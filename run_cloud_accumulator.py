@@ -1,0 +1,34 @@
+"""Cloud/CI friendly one-shot accumulator.
+
+Use this from GitHub Actions, VPS cron, or another always-on machine. It runs the
+same local report update jobs as the PC accumulator once, then exits.
+"""
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from pathlib import Path
+
+
+def main() -> int:
+    result = {"status": "OK", "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    try:
+        from run_auto_accumulator import _run_once
+        result["auto_accumulator"] = _run_once(interval_min=15.0, loop_count=1)
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["auto_accumulator_error"] = f"{type(exc).__name__}: {exc}"
+    try:
+        from run_v36_full_update import run_once as run_v36_once
+        result["v36"] = run_v36_once()
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v36_error"] = f"{type(exc).__name__}: {exc}"
+    Path("reports").mkdir(parents=True, exist_ok=True)
+    Path("reports/cloud_accumulator_last_run.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+    return 0 if result.get("status") == "OK" else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
