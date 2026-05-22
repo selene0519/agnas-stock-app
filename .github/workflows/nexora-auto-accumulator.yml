@@ -1,0 +1,39 @@
+name: NEXORA Auto Accumulator
+
+on:
+  schedule:
+    # Weekdays: roughly every 30 minutes during Korea evening / US market window.
+    # Adjust this after checking your API rate limits.
+    - cron: "*/30 * * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  accumulate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run cloud accumulator
+        env:
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+          KIS_ACCOUNT_NO: ${{ secrets.KIS_ACCOUNT_NO }}
+          AUTO_ACCUMULATOR_ONCE: "1"
+        run: python run_cloud_accumulator.py
+      - name: Commit updated reports
+        run: |
+          git config user.name "nexora-bot"
+          git config user.email "nexora-bot@example.com"
+          git add reports data logs backups || true
+          git commit -m "auto: update NEXORA reports" || echo "No changes"
+          git push || true
