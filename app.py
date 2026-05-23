@@ -49260,6 +49260,319 @@ def run_headless_runner(action: str) -> int:  # type: ignore[override]
         return _ORIG_run_headless_runner_v66(action)
     return 2
 
+
+
+# ══════════════════════════════════════════════
+# v67 — previous-close fallback, cleaner buy cards, split news translation
+# ══════════════════════════════════════════════
+
+def _v67_now() -> str:
+    try:
+        return datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _v67_slug(market: str | None = None) -> str:
+    try:
+        m = market or _v63_current_market_token()
+    except Exception:
+        m = market or "미국주식"
+    return "kr" if "한국" in str(m) or "국장" in str(m) else "us"
+
+
+def _v67_market() -> str:
+    try:
+        return _v63_current_market_token()
+    except Exception:
+        return "미국주식"
+
+
+def _v67_label(market: str | None = None) -> str:
+    return "국장" if _v67_slug(market) == "kr" else "미장"
+
+
+def _v67_read(path: str | Path) -> pd.DataFrame:
+    try:
+        return _v63_safe_df(path)
+    except Exception:
+        try:
+            p = Path(path)
+            if not p.exists() or p.stat().st_size == 0:
+                return pd.DataFrame()
+            return pd.read_csv(p)
+        except Exception:
+            return pd.DataFrame()
+
+
+def _v67_report(name: str) -> Path:
+    return Path("reports") / name
+
+
+def _v67_get(row: pd.Series, *keys: str, default: str = "-") -> str:
+    try:
+        return _v66_safe_get(row, *keys, default=default)
+    except Exception:
+        for k in keys:
+            if k in row.index:
+                s = str(row.get(k, "")).strip()
+                if s and s.lower() not in {"nan", "none", "null", "-"}:
+                    return s
+        return default
+
+
+def _v67_card(title: str, badge: str = "확인", body: str = "", footer: str = "") -> None:
+    try:
+        _v66_card(title, badge, body, footer)
+        return
+    except Exception:
+        pass
+    st.markdown(
+        f"""
+        <div style="border:1px solid rgba(148,163,184,.25);border-radius:18px;padding:16px 18px;margin:10px 0;background:rgba(15,23,42,.74);">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><b style="font-size:1.05rem;color:#f8fafc;">{title}</b><span style="color:#f87171;font-weight:800;">{badge}</span></div>
+          <div style="margin-top:10px;color:#dbeafe;line-height:1.6;">{body}</div>
+          <div style="margin-top:10px;color:#93c5fd;font-size:.9rem;line-height:1.5;">{footer}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _v67_render_pretty_table(df: pd.DataFrame, *, empty: str, limit: int = 30) -> None:
+    if df is None or df.empty:
+        st.info(empty)
+        return
+    work = df.head(limit).copy()
+    # Remove raw/None-heavy columns for readability
+    keep_candidates = [
+        "종목", "종목명", "종목코드", "시장", "상태", "행동", "위험 구분",
+        "기준가", "진입 기준", "손절가", "목표가", "현재가/직전종가", "현재가",
+        "등락률", "거래량", "거래대금", "수급점수", "수급 기준", "권장행동", "권장수량", "수익률",
+        "해석", "초보자 해석", "핵심 사유", "다음 행동", "가격기준", "가격출처", "간략 번역", "제목", "출처",
+    ]
+    cols = [c for c in keep_candidates if c in work.columns]
+    if cols:
+        work = work[cols]
+    work = work.fillna("-").replace({"None": "-", "nan": "-", "NaN": "-"})
+    st.dataframe(work, use_container_width=True, hide_index=True)
+
+
+def _v67_generate_reports() -> dict[str, Any]:
+    try:
+        from core.v67_previous_close_engine import run_v67_update
+        return run_v67_update(fetch_news=True, fetch_missing_prices=True)
+    except Exception as exc:
+        return {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}", "updated_at": _v67_now()}
+
+
+def render_v67_today_priority_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v67_market()
+    slug = _v67_slug(market)
+    label = _v67_label(market)
+    _render_nav_page_title(f"{label} 오늘 우선 확인")
+    st.caption("장전·장마감·휴장 시간에는 비워두지 않고, 가능한 경우 직전 장마감 기준으로 후보를 보여줍니다.")
+    _v63_market_help()
+    if st.button("오늘 후보/뉴스/가격 갱신", key=f"v67_today_refresh_{slug}"):
+        res = _v67_generate_reports()
+        st.success(f"갱신 완료: {res.get('updated_at', _v67_now())}")
+
+    action = _v67_read(_v67_report(f"v67_action_board_{slug}.csv"))
+    pull = _v67_read(_v67_report(f"v67_pullback_{slug}.csv"))
+    flow = _v67_read(_v67_report(f"v67_flow_{slug}.csv"))
+    risk = _v67_read(_v67_report(f"v67_risk_{slug}.csv"))
+
+    cards = [
+        ("🎯 오늘 우선 확인", len(action), "기준가·손절·목표가를 먼저 확인", action, "종목"),
+        ("🪜 눌림목/관찰", len(pull), "추격보다 기준가 근처 대기", pull, "종목"),
+        ("💚 수급·거래대금", len(flow), "장중 수급이 없으면 직전 장 기준 대체", flow, "종목코드"),
+        ("🚫 매수 위험·제외", len(risk), "신규매수보다 관망/제외 우선", risk, "종목"),
+    ]
+    cols = st.columns(4)
+    for col, (title, n, desc, df, name_col) in zip(cols, cards):
+        with col:
+            top = "후보 없음"
+            if df is not None and not df.empty:
+                top = str(df.iloc[0].get(name_col, df.iloc[0].get("종목명", df.iloc[0].get("종목코드", "-"))))
+            _v67_card(title, f"{n}개", f"{desc}<br><br><b>TOP</b> {top}", "사이드바 시장필터 기준")
+
+    with st.expander("🎯 오늘 우선 확인 상세", expanded=True):
+        _v67_render_pretty_table(action, empty=f"{label} 오늘 우선 확인 후보가 없습니다.", limit=20)
+    with st.expander("🪜 눌림목/관찰 상세", expanded=False):
+        _v67_render_pretty_table(pull, empty=f"{label} 눌림목/관찰 후보가 없습니다. 장마감 업데이트 후 다시 확인하세요.", limit=30)
+    with st.expander("💚 수급·거래대금 상세", expanded=False):
+        _v67_render_pretty_table(flow, empty=f"{label} 수급·거래대금 후보가 없습니다. 직전 장 기준 대체 리포트도 비어 있습니다.", limit=30)
+    with st.expander("🚫 매수 위험·제외 상세", expanded=False):
+        _v67_render_pretty_table(risk, empty=f"{label} 매수 위험 후보가 없습니다.", limit=30)
+
+
+def render_v67_buy_four_categories_page() -> None:
+    inject_native_graft_css()
+    market = _v67_market(); slug = _v67_slug(market); label = _v67_label(market)
+    _render_nav_page_title(f"{label} 매수 후보 4분류")
+    st.caption("화면 안에서 시장을 다시 고르지 않습니다. 왼쪽 사이드바 시장필터만 따릅니다.")
+    if st.button("매수 후보 4분류 갱신", key=f"v67_buy4_refresh_{slug}"):
+        res = _v67_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v67_now())}")
+    action = _v67_read(_v67_report(f"v67_action_board_{slug}.csv"))
+    pull = _v67_read(_v67_report(f"v67_pullback_{slug}.csv"))
+    flow = _v67_read(_v67_report(f"v67_flow_{slug}.csv"))
+    # 실적·저평가: actual if available, otherwise clear explanation only.
+    fund = _v67_read("reports/v65_company_analysis_cards.csv")
+    try:
+        fund = _v63_market_filter(fund, market)
+    except Exception:
+        pass
+    if not fund.empty and "종목코드" in fund.columns:
+        fund = fund[~fund["종목코드"].astype(str).str.strip().str.lower().isin(["", "-", "nan", "none", "null"])]
+    tabs = st.tabs(["오늘 확인", "눌림목/관찰", "수급·거래대금", "실적·저평가"])
+    with tabs[0]: _v67_render_pretty_table(action, empty=f"{label} 오늘 확인 후보가 없습니다.", limit=40)
+    with tabs[1]: _v67_render_pretty_table(pull, empty=f"{label} 눌림목/관찰 후보가 없습니다.", limit=40)
+    with tabs[2]: _v67_render_pretty_table(flow, empty=f"{label} 수급·거래대금 후보가 없습니다.", limit=40)
+    with tabs[3]:
+        if fund.empty:
+            st.warning("실적·저평가 값은 아직 재무/KPI 데이터가 부족합니다. 단기 매매는 가능하지만 장기 보유 판단에는 DART/Finnhub 재무 연결이 필요합니다.")
+        else:
+            _v67_render_pretty_table(fund, empty=f"{label} 실적·저평가 후보가 없습니다.", limit=40)
+
+
+def render_v67_buy_risk_page() -> None:
+    inject_native_graft_css()
+    market = _v67_market(); slug = _v67_slug(market); label = _v67_label(market)
+    _render_nav_page_title(f"{label} 매수 위험·제외")
+    st.caption("신규매수 제외·격한 추격·손익비 부족·주의 후보를 한 곳에서만 봅니다.")
+    if st.button("매수 위험 갱신", key=f"v67_risk_refresh_{slug}"):
+        res = _v67_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v67_now())}")
+    df = _v67_read(_v67_report(f"v67_risk_{slug}.csv"))
+    if df.empty:
+        st.info(f"{label} 매수 위험·제외 후보가 없습니다.")
+        return
+    c1, c2, c3 = st.columns(3)
+    c1.metric("위험 후보", len(df))
+    c2.metric("신규매수 제외", int(df.astype(str).apply(lambda s: s.str.contains("제외|금지", regex=True, na=False)).any(axis=1).sum()))
+    c3.metric("주의/관망", int(df.astype(str).apply(lambda s: s.str.contains("주의|관망|대기", regex=True, na=False)).any(axis=1).sum()))
+    _v67_render_pretty_table(df, empty=f"{label} 매수 위험 후보가 없습니다.", limit=100)
+
+
+def render_v67_position_plan_page() -> None:
+    inject_native_graft_css()
+    market = _v67_market(); slug = _v67_slug(market); label = _v67_label(market)
+    _render_nav_page_title(f"{label} 보유·매도 권장수량")
+    st.caption("실시간 현재가가 없으면 직전 장마감 가격으로 보유 손익과 권장수량을 보강합니다.")
+    if st.button("권장수량 갱신", key=f"v67_position_refresh_{slug}"):
+        res = _v67_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v67_now())}")
+    df = _v67_read(_v67_report(f"v67_position_plan_{slug}.csv"))
+    if df.empty:
+        st.info(f"{label} 보유종목 파일이 없거나 읽을 수 없습니다. holdings_{slug}.csv 파일에 종목코드·평단가·보유수량을 넣으면 계산됩니다.")
+        return
+    for _, r in df.head(20).iterrows():
+        title = _v67_get(r, "종목", default="-")
+        action = _v67_get(r, "권장행동", default="보유 점검")
+        body = (
+            f"보유수량 {_v67_get(r,'보유수량')} · 평단 {_v67_get(r,'평단가')} · 현재가 {_v67_get(r,'현재가')}<br>"
+            f"수익률 {_v67_get(r,'수익률')} · 권장수량 {_v67_get(r,'권장수량')} · 예상금액 {_v67_get(r,'예상금액')}<br>"
+            f"가격출처 {_v67_get(r,'가격출처', default='-')}"
+        )
+        _v67_card(title, action, body, _v67_get(r, "초보자 안내", default="실제 주문 전 증권사 현재가와 비교하세요."))
+    with st.expander("원본 표 보기", expanded=False):
+        _v67_render_pretty_table(df, empty="보유·매도 권장수량 데이터 없음", limit=80)
+
+
+def render_v67_news_cards_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v67_market(); slug = _v67_slug(market); label = _v67_label(market)
+    _render_nav_page_title(f"{label} 뉴스 카드")
+    st.caption("국장/미장 뉴스는 사이드바 시장필터 기준으로 분리합니다. 미장 뉴스는 AI API가 없어도 간략 번역을 붙입니다.")
+    if st.button("뉴스 갱신/번역", key=f"v67_news_refresh_{slug}"):
+        res = _v67_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v67_now())}")
+    df = _v67_read(_v67_report(f"v67_news_cards_{slug}.csv"))
+    if df.empty:
+        diag_path = _v67_report(f"v67_news_diag_{slug}.json")
+        st.warning(f"{label} 뉴스가 0건입니다. GNews 호출이 성공해도 검색 결과가 없거나 무료 한도/검색 조건 문제일 수 있습니다.")
+        if diag_path.exists():
+            with st.expander("GNews 진단 보기", expanded=False):
+                st.json(json.loads(diag_path.read_text(encoding='utf-8')))
+        return
+    for _, r in df.head(20).iterrows():
+        title = _v67_get(r, "제목", "title", "Title", default="뉴스 제목 없음")
+        summary = _v67_get(r, "요약", "description", "Description", "content", default="")
+        trans = _v67_get(r, "간략 번역", "한글 해석", "초보자 해석", default="")
+        source = _v67_get(r, "출처", "source", "Source", default="-")
+        body = f"{summary}<br><br><b>간략 번역</b>: {trans}<br><br>출처: {source}"
+        _v67_card(title, "뉴스", body, "뉴스만으로 매수하지 말고 기준가·거래량·시장 방향을 함께 확인하세요.")
+
+
+def render_v67_selected_chart_flow_page() -> None:
+    """Call the existing chart page, then add a clearer current-price fallback explanation."""
+    try:
+        render_v37_selected_chart_flow_page()
+    except Exception as exc:
+        st.warning(f"기존 차트 화면을 불러오는 중 문제가 발생했습니다: {type(exc).__name__}: {exc}")
+    st.markdown("### 장전/장마감 데이터 해석")
+    st.info("현재가·호가·수급이 미수신이어도 후보/기준가는 직전 장마감 기준으로 참고할 수 있습니다. 현재가 카드가 비어 있으면 API가 실시간 시세를 주지 않았거나 장전/장마감 시간일 가능성이 큽니다.")
+    slug = _v67_slug(_v67_market())
+    price_df = _v67_read(_v67_report("v67_price_lookup.csv"))
+    if not price_df.empty:
+        st.caption("저장된 직전 가격 lookup 일부")
+        _v67_render_pretty_table(price_df[price_df.get('시장', '').astype(str).str.contains('한국|미국', regex=True, na=False)].head(20), empty="가격 lookup 없음", limit=20)
+
+
+# v67 menus
+try:
+    OPERATIONAL_NAV_GROUPS.clear()
+    OPERATIONAL_NAV_GROUPS.update({
+        "오늘 실행": [("오늘 우선 확인", "page_v67_today_priority")],
+        "매수": [("매수 후보 4분류", "page_v67_buy_4_categories"), ("매수 위험·제외", "page_v67_buy_risk"), ("매수 판단·기준가", "page_buy_decision"), ("커스텀 스크리너", "page_v37_custom_screener")],
+        "보유·매도": [("보유·매도 권장수량", "page_v67_position_plan"), ("보유·매도 통합", "page_ops_holdings_unified")],
+        "차트·수급": [("선택 종목 차트·수급", "page_v67_selected_chart_flow")],
+        "뉴스·재무·시장": [("뉴스 카드", "page_v67_news_cards"), ("기업분석 카드", "page_v66_business_cards"), ("시장·거시 카드", "page_v66_macro_cards"), ("종목 내러티브", "page_v66_narrative")],
+        "관심·설정": [("관심종목 관리", "page_watch_manage"), ("실전 운용 기준", "page_operation_settings"), ("MONE 사용 순서", "page_v64_usage_guide")],
+    })
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v67 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v67 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v67_today_priority": render_v67_today_priority_page(); return
+    if page_id == "page_v67_buy_4_categories": render_v67_buy_four_categories_page(); return
+    if page_id == "page_v67_buy_risk": render_v67_buy_risk_page(); return
+    if page_id == "page_v67_position_plan": render_v67_position_plan_page(); return
+    if page_id == "page_v67_news_cards": render_v67_news_cards_page(); return
+    if page_id == "page_v67_selected_chart_flow": render_v67_selected_chart_flow_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v67 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v67(page_id)
+    st.warning(f"알 수 없는 화면 ID: {page_id}")
+
+try:
+    _ORIG_run_headless_runner_v67 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v67 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v67", "v67_update", "daily_v67", "mone_v67"}:
+        try:
+            from core.v67_previous_close_engine import run_v67_update
+            res = run_v67_update(fetch_news=True, fetch_missing_prices=True)
+            print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0 if res.get("status") in {"OK", "WARN"} else 2
+        except Exception as exc:
+            print(f"v67 update failed: {type(exc).__name__}: {exc}", flush=True)
+            return 2
+    if _ORIG_run_headless_runner_v67 is not None:
+        return _ORIG_run_headless_runner_v67(action)
+    return 2
+
 if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "--runner":
         raise SystemExit(run_headless_runner(sys.argv[2]))
