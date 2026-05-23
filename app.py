@@ -46868,7 +46868,7 @@ def render_v50_news_cards_page() -> None:
     from core.v43_operational_engine import read_csv_safe, read_json_safe
     inject_native_graft_css()
     _render_nav_page_title("뉴스 카드")
-    st.caption("GNews/News API 결과를 초보자용 카드로 정리합니다. LLM 키가 없어도 제목/설명 기반 기본 해석은 가능합니다.")
+    st.caption("GGNews API 결과를 초보자용 카드로 정리합니다. LLM 키가 없어도 제목/설명 기반 기본 해석은 가능합니다.")
     if st.button("뉴스 카드 갱신", key="v50_news_refresh"):
         res = run_v50_update(fetch_news=True)
         st.success(f"갱신 완료: {res.get('updated_at', '')}")
@@ -46879,7 +46879,7 @@ def render_v50_news_cards_page() -> None:
             st.caption(f"API 수집 결과: {fr}")
     df = read_csv_safe(NEWS_CSV)
     if df.empty:
-        st.info("뉴스 카드 데이터가 없습니다. GNEWS_API_KEY/NEWS_API_KEY와 GitHub Actions 실행 상태를 확인하세요.")
+        st.info("뉴스 카드 데이터가 없습니다. GNEWS_API_KEY와 GitHub Actions 실행 상태를 확인하세요.")
         return
     for _, r in df.head(30).iterrows():
         title = str(r.get("제목", "-"))
@@ -47650,7 +47650,7 @@ def render_v60_action_board_page() -> None:
     st.caption("국장과 미장을 따로 봅니다. 통합 보기 없이 오늘 실제 행동 후보만 가볍게 확인합니다.")
     market = _v60_market_picker("v60_action_market", default="국장")
     if st.button("오늘 행동판 갱신", key="v60_action_refresh"):
-        res = run_v60_update(fetch_news=False, fetch_missing_prices=False)
+        res = run_v60_update(fetch_news=False, fetch_missing_prices=True)
         st.success(f"갱신 완료: {res.get('updated_at','')}")
     df = _v60_safe_df(ACTION_LIGHT_CSV)
     if df.empty:
@@ -47687,7 +47687,7 @@ def render_v60_data_center_page() -> None:
     meta = _v60_safe_json(V60_DATA_CENTER_JSON)
     keys = meta.get("keys", {}) if isinstance(meta, dict) else {}
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("GNews", "인식" if keys.get("GNEWS_API_KEY") or keys.get("NEWS_API_KEY") else "미설정")
+    k1.metric("GNews", "인식" if keys.get("GNEWS_API_KEY") else "미설정")
     k2.metric("Finnhub", "인식" if keys.get("FINNHUB_API_KEY") else "미설정")
     k3.metric("DART", "인식" if keys.get("DART_API_KEY") else "미설정")
     k4.metric("LLM", "인식" if keys.get("OPENAI_API_KEY") or keys.get("ANTHROPIC_API_KEY") else "선택")
@@ -47711,7 +47711,7 @@ def render_v60_buy_risk_page() -> None:
     st.caption("국장/미장별로 신규매수 제외·추격·손익비 부족·주의 후보를 하나의 기준으로 봅니다.")
     market = _v60_market_picker("v60_risk_market", default="국장")
     if st.button("매수 위험 갱신", key="v60_risk_refresh"):
-        res = run_v60_update(fetch_news=False, fetch_missing_prices=False)
+        res = run_v60_update(fetch_news=False, fetch_missing_prices=True)
         st.success(f"갱신 완료: {res.get('updated_at','')}")
     df = _v60_safe_df(BUY_RISK_LIGHT_CSV)
     if df.empty:
@@ -47754,10 +47754,10 @@ def render_v60_news_page() -> None:
     from core.v60_final_engine import run_v60_update, V60_NEWS_CARDS_CSV, V60_DATA_CENTER_JSON
     inject_native_graft_css()
     _render_nav_page_title("뉴스 카드")
-    st.caption("GNews API는 뉴스 수집용입니다. AI API는 한글 요약/감성분석 고도화용이라 없어도 기본 뉴스 수집은 가능합니다.")
+    st.caption("GGNews API는 뉴스 수집용입니다. AI API는 한글 요약/감성분석 고도화용이라 없어도 기본 뉴스 수집은 가능합니다.")
     market = _v60_market_picker("v60_news_market", default="국장")
     if st.button("뉴스 갱신/테스트", key="v60_news_refresh"):
-        res = run_v60_update(fetch_news=True, fetch_missing_prices=False)
+        res = run_v60_update(fetch_news=True, fetch_missing_prices=True)
         st.success(f"갱신 완료: {res.get('updated_at','')}")
     meta = _v60_safe_json(V60_DATA_CENTER_JSON)
     gnews = (meta.get("gnews_test") or {}) if isinstance(meta, dict) else {}
@@ -47780,7 +47780,7 @@ def render_v60_quant_review_page() -> None:
     _render_nav_page_title("퀀트 안내·복기")
     st.caption("퀀트는 사용자가 직접 계산하는 화면이 아니라, 앱 추천이 실제로 맞았는지 기록하고 보정하는 근거 화면입니다.")
     if st.button("퀀트 복기 요약 갱신", key="v60_quant_refresh"):
-        res = run_v60_update(fetch_news=False, fetch_missing_prices=False)
+        res = run_v60_update(fetch_news=False, fetch_missing_prices=True)
         st.success(f"갱신 완료: {res.get('updated_at','')}")
     df = _v60_safe_df(V60_QUANT_REVIEW_CSV)
     if df.empty:
@@ -47796,7 +47796,7 @@ def render_v60_final_guide_page() -> None:
     _render_nav_page_title("v60 안정판 안내")
     st.caption("v60은 기능 추가보다 사용 흐름·속도·데이터 점검·메뉴 정리를 우선한 안정판입니다.")
     if st.button("v60 안정판 리포트 갱신", key="v60_guide_refresh"):
-        res = run_v60_update(fetch_news=False, fetch_missing_prices=False)
+        res = run_v60_update(fetch_news=False, fetch_missing_prices=True)
         st.success(f"갱신 완료: {res.get('updated_at','')}")
     guide = _v60_safe_json(V60_BEGINNER_GUIDE_JSON)
     if guide:

@@ -220,7 +220,7 @@ def _read_many(paths: Iterable[Path]) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
-def build_action_board_light() -> pd.DataFrame:
+def build_action_board_light(fetch_missing_prices: bool = True) -> pd.DataFrame:
     src = _read_first([
         REPORT_DIR / "v45_beginner_action_board.csv",
         REPORT_DIR / "v44_beginner_action_board.csv",
@@ -231,6 +231,7 @@ def build_action_board_light() -> pd.DataFrame:
         out = pd.DataFrame(columns=["시장", "우선순위", "행동", "종목", "기준가", "손절가", "목표가", "초보자 안내", "이유"])
         out.to_csv(ACTION_LIGHT_CSV, index=False, encoding="utf-8-sig")
         return out
+    prices = _load_current_prices()
     for _, r in src.head(400).iterrows():
         symbol_raw = first(r, ["종목코드", "symbol", "ticker", "종목", "code"], "")
         market = norm_market(first(r, ["시장", "market"], ""), symbol_raw)
@@ -239,16 +240,39 @@ def build_action_board_light() -> pd.DataFrame:
         label = add_symbol_label(sym or symbol_raw, name, market) if (sym or clean_text(symbol_raw, "")) else clean_text(first(r, ["종목"], "-"))
         if not clean_text(label, "") or label == "-":
             continue
+        basis_raw = first(r, ["기준가", "우선진입가", "entry_price", "preferred_entry", "basis_price"], "-")
+        stop_raw = first(r, ["손절가", "stop_price", "stop_loss"], "-")
+        target_raw = first(r, ["목표가", "1차 목표가", "target_price", "take_profit1"], "-")
+        basis_num = to_num(basis_raw, math.nan)
+        stop_num = to_num(stop_raw, math.nan)
+        target_num = to_num(target_raw, math.nan)
+        px = prices.get(sym.upper(), prices.get(sym, math.nan)) if sym else math.nan
+        if (math.isnan(px) or px <= 0) and sym and fetch_missing_prices:
+            px = _fetch_price(sym, market)
+        # 기준가/손절/목표가가 비어 있으면 현재가 기반의 보수적 임시 기준을 채웁니다.
+        # 이 값은 실전 주문가가 아니라 "기준가 계산 전" 상태를 줄이기 위한 참고값입니다.
+        if (math.isnan(basis_num) or basis_num <= 0) and not math.isnan(px) and px > 0:
+            basis_num = px
+        if (math.isnan(stop_num) or stop_num <= 0) and not math.isnan(basis_num) and basis_num > 0:
+            stop_num = basis_num * 0.95
+        if (math.isnan(target_num) or target_num <= 0) and not math.isnan(basis_num) and basis_num > 0:
+            target_num = basis_num * 1.10
+        basis_txt = fmt_price(basis_num, market) if not math.isnan(basis_num) and basis_num > 0 else clean_text(basis_raw, "-")
+        stop_txt = fmt_price(stop_num, market) if not math.isnan(stop_num) and stop_num > 0 else clean_text(stop_raw, "-")
+        target_txt = fmt_price(target_num, market) if not math.isnan(target_num) and target_num > 0 else clean_text(target_raw, "-")
+        reason_extra = ""
+        if not math.isnan(px) and px > 0 and clean_text(basis_raw, "-") == "-":
+            reason_extra = " · 현재가 기반 임시 기준"
         rows.append({
             "시장": market,
             "우선순위": clean_text(first(r, ["우선순위", "priority"], "중간"), "중간"),
             "행동": clean_text(first(r, ["행동", "추천행동", "판단", "action"], "진입가 대기"), "진입가 대기"),
             "종목": label,
-            "기준가": clean_text(first(r, ["기준가", "우선진입가", "entry_price"], "-")),
-            "손절가": clean_text(first(r, ["손절가", "stop_price"], "-")),
-            "목표가": clean_text(first(r, ["목표가", "1차 목표가", "target_price"], "-")),
+            "기준가": basis_txt,
+            "손절가": stop_txt,
+            "목표가": target_txt,
             "초보자 안내": clean_text(first(r, ["초보자 안내", "beginner_guide", "안내"], ""), "기준가·손절가·뉴스·수급 확인 후 작은 비중부터 검토하세요."),
-            "이유": clean_text(first(r, ["이유", "사유", "감점근거", "reason"], "-")),
+            "이유": clean_text(first(r, ["이유", "사유", "감점근거", "reason"], "-")) + reason_extra,
         })
     out = pd.DataFrame(rows)
     if not out.empty:
@@ -511,7 +535,7 @@ def build_news_status(fetch_news: bool = False) -> dict[str, Any]:
             errors += [clean_text(x, "") for x in df["error"].dropna().astype(str).tolist() if clean_text(x, "")]
     if not key_present:
         status = "키 미인식"
-        guide = "로컬 앱 폴더의 .env 또는 GitHub Secrets에 GNEWS_API_KEY/NEWS_API_KEY를 넣어야 합니다."
+        guide = "로컬 앱 폴더의 .env 또는 GitHub Secrets에 GNEWS_API_KEY를 넣어야 합니다."
     elif ok_kr + ok_us > 0:
         status = "정상"
         guide = "뉴스가 수집되었습니다. LLM API가 없어도 제목/링크/설명 수집은 가능합니다."
@@ -537,7 +561,7 @@ def run_v52_update(fetch_news: bool = False, include_v50: bool = False, fetch_mi
             upstream = run_v50_update(fetch_news=False)
         except Exception as exc:
             upstream = {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
-    action = build_action_board_light()
+    action = build_action_board_light(fetch_missing_prices=fetch_missing_prices)
     risk = build_buy_risk_light()
     pos = build_position_plan_light(fetch_missing_prices=fetch_missing_prices)
     news = build_news_status(fetch_news=fetch_news)

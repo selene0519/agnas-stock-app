@@ -1,0 +1,389 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260515112130
+Username: Kang\CodexSandboxOffline
+RunAs User: Kang\CodexSandboxOffline
+Configuration Name: 
+Machine: KANG (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\daily_mock_operation_check_final.ps1 -OpenAppAtEnd 0
+Process ID: 11472
+PSVersion: 5.1.26100.8457
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
+BuildVersion: 10.0.26100.8457
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+
+==================================================
+STOCK APP DAILY PAPER-OP CHECK FINAL
+==================================================
+checked_at: 2026-05-15 11:21:30
+root: C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app
+check_log: C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app\reports\daily_mock_operation_check_20260515_112129.txt
+
+[1. Scheduled Task Status]
+PS>TerminatingError(Get-ScheduledTask): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 액세스가 거부되었습니다. "
+
+Task: runner_kr_predict -> not found
+PS>TerminatingError(Get-ScheduledTask): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 액세스가 거부되었습니다. "
+
+Task: runner_kr_update -> not found
+PS>TerminatingError(Get-ScheduledTask): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 액세스가 거부되었습니다. "
+
+Task: runner_us_predict -> not found
+PS>TerminatingError(Get-ScheduledTask): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 액세스가 거부되었습니다. "
+
+Task: runner_us_update -> not found
+PS>TerminatingError(Get-ScheduledTask): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 액세스가 거부되었습니다. "
+
+Task: runner_us_update_retry -> not found
+PS>TerminatingError(Get-ScheduledTask): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 액세스가 거부되었습니다. "
+
+Task: runner_scheduler_guard -> not found
+PS>TerminatingError(Get-ScheduledTask): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 액세스가 거부되었습니다. "
+
+Task: US FAST Predict -> not found
+PS>TerminatingError(Get-ScheduledTask): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 액세스가 거부되었습니다. "
+
+Task: US FULL Predict -> not found
+
+[2. scheduler_health.json]
+us_update | due=07:10 | status=정상 | detail=오늘 실행 로그 확인
+us_update_retry | due=08:30 | status=정상 | detail=오늘 실행 로그 확인
+kr_predict | due=08:50 | status=정상 | detail=오늘 실행 로그 확인
+kr_update | due=16:20 | status=대기 | detail=예정 시간 전
+us_predict | due=22:20 | status=대기 | detail=예정 시간 전
+OK: scheduler health is normal/wait only
+
+[3. Core Files]
+OK  .\runner_status_us.json | modified: 05/14/2026 22:36:31 | size: 2362
+OK  .\runner_status_kr.json | modified: 05/15/2026 08:51:37 | size: 2380
+OK  .\predictions.csv | modified: 05/15/2026 08:51:09 | size: 878728
+OK  .\paper_trading_log.csv | modified: 05/15/2026 08:51:37 | size: 148793
+OK  .\paper_trading_summary.csv | modified: 05/15/2026 08:51:37 | size: 1998
+OK  .\reports\latest_us_order_plan.csv | modified: 05/15/2026 08:30:37 | size: 82543
+OK  .\reports\latest_kr_order_plan.csv | modified: 05/15/2026 08:51:10 | size: 85577
+OK  .\reports\buy_priority_candidates.csv | modified: 05/15/2026 08:51:38 | size: 369235
+OK  .\reports\buy_candidate_dashboard_health.json | modified: 05/15/2026 08:51:38 | size: 1621
+OK  .\reports\swing_candidates_us_A_top3.csv | modified: 05/14/2026 22:35:47 | size: 1258
+OK  .\reports\swing_candidates_us_B_watch.csv | modified: 05/14/2026 22:35:47 | size: 169855
+OK  .\reports\swing_candidates_us_C_excluded.csv | modified: 05/14/2026 22:35:47 | size: 149894
+OK  .\reports\swing_candidates_kr_A_top3.csv | modified: 05/15/2026 08:51:26 | size: 1258
+OK  .\reports\swing_candidates_kr_B_watch.csv | modified: 05/15/2026 08:51:26 | size: 1258
+OK  .\reports\swing_candidates_kr_C_excluded.csv | modified: 05/15/2026 08:51:26 | size: 301064
+OK  .\logs\error_log.csv | modified: 05/14/2026 21:07:45 | size: 14808
+OK  .\app_error_log.csv | modified: 05/14/2026 10:23:02 | size: 4508
+
+[4. runner_status JSON]
+
+.\runner_status_us.json
+
+
+last_run_kst                   : 2026-05-14 22:36:31
+market                         : 미국주식
+result                         : no_candidate
+skip_reason                    :
+error_message                  :
+files_updated                  : {data\backtest\backtest_validation_us_20260514_223548.csv, data\backtest\latest_us_bac
+                                 ktest_summary.txt, data\backtest\latest_us_backtest_validation.csv, data\backtest\late
+                                 st_us_swing_condition_learning.csv...}
+prediction_generation_allowed  : True
+prediction_lock_reason         : 프리마켓 → 오늘 미국장 예측 · 예측 생성/갱신 가능 시간대입니다.
+normal_skip                    : False
+session_label                  : 프리마켓 → 오늘 미국장 예측
+session                        : regular
+target_date                    : 2026-05-14
+next_recommended_hint          : 장전·장마감 후 예측 배치 시간에 runner_predict 실행을 권장합니다.
+next_recommended_run_kst       : 2026-05-15 22:20:00 KST
+saved_predictions              : 59
+tried                          : 59
+swing_a_count                  : 0
+swing_b_count                  : 56
+swing_c_count                  : 50
+swing_scan_allowed             : True
+paper_log_rows                 : 107
+swing_scan_result              : completed
+us_input_universe_count        : 106
+us_scanned_count               : 106
+us_success_count               : 106
+us_failed_count                : 0
+us_skipped_count               : 0
+skipped_tickers                : {}
+skipped_reasons                : {}
+us_swing_event_timing_mode     : none
+us_swing_no_chase_y_count      : 16
+us_swing_pullback_wait_y_count : 106
+us_swing_retest_entry_y_count  : 0
+extra                          : @{saved_predictions=59; tried=59; paper_log_rows=107; swing_a_count=0; swing_b_count=5
+                                 6; swing_c_count=50}
+
+
+
+OK: .\runner_status_us.json status=no_candidate
+
+.\runner_status_kr.json
+
+
+last_run_kst                   : 2026-05-15 08:51:37
+market                         : 한국주식
+result                         : no_candidate
+skip_reason                    :
+error_message                  :
+files_updated                  : {data\backtest\backtest_validation_kr_20260515_085126.csv, data\backtest\latest_kr_bac
+                                 ktest_summary.txt, data\backtest\latest_kr_backtest_validation.csv, data\backtest\late
+                                 st_kr_swing_condition_learning.csv...}
+prediction_generation_allowed  : True
+prediction_lock_reason         : 예상체결가 시간대 → 오늘 국장 예측 · 예측 생성/갱신 가능 시간대입니다.
+normal_skip                    : False
+session_label                  : 예상체결가 시간대 → 오늘 국장 예측
+session                        : expected_open
+target_date                    : 2026-05-15
+next_recommended_hint          : 장전·장마감 후 예측 배치 시간에 runner_predict 실행을 권장합니다.
+next_recommended_run_kst       : 2026-05-15 16:10:00 KST
+saved_predictions              : 62
+tried                          : 62
+swing_a_count                  : 0
+swing_b_count                  : 0
+swing_c_count                  : 98
+swing_scan_allowed             : True
+paper_log_rows                 : 99
+swing_scan_result              : completed
+kr_input_universe_count        : 98
+kr_scanned_count               : 98
+kr_success_count               : 98
+kr_failed_count                : 0
+kr_skipped_count               : 0
+skipped_tickers                : {}
+skipped_reasons                : {}
+kr_swing_event_timing_mode     : none
+kr_swing_no_chase_y_count      : 18
+kr_swing_pullback_wait_y_count : 98
+kr_swing_retest_entry_y_count  : 0
+extra                          : @{saved_predictions=62; tried=62; paper_log_rows=99; swing_a_count=0; swing_b_count=0;
+                                  swing_c_count=98}
+
+
+
+OK: .\runner_status_kr.json status=no_candidate
+
+[5. daily_health_report ok:true]
+running daily_health_report.py...
+PS>TerminatingError(): "Program 'python.exe' failed to run: Access is deniedAt C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app\daily_mock_operation_check_final.ps1:258 char:9
++         & $python ".\daily_health_report.py" | Out-Null
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~."
+CHECK: daily_health_report.py failed: Program 'python.exe' failed to run: Access is deniedAt C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app\daily_mock_operation_check_final.ps1:258 char:9
++         & $python ".\daily_health_report.py" | Out-Null
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.
+generated_at: 2026-05-15 11:12:19 KST
+ok: True
+warnings: recent_errors=46
+blocking_warnings:
+OK: daily health ok:true
+
+[6. A/B/C Candidate Counts]
+KR_B_WATCH : 0
+KR_C_EXCLUDED : 98
+US_C_EXCLUDED : 50
+US_B_WATCH : 56
+KR_A_TOP3 : 0
+US_A_TOP3 : 0
+
+[7. US Scan Is Not NVDA-only]
+US A/B/C total rows: 106
+US unique symbols: 106
+US sample symbols:
+AAPL
+ACHR
+AI
+ALAB
+AMAT
+AMD
+AMZN
+ANET
+APP
+ARM
+ASML
+ASTS
+AVAV
+AVGO
+BBAI
+CAT
+CAVA
+CEG
+CELH
+COHR
+OK: US result has multiple symbols
+
+[8. C-grade Normalized Exclude Reason]
+
+[us C]
+has normalized_exclude_reason: True
+has normalized_exclude_labels: True
+C total rows: 50
+empty normalized rows: 0
+OK: us C normalized_exclude_reason filled
+exclude reason summary:
+
+Name   Count
+----   -----
+주봉 하락     36
+갭상승 과열    14
+
+
+
+[kr C]
+has normalized_exclude_reason: True
+has normalized_exclude_labels: True
+C total rows: 98
+empty normalized rows: 0
+OK: kr C normalized_exclude_reason filled
+exclude reason summary:
+
+Name    Count
+----    -----
+이벤트 리스크    82
+주봉 하락      16
+
+
+
+[9. paper_trading Files]
+paper_trading_log rows: 314 | modified: 05/15/2026 08:51:37
+recent 5 rows:
+
+기록일        시장   시장국면  앱신뢰도점수 종목     등급 판정   현재가      우선진입가    손절가
+---        --   ----  ------ --     -- --   ---      -----    ---
+2026-05-15 한국주식 상방 우위 94     128940 C급 매수금지 449,500원 444,132원 433,836원
+2026-05-15 한국주식 상방 우위 94     035900 C급 매수금지 59,000원  58,153원  57,247원
+2026-05-15 한국주식 상방 우위 94     068270 C급 매수금지 195,100원 190,020원 184,668원
+2026-05-15 한국주식 상방 우위 94     086900 C급 매수금지 106,300원 105,726원 103,538원
+2026-05-15 한국주식 상방 우위 94     035720 C급 매수금지 45,950원  45,894원  44,087원
+
+
+
+paper_trading_summary rows: 12 | modified: 05/15/2026 08:51:37
+
+요약구간   요약기준일                   창구일수 관망기록수 총기록수 A급후보수 B급후보수 C급제외수 진입가터치율 1차익절도달률
+----   -----                   ---- ----- ---- ----- ----- ----- ------ -------
+전체합산   2026-05-15 08:51:37 KST 3    4     310  0     106   204   0.0    0.0
+미국장    2026-05-15 08:51:37 KST 2    2     212  0     106   106   0.0    0.0
+한국장    2026-05-15 08:51:37 KST 1    2     98   0     0     98    0.0    0.0
+A급     2026-05-15 08:51:37 KST 0    0     0    0     0     0     0.0    0.0
+B급     2026-05-15 08:51:37 KST 2    0     106  0     106   0     0.0    0.0
+C급     2026-05-15 08:51:37 KST 3    0     204  0     0     204   0.0    0.0
+미국장_A급 2026-05-15 08:51:37 KST 0    0     0    0     0     0     0.0    0.0
+미국장_B급 2026-05-15 08:51:37 KST 2    0     106  0     106   0     0.0    0.0
+한국장_A급 2026-05-15 08:51:37 KST 0    0     0    0     0     0     0.0    0.0
+한국장_B급 2026-05-15 08:51:37 KST 0    0     0    0     0     0     0.0    0.0
+최근7일   2026-05-15 08:51:37 KST 3    4     310  0     106   204   0.0    0.0
+최근14일  2026-05-15 08:51:37 KST 3    4     310  0     106   204   0.0    0.0
+
+
+
+[10. Row Count Trend]
+current predictions rows: 308
+current paper_trading_log rows: 314
+current buy_priority_candidates rows: 530
+no previous snapshot. Current values will be saved as baseline.
+
+[11. DATA_MISSING / NEEDS_REVIEW Watch]
+buy dashboard ok: True
+total rows: 530
+DATA_MISSING: 41
+NEEDS_REVIEW: 48
+missing/review ratio: 16.79%
+warnings: no high-conviction candidate today
+OK: buy dashboard health ok:true
+OK: missing/review ratio in range: 16.79%
+OK: snapshot saved: C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app\reports\daily_mock_operation_snapshot.json
+
+[12. Error Logs]
+
+logs\error_log.csv tail 20
+2026-05-14 21:06:31 KST,fundamental_cache_runner,fetch_finnhub_metric,ESTC,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=ESTC&metric=all&token=***
+2026-05-14 21:06:32 KST,fundamental_cache_runner,fetch_finnhub_metric,BBAI,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=BBAI&metric=all&token=***
+2026-05-14 21:06:32 KST,fundamental_cache_runner,fetch_finnhub_metric,SOUN,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=SOUN&metric=all&token=***
+2026-05-14 21:06:33 KST,fundamental_cache_runner,fetch_finnhub_metric,AI,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=AI&metric=all&token=***
+2026-05-14 21:06:34 KST,fundamental_cache_runner,fetch_finnhub_metric,DELL,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=DELL&metric=all&token=***
+2026-05-14 21:06:34 KST,fundamental_cache_runner,fetch_finnhub_metric,HPE,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=HPE&metric=all&token=***
+2026-05-14 21:06:35 KST,fundamental_cache_runner,fetch_finnhub_metric,WMT,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=WMT&metric=all&token=***
+2026-05-14 21:06:36 KST,fundamental_cache_runner,fetch_finnhub_metric,COST,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=COST&metric=all&token=***
+2026-05-14 21:06:36 KST,fundamental_cache_runner,fetch_finnhub_metric,LLY,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=LLY&metric=all&token=***
+2026-05-14 21:06:37 KST,fundamental_cache_runner,fetch_finnhub_metric,NVO,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=NVO&metric=all&token=***
+2026-05-14 21:06:37 KST,fundamental_cache_runner,fetch_finnhub_metric,ISRG,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=ISRG&metric=all&token=***
+2026-05-14 21:06:38 KST,fundamental_cache_runner,fetch_finnhub_metric,VRTX,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=VRTX&metric=all&token=***
+2026-05-14 21:06:39 KST,fundamental_cache_runner,fetch_finnhub_metric,EXAS,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=EXAS&metric=all&token=***
+2026-05-14 21:06:39 KST,fundamental_cache_runner,fetch_finnhub_metric,RXRX,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=RXRX&metric=all&token=***
+2026-05-14 21:06:40 KST,fundamental_cache_runner,fetch_finnhub_metric,CAVA,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=CAVA&metric=all&token=***
+2026-05-14 21:06:40 KST,fundamental_cache_runner,fetch_finnhub_metric,CELH,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=CELH&metric=all&token=***
+2026-05-14 21:06:41 KST,fundamental_cache_runner,fetch_finnhub_metric,ELF,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=ELF&metric=all&token=***
+2026-05-14 21:06:42 KST,fundamental_cache_runner,fetch_finnhub_metric,SHOP,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=SHOP&metric=all&token=***
+2026-05-14 21:06:43 KST,fundamental_cache_runner,fetch_finnhub_metric,MELI,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=MELI&metric=all&token=***
+2026-05-14 21:06:43 KST,fundamental_cache_runner,fetch_finnhub_metric,SE,429 Client Error: Too Many Requests for url: https://finnhub.io/api/v1/stock/metric?symbol=SE&metric=all&token=***
+OK: no critical pattern in logs\error_log.csv tail
+
+app_error_log.csv tail 20
+2026-05-14 04:24:25,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 09:52:18,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 09:52:44,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 09:52:44,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 09:56:18,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 09:56:35,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 09:56:35,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:05:53,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:06:13,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:06:13,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:06:49,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:07:10,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:07:10,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:07:13,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:07:24,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:07:25,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:08:13,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:08:58,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:08:59,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+2026-05-14 10:23:02,app_reliability,warning,,,,미국주식 reliability low score=12 label=관망 우선,
+OK: no critical pattern in app_error_log.csv tail
+
+[13. App Running / HTTP Check]
+Get-CimInstance : 액세스가 거부되었습니다. 
+At C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app\daily_mock_operation_check_final.ps1:561 char:25
++ $streamlitProcesses = @(Get-CimInstance Win32_Process | Where-Object  ...
++                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : PermissionDenied: (root\cimv2:Win32_Process:String) [Get-CimInstance], CimException
+    + FullyQualifiedErrorId : HRESULT 0x80041003,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand
+Get-CimInstance : 액세스가 거부되었습니다.
+At C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app\daily_mock_operation_check_final.ps1:561 char:25
++ $streamlitProcesses = @(Get-CimInstance Win32_Process | Where-Object  ...
++                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : PermissionDenied: (root\cimv2:Win32_Process:String) [Get-CimInstance], CimException
+    + FullyQualifiedErrorId : HRESULT 0x80041003,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand
+
+Streamlit is not running. Starting on port 8502...
+OK: app HTTP response OK: http://localhost:8502
+
+==================================================
+FINAL VERDICT
+==================================================
+CHECK NEEDED:
+- runner_status_us.json exists: True
+- runner_status_kr.json exists: True
+- paper_trading_log.csv exists: True
+- paper_trading_summary.csv exists: True
+- US A/B/C multiple symbols: True
+- C normalized values filled: True
+- no critical error in recent logs: True
+- scheduler_health readable: True
+- daily_health_report ok:true: True
+- buy_candidate_dashboard_health ok:true: True
+- overall check flag: False
+
+done.
+check log: C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app\reports\daily_mock_operation_check_20260515_112129.txt
+snapshot: C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app\reports\daily_mock_operation_snapshot.json
+**********************
+Windows PowerShell transcript end
+End time: 20260515112138
+**********************
