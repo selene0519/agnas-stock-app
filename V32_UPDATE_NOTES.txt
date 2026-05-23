@@ -1,0 +1,32 @@
+NEXORA / stock_app FINAL v32
+
+주요 변경
+1. 한국/미국 시장 세션 판정 로직 분리
+   - 한국: KST 기준 09:00~15:30 정규장
+   - 미국: US/Eastern 기준 09:30~16:00 정규장, 프리/애프터 구분
+   - 국장 장마감/휴장, 미장 장중 상황이 화면에 잘못 표시되던 문제 보정
+
+2. 장중 데이터 자동 갱신 연결
+   - run_intraday_refresh.py 추가
+   - run_intraday_refresh.bat 추가
+   - run_auto_accumulator.py가 장중 시장이 열려 있으면 현재가/호가/수급 리포트를 함께 갱신
+
+3. 현재가/호가/장중 진단 화면 보강
+   - 시장 상태, 세션 코드, 갱신 상태 표시
+   - 오래된 리포트는 '저장 리포트 기준' 경고를 표시
+
+4. 차트 및 판단 기준 MA5 -> MA10 변경
+   - 차트/기술 시그널/과열 판단/백테스트 전략에서 MA10 기준 강화
+
+5. 호가 리포트 요약 버그 수정
+   - 시장별 데이터가 없을 때 전체 target_count가 0으로 덮이는 문제 수정
+
+6. 자동누적 상태/백업 대상 확장
+   - 장중 현재가/호가/수급/데이터 진단 파일도 상태판과 백업 대상에 포함
+
+실행
+- 앱 실행: streamlit run app.py
+- 자동 시작 등록: .\install_autostart.bat
+- 자동 시작 해제: .\uninstall_autostart.bat
+- 장중 데이터 즉시 갱신: .\run_intraday_refresh.bat
+- 자동누적 즉시 실행: .\start_auto_accumulator.bat
