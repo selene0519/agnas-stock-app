@@ -53,21 +53,21 @@ def main() -> int:
 
     try:
         from core.v51_fast_light_engine import run_v51_update
-        result["v51"] = run_v51_update(fetch_news=False)
+        result["v51"] = run_v51_update(fetch_news=True)
     except Exception as exc:
         result["status"] = "ERROR"
         result["v51_error"] = f"{type(exc).__name__}: {exc}"
 
     try:
         from core.v52_market_split_engine import run_v52_update
-        result["v52"] = run_v52_update(fetch_news=False, fetch_missing_prices=True)
+        result["v52"] = run_v52_update(fetch_news=True, fetch_missing_prices=True)
     except Exception as exc:
         result["status"] = "ERROR"
         result["v52_error"] = f"{type(exc).__name__}: {exc}"
 
     try:
         from core.v60_final_engine import run_v60_update
-        result["v60"] = run_v60_update(fetch_news=False, fetch_missing_prices=False)
+        result["v60"] = run_v60_update(fetch_news=True, fetch_missing_prices=True)
     except Exception as exc:
         result["status"] = "ERROR"
         result["v60_error"] = f"{type(exc).__name__}: {exc}"

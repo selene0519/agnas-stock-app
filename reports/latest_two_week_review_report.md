@@ -1,0 +1,40 @@
+# Two Week Review Report
+- generated_at: 2026-05-15 00:04:53 KST
+- window_days: 14
+- window_start: 2026-05-01
+
+## Prediction Metrics
+- rows: 246
+- by_market: {'한국주식': 128, '미국주식': 118}
+- open_abs_error_pct_avg: 1.418
+- open_abs_error_pct_median: 1.002
+- close_abs_error_pct_avg: 3.131
+- close_abs_error_pct_median: 2.971
+- open_in_range_rate_pct: 73.62
+- close_in_range_rate_pct: 96.6
+- direction_hit_rate_pct: 46.82
+- entry_touched_rate_pct: 51.87
+- stop_touched_rate_pct: 5.88
+- tp1_touched_rate_pct: 15.51
+- tp2_touched_rate_pct: 5.35
+- virtual_net_return_avg_pct: -0.235
+- top_error_reasons: {'방향 불일치 / 예측 당시 주의사유 존재': 64, '예측 당시 주의사유 존재': 42, '우선진입가 미도달 / 예측 당시 주의사유 존재': 39, '시초가 범위 이탈 / 예측 당시 주의사유 존재': 28, '시초가 범위 이탈 / 우선진입가 미도달 / 예측 당시 주의사유 존재': 24, '방향 불일치 / 우선진입가 미도달 / 예측 당시 주의사유 존재': 23, '시초가 범위 이탈 / 손절 기준 터치 / 예측 당시 주의사유 존재': 5, '시초가 범위 이탈 / 종가 범위 이탈 / 우선진입가 미도달 / 예측 당시 주의사유 존재': 3}
+
+## Paper Trading Metrics
+- rows: 215
+- by_market: {'미국주식': 214, '한국주식': 1}
+- by_grade: {'B급': 106, 'C급': 106, '관망': 3}
+- 가상수익률_avg: -4.9426
+
+## Buy Priority Metrics
+- rows: 482
+- status: {'OK': 230, 'EXCLUDED_RISK': 115, 'NEEDS_REVIEW': 96, 'DATA_MISSING': 41}
+- source_group: {'저평가 성장': 205, '수급 급증': 204, '관심종목': 73}
+- final_judgment: {'관망 우위': 258, '손절 우선': 115, '비중 축소 우선': 99, '돌파 확인 후 접근': 9, '눌림목 매수 가능': 1}
+- score_cap_reason: {'': 287, 'DATA_COVERAGE_PARTIAL': 105, 'DATA_COVERAGE_LOW': 90}
+- score_min: 0.0
+- score_max: 76.0
+- score_avg: 21.36
+
+## Interpretation
+- DATA_MISSING/NEEDS_REVIEW 비율을 계속 줄이는 것이 다음 개선 우선순위입니다.

@@ -5,6 +5,7 @@
 - v53~v60 누적 안정화: 데이터 연결 점검, 뉴스/재무/보유/차트/퀀트/속도/메뉴 정리.
 - 화면은 가볍게 CSV/JSON만 읽고, 무거운 작업은 run_v60_update에서 백그라운드로 처리.
 - 로컬 .env와 GitHub Secrets 차이를 명확히 표시.
+- v61: 뉴스 키는 GNEWS_API_KEY를 기준으로 표시하고, 현재가 fallback은 기본 갱신에 포함.
 """
 from __future__ import annotations
 
@@ -71,7 +72,7 @@ V60_SPEED_PLAN_CSV = REPORT_DIR / 'v60_speed_plan.csv'
 V60_MENU_MAP_CSV = REPORT_DIR / 'v60_menu_map.csv'
 V60_BEGINNER_GUIDE_JSON = REPORT_DIR / 'v60_beginner_guide.json'
 
-KEYS = ['GNEWS_API_KEY','NEWS_API_KEY','FINNHUB_API_KEY','DART_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY','KIS_APP_KEY','KIS_APP_SECRET']
+KEYS = ['GNEWS_API_KEY','FINNHUB_API_KEY','DART_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY','KIS_APP_KEY','KIS_APP_SECRET']
 
 
 def now() -> str:
@@ -165,7 +166,7 @@ def _git_info() -> dict[str, Any]:
 def gnews_direct_test(fetch: bool = False) -> dict[str, Any]:
     key = get_key('GNEWS_API_KEY') or get_key('NEWS_API_KEY')
     if not key:
-        return {'status':'키 없음','key_present':False,'rows':0,'message':'로컬 .env 또는 GitHub Secrets에 GNEWS_API_KEY/NEWS_API_KEY가 필요합니다.'}
+        return {'status':'키 없음','key_present':False,'rows':0,'message':'로컬 .env 또는 GitHub Secrets에 GNEWS_API_KEY가 필요합니다. NEWS_API_KEY는 이 앱에서 기본 키가 아닙니다.'}
     if not fetch:
         return {'status':'키 인식','key_present':True,'rows':0,'message':'키는 인식됐습니다. 실제 호출은 뉴스 갱신 버튼에서 실행합니다.'}
     if requests is None:
@@ -190,11 +191,11 @@ def build_data_connection_center(fetch_news_test: bool = False) -> tuple[pd.Data
     cloud = read_json_safe(REPORT_DIR/'cloud_accumulator_last_run.json')
     rows: list[dict[str, Any]] = []
     rows.append({'구분':'환경','항목':'.env 파일','상태':'있음' if env_files else '없음','행수':len(env_files),'파일':' / '.join(env_files) or '-', '수정시각':'-', '다음 행동':'GitHub 폴더 안에도 .env를 복사하세요.' if not env_files else 'API 키 파일을 인식했습니다.'})
-    for k in ['GNEWS_API_KEY','NEWS_API_KEY','FINNHUB_API_KEY','DART_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY']:
-        rows.append({'구분':'API 키','항목':k,'상태':'인식됨' if vals.get(k) else '미설정','행수':1 if vals.get(k) else 0,'파일':'.env 또는 환경변수','수정시각':'-', '다음 행동':'정상' if vals.get(k) else ('AI 요약이 필요할 때만 설정' if k in {'OPENAI_API_KEY','ANTHROPIC_API_KEY'} else '키를 .env/GitHub Secrets에 넣으세요.')})
+    for k in ['GNEWS_API_KEY','FINNHUB_API_KEY','DART_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY']:
+        rows.append({'구분':'API 키','항목':k,'상태':'인식됨' if vals.get(k) else '미설정','행수':1 if vals.get(k) else 0,'파일':'.env 또는 환경변수','수정시각':'-', '다음 행동':'정상' if vals.get(k) else ('AI 요약이 필요할 때만 설정' if k in {'OPENAI_API_KEY','ANTHROPIC_API_KEY'} else ('뉴스 수집은 GNEWS_API_KEY를 사용합니다.' if k == 'GNEWS_API_KEY' else '키를 .env/GitHub Secrets에 넣으세요.'))})
     rows.append({'구분':'GitHub','항목':'로컬 Git 동기화','상태':git.get('status','-'),'행수':git.get('dirty_count',0),'파일':str(ROOT),'수정시각':'-', '다음 행동':git.get('message','')})
     rows.append({'구분':'GitHub','항목':'Actions 마지막 실행','상태':cloud.get('status','없음') if cloud else '없음','행수':1 if cloud else 0,'파일':'reports/cloud_accumulator_last_run.json','수정시각':cloud.get('updated_at','-') if cloud else '-', '다음 행동':'정상' if cloud else 'GitHub Actions 자동 실행 후 Pull/동기화하세요.'})
-    rows.append({'구분':'뉴스','항목':'GNews 직접 테스트','상태':gnews.get('status','-'),'행수':gnews.get('rows',0),'파일':'GNews API','수정시각':now(), '다음 행동':gnews.get('message','')})
+    rows.append({'구분':'뉴스','항목':'GNews 직접 테스트','상태':gnews.get('status','-'),'행수':gnews.get('rows',0),'파일':'GGNews API','수정시각':now(), '다음 행동':gnews.get('message','')})
     files = [
         (REPORT_DIR/'v52_action_board_light.csv','오늘 행동판','행동판'),
         (REPORT_DIR/'v52_buy_risk_light.csv','매수 위험·제외','매수'),
@@ -320,4 +321,4 @@ def run_v60_update(fetch_news: bool = False, fetch_missing_prices: bool = False)
 
 
 if __name__ == '__main__':
-    print(json.dumps(run_v60_update(fetch_news=False), ensure_ascii=False, indent=2, default=str))
+    print(json.dumps(run_v60_update(fetch_news=True, fetch_missing_prices=True), ensure_ascii=False, indent=2, default=str))
