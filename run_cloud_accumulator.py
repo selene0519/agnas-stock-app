@@ -50,6 +50,28 @@ def main() -> int:
     except Exception as exc:
         result["status"] = "ERROR"
         result["v50_error"] = f"{type(exc).__name__}: {exc}"
+
+    try:
+        from core.v51_fast_light_engine import run_v51_update
+        result["v51"] = run_v51_update(fetch_news=False)
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v51_error"] = f"{type(exc).__name__}: {exc}"
+
+    try:
+        from core.v52_market_split_engine import run_v52_update
+        result["v52"] = run_v52_update(fetch_news=False, fetch_missing_prices=True)
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v52_error"] = f"{type(exc).__name__}: {exc}"
+
+    try:
+        from core.v60_final_engine import run_v60_update
+        result["v60"] = run_v60_update(fetch_news=False, fetch_missing_prices=False)
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v60_error"] = f"{type(exc).__name__}: {exc}"
+
     Path("reports").mkdir(parents=True, exist_ok=True)
     Path("reports/cloud_accumulator_last_run.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
