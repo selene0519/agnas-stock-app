@@ -166,22 +166,40 @@ def _git_info() -> dict[str, Any]:
 def gnews_direct_test(fetch: bool = False) -> dict[str, Any]:
     key = get_key('GNEWS_API_KEY') or get_key('NEWS_API_KEY')
     if not key:
-        return {'status':'키 없음','key_present':False,'rows':0,'message':'로컬 .env 또는 GitHub Secrets에 GNEWS_API_KEY가 필요합니다. NEWS_API_KEY는 이 앱에서 기본 키가 아닙니다.'}
+        return {'status':'키 없음','key_present':False,'rows':0,'message':'로컬 .env 또는 GitHub Secrets에 GNEWS_API_KEY가 필요합니다.'}
     if not fetch:
         return {'status':'키 인식','key_present':True,'rows':0,'message':'키는 인식됐습니다. 실제 호출은 뉴스 갱신 버튼에서 실행합니다.'}
     if requests is None:
         return {'status':'요청 불가','key_present':True,'rows':0,'message':'requests 패키지를 사용할 수 없습니다.'}
+    tests = [
+        ('search', {'q':'stock market','lang':'en','max':5,'apikey':key}),
+        ('search', {'q':'Nasdaq stocks','lang':'en','country':'us','max':5,'apikey':key}),
+        ('top-headlines', {'category':'business','lang':'en','country':'us','max':5,'apikey':key}),
+        ('top-headlines', {'category':'business','lang':'en','max':5,'apikey':key}),
+    ]
+    attempts = []
+    total_rows = 0
     try:
-        url = 'https://gnews.io/api/v4/search'
-        params = {'q':'stock OR market','lang':'en','max':3,'apikey':key}
-        r = requests.get(url, params=params, timeout=12)
-        if r.status_code != 200:
-            return {'status':'API 오류','key_present':True,'rows':0,'http_status':r.status_code,'message':r.text[:220]}
-        data = r.json()
-        articles = data.get('articles') or []
-        return {'status':'정상' if articles else '0건','key_present':True,'rows':len(articles),'message':'GNews 직접 호출 성공' if articles else '호출은 성공했지만 결과가 0건입니다.'}
+        for endpoint, params in tests:
+            url = f'https://gnews.io/api/v4/{endpoint}'
+            r = requests.get(url, params=params, timeout=12)
+            item = {'endpoint':endpoint, 'query':params.get('q', f"top:{params.get('category','')}"), 'http_status':r.status_code, 'rows':0}
+            if r.status_code != 200:
+                item['error'] = r.text[:180]
+                attempts.append(item)
+                continue
+            data = r.json()
+            articles = data.get('articles') or []
+            item['rows'] = len(articles)
+            item['totalArticles'] = data.get('totalArticles', len(articles))
+            attempts.append(item)
+            total_rows += len(articles)
+        if total_rows > 0:
+            return {'status':'정상','key_present':True,'rows':total_rows,'message':f'GNews 직접 호출 성공: 총 {total_rows}건', 'attempts':attempts}
+        err = '; '.join([f"{a.get('endpoint')}:{a.get('query')}={a.get('rows',0)}" for a in attempts])
+        return {'status':'0건','key_present':True,'rows':0,'message':f'호출은 성공했지만 모든 테스트가 0건입니다. {err}', 'attempts':attempts}
     except Exception as exc:
-        return {'status':'호출 실패','key_present':True,'rows':0,'message':f'{type(exc).__name__}: {exc}'}
+        return {'status':'호출 실패','key_present':True,'rows':0,'message':f'{type(exc).__name__}: {exc}', 'attempts':attempts}
 
 
 def build_data_connection_center(fetch_news_test: bool = False) -> tuple[pd.DataFrame, dict[str, Any]]:
@@ -217,10 +235,16 @@ def build_data_connection_center(fetch_news_test: bool = False) -> tuple[pd.Data
 
 def build_news_cards() -> pd.DataFrame:
     rows = []
+    diagnostics = []
     for market, path in [('국장', REPORT_DIR/'gnews_latest_kr.csv'), ('미장', REPORT_DIR/'gnews_latest_us.csv')]:
         df = read_csv_safe(path)
         if df.empty:
             continue
+        if 'status' in df.columns:
+            diag = df[~df['status'].astype(str).eq('OK')].copy()
+            if not diag.empty:
+                diagnostics += [f"{market}: " + clean_text(x, '') for x in diag.get('description', pd.Series(dtype=str)).dropna().astype(str).head(2).tolist()]
+            df = df[df['status'].astype(str).eq('OK')].copy()
         for _, r in df.head(30).iterrows():
             title = clean_text(r.get('title', r.get('제목','뉴스 제목 없음')), '뉴스 제목 없음')
             desc = clean_text(r.get('description', r.get('요약','')), '')
@@ -229,7 +253,9 @@ def build_news_cards() -> pd.DataFrame:
             rows.append({'시장':market,'제목':title,'요약':desc or title,'출처':source,'링크':url,'초보자 해석':'뉴스는 가격·거래량·수급 확인 후 판단에 반영하세요.','매매 영향':'단독 매수 근거 아님'})
     out = pd.DataFrame(rows)
     if out.empty:
-        out = pd.DataFrame(columns=['시장','제목','요약','출처','링크','초보자 해석','매매 영향'])
+        # 뉴스가 0건일 때도 이유를 카드로 남겨 사용자가 다음 행동을 알 수 있게 합니다.
+        msg = ' / '.join([x for x in diagnostics if x])[:500] or 'GNews 호출 결과가 0건입니다. v62는 검색어를 넓혀 재시도하지만, 그래도 0건이면 GNews 대시보드의 호출 한도/키 상태를 확인하세요.'
+        out = pd.DataFrame([{'시장':'국장','제목':'뉴스 0건 진단','요약':msg,'출처':'APP','링크':'-','초보자 해석':'뉴스 재료는 제외하고 가격·거래량·수급 중심으로 판단하세요.','매매 영향':'뉴스 근거 없음'}, {'시장':'미장','제목':'뉴스 0건 진단','요약':msg,'출처':'APP','링크':'-','초보자 해석':'뉴스 재료는 제외하고 가격·거래량·수급 중심으로 판단하세요.','매매 영향':'뉴스 근거 없음'}])
     out.to_csv(V60_NEWS_CARDS_CSV, index=False, encoding='utf-8-sig')
     return out
 

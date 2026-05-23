@@ -46868,7 +46868,7 @@ def render_v50_news_cards_page() -> None:
     from core.v43_operational_engine import read_csv_safe, read_json_safe
     inject_native_graft_css()
     _render_nav_page_title("뉴스 카드")
-    st.caption("GGNews API 결과를 초보자용 카드로 정리합니다. LLM 키가 없어도 제목/설명 기반 기본 해석은 가능합니다.")
+    st.caption("GNews API 결과를 초보자용 카드로 정리합니다. LLM 키가 없어도 제목/설명 기반 기본 해석은 가능합니다.")
     if st.button("뉴스 카드 갱신", key="v50_news_refresh"):
         res = run_v50_update(fetch_news=True)
         st.success(f"갱신 완료: {res.get('updated_at', '')}")
@@ -47754,7 +47754,7 @@ def render_v60_news_page() -> None:
     from core.v60_final_engine import run_v60_update, V60_NEWS_CARDS_CSV, V60_DATA_CENTER_JSON
     inject_native_graft_css()
     _render_nav_page_title("뉴스 카드")
-    st.caption("GGNews API는 뉴스 수집용입니다. AI API는 한글 요약/감성분석 고도화용이라 없어도 기본 뉴스 수집은 가능합니다.")
+    st.caption("GNews API는 뉴스 수집용입니다. AI API는 한글 요약/감성분석 고도화용이라 없어도 기본 뉴스 수집은 가능합니다.")
     market = _v60_market_picker("v60_news_market", default="국장")
     if st.button("뉴스 갱신/테스트", key="v60_news_refresh"):
         res = run_v60_update(fetch_news=True, fetch_missing_prices=True)
@@ -47869,6 +47869,984 @@ def run_headless_runner(action: str) -> int:  # type: ignore[override]
             return 2
     if _ORIG_run_headless_runner_v60 is not None:
         return _ORIG_run_headless_runner_v60(action)
+    return 2
+
+
+# ══════════════════════════════════════════════
+# v63 Global Market Filter Cleanup
+# - page-level 국장/미장 radios removed from key operational pages
+# - sidebar 시장 필터 is the single source of truth
+# - quant backtest, buy risk, position plan, action board, news are market-filtered
+# - restore 5 buy-candidate categories: 오늘 확인 / 눌림목 / 수급 / 실적·저평가 / 매수 위험·제외
+# ══════════════════════════════════════════════
+try:
+    APP_VERSION = str(APP_VERSION) + " + v63 global market filter"
+except Exception:
+    APP_VERSION = "v63 global market filter"
+
+
+def _v63_current_market_token() -> str:
+    """Return the sidebar/global market token only: 한국주식 or 미국주식."""
+    token = None
+    try:
+        token = _general_market_filter_value()
+    except Exception:
+        token = None
+    if token not in ("한국주식", "미국주식"):
+        try:
+            token = _graft_market_token_from_mode(_graft_sidebar_market_mode())
+        except Exception:
+            token = None
+    if token not in ("한국주식", "미국주식"):
+        raw = str(st.session_state.get("general_mode_market_filter") or st.session_state.get("native_global_market_mode") or st.session_state.get("native_global_market_mode_v9977") or "미장")
+        token = "한국주식" if ("국" in raw or "한국" in raw or raw.upper() in {"KR", "KOREA"}) else "미국주식"
+    return token
+
+
+def _v63_market_label(token: str | None = None) -> str:
+    token = token or _v63_current_market_token()
+    return "국장" if token == "한국주식" else "미장"
+
+
+def _v63_market_help() -> None:
+    token = _v63_current_market_token()
+    label = _v63_market_label(token)
+    st.info(f"현재 화면은 왼쪽 사이드바의 **시장 필터: {label}** 기준으로만 표시합니다. 이 화면 안에서는 국장/미장을 따로 다시 선택하지 않습니다.")
+
+
+def _v63_safe_df(path):
+    try:
+        return _v60_safe_df(path)
+    except Exception:
+        try:
+            return pd.read_csv(path) if Path(path).exists() else pd.DataFrame()
+        except Exception:
+            return pd.DataFrame()
+
+
+def _v63_code_market_guess(value: object) -> str | None:
+    s = str(value or "").strip()
+    if not s or s.lower() in {"nan", "none", "null", "nat"}:
+        return None
+    u = s.upper().replace(" ", "")
+    if u.endswith(".KS") or u.endswith(".KQ"):
+        return "한국주식"
+    if u.endswith(".US") or u.endswith(".O") or u.endswith(".N"):
+        return "미국주식"
+    digits = "".join(ch for ch in u if ch.isdigit())
+    letters = "".join(ch for ch in u if "A" <= ch <= "Z")
+    if digits and len(digits) == 6 and not letters:
+        return "한국주식"
+    if letters and len(letters) <= 6 and not digits:
+        return "미국주식"
+    return None
+
+
+def _v63_market_filter(df, market_token: str | None = None):
+    market_token = market_token or _v63_current_market_token()
+    if df is None or getattr(df, "empty", True):
+        return df
+    out = df.copy()
+    # 1) direct market column
+    for col in ["시장", "market", "Market", "마켓"]:
+        if col in out.columns:
+            s = out[col].astype(str)
+            if market_token == "한국주식":
+                mask = s.str.contains("한국|국장|KR|Korea|KOSPI|KOSDAQ", case=False, regex=True, na=False)
+            else:
+                mask = s.str.contains("미국|미장|US|USA|NYSE|NASDAQ|AMEX|S&P", case=False, regex=True, na=False)
+            filtered = out.loc[mask].copy()
+            # If market column exists but values are unrecognized, fall back to ticker guessing.
+            if not filtered.empty or len(out) == 0:
+                return filtered
+            break
+    # 2) infer from ticker-like columns
+    for col in ["종목코드", "ticker", "symbol", "티커", "종목", "종목명"]:
+        if col in out.columns:
+            guesses = out[col].map(_v63_code_market_guess)
+            filtered = out.loc[guesses.eq(market_token)].copy()
+            if not filtered.empty:
+                return filtered
+    return out
+
+
+def _v63_render_df(df, *, empty: str, limit: int = 80):
+    if df is None or getattr(df, "empty", True):
+        st.info(empty)
+        return
+    _v37_render_table(df.head(limit), empty=empty, limit=limit)
+
+
+def _v63_report_path(name: str) -> Path:
+    return Path("reports") / name
+
+
+def render_v63_action_board_page() -> None:
+    from core.v60_final_engine import run_v60_update
+    from core.v52_market_split_engine import ACTION_LIGHT_CSV
+    inject_native_graft_css()
+    _render_nav_page_title("오늘 행동판")
+    st.caption("국장/미장 통합 보기 없이, 사이드바 시장 필터에 맞는 오늘 행동 후보만 보여줍니다.")
+    _v63_market_help()
+    if st.button("오늘 행동판 갱신", key="v63_action_refresh"):
+        res = run_v60_update(fetch_news=False, fetch_missing_prices=True)
+        st.success(f"갱신 완료: {res.get('updated_at','')}")
+    df = _v63_market_filter(_v63_safe_df(ACTION_LIGHT_CSV))
+    if df.empty:
+        st.info(f"{_v63_market_label()} 행동 후보가 없습니다. 후보가 없으면 무리하게 매수하지 않는 것도 정상 판단입니다.")
+        return
+    for _, r in df.head(8).iterrows():
+        title = str(r.get("종목", "-"))
+        status = f"{r.get('우선순위','중간')} · {r.get('행동','확인')}"
+        body = f"기준가 {r.get('기준가','-')} · 손절 {r.get('손절가','-')} · 목표 {r.get('목표가','-')}<br><br>{r.get('이유','-')}"
+        action = str(r.get("초보자 안내", "기준가·손절가 확인 후 소액/분할만 검토하세요."))
+        _v60_card(title, status, body, action)
+    with st.expander("원본 light 표", expanded=False):
+        _v63_render_df(df, empty="오늘 행동판 원본이 없습니다.", limit=120)
+
+
+def render_v63_buy_risk_page() -> None:
+    from core.v60_final_engine import run_v60_update
+    from core.v52_market_split_engine import BUY_RISK_LIGHT_CSV
+    inject_native_graft_css()
+    _render_nav_page_title("매수 위험·제외")
+    st.caption("신규매수 제외·추격·손익비 부족·주의 후보를 하나의 기준으로 봅니다. 화면 안의 추가 시장 선택은 없앴습니다.")
+    _v63_market_help()
+    if st.button("매수 위험 갱신", key="v63_risk_refresh"):
+        res = run_v60_update(fetch_news=False, fetch_missing_prices=True)
+        st.success(f"갱신 완료: {res.get('updated_at','')}")
+    df = _v63_market_filter(_v63_safe_df(BUY_RISK_LIGHT_CSV))
+    if df.empty:
+        st.info(f"{_v63_market_label()} 매수 위험 후보가 없습니다.")
+        return
+    c1, c2, c3 = st.columns(3)
+    c1.metric("위험 후보", len(df))
+    c2.metric("신규매수 제외", int(df.get("위험 구분", pd.Series(dtype=str)).astype(str).str.contains("제외|금지", na=False).sum()) if "위험 구분" in df.columns else 0)
+    c3.metric("주의/관망", int(df.get("위험 구분", pd.Series(dtype=str)).astype(str).str.contains("주의|관망|대기", na=False).sum()) if "위험 구분" in df.columns else 0)
+    for _, r in df.head(30).iterrows():
+        _v60_card(str(r.get("종목", "-")), str(r.get("위험 구분", "주의")), f"{r.get('초보자 해석','-')}<br><br>핵심 사유: {r.get('핵심 사유','-')}", f"다음 행동: {r.get('권장 행동','신규매수 보류')}")
+    with st.expander("원본 light 표", expanded=False):
+        _v63_render_df(df, empty="매수 위험 원본이 없습니다.", limit=150)
+
+
+def render_v63_position_page() -> None:
+    from core.v60_final_engine import run_v60_update
+    from core.v52_market_split_engine import POSITION_LIGHT_CSV
+    inject_native_graft_css()
+    _render_nav_page_title("보유·매도 권장수량")
+    st.caption("사이드바 시장 필터에 맞는 보유종목만 표시합니다. 이 페이지 안의 국장/미장 중복 선택은 제거했습니다.")
+    _v63_market_help()
+    if st.button("권장수량 갱신", key="v63_position_refresh"):
+        res = run_v60_update(fetch_news=False, fetch_missing_prices=True)
+        st.success(f"갱신 완료: {res.get('updated_at','')}")
+    df_all = _v63_safe_df(POSITION_LIGHT_CSV)
+    df = _v63_market_filter(df_all)
+    if df.empty:
+        st.info(f"{_v63_market_label()} 보유종목 또는 권장수량 데이터가 없습니다. 보유종목 파일에 종목코드·보유수량·평단가가 있어야 합니다.")
+        if not df_all.empty:
+            st.caption("참고: 다른 시장 데이터는 있으나 현재 시장 필터에는 해당하지 않습니다.")
+        return
+    for _, r in df.head(30).iterrows():
+        title = f"{r.get('종목','-')} · {r.get('권장행동','보유 점검')}"
+        status = f"수익률 {r.get('수익률','-')} · 현재가 {r.get('현재가','-')}"
+        body = f"보유 {r.get('보유수량','-')} · 평단 {r.get('평단가','-')} · 권장수량 {r.get('권장수량','-')} · 예상금액 {r.get('예상금액','-')}"
+        _v60_card(title, status, body, str(r.get("초보자 안내", "실제 주문 전 증권사 화면과 비교하세요.")))
+    with st.expander("원본 light 표", expanded=False):
+        _v63_render_df(df, empty="권장수량 원본이 없습니다.", limit=120)
+
+
+def _v63_read_swing_candidates() -> pd.DataFrame:
+    token = _v63_current_market_token()
+    prefix = "kr" if token == "한국주식" else "us"
+    frames = []
+    for fname, label in [(f"swing_candidates_{prefix}_A_top3.csv", "오늘 확인"), (f"swing_candidates_{prefix}_B_watch.csv", "눌림목/관찰"), (f"swing_candidates_{prefix}_C_excluded.csv", "제외/관망")]:
+        df = _v63_safe_df(_v63_report_path(fname))
+        if not df.empty:
+            df = df.copy()
+            df["분류"] = label
+            frames.append(df)
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+
+def render_v63_buy_five_categories_page() -> None:
+    inject_native_graft_css()
+    _render_nav_page_title("매수 후보 5분류")
+    st.caption("예전 매수 화면의 5가지 묶음(오늘 확인·눌림목·수급·실적·위험)을 복구했습니다. 모든 표는 사이드바 시장 필터 기준입니다.")
+    _v63_market_help()
+    from core.v60_final_engine import run_v60_update
+    if st.button("매수 후보 5분류 갱신", key="v63_buy5_refresh"):
+        res = run_v60_update(fetch_news=False, fetch_missing_prices=True)
+        st.success(f"갱신 완료: {res.get('updated_at','')}")
+    action = _v63_market_filter(_v63_safe_df(_v63_report_path("v52_action_board_light.csv")))
+    risk = _v63_market_filter(_v63_safe_df(_v63_report_path("v52_buy_risk_light.csv")))
+    swing = _v63_read_swing_candidates()
+    flow = _v63_market_filter(_v63_safe_df(_v63_report_path("intraday_flow_snapshot.csv")))
+    fund = _v63_market_filter(_v63_safe_df(_v63_report_path("v50_fundamental_kpi_cards.csv")))
+    tabs = st.tabs(["오늘 확인", "눌림목/관찰", "수급·거래대금", "실적·저평가", "매수 위험·제외"])
+    with tabs[0]:
+        st.caption("오늘 먼저 볼 후보입니다. 기준가/손절/목표가가 비어 있으면 관찰 후보로만 봅니다.")
+        _v63_render_df(action, empty=f"{_v63_market_label()} 오늘 확인 후보가 없습니다.", limit=30)
+    with tabs[1]:
+        st.caption("진입가를 기다리는 후보 또는 스윙 관찰 후보입니다.")
+        if not swing.empty:
+            sw = swing[swing.get("분류", "").astype(str).str.contains("눌림|관찰|오늘", na=False)] if "분류" in swing.columns else swing
+        else:
+            sw = pd.DataFrame()
+        _v63_render_df(sw, empty=f"{_v63_market_label()} 눌림목/관찰 후보가 없습니다.", limit=40)
+    with tabs[2]:
+        st.caption("거래량·수급 데이터가 있는 경우만 표시합니다. 비어 있으면 장중 데이터 갱신이 필요합니다.")
+        _v63_render_df(flow, empty=f"{_v63_market_label()} 수급·거래대금 후보가 아직 없습니다.", limit=40)
+    with tabs[3]:
+        st.caption("재무·KPI 또는 저평가 관련 캐시가 있는 경우 표시합니다.")
+        _v63_render_df(fund, empty=f"{_v63_market_label()} 실적·저평가 후보 데이터가 없습니다.", limit=40)
+    with tabs[4]:
+        st.caption("지금 바로 신규매수하기보다 관망·제외가 우선인 후보입니다.")
+        _v63_render_df(risk, empty=f"{_v63_market_label()} 매수 위험·제외 후보가 없습니다.", limit=60)
+
+
+def render_v63_quant_backtest_page() -> None:
+    from core.v43_operational_engine import save_v43_strategy_backtest, read_csv_safe, REPORT_DIR, read_json_safe
+    from core.v44_learning_calibration_engine import run_v44_update, STATUS_JSON
+    inject_native_graft_css()
+    _render_nav_page_title("퀀트 백테스팅")
+    st.caption("사이드바 시장 필터에 맞춰 국장 또는 미장 백테스트 결과만 보여줍니다. 사용자가 직접 계산하는 화면이 아니라 앱이 자동 계산·기록합니다.")
+    _v63_market_help()
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("과거 전략 백테스트 계산", key="v63_quant_backtest_refresh"):
+            res = save_v43_strategy_backtest()
+            st.success(f"백테스트 완료: {res.get('rows', 0)}행 / 검증 가능 {res.get('ok_rows', 0)}행")
+    with c2:
+        if st.button("실전 추천 복기 갱신", key="v63_quant_review_refresh"):
+            res = run_v44_update()
+            st.success(f"실전 복기 갱신 완료: {res.get('updated_at', '')}")
+    status = read_json_safe(REPORT_DIR / "v43_strategy_backtest_summary.json")
+    v44 = read_json_safe(STATUS_JSON)
+    raw = read_csv_safe(REPORT_DIR / "v43_strategy_backtest_summary.csv")
+    df = _v63_market_filter(raw)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric(f"{_v63_market_label()} 대상", len(df) if df is not None else 0)
+    if df is not None and not df.empty and "상태" in df.columns:
+        ok_count = int(~df["상태"].astype(str).str.contains("부족|없음|NO_DATA", na=False).sum())
+    else:
+        ok_count = 0
+    c2.metric("검증 가능", ok_count)
+    c3.metric("전체 백테스트 행", int(status.get("rows", 0) or 0) if isinstance(status, dict) else 0)
+    c4.metric("실전 추천 기록", int((v44.get("recommendations", {}) or {}).get("total_rows", 0) or 0) if isinstance(v44, dict) else 0)
+    if df is None or df.empty:
+        st.info(f"{_v63_market_label()} 퀀트 백테스트 결과가 없습니다. 위 버튼을 누르거나 자동 실행 후 동기화하세요.")
+        return
+    _v37_render_table(df, empty="전략 백테스트 결과가 없습니다.", limit=120)
+
+
+def render_v63_news_page() -> None:
+    from core.v60_final_engine import run_v60_update, V60_NEWS_CARDS_CSV, V60_DATA_CENTER_JSON
+    inject_native_graft_css()
+    _render_nav_page_title("뉴스 카드")
+    st.caption("GNews API는 뉴스 수집용입니다. AI API는 한글 요약/감성분석 고도화용이라 없어도 기본 뉴스 수집은 가능합니다.")
+    _v63_market_help()
+    if st.button("뉴스 갱신/테스트", key="v63_news_refresh"):
+        res = run_v60_update(fetch_news=True, fetch_missing_prices=True)
+        st.success(f"갱신 완료: {res.get('updated_at','')}")
+    meta = _v60_safe_json(V60_DATA_CENTER_JSON)
+    gnews = (meta.get("gnews_test") or {}) if isinstance(meta, dict) else {}
+    st.info(f"GNews 상태: {gnews.get('status','-')} · {gnews.get('message','')}")
+    df = _v63_market_filter(_v60_safe_df(V60_NEWS_CARDS_CSV))
+    if df.empty:
+        st.warning(f"{_v63_market_label()} 표시 뉴스가 없습니다. 데이터 연결 점검에서 GNews 직접 테스트 결과를 확인하세요.")
+        return
+    for _, r in df.head(20).iterrows():
+        _v60_card(str(r.get("제목", "뉴스 제목 없음")), str(r.get("매매 영향", "확인")), f"{r.get('요약','-')}<br><br>출처: {r.get('출처','-')}", str(r.get("초보자 해석", "가격·수급과 함께 확인하세요.")))
+
+# v63 final operational menu: sidebar market filter is the only market selector.
+try:
+    OPERATIONAL_NAV_GROUPS.clear()
+    OPERATIONAL_NAV_GROUPS.update({
+        "오늘 실행": [("오늘 행동판", "page_v44_action_board"), ("데이터 연결 점검", "page_v60_data_center")],
+        "매수": [("매수 후보 5분류", "page_v63_buy_5_categories"), ("매수 위험·제외", "page_v41_buy_risk"), ("매수 판단·기준가", "page_buy_decision"), ("커스텀 스크리너", "page_v37_custom_screener")],
+        "보유·매도": [("보유·매도 권장수량", "page_v50_position_plan"), ("보유·매도 통합", "page_ops_holdings_unified")],
+        "차트·수급": [("선택 종목 차트·수급", "page_v37_selected_chart_flow")],
+        "뉴스·재무·시장": [("뉴스 카드", "page_v50_news_cards"), ("재무·KPI 카드", "page_v50_fundamental_cards"), ("시장·거시", "page_v40_macro_regime")],
+        "퀀트": [("퀀트 안내·복기", "page_v60_quant_review"), ("퀀트 백테스팅", "page_v40_quant_backtest"), ("몬테카를로", "page_v40_monte_carlo"), ("옵션 프라이싱", "page_v40_option_pricing")],
+        "관심·설정": [("관심종목 관리", "page_watch_manage"), ("실전 운용 기준", "page_operation_settings"), ("v60 안정판 안내", "page_v60_final_guide")],
+    })
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v63 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v63 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v44_action_board":
+        render_v63_action_board_page(); return
+    if page_id == "page_v63_buy_5_categories":
+        render_v63_buy_five_categories_page(); return
+    if page_id == "page_v41_buy_risk":
+        render_v63_buy_risk_page(); return
+    if page_id == "page_v50_position_plan":
+        render_v63_position_page(); return
+    if page_id in {"page_v50_news_cards", "page_v37_news_narrative"}:
+        render_v63_news_page(); return
+    if page_id == "page_v40_quant_backtest":
+        render_v63_quant_backtest_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v63 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v63(page_id)
+    st.warning(f"알 수 없는 화면 ID: {page_id}")
+
+try:
+    _ORIG_run_headless_runner_v63 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v63 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v63", "v63_update", "daily_v63", "market_filter_v63"}:
+        try:
+            from core.v60_final_engine import run_v60_update
+            res = run_v60_update(fetch_news=True, fetch_missing_prices=True)
+            print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0 if str(res.get("status", "")).upper() in {"OK", "WARN", "PARTIAL"} else 2
+        except Exception as exc:
+            print(f"v63 update failed: {type(exc).__name__}: {exc}", flush=True)
+            return 2
+    if _ORIG_run_headless_runner_v63 is not None:
+        return _ORIG_run_headless_runner_v63(action)
+    return 2
+
+
+
+# ══════════════════════════════════════════════
+# v64 UX/Card Cleanup Pack
+# - 고급 기능 구현 상태를 명확히 표시
+# - 일반모드는 매수/보유/매도 판단용 카드 중심으로 축소
+# - 데이터 진단/로드맵/실험성 화면은 관리자모드로 이동
+# - 표 위주의 화면을 카드/요약/상태 배지 중심으로 보강
+# ══════════════════════════════════════════════
+try:
+    APP_VERSION = str(APP_VERSION) + " + v64 ux cards"
+except Exception:
+    APP_VERSION = "v64 ux cards"
+
+
+def _v64_status_badge(status: str) -> str:
+    s = str(status or "").strip()
+    color = "#64748b"
+    if any(x in s for x in ["완료", "반영", "정상", "가능"]):
+        color = "#16a34a"
+    if any(x in s for x in ["부분", "기초", "진행"]):
+        color = "#d97706"
+    if any(x in s for x in ["미반영", "필요", "대기", "부족"]):
+        color = "#dc2626"
+    return f"<span style='display:inline-block;padding:4px 10px;border-radius:999px;background:{color}22;color:{color};border:1px solid {color}66;font-weight:700;font-size:.84rem'>{s}</span>"
+
+
+def _v64_inject_card_css() -> None:
+    try:
+        st.markdown("""
+<style>
+.v64-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0 20px 0;}
+.v64-card{border:1px solid rgba(148,163,184,.28);border-radius:18px;background:rgba(15,23,42,.72);padding:18px 18px 16px 18px;box-shadow:0 14px 28px rgba(0,0,0,.18);min-height:148px;}
+.v64-card h4{margin:0 0 8px 0;font-size:1.02rem;letter-spacing:-.02em;color:#f8fafc;}
+.v64-card .sub{font-size:.88rem;line-height:1.58;color:#a8b3c7;margin-top:8px;}
+.v64-card .line{height:1px;background:rgba(148,163,184,.16);margin:12px 0;}
+.v64-kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:12px 0 18px 0;}
+.v64-kpi-card{border:1px solid rgba(148,163,184,.26);border-radius:16px;background:rgba(15,23,42,.62);padding:16px;}
+.v64-kpi-card .label{font-size:.82rem;color:#94a3b8;margin-bottom:8px;}
+.v64-kpi-card .value{font-size:1.55rem;color:#f8fafc;font-weight:800;letter-spacing:-.03em;}
+.v64-admin-note{border:1px dashed rgba(148,163,184,.36);border-radius:14px;padding:14px;background:rgba(30,41,59,.45);color:#b7c2d7;line-height:1.6;}
+@media(max-width:900px){.v64-grid{grid-template-columns:1fr}.v64-kpi{grid-template-columns:repeat(2,minmax(0,1fr));}}
+</style>
+""", unsafe_allow_html=True)
+    except Exception:
+        pass
+
+
+def _v64_html_card(title: str, status: str, desc: str, action: str = "", footer: str = "") -> None:
+    _v64_inject_card_css()
+    st.markdown(
+        f"""
+<div class="v64-card">
+  <h4>{title}</h4>
+  {_v64_status_badge(status)}
+  <div class="sub">{desc}</div>
+  <div class="line"></div>
+  <div class="sub"><b>다음 행동</b><br>{action or '데이터가 쌓이면 자동으로 채워집니다.'}</div>
+  {f'<div class="sub" style="opacity:.78;margin-top:8px">{footer}</div>' if footer else ''}
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def _v64_feature_rows() -> list[dict]:
+    return [
+        {
+            "기능": "고급 가치평가",
+            "상태": "부분 반영",
+            "일반모드 표시": "뉴스·재무·시장 → 기업분석 카드",
+            "관리자모드": "재무 원본/데이터 연결 점검",
+            "설명": "PER/PBR/ROE/성장률 기반 요약 틀은 있으나, DART/Finnhub 데이터가 들어와야 값이 채워집니다.",
+            "다음": "재무 API 연결 후 저평가/고평가 점수 자동 계산",
+        },
+        {
+            "기능": "재무제표 상세표",
+            "상태": "부분 반영",
+            "일반모드 표시": "요약 카드만 표시",
+            "관리자모드": "원본 재무제표/CSV 점검",
+            "설명": "사용자에게는 요약 카드만 보여주고, 긴 원본표는 관리자모드에서만 확인하도록 정리했습니다.",
+            "다음": "분기/연간 재무표 컬럼 표준화",
+        },
+        {
+            "기능": "KPI",
+            "상태": "부분 반영",
+            "일반모드 표시": "뉴스·재무·시장 → 기업분석 카드",
+            "관리자모드": "재무·KPI 원본 리포트",
+            "설명": "ROE, 성장률, 부채, 마진류 KPI 카드 구조는 반영했습니다. 실제 값은 데이터 연결 상태에 따라 채워집니다.",
+            "다음": "기업별 핵심 KPI 자동 선택",
+        },
+        {
+            "기능": "기술특허",
+            "상태": "미반영",
+            "일반모드 표시": "숨김",
+            "관리자모드": "기능 구현 상태",
+            "설명": "특허 API/데이터 소스가 아직 연결되지 않았습니다. 현재 일반모드에는 노출하지 않습니다.",
+            "다음": "특허 데이터 소스 선정 후 중장기 분석 카드로 추가",
+        },
+        {
+            "기능": "거시경제 분석",
+            "상태": "부분 반영",
+            "일반모드 표시": "뉴스·재무·시장 → 시장·거시",
+            "관리자모드": "시장·거시 원본 리포트",
+            "설명": "시장 국면/데이터 상태 요약은 있으나, 금리·환율·VIX 등 실데이터 연결은 보강이 필요합니다.",
+            "다음": "금리/환율/VIX/FRED 계열 데이터 연결",
+        },
+        {
+            "기능": "커스텀 경제지표",
+            "상태": "미반영",
+            "일반모드 표시": "숨김",
+            "관리자모드": "기능 구현 상태",
+            "설명": "사용자가 지표 조합식을 직접 만드는 기능은 아직 없습니다. 일반 사용 화면에서는 숨겼습니다.",
+            "다음": "지표 빌더를 관리자/고급 기능으로 설계",
+        },
+        {
+            "기능": "투자거장 분석",
+            "상태": "미반영",
+            "일반모드 표시": "숨김",
+            "관리자모드": "기능 구현 상태",
+            "설명": "버핏/피터린치식 점수화는 아직 구현 전입니다. 실제 포트폴리오 데이터/API가 필요합니다.",
+            "다음": "대가별 보유종목·스타일 점수 연결",
+        },
+        {
+            "기능": "종목 내러티브",
+            "상태": "부분 반영",
+            "일반모드 표시": "뉴스·재무·시장 → 뉴스 카드 / 기업분석 카드",
+            "관리자모드": "뉴스 원본/요약 상태",
+            "설명": "뉴스/후보 리포트 기반 기본 내러티브는 가능하지만, AI API가 없으면 자연어 요약은 제한됩니다.",
+            "다음": "LLM API 연결 시 감성/요약/리스크 키워드 강화",
+        },
+    ]
+
+
+def render_v64_business_analysis_cards_page() -> None:
+    _v64_inject_card_css()
+    _render_nav_page_title("기업분석 카드")
+    st.caption("일반모드에는 긴 원본표가 아니라 매수·보유 판단에 필요한 요약 카드만 표시합니다. 원본 데이터 점검은 관리자모드로 분리했습니다.")
+    rows = _v64_feature_rows()
+    visible = [r for r in rows if r["기능"] in {"고급 가치평가", "재무제표 상세표", "KPI", "종목 내러티브"}]
+    st.markdown('<div class="v64-grid">', unsafe_allow_html=True)
+    for r in visible:
+        _v64_html_card(r["기능"], r["상태"], r["설명"], r["다음"], f"위치: {r['일반모드 표시']}")
+    st.markdown('</div>', unsafe_allow_html=True)
+    # 실제 데이터가 있으면 아래에 요약표로 추가 표시
+    candidates = [
+        Path("reports/v50_fundamental_kpi_cards.csv"),
+        Path("reports/v40_fundamental_summary.csv"),
+        Path("reports/v60_fundamental_cards.csv"),
+    ]
+    df = pd.DataFrame()
+    for p in candidates:
+        if p.exists():
+            df = _v60_safe_df(p) if "_v60_safe_df" in globals() else pd.read_csv(p)
+            if not df.empty:
+                break
+    if df is not None and not df.empty:
+        st.markdown("### 재무·KPI 요약표")
+        _v37_render_table(df, limit=40)
+    else:
+        st.info("아직 연결된 재무·KPI 값이 없습니다. DART/Finnhub 키와 자동누적 결과가 들어오면 이 영역이 채워집니다.")
+
+
+def render_v64_investment_story_cards_page() -> None:
+    _v64_inject_card_css()
+    _render_nav_page_title("투자 인사이트 카드")
+    st.caption("오늘 행동판·뉴스·재무·퀀트를 카드뉴스처럼 요약해서 먼저 보여주는 화면입니다.")
+    market = _v63_market_label() if "_v63_market_label" in globals() else "현재 시장"
+    action_df = _v63_market_filter(_v63_safe_df(_v63_report_path("v52_action_board_light.csv"))) if "_v63_market_filter" in globals() else pd.DataFrame()
+    risk_df = _v63_market_filter(_v63_safe_df(_v63_report_path("v52_buy_risk_light.csv"))) if "_v63_market_filter" in globals() else pd.DataFrame()
+    news_df = _v63_market_filter(_v60_safe_df(Path("reports/v60_news_cards.csv"))) if "_v63_market_filter" in globals() else pd.DataFrame()
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("시장", market)
+    c2.metric("오늘 후보", len(action_df) if action_df is not None else 0)
+    c3.metric("위험/제외", len(risk_df) if risk_df is not None else 0)
+    c4.metric("뉴스 카드", len(news_df) if news_df is not None else 0)
+    st.markdown('<div class="v64-grid">', unsafe_allow_html=True)
+    top_name = "-"
+    top_desc = "오늘 행동판 데이터가 아직 없습니다. 자동 실행 또는 일일 업데이트 후 확인하세요."
+    if action_df is not None and not action_df.empty:
+        r = action_df.iloc[0]
+        top_name = str(r.get("종목", "-"))
+        top_desc = f"행동: {r.get('행동','확인')} · 기준가 {r.get('기준가','-')} · 손절 {r.get('손절가','-')} · 목표 {r.get('목표가','-')}"
+    _v64_html_card("오늘 먼저 볼 종목", "확인", top_name + "<br>" + top_desc, "기준가·손절가가 비어 있으면 관찰 후보로만 봅니다.")
+    _v64_html_card("매수 위험", "확인", f"{market} 기준 위험/제외 후보 {len(risk_df) if risk_df is not None else 0}개", "위험 후보는 신규매수보다 관망 또는 진입가 대기를 우선합니다.")
+    _v64_html_card("뉴스 상태", "확인", f"{market} 뉴스 카드 {len(news_df) if news_df is not None else 0}개", "뉴스가 0건이면 GNews 검색어/한도/필터 진단을 확인합니다.")
+    _v64_html_card("퀀트·복기", "주간 점검", "추천이 실제로 맞았는지 확인하는 참고 영역입니다.", "매일 볼 필요는 없고 주 1회 정도 점검하면 됩니다.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_v64_feature_status_admin_page() -> None:
+    _v64_inject_card_css()
+    _render_nav_page_title("기능 구현 상태")
+    st.caption("사용자가 매일 볼 필요 없는 구현 상태/로드맵/데이터 요건은 관리자모드에서만 확인합니다.")
+    df = pd.DataFrame(_v64_feature_rows())
+    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.markdown("### 관리자모드로 분리한 이유")
+    st.markdown("""
+<div class="v64-admin-note">
+일반모드에는 <b>오늘 매수·보유·매도 판단에 직접 필요한 화면</b>만 남깁니다.<br>
+API 연결 상태, 원본표, 구현상태, 로드맵, 실험성 기능은 관리자모드에 둬서 평소 사용 화면이 복잡해지지 않게 했습니다.
+</div>
+""", unsafe_allow_html=True)
+
+
+def render_v64_clean_usage_guide_page() -> None:
+    _v64_inject_card_css()
+    _render_nav_page_title("v64 사용 순서")
+    st.caption("앱을 매일 쓸 때는 아래 순서만 보면 됩니다.")
+    st.markdown('<div class="v64-grid">', unsafe_allow_html=True)
+    _v64_html_card("1. 오늘 실행", "매일", "오늘 행동판과 투자 인사이트 카드만 먼저 봅니다.", "기준가가 없는 종목은 매수 후보가 아니라 관찰 후보로 봅니다.")
+    _v64_html_card("2. 매수", "필요 시", "매수 후보 5분류에서 오늘 확인·눌림목·수급·실적 후보를 봅니다.", "매수 위험·제외 후보는 신규매수하지 않습니다.")
+    _v64_html_card("3. 보유·매도", "보유자", "보유·매도 권장수량에서 현재가/수익률/권장수량을 봅니다.", "값이 비면 보유 파일 또는 현재가 리포트가 부족한 상태입니다.")
+    _v64_html_card("4. 차트·수급", "확인용", "차트는 한 화면에서 한 종목만 봅니다.", "워치리스트 밖 종목도 직접 검색할 수 있습니다.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+# v64: 일반모드는 카드/실전 판단만, 관리자모드는 진단/원본/로드맵 담당.
+try:
+    OPERATIONAL_NAV_GROUPS.clear()
+    OPERATIONAL_NAV_GROUPS.update({
+        "오늘 실행": [("투자 인사이트 카드", "page_v64_investment_cards"), ("오늘 행동판", "page_v44_action_board")],
+        "매수": [("매수 후보 5분류", "page_v63_buy_5_categories"), ("매수 위험·제외", "page_v41_buy_risk"), ("매수 판단·기준가", "page_buy_decision"), ("커스텀 스크리너", "page_v37_custom_screener")],
+        "보유·매도": [("보유·매도 권장수량", "page_v50_position_plan"), ("보유·매도 통합", "page_ops_holdings_unified")],
+        "차트·수급": [("선택 종목 차트·수급", "page_v37_selected_chart_flow")],
+        "뉴스·재무·시장": [("뉴스 카드", "page_v50_news_cards"), ("기업분석 카드", "page_v64_business_cards"), ("시장·거시", "page_v40_macro_regime")],
+        "퀀트": [("퀀트 안내·복기", "page_v60_quant_review")],
+        "관심·설정": [("관심종목 관리", "page_watch_manage"), ("실전 운용 기준", "page_operation_settings"), ("v64 사용 순서", "page_v64_usage_guide")],
+    })
+except Exception:
+    pass
+
+try:
+    INSPECTION_NAV_GROUPS.clear()
+    INSPECTION_NAV_GROUPS.update({
+        "데이터 진단": [("데이터 연결 점검", "page_v60_data_center"), ("자동 운영센터", "page_v50_operation_center"), ("데이터 상태센터", "page_v45_data_status")],
+        "원본·리포트": [("모드·메뉴 구조", "page_v37_mode_structure"), ("기능 구현 상태", "page_v64_feature_status")],
+        "퀀트·실험": [("퀀트 백테스팅", "page_v40_quant_backtest"), ("몬테카를로", "page_v40_monte_carlo"), ("옵션 프라이싱", "page_v40_option_pricing"), ("포트폴리오 리스크", "page_portfolio_risk")],
+        "기존 점검": [("v60 안정판 안내", "page_v60_final_guide")],
+    })
+    INSPECTION_NAV_GROUPS_WITH_LEGACY.clear()
+    INSPECTION_NAV_GROUPS_WITH_LEGACY.update({**INSPECTION_NAV_GROUPS})
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v64 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v64 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v64_business_cards":
+        render_v64_business_analysis_cards_page(); return
+    if page_id == "page_v64_investment_cards":
+        render_v64_investment_story_cards_page(); return
+    if page_id == "page_v64_feature_status":
+        render_v64_feature_status_admin_page(); return
+    if page_id == "page_v64_usage_guide":
+        render_v64_clean_usage_guide_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v64 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v64(page_id)
+    st.warning(f"알 수 없는 화면 ID: {page_id}")
+
+try:
+    _ORIG_run_headless_runner_v64 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v64 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v64", "v64_update", "daily_v64", "ux_cards_v64"}:
+        try:
+            from core.v60_final_engine import run_v60_update
+            res = run_v60_update(fetch_news=True, fetch_missing_prices=True)
+            print(json.dumps({"status":"OK", "v64":"ux_cards", "base":res}, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0
+        except Exception as exc:
+            print(f"v64 update failed: {type(exc).__name__}: {exc}", flush=True)
+            return 2
+    if _ORIG_run_headless_runner_v64 is not None:
+        return _ORIG_run_headless_runner_v64(action)
+    return 2
+
+
+
+# ══════════════════════════════════════════════
+# v65 Maximum feasible implementation + UX card/graph cleanup
+# - 구현 가능한 고급 기능은 카드/그래프 형태로 일반모드에 요약
+# - 원본/진단/구현 상태/실험성 기능은 관리자모드로 이동
+# - 재무·KPI·거시·투자거장·기술특허·내러티브·커스텀 지표의 기초 구현 추가
+# ══════════════════════════════════════════════
+try:
+    APP_VERSION = str(APP_VERSION) + " + v65 maximum UX cards"
+except Exception:
+    APP_VERSION = "v65 maximum UX cards"
+
+
+def _v65_path(name: str) -> Path:
+    p = Path(name)
+    if p.is_absolute():
+        return p
+    return Path.cwd() / p
+
+
+def _v65_read_csv(name: str) -> pd.DataFrame:
+    try:
+        p = _v65_path(name)
+        if p.exists() and p.stat().st_size:
+            return pd.read_csv(p)
+    except Exception:
+        pass
+    return pd.DataFrame()
+
+
+def _v65_market() -> str:
+    try:
+        return _v63_selected_market_value()
+    except Exception:
+        try:
+            return _effective_nav_market("v65")
+        except Exception:
+            return "미국주식"
+
+
+def _v65_market_label() -> str:
+    return "국장" if _v65_market() == "한국주식" else "미장"
+
+
+def _v65_filter_market(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+    target = _v65_market()
+    work = df.copy()
+    for col in ["시장", "market", "Market"]:
+        if col in work.columns:
+            try:
+                return work[work[col].apply(lambda x: _v52_norm_market(x) if "_v52_norm_market" in globals() else ("한국주식" if "한국" in str(x) or "국장" in str(x) else "미국주식")) == target].copy()
+            except Exception:
+                pass
+    # 6자리 숫자 코드면 국장, 알파벳 티커면 미장으로 추정
+    code_col = next((c for c in work.columns if c in ["종목코드", "종목", "symbol", "Symbol", "ticker"]), None)
+    if code_col:
+        mask = work[code_col].astype(str).str.fullmatch(r"\d{6}", na=False)
+        return work[mask].copy() if target == "한국주식" else work[~mask].copy()
+    return work
+
+
+def _v65_css() -> None:
+    st.markdown("""
+<style>
+.v65-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:12px 0 18px 0;}
+.v65-card {border:1px solid rgba(148,163,184,.28);background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(2,6,23,.92));border-radius:20px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.18);min-height:156px;}
+.v65-card h3 {font-size:1.12rem;margin:0 0 8px 0;color:#f8fafc;}
+.v65-card .state {display:inline-block;border-radius:999px;padding:4px 10px;font-size:.78rem;font-weight:700;margin-bottom:10px;}
+.v65-ok {background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.35);}
+.v65-warn {background:rgba(245,158,11,.16);color:#fde68a;border:1px solid rgba(245,158,11,.35);}
+.v65-bad {background:rgba(239,68,68,.16);color:#fecaca;border:1px solid rgba(239,68,68,.35);}
+.v65-info {background:rgba(59,130,246,.16);color:#bfdbfe;border:1px solid rgba(59,130,246,.35);}
+.v65-card p {color:#cbd5e1;margin:6px 0;line-height:1.55;}
+.v65-next {color:#93c5fd!important;font-size:.93rem;}
+.v65-muted {color:#94a3b8!important;font-size:.88rem;}
+.v65-section {border-left:4px solid #38bdf8;padding-left:14px;margin:22px 0 10px 0;}
+</style>
+""", unsafe_allow_html=True)
+
+
+def _v65_badge_class(state: str) -> str:
+    s = str(state)
+    if any(x in s for x in ["정상", "양호", "검토 가능", "구현", "요약 가능", "기초 생성", "데이터 있음"]):
+        return "v65-ok"
+    if any(x in s for x in ["주의", "확인", "부분", "기초", "필요", "부족"]):
+        return "v65-warn"
+    if any(x in s for x in ["오류", "실패", "미반영", "없음"]):
+        return "v65-bad"
+    return "v65-info"
+
+
+def _v65_card(title: str, state: str, body: str, next_action: str = "", muted: str = "") -> None:
+    cls = _v65_badge_class(state)
+    st.markdown(f"""
+<div class="v65-card">
+  <h3>{title}</h3>
+  <div class="state {cls}">{state}</div>
+  <p>{body}</p>
+  {f'<p class="v65-next">다음 행동: {next_action}</p>' if next_action else ''}
+  {f'<p class="v65-muted">{muted}</p>' if muted else ''}
+</div>
+""", unsafe_allow_html=True)
+
+
+def _v65_plot_score_bar(df: pd.DataFrame, title: str, label_col: str, score_col: str = "점수") -> None:
+    try:
+        if df is None or df.empty or label_col not in df.columns or score_col not in df.columns:
+            return
+        tmp = df.copy().head(12)
+        tmp[score_col] = pd.to_numeric(tmp[score_col], errors="coerce").fillna(0)
+        fig = px.bar(tmp, x=label_col, y=score_col, title=title)
+        fig.update_layout(height=320, margin=dict(l=20,r=20,t=50,b=40))
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception:
+        pass
+
+
+def render_v65_business_analysis_cards_page() -> None:
+    _v65_css()
+    _render_nav_page_title("기업분석 카드")
+    market_label = _v65_market_label()
+    st.caption(f"{market_label} 기준입니다. 일반모드는 카드/그래프 요약만 보여주고, 원본표와 구현상태는 관리자모드로 분리했습니다.")
+    if st.button("기업분석 카드 갱신", key=f"v65_company_refresh_{market_label}"):
+        try:
+            from core.v65_maximum_ux_engine import run_v65_update
+            res = run_v65_update(fetch_news=True, fetch_missing_prices=True)
+            st.success(f"갱신 완료: {res.get('updated_at','')}")
+        except Exception as exc:
+            st.error(f"갱신 실패: {type(exc).__name__}: {exc}")
+    cards = _v65_filter_market(_v65_read_csv("reports/v65_company_analysis_cards.csv"))
+    if cards.empty:
+        st.info("아직 기업분석 카드 데이터가 없습니다. 갱신 버튼 또는 run_v65_daily_update.bat를 실행하세요.")
+        return
+    tabs = st.tabs(["가치평가", "재무제표", "KPI", "내러티브", "기술·투자거장"])
+    cat_map = [
+        ("value", tabs[0]),
+        ("financial", tabs[1]),
+        ("kpi", tabs[2]),
+        ("narrative", tabs[3]),
+    ]
+    for cat, tab in cat_map:
+        with tab:
+            sub = cards[cards.get("카테고리", "") == cat].head(12)
+            if sub.empty:
+                st.info("표시할 카드가 없습니다.")
+            else:
+                st.markdown('<div class="v65-grid">', unsafe_allow_html=True)
+                for _, r in sub.iterrows():
+                    title = f"{r.get('종목명','-')} ({r.get('종목코드','-')}) · {r.get('카드제목','')}"
+                    body = f"핵심값: {r.get('핵심값','-')}<br>{r.get('초보자 해석','')}"
+                    _v65_card(title, str(r.get("상태", "확인")), body, str(r.get("다음 행동", "")))
+                st.markdown('</div>', unsafe_allow_html=True)
+                _v65_plot_score_bar(sub, "카드 점수 요약", "종목명", "점수")
+                with st.expander("요약표 보기", expanded=False):
+                    st.dataframe(sub, use_container_width=True, hide_index=True)
+    with tabs[4]:
+        guru = _v65_filter_market(_v65_read_csv("reports/v65_guru_style_cards.csv"))
+        tech = _v65_filter_market(_v65_read_csv("reports/v65_tech_patent_cards.csv"))
+        st.markdown("### 투자거장 스타일 점검")
+        if guru.empty:
+            st.info("투자거장 스타일 카드가 아직 없습니다.")
+        else:
+            st.markdown('<div class="v65-grid">', unsafe_allow_html=True)
+            for _, r in guru.iterrows():
+                _v65_card(str(r.get("분석스타일","스타일")), str(r.get("상태","기초 구현")), f"점수: {r.get('점수','-')}<br>{r.get('해석','')}", str(r.get('주의','')))
+            st.markdown('</div>', unsafe_allow_html=True)
+            _v65_plot_score_bar(guru, "투자 스타일 점수", "분석스타일", "점수")
+        st.markdown("### 기술·특허 기초 카드")
+        if tech.empty:
+            st.info("기술·특허 키워드 카드가 아직 없습니다.")
+        else:
+            st.markdown('<div class="v65-grid">', unsafe_allow_html=True)
+            for _, r in tech.iterrows():
+                _v65_card(str(r.get("카드제목","기술·특허")), str(r.get("상태","확인")), f"키워드: {r.get('키워드','-')}<br>{r.get('해석','')}", str(r.get('다음 행동','')))
+            st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_v65_market_macro_cards_page() -> None:
+    _v65_css()
+    _render_nav_page_title("시장·거시 카드")
+    market_label = _v65_market_label()
+    st.caption(f"{market_label} 기준 시장 국면을 카드형으로 보여줍니다. 원본표는 관리자모드에서 확인합니다.")
+    if st.button("시장·거시 카드 갱신", key=f"v65_macro_refresh_{market_label}"):
+        try:
+            from core.v65_maximum_ux_engine import run_v65_update
+            res = run_v65_update(fetch_news=False, fetch_missing_prices=False)
+            st.success(f"갱신 완료: {res.get('updated_at','')}")
+        except Exception as exc:
+            st.error(f"갱신 실패: {type(exc).__name__}: {exc}")
+    df = _v65_filter_market(_v65_read_csv("reports/v65_macro_cards.csv"))
+    if df.empty:
+        st.info("시장·거시 카드 데이터가 없습니다.")
+        return
+    st.markdown('<div class="v65-grid">', unsafe_allow_html=True)
+    for _, r in df.head(12).iterrows():
+        _v65_card(str(r.get("카드","시장 지표")), str(r.get("상태","확인")), f"값: {r.get('값','-')}<br>{r.get('해석','')}")
+    st.markdown('</div>', unsafe_allow_html=True)
+    _v65_plot_score_bar(df, "시장·거시 점수", "카드", "점수")
+
+
+def render_v65_narrative_page() -> None:
+    _v65_css()
+    _render_nav_page_title("종목 내러티브")
+    market_label = _v65_market_label()
+    st.caption(f"{market_label} 기준 후보/리스크/재무 데이터를 묶어 종목 스토리를 카드로 보여줍니다. AI API가 없어도 기초 설명은 생성됩니다.")
+    df = _v65_filter_market(_v65_read_csv("reports/v65_narrative_cards.csv"))
+    if df.empty:
+        st.info("내러티브 데이터가 없습니다. v65 갱신을 실행하세요.")
+        return
+    st.markdown('<div class="v65-grid">', unsafe_allow_html=True)
+    for _, r in df.head(16).iterrows():
+        title = f"{r.get('종목명','-')} ({r.get('종목코드','-')})"
+        body = f"{r.get('내러티브','')}<br>매수판단 영향: {r.get('매수판단 영향','-')}"
+        _v65_card(title, "기초 내러티브", body, str(r.get("주의", "")))
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_v65_custom_indicator_admin_page() -> None:
+    _v65_css()
+    _render_nav_page_title("커스텀 경제지표")
+    st.caption("고급 설정 화면입니다. 사용자가 시장폭·뉴스·재무·수급·퀀트 가중치를 조합해 나만의 지표를 만들 수 있습니다.")
+    templates = _v65_read_csv("reports/v65_custom_indicator_templates.csv")
+    if not templates.empty:
+        st.markdown("### 기본 템플릿")
+        st.dataframe(templates, use_container_width=True, hide_index=True)
+    st.markdown("### 내 커스텀 지표 만들기")
+    c1, c2, c3, c4, c5 = st.columns(5)
+    w_market = c1.slider("시장폭", 0, 50, 25)
+    w_news = c2.slider("뉴스", 0, 50, 20)
+    w_fund = c3.slider("재무", 0, 50, 20)
+    w_flow = c4.slider("수급", 0, 50, 20)
+    w_quant = c5.slider("퀀트", 0, 50, 15)
+    total = max(1, w_market + w_news + w_fund + w_flow + w_quant)
+    st.progress(min(1.0, total / 150))
+    st.write(f"가중치 합계: {total}")
+    if st.button("커스텀 지표 설정 저장", key="v65_custom_indicator_save"):
+        try:
+            out = {"시장폭":w_market,"뉴스":w_news,"재무":w_fund,"수급":w_flow,"퀀트":w_quant,"updated_at":datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            p = Path("data/user_custom_indicator_settings.json")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+            st.success("저장 완료")
+        except Exception as exc:
+            st.error(f"저장 실패: {exc}")
+
+
+def render_v65_feature_status_admin_page() -> None:
+    _v65_css()
+    _render_nav_page_title("기능 구현 상태")
+    st.caption("일반 사용자가 매일 볼 필요 없는 구현 상태/데이터 요건은 관리자모드에서 확인합니다.")
+    df = _v65_read_csv("reports/v65_feature_implementation_map.csv")
+    if df.empty:
+        st.info("구현 상태 리포트가 없습니다. run_v65_daily_update.bat 실행 후 확인하세요.")
+        return
+    st.markdown('<div class="v65-grid">', unsafe_allow_html=True)
+    for _, r in df.iterrows():
+        title = str(r.get("기능", "기능"))
+        state = f"{r.get('구현상태','')} · {r.get('데이터상태','')}"
+        body = f"{r.get('설명','')}<br>표시 위치: {r.get('표시위치','-')}"
+        _v65_card(title, state, body, str(r.get("확인/다음행동", "")), str(r.get("일반/관리자", "")))
+    st.markdown('</div>', unsafe_allow_html=True)
+    with st.expander("원본 구현 상태표", expanded=False):
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+# v65: 일반모드는 카드/그래프/판단 중심, 관리자모드는 원본/진단/실험 중심.
+try:
+    OPERATIONAL_NAV_GROUPS.clear()
+    OPERATIONAL_NAV_GROUPS.update({
+        "오늘 실행": [("투자 인사이트 카드", "page_v64_investment_cards"), ("오늘 행동판", "page_v44_action_board")],
+        "매수": [("매수 후보 5분류", "page_v63_buy_5_categories"), ("매수 위험·제외", "page_v41_buy_risk"), ("매수 판단·기준가", "page_buy_decision"), ("커스텀 스크리너", "page_v37_custom_screener")],
+        "보유·매도": [("보유·매도 권장수량", "page_v50_position_plan"), ("보유·매도 통합", "page_ops_holdings_unified")],
+        "차트·수급": [("선택 종목 차트·수급", "page_v37_selected_chart_flow")],
+        "뉴스·재무·시장": [("뉴스 카드", "page_v50_news_cards"), ("기업분석 카드", "page_v65_business_cards"), ("시장·거시 카드", "page_v65_macro_cards"), ("종목 내러티브", "page_v65_narrative")],
+        "퀀트": [("퀀트 안내·복기", "page_v60_quant_review")],
+        "관심·설정": [("관심종목 관리", "page_watch_manage"), ("실전 운용 기준", "page_operation_settings"), ("v64 사용 순서", "page_v64_usage_guide")],
+    })
+except Exception:
+    pass
+
+try:
+    INSPECTION_NAV_GROUPS.clear()
+    INSPECTION_NAV_GROUPS.update({
+        "데이터 진단": [("데이터 연결 점검", "page_v60_data_center"), ("자동 운영센터", "page_v50_operation_center"), ("데이터 상태센터", "page_v45_data_status")],
+        "고급 분석·설정": [("기능 구현 상태", "page_v65_feature_status"), ("커스텀 경제지표", "page_v65_custom_indicator"), ("투자거장 분석 상세", "page_v65_guru_admin"), ("기술·특허 상세", "page_v65_tech_admin")],
+        "원본·리포트": [("모드·메뉴 구조", "page_v37_mode_structure"), ("리포트 센터", "page_report_center"), ("파일·리포트 rows", "page_admin_files")],
+        "퀀트·실험": [("퀀트 백테스팅", "page_v40_quant_backtest"), ("몬테카를로", "page_v40_monte_carlo"), ("옵션 프라이싱", "page_v40_option_pricing"), ("포트폴리오 리스크", "page_portfolio_risk")],
+    })
+    INSPECTION_NAV_GROUPS_WITH_LEGACY.clear()
+    INSPECTION_NAV_GROUPS_WITH_LEGACY.update({**INSPECTION_NAV_GROUPS})
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v65 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v65 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v65_business_cards":
+        render_v65_business_analysis_cards_page(); return
+    if page_id == "page_v65_macro_cards":
+        render_v65_market_macro_cards_page(); return
+    if page_id == "page_v65_narrative":
+        render_v65_narrative_page(); return
+    if page_id == "page_v65_custom_indicator":
+        render_v65_custom_indicator_admin_page(); return
+    if page_id == "page_v65_feature_status":
+        render_v65_feature_status_admin_page(); return
+    if page_id == "page_v65_guru_admin":
+        # 같은 데이터를 상세표 중심으로 보여줌
+        _render_nav_page_title("투자거장 분석 상세")
+        st.caption("실제 대가 보유종목 API는 미연결이며, 현재는 스타일 기준 점검표입니다.")
+        st.dataframe(_v65_filter_market(_v65_read_csv("reports/v65_guru_style_cards.csv")), use_container_width=True, hide_index=True); return
+    if page_id == "page_v65_tech_admin":
+        _render_nav_page_title("기술·특허 상세")
+        st.caption("실제 특허 API는 미연결이며, 현재는 뉴스/R&D 키워드 기반 기초 카드입니다.")
+        st.dataframe(_v65_filter_market(_v65_read_csv("reports/v65_tech_patent_cards.csv")), use_container_width=True, hide_index=True); return
+    if _ORIG_dispatch_sidebar_nav_page_v65 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v65(page_id)
+    st.warning(f"알 수 없는 화면 ID: {page_id}")
+
+try:
+    _ORIG_run_headless_runner_v65 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v65 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v65", "v65_update", "daily_v65", "ux_cards_v65"}:
+        try:
+            from core.v65_maximum_ux_engine import run_v65_update
+            res = run_v65_update(fetch_news=True, fetch_missing_prices=True)
+            print(json.dumps({"status":"OK", "v65":"maximum_ux_cards", "result":res}, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0
+        except Exception as exc:
+            print(f"v65 update failed: {type(exc).__name__}: {exc}", flush=True)
+            return 2
+    if _ORIG_run_headless_runner_v65 is not None:
+        return _ORIG_run_headless_runner_v65(action)
     return 2
 
 if __name__ == "__main__":

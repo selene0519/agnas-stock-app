@@ -68,9 +68,20 @@ def main() -> int:
     try:
         from core.v60_final_engine import run_v60_update
         result["v60"] = run_v60_update(fetch_news=True, fetch_missing_prices=True)
+        result["v62"] = {"status": "OK", "note": "v62 robust GNews retry is included in v60_final_engine"}
+        result["v63"] = {"status": "OK", "note": "v63 is a UI/menu global market-filter cleanup; reports generated through v60/v52 engines"}
     except Exception as exc:
         result["status"] = "ERROR"
         result["v60_error"] = f"{type(exc).__name__}: {exc}"
+
+
+
+    try:
+        from core.v65_maximum_ux_engine import run_v65_update
+        result["v65"] = run_v65_update(fetch_news=True, fetch_missing_prices=True)
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v65_error"] = f"{type(exc).__name__}: {exc}"
 
     Path("reports").mkdir(parents=True, exist_ok=True)
     Path("reports/cloud_accumulator_last_run.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str), encoding="utf-8")

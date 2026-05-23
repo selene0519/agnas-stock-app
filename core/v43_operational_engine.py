@@ -332,10 +332,33 @@ def build_sell_budget_table_v43(market: str, limit: int = 80) -> pd.DataFrame:
     return pd.DataFrame(rows2)
 
 
-def _gnews_queries(market: str) -> list[str]:
-    if market_slug(market) == "kr":
-        return ["한국 주식 반도체 로봇 전력기기 조선 방산", "코스피 코스닥 시장 주도주 실적"]
-    return ["US stock market AI semiconductor earnings", "Nasdaq technology stocks market movers"]
+def _gnews_queries(market: str) -> list[dict[str, Any]]:
+    """v62: GNews 검색어를 국장/미장별로 넓게 분리하고, 0건이면 자동 재시도합니다.
+
+    GNews는 검색어(q), 언어(lang), 국가(country) 조건이 조금만 좁아도 0건이 자주 나옵니다.
+    그래서 1차는 시장/섹터 검색, 2차는 country/lang 제거 검색, 3차는 top-headlines로 넓게 재시도합니다.
+    """
+    slug = market_slug(market)
+    if slug == "kr":
+        return [
+            {"kind": "search", "q": "KOSPI stock market", "lang": "en", "country": "kr", "label": "KOSPI/en/kr"},
+            {"kind": "search", "q": "KOSDAQ semiconductor stocks Korea", "lang": "en", "country": "kr", "label": "KOSDAQ semiconductor/en/kr"},
+            {"kind": "search", "q": "Samsung Electronics SK Hynix stock", "lang": "en", "country": "kr", "label": "Korea large caps/en/kr"},
+            {"kind": "search", "q": "한국 증시 코스피 코스닥 반도체", "lang": "ko", "country": "kr", "label": "한국어 시장/ko/kr"},
+            {"kind": "search", "q": "Korea stock market", "label": "wide Korea/no-filter"},
+            {"kind": "top", "category": "business", "country": "kr", "lang": "ko", "label": "top business/ko/kr"},
+            {"kind": "top", "category": "business", "country": "kr", "lang": "en", "label": "top business/en/kr"},
+        ]
+    return [
+        {"kind": "search", "q": "stock market", "lang": "en", "country": "us", "label": "stock market/en/us"},
+        {"kind": "search", "q": "Nasdaq stocks", "lang": "en", "country": "us", "label": "Nasdaq/en/us"},
+        {"kind": "search", "q": "S&P 500 market movers", "lang": "en", "country": "us", "label": "S&P 500/en/us"},
+        {"kind": "search", "q": "Nvidia AI semiconductor stocks", "lang": "en", "country": "us", "label": "AI semiconductor/en/us"},
+        {"kind": "search", "q": "Federal Reserve Treasury yields stocks", "lang": "en", "country": "us", "label": "macro/en/us"},
+        {"kind": "search", "q": "stock market", "label": "wide stock market/no-filter"},
+        {"kind": "top", "category": "business", "country": "us", "lang": "en", "label": "top business/en/us"},
+        {"kind": "top", "category": "business", "lang": "en", "label": "top business/en/no-country"},
+    ]
 
 
 def _gnews_sentiment(title: str, desc: str) -> str:
@@ -349,34 +372,85 @@ def _gnews_sentiment(title: str, desc: str) -> str:
     return "중립"
 
 
+def _extract_gnews_articles(data: dict[str, Any]) -> list[dict[str, Any]]:
+    articles = data.get("articles") if isinstance(data, dict) else []
+    return articles if isinstance(articles, list) else []
+
+
 def fetch_gnews(market: str, max_items: int = 20) -> pd.DataFrame:
+    """v62 robust GNews fetcher.
+
+    변경점
+    - GNEWS_API_KEY만 기본 키로 사용합니다. NEWS_API_KEY는 과거 호환용으로만 fallback합니다.
+    - search/top-headlines를 모두 시도합니다.
+    - lang/country 조건 때문에 0건이 되지 않도록 no-filter 재검색을 포함합니다.
+    - 0건이어도 diagnostics rows를 남겨 원인을 앱에서 볼 수 있게 합니다.
+    """
     key = get_secret("GNEWS_API_KEY") or get_secret("NEWS_API_KEY")
     rows: list[dict[str, Any]] = []
+    attempts: list[dict[str, Any]] = []
     if not key:
-        return pd.DataFrame()
+        return pd.DataFrame([{
+            "market": market_label(market), "status": "DIAG", "query": "-", "title": "GNEWS_API_KEY 미설정",
+            "description": "로컬 .env 또는 GitHub Secrets에 GNEWS_API_KEY가 필요합니다.",
+            "url": "", "source": "APP", "publishedAt": "", "sentiment": "확인 필요",
+            "summary_ko": "뉴스 키가 없어 실제 뉴스 수집을 실행하지 못했습니다.",
+            "fetched_at": datetime.now().isoformat(timespec="seconds"),
+        }])
     try:
         import requests  # type: ignore
-        for q in _gnews_queries(market):
-            params = {
-                "q": q,
-                "max": min(10, max_items),
-                "apikey": key,
-                "lang": "ko" if market_slug(market) == "kr" else "en",
-                "country": "kr" if market_slug(market) == "kr" else "us",
+        for spec in _gnews_queries(market):
+            if len([r for r in rows if r.get("status") == "OK"]) >= max_items:
+                break
+            kind = spec.get("kind", "search")
+            endpoint = "top-headlines" if kind == "top" else "search"
+            params: dict[str, Any] = {"max": min(10, max_items), "apikey": key}
+            if kind == "top":
+                if spec.get("category"):
+                    params["category"] = spec.get("category")
+            else:
+                params["q"] = spec.get("q") or "stock market"
+            if spec.get("lang"):
+                params["lang"] = spec.get("lang")
+            if spec.get("country"):
+                params["country"] = spec.get("country")
+
+            url = f"https://gnews.io/api/v4/{endpoint}"
+            resp = requests.get(url, params=params, timeout=15)
+            attempt = {
+                "market": market_label(market),
+                "endpoint": endpoint,
+                "label": spec.get("label", ""),
+                "query": params.get("q", f"top:{params.get('category','')}") or "-",
+                "http_status": resp.status_code,
+                "fetched_at": datetime.now().isoformat(timespec="seconds"),
             }
-            resp = requests.get("https://gnews.io/api/v4/search", params=params, timeout=15)
             if resp.status_code >= 400:
-                rows.append({"status": "ERROR", "query": q, "error": f"HTTP {resp.status_code}: {resp.text[:160]}"})
+                attempt["rows"] = 0
+                attempt["error"] = resp.text[:240]
+                attempts.append(attempt)
                 continue
-            data = resp.json()
-            for a in data.get("articles", []) or []:
+            try:
+                data = resp.json()
+            except Exception as exc:
+                attempt["rows"] = 0
+                attempt["error"] = f"JSON {type(exc).__name__}: {exc}"
+                attempts.append(attempt)
+                continue
+            articles = _extract_gnews_articles(data)
+            attempt["rows"] = len(articles)
+            attempt["totalArticles"] = data.get("totalArticles", len(articles)) if isinstance(data, dict) else len(articles)
+            attempts.append(attempt)
+            for a in articles:
                 title = str(a.get("title") or "").strip()
                 desc = str(a.get("description") or "").strip()
                 if not title:
                     continue
                 rows.append({
                     "market": market_label(market),
-                    "query": q,
+                    "query": attempt["query"],
+                    "attempt_label": attempt["label"],
+                    "endpoint": endpoint,
                     "title": title,
                     "description": desc,
                     "url": a.get("url") or "",
@@ -387,12 +461,32 @@ def fetch_gnews(market: str, max_items: int = 20) -> pd.DataFrame:
                     "status": "OK",
                     "fetched_at": datetime.now().isoformat(timespec="seconds"),
                 })
+        if not rows:
+            # 앱에서 원인을 볼 수 있도록 0건 진단행을 1개 남깁니다. 뉴스 카드에는 표시하지 않고 상태센터에서만 사용됩니다.
+            summary = "; ".join([f"{a.get('label')}={a.get('rows',0)}" for a in attempts[:8]])
+            rows.append({
+                "market": market_label(market), "status": "DIAG", "query": " / ".join([str(a.get('query','')) for a in attempts[:3]]),
+                "title": "GNews 검색 결과 0건", "description": f"모든 재검색 결과가 0건입니다. 시도: {summary}",
+                "url": "", "source": "GNews diagnostics", "publishedAt": "", "sentiment": "확인 필요",
+                "summary_ko": "API 호출은 성공했지만 실제 뉴스 항목이 없습니다. GNews 무료 한도/검색어/국가·언어 조건을 확인하세요.",
+                "fetched_at": datetime.now().isoformat(timespec="seconds"),
+            })
+        df = pd.DataFrame(rows)
+        if not df.empty and "title" in df.columns:
+            # OK 뉴스만 중복 제거. DIAG는 마지막에 유지.
+            ok = df[df.get("status", pd.Series(dtype=str)).astype(str).eq("OK")].copy()
+            diag = df[~df.get("status", pd.Series(dtype=str)).astype(str).eq("OK")].copy()
+            if not ok.empty:
+                ok = ok.drop_duplicates(subset=["title"], keep="first").head(max_items)
+            df = pd.concat([ok, diag.head(3)], ignore_index=True, sort=False) if not diag.empty else ok
+        return df
     except Exception as exc:
-        rows.append({"status": "ERROR", "error": f"{type(exc).__name__}: {exc}", "market": market_label(market)})
-    df = pd.DataFrame(rows)
-    if not df.empty and "title" in df.columns:
-        df = df.drop_duplicates(subset=["title"], keep="first").head(max_items)
-    return df
+        return pd.DataFrame([{
+            "status": "ERROR", "error": f"{type(exc).__name__}: {exc}", "market": market_label(market),
+            "title": "GNews 호출 실패", "description": f"{type(exc).__name__}: {exc}",
+            "summary_ko": "네트워크/API 호출 단계에서 실패했습니다.", "source": "APP",
+            "fetched_at": datetime.now().isoformat(timespec="seconds"),
+        }])
 
 
 def _simple_news_korean(title: str, desc: str) -> str:
@@ -411,11 +505,20 @@ def save_gnews_reports() -> dict[str, Any]:
         out_path = REPORT_DIR / f"gnews_latest_{slug}.csv"
         df.to_csv(out_path, index=False, encoding="utf-8-sig")
         ok_rows = int((df.get("status", pd.Series(dtype=str)).astype(str).eq("OK")).sum()) if not df.empty and "status" in df.columns else 0
+        diag_rows = int((df.get("status", pd.Series(dtype=str)).astype(str).isin(["DIAG", "ERROR"])).sum()) if not df.empty and "status" in df.columns else 0
+        last_diag = ""
+        if diag_rows and "description" in df.columns:
+            try:
+                last_diag = str(df[df.get("status", pd.Series(dtype=str)).astype(str).isin(["DIAG", "ERROR"])]["description"].dropna().iloc[-1])[:300]
+            except Exception:
+                last_diag = ""
         status["markets"][slug] = {
             "rows": int(len(df)),
             "ok_rows": ok_rows,
-            "api_key_present": bool(get_secret("GNEWS_API_KEY") or get_secret("NEWS_API_KEY")),
+            "diag_rows": diag_rows,
+            "api_key_present": bool(get_secret("GNEWS_API_KEY")),
             "path": str(out_path.relative_to(ROOT)),
+            "diagnostic": last_diag,
         }
         if ok_rows:
             combined.append(df[df["status"].astype(str).eq("OK")].copy())
