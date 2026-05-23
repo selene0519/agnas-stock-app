@@ -152,6 +152,15 @@ def _run_once(*, interval_min: float = 15.0, loop_count: int = 0) -> dict[str, A
         out["v40_analysis_error"] = str(exc)
         append_log(f"v40 analysis update failed: {exc}", "ERROR")
 
+    # v43: actual GNews fetch/cache and app-calculated strategy backtest.
+    try:
+        from core.v43_operational_engine import run_v43_update
+        out["v43_update"] = run_v43_update()
+        append_log(f"v43 update success status={out['v43_update'].get('status', '-') if isinstance(out.get('v43_update'), dict) else '-'}")
+    except Exception as exc:
+        out["v43_update_error"] = str(exc)
+        append_log(f"v43 update failed: {exc}", "ERROR")
+
     try:
         backup = create_daily_backup(force=False)
         out["backup"] = backup
