@@ -45631,6 +45631,441 @@ def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
 
 
 
+# ══════════════════════════════════════════════
+# v42 UI Simplification + Beginner Quant Guide + Sync-friendly Ops
+# - 매수판단 화면에서 차트 제거: 기준가/판단표만 표시
+# - 차트는 「차트·수급 → 선택 종목 차트·수급」 1곳으로 통합
+# - 고점/저점은 확인된 최근 스윙 1개씩만 표시
+# - 보유·매도 통합에서 포트폴리오 리스크 요약 제거
+# - 매수금지/추격위험/매수위험 용어를 「매수 위험·제외」로 통일
+# - 퀀트 대분류 안내 화면 추가
+# ══════════════════════════════════════════════
+try:
+    APP_VERSION = str(APP_VERSION) + " + v42 simplified beginner UI"
+except Exception:
+    APP_VERSION = "v42 simplified beginner UI"
+
+
+def _v42_market_label(market: str) -> str:
+    return "국장" if str(market) == "한국주식" else "미장"
+
+
+def _v42_confirmed_pivots(df: pd.DataFrame | None, *, window: int = 5, lookback: int = 120) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Return one recently confirmed swing high and one swing low.
+
+    기준:
+    - 앞뒤 window개 봉 안에서 가장 높은 High이면 스윙 고점
+    - 앞뒤 window개 봉 안에서 가장 낮은 Low이면 스윙 저점
+    - 최근 lookback개 봉 안에서 가장 최근에 확인된 고점/저점 1개씩만 표시
+    """
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    need = {"Date", "High", "Low"}
+    if not need.issubset(set(df.columns)):
+        return pd.DataFrame(), pd.DataFrame()
+    work = df.copy()
+    try:
+        work["Date"] = pd.to_datetime(work["Date"])
+        work["High"] = pd.to_numeric(work["High"], errors="coerce")
+        work["Low"] = pd.to_numeric(work["Low"], errors="coerce")
+        work = work.dropna(subset=["Date", "High", "Low"]).reset_index(drop=True)
+    except Exception:
+        return pd.DataFrame(), pd.DataFrame()
+    if len(work) < max(7, window * 2 + 1):
+        return pd.DataFrame(), pd.DataFrame()
+    roll_n = window * 2 + 1
+    high_roll = work["High"].rolling(roll_n, center=True).max()
+    low_roll = work["Low"].rolling(roll_n, center=True).min()
+    # 마지막 window개는 아직 뒤쪽 봉이 부족해 확정으로 보지 않음
+    confirmed = work.iloc[:-window].copy() if len(work) > window else work.copy()
+    high_mask = work["High"].eq(high_roll).iloc[:len(confirmed)]
+    low_mask = work["Low"].eq(low_roll).iloc[:len(confirmed)]
+    high_df = confirmed.loc[high_mask.values].tail(lookback)
+    low_df = confirmed.loc[low_mask.values].tail(lookback)
+    if high_df.empty:
+        high_df = work.tail(min(60, len(work))).nlargest(1, "High")
+    else:
+        high_df = high_df.tail(1)
+    if low_df.empty:
+        low_df = work.tail(min(60, len(work))).nsmallest(1, "Low")
+    else:
+        low_df = low_df.tail(1)
+    return high_df.copy(), low_df.copy()
+
+
+def _v42_add_key_pivots(fig: Any, df: pd.DataFrame | None, market: str) -> None:
+    try:
+        high_df, low_df = _v42_confirmed_pivots(df, window=5, lookback=120)
+        if not high_df.empty:
+            fig.add_trace(go.Scatter(
+                x=high_df["Date"],
+                y=pd.to_numeric(high_df["High"], errors="coerce"),
+                mode="markers",
+                name="최근 확정 고점",
+                marker=dict(color="#ef4444", size=11, symbol="triangle-down"),
+                hovertemplate="최근 확정 고점<br>%{x|%Y-%m-%d}<br>%{y}<extra></extra>",
+            ))
+        if not low_df.empty:
+            fig.add_trace(go.Scatter(
+                x=low_df["Date"],
+                y=pd.to_numeric(low_df["Low"], errors="coerce"),
+                mode="markers",
+                name="최근 확정 저점",
+                marker=dict(color="#22c55e", size=11, symbol="triangle-up"),
+                hovertemplate="최근 확정 저점<br>%{x|%Y-%m-%d}<br>%{y}<extra></extra>",
+            ))
+    except Exception:
+        return
+
+
+def render_native_buy_decision_page() -> None:  # type: ignore[override]
+    """v42: 매수 판단은 기준가 표만. 차트는 차트·수급 메뉴에서만 확인."""
+    market = _effective_nav_market("buy_decision") if "_effective_nav_market" in globals() else "미국주식"
+    inject_native_graft_css()
+    _render_nav_page_title("매수 판단·기준가") if "_render_nav_page_title" in globals() else st.markdown("## 매수 판단·기준가")
+    st.caption("이 화면은 신규 매수 후보의 현재가·진입가·손절가·목표가만 확인합니다. 차트는 중복을 줄이기 위해 ‘차트·수급 → 선택 종목 차트·수급’에서만 봅니다.")
+    table = pd.DataFrame()
+    try:
+        table = _cached_buy_decision_display_table(market, _swing_report_cache_sig(market))
+    except Exception:
+        try:
+            table = _build_buy_decision_display_table_partial(market, limit=30)
+        except Exception:
+            table = pd.DataFrame()
+    if table.empty:
+        st.info("표시할 매수 판단 데이터가 없습니다. 후보 스캔 리포트를 먼저 생성하세요.")
+    else:
+        st.dataframe(table, use_container_width=True, hide_index=True)
+    st.info("차트 확인 경로: 왼쪽 메뉴 → 차트·수급 → 선택 종목 차트·수급")
+    if _is_inspection_screen_area() if "_is_inspection_screen_area" in globals() else False:
+        with st.expander("매수 판단 기준 원본 (관리자)", expanded=False):
+            log_df = _native_market_filtered_log(market) if "_native_market_filtered_log" in globals() else pd.DataFrame()
+            batch = _native_latest_prediction_batch(log_df, market) if "_native_latest_prediction_batch" in globals() else pd.DataFrame()
+            if batch.empty:
+                st.caption("최근 예측 배치 없음")
+            else:
+                _native_show_prediction_table(batch.head(30), market, "매수 판단 기준")
+
+
+def render_v37_selected_chart_flow_page() -> None:  # type: ignore[override]
+    """v42: 일반모드의 유일한 종목 차트 화면. 차트 1개 + 수급 해석표만 표시."""
+    from core.operational_plus_engine import symbol_options, build_selected_symbol_flow
+
+    market = _v37_market("v42_selected_flow") if "_v37_market" in globals() else "미국주식"
+    inject_native_graft_css()
+    _render_nav_page_title("선택 종목 차트·수급")
+    st.caption("일반모드의 차트는 이 화면 하나로 통합했습니다. 매수 판단표에서 고른 종목을 여기서 다시 선택해 차트와 수급을 확인하세요.")
+
+    opts = symbol_options(market)
+    default_symbol = opts[0] if opts else ("NVDA" if market == "미국주식" else "005930")
+    c1, c2, c3, c4 = st.columns([1.25, .7, .7, .9])
+    with c1:
+        symbol = st.selectbox("종목 선택", opts or [default_symbol], index=0, key=f"v42_flow_symbol_{market}")
+    with c2:
+        period_label = st.selectbox("조회 기간", ["3개월", "6개월", "1년", "2년"], index=2, key=f"v42_flow_period_{market}")
+    with c3:
+        candle_mode = st.selectbox("봉 기준", ["일봉", "주봉", "월봉"], index=0, key=f"v42_flow_candle_{market}")
+    with c4:
+        show_pivots = st.checkbox("최근 고점/저점", value=True, key=f"v42_show_pivots_{market}", help="확정된 최근 스윙 고점 1개와 저점 1개만 표시합니다.")
+
+    raw_symbol = str(symbol or default_symbol).strip()
+    ticker = normalize_ticker(korean_symbol_from_name(raw_symbol), market) if market == "한국주식" else display_symbol(raw_symbol, "미국주식")
+    years = {"3개월": 0.25, "6개월": 0.5, "1년": 1.0, "2년": 2.0}.get(period_label, 1.0)
+    with st.spinner(f"{ticker} 차트 불러오는 중..."):
+        chart_df = _load_stock_data_for_chart_cached(ticker, market, years)
+    if chart_df is None or chart_df.empty or len(chart_df) < 5:
+        st.warning("차트 데이터를 불러오지 못했습니다. 아래 저장 리포트는 확인할 수 있습니다.")
+    else:
+        try:
+            chart_df = calculate_indicators(chart_df)
+            chart_df = ensure_chart_moving_averages(chart_df) if "ensure_chart_moving_averages" in globals() else chart_df
+        except Exception:
+            pass
+        plot_df = chart_df.copy()
+        try:
+            if candle_mode == "주봉":
+                plot_df = plot_df.set_index(pd.to_datetime(plot_df["Date"])).resample("W-FRI").agg({"Open":"first", "High":"max", "Low":"min", "Close":"last", "Volume":"sum"}).dropna().reset_index().rename(columns={"index":"Date"})
+                plot_df = calculate_indicators(plot_df)
+            elif candle_mode == "월봉":
+                plot_df = plot_df.set_index(pd.to_datetime(plot_df["Date"])).resample("M").agg({"Open":"first", "High":"max", "Low":"min", "Close":"last", "Volume":"sum"}).dropna().reset_index().rename(columns={"index":"Date"})
+                plot_df = calculate_indicators(plot_df)
+            plot_df = ensure_chart_moving_averages(plot_df) if "ensure_chart_moving_averages" in globals() else plot_df
+        except Exception:
+            pass
+        fig = go.Figure()
+        fig.add_trace(go.Candlestick(
+            x=plot_df["Date"], open=plot_df["Open"], high=plot_df["High"], low=plot_df["Low"], close=plot_df["Close"],
+            name="캔들", increasing_line_color="#ef5350", decreasing_line_color="#26a69a",
+        ))
+        # 초보자용 기본선만: MA10/20/50/200. MA100은 기본 제외해 차트 혼잡도를 낮춤.
+        for ma in ["MA10", "MA20", "MA50", "MA200"]:
+            if ma in plot_df.columns:
+                fig.add_trace(go.Scatter(x=plot_df["Date"], y=plot_df[ma], mode="lines", name=ma, line=dict(width=1.25)))
+        if show_pivots:
+            _v42_add_key_pivots(fig, plot_df, market)
+        fig.update_layout(
+            title=dict(text=f"{ticker} · {period_label} · {candle_mode}", x=0.01, xanchor="left", y=0.98, yanchor="top"),
+            template="plotly_dark", height=560, margin=dict(l=10, r=34, t=92, b=26),
+            xaxis=dict(rangeslider=dict(visible=False), automargin=True), yaxis=dict(side="right", automargin=True),
+            legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0),
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False})
+        st.caption("고점/저점 기준: 앞뒤 5개 봉 안에서 가장 높은/낮은 가격이 확인된 지점만 표시합니다. 최근 확정 고점은 빨간 ▼, 최근 확정 저점은 초록 ▲입니다.")
+
+    st.markdown('<div class="mode-section-title">선택 종목 수급·호가·현재가 요약</div>', unsafe_allow_html=True)
+    st.caption("수급/호가 값이 0이면 실제 0이 아니라 API 미제공 또는 장외 시간일 수 있습니다. 초보자 해석과 다음 행동을 우선 보세요.")
+    pack = build_selected_symbol_flow(market, ticker)
+    _v37_render_table(pack.get("summary"), empty="저장된 장중 수급/호가 리포트가 없습니다. 자동누적 또는 run_intraday_refresh 실행 후 채워집니다.", limit=10)
+    with st.expander("상세 원본 보기 — 관리자 점검용", expanded=False):
+        for title, key in [("후보/기준가", "candidate"), ("현재가", "quote"), ("호가", "orderbook"), ("수급", "flow"), ("업종", "sector")]:
+            st.markdown(f"**{title}**")
+            _v37_render_table(pack.get(key), empty=f"{title} 데이터 없음", limit=20)
+
+
+def render_operational_holdings_unified_page() -> None:  # type: ignore[override]
+    """v42: 보유·매도 통합에서 포트폴리오 리스크 요약 제거."""
+    market = _effective_nav_market("nav_ops_holdings_unified") if "_effective_nav_market" in globals() else "미국주식"
+    inject_native_graft_css()
+    _render_nav_page_title("보유·매도")
+    st.caption("보유 종목 유지·축소·매도 판단만 표시합니다. 포트폴리오 전체 리스크는 ‘퀀트 → 포트폴리오 리스크’에서 별도로 확인합니다.")
+    log_df = _native_market_filtered_log(market) if "_native_market_filtered_log" in globals() else pd.DataFrame()
+    mf = market if market in ("한국주식", "미국주식") else (_general_market_filter_value() if "_general_market_filter_value" in globals() else market)
+    try:
+        scope = _apply_general_market_filter(_future_scope_for_mode(market if market in ("한국주식", "미국주식") else None), mf)
+    except Exception:
+        scope = pd.DataFrame()
+
+    st.markdown('<div class="mode-section-title">보유종목 점검</div>', unsafe_allow_html=True)
+    try:
+        render_holdings_management(log_df, market, show_section_header=False)
+    except TypeError:
+        render_holdings_management(log_df, market)
+    except Exception as exc:
+        st.warning(f"보유종목 편집 UI 표시 중 오류: {exc}")
+    try:
+        render_holdings_action_summary(scope, market_filter=mf, show_section_title=False)
+    except Exception:
+        pass
+
+    st.markdown('<div class="mode-section-title">매도·축소 검토</div>', unsafe_allow_html=True)
+    batch = _native_latest_prediction_batch(log_df, market) if "_native_latest_prediction_batch" in globals() else pd.DataFrame()
+    try:
+        action_df = build_unified_decision_df(_native_build_buy_action(batch, log_df, market), log_df, market)
+    except Exception:
+        action_df = pd.DataFrame()
+
+    try:
+        holdings_status = build_holdings_status(load_holdings(market), log_df, market)
+    except Exception:
+        holdings_status = pd.DataFrame()
+    try:
+        sell_df = build_native_sell_decision_df(action_df, holdings_status, market)
+    except Exception:
+        sell_df = pd.DataFrame()
+    if not sell_df.empty:
+        try:
+            render_native_sell_top_cards(sell_df, market, top_n=5, title="매도/축소 우선")
+        except Exception:
+            pass
+        sell_cols = [
+            "매도우선순위", "종목", "매도판단", "보유판단", "현재가", "평단가", "수익률",
+            "손절가", "1차익절가", "손절가여유", "1차익절여유", "매도이유",
+        ]
+        st.dataframe(_apply_operational_trade_column_labels(sell_df[[c for c in sell_cols if c in sell_df.columns]].head(40)), use_container_width=True, hide_index=True)
+    else:
+        st.info("현재 매도/축소 후보가 없습니다. 보유종목을 입력하면 손절·익절 기준이 표시됩니다.")
+
+
+def render_v42_quant_guide_page() -> None:
+    inject_native_graft_css()
+    _render_nav_page_title("퀀트 안내")
+    st.caption("퀀트는 차트나 뉴스처럼 바로 매수 버튼을 누르기 위한 화면이 아니라, 내 전략과 리스크를 숫자로 검증하는 참고 영역입니다.")
+    st.markdown("""
+### 초보자는 이렇게 보면 됩니다
+
+| 화면 | 언제 보나요? | 쉽게 말하면 |
+|---|---|---|
+| **퀀트 백테스팅** | 내가 쓰는 조건이 과거에 통했는지 보고 싶을 때 | 이 방식이 예전에도 돈이 됐나? |
+| **몬테카를로** | 앞으로 손실 가능 범위를 대략 보고 싶을 때 | 최악이면 어느 정도 흔들릴 수 있나? |
+| **옵션 프라이싱** | 옵션 이론가를 공부하거나 참고할 때 | 옵션 가격 계산기입니다. 초보자는 건너뛰어도 됩니다. |
+| **포트폴리오 리스크** | 보유종목 전체 위험을 볼 때 | 내 계좌가 한쪽에 몰려 있는지 확인합니다. |
+
+**매일 꼭 볼 필요는 없습니다.**  
+평소에는 `오늘 실행`, `매수`, `보유·매도`, `차트·수급`만 봐도 됩니다. 퀀트는 주 1회 점검용으로 생각하면 됩니다.
+""")
+
+
+try:
+    _ORIG_render_home_toss_style_categories_v42 = _render_home_toss_style_categories
+except Exception:
+    _ORIG_render_home_toss_style_categories_v42 = None
+
+
+def _render_home_toss_style_categories(market: str, view_scope: str, df_a: pd.DataFrame, df_b: pd.DataFrame, df_c: pd.DataFrame) -> None:  # type: ignore[override]
+    """v42: 홈 카드 용어를 매수 위험·제외로 통일."""
+    if _ORIG_render_home_toss_style_categories_v42 is None:
+        return
+    # 원본 함수를 거의 그대로 쓰되 위험 카드 라벨만 바꾸기 위해 간단 재구성
+    try:
+        buy_df = _home_category_source_from_paths((REPORT_DIR / "buy_priority_candidates.csv",), market, view_scope)
+        watch_df = _home_category_source_from_paths((REPORT_DIR / "watchlist_buy_candidates.csv",), market, view_scope)
+        all_df = _home_category_source_from_paths((SWING_SCAN_US_FILE, SWING_SCAN_KR_FILE), market, view_scope)
+        a_rank = _home_rank_category_df(df_a, "priority")
+        pullback_rank = _home_rank_category_df(df_b if df_b is not None and not df_b.empty else buy_df, "pullback")
+        flow_rank = _home_rank_category_df(all_df if all_df is not None and not all_df.empty else buy_df, "flow")
+        value_rank = _home_rank_category_df(watch_df if watch_df is not None and not watch_df.empty else buy_df, "value")
+        risk_rank = _home_rank_category_df(df_c, "risk")
+        cards = [
+            {"cls":"hot","icon":"🎯","title":"오늘 우선 확인","desc":"지금 가장 먼저 볼 후보를 모았어요","df":a_rank},
+            {"cls":"pullback","icon":"🪜","title":"눌림목 진입 후보","desc":"추격보다 눌림·조건부 진입을 기다리는 후보예요","df":pullback_rank},
+            {"cls":"flow","icon":"💚","title":"수급 급증 후보","desc":"기관·외국인·프로그램 수급이 강한 후보예요","df":flow_rank},
+            {"cls":"value","icon":"💎","title":"실적·저평가 후보","desc":"실적/밸류 지표를 같이 확인할 후보예요","df":value_rank},
+            {"cls":"danger","icon":"🚫","title":"매수 위험·제외","desc":"지금은 신규 진입보다 관망·제외가 우선인 후보예요","df":risk_rank},
+        ]
+        html_parts = ['<div class="judge-category-grid">']
+        for card in cards:
+            n = int(len(card["df"])) if isinstance(card.get("df"), pd.DataFrame) else 0
+            top = "-"
+            if n > 0:
+                sym, nm = _home_display_symbol_name(card["df"].iloc[0], market)
+                top = nm or sym or "-"
+            html_parts.append(
+                f'<div class="judge-category-card {card["cls"]}">'
+                f'<div class="judge-category-head"><div class="judge-category-icon">{card["icon"]}</div>'
+                f'<div class="judge-category-title">{_html_escape_v9968(card["title"])}</div></div>'
+                f'<div class="judge-category-desc">{_html_escape_v9968(card["desc"])}</div>'
+                f'<div class="judge-category-meta"><b>{n}</b>개 · TOP {_html_escape_v9968(str(top))}</div>'
+                '</div>'
+            )
+        html_parts.append('</div>')
+        st.markdown("".join(html_parts), unsafe_allow_html=True)
+        for label, df in [("오늘 우선 확인", a_rank),("눌림목 진입 후보", pullback_rank),("수급 급증 후보", flow_rank),("실적·저평가 후보", value_rank),("매수 위험·제외", risk_rank)]:
+            with st.expander(f"{label} 보기", expanded=False):
+                preview = _home_category_preview_df(df, market, view_scope, limit=8)
+                if preview.empty:
+                    st.info("표시할 후보가 없습니다.")
+                else:
+                    st.dataframe(preview, use_container_width=True, hide_index=True)
+    except Exception:
+        return _ORIG_render_home_toss_style_categories_v42(market, view_scope, df_a, df_b, df_c)
+
+
+# v42: final beginner menu layout. General mode keeps only non-duplicate screens.
+try:
+    OPERATIONAL_NAV_GROUPS.clear()
+    OPERATIONAL_NAV_GROUPS.update({
+        "오늘 실행": [
+            ("오늘의 실행 플랜", "page_ops_execution_plan"),
+        ],
+        "매수": [
+            ("후보 요약", "page_buy_dashboard"),
+            ("매수 판단·기준가", "page_buy_decision"),
+            ("스윙·관찰 후보", "page_swing_board"),
+            ("매수 위험·제외", "page_v41_buy_risk"),
+            ("커스텀 스크리너", "page_v37_custom_screener"),
+        ],
+        "보유·매도": [
+            ("보유·매도 통합", "page_ops_holdings_unified"),
+            ("예산·권장수량", "page_v37_budget_quantity"),
+        ],
+        "차트·수급": [
+            ("선택 종목 차트·수급", "page_v37_selected_chart_flow"),
+            ("장중 요약", "page_ops_intraday_summary"),
+        ],
+        "뉴스·재무·시장": [
+            ("뉴스·내러티브", "page_v37_news_narrative"),
+            ("재무·가치·KPI", "page_v40_valuation_kpi"),
+            ("시장·거시", "page_v40_macro_regime"),
+        ],
+        "퀀트": [
+            ("퀀트 안내", "page_v42_quant_guide"),
+            ("퀀트 백테스팅", "page_v40_quant_backtest"),
+            ("포트폴리오 리스크", "page_portfolio_risk"),
+            ("몬테카를로", "page_v40_monte_carlo"),
+            ("옵션 프라이싱", "page_v40_option_pricing"),
+        ],
+        "관심·설정": [
+            ("관심종목 관리", "page_watch_manage"),
+            ("실전 운용 기준", "page_operation_settings"),
+        ],
+    })
+    INSPECTION_NAV_GROUPS.clear()
+    INSPECTION_NAV_GROUPS.update({
+        "데이터 진단": [
+            ("API·데이터 상태센터", "page_v36_api_status"),
+            ("현재가 진단", "page_admin_data"),
+            ("호가·수급 진단", "page_intraday_diagnosis"),
+            ("데이터 품질 요약", "page_api_quality"),
+            ("알림·오류 로그", "page_admin_logs"),
+        ],
+        "예측·복기": [
+            ("복기·학습", "page_v36_learning"),
+            ("예측 복기", "page_pred_review"),
+            ("예측 보정", "page_pred_adjust"),
+            ("보정 성과", "page_adjust_perf"),
+            ("백테스트 상세", "page_backtest"),
+            ("매매일지", "page_journal"),
+        ],
+        "원본·리포트": [
+            ("v40 분석 리포트", "page_v40_admin_report"),
+            ("리포트 센터", "page_report_center"),
+            ("파일·리포트 rows", "page_admin_files"),
+            ("매수금지 원본", "page_no_buy"),
+            ("추격위험 원본", "page_chase_risk"),
+            ("직접 차트 검색", "page_symbol_chart"),
+            ("SEC/DART 공시 원본", "page_sec_dart"),
+        ],
+        "시스템·설정": [
+            ("시스템 안전장치", "page_admin_system"),
+            ("자동누적·클라우드 준비", "page_v36_cloud"),
+            ("앱/경로 설정", "page_settings"),
+            ("운영 상태·runner", "page_ops_status"),
+            ("모드·메뉴 구조", "page_v37_mode_structure"),
+            ("UI 항목 점검표", "page_admin_ui_inventory"),
+        ],
+    })
+    INSPECTION_NAV_GROUPS_WITH_LEGACY.clear()
+    INSPECTION_NAV_GROUPS_WITH_LEGACY.update({
+        **INSPECTION_NAV_GROUPS,
+        "기타 기존 기능": _inspection_legacy_sidebar_entries(),
+    })
+except Exception:
+    pass
+
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v42 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v42 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v42_quant_guide":
+        render_v42_quant_guide_page(); return
+    if page_id == "page_v41_buy_risk":
+        render_v41_buy_risk_page(); return
+    if page_id == "page_v37_budget_quantity":
+        render_v37_budget_quantity_page(); return
+    if page_id == "page_v37_selected_chart_flow":
+        render_v37_selected_chart_flow_page(); return
+    if page_id == "page_v37_custom_screener":
+        render_v37_custom_screener_page(); return
+    if page_id == "page_v40_valuation_kpi":
+        render_v40_valuation_kpi_page(); return
+    if page_id == "page_v40_macro_regime":
+        render_v40_macro_regime_page(); return
+    if page_id == "page_v40_quant_backtest":
+        render_v40_quant_backtest_page(); return
+    if page_id == "page_v40_option_pricing":
+        render_v40_option_pricing_page(); return
+    if page_id == "page_v40_monte_carlo":
+        render_v40_monte_carlo_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v42 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v42(page_id)
+    st.warning(f"알 수 없는 화면 ID: {page_id}")
+
+
+
 if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "--runner":
         raise SystemExit(run_headless_runner(sys.argv[2]))
