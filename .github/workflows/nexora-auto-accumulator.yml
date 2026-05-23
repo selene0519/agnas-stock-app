@@ -1,11 +1,16 @@
 name: NEXORA Auto Accumulator
 
 on:
-  schedule:
-    # Weekdays: roughly every 30 minutes during Korea evening / US market window.
-    # Adjust this after checking your API rate limits.
-    - cron: "*/30 * * * 1-5"
   workflow_dispatch:
+  schedule:
+    # GitHub cron uses UTC. Selected KST checkpoints:
+    # KST 09:10 / 12:30 / 15:40 / 23:30 / 02:00 / 05:30 on weekdays.
+    - cron: "10 0 * * 1-5"
+    - cron: "30 3 * * 1-5"
+    - cron: "40 6 * * 1-5"
+    - cron: "30 14 * * 1-5"
+    - cron: "0 17 * * 1-5"
+    - cron: "30 20 * * 1-5"
 
 permissions:
   contents: write
@@ -14,8 +19,8 @@ jobs:
   accumulate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -25,6 +30,11 @@ jobs:
       - name: Run cloud accumulator
         env:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
           KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
           KIS_ACCOUNT_NO: ${{ secrets.KIS_ACCOUNT_NO }}

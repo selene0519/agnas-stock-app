@@ -24,6 +24,32 @@ def main() -> int:
     except Exception as exc:
         result["status"] = "ERROR"
         result["v36_error"] = f"{type(exc).__name__}: {exc}"
+    try:
+        from core.v43_operational_engine import run_v43_update
+        result["v43"] = run_v43_update()
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v43_error"] = f"{type(exc).__name__}: {exc}"
+    try:
+        from core.v44_learning_calibration_engine import run_v44_update
+        result["v44"] = run_v44_update()
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v44_error"] = f"{type(exc).__name__}: {exc}"
+
+    try:
+        from core.v45_calibrated_decision_engine import run_v45_update
+        result["v45"] = run_v45_update()
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v45_error"] = f"{type(exc).__name__}: {exc}"
+
+    try:
+        from core.v50_stability_engine import run_v50_update
+        result["v50"] = run_v50_update()
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v50_error"] = f"{type(exc).__name__}: {exc}"
     Path("reports").mkdir(parents=True, exist_ok=True)
     Path("reports/cloud_accumulator_last_run.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
