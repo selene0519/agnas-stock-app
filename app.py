@@ -49581,3 +49581,268 @@ if __name__ == "__main__":
     except Exception as e:
         log_app_event("streamlit_main", "error", f"{type(e).__name__}: {e}")
         st.error(f"앱 실행 중 오류가 발생했습니다. logs/error_log.csv를 확인하세요: {e}")
+
+# ══════════════════════════════════════════════
+# v68 — News/Finance/Market category operational cleanup
+# ══════════════════════════════════════════════
+
+try:
+    APP_VERSION = str(APP_VERSION) + " + v68 news/finance/market"
+except Exception:
+    APP_VERSION = "v68 news/finance/market"
+
+
+def _v68_now() -> str:
+    try:
+        return datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _v68_market() -> str:
+    try:
+        return _v67_market()
+    except Exception:
+        try:
+            return _v63_current_market_token()
+        except Exception:
+            return "미국주식"
+
+
+def _v68_slug(market: str | None = None) -> str:
+    try:
+        return _v67_slug(market or _v68_market())
+    except Exception:
+        m = str(market or _v68_market())
+        return "kr" if "한국" in m or "국장" in m else "us"
+
+
+def _v68_label(market: str | None = None) -> str:
+    return "국장" if _v68_slug(market) == "kr" else "미장"
+
+
+def _v68_read(path: str | Path) -> pd.DataFrame:
+    try:
+        return _v67_read(path)
+    except Exception:
+        try:
+            p = Path(path)
+            if not p.exists() or p.stat().st_size == 0:
+                return pd.DataFrame()
+            return pd.read_csv(p)
+        except Exception:
+            return pd.DataFrame()
+
+
+def _v68_report(name: str) -> Path:
+    return Path("reports") / name
+
+
+def _v68_get(row: pd.Series, *keys: str, default: str = "-") -> str:
+    try:
+        return _v67_get(row, *keys, default=default)
+    except Exception:
+        return default
+
+
+def _v68_generate_reports() -> dict[str, Any]:
+    try:
+        from core.v68_news_finance_market_engine import run_v68_update
+        return run_v68_update(fetch_news=True, fetch_missing_fundamentals=True)
+    except Exception as exc:
+        return {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}", "updated_at": _v68_now()}
+
+
+def _v68_card(title: str, badge: str = "확인", body: str = "", footer: str = "") -> None:
+    try:
+        _v67_card(title, badge, body, footer)
+        return
+    except Exception:
+        pass
+    st.markdown(f"""
+    <div style="border:1px solid rgba(148,163,184,.25);border-radius:18px;padding:16px 18px;margin:10px 0;background:rgba(15,23,42,.78);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <b style="font-size:1.05rem;color:#f8fafc;">{title}</b><span style="color:#60a5fa;font-weight:800;">{badge}</span>
+      </div>
+      <div style="margin-top:10px;color:#dbeafe;line-height:1.65;">{body}</div>
+      <div style="margin-top:10px;color:#93c5fd;font-size:.9rem;line-height:1.5;">{footer}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _v68_empty_guide(title: str, body: str) -> None:
+    st.info(f"**{title}**\n\n{body}")
+
+
+def render_v68_news_cards_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v68_market(); slug = _v68_slug(market); label = _v68_label(market)
+    _render_nav_page_title(f"{label} 뉴스 카드")
+    if slug == "kr":
+        st.caption("국장은 한국어/국내 소스 뉴스를 우선 보여줍니다. 연합뉴스·인베스팅닷컴 한국·한국경제·매일경제·이데일리 등 Google News RSS fallback을 함께 사용합니다.")
+    else:
+        st.caption("미장은 원문 뉴스와 함께 AI 없이 만든 간략 한글 해석을 표시합니다. AI API가 있으면 추후 더 자연스럽게 고도화할 수 있습니다.")
+    if st.button("뉴스·시장 리포트 갱신", key=f"v68_news_refresh_{slug}"):
+        res = _v68_generate_reports()
+        if res.get("status") in {"OK", "WARN"}:
+            st.success(f"갱신 완료: {res.get('updated_at', _v68_now())}")
+        else:
+            st.error(f"갱신 실패: {res.get('error', res)}")
+    df = _v68_read(_v68_report(f"v68_news_cards_{slug}.csv"))
+    diag_path = _v68_report(f"v68_news_diag_{slug}.json")
+    if df.empty:
+        _v68_empty_guide(
+            f"{label} 뉴스가 아직 0건입니다.",
+            "GNEWS_API_KEY가 있어도 검색어·무료 한도·응답 결과에 따라 0건일 수 있습니다. v68은 GNews 이후 Google News RSS fallback도 시도합니다. 위 갱신 버튼을 누른 뒤 진단을 확인하세요.",
+        )
+        if diag_path.exists():
+            with st.expander("뉴스 수집 진단 보기", expanded=True):
+                try:
+                    st.json(json.loads(diag_path.read_text(encoding='utf-8')))
+                except Exception:
+                    st.write(diag_path.read_text(encoding='utf-8', errors='ignore'))
+        return
+    c1, c2, c3 = st.columns(3)
+    c1.metric("표시 뉴스", len(df))
+    c2.metric("국내/선호 소스", int((df.get('우선순위', pd.Series(dtype=int)).astype(str).isin(['0']).sum()) if '우선순위' in df.columns else 0))
+    c3.metric("수집방식", ", ".join(sorted(set(df.get('수집방식', pd.Series(['-'])).astype(str).head(4)))))
+    for _, r in df.head(18).iterrows():
+        title = _v68_get(r, "제목", "title", default="뉴스 제목 없음")
+        desc = _v68_get(r, "요약", "description", default="")
+        trans = _v68_get(r, "간략 번역", "한글 해석", default="시장 영향을 확인하세요.")
+        source = _v68_get(r, "출처", "source", default="-")
+        query = _v68_get(r, "검색어", default="-")
+        method = _v68_get(r, "수집방식", default="-")
+        body = f"{desc}<br><br><b>한글 해석</b><br>{trans}<br><br><b>출처</b> {source} · <b>수집</b> {method} · <b>검색어</b> {query}"
+        _v68_card(title, "뉴스", body, "뉴스만으로 매수하지 말고 가격·거래량·기준가 반응을 함께 확인하세요.")
+    with st.expander("뉴스 원본 표 보기", expanded=False):
+        try:
+            _v67_render_pretty_table(df, empty="뉴스 원본 없음", limit=80)
+        except Exception:
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_v68_company_cards_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v68_market(); slug = _v68_slug(market); label = _v68_label(market)
+    _render_nav_page_title(f"{label} 기업분석 카드")
+    st.caption("가치평가·재무제표·KPI를 한 카드에서 봅니다. 데이터가 없으면 빈칸 대신 왜 부족한지 표시합니다.")
+    if st.button("기업분석 카드 갱신", key=f"v68_company_refresh_{slug}"):
+        res = _v68_generate_reports()
+        st.success(f"갱신 완료: {res.get('updated_at', _v68_now())}" if res.get("status") in {"OK","WARN"} else f"갱신 결과: {res}")
+    df = _v68_read(_v68_report(f"v68_company_cards_{slug}.csv"))
+    if df.empty:
+        _v68_empty_guide(
+            "기업분석 카드 데이터가 아직 없습니다.",
+            "단기 후보 화면은 볼 수 있지만, 장기 보유 판단에는 PER/PBR/ROE/성장률 같은 재무/KPI 연결이 필요합니다. 갱신 버튼 또는 run_v68_daily_update.bat를 실행하세요.",
+        )
+        return
+    for _, r in df.head(15).iterrows():
+        title = _v68_get(r, "종목", default="-")
+        code = _v68_get(r, "종목코드", default="-")
+        status = _v68_get(r, "재무상태", default="확인")
+        metrics = (
+            f"PER {_v68_get(r,'PER')} · PBR {_v68_get(r,'PBR')} · ROE {_v68_get(r,'ROE')}<br>"
+            f"매출성장률 {_v68_get(r,'매출성장률')} · 부채비율 {_v68_get(r,'부채비율')}<br>"
+            f"가치평가 {_v68_get(r,'가치평가')} · KPI {_v68_get(r,'KPI')}"
+        )
+        body = f"<b>{code}</b><br>{metrics}<br><br>{_v68_get(r,'초보자 해석', default='재무/KPI 확인이 필요합니다.')}"
+        _v68_card(title, status, body, _v68_get(r, "다음 행동", default="가격·뉴스·재무를 함께 확인하세요."))
+    with st.expander("기업분석 원본 표 보기", expanded=False):
+        try:
+            _v67_render_pretty_table(df, empty="기업분석 원본 없음", limit=80)
+        except Exception:
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_v68_macro_cards_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v68_market(); slug = _v68_slug(market); label = _v68_label(market)
+    _render_nav_page_title(f"{label} 시장·거시 카드")
+    st.caption("국장/미장 시장 분위기를 지수·금리·환율/변동성 중심으로 간단히 봅니다. 시장이 약하면 좋은 종목도 비중을 줄입니다.")
+    if st.button("시장·거시 카드 갱신", key=f"v68_macro_refresh_{slug}"):
+        res = _v68_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v68_now())}")
+    df = _v68_read(_v68_report(f"v68_macro_cards_{slug}.csv"))
+    if df.empty:
+        _v68_empty_guide("시장·거시 데이터가 없습니다.", "장마감/자동누적 후 다시 확인하거나 run_v68_daily_update.bat를 실행하세요.")
+        return
+    cols = st.columns(min(3, max(1, len(df))))
+    for i, (_, r) in enumerate(df.head(6).iterrows()):
+        with cols[i % len(cols)]:
+            _v68_card(_v68_get(r, "지표", default="시장 지표"), _v68_get(r, "등락률", default="-"), f"값 {_v68_get(r,'값')}<br>{_v68_get(r,'해석')}", _v68_get(r,"출처", default="-"))
+    with st.expander("시장·거시 원본 표 보기", expanded=False):
+        st.dataframe(df.fillna('-'), use_container_width=True, hide_index=True)
+
+
+def render_v68_narrative_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v68_market(); slug = _v68_slug(market); label = _v68_label(market)
+    _render_nav_page_title(f"{label} 종목 내러티브")
+    st.caption("뉴스·재무·후보·시장 배경을 합쳐 규칙 기반으로 설명합니다. AI API가 없어도 기초 설명은 생성됩니다.")
+    if st.button("종목 내러티브 갱신", key=f"v68_narrative_refresh_{slug}"):
+        res = _v68_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v68_now())}")
+    df = _v68_read(_v68_report(f"v68_narrative_{slug}.csv"))
+    if df.empty:
+        _v68_empty_guide("종목 내러티브 데이터가 없습니다.", "후보/뉴스/재무 리포트가 쌓이면 종목별 스토리가 표시됩니다.")
+        return
+    for _, r in df.head(15).iterrows():
+        title = _v68_get(r, "종목", default="-")
+        body = f"{_v68_get(r,'내러티브')}<br><br><b>시장 배경</b><br>{_v68_get(r,'시장 배경')}"
+        _v68_card(title, _v68_get(r, "종목코드", default="-"), body, _v68_get(r, "주의", default=""))
+
+
+# v68: news/finance/market category uses the new operational pages.
+try:
+    if "뉴스·재무·시장" in OPERATIONAL_NAV_GROUPS:
+        OPERATIONAL_NAV_GROUPS["뉴스·재무·시장"] = [
+            ("뉴스 카드", "page_v68_news_cards"),
+            ("기업분석 카드", "page_v68_company_cards"),
+            ("시장·거시 카드", "page_v68_macro_cards"),
+            ("종목 내러티브", "page_v68_narrative"),
+        ]
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v68 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v68 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v68_news_cards": render_v68_news_cards_page(); return
+    if page_id == "page_v68_company_cards": render_v68_company_cards_page(); return
+    if page_id == "page_v68_macro_cards": render_v68_macro_cards_page(); return
+    if page_id == "page_v68_narrative": render_v68_narrative_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v68 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v68(page_id)
+    st.warning(f"알 수 없는 화면 ID: {page_id}")
+
+try:
+    _ORIG_run_headless_runner_v68 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v68 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v68", "v68_update", "daily_v68", "mone_v68"}:
+        try:
+            from core.v68_news_finance_market_engine import run_v68_update
+            res = run_v68_update(fetch_news=True, fetch_missing_fundamentals=True)
+            print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0 if res.get("status") in {"OK", "WARN"} else 2
+        except Exception as exc:
+            print(f"v68 update failed: {type(exc).__name__}: {exc}", flush=True)
+            return 2
+    if _ORIG_run_headless_runner_v68 is not None:
+        return _ORIG_run_headless_runner_v68(action)
+    return 2
