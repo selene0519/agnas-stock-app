@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantAI Pro v3.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050810;--bg2:#090d18;--bg3:#0f1623;--bg4:#141d2e;--bg5:#1a2540;
+  --b1:#162030;--b2:#1e3050;--b3:#2a4570;
+  --ac:#3b9eff;--ac2:#1a6fd4;--ac3:#0d3d7a;--acg:rgba(59,158,255,.12);
+  --g:#00e5a0;--g2:#00b87d;--gbg:rgba(0,229,160,.07);--gbd:rgba(0,229,160,.25);
+  --r:#ff4d6a;--r2:#d42846;--rbg:rgba(255,77,106,.07);--rbd:rgba(255,77,106,.25);
+  --am:#ffb020;--ambg:rgba(255,176,32,.07);--ambd:rgba(255,176,32,.25);
+  --pu:#9d7cff;
+  --t1:#dde8f5;--t2:#6e9abf;--t3:#2e5070;--t4:#162538;
+  --mono:'IBM Plex Mono',monospace;--sans:'Inter',-apple-system,sans-serif;
+  --r7:7px;--r12:12px;--r16:16px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:13px}
+::-webkit-scrollbar{width:3px;height:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--b3);border-radius:2px}
+button{cursor:pointer;font-family:var(--sans)}input,select{font-family:var(--sans)}
+#app{display:flex;flex-direction:column;height:100vh}
+.topbar{display:flex;align-items:center;height:50px;padding:0 14px;border-bottom:1px solid var(--b2);background:var(--bg2);flex-shrink:0;gap:10px;z-index:10}
+.main{display:flex;flex:1;overflow:hidden}
+.sidebar{width:196px;flex-shrink:0;border-right:1px solid var(--b2);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden}
+.center{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.rpanel{width:210px;flex-shrink:0;border-left:1px solid var(--b2);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden}
+.logo{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.logo-icon{width:26px;height:26px;background:linear-gradient(135deg,var(--ac2),var(--ac));border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;font-weight:700;color:#fff}
+.logo-name{font-weight:700;font-size:14px;letter-spacing:-.4px}
+.logo-name em{color:var(--ac);font-style:normal}
+.logo-badge{font-size:9px;font-family:var(--mono);background:var(--acg);color:var(--ac);border:1px solid var(--ac3);padding:1px 5px;border-radius:3px}
+.tb-div{width:1px;height:22px;background:var(--b2);flex-shrink:0}
+.live-dot{width:5px;height:5px;background:var(--g);border-radius:50%;animation:lp 2s infinite;flex-shrink:0}
+@keyframes lp{0%,100%{box-shadow:0 0 0 0 rgba(0,229,160,.6)}60%{box-shadow:0 0 0 4px transparent}}
+.live-txt{font-size:9px;font-family:var(--mono);color:var(--t3)}
+.tb-stats{display:flex;gap:18px;flex:1;justify-content:center}
+.tbs{text-align:center}
+.tbs-l{font-size:9px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+.tbs-v{font-size:11px;font-weight:600;font-family:var(--mono);margin-top:1px}
+.pos{color:var(--g)}.neg{color:var(--r)}.neu{color:var(--ac)}
+.tb-right{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.api-note{font-size:10px;color:var(--t3);font-family:var(--mono)}
+.sb-blk{padding:7px;border-bottom:1px solid var(--b1);flex-shrink:0}
+.sb-lbl{font-size:9px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;padding:0 2px}
+.tick{display:flex;align-items:center;justify-content:space-between;padding:5px;border-radius:5px;cursor:pointer;transition:all .1s;gap:3px}
+.tick:hover{background:var(--bg4)}.tick.on{background:var(--bg5);outline:1px solid var(--b3)}
+.tick-l{flex:1}
+.tick-sym{font-family:var(--mono);font-size:11px;font-weight:700}
+.tick-px{font-family:var(--mono);font-size:10px;color:var(--t2)}
+.tick-chg{font-family:var(--mono);font-size:9px;padding:1px 4px;border-radius:3px;flex-shrink:0}
+.up{color:var(--g);background:var(--gbg)}.dn{color:var(--r);background:var(--rbg)}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:7px}
+.kpi{background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r7);padding:6px}
+.kpi-l{font-size:8px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px}
+.kpi-v{font-size:13px;font-weight:700;font-family:var(--mono);margin-top:1px}
+.sb-scroll{flex:1;overflow-y:auto}
+.tlog{padding:5px 8px;border-bottom:1px solid rgba(22,32,48,.8)}
+.tlog-top{display:flex;justify-content:space-between;margin-bottom:1px}
+.tlog-sym{font-family:var(--mono);font-size:11px;font-weight:700}
+.tlog-b{color:var(--g);font-size:9px;font-family:var(--mono);font-weight:600}
+.tlog-s{color:var(--r);font-size:9px;font-family:var(--mono);font-weight:600}
+.tlog-bot{display:flex;justify-content:space-between}
+.tlog-info{font-size:9px;color:var(--t3);font-family:var(--mono)}
+.tlog-pnl{font-size:9px;font-family:var(--mono);font-weight:600}
+.chartbar{background:var(--bg2);border-bottom:1px solid var(--b2);padding:9px 13px;flex-shrink:0}
+.cb-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap}
+.cb-left{display:flex;align-items:baseline;gap:8px}
+.cb-sym{font-family:var(--mono);font-size:14px;font-weight:700}
+.cb-px{font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:-.5px}
+.cb-chg{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px}
+.cb-mid{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sig-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid;letter-spacing:.5px}
+.sig-buy{color:var(--g);border-color:var(--g2);background:var(--gbg)}
+.sig-sell{color:var(--r);border-color:var(--r2);background:var(--rbg)}
+.sig-hold{color:var(--am);border-color:rgba(255,176,32,.4);background:var(--ambg)}
+.sig-long{color:#00e5a0;border-color:#00b87d;background:rgba(0,229,160,.12)}
+.sig-short{color:#ff4d6a;border-color:#d42846;background:rgba(255,77,106,.12)}
+.hl-levels{display:flex;align-items:center;gap:10px}
+.hl-lvl{display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--mono)}
+.hl-dot-h{width:6px;height:6px;border-radius:50%;background:#ff4d6a}
+.hl-dot-l{width:6px;height:6px;border-radius:50%;background:#00e5a0}
+.tf-row{display:flex;gap:3px}
+.tf{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:4px;border:1px solid var(--b2);background:transparent;color:var(--t3);transition:all .12s}
+.tf:hover,.tf.on{background:var(--bg5);color:var(--ac);border-color:var(--ac)}
+.chartbox{height:155px;position:relative}
+.tabs{display:flex;border-bottom:1px solid var(--b2);background:var(--bg2);flex-shrink:0;overflow-x:auto}
+.tabs::-webkit-scrollbar{height:0}
+.tab{padding:8px 13px;font-size:11px;font-weight:500;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--t2)}.tab.on{color:var(--ac);border-bottom-color:var(--ac)}
+.page{display:none;flex:1;overflow:hidden;flex-direction:column}.page.on{display:flex}
+.split{display:flex;flex:1;overflow:hidden}
+.split-l{width:230px;flex-shrink:0;border-right:1px solid var(--b2);padding:12px;overflow-y:auto;background:var(--bg2)}
+.split-r{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.fg{margin-bottom:10px}
+.fl{font-size:9px;font-family:var(--mono);color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
+.fsel,.finp{width:100%;background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r7);padding:6px 8px;color:var(--t1);font-family:var(--mono);font-size:11px;outline:none;transition:border-color .15s}
+.fsel:focus,.finp:focus{border-color:var(--ac)}.fsel option{background:var(--bg3)}
+.run-btn{width:100%;background:var(--ac2);border:none;border-radius:var(--r7);padding:8px;color:#fff;font-size:12px;font-weight:600;transition:all .15s;margin-top:2px}
+.run-btn:hover{background:var(--ac);box-shadow:0 0 12px var(--acg)}
+.run-btn:disabled{background:var(--bg5);color:var(--t3)}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.sc{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r7);padding:9px 11px}
+.sc-l{font-size:8px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.sc-v{font-size:17px;font-weight:700;font-family:var(--mono)}
+.sc-s{font-size:9px;font-family:var(--mono);color:var(--t3);margin-top:1px}
+.cc{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r12);padding:12px}
+.cc-t{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:9px;display:flex;align-items:center;justify-content:space-between}
+.cc-t span{font-size:9px;font-family:var(--mono);color:var(--t3);font-weight:400}
+.cc-h{position:relative}
+table.bt-tbl{width:100%;border-collapse:collapse;font-size:11px}
+table.bt-tbl th{text-align:left;padding:5px 7px;font-size:8px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--b2);font-weight:400;white-space:nowrap}
+table.bt-tbl td{padding:5px 7px;border-bottom:1px solid rgba(22,32,48,.8);font-family:var(--mono);white-space:nowrap}
+table.bt-tbl tbody tr:hover{background:var(--bg5)}
+.tag{font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--mono);font-weight:600}
+.tag-b{color:var(--g);background:var(--gbg)}.tag-s{color:var(--r);background:var(--rbg)}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:8px;color:var(--t3)}
+.empty-ico{font-size:36px;opacity:.2}.empty-txt{font-size:12px;font-family:var(--mono)}
+.pf-wrap{padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1}
+.pf-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.pf-card{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r7);padding:10px}
+.pfc-l{font-size:8px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+.pfc-v{font-size:16px;font-weight:700;font-family:var(--mono);margin-top:2px}
+.sec-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.sec-t{font-size:12px;font-weight:600}
+.add-btn{background:var(--bg5);border:1px solid var(--b3);border-radius:5px;padding:3px 8px;color:var(--t2);font-size:10px;font-family:var(--mono);transition:all .12s}
+.add-btn:hover{border-color:var(--ac);color:var(--ac)}
+.tbl-wrap{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r12);overflow:hidden}
+table.hold-tbl{width:100%;border-collapse:collapse;font-size:11px}
+table.hold-tbl th{text-align:left;padding:6px 9px;font-size:8px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--b2);font-weight:400;white-space:nowrap;background:var(--bg3)}
+table.hold-tbl td{padding:7px 9px;border-bottom:1px solid rgba(22,32,48,.8);font-family:var(--mono)}
+table.hold-tbl tbody tr:hover{background:var(--bg5)}
+.del{background:none;border:none;color:var(--t3);font-size:12px;padding:0 2px;transition:color .12s}
+.del:hover{color:var(--r)}
+.pf-charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pf-cc{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r12);padding:12px}
+.notice{background:var(--ambg);border:1px solid var(--ambd);border-radius:var(--r7);padding:7px 11px;font-size:10px;color:var(--am);line-height:1.6}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg3);border:1px solid var(--b3);border-radius:var(--r16);padding:18px;width:320px;box-shadow:0 16px 60px rgba(0,0,0,.6)}
+.modal h3{font-size:13px;font-weight:600;margin-bottom:12px}
+.modal-btns{display:flex;gap:7px;justify-content:flex-end;margin-top:12px}
+.btn-cancel{background:var(--bg5);border:1px solid var(--b3);border-radius:var(--r7);padding:6px 12px;color:var(--t2);font-size:12px}
+.btn-ok{background:var(--ac2);border:none;border-radius:var(--r7);padding:6px 12px;color:#fff;font-size:12px;font-weight:600}
+.btn-ok:hover{background:var(--ac)}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;overflow-y:auto;align-content:start}
+.calc-card{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r12);padding:13px}
+.calc-t{font-size:12px;font-weight:600;margin-bottom:11px;display:flex;align-items:center;justify-content:space-between}
+.calc-t .badge{font-size:9px;font-family:var(--mono);background:var(--acg);color:var(--ac);padding:1px 6px;border-radius:3px;font-weight:400}
+.srow{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.srow label{font-size:9px;font-family:var(--mono);color:var(--t2);width:105px;flex-shrink:0}
+.srow input[type=range]{flex:1;accent-color:var(--ac)}
+.srow .sv{font-size:10px;font-family:var(--mono);color:var(--ac);width:55px;text-align:right;flex-shrink:0}
+.calc-out{background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r7);padding:9px;margin-top:9px}
+.cr{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(22,32,48,.8)}
+.cr:last-child{border-bottom:none}
+.cr-l{font-size:9px;font-family:var(--mono);color:var(--t2)}
+.cr-v{font-size:10px;font-family:var(--mono);font-weight:600}
+.mc-wrap{display:flex;flex:1;overflow:hidden}
+.mc-l{width:215px;flex-shrink:0;border-right:1px solid var(--b2);padding:12px;overflow-y:auto;background:var(--bg2)}
+.mc-r{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.scan-wrap{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.scan-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px}
+.scan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px}
+.scard{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r12);padding:12px;transition:all .15s}
+.scard:hover{border-color:var(--b3)}
+.scard-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:9px}
+.scard-sym{font-family:var(--mono);font-size:13px;font-weight:700}
+.scard-name{font-size:9px;color:var(--t3);margin-top:1px}
+.scard-px{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:2px}
+.scard-body{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:9px}
+.scard-row{display:flex;justify-content:space-between;font-size:10px;font-family:var(--mono);padding:2px 0}
+.scard-lbl{color:var(--t3)}
+.scard-foot{display:flex;align-items:center;justify-content:space-between;padding-top:7px;border-top:1px solid var(--b1)}
+.score-bar{height:3px;background:var(--bg5);border-radius:2px;overflow:hidden;margin-top:4px}
+.score-fill{height:100%;border-radius:2px;transition:width .5s}
+.scard-sig{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid}
+.hm-wrap{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.hm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hm-card{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r12);padding:12px}
+.hm-title{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:10px}
+table.hm-tbl{border-collapse:separate;border-spacing:2px;font-family:var(--mono);font-size:10px}
+table.hm-tbl th{padding:3px 5px;color:var(--t3);font-weight:400;font-size:9px}
+table.hm-tbl td{width:44px;height:34px;text-align:center;border-radius:4px;font-weight:600;font-size:10px}
+table.hm-tbl td:hover{opacity:.8;cursor:default}
+.hm-lbl{color:var(--t2);text-align:right!important;padding-right:7px!important;white-space:nowrap;background:transparent!important}
+.corr-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.corr-card{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r7);padding:10px}
+.corr-l{font-size:8px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+.corr-v{font-size:18px;font-weight:700;font-family:var(--mono);margin:2px 0}
+.corr-d{font-size:10px;color:var(--t3)}
+.picks-wrap{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.picks-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px}
+.picks-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.ptab{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:5px;border:1px solid var(--b2);background:transparent;color:var(--t3);transition:all .12s}
+.ptab:hover{color:var(--t2)}.ptab.on{background:var(--bg5);color:var(--ac);border-color:var(--ac)}
+.picks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px}
+.pick-card{background:var(--bg4);border:1px solid var(--b2);border-radius:var(--r12);padding:14px;transition:all .15s;position:relative;overflow:hidden}
+.pick-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.pick-card.underval::before{background:linear-gradient(90deg,var(--g),var(--ac))}
+.pick-card.pullback::before{background:linear-gradient(90deg,var(--am),var(--pu))}
+.pick-card.long::before{background:linear-gradient(90deg,var(--g),var(--g2))}
+.pick-card.short::before{background:linear-gradient(90deg,var(--r),var(--r2))}
+.pick-card:hover{border-color:var(--b3);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.pick-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.pick-sym{font-family:var(--mono);font-size:15px;font-weight:700}
+.pick-name{font-size:10px;color:var(--t3);margin-top:1px}
+.pick-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:3px 8px;border-radius:4px;border:1px solid;letter-spacing:.3px}
+.pb-uv{color:var(--g);border-color:var(--gbd);background:var(--gbg)}
+.pb-pb{color:var(--am);border-color:var(--ambd);background:var(--ambg)}
+.pb-long{color:#00e5a0;border-color:rgba(0,229,160,.4);background:rgba(0,229,160,.1)}
+.pb-short{color:#ff4d6a;border-color:rgba(255,77,106,.4);background:rgba(255,77,106,.1)}
+.pick-price-row{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.pick-price{font-family:var(--mono);font-size:18px;font-weight:700}
+.pick-chg{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px}
+.pick-targets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.pick-tgt{background:var(--bg3);border:1px solid var(--b1);border-radius:5px;padding:6px 8px;text-align:center}
+.pick-tgt-l{font-size:8px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+.pick-tgt-v{font-size:12px;font-family:var(--mono);font-weight:600;margin-top:2px}
+.pick-reasons{margin-bottom:10px}
+.pick-reason-title{font-size:9px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.pick-reason{font-size:10px;color:var(--t2);display:flex;align-items:flex-start;gap:5px;line-height:1.5;margin-bottom:3px}
+.pick-reason::before{content:"›";color:var(--ac);font-weight:700;flex-shrink:0}
+.pick-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.pick-m{background:var(--bg3);border:1px solid var(--b1);border-radius:5px;padding:5px;text-align:center}
+.pick-m-l{font-size:8px;font-family:var(--mono);color:var(--t3)}
+.pick-m-v{font-size:11px;font-family:var(--mono);font-weight:600;margin-top:1px}
+.pick-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--b1)}
+.conv-dots{display:flex;gap:2px}
+.conv-dot{width:8px;height:8px;border-radius:50%}
+.conv-label{font-size:9px;font-family:var(--mono);color:var(--t3);margin-left:5px}
+.rp-blk{padding:9px;border-bottom:1px solid var(--b1);flex-shrink:0}
+.rp-lbl{font-size:9px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.sig-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(22,32,48,.7)}
+.sig-row:last-child{border-bottom:none}
+.sig-name{font-size:10px;font-family:var(--mono);color:var(--t2)}
+.sig-right{display:flex;align-items:center;gap:5px}
+.sig-val{font-size:10px;font-family:var(--mono)}
+.sig-bar{width:36px;height:2px;background:var(--bg5);border-radius:1px;overflow:hidden}
+.sig-fill{height:100%;border-radius:1px}
+.news-scroll{flex:1;overflow-y:auto;padding:7px}
+.ni{padding:6px 2px;border-bottom:1px solid rgba(22,32,48,.6)}
+.ni:last-child{border-bottom:none}
+.ni-t{font-size:10px;line-height:1.5;color:var(--t2)}
+.ni-bot{display:flex;align-items:center;gap:5px;margin-top:2px}
+.ni-src{font-size:9px;font-family:var(--mono);color:var(--t3)}
+.sent{font-size:8px;font-family:var(--mono);padding:1px 4px;border-radius:3px}
+.sp{color:var(--g);background:var(--gbg)}.sn{color:var(--r);background:var(--rbg)}.snu{color:var(--am);background:var(--ambg)}
+.info-box{background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r12);padding:20px;margin:12px;flex:1;overflow-y:auto}
+.info-box h2{font-size:16px;font-weight:600;margin-bottom:14px;color:var(--ac)}
+.info-box p{font-size:12px;line-height:1.8;color:var(--t2);margin-bottom:10px}
+.info-box ul{padding-left:16px;margin-bottom:10px}
+.info-box li{font-size:12px;line-height:1.8;color:var(--t2)}
+.info-box strong{color:var(--t1)}
+.info-highlight{background:var(--ambg);border:1px solid var(--ambd);border-radius:var(--r7);padding:10px 13px;font-size:11px;color:var(--am);line-height:1.7;margin-top:12px}
+.disc{font-size:9px;font-family:var(--mono);color:var(--t4);text-align:center;padding:3px 14px;background:var(--bg2);border-top:1px solid var(--b1);flex-shrink:0;line-height:1.5}
+.toast-wrap{position:fixed;bottom:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+.toast{background:var(--bg3);border:1px solid var(--b3);border-radius:var(--r7);padding:9px 13px;font-size:11px;font-family:var(--mono);color:var(--t1);box-shadow:0 4px 24px rgba(0,0,0,.4);animation:ti .18s ease;max-width:280px;pointer-events:all}
+.toast.ok{border-color:var(--gbd);color:var(--g)}.toast.err{border-color:var(--rbd);color:var(--r)}
+@keyframes ti{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">QA</div>
+      <div class="logo-name">Quant<em>AI</em></div>
+      <span class="logo-badge">PRO v3</span>
+    </div>
+    <div class="tb-div"></div>
+    <div class="live-dot"></div><span class="live-txt">LIVE SIM</span>
+    <div class="tb-stats">
+      <div class="tbs"><div class="tbs-l">Portfolio</div><div class="tbs-v" id="hdr-pf">$2,847,392</div></div>
+      <div class="tbs"><div class="tbs-l">Day P&L</div><div class="tbs-v pos" id="hdr-pnl">+$18,427</div></div>
+      <div class="tbs"><div class="tbs-l">Sharpe</div><div class="tbs-v neu">2.34</div></div>
+      <div class="tbs"><div class="tbs-l">Win Rate</div><div class="tbs-v pos">67.3%</div></div>
+      <div class="tbs"><div class="tbs-l">Max DD</div><div class="tbs-v neg">-8.2%</div></div>
+      <div class="tbs"><div class="tbs-l">Beta</div><div class="tbs-v neu">0.72</div></div>
+    </div>
+    <div class="tb-right">
+      <span class="api-note">API 없이 모든 기능 사용 가능</span>
+    </div>
+  </div>
+  <div class="main">
+    <div class="sidebar">
+      <div class="sb-blk">
+        <div class="sb-lbl">관심 종목</div>
+        <div id="tickerList"></div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-l">Alpha</div><div class="kpi-v pos">+14.8%</div></div>
+        <div class="kpi"><div class="kpi-l">VaR 95%</div><div class="kpi-v neg">-1.2%</div></div>
+        <div class="kpi"><div class="kpi-l">CVaR</div><div class="kpi-v neg">-2.1%</div></div>
+        <div class="kpi"><div class="kpi-l">Vol</div><div class="kpi-v neu">18.4%</div></div>
+      </div>
+      <div class="sb-lbl" style="padding:7px 9px 0">Recent Trades</div>
+      <div class="sb-scroll" id="tradeLog"></div>
+    </div>
+    <div class="center">
+      <div class="chartbar">
+        <div class="cb-top">
+          <div class="cb-left">
+            <span class="cb-sym" id="cb-sym">AAPL</span>
+            <span class="cb-px" id="cb-px">$189.24</span>
+            <span class="cb-chg up" id="cb-chg">+1.23%</span>
+          </div>
+          <div class="cb-mid">
+            <span class="sig-badge sig-buy" id="cb-sig">BUY</span>
+            <span class="sig-badge sig-long" id="cb-dir">LONG</span>
+            <div class="hl-levels">
+              <div class="hl-lvl"><div class="hl-dot-h"></div><span id="cb-high" style="color:var(--r)">고점 $194.20</span></div>
+              <div class="hl-lvl"><div class="hl-dot-l"></div><span id="cb-low" style="color:var(--g)">저점 $183.40</span></div>
+              <span style="font-size:9px;font-family:var(--mono);color:var(--t3)" id="cb-tgt">목표 $204.50 손절 $182.00</span>
+            </div>
+          </div>
+          <div class="tf-row">
+            <button class="tf on" onclick="setTF('1D',this)">1D</button>
+            <button class="tf" onclick="setTF('1W',this)">1W</button>
+            <button class="tf" onclick="setTF('1M',this)">1M</button>
+            <button class="tf" onclick="setTF('3M',this)">3M</button>
+            <button class="tf" onclick="setTF('1Y',this)">1Y</button>
+          </div>
+        </div>
+        <div class="chartbox"><canvas id="mainChart"></canvas></div>
+      </div>
+      <div class="tabs">
+        <div class="tab on" onclick="goPage('backtest',this)">📊 백테스팅</div>
+        <div class="tab" onclick="goPage('portfolio',this)">💼 포트폴리오</div>
+        <div class="tab" onclick="goPage('calc',this)">🧮 계산기</div>
+        <div class="tab" onclick="goPage('montecarlo',this)">🎲 몬테카를로</div>
+        <div class="tab" onclick="goPage('scanner',this)">🔭 스캐너</div>
+        <div class="tab" onclick="goPage('heatmap',this)">🌡️ 상관관계</div>
+        <div class="tab" onclick="goPage('picks',this)" style="color:var(--am)">⭐ 종목추천</div>
+      </div>
+      <div class="page on" id="page-backtest">
+        <div class="split">
+          <div class="split-l">
+            <div class="sb-lbl" style="margin-bottom:9px">전략 설정</div>
+            <div class="fg"><label class="fl">종목</label><select class="fsel" id="bt-sym"><option>AAPL</option><option>NVDA</option><option>TSLA</option><option>SPY</option><option>QQQ</option><option>MSFT</option><option>GOOGL</option><option>AMZN</option></select></div>
+            <div class="fg"><label class="fl">전략</label><select class="fsel" id="bt-strat"><option value="ma">이동평균 교차 (Golden/Dead Cross)</option><option value="rsi">RSI 역추세 (과매수/과매도)</option><option value="mom">모멘텀 브레이크아웃</option><option value="bb">볼린저 밴드 평균회귀</option><option value="macd">MACD 시그널 교차</option><option value="hl">고점/저점 돌파 전략</option></select></div>
+            <div class="fg"><label class="fl">기간</label><select class="fsel" id="bt-period"><option value="1">1년</option><option value="2" selected>2년</option><option value="3">3년</option><option value="5">5년</option></select></div>
+            <div class="fg"><label class="fl">초기 자본 ($)</label><input class="finp" id="bt-cap" type="number" value="100000"></div>
+            <div class="fg"><label class="fl">수수료 (%)</label><input class="finp" id="bt-fee" type="number" value="0.05" step="0.01"></div>
+            <div class="fg"><label class="fl">손절 (%)</label><input class="finp" id="bt-sl" type="number" value="5"></div>
+            <div class="fg"><label class="fl">익절 (%)</label><input class="finp" id="bt-tp" type="number" value="12"></div>
+            <div class="fg"><label class="fl">포지션 비중 (%)</label><input class="finp" id="bt-pos" type="number" value="95"></div>
+            <button class="run-btn" onclick="runBT()">▶ 백테스트 실행</button>
+          </div>
+          <div class="split-r" id="bt-r"><div class="empty" id="bt-empty"><div class="empty-ico">📊</div><div class="empty-txt">전략 설정 후 실행하세요</div></div></div>
+        </div>
+      </div>
+      <div class="page" id="page-portfolio">
+        <div class="pf-wrap">
+          <div class="notice">⚠ 교육 목적 | 모든 데이터는 시뮬레이션 | 실제 투자에 사용 금지</div>
+          <div class="pf-sum" id="pf-sum"></div>
+          <div>
+            <div class="sec-row"><span class="sec-t">보유 종목</span><button class="add-btn" onclick="openModal()">+ 추가</button></div>
+            <div class="tbl-wrap"><table class="hold-tbl"><thead><tr><th>종목</th><th>섹터</th><th>수량</th><th>매입가</th><th>현재가</th><th>평가금액</th><th>손익</th><th>수익률</th><th>비중</th><th></th></tr></thead><tbody id="hold-body"></tbody></table></div>
+          </div>
+          <div class="pf-charts">
+            <div class="pf-cc"><div class="hm-title">섹터 배분</div><div style="position:relative;height:190px"><canvas id="sectorChart"></canvas></div></div>
+            <div class="pf-cc"><div class="hm-title">포지션 비중</div><div style="position:relative;height:190px"><canvas id="weightChart"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="page" id="page-calc">
+        <div class="calc-grid">
+          <div class="calc-card">
+            <div class="calc-t">블랙-숄즈 옵션 계산기 <span class="badge">Black-Scholes</span></div>
+            <div class="srow"><label>현재가 S ($)</label><input type="range" min="50" max="600" value="189" id="bs-s" oninput="cBS()"><span class="sv" id="bs-sv">$189</span></div>
+            <div class="srow"><label>행사가 K ($)</label><input type="range" min="50" max="600" value="195" id="bs-k" oninput="cBS()"><span class="sv" id="bs-kv">$195</span></div>
+            <div class="srow"><label>만기 T (일)</label><input type="range" min="7" max="730" value="30" id="bs-t" oninput="cBS()"><span class="sv" id="bs-tv">30d</span></div>
+            <div class="srow"><label>무위험금리 r (%)</label><input type="range" min="0" max="12" step="0.1" value="5.3" id="bs-r" oninput="cBS()"><span class="sv" id="bs-rv">5.3%</span></div>
+            <div class="srow"><label>내재변동성 σ (%)</label><input type="range" min="5" max="120" value="28" id="bs-iv" oninput="cBS()"><span class="sv" id="bs-ivv">28%</span></div>
+            <div class="calc-out" id="bs-out"></div>
+          </div>
+          <div class="calc-card">
+            <div class="calc-t">포지션 사이징 <span class="badge">Kelly Criterion</span></div>
+            <div class="srow"><label>총 자본 ($)</label><input type="range" min="10000" max="2000000" step="10000" value="100000" id="ps-c" oninput="cPS()"><span class="sv" id="ps-cv">$100k</span></div>
+            <div class="srow"><label>리스크 허용 (%)</label><input type="range" min="0.5" max="5" step="0.1" value="2" id="ps-ri" oninput="cPS()"><span class="sv" id="ps-rv">2%</span></div>
+            <div class="srow"><label>손절 거리 (%)</label><input type="range" min="1" max="25" value="5" id="ps-sl" oninput="cPS()"><span class="sv" id="ps-slv">5%</span></div>
+            <div class="srow"><label>승률 (%)</label><input type="range" min="25" max="80" value="55" id="ps-wr" oninput="cPS()"><span class="sv" id="ps-wrv">55%</span></div>
+            <div class="srow"><label>손익비 R:R</label><input type="range" min="0.5" max="6" step="0.1" value="2" id="ps-rr" oninput="cPS()"><span class="sv" id="ps-rrv">2.0</span></div>
+            <div class="calc-out" id="ps-out"></div>
+          </div>
+          <div class="calc-card">
+            <div class="calc-t">VaR / CVaR 계산기 <span class="badge">Value at Risk</span></div>
+            <div class="srow"><label>포트폴리오 ($)</label><input type="range" min="10000" max="10000000" step="10000" value="1000000" id="vr-p" oninput="cVaR()"><span class="sv" id="vr-pv">$1M</span></div>
+            <div class="srow"><label>연간 변동성 (%)</label><input type="range" min="5" max="80" value="18" id="vr-v" oninput="cVaR()"><span class="sv" id="vr-vv">18%</span></div>
+            <div class="srow"><label>신뢰수준 (%)</label><input type="range" min="90" max="99" value="95" id="vr-cl" oninput="cVaR()"><span class="sv" id="vr-clv">95%</span></div>
+            <div class="srow"><label>보유기간 (일)</label><input type="range" min="1" max="30" value="1" id="vr-d" oninput="cVaR()"><span class="sv" id="vr-dv">1d</span></div>
+            <div class="calc-out" id="vr-out"></div>
+          </div>
+          <div class="calc-card">
+            <div class="calc-t">위험조정수익률 <span class="badge">Sharpe · Sortino · Calmar</span></div>
+            <div class="srow"><label>연간 수익률 (%)</label><input type="range" min="-30" max="150" value="24" id="sh-r" oninput="cSH()"><span class="sv" id="sh-rv">24%</span></div>
+            <div class="srow"><label>무위험금리 (%)</label><input type="range" min="0" max="12" step="0.1" value="5.3" id="sh-rf" oninput="cSH()"><span class="sv" id="sh-rfv">5.3%</span></div>
+            <div class="srow"><label>연간 변동성 (%)</label><input type="range" min="3" max="80" value="18" id="sh-v" oninput="cSH()"><span class="sv" id="sh-vv">18%</span></div>
+            <div class="srow"><label>하방 변동성 (%)</label><input type="range" min="2" max="50" value="11" id="sh-dv" oninput="cSH()"><span class="sv" id="sh-dvv">11%</span></div>
+            <div class="srow"><label>최대 낙폭 (%)</label><input type="range" min="1" max="70" value="15" id="sh-mdd" oninput="cSH()"><span class="sv" id="sh-mddv">15%</span></div>
+            <div class="calc-out" id="sh-out"></div>
+          </div>
+        </div>
+      </div>
+      <div class="page" id="page-montecarlo">
+        <div class="mc-wrap">
+          <div class="mc-l">
+            <div class="sb-lbl" style="margin-bottom:9px">GBM 설정</div>
+            <div class="fg"><label class="fl">종목</label><select class="fsel" id="mc-sym"><option>AAPL</option><option>NVDA</option><option>TSLA</option><option>SPY</option><option>QQQ</option><option>MSFT</option></select></div>
+            <div class="fg"><label class="fl">시뮬레이션 횟수</label><select class="fsel" id="mc-n"><option value="200">200회</option><option value="500" selected>500회</option><option value="1000">1,000회</option></select></div>
+            <div class="fg"><label class="fl">예측 기간 (거래일)</label><input class="finp" id="mc-days" type="number" value="252" min="30" max="756"></div>
+            <div class="fg"><label class="fl">연간 변동성 σ (%)</label><input class="finp" id="mc-vol" type="number" value="28"></div>
+            <div class="fg"><label class="fl">연간 드리프트 μ (%)</label><input class="finp" id="mc-drift" type="number" value="8"></div>
+            <div class="fg"><label class="fl">초기 가격 S₀ ($)</label><input class="finp" id="mc-s0" type="number" value="189" step="0.01"></div>
+            <button class="run-btn" onclick="runMC()">▶ 시뮬레이션 실행</button>
+          </div>
+          <div class="mc-r" id="mc-r"><div class="empty" id="mc-empty"><div class="empty-ico">🎲</div><div class="empty-txt">GBM 가격 경로 시뮬레이션</div></div></div>
+        </div>
+      </div>
+      <div class="page" id="page-scanner">
+        <div class="scan-wrap">
+          <div class="scan-hdr">
+            <div style="font-size:13px;font-weight:600">마켓 스캐너 <span style="font-size:9px;font-family:var(--mono);color:var(--t3);font-weight:400" id="scan-ts"></span></div>
+            <div style="display:flex;gap:7px;align-items:center">
+              <select class="fsel" id="scan-f" style="width:140px"><option value="all">전체</option><option value="buy">BUY</option><option value="sell">SELL</option><option value="strong">강한 시그널</option></select>
+              <button class="run-btn" style="width:auto;padding:5px 12px;margin:0" onclick="runScanner(true)">🔄 새로고침</button>
+            </div>
+          </div>
+          <div class="scan-grid" id="scan-grid"></div>
+        </div>
+      </div>
+      <div class="page" id="page-heatmap">
+        <div class="hm-wrap">
+          <div class="hm-grid">
+            <div class="hm-card"><div class="hm-title">상관관계 히트맵 (90일 롤링)</div><div style="overflow-x:auto" id="hm-wrap"></div></div>
+            <div class="hm-card"><div class="hm-title">수익률 분포 비교</div><div style="position:relative;height:240px"><canvas id="retChart"></canvas></div></div>
+          </div>
+          <div class="corr-cards" id="corr-cards"></div>
+        </div>
+      </div>
+      <div class="page" id="page-picks">
+        <div class="picks-wrap">
+          <div class="picks-hdr">
+            <div style="font-size:13px;font-weight:600">종목 추천 <span style="font-size:9px;font-family:var(--mono);color:var(--t3);font-weight:400" id="picks-ts"></span></div>
+            <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+              <div class="picks-tabs">
+                <button class="ptab on" onclick="filterPicks('all',this)">전체</button>
+                <button class="ptab" onclick="filterPicks('underval',this)">저평가 성장주</button>
+                <button class="ptab" onclick="filterPicks('pullback',this)">눌림목 매수</button>
+                <button class="ptab" onclick="filterPicks('long',this)">롱 포지션</button>
+                <button class="ptab" onclick="filterPicks('short',this)">숏 포지션</button>
+              </div>
+              <button class="run-btn" style="width:auto;padding:5px 12px;margin:0" onclick="buildPicks(true)">🔄 업데이트</button>
+            </div>
+          </div>
+          <div class="picks-grid" id="picks-grid"></div>
+        </div>
+      </div>
+    </div>
+    <div class="rpanel">
+      <div class="rp-blk"><div class="rp-lbl">기술적 시그널</div><div id="sig-panel"></div></div>
+      <div class="rp-blk"><div class="rp-lbl">리스크 지표</div><div id="risk-panel"></div></div>
+      <div class="rp-blk" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <div class="rp-lbl">시장 감성</div>
+        <div class="news-scroll" id="news-panel"></div>
+      </div>
+    </div>
+  </div>
+  <div class="disc">⚠ 교육·연구 목적 전용 | AI 분석은 투자 권유가 아닙니다 | 실제 투자 전 전문가 자문 필수 | 모든 데이터는 시뮬레이션 | QuantAI Pro v3.0</div>
+</div>
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>종목 추가</h3>
+    <div class="fg"><label class="fl">심볼</label><select class="fsel" id="m-sym"><option>AAPL</option><option>NVDA</option><option>TSLA</option><option>MSFT</option><option>GOOGL</option><option>AMZN</option><option>META</option><option>SPY</option><option>QQQ</option><option>GLD</option><option>TLT</option><option>BRK-B</option></select></div>
+    <div class="fg"><label class="fl">수량</label><input class="finp" id="m-qty" type="number" value="10" min="1"></div>
+    <div class="fg"><label class="fl">매입 평균가 ($)</label><input class="finp" id="m-cost" type="number" value="180" step="0.01"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-ok" onclick="addHolding()">추가</button>
+    </div>
+  </div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+'use strict';
+
+/* ===== STATE ===== */
+var curSym = 'AAPL';
+var curTF = '1D';
+var mainCI = null, sectorCI = null, weightCI = null, retCI = null;
+var picksFilter = 'all';
+
+var TICKERS = [
+  {sym:'AAPL', px:189.24, chg:1.23,  vol:0.022, sector:'Technology'},
+  {sym:'NVDA', px:875.60, chg:-0.87, vol:0.038, sector:'Technology'},
+  {sym:'TSLA', px:242.15, chg:2.14,  vol:0.045, sector:'Consumer'},
+  {sym:'SPY',  px:521.30, chg:0.42,  vol:0.010, sector:'ETF'},
+  {sym:'QQQ',  px:448.92, chg:-0.31, vol:0.014, sector:'ETF'},
+  {sym:'MSFT', px:415.78, chg:0.95,  vol:0.018, sector:'Technology'},
+  {sym:'GOOGL',px:172.45, chg:-0.22, vol:0.020, sector:'Technology'},
+  {sym:'AMZN', px:198.63, chg:1.54,  vol:0.025, sector:'Consumer'}
+];
+var holdings = [
+  {sym:'AAPL', qty:50,  cost:162.50, sector:'Technology'},
+  {sym:'NVDA', qty:15,  cost:620.00, sector:'Technology'},
+  {sym:'MSFT', qty:25,  cost:380.00, sector:'Technology'},
+  {sym:'SPY',  qty:30,  cost:480.00, sector:'ETF'},
+  {sym:'TSLA', qty:20,  cost:210.00, sector:'Consumer'},
+  {sym:'AMZN', qty:12,  cost:175.00, sector:'Consumer'}
+];
+var SIGS = [
+  {n:'RSI(14)',v:'58.3',p:0.58,d:'pos'},{n:'MACD',v:'Bullish',p:0.72,d:'pos'},
+  {n:'BB%',v:'0.63',p:0.63,d:'pos'},{n:'EMA Cross',v:'Above',p:0.80,d:'pos'},
+  {n:'MOM(20)',v:'+2.1%',p:0.42,d:'pos'},{n:'ATR(14)',v:'3.24',p:0.50,d:'neu'},
+  {n:'Vol Ratio',v:'0.87',p:0.30,d:'neg'},{n:'OBV',v:'Rising',p:0.65,d:'pos'}
+];
+var RISKS = [
+  {n:'VaR 1d 95%',v:'-1.2%',c:'#ff4d6a'},{n:'CVaR 1d',v:'-2.1%',c:'#ff4d6a'},
+  {n:'상관계수',v:'0.68',c:'#ffb020'},{n:'연간 변동성',v:'18.4%',c:'#ffb020'},
+  {n:'베타',v:'0.72',c:'#3b9eff'},{n:'알파 (연)',v:'+14.8%',c:'#00e5a0'}
+];
+var NEWS = [
+  {t:'Fed 금리 동결 시사 — 시장 안도 랠리 기대감',src:'Bloomberg',time:'12m',s:'pos'},
+  {t:'NVDA 실적 예상치 상회, 데이터센터 수요 급증',src:'Reuters',time:'34m',s:'pos'},
+  {t:'중국 반도체 수출 규제 강화, 관련주 약세',src:'WSJ',time:'1h',s:'neg'},
+  {t:'VIX 22.3 유지 — 옵션 시장 헤징 수요 증가',src:'CBOE',time:'2h',s:'neu'},
+  {t:'S&P500 5,280p 저항선 돌파 시도',src:'FT',time:'3h',s:'pos'},
+  {t:'달러 인덱스 103.8 고금리 장기화 우려',src:'IMF',time:'4h',s:'neg'}
+];
+var TRADES = [
+  {sym:'NVDA',side:'SELL',qty:5, px:892.40,pnl:2847},
+  {sym:'AAPL',side:'BUY', qty:10,px:188.50,pnl:null},
+  {sym:'SPY', side:'BUY', qty:8, px:519.80,pnl:null},
+  {sym:'TSLA',side:'SELL',qty:12,px:248.30,pnl:3120},
+  {sym:'QQQ', side:'SELL',qty:5, px:445.00,pnl:-890}
+];
+
+/* ===== UTILS ===== */
+function f2(n){ return parseFloat(n).toFixed(2); }
+function fPct(n,d){ d=d||1; return (n>=0?'+':'') + (n*100).toFixed(d) + '%'; }
+function fMoney(n){
+  var abs = Math.abs(n);
+  if(abs>=1e6) return '$'+(n/1e6).toFixed(2)+'M';
+  if(abs>=1000) return '$'+Math.round(n).toLocaleString();
+  return '$'+Math.round(n);
+}
+function nowTime(){
+  var d=new Date();
+  return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+}
+function getPx(sym){
+  var t = TICKERS.find(function(x){return x.sym===sym;});
+  if(t) return t.px;
+  var extras = {GOOGL:172.45,AMZN:198.63,META:502.30,'BRK-B':420,GLD:218.4,TLT:93.2};
+  return extras[sym]||200;
+}
+function toast(msg,type,ms){
+  type=type||'ok'; ms=ms||3000;
+  var w=document.getElementById('toastWrap');
+  var el=document.createElement('div');
+  el.className='toast '+type; el.textContent=msg;
+  w.appendChild(el);
+  setTimeout(function(){ el.style.opacity='0'; setTimeout(function(){el.remove();},200); }, ms);
+}
+function bmuller(){
+  var u=0,v=0;
+  while(!u) u=Math.random(); while(!v) v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function normCDF(x){
+  var t=1/(1+0.2316419*Math.abs(x));
+  var p=t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+  var d=1-Math.exp(-x*x/2)/Math.sqrt(2*Math.PI)*p;
+  return x>=0?d:1-d;
+}
+
+/* ===== RENDER SIDEBAR ===== */
+function renderTickers(){
+  document.getElementById('tickerList').innerHTML = TICKERS.map(function(t){
+    return '<div class="tick'+(t.sym===curSym?' on':'')+'" onclick="selTicker(''+t.sym+'')">' +
+      '<div class="tick-l"><div class="tick-sym">'+t.sym+'</div><div class="tick-px">$'+f2(t.px)+'</div></div>' +
+      '<span class="tick-chg '+(t.chg>=0?'up':'dn')+'">'+(t.chg>=0?'+':'')+f2(t.chg)+'%</span></div>';
+  }).join('');
+}
+function renderSigs(){
+  var dc={pos:'#00e5a0',neg:'#ff4d6a',neu:'#ffb020'};
+  document.getElementById('sig-panel').innerHTML = SIGS.map(function(s){
+    return '<div class="sig-row"><span class="sig-name">'+s.n+'</span>' +
+      '<div class="sig-right"><span class="sig-val" style="color:'+dc[s.d]+'">'+s.v+'</span>' +
+      '<div class="sig-bar"><div class="sig-fill" style="width:'+Math.round(s.p*100)+'%;background:'+dc[s.d]+'"></div></div></div></div>';
+  }).join('');
+}
+function renderRisk(){
+  document.getElementById('risk-panel').innerHTML = RISKS.map(function(r){
+    return '<div class="sig-row"><span class="sig-name">'+r.n+'</span><span class="sig-val" style="color:'+r.c+'">'+r.v+'</span></div>';
+  }).join('');
+}
+function renderNews(){
+  document.getElementById('news-panel').innerHTML = NEWS.map(function(n){
+    var sc = n.s==='pos'?'sp':n.s==='neg'?'sn':'snu';
+    var sl = n.s==='pos'?'긍정':n.s==='neg'?'부정':'중립';
+    return '<div class="ni"><div class="ni-t">'+n.t+'</div>' +
+      '<div class="ni-bot"><span class="ni-src">'+n.src+'</span><span class="ni-src">'+n.time+'전</span>' +
+      '<span class="sent '+sc+'">'+sl+'</span></div></div>';
+  }).join('');
+}
+function renderTrades(){
+  document.getElementById('tradeLog').innerHTML = TRADES.map(function(t){
+    var pnlHtml = t.pnl!==null
+      ? '<span class="tlog-pnl '+(t.pnl>=0?'pos':'neg')+'">'+(t.pnl>=0?'+':'')+'$'+Math.abs(t.pnl).toLocaleString()+'</span>'
+      : '<span class="tlog-info">미결</span>';
+    return '<div class="tlog"><div class="tlog-top"><span class="tlog-sym">'+t.sym+'</span>' +
+      '<span class="'+(t.side==='BUY'?'tlog-b':'tlog-s')+'">'+t.side+'</span></div>' +
+      '<div class="tlog-bot"><span class="tlog-info">'+t.qty+'주@$'+t.px+'</span>'+pnlHtml+'</div></div>';
+  }).join('');
+}
+
+/* ===== CHART ===== */
+function calcHL(prices, lb){
+  lb = lb||5;
+  var highs=[], lows=[];
+  for(var i=lb; i<prices.length-lb; i++){
+    var sl = prices.slice(i-lb, i+lb+1);
+    var mx = Math.max.apply(null,sl), mn = Math.min.apply(null,sl);
+    if(prices[i]===mx) highs.push({i:i,v:prices[i]});
+    if(prices[i]===mn) lows.push({i:i,v:prices[i]});
+  }
+  return {highs:highs.slice(-3), lows:lows.slice(-3)};
+}
+function genSeries(base, n, vol, drift){
+  drift = drift||0.0003;
+  var dt=1/252, mu=drift-0.5*vol*vol*dt;
+  var data=[base*(0.93+Math.random()*0.04)];
+  for(var i=1;i<n;i++){
+    data.push(Math.max(1, data[i-1]*Math.exp(mu + vol*Math.sqrt(dt)*bmuller())));
+  }
+  data[n-1]=base;
+  return data.map(function(v){return parseFloat(v.toFixed(2));});
+}
+function drawChart(ticker){
+  var cv = document.getElementById('mainChart');
+  if(!cv) return;
+  if(mainCI){ mainCI.destroy(); mainCI=null; }
+  var cfgs = {'1D':{n:78,vol:0.006},'1W':{n:35,vol:0.012},'1M':{n:30,vol:0.018},'3M':{n:90,vol:0.022},'1Y':{n:252,vol:0.030}};
+  var cfg = cfgs[curTF]||cfgs['1D'];
+  var data = genSeries(ticker.px, cfg.n, cfg.vol);
+  var hl = calcHL(data);
+
+  var ma20=[], ma5=[];
+  for(var i=0;i<data.length;i++){
+    ma20.push(i>=19 ? parseFloat((data.slice(i-19,i+1).reduce(function(a,b){return a+b;},0)/20).toFixed(2)) : null);
+    ma5.push(i>=4  ? parseFloat((data.slice(i-4, i+1).reduce(function(a,b){return a+b;},0)/5 ).toFixed(2)) : null);
+  }
+
+  var trend = data[data.length-1] > data[0];
+  var col = trend ? '#00e5a0' : '#ff4d6a';
+  var labels = data.map(function(_,i){return i;});
+
+  var hlPts = data.map(function(_,i){
+    var isH = hl.highs.some(function(h){return h.i===i;});
+    var isL = hl.lows.some(function(l){return l.i===i;});
+    return (isH||isL) ? data[i] : null;
+  });
+  var ptColors = data.map(function(_,i){
+    if(hl.highs.some(function(h){return h.i===i;})) return '#ff4d6a';
+    if(hl.lows.some(function(l){return l.i===i;})) return '#00e5a0';
+    return 'transparent';
+  });
+  var ptSizes = data.map(function(_,i){
+    var isH = hl.highs.some(function(h){return h.i===i;});
+    var isL = hl.lows.some(function(l){return l.i===i;});
+    return (isH||isL) ? 5 : 0;
+  });
+
+  mainCI = new Chart(cv, {
+    type:'line',
+    data:{labels:labels, datasets:[
+      {data:data, borderColor:col, borderWidth:1.5, pointRadius:0, tension:0.3, fill:true,
+       backgroundColor: (function(){
+         var g = cv.getContext('2d').createLinearGradient(0,0,0,cv.height||120);
+         g.addColorStop(0, trend?'rgba(0,229,160,.1)':'rgba(255,77,106,.1)');
+         g.addColorStop(1,'rgba(0,0,0,0)'); return g;
+       })()},
+      {data:ma20, borderColor:'rgba(157,124,255,.5)', borderWidth:1, pointRadius:0, tension:0.3, fill:false, borderDash:[4,3]},
+      {data:ma5,  borderColor:'rgba(255,176,32,.4)',  borderWidth:1, pointRadius:0, tension:0.3, fill:false, borderDash:[2,2]},
+      {type:'scatter', data:hlPts.map(function(v,i){return v!==null?{x:i,y:v}:null;}).filter(function(v){return v!==null;}),
+       pointRadius:5, pointBackgroundColor: (function(){
+         var cols=[];
+         for(var i=0;i<data.length;i++){
+           var isH=hl.highs.some(function(h){return h.i===i;});
+           var isL=hl.lows.some(function(l){return l.i===i;});
+           if(isH||isL) cols.push(isH?'#ff4d6a':'#00e5a0');
+         }
+         return cols;
+       })(), pointBorderWidth:0, showLine:false}
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'rgba(9,13,24,.96)', borderColor:'rgba(42,69,112,.8)', borderWidth:1,
+          titleColor:'#6e9abf', bodyColor:'#dde8f5', padding:9,
+          callbacks:{
+            label:function(ctx){
+              if(ctx.datasetIndex===0) return '  가격: $'+ctx.parsed.y.toFixed(2);
+              if(ctx.datasetIndex===1 && ctx.parsed.y) return '  MA20: $'+ctx.parsed.y.toFixed(2);
+              return null;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{display:false},
+        y:{position:'right', ticks:{color:'#2e5070', font:{family:'IBM Plex Mono',size:9}, maxTicksLimit:5, callback:function(v){return '$'+Math.round(v);}},
+           grid:{color:'rgba(22,32,48,.5)', lineWidth:0.5}, border:{display:false}}
+      },
+      animation:{duration:350}
+    }
+  });
+
+  var lastH = hl.highs.length ? hl.highs[hl.highs.length-1].v : ticker.px*1.03;
+  var lastL = hl.lows.length  ? hl.lows[hl.lows.length-1].v   : ticker.px*0.97;
+  document.getElementById('cb-high').textContent = '고점 $'+lastH.toFixed(2);
+  document.getElementById('cb-low').textContent  = '저점 $'+lastL.toFixed(2);
+
+  var lm5  = ma5.filter(function(v){return v!==null;}).slice(-1)[0] || ticker.px;
+  var lm20 = ma20.filter(function(v){return v!==null;}).slice(-1)[0] || ticker.px;
+  var dirEl = document.getElementById('cb-dir');
+  if(lm5 > lm20*1.005){
+    dirEl.textContent='LONG'; dirEl.className='sig-badge sig-long';
+  } else if(lm5 < lm20*0.995){
+    dirEl.textContent='SHORT'; dirEl.className='sig-badge sig-short';
+  } else {
+    dirEl.textContent='NEUTRAL'; dirEl.className='sig-badge sig-hold';
+  }
+}
+function selTicker(sym){
+  curSym=sym;
+  var t=TICKERS.find(function(x){return x.sym===sym;}); if(!t) return;
+  document.getElementById('cb-sym').textContent = t.sym;
+  document.getElementById('cb-px').textContent  = '$'+f2(t.px);
+  var ce = document.getElementById('cb-chg');
+  ce.textContent = (t.chg>=0?'+':'')+f2(t.chg)+'%';
+  ce.className = 'cb-chg '+(t.chg>=0?'up':'dn');
+  var sig = t.chg>1.5?'BUY':t.chg<-1?'SELL':'HOLD';
+  var se  = document.getElementById('cb-sig');
+  se.textContent = sig; se.className = 'sig-badge sig-'+sig.toLowerCase();
+  document.getElementById('cb-tgt').textContent = '목표 $'+(t.px*1.08).toFixed(2)+' 손절 $'+(t.px*0.96).toFixed(2);
+  renderTickers(); drawChart(t);
+}
+function setTF(tf, btn){
+  curTF=tf;
+  document.querySelectorAll('.tf').forEach(function(b){b.classList.remove('on');}); btn.classList.add('on');
+  var t=TICKERS.find(function(x){return x.sym===curSym;}); if(t) drawChart(t);
+}
+
+/* ===== BACKTEST ===== */
+function genBTPrices(base, days, vol){
+  var dt=1/252, mu=0.07/252-0.5*vol*vol*dt;
+  var p=[base*(0.92+Math.random()*0.04)];
+  for(var i=1;i<days;i++){
+    p.push(Math.max(1, p[i-1]*Math.exp(mu + vol*Math.sqrt(dt)*bmuller())));
+  }
+  p[days-1]=base;
+  return p.map(function(v){return parseFloat(v.toFixed(2));});
+}
+function ema(arr, n, end){
+  var e=arr[end-n], k=2/(n+1);
+  for(var j=end-n+1; j<=end; j++) e=arr[j]*k+e*(1-k);
+  return e;
+}
+function btSig(strat, prices, i){
+  if(i<30) return 0;
+  if(strat==='ma'){
+    var m5=prices.slice(i-5,i+1).reduce(function(a,b){return a+b;},0)/6;
+    var m20=prices.slice(i-20,i+1).reduce(function(a,b){return a+b;},0)/21;
+    return m5>m20*1.002?1:m5<m20*0.998?-1:0;
+  }
+  if(strat==='rsi'){
+    var g=[],l=[];
+    for(var j=i-14;j<i;j++){var d=prices[j+1]-prices[j]; d>0?g.push(d):l.push(-d);}
+    var ag=g.length?g.reduce(function(a,b){return a+b;},0)/g.length:0.0001;
+    var al=l.length?l.reduce(function(a,b){return a+b;},0)/l.length:0.0001;
+    var rsi=100-100/(1+ag/al);
+    return rsi<32?1:rsi>70?-1:0;
+  }
+  if(strat==='mom'){
+    var r=(prices[i]-prices[i-20])/prices[i-20];
+    return r>0.04?1:r<-0.04?-1:0;
+  }
+  if(strat==='bb'){
+    var sl=prices.slice(i-20,i+1);
+    var m=sl.reduce(function(a,b){return a+b;},0)/21;
+    var s=Math.sqrt(sl.map(function(x){return (x-m)*(x-m);}).reduce(function(a,b){return a+b;},0)/21);
+    return prices[i]<m-1.8*s?1:prices[i]>m+1.8*s?-1:0;
+  }
+  if(strat==='macd'){
+    var e12=ema(prices,12,i), e26=ema(prices,26,i), macd=e12-e26;
+    var pe12=ema(prices,12,i-1), pe26=ema(prices,26,i-1), pmacd=pe12-pe26;
+    return macd>0&&pmacd<=0?1:macd<0&&pmacd>=0?-1:0;
+  }
+  if(strat==='hl'){
+    var h20=Math.max.apply(null,prices.slice(i-20,i));
+    var l20=Math.min.apply(null,prices.slice(i-20,i));
+    if(prices[i]>h20 && prices[i-1]<=h20) return 1;
+    if(prices[i]<l20 && prices[i-1]>=l20) return -1;
+    return 0;
+  }
+  return 0;
+}
+function runBT(){
+  var sym    = document.getElementById('bt-sym').value;
+  var strat  = document.getElementById('bt-strat').value;
+  var years  = parseInt(document.getElementById('bt-period').value)||2;
+  var cap    = parseFloat(document.getElementById('bt-cap').value)||100000;
+  var fee    = parseFloat(document.getElementById('bt-fee').value)/100;
+  var sl     = parseFloat(document.getElementById('bt-sl').value)/100;
+  var tp     = parseFloat(document.getElementById('bt-tp').value)/100;
+  var posPct = parseFloat(document.getElementById('bt-pos').value)/100;
+  var days   = years*252;
+  var tData  = TICKERS.find(function(t){return t.sym===sym;});
+  var base   = tData?tData.px:200;
+  var vol    = tData?tData.vol:0.022;
+
+  document.getElementById('bt-r').innerHTML = '<div class="empty"><div class="empty-txt" style="color:#6e9abf;font-family:'IBM Plex Mono',monospace">시뮬레이션 실행 중...</div></div>';
+  setTimeout(function(){
+    var prices = genBTPrices(base, days, vol);
+    var cash=cap, shares=0, entry=0;
+    var equity=[cap], trades=[], rets=[];
+    var wins=0, losses=0;
+
+    for(var i=30;i<days;i++){
+      var c=prices[i];
+      var sig=btSig(strat,prices,i);
+      if(shares>0 && entry>0){
+        var rc=(c-entry)/entry;
+        if(rc<=-sl || rc>=tp) sig=-1;
+      }
+      if(sig===1 && shares===0 && cash>c){
+        var q=Math.floor(cash*posPct/c);
+        if(q>0){ cash-=q*c*(1+fee); shares=q; entry=c; }
+      } else if(sig===-1 && shares>0){
+        var proc=shares*c*(1-fee);
+        var pnl=proc-shares*entry*(1+fee);
+        cash+=proc;
+        trades.push({day:i, px:c, pnl:parseFloat(pnl.toFixed(2)), ret:(c-entry)/entry});
+        pnl>0?wins++:losses++;
+        shares=0; entry=0;
+      }
+      var eq=cash+shares*c;
+      equity.push(parseFloat(eq.toFixed(2)));
+      if(i>0) rets.push((eq-equity[equity.length-2])/equity[equity.length-2]);
+    }
+    if(shares>0){ cash+=shares*prices[days-1]*(1-fee); }
+
+    var finalEq=cash;
+    var totRet=(finalEq-cap)/cap;
+    var cagr=Math.pow(finalEq/cap,1/years)-1;
+    var mr=rets.reduce(function(a,b){return a+b;},0)/(rets.length||1);
+    var sr=Math.sqrt(rets.map(function(r){return (r-mr)*(r-mr);}).reduce(function(a,b){return a+b;},0)/(rets.length||1))||0.0001;
+    var sharpe=(mr/sr)*Math.sqrt(252);
+    var dr=rets.filter(function(r){return r<0;});
+    var ds=dr.length?Math.sqrt(dr.map(function(r){return r*r;}).reduce(function(a,b){return a+b;},0)/dr.length):0.0001;
+    var sortino=(mr/ds)*Math.sqrt(252);
+    var peak=cap, mdd=0;
+    equity.forEach(function(v){if(v>peak)peak=v; var d=(peak-v)/peak; if(d>mdd)mdd=d;});
+    var totT=wins+losses, wr=totT>0?wins/totT:0;
+    var bh=(prices[days-1]-prices[0])/prices[0];
+    var alpha=totRet-bh;
+    var calmar=mdd>0?cagr/mdd:0;
+    var aw=trades.filter(function(t){return t.pnl>0;}).reduce(function(a,t){return a+t.pnl;},0)/(wins||1);
+    var aloss=Math.abs(trades.filter(function(t){return t.pnl<0;}).reduce(function(a,t){return a+t.pnl;},0)/(losses||1));
+    var pf=(aw*wins)/((aloss*losses)||1);
+
+    var step=Math.max(1,Math.floor(equity.length/150));
+    var eqD=equity.filter(function(_,i){return i%step===0;});
+    var bhD=eqD.map(function(_,i){return cap*(1+bh*(i*step/equity.length));});
+    var lbls=eqD.map(function(_,i){return i;});
+
+    function fp(v){return v>=0?'pos':'neg';}
+    function fpct(v){return (v>=0?'+':'')+(v*100).toFixed(2)+'%';}
+    function fmR(v){return (v>=0?'+':'')+'$'+Math.round(Math.abs(v)).toLocaleString();}
+
+    var tradeRows = trades.slice(-30).map(function(t,i){
+      var pr = t.ret>=0?'pos':'neg';
+      return '<tr><td>'+(totT-Math.min(30,trades.length)+i+1)+'</td><td>'+t.day+'d</td>' +
+        '<td><span class="tag tag-s">SELL</span></td>' +
+        '<td>$'+t.px.toFixed(2)+'</td>' +
+        '<td class="'+(t.pnl>=0?'pos':'neg')+'">'+(t.pnl>=0?'+':'')+'$'+Math.round(Math.abs(t.pnl)).toLocaleString()+'</td>' +
+        '<td class="'+pr+'">'+(t.ret>=0?'+':'')+(t.ret*100).toFixed(2)+'%</td></tr>';
+    }).join('');
+
+    document.getElementById('bt-r').innerHTML =
+      '<div class="sg">' +
+        '<div class="sc"><div class="sc-l">총 수익률</div><div class="sc-v '+fp(totRet)+'">'+fpct(totRet)+'</div><div class="sc-s">CAGR '+fpct(cagr)+'</div></div>' +
+        '<div class="sc"><div class="sc-l">샤프 비율</div><div class="sc-v '+(sharpe>=1?'pos':'neg')+'">'+sharpe.toFixed(2)+'</div><div class="sc-s">소르티노 '+sortino.toFixed(2)+'</div></div>' +
+        '<div class="sc"><div class="sc-l">최대낙폭</div><div class="sc-v neg">-'+(mdd*100).toFixed(1)+'%</div><div class="sc-s">칼마 '+calmar.toFixed(2)+'</div></div>' +
+        '<div class="sc"><div class="sc-l">승률</div><div class="sc-v '+(wr>=0.5?'pos':'neg')+'">'+(wr*100).toFixed(1)+'%</div><div class="sc-s">'+wins+'W/'+losses+'L</div></div>' +
+        '<div class="sc"><div class="sc-l">최종 자산</div><div class="sc-v">'+fMoney(finalEq)+'</div><div class="sc-s">원금 '+fMoney(cap)+'</div></div>' +
+        '<div class="sc"><div class="sc-l">초과수익 α</div><div class="sc-v '+fp(alpha)+'">'+fpct(alpha)+'</div><div class="sc-s">B&H '+fpct(bh)+'</div></div>' +
+        '<div class="sc"><div class="sc-l">수익팩터</div><div class="sc-v '+(pf>=1.5?'pos':'neg')+'">'+pf.toFixed(2)+'</div><div class="sc-s">손익비 '+(aloss>0?(aw/aloss).toFixed(2):'—')+'</div></div>' +
+        '<div class="sc"><div class="sc-l">총 거래</div><div class="sc-v neu">'+totT+'회</div><div class="sc-s">평균 '+(trades.length?(days/trades.length).toFixed(0):'—')+'일</div></div>' +
+      '</div>' +
+      '<div class="cc"><div class="cc-t">자산 곡선 <span>전략 vs 벤치마크 B&H</span></div><div class="cc-h" style="height:190px"><canvas id="btEq"></canvas></div></div>' +
+      '<div class="cc"><div class="cc-t">거래 손익 <span>최근 '+Math.min(50,trades.length)+'건</span></div><div class="cc-h" style="height:130px"><canvas id="btPnl"></canvas></div></div>' +
+      '<div class="cc"><div class="cc-t">거래 내역 <span>최근 30건</span></div><div style="overflow-x:auto"><table class="bt-tbl"><thead><tr><th>#</th><th>경과일</th><th>구분</th><th>체결가</th><th>P&L</th><th>수익률</th></tr></thead><tbody>'+tradeRows+'</tbody></table></div></div>';
+
+    new Chart(document.getElementById('btEq'),{
+      type:'line',
+      data:{labels:lbls, datasets:[
+        {label:'전략',data:eqD,borderColor:'#00e5a0',borderWidth:1.5,pointRadius:0,tension:0.3,fill:false},
+        {label:'B&H', data:bhD,borderColor:'rgba(59,158,255,.5)',borderWidth:1,pointRadius:0,tension:0.3,fill:false,borderDash:[5,3]}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,labels:{color:'#6e9abf',font:{family:'IBM Plex Mono',size:9},boxWidth:8}}},
+        scales:{x:{display:false},y:{ticks:{color:'#2e5070',font:{family:'IBM Plex Mono',size:9},callback:function(v){return '$'+Math.round(v/1000)+'k';}},grid:{color:'rgba(22,32,48,.7)',lineWidth:0.5},border:{display:false}}},
+        animation:{duration:350}}
+    });
+    var pnlD=trades.slice(-50).map(function(t){return t.pnl;});
+    new Chart(document.getElementById('btPnl'),{
+      type:'bar',
+      data:{labels:pnlD.map(function(_,i){return i+1;}), datasets:[{data:pnlD,backgroundColor:pnlD.map(function(p){return p>=0?'rgba(0,229,160,.7)':'rgba(255,77,106,.7)';}),borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{display:false},y:{ticks:{color:'#2e5070',font:{family:'IBM Plex Mono',size:9}},grid:{color:'rgba(22,32,48,.7)',lineWidth:0.5},border:{display:false}}},animation:{duration:280}}
+    });
+  }, 80);
+}
+</script>
+
+<script>
+/* ===== PORTFOLIO ===== */
+function renderPF(){
+  var tv=0, tc=0;
+  holdings.forEach(function(h){ tv+=getPx(h.sym)*h.qty; tc+=h.cost*h.qty; });
+  var pnl=tv-tc, ret=tc?pnl/tc:0;
+  document.getElementById('pf-sum').innerHTML =
+    '<div class="pf-card"><div class="pfc-l">총 평가금액</div><div class="pfc-v">'+fMoney(tv)+'</div></div>' +
+    '<div class="pf-card"><div class="pfc-l">총 원금</div><div class="pfc-v">'+fMoney(tc)+'</div></div>' +
+    '<div class="pf-card"><div class="pfc-l">평가손익</div><div class="pfc-v '+(pnl>=0?'pos':'neg')+'">'+(pnl>=0?'+':'')+fMoney(pnl)+'</div></div>' +
+    '<div class="pf-card"><div class="pfc-l">총 수익률</div><div class="pfc-v '+(ret>=0?'pos':'neg')+'">'+fPct(ret)+'</div></div>' +
+    '<div class="pf-card"><div class="pfc-l">종목 수</div><div class="pfc-v neu">'+holdings.length+'</div></div>';
+
+  document.getElementById('hold-body').innerHTML = holdings.map(function(h,i){
+    var p=getPx(h.sym), v=p*h.qty, c=h.cost*h.qty, pn=v-c, r=(v-c)/c, wt=tv>0?v/tv:0;
+    return '<tr>' +
+      '<td style="font-weight:700">'+h.sym+'</td>' +
+      '<td style="color:var(--t3)">'+h.sector+'</td>' +
+      '<td>'+h.qty+'</td><td>$'+f2(h.cost)+'</td><td>$'+f2(p)+'</td>' +
+      '<td>'+fMoney(v)+'</td>' +
+      '<td class="'+(pn>=0?'pos':'neg')+'">'+(pn>=0?'+':'')+fMoney(pn)+'</td>' +
+      '<td class="'+(r>=0?'pos':'neg')+'">'+fPct(r)+'</td>' +
+      '<td style="color:var(--t2)">'+(wt*100).toFixed(1)+'%</td>' +
+      '<td><button class="del" onclick="rmHolding('+i+')">✕</button></td></tr>';
+  }).join('');
+
+  var secs={};
+  holdings.forEach(function(h){ var v=getPx(h.sym)*h.qty; secs[h.sector]=(secs[h.sector]||0)+v; });
+  var pal=['#3b9eff','#00e5a0','#ff4d6a','#ffb020','#9d7cff','#00bcd4','#ff6e40'];
+  var secL=Object.keys(secs), secV=Object.values(secs);
+  if(sectorCI) sectorCI.destroy();
+  sectorCI = new Chart(document.getElementById('sectorChart'),{
+    type:'doughnut',
+    data:{labels:secL,datasets:[{data:secV,backgroundColor:pal,borderColor:'#090d18',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
+      plugins:{legend:{position:'right',labels:{color:'#6e9abf',font:{family:'IBM Plex Mono',size:9},boxWidth:8,padding:7}},
+               tooltip:{callbacks:{label:function(c){return c.label+': '+fMoney(c.parsed)+' ('+(c.parsed/tv*100).toFixed(1)+'%)';}}}}
+    }
+  });
+  if(weightCI) weightCI.destroy();
+  weightCI = new Chart(document.getElementById('weightChart'),{
+    type:'bar',
+    data:{labels:holdings.map(function(h){return h.sym;}),
+          datasets:[{data:holdings.map(function(h){return parseFloat(((getPx(h.sym)*h.qty/tv)*100).toFixed(1));}),
+                     backgroundColor:pal.slice(0,holdings.length),borderWidth:0,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.x+'%';}}}},
+      scales:{
+        x:{ticks:{color:'#2e5070',font:{family:'IBM Plex Mono',size:9},callback:function(v){return v+'%';}},grid:{color:'rgba(22,32,48,.6)',lineWidth:0.5},border:{display:false}},
+        y:{ticks:{color:'#6e9abf',font:{family:'IBM Plex Mono',size:9}},grid:{display:false},border:{display:false}}
+      }
+    }
+  });
+}
+function openModal(){ document.getElementById('modal').classList.add('open'); }
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+function addHolding(){
+  var sym  = document.getElementById('m-sym').value;
+  var qty  = parseInt(document.getElementById('m-qty').value)||1;
+  var cost = parseFloat(document.getElementById('m-cost').value)||100;
+  var sm   = {AAPL:'Technology',NVDA:'Technology',TSLA:'Consumer',MSFT:'Technology',GOOGL:'Technology',AMZN:'Consumer',META:'Technology',SPY:'ETF',QQQ:'ETF',GLD:'Commodity',TLT:'Bond','BRK-B':'Finance'};
+  var ei   = holdings.findIndex(function(h){return h.sym===sym;});
+  if(ei>=0){
+    var pr=holdings[ei], nq=pr.qty+qty;
+    holdings[ei]={sym:pr.sym,qty:nq,cost:(pr.cost*pr.qty+cost*qty)/nq,sector:pr.sector};
+    toast(sym+' 업데이트 (평균가 $'+holdings[ei].cost.toFixed(2)+')');
+  } else {
+    holdings.push({sym:sym,qty:qty,cost:cost,sector:sm[sym]||'Other'});
+    toast(sym+' 추가됨');
+  }
+  closeModal(); renderPF();
+}
+function rmHolding(i){ var s=holdings[i].sym; holdings.splice(i,1); toast(s+' 삭제됨'); renderPF(); }
+
+/* ===== CALCULATORS ===== */
+function cBS(){
+  var S=+document.getElementById('bs-s').value, K=+document.getElementById('bs-k').value;
+  var T=(+document.getElementById('bs-t').value)/365, r=(+document.getElementById('bs-r').value)/100, iv=(+document.getElementById('bs-iv').value)/100;
+  document.getElementById('bs-sv').textContent='$'+S;
+  document.getElementById('bs-kv').textContent='$'+K;
+  document.getElementById('bs-tv').textContent=Math.round(+document.getElementById('bs-t').value)+'d';
+  document.getElementById('bs-rv').textContent=(+document.getElementById('bs-r').value).toFixed(1)+'%';
+  document.getElementById('bs-ivv').textContent=(+document.getElementById('bs-iv').value)+'%';
+  if(T<=0||iv<=0) return;
+  var d1=(Math.log(S/K)+(r+iv*iv/2)*T)/(iv*Math.sqrt(T)), d2=d1-iv*Math.sqrt(T);
+  var call=S*normCDF(d1)-K*Math.exp(-r*T)*normCDF(d2), put=K*Math.exp(-r*T)*normCDF(-d2)-S*normCDF(-d1);
+  var dc=normCDF(d1), phi=Math.exp(-d1*d1/2)/Math.sqrt(2*Math.PI);
+  var gamma=phi/(S*iv*Math.sqrt(T)), theta=(-S*phi*iv/(2*Math.sqrt(T))-r*K*Math.exp(-r*T)*normCDF(d2))/365;
+  var vega=S*Math.sqrt(T)*phi/100, rho=K*T*Math.exp(-r*T)*normCDF(d2)/100;
+  var rows=[
+    ['콜 가격','$'+call.toFixed(3),'#00e5a0'],['풋 가격','$'+put.toFixed(3),'#ff4d6a'],
+    ['델타 콜/풋',dc.toFixed(4)+'/'+(dc-1).toFixed(4),'#3b9eff'],
+    ['감마 (Γ)',gamma.toFixed(5),'#9d7cff'],['세타 (Θ)/일','$'+theta.toFixed(4),'#ffb020'],
+    ['베가 (ν)/1%IV','$'+vega.toFixed(3),'#00e5a0'],['로 (ρ)/1%r','$'+rho.toFixed(3),'#6e9abf'],
+    ['내재가치 콜/풋','$'+Math.max(0,S-K).toFixed(2)+'/$'+Math.max(0,K-S).toFixed(2),'#6e9abf']
+  ];
+  document.getElementById('bs-out').innerHTML=rows.map(function(row){
+    return '<div class="cr"><span class="cr-l">'+row[0]+'</span><span class="cr-v" style="color:'+row[2]+'">'+row[1]+'</span></div>';
+  }).join('');
+}
+function cPS(){
+  var cap=+document.getElementById('ps-c').value, risk=+document.getElementById('ps-ri').value/100;
+  var sl=+document.getElementById('ps-sl').value/100, wr=+document.getElementById('ps-wr').value/100, rr=+document.getElementById('ps-rr').value;
+  document.getElementById('ps-cv').textContent='$'+(cap>=1e6?(cap/1e6).toFixed(1)+'M':(cap/1e3).toFixed(0)+'k');
+  document.getElementById('ps-rv').textContent=(risk*100).toFixed(1)+'%';
+  document.getElementById('ps-slv').textContent=(sl*100).toFixed(0)+'%';
+  document.getElementById('ps-wrv').textContent=(wr*100).toFixed(0)+'%';
+  document.getElementById('ps-rrv').textContent=rr.toFixed(1);
+  var ra=cap*risk, ff=sl>0?ra/sl:0, kf=wr-(1-wr)/rr, kp=Math.max(0,kf)*cap;
+  var rows=[
+    ['리스크 금액','$'+Math.round(ra).toLocaleString(),'#ffb020'],
+    ['Fixed Frac. 포지션','$'+Math.round(ff).toLocaleString(),'#00e5a0'],
+    ['켈리 포지션','$'+Math.round(kp).toLocaleString(),'#3b9eff'],
+    ['1/2 켈리 (권장)','$'+Math.round(kp/2).toLocaleString(),'#9d7cff'],
+    ['켈리 비율',(kf*100).toFixed(1)+'%',kf>0?'#00e5a0':'#ff4d6a'],
+    ['기대 R-Multiple',(wr*rr-(1-wr)).toFixed(2),(wr*rr)>(1-wr)?'#00e5a0':'#ff4d6a']
+  ];
+  document.getElementById('ps-out').innerHTML=rows.map(function(row){
+    return '<div class="cr"><span class="cr-l">'+row[0]+'</span><span class="cr-v" style="color:'+row[2]+'">'+row[1]+'</span></div>';
+  }).join('');
+}
+function cVaR(){
+  var port=+document.getElementById('vr-p').value, vol=+document.getElementById('vr-v').value/100;
+  var cl=+document.getElementById('vr-cl').value/100, days=+document.getElementById('vr-d').value;
+  document.getElementById('vr-pv').textContent='$'+(port>=1e6?(port/1e6).toFixed(1)+'M':(port/1e3).toFixed(0)+'k');
+  document.getElementById('vr-vv').textContent=(vol*100).toFixed(0)+'%';
+  document.getElementById('vr-clv').textContent=(cl*100).toFixed(0)+'%';
+  document.getElementById('vr-dv').textContent=days+'d';
+  var zMap={'0.90':1.282,'0.91':1.341,'0.92':1.405,'0.93':1.476,'0.94':1.555,'0.95':1.645,'0.96':1.751,'0.97':1.881,'0.98':2.054,'0.99':2.326};
+  var z=zMap[cl.toFixed(2)]||1.645;
+  var dv=vol/Math.sqrt(252), pv=dv*Math.sqrt(days);
+  var var95=port*z*pv, cvar=var95*(1+0.5*(1-cl));
+  var rows=[
+    ['VaR '+(cl*100).toFixed(0)+'% ('+days+'d)','−$'+Math.round(var95).toLocaleString(),'#ffb020'],
+    ['CVaR / ES','−$'+Math.round(cvar).toLocaleString(),'#ff4d6a'],
+    ['VaR 99%','−$'+Math.round(port*2.326*pv).toLocaleString(),'#ff4d6a'],
+    ['스트레스','−$'+Math.round(port*pv*3.8).toLocaleString(),'#ff4d6a'],
+    ['일간 σ','$'+Math.round(port*dv).toLocaleString(),'#6e9abf'],
+    [days+'일 σ','$'+Math.round(port*pv).toLocaleString(),'#6e9abf']
+  ];
+  document.getElementById('vr-out').innerHTML=rows.map(function(row){
+    return '<div class="cr"><span class="cr-l">'+row[0]+'</span><span class="cr-v" style="color:'+row[2]+'">'+row[1]+'</span></div>';
+  }).join('');
+}
+function cSH(){
+  var ret=+document.getElementById('sh-r').value/100, rf=+document.getElementById('sh-rf').value/100;
+  var vol=+document.getElementById('sh-v').value/100, dv=+document.getElementById('sh-dv').value/100, mdd=+document.getElementById('sh-mdd').value/100;
+  document.getElementById('sh-rv').textContent=(ret*100).toFixed(0)+'%';
+  document.getElementById('sh-rfv').textContent=(rf*100).toFixed(1)+'%';
+  document.getElementById('sh-vv').textContent=(vol*100).toFixed(0)+'%';
+  document.getElementById('sh-dvv').textContent=(dv*100).toFixed(0)+'%';
+  document.getElementById('sh-mddv').textContent=(mdd*100).toFixed(0)+'%';
+  var sh=vol>0?(ret-rf)/vol:0, so=dv>0?(ret-rf)/dv:0, ca=mdd>0?ret/mdd:0, om=vol>0?1+(ret-rf)/(vol*0.8):1;
+  var gr=sh>=2?'탁월 ★★★':sh>=1.5?'우수 ★★☆':sh>=1?'양호 ★☆☆':sh>=0.5?'보통':'미흡';
+  var gc=sh>=1.5?'#00e5a0':sh>=0.5?'#ffb020':'#ff4d6a';
+  var rows=[
+    ['샤프 비율 (Sharpe)',sh.toFixed(3),sh>=1?'#00e5a0':sh>=0?'#ffb020':'#ff4d6a'],
+    ['소르티노 (Sortino)',so.toFixed(3),so>=1.5?'#00e5a0':'#ffb020'],
+    ['칼마 (Calmar)',ca.toFixed(3),ca>=1?'#00e5a0':'#ffb020'],
+    ['오메가 (Omega)',om.toFixed(3),om>=1.5?'#00e5a0':'#6e9abf'],
+    ['전략 등급',gr,gc]
+  ];
+  document.getElementById('sh-out').innerHTML=rows.map(function(row){
+    return '<div class="cr"><span class="cr-l">'+row[0]+'</span><span class="cr-v" style="color:'+row[2]+'">'+row[1]+'</span></div>';
+  }).join('');
+}
+
+/* ===== MONTE CARLO ===== */
+function runMC(){
+  var sym  =document.getElementById('mc-sym').value;
+  var n    =parseInt(document.getElementById('mc-n').value)||500;
+  var days =parseInt(document.getElementById('mc-days').value)||252;
+  var vol  =parseFloat(document.getElementById('mc-vol').value)/100;
+  var drift=parseFloat(document.getElementById('mc-drift').value)/100;
+  var S0   =parseFloat(document.getElementById('mc-s0').value)||189;
+  var r    =document.getElementById('mc-r');
+  r.innerHTML='<div class="empty"><div class="empty-txt" style="color:#6e9abf;font-family:'IBM Plex Mono',monospace">GBM '+n+'회 실행 중...</div></div>';
+  setTimeout(function(){
+    var dt=1/252, mu=drift-0.5*vol*vol;
+    var paths=[], finals=[];
+    for(var s=0;s<n;s++){
+      var p=S0, path=[S0];
+      for(var d=0;d<days;d++){
+        p=Math.max(0.01, p*Math.exp(mu*dt+vol*Math.sqrt(dt)*bmuller()));
+        path.push(parseFloat(p.toFixed(3)));
+      }
+      paths.push(path); finals.push(p);
+    }
+    finals.sort(function(a,b){return a-b;});
+    function pct(q){ return finals[Math.floor(n*q)]; }
+    var mean=finals.reduce(function(a,b){return a+b;},0)/n;
+    var probUp=finals.filter(function(f){return f>S0;}).length/n;
+
+    var bStep=Math.max(1,Math.floor(days/100));
+    var idxs=[];
+    for(var ii=0;ii<=days;ii+=bStep) idxs.push(Math.min(ii,days));
+    function band(q){
+      return idxs.map(function(i){
+        var v=paths.map(function(path){return path[i];}).sort(function(a,b){return a-b;});
+        return v[Math.floor(n*q)]||v[0];
+      });
+    }
+    var b5=band(0.05), b50=band(0.5), b95=band(0.95);
+    var sDs=[];
+    var step=Math.floor(n/8)||1;
+    for(var si=0;si<paths.length&&sDs.length<8;si+=step){
+      sDs.push({data:idxs.map(function(i){return paths[si][i];}),borderColor:'rgba(59,158,255,.1)',borderWidth:0.8,pointRadius:0,tension:0.2,fill:false});
+    }
+
+    var hBins=40, hMin=finals[0], hMax=finals[finals.length-1], hBw=(hMax-hMin)/hBins||1;
+    var hData=Array(hBins).fill(0);
+    finals.forEach(function(f){var b=Math.min(hBins-1,Math.floor((f-hMin)/hBw)); hData[b]++;});
+    var hLabels=[], hColors=[];
+    for(var bi=0;bi<hBins;bi++){
+      hLabels.push('$'+(hMin+bi*hBw).toFixed(0));
+      hColors.push((hMin+bi*hBw)>=S0?'rgba(0,229,160,.7)':'rgba(255,77,106,.65)');
+    }
+
+    var var95val=S0-pct(0.05);
+    var cvarPts=finals.slice(0,Math.floor(n*0.05));
+    var cvarVal=S0-(cvarPts.length?cvarPts.reduce(function(a,b){return a+b;},0)/cvarPts.length:pct(0.05));
+
+    r.innerHTML=
+      '<div class="sg">' +
+        '<div class="sc"><div class="sc-l">P50 중간값</div><div class="sc-v neu">$'+pct(0.5).toFixed(2)+'</div><div class="sc-s">기대값 $'+mean.toFixed(2)+'</div></div>' +
+        '<div class="sc"><div class="sc-l">상승 확률</div><div class="sc-v '+(probUp>=0.5?'pos':'neg')+'">'+(probUp*100).toFixed(1)+'%</div><div class="sc-s">'+n+'회 시뮬레이션</div></div>' +
+        '<div class="sc"><div class="sc-l">VaR 95%</div><div class="sc-v neg">−$'+var95val.toFixed(2)+'</div><div class="sc-s">CVaR −$'+cvarVal.toFixed(2)+'</div></div>' +
+        '<div class="sc"><div class="sc-l">P5 / P95</div><div class="sc-v">$'+pct(0.05).toFixed(0)+'/$'+pct(0.95).toFixed(0)+'</div><div class="sc-s">P25 $'+pct(0.25).toFixed(0)+' / P75 $'+pct(0.75).toFixed(0)+'</div></div>' +
+      '</div>' +
+      '<div class="cc"><div class="cc-t">'+sym+' GBM 경로 <span>'+n+'회 시뮬레이션 · '+days+'거래일</span></div><div class="cc-h" style="height:240px"><canvas id="mcPath"></canvas></div></div>' +
+      '<div class="cc"><div class="cc-t">최종 가격 분포 <span>현재가 $'+S0+' 기준</span></div><div class="cc-h" style="height:170px"><canvas id="mcHist"></canvas></div></div>';
+
+    var allDs = sDs.concat([
+      {data:b95,borderColor:'rgba(0,229,160,.5)',borderWidth:1.2,pointRadius:0,tension:0.3,fill:false,label:'P95',borderDash:[5,3]},
+      {data:b50,borderColor:'#3b9eff',borderWidth:2,pointRadius:0,tension:0.3,fill:false,label:'P50'},
+      {data:b5, borderColor:'rgba(255,77,106,.5)',borderWidth:1.2,pointRadius:0,tension:0.3,fill:false,label:'P5',borderDash:[5,3]}
+    ]);
+    new Chart(document.getElementById('mcPath'),{
+      type:'line', data:{labels:idxs, datasets:allDs},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,labels:{color:'#6e9abf',font:{family:'IBM Plex Mono',size:9},boxWidth:8,
+          filter:function(i){return ['P95','P50','P5'].indexOf(i.text)>=0;}}}},
+        scales:{x:{display:false},y:{ticks:{color:'#2e5070',font:{family:'IBM Plex Mono',size:9},callback:function(v){return '$'+v.toFixed(0);}},grid:{color:'rgba(22,32,48,.6)',lineWidth:0.5},border:{display:false}}},
+        animation:{duration:450}}
+    });
+    new Chart(document.getElementById('mcHist'),{
+      type:'bar', data:{labels:hLabels, datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,borderRadius:2}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:function(c){return c.parsed.y+'회 ('+(c.parsed.y/n*100).toFixed(1)+'%)';}}}},
+        scales:{x:{ticks:{color:'#2e5070',font:{family:'IBM Plex Mono',size:8},maxTicksLimit:8},grid:{display:false}},
+          y:{ticks:{color:'#2e5070',font:{family:'IBM Plex Mono',size:9}},grid:{color:'rgba(22,32,48,.6)',lineWidth:0.5},border:{display:false}}},
+        animation:{duration:350}}
+    });
+  }, 60);
+}
+</script>
+
+<script>
+/* ===== SCANNER ===== */
+var SCAN_UNI = [
+  {sym:'AAPL', name:'Apple Inc.',         sector:'Technology', px:189.24, vol:0.022},
+  {sym:'NVDA', name:'NVIDIA Corp.',        sector:'Technology', px:875.60, vol:0.038},
+  {sym:'TSLA', name:'Tesla Inc.',          sector:'Consumer',   px:242.15, vol:0.045},
+  {sym:'MSFT', name:'Microsoft Corp.',     sector:'Technology', px:415.78, vol:0.018},
+  {sym:'GOOGL',name:'Alphabet Inc.',       sector:'Technology', px:172.45, vol:0.020},
+  {sym:'AMZN', name:'Amazon.com',          sector:'Consumer',   px:198.63, vol:0.025},
+  {sym:'META', name:'Meta Platforms',      sector:'Technology', px:502.30, vol:0.028},
+  {sym:'SPY',  name:'S&P 500 ETF',         sector:'ETF',        px:521.30, vol:0.010},
+  {sym:'QQQ',  name:'Nasdaq-100 ETF',      sector:'ETF',        px:448.92, vol:0.014},
+  {sym:'GLD',  name:'Gold ETF',            sector:'Commodity',  px:218.40, vol:0.012},
+  {sym:'TLT',  name:'20Y Treasury ETF',    sector:'Bond',       px:93.20,  vol:0.015},
+  {sym:'XLF',  name:'Financials ETF',      sector:'Finance',    px:42.80,  vol:0.016},
+  {sym:'XLE',  name:'Energy ETF',          sector:'Energy',     px:89.45,  vol:0.020},
+  {sym:'BRK-B',name:'Berkshire Hathaway',  sector:'Finance',    px:420.00, vol:0.013}
+];
+function scanSig(sym, seed){
+  function rng(s){ var x=Math.sin(s+Date.now()*0.0000007)*9999; return x-Math.floor(x); }
+  var rsi=25+rng(seed)*55, macd=(rng(seed+1)-0.44)*2.5, bb=rng(seed+2);
+  var mom=(rng(seed+3)-0.46)*9, vr=0.6+rng(seed+4)*1.6;
+  var sc=0;
+  sc += rsi<32?28:rsi>68?-28:(rsi-50)/50*12;
+  sc += macd>0.4?22:macd<-0.4?-22:macd*28;
+  sc += bb<0.25?16:bb>0.75?-16:(0.5-bb)*12;
+  sc += mom>2.5?16:mom<-2.5?-16:mom*5;
+  sc += vr>1.3?8:-4;
+  return {rsi:rsi.toFixed(1), macd:macd.toFixed(3), bb:bb.toFixed(2), mom:mom.toFixed(2), vr:vr.toFixed(2), score:parseFloat(sc.toFixed(1))};
+}
+function runScanner(force){
+  var filter=document.getElementById('scan-f').value;
+  document.getElementById('scan-ts').textContent='업데이트: '+nowTime();
+  var items=SCAN_UNI.map(function(s,i){
+    var sig=scanSig(s.sym, i*37+1);
+    var price=s.px*(1+(Math.random()-0.49)*0.006);
+    var chg=(Math.random()-0.46)*3.5;
+    return {sym:s.sym,name:s.name,sector:s.sector,vol:s.vol,price:price,chg:chg,
+            rsi:sig.rsi,macd:sig.macd,bb:sig.bb,mom:sig.mom,vr:sig.vr,score:sig.score};
+  });
+  if(filter==='buy')    items=items.filter(function(i){return i.score>12;});
+  if(filter==='sell')   items=items.filter(function(i){return i.score<-12;});
+  if(filter==='strong') items=items.filter(function(i){return Math.abs(i.score)>28;});
+  items.sort(function(a,b){return b.score-a.score;});
+  document.getElementById('scan-grid').innerHTML=items.map(function(s){
+    var sigTxt=s.score>32?'STRONG BUY':s.score>12?'BUY':s.score<-32?'STRONG SELL':s.score<-12?'SELL':'HOLD';
+    var sc=s.score>12?'#00e5a0':s.score<-12?'#ff4d6a':'#ffb020';
+    var sbg=s.score>12?'var(--gbg)':s.score<-12?'var(--rbg)':'var(--ambg)';
+    var sbd=s.score>12?'var(--gbd)':s.score<-12?'var(--rbd)':'var(--ambd)';
+    var fp=Math.min(100,Math.abs(s.score)/65*100);
+    var rsiC=+s.rsi<35?'#00e5a0':+s.rsi>65?'#ff4d6a':'#6e9abf';
+    var macdC=+s.macd>0?'#00e5a0':'#ff4d6a';
+    var bbC=+s.bb<0.3?'#00e5a0':+s.bb>0.7?'#ff4d6a':'#ffb020';
+    var momC=+s.mom>0?'#00e5a0':'#ff4d6a';
+    var vrC=+s.vr>1.2?'#00e5a0':'#6e9abf';
+    return '<div class="scard">' +
+      '<div class="scard-head"><div>' +
+        '<div class="scard-sym">'+s.sym+'</div>' +
+        '<div class="scard-name">'+s.name+'</div>' +
+        '<div class="scard-px">$'+s.price.toFixed(2)+' <span style="color:'+(s.chg>=0?'#00e5a0':'#ff4d6a')+'">'+(s.chg>=0?'+':'')+s.chg.toFixed(2)+'%</span></div>' +
+      '</div>' +
+      '<div class="scard-sig" style="color:'+sc+';background:'+sbg+';border-color:'+sbd+'">'+sigTxt+'</div></div>' +
+      '<div class="scard-body">' +
+        '<div class="scard-row"><span class="scard-lbl">RSI(14)</span><span style="color:'+rsiC+'">'+s.rsi+'</span></div>' +
+        '<div class="scard-row"><span class="scard-lbl">MACD</span><span style="color:'+macdC+'">'+s.macd+'</span></div>' +
+        '<div class="scard-row"><span class="scard-lbl">BB%</span><span style="color:'+bbC+'">'+s.bb+'</span></div>' +
+        '<div class="scard-row"><span class="scard-lbl">모멘텀</span><span style="color:'+momC+'">'+(+s.mom>0?'+':'')+s.mom+'%</span></div>' +
+        '<div class="scard-row"><span class="scard-lbl">섹터</span><span style="color:var(--t2)">'+s.sector+'</span></div>' +
+        '<div class="scard-row"><span class="scard-lbl">거래량비</span><span style="color:'+vrC+'">'+s.vr+'x</span></div>' +
+      '</div>' +
+      '<div class="score-bar"><div class="score-fill" style="width:'+fp+'%;background:'+sc+'"></div></div>' +
+      '<div class="scard-foot">' +
+        '<span style="font-family:var(--mono);font-size:10px;color:var(--t3)">종합: <strong style="color:'+sc+'">'+(s.score>0?'+':'')+s.score+'</strong>/65</span>' +
+        '<span style="font-size:9px;color:var(--t3);font-family:var(--mono)">Vol '+(s.vol*100).toFixed(1)+'%</span>' +
+      '</div></div>';
+  }).join('');
+  if(force) toast('스캔 완료 — '+items.length+'개 종목', 'ok', 2000);
+}
+
+/* ===== HEATMAP ===== */
+function buildHeatmap(){
+  var syms=['AAPL','NVDA','TSLA','MSFT','SPY','QQQ','GLD','TLT'];
+  var corr=[
+    [1.00,0.68,0.52,0.78,0.82,0.85,0.02,-0.25],
+    [0.68,1.00,0.55,0.72,0.75,0.80,0.05,-0.20],
+    [0.52,0.55,1.00,0.48,0.58,0.62,0.08,-0.18],
+    [0.78,0.72,0.48,1.00,0.79,0.82,0.03,-0.22],
+    [0.82,0.75,0.58,0.79,1.00,0.97,0.10,-0.35],
+    [0.85,0.80,0.62,0.82,0.97,1.00,0.08,-0.30],
+    [0.02,0.05,0.08,0.03,0.10,0.08,1.00,0.22],
+    [-0.25,-0.20,-0.18,-0.22,-0.35,-0.30,0.22,1.00]
+  ];
+  function hc(v){
+    if(v===1) return '#0f1623';
+    var steps=[[-1,'#6b1a1a'],[-0.5,'#2e0f12'],[0,'#141d2e'],[0.5,'#0d2e1a'],[1,'#0a3d2a']];
+    for(var i=1;i<steps.length;i++){
+      if(v<=steps[i][0]){
+        var t=(v-steps[i-1][0])/(steps[i][0]-steps[i-1][0]);
+        function parseHex(c){return parseInt(c,16);}
+        function splitHex(hex){return hex.slice(1).match(/../g).map(parseHex);}
+        var a=splitHex(steps[i-1][1]), b=splitHex(steps[i][1]);
+        function toHex(n){return Math.round(n).toString(16).padStart(2,'0');}
+        return '#'+toHex(a[0]+(b[0]-a[0])*t)+toHex(a[1]+(b[1]-a[1])*t)+toHex(a[2]+(b[2]-a[2])*t);
+      }
+    }
+    return '#0a3d2a';
+  }
+  var html='<table class="hm-tbl"><thead><tr><th></th>';
+  syms.forEach(function(s){ html+='<th>'+s+'</th>'; });
+  html+='</tr></thead><tbody>';
+  corr.forEach(function(row,i){
+    html+='<tr><td class="hm-lbl">'+syms[i]+'</td>';
+    row.forEach(function(v,j){
+      var tc=Math.abs(v)>0.5?'#dde8f5':'#4a7090';
+      html+='<td style="background:'+hc(v)+';color:'+tc+'" title="'+syms[i]+' x '+syms[j]+': '+v.toFixed(2)+'">'+(i===j?'—':v.toFixed(2))+'</td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('hm-wrap').innerHTML=html;
+
+  var bins=[-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6];
+  function norm(mu,sig){ return bins.map(function(x){ return Math.round(200*Math.exp(-(x-mu)*(x-mu)/(2*sig*sig))/(sig*Math.sqrt(2*Math.PI))); }); }
+  var bLabels=bins.map(function(b){ return (b>0?'+':'')+b+'%'; });
+  if(retCI) retCI.destroy();
+  retCI=new Chart(document.getElementById('retChart'),{
+    type:'bar',
+    data:{labels:bLabels, datasets:[
+      {label:'SPY (σ=1%)',   data:norm(0.05,1),   backgroundColor:'rgba(59,158,255,.65)',borderWidth:0},
+      {label:'TSLA (σ=2.8%)',data:norm(0.15,2.8), backgroundColor:'rgba(255,77,106,.55)',borderWidth:0},
+      {label:'GLD (σ=0.75%)',data:norm(0.02,0.75),backgroundColor:'rgba(255,176,32,.55)',borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{color:'#6e9abf',font:{family:'IBM Plex Mono',size:9},boxWidth:8}}},
+      scales:{x:{ticks:{color:'#2e5070',font:{family:'IBM Plex Mono',size:9}},grid:{display:false}},
+              y:{ticks:{color:'#2e5070',font:{family:'IBM Plex Mono',size:9}},grid:{color:'rgba(22,32,48,.6)',lineWidth:0.5},border:{display:false}}},
+      animation:{duration:350}}
+  });
+
+  var corrData=[
+    {l:'SPY x QQQ',  v:'0.97', d:'매우 강한 양의 상관 — 분산 효과 없음',   c:'#ff4d6a'},
+    {l:'SPY x GLD',  v:'0.10', d:'낮은 상관 — 효과적 헤지 수단',           c:'#00e5a0'},
+    {l:'SPY x TLT',  v:'-0.35',d:'역상관 — 채권의 포트폴리오 완충 효과',    c:'#00e5a0'},
+    {l:'AAPL x NVDA',v:'0.68', d:'강한 테크 상관 — 섹터 집중 위험',        c:'#ffb020'},
+    {l:'TSLA x SPY', v:'0.58', d:'중간 상관 — 개별 알파 가능',             c:'#3b9eff'},
+    {l:'GLD x TLT',  v:'0.22', d:'약한 양의 상관 — 안전자산 페어',         c:'#9d7cff'}
+  ];
+  document.getElementById('corr-cards').innerHTML=corrData.map(function(s){
+    return '<div class="corr-card"><div class="corr-l">'+s.l+'</div><div class="corr-v" style="color:'+s.c+'">'+s.v+'</div><div class="corr-d">'+s.d+'</div></div>';
+  }).join('');
+}
+</script>
+
+<script>
+/* ===== STOCK PICKS ===== */
+var PICKS_DB = [
+  {
+    sym:'NVDA', name:'NVIDIA Corporation', sector:'Semiconductors', type:'underval',
+    px:875.60, chg:2.14, high52:974.00, low52:395.00,
+    entry:865.00, target1:'$940', target2:'$1,050', stop:'$810',
+    t1c:'#00e5a0', t2c:'#3b9eff', stc:'#ff4d6a',
+    t1l:'단기 목표', t2l:'중기 목표', stl:'손절가',
+    reasons:['AI 데이터센터 수요 구조적 성장 — 향후 3년 EPS CAGR 40%+ 전망','Blackwell 아키텍처 수요 공급 초과 상황, 마진 확대 지속','PEG 1.18은 성장 대비 저평가 — S&P500 대비 알파 창출 여지'],
+    metrics:[{l:'PEG',v:'1.18',c:'#00e5a0'},{l:'FwdPE',v:'34x',c:'#3b9eff'},{l:'EPS성장',v:'+142%',c:'#00e5a0'},{l:'EV/EBITDA',v:'45x',c:'#ffb020'}],
+    conviction:5, rr:3.7, badge:'pb-uv', badgeText:'저평가 성장'
+  },
+  {
+    sym:'GOOGL', name:'Alphabet Inc.', sector:'Internet/AI', type:'underval',
+    px:172.45, chg:-0.22, high52:193.00, low52:120.21,
+    entry:170.00, target1:'$185', target2:'$210', stop:'$158',
+    t1c:'#00e5a0', t2c:'#3b9eff', stc:'#ff4d6a',
+    t1l:'단기 목표', t2l:'중기 목표', stl:'손절가',
+    reasons:['PEG 0.92 — EPS 성장 대비 주가 명백 저평가','YouTube + Cloud 매출 성장 재가속, AI Gemini 수익화 시작','자사주 매입 $70B 프로그램 — 주당 가치 제고 확실'],
+    metrics:[{l:'PEG',v:'0.92',c:'#00e5a0'},{l:'FwdPE',v:'18x',c:'#00e5a0'},{l:'EPS성장',v:'+29%',c:'#00e5a0'},{l:'EV/EBITDA',v:'14x',c:'#00e5a0'}],
+    conviction:5, rr:3.2, badge:'pb-uv', badgeText:'저평가 성장'
+  },
+  {
+    sym:'META', name:'Meta Platforms', sector:'Social Media/AI', type:'underval',
+    px:502.30, chg:1.54, high52:589.00, low52:279.40,
+    entry:495.00, target1:'$540', target2:'$620', stop:'$460',
+    t1c:'#00e5a0', t2c:'#3b9eff', stc:'#ff4d6a',
+    t1l:'단기 목표', t2l:'중기 목표', stl:'손절가',
+    reasons:['광고 AI 효율화로 ARPU 급증, EPS 73% 성장 현실화','Llama 오픈소스 전략 — 개발자 생태계 확보로 장기 해자','Reality Labs 손실 감소 추세 — 흑자 전환 시 멀티플 재평가'],
+    metrics:[{l:'PEG',v:'1.05',c:'#00e5a0'},{l:'FwdPE',v:'22x',c:'#3b9eff'},{l:'EPS성장',v:'+73%',c:'#00e5a0'},{l:'EV/EBITDA',v:'17x',c:'#3b9eff'}],
+    conviction:4, rr:2.9, badge:'pb-uv', badgeText:'저평가 성장'
+  },
+  {
+    sym:'AAPL', name:'Apple Inc.', sector:'Consumer Technology', type:'pullback',
+    px:189.24, chg:1.23, high52:199.62, low52:164.08,
+    entry:186.50, target1:'$198', target2:'$205', stop:'$180',
+    t1c:'#00e5a0', t2c:'#3b9eff', stc:'#ff4d6a',
+    t1l:'목표가 1', t2l:'목표가 2', stl:'손절가',
+    reasons:['RSI 42 — 과매도 구간, 20일 지지선($185) 근접 눌림목','애플 인텔리전스 출시 후 업그레이드 사이클 시작','서비스 매출 25% YoY 성장 — 주가 지지 펀더멘털 확고'],
+    metrics:[{l:'RSI',v:'42',c:'#ffb020'},{l:'지지선',v:'$185',c:'#00e5a0'},{l:'MA20',v:'$187',c:'#3b9eff'},{l:'BB%',v:'0.21',c:'#00e5a0'}],
+    conviction:4, rr:2.8, badge:'pb-pb', badgeText:'눌림목 매수'
+  },
+  {
+    sym:'AMZN', name:'Amazon.com Inc.', sector:'E-Commerce/Cloud', type:'pullback',
+    px:198.63, chg:1.54, high52:226.00, low52:151.61,
+    entry:196.00, target1:'$215', target2:'$230', stop:'$183',
+    t1c:'#00e5a0', t2c:'#3b9eff', stc:'#ff4d6a',
+    t1l:'목표가 1', t2l:'목표가 2', stl:'손절가',
+    reasons:['52주 고점에서 12% 조정 — 기술적 눌림목, RSI 38 과매도','AWS 성장률 재가속 17%+ — 점유율 확대 지속','광고 사업 $47B 규모, EPS 94% 성장 — 밸류에이션 합리화'],
+    metrics:[{l:'RSI',v:'38',c:'#00e5a0'},{l:'조정폭',v:'-12%',c:'#ffb020'},{l:'AWS성장',v:'+17%',c:'#00e5a0'},{l:'FwdPE',v:'31x',c:'#3b9eff'}],
+    conviction:4, rr:2.6, badge:'pb-pb', badgeText:'눌림목 매수'
+  },
+  {
+    sym:'TSLA', name:'Tesla Inc.', sector:'EV/Energy', type:'pullback',
+    px:242.15, chg:2.14, high52:299.29, low52:138.80,
+    entry:238.00, target1:'$260', target2:'$280', stop:'$220',
+    t1c:'#00e5a0', t2c:'#3b9eff', stc:'#ff4d6a',
+    t1l:'목표가 1', t2l:'목표가 2', stl:'손절가',
+    reasons:['52주 저점에서 74% 반등 후 눌림 — $235 지지선 테스트','FSD 완전 자율주행 유료 구독 확산 — 고마진 소프트웨어 수익 증가','에너지 저장 사업 폭발적 성장 (PowerWall/Megapack)'],
+    metrics:[{l:'RSI',v:'48',c:'#ffb020'},{l:'지지선',v:'$235',c:'#00e5a0'},{l:'저점比',v:'+74%',c:'#3b9eff'},{l:'FSD성장',v:'+42%',c:'#00e5a0'}],
+    conviction:3, rr:2.3, badge:'pb-pb', badgeText:'눌림목 매수'
+  },
+  {
+    sym:'MSFT', name:'Microsoft Corp.', sector:'Cloud/AI', type:'long',
+    px:415.78, chg:0.95, high52:468.35, low52:309.45,
+    entry:413.00, target1:'$440', target2:'$470', stop:'$392',
+    t1c:'#00e5a0', t2c:'#3b9eff', stc:'#ff4d6a',
+    t1l:'롱 목표 1', t2l:'롱 목표 2', stl:'손절가',
+    reasons:['MA5 > MA20 > MA50 — 완벽한 상승 정렬, 롱 포지션 유리','Copilot 기업 침투율 급등 — Azure AI 수익 분기 $10B 돌파 전망','RSI 58 — 건강한 모멘텀 구간, 추가 상승 여력 충분'],
+    metrics:[{l:'MA정렬',v:'강세',c:'#00e5a0'},{l:'RSI',v:'58',c:'#3b9eff'},{l:'Azure',v:'+31%',c:'#00e5a0'},{l:'R:R',v:'2.7:1',c:'#9d7cff'}],
+    conviction:5, rr:2.7, badge:'pb-long', badgeText:'LONG'
+  },
+  {
+    sym:'SPY', name:'S&P 500 ETF', sector:'Broad Market', type:'short',
+    px:521.30, chg:0.42, high52:565.16, low52:410.44,
+    entry:522.00, target1:'$505', target2:'$488', stop:'$535',
+    t1c:'#ff4d6a', t2c:'#ff4d6a', stc:'#ffb020',
+    t1l:'숏 목표 1', t2l:'숏 목표 2', stl:'손절가',
+    reasons:['RSI 72 — 명백한 과매수, 하락 반전 신호 접근','52주 고점 대비 -8%, 이중 천장 패턴 형성 중','CAPE 34x 역사적 고평가 + 고금리 장기화 = 단기 조정 압력'],
+    metrics:[{l:'RSI',v:'72',c:'#ff4d6a'},{l:'CAPE',v:'34x',c:'#ff4d6a'},{l:'고점比',v:'-8%',c:'#ffb020'},{l:'R:R',v:'2.6:1',c:'#9d7cff'}],
+    conviction:3, rr:2.6, badge:'pb-short', badgeText:'SHORT'
+  }
+];
+
+function convDots(n, color){
+  var html='';
+  for(var i=0;i<5;i++){
+    html+='<div class="conv-dot" style="background:'+(i<n?color:'var(--bg5)')+'"></div>';
+  }
+  return html;
+}
+
+function renderPickCard(p){
+  var rrColor = p.rr>=3?'#00e5a0':p.rr>=2?'#ffb020':'#ff4d6a';
+  var convColor = p.conviction>=4?'#00e5a0':p.conviction>=3?'#ffb020':'#ff4d6a';
+  return '<div class="pick-card '+p.type+'">' +
+    '<div class="pick-head">' +
+      '<div><div class="pick-sym">'+p.sym+'</div><div class="pick-name">'+p.name+'</div>' +
+      '<div style="font-size:9px;font-family:var(--mono);color:var(--t3);margin-top:1px">'+p.sector+'</div></div>' +
+      '<span class="pick-badge '+p.badge+'">'+p.badgeText+'</span>' +
+    '</div>' +
+    '<div class="pick-price-row">' +
+      '<span class="pick-price">$'+f2(p.px)+'</span>' +
+      '<span class="pick-chg '+(p.chg>=0?'up':'dn')+'">'+(p.chg>=0?'+':'')+f2(p.chg)+'%</span>' +
+      '<span style="font-size:9px;font-family:var(--mono);color:var(--t3)">52W: $'+p.low52+' — $'+p.high52+'</span>' +
+    '</div>' +
+    '<div class="pick-targets">' +
+      '<div class="pick-tgt"><div class="pick-tgt-l">'+p.t1l+'</div><div class="pick-tgt-v" style="color:'+p.t1c+'">'+p.target1+'</div></div>' +
+      '<div class="pick-tgt"><div class="pick-tgt-l">'+p.t2l+'</div><div class="pick-tgt-v" style="color:'+p.t2c+'">'+p.target2+'</div></div>' +
+      '<div class="pick-tgt"><div class="pick-tgt-l">'+p.stl+'</div><div class="pick-tgt-v" style="color:'+p.stc+'">'+p.stop+'</div></div>' +
+    '</div>' +
+    '<div class="pick-reasons">' +
+      '<div class="pick-reason-title">핵심 근거</div>' +
+      p.reasons.map(function(r){ return '<div class="pick-reason">'+r+'</div>'; }).join('') +
+    '</div>' +
+    '<div class="pick-metrics">' +
+      p.metrics.map(function(m){ return '<div class="pick-m"><div class="pick-m-l">'+m.l+'</div><div class="pick-m-v" style="color:'+m.c+'">'+m.v+'</div></div>'; }).join('') +
+    '</div>' +
+    '<div class="pick-footer">' +
+      '<div style="display:flex;align-items:center;gap:4px">' +
+        '<div class="conv-dots">'+convDots(p.conviction, convColor)+'</div>' +
+        '<span class="conv-label">확신도 '+p.conviction+'/5</span>' +
+      '</div>' +
+      '<span style="font-size:10px;font-family:var(--mono);color:'+rrColor+';font-weight:600">R:R '+p.rr.toFixed(1)+':1</span>' +
+    '</div>' +
+  '</div>';
+}
+
+function buildPicks(force){
+  document.getElementById('picks-ts').textContent = '업데이트: '+nowTime();
+  var items = picksFilter==='all' ? PICKS_DB : PICKS_DB.filter(function(p){return p.type===picksFilter;});
+  document.getElementById('picks-grid').innerHTML = items.map(renderPickCard).join('');
+  if(force) toast('종목 추천 업데이트 — '+items.length+'개', 'ok', 2000);
+}
+function filterPicks(type, btn){
+  picksFilter=type;
+  document.querySelectorAll('.ptab').forEach(function(b){b.classList.remove('on');}); btn.classList.add('on');
+  buildPicks();
+}
+
+/* ===== PAGE SWITCH ===== */
+function goPage(id, el){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  document.getElementById('page-'+id).classList.add('on');
+  if(el && el.classList) el.classList.add('on');
+  if(id==='portfolio')  renderPF();
+  if(id==='scanner')    runScanner(false);
+  if(id==='heatmap')    buildHeatmap();
+  if(id==='picks')      buildPicks(false);
+}
+
+/* ===== LIVE TICK ===== */
+setInterval(function(){
+  TICKERS.forEach(function(t){
+    var d=(Math.random()-0.485)*0.18;
+    t.px=Math.max(1, parseFloat((t.px*(1+d/100)).toFixed(2)));
+    t.chg=parseFloat(Math.min(12,Math.max(-12,t.chg+d*0.1)).toFixed(2));
+  });
+  var sel=TICKERS.find(function(t){return t.sym===curSym;});
+  if(sel){
+    document.getElementById('cb-px').textContent='$'+f2(sel.px);
+    var ce=document.getElementById('cb-chg');
+    ce.textContent=(sel.chg>=0?'+':'')+f2(sel.chg)+'%';
+    ce.className='cb-chg '+(sel.chg>=0?'up':'dn');
+  }
+  var pnlD=(Math.random()-0.45)*700, ptotal=2847392+Math.round(pnlD*4.2);
+  var pnlA=Math.round(pnlD*40);
+  document.getElementById('hdr-pf').textContent='$'+ptotal.toLocaleString();
+  var pe=document.getElementById('hdr-pnl');
+  pe.textContent=(pnlA>=0?'+':'')+'$'+Math.abs(pnlA).toLocaleString();
+  pe.className='tbs-v '+(pnlA>=0?'pos':'neg');
+  renderTickers();
+}, 2800);
+
+/* ===== INIT ===== */
+(function(){
+  renderTickers(); renderSigs(); renderRisk(); renderNews(); renderTrades();
+  drawChart(TICKERS[0]);
+  cBS(); cPS(); cVaR(); cSH();
+  runScanner(false); buildPicks(false);
+})();
+</script>
+</body>
+</html>

@@ -39,14 +39,11 @@ def _row_market_ok(row: pd.Series, slug: str) -> bool:
     candidates=[]
     for c in ['종목코드','종목','종목명','symbol','ticker','티커','TOP']:
         if c in row.index and not _is_empty(row.get(c)): candidates.append(str(row.get(c)).strip())
-    normalized_candidates=[x.zfill(6) if x.isdigit() and len(x)<6 else x for x in candidates]
-    has_kr_code=any(KR_CODE_RE.match(x) for x in normalized_candidates)
-    has_us_ticker=any(US_TICKER_RE.match(x) for x in candidates)
-    candidate_text=' '.join(candidates)
-    has_hangul=bool(HANGUL_RE.search(candidate_text))
+    has_kr_code=any(KR_CODE_RE.match(x.zfill(6) if x.isdigit() and len(x)<6 else x) for x in candidates)
+    has_hangul=bool(HANGUL_RE.search(text)); has_us_ticker=any(US_TICKER_RE.match(x) for x in candidates)
     if slug=='kr':
         if re.search(r'미국|미장|United States|NASDAQ|NYSE', market_text, re.I): return False
-        if has_us_ticker and not has_kr_code: return False
+        if has_us_ticker and not has_kr_code and not has_hangul: return False
         return has_kr_code or has_hangul or not candidates
     if slug=='us':
         if re.search(r'한국|국장|KOSPI|KOSDAQ', market_text, re.I): return False
