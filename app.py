@@ -50109,3 +50109,271 @@ def run_headless_runner(action: str) -> int:  # type: ignore[override]
     if _ORIG_run_headless_runner_v69 is not None:
         return _ORIG_run_headless_runner_v69(action)
     return 2
+
+
+# ══════════════════════════════════════════════
+# v70 — KR domestic news strict filter + finance page wiring fix
+# ══════════════════════════════════════════════
+try:
+    APP_VERSION = str(APP_VERSION) + " + v70 KR news/finance fix"
+except Exception:
+    APP_VERSION = "v70 KR news/finance fix"
+
+
+def _v70_now() -> str:
+    try:
+        return datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _v70_market() -> str:
+    try: return _v69_market()
+    except Exception:
+        try: return _v68_market()
+        except Exception: return "미국주식"
+
+
+def _v70_slug(market: str | None = None) -> str:
+    try: return _v69_slug(market or _v70_market())
+    except Exception:
+        m=str(market or _v70_market())
+        return "kr" if "한국" in m or "국장" in m else "us"
+
+
+def _v70_label(market: str | None = None) -> str:
+    return "국장" if _v70_slug(market) == "kr" else "미장"
+
+
+def _v70_report(name: str) -> Path:
+    return Path("reports") / name
+
+
+def _v70_read(path: str | Path) -> pd.DataFrame:
+    try: return _v69_read(path)
+    except Exception:
+        p=Path(path)
+        if p.exists() and p.stat().st_size:
+            try: return pd.read_csv(p)
+            except Exception: return pd.DataFrame()
+        return pd.DataFrame()
+
+
+def _v70_get(row: pd.Series, *keys: str, default: str = "-") -> str:
+    try: return _v69_get(row, *keys, default=default)
+    except Exception:
+        for k in keys:
+            try:
+                v=row.get(k)
+                s=str(v).strip()
+                if s and s.lower() not in {"nan","none","null","nat"}: return s
+            except Exception: pass
+        return default
+
+
+def _v70_generate_reports() -> dict[str, Any]:
+    try:
+        from core.v70_news_finance_market_fix_engine import run_v70_update
+        return run_v70_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+    except Exception as exc:
+        return {"status":"ERROR","error":f"{type(exc).__name__}: {exc}","updated_at":_v70_now()}
+
+
+def _v70_status_box() -> None:
+    try:
+        raw=json.loads(_v70_report("v70_status.json").read_text(encoding="utf-8"))
+    except Exception:
+        raw={}
+    env=raw.get("env") or {}
+    c1,c2,c3,c4=st.columns(4)
+    c1.metric("GNews", "인식" if env.get("GNEWS_API_KEY") else "미인식")
+    c2.metric("Finnhub", "인식" if env.get("FINNHUB_API_KEY") else "미인식")
+    c3.metric("DART", "인식" if env.get("DART_API_KEY") else "미인식")
+    c4.metric("SEC", "UA 있음" if env.get("SEC_USER_AGENT") else "기본 UA")
+
+
+def render_v70_news_cards_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market=_v70_market(); slug=_v70_slug(market); label=_v70_label(market)
+    _render_nav_page_title(f"{label} 뉴스 카드")
+    if slug == "kr":
+        st.caption("국장은 국내 언론/국내 증시 키워드만 우선 표시합니다. 해외 일반 뉴스는 필터링합니다.")
+    else:
+        st.caption("미장은 영어 원문과 간략 한글 해석을 같이 표시합니다.")
+    if st.button("뉴스·재무·시장 v70 갱신", key=f"v70_news_refresh_{slug}"):
+        res=_v70_generate_reports()
+        st.success(f"갱신 완료: {res.get('updated_at', _v70_now())}" if res.get("status") in {"OK","WARN"} else f"갱신 결과: {res}")
+    df=_v70_read(_v70_report(f"v70_news_cards_{slug}.csv"))
+    diag=_v70_report(f"v70_news_diag_{slug}.json")
+    if df.empty:
+        st.info(f"{label} 뉴스가 없습니다. 갱신 버튼을 누른 뒤 진단을 확인하세요.")
+        if diag.exists():
+            with st.expander("뉴스/API 진단", expanded=True):
+                try: st.json(json.loads(diag.read_text(encoding="utf-8")))
+                except Exception: st.write(diag.read_text(encoding="utf-8", errors="ignore"))
+        return
+    c1,c2,c3=st.columns(3)
+    c1.metric("표시 뉴스", len(df))
+    c2.metric("국내/시장 필터", "적용" if slug == "kr" else "미장")
+    c3.metric("수집 방식", ", ".join(sorted(set(df.get("수집방식", pd.Series(dtype=str)).astype(str).head(8)))) if "수집방식" in df.columns else "-")
+    for _,r in df.head(18).iterrows():
+        title=_v70_get(r,"제목","title",default="뉴스 제목 없음")
+        desc=_v70_get(r,"요약","description",default="")
+        trans=_v70_get(r,"간략 번역","한글 해석",default="시장 영향을 확인하세요.")
+        source=_v70_get(r,"출처","source",default="-")
+        method=_v70_get(r,"수집방식",default="-")
+        body=f"{desc}<br><br><b>간략 해석</b><br>{trans}<br><br><b>출처</b> {source} · <b>수집</b> {method}"
+        _v69_card(title,"뉴스",body,"뉴스만으로 매수하지 말고 기준가·거래량·시장 방향을 함께 확인하세요.")
+    with st.expander("뉴스 원본 표 보기", expanded=False):
+        try: _v67_render_pretty_table(df, empty="뉴스 원본 없음", limit=80)
+        except Exception: st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_v70_company_cards_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market=_v70_market(); slug=_v70_slug(market); label=_v70_label(market)
+    _render_nav_page_title(f"{label} 기업분석 카드")
+    st.caption("국장=DART, 미장=Finnhub+SEC를 사용합니다. 값이 없으면 실패 이유를 카드에 표시합니다.")
+    if st.button("재무 API v70 갱신", key=f"v70_company_refresh_{slug}"):
+        res=_v70_generate_reports()
+        st.success(f"갱신 완료: {res.get('updated_at', _v70_now())}" if res.get("status") in {"OK","WARN"} else f"갱신 결과: {res}")
+    _v70_status_box()
+    df=_v70_read(_v70_report(f"v70_company_cards_{slug}.csv"))
+    if df.empty:
+        st.warning("기업분석 카드 데이터가 없습니다. 재무 API v70 갱신 버튼 또는 run_v70_daily_update.bat를 실행하세요.")
+        return
+    ok_count=int(df.astype(str).apply(lambda s: s.str.contains("재무/KPI 수신", na=False)).any(axis=1).sum()) if not df.empty else 0
+    c1,c2,c3=st.columns(3)
+    c1.metric("분석 종목", len(df))
+    c2.metric("재무 수신", ok_count)
+    c3.metric("데이터 부족", max(len(df)-ok_count,0))
+    for _,r in df.head(18).iterrows():
+        title=_v70_get(r,"종목명","종목",default="-")
+        code=_v70_get(r,"종목코드",default="-")
+        status=_v70_get(r,"재무상태",default="확인")
+        body=(
+            f"<b>{code}</b><br>"
+            f"PER {_v70_get(r,'PER표시','PER')} · PBR {_v70_get(r,'PBR표시','PBR')} · ROE {_v70_get(r,'ROE표시','ROE')}<br>"
+            f"매출 {_v70_get(r,'매출표시','매출액')} · 순이익 {_v70_get(r,'순이익표시','순이익')}<br>"
+            f"영업이익률 {_v70_get(r,'영업이익률표시','영업이익률')} · 부채비율 {_v70_get(r,'부채비율표시','부채비율')}<br><br>"
+            f"{_v70_get(r,'초보자 해석', default='재무/KPI 확인이 필요합니다.')}<br>"
+            f"<b>상태 설명</b> {_v70_get(r,'데이터상태설명','오류', default='-')}"
+        )
+        footer=f"출처: {_v70_get(r,'데이터출처',default='-')} · 다음 행동: {_v70_get(r,'다음 행동',default='가격·뉴스·차트를 함께 확인하세요.')}"
+        _v69_card(title,status,body,footer)
+    with st.expander("재무 원본 표 보기", expanded=False):
+        try: _v67_render_pretty_table(df, empty="재무 원본 없음", limit=100)
+        except Exception: st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_v70_macro_cards_page() -> None:
+    inject_native_graft_css()
+    market=_v70_market(); slug=_v70_slug(market); label=_v70_label(market)
+    _render_nav_page_title(f"{label} 시장·거시 카드")
+    if st.button("시장·거시 v70 갱신", key=f"v70_macro_refresh_{slug}"):
+        res=_v70_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v70_now())}")
+    df=_v70_read(_v70_report(f"v70_macro_cards_{slug}.csv"))
+    if df.empty:
+        st.info("시장·거시 데이터가 없습니다. run_v70_daily_update.bat를 실행하세요.")
+        return
+    for _,r in df.iterrows():
+        body=f"<b>값</b> {_v70_get(r,'값')} · <b>변화율</b> {_v70_get(r,'변화율')}<br>{_v70_get(r,'해석',default='시장 참고 지표입니다.')}"
+        _v69_card(_v70_get(r,"카드",default="시장 지표"), _v70_get(r,"상태",default="확인"), body, f"지표: {_v70_get(r,'지표')} · 출처: {_v70_get(r,'출처')}")
+    with st.expander("시장·거시 원본 표 보기", expanded=False):
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_v70_narrative_page() -> None:
+    inject_native_graft_css()
+    market=_v70_market(); slug=_v70_slug(market); label=_v70_label(market)
+    _render_nav_page_title(f"{label} 종목 내러티브")
+    if st.button("종목 내러티브 v70 갱신", key=f"v70_narrative_refresh_{slug}"):
+        res=_v70_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v70_now())}")
+    df=_v70_read(_v70_report(f"v70_narrative_{slug}.csv"))
+    if df.empty:
+        st.info("종목 내러티브 데이터가 없습니다. 뉴스/재무/시장 리포트를 먼저 갱신하세요.")
+        return
+    for _,r in df.head(15).iterrows():
+        body=f"{_v70_get(r,'내러티브')}<br><br><b>시장 배경</b><br>{_v70_get(r,'시장 배경')}"
+        _v69_card(_v70_get(r,"종목",default="-"), _v70_get(r,"종목코드",default="-"), body, _v70_get(r,"주의",default=""))
+
+# 매수 후보 4분류의 실적·저평가 탭도 v70 재무 카드 파일을 우선 사용하도록 교체합니다.
+try:
+    _ORIG_render_v67_buy_four_categories_page_v70 = render_v67_buy_four_categories_page
+except Exception:
+    _ORIG_render_v67_buy_four_categories_page_v70 = None
+
+
+def render_v67_buy_four_categories_page() -> None:  # type: ignore[override]
+    inject_native_graft_css()
+    market = _v70_market(); slug = _v70_slug(market); label = _v70_label(market)
+    _render_nav_page_title(f"{label} 매수 후보 4분류")
+    st.caption("화면 안에서 시장을 다시 고르지 않습니다. 왼쪽 사이드바 시장필터만 따릅니다.")
+    if st.button("매수 후보 4분류 갱신", key=f"v70_buy4_refresh_{slug}"):
+        res = _v70_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v70_now())}")
+    action = _v70_read(_v70_report(f"v67_action_board_{slug}.csv"))
+    pull = _v70_read(_v70_report(f"v67_pullback_{slug}.csv"))
+    flow = _v70_read(_v70_report(f"v67_flow_{slug}.csv"))
+    fund = _v70_read(_v70_report(f"v70_company_cards_{slug}.csv"))
+    if fund.empty:
+        fund = _v70_read(_v70_report(f"v69_company_cards_{slug}.csv"))
+    tabs = st.tabs(["오늘 확인", "눌림목/관찰", "수급·거래대금", "실적·저평가"])
+    with tabs[0]: _v67_render_pretty_table(action, empty=f"{label} 오늘 확인 후보가 없습니다.", limit=40)
+    with tabs[1]: _v67_render_pretty_table(pull, empty=f"{label} 눌림목/관찰 후보가 없습니다.", limit=40)
+    with tabs[2]: _v67_render_pretty_table(flow, empty=f"{label} 수급·거래대금 후보가 없습니다.", limit=40)
+    with tabs[3]:
+        if fund.empty:
+            st.warning("재무/KPI 카드가 아직 생성되지 않았습니다. 뉴스·재무·시장 → 기업분석 카드에서 재무 API v70 갱신을 먼저 실행하세요.")
+        else:
+            _v67_render_pretty_table(fund, empty=f"{label} 실적·저평가 후보가 없습니다.", limit=40)
+
+try:
+    if "뉴스·재무·시장" in OPERATIONAL_NAV_GROUPS:
+        OPERATIONAL_NAV_GROUPS["뉴스·재무·시장"] = [
+            ("뉴스 카드", "page_v70_news_cards"),
+            ("기업분석 카드", "page_v70_company_cards"),
+            ("시장·거시 카드", "page_v70_macro_cards"),
+            ("종목 내러티브", "page_v70_narrative"),
+        ]
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v70 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v70 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v70_news_cards": render_v70_news_cards_page(); return
+    if page_id == "page_v70_company_cards": render_v70_company_cards_page(); return
+    if page_id == "page_v70_macro_cards": render_v70_macro_cards_page(); return
+    if page_id == "page_v70_narrative": render_v70_narrative_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v70 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v70(page_id)
+    st.warning(f"알 수 없는 화면 ID: {page_id}")
+
+try:
+    _ORIG_run_headless_runner_v70 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v70 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v70", "v70_update", "daily_v70", "mone_v70"}:
+        try:
+            from core.v70_news_finance_market_fix_engine import run_v70_update
+            res = run_v70_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+            print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0 if res.get("status") in {"OK", "WARN"} else 2
+        except Exception as exc:
+            print(f"v70 update failed: {type(exc).__name__}: {exc}", flush=True)
+            return 2
+    if _ORIG_run_headless_runner_v70 is not None:
+        return _ORIG_run_headless_runner_v70(action)
+    return 2
