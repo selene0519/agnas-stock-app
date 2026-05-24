@@ -1,4 +1,4 @@
-name: NEXORA Auto Accumulator
+name: MONE Auto Accumulator
 
 on:
   workflow_dispatch:
@@ -37,6 +37,9 @@ jobs:
           KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
           KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
           KIS_ACCOUNT_NO: ${{ secrets.KIS_ACCOUNT_NO }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          APIFY_NEWS_ACTOR_ID: ${{ secrets.APIFY_NEWS_ACTOR_ID }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           AUTO_ACCUMULATOR_ONCE: "1"
         run: python run_cloud_accumulator.py
       - name: Commit updated reports
@@ -44,5 +47,5 @@ jobs:
           git config user.name "nexora-bot"
           git config user.email "nexora-bot@example.com"
           git add reports data logs backups || true
-          git commit -m "auto: update NEXORA reports" || echo "No changes"
+          git commit -m "auto: update MONE reports" || echo "No changes"
           git push || true

@@ -49846,3 +49846,266 @@ def run_headless_runner(action: str) -> int:  # type: ignore[override]
     if _ORIG_run_headless_runner_v68 is not None:
         return _ORIG_run_headless_runner_v68(action)
     return 2
+
+
+# ══════════════════════════════════════════════
+# v69 — News / Finance API live connection
+# ══════════════════════════════════════════════
+
+try:
+    APP_VERSION = str(APP_VERSION) + " + v69 finance API"
+except Exception:
+    APP_VERSION = "v69 finance API"
+
+
+def _v69_now() -> str:
+    try:
+        return datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _v69_market() -> str:
+    try:
+        return _v68_market()
+    except Exception:
+        try:
+            return _v67_market()
+        except Exception:
+            return "미국주식"
+
+
+def _v69_slug(market: str | None = None) -> str:
+    try:
+        return _v68_slug(market or _v69_market())
+    except Exception:
+        m = str(market or _v69_market())
+        return "kr" if "한국" in m or "국장" in m else "us"
+
+
+def _v69_label(market: str | None = None) -> str:
+    return "국장" if _v69_slug(market) == "kr" else "미장"
+
+
+def _v69_report(name: str) -> Path:
+    return Path("reports") / name
+
+
+def _v69_read(path: str | Path) -> pd.DataFrame:
+    try:
+        return _v68_read(path)
+    except Exception:
+        try:
+            p = Path(path)
+            if not p.exists() or p.stat().st_size == 0:
+                return pd.DataFrame()
+            return pd.read_csv(p)
+        except Exception:
+            return pd.DataFrame()
+
+
+def _v69_get(row: pd.Series, *keys: str, default: str = "-") -> str:
+    try:
+        return _v68_get(row, *keys, default=default)
+    except Exception:
+        for k in keys:
+            try:
+                v = row.get(k)
+                s = str(v).strip()
+                if s and s.lower() not in {"nan", "none", "null"}:
+                    return s
+            except Exception:
+                pass
+        return default
+
+
+def _v69_generate_reports() -> dict[str, Any]:
+    try:
+        from core.v69_finance_api_engine import run_v69_update
+        return run_v69_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+    except Exception as exc:
+        return {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}", "updated_at": _v69_now()}
+
+
+def _v69_card(title: str, badge: str = "확인", body: str = "", footer: str = "") -> None:
+    try:
+        _v68_card(title, badge, body, footer)
+        return
+    except Exception:
+        pass
+    st.markdown(f"""
+    <div style="border:1px solid rgba(148,163,184,.25);border-radius:18px;padding:16px 18px;margin:10px 0;background:rgba(15,23,42,.78);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <b style="font-size:1.05rem;color:#f8fafc;">{title}</b><span style="color:#60a5fa;font-weight:800;">{badge}</span>
+      </div>
+      <div style="margin-top:10px;color:#dbeafe;line-height:1.65;">{body}</div>
+      <div style="margin-top:10px;color:#93c5fd;font-size:.9rem;line-height:1.5;">{footer}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _v69_status_box() -> None:
+    df = _v69_read(_v69_report("v69_status.json"))
+    try:
+        raw = json.loads(_v69_report("v69_status.json").read_text(encoding="utf-8"))
+    except Exception:
+        raw = {}
+    env = raw.get("env") or {}
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("GNews", "인식" if env.get("GNEWS_API_KEY") else "미인식")
+    c2.metric("Finnhub", "인식" if env.get("FINNHUB_API_KEY") else "미인식")
+    c3.metric("DART", "인식" if env.get("DART_API_KEY") else "미인식")
+    c4.metric("Apify", "인식" if env.get("APIFY_TOKEN") else "선택")
+
+
+def render_v69_news_cards_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v69_market(); slug = _v69_slug(market); label = _v69_label(market)
+    _render_nav_page_title(f"{label} 뉴스 카드")
+    if slug == "kr":
+        st.caption("국장은 국내 증시 뉴스 중심으로 보여줍니다. GNews/RSS에 더해 APIFY_NEWS_ACTOR_ID가 있으면 Apify Actor도 함께 시도합니다.")
+    else:
+        st.caption("미장은 영어 뉴스 원문과 간략 한글 해석을 함께 표시합니다. AI API 없이도 기본 해석을 붙입니다.")
+    if st.button("뉴스·재무·시장 v69 갱신", key=f"v69_news_refresh_{slug}"):
+        res = _v69_generate_reports()
+        if res.get("status") in {"OK", "WARN"}:
+            st.success(f"갱신 완료: {res.get('updated_at', _v69_now())}")
+        else:
+            st.error(f"갱신 실패: {res.get('error', res)}")
+    df = _v69_read(_v69_report(f"v69_news_cards_{slug}.csv"))
+    diag_path = _v69_report(f"v69_news_diag_{slug}.json")
+    if df.empty:
+        st.info(f"**{label} 뉴스가 아직 없습니다.**\n\nGNEWS_API_KEY는 뉴스 검색용이고, APIFY_TOKEN은 Actor ID가 함께 있어야 실제 Actor 실행이 가능합니다. 갱신 후에도 0건이면 진단을 펼쳐 확인하세요.")
+        if diag_path.exists():
+            with st.expander("뉴스/API 진단 보기", expanded=True):
+                try: st.json(json.loads(diag_path.read_text(encoding="utf-8")))
+                except Exception: st.write(diag_path.read_text(encoding="utf-8", errors="ignore"))
+        return
+    c1, c2, c3 = st.columns(3)
+    c1.metric("표시 뉴스", len(df))
+    c2.metric("Apify 수집", int(df.get("수집방식", pd.Series(dtype=str)).astype(str).str.contains("Apify", na=False).sum()) if "수집방식" in df.columns else 0)
+    c3.metric("GNews/RSS", int(df.get("수집방식", pd.Series(dtype=str)).astype(str).str.contains("GNews|RSS", na=False).sum()) if "수집방식" in df.columns else 0)
+    for _, r in df.head(18).iterrows():
+        title = _v69_get(r, "제목", "title", default="뉴스 제목 없음")
+        desc = _v69_get(r, "요약", "description", default="")
+        trans = _v69_get(r, "간략 번역", "한글 해석", default="시장 영향을 확인하세요.")
+        source = _v69_get(r, "출처", "source", default="-")
+        method = _v69_get(r, "수집방식", default="-")
+        body = f"{desc}<br><br><b>간략 해석</b><br>{trans}<br><br><b>출처</b> {source} · <b>수집</b> {method}"
+        _v69_card(title, "뉴스", body, "뉴스만으로 매수하지 말고 가격·거래량·기준가 반응을 같이 확인하세요.")
+    with st.expander("뉴스 원본 표 보기", expanded=False):
+        try: _v67_render_pretty_table(df, empty="뉴스 원본 없음", limit=80)
+        except Exception: st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_v69_company_cards_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v69_market(); slug = _v69_slug(market); label = _v69_label(market)
+    _render_nav_page_title(f"{label} 기업분석 카드")
+    st.caption("국장은 DART 재무제표, 미장은 Finnhub metric + SEC companyfacts를 우선 사용합니다. 값이 없으면 API 상태와 실패 이유를 보여줍니다.")
+    if st.button("재무 API 갱신", key=f"v69_company_refresh_{slug}"):
+        res = _v69_generate_reports()
+        st.success(f"갱신 완료: {res.get('updated_at', _v69_now())}" if res.get("status") in {"OK","WARN"} else f"갱신 결과: {res}")
+    _v69_status_box()
+    df = _v69_read(_v69_report(f"v69_company_cards_{slug}.csv"))
+    if df.empty:
+        st.warning("기업분석 카드 데이터가 없습니다. 재무 API 갱신 버튼 또는 run_v69_daily_update.bat를 실행하세요.")
+        return
+    for _, r in df.head(18).iterrows():
+        title = _v69_get(r, "종목명", "종목", default="-")
+        code = _v69_get(r, "종목코드", default="-")
+        status = _v69_get(r, "재무상태", default="확인")
+        source = _v69_get(r, "데이터출처", default="-")
+        body = (
+            f"<b>{code}</b><br>"
+            f"PER {_v69_get(r,'PER표시','PER')} · PBR {_v69_get(r,'PBR표시','PBR')} · ROE {_v69_get(r,'ROE표시','ROE')}<br>"
+            f"매출 {_v69_get(r,'매출표시','매출액')} · 순이익 {_v69_get(r,'순이익표시','순이익')}<br>"
+            f"영업이익률 {_v69_get(r,'영업이익률표시','영업이익률')} · 부채비율 {_v69_get(r,'부채비율표시','부채비율')}<br><br>"
+            f"{_v69_get(r,'초보자 해석', default='재무/KPI 확인이 필요합니다.')}"
+        )
+        footer = f"출처: {source} · 다음 행동: {_v69_get(r, '다음 행동', default='가격·뉴스·차트를 함께 확인하세요.')}"
+        _v69_card(title, status, body, footer)
+    with st.expander("재무 API 원본 표 보기", expanded=False):
+        try: _v67_render_pretty_table(df, empty="재무 원본 없음", limit=100)
+        except Exception: st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_v69_macro_cards_page() -> None:
+    try:
+        render_v68_macro_cards_page()
+    except Exception:
+        market = _v69_market(); slug = _v69_slug(market); label = _v69_label(market)
+        _render_nav_page_title(f"{label} 시장·거시 카드")
+        df = _v69_read(_v69_report(f"v69_macro_cards_{slug}.csv"))
+        if df.empty: st.info("시장·거시 데이터가 없습니다. run_v69_daily_update.bat를 실행하세요."); return
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_v69_narrative_page() -> None:
+    inject_native_graft_css()
+    try: _v65_css()
+    except Exception: pass
+    market = _v69_market(); slug = _v69_slug(market); label = _v69_label(market)
+    _render_nav_page_title(f"{label} 종목 내러티브")
+    st.caption("뉴스·재무·시장·후보 데이터를 합쳐 간단한 종목 스토리로 보여줍니다.")
+    if st.button("종목 내러티브 갱신", key=f"v69_narrative_refresh_{slug}"):
+        res = _v69_generate_reports(); st.success(f"갱신 완료: {res.get('updated_at', _v69_now())}")
+    df = _v69_read(_v69_report(f"v69_narrative_{slug}.csv"))
+    if df.empty:
+        st.info("종목 내러티브 데이터가 없습니다. 뉴스/재무/후보 리포트 갱신 후 표시됩니다.")
+        return
+    for _, r in df.head(15).iterrows():
+        body = f"{_v69_get(r,'내러티브')}<br><br><b>시장 배경</b><br>{_v69_get(r,'시장 배경')}"
+        _v69_card(_v69_get(r,"종목", default="-"), _v69_get(r,"종목코드", default="-"), body, _v69_get(r,"주의", default=""))
+
+
+try:
+    if "뉴스·재무·시장" in OPERATIONAL_NAV_GROUPS:
+        OPERATIONAL_NAV_GROUPS["뉴스·재무·시장"] = [
+            ("뉴스 카드", "page_v69_news_cards"),
+            ("기업분석 카드", "page_v69_company_cards"),
+            ("시장·거시 카드", "page_v69_macro_cards"),
+            ("종목 내러티브", "page_v69_narrative"),
+        ]
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v69 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v69 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v69_news_cards": render_v69_news_cards_page(); return
+    if page_id == "page_v69_company_cards": render_v69_company_cards_page(); return
+    if page_id == "page_v69_macro_cards": render_v69_macro_cards_page(); return
+    if page_id == "page_v69_narrative": render_v69_narrative_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v69 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v69(page_id)
+    st.warning(f"알 수 없는 화면 ID: {page_id}")
+
+try:
+    _ORIG_run_headless_runner_v69 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v69 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v69", "v69_update", "daily_v69", "mone_v69"}:
+        try:
+            from core.v69_finance_api_engine import run_v69_update
+            res = run_v69_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+            print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0 if res.get("status") in {"OK", "WARN"} else 2
+        except Exception as exc:
+            print(f"v69 update failed: {type(exc).__name__}: {exc}", flush=True)
+            return 2
+    if _ORIG_run_headless_runner_v69 is not None:
+        return _ORIG_run_headless_runner_v69(action)
+    return 2
