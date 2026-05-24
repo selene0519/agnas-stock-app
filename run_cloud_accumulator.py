@@ -100,6 +100,15 @@ def main() -> int:
         result["status"] = "ERROR"
         result["v67_error"] = f"{type(exc).__name__}: {exc}"
 
+
+
+    try:
+        from core.v68_news_finance_market_engine import run_v68_update
+        result["v68"] = run_v68_update(fetch_news=True, fetch_missing_fundamentals=True)
+    except Exception as exc:
+        result["status"] = "ERROR"
+        result["v68_error"] = f"{type(exc).__name__}: {exc}"
+
     Path("reports").mkdir(parents=True, exist_ok=True)
     Path("reports/cloud_accumulator_last_run.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
