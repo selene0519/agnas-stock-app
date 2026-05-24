@@ -49573,7 +49573,8 @@ def run_headless_runner(action: str) -> int:  # type: ignore[override]
         return _ORIG_run_headless_runner_v67(action)
     return 2
 
-if __name__ == "__main__":
+# Original early main block disabled by v73. The final main call is appended at the bottom after all navigation overrides.
+if __name__ == "__main__" and False:
     if len(sys.argv) >= 3 and sys.argv[1] == "--runner":
         raise SystemExit(run_headless_runner(sys.argv[2]))
     try:
@@ -50713,3 +50714,515 @@ def run_headless_runner(action: str) -> int:  # type: ignore[override]
     if _ORIG_run_headless_runner_v71 is not None:
         return _ORIG_run_headless_runner_v71(action)
     return 2
+
+# =========================
+# MONE v72 visible version / guard / QuantAI UI patch
+# =========================
+from datetime import datetime as _MONE_V72_DT
+
+
+def _v72_report(name: str) -> Path:
+    return Path('reports') / name
+
+
+def _v72_read(path: str | Path) -> pd.DataFrame:
+    try:
+        return _v71_read(path)
+    except Exception:
+        p = Path(path)
+        if p.exists() and p.stat().st_size:
+            try:
+                return pd.read_csv(p)
+            except Exception:
+                return pd.DataFrame()
+        return pd.DataFrame()
+
+
+def _v72_now() -> str:
+    return _MONE_V72_DT.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _v72_generate_reports() -> dict[str, Any]:
+    try:
+        from core.v72_visible_guard_quant_engine import run_v72_update
+        return run_v72_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+    except Exception as exc:
+        return {'status': 'ERROR', 'version': 'v72', 'error': f'{type(exc).__name__}: {exc}', 'updated_at': _v72_now()}
+
+
+def _v72_css() -> None:
+    st.markdown(
+        """
+        <style>
+        .mone-v72-banner{background:linear-gradient(135deg,#0b1f3a,#0f172a 50%,#111827);border:1px solid rgba(96,165,250,.38);border-radius:22px;padding:18px 20px;margin:4px 0 18px 0;box-shadow:0 18px 44px rgba(0,0,0,.22)}
+        .mone-v72-banner-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.mone-v72-title{font-size:1.45rem;font-weight:900;color:#eff6ff;letter-spacing:-.02em}.mone-v72-sub{color:#9fb8d7;line-height:1.55;margin-top:6px}.mone-v72-pill{border:1px solid rgba(34,197,94,.42);background:rgba(34,197,94,.12);color:#bbf7d0;border-radius:999px;padding:7px 12px;font-weight:800;font-size:.82rem;white-space:nowrap}.mone-v72-pill.warn{border-color:rgba(245,158,11,.46);background:rgba(245,158,11,.12);color:#fde68a}
+        .mone-v72-status{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:12px;margin-top:16px}.mone-v72-status-card{background:rgba(15,23,42,.78);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:14px}.mone-v72-status-label{font-size:.78rem;color:#93a7c1}.mone-v72-status-value{font-size:1.08rem;font-weight:900;color:#eaf2ff;margin-top:5px}.mone-v72-status-note{font-size:.74rem;color:#7f94b2;margin-top:5px;line-height:1.4}
+        .mone-v72-qgrid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:14px;margin:14px 0 22px 0}.mone-v72-qcard{background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:22px;padding:20px;min-height:168px;box-shadow:0 12px 34px rgba(0,0,0,.18);position:relative;overflow:hidden}.mone-v72-qcard:before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#3b82f6,#22c55e)}.mone-v72-qcard.risk:before{background:linear-gradient(90deg,#ef4444,#f97316)}.mone-v72-qcard.value:before{background:linear-gradient(90deg,#60a5fa,#a78bfa)}.mone-v72-qicon{width:44px;height:44px;border-radius:16px;background:#17243a;display:flex;align-items:center;justify-content:center;font-size:21px;margin-bottom:14px}.mone-v72-qtitle{font-weight:900;font-size:1.16rem;line-height:1.25;color:#f8fafc}.mone-v72-qdesc{font-size:.86rem;color:#a7b7cc;line-height:1.55;margin-top:8px;min-height:44px}.mone-v72-qcount{margin-top:14px;font-size:1rem;font-weight:900;color:#dbeafe}.mone-v72-qtop{font-size:.78rem;color:#87a0bd;margin-top:4px}
+        .mone-v72-cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;margin-top:12px}.mone-v72-card{background:#101827;border:1px solid rgba(148,163,184,.2);border-radius:20px;padding:18px}.mone-v72-card h4{margin:0 0 8px 0;color:#f8fafc;font-size:1.08rem}.mone-v72-card p{color:#b8c8dc;line-height:1.65;margin:.25rem 0}.mone-v72-badge{display:inline-block;border:1px solid rgba(96,165,250,.4);background:rgba(96,165,250,.12);color:#bfdbfe;border-radius:999px;padding:4px 9px;font-size:.78rem;font-weight:800;margin-bottom:8px}
+        @media(max-width:1300px){.mone-v72-status,.mone-v72-qgrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){.mone-v72-status,.mone-v72-qgrid,.mone-v72-cardgrid{grid-template-columns:1fr}}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _v72_status_json() -> dict[str, Any]:
+    p = _v72_report('v72_status.json')
+    if p.exists() and p.stat().st_size:
+        try:
+            return json.loads(p.read_text(encoding='utf-8'))
+        except Exception:
+            return {}
+    return {}
+
+
+def _v72_banner(page_note: str = '') -> None:
+    _v72_css()
+    status = _v72_status_json()
+    updated = status.get('updated_at', '-')
+    slug = _v71_slug(_v71_market())
+    label = _v71_label(_v71_market())
+    data_status = _v72_read(_v72_report('v72_visible_data_status.csv'))
+    market_rows = data_status[data_status.get('시장', pd.Series(dtype=str)).astype(str).eq(label)] if not data_status.empty and '시장' in data_status.columns else pd.DataFrame()
+    news_rows = 0
+    finance_rows = 0
+    guard_rows = 0
+    position_rows = 0
+    if not market_rows.empty:
+        def _rows_for(key: str) -> int:
+            sub = market_rows[market_rows['항목'].astype(str).str.contains(key, na=False)]
+            if sub.empty:
+                return 0
+            try:
+                return int(float(sub.iloc[0].get('행수', 0)))
+            except Exception:
+                return 0
+        news_rows = _rows_for('뉴스')
+        finance_rows = _rows_for('기업분석')
+        guard_rows = _rows_for('시장 가드')
+        position_rows = _rows_for('보유')
+    else:
+        news_rows = len(_v72_read(_v72_report(f'v70_news_cards_{slug}.csv')))
+        finance_rows = len(_v72_read(_v72_report(f'v70_company_cards_{slug}.csv')))
+        guard_rows = len(_v72_read(_v72_report(f'v72_market_guard_{slug}.csv')))
+        position_rows = len(_v72_read(_v72_report(f'v72_position_cards_{slug}.csv')))
+    pill_cls = 'mone-v72-pill' if updated != '-' else 'mone-v72-pill warn'
+    st.markdown(f"""
+    <div class="mone-v72-banner">
+      <div class="mone-v72-banner-top">
+        <div>
+          <div class="mone-v72-title">MONE v72 실행 중</div>
+          <div class="mone-v72-sub">Donhyun Stock Guard의 시장가드/섹터 판단 + QuantAI Pro의 카드형 UI를 눈에 보이게 합친 버전입니다. {page_note}</div>
+        </div>
+        <div class="{pill_cls}">마지막 갱신 {updated}</div>
+      </div>
+      <div class="mone-v72-status">
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">시장필터</div><div class="mone-v72-status-value">{label}</div><div class="mone-v72-status-note">사이드바 선택값 기준</div></div>
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">시장 가드</div><div class="mone-v72-status-value">{guard_rows}개</div><div class="mone-v72-status-note">시장국면·시장폭·섹터강도</div></div>
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">뉴스</div><div class="mone-v72-status-value">{news_rows}건</div><div class="mone-v72-status-note">국장은 국내증시 필터 적용</div></div>
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">재무/KPI</div><div class="mone-v72-status-value">{finance_rows}건</div><div class="mone-v72-status-note">DART/Finnhub/SEC 연결 결과</div></div>
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">보유·매도</div><div class="mone-v72-status-value">{position_rows}건</div><div class="mone-v72-status-note">카드형 권장수량</div></div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _v72_html_card_grid(df: pd.DataFrame) -> None:
+    if df.empty:
+        st.info('v72 카드 데이터가 아직 없습니다. v72 갱신을 먼저 실행하세요.')
+        return
+    cards = []
+    for _, r in df.iterrows():
+        title = _v71_get(r, '카드', default='카드')
+        icon = _v71_get(r, '아이콘', default='•')
+        desc = _v71_get(r, '설명', default='')
+        count = _v71_get(r, '건수', default='0')
+        top = _v71_get(r, 'TOP', default='-')
+        kind = _v71_get(r, '구분', default='')
+        cls = 'risk' if 'risk' in kind or '금지' in title or '주의' in title else ('value' if 'value' in kind or '저평가' in title else '')
+        cards.append(f"""
+        <div class="mone-v72-qcard {cls}">
+          <div class="mone-v72-qicon">{icon}</div>
+          <div class="mone-v72-qtitle">{title}</div>
+          <div class="mone-v72-qdesc">{desc}</div>
+          <div class="mone-v72-qcount">{count}개</div>
+          <div class="mone-v72-qtop">TOP {top}</div>
+        </div>
+        """)
+    st.markdown('<div class="mone-v72-qgrid">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
+
+
+def render_v72_today_priority_page() -> None:
+    inject_native_graft_css(); _v72_css()
+    market = _v71_market(); slug = _v71_slug(market); label = _v71_label(market)
+    _render_nav_page_title(f'{label} 오늘 우선 확인')
+    _v72_banner('첫 화면은 5개 카드가 유지되고, 상단에 데이터 상태가 표시됩니다.')
+    if st.button('MONE v72 전체 갱신', key=f'v72_today_refresh_{slug}'):
+        res = _v72_generate_reports()
+        st.success(f"v72 갱신 완료: {res.get('updated_at', _v72_now())}" if res.get('status') in {'OK','WARN'} else f"갱신 결과: {res}")
+    summary = _v72_read(_v72_report(f'v72_today_summary_{slug}.csv'))
+    if summary.empty:
+        summary = _v72_read(_v72_report(f'v71_today_summary_{slug}.csv'))
+    _v72_html_card_grid(summary)
+    guard = _v72_read(_v72_report(f'v72_market_guard_{slug}.csv'))
+    if guard.empty:
+        guard = _v72_read(_v72_report(f'v71_market_guard_{slug}.csv'))
+    if not guard.empty:
+        st.markdown('### 시장 가드')
+        cols = st.columns(min(4, len(guard)))
+        for col, (_, r) in zip(cols, guard.head(4).iterrows()):
+            with col:
+                st.metric(_v71_get(r, '카드'), _v71_get(r, '값'), _v71_get(r, '점수'))
+                st.caption(_v71_get(r, '다음행동', default='-'))
+    with st.expander('v72 데이터 상태 보기', expanded=False):
+        status = _v72_read(_v72_report('v72_visible_data_status.csv'))
+        _v67_render_pretty_table(status, empty='v72 데이터 상태 파일 없음', limit=80)
+    action = _v72_read(_v72_report(f'v67_action_board_{slug}.csv'))
+    pull = _v72_read(_v72_report(f'v67_pullback_{slug}.csv'))
+    flow = _v72_read(_v72_report(f'v67_flow_{slug}.csv'))
+    company = _v72_read(_v72_report(f'v70_company_cards_{slug}.csv'))
+    risk = _v72_read(_v72_report(f'v67_risk_{slug}.csv'))
+    with st.expander('🎯 오늘 우선 확인 상세', expanded=True): _v67_render_pretty_table(action, empty=f'{label} 오늘 우선 확인 후보가 없습니다.', limit=20)
+    with st.expander('🪜 눌림목 진입 후보 상세', expanded=False): _v67_render_pretty_table(pull, empty=f'{label} 눌림목/관찰 후보가 없습니다.', limit=30)
+    with st.expander('💚 수급 급증 후보 상세', expanded=False): _v67_render_pretty_table(flow, empty=f'{label} 수급·거래대금 후보가 없습니다.', limit=30)
+    with st.expander('💎 실적·저평가 후보 상세', expanded=False): _v67_render_pretty_table(company, empty=f'{label} 실적·저평가 후보가 없습니다.', limit=40)
+    with st.expander('🚫 매수금지·주의 상세', expanded=False): _v67_render_pretty_table(risk, empty=f'{label} 매수금지·주의 후보가 없습니다.', limit=40)
+
+
+def render_v72_position_plan_page() -> None:
+    inject_native_graft_css(); _v72_css()
+    market = _v71_market(); slug = _v71_slug(market); label = _v71_label(market)
+    _render_nav_page_title(f'{label} 보유·매도 권장수량')
+    _v72_banner('보유·매도는 QuantAI식 카드형으로 읽기 쉽게 표시합니다.')
+    if st.button('권장수량 v72 갱신', key=f'v72_position_refresh_{slug}'):
+        res = _v72_generate_reports(); st.success(f"v72 갱신 완료: {res.get('updated_at', _v72_now())}")
+    df = _v72_read(_v72_report(f'v72_position_cards_{slug}.csv'))
+    if df.empty: df = _v72_read(_v72_report(f'v71_position_cards_{slug}.csv'))
+    if df.empty: df = _v72_read(_v72_report(f'v67_position_plan_{slug}.csv'))
+    if df.empty:
+        st.info(f'{label} 보유종목 파일이 없거나 읽을 수 없습니다. holdings_{slug}.csv 파일을 확인하세요.')
+        return
+    cards = []
+    for _, r in df.head(24).iterrows():
+        name = _v71_get(r, '카드제목','종목','종목명','종목코드', default='-')
+        judgement = _v71_get(r, '판단','권장행동', default='보유 점검')
+        summary = _v71_get(r, '핵심요약', default=f"보유 {_v71_get(r,'보유수량')} · 현재가 {_v71_get(r,'현재가')} · 수익률 {_v71_get(r,'수익률')}")
+        qty = _v71_get(r, '수량요약', default=f"권장수량 {_v71_get(r,'권장수량')} · 예상금액 {_v71_get(r,'예상금액')}")
+        source = _v71_get(r, '가격출처표시','가격출처', default='-')
+        action = _v71_get(r, '다음행동표시','초보자 안내','다음 행동', default='실제 주문 전 증권사 현재가와 비교하세요.')
+        cards.append(f"""
+        <div class="mone-v72-card">
+          <span class="mone-v72-badge">{judgement}</span>
+          <h4>{name}</h4>
+          <p>{summary}</p>
+          <p>{qty}</p>
+          <p>가격출처 {source}</p>
+          <p><b>다음 행동</b> {action}</p>
+        </div>
+        """)
+    st.markdown('<div class="mone-v72-cardgrid">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
+    with st.expander('원본 표 보기', expanded=False): _v67_render_pretty_table(df, empty='보유·매도 권장수량 데이터 없음', limit=80)
+
+
+def render_v72_news_cards_page() -> None:
+    inject_native_graft_css(); _v72_css()
+    market = _v71_market(); slug = _v71_slug(market); label = _v71_label(market)
+    _render_nav_page_title(f'{label} 뉴스 카드')
+    _v72_banner('국장은 국내 증시 뉴스만 강하게 필터링하고, 미장은 간략 한글 해석을 붙입니다.')
+    if st.button('뉴스 v72 갱신', key=f'v72_news_refresh_{slug}'):
+        res = _v72_generate_reports(); st.success(f"v72 갱신 완료: {res.get('updated_at', _v72_now())}")
+    df = _v72_read(_v72_report(f'v70_news_cards_{slug}.csv'))
+    try:
+        df = _v71_domestic_news_filter(df)
+    except Exception:
+        pass
+    if df.empty:
+        st.warning(f'{label} 뉴스가 없습니다. 국장은 해외 뉴스가 섞이지 않도록 필터가 엄격해서 0건일 수 있습니다.')
+        diag = _v72_report(f'v70_news_diag_{slug}.json')
+        if diag.exists():
+            with st.expander('뉴스/API 진단', expanded=True):
+                try: st.json(json.loads(diag.read_text(encoding='utf-8')))
+                except Exception: st.write(diag.read_text(encoding='utf-8', errors='ignore'))
+        return
+    for _, r in df.head(18).iterrows():
+        title = _v71_get(r, '제목','title', default='뉴스 제목 없음')
+        desc = _v71_get(r, '요약','description', default='')
+        trans = _v71_get(r, '간략 번역','한글 해석', default='시장 영향을 확인하세요.')
+        source = _v71_get(r, '출처','source', default='-')
+        method = _v71_get(r, '수집방식', default='-')
+        st.markdown(f"""
+        <div class="mone-v72-card">
+          <span class="mone-v72-badge">뉴스</span>
+          <h4>{title}</h4>
+          <p>{desc}</p>
+          <p><b>간략 해석</b><br>{trans}</p>
+          <p><b>출처</b> {source} · <b>수집</b> {method}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with st.expander('뉴스 원본 표 보기', expanded=False): _v67_render_pretty_table(df, empty='뉴스 원본 없음', limit=80)
+
+
+def render_v72_macro_cards_page() -> None:
+    inject_native_graft_css(); _v72_css()
+    market = _v71_market(); slug = _v71_slug(market); label = _v71_label(market)
+    _render_nav_page_title(f'{label} 시장·거시 카드')
+    _v72_banner('Donhyun식 시장 국면·시장 폭·섹터 강도 판단을 상단에 둡니다.')
+    if st.button('시장·거시 v72 갱신', key=f'v72_macro_refresh_{slug}'):
+        res = _v72_generate_reports(); st.success(f"v72 갱신 완료: {res.get('updated_at', _v72_now())}")
+    guard = _v72_read(_v72_report(f'v72_market_guard_{slug}.csv'))
+    if guard.empty: guard = _v72_read(_v72_report(f'v71_market_guard_{slug}.csv'))
+    if not guard.empty:
+        cols = st.columns(min(4, len(guard)))
+        for col, (_, r) in zip(cols, guard.head(4).iterrows()):
+            with col:
+                st.metric(_v71_get(r,'카드'), _v71_get(r,'값'), _v71_get(r,'점수'))
+                st.caption(_v71_get(r,'해석', default='-'))
+    sector = _v72_read(_v72_report(f'v72_sector_strength_{slug}.csv'))
+    if sector.empty: sector = _v72_read(_v72_report(f'v71_sector_strength_{slug}.csv'))
+    if not sector.empty:
+        st.markdown('### 섹터 강도')
+        _v67_render_pretty_table(sector, empty='섹터 강도 데이터 없음', limit=20)
+    macro = _v72_read(_v72_report(f'v70_macro_cards_{slug}.csv'))
+    if not macro.empty:
+        st.markdown('### 지수·거시 원본 카드')
+        _v67_render_pretty_table(macro, empty='시장·거시 원본 데이터 없음', limit=40)
+
+
+def render_v72_company_cards_page() -> None:
+    inject_native_graft_css(); _v72_css()
+    market = _v71_market(); slug = _v71_slug(market); label = _v71_label(market)
+    _render_nav_page_title(f'{label} 기업분석 카드')
+    _v72_banner('재무/KPI는 DART·Finnhub·SEC 결과가 실제로 몇 건 들어왔는지 상단에서 바로 확인합니다.')
+    if st.button('기업분석 v72 갱신', key=f'v72_company_refresh_{slug}'):
+        res = _v72_generate_reports(); st.success(f"v72 갱신 완료: {res.get('updated_at', _v72_now())}")
+    df = _v72_read(_v72_report(f'v70_company_cards_{slug}.csv'))
+    if df.empty: df = _v72_read(_v72_report(f'v69_company_cards_{slug}.csv'))
+    if df.empty:
+        st.warning(f'{label} 기업분석 카드가 없습니다. API 키 또는 재무 수집 로그를 확인하세요.')
+        return
+    _v67_render_pretty_table(df, empty='기업분석 카드 없음', limit=80)
+
+
+def render_v72_narrative_page() -> None:
+    inject_native_graft_css(); _v72_css()
+    market = _v71_market(); slug = _v71_slug(market); label = _v71_label(market)
+    _render_nav_page_title(f'{label} 종목 내러티브')
+    _v72_banner('뉴스·재무·위험·시장 가드가 함께 있을 때 내러티브 품질이 좋아집니다.')
+    try:
+        render_v70_narrative_page()
+    except Exception:
+        df = _v72_read(_v72_report(f'v70_narrative_{slug}.csv'))
+        _v67_render_pretty_table(df, empty='종목 내러티브 데이터 없음', limit=60)
+
+
+try:
+    OPERATIONAL_NAV_GROUPS.clear()
+    OPERATIONAL_NAV_GROUPS.update({
+        '오늘 실행': [('오늘 우선 확인', 'page_v72_today_priority')],
+        '매수': [('매수 후보 4분류', 'page_v67_buy_4_categories'), ('매수 위험·제외', 'page_v67_buy_risk'), ('매수 판단·기준가', 'page_buy_decision'), ('커스텀 스크리너', 'page_v37_custom_screener')],
+        '보유·매도': [('보유·매도 권장수량', 'page_v72_position_plan'), ('보유·매도 통합', 'page_ops_holdings_unified')],
+        '차트·수급': [('선택 종목 차트·수급', 'page_v67_selected_chart_flow')],
+        '뉴스·재무·시장': [('뉴스 카드', 'page_v72_news_cards'), ('기업분석 카드', 'page_v72_company_cards'), ('시장·거시 카드', 'page_v72_macro_cards'), ('종목 내러티브', 'page_v72_narrative')],
+        '관심·설정': [('관심종목 관리', 'page_watch_manage'), ('실전 운용 기준', 'page_operation_settings'), ('MONE 사용 순서', 'page_v64_usage_guide')],
+    })
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v72 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v72 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == 'page_v72_today_priority': render_v72_today_priority_page(); return
+    if page_id == 'page_v72_position_plan': render_v72_position_plan_page(); return
+    if page_id == 'page_v72_news_cards': render_v72_news_cards_page(); return
+    if page_id == 'page_v72_company_cards': render_v72_company_cards_page(); return
+    if page_id == 'page_v72_macro_cards': render_v72_macro_cards_page(); return
+    if page_id == 'page_v72_narrative': render_v72_narrative_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v72 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v72(page_id)
+    st.warning(f'알 수 없는 화면 ID: {page_id}')
+
+try:
+    _ORIG_run_headless_runner_v72 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v72 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or '').strip().lower()
+    if normalized in {'v72', 'v72_update', 'daily_v72', 'mone_v72'}:
+        try:
+            from core.v72_visible_guard_quant_engine import run_v72_update
+            res = run_v72_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+            print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0 if res.get('status') in {'OK', 'WARN'} else 2
+        except Exception as exc:
+            print(f'v72 update failed: {type(exc).__name__}: {exc}', flush=True)
+            return 2
+    if _ORIG_run_headless_runner_v72 is not None:
+        return _ORIG_run_headless_runner_v72(action)
+    return 2
+
+
+# =========================
+# MONE v73 final hook / market-clean first screen patch
+# =========================
+
+
+def _v73_report(name: str) -> Path:
+    return Path('reports') / name
+
+
+def _v73_read(path: str | Path) -> pd.DataFrame:
+    p = Path(path)
+    if p.exists() and p.stat().st_size:
+        try:
+            return pd.read_csv(p)
+        except Exception:
+            try:
+                return pd.read_csv(p, encoding='utf-8-sig')
+            except Exception:
+                return pd.DataFrame()
+    return pd.DataFrame()
+
+
+def _v73_now() -> str:
+    return _MONE_V72_DT.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _v73_status_json() -> dict[str, Any]:
+    p = _v73_report('v73_status.json')
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding='utf-8'))
+        except Exception:
+            return {}
+    return {}
+
+
+def _v73_generate_reports() -> dict[str, Any]:
+    try:
+        from core.v73_market_clean_visible_ui_engine import run_v73_update
+        return run_v73_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+    except Exception as exc:
+        return {'status': 'ERROR', 'version': 'v73', 'error': f'{type(exc).__name__}: {exc}', 'updated_at': _v73_now()}
+
+
+def _v73_banner(page_note: str = '') -> None:
+    _v72_css()
+    market = _v71_market(); slug = _v71_slug(market); label = _v71_label(market)
+    summary_rows = len(_v73_read(_v73_report(f'v73_today_summary_{slug}.csv')))
+    news_rows = len(_v73_read(_v73_report(f'v70_news_cards_{slug}.csv')))
+    finance_rows = len(_v73_read(_v73_report(f'v70_company_cards_{slug}.csv')))
+    guard_rows = len(_v73_read(_v73_report(f'v73_market_guard_{slug}.csv')))
+    pos_rows = len(_v73_read(_v73_report(f'v73_position_cards_{slug}.csv')))
+    status_json = _v73_status_json(); updated = status_json.get('updated_at', '-') if isinstance(status_json, dict) else '-'
+    st.markdown(f"""
+    <div class="mone-v72-banner" style="border-color:rgba(34,197,94,.55)">
+      <div class="mone-v72-banner-top"><div><div class="mone-v72-title">MONE v73 실행 중</div>
+      <div class="mone-v72-sub">v73은 <b>최종 실행 훅을 맨 아래로 이동</b>해 실제 화면이 최신 페이지를 보도록 수정했고, 국장 리포트에서 GOOGL 같은 미장 종목이 섞이지 않게 시장별 정제 필터를 적용했습니다. {page_note}</div></div>
+      <div class="mone-v72-pill">업데이트 {updated}</div></div>
+      <div class="mone-v72-status">
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">시장필터</div><div class="mone-v72-status-value">{label}</div><div class="mone-v72-status-note">사이드바 선택 기준</div></div>
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">첫 화면 카드</div><div class="mone-v72-status-value">{summary_rows}개</div><div class="mone-v72-status-note">5개가 정상입니다</div></div>
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">시장 가드</div><div class="mone-v72-status-value">{guard_rows}개</div><div class="mone-v72-status-note">Donhyun식 시장 판단</div></div>
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">뉴스/재무</div><div class="mone-v72-status-value">{news_rows}/{finance_rows}</div><div class="mone-v72-status-note">뉴스건수 / 재무건수</div></div>
+        <div class="mone-v72-status-card"><div class="mone-v72-status-label">보유·매도</div><div class="mone-v72-status-value">{pos_rows}개</div><div class="mone-v72-status-note">QuantAI식 카드</div></div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_v73_today_priority_page() -> None:
+    inject_native_graft_css(); _v72_css()
+    market = _v71_market(); slug = _v71_slug(market); label = _v71_label(market)
+    _render_nav_page_title(f'{label} 오늘 우선 확인')
+    _v73_banner('첫 화면은 원래 구조대로 5개 카드가 모두 표시됩니다.')
+    if st.button('MONE v73 전체 갱신', key=f'v73_today_refresh_{slug}'):
+        res = _v73_generate_reports(); st.success(f"v73 갱신 완료: {res.get('updated_at', _v73_now())}" if res.get('status') in {'OK','WARN'} else f"갱신 결과: {res}")
+    summary = _v73_read(_v73_report(f'v73_today_summary_{slug}.csv'))
+    if summary.empty: summary = _v73_read(_v73_report(f'v72_today_summary_{slug}.csv'))
+    _v72_html_card_grid(summary)
+    guard = _v73_read(_v73_report(f'v73_market_guard_{slug}.csv'))
+    if guard.empty: guard = _v73_read(_v73_report(f'v72_market_guard_{slug}.csv'))
+    if not guard.empty:
+        st.markdown('### 시장 가드')
+        cols = st.columns(min(4, len(guard)))
+        for col, (_, r) in zip(cols, guard.head(4).iterrows()):
+            with col:
+                st.metric(_v71_get(r, '카드'), _v71_get(r, '값'), _v71_get(r, '점수'))
+                st.caption(_v71_get(r, '다음행동', default='-'))
+    with st.expander('v73 데이터 상태 보기', expanded=False):
+        _v67_render_pretty_table(_v73_read(_v73_report('v73_visible_data_status.csv')), empty='v73 데이터 상태 파일 없음', limit=80)
+    action = _v73_read(_v73_report(f'v73_action_clean_{slug}.csv'))
+    pull = _v73_read(_v73_report(f'v73_pullback_clean_{slug}.csv'))
+    flow = _v73_read(_v73_report(f'v73_flow_clean_{slug}.csv'))
+    company = _v73_read(_v73_report(f'v73_company_clean_{slug}.csv'))
+    risk = _v73_read(_v73_report(f'v73_risk_clean_{slug}.csv'))
+    with st.expander('🎯 오늘 우선 확인 상세', expanded=False): _v67_render_pretty_table(action, empty=f'{label} 오늘 우선 확인 후보가 없습니다.', limit=20)
+    with st.expander('🪜 눌림목 진입 후보 상세', expanded=False): _v67_render_pretty_table(pull, empty=f'{label} 눌림목/관찰 후보가 없습니다.', limit=30)
+    with st.expander('💚 수급 급증 후보 상세', expanded=False): _v67_render_pretty_table(flow, empty=f'{label} 수급·거래대금 후보가 없습니다.', limit=30)
+    with st.expander('💎 실적·저평가 후보 상세', expanded=False): _v67_render_pretty_table(company, empty=f'{label} 실적·저평가 후보가 없습니다.', limit=40)
+    with st.expander('🚫 매수금지·주의 상세', expanded=False): _v67_render_pretty_table(risk, empty=f'{label} 매수금지·주의 후보가 없습니다.', limit=40)
+
+
+def render_v73_position_plan_page() -> None: render_v72_position_plan_page()
+def render_v73_news_cards_page() -> None: render_v72_news_cards_page()
+def render_v73_company_cards_page() -> None: render_v72_company_cards_page()
+def render_v73_macro_cards_page() -> None: render_v72_macro_cards_page()
+def render_v73_narrative_page() -> None: render_v72_narrative_page()
+
+try:
+    OPERATIONAL_NAV_GROUPS.clear()
+    OPERATIONAL_NAV_GROUPS.update({
+        '오늘 실행': [('오늘 우선 확인', 'page_v73_today_priority')],
+        '매수': [('매수 후보 4분류', 'page_v67_buy_4_categories'), ('매수 위험·제외', 'page_v67_buy_risk'), ('매수 판단·기준가', 'page_buy_decision'), ('커스텀 스크리너', 'page_v37_custom_screener')],
+        '보유·매도': [('보유·매도 권장수량', 'page_v73_position_plan'), ('보유·매도 통합', 'page_ops_holdings_unified')],
+        '차트·수급': [('선택 종목 차트·수급', 'page_v67_selected_chart_flow')],
+        '뉴스·재무·시장': [('뉴스 카드', 'page_v73_news_cards'), ('기업분석 카드', 'page_v73_company_cards'), ('시장·거시 카드', 'page_v73_macro_cards'), ('종목 내러티브', 'page_v73_narrative')],
+        '관심·설정': [('관심종목 관리', 'page_watch_manage'), ('실전 운용 기준', 'page_operation_settings'), ('MONE 사용 순서', 'page_v64_usage_guide')],
+    })
+except Exception:
+    pass
+
+try: _ORIG_dispatch_sidebar_nav_page_v73 = _dispatch_sidebar_nav_page
+except Exception: _ORIG_dispatch_sidebar_nav_page_v73 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == 'page_v73_today_priority': render_v73_today_priority_page(); return
+    if page_id == 'page_v73_position_plan': render_v73_position_plan_page(); return
+    if page_id == 'page_v73_news_cards': render_v73_news_cards_page(); return
+    if page_id == 'page_v73_company_cards': render_v73_company_cards_page(); return
+    if page_id == 'page_v73_macro_cards': render_v73_macro_cards_page(); return
+    if page_id == 'page_v73_narrative': render_v73_narrative_page(); return
+    if _ORIG_dispatch_sidebar_nav_page_v73 is not None: return _ORIG_dispatch_sidebar_nav_page_v73(page_id)
+    st.warning(f'알 수 없는 화면 ID: {page_id}')
+
+try: _ORIG_run_headless_runner_v73 = run_headless_runner
+except Exception: _ORIG_run_headless_runner_v73 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or '').strip().lower()
+    if normalized in {'v73', 'v73_update', 'daily_v73', 'mone_v73'}:
+        try:
+            from core.v73_market_clean_visible_ui_engine import run_v73_update
+            res = run_v73_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+            print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+            return 0 if res.get('status') in {'OK', 'WARN'} else 2
+        except Exception as exc:
+            print(f'v73 update failed: {type(exc).__name__}: {exc}', flush=True); return 2
+    if _ORIG_run_headless_runner_v73 is not None: return _ORIG_run_headless_runner_v73(action)
+    return 2
+
+# Final call must stay at the very bottom so the latest v73 navigation/dispatch overrides are active before rendering.
+if __name__ == "__main__":
+    if len(sys.argv) >= 3 and sys.argv[1] == "--runner": raise SystemExit(run_headless_runner(sys.argv[2]))
+    try: main()
+    except Exception as e:
+        log_app_event("streamlit_main", "error", f"{type(e).__name__}: {e}")
+        st.error(f"앱 실행 중 오류가 발생했습니다. logs/error_log.csv를 확인하세요: {e}")
