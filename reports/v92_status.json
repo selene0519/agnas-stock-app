@@ -1,8 +1,8 @@
 {
   "status": "OK",
   "version": "v92",
-  "started_at": "2026-05-26 08:26:36",
-  "updated_at": "2026-05-26 08:26:36",
+  "started_at": "2026-05-26 08:31:12",
+  "updated_at": "2026-05-26 08:31:13",
   "base_version": "v91",
   "base_status": "SKIPPED",
   "base": {
@@ -27,43 +27,43 @@
       "source_version": "v91",
       "source": "v91_company_integrated_kr.csv",
       "target": "v92_company_integrated_kr.csv",
-      "bytes": 575
+      "bytes": 1445
     },
     {
       "source_version": "v91",
       "source": "v91_company_integrated_us.csv",
       "target": "v92_company_integrated_us.csv",
-      "bytes": 907
+      "bytes": 1927
     },
     {
       "source_version": "v91",
       "source": "v91_confidence_cards_kr.csv",
       "target": "v92_confidence_cards_kr.csv",
-      "bytes": 425
+      "bytes": 1122
     },
     {
       "source_version": "v91",
       "source": "v91_confidence_cards_us.csv",
       "target": "v92_confidence_cards_us.csv",
-      "bytes": 711
+      "bytes": 1539
     },
     {
       "source_version": "v91",
       "source": "v91_data_status.csv",
       "target": "v92_data_status.csv",
-      "bytes": 995
+      "bytes": 1804
     },
     {
       "source_version": "v91",
       "source": "v91_data_status_kr.csv",
       "target": "v92_data_status_kr.csv",
-      "bytes": 600
+      "bytes": 1237
     },
     {
       "source_version": "v91",
       "source": "v91_data_status_us.csv",
       "target": "v92_data_status_us.csv",
-      "bytes": 600
+      "bytes": 1237
     },
     {
       "source_version": "v91",
@@ -93,13 +93,13 @@
       "source_version": "v91",
       "source": "v91_future_probability_kr.csv",
       "target": "v92_future_probability_kr.csv",
-      "bytes": 615
+      "bytes": 1604
     },
     {
       "source_version": "v91",
       "source": "v91_future_probability_us.csv",
       "target": "v92_future_probability_us.csv",
-      "bytes": 1047
+      "bytes": 2240
     },
     {
       "source_version": "v91",
@@ -117,13 +117,13 @@
       "source_version": "v91",
       "source": "v91_narrative_cards_kr.csv",
       "target": "v92_narrative_cards_kr.csv",
-      "bytes": 844
+      "bytes": 2465
     },
     {
       "source_version": "v91",
       "source": "v91_narrative_cards_us.csv",
       "target": "v92_narrative_cards_us.csv",
-      "bytes": 1574
+      "bytes": 3541
     },
     {
       "source_version": "v91",
@@ -135,43 +135,43 @@
   "checks": {
     "today_summary_kr": {
       "exists": true,
-      "bytes": 520,
-      "rows": 5
+      "bytes": 698,
+      "rows": 9
     },
     "symbol_snapshot_kr": {
       "exists": true,
-      "bytes": 742,
-      "rows": 2
+      "bytes": 1991,
+      "rows": 9
     },
     "confidence_cards_kr": {
       "exists": true,
-      "bytes": 425,
-      "rows": 2
+      "bytes": 1122,
+      "rows": 9
     },
     "operational_dashboard_kr": {
       "exists": true,
-      "bytes": 492,
-      "rows": 6
+      "bytes": 858,
+      "rows": 13
     },
     "today_summary_us": {
       "exists": true,
-      "bytes": 510,
-      "rows": 5
+      "bytes": 680,
+      "rows": 9
     },
     "symbol_snapshot_us": {
       "exists": true,
-      "bytes": 1303,
-      "rows": 4
+      "bytes": 2820,
+      "rows": 12
     },
     "confidence_cards_us": {
       "exists": true,
-      "bytes": 711,
-      "rows": 4
+      "bytes": 1539,
+      "rows": 12
     },
     "operational_dashboard_us": {
       "exists": true,
-      "bytes": 472,
-      "rows": 6
+      "bytes": 822,
+      "rows": 13
     }
   },
   "note": "v92 is a stable no-install update wrapper. It avoids pip install loops and keeps v91/v85/v84/v83/v82 fallback data available."

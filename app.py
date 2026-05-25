@@ -55898,6 +55898,10 @@ def _mone_data_restore_candidates(slug: str, kind: str) -> pd.DataFrame:
         "status": ["data_status"],
         "strategy": ["strategy_score"],
     }
+    if k in {"position", "holdings"}:
+        live_holdings = _mone_restore_file_fallback(m, k)
+        if live_holdings is not None and not live_holdings.empty:
+            return live_holdings
     candidates: list[str] = []
     for version in versions:
         for suffix in by_kind.get(k, []):
@@ -56000,6 +56004,165 @@ try:
     _v80_candidates = _mone_data_restore_candidates
 except Exception:
     pass
+
+
+# =========================
+# MONE DATA RESTORE FALLBACK PATCH
+# =========================
+def _mone_restore_read_any_csv(paths: list[Path]) -> tuple[pd.DataFrame, str]:
+    for p in paths:
+        try:
+            if not p.exists() or p.stat().st_size <= 0:
+                continue
+            for enc in ("utf-8-sig", "utf-8", "cp949"):
+                try:
+                    return pd.read_csv(p, dtype=str, encoding=enc).fillna(""), str(p)
+                except Exception:
+                    continue
+        except Exception:
+            continue
+    return pd.DataFrame(), ""
+
+
+def _mone_restore_market_filter(df: pd.DataFrame, market_slug: str) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+    out = df.copy()
+    market_cols = [c for c in ["market", "\uc2dc\uc7a5", "market_slug"] if c in out.columns]
+    if market_cols:
+        text = out[market_cols].astype(str).agg(" ".join, axis=1).str.lower()
+        if market_slug == "us":
+            mask = text.str.contains("us|usa|united|\ubbf8\uad6d|\ubbf8\uc7a5", regex=True, na=False)
+        else:
+            mask = text.str.contains("kr|kor|korea|\ud55c\uad6d|\uad6d\uc7a5", regex=True, na=False)
+        if mask.any():
+            out = out.loc[mask].copy()
+    symbol_col = next((c for c in ["symbol", "ticker", "code", "\uc885\ubaa9\ucf54\ub4dc"] if c in out.columns), "")
+    if symbol_col:
+        symbols = out[symbol_col].astype(str).str.strip()
+        if market_slug == "us":
+            out = out.loc[~symbols.str.fullmatch(r"\d+", na=False)].copy()
+        else:
+            out = out.loc[symbols.str.fullmatch(r"\d+", na=False)].copy()
+    return out
+
+
+def _mone_restore_file_fallback(market_slug: str, kind: str) -> pd.DataFrame:
+    m = _mone_data_restore_slug(market_slug)
+    k = str(kind or "").lower().strip()
+    if k in {"position", "holdings"}:
+        paths = [Path("holdings_us.csv"), Path("data/holdings_us.csv")] if m == "us" else [Path("data/holdings_kr.csv"), Path("holdings_kr.csv")]
+    elif k in {"future", "probability", "prediction", "predictions"}:
+        paths = [Path("predictions.csv"), Path("data/predictions.csv")]
+    elif k in {"flow", "watchlist"}:
+        paths = [Path(f"watchlist_{m}_growth.csv"), Path(f"watchlist_{m}.csv")]
+    elif k in {"summary", "action", "pullback", "risk", "confidence", "dashboard"}:
+        paths = [Path(f"candidate_universe_{m}.csv"), Path(f"watchlist_{m}_growth.csv"), Path(f"watchlist_{m}.csv")]
+    else:
+        paths = [Path(f"candidate_universe_{m}.csv")]
+    df, source = _mone_restore_read_any_csv(paths)
+    df = _mone_restore_market_filter(df, m)
+    if not df.empty:
+        df = df.copy()
+        df["_source_file"] = source.replace("\\", "/")
+    return df
+
+
+def _mone_data_restore_candidates(slug: str, kind: str) -> pd.DataFrame:  # type: ignore[override]
+    m = _mone_data_restore_slug(slug)
+    k = str(kind or "").lower().strip()
+    versions = ["v93", "v92", "v91", "v85", "v84", "v83", "v82", "v81", "v80", "v79", "v78", "v75", "v74"]
+    by_kind = {
+        "summary": ["today_summary"],
+        "action": ["action_cards", "action_clean"],
+        "pullback": ["pullback_cards", "pullback_clean"],
+        "flow": ["flow_cards", "flow_clean"],
+        "company": ["company_integrated", "company_summary_cards", "company_cards", "company_clean", "kpi_cards"],
+        "risk": ["risk_cards", "risk_clean"],
+        "position": ["position_cards"],
+        "holdings": ["position_cards"],
+        "future": ["future_probability"],
+        "probability": ["future_probability"],
+        "snapshot": ["symbol_snapshot"],
+        "news": ["news_summary", "news_cards", "narrative_cards"],
+        "narrative": ["narrative_cards", "narrative"],
+        "confidence": ["confidence_cards", "company_summary_cards", "risk_cards", "action_cards"],
+        "dashboard": ["operational_dashboard", "data_status", "macro_analysis", "flow_clean", "company_integrated"],
+        "status": ["data_status"],
+        "strategy": ["strategy_score"],
+    }
+    candidates: list[str] = []
+    for version in versions:
+        for suffix in by_kind.get(k, []):
+            if k in {"status", "strategy"} and suffix in {"data_status", "strategy_score"}:
+                candidates.append(f"{version}_{suffix}_{m}.csv")
+                candidates.append(f"{version}_{suffix}.csv")
+            else:
+                candidates.append(f"{version}_{suffix}_{m}.csv")
+    if k == "dashboard":
+        candidates.extend([
+            f"operational_readiness_{m}.csv",
+            f"operational_macro_{m}.csv",
+            f"operational_news_narrative_{m}.csv",
+            f"operational_financial_kpi_{m}.csv",
+        ])
+    for name in candidates:
+        df = _mone_data_restore_read_csv(name)
+        df = _mone_restore_market_filter(df, m)
+        if df is not None and not df.empty:
+            df = df.copy()
+            df["_source_file"] = name
+            try:
+                if k not in {"status", "strategy", "dashboard"}:
+                    df = _v77_clean_market_df(df, m)
+            except Exception:
+                pass
+            return df
+    return _mone_restore_file_fallback(m, k)
+
+
+def _mone_data_restore_display_name(row: Any) -> str:  # type: ignore[override]
+    for c in ["\uc885\ubaa9\uba85", "name", "stock_name", "company", "\uc885\ubaa9", "symbol", "ticker", "\uc885\ubaa9\ucf54\ub4dc", "code"]:
+        try:
+            v = str(row.get(c, "") or "").strip() if hasattr(row, "get") else ""
+            if v and v.lower() not in {"nan", "none", "null"}:
+                return v
+        except Exception:
+            continue
+    return "-"
+
+
+def _mone_data_restore_summary_rows(slug: str) -> list[dict[str, Any]]:  # type: ignore[override]
+    action = _mone_data_restore_candidates(slug, "action")
+    pull = _mone_data_restore_candidates(slug, "pullback")
+    flow = _mone_data_restore_candidates(slug, "flow")
+    company = _mone_data_restore_candidates(slug, "company")
+    risk = _mone_data_restore_candidates(slug, "risk")
+
+    def top(df: pd.DataFrame) -> str:
+        if df is None or df.empty:
+            return "-"
+        return _mone_data_restore_display_name(df.iloc[0])
+
+    return [
+        {"\uc544\uc774\ucf58": "01.", "\uce74\ub4dc": "\uc624\ub298 \uc6b0\uc120 \ud655\uc778", "\uc124\uba85": "\uae30\uc900\uac00, \uc190\uc808\uac00, \ubaa9\ud45c\uac00\ub97c \uba3c\uc800 \ud655\uc778\ud560 \ud6c4\ubcf4", "\uac74\uc218": len(action), "TOP": top(action), "\uad6c\ubd84": "buy"},
+        {"\uc544\uc774\ucf58": "02.", "\uce74\ub4dc": "\ub20c\ub9bc\ubaa9 \uc9c4\uc785 \ud6c4\ubcf4", "\uc124\uba85": "\ucd94\uaca9\ubcf4\ub2e4 \uc870\uac74\ubd80 \uc9c4\uc785\uc744 \uae30\ub2e4\ub9b4 \ud6c4\ubcf4", "\uac74\uc218": len(pull), "TOP": top(pull), "\uad6c\ubd84": "buy"},
+        {"\uc544\uc774\ucf58": "03.", "\uce74\ub4dc": "\uc218\uae09 \uae09\uc99d \ud6c4\ubcf4", "\uc124\uba85": "\uc218\uae09\uacfc \uac70\ub798\ub300\uae08 \ud750\ub984\uc744 \uba3c\uc800 \ubcfc \ud6c4\ubcf4", "\uac74\uc218": len(flow), "TOP": top(flow), "\uad6c\ubd84": "buy"},
+        {"\uc544\uc774\ucf58": "04.", "\uce74\ub4dc": "\uc2e4\uc801, \uc800\ud3c9\uac00 \ud6c4\ubcf4", "\uc124\uba85": "\uc2e4\uc801\uacfc \ubc38\ub958\ub97c \uac19\uc774 \ud655\uc778\ud560 \ud6c4\ubcf4", "\uac74\uc218": len(company), "TOP": top(company), "\uad6c\ubd84": "value"},
+        {"\uc544\uc774\ucf58": "05.", "\uce74\ub4dc": "\ub9e4\uc218\uae08\uc9c0, \uc8fc\uc758", "\uc124\uba85": "\uc2e0\uaddc\ub9e4\uc218\ubcf4\ub2e4 \uc81c\uc678\uac00 \uc6b0\uc120\uc778 \ud6c4\ubcf4", "\uac74\uc218": len(risk), "TOP": top(risk), "\uad6c\ubd84": "risk"},
+    ]
+
+
+for _name in [
+    "_v91_candidates", "_v85_candidates", "_v84_candidates", "_v83_candidates",
+    "_v82_candidates", "_v81_candidates", "_v80_candidates",
+]:
+    globals()[_name] = _mone_data_restore_candidates
+for _name in [
+    "_v91_build_summary_rows", "_v85_build_summary_rows", "_v84_build_summary_rows",
+    "_v83_summary_rows", "_v82_summary_rows", "_v81_summary_rows",
+]:
+    globals()[_name] = _mone_data_restore_summary_rows
 
 
 # =========================

@@ -1,6 +1,7 @@
 {
   "status": "OK",
   "version": "v83",
+<<<<<<< HEAD
   "updated_at": "2026-05-26 08:22:06",
   "base": {
     "status": "OK",
@@ -54,22 +55,91 @@
                             "status": "OK",
                             "version": "v70",
                             "updated_at": "2026-05-26 08:20:44",
+=======
+  "updated_at": "2026-05-26 07:28:28",
+  "base": {
+    "status": "OK",
+    "version": "v82",
+    "updated_at": "2026-05-26 07:27:55",
+    "base": {
+      "status": "OK",
+      "version": "v81",
+      "updated_at": "2026-05-26 07:27:48",
+      "base": {
+        "status": "OK",
+        "version": "v80",
+        "updated_at": "2026-05-26 07:27:48",
+        "result": {
+          "status": "OK",
+          "version": "v80",
+          "updated_at": "2026-05-26 07:23:10",
+          "base": {
+            "status": "OK",
+            "version": "v79",
+            "updated_at": "2026-05-26 07:23:10",
+            "result": {
+              "status": "OK",
+              "version": "v79",
+              "updated_at": "2026-05-26 07:23:10",
+              "base": {
+                "status": "OK",
+                "version": "v78",
+                "updated_at": "2026-05-26 07:23:09",
+                "result": {
+                  "status": "OK",
+                  "version": "v78",
+                  "updated_at": "2026-05-26 07:23:09",
+                  "base": {
+                    "status": "OK",
+                    "version": "v75",
+                    "updated_at": "2026-05-26 07:23:09",
+                    "result": {
+                      "status": "OK",
+                      "version": "v75",
+                      "updated_at": "2026-05-26 07:23:09",
+                      "base": {
+                        "status": "OK",
+                        "version": "v74",
+                        "updated_at": "2026-05-26 07:23:09",
+                        "base_result": {
+                          "status": "OK",
+                          "version": "v74",
+                          "updated_at": "2026-05-26 07:23:09",
+                          "base": {
+                            "status": "OK",
+                            "version": "v70",
+                            "updated_at": "2026-05-26 07:18:35",
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                             "env": {
                               "GNEWS_API_KEY": true,
                               "FINNHUB_API_KEY": true,
                               "DART_API_KEY": true,
+<<<<<<< HEAD
                               "APIFY_TOKEN": true,
                               "APIFY_NEWS_ACTOR_ID": true,
+=======
+                              "APIFY_TOKEN": false,
+                              "APIFY_NEWS_ACTOR_ID": false,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                               "SEC_USER_AGENT": true
                             },
                             "kr": {
                               "news_rows": 30,
+<<<<<<< HEAD
                               "company_rows": 2,
                               "macro_rows": 3,
                               "narrative_rows": 2,
                               "news_diag": {
                                 "market": "한국주식",
                                 "updated_at": "2026-05-26 08:20:58",
+=======
+                              "company_rows": 4,
+                              "macro_rows": 3,
+                              "narrative_rows": 4,
+                              "news_diag": {
+                                "market": "한국주식",
+                                "updated_at": "2026-05-26 07:18:40",
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                                 "mode": "strict_domestic_kr_news",
                                 "attempts": [
                                   {
@@ -112,12 +182,21 @@
                             },
                             "us": {
                               "news_rows": 30,
+<<<<<<< HEAD
                               "company_rows": 4,
                               "macro_rows": 3,
                               "narrative_rows": 4,
                               "news_diag": {
                                 "market": "미국주식",
                                 "updated_at": "2026-05-26 08:21:11",
+=======
+                              "company_rows": 5,
+                              "macro_rows": 3,
+                              "narrative_rows": 5,
+                              "news_diag": {
+                                "market": "미국주식",
+                                "updated_at": "2026-05-26 07:23:08",
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                                 "mode": "us_news_with_brief_ko",
                                 "attempts": [
                                   {
@@ -149,7 +228,11 @@
                             "pullback": 0,
                             "flow": 0,
                             "risk": 0,
+<<<<<<< HEAD
                             "company": 2,
+=======
+                            "company": 4,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                             "summary": 5
                           },
                           "us": {
@@ -157,7 +240,11 @@
                             "pullback": 0,
                             "flow": 0,
                             "risk": 0,
+<<<<<<< HEAD
                             "company": 4,
+=======
+                            "company": 5,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                             "summary": 5
                           }
                         },
@@ -165,7 +252,11 @@
                           "DART_API_KEY": true,
                           "FINNHUB_API_KEY": true,
                           "GNEWS_API_KEY": true,
+<<<<<<< HEAD
                           "APIFY_TOKEN": true,
+=======
+                          "APIFY_TOKEN": false,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                           "SEC_USER_AGENT": true
                         },
                         "data_status_rows": 18
@@ -175,7 +266,11 @@
                         "pullback": 0,
                         "flow": 0,
                         "risk": 0,
+<<<<<<< HEAD
                         "company": 2,
+=======
+                        "company": 3,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                         "summary": 5,
                         "news": 30,
                         "positions": 0,
@@ -186,7 +281,11 @@
                         "pullback": 0,
                         "flow": 0,
                         "risk": 0,
+<<<<<<< HEAD
                         "company": 4,
+=======
+                        "company": 5,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                         "summary": 5,
                         "news": 30,
                         "positions": 0,
@@ -197,7 +296,11 @@
                       "DART_API_KEY": true,
                       "FINNHUB_API_KEY": true,
                       "GNEWS_API_KEY": true,
+<<<<<<< HEAD
                       "APIFY_TOKEN": true,
+=======
+                      "APIFY_TOKEN": false,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                       "SEC_USER_AGENT": true
                     }
                   },
@@ -206,32 +309,54 @@
                     "pullback": 0,
                     "flow": 0,
                     "risk": 0,
+<<<<<<< HEAD
                     "company": 2,
+=======
+                    "company": 3,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                     "summary": 5,
                     "news": 30,
                     "positions": 0,
                     "sector": 0,
+<<<<<<< HEAD
                     "future": 2
+=======
+                    "future": 3
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                   },
                   "us": {
                     "action": 0,
                     "pullback": 0,
                     "flow": 0,
                     "risk": 0,
+<<<<<<< HEAD
                     "company": 4,
+=======
+                    "company": 5,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                     "summary": 5,
                     "news": 30,
                     "positions": 0,
                     "sector": 0,
+<<<<<<< HEAD
                     "future": 4
                   },
                   "history_appended_total": 6
+=======
+                    "future": 5
+                  },
+                  "history_appended_total": 8
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                 },
                 "env": {
                   "DART_API_KEY": true,
                   "FINNHUB_API_KEY": true,
                   "GNEWS_API_KEY": true,
+<<<<<<< HEAD
                   "APIFY_TOKEN": true,
+=======
+                  "APIFY_TOKEN": false,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                   "SEC_USER_AGENT": true
                 }
               },
@@ -239,41 +364,65 @@
                 "action": 0,
                 "pullback": 0,
                 "risk": 0,
+<<<<<<< HEAD
                 "company": 2,
+=======
+                "company": 3,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                 "position": 0,
                 "news": 30,
                 "macro": 4,
                 "sector": 0,
                 "flow": 0,
                 "summary": 5,
+<<<<<<< HEAD
                 "future": 2,
+=======
+                "future": 3,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                 "flow_diag": 0
               },
               "us": {
                 "action": 0,
                 "pullback": 0,
                 "risk": 0,
+<<<<<<< HEAD
                 "company": 4,
+=======
+                "company": 5,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
                 "position": 0,
                 "news": 30,
                 "macro": 0,
                 "sector": 0,
                 "flow": 0,
                 "summary": 5,
+<<<<<<< HEAD
                 "future": 4,
                 "flow_diag": 0
               },
               "history_appended_total": 6
+=======
+                "future": 5,
+                "flow_diag": 0
+              },
+              "history_appended_total": 8
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
             },
             "env": {
               "DART_API_KEY": true,
               "FINNHUB_API_KEY": true,
               "GNEWS_API_KEY": true,
+<<<<<<< HEAD
               "APIFY_TOKEN": true,
+=======
+              "APIFY_TOKEN": false,
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
               "SEC_USER_AGENT": true
             }
           },
           "kr": {
+<<<<<<< HEAD
             "candidates": 2,
             "finance": 2,
             "financials": 2,
@@ -283,6 +432,8 @@
             "flow": 0
           },
           "us": {
+=======
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
             "candidates": 4,
             "finance": 4,
             "financials": 4,
@@ -290,15 +441,33 @@
             "news": 8,
             "narrative": 4,
             "flow": 0
+<<<<<<< HEAD
+=======
+          },
+          "us": {
+            "candidates": 5,
+            "finance": 5,
+            "financials": 5,
+            "kpi": 5,
+            "news": 8,
+            "narrative": 5,
+            "flow": 0
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
           }
         },
         "env": {
           "DART_API_KEY": true,
           "FINNHUB_API_KEY": true,
           "GNEWS_API_KEY": true,
+<<<<<<< HEAD
           "APIFY_TOKEN": true,
           "SEC_USER_AGENT": true,
           "KIS_APP_KEY": true
+=======
+          "APIFY_TOKEN": false,
+          "SEC_USER_AGENT": true,
+          "KIS_APP_KEY": false
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
         }
       },
       "kr": {
@@ -306,20 +475,34 @@
         "action": 0,
         "pullback": 0,
         "flow": 0,
+<<<<<<< HEAD
         "company": 2,
         "risk": 0,
         "snapshot": 2,
         "future": 2
+=======
+        "company": 4,
+        "risk": 0,
+        "snapshot": 4,
+        "future": 3
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
       },
       "us": {
         "summary": 5,
         "action": 0,
         "pullback": 0,
         "flow": 0,
+<<<<<<< HEAD
         "company": 4,
         "risk": 0,
         "snapshot": 4,
         "future": 4
+=======
+        "company": 5,
+        "risk": 0,
+        "snapshot": 5,
+        "future": 5
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
       }
     },
     "kr": {
@@ -327,22 +510,38 @@
       "action": 0,
       "pullback": 0,
       "flow": 0,
+<<<<<<< HEAD
       "company": 2,
       "risk": 0,
       "snapshot": 6,
       "future": 2,
       "narrative": 2
+=======
+      "company": 4,
+      "risk": 0,
+      "snapshot": 4,
+      "future": 3,
+      "narrative": 4
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
     },
     "us": {
       "summary": 5,
       "action": 0,
       "pullback": 0,
       "flow": 0,
+<<<<<<< HEAD
       "company": 4,
       "risk": 0,
       "snapshot": 9,
       "future": 4,
       "narrative": 4
+=======
+      "company": 5,
+      "risk": 0,
+      "snapshot": 5,
+      "future": 5,
+      "narrative": 5
+>>>>>>> 406077dbd4079231d812b3e19dce6fc7291c4dce
     }
   },
   "copied_files": 32,
