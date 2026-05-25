@@ -6,17 +6,59 @@
       "q": "stock market",
       "lang": "en",
       "country": "us",
-      "status_code": 200,
-      "articles": 10
+      "status_code": 403,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-p"
     },
     {
       "q": "stock market",
       "lang": "en",
       "country": "",
-      "status_code": 200,
-      "articles": 10
+      "status_code": 403,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-p"
+    },
+    {
+      "q": "Nasdaq stocks",
+      "lang": "en",
+      "country": "us",
+      "status_code": 403,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-p"
+    },
+    {
+      "q": "Nasdaq stocks",
+      "lang": "en",
+      "country": "",
+      "status_code": 403,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-p"
+    },
+    {
+      "q": "Nvidia AI semiconductor stocks",
+      "lang": "en",
+      "country": "us",
+      "status_code": 403,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-p"
+    },
+    {
+      "q": "Nvidia AI semiconductor stocks",
+      "lang": "en",
+      "country": "",
+      "status_code": 403,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-p"
+    },
+    {
+      "q": "Federal Reserve Treasury yields stocks",
+      "lang": "en",
+      "country": "us",
+      "status_code": 403,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-p"
+    },
+    {
+      "q": "Federal Reserve Treasury yields stocks",
+      "lang": "en",
+      "country": "",
+      "status_code": 403,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-p"
     }
   ],
-  "status": "OK",
-  "rows": 16
+  "status": "ZERO_ROWS",
+  "rows": 0
 }

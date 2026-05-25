@@ -1,42 +1,117 @@
 {
   "market": "미국주식",
-  "updated_at": "2026-05-23 16:10:31",
+  "updated_at": "2026-05-25 19:29:31",
   "env": {
-    "GNEWS_API_KEY": false
+    "GNEWS_API_KEY": true
   },
   "attempts": [
     {
       "type": "gnews",
-      "status": "NO_KEY"
+      "q": "Nasdaq stock market Nvidia AI chip",
+      "lang": "en",
+      "country": "us",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "Nasdaq stock market Nvidia AI chip",
+      "lang": "en",
+      "country": "",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "S&P 500 Federal Reserve Treasury yields stocks",
+      "lang": "en",
+      "country": "us",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "S&P 500 Federal Reserve Treasury yields stocks",
+      "lang": "en",
+      "country": "",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "US stock market earnings guidance technology",
+      "lang": "en",
+      "country": "us",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "US stock market earnings guidance technology",
+      "lang": "en",
+      "country": "",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "Reuters Nvidia AI semiconductor stocks",
+      "lang": "en",
+      "country": "us",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "Reuters Nvidia AI semiconductor stocks",
+      "lang": "en",
+      "country": "",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "CNBC Nasdaq Federal Reserve stocks",
+      "lang": "en",
+      "country": "us",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+    },
+    {
+      "type": "gnews",
+      "q": "CNBC Nasdaq Federal Reserve stocks",
+      "lang": "en",
+      "country": "",
+      "status_code": 403,
+      "articles": 0,
+      "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
     },
     {
       "type": "google_rss",
       "query": "Nasdaq stock market Nvidia AI chip",
       "url": "https://news.google.com/rss/search?q=Nasdaq+stock+market+Nvidia+AI+chip&hl=en-US&gl=US&ceid=US:en",
-      "rows": 0,
-      "error": "ConnectionError: HTTPSConnectionPool(host='news.google.com', port=443): Max retries exceeded with url: /rss/search?q=Nasdaq+stock+market+Nvidia+AI+chip&hl=en-US&gl=US&ceid=US:en (Caused by NameResolutionError(\"HTTPSConnection(host='news.google.com', port=443): Failed to resolve 'news.google.com' ([Errno -3] Temporary failure in name resolution)\"))"
+      "rows": 15,
+      "status_code": 200
     },
     {
       "type": "google_rss",
       "query": "S&P 500 Federal Reserve Treasury yields stocks",
       "url": "https://news.google.com/rss/search?q=S%26P+500+Federal+Reserve+Treasury+yields+stocks&hl=en-US&gl=US&ceid=US:en",
-      "rows": 0,
-      "error": "ConnectionError: HTTPSConnectionPool(host='news.google.com', port=443): Max retries exceeded with url: /rss/search?q=S%26P+500+Federal+Reserve+Treasury+yields+stocks&hl=en-US&gl=US&ceid=US:en (Caused by NameResolutionError(\"HTTPSConnection(host='news.google.com', port=443): Failed to resolve 'news.google.com' ([Errno -3] Temporary failure in name resolution)\"))"
-    },
-    {
-      "type": "google_rss",
-      "query": "Reuters US stock market earnings technology",
-      "url": "https://news.google.com/rss/search?q=Reuters+US+stock+market+earnings+technology&hl=en-US&gl=US&ceid=US:en",
-      "rows": 0,
-      "error": "ConnectionError: HTTPSConnectionPool(host='news.google.com', port=443): Max retries exceeded with url: /rss/search?q=Reuters+US+stock+market+earnings+technology&hl=en-US&gl=US&ceid=US:en (Caused by NameResolutionError(\"HTTPSConnection(host='news.google.com', port=443): Failed to resolve 'news.google.com' ([Errno -3] Temporary failure in name resolution)\"))"
-    },
-    {
-      "type": "google_rss",
-      "query": "CNBC Nasdaq Nvidia stocks",
-      "url": "https://news.google.com/rss/search?q=CNBC+Nasdaq+Nvidia+stocks&hl=en-US&gl=US&ceid=US:en",
-      "rows": 0,
-      "error": "ConnectionError: HTTPSConnectionPool(host='news.google.com', port=443): Max retries exceeded with url: /rss/search?q=CNBC+Nasdaq+Nvidia+stocks&hl=en-US&gl=US&ceid=US:en (Caused by NameResolutionError(\"HTTPSConnection(host='news.google.com', port=443): Failed to resolve 'news.google.com' ([Errno -3] Temporary failure in name resolution)\"))"
+      "rows": 15,
+      "status_code": 200
     }
   ],
-  "status": "ZERO_ROWS"
+  "status": "OK",
+  "rows": 25,
+  "gnews_rows": 0,
+  "rss_rows": 25
 }
