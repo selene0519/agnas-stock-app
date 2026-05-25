@@ -1,39 +1,39 @@
 {
   "status": "OK",
   "version": "v79",
-  "updated_at": "2026-05-26 00:11:20",
+  "updated_at": "2026-05-26 00:18:20",
   "result": {
     "status": "OK",
     "version": "v79",
-    "updated_at": "2026-05-26 00:11:18",
+    "updated_at": "2026-05-26 00:18:19",
     "base": {
       "status": "OK",
       "version": "v78",
-      "updated_at": "2026-05-26 00:11:11",
+      "updated_at": "2026-05-26 00:18:10",
       "result": {
         "status": "OK",
         "version": "v78",
-        "updated_at": "2026-05-26 00:11:10",
+        "updated_at": "2026-05-26 00:18:08",
         "base": {
           "status": "OK",
           "version": "v75",
-          "updated_at": "2026-05-26 00:11:10",
+          "updated_at": "2026-05-26 00:18:08",
           "result": {
             "status": "OK",
             "version": "v75",
-            "updated_at": "2026-05-26 00:11:10",
+            "updated_at": "2026-05-26 00:18:08",
             "base": {
               "status": "OK",
               "version": "v74",
-              "updated_at": "2026-05-26 00:11:10",
+              "updated_at": "2026-05-26 00:18:08",
               "base_result": {
                 "status": "OK",
                 "version": "v74",
-                "updated_at": "2026-05-26 00:11:09",
+                "updated_at": "2026-05-26 00:18:07",
                 "base": {
                   "status": "OK",
                   "version": "v70",
-                  "updated_at": "2026-05-26 00:10:00",
+                  "updated_at": "2026-05-26 00:18:07",
                   "env": {
                     "GNEWS_API_KEY": true,
                     "FINNHUB_API_KEY": true,
@@ -48,46 +48,7 @@
                     "macro_rows": 3,
                     "narrative_rows": 2,
                     "news_diag": {
-                      "market": "한국주식",
-                      "updated_at": "2026-05-26 00:10:36",
-                      "mode": "strict_domestic_kr_news",
-                      "attempts": [
-                        {
-                          "source": "v69_base",
-                          "rows": 25
-                        },
-                        {
-                          "source": "rss",
-                          "query": "연합뉴스 코스피 코스닥 증시",
-                          "rows": 12
-                        },
-                        {
-                          "source": "rss",
-                          "query": "인베스팅닷컴 한국 증시 코스피 코스닥",
-                          "rows": 12
-                        },
-                        {
-                          "source": "rss",
-                          "query": "국내 증시 외국인 기관 수급 코스피 코스닥",
-                          "rows": 12
-                        },
-                        {
-                          "source": "rss",
-                          "query": "삼성전자 SK하이닉스 반도체 증시",
-                          "rows": 12
-                        },
-                        {
-                          "source": "rss",
-                          "query": "한국경제 코스피 코스닥 반도체 2차전지",
-                          "rows": 12
-                        },
-                        {
-                          "source": "rss",
-                          "query": "매일경제 코스피 코스닥 증시",
-                          "rows": 12
-                        }
-                      ],
-                      "rows": 30
+                      "status": "SKIPPED"
                     }
                   },
                   "us": {
@@ -96,31 +57,7 @@
                     "macro_rows": 3,
                     "narrative_rows": 4,
                     "news_diag": {
-                      "market": "미국주식",
-                      "updated_at": "2026-05-26 00:11:03",
-                      "mode": "us_news_with_brief_ko",
-                      "attempts": [
-                        {
-                          "source": "v69_base",
-                          "rows": 25
-                        },
-                        {
-                          "source": "rss",
-                          "query": "US stock market Nasdaq S&P 500",
-                          "rows": 10
-                        },
-                        {
-                          "source": "rss",
-                          "query": "Nvidia AI semiconductor stocks",
-                          "rows": 10
-                        },
-                        {
-                          "source": "rss",
-                          "query": "Federal Reserve Treasury yields stocks",
-                          "rows": 10
-                        }
-                      ],
-                      "rows": 30
+                      "status": "SKIPPED"
                     }
                   }
                 },
