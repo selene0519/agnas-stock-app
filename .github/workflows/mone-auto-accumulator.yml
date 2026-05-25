@@ -1,0 +1,91 @@
+name: MONE Auto Accumulator
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub Actions schedule is UTC.
+    # KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu. 국장 장전/후보 생성.
+    - cron: "17 23 * * 0-4"
+    # KST 16:37 Mon-Fri = UTC 07:37 Mon-Fri. 국장 장마감 이후 보정/기록.
+    - cron: "37 7 * * 1-5"
+    # KST 06:42 Tue-Sat = UTC 21:42 Mon-Fri. 미장 장마감 이후 보정/기록.
+    - cron: "42 21 * * 1-5"
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mone-auto-accumulator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      GITHUB_ACTIONS_RUN: "true"
+      TZ: Asia/Seoul
+      PYTHONUTF8: "1"
+      STREAMLIT_APP_ENABLE_LIVE_API: "0"
+      DART_API_KEY: ${{ secrets.DART_API_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+      KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+      KIS_ACCOUNT: ${{ secrets.KIS_ACCOUNT }}
+      KIS_CANO: ${{ secrets.KIS_CANO }}
+      KIS_ACNT_PRDT_CD: ${{ secrets.KIS_ACNT_PRDT_CD }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          else
+            python -m pip install pandas numpy requests python-dotenv yfinance finance-datareader beautifulsoup4 lxml
+          fi
+
+      - name: Run MONE cloud update
+        run: |
+          python scripts/mone_github_auto_update.py
+
+      - name: Show generated report status
+        run: |
+          echo "=== reports ==="
+          ls -lah reports | tail -80 || true
+          echo "=== history ==="
+          ls -lah data/history || true
+          echo "=== v93 status ==="
+          test -f reports/v93_github_actions_status.json && cat reports/v93_github_actions_status.json || true
+
+      - name: Commit generated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports data/history backups logs 2>/dev/null || true
+          git reset -- .env .env.local "*.env" 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No report/history changes to commit."
+          else
+            git commit -m "chore: update MONE reports/history [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
