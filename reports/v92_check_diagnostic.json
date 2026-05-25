@@ -1,0 +1,96 @@
+{
+  "overall_status": "OK_CORE_WITH_APP_EXPECTED_WARNING",
+  "core_required_ok": true,
+  "app_expected_exact_ok": false,
+  "alternative_groups_ok": true,
+  "missing_core": [],
+  "missing_app_expected_exact": [
+    "v92_confidence_cards_kr.csv",
+    "v92_confidence_cards_us.csv",
+    "v92_operational_dashboard_kr.csv",
+    "v92_operational_dashboard_us.csv"
+  ],
+  "alternative_groups_found": {
+    "confidence_related_kr": [
+      "v92_action_cards_kr.csv",
+      "v92_kpi_cards_kr.csv",
+      "v92_risk_cards_kr.csv",
+      "v92_flow_cards_kr.csv",
+      "v92_position_cards_kr.csv",
+      "v92_future_probability_kr.csv",
+      "v92_pullback_cards_kr.csv"
+    ],
+    "confidence_related_us": [
+      "v92_action_cards_us.csv",
+      "v92_kpi_cards_us.csv",
+      "v92_risk_cards_us.csv",
+      "v92_flow_cards_us.csv",
+      "v92_position_cards_us.csv",
+      "v92_future_probability_us.csv",
+      "v92_pullback_cards_us.csv"
+    ],
+    "dashboard_related_kr": [
+      "v92_data_status_kr.csv",
+      "operational_readiness_kr.csv",
+      "v92_macro_analysis_kr.csv",
+      "v92_flow_clean_kr.csv",
+      "v92_company_integrated_kr.csv"
+    ],
+    "dashboard_related_us": [
+      "v92_data_status_us.csv",
+      "operational_readiness_us.csv",
+      "v92_macro_analysis_us.csv",
+      "v92_flow_clean_us.csv",
+      "v92_company_integrated_us.csv"
+    ]
+  },
+  "status_json_summary": {
+    "status": "OK",
+    "version": "v92",
+    "updated_at": "2026-05-26 06:28:41",
+    "base_status": "SKIPPED",
+    "copied_files": 46,
+    "checks": {
+      "today_summary_kr": {
+        "exists": true,
+        "bytes": 585,
+        "rows": 5
+      },
+      "symbol_snapshot_kr": {
+        "exists": true,
+        "bytes": 13337,
+        "rows": 73
+      },
+      "confidence_cards_kr": {
+        "exists": false,
+        "bytes": 0,
+        "rows": 0
+      },
+      "operational_dashboard_kr": {
+        "exists": false,
+        "bytes": 0,
+        "rows": 0
+      },
+      "today_summary_us": {
+        "exists": true,
+        "bytes": 556,
+        "rows": 5
+      },
+      "symbol_snapshot_us": {
+        "exists": true,
+        "bytes": 6154,
+        "rows": 30
+      },
+      "confidence_cards_us": {
+        "exists": false,
+        "bytes": 0,
+        "rows": 0
+      },
+      "operational_dashboard_us": {
+        "exists": false,
+        "bytes": 0,
+        "rows": 0
+      }
+    }
+  }
+}

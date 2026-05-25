@@ -1,53 +1,101 @@
 {
   "status": "OK",
-  "updated_at": "2026-05-25 20:21:59",
+  "updated_at": "2026-05-25 19:28:55",
   "version": "v60 final stable",
   "v52": {
     "status": "OK",
-    "updated_at": "2026-05-25 20:22:20",
+    "updated_at": "2026-05-25 19:29:06",
     "upstream_v50": null,
     "action_rows": 30,
-    "risk_rows": 32,
-    "position_rows": 25,
+    "risk_rows": 320,
+    "position_rows": 33,
     "news_status": {
-      "updated_at": "2026-05-25 20:22:20",
+      "updated_at": "2026-05-25 19:29:06",
       "key_present": true,
       "status": "0건",
       "guide": "키는 인식됐지만 검색 결과가 0건입니다. 쿼리/언어/국가 조건 또는 API 무료 한도를 확인하세요.",
       "kr_news": 0,
       "us_news": 0,
       "cache_rows": 0,
-      "fetch_result": null,
+      "fetch_result": {
+        "updated_at": "2026-05-25T19:29:06",
+        "markets": {
+          "kr": {
+            "rows": 1,
+            "ok_rows": 0,
+            "diag_rows": 1,
+            "api_key_present": true,
+            "path": "reports/gnews_latest_kr.csv",
+            "diagnostic": "모든 재검색 결과가 0건입니다. 시도: KOSPI/en/kr=0; KOSDAQ semiconductor/en/kr=0; Korea large caps/en/kr=0; 한국어 시장/ko/kr=0; wide Korea/no-filter=0; top business/ko/kr=0; top business/en/kr=0"
+          },
+          "us": {
+            "rows": 1,
+            "ok_rows": 0,
+            "diag_rows": 1,
+            "api_key_present": true,
+            "path": "reports/gnews_latest_us.csv",
+            "diagnostic": "모든 재검색 결과가 0건입니다. 시도: stock market/en/us=0; Nasdaq/en/us=0; S&P 500/en/us=0; AI semiconductor/en/us=0; macro/en/us=0; wide stock market/no-filter=0; top business/en/us=0; top business/en/no-country=0"
+          }
+        }
+      },
       "errors": []
     },
     "note": "v52는 국장/미장 두 보기만 제공하고, 보유/매도 수량의 빈값을 현재가 fallback으로 최대한 채웁니다."
   },
   "data_center_rows": 18,
   "data_center": {
-    "updated_at": "2026-05-25 20:22:20",
-    "env_files": [
-      "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\.env"
-    ],
+    "updated_at": "2026-05-25 19:29:07",
+    "env_files": [],
     "keys": {
       "GNEWS_API_KEY": true,
       "FINNHUB_API_KEY": true,
       "DART_API_KEY": true,
       "OPENAI_API_KEY": false,
       "ANTHROPIC_API_KEY": false,
-      "KIS_APP_KEY": true,
-      "KIS_APP_SECRET": true
+      "KIS_APP_KEY": false,
+      "KIS_APP_SECRET": false
     },
     "git": {
       "is_repo": true,
       "status": "정상",
-      "message": "변경 파일 2개 있음",
-      "dirty_count": 2
+      "message": "변경 파일 99개 있음",
+      "dirty_count": 99
     },
     "gnews_test": {
-      "status": "키 인식",
+      "status": "0건",
       "key_present": true,
       "rows": 0,
-      "message": "키는 인식됐습니다. 실제 호출은 뉴스 갱신 버튼에서 실행합니다."
+      "message": "호출은 성공했지만 모든 테스트가 0건입니다. search:stock market=0; search:Nasdaq stocks=0; top-headlines:top:business=0; top-headlines:top:business=0",
+      "attempts": [
+        {
+          "endpoint": "search",
+          "query": "stock market",
+          "http_status": 403,
+          "rows": 0,
+          "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/"
+        },
+        {
+          "endpoint": "search",
+          "query": "Nasdaq stocks",
+          "http_status": 403,
+          "rows": 0,
+          "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/"
+        },
+        {
+          "endpoint": "top-headlines",
+          "query": "top:business",
+          "http_status": 403,
+          "rows": 0,
+          "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/"
+        },
+        {
+          "endpoint": "top-headlines",
+          "query": "top:business",
+          "http_status": 403,
+          "rows": 0,
+          "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/"
+        }
+      ]
     },
     "cloud_status": {}
   },

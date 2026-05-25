@@ -1,22 +1,22 @@
 {
-  "updated_at": "2026-05-23 02:37:26 KST",
-  "target_count": 5,
+  "updated_at": "2026-05-26 01:09:10 KST",
+  "target_count": 127,
   "success_count": 0,
-  "fail_count": 5,
-  "unsupported_count": 5,
-  "market_closed_count": 0,
+  "fail_count": 127,
+  "unsupported_count": 63,
+  "market_closed_count": 64,
   "data_available_rate": 0.0,
-  "kr_target_count": 0,
+  "kr_target_count": 64,
   "kr_success_count": 0,
   "kr_data_available_rate": 0.0,
-  "kr_orderbook_status": "NO_TARGETS",
-  "us_target_count": 5,
+  "kr_orderbook_status": "MARKET_CLOSED",
+  "us_target_count": 63,
   "us_success_count": 0,
   "us_data_available_rate": 0.0,
   "us_orderbook_status": "WARNING",
   "kr_orderbook_attempt_count": 0,
   "kr_orderbook_success_count": 0,
-  "kr_orderbook_fail_count": 0,
+  "kr_orderbook_fail_count": 64,
   "kr_orderbook_api_empty_count": 0,
   "kr_orderbook_no_fields_count": 0,
   "us_orderbook_attempt_count": 0,
@@ -24,17 +24,19 @@
   "us_orderbook_fail_count": 0,
   "us_orderbook_api_empty_count": 0,
   "us_orderbook_no_fields_count": 0,
-  "orderbook_warning_count": 5,
+  "orderbook_warning_count": 127,
   "top_bid_imbalance_symbols": [],
   "top_ask_pressure_symbols": [],
   "top_execution_strength_symbols": [],
   "orderbook_failure_reason_counts": {
-    "endpoint_not_configured": 5
+    "endpoint_not_configured": 63,
+    "market_closed": 64
   },
-  "overall_status": "UNSUPPORTED",
+  "overall_status": "WARNING",
   "warnings": [
     "일부 호가/체결강도 데이터 미수신",
-    "일부 호가/체결강도 미지원"
+    "일부 호가/체결강도 미지원",
+    "일부 대상은 장외 시간으로 실시간 호가 미수신 가능"
   ],
   "errors": []
 }

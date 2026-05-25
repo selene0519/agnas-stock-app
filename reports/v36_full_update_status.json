@@ -1,32 +1,44 @@
 {
   "status": "OK",
-  "updated_at": "2026-05-22 16:33:41",
+  "updated_at": "2026-05-25 16:09:33",
   "prediction_learning": {
-    "status": "NO_DATA",
-    "message": "predictions.csv가 없거나 비어 있습니다.",
-    "updated_at": "2026-05-22 16:33:41"
+    "status": "OK",
+    "updated_at": "2026-05-25 16:09:33",
+    "prediction_rows": 931,
+    "actual_rows": 0,
+    "reviewable_rows": 867,
+    "summary_csv": "reports/prediction_learning_summary.csv",
+    "symbol_csv": "reports/prediction_learning_symbol_summary.csv",
+    "note": "실제 결과 컬럼이 부족한 행은 표본에는 포함하지만 성과율 계산에서는 제외했습니다."
   },
   "risk_priority": {
-    "status": "NO_DATA",
-    "updated_at": "2026-05-22 16:33:41",
-    "message": "predictions.csv가 없거나 비어 있습니다."
+    "status": "OK",
+    "updated_at": "2026-05-25 16:09:34",
+    "rows": 167,
+    "action_counts": {
+      "소액/분할만": 160,
+      "신규매수 제외": 5,
+      "조건부 매수 검토": 2
+    },
+    "csv": "reports/risk_priority_candidates.csv",
+    "note": "좋은 종목보다 좋은 가격 원칙에 맞춰 손익비·추격위험·매수금지 점수를 우선 반영했습니다."
   },
   "api_status_center": {
     "status": "OK",
-    "updated_at": "2026-05-22 16:33:41",
+    "updated_at": "2026-05-25 16:09:34",
     "rows": 13,
     "counts": {
-      "없음": 12,
-      "비어 있음": 1
+      "정상": 9,
+      "없음": 4
     },
     "csv": "reports/api_data_status_center.csv",
     "note": "오래됨은 API 오류가 아니라 저장 리포트 기준 데이터일 가능성을 뜻합니다."
   },
   "cloud_readiness": {
     "status": "READY_AFTER_SECRETS",
-    "updated_at": "2026-05-22 16:33:41",
+    "updated_at": "2026-05-25 16:09:34",
     "missing_files": [],
-    "missing_secret_count": 4,
+    "missing_secret_count": 3,
     "checklist_csv": "reports/cloud_readiness_checklist.csv",
     "guide": "CLOUD_AUTO_ACCUMULATION_GUIDE.md",
     "note": "노트북이 꺼져도 자동누적하려면 이 폴더를 GitHub/VPS에 올리고 API 키를 Secrets로 설정해야 합니다."

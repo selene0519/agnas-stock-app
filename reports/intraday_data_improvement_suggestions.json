@@ -1,12 +1,16 @@
 {
-  "updated_at": "2026-05-22 17:37:28",
+  "updated_at": "2026-05-25 16:09:16",
   "priority_1_fixes": [
-    "미국주식 현재가 API 응답 없음 5건: GOOGL, INTC, NVDA, PLTR, TSLA - endpoint/파라미터/fallback 확인 필요"
+    "미국주식 현재가 API 응답 없음 3건: BTC-USD, SMH, SPY - endpoint/파라미터/fallback 확인 필요"
   ],
   "priority_2_fixes": [],
   "unsupported_items": [
-    "미국주식 호가/체결강도는 API 미지원 가능성 (5건)"
+    "미국주식 호가/체결강도는 API 미지원 가능성 (63건)",
+    "미국주식 현재가 API가 해당 심볼을 지원하지 않습니다. 후보 CSV 가격 fallback만 검토하세요.",
+    "장마감 시간: 장중 재확인 필요"
   ],
-  "monitor_later_items": [],
-  "summary_message": "장중 커버리지 진단: 현재가 수신률 0.0%. 개선 가능 5건, 미지원/불가 0건."
+  "monitor_later_items": [
+    "장중 시간에 재실행하여 market_closed 원인 제거 후 재확인"
+  ],
+  "summary_message": "장중 커버리지 진단: 현재가 수신률 47.2%. 개선 가능 2건, 미지원/불가 65건."
 }
