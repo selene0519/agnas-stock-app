@@ -1,0 +1,19 @@
+{
+  "updated_at": "2026-05-20 22:54:55",
+  "priority_1_fixes": [
+    "미국주식 현재가 API 응답 없음 38건: AAOI, AAPL, ALAB, AMD, AMZN, ANET, ARM, ASTS - endpoint/파라미터/fallback 확인 필요"
+  ],
+  "priority_2_fixes": [
+    "거래량/거래대금은 실제 API 미수신으로 장중 판단 제한"
+  ],
+  "unsupported_items": [
+    "미국주식 호가/체결강도는 API 미지원 가능성 (74건)",
+    "미국주식 수급/프로그램은 API 미지원 가능성 (16건)",
+    "미국주식 현재가 API가 해당 심볼을 지원하지 않습니다. 후보 CSV 가격 fallback만 검토하세요.",
+    "장마감 시간: 장중 재확인 필요"
+  ],
+  "monitor_later_items": [
+    "장중 시간에 재실행하여 market_closed 원인 제거 후 재확인"
+  ],
+  "summary_message": "장중 커버리지 진단: 현재가 수신률 13.8%. 개선 가능 53건, 미지원/불가 72건."
+}

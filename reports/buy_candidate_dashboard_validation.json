@@ -1,0 +1,127 @@
+{
+  "ok": true,
+  "checked_at": "2026-05-21 08:52:07 KST",
+  "required_columns": [
+    "runner_status",
+    "status",
+    "market",
+    "source_group",
+    "symbol",
+    "name",
+    "current_price",
+    "total_score",
+    "risk_penalty",
+    "final_judgment",
+    "buy_zone",
+    "stop_loss",
+    "target1",
+    "risk_reward",
+    "reason",
+    "risk_reason",
+    "buy_reason",
+    "invalidation_condition"
+  ],
+  "checks": [
+    {
+      "dataset": "swing",
+      "rows": 206,
+      "ok": true,
+      "missing_columns": "",
+      "score_out_of_range": 0,
+      "status_counts": {
+        "DATA_MISSING": 107,
+        "OK": 79,
+        "EXCLUDED_RISK": 20
+      }
+    },
+    {
+      "dataset": "undervalued",
+      "rows": 205,
+      "ok": true,
+      "missing_columns": "",
+      "score_out_of_range": 0,
+      "status_counts": {
+        "OK": 117,
+        "NEEDS_REVIEW": 47,
+        "DATA_MISSING": 41
+      }
+    },
+    {
+      "dataset": "watchlist",
+      "rows": 124,
+      "ok": true,
+      "missing_columns": "",
+      "score_out_of_range": 0,
+      "status_counts": {
+        "OK": 120,
+        "EXCLUDED_RISK": 4
+      }
+    },
+    {
+      "dataset": "priority",
+      "rows": 535,
+      "ok": true,
+      "missing_columns": "",
+      "score_out_of_range": 0,
+      "status_counts": {
+        "OK": 316,
+        "DATA_MISSING": 148,
+        "NEEDS_REVIEW": 47,
+        "EXCLUDED_RISK": 24
+      }
+    },
+    {
+      "dataset": "excluded",
+      "rows": 24,
+      "ok": true,
+      "missing_columns": "",
+      "score_out_of_range": 0,
+      "status_counts": {
+        "EXCLUDED_RISK": 24
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "path": "reports\\swing_candidates_kr.csv",
+      "mtime": "2026-05-21 08:51:53",
+      "bytes": 847409
+    },
+    {
+      "path": "reports\\swing_candidates_us.csv",
+      "mtime": "2026-05-20 22:31:44",
+      "bytes": 537219
+    },
+    {
+      "path": "reports\\latest_kr_order_plan.csv",
+      "mtime": "2026-05-21 08:51:35",
+      "bytes": 261429
+    },
+    {
+      "path": "reports\\latest_us_order_plan.csv",
+      "mtime": "2026-05-21 08:30:45",
+      "bytes": 96053
+    },
+    {
+      "path": "reports\\fundamental_cache_kr.csv",
+      "mtime": "2026-05-14 21:08:20",
+      "bytes": 23862
+    },
+    {
+      "path": "reports\\fundamental_cache_us.csv",
+      "mtime": "2026-05-14 21:08:20",
+      "bytes": 23738
+    },
+    {
+      "path": "watchlist_kr_growth.csv",
+      "mtime": "2026-05-15 21:03:17",
+      "bytes": 6239
+    },
+    {
+      "path": "watchlist_us_growth.csv",
+      "mtime": "2026-05-15 23:37:49",
+      "bytes": 5062
+    }
+  ],
+  "latest_input_mtime": "2026-05-21 08:51:53"
+}

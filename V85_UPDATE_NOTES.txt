@@ -1,0 +1,18 @@
+MONE v85 - Product-grade UI + Fallback Upgrade
+
+핵심 반영:
+1. 로드맵 문서 기준 v85 목표 반영: UI/UX 통합 정리, 선택종목 fallback, 메뉴 축소.
+2. 홈 화면 5개 카드 고정: 오늘 우선 확인, 눌림목 진입 후보, 수급 급증 후보, 실적·저평가 후보, 매수금지·주의.
+3. 일반 화면은 카드 중심, 원본 CSV/API/rows/퀀트 도구는 관리자 모드로 이동.
+4. 선택 종목 화면은 장중이 아니어도 후보/보유/직전장 데이터 기반 fallback 표시.
+5. 뉴스·기업분석·내러티브를 한 페이지로 통합.
+6. 미래확률예측표는 종목명/근거/데이터충분도/다음행동을 카드로 표시.
+7. outcome_history.csv 스켈레톤 생성으로 결과 추적 준비.
+8. 기존 data, reports, .env는 패키지에 포함하지 않으며 사용자의 누적 기록을 덮어쓰지 않음.
+
+실행:
+run_v85_daily_update.bat
+START_APP_NO_SYNC_V85_FIXED.bat
+
+문제가 있으면:
+ONE_CLICK_REPAIR_UPDATE_START_V85.bat

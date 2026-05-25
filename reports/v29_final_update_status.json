@@ -1,0 +1,41 @@
+{
+  "status": "OK",
+  "updated_at": "2026-05-23 03:23:25",
+  "benchmark_rows": 1678,
+  "portfolio": {
+    "updated_at": "2026-05-23 03:23:28",
+    "history_days": 2,
+    "status": "OK",
+    "warnings": [
+      "샤프비율·VaR/CVaR는 20일 이상 수익률 기록이 필요합니다.",
+      "베타·알파는 benchmark_daily.csv 기록이 필요합니다."
+    ],
+    "latest_date": "2026-05-23",
+    "latest_total_value": 12062160.315000001,
+    "cumulative_return_pct": 0.0,
+    "max_drawdown_pct": 0.0,
+    "volatility_pct": NaN,
+    "portfolio_daily_nav_path": "data\\portfolio\\portfolio_daily_nav.csv",
+    "position_daily_snapshot_path": "data\\portfolio\\position_daily_snapshot.csv",
+    "benchmark_daily_path": "data\\market\\benchmark_daily.csv",
+    "portfolio_risk_metrics_path": "reports\\portfolio_risk_metrics.json"
+  },
+  "backtest_beta": {
+    "updated_at": "2026-05-23 03:23:28",
+    "source": "data\\decision_system\\actual_results.csv",
+    "status": "DATA_SHORT",
+    "warnings": [
+      "30일 이상 OHLC가 있는 종목이 부족합니다."
+    ],
+    "strategy_count": 4,
+    "usable_symbol_count": 0,
+    "summary_csv": "reports\\backtest_beta_summary.csv",
+    "summary_json": "reports\\backtest_beta_summary.json"
+  },
+  "news_cache": {
+    "status": "NO_CACHE",
+    "cache_rows": 0,
+    "updated_at": "2026-05-23 03:23:28",
+    "path": "data\\news\\news_cache.csv"
+  }
+}

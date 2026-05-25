@@ -1,0 +1,28 @@
+{
+  "updated_at": "2026-05-23 11:14:23",
+  "key_present": false,
+  "status": "키 미인식",
+  "guide": "로컬 앱 폴더의 .env 또는 GitHub Secrets에 GNEWS_API_KEY/NEWS_API_KEY를 넣어야 합니다.",
+  "kr_news": 0,
+  "us_news": 0,
+  "cache_rows": 0,
+  "summary": {
+    "updated_at": "2026-05-23T05:40:14",
+    "markets": {
+      "kr": {
+        "rows": 0,
+        "ok_rows": 0,
+        "api_key_present": false,
+        "path": "reports/gnews_latest_kr.csv"
+      },
+      "us": {
+        "rows": 0,
+        "ok_rows": 0,
+        "api_key_present": false,
+        "path": "reports/gnews_latest_us.csv"
+      }
+    }
+  },
+  "fetch_result": null,
+  "errors": []
+}

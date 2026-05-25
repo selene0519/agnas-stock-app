@@ -1,0 +1,42 @@
+{
+  "market": "미국주식",
+  "updated_at": "2026-05-23 16:10:31",
+  "env": {
+    "GNEWS_API_KEY": false
+  },
+  "attempts": [
+    {
+      "type": "gnews",
+      "status": "NO_KEY"
+    },
+    {
+      "type": "google_rss",
+      "query": "Nasdaq stock market Nvidia AI chip",
+      "url": "https://news.google.com/rss/search?q=Nasdaq+stock+market+Nvidia+AI+chip&hl=en-US&gl=US&ceid=US:en",
+      "rows": 0,
+      "error": "ConnectionError: HTTPSConnectionPool(host='news.google.com', port=443): Max retries exceeded with url: /rss/search?q=Nasdaq+stock+market+Nvidia+AI+chip&hl=en-US&gl=US&ceid=US:en (Caused by NameResolutionError(\"HTTPSConnection(host='news.google.com', port=443): Failed to resolve 'news.google.com' ([Errno -3] Temporary failure in name resolution)\"))"
+    },
+    {
+      "type": "google_rss",
+      "query": "S&P 500 Federal Reserve Treasury yields stocks",
+      "url": "https://news.google.com/rss/search?q=S%26P+500+Federal+Reserve+Treasury+yields+stocks&hl=en-US&gl=US&ceid=US:en",
+      "rows": 0,
+      "error": "ConnectionError: HTTPSConnectionPool(host='news.google.com', port=443): Max retries exceeded with url: /rss/search?q=S%26P+500+Federal+Reserve+Treasury+yields+stocks&hl=en-US&gl=US&ceid=US:en (Caused by NameResolutionError(\"HTTPSConnection(host='news.google.com', port=443): Failed to resolve 'news.google.com' ([Errno -3] Temporary failure in name resolution)\"))"
+    },
+    {
+      "type": "google_rss",
+      "query": "Reuters US stock market earnings technology",
+      "url": "https://news.google.com/rss/search?q=Reuters+US+stock+market+earnings+technology&hl=en-US&gl=US&ceid=US:en",
+      "rows": 0,
+      "error": "ConnectionError: HTTPSConnectionPool(host='news.google.com', port=443): Max retries exceeded with url: /rss/search?q=Reuters+US+stock+market+earnings+technology&hl=en-US&gl=US&ceid=US:en (Caused by NameResolutionError(\"HTTPSConnection(host='news.google.com', port=443): Failed to resolve 'news.google.com' ([Errno -3] Temporary failure in name resolution)\"))"
+    },
+    {
+      "type": "google_rss",
+      "query": "CNBC Nasdaq Nvidia stocks",
+      "url": "https://news.google.com/rss/search?q=CNBC+Nasdaq+Nvidia+stocks&hl=en-US&gl=US&ceid=US:en",
+      "rows": 0,
+      "error": "ConnectionError: HTTPSConnectionPool(host='news.google.com', port=443): Max retries exceeded with url: /rss/search?q=CNBC+Nasdaq+Nvidia+stocks&hl=en-US&gl=US&ceid=US:en (Caused by NameResolutionError(\"HTTPSConnection(host='news.google.com', port=443): Failed to resolve 'news.google.com' ([Errno -3] Temporary failure in name resolution)\"))"
+    }
+  ],
+  "status": "ZERO_ROWS"
+}

@@ -1,0 +1,57 @@
+{
+  "checked_at": "2026-05-23 08:30:53 KST",
+  "market": "미국주식",
+  "target_date": "2026-05-22",
+  "score": 90,
+  "label": "안정권",
+  "action": "방치 모의운용 가능. 하루 1회 상태 확인 권장.",
+  "checks": [
+    {
+      "name": "predictions.csv 존재",
+      "ok": true,
+      "penalty": 0,
+      "detail": "예측 저장 파일 확인"
+    },
+    {
+      "name": "대상일 예측 행 존재",
+      "ok": true,
+      "penalty": 0,
+      "detail": "미국주식 2026-05-22 예측 60건"
+    },
+    {
+      "name": "실제 OHLC 반영 완료",
+      "ok": true,
+      "penalty": 0,
+      "detail": "actual OHLC 60/60, 미반영 0"
+    },
+    {
+      "name": "예측파일 최신성",
+      "ok": true,
+      "penalty": 0,
+      "detail": "predictions.csv age 0.6분"
+    },
+    {
+      "name": "최근 오류 로그",
+      "ok": false,
+      "penalty": 10,
+      "detail": "최근 24시간 오류 619건"
+    },
+    {
+      "name": "스케줄러 감시 상태",
+      "ok": true,
+      "penalty": 0,
+      "detail": "scheduler_guard ok · age 15.8"
+    },
+    {
+      "name": "검증 누적 기록",
+      "ok": true,
+      "penalty": 0,
+      "detail": "미국주식 integrity 그룹 6개"
+    }
+  ],
+  "scheduler": {
+    "status": "ok",
+    "age_minutes": 15.8,
+    "path": "reports\\scheduler_health.json"
+  }
+}

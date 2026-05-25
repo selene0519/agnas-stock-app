@@ -1,0 +1,76 @@
+{
+  "checked_at": "2026-05-23 08:58:13 KST",
+  "stage": "post_predict",
+  "market": "한국주식",
+  "actual_update": {
+    "market": "한국주식",
+    "target_date": "2026-05-22",
+    "expected_rows": 64,
+    "actual_done": 64,
+    "pending_actual": 0,
+    "status": "ok",
+    "missing_tickers": []
+  },
+  "operational_readiness": {
+    "checked_at": "2026-05-23 08:58:13 KST",
+    "market": "한국주식",
+    "target_date": "2026-05-22",
+    "score": 90,
+    "label": "안정권",
+    "action": "방치 모의운용 가능. 하루 1회 상태 확인 권장.",
+    "checks": [
+      {
+        "name": "predictions.csv 존재",
+        "ok": true,
+        "penalty": 0,
+        "detail": "예측 저장 파일 확인"
+      },
+      {
+        "name": "대상일 예측 행 존재",
+        "ok": true,
+        "penalty": 0,
+        "detail": "한국주식 2026-05-22 예측 64건"
+      },
+      {
+        "name": "실제 OHLC 반영 완료",
+        "ok": true,
+        "penalty": 0,
+        "detail": "actual OHLC 64/64, 미반영 0"
+      },
+      {
+        "name": "예측파일 최신성",
+        "ok": true,
+        "penalty": 0,
+        "detail": "predictions.csv age 1.4분"
+      },
+      {
+        "name": "최근 오류 로그",
+        "ok": false,
+        "penalty": 10,
+        "detail": "최근 24시간 오류 619건"
+      },
+      {
+        "name": "스케줄러 감시 상태",
+        "ok": true,
+        "penalty": 0,
+        "detail": "scheduler_guard ok · age 13.2"
+      },
+      {
+        "name": "검증 누적 기록",
+        "ok": true,
+        "penalty": 0,
+        "detail": "한국주식 integrity 그룹 8개"
+      }
+    ],
+    "scheduler": {
+      "status": "ok",
+      "age_minutes": 13.2,
+      "path": "reports\\scheduler_health.json"
+    }
+  },
+  "result": "ok",
+  "warnings": [],
+  "extra": {
+    "recovered_rows": 0
+  }
+}

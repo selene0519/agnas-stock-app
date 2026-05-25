@@ -1,0 +1,67 @@
+{
+  "status": "OK",
+  "updated_at": "2026-05-23 12:45:05",
+  "version": "v65",
+  "base_v60": {
+    "status": "OK",
+    "updated_at": "2026-05-23 12:45:05",
+    "version": "v60 final stable",
+    "v52": {
+      "status": "OK",
+      "updated_at": "2026-05-23 12:45:06",
+      "upstream_v50": null,
+      "action_rows": 30,
+      "risk_rows": 32,
+      "position_rows": 0,
+      "news_status": {
+        "updated_at": "2026-05-23 12:45:06",
+        "key_present": false,
+        "status": "키 미인식",
+        "guide": "로컬 앱 폴더의 .env 또는 GitHub Secrets에 GNEWS_API_KEY를 넣어야 합니다.",
+        "kr_news": 0,
+        "us_news": 0,
+        "cache_rows": 0,
+        "fetch_result": null,
+        "errors": []
+      },
+      "note": "v52는 국장/미장 두 보기만 제공하고, 보유/매도 수량의 빈값을 현재가 fallback으로 최대한 채웁니다."
+    },
+    "data_center_rows": 18,
+    "data_center": {
+      "updated_at": "2026-05-23 12:45:06",
+      "env_files": [],
+      "keys": {
+        "GNEWS_API_KEY": false,
+        "FINNHUB_API_KEY": false,
+        "DART_API_KEY": false,
+        "OPENAI_API_KEY": false,
+        "ANTHROPIC_API_KEY": false,
+        "KIS_APP_KEY": false,
+        "KIS_APP_SECRET": false
+      },
+      "git": {
+        "is_repo": false,
+        "status": "로컬 폴더",
+        "message": "현재 폴더가 Git 저장소가 아닙니다. GitHub Desktop 저장소 폴더에서 실행하면 자동 pull 상태가 정상 표시됩니다."
+      },
+      "gnews_test": {
+        "status": "키 없음",
+        "key_present": false,
+        "rows": 0,
+        "message": "로컬 .env 또는 GitHub Secrets에 GNEWS_API_KEY가 필요합니다."
+      },
+      "cloud_status": {}
+    },
+    "news_rows": 2,
+    "quant_rows": 4,
+    "speed_rows": 4,
+    "menu_rows": 9
+  },
+  "feature_rows": 8,
+  "company_cards": 8,
+  "guru_cards": 8,
+  "tech_patent_cards": 2,
+  "macro_cards": 8,
+  "narrative_cards": 30,
+  "custom_indicator_templates": 3
+}
