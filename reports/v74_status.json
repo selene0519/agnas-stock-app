@@ -1,15 +1,15 @@
 {
   "status": "OK",
   "version": "v74",
-  "updated_at": "2026-05-26 00:11:10",
+  "updated_at": "2026-05-25 19:30:05",
   "base_result": {
     "status": "OK",
     "version": "v74",
-    "updated_at": "2026-05-26 00:11:09",
+    "updated_at": "2026-05-25 19:30:05",
     "base": {
       "status": "OK",
       "version": "v70",
-      "updated_at": "2026-05-26 00:10:00",
+      "updated_at": "2026-05-25 19:29:47",
       "env": {
         "GNEWS_API_KEY": true,
         "FINNHUB_API_KEY": true,
@@ -25,7 +25,7 @@
         "narrative_rows": 2,
         "news_diag": {
           "market": "한국주식",
-          "updated_at": "2026-05-26 00:10:36",
+          "updated_at": "2026-05-25 19:29:51",
           "mode": "strict_domestic_kr_news",
           "attempts": [
             {
@@ -73,7 +73,7 @@
         "narrative_rows": 4,
         "news_diag": {
           "market": "미국주식",
-          "updated_at": "2026-05-26 00:11:03",
+          "updated_at": "2026-05-25 19:30:05",
           "mode": "us_news_with_brief_ko",
           "attempts": [
             {
@@ -101,18 +101,18 @@
       }
     },
     "kr": {
-      "action": 14,
-      "pullback": 14,
-      "flow": 0,
-      "risk": 14,
+      "action": 19,
+      "pullback": 19,
+      "flow": 17,
+      "risk": 155,
       "company": 2,
       "summary": 5
     },
     "us": {
-      "action": 16,
-      "pullback": 16,
-      "flow": 5,
-      "risk": 18,
+      "action": 11,
+      "pullback": 11,
+      "flow": 40,
+      "risk": 100,
       "company": 4,
       "summary": 5
     }
