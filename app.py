@@ -52916,7 +52916,381 @@ def run_headless_runner(action: str) -> int:  # type: ignore[override]
         return _ORIG_run_headless_runner_v80(action)
     return 2
 
-# Final call must stay at the very bottom so the latest v80 navigation/dispatch overrides are active before rendering.
+
+# ============================================================
+# MONE v81 consolidated UI + data usability patch
+# - 첫 화면 5개 카드 고정
+# - 뉴스는 오늘 화면 맨 아래로 이동
+# - 선택종목 현재가/호가/수급은 장중이 아니어도 직전장/후보 파일 기준으로 보강
+# - 뉴스·재무·시장 메뉴 중복 축소
+# - 미래확률예측표 중복 제거 카드화
+# - 일반모드/관리자모드 분리 강화
+# ============================================================
+
+MONE_V81_VERSION = "v81 Consolidated UX"
+
+
+def _v81_generate_reports() -> dict:
+    try:
+        _v80_load_env_once()
+    except Exception:
+        pass
+    try:
+        from core.v81_consolidated_ui_engine import run_v81_update
+        return run_v81_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+    except Exception as exc:
+        return {"status":"ERROR", "version":"v81", "error":f"{type(exc).__name__}: {exc}"}
+
+
+def _v81_slug(market: str | None = None) -> str:
+    try:
+        return _v80_slug(market)
+    except Exception:
+        return "us" if str(market or "") == "미국주식" else "kr"
+
+
+def _v81_label(market: str | None = None) -> str:
+    return "미장" if _v81_slug(market) == "us" else "국장"
+
+
+def _v81_read_report(*names: str) -> pd.DataFrame:
+    for name in names:
+        try:
+            p = REPORT_DIR / name
+            if not p.exists() or p.stat().st_size == 0:
+                continue
+            try:
+                df = read_csv_cached(p, dtype_str=True)
+            except Exception:
+                df = pd.read_csv(p, dtype=str, encoding="utf-8-sig")
+            if df is not None and not df.empty:
+                return df.fillna("")
+        except Exception:
+            continue
+    return pd.DataFrame()
+
+
+def _v81_candidates(slug: str, kind: str) -> pd.DataFrame:
+    files = {
+        "summary":[f"v81_today_summary_{slug}.csv", f"v80_today_summary_{slug}.csv", f"v79_today_summary_{slug}.csv"],
+        "action":[f"v81_action_cards_{slug}.csv", f"v79_action_clean_{slug}.csv", f"v78_action_clean_{slug}.csv"],
+        "pullback":[f"v81_pullback_cards_{slug}.csv", f"v79_pullback_clean_{slug}.csv", f"v78_pullback_clean_{slug}.csv"],
+        "flow":[f"v81_flow_cards_{slug}.csv", f"v81_flow_clean_{slug}.csv", f"v80_flow_clean_{slug}.csv", f"v79_flow_clean_{slug}.csv"],
+        "company":[f"v81_company_summary_cards_{slug}.csv", f"v81_company_cards_{slug}.csv", f"v80_company_cards_{slug}.csv", f"v80_kpi_cards_{slug}.csv"],
+        "risk":[f"v81_risk_cards_{slug}.csv", f"v79_risk_clean_{slug}.csv", f"v78_risk_clean_{slug}.csv"],
+        "news":[f"v81_news_summary_{slug}.csv", f"v80_news_summary_{slug}.csv", f"v79_news_cards_{slug}.csv", f"v70_news_cards_{slug}.csv"],
+        "position":[f"v81_position_cards_{slug}.csv", f"v80_position_cards_{slug}.csv", f"v79_position_cards_{slug}.csv"],
+        "future":[f"v81_future_probability_{slug}.csv", f"v80_future_probability_{slug}.csv", f"v79_future_probability_{slug}.csv"],
+        "snapshot":[f"v81_symbol_snapshot_{slug}.csv"],
+        "kpi":[f"v81_kpi_cards_{slug}.csv", f"v80_kpi_cards_{slug}.csv"],
+        "financials":[f"v81_financial_statement_{slug}.csv", f"v80_financial_statement_{slug}.csv"],
+        "valuation":[f"v81_advanced_valuation_{slug}.csv", f"v80_advanced_valuation_{slug}.csv"],
+        "macro":[f"v81_macro_analysis_{slug}.csv", f"v80_macro_analysis_{slug}.csv", f"v79_market_guard_{slug}.csv"],
+        "narrative":[f"v81_narrative_cards_{slug}.csv", f"v80_narrative_cards_{slug}.csv"],
+        "tech":[f"v81_tech_patent_{slug}.csv", f"v80_tech_patent_{slug}.csv"],
+        "custom_macro":[f"v81_custom_macro_{slug}.csv", f"v80_custom_macro_{slug}.csv"],
+        "master":[f"v81_master_investors_{slug}.csv", f"v80_master_investors_{slug}.csv"],
+        "status":["v81_data_status.csv", f"v80_data_status_{slug}.csv", "v80_data_status.csv"],
+    }.get(kind, [])
+    df = _v81_read_report(*files)
+    try:
+        if kind not in {"status", "tech", "custom_macro"}:
+            return _v77_clean_market_df(df, slug)
+    except Exception:
+        pass
+    return df
+
+
+def _v81_text(row, *cols, default="-") -> str:
+    for c in cols:
+        try:
+            v = str(row.get(c, "")).strip()
+            if v and v.lower() not in {"nan", "none", "null", "-"}:
+                return v
+        except Exception:
+            pass
+    return default
+
+
+def _v81_display_name(row) -> str:
+    name = _v81_text(row, "종목명", "name", "종목", default="")
+    code = _v81_text(row, "종목코드", "symbol", "ticker", "코드", default="")
+    if name and code and code not in name:
+        return f"{name} ({code})"
+    return name or code or "-"
+
+
+def _v81_top(df: pd.DataFrame) -> str:
+    if df.empty:
+        return "-"
+    return _v81_display_name(df.iloc[0])
+
+
+def _v81_summary_rows(slug: str) -> list[dict]:
+    # 기존 summary가 4개 이하로 잘리더라도 화면은 반드시 5개를 구성한다.
+    action = _v81_candidates(slug, "action")
+    pull = _v81_candidates(slug, "pullback")
+    flow = _v81_candidates(slug, "flow")
+    company = _v81_candidates(slug, "company")
+    risk = _v81_candidates(slug, "risk")
+    rows = [
+        {"아이콘":"🎯", "카드":"오늘 우선 확인", "설명":"직전가·가격 기준을 먼저 확인할 후보", "건수":len(action), "TOP":_v81_top(action)},
+        {"아이콘":"🪜", "카드":"눌림목 진입 후보", "설명":"추격보다 눌림 조건부 진입을 기다릴 후보", "건수":len(pull), "TOP":_v81_top(pull)},
+        {"아이콘":"💚", "카드":"수급 급증 후보", "설명":"수급·거래대금 흐름을 우선 보는 후보", "건수":len(flow), "TOP":_v81_top(flow)},
+        {"아이콘":"💎", "카드":"실적·저평가 후보", "설명":"실적과 밸류를 같이 확인할 후보", "건수":len(company), "TOP":_v81_top(company)},
+        {"아이콘":"🚫", "카드":"매수금지·주의", "설명":"신규매수보다 제외·관망이 우선인 후보", "건수":len(risk), "TOP":_v81_top(risk)},
+    ]
+    return rows
+
+
+def _v81_summary_cards(rows: list[dict]) -> None:
+    cols = st.columns(5)
+    for col, row in zip(cols, rows[:5]):
+        with col:
+            with st.container(border=True):
+                st.markdown(f"## {row.get('아이콘','')} {row.get('카드','')}")
+                st.caption(str(row.get("설명", "")))
+                st.markdown(f"# {row.get('건수', 0)}개")
+                st.info(f"TOP {row.get('TOP', '-')}")
+
+
+def _v81_compact_candidate_cards(df: pd.DataFrame, empty: str, limit: int = 12) -> None:
+    if df.empty:
+        st.info(empty)
+        return
+    cols = st.columns(3)
+    for i, (_, row) in enumerate(df.head(limit).iterrows()):
+        with cols[i % 3]:
+            with st.container(border=True):
+                st.markdown(f"### {_v81_display_name(row)}")
+                summary = _v81_text(row, "핵심요약", "초보자 해석", "해석", default="가격·수급·재무를 함께 확인하세요.")
+                st.write(summary)
+                metric = _v81_text(row, "수급점수", "종합점수", "점수", default="")
+                if metric:
+                    st.metric("점수", metric)
+                st.info(_v81_text(row, "다음행동", "다음 행동", default="기준가와 손절가를 먼저 확인"))
+
+
+def _v81_render_news_bottom(slug: str, limit: int = 3) -> None:
+    st.markdown("---")
+    st.markdown("### 오늘 뉴스 3줄 요약")
+    df = _v81_candidates(slug, "news")
+    if df.empty:
+        st.info("뉴스 요약이 아직 없습니다. 전체 갱신 후 다시 확인하세요.")
+        return
+    for _, row in df.head(limit).iterrows():
+        with st.container(border=True):
+            st.markdown(f"#### {_v81_text(row, '제목', 'title', default='뉴스')}")
+            st.write(_v81_text(row, "3줄요약", "요약", "description", "summary", default="시장 흐름 관련 뉴스입니다."))
+            st.caption(f"출처: {_v81_text(row, '출처', 'source', default='-')}")
+
+
+def _v81_render_today_page() -> None:
+    slug = _v81_slug(); label = _v81_label()
+    _v80_title(f"{label} 오늘 우선 확인")
+    if st.button("MONE v81 전체 갱신", key=f"v81_today_refresh_{slug}"):
+        res = _v81_generate_reports()
+        st.success("갱신 완료") if str(res.get("status")) in {"OK", "WARN"} else st.warning("갱신 중 오류가 있습니다. 관리자 모드에서 확인하세요.")
+    rows = _v81_summary_rows(slug)
+    _v81_summary_cards(rows)
+    action = _v81_candidates(slug, "action")
+    pull = _v81_candidates(slug, "pullback")
+    flow = _v81_candidates(slug, "flow")
+    company = _v81_candidates(slug, "company")
+    risk = _v81_candidates(slug, "risk")
+    with st.expander("🎯 오늘 우선 확인 상세", expanded=True):
+        _v81_compact_candidate_cards(action, f"{label} 오늘 우선 확인 후보가 없습니다.")
+    with st.expander("🪜 눌림목 진입 후보 상세", expanded=False):
+        _v81_compact_candidate_cards(pull, f"{label} 눌림목/관찰 후보가 없습니다.")
+    with st.expander("💚 수급·거래대금 후보 상세", expanded=False):
+        _v80_render_flow_cards()
+    with st.expander("💎 실적·저평가 후보 상세", expanded=False):
+        _v80_render_company_cards("company")
+    with st.expander("🚫 매수금지·주의 상세", expanded=False):
+        _v81_compact_candidate_cards(risk, f"{label} 매수금지·주의 후보가 없습니다.")
+    _v81_render_news_bottom(slug, limit=3)
+    if _v77_is_admin():
+        with st.expander("관리자: v81 데이터 상태", expanded=False):
+            st.dataframe(_v81_candidates(slug, "status"), use_container_width=True, hide_index=True)
+
+
+def _v81_render_buy_4_categories_page() -> None:
+    slug = _v81_slug(); label = _v81_label()
+    _v80_title(f"{label} 매수 후보 4분류")
+    if st.button("매수 후보 v81 갱신", key=f"v81_buy_refresh_{slug}"):
+        _v81_generate_reports(); st.success("갱신 완료")
+    tab1, tab2, tab3, tab4 = st.tabs(["오늘 확인", "눌림목/관찰", "수급·거래대금", "실적·저평가"])
+    with tab1: _v81_compact_candidate_cards(_v81_candidates(slug, "action"), f"{label} 오늘 확인 후보가 없습니다.")
+    with tab2: _v81_compact_candidate_cards(_v81_candidates(slug, "pullback"), f"{label} 눌림목/관찰 후보가 없습니다.")
+    with tab3: _v80_render_flow_cards()
+    with tab4: _v80_render_company_cards("company")
+
+
+def _v81_render_selected_snapshot_page() -> None:
+    slug = _v81_slug(); label = _v81_label()
+    _v80_title(f"{label} 선택 종목 차트·수급")
+    st.caption("장중 현재가가 없어도 직전장·후보·보유 파일에서 가능한 값을 모아 보여줍니다.")
+    df = _v81_candidates(slug, "snapshot")
+    if df.empty:
+        # v81 리포트가 아직 없으면 후보 파일에서 즉석 구성
+        parts = [_v81_candidates(slug, k) for k in ["action", "pullback", "flow", "company", "position"]]
+        parts = [p for p in parts if not p.empty]
+        df = pd.concat(parts, ignore_index=True).fillna("") if parts else pd.DataFrame()
+    if df.empty:
+        st.info("선택 가능한 종목 데이터가 아직 없습니다. 전체 갱신 후 다시 확인하세요.")
+        return
+    df = df.drop_duplicates(subset=[c for c in ["종목코드"] if c in df.columns])
+    labels = []
+    for _, r in df.iterrows():
+        labels.append(_v81_display_name(r))
+    selected = st.selectbox("종목 선택", labels, key=f"v81_snapshot_select_{slug}")
+    idx = labels.index(selected) if selected in labels else 0
+    row = df.iloc[idx]
+    st.markdown(f"### {_v81_display_name(row)}")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("현재가", _v81_text(row, "현재가", "현재가/직전종가", default="직전장 기준"))
+    c2.metric("기준가", _v81_text(row, "기준가", "진입가", "진입", default="-"))
+    c3.metric("손절가", _v81_text(row, "손절가", "손절", default="-"))
+    c4.metric("목표가", _v81_text(row, "목표가", "목표", default="-"))
+    q1, q2, q3 = st.columns(3)
+    q1.info(f"호가: {_v81_text(row, '호가', '호가상태', default='장중 미수신 · 직전장 기준')}")
+    q2.info(f"수급: {_v81_text(row, '수급점수', '점수', default='확인 필요')}")
+    q3.info(_v81_text(row, "다음행동", "다음 행동", default="현재가가 기준가 근처인지 먼저 확인"))
+    if _v77_is_admin():
+        with st.expander("관리자: 선택 종목 원본"):
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def _v81_render_news_finance_hub() -> None:
+    slug = _v81_slug(); label = _v81_label()
+    _v80_title(f"{label} 뉴스·재무 요약")
+    if st.button("뉴스·재무 v81 갱신", key=f"v81_news_finance_refresh_{slug}"):
+        _v81_generate_reports(); st.success("갱신 완료")
+    _v81_render_news_bottom(slug, limit=5)
+    st.markdown("### 핵심 KPI")
+    _v80_render_company_cards("kpi")
+
+
+def _v81_render_company_kpi_page() -> None:
+    slug = _v81_slug(); label = _v81_label()
+    _v80_title(f"{label} 기업분석·KPI")
+    tabs = st.tabs(["기업분석", "고급 가치평가", "재무제표", "KPI"])
+    with tabs[0]: _v80_render_company_cards("company")
+    with tabs[1]: _v80_render_company_cards("valuation")
+    with tabs[2]: _v80_render_company_cards("financials")
+    with tabs[3]: _v80_render_company_cards("kpi")
+
+
+def _v81_render_macro_hub() -> None:
+    slug = _v81_slug(); label = _v81_label()
+    _v80_title(f"{label} 시장·섹터·거시")
+    tabs = st.tabs(["시장·섹터", "거시경제", "커스텀 지표"])
+    with tabs[0]:
+        try:
+            _v79_render_macro_page()
+        except Exception:
+            _v80_render_simple_cards("macro", "시장·섹터")
+    with tabs[1]: _v80_render_simple_cards("macro", "거시경제 분석")
+    with tabs[2]: _v80_render_simple_cards("custom_macro", "커스텀 경제지표")
+
+
+def _v81_render_narrative_hub() -> None:
+    slug = _v81_slug(); label = _v81_label()
+    _v80_title(f"{label} 종목 내러티브")
+    tabs = st.tabs(["종목 내러티브", "투자거장 관점", "기술·특허"])
+    with tabs[0]: _v80_render_simple_cards("narrative", "종목 내러티브")
+    with tabs[1]: _v80_render_simple_cards("master", "투자거장 분석")
+    with tabs[2]: _v80_render_simple_cards("tech", "기술특허")
+
+
+def _v81_render_probability_page() -> None:
+    slug = _v81_slug(); label = _v81_label()
+    _v80_title(f"{label} 미래확률예측표")
+    df = _v81_candidates(slug, "future")
+    if df.empty:
+        st.info("미래확률예측표가 아직 없습니다. 예측 기록이 쌓이면 자동 표시됩니다.")
+        return
+    st.caption("초기 확률은 예측 기록 기반 추정치입니다. 실제 결과가 누적되면 자동 보정됩니다.")
+    cols = st.columns(3)
+    for i, (_, row) in enumerate(df.head(18).iterrows()):
+        with cols[i % 3]:
+            with st.container(border=True):
+                st.markdown(f"### {_v81_display_name(row)}")
+                st.caption(_v81_text(row, "분류", default="오늘확인"))
+                c1, c2, c3 = st.columns(3)
+                c1.metric("1일", _v81_text(row, "1일상승확률", default="-"))
+                c2.metric("3일", _v81_text(row, "3일상승확률", default="-"))
+                c3.metric("5일", _v81_text(row, "5일상승확률", default="-"))
+                st.info(_v81_text(row, "다음행동", "다음 행동", default="실제 결과가 쌓이면 자동 보정"))
+    if _v77_is_admin():
+        with st.expander("관리자: 원본 미래확률표"):
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+try:
+    _v80_load_env_once()
+except Exception:
+    pass
+
+try:
+    OPERATIONAL_NAV_GROUPS.clear()
+    OPERATIONAL_NAV_GROUPS.update({
+        "오늘 실행": [("오늘 우선 확인", "page_v81_today_priority")],
+        "매수": [("매수 후보 4분류", "page_v81_buy_4_categories"), ("매수 위험·제외", "page_v67_buy_risk"), ("매수 판단·기준가", "page_buy_decision")],
+        "보유·매도": [("보유·매도 권장수량", "page_v79_position_plan"), ("보유·매도 통합", "page_ops_holdings_unified")],
+        "차트·수급": [("선택 종목 차트·수급", "page_v81_selected_snapshot")],
+        "뉴스·재무·시장": [
+            ("뉴스·재무 요약", "page_v81_news_finance_hub"),
+            ("기업분석·KPI", "page_v81_company_kpi"),
+            ("시장·섹터·거시", "page_v81_macro_hub"),
+            ("종목 내러티브", "page_v81_narrative_hub"),
+        ],
+        "퀀트·리스크": [("미래확률예측표", "page_v81_probability"), ("퀀트 백테스팅", "page_v79_quant_backtest"), ("몬테카를로", "page_v79_monte_carlo"), ("상관관계", "page_v79_correlation")],
+    })
+    INSPECTION_NAV_GROUPS.setdefault("원본·진단", [])
+    for _label, _page_id in [("API 연결 진단", "page_admin_api"), ("파일·리포트 rows", "page_admin_files"), ("v81 데이터 상태", "page_v81_data_status")]:
+        if (_label, _page_id) not in INSPECTION_NAV_GROUPS["원본·진단"]:
+            INSPECTION_NAV_GROUPS["원본·진단"].append((_label, _page_id))
+except Exception:
+    pass
+
+try:
+    _ORIG_dispatch_sidebar_nav_page_v81 = _dispatch_sidebar_nav_page
+except Exception:
+    _ORIG_dispatch_sidebar_nav_page_v81 = None
+
+
+def _dispatch_sidebar_nav_page(page_id: str) -> None:  # type: ignore[override]
+    if page_id == "page_v81_today_priority": _v81_render_today_page(); return
+    if page_id == "page_v81_buy_4_categories": _v81_render_buy_4_categories_page(); return
+    if page_id == "page_v81_selected_snapshot": _v81_render_selected_snapshot_page(); return
+    if page_id == "page_v81_news_finance_hub": _v81_render_news_finance_hub(); return
+    if page_id == "page_v81_company_kpi": _v81_render_company_kpi_page(); return
+    if page_id == "page_v81_macro_hub": _v81_render_macro_hub(); return
+    if page_id == "page_v81_narrative_hub": _v81_render_narrative_hub(); return
+    if page_id == "page_v81_probability": _v81_render_probability_page(); return
+    if page_id == "page_v81_data_status": st.dataframe(_v81_candidates(_v81_slug(), "status"), use_container_width=True, hide_index=True); return
+    if _ORIG_dispatch_sidebar_nav_page_v81 is not None:
+        return _ORIG_dispatch_sidebar_nav_page_v81(page_id)
+    st.warning("화면을 찾을 수 없습니다.")
+
+try:
+    _ORIG_run_headless_runner_v81 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_v81 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v81", "v81_update", "daily_v81", "mone_v81"}:
+        res = _v81_generate_reports()
+        print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+        return 0 if isinstance(res, dict) and str(res.get("status")) in {"OK", "WARN"} else 2
+    if _ORIG_run_headless_runner_v81 is not None:
+        return _ORIG_run_headless_runner_v81(action)
+    return 2
+
+# Final call must stay at the very bottom so the latest v81 navigation/dispatch overrides are active before rendering.
 if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "--runner":
         raise SystemExit(run_headless_runner(sys.argv[2]))
