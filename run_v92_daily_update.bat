@@ -11,6 +11,11 @@ if "%PYEXE%"=="" set "PYEXE=python"
 
 echo [INFO] Python: %PYEXE% >> "%LOG%"
 echo [INFO] This updater does NOT install packages. It only runs the update. >> "%LOG%"
+if "%MONE_FULL_REFRESH%"=="1" (
+  echo [INFO] Mode: full v91 rebuild >> "%LOG%"
+) else (
+  echo [INFO] Mode: fast existing reports >> "%LOG%"
+)
 %PYEXE% -u run_v92_daily_update.py >> "%LOG%" 2>&1
 set "ERR=%ERRORLEVEL%"
 type "%LOG%"

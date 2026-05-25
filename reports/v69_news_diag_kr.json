@@ -1,0 +1,175 @@
+{
+  "market": "한국주식",
+  "updated_at": "2026-05-26 08:20:55",
+  "apify": {
+    "enabled": true,
+    "actor_configured": true,
+    "rows": 0,
+    "status": "HTTP_ERROR",
+    "status_code": 401,
+    "error": "{\n  \"error\": {\n    \"type\": \"user-or-token-not-found\",\n    \"message\": \"User was not found or authentication token is not valid\"\n  }\n}"
+  },
+  "gnews": {
+    "market": "한국주식",
+    "updated_at": "2026-05-26 08:20:55",
+    "env": {
+      "GNEWS_API_KEY": true
+    },
+    "attempts": [
+      {
+        "type": "gnews",
+        "q": "코스피 코스닥 외국인 기관 수급",
+        "lang": "ko",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "코스피 코스닥 외국인 기관 수급",
+        "lang": "ko",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "코스피 코스닥 외국인 기관 수급",
+        "lang": "en",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "한국 증시 반도체 삼성전자 SK하이닉스",
+        "lang": "ko",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "한국 증시 반도체 삼성전자 SK하이닉스",
+        "lang": "ko",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "한국 증시 반도체 삼성전자 SK하이닉스",
+        "lang": "en",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:yna.co.kr 증시 코스피",
+        "lang": "ko",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:yna.co.kr 증시 코스피",
+        "lang": "ko",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:yna.co.kr 증시 코스피",
+        "lang": "en",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:kr.investing.com 코스피 코스닥",
+        "lang": "ko",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:kr.investing.com 코스피 코스닥",
+        "lang": "ko",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:kr.investing.com 코스피 코스닥",
+        "lang": "en",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:hankyung.com 증시 반도체",
+        "lang": "ko",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:hankyung.com 증시 반도체",
+        "lang": "ko",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "site:hankyung.com 증시 반도체",
+        "lang": "en",
+        "country": "kr",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "google_rss",
+        "query": "코스피 코스닥 외국인 기관 수급",
+        "url": "https://news.google.com/rss/search?q=%EC%BD%94%EC%8A%A4%ED%94%BC+%EC%BD%94%EC%8A%A4%EB%8B%A5+%EC%99%B8%EA%B5%AD%EC%9D%B8+%EA%B8%B0%EA%B4%80+%EC%88%98%EA%B8%89&hl=ko-KR&gl=KR&ceid=KR:ko",
+        "rows": 15,
+        "status_code": 200
+      },
+      {
+        "type": "google_rss",
+        "query": "연합뉴스 증시 코스피 코스닥",
+        "url": "https://news.google.com/rss/search?q=%EC%97%B0%ED%95%A9%EB%89%B4%EC%8A%A4+%EC%A6%9D%EC%8B%9C+%EC%BD%94%EC%8A%A4%ED%94%BC+%EC%BD%94%EC%8A%A4%EB%8B%A5&hl=ko-KR&gl=KR&ceid=KR:ko",
+        "rows": 15,
+        "status_code": 200
+      }
+    ],
+    "status": "OK",
+    "rows": 25,
+    "gnews_rows": 0,
+    "rss_rows": 25
+  },
+  "rows": 25
+}

@@ -1,0 +1,316 @@
+{
+  "status": "OK",
+  "version": "v81",
+  "updated_at": "2026-05-26 08:21:23",
+  "base": {
+    "status": "OK",
+    "version": "v80",
+    "updated_at": "2026-05-26 08:21:23",
+    "result": {
+      "status": "OK",
+      "version": "v80",
+      "updated_at": "2026-05-26 08:21:17",
+      "base": {
+        "status": "OK",
+        "version": "v79",
+        "updated_at": "2026-05-26 08:21:17",
+        "result": {
+          "status": "OK",
+          "version": "v79",
+          "updated_at": "2026-05-26 08:21:16",
+          "base": {
+            "status": "OK",
+            "version": "v78",
+            "updated_at": "2026-05-26 08:21:15",
+            "result": {
+              "status": "OK",
+              "version": "v78",
+              "updated_at": "2026-05-26 08:21:14",
+              "base": {
+                "status": "OK",
+                "version": "v75",
+                "updated_at": "2026-05-26 08:21:14",
+                "result": {
+                  "status": "OK",
+                  "version": "v75",
+                  "updated_at": "2026-05-26 08:21:14",
+                  "base": {
+                    "status": "OK",
+                    "version": "v74",
+                    "updated_at": "2026-05-26 08:21:14",
+                    "base_result": {
+                      "status": "OK",
+                      "version": "v74",
+                      "updated_at": "2026-05-26 08:21:14",
+                      "base": {
+                        "status": "OK",
+                        "version": "v70",
+                        "updated_at": "2026-05-26 08:20:44",
+                        "env": {
+                          "GNEWS_API_KEY": true,
+                          "FINNHUB_API_KEY": true,
+                          "DART_API_KEY": true,
+                          "APIFY_TOKEN": true,
+                          "APIFY_NEWS_ACTOR_ID": true,
+                          "SEC_USER_AGENT": true
+                        },
+                        "kr": {
+                          "news_rows": 30,
+                          "company_rows": 2,
+                          "macro_rows": 3,
+                          "narrative_rows": 2,
+                          "news_diag": {
+                            "market": "한국주식",
+                            "updated_at": "2026-05-26 08:20:58",
+                            "mode": "strict_domestic_kr_news",
+                            "attempts": [
+                              {
+                                "source": "v69_base",
+                                "rows": 25
+                              },
+                              {
+                                "source": "rss",
+                                "query": "연합뉴스 코스피 코스닥 증시",
+                                "rows": 12
+                              },
+                              {
+                                "source": "rss",
+                                "query": "인베스팅닷컴 한국 증시 코스피 코스닥",
+                                "rows": 12
+                              },
+                              {
+                                "source": "rss",
+                                "query": "국내 증시 외국인 기관 수급 코스피 코스닥",
+                                "rows": 12
+                              },
+                              {
+                                "source": "rss",
+                                "query": "삼성전자 SK하이닉스 반도체 증시",
+                                "rows": 12
+                              },
+                              {
+                                "source": "rss",
+                                "query": "한국경제 코스피 코스닥 반도체 2차전지",
+                                "rows": 12
+                              },
+                              {
+                                "source": "rss",
+                                "query": "매일경제 코스피 코스닥 증시",
+                                "rows": 12
+                              }
+                            ],
+                            "rows": 30
+                          }
+                        },
+                        "us": {
+                          "news_rows": 30,
+                          "company_rows": 4,
+                          "macro_rows": 3,
+                          "narrative_rows": 4,
+                          "news_diag": {
+                            "market": "미국주식",
+                            "updated_at": "2026-05-26 08:21:11",
+                            "mode": "us_news_with_brief_ko",
+                            "attempts": [
+                              {
+                                "source": "v69_base",
+                                "rows": 25
+                              },
+                              {
+                                "source": "rss",
+                                "query": "US stock market Nasdaq S&P 500",
+                                "rows": 10
+                              },
+                              {
+                                "source": "rss",
+                                "query": "Nvidia AI semiconductor stocks",
+                                "rows": 10
+                              },
+                              {
+                                "source": "rss",
+                                "query": "Federal Reserve Treasury yields stocks",
+                                "rows": 10
+                              }
+                            ],
+                            "rows": 30
+                          }
+                        }
+                      },
+                      "kr": {
+                        "action": 0,
+                        "pullback": 0,
+                        "flow": 0,
+                        "risk": 0,
+                        "company": 2,
+                        "summary": 5
+                      },
+                      "us": {
+                        "action": 0,
+                        "pullback": 0,
+                        "flow": 0,
+                        "risk": 0,
+                        "company": 4,
+                        "summary": 5
+                      }
+                    },
+                    "env": {
+                      "DART_API_KEY": true,
+                      "FINNHUB_API_KEY": true,
+                      "GNEWS_API_KEY": true,
+                      "APIFY_TOKEN": true,
+                      "SEC_USER_AGENT": true
+                    },
+                    "data_status_rows": 18
+                  },
+                  "kr": {
+                    "action": 0,
+                    "pullback": 0,
+                    "flow": 0,
+                    "risk": 0,
+                    "company": 2,
+                    "summary": 5,
+                    "news": 30,
+                    "positions": 0,
+                    "sector": 0
+                  },
+                  "us": {
+                    "action": 0,
+                    "pullback": 0,
+                    "flow": 0,
+                    "risk": 0,
+                    "company": 4,
+                    "summary": 5,
+                    "news": 30,
+                    "positions": 0,
+                    "sector": 0
+                  }
+                },
+                "env": {
+                  "DART_API_KEY": true,
+                  "FINNHUB_API_KEY": true,
+                  "GNEWS_API_KEY": true,
+                  "APIFY_TOKEN": true,
+                  "SEC_USER_AGENT": true
+                }
+              },
+              "kr": {
+                "action": 0,
+                "pullback": 0,
+                "flow": 0,
+                "risk": 0,
+                "company": 2,
+                "summary": 5,
+                "news": 30,
+                "positions": 0,
+                "sector": 0,
+                "future": 2
+              },
+              "us": {
+                "action": 0,
+                "pullback": 0,
+                "flow": 0,
+                "risk": 0,
+                "company": 4,
+                "summary": 5,
+                "news": 30,
+                "positions": 0,
+                "sector": 0,
+                "future": 4
+              },
+              "history_appended_total": 6
+            },
+            "env": {
+              "DART_API_KEY": true,
+              "FINNHUB_API_KEY": true,
+              "GNEWS_API_KEY": true,
+              "APIFY_TOKEN": true,
+              "SEC_USER_AGENT": true
+            }
+          },
+          "kr": {
+            "action": 0,
+            "pullback": 0,
+            "risk": 0,
+            "company": 2,
+            "position": 0,
+            "news": 30,
+            "macro": 4,
+            "sector": 0,
+            "flow": 0,
+            "summary": 5,
+            "future": 2,
+            "flow_diag": 0
+          },
+          "us": {
+            "action": 0,
+            "pullback": 0,
+            "risk": 0,
+            "company": 4,
+            "position": 0,
+            "news": 30,
+            "macro": 0,
+            "sector": 0,
+            "flow": 0,
+            "summary": 5,
+            "future": 4,
+            "flow_diag": 0
+          },
+          "history_appended_total": 6
+        },
+        "env": {
+          "DART_API_KEY": true,
+          "FINNHUB_API_KEY": true,
+          "GNEWS_API_KEY": true,
+          "APIFY_TOKEN": true,
+          "SEC_USER_AGENT": true
+        }
+      },
+      "kr": {
+        "candidates": 2,
+        "finance": 2,
+        "financials": 2,
+        "kpi": 2,
+        "news": 8,
+        "narrative": 2,
+        "flow": 0
+      },
+      "us": {
+        "candidates": 4,
+        "finance": 4,
+        "financials": 4,
+        "kpi": 4,
+        "news": 8,
+        "narrative": 4,
+        "flow": 0
+      }
+    },
+    "env": {
+      "DART_API_KEY": true,
+      "FINNHUB_API_KEY": true,
+      "GNEWS_API_KEY": true,
+      "APIFY_TOKEN": true,
+      "SEC_USER_AGENT": true,
+      "KIS_APP_KEY": true
+    }
+  },
+  "kr": {
+    "summary": 5,
+    "action": 0,
+    "pullback": 0,
+    "flow": 0,
+    "company": 2,
+    "risk": 0,
+    "snapshot": 2,
+    "future": 2
+  },
+  "us": {
+    "summary": 5,
+    "action": 0,
+    "pullback": 0,
+    "flow": 0,
+    "company": 4,
+    "risk": 0,
+    "snapshot": 4,
+    "future": 4
+  }
+}

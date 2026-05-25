@@ -1,0 +1,178 @@
+{
+  "status": "OK",
+  "version": "v92",
+  "started_at": "2026-05-26 08:26:36",
+  "updated_at": "2026-05-26 08:26:36",
+  "base_version": "v91",
+  "base_status": "SKIPPED",
+  "base": {
+    "status": "SKIPPED",
+    "reason": "using existing report files"
+  },
+  "copied_files": 83,
+  "copied_detail": [
+    {
+      "source_version": "v91",
+      "source": "v91_action_cards_kr.csv",
+      "target": "v92_action_cards_kr.csv",
+      "bytes": 5
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_action_cards_us.csv",
+      "target": "v92_action_cards_us.csv",
+      "bytes": 5
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_company_integrated_kr.csv",
+      "target": "v92_company_integrated_kr.csv",
+      "bytes": 575
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_company_integrated_us.csv",
+      "target": "v92_company_integrated_us.csv",
+      "bytes": 907
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_confidence_cards_kr.csv",
+      "target": "v92_confidence_cards_kr.csv",
+      "bytes": 425
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_confidence_cards_us.csv",
+      "target": "v92_confidence_cards_us.csv",
+      "bytes": 711
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_data_status.csv",
+      "target": "v92_data_status.csv",
+      "bytes": 995
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_data_status_kr.csv",
+      "target": "v92_data_status_kr.csv",
+      "bytes": 600
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_data_status_us.csv",
+      "target": "v92_data_status_us.csv",
+      "bytes": 600
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_flow_cards_kr.csv",
+      "target": "v92_flow_cards_kr.csv",
+      "bytes": 5
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_flow_cards_us.csv",
+      "target": "v92_flow_cards_us.csv",
+      "bytes": 5
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_flow_clean_kr.csv",
+      "target": "v92_flow_clean_kr.csv",
+      "bytes": 153
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_flow_clean_us.csv",
+      "target": "v92_flow_clean_us.csv",
+      "bytes": 153
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_future_probability_kr.csv",
+      "target": "v92_future_probability_kr.csv",
+      "bytes": 615
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_future_probability_us.csv",
+      "target": "v92_future_probability_us.csv",
+      "bytes": 1047
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_macro_analysis_kr.csv",
+      "target": "v92_macro_analysis_kr.csv",
+      "bytes": 315
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_macro_analysis_us.csv",
+      "target": "v92_macro_analysis_us.csv",
+      "bytes": 5
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_narrative_cards_kr.csv",
+      "target": "v92_narrative_cards_kr.csv",
+      "bytes": 844
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_narrative_cards_us.csv",
+      "target": "v92_narrative_cards_us.csv",
+      "bytes": 1574
+    },
+    {
+      "source_version": "v91",
+      "source": "v91_news_summary_kr.csv",
+      "target": "v92_news_summary_kr.csv",
+      "bytes": 416
+    }
+  ],
+  "checks": {
+    "today_summary_kr": {
+      "exists": true,
+      "bytes": 520,
+      "rows": 5
+    },
+    "symbol_snapshot_kr": {
+      "exists": true,
+      "bytes": 742,
+      "rows": 2
+    },
+    "confidence_cards_kr": {
+      "exists": true,
+      "bytes": 425,
+      "rows": 2
+    },
+    "operational_dashboard_kr": {
+      "exists": true,
+      "bytes": 492,
+      "rows": 6
+    },
+    "today_summary_us": {
+      "exists": true,
+      "bytes": 510,
+      "rows": 5
+    },
+    "symbol_snapshot_us": {
+      "exists": true,
+      "bytes": 1303,
+      "rows": 4
+    },
+    "confidence_cards_us": {
+      "exists": true,
+      "bytes": 711,
+      "rows": 4
+    },
+    "operational_dashboard_us": {
+      "exists": true,
+      "bytes": 472,
+      "rows": 6
+    }
+  },
+  "note": "v92 is a stable no-install update wrapper. It avoids pip install loops and keeps v91/v85/v84/v83/v82 fallback data available."
+}

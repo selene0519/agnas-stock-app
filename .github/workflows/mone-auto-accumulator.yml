@@ -4,11 +4,20 @@ on:
   workflow_dispatch:
   schedule:
     # GitHub Actions schedule is UTC.
-    # KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu. 국장 장전/후보 생성.
+
+    # KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu. 국장 장전/후보 생성
     - cron: "17 23 * * 0-4"
-    # KST 16:37 Mon-Fri = UTC 07:37 Mon-Fri. 국장 장마감 이후 보정/기록.
+
+    # KST 16:37 Mon-Fri = UTC 07:37 Mon-Fri. 국장 장마감 이후 보정/기록
     - cron: "37 7 * * 1-5"
-    # KST 06:42 Tue-Sat = UTC 21:42 Mon-Fri. 미장 장마감 이후 보정/기록.
+
+    # KST 21:50 Mon-Fri = UTC 12:50 Mon-Fri. 미장 장전 예측/후보 생성
+    - cron: "50 12 * * 1-5"
+
+    # KST 22:50 Mon-Fri = UTC 13:50 Mon-Fri. 미장 장전 보조 실행
+    - cron: "50 13 * * 1-5"
+
+    # KST 06:42 Tue-Sat = UTC 21:42 Mon-Fri. 미장 장마감 이후 보정/기록
     - cron: "42 21 * * 1-5"
 
 permissions:
