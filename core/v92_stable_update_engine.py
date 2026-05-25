@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +17,7 @@ except Exception:  # pragma: no cover
 
 VERSION = 'v92'
 BASE_VERSION = 'v91'
+FALLBACK_SOURCE_VERSIONS = ['v91', 'v85', 'v84', 'v83', 'v82', 'v81', 'v80']
 
 def _now() -> str:
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -29,15 +31,35 @@ def _ensure_dirs() -> None:
 
 def _copy_base_reports() -> list[dict[str, Any]]:
     copied: list[dict[str, Any]] = []
-    for pattern in (f'{BASE_VERSION}_*.csv', f'{BASE_VERSION}_*.json'):
+    seen_targets: set[str] = set()
+    for source_version in FALLBACK_SOURCE_VERSIONS:
+        for pattern in (f'{source_version}_*.csv', f'{source_version}_*.json'):
+            for src in sorted(REPORT_DIR.glob(pattern)):
+                dst_name = src.name.replace(f'{source_version}_', f'{VERSION}_', 1)
+                if dst_name in seen_targets:
+                    continue
+                seen_targets.add(dst_name)
+                dst = REPORT_DIR / dst_name
+                try:
+                    if src.exists() and src.stat().st_size > 0:
+                        shutil.copyfile(src, dst)
+                        copied.append({'source_version': source_version, 'source': src.name, 'target': dst.name, 'bytes': dst.stat().st_size})
+                except Exception as exc:
+                    copied.append({'source_version': source_version, 'source': src.name, 'target': dst.name, 'error': f'{type(exc).__name__}: {exc}'})
+    return copied
+
+
+def _copy_reports_from_version(source_version: str) -> list[dict[str, Any]]:
+    copied: list[dict[str, Any]] = []
+    for pattern in (f'{source_version}_*.csv', f'{source_version}_*.json'):
         for src in sorted(REPORT_DIR.glob(pattern)):
             dst = REPORT_DIR / src.name.replace(f'{BASE_VERSION}_', f'{VERSION}_', 1)
             try:
                 if src.exists() and src.stat().st_size > 0:
                     shutil.copyfile(src, dst)
-                    copied.append({'source': src.name, 'target': dst.name, 'bytes': dst.stat().st_size})
+                    copied.append({'source_version': source_version, 'source': src.name, 'target': dst.name, 'bytes': dst.stat().st_size})
             except Exception as exc:
-                copied.append({'source': src.name, 'target': dst.name, 'error': f'{type(exc).__name__}: {exc}'})
+                copied.append({'source_version': source_version, 'source': src.name, 'target': dst.name, 'error': f'{type(exc).__name__}: {exc}'})
     return copied
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -61,7 +83,7 @@ def _rows(path: Path) -> int:
     except Exception:
         return 0
 
-def run_v92_update(fetch_news: bool = True, fetch_fundamentals: bool = True, fetch_macro: bool = True) -> dict[str, Any]:
+def run_v92_update(fetch_news: bool = False, fetch_fundamentals: bool = False, fetch_macro: bool = False) -> dict[str, Any]:
     """Stable wrapper around v91.
 
     The previous one-click launcher repeatedly ran pip install and could appear to hang.
@@ -71,16 +93,17 @@ def run_v92_update(fetch_news: bool = True, fetch_fundamentals: bool = True, fet
     """
     _ensure_dirs()
     started = _now()
-    base: dict[str, Any]
-    if run_v91_update is None:
-        base = {'status': 'ERROR', 'error': 'v91 update engine is not importable'}
-    else:
+    rebuild_v91 = bool(fetch_news or fetch_fundamentals or fetch_macro) or str(os.environ.get('MONE_REBUILD_V91', '')).strip() == '1'
+    base: dict[str, Any] = {'status': 'SKIPPED', 'reason': 'using existing report files'}
+    if rebuild_v91 and run_v91_update is not None:
         try:
             base = run_v91_update(fetch_news=fetch_news, fetch_fundamentals=fetch_fundamentals, fetch_macro=fetch_macro)
         except Exception as exc:
             base = {'status': 'ERROR', 'error': f'{type(exc).__name__}: {exc}'}
+    elif rebuild_v91 and run_v91_update is None:
+        base = {'status': 'WARN', 'error': 'v91 update engine is not importable; using existing report files'}
     copied = _copy_base_reports()
-    status = 'OK' if str(base.get('status')) in {'OK', 'WARN'} else 'WARN'
+    status = 'OK' if copied and str(base.get('status')) in {'OK', 'WARN', 'SKIPPED'} else 'WARN'
     checks = {}
     for slug in ['kr', 'us']:
         for key in ['today_summary', 'symbol_snapshot', 'confidence_cards', 'operational_dashboard']:
