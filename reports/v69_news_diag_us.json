@@ -1,0 +1,128 @@
+{
+  "market": "미국주식",
+  "updated_at": "2026-05-26 07:23:06",
+  "apify": {
+    "enabled": false,
+    "actor_configured": false,
+    "rows": 0,
+    "status": "SKIPPED"
+  },
+  "gnews": {
+    "market": "미국주식",
+    "updated_at": "2026-05-26 07:23:06",
+    "env": {
+      "GNEWS_API_KEY": true
+    },
+    "attempts": [
+      {
+        "type": "gnews",
+        "q": "Nasdaq stock market Nvidia AI chip",
+        "lang": "en",
+        "country": "us",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "Nasdaq stock market Nvidia AI chip",
+        "lang": "en",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "S&P 500 Federal Reserve Treasury yields stocks",
+        "lang": "en",
+        "country": "us",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "S&P 500 Federal Reserve Treasury yields stocks",
+        "lang": "en",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "US stock market earnings guidance technology",
+        "lang": "en",
+        "country": "us",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "US stock market earnings guidance technology",
+        "lang": "en",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "Reuters Nvidia AI semiconductor stocks",
+        "lang": "en",
+        "country": "us",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "Reuters Nvidia AI semiconductor stocks",
+        "lang": "en",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "CNBC Nasdaq Federal Reserve stocks",
+        "lang": "en",
+        "country": "us",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "gnews",
+        "q": "CNBC Nasdaq Federal Reserve stocks",
+        "lang": "en",
+        "country": "",
+        "status_code": 403,
+        "articles": 0,
+        "error": "{\"errors\":[\"You have reached your request limit for today, the next reset will be tomorrow at 00:00 UTC. If you need more requests, you can upgrade your subscription here: https:\\/\\/gnews.io\\/change-plan\"]}"
+      },
+      {
+        "type": "google_rss",
+        "query": "Nasdaq stock market Nvidia AI chip",
+        "url": "https://news.google.com/rss/search?q=Nasdaq+stock+market+Nvidia+AI+chip&hl=en-US&gl=US&ceid=US:en",
+        "rows": 15,
+        "status_code": 200
+      },
+      {
+        "type": "google_rss",
+        "query": "S&P 500 Federal Reserve Treasury yields stocks",
+        "url": "https://news.google.com/rss/search?q=S%26P+500+Federal+Reserve+Treasury+yields+stocks&hl=en-US&gl=US&ceid=US:en",
+        "rows": 15,
+        "status_code": 200
+      }
+    ],
+    "status": "OK",
+    "rows": 25,
+    "gnews_rows": 0,
+    "rss_rows": 25
+  },
+  "rows": 25
+}
