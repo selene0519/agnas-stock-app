@@ -55488,3 +55488,88 @@ if __name__ == "__main__":
     except Exception as e:
         log_app_event("streamlit_main", "error", f"{type(e).__name__}: {e}")
         st.error("앱 실행 중 오류가 발생했습니다. 관리자 모드에서 오류 로그를 확인하세요.")
+
+# =========================
+# MONE v92 Stable Update Override
+# =========================
+# v92 keeps the v91 UI, but fixes the update path:
+# - no pip install during daily update
+# - v92 reports preferred first, with v91/v85/v84 fallback
+# - update button calls the stable v92 wrapper
+
+try:
+    _ORIG_v91_generate_reports_for_v92 = _v91_generate_reports
+except Exception:
+    _ORIG_v91_generate_reports_for_v92 = None
+
+
+def _v92_generate_reports() -> dict:
+    try:
+        from core.v92_stable_update_engine import run_v92_update
+        return run_v92_update(fetch_news=True, fetch_fundamentals=True, fetch_macro=True)
+    except Exception as exc:
+        return {"status": "ERROR", "version": "v92", "error": f"{type(exc).__name__}: {exc}"}
+
+
+def _v91_generate_reports() -> dict:  # type: ignore[override]
+    return _v92_generate_reports()
+
+
+def _v91_candidates(slug: str, kind: str) -> pd.DataFrame:  # type: ignore[override]
+    files = {
+        "summary": [f"v92_today_summary_{slug}.csv", f"v91_today_summary_{slug}.csv", f"v85_today_summary_{slug}.csv", f"v84_today_summary_{slug}.csv"],
+        "action": [f"v92_action_cards_{slug}.csv", f"v91_action_cards_{slug}.csv", f"v85_action_cards_{slug}.csv", f"v84_action_cards_{slug}.csv"],
+        "pullback": [f"v92_pullback_cards_{slug}.csv", f"v91_pullback_cards_{slug}.csv", f"v85_pullback_cards_{slug}.csv", f"v84_pullback_cards_{slug}.csv"],
+        "flow": [f"v92_flow_cards_{slug}.csv", f"v91_flow_cards_{slug}.csv", f"v85_flow_cards_{slug}.csv", f"v84_flow_cards_{slug}.csv", f"v79_flow_clean_{slug}.csv"],
+        "company": [f"v92_company_integrated_{slug}.csv", f"v91_company_integrated_{slug}.csv", f"v85_company_integrated_{slug}.csv", f"v80_kpi_cards_{slug}.csv"],
+        "risk": [f"v92_risk_cards_{slug}.csv", f"v91_risk_cards_{slug}.csv", f"v85_risk_cards_{slug}.csv", f"v84_risk_cards_{slug}.csv"],
+        "news": [f"v92_news_summary_{slug}.csv", f"v91_news_summary_{slug}.csv", f"v85_news_summary_{slug}.csv", f"v84_news_summary_{slug}.csv"],
+        "position": [f"v92_position_cards_{slug}.csv", f"v91_position_cards_{slug}.csv", f"v85_position_cards_{slug}.csv", f"v84_position_cards_{slug}.csv"],
+        "snapshot": [f"v92_symbol_snapshot_{slug}.csv", f"v91_symbol_snapshot_{slug}.csv", f"v85_symbol_snapshot_{slug}.csv", f"v84_symbol_snapshot_{slug}.csv"],
+        "future": [f"v92_future_probability_{slug}.csv", f"v91_future_probability_{slug}.csv", f"v85_future_probability_{slug}.csv", f"v84_future_probability_{slug}.csv"],
+        "narrative": [f"v92_narrative_cards_{slug}.csv", f"v91_narrative_cards_{slug}.csv", f"v85_narrative_cards_{slug}.csv", f"v84_narrative_cards_{slug}.csv"],
+        "confidence": [f"v92_confidence_cards_{slug}.csv", f"v91_confidence_cards_{slug}.csv"],
+        "dashboard": [f"v92_operational_dashboard_{slug}.csv", f"v91_operational_dashboard_{slug}.csv"],
+        "status": ["v92_data_status.csv", "v91_data_status.csv", "v85_data_status.csv", "v84_data_status.csv"],
+        "strategy": ["v92_strategy_score.csv", "v91_strategy_score.csv"],
+    }.get(kind, [])
+    df = _v91_read_report(*files)
+    try:
+        if kind not in {"status", "strategy"}:
+            return _v77_clean_market_df(df, slug)
+    except Exception:
+        pass
+    return df
+
+
+def _v91_update_button(label: str = "MONE v92 안정 업데이트") -> None:  # type: ignore[override]
+    if st.button("MONE v92 안정 업데이트", key="v92_stable_update_button"):
+        with st.spinner("MONE v92 안정 업데이트 중입니다. 패키지 설치는 실행하지 않습니다..."):
+            res = _v92_generate_reports()
+        if str(res.get("status")) in {"OK", "WARN"}:
+            st.success("업데이트 완료. 최신 리포트를 불러옵니다.")
+            try:
+                st.cache_data.clear()
+            except Exception:
+                pass
+            st.rerun()
+        else:
+            st.error("업데이트가 완료되지 않았습니다. 관리자 모드에서 logs/v92_daily_update.log를 확인하세요.")
+            st.code(json.dumps(res, ensure_ascii=False, indent=2, default=str), language="json")
+
+# Make headless runner accept v92 too.
+try:
+    _ORIG_run_headless_runner_for_v92 = run_headless_runner
+except Exception:
+    _ORIG_run_headless_runner_for_v92 = None
+
+
+def run_headless_runner(action: str) -> int:  # type: ignore[override]
+    normalized = str(action or "").strip().lower()
+    if normalized in {"v92", "v92_update", "daily_v92", "mone_v92", "v91", "v91_update", "daily_v91", "mone_v91"}:
+        res = _v92_generate_reports()
+        print(json.dumps(res, ensure_ascii=False, indent=2, default=str), flush=True)
+        return 0 if isinstance(res, dict) and str(res.get("status")) in {"OK", "WARN"} else 2
+    if _ORIG_run_headless_runner_for_v92 is not None:
+        return _ORIG_run_headless_runner_for_v92(action)
+    return 2
