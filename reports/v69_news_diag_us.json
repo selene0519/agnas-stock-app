@@ -1,17 +1,17 @@
 {
   "market": "미국주식",
-  "updated_at": "2026-05-26 00:10:59",
+  "updated_at": "2026-05-25 19:30:03",
   "apify": {
     "enabled": true,
     "actor_configured": true,
     "rows": 0,
     "status": "HTTP_ERROR",
-    "status_code": 401,
-    "error": "{\n  \"error\": {\n    \"type\": \"user-or-token-not-found\",\n    \"message\": \"User was not found or authentication token is not valid\"\n  }\n}"
+    "status_code": 404,
+    "error": "{\n  \"error\": {\n    \"type\": \"record-not-found\",\n    \"message\": \"Actor was not found\"\n  }\n}"
   },
   "gnews": {
     "market": "미국주식",
-    "updated_at": "2026-05-26 00:10:59",
+    "updated_at": "2026-05-25 19:30:03",
     "env": {
       "GNEWS_API_KEY": true
     },

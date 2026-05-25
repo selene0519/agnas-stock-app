@@ -1,16 +1,36 @@
 {
-  "updated_at": "2026-05-23 10:14:36",
+  "updated_at": "2026-05-25 19:23:27",
   "rows": [
     {
-      "시장": "전체",
-      "제목": "수집된 뉴스가 없습니다",
-      "요약": "GNEWS_API_KEY/NEWS_API_KEY가 없거나 API 호출 결과가 비어 있습니다.",
+      "시장": "한국주식",
+      "제목": "GNews 검색 결과 0건",
+      "요약": "모든 재검색 결과가 0건입니다. 시도: KOSPI/en/kr=0; KOSDAQ semiconductor/en/kr=0; Korea large caps/en/kr=0; 한국어 시장/ko/kr=0; wide Korea/no-filter=0; top business/ko/kr=0; top business/en/kr=0",
       "감성": "확인 필요",
-      "초보자 해석": "뉴스가 없으면 뉴스 재료는 매수 판단에서 제외하고 가격·거래량·수급 중심으로 보세요.",
-      "다음 행동": "GitHub Secrets의 GNEWS_API_KEY 확인 → Actions 실행 → start 앱 동기화 확인",
-      "출처": "-",
+      "초보자 해석": "중립/확인 필요",
+      "다음 행동": "뉴스만으로 판단하지 말고 가격·거래량·수급이 같이 움직이는지 확인하세요.",
+      "출처": "reports/gnews_latest_kr.csv",
       "링크": "-"
     }
   ],
-  "fetch_result": null
+  "fetch_result": {
+    "updated_at": "2026-05-25T19:23:26",
+    "markets": {
+      "kr": {
+        "rows": 1,
+        "ok_rows": 0,
+        "diag_rows": 1,
+        "api_key_present": true,
+        "path": "reports/gnews_latest_kr.csv",
+        "diagnostic": "모든 재검색 결과가 0건입니다. 시도: KOSPI/en/kr=0; KOSDAQ semiconductor/en/kr=0; Korea large caps/en/kr=0; 한국어 시장/ko/kr=0; wide Korea/no-filter=0; top business/ko/kr=0; top business/en/kr=0"
+      },
+      "us": {
+        "rows": 1,
+        "ok_rows": 0,
+        "diag_rows": 1,
+        "api_key_present": true,
+        "path": "reports/gnews_latest_us.csv",
+        "diagnostic": "모든 재검색 결과가 0건입니다. 시도: stock market/en/us=0; Nasdaq/en/us=0; S&P 500/en/us=0; AI semiconductor/en/us=0; macro/en/us=0; wide stock market/no-filter=0; top business/en/us=0; top business/en/no-country=0"
+      }
+    }
+  }
 }
