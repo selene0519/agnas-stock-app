@@ -1,0 +1,19 @@
+﻿구분,항목,상태,행수,파일,수정시각,다음 행동
+환경,.env 파일,있음,1,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\.env,-,API 키 파일을 인식했습니다.
+API 키,GNEWS_API_KEY,인식됨,1,.env 또는 환경변수,-,정상
+API 키,FINNHUB_API_KEY,인식됨,1,.env 또는 환경변수,-,정상
+API 키,DART_API_KEY,인식됨,1,.env 또는 환경변수,-,정상
+API 키,OPENAI_API_KEY,미설정,0,.env 또는 환경변수,-,AI 요약이 필요할 때만 설정
+API 키,ANTHROPIC_API_KEY,미설정,0,.env 또는 환경변수,-,AI 요약이 필요할 때만 설정
+GitHub,로컬 Git 동기화,정상,2,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app,-,변경 파일 2개 있음
+GitHub,Actions 마지막 실행,없음,0,reports/cloud_accumulator_last_run.json,-,GitHub Actions 자동 실행 후 Pull/동기화하세요.
+뉴스,GNews 직접 테스트,키 인식,0,GGNews API,2026-05-25 20:22:20,키는 인식됐습니다. 실제 호출은 뉴스 갱신 버튼에서 실행합니다.
+행동판,오늘 행동판,정상,30,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\v52_action_board_light.csv,2026-05-25 20:22:19,정상적으로 읽을 수 있습니다.
+매수,매수 위험·제외,정상,32,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\v52_buy_risk_light.csv,2026-05-25 20:22:19,정상적으로 읽을 수 있습니다.
+보유,보유·매도 권장수량,정상,25,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\v52_position_plan_light.csv,2026-05-25 20:22:20,정상적으로 읽을 수 있습니다.
+뉴스,국장 뉴스,비어 있음,0,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\gnews_latest_kr.csv,2026-05-25 00:10:16,자동누적/수동 갱신 또는 API 키를 확인하세요.
+뉴스,미장 뉴스,비어 있음,0,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\gnews_latest_us.csv,2026-05-25 00:10:16,자동누적/수동 갱신 또는 API 키를 확인하세요.
+재무,재무·KPI,없음,0,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\v50_fundamental_cards.csv,-,자동누적/수동 갱신 또는 API 키를 확인하세요.
+퀀트,전략 백테스트,정상,32,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\v43_strategy_backtest_summary.csv,2026-05-25 00:10:17,정상적으로 읽을 수 있습니다.
+퀀트,추천 보정 후보,정상,32,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\v45_calibrated_candidates.csv,2026-05-25 00:10:17,정상적으로 읽을 수 있습니다.
+현재가,현재가 스냅샷,정상,5,C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\reports\intraday_realtime_snapshot.csv,2026-05-25 00:10:16,정상적으로 읽을 수 있습니다.

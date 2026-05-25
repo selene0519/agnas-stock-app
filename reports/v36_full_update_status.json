@@ -1,0 +1,34 @@
+{
+  "status": "OK",
+  "updated_at": "2026-05-22 16:33:41",
+  "prediction_learning": {
+    "status": "NO_DATA",
+    "message": "predictions.csv가 없거나 비어 있습니다.",
+    "updated_at": "2026-05-22 16:33:41"
+  },
+  "risk_priority": {
+    "status": "NO_DATA",
+    "updated_at": "2026-05-22 16:33:41",
+    "message": "predictions.csv가 없거나 비어 있습니다."
+  },
+  "api_status_center": {
+    "status": "OK",
+    "updated_at": "2026-05-22 16:33:41",
+    "rows": 13,
+    "counts": {
+      "없음": 12,
+      "비어 있음": 1
+    },
+    "csv": "reports/api_data_status_center.csv",
+    "note": "오래됨은 API 오류가 아니라 저장 리포트 기준 데이터일 가능성을 뜻합니다."
+  },
+  "cloud_readiness": {
+    "status": "READY_AFTER_SECRETS",
+    "updated_at": "2026-05-22 16:33:41",
+    "missing_files": [],
+    "missing_secret_count": 4,
+    "checklist_csv": "reports/cloud_readiness_checklist.csv",
+    "guide": "CLOUD_AUTO_ACCUMULATION_GUIDE.md",
+    "note": "노트북이 꺼져도 자동누적하려면 이 폴더를 GitHub/VPS에 올리고 API 키를 Secrets로 설정해야 합니다."
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "market": "한국주식",
+  "updated_at": "2026-05-25 20:52:58",
+  "mode": "strict_domestic_kr_news",
+  "attempts": [
+    {
+      "source": "v69_base",
+      "rows": 25
+    },
+    {
+      "source": "rss",
+      "query": "연합뉴스 코스피 코스닥 증시",
+      "rows": 12
+    },
+    {
+      "source": "rss",
+      "query": "인베스팅닷컴 한국 증시 코스피 코스닥",
+      "rows": 12
+    },
+    {
+      "source": "rss",
+      "query": "국내 증시 외국인 기관 수급 코스피 코스닥",
+      "rows": 12
+    },
+    {
+      "source": "rss",
+      "query": "삼성전자 SK하이닉스 반도체 증시",
+      "rows": 12
+    },
+    {
+      "source": "rss",
+      "query": "한국경제 코스피 코스닥 반도체 2차전지",
+      "rows": 12
+    },
+    {
+      "source": "rss",
+      "query": "매일경제 코스피 코스닥 증시",
+      "rows": 12
+    }
+  ],
+  "rows": 30
+}

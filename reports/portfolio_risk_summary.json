@@ -1,0 +1,84 @@
+{
+  "portfolio_risk_level": "매우 높음",
+  "total_exposure_pct": 100.0,
+  "sector_concentration": {
+    "전기차/성장주": {
+      "count": 3,
+      "exposure_pct": 0.0653,
+      "symbols": [
+        "ASTS",
+        "CRCL",
+        "RKLB"
+      ]
+    },
+    "가상자산": {
+      "count": 1,
+      "exposure_pct": 0.0445,
+      "symbols": [
+        "BMNR"
+      ]
+    },
+    "지수형": {
+      "count": 1,
+      "exposure_pct": 0.0363,
+      "symbols": [
+        "CAT"
+      ]
+    },
+    "반도체/AI": {
+      "count": 5,
+      "exposure_pct": 0.1485,
+      "symbols": [
+        "INTC",
+        "LITE",
+        "SNDK",
+        "AAOI",
+        "SIMO"
+      ]
+    },
+    "클라우드/소프트웨어": {
+      "count": 1,
+      "exposure_pct": 0.0324,
+      "symbols": [
+        "NBIS"
+      ]
+    },
+    "반도체": {
+      "count": 1,
+      "exposure_pct": 49.5814,
+      "symbols": [
+        "131970"
+      ]
+    },
+    "반도체 부품": {
+      "count": 1,
+      "exposure_pct": 50.0915,
+      "symbols": [
+        "222800"
+      ]
+    }
+  },
+  "max_expected_loss_pct": 7.0066,
+  "portfolio_expected_return": 0.0,
+  "market_exposure_level": "높음",
+  "risk_mode": false,
+  "position_count": 13,
+  "blocked_candidate_count": 0,
+  "portfolio_warnings": [
+    "총 포지션 노출 80% 초과",
+    "전기차/성장주 섹터 과집중",
+    "반도체/AI 섹터 과집중",
+    "반도체 섹터 과집중",
+    "반도체 부품 섹터 과집중",
+    "예상 최대 손실 6% 이상"
+  ],
+  "portfolio_actions": [
+    "추가 편입 전 현금 비중 확인",
+    "전기차/성장주 섹터 신규 편입 제한",
+    "반도체/AI 섹터 신규 편입 제한",
+    "반도체 섹터 신규 편입 제한",
+    "반도체 부품 섹터 신규 편입 제한",
+    "손절 기준 재점검 및 포지션 축소"
+  ],
+  "updated_at": "2026-05-23 14:07:10"
+}

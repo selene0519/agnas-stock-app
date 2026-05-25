@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "checked_at": "2026-05-21 08:52:07 KST",
+  "rows": 535,
+  "status_counts": {
+    "OK": 316,
+    "DATA_MISSING": 148,
+    "NEEDS_REVIEW": 47,
+    "EXCLUDED_RISK": 24
+  },
+  "data_missing_or_review_ratio": 0.3645,
+  "excluded_count": 24,
+  "score_min": 0.0,
+  "score_max": 62.0,
+  "latest_input_mtime": "2026-05-21 08:51:53",
+  "warnings": [
+    "DATA_MISSING/NEEDS_REVIEW ratio is high",
+    "no high-conviction candidate today"
+  ],
+  "top_candidates": [
+    {
+      "rank": 1,
+      "symbol": "000990",
+      "name": "DB하이텍",
+      "source_group": "수급 급증",
+      "total_score": 62.0,
+      "status": "OK",
+      "final_judgment": "돌파 확인 후 접근"
+    },
+    {
+      "rank": 2,
+      "symbol": "012450",
+      "name": "한화에어로스페이스",
+      "source_group": "수급 급증",
+      "total_score": 62.0,
+      "status": "OK",
+      "final_judgment": "돌파 확인 후 접근"
+    },
+    {
+      "rank": 3,
+      "symbol": "006260",
+      "name": "LS",
+      "source_group": "수급 급증",
+      "total_score": 62.0,
+      "status": "OK",
+      "final_judgment": "돌파 확인 후 접근"
+    },
+    {
+      "rank": 4,
+      "symbol": "034020",
+      "name": "두산에너빌리티",
+      "source_group": "수급 급증",
+      "total_score": 61.5,
+      "status": "OK",
+      "final_judgment": "관망 우위"
+    },
+    {
+      "rank": 5,
+      "symbol": "018260",
+      "name": "삼성에스디에스",
+      "source_group": "수급 급증",
+      "total_score": 56.5,
+      "status": "OK",
+      "final_judgment": "관망 우위"
+    }
+  ]
+}

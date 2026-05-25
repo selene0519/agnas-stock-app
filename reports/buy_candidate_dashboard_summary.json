@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-05-21 08:52:07 KST",
+  "files": {
+    "swing": {
+      "path": "reports\\swing_candidates.csv",
+      "rows": 206,
+      "status_counts": {
+        "DATA_MISSING": 107,
+        "OK": 79,
+        "EXCLUDED_RISK": 20
+      }
+    },
+    "undervalued": {
+      "path": "reports\\undervalued_growth_candidates.csv",
+      "rows": 205,
+      "status_counts": {
+        "OK": 117,
+        "NEEDS_REVIEW": 47,
+        "DATA_MISSING": 41
+      }
+    },
+    "watchlist": {
+      "path": "reports\\watchlist_buy_candidates.csv",
+      "rows": 124,
+      "status_counts": {
+        "OK": 120,
+        "EXCLUDED_RISK": 4
+      }
+    },
+    "priority": {
+      "path": "reports\\buy_priority_candidates.csv",
+      "rows": 535,
+      "status_counts": {
+        "OK": 316,
+        "DATA_MISSING": 148,
+        "NEEDS_REVIEW": 47,
+        "EXCLUDED_RISK": 24
+      }
+    },
+    "excluded": {
+      "path": "reports\\excluded_risk_stocks.csv",
+      "rows": 24,
+      "status_counts": {
+        "EXCLUDED_RISK": 24
+      }
+    }
+  },
+  "validation_ok": true,
+  "latest_input_mtime": "2026-05-21 08:51:53",
+  "health_ok": true
+}

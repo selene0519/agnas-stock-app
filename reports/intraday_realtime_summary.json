@@ -1,0 +1,49 @@
+{
+  "updated_at": "2026-05-22 17:37:27",
+  "target_count": 5,
+  "success_count": 0,
+  "fail_count": 5,
+  "skipped_count": 0,
+  "unsupported_count": 0,
+  "market_closed_count": 0,
+  "data_available_rate": 0.0,
+  "quote_available_rate": 0.0,
+  "quote_full_available_rate": 0.0,
+  "quote_partial_available_rate": 0.0,
+  "quote_fallback_used_count": 0,
+  "quote_api_empty_count": 5,
+  "kr_quote_missing_count": 0,
+  "kr_quote_fallback_count": 0,
+  "kis_us_quote_success_count": 0,
+  "kis_us_quote_fail_count": 5,
+  "finnhub_fallback_used_count": 0,
+  "csv_fallback_used_count": 0,
+  "quote_partial_fallback_count": 0,
+  "quote_missing_count": 5,
+  "intraday_missing_symbols": [
+    "GOOGL",
+    "INTC",
+    "NVDA",
+    "PLTR",
+    "TSLA"
+  ],
+  "intraday_failure_reason_counts": {
+    "api_response_empty": 5
+  },
+  "top_money_flow_symbols": [
+    "GOOGL",
+    "INTC",
+    "NVDA",
+    "PLTR",
+    "TSLA"
+  ],
+  "top_chase_risk_symbols": [],
+  "intraday_warning_count": 5,
+  "api_call_mode": "candidate_fallback_no_order",
+  "overall_status": "WARNING",
+  "warnings": [
+    "일부 장중 데이터 미수신",
+    "장중 데이터 경고 존재"
+  ],
+  "errors": []
+}

@@ -1,38 +1,9 @@
-# Python cache
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-
-# Secrets / local config
 .env
 *.env
-finnhub_config.json
-kis_config.json
-kis_token.json
-sec_api_config.json
-alert_config.json
-config.local.json
-secrets.toml
-.streamlit/secrets.toml
-
-# Generated runtime data
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
 logs/
 backups/
-reports/*.csv
-reports/*.json
-data/**/*.csv
-data/**/*.json
-
-# OS/editor files
 .DS_Store
-Thumbs.db
-.vscode/
-.idea/

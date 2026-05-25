@@ -1,0 +1,51 @@
+{
+  "status": "OK",
+  "version": "v71",
+  "updated_at": "2026-05-24 10:55:13",
+  "base": "v70 + Donhyun market guard + QuantAI card UX",
+  "v70": {
+    "status": "OK",
+    "version": "v70",
+    "updated_at": "2026-05-24 10:55:13",
+    "env": {
+      "GNEWS_API_KEY": false,
+      "FINNHUB_API_KEY": false,
+      "DART_API_KEY": false,
+      "APIFY_TOKEN": false,
+      "APIFY_NEWS_ACTOR_ID": false,
+      "SEC_USER_AGENT": false
+    },
+    "kr": {
+      "news_rows": 0,
+      "company_rows": 0,
+      "macro_rows": 0,
+      "narrative_rows": 12,
+      "news_diag": {
+        "status": "SKIPPED"
+      }
+    },
+    "us": {
+      "news_rows": 0,
+      "company_rows": 0,
+      "macro_rows": 0,
+      "narrative_rows": 12,
+      "news_diag": {
+        "status": "SKIPPED"
+      }
+    }
+  },
+  "kr": {
+    "today_cards": 5,
+    "position_cards": 0,
+    "market_guard_cards": 4,
+    "sector_rows": 1,
+    "signal_rows": 4
+  },
+  "us": {
+    "today_cards": 5,
+    "position_cards": 0,
+    "market_guard_cards": 4,
+    "sector_rows": 1,
+    "signal_rows": 4
+  }
+}
