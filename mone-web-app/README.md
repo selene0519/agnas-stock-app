@@ -1,6 +1,6 @@
 # MONE Web App
 
-> v2.5: 보수/균형/공격 추천 모드, 스윙 A/B/C군, 가상 운용 미리보기, 공시/기업분석 연결 API, GitHub Actions 상태판 보강. v2.1
+> v3.0: 첫 화면 보수/균형/공격 3모드 비교 카드, 선택 모드별 후보, 종목 상세 패널 확장(종목뉴스·공시/IR·EPS·주요재무·연간/분기실적·ESG·리서치 자리), 기본 API 포트 8050 정리, 버전 표기 정리.
 
 Next.js + FastAPI 기반의 MONE 웹앱입니다. v2.1은 기존 v2.0 정리 방향을 유지하면서 남은 대분류를 추가 정리했습니다. 일반 사용자 화면은 매일 확인할 내용 중심으로 줄이고, 예측 기록/결과 검증/실패 복기/자동 보정은 관리 영역으로 이동했습니다.
 
@@ -92,7 +92,7 @@ v2.0에서 확정한 정리 방향을 유지합니다.
 - 기존 `.github/workflows/`: 수정하지 않음
 
 
-## v2.5 데이터 산출 업그레이드
+## v3.0 데이터 산출 업그레이드
 
 - 확률/예상가가 비어 있을 때 현재가, OHLCV, 신뢰도, 기준가와 거리로 단기/스윙/중기 값을 임시 산출합니다.
 - 장전 리포트의 예상 시초가/예상 종가가 비어 있으면 OHLCV 갭 평균과 최근 수익률로 보강합니다.
@@ -100,7 +100,7 @@ v2.0에서 확정한 정리 방향을 유지합니다.
 - 자동화 상태 화면은 GitHub Actions API를 조회합니다. private repo는 `.env`에 `MONE_GITHUB_TOKEN` 또는 `GITHUB_TOKEN`이 필요합니다.
 - 후보 카드에 예상 매수가 기준 손실/이익 계산을 표시합니다. 자동주문 기능은 없습니다.
 
-## v2.6 virtual operation upgrade
+## v3.0 virtual operation upgrade
 
 - Added portfolio-level virtual operation summary endpoint: `GET /api/virtual/portfolio?market=kr|us&mode=conservative|balanced|aggressive`.
 - Recommendation/virtual operation modes now support conservative, balanced, and aggressive operation assumptions.
@@ -109,3 +109,53 @@ v2.0에서 확정한 정리 방향을 유지합니다.
 - Stock detail card now shows prediction line and virtual operation line together.
 
 Virtual operation is for simulation and calibration only. It does not place orders.
+
+## v3.0 데이터 연결/공시 수집/차트 QA 업데이트
+
+- `POST /api/disclosures/refresh?market=kr|us|all&days=30` 추가
+  - 국장: DART 공시 목록 수집 후 `data/disclosures/disclosures_kr.csv` 생성
+  - 미장: Finnhub filings API 기반 SEC filing 수집 후 `data/disclosures/disclosures_us.csv` 생성
+- 공시 탭에서 공시 CSV가 없을 때 수집 버튼으로 수집을 시도할 수 있습니다.
+- 기업분석 로더를 보강했습니다.
+  - company_integrated, company, financial, fundamental, flow 계열 CSV를 최신 파일 우선으로 병합합니다.
+  - EPS, PER, PBR, ROE, 매출, 영업이익, 순이익, 연간실적, 분기실적, ESG, 리서치 필드를 화면에 연결합니다.
+- 첫 화면 뉴스는 시장·섹터·수급 뉴스 중심으로 우선 표시하고, 개별 종목 뉴스는 종목 상세 패널에서 우선 확인하도록 정리했습니다.
+- 차트 화면은 OHLCV 기반 MA5/MA20/MA60, 볼린저밴드, RSI, MACD, 거래량 계산 상태를 함께 표시합니다.
+
+
+## v3.0 기록 저장 / 자동 보정 준비
+
+이번 버전은 미장/국장 자동 업데이트가 돌 때 예측값과 가상 운용 값을 바로 기록할 수 있도록 아래 기능을 추가합니다.
+
+- `data/history/virtual_operation_history.csv`에 보수/균형/공격 가상 운용 스냅샷 저장
+- `data/history/prediction_snapshot_history.csv`에 예측 스냅샷 저장
+- 기존 `predictions.csv`, `prediction_history.csv`, `outcome_history.csv`를 활용한 backfill 지원
+- `data/history/virtual_operation_evaluation.csv`에 outcome 매칭 평가 저장
+- `data/history/auto_correction_summary.csv`에 모드별/스윙군별 보정 요약 저장
+
+### 즉시 기록 생성
+
+```powershell
+cd "C:\Users\minbo\OneDrive\문서\GitHub\agnas-stock-app\mone-web-app\backend"
+python .\record_operation_history.py --market all --modes all --source manual --backfill-existing
+```
+
+### API
+
+- `POST /api/history/snapshot?market=all&modes=all&source=manual&backfill_existing=true`
+- `POST /api/history/backfill?market=all&modes=all`
+- `POST /api/history/evaluate`
+- `GET /api/history/files`
+- `GET /api/history/virtual-operations`
+- `GET /api/history/prediction-snapshots`
+- `GET /api/history/auto-correction`
+
+### GitHub Actions 자동 기록 연결
+
+`mone-auto-accumulator.yml`의 cloud update step 이후에 아래 실행을 추가하면 스케줄 실행 때마다 기록이 쌓입니다.
+
+```yaml
+      - name: Record virtual operation history
+        run: |
+          python mone-web-app/backend/record_operation_history.py --market all --modes all --source github-actions --backfill-existing
+```
