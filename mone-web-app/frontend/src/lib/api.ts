@@ -67,6 +67,19 @@ export async function getJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export function money(value?: number | null, market: Market = "kr") {
   if (!value) return "기준가 없음";
   return market === "us" ? `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `${value.toLocaleString()}원`;

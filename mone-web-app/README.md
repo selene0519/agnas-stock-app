@@ -1,6 +1,6 @@
-# MONE Web App v1.3
+# MONE Web App v1.4
 
-Next.js + FastAPI 기반의 MONE 웹앱입니다. v1.3에서는 `POST /api/quotes/refresh`를 실제 현재가 새로고침으로 연결했습니다. 현재가는 백엔드에서만 KIS/Finnhub API 키를 사용해 조회하고, 결과는 `mone-web-app/backend/cache/quotes_cache.json`에 저장됩니다. 기존 Streamlit `app.py`와 기존 `reports/`, `data/`, `predictions.csv`, watchlist/candidate 파일은 수정하지 않고 읽기 전용으로 유지합니다.
+Next.js + FastAPI 기반의 MONE 웹앱입니다. v1.4에서는 고급 분석 영역의 백테스트, 스캐너, 계산기, 몬테카를로, 상관관계/히트맵을 실제 데이터 화면으로 연결했습니다. 기존 Streamlit `app.py`와 기존 `reports/`, `data/`, `predictions.csv`, watchlist/candidate 파일은 수정하지 않고 읽기 전용으로 유지합니다.
 
 ## 1. 실행 방법
 
@@ -39,6 +39,7 @@ mone-web-app/
       main.py
       services/data_loader.py
       services/quotes.py
+      services/advanced.py
     cache/              # runtime quote/token cache, git ignored
     requirements.txt
   frontend/
@@ -70,28 +71,17 @@ mone-web-app/
 - `GET /api/history/predictions`
 - `GET /api/history/outcomes`
 - `POST /api/quotes/refresh?market=kr|us|all&symbols=005930,NVDA&max_symbols=80`
+- `GET /api/advanced/backtest?market=kr|us`
+- `GET /api/advanced/scanner?market=kr|us`
+- `POST /api/advanced/calculator/kelly`
+- `POST /api/advanced/calculator/var`
+- `POST /api/advanced/calculator/risk-reward`
+- `POST /api/advanced/monte-carlo`
+- `GET /api/advanced/correlation?market=kr|us`
 
-## 4. 현재가 새로고침
+## 4. Frontend 화면 목록
 
-- 국장: KIS 국내주식 현재가 API를 사용합니다.
-- 미장: KIS 해외주식 현재가 API를 먼저 사용하고, 실패하면 Finnhub quote API로 보조 조회합니다.
-- 성공한 현재가만 cache에 저장합니다.
-- 실패 종목은 기존 reports/data 값 또는 기존 cache 값을 fallback으로 유지합니다.
-- API 키는 backend `.env` 또는 실행 환경 변수에서만 읽고 frontend로 전달하지 않습니다.
-- 자동매매/주문 기능은 구현하지 않았습니다.
-
-필요한 backend 환경 변수:
-
-```powershell
-KIS_APP_KEY=...
-KIS_APP_SECRET=...
-KIS_IS_MOCK=false
-FINNHUB_API_KEY=...
-```
-
-## 5. Frontend 네비게이션 구조
-
-사이드바에는 대분류만 표시하고, 각 대분류 화면 상단에서 소분류를 pill button으로 선택합니다. 상단 바의 `현재가 새로고침` 버튼을 누르면 현재 선택한 시장의 현재가를 갱신한 뒤 시장 요약, 종목, 보유, 리포트 데이터를 다시 조회합니다.
+사이드바에는 대분류만 표시하고, 각 대분류 화면 상단에서 소분류를 pill button으로 선택합니다.
 
 - 시장 홈: 요약, 오늘 체크, 운영 대시보드
 - 운용 리포트: 장전 리포트, 장중 체크, 장마감 검증, 리포트 센터
@@ -103,19 +93,59 @@ FINNHUB_API_KEY=...
 - 고급 분석: 백테스트, 스캐너, 계산기, 몬테카를로, 상관관계 / 히트맵
 - 관리: 데이터 점검, API 상태, 자동화 상태, 로그 / 백업
 
-## 6. 검증 결과
+## 5. v1.4 고급 분석
+
+- 백테스트: `reports/backtest_*`, `reports/v92_quant_backtest_*`, `data/history`, `predictions.csv`를 읽어 전략별 수익률, 승률, MDD, Sharpe, 거래 수, 최근 결과를 표시합니다. 데이터가 부족하면 부족 사유를 표시합니다.
+- 스캐너: `candidate_universe_*`, `watchlist_*_growth.csv`, v92 action/pullback/flow/risk 카드를 조합해 전체, BUY, 주의, 눌림목, 수급, 저평가, 보유 제외 필터를 제공합니다.
+- 계산기: Kelly 포지션 사이징, VaR/CVaR, 위험조정수익률, 손익비, 포지션 수량 계산 결과만 표시합니다.
+- 몬테카를로: 입력값 기반 GBM 시뮬레이션으로 P5/P50/P95, 상승확률, 예상 최종가, VaR/CVaR와 Recharts 라인 차트를 표시합니다.
+- 상관관계/히트맵: `data/market/benchmark_daily.csv`를 우선 사용해 수익률 상관관계 히트맵과 페어별 해석을 표시합니다. 데이터가 부족하면 `상관관계 계산 데이터 부족`을 표시합니다.
+- 자동매매/주문 기능은 구현하지 않았습니다.
+
+## 6. 현재가 새로고침
+
+- 국장: KIS 국내주식 현재가 API를 사용합니다.
+- 미장: KIS 해외주식 현재가 API를 먼저 사용하고, 실패하면 Finnhub quote API로 보조 조회합니다.
+- 성공한 현재가만 cache에 저장합니다.
+- 실패 종목은 기존 reports/data 값 또는 기존 cache 값을 fallback으로 유지합니다.
+- API 키는 backend `.env` 또는 실행 환경 변수에서만 읽고 frontend로 전달하지 않습니다.
+
+필요한 backend 환경 변수:
+
+```powershell
+KIS_APP_KEY=...
+KIS_APP_SECRET=...
+KIS_IS_MOCK=false
+FINNHUB_API_KEY=...
+```
+
+## 7. 검증 결과
 
 - `python -m compileall mone-web-app\backend\app`: 성공
 - `npm run build`: 성공
 - `/health`: OK
-- `POST /api/quotes/refresh?market=kr&symbols=005930&max_symbols=1`: JSON 응답, 삼성전자 KIS 현재가 수신
-- `POST /api/quotes/refresh?market=us&symbols=NVDA&max_symbols=1`: JSON 응답, NVDA KIS 해외 현재가 수신
-- 삼성전자: 현재가 `300,500원`, 기준시각 `2026-05-26 13:51:37 KST`, 출처 `KIS 현재가`
-- NVDA: 현재가 `$215.33`, 기준시각 `2026-05-26 13:51:10 KST`, 출처 `KIS 해외 현재가 · NAS`
-- API 키 missing 시: `NO_REFRESH` JSON 응답, 앱 예외 없음, 기존 fallback 유지
-- 보유종목 수익률 표시: 유지
+- `GET /api/advanced/backtest?market=kr`: `DATA_SHORT`, 4 strategies 표시
+- `GET /api/advanced/scanner?market=kr`: 119 rows 표시
+- `GET /api/advanced/scanner?market=us`: 128 rows 표시
+- `GET /api/advanced/correlation?market=kr|us`: OK, 벤치마크 일간 수익률 기준
+- `POST /api/advanced/calculator/kelly`: Half Kelly 계산 응답
+- `POST /api/advanced/calculator/var`: VaR/CVaR 계산 응답
+- `POST /api/advanced/calculator/risk-reward`: 손익비 계산 응답
+- `POST /api/advanced/monte-carlo`: 61개 차트 포인트, P5/P50/P95 계산 응답
+- 고급 분석 > 백테스트 화면 표시 확인
+- 고급 분석 > 스캐너 화면 표시 확인
+- 고급 분석 > 계산기 화면 표시 확인
+- 고급 분석 > 몬테카를로 화면 표시 확인
+- 고급 분석 > 상관관계/히트맵 화면 표시 확인
+- 자동매매/주문 기능 추가 없음
 
-## 7. 기존 파일 보호 확인
+## 8. 아직 준비 중인 기능
+
+- 관심종목 편입 버튼은 v1.4에서 비활성 상태입니다.
+- 계산기 입력값 UI는 기본값 기반 실행으로 제공하며, 상세 사용자 입력 폼은 후속 버전에서 확장합니다.
+- 백테스트는 기존 파일에 충분한 OHLC/거래 결과가 부족하면 샘플 계산을 만들지 않고 데이터 부족 사유를 표시합니다.
+
+## 9. 기존 파일 보호 확인
 
 이번 작업은 `mone-web-app/` 폴더 안에서만 진행했습니다.
 
