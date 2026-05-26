@@ -1,7 +1,7 @@
 {
   "status": "OK",
   "version": "v93",
-  "updated_at": "2026-05-26 22:31:42",
+  "updated_at": "2026-05-27 03:08:25",
   "base_update": {
     "command": "/opt/hostedtoolcache/Python/3.11.15/x64/bin/python run_v92_daily_update.py",
     "returncode": 0,
@@ -22,21 +22,21 @@
     },
     {
       "target": "v93_action_cards_kr.csv",
-      "source": "v92_action_cards_kr.csv",
+      "source": "v93_action_cards_kr.csv",
       "rows": 5,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_pullback_cards_kr.csv",
-      "source": "v92_pullback_cards_kr.csv",
+      "source": "v93_pullback_cards_kr.csv",
       "rows": 5,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_flow_cards_kr.csv",
-      "source": "v92_flow_cards_kr.csv",
+      "source": "v93_flow_cards_kr.csv",
       "rows": 5,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_company_integrated_kr.csv",
@@ -46,9 +46,9 @@
     },
     {
       "target": "v93_risk_cards_kr.csv",
-      "source": "v92_risk_cards_kr.csv",
+      "source": "v93_risk_cards_kr.csv",
       "rows": 5,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_future_probability_kr.csv",
@@ -64,9 +64,9 @@
     },
     {
       "target": "v93_position_cards_kr.csv",
-      "source": "v92_position_cards_kr.csv",
+      "source": "v93_position_cards_kr.csv",
       "rows": 2,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_narrative_cards_kr.csv",
@@ -88,21 +88,21 @@
     },
     {
       "target": "v93_action_cards_us.csv",
-      "source": "v92_action_cards_us.csv",
+      "source": "v93_action_cards_us.csv",
       "rows": 5,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_pullback_cards_us.csv",
-      "source": "v92_pullback_cards_us.csv",
+      "source": "v93_pullback_cards_us.csv",
       "rows": 5,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_flow_cards_us.csv",
-      "source": "v92_flow_cards_us.csv",
+      "source": "v93_flow_cards_us.csv",
       "rows": 5,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_company_integrated_us.csv",
@@ -112,9 +112,9 @@
     },
     {
       "target": "v93_risk_cards_us.csv",
-      "source": "v92_risk_cards_us.csv",
+      "source": "v93_risk_cards_us.csv",
       "rows": 5,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_future_probability_us.csv",
@@ -130,9 +130,9 @@
     },
     {
       "target": "v93_position_cards_us.csv",
-      "source": "v92_position_cards_us.csv",
+      "source": "v93_position_cards_us.csv",
       "rows": 11,
-      "status": "COPIED"
+      "status": "ALREADY"
     },
     {
       "target": "v93_narrative_cards_us.csv",
@@ -160,8 +160,8 @@
     }
   ],
   "history": {
-    "rows_added": 0,
-    "total": 177,
+    "rows_added": 10,
+    "total": 187,
     "status": "OK"
   },
   "note": "GitHub Actions update package. Local app can be opened later after Fetch/Pull."
