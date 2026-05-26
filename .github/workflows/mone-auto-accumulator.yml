@@ -76,6 +76,11 @@ jobs:
         run: |
           python scripts/mone_github_auto_update.py
 
+
+      - name: Record virtual operation history
+        run: |
+          python mone-web-app/backend/record_operation_history.py --market all --modes all --source github-actions --backfill-existing
+
       - name: Show generated report status
         run: |
           echo "=== reports ==="
