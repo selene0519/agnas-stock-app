@@ -83,6 +83,12 @@ ENTRY_ALIASES = ["기준가", "관찰 기준가", "active_scenario_pullback_pric
 STOP_ALIASES = ["손절가", "stop", "stop_loss"]
 TARGET_ALIASES = ["목표가", "1차 목표가", "tp1", "target_price", "2차 목표가", "tp2"]
 TARGET2_ALIASES = ["2차 목표가", "tp2", "take_profit2"]
+EXPECTED_PRICE_ALIASES = {
+    "1d": ["1일예상가", "1일 예상가", "예상가_1일", "expected_price_1d", "pred_price_1d", "predicted_price_1d", "price_1d", "target_price_1d"],
+    "3d": ["3일예상가", "3일 예상가", "예상가_3일", "expected_price_3d", "pred_price_3d", "predicted_price_3d", "price_3d", "target_price_3d"],
+    "5d": ["5일예상가", "5일 예상가", "예상가_5일", "expected_price_5d", "pred_price_5d", "predicted_price_5d", "price_5d", "target_price_5d"],
+    "20d": ["20일예상가", "20일 예상가", "예상가_20일", "expected_price_20d", "pred_price_20d", "predicted_price_20d", "price_20d", "target_price_20d", "midterm_expected_price"],
+}
 SUPPLY_SCORE_ALIASES = ["수급점수", "수급 점수", "supply_score", "flow_score"]
 EARNINGS_SCORE_ALIASES = ["실적점수", "실적 점수", "earnings_score"]
 VALUATION_SCORE_ALIASES = ["밸류에이션점수", "밸류에이션 점수", "벨류에이션점수", "valuation_score"]
@@ -364,12 +370,20 @@ def format_percent(value: float | None, missing: str = "수익률 없음") -> st
 
 def _market_matches(row: dict[str, Any], market: str) -> bool:
     value = first_value(row, ["market", "시장"], "")
-    if not value:
-        return True
     lowered = value.lower()
-    if market == "kr":
-        return lowered in {"kr", "korea", "한국주식", "국장"} or "한국" in value
-    return lowered in {"us", "usa", "미국주식", "미장"} or "미국" in value
+    if value:
+        if market == "kr":
+            return lowered in {"kr", "korea", "한국주식", "국장", "kospi", "kosdaq"} or "한국" in value
+        return lowered in {"us", "usa", "미국주식", "미장", "nas", "nys", "amex"} or "미국" in value
+
+    symbol = first_value(row, SYMBOL_ALIASES + ["ticker", "종목코드"], "")
+    symbol = str(symbol).strip().replace(".0", "")
+    symbol = re.sub(r"[^A-Za-z0-9._-]", "", symbol)
+    if re.fullmatch(r"\d{1,6}", symbol):
+        return market == "kr"
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,12}", symbol):
+        return market == "us"
+    return False
 
 
 def read_predictions_csv(market: str | None = None) -> list[dict[str, Any]]:
@@ -649,6 +663,15 @@ def positions(market: str) -> dict[str, Any]:
         source = fallback.relative_to(REPO_ROOT).as_posix() if not df.empty else ""
         rows = dataframe_records(df)
 
+    # Include direct holdings rows that may not yet have a generated position_card report.
+    direct_holdings = dataframe_records(read_csv(DATA_DIR / f"holdings_{market}.csv"))
+    existing_symbols = {_row_symbol(row, market) for row in rows}
+    for holding_row in direct_holdings:
+        symbol = _row_symbol(holding_row, market)
+        if symbol and symbol not in existing_symbols:
+            rows.append(holding_row)
+            existing_symbols.add(symbol)
+
     normalized_rows = []
     for row in rows:
         row = apply_quote_cache(row, market)
@@ -712,9 +735,20 @@ def predictions(market: str) -> dict[str, Any]:
         row = apply_quote_cache(row, market)
         normalized = normalize_security_row(row, market)
         normalized.update({
-            "prob1d": first_value(row, ["1일상승확률", "prob_up_1d"], "확률 없음"),
-            "prob3d": first_value(row, ["3일상승확률", "prob_up_3d"], "확률 없음"),
-            "prob5d": first_value(row, ["5일상승확률", "prob_up_5d"], "확률 없음"),
+            "prob1d": first_value(row, ["1일상승확률", "prob_up_1d", "prob1d", "1d_probability"], "확률 없음"),
+            "prob3d": first_value(row, ["3일상승확률", "prob_up_3d", "prob3d", "3d_probability"], "확률 없음"),
+            "prob5d": first_value(row, ["5일상승확률", "prob_up_5d", "prob5d", "5d_probability"], "확률 없음"),
+            "prob20d": first_value(row, ["20일상승확률", "prob_up_20d", "prob20d", "20d_probability", "midterm_probability"], "확률 없음"),
+            "probShort": first_value(row, ["1일상승확률", "prob_up_1d", "prob1d", "1d_probability"], "확률 없음"),
+            "probSwing": first_value(row, ["5일상승확률", "prob_up_5d", "prob5d", "5d_probability"], "확률 없음"),
+            "probMid": first_value(row, ["20일상승확률", "prob_up_20d", "prob20d", "20d_probability", "midterm_probability"], "확률 없음"),
+            "expectedPrice1dText": _format_optional_price(row, EXPECTED_PRICE_ALIASES["1d"], market, "예상가 산출 필요"),
+            "expectedPrice3dText": _format_optional_price(row, EXPECTED_PRICE_ALIASES["3d"], market, "예상가 산출 필요"),
+            "expectedPrice5dText": _format_optional_price(row, EXPECTED_PRICE_ALIASES["5d"], market, "예상가 산출 필요"),
+            "expectedPrice20dText": _format_optional_price(row, EXPECTED_PRICE_ALIASES["20d"], market, "예상가 산출 필요"),
+            "expectedPriceShortText": _format_optional_price(row, EXPECTED_PRICE_ALIASES["1d"], market, "예상가 산출 필요"),
+            "expectedPriceSwingText": _format_optional_price(row, EXPECTED_PRICE_ALIASES["5d"], market, "예상가 산출 필요"),
+            "expectedPriceMidText": _format_optional_price(row, EXPECTED_PRICE_ALIASES["20d"], market, "예상가 산출 필요"),
             "confidence": first_value(row, ["신뢰도점수", "confidence_score"], "신뢰도 없음"),
             "nextAction": first_value(row, ["다음행동"], "다음 행동 없음"),
         })
@@ -847,8 +881,8 @@ def intraday_report(market: str) -> dict[str, Any]:
 
 def closing_report(market: str) -> dict[str, Any]:
     prediction_rows = read_predictions_csv(market)
-    prediction_history_rows = [row for row in prediction_history()["items"] if _market_matches(row, market)]
-    outcome_rows = [row for row in outcome_history()["items"] if _market_matches(row, market)]
+    prediction_history_rows = prediction_history(market)["items"]
+    outcome_rows = outcome_history(market)["items"]
     recent_predictions = sorted(prediction_rows, key=lambda row: first_value(row, ["created_at", "target_date"], ""), reverse=True)[:120]
     recent_history = sorted(prediction_history_rows, key=lambda row: first_value(row, ["created_at", "target_date"], ""), reverse=True)[:80]
 
@@ -896,8 +930,8 @@ def closing_report(market: str) -> dict[str, Any]:
         "count": len(items),
         "directionHitRate": _rate(prediction_rows, ["direction_hit", "decision_success"]),
         "rangeHitRate": _rate(prediction_rows, ["close_in_range", "open_in_range"]),
-        "predictionHistoryCount": prediction_history()["count"],
-        "outcomeHistoryCount": outcome_history()["count"],
+        "predictionHistoryCount": prediction_history(market)["count"],
+        "outcomeHistoryCount": outcome_history(market)["count"],
         "sources": ["predictions.csv", "data/history/prediction_history.csv", "data/history/outcome_history.csv"],
         "items": items,
         "outcomes": outcome_rows[:80],
@@ -950,21 +984,105 @@ def report_preview(path: str) -> dict[str, Any]:
     }
 
 
-def prediction_history() -> dict[str, Any]:
+def prediction_history(market: str | None = None) -> dict[str, Any]:
     path = HISTORY_DIR / "prediction_history.csv"
     df = read_csv(path)
+    rows = dataframe_records(df)
+    if market:
+        rows = [row for row in rows if _market_matches(row, market)]
     return {
-        "count": int(len(df)),
+        "count": int(len(rows)),
         "source": path.relative_to(REPO_ROOT).as_posix(),
-        "items": dataframe_records(df, 250),
+        "items": rows[:250],
     }
 
 
-def outcome_history() -> dict[str, Any]:
+def outcome_history(market: str | None = None) -> dict[str, Any]:
     path = HISTORY_DIR / "outcome_history.csv"
     df = read_csv(path)
+    rows = dataframe_records(df)
+    if market:
+        rows = [row for row in rows if _market_matches(row, market)]
     return {
-        "count": int(len(df)),
+        "count": int(len(rows)),
         "source": path.relative_to(REPO_ROOT).as_posix(),
-        "items": dataframe_records(df, 250),
+        "items": rows[:250],
     }
+
+
+def _find_data_files(patterns: tuple[str, ...], exclude: tuple[str, ...] = ()) -> list[Path]:
+    roots = [DATA_DIR, REPORT_DIR]
+    found: list[Path] = []
+    for base in roots:
+        if not base.exists():
+            continue
+        for path in base.rglob("*"):
+            if not path.is_file():
+                continue
+            name = path.name.lower()
+            full = path.as_posix().lower()
+            if exclude and any(term in name or term in full for term in exclude):
+                continue
+            if any(re.search(pattern, name) or re.search(pattern, full) for pattern in patterns):
+                found.append(path)
+    # de-duplicate while preserving order
+    seen: set[str] = set()
+    unique: list[Path] = []
+    for path in sorted(found, key=lambda p: p.as_posix()):
+        key = path.resolve().as_posix()
+        if key not in seen:
+            unique.append(path)
+            seen.add(key)
+    return unique
+
+
+def data_source_status() -> dict[str, Any]:
+    groups = [
+        {
+            "key": "chart",
+            "name": "차트/OHLCV",
+            "patterns": (r"ohlcv", r"daily", r"chart"),
+            "exclude": ("node_modules",),
+            "target": "차트·기술분석 > 차트 보기",
+        },
+        {
+            "key": "flow",
+            "name": "수급/거래대금",
+            "patterns": (r"flow", r"supply", r"수급", r"investor", r"volume"),
+            "exclude": ("node_modules",),
+            "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
+        },
+        {
+            "key": "orderbook",
+            "name": "호가/체결",
+            "patterns": (r"orderbook", r"quote", r"quotes", r"bid", r"ask", r"호가", r"체결"),
+            "exclude": ("node_modules", "quotes_cache"),
+            "target": "장중 체크 / 오늘 매수 검토",
+        },
+        {
+            "key": "disclosure",
+            "name": "공시",
+            "patterns": (r"disclosure", r"filing", r"dart", r"sec", r"공시"),
+            "exclude": ("sector", "dart_corp"),
+            "target": "뉴스·기업분석 > 공시",
+        },
+    ]
+    items = []
+    for group in groups:
+        files = _find_data_files(group["patterns"], group["exclude"])
+        csv_files = [path for path in files if path.suffix.lower() == ".csv"]
+        latest = max((file_mtime(path) for path in files if path.exists()), default="")
+        row_count = sum(rows_for(path) for path in csv_files[:20])
+        items.append({
+            "key": group["key"],
+            "name": group["name"],
+            "status": "OK" if files else "MISSING",
+            "files": len(files),
+            "csvFiles": len(csv_files),
+            "rows": int(row_count),
+            "latestUpdatedAt": latest,
+            "target": group["target"],
+            "examples": [path.relative_to(REPO_ROOT).as_posix() for path in files[:5]],
+            "message": "파일 감지됨" if files else "API 키/워크플로가 있어도 저장된 CSV가 없으면 앱에 표시할 데이터가 없습니다.",
+        })
+    return {"items": items}

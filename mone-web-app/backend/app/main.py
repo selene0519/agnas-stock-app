@@ -5,11 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.services import advanced
 from app.services import data_loader as data
+from app.services import insights
 from app.services import quotes
 from app.services import user_data
 
 
-app = FastAPI(title="MONE Web API", version="0.1.5")
+app = FastAPI(title="MONE Web API", version="0.2.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +43,11 @@ def api_status_files() -> dict:
 @app.get("/api/status/env")
 def api_status_env() -> dict:
     return data.status_env()
+
+
+@app.get("/api/status/data-sources")
+def api_status_data_sources() -> dict:
+    return data.data_source_status()
 
 
 @app.get("/api/market/summary")
@@ -178,14 +184,19 @@ def api_advanced_correlation(market: str = Query("kr", pattern="^(kr|us)$")) -> 
     return advanced.correlation(_market(market))
 
 
+@app.get("/api/insights/prediction")
+def api_prediction_insights(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return insights.prediction_insights(_market(market))
+
+
 @app.get("/api/history/predictions")
-def api_prediction_history() -> dict:
-    return data.prediction_history()
+def api_prediction_history(market: str | None = Query(None, pattern="^(kr|us)$")) -> dict:
+    return data.prediction_history(_market(market) if market else None)
 
 
 @app.get("/api/history/outcomes")
-def api_outcome_history() -> dict:
-    return data.outcome_history()
+def api_outcome_history(market: str | None = Query(None, pattern="^(kr|us)$")) -> dict:
+    return data.outcome_history(_market(market) if market else None)
 
 
 @app.post("/api/quotes/refresh")
