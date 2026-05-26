@@ -99,23 +99,6 @@ type VirtualPreviewItem = {
 
 type VirtualPreviewResponse = ApiList<VirtualPreviewItem> & { mode: string; modeLabel: string };
 
-type VirtualPortfolioResponse = {
-  market?: Market;
-  mode: string;
-  modeLabel: string;
-  totalCapital: string;
-  invested: string;
-  cash: string;
-  lossTotal: string;
-  profitTotal: string;
-  lossPct: string;
-  profitPct: string;
-  count: number;
-  cards: { label: string; value: string; note: string }[];
-  items: (VirtualPreviewItem & { executionStatus?: string })[];
-  note?: string;
-};
-
 type StrategyMode = "conservative" | "balanced" | "aggressive";
 
 const STRATEGY_MODE_LABEL: Record<StrategyMode, string> = {
@@ -449,7 +432,6 @@ export default function Home() {
   const [disclosures, setDisclosures] = useState<ApiList<DisclosureItem>>({ count: 0, items: [], sources: [] });
   const [companyAnalysis, setCompanyAnalysis] = useState<ApiList<CompanyAnalysisItem>>({ count: 0, items: [] });
   const [virtualPreview, setVirtualPreview] = useState<VirtualPreviewResponse>({ count: 0, items: [], mode: "balanced", modeLabel: "균형" });
-  const [virtualPortfolio, setVirtualPortfolio] = useState<VirtualPortfolioResponse>({ mode: "balanced", modeLabel: "균형", totalCapital: "-", invested: "-", cash: "-", lossTotal: "-", profitTotal: "-", lossPct: "-", profitPct: "-", count: 0, cards: [], items: [], note: "" });
   const [strategyMode, setStrategyMode] = useState<StrategyMode>("balanced");
   const [query, setQuery] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState<Security | null>(null);
@@ -508,8 +490,7 @@ export default function Home() {
           githubActionsData,
           disclosureData,
           companyAnalysisData,
-          virtualPreviewData,
-          virtualPortfolioData
+          virtualPreviewData
         ] =
           await Promise.all([
             getJson<MarketSummary>(`/api/market/summary?market=${market}`),
@@ -535,8 +516,7 @@ export default function Home() {
             getJson<GitHubActionsStatus>("/api/status/github-actions"),
             getJson<ApiList<DisclosureItem>>(`/api/disclosures?market=${market}`),
             getJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`),
-            getJson<VirtualPreviewResponse>(`/api/virtual/preview?market=${market}&mode=${strategyMode}`),
-            getJson<VirtualPortfolioResponse>(`/api/virtual/portfolio?market=${market}&mode=${strategyMode}`)
+            getJson<VirtualPreviewResponse>(`/api/virtual/preview?market=${market}&mode=${strategyMode}`)
           ]);
         const candidateData = await Promise.all(
           candidateTabs.map(([type]) => getJson<ApiList<Security>>(`/api/candidates?market=${market}&type=${type}`))
@@ -567,7 +547,6 @@ export default function Home() {
         setDisclosures(disclosureData);
         setCompanyAnalysis(companyAnalysisData);
         setVirtualPreview(virtualPreviewData);
-        setVirtualPortfolio(virtualPortfolioData);
         setCandidates(Object.fromEntries(candidateTabs.map(([type], idx) => [type, candidateData[idx]])));
         setSelectedSymbol(symbolData.items[0] ?? null);
       } catch (err) {
@@ -2299,11 +2278,6 @@ function SymbolDetailCard({ item }: { item: Security }) {
             <StatCard label="평가손익" value={item.pnlText || "평가손익 없음"} tone={(item.pnl ?? 0) < 0 ? "warn" : "good"} />
           </div>
         ) : null}
-        <div className="mt-3 rounded-lg border border-line bg-panel p-3 text-sm leading-6 text-slate-200">
-          <div className="font-black text-white">예측 · 가상 운용</div>
-          <div className="mt-1">{predictionLine(item)}</div>
-          <div className="mt-1">{tradePlanLine(item)}</div>
-        </div>
       </div>
       <div className="rounded-lg border border-line bg-panel p-4">
         <div className="text-sm font-black text-white">상태</div>

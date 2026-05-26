@@ -1553,110 +1553,6 @@ def company_analysis(market: str) -> dict[str, Any]:
     return {"market": market, "count": len(items), "source": source, "items": items}
 
 
-
-def _execution_status_for_plan(current: float | None, entry: float | None, mode: str) -> str:
-    settings = TRADE_MODE_SETTINGS.get(mode, TRADE_MODE_SETTINGS["balanced"])
-    if current is None or entry is None or entry <= 0:
-        return "체결 판단 불가"
-    gap = (current - entry) / entry
-    tol = float(settings.get("entry_tolerance_pct", 0.01) or 0.0)
-    if mode == "conservative":
-        if current <= entry * (1 + 0.003):
-            return "체결 가능"
-        if current <= entry * 1.02:
-            return "대기"
-        return "추격 부담"
-    if mode == "aggressive":
-        if gap <= tol:
-            return "체결 가능"
-        if gap <= 0.08:
-            return "공격 검토"
-        return "추격 부담"
-    if abs(gap) <= tol:
-        return "체결 가능"
-    if gap > tol:
-        return "대기"
-    return "기준가 아래"
-
-
-def virtual_portfolio_summary(market: str, mode: str = "balanced") -> dict[str, Any]:
-    if mode not in TRADE_MODE_SETTINGS:
-        mode = "balanced"
-    settings = TRADE_MODE_SETTINGS[mode]
-    max_positions = {"conservative": 3, "balanced": 5, "aggressive": 8}.get(mode, 5)
-    universe = candidate_rows(market, "action").get("items", []) + candidate_rows(market, "pullback").get("items", []) + candidate_rows(market, "flow").get("items", [])
-    seen: set[str] = set()
-    selected: list[dict[str, Any]] = []
-    for item in universe:
-        symbol = normalize_symbol(item.get("symbol"), market)
-        if not symbol or symbol in seen:
-            continue
-        seen.add(symbol)
-        modes = item.get("recommendationModes") or []
-        if mode not in modes and mode != "aggressive":
-            continue
-        plan = (item.get("virtualPlans") or {}).get(mode) or {}
-        if plan.get("status") != "OK":
-            continue
-        selected.append({"item": item, "plan": plan})
-        if len(selected) >= max_positions:
-            break
-
-    capital_per_position = float(settings["capital_us"] if market == "us" else settings["capital_kr"])
-    total_capital = capital_per_position * max_positions
-    invested = sum(float(row["plan"].get("invested", 0) or 0) for row in selected)
-    loss_total = sum(float(row["plan"].get("lossTotal", 0) or 0) for row in selected)
-    profit_total = sum(float(row["plan"].get("profitTotal", 0) or 0) for row in selected)
-    cash = max(0.0, total_capital - invested)
-    loss_pct = (loss_total / total_capital * 100) if total_capital else 0
-    profit_pct = (profit_total / total_capital * 100) if total_capital else 0
-
-    cards = [
-        {"label": "추천 모드", "value": settings["label"], "note": settings["buy_rule"]},
-        {"label": "최대 보유", "value": f"{max_positions}종목", "note": f"종목당 {format_price(capital_per_position, market)} 기준"},
-        {"label": "예상 최대 손실", "value": format_signed_money(loss_total, market), "note": format_percent(loss_pct)},
-        {"label": "예상 목표 이익", "value": format_signed_money(profit_total, market), "note": format_percent(profit_pct)},
-        {"label": "잔여 현금", "value": format_price(cash, market), "note": "정수 수량 계산 후 잔여"},
-    ]
-    items = []
-    for row in selected:
-        item = row["item"]
-        plan = row["plan"]
-        items.append({
-            "symbol": item.get("symbol", ""),
-            "name": item.get("name", item.get("symbol", "")),
-            "swingGrade": item.get("swingGrade", "스윙 C군"),
-            "currentPrice": item.get("currentPriceText", "현재가 없음"),
-            "entry": plan.get("entryText", "예상 매수가 산출 필요"),
-            "shares": plan.get("sharesText", "수량 산출 필요"),
-            "invested": plan.get("investedText", "투입금 산출 필요"),
-            "loss": plan.get("lossTotalText", "손실 산출 필요"),
-            "profit": plan.get("profitTotalText", "이익 산출 필요"),
-            "accountLossPct": plan.get("accountLossPctText", "운용 손실률 산출 필요"),
-            "accountProfitPct": plan.get("accountProfitPctText", "운용 수익률 산출 필요"),
-            "executionStatus": _execution_status_for_plan(item.get("currentPrice"), item.get("entry"), mode),
-            "buyRule": plan.get("buyRule", settings["buy_rule"]),
-            "holdDays": plan.get("holdDays", settings["hold_days"]),
-        })
-    return {
-        "market": market,
-        "mode": mode,
-        "modeLabel": settings["label"],
-        "maxPositions": max_positions,
-        "capitalPerPosition": format_price(capital_per_position, market),
-        "totalCapital": format_price(total_capital, market),
-        "invested": format_price(invested, market),
-        "cash": format_price(cash, market),
-        "lossTotal": format_signed_money(loss_total, market),
-        "profitTotal": format_signed_money(profit_total, market),
-        "lossPct": format_percent(loss_pct),
-        "profitPct": format_percent(profit_pct),
-        "cards": cards,
-        "count": len(items),
-        "items": items,
-        "note": "가상 운용은 자동주문이 아니며, 기준가·손절가·목표가와 OHLCV 기반 검증을 위한 참고 계산입니다.",
-    }
-
 def virtual_operation_preview(market: str, mode: str = "balanced") -> dict[str, Any]:
     if mode not in TRADE_MODE_SETTINGS:
         mode = "balanced"
@@ -1688,7 +1584,6 @@ def virtual_operation_preview(market: str, mode: str = "balanced") -> dict[str, 
             "accountProfitPct": plan.get("accountProfitPctText", "운용 수익률 산출 필요"),
             "buyRule": plan.get("buyRule", "매수 기준 없음"),
             "holdDays": plan.get("holdDays", "보유기간 없음"),
-            "executionStatus": _execution_status_for_plan(item.get("currentPrice"), item.get("entry"), mode),
             "summary": plan.get("summary", "가상 운용 산출 필요"),
         })
     return {"market": market, "mode": mode, "modeLabel": TRADE_MODE_SETTINGS[mode]["label"], "count": len(rows), "items": rows[:80]}
