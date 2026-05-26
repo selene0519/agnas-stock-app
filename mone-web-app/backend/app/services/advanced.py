@@ -32,59 +32,291 @@ def _read_any_csv(path: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+DATE_ALIASES = ["date", "Date", "날짜", "stck_bsop_date", "xymd", "time", "timestamp"]
+OPEN_ALIASES = ["open", "Open", "시가", "stck_oprc", "ovrs_nmix_oprc", "open_price"]
+HIGH_ALIASES = ["high", "High", "고가", "stck_hgpr", "ovrs_nmix_hgpr", "high_price"]
+LOW_ALIASES = ["low", "Low", "저가", "stck_lwpr", "ovrs_nmix_lwpr", "low_price"]
+CLOSE_ALIASES = ["close", "Close", "종가", "stck_clpr", "ovrs_nmix_prpr", "last", "adj_close", "Adj Close", "close_price"]
+VOLUME_ALIASES = ["volume", "Volume", "거래량", "acml_vol", "tvol", "vol"]
+
+
+def _first_col(df: pd.DataFrame, aliases: list[str]) -> str | None:
+    exact = {str(c).strip().lower(): c for c in df.columns}
+    for alias in aliases:
+        key = alias.strip().lower()
+        if key in exact:
+            return exact[key]
+    # 느슨한 fallback: 공백/언더바 제거 후 비교
+    compact = {str(c).strip().lower().replace("_", "").replace(" ", ""): c for c in df.columns}
+    for alias in aliases:
+        key = alias.strip().lower().replace("_", "").replace(" ", "")
+        if key in compact:
+            return compact[key]
+    return None
+
+
+def _to_number_series(series: pd.Series) -> pd.Series:
+    return pd.to_numeric(
+        series.astype(str).str.replace(",", "", regex=False).str.replace("$", "", regex=False).str.replace("원", "", regex=False).str.strip(),
+        errors="coerce",
+    )
+
+
+def _parse_date_series(series: pd.Series) -> pd.Series:
+    text = series.astype(str).str.strip()
+    parsed = pd.to_datetime(text, errors="coerce")
+    if parsed.notna().sum() == 0:
+        parsed = pd.to_datetime(text, format="%Y%m%d", errors="coerce")
+    return parsed
+
+
+def _symbol_from_ohlcv_path(path: Path, market: str) -> str:
+    name = path.stem
+    prefix = f"{market}_"
+    if name.lower().startswith(prefix):
+        name = name[len(prefix):]
+    if name.lower().endswith("_daily"):
+        name = name[:-6]
+    return data.normalize_symbol(name, market)
+
+
+def _ohlcv_files(market: str) -> list[Path]:
+    base = data.DATA_DIR / "market" / "ohlcv"
+    if not base.exists():
+        return []
+    return sorted(base.glob(f"{market}_*_daily.csv"))
+
+
+def _normalize_ohlcv_frame(path: Path, market: str) -> tuple[pd.DataFrame, str]:
+    raw = _read_any_csv(path)
+    if raw.empty:
+        return pd.DataFrame(), "파일이 비어 있음"
+
+    date_col = _first_col(raw, DATE_ALIASES)
+    close_col = _first_col(raw, CLOSE_ALIASES)
+    open_col = _first_col(raw, OPEN_ALIASES) or close_col
+    high_col = _first_col(raw, HIGH_ALIASES) or close_col
+    low_col = _first_col(raw, LOW_ALIASES) or close_col
+    volume_col = _first_col(raw, VOLUME_ALIASES)
+
+    if not date_col or not close_col:
+        return pd.DataFrame(), f"필수 컬럼 부족(date={date_col}, close={close_col})"
+
+    work = pd.DataFrame({
+        "date": _parse_date_series(raw[date_col]),
+        "open": _to_number_series(raw[open_col]),
+        "high": _to_number_series(raw[high_col]),
+        "low": _to_number_series(raw[low_col]),
+        "close": _to_number_series(raw[close_col]),
+    })
+    work["volume"] = _to_number_series(raw[volume_col]) if volume_col else 0
+    work = work.dropna(subset=["date", "close"]).sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
+
+    # open/high/low가 없는 fallback 파일은 close로 보강해서 백테스트가 깨지지 않게 함.
+    for col in ["open", "high", "low"]:
+        work[col] = work[col].fillna(work["close"])
+    work = work[(work["close"] > 0)].reset_index(drop=True)
+    return work, "OK" if not work.empty else "정상 가격 row 없음"
+
+
+def _rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    delta = close.diff()
+    gain = delta.clip(lower=0).rolling(period).mean()
+    loss = (-delta.clip(upper=0)).rolling(period).mean()
+    rs = gain / loss.replace(0, np.nan)
+    return 100 - (100 / (1 + rs))
+
+
+def _max_drawdown_from_returns(returns: np.ndarray) -> float:
+    if returns.size == 0:
+        return 0.0
+    equity = np.cumprod(1 + returns)
+    peak = np.maximum.accumulate(equity)
+    dd = equity / np.where(peak == 0, 1, peak) - 1
+    return float(dd.min())
+
+
+def _strategy_returns(frame: pd.DataFrame, symbol: str) -> dict[str, list[dict[str, Any]]]:
+    work = frame.copy()
+    work["ret_next"] = work["close"].shift(-1) / work["close"] - 1
+    work["ma10"] = work["close"].rolling(10).mean()
+    work["ma20"] = work["close"].rolling(20).mean()
+    work["high20"] = work["high"].rolling(20).max().shift(1)
+    work["rsi14"] = _rsi(work["close"], 14)
+
+    strategy_signals = {
+        "20일 고점 돌파": work["close"] > work["high20"],
+        "MA10 > MA20 추세": work["ma10"] > work["ma20"],
+        "RSI 저점 반등": (work["rsi14"] < 35) & (work["close"] > work["close"].shift(1)),
+        "20일선 눌림목": (work["close"] > work["ma20"]) & ((work["close"] / work["ma20"] - 1).abs() <= 0.03),
+    }
+
+    out: dict[str, list[dict[str, Any]]] = {name: [] for name in strategy_signals}
+    for name, signal in strategy_signals.items():
+        selected = work[signal.fillna(False) & work["ret_next"].notna()].copy()
+        for _, row in selected.iterrows():
+            out[name].append({
+                "date": row["date"].strftime("%Y-%m-%d") if pd.notna(row["date"]) else "",
+                "symbol": symbol,
+                "return": float(row["ret_next"]),
+                "close": float(row["close"]),
+            })
+    return out
+
+
+def _metrics_for_trades(trades: list[dict[str, Any]]) -> dict[str, Any]:
+    if not trades:
+        return {
+            "totalReturn": "0.00%",
+            "winRate": "0.00%",
+            "mdd": "0.00%",
+            "sharpe": "데이터 부족",
+            "trades": "0",
+            "status": "DATA_SHORT",
+            "recentResult": "신호 또는 OHLC 데이터 부족",
+        }
+    arr = np.array([float(t["return"]) for t in trades if math.isfinite(float(t["return"]))], dtype=float)
+    if arr.size == 0:
+        return {
+            "totalReturn": "0.00%",
+            "winRate": "0.00%",
+            "mdd": "0.00%",
+            "sharpe": "데이터 부족",
+            "trades": "0",
+            "status": "DATA_SHORT",
+            "recentResult": "유효 수익률 데이터 부족",
+        }
+    avg_return = float(arr.mean() * 100)
+    win = float((arr > 0).mean() * 100)
+    mdd = _max_drawdown_from_returns(arr) * 100
+    sharpe = None
+    if arr.size > 2 and float(arr.std()) > 0:
+        sharpe = float(arr.mean() / arr.std() * math.sqrt(252))
+    recent = sorted(trades, key=lambda x: str(x.get("date", "")), reverse=True)[:5]
+    recent_avg = np.array([float(t["return"]) for t in recent], dtype=float).mean() * 100 if recent else 0
+    return {
+        "totalReturn": _pct(avg_return),
+        "winRate": _pct(win),
+        "mdd": _pct(mdd),
+        "sharpe": f"{sharpe:.2f}" if sharpe is not None else "데이터 부족",
+        "trades": str(int(arr.size)),
+        "status": "OK",
+        "recentResult": f"최근 {len(recent)}건 평균 {recent_avg:.2f}% · 실제 OHLCV 기반",
+    }
+
+
 def advanced_backtest(market: str) -> dict[str, Any]:
-    summary_json = data.read_json(data.REPORT_DIR / "backtest_beta_summary.json")
-    beta = _read_any_csv(data.REPORT_DIR / "backtest_beta_summary.csv")
-    quant, quant_source = data.read_report("quant_backtest", market)
     outcome = data.outcome_history()
+    predictions_all = data.read_predictions_csv(None)
     predictions = data.read_predictions_csv(market)
 
-    items = []
-    for row in data.dataframe_records(beta):
-        status = data.first_value(row, ["status"], "데이터 부족")
-        days = _num(row.get("days"))
-        total = _num(row.get("total_return_pct"))
-        win = _num(row.get("win_rate_pct"))
-        mdd = _num(row.get("mdd_pct"))
-        sharpe = None
-        if days > 1:
-            avg_daily = _num(row.get("avg_daily_return_pct"))
-            sharpe = (avg_daily / max(abs(mdd), 1.0)) * math.sqrt(252)
+    ohlcv_paths = _ohlcv_files(market)
+    min_days = 30
+    eligible_frames: dict[str, pd.DataFrame] = {}
+    insufficient: list[dict[str, Any]] = []
+    schema_errors: list[dict[str, Any]] = []
+
+    for path in ohlcv_paths:
+        symbol = _symbol_from_ohlcv_path(path, market)
+        frame, status = _normalize_ohlcv_frame(path, market)
+        if frame.empty or status != "OK":
+            schema_errors.append({"symbol": symbol, "file": path.name, "reason": status})
+            continue
+        if len(frame) < min_days:
+            insufficient.append({"symbol": symbol, "file": path.name, "rows": len(frame), "reason": f"{min_days}일 미만 OHLCV"})
+            continue
+        eligible_frames[symbol] = frame
+
+    prediction_symbols = {data.normalize_symbol(data.first_value(row, data.SYMBOL_ALIASES), market) for row in predictions}
+    prediction_symbols = {s for s in prediction_symbols if s}
+    eligible_symbols = set(eligible_frames)
+    matched_prediction_symbols = prediction_symbols & eligible_symbols
+
+    strategy_trades: dict[str, list[dict[str, Any]]] = {
+        "20일 고점 돌파": [],
+        "MA10 > MA20 추세": [],
+        "RSI 저점 반등": [],
+        "20일선 눌림목": [],
+    }
+    for symbol, frame in eligible_frames.items():
+        result = _strategy_returns(frame, symbol)
+        for strategy, trades in result.items():
+            strategy_trades.setdefault(strategy, []).extend(trades)
+
+    items: list[dict[str, Any]] = []
+    for strategy, trades in strategy_trades.items():
+        metrics = _metrics_for_trades(trades)
         items.append({
-            "strategy": data.first_value(row, ["전략", "strategy"], "전략명 없음"),
-            "status": status,
-            "totalReturn": _pct(total),
-            "winRate": _pct(win),
-            "mdd": _pct(mdd),
-            "sharpe": f"{sharpe:.2f}" if sharpe is not None else "데이터 부족",
-            "trades": data.first_value(row, ["trades", "symbols"], "거래 수 데이터 부족"),
-            "recentResult": "데이터 부족 사유: 30일 이상 OHLC가 있는 종목 부족" if status != "OK" else "최근 결과 확인",
+            "strategy": strategy,
+            "status": metrics["status"],
+            "totalReturn": metrics["totalReturn"],
+            "winRate": metrics["winRate"],
+            "mdd": metrics["mdd"],
+            "sharpe": metrics["sharpe"],
+            "trades": metrics["trades"],
+            "recentResult": metrics["recentResult"],
         })
 
-    if not items and not quant.empty:
-        for row in data.dataframe_records(quant):
-            items.append({
-                "strategy": data.first_value(row, ["항목"], "전략명 없음"),
-                "status": "기록 축적 중",
-                "totalReturn": "데이터 부족",
-                "winRate": "데이터 부족",
-                "mdd": "데이터 부족",
-                "sharpe": "데이터 부족",
-                "trades": data.first_value(row, ["값"], "거래 수 데이터 부족"),
-                "recentResult": data.first_value(row, ["해석"], "데이터 부족 사유 없음"),
-            })
+    total_trades = sum(int(item["trades"]) for item in items if str(item.get("trades", "0")).isdigit())
+    status = "OK" if eligible_frames and total_trades > 0 else "DATA_SHORT"
+    warnings: list[str] = []
+    if not ohlcv_paths:
+        warnings.append("data/market/ohlcv에 OHLCV 파일이 없습니다")
+    if not eligible_frames:
+        warnings.append("30일 이상 OHLCV가 있는 종목이 없습니다")
+    if prediction_symbols and not matched_prediction_symbols:
+        warnings.append("예측 종목과 OHLCV 보유 종목이 매칭되지 않습니다")
+    if status == "OK":
+        warnings.append("data/market/ohlcv 실제 OHLCV 기반 백테스트")
 
-    warnings = summary_json.get("warnings", []) if isinstance(summary_json.get("warnings"), list) else []
+    diagnostics = [
+        {"항목": "전체 predictions.csv rows", "값": len(predictions_all), "해석": "전체 예측 원장"},
+        {"항목": "현재 시장 필터 rows", "값": len(predictions), "해석": _market_text(market)},
+        {"항목": "OHLCV 파일 수", "값": len(ohlcv_paths), "해석": "data/market/ohlcv/*_daily.csv"},
+        {"항목": "30일 이상 OHLCV 종목 수", "값": len(eligible_frames), "해석": f"최소 기준 {min_days}일"},
+        {"항목": "예측+OHLCV 매칭 종목 수", "값": len(matched_prediction_symbols), "해석": "예측 기록과 가격 데이터가 모두 있는 종목"},
+        {"항목": "OHLCV 부족 종목 수", "값": len(insufficient), "해석": "30일 미만"},
+        {"항목": "OHLCV 컬럼/파싱 오류 수", "값": len(schema_errors), "해석": "date/close 등 필수값 문제"},
+        {"항목": "전체 거래 신호 수", "값": total_trades, "해석": "4개 전략 합산"},
+    ]
+
+    recent_trades = []
+    for strategy, trades in strategy_trades.items():
+        for trade in sorted(trades, key=lambda x: str(x.get("date", "")), reverse=True)[:10]:
+            recent_trades.append({
+                "date": trade.get("date", ""),
+                "strategy": strategy,
+                "symbol": trade.get("symbol", ""),
+                "return": _pct(float(trade.get("return", 0)) * 100),
+                "close": data.format_price(float(trade.get("close", 0)), market),
+            })
+    recent_trades = sorted(recent_trades, key=lambda x: str(x.get("date", "")), reverse=True)[:30]
+
     return {
         "market": market,
         "count": len(items),
-        "status": summary_json.get("status", "DATA_SHORT" if items else "NO_DATA"),
-        "warnings": warnings if warnings else ([] if items else ["백테스트 계산 데이터 부족"]),
-        "sources": ["reports/backtest_beta_summary.csv", "reports/backtest_beta_summary.json", quant_source, "data/history/outcome_history.csv", "predictions.csv"],
+        "status": status,
+        "warnings": warnings,
+        "sources": [
+            "data/market/ohlcv/*_daily.csv",
+            "predictions.csv",
+            "data/history/outcome_history.csv",
+        ],
         "predictionRows": len(predictions),
+        "totalPredictionRows": len(predictions_all),
         "outcomeRows": outcome["count"],
         "items": items,
         "recentOutcomes": outcome["items"][:30],
+        "recentTrades": recent_trades,
+        "diagnostics": diagnostics,
+        "ohlcv": {
+            "files": len(ohlcv_paths),
+            "eligibleSymbols": len(eligible_frames),
+            "minDaysRequired": min_days,
+            "predictionMatchedSymbols": len(matched_prediction_symbols),
+            "insufficient": insufficient[:30],
+            "schemaErrors": schema_errors[:30],
+        },
     }
 
 
