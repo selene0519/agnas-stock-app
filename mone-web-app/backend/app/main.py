@@ -3,11 +3,12 @@ from __future__ import annotations
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.services import advanced
 from app.services import data_loader as data
 from app.services import quotes
 
 
-app = FastAPI(title="MONE Web API", version="0.1.3")
+app = FastAPI(title="MONE Web API", version="0.1.4")
 
 app.add_middleware(
     CORSMiddleware,
@@ -103,6 +104,41 @@ def api_report_files() -> dict:
 @app.get("/api/reports/preview")
 def api_report_preview(path: str = Query(..., min_length=1)) -> dict:
     return data.report_preview(path)
+
+
+@app.get("/api/advanced/backtest")
+def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return advanced.advanced_backtest(_market(market))
+
+
+@app.get("/api/advanced/scanner")
+def api_advanced_scanner(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return advanced.advanced_scanner(_market(market))
+
+
+@app.post("/api/advanced/calculator/kelly")
+def api_calculator_kelly(payload: dict) -> dict:
+    return advanced.kelly(payload)
+
+
+@app.post("/api/advanced/calculator/var")
+def api_calculator_var(payload: dict) -> dict:
+    return advanced.var_cvar(payload)
+
+
+@app.post("/api/advanced/calculator/risk-reward")
+def api_calculator_risk_reward(payload: dict) -> dict:
+    return advanced.risk_reward(payload)
+
+
+@app.post("/api/advanced/monte-carlo")
+def api_monte_carlo(payload: dict) -> dict:
+    return advanced.monte_carlo(payload)
+
+
+@app.get("/api/advanced/correlation")
+def api_advanced_correlation(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return advanced.correlation(_market(market))
 
 
 @app.get("/api/history/predictions")

@@ -7,6 +7,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,7 +17,7 @@ import {
 import { EmptyReason, Section, StatCard } from "@/components/Cards";
 import { DataTable, type Column } from "@/components/DataTable";
 import { firstSubPage, NAV_GROUPS, Sidebar } from "@/components/Sidebar";
-import { API_BASE, getJson, money, type ApiList, type Market, type Security } from "@/lib/api";
+import { API_BASE, getJson, money, postJson, type ApiList, type Market, type Security } from "@/lib/api";
 
 type FileItem = {
   path: string;
@@ -128,6 +130,63 @@ type QuoteRefreshResponse = {
   failedItems: Array<{ symbol: string; error: string; fallbackKept?: boolean }>;
 };
 
+type BacktestItem = {
+  strategy: string;
+  status: string;
+  totalReturn: string;
+  winRate: string;
+  mdd: string;
+  sharpe: string;
+  trades: string;
+  recentResult: string;
+};
+
+type BacktestResponse = ApiList<BacktestItem> & {
+  status: string;
+  warnings: string[];
+  predictionRows: number;
+  outcomeRows: number;
+  recentOutcomes: Record<string, string>[];
+};
+
+type ScannerItem = Security & {
+  bucket: string;
+  theme: string;
+  group: string;
+  riskLevel: string;
+  score: string;
+  reason: string;
+  isHolding: boolean;
+  watchlistAction: string;
+};
+
+type CalculatorResults = {
+  kelly?: Record<string, string | number>;
+  var?: Record<string, string | number>;
+  rr?: Record<string, string | number | null>;
+};
+
+type MonteCarloResponse = {
+  p5: number;
+  p50: number;
+  p95: number;
+  upProbability: string;
+  expectedFinalPrice: number;
+  varText: string;
+  cvarText: string;
+  chart: { day: number; p5: number; p50: number; p95: number }[];
+};
+
+type CorrelationResponse = {
+  status: string;
+  reason: string;
+  assets?: string[];
+  items: { pair: string; correlation: number; interpretation: string }[];
+  matrix: Record<string, string | number>[];
+  sources: string[];
+  diversificationNote?: string;
+};
+
 const candidateTabs = [
   ["action", "오늘 확인"],
   ["pullback", "눌림목"],
@@ -169,6 +228,12 @@ export default function Home() {
     outcomes: []
   });
   const [reportFiles, setReportFiles] = useState<ReportFilesResponse>({ count: 0, fallbackPolicy: [], items: [] });
+  const [backtest, setBacktest] = useState<BacktestResponse>({ count: 0, items: [], status: "NO_DATA", warnings: [], predictionRows: 0, outcomeRows: 0, recentOutcomes: [] });
+  const [scanner, setScanner] = useState<ApiList<ScannerItem>>({ count: 0, items: [] });
+  const [scannerFilter, setScannerFilter] = useState("전체");
+  const [calculator, setCalculator] = useState<CalculatorResults>({});
+  const [monteCarlo, setMonteCarlo] = useState<MonteCarloResponse | null>(null);
+  const [correlation, setCorrelation] = useState<CorrelationResponse>({ status: "NO_DATA", reason: "상관관계 계산 데이터 부족", items: [], matrix: [], sources: [] });
   const [query, setQuery] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState<Security | null>(null);
   const [candidateType, setCandidateType] = useState<(typeof candidateTabs)[number][0]>("action");
@@ -193,7 +258,10 @@ export default function Home() {
           premarketData,
           intradayData,
           closingData,
-          reportFileData
+          reportFileData,
+          backtestData,
+          scannerData,
+          correlationData
         ] =
           await Promise.all([
             getJson<MarketSummary>(`/api/market/summary?market=${market}`),
@@ -208,7 +276,10 @@ export default function Home() {
             getJson<ApiList<PremarketItem>>(`/api/reports/premarket?market=${market}`),
             getJson<ApiList<IntradayItem>>(`/api/reports/intraday?market=${market}`),
             getJson<ClosingReport>(`/api/reports/closing?market=${market}`),
-            getJson<ReportFilesResponse>("/api/reports/files")
+            getJson<ReportFilesResponse>("/api/reports/files"),
+            getJson<BacktestResponse>(`/api/advanced/backtest?market=${market}`),
+            getJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`),
+            getJson<CorrelationResponse>(`/api/advanced/correlation?market=${market}`)
           ]);
         const candidateData = await Promise.all(
           candidateTabs.map(([type]) => getJson<ApiList<Security>>(`/api/candidates?market=${market}&type=${type}`))
@@ -228,6 +299,9 @@ export default function Home() {
         setIntraday(intradayData);
         setClosing(closingData);
         setReportFiles(reportFileData);
+        setBacktest(backtestData);
+        setScanner(scannerData);
+        setCorrelation(correlationData);
         setCandidates(Object.fromEntries(candidateTabs.map(([type], idx) => [type, candidateData[idx]])));
         setSelectedSymbol(symbolData.items[0] ?? null);
       } catch (err) {
@@ -261,6 +335,15 @@ export default function Home() {
     date: row.date ?? `${idx + 1}`,
     value: Number(row.return_5d ?? row.return_3d ?? row.return_1d ?? 0)
   }));
+
+  const filteredScanner = useMemo(() => {
+    if (scannerFilter === "전체") return scanner.items;
+    if (scannerFilter === "보유 제외") return scanner.items.filter((item) => !item.isHolding);
+    if (scannerFilter === "저평가") {
+      return scanner.items.filter((item) => `${item.theme} ${item.group} ${item.reason}`.includes("저평가"));
+    }
+    return scanner.items.filter((item) => item.bucket === scannerFilter || `${item.theme} ${item.group} ${item.reason}`.includes(scannerFilter));
+  }, [scanner.items, scannerFilter]);
 
   const symbolColumns: Column<Security>[] = [
     { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
@@ -361,6 +444,30 @@ export default function Home() {
     { key: "fallback", header: "fallback", render: (row) => row.fallbackStatus }
   ];
 
+  const backtestColumns: Column<BacktestItem>[] = [
+    { key: "strategy", header: "전략", render: (row) => <b>{row.strategy}</b> },
+    { key: "return", header: "수익률", render: (row) => row.totalReturn },
+    { key: "win", header: "승률", render: (row) => row.winRate },
+    { key: "mdd", header: "MDD", render: (row) => row.mdd },
+    { key: "sharpe", header: "Sharpe", render: (row) => row.sharpe },
+    { key: "trades", header: "거래 수", render: (row) => row.trades },
+    { key: "status", header: "상태", render: (row) => row.status },
+    { key: "recent", header: "최근 결과", render: (row) => <LongText text={row.recentResult} /> }
+  ];
+
+  const scannerColumns: Column<ScannerItem>[] = [
+    { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
+    { key: "symbol", header: "코드", render: (row) => row.symbol },
+    { key: "bucket", header: "구분", render: (row) => row.bucket },
+    { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
+    { key: "score", header: "점수", render: (row) => row.score || "점수 없음" },
+    { key: "theme", header: "테마", render: (row) => row.theme || "테마 없음" },
+    { key: "risk", header: "리스크", render: (row) => <LongText text={row.riskLevel || "리스크 없음"} /> },
+    { key: "reason", header: "근거", render: (row) => <LongText text={row.reason || "근거 없음"} /> },
+    { key: "holding", header: "보유", render: (row) => (row.isHolding ? "보유 중" : "미보유") },
+    { key: "action", header: "관심종목", render: (row) => <button disabled className="rounded-md border border-line px-2 py-1 text-xs text-muted">{row.watchlistAction}</button> }
+  ];
+
   function selectCategory(category: string) {
     setActiveCategory(category);
     setActiveSubPage(firstSubPage(category));
@@ -379,6 +486,48 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "현재가 새로고침 실패");
     } finally {
       setQuoteRefreshing(false);
+    }
+  }
+
+  async function runCalculators() {
+    try {
+      const [kelly, valueAtRisk, rr] = await Promise.all([
+        postJson<Record<string, string | number>>("/api/advanced/calculator/kelly", {
+          capital: 10000000,
+          winRate: 55,
+          payoffRatio: 1.7
+        }),
+        postJson<Record<string, string | number>>("/api/advanced/calculator/var", {
+          portfolioValue: 10000000,
+          expectedReturn: 8,
+          volatility: 25,
+          confidence: 95
+        }),
+        postJson<Record<string, string | number | null>>("/api/advanced/calculator/risk-reward", {
+          entry: 100,
+          stop: 92,
+          target: 118
+        })
+      ]);
+      setCalculator({ kelly, var: valueAtRisk, rr });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "계산기 실행 실패");
+    }
+  }
+
+  async function runMonteCarlo() {
+    try {
+      const currentPrice = selectedSymbol?.currentPrice ?? symbols.items[0]?.currentPrice ?? 100;
+      const result = await postJson<MonteCarloResponse>("/api/advanced/monte-carlo", {
+        currentPrice,
+        expectedReturn: 8,
+        volatility: 25,
+        days: 60,
+        simulations: 1000
+      });
+      setMonteCarlo(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "몬테카를로 실행 실패");
     }
   }
 
@@ -844,26 +993,143 @@ export default function Home() {
   }
 
   function renderAdvanced() {
-    if (activeSubPage === "백테스트") return <HistoryTable title="백테스트 검증 데이터" history={outcomeHistory} />;
+    if (activeSubPage === "백테스트") {
+      return (
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <StatCard label="백테스트 상태" value={backtest.status || "NO_DATA"} note={(backtest.warnings ?? []).join(" · ") || "상태 없음"} tone={backtest.status === "OK" ? "good" : "warn"} />
+            <StatCard label="전략 수" value={backtest.count} note="backtest reports" tone="accent" />
+            <StatCard label="prediction rows" value={backtest.predictionRows} />
+            <StatCard label="outcome rows" value={backtest.outcomeRows} />
+          </div>
+          <Section title="백테스트 전략별 성과">
+            {backtest.items.length ? <DataTable rows={backtest.items} columns={backtestColumns} /> : <EmptyReason text="백테스트 데이터 부족 사유: 전략 성과 파일 또는 OHLC 기록 부족" />}
+          </Section>
+          <Section title="최근 결과">
+            <SimpleRecords rows={backtest.recentOutcomes.slice(0, 20)} empty="최근 검증 결과 없음" />
+          </Section>
+        </>
+      );
+    }
     if (activeSubPage === "스캐너") {
       return (
-        <Section title="스캐너">
-          <DataTable rows={[...(candidates.action?.items ?? []), ...(candidates.pullback?.items ?? [])]} columns={compactSymbolColumns} onRowClick={setSelectedSymbol} />
-        </Section>
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <StatCard label="스캐너 대상" value={scanner.count} note="candidate/watchlist/cards 조합" tone="accent" />
+            <StatCard label="현재 필터" value={scannerFilter} />
+            <StatCard label="보유 제외" value={scanner.items.filter((item) => !item.isHolding).length} />
+            <StatCard label="관심종목 편입" value="준비 중" note="v1.4는 계산/표시만 지원" tone="warn" />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {["전체", "BUY", "주의", "눌림목", "수급", "저평가", "보유 제외"].map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setScannerFilter(filter)}
+                className={`rounded-full border px-3 py-2 text-sm font-bold ${scannerFilter === filter ? "border-accent bg-accent text-ink" : "border-line bg-panel text-slate-300"}`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+          <Section title="스캐너">
+            {filteredScanner.length ? <DataTable rows={filteredScanner} columns={scannerColumns} onRowClick={setSelectedSymbol} /> : <EmptyReason text="조건에 맞는 스캐너 결과 없음" />}
+          </Section>
+        </>
       );
     }
     if (activeSubPage === "계산기") {
       return (
-        <Section title="포지션 계산기">
-          <DataTable rows={positions.items} columns={positionColumns} onRowClick={setSelectedSymbol} />
-        </Section>
+        <>
+          <div className="grid gap-3 md:grid-cols-3">
+            <StatCard label="Kelly" value={String(calculator.kelly?.halfKellyText ?? "미계산")} note="Half Kelly 기준" tone="accent" />
+            <StatCard label="VaR / CVaR" value={String(calculator.var?.varPct ?? "미계산")} note={String(calculator.var?.cvarPct ?? "실행 필요")} tone="warn" />
+            <StatCard label="손익비" value={String(calculator.rr?.ratioText ?? "미계산")} note="자동주문 없음" />
+          </div>
+          <Section title="계산기 입력">
+            <div className="grid gap-3 md:grid-cols-5">
+              <MiniMetric label="자본" value="10,000,000" />
+              <MiniMetric label="승률" value="55%" />
+              <MiniMetric label="Payoff" value="1.7" />
+              <MiniMetric label="VaR 신뢰도" value="95%" />
+              <button onClick={runCalculators} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">계산 실행</button>
+            </div>
+          </Section>
+          <Section title="계산 결과">
+            <SimpleRecords
+              rows={[
+                { 계산: "Kelly 포지션 사이징", 결과: String(calculator.kelly?.halfKellyText ?? "계산 전"), 설명: String(calculator.kelly?.note ?? "계산 결과만 표시합니다.") },
+                { 계산: "VaR / CVaR", 결과: `${String(calculator.var?.varPct ?? "계산 전")} / ${String(calculator.var?.cvarPct ?? "계산 전")}`, 설명: "손실 분위수 기반" },
+                { 계산: "위험조정수익률", 결과: String(calculator.rr?.rewardPct ?? "계산 전"), 설명: "목표 보상률 참고" },
+                { 계산: "손익비", 결과: String(calculator.rr?.ratioText ?? "계산 전"), 설명: "진입/손절/목표 기반" },
+                { 계산: "포지션 수량", 결과: String(calculator.kelly?.positionAmountText ?? "계산 전"), 설명: "자동주문은 지원하지 않음" }
+              ]}
+              empty="계산 결과 없음"
+            />
+          </Section>
+        </>
+      );
+    }
+    if (activeSubPage === "몬테카를로") {
+      return (
+        <>
+          <div className="grid gap-3 md:grid-cols-5">
+            <StatCard label="P5" value={monteCarlo?.p5 ?? "미계산"} />
+            <StatCard label="P50" value={monteCarlo?.p50 ?? "미계산"} tone="accent" />
+            <StatCard label="P95" value={monteCarlo?.p95 ?? "미계산"} tone="good" />
+            <StatCard label="상승확률" value={monteCarlo?.upProbability ?? "미계산"} />
+            <button onClick={runMonteCarlo} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">시뮬레이션 실행</button>
+          </div>
+          <Section title="몬테카를로 GBM 경로">
+            {monteCarlo?.chart?.length ? (
+              <div className="h-72 rounded-lg border border-line bg-panel p-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={monteCarlo.chart}>
+                    <CartesianGrid stroke="rgba(148,163,184,.16)" />
+                    <XAxis dataKey="day" stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                    <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ background: "#0b1220", border: "1px solid rgba(148,163,184,.25)" }} />
+                    <Line type="monotone" dataKey="p5" stroke="#f59e0b" dot={false} />
+                    <Line type="monotone" dataKey="p50" stroke="#38bdf8" dot={false} />
+                    <Line type="monotone" dataKey="p95" stroke="#22c55e" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <EmptyReason text="몬테카를로 입력값을 확인한 뒤 시뮬레이션 실행을 누르세요." />
+            )}
+          </Section>
+          <Section title="위험 지표">
+            <SimpleRecords rows={[{ 예상최종가: String(monteCarlo?.expectedFinalPrice ?? "미계산"), VaR: monteCarlo?.varText ?? "미계산", CVaR: monteCarlo?.cvarText ?? "미계산" }]} empty="위험 지표 없음" />
+          </Section>
+        </>
       );
     }
     if (activeSubPage === "상관관계 / 히트맵") {
       return (
-        <Section title="상관관계 / 히트맵">
-          <DataTable rows={symbols.items.slice(0, 20)} columns={scoreColumns} onRowClick={setSelectedSymbol} />
-        </Section>
+        <>
+          <div className="grid gap-3 md:grid-cols-3">
+            <StatCard label="상태" value={correlation.status} note={correlation.reason} tone={correlation.status === "OK" ? "good" : "warn"} />
+            <StatCard label="자산 수" value={correlation.assets?.length ?? 0} note={(correlation.sources ?? []).join(" · ")} tone="accent" />
+            <StatCard label="분산 효과" value="설명" note={correlation.diversificationNote ?? "상관관계 계산 데이터 부족"} />
+          </div>
+          <Section title="상관관계 / 히트맵">
+            {correlation.matrix.length ? <CorrelationHeatmap matrix={correlation.matrix} /> : <EmptyReason text="상관관계 계산 데이터 부족" />}
+          </Section>
+          <Section title="상관관계 페어">
+            {correlation.items.length ? (
+              <DataTable
+                rows={correlation.items}
+                columns={[
+                  { key: "pair", header: "페어", render: (row) => row.pair },
+                  { key: "corr", header: "상관", render: (row) => row.correlation.toFixed(3) },
+                  { key: "interp", header: "해석", render: (row) => row.interpretation }
+                ]}
+              />
+            ) : (
+              <EmptyReason text="상관관계 계산 데이터 부족" />
+            )}
+          </Section>
+        </>
       );
     }
     return <ComingSoon title={activeSubPage} />;
@@ -946,16 +1212,74 @@ function SymbolDetailCard({ item }: { item: Security }) {
   );
 }
 
-function SimpleRecords({ rows, empty }: { rows: Record<string, string>[]; empty: string }) {
+type SimpleValue = string | number | boolean | null | undefined;
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-line bg-panel px-4 py-3">
+      <div className="text-xs font-bold text-muted">{label}</div>
+      <div className="mt-1 text-lg font-black text-white">{value}</div>
+    </div>
+  );
+}
+
+function CorrelationHeatmap({ matrix }: { matrix: Record<string, SimpleValue>[] }) {
+  const assets = Object.keys(matrix[0] ?? {}).filter((key) => key !== "asset");
+  const tone = (value: SimpleValue) => {
+    const corr = Number(value);
+    if (!Number.isFinite(corr)) return "bg-white/5 text-muted";
+    if (corr >= 0.8) return "bg-danger/25 text-danger";
+    if (corr >= 0.5) return "bg-warn/20 text-warn";
+    if (corr >= 0.2) return "bg-accent/16 text-accent";
+    return "bg-good/16 text-good";
+  };
+
+  if (!assets.length) return <EmptyReason text="상관관계 계산 데이터 부족" />;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-line bg-panel">
+      <div className="scrollbar-thin overflow-x-auto">
+        <table className="w-full min-w-[620px] border-collapse text-sm">
+          <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-muted">
+            <tr>
+              <th className="border-b border-line px-3 py-2 text-left">자산</th>
+              {assets.map((asset) => (
+                <th key={asset} className="border-b border-line px-3 py-2 text-center">
+                  {asset}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.map((row) => (
+              <tr key={String(row.asset ?? "")}>
+                <td className="border-b border-line px-3 py-2 font-bold text-white">{String(row.asset ?? "자산 없음")}</td>
+                {assets.map((asset) => (
+                  <td key={asset} className="border-b border-line px-2 py-2 text-center">
+                    <span className={`inline-flex min-w-16 justify-center rounded-md px-2 py-1 text-xs font-black ${tone(row[asset])}`}>
+                      {Number.isFinite(Number(row[asset])) ? Number(row[asset]).toFixed(3) : "부족"}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SimpleRecords({ rows, empty }: { rows: Record<string, SimpleValue>[]; empty: string }) {
   if (!rows.length) return <EmptyReason text={empty} />;
   const keys = Object.keys(rows[0] ?? {}).slice(0, 5);
   return (
-    <DataTable<Record<string, string>>
+    <DataTable<Record<string, SimpleValue>>
       rows={rows}
       columns={keys.map((key) => ({
         key,
         header: key,
-        render: (row) => String(row[key] ?? "-")
+        render: (row) => String(row[key] ?? "데이터 없음")
       }))}
     />
   );
