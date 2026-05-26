@@ -157,11 +157,6 @@ def api_virtual_preview(market: str = Query("kr", pattern="^(kr|us)$"), mode: st
     return data.virtual_operation_preview(_market(market), mode)
 
 
-@app.get("/api/virtual/portfolio")
-def api_virtual_portfolio(market: str = Query("kr", pattern="^(kr|us)$"), mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$")) -> dict:
-    return data.virtual_portfolio_summary(_market(market), mode)
-
-
 @app.get("/api/predictions")
 def api_predictions(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return data.predictions(_market(market))
