@@ -4,9 +4,10 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.services import data_loader as data
+from app.services import quotes
 
 
-app = FastAPI(title="MONE Web API", version="0.1.2")
+app = FastAPI(title="MONE Web API", version="0.1.3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -115,8 +116,9 @@ def api_outcome_history() -> dict:
 
 
 @app.post("/api/quotes/refresh")
-def api_quotes_refresh() -> dict:
-    return {
-        "status": "READY",
-        "message": "Quote refresh endpoint is scaffolded. Live refresh will be connected in a later version.",
-    }
+def api_quotes_refresh(
+    market: str = Query("all", pattern="^(kr|us|all)$"),
+    symbols: str | None = Query(None),
+    max_symbols: int = Query(80, ge=1, le=150),
+) -> dict:
+    return quotes.refresh_quotes(market=market, symbols=symbols, max_symbols=max_symbols)

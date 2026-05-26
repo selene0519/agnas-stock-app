@@ -1,6 +1,6 @@
-# MONE Web App v1.2
+# MONE Web App v1.3
 
-Next.js + FastAPI 기반의 MONE 웹앱입니다. v1.2에서는 기존 v1.1 네비게이션 구조를 유지하면서 `운용 리포트` 영역의 장전 리포트, 장중 체크, 장마감 검증, 리포트 센터를 실제 CSV/JSON 기반 화면으로 강화했습니다. 기존 Streamlit `app.py`와 기존 `reports/`, `data/`, `predictions.csv`, watchlist/candidate 파일은 수정하지 않고 읽기 전용으로 사용합니다.
+Next.js + FastAPI 기반의 MONE 웹앱입니다. v1.3에서는 `POST /api/quotes/refresh`를 실제 현재가 새로고침으로 연결했습니다. 현재가는 백엔드에서만 KIS/Finnhub API 키를 사용해 조회하고, 결과는 `mone-web-app/backend/cache/quotes_cache.json`에 저장됩니다. 기존 Streamlit `app.py`와 기존 `reports/`, `data/`, `predictions.csv`, watchlist/candidate 파일은 수정하지 않고 읽기 전용으로 유지합니다.
 
 ## 1. 실행 방법
 
@@ -38,6 +38,8 @@ mone-web-app/
     app/
       main.py
       services/data_loader.py
+      services/quotes.py
+    cache/              # runtime quote/token cache, git ignored
     requirements.txt
   frontend/
     .env.example
@@ -67,11 +69,29 @@ mone-web-app/
 - `GET /api/reports/preview?path=reports/...csv`
 - `GET /api/history/predictions`
 - `GET /api/history/outcomes`
-- `POST /api/quotes/refresh`
+- `POST /api/quotes/refresh?market=kr|us|all&symbols=005930,NVDA&max_symbols=80`
 
-## 4. Frontend 네비게이션 구조
+## 4. 현재가 새로고침
 
-사이드바에는 대분류만 표시하고, 각 대분류 화면 상단에서 소분류를 pill button으로 선택합니다.
+- 국장: KIS 국내주식 현재가 API를 사용합니다.
+- 미장: KIS 해외주식 현재가 API를 먼저 사용하고, 실패하면 Finnhub quote API로 보조 조회합니다.
+- 성공한 현재가만 cache에 저장합니다.
+- 실패 종목은 기존 reports/data 값 또는 기존 cache 값을 fallback으로 유지합니다.
+- API 키는 backend `.env` 또는 실행 환경 변수에서만 읽고 frontend로 전달하지 않습니다.
+- 자동매매/주문 기능은 구현하지 않았습니다.
+
+필요한 backend 환경 변수:
+
+```powershell
+KIS_APP_KEY=...
+KIS_APP_SECRET=...
+KIS_IS_MOCK=false
+FINNHUB_API_KEY=...
+```
+
+## 5. Frontend 네비게이션 구조
+
+사이드바에는 대분류만 표시하고, 각 대분류 화면 상단에서 소분류를 pill button으로 선택합니다. 상단 바의 `현재가 새로고침` 버튼을 누르면 현재 선택한 시장의 현재가를 갱신한 뒤 시장 요약, 종목, 보유, 리포트 데이터를 다시 조회합니다.
 
 - 시장 홈: 요약, 오늘 체크, 운영 대시보드
 - 운용 리포트: 장전 리포트, 장중 체크, 장마감 검증, 리포트 센터
@@ -83,30 +103,19 @@ mone-web-app/
 - 고급 분석: 백테스트, 스캐너, 계산기, 몬테카를로, 상관관계 / 히트맵
 - 관리: 데이터 점검, API 상태, 자동화 상태, 로그 / 백업
 
-## 5. v1.2 운용 리포트 화면
-
-- 장전 리포트: `today_summary`, `action_cards`, `pullback_cards`, `risk_cards`, `future_probability`, `predictions.csv`를 조합해 현재가, 기준시각, 출처, 예상 시초가/종가, 기준가, 손절가, 목표가, 손익비, 다음 행동, 리스크 상태, 데이터 상태를 표시합니다.
-- 장중 체크: `symbol_snapshot`, `position_cards`, `risk_cards`, `news_summary`를 조합해 기준가 대비 괴리율, 손절가 이탈 여부, 목표가 도달 여부, 보유 위험, 뉴스/리스크 상태, 장중 판단을 표시합니다.
-- 장마감 검증: `prediction_history`, `outcome_history`, `predictions.csv`를 조합해 최근 예측, 결과일, 방향/범위 적중, 주문 기준가, 손절/익절, 실패 사유, 전체 적중률을 표시합니다.
-- 리포트 센터: `reports/` 폴더의 latest, v92, v93, operational, portfolio, backtest 관련 파일 목록과 row/column count, 수정시각, 파일 크기, CSV 미리보기, fallback 상태를 표시합니다.
-
 ## 6. 검증 결과
 
 - `python -m compileall mone-web-app\backend\app`: 성공
 - `npm run build`: 성공
 - `/health`: OK
-- 장전 리포트: 21 rows
-- 장중 체크: 34 rows
-- 장마감 검증: 80 rows
-- 리포트 센터: 129 files
-- 국장/미장 시장 전환: 정상
-- 현재가 기준시각/출처 표시: 유지
+- `POST /api/quotes/refresh?market=kr&symbols=005930&max_symbols=1`: JSON 응답, 삼성전자 KIS 현재가 수신
+- `POST /api/quotes/refresh?market=us&symbols=NVDA&max_symbols=1`: JSON 응답, NVDA KIS 해외 현재가 수신
+- 삼성전자: 현재가 `300,500원`, 기준시각 `2026-05-26 13:51:37 KST`, 출처 `KIS 현재가`
+- NVDA: 현재가 `$215.33`, 기준시각 `2026-05-26 13:51:10 KST`, 출처 `KIS 해외 현재가 · NAS`
+- API 키 missing 시: `NO_REFRESH` JSON 응답, 앱 예외 없음, 기존 fallback 유지
 - 보유종목 수익률 표시: 유지
-- 삼성전자: 현재가 `299,500원`, 기준시각 `05-26 10:12 KST`, 출처 `KIS 현재가 · 05-26 10:12 KST`
-- 두산테스나: 평균단가 `178,200원`, 현재가 `169,000원`, 수익률 `-5.16%`
-- 심텍: 평균단가 `98,200원`, 현재가 `132,400원`, 수익률 `+34.83%`
 
-## 7. 기존 app.py를 건드리지 않았는지 확인 결과
+## 7. 기존 파일 보호 확인
 
 이번 작업은 `mone-web-app/` 폴더 안에서만 진행했습니다.
 

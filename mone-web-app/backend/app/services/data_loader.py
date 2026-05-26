@@ -17,6 +17,8 @@ REPO_ROOT = Path(os.environ.get("MONE_REPO_ROOT", APP_DIR.parent)).resolve()
 REPORT_DIR = REPO_ROOT / "reports"
 DATA_DIR = REPO_ROOT / "data"
 HISTORY_DIR = DATA_DIR / "history"
+CACHE_DIR = APP_DIR / "backend" / "cache"
+QUOTE_CACHE_FILE = CACHE_DIR / "quotes_cache.json"
 
 load_dotenv(REPO_ROOT / ".env")
 load_dotenv(APP_DIR / "backend" / ".env")
@@ -171,6 +173,11 @@ def read_json(path: Path) -> dict[str, Any]:
     return {}
 
 
+def write_json(path: Path, data: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def rows_for(path: Path) -> int:
     if path.suffix.lower() == ".csv":
         return int(len(read_csv(path)))
@@ -225,6 +232,47 @@ def dataframe_records(df: pd.DataFrame, limit: int | None = None) -> list[dict[s
         return []
     work = df.head(limit).copy() if limit else df.copy()
     return work.replace({np.nan: ""}).to_dict(orient="records")
+
+
+def quote_cache() -> dict[str, Any]:
+    data = read_json(QUOTE_CACHE_FILE)
+    if not data:
+        return {"updatedAt": "", "markets": {"kr": {}, "us": {}}}
+    data.setdefault("markets", {})
+    data["markets"].setdefault("kr", {})
+    data["markets"].setdefault("us", {})
+    return data
+
+
+def save_quote_cache(cache: dict[str, Any]) -> None:
+    write_json(QUOTE_CACHE_FILE, cache)
+
+
+def cached_quote_for(symbol: str, market: str) -> dict[str, Any]:
+    cache = quote_cache()
+    return dict((cache.get("markets", {}).get(market, {}) or {}).get(normalize_symbol(symbol, market), {}) or {})
+
+
+def apply_quote_cache(row: dict[str, Any], market: str) -> dict[str, Any]:
+    symbol = _row_symbol(row, market)
+    cached = cached_quote_for(symbol, market) if symbol else {}
+    if not cached or not cached.get("ok"):
+        return row
+    price = cached.get("currentPrice")
+    if _safe_float(price) is None:
+        return row
+    merged = dict(row)
+    merged["current_price"] = str(price)
+    merged["last_price"] = str(price)
+    merged["quote_fallback_price"] = str(price)
+    merged["가격기준시각"] = cached.get("priceTime", "") or "현재가 기준시각 없음"
+    merged["가격출처"] = cached.get("priceSource", "") or "가격출처 없음"
+    merged["quote_source_label"] = cached.get("priceSource", "") or "가격출처 없음"
+    merged["quote_source"] = cached.get("source", "") or cached.get("priceSource", "") or "가격출처 없음"
+    merged["current_price_source"] = cached.get("priceSource", "") or "가격출처 없음"
+    merged["data_status"] = "현재가 캐시 반영"
+    merged["price_data_status"] = "cache_success"
+    return merged
 
 
 def _row_symbol(row: dict[str, Any] | pd.Series, market: str) -> str:
@@ -523,6 +571,9 @@ def latest_updated_at() -> str:
         REPORT_DIR / "v93_github_actions_status.json",
     ]
     times = [file_mtime(path) for path in candidates if path.exists()]
+    cache_updated = quote_cache().get("updatedAt", "")
+    if cache_updated:
+        times.append(str(cache_updated))
     return max(times) if times else "기준시각 없음"
 
 
@@ -535,7 +586,7 @@ def symbols(market: str) -> dict[str, Any]:
         df = read_csv(REPO_ROOT / f"watchlist_{market}_growth.csv")
         source = f"watchlist_{market}_growth.csv" if not df.empty else ""
         rows = dataframe_records(df)
-    normalized = [normalize_security_row(row, market) for row in rows]
+    normalized = [normalize_security_row(apply_quote_cache(row, market), market) for row in rows]
     return {"market": market, "count": len(normalized), "source": source, "items": normalized}
 
 
@@ -573,6 +624,7 @@ def candidate_rows(market: str, kind: str) -> dict[str, Any]:
     rows = enrich_records_with_version_fallback(f"{kind}_cards", market, dataframe_records(df))
     normalized_rows = []
     for row in rows:
+        row = apply_quote_cache(row, market)
         normalized = normalize_security_row(row, market)
         normalized.update({
             "category": first_value(row, ["분류", "category"], kind),
@@ -599,6 +651,7 @@ def positions(market: str) -> dict[str, Any]:
 
     normalized_rows = []
     for row in rows:
+        row = apply_quote_cache(row, market)
         normalized = normalize_security_row(row, market)
         quantity = first_number(row, ["quantity", "보유수량", "shares"])
         avg_price = first_number(row, ["avg_price", "평균단가", "평단가"])
@@ -656,6 +709,7 @@ def predictions(market: str) -> dict[str, Any]:
     rows = enrich_records_with_version_fallback("future_probability", market, dataframe_records(df))
     normalized_rows = []
     for row in rows:
+        row = apply_quote_cache(row, market)
         normalized = normalize_security_row(row, market)
         normalized.update({
             "prob1d": first_value(row, ["1일상승확률", "prob_up_1d"], "확률 없음"),
@@ -690,6 +744,7 @@ def premarket_report(market: str) -> dict[str, Any]:
         merged = _merge_alias_values(base_map.get(symbol, {}), row)
         prediction = prediction_map.get(symbol, {})
         merged = _merge_alias_values(merged, prediction)
+        merged = apply_quote_cache(merged, market)
         normalized = normalize_security_row(merged, market)
         key = f"{label}:{symbol}"
         if key in seen:
@@ -744,6 +799,7 @@ def intraday_report(market: str) -> dict[str, Any]:
             merged = _merge_alias_values(merged, position.get("raw", {}))
         if risk_map.get(symbol):
             merged = _merge_alias_values(merged, risk_map[symbol].get("raw", {}))
+        merged = apply_quote_cache(merged, market)
         normalized = normalize_security_row(merged, market)
         current = normalized.get("currentPrice")
         entry = normalized.get("entry")

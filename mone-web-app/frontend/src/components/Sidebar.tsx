@@ -60,7 +60,7 @@ export function Sidebar({
       <div className="flex h-full flex-col">
         <div className="border-b border-line px-5 py-4">
           <div className="text-xl font-black tracking-wide text-white">MONE</div>
-          <div className="mt-1 text-xs text-muted">Next.js + FastAPI v1.2</div>
+          <div className="mt-1 text-xs text-muted">Next.js + FastAPI v1.3</div>
         </div>
         <nav className="flex-1 px-3 py-4">
           {NAV_GROUPS.map((group) => (
