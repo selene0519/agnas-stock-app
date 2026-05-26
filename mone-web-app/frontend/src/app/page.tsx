@@ -30,6 +30,19 @@ type FileItem = {
 
 type EnvItem = { key: string; status: "OK" | "MISSING" };
 
+type DataSourceItem = {
+  key: string;
+  name: string;
+  status: "OK" | "MISSING";
+  files: number;
+  csvFiles: number;
+  rows: number;
+  latestUpdatedAt: string;
+  target: string;
+  examples: string[];
+  message: string;
+};
+
 type NewsItem = {
   title: string;
   summary: string;
@@ -49,6 +62,7 @@ type MarketSummary = {
   dashboard: Record<string, string>[];
   sources: string[];
   updatedAt: string;
+  automation?: Record<string, unknown>;
 };
 
 type HistoryResponse = {
@@ -160,6 +174,29 @@ type BacktestResponse = ApiList<BacktestItem> & {
   };
 };
 
+type PredictionInsightResponse = {
+  market: Market;
+  status: string;
+  summary: {
+    predictionRows: number;
+    historyRows: number;
+    outcomeRows: number;
+    validationRows: number;
+    success: number;
+    fail: number;
+    neutral: number;
+    successRate: string;
+    coverage: string;
+  };
+  diagnostics: Record<string, SimpleValue>[];
+  bySymbol: Record<string, SimpleValue>[];
+  byPeriod: Record<string, SimpleValue>[];
+  failures: Record<string, SimpleValue>[];
+  corrections: Record<string, SimpleValue>[];
+  sources: string[];
+};
+
+
 type ScannerItem = Security & {
   bucket: string;
   theme: string;
@@ -250,6 +287,12 @@ const candidateTabs = [
   ["risk", "주의"]
 ] as const;
 
+const buyCandidateTabs = [
+  ["action", "오늘 확인"],
+  ["pullback", "눌림목"],
+  ["flow", "수급"]
+] as const;
+
 const sourceLabel = (source?: string) => source || "소스 없음";
 
 export default function Home() {
@@ -269,8 +312,10 @@ export default function Home() {
   const [candidates, setCandidates] = useState<Record<string, ApiList<Security>>>({});
   const [files, setFiles] = useState<FileItem[]>([]);
   const [env, setEnv] = useState<EnvItem[]>([]);
+  const [dataSources, setDataSources] = useState<DataSourceItem[]>([]);
   const [predictionHistory, setPredictionHistory] = useState<HistoryResponse>({ count: 0, source: "", items: [] });
   const [outcomeHistory, setOutcomeHistory] = useState<HistoryResponse>({ count: 0, source: "", items: [] });
+  const [predictionInsights, setPredictionInsights] = useState<PredictionInsightResponse>({ market: "kr", status: "NO_DATA", summary: { predictionRows: 0, historyRows: 0, outcomeRows: 0, validationRows: 0, success: 0, fail: 0, neutral: 0, successRate: "검증 데이터 부족", coverage: "검증 데이터 부족" }, diagnostics: [], bySymbol: [], byPeriod: [], failures: [], corrections: [], sources: [] });
   const [premarket, setPremarket] = useState<ApiList<PremarketItem>>({ count: 0, items: [], sources: [] });
   const [intraday, setIntraday] = useState<ApiList<IntradayItem>>({ count: 0, items: [], sources: [] });
   const [closing, setClosing] = useState<ClosingReport>({
@@ -333,8 +378,10 @@ export default function Home() {
           predictionData,
           fileData,
           envData,
+          dataSourceData,
           predHistory,
           outcomes,
+          insightData,
           premarketData,
           intradayData,
           closingData,
@@ -353,8 +400,10 @@ export default function Home() {
             getJson<ApiList<Security>>(`/api/predictions?market=${market}`),
             getJson<{ items: FileItem[] }>("/api/status/files"),
             getJson<{ items: EnvItem[] }>("/api/status/env"),
-            getJson<HistoryResponse>("/api/history/predictions"),
-            getJson<HistoryResponse>("/api/history/outcomes"),
+            getJson<{ items: DataSourceItem[] }>("/api/status/data-sources"),
+            getJson<HistoryResponse>(`/api/history/predictions?market=${market}`),
+            getJson<HistoryResponse>(`/api/history/outcomes?market=${market}`),
+            getJson<PredictionInsightResponse>(`/api/insights/prediction?market=${market}`),
             getJson<ApiList<PremarketItem>>(`/api/reports/premarket?market=${market}`),
             getJson<ApiList<IntradayItem>>(`/api/reports/intraday?market=${market}`),
             getJson<ClosingReport>(`/api/reports/closing?market=${market}`),
@@ -377,8 +426,10 @@ export default function Home() {
         setPredictions(predictionData);
         setFiles(fileData.items);
         setEnv(envData.items);
+        setDataSources(dataSourceData.items);
         setPredictionHistory(predHistory);
         setOutcomeHistory(outcomes);
+        setPredictionInsights(insightData);
         setPremarket(premarketData);
         setIntraday(intradayData);
         setClosing(closingData);
@@ -432,6 +483,37 @@ export default function Home() {
   }, [scanner.items, scannerFilter]);
 
   const directHoldingsBySymbol = useMemo(() => new Map(directHoldings.items.map((item) => [item.symbol, item])), [directHoldings.items]);
+  const predictionBySymbol = useMemo(() => new Map(predictions.items.map((item) => [item.symbol, item])), [predictions.items]);
+  const watchSymbols = useMemo(() => new Set(watchlist.items.map((item) => item.symbol)), [watchlist.items]);
+  const holdingSymbols = useMemo(() => new Set([...positions.items, ...directHoldings.items].map((item) => item.symbol)), [positions.items, directHoldings.items]);
+
+  const discoveryRows = useMemo(() => {
+    type DiscoveryItem = Security & { discoverySource?: string; isWatchlisted?: boolean; isHoldingNow?: boolean };
+    const bySymbol = new Map<string, DiscoveryItem>();
+    const add = (item: Security, source: string) => {
+      if (!item.symbol) return;
+      const prev = bySymbol.get(item.symbol);
+      const merged: DiscoveryItem = {
+        ...(prev ?? item),
+        ...item,
+        discoverySource: prev?.discoverySource ? `${prev.discoverySource} · ${source}` : source,
+        isWatchlisted: watchSymbols.has(item.symbol),
+        isHoldingNow: holdingSymbols.has(item.symbol)
+      };
+      bySymbol.set(item.symbol, merged);
+    };
+    symbols.items.forEach((item) => add(item, "오늘 선택"));
+    watchlist.items.forEach((item) => add(item, "관심"));
+    positions.items.forEach((item) => add(item, "보유"));
+    scanner.items.forEach((item) => add(item, "후보군"));
+    return Array.from(bySymbol.values());
+  }, [symbols.items, watchlist.items, positions.items, scanner.items, watchSymbols, holdingSymbols]);
+
+  const filteredDiscoveryRows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return discoveryRows;
+    return discoveryRows.filter((item) => `${item.symbol} ${item.name} ${item.discoverySource ?? ""}`.toLowerCase().includes(needle));
+  }, [query, discoveryRows]);
 
   function parseNumber(value: string, fallback = 0) {
     const out = Number(String(value || "").replace(/,/g, ""));
@@ -550,7 +632,7 @@ export default function Home() {
             onClick={(event) => {
               event.stopPropagation();
               fillHoldingForm(row);
-              setActiveSubPage("보유 관리");
+              setActiveSubPage("보유 현황");
             }}
             className="rounded-md border border-accent/40 px-2 py-1 text-xs font-bold text-accent"
           >
@@ -587,6 +669,27 @@ export default function Home() {
     { key: "target", header: "목표가", render: (row) => row.targetText || "목표가 없음" }
   ];
 
+  const pnlColumns: Column<Security>[] = [
+    { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
+    { key: "symbol", header: "코드", render: (row) => row.symbol },
+    { key: "quantity", header: "수량", render: (row) => row.quantityText || "수량 없음" },
+    { key: "avgPrice", header: "평균단가", render: (row) => row.avgPriceText || "평균단가 없음" },
+    { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
+    { key: "marketValue", header: "평가금액", render: (row) => row.marketValueText || "평가금액 없음" },
+    { key: "pnl", header: "평가손익", render: (row) => <GainText value={row.pnl} text={row.pnlText} /> },
+    { key: "returnPct", header: "수익률", render: (row) => <GainText value={row.returnPct} text={row.returnPctText} /> }
+  ];
+
+  const positionCalcColumns: Column<Security>[] = [
+    { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
+    { key: "symbol", header: "코드", render: (row) => row.symbol },
+    { key: "quantity", header: "수량", render: (row) => row.quantityText || "수량 없음" },
+    { key: "cost", header: "투자원금", render: (row) => row.costBasisText || "투자원금 없음" },
+    { key: "value", header: "평가금액", render: (row) => row.marketValueText || "평가금액 없음" },
+    { key: "pnl", header: "손익", render: (row) => <GainText value={row.pnl} text={row.pnlText} /> },
+    { key: "decision", header: "점검", render: (row) => <LongText text={row.nextAction || row.dataStatus || "보유 유지/축소 여부는 손절가와 목표가 기준으로 확인"} /> }
+  ];
+
   const compactSymbolColumns: Column<Security>[] = [
     { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
     { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
@@ -597,45 +700,32 @@ export default function Home() {
   const premarketColumns: Column<PremarketItem>[] = [
     { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
     { key: "symbol", header: "코드", render: (row) => row.symbol },
-    { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
-    { key: "priceTime", header: "가격기준시각", render: (row) => row.priceTime || "현재가 기준시각 없음" },
-    { key: "priceSource", header: "가격출처", render: (row) => row.priceSource || "가격출처 없음" },
-    { key: "open", header: "예상 시초가", render: (row) => row.expectedOpen },
-    { key: "close", header: "예상 종가", render: (row) => row.expectedClose },
-    { key: "entry", header: "기준가", render: (row) => row.entryText || "기준가 없음" },
-    { key: "stop", header: "손절가", render: (row) => row.stopText || "손절가 없음" },
-    { key: "tp1", header: "1차 목표가", render: (row) => row.targetText || "목표가 없음" },
-    { key: "tp2", header: "2차 목표가", render: (row) => row.target2Text || "2차 목표가 없음" },
-    { key: "rr", header: "손익비", render: (row) => row.riskReward || "손익비 없음" },
-    { key: "action", header: "다음 행동", render: (row) => row.nextAction || "다음 행동 없음" },
-    { key: "risk", header: "리스크 상태", render: (row) => <LongText text={row.riskStatus || "리스크 상태 없음"} /> },
-    { key: "status", header: "데이터 상태", render: (row) => row.dataStatus || "데이터 상태 없음" }
+    { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact hideMeta /> },
+    { key: "open", header: "예상 시초가", render: (row) => row.expectedOpen || "예상 시초가 없음" },
+    { key: "close", header: "예상 종가", render: (row) => row.expectedClose || "예상 종가 없음" },
+    { key: "entry", header: "기준가", render: (row) => priceText(row.entryText, row.entry, "기준가") },
+    { key: "stop", header: "손절가", render: (row) => priceText(row.stopText, row.stop, "손절가") },
+    { key: "target", header: "목표가", render: (row) => priceText(row.targetText, row.target, "목표가") },
+    { key: "rr", header: "손익비", render: (row) => formatRiskReward(row.riskReward) }
   ];
 
   const intradayColumns: Column<IntradayItem>[] = [
     { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
-    { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
-    { key: "gap", header: "기준가 괴리율", render: (row) => <GainText value={row.divergencePct} text={row.divergenceText} /> },
-    { key: "stop", header: "손절 이탈", render: (row) => row.stopBreakText },
-    { key: "target", header: "목표 도달", render: (row) => row.targetHitText },
-    { key: "holding", header: "보유 위험", render: (row) => row.holdingRisk },
-    { key: "news", header: "뉴스/리스크", render: (row) => <LongText text={row.newsRiskStatus} /> },
-    { key: "priceTime", header: "가격기준시각", render: (row) => row.priceTime || "현재가 기준시각 없음" },
-    { key: "priceSource", header: "가격출처", render: (row) => row.priceSource || "가격출처 없음" },
-    { key: "decision", header: "장중 판단", render: (row) => <DecisionPill text={row.intradayDecision} /> }
+    { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact hideMeta /> },
+    { key: "gap", header: "기준가와 거리", render: (row) => <GainText value={row.divergencePct} text={row.divergenceText} /> },
+    { key: "zone", header: "구간", render: (row) => intradayZoneText(row) },
+    { key: "holding", header: "보유 여부", render: (row) => row.holdingRisk || "보유종목 아님" },
+    { key: "decision", header: "장중 판단", render: (row) => <LongText text={intradayDecisionText(row)} /> }
   ];
 
   const closingColumns: Column<ClosingItem>[] = [
     { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
-    { key: "symbol", header: "코드", render: (row) => row.symbol },
-    { key: "base", header: "예측 기준일", render: (row) => row.predictionBaseDate },
-    { key: "actual", header: "실제 결과일", render: (row) => row.actualResultDate },
-    { key: "direction", header: "방향 적중", render: (row) => row.directionHit },
-    { key: "range", header: "범위 적중", render: (row) => row.rangeHit },
-    { key: "entry", header: "주문 기준가", render: (row) => row.entryTouched },
-    { key: "touch", header: "손절/익절", render: (row) => row.stopTakeProfit },
-    { key: "failed", header: "실패 종목", render: (row) => row.failedSymbol },
-    { key: "reason", header: "실패/부족 사유", render: (row) => <LongText text={row.failureReason} /> }
+    { key: "base", header: "예측일", render: (row) => row.predictionBaseDate || "예측일 없음" },
+    { key: "actual", header: "결과일", render: (row) => row.actualResultDate || "결과일 없음" },
+    { key: "direction", header: "방향", render: (row) => row.directionHit || "방향 데이터 없음" },
+    { key: "range", header: "범위", render: (row) => row.rangeHit || "범위 데이터 없음" },
+    { key: "touch", header: "손절/익절", render: (row) => row.stopTakeProfit || "손절/익절 데이터 없음" },
+    { key: "reason", header: "사유", render: (row) => <LongText text={compactClosingReason(row.failureReason || row.failedSymbol || "사유 없음")} /> }
   ];
 
   const reportFileColumns: Column<ReportFile>[] = [
@@ -668,7 +758,6 @@ export default function Home() {
     { key: "score", header: "점수", render: (row) => row.score || "점수 없음" },
     { key: "theme", header: "테마", render: (row) => row.theme || "테마 없음" },
     { key: "risk", header: "리스크", render: (row) => <LongText text={row.riskLevel || "리스크 없음"} /> },
-    { key: "reason", header: "근거", render: (row) => <LongText text={row.reason || "근거 없음"} /> },
     { key: "holding", header: "보유", render: (row) => (row.isHolding ? "보유 중" : "미보유") },
     {
       key: "action",
@@ -801,22 +890,24 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mb-5 flex flex-wrap gap-2">
-            {currentGroup.items.map((item) => (
-              <button
-                key={item}
-                onClick={() => setActiveSubPage(item)}
-                className={[
-                  "rounded-full border px-4 py-2 text-sm font-bold transition",
-                  activeSubPage === item
-                    ? "border-accent bg-accent text-ink"
-                    : "border-line bg-panel text-slate-300 hover:border-accent/50 hover:text-white"
-                ].join(" ")}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
+          {currentGroup.items.length > 1 ? (
+            <div className="mb-5 flex flex-wrap gap-2">
+              {currentGroup.items.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setActiveSubPage(item)}
+                  className={[
+                    "rounded-full border px-4 py-2 text-sm font-bold transition",
+                    activeSubPage === item
+                      ? "border-accent bg-accent text-ink"
+                      : "border-line bg-panel text-slate-300 hover:border-accent/50 hover:text-white"
+                  ].join(" ")}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {loading ? <EmptyReason text="데이터를 읽는 중입니다." /> : null}
           {error ? <EmptyReason text={`API 연결 확인 필요: ${error}. backend 실행 주소는 ${API_BASE} 입니다.`} /> : null}
@@ -840,48 +931,21 @@ export default function Home() {
   }
 
   function renderMarketHome() {
-    if (activeSubPage === "운영 대시보드") {
-      return (
-        <Section title="운영 대시보드">
-          <SimpleRecords rows={summary?.dashboard ?? []} empty="운영 대시보드 데이터 없음" />
-        </Section>
-      );
-    }
-
-    if (activeSubPage === "오늘 체크") {
-      return (
-        <>
-          <div className="grid gap-3 md:grid-cols-4">
-            <StatCard label="매수 후보" value={candidates.action?.count ?? 0} note={sourceLabel(candidates.action?.source)} tone="accent" />
-            <StatCard label="주의 후보" value={candidates.risk?.count ?? 0} note={sourceLabel(candidates.risk?.source)} tone="warn" />
-            <StatCard label="보유 종목" value={positions.count} note={sourceLabel(positions.source)} tone="good" />
-            <StatCard label="뉴스" value={news.count || "뉴스 없음"} note={sourceLabel(news.source)} />
-          </div>
-          <Section title="오늘 확인 후보">
-            <DataTable rows={(candidates.action?.items ?? []).slice(0, 10)} columns={compactSymbolColumns} onRowClick={setSelectedSymbol} />
-          </Section>
-        </>
-      );
-    }
+    const todayCandidates = (candidates.action?.items ?? []).slice(0, 5);
+    const homeNews = buildHomeNews(news.items, 5);
 
     return (
       <>
-        <div className="grid gap-3 md:grid-cols-4">
-          <StatCard label="선택 종목" value={symbols.count} note={sourceLabel(symbols.source)} tone="accent" />
-          <StatCard label="보유 종목" value={positions.count} note={sourceLabel(positions.source)} tone="good" />
-          <StatCard label="뉴스" value={news.count || "뉴스 없음"} note={sourceLabel(news.source)} tone={news.count ? "accent" : "warn"} />
-          <StatCard label="예측 이력" value={predictionHistory.count} note={predictionHistory.source} />
-        </div>
         <Section title="오늘 요약">
           {summary?.cards?.length ? (
             <div className="grid gap-3 md:grid-cols-5">
-              {summary.cards.map((card, idx) => (
+              {summary.cards.slice(0, 5).map((card, idx) => (
                 <StatCard
                   key={idx}
                   label={String(card["카드"] ?? card["category"] ?? `요약 ${idx + 1}`)}
                   value={String(card["건수"] ?? card["count"] ?? "-")}
                   note={String(card["TOP"] ?? card["설명"] ?? "요약 없음")}
-                  tone={idx === 0 ? "good" : "neutral"}
+                  tone={idx === 0 ? "good" : idx === 4 ? "warn" : "neutral"}
                 />
               ))}
             </div>
@@ -889,179 +953,215 @@ export default function Home() {
             <EmptyReason text="오늘 요약 파일이 없습니다." />
           )}
         </Section>
+
+        <Section title="오늘 확인 후보">
+          {todayCandidates.length ? (
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+              {todayCandidates.map((item) => renderTodayCandidateCard(item))}
+            </div>
+          ) : (
+            <EmptyReason text="오늘 확인 후보가 없습니다." />
+          )}
+        </Section>
+
+        <Section title="오늘 뉴스 요약">
+          {homeNews.length ? (
+            <ul className="space-y-2 rounded-lg border border-line bg-panel p-4">
+              {homeNews.map((item, idx) => (
+                <li key={`${item.title}-${idx}`} className="flex gap-3 border-b border-line/70 pb-2 last:border-b-0 last:pb-0">
+                  <span className="shrink-0 rounded-md bg-white/10 px-2 py-1 text-xs font-black text-accent">{newsTag(item)}</span>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold text-slate-100" title={item.title}>{item.title || "뉴스 제목 없음"}</div>
+                    <div className="mt-1 text-xs text-muted">
+                      {[item.sourceName, item.publishedAt, item.name || item.symbol].filter(Boolean).join(" · ") || "뉴스 정보 없음"}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyReason text="표시할 뉴스 요약이 없습니다." />
+          )}
+        </Section>
       </>
     );
+  }
+
+  function renderTodayCandidateCard(item: Security) {
+    const prediction = predictionBySymbol.get(item.symbol) ?? item;
+    return (
+      <button
+        key={item.symbol}
+        onClick={() => setSelectedSymbol(item)}
+        className="rounded-xl border border-line bg-panel p-4 text-left shadow-soft transition hover:border-accent/60 hover:bg-accent/5"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-lg font-black text-white">{item.name || item.symbol}</div>
+            <div className="mt-1 text-xs text-muted">{item.symbol}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-base font-black text-white">{item.currentPriceText || "현재가 없음"}</div>
+            <div className="mt-1 text-xs text-muted">{item.priceTime || "기준시각 없음"}</div>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+          <PriceMini label="기준가" value={priceText(item.entryText, item.entry, "기준가")} />
+          <PriceMini label="손절가" value={priceText(item.stopText, item.stop, "손절가")} tone="warn" />
+          <PriceMini label="목표가" value={priceText(item.targetText, item.target, "목표가")} tone="good" />
+        </div>
+        <div className="mt-3 rounded-lg bg-accent/10 px-3 py-2 text-xs font-bold leading-5 text-slate-100">
+          {predictionLine(prediction)}
+        </div>
+      </button>
+    );
+  }
+
+  function priceText(text?: string, value?: number | null, label = "가격") {
+    if (text && text.trim() && !text.includes("없음")) return text;
+    if (value) return money(value, market);
+    return `${label} 산출 필요`;
+  }
+
+  function buildHomeNews(items: NewsItem[], limit: number) {
+    const tagRank: Record<string, number> = { "개별": 0, "공시/이슈": 1, "반도체": 2, "2차전지": 3, "AI·로봇": 4, "수급": 5, "지수": 6, "뉴스": 7, "시장": 8 };
+    const prepared = items
+      .map((item, idx) => ({ item, idx, tag: newsTag(item) }))
+      .sort((a, b) => (tagRank[a.tag] ?? 9) - (tagRank[b.tag] ?? 9) || a.idx - b.idx);
+    const picked: NewsItem[] = [];
+    const tagCounts = new Map<string, number>();
+    const seenTitles = new Set<string>();
+    const seenSources = new Map<string, number>();
+
+    for (const { item, tag } of prepared) {
+      const titleKey = (item.title || "").replace(/\s+/g, " ").slice(0, 34);
+      if (!titleKey || seenTitles.has(titleKey)) continue;
+      if ((tagCounts.get(tag) ?? 0) >= 1) continue;
+      if (item.sourceName && (seenSources.get(item.sourceName) ?? 0) >= 2) continue;
+      picked.push(item);
+      seenTitles.add(titleKey);
+      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+      if (item.sourceName) seenSources.set(item.sourceName, (seenSources.get(item.sourceName) ?? 0) + 1);
+      if (picked.length >= limit) return picked;
+    }
+
+    for (const { item } of prepared) {
+      if (picked.length >= limit) break;
+      const titleKey = (item.title || "").replace(/\s+/g, " ").slice(0, 34);
+      if (!titleKey || seenTitles.has(titleKey)) continue;
+      picked.push(item);
+      seenTitles.add(titleKey);
+    }
+    return picked;
+  }
+
+  function newsTag(item: NewsItem) {
+    const text = `${item.title ?? ""} ${item.summary ?? ""} ${item.name ?? ""} ${item.sourceName ?? ""}`;
+    const hasRealName = item.name && !["종목", "시장", item.symbol].includes(item.name) && !/^\d{4,6}$/.test(item.name);
+    if (/공시|실적|계약|증자|분기|사업보고|합병|분할|수주|공급계약|자사주|배당/.test(text)) return "공시/이슈";
+    if (/삼성전자|하이닉스|반도체|HBM|AI반도체|메모리|파운드리|엔비디아|NVDA/.test(text)) return "반도체";
+    if (/전지|배터리|2차전지|LG에너지|에코프로|양극재|음극재/.test(text)) return "2차전지";
+    if (/로봇|AI|인공지능|자동화|로보스타|두산로보틱스/.test(text)) return "AI·로봇";
+    if (hasRealName || (item.symbol && item.symbol !== "종목")) return "개별";
+    if (/외국인|기관|개인|순매수|순매도|매수|매도/.test(text)) return "수급";
+    if (/코스피|코스닥|나스닥|S&P|다우|지수/.test(text)) return "지수";
+    if (/증시|시장|환율|금리/.test(text)) return "시장";
+    return "뉴스";
   }
 
   function renderReports() {
     if (activeSubPage === "장전 리포트") {
       return (
-        <>
-          <div className="grid gap-3 md:grid-cols-4">
-            <StatCard label="장전 항목" value={premarket.count || "데이터 없음"} note={(premarket.sources ?? []).slice(0, 2).join(" · ") || "소스 없음"} tone="accent" />
-            <StatCard label="오늘 요약" value={summary?.cards?.length ?? 0} note="today_summary" />
-            <StatCard label="주의 후보" value={premarket.items.filter((item) => item.sourceGroup === "주의").length} note="risk_cards" tone="warn" />
-            <StatCard label="확률 후보" value={premarket.items.filter((item) => item.sourceGroup === "확률").length} note="future_probability" tone="good" />
-          </div>
-          <Section title="장전 리포트">
-            {premarket.items.length ? (
-              <DataTable rows={premarket.items} columns={premarketColumns} onRowClick={setSelectedSymbol} />
-            ) : (
-              <EmptyReason text="장전 리포트 데이터 없음" />
-            )}
-          </Section>
-        </>
+        <Section title="장전 리포트">
+          {premarket.items.length ? (
+            <DataTable rows={premarket.items} columns={premarketColumns} onRowClick={setSelectedSymbol} />
+          ) : (
+            <EmptyReason text="장전 리포트 데이터 없음" />
+          )}
+        </Section>
       );
     }
     if (activeSubPage === "장중 체크") {
+      const validRows = intraday.items.filter((item) => hasUsablePriceLevel(item.entryText, item.entry));
+      const excluded = intraday.items.length - validRows.length;
       return (
-        <>
-          <div className="grid gap-3 md:grid-cols-4">
-            <StatCard label="장중 점검" value={intraday.count || "데이터 없음"} note={(intraday.sources ?? []).slice(0, 2).join(" · ") || "소스 없음"} tone="accent" />
-            <StatCard label="보유 종목" value={positions.count} note={sourceLabel(positions.source)} tone="good" />
-            <StatCard label="손절 주의" value={intraday.items.filter((item) => item.intradayDecision === "손절 주의").length} tone="warn" />
-            <StatCard label="익절 검토" value={intraday.items.filter((item) => item.intradayDecision === "익절 검토").length} tone="good" />
-          </div>
-          <Section title="장중 체크">
-            {intraday.items.length ? (
-              <DataTable rows={intraday.items} columns={intradayColumns} onRowClick={setSelectedSymbol} />
-            ) : (
-              <EmptyReason text="장중 체크 데이터 없음" />
-            )}
-          </Section>
-        </>
+        <Section
+          title="장중 체크"
+          right={excluded > 0 ? <span className="text-xs text-muted">기준가 없는 종목 {excluded}개 제외</span> : null}
+        >
+          {validRows.length ? (
+            <DataTable rows={validRows} columns={intradayColumns} onRowClick={setSelectedSymbol} />
+          ) : (
+            <EmptyReason text="장중 체크 가능한 항목이 없습니다. 기준가가 없는 항목은 메인 표에서 제외했습니다." />
+          )}
+        </Section>
       );
     }
     if (activeSubPage === "장마감 검증") {
+      const validRows = closing.items.filter(isClosingVerifiable);
+      const excluded = closing.items.length - validRows.length;
       return (
-        <>
-          <div className="grid gap-3 md:grid-cols-4">
-            <StatCard label="최근 예측" value={closing.count || "검증 데이터 없음"} note={(closing.sources ?? []).join(" · ")} tone="accent" />
-            <StatCard label="방향 적중률" value={closing.directionHitRate} note="전체 direction_hit 기준" tone="good" />
-            <StatCard label="범위 적중률" value={closing.rangeHitRate} note="open/close range 기준" />
-            <StatCard label="outcome_history" value={closing.outcomeHistoryCount} note="rows" />
-          </div>
-          <Section title="장마감 검증">
-            {closing.items.length ? (
-              <DataTable rows={closing.items} columns={closingColumns} />
-            ) : (
-              <EmptyReason text="장마감 검증 데이터 없음" />
-            )}
-          </Section>
-        </>
-      );
-    }
-    return (
-      <>
-        <div className="grid gap-3 md:grid-cols-4">
-          <StatCard label="리포트 파일" value={reportFiles.count} note={`fallback ${reportFiles.fallbackPolicy.join(" → ") || "상태 없음"}`} tone="accent" />
-          <StatCard label="OK" value={reportFiles.items.filter((item) => item.status === "OK").length} tone="good" />
-          <StatCard label="비어 있음" value={reportFiles.items.filter((item) => item.status !== "OK").length} tone="warn" />
-          <StatCard label="CSV 미리보기" value="표시" note="각 파일 상위 3행" />
-        </div>
-        <Section title="리포트 센터">
-          {reportFiles.items.length ? (
-            <DataTable rows={reportFiles.items} columns={reportFileColumns} />
+        <Section
+          title="장마감 검증"
+          right={excluded > 0 ? <span className="text-xs text-muted">검증 데이터 부족 {excluded}개 제외</span> : null}
+        >
+          {validRows.length ? (
+            <DataTable rows={validRows} columns={closingColumns} />
           ) : (
-            <EmptyReason text="reports 파일 목록 없음" />
+            <EmptyReason text="오늘 장마감 검증 가능한 항목이 없습니다. 예상 시초가/종가 또는 실제 OHLC 데이터가 부족한 항목은 제외했습니다." />
           )}
         </Section>
-        <Section title="CSV 미리보기">
-          <div className="grid gap-3 xl:grid-cols-2">
-            {reportFiles.items.slice(0, 8).map((file) => (
-              <div key={file.path} className="rounded-lg border border-line bg-card p-4">
-                <div className="text-sm font-black text-white">{file.fileName}</div>
-                <div className="mt-1 text-xs text-muted">
-                  {file.group} · {file.rows} rows · {file.columns} cols · {file.fallbackStatus}
-                </div>
-                <SimpleRecords rows={file.preview ?? []} empty="CSV 미리보기 없음" />
-              </div>
-            ))}
-          </div>
-        </Section>
-      </>
-    );
+      );
+    }
+    return <EmptyReason text="운용 리포트 메뉴를 선택하세요." />;
   }
 
   function renderSymbolDiscovery() {
-    if (activeSubPage === "관심종목") {
-      return (
-        <>
-          <WriteStatus text={writeStatus} />
-          <Section title="관심종목 직접 추가">
-            <div className="grid gap-3 md:grid-cols-4">
-              <FormInput label="종목코드/티커" value={watchForm.symbol} onChange={(value) => setWatchForm((form) => ({ ...form, symbol: value }))} />
-              <FormInput label="종목명" value={watchForm.name} onChange={(value) => setWatchForm((form) => ({ ...form, name: value }))} />
-              <FormInput label="메모" value={watchForm.memo} onChange={(value) => setWatchForm((form) => ({ ...form, memo: value }))} />
-              <button onClick={addWatchlistManual} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">관심종목 추가</button>
-            </div>
-          </Section>
-          <Section title={`${marketName} 관심종목`} right={<span className="text-xs text-muted">{watchlist.count}개 · {sourceLabel(watchlist.source)}</span>}>
-            <DataTable
-              rows={watchlist.items}
-              columns={[
-                ...symbolColumns,
-                {
-                  key: "delete",
-                  header: "관리",
-                  render: (row) => (
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        deleteWatchlistSymbol(row.symbol);
-                      }}
-                      className="rounded-md border border-warn/40 px-2 py-1 text-xs font-bold text-warn"
-                    >
-                      삭제
-                    </button>
-                  )
-                }
-              ]}
-              onRowClick={setSelectedSymbol}
-            />
-          </Section>
-        </>
-      );
-    }
-
-    if (activeSubPage === "후보군") {
-      return (
-        <>
-          <WriteStatus text={writeStatus} />
-          <div className="grid gap-3 md:grid-cols-4">
-            <StatCard label="후보군" value={scanner.count} note="candidate/watchlist/v92 cards" tone="accent" />
-            <StatCard label="관심종목" value={watchlist.count} note={sourceLabel(watchlist.source)} />
-            <StatCard label="보유 제외" value={scanner.items.filter((item) => !item.isHolding).length} />
-            <StatCard label="쓰기 안전장치" value="백업 후 저장" note="watchlist만 수정" tone="good" />
-          </div>
-          <Section title="후보군 / 관심종목 편입">
-            <DataTable rows={filteredScanner} columns={scannerColumns} onRowClick={setSelectedSymbol} />
-          </Section>
-        </>
-      );
-    }
-
-    if (activeSubPage === "매수 후보" || activeSubPage === "매수금지 / 주의") {
-      const type = activeSubPage === "매수금지 / 주의" ? "risk" : candidateType;
-      const list = candidates[type]?.items ?? [];
+    if (activeSubPage === "오늘 매수 검토") {
+      const safeType = candidateType === "risk" ? "action" : candidateType;
+      const list = candidates[safeType]?.items ?? [];
       return (
         <>
           <WriteStatus text={writeStatus} />
           <div className="flex flex-wrap gap-2">
-            {candidateTabs.map(([typeId, label]) => (
+            {buyCandidateTabs.map(([typeId, label]) => (
               <button
                 key={typeId}
                 onClick={() => setCandidateType(typeId)}
                 className={`rounded-md border px-3 py-2 text-sm font-bold ${
-                  type === typeId ? "border-accent bg-accent/15 text-accent" : "border-line bg-panel text-slate-300"
+                  safeType === typeId ? "border-accent bg-accent/15 text-accent" : "border-line bg-panel text-slate-300"
                 }`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <Section title={`${marketName} ${activeSubPage}`}>
-            <DataTable rows={list} columns={[...compactSymbolColumns, { key: "watch", header: "관심종목", render: (row) => <button onClick={(event) => { event.stopPropagation(); addWatchlistFrom(row); }} className="rounded-md border border-accent/45 px-2 py-1 text-xs font-bold text-accent hover:bg-accent hover:text-ink">추가</button> }]} onRowClick={setSelectedSymbol} />
+          <Section title={`${marketName} 오늘 매수 검토`}>
+            {list.length ? (
+              <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                {list.map((item) => renderTradeCandidateCard(item, "buy"))}
+              </div>
+            ) : (
+              <EmptyReason text="오늘 매수 검토 후보가 없습니다." />
+            )}
+          </Section>
+        </>
+      );
+    }
+
+    if (activeSubPage === "매수금지 / 주의") {
+      const list = candidates.risk?.items ?? [];
+      return (
+        <>
+          <WriteStatus text={writeStatus} />
+          <Section title={`${marketName} 매수금지 / 주의`}>
+            {list.length ? (
+              <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                {list.map((item) => renderTradeCandidateCard(item, "risk"))}
+              </div>
+            ) : (
+              <EmptyReason text="매수금지 / 주의 후보가 없습니다." />
+            )}
           </Section>
         </>
       );
@@ -1070,9 +1170,17 @@ export default function Home() {
     return (
       <>
         <WriteStatus text={writeStatus} />
+        <Section title="관심종목 직접 추가">
+          <div className="grid gap-3 md:grid-cols-4">
+            <FormInput label="종목코드/티커" value={watchForm.symbol} onChange={(value) => setWatchForm((form) => ({ ...form, symbol: value }))} />
+            <FormInput label="종목명" value={watchForm.name} onChange={(value) => setWatchForm((form) => ({ ...form, name: value }))} />
+            <FormInput label="메모" value={watchForm.memo} onChange={(value) => setWatchForm((form) => ({ ...form, memo: value }))} />
+            <button onClick={addWatchlistManual} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">관심종목 추가</button>
+          </div>
+        </Section>
         <Section
-          title={`${marketName} ${activeSubPage}`}
-          right={<span className="text-xs text-muted">{symbols.count}개 · {sourceLabel(symbols.source)}</span>}
+          title={`${marketName} 종목 검색 / 관심`}
+          right={<span className="text-xs text-muted">검색 범위: 오늘 선택 · 관심 · 보유 · 후보군</span>}
         >
           <input
             value={query}
@@ -1080,7 +1188,21 @@ export default function Home() {
             placeholder="종목명 또는 코드 검색"
             className="mb-3 w-full rounded-lg border border-line bg-panel px-4 py-3 text-sm outline-none focus:border-accent"
           />
-          <DataTable rows={filteredSymbols} columns={[...symbolColumns, { key: "watch", header: "관심종목", render: (row) => <button onClick={(event) => { event.stopPropagation(); addWatchlistFrom(row); }} className="rounded-md border border-accent/45 px-2 py-1 text-xs font-bold text-accent hover:bg-accent hover:text-ink">추가</button> }]} onRowClick={setSelectedSymbol} />
+          <DataTable
+            rows={filteredDiscoveryRows}
+            columns={[
+              { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
+              { key: "symbol", header: "코드", render: (row) => row.symbol },
+              { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
+              { key: "entry", header: "기준가", render: (row) => priceText(row.entryText, row.entry, "기준가") },
+              { key: "stop", header: "손절가", render: (row) => priceText(row.stopText, row.stop, "손절가") },
+              { key: "target", header: "목표가", render: (row) => priceText(row.targetText, row.target, "목표가") },
+              { key: "source", header: "구분", render: (row) => row.discoverySource || "검색 대상" },
+              { key: "chart", header: "차트", render: (row) => <button onClick={(event) => { event.stopPropagation(); setSelectedSymbol(row); setActiveCategory("차트·기술분석"); setActiveSubPage("차트 보기"); }} className="rounded-md border border-accent/45 px-2 py-1 text-xs font-bold text-accent hover:bg-accent hover:text-ink">보기</button> },
+              { key: "watch", header: "관심", render: (row) => row.isWatchlisted ? <span className="text-xs font-bold text-good">관심중</span> : <button onClick={(event) => { event.stopPropagation(); addWatchlistFrom(row); }} className="rounded-md border border-accent/45 px-2 py-1 text-xs font-bold text-accent hover:bg-accent hover:text-ink">추가</button> }
+            ]}
+            onRowClick={setSelectedSymbol}
+          />
         </Section>
         <Section title="상세 카드">
           {selectedSymbol ? <SymbolDetailCard item={selectedSymbol} /> : <EmptyReason text="선택된 종목이 없습니다." />}
@@ -1089,56 +1211,151 @@ export default function Home() {
     );
   }
 
+  function renderTradeCandidateCard(item: Security, mode: "buy" | "risk") {
+    const prediction = predictionBySymbol.get(item.symbol) ?? item;
+    const status = mode === "risk" ? shortRiskText(item.warning || item.reason || item.dataStatus || "관망") : formatRiskRewardFromPrices(item);
+    return (
+      <button
+        key={`${mode}-${item.symbol}`}
+        onClick={() => setSelectedSymbol(item)}
+        className={`rounded-xl border bg-panel p-4 text-left shadow-soft transition hover:bg-accent/5 ${mode === "risk" ? "border-warn/45 hover:border-warn" : "border-line hover:border-accent/60"}`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-lg font-black text-white">{item.name || item.symbol}</div>
+            <div className="mt-1 text-xs text-muted">{item.symbol}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-base font-black text-white">{item.currentPriceText || "현재가 없음"}</div>
+            <div className="mt-1 text-xs text-muted">{item.priceTime || "기준시각 없음"}</div>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+          <PriceMini label="기준가" value={priceText(item.entryText, item.entry, "기준가")} />
+          <PriceMini label="손절가" value={priceText(item.stopText, item.stop, "손절가")} tone="warn" />
+          <PriceMini label="목표가" value={priceText(item.targetText, item.target, "목표가")} tone="good" />
+        </div>
+        <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-xs font-bold leading-5 text-slate-200">
+          {mode === "buy" ? `${status} · ${predictionLine(prediction)}` : `상태 ${status} · ${gapText(item)}`}
+        </div>
+        <div className="mt-3 flex justify-end">
+          <button onClick={(event) => { event.stopPropagation(); addWatchlistFrom(item); }} className="rounded-md border border-accent/45 px-2 py-1 text-xs font-bold text-accent hover:bg-accent hover:text-ink">관심 추가</button>
+        </div>
+      </button>
+    );
+  }
+
   function renderPositions() {
-    const displayRows = activeSubPage === "보유 관리" ? directHoldings.items : positions.items;
-    const positive = displayRows.filter((item) => (item.pnl ?? 0) > 0).length;
-    const negative = displayRows.filter((item) => (item.pnl ?? 0) < 0).length;
+    const managementRows = directHoldings.items.length ? directHoldings.items : positions.items;
     return (
       <>
         <WriteStatus text={writeStatus} />
-        <div className="grid gap-3 md:grid-cols-4">
-          <StatCard label="보유 종목" value={displayRows.length} note={activeSubPage === "보유 관리" ? sourceLabel(directHoldings.source) : sourceLabel(positions.source)} tone="good" />
-          <StatCard label="수익 구간" value={positive} note="평가손익 기준" tone="accent" />
-          <StatCard label="손실 구간" value={negative} note="평가손익 기준" tone={negative ? "warn" : "good"} />
-          <StatCard label="쓰기 안전장치" value="백업 후 저장" note="holdings 파일만 수정" tone="warn" />
-        </div>
-        {activeSubPage === "보유 관리" ? (
-          <Section title="보유종목 추가 / 수정">
-            <div className="grid gap-3 md:grid-cols-6">
-              <FormInput label="종목코드/티커" value={holdingForm.symbol} onChange={(value) => setHoldingForm((form) => ({ ...form, symbol: value }))} />
-              <FormInput label="종목명" value={holdingForm.name} onChange={(value) => setHoldingForm((form) => ({ ...form, name: value }))} />
-              <FormInput label="평균단가" value={holdingForm.avgPrice} onChange={(value) => setHoldingForm((form) => ({ ...form, avgPrice: value }))} />
-              <FormInput label="수량" value={holdingForm.quantity} onChange={(value) => setHoldingForm((form) => ({ ...form, quantity: value }))} />
-              <FormInput label="메모" value={holdingForm.memo} onChange={(value) => setHoldingForm((form) => ({ ...form, memo: value }))} />
-              <button onClick={saveHolding} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">저장 / 업데이트</button>
+        <Section title={`${marketName} 보유 현황`}>
+          {managementRows.length ? (
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+              {managementRows.map((item) => renderHoldingCard(item))}
             </div>
-          </Section>
-        ) : null}
-        <Section title={`${marketName} ${activeSubPage}`}>
-          <DataTable rows={displayRows} columns={activeSubPage === "손절·목표가" ? orderLineColumns : positionColumns} onRowClick={setSelectedSymbol} />
+          ) : (
+            <EmptyReason text="보유종목이 없습니다." />
+          )}
+        </Section>
+        <Section title="보유종목 추가 / 수정">
+          <div className="grid gap-3 md:grid-cols-6">
+            <FormInput label="종목코드/티커" value={holdingForm.symbol} onChange={(value) => setHoldingForm((form) => ({ ...form, symbol: value }))} />
+            <FormInput label="종목명" value={holdingForm.name} onChange={(value) => setHoldingForm((form) => ({ ...form, name: value }))} />
+            <FormInput label="평균단가" value={holdingForm.avgPrice} onChange={(value) => setHoldingForm((form) => ({ ...form, avgPrice: value }))} />
+            <FormInput label="수량" value={holdingForm.quantity} onChange={(value) => setHoldingForm((form) => ({ ...form, quantity: value }))} />
+            <FormInput label="메모" value={holdingForm.memo} onChange={(value) => setHoldingForm((form) => ({ ...form, memo: value }))} />
+            <button onClick={saveHolding} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">저장 / 업데이트</button>
+          </div>
         </Section>
       </>
     );
   }
 
+  function renderHoldingCard(item: Security) {
+    const risk = holdingRiskText(item);
+    return (
+      <div key={item.symbol} className="rounded-xl border border-line bg-panel p-4 shadow-soft">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-lg font-black text-white">{item.name || item.symbol}</div>
+            <div className="mt-1 text-xs text-muted">{item.symbol}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-base font-black text-white">{item.currentPriceText || "현재가 없음"}</div>
+            <div className="mt-1 text-xs text-muted">{item.priceTime || "기준시각 없음"}</div>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+          <MiniMetric label="수량" value={item.quantityText || "수량 없음"} />
+          <MiniMetric label="평균단가" value={item.avgPriceText || "평균단가 없음"} />
+          <MiniMetric label="평가손익" value={item.pnlText || "평가손익 없음"} />
+          <MiniMetric label="수익률" value={item.returnPctText || "수익률 없음"} />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <PriceMini label="손절가" value={priceText(item.stopText, item.stop, "손절가")} tone="warn" />
+          <PriceMini label="목표가" value={priceText(item.targetText, item.target, "목표가")} tone="good" />
+        </div>
+        <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-xs font-bold leading-5 text-slate-200">
+          상태 {holdingStatusText(item)} · 리스크 {risk}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={() => fillHoldingForm(item)}
+            className="rounded-md border border-accent/40 px-2 py-1 text-xs font-bold text-accent"
+          >
+            수정
+          </button>
+          <button
+            onClick={() => deleteHoldingSymbol(item.symbol)}
+            className="rounded-md border border-warn/40 px-2 py-1 text-xs font-bold text-warn"
+          >
+            삭제
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   function renderCharts() {
-    if (activeSubPage === "기술지표") {
-      return (
-        <Section title="기술지표 점검">
-          <DataTable rows={symbols.items} columns={scoreColumns} onRowClick={setSelectedSymbol} />
-        </Section>
-      );
-    }
-    if (activeSubPage === "지지·저항" || activeSubPage === "예측선 / 주문선") {
-      return (
-        <Section title={activeSubPage}>
-          <DataTable rows={symbols.items} columns={orderLineColumns} onRowClick={setSelectedSymbol} />
-        </Section>
-      );
-    }
+    const chartUniverse = symbols.items.length ? symbols.items : [...positions.items, ...watchlist.items];
+    const selected = selectedSymbol ?? chartUniverse[0] ?? null;
     return (
       <>
-        <Section title="차트 보기">
+        <Section
+          title="차트 보기"
+          right={
+            chartUniverse.length ? (
+              <select
+                value={selected?.symbol ?? ""}
+                onChange={(event) => {
+                  const found = chartUniverse.find((item) => item.symbol === event.target.value);
+                  if (found) setSelectedSymbol(found);
+                }}
+                className="min-w-56 rounded-lg border border-line bg-panel px-3 py-2 text-sm font-bold text-white outline-none focus:border-accent"
+              >
+                {chartUniverse.map((item) => (
+                  <option key={item.symbol} value={item.symbol}>
+                    {item.name || item.symbol} ({item.symbol})
+                  </option>
+                ))}
+              </select>
+            ) : null
+          }
+        >
+          {selected ? (
+            <div className="mb-4 grid gap-3 md:grid-cols-4">
+              <PriceMini label="현재가" value={selected.currentPriceText || "현재가 없음"} />
+              <PriceMini label="기준가" value={priceText(selected.entryText, selected.entry, "기준가")} />
+              <PriceMini label="손절가" value={priceText(selected.stopText, selected.stop, "손절가")} tone="warn" />
+              <PriceMini label="목표가" value={priceText(selected.targetText, selected.target, "목표가")} tone="good" />
+              <PriceMini label="단기 예상가" value={expectedPriceText(selected, "short")} />
+              <PriceMini label="스윙 예상가" value={expectedPriceText(selected, "swing")} />
+              <PriceMini label="중기 예상가" value={expectedPriceText(selected, "mid")} />
+              <PriceMini label="상태" value={priceLevelStatus(selected)} />
+            </div>
+          ) : null}
           {historyChart.length ? (
             <div className="h-72 rounded-lg border border-line bg-panel p-4">
               <ResponsiveContainer width="100%" height="100%">
@@ -1158,11 +1375,8 @@ export default function Home() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyReason text="차트 데이터 부족" />
+            <EmptyReason text="차트 데이터 준비 중입니다. 현재는 가격 기준선과 예상가 요약을 우선 표시합니다." />
           )}
-        </Section>
-        <Section title="선택 종목 가격 기준">
-          <DataTable rows={symbols.items.slice(0, 20)} columns={symbolColumns} onRowClick={setSelectedSymbol} />
         </Section>
       </>
     );
@@ -1172,19 +1386,10 @@ export default function Home() {
     if (activeSubPage === "공시") {
       return (
         <Section title="공시">
-          {news.items.length ? (
-            <DataTable
-              rows={news.items}
-              columns={[
-                { key: "title", header: "제목", render: (row) => row.title },
-                { key: "source", header: "출처", render: (row) => row.sourceName },
-                { key: "time", header: "게시시간", render: (row) => row.publishedAt },
-                { key: "name", header: "연결 종목", render: (row) => row.name || row.symbol || "연결 종목 없음" }
-              ]}
-            />
-          ) : (
-            <EmptyReason text="공시 전용 데이터 없음" />
-          )}
+          <EmptyReason text="공시 데이터 없음 · DART/SEC 공시 수집 파일이 아직 없습니다." />
+          <div className="mt-4 rounded-xl border border-line bg-panel p-4 text-sm leading-6 text-muted">
+            뉴스 요약 데이터는 공시 탭에 표시하지 않습니다. DART/SEC 공시 수집 파일이 생성되면 이 화면에 연결합니다.
+          </div>
         </Section>
       );
     }
@@ -1192,13 +1397,6 @@ export default function Home() {
       return (
         <Section title="기업분석">
           <DataTable rows={symbols.items} columns={scoreColumns} onRowClick={setSelectedSymbol} />
-        </Section>
-      );
-    }
-    if (activeSubPage === "종목 내러티브") {
-      return (
-        <Section title="종목 내러티브">
-          <DataTable rows={symbols.items.slice(0, 30)} columns={compactSymbolColumns} onRowClick={setSelectedSymbol} />
         </Section>
       );
     }
@@ -1237,30 +1435,12 @@ export default function Home() {
   }
 
   function renderPredictions() {
-    if (activeSubPage === "예측 기록") {
-      return <HistoryTable title="예측 기록" history={predictionHistory} />;
-    }
-    if (activeSubPage === "결과 검증") {
-      return <HistoryTable title="결과 검증" history={outcomeHistory} />;
-    }
-    if (activeSubPage === "실패 복기" || activeSubPage === "자동 보정") {
-      return (
-        <>
-          <div className="grid gap-3 md:grid-cols-3">
-            <StatCard label="예측 기록" value={predictionHistory.count} note={predictionHistory.source} tone="accent" />
-            <StatCard label="결과 검증" value={outcomeHistory.count} note={outcomeHistory.source} />
-            <StatCard label={activeSubPage} value="데이터 연결" note="자동 규칙은 후속 버전에서 보강" tone="warn" />
-          </div>
-          <HistoryTable title={activeSubPage} history={activeSubPage === "실패 복기" ? outcomeHistory : predictionHistory} />
-        </>
-      );
-    }
     return (
       <>
         <div className="grid gap-3 md:grid-cols-3">
           <StatCard label="확률 행" value={predictions.count} note={sourceLabel(predictions.source)} tone="accent" />
-          <StatCard label="prediction_history" value={predictionHistory.count} note={predictionHistory.source} />
-          <StatCard label="outcome_history" value={outcomeHistory.count} note={outcomeHistory.source} />
+          <StatCard label="표시 항목" value="단기 · 스윙 · 중기" note="확률 + 예상가" />
+          <StatCard label="시장" value={marketName} note="참고용 예측 지표" />
         </div>
         <Section title="확률 예측">
           <DataTable
@@ -1268,8 +1448,10 @@ export default function Home() {
             columns={[
               { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
               { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
-              { key: "confidence", header: "신뢰도", render: (row) => String(row.confidence ?? "신뢰도 없음") },
-              { key: "action", header: "다음 행동", render: (row) => row.nextAction || "다음 행동 없음" }
+              { key: "short", header: "단기", render: (row) => probabilityCell(row, "short") },
+              { key: "swing", header: "스윙", render: (row) => probabilityCell(row, "swing") },
+              { key: "mid", header: "중기", render: (row) => probabilityCell(row, "mid") },
+              { key: "confidence", header: "신뢰도", render: (row) => String(row.confidence ?? "신뢰도 없음") }
             ]}
             onRowClick={setSelectedSymbol}
           />
@@ -1278,9 +1460,85 @@ export default function Home() {
     );
   }
 
+  function renderPredictionAdmin() {
+    if (activeSubPage === "예측 기록") {
+      return (
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <StatCard label="예측 기록" value={predictionHistory.count} note={predictionHistory.source} tone="accent" />
+            <StatCard label="시장 예측 rows" value={predictionInsights.summary.predictionRows} note={market === "kr" ? "국장" : "미장"} />
+            <StatCard label="검증 커버리지" value={predictionInsights.summary.coverage} note="검증 rows / 예측 rows" />
+            <StatCard label="성공률" value={predictionInsights.summary.successRate} note="success/fail 기준" tone="good" />
+          </div>
+          <Section title="종목별 예측 성과">
+            <SimpleRecords rows={predictionInsights.bySymbol.slice(0, 60)} empty="종목별 성과 데이터 부족" />
+          </Section>
+          <HistoryTable title="예측 기록" history={predictionHistory} />
+        </>
+      );
+    }
+    if (activeSubPage === "결과 검증") {
+      return (
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <StatCard label="결과 검증" value={outcomeHistory.count} note={outcomeHistory.source} tone="accent" />
+            <StatCard label="성공" value={predictionInsights.summary.success} tone="good" />
+            <StatCard label="실패" value={predictionInsights.summary.fail} tone="warn" />
+            <StatCard label="중립/대기" value={predictionInsights.summary.neutral} />
+          </div>
+          <Section title="기간별 적중률">
+            <SimpleRecords rows={predictionInsights.byPeriod} empty="기간별 검증 데이터 부족" />
+          </Section>
+          <HistoryTable title="결과 검증" history={outcomeHistory} />
+        </>
+      );
+    }
+    if (activeSubPage === "실패 복기") {
+      return (
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <StatCard label="실패 후보" value={predictionInsights.failures.length} note="최근 실패/불일치 행" tone="warn" />
+            <StatCard label="검증 사용 rows" value={predictionInsights.summary.validationRows} note="outcome > history > predictions" />
+            <StatCard label="실패" value={predictionInsights.summary.fail} tone="warn" />
+            <StatCard label="성공률" value={predictionInsights.summary.successRate} />
+          </div>
+          <Section title="실패 복기">
+            <SimpleRecords rows={predictionInsights.failures} empty="실패 복기 데이터 부족" />
+          </Section>
+          <Section title="진단">
+            <SimpleRecords rows={predictionInsights.diagnostics} empty="예측 진단 데이터 부족" />
+          </Section>
+        </>
+      );
+    }
+    if (activeSubPage === "자동 보정") {
+      return (
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <StatCard label="자동 보정 후보" value={predictionInsights.corrections.length} note="종목/기간별 제안" tone="accent" />
+            <StatCard label="검증 커버리지" value={predictionInsights.summary.coverage} />
+            <StatCard label="실패" value={predictionInsights.summary.fail} tone="warn" />
+            <StatCard label="성공" value={predictionInsights.summary.success} tone="good" />
+          </div>
+          <Section title="자동 보정 후보">
+            <SimpleRecords rows={predictionInsights.corrections} empty="자동 보정 후보 부족" />
+          </Section>
+          <Section title="종목별 보정 참고">
+            <SimpleRecords rows={predictionInsights.bySymbol.slice(0, 40)} empty="종목별 보정 데이터 부족" />
+          </Section>
+        </>
+      );
+    }
+    return null;
+  }
+
   function renderAdmin() {
+    const predictionAdmin = renderPredictionAdmin();
+    if (predictionAdmin) return predictionAdmin;
     if (activeSubPage === "데이터 점검") return <FileStatusTable rows={files} />;
-    if (activeSubPage === "API 상태" || activeSubPage === "자동화 상태") return <ApiStatus env={env} />;
+    if (activeSubPage === "데이터 소스") return <DataSourceStatus rows={dataSources} />;
+    if (activeSubPage === "API 상태") return <ApiStatus env={env} />;
+    if (activeSubPage === "자동화 상태") return <AutomationStatus automation={summary?.automation} updatedAt={updatedAt} />;
     return <FileStatusTable rows={files.filter((item) => item.path.includes("history") || item.path.includes("daily_watch"))} />;
   }
 
@@ -1348,6 +1606,9 @@ export default function Home() {
             <StatCard label="손익비" value={String(calculator.rr?.ratioText ?? "미계산")} note="자동주문 없음" />
           </div>
           <Section title="계산기 입력">
+            <div className="mb-3 rounded-lg border border-line bg-panel px-4 py-3 text-sm leading-6 text-muted">
+              기본값으로 바로 계산할 수 있지만, 실제 매매 전에는 자본·진입가·손절가·목표가를 본인 계획에 맞게 수정하세요. 이 계산기는 주문을 실행하지 않습니다.
+            </div>
             <div className="grid gap-3 md:grid-cols-5">
               <FormInput label="자본" value={calculatorForm.capital} onChange={(value) => setCalculatorForm((form) => ({ ...form, capital: value }))} />
               <FormInput label="승률(%)" value={calculatorForm.winRate} onChange={(value) => setCalculatorForm((form) => ({ ...form, winRate: value }))} />
@@ -1387,6 +1648,9 @@ export default function Home() {
             <button onClick={runMonteCarlo} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">시뮬레이션 실행</button>
           </div>
           <Section title="몬테카를로 입력">
+            <div className="mb-3 rounded-lg border border-line bg-panel px-4 py-3 text-sm leading-6 text-muted">
+              현재가를 비워두면 선택 종목의 현재가로 실행합니다. 기본값 실행은 가능하지만, 선택 종목의 OHLCV와 변동성 값이 충분할수록 해석 신뢰도가 좋아집니다.
+            </div>
             <div className="grid gap-3 md:grid-cols-5">
               <FormInput label="현재가" value={monteCarloForm.currentPrice} placeholder={String(selectedSymbol?.currentPrice ?? symbols.items[0]?.currentPrice ?? 100)} onChange={(value) => setMonteCarloForm((form) => ({ ...form, currentPrice: value }))} />
               <FormInput label="기대수익률(%)" value={monteCarloForm.expectedReturn} onChange={(value) => setMonteCarloForm((form) => ({ ...form, expectedReturn: value }))} />
@@ -1452,18 +1716,205 @@ export default function Home() {
   }
 }
 
-function PriceBlock({ item, compact = false }: { item: Security; compact?: boolean }) {
+
+function intradayZoneText(item: IntradayItem) {
+  const gap = item.divergencePct;
+  const stopText = `${item.stopBreakText ?? ""}`;
+  const targetText = `${item.targetHitText ?? ""}`;
+  if (stopText.includes("이탈") || stopText.includes("근접")) return "손절 근접";
+  if (targetText.includes("도달") || targetText.includes("근접")) return "목표가 근접";
+  if (typeof gap === "number" && Number.isFinite(gap)) {
+    if (gap >= 8) return "추격 부담";
+    if (gap >= -2 && gap <= 3) return "기준가 근처";
+    if (gap < -2) return "기준가 아래";
+  }
+  return item.intradayDecision || "관망";
+}
+
+function intradayDecisionText(item: IntradayItem) {
+  const zone = intradayZoneText(item);
+  const holding = `${item.holdingRisk ?? ""}`;
+  if (zone === "손절 근접") return "손절 기준 우선 확인";
+  if (zone === "목표가 근접") return "익절 기준 확인";
+  if (zone === "추격 부담") return holding.includes("보유") ? "신규매수보다 보유 대응" : "신규매수 추격 주의";
+  if (zone === "기준가 근처") return "진입 조건 재확인";
+  if (zone === "기준가 아래") return "흐름 확인 후 대기";
+  return item.intradayDecision || item.newsRiskStatus || "관망";
+}
+
+function priceLevelStatus(item: Security) {
+  if (!item.currentPrice || !item.entry) return "기준가 산출 필요";
+  const gap = ((item.currentPrice - item.entry) / item.entry) * 100;
+  if (gap >= 8) return "추격 부담";
+  if (gap >= -2 && gap <= 3) return "기준가 근처";
+  if (gap < -2) return "기준가 아래";
+  return "관망";
+}
+
+function PriceBlock({ item, compact = false, hideMeta = false }: { item: Security; compact?: boolean; hideMeta?: boolean }) {
   return (
     <div>
       <div className={compact ? "font-bold text-white" : "text-base font-black text-white"}>
-        {item.currentPriceText || "기준가 없음"}
+        {item.currentPriceText || "현재가 없음"}
       </div>
-      <div className="mt-1 text-xs leading-5 text-muted">
-        {item.priceTime || "기준시각 없음"} · {item.priceSource || "가격출처 없음"}
-      </div>
+      {!hideMeta ? (
+        <div className="mt-1 text-xs leading-5 text-muted">
+          {item.priceTime || "기준시각 없음"} · {item.priceSource || "가격출처 없음"}
+        </div>
+      ) : null}
     </div>
   );
 }
+
+
+function PriceMini({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "warn" }) {
+  const color = tone === "good" ? "text-good" : tone === "warn" ? "text-warn" : "text-slate-100";
+  return (
+    <div className="rounded-lg border border-line bg-card/70 px-3 py-2">
+      <div className="text-[11px] font-bold text-muted">{label}</div>
+      <div className={`mt-1 truncate text-sm font-black ${color}`} title={value}>{value}</div>
+    </div>
+  );
+}
+
+function rawText(item: Security, aliases: string[]) {
+  const raw = item.raw ?? {};
+  for (const key of aliases) {
+    const value = raw[key];
+    if (value !== undefined && value !== null && String(value).trim() && !["-", "없음", "nan", "null", "none"].includes(String(value).trim().toLowerCase())) {
+      return String(value).trim();
+    }
+  }
+  return "";
+}
+
+function normalizePercent(value?: string | number | null) {
+  const text = String(value ?? "").trim();
+  if (!text || ["-", "확률 없음", "nan", "null", "none"].includes(text.toLowerCase())) return "확률 없음";
+  if (text.includes("%")) return text;
+  const num = Number(text.replace(/,/g, ""));
+  if (!Number.isFinite(num)) return text;
+  const pct = Math.abs(num) <= 1 ? num * 100 : num;
+  return `${pct.toFixed(pct % 1 === 0 ? 0 : 1)}%`;
+}
+
+function probabilityText(item: Security, horizon: "1" | "3" | "5" | "20" | "short" | "swing" | "mid") {
+  const direct = horizon === "short" ? item.probShort : horizon === "swing" ? item.probSwing : horizon === "mid" ? item.probMid : horizon === "1" ? item.prob1d : horizon === "3" ? item.prob3d : horizon === "20" ? item.prob20d : item.prob5d;
+  const key = horizon === "short" ? "1" : horizon === "swing" ? "5" : horizon === "mid" ? "20" : horizon;
+  const raw = rawText(item, [
+    `${key}일상승확률`,
+    `prob_up_${key}d`,
+    `prob${key}d`,
+    `${key}d_probability`,
+    `probability_${key}d`,
+    `${key}일 확률`
+  ]);
+  return normalizePercent(direct ?? raw);
+}
+
+function expectedPriceText(item: Security, horizon: "1" | "3" | "5" | "20" | "short" | "swing" | "mid") {
+  const direct = horizon === "short" ? item.expectedPriceShortText : horizon === "swing" ? item.expectedPriceSwingText : horizon === "mid" ? item.expectedPriceMidText : horizon === "1" ? item.expectedPrice1dText : horizon === "3" ? item.expectedPrice3dText : horizon === "20" ? item.expectedPrice20dText : item.expectedPrice5dText;
+  const key = horizon === "short" ? "1" : horizon === "swing" ? "5" : horizon === "mid" ? "20" : horizon;
+  if (direct && !direct.includes("없음")) return direct;
+  const raw = rawText(item, [
+    `${key}일예상가`,
+    `${key}일 예상가`,
+    `예상가_${key}일`,
+    `expected_price_${key}d`,
+    `pred_price_${key}d`,
+    `predicted_price_${key}d`,
+    `price_${key}d`,
+    `target_price_${key}d`
+  ]);
+  const num = Number(String(raw).replace(/,/g, "").replace(/[$원]/g, ""));
+  if (Number.isFinite(num) && num > 0) return money(num, item.market);
+  return "예상가 산출 필요";
+}
+
+function probabilityCell(item: Security, horizon: "1" | "3" | "5" | "20" | "short" | "swing" | "mid") {
+  return (
+    <div>
+      <div className="font-black text-white">{probabilityText(item, horizon)}</div>
+      <div className="mt-1 text-xs text-muted">{expectedPriceText(item, horizon)}</div>
+    </div>
+  );
+}
+
+function predictionLine(item: Security) {
+  return `단기 ${probabilityText(item, "short")} / ${expectedPriceText(item, "short")} · 스윙 ${probabilityText(item, "swing")} / ${expectedPriceText(item, "swing")} · 중기 ${probabilityText(item, "mid")} / ${expectedPriceText(item, "mid")}`;
+}
+
+function formatRiskReward(value?: string | number | null) {
+  const text = String(value ?? "").trim();
+  if (!text || text.includes("없음")) return "손익비 없음";
+  const num = Number(text.replace(/,/g, "").replace(/[^0-9.+-]/g, ""));
+  if (Number.isFinite(num) && num > 0) return `1:${num.toFixed(2)}`;
+  return text;
+}
+
+function formatRiskRewardFromPrices(item: Security) {
+  if (!item.entry || !item.stop || !item.target) return "손익비 산출 필요";
+  const risk = Math.abs(item.entry - item.stop);
+  const reward = Math.abs(item.target - item.entry);
+  if (!risk || !reward) return "손익비 산출 필요";
+  return `손익비 1:${(reward / risk).toFixed(2)}`;
+}
+
+function gapText(item: Security) {
+  if (!item.currentPrice || !item.entry) return "기준가 산출 필요";
+  const gap = ((item.currentPrice - item.entry) / item.entry) * 100;
+  return `기준가 대비 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}%`;
+}
+
+function hasUsablePriceLevel(text?: string, value?: number | null) {
+  if (value && value > 0) return true;
+  const raw = String(text ?? "");
+  return Boolean(raw && !raw.includes("없음") && !raw.includes("산출 필요"));
+}
+
+function shortRiskText(text?: string) {
+  const value = String(text ?? "").trim();
+  if (!value || value.includes("없음")) return "관망";
+  if (value.includes("손절")) return "손절 기준 확인";
+  if (value.includes("과열")) return "과열";
+  if (value.includes("관망")) return "관망";
+  if (value.includes("뉴스")) return "뉴스 확인";
+  return value.length > 18 ? `${value.slice(0, 18)}...` : value;
+}
+
+function isClosingVerifiable(row: ClosingItem) {
+  const text = `${row.directionHit} ${row.rangeHit} ${row.entryTouched} ${row.stopTakeProfit} ${row.failureReason}`;
+  return !/검증 데이터 부족|데이터 부족|부족|대기/.test(text);
+}
+
+function compactClosingReason(text: string) {
+  if (!text) return "사유 없음";
+  if (text.includes("검증 데이터 부족")) return "검증 데이터 부족";
+  if (text.includes("시초")) return "시초 데이터 부족";
+  if (text.includes("종가")) return "종가 데이터 부족";
+  if (text.includes("손절")) return "손절 데이터 부족";
+  if (text.includes("익절")) return "익절 데이터 부족";
+  return text;
+}
+
+function holdingStatusText(item: Security) {
+  if ((item.returnPct ?? 0) > 5) return "익절 검토";
+  if ((item.returnPct ?? 0) > 0) return "보유 유지";
+  if ((item.returnPct ?? 0) < -5) return "손실 관리";
+  return "관망";
+}
+
+function holdingRiskText(item: Security) {
+  if (!item.currentPrice || !item.stop) return "가격 기준 부족";
+  const stopGap = ((item.currentPrice - item.stop) / item.currentPrice) * 100;
+  if (stopGap <= 3) return "손절가 근접";
+  if (item.target) {
+    const targetGap = ((item.target - item.currentPrice) / item.currentPrice) * 100;
+    if (targetGap <= 3 && targetGap >= -3) return "목표가 근접";
+  }
+  return "특별 리스크 없음";
+}
+
 
 function GainText({ value, text }: { value?: number | null; text?: string }) {
   const tone = (value ?? 0) < 0 ? "text-warn" : (value ?? 0) > 0 ? "text-good" : "text-slate-300";
@@ -1638,6 +2089,68 @@ function FileStatusTable({ rows }: { rows: FileItem[] }) {
         ]}
       />
     </Section>
+  );
+}
+
+function DataSourceStatus({ rows }: { rows: DataSourceItem[] }) {
+  return (
+    <>
+      <div className="grid gap-3 md:grid-cols-4">
+        {rows.map((row) => (
+          <StatCard
+            key={row.key}
+            label={row.name}
+            value={row.status}
+            note={`${row.files} files · ${row.rows} rows`}
+            tone={row.status === "OK" ? "good" : "warn"}
+          />
+        ))}
+      </div>
+      <Section title="CSV 데이터 소스 연결 상태">
+        <DataTable
+          rows={rows}
+          columns={[
+            { key: "name", header: "구분", render: (row) => <b>{row.name}</b> },
+            { key: "status", header: "상태", render: (row) => <StatusPill status={row.status} /> },
+            { key: "files", header: "파일", render: (row) => row.files },
+            { key: "rows", header: "rows", render: (row) => row.rows },
+            { key: "target", header: "연결 화면", render: (row) => row.target },
+            { key: "updated", header: "최근 수정", render: (row) => row.latestUpdatedAt || "기준시각 없음" },
+            { key: "message", header: "상태 설명", render: (row) => <LongText text={row.message} /> }
+          ]}
+        />
+      </Section>
+      <Section title="감지된 파일 예시">
+        <SimpleRecords
+          rows={rows.map((row) => ({ 구분: row.name, 예시: row.examples.join(" · ") || "감지 파일 없음" }))}
+          empty="데이터 소스 파일 없음"
+        />
+      </Section>
+    </>
+  );
+}
+
+function AutomationStatus({ automation, updatedAt }: { automation?: Record<string, unknown>; updatedAt: string }) {
+  const hasStatus = automation && Object.keys(automation).length > 0;
+  const rows = hasStatus
+    ? Object.entries(automation as Record<string, unknown>).map(([key, value]) => ({ 항목: key, 값: typeof value === "object" ? JSON.stringify(value) : String(value ?? "") }))
+    : [
+        { 항목: "GitHub Actions 상태", 값: "실시간 조회 미연동" },
+        { 항목: "현재 표시 기준", 값: "로컬 파일/상태 파일 기준" },
+        { 항목: "마지막 데이터 기준시각", 값: updatedAt },
+        { 항목: "필요 작업", 값: "GitHub Actions API 조회 또는 workflow 상태 JSON 생성 필요" }
+      ];
+  return (
+    <>
+      <div className="grid gap-3 md:grid-cols-3">
+        <StatCard label="자동화 상태" value={hasStatus ? "상태 파일 감지" : "미연동"} tone={hasStatus ? "good" : "warn"} />
+        <StatCard label="기준" value="로컬 파일" note="GitHub 실시간 API 조회 아님" />
+        <StatCard label="최근 데이터" value={updatedAt} />
+      </div>
+      <Section title="자동화 상태">
+        <SimpleRecords rows={rows} empty="자동화 상태 데이터 없음" />
+      </Section>
+    </>
   );
 }
 
