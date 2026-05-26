@@ -1400,6 +1400,153 @@ def _find_data_files(patterns: tuple[str, ...], exclude: tuple[str, ...] = ()) -
 
 
 
+
+
+def _write_csv_records(path: Path, records: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(records).to_csv(path, index=False, encoding="utf-8-sig")
+
+
+def _recent_date_window(days: int = 30) -> tuple[str, str]:
+    end = pd.Timestamp.today().normalize()
+    start = end - pd.Timedelta(days=max(1, days))
+    return start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
+
+
+def _disclosure_output_file(market: str) -> Path:
+    return DATA_DIR / "disclosures" / f"disclosures_{market}.csv"
+
+
+def _collect_dart_disclosures(days: int = 30) -> dict[str, Any]:
+    api_key = os.environ.get("DART_API_KEY", "").strip()
+    out_file = _disclosure_output_file("kr")
+    if not api_key:
+        return {"status": "MISSING_KEY", "market": "kr", "message": "DART_API_KEY가 없어 공시를 수집하지 못했습니다.", "count": 0, "file": out_file.relative_to(REPO_ROOT).as_posix()}
+    bgn_de, end_de = _recent_date_window(days)
+    params = {
+        "crtfc_key": api_key,
+        "bgn_de": bgn_de,
+        "end_de": end_de,
+        "page_no": 1,
+        "page_count": 100,
+        "sort": "date",
+        "sort_mth": "desc",
+    }
+    try:
+        res = requests.get("https://opendart.fss.or.kr/api/list.json", params=params, timeout=12)
+        res.raise_for_status()
+        payload = res.json()
+    except Exception as exc:
+        return {"status": "ERROR", "market": "kr", "message": f"DART 공시 수집 실패: {exc}", "count": 0, "file": out_file.relative_to(REPO_ROOT).as_posix()}
+    rows = []
+    for item in payload.get("list", []) or []:
+        rows.append({
+            "market": "kr",
+            "symbol": normalize_symbol(item.get("stock_code", ""), "kr"),
+            "name": item.get("corp_name", ""),
+            "corp_code": item.get("corp_code", ""),
+            "title": item.get("report_nm", ""),
+            "date": item.get("rcept_dt", ""),
+            "rcept_no": item.get("rcept_no", ""),
+            "source": "DART",
+            "url": f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={item.get('rcept_no', '')}" if item.get("rcept_no") else "",
+            "collection_status": payload.get("status", ""),
+            "collection_message": payload.get("message", ""),
+            "collected_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        })
+    _write_csv_records(out_file, rows)
+    return {"status": "OK", "market": "kr", "message": "DART 공시 수집 완료", "count": len(rows), "file": out_file.relative_to(REPO_ROOT).as_posix()}
+
+
+def _collect_us_filings(days: int = 60, max_symbols: int = 35) -> dict[str, Any]:
+    token = os.environ.get("FINNHUB_API_KEY", "").strip()
+    out_file = _disclosure_output_file("us")
+    if not token:
+        return {"status": "MISSING_KEY", "market": "us", "message": "FINNHUB_API_KEY가 없어 SEC filing을 수집하지 못했습니다.", "count": 0, "file": out_file.relative_to(REPO_ROOT).as_posix()}
+    universe = symbols("us").get("items", [])
+    tickers: list[str] = []
+    for item in universe:
+        sym = normalize_symbol(item.get("symbol"), "us")
+        if sym and sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
+            tickers.append(sym)
+        if len(tickers) >= max_symbols:
+            break
+    if not tickers:
+        return {"status": "NO_SYMBOLS", "market": "us", "message": "SEC filing을 조회할 미장 티커가 없습니다.", "count": 0, "file": out_file.relative_to(REPO_ROOT).as_posix()}
+    end = pd.Timestamp.today().normalize()
+    start = end - pd.Timedelta(days=max(1, days))
+    rows: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for sym in tickers:
+        try:
+            res = requests.get(
+                "https://finnhub.io/api/v1/stock/filings",
+                params={"symbol": sym, "from": start.strftime("%Y-%m-%d"), "to": end.strftime("%Y-%m-%d"), "token": token},
+                timeout=8,
+            )
+            if res.status_code >= 400:
+                errors.append(f"{sym}: HTTP {res.status_code}")
+                continue
+            data = res.json()
+            if not isinstance(data, list):
+                continue
+            for item in data[:20]:
+                rows.append({
+                    "market": "us",
+                    "symbol": sym,
+                    "name": sym,
+                    "title": item.get("form") or item.get("type") or "SEC filing",
+                    "date": item.get("filedDate") or item.get("acceptedDate") or "",
+                    "source": "SEC/Finnhub",
+                    "url": item.get("reportUrl") or item.get("filingUrl") or "",
+                    "accessionNumber": item.get("accessionNumber", ""),
+                    "collected_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                })
+        except Exception as exc:
+            errors.append(f"{sym}: {exc}")
+    _write_csv_records(out_file, rows)
+    status = "OK" if rows else "NO_DATA"
+    return {"status": status, "market": "us", "message": "SEC/Finnhub filing 수집 완료" if rows else "SEC/Finnhub filing 결과가 없습니다.", "count": len(rows), "file": out_file.relative_to(REPO_ROOT).as_posix(), "errors": errors[:10]}
+
+
+def refresh_disclosures(market: str = "all", days: int = 30) -> dict[str, Any]:
+    market = market if market in {"kr", "us", "all"} else "all"
+    results: list[dict[str, Any]] = []
+    if market in {"kr", "all"}:
+        results.append(_collect_dart_disclosures(days=days))
+    if market in {"us", "all"}:
+        results.append(_collect_us_filings(days=max(days, 60)))
+    return {
+        "status": "OK" if any(r.get("status") == "OK" for r in results) else "NO_DATA",
+        "results": results,
+        "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+def _latest_data_maps(patterns: tuple[str, ...], market: str, exclude: tuple[str, ...] = ()) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    files = sorted(_find_data_files(patterns, exclude + ("node_modules",)), key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+    merged: dict[str, dict[str, Any]] = {}
+    sources: list[str] = []
+    for path in files[:12]:
+        if path.suffix.lower() != ".csv":
+            continue
+        df = read_csv(path)
+        if df.empty:
+            continue
+        sources.append(path.relative_to(REPO_ROOT).as_posix())
+        for row in dataframe_records(df):
+            low_name = path.name.lower()
+            if not _market_matches(row, market):
+                if market == "kr" and any(tok in low_name for tok in ("us", "sec")):
+                    continue
+                if market == "us" and any(tok in low_name for tok in ("kr", "dart", "kor")):
+                    continue
+            symbol = _row_symbol(row, market)
+            if not symbol:
+                continue
+            merged[symbol] = _merge_alias_values(merged.get(symbol, {}), row) if symbol in merged else dict(row)
+    return merged, sources
+
 def github_actions_status() -> dict[str, Any]:
     repo = os.environ.get("GITHUB_REPOSITORY") or os.environ.get("MONE_GITHUB_REPOSITORY") or "selene0519/agnas-stock-app"
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or os.environ.get("MONE_GITHUB_TOKEN")
@@ -1482,19 +1629,49 @@ def chart_data(symbol: str, market: str) -> dict[str, Any]:
     for row in work.tail(160)[cols].replace({np.nan: None}).to_dict(orient="records"):
         items.append({k: (round(v, 4) if isinstance(v, float) and np.isfinite(v) else v) for k, v in row.items()})
     latest = items[-1] if items else {}
-    return {"status": "OK", "symbol": target, "market": market, "source": source, "count": len(items), "latest": latest, "items": items}
+    indicator_status = []
+    if len(work) >= 5:
+        indicator_status.append("MA5 산출 가능")
+    else:
+        indicator_status.append("MA5 산출 불가: OHLCV 5일 미만")
+    if len(work) >= 20:
+        indicator_status.append("MA20·볼린저밴드 산출 가능")
+    else:
+        indicator_status.append("MA20·볼린저밴드 산출 불가: OHLCV 20일 미만")
+    if len(work) >= 14:
+        indicator_status.append("RSI 산출 가능")
+    else:
+        indicator_status.append("RSI 산출 불가: OHLCV 14일 미만")
+    if len(work) >= 26:
+        indicator_status.append("MACD 산출 가능")
+    else:
+        indicator_status.append("MACD 산출 불가: OHLCV 26일 미만")
+    return {"status": "OK", "symbol": target, "market": market, "source": source, "count": len(items), "latest": latest, "indicatorStatus": indicator_status, "items": items}
+
 
 
 
 def disclosure_rows(market: str) -> dict[str, Any]:
-    files = _find_data_files((r"disclosure", r"filing", r"공시"), ("sector", "dart_corp", "node_modules"))
-    # DART/SEC 파일명은 너무 넓게 잡으면 기업코드/섹터 파일이 섞이므로, 명시적 공시성 파일만 우선 사용합니다.
-    if not files:
-        files = _find_data_files((r"dart", r"sec"), ("sector", "dart_corp", "corp_code", "company_code", "node_modules"))
+    out_file = _disclosure_output_file(market)
+    # 데이터가 없으면 API 키가 있을 때 1회 수집을 시도합니다. 실패해도 화면은 안전하게 빈 상태를 유지합니다.
+    if not out_file.exists() or rows_for(out_file) == 0:
+        if (market == "kr" and os.environ.get("DART_API_KEY")) or (market == "us" and os.environ.get("FINNHUB_API_KEY")):
+            try:
+                refresh_disclosures(market=market, days=30)
+            except Exception:
+                pass
+    files = _find_data_files((r"disclosure", r"disclosures", r"filing", r"공시"), ("sector", "dart_corp", "corp_code", "company_code", "node_modules"))
+    if out_file.exists():
+        files = [out_file] + [p for p in files if p.resolve() != out_file.resolve()]
     items: list[dict[str, Any]] = []
     used_sources: list[str] = []
-    for path in files[:12]:
+    for path in files[:20]:
         if path.suffix.lower() != ".csv":
+            continue
+        low_name = path.name.lower()
+        if market == "kr" and any(tok in low_name for tok in ("us", "sec")):
+            continue
+        if market == "us" and any(tok in low_name for tok in ("kr", "dart", "kor")):
             continue
         df = read_csv(path)
         if df.empty:
@@ -1503,18 +1680,18 @@ def disclosure_rows(market: str) -> dict[str, Any]:
         for row in dataframe_records(df):
             if not _market_matches(row, market):
                 # market 값이 없는 공시 파일은 파일명으로 보조 판단합니다.
-                low_name = path.name.lower()
                 if market == "kr" and any(tok in low_name for tok in ("us", "sec")):
                     continue
                 if market == "us" and any(tok in low_name for tok in ("kr", "dart", "kor")):
                     continue
-            symbol = normalize_symbol(first_value(row, SYMBOL_ALIASES + ["종목코드", "ticker"], ""), market)
+            symbol = normalize_symbol(first_value(row, SYMBOL_ALIASES + ["종목코드", "ticker", "stock_code"], ""), market)
             name = first_value(row, NAME_ALIASES + ["corp_name", "company", "회사명"], symbol or "회사명 없음")
-            title = first_value(row, ["title", "공시제목", "report_nm", "보고서명", "form", "filing"], "공시 제목 없음")
-            date = first_value(row, ["date", "공시일", "rcept_dt", "filing_date", "accepted", "게시일"], "공시일 없음")
+            title = first_value(row, ["title", "공시제목", "report_nm", "보고서명", "form", "filing", "type"], "공시 제목 없음")
+            date = first_value(row, ["date", "공시일", "rcept_dt", "filing_date", "filedDate", "accepted", "acceptedDate", "게시일"], "공시일 없음")
             source_name = first_value(row, ["source", "출처", "provider"], "DART" if market == "kr" else "SEC")
-            url = first_value(row, ["url", "link", "공시링크", "html_url"], "")
+            url = first_value(row, ["url", "link", "공시링크", "html_url", "reportUrl", "filingUrl"], "")
             items.append({
+                "market": market,
                 "symbol": symbol,
                 "name": name,
                 "title": title,
@@ -1524,21 +1701,49 @@ def disclosure_rows(market: str) -> dict[str, Any]:
                 "status": "OK",
                 "raw": row,
             })
-    return {"market": market, "count": len(items), "sources": used_sources, "items": items[:200]}
+    return {"market": market, "count": len(items), "sources": used_sources, "items": items[:250]}
 
 
 def company_analysis(market: str) -> dict[str, Any]:
-    df, source = read_report("company_integrated", market)
-    rows = dataframe_records(df)
-    if not rows:
-        rows = [dict(item) for item in symbols(market).get("items", [])[:80]]
-        source = source or "symbols fallback"
+    base_map = _combine_symbol_maps(market)
+    company_map, company_sources = _latest_data_maps((r"company_integrated", r"company", r"기업"), market, ("news", "sector", "action", "pullback", "risk", "flow", "node_modules"))
+    financial_map, financial_sources = _latest_data_maps((r"financial", r"fundamental", r"finance", r"재무", r"income", r"eps"), market, ("sector", "node_modules"))
+    flow_map, flow_sources = _latest_data_maps((r"flow", r"supply", r"수급", r"investor"), market, ("sector", "node_modules"))
+    source_list = []
+    for src in company_sources + financial_sources + flow_sources:
+        if src not in source_list:
+            source_list.append(src)
+
+    if not base_map:
+        for item in symbols(market).get("items", []):
+            raw = dict(item.get("raw", item))
+            symbol = normalize_symbol(item.get("symbol"), market)
+            if symbol:
+                base_map[symbol] = raw
+
     items: list[dict[str, Any]] = []
-    for row in rows:
-        normalized = normalize_security_row(apply_quote_cache(row, market), market)
+    all_symbols = list(dict.fromkeys(list(base_map.keys()) + list(company_map.keys()) + list(financial_map.keys())))
+    for symbol in all_symbols[:200]:
+        merged = dict(base_map.get(symbol, {}))
+        merged = _merge_alias_values(merged, company_map.get(symbol, {}))
+        merged = _merge_alias_values(merged, financial_map.get(symbol, {}))
+        merged = _merge_alias_values(merged, flow_map.get(symbol, {}))
+        merged = apply_quote_cache(merged, market)
+        normalized = normalize_security_row(merged, market)
+        eps = _display_value(merged, ["EPS", "eps", "주당순이익", "basic_eps", "diluted_eps"], "EPS 데이터 없음")
+        per = _display_value(merged, ["PER", "per"], "PER 데이터 없음")
+        pbr = _display_value(merged, ["PBR", "pbr"], "PBR 데이터 없음")
+        roe = _display_value(merged, ["ROE", "roe"], "ROE 데이터 없음")
+        revenue = _display_value(merged, ["매출", "매출액", "revenue", "sales"], "매출 데이터 없음")
+        operating_income = _display_value(merged, ["영업이익", "operating_income", "op_income"], "영업이익 데이터 없음")
+        net_income = _display_value(merged, ["순이익", "net_income", "당기순이익"], "순이익 데이터 없음")
+        annual = _display_value(merged, ["연간실적", "annual_result", "annual_performance", "annual"], "연간실적 데이터 연결 대기")
+        quarterly = _display_value(merged, ["분기실적", "quarter_result", "quarterly_performance", "quarterly"], "분기실적 데이터 연결 대기")
+        esg = _display_value(merged, ["ESG", "esg", "ESG등급"], "ESG 데이터 연결 대기")
+        research = _display_value(merged, ["리서치", "research", "report", "투자의견", "target_opinion"], "리서치 데이터 연결 대기")
         items.append({
-            "symbol": normalized.get("symbol", ""),
-            "name": normalized.get("name", ""),
+            "symbol": normalized.get("symbol", symbol),
+            "name": normalized.get("name", symbol),
             "currentPriceText": normalized.get("currentPriceText", "현재가 없음"),
             "supply": normalized.get("scores", {}).get("supply", "수급 데이터 없음"),
             "earnings": normalized.get("scores", {}).get("earnings", "재무 데이터 없음"),
@@ -1548,10 +1753,21 @@ def company_analysis(market: str) -> dict[str, Any]:
             "earningsStatus": normalized.get("statuses", {}).get("earnings", "재무 데이터 없음"),
             "valuationStatus": normalized.get("statuses", {}).get("valuation", "재무 데이터 없음"),
             "dataStatus": normalized.get("dataStatus", "상태 없음"),
-            "raw": row,
+            "eps": eps,
+            "per": per,
+            "pbr": pbr,
+            "roe": roe,
+            "revenue": revenue,
+            "operatingIncome": operating_income,
+            "netIncome": net_income,
+            "annualPerformance": annual,
+            "quarterlyPerformance": quarterly,
+            "incomeStatementStatus": "손익계산서 연결" if any("데이터" not in str(v) and "대기" not in str(v) for v in (revenue, operating_income, net_income, annual, quarterly)) else "손익계산서 데이터 연결 대기",
+            "esg": esg,
+            "research": research,
+            "raw": merged,
         })
-    return {"market": market, "count": len(items), "source": source, "items": items}
-
+    return {"market": market, "count": len(items), "source": " · ".join(source_list[:6]) if source_list else "symbols fallback", "sources": source_list[:12], "items": items}
 
 
 def _execution_status_for_plan(current: float | None, entry: float | None, mode: str) -> str:
@@ -1730,16 +1946,17 @@ def data_source_status() -> dict[str, Any]:
         csv_files = [path for path in files if path.suffix.lower() == ".csv"]
         latest = max((file_mtime(path) for path in files if path.exists()), default="")
         row_count = sum(rows_for(path) for path in csv_files[:20])
+        has_rows = bool(csv_files and row_count > 0)
         items.append({
             "key": group["key"],
             "name": group["name"],
-            "status": "OK" if files else "MISSING",
+            "status": "OK" if has_rows else "MISSING",
             "files": len(files),
             "csvFiles": len(csv_files),
             "rows": int(row_count),
             "latestUpdatedAt": latest,
             "target": group["target"],
             "examples": [path.relative_to(REPO_ROOT).as_posix() for path in files[:5]],
-            "message": "파일 감지됨" if files else "API 키/워크플로가 있어도 저장된 CSV가 없으면 앱에 표시할 데이터가 없습니다.",
+            "message": "표시 가능한 CSV 행이 감지됨" if has_rows else "API 키/워크플로가 있어도 저장된 CSV 행이 없으면 앱에 표시할 데이터가 없습니다. 공시는 관리/공시 화면에서 수집을 실행하세요.",
         })
     return {"items": items}

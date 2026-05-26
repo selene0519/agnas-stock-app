@@ -6,11 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.services import advanced
 from app.services import data_loader as data
 from app.services import insights
+from app.services import operation_history
 from app.services import quotes
 from app.services import user_data
 
 
-app = FastAPI(title="MONE Web API", version="0.2.5")
+app = FastAPI(title="MONE Web API", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -147,6 +148,11 @@ def api_disclosures(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return data.disclosure_rows(_market(market))
 
 
+@app.post("/api/disclosures/refresh")
+def api_disclosures_refresh(market: str = Query("all", pattern="^(kr|us|all)$"), days: int = Query(30, ge=1, le=365)) -> dict:
+    return data.refresh_disclosures(market=market, days=days)
+
+
 @app.get("/api/company-analysis")
 def api_company_analysis(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return data.company_analysis(_market(market))
@@ -160,6 +166,58 @@ def api_virtual_preview(market: str = Query("kr", pattern="^(kr|us)$"), mode: st
 @app.get("/api/virtual/portfolio")
 def api_virtual_portfolio(market: str = Query("kr", pattern="^(kr|us)$"), mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$")) -> dict:
     return data.virtual_portfolio_summary(_market(market), mode)
+
+
+@app.get("/api/history/files")
+def api_history_files() -> dict:
+    return operation_history.history_file_summary()
+
+
+@app.get("/api/history/virtual-operations")
+def api_virtual_operation_history(
+    market: str | None = Query(None, pattern="^(kr|us)$"),
+    mode: str | None = Query(None, pattern="^(conservative|balanced|aggressive)$"),
+    limit: int = Query(250, ge=1, le=1000),
+) -> dict:
+    return operation_history.virtual_operation_history(market, mode, limit)
+
+
+@app.get("/api/history/prediction-snapshots")
+def api_prediction_snapshot_history(
+    market: str | None = Query(None, pattern="^(kr|us)$"),
+    limit: int = Query(250, ge=1, le=1000),
+) -> dict:
+    return operation_history.prediction_snapshot_history(market, limit)
+
+
+@app.post("/api/history/snapshot")
+def api_save_history_snapshot(
+    market: str = Query("all", pattern="^(all|kr|us)$"),
+    modes: str = Query("all"),
+    source: str = Query("manual"),
+    backfill_existing: bool = Query(False),
+) -> dict:
+    return operation_history.save_current_snapshot(market=market, modes=modes, source=source, include_backfill=backfill_existing)
+
+
+@app.post("/api/history/backfill")
+def api_backfill_existing_history(
+    market: str = Query("all", pattern="^(all|kr|us)$"),
+    modes: str = Query("all"),
+) -> dict:
+    return operation_history.backfill_existing_records(market=market, modes=modes)
+
+
+@app.post("/api/history/evaluate")
+def api_evaluate_virtual_history() -> dict:
+    evaluation = operation_history.evaluate_virtual_operations(write=True)
+    correction = operation_history.build_auto_correction_summary(write=True)
+    return {"status": "OK", "evaluation": evaluation, "autoCorrection": correction}
+
+
+@app.get("/api/history/auto-correction")
+def api_auto_correction_summary() -> dict:
+    return operation_history.build_auto_correction_summary(write=False)
 
 
 @app.get("/api/predictions")

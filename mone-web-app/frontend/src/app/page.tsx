@@ -76,6 +76,19 @@ type CompanyAnalysisItem = {
   earningsStatus: string;
   valuationStatus: string;
   dataStatus: string;
+  eps?: string;
+  per?: string;
+  pbr?: string;
+  roe?: string;
+  revenue?: string;
+  operatingIncome?: string;
+  netIncome?: string;
+  annualPerformance?: string;
+  quarterlyPerformance?: string;
+  incomeStatementStatus?: string;
+  esg?: string;
+  research?: string;
+  raw?: Record<string, unknown>;
 };
 
 type VirtualPreviewItem = {
@@ -330,6 +343,7 @@ type ChartResponse = {
   count?: number;
   message?: string;
   latest?: ChartPoint;
+  indicatorStatus?: string[];
   items: ChartPoint[];
 };
 
@@ -448,6 +462,7 @@ export default function Home() {
   const [githubActions, setGithubActions] = useState<GitHubActionsStatus>({ status: "NOT_LOADED", message: "GitHub Actions 상태를 아직 읽지 않았습니다.", workflows: [], runs: [] });
   const [disclosures, setDisclosures] = useState<ApiList<DisclosureItem>>({ count: 0, items: [], sources: [] });
   const [companyAnalysis, setCompanyAnalysis] = useState<ApiList<CompanyAnalysisItem>>({ count: 0, items: [] });
+  const [disclosureRefreshStatus, setDisclosureRefreshStatus] = useState("");
   const [virtualPreview, setVirtualPreview] = useState<VirtualPreviewResponse>({ count: 0, items: [], mode: "balanced", modeLabel: "균형" });
   const [virtualPortfolio, setVirtualPortfolio] = useState<VirtualPortfolioResponse>({ mode: "balanced", modeLabel: "균형", totalCapital: "-", invested: "-", cash: "-", lossTotal: "-", profitTotal: "-", lossPct: "-", profitPct: "-", count: 0, cards: [], items: [], note: "" });
   const [strategyMode, setStrategyMode] = useState<StrategyMode>("balanced");
@@ -704,6 +719,20 @@ export default function Home() {
       setRefreshTick((value) => value + 1);
     } catch (err) {
       setWriteStatus(err instanceof Error ? err.message : "관심종목 삭제 실패");
+    }
+  }
+
+  async function refreshDisclosures() {
+    setDisclosureRefreshStatus("공시 수집 중...");
+    try {
+      const res = await postJson<{ status: string; results: Array<{ market: string; status: string; count: number; message: string; file?: string }> }>(`/api/disclosures/refresh?market=${market}&days=30`, {});
+      const message = res.results?.map((row) => `${row.market.toUpperCase()} ${row.status} ${row.count}건`).join(" · ") || res.status;
+      setDisclosureRefreshStatus(`공시 수집 결과: ${message}`);
+      const refreshed = await getJson<ApiList<DisclosureItem>>(`/api/disclosures?market=${market}`);
+      setDisclosures(refreshed);
+      setRefreshTick((value) => value + 1);
+    } catch (err) {
+      setDisclosureRefreshStatus(err instanceof Error ? err.message : "공시 수집 실패");
     }
   }
 
@@ -1105,6 +1134,33 @@ export default function Home() {
           )}
         </Section>
 
+        <Section title="추천 모드 비교" right={<span className="text-xs text-muted">보수 · 균형 · 공격을 한 화면에서 비교</span>}>
+          <div className="grid gap-3 md:grid-cols-3">
+            {(["conservative", "balanced", "aggressive"] as StrategyMode[]).map((mode) => {
+              const summary = buildModeSummary(candidates.action?.items ?? [], mode, market);
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setStrategyMode(mode)}
+                  className={`rounded-xl border p-4 text-left shadow-soft transition ${strategyMode === mode ? "border-accent bg-accent/12" : "border-line bg-panel hover:border-accent/50 hover:bg-accent/5"}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-lg font-black text-white">{STRATEGY_MODE_LABEL[mode]} 모드</div>
+                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-black text-accent">{summary.count}개</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <MiniMetric label="예상 최대손실" value={summary.lossText} />
+                    <MiniMetric label="예상 목표이익" value={summary.profitText} />
+                  </div>
+                  <div className="mt-3 text-sm font-bold text-slate-200">TOP: {summary.topName}</div>
+                  <div className="mt-1 text-xs leading-5 text-muted">{summary.rule}</div>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+
         <Section title={`오늘 확인 후보 · ${STRATEGY_MODE_LABEL[strategyMode]} 추천`}>
           {todayCandidates.length ? (
             <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
@@ -1178,7 +1234,7 @@ export default function Home() {
   }
 
   function buildHomeNews(items: NewsItem[], limit: number) {
-    const tagRank: Record<string, number> = { "개별": 0, "공시/이슈": 1, "반도체": 2, "2차전지": 3, "AI·로봇": 4, "수급": 5, "지수": 6, "뉴스": 7, "시장": 8 };
+    const tagRank: Record<string, number> = { "공시/이슈": 0, "반도체": 1, "2차전지": 2, "AI·로봇": 3, "수급": 4, "지수": 5, "시장": 6, "뉴스": 7, "개별": 8 };
     const prepared = items
       .map((item, idx) => ({ item, idx, tag: newsTag(item) }))
       .sort((a, b) => (tagRank[a.tag] ?? 9) - (tagRank[b.tag] ?? 9) || a.idx - b.idx);
@@ -1187,7 +1243,9 @@ export default function Home() {
     const seenTitles = new Set<string>();
     const seenSources = new Map<string, number>();
 
+    // 첫 화면은 시장·섹터·수급 뉴스 중심으로 채우고, 개별 종목 뉴스는 종목 상세로 보냅니다.
     for (const { item, tag } of prepared) {
+      if (tag === "개별") continue;
       const titleKey = (item.title || "").replace(/\s+/g, " ").slice(0, 34);
       if (!titleKey || seenTitles.has(titleKey)) continue;
       if ((tagCounts.get(tag) ?? 0) >= 1) continue;
@@ -1199,6 +1257,7 @@ export default function Home() {
       if (picked.length >= limit) return picked;
     }
 
+    // 시장/섹터 뉴스가 부족할 때만 개별 뉴스를 보충합니다.
     for (const { item } of prepared) {
       if (picked.length >= limit) break;
       const titleKey = (item.title || "").replace(/\s+/g, " ").slice(0, 34);
@@ -1360,7 +1419,7 @@ export default function Home() {
           />
         </Section>
         <Section title="상세 카드">
-          {selectedSymbol ? <SymbolDetailCard item={selectedSymbol} /> : <EmptyReason text="선택된 종목이 없습니다." />}
+          {selectedSymbol ? <SymbolDetailCard item={selectedSymbol} mode={strategyMode} newsItems={news.items} disclosures={disclosures.items} companyItems={companyAnalysis.items} /> : <EmptyReason text="선택된 종목이 없습니다." />}
         </Section>
       </>
     );
@@ -1534,6 +1593,21 @@ export default function Home() {
                 <MiniMetric label="MACD" value={formatNumber(chartData.latest?.macd, "MACD 부족")} />
                 <MiniMetric label="거래량" value={formatNumber(chartData.latest?.volume, "거래량 부족")} />
               </div>
+              <div className="mt-3 h-32 rounded-lg border border-line bg-panel p-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData.items}>
+                    <XAxis dataKey="date" hide />
+                    <YAxis hide />
+                    <Tooltip contentStyle={{ background: "#0b1220", border: "1px solid rgba(148,163,184,.25)" }} />
+                    <Bar dataKey="volume" name="거래량" fill="#38bdf8" opacity={0.45} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted">
+                {(chartData.indicatorStatus ?? []).map((text, idx) => (
+                  <span key={idx} className="rounded-md border border-line bg-panel px-2 py-1">{text}</span>
+                ))}
+              </div>
             </>
           ) : (
             <EmptyReason text={chartData.message || "차트 데이터 준비 중입니다. 현재는 가격 기준선과 예상가 요약을 우선 표시합니다."} />
@@ -1546,7 +1620,15 @@ export default function Home() {
   function renderNewsCompany() {
     if (activeSubPage === "공시") {
       return (
-        <Section title="공시" right={<span className="text-xs text-muted">{(disclosures.sources ?? []).join(" · ") || "공시 CSV 감지 대기"}</span>}>
+        <Section
+          title="공시"
+          right={
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+              <span>{(disclosures.sources ?? []).join(" · ") || "공시 CSV 감지 대기"}</span>
+              <button onClick={refreshDisclosures} className="rounded-md border border-accent/40 px-2 py-1 font-bold text-accent hover:bg-accent hover:text-ink">공시 수집</button>
+            </div>
+          }
+        >
           {disclosures.items.length ? (
             <DataTable
               rows={disclosures.items}
@@ -1563,6 +1645,7 @@ export default function Home() {
               <EmptyReason text="공시 데이터 없음 · DART/SEC 공시 수집 CSV가 아직 없습니다." />
               <div className="mt-4 rounded-xl border border-line bg-panel p-4 text-sm leading-6 text-muted">
                 뉴스 요약 데이터는 공시 탭에 표시하지 않습니다. 공시 CSV가 생성되면 이 화면에 실제 공시만 표시됩니다.
+                {disclosureRefreshStatus ? <div className="mt-2 font-bold text-accent">{disclosureRefreshStatus}</div> : null}
               </div>
             </>
           )}
@@ -1587,9 +1670,11 @@ export default function Home() {
                   { key: "name", header: "종목", render: (row) => <b>{row.name || row.symbol}</b> },
                   { key: "price", header: "현재가", render: (row) => row.currentPriceText || "현재가 없음" },
                   { key: "supply", header: "수급", render: (row) => row.supply || row.flowStatus || "수급 데이터 없음" },
-                  { key: "earnings", header: "실적", render: (row) => row.earnings || row.earningsStatus || "재무 데이터 없음" },
-                  { key: "valuation", header: "밸류", render: (row) => row.valuation || row.valuationStatus || "재무 데이터 없음" },
-                  { key: "status", header: "상태", render: (row) => row.dataStatus || "상태 없음" }
+                  { key: "eps", header: "EPS", render: (row) => row.eps || "EPS 데이터 없음" },
+                  { key: "per", header: "PER/PBR", render: (row) => `${row.per || "PER 없음"} / ${row.pbr || "PBR 없음"}` },
+                  { key: "profit", header: "매출/영업익", render: (row) => <LongText text={`${row.revenue || "매출 없음"} / ${row.operatingIncome || "영업익 없음"}`} /> },
+                  { key: "income", header: "연간/분기", render: (row) => <LongText text={`${row.annualPerformance || "연간실적 대기"} / ${row.quarterlyPerformance || "분기실적 대기"}`} /> },
+                  { key: "status", header: "상태", render: (row) => row.incomeStatementStatus || row.dataStatus || "상태 없음" }
                 ]}
               />
             ) : (
@@ -2279,44 +2364,190 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function SymbolDetailCard({ item }: { item: Security }) {
+function SymbolDetailCard({
+  item,
+  mode = "balanced",
+  newsItems = [],
+  disclosures = [],
+  companyItems = []
+}: {
+  item: Security;
+  mode?: StrategyMode;
+  newsItems?: NewsItem[];
+  disclosures?: DisclosureItem[];
+  companyItems?: CompanyAnalysisItem[];
+}) {
+  const relatedNews = relatedRecords(newsItems, item).slice(0, 5);
+  const relatedDisclosures = relatedRecords(disclosures, item).slice(0, 5);
+  const company = relatedRecords(companyItems, item)[0] as CompanyAnalysisItem | undefined;
+  const raw = (company?.raw ?? item.raw ?? {}) as Record<string, unknown>;
+  const valueOf = (keys: string[], fallback = "데이터 연결 대기") => firstDisplayValue(raw, keys, fallback);
+
   return (
-    <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
-      <div className="rounded-lg border border-line bg-card p-4">
-        <div className="text-sm text-muted">
-          {item.marketLabel} · {item.symbol}
-        </div>
-        <div className="mt-1 text-2xl font-black text-white">{item.name}</div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <StatCard label="현재가" value={item.currentPriceText} note={`${item.priceTime} · ${item.priceSource}`} tone="accent" />
-          <StatCard label="기준가" value={item.entryText || money(item.entry, item.market)} />
-          <StatCard label="손절 / 목표" value={`${item.stopText || money(item.stop, item.market)} / ${item.targetText || money(item.target, item.market)}`} tone="warn" />
-        </div>
-        {item.avgPriceText || item.returnPctText ? (
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <StatCard label="평균단가" value={item.avgPriceText || "평균단가 없음"} />
-            <StatCard label="수익률" value={item.returnPctText || "수익률 없음"} tone={(item.returnPct ?? 0) < 0 ? "warn" : "good"} />
-            <StatCard label="평가손익" value={item.pnlText || "평가손익 없음"} tone={(item.pnl ?? 0) < 0 ? "warn" : "good"} />
+    <div className="space-y-3">
+      <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
+        <div className="rounded-lg border border-line bg-card p-4">
+          <div className="text-sm text-muted">
+            {item.marketLabel} · {item.symbol}
           </div>
-        ) : null}
-        <div className="mt-3 rounded-lg border border-line bg-panel p-3 text-sm leading-6 text-slate-200">
-          <div className="font-black text-white">예측 · 가상 운용</div>
-          <div className="mt-1">{predictionLine(item)}</div>
-          <div className="mt-1">{tradePlanLine(item)}</div>
+          <div className="mt-1 text-2xl font-black text-white">{item.name}</div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <StatCard label="현재가" value={item.currentPriceText} note={`${item.priceTime} · ${item.priceSource}`} tone="accent" />
+            <StatCard label="기준가" value={item.entryText || money(item.entry, item.market)} />
+            <StatCard label="손절 / 목표" value={`${item.stopText || money(item.stop, item.market)} / ${item.targetText || money(item.target, item.market)}`} tone="warn" />
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <StatCard label="예상 시초가" value={item.expectedOpenText || valueOf(["예상시초가", "expected_open", "open_expected"], "산출 필요")} />
+            <StatCard label="예상 종가" value={item.expectedCloseText || valueOf(["예상종가", "expected_close", "close_expected"], "산출 필요")} />
+            <StatCard label="추천 성향" value={STRATEGY_MODE_LABEL[mode]} note={item.recommendationModeText || "모드별 점수 반영"} tone="good" />
+          </div>
+          <div className="mt-3 rounded-lg border border-line bg-panel p-3 text-sm leading-6 text-slate-200">
+            <div className="font-black text-white">예측 · 가상 운용</div>
+            <div className="mt-1">{predictionLine(item)}</div>
+            <div className="mt-1">{tradePlanLine(item, mode)}</div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-line bg-panel p-4">
+          <div className="text-sm font-black text-white">데이터 신뢰도 / 상태</div>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{item.dataStatus || company?.dataStatus || "상태 없음"}</p>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted">
+            <span>수급: {company?.supply || item.scores?.supply || "수급 데이터 없음"}</span>
+            <span>실적: {company?.earnings || item.scores?.earnings || "재무 데이터 없음"}</span>
+            <span>밸류: {company?.valuation || item.scores?.valuation || "재무 데이터 없음"}</span>
+            <span>차트: {company?.chart || item.scores?.chart || "차트 데이터 부족"}</span>
+          </div>
         </div>
       </div>
-      <div className="rounded-lg border border-line bg-panel p-4">
-        <div className="text-sm font-black text-white">상태</div>
-        <p className="mt-2 text-sm leading-6 text-slate-300">{item.dataStatus || "상태 없음"}</p>
-        <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted">
-          <span>수급: {item.scores?.supply || "수급 데이터 없음"}</span>
-          <span>실적: {item.scores?.earnings || "재무 데이터 없음"}</span>
-          <span>밸류: {item.scores?.valuation || "재무 데이터 없음"}</span>
-          <span>차트: {item.scores?.chart || "차트 데이터 부족"}</span>
+
+      <Section title="종목 뉴스">
+        {relatedNews.length ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {relatedNews.map((row, idx) => (
+              <a key={idx} href={row.url || undefined} target="_blank" className="rounded-lg border border-line bg-card p-4 hover:border-accent/50">
+                <div className="text-xs text-muted">[{newsTag(row)}] {row.sourceName || "뉴스"} · {row.publishedAt || "일자 없음"}</div>
+                <div className="mt-2 font-black text-white">{row.title || "제목 없음"}</div>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{row.summary || "요약 없음"}</p>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <EmptyReason text="이 종목과 직접 매칭된 뉴스가 없습니다. 첫 화면은 시장·섹터 뉴스 중심으로 유지합니다." />
+        )}
+      </Section>
+
+      <Section title="공시 / IR">
+        {relatedDisclosures.length ? (
+          <DataTable
+            rows={relatedDisclosures}
+            columns={[
+              { key: "title", header: "공시/IR", render: (row) => <LongText text={row.title || "제목 없음"} /> },
+              { key: "date", header: "일자", render: (row) => row.date || "일자 없음" },
+              { key: "sourceName", header: "출처", render: (row) => row.sourceName || "출처 없음" },
+              { key: "url", header: "링크", render: (row) => row.url ? <a className="text-accent" href={row.url} target="_blank">열기</a> : "링크 없음" }
+            ]}
+          />
+        ) : (
+          <EmptyReason text="공시/IR CSV가 아직 없거나 이 종목과 매칭되지 않았습니다." />
+        )}
+      </Section>
+
+      <Section title="기업분석 상세">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+          <MiniMetric label="EPS" value={company?.eps || valueOf(["EPS", "eps", "주당순이익"])} />
+          <MiniMetric label="PER" value={company?.per || valueOf(["PER", "per"])} />
+          <MiniMetric label="PBR" value={company?.pbr || valueOf(["PBR", "pbr"])} />
+          <MiniMetric label="ROE" value={company?.roe || valueOf(["ROE", "roe"])} />
+          <MiniMetric label="매출" value={company?.revenue || valueOf(["매출", "매출액", "revenue", "sales"])} />
+          <MiniMetric label="영업이익" value={company?.operatingIncome || valueOf(["영업이익", "operating_income", "op_income"])} />
+          <MiniMetric label="순이익" value={company?.netIncome || valueOf(["순이익", "net_income", "당기순이익"])} />
+          <MiniMetric label="부채비율" value={valueOf(["부채비율", "debt_ratio"])} />
+          <MiniMetric label="연간실적" value={company?.annualPerformance || valueOf(["연간실적", "annual_result", "annual_performance"])} />
+          <MiniMetric label="분기실적" value={company?.quarterlyPerformance || valueOf(["분기실적", "quarter_result", "quarterly_performance"])} />
+          <MiniMetric label="ESG" value={company?.esg || valueOf(["ESG", "esg", "ESG등급"])} />
+          <MiniMetric label="리서치" value={company?.research || valueOf(["리서치", "research", "report", "투자의견"])} />
         </div>
-      </div>
+      </Section>
     </div>
   );
+}
+
+
+function buildModeSummary(items: Security[], mode: StrategyMode, market: Market) {
+  const maxPositions = mode === "conservative" ? 3 : mode === "aggressive" ? 8 : 5;
+  const picked = pickForMode(items, mode, maxPositions);
+  const capitalPerPosition = market === "us" ? 1000 : 1000000;
+  const totalCapital = capitalPerPosition * maxPositions;
+  let lossTotal = 0;
+  let profitTotal = 0;
+  for (const item of picked) {
+    const plan = item.virtualPlans?.[mode];
+    const rawLoss = plan?.lossTotalText ?? "";
+    const rawProfit = plan?.profitTotalText ?? "";
+    const loss = parseMoneyText(rawLoss);
+    const profit = parseMoneyText(rawProfit);
+    if (Number.isFinite(loss)) lossTotal += loss;
+    else if (item.entry && item.stop) lossTotal += (item.stop - item.entry) * Math.max(1, Math.floor(capitalPerPosition / item.entry));
+    if (Number.isFinite(profit)) profitTotal += profit;
+    else if (item.entry && item.target) profitTotal += (item.target - item.entry) * Math.max(1, Math.floor(capitalPerPosition / item.entry));
+  }
+  const lossPct = totalCapital ? (lossTotal / totalCapital) * 100 : 0;
+  const profitPct = totalCapital ? (profitTotal / totalCapital) * 100 : 0;
+  const rules: Record<StrategyMode, string> = {
+    conservative: "스윙 A군·기준가 근처·손절 방어 우선",
+    balanced: "스윙 A/B군·손익비와 체결 가능성 균형",
+    aggressive: "A/B/C군·모멘텀 허용, 단 손절/목표 필수"
+  };
+  return {
+    count: picked.length,
+    topName: picked[0] ? `${picked[0].name || picked[0].symbol} (${picked[0].symbol})` : "후보 없음",
+    lossText: `${formatSignedMoneyForMarket(lossTotal, market)} · ${formatSignedPercent(lossPct)}`,
+    profitText: `${formatSignedMoneyForMarket(profitTotal, market)} · ${formatSignedPercent(profitPct)}`,
+    rule: rules[mode]
+  };
+}
+
+function parseMoneyText(text: string) {
+  const cleaned = String(text || "").replace(/[$,원\s]/g, "");
+  const num = Number(cleaned.replace(/[^0-9.+-]/g, ""));
+  return Number.isFinite(num) ? num : NaN;
+}
+
+function formatSignedMoneyForMarket(value: number, market: Market) {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  if (market === "us") return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${sign}${Math.trunc(abs).toLocaleString()}원`;
+}
+
+function formatSignedPercent(value: number) {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+function relatedRecords<T extends { symbol?: string; name?: string; title?: string; summary?: string; raw?: Record<string, unknown> }>(items: T[], item: Security) {
+  const symbol = normalizeComparable(item.symbol);
+  const name = normalizeComparable(item.name);
+  return items.filter((row) => {
+    const rowSymbol = normalizeComparable(row.symbol || String(row.raw?.["종목코드"] ?? row.raw?.["ticker"] ?? ""));
+    const rowName = normalizeComparable(row.name || String(row.raw?.["종목명"] ?? row.raw?.["corp_name"] ?? row.raw?.["company"] ?? ""));
+    const text = normalizeComparable(`${row.title ?? ""} ${row.summary ?? ""}`);
+    return Boolean((symbol && rowSymbol === symbol) || (name && rowName.includes(name)) || (name && text.includes(name)));
+  });
+}
+
+function normalizeComparable(value?: string) {
+  return String(value ?? "").replace(/[()\s]/g, "").toLowerCase();
+}
+
+function firstDisplayValue(raw: Record<string, unknown>, keys: string[], fallback: string) {
+  for (const key of keys) {
+    const value = raw[key];
+    if (value !== undefined && value !== null) {
+      const text = String(value).trim();
+      if (text && !["-", "nan", "none", "null", "없음"].includes(text.toLowerCase())) return text;
+    }
+  }
+  return fallback;
 }
 
 type SimpleValue = string | number | boolean | null | undefined;
