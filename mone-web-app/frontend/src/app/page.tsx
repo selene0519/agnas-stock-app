@@ -114,6 +114,20 @@ type ReportFilesResponse = {
   items: ReportFile[];
 };
 
+type QuoteRefreshResponse = {
+  status: "OK" | "PARTIAL" | "NO_REFRESH";
+  market: Market | "all";
+  updatedAt: string;
+  refreshed: number;
+  failed: number;
+  providers: {
+    kis: "OK" | "MISSING";
+    finnhub: "OK" | "MISSING";
+  };
+  items: Array<{ symbol: string; currentPrice: number; priceTime: string; priceSource: string }>;
+  failedItems: Array<{ symbol: string; error: string; fallbackKept?: boolean }>;
+};
+
 const candidateTabs = [
   ["action", "오늘 확인"],
   ["pullback", "눌림목"],
@@ -129,6 +143,9 @@ export default function Home() {
   const [market, setMarket] = useState<Market>("kr");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [quoteRefreshing, setQuoteRefreshing] = useState(false);
+  const [quoteStatus, setQuoteStatus] = useState<QuoteRefreshResponse | null>(null);
   const [summary, setSummary] = useState<MarketSummary | null>(null);
   const [symbols, setSymbols] = useState<ApiList<Security>>({ count: 0, items: [] });
   const [positions, setPositions] = useState<ApiList<Security>>({ count: 0, items: [] });
@@ -224,7 +241,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [market]);
+  }, [market, refreshTick]);
 
   const currentGroup = NAV_GROUPS.find((group) => group.title === activeCategory) ?? NAV_GROUPS[0];
   const marketName = market === "kr" ? "국장" : "미장";
@@ -349,6 +366,22 @@ export default function Home() {
     setActiveSubPage(firstSubPage(category));
   }
 
+  async function refreshQuotes() {
+    setQuoteRefreshing(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/quotes/refresh?market=${market}`, { method: "POST" });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const payload = (await res.json()) as QuoteRefreshResponse;
+      setQuoteStatus(payload);
+      setRefreshTick((value) => value + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "현재가 새로고침 실패");
+    } finally {
+      setQuoteRefreshing(false);
+    }
+  }
+
   return (
     <main>
       <Sidebar activeCategory={activeCategory} onSelectCategory={selectCategory} />
@@ -373,6 +406,13 @@ export default function Home() {
                 미장
               </button>
             </div>
+            <button
+              onClick={refreshQuotes}
+              disabled={quoteRefreshing}
+              className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-2 text-sm font-black text-accent transition hover:bg-accent hover:text-ink disabled:cursor-wait disabled:opacity-60"
+            >
+              {quoteRefreshing ? "새로고침 중" : "현재가 새로고침"}
+            </button>
           </div>
         </header>
 
@@ -385,6 +425,11 @@ export default function Home() {
             </div>
             <div className="rounded-lg border border-line bg-panel px-4 py-3 text-sm text-muted">
               API {apiOk} OK / {apiMissing} MISSING · 파일 누락 {filesMissing}
+              {quoteStatus ? (
+                <span className="ml-2 text-accent">
+                  현재가 {quoteStatus.status} · 성공 {quoteStatus.refreshed} / 실패 {quoteStatus.failed}
+                </span>
+              ) : null}
             </div>
           </div>
 
