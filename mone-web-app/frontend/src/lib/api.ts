@@ -84,3 +84,28 @@ export function money(value?: number | null, market: Market = "kr") {
   if (!value) return "기준가 없음";
   return market === "us" ? `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `${value.toLocaleString()}원`;
 }
+
+
+export async function deleteJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}

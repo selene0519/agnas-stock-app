@@ -17,7 +17,7 @@ import {
 import { EmptyReason, Section, StatCard } from "@/components/Cards";
 import { DataTable, type Column } from "@/components/DataTable";
 import { firstSubPage, NAV_GROUPS, Sidebar } from "@/components/Sidebar";
-import { API_BASE, getJson, money, postJson, type ApiList, type Market, type Security } from "@/lib/api";
+import { API_BASE, deleteJson, getJson, money, patchJson, postJson, type ApiList, type Market, type Security } from "@/lib/api";
 
 type FileItem = {
   path: string;
@@ -145,8 +145,19 @@ type BacktestResponse = ApiList<BacktestItem> & {
   status: string;
   warnings: string[];
   predictionRows: number;
+  totalPredictionRows?: number;
   outcomeRows: number;
   recentOutcomes: Record<string, string>[];
+  recentTrades?: Record<string, string | number>[];
+  diagnostics?: Record<string, string | number>[];
+  ohlcv?: {
+    files: number;
+    eligibleSymbols: number;
+    minDaysRequired: number;
+    predictionMatchedSymbols: number;
+    insufficient?: Record<string, string | number>[];
+    schemaErrors?: Record<string, string | number>[];
+  };
 };
 
 type ScannerItem = Security & {
@@ -185,6 +196,51 @@ type CorrelationResponse = {
   matrix: Record<string, string | number>[];
   sources: string[];
   diversificationNote?: string;
+};
+
+type WriteResponse = {
+  status: string;
+  action?: string;
+  message: string;
+  market?: Market;
+  symbol?: string;
+  backupFile?: string;
+  count?: number;
+};
+
+type HoldingForm = {
+  symbol: string;
+  name: string;
+  avgPrice: string;
+  quantity: string;
+  memo: string;
+};
+
+type WatchForm = {
+  symbol: string;
+  name: string;
+  memo: string;
+};
+
+type CalculatorForm = {
+  capital: string;
+  winRate: string;
+  payoffRatio: string;
+  portfolioValue: string;
+  expectedReturn: string;
+  volatility: string;
+  confidence: string;
+  entry: string;
+  stop: string;
+  target: string;
+};
+
+type MonteCarloForm = {
+  currentPrice: string;
+  expectedReturn: string;
+  volatility: string;
+  days: string;
+  simulations: string;
 };
 
 const candidateTabs = [
@@ -230,6 +286,8 @@ export default function Home() {
   const [reportFiles, setReportFiles] = useState<ReportFilesResponse>({ count: 0, fallbackPolicy: [], items: [] });
   const [backtest, setBacktest] = useState<BacktestResponse>({ count: 0, items: [], status: "NO_DATA", warnings: [], predictionRows: 0, outcomeRows: 0, recentOutcomes: [] });
   const [scanner, setScanner] = useState<ApiList<ScannerItem>>({ count: 0, items: [] });
+  const [watchlist, setWatchlist] = useState<ApiList<Security>>({ count: 0, items: [] });
+  const [directHoldings, setDirectHoldings] = useState<ApiList<Security>>({ count: 0, items: [] });
   const [scannerFilter, setScannerFilter] = useState("전체");
   const [calculator, setCalculator] = useState<CalculatorResults>({});
   const [monteCarlo, setMonteCarlo] = useState<MonteCarloResponse | null>(null);
@@ -237,6 +295,28 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState<Security | null>(null);
   const [candidateType, setCandidateType] = useState<(typeof candidateTabs)[number][0]>("action");
+  const [writeStatus, setWriteStatus] = useState("");
+  const [watchForm, setWatchForm] = useState<WatchForm>({ symbol: "", name: "", memo: "" });
+  const [holdingForm, setHoldingForm] = useState<HoldingForm>({ symbol: "", name: "", avgPrice: "", quantity: "", memo: "" });
+  const [calculatorForm, setCalculatorForm] = useState<CalculatorForm>({
+    capital: "10000000",
+    winRate: "55",
+    payoffRatio: "1.7",
+    portfolioValue: "10000000",
+    expectedReturn: "8",
+    volatility: "25",
+    confidence: "95",
+    entry: "100",
+    stop: "92",
+    target: "118"
+  });
+  const [monteCarloForm, setMonteCarloForm] = useState<MonteCarloForm>({
+    currentPrice: "",
+    expectedReturn: "8",
+    volatility: "25",
+    days: "60",
+    simulations: "1000"
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -261,6 +341,8 @@ export default function Home() {
           reportFileData,
           backtestData,
           scannerData,
+          watchlistData,
+          directHoldingsData,
           correlationData
         ] =
           await Promise.all([
@@ -279,6 +361,8 @@ export default function Home() {
             getJson<ReportFilesResponse>("/api/reports/files"),
             getJson<BacktestResponse>(`/api/advanced/backtest?market=${market}`),
             getJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`),
+            getJson<ApiList<Security>>(`/api/watchlist?market=${market}`),
+            getJson<ApiList<Security>>(`/api/holdings?market=${market}`),
             getJson<CorrelationResponse>(`/api/advanced/correlation?market=${market}`)
           ]);
         const candidateData = await Promise.all(
@@ -301,6 +385,8 @@ export default function Home() {
         setReportFiles(reportFileData);
         setBacktest(backtestData);
         setScanner(scannerData);
+        setWatchlist(watchlistData);
+        setDirectHoldings(directHoldingsData);
         setCorrelation(correlationData);
         setCandidates(Object.fromEntries(candidateTabs.map(([type], idx) => [type, candidateData[idx]])));
         setSelectedSymbol(symbolData.items[0] ?? null);
@@ -345,6 +431,98 @@ export default function Home() {
     return scanner.items.filter((item) => item.bucket === scannerFilter || `${item.theme} ${item.group} ${item.reason}`.includes(scannerFilter));
   }, [scanner.items, scannerFilter]);
 
+  const directHoldingsBySymbol = useMemo(() => new Map(directHoldings.items.map((item) => [item.symbol, item])), [directHoldings.items]);
+
+  function parseNumber(value: string, fallback = 0) {
+    const out = Number(String(value || "").replace(/,/g, ""));
+    return Number.isFinite(out) ? out : fallback;
+  }
+
+  async function addWatchlistFrom(item: Pick<Security, "symbol" | "name">) {
+    setWriteStatus("관심종목 저장 중...");
+    try {
+      const res = await postJson<WriteResponse>("/api/watchlist", {
+        market,
+        symbol: item.symbol,
+        name: item.name,
+        memo: "MONE Web에서 추가"
+      });
+      setWriteStatus(`${res.status}: ${res.message}${res.backupFile ? ` · 백업 ${res.backupFile}` : ""}`);
+      setRefreshTick((value) => value + 1);
+    } catch (err) {
+      setWriteStatus(err instanceof Error ? err.message : "관심종목 저장 실패");
+    }
+  }
+
+  async function addWatchlistManual() {
+    if (!watchForm.symbol.trim()) {
+      setWriteStatus("관심종목 추가 실패: 종목코드/티커가 필요합니다.");
+      return;
+    }
+    await addWatchlistFrom({ symbol: watchForm.symbol.trim(), name: watchForm.name.trim() || watchForm.symbol.trim() });
+    setWatchForm({ symbol: "", name: "", memo: "" });
+  }
+
+  async function deleteWatchlistSymbol(symbol: string) {
+    if (!window.confirm(`${symbol} 관심종목을 삭제할까요?`)) return;
+    setWriteStatus("관심종목 삭제 중...");
+    try {
+      const res = await deleteJson<WriteResponse>(`/api/watchlist/${encodeURIComponent(symbol)}?market=${market}`);
+      setWriteStatus(`${res.status}: ${res.message}${res.backupFile ? ` · 백업 ${res.backupFile}` : ""}`);
+      setRefreshTick((value) => value + 1);
+    } catch (err) {
+      setWriteStatus(err instanceof Error ? err.message : "관심종목 삭제 실패");
+    }
+  }
+
+  function fillHoldingForm(item: Security) {
+    setHoldingForm({
+      symbol: item.symbol,
+      name: item.name,
+      avgPrice: item.avgPrice ? String(item.avgPrice) : "",
+      quantity: item.quantity ? String(item.quantity) : "",
+      memo: item.nextAction || ""
+    });
+  }
+
+  async function saveHolding() {
+    if (!holdingForm.symbol.trim()) {
+      setWriteStatus("보유종목 저장 실패: 종목코드/티커가 필요합니다.");
+      return;
+    }
+    setWriteStatus("보유종목 저장 중...");
+    try {
+      const exists = directHoldingsBySymbol.has(holdingForm.symbol.trim().toUpperCase());
+      const payload = {
+        market,
+        symbol: holdingForm.symbol.trim(),
+        name: holdingForm.name.trim() || holdingForm.symbol.trim(),
+        avgPrice: parseNumber(holdingForm.avgPrice),
+        quantity: parseNumber(holdingForm.quantity),
+        memo: holdingForm.memo.trim()
+      };
+      const res = exists
+        ? await patchJson<WriteResponse>(`/api/holdings/${encodeURIComponent(payload.symbol)}`, payload)
+        : await postJson<WriteResponse>("/api/holdings", payload);
+      setWriteStatus(`${res.status}: ${res.message}${res.backupFile ? ` · 백업 ${res.backupFile}` : ""}`);
+      setRefreshTick((value) => value + 1);
+    } catch (err) {
+      setWriteStatus(err instanceof Error ? err.message : "보유종목 저장 실패");
+    }
+  }
+
+  async function deleteHoldingSymbol(symbol: string) {
+    if (!window.confirm(`${symbol} 보유종목을 삭제할까요? 삭제 전 백업이 생성됩니다.`)) return;
+    setWriteStatus("보유종목 삭제 중...");
+    try {
+      const res = await deleteJson<WriteResponse>(`/api/holdings/${encodeURIComponent(symbol)}?market=${market}`);
+      setWriteStatus(`${res.status}: ${res.message}${res.backupFile ? ` · 백업 ${res.backupFile}` : ""}`);
+      setRefreshTick((value) => value + 1);
+    } catch (err) {
+      setWriteStatus(err instanceof Error ? err.message : "보유종목 삭제 실패");
+    }
+  }
+
   const symbolColumns: Column<Security>[] = [
     { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
     { key: "symbol", header: "코드", render: (row) => row.symbol },
@@ -362,7 +540,34 @@ export default function Home() {
     { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
     { key: "returnPct", header: "수익률", render: (row) => <GainText value={row.returnPct} text={row.returnPctText} /> },
     { key: "pnl", header: "평가손익", render: (row) => <GainText value={row.pnl} text={row.pnlText} /> },
-    { key: "action", header: "다음 행동", render: (row) => row.nextAction || "다음 행동 없음" }
+    { key: "action", header: "다음 행동", render: (row) => row.nextAction || "다음 행동 없음" },
+    {
+      key: "manage",
+      header: "관리",
+      render: (row) => (
+        <div className="flex gap-2">
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              fillHoldingForm(row);
+              setActiveSubPage("보유 관리");
+            }}
+            className="rounded-md border border-accent/40 px-2 py-1 text-xs font-bold text-accent"
+          >
+            수정
+          </button>
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              deleteHoldingSymbol(row.symbol);
+            }}
+            className="rounded-md border border-warn/40 px-2 py-1 text-xs font-bold text-warn"
+          >
+            삭제
+          </button>
+        </div>
+      )
+    }
   ];
 
   const scoreColumns: Column<Security>[] = [
@@ -465,7 +670,21 @@ export default function Home() {
     { key: "risk", header: "리스크", render: (row) => <LongText text={row.riskLevel || "리스크 없음"} /> },
     { key: "reason", header: "근거", render: (row) => <LongText text={row.reason || "근거 없음"} /> },
     { key: "holding", header: "보유", render: (row) => (row.isHolding ? "보유 중" : "미보유") },
-    { key: "action", header: "관심종목", render: (row) => <button disabled className="rounded-md border border-line px-2 py-1 text-xs text-muted">{row.watchlistAction}</button> }
+    {
+      key: "action",
+      header: "관심종목",
+      render: (row) => (
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            addWatchlistFrom(row);
+          }}
+          className="rounded-md border border-accent/45 px-2 py-1 text-xs font-bold text-accent hover:bg-accent hover:text-ink"
+        >
+          추가
+        </button>
+      )
+    }
   ];
 
   function selectCategory(category: string) {
@@ -493,20 +712,20 @@ export default function Home() {
     try {
       const [kelly, valueAtRisk, rr] = await Promise.all([
         postJson<Record<string, string | number>>("/api/advanced/calculator/kelly", {
-          capital: 10000000,
-          winRate: 55,
-          payoffRatio: 1.7
+          capital: parseNumber(calculatorForm.capital, 10000000),
+          winRate: parseNumber(calculatorForm.winRate, 55),
+          payoffRatio: parseNumber(calculatorForm.payoffRatio, 1.7)
         }),
         postJson<Record<string, string | number>>("/api/advanced/calculator/var", {
-          portfolioValue: 10000000,
-          expectedReturn: 8,
-          volatility: 25,
-          confidence: 95
+          portfolioValue: parseNumber(calculatorForm.portfolioValue, 10000000),
+          expectedReturn: parseNumber(calculatorForm.expectedReturn, 8),
+          volatility: parseNumber(calculatorForm.volatility, 25),
+          confidence: parseNumber(calculatorForm.confidence, 95)
         }),
         postJson<Record<string, string | number | null>>("/api/advanced/calculator/risk-reward", {
-          entry: 100,
-          stop: 92,
-          target: 118
+          entry: parseNumber(calculatorForm.entry, 100),
+          stop: parseNumber(calculatorForm.stop, 92),
+          target: parseNumber(calculatorForm.target, 118)
         })
       ]);
       setCalculator({ kelly, var: valueAtRisk, rr });
@@ -517,13 +736,13 @@ export default function Home() {
 
   async function runMonteCarlo() {
     try {
-      const currentPrice = selectedSymbol?.currentPrice ?? symbols.items[0]?.currentPrice ?? 100;
+      const currentPrice = parseNumber(monteCarloForm.currentPrice, selectedSymbol?.currentPrice ?? symbols.items[0]?.currentPrice ?? 100);
       const result = await postJson<MonteCarloResponse>("/api/advanced/monte-carlo", {
         currentPrice,
-        expectedReturn: 8,
-        volatility: 25,
-        days: 60,
-        simulations: 1000
+        expectedReturn: parseNumber(monteCarloForm.expectedReturn, 8),
+        volatility: parseNumber(monteCarloForm.volatility, 25),
+        days: parseNumber(monteCarloForm.days, 60),
+        simulations: parseNumber(monteCarloForm.simulations, 1000)
       });
       setMonteCarlo(result);
     } catch (err) {
@@ -765,11 +984,69 @@ export default function Home() {
   }
 
   function renderSymbolDiscovery() {
+    if (activeSubPage === "관심종목") {
+      return (
+        <>
+          <WriteStatus text={writeStatus} />
+          <Section title="관심종목 직접 추가">
+            <div className="grid gap-3 md:grid-cols-4">
+              <FormInput label="종목코드/티커" value={watchForm.symbol} onChange={(value) => setWatchForm((form) => ({ ...form, symbol: value }))} />
+              <FormInput label="종목명" value={watchForm.name} onChange={(value) => setWatchForm((form) => ({ ...form, name: value }))} />
+              <FormInput label="메모" value={watchForm.memo} onChange={(value) => setWatchForm((form) => ({ ...form, memo: value }))} />
+              <button onClick={addWatchlistManual} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">관심종목 추가</button>
+            </div>
+          </Section>
+          <Section title={`${marketName} 관심종목`} right={<span className="text-xs text-muted">{watchlist.count}개 · {sourceLabel(watchlist.source)}</span>}>
+            <DataTable
+              rows={watchlist.items}
+              columns={[
+                ...symbolColumns,
+                {
+                  key: "delete",
+                  header: "관리",
+                  render: (row) => (
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteWatchlistSymbol(row.symbol);
+                      }}
+                      className="rounded-md border border-warn/40 px-2 py-1 text-xs font-bold text-warn"
+                    >
+                      삭제
+                    </button>
+                  )
+                }
+              ]}
+              onRowClick={setSelectedSymbol}
+            />
+          </Section>
+        </>
+      );
+    }
+
+    if (activeSubPage === "후보군") {
+      return (
+        <>
+          <WriteStatus text={writeStatus} />
+          <div className="grid gap-3 md:grid-cols-4">
+            <StatCard label="후보군" value={scanner.count} note="candidate/watchlist/v92 cards" tone="accent" />
+            <StatCard label="관심종목" value={watchlist.count} note={sourceLabel(watchlist.source)} />
+            <StatCard label="보유 제외" value={scanner.items.filter((item) => !item.isHolding).length} />
+            <StatCard label="쓰기 안전장치" value="백업 후 저장" note="watchlist만 수정" tone="good" />
+          </div>
+          <Section title="후보군 / 관심종목 편입">
+            <DataTable rows={filteredScanner} columns={scannerColumns} onRowClick={setSelectedSymbol} />
+          </Section>
+        </>
+      );
+    }
+
     if (activeSubPage === "매수 후보" || activeSubPage === "매수금지 / 주의") {
       const type = activeSubPage === "매수금지 / 주의" ? "risk" : candidateType;
       const list = candidates[type]?.items ?? [];
       return (
         <>
+          <WriteStatus text={writeStatus} />
           <div className="flex flex-wrap gap-2">
             {candidateTabs.map(([typeId, label]) => (
               <button
@@ -784,7 +1061,7 @@ export default function Home() {
             ))}
           </div>
           <Section title={`${marketName} ${activeSubPage}`}>
-            <DataTable rows={list} columns={compactSymbolColumns} onRowClick={setSelectedSymbol} />
+            <DataTable rows={list} columns={[...compactSymbolColumns, { key: "watch", header: "관심종목", render: (row) => <button onClick={(event) => { event.stopPropagation(); addWatchlistFrom(row); }} className="rounded-md border border-accent/45 px-2 py-1 text-xs font-bold text-accent hover:bg-accent hover:text-ink">추가</button> }]} onRowClick={setSelectedSymbol} />
           </Section>
         </>
       );
@@ -792,6 +1069,7 @@ export default function Home() {
 
     return (
       <>
+        <WriteStatus text={writeStatus} />
         <Section
           title={`${marketName} ${activeSubPage}`}
           right={<span className="text-xs text-muted">{symbols.count}개 · {sourceLabel(symbols.source)}</span>}
@@ -802,7 +1080,7 @@ export default function Home() {
             placeholder="종목명 또는 코드 검색"
             className="mb-3 w-full rounded-lg border border-line bg-panel px-4 py-3 text-sm outline-none focus:border-accent"
           />
-          <DataTable rows={filteredSymbols} columns={symbolColumns} onRowClick={setSelectedSymbol} />
+          <DataTable rows={filteredSymbols} columns={[...symbolColumns, { key: "watch", header: "관심종목", render: (row) => <button onClick={(event) => { event.stopPropagation(); addWatchlistFrom(row); }} className="rounded-md border border-accent/45 px-2 py-1 text-xs font-bold text-accent hover:bg-accent hover:text-ink">추가</button> }]} onRowClick={setSelectedSymbol} />
         </Section>
         <Section title="상세 카드">
           {selectedSymbol ? <SymbolDetailCard item={selectedSymbol} /> : <EmptyReason text="선택된 종목이 없습니다." />}
@@ -812,18 +1090,32 @@ export default function Home() {
   }
 
   function renderPositions() {
-    const positive = positions.items.filter((item) => (item.pnl ?? 0) > 0).length;
-    const negative = positions.items.filter((item) => (item.pnl ?? 0) < 0).length;
+    const displayRows = activeSubPage === "보유 관리" ? directHoldings.items : positions.items;
+    const positive = displayRows.filter((item) => (item.pnl ?? 0) > 0).length;
+    const negative = displayRows.filter((item) => (item.pnl ?? 0) < 0).length;
     return (
       <>
+        <WriteStatus text={writeStatus} />
         <div className="grid gap-3 md:grid-cols-4">
-          <StatCard label="보유 종목" value={positions.count} note={sourceLabel(positions.source)} tone="good" />
+          <StatCard label="보유 종목" value={displayRows.length} note={activeSubPage === "보유 관리" ? sourceLabel(directHoldings.source) : sourceLabel(positions.source)} tone="good" />
           <StatCard label="수익 구간" value={positive} note="평가손익 기준" tone="accent" />
           <StatCard label="손실 구간" value={negative} note="평가손익 기준" tone={negative ? "warn" : "good"} />
-          <StatCard label="데이터 모드" value="Read-only" note="기존 holdings 파일 미수정" />
+          <StatCard label="쓰기 안전장치" value="백업 후 저장" note="holdings 파일만 수정" tone="warn" />
         </div>
+        {activeSubPage === "보유 관리" ? (
+          <Section title="보유종목 추가 / 수정">
+            <div className="grid gap-3 md:grid-cols-6">
+              <FormInput label="종목코드/티커" value={holdingForm.symbol} onChange={(value) => setHoldingForm((form) => ({ ...form, symbol: value }))} />
+              <FormInput label="종목명" value={holdingForm.name} onChange={(value) => setHoldingForm((form) => ({ ...form, name: value }))} />
+              <FormInput label="평균단가" value={holdingForm.avgPrice} onChange={(value) => setHoldingForm((form) => ({ ...form, avgPrice: value }))} />
+              <FormInput label="수량" value={holdingForm.quantity} onChange={(value) => setHoldingForm((form) => ({ ...form, quantity: value }))} />
+              <FormInput label="메모" value={holdingForm.memo} onChange={(value) => setHoldingForm((form) => ({ ...form, memo: value }))} />
+              <button onClick={saveHolding} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">저장 / 업데이트</button>
+            </div>
+          </Section>
+        ) : null}
         <Section title={`${marketName} ${activeSubPage}`}>
-          <DataTable rows={positions.items} columns={activeSubPage === "손절·목표가" ? orderLineColumns : positionColumns} onRowClick={setSelectedSymbol} />
+          <DataTable rows={displayRows} columns={activeSubPage === "손절·목표가" ? orderLineColumns : positionColumns} onRowClick={setSelectedSymbol} />
         </Section>
       </>
     );
@@ -998,12 +1290,22 @@ export default function Home() {
         <>
           <div className="grid gap-3 md:grid-cols-4">
             <StatCard label="백테스트 상태" value={backtest.status || "NO_DATA"} note={(backtest.warnings ?? []).join(" · ") || "상태 없음"} tone={backtest.status === "OK" ? "good" : "warn"} />
-            <StatCard label="전략 수" value={backtest.count} note="backtest reports" tone="accent" />
-            <StatCard label="prediction rows" value={backtest.predictionRows} />
-            <StatCard label="outcome rows" value={backtest.outcomeRows} />
+            <StatCard label="전략 수" value={backtest.count} note="OHLCV 기반 전략" tone="accent" />
+            <StatCard label="전체 예측 rows" value={backtest.totalPredictionRows ?? backtest.predictionRows} note="predictions.csv" />
+            <StatCard label="결과 검증 rows" value={backtest.outcomeRows} note="outcome_history.csv" />
+            <StatCard label="OHLCV 파일" value={backtest.ohlcv?.files ?? 0} note="data/market/ohlcv" tone="accent" />
+            <StatCard label="30일 이상 종목" value={backtest.ohlcv?.eligibleSymbols ?? 0} note={`최소 ${backtest.ohlcv?.minDaysRequired ?? 30}일`} tone={(backtest.ohlcv?.eligibleSymbols ?? 0) ? "good" : "warn"} />
+            <StatCard label="예측+가격 매칭" value={backtest.ohlcv?.predictionMatchedSymbols ?? 0} note="예측과 OHLCV 모두 존재" />
+            <StatCard label="시장 필터 rows" value={backtest.predictionRows} note={market === "kr" ? "국장" : "미장"} />
           </div>
+          <Section title="백테스트 데이터 진단">
+            <SimpleRecords rows={backtest.diagnostics ?? []} empty="백테스트 진단 데이터 없음" />
+          </Section>
           <Section title="백테스트 전략별 성과">
-            {backtest.items.length ? <DataTable rows={backtest.items} columns={backtestColumns} /> : <EmptyReason text="백테스트 데이터 부족 사유: 전략 성과 파일 또는 OHLC 기록 부족" />}
+            {backtest.items.length ? <DataTable rows={backtest.items} columns={backtestColumns} /> : <EmptyReason text="백테스트 데이터 부족 사유: 전략 신호 또는 OHLCV 기록 부족" />}
+          </Section>
+          <Section title="최근 백테스트 신호">
+            <SimpleRecords rows={(backtest.recentTrades ?? []).slice(0, 20)} empty="최근 백테스트 신호 없음" />
           </Section>
           <Section title="최근 결과">
             <SimpleRecords rows={backtest.recentOutcomes.slice(0, 20)} empty="최근 검증 결과 없음" />
@@ -1018,7 +1320,7 @@ export default function Home() {
             <StatCard label="스캐너 대상" value={scanner.count} note="candidate/watchlist/cards 조합" tone="accent" />
             <StatCard label="현재 필터" value={scannerFilter} />
             <StatCard label="보유 제외" value={scanner.items.filter((item) => !item.isHolding).length} />
-            <StatCard label="관심종목 편입" value="준비 중" note="v1.4는 계산/표시만 지원" tone="warn" />
+            <StatCard label="관심종목 편입" value="활성화" note="중복 방지 + 백업 후 저장" tone="good" />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {["전체", "BUY", "주의", "눌림목", "수급", "저평가", "보유 제외"].map((filter) => (
@@ -1047,11 +1349,16 @@ export default function Home() {
           </div>
           <Section title="계산기 입력">
             <div className="grid gap-3 md:grid-cols-5">
-              <MiniMetric label="자본" value="10,000,000" />
-              <MiniMetric label="승률" value="55%" />
-              <MiniMetric label="Payoff" value="1.7" />
-              <MiniMetric label="VaR 신뢰도" value="95%" />
+              <FormInput label="자본" value={calculatorForm.capital} onChange={(value) => setCalculatorForm((form) => ({ ...form, capital: value }))} />
+              <FormInput label="승률(%)" value={calculatorForm.winRate} onChange={(value) => setCalculatorForm((form) => ({ ...form, winRate: value }))} />
+              <FormInput label="Payoff" value={calculatorForm.payoffRatio} onChange={(value) => setCalculatorForm((form) => ({ ...form, payoffRatio: value }))} />
+              <FormInput label="VaR 신뢰도(%)" value={calculatorForm.confidence} onChange={(value) => setCalculatorForm((form) => ({ ...form, confidence: value }))} />
               <button onClick={runCalculators} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">계산 실행</button>
+              <FormInput label="포트폴리오 금액" value={calculatorForm.portfolioValue} onChange={(value) => setCalculatorForm((form) => ({ ...form, portfolioValue: value }))} />
+              <FormInput label="기대수익률(%)" value={calculatorForm.expectedReturn} onChange={(value) => setCalculatorForm((form) => ({ ...form, expectedReturn: value }))} />
+              <FormInput label="변동성(%)" value={calculatorForm.volatility} onChange={(value) => setCalculatorForm((form) => ({ ...form, volatility: value }))} />
+              <FormInput label="진입가" value={calculatorForm.entry} onChange={(value) => setCalculatorForm((form) => ({ ...form, entry: value }))} />
+              <FormInput label="손절가 / 목표가" value={`${calculatorForm.stop} / ${calculatorForm.target}`} onChange={(value) => { const [stop, target] = value.split("/").map((v) => v.trim()); setCalculatorForm((form) => ({ ...form, stop: stop ?? form.stop, target: target ?? form.target })); }} />
             </div>
           </Section>
           <Section title="계산 결과">
@@ -1079,6 +1386,15 @@ export default function Home() {
             <StatCard label="상승확률" value={monteCarlo?.upProbability ?? "미계산"} />
             <button onClick={runMonteCarlo} className="rounded-lg border border-accent/45 bg-accent/12 px-4 py-3 text-sm font-black text-accent hover:bg-accent hover:text-ink">시뮬레이션 실행</button>
           </div>
+          <Section title="몬테카를로 입력">
+            <div className="grid gap-3 md:grid-cols-5">
+              <FormInput label="현재가" value={monteCarloForm.currentPrice} placeholder={String(selectedSymbol?.currentPrice ?? symbols.items[0]?.currentPrice ?? 100)} onChange={(value) => setMonteCarloForm((form) => ({ ...form, currentPrice: value }))} />
+              <FormInput label="기대수익률(%)" value={monteCarloForm.expectedReturn} onChange={(value) => setMonteCarloForm((form) => ({ ...form, expectedReturn: value }))} />
+              <FormInput label="변동성(%)" value={monteCarloForm.volatility} onChange={(value) => setMonteCarloForm((form) => ({ ...form, volatility: value }))} />
+              <FormInput label="기간(일)" value={monteCarloForm.days} onChange={(value) => setMonteCarloForm((form) => ({ ...form, days: value }))} />
+              <FormInput label="시뮬레이션 수" value={monteCarloForm.simulations} onChange={(value) => setMonteCarloForm((form) => ({ ...form, simulations: value }))} />
+            </div>
+          </Section>
           <Section title="몬테카를로 GBM 경로">
             {monteCarlo?.chart?.length ? (
               <div className="h-72 rounded-lg border border-line bg-panel p-4">
@@ -1219,6 +1535,30 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-line bg-panel px-4 py-3">
       <div className="text-xs font-bold text-muted">{label}</div>
       <div className="mt-1 text-lg font-black text-white">{value}</div>
+    </div>
+  );
+}
+
+function FormInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-bold text-muted">{label}</span>
+      <input
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+      />
+    </label>
+  );
+}
+
+function WriteStatus({ text }: { text: string }) {
+  if (!text) return null;
+  const isError = text.toLowerCase().includes("error") || text.includes("실패");
+  return (
+    <div className={`mb-4 rounded-lg border px-4 py-3 text-sm font-bold ${isError ? "border-warn/40 bg-warn/10 text-warn" : "border-accent/35 bg-accent/10 text-accent"}`}>
+      {text}
     </div>
   );
 }

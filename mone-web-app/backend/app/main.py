@@ -6,9 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.services import advanced
 from app.services import data_loader as data
 from app.services import quotes
+from app.services import user_data
 
 
-app = FastAPI(title="MONE Web API", version="0.1.4")
+app = FastAPI(title="MONE Web API", version="0.1.5")
 
 app.add_middleware(
     CORSMiddleware,
@@ -70,6 +71,42 @@ def api_candidates(
 def api_positions(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return data.positions(_market(market))
 
+
+
+
+@app.get("/api/watchlist")
+def api_watchlist(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return user_data.get_watchlist(_market(market))
+
+
+@app.post("/api/watchlist")
+def api_watchlist_add(payload: dict) -> dict:
+    return user_data.add_watchlist(payload)
+
+
+@app.delete("/api/watchlist/{symbol}")
+def api_watchlist_delete(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return user_data.delete_watchlist(symbol, _market(market))
+
+
+@app.get("/api/holdings")
+def api_holdings(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return user_data.get_holdings(_market(market))
+
+
+@app.post("/api/holdings")
+def api_holdings_add(payload: dict) -> dict:
+    return user_data.upsert_holding(payload, mode="post")
+
+
+@app.patch("/api/holdings/{symbol}")
+def api_holdings_patch(symbol: str, payload: dict) -> dict:
+    return user_data.upsert_holding(payload, mode="patch", symbol_arg=symbol)
+
+
+@app.delete("/api/holdings/{symbol}")
+def api_holdings_delete(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return user_data.delete_holding(symbol, _market(market))
 
 @app.get("/api/news")
 def api_news(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:

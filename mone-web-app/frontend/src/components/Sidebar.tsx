@@ -60,7 +60,7 @@ export function Sidebar({
       <div className="flex h-full flex-col">
         <div className="border-b border-line px-5 py-4">
           <div className="text-xl font-black tracking-wide text-white">MONE</div>
-          <div className="mt-1 text-xs text-muted">Next.js + FastAPI v1.4</div>
+          <div className="mt-1 text-xs text-muted">Next.js + FastAPI v1.5</div>
         </div>
         <nav className="flex-1 px-3 py-4">
           {NAV_GROUPS.map((group) => (
@@ -79,7 +79,7 @@ export function Sidebar({
           ))}
         </nav>
         <div className="border-t border-line px-4 py-3 text-xs leading-5 text-muted">
-          기존 CSV/JSON read-only
+          watchlist/holdings 백업 후 쓰기
         </div>
       </div>
     </aside>
