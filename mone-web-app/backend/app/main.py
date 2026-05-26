@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.services import data_loader as data
 
 
-app = FastAPI(title="MONE Web API", version="0.1.0")
+app = FastAPI(title="MONE Web API", version="0.1.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -77,6 +77,31 @@ def api_news(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
 @app.get("/api/predictions")
 def api_predictions(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return data.predictions(_market(market))
+
+
+@app.get("/api/reports/premarket")
+def api_report_premarket(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return data.premarket_report(_market(market))
+
+
+@app.get("/api/reports/intraday")
+def api_report_intraday(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return data.intraday_report(_market(market))
+
+
+@app.get("/api/reports/closing")
+def api_report_closing(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return data.closing_report(_market(market))
+
+
+@app.get("/api/reports/files")
+def api_report_files() -> dict:
+    return data.report_files()
+
+
+@app.get("/api/reports/preview")
+def api_report_preview(path: str = Query(..., min_length=1)) -> dict:
+    return data.report_preview(path)
 
 
 @app.get("/api/history/predictions")

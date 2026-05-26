@@ -1,4 +1,4 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8010";
 
 export type Market = "kr" | "us";
 
@@ -13,13 +13,41 @@ export type Security = {
   priceSource: string;
   dataStatus: string;
   entry?: number | null;
+  entryText?: string;
   stop?: number | null;
+  stopText?: string;
   target?: number | null;
-  confidence?: number | null;
+  targetText?: string;
+  quantity?: number | null;
+  quantityText?: string;
+  avgPrice?: number | null;
+  avgPriceText?: string;
+  marketValue?: number | null;
+  marketValueText?: string;
+  costBasis?: number | null;
+  costBasisText?: string;
+  returnPct?: number | null;
+  returnPctText?: string;
+  pnl?: number | null;
+  pnlText?: string;
+  confidence?: number | string | null;
   reason?: string;
   warning?: string;
   nextAction?: string;
   category?: string;
+  scores?: {
+    supply?: string;
+    earnings?: string;
+    valuation?: string;
+    chart?: string;
+  };
+  statuses?: {
+    data?: string;
+    price?: string;
+    earnings?: string;
+    valuation?: string;
+    flow?: string;
+  };
   raw?: Record<string, unknown>;
 };
 
@@ -27,6 +55,7 @@ export type ApiList<T> = {
   market?: Market;
   count: number;
   source?: string;
+  sources?: string[];
   items: T[];
 };
 
