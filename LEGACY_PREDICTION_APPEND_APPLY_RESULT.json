@@ -1,0 +1,70 @@
+﻿{
+  "status": "OK",
+  "mode": "APPEND_ONLY_SAFE_MERGE",
+  "backup_dir": "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_append_apply_20260526_153225",
+  "files": {
+    "predictions.csv": {
+      "target": "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\predictions.csv",
+      "candidates": [
+        "C:\\Users\\minbo\\OneDrive\\바탕 화면\\stock_app\\stock_app\\predictions.csv",
+        "C:\\Users\\minbo\\OneDrive\\바탕 화면\\stock_app\\stock_app\\backups\\STOCK_APP_STABLE_2026_05_16\\predictions.csv",
+        "C:\\Users\\minbo\\OneDrive\\바탕 화면\\stock_app\\stock_app\\backups\\STOCK_APP_STABLE_2026_05_16\\data\\decision_system\\predictions.csv",
+        "C:\\Users\\minbo\\OneDrive\\바탕 화면\\stock_app\\stock_app\\data\\decision_system\\predictions.csv",
+        "C:\\Users\\minbo\\OneDrive\\바탕 화면\\stock_ai_app_new\\data\\predictions.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\data_restore_fix_20260526_081759\\predictions.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_append_apply_20260526_153225\\predictions.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_apply_20260526_152516\\predictions.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\mone_data_restore_20260526_085250\\predictions.csv"
+      ],
+      "before_rows": 1051,
+      "after_rows": 2028,
+      "added_rows": 977,
+      "skipped_duplicate_rows": 5381,
+      "status": "MERGED_APPEND_ONLY"
+    },
+    "prediction_history.csv": {
+      "target": "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\data\\history\\prediction_history.csv",
+      "candidates": [
+        "C:\\Users\\minbo\\OneDrive\\바탕 화면\\stock_ai_app_new\\data\\prediction_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_append_apply_20260526_153225\\prediction_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_apply_20260526_152516\\prediction_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\data_restore_fix_20260526_081759\\data\\history\\prediction_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\mone_data_restore_20260526_085250\\data\\history\\prediction_history.csv"
+      ],
+      "before_rows": 1051,
+      "after_rows": 1095,
+      "added_rows": 44,
+      "skipped_duplicate_rows": 2119,
+      "status": "MERGED_APPEND_ONLY"
+    },
+    "outcome_history.csv": {
+      "target": "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\data\\history\\outcome_history.csv",
+      "candidates": [
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_append_apply_20260526_153225\\outcome_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_apply_20260526_152516\\outcome_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\data_restore_fix_20260526_081759\\data\\history\\outcome_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\mone_data_restore_20260526_085250\\data\\history\\outcome_history.csv"
+      ],
+      "before_rows": 62,
+      "after_rows": 66,
+      "added_rows": 4,
+      "skipped_duplicate_rows": 124,
+      "status": "MERGED_APPEND_ONLY"
+    },
+    "strategy_score_history.csv": {
+      "target": "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\data\\history\\strategy_score_history.csv",
+      "candidates": [
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_append_apply_20260526_153225\\strategy_score_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\legacy_prediction_apply_20260526_152516\\strategy_score_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\mone_data_restore_20260526_085250\\data\\history\\strategy_score_history.csv",
+        "C:\\Users\\minbo\\OneDrive\\문서\\GitHub\\agnas-stock-app\\backups\\mone_final_live_data_fix_20260526_090354\\backups\\mone_data_restore_20260526_085250\\data\\history\\strategy_score_history.csv"
+      ],
+      "before_rows": 18,
+      "after_rows": 8,
+      "added_rows": 0,
+      "skipped_duplicate_rows": 36,
+      "status": "ABORTED_DEDUP_WOULD_SHRINK_BELOW_CURRENT"
+    }
+  },
+  "finished_at": "2026-05-26 15:32:51"
+}
