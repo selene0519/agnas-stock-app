@@ -100,12 +100,31 @@ export type ApiList<T> = {
   items: T[];
 };
 
-export async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`);
+export const VIRTUAL_PORTFOLIO_MODES = ["conservative", "balanced", "aggressive"] as const;
+export type VirtualPortfolioMode = (typeof VIRTUAL_PORTFOLIO_MODES)[number];
+
+export async function getJson<T>(path: string, timeoutMs = 8000): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { cache: "no-store", signal: controller.signal });
+    if (!res.ok) {
+      throw new Error(`${res.status} ${res.statusText}`);
+    }
+    return res.json() as Promise<T>;
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json() as Promise<T>;
+}
+
+export async function fetchVirtualPortfolio<T>(market: Market, mode: VirtualPortfolioMode): Promise<T> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8050";
+  const url = `${baseUrl}/api/virtual/portfolio?market=${market}&mode=${mode}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`virtual portfolio failed: ${res.status}`);
+  }
+  return await res.json() as T;
 }
 
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
