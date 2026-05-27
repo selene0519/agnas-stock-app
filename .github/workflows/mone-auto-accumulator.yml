@@ -78,6 +78,8 @@ jobs:
 
 
       - name: Record virtual operation history
+        env:
+          PYTHONPATH: mone-web-app/backend
         run: |
           python mone-web-app/backend/record_operation_history.py --market all --modes all --source github-actions --backfill-existing
 
@@ -103,4 +105,5 @@ jobs:
             git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
+
 
