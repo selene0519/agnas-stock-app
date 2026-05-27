@@ -1,23 +1,18 @@
-﻿name: MONE Auto Accumulator
-# schedule-refresh: 2026-05-26 22:14:19 KST
+name: MONE Auto Accumulator
+
 on:
   workflow_dispatch:
   schedule:
-    # GitHub Actions schedule is UTC.
-
-    # KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu. 援?옣 ?μ쟾/?꾨낫 ?앹꽦
+    # GitHub Actions cron uses UTC. KST = UTC+9.
+    # KR pre-market: KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu
     - cron: "17 23 * * 0-4"
-
-    # KST 16:37 Mon-Fri = UTC 07:37 Mon-Fri. 援?옣 ?λ쭏媛??댄썑 蹂댁젙/湲곕줉
+    # KR close update: KST 16:37 Mon-Fri = UTC 07:37 Mon-Fri
     - cron: "37 7 * * 1-5"
-
-    # KST 21:50 Mon-Fri = UTC 12:50 Mon-Fri. 誘몄옣 ?μ쟾 ?덉륫/?꾨낫 ?앹꽦
+    # US pre-market early: KST 21:50 Mon-Fri = UTC 12:50 Mon-Fri
     - cron: "50 12 * * 1-5"
-
-    # KST 22:50 Mon-Fri = UTC 13:50 Mon-Fri. 誘몄옣 ?μ쟾 蹂댁“ ?ㅽ뻾
+    # US pre-market confirm: KST 22:50 Mon-Fri = UTC 13:50 Mon-Fri
     - cron: "50 13 * * 1-5"
-
-    # KST 06:42 Tue-Sat = UTC 21:42 Mon-Fri. 誘몄옣 ?λ쭏媛??댄썑 蹂댁젙/湲곕줉
+    # US close update: KST 06:42 Tue-Sat = UTC 21:42 Mon-Fri
     - cron: "42 21 * * 1-5"
 
 permissions:
@@ -74,36 +69,53 @@ jobs:
 
       - name: Run MONE cloud update
         run: |
-          python scripts/mone_github_auto_update.py
-
+          if [ -f scripts/mone_github_auto_update.py ]; then
+            python scripts/mone_github_auto_update.py
+          else
+            echo "scripts/mone_github_auto_update.py not found; skip cloud update."
+          fi
 
       - name: Record virtual operation history
+        working-directory: mone-web-app/backend
         env:
-          PYTHONPATH: mone-web-app/backend
+          PYTHONPATH: .
         run: |
-          python mone-web-app/backend/record_operation_history.py --market all --modes all --source github-actions --backfill-existing
+          if [ -f record_operation_history.py ]; then
+            python record_operation_history.py --market all --modes all --source github-actions --backfill-existing
+          else
+            echo "record_operation_history.py not found; skip history record."
+          fi
+
+      - name: Generate MONE v3.6.1 operational reports
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          python operational_check.py
+
+      - name: Remove local token/cache files before commit
+        run: |
+          find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
 
       - name: Show generated report status
         run: |
+          echo "=== operational readiness ==="
+          test -f reports/mone_v36_operational_readiness.json && cat reports/mone_v36_operational_readiness.json || true
           echo "=== reports ==="
           ls -lah reports | tail -80 || true
           echo "=== history ==="
           ls -lah data/history || true
-          echo "=== v93 status ==="
-          test -f reports/v93_github_actions_status.json && cat reports/v93_github_actions_status.json || true
 
       - name: Commit generated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports data/history backups logs 2>/dev/null || true
-          git reset -- .env .env.local "*.env" 2>/dev/null || true
+          git add reports data/history data/calendar .gitignore 2>/dev/null || true
+          git reset -- .env .env.local "*.env" "*token_cache*.json" "**/*token_cache*.json" 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No report/history changes to commit."
           else
-            git commit -m "chore: update MONE reports/history [skip ci]"
+            git commit -m "chore: update MONE v3.6.1 operational reports [skip ci]"
             git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
-
-
