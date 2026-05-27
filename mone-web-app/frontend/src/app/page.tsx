@@ -16,8 +16,8 @@ import {
 } from "recharts";
 import { EmptyReason, Section, StatCard } from "@/components/Cards";
 import { DataTable, type Column } from "@/components/DataTable";
-import { firstSubPage, NAV_GROUPS, Sidebar } from "@/components/Sidebar";
-import { API_BASE, deleteJson, getJson, money, patchJson, postJson, type ApiList, type Market, type Security } from "@/lib/api";
+import { firstSubPage, NAV_GROUPS, Sidebar, visibleGroups, type AppMode } from "@/components/Sidebar";
+import { API_BASE, deleteJson, fetchVirtualPortfolio, getJson, money, patchJson, postJson, type ApiList, type Market, type Security } from "@/lib/api";
 
 type FileItem = {
   path: string;
@@ -124,18 +124,69 @@ type VirtualPortfolioResponse = {
   lossPct: string;
   profitPct: string;
   count: number;
+  candidateCount?: number;
   cards: { label: string; value: string; note: string }[];
   items: (VirtualPreviewItem & { executionStatus?: string })[];
+  topName?: string;
   note?: string;
 };
 
 type StrategyMode = "conservative" | "balanced" | "aggressive";
+type TimingBucket = "today" | "wait" | "next" | "risk";
 
 const STRATEGY_MODE_LABEL: Record<StrategyMode, string> = {
   conservative: "보수",
   balanced: "균형",
   aggressive: "공격"
 };
+
+const EMPTY_PORTFOLIO_BY_MODE: Record<StrategyMode, VirtualPortfolioResponse> = {
+  conservative: { mode: "conservative", modeLabel: "보수", totalCapital: "-", invested: "-", cash: "-", lossTotal: "-", profitTotal: "-", lossPct: "-", profitPct: "-", count: 0, cards: [], items: [], note: "" },
+  balanced: { mode: "balanced", modeLabel: "균형", totalCapital: "-", invested: "-", cash: "-", lossTotal: "-", profitTotal: "-", lossPct: "-", profitPct: "-", count: 0, cards: [], items: [], note: "" },
+  aggressive: { mode: "aggressive", modeLabel: "공격", totalCapital: "-", invested: "-", cash: "-", lossTotal: "-", profitTotal: "-", lossPct: "-", profitPct: "-", count: 0, cards: [], items: [], note: "" }
+};
+
+function emptyPortfolio(mode: StrategyMode): VirtualPortfolioResponse {
+  return { ...EMPTY_PORTFOLIO_BY_MODE[mode], items: [], cards: [] };
+}
+
+function normalizePortfolioResponse(raw: unknown, mode: StrategyMode = "balanced"): VirtualPortfolioResponse {
+  const container = (raw ?? {}) as { data?: unknown; portfolio?: unknown };
+  const p = (container.data ?? container.portfolio ?? raw ?? {}) as Partial<VirtualPortfolioResponse> & {
+    candidateCount?: number | string;
+    loss?: string;
+    profit?: string;
+  };
+  const base = emptyPortfolio(mode);
+  const items = Array.isArray(p.items) ? p.items : [];
+  const parsedCount = Number(p.count ?? p.candidateCount ?? items.length ?? 0);
+  const count = Number.isFinite(parsedCount) ? parsedCount : items.length;
+  return {
+    ...base,
+    ...p,
+    mode: p.mode || mode,
+    modeLabel: p.modeLabel || STRATEGY_MODE_LABEL[mode],
+    count,
+    candidateCount: count,
+    cards: Array.isArray(p.cards) ? p.cards : [],
+    items,
+    lossTotal: p.lossTotal ?? p.loss ?? "-",
+    profitTotal: p.profitTotal ?? p.profit ?? "-",
+    topName: items?.[0]?.name ?? "후보 없음"
+  };
+}
+
+function normalizePortfolio(mode: StrategyMode, value?: unknown): VirtualPortfolioResponse {
+  return normalizePortfolioResponse(value, mode);
+}
+
+function normalizePortfolioMap(source?: Partial<Record<StrategyMode, unknown>> | null): Record<StrategyMode, VirtualPortfolioResponse> {
+  return {
+    conservative: normalizePortfolioResponse(source?.conservative, "conservative"),
+    balanced: normalizePortfolioResponse(source?.balanced, "balanced"),
+    aggressive: normalizePortfolioResponse(source?.aggressive, "aggressive"),
+  };
+}
 
 type MarketSummary = {
   market: Market;
@@ -416,8 +467,33 @@ const buyCandidateTabs = [
 
 const sourceLabel = (source?: string) => source || "소스 없음";
 
+
+async function safeGetJson<T>(path: string, fallback: T): Promise<T> {
+  try {
+    return await getJson<T>(path);
+  } catch (err) {
+    console.warn(`[MONE] optional API fallback: ${path}`, err);
+    return fallback;
+  }
+}
+
+function newsTag(item: NewsItem) {
+  const text = `${item.title ?? ""} ${item.summary ?? ""} ${item.name ?? ""} ${item.sourceName ?? ""}`;
+  const hasRealName = item.name && !["종목", "시장", item.symbol].includes(item.name) && !/^\d{4,6}$/.test(item.name);
+  if (/공시|실적|계약|증자|분기|사업보고|합병|분할|수주|공급계약|자사주|배당/.test(text)) return "공시/이슈";
+  if (/삼성전자|하이닉스|반도체|HBM|AI반도체|메모리|파운드리|엔비디아|NVDA/.test(text)) return "반도체";
+  if (/전지|배터리|2차전지|LG에너지|에코프로|포스코퓨처/.test(text)) return "2차전지";
+  if (/로봇|AI|인공지능|자동화|로보틱스/.test(text)) return "AI·로봇";
+  if (hasRealName || (item.symbol && item.symbol !== "종목")) return "개별";
+  if (/외국인|기관|개인|순매수|순매도|매수|매도/.test(text)) return "수급";
+  if (/코스피|코스닥|나스닥|S&P|다우|지수/.test(text)) return "지수";
+  if (/증시|시장|환율|금리/.test(text)) return "시장";
+  return "뉴스";
+}
+
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("시장 홈");
+  const [appMode, setAppMode] = useState<AppMode>("general");
   const [activeSubPage, setActiveSubPage] = useState("요약");
   const [market, setMarket] = useState<Market>("kr");
   const [loading, setLoading] = useState(true);
@@ -464,7 +540,8 @@ export default function Home() {
   const [companyAnalysis, setCompanyAnalysis] = useState<ApiList<CompanyAnalysisItem>>({ count: 0, items: [] });
   const [disclosureRefreshStatus, setDisclosureRefreshStatus] = useState("");
   const [virtualPreview, setVirtualPreview] = useState<VirtualPreviewResponse>({ count: 0, items: [], mode: "balanced", modeLabel: "균형" });
-  const [virtualPortfolio, setVirtualPortfolio] = useState<VirtualPortfolioResponse>({ mode: "balanced", modeLabel: "균형", totalCapital: "-", invested: "-", cash: "-", lossTotal: "-", profitTotal: "-", lossPct: "-", profitPct: "-", count: 0, cards: [], items: [], note: "" });
+  const [virtualPortfolio, setVirtualPortfolio] = useState<VirtualPortfolioResponse>(emptyPortfolio("balanced"));
+  const [virtualPortfolios, setVirtualPortfolios] = useState<Record<StrategyMode, VirtualPortfolioResponse>>(normalizePortfolioMap());
   const [strategyMode, setStrategyMode] = useState<StrategyMode>("balanced");
   const [query, setQuery] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState<Security | null>(null);
@@ -498,6 +575,9 @@ export default function Home() {
     async function load() {
       setLoading(true);
       setError("");
+
+      // v3.4: 첫 화면은 무거운 관리/점검 API를 기다리지 않고 먼저 띄웁니다.
+      // 시장 홈에 필요한 핵심 데이터만 먼저 읽고, 나머지는 백그라운드로 채웁니다.
       try {
         const [
           summaryData,
@@ -505,6 +585,66 @@ export default function Home() {
           positionData,
           newsData,
           predictionData,
+          virtualPreviewData,
+          portfolioMapData
+        ] = await Promise.all([
+          safeGetJson<MarketSummary>(`/api/market/summary?market=${market}`, { market, marketLabel: market === "kr" ? "국장" : "미장", cards: [], dataStatus: [], dashboard: [], sources: [], updatedAt: "" }),
+          safeGetJson<ApiList<Security>>(`/api/symbols?market=${market}`, { count: 0, items: [] }),
+          safeGetJson<ApiList<Security>>(`/api/positions?market=${market}`, { count: 0, items: [] }),
+          safeGetJson<ApiList<NewsItem>>(`/api/news?market=${market}`, { count: 0, items: [] }),
+          safeGetJson<ApiList<Security>>(`/api/predictions?market=${market}`, { count: 0, items: [] }),
+          safeGetJson<VirtualPreviewResponse>(`/api/virtual/preview?market=${market}&mode=${strategyMode}`, { count: 0, items: [], mode: strategyMode, modeLabel: STRATEGY_MODE_LABEL[strategyMode] }),
+          (async () => {
+            const [conservative, balanced, aggressive] = await Promise.all([
+              fetchVirtualPortfolio<unknown>(market, "conservative"),
+              fetchVirtualPortfolio<unknown>(market, "balanced"),
+              fetchVirtualPortfolio<unknown>(market, "aggressive")
+            ]);
+            console.log("[MONE] RAW conservative portfolio", conservative);
+            console.log("[MONE] RAW balanced portfolio", balanced);
+            console.log("[MONE] RAW aggressive portfolio", aggressive);
+            const normalizedConservative = normalizePortfolioResponse(conservative, "conservative");
+            const normalizedBalanced = normalizePortfolioResponse(balanced, "balanced");
+            const normalizedAggressive = normalizePortfolioResponse(aggressive, "aggressive");
+            console.log("[MONE] NORMALIZED conservative portfolio", normalizedConservative);
+            console.log("[MONE] NORMALIZED balanced portfolio", normalizedBalanced);
+            console.log("[MONE] NORMALIZED aggressive portfolio", normalizedAggressive);
+            return {
+              conservative: normalizedConservative,
+              balanced: normalizedBalanced,
+              aggressive: normalizedAggressive
+            };
+          })()
+        ]);
+
+        const candidateData = await Promise.all(
+          candidateTabs.map(([type]) => safeGetJson<ApiList<Security>>(`/api/candidates?market=${market}&type=${type}`, { count: 0, items: [] }))
+        );
+
+        if (cancelled) return;
+        setSummary(summaryData);
+        setSymbols(symbolData);
+        setPositions(positionData);
+        setNews(newsData);
+        setPredictions(predictionData);
+        setVirtualPreview(virtualPreviewData);
+        const portfolios = normalizePortfolioMap(portfolioMapData);
+        setVirtualPortfolios(portfolios);
+        setVirtualPortfolio(portfolios[strategyMode] ?? portfolios.balanced);
+        setCandidates(Object.fromEntries(candidateTabs.map(([type], idx) => [type, candidateData[idx]])));
+        setSelectedSymbol((prev) => prev ?? symbolData.items[0] ?? null);
+        setLoading(false);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "핵심 데이터 로딩 실패");
+          setLoading(false);
+        }
+        return;
+      }
+
+      // v3.4: 무거운 데이터 상태/관리/검증 API는 화면을 먼저 띄운 뒤 백그라운드로 읽습니다.
+      void (async () => {
+        const [
           fileData,
           envData,
           dataSourceData,
@@ -522,47 +662,29 @@ export default function Home() {
           correlationData,
           githubActionsData,
           disclosureData,
-          companyAnalysisData,
-          virtualPreviewData,
-          virtualPortfolioData
-        ] =
-          await Promise.all([
-            getJson<MarketSummary>(`/api/market/summary?market=${market}`),
-            getJson<ApiList<Security>>(`/api/symbols?market=${market}`),
-            getJson<ApiList<Security>>(`/api/positions?market=${market}`),
-            getJson<ApiList<NewsItem>>(`/api/news?market=${market}`),
-            getJson<ApiList<Security>>(`/api/predictions?market=${market}`),
-            getJson<{ items: FileItem[] }>("/api/status/files"),
-            getJson<{ items: EnvItem[] }>("/api/status/env"),
-            getJson<{ items: DataSourceItem[] }>("/api/status/data-sources"),
-            getJson<HistoryResponse>(`/api/history/predictions?market=${market}`),
-            getJson<HistoryResponse>(`/api/history/outcomes?market=${market}`),
-            getJson<PredictionInsightResponse>(`/api/insights/prediction?market=${market}`),
-            getJson<ApiList<PremarketItem>>(`/api/reports/premarket?market=${market}`),
-            getJson<ApiList<IntradayItem>>(`/api/reports/intraday?market=${market}`),
-            getJson<ClosingReport>(`/api/reports/closing?market=${market}`),
-            getJson<ReportFilesResponse>("/api/reports/files"),
-            getJson<BacktestResponse>(`/api/advanced/backtest?market=${market}`),
-            getJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`),
-            getJson<ApiList<Security>>(`/api/watchlist?market=${market}`),
-            getJson<ApiList<Security>>(`/api/holdings?market=${market}`),
-            getJson<CorrelationResponse>(`/api/advanced/correlation?market=${market}`),
-            getJson<GitHubActionsStatus>("/api/status/github-actions"),
-            getJson<ApiList<DisclosureItem>>(`/api/disclosures?market=${market}`),
-            getJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`),
-            getJson<VirtualPreviewResponse>(`/api/virtual/preview?market=${market}&mode=${strategyMode}`),
-            getJson<VirtualPortfolioResponse>(`/api/virtual/portfolio?market=${market}&mode=${strategyMode}`)
-          ]);
-        const candidateData = await Promise.all(
-          candidateTabs.map(([type]) => getJson<ApiList<Security>>(`/api/candidates?market=${market}&type=${type}`))
-        );
+          companyAnalysisData
+        ] = await Promise.all([
+          safeGetJson<{ items: FileItem[] }>("/api/status/files", { items: [] }),
+          safeGetJson<{ items: EnvItem[] }>("/api/status/env", { items: [] }),
+          safeGetJson<{ items: DataSourceItem[] }>("/api/status/data-sources", { items: [] }),
+          safeGetJson<HistoryResponse>(`/api/history/predictions?market=${market}`, { count: 0, source: "", items: [] }),
+          safeGetJson<HistoryResponse>(`/api/history/outcomes?market=${market}`, { count: 0, source: "", items: [] }),
+          safeGetJson<PredictionInsightResponse>(`/api/insights/prediction?market=${market}`, { market, status: "NO_DATA", summary: { predictionRows: 0, historyRows: 0, outcomeRows: 0, validationRows: 0, success: 0, fail: 0, neutral: 0, successRate: "검증 데이터 부족", coverage: "검증 데이터 부족" }, diagnostics: [], bySymbol: [], byPeriod: [], failures: [], corrections: [], sources: [] }),
+          safeGetJson<ApiList<PremarketItem>>(`/api/reports/premarket?market=${market}`, { count: 0, items: [], sources: [] }),
+          safeGetJson<ApiList<IntradayItem>>(`/api/reports/intraday?market=${market}`, { count: 0, items: [], sources: [] }),
+          safeGetJson<ClosingReport>(`/api/reports/closing?market=${market}`, { count: 0, items: [], sources: [], directionHitRate: "검증 데이터 부족", rangeHitRate: "검증 데이터 부족", predictionHistoryCount: 0, outcomeHistoryCount: 0, outcomes: [] }),
+          safeGetJson<ReportFilesResponse>("/api/reports/files", { count: 0, fallbackPolicy: [], items: [] }),
+          safeGetJson<BacktestResponse>(`/api/advanced/backtest?market=${market}`, { count: 0, items: [], status: "NO_DATA", warnings: [], predictionRows: 0, outcomeRows: 0, recentOutcomes: [] }),
+          safeGetJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`, { count: 0, items: [] }),
+          safeGetJson<ApiList<Security>>(`/api/watchlist?market=${market}`, { count: 0, items: [] }),
+          safeGetJson<ApiList<Security>>(`/api/holdings?market=${market}`, { count: 0, items: [] }),
+          safeGetJson<CorrelationResponse>(`/api/advanced/correlation?market=${market}`, { status: "NO_DATA", reason: "상관관계 계산 데이터 부족", items: [], matrix: [], sources: [] }),
+          safeGetJson<GitHubActionsStatus>("/api/status/github-actions", { status: "NOT_LOADED", message: "GitHub Actions 상태를 읽지 못했습니다.", workflows: [], runs: [] }),
+          safeGetJson<ApiList<DisclosureItem>>(`/api/disclosures?market=${market}`, { count: 0, items: [], sources: [] }),
+          safeGetJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`, { count: 0, items: [] })
+        ]);
 
         if (cancelled) return;
-        setSummary(summaryData);
-        setSymbols(symbolData);
-        setPositions(positionData);
-        setNews(newsData);
-        setPredictions(predictionData);
         setFiles(fileData.items);
         setEnv(envData.items);
         setDataSources(dataSourceData.items);
@@ -581,22 +703,18 @@ export default function Home() {
         setGithubActions(githubActionsData);
         setDisclosures(disclosureData);
         setCompanyAnalysis(companyAnalysisData);
-        setVirtualPreview(virtualPreviewData);
-        setVirtualPortfolio(virtualPortfolioData);
-        setCandidates(Object.fromEntries(candidateTabs.map(([type], idx) => [type, candidateData[idx]])));
-        setSelectedSymbol(symbolData.items[0] ?? null);
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "데이터 로딩 실패");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      })();
     }
 
     load();
     return () => {
       cancelled = true;
     };
-  }, [market, refreshTick, strategyMode]);
+  }, [market, refreshTick]);
+
+  useEffect(() => {
+    setVirtualPortfolio(virtualPortfolios[strategyMode] ?? virtualPortfolios.balanced);
+  }, [strategyMode, virtualPortfolios]);
 
   useEffect(() => {
     let cancelled = false;
@@ -619,7 +737,7 @@ export default function Home() {
     };
   }, [market, selectedSymbol?.symbol, symbols.items]);
 
-  const currentGroup = NAV_GROUPS.find((group) => group.title === activeCategory) ?? NAV_GROUPS[0];
+  const currentGroup = visibleGroups(appMode).find((group) => group.title === activeCategory) ?? visibleGroups(appMode)[0] ?? NAV_GROUPS[0];
   const marketName = market === "kr" ? "국장" : "미장";
   const updatedAt = summary?.updatedAt ?? "기준시각 없음";
   const apiOk = env.filter((item) => item.status === "OK").length;
@@ -960,6 +1078,13 @@ export default function Home() {
     setActiveSubPage(firstSubPage(category));
   }
 
+  function switchAppMode(mode: AppMode) {
+    setAppMode(mode);
+    const nextCategory = mode === "admin" ? "관리" : "시장 홈";
+    setActiveCategory(nextCategory);
+    setActiveSubPage(firstSubPage(nextCategory));
+  }
+
   async function refreshQuotes() {
     setQuoteRefreshing(true);
     setError("");
@@ -1020,7 +1145,7 @@ export default function Home() {
 
   return (
     <main>
-      <Sidebar activeCategory={activeCategory} onSelectCategory={selectCategory} />
+      <Sidebar activeCategory={activeCategory} onSelectCategory={selectCategory} appMode={appMode} />
       <div className="min-h-screen pl-64 md:pl-72">
         <header className="sticky top-0 z-10 border-b border-line bg-ink/95 backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 md:px-6">
@@ -1042,7 +1167,21 @@ export default function Home() {
                 미장
               </button>
             </div>
-            <ModeSelector value={strategyMode} onChange={setStrategyMode} />
+            <div className="flex items-center gap-1 rounded-lg border border-line bg-panel p-1">
+              <button
+                className={`rounded-md px-3 py-2 text-xs font-black ${appMode === "general" ? "bg-accent text-ink" : "text-slate-300"}`}
+                onClick={() => switchAppMode("general")}
+              >
+                일반 모드
+              </button>
+              <button
+                className={`rounded-md px-3 py-2 text-xs font-black ${appMode === "admin" ? "bg-warn text-ink" : "text-slate-300"}`}
+                onClick={() => switchAppMode("admin")}
+              >
+                관리자 모드
+              </button>
+            </div>
+            {appMode === "general" ? <ModeSelector value={strategyMode} onChange={setStrategyMode} /> : null}
             <button
               onClick={refreshQuotes}
               disabled={quoteRefreshing}
@@ -1111,64 +1250,103 @@ export default function Home() {
   }
 
   function renderMarketHome() {
-    const todayCandidates = pickForMode(candidates.action?.items ?? [], strategyMode, 5);
+    const selectedPortfolio = normalizePortfolio(strategyMode, virtualPortfolios[strategyMode] ?? virtualPortfolio);
+    const timingGroups = groupPortfolioItemsByTiming(selectedPortfolio.items ?? [], strategyMode);
+    const modeCards = (["conservative", "balanced", "aggressive"] as StrategyMode[]).map((mode) => {
+      const portfolio = normalizePortfolio(mode, virtualPortfolios[mode]);
+      const grouped = groupPortfolioItemsByTiming(portfolio.items ?? [], mode);
+      return {
+        mode,
+        title: `${STRATEGY_MODE_LABEL[mode]} 모드`,
+        count: portfolio.count,
+        candidateCount: portfolio.candidateCount ?? portfolio.count,
+        lossTotal: portfolio.lossTotal || "-",
+        profitTotal: portfolio.profitTotal || "-",
+        topName: portfolio.topName ?? portfolio.items?.[0]?.name ?? "후보 없음",
+        todayEntryCount: grouped.today.length,
+        waitCount: grouped.wait.length,
+        nextEntryCount: grouped.next.length,
+        riskCount: grouped.risk.length,
+        note: modeGuideText(mode)
+      };
+    });
+    console.log("[MONE] rendered mode cards", modeCards);
     const homeNews = buildHomeNews(news.items, 5);
+    const dataSourceOk = dataSources.filter((item) => item.status === "OK").length;
+    const dataSourceTotal = dataSources.length;
+    const stockBridge = dataSources.find((item) => item.key === "stockapp_bridge");
+    const githubStatus = githubActions.status === "NOT_LOADED" ? "확인 중" : githubActions.status;
+    const selectedTimingCount = Object.values(timingGroups).reduce((acc, arr) => acc + arr.length, 0);
 
     return (
       <>
-        <Section title="오늘 요약">
-          {summary?.cards?.length ? (
-            <div className="grid gap-3 md:grid-cols-5">
-              {summary.cards.slice(0, 5).map((card, idx) => (
-                <StatCard
-                  key={idx}
-                  label={String(card["카드"] ?? card["category"] ?? `요약 ${idx + 1}`)}
-                  value={String(card["건수"] ?? card["count"] ?? "-")}
-                  note={String(card["TOP"] ?? card["설명"] ?? "요약 없음")}
-                  tone={idx === 0 ? "good" : idx === 4 ? "warn" : "neutral"}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyReason text="오늘 요약 파일이 없습니다." />
-          )}
+        <Section title="일반 모드 요약" right={<span className="text-xs text-muted">관리자 기능은 숨기고, 필요한 상태만 요약 표시</span>}>
+          <div className="grid gap-3 md:grid-cols-4">
+            <StatCard label="데이터 연결" value={dataSourceTotal ? `${dataSourceOk}/${dataSourceTotal} OK` : "확인 중"} note={stockBridge?.status === "OK" ? "StockApp 브릿지 연결됨" : "데이터 소스 백그라운드 점검 중"} tone={dataSourceOk ? "good" : "neutral"} />
+            <StatCard label="자동화" value={githubStatus} note="자세한 로그는 관리자 모드에서 확인" tone={githubActions.status === "OK" ? "good" : "neutral"} />
+            <StatCard label="오늘 시장" value={summary?.marketLabel || marketName} note={updatedAt || "기준시각 확인 중"} tone="neutral" />
+            <StatCard label="매크로·이벤트" value="리스크 배지" note="FOMC·CPI·실적·IPO는 진입 판단에 반영할 영역" tone="warn" />
+          </div>
         </Section>
 
-        <Section title="추천 모드 비교" right={<span className="text-xs text-muted">보수 · 균형 · 공격을 한 화면에서 비교</span>}>
+        <Section title="추천 성향 비교" right={<span className="text-xs text-muted">3개 모드는 한 번에 불러오고, 전환 시 화면만 바뀜</span>}>
           <div className="grid gap-3 md:grid-cols-3">
-            {(["conservative", "balanced", "aggressive"] as StrategyMode[]).map((mode) => {
-              const summary = buildModeSummary(candidates.action?.items ?? [], mode, market);
+            {modeCards.map((card) => {
               return (
                 <button
-                  key={mode}
+                  key={card.mode}
                   type="button"
-                  onClick={() => setStrategyMode(mode)}
-                  className={`rounded-xl border p-4 text-left shadow-soft transition ${strategyMode === mode ? "border-accent bg-accent/12" : "border-line bg-panel hover:border-accent/50 hover:bg-accent/5"}`}
+                  onClick={() => setStrategyMode(card.mode)}
+                  className={`rounded-xl border p-4 text-left shadow-soft transition ${strategyMode === card.mode ? "border-accent bg-accent/12" : "border-line bg-panel hover:border-accent/50 hover:bg-accent/5"}`}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-lg font-black text-white">{STRATEGY_MODE_LABEL[mode]} 모드</div>
-                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-black text-accent">{summary.count}개</span>
+                    <div className="text-lg font-black text-white">{card.title}</div>
+                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-black text-accent">후보 {card.candidateCount}개</span>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                    <MiniMetric label="예상 최대손실" value={summary.lossText} />
-                    <MiniMetric label="예상 목표이익" value={summary.profitText} />
+                    <MiniMetric label="오늘 진입" value={`${card.todayEntryCount}개`} />
+                    <MiniMetric label="기다림" value={`${card.waitCount}개`} />
+                    <MiniMetric label="다음 진입" value={`${card.nextEntryCount}개`} />
+                    <MiniMetric label="주의" value={`${card.riskCount}개`} />
                   </div>
-                  <div className="mt-3 text-sm font-bold text-slate-200">TOP: {summary.topName}</div>
-                  <div className="mt-1 text-xs leading-5 text-muted">{summary.rule}</div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <MiniMetric label="손절 시 손실" value={card.lossTotal} tone="warn" />
+                    <MiniMetric label="목표 도달 시 이익" value={card.profitTotal} tone="good" />
+                  </div>
+                  <div className="mt-3 text-sm font-bold text-slate-200">TOP: {card.topName}</div>
+                  <div className="mt-1 text-xs leading-5 text-muted">{card.note}</div>
+                  <div className="mt-2 text-[11px] font-bold text-muted">debug: {card.mode} / {card.candidateCount} / {card.lossTotal} / {card.profitTotal}</div>
                 </button>
               );
             })}
           </div>
         </Section>
 
-        <Section title={`오늘 확인 후보 · ${STRATEGY_MODE_LABEL[strategyMode]} 추천`}>
-          {todayCandidates.length ? (
-            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-              {todayCandidates.map((item) => renderTodayCandidateCard(item))}
-            </div>
-          ) : (
-            <EmptyReason text="오늘 확인 후보가 없습니다." />
-          )}
+        <Section title={`${STRATEGY_MODE_LABEL[strategyMode]} 모드 · 조건부 가상운용 계획`} right={<span className="text-xs text-muted">오늘 전부 매수 아님 · 진입가 도달 시만 체결 기록</span>}>
+          <div className="grid gap-3 md:grid-cols-5">
+            <StatCard label="조건부 후보" value={`${selectedTimingCount || selectedPortfolio.count || 0}개`} note={`오늘 ${timingGroups.today.length} · 대기 ${timingGroups.wait.length} · 다음 ${timingGroups.next.length} · 주의 ${timingGroups.risk.length}`} tone="neutral" />
+            <StatCard label="예상 투입금" value={selectedPortfolio.invested || "-"} note={`현금 ${selectedPortfolio.cash || "-"}`} tone="neutral" />
+            <StatCard label="손절 시 손실" value={selectedPortfolio.lossTotal || "-"} note={selectedPortfolio.lossPct || "조건부 계획"} tone="warn" />
+            <StatCard label="목표 도달 시 이익" value={selectedPortfolio.profitTotal || "-"} note={selectedPortfolio.profitPct || "조건부 계획"} tone="good" />
+            <StatCard label="검증 방식" value="예측·매매 분리" note="단기 D+1 · 스윙 D+5 · 중기 D+20" tone="neutral" />
+          </div>
+        </Section>
+
+        <Section title={`${STRATEGY_MODE_LABEL[strategyMode]} 모드 진입 타이밍`} right={<span className="text-xs text-muted">기회 점수와 진입 점수를 분리해 표시</span>}>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {renderTimingLane("오늘 진입 가능", "today", timingGroups.today, "현재가가 진입 구간에 가까운 후보")}
+            {renderTimingLane("기다릴 후보", "wait", timingGroups.wait, "좋은 종목이지만 진입가를 기다리는 후보")}
+            {renderTimingLane("다음 진입 후보", "next", timingGroups.next, "D+1~D+3 눌림 또는 돌파 확인 후보")}
+            {renderTimingLane("매수금지 / 주의", "risk", timingGroups.risk, "추격·과열·데이터 부족 등으로 신규 진입 제한")}
+          </div>
+        </Section>
+
+        <Section title="신규 발굴·이벤트·매크로 체크">
+          <div className="grid gap-3 md:grid-cols-3">
+            <InfoBox title="신규 종목 발굴" lines={["저평가 성장 · 실적 개선 눌림목 · 수급 포착 · 모멘텀 초기 라벨로 분류", "워치리스트 외 종목도 후보로 유지"]} />
+            <InfoBox title="이벤트 리스크" lines={["실적발표 · IPO/상장 · 보호예수 · 공시 이벤트는 배지로 표시", "이벤트 전 기대감과 이벤트 후 재료 소멸을 분리"]} />
+            <InfoBox title="매크로 리스크" lines={["FOMC · CPI · PPI · 고용지표 발표일에는 신규 진입 기준을 보수적으로 조정", "발표 전 대기, 발표 후 방향 확인 규칙 반영"]} />
+          </div>
         </Section>
 
         <Section title="오늘 뉴스 요약">
@@ -1194,15 +1372,80 @@ export default function Home() {
     );
   }
 
+  function renderTimingLane(title: string, bucket: TimingBucket, items: VirtualPortfolioResponse["items"], description: string) {
+    return (
+      <div className="rounded-2xl border border-line bg-panel/70 p-4 shadow-soft">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-base font-black text-white">{title}</div>
+            <div className="mt-1 text-xs text-muted">{description}</div>
+          </div>
+          <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-black text-accent">{items.length}개</span>
+        </div>
+        <div className="mt-3 space-y-3">
+          {items.length ? items.slice(0, 4).map((item) => renderTimingCandidateCard(item, bucket)) : <EmptyReason text="해당 분류 후보가 없습니다." />}
+        </div>
+      </div>
+    );
+  }
+
+  function renderTimingCandidateCard(item: VirtualPortfolioResponse["items"][number], bucket: TimingBucket) {
+    const security = portfolioItemToSecurity(item, market, strategyMode);
+    const eventBadge = eventMacroBadgeFromText(`${item.name} ${item.symbol} ${item.summary ?? ""} ${item.buyRule ?? ""}`);
+    return (
+      <button
+        key={`${strategyMode}-${bucket}-${item.symbol}`}
+        onClick={() => setSelectedSymbol(security)}
+        className="w-full rounded-xl border border-line bg-ink/40 p-3 text-left transition hover:border-accent/60 hover:bg-accent/5"
+      >
+        <div className="flex flex-wrap gap-1">
+          <Badge text={item.swingGrade || "스윙군 산출 대기"} />
+          <Badge text={STRATEGY_MODE_LABEL[strategyMode]} />
+          <Badge text={timingLabel(bucket)} tone={bucket === "risk" ? "warn" : bucket === "today" ? "good" : "neutral"} />
+          <Badge text={discoveryLabelFromItem(item)} />
+          {eventBadge ? <Badge text={eventBadge} tone="warn" /> : null}
+        </div>
+        <div className="mt-3 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-base font-black text-white">{item.name || item.symbol}</div>
+            <div className="mt-1 text-xs text-muted">{item.symbol} · {item.executionStatus || timingDescription(bucket)}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-black text-white">{item.currentPrice || "현재가 없음"}</div>
+            <div className="mt-1 text-xs text-muted">현재가</div>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+          <PriceMini label="권장 진입가" value={item.entry || "산출 필요"} />
+          <PriceMini label="손절 시 손실" value={item.loss || "산출 필요"} tone="warn" />
+          <PriceMini label="목표 도달 시 이익" value={item.profit || "산출 필요"} tone="good" />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <MiniMetric label="기회 점수" value={`${opportunityScoreFromPortfolio(item)}점`} />
+          <MiniMetric label="진입 점수" value={`${entryScoreFromPortfolio(item, strategyMode)}점`} />
+        </div>
+        <div className="mt-2 rounded-lg bg-white/5 px-3 py-2 text-xs font-bold leading-5 text-slate-200">
+          {timingActionText(bucket, item, strategyMode)} · 유효기간 D+3 · 스윙 검증 D+5
+        </div>
+      </button>
+    );
+  }
+
   function renderTodayCandidateCard(item: Security) {
     const prediction = predictionBySymbol.get(item.symbol) ?? item;
+    const bucket = timingBucketForSecurity(item, strategyMode);
     return (
       <button
         key={item.symbol}
         onClick={() => setSelectedSymbol(item)}
         className="rounded-xl border border-line bg-panel p-4 text-left shadow-soft transition hover:border-accent/60 hover:bg-accent/5"
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-1">
+          <Badge text={item.swingGrade || "스윙군 산출 대기"} />
+          <Badge text={STRATEGY_MODE_LABEL[strategyMode]} />
+          <Badge text={timingLabel(bucket)} tone={bucket === "risk" ? "warn" : bucket === "today" ? "good" : "neutral"} />
+        </div>
+        <div className="mt-3 flex items-start justify-between gap-3">
           <div>
             <div className="text-lg font-black text-white">{item.name || item.symbol}</div>
             <div className="mt-1 text-xs text-muted">{item.symbol}</div>
@@ -1213,7 +1456,7 @@ export default function Home() {
           </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-          <PriceMini label="기준가" value={priceText(item.entryText, item.entry, "기준가")} />
+          <PriceMini label="권장 진입가" value={priceText(item.entryText, item.entry, "진입가")} />
           <PriceMini label="손절가" value={priceText(item.stopText, item.stop, "손절가")} tone="warn" />
           <PriceMini label="목표가" value={priceText(item.targetText, item.target, "목표가")} tone="good" />
         </div>
@@ -1221,10 +1464,15 @@ export default function Home() {
           {predictionLine(prediction)}
         </div>
         <div className="mt-2 rounded-lg bg-white/5 px-3 py-2 text-xs font-bold leading-5 text-slate-200">
-          {tradePlanLine(item, strategyMode)}
+          {timingActionText(bucket, null, strategyMode)} · {tradePlanLine(item, strategyMode)}
         </div>
       </button>
     );
+  }
+
+  function renderPortfolioCandidateCard(item: VirtualPortfolioResponse["items"][number]) {
+    const bucket = timingBucketForPortfolioItem(item, strategyMode);
+    return renderTimingCandidateCard(item, bucket);
   }
 
   function priceText(text?: string, value?: number | null, label = "가격") {
@@ -1243,7 +1491,6 @@ export default function Home() {
     const seenTitles = new Set<string>();
     const seenSources = new Map<string, number>();
 
-    // 첫 화면은 시장·섹터·수급 뉴스 중심으로 채우고, 개별 종목 뉴스는 종목 상세로 보냅니다.
     for (const { item, tag } of prepared) {
       if (tag === "개별") continue;
       const titleKey = (item.title || "").replace(/\s+/g, " ").slice(0, 34);
@@ -1257,7 +1504,6 @@ export default function Home() {
       if (picked.length >= limit) return picked;
     }
 
-    // 시장/섹터 뉴스가 부족할 때만 개별 뉴스를 보충합니다.
     for (const { item } of prepared) {
       if (picked.length >= limit) break;
       const titleKey = (item.title || "").replace(/\s+/g, " ").slice(0, 34);
@@ -2110,6 +2356,124 @@ function ModeSelector({ value, onChange }: { value: StrategyMode; onChange: (val
   );
 }
 
+function modeGuideText(mode: StrategyMode) {
+  if (mode === "conservative") return "손실 제한 우선 · 기준가 근처 또는 이하만 진입 · 이벤트 전 급등주는 대기";
+  if (mode === "aggressive") return "상승 여력과 모멘텀 우선 · 돌파 진입 일부 허용 · 손절선 짧게";
+  return "수익 기회와 리스크 균형 · 기준가 ±1% 중심 · 스윙 A/B군 우선";
+}
+
+function groupPortfolioItemsByTiming(items: VirtualPortfolioResponse["items"], mode: StrategyMode): Record<TimingBucket, VirtualPortfolioResponse["items"]> {
+  const groups: Record<TimingBucket, VirtualPortfolioResponse["items"]> = { today: [], wait: [], next: [], risk: [] };
+  for (const item of items ?? []) {
+    groups[timingBucketForPortfolioItem(item, mode)].push(item);
+  }
+  return groups;
+}
+
+function timingBucketForPortfolioItem(item: VirtualPortfolioResponse["items"][number], mode: StrategyMode): TimingBucket {
+  const executionStatus = `${item.executionStatus ?? ""}`;
+  if (executionStatus) {
+    if (executionStatus.includes("체결 가능")) return "today";
+    if (executionStatus.includes("대기")) return "wait";
+    if (executionStatus.includes("기준가") || executionStatus.includes("다음")) return "next";
+    return "risk";
+  }
+  const status = `${item.buyRule ?? ""} ${item.summary ?? ""}`;
+  const current = parseMoneyText(item.currentPrice || "");
+  const entry = parseMoneyText(item.entry || "");
+  const grade = `${item.swingGrade ?? ""}`;
+  if (/매수금지|주의|추격|과열|손절|불가/.test(status)) return "risk";
+  if (/체결 가능|기준가 아래|진입 가능/.test(status)) return "today";
+  if (Number.isFinite(current) && Number.isFinite(entry) && entry > 0) {
+    const gap = (current - entry) / entry;
+    const todayLimit = mode === "conservative" ? 0.003 : mode === "aggressive" ? 0.025 : 0.01;
+    const waitLimit = mode === "conservative" ? 0.025 : mode === "aggressive" ? 0.09 : 0.05;
+    if (gap <= todayLimit) return "today";
+    if (gap <= waitLimit) return "wait";
+    if (gap <= waitLimit * 1.7 && !grade.includes("C")) return "next";
+    return "risk";
+  }
+  if (/대기|눌림|기다/.test(status)) return "wait";
+  if (grade.includes("A")) return mode === "aggressive" ? "today" : "wait";
+  return "next";
+}
+
+function timingBucketForSecurity(item: Security, mode: StrategyMode): TimingBucket {
+  const text = `${item.dataStatus ?? ""} ${item.warning ?? ""} ${item.reason ?? ""} ${item.nextAction ?? ""}`;
+  if (/매수금지|주의|추격|과열/.test(text)) return "risk";
+  if (item.currentPrice && item.entry) {
+    const gap = (item.currentPrice - item.entry) / item.entry;
+    const todayLimit = mode === "conservative" ? 0.003 : mode === "aggressive" ? 0.025 : 0.01;
+    const waitLimit = mode === "conservative" ? 0.025 : mode === "aggressive" ? 0.09 : 0.05;
+    if (gap <= todayLimit) return "today";
+    if (gap <= waitLimit) return "wait";
+    return "next";
+  }
+  return "wait";
+}
+
+function timingLabel(bucket: TimingBucket) {
+  if (bucket === "today") return "오늘 진입 가능";
+  if (bucket === "wait") return "기다릴 후보";
+  if (bucket === "next") return "다음 진입 후보";
+  return "매수금지/주의";
+}
+
+function timingDescription(bucket: TimingBucket) {
+  if (bucket === "today") return "진입 조건 근처";
+  if (bucket === "wait") return "진입가 대기";
+  if (bucket === "next") return "D+1~D+3 재확인";
+  return "신규 진입 제한";
+}
+
+function timingActionText(bucket: TimingBucket, item: VirtualPortfolioResponse["items"][number] | null, mode: StrategyMode) {
+  const rule = item?.buyRule || (mode === "conservative" ? "기준가 근처 또는 이하" : mode === "aggressive" ? "돌파 유지 또는 짧은 손절" : "기준가 ±1%");
+  if (bucket === "today") return `조건 충족 시 진입 · ${rule}`;
+  if (bucket === "wait") return `지금 추격보다 진입가 대기 · ${rule}`;
+  if (bucket === "next") return `오늘은 무리하지 않고 D+3 안에 재확인 · ${rule}`;
+  return "신규 진입 제한 · 보유자는 손절선/익절선만 확인";
+}
+
+function opportunityScoreFromPortfolio(item: VirtualPortfolioResponse["items"][number]) {
+  const grade = `${item.swingGrade ?? ""}`;
+  let score = grade.includes("A") ? 78 : grade.includes("B") ? 66 : 54;
+  const profit = Math.abs(parseMoneyText(item.profit || ""));
+  const loss = Math.abs(parseMoneyText(item.loss || ""));
+  if (profit && loss) score += Math.min(12, (profit / Math.max(loss, 1)) * 3);
+  if (/수급|모멘텀|성장|실적|저평가/i.test(`${item.summary ?? ""} ${item.buyRule ?? ""}`)) score += 6;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function entryScoreFromPortfolio(item: VirtualPortfolioResponse["items"][number], mode: StrategyMode) {
+  const current = parseMoneyText(item.currentPrice || "");
+  const entry = parseMoneyText(item.entry || "");
+  let score = mode === "conservative" ? 55 : mode === "aggressive" ? 62 : 60;
+  if (Number.isFinite(current) && Number.isFinite(entry) && entry > 0) {
+    const gap = Math.abs((current - entry) / entry);
+    score += gap <= 0.01 ? 25 : gap <= 0.03 ? 15 : gap <= 0.07 ? 4 : -15;
+  }
+  if (/체결 가능|기준가 아래/.test(`${item.executionStatus ?? ""}`)) score += 12;
+  if (/추격|과열|주의/.test(`${item.executionStatus ?? ""}`)) score -= 20;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function discoveryLabelFromItem(item: VirtualPortfolioResponse["items"][number]) {
+  const text = `${item.name ?? ""} ${item.symbol ?? ""} ${item.summary ?? ""} ${item.buyRule ?? ""}`;
+  if (/저평가|value|valuation/i.test(text)) return "저평가 성장";
+  if (/실적|EPS|earnings|financial/i.test(text)) return "실적 개선";
+  if (/수급|flow|거래대금|기관|외국인/i.test(text)) return "수급 포착";
+  if (/모멘텀|돌파|테마|AI|우주|반도체|로봇/i.test(text)) return "모멘텀 초기";
+  return "신규 발굴";
+}
+
+function eventMacroBadgeFromText(text: string) {
+  if (/FOMC|CPI|PPI|PCE|고용|금리|파월|환율/i.test(text)) return "매크로 주의";
+  if (/IPO|상장|SpaceX|스페이스X|보호예수|락업/i.test(text)) return "이벤트 주의";
+  if (/실적발표|분기|잠정실적|컨센서스|EPS/i.test(text)) return "실적 이벤트";
+  if (/공시|수주|계약|FDA|임상|증자|CB/i.test(text)) return "공시 이벤트";
+  return "";
+}
+
 function intradayZoneText(item: IntradayItem) {
   const gap = item.divergencePct;
   const stopText = `${item.stopBreakText ?? ""}`;
@@ -2472,6 +2836,59 @@ function SymbolDetailCard({
 }
 
 
+
+function buildModeSummaryFromPortfolio(portfolio: VirtualPortfolioResponse, mode: StrategyMode) {
+  const rules: Record<StrategyMode, string> = {
+    conservative: "스윙 A군·기준가 근처·손절 방어 우선",
+    balanced: "스윙 A/B군·손익비와 체결 가능성 균형",
+    aggressive: "A/B/C군·모멘텀 허용, 단 손절/목표 필수"
+  };
+  const top = portfolio.items?.[0];
+  return {
+    count: portfolio.count ?? portfolio.items?.length ?? 0,
+    topName: top ? `${top.name || top.symbol} (${top.symbol})` : "후보 없음",
+    lossText: portfolio.lossTotal || "-",
+    profitText: portfolio.profitTotal || "-",
+    rule: rules[mode]
+  };
+}
+
+function portfolioItemToSecurity(item: VirtualPortfolioResponse["items"][number], market: Market, mode: StrategyMode = "balanced"): Security {
+  return {
+    symbol: item.symbol,
+    name: item.name,
+    market,
+    marketLabel: market === "kr" ? "국장" : "미장",
+    currentPrice: parseMoneyText(item.currentPrice || ""),
+    currentPriceText: item.currentPrice || "현재가 없음",
+    priceTime: "조건부 가상운용 계획",
+    priceSource: "StockApp bridge",
+    dataStatus: item.executionStatus || "가상 운용 후보",
+    entry: parseMoneyText(item.entry || ""),
+    entryText: item.entry || "예상매수가 산출 필요",
+    swingGrade: item.swingGrade,
+    recommendationModeText: item.modeLabel,
+    recommendationModes: [item.mode || mode],
+    virtualPlans: {
+      [item.mode || mode]: {
+        mode: item.mode || mode,
+        modeLabel: item.modeLabel || STRATEGY_MODE_LABEL[mode],
+        status: item.executionStatus,
+        entryText: item.entry,
+        sharesText: item.shares,
+        investedText: item.invested,
+        lossTotalText: item.loss,
+        profitTotalText: item.profit,
+        accountLossPctText: item.accountLossPct,
+        accountProfitPctText: item.accountProfitPct,
+        buyRule: item.buyRule,
+        holdDays: item.holdDays
+      }
+    },
+    raw: item as unknown as Record<string, unknown>
+  };
+}
+
 function buildModeSummary(items: Security[], mode: StrategyMode, market: Market) {
   const maxPositions = mode === "conservative" ? 3 : mode === "aggressive" ? 8 : 5;
   const picked = pickForMode(items, mode, maxPositions);
@@ -2552,11 +2969,28 @@ function firstDisplayValue(raw: Record<string, unknown>, keys: string[], fallbac
 
 type SimpleValue = string | number | boolean | null | undefined;
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function MiniMetric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "warn" }) {
+  const color = tone === "good" ? "text-good" : tone === "warn" ? "text-warn" : "text-white";
   return (
     <div className="rounded-lg border border-line bg-panel px-4 py-3">
       <div className="text-xs font-bold text-muted">{label}</div>
-      <div className="mt-1 text-lg font-black text-white">{value}</div>
+      <div className={`mt-1 text-lg font-black ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+function Badge({ text, tone = "neutral" }: { text: string; tone?: "neutral" | "good" | "warn" }) {
+  const cls = tone === "good" ? "border-good/30 bg-good/10 text-good" : tone === "warn" ? "border-warn/30 bg-warn/10 text-warn" : "border-line bg-white/5 text-slate-200";
+  return <span className={`rounded-full border px-2 py-1 text-[11px] font-black ${cls}`}>{text}</span>;
+}
+
+function InfoBox({ title, lines }: { title: string; lines: string[] }) {
+  return (
+    <div className="rounded-xl border border-line bg-panel p-4 shadow-soft">
+      <div className="text-sm font-black text-white">{title}</div>
+      <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+        {lines.map((line, idx) => <li key={`${title}-${idx}`}>· {line}</li>)}
+      </ul>
     </div>
   );
 }
