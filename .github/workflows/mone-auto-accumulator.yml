@@ -23,8 +23,6 @@ defaults:
     shell: bash
 
 concurrency:
-  # Prevent overlapping scheduled/manual runs from pushing to main at the same time.
-  # false = queue the next run instead of cancelling the current run mid-process.
   group: mone-auto-accumulator-${{ github.ref }}
   cancel-in-progress: false
 
@@ -47,6 +45,7 @@ jobs:
       KIS_ACCOUNT: ${{ secrets.KIS_ACCOUNT }}
       KIS_CANO: ${{ secrets.KIS_CANO }}
       KIS_ACNT_PRDT_CD: ${{ secrets.KIS_ACNT_PRDT_CD }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -106,16 +105,6 @@ jobs:
             exit 0
           fi
 
-          python - <<'PY'
-          import sys
-          sys.path.insert(0, '.')
-          try:
-              import app.services.final_engine
-          except Exception as exc:
-              print(f"final_engine import failed; skip operational report generation for now: {exc}")
-              raise SystemExit(0)
-          PY
-
           python operational_check.py
           rc=$?
           if [ "$rc" -ne 0 ]; then
@@ -125,7 +114,17 @@ jobs:
 
       - name: Remove local token/cache files before commit
         run: |
-          find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
+          # Keep .env.example because it is a template file, not a real secret file.
+          git restore -- .env.example 2>/dev/null || true
+
+          find . -type f \( \
+            -iname '*token_cache*.json' -o \
+            -name '.env' -o \
+            -name '.env.local' -o \
+            -name '.env.production' -o \
+            -name '.env.development' -o \
+            -name '.env.test' \
+          \) ! -name '.env.example' -print -delete || true
 
       - name: Show generated report status
         run: |
@@ -149,25 +148,64 @@ jobs:
           echo "=== Changed files before staging ==="
           git status --short || true
 
-          # Stage only generated app/report/data files.
-          # Missing folders are ignored so the workflow stays compatible with the current repo structure.
-          git add             reports             data/history             data/calendar             mone-web-app/backend/data             mone-web-app/frontend/public/data             mone-web-app/frontend/public/reports             .gitignore             2>/dev/null || true
+          # Stage each generated path one by one. This avoids a full git-add failure when one optional path is missing.
+          STAGE_PATHS=(
+            "reports"
+            "data/history"
+            "data/calendar"
+            "data/backtest"
+            "data/learning"
+            "data/decision_system"
+            "data/decisions"
+            "data/buy_decisions"
+            "data/sell_decisions"
+            "data/trading_journal"
+            "data/stockapp"
+            "mone-web-app/backend/data"
+            "mone-web-app/frontend/public/data"
+            "mone-web-app/frontend/public/reports"
+            "predictions.csv"
+            "paper_trading_log.csv"
+            "paper_trading_summary.csv"
+            "runner_status_kr.json"
+            "runner_status_us.json"
+          )
 
-          # Never commit local secret/cache files.
-          git reset --             .env             .env.local             "*.env"             "*token_cache*.json"             "**/*token_cache*.json"             2>/dev/null || true
+          for path in "${STAGE_PATHS[@]}"; do
+            if [ -e "$path" ]; then
+              echo "Stage: $path"
+              git add -A "$path"
+            else
+              echo "Skip missing path: $path"
+            fi
+          done
+
+          # Never commit local secret/cache/process files, even if they were included by a broad data path.
+          git diff --cached --name-only -z | while IFS= read -r -d '' file; do
+            case "$file" in
+              .env|.env.local|.env.production|.env.development|.env.test|*token_cache*.json|*.pid|data/streamlit_test_*.pid)
+                echo "Unstage local/cache file: $file"
+                git restore --staged -- "$file" 2>/dev/null || true
+                ;;
+            esac
+          done
+
+          # .env.example should stay in the repository and should not be committed as deleted by the workflow.
+          git restore --staged -- .env.example 2>/dev/null || true
+          git restore -- .env.example 2>/dev/null || true
 
           if git diff --cached --quiet; then
-            echo "No report/history/data changes to commit."
+            echo "No generated report/history/data changes to commit after staging."
+            echo "=== Remaining unstaged changes, if any ==="
+            git status --short || true
             exit 0
           fi
 
           echo "=== Staged files ==="
-          git diff --cached --name-only
+          git diff --cached --name-status
 
           git commit -m "chore: update MONE operational data [skip ci]"
 
-          # Push can occasionally fail on GitHub refs updates or because another run updated main first.
-          # Retry after fetch/rebase so the run can recover without manual Re-run.
           for attempt in 1 2 3 4 5; do
             echo "=== Push attempt ${attempt}/5 ==="
 
