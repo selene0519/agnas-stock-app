@@ -107,14 +107,14 @@ jobs:
           fi
 
           python - <<'PY'
-import sys
-sys.path.insert(0, '.')
-try:
-    import app.services.final_engine
-except Exception as exc:
-    print(f"final_engine import failed; skip operational report generation for now: {exc}")
-    raise SystemExit(0)
-PY
+          import sys
+          sys.path.insert(0, '.')
+          try:
+              import app.services.final_engine
+          except Exception as exc:
+              print(f"final_engine import failed; skip operational report generation for now: {exc}")
+              raise SystemExit(0)
+          PY
 
           python operational_check.py
           rc=$?
