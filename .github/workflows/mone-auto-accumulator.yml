@@ -78,8 +78,11 @@ jobs:
 
 
       - name: Record virtual operation history
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
         run: |
-          python mone-web-app/backend/record_operation_history.py --market all --modes all --source github-actions --backfill-existing
+          python record_operation_history.py --market all --modes all --source github-actions --backfill-existing
 
       - name: Show generated report status
         run: |
