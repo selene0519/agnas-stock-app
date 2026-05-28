@@ -2796,14 +2796,45 @@ function priceLevelStatus(item: Security) {
   return "관망";
 }
 
+function sourceTypeLabel(type?: string) {
+  if (type === "stockapp_snapshot") return "stockapp_snapshot";
+  if (type === "github_actions") return "github_actions";
+  if (type === "stale") return "stale";
+  if (type === "local_fallback") return "local_fallback";
+  return type || "local_fallback";
+}
+
+function SourceBadge({ item }: { item: Security }) {
+  const label = sourceTypeLabel(item.sourceType);
+  const tone =
+    label === "github_actions"
+      ? "border-good/40 bg-good/10 text-good"
+      : label === "stockapp_snapshot"
+        ? "border-accent/40 bg-accent/10 text-accent"
+        : "border-warn/40 bg-warn/10 text-warn";
+  return <span className={`inline-flex max-w-full rounded px-1.5 py-0.5 text-[10px] font-black ${tone}`} title={item.sourceFile || label}>{label}</span>;
+}
+
+function SourceStatus({ item }: { item: Security }) {
+  return (
+    <div className="space-y-1">
+      <SourceBadge item={item} />
+      <div className="text-xs leading-5 text-slate-300">{item.dataStatus || "status unknown"}</div>
+    </div>
+  );
+}
+
 function PriceBlock({ item, compact = false, hideMeta = false }: { item: Security; compact?: boolean; hideMeta?: boolean }) {
   return (
     <div>
       <div className={compact ? "font-bold text-white" : "text-base font-black text-white"}>
         {item.currentPriceText || "현재가 없음"}
       </div>
+      <div className="mt-1">
+        <SourceBadge item={item} />
+      </div>
       {!hideMeta ? (
-        <div className="mt-1 text-xs leading-5 text-muted">
+        <div className="mt-1 space-y-1 text-xs leading-5 text-muted">
           {item.priceTime || "기준시각 없음"} · {item.priceSource || "가격출처 없음"}
         </div>
       ) : null}

@@ -11,6 +11,9 @@ export type Security = {
   currentPriceText: string;
   priceTime: string;
   priceSource: string;
+  sourceType?: "stockapp_snapshot" | "github_actions" | "local_fallback" | "stale" | string;
+  sourceFile?: string;
+  sourceDate?: string;
   dataStatus: string;
   entry?: number | null;
   entryText?: string;

@@ -89,15 +89,15 @@ jobs:
       - name: Generate MONE v3.6.1 operational reports
         working-directory: mone-web-app/backend
         env:
-          PYTHONPATH: ${{ github.workspace }}/mone-web-app/backend
+          PYTHONPATH: .
         run: |
-          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
           set +e
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
           python operational_check.py
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
-            echo "::warning::operational_check.py returned $status; keep workflow running so generated data can still be committed."
+            echo "warning: operational_check.py returned $status; keep workflow running so generated data can still be committed."
           fi
 
       - name: Remove local token/cache files before commit

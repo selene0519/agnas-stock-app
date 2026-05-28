@@ -21,12 +21,33 @@ DATA_DIR = REPO_ROOT / "data"
 HISTORY_DIR = DATA_DIR / "history"
 CACHE_DIR = APP_DIR / "backend" / "cache"
 QUOTE_CACHE_FILE = CACHE_DIR / "quotes_cache.json"
+SOURCE_HANDOFF_FILE = DATA_DIR / "source_handoff.json"
 
 load_dotenv(REPO_ROOT / ".env")
 load_dotenv(APP_DIR / "backend" / ".env")
 
 DEFAULT_VERSION_PRIORITY = ("mone_v36", "stockapp", "v93", "v92", "v91", "v85")
 FALLBACK_POLICY = ("mone_v36", "stockapp", "v93", "v92", "v91", "v85")
+
+DEFAULT_SOURCE_HANDOFF = {
+    "handoff_at_kst": "2026-05-28 16:00:00",
+    "historical_source": "stockapp_local_snapshot",
+    "future_source": "github_actions",
+    "kr_handoff_date": "2026-05-28",
+    "us_handoff_date": "2026-05-28",
+}
+
+SOURCE_TYPE_ALIASES = {
+    "stockapp_local_snapshot": "stockapp_snapshot",
+    "stockapp_snapshot": "stockapp_snapshot",
+    "stockapp": "stockapp_snapshot",
+    "github": "github_actions",
+    "github_actions": "github_actions",
+    "local": "local_fallback",
+    "local_fallback": "local_fallback",
+    "fallback": "local_fallback",
+    "stale": "stale",
+}
 
 RUNNER_STATUS_FILES = {
     "kr": "runner_status_kr.json",
@@ -136,6 +157,117 @@ def _unique_paths(paths: list[Path]) -> list[Path]:
     return out
 
 
+def _canonical_source_type(value: Any) -> str:
+    key = _safe_str(value).lower()
+    allowed = {"stockapp_snapshot", "github_actions", "local_fallback", "stale"}
+    return SOURCE_TYPE_ALIASES.get(key, key if key in allowed else "local_fallback")
+
+
+def source_handoff() -> dict[str, Any]:
+    payload = read_json(SOURCE_HANDOFF_FILE)
+    merged = dict(DEFAULT_SOURCE_HANDOFF)
+    if payload:
+        merged.update({key: value for key, value in payload.items() if value not in (None, "")})
+    merged["historical_source_type"] = _canonical_source_type(merged.get("historical_source"))
+    merged["future_source_type"] = _canonical_source_type(merged.get("future_source"))
+    return merged
+
+
+def _date_key_text(value: Any) -> str:
+    text = _safe_str(value)
+    digits = re.sub(r"\D", "", text)
+    if len(digits) >= 8:
+        return f"{digits[:4]}-{digits[4:6]}-{digits[6:8]}"
+    return text[:10] if len(text) >= 10 else ""
+
+
+def _datetime_key(value: Any) -> datetime | None:
+    text = _safe_str(value)
+    if not text:
+        return None
+    normalized = text.replace("T", " ").replace("/", "-")[:19]
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(normalized[:len(datetime.now().strftime(fmt))], fmt)
+        except Exception:
+            continue
+    return None
+
+
+def preferred_source_type(market: str, request_date: Any = "") -> str:
+    mk = "us" if market == "us" else "kr"
+    handoff = source_handoff()
+    handoff_dt = _datetime_key(handoff.get("handoff_at_kst"))
+    request_dt = _datetime_key(request_date)
+    if request_dt and handoff_dt and len(_safe_str(request_date)) > 10:
+        historical = request_dt <= handoff_dt
+    else:
+        request_key = _date_key_text(request_date) or datetime.now().strftime("%Y-%m-%d")
+        handoff_key = _date_key_text(handoff.get(f"{mk}_handoff_date") or handoff.get("handoff_at_kst"))
+        historical = request_key <= handoff_key if mk == "kr" else request_key < handoff_key
+    return handoff["historical_source_type"] if historical else handoff["future_source_type"]
+
+
+def _source_type_for_label(label: str, market: str = "", request_date: Any = "") -> str:
+    text = _safe_str(label).replace("\\", "/").lower()
+    if not text:
+        return preferred_source_type(market, request_date) if market else "local_fallback"
+    if text.startswith("stockapp://") or "data/stockapp/" in text or "/data/stockapp/" in text or "reports/stockapp_" in text:
+        return "stockapp_snapshot"
+    if text == "predictions.csv" or text.startswith("reports/mone_v36_") or text in {"runner_status_kr.json", "runner_status_us.json"}:
+        return "github_actions"
+    return "local_fallback"
+
+
+def _effective_source_type(source_type: str, preferred: str, fallback: bool = False) -> str:
+    source_type = _canonical_source_type(source_type)
+    preferred = _canonical_source_type(preferred)
+    if source_type == preferred and not fallback:
+        return source_type
+    if preferred == "github_actions" and source_type == "stockapp_snapshot":
+        return "stale"
+    if fallback:
+        return "local_fallback"
+    return source_type
+
+
+def _source_status(source_type: str, existing: str = "") -> str:
+    if source_type == "stale":
+        return "STALE: GitHub Actions result missing; using StockApp snapshot fallback"
+    if source_type == "local_fallback":
+        return "PARTIAL: preferred source missing; using local fallback"
+    return existing
+
+
+def _annotate_source_rows(
+    rows: list[dict[str, Any]],
+    market: str,
+    source: str,
+    request_date: Any = "",
+    fallback: bool = False,
+) -> list[dict[str, Any]]:
+    if not rows:
+        return rows
+    preferred = preferred_source_type(market, request_date)
+    source_type = _source_type_for_label(source, market, request_date)
+    annotated: list[dict[str, Any]] = []
+    for row in rows:
+        merged = dict(row)
+        row_date = _row_source_date(merged) or request_date
+        row_preferred = preferred_source_type(market, row_date) if row_date else preferred
+        effective = _effective_source_type(source_type, row_preferred, fallback)
+        merged["sourceType"] = effective
+        merged.setdefault("sourceFile", source)
+        merged.setdefault("sourceDate", row_date)
+        merged["isFallback"] = effective in {"local_fallback", "stale"}
+        status = _source_status(effective, first_value(merged, DATA_STATUS_ALIASES, ""))
+        if status:
+            merged.setdefault("data_status", status)
+            merged.setdefault("price_data_status", status)
+        annotated.append(merged)
+    return annotated
+
+
 def stockapp_roots() -> list[Path]:
     """기존 StockApp 작업스케줄러 출력 폴더를 MONE의 보조 데이터 소스로 사용합니다."""
     roots: list[Path] = []
@@ -195,14 +327,18 @@ def source_label(path: Path) -> str:
 
 def _runner_status_candidates(market: str) -> list[Path]:
     name = RUNNER_STATUS_FILES.get("us" if market == "us" else "kr", "runner_status_kr.json")
-    candidates = [
+    github_candidates = [
         REPO_ROOT / name,
-        DATA_DIR / "stockapp" / name,
-        REPORT_DIR / f"stockapp_{name}",
         REPORT_DIR / name,
     ]
+    stockapp_candidates = [
+        DATA_DIR / "stockapp" / name,
+        REPORT_DIR / f"stockapp_{name}",
+    ]
     for root in stockapp_roots():
-        candidates.extend([root / name, root / "data" / name, root / "reports" / name])
+        stockapp_candidates.extend([root / name, root / "data" / name, root / "reports" / name])
+    preferred = preferred_source_type(market)
+    candidates = stockapp_candidates + github_candidates if preferred == "stockapp_snapshot" else github_candidates + stockapp_candidates
     return _unique_paths([path for path in candidates if path.exists() and path.stat().st_size > 0])
 
 
@@ -212,7 +348,14 @@ def runner_status(market: str) -> dict[str, Any]:
         payload = read_json(path)
         if payload:
             payload = dict(payload)
-            payload["_sourceFile"] = source_label(path)
+            source = source_label(path)
+            request_date = first_value(payload, ["target_date", "targetDate", "date"], "")
+            preferred = preferred_source_type(market, request_date)
+            source_type = _effective_source_type(_source_type_for_label(source, market, request_date), preferred)
+            payload["_sourceFile"] = source
+            payload["sourceType"] = source_type
+            if source_type in {"local_fallback", "stale"}:
+                payload["dataStatus"] = _source_status(source_type, _safe_str(payload.get("dataStatus", "")))
             return payload
     return {}
 
@@ -1051,28 +1194,48 @@ def _market_matches(row: dict[str, Any], market: str) -> bool:
     return False
 
 
-def read_predictions_csv(market: str | None = None) -> list[dict[str, Any]]:
-    df = read_csv(REPO_ROOT / "predictions.csv")
+def _prediction_file_candidates(preferred: str) -> list[Path]:
+    github_candidates = [REPO_ROOT / "predictions.csv"]
+    stockapp_candidates = [DATA_DIR / "stockapp" / "predictions.csv"]
+    for root in stockapp_roots():
+        stockapp_candidates.extend([root / "predictions.csv", root / "data" / "predictions.csv"])
+    candidates = stockapp_candidates + github_candidates if preferred == "stockapp_snapshot" else github_candidates + stockapp_candidates
+    return _unique_paths([path for path in candidates if path.exists() and path.stat().st_size > 0])
+
+
+def _read_predictions_from_path(path: Path, market: str | None = None) -> list[dict[str, Any]]:
+    df = read_csv(path)
     rows = dataframe_records(df)
     if market is None:
         return rows
     return [row for row in rows if _market_matches(row, market)]
 
 
+def read_predictions_csv(market: str | None = None) -> list[dict[str, Any]]:
+    preferred = preferred_source_type(market or "kr")
+    for path in _prediction_file_candidates(preferred):
+        rows = _read_predictions_from_path(path, market)
+        if rows:
+            return rows
+    return []
+
+
 def read_primary_predictions(market: str) -> tuple[list[dict[str, Any]], str, str]:
-    rows = read_predictions_csv(market)
-    source = "predictions.csv"
     target_date = runner_target_date(market)
-    if target_date:
-        target_key = _normalize_date_text(target_date)
-        matched = [row for row in rows if _normalize_date_text(first_value(row, ["target_date", "targetDate", "actual_date", "data_date"], "")) == target_key]
-        rows = matched
-    for row in rows:
-        row.setdefault("sourceType", "github")
-        row.setdefault("sourceFile", source)
-        row.setdefault("sourceDate", _row_source_date(row) or target_date)
-        row.setdefault("isFallback", False)
-    return rows, source, target_date
+    preferred = preferred_source_type(market, target_date)
+    for path in _prediction_file_candidates(preferred):
+        source = source_label(path)
+        rows = _read_predictions_from_path(path, market)
+        if target_date:
+            target_key = _normalize_date_text(target_date)
+            matched = [row for row in rows if _normalize_date_text(first_value(row, ["target_date", "targetDate", "actual_date", "data_date"], "")) == target_key]
+            rows = matched
+        if not rows:
+            continue
+        fallback = _source_type_for_label(source, market, target_date) != preferred
+        rows = _annotate_source_rows(rows, market, source, target_date, fallback=fallback)
+        return rows, source, target_date
+    return [], "", target_date
 
 
 def _latest_records_by_symbol(rows: list[dict[str, Any]], market: str) -> dict[str, dict[str, Any]]:
@@ -1200,10 +1363,11 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
     price_source = f"OHLCV 종가{f' · {ohlc_source}' if ohlc_source else ''}" if ohlc_close is not None else first_value(row_dict, PRICE_SOURCE_ALIASES, "가격출처 없음")
     data_status = "OHLCV 종가 반영" if ohlc_close is not None else first_value(row_dict, DATA_STATUS_ALIASES, "상태 없음")
     runner_date = runner_target_date(market)
-    source_type = first_value(row_dict, ["sourceType"], "local")
     source_file = first_value(row_dict, ["sourceFile", "source_file"], "")
     source_date = first_value(row_dict, ["sourceDate"], _row_source_date(row_dict))
-    is_fallback = bool(row_dict.get("isFallback")) or source_type not in {"github", "kis"}
+    source_type = _canonical_source_type(first_value(row_dict, ["sourceType"], _source_type_for_label(source_file, market, source_date)))
+    source_type = _effective_source_type(source_type, preferred_source_type(market, source_date or runner_date), bool(row_dict.get("isFallback")))
+    is_fallback = bool(row_dict.get("isFallback")) or source_type in {"local_fallback", "stale"}
     source_text = first_value(row_dict, ["priceSourceType", "quote_source", "current_price_source", "priceSource"], "").lower()
     kis_price = first_number(row_dict, ["current_price", "last_price"]) if "kis" in source_text else None
     price_source_type = "local"
@@ -1221,7 +1385,7 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
         price_source_file = ohlc_source
         price_source_date = price_time
         price_source = f"OHLCV close{f' · {ohlc_source}' if ohlc_source else ''}"
-    data_status = _price_status(source_date, price_source_date, runner_date, is_fallback)
+    data_status = _source_status(source_type, _price_status(source_date, price_source_date, runner_date, is_fallback))
     entry = first_number(row_dict, ENTRY_ALIASES)
     stop = first_number(row_dict, STOP_ALIASES)
     target = first_number(row_dict, TARGET_ALIASES)
@@ -1585,6 +1749,7 @@ def status_files() -> dict[str, Any]:
         })
     return {
         "repoRoot": str(REPO_ROOT),
+        "sourceHandoff": source_handoff(),
         "stockAppBridge": stockapp_bridge_status(),
         "fallbackPolicy": list(FALLBACK_POLICY),
         "defaultVersionPriority": list(DEFAULT_VERSION_PRIORITY),
@@ -1738,10 +1903,12 @@ def symbols(market: str) -> dict[str, Any]:
     rows = dataframe_records(df)
     if rows:
         rows = enrich_records_with_version_fallback("symbol_snapshot", market, rows)
+        rows = _annotate_source_rows(rows, market, source, runner_target_date(market), fallback=_source_type_for_label(source, market, runner_target_date(market)) != preferred_source_type(market, runner_target_date(market)))
     else:
         df = read_csv(REPO_ROOT / f"watchlist_{market}_growth.csv")
         source = f"watchlist_{market}_growth.csv" if not df.empty else ""
         rows = dataframe_records(df)
+        rows = _annotate_source_rows(rows, market, source, runner_target_date(market), fallback=True)
     normalized = [normalize_security_row(apply_quote_cache(row, market), market) for row in rows]
     return {"market": market, "count": len(normalized), "source": source, "items": normalized}
 
@@ -1776,12 +1943,18 @@ def candidate_rows(market: str, kind: str) -> dict[str, Any]:
     allowed = {"action", "pullback", "flow", "risk"}
     if kind not in allowed:
         kind = "action"
+    target_date = runner_target_date(market)
+    preferred = preferred_source_type(market, target_date)
 
     # v3.5.11: If today's StockApp raw order plan exists, treat it as raw data
     # and classify it with MONE's own rules. Do not trust StockApp's final
     # "관망/제외/매수금지" labels as the MONE timing bucket.
-    raw_rows, raw_source = _stockapp_raw_to_candidate_rows(market, kind)
+    raw_rows: list[dict[str, Any]] = []
+    raw_source = ""
+    if preferred == "stockapp_snapshot":
+        raw_rows, raw_source = _stockapp_raw_to_candidate_rows(market, kind)
     if raw_source:
+        raw_rows = _annotate_source_rows(raw_rows, market, raw_source, target_date)
         return {
             "market": market,
             "type": kind,
@@ -1794,6 +1967,8 @@ def candidate_rows(market: str, kind: str) -> dict[str, Any]:
     # Fallback: existing MONE reports/v93/v92 files.
     df, source = read_report(f"{kind}_cards", market)
     rows = enrich_records_with_version_fallback(f"{kind}_cards", market, dataframe_records(df))
+    fallback = _source_type_for_label(source, market, target_date) != preferred
+    rows = _annotate_source_rows(rows, market, source, target_date, fallback=fallback)
     normalized_rows = []
     for row in rows:
         row = apply_quote_cache(row, market)
@@ -1807,20 +1982,35 @@ def candidate_rows(market: str, kind: str) -> dict[str, Any]:
             "policy": "MONE reports fallback",
         })
         normalized_rows.append(normalized)
+    if not normalized_rows and preferred == "github_actions":
+        raw_rows, raw_source = _stockapp_raw_to_candidate_rows(market, kind)
+        if raw_source:
+            raw_rows = _annotate_source_rows(raw_rows, market, raw_source, target_date, fallback=True)
+            return {
+                "market": market,
+                "type": kind,
+                "count": len(raw_rows),
+                "source": raw_source,
+                "policy": "GitHub Actions missing; stale StockApp snapshot fallback",
+                "items": raw_rows,
+            }
     return {"market": market, "type": kind, "count": len(normalized_rows), "source": source, "items": normalized_rows}
 
 
 def positions(market: str) -> dict[str, Any]:
     df, source = read_report("position_cards", market)
     rows = dataframe_records(df)
+    target_date = runner_target_date(market)
     if rows:
         rows = enrich_records_with_version_fallback("position_cards", market, rows)
         rows = enrich_records_from_file(rows, DATA_DIR / f"holdings_{market}.csv", market)
+        rows = _annotate_source_rows(rows, market, source, target_date, fallback=_source_type_for_label(source, market, target_date) != preferred_source_type(market, target_date))
     else:
         fallback = DATA_DIR / f"holdings_{market}.csv"
         df = read_csv(fallback)
         source = fallback.relative_to(REPO_ROOT).as_posix() if not df.empty else ""
         rows = dataframe_records(df)
+        rows = _annotate_source_rows(rows, market, source, target_date, fallback=True)
 
     # Include direct holdings rows that may not yet have a generated position_card report.
     direct_holdings = dataframe_records(read_csv(DATA_DIR / f"holdings_{market}.csv"))
@@ -1828,7 +2018,7 @@ def positions(market: str) -> dict[str, Any]:
     for holding_row in direct_holdings:
         symbol = _row_symbol(holding_row, market)
         if symbol and symbol not in existing_symbols:
-            rows.append(holding_row)
+            rows.extend(_annotate_source_rows([holding_row], market, f"data/holdings_{market}.csv", target_date, fallback=True))
             existing_symbols.add(symbol)
 
     normalized_rows = []
@@ -1891,27 +2081,19 @@ def predictions(market: str) -> dict[str, Any]:
     if not rows:
         df, source = read_report("future_probability", market)
         rows = enrich_records_with_version_fallback("future_probability", market, dataframe_records(df))
-        for row in rows:
-            row.setdefault("sourceType", "local")
-            row.setdefault("sourceFile", source)
-            row.setdefault("sourceDate", _row_source_date(row))
-            row.setdefault("isFallback", True)
+        rows = _annotate_source_rows(rows, market, source, target_date, fallback=True)
     if not rows:
         rows = [dict(item.get("raw", item)) for item in symbols(market)["items"][:30]]
         source = source or "symbols fallback + derived prediction"
-        for row in rows:
-            row.setdefault("sourceType", "local")
-            row.setdefault("sourceFile", source)
-            row.setdefault("sourceDate", _row_source_date(row))
-            row.setdefault("isFallback", True)
+        rows = _annotate_source_rows(rows, market, source, target_date, fallback=True)
     base_map = _combine_symbol_maps(market)
     normalized_rows = []
     for row in rows:
         row = dict(row.get("raw", row)) if isinstance(row, dict) else dict(row)
-        row.setdefault("sourceType", "github" if source == "predictions.csv" else "local")
         row.setdefault("sourceFile", source)
         row.setdefault("sourceDate", _row_source_date(row) or target_date)
-        row.setdefault("isFallback", source != "predictions.csv")
+        row.setdefault("sourceType", _effective_source_type(_source_type_for_label(source, market, row.get("sourceDate")), preferred_source_type(market, row.get("sourceDate")), bool(row.get("isFallback"))))
+        row.setdefault("isFallback", row.get("sourceType") in {"local_fallback", "stale"})
         symbol = _row_symbol(row, market)
         row = {**base_map.get(symbol, {}), **row} if symbol else row
         row = apply_quote_cache(row, market)
@@ -2838,5 +3020,18 @@ def data_source_status() -> dict[str, Any]:
         "target": "MONE 데이터 부족 시 기존 StockApp 작업스케줄러 결과를 fallback으로 사용",
         "examples": [ex for root in roots for ex in root.get("examples", [])][:5],
         "message": bridge.get("message", ""),
+    })
+    handoff = source_handoff()
+    items.append({
+        "key": "source_handoff",
+        "name": "Source handoff",
+        "status": "OK" if SOURCE_HANDOFF_FILE.exists() else "MISSING",
+        "files": 1 if SOURCE_HANDOFF_FILE.exists() else 0,
+        "csvFiles": 0,
+        "rows": 0,
+        "latestUpdatedAt": file_mtime(SOURCE_HANDOFF_FILE),
+        "target": "Before handoff use StockApp snapshot; after handoff use GitHub Actions",
+        "examples": [source_label(SOURCE_HANDOFF_FILE)],
+        "message": f"KR={preferred_source_type('kr', handoff.get('kr_handoff_date'))}, US={preferred_source_type('us', handoff.get('us_handoff_date'))}, handoff_at_kst={handoff.get('handoff_at_kst')}",
     })
     return {"items": items}
