@@ -1,0 +1,616 @@
+{
+  "status": "OK",
+  "version": "v3.6.1-operational-stable",
+  "readinessAverage": 100.0,
+  "readinessLabel": "운영 안정",
+  "blockingIssues": [
+    "차단 이슈 없음"
+  ],
+  "markets": [
+    {
+      "status": "NORMAL",
+      "version": "v3.6.1-operational-stable",
+      "market": "kr",
+      "updatedAt": "2026-05-28 15:49:21",
+      "readinessScore": 100,
+      "readinessLabel": "운영 가능",
+      "warnings": [
+        "핵심 데이터 상태 양호"
+      ],
+      "todayDataSource": "GitHub predictions.csv + KIS/GitHub price",
+      "githubStatus": "NEED_TOKEN",
+      "stockAppBridgeStatus": "NOT_FOUND",
+      "chartData": "OK",
+      "flowData": "OK",
+      "orderbookData": "MISSING",
+      "disclosureData": "OK",
+      "criticalFiles": [
+        {
+          "path": "reports/mone_v36_final_recommendations_kr_balanced_swing.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:29"
+        },
+        {
+          "path": "reports/mone_v36_final_trade_validation_kr_balanced_swing.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:29"
+        },
+        {
+          "path": "reports/mone_v36_final_prediction_validation_kr.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:27"
+        },
+        {
+          "path": "reports/mone_v36_final_macro_events_kr.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:26"
+        },
+        {
+          "path": "reports/mone_v36_final_data_center_kr.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:23"
+        },
+        {
+          "path": "predictions.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.01,
+          "updatedAt": "2026-05-28 15:48:58"
+        }
+      ],
+      "summary": [
+        {
+          "label": "운영 준비도",
+          "value": "100점 · 운영 가능",
+          "note": "핵심 파일/차트/공시/GitHub/StockApp 상태 종합"
+        },
+        {
+          "label": "오늘 데이터 출처",
+          "value": "MONE v3.6 final 우선 · StockApp fallback",
+          "note": "StockApp 판단은 원본으로만 보존"
+        },
+        {
+          "label": "마지막 업데이트",
+          "value": "2026-05-28 15:49:21",
+          "note": "reports/data 기준"
+        },
+        {
+          "label": "차트 데이터",
+          "value": "OK",
+          "note": "OHLCV/기술지표/체결 검증"
+        },
+        {
+          "label": "공시 데이터",
+          "value": "OK",
+          "note": "DART/SEC CSV 감지"
+        }
+      ],
+      "raw": {
+        "dataSources": [
+          {
+            "key": "chart",
+            "name": "차트/OHLCV",
+            "status": "OK",
+            "files": 3,
+            "csvFiles": 3,
+            "rows": 1696,
+            "latestUpdatedAt": "2026-05-28 15:48:58",
+            "target": "차트·기술분석 > 차트 보기",
+            "examples": [
+              "data/portfolio/position_daily_snapshot.csv",
+              "data/portfolio/portfolio_daily_nav.csv",
+              "data/market/benchmark_daily.csv"
+            ],
+            "message": "표시 가능한 CSV 행이 감지됨"
+          },
+          {
+            "key": "flow",
+            "name": "수급/거래대금",
+            "status": "OK",
+            "files": 46,
+            "csvFiles": 46,
+            "rows": 45,
+            "latestUpdatedAt": "2026-05-28 15:49:21",
+            "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
+            "examples": [
+              "reports/v92_flow_cards_us.csv",
+              "reports/v92_flow_cards_kr.csv",
+              "reports/v92_flow_source_diagnosis_us.csv",
+              "reports/v92_flow_source_diagnosis_kr.csv",
+              "reports/v92_master_investors_us.csv"
+            ],
+            "message": "표시 가능한 CSV 행이 감지됨"
+          },
+          {
+            "key": "orderbook",
+            "name": "호가/체결",
+            "status": "MISSING",
+            "files": 0,
+            "csvFiles": 0,
+            "rows": 0,
+            "latestUpdatedAt": "",
+            "target": "장중 체크 / 오늘 매수 검토",
+            "examples": [],
+            "message": "API 키/워크플로가 있어도 저장된 CSV 행이 없으면 앱에 표시할 데이터가 없습니다. 공시는 관리/공시 화면에서 수집을 실행하세요."
+          },
+          {
+            "key": "disclosure",
+            "name": "공시",
+            "status": "OK",
+            "files": 2,
+            "csvFiles": 2,
+            "rows": 180,
+            "latestUpdatedAt": "2026-05-28 15:49:32",
+            "target": "뉴스·기업분석 > 공시",
+            "examples": [
+              "data/disclosures/disclosures_us.csv",
+              "data/disclosures/disclosures_kr.csv"
+            ],
+            "message": "표시 가능한 CSV 행이 감지됨"
+          },
+          {
+            "key": "stockapp_bridge",
+            "name": "StockApp 브릿지",
+            "status": "NOT_FOUND",
+            "files": 0,
+            "csvFiles": 0,
+            "rows": 0,
+            "latestUpdatedAt": "",
+            "target": "MONE 데이터 부족 시 기존 StockApp 작업스케줄러 결과를 fallback으로 사용",
+            "examples": [],
+            "message": "StockApp 출력 폴더를 찾지 못했습니다. MONE_STOCKAPP_ROOTS 환경변수로 지정할 수 있습니다."
+          }
+        ],
+        "github": {
+          "status": "NEED_TOKEN",
+          "repo": "selene0519/agnas-stock-app",
+          "message": "private repo이거나 인증이 없어 GitHub Actions를 조회할 수 없습니다. GITHUB_TOKEN 또는 MONE_GITHUB_TOKEN을 .env에 넣으면 연결됩니다.",
+          "workflows": [],
+          "runs": []
+        },
+        "stockapp": {
+          "status": "NOT_FOUND",
+          "message": "StockApp 출력 폴더를 찾지 못했습니다. MONE_STOCKAPP_ROOTS 환경변수로 지정할 수 있습니다.",
+          "roots": [],
+          "envKey": "MONE_STOCKAPP_ROOTS",
+          "optimized": true
+        }
+      }
+    },
+    {
+      "status": "NORMAL",
+      "version": "v3.6.1-operational-stable",
+      "market": "us",
+      "updatedAt": "2026-05-28 15:49:21",
+      "readinessScore": 100,
+      "readinessLabel": "운영 가능",
+      "warnings": [
+        "핵심 데이터 상태 양호"
+      ],
+      "todayDataSource": "GitHub predictions.csv + KIS/GitHub price",
+      "githubStatus": "NEED_TOKEN",
+      "stockAppBridgeStatus": "NOT_FOUND",
+      "chartData": "OK",
+      "flowData": "OK",
+      "orderbookData": "MISSING",
+      "disclosureData": "OK",
+      "criticalFiles": [
+        {
+          "path": "reports/mone_v36_final_recommendations_us_balanced_swing.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:34"
+        },
+        {
+          "path": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:34"
+        },
+        {
+          "path": "reports/mone_v36_final_prediction_validation_us.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:33"
+        },
+        {
+          "path": "reports/mone_v36_final_macro_events_us.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:32"
+        },
+        {
+          "path": "reports/mone_v36_final_data_center_us.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.0,
+          "updatedAt": "2026-05-28 15:49:31"
+        },
+        {
+          "path": "predictions.csv",
+          "exists": true,
+          "status": "OK",
+          "ageHours": 0.01,
+          "updatedAt": "2026-05-28 15:48:58"
+        }
+      ],
+      "summary": [
+        {
+          "label": "운영 준비도",
+          "value": "100점 · 운영 가능",
+          "note": "핵심 파일/차트/공시/GitHub/StockApp 상태 종합"
+        },
+        {
+          "label": "오늘 데이터 출처",
+          "value": "MONE v3.6 final 우선 · StockApp fallback",
+          "note": "StockApp 판단은 원본으로만 보존"
+        },
+        {
+          "label": "마지막 업데이트",
+          "value": "2026-05-28 15:49:21",
+          "note": "reports/data 기준"
+        },
+        {
+          "label": "차트 데이터",
+          "value": "OK",
+          "note": "OHLCV/기술지표/체결 검증"
+        },
+        {
+          "label": "공시 데이터",
+          "value": "OK",
+          "note": "DART/SEC CSV 감지"
+        }
+      ],
+      "raw": {
+        "dataSources": [
+          {
+            "key": "chart",
+            "name": "차트/OHLCV",
+            "status": "OK",
+            "files": 3,
+            "csvFiles": 3,
+            "rows": 1696,
+            "latestUpdatedAt": "2026-05-28 15:48:58",
+            "target": "차트·기술분석 > 차트 보기",
+            "examples": [
+              "data/portfolio/position_daily_snapshot.csv",
+              "data/portfolio/portfolio_daily_nav.csv",
+              "data/market/benchmark_daily.csv"
+            ],
+            "message": "표시 가능한 CSV 행이 감지됨"
+          },
+          {
+            "key": "flow",
+            "name": "수급/거래대금",
+            "status": "OK",
+            "files": 46,
+            "csvFiles": 46,
+            "rows": 45,
+            "latestUpdatedAt": "2026-05-28 15:49:21",
+            "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
+            "examples": [
+              "reports/v92_flow_cards_us.csv",
+              "reports/v92_flow_cards_kr.csv",
+              "reports/v92_flow_source_diagnosis_us.csv",
+              "reports/v92_flow_source_diagnosis_kr.csv",
+              "reports/v92_master_investors_us.csv"
+            ],
+            "message": "표시 가능한 CSV 행이 감지됨"
+          },
+          {
+            "key": "orderbook",
+            "name": "호가/체결",
+            "status": "MISSING",
+            "files": 0,
+            "csvFiles": 0,
+            "rows": 0,
+            "latestUpdatedAt": "",
+            "target": "장중 체크 / 오늘 매수 검토",
+            "examples": [],
+            "message": "API 키/워크플로가 있어도 저장된 CSV 행이 없으면 앱에 표시할 데이터가 없습니다. 공시는 관리/공시 화면에서 수집을 실행하세요."
+          },
+          {
+            "key": "disclosure",
+            "name": "공시",
+            "status": "OK",
+            "files": 2,
+            "csvFiles": 2,
+            "rows": 180,
+            "latestUpdatedAt": "2026-05-28 15:49:32",
+            "target": "뉴스·기업분석 > 공시",
+            "examples": [
+              "data/disclosures/disclosures_us.csv",
+              "data/disclosures/disclosures_kr.csv"
+            ],
+            "message": "표시 가능한 CSV 행이 감지됨"
+          },
+          {
+            "key": "stockapp_bridge",
+            "name": "StockApp 브릿지",
+            "status": "NOT_FOUND",
+            "files": 0,
+            "csvFiles": 0,
+            "rows": 0,
+            "latestUpdatedAt": "",
+            "target": "MONE 데이터 부족 시 기존 StockApp 작업스케줄러 결과를 fallback으로 사용",
+            "examples": [],
+            "message": "StockApp 출력 폴더를 찾지 못했습니다. MONE_STOCKAPP_ROOTS 환경변수로 지정할 수 있습니다."
+          }
+        ],
+        "github": {
+          "status": "NEED_TOKEN",
+          "repo": "selene0519/agnas-stock-app",
+          "message": "private repo이거나 인증이 없어 GitHub Actions를 조회할 수 없습니다. GITHUB_TOKEN 또는 MONE_GITHUB_TOKEN을 .env에 넣으면 연결됩니다.",
+          "workflows": [],
+          "runs": []
+        },
+        "stockapp": {
+          "status": "NOT_FOUND",
+          "message": "StockApp 출력 폴더를 찾지 못했습니다. MONE_STOCKAPP_ROOTS 환경변수로 지정할 수 있습니다.",
+          "roots": [],
+          "envKey": "MONE_STOCKAPP_ROOTS",
+          "optimized": true
+        }
+      }
+    }
+  ],
+  "matrix": [
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "short",
+      "recommendations": 5,
+      "universeCount": 5,
+      "conditionalOrders": 5,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_conservative_short.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_conservative_short.csv",
+      "status": "OK"
+    },
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "swing",
+      "recommendations": 5,
+      "universeCount": 5,
+      "conditionalOrders": 5,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_conservative_swing.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_conservative_swing.csv",
+      "status": "OK"
+    },
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "mid",
+      "recommendations": 5,
+      "universeCount": 5,
+      "conditionalOrders": 5,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_conservative_mid.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_conservative_mid.csv",
+      "status": "OK"
+    },
+    {
+      "market": "kr",
+      "mode": "balanced",
+      "horizon": "short",
+      "recommendations": 8,
+      "universeCount": 8,
+      "conditionalOrders": 8,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_balanced_short.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_balanced_short.csv",
+      "status": "OK"
+    },
+    {
+      "market": "kr",
+      "mode": "balanced",
+      "horizon": "swing",
+      "recommendations": 8,
+      "universeCount": 8,
+      "conditionalOrders": 8,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_balanced_swing.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_balanced_swing.csv",
+      "status": "OK"
+    },
+    {
+      "market": "kr",
+      "mode": "balanced",
+      "horizon": "mid",
+      "recommendations": 8,
+      "universeCount": 8,
+      "conditionalOrders": 8,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_balanced_mid.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_balanced_mid.csv",
+      "status": "OK"
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "short",
+      "recommendations": 12,
+      "universeCount": 12,
+      "conditionalOrders": 12,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_aggressive_short.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_aggressive_short.csv",
+      "status": "OK"
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "swing",
+      "recommendations": 12,
+      "universeCount": 12,
+      "conditionalOrders": 12,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_aggressive_swing.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_aggressive_swing.csv",
+      "status": "OK"
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "recommendations": 12,
+      "universeCount": 12,
+      "conditionalOrders": 12,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_kr_aggressive_mid.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_kr_aggressive_mid.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "short",
+      "recommendations": 5,
+      "universeCount": 5,
+      "conditionalOrders": 5,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_conservative_short.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_conservative_short.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "swing",
+      "recommendations": 5,
+      "universeCount": 5,
+      "conditionalOrders": 5,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_conservative_swing.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_conservative_swing.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "mid",
+      "recommendations": 5,
+      "universeCount": 5,
+      "conditionalOrders": 5,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_conservative_mid.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_conservative_mid.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "short",
+      "recommendations": 8,
+      "universeCount": 8,
+      "conditionalOrders": 8,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_balanced_short.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_balanced_short.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "swing",
+      "recommendations": 8,
+      "universeCount": 8,
+      "conditionalOrders": 8,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_balanced_swing.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "mid",
+      "recommendations": 8,
+      "universeCount": 8,
+      "conditionalOrders": 8,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_balanced_mid.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_balanced_mid.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "short",
+      "recommendations": 12,
+      "universeCount": 12,
+      "conditionalOrders": 12,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_aggressive_short.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_aggressive_short.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "swing",
+      "recommendations": 12,
+      "universeCount": 12,
+      "conditionalOrders": 12,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_aggressive_swing.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_aggressive_swing.csv",
+      "status": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "recommendations": 12,
+      "universeCount": 12,
+      "conditionalOrders": 12,
+      "filledCount": 0,
+      "avgReturn": "",
+      "recommendationReport": "reports/mone_v36_final_recommendations_us_aggressive_mid.csv",
+      "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_aggressive_mid.csv",
+      "status": "OK"
+    }
+  ],
+  "predictionValidatedD1Count": {
+    "kr": 80,
+    "us": 0
+  },
+  "macroEventCount": {
+    "kr": 54,
+    "us": 1
+  },
+  "generatedAt": "2026-05-28 15:49:38"
+}
