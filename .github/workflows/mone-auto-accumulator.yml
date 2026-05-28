@@ -3,6 +3,7 @@ name: MONE Auto Accumulator
 on:
   workflow_dispatch:
   schedule:
+    - cron: "16 8 * * *"  # temp test KST 17:16
     # GitHub Actions cron uses UTC. KST = UTC+9.
     # KR pre-market: KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu
     - cron: "17 23 * * 0-4"
