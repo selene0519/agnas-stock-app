@@ -2,38 +2,18 @@ name: MONE Auto Accumulator
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/mone-auto-accumulator.yml"
   schedule:
-    # KST-based schedules. GitHub Actions supports timezone on schedules.
-    # US close update: KST 06:42 Tue-Sat, with KST 07:12 backup.
-    - cron: "42 6 * * 2-6"
-      timezone: "Asia/Seoul"
-    - cron: "12 7 * * 2-6"
-      timezone: "Asia/Seoul"
-    # KR pre-market: KST 08:17 Mon-Fri, with KST 08:47 backup.
-    - cron: "17 8 * * 1-5"
-      timezone: "Asia/Seoul"
-    - cron: "47 8 * * 1-5"
-      timezone: "Asia/Seoul"
-    # KR close update: KST 16:37 Mon-Fri, with KST 17:07 backup.
-    - cron: "37 16 * * 1-5"
-      timezone: "Asia/Seoul"
-    - cron: "7 17 * * 1-5"
-      timezone: "Asia/Seoul"
-    # US pre-market early: KST 21:50 Mon-Fri, with KST 22:05 backup.
-    - cron: "50 21 * * 1-5"
-      timezone: "Asia/Seoul"
-    - cron: "5 22 * * 1-5"
-      timezone: "Asia/Seoul"
-    # US pre-market confirm: KST 22:50 Mon-Fri, with KST 23:05 backup.
-    - cron: "50 22 * * 1-5"
-      timezone: "Asia/Seoul"
-    - cron: "5 23 * * 1-5"
-      timezone: "Asia/Seoul"
+    # GitHub Actions cron uses UTC. KST = UTC+9.
+    # KR pre-market: KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu
+    - cron: "17 23 * * 0-4"
+    # KR close update: KST 16:37 Mon-Fri = UTC 07:37 Mon-Fri
+    - cron: "37 7 * * 1-5"
+    # US pre-market early: KST 21:50 Mon-Fri = UTC 12:50 Mon-Fri
+    - cron: "50 12 * * 1-5"
+    # US pre-market confirm: KST 22:50 Mon-Fri = UTC 13:50 Mon-Fri
+    - cron: "50 13 * * 1-5"
+    # US close update: KST 06:42 Tue-Sat = UTC 21:42 Mon-Fri
+    - cron: "42 21 * * 1-5"
 
 permissions:
   contents: write
@@ -44,7 +24,7 @@ defaults:
 
 concurrency:
   group: mone-auto-accumulator-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   update:
@@ -65,7 +45,6 @@ jobs:
       KIS_ACCOUNT: ${{ secrets.KIS_ACCOUNT }}
       KIS_CANO: ${{ secrets.KIS_CANO }}
       KIS_ACNT_PRDT_CD: ${{ secrets.KIS_ACNT_PRDT_CD }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -113,38 +92,16 @@ jobs:
           PYTHONPATH: .
         run: |
           set +e
-
-          if [ ! -f operational_check.py ]; then
-            echo "operational_check.py not found; skip operational report generation."
-            exit 0
-          fi
-
-          if [ ! -f app/services/final_engine.py ]; then
-            echo "app/services/final_engine.py not found on main; skip operational report generation for now."
-            echo "This does not stop data update/commit. Merge the backend app files later to enable this report."
-            exit 0
-          fi
-
           python operational_check.py
-          rc=$?
-          if [ "$rc" -ne 0 ]; then
-            echo "operational_check.py failed with exit code $rc; skip this optional report and continue workflow."
-            exit 0
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::operational_check.py returned $status; keep workflow running so generated data can still be committed."
           fi
 
       - name: Remove local token/cache files before commit
         run: |
-          # Keep .env.example because it is a template file, not a real secret file.
-          git restore -- .env.example 2>/dev/null || true
-
-          find . -type f \( \
-            -iname '*token_cache*.json' -o \
-            -name '.env' -o \
-            -name '.env.local' -o \
-            -name '.env.production' -o \
-            -name '.env.development' -o \
-            -name '.env.test' \
-          \) ! -name '.env.example' -print -delete || true
+          find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
 
       - name: Show generated report status
         run: |
@@ -157,94 +114,43 @@ jobs:
 
       - name: Commit generated data
         run: |
-          set -euo pipefail
-
-          BRANCH="${GITHUB_REF_NAME:-main}"
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          echo "Current branch target: ${BRANCH}"
-          echo "=== Changed files before staging ==="
-          git status --short || true
+          # Add only the files the app must read from GitHub raw.
+          # Do NOT add whole reports/ or whole data/ because that brings old logs, backtests, alerts, and temporary files.
+          git add predictions.csv runner_status_kr.json runner_status_us.json 2>/dev/null || true
+          git add paper_trading_log.csv paper_trading_summary.csv 2>/dev/null || true
 
-          # Stage each generated path one by one. This avoids a full git-add failure when one optional path is missing.
-          STAGE_PATHS=(
-            "reports"
-            "data/history"
-            "data/calendar"
-            "data/backtest"
-            "data/learning"
-            "data/decision_system"
-            "data/decisions"
-            "data/buy_decisions"
-            "data/sell_decisions"
-            "data/trading_journal"
-            "data/stockapp"
-            "mone-web-app/backend/data"
-            "mone-web-app/frontend/public/data"
-            "mone-web-app/frontend/public/reports"
-            "predictions.csv"
-            "paper_trading_log.csv"
-            "paper_trading_summary.csv"
-            "runner_status_kr.json"
-            "runner_status_us.json"
-          )
+          # Core candidate / latest run outputs.
+          git add reports/swing_candidates_kr*.csv reports/swing_candidates_us*.csv 2>/dev/null || true
+          git add reports/latest_kr_* reports/latest_us_* 2>/dev/null || true
+          git add reports/stockapp_*.csv reports/stockapp_*.json 2>/dev/null || true
 
-          for path in "${STAGE_PATHS[@]}"; do
-            if [ -e "$path" ]; then
-              echo "Stage: $path"
-              git add -A "$path"
-            else
-              echo "Skip missing path: $path"
-            fi
-          done
+          # MONE v3.6 app-facing reports.
+          git add reports/mone_v36_*.csv reports/mone_v36_*.json 2>/dev/null || true
+          git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true
+          git add reports/api_data_status_center*.csv reports/api_data_status_center*.json 2>/dev/null || true
+          git add reports/gnews_*.csv reports/gnews_*.json reports/news_*.csv reports/news_*.json 2>/dev/null || true
+          git add reports/fundamental_*.csv reports/fundamental_*.json 2>/dev/null || true
+          git add reports/portfolio_risk_summary.json 2>/dev/null || true
 
-          # Never commit local secret/cache/process files, even if they were included by a broad data path.
-          git diff --cached --name-only -z | while IFS= read -r -d '' file; do
-            case "$file" in
-              .env|.env.local|.env.production|.env.development|.env.test|*token_cache*.json|*.pid|data/streamlit_test_*.pid)
-                echo "Unstage local/cache file: $file"
-                git restore --staged -- "$file" 2>/dev/null || true
-                ;;
-            esac
-          done
+          # Data files used by the app as source/cache.
+          git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
 
-          # .env.example should stay in the repository and should not be committed as deleted by the workflow.
-          git restore --staged -- .env.example 2>/dev/null || true
-          git restore -- .env.example 2>/dev/null || true
+          # Keep ignore rules up to date, but never commit secrets/tokens/env files.
+          git add .gitignore 2>/dev/null || true
+          git reset -- .env .env.local "*.env" "*token_cache*.json" "**/*token_cache*.json" 2>/dev/null || true
+          git reset -- data/backtest data/alerts logs backups mone-web-app_backup_before_v3_5 mone-web-app_backup_before_v3_5_2 mone-web-app_backup_before_v3_5_3 mone-web-app_backup_before_v3_6_1_operational 2>/dev/null || true
+          git reset -- 'reports/daily_summary_*' 'reports/summary_*' 'reports/order_plan_*_202*.csv' 'reports/test_*.csv' 2>/dev/null || true
+
+          echo "=== staged files ==="
+          git diff --cached --name-only
 
           if git diff --cached --quiet; then
-            echo "No generated report/history/data changes to commit after staging."
-            echo "=== Remaining unstaged changes, if any ==="
-            git status --short || true
-            exit 0
+            echo "No app data/report changes to commit."
+          else
+            git commit -m "chore: update MONE app data reports [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
-
-          echo "=== Staged files ==="
-          git diff --cached --name-status
-
-          git commit -m "chore: update MONE operational data [skip ci]"
-
-          for attempt in 1 2 3 4 5; do
-            echo "=== Push attempt ${attempt}/5 ==="
-
-            git fetch origin "${BRANCH}"
-
-            if git rebase --autostash "origin/${BRANCH}"; then
-              if git push origin "HEAD:${BRANCH}"; then
-                echo "Push succeeded."
-                exit 0
-              fi
-            else
-              echo "Rebase failed on attempt ${attempt}. Aborting rebase and retrying if possible."
-              git rebase --abort || true
-            fi
-
-            sleep $((attempt * 10))
-          done
-
-          echo "Push failed after 5 attempts."
-          echo "=== Final git status ==="
-          git status --short || true
-          exit 1
