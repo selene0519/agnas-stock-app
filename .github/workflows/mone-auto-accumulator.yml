@@ -89,8 +89,9 @@ jobs:
       - name: Generate MONE v3.6.1 operational reports
         working-directory: mone-web-app/backend
         env:
-          PYTHONPATH: .
+          PYTHONPATH: ${{ github.workspace }}/mone-web-app/backend
         run: |
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
           set +e
           python operational_check.py
           status=$?
