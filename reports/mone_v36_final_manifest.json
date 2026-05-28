@@ -1,6 +1,6 @@
 {
   "version": "v3.6.1-operational-stable",
-  "generatedAt": "2026-05-28 15:49:38",
+  "generatedAt": "2026-05-28 20:46:04",
   "readiness": {
     "status": "OK",
     "version": "v3.6.1-operational-stable",
@@ -11,10 +11,10 @@
     ],
     "markets": [
       {
-        "status": "NORMAL",
+        "status": "PARTIAL",
         "version": "v3.6.1-operational-stable",
         "market": "kr",
-        "updatedAt": "2026-05-28 15:49:21",
+        "updatedAt": "2026-05-28 20:45:44",
         "readinessScore": 100,
         "readinessLabel": "운영 가능",
         "warnings": [
@@ -33,42 +33,42 @@
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:29"
+            "updatedAt": "2026-05-28 20:45:54"
           },
           {
             "path": "reports/mone_v36_final_trade_validation_kr_balanced_swing.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:29"
+            "updatedAt": "2026-05-28 20:45:54"
           },
           {
             "path": "reports/mone_v36_final_prediction_validation_kr.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:27"
+            "updatedAt": "2026-05-28 20:45:51"
           },
           {
             "path": "reports/mone_v36_final_macro_events_kr.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:26"
+            "updatedAt": "2026-05-28 20:45:50"
           },
           {
             "path": "reports/mone_v36_final_data_center_kr.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:23"
+            "updatedAt": "2026-05-28 20:45:47"
           },
           {
             "path": "predictions.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-05-28 15:48:58"
+            "updatedAt": "2026-05-28 20:45:20"
           }
         ],
         "summary": [
@@ -84,7 +84,7 @@
           },
           {
             "label": "마지막 업데이트",
-            "value": "2026-05-28 15:49:21",
+            "value": "2026-05-28 20:45:44",
             "note": "reports/data 기준"
           },
           {
@@ -107,12 +107,12 @@
               "files": 3,
               "csvFiles": 3,
               "rows": 1696,
-              "latestUpdatedAt": "2026-05-28 15:48:58",
+              "latestUpdatedAt": "2026-05-28 20:45:20",
               "target": "차트·기술분석 > 차트 보기",
               "examples": [
                 "data/portfolio/position_daily_snapshot.csv",
-                "data/portfolio/portfolio_daily_nav.csv",
-                "data/market/benchmark_daily.csv"
+                "data/market/benchmark_daily.csv",
+                "data/portfolio/portfolio_daily_nav.csv"
               ],
               "message": "표시 가능한 CSV 행이 감지됨"
             },
@@ -123,7 +123,7 @@
               "files": 46,
               "csvFiles": 46,
               "rows": 45,
-              "latestUpdatedAt": "2026-05-28 15:49:21",
+              "latestUpdatedAt": "2026-05-28 20:45:44",
               "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
               "examples": [
                 "reports/v92_flow_cards_us.csv",
@@ -153,7 +153,7 @@
               "files": 2,
               "csvFiles": 2,
               "rows": 180,
-              "latestUpdatedAt": "2026-05-28 15:49:32",
+              "latestUpdatedAt": "2026-05-28 20:45:58",
               "target": "뉴스·기업분석 > 공시",
               "examples": [
                 "data/disclosures/disclosures_us.csv",
@@ -172,6 +172,20 @@
               "target": "MONE 데이터 부족 시 기존 StockApp 작업스케줄러 결과를 fallback으로 사용",
               "examples": [],
               "message": "StockApp 출력 폴더를 찾지 못했습니다. MONE_STOCKAPP_ROOTS 환경변수로 지정할 수 있습니다."
+            },
+            {
+              "key": "source_handoff",
+              "name": "Source handoff",
+              "status": "MISSING",
+              "files": 0,
+              "csvFiles": 0,
+              "rows": 0,
+              "latestUpdatedAt": "",
+              "target": "Before handoff use StockApp snapshot; after handoff use GitHub Actions",
+              "examples": [
+                "data/source_handoff.json"
+              ],
+              "message": "KR=stockapp_snapshot, US=github_actions, handoff_at_kst=2026-05-28 16:00:00"
             }
           ],
           "github": {
@@ -194,7 +208,7 @@
         "status": "NORMAL",
         "version": "v3.6.1-operational-stable",
         "market": "us",
-        "updatedAt": "2026-05-28 15:49:21",
+        "updatedAt": "2026-05-28 20:45:44",
         "readinessScore": 100,
         "readinessLabel": "운영 가능",
         "warnings": [
@@ -213,42 +227,42 @@
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:34"
+            "updatedAt": "2026-05-28 20:46:00"
           },
           {
             "path": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:34"
+            "updatedAt": "2026-05-28 20:46:00"
           },
           {
             "path": "reports/mone_v36_final_prediction_validation_us.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:33"
+            "updatedAt": "2026-05-28 20:45:58"
           },
           {
             "path": "reports/mone_v36_final_macro_events_us.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:32"
+            "updatedAt": "2026-05-28 20:45:58"
           },
           {
             "path": "reports/mone_v36_final_data_center_us.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.0,
-            "updatedAt": "2026-05-28 15:49:31"
+            "updatedAt": "2026-05-28 20:45:57"
           },
           {
             "path": "predictions.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-05-28 15:48:58"
+            "updatedAt": "2026-05-28 20:45:20"
           }
         ],
         "summary": [
@@ -264,7 +278,7 @@
           },
           {
             "label": "마지막 업데이트",
-            "value": "2026-05-28 15:49:21",
+            "value": "2026-05-28 20:45:44",
             "note": "reports/data 기준"
           },
           {
@@ -287,12 +301,12 @@
               "files": 3,
               "csvFiles": 3,
               "rows": 1696,
-              "latestUpdatedAt": "2026-05-28 15:48:58",
+              "latestUpdatedAt": "2026-05-28 20:45:20",
               "target": "차트·기술분석 > 차트 보기",
               "examples": [
                 "data/portfolio/position_daily_snapshot.csv",
-                "data/portfolio/portfolio_daily_nav.csv",
-                "data/market/benchmark_daily.csv"
+                "data/market/benchmark_daily.csv",
+                "data/portfolio/portfolio_daily_nav.csv"
               ],
               "message": "표시 가능한 CSV 행이 감지됨"
             },
@@ -303,7 +317,7 @@
               "files": 46,
               "csvFiles": 46,
               "rows": 45,
-              "latestUpdatedAt": "2026-05-28 15:49:21",
+              "latestUpdatedAt": "2026-05-28 20:45:44",
               "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
               "examples": [
                 "reports/v92_flow_cards_us.csv",
@@ -333,7 +347,7 @@
               "files": 2,
               "csvFiles": 2,
               "rows": 180,
-              "latestUpdatedAt": "2026-05-28 15:49:32",
+              "latestUpdatedAt": "2026-05-28 20:45:58",
               "target": "뉴스·기업분석 > 공시",
               "examples": [
                 "data/disclosures/disclosures_us.csv",
@@ -352,6 +366,20 @@
               "target": "MONE 데이터 부족 시 기존 StockApp 작업스케줄러 결과를 fallback으로 사용",
               "examples": [],
               "message": "StockApp 출력 폴더를 찾지 못했습니다. MONE_STOCKAPP_ROOTS 환경변수로 지정할 수 있습니다."
+            },
+            {
+              "key": "source_handoff",
+              "name": "Source handoff",
+              "status": "MISSING",
+              "files": 0,
+              "csvFiles": 0,
+              "rows": 0,
+              "latestUpdatedAt": "",
+              "target": "Before handoff use StockApp snapshot; after handoff use GitHub Actions",
+              "examples": [
+                "data/source_handoff.json"
+              ],
+              "message": "KR=stockapp_snapshot, US=github_actions, handoff_at_kst=2026-05-28 16:00:00"
             }
           ],
           "github": {
@@ -612,10 +640,10 @@
       "us": 0
     },
     "macroEventCount": {
-      "kr": 54,
+      "kr": 46,
       "us": 1
     },
-    "generatedAt": "2026-05-28 15:49:38"
+    "generatedAt": "2026-05-28 20:46:04"
   },
   "written": [
     {
@@ -624,7 +652,7 @@
     },
     {
       "path": "reports/mone_v36_final_macro_events_kr.csv",
-      "rows": 54
+      "rows": 46
     },
     {
       "path": "reports/mone_v36_final_prediction_validation_kr.csv",
