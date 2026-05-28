@@ -257,6 +257,13 @@ def _critical_file_status(path: Path, max_age_hours: float | None = None) -> dic
     }
 
 
+def _fresh_report_source(path: Path, max_age_hours: float = 48) -> str:
+    status = _critical_file_status(path, max_age_hours=max_age_hours)
+    if status["status"] == "OK" and data.rows_for(path) > 0:
+        return data.source_label(path)
+    return ""
+
+
 @lru_cache(maxsize=256)
 def _news_context(market: str) -> dict[str, list[dict[str, Any]]]:
     by_symbol: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -290,37 +297,56 @@ def _candidate_universe(market: str) -> tuple[list[dict[str, Any]], list[str]]:
     seen: set[str] = set()
     items: list[dict[str, Any]] = []
     sources: list[str] = []
+    preferred = data.preferred_source_type(market)
     prediction_rows, prediction_source, _ = data.read_primary_predictions(market)
-    if prediction_rows:
-        sources.append(prediction_source)
+
+    def add_prediction_rows() -> None:
+        if not prediction_rows:
+            return
+        if prediction_source and prediction_source not in sources:
+            sources.append(prediction_source)
         for row in prediction_rows:
             sym = _symbol(row, market)
             if not sym:
                 continue
             key = f"{market}|{sym}"
+            if key in seen:
+                continue
             enriched = dict(row)
-            enriched["baseBucket"] = "github_predictions"
-            enriched.setdefault("sourceType", "github")
+            enriched["baseBucket"] = "stockapp_predictions" if enriched.get("sourceType") == "stockapp_snapshot" else "github_predictions"
+            enriched.setdefault("sourceType", "github_actions")
             enriched.setdefault("sourceFile", prediction_source)
             enriched.setdefault("isFallback", False)
             seen.add(key)
             items.append(enriched)
-    for kind in ("action", "pullback", "flow", "risk"):
-        payload = data.candidate_rows(market, kind)
-        src = payload.get("source", "")
-        if src and src not in sources:
-            sources.append(src)
-        for item in payload.get("items", []):
-            sym = _symbol(item, market)
-            if not sym:
-                continue
-            key = f"{market}|{sym}"
-            enriched = dict(item)
-            enriched["baseBucket"] = kind
-            if key in seen:
-                continue
-            seen.add(key)
-            items.append(enriched)
+
+    def add_candidate_rows() -> int:
+        added = 0
+        for kind in ("action", "pullback", "flow", "risk"):
+            payload = data.candidate_rows(market, kind)
+            src = payload.get("source", "")
+            if src and src not in sources:
+                sources.append(src)
+            for item in payload.get("items", []):
+                sym = _symbol(item, market)
+                if not sym:
+                    continue
+                key = f"{market}|{sym}"
+                enriched = dict(item)
+                enriched["baseBucket"] = kind
+                if key in seen:
+                    continue
+                seen.add(key)
+                items.append(enriched)
+                added += 1
+        return added
+
+    if preferred == "stockapp_snapshot":
+        if add_candidate_rows() == 0:
+            add_prediction_rows()
+    else:
+        add_prediction_rows()
+        add_candidate_rows()
     # Add broader symbol snapshot as discovery fallback so the app is not limited to current watch/action cards.
     try:
         symbol_payload = data.symbols(market)
@@ -337,6 +363,109 @@ def _candidate_universe(market: str) -> tuple[list[dict[str, Any]], list[str]]:
     except Exception:
         pass
     return items, sources
+
+
+def _report_source_date(path: Path, rows: list[dict[str, Any]]) -> str:
+    mtime_date = data.file_mtime(path)[:10]
+    row_dates = [
+        data._normalize_date_text(data.first_value(row, ["sourceDate", "target_date", "targetDate", "actual_date", "data_date", "date", "updated_at", "업데이트시각"], ""))
+        for row in rows[:20]
+    ]
+    row_dates = [date[:10] for date in row_dates if len(date) >= 10]
+    return max([mtime_date] + row_dates) if mtime_date or row_dates else ""
+
+
+def _confidence_card_rows(path: Path, market: str) -> list[dict[str, Any]]:
+    rows = data.dataframe_records(data.read_csv(path))
+    if not rows:
+        return []
+    source = data.source_label(path)
+    source_date = _report_source_date(path, rows)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not data._market_matches(row, market):  # type: ignore[attr-defined]
+            continue
+        symbol = data.normalize_symbol(data.first_value(row, ["symbol", "ticker", "종목코드"], ""), market)
+        if not symbol:
+            continue
+        mapped = dict(row)
+        mapped["symbol"] = symbol
+        mapped.setdefault("name", data.first_value(row, ["name", "companyName", "종목명"], symbol))
+        current = data.first_number(row, ["currentPrice", "current_price", "price", "close", "현재가", "last_price"])
+        confidence = data.first_number(row, ["confidence", "confidenceScore", "score", "신뢰도점수"])
+        entry = data.first_number(row, ["entryPrice", "entry_price", "buyPrice"])
+        target = data.first_number(row, ["targetPrice", "target_price"])
+        stop = data.first_number(row, ["stopLoss", "stop_loss"])
+        if current is not None:
+            mapped["current_price"] = current
+        if confidence is not None:
+            mapped["confidenceScore"] = confidence
+            mapped["confidence_score"] = confidence
+            mapped["risk_confidence_score"] = confidence
+        if entry is not None:
+            mapped["entry_price"] = entry
+        if target is not None:
+            mapped["target_price"] = target
+        if stop is not None:
+            mapped["stop_loss"] = stop
+        mapped["reason"] = data.first_value(row, ["reason", "note", "summary", "핵심근거"], "")
+        mapped["nextAction"] = data.first_value(row, ["nextAction", "다음행동"], "")
+        mapped["sourceFile"] = source
+        mapped["sourceType"] = "github_actions"
+        mapped["sourceDate"] = source_date
+        mapped["data_status"] = "NORMAL"
+        mapped["dataStatus"] = "NORMAL"
+        mapped["isFallback"] = False
+        mapped["baseBucket"] = "us_confidence_cards"
+        out.append(mapped)
+    return out
+
+
+def _rows_from_report_path(path: Path, market: str) -> list[dict[str, Any]]:
+    if not path.exists() or path.stat().st_size <= 0 or data.rows_for(path) <= 0:
+        return []
+    source = data.source_label(path)
+    if path.name in {"v93_confidence_cards_us.csv", "v92_confidence_cards_us.csv"}:
+        return _confidence_card_rows(path, market)
+    rows = [row for row in data.dataframe_records(data.read_csv(path)) if data._market_matches(row, market)]  # type: ignore[attr-defined]
+    source_date = _report_source_date(path, rows)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        symbol = data.normalize_symbol(data.first_value(row, data.SYMBOL_ALIASES + ["ticker"], ""), market)
+        if not symbol:
+            continue
+        mapped = dict(row)
+        mapped["symbol"] = symbol
+        mapped.setdefault("sourceFile", source)
+        mapped.setdefault("sourceType", "github_actions")
+        mapped.setdefault("sourceDate", source_date)
+        mapped.setdefault("data_status", "NORMAL")
+        mapped.setdefault("dataStatus", "NORMAL")
+        mapped.setdefault("isFallback", False)
+        mapped.setdefault("baseBucket", "us_report")
+        out.append(mapped)
+    return out
+
+
+def _us_balanced_swing_universe() -> tuple[list[dict[str, Any]], list[str]]:
+    mone_path = data.REPORT_DIR / "mone_v36_final_recommendations_us_balanced_swing.csv"
+    newer_report_paths = [
+        data.REPORT_DIR / "v93_confidence_cards_us.csv",
+        data.REPORT_DIR / "v92_confidence_cards_us.csv",
+        data.REPORT_DIR / "swing_candidates_us.csv",
+    ]
+    newest_report_time = max((data.file_mtime(path) for path in newer_report_paths if path.exists()), default="")
+    paths = []
+    if not newest_report_time or data.file_mtime(mone_path) >= newest_report_time:
+        paths.append(mone_path)
+    paths.extend(newer_report_paths)
+    for path in paths:
+        rows = _rows_from_report_path(path, "us")
+        if rows:
+            return rows, [data.source_label(path)]
+
+    rows, source, _ = data.read_primary_predictions("us")
+    return rows, ([source] if source else [])
 
 
 def _event_badges(item: dict[str, Any], news_rows: list[dict[str, Any]], disclosure_rows: list[dict[str, Any]]) -> tuple[list[str], int, int, str]:
@@ -586,7 +715,10 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
     horizon = horizon if horizon in HORIZONS else "swing"
     news_map = _news_context(market)
     disc_map = _disclosure_context(market)
-    universe, sources = _candidate_universe(market)
+    if market == "us" and mode == "balanced" and horizon == "swing":
+        universe, sources = _us_balanced_swing_universe()
+    else:
+        universe, sources = _candidate_universe(market)
     rows: list[dict[str, Any]] = []
     for item in universe:
         sym = _symbol(item, market)
@@ -942,13 +1074,95 @@ def data_center(market: str = "kr") -> dict[str, Any]:
         data.REPO_ROOT / "predictions.csv",
     ]
     critical = [_critical_file_status(path, max_age_hours=48 if "final" in path.name else 96) for path in critical_paths]
+    missing = [x for x in critical if x["status"] == "MISSING"]
+    stale = [x for x in critical if x["status"] == "STALE"]
     def find_status(key: str) -> str:
         row = next((x for x in status if x.get("key") == key), {})
         return row.get("status", "MISSING")
-    chart_status = find_status("chart")
-    disclosure_status = find_status("disclosure")
-    missing = [x for x in critical if x["status"] == "MISSING"]
-    stale = [x for x in critical if x["status"] == "STALE"]
+    chart_status = "MISSING"
+    try:
+        for item in data.symbols(market).get("items", [])[:30]:
+            sym = data.normalize_symbol(item.get("symbol", ""), market)
+            if sym:
+                chart_df, _ = data._load_ohlcv(sym, market)  # type: ignore[attr-defined]
+                if not chart_df.empty:
+                    chart_status = "OK"
+                    break
+    except Exception:
+        chart_status = find_status("chart")
+    disclosure_payload = data.disclosure_rows(market)
+    disclosure_status = "OK" if disclosure_payload.get("count", 0) else "MISSING"
+    company_payload = data.company_analysis(market)
+    company_status = company_payload.get("status") or ("OK" if company_payload.get("count", 0) else "MISSING")
+    company_quality = company_payload.get("financialCompleteness", {}) if isinstance(company_payload, dict) else {}
+    report_sources: list[str] = []
+    report_rows = 0
+    for name in (
+        "operational_readiness_{market}.csv",
+        "operation_health_{market}.csv",
+        "latest_{market}_performance_summary.csv",
+        "prediction_integrity_status.csv",
+    ):
+        rows, src = data.stockapp_report_rows(market, name)
+        if src:
+            report_sources.append(src)
+            report_rows += len(rows)
+    if market == "us":
+        for path in (
+            data.REPORT_DIR / "v93_confidence_cards_us.csv",
+            data.REPORT_DIR / "v93_operational_dashboard_us.csv",
+            data.REPORT_DIR / "v92_confidence_cards_us.csv",
+            data.REPORT_DIR / "v92_operational_dashboard_us.csv",
+        ):
+            src = _fresh_report_source(path)
+            if src and src not in report_sources:
+                report_sources.append(src)
+                report_rows += data.rows_for(path)
+
+    # Split the old one-word report state into the active report phase.
+    # A report folder can contain rows while the active intraday/close/premarket
+    # data for the current market phase is stale.
+    try:
+        phase = data._market_price_phase(market)  # type: ignore[attr-defined]
+    except Exception:
+        phase = {"phase": "unknown", "label": "가격 기준 확인"}
+    try:
+        premarket_payload = data.premarket_report(market)
+    except Exception:
+        premarket_payload = {"status": "MISSING", "count": 0, "missingReason": "장전 리포트 확인 실패"}
+    try:
+        intraday_payload = data.intraday_report(market)
+    except Exception:
+        intraday_payload = {"status": "MISSING", "count": 0, "missingReason": "장중 리포트 확인 실패"}
+    try:
+        closing_payload = data.closing_report(market)
+        if not closing_payload.get("status"):
+            closing_payload["status"] = "OK" if closing_payload.get("count", 0) else "MISSING"
+    except Exception:
+        closing_payload = {"status": "MISSING", "count": 0, "missingReason": "장마감 리포트 확인 실패"}
+
+    phase_key = str(phase.get("phase", ""))
+    if phase_key.endswith("intraday"):
+        active_report_payload = intraday_payload
+    elif phase_key.endswith("after_close"):
+        active_report_payload = closing_payload
+    else:
+        active_report_payload = premarket_payload
+    report_status = str(active_report_payload.get("status") or "MISSING").upper()
+    if report_status not in {"OK", "STALE", "MISSING", "PARTIAL"}:
+        report_status = "PARTIAL" if active_report_payload.get("count", 0) else "MISSING"
+    latest_automation_run = github.get("latestScheduled") or github.get("latestWorkflowDispatch") or github.get("latestAutomationRun")
+    github_schedule_status = "OK" if github.get("latestScheduled") else "SCHEDULE_MISSING"
+    automation_mode = "github_schedule" if github.get("latestScheduled") else ("external_workflow_dispatch" if github.get("latestWorkflowDispatch") else github.get("automationMode", "unknown"))
+    if latest_automation_run and latest_automation_run.get("conclusion") == "success":
+        automation_status = "OK"
+        automation_label = "자동 실행 정상"
+    elif latest_automation_run:
+        automation_status = "PARTIAL"
+        automation_label = "자동 실행 확인 필요"
+    else:
+        automation_status = "MISSING"
+        automation_label = "자동 실행 기록 없음"
     prediction_payload = data.predictions(market)
     prediction_items = prediction_payload.get("items", [])
     item_statuses = {str(item.get("dataStatus", "")) for item in prediction_items}
@@ -961,11 +1175,11 @@ def data_center(market: str = "kr") -> dict[str, Any]:
     else:
         data_status = "PARTIAL"
     ok_points = 0
-    ok_points += 20 if github.get("status") in {"OK", "NEED_TOKEN", "ERROR"} else 0
+    ok_points += 20 if automation_status == "OK" else 10
     ok_points += 20 if bridge.get("status") in {"OK", "NOT_FOUND"} else 0
     ok_points += 20 if chart_status == "OK" else 0
     ok_points += 15 if disclosure_status == "OK" else 0
-    ok_points += 25 if not missing and not stale else max(0, 25 - len(missing) * 8 - len(stale) * 5)
+    ok_points += 25 if report_status == "OK" else max(0, 25 - len(missing) * 8 - len(stale) * 5)
     readiness = int(data._clamp(ok_points, 0, 100))  # type: ignore[attr-defined]
     if readiness >= 85:
         readiness_label = "운영 가능"
@@ -982,6 +1196,10 @@ def data_center(market: str = "kr") -> dict[str, Any]:
         warnings.append("차트/OHLCV 데이터 부족")
     if disclosure_status != "OK":
         warnings.append("공시 데이터 부족")
+    if company_status != "OK":
+        warnings.append("기업분석 데이터 부족")
+    if automation_status != "OK":
+        warnings.append("자동 실행 기록 확인 필요")
     if not warnings:
         warnings.append("핵심 데이터 상태 양호")
     return {
@@ -992,20 +1210,39 @@ def data_center(market: str = "kr") -> dict[str, Any]:
         "readinessScore": readiness,
         "readinessLabel": readiness_label,
         "warnings": warnings,
-        "todayDataSource": "GitHub predictions.csv + KIS/GitHub price",
+        "todayDataSource": "StockApp snapshot" if data.preferred_source_type(market) == "stockapp_snapshot" else "GitHub Actions",
         "githubStatus": github.get("status", "UNKNOWN"),
+        "githubScheduleStatus": github_schedule_status,
+        "automationStatus": automation_status,
+        "automationLabel": automation_label,
+        "automationMode": automation_mode,
+        "latestAutomationRunAt": (latest_automation_run or {}).get("updated_at") or (latest_automation_run or {}).get("created_at", ""),
+        "latestAutomationEvent": (latest_automation_run or {}).get("event", ""),
+        "latestAutomationConclusion": (latest_automation_run or {}).get("conclusion", ""),
         "stockAppBridgeStatus": bridge.get("status", "NOT_FOUND"),
         "chartData": chart_status,
         "flowData": find_status("flow"),
         "orderbookData": find_status("orderbook"),
         "disclosureData": disclosure_status,
+        "reportData": report_status,
+        "premarketData": premarket_payload.get("status", "MISSING"),
+        "intradayData": intraday_payload.get("status", "MISSING"),
+        "closingData": closing_payload.get("status", "MISSING"),
+        "activeReportPhase": phase.get("phase", "unknown"),
+        "activeReportLabel": phase.get("label", ""),
+        "activeReportMissingReason": active_report_payload.get("missingReason", ""),
+        "companyData": company_status,
+        "companyQuality": company_quality,
         "criticalFiles": critical,
         "summary": [
             {"label": "운영 준비도", "value": f"{readiness}점 · {readiness_label}", "note": "핵심 파일/차트/공시/GitHub/StockApp 상태 종합"},
-            {"label": "오늘 데이터 출처", "value": "MONE v3.6 final 우선 · StockApp fallback", "note": "StockApp 판단은 원본으로만 보존"},
+            {"label": "오늘 데이터 출처", "value": "StockApp snapshot" if data.preferred_source_type(market) == "stockapp_snapshot" else "GitHub Actions", "note": "handoff 기준 source policy 반영"},
+            {"label": "자동 실행 상태", "value": automation_label, "note": f"mode={automation_mode} · event={(latest_automation_run or {}).get('event', '없음')}"},
             {"label": "마지막 업데이트", "value": data.latest_updated_at(), "note": "reports/data 기준"},
             {"label": "차트 데이터", "value": chart_status, "note": "OHLCV/기술지표/체결 검증"},
             {"label": "공시 데이터", "value": disclosure_status, "note": "DART/SEC CSV 감지"},
+            {"label": "리포트 데이터", "value": report_status, "note": f"active={phase.get('phase', 'unknown')} · pre={premarket_payload.get('status', 'MISSING')} · intra={intraday_payload.get('status', 'MISSING')} · close={closing_payload.get('status', 'MISSING')}"},
+            {"label": "기업분석 데이터", "value": company_status, "note": company_quality.get("note") or "필요 파일: kr_financial_metrics/kr_market_cap 또는 SEC/US financial"},
         ],
         "raw": {"dataSources": status, "github": github, "stockapp": bridge},
     }
@@ -1029,6 +1266,216 @@ def discovery(market: str = "kr", mode: str = "balanced", horizon: str = "swing"
     items = [{"bucket": k, "count": len(v), "items": v[:12]} for k, v in sorted(buckets.items(), key=lambda kv: len(kv[1]), reverse=True)]
     return {"status": "OK", "market": market, "mode": mode, "horizon": horizon, "count": sum(x["count"] for x in items), "items": items}
 
+
+
+
+def _admin_records_from_recommendations(market: str, limit: int = 250) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for mode in MODES:
+        for horizon in HORIZONS:
+            rec = final_recommendations(market, mode, horizon, limit=80)
+            for item in rec.get("items", []):
+                rows.append({
+                    "date": item.get("sourceDate") or item.get("priceSourceDate") or rec.get("generatedAt") or "",
+                    "market": market,
+                    "mode": MODE_LABELS.get(mode, mode),
+                    "horizon": HORIZON_LABELS.get(horizon, horizon),
+                    "symbol": item.get("symbol"),
+                    "name": item.get("name"),
+                    "decision": item.get("decisionBucket") or item.get("newEntryDecision") or item.get("buyTiming"),
+                    "price": item.get("currentPriceText"),
+                    "priceStatus": item.get("priceDataStatus"),
+                    "sourceFile": item.get("sourceFile"),
+                    "dataStatus": item.get("dataStatus"),
+                })
+    return rows[:limit]
+
+
+def admin_prediction_history(market: str | None = None, limit: int = 250) -> dict[str, Any]:
+    markets = [market] if market in MARKETS else list(MARKETS)
+    rows: list[dict[str, Any]] = []
+    sources: list[str] = []
+    for mk in markets:
+        rec_rows = _admin_records_from_recommendations(mk, limit=limit)
+        rows.extend(rec_rows)
+        for row in rec_rows:
+            src = _as_text(row.get("sourceFile"))
+            if src and src not in sources:
+                sources.append(src)
+    rows = sorted(rows, key=lambda r: str(r.get("date", "")), reverse=True)[:limit]
+    return {"status": "OK" if rows else "NO_DATA", "market": market or "all", "count": len(rows), "source": " · ".join(sources[:5]) or "final recommendations", "items": rows}
+
+
+def admin_outcome_history(market: str | None = None, limit: int = 250) -> dict[str, Any]:
+    markets = [market] if market in MARKETS else list(MARKETS)
+    rows: list[dict[str, Any]] = []
+    sources: list[str] = []
+    for mk in markets:
+        for mode in ("balanced",):
+            for horizon in ("swing", "short", "mid"):
+                trade = trade_validation(mk, mode, horizon)
+                if trade.get("source") and trade.get("source") not in sources:
+                    sources.append(str(trade.get("source")))
+                for item in trade.get("items", [])[:80]:
+                    rows.append({
+                        "date": item.get("ohlcvDate") or item.get("sourceDate") or "",
+                        "market": mk,
+                        "mode": MODE_LABELS.get(mode, mode),
+                        "horizon": HORIZON_LABELS.get(horizon, horizon),
+                        "symbol": item.get("symbol"),
+                        "name": item.get("name"),
+                        "result": item.get("executionStatus"),
+                        "exitStatus": item.get("exitStatus"),
+                        "pnlText": item.get("pnlText"),
+                        "reason": item.get("executionReason"),
+                        "ohlcvSource": item.get("ohlcvSource"),
+                    })
+    rows = sorted(rows, key=lambda r: str(r.get("date", "")), reverse=True)[:limit]
+    return {"status": "OK" if rows else "NO_DATA", "market": market or "all", "count": len(rows), "source": " · ".join(sources[:5]) or "trade validation", "items": rows}
+
+
+def admin_prediction_insights(market: str = "kr") -> dict[str, Any]:
+    market = "us" if str(market).lower() == "us" else "kr"
+    pred_history = admin_prediction_history(market, limit=250)
+    outcomes = admin_outcome_history(market, limit=250)
+    pred_validation = prediction_validation(market, limit=250)
+    validation_rows = pred_validation.get("items", [])
+    outcome_rows = outcomes.get("items", [])
+    success = 0
+    fail = 0
+    neutral = 0
+    failures: list[dict[str, Any]] = []
+    by_symbol: dict[str, dict[str, Any]] = {}
+    by_period: dict[str, dict[str, Any]] = {}
+
+    def mark(symbol: str, ok: bool | None, period: str, row: dict[str, Any]) -> None:
+        nonlocal success, fail, neutral
+        if ok is True:
+            success += 1
+        elif ok is False:
+            fail += 1
+            failures.append({
+                "symbol": symbol,
+                "name": row.get("name", ""),
+                "period": period,
+                "reason": row.get("reason") or row.get("result") or row.get("predictionResult") or "검증 불일치",
+                "source": row.get("ohlcvSource") or row.get("source") or "",
+            })
+        else:
+            neutral += 1
+        bucket = by_symbol.setdefault(symbol or "UNKNOWN", {"symbol": symbol or "UNKNOWN", "success": 0, "fail": 0, "neutral": 0})
+        pb = by_period.setdefault(period, {"period": period, "success": 0, "fail": 0, "neutral": 0})
+        key = "success" if ok is True else "fail" if ok is False else "neutral"
+        bucket[key] += 1
+        pb[key] += 1
+
+    for row in validation_rows:
+        symbol = _as_text(row.get("symbol"))
+        for period in ("D+1", "D+5", "D+20"):
+            payload = row.get(period, {}) if isinstance(row.get(period), dict) else {}
+            status_text = _as_text(payload.get("status") or payload.get("direction") or row.get("predictionResult"))
+            if "성공" in status_text or "hit" in status_text.lower():
+                mark(symbol, True, period, row)
+            elif "실패" in status_text or "miss" in status_text.lower() or "불일치" in status_text:
+                mark(symbol, False, period, row)
+            else:
+                mark(symbol, None, period, row)
+    if not validation_rows:
+        for row in outcome_rows:
+            text = f"{row.get('result','')} {row.get('exitStatus','')} {row.get('reason','')}"
+            ok = True if any(word in text for word in ("체결", "목표", "이익", "성공")) else False if any(word in text for word in ("손절", "불일치", "실패")) else None
+            mark(_as_text(row.get("symbol")), ok, _as_text(row.get("horizon") or "검증"), row)
+    total_checked = success + fail
+    success_rate = f"{success / total_checked * 100:.1f}%" if total_checked else "검증 데이터 부족"
+    coverage = f"{len(validation_rows) or len(outcome_rows)}/{pred_history.get('count', 0)}" if pred_history.get("count", 0) else "검증 데이터 부족"
+    corrections = []
+    if fail:
+        corrections.append({"항목": "진입 기준", "제안": "실패/불일치 종목은 진입 점수 기준 상향", "근거": f"실패 {fail}건"})
+    if neutral > success + fail:
+        corrections.append({"항목": "검증 데이터", "제안": "장마감 OHLC/actual_close 연결 우선", "근거": f"중립/대기 {neutral}건"})
+    diagnostics = [
+        {"항목": "예측 source", "값": pred_history.get("source", "")},
+        {"항목": "결과 source", "값": outcomes.get("source", "")},
+        {"항목": "검증 기준", "값": "final recommendations + trade validation + OHLCV/actual close"},
+    ]
+    return {
+        "market": market,
+        "status": "OK" if (validation_rows or outcome_rows) else "NO_DATA",
+        "summary": {
+            "predictionRows": pred_history.get("count", 0),
+            "historyRows": pred_history.get("count", 0),
+            "outcomeRows": outcomes.get("count", 0),
+            "validationRows": len(validation_rows),
+            "success": success,
+            "fail": fail,
+            "neutral": neutral,
+            "successRate": success_rate,
+            "coverage": coverage,
+        },
+        "diagnostics": diagnostics,
+        "bySymbol": list(by_symbol.values())[:120],
+        "byPeriod": list(by_period.values()),
+        "failures": failures[:120],
+        "corrections": corrections,
+        "sources": [pred_history.get("source", ""), outcomes.get("source", ""), pred_validation.get("source", "")],
+    }
+
+
+def admin_backtest(market: str = "kr") -> dict[str, Any]:
+    market = "us" if str(market).lower() == "us" else "kr"
+    items: list[dict[str, Any]] = []
+    recent_trades: list[dict[str, Any]] = []
+    recent_outcomes: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for mode in MODES:
+        trade = trade_validation(market, mode, "swing")
+        rows = trade.get("items", [])
+        filled = [r for r in rows if "체결" in _as_text(r.get("executionStatus")) and not r.get("excludedFromReturn")]
+        pnl_values = []
+        for r in filled:
+            m = re.search(r"([+-]?\\d+(?:\\.\\d+)?)%", _as_text(r.get("pnlText")))
+            if m:
+                pnl_values.append(float(m.group(1)))
+        win = sum(1 for v in pnl_values if v > 0)
+        trades = len(pnl_values)
+        total_return = sum(pnl_values)
+        win_rate = f"{win / trades * 100:.1f}%" if trades else "체결 수익률 없음"
+        items.append({
+            "strategy": MODE_LABELS.get(mode, mode),
+            "status": "OK" if rows else "NO_DATA",
+            "totalReturn": f"{total_return:+.2f}%" if trades else "검증 대기",
+            "winRate": win_rate,
+            "mdd": "실거래 누적 전용",
+            "sharpe": "실거래 누적 전용",
+            "trades": str(len(rows)),
+            "recentResult": _as_text(rows[0].get("executionStatus")) if rows else "신호 없음",
+        })
+        recent_trades.extend(rows[:10])
+        recent_outcomes.extend(rows[:10])
+    pred_history = admin_prediction_history(market, 250)
+    outcome_history = admin_outcome_history(market, 250)
+    if not recent_trades:
+        warnings.append("최신 추천/검증 데이터 부족")
+    if any(_as_text(r.get("priceDataStatus")) == "STALE" for r in recent_trades):
+        warnings.append("일부 가격 기준 STALE")
+    return {
+        "status": "OK" if items and any(i.get("status") == "OK" for i in items) else "NO_DATA",
+        "market": market,
+        "count": len(items),
+        "items": items,
+        "warnings": warnings or ["최신 final/trade validation 기준"],
+        "predictionRows": pred_history.get("count", 0),
+        "totalPredictionRows": pred_history.get("count", 0),
+        "outcomeRows": outcome_history.get("count", 0),
+        "recentOutcomes": recent_outcomes[:80],
+        "recentTrades": recent_trades[:80],
+        "diagnostics": [
+            {"항목": "기준", "값": "latest final recommendations + trade validation"},
+            {"항목": "예측 source", "값": pred_history.get("source", "")},
+            {"항목": "결과 source", "값": outcome_history.get("source", "")},
+        ],
+        "ohlcv": {"files": "fallback 포함", "eligibleSymbols": len({r.get("symbol") for r in recent_trades if r.get("symbol")}), "minDaysRequired": 1, "predictionMatchedSymbols": len({r.get("symbol") for r in recent_outcomes if r.get("symbol")})},
+    }
 
 
 

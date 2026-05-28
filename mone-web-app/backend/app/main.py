@@ -353,7 +353,7 @@ def api_report_preview(path: str = Query(..., min_length=1)) -> dict:
 
 @app.get("/api/advanced/backtest")
 def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return advanced.advanced_backtest(_market(market))
+    return final_engine.admin_backtest(_market(market))
 
 
 @app.get("/api/advanced/scanner")
@@ -388,17 +388,17 @@ def api_advanced_correlation(market: str = Query("kr", pattern="^(kr|us)$")) -> 
 
 @app.get("/api/insights/prediction")
 def api_prediction_insights(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return insights.prediction_insights(_market(market))
+    return final_engine.admin_prediction_insights(_market(market))
 
 
 @app.get("/api/history/predictions")
 def api_prediction_history(market: str | None = Query(None, pattern="^(kr|us)$")) -> dict:
-    return data.prediction_history(_market(market) if market else None)
+    return final_engine.admin_prediction_history(_market(market) if market else None)
 
 
 @app.get("/api/history/outcomes")
 def api_outcome_history(market: str | None = Query(None, pattern="^(kr|us)$")) -> dict:
-    return data.outcome_history(_market(market) if market else None)
+    return final_engine.admin_outcome_history(_market(market) if market else None)
 
 
 @app.post("/api/quotes/refresh")

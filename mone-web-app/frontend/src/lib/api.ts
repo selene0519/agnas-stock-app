@@ -11,9 +11,16 @@ export type Security = {
   currentPriceText: string;
   priceTime: string;
   priceSource: string;
+  priceSourceFile?: string;
+  priceSourceDate?: string;
+  priceSourceType?: string;
+  priceDataStatus?: string;
+  priceBasis?: string;
+  priceSession?: string;
   sourceType?: "stockapp_snapshot" | "github_actions" | "local_fallback" | "stale" | string;
   sourceFile?: string;
   sourceDate?: string;
+  isFallback?: boolean;
   dataStatus: string;
   entry?: number | null;
   entryText?: string;
@@ -96,17 +103,20 @@ export type Security = {
 };
 
 export type ApiList<T> = {
+  status?: string;
   market?: Market;
   count: number;
   source?: string;
   sources?: string[];
+  requiredFiles?: string[];
+  missingReason?: string;
   items: T[];
 };
 
 export const VIRTUAL_PORTFOLIO_MODES = ["conservative", "balanced", "aggressive"] as const;
 export type VirtualPortfolioMode = (typeof VIRTUAL_PORTFOLIO_MODES)[number];
 
-export async function getJson<T>(path: string, timeoutMs = 8000): Promise<T> {
+export async function getJson<T>(path: string, timeoutMs = 90000): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
