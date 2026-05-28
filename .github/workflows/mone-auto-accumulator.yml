@@ -2,18 +2,38 @@ name: MONE Auto Accumulator
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/mone-auto-accumulator.yml"
   schedule:
-    # GitHub Actions cron uses UTC. KST = UTC+9.
-    # KR pre-market: KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu
-    - cron: "17 23 * * 0-4"
-    # KR close update: KST 16:37 Mon-Fri = UTC 07:37 Mon-Fri
-    - cron: "37 7 * * 1-5"
-    # US pre-market early: KST 21:50 Mon-Fri = UTC 12:50 Mon-Fri
-    - cron: "50 12 * * 1-5"
-    # US pre-market confirm: KST 22:50 Mon-Fri = UTC 13:50 Mon-Fri
-    - cron: "50 13 * * 1-5"
-    # US close update: KST 06:42 Tue-Sat = UTC 21:42 Mon-Fri
-    - cron: "42 21 * * 1-5"
+    # KST-based schedules. GitHub Actions supports timezone on schedules.
+    # US close update: KST 06:42 Tue-Sat, with KST 07:12 backup.
+    - cron: "42 6 * * 2-6"
+      timezone: "Asia/Seoul"
+    - cron: "12 7 * * 2-6"
+      timezone: "Asia/Seoul"
+    # KR pre-market: KST 08:17 Mon-Fri, with KST 08:47 backup.
+    - cron: "17 8 * * 1-5"
+      timezone: "Asia/Seoul"
+    - cron: "47 8 * * 1-5"
+      timezone: "Asia/Seoul"
+    # KR close update: KST 16:37 Mon-Fri, with KST 17:07 backup.
+    - cron: "37 16 * * 1-5"
+      timezone: "Asia/Seoul"
+    - cron: "7 17 * * 1-5"
+      timezone: "Asia/Seoul"
+    # US pre-market early: KST 21:50 Mon-Fri, with KST 22:05 backup.
+    - cron: "50 21 * * 1-5"
+      timezone: "Asia/Seoul"
+    - cron: "5 22 * * 1-5"
+      timezone: "Asia/Seoul"
+    # US pre-market confirm: KST 22:50 Mon-Fri, with KST 23:05 backup.
+    - cron: "50 22 * * 1-5"
+      timezone: "Asia/Seoul"
+    - cron: "5 23 * * 1-5"
+      timezone: "Asia/Seoul"
 
 permissions:
   contents: write
