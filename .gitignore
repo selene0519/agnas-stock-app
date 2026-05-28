@@ -1,19 +1,20 @@
+# secrets / tokens
 .env
+.env.*
 *.env
-.venv/
+*token_cache*.json
+kis_token_cache*.json
+data/kis_token_cache*.json
+reports/kis_token_cache*.json
+**/kis_token_cache*.json
+**/*token_cache*.json
+
+# local/runtime
 __pycache__/
 *.pyc
-.pytest_cache/
+node_modules/
+.next/
 logs/
 backups/
+.cache/
 .DS_Store
-
-# local backup folders
-mone-web-app_backup_before_*/
-restore_from_backup_before_*/
-*backup_before*/
-
-# local backup folders
-mone-web-app_backup_before_*/
-restore_from_backup_before_*/
-*backup_before*/

@@ -23,10 +23,8 @@ defaults:
     shell: bash
 
 concurrency:
-  # Prevent overlapping scheduled/manual runs from pushing to main at the same time.
-  # false = queue the next run instead of cancelling the current run mid-process.
   group: mone-auto-accumulator-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   update:
@@ -110,55 +108,14 @@ jobs:
 
       - name: Commit generated data
         run: |
-          set -euo pipefail
-
-          BRANCH="${GITHUB_REF_NAME:-main}"
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          echo "Current branch target: ${BRANCH}"
-          echo "=== Changed files before staging ==="
-          git status --short || true
-
-          # Stage only generated app/report/data files.
-          # Missing folders are ignored so the workflow stays compatible with the current repo structure.
-          git add             reports             data/history             data/calendar             mone-web-app/backend/data             mone-web-app/frontend/public/data             mone-web-app/frontend/public/reports             .gitignore             2>/dev/null || true
-
-          # Never commit local secret/cache files.
-          git reset --             .env             .env.local             "*.env"             "*token_cache*.json"             "**/*token_cache*.json"             2>/dev/null || true
-
+          git add reports data/history data/calendar .gitignore 2>/dev/null || true
+          git reset -- .env .env.local "*.env" "*token_cache*.json" "**/*token_cache*.json" 2>/dev/null || true
           if git diff --cached --quiet; then
-            echo "No report/history/data changes to commit."
-            exit 0
+            echo "No report/history changes to commit."
+          else
+            git commit -m "chore: update MONE v3.6.1 operational reports [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
-
-          echo "=== Staged files ==="
-          git diff --cached --name-only
-
-          git commit -m "chore: update MONE operational data [skip ci]"
-
-          # Push can occasionally fail on GitHub refs updates or because another run updated main first.
-          # Retry after fetch/rebase so the run can recover without manual Re-run.
-          for attempt in 1 2 3 4 5; do
-            echo "=== Push attempt ${attempt}/5 ==="
-
-            git fetch origin "${BRANCH}"
-
-            if git rebase --autostash "origin/${BRANCH}"; then
-              if git push origin "HEAD:${BRANCH}"; then
-                echo "Push succeeded."
-                exit 0
-              fi
-            else
-              echo "Rebase failed on attempt ${attempt}. Aborting rebase and retrying if possible."
-              git rebase --abort || true
-            fi
-
-            sleep $((attempt * 10))
-          done
-
-          echo "Push failed after 5 attempts."
-          echo "=== Final git status ==="
-          git status --short || true
-          exit 1

@@ -5,13 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.services import advanced
 from app.services import data_loader as data
+from app.services import final_engine
 from app.services import insights
 from app.services import operation_history
 from app.services import quotes
 from app.services import user_data
 
 
-app = FastAPI(title="MONE Web API", version="0.3.0")
+app = FastAPI(title="MONE Web API", version="3.6.1-operational-stable")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +37,78 @@ def health() -> dict:
     }
 
 
+
+
+
+
+@app.get("/api/final/recommendations")
+def api_final_recommendations(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
+    horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+) -> dict:
+    return final_engine.final_recommendations(_market(market), mode, horizon)
+
+
+@app.get("/api/final/conditional-executions")
+def api_final_conditional_executions(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
+    horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+) -> dict:
+    return final_engine.conditional_execution_summary(_market(market), mode, horizon)
+
+
+@app.get("/api/final/prediction-validation")
+def api_final_prediction_validation(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return final_engine.prediction_validation(_market(market))
+
+
+@app.get("/api/final/trade-validation")
+def api_final_trade_validation(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
+    horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+) -> dict:
+    return final_engine.trade_validation(_market(market), mode, horizon)
+
+
+@app.get("/api/final/data-center")
+def api_final_data_center(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return final_engine.data_center(_market(market))
+
+
+@app.get("/api/final/discovery")
+def api_final_discovery(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
+    horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+) -> dict:
+    return final_engine.discovery(_market(market), mode, horizon)
+
+
+@app.get("/api/final/macro-events")
+def api_final_macro_events(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return final_engine.macro_event_risk(_market(market))
+
+
+@app.get("/api/final/portfolio-risk")
+def api_final_portfolio_risk(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
+    horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+) -> dict:
+    return final_engine.portfolio_risk(_market(market), mode, horizon)
+
+
+@app.post("/api/final/generate-reports")
+def api_final_generate_reports() -> dict:
+    return final_engine.write_final_reports()
+
+
+@app.get("/api/final/operational-readiness")
+def api_final_operational_readiness() -> dict:
+    return final_engine.operational_readiness()
 
 
 @app.get("/api/status")
@@ -67,6 +140,11 @@ def api_status_data_sources() -> dict:
 @app.get("/api/status/github-actions")
 def api_status_github_actions() -> dict:
     return data.github_actions_status()
+
+
+@app.get("/api/status/stockapp-bridge")
+def api_status_stockapp_bridge() -> dict:
+    return data.stockapp_bridge_status()
 
 
 @app.get("/api/market/summary")
@@ -163,9 +241,32 @@ def api_virtual_preview(market: str = Query("kr", pattern="^(kr|us)$"), mode: st
     return data.virtual_operation_preview(_market(market), mode)
 
 
+@app.get("/api/virtual/conditional")
+def api_virtual_conditional(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
+    horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+) -> dict:
+    # v3.6-final: keep the old endpoint path, but return the final conditional execution engine.
+    return final_engine.conditional_execution_summary(_market(market), mode, horizon)
+
+
 @app.get("/api/virtual/portfolio")
 def api_virtual_portfolio(market: str = Query("kr", pattern="^(kr|us)$"), mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$")) -> dict:
     return data.virtual_portfolio_summary(_market(market), mode)
+
+
+@app.get("/api/virtual/portfolios")
+def api_virtual_portfolios(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    mk = _market(market)
+    modes = ["conservative", "balanced", "aggressive"]
+    items = {mode: data.virtual_portfolio_summary(mk, mode) for mode in modes}
+    return {
+        "market": mk,
+        "modes": items,
+        "counts": {mode: items[mode].get("count", 0) for mode in modes},
+        "source": "virtual_portfolio_summary",
+    }
 
 
 @app.get("/api/history/files")

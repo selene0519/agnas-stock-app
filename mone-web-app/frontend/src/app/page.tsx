@@ -133,6 +133,117 @@ type VirtualPortfolioResponse = {
 
 type StrategyMode = "conservative" | "balanced" | "aggressive";
 type TimingBucket = "today" | "wait" | "next" | "risk";
+type DecisionHorizon = "short" | "swing" | "mid";
+
+const HORIZON_LABEL: Record<DecisionHorizon, string> = {
+  short: "단기",
+  swing: "스윙",
+  mid: "중기"
+};
+
+type FinalExecution = {
+  executionStatus?: string;
+  executionReason?: string;
+  filled?: boolean;
+  excludedFromReturn?: boolean;
+  exitStatus?: string;
+  pnlText?: string;
+  dayHigh?: string;
+  dayLow?: string;
+  ohlcvDate?: string;
+  ohlcvSource?: string;
+};
+
+type FinalRecommendationItem = Security & {
+  mode?: StrategyMode;
+  modeLabel?: string;
+  horizon?: DecisionHorizon;
+  horizonLabel?: string;
+  decisionBucket?: string;
+  buyTiming?: string;
+  sellTiming?: string;
+  newEntryDecision?: string;
+  holderDecision?: string;
+  decisionReason?: string;
+  eventBadgesText?: string;
+  eventRiskScore?: number;
+  newsReliabilityScore?: number;
+  surgeLabel?: string;
+  surgeReason?: string;
+  finalRankScore?: number;
+  opportunityScore?: number | string;
+  entryScore?: number | string;
+  riskScore?: number | string;
+  probabilityText?: string;
+  expectedPriceText?: string;
+  executionStatus?: string;
+  exitStatus?: string;
+  pnlText?: string;
+  execution?: FinalExecution;
+};
+
+type FinalRecommendationsResponse = {
+  status?: string;
+  market?: Market;
+  mode?: StrategyMode;
+  modeLabel?: string;
+  horizon?: DecisionHorizon;
+  horizonLabel?: string;
+  count: number;
+  universeCount?: number;
+  rule?: string;
+  sources?: string[];
+  items: FinalRecommendationItem[];
+};
+
+type FinalExecutionSummary = {
+  status?: string;
+  conditionalOrders: number;
+  filledCount: number;
+  unfilledCount: number;
+  filledReturnAvgText?: string;
+  rule?: string;
+  items: FinalRecommendationItem[];
+};
+
+type FinalDataCenter = {
+  status?: string;
+  updatedAt?: string;
+  todayDataSource?: string;
+  githubStatus?: string;
+  stockAppBridgeStatus?: string;
+  chartData?: string;
+  flowData?: string;
+  orderbookData?: string;
+  disclosureData?: string;
+  summary?: { label: string; value: string; note: string }[];
+};
+
+type FinalMacroEvent = {
+  sourceType?: string;
+  symbol?: string;
+  name?: string;
+  date?: string;
+  title?: string;
+  badgeText?: string;
+  riskScore?: number;
+  action?: string;
+};
+
+type FinalMacroEvents = { status?: string; count: number; items: FinalMacroEvent[] };
+
+type FinalPortfolioRisk = {
+  status?: string;
+  candidateCount?: number;
+  filledCount?: number;
+  topSector?: string;
+  marketMix?: string;
+  averageRiskScore?: number;
+  averageEventRiskScore?: number;
+  cashPolicy?: string;
+  warnings?: string[];
+  sectorDistribution?: Record<string, number>;
+};
 
 const STRATEGY_MODE_LABEL: Record<StrategyMode, string> = {
   conservative: "보수",
@@ -186,6 +297,37 @@ function normalizePortfolioMap(source?: Partial<Record<StrategyMode, unknown>> |
     balanced: normalizePortfolioResponse(source?.balanced, "balanced"),
     aggressive: normalizePortfolioResponse(source?.aggressive, "aggressive"),
   };
+}
+
+async function fetchPortfolioMap(market: Market): Promise<Record<StrategyMode, VirtualPortfolioResponse>> {
+  const timeout = new Promise<Record<StrategyMode, VirtualPortfolioResponse>>((resolve) => {
+    window.setTimeout(() => resolve(normalizePortfolioMap()), 12000);
+  });
+  const request = (async () => {
+    const [conservative, balanced, aggressive] = await Promise.all([
+      fetchVirtualPortfolio<unknown>(market, "conservative"),
+      fetchVirtualPortfolio<unknown>(market, "balanced"),
+      fetchVirtualPortfolio<unknown>(market, "aggressive")
+    ]);
+    const normalizedConservative = normalizePortfolioResponse(conservative, "conservative");
+    const normalizedBalanced = normalizePortfolioResponse(balanced, "balanced");
+    const normalizedAggressive = normalizePortfolioResponse(aggressive, "aggressive");
+    console.log("[MONE] raw portfolio api responses", { conservative, balanced, aggressive });
+    console.log("[MONE] normalized portfolios", {
+      conservative: normalizedConservative,
+      balanced: normalizedBalanced,
+      aggressive: normalizedAggressive
+    });
+    return {
+      conservative: normalizedConservative,
+      balanced: normalizedBalanced,
+      aggressive: normalizedAggressive
+    };
+  })();
+  return Promise.race([request, timeout]).catch((err) => {
+    console.warn("[MONE] portfolio API fallback", err);
+    return normalizePortfolioMap();
+  });
 }
 
 type MarketSummary = {
@@ -468,9 +610,9 @@ const buyCandidateTabs = [
 const sourceLabel = (source?: string) => source || "소스 없음";
 
 
-async function safeGetJson<T>(path: string, fallback: T): Promise<T> {
+async function safeGetJson<T>(path: string, fallback: T, timeoutMs = 8000): Promise<T> {
   try {
-    return await getJson<T>(path);
+    return await getJson<T>(path, timeoutMs);
   } catch (err) {
     console.warn(`[MONE] optional API fallback: ${path}`, err);
     return fallback;
@@ -543,6 +685,12 @@ export default function Home() {
   const [virtualPortfolio, setVirtualPortfolio] = useState<VirtualPortfolioResponse>(emptyPortfolio("balanced"));
   const [virtualPortfolios, setVirtualPortfolios] = useState<Record<StrategyMode, VirtualPortfolioResponse>>(normalizePortfolioMap());
   const [strategyMode, setStrategyMode] = useState<StrategyMode>("balanced");
+  const [decisionHorizon, setDecisionHorizon] = useState<DecisionHorizon>("swing");
+  const [finalRecommendations, setFinalRecommendations] = useState<FinalRecommendationsResponse>({ count: 0, items: [] });
+  const [finalExecutions, setFinalExecutions] = useState<FinalExecutionSummary>({ conditionalOrders: 0, filledCount: 0, unfilledCount: 0, items: [] });
+  const [finalDataCenter, setFinalDataCenter] = useState<FinalDataCenter>({ status: "NOT_LOADED" });
+  const [finalMacroEvents, setFinalMacroEvents] = useState<FinalMacroEvents>({ count: 0, items: [] });
+  const [finalPortfolioRisk, setFinalPortfolioRisk] = useState<FinalPortfolioRisk>({ status: "NOT_LOADED", warnings: [] });
   const [query, setQuery] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState<Security | null>(null);
   const [candidateType, setCandidateType] = useState<(typeof candidateTabs)[number][0]>("action");
@@ -594,27 +742,7 @@ export default function Home() {
           safeGetJson<ApiList<NewsItem>>(`/api/news?market=${market}`, { count: 0, items: [] }),
           safeGetJson<ApiList<Security>>(`/api/predictions?market=${market}`, { count: 0, items: [] }),
           safeGetJson<VirtualPreviewResponse>(`/api/virtual/preview?market=${market}&mode=${strategyMode}`, { count: 0, items: [], mode: strategyMode, modeLabel: STRATEGY_MODE_LABEL[strategyMode] }),
-          (async () => {
-            const [conservative, balanced, aggressive] = await Promise.all([
-              fetchVirtualPortfolio<unknown>(market, "conservative"),
-              fetchVirtualPortfolio<unknown>(market, "balanced"),
-              fetchVirtualPortfolio<unknown>(market, "aggressive")
-            ]);
-            console.log("[MONE] RAW conservative portfolio", conservative);
-            console.log("[MONE] RAW balanced portfolio", balanced);
-            console.log("[MONE] RAW aggressive portfolio", aggressive);
-            const normalizedConservative = normalizePortfolioResponse(conservative, "conservative");
-            const normalizedBalanced = normalizePortfolioResponse(balanced, "balanced");
-            const normalizedAggressive = normalizePortfolioResponse(aggressive, "aggressive");
-            console.log("[MONE] NORMALIZED conservative portfolio", normalizedConservative);
-            console.log("[MONE] NORMALIZED balanced portfolio", normalizedBalanced);
-            console.log("[MONE] NORMALIZED aggressive portfolio", normalizedAggressive);
-            return {
-              conservative: normalizedConservative,
-              balanced: normalizedBalanced,
-              aggressive: normalizedAggressive
-            };
-          })()
+          fetchPortfolioMap(market)
         ]);
 
         const candidateData = await Promise.all(
@@ -629,6 +757,7 @@ export default function Home() {
         setPredictions(predictionData);
         setVirtualPreview(virtualPreviewData);
         const portfolios = normalizePortfolioMap(portfolioMapData);
+        console.log("[MONE] rendered mode cards", portfolios);
         setVirtualPortfolios(portfolios);
         setVirtualPortfolio(portfolios[strategyMode] ?? portfolios.balanced);
         setCandidates(Object.fromEntries(candidateTabs.map(([type], idx) => [type, candidateData[idx]])));
@@ -674,14 +803,14 @@ export default function Home() {
           safeGetJson<ApiList<IntradayItem>>(`/api/reports/intraday?market=${market}`, { count: 0, items: [], sources: [] }),
           safeGetJson<ClosingReport>(`/api/reports/closing?market=${market}`, { count: 0, items: [], sources: [], directionHitRate: "검증 데이터 부족", rangeHitRate: "검증 데이터 부족", predictionHistoryCount: 0, outcomeHistoryCount: 0, outcomes: [] }),
           safeGetJson<ReportFilesResponse>("/api/reports/files", { count: 0, fallbackPolicy: [], items: [] }),
-          safeGetJson<BacktestResponse>(`/api/advanced/backtest?market=${market}`, { count: 0, items: [], status: "NO_DATA", warnings: [], predictionRows: 0, outcomeRows: 0, recentOutcomes: [] }),
-          safeGetJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`, { count: 0, items: [] }),
+          safeGetJson<BacktestResponse>(`/api/advanced/backtest?market=${market}`, { count: 0, items: [], status: "NO_DATA", warnings: [], predictionRows: 0, outcomeRows: 0, recentOutcomes: [] }, 20000),
+          safeGetJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`, { count: 0, items: [] }, 20000),
           safeGetJson<ApiList<Security>>(`/api/watchlist?market=${market}`, { count: 0, items: [] }),
           safeGetJson<ApiList<Security>>(`/api/holdings?market=${market}`, { count: 0, items: [] }),
           safeGetJson<CorrelationResponse>(`/api/advanced/correlation?market=${market}`, { status: "NO_DATA", reason: "상관관계 계산 데이터 부족", items: [], matrix: [], sources: [] }),
           safeGetJson<GitHubActionsStatus>("/api/status/github-actions", { status: "NOT_LOADED", message: "GitHub Actions 상태를 읽지 못했습니다.", workflows: [], runs: [] }),
           safeGetJson<ApiList<DisclosureItem>>(`/api/disclosures?market=${market}`, { count: 0, items: [], sources: [] }),
-          safeGetJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`, { count: 0, items: [] })
+          safeGetJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`, { count: 0, items: [] }, 20000)
         ]);
 
         if (cancelled) return;
@@ -718,6 +847,61 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
+    async function loadModePreview() {
+      const preview = await safeGetJson<VirtualPreviewResponse>(
+        `/api/virtual/preview?market=${market}&mode=${strategyMode}`,
+        { count: 0, items: [], mode: strategyMode, modeLabel: STRATEGY_MODE_LABEL[strategyMode] },
+        15000
+      );
+      if (!cancelled) setVirtualPreview(preview);
+    }
+    void loadModePreview();
+    return () => { cancelled = true; };
+  }, [market, strategyMode, refreshTick]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadVisibleHeavyData() {
+      if (activeCategory === "뉴스·기업분석") {
+        const data = await safeGetJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`, { count: 0, items: [] }, 20000);
+        if (!cancelled) setCompanyAnalysis(data);
+      }
+      if (activeCategory === "예측·검증") {
+        const data = await safeGetJson<ApiList<Security>>(`/api/predictions?market=${market}`, { count: 0, items: [] }, 15000);
+        if (!cancelled) setPredictions(data);
+      }
+      if (activeCategory === "고급 분석") {
+        const data = await safeGetJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`, { count: 0, items: [] }, 20000);
+        if (!cancelled) setScanner(data);
+      }
+    }
+    void loadVisibleHeavyData();
+    return () => { cancelled = true; };
+  }, [activeCategory, market, refreshTick]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadFinalEngine() {
+      const [recommendations, executions, dataCenter, macroEvents, portfolioRisk] = await Promise.all([
+        safeGetJson<FinalRecommendationsResponse>(`/api/final/recommendations?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`, { count: 0, items: [] }),
+        safeGetJson<FinalExecutionSummary>(`/api/final/conditional-executions?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`, { conditionalOrders: 0, filledCount: 0, unfilledCount: 0, items: [] }),
+        safeGetJson<FinalDataCenter>(`/api/final/data-center?market=${market}`, { status: "NO_DATA" }),
+        safeGetJson<FinalMacroEvents>(`/api/final/macro-events?market=${market}`, { count: 0, items: [] }),
+        safeGetJson<FinalPortfolioRisk>(`/api/final/portfolio-risk?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`, { status: "NO_DATA", warnings: [] })
+      ]);
+      if (cancelled) return;
+      setFinalRecommendations(recommendations);
+      setFinalExecutions(executions);
+      setFinalDataCenter(dataCenter);
+      setFinalMacroEvents(macroEvents);
+      setFinalPortfolioRisk(portfolioRisk);
+    }
+    void loadFinalEngine();
+    return () => { cancelled = true; };
+  }, [market, strategyMode, decisionHorizon, refreshTick]);
+
+  useEffect(() => {
+    let cancelled = false;
     async function loadSelectedChart() {
       const symbol = selectedSymbol?.symbol ?? symbols.items[0]?.symbol;
       if (!symbol) {
@@ -743,6 +927,16 @@ export default function Home() {
   const apiOk = env.filter((item) => item.status === "OK").length;
   const apiMissing = env.filter((item) => item.status === "MISSING").length;
   const filesMissing = files.filter((item) => item.status === "MISSING").length;
+  const generalDataStatusText = finalDataCenter.status && finalDataCenter.status !== "NOT_LOADED"
+    ? finalDataCenter.status
+    : dataSources.some((item) => item.status === "OK")
+      ? "일부 연결 확인"
+      : "확인 중";
+  const generalDataStatusNote = [
+    finalDataCenter.chartData ? `차트 ${finalDataCenter.chartData}` : null,
+    finalDataCenter.disclosureData ? `공시 ${finalDataCenter.disclosureData}` : null,
+    finalDataCenter.todayDataSource ? `출처 ${finalDataCenter.todayDataSource}` : null
+  ].filter(Boolean).join(" · ") || "상세 상태는 관리자 모드에서 확인";
 
   const filteredSymbols = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -764,6 +958,17 @@ export default function Home() {
     }
     return scanner.items.filter((item) => item.bucket === scannerFilter || `${item.theme} ${item.group} ${item.riskLevel}`.includes(scannerFilter));
   }, [scanner.items, scannerFilter]);
+  const displayedScanner = filteredScanner.length || !scanner.items.length ? filteredScanner : scanner.items;
+  const predictionRows = useMemo(() => {
+    const hasModeData = predictions.items.some((item) => (item.recommendationModes ?? []).length > 0);
+    return predictions.items.filter((item) => {
+      const modes = item.recommendationModes ?? [];
+      if (!modes.length) return !hasModeData;
+      return modes.includes(strategyMode);
+    });
+  }, [predictions.items, strategyMode]);
+  const selectedPortfolioPreview = virtualPortfolios[strategyMode] ?? virtualPortfolio;
+  const selectedPreviewRows = selectedPortfolioPreview.items.length ? selectedPortfolioPreview.items : virtualPreview.items;
 
   const directHoldingsBySymbol = useMemo(() => new Map(directHoldings.items.map((item) => [item.symbol, item])), [directHoldings.items]);
   const predictionBySymbol = useMemo(() => new Map(predictions.items.map((item) => [item.symbol, item])), [predictions.items]);
@@ -1200,12 +1405,21 @@ export default function Home() {
               <div className="mt-1 text-sm text-muted">현재 화면: {activeSubPage}</div>
             </div>
             <div className="rounded-lg border border-line bg-panel px-4 py-3 text-sm text-muted">
-              API {apiOk} OK / {apiMissing} MISSING · 파일 누락 {filesMissing}
-              {quoteStatus ? (
-                <span className="ml-2 text-accent">
-                  현재가 {quoteStatus.status} · 성공 {quoteStatus.refreshed} / 실패 {quoteStatus.failed}
-                </span>
-              ) : null}
+              {appMode === "admin" ? (
+                <>
+                  API {apiOk} OK / {apiMissing} MISSING · 파일 누락 {filesMissing}
+                  {quoteStatus ? (
+                    <span className="ml-2 text-accent">
+                      현재가 {quoteStatus.status} · 성공 {quoteStatus.refreshed} / 실패 {quoteStatus.failed}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  데이터 상태: <span className="font-black text-accent">{generalDataStatusText}</span>
+                  <span className="ml-2 text-xs">{generalDataStatusNote}</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -1252,123 +1466,153 @@ export default function Home() {
   function renderMarketHome() {
     const selectedPortfolio = normalizePortfolio(strategyMode, virtualPortfolios[strategyMode] ?? virtualPortfolio);
     const timingGroups = groupPortfolioItemsByTiming(selectedPortfolio.items ?? [], strategyMode);
-    const modeCards = (["conservative", "balanced", "aggressive"] as StrategyMode[]).map((mode) => {
-      const portfolio = normalizePortfolio(mode, virtualPortfolios[mode]);
-      const grouped = groupPortfolioItemsByTiming(portfolio.items ?? [], mode);
-      return {
-        mode,
-        title: `${STRATEGY_MODE_LABEL[mode]} 모드`,
-        count: portfolio.count,
-        candidateCount: portfolio.candidateCount ?? portfolio.count,
-        lossTotal: portfolio.lossTotal || "-",
-        profitTotal: portfolio.profitTotal || "-",
-        topName: portfolio.topName ?? portfolio.items?.[0]?.name ?? "후보 없음",
-        todayEntryCount: grouped.today.length,
-        waitCount: grouped.wait.length,
-        nextEntryCount: grouped.next.length,
-        riskCount: grouped.risk.length,
-        note: modeGuideText(mode)
-      };
-    });
-    console.log("[MONE] rendered mode cards", modeCards);
-    const homeNews = buildHomeNews(news.items, 5);
-    const dataSourceOk = dataSources.filter((item) => item.status === "OK").length;
-    const dataSourceTotal = dataSources.length;
-    const stockBridge = dataSources.find((item) => item.key === "stockapp_bridge");
-    const githubStatus = githubActions.status === "NOT_LOADED" ? "확인 중" : githubActions.status;
-    const selectedTimingCount = Object.values(timingGroups).reduce((acc, arr) => acc + arr.length, 0);
+    const homeNews = buildHomeNews(news.items, 3);
+    const topCandidates = finalRecommendations.items.slice(0, 3);
+    const todayEntryCount = topCandidates.filter((item) => isTodayEntryCandidate(item)).length || timingGroups.today.length;
+    const waitCount = topCandidates.filter((item) => isWaitCandidate(item)).length || timingGroups.wait.length;
+    const dataBasis = dataBasisLabel(updatedAt, finalDataCenter.todayDataSource);
+    const conditionalReturn = finalExecutions.filledReturnAvgText || selectedPortfolio.profitPct || "검증 대기";
+    const dataStatusValue = dataStatusLabel(finalDataCenter.status, dataSources);
+    const dataStatusNote = [
+      finalDataCenter.chartData ? `차트 ${finalDataCenter.chartData}` : null,
+      finalDataCenter.disclosureData ? `공시 ${finalDataCenter.disclosureData}` : null,
+      finalDataCenter.flowData ? `수급 ${finalDataCenter.flowData}` : null
+    ].filter(Boolean).join(" · ") || "상세는 관리자 모드";
 
     return (
       <>
-        <Section title="일반 모드 요약" right={<span className="text-xs text-muted">관리자 기능은 숨기고, 필요한 상태만 요약 표시</span>}>
-          <div className="grid gap-3 md:grid-cols-4">
-            <StatCard label="데이터 연결" value={dataSourceTotal ? `${dataSourceOk}/${dataSourceTotal} OK` : "확인 중"} note={stockBridge?.status === "OK" ? "StockApp 브릿지 연결됨" : "데이터 소스 백그라운드 점검 중"} tone={dataSourceOk ? "good" : "neutral"} />
-            <StatCard label="자동화" value={githubStatus} note="자세한 로그는 관리자 모드에서 확인" tone={githubActions.status === "OK" ? "good" : "neutral"} />
-            <StatCard label="오늘 시장" value={summary?.marketLabel || marketName} note={updatedAt || "기준시각 확인 중"} tone="neutral" />
-            <StatCard label="매크로·이벤트" value="리스크 배지" note="FOMC·CPI·실적·IPO는 진입 판단에 반영할 영역" tone="warn" />
+        <Section
+          title="오늘 운용 요약"
+          right={<span className="text-xs text-muted">시장 홈은 핵심 판단만 짧게 표시 · 상세 표는 각 메뉴에서 확인</span>}
+        >
+          <div className="mb-3 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm leading-6 text-slate-100">
+            <span className="font-black text-accent">데이터 기준:</span> {dataBasis}
+            <span className="mx-2 text-line">|</span>
+            <span className="font-black text-accent">선택:</span> {marketName} · {STRATEGY_MODE_LABEL[strategyMode]} · {HORIZON_LABEL[decisionHorizon]}
+            <span className="mx-2 text-line">|</span>
+            <span className="text-muted">{updatedAt || "기준시각 확인 중"}</span>
           </div>
-        </Section>
-
-        <Section title="추천 성향 비교" right={<span className="text-xs text-muted">3개 모드는 한 번에 불러오고, 전환 시 화면만 바뀜</span>}>
-          <div className="grid gap-3 md:grid-cols-3">
-            {modeCards.map((card) => {
-              return (
-                <button
-                  key={card.mode}
-                  type="button"
-                  onClick={() => setStrategyMode(card.mode)}
-                  className={`rounded-xl border p-4 text-left shadow-soft transition ${strategyMode === card.mode ? "border-accent bg-accent/12" : "border-line bg-panel hover:border-accent/50 hover:bg-accent/5"}`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-lg font-black text-white">{card.title}</div>
-                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-black text-accent">후보 {card.candidateCount}개</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                    <MiniMetric label="오늘 진입" value={`${card.todayEntryCount}개`} />
-                    <MiniMetric label="기다림" value={`${card.waitCount}개`} />
-                    <MiniMetric label="다음 진입" value={`${card.nextEntryCount}개`} />
-                    <MiniMetric label="주의" value={`${card.riskCount}개`} />
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                    <MiniMetric label="손절 시 손실" value={card.lossTotal} tone="warn" />
-                    <MiniMetric label="목표 도달 시 이익" value={card.profitTotal} tone="good" />
-                  </div>
-                  <div className="mt-3 text-sm font-bold text-slate-200">TOP: {card.topName}</div>
-                  <div className="mt-1 text-xs leading-5 text-muted">{card.note}</div>
-                  <div className="mt-2 text-[11px] font-bold text-muted">debug: {card.mode} / {card.candidateCount} / {card.lossTotal} / {card.profitTotal}</div>
-                </button>
-              );
-            })}
-          </div>
-        </Section>
-
-        <Section title={`${STRATEGY_MODE_LABEL[strategyMode]} 모드 · 조건부 가상운용 계획`} right={<span className="text-xs text-muted">오늘 전부 매수 아님 · 진입가 도달 시만 체결 기록</span>}>
           <div className="grid gap-3 md:grid-cols-5">
-            <StatCard label="조건부 후보" value={`${selectedTimingCount || selectedPortfolio.count || 0}개`} note={`오늘 ${timingGroups.today.length} · 대기 ${timingGroups.wait.length} · 다음 ${timingGroups.next.length} · 주의 ${timingGroups.risk.length}`} tone="neutral" />
-            <StatCard label="예상 투입금" value={selectedPortfolio.invested || "-"} note={`현금 ${selectedPortfolio.cash || "-"}`} tone="neutral" />
-            <StatCard label="손절 시 손실" value={selectedPortfolio.lossTotal || "-"} note={selectedPortfolio.lossPct || "조건부 계획"} tone="warn" />
-            <StatCard label="목표 도달 시 이익" value={selectedPortfolio.profitTotal || "-"} note={selectedPortfolio.profitPct || "조건부 계획"} tone="good" />
-            <StatCard label="검증 방식" value="예측·매매 분리" note="단기 D+1 · 스윙 D+5 · 중기 D+20" tone="neutral" />
+            <StatCard label="오늘 진입 가능" value={`${todayEntryCount}개`} note="조건 충족 또는 진입가 근접" tone={todayEntryCount ? "good" : "neutral"} />
+            <StatCard label="기다릴 후보" value={`${waitCount}개`} note="좋은 종목이지만 진입가 대기" tone="accent" />
+            <StatCard label="조건부 가상체결" value={`${finalExecutions.filledCount || 0}건`} note={`가상 검증 · 미체결 ${finalExecutions.unfilledCount || 0}건`} tone="accent" />
+            <StatCard label="매크로·이벤트 주의" value={`${finalMacroEvents.count || 0}건`} note={finalMacroEvents.items[0]?.badgeText || "유의 이벤트 점검"} tone={finalMacroEvents.count ? "warn" : "neutral"} />
+            <StatCard label="데이터 상태" value={dataStatusValue} note={dataStatusNote} tone={dataStatusValue.includes("정상") ? "good" : "warn"} />
           </div>
         </Section>
 
-        <Section title={`${STRATEGY_MODE_LABEL[strategyMode]} 모드 진입 타이밍`} right={<span className="text-xs text-muted">기회 점수와 진입 점수를 분리해 표시</span>}>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {renderTimingLane("오늘 진입 가능", "today", timingGroups.today, "현재가가 진입 구간에 가까운 후보")}
-            {renderTimingLane("기다릴 후보", "wait", timingGroups.wait, "좋은 종목이지만 진입가를 기다리는 후보")}
-            {renderTimingLane("다음 진입 후보", "next", timingGroups.next, "D+1~D+3 눌림 또는 돌파 확인 후보")}
-            {renderTimingLane("매수금지 / 주의", "risk", timingGroups.risk, "추격·과열·데이터 부족 등으로 신규 진입 제한")}
+        <Section
+          title="오늘 TOP 후보"
+          right={<button onClick={() => { setActiveCategory("종목 탐색"); setActiveSubPage("오늘 매수 검토"); }} className="rounded-md border border-accent/45 px-3 py-1.5 text-xs font-black text-accent hover:bg-accent hover:text-ink">전체 후보 보기</button>}
+        >
+          {topCandidates.length ? (
+            <div className="grid gap-3 lg:grid-cols-3">
+              {topCandidates.map((item, idx) => renderHomeTopCandidate(item, idx))}
+            </div>
+          ) : (
+            <EmptyReason text="오늘 TOP 후보를 불러오는 중입니다. 후보 표는 종목 탐색에서 확인할 수 있습니다." />
+          )}
+        </Section>
+
+        <Section title="조건부 가상운용 · 리스크 요약" right={<span className="text-xs text-muted">추천됨 ≠ 매수됨 · 진입가 도달 시에만 가상체결</span>}>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-accent/35 bg-panel p-4 shadow-soft">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-base font-black text-white">조건부 가상운용 요약</div>
+                  <div className="mt-1 text-xs text-muted">장마감 후 OHLCV 기준으로 체결/미체결 확정</div>
+                </div>
+                <Badge text="가상 검증" tone="warn" />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-4">
+                <MiniMetric label="조건부 주문" value={`${finalExecutions.conditionalOrders || selectedPortfolio.count || 0}건`} />
+                <MiniMetric label="체결" value={`${finalExecutions.filledCount || 0}건`} tone="good" />
+                <MiniMetric label="미체결" value={`${finalExecutions.unfilledCount || 0}건`} />
+                <MiniMetric label="체결 기준 수익률" value={conditionalReturn} tone={String(conditionalReturn).includes("-") ? "warn" : "good"} />
+              </div>
+              <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-xs font-bold leading-5 text-slate-200">
+                진입가가 당일 고가/저가 범위에 도달한 종목만 체결로 기록 · 미체결은 수익률 계산 제외
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-line bg-panel p-4 shadow-soft">
+              <div className="mb-3 text-base font-black text-white">리스크 요약</div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <MiniMetric label="매크로 주의" value={`${finalMacroEvents.count || 0}건`} tone={finalMacroEvents.count ? "warn" : "neutral"} />
+                <MiniMetric label="포트폴리오 주의" value={(finalPortfolioRisk.warnings ?? []).length ? `${(finalPortfolioRisk.warnings ?? []).length}건` : "0건"} tone={(finalPortfolioRisk.warnings ?? []).length ? "warn" : "good"} />
+                <MiniMetric label="데이터 주의" value={dataStatusValue.includes("정상") ? "0건" : "확인"} tone={dataStatusValue.includes("정상") ? "good" : "warn"} />
+              </div>
+              <div className="mt-3 space-y-2 text-xs leading-5 text-muted">
+                <div>· {finalMacroEvents.items[0]?.title || "오늘 주요 매크로/이벤트 리스크 감지 대기"}</div>
+                <div>· {(finalPortfolioRisk.warnings ?? []).slice(0, 1).join(" · ") || "섹터/상관관계 쏠림 특이사항 낮음"}</div>
+                <div>· {dataStatusNote}</div>
+              </div>
+            </div>
           </div>
         </Section>
 
-        <Section title="신규 발굴·이벤트·매크로 체크">
-          <div className="grid gap-3 md:grid-cols-3">
-            <InfoBox title="신규 종목 발굴" lines={["저평가 성장 · 실적 개선 눌림목 · 수급 포착 · 모멘텀 초기 라벨로 분류", "워치리스트 외 종목도 후보로 유지"]} />
-            <InfoBox title="이벤트 리스크" lines={["실적발표 · IPO/상장 · 보호예수 · 공시 이벤트는 배지로 표시", "이벤트 전 기대감과 이벤트 후 재료 소멸을 분리"]} />
-            <InfoBox title="매크로 리스크" lines={["FOMC · CPI · PPI · 고용지표 발표일에는 신규 진입 기준을 보수적으로 조정", "발표 전 대기, 발표 후 방향 확인 규칙 반영"]} />
-          </div>
-        </Section>
-
-        <Section title="오늘 뉴스 요약">
+        <Section
+          title="오늘 뉴스·공시 핵심"
+          right={<button onClick={() => { setActiveCategory("뉴스·기업분석"); setActiveSubPage("뉴스 요약"); }} className="rounded-md border border-accent/45 px-3 py-1.5 text-xs font-black text-accent hover:bg-accent hover:text-ink">더보기</button>}
+        >
           {homeNews.length ? (
-            <ul className="space-y-2 rounded-lg border border-line bg-panel p-4">
+            <ul className="rounded-xl border border-line bg-panel p-4 shadow-soft">
               {homeNews.map((item, idx) => (
-                <li key={`${item.title}-${idx}`} className="flex gap-3 border-b border-line/70 pb-2 last:border-b-0 last:pb-0">
-                  <span className="shrink-0 rounded-md bg-white/10 px-2 py-1 text-xs font-black text-accent">{newsTag(item)}</span>
+                <li key={`${item.title}-${idx}`} className="grid gap-3 border-b border-line/70 py-3 first:pt-0 last:border-b-0 last:pb-0 md:grid-cols-[120px_1fr_260px]">
+                  <span className="w-fit rounded-md bg-white/10 px-2 py-1 text-xs font-black text-accent">{newsTag(item)}</span>
                   <div className="min-w-0">
                     <div className="truncate text-sm font-bold text-slate-100" title={item.title}>{item.title || "뉴스 제목 없음"}</div>
-                    <div className="mt-1 text-xs text-muted">
-                      {[item.sourceName, item.publishedAt, item.name || item.symbol].filter(Boolean).join(" · ") || "뉴스 정보 없음"}
-                    </div>
+                    <div className="mt-1 text-xs text-muted">{[item.sourceName, item.publishedAt, item.name || item.symbol].filter(Boolean).join(" · ") || "뉴스 정보 없음"}</div>
+                  </div>
+                  <div className="text-xs leading-5 text-muted">
+                    <span className="font-black text-accent">판단 영향</span> · {newsImpactText(item)}
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <EmptyReason text="표시할 뉴스 요약이 없습니다." />
+            <EmptyReason text="표시할 뉴스·공시 핵심 요약이 없습니다." />
           )}
         </Section>
       </>
+    );
+  }
+
+  function renderHomeTopCandidate(item: FinalRecommendationItem, idx: number) {
+    return (
+      <button
+        key={`home-top-${item.symbol}-${idx}`}
+        onClick={() => setSelectedSymbol(item)}
+        className="rounded-2xl border border-line bg-panel p-4 text-left shadow-soft transition hover:border-accent/60 hover:bg-accent/5"
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <div className="mb-2 flex flex-wrap gap-1">
+              <Badge text={`TOP ${idx + 1}`} tone={idx === 0 ? "good" : "neutral"} />
+              <Badge text={item.decisionBucket || "판단 대기"} tone={isTodayEntryCandidate(item) ? "good" : isWaitCandidate(item) ? "neutral" : "warn"} />
+              <Badge text={item.horizonLabel || HORIZON_LABEL[decisionHorizon]} />
+            </div>
+            <div className="text-lg font-black text-white">{item.name || item.symbol}</div>
+            <div className="mt-1 text-xs text-muted">{item.symbol}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-base font-black text-white">{item.currentPriceText || money(item.currentPrice, market) || "현재가 없음"}</div>
+            <div className="mt-1 text-xs text-muted">현재가</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <PriceMini label="권장 진입가" value={priceText(item.entryText, item.entry, "진입가")} />
+          <PriceMini label="손절" value={priceText(item.stopText, item.stop, "손절가")} tone="warn" />
+          <PriceMini label="목표" value={priceText(item.targetText, item.target, "목표가")} tone="good" />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <MiniMetric label="기회 점수" value={`${item.opportunityScore ?? "-"}점`} />
+          <MiniMetric label="진입 점수" value={`${item.entryScore ?? "-"}점`} />
+        </div>
+        <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-xs font-bold leading-5 text-slate-200">
+          {item.buyTiming || item.decisionReason || "조건 충족 시 조건부 진입"}
+        </div>
+      </button>
     );
   }
 
@@ -1528,6 +1772,43 @@ export default function Home() {
     return "뉴스";
   }
 
+
+  function isTodayEntryCandidate(item: FinalRecommendationItem) {
+    const text = `${item.decisionBucket ?? ""} ${item.newEntryDecision ?? ""} ${item.buyTiming ?? ""}`;
+    return /오늘|진입 가능|조건부 진입|체결 가능/.test(text) && !/주의|금지|대기/.test(text);
+  }
+
+  function isWaitCandidate(item: FinalRecommendationItem) {
+    const text = `${item.decisionBucket ?? ""} ${item.newEntryDecision ?? ""} ${item.buyTiming ?? ""}`;
+    return /기다|대기|다음|눌림|확인/.test(text) && !/금지/.test(text);
+  }
+
+  function dataBasisLabel(timeText?: string, source?: string) {
+    const sourceText = source ? `${source} 기준` : "MONE final 기준";
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    if (timeText && timeText.includes(todayKey)) return `오늘 데이터 · ${sourceText}`;
+    if (timeText) return `전일 또는 최근 업데이트 · ${sourceText}`;
+    return `기준시각 확인 중 · ${sourceText}`;
+  }
+
+  function dataStatusLabel(status?: string, sources?: DataSourceItem[]) {
+    const okSources = sources?.filter((item) => item.status === "OK").length ?? 0;
+    if (status && /OK|READY|정상|운영 안정/i.test(status)) return "정상";
+    if (okSources > 0) return "일부 확인";
+    if (status && status !== "NOT_LOADED") return status;
+    return "확인 중";
+  }
+
+  function newsImpactText(item: NewsItem) {
+    const text = `${item.title ?? ""} ${item.summary ?? ""}`;
+    if (/수주|공급계약|계약|자사주|배당|실적 개선|흑자/.test(text)) return "긍정적 · 실적/수급 신뢰도 보강";
+    if (/증자|CB|전환사채|BW|감자|소송|제재|하향/.test(text)) return "주의 · 위험 점수 상향";
+    if (/FOMC|CPI|PPI|PCE|고용|금리|파월|환율/.test(text)) return "중립~주의 · 변동성 확대 가능";
+    if (/기관|외국인|순매수|수급/.test(text)) return "긍정적 · 수급 모멘텀 확인";
+    if (/코스피|코스닥|나스닥|S&P|지수|시장/.test(text)) return "시장 영향 · 지수 분위기 반영";
+    return item.nextAction || "판단 영향 확인 필요";
+  }
   function renderReports() {
     if (activeSubPage === "장전 리포트") {
       return (
@@ -1969,8 +2250,8 @@ export default function Home() {
     return (
       <>
         <div className="grid gap-3 md:grid-cols-3">
-          <StatCard label="확률 행" value={predictions.count} note={sourceLabel(predictions.source)} tone="accent" />
-          <StatCard label="표시 항목" value="단기 · 스윙 · 중기" note="확률 + 예상가" />
+          <StatCard label="확률 행" value={predictionRows.length} note={`${STRATEGY_MODE_LABEL[strategyMode]} 모드 필터 · 전체 ${predictions.count}행`} tone="accent" />
+          <StatCard label="표시 항목" value="단기 · 스윙 · 중기" note={sourceLabel(predictions.source)} />
           <StatCard label="시장" value={marketName} note="참고용 예측 지표" />
         </div>
         <Section title={`확률 예측 · ${STRATEGY_MODE_LABEL[strategyMode]} 모드`}>
@@ -1979,7 +2260,7 @@ export default function Home() {
             <span className="text-xs text-muted">추천과 가상 운용 계산 기준이 함께 바뀝니다.</span>
           </div>
           <DataTable
-            rows={predictions.items}
+            rows={predictionRows}
             columns={[
               { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
               { key: "price", header: "현재가", render: (row) => <PriceBlock item={row} compact /> },
@@ -1992,10 +2273,10 @@ export default function Home() {
             onRowClick={setSelectedSymbol}
           />
         </Section>
-        <Section title={`가상 운용 미리보기 · ${virtualPreview.modeLabel || STRATEGY_MODE_LABEL[strategyMode]}`}>
-          {virtualPreview.items.length ? (
+        <Section title={`가상 운용 미리보기 · ${STRATEGY_MODE_LABEL[strategyMode]}`}>
+          {selectedPreviewRows.length ? (
             <DataTable
-              rows={virtualPreview.items}
+              rows={selectedPreviewRows}
               columns={[
                 { key: "name", header: "종목", render: (row) => <b>{row.name}</b> },
                 { key: "grade", header: "스윙군", render: (row) => row.swingGrade },
@@ -2165,7 +2446,7 @@ export default function Home() {
       return (
         <>
           <div className="grid gap-3 md:grid-cols-4">
-            <StatCard label="스캐너 대상" value={scanner.count} note="candidate/watchlist/cards 조합" tone="accent" />
+            <StatCard label="스캐너 대상" value={scanner.count || scanner.items.length} note="candidate/watchlist/cards 조합" tone="accent" />
             <StatCard label="현재 필터" value={scannerFilter} />
             <StatCard label="보유 제외" value={scanner.items.filter((item) => !item.isHolding).length} />
             <StatCard label="관심종목 편입" value="활성화" note="중복 방지 + 백업 후 저장" tone="good" />
@@ -2182,7 +2463,14 @@ export default function Home() {
             ))}
           </div>
           <Section title="스캐너">
-            {filteredScanner.length ? <DataTable rows={filteredScanner} columns={scannerColumns} onRowClick={setSelectedSymbol} /> : <EmptyReason text="조건에 맞는 스캐너 결과 없음" />}
+            {displayedScanner.length ? (
+              <>
+                {!filteredScanner.length && scanner.items.length ? <div className="mb-3 text-xs text-muted">현재 필터에 맞는 결과가 없어 전체 스캐너 결과를 표시합니다.</div> : null}
+                <DataTable rows={displayedScanner} columns={scannerColumns} onRowClick={setSelectedSymbol} />
+              </>
+            ) : (
+              <EmptyReason text="조건에 맞는 스캐너 결과 없음" />
+            )}
           </Section>
         </>
       );
@@ -2703,6 +2991,23 @@ function holdingRiskText(item: Security) {
 function GainText({ value, text }: { value?: number | null; text?: string }) {
   const tone = (value ?? 0) < 0 ? "text-warn" : (value ?? 0) > 0 ? "text-good" : "text-slate-300";
   return <span className={`font-black ${tone}`}>{text || "평가 데이터 없음"}</span>;
+}
+
+function HorizonSelector({ value, onChange }: { value: DecisionHorizon; onChange: (value: DecisionHorizon) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {(["short", "swing", "mid"] as DecisionHorizon[]).map((horizon) => (
+        <button
+          key={horizon}
+          type="button"
+          onClick={() => onChange(horizon)}
+          className={`rounded-full border px-3 py-1 text-xs font-black transition ${value === horizon ? "border-accent bg-accent text-ink" : "border-line bg-panel text-slate-300 hover:border-accent/50"}`}
+        >
+          {HORIZON_LABEL[horizon]}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function LongText({ text }: { text: string }) {

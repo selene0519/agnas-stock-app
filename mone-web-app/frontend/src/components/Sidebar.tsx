@@ -79,7 +79,7 @@ export function Sidebar({
       <div className="flex h-full flex-col">
         <div className="border-b border-line px-5 py-4">
           <div className="text-xl font-black tracking-wide text-white">MONE</div>
-          <div className="mt-1 text-xs text-muted">Next.js + FastAPI v3.5.6</div>
+          <div className="mt-1 text-xs text-muted">Next.js + FastAPI v3.6.2 UX</div>
           <div className="mt-2 inline-flex rounded-full border border-line bg-panel px-2 py-1 text-[11px] font-black text-accent">
             {appMode === "admin" ? "관리자 모드" : "일반 모드"}
           </div>

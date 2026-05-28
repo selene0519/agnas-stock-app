@@ -7,6 +7,7 @@ import requests
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from functools import lru_cache
 
 import numpy as np
 import pandas as pd
@@ -24,10 +25,23 @@ QUOTE_CACHE_FILE = CACHE_DIR / "quotes_cache.json"
 load_dotenv(REPO_ROOT / ".env")
 load_dotenv(APP_DIR / "backend" / ".env")
 
-DEFAULT_VERSION_PRIORITY = ("v92", "v93", "v91", "v85")
-FALLBACK_POLICY = ("v93", "v92", "v91", "v85")
+DEFAULT_VERSION_PRIORITY = ("mone_v36", "stockapp", "v93", "v92", "v91", "v85")
+FALLBACK_POLICY = ("mone_v36", "stockapp", "v93", "v92", "v91", "v85")
+
+RUNNER_STATUS_FILES = {
+    "kr": "runner_status_kr.json",
+    "us": "runner_status_us.json",
+}
 
 REQUIRED_FILES = [
+    "reports/mone_v36_symbol_snapshot_kr.csv",
+    "reports/mone_v36_symbol_snapshot_us.csv",
+    "reports/mone_v36_action_cards_kr.csv",
+    "reports/mone_v36_action_cards_us.csv",
+    "reports/mone_v36_today_summary_kr.csv",
+    "reports/mone_v36_today_summary_us.csv",
+    "reports/mone_v36_virtual_trade_plan_kr.csv",
+    "reports/mone_v36_virtual_trade_plan_us.csv",
     "reports/v92_symbol_snapshot_kr.csv",
     "reports/v92_symbol_snapshot_us.csv",
     "reports/v92_position_cards_kr.csv",
@@ -73,16 +87,204 @@ ENV_KEYS = [
     "SEC_USER_AGENT",
 ]
 
+
+DEFAULT_STOCKAPP_ROOTS = [
+    Path(r"C:\Users\minbo\OneDrive\바탕 화면\stock_ai_app_new"),
+    Path(r"C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app"),
+    Path(r"C:\Users\minbo\OneDrive\바탕 화면\stock_app"),
+]
+
+
+def _split_env_paths(value: str) -> list[Path]:
+    if not value:
+        return []
+    parts: list[str] = []
+    for chunk in value.split(";"):
+        parts.extend(chunk.split(os.pathsep))
+    return [Path(part.strip()).expanduser() for part in parts if part.strip()]
+
+
+EXCLUDED_SCAN_PARTS = {
+    ".git", ".venv", "venv", "env", "node_modules", ".next", "__pycache__",
+    "site-packages", "dist", "build", "cache", ".cache", "logs",
+}
+
+ALLOWED_STOCKAPP_FILE_KEYWORDS = (
+    "prediction", "predictions", "outcome", "actual", "buy_priority", "scanner",
+    "flow", "supply", "investor", "quote", "orderbook", "ohlcv", "daily", "chart",
+    "disclosure", "filing", "dart", "sec", "financial", "fundamental", "company",
+    "portfolio", "risk", "candidate", "watchlist", "history", "summary", "operation",
+)
+
+
+def _is_excluded_path(path: Path) -> bool:
+    parts = {str(part).lower() for part in path.parts}
+    return bool(parts & EXCLUDED_SCAN_PARTS)
+
+
+def _unique_paths(paths: list[Path]) -> list[Path]:
+    out: list[Path] = []
+    seen: set[str] = set()
+    for path in paths:
+        try:
+            key = path.resolve().as_posix().lower()
+        except Exception:
+            key = path.as_posix().lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(path)
+    return out
+
+
+def stockapp_roots() -> list[Path]:
+    """기존 StockApp 작업스케줄러 출력 폴더를 MONE의 보조 데이터 소스로 사용합니다."""
+    roots: list[Path] = []
+    for root in _split_env_paths(os.environ.get("MONE_STOCKAPP_ROOTS", "")) + DEFAULT_STOCKAPP_ROOTS:
+        try:
+            resolved = root.resolve()
+        except Exception:
+            resolved = root
+        if resolved not in roots and resolved.exists():
+            roots.append(resolved)
+    return roots
+
+
+def _stockapp_data_bases(root: Path) -> list[Path]:
+    candidates: list[Path] = []
+    if root.name.lower() == "data":
+        candidates.append(root)
+    else:
+        candidates.extend([root / "data", root / "data" / "history", root / "data" / "market", root / "data" / "market" / "ohlcv", root / "data" / "disclosures"])
+    return [p for p in _unique_paths(candidates) if p.exists() and not _is_excluded_path(p)]
+
+
+def _stockapp_report_bases(root: Path) -> list[Path]:
+    candidates: list[Path] = []
+    if root.name.lower() == "reports":
+        candidates.append(root)
+    else:
+        candidates.append(root / "reports")
+    return [p for p in _unique_paths(candidates) if p.exists() and not _is_excluded_path(p)]
+
+
+def data_roots() -> list[Path]:
+    roots = [DATA_DIR]
+    for root in stockapp_roots():
+        roots.extend(_stockapp_data_bases(root))
+    return _unique_paths([p for p in roots if p.exists()])
+
+
+def report_roots() -> list[Path]:
+    roots = [REPORT_DIR]
+    for root in stockapp_roots():
+        roots.extend(_stockapp_report_bases(root))
+    return _unique_paths([p for p in roots if p.exists()])
+
+
+def source_label(path: Path) -> str:
+    try:
+        return path.relative_to(REPO_ROOT).as_posix()
+    except Exception:
+        for root in stockapp_roots():
+            try:
+                return "stockapp://" + path.relative_to(root).as_posix()
+            except Exception:
+                pass
+        return path.as_posix()
+
+
+def _runner_status_candidates(market: str) -> list[Path]:
+    name = RUNNER_STATUS_FILES.get("us" if market == "us" else "kr", "runner_status_kr.json")
+    candidates = [
+        REPO_ROOT / name,
+        DATA_DIR / "stockapp" / name,
+        REPORT_DIR / f"stockapp_{name}",
+        REPORT_DIR / name,
+    ]
+    for root in stockapp_roots():
+        candidates.extend([root / name, root / "data" / name, root / "reports" / name])
+    return _unique_paths([path for path in candidates if path.exists() and path.stat().st_size > 0])
+
+
+@lru_cache(maxsize=16)
+def runner_status(market: str) -> dict[str, Any]:
+    for path in _runner_status_candidates(market):
+        payload = read_json(path)
+        if payload:
+            payload = dict(payload)
+            payload["_sourceFile"] = source_label(path)
+            return payload
+    return {}
+
+
+def runner_target_date(market: str) -> str:
+    return first_value(runner_status(market), ["target_date", "targetDate", "date"], "")
+
+
+def _normalize_date_text(value: Any) -> str:
+    text = _safe_str(value)
+    digits = re.sub(r"\D", "", text)
+    if len(digits) >= 8:
+        return f"{digits[:4]}-{digits[4:6]}-{digits[6:8]}"
+    return text[:10] if len(text) >= 10 else text
+
+
+def _row_source_date(row: dict[str, Any]) -> str:
+    return _normalize_date_text(first_value(row, ["target_date", "targetDate", "actual_date", "data_date", "basis_ohlc_date", "created_at", "updated_at"], ""))
+
+
+def _iter_relevant_csv_files(bases: list[Path], limit: int = 300) -> list[Path]:
+    files: list[Path] = []
+    for base in bases:
+        if not base.exists() or _is_excluded_path(base):
+            continue
+        for path in base.rglob("*.csv"):
+            if _is_excluded_path(path):
+                continue
+            low = path.name.lower()
+            full = path.as_posix().lower()
+            if not any(token in low or token in full for token in ALLOWED_STOCKAPP_FILE_KEYWORDS):
+                continue
+            files.append(path)
+            if len(files) >= limit:
+                return _unique_paths(files)
+    return _unique_paths(files)
+
+
+def stockapp_bridge_status() -> dict[str, Any]:
+    roots = []
+    for root in stockapp_roots():
+        bases = _stockapp_data_bases(root) + _stockapp_report_bases(root)
+        files = _iter_relevant_csv_files(bases, limit=300)
+        latest = max((file_mtime(path) for path in files), default="")
+        roots.append({
+            "root": root.as_posix(),
+            "status": "OK" if files else "NO_CSV",
+            "csvFiles": len(files),
+            "latestUpdatedAt": latest,
+            "examples": [source_label(path) for path in sorted(files, key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)[:8]],
+            "scanBases": [base.as_posix() for base in bases[:8]],
+            "scanMode": "light-index",
+        })
+    return {
+        "status": "OK" if roots else "NOT_FOUND",
+        "message": "StockApp 작업스케줄러 출력 폴더의 data/reports만 빠르게 스캔합니다." if roots else "StockApp 출력 폴더를 찾지 못했습니다. MONE_STOCKAPP_ROOTS 환경변수로 지정할 수 있습니다.",
+        "roots": roots,
+        "envKey": "MONE_STOCKAPP_ROOTS",
+        "optimized": True,
+    }
+
 MISSING_TOKENS = {"", "-", "nan", "none", "nat", "null", "n/a", "na", "없음"}
 
 SYMBOL_ALIASES = ["symbol", "ticker", "code", "종목코드", "종목", "stock_code"]
 NAME_ALIASES = ["name", "종목명", "stock_name", "종목", "회사명"]
-CURRENT_PRICE_ALIASES = ["current_price", "last_price", "현재가", "실시간현재가", "quote_fallback_price"]
+CURRENT_PRICE_ALIASES = ["current_price", "last_price", "현재가", "실시간현재가", "quote_fallback_price", "current_price_at_prediction", "basis_close", "prev_close"]
+KR_OHLC_CLOSE_ALIASES = ["basis_close", "ohlcv_close", "close", "종가", "prev_close", "current_price_at_prediction"]
 PRICE_TIME_ALIASES = ["가격기준시각", "updated_at", "last_time", "quote_time", "price_time", "갱신시각"]
 PRICE_SOURCE_ALIASES = ["가격출처", "quote_source_label", "quote_source", "current_price_source", "source"]
-ENTRY_ALIASES = ["기준가", "관찰 기준가", "active_scenario_pullback_price", "조건부 진입가", "매수가", "entry", "entry_price", "buy_price"]
-STOP_ALIASES = ["손절가", "stop", "stop_loss"]
-TARGET_ALIASES = ["목표가", "1차 목표가", "tp1", "target_price", "2차 목표가", "tp2"]
+ENTRY_ALIASES = ["기준가", "관찰 기준가", "active_scenario_pullback_price", "조건부 진입가", "매수가", "entry", "entry_price", "buy_price", "우선진입가", "보수대기선", "preferred_entry", "conservative_entry", "technical_entry"]
+STOP_ALIASES = ["손절가", "stop", "stop_loss", "stop_loss_price"]
+TARGET_ALIASES = ["목표가", "1차 목표가", "1차익절가", "tp1", "target_price", "take_profit1", "2차 목표가", "2차익절가", "tp2"]
 TARGET2_ALIASES = ["2차 목표가", "tp2", "take_profit2"]
 EXPECTED_PRICE_ALIASES = {
     "1d": ["1일예상가", "1일 예상가", "예상가_1일", "expected_price_1d", "pred_price_1d", "predicted_price_1d", "price_1d", "target_price_1d"],
@@ -90,10 +292,10 @@ EXPECTED_PRICE_ALIASES = {
     "5d": ["5일예상가", "5일 예상가", "예상가_5일", "expected_price_5d", "pred_price_5d", "predicted_price_5d", "price_5d", "target_price_5d"],
     "20d": ["20일예상가", "20일 예상가", "예상가_20일", "expected_price_20d", "pred_price_20d", "predicted_price_20d", "price_20d", "target_price_20d", "midterm_expected_price"],
 }
-SUPPLY_SCORE_ALIASES = ["수급점수", "수급 점수", "supply_score", "flow_score"]
-EARNINGS_SCORE_ALIASES = ["실적점수", "실적 점수", "earnings_score"]
-VALUATION_SCORE_ALIASES = ["밸류에이션점수", "밸류에이션 점수", "벨류에이션점수", "valuation_score"]
-CHART_SCORE_ALIASES = ["차트점수", "차트 점수", "chart_score"]
+SUPPLY_SCORE_ALIASES = ["수급점수", "수급 점수", "supply_score", "flow_score", "수급", "supply_label", "supply_summary"]
+EARNINGS_SCORE_ALIASES = ["실적점수", "실적 점수", "earnings_score", "fundamental_score", "재무", "fundamental_label"]
+VALUATION_SCORE_ALIASES = ["밸류에이션점수", "밸류에이션 점수", "벨류에이션점수", "valuation_score", "fundamental_label"]
+CHART_SCORE_ALIASES = ["차트점수", "차트 점수", "chart_score", "technical_score", "technical_verdict", "판정"]
 DATA_STATUS_ALIASES = ["data_status", "price_data_status", "earnings_data_status", "valuation_data_status", "flow_data_status"]
 
 MERGE_ALIAS_GROUPS = [
@@ -150,10 +352,15 @@ def _market_label(market: str) -> str:
 
 
 def normalize_symbol(symbol: Any, market: str = "") -> str:
-    text = _safe_str(symbol).upper()
+    text = _safe_str(symbol).upper().strip()
     text = text.replace(".KS", "").replace(".KQ", "")
-    if market == "kr" and text.isdigit() and len(text) < 6:
-        return text.zfill(6)
+    # CSVs often load Korean stock codes as "10120.0". Treat them as codes.
+    if re.fullmatch(r"\d+\.0", text):
+        text = text[:-2]
+    if market == "kr":
+        digits = re.sub(r"\D", "", text)
+        if digits and len(digits) <= 6:
+            return digits.zfill(6)
     return text
 
 
@@ -186,8 +393,21 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
 
 
 def rows_for(path: Path) -> int:
+    if not path.exists() or not path.is_file():
+        return 0
     if path.suffix.lower() == ".csv":
-        return int(len(read_csv(path)))
+        # 상태표 계산에서 전체 CSV를 pandas로 모두 읽으면 StockApp fallback 연결 시 매우 느려집니다.
+        # 행 수는 빠른 라인 카운트로 계산하고, 큰 파일은 10000행까지만 세어 UI 로딩을 보호합니다.
+        try:
+            count = 0
+            with path.open("rb") as f:
+                for _ in f:
+                    count += 1
+                    if count >= 10001:
+                        return 10000
+            return max(count - 1, 0)
+        except Exception:
+            return 0
     if path.suffix.lower() == ".json":
         data = read_json(path)
         return int(len(data)) if data else 0
@@ -220,10 +440,12 @@ def first_number(row: dict[str, Any] | pd.Series, names: list[str]) -> float | N
 
 
 def report_path(kind: str, market: str, versions: tuple[str, ...] = DEFAULT_VERSION_PRIORITY) -> Path | None:
-    for version in versions:
-        path = REPORT_DIR / f"{version}_{kind}_{market}.csv"
-        if path.exists() and path.stat().st_size > 0 and rows_for(path) > 0:
-            return path
+    # 1순위는 현재 MONE repo, 2순위는 기존 StockApp 작업스케줄러 출력 폴더입니다.
+    for base in report_roots():
+        for version in versions:
+            path = base / f"{version}_{kind}_{market}.csv"
+            if path.exists() and path.stat().st_size > 0 and rows_for(path) > 0:
+                return path
     return None
 
 
@@ -231,7 +453,7 @@ def read_report(kind: str, market: str, versions: tuple[str, ...] = DEFAULT_VERS
     path = report_path(kind, market, versions)
     if path is None:
         return pd.DataFrame(), ""
-    return read_csv(path), path.relative_to(REPO_ROOT).as_posix()
+    return read_csv(path), source_label(path)
 
 
 def dataframe_records(df: pd.DataFrame, limit: int | None = None) -> list[dict[str, Any]]:
@@ -278,12 +500,21 @@ def apply_quote_cache(row: dict[str, Any], market: str) -> dict[str, Any]:
     merged["quote_source"] = cached.get("source", "") or cached.get("priceSource", "") or "가격출처 없음"
     merged["current_price_source"] = cached.get("priceSource", "") or "가격출처 없음"
     merged["data_status"] = "현재가 캐시 반영"
+    merged["priceSourceType"] = "kis"
+    merged["priceSourceFile"] = source_label(QUOTE_CACHE_FILE)
+    merged["priceSourceDate"] = cached.get("priceTime", "") or quote_cache().get("updatedAt", "")
     merged["price_data_status"] = "cache_success"
     return merged
 
 
 def _row_symbol(row: dict[str, Any] | pd.Series, market: str) -> str:
-    return normalize_symbol(first_value(row, SYMBOL_ALIASES), market)
+    # StockApp order-plan rows often use "종목" for the Korean company name and "stock_code" for the code.
+    # Prefer explicit code/ticker columns so Korean names are not mistaken for symbols.
+    preferred = ["symbol", "ticker", "code", "종목코드", "stock_code", "stockCode", "종목"]
+    value = first_value(row, preferred)
+    if market == "kr" and value and not re.fullmatch(r"\d{1,6}", str(value).strip().replace(".0", "")):
+        value = first_value(row, ["stock_code", "종목코드", "code", "ticker", "symbol"])
+    return normalize_symbol(value, market)
 
 
 def _records_by_symbol(df: pd.DataFrame, market: str) -> dict[str, dict[str, Any]]:
@@ -399,6 +630,12 @@ def _ohlcv_column(df: pd.DataFrame, aliases: list[str]) -> str | None:
 
 
 def _find_ohlcv_candidates(symbol: str, market: str) -> list[Path]:
+    """Fast OHLCV lookup.
+
+    Earlier versions recursively scanned data/ and reports/ for every symbol, which
+    became very slow once StockApp/backtest folders were copied in. v3.5.11 only
+    searches known chart/OHLCV folders and direct filename patterns.
+    """
     symbol = normalize_symbol(symbol, market)
     names = [
         f"{market}_{symbol}_daily.csv",
@@ -408,16 +645,28 @@ def _find_ohlcv_candidates(symbol: str, market: str) -> list[Path]:
         f"ohlcv_{market}_{symbol}.csv",
         f"chart_{market}_{symbol}.csv",
     ]
-    roots = [DATA_DIR / "market", DATA_DIR / "chart", DATA_DIR / "ohlcv", DATA_DIR, REPORT_DIR]
+    roots = [
+        DATA_DIR / "market" / "ohlcv",
+        DATA_DIR / "market",
+        DATA_DIR / "chart",
+        DATA_DIR / "ohlcv",
+    ]
+    for root in stockapp_roots():
+        roots.extend([
+            root / "data" / "market" / "ohlcv",
+            root / "data" / "market",
+            root / "data" / "ohlcv",
+            root / "data" / "chart",
+        ])
+    roots = _unique_paths([r for r in roots if r.exists() and not _is_excluded_path(r)])
     found: list[Path] = []
     for base in roots:
-        if not base.exists():
-            continue
         for name in names:
             p = base / name
             if p.exists() and p.is_file() and p.stat().st_size > 0:
                 found.append(p)
-        for p in base.rglob("*.csv"):
+        # Only scan shallow OHLCV/chart folders, never the whole data/reports tree.
+        for p in base.glob("*.csv"):
             low = p.name.lower()
             if symbol.lower() in low and any(token in low for token in ("daily", "ohlcv", "chart")):
                 found.append(p)
@@ -466,21 +715,24 @@ def _normalize_ohlcv_dataframe(df: pd.DataFrame, symbol: str, market: str) -> pd
     return out.drop(columns=["date_sort"], errors="ignore").tail(240).reset_index(drop=True)
 
 
+@lru_cache(maxsize=1024)
 def _load_ohlcv(symbol: str, market: str) -> tuple[pd.DataFrame, str]:
     for path in _find_ohlcv_candidates(symbol, market):
         df = _normalize_ohlcv_dataframe(read_csv(path), symbol, market)
         if not df.empty and len(df) >= 5:
-            return df, path.relative_to(REPO_ROOT).as_posix()
+            return df, source_label(path)
     return pd.DataFrame(), ""
 
 
+@lru_cache(maxsize=1024)
 def _ohlcv_stats(symbol: str, market: str) -> dict[str, float | str | int]:
     df, source = _load_ohlcv(symbol, market)
     if df.empty:
-        return {"source": source, "rows": 0, "avgReturn": 0.001, "volatility": 0.022, "gapAvg": 0.0, "lastClose": 0.0}
+        return {"source": source, "rows": 0, "avgReturn": 0.001, "volatility": 0.022, "gapAvg": 0.0, "lastClose": 0.0, "lastDate": ""}
     close = pd.to_numeric(df["close"], errors="coerce").dropna()
+    last_date = str(df["date"].iloc[-1]) if "date" in df and len(df) else ""
     if len(close) < 2:
-        return {"source": source, "rows": len(df), "avgReturn": 0.001, "volatility": 0.022, "gapAvg": 0.0, "lastClose": float(close.iloc[-1]) if len(close) else 0.0}
+        return {"source": source, "rows": len(df), "avgReturn": 0.001, "volatility": 0.022, "gapAvg": 0.0, "lastClose": float(close.iloc[-1]) if len(close) else 0.0, "lastDate": last_date}
     returns = close.pct_change().dropna()
     avg_return = float(returns.tail(20).mean()) if len(returns) else 0.001
     volatility = float(returns.tail(60).std()) if len(returns) > 3 else 0.022
@@ -500,7 +752,75 @@ def _ohlcv_stats(symbol: str, market: str) -> dict[str, float | str | int]:
         "volatility": _clamp(volatility, 0.004, 0.08),
         "gapAvg": _clamp(gap_avg, -0.04, 0.04),
         "lastClose": float(close.iloc[-1]),
+        "lastDate": last_date,
     }
+
+
+def _date_key(value: Any) -> str:
+    text = _safe_str(value)
+    digits = re.sub(r"\D", "", text)
+    if len(digits) >= 8:
+        return digits[:8]
+    return digits
+
+
+@lru_cache(maxsize=8)
+def _latest_actual_close_map(market: str) -> dict[str, dict[str, Any]]:
+    if market != "kr":
+        return {}
+    candidates = [
+        DATA_DIR / "decision_system" / "actual_results.csv",
+        DATA_DIR / "stockapp" / "actual_results.csv",
+        DATA_DIR / "adjustment_performance_report.csv",
+        REPORT_DIR / "mone_v36_final_prediction_validation_kr.csv",
+    ]
+    by_symbol: dict[str, dict[str, Any]] = {}
+    for path in candidates:
+        df = read_csv(path)
+        if df.empty:
+            continue
+        symbol_col = _ohlcv_column(df, ["ticker", "symbol", "stock_code", "종목코드"])
+        close_col = _ohlcv_column(df, ["actual_close", "actualClose", "실제종가", "actual close"])
+        date_col = _ohlcv_column(df, ["target_date", "actual_result_date", "date", "예측대상일"])
+        if not symbol_col or not close_col or not date_col:
+            continue
+        work = df.copy()
+        work["_symbol"] = work[symbol_col].map(lambda v: normalize_symbol(v, market))
+        work["_close"] = work[close_col].map(_safe_float)
+        work["_date_key"] = work[date_col].map(_date_key)
+        work = work.dropna(subset=["_close"])
+        work = work[(work["_symbol"].astype(str) != "") & (work["_date_key"].astype(str) != "")]
+        if work.empty:
+            continue
+        for _, row in work.sort_values("_date_key").iterrows():
+            symbol = str(row["_symbol"])
+            candidate = {
+                "close": float(row["_close"]),
+                "date": str(row["_date_key"]),
+                "source": source_label(path),
+            }
+            prev = by_symbol.get(symbol)
+            if not prev or str(candidate["date"]) > str(prev.get("date", "")):
+                by_symbol[symbol] = candidate
+    return by_symbol
+
+
+@lru_cache(maxsize=1024)
+def _latest_actual_close(symbol: str, market: str) -> dict[str, Any]:
+    """Latest verified actual close from daily validation reports."""
+    if market != "kr" or not symbol:
+        return {}
+    return dict(_latest_actual_close_map(market).get(normalize_symbol(symbol, market), {}))
+
+
+def _price_status(source_date: str, price_date: str, runner_date: str, is_fallback: bool) -> str:
+    if is_fallback:
+        return "FALLBACK"
+    if runner_date and source_date and _normalize_date_text(source_date) != _normalize_date_text(runner_date):
+        return "STALE"
+    if not price_date:
+        return "PARTIAL"
+    return "NORMAL"
 
 
 def _confidence_value(row: dict[str, Any] | pd.Series) -> float:
@@ -739,6 +1059,22 @@ def read_predictions_csv(market: str | None = None) -> list[dict[str, Any]]:
     return [row for row in rows if _market_matches(row, market)]
 
 
+def read_primary_predictions(market: str) -> tuple[list[dict[str, Any]], str, str]:
+    rows = read_predictions_csv(market)
+    source = "predictions.csv"
+    target_date = runner_target_date(market)
+    if target_date:
+        target_key = _normalize_date_text(target_date)
+        matched = [row for row in rows if _normalize_date_text(first_value(row, ["target_date", "targetDate", "actual_date", "data_date"], "")) == target_key]
+        rows = matched
+    for row in rows:
+        row.setdefault("sourceType", "github")
+        row.setdefault("sourceFile", source)
+        row.setdefault("sourceDate", _row_source_date(row) or target_date)
+        row.setdefault("isFallback", False)
+    return rows, source, target_date
+
+
 def _latest_records_by_symbol(rows: list[dict[str, Any]], market: str) -> dict[str, dict[str, Any]]:
     def sort_key(row: dict[str, Any]) -> str:
         return first_value(row, ["created_at", "target_date", "data_date", "updated_at"], "")
@@ -805,6 +1141,8 @@ def _report_group(path: Path) -> str:
     name = path.name.lower()
     if "latest" in name:
         return "latest"
+    if name.startswith("mone_v36"):
+        return "mone_v36"
     if name.startswith("v93"):
         return "v93"
     if name.startswith("v92"):
@@ -821,11 +1159,11 @@ def _report_group(path: Path) -> str:
 
 
 def _fallback_status_for_file(path: Path) -> str:
-    match = re.match(r"v\d+_(.+)_(kr|us)\.csv$", path.name)
+    match = re.match(r"(?:mone_v36|v\d+)_(.+)_(kr|us)\.csv$", path.name)
     if not match:
         return "fallback 대상 아님"
     suffix = f"{match.group(1)}_{match.group(2)}.csv"
-    for version in ("v93", "v92", "v91"):
+    for version in ("mone_v36", "v93", "v92", "v91"):
         candidate = REPORT_DIR / f"{version}_{suffix}"
         if candidate.exists() and candidate.stat().st_size > 0 and rows_for(candidate) > 0:
             return f"{version} 사용 가능" if candidate == path else f"{version} fallback 가능"
@@ -836,7 +1174,54 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
     row_dict = dict(row)
     symbol = normalize_symbol(first_value(row_dict, SYMBOL_ALIASES), market)
     name = first_value(row_dict, NAME_ALIASES, symbol or "이름 없음")
-    current_price = first_number(row_dict, CURRENT_PRICE_ALIASES)
+    ohlc_close = first_number(row_dict, KR_OHLC_CLOSE_ALIASES) if market == "kr" else None
+    ohlc_stats = _ohlcv_stats(symbol, market) if market == "kr" and symbol else {}
+    actual_close = _latest_actual_close(symbol, market) if market == "kr" and symbol else {}
+    if actual_close:
+        actual_date = str(actual_close.get("date") or "")
+        ohlc_date = _date_key(ohlc_stats.get("lastDate") or first_value(row_dict, ["basis_ohlc_date", "ohlcv_date", "date", "일자"], ""))
+        if actual_date and (not ohlc_date or actual_date >= ohlc_date):
+            close_value = _safe_float(actual_close.get("close"))
+            if close_value is not None and close_value > 0:
+                ohlc_close = close_value
+                ohlc_stats = {
+                    **ohlc_stats,
+                    "lastClose": close_value,
+                    "lastDate": actual_date,
+                    "source": actual_close.get("source", "") or ohlc_stats.get("source", ""),
+                }
+    if ohlc_close is None and int(ohlc_stats.get("rows", 0) or 0) > 0:
+        stats_close = _safe_float(ohlc_stats.get("lastClose"))
+        if stats_close is not None and stats_close > 0:
+            ohlc_close = stats_close
+    current_price = ohlc_close if ohlc_close is not None else first_number(row_dict, CURRENT_PRICE_ALIASES)
+    ohlc_source = str(ohlc_stats.get("source") or "")
+    price_time = (str(ohlc_stats.get("lastDate") or "") or first_value(row_dict, ["updated_at", "가격기준시각", "ohlcv_date", "date", "일자"], "OHLCV 최신 종가")) if ohlc_close is not None else first_value(row_dict, PRICE_TIME_ALIASES, "현재가 기준시각 없음")
+    price_source = f"OHLCV 종가{f' · {ohlc_source}' if ohlc_source else ''}" if ohlc_close is not None else first_value(row_dict, PRICE_SOURCE_ALIASES, "가격출처 없음")
+    data_status = "OHLCV 종가 반영" if ohlc_close is not None else first_value(row_dict, DATA_STATUS_ALIASES, "상태 없음")
+    runner_date = runner_target_date(market)
+    source_type = first_value(row_dict, ["sourceType"], "local")
+    source_file = first_value(row_dict, ["sourceFile", "source_file"], "")
+    source_date = first_value(row_dict, ["sourceDate"], _row_source_date(row_dict))
+    is_fallback = bool(row_dict.get("isFallback")) or source_type not in {"github", "kis"}
+    source_text = first_value(row_dict, ["priceSourceType", "quote_source", "current_price_source", "priceSource"], "").lower()
+    kis_price = first_number(row_dict, ["current_price", "last_price"]) if "kis" in source_text else None
+    price_source_type = "local"
+    price_source_file = first_value(row_dict, ["priceSourceFile", "source_file", "source"], "")
+    price_source_date = price_time
+    if kis_price is not None:
+        current_price = kis_price
+        price_time = first_value(row_dict, ["priceSourceDate", "updated_at", "quote_time", "price_time"], price_time)
+        price_source = first_value(row_dict, ["current_price_source", "quote_source", "quote_source_label"], "KIS current price")
+        price_source_type = "kis"
+        price_source_file = first_value(row_dict, ["priceSourceFile"], source_label(QUOTE_CACHE_FILE))
+        price_source_date = price_time
+    elif ohlc_close is not None:
+        price_source_type = "github" if ohlc_source else "local"
+        price_source_file = ohlc_source
+        price_source_date = price_time
+        price_source = f"OHLCV close{f' · {ohlc_source}' if ohlc_source else ''}"
+    data_status = _price_status(source_date, price_source_date, runner_date, is_fallback)
     entry = first_number(row_dict, ENTRY_ALIASES)
     stop = first_number(row_dict, STOP_ALIASES)
     target = first_number(row_dict, TARGET_ALIASES)
@@ -866,9 +1251,16 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
         "marketLabel": _market_label(market),
         "currentPrice": current_price,
         "currentPriceText": format_price(current_price, market) if current_price is not None else "현재가 없음",
-        "priceTime": first_value(row_dict, PRICE_TIME_ALIASES, "현재가 기준시각 없음"),
-        "priceSource": first_value(row_dict, PRICE_SOURCE_ALIASES, "가격출처 없음"),
-        "dataStatus": first_value(row_dict, DATA_STATUS_ALIASES, "상태 없음"),
+        "priceTime": price_time,
+        "priceSource": price_source,
+        "sourceType": source_type,
+        "sourceFile": source_file,
+        "sourceDate": source_date,
+        "priceSourceType": price_source_type,
+        "priceSourceFile": price_source_file,
+        "priceSourceDate": price_source_date,
+        "dataStatus": data_status,
+        "isFallback": is_fallback,
         "entry": entry,
         "entryText": format_price(entry, market) if entry is not None else "기준가 산출 필요",
         "stop": stop,
@@ -903,20 +1295,297 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
     }
 
 
+
+
+# -----------------------------------------------------------------------------
+# v3.5.11: StockApp raw-data ingestion + MONE-owned classification
+# -----------------------------------------------------------------------------
+# StockApp is treated as a DATA FEED only. We intentionally do not copy its
+# final labels such as "관망 우위", "매수금지", or "관망/제외" into MONE's
+# recommendation buckets. Those labels are kept as risk context, while MONE
+# recalculates opportunity score, entry score, and timing bucket with its own
+# rules: today entry / wait for pullback / next entry / caution.
+
+STOCKAPP_RAW_DATA_NOTE = "StockApp 원본 데이터 수신 후 MONE 성향·진입타이밍 기준으로 재분류"
+
+
+def _latest_existing_path(paths: list[Path]) -> Path | None:
+    candidates = [p for p in paths if p.exists() and p.is_file() and p.stat().st_size > 0]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda p: p.stat().st_mtime)
+
+
+def _stockapp_order_plan_path(market: str) -> Path | None:
+    mk = "kr" if market == "kr" else "us"
+    paths: list[Path] = [
+        REPORT_DIR / f"latest_{mk}_order_plan.csv",
+        DATA_DIR / "stockapp" / f"latest_{mk}_order_plan.csv",
+        DATA_DIR / "decision_system" / f"latest_{mk}_order_plan.csv",
+    ]
+    for root in stockapp_roots():
+        paths.extend([
+            root / "reports" / f"latest_{mk}_order_plan.csv",
+            root / "data" / f"latest_{mk}_order_plan.csv",
+            root / f"latest_{mk}_order_plan.csv",
+        ])
+    # If a dated file is newer than latest_*.csv, use the newest dated one.
+    for base in [REPORT_DIR, DATA_DIR / "stockapp"] + [root / "reports" for root in stockapp_roots()]:
+        if base.exists():
+            paths.extend(sorted(base.glob(f"order_plan_{mk}_*.csv")))
+    return _latest_existing_path(paths)
+
+
+def _stockapp_result_path(market: str) -> Path | None:
+    mk = "kr" if market == "kr" else "us"
+    paths: list[Path] = [
+        REPORT_DIR / f"latest_{mk}_result.json",
+        DATA_DIR / "stockapp" / f"latest_{mk}_result.json",
+    ]
+    for root in stockapp_roots():
+        paths.extend([root / "reports" / f"latest_{mk}_result.json", root / "data" / f"latest_{mk}_result.json"])
+    return _latest_existing_path(paths)
+
+
+def _stockapp_order_plan_rows(market: str) -> tuple[list[dict[str, Any]], str]:
+    path = _stockapp_order_plan_path(market)
+    if path is None:
+        return [], ""
+    rows = dataframe_records(read_csv(path))
+    return rows, source_label(path)
+
+
+def _text_has_any(text: str, tokens: tuple[str, ...]) -> bool:
+    return any(token in text for token in tokens)
+
+
+def _risk_context_text(row: dict[str, Any]) -> str:
+    parts = [
+        first_value(row, ["주의사유", "risk_reason", "risk_warning_flags", "invalidation_condition"], ""),
+        first_value(row, ["금지사유", "no_buy_reasons", "no_buy_market_reason"], ""),
+        first_value(row, ["실전판정이유", "행동이유", "risk_decision_reasons"], ""),
+        first_value(row, ["event_label", "event_learning_bucket", "earnings_event_timing"], ""),
+    ]
+    return " | ".join(p for p in parts if p)
+
+
+def _score_from_label(text: str, positive_tokens: tuple[str, ...], negative_tokens: tuple[str, ...]) -> float:
+    if not text:
+        return 0.0
+    score = 0.0
+    for token in positive_tokens:
+        if token in text:
+            score += 7.0
+    for token in negative_tokens:
+        if token in text:
+            score -= 7.0
+    return score
+
+
+def _mone_classifier_scores(row: dict[str, Any], market: str) -> dict[str, Any]:
+    symbol = _row_symbol(row, market)
+    current = first_number(row, CURRENT_PRICE_ALIASES)
+    entry = first_number(row, ENTRY_ALIASES)
+    stop = first_number(row, STOP_ALIASES)
+    target = first_number(row, TARGET_ALIASES)
+    current = current or first_number(row, ["basis_close", "prev_close", "current_price_at_prediction"])
+    entry, stop, target = _derive_price_levels(row, market, current, entry, stop, target, symbol)
+    risk, reward, rr_derived = _risk_reward_values(entry, stop, target)
+    rr = first_number(row, ["손익비", "risk_reward_ratio", "rr", "rr1"]) or rr_derived or 0.0
+    trade_fit = first_number(row, ["매매적합도", "trade_fit_score"]) or 0.0
+    ensemble = first_number(row, ["앙상블추정점수", "ensemble_score", "purpose_score_after_disclosure"]) or 0.0
+    quality = first_number(row, ["품질점수", "quality_score", "prediction_quality_score"]) or 0.0
+    confidence = first_number(row, ["보정신뢰도", "confidence_score", "risk_confidence_score"]) or 50.0
+    supply_text = first_value(row, ["수급", "supply_label", "supply_summary", "foreign_institution_score"], "")
+    fundamental_text = first_value(row, ["재무", "fundamental_label", "fundamental_summary"], "")
+    risk_text = _risk_context_text(row)
+    no_buy_raw = first_value(row, ["매수금지", "no_buy_filter_applied"], "").lower()
+
+    supply_bonus = _score_from_label(supply_text, ("우호", "순매수", "동시 순매수", "강함", "양호"), ("약함", "순매도", "중립/확인"))
+    fundamental_bonus = _score_from_label(fundamental_text, ("우호", "개선", "저평가", "양호", "성장"), ("제한", "부족", "악화", "위험"))
+    event_penalty = 0.0
+    if _text_has_any(risk_text, ("대형 이벤트", "매크로 고변동", "이벤트·매크로", "FOMC", "CPI", "실적발표", "상장", "재료 소멸")):
+        event_penalty += 12.0
+    if _text_has_any(risk_text, ("주봉 강한 하락", "강한 하락", "방향 적중률 낮음", "가상매매 평균 -")):
+        event_penalty += 10.0
+    if no_buy_raw in {"true", "1", "y", "yes"}:
+        # StockApp's no-buy flag is treated as a risk input only, not as a bucket override.
+        event_penalty += 8.0
+    if _text_has_any(risk_text, ("앙상블 약함", "신규매수 금지", "주의사유 존재")):
+        event_penalty += 8.0
+
+    rr_component = _clamp(rr, 0, 3.5) * 9.0
+    opportunity = 38.0 + rr_component + _clamp(trade_fit, -20, 60) * 0.35 + _clamp(ensemble, -50, 100) * 0.22 + _clamp(confidence - 50, -50, 50) * 0.18 + supply_bonus + fundamental_bonus - event_penalty * 0.45
+
+    gap = None
+    if current and entry:
+        gap = (current - entry) / entry
+    risk_pct = None
+    if entry and stop:
+        risk_pct = abs(entry - stop) / entry
+    entry_score = 50.0
+    if gap is not None:
+        abs_gap = abs(gap)
+        if abs_gap <= 0.015:
+            entry_score += 24.0
+        elif abs_gap <= 0.035:
+            entry_score += 16.0
+        elif gap > 0.035:
+            entry_score -= min(30.0, gap * 250)
+        elif gap < -0.035:
+            entry_score += 7.0
+    else:
+        entry_score -= 10.0
+    if rr >= 1.8:
+        entry_score += 12.0
+    elif rr >= 1.2:
+        entry_score += 6.0
+    else:
+        entry_score -= 10.0
+    if risk_pct is not None:
+        if risk_pct <= 0.07:
+            entry_score += 8.0
+        elif risk_pct >= 0.14:
+            entry_score -= 12.0
+    entry_score -= event_penalty * 0.45
+
+    opportunity = round(_clamp(opportunity, 0, 100), 1)
+    entry_score = round(_clamp(entry_score, 0, 100), 1)
+    risk_score = round(_clamp(event_penalty + max(0.0, 45.0 - opportunity) * 0.45 + (15.0 if rr and rr < 1.0 else 0.0), 0, 100), 1)
+    return {
+        "symbol": symbol,
+        "current": current,
+        "entry": entry,
+        "stop": stop,
+        "target": target,
+        "rr": rr,
+        "gap": gap,
+        "riskPct": risk_pct,
+        "opportunityScore": opportunity,
+        "entryScore": entry_score,
+        "riskScore": risk_score,
+        "riskText": risk_text,
+        "supplyText": supply_text,
+        "fundamentalText": fundamental_text,
+    }
+
+
+def _mone_timing_bucket(row: dict[str, Any], market: str) -> str:
+    s = _mone_classifier_scores(row, market)
+    opportunity = float(s["opportunityScore"])
+    entry_score = float(s["entryScore"])
+    risk_score = float(s["riskScore"])
+    gap = s.get("gap")
+    rr = float(s.get("rr") or 0)
+    supply_text = str(s.get("supplyText") or "")
+
+    missing_levels = s.get("entry") is None or s.get("stop") is None or s.get("target") is None
+    if missing_levels:
+        return "risk"
+    if risk_score >= 55 and opportunity < 62:
+        return "risk"
+    if opportunity >= 68 and entry_score >= 68 and risk_score < 45 and (gap is None or gap <= 0.025) and rr >= 1.25:
+        return "action"
+    if opportunity >= 56 and rr >= 1.15 and (gap is None or gap > 0.015 or risk_score >= 35):
+        return "pullback"
+    if ("우호" in supply_text or "순매수" in supply_text) and opportunity >= 48 and risk_score < 65:
+        return "flow"
+    if opportunity >= 52 and entry_score >= 50 and risk_score < 60:
+        return "pullback"
+    return "risk"
+
+
+def _stockapp_raw_to_candidate_rows(market: str, kind: str) -> tuple[list[dict[str, Any]], str]:
+    raw_rows, source = _stockapp_order_plan_rows(market)
+    if not raw_rows:
+        return [], ""
+    out: list[dict[str, Any]] = []
+    for row in raw_rows:
+        if not _market_matches(row, market):
+            continue
+        bucket = _mone_timing_bucket(row, market)
+        if bucket != kind:
+            continue
+        merged = dict(row)
+        # Add alias columns so normalize_security_row can read StockApp raw consistently.
+        merged.setdefault("symbol", _row_symbol(row, market))
+        merged.setdefault("name", first_value(row, ["stock_name", "종목", "name", "ticker"], _row_symbol(row, market)))
+        merged.setdefault("current_price", first_value(row, ["실시간현재가", "current_price_at_prediction", "basis_close", "prev_close"], ""))
+        merged.setdefault("entry", first_value(row, ["우선진입가", "보수대기선", "preferred_entry", "technical_entry"], ""))
+        merged.setdefault("stop_loss", first_value(row, ["손절가", "stop_loss"], ""))
+        merged.setdefault("target_price", first_value(row, ["1차익절가", "take_profit1", "target_price"], ""))
+        scores = _mone_classifier_scores(merged, market)
+        normalized = normalize_security_row(merged, market)
+        normalized.update({
+            "category": kind,
+            "sourceCategory": "stockapp_raw_mone_reclassified",
+            "dataOrigin": "StockApp raw feed",
+            "classificationPolicy": STOCKAPP_RAW_DATA_NOTE,
+            "moneTimingBucket": kind,
+            "opportunityScore": scores["opportunityScore"],
+            "entryScore": scores["entryScore"],
+            "riskScore": scores["riskScore"],
+            "riskReward": f"1:{scores['rr']:.2f}" if scores.get("rr") else "손익비 없음",
+            "confidence": scores["opportunityScore"],
+            "reason": f"MONE 재분류: 기회 {scores['opportunityScore']} / 진입 {scores['entryScore']} / 위험 {scores['riskScore']}",
+            "warning": scores.get("riskText") or "주의사항 없음",
+            "nextAction": {
+                "action": "오늘 진입 가능: 기준가·손절가·목표가 확인 후 조건부 진입",
+                "pullback": "기다릴 후보: 좋은 후보이나 기준가/눌림 도달 시 재검토",
+                "flow": "수급 포착: 수급은 우호적이나 가격·리스크 확인 필요",
+                "risk": "매수금지/주의: 위험·이벤트·데이터 부족 요인 확인",
+            }.get(kind, "재검토"),
+            "rawStockAppFinalJudgment": first_value(row, ["실전최종판정", "final_judgment"], ""),
+            "rawStockAppBuyAction": first_value(row, ["매수행동", "suggested_action"], ""),
+            "rawStockAppNoBuy": first_value(row, ["매수금지", "no_buy_filter_applied"], ""),
+            "raw": merged,
+        })
+        out.append(normalized)
+    # Ranking: MONE scores first, not StockApp final labels.
+    out.sort(key=lambda item: (float(item.get("opportunityScore") or 0), float(item.get("entryScore") or 0), -float(item.get("riskScore") or 0)), reverse=True)
+    return out, source
+
+
+def _locate_required_file(rel: str) -> Path:
+    repo_path = REPO_ROOT / rel
+    if repo_path.exists():
+        return repo_path
+    for root in stockapp_roots():
+        for candidate in (root / rel, root / Path(rel).name, root / "reports" / Path(rel).name, root / "data" / Path(rel).name):
+            if candidate.exists():
+                return candidate
+    return repo_path
+
+
+def _history_source_file(file_name: str) -> Path:
+    repo_path = HISTORY_DIR / file_name
+    if repo_path.exists() and repo_path.stat().st_size > 0:
+        return repo_path
+    rel = Path("data") / "history" / file_name
+    for root in stockapp_roots():
+        for candidate in (root / rel, root / "history" / file_name, root / file_name):
+            if candidate.exists() and candidate.stat().st_size > 0:
+                return candidate
+    return repo_path
+
+
 def status_files() -> dict[str, Any]:
     items = []
     for rel in REQUIRED_FILES:
-        path = REPO_ROOT / rel
+        path = _locate_required_file(rel)
+        exists = path.exists()
         items.append({
             "path": rel,
-            "exists": path.exists(),
-            "status": "OK" if path.exists() and path.stat().st_size > 0 else "MISSING",
-            "bytes": path.stat().st_size if path.exists() else 0,
-            "rows": rows_for(path) if path.exists() else 0,
-            "updatedAt": file_mtime(path) if path.exists() else "",
+            "resolvedPath": source_label(path) if exists else rel,
+            "exists": exists,
+            "status": "OK" if exists and path.stat().st_size > 0 else "MISSING",
+            "bytes": path.stat().st_size if exists else 0,
+            "rows": rows_for(path) if exists else 0,
+            "updatedAt": file_mtime(path) if exists else "",
         })
     return {
         "repoRoot": str(REPO_ROOT),
+        "stockAppBridge": stockapp_bridge_status(),
         "fallbackPolicy": list(FALLBACK_POLICY),
         "defaultVersionPriority": list(DEFAULT_VERSION_PRIORITY),
         "items": items,
@@ -931,17 +1600,109 @@ def status_env() -> dict[str, Any]:
     return {"items": items}
 
 
+def _home_card_count(row: dict[str, Any]) -> int:
+    value = first_value(row, ["건수", "count", "rows", "후보수", "개수"], "")
+    num = _safe_float(value)
+    return int(num) if num is not None else 0
+
+
+def _home_top_text(items: list[dict[str, Any]]) -> str:
+    if not items:
+        return "-"
+    item = items[0]
+    name = item.get("name") or item.get("종목명") or item.get("company") or item.get("symbol") or "-"
+    symbol = item.get("symbol") or item.get("종목코드") or item.get("ticker") or ""
+    return f"{name} ({symbol})" if symbol and str(symbol) not in str(name) else str(name)
+
+
+def _market_home_cards_from_live_data(market: str, existing_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build the market-home top cards from the latest actionable datasets.
+
+    v3.5.2 fix:
+    - Do NOT keep an old today_summary just because one card has a non-zero count.
+    - v93_action/pullback/flow/risk/company data must override stale summary cards.
+    - If the live files are unexpectedly empty, fall back to existing_rows.
+    """
+    action_payload = candidate_rows(market, "action")
+    pullback_payload = candidate_rows(market, "pullback")
+    flow_payload = candidate_rows(market, "flow")
+    risk_payload = candidate_rows(market, "risk")
+
+    action = action_payload.get("items", [])
+    pullback = pullback_payload.get("items", [])
+    flow = flow_payload.get("items", [])
+    risk = risk_payload.get("items", [])
+    company_df, company_source = read_report("company_integrated", market)
+    value_rows = dataframe_records(company_df)
+
+    live_total = len(action) + len(pullback) + len(flow) + len(risk) + len(value_rows)
+    if live_total <= 0 and existing_rows:
+        return existing_rows
+
+    cards = [
+        {
+            "아이콘": "🎯",
+            "카드": "오늘 진입 가능",
+            "설명": "진입가·기준가·손절가·목표가를 먼저 확인할 후보",
+            "건수": str(len(action)),
+            "TOP": _home_top_text(action),
+            "구분": "action",
+            "source": action_payload.get("source", ""),
+        },
+        {
+            "아이콘": "⏳",
+            "카드": "기다릴 후보",
+            "설명": "좋은 종목이지만 기준가 또는 눌림을 기다릴 후보",
+            "건수": str(len(pullback)),
+            "TOP": _home_top_text(pullback),
+            "구분": "pullback",
+            "source": pullback_payload.get("source", ""),
+        },
+        {
+            "아이콘": "💧",
+            "카드": "수급 포착 후보",
+            "설명": "수급·거래대금 흐름이 먼저 감지된 후보",
+            "건수": str(len(flow)),
+            "TOP": _home_top_text(flow),
+            "구분": "flow",
+            "source": flow_payload.get("source", ""),
+        },
+        {
+            "아이콘": "📊",
+            "카드": "저평가·기업분석",
+            "설명": "실적·밸류·성장성을 함께 확인할 후보",
+            "건수": str(len(value_rows)),
+            "TOP": _home_top_text(value_rows),
+            "구분": "value",
+            "source": company_source,
+        },
+        {
+            "아이콘": "⚠️",
+            "카드": "매수금지 / 주의",
+            "설명": "추격·과열·데이터 부족 등으로 신규 진입 제한",
+            "건수": str(len(risk)),
+            "TOP": _home_top_text(risk),
+            "구분": "risk",
+            "source": risk_payload.get("source", ""),
+        },
+    ]
+    return cards
+
 def market_summary(market: str) -> dict[str, Any]:
     summary, source = read_report("today_summary", market)
     data_status, data_source = read_report("data_status", market)
     dashboard, dash_source = read_report("operational_dashboard", market)
-    status_path = REPORT_DIR / "v93_github_actions_status.json"
+    status_path = REPORT_DIR / "mone_v36_github_actions_status.json"
+    if not status_path.exists():
+        status_path = REPORT_DIR / "v93_github_actions_status.json"
     status = read_json(status_path)
+    summary_rows = dataframe_records(summary)
+    summary_rows = _market_home_cards_from_live_data(market, summary_rows)
     sources = [source, data_source, dash_source]
     return {
         "market": market,
         "marketLabel": _market_label(market),
-        "cards": dataframe_records(summary),
+        "cards": summary_rows,
         "dataStatus": dataframe_records(data_status),
         "dashboard": dataframe_records(dashboard),
         "automation": status,
@@ -952,12 +1713,20 @@ def market_summary(market: str) -> dict[str, Any]:
 
 def latest_updated_at() -> str:
     candidates = [
-        REPORT_DIR / "v92_symbol_snapshot_kr.csv",
-        REPORT_DIR / "v92_symbol_snapshot_us.csv",
-        REPORT_DIR / "v92_news_summary_kr.csv",
+        report_path("symbol_snapshot", "kr"),
+        report_path("symbol_snapshot", "us"),
+        report_path("news_summary", "kr"),
+        REPORT_DIR / "mone_v36_github_actions_status.json",
         REPORT_DIR / "v93_github_actions_status.json",
+        REPORT_DIR / "stockapp_runner_status_kr.json",
+        REPORT_DIR / "stockapp_runner_status_us.json",
+        DATA_DIR / "stockapp" / "runner_status_kr.json",
+        DATA_DIR / "stockapp" / "runner_status_us.json",
     ]
-    times = [file_mtime(path) for path in candidates if path.exists()]
+    for root in stockapp_roots():
+        candidates.append(root / "reports" / "mone_v36_github_actions_status.json")
+        candidates.append(root / "reports" / "v93_github_actions_status.json")
+    times = [file_mtime(path) for path in candidates if path and path.exists()]
     cache_updated = quote_cache().get("updatedAt", "")
     if cache_updated:
         times.append(str(cache_updated))
@@ -1007,6 +1776,22 @@ def candidate_rows(market: str, kind: str) -> dict[str, Any]:
     allowed = {"action", "pullback", "flow", "risk"}
     if kind not in allowed:
         kind = "action"
+
+    # v3.5.11: If today's StockApp raw order plan exists, treat it as raw data
+    # and classify it with MONE's own rules. Do not trust StockApp's final
+    # "관망/제외/매수금지" labels as the MONE timing bucket.
+    raw_rows, raw_source = _stockapp_raw_to_candidate_rows(market, kind)
+    if raw_source:
+        return {
+            "market": market,
+            "type": kind,
+            "count": len(raw_rows),
+            "source": raw_source,
+            "policy": STOCKAPP_RAW_DATA_NOTE,
+            "items": raw_rows,
+        }
+
+    # Fallback: existing MONE reports/v93/v92 files.
     df, source = read_report(f"{kind}_cards", market)
     rows = enrich_records_with_version_fallback(f"{kind}_cards", market, dataframe_records(df))
     normalized_rows = []
@@ -1019,6 +1804,7 @@ def candidate_rows(market: str, kind: str) -> dict[str, Any]:
             "reason": first_value(row, ["핵심근거", "근거1", "설명"], "근거 없음"),
             "warning": first_value(row, ["주의점", "주의", "risk_warning_flags"], "주의사항 없음"),
             "nextAction": first_value(row, ["다음행동", "suggested_action", "final_judgment"], "다음 행동 없음"),
+            "policy": "MONE reports fallback",
         })
         normalized_rows.append(normalized)
     return {"market": market, "type": kind, "count": len(normalized_rows), "source": source, "items": normalized_rows}
@@ -1101,14 +1887,33 @@ def news_rows(market: str) -> dict[str, Any]:
 
 
 def predictions(market: str) -> dict[str, Any]:
-    df, source = read_report("future_probability", market)
-    rows = enrich_records_with_version_fallback("future_probability", market, dataframe_records(df))
+    rows, source, target_date = read_primary_predictions(market)
+    if not rows:
+        df, source = read_report("future_probability", market)
+        rows = enrich_records_with_version_fallback("future_probability", market, dataframe_records(df))
+        for row in rows:
+            row.setdefault("sourceType", "local")
+            row.setdefault("sourceFile", source)
+            row.setdefault("sourceDate", _row_source_date(row))
+            row.setdefault("isFallback", True)
     if not rows:
         rows = [dict(item.get("raw", item)) for item in symbols(market)["items"][:30]]
         source = source or "symbols fallback + derived prediction"
+        for row in rows:
+            row.setdefault("sourceType", "local")
+            row.setdefault("sourceFile", source)
+            row.setdefault("sourceDate", _row_source_date(row))
+            row.setdefault("isFallback", True)
+    base_map = _combine_symbol_maps(market)
     normalized_rows = []
     for row in rows:
         row = dict(row.get("raw", row)) if isinstance(row, dict) else dict(row)
+        row.setdefault("sourceType", "github" if source == "predictions.csv" else "local")
+        row.setdefault("sourceFile", source)
+        row.setdefault("sourceDate", _row_source_date(row) or target_date)
+        row.setdefault("isFallback", source != "predictions.csv")
+        symbol = _row_symbol(row, market)
+        row = {**base_map.get(symbol, {}), **row} if symbol else row
         row = apply_quote_cache(row, market)
         normalized = normalize_security_row(row, market)
         normalized.update({
@@ -1120,6 +1925,42 @@ def predictions(market: str) -> dict[str, Any]:
 
 
 def premarket_report(market: str) -> dict[str, Any]:
+    # v3.5.11: Prefer MONE-classified StockApp raw buckets for the user-facing premarket view.
+    bucket_payloads = [("오늘 진입", candidate_rows(market, "action")), ("기다림", candidate_rows(market, "pullback")), ("수급", candidate_rows(market, "flow")), ("주의", candidate_rows(market, "risk"))]
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    sources: list[str] = []
+    for label, payload in bucket_payloads:
+        if payload.get("source"):
+            sources.append(payload.get("source"))
+        for normalized in payload.get("items", [])[:30]:
+            symbol = normalize_symbol(normalized.get("symbol"), market)
+            key = f"{label}:{symbol}"
+            if key in seen:
+                continue
+            seen.add(key)
+            raw = normalized.get("raw", {}) if isinstance(normalized.get("raw"), dict) else {}
+            items.append({
+                **normalized,
+                "sourceGroup": label,
+                "expectedOpen": normalized.get("expectedOpenText", _format_optional_price(raw, ["예상시초가", "pred_open_mid", "pred_open", "premarket_price"], market, "예상 시초가 산출 필요")),
+                "expectedClose": normalized.get("expectedCloseText", _format_optional_price(raw, ["예상종가", "pred_close_mid", "pred_close"], market, "예상 종가 산출 필요")),
+                "target2Text": _format_optional_price(raw, TARGET2_ALIASES, market, "2차 목표가 없음"),
+                "riskReward": normalized.get("riskReward", _display_value(raw, ["손익비", "rr", "rr1", "risk_reward", "risk_reward_ratio"], "손익비 없음")),
+                "nextAction": normalized.get("nextAction") or "다음 행동 없음",
+                "riskStatus": normalized.get("warning") or "리스크 상태 없음",
+                "dataStatus": f"{normalized.get('classificationPolicy', 'MONE 재분류')} / 원본판정: {normalized.get('rawStockAppFinalJudgment', '-')}",
+            })
+    if items:
+        summary = [
+            {"구분": "오늘 진입", "건수": str(candidate_rows(market, "action").get("count", 0)), "설명": "MONE 진입점수·기회점수 기준"},
+            {"구분": "기다림", "건수": str(candidate_rows(market, "pullback").get("count", 0)), "설명": "좋은 후보이나 가격/이벤트 대기"},
+            {"구분": "수급", "건수": str(candidate_rows(market, "flow").get("count", 0)), "설명": "수급 포착 후보"},
+            {"구분": "주의", "건수": str(candidate_rows(market, "risk").get("count", 0)), "설명": "위험/데이터 부족/과열 주의"},
+        ]
+        return {"market": market, "count": len(items), "sources": sorted(set(sources)), "summary": summary, "items": items}
+
+    # Existing reports fallback.
     summary_df, summary_source = read_report("today_summary", market)
     source_rows: list[tuple[str, str, dict[str, Any]]] = []
     sources = [summary_source]
@@ -1348,50 +2189,55 @@ def report_preview(path: str) -> dict[str, Any]:
 
 
 def prediction_history(market: str | None = None) -> dict[str, Any]:
-    path = HISTORY_DIR / "prediction_history.csv"
+    path = _history_source_file("prediction_history.csv")
     df = read_csv(path)
     rows = dataframe_records(df)
     if market:
         rows = [row for row in rows if _market_matches(row, market)]
     return {
         "count": int(len(rows)),
-        "source": path.relative_to(REPO_ROOT).as_posix(),
+        "source": source_label(path),
         "items": rows[:250],
     }
 
 
 def outcome_history(market: str | None = None) -> dict[str, Any]:
-    path = HISTORY_DIR / "outcome_history.csv"
+    path = _history_source_file("outcome_history.csv")
     df = read_csv(path)
     rows = dataframe_records(df)
     if market:
         rows = [row for row in rows if _market_matches(row, market)]
     return {
         "count": int(len(rows)),
-        "source": path.relative_to(REPO_ROOT).as_posix(),
+        "source": source_label(path),
         "items": rows[:250],
     }
 
 
 def _find_data_files(patterns: tuple[str, ...], exclude: tuple[str, ...] = ()) -> list[Path]:
-    roots = [DATA_DIR, REPORT_DIR]
+    roots = _unique_paths(data_roots() + report_roots())
     found: list[Path] = []
+    exclude_all = tuple(set(exclude + tuple(EXCLUDED_SCAN_PARTS)))
     for base in roots:
-        if not base.exists():
+        if not base.exists() or _is_excluded_path(base):
             continue
-        for path in base.rglob("*"):
-            if not path.is_file():
+        for path in base.rglob("*.csv"):
+            if _is_excluded_path(path):
                 continue
             name = path.name.lower()
             full = path.as_posix().lower()
-            if exclude and any(term in name or term in full for term in exclude):
+            if exclude_all and any(term in name or term in full for term in exclude_all):
                 continue
             if any(re.search(pattern, name) or re.search(pattern, full) for pattern in patterns):
                 found.append(path)
-    # de-duplicate while preserving order
+                if len(found) >= 500:
+                    break
+        if len(found) >= 500:
+            break
+    # de-duplicate while preserving deterministic order
     seen: set[str] = set()
     unique: list[Path] = []
-    for path in sorted(found, key=lambda p: p.as_posix()):
+    for path in sorted(found, key=lambda p: (p.stat().st_mtime if p.exists() else 0), reverse=True):
         key = path.resolve().as_posix()
         if key not in seen:
             unique.append(path)
@@ -1533,7 +2379,7 @@ def _latest_data_maps(patterns: tuple[str, ...], market: str, exclude: tuple[str
         df = read_csv(path)
         if df.empty:
             continue
-        sources.append(path.relative_to(REPO_ROOT).as_posix())
+        sources.append(source_label(path))
         for row in dataframe_records(df):
             low_name = path.name.lower()
             if not _market_matches(row, market):
@@ -1676,7 +2522,7 @@ def disclosure_rows(market: str) -> dict[str, Any]:
         df = read_csv(path)
         if df.empty:
             continue
-        used_sources.append(path.relative_to(REPO_ROOT).as_posix())
+        used_sources.append(source_label(path))
         for row in dataframe_records(df):
             if not _market_matches(row, market):
                 # market 값이 없는 공시 파일은 파일명으로 보조 판단합니다.
@@ -1745,6 +2591,8 @@ def company_analysis(market: str) -> dict[str, Any]:
             "symbol": normalized.get("symbol", symbol),
             "name": normalized.get("name", symbol),
             "currentPriceText": normalized.get("currentPriceText", "현재가 없음"),
+            "priceTime": normalized.get("priceTime", ""),
+            "priceSource": normalized.get("priceSource", ""),
             "supply": normalized.get("scores", {}).get("supply", "수급 데이터 없음"),
             "earnings": normalized.get("scores", {}).get("earnings", "재무 데이터 없음"),
             "valuation": normalized.get("scores", {}).get("valuation", "재무 데이터 없음"),
@@ -1830,8 +2678,8 @@ def virtual_portfolio_summary(market: str, mode: str = "balanced") -> dict[str, 
     cards = [
         {"label": "추천 모드", "value": settings["label"], "note": settings["buy_rule"]},
         {"label": "최대 보유", "value": f"{max_positions}종목", "note": f"종목당 {format_price(capital_per_position, market)} 기준"},
-        {"label": "예상 최대 손실", "value": format_signed_money(loss_total, market), "note": format_percent(loss_pct)},
-        {"label": "예상 목표 이익", "value": format_signed_money(profit_total, market), "note": format_percent(profit_pct)},
+        {"label": "손절 시 손실", "value": format_signed_money(loss_total, market), "note": format_percent(loss_pct)},
+        {"label": "목표 도달 시 이익", "value": format_signed_money(profit_total, market), "note": format_percent(profit_pct)},
         {"label": "잔여 현금", "value": format_price(cash, market), "note": "정수 수량 계산 후 잔여"},
     ]
     items = []
@@ -1870,7 +2718,7 @@ def virtual_portfolio_summary(market: str, mode: str = "balanced") -> dict[str, 
         "cards": cards,
         "count": len(items),
         "items": items,
-        "note": "가상 운용은 자동주문이 아니며, 기준가·손절가·목표가와 OHLCV 기반 검증을 위한 참고 계산입니다.",
+        "note": "StockApp 원본 데이터는 데이터 피드로만 사용하며, 후보 분류와 성향별 가상운용은 MONE 기준으로 재계산합니다.",
     }
 
 def virtual_operation_preview(market: str, mode: str = "balanced") -> dict[str, Any]:
@@ -1908,6 +2756,24 @@ def virtual_operation_preview(market: str, mode: str = "balanced") -> dict[str, 
             "summary": plan.get("summary", "가상 운용 산출 필요"),
         })
     return {"market": market, "mode": mode, "modeLabel": TRADE_MODE_SETTINGS[mode]["label"], "count": len(rows), "items": rows[:80]}
+
+
+
+def virtual_conditional_plan(market: str, mode: str = "balanced") -> dict[str, Any]:
+    preview = virtual_operation_preview(market, mode)
+    portfolio = virtual_portfolio_summary(market, mode)
+    return {
+        "market": market,
+        "mode": mode,
+        "modeLabel": preview.get("modeLabel", ""),
+        "title": "조건부 가상운용 계획",
+        "source": f"reports/mone_v36_virtual_trade_plan_{market}.csv",
+        "summarySource": f"reports/mone_v36_virtual_trade_summary_{market}.csv",
+        "rule": "추천됨 ≠ 매수됨 · 진입가 도달 시 체결 · 미도달 시 미체결 · 체결된 종목만 손익 계산",
+        "count": preview.get("count", 0),
+        "items": preview.get("items", []),
+        "portfolio": portfolio,
+    }
 
 def data_source_status() -> dict[str, Any]:
     groups = [
@@ -1956,7 +2822,21 @@ def data_source_status() -> dict[str, Any]:
             "rows": int(row_count),
             "latestUpdatedAt": latest,
             "target": group["target"],
-            "examples": [path.relative_to(REPO_ROOT).as_posix() for path in files[:5]],
+            "examples": [source_label(path) for path in files[:5]],
             "message": "표시 가능한 CSV 행이 감지됨" if has_rows else "API 키/워크플로가 있어도 저장된 CSV 행이 없으면 앱에 표시할 데이터가 없습니다. 공시는 관리/공시 화면에서 수집을 실행하세요.",
         })
+    bridge = stockapp_bridge_status()
+    roots = bridge.get("roots", [])
+    items.append({
+        "key": "stockapp_bridge",
+        "name": "StockApp 브릿지",
+        "status": bridge.get("status", "NOT_FOUND"),
+        "files": sum(root.get("csvFiles", 0) for root in roots),
+        "csvFiles": sum(root.get("csvFiles", 0) for root in roots),
+        "rows": 0,
+        "latestUpdatedAt": max((root.get("latestUpdatedAt", "") for root in roots), default=""),
+        "target": "MONE 데이터 부족 시 기존 StockApp 작업스케줄러 결과를 fallback으로 사용",
+        "examples": [ex for root in roots for ex in root.get("examples", [])][:5],
+        "message": bridge.get("message", ""),
+    })
     return {"items": items}

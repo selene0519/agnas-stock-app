@@ -1,6 +1,6 @@
 # MONE Web App
 
-> v3.0: 첫 화면 보수/균형/공격 3모드 비교 카드, 선택 모드별 후보, 종목 상세 패널 확장(종목뉴스·공시/IR·EPS·주요재무·연간/분기실적·ESG·리서치 자리), 기본 API 포트 8050 정리, 버전 표기 정리.
+> v3.4.1: 첫 화면 보수/균형/공격 3모드 비교 카드, 선택 모드별 후보, 종목 상세 패널 확장(종목뉴스·공시/IR·EPS·주요재무·연간/분기실적·ESG·리서치 자리), 기본 API 포트 8050 정리, 버전 표기 정리.
 
 Next.js + FastAPI 기반의 MONE 웹앱입니다. v2.1은 기존 v2.0 정리 방향을 유지하면서 남은 대분류를 추가 정리했습니다. 일반 사용자 화면은 매일 확인할 내용 중심으로 줄이고, 예측 기록/결과 검증/실패 복기/자동 보정은 관리 영역으로 이동했습니다.
 
@@ -92,7 +92,7 @@ v2.0에서 확정한 정리 방향을 유지합니다.
 - 기존 `.github/workflows/`: 수정하지 않음
 
 
-## v3.0 데이터 산출 업그레이드
+## v3.4.1 데이터 산출 업그레이드
 
 - 확률/예상가가 비어 있을 때 현재가, OHLCV, 신뢰도, 기준가와 거리로 단기/스윙/중기 값을 임시 산출합니다.
 - 장전 리포트의 예상 시초가/예상 종가가 비어 있으면 OHLCV 갭 평균과 최근 수익률로 보강합니다.
@@ -100,7 +100,7 @@ v2.0에서 확정한 정리 방향을 유지합니다.
 - 자동화 상태 화면은 GitHub Actions API를 조회합니다. private repo는 `.env`에 `MONE_GITHUB_TOKEN` 또는 `GITHUB_TOKEN`이 필요합니다.
 - 후보 카드에 예상 매수가 기준 손실/이익 계산을 표시합니다. 자동주문 기능은 없습니다.
 
-## v3.0 virtual operation upgrade
+## v3.4.1 virtual operation upgrade
 
 - Added portfolio-level virtual operation summary endpoint: `GET /api/virtual/portfolio?market=kr|us&mode=conservative|balanced|aggressive`.
 - Recommendation/virtual operation modes now support conservative, balanced, and aggressive operation assumptions.
@@ -110,7 +110,7 @@ v2.0에서 확정한 정리 방향을 유지합니다.
 
 Virtual operation is for simulation and calibration only. It does not place orders.
 
-## v3.0 데이터 연결/공시 수집/차트 QA 업데이트
+## v3.4.1 데이터 연결/공시 수집/차트 QA 업데이트
 
 - `POST /api/disclosures/refresh?market=kr|us|all&days=30` 추가
   - 국장: DART 공시 목록 수집 후 `data/disclosures/disclosures_kr.csv` 생성
@@ -123,7 +123,7 @@ Virtual operation is for simulation and calibration only. It does not place orde
 - 차트 화면은 OHLCV 기반 MA5/MA20/MA60, 볼린저밴드, RSI, MACD, 거래량 계산 상태를 함께 표시합니다.
 
 
-## v3.0 기록 저장 / 자동 보정 준비
+## v3.4.1 기록 저장 / 자동 보정 준비
 
 이번 버전은 미장/국장 자동 업데이트가 돌 때 예측값과 가상 운용 값을 바로 기록할 수 있도록 아래 기능을 추가합니다.
 
@@ -159,3 +159,26 @@ python .\record_operation_history.py --market all --modes all --source manual --
         run: |
           python mone-web-app/backend/record_operation_history.py --market all --modes all --source github-actions --backfill-existing
 ```
+
+## v3.4.1 StockApp Bridge / Backend Stabilization
+
+- `record_operation_history.py` can now run from GitHub Actions or repo root because it adds `mone-web-app/backend` to `sys.path` internally.
+- The backend can use existing StockApp Scheduler outputs as fallback data sources.
+- Default fallback roots on the local PC:
+  - `C:\Users\minbo\OneDrive\바탕 화면\stock_ai_app_new`
+  - `C:\Users\minbo\OneDrive\바탕 화면\stock_app\stock_app`
+  - `C:\Users\minbo\OneDrive\바탕 화면\stock_app`
+- Optional override: set `MONE_STOCKAPP_ROOTS` with semicolon-separated folders.
+- New API: `GET /api/status/stockapp-bridge`.
+- Data source status now includes `StockApp 브릿지`.
+
+
+## v3.5 성향별 진입 타이밍 판단 업데이트
+
+- 일반 모드와 관리자 모드를 분리했습니다. 일반 모드는 매매 판단 화면 중심, 관리자 모드는 데이터 점검/자동화/백테스트/예측 기록/자동 보정 중심입니다.
+- 일반 모드 시장 홈에는 관리자 정보 중 일반 사용자가 알아야 할 데이터 연결, 자동화, 기준시각, 매크로/이벤트 리스크만 요약 표시합니다.
+- 보수/균형/공격 3개 모드는 처음에 함께 로딩하고, 버튼 전환 시 화면만 바뀌도록 정리했습니다.
+- 추천 후보는 성향별로 오늘 진입 가능 / 기다릴 후보 / 다음 진입 후보 / 매수금지·주의로 나눕니다.
+- 가상운용 문구를 “조건부 진입 계획”으로 정리했습니다. 오늘 후보를 모두 산 것으로 보지 않고, 진입가가 실제로 왔을 때만 체결로 기록하는 방향입니다.
+- 기회 점수와 진입 점수를 분리해서, 좋은 종목이어도 지금 가격이 나쁘면 대기 후보로 표시할 수 있게 했습니다.
+- 신규 발굴, 급등주, 이벤트 리스크, 매크로 리스크를 배지/요약 영역으로 표시할 수 있는 UI 구조를 추가했습니다.
