@@ -91,7 +91,13 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
+          set +e
           python operational_check.py
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::operational_check.py returned $status; keep workflow running so generated data can still be committed."
+          fi
 
       - name: Remove local token/cache files before commit
         run: |
@@ -110,12 +116,41 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports data/history data/calendar .gitignore 2>/dev/null || true
+
+          # Add only the files the app must read from GitHub raw.
+          # Do NOT add whole reports/ or whole data/ because that brings old logs, backtests, alerts, and temporary files.
+          git add predictions.csv runner_status_kr.json runner_status_us.json 2>/dev/null || true
+          git add paper_trading_log.csv paper_trading_summary.csv 2>/dev/null || true
+
+          # Core candidate / latest run outputs.
+          git add reports/swing_candidates_kr*.csv reports/swing_candidates_us*.csv 2>/dev/null || true
+          git add reports/latest_kr_* reports/latest_us_* 2>/dev/null || true
+          git add reports/stockapp_*.csv reports/stockapp_*.json 2>/dev/null || true
+
+          # MONE v3.6 app-facing reports.
+          git add reports/mone_v36_*.csv reports/mone_v36_*.json 2>/dev/null || true
+          git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true
+          git add reports/api_data_status_center*.csv reports/api_data_status_center*.json 2>/dev/null || true
+          git add reports/gnews_*.csv reports/gnews_*.json reports/news_*.csv reports/news_*.json 2>/dev/null || true
+          git add reports/fundamental_*.csv reports/fundamental_*.json 2>/dev/null || true
+          git add reports/portfolio_risk_summary.json 2>/dev/null || true
+
+          # Data files used by the app as source/cache.
+          git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
+
+          # Keep ignore rules up to date, but never commit secrets/tokens/env files.
+          git add .gitignore 2>/dev/null || true
           git reset -- .env .env.local "*.env" "*token_cache*.json" "**/*token_cache*.json" 2>/dev/null || true
+          git reset -- data/backtest data/alerts logs backups mone-web-app_backup_before_v3_5 mone-web-app_backup_before_v3_5_2 mone-web-app_backup_before_v3_5_3 mone-web-app_backup_before_v3_6_1_operational 2>/dev/null || true
+          git reset -- 'reports/daily_summary_*' 'reports/summary_*' 'reports/order_plan_*_202*.csv' 'reports/test_*.csv' 2>/dev/null || true
+
+          echo "=== staged files ==="
+          git diff --cached --name-only
+
           if git diff --cached --quiet; then
-            echo "No report/history changes to commit."
+            echo "No app data/report changes to commit."
           else
-            git commit -m "chore: update MONE v3.6.1 operational reports [skip ci]"
+            git commit -m "chore: update MONE app data reports [skip ci]"
             git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi

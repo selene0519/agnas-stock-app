@@ -18,3 +18,19 @@ logs/
 backups/
 .cache/
 .DS_Store
+# MONE local backup / patch artifacts
+mone-web-app_backup*/
+PATCH_WORKFLOW_*.py
+RUN_MONE_STOCKAPP_BRIDGE_CHECK.ps1
+README_STANDALONE_HISTORY_FIX.txt
+MONE_V3_6*_README.md
+MONE_V3_6*_MANIFEST.json
+STOCKAPP_*_v3.5.*.md
+# noisy generated files that should not be pushed manually
+data/backtest/
+data/alerts/
+data/streamlit_test_*.pid
+reports/daily_summary_*
+reports/summary_*
+reports/order_plan_*_202*.csv
+reports/test_*.csv
