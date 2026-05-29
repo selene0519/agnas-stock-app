@@ -90,6 +90,111 @@ def _latest_ohlcv(symbol: str, market: str) -> tuple[pd.DataFrame, str]:
 OPERATIONAL_VERSION = "v3.6.1-operational-stable"
 
 
+FINAL_PRICE_OVERLAY_FIELDS = (
+    "currentPrice",
+    "currentPriceText",
+    "priceTime",
+    "priceSource",
+    "priceSourceType",
+    "priceSourceFile",
+    "priceSourceDate",
+    "priceDataStatus",
+    "priceBasis",
+    "priceSession",
+)
+
+
+def _final_price_overlay_score(item: dict[str, Any]) -> tuple[int, str]:
+    """Rank already-normalized report prices for final recommendation cards.
+
+    final_recommendations can start from older prediction rows.  Those rows may
+    still contain a usable score/entry/target, but their current-price layer can
+    point to an old predictions.csv value.  The report/intraday API has already
+    resolved the current session price source (KIS snapshot, OHLCV close, or
+    StockApp post-close snapshot), so final cards should reuse that price layer.
+    """
+    price = _num(item.get("currentPrice"))
+    if price is None or price <= 0:
+        return (-1, "")
+    status = _as_text(item.get("priceDataStatus")).upper()
+    source_type = _as_text(item.get("priceSourceType")).lower()
+    source_file = _as_text(item.get("priceSourceFile") or item.get("sourceFile"))
+    if status in {"", "STALE", "NO_PRICE", "ERROR", "MISSING"}:
+        return (-1, "")
+    if source_type in {"", "local", "local_fallback", "row", "existing"}:
+        return (-1, "")
+    try:
+        if data._is_legacy_quote_source(source_file, _as_text(item.get("market"))):  # type: ignore[attr-defined]
+            return (-1, "")
+    except Exception:
+        pass
+
+    source_rank = {
+        "kis_snapshot": 120,
+        "kis": 115,
+        "ohlcv": 100,
+        "github": 95,
+        "stockapp_snapshot": 90,
+        "quote_cache": 80,
+        "yfinance_fallback": 70,
+        "finnhub_fallback": 70,
+    }.get(source_type, 50)
+    status_rank = {
+        "INTRADAY": 40,
+        "AFTER_CLOSE": 35,
+        "PREMARKET_SNAPSHOT": 30,
+        "PREVIOUS_CLOSE": 25,
+        "NORMAL": 20,
+    }.get(status, 10)
+    return (source_rank + status_rank, _as_text(item.get("priceSourceDate") or item.get("priceTime")))
+
+
+def _final_price_overlay_map(market: str) -> dict[str, dict[str, Any]]:
+    """Build symbol -> clean price layer from the already-normalized report API."""
+    try:
+        payload = data.intraday_report(market)
+    except Exception:
+        return {}
+    best: dict[str, dict[str, Any]] = {}
+    best_score: dict[str, tuple[int, str]] = {}
+    for item in payload.get("items", []) or []:
+        if not isinstance(item, dict):
+            continue
+        sym = data.normalize_symbol(item.get("symbol"), market)
+        if not sym:
+            continue
+        score = _final_price_overlay_score(item)
+        if score[0] < 0:
+            continue
+        if sym not in best_score or score > best_score[sym]:
+            best_score[sym] = score
+            best[sym] = {field: item.get(field) for field in FINAL_PRICE_OVERLAY_FIELDS if field in item}
+    return best
+
+
+def _apply_final_price_overlay(item: dict[str, Any], overlay: dict[str, Any] | None) -> dict[str, Any]:
+    """Replace only the price layer, preserving recommendation scores and reasons."""
+    if not overlay:
+        return item
+    patched = dict(item)
+    for field in FINAL_PRICE_OVERLAY_FIELDS:
+        if field in overlay and overlay.get(field) not in (None, ""):
+            patched[field] = overlay[field]
+    # Keep lowercase/current aliases aligned for helper functions that still look
+    # at current_price rather than currentPrice.
+    if "currentPrice" in patched:
+        patched["current_price"] = patched["currentPrice"]
+        patched["last_price"] = patched["currentPrice"]
+    statuses = patched.get("statuses")
+    if isinstance(statuses, dict):
+        statuses = dict(statuses)
+        if patched.get("priceDataStatus"):
+            statuses["price"] = patched.get("priceDataStatus")
+        patched["statuses"] = statuses
+    patched["finalPriceOverlayApplied"] = True
+    return patched
+
+
 def _to_ts(value: Any) -> pd.Timestamp | None:
     """Parse a date/time value safely. Returns None if parsing fails."""
     text = _as_text(value)
@@ -719,6 +824,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         universe, sources = _us_balanced_swing_universe()
     else:
         universe, sources = _candidate_universe(market)
+    price_overlay_map = _final_price_overlay_map(market)
     rows: list[dict[str, Any]] = []
     for item in universe:
         sym = _symbol(item, market)
@@ -729,8 +835,13 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         for key, value in item.items():
             if key not in merged and key != "raw":
                 merged[key] = value
+        price_overlay = price_overlay_map.get(sym)
+        if price_overlay:
+            merged = _apply_final_price_overlay(merged, price_overlay)
         scores = data._mone_classifier_scores(merged, market)  # type: ignore[attr-defined]
         normalized = data.normalize_security_row(merged, market)
+        if price_overlay:
+            normalized = _apply_final_price_overlay(normalized, price_overlay)
         for key, value in item.items():
             normalized.setdefault(key, value)
         normalized.update({
