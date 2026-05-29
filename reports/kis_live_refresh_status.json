@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-05-29 16:02:15 KST",
+  "updatedAt": "2026-05-29 16:10:04 KST",
   "envPresent": {
-    "KIS_APP_KEY": false,
-    "KIS_APP_SECRET": false,
+    "KIS_APP_KEY": true,
+    "KIS_APP_SECRET": true,
     "KIS_ACCOUNT": false,
     "KIS_CANO": false,
     "KIS_ACNT_PRDT_CD": false,
@@ -10,20 +10,20 @@
   },
   "markets": {
     "kr": {
-      "status": "MISSING_KIS_SECRET",
-      "refreshed": 0,
+      "status": "OK",
+      "refreshed": 6,
       "failed": 0,
-      "kisRows": 0,
+      "kisRows": 6,
       "fallbackRows": 0,
-      "message": "KIS_APP_KEY/KIS_APP_SECRET are not available in GitHub Actions secrets."
+      "updatedAt": "2026-05-29 16:10:09 KST"
     },
     "us": {
-      "status": "MISSING_KIS_SECRET",
-      "refreshed": 0,
+      "status": "OK",
+      "refreshed": 16,
       "failed": 0,
-      "kisRows": 0,
+      "kisRows": 16,
       "fallbackRows": 0,
-      "message": "KIS_APP_KEY/KIS_APP_SECRET are not available in GitHub Actions secrets."
+      "updatedAt": "2026-05-29 16:10:22 KST"
     }
   }
 }
