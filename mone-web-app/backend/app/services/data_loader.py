@@ -197,14 +197,9 @@ def _datetime_key(value: Any) -> datetime | None:
 def preferred_source_type(market: str, request_date: Any = "") -> str:
     mk = "us" if market == "us" else "kr"
     handoff = source_handoff()
-    handoff_dt = _datetime_key(handoff.get("handoff_at_kst"))
-    request_dt = _datetime_key(request_date)
-    if request_dt and handoff_dt and len(_safe_str(request_date)) > 10:
-        historical = request_dt <= handoff_dt
-    else:
-        request_key = _date_key_text(request_date) or datetime.now().strftime("%Y-%m-%d")
-        handoff_key = _date_key_text(handoff.get(f"{mk}_handoff_date") or handoff.get("handoff_at_kst"))
-        historical = request_key <= handoff_key if mk == "kr" else request_key < handoff_key
+    request_key = _date_key_text(request_date) or datetime.now().strftime("%Y-%m-%d")
+    handoff_key = _date_key_text(handoff.get(f"{mk}_handoff_date") or handoff.get("handoff_at_kst"))
+    historical = request_key <= handoff_key if mk == "kr" else request_key < handoff_key
     return handoff["historical_source_type"] if historical else handoff["future_source_type"]
 
 
@@ -361,6 +356,16 @@ def runner_status(market: str) -> dict[str, Any]:
 
 
 def runner_target_date(market: str) -> str:
+    if preferred_source_type(market) == "stockapp_snapshot":
+        dates: list[str] = []
+        for file_name in ("operation_health_{market}.csv", "operational_readiness_{market}.csv", "prediction_integrity_status.csv"):
+            rows, _ = stockapp_report_rows(market, file_name)
+            for row in rows:
+                target = first_value(row, ["target_date", "targetDate", "date"], "")
+                if target:
+                    dates.append(_normalize_date_text(target))
+        if dates:
+            return max(dates)
     return first_value(runner_status(market), ["target_date", "targetDate", "date"], "")
 
 
@@ -425,6 +430,8 @@ CURRENT_PRICE_ALIASES = ["current_price", "last_price", "현재가", "실시간�
 KR_OHLC_CLOSE_ALIASES = ["basis_close", "ohlcv_close", "close", "종가", "prev_close", "current_price_at_prediction"]
 PRICE_TIME_ALIASES = ["가격기준시각", "updated_at", "last_time", "quote_time", "price_time", "갱신시각"]
 PRICE_SOURCE_ALIASES = ["가격출처", "quote_source_label", "quote_source", "current_price_source", "source"]
+STOCKAPP_PRICE_ALIASES = ["currentPrice", "current_price", "current", "last", "lastPrice", "last_price", "regularMarketPrice", "실시간현재가", "현재가", "current_price_at_prediction", "close", "actual_close", "basis_close", "prev_close", "last_close", "price", "final_price", "close_price", "종가"]
+STOCKAPP_PRICE_DATE_ALIASES = ["priceSourceDate", "priceTime", "price_time", "quote_time", "updated_at", "created_at", "report_generated_at", "target_date", "targetDate", "예측대상일", "actual_date", "date", "날짜", "일자", "basis_ohlc_date", "prediction_date"]
 ENTRY_ALIASES = ["기준가", "관찰 기준가", "active_scenario_pullback_price", "조건부 진입가", "매수가", "entry", "entry_price", "buy_price", "우선진입가", "보수대기선", "preferred_entry", "conservative_entry", "technical_entry"]
 STOP_ALIASES = ["손절가", "stop", "stop_loss", "stop_loss_price"]
 TARGET_ALIASES = ["목표가", "1차 목표가", "1차익절가", "tp1", "target_price", "take_profit1", "2차 목표가", "2차익절가", "tp2"]
@@ -633,11 +640,22 @@ def apply_quote_cache(row: dict[str, Any], market: str) -> dict[str, Any]:
     price = cached.get("currentPrice")
     if _safe_float(price) is None:
         return row
+
+    # Do not let an old local quote cache overwrite a newer GitHub/StockApp
+    # row. This was the main cause of today's reports showing 5/27 prices
+    # even when 5/29 order-plan/report rows were already loaded.
+    cache_time = cached.get("priceTime", "") or quote_cache().get("updatedAt", "")
+    if cache_time and not _date_is_today(cache_time):
+        return row
+    row_date = first_value(row, ["sourceDate", "report_generated_at", "created_at", "updated_at", "basis_ohlc_date", "date", "일자"], "")
+    if row_date and cache_time and _date_is_older(cache_time, row_date):
+        return row
+
     merged = dict(row)
     merged["current_price"] = str(price)
     merged["last_price"] = str(price)
     merged["quote_fallback_price"] = str(price)
-    merged["가격기준시각"] = cached.get("priceTime", "") or "현재가 기준시각 없음"
+    merged["가격기준시각"] = cache_time or "현재가 기준시각 없음"
     merged["가격출처"] = cached.get("priceSource", "") or "가격출처 없음"
     merged["quote_source_label"] = cached.get("priceSource", "") or "가격출처 없음"
     merged["quote_source"] = cached.get("source", "") or cached.get("priceSource", "") or "가격출처 없음"
@@ -645,7 +663,7 @@ def apply_quote_cache(row: dict[str, Any], market: str) -> dict[str, Any]:
     merged["data_status"] = "현재가 캐시 반영"
     merged["priceSourceType"] = "kis"
     merged["priceSourceFile"] = source_label(QUOTE_CACHE_FILE)
-    merged["priceSourceDate"] = cached.get("priceTime", "") or quote_cache().get("updatedAt", "")
+    merged["priceSourceDate"] = cache_time
     merged["price_data_status"] = "cache_success"
     return merged
 
@@ -660,11 +678,20 @@ def _row_symbol(row: dict[str, Any] | pd.Series, market: str) -> str:
     return normalize_symbol(value, market)
 
 
+def _symbol_belongs_to_market(symbol: Any, market: str) -> bool:
+    text = normalize_symbol(symbol, market)
+    if not text:
+        return False
+    if market == "kr":
+        return bool(re.fullmatch(r"\d{6}", text))
+    return bool(re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", text)) and not text.isdigit()
+
+
 def _records_by_symbol(df: pd.DataFrame, market: str) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for row in dataframe_records(df):
         symbol = _row_symbol(row, market)
-        if symbol and symbol not in out:
+        if symbol and _symbol_belongs_to_market(symbol, market) and symbol not in out:
             out[symbol] = row
     return out
 
@@ -796,6 +823,10 @@ def _find_ohlcv_candidates(symbol: str, market: str) -> list[Path]:
     ]
     for root in stockapp_roots():
         roots.extend([
+            root / "market" / "ohlcv",
+            root / "market",
+            root / "ohlcv",
+            root / "chart",
             root / "data" / "market" / "ohlcv",
             root / "data" / "market",
             root / "data" / "ohlcv",
@@ -858,12 +889,81 @@ def _normalize_ohlcv_dataframe(df: pd.DataFrame, symbol: str, market: str) -> pd
     return out.drop(columns=["date_sort"], errors="ignore").tail(240).reset_index(drop=True)
 
 
+def _actual_close_history_files(market: str) -> list[Path]:
+    """Return StockApp/MONE files that can be used as a chart fallback.
+
+    Some installations do not have per-symbol OHLCV CSVs yet, but they do have
+    actual close validation files.  These are not a full candle feed, so the
+    chart API labels them as a close-history fallback instead of pretending they
+    are real OHLCV.
+    """
+    candidates = [
+        DATA_DIR / "decision_system" / "actual_results.csv",
+        DATA_DIR / "stockapp" / "actual_results.csv",
+        DATA_DIR / "adjustment_performance_report.csv",
+        DATA_DIR / "stockapp" / "adjustment_performance_report.csv",
+        REPORT_DIR / f"mone_v36_final_prediction_validation_{market}.csv",
+    ]
+    try:
+        candidates.extend(_find_data_files((r"actual_results", r"adjustment_performance_report", r"prediction_validation"), ("node_modules", "backtest")))
+    except Exception:
+        pass
+    existing = [path for path in candidates if path.exists() and path.is_file() and path.suffix.lower() == ".csv" and path.stat().st_size > 0]
+    return _unique_paths(existing)
+
+
+def _load_actual_close_history(symbol: str, market: str) -> tuple[pd.DataFrame, str]:
+    target = normalize_symbol(symbol, market)
+    frames: list[tuple[pd.DataFrame, str]] = []
+    for path in _actual_close_history_files(market):
+        df = read_csv(path)
+        if df.empty:
+            continue
+        symbol_col = _ohlcv_column(df, ["ticker", "symbol", "stock_code", "code", "종목코드"])
+        close_col = _ohlcv_column(df, ["actual_close", "actualClose", "close", "종가", "실제종가", "final_price", "current_price", "currentPrice"])
+        date_col = _ohlcv_column(df, ["target_date", "actual_result_date", "date", "날짜", "일자", "예측대상일", "prediction_date"])
+        if not symbol_col or not close_col or not date_col:
+            continue
+        work = df.copy()
+        work["_symbol"] = work[symbol_col].map(lambda value: normalize_symbol(value, market))
+        work = work[work["_symbol"] == target]
+        if work.empty:
+            continue
+        out = pd.DataFrame()
+        out["date"] = work[date_col].astype(str).map(_date_key)
+        out["close"] = work[close_col].map(_safe_float)
+        open_col = _ohlcv_column(work, ["open", "actual_open", "시가"])
+        high_col = _ohlcv_column(work, ["high", "actual_high", "고가"])
+        low_col = _ohlcv_column(work, ["low", "actual_low", "저가"])
+        volume_col = _ohlcv_column(work, ["volume", "거래량"])
+        out["open"] = work[open_col].map(_safe_float) if open_col else out["close"]
+        out["high"] = work[high_col].map(_safe_float) if high_col else out[["open", "close"]].max(axis=1)
+        out["low"] = work[low_col].map(_safe_float) if low_col else out[["open", "close"]].min(axis=1)
+        out["volume"] = work[volume_col].map(_safe_float) if volume_col else 0
+        out = out.dropna(subset=["close"])
+        out = out[out["date"].astype(str) != ""]
+        if out.empty:
+            continue
+        frames.append((out, source_label(path)))
+    if not frames:
+        return pd.DataFrame(), ""
+    combined = pd.concat([frame for frame, _source in frames], ignore_index=True)
+    combined["date_sort"] = pd.to_datetime(combined["date"], errors="coerce")
+    combined = combined.sort_values(["date_sort", "date"]).drop_duplicates(subset=["date"], keep="last")
+    combined = combined.drop(columns=["date_sort"], errors="ignore").tail(240).reset_index(drop=True)
+    sources = list(dict.fromkeys(source for _frame, source in frames))
+    return combined, " · ".join(sources[:3]) + " · close-history fallback"
+
+
 @lru_cache(maxsize=1024)
 def _load_ohlcv(symbol: str, market: str) -> tuple[pd.DataFrame, str]:
     for path in _find_ohlcv_candidates(symbol, market):
         df = _normalize_ohlcv_dataframe(read_csv(path), symbol, market)
         if not df.empty and len(df) >= 5:
             return df, source_label(path)
+    fallback_df, fallback_source = _load_actual_close_history(symbol, market)
+    if not fallback_df.empty and len(fallback_df) >= 2:
+        return fallback_df, fallback_source
     return pd.DataFrame(), ""
 
 
@@ -905,6 +1005,55 @@ def _date_key(value: Any) -> str:
     if len(digits) >= 8:
         return digits[:8]
     return digits
+
+
+def _today_key() -> str:
+    return _kst_now().strftime("%Y%m%d")
+
+
+def _date_is_today(value: Any) -> bool:
+    key = _date_key(value)
+    return bool(key and key == _today_key())
+
+
+def _max_date_key_from_rows(rows: list[dict[str, Any]]) -> str:
+    keys: list[str] = []
+    for row in rows:
+        for field in ("sourceDate", "priceSourceDate", "priceTime", "updated_at", "created_at", "target_date", "date"):
+            key = _date_key(row.get(field))
+            if key:
+                keys.append(key)
+                break
+    return max(keys) if keys else ""
+
+
+def _intraday_item_is_fresh(item: dict[str, Any]) -> bool:
+    status = str(item.get("priceDataStatus", "")).upper()
+    if status != "INTRADAY":
+        return False
+    date_text = item.get("priceSourceDate") or item.get("priceTime") or item.get("sourceDate")
+    return _date_is_today(date_text)
+
+
+def _has_time_component(value: Any) -> bool:
+    text = _safe_str(value)
+    return bool(re.search(r"\d{1,2}:\d{2}", text))
+
+
+def _date_is_older(candidate_date: Any, reference_date: Any) -> bool:
+    candidate_key = _date_key(candidate_date)
+    reference_key = _date_key(reference_date)
+    if candidate_key and reference_key and candidate_key != reference_key:
+        return candidate_key < reference_key
+    if candidate_key and reference_key and candidate_key == reference_key:
+        if _has_time_component(candidate_date) and _has_time_component(reference_date):
+            candidate_dt = _datetime_key(candidate_date)
+            reference_dt = _datetime_key(reference_date)
+            return bool(candidate_dt and reference_dt and candidate_dt < reference_dt)
+        return False
+    candidate_dt = _datetime_key(candidate_date)
+    reference_dt = _datetime_key(reference_date)
+    return bool(candidate_dt and reference_dt and candidate_dt < reference_dt)
 
 
 @lru_cache(maxsize=8)
@@ -1271,6 +1420,57 @@ def _display_value(row: dict[str, Any], aliases: list[str], missing: str) -> str
     return first_value(row, aliases, missing)
 
 
+def _metric_has_value(value: Any) -> bool:
+    """True only for values that look usable in company/financial screens."""
+    text = _safe_str(value).strip()
+    if not text:
+        return False
+    missing_markers = ("데이터 없음", "연결 대기", "없음", "대기", "N/A", "nan", "None")
+    return not any(marker.lower() in text.lower() for marker in missing_markers)
+
+
+def _company_financial_quality(items: list[dict[str, Any]]) -> dict[str, Any]:
+    if not items:
+        return {"status": "MISSING", "filledRows": 0, "densityPct": 0, "note": "기업분석 행 없음"}
+    metric_keys = ["eps", "per", "pbr", "roe", "revenue", "operatingIncome", "netIncome", "annualPerformance", "quarterlyPerformance"]
+    filled_rows = 0
+    total_slots = len(items) * len(metric_keys)
+    filled_slots = 0
+    for item in items:
+        row_filled = 0
+        for key in metric_keys:
+            if _metric_has_value(item.get(key)):
+                filled_slots += 1
+                row_filled += 1
+        if row_filled:
+            filled_rows += 1
+    density = round((filled_slots / total_slots) * 100, 1) if total_slots else 0
+    if filled_rows == 0:
+        status = "PARTIAL"
+        note = "기업 행은 있으나 EPS/PER/PBR/매출 등 핵심 재무값 부족"
+    elif density < 25:
+        status = "PARTIAL"
+        note = f"핵심 재무값 일부만 연결됨: {filled_rows}/{len(items)}행"
+    else:
+        status = "OK"
+        note = f"핵심 재무값 연결: {filled_rows}/{len(items)}행"
+    return {"status": status, "filledRows": filled_rows, "densityPct": density, "note": note}
+
+
+def _clean_disclosure_title(title: Any, market: str) -> str:
+    text = _safe_str(title).strip()
+    upper = text.upper().replace("FORM ", "").strip()
+    if market == "us":
+        form_like = {"4", "144", "8-K", "10-K", "10-Q", "6-K", "S-1", "SD", "IRANNOTICE", "IRAN NOTICE"}
+        if not text:
+            return "SEC filing"
+        if upper in form_like or re.fullmatch(r"\d{1,4}", upper):
+            return f"SEC Form {upper}"
+    if market == "kr" and (not text or re.fullmatch(r"\d+", text)):
+        return "공시 제목 확인 필요"
+    return text
+
+
 def _direction_label(value: Any) -> str:
     text = _safe_str(value, "")
     if not text:
@@ -1333,6 +1533,404 @@ def _fallback_status_for_file(path: Path) -> str:
     return "fallback 없음"
 
 
+def _kst_now() -> datetime:
+    """Return current time in Korea. Falls back safely if zoneinfo is unavailable."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("Asia/Seoul")).replace(tzinfo=None)
+    except Exception:
+        return datetime.now()
+
+
+
+def _has_kr_premarket_update_for_date(date_text: str) -> bool:
+    """Return True only when next-day KR premarket data exists.
+
+    Before the next KR premarket run is produced, the app should keep using the
+    latest close-update price instead of treating the clock-only morning window
+    as a new premarket basis.
+    """
+    ymd = re.sub(r"\D", "", str(date_text or ""))[:8]
+    if not ymd:
+        return False
+    candidates: list[Path] = []
+    for base in [REPORT_DIR, DATA_DIR / "stockapp", DATA_DIR / "decision_system"] + [root / "reports" for root in stockapp_roots()]:
+        if not base.exists():
+            continue
+        patterns = [
+            f"*premarket*kr*{ymd}*.csv",
+            f"*kr*premarket*{ymd}*.csv",
+            f"order_plan_kr_{ymd}_*.csv",
+            f"*recommendations_kr*{ymd}*.csv",
+        ]
+        for pattern in patterns:
+            candidates.extend(base.glob(pattern))
+    for path in candidates:
+        try:
+            if path.exists() and path.stat().st_size > 0 and rows_for(path) > 0:
+                return True
+        except Exception:
+            continue
+    return False
+
+def _market_price_phase(market: str, now: datetime | None = None) -> dict[str, Any]:
+    """Business rule for the one price all screens should share.
+
+    KR:
+      - before regular session: previous OHLC close
+      - during regular session: current/quote price
+      - after close: today's OHLC/close update
+    US (KST):
+      - before regular session: morning/update snapshot
+      - during regular session: current/quote price
+      - after close: post-close update snapshot
+    """
+    now = now or _kst_now()
+    minutes = now.hour * 60 + now.minute
+    weekday = now.weekday()  # Mon=0
+    if market == "kr":
+        if weekday >= 5:
+            phase = "kr_after_close"
+        elif minutes < 9 * 60:
+            # Clock time alone is not enough.  If the next-day KR premarket
+            # prediction has not been generated yet, keep using the latest
+            # after-close update from the previous trading day.
+            phase = "kr_premarket" if _has_kr_premarket_update_for_date(now.strftime("%Y%m%d")) else "kr_after_close"
+        elif minutes < 15 * 60 + 30:
+            phase = "kr_intraday"
+        else:
+            phase = "kr_after_close"
+        labels = {
+            "kr_premarket": "국장 전 · 전일 OHLC 기준",
+            "kr_intraday": "국장 장중 · 현재가 기준",
+            "kr_after_close": "국장 마감 후 · 당일 마감 업데이트 기준",
+        }
+        return {"market": market, "phase": phase, "label": labels[phase], "isIntraday": phase.endswith("intraday")}
+
+    # US regular session in Korea time. Use a broad DST-aware practical window.
+    # March-November: 22:30-05:00 KST, otherwise 23:30-06:00 KST.
+    is_dst_season = 3 <= now.month <= 11
+    open_min = (22 * 60 + 30) if is_dst_season else (23 * 60 + 30)
+    close_min = (5 * 60) if is_dst_season else (6 * 60)
+    in_intraday = minutes >= open_min or minutes < close_min
+    if in_intraday:
+        phase = "us_intraday"
+    else:
+        # In KST daytime the US regular session has already closed.  Keep the
+        # app on the post-close update until the evening pre-market/preview
+        # job is expected to refresh the next-session plan.
+        premarket_start_min = 21 * 60 + 50
+        phase = "us_after_close" if minutes < premarket_start_min else "us_premarket"
+    labels = {
+        "us_premarket": "미장 전 · 오전 업데이트 기준",
+        "us_intraday": "미장 장중 · 현재가 기준",
+        "us_after_close": "미장 마감 후 · 업데이트 기준",
+    }
+    return {"market": market, "phase": phase, "label": labels[phase], "isIntraday": phase.endswith("intraday")}
+
+
+def _price_candidate(
+    price: float | None,
+    time_text: Any,
+    source: str,
+    source_file: str,
+    source_type: str,
+    status: str,
+    phase: dict[str, Any],
+    priority: int,
+) -> dict[str, Any] | None:
+    if price is None or price <= 0:
+        return None
+    return {
+        "price": float(price),
+        "priceTime": _safe_str(time_text) or _safe_str(_kst_now().strftime("%Y-%m-%d %H:%M:%S")),
+        "priceSource": source,
+        "priceSourceFile": source_file,
+        "priceSourceDate": _safe_str(time_text) or _safe_str(_kst_now().strftime("%Y-%m-%d %H:%M:%S")),
+        "priceSourceType": source_type,
+        "priceDataStatus": status,
+        "priceBasis": phase.get("label", "가격 기준 확인"),
+        "priceSession": phase.get("phase", "unknown"),
+        "priority": priority,
+    }
+
+
+def _row_price_candidate(row: dict[str, Any], market: str, phase: dict[str, Any], source_file: str = "") -> dict[str, Any] | None:
+    phase_key = str(phase.get("phase", ""))
+    if market == "kr":
+        if phase_key == "kr_premarket":
+            aliases = ["prev_close", "basis_close", "ohlcv_close", "close", "종가", "current_price_at_prediction"]
+            status = "PREVIOUS_CLOSE"
+            source = "전일 OHLC close"
+        elif phase_key == "kr_intraday":
+            aliases = ["currentPrice", "current_price", "last_price", "regularMarketPrice", "실시간현재가", "현재가", "quote_fallback_price"]
+            source_hint = str(source_file or first_value(row, ["priceSourceFile", "sourceFile", "source_file", "source"], "")).lower()
+            current_like_source = any(token in source_hint for token in ("quote", "current", "intraday", "orderbook", "kis"))
+            status = "INTRADAY" if current_like_source else "STALE"
+            source = "장중 현재가" if current_like_source else "장중 현재가 미확인 · 참고가"
+        else:
+            aliases = ["actual_close", "close", "basis_close", "ohlcv_close", "종가", "final_price", "current_price_at_prediction"]
+            status = "AFTER_CLOSE"
+            source = "당일 OHLC close"
+    else:
+        if phase_key == "us_intraday":
+            aliases = ["currentPrice", "current_price", "last_price", "regularMarketPrice", "실시간현재가", "현재가"]
+            source_hint = str(source_file or first_value(row, ["priceSourceFile", "sourceFile", "source_file", "source"], "")).lower()
+            current_like_source = any(token in source_hint for token in ("quote", "current", "intraday", "yfinance", "finnhub", "kis"))
+            status = "INTRADAY" if current_like_source else "STALE"
+            source = "미장 장중 현재가" if current_like_source else "미장 장중 현재가 미확인 · 참고가"
+        elif phase_key == "us_after_close":
+            aliases = ["actual_close", "close", "final_price", "current_price", "current_price_at_prediction", "basis_close", "last_price", "price"]
+            status = "AFTER_CLOSE"
+            source = "미장 마감 후 업데이트"
+        else:
+            aliases = ["current_price", "currentPrice", "current_price_at_prediction", "basis_close", "prev_close", "last_price", "price", "close"]
+            status = "PREMARKET_SNAPSHOT"
+            source = "미장 전 오전 업데이트"
+    price = first_number(row, aliases)
+    if price is None:
+        return None
+    time_text = first_value(row, STOCKAPP_PRICE_DATE_ALIASES + PRICE_TIME_ALIASES, "")
+    if phase_key.endswith("intraday") and status == "INTRADAY" and not _date_is_today(time_text):
+        status = "STALE"
+        source = f"{source} · 오래된 캐시/스냅샷 참고가"
+    source_text = first_value(row, ["priceSource", "current_price_source", "quote_source", "basis_source", "source"], source)
+    return _price_candidate(price, time_text, source_text or source, source_file or first_value(row, ["priceSourceFile", "sourceFile", "source_file", "source"], ""), "row", status, phase, 30)
+
+
+def _quote_price_candidate(symbol: str, market: str, phase: dict[str, Any]) -> dict[str, Any] | None:
+    # Only use quote cache during regular trading session. Outside the session it may be stale.
+    if not phase.get("isIntraday"):
+        return None
+    cached = cached_quote_for(symbol, market) if symbol else {}
+    price = _safe_float(cached.get("currentPrice"))
+    if not cached or not cached.get("ok") or price is None:
+        return None
+    time_text = cached.get("priceTime") or quote_cache().get("updatedAt", "")
+    is_fresh = _date_is_today(time_text)
+    return _price_candidate(
+        price,
+        time_text,
+        cached.get("priceSource") or ("quote cache current price" if is_fresh else "stale quote cache reference"),
+        source_label(QUOTE_CACHE_FILE),
+        "quote_cache",
+        "INTRADAY" if is_fresh else "STALE",
+        phase,
+        100 if is_fresh else 2,
+    )
+
+
+
+def _realtime_snapshot_price_candidate(symbol: str, market: str, phase: dict[str, Any]) -> dict[str, Any] | None:
+    """Read KIS/current quote snapshot CSVs when quote cache is not populated."""
+    if not phase.get("isIntraday") or not symbol:
+        return None
+    norm_symbol = normalize_symbol(symbol, market)
+    paths: list[Path] = []
+    base_paths = [REPORT_DIR, DATA_DIR, DATA_DIR / "stockapp", DATA_DIR / "decision_system"] + [root / "reports" for root in stockapp_roots()]
+    names = [
+        "intraday_realtime_snapshot.csv",
+        "intraday_realtime_snapshot-Kang.csv",
+        "intraday_quote_snapshot.csv",
+        "quote_snapshot.csv",
+        f"kis_current_price_{market}.csv",
+        f"current_price_{market}.csv",
+        f"v93_symbol_snapshot_{market}.csv",
+        f"v92_symbol_snapshot_{market}.csv",
+    ]
+    for base in base_paths:
+        for name in names:
+            paths.append(base / name)
+    best: dict[str, Any] | None = None
+    for path in paths:
+        if not path.exists() or path.stat().st_size <= 0:
+            continue
+        df = read_csv(path)
+        if df.empty:
+            continue
+        for raw in dataframe_records(df):
+            row_symbol = normalize_symbol(first_value(raw, SYMBOL_ALIASES + ["symbol", "ticker", "code", "stock_code"]), market)
+            if row_symbol != norm_symbol:
+                continue
+            price = first_number(raw, [
+                "currentPrice", "current_price", "last_price", "regularMarketPrice", "실시간현재가", "현재가",
+                "quote_price", "quote_fallback_price", "price", "last",
+            ])
+            if price is None or price <= 0:
+                continue
+            source_text = str(first_value(raw, [
+                "priceSource", "current_price_source", "quote_source_label", "quote_source", "intraday_data_source",
+                "flow_source", "source",
+            ], "")).lower()
+            success_text = " ".join(str(first_value(raw, [k], "")) for k in [
+                "kis_quote_success", "quote_available", "quote_full_available", "intraday_data_available", "flow_available",
+            ]).lower()
+            file_hint = source_label(path).lower()
+            is_current_like = any(token in (source_text + " " + success_text + " " + file_hint) for token in (
+                "kis", "quote", "current", "intraday", "realtime", "yfinance", "finnhub"
+            ))
+            if not is_current_like:
+                continue
+            time_text = first_value(raw, [
+                "priceSourceDate", "priceTime", "intraday_updated_at", "flow_updated_at", "updated_at", "quote_time", "date", "일자",
+            ], _safe_str(path.stat().st_mtime))
+            is_fresh = _date_is_today(time_text)
+            cand = _price_candidate(
+                price,
+                time_text,
+                first_value(raw, ["priceSource", "current_price_source", "quote_source_label", "quote_source", "intraday_data_source"], "KIS/current intraday snapshot" if is_fresh else "stale KIS/current snapshot reference"),
+                source_label(path),
+                "kis_snapshot",
+                "INTRADAY" if is_fresh else "STALE",
+                phase,
+                98 if is_fresh else 3,
+            )
+            if cand and (best is None or _date_key(cand.get("priceSourceDate")) >= _date_key(best.get("priceSourceDate"))):
+                best = cand
+    return best
+
+def _ohlcv_price_candidate(symbol: str, market: str, phase: dict[str, Any]) -> dict[str, Any] | None:
+    stats = _ohlcv_stats(symbol, market) if symbol else {}
+    close = _safe_float(stats.get("lastClose"))
+    if close is None or close <= 0:
+        return None
+    phase_key = str(phase.get("phase", ""))
+    if market == "kr":
+        if phase_key == "kr_premarket":
+            status = "PREVIOUS_CLOSE"
+            priority = 90
+        elif phase_key == "kr_after_close":
+            status = "AFTER_CLOSE"
+            priority = 90
+        else:
+            status = "STALE"
+            priority = 5
+    else:
+        if phase_key == "us_after_close":
+            status = "AFTER_CLOSE"
+            priority = 85
+        elif phase_key == "us_premarket":
+            status = "PREMARKET_SNAPSHOT"
+            priority = 20
+        else:
+            status = "STALE"
+            priority = 5
+    return _price_candidate(
+        close,
+        stats.get("lastDate") or "",
+        f"OHLCV close · {stats.get('source', '')}".strip(" ·"),
+        _safe_str(stats.get("source", "")),
+        "ohlcv",
+        status,
+        phase,
+        priority,
+    )
+
+
+def _allowed_price_statuses_for_phase(phase: dict[str, Any] | None) -> set[str]:
+    phase_key = str((phase or {}).get("phase", ""))
+    if phase_key == "kr_premarket":
+        return {"PREVIOUS_CLOSE"}
+    if phase_key == "kr_intraday":
+        return {"INTRADAY"}
+    if phase_key == "kr_after_close":
+        return {"AFTER_CLOSE"}
+    if phase_key == "us_premarket":
+        return {"PREMARKET_SNAPSHOT", "PREVIOUS_CLOSE"}
+    if phase_key == "us_intraday":
+        return {"INTRADAY"}
+    if phase_key == "us_after_close":
+        return {"AFTER_CLOSE"}
+    return {"NORMAL", "INTRADAY", "AFTER_CLOSE", "PREVIOUS_CLOSE", "PREMARKET_SNAPSHOT"}
+
+
+def _mark_price_stale_for_phase(candidate: dict[str, Any], phase: dict[str, Any] | None) -> dict[str, Any]:
+    marked = dict(candidate)
+    phase_label = str((phase or {}).get("label", "가격 기준 확인"))
+    phase_key = str((phase or {}).get("phase", "unknown"))
+    if phase_key.endswith("intraday"):
+        marked["priceDataStatus"] = "STALE"
+        marked["priceBasis"] = f"{phase_label} · 현재가 미확인, 참고가"
+    else:
+        marked["priceDataStatus"] = "STALE"
+        marked["priceBasis"] = f"{phase_label} · 기준 가격 미확인, 참고가"
+    marked["priceSession"] = phase_key
+    return marked
+
+
+def _select_price_candidate(candidates: list[dict[str, Any] | None], reference_date: str = "", phase: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    valid = [c for c in candidates if c and _safe_float(c.get("price")) is not None]
+    if not valid:
+        return None
+    if reference_date:
+        fresh = [c for c in valid if not _date_is_older(c.get("priceSourceDate"), reference_date)]
+        if fresh:
+            valid = fresh
+    allowed = _allowed_price_statuses_for_phase(phase)
+    compatible = [c for c in valid if str(c.get("priceDataStatus", "")).upper() in allowed]
+    if compatible:
+        valid = compatible
+        return sorted(valid, key=lambda c: (int(c.get("priority", 0)), _date_key(c.get("priceSourceDate", ""))), reverse=True)[0]
+    best = sorted(valid, key=lambda c: (int(c.get("priority", 0)), _date_key(c.get("priceSourceDate", ""))), reverse=True)[0]
+    return _mark_price_stale_for_phase(best, phase)
+
+
+def _unified_price_for_row(
+    row: dict[str, Any],
+    market: str,
+    symbol: str,
+    source_date: str,
+    existing: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    phase = _market_price_phase(market)
+    source_file = first_value(row, ["sourceFile", "source_file"], "")
+    candidates: list[dict[str, Any] | None] = []
+    existing = existing or {}
+    candidates.append(_price_candidate(
+        _safe_float(existing.get("price")),
+        existing.get("priceTime") or existing.get("priceSourceDate"),
+        existing.get("priceSource") or "기존 계산 가격",
+        existing.get("priceSourceFile") or "",
+        existing.get("priceSourceType") or "existing",
+        existing.get("priceDataStatus") or "NORMAL",
+        phase,
+        20,
+    ))
+    candidates.append(_row_price_candidate(row, market, phase, source_file))
+    candidates.append(_quote_price_candidate(symbol, market, phase))
+    candidates.append(_realtime_snapshot_price_candidate(symbol, market, phase))
+    candidates.append(_ohlcv_price_candidate(symbol, market, phase))
+    stockapp_price = _stockapp_price_overlay(row, market, source_date)
+    if stockapp_price:
+        phase_key = str(phase.get("phase", ""))
+        stockapp_source_file = first_value(stockapp_price, ["priceSourceFile"], "")
+        source_hint = str(stockapp_source_file).lower()
+        if phase.get("isIntraday"):
+            is_realtime_like = any(token in source_hint for token in ("quote", "current", "intraday", "orderbook", "yfinance", "finnhub", "kis"))
+            status = "INTRADAY" if is_realtime_like else "STALE"
+            priority = 95 if is_realtime_like else 1
+        elif market == "kr" and phase_key == "kr_premarket":
+            status = "PREVIOUS_CLOSE"
+            priority = 15 if "prediction" in source_hint else 65
+        elif phase_key.endswith("after_close"):
+            status = "AFTER_CLOSE"
+            priority = 95 if any(token in source_hint for token in ("actual", "adjustment", "performance", "ohlcv", "close")) else 60
+        else:
+            status = "PREMARKET_SNAPSHOT"
+            priority = 80
+        candidates.append(_price_candidate(
+            _safe_float(stockapp_price.get("price")),
+            first_value(stockapp_price, ["priceTime", "priceSourceDate"], ""),
+            first_value(stockapp_price, ["priceSource"], "StockApp price/update"),
+            stockapp_source_file,
+            "stockapp_snapshot",
+            status,
+            phase,
+            priority,
+        ))
+    return _select_price_candidate(candidates, source_date, phase)
+
+
 def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict[str, Any]:
     row_dict = dict(row)
     symbol = normalize_symbol(first_value(row_dict, SYMBOL_ALIASES), market)
@@ -1385,7 +1983,37 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
         price_source_file = ohlc_source
         price_source_date = price_time
         price_source = f"OHLCV close{f' · {ohlc_source}' if ohlc_source else ''}"
-    data_status = _source_status(source_type, _price_status(source_date, price_source_date, runner_date, is_fallback))
+    unified_price = _unified_price_for_row(row_dict, market, symbol, source_date, {
+        "price": current_price,
+        "priceTime": price_time,
+        "priceSource": price_source,
+        "priceSourceFile": price_source_file,
+        "priceSourceDate": price_source_date,
+        "priceSourceType": price_source_type,
+        "priceDataStatus": "NORMAL",
+    })
+    price_basis = "가격 기준 확인"
+    price_session = "unknown"
+    if unified_price:
+        current_price = _safe_float(unified_price.get("price"))
+        price_time = first_value(unified_price, ["priceTime", "priceSourceDate"], price_time)
+        price_source = first_value(unified_price, ["priceSource"], price_source)
+        price_source_type = first_value(unified_price, ["priceSourceType"], price_source_type)
+        price_source_file = first_value(unified_price, ["priceSourceFile"], price_source_file)
+        price_source_date = first_value(unified_price, ["priceSourceDate", "priceTime"], price_source_date)
+        price_basis = first_value(unified_price, ["priceBasis"], price_basis)
+        price_session = first_value(unified_price, ["priceSession"], price_session)
+        price_data_status = first_value(unified_price, ["priceDataStatus"], "NORMAL")
+    else:
+        price_data_status = _price_status(source_date, price_source_date, runner_date, is_fallback)
+    if source_date and price_source_date and _date_is_older(price_source_date, source_date):
+        price_data_status = "STALE"
+    raw_data_status = first_value(row_dict, DATA_STATUS_ALIASES, "")
+    if source_type in {"stockapp_snapshot", "github_actions"} and raw_data_status.upper() not in {"STALE", "PARTIAL", "NO_DATA", "MISSING", "FALLBACK"}:
+        base_data_status = "NORMAL"
+    else:
+        base_data_status = raw_data_status or ("NORMAL" if source_type in {"stockapp_snapshot", "github_actions"} else "")
+    data_status = _source_status(source_type, base_data_status or price_data_status)
     entry = first_number(row_dict, ENTRY_ALIASES)
     stop = first_number(row_dict, STOP_ALIASES)
     target = first_number(row_dict, TARGET_ALIASES)
@@ -1403,7 +2031,7 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
     }
     statuses = {
         "data": first_value(row_dict, ["data_status"], "상태 없음"),
-        "price": first_value(row_dict, ["price_data_status"], "현재가 상태 없음"),
+        "price": price_data_status,
         "earnings": first_value(row_dict, ["earnings_data_status", "실적상태"], "재무 데이터 없음"),
         "valuation": first_value(row_dict, ["valuation_data_status", "밸류상태"], "재무 데이터 없음"),
         "flow": first_value(row_dict, ["flow_data_status", "수급상태"], "수급 데이터 없음"),
@@ -1423,6 +2051,9 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
         "priceSourceType": price_source_type,
         "priceSourceFile": price_source_file,
         "priceSourceDate": price_source_date,
+        "priceDataStatus": price_data_status,
+        "priceBasis": price_basis,
+        "priceSession": price_session,
         "dataStatus": data_status,
         "isFallback": is_fallback,
         "entry": entry,
@@ -1511,12 +2142,177 @@ def _stockapp_result_path(market: str) -> Path | None:
     return _latest_existing_path(paths)
 
 
+def _stockapp_report_path(market: str, file_name: str) -> Path | None:
+    mk = "kr" if market == "kr" else "us"
+    names = [file_name.format(market=mk)]
+    paths: list[Path] = []
+    for name in names:
+        paths.extend([REPORT_DIR / name, DATA_DIR / "stockapp" / name])
+        for root in stockapp_roots():
+            paths.extend([root / name, root / "reports" / name, root / "data" / name])
+    return _latest_existing_path(paths)
+
+
+def stockapp_report_rows(market: str, file_name: str) -> tuple[list[dict[str, Any]], str]:
+    path = _stockapp_report_path(market, file_name)
+    if path is None:
+        return [], ""
+    rows = dataframe_records(read_csv(path))
+    source = source_label(path)
+    source_date = file_mtime(path)
+    filtered: list[dict[str, Any]] = []
+    for row in rows:
+        if not _market_matches(row, market):
+            market_text = first_value(row, ["market", "시장"], "")
+            if market_text:
+                continue
+        merged = dict(row)
+        merged.setdefault("sourceType", _source_type_for_label(source, market, source_date))
+        merged.setdefault("sourceFile", source)
+        merged.setdefault("sourceDate", source_date)
+        filtered.append(merged)
+    return filtered, source
+
+
 def _stockapp_order_plan_rows(market: str) -> tuple[list[dict[str, Any]], str]:
     path = _stockapp_order_plan_path(market)
     if path is None:
         return [], ""
     rows = dataframe_records(read_csv(path))
-    return rows, source_label(path)
+    source = source_label(path)
+    source_date = file_mtime(path)
+    for row in rows:
+        row["sourceType"] = "stockapp_snapshot"
+        row["sourceFile"] = source
+        row["sourceDate"] = source_date
+        row["isFallback"] = False
+    return rows, source
+
+
+def _stockapp_price_file_candidates(market: str) -> list[Path]:
+    paths: list[Path] = []
+    if market == "kr":
+        names = (
+            "actual_results.csv",
+            "stockapp_close_update_kr.csv",
+            "latest_kr_performance_summary.csv",
+            "adjustment_performance_report.csv",
+            "operation_health_kr.csv",
+        )
+        glob_patterns = ("order_plan_kr_*.csv", "*kr*price*.csv", "*kr*quote*.csv")
+    else:
+        names = (
+            "actual_results.csv",
+            "latest_us_performance_summary.csv",
+            "adjustment_performance_report.csv",
+            "operation_health_us.csv",
+            "v93_confidence_cards_us.csv",
+            "v93_symbol_snapshot_us.csv",
+            "v93_position_cards_us.csv",
+            "v92_confidence_cards_us.csv",
+            "v92_symbol_snapshot_us.csv",
+            "v92_position_cards_us.csv",
+            "stockapp_company_integrated_us.csv",
+            "mone_v36_company_integrated_us.csv",
+        )
+        glob_patterns = ("order_plan_us_*.csv", "*us*price*.csv", "*us*quote*.csv", "*symbol_snapshot_us.csv", "*confidence_cards_us.csv")
+    for name in names:
+        path = _stockapp_report_path(market, name)
+        if path is not None:
+            paths.append(path)
+        # GitHub reports may not live in StockApp folders.
+        direct_report = REPORT_DIR / name
+        direct_data = DATA_DIR / name
+        for direct in (direct_report, direct_data, DATA_DIR / "stockapp" / name, DATA_DIR / "decision_system" / name):
+            if direct.exists():
+                paths.append(direct)
+    order_path = _stockapp_order_plan_path(market)
+    if order_path is not None:
+        paths.append(order_path)
+    for base in (REPORT_DIR, DATA_DIR, DATA_DIR / "stockapp", DATA_DIR / "decision_system"):
+        if base.exists():
+            for pattern in glob_patterns:
+                paths.extend(sorted(base.glob(pattern)))
+    for root in stockapp_roots():
+        for base in (root / "reports", root / "data", root):
+            if base.exists():
+                for pattern in glob_patterns:
+                    paths.extend(sorted(base.glob(pattern)))
+                for name in names:
+                    for direct in (base / name, base / "reports" / name, base / "data" / name):
+                        if direct.exists():
+                            paths.append(direct)
+    return _unique_paths([p for p in paths if p.exists() and p.suffix.lower() == ".csv"])
+
+
+def _stockapp_price_candidate_from_row(
+    row: dict[str, Any],
+    market: str,
+    source: str,
+    file_time: str,
+    reference_date: Any = "",
+) -> dict[str, Any] | None:
+    symbol = _row_symbol(row, market)
+    if not _symbol_belongs_to_market(symbol, market):
+        return None
+    price = first_number(row, STOCKAPP_PRICE_ALIASES)
+    if price is None or price <= 0:
+        return None
+    row_date = first_value(row, STOCKAPP_PRICE_DATE_ALIASES, "") or file_time
+    price_date = first_value(row, ["created_at", "report_generated_at", "updated_at"], "") or row_date or file_time
+    if reference_date and price_date and _date_is_older(price_date, reference_date):
+        return None
+    return {
+        "symbol": symbol,
+        "price": price,
+        "priceTime": price_date or row_date or file_time,
+        "priceSource": "StockApp close/update",
+        "priceSourceFile": source,
+        "priceSourceDate": price_date or row_date or file_time,
+        "fileTime": file_time,
+    }
+
+
+@lru_cache(maxsize=16)
+def _stockapp_latest_price_map(market: str, reference_date_key: str = "") -> dict[str, dict[str, Any]]:
+    if market != "kr":
+        return {}
+    candidates: dict[str, dict[str, Any]] = {}
+    for path in sorted(_stockapp_price_file_candidates(market), key=lambda p: file_mtime(p), reverse=True):
+        source = source_label(path)
+        file_time = file_mtime(path)
+        df = read_csv(path)
+        if df.empty:
+            continue
+        for row in dataframe_records(df):
+            if not _market_matches(row, market):
+                market_text = first_value(row, ["market", "시장"], "")
+                if market_text:
+                    continue
+            candidate = _stockapp_price_candidate_from_row(row, market, source, file_time, reference_date_key)
+            if not candidate:
+                continue
+            symbol = str(candidate["symbol"])
+            prev = candidates.get(symbol)
+            prev_time = first_value(prev or {}, ["priceSourceDate", "fileTime"], "")
+            candidate_time = first_value(candidate, ["priceSourceDate", "fileTime"], "")
+            if not prev or _date_is_older(prev_time, candidate_time):
+                candidates[symbol] = candidate
+    return candidates
+
+
+def _stockapp_price_overlay(row: dict[str, Any], market: str, source_date: str) -> dict[str, Any] | None:
+    source_file = first_value(row, ["sourceFile", "source_file"], "")
+    source_type = _canonical_source_type(first_value(row, ["sourceType"], _source_type_for_label(source_file, market, source_date)))
+    # KR handoff snapshots should stay strict. US v93/v92 GitHub outputs are also valid price snapshots.
+    if market == "kr" and source_type != "stockapp_snapshot" and not source_file.startswith("stockapp://"):
+        return None
+    row_candidate = _stockapp_price_candidate_from_row(row, market, source_file, source_date, source_date)
+    symbol = _row_symbol(row, market)
+    fallback = _stockapp_latest_price_map(market, _normalize_date_text(source_date)).get(symbol, {})
+    if row_candidate and not _date_is_older(row_candidate.get("priceSourceDate"), source_date):
+        return row_candidate
+    return dict(fallback) if fallback else None
 
 
 def _text_has_any(text: str, tokens: tuple[str, ...]) -> bool:
@@ -2112,6 +2908,26 @@ def premarket_report(market: str) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     seen: set[str] = set()
     sources: list[str] = []
+    required_files = [
+        f"operational_readiness_{market}.csv",
+        f"operation_health_{market}.csv",
+        f"latest_{market}_performance_summary.csv",
+        "prediction_integrity_status.csv",
+        f"order_plan_{market}_*.csv",
+        f"reports/mone_v36_final_recommendations_{market}_balanced_swing.csv",
+        f"reports/mone_v36_final_data_center_{market}.csv",
+    ]
+    report_summary: list[dict[str, Any]] = []
+    for file_name, label in (
+        ("operational_readiness_{market}.csv", "operational_readiness"),
+        ("operation_health_{market}.csv", "operation_health"),
+        ("latest_{market}_performance_summary.csv", "performance_summary"),
+        ("prediction_integrity_status.csv", "prediction_integrity"),
+    ):
+        rows, src = stockapp_report_rows(market, file_name)
+        if src:
+            sources.append(src)
+            report_summary.extend({"report": label, **row} for row in rows[:8])
     for label, payload in bucket_payloads:
         if payload.get("source"):
             sources.append(payload.get("source"))
@@ -2140,7 +2956,18 @@ def premarket_report(market: str) -> dict[str, Any]:
             {"구분": "수급", "건수": str(candidate_rows(market, "flow").get("count", 0)), "설명": "수급 포착 후보"},
             {"구분": "주의", "건수": str(candidate_rows(market, "risk").get("count", 0)), "설명": "위험/데이터 부족/과열 주의"},
         ]
-        return {"market": market, "count": len(items), "sources": sorted(set(sources)), "summary": summary, "items": items}
+        return {
+            "status": "OK",
+            "market": market,
+            "count": len(items),
+            "sourceDate": _max_date_key_from_rows(items),
+            "sources": sorted(set(sources)),
+            "summary": summary,
+            "reportSummary": report_summary,
+            "requiredFiles": required_files,
+            "missingReason": "",
+            "items": items,
+        }
 
     # Existing reports fallback.
     summary_df, summary_source = read_report("today_summary", market)
@@ -2183,16 +3010,71 @@ def premarket_report(market: str) -> dict[str, Any]:
         })
 
     return {
+        "status": "OK" if items else "MISSING",
         "market": market,
         "count": len(items),
+        "sourceDate": _max_date_key_from_rows(items),
         "sources": [source for source in sources if source],
         "summary": dataframe_records(summary_df),
+        "reportSummary": report_summary,
+        "requiredFiles": required_files,
+        "missingReason": "" if items else "장전 리포트 후보/운영 리포트 파일에서 표시할 행을 찾지 못했습니다.",
         "items": items,
     }
 
 
+def _latest_plan_baseline_map(market: str) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """Latest order-plan/candidate rows used as the baseline for reports.
+
+    These rows come from the GitHub/StockApp automation and should beat stale
+    local position/risk snapshots.  They are not always live intraday quotes,
+    but they are the freshest app-facing values and prevent empty/old rows from
+    dominating the report screens.
+    """
+    baseline: dict[str, dict[str, Any]] = {}
+    sources: list[str] = []
+    for kind in ("action", "pullback", "flow", "risk"):
+        try:
+            payload = candidate_rows(market, kind)
+        except Exception:
+            continue
+        src = _safe_str(payload.get("source", ""))
+        if src and src not in sources:
+            sources.append(src)
+        for item in payload.get("items", []) or []:
+            raw = item.get("raw", {}) if isinstance(item, dict) and isinstance(item.get("raw"), dict) else {}
+            merged = {**raw, **item}
+            symbol = normalize_symbol(first_value(merged, SYMBOL_ALIASES + ["stock_code", "종목코드", "ticker", "code", "symbol"]), market)
+            if not _symbol_belongs_to_market(symbol, market):
+                continue
+            merged.setdefault("sourceFile", item.get("sourceFile") or src)
+            merged.setdefault("sourceDate", item.get("sourceDate") or _row_source_date(merged) or file_mtime(REPO_ROOT / str(src)) if src else "")
+            # Prefer the newest app-facing row for each symbol.
+            old = baseline.get(symbol)
+            if old is None or _date_key(merged.get("sourceDate")) >= _date_key(old.get("sourceDate")):
+                baseline[symbol] = merged
+    return baseline, sources
+
+
+def _has_today_baseline_price(item: dict[str, Any]) -> bool:
+    date_text = item.get("sourceDate") or item.get("priceSourceDate") or item.get("priceTime")
+    price = _safe_float(item.get("currentPrice"))
+    return bool(price is not None and price > 0 and _date_is_today(date_text))
+
+
 def intraday_report(market: str) -> dict[str, Any]:
     symbol_map = _combine_symbol_maps(market)
+    plan_map, plan_sources = _latest_plan_baseline_map(market)
+    flow_map, flow_sources = _latest_data_maps(
+        (r"kr_investor_flow_kis", r"flow_cards", r"master_investors", r"flow", r"supply", r"investor", r"수급"),
+        market,
+        ("sector", "node_modules"),
+    )
+    orderbook_map, orderbook_sources = _latest_data_maps(
+        (r"intraday_orderbook_snapshot", r"orderbook", r"quote", r"bid", r"ask", r"호가", r"체결"),
+        market,
+        ("quotes_cache", "node_modules"),
+    )
     position_items = positions(market)["items"]
     risk_items = candidate_rows(market, "risk")["items"]
     news = news_rows(market)["items"]
@@ -2203,6 +3085,14 @@ def intraday_report(market: str) -> dict[str, Any]:
             news_count_by_symbol[symbol] = news_count_by_symbol.get(symbol, 0) + 1
 
     symbols_order = []
+    # Latest automation/order-plan rows first.  Position/risk/symbol fallbacks
+    # should never decide which rows appear when current GitHub data exists.
+    for symbol in list(plan_map.keys()):
+        if _symbol_belongs_to_market(symbol, market) and symbol not in symbols_order:
+            symbols_order.append(symbol)
+    for symbol in list(flow_map.keys()) + list(orderbook_map.keys()):
+        if _symbol_belongs_to_market(symbol, market) and symbol not in symbols_order:
+            symbols_order.append(symbol)
     for collection in (position_items, risk_items, symbols(market)["items"][:30]):
         for item in collection:
             symbol = normalize_symbol(item.get("symbol"), market)
@@ -2213,7 +3103,12 @@ def intraday_report(market: str) -> dict[str, Any]:
     position_map = {normalize_symbol(item.get("symbol"), market): item for item in position_items}
     items = []
     for symbol in symbols_order:
-        merged = symbol_map.get(symbol, {})
+        if not _symbol_belongs_to_market(symbol, market):
+            continue
+        merged = dict(symbol_map.get(symbol, {}))
+        merged = _merge_alias_values(merged, plan_map.get(symbol, {}))
+        merged = _merge_alias_values(merged, flow_map.get(symbol, {}))
+        merged = _merge_alias_values(merged, orderbook_map.get(symbol, {}))
         position = position_map.get(symbol)
         if position:
             merged = _merge_alias_values(merged, position.get("raw", {}))
@@ -2250,17 +3145,56 @@ def intraday_report(market: str) -> dict[str, Any]:
             "holdingRisk": position.get("returnPctText", "보유종목 아님") if position else "보유종목 아님",
             "newsRiskStatus": f"뉴스 {news_count_by_symbol.get(symbol, 0)}건 / {risk_map[symbol].get('warning', '리스크 상태 있음')}" if symbol in risk_map else f"뉴스 {news_count_by_symbol.get(symbol, 0)}건",
             "intradayDecision": decision,
+            "flowStatus": first_value(merged, ["supply_label", "supply_summary", "flow_data_status"], normalized.get("statuses", {}).get("flow", "")),
+            "orderbookStatus": first_value(merged, ["orderbook_fetch_status", "orderbook_source_label", "orderbook_warning"], ""),
         })
 
+    sources = list(dict.fromkeys(plan_sources + flow_sources + orderbook_sources + [
+        f"reports/v92_symbol_snapshot_{market}.csv",
+        f"reports/v92_position_cards_{market}.csv",
+        f"reports/v92_risk_cards_{market}.csv",
+        f"reports/v92_news_summary_{market}.csv",
+    ]))
+    required_files = (
+        [
+            "intraday_orderbook_snapshot.csv",
+            "intraday_orderbook_snapshot-Kang.csv",
+            "kr_investor_flow_kis.csv",
+            "reports/v92_flow_cards_kr.csv",
+            "reports/v92_master_investors_kr.csv",
+        ]
+        if market == "kr"
+        else ["intraday_orderbook_snapshot.csv", "reports/v92_flow_cards_us.csv"]
+    )
+    phase = _market_price_phase(market)
+    fresh_intraday_count = sum(1 for item in items if _intraday_item_is_fresh(item))
+    today_baseline_count = sum(1 for item in items if _has_today_baseline_price(item))
+    source_date = _max_date_key_from_rows(items)
+    if not items:
+        status = "MISSING"
+        missing_reason = "장중 수급/호가/위험 카드에서 표시할 행을 찾지 못했습니다."
+    elif not phase.get("isIntraday"):
+        # Outside the regular session this screen is a reference view.  If the
+        # automation produced today's order-plan/performance rows, treat it as
+        # PARTIAL instead of pretending there is no data.
+        status = "PARTIAL" if today_baseline_count > 0 else "STALE"
+        missing_reason = f"현재 {phase.get('label', '장중 아님')} 구간입니다. 최신 자동화 기준값을 참고용으로 표시합니다."
+    elif fresh_intraday_count <= 0:
+        status = "PARTIAL" if today_baseline_count > 0 else "STALE"
+        missing_reason = "오늘 장중 KIS 현재가/호가/수급의 실시간 행은 확인되지 않았고, 최신 자동화 기준값을 참고용으로 표시합니다."
+    else:
+        status = "OK"
+        missing_reason = ""
     return {
+        "status": status,
         "market": market,
         "count": len(items),
-        "sources": [
-            f"reports/v92_symbol_snapshot_{market}.csv",
-            f"reports/v92_position_cards_{market}.csv",
-            f"reports/v92_risk_cards_{market}.csv",
-            f"reports/v92_news_summary_{market}.csv",
-        ],
+        "freshIntradayCount": fresh_intraday_count,
+        "todayBaselineCount": today_baseline_count,
+        "sourceDate": source_date,
+        "sources": sources,
+        "requiredFiles": required_files,
+        "missingReason": missing_reason,
         "items": items,
     }
 
@@ -2271,10 +3205,29 @@ def closing_report(market: str) -> dict[str, Any]:
     outcome_rows = outcome_history(market)["items"]
     recent_predictions = sorted(prediction_rows, key=lambda row: first_value(row, ["created_at", "target_date"], ""), reverse=True)[:120]
     recent_history = sorted(prediction_history_rows, key=lambda row: first_value(row, ["created_at", "target_date"], ""), reverse=True)[:80]
+    report_sources: list[str] = []
+    report_summary: list[dict[str, Any]] = []
+    for file_name, label in (
+        ("operation_health_{market}.csv", "operation_health"),
+        ("operational_readiness_{market}.csv", "operational_readiness"),
+        ("latest_{market}_performance_summary.csv", "performance_summary"),
+        ("prediction_integrity_status.csv", "prediction_integrity"),
+    ):
+        rows, src = stockapp_report_rows(market, file_name)
+        if src:
+            report_sources.append(src)
+            for row in rows[:8]:
+                report_summary.append({"report": label, **row})
 
     items = []
-    for row in recent_predictions[:80]:
+    stockapp_rows, stockapp_order_source = _stockapp_order_plan_rows(market) if preferred_source_type(market) == "stockapp_snapshot" else ([], "")
+    if stockapp_order_source:
+        report_sources.insert(0, stockapp_order_source)
+    closing_source_rows = stockapp_rows[:80] if stockapp_rows else recent_predictions[:80]
+    for row in closing_source_rows:
         symbol = _row_symbol(row, market)
+        if not _symbol_belongs_to_market(symbol, market):
+            continue
         name = first_value(row, NAME_ALIASES + ["stock_name"], symbol or "이름 없음")
         direction = _direction_label(first_value(row, ["direction_hit", "decision_success", "prediction_result"], ""))
         open_range = _direction_label(first_value(row, ["open_in_range"], ""))
@@ -2294,6 +3247,9 @@ def closing_report(market: str) -> dict[str, Any]:
             "stopTakeProfit": f"손절 {stop_touched} / 익절 {tp_touched}",
             "failedSymbol": name if failed else "해당 없음",
             "failureReason": first_value(row, ["prediction_error_reason", "failure_reason", "prediction_cause_summary"], "실패 사유 또는 데이터 부족 사유 없음"),
+            "sourceType": first_value(row, ["sourceType"], _source_type_for_label(stockapp_order_source, market, first_value(row, ["sourceDate"], ""))),
+            "sourceFile": first_value(row, ["sourceFile"], stockapp_order_source or "predictions.csv"),
+            "sourceDate": first_value(row, ["sourceDate"], first_value(row, ["created_at", "target_date"], "")),
         })
 
     if not items:
@@ -2318,7 +3274,8 @@ def closing_report(market: str) -> dict[str, Any]:
         "rangeHitRate": _rate(prediction_rows, ["close_in_range", "open_in_range"]),
         "predictionHistoryCount": prediction_history(market)["count"],
         "outcomeHistoryCount": outcome_history(market)["count"],
-        "sources": ["predictions.csv", "data/history/prediction_history.csv", "data/history/outcome_history.csv"],
+        "sources": list(dict.fromkeys(report_sources + ["predictions.csv", "data/history/prediction_history.csv", "data/history/outcome_history.csv"])),
+        "reportSummary": report_summary,
         "items": items,
         "outcomes": outcome_rows[:80],
     }
@@ -2558,21 +3515,29 @@ def _latest_data_maps(patterns: tuple[str, ...], market: str, exclude: tuple[str
     for path in files[:12]:
         if path.suffix.lower() != ".csv":
             continue
+        low_name = path.name.lower()
+        full = path.as_posix().lower()
+        if market == "kr" and any(tok in low_name or tok in full for tok in ("_us", "us_", "sec_recent", "sec_filing", "disclosures_us")):
+            continue
+        if market == "us" and any(tok in low_name or tok in full for tok in ("_kr", "kr_", "dart", "disclosures_kr", "market_cap_cache", "kr_financial")):
+            continue
         df = read_csv(path)
         if df.empty:
             continue
-        sources.append(source_label(path))
+        source = source_label(path)
         for row in dataframe_records(df):
-            low_name = path.name.lower()
             if not _market_matches(row, market):
-                if market == "kr" and any(tok in low_name for tok in ("us", "sec")):
-                    continue
-                if market == "us" and any(tok in low_name for tok in ("kr", "dart", "kor")):
-                    continue
-            symbol = _row_symbol(row, market)
-            if not symbol:
                 continue
+            symbol = _row_symbol(row, market)
+            if not _symbol_belongs_to_market(symbol, market):
+                continue
+            row = dict(row)
+            row.setdefault("sourceFile", source)
+            row.setdefault("sourceType", _source_type_for_label(source, market, file_mtime(path)))
+            row.setdefault("sourceDate", file_mtime(path))
             merged[symbol] = _merge_alias_values(merged.get(symbol, {}), row) if symbol in merged else dict(row)
+        if source not in sources and merged:
+            sources.append(source)
     return merged, sources
 
 def github_actions_status() -> dict[str, Any]:
@@ -2617,6 +3582,9 @@ def github_actions_status() -> dict[str, Any]:
                     "html_url": run.get("html_url", ""),
                 })
         schedule_runs = [r for r in runs if r.get("event") == "schedule"]
+        dispatch_runs = [r for r in runs if r.get("event") == "workflow_dispatch"]
+        successful_runs = [r for r in runs if r.get("conclusion") == "success" and str(r.get("name", "")).lower() == "mone auto accumulator"]
+        latest_automation = (schedule_runs[0] if schedule_runs else None) or (dispatch_runs[0] if dispatch_runs else None) or (successful_runs[0] if successful_runs else None)
         return {
             "status": "OK",
             "repo": repo,
@@ -2624,6 +3592,9 @@ def github_actions_status() -> dict[str, Any]:
             "workflows": workflows,
             "runs": runs,
             "latestScheduled": schedule_runs[0] if schedule_runs else None,
+            "latestWorkflowDispatch": dispatch_runs[0] if dispatch_runs else None,
+            "latestAutomationRun": latest_automation,
+            "automationMode": "github_schedule" if schedule_runs else ("external_workflow_dispatch" if dispatch_runs else "unknown"),
         }
     except Exception as exc:
         return {"status": "ERROR", "repo": repo, "message": f"GitHub Actions 조회 실패: {exc}", "workflows": [], "runs": []}
@@ -2633,7 +3604,19 @@ def chart_data(symbol: str, market: str) -> dict[str, Any]:
     target = normalize_symbol(symbol, market)
     df, source = _load_ohlcv(target, market)
     if df.empty:
-        return {"status": "NO_DATA", "symbol": target, "market": market, "source": "", "items": [], "message": "OHLCV CSV를 찾지 못했습니다."}
+        prefix = "kr" if market == "kr" else "us"
+        return {
+            "status": "NO_DATA",
+            "symbol": target,
+            "market": market,
+            "source": "",
+            "items": [],
+            "message": "선택 종목의 OHLCV CSV를 찾지 못했습니다.",
+            "requiredFiles": [
+                f"data/market/ohlcv/{prefix}_{target}_daily.csv",
+                f"StockApp data/market/ohlcv/{prefix}_{target}_daily.csv",
+            ],
+        }
     work = df.copy()
     work["ma5"] = work["close"].rolling(5).mean()
     work["ma20"] = work["close"].rolling(20).mean()
@@ -2679,58 +3662,126 @@ def chart_data(symbol: str, market: str) -> dict[str, Any]:
 
 
 
+def _preferred_disclosure_files(market: str) -> list[Path]:
+    mk = "kr" if market == "kr" else "us"
+    candidates: list[Path] = []
+    if mk == "kr":
+        names = [
+            DATA_DIR / "disclosures" / "disclosures_kr.csv",
+            DATA_DIR / "stockapp" / "disclosures_kr.csv",
+            REPORT_DIR / "disclosures_kr.csv",
+        ]
+    else:
+        names = [
+            DATA_DIR / "disclosures" / "disclosures_us.csv",
+            DATA_DIR / "sec_recent_filings.csv",
+            DATA_DIR / "stockapp" / "disclosures_us.csv",
+            DATA_DIR / "stockapp" / "sec_recent_filings.csv",
+            REPORT_DIR / "disclosures_us.csv",
+            REPORT_DIR / "sec_recent_filings.csv",
+        ]
+    candidates.extend(names)
+    for root in stockapp_roots():
+        if mk == "kr":
+            rels = [
+                Path("data/disclosures/disclosures_kr.csv"),
+                Path("disclosures/disclosures_kr.csv"),
+                Path("reports/disclosures_kr.csv"),
+                Path("disclosures_kr.csv"),
+            ]
+        else:
+            rels = [
+                Path("data/disclosures/disclosures_us.csv"),
+                Path("data/sec_recent_filings.csv"),
+                Path("disclosures/disclosures_us.csv"),
+                Path("reports/disclosures_us.csv"),
+                Path("reports/sec_recent_filings.csv"),
+                Path("sec_recent_filings.csv"),
+            ]
+        candidates.extend(root / rel for rel in rels)
+    existing = [p for p in candidates if p.exists() and p.is_file() and p.stat().st_size > 0]
+    if not existing:
+        exact_names = {"disclosures_kr.csv"} if mk == "kr" else {"disclosures_us.csv", "sec_recent_filings.csv"}
+        for p in _find_data_files((r"disclosures", r"sec_recent_filings"), ("sector", "dart_corp", "corp_code", "company_code", "node_modules")):
+            if p.name.lower() in exact_names:
+                existing.append(p)
+    return _unique_paths(existing)
+
+
+def _disclosure_sort_key(item: dict[str, Any]) -> str:
+    return _date_key(item.get("date") or item.get("raw", {}).get("date") or "")
+
+
 def disclosure_rows(market: str) -> dict[str, Any]:
     out_file = _disclosure_output_file(market)
-    # 데이터가 없으면 API 키가 있을 때 1회 수집을 시도합니다. 실패해도 화면은 안전하게 빈 상태를 유지합니다.
     if not out_file.exists() or rows_for(out_file) == 0:
         if (market == "kr" and os.environ.get("DART_API_KEY")) or (market == "us" and os.environ.get("FINNHUB_API_KEY")):
             try:
                 refresh_disclosures(market=market, days=30)
             except Exception:
                 pass
-    files = _find_data_files((r"disclosure", r"disclosures", r"filing", r"공시"), ("sector", "dart_corp", "corp_code", "company_code", "node_modules"))
-    if out_file.exists():
-        files = [out_file] + [p for p in files if p.resolve() != out_file.resolve()]
+    files = _preferred_disclosure_files(market)
     items: list[dict[str, Any]] = []
     used_sources: list[str] = []
-    for path in files[:20]:
-        if path.suffix.lower() != ".csv":
-            continue
-        low_name = path.name.lower()
-        if market == "kr" and any(tok in low_name for tok in ("us", "sec")):
-            continue
-        if market == "us" and any(tok in low_name for tok in ("kr", "dart", "kor")):
-            continue
+    seen: set[str] = set()
+    for path in files[:12]:
         df = read_csv(path)
         if df.empty:
             continue
-        used_sources.append(source_label(path))
+        source = source_label(path)
+        if source not in used_sources:
+            used_sources.append(source)
         for row in dataframe_records(df):
+            symbol = normalize_symbol(first_value(row, ["stock_code", "종목코드", "ticker", "symbol", "code"], ""), market)
+            # Only listed-market disclosures are useful for this stock app.  This
+            # prevents DART corp-code master rows or broad SEC tables from flooding
+            # the screen as if they were stock disclosures.
+            if not symbol or not _symbol_belongs_to_market(symbol, market):
+                continue
             if not _market_matches(row, market):
-                # market 값이 없는 공시 파일은 파일명으로 보조 판단합니다.
-                if market == "kr" and any(tok in low_name for tok in ("us", "sec")):
+                market_text = first_value(row, ["market", "시장"], "")
+                if market_text:
                     continue
-                if market == "us" and any(tok in low_name for tok in ("kr", "dart", "kor")):
-                    continue
-            symbol = normalize_symbol(first_value(row, SYMBOL_ALIASES + ["종목코드", "ticker", "stock_code"], ""), market)
-            name = first_value(row, NAME_ALIASES + ["corp_name", "company", "회사명"], symbol or "회사명 없음")
-            title = first_value(row, ["title", "공시제목", "report_nm", "보고서명", "form", "filing", "type"], "공시 제목 없음")
-            date = first_value(row, ["date", "공시일", "rcept_dt", "filing_date", "filedDate", "accepted", "acceptedDate", "게시일"], "공시일 없음")
+            name = first_value(row, NAME_ALIASES + ["corp_name", "company", "회사명"], symbol)
+            raw_title = first_value(row, ["title", "공시제목", "report_nm", "보고서명", "filingTitle", "form", "filing", "type"], "")
+            form_type = first_value(row, ["form", "formType", "type", "filing", "filingType"], "")
+            title = _clean_disclosure_title(raw_title or form_type, market)
+            date = first_value(row, ["date", "공시일", "rcept_dt", "filing_date", "filedDate", "accepted", "acceptedDate", "게시일"], "")
+            if not title and not date:
+                continue
             source_name = first_value(row, ["source", "출처", "provider"], "DART" if market == "kr" else "SEC")
             url = first_value(row, ["url", "link", "공시링크", "html_url", "reportUrl", "filingUrl"], "")
+            key = "|".join([market, symbol, _date_key(date), str(title).strip().lower(), str(form_type).strip().lower()])
+            if key in seen:
+                continue
+            seen.add(key)
             items.append({
                 "market": market,
                 "symbol": symbol,
                 "name": name,
-                "title": title,
-                "date": date,
+                "title": title or "공시 제목 없음",
+                "date": date or "공시일 없음",
                 "sourceName": source_name,
                 "url": url,
                 "status": "OK",
+                "sourceFile": source,
                 "raw": row,
             })
-    return {"market": market, "count": len(items), "sources": used_sources, "items": items[:250]}
-
+    items = sorted(items, key=_disclosure_sort_key, reverse=True)
+    required_files = (
+        ["data/disclosures/disclosures_kr.csv"]
+        if market == "kr"
+        else ["data/disclosures/disclosures_us.csv", "data/sec_recent_filings.csv", "stockapp://sec_recent_filings.csv"]
+    )
+    return {
+        "status": "OK" if items else "MISSING",
+        "market": market,
+        "count": len(items),
+        "sources": used_sources,
+        "requiredFiles": required_files,
+        "missingReason": "" if items else "시장에 맞는 상장 종목 공시 CSV 행을 찾지 못했습니다.",
+        "items": items[:250],
+    }
 
 def company_analysis(market: str) -> dict[str, Any]:
     base_map = _combine_symbol_maps(market)
@@ -2750,8 +3801,18 @@ def company_analysis(market: str) -> dict[str, Any]:
                 base_map[symbol] = raw
 
     items: list[dict[str, Any]] = []
-    all_symbols = list(dict.fromkeys(list(base_map.keys()) + list(company_map.keys()) + list(financial_map.keys())))
-    for symbol in all_symbols[:200]:
+    priority_symbols: list[str] = []
+    for payload in (candidate_rows(market, "action"), candidate_rows(market, "pullback"), candidate_rows(market, "flow"), candidate_rows(market, "risk"), positions(market)):
+        for item in payload.get("items", []) if isinstance(payload, dict) else []:
+            symbol = normalize_symbol(item.get("symbol"), market)
+            if symbol and _symbol_belongs_to_market(symbol, market) and symbol not in priority_symbols:
+                priority_symbols.append(symbol)
+    all_symbols = list(dict.fromkeys(priority_symbols + list(base_map.keys()) + list(company_map.keys()) + list(financial_map.keys())))
+    seen_symbols: set[str] = set()
+    for symbol in all_symbols:
+        if not _symbol_belongs_to_market(symbol, market) or symbol in seen_symbols:
+            continue
+        seen_symbols.add(symbol)
         merged = dict(base_map.get(symbol, {}))
         merged = _merge_alias_values(merged, company_map.get(symbol, {}))
         merged = _merge_alias_values(merged, financial_map.get(symbol, {}))
@@ -2797,7 +3858,38 @@ def company_analysis(market: str) -> dict[str, Any]:
             "research": research,
             "raw": merged,
         })
-    return {"market": market, "count": len(items), "source": " · ".join(source_list[:6]) if source_list else "symbols fallback", "sources": source_list[:12], "items": items}
+        if len(items) >= 120:
+            break
+    required_files = (
+        [
+            "data/kr_financial_metrics.csv",
+            "data/kr_market_cap_cache.csv",
+            "data/disclosures/disclosures_kr.csv",
+            "reports/v92_financial_statement_kr.csv",
+            "reports/v92_kpi_cards_kr.csv",
+            "reports/v92_symbol_snapshot_kr.csv",
+        ]
+        if market == "kr"
+        else [
+            "data/sec_recent_filings.csv",
+            "data/disclosures/disclosures_us.csv",
+            "data/us_financial_metrics.csv",
+            "reports/v92_symbol_snapshot_us.csv",
+        ]
+    )
+    quality = _company_financial_quality(items)
+    return {
+        "status": quality["status"],
+        "market": market,
+        "count": len(items),
+        "source": " · ".join(source_list[:6]) if source_list else "symbols fallback",
+        "sources": source_list[:12],
+        "requiredFiles": required_files,
+        "financialCompleteness": quality,
+        "message": quality["note"] if items else "필요 파일 감지 대기",
+        "missingReason": "" if items else "시장에 맞는 기업/재무 CSV 행을 찾지 못했습니다.",
+        "items": items,
+    }
 
 
 def _execution_status_for_plan(current: float | None, entry: float | None, mode: str) -> str:

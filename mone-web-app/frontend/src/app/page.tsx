@@ -33,7 +33,7 @@ type EnvItem = { key: string; status: "OK" | "MISSING" };
 type DataSourceItem = {
   key: string;
   name: string;
-  status: "OK" | "MISSING";
+  status: string;
   files: number;
   csvFiles: number;
   rows: number;
@@ -216,6 +216,22 @@ type FinalDataCenter = {
   flowData?: string;
   orderbookData?: string;
   disclosureData?: string;
+  reportData?: string;
+  premarketData?: string;
+  intradayData?: string;
+  closingData?: string;
+  activeReportPhase?: string;
+  activeReportLabel?: string;
+  activeReportMissingReason?: string;
+  companyData?: string;
+  companyQuality?: Record<string, unknown>;
+  githubScheduleStatus?: string;
+  automationStatus?: string;
+  automationLabel?: string;
+  automationMode?: string;
+  latestAutomationRunAt?: string;
+  latestAutomationEvent?: string;
+  latestAutomationConclusion?: string;
   summary?: { label: string; value: string; note: string }[];
 };
 
@@ -547,6 +563,8 @@ type GitHubActionsStatus = {
   workflows?: Record<string, string | number>[];
   runs?: Record<string, string>[];
   latestScheduled?: Record<string, string> | null;
+  latestWorkflowDispatch?: Record<string, string> | null;
+  latestAutomationRun?: Record<string, string> | null;
 };
 
 type WriteResponse = {
@@ -610,11 +628,107 @@ const buyCandidateTabs = [
 const sourceLabel = (source?: string) => source || "소스 없음";
 
 
-async function safeGetJson<T>(path: string, fallback: T, timeoutMs = 8000): Promise<T> {
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function firstArray<T>(...values: unknown[]): T[] {
+  for (const value of values) {
+    const arr = asArray<T>(value);
+    if (arr.length) return arr;
+  }
+  return [];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function normalizeFinalRecommendationsPayload(payload: unknown): FinalRecommendationsResponse {
+  if (Array.isArray(payload)) {
+    return { status: payload.length ? "OK" : "NO_DATA", count: payload.length, items: payload as FinalRecommendationItem[] };
+  }
+  const raw = asRecord(payload);
+  const nestedResult = asRecord(raw.result);
+  const nestedPayload = asRecord(raw.payload);
+  const nestedData = asRecord(raw.data);
+  const items = firstArray<FinalRecommendationItem>(
+    raw.items,
+    raw.recommendations,
+    raw.candidates,
+    raw.rows,
+    raw.data,
+    nestedResult.items,
+    nestedResult.recommendations,
+    nestedResult.candidates,
+    nestedResult.rows,
+    nestedPayload.items,
+    nestedPayload.recommendations,
+    nestedPayload.candidates,
+    nestedPayload.rows,
+    nestedData.items,
+    nestedData.recommendations,
+    nestedData.candidates,
+    nestedData.rows
+  );
+  const countValue = Number(
+    raw.count ?? raw.total ?? nestedResult.count ?? nestedPayload.count ?? nestedData.count ?? items.length
+  );
+  return {
+    ...(raw as Partial<FinalRecommendationsResponse>),
+    status: String(raw.status ?? nestedResult.status ?? nestedPayload.status ?? nestedData.status ?? (items.length ? "OK" : "NO_DATA")),
+    count: Number.isFinite(countValue) ? countValue : items.length,
+    items,
+  };
+}
+
+function getFinalRecommendationItems(recommendations: FinalRecommendationsResponse): FinalRecommendationItem[] {
+  return normalizeFinalRecommendationsPayload(recommendations).items;
+}
+
+function hasFinalRecommendationItems(recommendations: FinalRecommendationsResponse): boolean {
+  const normalized = normalizeFinalRecommendationsPayload(recommendations);
+  return normalized.items.length > 0 || Number(normalized.count ?? 0) > 0;
+}
+
+
+async function safeGetJson<T>(path: string, fallback: T, timeoutMs = 90000): Promise<T> {
   try {
     return await getJson<T>(path, timeoutMs);
   } catch (err) {
     console.warn(`[MONE] optional API fallback: ${path}`, err);
+    const reason = err instanceof Error ? err.message : "API 응답 실패";
+    if (fallback && typeof fallback === "object") {
+      return {
+        ...(fallback as Record<string, unknown>),
+        status: "PARTIAL",
+        missingReason: `${path} 호출 실패: ${reason}`,
+      } as T;
+    }
+    return fallback;
+  }
+}
+
+function withCacheBust(path: string): string {
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}_ts=${Date.now()}`;
+}
+
+async function safeGetJsonNoAbort<T>(path: string, fallback: T): Promise<T> {
+  try {
+    const res = await fetch(`${API_BASE}${withCacheBust(path)}`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return await res.json() as T;
+  } catch (err) {
+    console.warn(`[MONE] required API fallback: ${path}`, err);
+    const reason = err instanceof Error ? err.message : "API 응답 실패";
+    if (fallback && typeof fallback === "object") {
+      return {
+        ...(fallback as Record<string, unknown>),
+        status: "PARTIAL",
+        missingReason: `${path} 호출 실패: ${reason}`,
+      } as T;
+    }
     return fallback;
   }
 }
@@ -723,123 +837,107 @@ export default function Home() {
     async function load() {
       setLoading(true);
       setError("");
+      let loadingGuard: number | undefined;
+      const finishInitialLoading = () => {
+        if (loadingGuard) {
+          window.clearTimeout(loadingGuard);
+          loadingGuard = undefined;
+        }
+        if (!cancelled) setLoading(false);
+      };
+
+      loadingGuard = window.setTimeout(() => {
+        if (!cancelled) setLoading(false);
+      }, 6000);
 
       // v3.4: 첫 화면은 무거운 관리/점검 API를 기다리지 않고 먼저 띄웁니다.
       // 시장 홈에 필요한 핵심 데이터만 먼저 읽고, 나머지는 백그라운드로 채웁니다.
       try {
-        const [
-          summaryData,
-          symbolData,
-          positionData,
-          newsData,
-          predictionData,
-          virtualPreviewData,
-          portfolioMapData
-        ] = await Promise.all([
-          safeGetJson<MarketSummary>(`/api/market/summary?market=${market}`, { market, marketLabel: market === "kr" ? "국장" : "미장", cards: [], dataStatus: [], dashboard: [], sources: [], updatedAt: "" }),
-          safeGetJson<ApiList<Security>>(`/api/symbols?market=${market}`, { count: 0, items: [] }),
-          safeGetJson<ApiList<Security>>(`/api/positions?market=${market}`, { count: 0, items: [] }),
-          safeGetJson<ApiList<NewsItem>>(`/api/news?market=${market}`, { count: 0, items: [] }),
-          safeGetJson<ApiList<Security>>(`/api/predictions?market=${market}`, { count: 0, items: [] }),
-          safeGetJson<VirtualPreviewResponse>(`/api/virtual/preview?market=${market}&mode=${strategyMode}`, { count: 0, items: [], mode: strategyMode, modeLabel: STRATEGY_MODE_LABEL[strategyMode] }),
-          fetchPortfolioMap(market)
+        const recommendationsPath = `/api/final/recommendations?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`;
+        const [summaryData, symbolData, recommendationData, dataCenterData] = await Promise.all([
+          safeGetJson<MarketSummary>(`/api/market/summary?market=${market}`, { market, marketLabel: market === "kr" ? "국장" : "미장", cards: [], dataStatus: [], dashboard: [], sources: [], updatedAt: "" }, 15000),
+          safeGetJson<ApiList<Security>>(`/api/symbols?market=${market}`, { count: 0, items: [] }, 15000),
+          safeGetJsonNoAbort<FinalRecommendationsResponse>(recommendationsPath, { count: 0, items: [] }),
+          safeGetJsonNoAbort<FinalDataCenter>(`/api/final/data-center?market=${market}`, { status: "PARTIAL" })
         ]);
 
-        const candidateData = await Promise.all(
-          candidateTabs.map(([type]) => safeGetJson<ApiList<Security>>(`/api/candidates?market=${market}&type=${type}`, { count: 0, items: [] }))
-        );
-
         if (cancelled) return;
+        const normalizedRecommendations = normalizeFinalRecommendationsPayload(recommendationData);
         setSummary(summaryData);
         setSymbols(symbolData);
-        setPositions(positionData);
-        setNews(newsData);
-        setPredictions(predictionData);
-        setVirtualPreview(virtualPreviewData);
-        const portfolios = normalizePortfolioMap(portfolioMapData);
-        console.log("[MONE] rendered mode cards", portfolios);
-        setVirtualPortfolios(portfolios);
-        setVirtualPortfolio(portfolios[strategyMode] ?? portfolios.balanced);
-        setCandidates(Object.fromEntries(candidateTabs.map(([type], idx) => [type, candidateData[idx]])));
-        setSelectedSymbol((prev) => prev ?? symbolData.items[0] ?? null);
-        setLoading(false);
+        setFinalRecommendations(normalizedRecommendations);
+        setFinalDataCenter(dataCenterData);
+        console.log("[MONE] home core final data", {
+          market,
+          mode: strategyMode,
+          horizon: decisionHorizon,
+          recommendationStatus: normalizedRecommendations.status,
+          recommendationCount: normalizedRecommendations.count,
+          recommendationItems: normalizedRecommendations.items.length,
+          firstSourceFile: normalizedRecommendations.items[0]?.sourceFile,
+          dataCenterStatus: dataCenterData.status
+        });
+        setSelectedSymbol((prev) => prev ?? normalizedRecommendations.items[0] ?? symbolData.items[0] ?? null);
+        finishInitialLoading();
+
+        void (async () => {
+          const [
+            positionData,
+            newsData,
+            predictionData,
+            virtualPreviewData,
+            portfolioMapData,
+            candidateData
+          ] = await Promise.all([
+            safeGetJson<ApiList<Security>>(`/api/positions?market=${market}`, { count: 0, items: [] }, 90000),
+            safeGetJson<ApiList<NewsItem>>(`/api/news?market=${market}`, { count: 0, items: [] }, 90000),
+            safeGetJson<ApiList<Security>>(`/api/predictions?market=${market}`, { count: 0, items: [] }, 90000),
+            safeGetJson<VirtualPreviewResponse>(`/api/virtual/preview?market=${market}&mode=${strategyMode}`, { count: 0, items: [], mode: strategyMode, modeLabel: STRATEGY_MODE_LABEL[strategyMode] }),
+            fetchPortfolioMap(market),
+            Promise.all(candidateTabs.map(([type]) => safeGetJson<ApiList<Security>>(`/api/candidates?market=${market}&type=${type}`, { count: 0, items: [] }, 90000)))
+          ]);
+
+          if (cancelled) return;
+          setPositions(positionData);
+          setNews(newsData);
+          setPredictions(predictionData);
+          setVirtualPreview(virtualPreviewData);
+          const portfolios = normalizePortfolioMap(portfolioMapData);
+          console.log("[MONE] rendered mode cards", portfolios);
+          setVirtualPortfolios(portfolios);
+          setVirtualPortfolio(portfolios[strategyMode] ?? portfolios.balanced);
+          setCandidates(Object.fromEntries(candidateTabs.map(([type], idx) => [type, candidateData[idx]])));
+        })();
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "핵심 데이터 로딩 실패");
-          setLoading(false);
+          finishInitialLoading();
         }
         return;
       }
 
       // v3.4: 무거운 데이터 상태/관리/검증 API는 화면을 먼저 띄운 뒤 백그라운드로 읽습니다.
-      void (async () => {
-        const [
-          fileData,
-          envData,
-          dataSourceData,
-          predHistory,
-          outcomes,
-          insightData,
-          premarketData,
-          intradayData,
-          closingData,
-          reportFileData,
-          backtestData,
-          scannerData,
-          watchlistData,
-          directHoldingsData,
-          correlationData,
-          githubActionsData,
-          disclosureData,
-          companyAnalysisData
-        ] = await Promise.all([
-          safeGetJson<{ items: FileItem[] }>("/api/status/files", { items: [] }),
-          safeGetJson<{ items: EnvItem[] }>("/api/status/env", { items: [] }),
-          safeGetJson<{ items: DataSourceItem[] }>("/api/status/data-sources", { items: [] }),
-          safeGetJson<HistoryResponse>(`/api/history/predictions?market=${market}`, { count: 0, source: "", items: [] }),
-          safeGetJson<HistoryResponse>(`/api/history/outcomes?market=${market}`, { count: 0, source: "", items: [] }),
-          safeGetJson<PredictionInsightResponse>(`/api/insights/prediction?market=${market}`, { market, status: "NO_DATA", summary: { predictionRows: 0, historyRows: 0, outcomeRows: 0, validationRows: 0, success: 0, fail: 0, neutral: 0, successRate: "검증 데이터 부족", coverage: "검증 데이터 부족" }, diagnostics: [], bySymbol: [], byPeriod: [], failures: [], corrections: [], sources: [] }),
-          safeGetJson<ApiList<PremarketItem>>(`/api/reports/premarket?market=${market}`, { count: 0, items: [], sources: [] }),
-          safeGetJson<ApiList<IntradayItem>>(`/api/reports/intraday?market=${market}`, { count: 0, items: [], sources: [] }),
-          safeGetJson<ClosingReport>(`/api/reports/closing?market=${market}`, { count: 0, items: [], sources: [], directionHitRate: "검증 데이터 부족", rangeHitRate: "검증 데이터 부족", predictionHistoryCount: 0, outcomeHistoryCount: 0, outcomes: [] }),
-          safeGetJson<ReportFilesResponse>("/api/reports/files", { count: 0, fallbackPolicy: [], items: [] }),
-          safeGetJson<BacktestResponse>(`/api/advanced/backtest?market=${market}`, { count: 0, items: [], status: "NO_DATA", warnings: [], predictionRows: 0, outcomeRows: 0, recentOutcomes: [] }, 20000),
-          safeGetJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`, { count: 0, items: [] }, 20000),
-          safeGetJson<ApiList<Security>>(`/api/watchlist?market=${market}`, { count: 0, items: [] }),
-          safeGetJson<ApiList<Security>>(`/api/holdings?market=${market}`, { count: 0, items: [] }),
-          safeGetJson<CorrelationResponse>(`/api/advanced/correlation?market=${market}`, { status: "NO_DATA", reason: "상관관계 계산 데이터 부족", items: [], matrix: [], sources: [] }),
-          safeGetJson<GitHubActionsStatus>("/api/status/github-actions", { status: "NOT_LOADED", message: "GitHub Actions 상태를 읽지 못했습니다.", workflows: [], runs: [] }),
-          safeGetJson<ApiList<DisclosureItem>>(`/api/disclosures?market=${market}`, { count: 0, items: [], sources: [] }),
-          safeGetJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`, { count: 0, items: [] }, 20000)
-        ]);
-
-        if (cancelled) return;
-        setFiles(fileData.items);
-        setEnv(envData.items);
-        setDataSources(dataSourceData.items);
-        setPredictionHistory(predHistory);
-        setOutcomeHistory(outcomes);
-        setPredictionInsights(insightData);
-        setPremarket(premarketData);
-        setIntraday(intradayData);
-        setClosing(closingData);
-        setReportFiles(reportFileData);
-        setBacktest(backtestData);
-        setScanner(scannerData);
-        setWatchlist(watchlistData);
-        setDirectHoldings(directHoldingsData);
-        setCorrelation(correlationData);
-        setGithubActions(githubActionsData);
-        setDisclosures(disclosureData);
-        setCompanyAnalysis(companyAnalysisData);
-      })();
+      void safeGetJson<{ items: FileItem[] }>("/api/status/files", { items: [] })
+        .then((fileData) => { if (!cancelled) setFiles(fileData.items); });
+      void safeGetJson<{ items: EnvItem[] }>("/api/status/env", { items: [] })
+        .then((envData) => { if (!cancelled) setEnv(envData.items); });
+      void safeGetJson<{ items: DataSourceItem[] }>("/api/status/data-sources", { items: [] })
+        .then((dataSourceData) => { if (!cancelled) setDataSources(dataSourceData.items); });
+      void safeGetJson<HistoryResponse>(`/api/history/predictions?market=${market}`, { count: 0, source: "", items: [] })
+        .then((predHistory) => { if (!cancelled) setPredictionHistory(predHistory); });
+      void safeGetJson<HistoryResponse>(`/api/history/outcomes?market=${market}`, { count: 0, source: "", items: [] })
+        .then((outcomes) => { if (!cancelled) setOutcomeHistory(outcomes); });
+      void safeGetJson<ReportFilesResponse>("/api/reports/files", { count: 0, fallbackPolicy: [], items: [] })
+        .then((reportFileData) => { if (!cancelled) setReportFiles(reportFileData); });
+      void safeGetJson<GitHubActionsStatus>("/api/status/github-actions", { status: "NOT_LOADED", message: "GitHub Actions 상태를 읽지 못했습니다.", workflows: [], runs: [] })
+        .then((githubActionsData) => { if (!cancelled) setGithubActions(githubActionsData); });
     }
 
     load();
     return () => {
       cancelled = true;
     };
-  }, [market, refreshTick]);
+  }, [market, strategyMode, decisionHorizon, refreshTick]);
 
   useEffect(() => {
     setVirtualPortfolio(virtualPortfolios[strategyMode] ?? virtualPortfolios.balanced);
@@ -862,16 +960,28 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     async function loadVisibleHeavyData() {
+      if (activeCategory === "운용 리포트") {
+        void safeGetJson<ApiList<PremarketItem>>(`/api/reports/premarket?market=${market}`, { count: 0, items: [], sources: [] }, 120000)
+          .then((data) => { if (!cancelled) setPremarket(data); });
+        void safeGetJson<ApiList<IntradayItem>>(`/api/reports/intraday?market=${market}`, { count: 0, items: [], sources: [] }, 120000)
+          .then((data) => { if (!cancelled) setIntraday(data); });
+        void safeGetJson<ClosingReport>(`/api/reports/closing?market=${market}`, { count: 0, items: [], sources: [], directionHitRate: "검증 데이터 부족", rangeHitRate: "검증 데이터 부족", predictionHistoryCount: 0, outcomeHistoryCount: 0, outcomes: [] }, 120000)
+          .then((data) => { if (!cancelled) setClosing(data); });
+        void safeGetJson<ReportFilesResponse>("/api/reports/files", { count: 0, fallbackPolicy: [], items: [] }, 120000)
+          .then((data) => { if (!cancelled) setReportFiles(data); });
+      }
       if (activeCategory === "뉴스·기업분석") {
-        const data = await safeGetJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`, { count: 0, items: [] }, 20000);
-        if (!cancelled) setCompanyAnalysis(data);
+        void safeGetJson<ApiList<DisclosureItem>>(`/api/disclosures?market=${market}`, { count: 0, items: [], sources: [] }, 120000)
+          .then((data) => { if (!cancelled) setDisclosures(data); });
+        void safeGetJson<ApiList<CompanyAnalysisItem>>(`/api/company-analysis?market=${market}`, { count: 0, items: [] }, 120000)
+          .then((data) => { if (!cancelled) setCompanyAnalysis(data); });
       }
       if (activeCategory === "예측·검증") {
-        const data = await safeGetJson<ApiList<Security>>(`/api/predictions?market=${market}`, { count: 0, items: [] }, 15000);
+        const data = await safeGetJson<ApiList<Security>>(`/api/predictions?market=${market}`, { count: 0, items: [] }, 90000);
         if (!cancelled) setPredictions(data);
       }
       if (activeCategory === "고급 분석") {
-        const data = await safeGetJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`, { count: 0, items: [] }, 20000);
+        const data = await safeGetJson<ApiList<ScannerItem>>(`/api/advanced/scanner?market=${market}`, { count: 0, items: [] }, 90000);
         if (!cancelled) setScanner(data);
       }
     }
@@ -881,22 +991,31 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadFinalEngine() {
-      const [recommendations, executions, dataCenter, macroEvents, portfolioRisk] = await Promise.all([
-        safeGetJson<FinalRecommendationsResponse>(`/api/final/recommendations?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`, { count: 0, items: [] }),
-        safeGetJson<FinalExecutionSummary>(`/api/final/conditional-executions?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`, { conditionalOrders: 0, filledCount: 0, unfilledCount: 0, items: [] }),
-        safeGetJson<FinalDataCenter>(`/api/final/data-center?market=${market}`, { status: "NO_DATA" }),
-        safeGetJson<FinalMacroEvents>(`/api/final/macro-events?market=${market}`, { count: 0, items: [] }),
-        safeGetJson<FinalPortfolioRisk>(`/api/final/portfolio-risk?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`, { status: "NO_DATA", warnings: [] })
-      ]);
-      if (cancelled) return;
-      setFinalRecommendations(recommendations);
-      setFinalExecutions(executions);
-      setFinalDataCenter(dataCenter);
-      setFinalMacroEvents(macroEvents);
-      setFinalPortfolioRisk(portfolioRisk);
-    }
-    void loadFinalEngine();
+    const recommendationsPath = `/api/final/recommendations?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`;
+    void safeGetJsonNoAbort<FinalRecommendationsResponse>(recommendationsPath, { count: 0, items: [] })
+      .then((recommendations) => {
+        if (cancelled) return;
+        const normalized = normalizeFinalRecommendationsPayload(recommendations);
+        console.log("[MONE] final recommendations loaded", { market, mode: strategyMode, horizon: decisionHorizon, status: normalized.status, count: normalized.count, items: normalized.items.length, firstSourceFile: normalized.items[0]?.sourceFile });
+        setFinalRecommendations(normalized);
+        if (!normalized.items.length) {
+          window.setTimeout(() => {
+            if (cancelled) return;
+            void safeGetJsonNoAbort<FinalRecommendationsResponse>(`${recommendationsPath}&retry=1`, { count: 0, items: [] })
+              .then((retryRecommendations) => {
+                if (!cancelled) setFinalRecommendations(normalizeFinalRecommendationsPayload(retryRecommendations));
+              });
+          }, 1200);
+        }
+      });
+    void safeGetJsonNoAbort<FinalDataCenter>(`/api/final/data-center?market=${market}`, { status: "PARTIAL" })
+      .then((dataCenter) => { if (!cancelled) setFinalDataCenter(dataCenter); });
+    void safeGetJson<FinalExecutionSummary>(`/api/final/conditional-executions?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`, { conditionalOrders: 0, filledCount: 0, unfilledCount: 0, items: [] }, 60000)
+      .then((executions) => { if (!cancelled) setFinalExecutions(executions); });
+    void safeGetJson<FinalMacroEvents>(`/api/final/macro-events?market=${market}`, { count: 0, items: [] }, 60000)
+      .then((macroEvents) => { if (!cancelled) setFinalMacroEvents(macroEvents); });
+    void safeGetJson<FinalPortfolioRisk>(`/api/final/portfolio-risk?market=${market}&mode=${strategyMode}&horizon=${decisionHorizon}`, { status: "PARTIAL", warnings: [] }, 60000)
+      .then((portfolioRisk) => { if (!cancelled) setFinalPortfolioRisk(portfolioRisk); });
     return () => { cancelled = true; };
   }, [market, strategyMode, decisionHorizon, refreshTick]);
 
@@ -927,14 +1046,19 @@ export default function Home() {
   const apiOk = env.filter((item) => item.status === "OK").length;
   const apiMissing = env.filter((item) => item.status === "MISSING").length;
   const filesMissing = files.filter((item) => item.status === "MISSING").length;
-  const generalDataStatusText = finalDataCenter.status && finalDataCenter.status !== "NOT_LOADED"
-    ? finalDataCenter.status
-    : dataSources.some((item) => item.status === "OK")
-      ? "일부 연결 확인"
-      : "확인 중";
+  const generalDataStatusText = resolvedDataStatus(finalDataCenter, finalRecommendations, dataSources);
   const generalDataStatusNote = [
     finalDataCenter.chartData ? `차트 ${finalDataCenter.chartData}` : null,
     finalDataCenter.disclosureData ? `공시 ${finalDataCenter.disclosureData}` : null,
+    finalDataCenter.reportData ? `리포트 ${finalDataCenter.reportData}` : null,
+    finalDataCenter.premarketData ? `장전 ${finalDataCenter.premarketData}` : null,
+    finalDataCenter.intradayData ? `장중 ${finalDataCenter.intradayData}` : null,
+    finalDataCenter.closingData ? `마감 ${finalDataCenter.closingData}` : null,
+    finalDataCenter.premarketData ? `장전 ${finalDataCenter.premarketData}` : null,
+    finalDataCenter.intradayData ? `장중 ${finalDataCenter.intradayData}` : null,
+    finalDataCenter.closingData ? `마감 ${finalDataCenter.closingData}` : null,
+    finalDataCenter.companyData ? `기업분석 ${finalDataCenter.companyData}` : null,
+    finalDataCenter.automationLabel ? `자동 실행 ${finalDataCenter.automationLabel}` : null,
     finalDataCenter.todayDataSource ? `출처 ${finalDataCenter.todayDataSource}` : null
   ].filter(Boolean).join(" · ") || "상세 상태는 관리자 모드에서 확인";
 
@@ -1467,16 +1591,28 @@ export default function Home() {
     const selectedPortfolio = normalizePortfolio(strategyMode, virtualPortfolios[strategyMode] ?? virtualPortfolio);
     const timingGroups = groupPortfolioItemsByTiming(selectedPortfolio.items ?? [], strategyMode);
     const homeNews = buildHomeNews(news.items, 3);
-    const topCandidates = finalRecommendations.items.slice(0, 3);
-    const todayEntryCount = topCandidates.filter((item) => isTodayEntryCandidate(item)).length || timingGroups.today.length;
-    const waitCount = topCandidates.filter((item) => isWaitCandidate(item)).length || timingGroups.wait.length;
-    const dataBasis = dataBasisLabel(updatedAt, finalDataCenter.todayDataSource);
+    const recommendationItems = getFinalRecommendationItems(finalRecommendations);
+    const fallbackHomeItems = recommendationItems.length
+      ? recommendationItems
+      : firstArray<FinalRecommendationItem>(predictions.items, candidates.action?.items, candidates.pullback?.items, candidates.flow?.items);
+    const topCandidates = fallbackHomeItems.slice(0, 3);
+    const todayEntryCount = fallbackHomeItems.filter((item) => isTodayEntryCandidate(item)).length || timingGroups.today.length;
+    const waitCount = fallbackHomeItems.filter((item) => isWaitCandidate(item)).length || timingGroups.wait.length;
+    const displayedUpdatedAt = finalDataCenter.updatedAt ?? topCandidates[0]?.sourceDate ?? updatedAt;
+    const dataBasisSource = stockAppSnapshotApplied(finalRecommendations) ? "StockApp" : finalDataCenter.todayDataSource;
+    const dataBasis = dataBasisLabel(displayedUpdatedAt, dataBasisSource);
     const conditionalReturn = finalExecutions.filledReturnAvgText || selectedPortfolio.profitPct || "검증 대기";
-    const dataStatusValue = dataStatusLabel(finalDataCenter.status, dataSources);
+    const dataStatusValue = recommendationItems.length ? resolvedDataStatus(finalDataCenter, finalRecommendations, dataSources) : (fallbackHomeItems.length ? "PARTIAL" : resolvedDataStatus(finalDataCenter, finalRecommendations, dataSources));
+    const dataStatusOk = isHealthyDataStatus(dataStatusValue);
     const dataStatusNote = [
       finalDataCenter.chartData ? `차트 ${finalDataCenter.chartData}` : null,
       finalDataCenter.disclosureData ? `공시 ${finalDataCenter.disclosureData}` : null,
-      finalDataCenter.flowData ? `수급 ${finalDataCenter.flowData}` : null
+      finalDataCenter.reportData ? `리포트 ${finalDataCenter.reportData}` : null,
+      finalDataCenter.companyData ? `기업분석 ${finalDataCenter.companyData}` : null,
+      finalDataCenter.automationLabel ? `자동 실행 ${finalDataCenter.automationLabel}` : null,
+      finalDataCenter.flowData ? `수급 ${finalDataCenter.flowData}` : null,
+      stockAppSnapshotApplied(finalRecommendations) ? "StockApp 데이터 반영" : null,
+      finalDataCenter.activeReportMissingReason ? `리포트 주의: ${finalDataCenter.activeReportMissingReason}` : null
     ].filter(Boolean).join(" · ") || "상세는 관리자 모드";
 
     return (
@@ -1490,14 +1626,14 @@ export default function Home() {
             <span className="mx-2 text-line">|</span>
             <span className="font-black text-accent">선택:</span> {marketName} · {STRATEGY_MODE_LABEL[strategyMode]} · {HORIZON_LABEL[decisionHorizon]}
             <span className="mx-2 text-line">|</span>
-            <span className="text-muted">{updatedAt || "기준시각 확인 중"}</span>
+            <span className="text-muted">{displayedUpdatedAt || "기준시각 확인 중"}</span>
           </div>
           <div className="grid gap-3 md:grid-cols-5">
             <StatCard label="오늘 진입 가능" value={`${todayEntryCount}개`} note="조건 충족 또는 진입가 근접" tone={todayEntryCount ? "good" : "neutral"} />
             <StatCard label="기다릴 후보" value={`${waitCount}개`} note="좋은 종목이지만 진입가 대기" tone="accent" />
             <StatCard label="조건부 가상체결" value={`${finalExecutions.filledCount || 0}건`} note={`가상 검증 · 미체결 ${finalExecutions.unfilledCount || 0}건`} tone="accent" />
             <StatCard label="매크로·이벤트 주의" value={`${finalMacroEvents.count || 0}건`} note={finalMacroEvents.items[0]?.badgeText || "유의 이벤트 점검"} tone={finalMacroEvents.count ? "warn" : "neutral"} />
-            <StatCard label="데이터 상태" value={dataStatusValue} note={dataStatusNote} tone={dataStatusValue.includes("정상") ? "good" : "warn"} />
+            <StatCard label="데이터 상태" value={dataStatusValue} note={dataStatusNote} tone={dataStatusOk ? "good" : "warn"} />
           </div>
         </Section>
 
@@ -1510,7 +1646,7 @@ export default function Home() {
               {topCandidates.map((item, idx) => renderHomeTopCandidate(item, idx))}
             </div>
           ) : (
-            <EmptyReason text="오늘 TOP 후보를 불러오는 중입니다. 후보 표는 종목 탐색에서 확인할 수 있습니다." />
+            <EmptyReason text={hasFinalRecommendationItems(finalRecommendations) ? "후보 데이터는 수신됐지만 화면 표시용 items 매핑을 확인해야 합니다." : `오늘 TOP 후보를 불러오는 중입니다. final=${finalRecommendations.status ?? "NOT_LOADED"}/${finalRecommendations.count ?? 0}, predictions=${predictions.count ?? predictions.items.length}`} />
           )}
         </Section>
 
@@ -1540,7 +1676,7 @@ export default function Home() {
               <div className="grid gap-2 sm:grid-cols-3">
                 <MiniMetric label="매크로 주의" value={`${finalMacroEvents.count || 0}건`} tone={finalMacroEvents.count ? "warn" : "neutral"} />
                 <MiniMetric label="포트폴리오 주의" value={(finalPortfolioRisk.warnings ?? []).length ? `${(finalPortfolioRisk.warnings ?? []).length}건` : "0건"} tone={(finalPortfolioRisk.warnings ?? []).length ? "warn" : "good"} />
-                <MiniMetric label="데이터 주의" value={dataStatusValue.includes("정상") ? "0건" : "확인"} tone={dataStatusValue.includes("정상") ? "good" : "warn"} />
+                <MiniMetric label="데이터 주의" value={dataStatusOk ? "0건" : "확인"} tone={dataStatusOk ? "good" : "warn"} />
               </div>
               <div className="mt-3 space-y-2 text-xs leading-5 text-muted">
                 <div>· {finalMacroEvents.items[0]?.title || "오늘 주요 매크로/이벤트 리스크 감지 대기"}</div>
@@ -1792,9 +1928,45 @@ export default function Home() {
     return `기준시각 확인 중 · ${sourceText}`;
   }
 
+  function stockAppSnapshotApplied(recommendations: FinalRecommendationsResponse) {
+    return getFinalRecommendationItems(recommendations).some((item) => item.sourceType === "stockapp_snapshot" && item.isFallback === false);
+  }
+
+  function recommendationDataStatus(recommendations: FinalRecommendationsResponse) {
+    const normalized = normalizeFinalRecommendationsPayload(recommendations);
+    const status = (normalized.status ?? "").toUpperCase();
+    const items = normalized.items;
+    const count = normalized.count ?? items.length;
+    if ((status === "OK" || status === "NORMAL") && count > 0) {
+      if (stockAppSnapshotApplied(normalized)) return "NORMAL";
+      if (items.some((item) => item.isFallback || item.sourceType === "stale" || item.sourceType === "local_fallback")) return "PARTIAL";
+      return "NORMAL";
+    }
+    if (count > 0 || items.length > 0) return "PARTIAL";
+    return "";
+  }
+
+  function isHealthyDataStatus(status: string) {
+    return /NORMAL|OK|READY|정상/i.test(status);
+  }
+
+  function resolvedDataStatus(dataCenter: FinalDataCenter, recommendations: FinalRecommendationsResponse, sources?: DataSourceItem[]) {
+    const centerStatus = (dataCenter.status ?? "").toUpperCase();
+    const recommendationStatus = recommendationDataStatus(recommendations);
+    if (recommendationStatus === "NORMAL") return "NORMAL";
+    if (centerStatus && centerStatus !== "NOT_LOADED" && centerStatus !== "NO_DATA") {
+      if (isHealthyDataStatus(centerStatus)) return centerStatus === "OK" ? "NORMAL" : centerStatus;
+      if (recommendationStatus) return recommendationStatus;
+      return dataCenter.status ?? centerStatus;
+    }
+    if (recommendationStatus) return recommendationStatus;
+    return dataStatusLabel(dataCenter.status, sources);
+  }
+
   function dataStatusLabel(status?: string, sources?: DataSourceItem[]) {
     const okSources = sources?.filter((item) => item.status === "OK").length ?? 0;
-    if (status && /OK|READY|정상|운영 안정/i.test(status)) return "정상";
+    if (status && /NORMAL|OK|READY|정상|운영 안정/i.test(status)) return "NORMAL";
+    if (status && status.toUpperCase() === "NO_DATA" && okSources > 0) return "PARTIAL";
     if (okSources > 0) return "일부 확인";
     if (status && status !== "NOT_LOADED") return status;
     return "확인 중";
@@ -1812,27 +1984,27 @@ export default function Home() {
   function renderReports() {
     if (activeSubPage === "장전 리포트") {
       return (
-        <Section title="장전 리포트">
+        <Section title="장전 리포트" right={<span className="text-xs text-muted">{sourceLabel((premarket.sources ?? []).join(" · ")) || "리포트 소스 확인 중"}</span>}>
           {premarket.items.length ? (
             <DataTable rows={premarket.items} columns={premarketColumns} onRowClick={setSelectedSymbol} />
           ) : (
-            <EmptyReason text="장전 리포트 데이터 없음" />
+            <EmptyReason text={menuMissingText(premarket, "장전 리포트 데이터 없음")} />
           )}
         </Section>
       );
     }
     if (activeSubPage === "장중 체크") {
-      const validRows = intraday.items.filter((item) => hasUsablePriceLevel(item.entryText, item.entry));
-      const excluded = intraday.items.length - validRows.length;
+      const rows = intraday.items;
+      const excluded = intraday.items.filter((item) => !hasUsablePriceLevel(item.entryText, item.entry)).length;
       return (
         <Section
           title="장중 체크"
-          right={excluded > 0 ? <span className="text-xs text-muted">기준가 없는 종목 {excluded}개 제외</span> : null}
+          right={<span className="text-xs text-muted">{excluded > 0 ? `기준가 보강 필요 ${excluded}개 · ` : ""}{sourceLabel((intraday.sources ?? []).slice(0, 3).join(" · ")) || "장중 소스 확인 중"}</span>}
         >
-          {validRows.length ? (
-            <DataTable rows={validRows} columns={intradayColumns} onRowClick={setSelectedSymbol} />
+          {rows.length ? (
+            <DataTable rows={rows} columns={intradayColumns} onRowClick={setSelectedSymbol} />
           ) : (
-            <EmptyReason text="장중 체크 가능한 항목이 없습니다. 기준가가 없는 항목은 메인 표에서 제외했습니다." />
+            <EmptyReason text={menuMissingText(intraday, "장중 체크 데이터 없음")} />
           )}
         </Section>
       );
@@ -2169,7 +2341,7 @@ export default function Home() {
             />
           ) : (
             <>
-              <EmptyReason text="공시 데이터 없음 · DART/SEC 공시 수집 CSV가 아직 없습니다." />
+              <EmptyReason text={menuMissingText(disclosures, "공시 데이터 없음 · DART/SEC 공시 수집 CSV가 아직 없습니다.")} />
               <div className="mt-4 rounded-xl border border-line bg-panel p-4 text-sm leading-6 text-muted">
                 뉴스 요약 데이터는 공시 탭에 표시하지 않습니다. 공시 CSV가 생성되면 이 화면에 실제 공시만 표시됩니다.
                 {disclosureRefreshStatus ? <div className="mt-2 font-bold text-accent">{disclosureRefreshStatus}</div> : null}
@@ -2205,7 +2377,7 @@ export default function Home() {
                 ]}
               />
             ) : (
-              <EmptyReason text="기업분석 데이터 없음" />
+              <EmptyReason text={menuMissingText(companyAnalysis, "기업분석 데이터 없음")} />
             )}
           </Section>
         </>
@@ -2409,7 +2581,7 @@ export default function Home() {
     if (activeSubPage === "데이터 점검") return <FileStatusTable rows={files} />;
     if (activeSubPage === "데이터 소스") return <DataSourceStatus rows={dataSources} />;
     if (activeSubPage === "API 상태") return <ApiStatus env={env} />;
-    if (activeSubPage === "자동화 상태") return <AutomationStatus automation={summary?.automation} updatedAt={updatedAt} github={githubActions} />;
+    if (activeSubPage === "자동화 상태") return <AutomationStatus automation={finalDataCenter as unknown as Record<string, unknown>} updatedAt={updatedAt} github={githubActions} />;
     return <FileStatusTable rows={files.filter((item) => item.path.includes("history") || item.path.includes("daily_watch"))} />;
   }
 
@@ -2836,6 +3008,9 @@ function PriceBlock({ item, compact = false, hideMeta = false }: { item: Securit
       {!hideMeta ? (
         <div className="mt-1 space-y-1 text-xs leading-5 text-muted">
           {item.priceTime || "기준시각 없음"} · {item.priceSource || "가격출처 없음"}
+          {item.priceDataStatus && item.priceDataStatus !== "NORMAL" ? (
+            <div className="font-bold text-warn">현재가 {item.priceDataStatus}</div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -2973,6 +3148,11 @@ function hasUsablePriceLevel(text?: string, value?: number | null) {
   if (value && value > 0) return true;
   const raw = String(text ?? "");
   return Boolean(raw && !raw.includes("없음") && !raw.includes("산출 필요"));
+}
+
+function menuMissingText(payload: { missingReason?: string; requiredFiles?: string[] }, fallback: string) {
+  const required = payload.requiredFiles?.length ? ` 필요 파일: ${payload.requiredFiles.slice(0, 4).join(", ")}` : "";
+  return `${payload.missingReason || fallback}${required}`;
 }
 
 function shortRiskText(text?: string) {
@@ -3473,11 +3653,13 @@ function DataSourceStatus({ rows }: { rows: DataSourceItem[] }) {
 
 function AutomationStatus({ automation, updatedAt, github }: { automation?: Record<string, unknown>; updatedAt: string; github: GitHubActionsStatus }) {
   const hasStatus = automation && Object.keys(automation).length > 0;
+  const latestDispatch = github.latestWorkflowDispatch ?? github.latestAutomationRun ?? null;
   const githubRows = [
     { 항목: "연결 상태", 값: github.status || "미확인" },
     { 항목: "repo", 값: github.repo || "repo 없음" },
     { 항목: "설명", 값: github.message || "설명 없음" },
-    { 항목: "최근 Scheduled", 값: github.latestScheduled ? `${github.latestScheduled.name ?? "workflow"} · ${github.latestScheduled.conclusion ?? github.latestScheduled.status ?? "상태 없음"} · ${github.latestScheduled.updated_at ?? "시간 없음"}` : "Scheduled 실행 기록 없음" }
+    { 항목: "최근 외부 트리거", 값: latestDispatch ? `${latestDispatch.name ?? "workflow"} · ${latestDispatch.conclusion ?? latestDispatch.status ?? "상태 없음"} · ${latestDispatch.updated_at ?? latestDispatch.created_at ?? "시간 없음"}` : "workflow_dispatch 실행 확인 안 됨" },
+    { 항목: "최근 Scheduled", 값: github.latestScheduled ? `${github.latestScheduled.name ?? "workflow"} · ${github.latestScheduled.conclusion ?? github.latestScheduled.status ?? "상태 없음"} · ${github.latestScheduled.updated_at ?? "시간 없음"}` : "GitHub 내부 schedule 미사용" }
   ];
   const localRows = hasStatus
     ? Object.entries(automation as Record<string, unknown>).map(([key, value]) => ({ 항목: key, 값: typeof value === "object" ? JSON.stringify(value) : String(value ?? "") }))
@@ -3487,6 +3669,7 @@ function AutomationStatus({ automation, updatedAt, github }: { automation?: Reco
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard label="GitHub 연결" value={github.status === "OK" ? "연결됨" : github.status || "미확인"} note={github.message} tone={github.status === "OK" ? "good" : "warn"} />
         <StatCard label="Workflow" value={github.workflows?.length ?? 0} note="GitHub Actions API 기준" />
+        <StatCard label="자동화 방식" value={String(automation?.automationMode ?? "외부 트리거 확인")} note={String(automation?.automationLabel ?? "cron-job.org workflow_dispatch 기준")} tone={automation?.automationStatus === "OK" ? "good" : "warn"} />
         <StatCard label="최근 데이터" value={updatedAt} note="앱 데이터 기준시각" />
       </div>
       <Section title="GitHub Actions 상태">

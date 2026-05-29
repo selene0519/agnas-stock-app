@@ -2,7 +2,7 @@ name: MONE Auto Accumulator
 
 on:
   workflow_dispatch:
- 
+
 permissions:
   contents: write
 
@@ -23,7 +23,8 @@ jobs:
       GITHUB_ACTIONS_RUN: "true"
       TZ: Asia/Seoul
       PYTHONUTF8: "1"
-      STREAMLIT_APP_ENABLE_LIVE_API: "0"
+      STREAMLIT_APP_ENABLE_LIVE_API: "1"
+      MONE_ENABLE_LIVE_QUOTES: "1"
       DART_API_KEY: ${{ secrets.DART_API_KEY }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
       GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
@@ -61,6 +62,72 @@ jobs:
             python scripts/mone_github_auto_update.py
           else
             echo "scripts/mone_github_auto_update.py not found; skip cloud update."
+          fi
+
+      - name: Refresh live KIS quotes
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          if [ "${STREAMLIT_APP_ENABLE_LIVE_API:-0}" = "1" ]; then
+            python - <<'PY'
+from pathlib import Path
+import csv
+from app.services import quotes
+
+repo_root = Path.cwd().parents[1]
+reports = repo_root / "reports"
+stockapp = repo_root / "data" / "stockapp"
+reports.mkdir(parents=True, exist_ok=True)
+stockapp.mkdir(parents=True, exist_ok=True)
+
+fieldnames = [
+    "symbol", "market", "ok", "currentPrice", "current_price", "last_price",
+    "priceTime", "priceSource", "source", "priceSourceType", "priceSourceFile",
+    "priceSourceDate", "kis_quote_success", "quote_available", "updated_at"
+]
+
+def write_snapshot(market, result):
+    rows = []
+    for item in result.get("items", []) or []:
+        price = item.get("currentPrice")
+        rows.append({
+            "symbol": item.get("symbol", ""),
+            "market": market,
+            "ok": item.get("ok", ""),
+            "currentPrice": price,
+            "current_price": price,
+            "last_price": price,
+            "priceTime": item.get("priceTime", ""),
+            "priceSource": item.get("priceSource", item.get("source", "KIS current price")),
+            "source": item.get("source", item.get("priceSource", "KIS current price")),
+            "priceSourceType": "kis_snapshot",
+            "priceSourceFile": f"reports/kis_current_price_{market}.csv",
+            "priceSourceDate": item.get("priceTime", result.get("updatedAt", "")),
+            "kis_quote_success": "true",
+            "quote_available": "true",
+            "updated_at": result.get("updatedAt", ""),
+        })
+    for target in (
+        reports / f"kis_current_price_{market}.csv",
+        reports / f"intraday_realtime_snapshot_{market}.csv",
+        reports / f"intraday_quote_snapshot_{market}.csv",
+        stockapp / f"kis_current_price_{market}.csv",
+        stockapp / f"intraday_realtime_snapshot_{market}.csv",
+        stockapp / f"intraday_quote_snapshot_{market}.csv",
+    ):
+        with target.open("w", newline="", encoding="utf-8-sig") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+
+for market in ("kr", "us"):
+    result = quotes.refresh_quotes(market=market, max_symbols=100)
+    write_snapshot(market, result)
+    print({"market": market, "status": result.get("status"), "refreshed": result.get("refreshed"), "failed": result.get("failed"), "updatedAt": result.get("updatedAt")})
+PY
+          else
+            echo "STREAMLIT_APP_ENABLE_LIVE_API is not 1; skip live quote refresh."
           fi
 
       - name: Record virtual operation history
@@ -123,6 +190,8 @@ jobs:
           git add reports/gnews_*.csv reports/gnews_*.json reports/news_*.csv reports/news_*.json 2>/dev/null || true
           git add reports/fundamental_*.csv reports/fundamental_*.json 2>/dev/null || true
           git add reports/portfolio_risk_summary.json 2>/dev/null || true
+
+          git add mone-web-app/backend/cache/quotes_cache.json reports/intraday_realtime_snapshot*.csv reports/intraday_quote_snapshot*.csv reports/kis_current_price_*.csv data/stockapp/intraday_realtime_snapshot*.csv data/stockapp/intraday_quote_snapshot*.csv data/stockapp/kis_current_price_*.csv 2>/dev/null || true
 
           # Data files used by the app as source/cache.
           git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
