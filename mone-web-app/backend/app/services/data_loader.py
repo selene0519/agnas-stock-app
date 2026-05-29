@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+MONE_LEGACY_PRICE_FILTER_PATCH_VERSION = "v7_intraday_baseline_rebuild"
+
 import json
 import os
 import re
@@ -264,9 +266,17 @@ def _annotate_source_rows(
 
 
 def stockapp_roots() -> list[Path]:
-    """기존 StockApp 작업스케줄러 출력 폴더를 MONE의 보조 데이터 소스로 사용합니다."""
+    """기존 StockApp 작업스케줄러 출력 폴더를 MONE의 보조 데이터 소스로 사용합니다.
+
+    GitHub/KIS handoff 이후에는 OneDrive의 옛 StockApp 기본 폴더가
+    stale quote snapshot을 다시 섞을 수 있으므로 기본값은 사용하지 않습니다.
+    정말 필요할 때만 MONE_ENABLE_LEGACY_STOCKAPP_ROOTS=1 또는
+    MONE_STOCKAPP_ROOTS로 명시한 경로를 사용합니다.
+    """
     roots: list[Path] = []
-    for root in _split_env_paths(os.environ.get("MONE_STOCKAPP_ROOTS", "")) + DEFAULT_STOCKAPP_ROOTS:
+    explicit_roots = _split_env_paths(os.environ.get("MONE_STOCKAPP_ROOTS", ""))
+    legacy_defaults = DEFAULT_STOCKAPP_ROOTS if os.environ.get("MONE_ENABLE_LEGACY_STOCKAPP_ROOTS", "0").strip() == "1" else []
+    for root in explicit_roots + legacy_defaults:
         try:
             resolved = root.resolve()
         except Exception:
@@ -1016,6 +1026,142 @@ def _date_is_today(value: Any) -> bool:
     return bool(key and key == _today_key())
 
 
+def _is_legacy_quote_source(source: Any, market: str = "") -> bool:
+    """Return True for old/unscoped StockApp quote snapshots that must not drive prices.
+
+    After the GitHub/KIS handoff, market-specific files such as
+    reports/kis_current_price_us.csv and reports/intraday_realtime_snapshot_us.csv
+    are the only quote snapshot files that should win.  Old common files and
+    external StockApp files can contain stale rows, e.g.
+    stockapp://reports/intraday_realtime_snapshot-Kang.csv or
+    data/mone_live_quote_cache.csv.
+    """
+    text = _safe_str(source).replace("\\", "/").lower()
+    mk = (market or "").lower()
+    if not text:
+        return False
+
+    allowed_names = []
+    if mk in {"kr", "us"}:
+        allowed_names = [
+            f"kis_current_price_{mk}.csv",
+            f"intraday_realtime_snapshot_{mk}.csv",
+            f"intraday_quote_snapshot_{mk}.csv",
+            f"current_price_{mk}.csv",
+        ]
+        if any(text.endswith(name) or f"/{name}" in text for name in allowed_names):
+            return False
+
+    legacy_tokens = (
+        "intraday_realtime_snapshot-kang.csv",
+        "intraday_quote_snapshot-kang.csv",
+        "intraday_realtime_snapshot.csv",
+        "intraday_quote_snapshot.csv",
+        "quote_snapshot.csv",
+        "mone_live_quote_cache.csv",
+    )
+    if any(token in text for token in legacy_tokens):
+        return True
+    if text.startswith("stockapp://") and any(token in text for token in ("snapshot", "quote", "current_price", "price")):
+        return True
+    return False
+
+
+def _row_has_legacy_quote_source(row: dict[str, Any], market: str = "") -> bool:
+    """Return True when a data row points back to an old StockApp quote source."""
+    for key in (
+        "priceSourceFile", "sourceFile", "source_file", "source",
+        "price_source_file", "quote_source_file", "current_price_source_file",
+    ):
+        if _is_legacy_quote_source(row.get(key), market):
+            return True
+    return False
+
+
+def _row_price_is_stale_legacy(row: dict[str, Any], market: str = "") -> bool:
+    """Block stale KIS/StockApp quote rows before they appear in report APIs."""
+    source_type = _safe_str(first_value(row, ["priceSourceType", "sourceType", "source_type", "quote_source"], "")).lower()
+    status = _safe_str(first_value(row, ["priceDataStatus", "dataStatus", "status"], "")).upper()
+    if _row_has_legacy_quote_source(row, market):
+        return True
+    if source_type in {"kis", "kis_snapshot", "quote_cache", "stockapp_snapshot"}:
+        date_text = first_value(row, ["priceSourceDate", "priceTime", "updated_at", "sourceDate", "date", "일자"], "")
+        if status == "STALE" or (date_text and not _date_is_today(date_text)):
+            return True
+    if source_type in {"local", "local_fallback"}:
+        price = first_number(row, CURRENT_PRICE_ALIASES + ["currentPrice", "current_price", "last_price", "price"])
+        # Keep real OHLC/local rows; remove only empty placeholders and stale explicit local quote rows.
+        if status == "STALE" or price is None or price <= 0:
+            return True
+    return False
+
+
+def _sanitize_legacy_quote_fields(row: dict[str, Any], market: str = "") -> dict[str, Any]:
+    """Remove only stale quote fields while preserving the candidate/report row.
+
+    v2 removed entire rows when they contained old KIS/local quote metadata.
+    That fixed the STALE pollution, but it also removed useful KR candidates that
+    can still be priced by OHLCV close.  This helper keeps the symbol, entry,
+    stop/target, score and report context, while stripping the stale quote layer
+    so normalize_security_row can fall back to today's valid KIS snapshot or
+    OHLCV close.
+    """
+    if not isinstance(row, dict):
+        return row
+    if not _row_price_is_stale_legacy(row, market):
+        return row
+    clean = dict(row)
+    quote_keys = {
+        "currentPrice", "currentPriceText", "current_price", "last_price", "regularMarketPrice",
+        "실시간현재가", "현재가", "quote_price", "quote_fallback_price",
+        "priceSource", "current_price_source", "quote_source_label", "quote_source",
+        "priceSourceType", "priceSourceFile", "priceSourceDate", "priceTime",
+        "quote_source_file", "current_price_source_file", "intraday_updated_at",
+        "flow_updated_at", "quote_time", "kis_quote_success", "quote_available",
+        "quote_full_available", "intraday_data_available",
+    }
+    for key in list(clean.keys()):
+        key_text = str(key)
+        low = key_text.lower()
+        if key_text in quote_keys or ("quote" in low and "score" not in low) or low.startswith("price"):
+            clean.pop(key, None)
+    clean["legacyQuoteIgnored"] = True
+    clean["legacyQuoteIgnoredReason"] = "stale legacy/local quote fields removed; fallback to KIS/OHLCV"
+    return clean
+
+
+
+
+def _apply_price_candidate_to_normalized(normalized: dict[str, Any], candidate: dict[str, Any] | None, market: str) -> dict[str, Any]:
+    """Apply a clean price candidate without dropping the report row.
+
+    This is used when a row carried stale legacy quote metadata but the symbol
+    can still be priced from the valid close/OHLCV source required for the
+    current session.
+    """
+    if not candidate:
+        return normalized
+    price = _safe_float(candidate.get("price"))
+    if price is None or price <= 0:
+        return normalized
+    patched = dict(normalized)
+    patched["currentPrice"] = price
+    patched["currentPriceText"] = format_price(price, market)
+    patched["priceTime"] = first_value(candidate, ["priceTime", "priceSourceDate"], patched.get("priceTime", ""))
+    patched["priceSource"] = first_value(candidate, ["priceSource"], patched.get("priceSource", ""))
+    patched["priceSourceType"] = first_value(candidate, ["priceSourceType"], patched.get("priceSourceType", ""))
+    patched["priceSourceFile"] = first_value(candidate, ["priceSourceFile"], patched.get("priceSourceFile", ""))
+    patched["priceSourceDate"] = first_value(candidate, ["priceSourceDate", "priceTime"], patched.get("priceSourceDate", ""))
+    patched["priceDataStatus"] = first_value(candidate, ["priceDataStatus"], patched.get("priceDataStatus", "NORMAL"))
+    patched["priceBasis"] = first_value(candidate, ["priceBasis"], patched.get("priceBasis", "가격 기준 확인"))
+    patched["priceSession"] = first_value(candidate, ["priceSession"], patched.get("priceSession", "unknown"))
+    statuses = patched.get("statuses")
+    if isinstance(statuses, dict):
+        statuses = dict(statuses)
+        statuses["price"] = patched["priceDataStatus"]
+        patched["statuses"] = statuses
+    return patched
+
 def _max_date_key_from_rows(rows: list[dict[str, Any]]) -> str:
     keys: list[str] = []
     for row in rows:
@@ -1722,21 +1868,27 @@ def _quote_price_candidate(symbol: str, market: str, phase: dict[str, Any]) -> d
 
 
 def _realtime_snapshot_price_candidate(symbol: str, market: str, phase: dict[str, Any]) -> dict[str, Any] | None:
-    """Read KIS/current quote snapshot CSVs when quote cache is not populated."""
-    if not phase.get("isIntraday") or not symbol:
+    """Read KIS/current quote snapshot CSVs.
+
+    KIS quote files are generated by GitHub Actions after/around market hours as
+    well as during the session.  They should therefore be considered whenever
+    they are from today, not only when the local clock is inside regular
+    intraday hours.  Older snapshots remain STALE and lose to OHLCV/close data.
+    """
+    if not symbol:
         return None
     norm_symbol = normalize_symbol(symbol, market)
     paths: list[Path] = []
-    base_paths = [REPORT_DIR, DATA_DIR, DATA_DIR / "stockapp", DATA_DIR / "decision_system"] + [root / "reports" for root in stockapp_roots()]
+    # Only market-scoped KIS/current-price snapshots are valid quote sources.
+    # Do not scan external StockApp roots or old common files here; those caused
+    # stale rows such as stockapp://reports/intraday_realtime_snapshot-Kang.csv
+    # to re-enter the app.
+    base_paths = [REPORT_DIR, DATA_DIR]
     names = [
-        "intraday_realtime_snapshot.csv",
-        "intraday_realtime_snapshot-Kang.csv",
-        "intraday_quote_snapshot.csv",
-        "quote_snapshot.csv",
         f"kis_current_price_{market}.csv",
+        f"intraday_realtime_snapshot_{market}.csv",
+        f"intraday_quote_snapshot_{market}.csv",
         f"current_price_{market}.csv",
-        f"v93_symbol_snapshot_{market}.csv",
-        f"v92_symbol_snapshot_{market}.csv",
     ]
     for base in base_paths:
         for name in names:
@@ -1744,6 +1896,8 @@ def _realtime_snapshot_price_candidate(symbol: str, market: str, phase: dict[str
     best: dict[str, Any] | None = None
     for path in paths:
         if not path.exists() or path.stat().st_size <= 0:
+            continue
+        if _is_legacy_quote_source(source_label(path), market):
             continue
         df = read_csv(path)
         if df.empty:
@@ -1766,6 +1920,9 @@ def _realtime_snapshot_price_candidate(symbol: str, market: str, phase: dict[str
                 "kis_quote_success", "quote_available", "quote_full_available", "intraday_data_available", "flow_available",
             ]).lower()
             file_hint = source_label(path).lower()
+            row_source_hint = str(first_value(raw, ["priceSourceFile", "sourceFile", "source_file", "source"], "")).lower()
+            if _is_legacy_quote_source(file_hint, market) or _is_legacy_quote_source(row_source_hint, market):
+                continue
             is_current_like = any(token in (source_text + " " + success_text + " " + file_hint) for token in (
                 "kis", "quote", "current", "intraday", "realtime", "yfinance", "finnhub"
             ))
@@ -1775,15 +1932,41 @@ def _realtime_snapshot_price_candidate(symbol: str, market: str, phase: dict[str
                 "priceSourceDate", "priceTime", "intraday_updated_at", "flow_updated_at", "updated_at", "quote_time", "date", "일자",
             ], _safe_str(path.stat().st_mtime))
             is_fresh = _date_is_today(time_text)
+            if not is_fresh:
+                continue
+            phase_key = str(phase.get("phase", ""))
+            raw_source_type = str(first_value(raw, ["priceSourceType", "source_type"], "")).lower()
+            if "finnhub" in raw_source_type:
+                source_type = "finnhub_fallback"
+            elif "yfinance" in raw_source_type:
+                source_type = "yfinance_fallback"
+            elif "fallback" in raw_source_type:
+                source_type = "quote_fallback"
+            else:
+                source_type = "kis_snapshot"
+
+            if is_fresh and phase.get("isIntraday"):
+                status = "INTRADAY"
+                priority = 110
+            elif is_fresh and phase_key.endswith("after_close"):
+                status = "AFTER_CLOSE"
+                priority = 108
+            elif is_fresh and phase_key.endswith("premarket"):
+                status = "PREMARKET_SNAPSHOT"
+                priority = 106
+            else:
+                status = "STALE"
+                priority = 3
+
             cand = _price_candidate(
                 price,
                 time_text,
-                first_value(raw, ["priceSource", "current_price_source", "quote_source_label", "quote_source", "intraday_data_source"], "KIS/current intraday snapshot" if is_fresh else "stale KIS/current snapshot reference"),
+                first_value(raw, ["priceSource", "current_price_source", "quote_source_label", "quote_source", "intraday_data_source"], "KIS/current quote snapshot" if is_fresh else "stale KIS/current snapshot reference"),
                 source_label(path),
-                "kis_snapshot",
-                "INTRADAY" if is_fresh else "STALE",
+                source_type,
+                status,
                 phase,
-                98 if is_fresh else 3,
+                priority,
             )
             if cand and (best is None or _date_key(cand.get("priceSourceDate")) >= _date_key(best.get("priceSourceDate"))):
                 best = cand
@@ -2006,8 +2189,32 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
         price_data_status = first_value(unified_price, ["priceDataStatus"], "NORMAL")
     else:
         price_data_status = _price_status(source_date, price_source_date, runner_date, is_fallback)
+    if current_price is None:
+        price_data_status = "NO_PRICE"
     if source_date and price_source_date and _date_is_older(price_source_date, source_date):
-        price_data_status = "STALE"
+        # A row can be generated today while its valid price basis is the most
+        # recent OHLCV close from the previous/closed session.  v3 treated that
+        # as STALE and removed useful KR report rows after legacy quote fields
+        # were stripped.  Keep OHLCV/close references for premarket and
+        # after-close phases; still mark quote/current-price rows stale when old.
+        phase_key_for_staleness = str(_market_price_phase(market).get("phase", ""))
+        price_type_for_staleness = _safe_str(price_source_type).lower()
+        price_hint_for_staleness = " ".join([
+            _safe_str(price_source),
+            _safe_str(price_source_file),
+            _safe_str(price_basis),
+        ]).lower()
+        close_like_reference = (
+            price_type_for_staleness in {"ohlcv", "github"}
+            or "ohlcv" in price_hint_for_staleness
+            or "close" in price_hint_for_staleness
+            or "종가" in price_hint_for_staleness
+        )
+        close_phase = phase_key_for_staleness in {
+            "kr_premarket", "kr_after_close", "us_premarket", "us_after_close"
+        }
+        if not (close_like_reference and close_phase):
+            price_data_status = "STALE"
     raw_data_status = first_value(row_dict, DATA_STATUS_ALIASES, "")
     if source_type in {"stockapp_snapshot", "github_actions"} and raw_data_status.upper() not in {"STALE", "PARTIAL", "NO_DATA", "MISSING", "FALLBACK"}:
         base_data_status = "NORMAL"
@@ -2162,6 +2369,7 @@ def stockapp_report_rows(market: str, file_name: str) -> tuple[list[dict[str, An
     source_date = file_mtime(path)
     filtered: list[dict[str, Any]] = []
     for row in rows:
+        row = _sanitize_legacy_quote_fields(dict(row), market)
         if not _market_matches(row, market):
             market_text = first_value(row, ["market", "시장"], "")
             if market_text:
@@ -2255,6 +2463,8 @@ def _stockapp_price_candidate_from_row(
     symbol = _row_symbol(row, market)
     if not _symbol_belongs_to_market(symbol, market):
         return None
+    if _is_legacy_quote_source(source, market) or _is_legacy_quote_source(first_value(row, ["priceSourceFile", "sourceFile", "source_file", "source"], ""), market):
+        return None
     price = first_number(row, STOCKAPP_PRICE_ALIASES)
     if price is None or price <= 0:
         return None
@@ -2303,6 +2513,8 @@ def _stockapp_latest_price_map(market: str, reference_date_key: str = "") -> dic
 
 def _stockapp_price_overlay(row: dict[str, Any], market: str, source_date: str) -> dict[str, Any] | None:
     source_file = first_value(row, ["sourceFile", "source_file"], "")
+    if _row_price_is_stale_legacy(row, market) or _is_legacy_quote_source(source_file, market):
+        return None
     source_type = _canonical_source_type(first_value(row, ["sourceType"], _source_type_for_label(source_file, market, source_date)))
     # KR handoff snapshots should stay strict. US v93/v92 GitHub outputs are also valid price snapshots.
     if market == "kr" and source_type != "stockapp_snapshot" and not source_file.startswith("stockapp://"):
@@ -2466,7 +2678,7 @@ def _stockapp_raw_to_candidate_rows(market: str, kind: str) -> tuple[list[dict[s
         bucket = _mone_timing_bucket(row, market)
         if bucket != kind:
             continue
-        merged = dict(row)
+        merged = _sanitize_legacy_quote_fields(dict(row), market)
         # Add alias columns so normalize_security_row can read StockApp raw consistently.
         merged.setdefault("symbol", _row_symbol(row, market))
         merged.setdefault("name", first_value(row, ["stock_name", "종목", "name", "ticker"], _row_symbol(row, market)))
@@ -3043,7 +3255,7 @@ def _latest_plan_baseline_map(market: str) -> tuple[dict[str, dict[str, Any]], l
             sources.append(src)
         for item in payload.get("items", []) or []:
             raw = item.get("raw", {}) if isinstance(item, dict) and isinstance(item.get("raw"), dict) else {}
-            merged = {**raw, **item}
+            merged = _sanitize_legacy_quote_fields({**raw, **item}, market)
             symbol = normalize_symbol(first_value(merged, SYMBOL_ALIASES + ["stock_code", "종목코드", "ticker", "code", "symbol"]), market)
             if not _symbol_belongs_to_market(symbol, market):
                 continue
@@ -3061,6 +3273,157 @@ def _has_today_baseline_price(item: dict[str, Any]) -> bool:
     price = _safe_float(item.get("currentPrice"))
     return bool(price is not None and price > 0 and _date_is_today(date_text))
 
+
+
+
+def _intraday_baseline_report_paths(market: str) -> list[Path]:
+    """Candidate/report CSVs that can rebuild intraday rows after quote cleanup.
+
+    Quote-only snapshots are intentionally excluded.  They are handled by the
+    current-price overlay and must not decide the universe.  These report files
+    carry the actual app-facing candidates, entries, stops, targets and
+    OHLCV/basis-close values that should remain visible after stale KIS/local
+    quote fields are stripped.
+    """
+    mk = "kr" if market == "kr" else "us"
+    patterns = (
+        f"*action_cards_{mk}.csv",
+        f"*pullback_cards_{mk}.csv",
+        f"*risk_cards_{mk}.csv",
+        f"*flow_cards_{mk}.csv",
+        f"*position_cards_{mk}.csv",
+        f"*symbol_snapshot_{mk}.csv",
+        f"*confidence_cards_{mk}.csv",
+        f"*final_recommendations_{mk}_*.csv",
+        f"*company_integrated_{mk}.csv",
+    )
+    bases = [REPORT_DIR, DATA_DIR / "stockapp", DATA_DIR / "decision_system"]
+    paths: list[Path] = []
+    excluded_tokens = (
+        "intraday_realtime_snapshot",
+        "intraday_quote_snapshot",
+        "kis_current_price",
+        "mone_live_quote_cache",
+        "quotes_cache",
+        "orderbook",
+    )
+    for base in bases:
+        if not base.exists():
+            continue
+        for pattern in patterns:
+            for candidate in sorted(base.glob(pattern)):
+                name = candidate.name.lower()
+                if any(token in name for token in excluded_tokens):
+                    continue
+                if candidate.exists() and candidate.suffix.lower() == ".csv" and candidate.stat().st_size > 0 and rows_for(candidate) > 0:
+                    paths.append(candidate)
+    return sorted(_unique_paths(paths), key=lambda p: file_mtime(p), reverse=True)
+
+
+def _basis_close_price_candidate_from_row(row: dict[str, Any], market: str, phase: dict[str, Any], source: str) -> dict[str, Any] | None:
+    aliases = list(dict.fromkeys(KR_OHLC_CLOSE_ALIASES + CURRENT_PRICE_ALIASES + [
+        "basis_close", "prev_close", "ohlcv_close", "close", "actual_close", "current_price_at_prediction"
+    ]))
+    price = first_number(row, aliases)
+    if price is None or price <= 0:
+        return None
+    phase_key = str(phase.get("phase", ""))
+    if market == "kr":
+        status = "PREVIOUS_CLOSE" if phase_key == "kr_premarket" else "AFTER_CLOSE" if phase_key == "kr_after_close" else "STALE"
+    else:
+        status = "PREMARKET_SNAPSHOT" if phase_key == "us_premarket" else "AFTER_CLOSE" if phase_key == "us_after_close" else "STALE"
+    date_text = first_value(row, ["basis_ohlc_date", "ohlcv_date", "actual_date", "date", "날짜", "일자", "sourceDate", "updated_at", "created_at"], "")
+    return _price_candidate(
+        price,
+        date_text,
+        f"report OHLCV/basis close · {source}".strip(" ·"),
+        source,
+        "ohlcv",
+        status,
+        phase,
+        70,
+    )
+
+
+def _intraday_normalized_from_baseline_row(row: dict[str, Any], market: str, source: str, source_date: str) -> dict[str, Any] | None:
+    if not isinstance(row, dict):
+        return None
+    if not _market_matches(row, market):
+        market_text = first_value(row, ["market", "시장"], "")
+        if market_text:
+            return None
+    symbol = _row_symbol(row, market)
+    if not _symbol_belongs_to_market(symbol, market):
+        return None
+
+    merged = _sanitize_legacy_quote_fields(dict(row), market)
+    merged.setdefault("symbol", symbol)
+    merged.setdefault("sourceFile", source)
+    merged.setdefault("sourceDate", _row_source_date(merged) or source_date)
+    merged.setdefault("sourceType", _source_type_for_label(source, market, merged.get("sourceDate", source_date)))
+    merged = apply_quote_cache(merged, market)
+
+    normalized = normalize_security_row(merged, market)
+    phase = _market_price_phase(market)
+
+    def _bad_price(item: dict[str, Any]) -> bool:
+        current = item.get("currentPrice")
+        status = str(item.get("priceDataStatus", "")).upper()
+        source_type = str(item.get("priceSourceType", "")).lower()
+        source_file = item.get("priceSourceFile", "")
+        if current is None:
+            return True
+        if _is_legacy_quote_source(source_file, market):
+            return True
+        if status in {"STALE", "NO_PRICE"}:
+            return True
+        if source_type in {"local", "local_fallback", "row", "existing"}:
+            return True
+        return False
+
+    if _bad_price(normalized):
+        price_candidates = [
+            _realtime_snapshot_price_candidate(symbol, market, phase),
+            _ohlcv_price_candidate(symbol, market, phase),
+            _basis_close_price_candidate_from_row(merged, market, phase, source),
+        ]
+        selected = _select_price_candidate(price_candidates, "", phase)
+        if selected and str(selected.get("priceDataStatus", "")).upper() not in {"STALE", "NO_PRICE"}:
+            normalized = _apply_price_candidate_to_normalized(normalized, selected, market)
+
+    if _bad_price(normalized):
+        return None
+    return normalized
+
+
+def _append_intraday_baseline_fallback_items(market: str, items: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    """Append report candidates that were lost while removing stale quote rows.
+
+    This guardrail prevents the KR report from collapsing to only live KIS rows.
+    It restores the candidate universe from report CSVs and reprices each row
+    with current KIS snapshots or OHLCV/basis-close values.
+    """
+    existing = {normalize_symbol(item.get("symbol"), market) for item in items if item.get("symbol")}
+    added_sources: list[str] = []
+    out = list(items)
+    for path in _intraday_baseline_report_paths(market):
+        source = source_label(path)
+        source_date = file_mtime(path)
+        rows = dataframe_records(read_csv(path))
+        for row in rows:
+            normalized = _intraday_normalized_from_baseline_row(row, market, source, source_date)
+            if not normalized:
+                continue
+            symbol = normalize_symbol(normalized.get("symbol"), market)
+            if not symbol or symbol in existing:
+                continue
+            normalized.setdefault("sourceGroup", "baseline_fallback")
+            normalized.setdefault("fallbackRepair", True)
+            out.append(normalized)
+            existing.add(symbol)
+            if source and source not in added_sources:
+                added_sources.append(source)
+    return out, added_sources
 
 def intraday_report(market: str) -> dict[str, Any]:
     symbol_map = _combine_symbol_maps(market)
@@ -3117,6 +3480,48 @@ def intraday_report(market: str) -> dict[str, Any]:
         merged = apply_quote_cache(merged, market)
         normalized = normalize_security_row(merged, market)
         current = normalized.get("currentPrice")
+        price_status = str(normalized.get("priceDataStatus", "")).upper()
+        price_source_type = str(normalized.get("priceSourceType", "")).lower()
+        price_source_file = normalized.get("priceSourceFile", "")
+        # Report screens should not show stale legacy quote rows, but keep the
+        # underlying candidate when it can be repriced by valid KIS/OHLCV data.
+        needs_reprice = (
+            _is_legacy_quote_source(price_source_file, market)
+            or _row_price_is_stale_legacy(normalized, market)
+            or price_source_type in {"local", "local_fallback", "row", "existing"}
+            or (price_source_type in {"kis", "kis_snapshot", "quote_cache", "stockapp_snapshot"} and price_status == "STALE")
+        )
+        if needs_reprice:
+            clean_merged = _sanitize_legacy_quote_fields(dict(merged), market)
+            normalized = normalize_security_row(clean_merged, market)
+            current = normalized.get("currentPrice")
+            price_status = str(normalized.get("priceDataStatus", "")).upper()
+            price_source_type = str(normalized.get("priceSourceType", "")).lower()
+            price_source_file = normalized.get("priceSourceFile", "")
+            if (
+                _is_legacy_quote_source(price_source_file, market)
+                or current is None
+                or price_status == "STALE"
+                or price_source_type in {"local", "local_fallback", "row", "existing"}
+            ):
+                # Last safe fallback: keep the report/candidate row and reprice it
+                # from the current-session close/OHLCV source.  This restores KR
+                # after-close/premarket rows that v2/v3/v4 over-filtered, while
+                # still blocking old KIS/StockApp snapshot fields.
+                close_candidate = _ohlcv_price_candidate(symbol, market, _market_price_phase(market))
+                if close_candidate and str(close_candidate.get("priceDataStatus", "")).upper() in {"AFTER_CLOSE", "PREVIOUS_CLOSE", "PREMARKET_SNAPSHOT"}:
+                    normalized = _apply_price_candidate_to_normalized(normalized, close_candidate, market)
+                    current = normalized.get("currentPrice")
+                    price_status = str(normalized.get("priceDataStatus", "")).upper()
+                    price_source_type = str(normalized.get("priceSourceType", "")).lower()
+                    price_source_file = normalized.get("priceSourceFile", "")
+                if (
+                    _is_legacy_quote_source(price_source_file, market)
+                    or current is None
+                    or price_status == "STALE"
+                    or price_source_type in {"local", "local_fallback", "row", "existing"}
+                ):
+                    continue
         entry = normalized.get("entry")
         stop = normalized.get("stop")
         target = normalized.get("target")
@@ -3148,6 +3553,13 @@ def intraday_report(market: str) -> dict[str, Any]:
             "flowStatus": first_value(merged, ["supply_label", "supply_summary", "flow_data_status"], normalized.get("statuses", {}).get("flow", "")),
             "orderbookStatus": first_value(merged, ["orderbook_fetch_status", "orderbook_source_label", "orderbook_warning"], ""),
         })
+
+    repaired_items, repaired_sources = _append_intraday_baseline_fallback_items(market, items)
+    if repaired_sources:
+        for repaired_source in repaired_sources:
+            if repaired_source not in plan_sources:
+                plan_sources.append(repaired_source)
+    items = repaired_items
 
     sources = list(dict.fromkeys(plan_sources + flow_sources + orderbook_sources + [
         f"reports/v92_symbol_snapshot_{market}.csv",
@@ -3517,6 +3929,8 @@ def _latest_data_maps(patterns: tuple[str, ...], market: str, exclude: tuple[str
             continue
         low_name = path.name.lower()
         full = path.as_posix().lower()
+        if _is_legacy_quote_source(source_label(path), market):
+            continue
         if market == "kr" and any(tok in low_name or tok in full for tok in ("_us", "us_", "sec_recent", "sec_filing", "disclosures_us")):
             continue
         if market == "us" and any(tok in low_name or tok in full for tok in ("_kr", "kr_", "dart", "disclosures_kr", "market_cap_cache", "kr_financial")):
@@ -3531,7 +3945,7 @@ def _latest_data_maps(patterns: tuple[str, ...], market: str, exclude: tuple[str
             symbol = _row_symbol(row, market)
             if not _symbol_belongs_to_market(symbol, market):
                 continue
-            row = dict(row)
+            row = _sanitize_legacy_quote_fields(dict(row), market)
             row.setdefault("sourceFile", source)
             row.setdefault("sourceType", _source_type_for_label(source, market, file_mtime(path)))
             row.setdefault("sourceDate", file_mtime(path))
