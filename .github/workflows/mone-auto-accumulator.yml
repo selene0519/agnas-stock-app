@@ -2,19 +2,7 @@ name: MONE Auto Accumulator
 
 on:
   workflow_dispatch:
-  schedule:
-    # GitHub Actions cron uses UTC. KST = UTC+9.
-    # KR pre-market: KST 08:17 Mon-Fri = UTC 23:17 Sun-Thu
-    - cron: "17 23 * * 0-4"
-    # KR close update: KST 16:37 Mon-Fri = UTC 07:37 Mon-Fri
-    - cron: "37 7 * * 1-5"
-    # US pre-market early: KST 21:50 Mon-Fri = UTC 12:50 Mon-Fri
-    - cron: "50 12 * * 1-5"
-    # US pre-market confirm: KST 22:50 Mon-Fri = UTC 13:50 Mon-Fri
-    - cron: "50 13 * * 1-5"
-    # US close update: KST 06:42 Tue-Sat = UTC 21:42 Mon-Fri
-    - cron: "42 21 * * 1-5"
-
+ 
 permissions:
   contents: write
 
