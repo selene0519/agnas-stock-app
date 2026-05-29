@@ -30,10 +30,15 @@ jobs:
       GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+      KIS_APPKEY: ${{ secrets.KIS_APPKEY }}
       KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+      KIS_APP_SECRET_KEY: ${{ secrets.KIS_APP_SECRET_KEY }}
+      KIS_SECRET: ${{ secrets.KIS_SECRET }}
       KIS_ACCOUNT: ${{ secrets.KIS_ACCOUNT }}
+      KIS_ACCOUNT_NO: ${{ secrets.KIS_ACCOUNT_NO }}
       KIS_CANO: ${{ secrets.KIS_CANO }}
       KIS_ACNT_PRDT_CD: ${{ secrets.KIS_ACNT_PRDT_CD }}
+      KIS_IS_MOCK: ${{ secrets.KIS_IS_MOCK }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -69,74 +74,185 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          if [ "${STREAMLIT_APP_ENABLE_LIVE_API:-0}" = "1" ]; then
-            python - <<'PY'
+          if [ "${STREAMLIT_APP_ENABLE_LIVE_API:-0}" != "1" ]; then
+            echo "STREAMLIT_APP_ENABLE_LIVE_API is not 1; skip live quote refresh."
+            exit 0
+          fi
+
+          python - <<'PY'
+          from __future__ import annotations
+
           from pathlib import Path
           import csv
+          import json
+          import os
+          import re
+          from datetime import datetime
+
           from app.services import quotes
-          
+
           repo_root = Path.cwd().parents[1]
           reports = repo_root / "reports"
           stockapp = repo_root / "data" / "stockapp"
           reports.mkdir(parents=True, exist_ok=True)
           stockapp.mkdir(parents=True, exist_ok=True)
-          
+
+          def adopt_env(primary: str, *aliases: str) -> None:
+              if os.environ.get(primary):
+                  return
+              for alias in aliases:
+                  value = os.environ.get(alias)
+                  if value:
+                      os.environ[primary] = value
+                      return
+
+          adopt_env("KIS_APP_KEY", "KIS_APPKEY")
+          adopt_env("KIS_APP_SECRET", "KIS_APP_SECRET_KEY", "KIS_SECRET")
+          adopt_env("KIS_ACCOUNT", "KIS_ACCOUNT_NO")
+
+          account = re.sub(r"\D", "", os.environ.get("KIS_ACCOUNT", ""))
+          if account and not os.environ.get("KIS_CANO") and len(account) >= 8:
+              os.environ["KIS_CANO"] = account[:8]
+          if account and not os.environ.get("KIS_ACNT_PRDT_CD") and len(account) >= 10:
+              os.environ["KIS_ACNT_PRDT_CD"] = account[8:10]
+
+          env_status = {
+              "KIS_APP_KEY": bool(os.environ.get("KIS_APP_KEY")),
+              "KIS_APP_SECRET": bool(os.environ.get("KIS_APP_SECRET")),
+              "KIS_ACCOUNT": bool(os.environ.get("KIS_ACCOUNT")),
+              "KIS_CANO": bool(os.environ.get("KIS_CANO")),
+              "KIS_ACNT_PRDT_CD": bool(os.environ.get("KIS_ACNT_PRDT_CD")),
+              "KIS_IS_MOCK": os.environ.get("KIS_IS_MOCK", ""),
+          }
+          print({"kis_env_present": env_status})
+
           fieldnames = [
               "symbol", "market", "ok", "currentPrice", "current_price", "last_price",
               "priceTime", "priceSource", "source", "priceSourceType", "priceSourceFile",
-              "priceSourceDate", "kis_quote_success", "quote_available", "updated_at",
+              "priceSourceDate", "kis_quote_success", "quote_available", "error", "updated_at",
           ]
-          
-          def write_snapshot(market, result):
+
+          def empty_csv(target: Path) -> None:
+              target.parent.mkdir(parents=True, exist_ok=True)
+              with target.open("w", newline="", encoding="utf-8-sig") as fh:
+                  writer = csv.DictWriter(fh, fieldnames=fieldnames)
+                  writer.writeheader()
+
+          def source_type(item: dict) -> str:
+              source_text = " ".join(str(item.get(k, "")) for k in ("priceSource", "source", "fallbackFrom"))
+              source_lower = source_text.lower()
+              ok = bool(item.get("ok"))
+              if ok and "kis" in source_lower and "fallback" not in source_lower:
+                  return "kis_snapshot"
+              if ok and "finnhub" in source_lower:
+                  return "finnhub_fallback"
+              if ok and "yfinance" in source_lower:
+                  return "yfinance_fallback"
+              if ok:
+                  return "quote_fallback"
+              return "quote_failed"
+
+          def build_rows(market: str, result: dict, only_kis: bool) -> list[dict]:
               rows = []
               for item in result.get("items", []) or []:
+                  stype = source_type(item)
+                  if only_kis and stype != "kis_snapshot":
+                      continue
                   price = item.get("currentPrice")
+                  ok = bool(item.get("ok")) and price not in (None, "")
+                  price_source = item.get("priceSource") or item.get("source") or "KIS current price"
+                  price_time = item.get("priceTime") or result.get("updatedAt", "")
                   rows.append({
                       "symbol": item.get("symbol", ""),
                       "market": market,
-                      "ok": item.get("ok", ""),
-                      "currentPrice": price,
-                      "current_price": price,
-                      "last_price": price,
-                      "priceTime": item.get("priceTime", ""),
-                      "priceSource": item.get("priceSource", item.get("source", "KIS current price")),
-                      "source": item.get("source", item.get("priceSource", "KIS current price")),
-                      "priceSourceType": "kis_snapshot",
-                      "priceSourceFile": f"reports/kis_current_price_{market}.csv",
-                      "priceSourceDate": item.get("priceTime", result.get("updatedAt", "")),
-                      "kis_quote_success": "true",
-                      "quote_available": "true",
+                      "ok": str(ok).lower(),
+                      "currentPrice": price if ok else "",
+                      "current_price": price if ok else "",
+                      "last_price": price if ok else "",
+                      "priceTime": price_time,
+                      "priceSource": price_source,
+                      "source": price_source,
+                      "priceSourceType": stype,
+                      "priceSourceFile": f"reports/kis_current_price_{market}.csv" if stype == "kis_snapshot" else f"reports/intraday_realtime_snapshot_{market}.csv",
+                      "priceSourceDate": price_time,
+                      "kis_quote_success": "true" if stype == "kis_snapshot" else "false",
+                      "quote_available": "true" if ok else "false",
+                      "error": item.get("error", ""),
                       "updated_at": result.get("updatedAt", ""),
                   })
-          
-              targets = [
-                  reports / f"kis_current_price_{market}.csv",
-                  reports / f"intraday_realtime_snapshot_{market}.csv",
-                  reports / f"intraday_quote_snapshot_{market}.csv",
-                  stockapp / f"kis_current_price_{market}.csv",
-                  stockapp / f"intraday_realtime_snapshot_{market}.csv",
-                  stockapp / f"intraday_quote_snapshot_{market}.csv",
-              ]
+              return rows
+
+          def write_rows(targets: list[Path], rows: list[dict]) -> None:
               for target in targets:
+                  target.parent.mkdir(parents=True, exist_ok=True)
                   with target.open("w", newline="", encoding="utf-8-sig") as fh:
                       writer = csv.DictWriter(fh, fieldnames=fieldnames)
                       writer.writeheader()
                       writer.writerows(rows)
-          
+
+          has_kis_config = env_status["KIS_APP_KEY"] and env_status["KIS_APP_SECRET"]
+          status_summary = {
+              "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S KST"),
+              "envPresent": env_status,
+              "markets": {},
+          }
+
           for market in ("kr", "us"):
+              kis_targets = [
+                  reports / f"kis_current_price_{market}.csv",
+                  stockapp / f"kis_current_price_{market}.csv",
+              ]
+              all_targets = [
+                  reports / f"intraday_realtime_snapshot_{market}.csv",
+                  reports / f"intraday_quote_snapshot_{market}.csv",
+                  stockapp / f"intraday_realtime_snapshot_{market}.csv",
+                  stockapp / f"intraday_quote_snapshot_{market}.csv",
+              ]
+
+              if not has_kis_config:
+                  for target in kis_targets + all_targets:
+                      empty_csv(target)
+                  status_summary["markets"][market] = {
+                      "status": "MISSING_KIS_SECRET",
+                      "refreshed": 0,
+                      "failed": 0,
+                      "kisRows": 0,
+                      "fallbackRows": 0,
+                      "message": "KIS_APP_KEY/KIS_APP_SECRET are not available in GitHub Actions secrets.",
+                  }
+                  print({"market": market, "status": "MISSING_KIS_SECRET", "refreshed": 0, "failed": 0})
+                  continue
+
               result = quotes.refresh_quotes(market=market, max_symbols=100)
-              write_snapshot(market, result)
+              kis_rows = build_rows(market, result, only_kis=True)
+              all_rows = build_rows(market, result, only_kis=False)
+              write_rows(kis_targets, kis_rows)
+              write_rows(all_targets, all_rows)
+
+              status_summary["markets"][market] = {
+                  "status": result.get("status"),
+                  "refreshed": result.get("refreshed"),
+                  "failed": result.get("failed"),
+                  "kisRows": len(kis_rows),
+                  "fallbackRows": max(0, len(all_rows) - len(kis_rows)),
+                  "updatedAt": result.get("updatedAt"),
+              }
               print({
                   "market": market,
                   "status": result.get("status"),
                   "refreshed": result.get("refreshed"),
                   "failed": result.get("failed"),
+                  "kisRows": len(kis_rows),
+                  "fallbackRows": max(0, len(all_rows) - len(kis_rows)),
                   "updatedAt": result.get("updatedAt"),
               })
+
+          (reports / "kis_live_refresh_status.json").write_text(
+              json.dumps(status_summary, ensure_ascii=False, indent=2),
+              encoding="utf-8",
+          )
           PY
-          else
-            echo "STREAMLIT_APP_ENABLE_LIVE_API is not 1; skip live quote refresh."
-          fi
+
       - name: Record virtual operation history
         working-directory: mone-web-app/backend
         env:
@@ -165,9 +281,12 @@ jobs:
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
+          rm -rf mone-web-app/frontend/.next mone-web-app/frontend/node_modules || true
 
       - name: Show generated report status
         run: |
+          echo "=== KIS live refresh status ==="
+          test -f reports/kis_live_refresh_status.json && cat reports/kis_live_refresh_status.json || true
           echo "=== operational readiness ==="
           test -f reports/mone_v36_operational_readiness.json && cat reports/mone_v36_operational_readiness.json || true
           echo "=== reports ==="
@@ -180,7 +299,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Add only the files the app must read from GitHub raw.
+          # Add only files the app must read from GitHub raw.
           # Do NOT add whole reports/ or whole data/ because that brings old logs, backtests, alerts, and temporary files.
           git add predictions.csv runner_status_kr.json runner_status_us.json 2>/dev/null || true
           git add paper_trading_log.csv paper_trading_summary.csv 2>/dev/null || true
@@ -198,14 +317,22 @@ jobs:
           git add reports/fundamental_*.csv reports/fundamental_*.json 2>/dev/null || true
           git add reports/portfolio_risk_summary.json 2>/dev/null || true
 
-          git add mone-web-app/backend/cache/quotes_cache.json reports/intraday_realtime_snapshot*.csv reports/intraday_quote_snapshot*.csv reports/kis_current_price_*.csv data/stockapp/intraday_realtime_snapshot*.csv data/stockapp/intraday_quote_snapshot*.csv data/stockapp/kis_current_price_*.csv 2>/dev/null || true
+          # Live quote snapshots. KIS-only rows are separated from fallback rows.
+          git add reports/kis_live_refresh_status.json 2>/dev/null || true
+          git add reports/kis_current_price_*.csv 2>/dev/null || true
+          git add reports/intraday_realtime_snapshot*.csv reports/intraday_quote_snapshot*.csv 2>/dev/null || true
+          git add data/stockapp/kis_current_price_*.csv 2>/dev/null || true
+          git add data/stockapp/intraday_realtime_snapshot*.csv data/stockapp/intraday_quote_snapshot*.csv 2>/dev/null || true
+          git add mone-web-app/backend/cache/quotes_cache.json 2>/dev/null || true
 
           # Data files used by the app as source/cache.
           git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
 
-          # Keep ignore rules up to date, but never commit secrets/tokens/env files.
-          git add .gitignore 2>/dev/null || true
+          # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
+          git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true
           git reset -- .env .env.local "*.env" "*token_cache*.json" "**/*token_cache*.json" 2>/dev/null || true
+          git reset -- mone-web-app/backend/.env mone-web-app/backend/.env.* mone-web-app/frontend/.env.local mone-web-app/frontend/.env.* 2>/dev/null || true
+          git reset -- mone-web-app/frontend/.next mone-web-app/frontend/node_modules node_modules 2>/dev/null || true
           git reset -- data/backtest data/alerts logs backups mone-web-app_backup_before_v3_5 mone-web-app_backup_before_v3_5_2 mone-web-app_backup_before_v3_5_3 mone-web-app_backup_before_v3_6_1_operational 2>/dev/null || true
           git reset -- 'reports/daily_summary_*' 'reports/summary_*' 'reports/order_plan_*_202*.csv' 'reports/test_*.csv' 2>/dev/null || true
 
