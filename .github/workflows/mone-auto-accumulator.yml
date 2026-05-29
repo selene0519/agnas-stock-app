@@ -71,65 +71,72 @@ jobs:
         run: |
           if [ "${STREAMLIT_APP_ENABLE_LIVE_API:-0}" = "1" ]; then
             python - <<'PY'
-from pathlib import Path
-import csv
-from app.services import quotes
-
-repo_root = Path.cwd().parents[1]
-reports = repo_root / "reports"
-stockapp = repo_root / "data" / "stockapp"
-reports.mkdir(parents=True, exist_ok=True)
-stockapp.mkdir(parents=True, exist_ok=True)
-
-fieldnames = [
-    "symbol", "market", "ok", "currentPrice", "current_price", "last_price",
-    "priceTime", "priceSource", "source", "priceSourceType", "priceSourceFile",
-    "priceSourceDate", "kis_quote_success", "quote_available", "updated_at"
-]
-
-def write_snapshot(market, result):
-    rows = []
-    for item in result.get("items", []) or []:
-        price = item.get("currentPrice")
-        rows.append({
-            "symbol": item.get("symbol", ""),
-            "market": market,
-            "ok": item.get("ok", ""),
-            "currentPrice": price,
-            "current_price": price,
-            "last_price": price,
-            "priceTime": item.get("priceTime", ""),
-            "priceSource": item.get("priceSource", item.get("source", "KIS current price")),
-            "source": item.get("source", item.get("priceSource", "KIS current price")),
-            "priceSourceType": "kis_snapshot",
-            "priceSourceFile": f"reports/kis_current_price_{market}.csv",
-            "priceSourceDate": item.get("priceTime", result.get("updatedAt", "")),
-            "kis_quote_success": "true",
-            "quote_available": "true",
-            "updated_at": result.get("updatedAt", ""),
-        })
-    for target in (
-        reports / f"kis_current_price_{market}.csv",
-        reports / f"intraday_realtime_snapshot_{market}.csv",
-        reports / f"intraday_quote_snapshot_{market}.csv",
-        stockapp / f"kis_current_price_{market}.csv",
-        stockapp / f"intraday_realtime_snapshot_{market}.csv",
-        stockapp / f"intraday_quote_snapshot_{market}.csv",
-    ):
-        with target.open("w", newline="", encoding="utf-8-sig") as fh:
-            writer = csv.DictWriter(fh, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-
-for market in ("kr", "us"):
-    result = quotes.refresh_quotes(market=market, max_symbols=100)
-    write_snapshot(market, result)
-    print({"market": market, "status": result.get("status"), "refreshed": result.get("refreshed"), "failed": result.get("failed"), "updatedAt": result.get("updatedAt")})
-PY
+          from pathlib import Path
+          import csv
+          from app.services import quotes
+          
+          repo_root = Path.cwd().parents[1]
+          reports = repo_root / "reports"
+          stockapp = repo_root / "data" / "stockapp"
+          reports.mkdir(parents=True, exist_ok=True)
+          stockapp.mkdir(parents=True, exist_ok=True)
+          
+          fieldnames = [
+              "symbol", "market", "ok", "currentPrice", "current_price", "last_price",
+              "priceTime", "priceSource", "source", "priceSourceType", "priceSourceFile",
+              "priceSourceDate", "kis_quote_success", "quote_available", "updated_at",
+          ]
+          
+          def write_snapshot(market, result):
+              rows = []
+              for item in result.get("items", []) or []:
+                  price = item.get("currentPrice")
+                  rows.append({
+                      "symbol": item.get("symbol", ""),
+                      "market": market,
+                      "ok": item.get("ok", ""),
+                      "currentPrice": price,
+                      "current_price": price,
+                      "last_price": price,
+                      "priceTime": item.get("priceTime", ""),
+                      "priceSource": item.get("priceSource", item.get("source", "KIS current price")),
+                      "source": item.get("source", item.get("priceSource", "KIS current price")),
+                      "priceSourceType": "kis_snapshot",
+                      "priceSourceFile": f"reports/kis_current_price_{market}.csv",
+                      "priceSourceDate": item.get("priceTime", result.get("updatedAt", "")),
+                      "kis_quote_success": "true",
+                      "quote_available": "true",
+                      "updated_at": result.get("updatedAt", ""),
+                  })
+          
+              targets = [
+                  reports / f"kis_current_price_{market}.csv",
+                  reports / f"intraday_realtime_snapshot_{market}.csv",
+                  reports / f"intraday_quote_snapshot_{market}.csv",
+                  stockapp / f"kis_current_price_{market}.csv",
+                  stockapp / f"intraday_realtime_snapshot_{market}.csv",
+                  stockapp / f"intraday_quote_snapshot_{market}.csv",
+              ]
+              for target in targets:
+                  with target.open("w", newline="", encoding="utf-8-sig") as fh:
+                      writer = csv.DictWriter(fh, fieldnames=fieldnames)
+                      writer.writeheader()
+                      writer.writerows(rows)
+          
+          for market in ("kr", "us"):
+              result = quotes.refresh_quotes(market=market, max_symbols=100)
+              write_snapshot(market, result)
+              print({
+                  "market": market,
+                  "status": result.get("status"),
+                  "refreshed": result.get("refreshed"),
+                  "failed": result.get("failed"),
+                  "updatedAt": result.get("updatedAt"),
+              })
+          PY
           else
             echo "STREAMLIT_APP_ENABLE_LIVE_API is not 1; skip live quote refresh."
           fi
-
       - name: Record virtual operation history
         working-directory: mone-web-app/backend
         env:
