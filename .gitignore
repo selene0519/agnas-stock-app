@@ -34,3 +34,30 @@ reports/daily_summary_*
 reports/summary_*
 reports/order_plan_*_202*.csv
 reports/test_*.csv
+
+# MONE local development / generated artifacts
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Frontend local artifacts
+mone-web-app/frontend/.next/
+mone-web-app/frontend/node_modules/
+mone-web-app/frontend/next-dev.log
+mone-web-app/frontend/next-dev.err.log
+mone-web-app/frontend/tsconfig.tsbuildinfo
+
+# Backend local secrets/cache
+mone-web-app/backend/.env
+mone-web-app/backend/.env.*
+mone-web-app/backend/cache/*token_cache*.json
+mone-web-app/backend/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Temporary patch folders
+_mone_*_fix*/
+_workflow_yaml_fix*/
