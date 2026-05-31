@@ -1,0 +1,1061 @@
+from __future__ import annotations
+
+import csv
+import json
+import math
+import re
+import subprocess
+from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Callable
+
+from fastapi import Query
+from fastapi.routing import APIRoute
+
+
+KR_NAME_FALLBACK: dict[str, str] = {
+    "005930": "삼성전자",
+    "000660": "SK하이닉스",
+    "005380": "현대차",
+    "131970": "두산테스나",
+    "222800": "심텍",
+    "035420": "NAVER",
+    "207940": "삼성바이오로직스",
+    "000100": "유한양행",
+    "058470": "리노공업",
+    "006400": "삼성SDI",
+    "196170": "알테오젠",
+    "055550": "신한지주",
+    "375500": "DL이앤씨",
+    "086520": "에코프로",
+    "214150": "클래시스",
+    "267260": "HD현대일렉트릭",
+    "001440": "대한전선",
+    "003490": "대한항공",
+    "373220": "LG에너지솔루션",
+    "034020": "두산에너빌리티",
+    "009540": "HD한국조선해양",
+    "047810": "한국항공우주",
+    "015760": "한국전력",
+    "247540": "에코프로비엠",
+    "090360": "로보스타",
+    "403870": "HPSP",
+    "005490": "POSCO홀딩스",
+    "012330": "현대모비스",
+    "042700": "한미반도체",
+}
+
+US_NAME_FALLBACK: dict[str, str] = {
+    "AAPL": "Apple",
+    "MSFT": "Microsoft",
+    "NVDA": "NVIDIA",
+    "TSLA": "Tesla",
+    "GOOGL": "Alphabet",
+    "GOOG": "Alphabet",
+    "AMZN": "Amazon",
+    "META": "Meta Platforms",
+    "AMD": "AMD",
+    "AVGO": "Broadcom",
+    "PLTR": "Palantir",
+    "INTC": "Intel",
+    "MU": "Micron",
+    "RKLB": "Rocket Lab",
+    "ASTS": "AST SpaceMobile",
+}
+
+MODE_ALIASES = {
+    "conservative": "conservative",
+    "balanced": "balanced",
+    "aggressive": "aggressive",
+    "보수": "conservative",
+    "균형": "balanced",
+    "공격": "aggressive",
+}
+
+HORIZON_ALIASES = {
+    "short": "short",
+    "day": "short",
+    "swing": "swing",
+    "mid": "mid",
+    "middle": "mid",
+    "long": "mid",
+    "단기": "short",
+    "스윙": "swing",
+    "중기": "mid",
+}
+
+MODE_LABEL = {"conservative": "보수", "balanced": "균형", "aggressive": "공격"}
+HORIZON_LABEL = {"short": "단기", "swing": "스윙", "mid": "중기"}
+
+SYMBOL_KEYS = [
+    "symbol",
+    "ticker",
+    "code",
+    "stock_code",
+    "종목코드",
+    "종목",
+    "Symbol",
+    "Ticker",
+]
+
+NAME_KEYS = [
+    "name",
+    "stock_name",
+    "company_name",
+    "companyName",
+    "corp_name",
+    "종목명",
+    "기업명",
+    "Name",
+    "Company",
+]
+
+PRICE_KEYS = [
+    "currentPrice",
+    "current_price",
+    "last_price",
+    "price",
+    "close",
+    "prev_close",
+    "quote_fallback_price",
+    "현재가",
+    "실시간현재가",
+]
+
+
+def _app_root() -> Path:
+    here = Path(__file__).resolve()
+    for parent in [here.parent, *here.parents]:
+        if parent.name == "mone-web-app" and (parent / "backend").exists() and (parent / "frontend").exists():
+            return parent
+    for parent in [here.parent, *here.parents]:
+        if (parent / "mone-web-app").exists():
+            return parent / "mone-web-app"
+    return here.parents[3]
+
+
+def _repo_root() -> Path:
+    return _app_root().parent
+
+
+def _search_roots() -> list[Path]:
+    app = _app_root()
+    repo = _repo_root()
+    candidates = [
+        app,
+        app / "data",
+        app / "reports",
+        repo,
+        repo / "data",
+        repo / "reports",
+    ]
+    out: list[Path] = []
+    for path in candidates:
+        if path.exists() and path not in out:
+            out.append(path)
+    return out
+
+
+def _safe_rel(path: Path) -> str:
+    for root in _search_roots():
+        try:
+            return str(path.relative_to(root))
+        except Exception:
+            pass
+    return str(path)
+
+
+def _many(*patterns: str, max_files: int = 300) -> list[Path]:
+    found: list[Path] = []
+    seen: set[Path] = set()
+    for root in _search_roots():
+        for pattern in patterns:
+            try:
+                for path in root.glob(pattern):
+                    if path.is_file() and path.stat().st_size > 0 and path not in seen:
+                        seen.add(path)
+                        found.append(path)
+            except Exception:
+                continue
+    return sorted(found, key=lambda p: p.stat().st_mtime, reverse=True)[:max_files]
+
+
+def _read_csv(path: Path | None, limit: int = 50000) -> list[dict[str, Any]]:
+    if path is None or not path.exists() or not path.is_file() or path.stat().st_size <= 0:
+        return []
+    for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+        try:
+            rows: list[dict[str, Any]] = []
+            with path.open("r", encoding=enc, newline="") as f:
+                reader = csv.DictReader(f)
+                if not reader.fieldnames:
+                    return []
+                for index, row in enumerate(reader):
+                    item = {str(k): v for k, v in row.items() if k is not None}
+                    item["_source_file"] = path.name
+                    item["_source_path"] = _safe_rel(path)
+                    rows.append(item)
+                    if index + 1 >= limit:
+                        break
+            return rows
+        except Exception:
+            continue
+    return []
+
+
+def _read_json(path: Path | None) -> Any:
+    if path is None or not path.exists() or not path.is_file() or path.stat().st_size <= 0:
+        return None
+    for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+        try:
+            return json.loads(path.read_text(encoding=enc))
+        except Exception:
+            continue
+    return None
+
+
+def _text(row: dict[str, Any], keys: list[str], default: str = "") -> str:
+    lower = {str(k).lower(): v for k, v in row.items()}
+    for key in keys:
+        if key in row and row[key] is not None and str(row[key]).strip():
+            return str(row[key]).strip()
+        low_key = key.lower()
+        if low_key in lower and lower[low_key] is not None and str(lower[low_key]).strip():
+            return str(lower[low_key]).strip()
+    return default
+
+
+def _num(value: Any, default: float = 0.0) -> float:
+    try:
+        raw = str(value if value is not None else "").replace(",", "").replace("원", "").replace("$", "").replace("%", "").strip()
+        if not raw or raw.lower() in {"nan", "none", "null", "na", "-", "데이터 없음"}:
+            return default
+        parsed = float(raw)
+        return default if math.isnan(parsed) else parsed
+    except Exception:
+        return default
+
+
+def _symbol_value(value: Any, market: str = "") -> str:
+    text = str(value or "").strip().upper()
+    if text.endswith(".0"):
+        text = text[:-2]
+    text = re.sub(r"\.(KS|KQ|KR)$", "", text)
+    text = re.sub(r"[^0-9A-Z.\-]", "", text)
+    if (market == "kr" or text.isdigit()) and text.isdigit() and len(text) < 6:
+        text = text.zfill(6)
+    return text
+
+
+def _symbol(row: dict[str, Any], market: str = "") -> str:
+    return _symbol_value(_text(row, SYMBOL_KEYS, ""), market)
+
+
+def _market_norm(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in {"all", "전체"}:
+        return "all"
+    if raw in {"us", "usa", "nyse", "nasdaq", "amex", "미장"}:
+        return "us"
+    return "kr"
+
+
+def _mode_norm(value: Any) -> str:
+    return MODE_ALIASES.get(str(value or "").strip().lower(), "balanced")
+
+
+def _horizon_norm(value: Any) -> str:
+    return HORIZON_ALIASES.get(str(value or "").strip().lower(), "swing")
+
+
+def _infer_market(symbol: str, explicit: Any = "") -> str:
+    raw = str(explicit or "").strip().lower()
+    if raw in {"kr", "kospi", "kosdaq", "korea", "국장"}:
+        return "kr"
+    if raw in {"us", "usa", "nyse", "nasdaq", "amex", "미장"}:
+        return "us"
+    return "kr" if re.fullmatch(r"\d{6}", symbol or "") else "us"
+
+
+def _bad_name(value: Any, symbol: str) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return True
+    if text.upper() == symbol.upper():
+        return True
+    if text in {"-", "N/A", "UNKNOWN", "종목명 없음"}:
+        return True
+    return bool(re.search(r"[�]|援|蹂댁|誘몄|筌|醫|紐|쨌|\?\?\?", text))
+
+
+def _fallback_name(symbol: str, market: str) -> str:
+    if market == "kr":
+        return KR_NAME_FALLBACK.get(symbol, symbol)
+    return US_NAME_FALLBACK.get(symbol, symbol)
+
+
+@lru_cache(maxsize=1)
+def _build_name_map() -> dict[str, str]:
+    names: dict[str, str] = {}
+    for market in ("kr", "us"):
+        for symbol, name in (KR_NAME_FALLBACK if market == "kr" else US_NAME_FALLBACK).items():
+            names[f"{market}-{symbol}"] = name
+
+    source_patterns = [
+        "watchlist_kr.csv",
+        "watchlist_us.csv",
+        "watchlist_kr_growth.csv",
+        "watchlist_us_growth.csv",
+        "**/watchlist_kr.csv",
+        "**/watchlist_us.csv",
+        "**/watchlist_kr_growth.csv",
+        "**/watchlist_us_growth.csv",
+        "candidate_universe_kr.csv",
+        "candidate_universe_us.csv",
+        "**/candidate_universe_kr.csv",
+        "**/candidate_universe_us.csv",
+        "**/*company*.csv",
+        "**/*fundamental*.csv",
+        "**/*financial*.csv",
+    ]
+    for path in _many(*source_patterns, max_files=120):
+        for row in _read_csv(path, 20000):
+            market = _infer_market(_symbol(row), _text(row, ["market", "시장", "_market"], ""))
+            symbol = _symbol(row, market)
+            if not symbol:
+                continue
+            raw_name = _text(row, NAME_KEYS, "")
+            if not _bad_name(raw_name, symbol):
+                names.setdefault(f"{market}-{symbol}", raw_name)
+    return names
+
+
+def _display_name(row: dict[str, Any], symbol: str, market: str, names: dict[str, str]) -> str:
+    raw = _text(row, NAME_KEYS, "")
+    if not _bad_name(raw, symbol):
+        return raw
+    return names.get(f"{market}-{symbol}", _fallback_name(symbol, market))
+
+
+def _price_text(value: Any, market: str) -> str:
+    price = _num(value)
+    if price <= 0:
+        return "현재가 산출 필요"
+    return f"${price:,.2f}" if market == "us" else f"{round(price):,}원"
+
+
+def _optional_price_text(value: Any, market: str) -> str:
+    price = _num(value)
+    if price <= 0:
+        return "-"
+    return f"${price:,.2f}" if market == "us" else f"{round(price):,}원"
+
+
+def _pct_text(value: Any) -> str:
+    raw = str(value or "").strip()
+    if raw.endswith("%"):
+        return raw
+    n = _num(raw)
+    if 0 < n <= 1:
+        n *= 100
+    return f"{n:.1f}%" if n > 0 else "-"
+
+
+def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
+    return max(low, min(high, value))
+
+
+def _strategy_profile(mode: str) -> dict[str, float]:
+    if mode == "conservative":
+        return {"stop": 0.985, "target": 1.045, "prob": -3.0}
+    if mode == "aggressive":
+        return {"stop": 0.94, "target": 1.16, "prob": 3.0}
+    return {"stop": 0.97, "target": 1.08, "prob": 0.0}
+
+
+def _prob_number(value: Any, default: float = 58.0) -> float:
+    n = _num(value, default)
+    if 0 < n <= 1:
+        n *= 100
+    return _clamp(n)
+
+
+def _computed_append(fields: list[str], name: str) -> None:
+    if name not in fields:
+        fields.append(name)
+
+
+@lru_cache(maxsize=1)
+def _watch_symbols() -> set[str]:
+    symbols: set[str] = set()
+    for path in _many("daily_watch_selection.json", "**/daily_watch_selection.json"):
+        payload = _read_json(path)
+        values = payload.values() if isinstance(payload, dict) else payload if isinstance(payload, list) else []
+        for value in values:
+            if isinstance(value, dict):
+                value = value.get("symbols") or value.get("items") or value.get("watchlist") or value.get("codes")
+            if isinstance(value, list):
+                for item in value:
+                    symbols.add(_symbol(item) if isinstance(item, dict) else _symbol_value(item))
+            elif isinstance(value, str):
+                symbols.add(_symbol_value(value))
+    for path in _many("*watch*.csv", "**/*watch*.csv", "*interest*.csv", "**/*interest*.csv"):
+        for row in _read_csv(path, 20000):
+            sym = _symbol(row)
+            if sym:
+                symbols.add(sym)
+    return {s for s in symbols if s}
+
+
+def _rows_from_paths(paths: list[Path], limit_per_file: int = 50000) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path in paths:
+        rows.extend(_read_csv(path, limit_per_file))
+    return rows
+
+
+def _quote_files(market: str) -> list[Path]:
+    return _many(
+        f"**/kis_current_price_{market}.csv",
+        f"**/kis_current_price_{market}.json",
+        f"**/intraday_quote_snapshot_{market}.csv",
+        f"**/*quote*{market}*.csv",
+        f"**/*price*{market}*.csv",
+        max_files=80,
+    )
+
+
+@lru_cache(maxsize=4)
+def _quote_index(market: str) -> dict[str, dict[str, Any]]:
+    quotes: dict[str, dict[str, Any]] = {}
+    for row in _rows_from_paths([p for p in _quote_files(market) if p.suffix.lower() == ".csv"], 50000):
+        sym = _symbol(row, market)
+        if sym and sym not in quotes:
+            quotes[sym] = row
+    return quotes
+
+
+def _all_symbol_rows() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for market in ("kr", "us"):
+        for path in _many(
+            f"watchlist_{market}.csv",
+            f"watchlist_{market}_growth.csv",
+            f"**/watchlist_{market}.csv",
+            f"**/watchlist_{market}_growth.csv",
+            f"candidate_universe_{market}.csv",
+            f"**/candidate_universe_{market}.csv",
+            f"**/*company*{market}*.csv",
+            f"**/*fundamental*{market}*.csv",
+            max_files=80,
+        ):
+            for row in _read_csv(path, 50000):
+                row["_market"] = market
+                rows.append(row)
+    return rows
+
+
+def _extract_source_mode_horizon(path: Path, row: dict[str, Any]) -> tuple[str, str]:
+    source = " ".join([
+        path.name.lower(),
+        _text(row, ["sourceMode", "mode", "strategy", "추천모드"], "").lower(),
+        _text(row, ["sourceHorizon", "horizon", "term", "기간"], "").lower(),
+    ])
+
+    source_mode = ""
+    for mode in ("conservative", "balanced", "aggressive"):
+        if mode in source:
+            source_mode = mode
+            break
+    if not source_mode:
+        for label, mode in {"보수": "conservative", "균형": "balanced", "공격": "aggressive"}.items():
+            if label in source:
+                source_mode = mode
+                break
+
+    source_horizon = ""
+    for horizon in ("short", "swing", "mid", "long"):
+        if horizon in source:
+            source_horizon = "mid" if horizon == "long" else horizon
+            break
+    if not source_horizon:
+        for label, horizon in {"단기": "short", "스윙": "swing", "중기": "mid"}.items():
+            if label in source:
+                source_horizon = horizon
+                break
+
+    return source_mode, source_horizon
+
+
+def _recommendation_paths(market: str, mode: str, horizon: str) -> list[tuple[Path, str]]:
+    exact_patterns = [
+        f"reports/mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv",
+        f"**/mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv",
+        f"**/*recommend*{market}*{mode}*{horizon}*.csv",
+        f"**/*candidate*{market}*{mode}*{horizon}*.csv",
+        f"**/*action*{market}*{mode}*{horizon}*.csv",
+    ]
+    exact = _many(*exact_patterns, max_files=80)
+    if exact:
+        return [(path, "MATCH") for path in exact]
+
+    fallback_patterns = [
+        f"**/*recommend*{market}*{mode}*.csv",
+        f"**/*recommend*{market}*{horizon}*.csv",
+        f"**/*candidate*{market}*{mode}*.csv",
+        f"**/*candidate*{market}*{horizon}*.csv",
+        f"**/*action*{market}*{mode}*.csv",
+        f"**/*action*{market}*{horizon}*.csv",
+        "predictions.csv",
+        "**/predictions.csv",
+        f"**/v93_action_cards_{market}.csv",
+        f"**/candidate_universe_{market}.csv",
+        f"candidate_universe_{market}.csv",
+    ]
+    return [(path, "FALLBACK") for path in _many(*fallback_patterns, max_files=120)]
+
+
+@lru_cache(maxsize=4)
+def _company_paths(market: str) -> tuple[Path, ...]:
+    markets = ["kr", "us"] if market == "all" else [market]
+    paths: list[Path] = []
+    for item_market in markets:
+        paths.extend(_many(
+            f"**/*company*{item_market}*.csv",
+            f"**/*financial*{item_market}*.csv",
+            f"**/*fundamental*{item_market}*.csv",
+            f"**/*statement*{item_market}*.csv",
+            f"**/v81_company_summary_cards_{item_market}.csv",
+            f"**/v81_financial_statement_{item_market}.csv",
+            max_files=80,
+        ))
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for path in paths:
+        if path not in seen:
+            seen.add(path)
+            unique.append(path)
+    return tuple(unique)
+
+
+def _field_value(row: dict[str, Any], keys: list[str]) -> float:
+    return _num(_text(row, keys, ""))
+
+
+def _missing_fields(item: dict[str, Any]) -> list[str]:
+    fields = [
+        ("EPS", item.get("eps")),
+        ("PER", item.get("per")),
+        ("PBR", item.get("pbr")),
+        ("ROE", item.get("roe")),
+        ("매출", item.get("revenue")),
+        ("영업이익", item.get("operatingProfit")),
+        ("순이익", item.get("netIncome")),
+        ("부채비율", item.get("debtRatio")),
+    ]
+    return [name for name, value in fields if not value]
+
+
+def _symbols_payload(market: str, q: str, watch_only: bool, limit: int) -> dict[str, Any]:
+    market = _market_norm(market)
+    names = _build_name_map()
+    watch = _watch_symbols()
+    query = str(q or "").strip().lower()
+    seen: set[str] = set()
+    items: list[dict[str, Any]] = []
+
+    for row in _all_symbol_rows():
+        sym = _symbol(row)
+        item_market = _infer_market(sym, _text(row, ["market", "시장", "_market"], ""))
+        sym = _symbol(row, item_market)
+        if not sym:
+            continue
+        key = f"{item_market}-{sym}"
+        if key in seen:
+            continue
+        if market != "all" and item_market != market:
+            continue
+        name = _display_name(row, sym, item_market, names)
+        if watch_only and sym not in watch:
+            continue
+        if query and query not in sym.lower() and query not in name.lower():
+            continue
+        seen.add(key)
+        items.append({
+            "id": key,
+            "symbol": sym,
+            "name": name,
+            "market": item_market,
+            "label": f"{name} {sym}",
+            "isWatch": sym in watch,
+            "source": _text(row, ["_source_file"], ""),
+        })
+        if len(items) >= max(1, min(limit, 10000)):
+            break
+
+    items.sort(key=lambda item: (0 if item["isWatch"] else 1, item["market"], item["name"], item["symbol"]))
+    return {"status": "OK" if items else "NO_DATA", "market": market, "count": len(items), "watchCount": len(watch), "items": items}
+
+
+def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
+    market = _market_norm(market)
+    names = _build_name_map()
+    query = str(q or "").strip().lower()
+    seen: set[str] = set()
+    items: list[dict[str, Any]] = []
+    paths = _company_paths(market)
+
+    for path in paths:
+        for row in _read_csv(path, 50000):
+            item_market = _infer_market(_symbol(row), _text(row, ["market", "시장", "_market"], market))
+            if market != "all" and item_market != market:
+                continue
+            sym = _symbol(row, item_market)
+            if not sym:
+                continue
+            key = f"{item_market}-{sym}"
+            if key in seen:
+                continue
+            name = _display_name(row, sym, item_market, names)
+            if query and query not in sym.lower() and query not in name.lower():
+                continue
+
+            item = {
+                "id": f"company-{key}",
+                "symbol": sym,
+                "name": name,
+                "market": item_market,
+                "eps": _field_value(row, ["EPS", "eps", "주당순이익"]),
+                "per": _field_value(row, ["PER", "per"]),
+                "pbr": _field_value(row, ["PBR", "pbr"]),
+                "roe": _field_value(row, ["ROE", "roe"]),
+                "revenue": _field_value(row, ["revenue", "sales", "매출", "매출액"]),
+                "operatingProfit": _field_value(row, ["operatingProfit", "operating_profit", "영업이익"]),
+                "netIncome": _field_value(row, ["netIncome", "net_income", "순이익"]),
+                "debtRatio": _field_value(row, ["debtRatio", "debt_ratio", "부채비율"]),
+                "fundamentalScore": _field_value(row, ["fundamentalScore", "fundamental_score", "score", "펀더멘털점수"]),
+                "flowScore": _field_value(row, ["flowScore", "flow_score", "수급점수"]),
+                "source": path.name,
+            }
+            item["missingFields"] = _missing_fields(item)
+            item["missingReason"] = "CSV 누락" if item["missingFields"] else ""
+            item["dataStatus"] = "PARTIAL" if item["missingFields"] else "NORMAL"
+
+            seen.add(key)
+            items.append(item)
+            if len(items) >= max(1, min(limit, 10000)):
+                return {
+                    "status": "OK",
+                    "market": market,
+                    "count": len(items),
+                    "items": items,
+                    "sourceFiles": [p.name for p in paths[:20]],
+                }
+
+    return {"status": "OK" if items else "NO_DATA", "market": market, "count": len(items), "items": items, "sourceFiles": [p.name for p in paths[:20]]}
+
+
+def _recommendation_item(
+    row: dict[str, Any],
+    market: str,
+    mode: str,
+    horizon: str,
+    source_status: str,
+    source_mode: str,
+    source_horizon: str,
+    names: dict[str, str],
+    quotes: dict[str, dict[str, Any]],
+    watch: set[str],
+) -> dict[str, Any] | None:
+    sym = _symbol(row, market)
+    if not sym:
+        return None
+    if market == "kr" and not re.fullmatch(r"\d{6}", sym):
+        return None
+    if market == "us" and not re.fullmatch(r"[A-Z.\-]{1,12}", sym):
+        return None
+
+    quote = quotes.get(sym, {})
+    current = _num(_text(quote, PRICE_KEYS, "")) or _num(_text(row, PRICE_KEYS, ""))
+    entry = _num(_text(row, ["entry", "entry_price", "entryPrice", "preferred_entry", "technical_entry", "support1", "진입가"], ""))
+    if entry <= 0:
+        entry = current
+    stop = _num(_text(row, ["stop", "stop_loss", "stopLoss", "손절가"], ""))
+    if stop <= 0 and entry > 0:
+        stop = entry * 0.97
+    target = _num(_text(row, ["target", "target_price", "targetPrice", "take_profit1", "resistance1", "목표가"], ""))
+    if target <= 0 and entry > 0:
+        target = entry * 1.07
+    expected = _num(_text(row, ["expectedPrice", "expected_price", "예상가"], "")) or target
+
+    probability = _text(row, ["probability", "win_probability", "probSwing", "prob_3d", "prob_5d", "확률"], "58")
+    price_status = "NORMAL" if current > 0 else "PARTIAL"
+    fallback_reason = ""
+    if source_status == "FALLBACK":
+        fallback_reason = "요청한 투자 성향/기간과 정확히 일치하는 추천 파일이 없어 대체 소스를 사용했습니다."
+    if current <= 0:
+        fallback_reason = (fallback_reason + " " if fallback_reason else "") + "현재가 매핑 필요."
+
+    return {
+        "id": f"{market.upper()}-{sym}",
+        "symbol": sym,
+        "name": _display_name(row, sym, market, names),
+        "market": market,
+        "mode": mode,
+        "modeLabel": MODE_LABEL[mode],
+        "horizon": horizon,
+        "horizonLabel": HORIZON_LABEL[horizon],
+        "sourceMode": source_mode or mode,
+        "sourceHorizon": source_horizon or horizon,
+        "sourceStatus": source_status,
+        "fallbackReason": fallback_reason,
+        "currentPrice": current if current > 0 else None,
+        "currentPriceText": _price_text(current, market),
+        "entry": entry if entry > 0 else None,
+        "entryText": _optional_price_text(entry, market),
+        "stop": stop if stop > 0 else None,
+        "stopText": _optional_price_text(stop, market),
+        "target": target if target > 0 else None,
+        "targetText": _optional_price_text(target, market),
+        "expectedPrice": expected if expected > 0 else None,
+        "expectedPriceText": _optional_price_text(expected, market),
+        "probability": _num(probability, 0),
+        "probabilityText": _pct_text(probability),
+        "prob1d": _pct_text(_text(row, ["prob1d", "prob_1d"], probability)),
+        "prob3d": _pct_text(_text(row, ["prob3d", "prob_3d"], probability)),
+        "prob5d": _pct_text(_text(row, ["prob5d", "prob_5d"], probability)),
+        "priceDataStatus": price_status,
+        "dataStatus": price_status,
+        "warning_reason": "가격 일부 누락" if price_status == "PARTIAL" else "",
+        "priceSource": _text(quote, ["_source_file"], "") or _text(row, ["_source_file", "sourceFile", "source"], ""),
+        "source": _text(row, ["_source_file", "sourceFile", "source"], ""),
+        "isWatch": sym in watch,
+    }
+def _recommendation_item(
+    row: dict[str, Any],
+    market: str,
+    mode: str,
+    horizon: str,
+    source_status: str,
+    source_mode: str,
+    source_horizon: str,
+    names: dict[str, str],
+    quotes: dict[str, dict[str, Any]],
+    watch: set[str],
+) -> dict[str, Any] | None:
+    sym = _symbol(row, market)
+    if not sym:
+        return None
+    if market == "kr" and not re.fullmatch(r"\d{6}", sym):
+        return None
+    if market == "us" and not re.fullmatch(r"[A-Z.\-]{1,12}", sym):
+        return None
+
+    quote = quotes.get(sym, {})
+    computed_fields: list[str] = []
+    profile = _strategy_profile(mode)
+
+    current = _num(_text(quote, PRICE_KEYS, "")) or _num(_text(row, PRICE_KEYS, ""))
+    entry = _num(_text(row, ["entry", "entry_price", "entryPrice", "preferred_entry", "technical_entry", "support1"], ""))
+    if entry <= 0:
+        entry = current
+        if entry > 0:
+            _computed_append(computed_fields, "entry_from_current_price")
+    if current <= 0 and entry > 0:
+        current = entry
+        _computed_append(computed_fields, "current_price_from_entry")
+
+    stop = _num(_text(row, ["stop", "stop_loss", "stopLoss", "stopPrice"], ""))
+    if stop <= 0 and entry > 0:
+        stop = entry * profile["stop"]
+        _computed_append(computed_fields, "stop_from_strategy")
+
+    target = _num(_text(row, ["target", "target_price", "targetPrice", "take_profit1", "resistance1"], ""))
+    if target <= 0 and entry > 0:
+        target = entry * profile["target"]
+        _computed_append(computed_fields, "target_from_strategy")
+
+    expected = _num(_text(row, ["expectedPrice", "expected_price"], ""))
+    if expected <= 0:
+        expected = target if target > 0 else current * (1 + max(profile["target"] - 1, 0.03))
+        if expected > 0:
+            _computed_append(computed_fields, "expected_price_from_target")
+
+    probability_raw = _text(row, ["probability", "win_probability", "probSwing", "prob_3d", "prob_5d"], "")
+    probability = round(_clamp(_prob_number(probability_raw, 58.0) + profile["prob"]), 1)
+    if not probability_raw:
+        _computed_append(computed_fields, "probability_from_default")
+    prob1d = round(_clamp(probability - 1.0), 1)
+    prob3d = round(_clamp(probability + (0.5 if horizon == "short" else 1.0)), 1)
+    prob5d = round(_clamp(probability + (1.5 if horizon == "swing" else 0.5)), 1)
+    prob10d = round(_clamp(probability + (2.0 if horizon == "mid" else 1.0)), 1)
+
+    price_status = "NORMAL" if not computed_fields else "PARTIAL"
+    fallback_reason = ""
+    if source_status == "FALLBACK":
+        fallback_reason = "요청한 투자 성향/기간과 정확히 일치하는 추천 파일이 없어 대체 소스를 사용했습니다."
+    if "current_price_from_entry" in computed_fields:
+        fallback_reason = (fallback_reason + " " if fallback_reason else "") + "현재가는 진입가 기준으로 보강했습니다."
+
+    return {
+        "id": f"{market.upper()}-{sym}",
+        "symbol": sym,
+        "name": _display_name(row, sym, market, names),
+        "market": market,
+        "mode": mode,
+        "modeLabel": MODE_LABEL[mode],
+        "horizon": horizon,
+        "horizonLabel": HORIZON_LABEL[horizon],
+        "sourceMode": source_mode or mode,
+        "sourceHorizon": source_horizon or horizon,
+        "sourceStatus": source_status,
+        "fallbackReason": fallback_reason,
+        "currentPrice": current if current > 0 else None,
+        "currentPriceText": _price_text(current, market),
+        "entry": entry if entry > 0 else None,
+        "entryText": _optional_price_text(entry, market),
+        "stop": stop if stop > 0 else None,
+        "stopText": _optional_price_text(stop, market),
+        "target": target if target > 0 else None,
+        "targetText": _optional_price_text(target, market),
+        "expectedPrice": expected if expected > 0 else None,
+        "expectedPriceText": _optional_price_text(expected, market),
+        "probability": probability,
+        "probabilityText": _pct_text(probability),
+        "prob1d": _pct_text(_text(row, ["prob1d", "prob_1d"], prob1d)),
+        "prob3d": _pct_text(_text(row, ["prob3d", "prob_3d"], prob3d)),
+        "prob5d": _pct_text(_text(row, ["prob5d", "prob_5d"], prob5d)),
+        "prob10d": _pct_text(_text(row, ["prob10d", "prob_10d"], prob10d)),
+        "priceDataStatus": price_status,
+        "dataStatus": price_status,
+        "warning_reason": "자동 보강값 포함" if computed_fields else "",
+        "priceSource": _text(quote, ["_source_file"], "") or _text(row, ["_source_file", "sourceFile", "source"], ""),
+        "source": _text(row, ["_source_file", "sourceFile", "source"], ""),
+        "computedFields": computed_fields,
+        "isWatch": sym in watch,
+    }
+
+
+def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
+    market = _market_norm(market)
+    mode = _mode_norm(mode)
+    horizon = _horizon_norm(horizon)
+
+    if market == "all":
+        merged: list[dict[str, Any]] = []
+        source_files: list[str] = []
+        for item_market in ("kr", "us"):
+            payload = _recommendations_payload(item_market, mode, horizon, cash, limit, watch_only)
+            merged.extend(payload.get("items", []))
+            source_files.extend(payload.get("sourceFiles", []))
+        deduped: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for item in merged:
+            key = f"{item.get('market')}-{item.get('symbol')}"
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+            if len(deduped) >= max(1, min(limit, 1000)):
+                break
+        return {
+            "status": "OK" if deduped else "NO_DATA",
+            "market": "all",
+            "mode": mode,
+            "horizon": horizon,
+            "count": len(deduped),
+            "uniqueCount": len(seen),
+            "hiddenCount": 0,
+            "sourceFiles": source_files[:20],
+            "items": deduped,
+        }
+
+    names = _build_name_map()
+    quotes = _quote_index(market)
+    watch = _watch_symbols()
+    seen: set[str] = set()
+    items: list[dict[str, Any]] = []
+    source_files: list[str] = []
+
+    for path, source_status in _recommendation_paths(market, mode, horizon):
+        if path.name not in source_files:
+            source_files.append(path.name)
+        rows = _read_csv(path, 50000)
+        for row in rows:
+            source_mode, source_horizon = _extract_source_mode_horizon(path, row)
+            if source_status == "MATCH":
+                source_mode = source_mode or mode
+                source_horizon = source_horizon or horizon
+
+            if source_status == "FALLBACK":
+                if source_mode and source_mode != mode:
+                    continue
+                if source_horizon and source_horizon != horizon:
+                    continue
+
+            sym = _symbol(row, market)
+            key = f"{market}-{sym}"
+            if not sym or key in seen:
+                continue
+            if watch_only and sym not in watch:
+                continue
+
+            item = _recommendation_item(row, market, mode, horizon, source_status, source_mode, source_horizon, names, quotes, watch)
+            if not item:
+                continue
+            seen.add(key)
+            items.append(item)
+            if len(items) >= max(1, min(limit, 1000)):
+                break
+        if len(items) >= max(1, min(limit, 1000)):
+            break
+
+    return {
+        "status": "OK" if items else "NO_DATA",
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "count": len(items),
+        "uniqueCount": len(seen),
+        "hiddenCount": 0,
+        "sourceFiles": source_files[:20],
+        "items": items,
+    }
+
+
+def _audit_payload() -> dict[str, Any]:
+    specs = {
+        "candidateKR": ["candidate_universe_kr.csv", "**/candidate_universe_kr.csv", "**/*candidate*kr*.csv"],
+        "candidateUS": ["candidate_universe_us.csv", "**/candidate_universe_us.csv", "**/*candidate*us*.csv"],
+        "watchlist": ["daily_watch_selection.json", "**/daily_watch_selection.json", "*watch*.csv", "**/*watch*.csv"],
+        "ohlcv": ["**/ohlcv/*.csv", "**/*ohlcv*.csv"],
+        "companyKR": ["**/*company*kr*.csv", "**/*financial*kr*.csv", "**/*statement*kr*.csv"],
+        "companyUS": ["**/*company*us*.csv", "**/*financial*us*.csv", "**/*statement*us*.csv"],
+        "virtual": ["**/*virtual*.csv", "paper_trading*.csv", "**/*backtest*.csv", "**/*trading*.csv"],
+        "predictions": ["predictions.csv", "**/predictions.csv", "**/prediction*.csv"],
+        "news": ["**/*news*.csv"],
+        "disclosures": ["**/*disclosure*.csv", "**/disclosures*.csv"],
+    }
+    items: list[dict[str, Any]] = []
+    for name, patterns in specs.items():
+        paths = _many(*patterns, max_files=40)
+        records = 0
+        for path in paths[:5]:
+            records += len(_read_csv(path, 20000)) if path.suffix.lower() == ".csv" else 1
+        newest = paths[0] if paths else None
+        items.append({
+            "name": name,
+            "status": "OK" if paths else "NO_DATA",
+            "path": _safe_rel(newest) if newest else "",
+            "count": records,
+            "modified": datetime.fromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S") if newest else "",
+        })
+    return {"status": "OK", "root": str(_app_root()), "searchRoots": [str(path) for path in _search_roots()], "items": items}
+
+
+def _github_payload() -> dict[str, Any]:
+    app_root = _app_root()
+    repo = app_root if (app_root / ".git").exists() else app_root.parent
+    is_repo = (repo / ".git").exists()
+    branch = ""
+    remote = ""
+    if is_repo:
+        try:
+            branch = subprocess.check_output(["git", "branch", "--show-current"], cwd=repo, text=True, stderr=subprocess.DEVNULL).strip()
+        except Exception:
+            pass
+        try:
+            remote = subprocess.check_output(["git", "remote", "-v"], cwd=repo, text=True, stderr=subprocess.DEVNULL).strip().splitlines()[0]
+        except Exception:
+            pass
+    return {"status": "OK", "isGitRepo": is_repo, "branch": branch, "remote": remote, "root": str(repo)}
+
+
+def _safe_payload(fn: Callable[[], dict[str, Any]], endpoint: str) -> dict[str, Any]:
+    try:
+        return fn()
+    except Exception as exc:
+        return {
+            "status": "ERROR",
+            "error": f"{type(exc).__name__}: {exc}",
+            "endpoint": endpoint,
+            "appRoot": str(_app_root()),
+            "searchRoots": [str(path) for path in _search_roots()],
+            "items": [],
+            "count": 0,
+        }
+
+
+def register_mone_v65_api_stabilizer(app: Any) -> None:
+    paths = {
+        "/api/symbols",
+        "/api/watchlist",
+        "/api/company-analysis",
+        "/api/data/audit",
+        "/api/health/github",
+        "/api/final/recommendations",
+        "/api/v1/candidates",
+        "/api/reports/premarket",
+        "/api/reports/intraday",
+        "/api/predictions/table",
+    }
+    app.router.routes = [route for route in app.router.routes if not (isinstance(route, APIRoute) and getattr(route, "path", "") in paths)]
+
+    @app.get("/api/symbols")
+    def symbols(market: str = Query("all"), q: str = Query(""), watchOnly: bool = Query(False), limit: int = Query(10000)) -> dict[str, Any]:
+        return _safe_payload(lambda: _symbols_payload(market, q, watchOnly, limit), "/api/symbols")
+
+    @app.get("/api/watchlist")
+    def watchlist(market: str = Query("all"), limit: int = Query(10000)) -> dict[str, Any]:
+        return _safe_payload(lambda: _symbols_payload(market, "", True, limit), "/api/watchlist")
+
+    @app.get("/api/company-analysis")
+    def company(market: str = Query("all"), limit: int = Query(500), q: str = Query("")) -> dict[str, Any]:
+        return _safe_payload(lambda: _company_payload(market, limit, q), "/api/company-analysis")
+
+    @app.get("/api/data/audit")
+    def audit() -> dict[str, Any]:
+        return _safe_payload(_audit_payload, "/api/data/audit")
+
+    @app.get("/api/health/github")
+    def github() -> dict[str, Any]:
+        return _safe_payload(_github_payload, "/api/health/github")
+
+    @app.get("/api/final/recommendations")
+    def recommendations(
+        market: str = Query("kr"),
+        mode: str = Query("balanced"),
+        horizon: str = Query("swing"),
+        cash: float = Query(0),
+        limit: int = Query(300),
+        watchOnly: bool = Query(False),
+    ) -> dict[str, Any]:
+        return _safe_payload(lambda: _recommendations_payload(market, mode, horizon, cash, limit, watchOnly), "/api/final/recommendations")
+
+    @app.get("/api/v1/candidates")
+    def candidates(
+        market: str = Query("kr"),
+        strategy: str = Query("balanced"),
+        term: str = Query("swing"),
+        cash: float = Query(0),
+        limit: int = Query(300),
+        watchOnly: bool = Query(False),
+    ) -> dict[str, Any]:
+        return _safe_payload(lambda: _recommendations_payload(market, strategy, term, cash, limit, watchOnly), "/api/v1/candidates")
+
+    @app.get("/api/reports/premarket")
+    def premarket(market: str = Query("kr"), mode: str = Query("balanced"), horizon: str = Query("swing"), limit: int = Query(300)) -> dict[str, Any]:
+        payload = _safe_payload(lambda: _recommendations_payload(market, mode, horizon, 0, limit, False), "/api/reports/premarket")
+        payload["reportType"] = "premarket"
+        return payload
+
+    @app.get("/api/reports/intraday")
+    def intraday(market: str = Query("kr"), mode: str = Query("balanced"), horizon: str = Query("swing"), limit: int = Query(300)) -> dict[str, Any]:
+        payload = _safe_payload(lambda: _recommendations_payload(market, mode, horizon, 0, limit, False), "/api/reports/intraday")
+        payload["reportType"] = "intraday"
+        return payload
+
+    @app.get("/api/predictions/table")
+    def predictions(market: str = Query("all"), mode: str = Query("balanced"), horizon: str = Query("swing"), limit: int = Query(300)) -> dict[str, Any]:
+        return _safe_payload(lambda: _recommendations_payload(market, mode, horizon, 0, limit, False), "/api/predictions/table")
