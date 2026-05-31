@@ -9,16 +9,11 @@ const BACKEND_URL =
   "http://127.0.0.1:8050";
 
 type RouteContext = {
-  params: Promise<{ path?: string[] }> | { path?: string[] };
+  params: Promise<{ path?: string[] }>;
 };
 
 async function getPathSegments(context: RouteContext): Promise<string[]> {
-  const rawParams = context?.params;
-  const params =
-    rawParams && typeof (rawParams as Promise<{ path?: string[] }>).then === "function"
-      ? await (rawParams as Promise<{ path?: string[] }>)
-      : (rawParams as { path?: string[] } | undefined);
-
+  const params = await context.params;
   return Array.isArray(params?.path) ? params.path : [];
 }
 
