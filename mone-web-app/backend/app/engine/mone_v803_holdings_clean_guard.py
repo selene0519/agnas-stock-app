@@ -1,9 +1,43 @@
 from __future__ import annotations
 
+import csv
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from fastapi import Query
 from fastapi.routing import APIRoute
+
+
+def _repo_root() -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "reports").exists() and (parent / "mone-web-app").exists():
+            return parent
+    return here.parents[4]
+
+
+def _read_csv(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+        try:
+            with path.open("r", encoding=enc, newline="") as f:
+                return [dict(row) for row in csv.DictReader(f)]
+        except Exception:
+            continue
+    return []
+
+
+def _text(row: dict[str, Any], keys: list[str], default: str = "") -> str:
+    lower = {str(k).lower(): v for k, v in row.items()}
+    for key in keys:
+        if key in row and row[key] is not None and str(row[key]).strip():
+            return str(row[key]).strip()
+        low_key = key.lower()
+        if low_key in lower and lower[low_key] is not None and str(lower[low_key]).strip():
+            return str(lower[low_key]).strip()
+    return default
 
 
 def _num(value: Any) -> float:
@@ -47,6 +81,34 @@ def _dedupe(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         seen.add(key)
         out.append({**item, "symbol": symbol, "market": market})
     return out
+
+
+def _load_position_rows(market: str) -> list[dict[str, Any]]:
+    root = _repo_root()
+    markets = ["kr", "us"] if market == "all" else [market]
+    rows: list[dict[str, Any]] = []
+    for item_market in markets:
+        path = root / "reports" / f"v93_position_cards_{item_market}.csv"
+        for row in _read_csv(path):
+            symbol = str(_text(row, ["symbol", "ticker", "code", "종목코드"], "")).upper()
+            if not symbol:
+                continue
+            rows.append({
+                "id": f"{item_market}-{symbol}",
+                "symbol": symbol,
+                "name": _text(row, ["name", "종목명"], symbol),
+                "market": item_market,
+                "quantity": _num(_text(row, ["quantity", "보유수량"], "0")),
+                "avgPrice": _num(_text(row, ["avg_price", "avgPrice", "평균단가"], "0")),
+                "currentPrice": _num(_text(row, ["current_price", "last_price", "currentPrice", "현재가"], "0")),
+                "currentPriceText": _text(row, ["현재가", "currentPriceText"], ""),
+                "changePctText": _text(row, ["수익률", "changePctText"], ""),
+                "pnlText": _text(row, ["평가손익", "pnlText"], ""),
+                "source": path.name,
+                "quoteSource": _text(row, ["가격출처", "quote_source_label"], ""),
+                "dataStatus": _text(row, ["data_status", "price_data_status"], "NORMAL"),
+            })
+    return rows
 
 
 def _enrich_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -155,15 +217,12 @@ def _summary(items: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _fallback_payload(market: str, limit: int) -> dict[str, Any]:
-    from app.engine.mone_v77_holdings_risk import holdings_payload
-
-    payload = holdings_payload(market, limit)
-    items = [_enrich_item(item) for item in _dedupe(list(payload.get("items") or []))]
+@lru_cache(maxsize=12)
+def _fallback_payload_cached(market: str, limit: int) -> dict[str, Any]:
+    items = [_enrich_item(item) for item in _dedupe(_load_position_rows(market))]
     items = items[: max(1, min(limit, 1000))]
     return {
-        **payload,
-        "status": "OK" if items else payload.get("status", "NO_DATA"),
+        "status": "OK" if items else "NO_DATA",
         "routeVersion": "v80.2-clean",
         "market": market,
         "count": len(items),
@@ -185,4 +244,4 @@ def register_mone_v803_holdings_clean_guard(app: Any) -> None:
 
     @app.get(path)
     def holdings_clean(market: str = Query("all"), limit: int = Query(500)) -> dict[str, Any]:
-        return _fallback_payload(market, limit)
+        return _fallback_payload_cached(market, limit)

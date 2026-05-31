@@ -554,6 +554,12 @@ except Exception as exc:
     print("[MONE v8.0] company/prediction route registration failed:", exc)
 
 try:
+    from app.engine.mone_v65_api_stabilizer import register_mone_v65_api_stabilizer
+    register_mone_v65_api_stabilizer(app)
+except Exception as exc:
+    print("[MONE v6.5 final] api stabilizer registration failed:", exc)
+
+try:
     from app.engine.mone_v802_holdings_clean import register_mone_v802_holdings_clean_routes
     register_mone_v802_holdings_clean_routes(app)
 except Exception as exc:
