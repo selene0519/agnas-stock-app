@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BellRing, RefreshCw, ShieldAlert, X } from "lucide-react";
 import { mone } from "@/lib/api";
 import { priceSessionLabel, statusLabel } from "@/lib/utils";
+import { displayName, normalizeMarket, normalizeSymbol } from "@/lib/moneDisplay";
 
 type Market = "kr" | "us" | "all";
 
@@ -12,13 +13,15 @@ function labelSession(session?: string, fallback?: string) {
   return priceSessionLabel(session) || fallback || session;
 }
 
-export default function SessionSafetyBanner({
-  market = "kr",
-  onRefresh,
-}: {
-  market?: Market;
-  onRefresh?: () => void;
-}) {
+function alertTitle(alert: any) {
+  const symbol = normalizeSymbol(alert);
+  const market = normalizeMarket(alert.market, symbol);
+  const name = displayName(symbol, market, alert.name || alert.company);
+  const kind = String(alert.message || alert.type || "진입가 임박").replace(symbol, "").trim() || "진입가 임박";
+  return `${kind}: ${name}`;
+}
+
+export default function SessionSafetyBanner({ market = "kr", onRefresh }: { market?: Market; onRefresh?: () => void }) {
   const [quality, setQuality] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [hidden, setHidden] = useState(false);
@@ -39,12 +42,7 @@ export default function SessionSafetyBanner({
       window.dispatchEvent(new CustomEvent("mone-data-quality", { detail: payload }));
       onRefresh?.();
     } catch (error) {
-      const payload = {
-        status: "ERROR",
-        dataStatus: "ERROR",
-        killSwitch: true,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      const payload = { status: "ERROR", dataStatus: "ERROR", killSwitch: true, error: error instanceof Error ? error.message : String(error) };
       setQuality(payload);
       window.localStorage.setItem("mone_kill_switch", "1");
       window.dispatchEvent(new CustomEvent("mone-data-quality", { detail: payload }));
@@ -82,9 +80,7 @@ export default function SessionSafetyBanner({
               <ShieldAlert size={16} />
               <span className="text-sm font-bold">데이터 안전장치 작동 · 주문 판단 중지</span>
             </div>
-            <p className="mt-1 text-xs text-red-200">
-              STALE / NO_DATA / ERROR 상태에서는 추천 카드와 주문 가이드를 사용하지 마세요.
-            </p>
+            <p className="mt-1 text-xs text-red-200">STALE / NO_DATA / ERROR 상태에서는 추천 카드와 주문 가이드를 사용하지 마세요.</p>
           </div>
         </div>
       )}
@@ -111,23 +107,18 @@ export default function SessionSafetyBanner({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {alerts.slice(0, 3).map((alert) => (
-              <span key={`${alert.symbol}-${alert.type}`} className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
+            {alerts.slice(0, 3).map((alert, index) => (
+              <span key={`${normalizeSymbol(alert)}-${alert.type || index}`} className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
                 <BellRing size={11} />
-                {alert.message}: {alert.symbol}
+                {alertTitle(alert)}
+                {normalizeSymbol(alert) && <span className="font-mono text-amber-300/70">{normalizeSymbol(alert)}</span>}
               </span>
             ))}
-            <button
-              onClick={refresh}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800"
-            >
+            <button onClick={refresh} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800">
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
               동기화
             </button>
-            <button
-              onClick={() => setHidden(true)}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-800 px-3 py-2 text-xs text-slate-400 hover:text-slate-200"
-            >
+            <button onClick={() => setHidden(true)} className="inline-flex items-center gap-1 rounded-xl border border-slate-800 px-3 py-2 text-xs text-slate-400 hover:text-slate-200">
               <X size={12} />
               숨김
             </button>
