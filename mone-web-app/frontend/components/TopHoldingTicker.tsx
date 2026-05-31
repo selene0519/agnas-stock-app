@@ -3,125 +3,63 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { mone } from "@/lib/api";
+import { dedupeBySymbol, displayName, formatMoney, normalizeMarket, normalizeSymbol, pctText, toNumber } from "@/lib/moneDisplay";
 
 type TickerItem = {
   id: string;
   symbol: string;
   name: string;
-  market: string;
-  currentPrice?: number;
-  currentPriceText?: string;
-  changePctText?: string;
+  market: "kr" | "us";
+  currentPriceText: string;
+  changePctText: string;
 };
 
-const KR_NAME_MAP: Record<string, string> = {
-  "005930": "삼성전자",
-  "000660": "SK하이닉스",
-  "005380": "현대차",
-  "003490": "대한항공",
-  "373220": "LG에너지솔루션",
-  "015760": "한국전력",
-  "058470": "리노공업",
-  "006400": "삼성SDI",
-  "035420": "NAVER",
-  "035720": "카카오",
-  "207940": "삼성바이오로직스",
-  "196170": "알테오젠",
-  "086520": "에코프로",
-};
-
-const US_NAME_MAP: Record<string, string> = {
-  NVDA: "NVIDIA",
-  GOOGL: "Alphabet",
-  GOOG: "Alphabet",
-  TSLA: "Tesla",
-  AAPL: "Apple",
-  MSFT: "Microsoft",
-  AMZN: "Amazon",
-};
-
-function displayName(symbol: string, market: string, raw?: string) {
-  const sym = String(symbol || "").toUpperCase();
-  const mapped = market === "kr" ? KR_NAME_MAP[sym] : US_NAME_MAP[sym];
-  const name = String(raw || "").trim();
-  return mapped || (name && name !== sym ? name : sym);
+function derivePrice(row: any, market: string) {
+  const text = String(row.currentPriceText || row.priceText || "").trim();
+  if (text && text !== "-" && !text.includes("산출")) return text.replace(/₩/g, "");
+  return formatMoney(row.currentPrice ?? row.price, market, "가격 확인 필요");
 }
 
-function priceText(value: unknown, market: string, fallback?: string) {
-  const n = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
-  if (Number.isFinite(n) && n > 0) {
-    return market === "us" ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `${Math.round(n).toLocaleString("ko-KR")}원`;
-  }
-  return fallback && fallback !== "-" ? fallback : "현재가 산출 필요";
+function deriveChange(row: any) {
+  const direct = String(row.changePctText || row.changeText || "").trim();
+  if (direct && direct !== "-" && direct.includes("%")) return direct;
+  const current = toNumber(row.currentPrice ?? row.price ?? row.currentPriceText);
+  const prev = toNumber(row.prevClose ?? row.previousClose ?? row.prevCloseText);
+  if (current !== null && prev !== null && prev > 0) return pctText(((current - prev) / prev) * 100);
+  return "변동률 확인 필요";
 }
 
-function unique(items: TickerItem[]) {
-  const seen = new Set<string>();
-  const out: TickerItem[] = [];
-  for (const item of items) {
-    const symbol = String(item.symbol || "").toUpperCase();
-    const market = String(item.market || (symbol.match(/^\d{6}$/) ? "kr" : "us")).toLowerCase();
-    const key = `${market}-${symbol}`;
-    if (!symbol || seen.has(key)) continue;
-    seen.add(key);
-    out.push({ ...item, symbol, market, name: displayName(symbol, market, item.name) });
-  }
-  return out;
-}
-
-async function fetchHoldings(): Promise<TickerItem[]> {
+async function fetchTickerRows(): Promise<TickerItem[]> {
   const data: any = await mone.holdingsClean({ market: "all", limit: 50 });
-  const rows = Array.isArray(data?.items) ? data.items : [];
+  const rows = dedupeBySymbol(Array.isArray(data?.items) ? data.items : []);
   return rows.map((row: any, index: number) => {
-    const symbol = String(row.symbol || row.code || "").toUpperCase();
-    const market = String(row.market || (symbol.match(/^\d{6}$/) ? "kr" : "us")).toLowerCase();
+    const symbol = normalizeSymbol(row);
+    const market = normalizeMarket(row.market, symbol);
     return {
       id: `holding-${market}-${symbol}-${index}`,
       symbol,
-      name: displayName(symbol, market, row.name),
       market,
-      currentPrice: Number(row.currentPrice || 0),
-      currentPriceText: priceText(row.currentPrice, market, row.currentPriceText),
-      changePctText: row.changePctText || "+0.00%",
-    };
-  });
-}
-
-async function fetchWatch(): Promise<TickerItem[]> {
-  const data: any = await mone.symbols({ market: "all", limit: 20 });
-  const rows = Array.isArray(data?.items) ? data.items : [];
-  return rows.map((row: any, index: number) => {
-    const symbol = String(row.symbol || "").toUpperCase();
-    const market = String(row.market || (symbol.match(/^\d{6}$/) ? "kr" : "us")).toLowerCase();
-    return {
-      id: `watch-${market}-${symbol}-${index}`,
-      symbol,
-      name: displayName(symbol, market, row.name),
-      market,
-      currentPrice: Number(row.currentPrice || row.price || 0),
-      currentPriceText: priceText(row.currentPrice || row.price, market, row.currentPriceText),
-      changePctText: row.changePctText || "+0.00%",
+      name: displayName(row),
+      currentPriceText: derivePrice(row, market),
+      changePctText: deriveChange(row),
     };
   });
 }
 
 export default function TopHoldingTicker() {
   const [items, setItems] = useState<TickerItem[]>([]);
-  const [source, setSource] = useState("불러오는 중");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function load() {
     setLoading(true);
+    setError("");
     try {
-      const holdings = unique(await fetchHoldings());
-      if (holdings.length) {
-        setItems(holdings.slice(0, 12));
-        setSource("보유종목");
-        return;
-      }
-      const watch = unique(await fetchWatch());
-      setItems(watch.slice(0, 12));
-      setSource("관심종목");
+      const holdings = await fetchTickerRows();
+      setItems(holdings.slice(0, 13));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -133,33 +71,39 @@ export default function TopHoldingTicker() {
     return () => window.removeEventListener("focus", load);
   }, []);
 
-  const displayItems = useMemo(() => {
-    const fallback: TickerItem[] = [
-      { id: "fallback-kr-005930", symbol: "005930", name: "삼성전자", market: "kr", currentPrice: 0, currentPriceText: "현재가 산출 필요", changePctText: "+0.00%" },
-      { id: "fallback-kr-000660", symbol: "000660", name: "SK하이닉스", market: "kr", currentPrice: 0, currentPriceText: "현재가 산출 필요", changePctText: "+0.00%" },
-    ];
-    const base = items.length ? items : fallback;
-    return [...base, ...base];
-  }, [items]);
+  const displayItems = useMemo(() => (items.length ? [...items, ...items] : []), [items]);
 
   return (
     <div className="flex h-8 min-w-0 flex-1 items-center gap-3 overflow-hidden">
       <span className="hidden shrink-0 rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-slate-500 lg:inline">
-        {source}
+        보유 티커 {items.length ? `${items.length}개` : loading ? "로딩" : "대기"}
       </span>
+
       <div className="relative min-w-0 flex-1 overflow-hidden" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
-        <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-7 whitespace-nowrap">
-          {displayItems.map((item, index) => (
-            <span key={`${item.id}-${index}`} className="inline-flex items-center gap-2 text-xs">
-              <span className="font-semibold text-slate-300">{displayName(item.symbol, item.market, item.name)}</span>
-              <span className="font-mono text-slate-100">{item.currentPriceText || priceText(item.currentPrice, item.market)}</span>
-              <span className={(item.changePctText || "").startsWith("-") ? "font-mono text-red-400" : "font-mono text-emerald-400"}>
-                {item.changePctText || "+0.00%"}
-              </span>
-            </span>
-          ))}
-        </div>
+        {error ? (
+          <div className="text-xs text-red-300">티커 데이터 연결 확인 필요</div>
+        ) : displayItems.length === 0 ? (
+          <div className="text-xs text-slate-500">보유종목 티커를 불러오는 중...</div>
+        ) : (
+          <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-7 whitespace-nowrap">
+            {displayItems.map((item, index) => {
+              const isDown = item.changePctText.startsWith("-");
+              const needsCheck = item.currentPriceText.includes("확인") || item.changePctText.includes("확인");
+              return (
+                <span key={`${item.id}-${index}`} className="inline-flex items-center gap-2 text-xs">
+                  <span className="font-semibold text-slate-200">{item.name}</span>
+                  <span className="font-mono text-slate-500">{item.symbol}</span>
+                  <span className={`font-mono ${needsCheck ? "text-amber-300" : "text-slate-100"}`}>{item.currentPriceText}</span>
+                  <span className={isDown ? "font-mono text-red-400" : needsCheck ? "font-mono text-amber-300" : "font-mono text-emerald-400"}>
+                    {item.changePctText}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        )}
       </div>
+
       <button onClick={load} className="shrink-0 rounded-lg border border-slate-800 bg-slate-900/70 p-1.5 text-slate-500 hover:text-slate-200" title="상단 티커 새로고침">
         <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
       </button>
