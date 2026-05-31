@@ -1,21 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Sidebar, { type PageId } from "@/components/Sidebar";
-import TopHoldingTicker from "@/components/TopHoldingTicker";
-import SessionSafetyBanner from "@/components/SessionSafetyBanner";
-import CashInputBar from "@/components/CashInputBar";
-import HomePage from "@/components/pages/HomePage";
-import ReportPage from "@/components/pages/ReportPage";
-import StocksPage from "@/components/pages/StocksPage";
-import HoldingsPage from "@/components/pages/HoldingsPage";
-import ChartPage from "@/components/pages/ChartPage";
-import NewsPage from "@/components/pages/NewsPage";
-import PredictionPage from "@/components/pages/PredictionPage";
-import AdvancedPage from "@/components/pages/AdvancedPage";
-import AdminPage from "@/components/pages/AdminPage";
-import { loadRealMoneData, mockMarketSummary } from "@/lib/mockData";
-import { timeAgo } from "@/lib/utils";
+import Sidebar, { type PageId } from "../components/Sidebar";
+import TopHoldingTicker from "../components/TopHoldingTicker";
+import SessionSafetyBanner from "../components/SessionSafetyBanner";
+import CashInputBar from "../components/CashInputBar";
+import HomePage from "../components/pages/HomePage";
+import ReportPage from "../components/pages/ReportPage";
+import StocksPage from "../components/pages/StocksPage";
+import HoldingsPage from "../components/pages/HoldingsPage";
+import ChartPage from "../components/pages/ChartPage";
+import NewsPage from "../components/pages/NewsPage";
+import PredictionPage from "../components/pages/PredictionPage";
+import AdvancedPage from "../components/pages/AdvancedPage";
+import AdminPage from "../components/pages/AdminPage";
+import { loadRealMoneData, mockMarketSummary } from "../lib/mockData";
+import { timeAgo } from "../lib/utils";
 import { Bell } from "lucide-react";
 
 const initialNotifications = [
