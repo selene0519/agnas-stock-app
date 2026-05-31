@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 
+from app.engine import backtest, correction, data_quality, risk, session
 from app.services import advanced
 from app.services import data_loader as data
 from app.services import final_engine
@@ -16,7 +18,12 @@ app = FastAPI(title="MONE Web API", version="3.6.1-operational-stable")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -408,3 +415,152 @@ def api_quotes_refresh(
     max_symbols: int = Query(80, ge=1, le=150),
 ) -> dict:
     return quotes.refresh_quotes(market=market, symbols=symbols, max_symbols=max_symbols)
+
+
+def _remove_routes(paths: set[str]) -> None:
+    app.router.routes = [
+        route
+        for route in app.router.routes
+        if not (isinstance(route, APIRoute) and getattr(route, "path", "") in paths)
+    ]
+
+
+_remove_routes(
+    {
+        "/api/session",
+        "/api/final/data-quality",
+        "/api/v1/candidates",
+        "/api/backtest/trades",
+        "/api/backtest/summary",
+        "/api/virtual/summary",
+        "/api/admin/pipeline",
+        "/api/admin/correction",
+        "/api/ohlcv",
+    }
+)
+
+
+@app.get("/api/session")
+def api_session_core(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return {"status": "OK", **session.get_price_session(_market(market))}
+
+
+@app.get("/api/final/data-quality")
+def api_final_data_quality_core(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return data_quality.data_quality(_market(market))
+
+
+@app.get("/api/v1/candidates")
+def api_v1_candidates_core(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    strategy: str = Query("balanced"),
+    term: str = Query("swing"),
+    cash: float = Query(0, ge=0),
+    limit: int = Query(30, ge=1, le=100),
+) -> dict:
+    return risk.candidates(_market(market), strategy, term, cash, limit)
+
+
+@app.get("/api/backtest/trades")
+def api_backtest_trades_core(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+    limit: int = Query(250, ge=1, le=1000),
+) -> dict:
+    return backtest.trades(_market(market), mode, horizon, limit)
+
+
+@app.get("/api/backtest/summary")
+def api_backtest_summary_core(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+) -> dict:
+    return backtest.summary(_market(market), mode, horizon)
+
+
+@app.get("/api/virtual/summary")
+def api_virtual_summary_core(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+) -> dict:
+    return backtest.summary(_market(market), mode, horizon)
+
+
+@app.get("/api/admin/pipeline")
+def api_admin_pipeline_core(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    return data_quality.admin_pipeline(_market(market))
+
+
+@app.get("/api/admin/correction")
+def api_admin_correction_core(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+) -> dict:
+    return correction.correction_summary(_market(market), mode, horizon)
+
+
+@app.get("/api/ohlcv")
+def api_ohlcv_core(
+    symbol: str = Query(..., min_length=1),
+    market: str = Query("kr"),
+    limit: int = Query(120, ge=1, le=500),
+) -> dict:
+    normalized_market = _market(market)
+    payload = data.chart_data(symbol, normalized_market)
+    rows = payload.get("items") or payload.get("rows") or []
+    payload["items"] = rows[-limit:] if len(rows) > limit else rows
+    payload["count"] = len(payload["items"])
+    return payload
+
+
+try:
+    from app.engine.mone_v55_backend_aliases import register_mone_v55_backend_aliases
+    register_mone_v55_backend_aliases(app)
+except Exception as exc:
+    print("[MONE v5.5] backend alias registration failed:", exc)
+
+try:
+    from app.engine.mone_v61_virtual_summary import register_mone_v61_virtual_summary
+    register_mone_v61_virtual_summary(app)
+except Exception as exc:
+    print("[MONE v6.1] virtual summary registration failed:", exc)
+
+try:
+    from app.engine.mone_v65_api_stabilizer import register_mone_v65_api_stabilizer
+    register_mone_v65_api_stabilizer(app)
+except Exception as exc:
+    print("[MONE v6.5] api stabilizer registration failed:", exc)
+
+try:
+    from app.engine.mone_v75_session_guard import register_mone_v75_session_guard_routes
+    register_mone_v75_session_guard_routes(app)
+except Exception as exc:
+    print("[MONE v7.5] session guard registration failed:", exc)
+
+try:
+    from app.engine.mone_v77_holdings_risk import register_mone_v77_holdings_routes
+    register_mone_v77_holdings_routes(app)
+except Exception as exc:
+    print("[MONE v7.7] holdings risk registration failed:", exc)
+
+try:
+    from app.engine.mone_v80_company_prediction import register_mone_v80_company_prediction_routes
+    register_mone_v80_company_prediction_routes(app)
+except Exception as exc:
+    print("[MONE v8.0] company/prediction route registration failed:", exc)
+
+try:
+    from app.engine.mone_v802_holdings_clean import register_mone_v802_holdings_clean_routes
+    register_mone_v802_holdings_clean_routes(app)
+except Exception as exc:
+    print("[MONE v8.0.2] holdings clean final route failed:", exc)
+
+try:
+    from app.engine.mone_v803_holdings_clean_guard import register_mone_v803_holdings_clean_guard
+    register_mone_v803_holdings_clean_guard(app)
+except Exception as exc:
+    print("[MONE v8.0.3] holdings clean guard route failed:", exc)
