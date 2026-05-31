@@ -386,10 +386,81 @@ def _computed_append(fields: list[str], name: str) -> None:
         fields.append(name)
 
 
+def _direct_files(*relative_paths: str) -> list[Path]:
+    found: list[Path] = []
+    seen: set[Path] = set()
+    for root in _search_roots():
+        for rel in relative_paths:
+            path = root / rel
+            if path.is_file() and path.stat().st_size > 0 and path not in seen:
+                seen.add(path)
+                found.append(path)
+    return sorted(found, key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+@lru_cache(maxsize=1)
+def _build_name_map() -> dict[str, str]:
+    names: dict[str, str] = {}
+    for symbol, name in KR_NAME_FALLBACK.items():
+        names[f"kr-{symbol}"] = name
+    for symbol, name in US_NAME_FALLBACK.items():
+        names[f"us-{symbol}"] = name
+
+    for market in ("kr", "us"):
+        for path in _direct_files(
+            f"watchlist_{market}.csv",
+            f"watchlist_{market}_growth.csv",
+            f"candidate_universe_{market}.csv",
+            f"data/watchlist_{market}.csv",
+            f"data/watchlist_{market}_growth.csv",
+            f"data/candidate_universe_{market}.csv",
+        ):
+            for row in _read_csv(path, 50000):
+                sym = _symbol(row, market)
+                if not sym:
+                    continue
+                raw_name = _text(row, NAME_KEYS, "")
+                if not _bad_name(raw_name, sym):
+                    names.setdefault(f"{market}-{sym}", raw_name)
+    return names
+
+
+def _quote_files(market: str) -> list[Path]:
+    return _direct_files(
+        f"kis_current_price_{market}.csv",
+        f"intraday_quote_snapshot_{market}.csv",
+        f"data/kis_current_price_{market}.csv",
+        f"data/intraday_quote_snapshot_{market}.csv",
+        f"reports/kis_current_price_{market}.csv",
+        f"reports/intraday_quote_snapshot_{market}.csv",
+    )
+
+
+def _recommendation_paths(market: str, mode: str, horizon: str) -> list[tuple[Path, str]]:
+    exact = _direct_files(
+        f"reports/mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv",
+        f"mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv",
+    )
+    if exact:
+        return [(path, "MATCH") for path in exact]
+
+    fallback = _direct_files(
+        f"reports/mone_v36_final_recommendations_{market}_balanced_{horizon}.csv",
+        f"reports/mone_v36_final_recommendations_{market}_{mode}_swing.csv",
+        f"predictions.csv",
+        f"reports/predictions.csv",
+        f"reports/v93_action_cards_{market}.csv",
+        f"v93_action_cards_{market}.csv",
+        f"candidate_universe_{market}.csv",
+        f"data/candidate_universe_{market}.csv",
+    )
+    return [(path, "FALLBACK") for path in fallback]
+
+
 @lru_cache(maxsize=1)
 def _watch_symbols() -> set[str]:
     symbols: set[str] = set()
-    for path in _many("daily_watch_selection.json", "**/daily_watch_selection.json"):
+    for path in _direct_files("daily_watch_selection.json", "data/daily_watch_selection.json", "reports/daily_watch_selection.json"):
         payload = _read_json(path)
         values = payload.values() if isinstance(payload, dict) else payload if isinstance(payload, list) else []
         for value in values:
@@ -400,7 +471,16 @@ def _watch_symbols() -> set[str]:
                     symbols.add(_symbol(item) if isinstance(item, dict) else _symbol_value(item))
             elif isinstance(value, str):
                 symbols.add(_symbol_value(value))
-    for path in _many("*watch*.csv", "**/*watch*.csv", "*interest*.csv", "**/*interest*.csv"):
+    for path in _direct_files(
+        "watchlist_kr.csv",
+        "watchlist_us.csv",
+        "watchlist_kr_growth.csv",
+        "watchlist_us_growth.csv",
+        "data/watchlist_kr.csv",
+        "data/watchlist_us.csv",
+        "data/watchlist_kr_growth.csv",
+        "data/watchlist_us_growth.csv",
+    ):
         for row in _read_csv(path, 20000):
             sym = _symbol(row)
             if sym:
@@ -436,24 +516,28 @@ def _quote_index(market: str) -> dict[str, dict[str, Any]]:
     return quotes
 
 
-def _all_symbol_rows() -> list[dict[str, Any]]:
+@lru_cache(maxsize=1)
+def _all_symbol_rows() -> tuple[dict[str, Any], ...]:
     rows: list[dict[str, Any]] = []
     for market in ("kr", "us"):
-        for path in _many(
+        for path in _direct_files(
             f"watchlist_{market}.csv",
             f"watchlist_{market}_growth.csv",
-            f"**/watchlist_{market}.csv",
-            f"**/watchlist_{market}_growth.csv",
             f"candidate_universe_{market}.csv",
-            f"**/candidate_universe_{market}.csv",
-            f"**/*company*{market}*.csv",
-            f"**/*fundamental*{market}*.csv",
-            max_files=80,
+            f"data/watchlist_{market}.csv",
+            f"data/watchlist_{market}_growth.csv",
+            f"data/candidate_universe_{market}.csv",
+            f"reports/watchlist_{market}.csv",
+            f"reports/watchlist_{market}_growth.csv",
+            f"reports/candidate_universe_{market}.csv",
+            f"reports/v93_company_integrated_{market}.csv",
+            f"reports/v92_company_integrated_{market}.csv",
+            f"reports/v81_company_summary_cards_{market}.csv",
         ):
             for row in _read_csv(path, 50000):
                 row["_market"] = market
                 rows.append(row)
-    return rows
+    return tuple(rows)
 
 
 def _extract_source_mode_horizon(path: Path, row: dict[str, Any]) -> tuple[str, str]:
@@ -557,8 +641,10 @@ def _missing_fields(item: dict[str, Any]) -> list[str]:
     return [name for name, value in fields if not value]
 
 
-def _symbols_payload(market: str, q: str, watch_only: bool, limit: int) -> dict[str, Any]:
+@lru_cache(maxsize=128)
+def _symbols_payload_cached(market: str, q: str, watch_only: bool, limit: int) -> dict[str, Any]:
     market = _market_norm(market)
+    limit = max(1, min(int(limit or 300), 10000))
     names = _build_name_map()
     watch = _watch_symbols()
     query = str(q or "").strip().lower()
@@ -591,11 +677,19 @@ def _symbols_payload(market: str, q: str, watch_only: bool, limit: int) -> dict[
             "isWatch": sym in watch,
             "source": _text(row, ["_source_file"], ""),
         })
-        if len(items) >= max(1, min(limit, 10000)):
+        if len(items) >= limit:
             break
 
     items.sort(key=lambda item: (0 if item["isWatch"] else 1, item["market"], item["name"], item["symbol"]))
     return {"status": "OK" if items else "NO_DATA", "market": market, "count": len(items), "watchCount": len(watch), "items": items}
+
+
+def _symbols_payload(market: str, q: str, watch_only: bool, limit: int) -> dict[str, Any]:
+    market_key = _market_norm(market)
+    query_key = str(q or "").strip().lower()
+    limit_key = max(1, min(int(limit or 300), 10000))
+    payload = _symbols_payload_cached(market_key, query_key, bool(watch_only), limit_key)
+    return json.loads(json.dumps(payload, ensure_ascii=False))
 
 
 def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
@@ -654,6 +748,38 @@ def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
                 }
 
     return {"status": "OK" if items else "NO_DATA", "market": market, "count": len(items), "items": items, "sourceFiles": [p.name for p in paths[:20]]}
+
+
+def _quote_files(market: str) -> list[Path]:
+    return _direct_files(
+        f"kis_current_price_{market}.csv",
+        f"intraday_quote_snapshot_{market}.csv",
+        f"data/kis_current_price_{market}.csv",
+        f"data/intraday_quote_snapshot_{market}.csv",
+        f"reports/kis_current_price_{market}.csv",
+        f"reports/intraday_quote_snapshot_{market}.csv",
+    )
+
+
+def _recommendation_paths(market: str, mode: str, horizon: str) -> list[tuple[Path, str]]:
+    exact = _direct_files(
+        f"reports/mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv",
+        f"mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv",
+    )
+    if exact:
+        return [(path, "MATCH") for path in exact]
+
+    fallback = _direct_files(
+        f"reports/mone_v36_final_recommendations_{market}_balanced_{horizon}.csv",
+        f"reports/mone_v36_final_recommendations_{market}_{mode}_swing.csv",
+        f"reports/predictions.csv",
+        f"predictions.csv",
+        f"reports/v93_action_cards_{market}.csv",
+        f"v93_action_cards_{market}.csv",
+        f"candidate_universe_{market}.csv",
+        f"data/candidate_universe_{market}.csv",
+    )
+    return [(path, "FALLBACK") for path in fallback]
 
 
 def _recommendation_item(
@@ -837,7 +963,8 @@ def _recommendation_item(
     }
 
 
-def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
+@lru_cache(maxsize=48)
+def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit: int, watch_only: bool) -> dict[str, Any]:
     market = _market_norm(market)
     mode = _mode_norm(mode)
     horizon = _horizon_norm(horizon)
@@ -846,7 +973,7 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
         merged: list[dict[str, Any]] = []
         source_files: list[str] = []
         for item_market in ("kr", "us"):
-            payload = _recommendations_payload(item_market, mode, horizon, cash, limit, watch_only)
+            payload = _recommendations_payload_cached(item_market, mode, horizon, limit, watch_only)
             merged.extend(payload.get("items", []))
             source_files.extend(payload.get("sourceFiles", []))
         deduped: list[dict[str, Any]] = []
@@ -922,6 +1049,11 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
         "sourceFiles": source_files[:20],
         "items": items,
     }
+
+
+def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
+    payload = _recommendations_payload_cached(market, mode, horizon, limit, watch_only)
+    return json.loads(json.dumps(payload, ensure_ascii=False))
 
 
 def _audit_payload() -> dict[str, Any]:
