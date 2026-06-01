@@ -761,63 +761,109 @@ def _symbols_payload(market: str, q: str, watch_only: bool, limit: int) -> dict[
     return json.loads(json.dumps(payload, ensure_ascii=False))
 
 
+def _merge_company_item(base_item: dict[str, Any], row_item: dict[str, Any]) -> dict[str, Any]:
+    """Fill missing financial fields from another CSV row for the same market+symbol."""
+    out = dict(base_item)
+    for key in (
+        "eps", "per", "pbr", "roe", "revenue", "operatingProfit",
+        "netIncome", "debtRatio", "fundamentalScore", "flowScore",
+    ):
+        if not out.get(key) and row_item.get(key):
+            out[key] = row_item[key]
+
+    sources = list(out.get("sourceFiles") or [])
+    source = row_item.get("source")
+    if source and source not in sources:
+        sources.append(source)
+    out["sourceFiles"] = sources
+    out["source"] = ", ".join(sources[:3]) if sources else out.get("source", "")
+    return out
+
+
+def _company_row_item(row: dict[str, Any], sym: str, name: str, item_market: str, path: Path) -> dict[str, Any]:
+    item = {
+        "id": f"company-{item_market}-{sym}",
+        "symbol": sym,
+        "name": name,
+        "market": item_market,
+        "eps": _field_value(row, ["EPS", "eps", "주당순이익", "earningsPerShare", "basicEps"]),
+        "per": _field_value(row, ["PER", "per", "pe", "trailingPE", "forwardPE", "주가수익비율"]),
+        "pbr": _field_value(row, ["PBR", "pbr", "pb", "priceToBook", "주가순자산비율"]),
+        "roe": _field_value(row, ["ROE", "roe", "returnOnEquity", "자기자본이익률"]),
+        "revenue": _field_value(row, ["revenue", "sales", "totalRevenue", "매출", "매출액"]),
+        "operatingProfit": _field_value(row, ["operatingProfit", "operating_profit", "operatingIncome", "영업이익"]),
+        "netIncome": _field_value(row, ["netIncome", "net_income", "profit", "순이익", "당기순이익"]),
+        "debtRatio": _field_value(row, ["debtRatio", "debt_ratio", "debtToEquity", "부채비율"]),
+        "fundamentalScore": _field_value(row, ["fundamentalScore", "fundamental_score", "score", "펀더멘털점수"]),
+        "flowScore": _field_value(row, ["flowScore", "flow_score", "수급점수"]),
+        "source": path.name,
+        "sourceFiles": [path.name],
+    }
+    return item
+
+
+def _company_finalize(item: dict[str, Any]) -> dict[str, Any]:
+    item = dict(item)
+    item["missingFields"] = _missing_fields(item)
+    if item["missingFields"]:
+        item["missingReason"] = "재무 CSV 컬럼 매핑 또는 원본 값 부족"
+        item["dataStatus"] = "PARTIAL"
+        item["connectionStatus"] = "연결 필요"
+    else:
+        item["missingReason"] = ""
+        item["dataStatus"] = "NORMAL"
+        item["connectionStatus"] = "연결 완료"
+    return item
+
+
 def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
     market = _market_norm(market)
     names = _build_name_map()
     query = str(q or "").strip().lower()
-    seen: set[str] = set()
-    items: list[dict[str, Any]] = []
     paths = _company_paths(market)
+
+    merged: dict[str, dict[str, Any]] = {}
 
     for path in paths:
         for row in _read_csv(path, 50000):
             item_market = _infer_market(_symbol(row), _text(row, ["market", "시장", "_market"], market))
             if market != "all" and item_market != market:
                 continue
+
             sym = _symbol(row, item_market)
             if not sym:
                 continue
-            key = f"{item_market}-{sym}"
-            if key in seen:
-                continue
+
             name = _display_name(row, sym, item_market, names)
             if query and query not in sym.lower() and query not in name.lower():
                 continue
 
-            item = {
-                "id": f"company-{key}",
-                "symbol": sym,
-                "name": name,
-                "market": item_market,
-                "eps": _field_value(row, ["EPS", "eps", "주당순이익"]),
-                "per": _field_value(row, ["PER", "per"]),
-                "pbr": _field_value(row, ["PBR", "pbr"]),
-                "roe": _field_value(row, ["ROE", "roe"]),
-                "revenue": _field_value(row, ["revenue", "sales", "매출", "매출액"]),
-                "operatingProfit": _field_value(row, ["operatingProfit", "operating_profit", "영업이익"]),
-                "netIncome": _field_value(row, ["netIncome", "net_income", "순이익"]),
-                "debtRatio": _field_value(row, ["debtRatio", "debt_ratio", "부채비율"]),
-                "fundamentalScore": _field_value(row, ["fundamentalScore", "fundamental_score", "score", "펀더멘털점수"]),
-                "flowScore": _field_value(row, ["flowScore", "flow_score", "수급점수"]),
-                "source": path.name,
-            }
-            item["missingFields"] = _missing_fields(item)
-            item["missingReason"] = "CSV 누락" if item["missingFields"] else ""
-            item["dataStatus"] = "PARTIAL" if item["missingFields"] else "NORMAL"
+            key = f"{item_market}-{sym}"
+            row_item = _company_row_item(row, sym, name, item_market, path)
 
-            seen.add(key)
-            items.append(item)
-            if len(items) >= max(1, min(limit, 10000)):
-                return {
-                    "status": "OK",
-                    "market": market,
-                    "count": len(items),
-                    "items": items,
-                    "sourceFiles": [p.name for p in paths[:20]],
-                }
+            if key in merged:
+                merged[key] = _merge_company_item(merged[key], row_item)
+            else:
+                merged[key] = row_item
 
-    return {"status": "OK" if items else "NO_DATA", "market": market, "count": len(items), "items": items, "sourceFiles": [p.name for p in paths[:20]]}
+    items = [_company_finalize(item) for item in merged.values()]
+    items.sort(key=lambda item: (0 if item.get("dataStatus") == "NORMAL" else 1, item["market"], item["name"], item["symbol"]))
+    max_limit = max(1, min(limit, 10000))
+    items = items[:max_limit]
 
+    normal_count = sum(1 for item in items if item.get("dataStatus") == "NORMAL")
+    partial_count = sum(1 for item in items if item.get("dataStatus") == "PARTIAL")
+
+    return {
+        "status": "OK" if items else "NO_DATA",
+        "market": market,
+        "count": len(items),
+        "normalCount": normal_count,
+        "partialCount": partial_count,
+        "items": items,
+        "sourceFiles": [p.name for p in paths[:20]],
+        "message": "company financial rows merged by market+symbol; remaining missing fields need source CSV/API mapping",
+    }
 
 def _quote_files(market: str) -> list[Path]:
     return _direct_files(
