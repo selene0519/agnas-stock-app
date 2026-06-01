@@ -1131,6 +1131,76 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
     return json.loads(json.dumps(payload, ensure_ascii=False))
 
 
+def _pct_gap(current: float, level: float) -> float | None:
+    if current <= 0 or level <= 0:
+        return None
+    return round((level - current) / current * 100.0, 2)
+
+
+def _signed_pct_text(value: float | None) -> str:
+    if value is None:
+        return "-"
+    sign = "+" if value > 0 else ""
+    return f"{sign}{value:.2f}%"
+
+
+def _intraday_status(item: dict[str, Any]) -> tuple[str, str]:
+    current = _num(item.get("currentPrice"))
+    entry = _num(item.get("entry"))
+    stop = _num(item.get("stop"))
+    target = _num(item.get("target"))
+    if current <= 0:
+        return "현재가 없음", "현재가 수집이 필요합니다."
+    if entry > 0 and abs(current - entry) / entry <= 0.02:
+        return "진입 임박", "진입가 2% 이내입니다."
+    if entry > 0 and current > entry * 1.02:
+        if target > 0 and current >= target:
+            return "목표 도달", "현재가가 목표가 이상입니다."
+        if target > 0 and current >= target * 0.985:
+            return "목표 접근", "목표가 1.5% 이내입니다."
+        if stop > 0 and current <= stop * 1.015:
+            return "손절 접근", "진입 후 기준이라면 손절가 1.5% 이내입니다."
+        return "진입가 상회", "추격 매수보다 눌림 확인이 필요합니다."
+    if entry > 0 and current < entry * 0.98:
+        return "관망", "현재가가 진입가보다 낮아 조건 충족을 기다립니다."
+    if stop > 0 and current <= stop * 1.015:
+        return "손절 접근", "손절가 1.5% 이내입니다."
+    return "관망", "현재가와 기준 가격을 확인 중입니다."
+
+
+def _intraday_payload(market: str, mode: str, horizon: str, limit: int) -> dict[str, Any]:
+    payload = _recommendations_payload(market, mode, horizon, 0, limit, False)
+    items: list[dict[str, Any]] = []
+    for raw in payload.get("items", []) or []:
+        item = dict(raw)
+        current = _num(item.get("currentPrice"))
+        entry = _num(item.get("entry"))
+        stop = _num(item.get("stop"))
+        target = _num(item.get("target"))
+        entry_gap = _pct_gap(current, entry)
+        stop_gap = _pct_gap(current, stop)
+        target_gap = _pct_gap(current, target)
+        status, reason = _intraday_status(item)
+        item.update({
+            "intradayStatus": status,
+            "intradayReason": reason,
+            "entryDistancePct": entry_gap,
+            "entryDistanceText": _signed_pct_text(entry_gap),
+            "stopDistancePct": stop_gap,
+            "stopDistanceText": _signed_pct_text(stop_gap),
+            "targetDistancePct": target_gap,
+            "targetDistanceText": _signed_pct_text(target_gap),
+            "priceGapWarning": bool(entry_gap is not None and abs(entry_gap) >= 20),
+            "priceSource": item.get("priceSource") or "",
+            "recommendationSource": item.get("source") or "",
+        })
+        items.append(item)
+    payload["items"] = items
+    payload["reportType"] = "intraday"
+    payload["description"] = "현재가 기준 진입/손절/목표 접근도"
+    return payload
+
+
 def _audit_payload() -> dict[str, Any]:
     specs = {
         "candidateKR": ["candidate_universe_kr.csv", "**/candidate_universe_kr.csv", "**/*candidate*kr*.csv"],
@@ -1259,9 +1329,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
 
     @app.get("/api/reports/intraday")
     def intraday(market: str = Query("kr"), mode: str = Query("balanced"), horizon: str = Query("swing"), limit: int = Query(300)) -> dict[str, Any]:
-        payload = _safe_payload(lambda: _recommendations_payload(market, mode, horizon, 0, limit, False), "/api/reports/intraday")
-        payload["reportType"] = "intraday"
-        return payload
+        return _safe_payload(lambda: _intraday_payload(market, mode, horizon, limit), "/api/reports/intraday")
 
     @app.get("/api/predictions/table")
     def predictions(market: str = Query("all"), mode: str = Query("balanced"), horizon: str = Query("swing"), limit: int = Query(300)) -> dict[str, Any]:

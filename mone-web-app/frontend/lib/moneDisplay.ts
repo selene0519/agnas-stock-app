@@ -1,61 +1,61 @@
-import type { Market, Mode, Horizon } from "@/lib/api";
+import type { Horizon, Mode } from "@/lib/api";
 
 export const KR_NAME_MAP: Record<string, string> = {
-  "005930": "삼성전자",
-  "000660": "SK하이닉스",
-  "005380": "현대차",
-  "131970": "두산테스나",
-  "222800": "심텍",
-  "035420": "NAVER",
-  "207940": "삼성바이오로직스",
   "000100": "유한양행",
-  "058470": "리노공업",
-  "006400": "삼성SDI",
-  "196170": "알테오젠",
-  "055550": "신한지주",
-  "375500": "DL이앤씨",
-  "086520": "에코프로",
-  "214150": "클래시스",
-  "267260": "HD현대일렉트릭",
+  "000660": "SK하이닉스",
+  "000720": "현대건설",
   "001440": "대한전선",
   "003490": "대한항공",
-  "090360": "로보스타",
-  "247540": "에코프로비엠",
-  "403870": "HPSP",
+  "005380": "현대차",
+  "005930": "삼성전자",
+  "006400": "삼성SDI",
   "012450": "한화에어로스페이스",
-  "079550": "LIG넥스원",
-  "064350": "현대로템",
-  "034020": "두산에너빌리티",
-  "103590": "일진전기",
-  "373220": "LG에너지솔루션",
   "015760": "한국전력",
+  "034020": "두산에너빌리티",
+  "035420": "NAVER",
   "035720": "카카오",
+  "055550": "신한지주",
+  "058470": "리노공업",
+  "064350": "현대로템",
+  "079550": "LIG넥스원",
+  "086520": "에코프로",
+  "090360": "로보스타",
+  "103590": "일진전기",
+  "131970": "두산테스나",
+  "196170": "알테오젠",
+  "207940": "삼성바이오로직스",
+  "214150": "클래시스",
+  "222800": "심텍",
+  "247540": "에코프로비엠",
+  "267260": "HD현대일렉트릭",
+  "373220": "LG에너지솔루션",
+  "375500": "DL이앤씨",
+  "403870": "HPSP",
 };
 
 export const US_NAME_MAP: Record<string, string> = {
-  NVDA: "NVIDIA",
-  GOOGL: "Alphabet",
-  GOOG: "Alphabet",
-  TSLA: "Tesla",
   AAPL: "Apple",
-  MSFT: "Microsoft",
+  AAOI: "Applied Optoelectronics",
   AMZN: "Amazon",
-  SOXX: "Semiconductor ETF",
-  VRT: "Vertiv",
-  CAT: "Caterpillar",
-  CRCL: "Circle",
-  NBIS: "Nebius",
-  SNDK: "SanDisk",
-  RKLB: "Rocket Lab",
   ASTS: "AST SpaceMobile",
-  AAOI: "AAOI",
-  BMNR: "BMNR",
+  BMNR: "BitMine Immersion Technologies",
+  CAT: "Caterpillar",
+  COHR: "Coherent",
+  CRCL: "Circle",
+  GOOG: "Alphabet",
+  GOOGL: "Alphabet",
   INTC: "Intel",
   LITE: "Lumentum",
-  SIMO: "SIMO",
-  TMDX: "TMDX",
-  COHR: "Coherent",
   META: "Meta Platforms",
+  MSFT: "Microsoft",
+  NBIS: "Nebius",
+  NVDA: "NVIDIA",
+  RKLB: "Rocket Lab",
+  SIMO: "Silicon Motion",
+  SNDK: "SanDisk",
+  SOXX: "Semiconductor ETF",
+  TSLA: "Tesla",
+  VRT: "Vertiv",
 };
 
 export function normalizeMarket(value: any, symbol?: string): "kr" | "us" {
@@ -69,13 +69,19 @@ export function normalizeSymbol(item: any): string {
   return String(item?.symbol || item?.code || item?.ticker || "").trim().toUpperCase();
 }
 
+function isBadName(raw: string, symbol: string) {
+  if (!raw || raw === "-" || raw.toLowerCase() === "nan") return true;
+  if (raw.toUpperCase() === symbol.toUpperCase()) return true;
+  return /[�占癰沃嶺筌]/.test(raw);
+}
+
 export function displayName(itemOrSymbol: any, maybeMarket?: string, maybeRaw?: string): string {
   const symbol = typeof itemOrSymbol === "string" ? itemOrSymbol.toUpperCase() : normalizeSymbol(itemOrSymbol);
   const market = normalizeMarket(typeof itemOrSymbol === "string" ? maybeMarket : itemOrSymbol?.market, symbol);
   const raw = String(typeof itemOrSymbol === "string" ? maybeRaw || "" : itemOrSymbol?.name || itemOrSymbol?.company || itemOrSymbol?.companyName || "").trim();
   const mapped = market === "kr" ? KR_NAME_MAP[symbol] : US_NAME_MAP[symbol];
   if (mapped) return mapped;
-  if (raw && raw !== symbol && raw.toLowerCase() !== "nan" && raw !== "-") return raw;
+  if (!isBadName(raw, symbol)) return raw;
   return symbol || "-";
 }
 
@@ -130,16 +136,16 @@ export function priceText(item: any, key: "current" | "entry" | "stop" | "target
   const candidates: Record<string, any[]> = {
     current: [item?.currentPriceText, item?.priceText, item?.currentText, item?.currentPrice, item?.price],
     entry: [item?.entryText, item?.entryPriceText, item?.entryPrice, item?.entry],
-    stop: [item?.stopText, item?.stopPriceText, item?.stopPrice, item?.stop],
+    stop: [item?.stopText, item?.stopPriceText, item?.stopLoss, item?.stopPrice, item?.stop],
     target: [item?.targetText, item?.targetPriceText, item?.targetPrice, item?.target],
     expected: [item?.expectedPriceText, item?.expectedText, item?.expectedPrice, item?.expected],
   };
   for (const value of candidates[key]) {
     const text = String(value ?? "").trim();
-    if (text && text !== "-" && /[₩$원]|\d/.test(text)) {
-      if (/[₩$원]/.test(text)) return text.replace(/₩/g, "");
-      return formatMoney(value, market, fallback);
-    }
+    if (!text || text === "-") continue;
+    if (/[원$]/.test(text)) return text;
+    const formatted = formatMoney(value, market, "");
+    if (formatted) return formatted;
   }
   return fallback;
 }
@@ -167,8 +173,7 @@ export function modeLabel(mode: Mode | string): string {
 export function horizonLabel(horizon: Horizon | string): string {
   if (horizon === "short") return "단기";
   if (horizon === "swing") return "스윙";
-  if (horizon === "mid") return "중기";
-  if (horizon === "long") return "장기";
+  if (horizon === "mid" || horizon === "long") return "중기";
   return String(horizon || "-");
 }
 

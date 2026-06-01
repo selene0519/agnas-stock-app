@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Building2, ExternalLink, RefreshCw, Search } from "lucide-react";
 import { mone, type Market } from "@/lib/api";
-import { displayName, firstText, statusBadge } from "@/lib/moneDisplay";
+import { displayName, statusBadge } from "@/lib/moneDisplay";
 
 type Tab = "news" | "disclosures" | "company";
 
