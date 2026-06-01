@@ -137,7 +137,7 @@ export const mone = {
   session: (p?: { market?: Market }) =>
     apiGet<ApiList>("/api/session", p),
   dataQuality: (p?: { market?: Market }) =>
-    apiGet<ApiList>("/api/data/quality", p),
+    apiGet<ApiList>("/api/final/data-quality-live", p),
   positionSize: (p: { entry: number; cash: number; strategy?: Mode | string; market?: Market }) =>
     apiGet<ApiList>("/api/position/size", p),
   nearAlerts: (p?: { market?: Market; thresholdPct?: number; limit?: number }) =>
@@ -148,4 +148,5 @@ export const mone = {
 };
 
 export default mone;
+
 
