@@ -570,3 +570,197 @@ try:
     register_mone_v803_holdings_clean_guard(app)
 except Exception as exc:
     print("[MONE v8.0.3] holdings clean guard route failed:", exc)
+
+# --- MONE live data-quality route patch v2 ascii ---
+from pathlib import Path as _MONE_DQ_Path
+from datetime import datetime as _MONE_DQ_Datetime
+import csv as _MONE_DQ_csv
+import re as _MONE_DQ_re
+
+def _mone_dq_repo_root() -> _MONE_DQ_Path:
+    return _MONE_DQ_Path(__file__).resolve().parents[3]
+
+def _mone_dq_read_rows(path: _MONE_DQ_Path, max_rows: int = 5000):
+    if not path.exists() or not path.is_file():
+        return []
+    for enc in ("utf-8-sig", "utf-8", "cp949"):
+        try:
+            with path.open("r", encoding=enc, newline="") as f:
+                return list(_MONE_DQ_csv.DictReader(f))[:max_rows]
+        except Exception:
+            continue
+    return []
+
+def _mone_dq_symbol(row: dict) -> str:
+    for key in ("symbol", "ticker", "code", "stock_code", "Symbol", "Ticker"):
+        value = str(row.get(key, "") or "").strip()
+        if value:
+            return value.upper()
+    return ""
+
+def _mone_dq_time_value(row: dict) -> str:
+    for key in (
+        "timestamp", "updatedAt", "updated_at", "datetime", "dateTime",
+        "time", "createdAt", "created_at", "date", "tradeDate",
+        "asOfDate", "baseDate"
+    ):
+        value = str(row.get(key, "") or "").strip()
+        if value:
+            return value
+    return ""
+
+def _mone_dq_parse_time(value: str):
+    value = str(value or "").strip()
+    if not value:
+        return None
+    cleaned = value.replace("KST", "").replace("kst", "").strip().replace("/", "-")
+    if _MONE_DQ_re.fullmatch(r"\d{8}", cleaned):
+        cleaned = f"{cleaned[0:4]}-{cleaned[4:6]}-{cleaned[6:8]}"
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S.%f%z",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S.%f",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+    ):
+        try:
+            return _MONE_DQ_Datetime.strptime(cleaned, fmt)
+        except Exception:
+            pass
+    try:
+        return _MONE_DQ_Datetime.fromisoformat(cleaned)
+    except Exception:
+        return None
+
+def _mone_dq_file_summary(path: _MONE_DQ_Path, role: str, market: str) -> dict:
+    rows = _mone_dq_read_rows(path)
+    symbols = set()
+    latest_raw = ""
+    latest_dt = None
+
+    for row in rows:
+        sym = _mone_dq_symbol(row)
+        if sym:
+            symbols.add(sym)
+
+        raw = _mone_dq_time_value(row)
+        dt = _mone_dq_parse_time(raw)
+        if dt and (latest_dt is None or dt > latest_dt):
+            latest_dt = dt
+            latest_raw = raw
+
+    mtime = None
+    try:
+        mtime = _MONE_DQ_Datetime.fromtimestamp(path.stat().st_mtime).isoformat()
+    except Exception:
+        pass
+
+    return {
+        "name": path.name,
+        "role": role,
+        "market": market,
+        "path": str(path),
+        "exists": path.exists(),
+        "status": "NORMAL" if rows else "NO_DATA",
+        "rowCount": len(rows),
+        "uniqueSymbolCount": len(symbols),
+        "sampleSymbols": sorted(symbols)[:12],
+        "latestTimestamp": latest_raw,
+        "mtime": mtime,
+    }
+
+def _mone_dq_market(market: str) -> dict:
+    repo = _mone_dq_repo_root()
+    market = (market or "kr").lower()
+
+    price_files = [
+        (repo / "data" / "stockapp" / f"kis_current_price_{market}.csv", "price_current_stockapp"),
+        (repo / "reports" / f"kis_current_price_{market}.csv", "price_current_reports"),
+        (repo / "data" / "stockapp" / f"intraday_quote_snapshot_{market}.csv", "intraday_quote_stockapp"),
+        (repo / "reports" / f"intraday_quote_snapshot_{market}.csv", "intraday_quote_reports"),
+        (repo / "data" / "stockapp" / f"intraday_realtime_snapshot_{market}.csv", "intraday_realtime_stockapp"),
+        (repo / "reports" / f"intraday_realtime_snapshot_{market}.csv", "intraday_realtime_reports"),
+    ]
+
+    files = [_mone_dq_file_summary(path, role, market) for path, role in price_files]
+    good_files = [x for x in files if int(x.get("rowCount") or 0) > 0]
+
+    all_symbols = set()
+    for path, _role in price_files:
+        for row in _mone_dq_read_rows(path):
+            sym = _mone_dq_symbol(row)
+            if sym:
+                all_symbols.add(sym)
+
+    warnings = []
+    failures_path = repo / "reports" / "data_collection_failures_latest.csv"
+    failures = _mone_dq_read_rows(failures_path, max_rows=1000)
+    if failures:
+        warnings.append(f"collection failures present: {len(failures)} rows")
+
+    if good_files:
+        data_status = "NORMAL"
+        kill_switch = False
+        message = "core price data found"
+    else:
+        data_status = "NO_DATA"
+        kill_switch = True
+        message = "core price csv not found"
+
+    if good_files and len(all_symbols) < 5:
+        data_status = "PARTIAL"
+        warnings.append("price coverage is small")
+
+    return {
+        "status": "OK",
+        "market": market,
+        "dataStatus": data_status,
+        "priceDataStatus": "OK" if good_files else "NO_DATA",
+        "killSwitch": kill_switch,
+        "reviewMode": False,
+        "message": message,
+        "candidateCount": len(all_symbols),
+        "files": files,
+        "warnings": warnings,
+        "errors": [] if good_files else ["core price data not found"],
+        "updatedAt": _MONE_DQ_Datetime.now().astimezone().isoformat(),
+    }
+
+@app.get("/api/final/data-quality-live")
+def api_final_data_quality_live(market: str = "kr"):
+    market = (market or "kr").lower()
+
+    if market == "all":
+        kr = _mone_dq_market("kr")
+        us = _mone_dq_market("us")
+        kill = bool(kr.get("killSwitch")) or bool(us.get("killSwitch"))
+
+        if kr.get("dataStatus") == "NORMAL" and us.get("dataStatus") == "NORMAL":
+            data_status = "NORMAL"
+        elif kr.get("dataStatus") == "NO_DATA" and us.get("dataStatus") == "NO_DATA":
+            data_status = "NO_DATA"
+        else:
+            data_status = "PARTIAL"
+
+        return {
+            "status": "OK",
+            "market": "all",
+            "dataStatus": data_status,
+            "priceDataStatus": data_status,
+            "killSwitch": kill,
+            "reviewMode": False,
+            "message": "combined kr/us data quality",
+            "markets": {"kr": kr, "us": us},
+            "warnings": list(kr.get("warnings", [])) + list(us.get("warnings", [])),
+            "errors": list(kr.get("errors", [])) + list(us.get("errors", [])),
+            "updatedAt": _MONE_DQ_Datetime.now().astimezone().isoformat(),
+        }
+
+    if market not in ("kr", "us"):
+        market = "kr"
+
+    return _mone_dq_market(market)
+# --- end MONE live data-quality route patch v2 ascii ---
+
