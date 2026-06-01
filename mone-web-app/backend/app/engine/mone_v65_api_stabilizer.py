@@ -10,12 +10,14 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import Query
+from fastapi import Body, Query
 from fastapi.routing import APIRoute
 
 
 KR_NAME_FALLBACK: dict[str, str] = {
     "005930": "삼성전자",
+    "009150": "삼성전기",
+    "006340": "대원전선",
     "000660": "SK하이닉스",
     "005380": "현대차",
     "131970": "두산테스나",
@@ -330,8 +332,22 @@ def _build_name_map() -> dict[str, str]:
         "**/watchlist_us_growth.csv",
         "candidate_universe_kr.csv",
         "candidate_universe_us.csv",
+        "symbol_master_kr_full.csv",
+        "symbol_master_kr_extra.csv",
+        "symbol_master_us_full.csv",
+        "symbol_master_us_extra.csv",
+        "data/symbol_master_kr_full.csv",
+        "data/symbol_master_kr_extra.csv",
+        "data/symbol_master_us_full.csv",
+        "data/symbol_master_us_extra.csv",
         "**/candidate_universe_kr.csv",
         "**/candidate_universe_us.csv",
+        "**/symbol_master_kr_full.csv",
+        "**/symbol_master_kr_extra.csv",
+        "**/symbol_master_us_full.csv",
+        "**/symbol_master_us_extra.csv",
+        "**/*symbol_snapshot*.csv",
+        "**/*master_investors*.csv",
         "**/*company*.csv",
         "**/*fundamental*.csv",
         "**/*financial*.csv",
@@ -517,10 +533,14 @@ def _build_name_map() -> dict[str, str]:
             f"watchlist_{market}.csv",
             f"watchlist_{market}_growth.csv",
             f"candidate_universe_{market}.csv",
+            f"symbol_master_{market}_full.csv",
+            f"symbol_master_{market}_extra.csv",
             f"data/holdings_{market}.csv",
             f"data/watchlist_{market}.csv",
             f"data/watchlist_{market}_growth.csv",
             f"data/candidate_universe_{market}.csv",
+            f"data/symbol_master_{market}_full.csv",
+            f"data/symbol_master_{market}_extra.csv",
             f"reports/mone_v36_final_recommendations_{market}_balanced_swing.csv",
         ):
             for row in _read_csv(path, 50000):
@@ -539,8 +559,12 @@ def _quote_files(market: str) -> list[Path]:
         f"intraday_quote_snapshot_{market}.csv",
         f"data/kis_current_price_{market}.csv",
         f"data/intraday_quote_snapshot_{market}.csv",
+        f"data/stockapp/kis_current_price_{market}.csv",
+        f"data/stockapp/intraday_quote_snapshot_{market}.csv",
+        f"data/stockapp/intraday_realtime_snapshot_{market}.csv",
         f"reports/kis_current_price_{market}.csv",
         f"reports/intraday_quote_snapshot_{market}.csv",
+        f"reports/intraday_realtime_snapshot_{market}.csv",
     )
 
 
@@ -633,21 +657,40 @@ def _all_symbol_rows() -> tuple[dict[str, Any], ...]:
             f"watchlist_{market}.csv",
             f"watchlist_{market}_growth.csv",
             f"candidate_universe_{market}.csv",
+            f"symbol_master_{market}_full.csv",
+            f"symbol_master_{market}_extra.csv",
             f"data/holdings_{market}.csv",
             f"data/watchlist_{market}.csv",
             f"data/watchlist_{market}_growth.csv",
             f"data/candidate_universe_{market}.csv",
+            f"data/symbol_master_{market}_full.csv",
+            f"data/symbol_master_{market}_extra.csv",
+            f"data/stockapp/kis_current_price_{market}.csv",
+            f"data/stockapp/intraday_quote_snapshot_{market}.csv",
+            f"data/stockapp/intraday_realtime_snapshot_{market}.csv",
             f"reports/mone_v36_final_recommendations_{market}_balanced_swing.csv",
             f"reports/mone_v36_final_recommendations_{market}_balanced_short.csv",
             f"reports/mone_v36_final_recommendations_{market}_balanced_mid.csv",
             f"reports/mone_v36_final_recommendations_{market}_conservative_swing.csv",
             f"reports/mone_v36_final_recommendations_{market}_aggressive_swing.csv",
+            f"reports/kis_current_price_{market}.csv",
+            f"reports/intraday_quote_snapshot_{market}.csv",
+            f"reports/intraday_realtime_snapshot_{market}.csv",
             f"reports/watchlist_{market}.csv",
             f"reports/watchlist_{market}_growth.csv",
             f"reports/candidate_universe_{market}.csv",
             f"reports/v93_company_integrated_{market}.csv",
             f"reports/v92_company_integrated_{market}.csv",
             f"reports/v81_company_summary_cards_{market}.csv",
+        ):
+            for row in _read_csv(path, 50000):
+                row["_market"] = market
+                rows.append(row)
+        for path in _many(
+            f"reports/v*_symbol_snapshot_{market}.csv",
+            f"reports/v*_master_investors_{market}.csv",
+            f"reports/mone_v36_final_recommendations_{market}_*.csv",
+            max_files=300,
         ):
             for row in _read_csv(path, 50000):
                 row["_market"] = market
@@ -773,18 +816,61 @@ def _missing_fields(item: dict[str, Any]) -> list[str]:
 
 
 @lru_cache(maxsize=128)
+
 def _symbols_payload_cached(market: str, q: str, watch_only: bool, limit: int) -> dict[str, Any]:
     market = _market_norm(market)
     limit = max(1, min(int(limit or 300), 10000))
     names = _build_name_map()
     watch = _watch_symbols()
-    query = str(q or "").strip().lower()
+    query_raw = str(q or "").strip()
+    query = query_raw.lower()
+    query_compact = re.sub(r"\s+", "", query)
+    query_digits = re.sub(r"\D", "", query)
     seen: set[str] = set()
-    items: list[dict[str, Any]] = []
+    all_items: list[dict[str, Any]] = []
+    quote_indexes = {"kr": _quote_index("kr"), "us": _quote_index("us")}
+
+    def _compact(value: Any) -> str:
+        return re.sub(r"\s+", "", str(value or "").strip().lower())
+
+    def _match(symbol: str, name: str) -> bool:
+        if not query:
+            return True
+        sym_lower = symbol.lower()
+        name_lower = str(name or "").lower()
+        name_compact = _compact(name)
+        if query in sym_lower or query in name_lower:
+            return True
+        if query_compact and query_compact in name_compact:
+            return True
+        if query_digits and query_digits in re.sub(r"\D", "", symbol):
+            return True
+        return False
+
+    def _score(item: dict[str, Any]) -> tuple[int, int, int, int, str, str]:
+        symbol = str(item.get("symbol") or "")
+        name = str(item.get("name") or "")
+        symbol_lower = symbol.lower()
+        name_lower = name.lower()
+        name_compact = _compact(name)
+        symbol_digits = re.sub(r"\D", "", symbol)
+        exact_symbol = bool(query and symbol_lower == query) or bool(query_digits and symbol_digits == query_digits)
+        exact_name = bool(query and name_lower == query) or bool(query_compact and name_compact == query_compact)
+        starts_name = bool(query and name_lower.startswith(query)) or bool(query_compact and name_compact.startswith(query_compact))
+        has_price = bool(item.get("currentPrice"))
+        return (
+            0 if exact_symbol else 1,
+            0 if exact_name else 1,
+            0 if starts_name else 1,
+            0 if has_price else 1,
+            str(item.get("market") or ""),
+            symbol,
+        )
 
     for row in _all_symbol_rows():
-        sym = _symbol(row)
-        item_market = _infer_market(sym, _text(row, ["market", "시장", "_market"], ""))
+        item_market = _infer_market(str(_text(row, ["symbol", "ticker", "code", "종목코드"], "")), _text(row, ["market", "시장", "_market"], ""))
+        sym = _symbol(row, item_market)
+        item_market = _infer_market(sym, _text(row, ["market", "시장", "_market"], item_market))
         sym = _symbol(row, item_market)
         if not sym:
             continue
@@ -793,27 +879,59 @@ def _symbols_payload_cached(market: str, q: str, watch_only: bool, limit: int) -
             continue
         if market != "all" and item_market != market:
             continue
+
         name = _display_name(row, sym, item_market, names)
         if watch_only and sym not in watch:
             continue
-        if query and query not in sym.lower() and query not in name.lower():
+        if not _match(sym, name):
             continue
+
+        quote = quote_indexes.get(item_market, {}).get(sym, {})
+        current = _num(_text(quote, PRICE_KEYS, ""))
         seen.add(key)
-        items.append({
+
+        source_file = _text(row, ["_source_file", "sourceFile", "source"], "")
+        price_source = _text(quote, ["priceSource", "source", "price_source", "_source_file"], "")
+        price_time = _text(quote, ["priceTime", "priceSourceDate", "updated_at", "timestamp", "quoteTimestamp"], "")
+        prev_close = _num(_text(quote, ["prevClose", "previousClose", "basePrice", "stck_prdy_clpr", "전일종가", "기준가"], ""))
+        change_pct = _num(_text(quote, ["changePct", "changeRate", "prdy_ctrt", "등락률"], ""))
+
+        if not change_pct and current > 0 and prev_close > 0:
+            change_pct = (current - prev_close) / prev_close * 100
+
+        data_status = "NORMAL" if current > 0 else "PRICE_PENDING"
+
+        all_items.append({
             "id": key,
             "symbol": sym,
             "name": name,
             "market": item_market,
             "label": f"{name} {sym}",
             "isWatch": sym in watch,
-            "source": _text(row, ["_source_file"], ""),
+            "source": source_file,
+            "currentPrice": current if current > 0 else None,
+            "currentPriceText": _price_text(current, item_market) if current > 0 else "",
+            "prevClose": prev_close if prev_close > 0 else None,
+            "prevCloseText": _price_text(prev_close, item_market) if prev_close > 0 else "",
+            "changePct": change_pct if change_pct else None,
+            "changePctText": f"{'+' if change_pct > 0 else ''}{change_pct:.2f}%" if change_pct else "",
+            "priceSource": price_source,
+            "priceTime": price_time,
+            "dataStatus": data_status,
         })
-        if len(items) >= limit:
-            break
 
-    items.sort(key=lambda item: (0 if item["isWatch"] else 1, item["market"], item["name"], item["symbol"]))
-    return {"status": "OK" if items else "NO_DATA", "market": market, "count": len(items), "watchCount": len(watch), "items": items}
-
+    all_items.sort(key=_score)
+    items = all_items[:limit]
+    return {
+        "status": "OK" if items else "NO_DATA",
+        "routeVersion": "symbols-full-master-general-v3",
+        "market": market,
+        "query": q,
+        "count": len(items),
+        "totalCount": len(all_items),
+        "watchCount": len(watch),
+        "items": items,
+    }
 
 def _symbols_payload(market: str, q: str, watch_only: bool, limit: int) -> dict[str, Any]:
     market_key = _market_norm(market)
@@ -1523,10 +1641,233 @@ def _safe_payload(fn: Callable[[], dict[str, Any]], endpoint: str) -> dict[str, 
         }
 
 
+# __HOLDINGS_WATCHLIST_EDITOR_PATCH__
+def _editable_csv_path(kind: str, market: str) -> Path:
+    market_key = _market_norm(market)
+    if market_key == "all":
+        market_key = "kr"
+    filename = f"{'holdings' if kind == 'holdings' else 'watchlist'}_{market_key}.csv"
+    return _repo_root() / filename
+
+
+def _normalize_edit_symbol(symbol: Any, market: str) -> str:
+    value = _symbol_value(symbol)
+    market_key = _market_norm(market)
+    if market_key == "kr":
+        digits = re.sub(r"\D", "", value)
+        return digits.zfill(6)[-6:] if digits else ""
+    return value.upper()
+
+
+def _read_edit_rows(kind: str, market: str = "all") -> list[dict[str, Any]]:
+    markets = ["kr", "us"] if _market_norm(market) == "all" else [_market_norm(market)]
+    names = _build_name_map()
+    rows: list[dict[str, Any]] = []
+    for mk in markets:
+        path = _editable_csv_path(kind, mk)
+        for row in _read_csv(path, 20000):
+            symbol = _normalize_edit_symbol(_symbol(row, mk), mk)
+            if not symbol:
+                continue
+            name = _display_name(row, symbol, mk, names)
+            item: dict[str, Any] = {
+                "market": mk,
+                "symbol": symbol,
+                "name": name,
+                "source": path.name,
+                "sourcePath": str(path),
+            }
+            if kind == "holdings":
+                item["quantity"] = _num(_text(row, ["quantity", "qty", "?섎웾"], ""), 0)
+                item["avgPrice"] = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "?됯퇏?④?", "留ㅼ엯媛"], ""), 0)
+            rows.append(item)
+    rows.sort(key=lambda x: (str(x.get("market", "")), str(x.get("symbol", ""))))
+    return rows
+
+
+def _backup_file(path: Path) -> Path | None:
+    if not path.exists():
+        return None
+    backup_dir = _repo_root() / "_archive_old_files" / "mone_edit_backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    stamp_value = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup = backup_dir / f"{path.name}.bak_{stamp_value}"
+    backup.write_bytes(path.read_bytes())
+    return backup
+
+
+def _write_csv_rows(path: Path, fieldnames: list[str], rows: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row.get(key, "") for key in fieldnames})
+
+
+def _collection_target_path(market: str) -> Path:
+    return _repo_root() / "data" / "stockapp" / f"kis_collection_targets_{market}.csv"
+
+
+def _append_collection_targets(rows: list[dict[str, Any]], default_reason: str) -> dict[str, Any]:
+    updated_files: list[str] = []
+    updated_count = 0
+    by_market: dict[str, list[dict[str, Any]]] = {"kr": [], "us": []}
+    for row in rows:
+        market = _market_norm(row.get("market", "kr"))
+        if market not in {"kr", "us"}:
+            continue
+        symbol = _normalize_edit_symbol(row.get("symbol", ""), market)
+        if not symbol:
+            continue
+        by_market[market].append({
+            "market": market,
+            "symbol": symbol,
+            "name": str(row.get("name") or _fallback_name(symbol, market)).strip(),
+            "reason": str(row.get("targetReason") or row.get("_targetReason") or default_reason).strip() or default_reason,
+            "updatedAt": datetime.now().isoformat(timespec="seconds"),
+        })
+
+    for market, new_rows in by_market.items():
+        if not new_rows:
+            continue
+        path = _collection_target_path(market)
+        existing: dict[str, dict[str, Any]] = {}
+        for row in _read_csv(path, 20000):
+            symbol = _normalize_edit_symbol(_text(row, ["symbol", "code", "ticker"], ""), market)
+            if not symbol:
+                continue
+            existing[symbol] = {
+                "market": market,
+                "symbol": symbol,
+                "name": _text(row, ["name", "companyName"], _fallback_name(symbol, market)),
+                "reason": _text(row, ["reason"], "existing"),
+                "updatedAt": _text(row, ["updatedAt"], ""),
+            }
+        before = len(existing)
+        for row in new_rows:
+            existing[row["symbol"]] = row
+        _write_csv_rows(
+            path,
+            ["market", "symbol", "name", "reason", "updatedAt"],
+            sorted(existing.values(), key=lambda item: item["symbol"]),
+        )
+        updated_count += max(0, len(existing) - before) + len(new_rows)
+        updated_files.append(str(path))
+
+    return {"targetCount": updated_count, "targetFiles": updated_files}
+
+
+def _quote_map(*args, **kwargs):
+    return {}
+
+def _clear_mone_edit_caches() -> None:
+    for fn in [
+        _build_name_map,
+        _watch_symbols,
+        _all_symbol_rows,
+        _quote_index,
+        _symbols_payload_cached,
+        _symbols_payload,
+        _quote_map,
+    ]:
+        try:
+            fn.cache_clear()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+
+def _save_edit_rows(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+    raw_items = payload.get("items") if isinstance(payload, dict) else []
+    if not isinstance(raw_items, list):
+        return {"status": "ERROR", "error": "items must be a list", "items": [], "count": 0}
+
+    grouped: dict[str, list[dict[str, Any]]] = {"kr": [], "us": []}
+    errors: list[str] = []
+
+    for idx, raw in enumerate(raw_items):
+        if not isinstance(raw, dict):
+            continue
+        market = _market_norm(raw.get("market", "kr"))
+        if market not in {"kr", "us"}:
+            market = _infer_market(str(raw.get("symbol", "")), market)
+        symbol = _normalize_edit_symbol(raw.get("symbol", ""), market)
+        name = str(raw.get("name") or _fallback_name(symbol, market)).strip()
+        if not symbol:
+            errors.append(f"{idx + 1} row symbol missing")
+            continue
+        if market == "kr" and not re.fullmatch(r"\d{6}", symbol):
+            errors.append(f"{idx + 1} row KR symbol must be 6 digits")
+            continue
+
+        if kind == "holdings":
+            qty = _num(raw.get("quantity"), 0)
+            avg = _num(raw.get("avgPrice"), 0)
+            if qty <= 0:
+                errors.append(f"{symbol} quantity must be greater than 0")
+                continue
+            if avg <= 0:
+                errors.append(f"{symbol} avgPrice must be greater than 0")
+                continue
+            grouped[market].append({
+                "symbol": symbol,
+                "name": name,
+                "market": market,
+                "quantity": qty,
+                "avgPrice": avg,
+                "_targetReason": str(raw.get("targetReason") or "holding_added").strip(),
+            })
+        else:
+            grouped[market].append({
+                "symbol": symbol,
+                "name": name,
+                "market": market,
+                "_targetReason": str(raw.get("targetReason") or "user_added").strip(),
+            })
+
+    if errors:
+        return {"status": "ERROR", "error": "; ".join(errors[:5]), "items": [], "count": 0}
+
+    backups: list[str] = []
+    for market, rows in grouped.items():
+        path = _editable_csv_path(kind, market)
+        backup = _backup_file(path)
+        if backup:
+            backups.append(str(backup))
+        if kind == "holdings":
+            _write_csv_rows(path, ["symbol", "name", "market", "quantity", "avgPrice"], rows)
+        else:
+            _write_csv_rows(path, ["symbol", "name", "market"], rows)
+
+    target_info = _append_collection_targets(
+        [row for rows in grouped.values() for row in rows],
+        "holding_added" if kind == "holdings" else "user_added",
+    )
+
+    _clear_mone_edit_caches()
+    merged = _read_edit_rows(kind, "all")
+    return {
+        "status": "OK",
+        "kind": kind,
+        "count": len(merged),
+        "items": merged,
+        "backupCount": len(backups),
+        "backups": backups,
+        **target_info,
+        "updatedAt": datetime.now().isoformat(),
+    }
+
+
+
 def register_mone_v65_api_stabilizer(app: Any) -> None:
     paths = {
         "/api/symbols",
+        "/api/final/symbols",
         "/api/watchlist",
+        "/api/holdings-edit",
+        "/api/holdings-edit/save",
+        "/api/watchlist-edit",
+        "/api/watchlist-edit/save",
         "/api/company-analysis",
         "/api/data/audit",
         "/api/health/github",
@@ -1542,9 +1883,32 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     def symbols(market: str = Query("all"), q: str = Query(""), watchOnly: bool = Query(False), limit: int = Query(10000)) -> dict[str, Any]:
         return _safe_payload(lambda: _symbols_payload(market, q, watchOnly, limit), "/api/symbols")
 
+    @app.get("/api/final/symbols")
+    def final_symbols(market: str = Query("all"), q: str = Query(""), watchOnly: bool = Query(False), limit: int = Query(10000)) -> dict[str, Any]:
+        return _safe_payload(lambda: _symbols_payload(market, q, watchOnly, limit), "/api/final/symbols")
+
     @app.get("/api/watchlist")
     def watchlist(market: str = Query("all"), limit: int = Query(10000)) -> dict[str, Any]:
         return _safe_payload(lambda: _symbols_payload(market, "", True, limit), "/api/watchlist")
+
+
+    @app.get("/api/holdings-edit")
+    def holdings_edit(market: str = Query("all")) -> dict[str, Any]:
+        items = _read_edit_rows("holdings", market)
+        return _safe_payload(lambda: {"status": "OK", "kind": "holdings", "market": _market_norm(market), "items": items, "count": len(items)}, "/api/holdings-edit")
+
+    @app.post("/api/holdings-edit/save")
+    def holdings_edit_save(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        return _safe_payload(lambda: _save_edit_rows("holdings", payload), "/api/holdings-edit/save")
+
+    @app.get("/api/watchlist-edit")
+    def watchlist_edit(market: str = Query("all")) -> dict[str, Any]:
+        items = _read_edit_rows("watchlist", market)
+        return _safe_payload(lambda: {"status": "OK", "kind": "watchlist", "market": _market_norm(market), "items": items, "count": len(items)}, "/api/watchlist-edit")
+
+    @app.post("/api/watchlist-edit/save")
+    def watchlist_edit_save(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        return _safe_payload(lambda: _save_edit_rows("watchlist", payload), "/api/watchlist-edit/save")
 
     @app.get("/api/company-analysis")
     def company(market: str = Query("all"), limit: int = Query(500), q: str = Query("")) -> dict[str, Any]:
@@ -1593,3 +1957,5 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     @app.get("/api/predictions/table")
     def predictions(market: str = Query("all"), mode: str = Query("balanced"), horizon: str = Query("swing"), limit: int = Query(300)) -> dict[str, Any]:
         return _safe_payload(lambda: _recommendations_payload(market, mode, horizon, 0, limit, False), "/api/predictions/table")
+
+

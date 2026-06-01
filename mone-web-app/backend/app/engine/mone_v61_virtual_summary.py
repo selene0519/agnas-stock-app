@@ -297,6 +297,13 @@ def _virtual_summary(market: str = "all", mode: str = "all", horizon: str = "all
     losses = [r for r in executed if _is_loss(r)]
     returns = [_return_pct(r) for r in executed]
     total = len(filtered)
+    date_values = [_row_date_value(r) for r in filtered if re.search(r"20\d{2}-\d{2}-\d{2}", _row_date_value(r))]
+    latest_date = max(date_values) if date_values else ""
+    latest_rows = [r for r in filtered if _row_date_value(r) == latest_date] if latest_date else []
+    latest_executed = [r for r in latest_rows if _is_executed(r)]
+    latest_returns = [_return_pct(r) for r in latest_executed]
+    today = datetime.now().strftime("%Y-%m-%d")
+    today_rows = [r for r in filtered if _row_date_value(r) == today]
 
     # Read any summary files as supplementary context, but computed CSV rows are primary.
     summary_sources = [p.name for p in _summary_json_paths()] + [p.name for p in _virtual_paths()]
@@ -324,22 +331,41 @@ def _virtual_summary(market: str = "all", mode: str = "all", horizon: str = "all
     win_rate = round(len(wins) / len(executed) * 100, 2) if executed else 0
     avg_return = round(sum(returns) / len(returns), 2) if returns else 0
     cumulative = round(sum(returns), 2) if returns else 0
+    latest_win_count = sum(1 for r in latest_executed if _is_win(r))
+    latest_win_rate = round(latest_win_count / len(latest_executed) * 100, 2) if latest_executed else 0
+    latest_avg_return = round(sum(latest_returns) / len(latest_returns), 2) if latest_returns else 0
+    latest_cumulative = round(sum(latest_returns), 2) if latest_returns else 0
 
     return {
         "status": "OK" if filtered else "NO_DATA",
         "market": market,
         "mode": mode,
         "horizon": horizon,
+        "latestDate": latest_date,
+        "todayDate": today,
+        "todayStatus": "OK" if today_rows else "NO_DATA",
+        "todayMessage": "" if today_rows else "오늘 장마감 원본 없음",
         "totalRecommendations": total,
         "totalTrades": total,
         "executedTrades": len(executed),
         "executedCount": len(executed),
+        "unexecutedCount": total - len(executed),
         "executionRate": round(len(executed) / total * 100, 2) if total else 0,
         "winRate": win_rate,
         "successRate": win_rate,
         "avgReturnPct": avg_return,
         "averageReturnPct": avg_return,
         "cumulativeReturnPct": cumulative,
+        "executedReturnPct": cumulative,
+        "returnBasis": "체결 종목 기준, 미체결 제외",
+        "unexecutedExcludedFromReturn": True,
+        "latestRecommendations": len(latest_rows),
+        "latestExecutedTrades": len(latest_executed),
+        "latestUnexecutedCount": len(latest_rows) - len(latest_executed),
+        "latestExecutionRate": round(len(latest_executed) / len(latest_rows) * 100, 2) if latest_rows else 0,
+        "latestWinRate": latest_win_rate,
+        "latestAvgReturnPct": latest_avg_return,
+        "latestCumulativeReturnPct": latest_cumulative,
         "profitLossRatio": cumulative,
         "lossCount": len(losses),
         "sourceFiles": summary_sources,

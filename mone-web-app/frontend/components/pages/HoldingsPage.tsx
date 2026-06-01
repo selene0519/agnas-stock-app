@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Pencil, RefreshCw, Save, Trash2, X } from "lucide-react";
 
 type Market = "all" | "kr" | "us";
+
+type EditableHolding = {
+  market: "kr" | "us";
+  symbol: string;
+  name: string;
+  quantity: string;
+  avgPrice: string;
+};
 
 function apiUrl(path: string) {
   return `/mone-api${path}`;
@@ -17,6 +25,21 @@ async function getJson(path: string) {
   }
   return res.json();
 }
+
+async function postJson(path: string, body: any) {
+  const res = await fetch(apiUrl(path), {
+    method: "POST",
+    cache: "no-store",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  const text = await res.text().catch(() => "");
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText} ${text.slice(0, 500)}`.trim());
+  }
+  return text ? JSON.parse(text) : {};
+}
+
 
 function dedupe(items: any[]) {
   const seen = new Set<string>();
@@ -44,6 +67,57 @@ function displayName(item: any) {
   return name && name !== symbol ? name : symbol;
 }
 
+function cleanHoldingMarket(value: any): "kr" | "us" {
+  return String(value || "kr").toLowerCase() === "us" ? "us" : "kr";
+}
+
+function cleanHoldingSymbol(symbol: any, market: "kr" | "us") {
+  const raw = String(symbol || "").trim();
+  if (market === "kr") return raw.replace(/[^0-9]/g, "").padStart(6, "0").slice(-6);
+  return raw.toUpperCase().replace(/[^A-Z0-9.\-]/g, "");
+}
+
+function editableKey(item: { market?: any; symbol?: any }) {
+  const market = cleanHoldingMarket(item.market);
+  return `${market}-${cleanHoldingSymbol(item.symbol, market)}`;
+}
+
+function numberString(value: any) {
+  return String(value ?? "").replace(/[^0-9.]/g, "");
+}
+
+function toEditableHolding(item: any): EditableHolding {
+  const market = cleanHoldingMarket(item.market);
+  return {
+    market,
+    symbol: cleanHoldingSymbol(item.symbol || item.code || item.ticker, market),
+    name: String(item.name || item.company || item.companyName || item.displayName || "").trim(),
+    quantity: numberString(item.quantity ?? item.qty ?? ""),
+    avgPrice: numberString(item.avgPrice ?? item.avg_price ?? item.averagePrice ?? item.avgPriceText ?? ""),
+  };
+}
+
+function normalizeForSave(item: EditableHolding) {
+  const market = cleanHoldingMarket(item.market);
+  return {
+    market,
+    symbol: cleanHoldingSymbol(item.symbol, market),
+    name: item.name.trim(),
+    quantity: Number(String(item.quantity).replace(/,/g, "")),
+    avgPrice: Number(String(item.avgPrice).replace(/,/g, "")),
+  };
+}
+
+function validateHoldingDraft(item: EditableHolding) {
+  const normalized = normalizeForSave(item);
+  if (!normalized.symbol) return "종목코드/티커가 필요합니다.";
+  if (normalized.market === "kr" && !/^\d{6}$/.test(normalized.symbol)) return "국장 종목코드는 6자리여야 합니다.";
+  if (!Number.isFinite(normalized.quantity) || normalized.quantity <= 0) return "수량은 0보다 커야 합니다.";
+  if (!Number.isFinite(normalized.avgPrice) || normalized.avgPrice <= 0) return "평균단가는 0보다 커야 합니다.";
+  return "";
+}
+
+
 function riskClass(risk: string) {
   if (risk === "위험" || risk === "HIGH") return "border-red-500/30 bg-red-500/10 text-red-300";
   if (risk === "주의" || risk === "WATCH") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
@@ -54,6 +128,10 @@ export default function HoldingsPage() {
   const [market, setMarket] = useState<Market>("all");
   const [data, setData] = useState<any>({ items: [], summary: {} });
   const [loading, setLoading] = useState(false);
+  const [editKey, setEditKey] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditableHolding | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [editMessage, setEditMessage] = useState("");
 
   async function load() {
     setLoading(true);
@@ -64,6 +142,80 @@ export default function HoldingsPage() {
       setData({ status: "ERROR", error: String(error), items: [], summary: {} });
     } finally {
       setLoading(false);
+    }
+  }
+
+  function startEdit(holding: any) {
+    setEditKey(editableKey(holding));
+    setEditDraft(toEditableHolding(holding));
+    setEditMessage("");
+  }
+
+  function cancelEdit() {
+    setEditKey(null);
+    setEditDraft(null);
+    setEditMessage("");
+  }
+
+  async function loadEditableHoldings() {
+    const result = await getJson("/api/holdings-edit?market=all");
+    return Array.isArray(result.items) ? result.items.map(toEditableHolding) : [];
+  }
+
+  async function saveEdit(original: any) {
+    if (!editDraft) return;
+    const error = validateHoldingDraft(editDraft);
+    if (error) {
+      setEditMessage(error);
+      return;
+    }
+
+    const key = editableKey(original);
+    setSavingKey(key);
+    setEditMessage("");
+    try {
+      const rows = await loadEditableHoldings();
+      const normalized = normalizeForSave(editDraft);
+      const nextRows = rows.filter((row) => editableKey(row) !== key);
+      nextRows.push({
+        market: normalized.market,
+        symbol: normalized.symbol,
+        name: normalized.name,
+        quantity: String(normalized.quantity),
+        avgPrice: String(normalized.avgPrice),
+      });
+      const result = await postJson("/api/holdings-edit/save", { items: nextRows });
+      if (result?.status === "ERROR") throw new Error(result.error || "보유종목 저장 실패");
+      setEditKey(null);
+      setEditDraft(null);
+      setEditMessage("보유종목을 저장했습니다.");
+      await load();
+    } catch (error) {
+      setEditMessage(`저장 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function deleteHolding(holding: any) {
+    const key = editableKey(holding);
+    const label = `${displayName(holding)} ${holding.symbol || ""}`.trim();
+    if (typeof window !== "undefined" && !window.confirm(`${label} 보유종목을 삭제할까요?`)) return;
+
+    setSavingKey(key);
+    setEditMessage("");
+    try {
+      const rows = await loadEditableHoldings();
+      const nextRows = rows.filter((row) => editableKey(row) !== key);
+      const result = await postJson("/api/holdings-edit/save", { items: nextRows });
+      if (result?.status === "ERROR") throw new Error(result.error || "보유종목 삭제 실패");
+      if (editKey === key) cancelEdit();
+      setEditMessage("보유종목을 삭제했습니다.");
+      await load();
+    } catch (error) {
+      setEditMessage(`삭제 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setSavingKey(null);
     }
   }
 
@@ -116,11 +268,14 @@ export default function HoldingsPage() {
       </div>
 
       {data.error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">{data.error}</div>}
+      {editMessage && <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">{editMessage}</div>}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {items.map((holding: any) => {
           const stopMissing = !holding.stopText || holding.stopText === "-";
           const targetMissing = !holding.targetText || holding.targetText === "-";
+          const key = editableKey(holding);
+          const isEditing = editKey === key && editDraft;
           return (
             <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
               <div className="flex items-start justify-between gap-3">
@@ -136,10 +291,86 @@ export default function HoldingsPage() {
                     출처: {holding.source || "-"} · 현재가: {holding.quoteSource || "-"} · OHLCV: {holding.ohlcvSource || "-"}
                   </p>
                 </div>
-                <span className={`rounded-xl border px-3 py-1 text-xs font-bold ${riskClass(holding.riskStatus)}`}>
-                  {holding.riskStatus || "정상"}
-                </span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span className={`rounded-xl border px-3 py-1 text-xs font-bold ${riskClass(holding.riskStatus)}`}>
+                    {holding.riskStatus || "정상"}
+                  </span>
+                  {!isEditing ? (
+                    <>
+                      <button
+                        onClick={() => startEdit(holding)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
+                      >
+                        <Pencil size={12} /> 수정
+                      </button>
+                      <button
+                        onClick={() => deleteHolding(holding)}
+                        disabled={savingKey === key}
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                      >
+                        <Trash2 size={12} /> 삭제
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </div>
+
+              {isEditing && editDraft ? (
+                <div className="mt-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+                  <div className="mb-3 text-sm font-bold text-blue-200">보유종목 수정</div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                    <label className="text-xs text-slate-400">
+                      종목명
+                      <input
+                        value={editDraft.name}
+                        onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-400">
+                      종목코드/티커
+                      <input
+                        value={editDraft.symbol}
+                        onChange={(event) => setEditDraft({ ...editDraft, symbol: event.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-400">
+                      수량
+                      <input
+                        type="number"
+                        value={editDraft.quantity}
+                        onChange={(event) => setEditDraft({ ...editDraft, quantity: event.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-400">
+                      평균단가
+                      <input
+                        type="number"
+                        value={editDraft.avgPrice}
+                        onChange={(event) => setEditDraft({ ...editDraft, avgPrice: event.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => saveEdit(holding)}
+                      disabled={savingKey === key}
+                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      <Save size={13} /> 저장
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800"
+                    >
+                      <X size={13} /> 취소
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               {(Array.isArray(holding.missingFields) && holding.missingFields.length > 0) || stopMissing || targetMissing ? (
                 <div className="mt-3 flex flex-wrap gap-1">

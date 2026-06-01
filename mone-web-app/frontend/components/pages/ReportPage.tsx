@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
-import { dedupeBySymbol, displayName, firstText, horizonLabel, modeLabel, priceText, probabilityText } from "@/lib/moneDisplay";
+import { dedupeBySymbol, displayName, firstText, formatMoney, horizonLabel, modeLabel, pctText, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
 
 type Tab = "premarket" | "intraday" | "closing" | "virtual";
 
@@ -13,6 +13,13 @@ function Metric({ label, value, accent = false }: { label: string; value: any; a
       <div className={`mt-3 font-mono text-2xl font-bold ${accent ? "text-emerald-400" : "text-slate-100"}`}>{value}</div>
     </div>
   );
+}
+
+function signedMoney(value: number, market: Market) {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  if (market === "us") return `${sign}$${abs.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return `${sign}${Math.round(abs).toLocaleString("ko-KR")}원`;
 }
 
 function latestDate(items: any[]) {
@@ -39,6 +46,7 @@ export default function ReportPage() {
   const [tab, setTab] = useState<Tab>("premarket");
   const [data, setData] = useState<any>({ status: "LOADING", items: [] });
   const [virtual, setVirtual] = useState<any>({ status: "LOADING" });
+  const [holdings, setHoldings] = useState<any>({ status: "LOADING", items: [] });
 
   useEffect(() => {
     let active = true;
@@ -50,6 +58,7 @@ export default function ReportPage() {
     task.then((response) => active && setData(response || { status: "OK", items: [] }))
       .catch((error) => active && setData({ status: "ERROR", error: String(error), items: [] }));
     mone.backtestSummary({ market, mode, horizon }).then((response) => active && setVirtual(response || {})).catch(() => active && setVirtual({}));
+    mone.holdingsClean({ market, limit: 500 }).then((response) => active && setHoldings(response || { items: [] })).catch(() => active && setHoldings({ items: [] }));
     return () => { active = false; };
   }, [market, mode, horizon, tab]);
 
@@ -59,6 +68,18 @@ export default function ReportPage() {
   const closing = tab === "closing";
   const virtualTab = tab === "virtual";
   const intraday = tab === "intraday";
+  const holdingItems = Array.isArray(holdings.items) ? holdings.items : [];
+  const holdingValue = holdingItems.reduce((sum: number, item: any) => sum + (toNumber(item.valuation) || 0), 0);
+  const holdingPnl = holdingItems.reduce((sum: number, item: any) => sum + (toNumber(item.pnl) || 0), 0);
+  const holdingCost = holdingItems.reduce((sum: number, item: any) => sum + (toNumber(item.cost) || 0), 0);
+  const holdingDayPnl = holdingItems.reduce((sum: number, item: any) => {
+    const current = toNumber(item.currentPrice);
+    const prev = toNumber(item.prevClose);
+    const qty = toNumber(item.quantity);
+    return current && prev && qty ? sum + (current - prev) * qty : sum;
+  }, 0);
+  const holdingPnlPct = holdingCost > 0 ? (holdingPnl / holdingCost) * 100 : 0;
+  const holdingDayPnlPct = holdingValue - holdingDayPnl > 0 ? (holdingDayPnl / (holdingValue - holdingDayPnl)) * 100 : 0;
 
   const tabs: { id: Tab; label: string; desc: string }[] = [
     { id: "premarket", label: "장전 리포트", desc: "오늘 추천 후보와 매매 계획" },
@@ -102,11 +123,37 @@ export default function ReportPage() {
       </div>
 
       {(closing || virtualTab) && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <Metric label="누적 검증" value={virtual.totalRecommendations ?? data.totalRecommendations ?? items.length} />
-          <Metric label="누적 체결" value={virtual.executedTrades ?? data.executedTrades ?? 0} />
-          <Metric label="누적 승률" value={`${Number(virtual.winRate ?? data.winRate ?? 0).toFixed(2)}%`} />
-          <Metric label="누적 수익률" value={`${Number(virtual.cumulativeReturnPct ?? data.cumulativeReturnPct ?? 0).toFixed(2)}%`} accent />
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+            <div className="mb-3 text-sm font-semibold text-slate-200">보유종목 실제 평가손익</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <Metric label="보유 평가금액" value={formatMoney(holdingValue, market)} />
+              <Metric label="보유 평가손익" value={signedMoney(holdingPnl, market)} accent={holdingPnl >= 0} />
+              <Metric label="보유 수익률" value={pctText(holdingPnlPct)} />
+              <Metric label="보유 당일손익" value={`${signedMoney(holdingDayPnl, market)} · ${pctText(holdingDayPnlPct)}`} />
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+            <div className="mb-3 flex flex-col gap-1 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">
+              <span className="font-semibold text-slate-200">추천/가상운용 검증 수익률</span>
+              <span>{virtual.returnBasis || "체결 종목 기준, 미체결 제외"}</span>
+            </div>
+            {virtual.todayStatus === "NO_DATA" && (
+              <div className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                {virtual.todayDate} {virtual.todayMessage || "오늘 장마감 원본 없음"}
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <Metric label="추천 수" value={virtual.latestRecommendations ?? virtual.totalRecommendations ?? data.totalRecommendations ?? items.length} />
+              <Metric label="체결 수" value={virtual.latestExecutedTrades ?? virtual.executedTrades ?? data.executedTrades ?? 0} />
+              <Metric label="미체결 수" value={virtual.latestUnexecutedCount ?? virtual.unexecutedCount ?? 0} />
+              <Metric label="체결률" value={`${Number(virtual.latestExecutionRate ?? virtual.executionRate ?? 0).toFixed(2)}%`} />
+              <Metric label="체결 기준 승률" value={`${Number(virtual.latestWinRate ?? virtual.winRate ?? data.winRate ?? 0).toFixed(2)}%`} />
+              <Metric label="체결 기준 수익률" value={`${Number(virtual.latestCumulativeReturnPct ?? virtual.executedReturnPct ?? virtual.cumulativeReturnPct ?? data.cumulativeReturnPct ?? 0).toFixed(2)}%`} accent />
+              <Metric label="누적 검증" value={virtual.totalRecommendations ?? data.totalRecommendations ?? items.length} />
+              <Metric label="누적 체결" value={virtual.executedTrades ?? data.executedTrades ?? 0} />
+            </div>
+          </div>
         </div>
       )}
 
@@ -117,7 +164,7 @@ export default function ReportPage() {
             <Metric label="당일 후보" value={todayItems.length} />
             <Metric label="당일 체결" value={todayItems.filter((item) => item.executionStatus === "executed" || item.is_executed === true).length} />
             <Metric label="미체결" value={todayItems.filter((item) => String(item.executionStatus || "").includes("not_executed")).length} />
-            <Metric label="당일 수익률" value={`${todayItems.reduce((sum, item) => sum + Number(item.realizedReturnPct || item.returnPct || 0), 0).toFixed(2)}%`} accent />
+            <Metric label="체결 기준 당일 수익률" value={`${todayItems.filter((item) => !String(item.executionStatus || "").includes("not_executed")).reduce((sum, item) => sum + Number(item.realizedReturnPct || item.returnPct || 0), 0).toFixed(2)}%`} accent />
           </div>
         </div>
       )}

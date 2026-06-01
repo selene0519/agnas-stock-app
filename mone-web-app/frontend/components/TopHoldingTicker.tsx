@@ -12,6 +12,7 @@ type TickerItem = {
   market: "kr" | "us";
   currentPriceText: string;
   changePctText: string;
+  changeStatus?: "normal" | "pending" | "no-base" | "stale" | "error";
 };
 
 function derivePrice(row: any, market: string) {
@@ -20,13 +21,23 @@ function derivePrice(row: any, market: string) {
   return formatMoney(row.currentPrice ?? row.price, market, "가격 확인 필요");
 }
 
-function deriveChange(row: any) {
+function deriveChange(row: any): { text: string; status: TickerItem["changeStatus"] } {
   const direct = String(row.changePctText || row.changeText || "").trim();
-  if (direct && direct !== "-" && direct.includes("%")) return direct;
+  if (direct && direct !== "-" && direct.includes("%")) return { text: direct, status: "normal" };
+
+  const numeric = toNumber(row.changePct ?? row.changeRate);
+  if (numeric !== null && Number.isFinite(numeric) && numeric !== 0) {
+    return { text: pctText(numeric), status: "normal" };
+  }
+
   const current = toNumber(row.currentPrice ?? row.price ?? row.currentPriceText);
   const prev = toNumber(row.prevClose ?? row.previousClose ?? row.prevCloseText);
-  if (current !== null && prev !== null && prev > 0) return pctText(((current - prev) / prev) * 100);
-  return "변동률 확인 필요";
+  if (current !== null && prev !== null && prev > 0) {
+    return { text: pctText(((current - prev) / prev) * 100), status: "normal" };
+  }
+
+  if (current === null || current <= 0) return { text: "현재가 수집 대기", status: "pending" };
+  return { text: "전일 기준 없음", status: "no-base" };
 }
 
 async function fetchTickerRows(): Promise<TickerItem[]> {
@@ -35,13 +46,15 @@ async function fetchTickerRows(): Promise<TickerItem[]> {
   return rows.map((row: any, index: number) => {
     const symbol = normalizeSymbol(row);
     const market = normalizeMarket(row.market, symbol);
+    const change = deriveChange(row);
     return {
       id: `holding-${market}-${symbol}-${index}`,
       symbol,
       market,
       name: displayName(row),
       currentPriceText: derivePrice(row, market),
-      changePctText: deriveChange(row),
+      changePctText: change.text,
+      changeStatus: change.status,
     };
   });
 }
@@ -88,13 +101,14 @@ export default function TopHoldingTicker() {
           <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-7 whitespace-nowrap">
             {displayItems.map((item, index) => {
               const isDown = item.changePctText.startsWith("-");
-              const needsCheck = item.currentPriceText.includes("확인") || item.changePctText.includes("확인");
+              const needsPrice = item.currentPriceText.includes("확인") || item.currentPriceText.includes("대기");
+              const needsBase = item.changeStatus && item.changeStatus !== "normal";
               return (
                 <span key={`${item.id}-${index}`} className="inline-flex items-center gap-2 text-xs">
                   <span className="font-semibold text-slate-200">{item.name}</span>
                   <span className="font-mono text-slate-500">{item.symbol}</span>
-                  <span className={`font-mono ${needsCheck ? "text-amber-300" : "text-slate-100"}`}>{item.currentPriceText}</span>
-                  <span className={isDown ? "font-mono text-red-400" : needsCheck ? "font-mono text-amber-300" : "font-mono text-emerald-400"}>
+                  <span className={`font-mono ${needsPrice ? "text-amber-300" : "text-slate-100"}`}>{item.currentPriceText}</span>
+                  <span className={isDown ? "font-mono text-red-400" : needsBase ? "font-mono text-amber-300" : "font-mono text-emerald-400"}>
                     {item.changePctText}
                   </span>
                 </span>

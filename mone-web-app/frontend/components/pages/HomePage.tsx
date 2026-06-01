@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Pencil, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { mone, type Horizon, type Mode } from "@/lib/api";
 import {
   dedupeBySymbol,
@@ -24,6 +24,42 @@ type StrategyCell = {
   count: number;
   status: string;
 };
+
+type EditableHolding = {
+  market: string;
+  symbol: string;
+  name: string;
+  quantity: string;
+  avgPrice: string;
+};
+
+function holdingKey(item: any) {
+  return `${String(item.market || "kr").toLowerCase()}-${String(item.symbol || "").trim()}`;
+}
+
+function normalizeEditableHolding(item: any): EditableHolding {
+  const market = String(item.market || "kr").toLowerCase();
+  const symbol = market === "kr" ? String(item.symbol || "").replace(/[^0-9]/g, "").padStart(6, "0").slice(-6) : String(item.symbol || "").trim().toUpperCase();
+  return {
+    market,
+    symbol,
+    name: String(item.name || item.companyName || item.displayName || "").trim(),
+    quantity: String(item.quantity ?? item.qty ?? ""),
+    avgPrice: String(item.avgPrice ?? item.avg_price ?? item.averagePrice ?? item.avgPriceText ?? "").replace(/[^0-9.]/g, ""),
+  };
+}
+
+function normalizeHoldingForSave(item: EditableHolding) {
+  const market = String(item.market || "kr").toLowerCase();
+  const symbol = market === "kr" ? String(item.symbol || "").replace(/[^0-9]/g, "").padStart(6, "0").slice(-6) : String(item.symbol || "").trim().toUpperCase();
+  return {
+    market,
+    symbol,
+    name: item.name,
+    quantity: Number(String(item.quantity).replace(/,/g, "")),
+    avgPrice: Number(String(item.avgPrice).replace(/,/g, "")),
+  };
+}
 
 function Info({ label, value, accent = "text-slate-200" }: { label: string; value: any; accent?: string }) {
   return (
@@ -162,6 +198,11 @@ function StrategyMatrix({ cells, loading }: { cells: StrategyCell[]; loading: bo
 
 export default function HomePage() {
   const [holdings, setHoldings] = useState<any[]>([]);
+  const [editableHoldings, setEditableHoldings] = useState<EditableHolding[]>([]);
+  const [editingHoldingKey, setEditingHoldingKey] = useState<string | null>(null);
+  const [holdingDraft, setHoldingDraft] = useState<EditableHolding | null>(null);
+  const [holdingMessage, setHoldingMessage] = useState("");
+  const [holdingSaving, setHoldingSaving] = useState(false);
   const [summary, setSummary] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [matrix, setMatrix] = useState<StrategyCell[]>([]);
@@ -184,24 +225,83 @@ export default function HomePage() {
         })
       );
 
-      const [h, r, matrixResult] = await Promise.all([
+      const [h, r, matrixResult, editable] = await Promise.all([
         mone.holdingsClean({ market: "all", limit: 50 }),
         mone.recommendations({ market: "all", mode: "balanced", horizon: "swing", limit: 20 }),
         Promise.all(matrixRequests),
+        mone.holdingsEdit({ market: "all" }),
       ]);
 
       setHoldings(dedupeBySymbol(Array.isArray(h.items) ? h.items : []));
+      setEditableHoldings(Array.isArray(editable.items) ? editable.items.map(normalizeEditableHolding) : []);
       setSummary(h.summary || null);
       setRecommendations(dedupeBySymbol(Array.isArray(r.items) ? r.items : []).slice(0, 5));
       setMatrix(matrixResult);
     } catch {
       setHoldings([]);
+      setEditableHoldings([]);
       setSummary(null);
       setRecommendations([]);
       setMatrix([]);
     } finally {
       setLoading(false);
     }
+  }
+
+  function startEditHolding(item: any) {
+    const key = holdingKey(item);
+    const existing = editableHoldings.find((row) => holdingKey(row) === key);
+    const draft = existing || normalizeEditableHolding({
+      ...item,
+      avgPrice: item.avgPrice || item.avgPriceText || item.purchasePrice || item.entryPrice || "",
+    });
+    setEditingHoldingKey(key);
+    setHoldingDraft(draft);
+    setHoldingMessage("");
+  }
+
+  function cancelEditHolding() {
+    setEditingHoldingKey(null);
+    setHoldingDraft(null);
+  }
+
+  async function saveEditableHoldings(nextRows: EditableHolding[], message: string) {
+    setHoldingSaving(true);
+    setHoldingMessage("");
+    try {
+      const items = nextRows.map(normalizeHoldingForSave);
+      const invalid = items.find((item) => !item.symbol || item.quantity <= 0 || item.avgPrice <= 0 || !Number.isFinite(item.quantity) || !Number.isFinite(item.avgPrice));
+      if (invalid) {
+        setHoldingMessage("종목코드, 수량, 평균단가를 확인해 주세요.");
+        return;
+      }
+      const result = await mone.saveHoldingsEdit({ items });
+      if (result?.status === "ERROR") throw new Error(result.error || "보유종목 저장 실패");
+      setHoldingMessage(message);
+      cancelEditHolding();
+      await load();
+    } catch (error) {
+      setHoldingMessage(`저장 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setHoldingSaving(false);
+    }
+  }
+
+  async function saveHoldingDraft() {
+    if (!holdingDraft) return;
+    const key = holdingKey(holdingDraft);
+    const exists = editableHoldings.some((row) => holdingKey(row) === key);
+    const nextRows = exists
+      ? editableHoldings.map((row) => (holdingKey(row) === key ? holdingDraft : row))
+      : [...editableHoldings, holdingDraft];
+    await saveEditableHoldings(nextRows, `${holdingDraft.name || holdingDraft.symbol} 보유종목을 수정했습니다.`);
+  }
+
+  async function deleteHolding(item: any) {
+    const key = holdingKey(item);
+    const name = item.name || item.symbol;
+    const nextRows = editableHoldings.filter((row) => holdingKey(row) !== key);
+    await saveEditableHoldings(nextRows, `${name} 보유종목을 삭제했습니다.`);
   }
 
   useEffect(() => {
@@ -244,6 +344,8 @@ export default function HomePage() {
             <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{loading ? "불러오는 중" : "상위 5개"}</span>
           </div>
 
+          {holdingMessage ? <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-300">{holdingMessage}</div> : null}
+
           {loading ? (
             <div className="py-12 text-center text-slate-500">보유종목을 불러오는 중...</div>
           ) : topHoldings.length === 0 ? (
@@ -259,8 +361,78 @@ export default function HomePage() {
                         <div className="text-sm font-semibold text-slate-100">{displayName(item)}</div>
                         <div className="mt-1 font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div>
                       </div>
-                      <span className="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-400">{item.riskStatus || "정상"}</span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-400">{item.riskStatus || "정상"}</span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => startEditHolding(item)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
+                          >
+                            <Pencil size={12} /> 수정
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteHolding(item)}
+                            disabled={holdingSaving}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 px-2 py-1 text-[11px] text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                          >
+                            <Trash2 size={12} /> 삭제
+                          </button>
+                        </div>
+                      </div>
                     </div>
+
+                    {editingHoldingKey === holdingKey(item) && holdingDraft ? (
+                      <div className="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <label className="text-xs text-slate-500">
+                            종목명
+                            <input
+                              value={holdingDraft.name}
+                              onChange={(event) => setHoldingDraft({ ...holdingDraft, name: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100"
+                            />
+                          </label>
+                          <label className="text-xs text-slate-500">
+                            수량
+                            <input
+                              type="number"
+                              value={holdingDraft.quantity}
+                              onChange={(event) => setHoldingDraft({ ...holdingDraft, quantity: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100"
+                            />
+                          </label>
+                          <label className="text-xs text-slate-500">
+                            평균단가
+                            <input
+                              type="number"
+                              value={holdingDraft.avgPrice}
+                              onChange={(event) => setHoldingDraft({ ...holdingDraft, avgPrice: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100"
+                            />
+                          </label>
+                        </div>
+                        <div className="mt-3 flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={cancelEditHolding}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800"
+                          >
+                            <X size={13} /> 취소
+                          </button>
+                          <button
+                            type="button"
+                            onClick={saveHoldingDraft}
+                            disabled={holdingSaving}
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+                          >
+                            <Save size={13} /> 저장
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
                       <Info label="수량" value={item.quantity ?? "-"} />
                       <Info label="현재가" value={priceText(item, "current", "가격 확인 필요")} />

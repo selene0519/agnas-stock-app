@@ -9,6 +9,7 @@ export const KR_NAME_MAP: Record<string, string> = {
   "005380": "현대차",
   "005930": "삼성전자",
   "006400": "삼성SDI",
+  "009150": "삼성전기",
   "012450": "한화에어로스페이스",
   "015760": "한국전력",
   "034020": "두산에너빌리티",
@@ -72,7 +73,7 @@ export function normalizeSymbol(item: any): string {
 function isBadName(raw: string, symbol: string) {
   if (!raw || raw === "-" || raw.toLowerCase() === "nan") return true;
   if (raw.toUpperCase() === symbol.toUpperCase()) return true;
-  return /[�占癰沃嶺筌]/.test(raw);
+  return /[�占癰沃嶺筌ìíëê]/.test(raw);
 }
 
 export function displayName(itemOrSymbol: any, maybeMarket?: string, maybeRaw?: string): string {
@@ -80,8 +81,8 @@ export function displayName(itemOrSymbol: any, maybeMarket?: string, maybeRaw?: 
   const market = normalizeMarket(typeof itemOrSymbol === "string" ? maybeMarket : itemOrSymbol?.market, symbol);
   const raw = String(typeof itemOrSymbol === "string" ? maybeRaw || "" : itemOrSymbol?.name || itemOrSymbol?.company || itemOrSymbol?.companyName || "").trim();
   const mapped = market === "kr" ? KR_NAME_MAP[symbol] : US_NAME_MAP[symbol];
-  if (mapped) return mapped;
   if (!isBadName(raw, symbol)) return raw;
+  if (mapped) return mapped;
   return symbol || "-";
 }
 
