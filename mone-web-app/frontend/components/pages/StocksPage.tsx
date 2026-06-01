@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
-import { dedupeBySymbol, displayName, firstText, formatMoney, horizonLabel, modeLabel, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
+import { dedupeBySymbol, displayName, formatMoney, horizonLabel, modeLabel, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
 
 function Cell({ label, value, tone = "normal" }: { label: string; value?: string; tone?: "normal" | "blue" | "red" | "green" | "amber" }) {
   const color = tone === "blue" ? "text-blue-300" : tone === "red" ? "text-red-400" : tone === "green" ? "text-emerald-400" : tone === "amber" ? "text-amber-300" : "text-slate-100";
@@ -152,7 +152,10 @@ export default function StocksPage() {
             <div key={`${item.market}-${item.symbol}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-100">{item.isWatch ? "★ " : ""}{displayName(item)}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-bold text-slate-100">{displayName(item)}</h3>
+                    {item.isWatch && <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">관심</span>}
+                  </div>
                   <p className="font-mono text-sm text-slate-500">{item.symbol} · {String(item.market || market).toUpperCase()}</p>
                   <p className="mt-1 text-[11px] text-slate-600">요청: {modeLabel(mode)} / {horizonLabel(horizon)} · 소스: {modeLabel(item.sourceMode || item.mode || mode)} / {horizonLabel(item.sourceHorizon || item.horizon || horizon)}</p>
                 </div>
