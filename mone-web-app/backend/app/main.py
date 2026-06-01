@@ -764,3 +764,454 @@ def api_final_data_quality_live(market: str = "kr"):
     return _mone_dq_market(market)
 # --- end MONE live data-quality route patch v2 ascii ---
 
+
+# __MONE_AUTHORITATIVE_HOLDINGS_CLEAN_OVERRIDE_V3__
+def _install_mone_authoritative_holdings_clean_v3():
+    from pathlib import Path as _MonePath
+    import csv as _mone_csv
+    import re as _mone_re
+    from datetime import datetime as _mone_datetime
+    from fastapi import Query as _MoneQuery
+
+    def _root() -> _MonePath:
+        return _MonePath(__file__).resolve().parents[3]
+
+    def _read_csv(path: _MonePath) -> list[dict]:
+        if not path.exists():
+            return []
+        for enc in ("utf-8-sig", "utf-8", "cp949"):
+            try:
+                with path.open("r", encoding=enc, newline="") as f:
+                    return [dict(row) for row in _mone_csv.DictReader(f)]
+            except Exception:
+                continue
+        return []
+
+    def _num(value, default=0.0) -> float:
+        s = str(value or "").strip().replace(",", "").replace("₩", "").replace("$", "")
+        s = _mone_re.sub(r"[^0-9.\\-]", "", s)
+        try:
+            return float(s) if s not in ("", "-", ".", "-.") else float(default)
+        except Exception:
+            return float(default)
+
+    def _text(row: dict, keys: list[str], default: str = "") -> str:
+        lower = {str(k).lower(): k for k in row.keys()}
+        for key in keys:
+            if key in row and str(row.get(key, "")).strip():
+                return str(row.get(key, "")).strip()
+            actual = lower.get(str(key).lower())
+            if actual is not None and str(row.get(actual, "")).strip():
+                return str(row.get(actual, "")).strip()
+        return default
+
+    def _symbol(value, market: str) -> str:
+        raw = str(value or "").strip()
+        if market == "kr":
+            digits = _mone_re.sub(r"\\D", "", raw)
+            return digits.zfill(6)[-6:] if digits else ""
+        return raw.upper()
+
+    def _row_symbol(row: dict, market: str) -> str:
+        value = _text(row, ["symbol", "ticker", "code", "stock_code", "stockCode", "종목코드", "Symbol", "Ticker"], "")
+        if not value and row:
+            value = row.get(next(iter(row.keys())), "")
+        return _symbol(value, market)
+
+    def _name(row: dict, symbol: str) -> str:
+        return _text(row, ["name", "companyName", "company_name", "corp_name", "종목명", "Name"], symbol)
+
+    def _price_index(market: str) -> dict[str, dict]:
+        paths = [
+            _root() / "data" / "stockapp" / f"kis_current_price_{market}.csv",
+            _root() / "reports" / f"kis_current_price_{market}.csv",
+            _root() / "data" / "stockapp" / f"intraday_quote_snapshot_{market}.csv",
+            _root() / "reports" / f"intraday_quote_snapshot_{market}.csv",
+            _root() / "data" / "stockapp" / f"intraday_realtime_snapshot_{market}.csv",
+            _root() / "reports" / f"intraday_realtime_snapshot_{market}.csv",
+        ]
+        out: dict[str, dict] = {}
+        for path in paths:
+            for row in _read_csv(path):
+                sym = _row_symbol(row, market)
+                if not sym:
+                    continue
+                price = _num(_text(row, ["currentPrice", "current_price", "price", "last", "close", "현재가"], ""), 0)
+                if price <= 0:
+                    price = _num(_text(row, ["currentPriceText", "priceText"], ""), 0)
+                if price <= 0:
+                    continue
+                out[sym] = {
+                    "currentPrice": price,
+                    "currentPriceText": f"${price:,.2f}" if market == "us" else f"{round(price):,}원",
+                    "priceSource": path.name,
+                    "quoteTimestamp": _text(row, ["timestamp", "time", "updatedAt", "datetime", "date"], ""),
+                }
+        return out
+
+    def _v93_index(market: str) -> dict[str, dict]:
+        path = _root() / "reports" / f"v93_position_cards_{market}.csv"
+        out = {}
+        for row in _read_csv(path):
+            sym = _row_symbol(row, market)
+            if sym:
+                out[sym] = row
+        return out
+
+    def _read_authoritative_holdings(market: str) -> list[dict]:
+        markets = ["kr", "us"] if market == "all" else [market]
+        rows = []
+        seen_keys = set()
+        for mk in markets:
+            for path in [_root() / f"holdings_{mk}.csv", _root() / "data" / f"holdings_{mk}.csv"]:
+                for row in _read_csv(path):
+                    sym = _row_symbol(row, mk)
+                    if not sym:
+                        continue
+                    key = (mk, sym)
+                    if key in seen_keys:
+                        continue
+                    qty = _num(_text(row, ["quantity", "qty", "수량"], ""), 0)
+                    avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평균단가", "매입가"], ""), 0)
+                    if qty <= 0:
+                        continue
+                    seen_keys.add(key)
+                    rows.append({
+                        "symbol": sym,
+                        "name": _name(row, sym),
+                        "market": mk,
+                        "quantity": qty,
+                        "avgPrice": avg,
+                        "source": path.name,
+                        "holdingAuthority": "holdings_csv",
+                        "holdingAuthoritySource": path.name,
+                    })
+        return rows
+
+    def _payload(market: str = "all", limit: int = 100) -> dict:
+        market_key = str(market or "all").lower()
+        if market_key not in ("all", "kr", "us"):
+            market_key = "all"
+
+        rows = _read_authoritative_holdings(market_key)
+        quote_kr = _price_index("kr") if market_key in ("all", "kr") else {}
+        quote_us = _price_index("us") if market_key in ("all", "us") else {}
+        v93_kr = _v93_index("kr") if market_key in ("all", "kr") else {}
+        v93_us = _v93_index("us") if market_key in ("all", "us") else {}
+
+        items = []
+        for row in rows:
+            mk = row["market"]
+            sym = row["symbol"]
+            qty = _num(row.get("quantity"), 0)
+            avg = _num(row.get("avgPrice"), 0)
+            q = (quote_kr if mk == "kr" else quote_us).get(sym, {})
+            v = (v93_kr if mk == "kr" else v93_us).get(sym, {})
+
+            current = _num(q.get("currentPrice"), 0) or _num(_text(v, ["currentPrice", "current", "price", "현재가"], ""), 0)
+            current_text = q.get("currentPriceText") or (f"${current:,.2f}" if mk == "us" and current > 0 else f"{round(current):,}원" if current > 0 else "-")
+            pnl = (current - avg) * qty if current > 0 and avg > 0 else 0
+            invested = avg * qty if avg > 0 else 0
+            pnl_pct = (pnl / invested * 100) if invested > 0 else 0
+
+            stop = _num(_text(v, ["stopPrice", "stop", "stopText", "손절가"], ""), 0)
+            target = _num(_text(v, ["targetPrice", "target", "targetText", "목표가"], ""), 0)
+
+            item = dict(row)
+            item.update({
+                "avgPriceText": f"${avg:,.2f}" if mk == "us" and avg > 0 else f"{round(avg):,}원" if avg > 0 else "-",
+                "currentPrice": current,
+                "currentPriceText": current_text,
+                "marketValue": current * qty if current > 0 else 0,
+                "marketValueText": f"${current * qty:,.2f}" if mk == "us" and current > 0 else f"{round(current * qty):,}원" if current > 0 else "-",
+                "pnl": pnl,
+                "pnlText": f"${pnl:,.2f}" if mk == "us" else f"{round(pnl):,}원",
+                "pnlPct": pnl_pct,
+                "pnlPctText": f"{pnl_pct:+.2f}%",
+                "stopPrice": stop,
+                "stopText": f"${stop:,.2f}" if mk == "us" and stop > 0 else f"{round(stop):,}원" if stop > 0 else "-",
+                "targetPrice": target,
+                "targetText": f"${target:,.2f}" if mk == "us" and target > 0 else f"{round(target):,}원" if target > 0 else "-",
+                "riskLevel": _text(v, ["riskLevel", "risk", "status", "판정"], "NORMAL") or "NORMAL",
+                "dataStatus": "NORMAL" if current > 0 else "NO_PRICE",
+                "source": row["source"],
+                "enrichSource": "v93_position_cards" if v else "",
+                "priceSource": q.get("priceSource") or "",
+            })
+            items.append(item)
+
+        unique = {(i["market"], i["symbol"]) for i in items}
+        limit = max(1, min(int(limit or 100), 10000))
+        return {
+            "status": "OK",
+            "routeVersion": "holdings-authoritative-csv-v3",
+            "market": market_key,
+            "count": len(items[:limit]),
+            "totalCount": len(items),
+            "uniqueCount": len(unique),
+            "items": items[:limit],
+            "updatedAt": _mone_datetime.now().isoformat(),
+            "authority": "holdings_kr.csv/holdings_us.csv",
+        }
+
+    global app
+    app.router.routes = [
+        r for r in app.router.routes
+        if getattr(r, "path", "") not in {"/api/holdings-clean", "/api/final/holdings-clean"}
+    ]
+
+    @app.get("/api/holdings-clean")
+    def mone_authoritative_holdings_clean_v3(market: str = _MoneQuery("all"), limit: int = _MoneQuery(100)) -> dict:
+        return _payload(market, limit)
+
+    @app.get("/api/final/holdings-clean")
+    def mone_authoritative_final_holdings_clean_v3(market: str = _MoneQuery("all"), limit: int = _MoneQuery(100)) -> dict:
+        return _payload(market, limit)
+
+try:
+    _install_mone_authoritative_holdings_clean_v3()
+except Exception as _mone_holdings_override_error:
+    print("[MONE] holdings-clean override v3 failed:", _mone_holdings_override_error)
+
+
+# __MONE_SYMBOLS_EXTRA_MASTER_OVERRIDE_V2__
+def _install_mone_symbols_extra_master_v2():
+    from pathlib import Path as _MonePath
+    import csv as _mone_csv
+    import re as _mone_re
+    from datetime import datetime as _mone_datetime
+    from fastapi import Query as _MoneQuery
+
+    def _root() -> _MonePath:
+        return _MonePath(__file__).resolve().parents[3]
+
+    def _read_csv(path: _MonePath) -> list[dict]:
+        if not path.exists():
+            return []
+        for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+            try:
+                with path.open("r", encoding=enc, newline="") as f:
+                    return [dict(row) for row in _mone_csv.DictReader(f)]
+            except Exception:
+                continue
+        return []
+
+    def _text(row: dict, keys: list[str], default: str = "") -> str:
+        lower = {str(k).lower(): k for k in row.keys()}
+        for key in keys:
+            if key in row and str(row.get(key, "")).strip():
+                return str(row.get(key, "")).strip()
+            actual = lower.get(str(key).lower())
+            if actual is not None and str(row.get(actual, "")).strip():
+                return str(row.get(actual, "")).strip()
+        return default
+
+    def _num(value, default=0.0) -> float:
+        s = str(value or "").strip().replace(",", "").replace("₩", "").replace("$", "")
+        s = _mone_re.sub(r"[^0-9.\-]", "", s)
+        try:
+            return float(s) if s not in ("", "-", ".", "-.") else float(default)
+        except Exception:
+            return float(default)
+
+    def _market(value: str, symbol: str = "") -> str:
+        v = str(value or "").strip().lower()
+        if v in ("kr", "kospi", "kosdaq", "konex", "국장", "한국", "korea"):
+            return "kr"
+        if v in ("us", "nasdaq", "nyse", "amex", "미장", "미국", "usa"):
+            return "us"
+        return "kr" if str(symbol).isdigit() else "us"
+
+    def _symbol(value: str, market: str) -> str:
+        raw = str(value or "").strip()
+        if market == "kr":
+            digits = _mone_re.sub(r"\D", "", raw)
+            return digits.zfill(6)[-6:] if digits else ""
+        return raw.upper()
+
+    def _row_symbol(row: dict, fallback_market: str = "") -> tuple[str, str]:
+        raw = _text(row, ["symbol", "ticker", "code", "stock_code", "stockCode", "종목코드", "종목", "Symbol", "Ticker"], "")
+        guessed_market = _market(_text(row, ["market", "시장", "exchange", "marketType"], fallback_market), raw)
+        if not raw and row:
+            raw = str(row.get(next(iter(row.keys())), "")).strip()
+        sym = _symbol(raw, guessed_market)
+        return sym, guessed_market
+
+    def _name(row: dict, symbol: str) -> str:
+        return _text(row, ["name", "companyName", "company_name", "corp_name", "종목명", "한글명", "Name"], symbol)
+
+    def _price_index(market: str) -> dict[str, dict]:
+        paths = [
+            _root() / "data" / "stockapp" / f"kis_current_price_{market}.csv",
+            _root() / "reports" / f"kis_current_price_{market}.csv",
+            _root() / "data" / "stockapp" / f"intraday_quote_snapshot_{market}.csv",
+            _root() / "reports" / f"intraday_quote_snapshot_{market}.csv",
+            _root() / "data" / "stockapp" / f"intraday_realtime_snapshot_{market}.csv",
+            _root() / "reports" / f"intraday_realtime_snapshot_{market}.csv",
+        ]
+        out: dict[str, dict] = {}
+        for path in paths:
+            for row in _read_csv(path):
+                sym, mk = _row_symbol(row, market)
+                if not sym or mk != market:
+                    continue
+                price = _num(_text(row, ["currentPrice", "current_price", "price", "last", "close", "현재가"], ""), 0)
+                if price <= 0:
+                    price = _num(_text(row, ["currentPriceText", "priceText"], ""), 0)
+                if price <= 0:
+                    continue
+                out[sym] = {
+                    "currentPrice": price,
+                    "currentPriceText": f"${price:,.2f}" if market == "us" else f"{round(price):,}원",
+                    "priceSource": path.name,
+                }
+        return out
+
+    def _symbol_source_files() -> list[_MonePath]:
+        root = _root()
+        files: list[_MonePath] = [
+            root / "holdings_kr.csv",
+            root / "holdings_us.csv",
+            root / "watchlist_kr.csv",
+            root / "watchlist_us.csv",
+            root / "watchlist_kr_growth.csv",
+            root / "watchlist_us_growth.csv",
+            root / "candidate_universe_kr.csv",
+            root / "candidate_universe_us.csv",
+            root / "data" / "symbol_master_kr_full.csv",
+            root / "data" / "symbol_master_kr_extra.csv",
+            root / "data" / "symbol_master_us_full.csv",
+            root / "data" / "symbol_master_us_extra.csv",
+            root / "data" / "stock_master_kr.csv",
+            root / "data" / "stock_master_us.csv",
+            root / "data" / "holdings_kr.csv",
+            root / "data" / "holdings_us.csv",
+            root / "data" / "watchlist_kr.csv",
+            root / "data" / "watchlist_us.csv",
+            root / "data" / "watchlist_kr_growth.csv",
+            root / "data" / "watchlist_us_growth.csv",
+            root / "data" / "candidate_universe_kr.csv",
+            root / "data" / "candidate_universe_us.csv",
+            root / "data" / "stockapp" / "kis_current_price_kr.csv",
+            root / "data" / "stockapp" / "kis_current_price_us.csv",
+            root / "data" / "stockapp" / "intraday_quote_snapshot_kr.csv",
+            root / "data" / "stockapp" / "intraday_quote_snapshot_us.csv",
+            root / "data" / "stockapp" / "intraday_realtime_snapshot_kr.csv",
+            root / "data" / "stockapp" / "intraday_realtime_snapshot_us.csv",
+            root / "reports" / "candidate_universe_kr.csv",
+            root / "reports" / "candidate_universe_us.csv",
+            root / "reports" / "kis_current_price_kr.csv",
+            root / "reports" / "kis_current_price_us.csv",
+            root / "reports" / "intraday_quote_snapshot_kr.csv",
+            root / "reports" / "intraday_quote_snapshot_us.csv",
+        ]
+        if (root / "reports").exists():
+            files.extend(sorted((root / "reports").glob("v*_symbol_snapshot_kr.csv")))
+            files.extend(sorted((root / "reports").glob("v*_symbol_snapshot_us.csv")))
+            files.extend(sorted((root / "reports").glob("v*_master_investors_kr.csv")))
+            files.extend(sorted((root / "reports").glob("v*_master_investors_us.csv")))
+            files.extend(sorted((root / "reports").glob("mone_v36_final_recommendations_kr_*.csv")))
+            files.extend(sorted((root / "reports").glob("mone_v36_final_recommendations_us_*.csv")))
+        return [p for p in files if p.exists()]
+
+    def _symbols_payload(market: str = "all", q: str = "", limit: int = 10000) -> dict:
+        market_key = str(market or "all").lower()
+        if market_key not in ("all", "kr", "us"):
+            market_key = "all"
+        query = str(q or "").strip().lower()
+        query_digits = _mone_re.sub(r"\D", "", query)
+        price_kr = _price_index("kr") if market_key in ("all", "kr") else {}
+        price_us = _price_index("us") if market_key in ("all", "us") else {}
+
+        items_by_key: dict[tuple[str, str], dict] = {}
+
+        for path in _symbol_source_files():
+            lower_name = path.name.lower()
+            fallback_market = "kr" if "_kr" in lower_name or "kr_" in lower_name else "us" if "_us" in lower_name or "us_" in lower_name else ""
+            for row in _read_csv(path):
+                sym, mk = _row_symbol(row, fallback_market)
+                if not sym or mk not in ("kr", "us"):
+                    continue
+                if market_key != "all" and mk != market_key:
+                    continue
+                name = _name(row, sym)
+                key = (mk, sym)
+                base = items_by_key.get(key, {})
+                source = _text(row, ["source"], path.name) or path.name
+                items_by_key[key] = {
+                    **base,
+                    "symbol": sym,
+                    "name": name if name and name != sym else base.get("name", name or sym),
+                    "market": mk,
+                    "source": base.get("source") or source,
+                }
+
+        for mk, pidx in [("kr", price_kr), ("us", price_us)]:
+            if market_key not in ("all", mk):
+                continue
+            for sym in pidx.keys():
+                key = (mk, sym)
+                if key not in items_by_key:
+                    items_by_key[key] = {"symbol": sym, "name": sym, "market": mk, "source": "price_snapshot"}
+
+        rows = []
+        for item in items_by_key.values():
+            mk = item["market"]
+            sym = item["symbol"]
+            price = (price_kr if mk == "kr" else price_us).get(sym, {})
+            row = {**item, **price}
+            hay = f"{row.get('symbol','')} {row.get('name','')}".lower()
+            sym_digits = _mone_re.sub(r"\D", "", str(row.get("symbol", "")))
+            if query:
+                if query not in hay and (not query_digits or query_digits not in sym_digits):
+                    continue
+            if not row.get("currentPrice"):
+                row["currentPrice"] = None
+            row.setdefault("currentPriceText", "")
+            row.setdefault("priceSource", "")
+            row["dataStatus"] = "NORMAL" if row.get("currentPrice") else "PRICE_PENDING"
+            rows.append(row)
+
+        rows.sort(key=lambda r: (0 if str(r.get("name","")).lower().startswith(query) and query else 1, r.get("market",""), r.get("symbol","")))
+        limit = max(1, min(int(limit or 10000), 10000))
+        return {
+            "status": "OK",
+            "routeVersion": "symbols-extra-master-v2",
+            "market": market_key,
+            "query": q,
+            "count": len(rows[:limit]),
+            "totalCount": len(rows),
+            "items": rows[:limit],
+            "updatedAt": _mone_datetime.now().isoformat(),
+            "sources": [p.name for p in _symbol_source_files()],
+        }
+
+    global app
+    app.router.routes = [
+        r for r in app.router.routes
+        if getattr(r, "path", "") not in {"/api/symbols", "/api/final/symbols"}
+    ]
+
+    @app.get("/api/symbols")
+    def mone_symbols_extra_master_v2(
+        market: str = _MoneQuery("all"),
+        q: str = _MoneQuery(""),
+        limit: int = _MoneQuery(10000),
+        watchOnly: bool = _MoneQuery(False),
+    ) -> dict:
+        return _symbols_payload(market, q, limit)
+
+    @app.get("/api/final/symbols")
+    def mone_final_symbols_extra_master_v2(
+        market: str = _MoneQuery("all"),
+        q: str = _MoneQuery(""),
+        limit: int = _MoneQuery(10000),
+        watchOnly: bool = _MoneQuery(False),
+    ) -> dict:
+        return _symbols_payload(market, q, limit)
+
+try:
+    _install_mone_symbols_extra_master_v2()
+except Exception as _mone_symbols_extra_error:
+    print("[MONE] symbols extra master override failed:", _mone_symbols_extra_error)
+

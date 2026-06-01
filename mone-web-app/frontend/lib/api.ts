@@ -99,6 +99,44 @@ export function money(value: number | string | null | undefined, market: Market 
   return `${Math.round(n).toLocaleString()}원`;
 }
 
+
+export async function apiPost<T = any>(
+  path: string,
+  body?: any,
+  params?: Record<string, string | number | boolean | undefined | null>
+): Promise<T> {
+  const postJson = async (url: string): Promise<T> => {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        cache: "no-store",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body || {}),
+      });
+      const text = await response.text().catch(() => "");
+      if (!response.ok) {
+        return { status: "ERROR", error: `${response.status} ${response.statusText} ${text.slice(0, 500)}`, items: [], count: 0 } as T;
+      }
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        return { status: "ERROR", error: "Invalid JSON response", items: [], count: 0 } as T;
+      }
+    } catch (error) {
+      return { status: "ERROR", error: error instanceof Error ? error.message : String(error), items: [], count: 0 } as T;
+    }
+  };
+
+  const proxyUrl = buildUrl(API_BASE, path, params);
+  const proxyResult: any = await postJson(proxyUrl);
+  if (proxyResult?.status !== "ERROR") return proxyResult as T;
+
+  const directUrl = buildUrl(DIRECT_BACKEND, path, params);
+  const directResult: any = await postJson(directUrl);
+  if (directResult?.status === "ERROR") directResult.proxyError = proxyResult.error;
+  return directResult as T;
+}
+
 export const mone = {
   get: apiGet,
   symbols: (p?: { market?: Market; q?: string; watchOnly?: boolean; limit?: number }) =>
@@ -127,6 +165,14 @@ export const mone = {
     apiGet<ApiList>("/api/holdings", p),
   holdingsClean: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/holdings-clean", p),
+  holdingsEdit: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/holdings-edit", p),
+  saveHoldingsEdit: (body: { items: any[] }) =>
+    apiPost<ApiList>("/api/holdings-edit/save", body),
+  watchlistEdit: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/watchlist-edit", p),
+  saveWatchlistEdit: (body: { items: any[] }) =>
+    apiPost<ApiList>("/api/watchlist-edit/save", body),
   news: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/news", p),
   disclosures: (p?: { market?: Market; limit?: number }) =>
@@ -148,5 +194,7 @@ export const mone = {
 };
 
 export default mone;
+
+
 
 

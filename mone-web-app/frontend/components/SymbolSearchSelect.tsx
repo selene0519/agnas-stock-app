@@ -1,155 +1,220 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search, X } from "lucide-react";
 import { mone, type Market } from "@/lib/api";
-import { dedupeBySymbol, displayName, normalizeMarket, normalizeSymbol } from "@/lib/moneDisplay";
 
-export interface MoneSymbol {
-  id: string;
+export type MoneSymbol = {
   symbol: string;
   name: string;
-  market: "kr" | "us";
-  label: string;
+  market: Market;
+  label?: string;
   isWatch?: boolean;
+  currentPrice?: number | string | null;
+  currentPriceText?: string;
+  priceSource?: string;
+  source?: string;
+  dataStatus?: string;
+  [key: string]: any;
+};
+
+type Props = {
+  market?: Market;
+  watchOnly?: boolean;
+  value?: string;
+  onChange?: (item: MoneSymbol | null) => void;
+  onResults?: (items: MoneSymbol[], query: string) => void;
+  placeholder?: string;
+  className?: string;
+};
+
+function normalizeMarket(value: any): Market {
+  const v = String(value || "all").toLowerCase();
+  if (v === "kr" || v === "us" || v === "all") return v;
+  return "all";
 }
 
-function normalize(item: any, index: number): MoneSymbol {
-  const symbol = normalizeSymbol(item);
-  const market = normalizeMarket(item.market, symbol);
-  const name = displayName(item);
-  return {
-    id: String(item.id || `${market}-${symbol}-${index}`),
-    symbol,
-    name,
-    market,
-    label: `${name} (${symbol})`,
-    isWatch: Boolean(item.isWatch || item.watch),
-  };
-}
-
-function mergeSymbols(items: any[]): MoneSymbol[] {
-  return dedupeBySymbol(items).map(normalize);
+function cleanText(value: any) {
+  return String(value ?? "").trim();
 }
 
 export default function SymbolSearchSelect({
   market = "all",
-  value = "",
   watchOnly = false,
+  value = "",
   onChange,
+  onResults,
+  placeholder = "종목명 또는 종목코드 검색",
   className = "",
-}: {
-  market?: Market;
-  value?: string;
-  watchOnly?: boolean;
-  onChange: (symbol: MoneSymbol | null) => void;
-  className?: string;
-}) {
-  const [symbols, setSymbols] = useState<MoneSymbol[]>([]);
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(value);
+}: Props) {
+  const [query, setQuery] = useState(value || "");
+  const [items, setItems] = useState<MoneSymbol[]>([]);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    let alive = true;
-    setLoading(true);
-
-    Promise.allSettled([
-      mone.holdingsClean({ market, limit: 200 }),
-      mone.recommendations({ market, mode: "balanced", horizon: "swing", limit: 100 }),
-      mone.symbols({ market, watchOnly, limit: 300 }),
-    ])
-      .then((results) => {
-        if (!alive) return;
-        const raw = results.flatMap((result: any) =>
-          result.status === "fulfilled" && Array.isArray(result.value?.items) ? result.value.items : []
-        );
-        const next = mergeSymbols(raw).filter((item) => !watchOnly || item.isWatch);
-        setSymbols(next);
-      })
-      .catch(() => alive && setSymbols([]))
-      .finally(() => alive && setLoading(false));
-
-    return () => {
-      alive = false;
-    };
-  }, [market, watchOnly]);
-
-  useEffect(() => {
-    setSelected(value || "");
+    setQuery(value || "");
   }, [value]);
 
   useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) return;
+    const onClick = (event: MouseEvent) => {
+      if (!boxRef.current) return;
+      if (!boxRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, []);
 
-    let alive = true;
+  useEffect(() => {
+    let active = true;
+    const q = query.trim();
+
+    if (!q) {
+      setItems([]);
+      setLoading(false);
+      onResults?.([], "");
+      return;
+    }
+
     const timer = window.setTimeout(() => {
-      setSearching(true);
+      setLoading(true);
       mone
-        .symbols({ market, q, watchOnly, limit: 500 })
-        .then((data) => {
-          if (!alive) return;
-          const found = Array.isArray(data.items) ? data.items : [];
-          setSymbols((prev) => mergeSymbols([...prev, ...found]).filter((item) => !watchOnly || item.isWatch));
+        .symbols({
+          market: normalizeMarket(market),
+          q,
+          watchOnly,
+          limit: 50,
+        } as any)
+        .then((payload: any) => {
+          if (!active) return;
+          const rows = Array.isArray(payload?.items) ? payload.items : [];
+          const normalized = rows
+            .map((row: any) => ({
+              ...row,
+              symbol: cleanText(row.symbol || row.code || row.ticker),
+              name: cleanText(row.name || row.companyName || row.company_name || row.symbol),
+              market: normalizeMarket(row.market || market),
+              label: cleanText(row.label || `${row.name || row.symbol} ${row.symbol || ""}`),
+              currentPrice: row.currentPrice ?? row.price ?? row.last ?? row.close ?? null,
+              currentPriceText: cleanText(row.currentPriceText || row.priceText || ""),
+              priceSource: cleanText(row.priceSource || row.source || ""),
+              source: cleanText(row.source || ""),
+              dataStatus: cleanText(row.dataStatus || ""),
+            }))
+            .filter((row: MoneSymbol) => row.symbol && row.name);
+          setItems(normalized);
+          onResults?.(normalized, q);
+          setOpen(true);
         })
-        .finally(() => alive && setSearching(false));
-    }, 250);
+        .catch(() => {
+          if (active) {
+            setItems([]);
+            onResults?.([], q);
+          }
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 180);
 
     return () => {
-      alive = false;
+      active = false;
       window.clearTimeout(timer);
     };
-  }, [market, query, watchOnly]);
+  }, [query, market, watchOnly, onResults]);
 
-  const filtered = useMemo(() => {
+  const exact = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = q
-      ? symbols.filter(
-          (item) =>
-            item.symbol.toLowerCase().includes(q) ||
-            item.name.toLowerCase().includes(q) ||
-            item.label.toLowerCase().includes(q)
-        )
-      : symbols;
-    return base.slice(0, 500);
-  }, [symbols, query]);
+    if (!q) return null;
+    return items.find(
+      (item) =>
+        item.symbol.toLowerCase() === q ||
+        item.name.toLowerCase() === q ||
+        `${item.name} ${item.symbol}`.toLowerCase() === q,
+    );
+  }, [items, query]);
 
-  function select(symbol: string) {
-    setSelected(symbol);
-    onChange(symbol ? symbols.find((item) => item.symbol === symbol) || null : null);
-  }
+  const selectItem = (item: MoneSymbol) => {
+    setQuery(item.name || item.symbol);
+    setOpen(false);
+    onChange?.(item);
+  };
+
+  const clear = () => {
+    setQuery("");
+    setItems([]);
+    setOpen(false);
+    onChange?.(null);
+  };
 
   return (
-    <div className={`rounded-2xl border border-slate-800 bg-slate-950/40 p-3 ${className}`}>
-      <div className="flex flex-col gap-2 md:flex-row">
+    <div ref={boxRef} className={`relative ${className}`}>
+      <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 focus-within:border-blue-500">
+        <Search size={18} className="text-slate-500" />
         <input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="종목명 또는 종목코드 검색"
-          className="h-11 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-500"
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => query.trim() && setOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && exact) selectItem(exact);
+            if (event.key === "Escape") setOpen(false);
+          }}
+          placeholder={placeholder}
+          className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-600"
         />
-        <select
-          value={selected}
-          onChange={(event) => select(event.target.value)}
-          className="h-11 min-w-[300px] rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none focus:border-blue-500"
-        >
-          <option value="">전체 종목 보기</option>
-          {filtered.map((item, index) => (
-            <option key={`${item.market}-${item.symbol}-${index}`} value={item.symbol}>
-              {item.isWatch ? "* " : ""}
-              {item.name} ({item.symbol})
-            </option>
-          ))}
-        </select>
+        {query && (
+          <button
+            type="button"
+            onClick={clear}
+            className="rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
+            aria-label="검색어 지우기"
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
-      <div className="mt-2 text-xs text-slate-500">
-        {loading
-          ? "주요 종목을 불러오는 중..."
-          : searching
-            ? "검색 결과를 불러오는 중..."
-            : `전체 ${symbols.length.toLocaleString("ko-KR")}개 중 ${filtered.length.toLocaleString("ko-KR")}개 표시`}
-      </div>
+
+      {open && query.trim() && (
+        <div className="absolute z-50 mt-2 max-h-96 w-full overflow-auto rounded-2xl border border-slate-800 bg-slate-950 p-2 shadow-2xl">
+          {loading && <div className="px-3 py-3 text-sm text-slate-500">검색 중...</div>}
+
+          {!loading && items.length === 0 && (
+            <div className="px-3 py-3 text-sm text-amber-300">
+              검색 결과가 없습니다. 관심종목이 아니어도 전체 종목에서 검색합니다.
+            </div>
+          )}
+
+          {!loading &&
+            items.map((item) => (
+              <button
+                key={`${item.market}-${item.symbol}`}
+                type="button"
+                onClick={() => selectItem(item)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-900"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-bold text-slate-100">{item.name}</div>
+                  <div className="font-mono text-xs text-slate-500">
+                    {item.symbol} / {String(item.market).toUpperCase()}
+                    {item.isWatch ? " / 관심" : ""}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className={`font-mono text-xs ${item.currentPriceText ? "text-slate-300" : "text-amber-300"}`}>
+                    {item.currentPriceText || "가격 확인 필요"}
+                  </div>
+                  <div className="text-[10px] text-slate-600">
+                    {item.priceSource || item.source || (String(item.dataStatus || "").toUpperCase() === "PRICE_PENDING" ? "KIS 수집 대기" : item.dataStatus) || ""}
+                  </div>
+                </div>
+              </button>
+            ))}
+        </div>
+      )}
     </div>
   );
 }
