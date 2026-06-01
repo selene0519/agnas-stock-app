@@ -62,6 +62,9 @@ US_NAME_FALLBACK: dict[str, str] = {
     "MU": "Micron",
     "RKLB": "Rocket Lab",
     "ASTS": "AST SpaceMobile",
+    "AAOI": "Applied Optoelectronics",
+    "SIMO": "Silicon Motion",
+    "BMNR": "BitMine Immersion Technologies",
 }
 
 MODE_ALIASES = {
@@ -381,6 +384,48 @@ def _prob_number(value: Any, default: float = 58.0) -> float:
     return _clamp(n)
 
 
+def _symbol_jitter(symbol: str, scale: float = 0.35) -> float:
+    seed = sum((idx + 1) * ord(ch) for idx, ch in enumerate(str(symbol or "")))
+    return ((seed % 17) - 8) * scale
+
+
+def _auto_probability(
+    row: dict[str, Any],
+    symbol: str,
+    mode: str,
+    horizon: str,
+    current: float,
+    entry: float,
+    stop: float,
+    target: float,
+    raw_probability: float,
+) -> float:
+    raw_anchor = _clamp(raw_probability, 35.0, 72.0)
+    base = 50.0 + ((raw_anchor - 50.0) * 0.35)
+
+    rr_adj = 0.0
+    if entry > 0 and stop > 0 and target > entry and entry > stop:
+        rr = (target - entry) / max(entry - stop, 1e-9)
+        rr_adj = _clamp((rr - 1.6) * 3.2, -5.0, 6.0)
+
+    gap_adj = 0.0
+    if current > 0 and entry > 0:
+        gap_pct = abs(current - entry) / entry * 100.0
+        gap_adj = _clamp(3.0 - gap_pct, -4.0, 3.0)
+
+    score_adj = 0.0
+    score = _num(_text(row, ["score", "finalScore", "riskScore", "opportunityScore", "confidence"], ""), 0.0)
+    if score:
+        if 0 < score <= 1:
+            score *= 100.0
+        score_adj = _clamp((score - 50.0) / 12.0, -4.0, 4.0)
+
+    horizon_adj = {"short": -1.2, "swing": 0.0, "mid": 1.1, "long": 1.5}.get(horizon, 0.0)
+    mode_adj = {"conservative": -1.0, "balanced": 0.0, "aggressive": 1.0}.get(mode, 0.0)
+    probability = base + rr_adj + gap_adj + score_adj + horizon_adj + mode_adj + _symbol_jitter(symbol)
+    return round(_clamp(probability, 45.0, 70.0), 1)
+
+
 def _computed_append(fields: list[str], name: str) -> None:
     if name not in fields:
         fields.append(name)
@@ -408,12 +453,15 @@ def _build_name_map() -> dict[str, str]:
 
     for market in ("kr", "us"):
         for path in _direct_files(
+            f"holdings_{market}.csv",
             f"watchlist_{market}.csv",
             f"watchlist_{market}_growth.csv",
             f"candidate_universe_{market}.csv",
+            f"data/holdings_{market}.csv",
             f"data/watchlist_{market}.csv",
             f"data/watchlist_{market}_growth.csv",
             f"data/candidate_universe_{market}.csv",
+            f"reports/mone_v36_final_recommendations_{market}_balanced_swing.csv",
         ):
             for row in _read_csv(path, 50000):
                 sym = _symbol(row, market)
@@ -521,12 +569,19 @@ def _all_symbol_rows() -> tuple[dict[str, Any], ...]:
     rows: list[dict[str, Any]] = []
     for market in ("kr", "us"):
         for path in _direct_files(
+            f"holdings_{market}.csv",
             f"watchlist_{market}.csv",
             f"watchlist_{market}_growth.csv",
             f"candidate_universe_{market}.csv",
+            f"data/holdings_{market}.csv",
             f"data/watchlist_{market}.csv",
             f"data/watchlist_{market}_growth.csv",
             f"data/candidate_universe_{market}.csv",
+            f"reports/mone_v36_final_recommendations_{market}_balanced_swing.csv",
+            f"reports/mone_v36_final_recommendations_{market}_balanced_short.csv",
+            f"reports/mone_v36_final_recommendations_{market}_balanced_mid.csv",
+            f"reports/mone_v36_final_recommendations_{market}_conservative_swing.csv",
+            f"reports/mone_v36_final_recommendations_{market}_aggressive_swing.csv",
             f"reports/watchlist_{market}.csv",
             f"reports/watchlist_{market}_growth.csv",
             f"reports/candidate_universe_{market}.csv",
@@ -537,6 +592,20 @@ def _all_symbol_rows() -> tuple[dict[str, Any], ...]:
             for row in _read_csv(path, 50000):
                 row["_market"] = market
                 rows.append(row)
+        for path in _many(f"data/market/ohlcv/{market}_*_daily.csv", max_files=5000):
+            match = re.match(rf"{market}_(.+?)_daily\.csv$", path.name, re.IGNORECASE)
+            if not match:
+                continue
+            symbol = _symbol_value(match.group(1), market)
+            if not symbol:
+                continue
+            rows.append({
+                "symbol": symbol,
+                "name": _fallback_name(symbol, market),
+                "_market": market,
+                "_source_file": path.name,
+                "_source_path": _safe_rel(path),
+            })
     return tuple(rows)
 
 
@@ -909,9 +978,15 @@ def _recommendation_item(
             _computed_append(computed_fields, "expected_price_from_target")
 
     probability_raw = _text(row, ["probability", "win_probability", "probSwing", "prob_3d", "prob_5d"], "")
-    probability = round(_clamp(_prob_number(probability_raw, 58.0) + profile["prob"]), 1)
-    if not probability_raw:
-        _computed_append(computed_fields, "probability_from_default")
+    raw_probability = _prob_number(probability_raw, 58.0)
+    use_auto_probability = (not probability_raw) or raw_probability < 45.0
+    if use_auto_probability:
+        probability = _auto_probability(row, sym, mode, horizon, current, entry, stop, target, raw_probability)
+        _computed_append(computed_fields, "probability_auto")
+        if probability_raw:
+            _computed_append(computed_fields, "probability_source_low_confidence")
+    else:
+        probability = round(_clamp(raw_probability + profile["prob"]), 1)
     prob1d = round(_clamp(probability - 1.0), 1)
     prob3d = round(_clamp(probability + (0.5 if horizon == "short" else 1.0)), 1)
     prob5d = round(_clamp(probability + (1.5 if horizon == "swing" else 0.5)), 1)

@@ -6,6 +6,7 @@ import json
 import math
 import re
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -124,8 +125,30 @@ _NAMES = {
 }
 
 
+@lru_cache(maxsize=1)
+def _name_map() -> Dict[str, str]:
+    names = dict(_NAMES)
+    for path in _glob_existing([
+        "watchlist_kr.csv",
+        "watchlist_us.csv",
+        "watchlist_kr_growth.csv",
+        "watchlist_us_growth.csv",
+        "candidate_universe_kr.csv",
+        "candidate_universe_us.csv",
+    ]):
+        for row in _read_csv(path, limit=50000):
+            sym = _symbol(row)
+            name = _text(row, ["name", "stock_name", "company_name", "종목명", "Name", "Company"], "")
+            if sym and name and name.upper() != sym.upper():
+                names.setdefault(sym, name)
+    return names
+
+
 def _name(row: Dict[str, Any], sym: str) -> str:
-    return _text(row, ["name", "stock_name", "company_name", "종목명", "Name", "Company"], "") or _NAMES.get(sym, sym)
+    raw = _text(row, ["name", "stock_name", "company_name", "종목명", "Name", "Company"], "")
+    if raw and raw.upper() != str(sym or "").upper():
+        return raw
+    return _name_map().get(sym, sym)
 
 
 def _virtual_paths() -> List[Path]:
@@ -170,6 +193,10 @@ def _load_virtual_rows() -> List[Dict[str, Any]]:
 
 def _row_market(row: Dict[str, Any]) -> str:
     sym = _symbol(row)
+    if re.fullmatch(r"\d{6}", sym or ""):
+        return "kr"
+    if sym:
+        return "us"
     explicit = _text(row, ["market", "시장", "Market"], "")
     return _infer_market(sym, explicit)
 
@@ -206,10 +233,18 @@ def _is_loss(row: Dict[str, Any]) -> bool:
     return any(x in raw for x in ["stop", "loss", "손절", "실패", "fail"]) or ret < 0
 
 
+def _row_date_value(row: Dict[str, Any]) -> str:
+    raw = _text(row, ["date", "tradeDate", "ohlcvDate", "evaluated_at", "created_at", "날짜", "timestamp"], "")
+    match = re.search(r"20\d{2}-\d{2}-\d{2}", raw)
+    return match.group(0) if match else raw
+
+
 def _return_pct(row: Dict[str, Any]) -> float:
     direct = _num(_text(row, ["realized_return_pct", "return_pct", "pnl_pct", "profit_pct", "수익률"], "0"))
     if direct != 0:
         return direct
+    if not _is_executed(row):
+        return 0.0
     entry = _num(_text(row, ["entry_price", "entry", "진입가"], "0"))
     exit_price = _num(_text(row, ["exit_price", "close_price", "target_price", "target", "청산가", "종가"], "0"))
     if entry > 0 and exit_price > 0:
@@ -255,6 +290,8 @@ def _virtual_summary(market: str = "all", mode: str = "all", horizon: str = "all
             continue
         filtered.append(r)
 
+    filtered.sort(key=lambda r: (_row_date_value(r), _symbol(r), _text(r, ["_source_file"], "")), reverse=True)
+
     executed = [r for r in filtered if _is_executed(r)]
     wins = [r for r in executed if _is_win(r)]
     losses = [r for r in executed if _is_loss(r)]
@@ -269,7 +306,7 @@ def _virtual_summary(market: str = "all", mode: str = "all", horizon: str = "all
         sym = _symbol(r)
         items.append({
             "id": f"{_row_market(r)}-{sym or i}-{i}",
-            "date": _text(r, ["evaluated_at", "created_at", "date", "날짜", "timestamp"], ""),
+            "date": _row_date_value(r),
             "symbol": sym,
             "name": _name(r, sym),
             "market": _row_market(r),
