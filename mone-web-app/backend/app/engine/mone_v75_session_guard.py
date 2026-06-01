@@ -5,6 +5,7 @@ import csv
 import json
 import math
 from datetime import date, datetime, time, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from zoneinfo import ZoneInfo
@@ -337,18 +338,39 @@ def _symbol(row: Dict[str, Any]) -> str:
         return ""
     return raw.upper() if not raw.isdigit() else raw
 
+def _symbol_market(symbol: str) -> str:
+    return "kr" if symbol.isdigit() and len(symbol) == 6 else "us"
+
+@lru_cache(maxsize=4)
+def _symbol_name_map(market: str) -> Dict[str, str]:
+    names: Dict[str, str] = {}
+    files = _find([f"watchlist_{market}.csv", f"candidate_universe_{market}.csv", f"reports/*company*{market}*.csv"], max_files=20)
+    for f in files:
+        for row in _read_csv(f):
+            sym = _symbol(row)
+            if not sym or _symbol_market(sym) != market:
+                continue
+            name = _text(row, ["name", "stock_name", "company_name", "Name", "Company", "종목명"])
+            if name and name.upper() != sym.upper():
+                names.setdefault(sym, name)
+    return names
+
 def near_alerts_payload(market: str = "kr", threshold_pct: float = 1.0, limit: int = 20) -> Dict[str, Any]:
     files = _find([f"candidate_universe_{market}.csv", f"reports/*recommend*{market}*.csv", f"reports/*action*{market}*.csv", "predictions.csv", "reports/*prediction*.csv"], max_files=30)
+    names = _symbol_name_map(market)
     alerts, seen = [], set()
     for f in files:
         for row in _read_csv(f):
             sym = _symbol(row)
             if not sym or sym in seen:
                 continue
+            if _symbol_market(sym) != market:
+                continue
             current = _num(_text(row, ["currentPrice", "current_price", "last_price", "현재가", "close", "prev_close"]))
             entry = _num(_text(row, ["entry", "entry_price", "preferred_entry", "technical_entry", "진입가", "base_price", "기준가"]))
             stop = _num(_text(row, ["stop", "stop_loss", "stopLoss", "손절가"]))
-            name = _text(row, ["name", "stock_name", "company_name", "종목명"]) or sym
+            raw_name = _text(row, ["name", "stock_name", "company_name", "Name", "Company", "종목명"])
+            name = raw_name if raw_name and raw_name.upper() != sym.upper() else names.get(sym, sym)
             if current <= 0:
                 continue
             checks = []
