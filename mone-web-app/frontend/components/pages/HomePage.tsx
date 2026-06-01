@@ -56,8 +56,12 @@ function cellSourceBadge(cell: StrategyCell) {
   });
 
   const fallback = items.some((item) => String(item.sourceStatus || "").toUpperCase() === "FALLBACK");
-  if (mismatched || fallback) return { label: "동일 소스 확인", tone: "border-amber-500/30 bg-amber-500/10 text-amber-300" };
-  return { label: "전략 소스 일치", tone: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
+  const adjusted = items.some((item) =>
+    Array.isArray(item.computedFields) && item.computedFields.some((field: string) => String(field).includes("strategy_horizon"))
+  );
+  if (mismatched || fallback) return { label: "대체 소스 조정", tone: "border-amber-500/30 bg-amber-500/10 text-amber-300" };
+  if (adjusted) return { label: "전략 기준 조정", tone: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" };
+  return { label: "원본 소스 일치", tone: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
 }
 
 function avgProbability(items: any[]) {

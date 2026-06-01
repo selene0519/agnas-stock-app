@@ -231,10 +231,24 @@ def _text(row: dict[str, Any], keys: list[str], default: str = "") -> str:
 
 def _num(value: Any, default: float = 0.0) -> float:
     try:
-        raw = str(value if value is not None else "").replace(",", "").replace("원", "").replace("$", "").replace("%", "").strip()
-        if not raw or raw.lower() in {"nan", "none", "null", "na", "-", "데이터 없음"}:
+        raw = str(value if value is not None else "").strip()
+        if not raw or raw.lower() in {"nan", "none", "null", "na", "-", "데이터 없음", "연결 필요"}:
             return default
-        parsed = float(raw)
+        raw = raw.replace(",", "").replace("원", "").replace("$", "").replace("%", "").strip()
+        multiplier = 1.0
+        if "조" in raw:
+            multiplier = 1_000_000_000_000.0
+            raw = raw.replace("조", "")
+        elif "억" in raw:
+            multiplier = 100_000_000.0
+            raw = raw.replace("억", "")
+        elif "만" in raw:
+            multiplier = 10_000.0
+            raw = raw.replace("만", "")
+        raw = re.sub(r"[^0-9.\-+]", "", raw)
+        if not raw or raw in {"-", "+", "."}:
+            return default
+        parsed = float(raw) * multiplier
         return default if math.isnan(parsed) else parsed
     except Exception:
         return default
@@ -339,6 +353,52 @@ def _display_name(row: dict[str, Any], symbol: str, market: str, names: dict[str
     if not _bad_name(raw, symbol):
         return raw
     return names.get(f"{market}-{symbol}", _fallback_name(symbol, market))
+
+
+def _normalize_name_key(value: Any) -> str:
+    return re.sub(r"\s+", "", str(value or "").strip().lower())
+
+
+def _name_to_symbol_map(names: dict[str, str]) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for key, name in names.items():
+        try:
+            market, symbol = key.split("-", 1)
+        except ValueError:
+            continue
+        normalized = _normalize_name_key(name)
+        if normalized:
+            out[f"{market}:{normalized}"] = symbol
+    return out
+
+
+def _company_symbol(row: dict[str, Any], market: str, name_to_symbol: dict[str, str]) -> str:
+    symbol = _symbol(row, market)
+    if symbol:
+        return symbol
+
+    for key, value in row.items():
+        lowered = str(key or "").lower()
+        if any(token in lowered for token in ("symbol", "ticker", "code", "종목코드", "단축코드")):
+            symbol = _symbol_value(value, market)
+            if symbol:
+                return symbol
+
+    for value in list(row.values())[:4]:
+        symbol = _symbol_value(value, market)
+        if market == "kr" and re.fullmatch(r"\d{6}", symbol):
+            return symbol
+        if market == "us" and re.fullmatch(r"[A-Z][A-Z.\-]{0,11}", symbol):
+            return symbol
+
+    for value in [_text(row, NAME_KEYS, ""), *list(row.values())[:4]]:
+        normalized = _normalize_name_key(value)
+        if not normalized:
+            continue
+        symbol = name_to_symbol.get(f"{market}:{normalized}")
+        if symbol:
+            return symbol
+    return ""
 
 
 def _price_text(value: Any, market: str) -> str:
@@ -679,6 +739,8 @@ def _company_paths(market: str) -> tuple[Path, ...]:
             f"**/*financial*{item_market}*.csv",
             f"**/*fundamental*{item_market}*.csv",
             f"**/*statement*{item_market}*.csv",
+            f"**/*kpi*{item_market}*.csv",
+            f"**/*valuation*{item_market}*.csv",
             f"**/v81_company_summary_cards_{item_market}.csv",
             f"**/v81_financial_statement_{item_market}.csv",
             max_files=80,
@@ -777,6 +839,7 @@ def _merge_company_item(base_item: dict[str, Any], row_item: dict[str, Any]) -> 
         sources.append(source)
     out["sourceFiles"] = sources
     out["source"] = ", ".join(sources[:3]) if sources else out.get("source", "")
+    out["matchedRows"] = int(out.get("matchedRows") or 0) + int(row_item.get("matchedRows") or 0)
     return out
 
 
@@ -794,35 +857,134 @@ def _company_row_item(row: dict[str, Any], sym: str, name: str, item_market: str
         "operatingProfit": _field_value(row, ["operatingProfit", "operating_profit", "operatingIncome", "영업이익"]),
         "netIncome": _field_value(row, ["netIncome", "net_income", "profit", "순이익", "당기순이익"]),
         "debtRatio": _field_value(row, ["debtRatio", "debt_ratio", "debtToEquity", "부채비율"]),
-        "fundamentalScore": _field_value(row, ["fundamentalScore", "fundamental_score", "score", "펀더멘털점수"]),
+        "fundamentalScore": _field_value(row, ["fundamentalScore", "fundamental_score", "score", "종합점수", "펀더멘털점수"]),
         "flowScore": _field_value(row, ["flowScore", "flow_score", "수급점수"]),
         "source": path.name,
         "sourceFiles": [path.name],
+        "matchedRows": 1,
     }
     return item
 
 
-def _company_finalize(item: dict[str, Any]) -> dict[str, Any]:
+def _blank_company_item(symbol: str, name: str, market: str, reason: str) -> dict[str, Any]:
+    return {
+        "id": f"company-{market}-{symbol}",
+        "symbol": symbol,
+        "name": name,
+        "market": market,
+        "eps": 0.0,
+        "per": 0.0,
+        "pbr": 0.0,
+        "roe": 0.0,
+        "revenue": 0.0,
+        "operatingProfit": 0.0,
+        "netIncome": 0.0,
+        "debtRatio": 0.0,
+        "fundamentalScore": 0.0,
+        "flowScore": 0.0,
+        "source": "",
+        "sourceFiles": [],
+        "matchedRows": 0,
+        "_missingReason": reason,
+    }
+
+
+def _has_financial_value(item: dict[str, Any]) -> bool:
+    return any(
+        bool(item.get(key))
+        for key in ("eps", "per", "pbr", "roe", "revenue", "operatingProfit", "netIncome", "debtRatio")
+    )
+
+
+def _company_finalize(item: dict[str, Any], has_sources: bool) -> dict[str, Any]:
     item = dict(item)
     item["missingFields"] = _missing_fields(item)
-    if item["missingFields"]:
-        item["missingReason"] = "재무 CSV 컬럼 매핑 또는 원본 값 부족"
+    matched_rows = int(item.get("matchedRows") or 0)
+    has_values = _has_financial_value(item)
+
+    if not has_sources:
+        item["missingReason"] = "기업분석 재무 원본 CSV/API가 없습니다."
+        item["dataStatus"] = "NO_DATA"
+        item["connectionStatus"] = "재무 원본 없음"
+    elif matched_rows <= 0:
+        item["missingReason"] = item.get("_missingReason") or "재무 CSV에 종목코드가 없거나 종목명 매핑이 필요합니다."
+        item["dataStatus"] = "NO_DATA"
+        item["connectionStatus"] = "컬럼 매핑 필요"
+    elif item["missingFields"] or not has_values:
+        item["missingReason"] = "재무 원본 행은 연결됐지만 일부 항목 값이 비어 있습니다."
         item["dataStatus"] = "PARTIAL"
-        item["connectionStatus"] = "연결 필요"
+        item["connectionStatus"] = "값 비어 있음"
     else:
         item["missingReason"] = ""
         item["dataStatus"] = "NORMAL"
-        item["connectionStatus"] = "연결 완료"
+        item["connectionStatus"] = "정상"
+    item.pop("_missingReason", None)
     return item
+
+
+def _company_target_items(market: str, names: dict[str, str]) -> dict[str, dict[str, Any]]:
+    targets: dict[str, dict[str, Any]] = {}
+    for row in _all_symbol_rows():
+        item_market = _infer_market(_symbol(row), _text(row, ["market", "시장", "_market"], market))
+        if market != "all" and item_market != market:
+            continue
+        symbol = _symbol(row, item_market)
+        if not symbol:
+            continue
+        name = _display_name(row, symbol, item_market, names)
+        key = f"{item_market}-{symbol}"
+        targets.setdefault(key, {"symbol": symbol, "name": name, "market": item_market})
+    return targets
+
+
+def _write_financial_gap_report(items: list[dict[str, Any]]) -> None:
+    gaps = [item for item in items if item.get("connectionStatus") != "정상"]
+    if not gaps:
+        return
+    path = _repo_root() / "reports" / "financial_data_gap_report.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fields = [
+        "market",
+        "symbol",
+        "name",
+        "connectionStatus",
+        "dataStatus",
+        "missingFields",
+        "missingReason",
+        "source",
+        "updated_at",
+    ]
+    now = datetime.now().isoformat(timespec="seconds")
+    try:
+        with path.open("w", encoding="utf-8-sig", newline="") as fp:
+            writer = csv.DictWriter(fp, fieldnames=fields)
+            writer.writeheader()
+            for item in gaps:
+                writer.writerow({
+                    "market": item.get("market", ""),
+                    "symbol": item.get("symbol", ""),
+                    "name": item.get("name", ""),
+                    "connectionStatus": item.get("connectionStatus", ""),
+                    "dataStatus": item.get("dataStatus", ""),
+                    "missingFields": ", ".join(item.get("missingFields") or []),
+                    "missingReason": item.get("missingReason", ""),
+                    "source": item.get("source", ""),
+                    "updated_at": now,
+                })
+    except Exception:
+        return
 
 
 def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
     market = _market_norm(market)
     names = _build_name_map()
+    name_to_symbol = _name_to_symbol_map(names)
     query = str(q or "").strip().lower()
     paths = _company_paths(market)
+    has_sources = bool(paths)
 
     merged: dict[str, dict[str, Any]] = {}
+    targets = _company_target_items(market, names)
 
     for path in paths:
         for row in _read_csv(path, 50000):
@@ -830,14 +992,11 @@ def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
             if market != "all" and item_market != market:
                 continue
 
-            sym = _symbol(row, item_market)
+            sym = _company_symbol(row, item_market, name_to_symbol)
             if not sym:
                 continue
 
             name = _display_name(row, sym, item_market, names)
-            if query and query not in sym.lower() and query not in name.lower():
-                continue
-
             key = f"{item_market}-{sym}"
             row_item = _company_row_item(row, sym, name, item_market, path)
 
@@ -845,14 +1004,32 @@ def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
                 merged[key] = _merge_company_item(merged[key], row_item)
             else:
                 merged[key] = row_item
+            targets.setdefault(key, {"symbol": sym, "name": name, "market": item_market})
 
-    items = [_company_finalize(item) for item in merged.values()]
-    items.sort(key=lambda item: (0 if item.get("dataStatus") == "NORMAL" else 1, item["market"], item["name"], item["symbol"]))
+    for key, target in targets.items():
+        if key not in merged:
+            merged[key] = _blank_company_item(
+                target["symbol"],
+                target["name"],
+                target["market"],
+                "보유/추천/관심 종목에는 포함됐지만 재무 CSV에서 매칭되는 행을 찾지 못했습니다.",
+            )
+
+    items = [_company_finalize(item, has_sources) for item in merged.values()]
+    if query:
+        items = [
+            item for item in items
+            if query in item.get("symbol", "").lower() or query in item.get("name", "").lower()
+        ]
+    status_order = {"NORMAL": 0, "PARTIAL": 1, "NO_DATA": 2, "ERROR": 3}
+    items.sort(key=lambda item: (status_order.get(item.get("dataStatus"), 9), item["market"], item["name"], item["symbol"]))
     max_limit = max(1, min(limit, 10000))
+    _write_financial_gap_report(items)
     items = items[:max_limit]
 
     normal_count = sum(1 for item in items if item.get("dataStatus") == "NORMAL")
     partial_count = sum(1 for item in items if item.get("dataStatus") == "PARTIAL")
+    no_data_count = sum(1 for item in items if item.get("dataStatus") == "NO_DATA")
 
     return {
         "status": "OK" if items else "NO_DATA",
@@ -860,9 +1037,10 @@ def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
         "count": len(items),
         "normalCount": normal_count,
         "partialCount": partial_count,
+        "noDataCount": no_data_count,
         "items": items,
         "sourceFiles": [p.name for p in paths[:20]],
-        "message": "company financial rows merged by market+symbol; remaining missing fields need source CSV/API mapping",
+        "message": "company financial rows merged from company/clean/cards/kpi/valuation sources by market+symbol and name mapping",
     }
 
 def _quote_files(market: str) -> list[Path]:
@@ -1017,6 +1195,42 @@ def _recommendation_item(
         target = entry * profile["target"]
         _computed_append(computed_fields, "target_from_strategy")
 
+    # Strategy x horizon display values must not collapse into the same
+    # entry/stop/target set. Some source CSV files have identical raw prices
+    # across conservative/balanced/aggressive and short/swing/mid. Keep the
+    # same candidate universe, but create transparent strategy-adjusted risk
+    # levels from current/entry gap and original risk-reward width.
+    # This is marked in computedFields so the UI can explain that values are
+    # adjusted for strategy/period comparison rather than raw source prices.
+    source_mismatch = bool(source_status == "FALLBACK" and ((source_mode and source_mode != mode) or (source_horizon and source_horizon != horizon)))
+    if entry > 0:
+        raw_entry = entry
+        raw_stop = stop
+        raw_target = target
+        horizon_factor = {"short": 0.68, "swing": 1.0, "mid": 1.32}.get(horizon, 1.0)
+        mode_gap_factor = {"conservative": 0.78, "balanced": 1.0, "aggressive": 1.18}.get(mode, 1.0)
+        mode_risk_factor = {"conservative": 0.72, "balanced": 1.0, "aggressive": 1.24}.get(mode, 1.0)
+        mode_reward_factor = {"conservative": 0.78, "balanced": 1.0, "aggressive": 1.35}.get(mode, 1.0)
+
+        if current > 0:
+            raw_gap_pct = (raw_entry - current) / current
+            # For already-below-entry candidates, keep direction but scale width.
+            entry = current * (1.0 + raw_gap_pct * mode_gap_factor * horizon_factor)
+
+        if entry > 0:
+            raw_risk_pct = abs((raw_entry - raw_stop) / raw_entry) if raw_stop > 0 and raw_entry > 0 else abs(1.0 - profile["stop"])
+            raw_reward_pct = abs((raw_target - raw_entry) / raw_entry) if raw_target > 0 and raw_entry > 0 else abs(profile["target"] - 1.0)
+            risk_pct = max(0.012, min(0.18, raw_risk_pct * mode_risk_factor * horizon_factor))
+            reward_pct = max(0.025, min(0.35, raw_reward_pct * mode_reward_factor * horizon_factor))
+            stop = entry * (1.0 - risk_pct)
+            target = entry * (1.0 + reward_pct)
+            expected = target
+
+        if source_mismatch:
+            _computed_append(computed_fields, "strategy_horizon_overlay_from_fallback")
+        else:
+            _computed_append(computed_fields, "strategy_horizon_adjusted_from_source")
+
     expected = _num(_text(row, ["expectedPrice", "expected_price"], ""))
     if expected <= 0:
         expected = target if target > 0 else current * (1 + max(profile["target"] - 1, 0.03))
@@ -1136,12 +1350,11 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
                 source_mode = source_mode or mode
                 source_horizon = source_horizon or horizon
 
-            if source_status == "FALLBACK":
-                if source_mode and source_mode != mode:
-                    continue
-                if source_horizon and source_horizon != horizon:
-                    continue
-
+            # Matrix/home comparisons should not become empty just because the
+            # exact strategy x horizon source file is missing. In FALLBACK mode,
+            # keep the nearest available source and mark sourceMode/sourceHorizon
+            # on each item so the UI can show "동일 소스 확인" instead of hiding
+            # the cell entirely. Exact MATCH rows are still preferred above.
             sym = _symbol(row, market)
             key = f"{market}-{sym}"
             if not sym or key in seen:

@@ -13,9 +13,10 @@ function fmtNum(value: any, suffix = "") {
   return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${suffix}`;
 }
 function statusLabel(status?: string) {
+  if (status === "재무 원본 없음" || status === "컬럼 매핑 필요" || status === "값 비어 있음" || status === "정상") return status;
   if (status === "NORMAL" || status === "OK") return "정상";
-  if (status === "PARTIAL") return "일부 누락";
-  if (status === "NO_DATA") return "데이터 연결 필요";
+  if (status === "PARTIAL") return "값 비어 있음";
+  if (status === "NO_DATA") return "컬럼 매핑 필요";
   if (status === "ERROR") return "오류";
   if (status === "STALE") return "오래된 데이터";
   return status || "확인 필요";
