@@ -168,6 +168,20 @@ def api_market_summary(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return data.market_summary(_market(market))
 
 
+@app.get("/api/sector-strength")
+def api_sector_strength(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    period: int = Query(5, ge=1, le=20),
+) -> dict:
+    """섹터별 강도 점수 반환 (5일 수익률 기반)."""
+    try:
+        from app.engine.dsg_signal_engine import sector_strength
+        rows = sector_strength(market, period=period)
+        return {"ok": True, "market": market, "period": period, "data": rows}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc), "data": []}
+
+
 @app.get("/api/symbols")
 def api_symbols(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return data.symbols(_market(market))

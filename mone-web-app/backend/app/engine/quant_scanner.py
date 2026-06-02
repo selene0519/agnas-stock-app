@@ -458,36 +458,99 @@ def _compute_sub_scores(ind: dict[str, float | None]) -> dict[str, float]:
     }
 
 
-# ── 전략별 가중치 (대화에서 정의한 기준 그대로)
-_MODE_WEIGHTS: dict[str, dict[str, float]] = {
-    "conservative": {
-        "riskScore":      0.35,
-        "entryScore":     0.20,
-        "rrScore":        0.15,
-        "momentumScore":  0.15,
-        "qualityScore":   0.10,
-        "newsRiskPenalty": 0.05,
-        "upsideScore":    0.00,
+# ── 레짐×전략별 동적 가중치
+# 강세장(BULL): 상승여력·모멘텀 강조 / 약세장(BEAR): 리스크·품질 강조 / 횡보(SIDE): 균형
+_REGIME_MODE_WEIGHTS: dict[str, dict[str, dict[str, float]]] = {
+    "BULL": {
+        "conservative": {
+            "riskScore":       0.28,
+            "momentumScore":   0.22,
+            "upsideScore":     0.18,
+            "entryScore":      0.15,
+            "rrScore":         0.12,
+            "qualityScore":    0.00,
+            "newsRiskPenalty": 0.05,
+        },
+        "balanced": {
+            "upsideScore":     0.30,
+            "momentumScore":   0.22,
+            "riskScore":       0.20,
+            "rrScore":         0.15,
+            "entryScore":      0.08,
+            "qualityScore":    0.00,
+            "newsRiskPenalty": 0.05,
+        },
+        "aggressive": {
+            "upsideScore":     0.40,
+            "momentumScore":   0.28,
+            "rrScore":         0.14,
+            "entryScore":      0.08,
+            "riskScore":       0.05,
+            "qualityScore":    0.00,
+            "newsRiskPenalty": 0.05,
+        },
     },
-    "balanced": {
-        "upsideScore":    0.25,
-        "riskScore":      0.25,
-        "rrScore":        0.20,
-        "momentumScore":  0.15,
-        "entryScore":     0.10,
-        "newsRiskPenalty": 0.05,
-        "qualityScore":   0.00,
+    "BEAR": {
+        "conservative": {
+            "riskScore":       0.45,
+            "qualityScore":    0.20,
+            "entryScore":      0.15,
+            "rrScore":         0.10,
+            "momentumScore":   0.05,
+            "upsideScore":     0.00,
+            "newsRiskPenalty": 0.05,
+        },
+        "balanced": {
+            "riskScore":       0.35,
+            "qualityScore":    0.18,
+            "entryScore":      0.18,
+            "rrScore":         0.15,
+            "upsideScore":     0.09,
+            "momentumScore":   0.00,
+            "newsRiskPenalty": 0.05,
+        },
+        "aggressive": {
+            "upsideScore":     0.28,
+            "riskScore":       0.25,
+            "rrScore":         0.18,
+            "entryScore":      0.12,
+            "momentumScore":   0.07,
+            "qualityScore":    0.05,
+            "newsRiskPenalty": 0.05,
+        },
     },
-    "aggressive": {
-        "upsideScore":    0.35,
-        "momentumScore":  0.25,
-        "rrScore":        0.15,
-        "entryScore":     0.10,
-        "riskScore":      0.10,
-        "newsRiskPenalty": 0.05,
-        "qualityScore":   0.00,
+    "SIDE": {
+        "conservative": {
+            "riskScore":       0.35,
+            "entryScore":      0.20,
+            "rrScore":         0.15,
+            "momentumScore":   0.15,
+            "qualityScore":    0.10,
+            "upsideScore":     0.00,
+            "newsRiskPenalty": 0.05,
+        },
+        "balanced": {
+            "upsideScore":     0.25,
+            "riskScore":       0.25,
+            "rrScore":         0.20,
+            "momentumScore":   0.15,
+            "entryScore":      0.10,
+            "qualityScore":    0.00,
+            "newsRiskPenalty": 0.05,
+        },
+        "aggressive": {
+            "upsideScore":     0.35,
+            "momentumScore":   0.25,
+            "rrScore":         0.15,
+            "entryScore":      0.10,
+            "riskScore":       0.10,
+            "qualityScore":    0.00,
+            "newsRiskPenalty": 0.05,
+        },
     },
 }
+# 하위 호환 (기존 코드가 참조 시 SIDE 기본값 사용)
+_MODE_WEIGHTS = _REGIME_MODE_WEIGHTS["SIDE"]
 
 # ── 기간별 필터 기준 (정량)
 _HORIZON_PRICE_BANDS: dict[str, dict[str, tuple[float, float]]] = {
@@ -512,13 +575,18 @@ _HORIZON_PRICE_BANDS: dict[str, dict[str, tuple[float, float]]] = {
 }
 
 
-def _score(ind: dict[str, float | None], context: QuantContext) -> tuple[float, str]:
+def _score(
+    ind: dict[str, float | None],
+    context: QuantContext,
+    regime: str = "SIDE",
+) -> tuple[float, str]:
     """
-    전략별 가중치 기반 finalScore 계산.
-    보수: 손실방어 우선 / 균형: 기본값 / 공격: 상승여력 우선
+    레짐×전략 동적 가중치 기반 finalScore 계산.
+    BULL: 상승여력·모멘텀 강조 / BEAR: 리스크·품질 강조 / SIDE: 균형
     """
     sub = _compute_sub_scores(ind)
-    weights = _MODE_WEIGHTS.get(context.mode, _MODE_WEIGHTS["balanced"])
+    regime_key = regime if regime in _REGIME_MODE_WEIGHTS else "SIDE"
+    weights = _REGIME_MODE_WEIGHTS[regime_key].get(context.mode, _REGIME_MODE_WEIGHTS["SIDE"]["balanced"])
     notes: list[str] = []
 
     # 가중합 계산 (newsRiskPenalty는 감점)
@@ -560,6 +628,34 @@ def _score(ind: dict[str, float | None], context: QuantContext) -> tuple[float, 
         elif bb_percent_b > 0.5:  # 중립 이상
             final += 4.0
             notes.append("볼린저 스퀴즈 발산 중")
+
+    # ── MA수렴 가산 (5·20·60일선 밀집 → 방향 폭발 임박)
+    # 단독 수렴: 기간별 차등 / 스퀴즈 동반: 추가 가산
+    _convergence = _ma_convergence(ind)
+    if _convergence and (rsi is None or rsi < 75):
+        if bb_squeeze:
+            final += 10.0   # 스퀴즈 + 수렴 = 고확률 폭발
+            notes.append("MA수렴 + 볼린저스퀴즈 = 폭발 임박")
+        elif context.horizon == "swing":
+            final += 7.0
+            notes.append("3선 수렴 → 스윙 진입 준비")
+        elif context.horizon == "mid":
+            final += 6.0
+            notes.append("3선 수렴 → 중기 추세 전환 준비")
+        elif context.horizon == "short":
+            final += 4.0
+            notes.append("3선 수렴 확인")
+
+    # ── 레짐 보정: BEAR 장에서 모멘텀 추격 억제
+    if regime_key == "BEAR":
+        if mom5 is not None and mom5 > 10.0:
+            final -= 8.0
+            notes.append("약세장 급등 추격 주의")
+        if distance_52w is not None and distance_52w >= 0:
+            final -= 5.0  # 약세장 신고가는 신뢰도 낮음
+    elif regime_key == "BULL":
+        if mom20 is not None and mom20 > 5.0 and (rsi is None or rsi < 75):
+            final += 3.0   # 강세장 추세 동승 보너스
 
     if context.horizon == "short":
         # 단기: 진입가 접근성 + 단기 모멘텀 중요
@@ -663,6 +759,129 @@ def _ma_convergence(ind: dict[str, float | None]) -> bool:
     return within_band and spread <= 5.0
 
 
+def infer_supply_signal(ohlcv_rows: list[dict[str, Any]]) -> tuple[str | None, str]:
+    """
+    거래량 패턴으로 수급 신호 추론.
+    실제 기관/외국인 데이터 없이 OHLCV만으로 근사.
+
+    Returns
+    -------
+    (signal, reason)
+    signal: "STRONG_BUY" | "INST_ACCUMULATE" | "SELL_PRESSURE" | "DISTRIBUTION" | None
+    """
+    if not ohlcv_rows or len(ohlcv_rows) < 10:
+        return None, ""
+
+    closes = _series(ohlcv_rows, "close")
+    volumes = _series(ohlcv_rows, "volume")
+    if len(closes) < 10 or len(volumes) < 10:
+        return None, ""
+
+    latest_close  = closes[-1]
+    prev_close    = closes[-2]
+    latest_vol    = volumes[-1]
+    vol_ma20      = _ma(volumes, min(20, len(volumes))) or 1.0
+    vol_ma5       = _ma(volumes, min(5,  len(volumes))) or 1.0
+    price_chg_pct = (latest_close - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
+
+    vol_ratio_20 = latest_vol / vol_ma20 if vol_ma20 > 0 else 1.0
+    vol_ratio_5  = latest_vol / vol_ma5  if vol_ma5  > 0 else 1.0
+
+    # 3일 연속 거래량 증가 여부
+    vol_trend_up = (
+        len(volumes) >= 3
+        and volumes[-1] > volumes[-2] > volumes[-3]
+    )
+
+    # ── 신호 판정
+    # 1. 강한 매수세: 거래량 2.5배+ + 가격 상승
+    if vol_ratio_20 >= 2.5 and price_chg_pct > 1.0:
+        return "STRONG_BUY", f"거래량 {vol_ratio_20:.1f}배 + 가격 +{price_chg_pct:.1f}%"
+
+    # 2. 기관 매집 추정: 3일 거래량 증가 + 가격 상승세
+    if vol_trend_up and vol_ratio_5 >= 1.5 and price_chg_pct > 0:
+        return "INST_BUY", f"3일 연속 거래량 증가 + 가격 상승"
+
+    # 3. 매도 압력: 거래량 2배+ + 가격 하락
+    if vol_ratio_20 >= 2.0 and price_chg_pct < -1.5:
+        return "SELL_PRESSURE", f"거래량 {vol_ratio_20:.1f}배 + 가격 {price_chg_pct:.1f}%"
+
+    # 4. 분산 매도: 3일 거래량 증가 + 가격 하락
+    if vol_trend_up and vol_ratio_5 >= 1.3 and price_chg_pct < -0.5:
+        return "DISTRIBUTION", "3일 거래량 증가 + 가격 하락 → 분산 매도 의심"
+
+    return None, ""
+
+
+def _compute_decision_bucket(
+    score: float,
+    ev: float | None,
+    rsi: float | None,
+    d20: float | None,
+    rr_actual: float | None,
+    mode: str,
+    risk_flags: list[str],
+) -> tuple[str, str]:
+    """
+    퀀트 지표 기반 진입/대기 결정 버킷.
+
+    Returns (decisionBucket, decisionReason)
+    ──────────────────────────────────────
+    "오늘 진입"  : 즉시 진입 조건 완전 충족
+    "대기 관찰"  : 진입 임박, 조건 일부 미충족
+    "관찰"       : 중기 모니터링 단계
+    "매수금지"   : 진입 절대 불가
+    """
+    # ── 매수금지 (최우선)
+    block_flags = {"RSI_OVERHEATED", "GAP_UP_15PCT", "EV_NEGATIVE",
+                   "BOLLINGER_UPPER_BREAK", "FIVE_DAY_UP_STREAK", "NEWS_DISCLOSURE_RISK"}
+    if risk_flags and any(f in block_flags for f in risk_flags):
+        bad = next(f for f in risk_flags if f in block_flags)
+        labels = {
+            "RSI_OVERHEATED": "RSI 80+ 과열",
+            "GAP_UP_15PCT": "갭상승 15%+ 추격금지",
+            "EV_NEGATIVE": "기댓값 음수",
+            "BOLLINGER_UPPER_BREAK": "볼린저 상단 이탈",
+            "FIVE_DAY_UP_STREAK": "5일 연속 상승 후 거래량 감소",
+            "NEWS_DISCLOSURE_RISK": "공시/뉴스 리스크",
+        }
+        return "매수금지", labels.get(bad, bad)
+
+    if rsi is not None and rsi > 85:
+        return "매수금지", f"RSI {rsi:.0f} 극과열"
+    if ev is not None and ev < -5.0:
+        return "매수금지", f"기댓값 {ev:.1f}% 심각 음수"
+
+    # ── 모드별 점수 기준
+    thresholds = {
+        "conservative": (70, 60),   # (진입최소, 대기최소)
+        "balanced":     (62, 52),
+        "aggressive":   (52, 42),
+    }
+    t_enter, t_watch = thresholds.get(mode, (62, 52))
+
+    # ── 오늘 진입
+    if (score >= t_enter
+            and (ev is None or ev >= 1.0)
+            and (rsi is None or rsi <= 78)
+            and (d20 is None or -10.0 <= d20 <= 5.0)
+            and (rr_actual is None or rr_actual >= 1.5)):
+        ev_str = f", EV {ev:.1f}%" if ev is not None else ""
+        return "오늘 진입", f"종합점수 {score:.0f}{ev_str}"
+
+    # ── 대기 관찰
+    if score >= t_watch and (ev is None or ev >= -1.0):
+        if d20 is not None and d20 > 5.0:
+            return "대기 관찰", f"진입가까지 약 {d20:.1f}% 남음"
+        if ev is not None and ev < 1.0:
+            return "대기 관찰", f"EV {ev:.1f}% (조건 보완 대기)"
+        return "대기 관찰", f"점수 {score:.0f} (진입 조건 보완 중)"
+
+    # ── 관찰
+    ev_str = f", EV {ev:.1f}%" if ev is not None else ""
+    return "관찰", f"점수 {score:.0f}{ev_str}"
+
+
 def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str], str, str]:
     tags: list[str] = []
     rsi = ind.get("rsi14")
@@ -726,7 +945,12 @@ def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str]
     return unique, primary, TAG_LABELS.get(primary, primary)
 
 
-def score_candidate(row: dict[str, Any], ohlcv_rows: list[dict[str, Any]], context: QuantContext) -> dict[str, Any]:
+def score_candidate(
+    row: dict[str, Any],
+    ohlcv_rows: list[dict[str, Any]],
+    context: QuantContext,
+    regime: str = "SIDE",
+) -> dict[str, Any]:
     symbol = row.get("symbol") or row.get("ticker") or row.get("code")
 
     # 현재가: row에 없으면 OHLCV 최신 close로 fallback
@@ -753,7 +977,7 @@ def score_candidate(row: dict[str, Any], ohlcv_rows: list[dict[str, Any]], conte
         }
 
     ind = indicators(ohlcv_rows)
-    score, note = _score(ind, context)
+    score, note = _score(ind, context, regime=regime)
     sub = _compute_sub_scores(ind)
     status = "NORMAL" if all(ind.get(key) is not None for key in ("ma5", "ma20", "rsi14", "atr14")) else "PARTIAL"
     if current_source == "ohlcv_close":
@@ -891,14 +1115,27 @@ def score_candidate(row: dict[str, Any], ohlcv_rows: list[dict[str, Any]], conte
         "technicalSignals": technical_signals,
         "indicators": ind,
         "maConvergence": _ma_convergence(ind),
+        "regime": regime,
+        # 수급 신호 (거래량 패턴 기반 추론)
+        **dict(zip(
+            ("supplySignal", "supplySignalReason"),
+            infer_supply_signal(ohlcv_rows),
+        )),
     }
 
 
-def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizon: str) -> dict[str, Any]:
+def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizon: str) -> dict[str, Any]:  # noqa: C901
     market = str(item.get("market") or "kr").lower()
     symbol = str(item.get("symbol") or "").upper()
     context = make_context(market, mode, horizon)
-    result = score_candidate(item, load_ohlcv(repo_root, market, symbol), context)
+    _ohlcv = load_ohlcv(repo_root, market, symbol)
+    # 마켓 레짐 로드 (점수 가중치 결정)
+    try:
+        _regime_data = load_market_regime(repo_root, market)
+        _regime = _regime_data.get("regime", "SIDE")
+    except Exception:
+        _regime = "SIDE"
+    result = score_candidate(item, _ohlcv, context, regime=_regime)
     computed = list(item.get("computedFields") or [])
     computed.append("quant_scanner_v2")
 
@@ -926,6 +1163,9 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         "maConvergence": result.get("maConvergence", False),
         "evNegative": result.get("evNegative", False),
         "indicators": result.get("indicators", {}),
+        "regime": _regime,
+        "supplySignal": result.get("supplySignal"),
+        "supplySignalReason": result.get("supplySignalReason", ""),
         "computedFields": computed,
     }
     # 뉴스/공시 감성 — CSV 파일에서 실데이터 우선, 없으면 텍스트 키워드 fallback
@@ -1130,4 +1370,80 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     out["cautionReasons"] = block_reasons
     out["infoReasons"] = info_reasons
     out["tradeBlockStatus"] = "CAUTION" if block_reasons else "OK"
+
+    # ── decisionBucket: 진입/대기 결정 (백엔드에서 확정)
+    _score_val   = float(out.get("finalScore") or out.get("quantScore") or 0)
+    _ev_val      = _num(out.get("expectedValue"))
+    _rsi_val     = _num((result.get("indicators") or {}).get("rsi14"))
+    _d20_val     = _num((result.get("indicators") or {}).get("distanceToMa20"))
+    _rr_val      = _num(out.get("rrActual"))
+    _risk_flags  = out.get("riskFlags") or []
+    _decision, _decision_reason = _compute_decision_bucket(
+        score=_score_val, ev=_ev_val, rsi=_rsi_val,
+        d20=_d20_val, rr_actual=_rr_val,
+        mode=mode, risk_flags=_risk_flags,
+    )
+    # 기존 decisionBucket이 있으면 더 엄격한 쪽 채택
+    _existing_bucket = str(out.get("decisionBucket") or "")
+    _priority = {"매수금지": 0, "관찰": 1, "대기 관찰": 2, "오늘 진입": 3}
+    if _priority.get(_decision, 2) < _priority.get(_existing_bucket, 2):
+        out["decisionBucket"] = _decision
+        out["decisionReason"] = _decision_reason
+    elif not _existing_bucket:
+        out["decisionBucket"] = _decision
+        out["decisionReason"] = _decision_reason
+
+    # ── DSG 섹터 추론 + 주도주 + 눌림목 (KR 전용)  # noqa: E501
+    if _DSG_AVAILABLE and market == "kr":  # type: ignore[name-defined]
+        _name_kr = str(item.get("name") or item.get("nameKr") or item.get("stockName") or "")
+        _existing_sec = str(out.get("sector") or "").strip()
+        if not _existing_sec or _existing_sec in ("Unknown", "Other", ""):
+            out["sector"] = infer_kr_sector(symbol, _name_kr)  # type: ignore[name-defined]
+        out["sectorLabel"] = sector_label_kr(str(out.get("sector") or "Other"))  # type: ignore[name-defined]
+        if not out.get("themeNames"):
+            out["themeNames"] = get_theme_names(symbol)  # type: ignore[name-defined]
+
+        _ind = result.get("indicators", {})
+
+        def _fi(_k: str, _d: float = 0.0) -> float:
+            _v = _ind.get(_k)
+            try:
+                return float(_v) if _v is not None else _d
+            except Exception:
+                return _d
+
+        _close_px = float(result.get("currentPriceUsed") or _fi("ma20"))
+        _ma20 = _fi("ma20", _close_px)
+        _ma60 = _fi("ma60", _close_px)
+        _ret20 = _fi("recentMomentum20", 0.0)
+        _ret60 = _fi("distanceToMa60", 0.0)
+        _vol_r = _fi("volumeRatio20", 1.0)
+        _score = float(result.get("score") or 50)
+        # 종목 섹터의 실제 강도 점수 조회 (없으면 upsideScore로 fallback)
+        try:
+            from app.engine.dsg_signal_engine import sector_strength as _ss  # type: ignore[name-defined]
+            _sec_map = {r["sector"]: r["sector_score"] for r in _ss(market, period=5)}
+            _sec_s = float(_sec_map.get(str(out.get("sector") or ""), 0) or result.get("upsideScore") or 50)
+        except Exception:
+            _sec_s = float(result.get("upsideScore") or 50)
+        if _close_px > _ma20 > 0 and _ret20 > 0:
+            _regime = "BULL"
+        elif _close_px < _ma20 and _ret20 < -3:
+            _regime = "BEAR"
+        else:
+            _regime = "SIDE"
+        _is_leader, _lr = detect_leader_mode(  # type: ignore[name-defined]
+            score=_score, sector_score=_sec_s, market_regime=_regime,
+            close=_close_px, ma20=_ma20, ma60=_ma60,
+            ret20=_ret20, ret60=_ret60,
+            vol=_vol_r, vol_ma20=1.0, news_score=5.0,
+        )
+        out["isLeader"] = _is_leader
+        out["leaderReason"] = _lr
+        _entry_v = float(_num(out.get("entry")) or 0)
+        _ind2 = {**_ind, "rrActual": result.get("rrActual") or 2.0}
+        _ps, _pr = get_pullback_state_from_ohlcv(_ohlcv, _ind2, _entry_v, _is_leader)  # type: ignore[name-defined]
+        out["pullbackState"] = _ps
+        out["pullbackReason"] = _pr
+
     return out
