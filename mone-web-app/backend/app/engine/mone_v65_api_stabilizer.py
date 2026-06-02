@@ -1526,6 +1526,13 @@ def _recommendation_item(
         "computedFields": computed_fields,
         "isWatch": sym in watch,
         # ── CSV에서 직접 전달되는 새 필드 (generate_kr_recommendations 출력)
+        "sector": _text(row, ["sector"], ""),
+        "peg": _num(_text(row, ["peg"], "")) or None,
+        "debtRatio": _num(_text(row, ["debtRatio", "debt_ratio"], "")) or None,
+        "operatingMargin": _num(_text(row, ["operatingMargin", "operating_margin"], "")) or None,
+        "revenueGrowth": _num(_text(row, ["revenueGrowth", "revenue_growth"], "")) or None,
+        "epsGrowth": _num(_text(row, ["epsGrowth", "eps_growth"], "")) or None,
+        "finQualityScore": _num(_text(row, ["finQualityScore", "fin_quality_score"], "")) or None,
         "decisionBucket": _text(row, ["decisionBucket", "decision_bucket"], ""),
         "timingLabel": _text(row, ["timingLabel", "timing_label"], ""),
         "timingReason": _text(row, ["timingReason", "timing_reason"], ""),

@@ -285,6 +285,39 @@ jobs:
           fi
 
 
+      - name: Update win rates from validation results
+        run: |
+          set +e
+          if [ -f scripts/update_win_rates.py ]; then
+            python scripts/update_win_rates.py
+            echo "update_win_rates: exit $?"
+          fi
+          set -e
+
+      - name: Fetch DART financials (weekly on Monday)
+        run: |
+          set +e
+          DAY=$(date +%u)
+          if [ "$DAY" = "1" ] && [ -f scripts/fetch_dart_financials.py ]; then
+            python scripts/fetch_dart_financials.py
+            echo "fetch_dart_financials: exit $?"
+          else
+            echo "Not Monday or script missing — skip DART fetch."
+          fi
+          set -e
+
+      - name: Fetch sector data (weekly on Monday)
+        run: |
+          set +e
+          DAY=$(date +%u)
+          if [ "$DAY" = "1" ] && [ -f scripts/fetch_sector_data.py ]; then
+            python scripts/fetch_sector_data.py
+            echo "fetch_sector_data: exit $?"
+          else
+            echo "Not Monday or script missing — skip sector fetch."
+          fi
+          set -e
+
       - name: Generate KR recommendations from OHLCV
         run: |
           set +e
@@ -354,6 +387,8 @@ jobs:
           # MONE v3.6 app-facing reports.
           git add reports/mone_v36_*.csv reports/mone_v36_*.json 2>/dev/null || true
           git add reports/kr_recommendation_gen_status.json reports/us_recommendation_gen_status.json 2>/dev/null || true
+          git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
+          git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
           git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
           git add data/market/ohlcv/kr_*_daily.csv 2>/dev/null || true
           git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true
