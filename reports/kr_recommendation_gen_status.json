@@ -1,8 +1,18 @@
 {
-  "generatedAt": "2026-06-02 15:03:43",
+  "generatedAt": "2026-06-02 15:11:18",
   "source": "ohlcv_quant_scanner",
   "symbols": 99,
   "kisSymbols": 22,
+  "marketRegime": {
+    "regime": "BULL",
+    "label": "강세장",
+    "scoreAdjust": 5.0,
+    "description": "KOSPI 20일선 +9.4%, 5일 +6.8%",
+    "kospiLatest": 8028.0,
+    "distToMa20": 9.37
+  },
+  "evFiltered": 0,
+  "regimeFiltered": 0,
   "results": {
     "conservative_short": 12,
     "conservative_swing": 12,

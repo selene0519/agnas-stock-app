@@ -200,26 +200,42 @@ function StrategyCellCard({ cell }: { cell: StrategyCell }) {
                   </div>
                 )}
 
-                {Array.isArray(item.strategyTags) && item.strategyTags.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {item.strategyTags.slice(0, 3).map((tag: string, tagIndex: number) => (
-                      <span key={tag} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
-                        {Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels[tagIndex] || tag : tag}
-                      </span>
-                    ))}
-                    {Array.isArray(item.priceBandWarnings) && item.priceBandWarnings.length > 0 && (
-                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">
-                        가격대 확인
-                      </span>
-                    )}
-                  </div>
-                ) : item.candidateTypeLabel ? (
-                  <div className="mt-3">
-                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
-                      {item.candidateTypeLabel}
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {/* EV 음수 경고 */}
+                  {item.evNegative && (
+                    <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-300">
+                      EV음수
                     </span>
-                  </div>
-                ) : null}
+                  )}
+                  {/* 이격도 수렴 신호 */}
+                  {item.maConvergence && (
+                    <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-300">
+                      이격도수렴
+                    </span>
+                  )}
+                  {Array.isArray(item.strategyTags) && item.strategyTags.length > 0
+                    ? item.strategyTags.slice(0, 2).map((tag: string, tagIndex: number) => (
+                        <span key={tag} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
+                          {Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels[tagIndex] || tag : tag}
+                        </span>
+                      ))
+                    : item.candidateTypeLabel ? (
+                        <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
+                          {item.candidateTypeLabel}
+                        </span>
+                      ) : null}
+                  {/* surgeLabel (generate_kr_recommendations 생성 파일) */}
+                  {!Array.isArray(item.strategyTags) && item.surgeLabel && item.surgeLabel !== "판단 대기" && (
+                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
+                      {item.surgeLabel}
+                    </span>
+                  )}
+                  {Array.isArray(item.priceBandWarnings) && item.priceBandWarnings.length > 0 && (
+                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">
+                      가격대 확인
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -333,6 +349,7 @@ export default function HomePage() {
   const [summary, setSummary] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [matrix, setMatrix] = useState<StrategyCell[]>([]);
+  const [marketRegime, setMarketRegime] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [marketChoice, setMarketChoice] = useState<MarketChoice>(marketChoiceInitial);
   const selectedMarket = marketChoice === "auto" ? getDefaultMarketBySession() : marketChoice;
@@ -372,12 +389,15 @@ export default function HomePage() {
       setSummary(h.summary || null);
       setRecommendations(dedupeBySymbol(Array.isArray(r.items) ? r.items : []).slice(0, 5));
       setMatrix(matrixResult);
+      // 마켓 레짐: balanced/swing 응답에서 추출
+      if (r.marketRegime?.regime) setMarketRegime(r.marketRegime);
     } catch {
       setHoldings([]);
       setEditableHoldings([]);
       setSummary(null);
       setRecommendations([]);
       setMatrix([]);
+      setMarketRegime(null);
     } finally {
       setLoading(false);
     }
@@ -480,6 +500,26 @@ export default function HomePage() {
           </button>
         </div>
       </div>
+
+      {/* 마켓 레짐 배지 */}
+      {marketRegime && (
+        <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${
+          marketRegime.regime === "BULL"
+            ? "border-emerald-800/60 bg-emerald-950/20 text-emerald-300"
+            : marketRegime.regime === "BEAR"
+            ? "border-red-800/60 bg-red-950/20 text-red-300"
+            : "border-slate-700 bg-slate-900/40 text-slate-400"
+        }`}>
+          <span className="text-base font-bold">
+            {marketRegime.regime === "BULL" ? "📈" : marketRegime.regime === "BEAR" ? "📉" : "➡️"}
+            {" "}{marketRegime.label}
+          </span>
+          <span className="text-xs opacity-80">{marketRegime.description}</span>
+          {marketRegime.regime === "BEAR" && (
+            <span className="ml-auto rounded bg-red-900/60 px-2 py-0.5 text-xs text-red-200">공격형 비활성화</span>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Metric label="보유종목" value={`${holdings.length}개`} />

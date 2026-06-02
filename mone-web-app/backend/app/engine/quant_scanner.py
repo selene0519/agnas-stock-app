@@ -3,11 +3,17 @@ from __future__ import annotations
 import csv
 import math
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 MODES = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")
+
+# ── 마켓 레짐 상수
+REGIME_BULL   = "BULL"    # KOSPI 20일선 위, 최근 5일 상승
+REGIME_BEAR   = "BEAR"    # KOSPI 20일선 아래, 최근 5일 하락
+REGIME_SIDE   = "SIDE"    # 횡보 (나머지)
 
 
 @dataclass(frozen=True)
@@ -209,6 +215,66 @@ def indicators(rows: list[dict[str, Any]]) -> dict[str, float | None]:
         "bbPercentB": bb_percent_b,
         "consecutiveUpDays": float(_consecutive_up(close)),
         "gapUpPct": gap_up_pct,
+    }
+
+
+def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
+    """
+    benchmark_daily.csv에서 KOSPI/KOSDAQ 최근 데이터를 읽어 마켓 레짐을 판단.
+
+    Returns:
+        {
+            "regime": "BULL" | "BEAR" | "SIDE",
+            "label": "강세장" | "약세장" | "횡보장",
+            "kospiLatest": float,
+            "kospiMa20": float,
+            "distanceToMa20Pct": float,   # 현재가/20일선 이격도 (%)
+            "momentum5d": float,           # 최근 5일 수익률 (%)
+            "scoreAdjust": float,          # 추천 점수 가산/감점 기준값
+            "description": str,
+        }
+    """
+    benchmark_key = "KOSPI" if market == "kr" else "NASDAQ"
+    path = repo_root / "data" / "market" / "benchmark_daily.csv"
+    rows: list[dict[str, Any]] = []
+    if path.is_file():
+        rows = _read_csv(path)
+
+    # 해당 벤치마크 데이터만 필터 후 날짜 정렬
+    filtered = [r for r in rows if str(r.get("benchmark", "")).upper() == benchmark_key]
+    filtered.sort(key=lambda r: str(r.get("date", "")))
+
+    closes = [_num(r.get("close")) for r in filtered]
+    closes = [c for c in closes if c is not None]
+
+    default = {
+        "regime": REGIME_SIDE, "label": "횡보장", "kospiLatest": None,
+        "kospiMa20": None, "distanceToMa20Pct": None, "momentum5d": None,
+        "scoreAdjust": 0.0, "description": "벤치마크 데이터 부족 — 레짐 미적용",
+    }
+    if len(closes) < 20:
+        return default
+
+    latest = closes[-1]
+    ma20 = sum(closes[-20:]) / 20
+    dist = (latest - ma20) / ma20 * 100 if ma20 else 0.0
+    mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
+
+    # 레짐 판단: 20일선 위 + 최근 5일 양봉 → BULL
+    if dist > 0 and mom5 > 0:
+        regime, label, adjust = REGIME_BULL, "강세장", +5.0
+        desc = f"KOSPI 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 강세 (공격/균형 우선)"
+    elif dist < -2.0 or mom5 < -2.0:
+        regime, label, adjust = REGIME_BEAR, "약세장", -8.0
+        desc = f"KOSPI 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 약세 (보수 우선, 추천 축소)"
+    else:
+        regime, label, adjust = REGIME_SIDE, "횡보장", 0.0
+        desc = f"KOSPI 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 횡보 (스윙 중심)"
+
+    return {
+        "regime": regime, "label": label, "kospiLatest": round(latest, 2),
+        "kospiMa20": round(ma20, 2), "distanceToMa20Pct": round(dist, 2),
+        "momentum5d": round(mom5, 2), "scoreAdjust": adjust, "description": desc,
     }
 
 
@@ -473,12 +539,43 @@ def _score(ind: dict[str, float | None], context: QuantContext) -> tuple[float, 
 
 TAG_LABELS = {
     "PULLBACK_BUY": "눌림목 매수",
+    "MA_CONVERGENCE": "이격도 수렴",      # 신규: 5/20/60일선 수렴 구간
     "UNDERVALUED_GROWTH": "저평가 성장주",
     "VOLUME_BREAKOUT": "거래대금 증가",
     "MOMENTUM": "모멘텀 강세",
     "STABLE_LOW_RISK": "안정형",
     "CAUTION": "주의",
+    "EV_NEGATIVE": "EV음수",              # 신규: 기댓값 음수 → 자동 제외 대상
 }
+
+
+def _ma_convergence(ind: dict[str, float | None]) -> bool:
+    """
+    5/20/60일선 이격도가 동시 수렴 구간에 있을 때 True.
+    세 이격도 모두 -3% ~ +3% 이내이면서 방향이 같은 경우.
+    """
+    d20 = ind.get("distanceToMa20")
+    d60 = ind.get("distanceToMa60")
+    ma5 = ind.get("ma5")
+    ma20 = ind.get("ma20")
+    latest = ind.get("distanceToMa20")  # 현재가 기준
+
+    if d20 is None or d60 is None:
+        return False
+    # 5일/20일/60일 이격도 모두 -4% ~ +4% 이내 → 수렴
+    d5 = None
+    if ma5 is not None and ma20 is not None and ma20 > 0:
+        # d5 계산: ma5 vs ma20 비율로 근사
+        d5 = (ma5 - ma20) / ma20 * 100
+
+    within_band = abs(d20) <= 4.0 and abs(d60) <= 6.0
+    if d5 is not None:
+        within_band = within_band and abs(d5) <= 3.0
+
+    # 세 이격도 간 최대 차이가 5% 이내 → 밀집 구간
+    vals = [v for v in [d5, d20, d60] if v is not None]
+    spread = max(vals) - min(vals) if len(vals) >= 2 else 999
+    return within_band and spread <= 5.0
 
 
 def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str], str, str]:
@@ -499,6 +596,11 @@ def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str]
 
     if status in {"PRICE_PENDING", "DATA_PENDING"}:
         tags.append("CAUTION")
+
+    # ── 이격도 수렴 신호 (우선순위 높음: 눌림목보다 먼저 체크)
+    if _ma_convergence(ind) and (rsi is None or rsi < 75):
+        tags.append("MA_CONVERGENCE")
+
     if d20 is not None and -8 <= d20 <= 3 and (rsi is None or rsi < 80):
         tags.append("PULLBACK_BUY")
     if volume_ratio is not None and volume_ratio >= 1.5:
@@ -629,6 +731,14 @@ def score_candidate(row: dict[str, Any], ohlcv_rows: list[dict[str, Any]], conte
         risk_flags.append("GAP_UP_15PCT")
     if ind.get("rsi14") is not None and ind["rsi14"] >= 80:
         risk_flags.append("RSI_OVERHEATED")
+    # 이격도 수렴 신호
+    if _ma_convergence(ind):
+        technical_signals.append("MA_CONVERGENCE")
+    # EV 음수 플래그
+    ev_negative = ev is not None and ev < 0
+
+    if ev_negative:
+        risk_flags.append("EV_NEGATIVE")
 
     return {
         "symbol": symbol,
@@ -645,6 +755,7 @@ def score_candidate(row: dict[str, Any], ohlcv_rows: list[dict[str, Any]], conte
         "qualityScore": sub["qualityScore"],
         "newsRiskPenalty": sub["newsRiskPenalty"],
         "expectedValue": ev,
+        "evNegative": ev_negative,
         "rrActual": rr_actual,
         "currentPriceUsed": current,
         "currentPriceSource": current_source,
@@ -658,6 +769,7 @@ def score_candidate(row: dict[str, Any], ohlcv_rows: list[dict[str, Any]], conte
         "riskFlags": risk_flags,
         "technicalSignals": technical_signals,
         "indicators": ind,
+        "maConvergence": _ma_convergence(ind),
     }
 
 

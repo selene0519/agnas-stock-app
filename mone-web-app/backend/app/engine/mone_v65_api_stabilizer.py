@@ -1695,19 +1695,56 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         if len(items) >= max(1, min(limit, 1000)):
             break
 
+    # ── EV 음수 필터링 및 마켓 레짐 정보 수집
+    ev_negative_count = 0
+    filtered_items: list[dict[str, Any]] = []
+    for item in items:
+        ev = item.get("expectedValue")
+        ev_val = None
+        try:
+            ev_val = float(ev) if ev not in (None, "", "nan") else None
+        except Exception:
+            pass
+        ev_negative = ev_val is not None and ev_val < 0
+        item["evNegative"] = ev_negative
+        if ev_negative:
+            ev_negative_count += 1
+            # 보수형은 EV 음수 종목 완전 제외
+            if mode == "conservative":
+                continue
+            # 균형/공격은 tradeBlockStatus를 CAUTION으로, 진입 버킷을 기다림으로
+            item["tradeBlockStatus"] = "EV_NEGATIVE"
+            item["decisionBucket"] = "기다림"
+            item.setdefault("strategyTags", [])
+            if "CAUTION" not in item["strategyTags"]:
+                item["strategyTags"].append("CAUTION")
+        filtered_items.append(item)
+
+    hidden_count = len(items) - len(filtered_items)
+
+    # 마켓 레짐 로드
+    market_regime: dict[str, Any] = {}
+    try:
+        from app.engine.quant_scanner import load_market_regime
+        market_regime = load_market_regime(_repo_root(), market)
+    except Exception:
+        pass
+
     return {
-        "status": "OK" if items else "NO_DATA",
+        "status": "OK" if filtered_items else "NO_DATA",
         "market": market,
         "mode": mode,
         "horizon": horizon,
-        "count": len(items),
+        "count": len(filtered_items),
         "uniqueCount": len(seen),
-        "hiddenCount": 0,
+        "hiddenCount": hidden_count,
+        "evNegativeFiltered": ev_negative_count if mode == "conservative" else 0,
+        "marketRegime": market_regime,
         "selfCorrection": correction_state,
         "scanCoverage": _scan_coverage(market),
         "validationPolicy": _validation_policy_payload(),
         "sourceFiles": source_files[:20],
-        "items": items,
+        "items": filtered_items,
     }
 
 
