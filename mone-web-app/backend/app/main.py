@@ -248,8 +248,27 @@ def api_disclosures_refresh(market: str = Query("all", pattern="^(kr|us|all)$"),
 
 
 @app.get("/api/company-analysis")
-def api_company_analysis(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return data.company_analysis(_market(market))
+def api_company_analysis(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    q: str = Query(""),       # 종목코드 또는 종목명 필터
+    limit: int = Query(120),
+) -> dict:
+    result = data.company_analysis(_market(market))
+    if q.strip():
+        q_norm = q.strip().upper().lstrip("0") or q.strip()
+        filtered = [
+            item for item in result.get("items", [])
+            if (
+                str(item.get("symbol", "")).lstrip("0").upper() == q_norm
+                or str(item.get("symbol", "")).upper() == q.strip().upper()
+                or q.strip().lower() in str(item.get("name", "")).lower()
+            )
+        ]
+        result = {**result, "items": filtered[:limit], "count": len(filtered)}
+    else:
+        items = result.get("items", [])
+        result = {**result, "items": items[:limit], "count": len(items)}
+    return result
 
 
 @app.get("/api/virtual/preview")

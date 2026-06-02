@@ -222,7 +222,7 @@ function TvChart({
           volSeries.setData(volData);
         }
 
-        // 이동평균
+        // ── 이동평균 (API 제공값 우선, fallback 직접 계산)
         const closes = candleData.map((d) => d.close);
         const calcMA = (period: number): { time: string; value: number }[] =>
           candleData
@@ -233,33 +233,49 @@ function TvChart({
             })
             .filter(Boolean) as { time: string; value: number }[];
 
+        // API 제공 MA (rows에 포함)
+        const apiMA5  = rows.filter(r => r.date && r.ma5  > 0).map(r => ({ time: r.date as string, value: Number(r.ma5)  }));
+        const apiMA20 = rows.filter(r => r.date && r.ma20 > 0).map(r => ({ time: r.date as string, value: Number(r.ma20) }));
+        const apiMA60 = rows.filter(r => r.date && r.ma60 > 0).map(r => ({ time: r.date as string, value: Number(r.ma60) }));
+
         if (toggles.ma5) {
           const ma5s = chart.addLineSeries({ color: "#2dd4bf", lineWidth: 1, priceLineVisible: false });
-          ma5s.setData(calcMA(5));
+          ma5s.setData(apiMA5.length > 5 ? apiMA5 : calcMA(5));
         }
         if (toggles.ma20) {
           const ma20s = chart.addLineSeries({ color: "#facc15", lineWidth: 1.5, priceLineVisible: false });
-          ma20s.setData(calcMA(20));
+          ma20s.setData(apiMA20.length > 5 ? apiMA20 : calcMA(20));
         }
         if (toggles.ma60) {
           const ma60s = chart.addLineSeries({ color: "#f97316", lineWidth: 1.5, priceLineVisible: false });
-          ma60s.setData(calcMA(60));
+          ma60s.setData(apiMA60.length > 5 ? apiMA60 : calcMA(60));
         }
 
-        // 볼린저 밴드
-        if (toggles.bb && closes.length >= 20) {
-          const bbData = candleData.map((d, i) => {
-            if (i < 19) return null;
-            const slice = closes.slice(i - 19, i + 1);
-            const mean = slice.reduce((s, v) => s + v, 0) / 20;
-            const std = Math.sqrt(slice.reduce((s, v) => s + (v - mean) ** 2, 0) / 20);
-            return { time: d.time, upper: mean + std * 2, lower: mean - std * 2 };
-          }).filter(Boolean) as { time: string; upper: number; lower: number }[];
+        // ── 볼린저 밴드 (API 제공값 우선)
+        if (toggles.bb) {
+          const apiBBUpper = rows.filter(r => r.date && r.bbUpper > 0).map(r => ({ time: r.date as string, value: Number(r.bbUpper) }));
+          const apiBBLower = rows.filter(r => r.date && r.bbLower > 0).map(r => ({ time: r.date as string, value: Number(r.bbLower) }));
 
-          const bbUpper = chart.addLineSeries({ color: "#7c3aed55", lineWidth: 1, priceLineVisible: false, lineStyle: 3 });
-          const bbLower = chart.addLineSeries({ color: "#7c3aed55", lineWidth: 1, priceLineVisible: false, lineStyle: 3 });
-          bbUpper.setData(bbData.map((d) => ({ time: d.time, value: d.upper })));
-          bbLower.setData(bbData.map((d) => ({ time: d.time, value: d.lower })));
+          let bbUpperData = apiBBUpper;
+          let bbLowerData = apiBBLower;
+
+          // API 데이터 없으면 직접 계산
+          if (bbUpperData.length < 5 && closes.length >= 20) {
+            const bbCalc = candleData.map((d, i) => {
+              if (i < 19) return null;
+              const slice = closes.slice(i - 19, i + 1);
+              const mean = slice.reduce((s, v) => s + v, 0) / 20;
+              const std = Math.sqrt(slice.reduce((s, v) => s + (v - mean) ** 2, 0) / 20);
+              return { time: d.time, upper: mean + std * 2, lower: mean - std * 2 };
+            }).filter(Boolean) as { time: string; upper: number; lower: number }[];
+            bbUpperData = bbCalc.map(d => ({ time: d.time, value: d.upper }));
+            bbLowerData = bbCalc.map(d => ({ time: d.time, value: d.lower }));
+          }
+
+          const bbU = chart.addLineSeries({ color: "#7c3aed66", lineWidth: 1, priceLineVisible: false, lineStyle: 3 });
+          const bbL = chart.addLineSeries({ color: "#7c3aed66", lineWidth: 1, priceLineVisible: false, lineStyle: 3 });
+          bbU.setData(bbUpperData);
+          bbL.setData(bbLowerData);
         }
 
         // 진입/손절/목표 수평선
@@ -425,9 +441,20 @@ export default function ChartPage() {
 
   const latest = rows.at(-1);
   const indicators = derivedIndicators(rows, latest, levels?.indicators || {});
-  const latestRsi = indicators.rsi14 ?? rsi(rows.map(closeOf).filter(Boolean));
+  // API 차트 데이터에서 직접 추출 (더 정확)
+  const latestRsi = positiveNum(latest?.rsi) ?? indicators.rsi14 ?? rsi(rows.map(closeOf).filter(Boolean));
   const currentPrice = positiveNum(latest?.close) || positiveNum(latest?.Close) || levelValue(levels, "entry") || 0;
-  const atrValue = indicators.atr14 || 0;
+  // ATR: API 차트 rows에서 계산 (14일 True Range 평균)
+  const atrValue = (() => {
+    const recent = rows.slice(-14);
+    if (recent.length < 5) return indicators.atr14 || 0;
+    const trs = recent.map((r, i) => {
+      if (i === 0) return highOf(r) - lowOf(r);
+      const prev = recent[i - 1];
+      return Math.max(highOf(r) - lowOf(r), Math.abs(highOf(r) - closeOf(prev)), Math.abs(lowOf(r) - closeOf(prev)));
+    });
+    return trs.reduce((s, v) => s + v, 0) / trs.length;
+  })();
   const atrPlan = atrValue > 0 && currentPrice > 0
     ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon)
     : null;
@@ -632,15 +659,83 @@ export default function ChartPage() {
               </div>
             </Panel>
 
-            <Panel title="기업분석">
-              <Info label="EPS" value={company?.eps ? Number(company.eps).toLocaleString("ko-KR") : company?.connectionStatus || "재무 원본 확인 필요"} />
-              <Info label="PER" value={company?.per ? Number(company.per).toFixed(2) : company?.missingReason || "값 비어 있음"} />
-              <Info label="PBR" value={company?.pbr ? Number(company.pbr).toFixed(2) : company?.dataStatus || "값 비어 있음"} />
-              <Info label="ROE" value={company?.roe ? `${Number(company.roe).toFixed(2)}%` : "값 비어 있음"} />
-              {Array.isArray(company?.missingFields) && company.missingFields.length > 0 && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200">
-                  누락 필드: {company.missingFields.slice(0, 6).join(", ")}
-                </div>
+            <Panel title={`기업분석${company?.hasDartData ? ` · DART ${company.dartYear || ""}` : ""}`}>
+              {company ? (
+                <>
+                  {/* PER / PBR / PEG */}
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {[
+                      { label: "PER", value: company.per },
+                      { label: "PBR", value: company.pbr },
+                      { label: "PEG", value: company.peg },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2 text-center">
+                        <div className="text-[10px] text-slate-500">{label}</div>
+                        <div className={`mt-0.5 font-mono text-sm font-bold ${
+                          label === "PEG" && value && Number(value) < 1.0 ? "text-emerald-400"
+                          : label === "PEG" && value && Number(value) > 2.0 ? "text-red-400"
+                          : "text-slate-100"
+                        }`}>
+                          {value && String(value) !== "PER 데이터 없음" && String(value) !== "PBR 데이터 없음"
+                            ? Number(value).toFixed(2)
+                            : "-"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* ROE / 부채비율 / 영업이익률 */}
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {[
+                      { label: "ROE", value: company.roe, suffix: "%", good: (v: number) => v >= 15, bad: (v: number) => v < 5 },
+                      { label: "부채비율", value: company.debtRatio, suffix: "%", good: (v: number) => v < 100, bad: (v: number) => v > 200 },
+                      { label: "영업이익률", value: company.operatingMargin, suffix: "%", good: (v: number) => v >= 15, bad: (v: number) => v < 5 },
+                    ].map(({ label, value, suffix, good, bad }) => {
+                      const n = value && String(value) !== "" ? Number(value) : null;
+                      return (
+                        <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2 text-center">
+                          <div className="text-[10px] text-slate-500">{label}</div>
+                          <div className={`mt-0.5 font-mono text-sm font-bold ${
+                            n !== null && !isNaN(n) ? (good(n) ? "text-emerald-400" : bad(n) ? "text-red-400" : "text-slate-100") : "text-slate-600"
+                          }`}>
+                            {n !== null && !isNaN(n) ? `${n.toFixed(1)}${suffix}` : "-"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* 성장률 */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "매출 성장률", value: company.revenueGrowth },
+                      { label: "EPS 성장률", value: company.epsGrowth },
+                    ].map(({ label, value }) => {
+                      const n = value ? Number(value) : null;
+                      return (
+                        <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                          <div className="text-[10px] text-slate-500">{label}</div>
+                          <div className={`mt-0.5 font-mono text-sm font-bold ${
+                            n !== null && !isNaN(n) ? (n >= 15 ? "text-emerald-400" : n >= 0 ? "text-slate-300" : "text-red-400") : "text-slate-600"
+                          }`}>
+                            {n !== null && !isNaN(n) ? `${n >= 0 ? "+" : ""}${n.toFixed(1)}%` : "-"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* 저평가 성장주 배지 */}
+                  {company.peg && Number(company.peg) < 1.0 && Number(company.roe) >= 15 && (
+                    <div className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+                      저평가 성장주 — PEG {Number(company.peg).toFixed(2)} · ROE {Number(company.roe).toFixed(1)}%
+                    </div>
+                  )}
+                  {!company.hasDartData && (
+                    <div className="mt-2 text-[10px] text-slate-600">
+                      DART 재무 데이터 수집 대기 (매주 월요일 자동 갱신)
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-sm text-slate-500">기업분석 데이터를 불러오는 중...</div>
               )}
             </Panel>
           </div>
