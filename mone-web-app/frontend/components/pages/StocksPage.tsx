@@ -794,15 +794,49 @@ export default function StocksPage() {
                 </div>
               )}
 
-              {Array.isArray(item.strategyTags) && item.strategyTags.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {item.strategyTags.slice(0, 4).map((tag: string, tagIndex: number) => (
-                    <span key={tag} className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] font-bold text-slate-300">
-                      {Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels[tagIndex] || tag : tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* 전략 태그 + 새 신호 */}
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {/* surgeLabel (ohlcv_quant 파일에서 오는 태그) */}
+                {!Array.isArray(item.strategyTags) && item.surgeLabel && item.surgeLabel !== "판단 대기" &&
+                  String(item.surgeLabel).split("|").map((t: string) => t.trim()).filter(Boolean).map((t: string) => (
+                    <span key={t} className={`rounded-md border px-2 py-1 text-[11px] font-bold ${
+                      t.includes("주의") || t.includes("공시") ? "border-red-500/30 bg-red-500/10 text-red-300"
+                      : t.includes("저평가") ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                      : t.includes("수렴") ? "border-violet-500/30 bg-violet-500/10 text-violet-300"
+                      : t.includes("기관") || t.includes("외국인") ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                      : "border-slate-700 bg-slate-950 text-slate-300"
+                    }`}>{t}</span>
+                  ))
+                }
+                {/* 기존 strategyTags */}
+                {Array.isArray(item.strategyTags) && item.strategyTags.slice(0, 3).map((tag: string, tagIndex: number) => (
+                  <span key={tag} className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] font-bold text-slate-300">
+                    {Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels[tagIndex] || tag : tag}
+                  </span>
+                ))}
+                {/* 재무 정보 배지 */}
+                {item.isUndervaluedGrowth && (
+                  <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-300">
+                    저평가성장주{item.finReason ? ` (${item.finReason})` : ""}
+                  </span>
+                )}
+                {/* 수급 신호 */}
+                {item.supplySignal === "STRONG_BUY" && (
+                  <span className="rounded-md border border-blue-400/40 bg-blue-400/10 px-2 py-1 text-[11px] font-bold text-blue-300">기관+외국인 동반매수</span>
+                )}
+                {item.supplySignal === "INST_BUY" && (
+                  <span className="rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-[11px] text-sky-300">기관 순매수</span>
+                )}
+                {item.supplySignal === "SELL_PRESSURE" && (
+                  <span className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">수급 매도압력</span>
+                )}
+                {/* 뉴스 감점 */}
+                {Number(item.newsRiskPenalty) >= 10 && (
+                  <span className="rounded-md border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-[11px] text-orange-300">
+                    공시주의 (-{item.newsRiskPenalty}점)
+                  </span>
+                )}
+              </div>
               {Array.isArray(item.cautionReasons) && item.cautionReasons.length > 0 && (
                 <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
                   매수금지/주의: {item.cautionReasons.join(", ")}

@@ -400,6 +400,258 @@ def _load_name_map() -> dict[str, str]:
     return names
 
 
+# ══════════════════════════════════════════════
+# A-1: 뉴스/공시 감성 점수 (newsRiskPenalty 실제화)
+# ══════════════════════════════════════════════
+
+# 리스크 키워드 → 감점 / 호재 키워드 → 가산
+_RISK_KEYWORDS: list[tuple[str, float]] = [
+    # 매우 위험 (감점 큼)
+    ("유상증자", -15.0), ("증자", -10.0), ("전환사채", -12.0), ("CB발행", -12.0),
+    ("신주인수권", -10.0), ("BW발행", -10.0), ("관리종목", -20.0), ("상장폐지", -25.0),
+    ("감자", -20.0), ("횡령", -20.0), ("배임", -18.0), ("불성실공시", -15.0),
+    ("감사의견", -12.0), ("소송", -8.0), ("영업손실", -8.0), ("적자전환", -10.0),
+    ("부도", -25.0), ("워크아웃", -20.0), ("법정관리", -25.0),
+    # 경미한 위험
+    ("주식분산", -5.0), ("지분변동", -4.0), ("최대주주변경", -6.0),
+    ("임원보수", -3.0), ("스톡옵션", -3.0),
+]
+_POSITIVE_KEYWORDS: list[tuple[str, float]] = [
+    # 매우 긍정 (가산)
+    ("수주", +8.0), ("공급계약", +8.0), ("대형계약", +10.0), ("FDA승인", +12.0),
+    ("임상성공", +10.0), ("흑자전환", +8.0), ("최대실적", +10.0), ("자사주매입", +6.0),
+    ("배당증가", +5.0), ("배당확대", +5.0), ("자사주소각", +8.0),
+    # 경미한 긍정
+    ("수출증가", +4.0), ("매출증가", +3.0), ("영업이익증가", +5.0),
+    ("신제품", +3.0), ("기술이전", +4.0), ("MOU", +3.0), ("협약", +2.0),
+]
+
+
+def _load_news_sentiment() -> dict[str, float]:
+    """
+    공시/뉴스 CSV에서 종목별 감성 점수 계산.
+    반환: {symbol: news_penalty}  — 양수 = 리스크, 음수 = 호재
+    (generate_kr_recommendations에서 newsRiskPenalty에 직접 반영)
+    """
+    scores: dict[str, list[float]] = {}
+
+    def _score_text(text: str) -> float:
+        s = 0.0
+        for kw, v in _RISK_KEYWORDS:
+            if kw in text:
+                s += v
+        for kw, v in _POSITIVE_KEYWORDS:
+            if kw in text:
+                s += v
+        return s
+
+    # 공시 데이터 (종목코드 직접 연결)
+    for path in [ROOT / "data" / "disclosures" / "disclosures_kr.csv",
+                 REPORTS / "disclosures_kr.csv"]:
+        for row in _read_csv(path):
+            sym = str(row.get("symbol", "")).strip()
+            title = str(row.get("title", ""))
+            if not sym or not title:
+                continue
+            s = _score_text(title)
+            if s != 0:
+                scores.setdefault(sym, []).append(s)
+                scores.setdefault(sym.lstrip("0"), []).append(s)
+
+    # 뉴스 데이터 (종목코드 있는 것만)
+    for path in [REPORTS / "news_summary_kr.csv", REPORTS / "news_cards_kr.csv"]:
+        for row in _read_csv(path):
+            sym = str(row.get("종목코드", "") or row.get("symbol", "")).strip()
+            title = str(row.get("제목", "") or row.get("title", "") or row.get("3줄요약", ""))
+            if not sym or not title or sym == "종목":
+                continue
+            s = _score_text(title)
+            if s != 0:
+                scores.setdefault(sym, []).append(s)
+
+    # 종목별 평균 → 감점 변환 (양수 = 리스크 감점)
+    result: dict[str, float] = {}
+    for sym, vals in scores.items():
+        avg = sum(vals) / len(vals)
+        # 리스크: 감점 (0~20), 호재: 감점 완화 (-5~0)
+        penalty = max(-5.0, min(20.0, -avg))
+        result[sym] = round(penalty, 1)
+    return result
+
+
+# ══════════════════════════════════════════════
+# A-2: 재무 데이터 연결 (저평가 성장주 태그)
+# ══════════════════════════════════════════════
+
+def _load_financial_data() -> dict[str, dict[str, Any]]:
+    """
+    v93_company_integrated_kr.csv + v92_company_integrated_kr.csv에서
+    종목별 재무 지표 로드.
+    반환: {symbol: {roe, per, pbr, value_score, growth_score, stability_score}}
+    """
+    fin: dict[str, dict[str, Any]] = {}
+    for path in [
+        REPORTS / "v93_company_integrated_kr.csv",
+        REPORTS / "v92_company_integrated_kr.csv",
+        REPORTS / "v92_company_clean_kr.csv",
+    ]:
+        for row in _read_csv(path):
+            sym = str(row.get("종목코드", "") or row.get("symbol", "")).strip()
+            if not sym:
+                continue
+            roe = _num(row.get("ROE"))
+            per = _num(row.get("PER"))
+            pbr = _num(row.get("PBR"))
+            value_score = _num(row.get("가치점수") or row.get("value_score"))
+            growth_score = _num(row.get("성장점수") or row.get("growth_score"))
+            stability_score = _num(row.get("안정성점수") or row.get("stability_score"))
+            total_score = _num(row.get("종합점수") or row.get("total_score"))
+            # 이미 있으면 더 나은 데이터(값이 있는)로 업데이트
+            existing = fin.get(sym, {})
+            fin[sym] = {
+                "roe": roe if roe is not None else existing.get("roe"),
+                "per": per if per is not None else existing.get("per"),
+                "pbr": pbr if pbr is not None else existing.get("pbr"),
+                "value_score": value_score if value_score is not None else existing.get("value_score"),
+                "growth_score": growth_score if growth_score is not None else existing.get("growth_score"),
+                "stability_score": stability_score if stability_score is not None else existing.get("stability_score"),
+                "total_score": total_score if total_score is not None else existing.get("total_score"),
+            }
+            fin[sym.lstrip("0")] = fin[sym]
+    return fin
+
+
+def _is_undervalued_growth(sym: str, fin_map: dict[str, dict]) -> tuple[bool, str]:
+    """
+    저평가 성장주 판단:
+    - ROE > 10% (수익성)
+    - 가치점수 > 55 또는 PBR < 2.0
+    - 성장점수 > 55 (있을 경우)
+    반환: (해당 여부, 근거)
+    """
+    data = fin_map.get(sym) or fin_map.get(sym.lstrip("0")) or {}
+    roe = data.get("roe")
+    per = data.get("per")
+    pbr = data.get("pbr")
+    value_score = data.get("value_score")
+    growth_score = data.get("growth_score")
+
+    if not data:
+        return False, ""
+
+    reasons = []
+    score = 0
+
+    if roe is not None and roe > 10:
+        reasons.append(f"ROE {roe:.1f}%")
+        score += 2
+    if roe is not None and roe > 15:
+        score += 1  # 추가 가산
+
+    if value_score is not None and value_score > 55:
+        reasons.append(f"가치{value_score:.0f}점")
+        score += 1
+    elif pbr is not None and pbr < 2.0:
+        reasons.append(f"PBR {pbr:.1f}")
+        score += 1
+
+    if growth_score is not None and growth_score > 55:
+        reasons.append(f"성장{growth_score:.0f}점")
+        score += 1
+
+    if per is not None and per < 15:
+        reasons.append(f"PER {per:.1f}")
+        score += 1
+
+    return score >= 2, " · ".join(reasons) if reasons else ""
+
+
+# ══════════════════════════════════════════════
+# A-3: 기관/외국인 순매수 신호
+# ══════════════════════════════════════════════
+
+def _load_supply_data() -> dict[str, dict[str, Any]]:
+    """
+    predictions.csv의 KIS 수급 데이터에서 종목별 최신 기관/외국인 순매수 로드.
+    반환: {symbol: {inst5d, foreign5d, inst20d, foreign20d, signal}}
+    """
+    supply: dict[str, dict[str, Any]] = {}
+
+    # predictions.csv — 종목별 가장 최신 행만 사용
+    pred_path = ROOT / "predictions.csv"
+    if not pred_path.exists():
+        return supply
+
+    latest_by_sym: dict[str, dict] = {}
+    for row in _read_csv(pred_path):
+        mkt = str(row.get("market", "")).lower()
+        if "한국" not in mkt and mkt != "kr":
+            continue
+        sym = str(row.get("ticker") or row.get("symbol") or "").strip()
+        if not sym:
+            continue
+        created = str(row.get("created_at", ""))
+        existing = latest_by_sym.get(sym)
+        if existing is None or created > str(existing.get("created_at", "")):
+            latest_by_sym[sym] = row
+
+    for sym, row in latest_by_sym.items():
+        inst5d = _num(row.get("kis_institution_5d"))
+        foreign5d = _num(row.get("kis_foreign_5d"))
+        inst20d = _num(row.get("kis_institution_20d"))
+        foreign20d = _num(row.get("kis_foreign_20d"))
+
+        # 순매수 신호 판단
+        signal = "NEUTRAL"
+        signal_score = 0.0
+        if inst5d is not None and inst5d > 0:
+            signal_score += 1.0
+        if inst20d is not None and inst20d > 0:
+            signal_score += 1.0
+        if foreign5d is not None and foreign5d > 0:
+            signal_score += 1.0
+        if foreign20d is not None and foreign20d > 0:
+            signal_score += 0.5
+        # 기관+외국인 동시 순매수
+        if inst5d and inst5d > 0 and foreign5d and foreign5d > 0:
+            signal = "STRONG_BUY"
+            signal_score += 2.0
+        elif inst5d and inst5d > 0:
+            signal = "INST_BUY"
+        elif foreign5d and foreign5d > 0:
+            signal = "FOREIGN_BUY"
+        elif inst5d and inst5d < 0 and foreign5d and foreign5d < 0:
+            signal = "SELL_PRESSURE"
+            signal_score -= 2.0
+
+        supply[sym] = {
+            "inst5d": inst5d, "foreign5d": foreign5d,
+            "inst20d": inst20d, "foreign20d": foreign20d,
+            "signal": signal, "signal_score": round(signal_score, 1),
+        }
+        supply[sym.lstrip("0")] = supply[sym]
+
+    return supply
+
+
+def _supply_score_adjust(sym: str, supply_map: dict) -> tuple[float, str]:
+    """수급 신호 → 점수 가산/감점, 태그 반환"""
+    data = supply_map.get(sym) or supply_map.get(sym.lstrip("0")) or {}
+    if not data:
+        return 0.0, ""
+    signal = data.get("signal", "NEUTRAL")
+    score = data.get("signal_score", 0.0)
+    adjust = min(8.0, max(-8.0, score * 2.0))
+    label = {
+        "STRONG_BUY": "기관+외국인 동반매수",
+        "INST_BUY": "기관 순매수",
+        "FOREIGN_BUY": "외국인 순매수",
+        "SELL_PRESSURE": "기관+외국인 순매도",
+        "NEUTRAL": "",
+    }.get(signal, "")
+    return adjust, label
+
+
 # ── 메인 생성 로직
 
 def _load_ohlcv_all() -> dict[str, list[dict]]:
@@ -439,8 +691,12 @@ def generate_recommendations() -> dict[str, Any]:
     kis_prices = _load_kis_prices()
     name_map = _load_name_map()
     regime = _load_market_regime()
+    news_sentiment = _load_news_sentiment()
+    fin_data = _load_financial_data()
+    supply_data = _load_supply_data()
 
     print(f"  OHLCV: {len(ohlcv_all)}종목, KIS 현재가: {len(kis_prices)}종목")
+    print(f"  뉴스/공시 감성: {len(news_sentiment)}종목, 재무: {len(fin_data)//2}종목, 수급: {len(supply_data)//2}종목")
     print(f"  마켓 레짐: {regime['label']} ({regime['description']})")
 
     regime_adjust = regime.get("scoreAdjust", 0.0)
@@ -522,16 +778,52 @@ def generate_recommendations() -> dict[str, Any]:
                 if ev is not None and ev < 0:
                     if mode == "conservative":
                         ev_filtered += 1
-                        continue  # 보수형은 EV 음수 종목 제외
-                    # 균형/공격은 포함하되 태그 추가
-                    decision = "기다림"  # EV 음수면 진입 보류
+                        continue
+                    decision = "기다림"
+
+                # A-1: 뉴스/공시 감성 점수 반영
+                news_penalty = news_sentiment.get(sym, news_sentiment.get(sym.lstrip("0"), 0.0))
+
+                # A-3: 기관/외국인 수급 점수 반영
+                supply_adjust, supply_label = _supply_score_adjust(sym, supply_data)
+
+                # 최종 조정 점수 (뉴스 감점 + 수급 가산)
+                adj_score_final = max(0.0, min(100.0, adj_score - news_penalty + supply_adjust))
+
+                # A-2: 저평가 성장주 태그
+                is_undervalued, fin_reason = _is_undervalued_growth(sym, fin_data)
 
                 sub = _sub_scores(ind)
-                tags = _strategy_tags(ind)
+                tags_list = []
+                if _ma_convergence(ind) and (not ind.get("rsi14") or ind["rsi14"] < 75):
+                    tags_list.append("이격도수렴")
+                d20 = ind.get("distanceToMa20")
+                rsi = ind.get("rsi14")
+                if d20 and -8 <= d20 <= 3 and (not rsi or rsi < 80):
+                    tags_list.append("눌림목매수")
+                if supply_label:
+                    tags_list.append(supply_label)
+                if is_undervalued:
+                    tags_list.append("저평가성장주")
+                vr = ind.get("volumeRatio20")
+                if vr and vr >= 1.5:
+                    tags_list.append("거래대금증가")
+                mom5 = ind.get("recentMomentum5")
+                mom20 = ind.get("recentMomentum20")
+                if (mom5 and mom5 > 3) or (mom20 and mom20 > 8):
+                    tags_list.append("모멘텀강세")
+                if news_penalty >= 10.0:
+                    tags_list.append("공시주의")
+                if not tags_list:
+                    tags_list.append("안정형")
+                tags = " | ".join(tags_list)
+
                 rr = round((target - entry) / max(entry - stop, 1), 2) if stop < entry else None
-                rank_score = sub["opportunityScore"] * 0.45 + sub["entryScore"] * 0.35 if "opportunityScore" in sub else adj_score
+                rank_score = adj_score_final
                 ev_negative = ev is not None and ev < 0
                 ma_conv = _ma_convergence(ind)
+                fin_info = fin_data.get(sym) or fin_data.get(sym.lstrip("0")) or {}
+                supply_info = supply_data.get(sym) or supply_data.get(sym.lstrip("0")) or {}
                 row = {
                     "market": "kr",
                     "mode": mode,
@@ -541,22 +833,24 @@ def generate_recommendations() -> dict[str, Any]:
                     "symbol": sym,
                     "name": c["name"],
                     "decisionBucket": decision,
-                    "newEntryDecision": "조건부 진입" if adj_score >= 55 and not ev_negative else "대기",
+                    "newEntryDecision": "조건부 진입" if adj_score_final >= 55 and not ev_negative else "대기",
                     "holderDecision": "보유자는 목표가·손절가 대응",
                     "buyTiming": "조건부 매수 등록" if decision == "오늘 진입" else "기준가 도달 대기",
                     "sellTiming": "목표가 도달 시 분할익절 / 손절가 이탈 시 종료 / 보유기간 종료 시 재검토",
                     "entry": _fmt_krw(entry),
                     "stop":  _fmt_krw(stop),
                     "target": _fmt_krw(target),
-                    "probability": f"{round(adj_score, 1)}%",
-                    "expectedPrice": _fmt_krw(round(current * (1 + (adj_score/100 - 0.5) * 0.1))),
+                    "probability": f"{round(adj_score_final, 1)}%",
+                    "expectedPrice": _fmt_krw(round(current * (1 + (adj_score_final/100 - 0.5) * 0.1))),
                     "opportunityScore": round(sub["upsideScore"] * 0.6 + sub["momentumScore"] * 0.4, 1),
                     "entryScore": round(sub["entryScore"], 1),
                     "riskScore": round(sub["riskScore"], 1),
-                    "eventRiskScore": 0,
-                    "newsReliabilityScore": 50,
-                    "finalRankScore": round(adj_score, 1),
-                    "finalScore": round(adj_score, 1),
+                    "eventRiskScore": round(news_penalty, 1),
+                    "newsReliabilityScore": round(50 - news_penalty, 1),
+                    "newsRiskPenalty": round(news_penalty, 1),
+                    "newsSentimentSource": "keyword" if news_sentiment.get(sym) is not None else "none",
+                    "finalRankScore": round(adj_score_final, 1),
+                    "finalScore": round(adj_score_final, 1),
                     "baseScore": round(base_score, 1),
                     "upsideScore": sub["upsideScore"],
                     "momentumScore": sub["momentumScore"],
@@ -566,8 +860,28 @@ def generate_recommendations() -> dict[str, Any]:
                     "evNegative": ev_negative,
                     "rrActual": rr if rr is not None else "",
                     "maConvergence": ma_conv,
+                    # 재무 데이터
+                    "roe": fin_info.get("roe", ""),
+                    "per": fin_info.get("per", ""),
+                    "pbr": fin_info.get("pbr", ""),
+                    "finValueScore": fin_info.get("value_score", ""),
+                    "finGrowthScore": fin_info.get("growth_score", ""),
+                    "finStabilityScore": fin_info.get("stability_score", ""),
+                    "isUndervaluedGrowth": is_undervalued,
+                    "finReason": fin_reason,
+                    # 수급 데이터
+                    "instBuy5d": supply_info.get("inst5d", ""),
+                    "foreignBuy5d": supply_info.get("foreign5d", ""),
+                    "supplySignal": supply_info.get("signal", "NEUTRAL"),
+                    "supplyScoreAdj": supply_adjust,
                     "surgeLabel": tags,
-                    "eventBadges": "EV음수" if ev_negative else ("이격도수렴" if ma_conv else ""),
+                    "eventBadges": " | ".join(filter(None, [
+                        "EV음수" if ev_negative else "",
+                        "이격도수렴" if ma_conv else "",
+                        supply_label if supply_label else "",
+                        "저평가성장주" if is_undervalued else "",
+                        "공시주의" if news_penalty >= 10 else "",
+                    ])),
                     "marketRegime": regime_label,
                     "marketRegimeAdjust": regime_adjust,
                     "executionStatus": "체결" if decision == "오늘 진입" else "대기",
@@ -600,6 +914,9 @@ def generate_recommendations() -> dict[str, Any]:
         "source": "ohlcv_quant_scanner",
         "symbols": len(ohlcv_all),
         "kisSymbols": len(kis_prices),
+        "newsSentimentSymbols": len(news_sentiment),
+        "financialSymbols": len(fin_data) // 2,
+        "supplySymbols": len(supply_data) // 2,
         "marketRegime": regime,
         "evFiltered": ev_filtered,
         "regimeFiltered": regime_filtered,

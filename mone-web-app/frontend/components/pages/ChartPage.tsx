@@ -33,6 +33,11 @@ function num(value: any) {
   return Number.isFinite(n) ? n : null;
 }
 
+function positiveNum(value: any) {
+  const n = num(value);
+  return n !== null && n > 0 ? n : null;
+}
+
 function closeOf(row: any) {
   return num(row.close ?? row.Close ?? row.closePrice ?? row.currentPrice) || 0;
 }
@@ -68,6 +73,11 @@ function movingAverage(values: number[], period: number) {
   });
 }
 
+function average(values: number[]) {
+  const clean = values.filter((value) => Number.isFinite(value) && value > 0);
+  return clean.length ? clean.reduce((sum, value) => sum + value, 0) / clean.length : null;
+}
+
 function rsi(values: number[], period = 14) {
   if (values.length <= period) return null;
   let gain = 0;
@@ -82,6 +92,31 @@ function rsi(values: number[], period = 14) {
   return 100 - 100 / (1 + rs);
 }
 
+function derivedIndicators(rows: any[], latest: any, recommendationIndicators: any) {
+  const close = positiveNum(latest?.close ?? latest?.Close ?? latest?.closePrice ?? latest?.currentPrice);
+  const ma20 = positiveNum(recommendationIndicators?.ma20 ?? latest?.ma20 ?? latest?.MA20);
+  const bbUpper = positiveNum(recommendationIndicators?.bbUpper ?? latest?.bbUpper ?? latest?.BBUpper ?? latest?.bollingerUpper);
+  const bbLower = positiveNum(recommendationIndicators?.bbLower ?? latest?.bbLower ?? latest?.BBLower ?? latest?.bollingerLower);
+  const latestVolume = positiveNum(latest?.volume ?? latest?.Volume);
+  const volumeAvg20 = average(rows.slice(-20).map((row) => positiveNum(row.volume ?? row.Volume) || 0));
+  const high52w = Math.max(...rows.slice(-260).map(highOf).filter(Boolean), 0);
+
+  return {
+    ...recommendationIndicators,
+    rsi14: positiveNum(recommendationIndicators?.rsi14 ?? latest?.rsi ?? latest?.RSI),
+    atr14: positiveNum(recommendationIndicators?.atr14 ?? latest?.atr14 ?? latest?.ATR14),
+    mdd20: positiveNum(recommendationIndicators?.mdd20 ?? latest?.mdd20 ?? latest?.MDD20),
+    distanceToMa20:
+      recommendationIndicators?.distanceToMa20 ?? (close && ma20 ? ((close - ma20) / ma20) * 100 : null),
+    bbPercentB:
+      recommendationIndicators?.bbPercentB ?? (close && bbUpper && bbLower && bbUpper !== bbLower ? (close - bbLower) / (bbUpper - bbLower) : null),
+    volumeRatio20:
+      recommendationIndicators?.volumeRatio20 ?? (latestVolume && volumeAvg20 ? latestVolume / volumeAvg20 : null),
+    distanceTo52wHigh:
+      recommendationIndicators?.distanceTo52wHigh ?? (close && high52w ? ((close - high52w) / high52w) * 100 : null),
+  };
+}
+
 function relatedItems(items: any[], selected: MoneSymbol | null) {
   if (!selected) return [];
   const query = `${selected.symbol} ${selected.name}`.toLowerCase();
@@ -91,6 +126,16 @@ function relatedItems(items: any[], selected: MoneSymbol | null) {
       return query.split(" ").some((part) => part && text.includes(part));
     })
     .slice(0, 4);
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(fallback), ms);
+    promise
+      .then((value) => resolve(value))
+      .catch(() => resolve(fallback))
+      .finally(() => window.clearTimeout(timer));
+  });
 }
 
 export default function ChartPage() {
@@ -147,15 +192,18 @@ export default function ChartPage() {
 
     let active = true;
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260 }),
       mone.recommendations({ market: selected.market, mode: "balanced", horizon: "swing", limit: 300 }),
       mone.news({ market: selected.market, limit: 200 }),
       mone.disclosures({ market: selected.market, limit: 200 }),
-      mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }),
+      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }), 6000, { status: "TIMEOUT", items: [] }),
     ])
-      .then(([chartData, recommendationData, newsData, disclosureData, companyData]) => {
+      .then((results) => {
         if (!active) return;
+        const [chartData, recommendationData, newsData, disclosureData, companyData] = results.map((result) =>
+          result.status === "fulfilled" ? result.value : { items: [] },
+        );
         setRows(Array.isArray(chartData.items) ? chartData.items : []);
         const matched = Array.isArray(recommendationData.items)
           ? recommendationData.items.find((item: any) => normalizeSymbol(item) === selected.symbol)
@@ -167,15 +215,6 @@ export default function ChartPage() {
           ? companyData.items.find((item: any) => normalizeSymbol(item) === selected.symbol) || companyData.items[0]
           : null;
         setCompany(companyMatch || null);
-      })
-      .catch(() => {
-        if (active) {
-          setRows([]);
-          setLevels(null);
-          setNews([]);
-          setDisclosures([]);
-          setCompany(null);
-        }
       })
       .finally(() => active && setLoading(false));
 
@@ -189,8 +228,8 @@ export default function ChartPage() {
   const closes = display.map(closeOf);
   const ma5 = movingAverage(closes, 5);
   const ma20 = movingAverage(closes, 20);
-  const latestRsi = levels?.indicators?.rsi14 ?? rsi(rows.map(closeOf).filter(Boolean));
-  const indicators = levels?.indicators || {};
+  const indicators = derivedIndicators(rows, latest, levels?.indicators || {});
+  const latestRsi = indicators.rsi14 ?? rsi(rows.map(closeOf).filter(Boolean));
   const levelNumbers = ["base", "entry", "stop", "target", "expected"].map((key) => levelValue(levels, key as any)).filter(Boolean);
   const maNumbers = [...ma5, ...ma20].filter((value): value is number => Number.isFinite(value as number));
   const max = Math.max(...display.map(highOf), ...levelNumbers, ...maNumbers, 1);
