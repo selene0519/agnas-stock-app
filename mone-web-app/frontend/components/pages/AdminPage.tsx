@@ -30,27 +30,29 @@ export default function AdminPage() {
   const [syncing, setSyncing] = useState(false);
 
   async function load() {
-    setAudit({ status: "LOADING", items: [] });
     setGithub({ status: "LOADING" });
     setVirtualSummary({ status: "LOADING" });
 
+    // github, virtualSummary, syncStatus는 빠른 API — 먼저 로드
     try {
-      const [a, g, v, s] = await Promise.all([
-        mone.audit(),
+      const [g, v, s] = await Promise.all([
         mone.github(),
         mone.virtualSummary({ market: "all" }),
         fetch("/mone-api/api/admin/sync-status").then((r) => r.json()).catch(() => null),
       ]);
-
-      setAudit(a || { status: "ERROR", items: [] });
       setGithub(g || { status: "ERROR" });
       setVirtualSummary(v || { status: "ERROR" });
       setSyncStatus(s);
     } catch (error) {
-      setAudit({ status: "ERROR", items: [] });
       setGithub({ status: "ERROR", error: String(error) });
       setVirtualSummary({ status: "ERROR" });
     }
+
+    // audit는 느릴 수 있어 별도 비동기 로드 (다른 섹션 블로킹 방지)
+    setAudit({ status: "LOADING", items: [] });
+    mone.audit()
+      .then((a) => setAudit(a || { status: "ERROR", items: [] }))
+      .catch(() => setAudit({ status: "ERROR", items: [] }));
   }
 
   async function syncNow() {
