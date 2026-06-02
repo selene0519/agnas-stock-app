@@ -277,7 +277,69 @@ def _final_score(ind: dict, mode: str, horizon: str) -> float:
     return max(0.0, min(100.0, round(final, 1)))
 
 
-def _price_band(score: float, current: float, mode: str, horizon: str) -> tuple[float, float, float, float | None, str]:
+def _decide_timing(score: float, ind: dict, mode: str, horizon: str, ev: float | None) -> tuple[str, str, str]:
+    """
+    진입 타이밍 판단.
+    반환: (decisionBucket, timingLabel, timingReason)
+
+    decisionBucket:
+      "오늘 진입"   — 지금이 최적 구간
+      "대기 관찰"   — 1~3일 후 더 나은 진입 예상
+      "기다림"      — 조건 미충족, 중기 대기
+      "보류"        — EV 음수 또는 과열
+    """
+    d20 = ind.get("distanceToMa20")
+    d60 = ind.get("distanceToMa60")
+    rsi = ind.get("rsi14")
+    mom5 = ind.get("recentMomentum5")
+    mom20 = ind.get("recentMomentum20")
+    bb_b = ind.get("bbPercentB")
+    ma_conv = _ma_convergence(ind)
+
+    # 보류 조건
+    if ev is not None and ev < 0 and mode == "conservative":
+        return "보류", "매수 보류", "EV 음수 — 기댓값 불리"
+    if rsi and rsi >= 80:
+        return "보류", "과열 대기", f"RSI {rsi:.0f} 과열 — 눌림 확인 후 재진입"
+    if bb_b and bb_b > 1.0:
+        return "보류", "과열 대기", "볼린저 상단 돌파 — 추격 금지"
+
+    # 오늘 진입 조건: 충분히 높은 점수 + 진입 구간
+    entry_zone = d20 is not None and -5.0 <= d20 <= 5.0
+    trend_ok = (mom5 is not None and mom5 >= 0) or (mom20 is not None and mom20 >= 0)
+    score_ok = score >= 60
+
+    if score_ok and entry_zone and trend_ok:
+        if ma_conv:
+            return "오늘 진입", "즉시 진입", "이격도 수렴 + 진입 구간"
+        if d20 is not None and -3.0 <= d20 <= 3.0:
+            return "오늘 진입", "즉시 진입", f"20일선 {d20:+.1f}% — 최적 진입 구간"
+        return "오늘 진입", "조건부 진입", "점수·추세·진입가 조건 충족"
+
+    # 대기 관찰: 아직 눌리는 중, 1~3일 후 더 나은 진입 예상
+    falling = mom5 is not None and mom5 < 0
+    approaching = d20 is not None and -10.0 <= d20 <= -2.0  # 아직 20일선 아래, 다가오는 중
+
+    if approaching and falling and score >= 50:
+        if horizon == "short":
+            reason = f"단기 추세 하락 중 ({mom5:+.1f}%), 1~2일 내 눌림 완성 예상"
+            return "대기 관찰", "1~2일 후 진입", reason
+        elif horizon == "swing":
+            reason = f"20일선 {d20:+.1f}%, 추가 눌림 후 반등 기대 — 3~5일 모니터링"
+            return "대기 관찰", "3~5일 후 진입", reason
+        else:
+            reason = f"20일선 {d20:+.1f}%, 중기 지지선 테스트 중 — 다음 주 진입 고려"
+            return "대기 관찰", "다음 주 진입", reason
+
+    if score >= 55 and not entry_zone:
+        if d20 and d20 > 5.0:
+            return "대기 관찰", "눌림 대기", f"20일선 {d20:+.1f}% 위 — 가격 조정 시 진입"
+        return "대기 관찰", "진입 조건 대기", "점수 충족, 진입 구간 진입 대기"
+
+    return "기다림", "관망", "점수·추세 조건 미충족"
+
+
+def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict | None = None) -> tuple[float, float, float, float | None, str]:
     band = _HORIZON_BANDS[horizon]
     rf = _MODE_RISK[mode]; rwf = _MODE_REWARD[mode]
     entry = current
@@ -291,7 +353,12 @@ def _price_band(score: float, current: float, mode: str, horizon: str) -> tuple[
         if risk_pct > 0:
             ev = round(prob * rew - (1 - prob) * risk_pct, 2)
     rr = round((target - entry) / max(entry - stop, 1), 2) if stop < entry else None
-    decision = "오늘 진입" if score >= 55 else "기다림"
+    # 타이밍 판단 (ind가 있으면 세밀하게, 없으면 점수만으로)
+    if ind is not None:
+        decision, timing_label, timing_reason = _decide_timing(score, ind, mode, horizon, ev)
+    else:
+        decision = "오늘 진입" if score >= 60 else ("대기 관찰" if score >= 50 else "기다림")
+        timing_label, timing_reason = "", ""
     return entry, stop, target, ev, decision
 
 
@@ -772,7 +839,7 @@ def generate_recommendations() -> dict[str, Any]:
                 sym = c["symbol"]
                 current = c["current"]
                 ind = c["ind"]
-                entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon)
+                entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon, ind)
 
                 # EV 음수 필터링 (보수형은 엄격, 균형/공격은 경고만)
                 if ev is not None and ev < 0:
@@ -780,6 +847,9 @@ def generate_recommendations() -> dict[str, Any]:
                         ev_filtered += 1
                         continue
                     decision = "기다림"
+
+                # 타이밍 상세
+                _, timing_label, timing_reason = _decide_timing(adj_score, ind, mode, horizon, ev)
 
                 # A-1: 뉴스/공시 감성 점수 반영
                 news_penalty = news_sentiment.get(sym, news_sentiment.get(sym.lstrip("0"), 0.0))
@@ -833,6 +903,10 @@ def generate_recommendations() -> dict[str, Any]:
                     "symbol": sym,
                     "name": c["name"],
                     "decisionBucket": decision,
+                    "timingLabel": timing_label,
+                    "timingReason": timing_reason,
+                    # 대기 관찰용 예상 진입가 (현재가보다 1~3% 낮은 수준)
+                    "expectedEntryPrice": _fmt_krw(round(current * 0.98)) if decision == "대기 관찰" else "",
                     "newEntryDecision": "조건부 진입" if adj_score_final >= 55 and not ev_negative else "대기",
                     "holderDecision": "보유자는 목표가·손절가 대응",
                     "buyTiming": "조건부 매수 등록" if decision == "오늘 진입" else "기준가 도달 대기",
