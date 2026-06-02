@@ -1829,34 +1829,84 @@ def _intraday_payload(market: str, mode: str, horizon: str, limit: int) -> dict[
     return payload
 
 
+_audit_cache: dict[str, Any] | None = None
+_audit_cache_time: float = 0.0
+_AUDIT_CACHE_TTL = 30.0  # 30초 캐시
+
+
 def _audit_payload() -> dict[str, Any]:
-    specs = {
-        "candidateKR": ["candidate_universe_kr.csv", "**/candidate_universe_kr.csv", "**/*candidate*kr*.csv"],
-        "candidateUS": ["candidate_universe_us.csv", "**/candidate_universe_us.csv", "**/*candidate*us*.csv"],
-        "watchlist": ["daily_watch_selection.json", "**/daily_watch_selection.json", "*watch*.csv", "**/*watch*.csv"],
-        "ohlcv": ["**/ohlcv/*.csv", "**/*ohlcv*.csv"],
-        "companyKR": ["**/*company*kr*.csv", "**/*financial*kr*.csv", "**/*statement*kr*.csv"],
-        "companyUS": ["**/*company*us*.csv", "**/*financial*us*.csv", "**/*statement*us*.csv"],
-        "virtual": ["**/*virtual*.csv", "paper_trading*.csv", "**/*backtest*.csv", "**/*trading*.csv"],
-        "predictions": ["predictions.csv", "**/predictions.csv", "**/prediction*.csv"],
-        "news": ["**/*news*.csv"],
-        "disclosures": ["**/*disclosure*.csv", "**/disclosures*.csv"],
+    import time
+    global _audit_cache, _audit_cache_time
+    now = time.monotonic()
+    if _audit_cache is not None and now - _audit_cache_time < _AUDIT_CACHE_TTL:
+        return _audit_cache
+
+    repo = _repo_root()
+    reports = repo / "reports"
+    data = repo / "data"
+
+    # 알려진 경로만 직접 체크 — node_modules 등 무거운 디렉토리 스캔 금지
+    def _direct_check(paths: list[Path]) -> tuple[list[Path], int]:
+        found = [p for p in paths if p.exists() and p.is_file() and p.stat().st_size > 0]
+        found.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        rows = len(_read_csv(found[0], 500)) if found else 0
+        return found, rows
+
+    def _glob_scoped(base: Path, pattern: str, limit: int = 10) -> list[Path]:
+        """node_modules, .next 제외한 스코프 내 글로브"""
+        if not base.exists():
+            return []
+        found = []
+        for p in base.glob(pattern):
+            if p.is_file() and p.stat().st_size > 0:
+                parts = p.parts
+                if any(x in parts for x in ("node_modules", ".next", "__pycache__", "backups", "logs")):
+                    continue
+                found.append(p)
+            if len(found) >= limit:
+                break
+        return sorted(found, key=lambda p: p.stat().st_mtime, reverse=True)
+
+    specs: dict[str, list[Path]] = {
+        "candidateKR": _glob_scoped(reports, "mone_v36_final_recommendations_kr_*.csv", 9)
+                       or _glob_scoped(repo, "candidate_universe_kr.csv", 2),
+        "candidateUS": _glob_scoped(reports, "mone_v36_final_recommendations_us_*.csv", 9)
+                       or _glob_scoped(repo, "candidate_universe_us.csv", 2),
+        "watchlist":   [p for p in [repo / "watchlist_kr.csv", repo / "watchlist_us.csv",
+                                    data / "watchlist_kr.csv", data / "watchlist_us.csv"] if p.exists()],
+        "ohlcv":       _glob_scoped(data / "market" / "ohlcv", "kr_*_daily.csv", 5),
+        "companyKR":   _glob_scoped(reports, "*company*kr*.csv", 3) + _glob_scoped(data, "*company*kr*.csv", 3),
+        "companyUS":   _glob_scoped(reports, "*company*us*.csv", 3) + _glob_scoped(data, "*company*us*.csv", 3),
+        "virtual":     [p for p in [reports / "virtual_prediction_ledger.csv",
+                                    reports / "virtual_validation_results.csv"] if p.exists()],
+        "predictions": [p for p in [repo / "predictions.csv", data / "history" / "prediction_history.csv"] if p.exists()],
+        "news":        _glob_scoped(data / "news", "*.csv", 3) + _glob_scoped(reports, "*news*.csv", 3),
+        "disclosures": _glob_scoped(data / "disclosures", "*.csv", 3),
     }
+
     items: list[dict[str, Any]] = []
-    for name, patterns in specs.items():
-        paths = _many(*patterns, max_files=40)
-        records = 0
-        for path in paths[:5]:
-            records += len(_read_csv(path, 20000)) if path.suffix.lower() == ".csv" else 1
+    for name, paths in specs.items():
         newest = paths[0] if paths else None
+        rows = len(_read_csv(newest, 200)) if newest and newest.suffix.lower() == ".csv" else (1 if newest else 0)
         items.append({
             "name": name,
             "status": "OK" if paths else "NO_DATA",
             "path": _safe_rel(newest) if newest else "",
-            "count": records,
+            "count": rows,
+            "fileCount": len(paths),
             "modified": datetime.fromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S") if newest else "",
         })
-    return {"status": "OK", "root": str(_app_root()), "searchRoots": [str(path) for path in _search_roots()], "items": items}
+
+    result = {
+        "status": "OK",
+        "root": str(repo),
+        "cachedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "searchRoots": [str(reports), str(data)],
+        "items": items,
+    }
+    _audit_cache = result
+    _audit_cache_time = now
+    return result
 
 
 def _github_payload() -> dict[str, Any]:
