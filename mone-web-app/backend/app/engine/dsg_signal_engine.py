@@ -55,37 +55,137 @@ SECTOR_KR_LABEL: dict[str, str] = {
 
 # 키워드 → 섹터 룰
 _SECTOR_KW: list[tuple[str, list[str]]] = [
-    ("Semiconductor", ["반도체","하이닉스","삼성전자","원익","주성","이오테크","리노","ISC","테크윙","피에스케이","한미반도체","동진쎄미","칩","웨이퍼","실리콘","디램","낸드"]),
-    ("Battery/EV", ["배터리","전지","에너지솔루션","SDI","에코프로","엘앤에프","포스코퓨처","전기차","양극재","음극재","전해액","분리막","리튬"]),
-    ("Defense/Aerospace", ["방산","항공","에어로","우주","로템","넥스원","풍산","한화시스템","항공우주","위아"]),
-    ("Shipbuilding", ["조선","중공업","해양","엔진","미포","오션","선박","STX중공업"]),
-    ("Power/Utility", ["전력","전기","일렉트릭","LS ELECTRIC","효성중공업","변압","전선","대한전선","가온전선","제룡","한국전력"]),
-    ("Construction", ["건설","이앤씨","E&C","산업개발","엔지니어링","건축","시멘트","레미콘"]),
-    ("Auto", ["현대차","기아","모비스","자동차","타이어","만도","HL만도","성우하이텍","화신"]),
-    ("Bio/Healthcare", ["바이오","제약","약품","헬스","메디","의료","셀트리온","삼성바이오","유한양행","한미약품","클래시스"]),
-    ("Bank/Finance", ["은행","금융","KB금융","신한지주","하나금융","우리금융","기업은행","카카오뱅크"]),
-    ("Securities", ["증권","투자증권","미래에셋","NH투자","키움","한국금융"]),
-    ("Insurance", ["보험","화재","생명","손해보험"]),
-    ("Cosmetics", ["화장품","코스맥스","콜마","아모레","LG생활건강","클리오","실리콘투"]),
-    ("Entertainment/Media", ["엔터","미디어","스튜디오","하이브","JYP","에스엠","와이지","콘텐츠","CJ ENM"]),
-    ("Game", ["게임","게임즈","넷마블","크래프톤","엔씨","펄어비스","위메이드","카카오게임"]),
-    ("AI/Software", ["소프트","AI","인공지능","데이터","클라우드","보안","더존","안랩","한글과컴퓨터","NAVER","카카오"]),
-    ("Robot", ["로봇","레인보우","두산로보","유일로보","로보티즈","로보스타"]),
-    ("Telecom", ["통신","텔레콤","SK텔레콤","KT","LG유플러스"]),
-    ("Oil/Chemical", ["정유","화학","케미","석유","S-Oil","GS","롯데케미","금호석유","한화솔루션"]),
-    ("Steel/Metal", ["철강","금속","제철","POSCO","포스코","동국제강","고려아연","풍산"]),
-    ("Food/Beverage", ["식품","음식","제당","농심","오리온","하이트","롯데칠성","삼양식품"]),
-    ("Retail", ["유통","쇼핑","이마트","롯데쇼핑","신세계","현대백화점","BGF","GS리테일"]),
-    ("Airline", ["항공","대한항공","아시아나","제주항공","티웨이","진에어"]),
-    ("Shipping/Logistics", ["해운","물류","팬오션","HMM","대한해운","CJ대한통운","한진"]),
-    ("Nuclear", ["원전","두산에너빌리티","한전기술","우진","비에이치아이"]),
-    ("Renewable/Energy", ["태양광","풍력","신재생","에너지","OCI","씨에스윈드","동국S&C"]),
-    ("Display", ["디스플레이","OLED","LCD","덕산","AP시스템","비아트론"]),
-    ("Machinery/Equipment", ["기계","기공","공업","정밀","기술","테크놀로지","테크","장비","산업","두산","현대엘리베","엘리베이터"]),
-    ("Materials/Parts", ["소재","부품","전자","전기전자","PCB","회로","모듈","센서","필름","코일","모터","커넥터"]),
-    ("Internet/Platform", ["인터넷","플랫폼","커머스","페이","NAVER","카카오","쿠팡"]),
-    ("Holding", ["홀딩스","지주","지주회사"]),
+    ("Semiconductor", [
+        "반도체","하이닉스","삼성전자","원익","주성","이오테크","리노","ISC","테크윙",
+        "피에스케이","한미반도체","동진쎄미","칩","웨이퍼","실리콘","디램","낸드",
+        "하나마이크론","네패스","SFA반도체","엘비세미콘",
+    ]),
+    ("Battery/EV", [
+        "배터리","전지","에너지솔루션","SDI","에코프로","엘앤에프","포스코퓨처",
+        "전기차","양극재","음극재","전해액","분리막","리튬","일진머티리얼즈","천보",
+    ]),
+    ("Defense/Aerospace", [
+        "방산","항공","에어로","우주","로템","넥스원","풍산","한화시스템","항공우주",
+        "위아","SNT","빅텍","퍼스텍","스페코","한국항공","한화에어로","LIG넥스원",
+    ]),
+    ("Shipbuilding", [
+        "조선","중공업","해양","엔진","미포","오션","선박","STX중공업","현대중공업",
+        "삼성중공업","대우조선","한진중공업",
+    ]),
+    ("Power/Utility", [
+        "전력","전기","일렉트릭","LS ELECTRIC","효성중공업","변압","전선",
+        "대한전선","가온전선","제룡","한국전력","LS전선","일진전기","대원전선",
+        "에너비스","도시가스","가스","한국가스",
+    ]),
+    ("Construction", [
+        "건설","이앤씨","E&C","산업개발","엔지니어링","건축","시멘트","레미콘",
+        "DL이앤씨","GS건설","현대건설","대우건설","태영건설","HDC현대산업개발",
+        "아이에스동서","쌍용씨앤이","진흥기업","벽산","동양파일",
+    ]),
+    ("Auto", [
+        "현대차","기아","모비스","자동차","타이어","만도","HL만도","성우하이텍","화신",
+        "자동차부품","SP삼화","삼화","대원강업","유성기업","동아화성","세종공업",
+        "서연이화","한일현대","평화산업","인팩","삼기","동원금속","NVH코리아",
+        "화승엔터","디아이씨","에스엘","PKC","현성바이탈",
+    ]),
+    ("Bio/Healthcare", [
+        "바이오","제약","약품","헬스","메디","의료","셀트리온","삼성바이오","유한양행",
+        "한미약품","클래시스","녹십자","동아에스티","보령","대웅","JW중외","광동",
+        "경동제약","종근당","일동제약","환인제약","삼일제약","제일약품","안국약품",
+        "신풍제약","대화제약","유나이티드","동화약품","일성신약","건일제약",
+    ]),
+    ("Bank/Finance", [
+        "은행","금융","KB금융","신한지주","하나금융","우리금융","기업은행","카카오뱅크",
+        "BNK","DGB","JB금융","수협","산업은행",
+    ]),
+    ("Securities", ["증권","투자증권","미래에셋","NH투자","키움","한국금융","대신증권","삼성증권","한화투자"]),
+    ("Insurance", ["보험","화재","생명","손해보험","메리츠","삼성화재","현대해상","DB손보"]),
+    ("Cosmetics", [
+        "화장품","코스맥스","콜마","아모레","LG생활건강","클리오","실리콘투",
+        "한국화장품","코리아나","토니모리","에이블씨엔씨","잇츠한불",
+    ]),
+    ("Entertainment/Media", [
+        "엔터","미디어","스튜디오","하이브","JYP","에스엠","와이지","콘텐츠","CJ ENM",
+        "NEW","쇼박스","덱스터","자이언트스텝","CJ CGV","메가박스","롯데컬처",
+    ]),
+    ("Game", ["게임","게임즈","넷마블","크래프톤","엔씨","펄어비스","위메이드","카카오게임","컴투스","선데이토즈","웹젠"]),
+    ("AI/Software", [
+        "소프트","AI","인공지능","데이터","클라우드","보안","더존","안랩","한글과컴퓨터",
+        "NAVER","카카오","솔루션","시스템","IT","정보","넥서스","이글루","지니언스",
+    ]),
+    ("Robot", ["로봇","레인보우","두산로보","유일로보","로보티즈","로보스타","뉴로메카","협동로봇"]),
+    ("Telecom", ["통신","텔레콤","SK텔레콤","KT","LG유플러스","위성","케이블","딜라이브"]),
+    ("Oil/Chemical", [
+        "정유","화학","케미","석유","S-Oil","GS","롯데케미","금호석유","한화솔루션",
+        "효성화학","SK이노베이션","SK에너지","OCI","태광산업","코오롱인더","SKC",
+        "동성화학","이수화학","KPX","SH에너지","삼남석유","미원상사","미원화학",
+    ]),
+    ("Steel/Metal", [
+        "철강","금속","제철","POSCO","포스코","동국제강","고려아연","풍산",
+        "제강","강업","철관","주철","와이어","선재","봉강","냉연","열연","특수강",
+        "만호제강","고려제강","동일제강","대한제강","한국철강","세아베스틸",
+        "현대제철","일진제강","삼화강봉","원일특강","DSR제강","고강도","영흥",
+    ]),
+    ("Food/Beverage", [
+        "식품","음식","제당","농심","오리온","하이트","롯데칠성","삼양식품",
+        "CJ제일제당","대상","동원","남양유업","매일유업","빙그레","크라운","해태",
+        "삼립","SPC","진라","미원","샘표","청정원","팔도","농협식품",
+    ]),
+    ("Retail", [
+        "유통","쇼핑","이마트","롯데쇼핑","신세계","현대백화점","BGF","GS리테일",
+        "홈플러스","CU","GS25","세이브존","롯데마트","노브랜드",
+    ]),
+    ("Airline", ["항공","대한항공","아시아나","제주항공","티웨이","진에어","에어부산","에어서울"]),
+    ("Shipping/Logistics", [
+        "해운","물류","팬오션","HMM","대한해운","CJ대한통운","한진","택배","포워딩",
+        "선박관리","흥아","SM상선","고려해운","장금상선",
+    ]),
+    ("Nuclear", ["원전","두산에너빌리티","한전기술","우진","비에이치아이","하나기술","보성파워텍"]),
+    ("Renewable/Energy", [
+        "태양광","풍력","신재생","OCI","씨에스윈드","동국S&C",
+        "에너지","수소","연료전지","태양","그린","신에너지","한화큐셀",
+    ]),
+    ("Display", ["디스플레이","OLED","LCD","덕산","AP시스템","비아트론","LG디스플레이","삼성디스플레이","이녹스첨단소재"]),
+    ("Textile/Apparel", [
+        "방직","방적","섬유","직물","의류","패션","의복","니트","원단","봉제",
+        "경방","전방","일신방","태광산업","코오롱인더","BYC","비비안","신원",
+        "한세실업","영원무역","F&F","LF","한섬","유니클로","베이직하우스",
+        "휠라","골프","스포츠","아웃도어","블랙야크","K2","밀레","코오롱스포츠",
+    ]),
+    ("Consumer", [
+        "생활용품","화학생활","가전","주방","위생","지류","종이","잡화","문구",
+        "락앤락","삼광글라스","OX","유한킴벌리","깨끗한나라","대한펄프",
+        "삼익악기","악기","오르간","피아노","스포츠용품","낚시","레저",
+    ]),
+    ("Machinery/Equipment", [
+        "기계","기공","공업","정밀","기술","테크놀로지","테크","장비","산업",
+        "두산","현대엘리베","엘리베이터","공작기계","프레스","주조","단조",
+        "연마","절삭","금형","금형가공","제일연마","일진다이아","이구산업",
+        "SNT모티브","SG","SHD","혜인","유니온","DI동일",
+    ]),
+    ("Materials/Parts", [
+        "소재","부품","전자","전기전자","PCB","회로","모듈","센서","필름","코일","모터","커넥터",
+        "주철관","관이음","배관","파이프","한국주철관","동관","동파이프",
+        "세라믹","유리","내화물","SK네트웍스","LS네트웍스",
+    ]),
+    ("Internet/Platform", ["인터넷","플랫폼","커머스","페이","쿠팡","네이버","카카오페이","토스","뱅크샐러드"]),
+    ("Holding", [
+        "홀딩스","지주","지주회사","DL","CJ","코오롱","동양","LG","SK","GS","한화","롯데",
+        "현대","효성","태광","동부","세아","LS","삼천리","대성",
+    ]),
 ]
+
+# 우선주 접미사 패턴 (name에서 제거해서 모회사 이름 추론)
+_PREF_SUFFIX = ("3우B", "2우B", "1우B", "3우", "2우", "1우", "우B", "우")
+
+
+def _strip_pref(name: str) -> str:
+    """우선주 접미사 제거 → 보통주(모회사) 이름 반환"""
+    n = name.strip()
+    for suf in _PREF_SUFFIX:
+        if n.endswith(suf):
+            return n[: -len(suf)].strip()
+    return n
 
 # ── CSV 캐시
 _sector_map_cache: dict[str, str] = {}
@@ -103,10 +203,11 @@ def _load_caches() -> None:
         for enc in ("utf-8-sig", "utf-8", "cp949"):
             try:
                 with p.open(encoding=enc) as f:
+                    _BAD = {"", "unknown", "other", "미분류", "nan", "none", "-"}
                     for row in csv.DictReader(f):
                         sym = str(row.get("symbol", "")).strip()
                         sec = str(row.get("sector", "")).strip()
-                        if sym and sec and sec != "Unknown":
+                        if sym and sec and sec.lower() not in _BAD:
                             _sector_map_cache[sym] = sec
                             _sector_map_cache[sym.lstrip("0")] = sec
                 break
@@ -136,7 +237,7 @@ def _load_caches() -> None:
 def infer_kr_sector(code: str = "", name: str = "") -> str:
     """
     종목코드 + 이름으로 섹터 추론.
-    우선순위: CSV 맵 → 이름 키워드 → 테마
+    우선순위: CSV 맵 → 이름 키워드 → 우선주 모회사 추론 → 테마
     """
     _load_caches()
     code = re.sub(r"\D", "", str(code or "")).zfill(6)[-6:]
@@ -149,10 +250,21 @@ def infer_kr_sector(code: str = "", name: str = "") -> str:
     # 2. 이름 키워드 매칭
     lower_name = name_text.lower()
     for sector, keywords in _SECTOR_KW:
-        if any(str(kw).lower() in lower_name or str(kw).lower() in code for kw in keywords):
+        if any(str(kw).lower() in lower_name for kw in keywords):
             return sector
 
-    # 3. 테마 기반 추론
+    # 3. 우선주이면 모회사 이름으로 재시도
+    base_name = _strip_pref(name_text)
+    if base_name != name_text and base_name:
+        lower_base = base_name.lower()
+        for sector, keywords in _SECTOR_KW:
+            if any(str(kw).lower() in lower_base for kw in keywords):
+                return sector
+        # CSV에서 모회사 코드로 검색 (이름 일치)
+        for cached_code, cached_sector in _sector_map_cache.items():
+            pass  # 이름→코드 역조회는 _name_cache에서 처리
+
+    # 4. 테마 기반 추론
     themes = _theme_map_cache.get(code, [])
     for theme in themes:
         lower_theme = theme.lower()
@@ -371,3 +483,160 @@ def get_pullback_state_from_ohlcv(
         risk_reward=rr, is_leader=is_leader,
     )
     return state, reason
+
+
+# ── 섹터 강도 (sector_strength) ─────────────────────────────────────────────
+#
+# DSG의 sector_strength()를 MONE용으로 재구현.
+# yfinance / pandas 없이 로컬 OHLCV CSV + live quote cache 만으로 동작.
+#
+# 섹터별 대표 종목 (KR) — OHLCV 파일이 존재하는 종목만
+SECTOR_REPS_KR: dict[str, list[str]] = {
+    "Semiconductor":       ["005930", "000660"],
+    "Defense/Aerospace":   ["047810", "012450", "079550"],
+    "Shipbuilding":        ["009540", "010140", "329180"],
+    "Battery/EV":          ["373220", "005380", "051910"],
+    "Power/Utility":       ["015760", "006260"],
+    "Construction":        ["375500", "000720"],
+    "Bio/Healthcare":      ["068270", "207940", "000100"],
+    "Bank/Finance":        ["105560", "055550", "086790"],
+    "Auto":                ["000270", "012330", "005380"],
+    "Oil/Chemical":        ["010950", "078930"],
+    "Steel/Metal":         ["005490", "004020"],
+    "Nuclear":             ["034020"],
+    "Robot":               ["454910"],
+    "AI/Software":         ["035420", "035720"],
+    "Entertainment/Media": ["352820", "041510"],
+    "Airline":             ["003490"],
+    "Holding":             ["003550", "000810"],
+}
+
+# 섹터별 대표 종목 (US)
+SECTOR_REPS_US: dict[str, list[str]] = {
+    "AI/Semiconductor": ["NVDA", "AMD", "AVGO", "MU"],
+    "Mega Tech":        ["AAPL", "MSFT", "GOOGL", "META", "AMZN"],
+    "Software/Growth":  ["PLTR", "NET", "DDOG", "SNOW"],
+    "EV/Auto":          ["TSLA", "GM"],
+    "Energy":           ["XOM", "CVX"],
+    "Finance":          ["JPM", "BAC", "GS"],
+    "Bio/Healthcare":   ["JNJ", "UNH", "PFE"],
+}
+
+
+def _read_ohlcv_closes(market: str, code: str, days: int = 20) -> list[float]:
+    """OHLCV CSV에서 최근 N일 종가 리스트 반환 (오래된 순)."""
+    candidates = [
+        _DATA / "market" / "ohlcv" / f"{market}_{code}_daily.csv",
+        _DATA / "stockapp" / f"{market}_{code}_daily.csv",
+        _DATA.parent / "reports" / f"{market}_{code}_daily.csv",
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        for enc in ("utf-8-sig", "utf-8", "cp949"):
+            try:
+                with path.open(encoding=enc) as f:
+                    rows = list(csv.DictReader(f))
+                closes: list[float] = []
+                for row in rows:
+                    raw = row.get("close") or row.get("Close") or row.get("종가")
+                    try:
+                        v = float(str(raw).replace(",", ""))
+                        if v > 0:
+                            closes.append(v)
+                    except Exception:
+                        pass
+                if closes:
+                    return closes[-days:]
+            except Exception:
+                continue
+    return []
+
+
+def _live_quote_price(market: str, code: str) -> float | None:
+    """mone_live_quote_cache.csv 에서 현재가 조회."""
+    p = _DATA / "mone_live_quote_cache.csv"
+    if not p.exists():
+        return None
+    for enc in ("utf-8-sig", "utf-8", "cp949"):
+        try:
+            with p.open(encoding=enc) as f:
+                for row in csv.DictReader(f):
+                    if str(row.get("symbol", "")).strip().lstrip("0") == code.lstrip("0") \
+                            and str(row.get("market", "")).strip().lower() == market.lower():
+                        raw = row.get("current_price") or row.get("현재가", "")
+                        try:
+                            return float(str(raw).replace(",", "").replace("원", "").replace("$", "").strip())
+                        except Exception:
+                            return None
+            break
+        except Exception:
+            continue
+    return None
+
+
+def _pct_change(closes: list[float], period: int = 5) -> float | None:
+    """최근 period일 수익률(%) 반환."""
+    if len(closes) < period + 1:
+        if len(closes) >= 2:
+            period = len(closes) - 1
+        else:
+            return None
+    base = closes[-(period + 1)]
+    last = closes[-1]
+    if base <= 0:
+        return None
+    return (last - base) / base * 100.0
+
+
+def sector_strength(
+    market: str = "kr",
+    period: int = 5,
+) -> list[dict[str, Any]]:
+    """
+    섹터별 강도를 계산해 내림차순으로 반환.
+
+    Parameters
+    ----------
+    market : "kr" | "us"
+    period : 비교 기준일 수 (기본 5일)
+
+    Returns
+    -------
+    list of dict:
+        sector, sectorLabel, avg_change_pct, sector_score, rep_count
+    예) [{"sector": "Defense/Aerospace", "sectorLabel": "방산/항공",
+          "avg_change_pct": 3.2, "sector_score": 66.0, "rep_count": 3}, ...]
+    """
+    reps_map = SECTOR_REPS_KR if market.lower() == "kr" else SECTOR_REPS_US
+    results: list[dict[str, Any]] = []
+
+    for sector, codes in reps_map.items():
+        changes: list[float] = []
+        for code in codes:
+            closes = _read_ohlcv_closes(market.lower(), code, days=period + 5)
+            # live quote로 최신가 보정
+            live = _live_quote_price(market.lower(), code)
+            if live and closes:
+                closes = closes[:-1] + [live]   # 마지막 값을 live 가격으로 교체
+            elif live:
+                closes = [live]
+            chg = _pct_change(closes, period)
+            if chg is not None:
+                changes.append(chg)
+
+        if not changes:
+            continue
+        avg = sum(changes) / len(changes)
+        # score: 50 = 보합, +1% ≈ +5점 (100점 기준)
+        score = max(0.0, min(100.0, round(50.0 + avg * 5.0, 1)))
+        results.append({
+            "sector":          sector,
+            "sectorLabel":     SECTOR_KR_LABEL.get(sector, sector),
+            "avg_change_pct":  round(avg, 2),
+            "sector_score":    score,
+            "rep_count":       len(changes),
+        })
+
+    results.sort(key=lambda x: x["sector_score"], reverse=True)
+    return results
