@@ -299,6 +299,21 @@ def _fmt_krw(v: float) -> str:
     return f"{int(v):,}원"
 
 
+def _ma_convergence(ind: dict) -> bool:
+    """5/20/60일선 이격도 수렴 여부"""
+    d20 = ind.get("distanceToMa20"); d60 = ind.get("distanceToMa60")
+    ma5 = ind.get("ma5"); ma20 = ind.get("ma20")
+    if d20 is None or d60 is None:
+        return False
+    d5 = (ma5 - ma20) / ma20 * 100 if ma5 and ma20 and ma20 > 0 else None
+    within = abs(d20) <= 4.0 and abs(d60) <= 6.0
+    if d5 is not None:
+        within = within and abs(d5) <= 3.0
+    vals = [v for v in [d5, d20, d60] if v is not None]
+    spread = max(vals) - min(vals) if len(vals) >= 2 else 999
+    return within and spread <= 5.0
+
+
 def _strategy_tags(ind: dict) -> str:
     tags = []
     rsi = ind.get("rsi14"); d20 = ind.get("distanceToMa20")
@@ -306,6 +321,9 @@ def _strategy_tags(ind: dict) -> str:
     mom20 = ind.get("recentMomentum20"); mdd = ind.get("mdd20"); d60 = ind.get("distanceToMa60")
     bb_b = ind.get("bbPercentB"); cup = ind.get("consecutiveUpDays"); gap = ind.get("gapUpPct")
     d52 = ind.get("distanceTo52wHigh")
+    # 이격도 수렴 (우선 체크)
+    if _ma_convergence(ind) and (not rsi or rsi < 75):
+        tags.append("이격도 수렴")
     if d20 and -8 <= d20 <= 3 and (not rsi or rsi < 80): tags.append("눌림목 매수")
     if vr and vr >= 1.5: tags.append("거래대금 증가")
     if (mom5 and mom5 > 3) or (mom20 and mom20 > 8): tags.append("모멘텀 강세")
@@ -313,6 +331,32 @@ def _strategy_tags(ind: dict) -> str:
     if (rsi and rsi >= 80) or (bb_b and bb_b > 1) or (gap and gap >= 15) or (cup and cup >= 5 and vr and vr < 0.7):
         tags.append("주의")
     return " | ".join(tags) if tags else "판단 대기"
+
+
+def _load_market_regime() -> dict[str, Any]:
+    """KOSPI benchmark_daily.csv에서 마켓 레짐 판단"""
+    path = ROOT / "data" / "market" / "benchmark_daily.csv"
+    rows = [r for r in _read_csv(path) if str(r.get("benchmark", "")).upper() == "KOSPI"]
+    rows.sort(key=lambda r: str(r.get("date", "")))
+    closes = [_num(r.get("close")) for r in rows]
+    closes = [c for c in closes if c is not None]
+    if len(closes) < 20:
+        return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0, "description": "데이터 부족"}
+    latest = closes[-1]
+    ma20 = sum(closes[-20:]) / 20
+    dist = (latest - ma20) / ma20 * 100
+    mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
+    if dist > 0 and mom5 > 0:
+        return {"regime": "BULL", "label": "강세장", "scoreAdjust": +5.0,
+                "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
+                "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2)}
+    elif dist < -2.0 or mom5 < -2.0:
+        return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -8.0,
+                "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
+                "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2)}
+    return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
+            "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
+            "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2)}
 
 
 # ── KIS 현재가 로드
@@ -394,20 +438,28 @@ def generate_recommendations() -> dict[str, Any]:
     ohlcv_all = _load_ohlcv_all_quiet()
     kis_prices = _load_kis_prices()
     name_map = _load_name_map()
+    regime = _load_market_regime()
 
     print(f"  OHLCV: {len(ohlcv_all)}종목, KIS 현재가: {len(kis_prices)}종목")
+    print(f"  마켓 레짐: {regime['label']} ({regime['description']})")
 
-    # 전체 종목 스코어 계산 (mode=balanced, horizon=swing 기준으로 1차 필터)
+    regime_adjust = regime.get("scoreAdjust", 0.0)
+    regime_label = regime.get("label", "횡보장")
+    regime_type = regime.get("regime", "SIDE")
+
+    # 약세장: 보수형만 허용, 최소 점수 상향
+    min_score_by_regime = {"BULL": 45.0, "SIDE": 50.0, "BEAR": 58.0}
+    min_score_global = min_score_by_regime.get(regime_type, 50.0)
+
+    # 전체 종목 스코어 계산
     all_scored: list[dict] = []
     for sym, rows in ohlcv_all.items():
         ind = indicators(rows)
         latest = ind.get("latest")
         if not latest or latest <= 0:
             continue
-        # KIS 현재가 우선, 없으면 OHLCV 최신 close
         current = kis_prices.get(sym) or kis_prices.get(sym.lstrip("0")) or latest
-        ind["latest"] = current  # 현재가 업데이트
-        # distanceToMa20 재계산 (현재가 기준)
+        ind["latest"] = current
         ma20 = ind.get("ma20")
         if ma20:
             ind["distanceToMa20"] = (current - ma20) / ma20 * 100
@@ -421,33 +473,65 @@ def generate_recommendations() -> dict[str, Any]:
             "price_source": "kis" if kis_prices.get(sym) or kis_prices.get(sym.lstrip("0")) else "ohlcv",
         })
 
-    # 스코어 상위 TOP_N * 2 종목으로 후보 축소 (성능)
     all_scored.sort(key=lambda x: x["score_base"], reverse=True)
-    candidates = all_scored[:min(len(all_scored), TOP_N * 3)]
 
     results: dict[str, int] = {}
+    ev_filtered = 0
+    regime_filtered = 0
     REPORTS.mkdir(parents=True, exist_ok=True)
 
     for mode in MODES:
+        # 약세장에서는 공격형 비활성화
+        if regime_type == "BEAR" and mode == "aggressive":
+            # 빈 파일만 생성
+            for horizon in HORIZONS:
+                out_path = REPORTS / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
+                _write_csv(out_path, [])
+                tv_path = REPORTS / f"mone_v36_final_trade_validation_kr_{mode}_{horizon}.csv"
+                _write_csv(tv_path, [])
+                results[f"{mode}_{horizon}"] = 0
+            print(f"  [{mode:12s}] 약세장으로 비활성화")
+            continue
+
         for horizon in HORIZONS:
             rows_out: list[dict] = []
             scored_combo: list[tuple[float, dict]] = []
-            for c in all_scored:  # 전체에서 각 조합별 재스코어
+            for c in all_scored:
                 ind = c["ind"]
-                score = _final_score(ind, mode, horizon)
-                scored_combo.append((score, c))
+                base_score = _final_score(ind, mode, horizon)
+                # 마켓 레짐 보정 (강세: +5, 약세: -8)
+                adj_score = max(0.0, min(100.0, base_score + regime_adjust))
+                scored_combo.append((adj_score, base_score, c))
             scored_combo.sort(key=lambda x: x[0], reverse=True)
-            top = scored_combo[:TOP_N]
 
-            for score, c in top:
+            count = 0
+            for adj_score, base_score, c in scored_combo:
+                if count >= TOP_N:
+                    break
+                # 최소 점수 필터 (레짐별)
+                if adj_score < min_score_global:
+                    regime_filtered += 1
+                    continue
+
                 sym = c["symbol"]
                 current = c["current"]
                 ind = c["ind"]
-                entry, stop, target, ev, decision = _price_band(score, current, mode, horizon)
+                entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon)
+
+                # EV 음수 필터링 (보수형은 엄격, 균형/공격은 경고만)
+                if ev is not None and ev < 0:
+                    if mode == "conservative":
+                        ev_filtered += 1
+                        continue  # 보수형은 EV 음수 종목 제외
+                    # 균형/공격은 포함하되 태그 추가
+                    decision = "기다림"  # EV 음수면 진입 보류
+
                 sub = _sub_scores(ind)
                 tags = _strategy_tags(ind)
                 rr = round((target - entry) / max(entry - stop, 1), 2) if stop < entry else None
-                rank_score = sub["opportunityScore"] * 0.45 + sub["entryScore"] * 0.35 if "opportunityScore" in sub else score
+                rank_score = sub["opportunityScore"] * 0.45 + sub["entryScore"] * 0.35 if "opportunityScore" in sub else adj_score
+                ev_negative = ev is not None and ev < 0
+                ma_conv = _ma_convergence(ind)
                 row = {
                     "market": "kr",
                     "mode": mode,
@@ -457,34 +541,39 @@ def generate_recommendations() -> dict[str, Any]:
                     "symbol": sym,
                     "name": c["name"],
                     "decisionBucket": decision,
-                    "newEntryDecision": "조건부 진입" if score >= 55 else "대기",
+                    "newEntryDecision": "조건부 진입" if adj_score >= 55 and not ev_negative else "대기",
                     "holderDecision": "보유자는 목표가·손절가 대응",
                     "buyTiming": "조건부 매수 등록" if decision == "오늘 진입" else "기준가 도달 대기",
                     "sellTiming": "목표가 도달 시 분할익절 / 손절가 이탈 시 종료 / 보유기간 종료 시 재검토",
                     "entry": _fmt_krw(entry),
                     "stop":  _fmt_krw(stop),
                     "target": _fmt_krw(target),
-                    "probability": f"{round(score, 1)}%",
-                    "expectedPrice": _fmt_krw(round(current * (1 + (score/100 - 0.5) * 0.1))),
+                    "probability": f"{round(adj_score, 1)}%",
+                    "expectedPrice": _fmt_krw(round(current * (1 + (adj_score/100 - 0.5) * 0.1))),
                     "opportunityScore": round(sub["upsideScore"] * 0.6 + sub["momentumScore"] * 0.4, 1),
                     "entryScore": round(sub["entryScore"], 1),
                     "riskScore": round(sub["riskScore"], 1),
                     "eventRiskScore": 0,
                     "newsReliabilityScore": 50,
-                    "finalRankScore": round(score, 1),
-                    "finalScore": round(score, 1),
+                    "finalRankScore": round(adj_score, 1),
+                    "finalScore": round(adj_score, 1),
+                    "baseScore": round(base_score, 1),
                     "upsideScore": sub["upsideScore"],
                     "momentumScore": sub["momentumScore"],
                     "rrScore": sub["rrScore"],
                     "qualityScore": sub["qualityScore"],
                     "expectedValue": ev if ev is not None else "",
+                    "evNegative": ev_negative,
                     "rrActual": rr if rr is not None else "",
+                    "maConvergence": ma_conv,
                     "surgeLabel": tags,
-                    "eventBadges": "",
+                    "eventBadges": "EV음수" if ev_negative else ("이격도수렴" if ma_conv else ""),
+                    "marketRegime": regime_label,
+                    "marketRegimeAdjust": regime_adjust,
                     "executionStatus": "체결" if decision == "오늘 진입" else "대기",
                     "exitStatus": "",
                     "pnlText": "",
-                    "excludedFromReturn": False,
+                    "excludedFromReturn": ev_negative,
                     "sourceBucket": "ohlcv_quant",
                     "dataStatus": "NORMAL" if c["price_source"] == "kis" else "PARTIAL",
                     "priceSource": c["price_source"],
@@ -492,6 +581,7 @@ def generate_recommendations() -> dict[str, Any]:
                     "generatedAt": now,
                 }
                 rows_out.append(row)
+                count += 1
 
             key = f"{mode}_{horizon}"
             out_path = REPORTS / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
@@ -499,7 +589,7 @@ def generate_recommendations() -> dict[str, Any]:
             results[key] = len(rows_out)
             print(f"  [{mode:12s}/{horizon:5s}] {len(rows_out):2d}종목 → {out_path.name}")
 
-            # trade_validation 파일도 생성 (동일 내용 기반)
+            # trade_validation 파일도 생성
             tv_path = REPORTS / f"mone_v36_final_trade_validation_kr_{mode}_{horizon}.csv"
             tv_rows = [{**r, "validationStatus": "PENDING", "validationDate": ""} for r in rows_out]
             _write_csv(tv_path, tv_rows)
@@ -510,12 +600,16 @@ def generate_recommendations() -> dict[str, Any]:
         "source": "ohlcv_quant_scanner",
         "symbols": len(ohlcv_all),
         "kisSymbols": len(kis_prices),
+        "marketRegime": regime,
+        "evFiltered": ev_filtered,
+        "regimeFiltered": regime_filtered,
         "results": results,
     }
     (REPORTS / "kr_recommendation_gen_status.json").write_text(
         json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(f"[{now}] 완료: {sum(results.values())}건 생성")
+    total = sum(results.values())
+    print(f"[{now}] 완료: {total}건 생성 (EV음수 제외 {ev_filtered}건, 레짐필터 {regime_filtered}건)")
     return status
 
 
