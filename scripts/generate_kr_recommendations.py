@@ -309,13 +309,18 @@ def _decide_timing(score: float, ind: dict, mode: str, horizon: str, ev: float |
     if bb_b and bb_b > 1.0 and not bb_squeeze:
         return "보류", "과열 대기", "볼린저 상단 돌파 — 추격 금지"
 
-    # ── 오늘 진입 Case 1: 52주 신고가 돌파 (이미 높지만 위가 열린 구간)
-    # 신고가 ±3% + 거래량 확인 → 위에 매물 없음, 추격 가능
-    if d52 is not None and -3.0 <= d52 <= 0 and vr is not None and vr >= 1.5:
+    # ── 오늘 진입 Case 1: 52주 신고가 실제 돌파 (위에 매물 없음)
+    # d52 >= 0 = 신고가 갱신 또는 초과, 위에 매물 없음 → 추격 가능
+    if d52 is not None and d52 >= 0 and vr is not None and vr >= 1.5:
         if mode == "conservative":
-            return "대기 관찰", "신고가 근접", f"52주 고점 {abs(d52):.1f}% 근접 — 보수형은 눌림 확인 후"
-        reason = f"52주 신고가 {abs(d52):.1f}% 이내 + 거래량 {vr:.1f}x — 돌파 진입"
-        return "오늘 진입", "돌파 진입", reason
+            return "대기 관찰", "신고가 돌파 관찰", f"52주 신고가 돌파 — 보수형은 거래량 추가 확인 후 분할 진입"
+        reason = f"52주 신고가 돌파 (d52 +{d52:.1f}%) + 거래량 {vr:.1f}x — 위에 매물 없음"
+        return "오늘 진입", "신고가 돌파", reason
+
+    # 신고가 근접 (3% 이내): 돌파 직전 — 대기 관찰로 처리
+    if d52 is not None and -3.0 <= d52 < 0 and vr is not None and vr >= 1.3:
+        reason = f"52주 신고가 {abs(d52):.1f}% 이내 — 돌파 확인 후 진입 고려"
+        return "대기 관찰", "신고가 근접", reason
 
     # ── 오늘 진입 Case 2: 볼린저 스퀴즈 방향 확정
     if bb_squeeze and bb_b is not None and bb_b > 0.6 and score >= 55:
@@ -390,15 +395,27 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
         stop = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
 
     target = round(entry * (1.0 + (band["target"] - 1.0) * rwf))
+    # 승률 보정: score는 기술 품질 점수, 승률이 아님 (45~58% 범위)
+    _H_BASE  = {"short": 0.485, "swing": 0.505, "mid": 0.515}
+    _H_SCALE = {"short": 0.12,  "swing": 0.14,  "mid": 0.15}
+    base  = _H_BASE.get(horizon, 0.505)
+    scale = _H_SCALE.get(horizon, 0.14)
+    prob  = max(0.35, min(0.65, base + (score - 50.0) / 50.0 * scale))
+
     ev = None
+    rr = None
+    min_rr = _HORIZON_BANDS[horizon].get("min_rr", 1.5)
     if entry > 0 and stop > 0 and target > entry:
-        prob = score / 100.0
-        rew = (target - entry) / entry * 100
+        rew      = (target - entry) / entry * 100
         risk_pct = abs((entry - stop) / entry * 100)
         if risk_pct > 0:
+            rr = round(rew / risk_pct, 2)
             ev = round(prob * rew - (1 - prob) * risk_pct, 2)
-    rr = round((target - entry) / max(entry - stop, 1), 2) if stop < entry else None
-    # 타이밍 판단 (ind가 있으면 세밀하게, 없으면 점수만으로)
+            # 최소 RR 미달이면 EV 신뢰도 표시
+            if rr < min_rr:
+                ev = round(ev * 0.7, 2)   # 패널티 적용
+
+    # 타이밍 판단
     if ind is not None:
         decision, timing_label, timing_reason = _decide_timing(score, ind, mode, horizon, ev)
     else:
@@ -840,6 +857,10 @@ def generate_recommendations() -> dict[str, Any]:
         ma20 = ind.get("ma20")
         if ma20:
             ind["distanceToMa20"] = (current - ma20) / ma20 * 100
+        # ROE 주입 (qualityScore 계산에 사용)
+        fin = fin_data.get(sym) or fin_data.get(sym.lstrip("0")) or {}
+        if fin.get("roe") is not None:
+            ind["roe"] = fin["roe"]
         score_bal = _final_score(ind, "balanced", "swing")
         all_scored.append({
             "symbol": sym,

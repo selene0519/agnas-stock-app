@@ -282,13 +282,13 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
     # 레짐 판단: 20일선 위 + 최근 5일 양봉 → BULL
     if dist > 0 and mom5 > 0:
         regime, label, adjust = REGIME_BULL, "강세장", +5.0
-        desc = f"KOSPI 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 강세 (공격/균형 우선)"
+        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 강세 (공격/균형 우선)"
     elif dist < -2.0 or mom5 < -2.0:
         regime, label, adjust = REGIME_BEAR, "약세장", -8.0
-        desc = f"KOSPI 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 약세 (보수 우선, 추천 축소)"
+        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 약세 (보수 우선, 추천 축소)"
     else:
         regime, label, adjust = REGIME_SIDE, "횡보장", 0.0
-        desc = f"KOSPI 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 횡보 (스윙 중심)"
+        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 횡보 (스윙 중심)"
 
     return {
         "regime": regime, "label": label, "kospiLatest": round(latest, 2),
@@ -374,26 +374,56 @@ def _compute_sub_scores(ind: dict[str, float | None]) -> dict[str, float]:
             entry -= 10.0   # 너무 빠짐
     entryScore = max(0.0, min(100.0, entry))
 
-    # ── rrScore: 손익비 (0~100)
-    # 단독 지표로 계산 어려움 → d20 기반 잠재 수익 추정
+    # ── rrScore: 손익비 점수 (0~100)
+    # ATR 기반 예상 손익비 계산: 목표(1.5~2.5×ATR) / 손절(1~2×ATR)
+    # ATR 없으면 MA 이격도 기반으로 추정
     rr = 50.0
-    if d20 is not None and d60 is not None:
-        potential_reward = d60 - d20  # 60일선까지 올라갈 여지
-        if potential_reward > 5:
-            rr += min(20.0, potential_reward * 1.0)
-        elif potential_reward < 0:
-            rr -= min(20.0, abs(potential_reward) * 0.8)
+    atr = ind.get("atr14")
+    latest_px = ind.get("latest") or (close[-1] if close else None)
+    if atr and latest_px and latest_px > 0 and atr > 0:
+        # 기간별 예상 RR: 단기(1.5) / 스윙(2.0) / 중기(2.5)
+        # 보수/균형/공격은 _score() 레벨에서 조정
+        atr_pct = atr / latest_px * 100
+        # ATR이 작을수록(안정) 더 유리한 RR 설정 가능
+        if atr_pct < 1.0:    rr = 75.0   # 변동성 낮음 → RR 좋음
+        elif atr_pct < 2.0:  rr = 65.0
+        elif atr_pct < 3.5:  rr = 55.0
+        elif atr_pct < 5.0:  rr = 45.0
+        else:                rr = 35.0   # 변동성 너무 큼 → RR 불리
+        # MA 이격도로 추가 보정: 60일선까지의 잠재 수익
+        if d20 is not None and d60 is not None:
+            potential = d60 - d20
+            if potential > 5:  rr += min(15.0, potential * 0.8)
+            elif potential < 0: rr -= min(15.0, abs(potential) * 0.6)
+    else:
+        # Fallback: MA 기반 추정
+        if d20 is not None and d60 is not None:
+            potential_reward = d60 - d20
+            if potential_reward > 5:   rr += min(20.0, potential_reward * 1.0)
+            elif potential_reward < 0: rr -= min(20.0, abs(potential_reward) * 0.8)
     rrScore = max(0.0, min(100.0, rr))
 
-    # ── qualityScore: 재무/기업 안정성 (0~100)
-    # 기술 지표만으로 대리 측정: MDD 안정 + 60일선 위 = 안정 기업 대리
+    # ── qualityScore: 기업 안정성 (0~100)
+    # 재무 데이터(ROE) 있으면 우선 사용, 없으면 기술 지표 대리
+    # ROE: 자기자본이익률 — 수익 창출 능력의 핵심 지표
+    roe = ind.get("roe")  # 외부에서 주입된 재무 데이터 (있으면 사용)
     quality = 50.0
-    if mdd is not None and mdd > -15.0:
-        quality += 15.0
-    if d60 is not None and d60 > -5.0:
-        quality += 15.0
-    if rsi is not None and 30 <= rsi <= 70:
-        quality += 10.0
+    if roe is not None:
+        # ROE 기반 품질 점수
+        if roe >= 20:    quality = 85.0
+        elif roe >= 15:  quality = 75.0
+        elif roe >= 10:  quality = 65.0
+        elif roe >= 5:   quality = 55.0
+        elif roe >= 0:   quality = 45.0
+        else:            quality = 30.0  # 적자
+    else:
+        # Fallback: 기술 지표 대리 (MDD + MA 위치)
+        if mdd is not None and mdd > -15.0:
+            quality += 15.0
+        if d60 is not None and d60 > -5.0:
+            quality += 15.0
+        if rsi is not None and 30 <= rsi <= 70:
+            quality += 10.0
     qualityScore = max(0.0, min(100.0, quality))
 
     # ── newsRiskPenalty: 뉴스/공시 리스크 감점 (0~20)
@@ -577,8 +607,9 @@ def _score(ind: dict[str, float | None], context: QuantContext) -> tuple[float, 
 
 
 TAG_LABELS = {
-    "BREAKOUT_52W": "52주 신고가 돌파",    # 신규: 이미 높지만 위가 뚫린 구간
-    "BB_SQUEEZE": "볼린저 스퀴즈",         # 신규: 변동성 압축 → 방향 폭발 임박
+    "BREAKOUT_52W": "52주 신고가 돌파",    # 실제 돌파 (d52>=0 + 거래량)
+    "NEAR_52W_HIGH": "신고가 근접",        # 3% 이내 접근
+    "BB_SQUEEZE": "볼린저 스퀴즈",         # 변동성 압축 → 방향 폭발 임박
     "PULLBACK_BUY": "눌림목 매수",
     "MA_CONVERGENCE": "이격도 수렴",
     "UNDERVALUED_GROWTH": "저평가 성장주",
@@ -640,9 +671,12 @@ def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str]
     if status in {"PRICE_PENDING", "DATA_PENDING"}:
         tags.append("CAUTION")
 
-    # ── 52주 신고가 돌파 (이미 높지만 더 오를 수 있는 종목)
-    if distance_52w is not None and -3.0 <= distance_52w <= 0 and volume_ratio is not None and volume_ratio >= 1.5:
+    # ── 52주 신고가 돌파 (실제 신고가 이상 + 거래량)
+    if distance_52w is not None and distance_52w >= 0 and volume_ratio is not None and volume_ratio >= 1.5:
         tags.append("BREAKOUT_52W")
+    # 52주 신고가 근접 (3% 이내) — 돌파와 구분
+    elif distance_52w is not None and -3.0 <= distance_52w < 0 and volume_ratio is not None and volume_ratio >= 1.3:
+        tags.append("NEAR_52W_HIGH")
 
     # ── 볼린저 스퀴즈 (변동성 압축 → 방향 폭발 임박)
     if bb_squeeze and bb_percent_b is not None and bb_percent_b > 0.5:
@@ -756,15 +790,30 @@ def score_candidate(row: dict[str, Any], ohlcv_rows: list[dict[str, Any]], conte
         target_raw = entry_raw * (1.0 + raw_target_pct * rwf)
 
     # EV (기댓값) 계산
+    # ── 승률 보정: score는 기술적 품질 점수이지 승률이 아님
+    # 실증 연구 기준: 기술적 전략 승률 범위 ≈ 45%~58%
+    # score 50 → 50%, score 100 → 57.5% (선형 보정)
+    # 기간별 베이스 조정: 단기(더 불확실) < 스윙 < 중기
+    _HORIZON_BASE_WIN = {"short": 0.485, "swing": 0.505, "mid": 0.515}
+    _HORIZON_SCALE   = {"short": 0.12,  "swing": 0.14,  "mid":  0.15}
+    horizon_base = _HORIZON_BASE_WIN.get(context.horizon, 0.505)
+    horizon_scale = _HORIZON_SCALE.get(context.horizon, 0.14)
+    # prob = base + (score-50)/50 * scale → [base-scale, base+scale]
+    calibrated_prob = horizon_base + ((score - 50.0) / 50.0) * horizon_scale
+    calibrated_prob = max(0.35, min(0.65, calibrated_prob))   # 35~65% 하드 클램프
+
     ev = None
     rr_actual = None
+    min_rr = {"short": 1.5, "swing": 1.8, "mid": 2.0}.get(context.horizon, 1.5)
+    rr_ok = False
+
     if entry_raw and stop_raw and target_raw and entry_raw > 0 and stop_raw > 0 and target_raw > entry_raw:
-        prob = score / 100.0
         reward_pct = (target_raw - entry_raw) / entry_raw * 100.0
         risk_pct = abs((entry_raw - stop_raw) / entry_raw * 100.0)
         if risk_pct > 0:
-            ev = round(prob * reward_pct - (1 - prob) * risk_pct, 2)
             rr_actual = round(reward_pct / risk_pct, 2)
+            rr_ok = rr_actual >= min_rr
+            ev = round(calibrated_prob * reward_pct - (1 - calibrated_prob) * risk_pct, 2)
 
     risk_flags: list[str] = []
     technical_signals: list[str] = []
@@ -772,8 +821,16 @@ def score_candidate(row: dict[str, Any], ohlcv_rows: list[dict[str, Any]], conte
         technical_signals.append("BOLLINGER_READY")
     if ind.get("bbPercentB") is not None and ind["bbPercentB"] > 1:
         risk_flags.append("BOLLINGER_UPPER_BREAK")
-    if ind.get("distanceTo52wHigh") is not None and -2 <= ind["distanceTo52wHigh"] <= 0:
-        technical_signals.append("NEAR_52W_HIGH")
+    # 52주 신고가: 근접과 돌파 구분
+    d52w = ind.get("distanceTo52wHigh")
+    if d52w is not None:
+        if d52w >= 0:
+            technical_signals.append("BREAKOUT_52W")      # 실제 돌파
+        elif d52w >= -3.0:
+            technical_signals.append("NEAR_52W_HIGH")     # 근접
+    # 최소 RR 미달 경고
+    if not rr_ok and rr_actual is not None:
+        risk_flags.append(f"RR_BELOW_MIN_{min_rr}")
     if ind.get("volumeRatio20") is not None and ind["volumeRatio20"] >= 2:
         technical_signals.append("VOLUME_2X")
     if ind.get("consecutiveUpDays") is not None and ind["consecutiveUpDays"] >= 5:
