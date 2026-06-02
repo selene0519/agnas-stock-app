@@ -1856,8 +1856,12 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         if len(items) >= max(1, min(limit, 1000)):
             break
 
-    # ── EV 음수 필터링 및 마켓 레짐 정보 수집
+    # ── EV 필터링 및 마켓 레짐 정보 수집
+    # EV < -1%: 모든 전략에서 추천 제외 (기댓값이 명확히 음수인 종목)
+    # -1% <= EV < 0%: 보수형은 제외, 균형/공격형은 CAUTION 표시 후 유지
+    EV_HARD_CUTOFF = -1.0   # 모든 전략 공통 제외 임계값
     ev_negative_count = 0
+    ev_hard_filtered_count = 0
     filtered_items: list[dict[str, Any]] = []
     for item in items:
         ev = item.get("expectedValue")
@@ -1870,18 +1874,22 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         item["evNegative"] = ev_negative
         if ev_negative:
             ev_negative_count += 1
-            # 보수형은 EV 음수 종목 완전 제외
+        # EV < -1%: 전 전략 완전 제외
+        if ev_val is not None and ev_val < EV_HARD_CUTOFF:
+            ev_hard_filtered_count += 1
+            continue
+        # -1% <= EV < 0%: 보수형 완전 제외, 균형/공격형은 CAUTION
+        if ev_negative:
             if mode == "conservative":
                 continue
-            # 균형/공격은 tradeBlockStatus를 CAUTION으로, 진입 버킷을 기다림으로
             item["tradeBlockStatus"] = "EV_NEGATIVE"
-            item["decisionBucket"] = "기다림"
+            item["decisionBucket"] = "관찰"
             item.setdefault("strategyTags", [])
             if "CAUTION" not in item["strategyTags"]:
                 item["strategyTags"].append("CAUTION")
         filtered_items.append(item)
 
-    hidden_count = len(items) - len(filtered_items)
+    hidden_count = len(items) - len(filtered_items)  # EV < -1% 또는 보수형 EV < 0% 제외 포함
 
     # 마켓 레짐 로드
     market_regime: dict[str, Any] = {}
@@ -1899,7 +1907,9 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         "count": len(filtered_items),
         "uniqueCount": len(seen),
         "hiddenCount": hidden_count,
-        "evNegativeFiltered": ev_negative_count if mode == "conservative" else 0,
+        "evNegativeCount": ev_negative_count,
+        "evHardFiltered": ev_hard_filtered_count,
+        "evNegativeFiltered": ev_hard_filtered_count + (ev_negative_count - ev_hard_filtered_count if mode == "conservative" else 0),
         "marketRegime": market_regime,
         "selfCorrection": correction_state,
         "scanCoverage": _scan_coverage(market),
