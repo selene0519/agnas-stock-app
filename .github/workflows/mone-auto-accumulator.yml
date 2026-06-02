@@ -374,55 +374,72 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Add only files the app must read from GitHub raw.
-          # Do NOT add whole reports/ or whole data/ because that brings old logs, backtests, alerts, and temporary files.
-          git add predictions.csv runner_status_kr.json runner_status_us.json 2>/dev/null || true
-          git add paper_trading_log.csv paper_trading_summary.csv 2>/dev/null || true
+          stage_app_data() {
+            # Add only files the app must read from GitHub raw.
+            # Do NOT add whole reports/ or whole data/ because that brings old logs, backtests, alerts, and temporary files.
+            git add predictions.csv runner_status_kr.json runner_status_us.json 2>/dev/null || true
+            git add paper_trading_log.csv paper_trading_summary.csv 2>/dev/null || true
 
-          # Core candidate / latest run outputs.
-          git add reports/swing_candidates_kr*.csv reports/swing_candidates_us*.csv 2>/dev/null || true
-          git add reports/latest_kr_* reports/latest_us_* 2>/dev/null || true
-          git add reports/stockapp_*.csv reports/stockapp_*.json 2>/dev/null || true
+            # Core candidate / latest run outputs.
+            git add reports/swing_candidates_kr*.csv reports/swing_candidates_us*.csv 2>/dev/null || true
+            git add reports/latest_kr_* reports/latest_us_* 2>/dev/null || true
+            git add reports/stockapp_*.csv reports/stockapp_*.json 2>/dev/null || true
 
-          # MONE v3.6 app-facing reports.
-          git add reports/mone_v36_*.csv reports/mone_v36_*.json 2>/dev/null || true
-          git add reports/kr_recommendation_gen_status.json reports/us_recommendation_gen_status.json 2>/dev/null || true
-          git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
-          git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
-          git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
-          git add data/market/ohlcv/kr_*_daily.csv 2>/dev/null || true
-          git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true
-          git add reports/api_data_status_center*.csv reports/api_data_status_center*.json 2>/dev/null || true
-          git add reports/gnews_*.csv reports/gnews_*.json reports/news_*.csv reports/news_*.json 2>/dev/null || true
-          git add reports/fundamental_*.csv reports/fundamental_*.json 2>/dev/null || true
-          git add reports/portfolio_risk_summary.json 2>/dev/null || true
+            # MONE v3.6 app-facing reports.
+            git add reports/mone_v36_*.csv reports/mone_v36_*.json 2>/dev/null || true
+            git add reports/kr_recommendation_gen_status.json reports/us_recommendation_gen_status.json 2>/dev/null || true
+            git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
+            git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
+            git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
+            git add data/market/ohlcv/kr_*_daily.csv 2>/dev/null || true
+            git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true
+            git add reports/api_data_status_center*.csv reports/api_data_status_center*.json 2>/dev/null || true
+            git add reports/gnews_*.csv reports/gnews_*.json reports/news_*.csv reports/news_*.json 2>/dev/null || true
+            git add reports/fundamental_*.csv reports/fundamental_*.json 2>/dev/null || true
+            git add reports/portfolio_risk_summary.json 2>/dev/null || true
 
-          # Live quote snapshots. KIS-only rows are separated from fallback rows.
-          git add reports/kis_live_refresh_status.json 2>/dev/null || true
-          git add reports/kis_current_price_*.csv 2>/dev/null || true
-          git add reports/intraday_realtime_snapshot*.csv reports/intraday_quote_snapshot*.csv 2>/dev/null || true
-          git add data/stockapp/kis_current_price_*.csv 2>/dev/null || true
-          git add data/stockapp/intraday_realtime_snapshot*.csv data/stockapp/intraday_quote_snapshot*.csv 2>/dev/null || true
-          git add mone-web-app/backend/cache/quotes_cache.json 2>/dev/null || true
+            # Live quote snapshots. KIS-only rows are separated from fallback rows.
+            git add reports/kis_live_refresh_status.json 2>/dev/null || true
+            git add reports/kis_current_price_*.csv 2>/dev/null || true
+            git add reports/intraday_realtime_snapshot*.csv reports/intraday_quote_snapshot*.csv 2>/dev/null || true
+            git add data/stockapp/kis_current_price_*.csv 2>/dev/null || true
+            git add data/stockapp/intraday_realtime_snapshot*.csv data/stockapp/intraday_quote_snapshot*.csv 2>/dev/null || true
+            git add mone-web-app/backend/cache/quotes_cache.json 2>/dev/null || true
 
-          # Data files used by the app as source/cache.
-          git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
+            # Data files used by the app as source/cache.
+            git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
 
-          # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
-          git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true
-          git reset -- .env .env.local "*.env" "*token_cache*.json" "**/*token_cache*.json" 2>/dev/null || true
-          git reset -- mone-web-app/backend/.env mone-web-app/backend/.env.* mone-web-app/frontend/.env.local mone-web-app/frontend/.env.* 2>/dev/null || true
-          git reset -- mone-web-app/frontend/.next mone-web-app/frontend/node_modules node_modules 2>/dev/null || true
-          git reset -- data/backtest data/alerts logs backups mone-web-app_backup_before_v3_5 mone-web-app_backup_before_v3_5_2 mone-web-app_backup_before_v3_5_3 mone-web-app_backup_before_v3_6_1_operational 2>/dev/null || true
-          git reset -- 'reports/daily_summary_*' 'reports/summary_*' 'reports/order_plan_*_202*.csv' 'reports/test_*.csv' 2>/dev/null || true
+            # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
+            git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true
+            git reset -- .env .env.local "*.env" "*token_cache*.json" "**/*token_cache*.json" 2>/dev/null || true
+            git reset -- mone-web-app/backend/.env mone-web-app/backend/.env.* mone-web-app/frontend/.env.local mone-web-app/frontend/.env.* 2>/dev/null || true
+            git reset -- mone-web-app/frontend/.next mone-web-app/frontend/node_modules node_modules 2>/dev/null || true
+            git reset -- data/backtest data/alerts logs backups mone-web-app_backup_before_v3_5 mone-web-app_backup_before_v3_5_2 mone-web-app_backup_before_v3_5_3 mone-web-app_backup_before_v3_6_1_operational 2>/dev/null || true
+            git reset -- 'reports/daily_summary_*' 'reports/summary_*' 'reports/order_plan_*_202*.csv' 'reports/test_*.csv' 2>/dev/null || true
+          }
 
-          echo "=== staged files ==="
-          git diff --cached --name-only
+          for attempt in 1 2 3; do
+            echo "Commit attempt ${attempt}: align HEAD with origin/${GITHUB_REF_NAME} before staging generated data."
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --mixed "origin/${GITHUB_REF_NAME}"
+            stage_app_data
 
-          if git diff --cached --quiet; then
-            echo "No app data/report changes to commit."
-          else
+            echo "=== staged files ==="
+            git diff --cached --name-only
+
+            if git diff --cached --quiet; then
+              echo "No app data/report changes to commit."
+              exit 0
+            fi
+
             git commit -m "chore: update MONE app data reports [skip ci]"
-            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+
+            echo "Push race detected; retrying from latest origin/${GITHUB_REF_NAME}."
+            sleep 5
+          done
+
+          echo "Failed to push generated data after retries."
+          exit 1
