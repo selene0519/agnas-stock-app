@@ -56,13 +56,128 @@ def _load_us_prices() -> dict[str, float]:
 
 def _load_us_name_map() -> dict[str, str]:
     names: dict[str, str] = {}
-    for path in [ROOT / "watchlist_us.csv", ROOT / "data" / "watchlist_us.csv"]:
+    for path in [
+        ROOT / "watchlist_us.csv",
+        ROOT / "data" / "watchlist_us.csv",
+        ROOT / "data" / "candidate_universe_us.csv",
+        DATA_STOCKAPP / "price_collection_universe_us.csv",
+        DATA_STOCKAPP / "kis_collection_targets_us.csv",
+    ]:
         for row in _read_csv(path):
             sym = str(row.get("symbol") or "").strip().upper()
             name = str(row.get("name") or "").strip()
             if sym and name:
                 names[sym] = name
     return names
+
+
+def _load_us_candidate_symbols(limit: int = 160) -> list[str]:
+    symbols: list[str] = []
+
+    def add(value: Any, market: Any = "us") -> None:
+        if market and str(market).strip().lower() not in {"", "us"}:
+            return
+        sym = str(value or "").strip().upper()
+        if not sym:
+            return
+        if re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", sym) and sym not in symbols:
+            symbols.append(sym)
+
+    for path in [
+        DATA_STOCKAPP / "price_collection_universe_us.csv",
+        DATA_STOCKAPP / "kis_collection_targets_us.csv",
+        ROOT / "data" / "candidate_universe_us.csv",
+        ROOT / "candidate_universe_us.csv",
+        ROOT / "data" / "watchlist_us.csv",
+        ROOT / "watchlist_us.csv",
+    ]:
+        for row in _read_csv(path):
+            add(row.get("symbol") or row.get("ticker") or row.get("code"), row.get("market") or "us")
+
+    return symbols[:limit]
+
+
+def _download_us_ohlcv(symbols: list[str]) -> dict[str, list[dict]]:
+    if not symbols:
+        return {}
+    try:
+        import yfinance as yf  # type: ignore
+    except Exception as exc:
+        print(f"  yfinance import 실패: {exc}")
+        return {}
+
+    OHLCV_DIR.mkdir(parents=True, exist_ok=True)
+    loaded: dict[str, list[dict]] = {}
+    batch_size = 30
+    for start in range(0, len(symbols), batch_size):
+        batch = symbols[start:start + batch_size]
+        try:
+            data = yf.download(
+                tickers=" ".join(batch),
+                period="9mo",
+                interval="1d",
+                group_by="ticker",
+                auto_adjust=False,
+                progress=False,
+                threads=True,
+            )
+        except Exception as exc:
+            print(f"  yfinance batch 실패 {batch[:3]}...: {exc}")
+            continue
+
+        for sym in batch:
+            try:
+                frame = data[sym] if len(batch) > 1 else data
+            except Exception:
+                continue
+            if frame is None or getattr(frame, "empty", True):
+                continue
+            frame = frame.reset_index()
+            rows: list[dict[str, Any]] = []
+            for _, rec in frame.iterrows():
+                close = _num(rec.get("Close"))
+                if close is None or close <= 0:
+                    continue
+                rows.append({
+                    "date": str(rec.get("Date") or rec.get("Datetime") or "")[:10],
+                    "symbol": sym,
+                    "name": sym,
+                    "open": rec.get("Open", ""),
+                    "high": rec.get("High", ""),
+                    "low": rec.get("Low", ""),
+                    "close": rec.get("Close", ""),
+                    "volume": rec.get("Volume", ""),
+                    "source": f"Yahoo Finance {sym}",
+                })
+            if len(rows) >= MIN_OHLCV_ROWS:
+                _write_csv(OHLCV_DIR / f"us_{sym}_daily.csv", rows)
+                loaded[sym] = rows
+    return loaded
+
+
+def _load_us_ohlcv() -> dict[str, list[dict]]:
+    ohlcv_all: dict[str, list[dict]] = {}
+    for path in sorted(OHLCV_DIR.glob("us_*_daily.csv")):
+        m = re.match(r"us_(.+)_daily\.csv", path.name)
+        if not m:
+            continue
+        sym = m.group(1).upper()
+        rows = _read_csv(path)
+        rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
+        if len(rows) >= MIN_OHLCV_ROWS:
+            ohlcv_all[sym] = rows
+    return ohlcv_all
+
+
+def _nonempty_recommendation_count() -> int:
+    count = 0
+    for path in REPORTS.glob("mone_v36_final_recommendations_us_*.csv"):
+        try:
+            if len(_read_csv(path)) > 0:
+                count += 1
+        except Exception:
+            pass
+    return count
 
 
 def _load_us_market_regime() -> dict[str, Any]:
@@ -93,17 +208,13 @@ def generate_us_recommendations() -> dict[str, Any]:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{now}] US 추천 파일 생성 시작")
 
-    # OHLCV 로드
-    ohlcv_all: dict[str, list[dict]] = {}
-    for path in sorted(OHLCV_DIR.glob("us_*_daily.csv")):
-        m = re.match(r"us_(.+)_daily\.csv", path.name)
-        if not m:
-            continue
-        sym = m.group(1).upper()
-        rows = _read_csv(path)
-        rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
-        if len(rows) >= MIN_OHLCV_ROWS:
-            ohlcv_all[sym] = rows
+    # OHLCV 로드. Actions 러너에는 data/market/ohlcv가 .gitignore 때문에 없을 수 있어
+    # 후보군을 기반으로 임시 OHLCV를 받아 생성한다.
+    ohlcv_all = _load_us_ohlcv()
+    if not ohlcv_all:
+        candidates = _load_us_candidate_symbols()
+        print(f"  로컬 US OHLCV 없음 → yfinance 수집 시도: {len(candidates)}종목")
+        ohlcv_all = _download_us_ohlcv(candidates)
 
     prices = _load_us_prices()
     name_map = _load_us_name_map()
@@ -111,6 +222,25 @@ def generate_us_recommendations() -> dict[str, Any]:
 
     print(f"  US OHLCV: {len(ohlcv_all)}종목, 현재가: {len(prices)}종목")
     print(f"  US 마켓 레짐: {regime['label']} ({regime['description']})")
+
+    if not ohlcv_all:
+        status = {
+            "generatedAt": now,
+            "source": "us_ohlcv_quant_scanner",
+            "status": "NO_OHLCV",
+            "symbols": 0,
+            "liveSymbols": len(prices),
+            "marketRegime": regime,
+            "evFiltered": 0,
+            "results": {},
+            "preservedExistingRecommendationFiles": _nonempty_recommendation_count(),
+            "message": "US OHLCV를 찾거나 수집하지 못해 기존 추천 파일을 보존했습니다.",
+        }
+        (REPORTS / "us_recommendation_gen_status.json").write_text(
+            json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print("  US OHLCV 없음: 기존 추천 파일 보존")
+        return status
 
     regime_adjust = regime.get("scoreAdjust", 0.0)
     regime_label = regime.get("label", "횡보장")
