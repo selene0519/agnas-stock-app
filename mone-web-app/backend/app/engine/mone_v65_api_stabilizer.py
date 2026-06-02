@@ -5,6 +5,7 @@ import json
 import math
 import re
 import subprocess
+import time
 from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -1770,8 +1771,21 @@ def _validation_policy_payload() -> dict[str, Any]:
     }
 
 
-@lru_cache(maxsize=48)
-def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit: int, watch_only: bool) -> dict[str, Any]:
+def _reco_file_version(market: str, mode: str, horizon: str) -> int:
+    """추천 CSV의 최신 mtime을 5분 버킷으로 반올림한 정수 반환.
+    파일이 바뀌면 lru_cache 키가 달라져 자동 갱신된다."""
+    try:
+        path = _repo_root() / "reports" / f"mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv"
+        if path.exists():
+            mtime = path.stat().st_mtime
+            return int(mtime // 300)   # 5분 버킷
+    except Exception:
+        pass
+    return 0
+
+
+@lru_cache(maxsize=256)
+def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit: int, watch_only: bool, _ver: int = 0) -> dict[str, Any]:
     market = _market_norm(market)
     mode = _mode_norm(mode)
     horizon = _horizon_norm(horizon)
@@ -1780,7 +1794,8 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         merged: list[dict[str, Any]] = []
         source_files: list[str] = []
         for item_market in ("kr", "us"):
-            payload = _recommendations_payload_cached(item_market, mode, horizon, limit, watch_only)
+            _ver = _reco_file_version(item_market, _mode_norm(mode), _horizon_norm(horizon))
+            payload = _recommendations_payload_cached(item_market, mode, horizon, limit, watch_only, _ver)
             merged.extend(payload.get("items", []))
             source_files.extend(payload.get("sourceFiles", []))
         deduped: list[dict[str, Any]] = []
@@ -1920,7 +1935,8 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
 
 
 def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
-    payload = _recommendations_payload_cached(market, mode, horizon, limit, watch_only)
+    _ver = _reco_file_version(_market_norm(market), _mode_norm(mode), _horizon_norm(horizon))
+    payload = _recommendations_payload_cached(market, mode, horizon, limit, watch_only, _ver)
     try:
         _record_virtual_ledger(payload.get("items", []), "api/final/recommendations")
     except Exception:
@@ -2627,6 +2643,201 @@ def _journal_delete_payload(entry_id: str) -> dict[str, Any]:
     return {"status": "OK", "deleted": before - len(entries)}
 
 
+def _benchmark_comparison_payload(market: str) -> dict[str, Any]:
+    """보유종목 포트폴리오 수익률 vs 지수 수익률 비교."""
+    market = _market_norm(market)
+    repo   = _repo_root()
+
+    # 벤치마크 지수 파일
+    bm_sym   = "KOSPI" if market == "kr" else "SP500"
+    bm_path  = repo / "data" / "market" / "ohlcv" / f"{market}_{bm_sym}_daily.csv"
+    bm_rows  = _read_csv(bm_path, 5000)
+    bm_index: dict[str, float] = {}
+    for r in bm_rows:
+        d = _text(r, ["date", "Date"])
+        c = _num(_text(r, ["close", "Close", "종가"]))
+        if d and c:
+            bm_index[d] = c
+
+    # 보유종목 로드
+    holdings_data: list[dict[str, Any]] = []
+    try:
+        from app.engine.mone_v802_holdings_clean import holdings_clean_payload
+        h = holdings_clean_payload(market=market, limit=200)
+        holdings_data = h.get("items", [])
+    except Exception:
+        pass
+
+    if not holdings_data or not bm_index:
+        return {"status": "NO_DATA", "market": market,
+                "reason": "보유종목 또는 벤치마크 데이터 없음"}
+
+    bm_dates = sorted(bm_index.keys())
+    bm_latest_date  = bm_dates[-1] if bm_dates else None
+    bm_latest_close = bm_index.get(bm_latest_date, 0) if bm_latest_date else 0
+
+    items: list[dict[str, Any]] = []
+    total_cost = total_value = 0.0
+
+    for h in holdings_data:
+        sym       = str(h.get("symbol") or "").strip()
+        avg_price = _num(h.get("avgPrice") or h.get("avg_price") or 0) or 0
+        qty       = _num(h.get("quantity") or h.get("qty") or 0) or 0
+        cur_price = _num(h.get("currentPrice") or h.get("current_price") or 0) or 0
+        if avg_price <= 0 or qty <= 0:
+            continue
+
+        cost  = avg_price * qty
+        value = (cur_price if cur_price > 0 else avg_price) * qty
+        pnl_pct = (value - cost) / cost * 100.0 if cost > 0 else 0.0
+
+        # 보유 시작일 추정: OHLCV에서 avgPrice 근처 날짜 찾기
+        ohlcv_path = repo / "data" / "market" / "ohlcv" / f"{market}_{sym}_daily.csv"
+        entry_date: str | None = None
+        if ohlcv_path.exists():
+            ohlcv_rows = _read_csv(ohlcv_path, 5000)
+            # avgPrice에 가장 가까운 날짜를 진입일로 추정
+            best_diff = float("inf")
+            for row in ohlcv_rows:
+                c = _num(_text(row, ["close", "Close", "종가"]))
+                d = _text(row, ["date", "Date"])
+                if c and d:
+                    diff = abs(c - avg_price) / avg_price
+                    if diff < best_diff:
+                        best_diff = diff
+                        entry_date = d
+
+        # 벤치마크 진입일 가격
+        bm_entry = None
+        if entry_date and bm_index:
+            # entry_date 이후 가장 가까운 벤치마크 날짜
+            for d in sorted(bm_index.keys()):
+                if d >= entry_date:
+                    bm_entry = bm_index[d]
+                    break
+
+        bm_pct: float | None = None
+        if bm_entry and bm_latest_close:
+            bm_pct = (bm_latest_close - bm_entry) / bm_entry * 100.0
+
+        alpha: float | None = round(pnl_pct - bm_pct, 2) if bm_pct is not None else None
+        items.append({
+            "symbol":    sym,
+            "name":      str(h.get("name") or sym),
+            "entryDate": entry_date,
+            "portfolioReturn": round(pnl_pct, 2),
+            "benchmarkReturn": round(bm_pct, 2) if bm_pct is not None else None,
+            "alpha":     alpha,
+            "cost":      round(cost, 0),
+            "value":     round(value, 0),
+        })
+        total_cost  += cost
+        total_value += value
+
+    total_pnl_pct  = (total_value - total_cost) / total_cost * 100.0 if total_cost else 0.0
+    beating_count  = sum(1 for i in items if (i["alpha"] or 0) > 0)
+
+    return {
+        "status": "OK",
+        "market": market,
+        "benchmark": bm_sym,
+        "benchmarkLatestDate": bm_latest_date,
+        "totalPortfolioReturn": round(total_pnl_pct, 2),
+        "beatingBenchmark": beating_count,
+        "totalItems": len(items),
+        "items": sorted(items, key=lambda x: (x["alpha"] or -999), reverse=True),
+    }
+
+
+def _correlation_payload(market: str, days: int = 60) -> dict[str, Any]:
+    """보유종목 간 일별 수익률 상관계수 매트릭스."""
+    market = _market_norm(market)
+    repo   = _repo_root()
+
+    holdings_data: list[dict[str, Any]] = []
+    try:
+        from app.engine.mone_v802_holdings_clean import holdings_clean_payload
+        h = holdings_clean_payload(market=market, limit=200)
+        holdings_data = h.get("items", [])
+    except Exception:
+        pass
+
+    symbols = [str(h.get("symbol") or "").strip() for h in holdings_data if h.get("symbol")]
+    names   = {str(h.get("symbol") or "").strip(): str(h.get("name") or "") for h in holdings_data}
+
+    if len(symbols) < 2:
+        return {"status": "NO_DATA", "market": market, "reason": "보유종목 2개 이상 필요"}
+
+    # 각 종목 최근 N일 종가 로드
+    close_series: dict[str, list[float]] = {}
+    date_series:  dict[str, list[str]]   = {}
+
+    for sym in symbols:
+        path = repo / "data" / "market" / "ohlcv" / f"{market}_{sym}_daily.csv"
+        rows = _read_csv(path, 5000)
+        closes = []
+        dates  = []
+        for r in sorted(rows, key=lambda x: _text(x, ["date", "Date"]))[-days:]:
+            c = _num(_text(r, ["close", "Close", "종가"]))
+            d = _text(r, ["date", "Date"])
+            if c and d:
+                closes.append(c)
+                dates.append(d)
+        if len(closes) >= 10:
+            close_series[sym] = closes
+            date_series[sym]  = dates
+
+    valid_syms = list(close_series.keys())
+    if len(valid_syms) < 2:
+        return {"status": "NO_DATA", "market": market, "reason": "OHLCV 데이터 부족"}
+
+    # 일별 수익률
+    def returns(prices: list[float]) -> list[float]:
+        return [(prices[i] - prices[i-1]) / prices[i-1] for i in range(1, len(prices))]
+
+    ret_series = {sym: returns(close_series[sym]) for sym in valid_syms}
+
+    # 상관계수 계산
+    def pearson(a: list[float], b: list[float]) -> float | None:
+        n = min(len(a), len(b))
+        if n < 5:
+            return None
+        a, b = a[-n:], b[-n:]
+        ma = sum(a) / n
+        mb = sum(b) / n
+        num   = sum((a[i]-ma)*(b[i]-mb) for i in range(n))
+        denom = (sum((x-ma)**2 for x in a) * sum((x-mb)**2 for x in b)) ** 0.5
+        return round(num / denom, 3) if denom > 1e-10 else None
+
+    matrix: list[dict[str, Any]] = []
+    for i, sym_i in enumerate(valid_syms):
+        for j, sym_j in enumerate(valid_syms):
+            if i >= j:
+                continue
+            r = pearson(ret_series[sym_i], ret_series[sym_j])
+            if r is not None:
+                matrix.append({
+                    "sym1": sym_i, "name1": names.get(sym_i, sym_i),
+                    "sym2": sym_j, "name2": names.get(sym_j, sym_j),
+                    "corr": r,
+                    "level": "높음" if abs(r) >= 0.7 else "중간" if abs(r) >= 0.4 else "낮음",
+                })
+
+    high_corr = [m for m in matrix if m["corr"] >= 0.7]
+    matrix.sort(key=lambda x: -abs(x["corr"]))
+
+    return {
+        "status": "OK",
+        "market": market,
+        "days": days,
+        "symbols": valid_syms,
+        "names": names,
+        "matrix": matrix[:30],
+        "highCorrelationPairs": high_corr,
+        "warning": len(high_corr) > 0,
+    }
+
+
 def _sector_exposure_payload(market: str) -> dict[str, Any]:
     """보유종목 기준 섹터 노출도 + 최대 동시 손실 시뮬레이션."""
     market = _market_norm(market)
@@ -2728,37 +2939,87 @@ def _sector_exposure_payload(market: str) -> dict[str, Any]:
     }
 
 
+def _is_executed_row(r: dict[str, Any]) -> bool:
+    """두 가지 스키마(undated 메인파일 / dated 날짜파일)에서 체결 여부 판정."""
+    # 날짜별 파일: result in {target_hit, stop_hit, close_exit}
+    result = str(r.get("result") or r.get("outcome_result") or "").strip()
+    if result in {"target_hit", "stop_hit", "close_exit"}:
+        return True
+    # 날짜별 파일: is_executed / execution_status
+    if str(r.get("is_executed") or "").lower() in {"true", "1", "yes"}:
+        return True
+    # 메인 파일: executionStatus
+    exec_s = str(r.get("executionStatus") or "").strip()
+    return exec_s in {"체결", "HIT", "완료", "executed"}
+
+
+def _is_win_row(r: dict[str, Any]) -> bool:
+    result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
+    return result in {"target_hit", "TARGET_HIT", "WIN", "목표달성", "성공"}
+
+
+def _is_loss_row(r: dict[str, Any]) -> bool:
+    result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
+    return result in {"stop_hit", "STOP_HIT", "LOSS", "손절", "실패"}
+
+
 def _validation_dashboard_payload(market: str) -> dict[str, Any]:
-    """9가지 전략 조합의 검증 통계 + 생애주기 요약."""
+    """9가지 전략 조합의 검증 통계 + 생애주기 요약.
+    메인 파일(undated) + 날짜별 파일(YYYYMMDD) 모두 집계.
+    """
     market = _market_norm(market)
     repo   = _repo_root()
     MODES_    = ("conservative", "balanced", "aggressive")
     HORIZONS_ = ("short", "swing", "mid")
 
-    # ── 검증 통계 (trade_validation CSV 9개 집계)
+    # ── 검증 통계
     stats: dict[str, Any] = {}
     for m in MODES_:
         for h in HORIZONS_:
-            key  = f"{m}_{h}"
-            path = repo / "reports" / f"mone_v36_final_trade_validation_{market}_{m}_{h}.csv"
-            rows = _read_csv(path, 100000)
-            completed = [r for r in rows if str(r.get("executionStatus") or "").strip() in {"체결", "HIT", "완료"}]
-            win  = [r for r in completed if str(r.get("exitStatus") or r.get("result") or "").strip() in {"목표달성", "TARGET_HIT", "WIN", "성공"}]
-            lose = [r for r in completed if str(r.get("exitStatus") or r.get("result") or "").strip() in {"손절", "STOP_HIT", "LOSS", "실패"}]
-            rets = []
+            key = f"{m}_{h}"
+            base_name = f"mone_v36_final_trade_validation_{market}_{m}_{h}"
+            reports_dir = repo / "reports"
+
+            # 메인 파일 + 날짜별 파일 모두 수집
+            all_rows: list[dict[str, Any]] = []
+            seen_dated: set[str] = set()
+
+            # 날짜별 파일 우선 (최신 데이터)
+            for dated_path in sorted(reports_dir.glob(f"{base_name}_????????.csv"), reverse=True):
+                dated_rows = _read_csv(dated_path, 100000)
+                for row in dated_rows:
+                    sym = str(row.get("symbol") or "")
+                    date_key = f"{dated_path.stem}_{sym}"
+                    if date_key not in seen_dated:
+                        seen_dated.add(date_key)
+                        all_rows.append(row)
+
+            # 메인 파일 (날짜별에 없는 항목 보완)
+            main_path = reports_dir / f"{base_name}.csv"
+            main_rows = _read_csv(main_path, 100000)
+
+            completed = [r for r in all_rows if _is_executed_row(r)]
+            win       = [r for r in completed if _is_win_row(r)]
+            lose      = [r for r in completed if _is_loss_row(r)]
+            rets: list[float] = []
             for r in completed:
-                v = _num(_text(r, ["returnPct", "return_pct", "pnlPct"]))
+                v = _num(_text(r, ["returnPct", "realized_return_pct", "return_pct", "pnlPct"]))
                 if v != 0:
                     rets.append(v)
+
+            pending_count = len([r for r in main_rows
+                                 if str(r.get("validationStatus") or r.get("status") or "").strip() == "PENDING"])
+
             stats[key] = {
-                "mode": m, "horizon": h,
-                "total":    len(rows),
+                "mode":      m,
+                "horizon":   h,
+                "total":     len(all_rows),
                 "completed": len(completed),
-                "wins":     len(win),
-                "losses":   len(lose),
-                "winRate":  round(len(win) / len(completed) * 100, 1) if completed else None,
+                "wins":      len(win),
+                "losses":    len(lose),
+                "winRate":   round(len(win) / len(completed) * 100, 1) if completed else None,
                 "avgReturn": round(sum(rets) / len(rets), 2) if rets else None,
-                "pendingCount": len([r for r in rows if str(r.get("validationStatus") or r.get("status") or "").strip() == "PENDING"]),
+                "pendingCount": pending_count,
             }
 
     # ── 생애주기 (virtual_prediction_ledger.csv)
@@ -2804,6 +3065,168 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
         },
         "lifecycle": lifecycle,
     }
+
+
+def _disclosure_calendar_payload(market: str, days: int = 30) -> dict[str, Any]:
+    """보유/관심종목 공시 캘린더. 최근 N일 + 향후 공시를 날짜별로 그룹화."""
+    market = _market_norm(market)
+    repo   = _repo_root()
+
+    # 보유/관심 심볼 수집
+    tracked: set[str] = set()
+    for p in [repo / f"holdings_{market}.csv", repo / f"watchlist_{market}.csv",
+              repo / f"watchlist_{market}_growth.csv"]:
+        for row in _read_csv(p, 50000):
+            sym = _symbol(row, market)
+            if sym:
+                tracked.add(sym)
+
+    # 공시 파일 로드
+    disc_path = repo / "data" / "disclosures" / f"disclosures_{market}.csv"
+    all_disc  = _read_csv(disc_path, 100000)
+
+    # 날짜 범위
+    from_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+    to_date   = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+
+    # 관련 공시 필터링 + 날짜별 그룹화
+    by_date: dict[str, list[dict[str, Any]]] = {}
+    for row in all_disc:
+        sym  = _symbol(row, market)
+        date = _text(row, ["date", "Date", "rcept_dt"]) or ""
+        # date 형식 정규화 (YYYYMMDD → YYYY-MM-DD)
+        if len(date) == 8 and date.isdigit():
+            date = f"{date[:4]}-{date[4:6]}-{date[6:]}"
+        if not (from_date <= date <= to_date):
+            continue
+
+        title    = _text(row, ["title", "report_nm"])
+        name     = _text(row, ["name", "stockName", "corp_name"])
+        url      = _text(row, ["url", "rcept_no"])
+        in_watch = sym in tracked
+
+        # 실적/주요공시 분류
+        kind = "기타"
+        if any(k in title for k in ["분기보고서", "사업보고서", "반기보고서", "실적"]):
+            kind = "실적"
+        elif any(k in title for k in ["합병", "인수", "분할", "유상증자", "무상증자"]):
+            kind = "주요공시"
+        elif any(k in title for k in ["배당", "자사주"]):
+            kind = "배당/자사주"
+
+        item = {
+            "symbol": sym, "name": name, "title": title,
+            "date": date, "kind": kind, "url": url,
+            "inWatchlist": in_watch,
+        }
+        by_date.setdefault(date, []).append(item)
+
+    # 날짜별 정렬 + 관심/보유 종목 우선
+    calendar_days = []
+    for date in sorted(by_date.keys()):
+        items_for_day = by_date[date]
+        items_for_day.sort(key=lambda x: (0 if x["inWatchlist"] else 1, x["kind"]))
+        is_past = date < datetime.now().strftime("%Y-%m-%d")
+        calendar_days.append({
+            "date":      date,
+            "isPast":    is_past,
+            "isToday":   date == datetime.now().strftime("%Y-%m-%d"),
+            "count":     len(items_for_day),
+            "watched":   sum(1 for i in items_for_day if i["inWatchlist"]),
+            "items":     items_for_day[:20],
+        })
+
+    return {
+        "status": "OK" if calendar_days else "NO_DATA",
+        "market": market,
+        "fromDate": from_date,
+        "toDate":   to_date,
+        "totalDisclosures": sum(len(d["items"]) for d in calendar_days),
+        "watchedCount": sum(d["watched"] for d in calendar_days),
+        "calendar": calendar_days,
+    }
+
+
+def _watchlist_csv_path(market: str) -> Path:
+    return _repo_root() / f"watchlist_{market}.csv"
+
+
+def _watchlist_groups_payload(market: str) -> dict[str, Any]:
+    """관심종목 그룹(group 필드) 목록과 소속 종목 반환."""
+    market = _market_norm(market)
+    path   = _watchlist_csv_path(market)
+    rows   = _read_csv(path, 100000)
+
+    groups: dict[str, list[dict[str, Any]]] = {"미분류": []}
+    for row in rows:
+        sym   = _symbol(row, market)
+        name  = _text(row, ["name", "stockName"])
+        group = str(row.get("group") or "").strip() or "미분류"
+        groups.setdefault(group, []).append({"symbol": sym, "name": name})
+
+    items = [{"group": g, "count": len(v), "symbols": v} for g, v in groups.items() if v]
+    items.sort(key=lambda x: (0 if x["group"] == "미분류" else 1, x["group"]))
+    return {"status": "OK", "market": market, "count": len(items), "items": items,
+            "groups": [i["group"] for i in items]}
+
+
+def _watchlist_set_group_payload(data: dict[str, Any]) -> dict[str, Any]:
+    """관심종목 한 종목의 group 필드를 업데이트."""
+    market = _market_norm(str(data.get("market") or "kr"))
+    symbol = str(data.get("symbol") or "").strip()
+    group  = str(data.get("group") or "").strip()
+    path   = _watchlist_csv_path(market)
+    rows   = _read_csv(path, 100000)
+
+    if not rows or not symbol:
+        return {"status": "ERROR", "error": "symbol 또는 watchlist 없음"}
+
+    updated = 0
+    new_rows: list[dict[str, str]] = []
+    for row in rows:
+        sym = _symbol(row, market)
+        if sym == symbol or sym.lstrip("0") == symbol.lstrip("0"):
+            row = dict(row)
+            row["group"] = group
+            updated += 1
+        new_rows.append(row)
+
+    if updated == 0:
+        return {"status": "NOT_FOUND", "symbol": symbol}
+
+    # 필드 목록 확보 (group 없으면 추가)
+    fieldnames = list(rows[0].keys())
+    if "group" not in fieldnames:
+        fieldnames.append("group")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    import csv as _csv
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = _csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for r in new_rows:
+            writer.writerow({k: r.get(k, "") for k in fieldnames})
+
+    return {"status": "OK", "symbol": symbol, "group": group, "updated": updated}
+
+
+def _sectors_list_payload(market: str) -> dict[str, Any]:
+    """sector_map에서 고유 섹터 목록 반환."""
+    market = _market_norm(market)
+    repo   = _repo_root()
+    sectors: dict[str, int] = {}
+    for p in [repo / "data" / "sector_map_kr.csv", repo / f"sector_map_{market}.csv"]:
+        if p.exists():
+            for row in _read_csv(p, 200000):
+                mkt = str(row.get("market") or "kr").lower()
+                if mkt != market:
+                    continue
+                sec = str(row.get("sector") or "Other").strip() or "Other"
+                sectors[sec] = sectors.get(sec, 0) + 1
+            break
+    items = sorted([{"sector": k, "count": v} for k, v in sectors.items()],
+                   key=lambda x: -x["count"])
+    return {"status": "OK", "market": market, "count": len(items), "items": items}
 
 
 def _watchlist_scored_payload(market: str, mode: str, horizon: str) -> dict[str, Any]:
@@ -2933,7 +3356,8 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
         for horizon in HORIZONS:
             key = f"{mode}_{horizon}"
             try:
-                payload = _recommendations_payload_cached(market, mode, horizon, limit_per_cell, False)
+                _ver = _reco_file_version(market, mode, horizon)
+                payload = _recommendations_payload_cached(market, mode, horizon, limit_per_cell, False, _ver)
                 # 마켓 레짐은 balanced_swing 응답에서 우선 획득
                 if not market_regime and payload.get("marketRegime", {}).get("regime"):
                     market_regime = payload["marketRegime"]
@@ -3030,16 +3454,22 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         "/api/final/symbols",
         "/api/watchlist",
         "/api/watchlist/scored",
+        "/api/sectors",
+        "/api/disclosure-calendar",
         "/api/holdings-edit",
         "/api/holdings-edit/save",
         "/api/watchlist-edit",
         "/api/watchlist-edit/save",
+        "/api/watchlist/groups",
+        "/api/watchlist/set-group",
         "/api/company-analysis",
         "/api/data/audit",
         "/api/health/github",
         "/api/home/summary",
         "/api/validation/dashboard",
         "/api/risk/sector-exposure",
+        "/api/risk/benchmark",
+        "/api/risk/correlation",
         "/api/journal",
         "/api/journal/add",
         "/api/final/recommendations",
@@ -3064,6 +3494,14 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     def watchlist(market: str = Query("all"), limit: int = Query(10000)) -> dict[str, Any]:
         return _safe_payload(lambda: _symbols_payload(market, "", True, limit), "/api/watchlist")
 
+    @app.get("/api/disclosure-calendar")
+    def disclosure_calendar(market: str = Query("kr"), days: int = Query(30)) -> dict[str, Any]:
+        return _safe_payload(lambda: _disclosure_calendar_payload(market, days), "/api/disclosure-calendar")
+
+    @app.get("/api/sectors")
+    def sectors_list(market: str = Query("kr")) -> dict[str, Any]:
+        return _safe_payload(lambda: _sectors_list_payload(market), "/api/sectors")
+
     @app.get("/api/watchlist/scored")
     def watchlist_scored(market: str = Query("kr"), mode: str = Query("balanced"), horizon: str = Query("swing")) -> dict[str, Any]:
         return _safe_payload(lambda: _watchlist_scored_payload(market, mode, horizon), "/api/watchlist/scored")
@@ -3077,6 +3515,14 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     @app.post("/api/holdings-edit/save")
     def holdings_edit_save(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
         return _safe_payload(lambda: _save_edit_rows("holdings", payload), "/api/holdings-edit/save")
+
+    @app.get("/api/watchlist/groups")
+    def watchlist_groups(market: str = Query("kr")) -> dict[str, Any]:
+        return _safe_payload(lambda: _watchlist_groups_payload(market), "/api/watchlist/groups")
+
+    @app.post("/api/watchlist/set-group")
+    def watchlist_set_group(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        return _safe_payload(lambda: _watchlist_set_group_payload(payload), "/api/watchlist/set-group")
 
     @app.get("/api/watchlist-edit")
     def watchlist_edit(market: str = Query("all")) -> dict[str, Any]:
@@ -3106,6 +3552,14 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     @app.get("/api/risk/sector-exposure")
     def sector_exposure(market: str = Query("kr")) -> dict[str, Any]:
         return _safe_payload(lambda: _sector_exposure_payload(market), "/api/risk/sector-exposure")
+
+    @app.get("/api/risk/benchmark")
+    def benchmark(market: str = Query("kr")) -> dict[str, Any]:
+        return _safe_payload(lambda: _benchmark_comparison_payload(market), "/api/risk/benchmark")
+
+    @app.get("/api/risk/correlation")
+    def correlation(market: str = Query("kr"), days: int = Query(60)) -> dict[str, Any]:
+        return _safe_payload(lambda: _correlation_payload(market, days), "/api/risk/correlation")
 
     @app.get("/api/journal")
     def journal_get(market: str = Query("all")) -> dict[str, Any]:

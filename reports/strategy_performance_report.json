@@ -1,25 +1,47 @@
 {
-  "generated_at": "2026-06-02 23:35:20",
+  "generated_at": "2026-06-03 01:02:29",
   "virtual_eval": {
     "total_records": 2835,
-    "evaluated": 2085,
-    "pending": 750,
-    "eval_rate_pct": 73.5,
+    "evaluated": 843,
+    "pending": 1992,
+    "eval_rate_pct": 29.7,
+    "dated_exec": 77,
+    "dated_wins": 12,
+    "dated_losses": 25,
+    "overall_win_rate": 15.6,
     "by_mode": {
       "conservative": {
-        "swing_avg_return": null,
-        "swing_count": 0,
-        "swing_win_rate": 0.0
+        "short_win_rate": 0.0,
+        "short_avg_return": -2.05,
+        "short_count": 6,
+        "swing_win_rate": 0.0,
+        "swing_avg_return": -2.58,
+        "swing_count": 7,
+        "mid_win_rate": 0.0,
+        "mid_avg_return": -0.81,
+        "mid_count": 8
       },
       "balanced": {
-        "swing_avg_return": null,
-        "swing_count": 0,
-        "swing_win_rate": 0.0
+        "short_win_rate": 50.0,
+        "short_avg_return": 1.05,
+        "short_count": 8,
+        "swing_win_rate": 22.2,
+        "swing_avg_return": 2.06,
+        "swing_count": 9,
+        "mid_win_rate": 9.1,
+        "mid_avg_return": 1.5,
+        "mid_count": 11
       },
       "aggressive": {
-        "swing_avg_return": null,
-        "swing_count": 0,
-        "swing_win_rate": 0.0
+        "short_win_rate": 44.4,
+        "short_avg_return": 2.26,
+        "short_count": 9,
+        "swing_win_rate": 10.0,
+        "swing_avg_return": 1.51,
+        "swing_count": 10,
+        "mid_win_rate": 0.0,
+        "mid_avg_return": 2.09,
+        "mid_count": 9
       }
     }
   },

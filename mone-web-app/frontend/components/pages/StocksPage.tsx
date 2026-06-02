@@ -208,6 +208,38 @@ export default function StocksPage() {
   const [, setCashVersion] = useState(0);
   const [scoredWatch, setScoredWatch] = useState<any>(null);
   const [scoredLoading, setScoredLoading] = useState(false);
+  const [sectorFilter, setSectorFilter] = useState<string | null>(null);
+  const [sectorsList, setSectorsList] = useState<string[]>([]);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [groupsList, setGroupsList] = useState<string[]>([]);
+  const [groupAssigning, setGroupAssigning] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (market === "kr") {
+      mone.sectorsList({ market }).then((r) => {
+        setSectorsList(Array.isArray(r.items) ? r.items.slice(0, 20).map((s: any) => s.sector) : []);
+      }).catch(() => setSectorsList([]));
+    }
+    mone.watchlistGroups({ market }).then((r) => {
+      setGroupsList(Array.isArray(r.groups) ? r.groups.filter((g: string) => g !== "미분류") : []);
+    }).catch(() => setGroupsList([]));
+  }, [market]);
+
+  async function assignGroup(symbol: string, marketStr: string, group: string) {
+    let finalGroup = group;
+    if (group === "__new__") {
+      const input = window.prompt("새 그룹 이름을 입력하세요 (예: AI주, 배당주, 단기후보):");
+      if (!input) return;
+      finalGroup = input.trim();
+    }
+    setGroupAssigning(symbol);
+    try {
+      await mone.watchlistSetGroup({ market: marketStr, symbol, group: finalGroup });
+      setGroupsList((prev) => (finalGroup && !prev.includes(finalGroup) ? [...prev, finalGroup] : prev));
+    } finally {
+      setGroupAssigning(null);
+    }
+  }
 
   async function loadScoredWatchlist() {
     setScoredLoading(true);
@@ -291,11 +323,26 @@ export default function StocksPage() {
     };
   }, [market, mode, horizon, watchOnly, watchlist.length, refreshVersion]);
 
+  const sectorFiltered = useMemo(() => {
+    let result = items;
+    if (sectorFilter) {
+      result = result.filter((item) => {
+        const sec = String(item.sector || item.sectorLabel || "").trim();
+        return sec === sectorFilter || sec.startsWith(sectorFilter);
+      });
+    }
+    if (groupFilter) {
+      result = result.filter((item) => String(item.group || "미분류").trim() === groupFilter);
+    }
+    return result;
+  }, [items, sectorFilter, groupFilter]);
+
   const visible = useMemo(() => {
-    if (!selected) return items;
+    const base = sectorFilter ? sectorFiltered : items;
+    if (!selected) return base;
     const selectedMarket = cleanMarket(selected.market || market || "kr");
     const selectedSymbol = cleanSymbol(selected.symbol, selectedMarket);
-    const matched = items.filter((item) => {
+    const matched = base.filter((item) => {
       const itemMarket = cleanMarket(item.market || selectedMarket);
       return (
         cleanSymbol(item.symbol, itemMarket) === selectedSymbol &&
@@ -556,6 +603,39 @@ export default function StocksPage() {
             {scoredLoading ? "분석 중..." : "관심종목 점수 분석"}
           </button>
         </div>
+
+        {/* 그룹 필터 */}
+        {groupsList.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <span className="text-[10px] text-slate-500 self-center">그룹:</span>
+            <button onClick={() => setGroupFilter(null)}
+              className={`rounded-full px-3 py-1 text-[11px] font-medium ${!groupFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+              전체
+            </button>
+            {groupsList.map((g) => (
+              <button key={g} onClick={() => setGroupFilter(g === groupFilter ? null : g)}
+                className={`rounded-full px-3 py-1 text-[11px] font-medium ${groupFilter === g ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                {g}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 섹터 필터 */}
+        {sectorsList.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            <button onClick={() => setSectorFilter(null)}
+              className={`rounded-full px-3 py-1 text-[11px] font-medium ${!sectorFilter ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+              전체
+            </button>
+            {sectorsList.map((sec) => (
+              <button key={sec} onClick={() => setSectorFilter(sec === sectorFilter ? null : sec)}
+                className={`rounded-full px-3 py-1 text-[11px] font-medium ${sectorFilter === sec ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                {sec}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* 관심종목 자동선별 결과 */}
         {scoredWatch && Array.isArray(scoredWatch.items) && scoredWatch.items.length > 0 && (
@@ -958,6 +1038,20 @@ export default function StocksPage() {
                 >
                   <Star size={13} /> {watched ? "관심 해제" : "관심 등록"}
                 </button>
+                {watched && (
+                  <div className="flex items-center gap-1">
+                    <select
+                      className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-teal-500"
+                      value={String(item.group || "")}
+                      disabled={groupAssigning === String(item.symbol)}
+                      onChange={(e) => assignGroup(String(item.symbol), cleanMarket(item.market || market), e.target.value)}
+                    >
+                      <option value="">그룹 없음</option>
+                      {groupsList.map((g) => <option key={g} value={g}>{g}</option>)}
+                      <option value="__new__">+ 새 그룹...</option>
+                    </select>
+                  </div>
+                )}
                 <button
                   type="button"
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/20 disabled:opacity-50"

@@ -71,50 +71,91 @@ def _corr(xs: list[float], ys: list[float]) -> float:
 
 
 # ─────────────────────────────────────────────────────────────────
-# 1. virtual_operation_evaluation.csv 분석
+# 1. 날짜별 trade_validation CSV 집계 (실제 체결·승패 데이터)
 # ─────────────────────────────────────────────────────────────────
-def analyze_virtual_eval() -> dict[str, Any]:
-    rows = _read(HIST / "virtual_operation_evaluation.csv")
-    if not rows:
-        return {"error": "파일 없음"}
+WIN_RESULTS  = {"target_hit", "TARGET_HIT", "WIN", "목표달성", "성공", "익절"}
+LOSS_RESULTS = {"stop_hit",   "STOP_HIT",   "LOSS", "손절",    "실패"}
+EXEC_RESULTS = WIN_RESULTS | LOSS_RESULTS | {"close_exit", "CLOSE_EXIT"}
+MODES_   = ("conservative", "balanced", "aggressive")
+HORIZONS_= ("short", "swing", "mid")
 
-    # 완료된 거래만 (outcome_result != "대기")
-    done = [r for r in rows if r.get("outcome_result", "대기").strip() not in ("대기", "")]
-    total = len(rows)
-    evaluated = len(done)
 
-    # 모드 × 기간별 집계
-    bucket: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
-    for r in done:
-        mode     = r.get("mode", "balanced").strip() or "balanced"
-        swing    = r.get("swing_group", "swing").strip() or "swing"
-        ret      = _f(r.get("realized_return_pct", ""))
-        outcome  = r.get("outcome_result", "").strip()
-        win      = 1.0 if outcome in ("성공", "목표달성", "익절") else 0.0
+def _read_dated_validation(market: str = "kr") -> dict[str, list[dict[str, str]]]:
+    """날짜별 validation 파일 전부 읽어 mode_horizon 키로 반환."""
+    data: dict[str, list[dict[str, str]]] = {}
+    for m in MODES_:
+        for h in HORIZONS_:
+            key   = f"{m}_{h}"
+            files = sorted(REPT.glob(f"mone_v36_final_trade_validation_{market}_{m}_{h}_????????.csv"))
+            rows: list[dict[str, str]] = []
+            seen: set[str] = set()
+            for f in files:
+                for row in _read(f):
+                    sym  = row.get("symbol", "")
+                    date = row.get("date", f.stem[-8:])
+                    uid  = f"{sym}_{date}"
+                    if uid not in seen:
+                        seen.add(uid)
+                        rows.append(row)
+            data[key] = rows
+    return data
 
-        bucket[mode][swing].append(ret)
-        bucket[mode]["_win_" + swing].append(win)
 
-    stats: dict[str, Any] = {}
-    for mode, swings in bucket.items():
-        stats[mode] = {}
-        for key, vals in swings.items():
-            if key.startswith("_win_"):
-                swing = key[5:]
-                wins  = [v for v in vals if not math.isnan(v)]
-                stats[mode][f"{swing}_win_rate"] = round(
-                    sum(wins) / len(wins) * 100, 1) if wins else None
-            else:
-                rets = [v for v in vals if not math.isnan(v)]
-                stats[mode][f"{key}_avg_return"] = round(_mean(rets), 2) if rets else None
-                stats[mode][f"{key}_count"]       = len(rets)
+def analyze_virtual_eval(market: str = "kr") -> dict[str, Any]:
+    """날짜별 trade_validation CSV 기반 실제 승률 분석."""
+    validation_data = _read_dated_validation(market)
+
+    total_exec = total_win = total_loss = 0
+    by_mode: dict[str, Any] = {}
+
+    for m in MODES_:
+        mode_exec = mode_win = mode_loss = 0
+        mode_rets: list[float] = []
+        for h in HORIZONS_:
+            key  = f"{m}_{h}"
+            rows = validation_data.get(key, [])
+            exec_rows = [r for r in rows if (r.get("result") or r.get("outcome_result", "")).strip() in EXEC_RESULTS]
+            win_rows  = [r for r in exec_rows if (r.get("result") or "").strip() in WIN_RESULTS]
+            loss_rows = [r for r in exec_rows if (r.get("result") or "").strip() in LOSS_RESULTS]
+            rets = [_f(r.get("returnPct") or r.get("realized_return_pct") or r.get("return_pct", ""))
+                    for r in exec_rows if r.get("returnPct") or r.get("realized_return_pct") or r.get("return_pct")]
+            rets = [v for v in rets if not math.isnan(v)]
+
+            mode_exec  += len(exec_rows)
+            mode_win   += len(win_rows)
+            mode_loss  += len(loss_rows)
+            mode_rets  += rets
+
+            wr = round(len(win_rows) / len(exec_rows) * 100, 1) if exec_rows else None
+            by_mode.setdefault(m, {})[f"{h}_win_rate"]   = wr
+            by_mode[m][f"{h}_avg_return"] = round(_mean(rets), 2) if rets else None
+            by_mode[m][f"{h}_count"]      = len(exec_rows)
+
+        total_exec += mode_exec
+        total_win  += mode_win
+        total_loss += mode_loss
+
+        # 레거시 호환 필드 (dashboard용)
+        by_mode[m]["swing_win_rate"]   = by_mode[m].get("swing_win_rate")
+        by_mode[m]["swing_avg_return"] = by_mode[m].get("swing_avg_return")
+        by_mode[m]["swing_count"]      = by_mode[m].get("swing_count", 0)
+
+    # 레거시 virtual_operation_evaluation 기반 총계도 병합
+    legacy = _read(HIST / "virtual_operation_evaluation.csv")
+    total_legacy = len(legacy)
+    pending_legacy = sum(1 for r in legacy
+                         if str(r.get("execution_status") or "").strip() in {"대기", "체결 판단 불가"})
 
     return {
-        "total_records": total,
-        "evaluated": evaluated,
-        "pending": total - evaluated,
-        "eval_rate_pct": round(evaluated / total * 100, 1) if total else 0,
-        "by_mode": stats,
+        "total_records":   total_legacy,
+        "evaluated":       total_legacy - pending_legacy,
+        "pending":         pending_legacy,
+        "eval_rate_pct":   round((total_legacy - pending_legacy) / total_legacy * 100, 1) if total_legacy else 0,
+        "dated_exec":      total_exec,
+        "dated_wins":      total_win,
+        "dated_losses":    total_loss,
+        "overall_win_rate": round(total_win / total_exec * 100, 1) if total_exec else None,
+        "by_mode":         by_mode,
     }
 
 
