@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info } from "lucide-react";
+import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info, Calculator } from "lucide-react";
 import { mone, type Horizon, type Mode } from "@/lib/api";
 import {
   dedupeBySymbol,
@@ -219,6 +219,192 @@ function WatchCard({ item, onSelect }: { item: any; onSelect: (item: any) => voi
       </div>
       <TagChips item={item} />
     </div>
+  );
+}
+
+// ── 포지션 사이징 ──────────────────────────────────────────────────────────────
+
+const MODE_CAPS: Record<string, number> = {
+  conservative: 0.05,   // 최대 5%
+  balanced:     0.10,   // 최대 10%
+  aggressive:   0.15,   // 최대 15%
+};
+
+interface SizingRow {
+  symbol:   string;
+  name:     string;
+  mode:     string;
+  horizon:  string;
+  entry:    number;
+  prob:     number;      // 0~1
+  rr:       number;
+  kelly:    number;      // full kelly fraction
+  halfKelly: number;     // capped half kelly
+  amount:   number;      // 원화 금액
+  qty:      number;
+  ev:       number;
+}
+
+function calcSizing(items: any[], capital: number): SizingRow[] {
+  const seen = new Set<string>();
+  return items
+    .filter((i) => i.decisionBucket === "오늘 진입")
+    .flatMap((i) => {
+      const key = `${i.symbol}-${i._mode}-${i._horizon}`;
+      if (seen.has(key)) return [];
+      seen.add(key);
+
+      const entry = Number(i.entry || i.entryPrice || 0);
+      const prob  = Math.min(Math.max(Number(i.probability || 55) / 100, 0.3), 0.8);
+      const rr    = Math.max(Number(i.rrActual || i.rr || 1.5), 0.5);
+      const mode  = String(i._mode || i.mode || "balanced");
+      if (entry <= 0 || capital <= 0) return [];
+
+      const kelly    = Math.max(0, prob - (1 - prob) / rr);
+      const cap      = MODE_CAPS[mode] ?? 0.10;
+      const halfKelly = Math.min(kelly / 2, cap);
+      const amount   = Math.floor(capital * halfKelly);
+      const qty      = Math.floor(amount / entry);
+
+      return [{
+        symbol: String(i.symbol || ""),
+        name:   String(i.name || i.companyName || i.symbol || ""),
+        mode,
+        horizon: String(i._horizon || i.horizon || ""),
+        entry,
+        prob,
+        rr,
+        kelly,
+        halfKelly,
+        amount: qty * entry,
+        qty,
+        ev: Number(i.expectedValue || 0),
+      }];
+    })
+    .sort((a, b) => b.halfKelly - a.halfKelly);
+}
+
+function PositionSizingSection({
+  items,
+  capital,
+  setCapital,
+}: {
+  items: any[];
+  capital: number;
+  setCapital: (v: number) => void;
+}) {
+  const [inputVal, setInputVal] = useState(capital > 0 ? String(capital) : "");
+
+  function handleCapitalChange(raw: string) {
+    const clean = raw.replace(/[^0-9]/g, "");
+    setInputVal(clean);
+    const n = Number(clean);
+    if (n >= 100_000) {
+      setCapital(n);
+      if (typeof window !== "undefined") window.localStorage.setItem("mone:capital", String(n));
+    }
+  }
+
+  const rows = useMemo(() => calcSizing(items, capital), [items, capital]);
+  const totalAllocated = rows.reduce((s, r) => s + r.amount, 0);
+  const allocPct = capital > 0 ? (totalAllocated / capital) * 100 : 0;
+  const remaining = capital - totalAllocated;
+
+  if (rows.length === 0 && capital <= 0) return null;
+
+  return (
+    <section className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-5">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Calculator size={18} className="text-violet-400 shrink-0" />
+        <div className="flex-1">
+          <h2 className="text-base font-semibold text-slate-100">포지션 사이징</h2>
+          <p className="text-xs text-slate-500">Half-Kelly 공식으로 종목별 적정 투자금을 계산합니다.</p>
+        </div>
+        {/* 자본 입력 */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">총 자본</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="예: 10000000"
+            value={inputVal ? Number(inputVal).toLocaleString() : ""}
+            onChange={(e) => handleCapitalChange(e.target.value.replace(/,/g, ""))}
+            className="w-36 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-right font-mono text-sm text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+          />
+          <span className="text-xs text-slate-500">원</span>
+        </div>
+      </div>
+
+      {capital <= 0 ? (
+        <div className="py-6 text-center text-sm text-slate-500">총 자본을 입력하면 종목별 권장 수량과 금액을 계산합니다.</div>
+      ) : rows.length === 0 ? (
+        <div className="py-6 text-center text-sm text-slate-500">오늘 진입 후보가 없습니다.</div>
+      ) : (
+        <>
+          {/* 포트폴리오 요약 바 */}
+          <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+            <div className="mb-2 flex justify-between text-[11px] text-slate-400">
+              <span>총 배분: <span className="font-mono text-slate-200">{totalAllocated.toLocaleString()}원</span> ({allocPct.toFixed(1)}%)</span>
+              <span>잔여 현금: <span className={`font-mono ${remaining >= 0 ? "text-emerald-300" : "text-red-300"}`}>{remaining.toLocaleString()}원</span></span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+              <div
+                className={`h-2 rounded-full transition-all ${allocPct > 90 ? "bg-red-500" : allocPct > 60 ? "bg-amber-500" : "bg-violet-500"}`}
+                style={{ width: `${Math.min(100, allocPct)}%` }}
+              />
+            </div>
+            <div className="mt-1.5 flex gap-3 text-[10px] text-slate-500">
+              <span>{rows.length}개 종목</span>
+              <span>포트폴리오 노출 {allocPct.toFixed(1)}%</span>
+              {allocPct > 80 && <span className="text-amber-400">⚠ 집중도 높음 — 분산 권장</span>}
+            </div>
+          </div>
+
+          {/* 종목별 테이블 */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-500">
+                  <th className="pb-2 text-left font-medium">종목</th>
+                  <th className="pb-2 text-left font-medium">전략</th>
+                  <th className="pb-2 text-right font-medium">승률</th>
+                  <th className="pb-2 text-right font-medium">RR</th>
+                  <th className="pb-2 text-right font-medium">½Kelly</th>
+                  <th className="pb-2 text-right font-medium">금액</th>
+                  <th className="pb-2 text-right font-medium">수량</th>
+                  <th className="pb-2 text-right font-medium">EV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={`${r.symbol}-${r.mode}-${r.horizon}`} className="border-b border-slate-900 hover:bg-slate-900/40">
+                    <td className="py-2 pr-3">
+                      <div className="font-medium text-slate-200">{r.name}</div>
+                      <div className="text-slate-500">{r.symbol}</div>
+                    </td>
+                    <td className="py-2 pr-3 text-slate-400">
+                      {modeLabel(r.mode as Mode)}<span className="text-slate-600"> · </span>{horizonLabel(r.horizon as Horizon)}
+                    </td>
+                    <td className="py-2 pr-3 text-right font-mono text-slate-300">{(r.prob * 100).toFixed(0)}%</td>
+                    <td className="py-2 pr-3 text-right font-mono text-slate-300">{r.rr.toFixed(1)}</td>
+                    <td className="py-2 pr-3 text-right font-mono text-violet-300">{(r.halfKelly * 100).toFixed(1)}%</td>
+                    <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.amount.toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.qty > 0 ? `${r.qty}주` : "—"}</td>
+                    <td className={`py-2 text-right font-mono ${r.ev >= 2 ? "text-emerald-300" : r.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
+                      {r.ev >= 0 ? "+" : ""}{r.ev.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-3 text-[10px] text-slate-600">
+            Half-Kelly = min(max(0, p − (1−p)/RR) ÷ 2, 전략한도)  ·  보수형 최대 5% / 균형형 10% / 공격형 15%  ·  참고용이며 자동주문은 지원하지 않습니다.
+          </p>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -485,6 +671,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [capital, setCapital] = useState<number>(0);
   const [clientReady, setClientReady] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
   const sessionClock = clock || new Date();
@@ -536,6 +723,8 @@ export default function HomePage() {
     setClientReady(true);
     const saved = window.localStorage.getItem("mone:selectedMarketMode");
     if (saved === "kr" || saved === "us" || saved === "auto") setMarketChoice(saved);
+    const savedCapital = Number(window.localStorage.getItem("mone:capital") || 0);
+    if (savedCapital >= 100_000) setCapital(savedCapital);
     const refreshClock = () => setClock(new Date());
     refreshClock();
     const timer = window.setInterval(refreshClock, 60_000);
@@ -743,6 +932,9 @@ export default function HomePage() {
           </div>
         )}
       </section>
+
+      {/* ━━ 포지션 사이징 ━━ */}
+      {!loading && <PositionSizingSection items={allItems} capital={capital} setCapital={setCapital} />}
 
       {/* ━━ 대기 관찰 후보 ━━ */}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
