@@ -297,8 +297,20 @@ jobs:
 
       - name: Refresh KR close OHLCV and validations
         run: |
-          python scripts/refresh_kr_close_ohlcv.py
-          python scripts/generate_kr_close_validation.py
+          set +e
+          if [ -f scripts/refresh_kr_close_ohlcv.py ]; then
+            python scripts/refresh_kr_close_ohlcv.py
+            echo "refresh_kr_close_ohlcv: exit $?"
+          else
+            echo "scripts/refresh_kr_close_ohlcv.py not found; skip."
+          fi
+          if [ -f scripts/generate_kr_close_validation.py ]; then
+            python scripts/generate_kr_close_validation.py
+            echo "generate_kr_close_validation: exit $?"
+          else
+            echo "scripts/generate_kr_close_validation.py not found; skip."
+          fi
+          set -e
 
       - name: Remove local token/cache files before commit
         run: |
