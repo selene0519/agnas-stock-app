@@ -48,12 +48,6 @@ function getMarketSessionStatus(market: "kr" | "us", now = new Date()) {
   return "마감 후";
 }
 
-function marketChoiceInitial(): MarketChoice {
-  if (typeof window === "undefined") return "auto";
-  const saved = window.localStorage.getItem("mone:selectedMarketMode");
-  return saved === "kr" || saved === "us" || saved === "auto" ? saved : "auto";
-}
-
 // ── 점수 바
 function ScoreBar({ label, value, color = "bg-emerald-500" }: { label: string; value: number | null | undefined; color?: string }) {
   if (value == null) return null;
@@ -242,9 +236,13 @@ export default function HomePage() {
   const [summary, setSummary] = useState<any>(null);
   const [marketRegime, setMarketRegime] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [marketChoice, setMarketChoice] = useState<MarketChoice>(marketChoiceInitial);
-  const selectedMarket = marketChoice === "auto" ? getDefaultMarketBySession() : marketChoice;
-  const sessionStatus = getMarketSessionStatus(selectedMarket);
+  const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
+  const [clientReady, setClientReady] = useState(false);
+  const [clock, setClock] = useState<Date | null>(null);
+  const sessionClock = clock || new Date();
+  const selectedMarket = marketChoice === "auto" ? (clientReady ? getDefaultMarketBySession(sessionClock) : "kr") : marketChoice;
+  const sessionStatus = clientReady ? getMarketSessionStatus(selectedMarket, sessionClock) : "확인 중";
+  const marketChoiceLabel = clientReady && marketChoice !== "auto" ? "수동" : "자동";
 
   function updateMarketChoice(next: MarketChoice) {
     setMarketChoice(next);
@@ -253,6 +251,8 @@ export default function HomePage() {
 
   async function load() {
     setLoading(true);
+    setMarketRegime(null);
+    let nextMarketRegime: any = null;
     try {
       // 9개 조합 전부 로드
       const matrixRequests = MODES.flatMap((mode) =>
@@ -261,7 +261,7 @@ export default function HomePage() {
           const items = dedupeBySymbol(Array.isArray(result.items) ? result.items : [])
             .slice(0, 5)
             .map((item: any) => ({ ...item, _mode: mode, _horizon: horizon }));
-          if (result.marketRegime?.regime && !marketRegime) setMarketRegime(result.marketRegime);
+          if (result.marketRegime?.regime && !nextMarketRegime) nextMarketRegime = result.marketRegime;
           return { mode, horizon, items, count: Number(result.count || items.length || 0), status: String(result.status || "OK") } satisfies StrategyCell;
         })
       );
@@ -274,6 +274,7 @@ export default function HomePage() {
       setHoldings(dedupeBySymbol(Array.isArray(h.items) ? h.items : []));
       setSummary(h.summary || null);
       setMatrix(matrixResult);
+      setMarketRegime(nextMarketRegime);
 
       // 전체 후보 통합 (중복 제거 — 같은 종목이 여러 조합에 있을 수 있음)
       const all = matrixResult.flatMap((cell) => cell.items);
@@ -285,7 +286,19 @@ export default function HomePage() {
     }
   }
 
-  useEffect(() => { load(); }, [selectedMarket]);
+  useEffect(() => {
+    setClientReady(true);
+    const saved = window.localStorage.getItem("mone:selectedMarketMode");
+    if (saved === "kr" || saved === "us" || saved === "auto") setMarketChoice(saved);
+    const refreshClock = () => setClock(new Date());
+    refreshClock();
+    const timer = window.setInterval(refreshClock, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (clientReady) load();
+  }, [clientReady, selectedMarket]);
 
   // ── 오늘 진입 후보: EV 높은 순, 종목 중복 제거
   const todayEntries = useMemo(() => {
@@ -332,7 +345,7 @@ export default function HomePage() {
         <div>
           <h1 className="text-xl font-bold text-slate-100">시장 홈</h1>
           <p className="text-xs text-slate-500">
-            {marketChoice === "auto" ? "자동" : "수동"}: <span className="text-slate-300">{selectedMarket === "kr" ? "국장" : "미장"}</span>
+            {marketChoiceLabel}: <span className="text-slate-300">{selectedMarket === "kr" ? "국장" : "미장"}</span>
             {" · "}{sessionStatus}
           </p>
         </div>
