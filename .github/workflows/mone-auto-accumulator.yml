@@ -353,6 +353,31 @@ jobs:
           fi
           set -e
 
+      - name: Fetch benchmark index data (weekly on Monday)
+        run: |
+          set +e
+          DAY=$(date +%u)
+          if [ "$DAY" = "1" ] && [ -f scripts/fetch_benchmark_data.py ]; then
+            python scripts/fetch_benchmark_data.py
+            echo "fetch_benchmark_data: exit $?"
+          else
+            echo "Not Monday — skip benchmark fetch."
+          fi
+          set -e
+
+      - name: Settle pending validations and update win rates
+        run: |
+          set +e
+          if [ -f scripts/settle_pending_validations.py ]; then
+            python scripts/settle_pending_validations.py
+            echo "settle_pending_validations: exit $?"
+          fi
+          if [ -f scripts/analyze_history.py ]; then
+            python scripts/analyze_history.py
+            echo "analyze_history: exit $?"
+          fi
+          set -e
+
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true

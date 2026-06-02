@@ -130,6 +130,8 @@ export default function HoldingsPage() {
   const [loading, setLoading] = useState(false);
   const [editKey, setEditKey] = useState<string | null>(null);
   const [sectorData, setSectorData] = useState<any>(null);
+  const [benchmarkData, setBenchmarkData] = useState<any>(null);
+  const [corrData, setCorrData] = useState<any>(null);
   const [editDraft, setEditDraft] = useState<EditableHolding | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [editMessage, setEditMessage] = useState("");
@@ -138,12 +140,16 @@ export default function HoldingsPage() {
     setLoading(true);
     try {
       const m = market === "all" ? "kr" : market;
-      const [result, sector] = await Promise.all([
+      const [result, sector, bench, corr] = await Promise.all([
         getJson(`/api/holdings-clean?market=${market}&limit=500`),
         getJson(`/api/risk/sector-exposure?market=${m}`).catch(() => null),
+        getJson(`/api/risk/benchmark?market=${m}`).catch(() => null),
+        getJson(`/api/risk/correlation?market=${m}&days=60`).catch(() => null),
       ]);
       setData(result);
       setSectorData(sector);
+      setBenchmarkData(bench);
+      setCorrData(corr);
     } catch (error) {
       setData({ status: "ERROR", error: String(error), items: [], summary: {} });
     } finally {
@@ -275,6 +281,85 @@ export default function HoldingsPage() {
 
       {data.error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">{data.error}</div>}
       {editMessage && <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">{editMessage}</div>}
+
+      {/* 벤치마크 비교 */}
+      {benchmarkData && benchmarkData.status === "OK" && Array.isArray(benchmarkData.items) && benchmarkData.items.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">벤치마크 비교 ({benchmarkData.benchmark})</h2>
+              <p className="text-xs text-slate-500">{benchmarkData.benchmarkLatestDate} 기준 · 보유종목 vs 지수</p>
+            </div>
+            <div className="text-right">
+              <div className={`font-mono text-lg font-bold ${benchmarkData.totalPortfolioReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                포트폴리오 {benchmarkData.totalPortfolioReturn >= 0 ? "+" : ""}{benchmarkData.totalPortfolioReturn?.toFixed(1)}%
+              </div>
+              <div className="text-xs text-slate-500">지수 초과 {benchmarkData.beatingBenchmark}/{benchmarkData.totalItems}종목</div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-500">
+                  <th className="pb-2 text-left">종목</th>
+                  <th className="pb-2 text-right">내 수익률</th>
+                  <th className="pb-2 text-right">{benchmarkData.benchmark}</th>
+                  <th className="pb-2 text-right">알파 (초과)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {benchmarkData.items.map((item: any) => (
+                  <tr key={item.symbol} className="border-b border-slate-900">
+                    <td className="py-1.5 pr-3">
+                      <div className="font-medium text-slate-200">{item.name}</div>
+                      <div className="text-slate-500">{item.symbol}</div>
+                    </td>
+                    <td className={`py-1.5 pr-3 text-right font-mono ${item.portfolioReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                      {item.portfolioReturn >= 0 ? "+" : ""}{item.portfolioReturn?.toFixed(1)}%
+                    </td>
+                    <td className={`py-1.5 pr-3 text-right font-mono ${(item.benchmarkReturn ?? 0) >= 0 ? "text-slate-300" : "text-slate-400"}`}>
+                      {item.benchmarkReturn != null ? `${item.benchmarkReturn >= 0 ? "+" : ""}${item.benchmarkReturn.toFixed(1)}%` : "—"}
+                    </td>
+                    <td className={`py-1.5 text-right font-mono font-semibold ${(item.alpha ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {item.alpha != null ? `${item.alpha >= 0 ? "+" : ""}${item.alpha.toFixed(1)}%` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 상관관계 분석 */}
+      {corrData && corrData.status === "OK" && Array.isArray(corrData.matrix) && corrData.matrix.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-100">종목 간 상관관계 (60일)</h2>
+            {corrData.warning && <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">⚠ 높은 상관 쌍 있음</span>}
+          </div>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {corrData.matrix.slice(0, 15).map((pair: any) => (
+              <div key={`${pair.sym1}-${pair.sym2}`} className="flex items-center justify-between rounded-lg px-3 py-1.5 text-[11px] bg-slate-950/50">
+                <span className="text-slate-300">{pair.name1} <span className="text-slate-500">vs</span> {pair.name2}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-20 overflow-hidden rounded-full bg-slate-800">
+                    <div className={`h-1.5 rounded-full ${Math.abs(pair.corr) >= 0.7 ? "bg-red-500" : Math.abs(pair.corr) >= 0.4 ? "bg-amber-500" : "bg-emerald-500"}`}
+                      style={{ width: `${Math.abs(pair.corr) * 100}%` }} />
+                  </div>
+                  <span className={`w-12 text-right font-mono ${Math.abs(pair.corr) >= 0.7 ? "text-red-300" : Math.abs(pair.corr) >= 0.4 ? "text-amber-300" : "text-emerald-300"}`}>
+                    {pair.corr > 0 ? "+" : ""}{pair.corr.toFixed(2)}
+                  </span>
+                  <span className="text-slate-500">{pair.level}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {corrData.highCorrelationPairs?.length > 0 && (
+            <p className="mt-2 text-[10px] text-amber-400">상관계수 0.7 이상 쌍: {corrData.highCorrelationPairs.length}개 — 동일 방향 리스크 집중 가능성</p>
+          )}
+        </div>
+      )}
 
       {/* 리스크 히트맵 */}
       {sectorData && Array.isArray(sectorData.sectors) && sectorData.sectors.length > 0 && (

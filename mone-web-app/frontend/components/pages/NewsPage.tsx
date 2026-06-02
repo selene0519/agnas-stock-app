@@ -6,7 +6,7 @@ import { mone, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { displayName, statusBadge } from "@/lib/moneDisplay";
 
-type Tab = "news" | "disclosures" | "company";
+type Tab = "news" | "disclosures" | "company" | "calendar";
 
 function fmtNum(value: any, suffix = "") {
   const n = Number(value);
@@ -52,10 +52,22 @@ export default function NewsPage() {
   const [tab, setTab] = useState<Tab>("company");
   const [query, setQuery] = useState("");
   const [data, setData] = useState<any>({ items: [] });
+  const [calendarData, setCalendarData] = useState<any>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (tab === "calendar") {
+      setLoading(true);
+      mone.disclosureCalendar({ market, days: 30 })
+        .then((r) => setCalendarData(r))
+        .catch(() => setCalendarData(null))
+        .finally(() => setLoading(false));
+    }
+  }, [tab, market]);
+
   async function load() {
+    if (tab === "calendar") return;
     setLoading(true);
     try {
       const loader =
@@ -111,9 +123,9 @@ export default function NewsPage() {
             {marketLabel(item)}
           </button>
         ))}
-        {(["news", "disclosures", "company"] as Tab[]).map((item) => (
+        {(["news", "disclosures", "company", "calendar"] as Tab[]).map((item) => (
           <button key={item} onClick={() => setTab(item)} className={`rounded-xl px-4 py-2 text-sm ${tab === item ? "bg-emerald-600 text-white" : "bg-slate-900 text-slate-400"}`}>
-            {item === "news" ? "뉴스 요약" : item === "disclosures" ? "공시" : "기업분석"}
+            {item === "news" ? "뉴스 요약" : item === "disclosures" ? "공시" : item === "calendar" ? "공시 캘린더" : "기업분석"}
           </button>
         ))}
       </div>
@@ -172,6 +184,50 @@ export default function NewsPage() {
           )}
         </div>
       </div>
+
+      {/* ── 공시 캘린더 탭 */}
+      {tab === "calendar" && (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="py-12 text-center text-slate-500">불러오는 중...</div>
+          ) : !calendarData || calendarData.status === "NO_DATA" ? (
+            <div className="rounded-2xl border border-dashed border-slate-700 py-12 text-center text-slate-500">
+              공시 데이터가 없습니다. DART API 수집 후 다시 확인하세요.
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 text-xs text-slate-500">
+                <span>총 {calendarData.totalDisclosures}건</span>
+                {calendarData.watchedCount > 0 && <span className="text-amber-300">관심/보유 종목 {calendarData.watchedCount}건 포함</span>}
+                <span>{calendarData.fromDate} ~ {calendarData.toDate}</span>
+              </div>
+              {(calendarData.calendar || []).map((day: any) => (
+                <div key={day.date} className={`rounded-2xl border p-4 ${day.isToday ? "border-blue-600/50 bg-blue-950/20" : day.isPast ? "border-slate-800 opacity-60" : "border-slate-700"}`}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`font-semibold ${day.isToday ? "text-blue-300" : "text-slate-200"}`}>
+                      {day.date}{day.isToday && " (오늘)"}
+                    </span>
+                    <span className="text-xs text-slate-500">{day.count}건</span>
+                    {day.watched > 0 && <span className="rounded-full bg-amber-700/40 px-2 py-0.5 text-[10px] text-amber-300">관심 {day.watched}</span>}
+                  </div>
+                  <div className="space-y-1.5">
+                    {day.items.map((item: any, idx: number) => (
+                      <div key={idx} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-[11px] ${item.inWatchlist ? "bg-amber-950/30 border border-amber-800/30" : "bg-slate-950/50"}`}>
+                        <div>
+                          <span className={`font-medium ${item.inWatchlist ? "text-amber-200" : "text-slate-300"}`}>{item.name || item.symbol}</span>
+                          <span className="ml-1.5 text-slate-500">{item.symbol}</span>
+                          {item.kind !== "기타" && <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] ${item.kind === "실적" ? "bg-emerald-900/50 text-emerald-300" : item.kind === "주요공시" ? "bg-red-900/50 text-red-300" : "bg-slate-800 text-slate-400"}`}>{item.kind}</span>}
+                        </div>
+                        <span className="max-w-[200px] truncate text-slate-400">{item.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

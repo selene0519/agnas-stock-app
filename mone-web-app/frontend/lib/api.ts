@@ -147,6 +147,18 @@ export const mone = {
     apiGet<ApiList>("/api/home/summary", p),
   watchlistScored: (p?: { market?: Market; mode?: string; horizon?: string }) =>
     apiGet<ApiList>("/api/watchlist/scored", p),
+  sectorsList: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/sectors", p),
+  disclosureCalendar: (p?: { market?: Market; days?: number }) =>
+    apiGet<ApiList>("/api/disclosure-calendar", p),
+  watchlistGroups: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/watchlist/groups", p),
+  watchlistSetGroup: (body: { market?: string; symbol: string; group: string }) =>
+    apiPost<ApiList>("/api/watchlist/set-group", body),
+  correlationMatrix: (p?: { market?: Market; days?: number }) =>
+    apiGet<ApiList>("/api/risk/correlation", p),
+  benchmarkComparison: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/risk/benchmark", p),
   validationDashboard: (p?: { market?: Market }) =>
     apiGet<ApiList>("/api/validation/dashboard", p),
   sectorExposure: (p?: { market?: Market }) =>
