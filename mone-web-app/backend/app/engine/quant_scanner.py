@@ -802,6 +802,8 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         "quantReason": result.get("reason", ""),
         "riskFlags": result.get("riskFlags", []),
         "technicalSignals": result.get("technicalSignals", []),
+        "maConvergence": result.get("maConvergence", False),
+        "evNegative": result.get("evNegative", False),
         "indicators": result.get("indicators", {}),
         "computedFields": computed,
     }
@@ -852,7 +854,16 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         probability = max(35.0, min(80.0, round(base_prob + adjustment, 1)))
         out["probability"] = probability
         out["probabilityText"] = f"{probability:.1f}%"
-        out["dataStatus"] = "NORMAL" if out.get("dataStatus") == "NORMAL" and result.get("dataStatus") == "NORMAL" else "PARTIAL"
+        # 가격 데이터 상태: 두 소스 중 더 좋은 것을 반영
+        # PRICE_PENDING > PARTIAL > NORMAL 순으로 품질
+        prior_status = out.get("dataStatus", "PARTIAL")
+        quant_status = result.get("dataStatus", "PARTIAL")
+        if prior_status == "PRICE_PENDING" or quant_status == "PRICE_PENDING":
+            out["dataStatus"] = "PRICE_PENDING"
+        elif prior_status == "NORMAL" or quant_status == "NORMAL":
+            out["dataStatus"] = "NORMAL"  # 어느 하나라도 NORMAL이면 NORMAL
+        else:
+            out["dataStatus"] = "PARTIAL"
 
         # EV 기반 추천 적합성 등급
         ev = result.get("expectedValue")
@@ -936,7 +947,8 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
             tags.insert(0, "UNDERVALUED_GROWTH")
     else:
         out["financialDataMessage"] = "재무 데이터 보강 필요"
-    if out.get("priceDataStatus") == "PARTIAL" or out.get("dataStatus") in {"PARTIAL", "PRICE_PENDING", "DATA_PENDING"}:
+    # PRICE_PENDING/DATA_PENDING만 CAUTION 추가 (PARTIAL은 KIS 미연결 종목일 뿐, 과도한 CAUTION 방지)
+    if out.get("dataStatus") in {"PRICE_PENDING", "DATA_PENDING"}:
         if "CAUTION" not in tags:
             tags.append("CAUTION")
 
@@ -959,17 +971,30 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     out["candidateType"] = primary
     out["candidateTypeLabel"] = label
 
-    caution_reasons = []
+    # tradeBlockStatus: 실제 매수 주의가 필요한 조건만 (재무데이터 부족은 정보 표시용, 매수차단 아님)
+    block_reasons = []
+    info_reasons = []
     if "CAUTION" in tags:
-        caution_reasons.append("데이터 또는 과열 조건 확인 필요")
+        block_reasons.append("과열·데이터 조건 확인 필요")
     if out.get("quantDataStatus") in {"PRICE_PENDING", "DATA_PENDING"}:
-        caution_reasons.append(str(out.get("quantReason") or out.get("quantDataStatus")))
-    if out.get("financialDataStatus") == "DATA_PENDING":
-        caution_reasons.append(str(out.get("financialDataMessage") or "재무 데이터 보강 필요"))
+        block_reasons.append(str(out.get("quantReason") or out.get("quantDataStatus")))
     if out.get("riskFlags"):
-        caution_reasons.extend([str(flag) for flag in out.get("riskFlags", [])])
+        risk_flag_labels = {
+            "RSI_OVERHEATED": "RSI 과열(80+)",
+            "BOLLINGER_UPPER_BREAK": "볼린저 상단 돌파",
+            "FIVE_DAY_UP_STREAK": "5일 연속 상승 후 거래량 감소",
+            "GAP_UP_15PCT": "갭상승 15%+ 추격금지",
+            "EV_NEGATIVE": "EV(기댓값) 음수",
+        }
+        for flag in out.get("riskFlags", []):
+            block_reasons.append(risk_flag_labels.get(str(flag), str(flag)))
+    # 가격 밴드 경고는 참고용 (매수 차단 아님, 전략별 조정으로 인한 정상 범위 이탈)
     if band_warnings:
-        caution_reasons.extend(band_warnings)
-    out["cautionReasons"] = caution_reasons
-    out["tradeBlockStatus"] = "CAUTION" if caution_reasons else "OK"
+        info_reasons.extend(band_warnings)
+    # 재무 데이터 부족은 정보 표시용 (매수 차단 아님)
+    if out.get("financialDataStatus") == "DATA_PENDING":
+        info_reasons.append(str(out.get("financialDataMessage") or "재무 데이터 보강 필요"))
+    out["cautionReasons"] = block_reasons
+    out["infoReasons"] = info_reasons
+    out["tradeBlockStatus"] = "CAUTION" if block_reasons else "OK"
     return out

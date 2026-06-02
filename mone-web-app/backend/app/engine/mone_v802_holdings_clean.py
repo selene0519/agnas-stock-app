@@ -528,4 +528,4 @@ def _price_files(market: str) -> List[Path]:
 def _ohlcv_ref(symbol: str, market: str) -> Dict[str, Any]:
     # holdings-clean should not scan OHLCV folders for every holding.
     # Chart page can use the dedicated OHLCV API instead.
-    return {}
+    return {"latest": 0.0, "prev": 0.0, "source": "", "date": ""}
