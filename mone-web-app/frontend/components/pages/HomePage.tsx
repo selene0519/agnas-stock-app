@@ -546,6 +546,48 @@ export default function HomePage() {
     if (clientReady) load();
   }, [clientReady, selectedMarket]);
 
+  // ── 브라우저 알림: 장중 진입 임박 종목 감지 (1분 주기)
+  useEffect(() => {
+    if (!clientReady) return;
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+
+    const notifiedKeys = new Set<string>();
+
+    function checkAndNotify() {
+      const phase = getMarketSessionStatus(selectedMarket, new Date()) as SessionPhase;
+      if (phase !== "장중") return;                    // 장중에만 작동
+      if (Notification.permission !== "granted") return;
+
+      allItems
+        .filter((i) => i.decisionBucket === "오늘 진입")
+        .forEach((item) => {
+          const key = `${item.symbol}-${item._mode}-${item._horizon}`;
+          if (notifiedKeys.has(key)) return;
+
+          const current = Number(item.currentPrice || 0);
+          const entry   = Number(item.entry || 0);
+          if (current <= 0 || entry <= 0) return;
+
+          const gapPct = Math.abs((entry - current) / current * 100);
+          if (gapPct <= 2.0) {
+            notifiedKeys.add(key);
+            new Notification(`🎯 진입 임박 — ${item.name || item.symbol}`, {
+              body: `현재가 ${current.toLocaleString()}원  진입가 ${entry.toLocaleString()}원 (±${gapPct.toFixed(1)}%)`,
+              tag: key,
+            });
+          }
+        });
+    }
+
+    // 권한 요청 후 주기 체크
+    Notification.requestPermission().then((perm) => {
+      if (perm !== "granted") return;
+      checkAndNotify();
+      const id = window.setInterval(checkAndNotify, 60_000);
+      return () => window.clearInterval(id);
+    });
+  }, [clientReady, allItems, selectedMarket]);
+
   // ── 오늘 진입 후보: EV 높은 순, 종목 중복 제거
   const todayEntries = useMemo(() => {
     const seen = new Set<string>();

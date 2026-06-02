@@ -1,0 +1,160 @@
+name: MONE Entry Proximity Notifier
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 국장 장중 30분 주기: KST 09:00~15:30 → UTC 00:00~06:30
+    # UTC: 00:00, 00:30, 01:00, 01:30, 02:00, 02:30, 03:00, 03:30, 04:00, 04:30, 05:00, 05:30, 06:00
+    - cron: "0,30 0-6 * * 1-5"
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mone-notify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Asia/Seoul
+      PYTHONUTF8: "1"
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      ENTRY_PROXIMITY_PCT: "2.0"
+      KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+      KIS_APPKEY: ${{ secrets.KIS_APPKEY }}
+      KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+      KIS_APP_SECRET_KEY: ${{ secrets.KIS_APP_SECRET_KEY }}
+      KIS_SECRET: ${{ secrets.KIS_SECRET }}
+      KIS_ACCOUNT: ${{ secrets.KIS_ACCOUNT }}
+      KIS_ACCOUNT_NO: ${{ secrets.KIS_ACCOUNT_NO }}
+      KIS_CANO: ${{ secrets.KIS_CANO }}
+      KIS_ACNT_PRDT_CD: ${{ secrets.KIS_ACNT_PRDT_CD }}
+      KIS_IS_MOCK: ${{ secrets.KIS_IS_MOCK }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          else
+            python -m pip install pandas numpy requests python-dotenv
+          fi
+
+      - name: Check if market is open (KST 09:00~15:30)
+        id: market_check
+        run: |
+          HOUR=$(TZ=Asia/Seoul date +%H)
+          MIN=$(TZ=Asia/Seoul date +%M)
+          TOTAL=$((HOUR * 60 + MIN))
+          OPEN=$((9 * 60))
+          CLOSE=$((15 * 60 + 30))
+          if [ "$TOTAL" -ge "$OPEN" ] && [ "$TOTAL" -le "$CLOSE" ]; then
+            echo "open=true" >> $GITHUB_OUTPUT
+            echo "장중입니다 (KST $(TZ=Asia/Seoul date +%H:%M))"
+          else
+            echo "open=false" >> $GITHUB_OUTPUT
+            echo "장마감 시간입니다 (KST $(TZ=Asia/Seoul date +%H:%M)) — 알림 생략"
+          fi
+
+      - name: Refresh KIS live quotes
+        if: steps.market_check.outputs.open == 'true'
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+          STREAMLIT_APP_ENABLE_LIVE_API: "1"
+          MONE_ENABLE_LIVE_QUOTES: "1"
+        run: |
+          set +e
+          python - <<'PY'
+          import os, re
+          from pathlib import Path
+
+          def adopt_env(primary, *aliases):
+              if os.environ.get(primary): return
+              for a in aliases:
+                  v = os.environ.get(a)
+                  if v:
+                      os.environ[primary] = v; return
+
+          adopt_env("KIS_APP_KEY", "KIS_APPKEY")
+          adopt_env("KIS_APP_SECRET", "KIS_APP_SECRET_KEY", "KIS_SECRET")
+          adopt_env("KIS_ACCOUNT", "KIS_ACCOUNT_NO")
+          account = re.sub(r"\D", "", os.environ.get("KIS_ACCOUNT", ""))
+          if account and not os.environ.get("KIS_CANO") and len(account) >= 8:
+              os.environ["KIS_CANO"] = account[:8]
+          if account and not os.environ.get("KIS_ACNT_PRDT_CD") and len(account) >= 10:
+              os.environ["KIS_ACNT_PRDT_CD"] = account[8:10]
+
+          from app.services import quotes
+          repo = Path.cwd().parents[1]
+          targets = []
+
+          # 추천 종목에서 심볼 수집
+          import csv
+          for mode in ("conservative", "balanced", "aggressive"):
+              for horizon in ("short", "swing", "mid"):
+                  p = repo / "reports" / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
+                  if not p.exists(): continue
+                  for enc in ("utf-8-sig", "utf-8", "cp949"):
+                      try:
+                          with p.open("r", encoding=enc) as f:
+                              for row in csv.DictReader(f):
+                                  s = str(row.get("symbol") or "").strip()
+                                  if s and s not in targets:
+                                      targets.append(s)
+                          break
+                      except: continue
+
+          # 보유종목 심볼 추가
+          hpath = repo / "holdings_kr.csv"
+          if hpath.exists():
+              for enc in ("utf-8-sig", "utf-8", "cp949"):
+                  try:
+                      with hpath.open("r", encoding=enc) as f:
+                          for row in csv.DictReader(f):
+                              s = str(row.get("symbol") or "").strip()
+                              if s and s not in targets:
+                                  targets.append(s)
+                      break
+                  except: continue
+
+          print(f"현재가 수집 대상: {len(targets)}종목")
+          results = quotes.fetch_quotes_bulk("kr", targets[:80])
+          ok = sum(1 for r in results if r.get("ok"))
+          print(f"수집 완료: {ok}/{len(results)}")
+          PY
+          echo "KIS quote refresh: exit $?"
+
+      - name: Send entry proximity notifications
+        if: steps.market_check.outputs.open == 'true'
+        run: |
+          python scripts/notify_entry_proximity.py
+
+      - name: Save alert state
+        if: steps.market_check.outputs.open == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/notification_alert_state.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore: update notification alert state [skip ci]"
+          git push || true
