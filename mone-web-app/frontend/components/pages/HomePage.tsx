@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle } from "lucide-react";
+import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info } from "lucide-react";
 import { mone, type Horizon, type Mode } from "@/lib/api";
 import {
   dedupeBySymbol,
@@ -88,14 +88,14 @@ function TagChips({ item }: { item: any }) {
 }
 
 // ── 오늘 진입 카드 (상세)
-function TodayEntryCard({ item, rank }: { item: any; rank: number }) {
+function TodayEntryCard({ item, rank, onSelect }: { item: any; rank: number; onSelect: (item: any) => void }) {
   const ev = Number(item.expectedValue || 0);
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
   const horizon = String(item.horizon || item._horizon || "");
 
   return (
-    <div className="relative rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/30 to-slate-950 p-4">
+    <div onClick={() => onSelect(item)} className="relative cursor-pointer rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/30 to-slate-950 p-4 transition-colors hover:border-emerald-600/70 hover:bg-emerald-950/20">
       <div className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -151,7 +151,7 @@ function TodayEntryCard({ item, rank }: { item: any; rank: number }) {
 }
 
 // ── 대기 관찰 카드 (간결)
-function WatchCard({ item }: { item: any }) {
+function WatchCard({ item, onSelect }: { item: any; onSelect: (item: any) => void }) {
   const mode = String(item.mode || item._mode || "");
   const horizon = String(item.horizon || item._horizon || "");
   const timingLabel = String(item.timingLabel || "대기");
@@ -165,7 +165,7 @@ function WatchCard({ item }: { item: any }) {
     : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300";
 
   return (
-    <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-3">
+    <div onClick={() => onSelect(item)} className="cursor-pointer rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 transition-colors hover:border-amber-700/50 hover:bg-slate-900/80">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <span className="font-semibold text-slate-200">{displayName(item)}</span>
@@ -187,8 +187,219 @@ function WatchCard({ item }: { item: any }) {
   );
 }
 
+// ── 추천 근거 패널 (슬라이드오버)
+const SCORE_ITEMS = [
+  { key: "upsideScore",    label: "상승 여력",   color: "bg-emerald-500" },
+  { key: "riskScore",      label: "리스크 안정성", color: "bg-sky-500" },
+  { key: "momentumScore",  label: "모멘텀",       color: "bg-yellow-500" },
+  { key: "entryScore",     label: "진입 접근성",  color: "bg-cyan-500" },
+  { key: "rrScore",        label: "손익비",       color: "bg-violet-500" },
+  { key: "qualityScore",   label: "기업 안정성",  color: "bg-teal-500" },
+];
+
+const SUPPLY_LABEL: Record<string, string> = {
+  STRONG_BUY:    "기관+외국인 동시 매수",
+  INST_BUY:      "기관 매수 추정",
+  SELL_PRESSURE: "매도 압력 감지",
+  NEUTRAL:       "중립",
+};
+
+const RISK_FLAG_LABEL: Record<string, string> = {
+  RSI_OVERHEATED:        "RSI 80+ 과열",
+  BOLLINGER_UPPER_BREAK: "볼린저 상단 이탈",
+  FIVE_DAY_UP_STREAK:    "5일 연속 상승 후 거래량 감소",
+  GAP_UP_15PCT:          "갭상승 15%+ 추격금지",
+  EV_NEGATIVE:           "기댓값 음수",
+  NEWS_DISCLOSURE_RISK:  "공시/뉴스 리스크",
+};
+
+function WhyPanel({ item, onClose }: { item: any; onClose: () => void }) {
+  const mode    = String(item.mode || item._mode || "balanced") as Mode;
+  const horizon = String(item.horizon || item._horizon || "swing") as Horizon;
+  const ev      = Number(item.expectedValue ?? 0);
+  const rr      = Number(item.rrActual ?? 0);
+  const score   = Number(item.finalScore ?? 0);
+  const tags    = Array.isArray(item.strategyTags) ? item.strategyTags : [];
+  const riskFlags = Array.isArray(item.riskFlags) ? item.riskFlags : [];
+  const decisionBucket = String(item.decisionBucket || "관찰");
+  const decisionReason = String(item.decisionReason || "");
+  const supplySignal   = String(item.supplySignal || "NEUTRAL");
+  const maConv         = Boolean(item.maConvergence);
+  const cautionReasons = Array.isArray(item.cautionReasons) ? item.cautionReasons : [];
+
+  const bucketColor =
+    decisionBucket === "오늘 진입"  ? "bg-emerald-600 text-white"
+    : decisionBucket === "대기 관찰" ? "bg-amber-600 text-white"
+    : decisionBucket === "매수금지"  ? "bg-red-700 text-white"
+    : "bg-slate-700 text-slate-300";
+
+  // EV 근거 (백엔드 probability 필드 활용)
+  const prob = Number(item.probability ?? 0);
+  const evBase = prob > 0 ? prob / 100 : null;
+
+  return (
+    <>
+      {/* 배경 오버레이 */}
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+
+      {/* 패널 */}
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col overflow-y-auto bg-slate-950 shadow-2xl ring-1 ring-slate-800">
+        {/* 헤더 */}
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 px-5 py-4 backdrop-blur">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-slate-100">{displayName(item)}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${bucketColor}`}>{decisionBucket}</span>
+            </div>
+            <div className="mt-0.5 text-xs text-slate-500">
+              {item.symbol} · {modeLabel(mode)} · {horizonLabel(horizon)}
+              {decisionReason && <span className="ml-2 text-slate-400">{decisionReason}</span>}
+            </div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-5 px-5 py-5">
+          {/* 가격 그리드 */}
+          <div className="grid grid-cols-4 gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center text-[11px]">
+            {[
+              { label: "현재가", key: "current", color: "text-slate-200" },
+              { label: "진입가", key: "entry",   color: "text-sky-300" },
+              { label: "손절가", key: "stop",    color: "text-red-300" },
+              { label: "목표가", key: "target",  color: "text-emerald-300" },
+            ].map(({ label, key, color }) => (
+              <div key={key}>
+                <div className="text-slate-500">{label}</div>
+                <div className={`mt-1 font-mono font-semibold ${color}`}>{priceText(item, key as any, "—")}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* EV + RR 요약 */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-center">
+              <div className="text-[10px] text-slate-500">기댓값 EV</div>
+              <div className={`mt-1 text-lg font-bold font-mono ${ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
+                {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-center">
+              <div className="text-[10px] text-slate-500">손익비 RR</div>
+              <div className={`mt-1 text-lg font-bold font-mono ${rr >= 2 ? "text-emerald-300" : rr >= 1.5 ? "text-amber-300" : "text-red-300"}`}>
+                {rr > 0 ? rr.toFixed(1) : "—"}
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-center">
+              <div className="text-[10px] text-slate-500">종합 점수</div>
+              <div className={`mt-1 text-lg font-bold font-mono ${score >= 65 ? "text-emerald-300" : score >= 50 ? "text-amber-300" : "text-slate-400"}`}>
+                {score.toFixed(0)}점
+              </div>
+            </div>
+          </div>
+
+          {/* EV 계산 근거 */}
+          {evBase !== null && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-[11px]">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                <Info size={13} /> EV 계산 근거
+              </div>
+              <div className="space-y-1 font-mono text-slate-400">
+                <div>승률 <span className="text-emerald-400">{(evBase * 100).toFixed(0)}%</span>
+                  {" × "}목표 <span className="text-emerald-400">{priceText(item, "target", "—")}</span>
+                </div>
+                <div>패율 <span className="text-red-400">{((1 - evBase) * 100).toFixed(0)}%</span>
+                  {" × "}손절 <span className="text-red-400">{priceText(item, "stop", "—")}</span>
+                </div>
+                <div className={`border-t border-slate-700 pt-1 font-bold ${ev >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                  EV = {ev >= 0 ? "+" : ""}{ev.toFixed(2)}%
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 세부 점수 분해 */}
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+            <div className="mb-3 text-xs font-semibold text-slate-300">점수 분해</div>
+            <div className="space-y-2">
+              {SCORE_ITEMS.map(({ key, label, color }) => {
+                const val = Number((item as any)[key] ?? null);
+                if (isNaN(val)) return null;
+                return (
+                  <div key={key} className="flex items-center gap-2 text-[11px]">
+                    <span className="w-20 shrink-0 text-slate-400">{label}</span>
+                    <div className="flex-1 overflow-hidden rounded-full bg-slate-800">
+                      <div className={`h-1.5 rounded-full ${color} transition-all`} style={{ width: `${Math.max(0, Math.min(100, val))}%` }} />
+                    </div>
+                    <span className="w-8 text-right font-mono text-slate-300">{val.toFixed(0)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 전략 태그 */}
+          {tags.length > 0 && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+              <div className="mb-2 text-xs font-semibold text-slate-300">전략 태그</div>
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((tag: string) => (
+                  <span key={tag} className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                    tag === "CAUTION" ? "border-red-600/40 bg-red-600/10 text-red-300"
+                    : tag === "MA_CONVERGENCE" ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+                    : tag === "PULLBACK_BUY" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                    : tag === "MOMENTUM" ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
+                    : tag === "VOLUME_BREAKOUT" ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-300"
+                    : "border-slate-600 bg-slate-800 text-slate-300"
+                  }`}>
+                    {tag === "CAUTION" ? "⚠ 주의" : tag === "MA_CONVERGENCE" ? "이격도 수렴" : tag === "PULLBACK_BUY" ? "눌림목" : tag === "MOMENTUM" ? "모멘텀" : tag === "VOLUME_BREAKOUT" ? "거래량 증가" : tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* MA 수렴 신호 */}
+          {maConv && (
+            <div className="rounded-xl border border-cyan-800/40 bg-cyan-950/20 p-3 text-[11px] text-cyan-300">
+              이격도 수렴 — 5일/20일/60일선이 근접 구간에 있습니다. 변동성 확대 이전 진입 적기입니다.
+            </div>
+          )}
+
+          {/* 수급 신호 */}
+          {supplySignal !== "NEUTRAL" && (
+            <div className={`rounded-xl border p-3 text-[11px] ${
+              supplySignal === "STRONG_BUY" ? "border-blue-600/40 bg-blue-900/20 text-blue-300"
+              : supplySignal === "INST_BUY"  ? "border-sky-600/40 bg-sky-900/20 text-sky-300"
+              : "border-red-600/40 bg-red-900/20 text-red-300"
+            }`}>
+              수급 신호 — {SUPPLY_LABEL[supplySignal] ?? supplySignal}
+            </div>
+          )}
+
+          {/* 리스크 플래그 */}
+          {(riskFlags.length > 0 || cautionReasons.length > 0) && (
+            <div className="rounded-xl border border-red-800/40 bg-red-950/20 p-4">
+              <div className="mb-2 text-xs font-semibold text-red-400">주의사항</div>
+              <ul className="space-y-1 text-[11px] text-red-300">
+                {riskFlags.map((f: string) => (
+                  <li key={f}>• {RISK_FLAG_LABEL[f] ?? f}</li>
+                ))}
+                {cautionReasons.filter((r: string) => !riskFlags.some((f: string) => RISK_FLAG_LABEL[f] === r)).map((r: string) => (
+                  <li key={r}>• {r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── 3×3 매트릭스 셀 (간결 버전)
-function MatrixCell({ cell }: { cell: StrategyCell }) {
+function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: any) => void }) {
   const top = (cell.items || []).slice(0, 3);
   const todayIn = top.filter((i) => i.decisionBucket === "오늘 진입");
   const watching = top.filter((i) => i.decisionBucket === "대기 관찰");
@@ -208,7 +419,7 @@ function MatrixCell({ cell }: { cell: StrategyCell }) {
             const isWatch = item.decisionBucket === "대기 관찰";
             const ev = Number(item.expectedValue || 0);
             return (
-              <div key={item.symbol} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${
+              <div key={item.symbol} onClick={() => onSelect(item)} className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:brightness-125 ${
                 isToday ? "bg-emerald-950/40 border border-emerald-800/30" : isWatch ? "bg-slate-900/60" : "bg-slate-950/50 opacity-60"
               }`}>
                 <div className="min-w-0 flex-1">
@@ -237,6 +448,7 @@ export default function HomePage() {
   const [marketRegime, setMarketRegime] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
+  const [selectedItem, setSelectedItem] = useState<any>(null);
   const [clientReady, setClientReady] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
   const sessionClock = clock || new Date();
@@ -334,6 +546,9 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
+      {/* 추천 근거 패널 */}
+      {selectedItem && <WhyPanel item={selectedItem} onClose={() => setSelectedItem(null)} />}
+
       {/* 헤더 */}
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -407,7 +622,7 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {todayEntries.map((item, i) => (
-              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} />
+              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onSelect={setSelectedItem} />
             ))}
           </div>
         )}
@@ -432,7 +647,7 @@ export default function HomePage() {
         ) : (
           <div className="space-y-2">
             {watchItems.map((item) => (
-              <WatchCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} />
+              <WatchCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} onSelect={setSelectedItem} />
             ))}
           </div>
         )}
@@ -464,7 +679,7 @@ export default function HomePage() {
               </div>
               {HORIZONS.map((horizon) => {
                 const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
-                return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} />;
+                return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={setSelectedItem} />;
               })}
             </div>
           ))}
