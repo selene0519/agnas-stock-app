@@ -197,6 +197,7 @@ export default function StocksPage() {
   const [watchlist, setWatchlist] = useState<WatchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [watchSaving, setWatchSaving] = useState(false);
+  const [autoCurating, setAutoCurating] = useState(false);
   const [watchMessage, setWatchMessage] = useState("");
   const [holdingMessage, setHoldingMessage] = useState("");
   const [holdingSaving, setHoldingSaving] = useState(false);
@@ -352,6 +353,31 @@ export default function StocksPage() {
     }
   }
 
+  async function applySmartWatchlist() {
+    setAutoCurating(true);
+    setWatchMessage("");
+    try {
+      const targetMarket = market === "all" ? "all" : market;
+      const result = await mone.applyAutoWatchlist({ market: targetMarket, limitPerMarket: 12 });
+      if (result?.status === "ERROR") throw new Error(result.error || "자동 선별 실패");
+      const saved = Array.isArray(result.items)
+        ? result.items.map(normalizeWatch).filter((row) => row.symbol)
+        : [];
+      setWatchlist(saved);
+      await loadWatchlist();
+      setWatchOnly(true);
+      setRefreshVersion((value) => value + 1);
+      setWatchMessage(
+        `핵심 관심종목 자동선별 완료 · ${saved.length.toLocaleString("ko-KR")}개 (${result.policy || "추천 데이터 기준"})`,
+      );
+      window.dispatchEvent(new CustomEvent("mone-watchlist-updated"));
+    } catch (error) {
+      setWatchMessage(`자동선별 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setAutoCurating(false);
+    }
+  }
+
   async function addHoldingFromItem(item: any) {
     const itemMarket = cleanMarket(item.market || market || "kr");
     const clean = itemMarket === "all" ? "kr" : itemMarket;
@@ -485,6 +511,13 @@ export default function StocksPage() {
             className={`rounded-xl px-4 py-2 text-sm ${watchOnly ? "bg-amber-500 text-slate-950" : "bg-slate-950 text-slate-400"}`}
           >
             관심종목만 보기
+          </button>
+          <button
+            onClick={applySmartWatchlist}
+            disabled={autoCurating || watchSaving}
+            className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 disabled:opacity-50"
+          >
+            {autoCurating ? "핵심 선별 중..." : "핵심 관심 자동선별"}
           </button>
           <button
             onClick={refreshTargetQuotes}

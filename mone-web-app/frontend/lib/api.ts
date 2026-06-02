@@ -173,6 +173,10 @@ export const mone = {
     apiGet<ApiList>("/api/watchlist-edit", p),
   saveWatchlistEdit: (body: { items: any[] }) =>
     apiPost<ApiList>("/api/watchlist-edit/save", body),
+  autoWatchlistCandidates: (p?: { market?: Market; limitPerMarket?: number }) =>
+    apiGet<ApiList>("/api/watchlist/auto-candidates", p),
+  applyAutoWatchlist: (body?: { market?: Market; limitPerMarket?: number }) =>
+    apiPost<ApiList>("/api/watchlist/auto-curate", body || {}),
   news: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/news", p),
   disclosures: (p?: { market?: Market; limit?: number }) =>

@@ -36,6 +36,10 @@ def _write_csv_safe(path: Path, df: pd.DataFrame) -> str:
 
 
 def _watchlist_path(market: str) -> Path:
+    return data.REPO_ROOT / f"watchlist_{market}.csv"
+
+
+def _watchlist_growth_path(market: str) -> Path:
     return data.REPO_ROOT / f"watchlist_{market}_growth.csv"
 
 
@@ -154,6 +158,133 @@ def delete_watchlist(symbol: str, market: str) -> dict[str, Any]:
     next_df = df.loc[~mask].copy()
     backup = _write_csv_safe(path, next_df)
     return {"status": "OK", "message": "관심종목에서 삭제했습니다.", "market": market, "symbol": target, "backupFile": backup, "count": len(next_df)}
+
+
+def _auto_watch_reason(item: dict[str, Any]) -> tuple[str, float]:
+    tags = {str(tag).upper() for tag in item.get("strategyTags") or []}
+    texts = " ".join(
+        str(item.get(key) or "")
+        for key in (
+            "candidateType",
+            "candidateTypeLabel",
+            "timingLabel",
+            "timingReason",
+            "surgeLabel",
+            "finReason",
+            "pullbackState",
+            "pullbackReason",
+        )
+    )
+    text_upper = texts.upper()
+    score = 0.0
+    reasons: list[str] = []
+
+    if "PULLBACK_BUY" in tags or "PULLBACK" in text_upper or "눌림" in texts:
+        score += 34.0
+        reasons.append("눌림목")
+    if "UNDERVALUED_GROWTH" in tags or "GROWTH" in text_upper or "성장" in texts:
+        score += 28.0
+        reasons.append("성장")
+    if "LEADER" in text_upper or item.get("isLeader") is True:
+        score += 18.0
+        reasons.append("주도주")
+    if "MOMENTUM" in tags or "모멘텀" in texts:
+        score += 12.0
+        reasons.append("모멘텀")
+    if str(item.get("supplySignal") or "").upper() in {"STRONG_BUY", "INST_BUY"}:
+        score += 10.0
+        reasons.append("수급")
+
+    final_score = data.first_number(item, ["finalScore", "finalRankScore", "probability"]) or 0.0
+    expected_value = data.first_number(item, ["expectedValue"]) or 0.0
+    risk_score = data.first_number(item, ["riskScore"]) or 0.0
+    entry_score = data.first_number(item, ["entryScore"]) or 0.0
+    score += final_score * 0.28 + max(-10.0, min(15.0, expected_value)) * 1.2 + risk_score * 0.08 + entry_score * 0.08
+
+    if item.get("evNegative") is True or expected_value < 0:
+        score -= 25.0
+    if str(item.get("tradeBlockStatus") or "").upper() in {"CAUTION", "BLOCK"}:
+        score -= 10.0
+    if str(item.get("decisionBucket") or "") in {"보류", "제외"}:
+        score -= 18.0
+
+    if not reasons:
+        reasons.append("고득점")
+    return " · ".join(dict.fromkeys(reasons)), round(score, 2)
+
+
+def auto_watchlist_candidates(market: str = "all", limit_per_market: int = 12) -> dict[str, Any]:
+    markets = ["kr", "us"] if str(market).lower() == "all" else ["us" if str(market).lower() == "us" else "kr"]
+    modes = ["conservative", "balanced", "aggressive"]
+    horizons = ["short", "swing", "mid"]
+    limit_per_market = max(3, min(int(limit_per_market or 12), 30))
+    all_items: list[dict[str, Any]] = []
+    sources: list[str] = []
+
+    for mk in markets:
+        keyed: dict[str, dict[str, Any]] = {}
+        for mode in modes:
+            for horizon in horizons:
+                path = data.REPORT_DIR / f"mone_v36_final_recommendations_{mk}_{mode}_{horizon}.csv"
+                rows = data.dataframe_records(data.read_csv(path))
+                if rows and path.name not in sources:
+                    sources.append(path.name)
+                for item in rows:
+                    symbol = data.normalize_symbol(item.get("symbol"), mk)
+                    if not symbol:
+                        continue
+                    reason, auto_score = _auto_watch_reason(item)
+                    if auto_score < 35:
+                        continue
+                    row = {
+                        "market": mk,
+                        "symbol": symbol,
+                        "name": data.first_value(item, data.NAME_ALIASES, symbol),
+                        "targetReason": reason,
+                        "memo": f"자동선별 · {reason}",
+                        "autoWatchCategory": reason,
+                        "autoWatchScore": auto_score,
+                        "finalScore": data.first_number(item, ["finalScore", "finalRankScore", "probability"]),
+                        "expectedValue": data.first_number(item, ["expectedValue"]),
+                        "mode": mode,
+                        "horizon": horizon,
+                        "decisionBucket": item.get("decisionBucket", ""),
+                        "timingLabel": item.get("timingLabel", ""),
+                        "candidateTypeLabel": item.get("candidateTypeLabel", ""),
+                        "updated_at": _now(),
+                    }
+                    key = f"{mk}-{symbol}"
+                    if key not in keyed or auto_score > float(keyed[key].get("autoWatchScore") or 0):
+                        keyed[key] = row
+        all_items.extend(sorted(keyed.values(), key=lambda row: float(row.get("autoWatchScore") or 0), reverse=True)[:limit_per_market])
+
+    return {
+        "status": "OK",
+        "market": market,
+        "limitPerMarket": limit_per_market,
+        "count": len(all_items),
+        "sources": sources[:12],
+        "items": all_items,
+        "updatedAt": _now(),
+        "policy": "추천 3x3 조합에서 눌림목·성장·주도주·모멘텀·수급 후보를 점수화해 시장별 상위 종목만 선별",
+    }
+
+
+def apply_auto_watchlist(market: str = "all", limit_per_market: int = 12) -> dict[str, Any]:
+    payload = auto_watchlist_candidates(market, limit_per_market)
+    items = payload.get("items") or []
+    backup_files: list[str] = []
+    for mk in (["kr", "us"] if str(market).lower() == "all" else ["us" if str(market).lower() == "us" else "kr"]):
+        market_rows = [row for row in items if row.get("market") == mk]
+        if not market_rows:
+            continue
+        columns = ["market", "symbol", "name", "memo", "targetReason", "autoWatchCategory", "autoWatchScore", "finalScore", "expectedValue", "mode", "horizon", "decisionBucket", "timingLabel", "candidateTypeLabel", "updated_at"]
+        df = pd.DataFrame(market_rows, columns=columns)
+        for path in (_watchlist_path(mk), _watchlist_growth_path(mk)):
+            backup = _write_csv_safe(path, df)
+            if backup:
+                backup_files.append(backup)
+    return {**payload, "status": "OK", "backupFiles": backup_files, "message": "핵심 관심종목을 자동 선별 목록으로 교체했습니다."}
 
 
 def get_holdings(market: str) -> dict[str, Any]:

@@ -83,6 +83,18 @@ def _clear_all_caches() -> int:
     return cleared
 
 
+def _auto_curate_watchlist() -> dict[str, Any]:
+    if os.environ.get("MONE_AUTO_CURATE_WATCHLIST", "1") == "0":
+        return {"status": "DISABLED", "count": 0}
+    try:
+        from app.services import user_data
+
+        limit = int(os.environ.get("MONE_AUTO_WATCHLIST_LIMIT_PER_MARKET", "12"))
+        return user_data.apply_auto_watchlist("all", limit)
+    except Exception as exc:
+        return {"status": "ERROR", "count": 0, "error": str(exc)[:200]}
+
+
 def _save_status(status: dict[str, Any]) -> None:
     global _last_status
     _last_status = status
@@ -110,6 +122,9 @@ def pull_and_refresh(source: str = "manual") -> dict[str, Any]:
 
         changed = _files_changed(before, after)
         cleared = _clear_all_caches() if changed > 0 or code == 0 else 0
+        auto_watchlist = _auto_curate_watchlist() if code == 0 and (changed > 0 or source in {"api_sync_now", "startup"}) else {"status": "SKIPPED", "count": 0}
+        if auto_watchlist.get("status") == "OK":
+            cleared += _clear_all_caches()
 
         status: dict[str, Any] = {
             "status": "OK" if code == 0 else "ERROR",
@@ -119,6 +134,7 @@ def pull_and_refresh(source: str = "manual") -> dict[str, Any]:
             "afterCommit": after,
             "filesChanged": changed,
             "cachesCleared": cleared,
+            "autoWatchlist": auto_watchlist,
             "gitOutput": (out + "\n" + err).strip()[:500],
             "error": err[:200] if code != 0 else "",
         }
