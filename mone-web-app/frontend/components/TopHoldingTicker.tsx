@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { mone } from "@/lib/api";
-import { dedupeBySymbol, displayName, formatMoney, normalizeMarket, normalizeSymbol, pctText, toNumber } from "@/lib/moneDisplay";
+import {
+  dedupeBySymbol,
+  displayName,
+  formatMoney,
+  normalizeMarket,
+  normalizeSymbol,
+  pctText,
+  toNumber,
+} from "@/lib/moneDisplay";
 
 type TickerItem = {
   id: string;
@@ -12,13 +20,13 @@ type TickerItem = {
   market: "kr" | "us";
   currentPriceText: string;
   changePctText: string;
-  changeStatus?: "normal" | "pending" | "no-base" | "stale" | "error";
+  changeStatus: "normal" | "pending" | "no-base" | "stale" | "error";
 };
 
 function derivePrice(row: any, market: string) {
   const text = String(row.currentPriceText || row.priceText || "").trim();
-  if (text && text !== "-" && !text.includes("산출")) return text.replace(/₩/g, "");
-  return formatMoney(row.currentPrice ?? row.price, market, "가격 확인 필요");
+  if (text && text !== "-") return text;
+  return formatMoney(row.currentPrice ?? row.price, market, "현재가 수집 대기");
 }
 
 function deriveChange(row: any): { text: string; status: TickerItem["changeStatus"] } {
@@ -26,9 +34,7 @@ function deriveChange(row: any): { text: string; status: TickerItem["changeStatu
   if (direct && direct !== "-" && direct.includes("%")) return { text: direct, status: "normal" };
 
   const numeric = toNumber(row.changePct ?? row.changeRate);
-  if (numeric !== null && Number.isFinite(numeric) && numeric !== 0) {
-    return { text: pctText(numeric), status: "normal" };
-  }
+  if (numeric !== null && Number.isFinite(numeric)) return { text: pctText(numeric), status: "normal" };
 
   const current = toNumber(row.currentPrice ?? row.price ?? row.currentPriceText);
   const prev = toNumber(row.prevClose ?? row.previousClose ?? row.prevCloseText);
@@ -89,10 +95,13 @@ export default function TopHoldingTicker() {
   return (
     <div className="flex h-8 min-w-0 flex-1 items-center gap-3 overflow-hidden">
       <span className="hidden shrink-0 rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-slate-500 lg:inline">
-        보유 티커 {items.length ? `${items.length}개` : loading ? "로딩" : "대기"}
+        보유 티커 {items.length ? `${items.length}개` : loading ? "불러오는 중" : "대기"}
       </span>
 
-      <div className="relative min-w-0 flex-1 overflow-hidden" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
+      <div
+        className="relative min-w-0 flex-1 overflow-hidden"
+        style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}
+      >
         {error ? (
           <div className="text-xs text-red-300">티커 데이터 연결 확인 필요</div>
         ) : displayItems.length === 0 ? (
@@ -101,8 +110,8 @@ export default function TopHoldingTicker() {
           <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-7 whitespace-nowrap">
             {displayItems.map((item, index) => {
               const isDown = item.changePctText.startsWith("-");
-              const needsPrice = item.currentPriceText.includes("확인") || item.currentPriceText.includes("대기");
-              const needsBase = item.changeStatus && item.changeStatus !== "normal";
+              const needsPrice = item.changeStatus === "pending";
+              const needsBase = item.changeStatus !== "normal" && item.changeStatus !== "pending";
               return (
                 <span key={`${item.id}-${index}`} className="inline-flex items-center gap-2 text-xs">
                   <span className="font-semibold text-slate-200">{item.name}</span>
@@ -118,7 +127,11 @@ export default function TopHoldingTicker() {
         )}
       </div>
 
-      <button onClick={load} className="shrink-0 rounded-lg border border-slate-800 bg-slate-900/70 p-1.5 text-slate-500 hover:text-slate-200" title="상단 티커 새로고침">
+      <button
+        onClick={load}
+        className="shrink-0 rounded-lg border border-slate-800 bg-slate-900/70 p-1.5 text-slate-500 hover:text-slate-200"
+        title="상단 티커 새로고침"
+      >
         <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
       </button>
     </div>

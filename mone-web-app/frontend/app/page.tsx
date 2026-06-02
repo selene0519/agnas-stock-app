@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Bell } from "lucide-react";
 import Sidebar, { type PageId } from "../components/Sidebar";
 import TopHoldingTicker from "../components/TopHoldingTicker";
 import SessionSafetyBanner from "../components/SessionSafetyBanner";
@@ -14,9 +15,8 @@ import NewsPage from "../components/pages/NewsPage";
 import PredictionPage from "../components/pages/PredictionPage";
 import AdvancedPage from "../components/pages/AdvancedPage";
 import AdminPage from "../components/pages/AdminPage";
-import { loadRealMoneData, mockMarketSummary } from "../lib/mockData";
-import { timeAgo } from "../lib/utils";
-import { Bell } from "lucide-react";
+import { mone } from "../lib/api";
+import { getDefaultMarketBySession } from "../lib/marketSession";
 
 const initialNotifications = [
   { msg: "데이터 연결 상태를 확인했습니다.", time: "방금 전", warn: false },
@@ -41,7 +41,7 @@ export default function App() {
     setLoading(true);
     setError("");
     try {
-      await loadRealMoneData();
+      await mone.dataQuality({ market: getDefaultMarketBySession() });
       setDataVersion((value) => value + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -94,9 +94,7 @@ export default function App() {
           <div className="ml-3 flex items-center gap-2">
             <span className="hidden font-mono text-xs text-slate-500 md:block">{headerDate}</span>
             <span className="hidden text-slate-700 md:block">·</span>
-            <span className="hidden text-xs text-slate-500 md:block">
-              {mounted ? timeAgo(mockMarketSummary.lastUpdated) : "방금 전"}
-            </span>
+            <span className="hidden text-xs text-slate-500 md:block">{mounted ? "실시간 동기화" : "방금 전"}</span>
             <div className="relative">
               <button
                 className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 transition-colors hover:border-slate-600 hover:text-white"
@@ -116,10 +114,7 @@ export default function App() {
                         <div className="px-3 py-6 text-center text-xs text-slate-500">새 알림이 없습니다</div>
                       ) : (
                         notifications.map((item, index) => (
-                          <div
-                            key={`${item.msg}-${index}`}
-                            className={`px-3 py-2.5 text-xs ${item.warn ? "text-amber-300" : "text-slate-300"}`}
-                          >
+                          <div key={`${item.msg}-${index}`} className={`px-3 py-2.5 text-xs ${item.warn ? "text-amber-300" : "text-slate-300"}`}>
                             <div className="font-medium">{item.msg}</div>
                             <div className="mt-0.5 text-slate-500">{item.time}</div>
                           </div>
@@ -143,7 +138,7 @@ export default function App() {
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="mx-auto max-w-7xl space-y-4">
-            <SessionSafetyBanner market="all" />
+            <SessionSafetyBanner market={getDefaultMarketBySession()} />
             <CashInputBar />
             {loading && (
               <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">

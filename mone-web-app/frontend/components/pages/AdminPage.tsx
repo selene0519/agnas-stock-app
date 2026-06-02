@@ -26,6 +26,8 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<any>({ status: "LOADING", items: [] });
   const [github, setGithub] = useState<any>({ status: "LOADING" });
   const [virtualSummary, setVirtualSummary] = useState<any>({ status: "LOADING" });
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [syncing, setSyncing] = useState(false);
 
   async function load() {
     setAudit({ status: "LOADING", items: [] });
@@ -33,19 +35,35 @@ export default function AdminPage() {
     setVirtualSummary({ status: "LOADING" });
 
     try {
-      const [a, g, v] = await Promise.all([
+      const [a, g, v, s] = await Promise.all([
         mone.audit(),
         mone.github(),
         mone.virtualSummary({ market: "all" }),
+        fetch("/mone-api/api/admin/sync-status").then((r) => r.json()).catch(() => null),
       ]);
 
       setAudit(a || { status: "ERROR", items: [] });
       setGithub(g || { status: "ERROR" });
       setVirtualSummary(v || { status: "ERROR" });
+      setSyncStatus(s);
     } catch (error) {
       setAudit({ status: "ERROR", items: [] });
       setGithub({ status: "ERROR", error: String(error) });
       setVirtualSummary({ status: "ERROR" });
+    }
+  }
+
+  async function syncNow() {
+    setSyncing(true);
+    try {
+      const res = await fetch("/mone-api/api/admin/sync-now", { method: "POST" });
+      const data = await res.json();
+      setSyncStatus(data);
+    } catch (e) {
+      setSyncStatus({ status: "ERROR", error: String(e) });
+    } finally {
+      setSyncing(false);
+      load();
     }
   }
 
@@ -77,6 +95,44 @@ export default function AdminPage() {
         >
           새로고침
         </button>
+      </div>
+
+      {/* GitHub 동기화 패널 */}
+      <div className="rounded-2xl border border-blue-900/60 bg-blue-950/10 p-5">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-slate-400">GitHub 데이터 동기화</div>
+          <button
+            onClick={syncNow}
+            disabled={syncing}
+            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            {syncing ? "동기화 중..." : "지금 동기화"}
+          </button>
+        </div>
+        {syncStatus && (
+          <div className="mt-3 space-y-1 text-xs">
+            <div className={syncStatus.status === "OK" ? "text-emerald-400" : "text-red-400"}>
+              상태: {syncStatus.status}
+            </div>
+            {syncStatus.lastSyncAt && (
+              <div className="text-slate-500">마지막 동기화: {syncStatus.lastSyncAt}</div>
+            )}
+            {syncStatus.filesChanged !== undefined && (
+              <div className="text-slate-400">
+                변경 파일: {syncStatus.filesChanged}개 · 캐시 초기화: {syncStatus.cachesCleared ?? 0}개
+              </div>
+            )}
+            {syncStatus.afterCommit && (
+              <div className="font-mono text-slate-500">커밋: {syncStatus.afterCommit}</div>
+            )}
+            {syncStatus.error && (
+              <div className="break-all text-red-300">{syncStatus.error}</div>
+            )}
+          </div>
+        )}
+        <div className="mt-2 text-xs text-slate-600">
+          백그라운드 자동 동기화: 30분 간격 · GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정
+        </div>
       </div>
 
       <div className={`rounded-2xl border p-5 ${githubOk ? "border-emerald-900/60 bg-emerald-950/10" : "border-red-900/60 bg-red-950/10"}`}>

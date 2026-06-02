@@ -108,6 +108,22 @@ function avgProbability(items: any[]) {
   return `${(nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(1)}%`;
 }
 
+function ScoreBar({ label, value, color = "bg-emerald-500" }: { label: string; value: number | null | undefined; color?: string }) {
+  if (value == null) return null;
+  const pct = Math.min(100, Math.max(0, value));
+  return (
+    <div>
+      <div className="flex justify-between text-[10px] text-slate-500">
+        <span>{label}</span>
+        <span className="font-mono text-slate-400">{pct.toFixed(0)}</span>
+      </div>
+      <div className="mt-0.5 h-1 w-full rounded-full bg-slate-800">
+        <div className={`h-1 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function StrategyCellCard({ cell }: { cell: StrategyCell }) {
   const badge = cellSourceBadge(cell);
   const topItems = (cell.items || []).slice(0, 3);
@@ -128,23 +144,85 @@ function StrategyCellCard({ cell }: { cell: StrategyCell }) {
         <div className="mt-8 rounded-xl border border-dashed border-slate-800 p-4 text-center text-sm text-slate-500">표시할 후보가 없습니다.</div>
       ) : (
         <div className="mt-4 space-y-2">
-          {topItems.map((item) => (
-            <div key={`${cell.mode}-${cell.horizon}-${item.market}-${item.symbol}`} className="rounded-xl bg-slate-900/70 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-100">{displayName(item)}</div>
-                  <div className="mt-0.5 font-mono text-[11px] text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div>
+          {topItems.map((item) => {
+            const ev = item.expectedValue ?? item.ev;
+            const evText = typeof ev === "number" ? (ev >= 0 ? `EV +${ev.toFixed(1)}%` : `EV ${ev.toFixed(1)}%`) : null;
+            const evColor = typeof ev === "number" ? (ev >= 1 ? "text-emerald-300" : ev >= 0 ? "text-slate-400" : "text-red-300") : "text-slate-500";
+            const finalScore = item.finalScore ?? item.quantScore;
+            return (
+              <div key={`${cell.mode}-${cell.horizon}-${item.market}-${item.symbol}`} className="rounded-xl bg-slate-900/70 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-slate-100">{displayName(item)}</div>
+                    <div className="mt-0.5 font-mono text-[11px] text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="font-mono text-xs text-emerald-300">{probabilityText(item, "확률 확인")}</div>
+                    {evText && <div className={`font-mono text-[10px] ${evColor}`}>{evText}</div>}
+                  </div>
                 </div>
-                <div className="font-mono text-xs text-emerald-300">{probabilityText(item, "확률 확인")}</div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                  <Info label="진입" value={priceText(item, "entry", "-")} accent="text-sky-300" />
+                  <Info label="손절" value={priceText(item, "stop", "-")} accent="text-red-300" />
+                  <Info label="목표" value={priceText(item, "target", "-")} accent="text-emerald-300" />
+                  <Info label="현재" value={priceText(item, "current", "-")} />
+                </div>
+
+                {/* 세부 점수 바 */}
+                {finalScore != null && (
+                  <div className="mt-3 space-y-1">
+                    {cell.mode === "conservative" && (
+                      <>
+                        <ScoreBar label="리스크 안정성" value={item.riskScore} color="bg-sky-500" />
+                        <ScoreBar label="진입 접근성" value={item.entryScore} color="bg-emerald-500" />
+                        <ScoreBar label="손익비" value={item.rrScore} color="bg-violet-500" />
+                      </>
+                    )}
+                    {cell.mode === "balanced" && (
+                      <>
+                        <ScoreBar label="상승 여력" value={item.upsideScore} color="bg-emerald-500" />
+                        <ScoreBar label="리스크" value={item.riskScore} color="bg-sky-500" />
+                        <ScoreBar label="손익비" value={item.rrScore} color="bg-violet-500" />
+                      </>
+                    )}
+                    {cell.mode === "aggressive" && (
+                      <>
+                        <ScoreBar label="상승 여력" value={item.upsideScore} color="bg-orange-500" />
+                        <ScoreBar label="모멘텀" value={item.momentumScore} color="bg-yellow-500" />
+                        <ScoreBar label="손익비" value={item.rrScore} color="bg-violet-500" />
+                      </>
+                    )}
+                    <div className="flex items-center justify-between pt-0.5">
+                      <span className="text-[10px] text-slate-600">종합점수</span>
+                      <span className="font-mono text-[10px] text-slate-300">{finalScore.toFixed(0)}점</span>
+                    </div>
+                  </div>
+                )}
+
+                {Array.isArray(item.strategyTags) && item.strategyTags.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {item.strategyTags.slice(0, 3).map((tag: string, tagIndex: number) => (
+                      <span key={tag} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
+                        {Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels[tagIndex] || tag : tag}
+                      </span>
+                    ))}
+                    {Array.isArray(item.priceBandWarnings) && item.priceBandWarnings.length > 0 && (
+                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">
+                        가격대 확인
+                      </span>
+                    )}
+                  </div>
+                ) : item.candidateTypeLabel ? (
+                  <div className="mt-3">
+                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
+                      {item.candidateTypeLabel}
+                    </span>
+                  </div>
+                ) : null}
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                <Info label="진입" value={priceText(item, "entry", "-")} accent="text-sky-300" />
-                <Info label="손절" value={priceText(item, "stop", "-")} accent="text-red-300" />
-                <Info label="목표" value={priceText(item, "target", "-")} accent="text-emerald-300" />
-                <Info label="현재" value={priceText(item, "current", "-")} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -196,6 +274,55 @@ function StrategyMatrix({ cells, loading }: { cells: StrategyCell[]; loading: bo
   );
 }
 
+
+type MarketChoice = "auto" | "kr" | "us";
+
+function kstNowParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value || 0);
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute") };
+}
+
+function getDefaultMarketBySession(now = new Date()): "kr" | "us" {
+  const { hour, minute } = kstNowParts(now);
+  const total = hour * 60 + minute;
+  // KST 07:00~17:00은 국장, 그 외 시간은 미장 기준으로 시작합니다.
+  if (total >= 7 * 60 && total < 17 * 60) return "kr";
+  return "us";
+}
+
+function getMarketSessionStatus(market: "kr" | "us", now = new Date()) {
+  const { hour, minute } = kstNowParts(now);
+  const total = hour * 60 + minute;
+  if (market === "kr") {
+    if (total >= 9 * 60 && total <= 15 * 60 + 30) return "장중";
+    if (total > 15 * 60 + 30) return "장마감";
+    return "장전";
+  }
+  // 우선 KST 기준 단순 버전. 서머타임은 이후 거래소 캘린더와 연결해 고도화.
+  if (total >= 22 * 60 + 30 || total <= 5 * 60) return "장중";
+  if (total > 15 * 60 + 30 && total < 22 * 60 + 30) return "개장 전";
+  return "마감 후";
+}
+
+function marketChoiceInitial(): MarketChoice {
+  if (typeof window === "undefined") return "auto";
+  const saved = window.localStorage.getItem("mone:selectedMarketMode");
+  return saved === "kr" || saved === "us" || saved === "auto" ? saved : "auto";
+}
+
+function marketLabel(market: "kr" | "us") {
+  return market === "kr" ? "국장" : "미장";
+}
+
 export default function HomePage() {
   const [holdings, setHoldings] = useState<any[]>([]);
   const [editableHoldings, setEditableHoldings] = useState<EditableHolding[]>([]);
@@ -207,13 +334,21 @@ export default function HomePage() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [matrix, setMatrix] = useState<StrategyCell[]>([]);
   const [loading, setLoading] = useState(true);
+  const [marketChoice, setMarketChoice] = useState<MarketChoice>(marketChoiceInitial);
+  const selectedMarket = marketChoice === "auto" ? getDefaultMarketBySession() : marketChoice;
+  const sessionStatus = getMarketSessionStatus(selectedMarket);
+
+  function updateMarketChoice(next: MarketChoice) {
+    setMarketChoice(next);
+    if (typeof window !== "undefined") window.localStorage.setItem("mone:selectedMarketMode", next);
+  }
 
   async function load() {
     setLoading(true);
     try {
       const matrixRequests = MODES.flatMap((mode) =>
         HORIZONS.map(async (horizon) => {
-          const result = await mone.recommendations({ market: "all", mode, horizon, limit: 12 });
+          const result = await mone.recommendations({ market: selectedMarket, mode, horizon, limit: 12 });
           const items = dedupeBySymbol(Array.isArray(result.items) ? result.items : []).slice(0, 3);
           return {
             mode,
@@ -226,10 +361,10 @@ export default function HomePage() {
       );
 
       const [h, r, matrixResult, editable] = await Promise.all([
-        mone.holdingsClean({ market: "all", limit: 50 }),
-        mone.recommendations({ market: "all", mode: "balanced", horizon: "swing", limit: 20 }),
+        mone.holdingsClean({ market: selectedMarket, limit: 50 }),
+        mone.recommendations({ market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
         Promise.all(matrixRequests),
-        mone.holdingsEdit({ market: "all" }),
+        mone.holdingsEdit({ market: selectedMarket }),
       ]);
 
       setHoldings(dedupeBySymbol(Array.isArray(h.items) ? h.items : []));
@@ -306,7 +441,7 @@ export default function HomePage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [selectedMarket]);
 
   const topHoldings = useMemo(() => sortByValue(holdings).slice(0, 5), [holdings]);
   const riskCount = useMemo(() => holdings.filter((item) => ["위험", "주의", "HIGH", "WATCH"].includes(String(item.riskStatus || ""))).length, [holdings]);
@@ -317,12 +452,33 @@ export default function HomePage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">시장 홈</h1>
-          <p className="mt-1 text-sm text-slate-400">보유요약, 전략별 후보, 위험 신호를 한 화면에서 확인합니다.</p>
+          <p className="mt-1 text-sm text-slate-400">보유요약, 전략별 후보, 위험 신호를 한 화면에서 확인합니다. 국장 마감 후에는 자동으로 미장 기준을 우선 표시합니다.</p>
         </div>
-        <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          새로고침
-        </button>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {(["auto", "kr", "us"] as MarketChoice[]).map((choice) => {
+              const active = marketChoice === choice;
+              const label = choice === "auto" ? "자동" : marketLabel(choice);
+              return (
+                <button
+                  key={choice}
+                  type="button"
+                  onClick={() => updateMarketChoice(choice)}
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold ${active ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="text-xs text-slate-500">
+            {marketChoice === "auto" ? "자동 선택" : "수동 선택"}: {marketLabel(selectedMarket)} · {sessionStatus}
+          </div>
+          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            새로고침
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
