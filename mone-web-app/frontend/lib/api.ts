@@ -143,6 +143,8 @@ export const mone = {
     apiGet<ApiList>("/api/symbols", p),
   watchlist: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/watchlist", p),
+  homeSummary: (p?: { market?: Market; limit?: number }) =>
+    apiGet<ApiList>("/api/home/summary", p),
   recommendations: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>
     apiGet<ApiList>("/api/final/recommendations", p),
   candidates: (p?: { market?: Market; strategy?: Mode | string; term?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>
