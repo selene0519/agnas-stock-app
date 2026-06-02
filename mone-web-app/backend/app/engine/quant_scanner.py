@@ -7,6 +7,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+try:
+    from app.engine.dsg_signal_engine import (
+        infer_kr_sector,
+        get_theme_names,
+        detect_leader_mode,
+        get_pullback_state_from_ohlcv,
+        sector_label_kr,
+    )
+    _DSG_AVAILABLE = True
+except ImportError:
+    _DSG_AVAILABLE = False
+
 MODES = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")
 
@@ -211,6 +223,7 @@ def indicators(rows: list[dict[str, Any]]) -> dict[str, float | None]:
             bb_squeeze = True
 
     return {
+        "latest": latest,
         "ma5": _ma(close, 5),
         "ma20": ma20,
         "ma60": ma60,
@@ -379,7 +392,7 @@ def _compute_sub_scores(ind: dict[str, float | None]) -> dict[str, float]:
     # ATR 없으면 MA 이격도 기반으로 추정
     rr = 50.0
     atr = ind.get("atr14")
-    latest_px = ind.get("latest") or (close[-1] if close else None)
+    latest_px = ind.get("latest") or ind.get("ma5")
     if atr and latest_px and latest_px > 0 and atr > 0:
         # 기간별 예상 RR: 단기(1.5) / 스윙(2.0) / 중기(2.5)
         # 보수/균형/공격은 _score() 레벨에서 조정
