@@ -446,6 +446,7 @@ export default function HomePage() {
   const [holdings, setHoldings] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [marketRegime, setMarketRegime] = useState<any>(null);
+  const [dataHealth, setDataHealth] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -484,9 +485,10 @@ export default function HomePage() {
       setSummary(h.summary || null);
       setMatrix(matrixResult);
       setMarketRegime(result.marketRegime || null);
+      setDataHealth(result.dataHealth || null);
       setAllItems(matrixResult.flatMap((cell) => cell.items));
     } catch {
-      setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]);
+      setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setDataHealth(null);
     } finally {
       setLoading(false);
     }
@@ -583,6 +585,31 @@ export default function HomePage() {
           </span>
           <span className="text-xs opacity-70">{marketRegime.description}</span>
           {marketRegime.regime === "BEAR" && <span className="ml-auto rounded bg-red-900/60 px-2 py-0.5 text-xs text-red-200">공격형 비활성화</span>}
+        </div>
+      )}
+
+      {/* 데이터 상태 바 */}
+      {dataHealth && !loading && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-2.5 text-[11px] text-slate-400">
+          <span className="flex items-center gap-1">
+            <span className={`h-1.5 w-1.5 rounded-full ${(dataHealth.kisLiveCount ?? 0) >= 50 ? "bg-emerald-400" : (dataHealth.kisLiveCount ?? 0) >= 10 ? "bg-amber-400" : "bg-red-400"}`} />
+            현재가 <span className="font-mono text-slate-200">{dataHealth.kisLiveCount ?? 0}</span>
+            <span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+            OHLCV <span className="font-mono text-slate-200">{dataHealth.ohlcvCount ?? 0}종목</span>
+            {dataHealth.ohlcvLatestDate && <span className="text-slate-500">({dataHealth.ohlcvLatestDate})</span>}
+          </span>
+          {dataHealth.recoGeneratedAt && (
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+              추천 생성 <span className="font-mono text-slate-300">{String(dataHealth.recoGeneratedAt).slice(0, 16).replace("T", " ")}</span>
+            </span>
+          )}
+          <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${dataHealth.scanScope === "FULL_MARKET_READY" ? "bg-emerald-900/40 text-emerald-400" : "bg-slate-800 text-slate-400"}`}>
+            {dataHealth.scanScope === "FULL_MARKET_READY" ? "전종목" : "선별 유니버스"}
+          </span>
         </div>
       )}
 
