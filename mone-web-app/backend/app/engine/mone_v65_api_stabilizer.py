@@ -2554,6 +2554,67 @@ def _save_edit_rows(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 
+def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
+    """
+    홈화면용 통합 페이로드.
+    9개 추천 조합 + 보유종목 + 마켓 레짐을 단일 응답으로 반환.
+    """
+    market = _market_norm(market)
+    MODES    = ("conservative", "balanced", "aggressive")
+    HORIZONS = ("short", "swing", "mid")
+
+    matrix: dict[str, Any] = {}
+    market_regime: dict[str, Any] = {}
+
+    for mode in MODES:
+        for horizon in HORIZONS:
+            key = f"{mode}_{horizon}"
+            try:
+                payload = _recommendations_payload_cached(market, mode, horizon, limit_per_cell, False)
+                # 마켓 레짐은 balanced_swing 응답에서 우선 획득
+                if not market_regime and payload.get("marketRegime", {}).get("regime"):
+                    market_regime = payload["marketRegime"]
+                items = payload.get("items", [])
+                matrix[key] = {
+                    "mode": mode,
+                    "horizon": horizon,
+                    "status": payload.get("status", "OK"),
+                    "count": payload.get("count", len(items)),
+                    "evHardFiltered": payload.get("evHardFiltered", 0),
+                    "items": items[:limit_per_cell],
+                }
+            except Exception as exc:
+                matrix[key] = {"mode": mode, "horizon": horizon, "status": "ERROR", "error": str(exc), "items": []}
+
+    # 보유종목
+    holdings_data: dict[str, Any] = {}
+    try:
+        from app.engine.mone_v802_holdings_clean import holdings_clean_payload
+        holdings_data = holdings_clean_payload(market=market, limit=30)
+    except Exception:
+        holdings_data = {"items": [], "summary": {}}
+
+    # 마켓 레짐 (아직 없으면 별도 로드)
+    if not market_regime:
+        try:
+            from app.engine.quant_scanner import load_market_regime
+            market_regime = load_market_regime(_repo_root(), market)
+        except Exception:
+            pass
+
+    return {
+        "status": "OK",
+        "market": market,
+        "generatedAt": datetime.now().isoformat(),
+        "matrix": matrix,
+        "holdings": {
+            "items": holdings_data.get("items", [])[:20],
+            "summary": holdings_data.get("summary") or {},
+        },
+        "marketRegime": market_regime,
+    }
+
+
 def register_mone_v65_api_stabilizer(app: Any) -> None:
     paths = {
         "/api/symbols",
@@ -2566,6 +2627,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         "/api/company-analysis",
         "/api/data/audit",
         "/api/health/github",
+        "/api/home/summary",
         "/api/final/recommendations",
         "/api/v1/candidates",
         "/api/reports/premarket",
@@ -2618,6 +2680,13 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     @app.get("/api/health/github")
     def github() -> dict[str, Any]:
         return _safe_payload(_github_payload, "/api/health/github")
+
+    @app.get("/api/home/summary")
+    def home_summary(
+        market: str = Query("kr"),
+        limit: int = Query(12),
+    ) -> dict[str, Any]:
+        return _safe_payload(lambda: _home_summary_payload(market, limit), "/api/home/summary")
 
     @app.get("/api/final/recommendations")
     def recommendations(

@@ -252,33 +252,27 @@ export default function HomePage() {
   async function load() {
     setLoading(true);
     setMarketRegime(null);
-    let nextMarketRegime: any = null;
     try {
-      // 9개 조합 전부 로드
-      const matrixRequests = MODES.flatMap((mode) =>
-        HORIZONS.map(async (horizon) => {
-          const result = await mone.recommendations({ market: selectedMarket, mode, horizon, limit: 12 });
-          const items = dedupeBySymbol(Array.isArray(result.items) ? result.items : [])
+      // 단일 통합 API 호출 (기존 10회 → 1회)
+      const result = await mone.homeSummary({ market: selectedMarket, limit: 12 });
+
+      // matrix: { conservative_short: {items, count, status}, ... } → StrategyCell[]
+      const matrixResult: StrategyCell[] = MODES.flatMap((mode) =>
+        HORIZONS.map((horizon) => {
+          const cell = (result.matrix as any)?.[`${mode}_${horizon}`] || {};
+          const items = dedupeBySymbol(Array.isArray(cell.items) ? cell.items : [])
             .slice(0, 5)
             .map((item: any) => ({ ...item, _mode: mode, _horizon: horizon }));
-          if (result.marketRegime?.regime && !nextMarketRegime) nextMarketRegime = result.marketRegime;
-          return { mode, horizon, items, count: Number(result.count || items.length || 0), status: String(result.status || "OK") } satisfies StrategyCell;
+          return { mode, horizon, items, count: Number(cell.count || items.length || 0), status: String(cell.status || "OK") } satisfies StrategyCell;
         })
       );
 
-      const [h, matrixResult] = await Promise.all([
-        mone.holdingsClean({ market: selectedMarket, limit: 20 }),
-        Promise.all(matrixRequests),
-      ]);
-
+      const h = result.holdings || {};
       setHoldings(dedupeBySymbol(Array.isArray(h.items) ? h.items : []));
       setSummary(h.summary || null);
       setMatrix(matrixResult);
-      setMarketRegime(nextMarketRegime);
-
-      // 전체 후보 통합 (중복 제거 — 같은 종목이 여러 조합에 있을 수 있음)
-      const all = matrixResult.flatMap((cell) => cell.items);
-      setAllItems(all);
+      setMarketRegime(result.marketRegime || null);
+      setAllItems(matrixResult.flatMap((cell) => cell.items));
     } catch {
       setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]);
     } finally {
