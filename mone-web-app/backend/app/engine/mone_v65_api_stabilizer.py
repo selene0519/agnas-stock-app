@@ -112,6 +112,7 @@ NAME_KEYS = [
     "corp_name",
     "종목명",
     "기업명",
+    "회사명",
     "Name",
     "Company",
 ]
@@ -202,6 +203,38 @@ def _read_csv(path: Path | None, limit: int = 50000) -> list[dict[str, Any]]:
                     item["_source_path"] = _safe_rel(path)
                     rows.append(item)
                     if index + 1 >= limit:
+                        break
+            return rows
+        except Exception:
+            continue
+    return []
+
+
+def _read_csv_tables(path: Path | None, limit: int = 50000) -> list[dict[str, Any]]:
+    if path is None or not path.exists() or not path.is_file() or path.stat().st_size <= 0:
+        return []
+    for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+        try:
+            rows: list[dict[str, Any]] = []
+            header: list[str] | None = None
+            with path.open("r", encoding=enc, newline="") as f:
+                reader = csv.reader(f)
+                for raw in reader:
+                    cells = [str(cell).lstrip("\ufeff").strip() for cell in raw]
+                    if not any(cells):
+                        continue
+                    is_header = (
+                        any(cell in {"symbol", "ticker", "code", "종목코드"} for cell in cells)
+                        and any(cell in {"market", "시장"} for cell in cells)
+                    )
+                    if header is None or is_header:
+                        header = cells
+                        continue
+                    item = {header[i]: cells[i] if i < len(cells) else "" for i in range(len(header))}
+                    item["_source_file"] = path.name
+                    item["_source_path"] = _safe_rel(path)
+                    rows.append(item)
+                    if len(rows) >= limit:
                         break
             return rows
         except Exception:
@@ -395,6 +428,10 @@ def _company_symbol(row: dict[str, Any], market: str, name_to_symbol: dict[str, 
 
     for key, value in row.items():
         lowered = str(key or "").lower()
+        if "종목코드" in lowered or "단축코드" in lowered:
+            symbol = _symbol_value(value, market)
+            if symbol:
+                return symbol
         if any(token in lowered for token in ("symbol", "ticker", "code", "종목코드", "단축코드")):
             symbol = _symbol_value(value, market)
             if symbol:
@@ -784,16 +821,34 @@ def _company_paths(market: str) -> tuple[Path, ...]:
     markets = ["kr", "us"] if market == "all" else [market]
     paths: list[Path] = []
     for item_market in markets:
-        paths.extend(_many(
-            f"**/*company*{item_market}*.csv",
-            f"**/*financial*{item_market}*.csv",
-            f"**/*fundamental*{item_market}*.csv",
-            f"**/*statement*{item_market}*.csv",
-            f"**/*kpi*{item_market}*.csv",
-            f"**/*valuation*{item_market}*.csv",
-            f"**/v81_company_summary_cards_{item_market}.csv",
-            f"**/v81_financial_statement_{item_market}.csv",
-            max_files=80,
+        paths.extend(_direct_files(
+            f"reports/v93_company_integrated_{item_market}.csv",
+            f"reports/v92_company_integrated_{item_market}.csv",
+            f"reports/v92_company_clean_{item_market}.csv",
+            f"reports/v92_company_summary_cards_{item_market}.csv",
+            f"reports/v92_company_cards_{item_market}.csv",
+            f"reports/v92_financial_statement_{item_market}.csv",
+            f"reports/v92_kpi_cards_{item_market}.csv",
+            f"reports/v92_advanced_valuation_{item_market}.csv",
+            f"reports/v91_company_integrated_{item_market}.csv",
+            f"reports/v85_company_integrated_{item_market}.csv",
+            f"reports/v84_company_integrated_{item_market}.csv",
+            f"reports/v83_company_integrated_{item_market}.csv",
+            f"reports/v82_company_integrated_{item_market}.csv",
+            f"reports/v81_company_summary_cards_{item_market}.csv",
+            f"reports/v81_company_cards_{item_market}.csv",
+            f"reports/v81_financial_statement_{item_market}.csv",
+            f"reports/v81_kpi_cards_{item_market}.csv",
+            f"reports/v81_advanced_valuation_{item_market}.csv",
+            f"reports/v80_company_cards_{item_market}.csv",
+            f"reports/v80_financial_statement_{item_market}.csv",
+            f"reports/v80_kpi_cards_{item_market}.csv",
+            f"reports/v80_advanced_valuation_{item_market}.csv",
+            f"reports/operational_financial_kpi_{item_market}.csv",
+            f"data/fundamental/company_integrated_{item_market}.csv",
+            f"data/fundamental/financial_statement_{item_market}.csv",
+            f"data/fundamental/kpi_cards_{item_market}.csv",
+            f"data/fundamental/valuation_{item_market}.csv",
         ))
     seen: set[Path] = set()
     unique: list[Path] = []
@@ -991,6 +1046,29 @@ def _company_row_item(row: dict[str, Any], sym: str, name: str, item_market: str
         "sourceFiles": [path.name],
         "matchedRows": 1,
     }
+    for target, keys in {
+        "eps": ["EPS", "eps", "주당순이익"],
+        "per": ["PER", "per", "pe", "trailingPE", "forwardPE", "주가수익비율", "PER표시"],
+        "pbr": ["PBR", "pbr", "pb", "priceToBook", "주가순자산비율", "PBR표시"],
+        "roe": ["ROE", "roe", "returnOnEquity", "자기자본이익률", "ROE표시"],
+        "revenue": ["revenue", "sales", "totalRevenue", "매출", "매출액", "매출표시"],
+        "operatingProfit": ["operatingProfit", "operating_profit", "operatingIncome", "영업이익", "영업이익률", "영업이익률표시"],
+        "netIncome": ["netIncome", "net_income", "profit", "순이익", "당기순이익", "순이익표시"],
+        "debtRatio": ["debtRatio", "debt_ratio", "debtToEquity", "부채비율", "부채비율표시"],
+        "fundamentalScore": ["fundamentalScore", "fundamental_score", "score", "종합점수", "펀더멘털점수"],
+    }.items():
+        if not item.get(target):
+            item[target] = _field_value(row, keys)
+    for target, max_abs in {"per": 1000, "pbr": 1000, "roe": 1000, "debtRatio": 10000}.items():
+        value = item.get(target)
+        if value is not None and abs(float(value)) > max_abs:
+            item[target] = None
+    for target, keys in {
+        "per": ["PER", "per", "pe", "trailingPE", "forwardPE", "주가수익비율", "PER표시"],
+        "pbr": ["PBR", "pbr", "pb", "priceToBook", "주가순자산비율", "PBR표시"],
+    }.items():
+        if not item.get(target):
+            item[target] = _field_value(row, keys)
     return item
 
 
@@ -1103,6 +1181,7 @@ def _write_financial_gap_report(items: list[dict[str, Any]]) -> None:
         return
 
 
+@lru_cache(maxsize=32)
 def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
     market = _market_norm(market)
     names = _build_name_map()
@@ -1115,7 +1194,7 @@ def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
     targets = _company_target_items(market, names)
 
     for path in paths:
-        for row in _read_csv(path, 50000):
+        for row in _read_csv_tables(path, 50000):
             item_market = _infer_market(_symbol(row), _text(row, ["market", "시장", "_market"], market))
             if market != "all" and item_market != market:
                 continue
@@ -1446,6 +1525,31 @@ def _recommendation_item(
         "source": _text(row, ["_source_file", "sourceFile", "source"], ""),
         "computedFields": computed_fields,
         "isWatch": sym in watch,
+        # ── CSV에서 직접 전달되는 새 필드 (generate_kr_recommendations 출력)
+        "decisionBucket": _text(row, ["decisionBucket", "decision_bucket"], ""),
+        "timingLabel": _text(row, ["timingLabel", "timing_label"], ""),
+        "timingReason": _text(row, ["timingReason", "timing_reason"], ""),
+        "expectedEntryPrice": _text(row, ["expectedEntryPrice", "expected_entry_price"], ""),
+        "surgeLabel": _text(row, ["surgeLabel", "surge_label"], ""),
+        "evNegative": _text(row, ["evNegative", "ev_negative"], ""),
+        "maConvergence": _text(row, ["maConvergence", "ma_convergence"], ""),
+        "supplySignal": _text(row, ["supplySignal", "supply_signal"], ""),
+        "instBuy5d": _text(row, ["instBuy5d", "inst_buy_5d"], ""),
+        "foreignBuy5d": _text(row, ["foreignBuy5d", "foreign_buy_5d"], ""),
+        "isUndervaluedGrowth": _text(row, ["isUndervaluedGrowth", "is_undervalued_growth"], ""),
+        "finReason": _text(row, ["finReason", "fin_reason"], ""),
+        "roe": _text(row, ["roe", "ROE"], ""),
+        "newsRiskPenalty": _num(_text(row, ["newsRiskPenalty", "news_risk_penalty", "eventRiskScore"], "")) or 0,
+        "marketRegime": _text(row, ["marketRegime", "market_regime"], ""),
+        # ── 세부 점수 (quant_overlay 전 CSV 원본; overlay가 덮어씀)
+        "finalScore": _num(_text(row, ["finalScore", "final_score", "finalRankScore"], "")) or None,
+        "upsideScore": _num(_text(row, ["upsideScore", "upside_score"], "")) or None,
+        "riskScore": _num(_text(row, ["riskScore", "risk_score"], "")) or None,
+        "momentumScore": _num(_text(row, ["momentumScore", "momentum_score"], "")) or None,
+        "entryScore": _num(_text(row, ["entryScore", "entry_score"], "")) or None,
+        "rrScore": _num(_text(row, ["rrScore", "rr_score"], "")) or None,
+        "qualityScore": _num(_text(row, ["qualityScore", "quality_score"], "")) or None,
+        "expectedValue": _num(_text(row, ["expectedValue", "expected_value", "ev"], "")) or None,
     }
 
 
@@ -2268,10 +2372,12 @@ def _validate_virtual_ledger() -> dict[str, Any]:
         "validationWindowDays", "validationDueDate", "status", "source", "isExecuted",
         "targetHit", "stopHit", "exitPrice", "returnPct", "result", "reason", "dataStatus", "validationRule",
     ], results)
+    pending_count = sum(1 for row in results if row.get("result") == "PENDING")
     evaluable_count = len([row for row in results if row.get("dataStatus") != "DATA_PENDING" and row.get("result") != "PENDING"])
     return {
         "status": "OK",
         "count": len(results),
+        "pendingCount": pending_count,
         "executedCount": executed,
         "notExecutedCount": not_executed_count,
         "dataPendingCount": data_pending_count,
@@ -2519,5 +2625,6 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
                 if horizon_key != "all" and str(row.get("horizon")) != horizon_key:
                     continue
                 filtered.append(row)
-            return {**result, "count": len(filtered[:limit]), "totalCount": len(filtered), "items": filtered[:limit]}
+            pending_count = sum(1 for row in filtered if row.get("result") == "PENDING")
+            return {**result, "count": len(filtered[:limit]), "totalCount": len(filtered), "pendingCount": pending_count, "items": filtered[:limit]}
         return _safe_payload(payload, "/api/virtual/validation")
