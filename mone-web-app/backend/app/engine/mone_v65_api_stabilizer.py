@@ -1401,7 +1401,9 @@ def _recommendation_item(
     prob5d = round(_clamp(probability + (1.5 if horizon == "swing" else 0.5)), 1)
     prob10d = round(_clamp(probability + (2.0 if horizon == "mid" else 1.0)), 1)
 
-    price_status = "NORMAL" if not computed_fields else "PARTIAL"
+    # 실제 데이터 품질 기준: KIS 실시간 현재가 있으면 NORMAL, 없으면 PARTIAL
+    has_live_quote = bool(_text(quote, PRICE_KEYS, ""))
+    price_status = "NORMAL" if has_live_quote else ("PARTIAL" if current > 0 else "PRICE_PENDING")
     fallback_reason = ""
     if source_status == "FALLBACK":
         fallback_reason = "요청한 투자 성향/기간과 정확히 일치하는 추천 파일이 없어 대체 소스를 사용했습니다."
