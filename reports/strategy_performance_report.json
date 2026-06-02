@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-06-02 23:35:20",
+  "virtual_eval": {
+    "total_records": 2835,
+    "evaluated": 2085,
+    "pending": 750,
+    "eval_rate_pct": 73.5,
+    "by_mode": {
+      "conservative": {
+        "swing_avg_return": null,
+        "swing_count": 0,
+        "swing_win_rate": 0.0
+      },
+      "balanced": {
+        "swing_avg_return": null,
+        "swing_count": 0,
+        "swing_win_rate": 0.0
+      },
+      "aggressive": {
+        "swing_avg_return": null,
+        "swing_count": 0,
+        "swing_win_rate": 0.0
+      }
+    }
+  },
+  "outcome_history": {
+    "total": 50,
+    "with_data": 0,
+    "return_1d": {
+      "mean": NaN,
+      "win_rate": null
+    },
+    "return_5d": {
+      "mean": NaN,
+      "win_rate": null
+    },
+    "return_20d": {
+      "mean": NaN,
+      "win_rate": null
+    },
+    "avg_mdd": null
+  },
+  "strategy_scores": {
+    "records": [
+      {
+        "market": "KR",
+        "category": "실적저평가",
+        "count": 2,
+        "verified": 0,
+        "win_rate": null,
+        "avg_return": null
+      },
+      {
+        "market": "US",
+        "category": "실적저평가",
+        "count": 4,
+        "verified": 0,
+        "win_rate": null,
+        "avg_return": null
+      },
+      {
+        "market": "",
+        "category": "",
+        "count": 1,
+        "verified": 0,
+        "win_rate": null,
+        "avg_return": null
+      },
+      {
+        "market": "KR",
+        "category": "실적저평가",
+        "count": 4,
+        "verified": 0,
+        "win_rate": null,
+        "avg_return": null
+      },
+      {
+        "market": "US",
+        "category": "실적저평가",
+        "count": 5,
+        "verified": 0,
+        "win_rate": null,
+        "avg_return": null
+      }
+    ]
+  },
+  "score_correlation": {
+    "msg": "매칭 데이터 부족 (0건). 더 많은 데이터 축적 후 재실행 권장.",
+    "matched_count": 0
+  },
+  "auto_correction": {
+    "records": [
+      {
+        "summary_type": "status",
+        "updated_at": "2026-05-28 12:39:40",
+        "trades": "0",
+        "win_rate": "검증 데이터 부족",
+        "avg_return": "검증 데이터 부족",
+        "suggestion": "가상 운용 스냅샷과 outcome_history가 쌓이면 자동 보정 요약을 계산합니다."
+      }
+    ]
+  }
+}
