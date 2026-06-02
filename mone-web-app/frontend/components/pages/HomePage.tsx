@@ -48,6 +48,41 @@ function getMarketSessionStatus(market: "kr" | "us", now = new Date()) {
   return "마감 후";
 }
 
+function getSessionCountdown(market: "kr" | "us", now = new Date()): string {
+  const { hour, minute } = kstNowParts(now);
+  const t = hour * 60 + minute;
+
+  const fmt = (rem: number) => {
+    const h = Math.floor(rem / 60);
+    const m = rem % 60;
+    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+  };
+
+  if (market === "kr") {
+    const open = 9 * 60, close = 15 * 60 + 30;
+    if (t < open)  return `국장 시작까지 ${fmt(open - t)}`;
+    if (t <= close) return `장마감까지 ${fmt(close - t)}`;
+    const nextOpen = (24 + open) - t;   // 다음 날 09:00까지
+    return `다음 국장 시작까지 ${fmt(nextOpen)}`;
+  }
+  // 미장 22:30 ~ 05:00 KST
+  const usOpen = 22 * 60 + 30, usClose = 5 * 60;
+  if (t < usClose)  return `미장 마감까지 ${fmt(usClose - t)}`;
+  if (t < usOpen)   return `미장 시작까지 ${fmt(usOpen - t)}`;
+  return `미장 마감까지 ${fmt(24 * 60 - t + usClose)}`;
+}
+
+type SessionPhase = "장전" | "장중" | "장마감" | "개장 전" | "마감 후";
+
+function getSessionContext(session: SessionPhase) {
+  switch (session) {
+    case "장전":   return { focus: "today",    hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하세요." };
+    case "장중":   return { focus: "intraday", hint: "장중 — 진입가에 근접한 종목을 우선 확인하세요." };
+    case "장마감": return { focus: "review",   hint: "장마감 후 — 오늘 결과를 검증하고 내일 후보를 보강하세요." };
+    default:       return { focus: "today",    hint: "" };
+  }
+}
+
 // ── 점수 바
 function ScoreBar({ label, value, color = "bg-emerald-500" }: { label: string; value: number | null | undefined; color?: string }) {
   if (value == null) return null;
@@ -455,6 +490,9 @@ export default function HomePage() {
   const sessionClock = clock || new Date();
   const selectedMarket = marketChoice === "auto" ? (clientReady ? getDefaultMarketBySession(sessionClock) : "kr") : marketChoice;
   const sessionStatus = clientReady ? getMarketSessionStatus(selectedMarket, sessionClock) : "확인 중";
+  const sessionPhase = sessionStatus as SessionPhase;
+  const countdown = clientReady ? getSessionCountdown(selectedMarket, sessionClock) : "";
+  const sessionCtx = getSessionContext(sessionPhase);
   const marketChoiceLabel = clientReady && marketChoice !== "auto" ? "수동" : "자동";
 
   function updateMarketChoice(next: MarketChoice) {
@@ -555,10 +593,15 @@ export default function HomePage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-100">시장 홈</h1>
-          <p className="text-xs text-slate-500">
-            {marketChoiceLabel}: <span className="text-slate-300">{selectedMarket === "kr" ? "국장" : "미장"}</span>
-            {" · "}{sessionStatus}
-          </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+            <span>{marketChoiceLabel}: <span className="text-slate-300">{selectedMarket === "kr" ? "국장" : "미장"}</span></span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+              sessionPhase === "장중" ? "bg-emerald-900/50 text-emerald-300"
+              : sessionPhase === "장마감" ? "bg-blue-900/50 text-blue-300"
+              : "bg-slate-800 text-slate-400"
+            }`}>{sessionStatus}</span>
+            {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {(["auto", "kr", "us"] as MarketChoice[]).map((choice) => (
@@ -633,8 +676,12 @@ export default function HomePage() {
         <div className="mb-4 flex items-center gap-2">
           <TrendingUp size={18} className="text-emerald-400" />
           <div>
-            <h2 className="text-base font-semibold text-slate-100">오늘 진입 후보</h2>
-            <p className="text-xs text-slate-500">진입 구간 + EV 양수 + 추세 조건을 동시에 충족한 종목입니다.</p>
+            <h2 className="text-base font-semibold text-slate-100">
+              {sessionPhase === "장중" ? "진입가 근접 종목" : "오늘 진입 후보"}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {sessionCtx.hint || "진입 구간 + EV 양수 + 추세 조건을 동시에 충족한 종목입니다."}
+            </p>
           </div>
           <span className="ml-auto rounded-full border border-emerald-800/50 bg-emerald-900/30 px-3 py-1 text-xs text-emerald-400">
             {loading ? "..." : `${todayEntries.length}개`}
