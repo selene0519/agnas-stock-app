@@ -283,10 +283,10 @@ def _decide_timing(score: float, ind: dict, mode: str, horizon: str, ev: float |
     반환: (decisionBucket, timingLabel, timingReason)
 
     decisionBucket:
-      "오늘 진입"   — 지금이 최적 구간
-      "대기 관찰"   — 1~3일 후 더 나은 진입 예상
+      "오늘 진입"   — 지금이 최적 구간 (MA 근처 진입 / 신고가 돌파 / 스퀴즈 돌파)
+      "대기 관찰"   — 1~수일 후 더 나은 진입 예상
       "기다림"      — 조건 미충족, 중기 대기
-      "보류"        — EV 음수 또는 과열
+      "보류"        — EV 음수(보수) 또는 과열
     """
     d20 = ind.get("distanceToMa20")
     d60 = ind.get("distanceToMa60")
@@ -294,47 +294,77 @@ def _decide_timing(score: float, ind: dict, mode: str, horizon: str, ev: float |
     mom5 = ind.get("recentMomentum5")
     mom20 = ind.get("recentMomentum20")
     bb_b = ind.get("bbPercentB")
+    bb_squeeze = ind.get("bbSqueeze", False)
     ma_conv = _ma_convergence(ind)
+    vr = ind.get("volumeRatio20")
+    d52 = ind.get("distanceTo52wHigh")
+    atr_pct = ind.get("atr14Pct")  # ATR/현재가 비율
 
-    # 보류 조건
+    # ── 보류 조건
     if ev is not None and ev < 0 and mode == "conservative":
         return "보류", "매수 보류", "EV 음수 — 기댓값 불리"
-    if rsi and rsi >= 80:
+    if rsi and rsi >= 80 and not (d52 and d52 >= -1.0 and vr and vr >= 2.0):
+        # RSI 과열이어도 신고가 돌파+거래량이면 예외
         return "보류", "과열 대기", f"RSI {rsi:.0f} 과열 — 눌림 확인 후 재진입"
-    if bb_b and bb_b > 1.0:
+    if bb_b and bb_b > 1.0 and not bb_squeeze:
         return "보류", "과열 대기", "볼린저 상단 돌파 — 추격 금지"
 
-    # 오늘 진입 조건: 충분히 높은 점수 + 진입 구간
+    # ── 오늘 진입 Case 1: 52주 신고가 돌파 (이미 높지만 위가 열린 구간)
+    # 신고가 ±3% + 거래량 확인 → 위에 매물 없음, 추격 가능
+    if d52 is not None and -3.0 <= d52 <= 0 and vr is not None and vr >= 1.5:
+        if mode == "conservative":
+            return "대기 관찰", "신고가 근접", f"52주 고점 {abs(d52):.1f}% 근접 — 보수형은 눌림 확인 후"
+        reason = f"52주 신고가 {abs(d52):.1f}% 이내 + 거래량 {vr:.1f}x — 돌파 진입"
+        return "오늘 진입", "돌파 진입", reason
+
+    # ── 오늘 진입 Case 2: 볼린저 스퀴즈 방향 확정
+    if bb_squeeze and bb_b is not None and bb_b > 0.6 and score >= 55:
+        reason = f"볼린저 스퀴즈 발산 (B% {bb_b:.2f}) — 상단 방향 확정"
+        return "오늘 진입", "스퀴즈 돌파", reason
+
+    # ── 오늘 진입 Case 3: 20일선 근처 + 조건 충족
     entry_zone = d20 is not None and -5.0 <= d20 <= 5.0
     trend_ok = (mom5 is not None and mom5 >= 0) or (mom20 is not None and mom20 >= 0)
     score_ok = score >= 60
 
     if score_ok and entry_zone and trend_ok:
         if ma_conv:
-            return "오늘 진입", "즉시 진입", "이격도 수렴 + 진입 구간"
+            return "오늘 진입", "수렴 진입", "이격도 수렴 완성 — 최적 진입 타이밍"
         if d20 is not None and -3.0 <= d20 <= 3.0:
             return "오늘 진입", "즉시 진입", f"20일선 {d20:+.1f}% — 최적 진입 구간"
         return "오늘 진입", "조건부 진입", "점수·추세·진입가 조건 충족"
 
-    # 대기 관찰: 아직 눌리는 중, 1~3일 후 더 나은 진입 예상
+    # ── 오늘 진입 Case 4: 이격도 수렴 + 모멘텀 전환
+    if ma_conv and mom5 is not None and mom5 >= 0 and score >= 55:
+        return "오늘 진입", "수렴 진입", "이격도 수렴 중 모멘텀 반등"
+
+    # ── 대기 관찰: 눌리는 중 or 위에 있어서 눌림 기다리는 중
     falling = mom5 is not None and mom5 < 0
-    approaching = d20 is not None and -10.0 <= d20 <= -2.0  # 아직 20일선 아래, 다가오는 중
+    above_ma = d20 is not None and d20 > 5.0
+    approaching = d20 is not None and -10.0 <= d20 <= -2.0
 
     if approaching and falling and score >= 50:
         if horizon == "short":
-            reason = f"단기 추세 하락 중 ({mom5:+.1f}%), 1~2일 내 눌림 완성 예상"
+            reason = f"단기 하락 중 ({mom5:+.1f}%), 1~2일 내 지지 확인 예정"
             return "대기 관찰", "1~2일 후 진입", reason
         elif horizon == "swing":
-            reason = f"20일선 {d20:+.1f}%, 추가 눌림 후 반등 기대 — 3~5일 모니터링"
+            reason = f"20일선 {d20:+.1f}%, 3~5일 후 반등 기대"
             return "대기 관찰", "3~5일 후 진입", reason
         else:
-            reason = f"20일선 {d20:+.1f}%, 중기 지지선 테스트 중 — 다음 주 진입 고려"
+            reason = f"20일선 {d20:+.1f}%, 중기 지지선 테스트 — 다음 주 진입"
             return "대기 관찰", "다음 주 진입", reason
 
+    if above_ma and score >= 50:
+        if atr_pct and d20:
+            pullback_days = max(3, int(d20 / max(atr_pct * 0.5, 0.1)))  # ATR로 눌림 소요 기간 추정
+            if pullback_days <= 3:
+                return "대기 관찰", "1~2일 후 진입", f"20일선 {d20:+.1f}% — ATR 기준 단기 눌림 가능"
+            elif pullback_days <= 7:
+                return "대기 관찰", "3~5일 후 진입", f"20일선 {d20:+.1f}% — ATR 기준 {pullback_days}일 눌림 예상"
+        return "대기 관찰", "눌림 대기", f"20일선 {d20:+.1f}% 위 — 가격 조정 후 진입"
+
     if score >= 55 and not entry_zone:
-        if d20 and d20 > 5.0:
-            return "대기 관찰", "눌림 대기", f"20일선 {d20:+.1f}% 위 — 가격 조정 시 진입"
-        return "대기 관찰", "진입 조건 대기", "점수 충족, 진입 구간 진입 대기"
+        return "대기 관찰", "진입 조건 대기", "점수 충족, 진입 구간 도달 대기"
 
     return "기다림", "관망", "점수·추세 조건 미충족"
 
@@ -343,7 +373,22 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     band = _HORIZON_BANDS[horizon]
     rf = _MODE_RISK[mode]; rwf = _MODE_REWARD[mode]
     entry = current
-    stop = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
+
+    # ATR 기반 손절가 (데이터 있으면 우선, 없으면 고정 %)
+    atr14 = ind.get("atr14") if ind else None
+    atr_mult = {"conservative": 1.5, "balanced": 2.0, "aggressive": 2.5}.get(mode, 2.0)
+    if atr14 and atr14 > 0 and current > 0:
+        atr_stop = round(entry - atr14 * atr_mult)
+        fixed_stop = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
+        # ATR 손절이 합리적 범위(-3% ~ -15%) 내에 있으면 ATR 우선
+        atr_pct = (entry - atr_stop) / entry * 100
+        if 2.0 <= atr_pct <= 15.0:
+            stop = atr_stop
+        else:
+            stop = fixed_stop
+    else:
+        stop = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
+
     target = round(entry * (1.0 + (band["target"] - 1.0) * rwf))
     ev = None
     if entry > 0 and stop > 0 and target > entry:
@@ -473,7 +518,7 @@ def _load_name_map() -> dict[str, str]:
 
 # 리스크 키워드 → 감점 / 호재 키워드 → 가산
 _RISK_KEYWORDS: list[tuple[str, float]] = [
-    # 매우 위험 (감점 큼)
+    # 매우 위험
     ("유상증자", -15.0), ("증자", -10.0), ("전환사채", -12.0), ("CB발행", -12.0),
     ("신주인수권", -10.0), ("BW발행", -10.0), ("관리종목", -20.0), ("상장폐지", -25.0),
     ("감자", -20.0), ("횡령", -20.0), ("배임", -18.0), ("불성실공시", -15.0),
@@ -482,15 +527,24 @@ _RISK_KEYWORDS: list[tuple[str, float]] = [
     # 경미한 위험
     ("주식분산", -5.0), ("지분변동", -4.0), ("최대주주변경", -6.0),
     ("임원보수", -3.0), ("스톡옵션", -3.0),
+    # 매크로/실적 리스크
+    ("어닝쇼크", -12.0), ("실적쇼크", -12.0), ("실적 하회", -10.0), ("가이던스 하향", -8.0),
+    ("금리인상", -6.0), ("긴축", -5.0), ("관세", -6.0), ("무역분쟁", -5.0),
+    ("환율 급등", -5.0), ("원/달러 급등", -5.0), ("인플레이션", -4.0),
 ]
 _POSITIVE_KEYWORDS: list[tuple[str, float]] = [
-    # 매우 긍정 (가산)
+    # 매우 긍정
     ("수주", +8.0), ("공급계약", +8.0), ("대형계약", +10.0), ("FDA승인", +12.0),
     ("임상성공", +10.0), ("흑자전환", +8.0), ("최대실적", +10.0), ("자사주매입", +6.0),
     ("배당증가", +5.0), ("배당확대", +5.0), ("자사주소각", +8.0),
     # 경미한 긍정
     ("수출증가", +4.0), ("매출증가", +3.0), ("영업이익증가", +5.0),
     ("신제품", +3.0), ("기술이전", +4.0), ("MOU", +3.0), ("협약", +2.0),
+    # 매크로/실적 호재
+    ("어닝서프라이즈", +10.0), ("실적 상회", +8.0), ("가이던스 상향", +7.0),
+    ("금리인하", +5.0), ("금리 동결", +3.0), ("무역합의", +5.0),
+    ("IPO 수혜", +4.0), ("신규상장", +3.0), ("MSCI 편입", +6.0),
+    ("코스피 편입", +5.0), ("코스닥 편입", +4.0),
 ]
 
 
