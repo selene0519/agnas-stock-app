@@ -1325,7 +1325,7 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         if "CAUTION" not in tags:
             tags.append("CAUTION")
 
-    # EV 음수면 CAUTION 추가
+    # EV < 0이면 CAUTION 추가 (EV < -1% 종목은 stabilizer에서 완전 제외됨)
     if result.get("expectedValue") is not None and result["expectedValue"] < 0:
         if "CAUTION" not in tags:
             tags.append("CAUTION")
