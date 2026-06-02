@@ -970,29 +970,29 @@ def _install_mone_authoritative_holdings_clean_v3():
         rows = []
         seen_keys = set()
         for mk in markets:
-            for path in [_root() / f"holdings_{mk}.csv", _root() / "data" / f"holdings_{mk}.csv"]:
-                for row in _read_csv(path):
-                    sym = _row_symbol(row, mk)
-                    if not sym:
-                        continue
-                    key = (mk, sym)
-                    if key in seen_keys:
-                        continue
-                    qty = _num(_text(row, ["quantity", "qty", "수량"], ""), 0)
-                    avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평균단가", "매입가"], ""), 0)
-                    if qty <= 0:
-                        continue
-                    seen_keys.add(key)
-                    rows.append({
-                        "symbol": sym,
-                        "name": _name(row, sym),
-                        "market": mk,
-                        "quantity": qty,
-                        "avgPrice": avg,
-                        "source": path.name,
-                        "holdingAuthority": "holdings_csv",
-                        "holdingAuthoritySource": path.name,
-                    })
+            path = _root() / f"holdings_{mk}.csv"
+            for row in _read_csv(path):
+                sym = _row_symbol(row, mk)
+                if not sym:
+                    continue
+                key = (mk, sym)
+                if key in seen_keys:
+                    continue
+                qty = _num(_text(row, ["quantity", "qty", "수량"], ""), 0)
+                avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평균단가", "매입가"], ""), 0)
+                if qty <= 0:
+                    continue
+                seen_keys.add(key)
+                rows.append({
+                    "symbol": sym,
+                    "name": _name(row, sym),
+                    "market": mk,
+                    "quantity": qty,
+                    "avgPrice": avg,
+                    "source": path.name,
+                    "holdingAuthority": "holdings_csv",
+                    "holdingAuthoritySource": path.name,
+                })
         return rows
 
     def _payload(market: str = "all", limit: int = 100) -> dict:

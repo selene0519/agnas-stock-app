@@ -44,7 +44,7 @@ def _watchlist_growth_path(market: str) -> Path:
 
 
 def _holdings_path(market: str) -> Path:
-    return data.DATA_DIR / f"holdings_{market}.csv"
+    return data.REPO_ROOT / f"holdings_{market}.csv"
 
 
 def _row_symbol(row: dict[str, Any] | pd.Series, market: str) -> str:
