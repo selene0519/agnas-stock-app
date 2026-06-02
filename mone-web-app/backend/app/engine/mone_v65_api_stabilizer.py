@@ -2602,6 +2602,51 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
         except Exception:
             pass
 
+    # ── 데이터 헬스 요약
+    data_health: dict[str, Any] = {}
+    try:
+        cov = _scan_coverage(market)
+        repo = _repo_root()
+
+        # OHLCV 최신 날짜 (샘플 5개 파일에서 마지막 행의 date 읽기)
+        ohlcv_dates: list[str] = []
+        ohlcv_dir = repo / "data" / "market" / "ohlcv"
+        if ohlcv_dir.exists():
+            for p in list(ohlcv_dir.glob(f"{market}_*_daily.csv"))[:5]:
+                rows = _read_csv(p, 5)
+                if rows:
+                    d = _text(rows[-1], ["date", "Date", "날짜"], "")
+                    if d:
+                        ohlcv_dates.append(d)
+        ohlcv_latest = max(ohlcv_dates) if ohlcv_dates else None
+
+        # 추천 파일 생성 시각 (kr_recommendation_gen_status.json)
+        reco_gen_time: str | None = None
+        for status_path in [
+            repo / "reports" / f"{market}_recommendation_gen_status.json",
+            repo / f"{market}_recommendation_gen_status.json",
+        ]:
+            if status_path.exists():
+                try:
+                    import json as _json
+                    with status_path.open("r", encoding="utf-8") as f:
+                        st = _json.load(f)
+                    reco_gen_time = st.get("generatedAt") or st.get("completedAt") or st.get("timestamp")
+                except Exception:
+                    pass
+                break
+
+        data_health = {
+            "kisLiveCount":    cov.get("quoteCoverageCount", 0),
+            "kisTargetCount":  cov.get("quoteTargetCount", 0),
+            "ohlcvCount":      cov.get("ohlcvSymbolCount", 0),
+            "ohlcvLatestDate": ohlcv_latest,
+            "recoGeneratedAt": reco_gen_time,
+            "scanScope":       cov.get("universeScope", "CURATED_UNIVERSE"),
+        }
+    except Exception:
+        pass
+
     return {
         "status": "OK",
         "market": market,
@@ -2612,6 +2657,7 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
             "summary": holdings_data.get("summary") or {},
         },
         "marketRegime": market_regime,
+        "dataHealth": data_health,
     }
 
 
