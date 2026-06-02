@@ -124,7 +124,6 @@ def _holding_files(market: str) -> list[Path]:
     root = _repo_root()
     return [
         root / f"holdings_{market}.csv",
-        root / "data" / f"holdings_{market}.csv",
     ]
 
 
