@@ -289,11 +289,19 @@ jobs:
         run: |
           set +e
           python scripts/generate_kr_recommendations.py
-          status=$?
+          echo "generate_kr_recommendations: exit $?"
           set -e
-          if [ "$status" -ne 0 ]; then
-            echo "warning: generate_kr_recommendations.py returned $status; continuing."
+
+      - name: Generate US recommendations from OHLCV
+        run: |
+          set +e
+          if [ -f scripts/generate_us_recommendations.py ]; then
+            python scripts/generate_us_recommendations.py
+            echo "generate_us_recommendations: exit $?"
+          else
+            echo "scripts/generate_us_recommendations.py not found; skip."
           fi
+          set -e
 
       - name: Refresh KR close OHLCV and validations
         run: |
@@ -345,7 +353,7 @@ jobs:
 
           # MONE v3.6 app-facing reports.
           git add reports/mone_v36_*.csv reports/mone_v36_*.json 2>/dev/null || true
-          git add reports/kr_recommendation_gen_status.json 2>/dev/null || true
+          git add reports/kr_recommendation_gen_status.json reports/us_recommendation_gen_status.json 2>/dev/null || true
           git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
           git add data/market/ohlcv/kr_*_daily.csv 2>/dev/null || true
           git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true

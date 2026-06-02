@@ -194,6 +194,22 @@ def indicators(rows: list[dict[str, Any]]) -> dict[str, float | None]:
     gap_up_pct = None
     if len(open_prices) >= 1 and len(close) >= 2 and close[-2] > 0:
         gap_up_pct = (open_prices[-1] - close[-2]) / close[-2] * 100
+
+    # 볼린저 스퀴즈: 현재 bbWidth가 최근 20일 중 최저 수준
+    bb_squeeze = False
+    if bb_width is not None and len(close) >= 40:
+        past_widths: list[float] = []
+        for i in range(2, 22):
+            if len(close) >= 20 + i:
+                past_close = close[-(20 + i):-i]
+                pmid = sum(past_close) / 20
+                pstd_sq = sum((c - pmid) ** 2 for c in past_close) / 20
+                pstd = pstd_sq ** 0.5
+                pw = (pmid + pstd * 2 - (pmid - pstd * 2)) / pmid * 100 if pmid else 0
+                past_widths.append(pw)
+        if past_widths and bb_width <= min(past_widths) * 1.15:
+            bb_squeeze = True
+
     return {
         "ma5": _ma(close, 5),
         "ma20": ma20,
@@ -213,8 +229,11 @@ def indicators(rows: list[dict[str, Any]]) -> dict[str, float | None]:
         "distanceTo52wHigh": ((latest - high52w) / high52w * 100) if latest is not None and high52w else None,
         "bbWidth20": bb_width,
         "bbPercentB": bb_percent_b,
+        "bbSqueeze": bb_squeeze,
         "consecutiveUpDays": float(_consecutive_up(close)),
         "gapUpPct": gap_up_pct,
+        # ATR 기반 손절가 계산용
+        "atr14Pct": (_atr(high, low, close) / latest * 100) if latest and _atr(high, low, close) else None,
     }
 
 
@@ -471,13 +490,33 @@ def _score(ind: dict[str, float | None], context: QuantContext) -> tuple[float, 
     rsi = ind.get("rsi14")
     d20 = ind.get("distanceToMa20")
     mom5 = ind.get("recentMomentum5")
+    mom20 = ind.get("recentMomentum20")
     d60 = ind.get("distanceToMa60")
     mdd = ind.get("mdd20")
     volume_ratio = ind.get("volumeRatio20")
     bb_percent_b = ind.get("bbPercentB")
+    bb_squeeze = ind.get("bbSqueeze")
     consecutive_up = ind.get("consecutiveUpDays")
     gap_up_pct = ind.get("gapUpPct")
     distance_52w = ind.get("distanceTo52wHigh")
+
+    # ── 52주 신고가 돌파 가산 (이미 높지만 위가 열린 구간)
+    if distance_52w is not None and -3.0 <= distance_52w <= 0 and volume_ratio is not None:
+        if volume_ratio >= 2.0:
+            final += 10.0
+            notes.append("52주 신고가 돌파 + 거래량 급증")
+        elif volume_ratio >= 1.5:
+            final += 6.0
+            notes.append("52주 신고가 근접")
+
+    # ── 볼린저 스퀴즈 가산 (방향 폭발 임박)
+    if bb_squeeze and bb_percent_b is not None:
+        if bb_percent_b > 0.7:   # 상단 방향
+            final += 8.0
+            notes.append("볼린저 스퀴즈 상단 돌파")
+        elif bb_percent_b > 0.5:  # 중립 이상
+            final += 4.0
+            notes.append("볼린저 스퀴즈 발산 중")
 
     if context.horizon == "short":
         # 단기: 진입가 접근성 + 단기 모멘텀 중요
@@ -538,14 +577,16 @@ def _score(ind: dict[str, float | None], context: QuantContext) -> tuple[float, 
 
 
 TAG_LABELS = {
+    "BREAKOUT_52W": "52주 신고가 돌파",    # 신규: 이미 높지만 위가 뚫린 구간
+    "BB_SQUEEZE": "볼린저 스퀴즈",         # 신규: 변동성 압축 → 방향 폭발 임박
     "PULLBACK_BUY": "눌림목 매수",
-    "MA_CONVERGENCE": "이격도 수렴",      # 신규: 5/20/60일선 수렴 구간
+    "MA_CONVERGENCE": "이격도 수렴",
     "UNDERVALUED_GROWTH": "저평가 성장주",
     "VOLUME_BREAKOUT": "거래대금 증가",
     "MOMENTUM": "모멘텀 강세",
     "STABLE_LOW_RISK": "안정형",
     "CAUTION": "주의",
-    "EV_NEGATIVE": "EV음수",              # 신규: 기댓값 음수 → 자동 제외 대상
+    "EV_NEGATIVE": "EV음수",
 }
 
 
@@ -594,10 +635,20 @@ def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str]
     gap_up_pct = ind.get("gapUpPct")
     distance_52w = ind.get("distanceTo52wHigh")
 
+    bb_squeeze = ind.get("bbSqueeze")
+
     if status in {"PRICE_PENDING", "DATA_PENDING"}:
         tags.append("CAUTION")
 
-    # ── 이격도 수렴 신호 (우선순위 높음: 눌림목보다 먼저 체크)
+    # ── 52주 신고가 돌파 (이미 높지만 더 오를 수 있는 종목)
+    if distance_52w is not None and -3.0 <= distance_52w <= 0 and volume_ratio is not None and volume_ratio >= 1.5:
+        tags.append("BREAKOUT_52W")
+
+    # ── 볼린저 스퀴즈 (변동성 압축 → 방향 폭발 임박)
+    if bb_squeeze and bb_percent_b is not None and bb_percent_b > 0.5:
+        tags.append("BB_SQUEEZE")
+
+    # ── 이격도 수렴 신호
     if _ma_convergence(ind) and (rsi is None or rsi < 75):
         tags.append("MA_CONVERGENCE")
 

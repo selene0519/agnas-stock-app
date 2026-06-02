@@ -141,9 +141,15 @@ function TodayEntryCard({ item, rank }: { item: any; rank: number }) {
 
       <TagChips item={item} />
 
-      {item.timingReason && (
-        <div className="mt-2 rounded-lg bg-emerald-950/40 px-2 py-1 text-[10px] text-emerald-400">
-          ✓ {item.timingReason}
+      {item.timingLabel && (
+        <div className={`mt-2 rounded-lg px-2 py-1 text-[10px] ${
+          item.timingLabel === "돌파 진입" ? "bg-orange-950/40 text-orange-400"
+          : item.timingLabel === "스퀴즈 돌파" ? "bg-violet-950/40 text-violet-400"
+          : item.timingLabel === "수렴 진입" ? "bg-cyan-950/40 text-cyan-400"
+          : "bg-emerald-950/40 text-emerald-400"
+        }`}>
+          {item.timingLabel === "돌파 진입" ? "🚀" : item.timingLabel === "스퀴즈 돌파" ? "💥" : "✓"}{" "}
+          {item.timingReason || item.timingLabel}
         </div>
       )}
     </div>
