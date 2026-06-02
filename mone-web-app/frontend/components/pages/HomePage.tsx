@@ -118,6 +118,8 @@ function TagChips({ item }: { item: any }) {
         <span key={t} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">{t}</span>
       ))}
       {Number(item.newsRiskPenalty) >= 10 && <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-300">공시주의</span>}
+      {item.financialDataStatus === "DATA_PENDING" && <span className="rounded-full border border-slate-600 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">재무미확보</span>}
+      {item.finReason && item.financialDataStatus !== "DATA_PENDING" && item.finValueScore > 0 && <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] text-teal-300">재무확인</span>}
     </div>
   );
 }
@@ -408,6 +410,139 @@ function PositionSizingSection({
   );
 }
 
+// ── 운용 일지 모달 ─────────────────────────────────────────────────────────────
+
+const ACTION_LABELS: Record<string, string> = { BUY: "매수", SELL: "매도", NOTE: "메모" };
+const RESULT_LABELS: Record<string, string> = { WIN: "수익", LOSS: "손실", BREAK_EVEN: "본전", "": "미입력" };
+
+function JournalModal({ onClose }: { onClose: () => void }) {
+  const [entries, setEntries]   = useState<any[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [form, setForm]         = useState({ symbol: "", name: "", action: "BUY", price: "", qty: "", memo: "", review: "", result: "", returnPct: "" });
+  const [saving, setSaving]     = useState(false);
+  const [editId, setEditId]     = useState<string | null>(null);
+  const [reviewText, setReviewText] = useState("");
+
+  useEffect(() => {
+    mone.journalGet({ market: "all" })
+      .then((r) => setEntries(Array.isArray(r.items) ? r.items : []))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function addEntry() {
+    if (!form.memo.trim()) return;
+    setSaving(true);
+    try {
+      const r = await mone.journalAdd({
+        symbol: form.symbol, name: form.name, action: form.action,
+        price: Number(form.price) || undefined, qty: Number(form.qty) || undefined,
+        memo: form.memo, result: form.result,
+        returnPct: Number(form.returnPct) || undefined,
+      });
+      if (r.entry) setEntries((prev) => [r.entry, ...prev]);
+      setForm({ symbol: "", name: "", action: "BUY", price: "", qty: "", memo: "", review: "", result: "", returnPct: "" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveReview(id: string) {
+    await mone.journalUpdate(id, { review: reviewText, result: entries.find((e) => e.id === id)?.result });
+    setEntries((prev) => prev.map((e) => e.id === id ? { ...e, review: reviewText } : e));
+    setEditId(null);
+  }
+
+  async function deleteEntry(id: string) {
+    await mone.journalDelete(id);
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-slate-950 shadow-2xl ring-1 ring-slate-800">
+        <div className="sticky top-0 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 px-5 py-4 backdrop-blur">
+          <h2 className="font-bold text-slate-100">운용 일지</h2>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800"><X size={18} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* 새 기록 입력 */}
+          <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 space-y-3">
+            <div className="text-xs font-semibold text-slate-400">새 기록 추가</div>
+            <div className="grid grid-cols-3 gap-2">
+              {(["BUY", "SELL", "NOTE"] as const).map((a) => (
+                <button key={a} onClick={() => setForm((f) => ({ ...f, action: a }))}
+                  className={`rounded-lg py-1.5 text-xs font-semibold ${form.action === a ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+                  {ACTION_LABELS[a]}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input placeholder="종목코드" value={form.symbol} onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
+              <input placeholder="종목명" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
+              <input placeholder="가격" type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
+              <input placeholder="수량" type="number" value={form.qty} onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
+            </div>
+            <textarea placeholder="진입 근거 (최대 100자)" maxLength={100} value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 resize-none" rows={2} />
+            <button onClick={addEntry} disabled={saving || !form.memo.trim()}
+              className="w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-blue-700">
+              {saving ? "저장 중..." : "기록 추가"}
+            </button>
+          </div>
+
+          {/* 기록 목록 */}
+          {loading ? (
+            <div className="text-center text-sm text-slate-500">불러오는 중...</div>
+          ) : entries.length === 0 ? (
+            <div className="text-center text-sm text-slate-500">기록이 없습니다.</div>
+          ) : (
+            <div className="space-y-3">
+              {entries.map((e) => (
+                <div key={e.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-[11px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${e.action === "BUY" ? "bg-emerald-800 text-emerald-200" : e.action === "SELL" ? "bg-red-800 text-red-200" : "bg-slate-700 text-slate-300"}`}>{ACTION_LABELS[e.action] ?? e.action}</span>
+                      {" "}<span className="font-semibold text-slate-200">{e.name || e.symbol || "—"}</span>
+                      {e.price > 0 && <span className="ml-1.5 font-mono text-slate-400">{e.price.toLocaleString()}원</span>}
+                      {e.qty > 0 && <span className="ml-1 text-slate-500">{e.qty}주</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-500">{String(e.createdAt || "").slice(0, 10)}</span>
+                      <button onClick={() => { setEditId(e.id); setReviewText(e.review || ""); }} className="text-slate-500 hover:text-slate-300">복기</button>
+                      <button onClick={() => deleteEntry(e.id)} className="text-slate-600 hover:text-red-400">✕</button>
+                    </div>
+                  </div>
+                  <p className="mt-1.5 text-slate-300">{e.memo}</p>
+                  {e.result && <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] ${e.result === "WIN" ? "bg-emerald-900 text-emerald-300" : e.result === "LOSS" ? "bg-red-900 text-red-300" : "bg-slate-800 text-slate-400"}`}>{RESULT_LABELS[e.result] ?? e.result}</span>}
+                  {e.returnPct !== 0 && e.returnPct != null && <span className={`ml-1.5 font-mono text-[10px] ${e.returnPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>{e.returnPct >= 0 ? "+" : ""}{e.returnPct.toFixed(1)}%</span>}
+                  {e.review && <p className="mt-1.5 border-t border-slate-800 pt-1.5 text-slate-400">복기: {e.review}</p>}
+                  {editId === e.id && (
+                    <div className="mt-2 space-y-2">
+                      <textarea placeholder="청산 후 복기 (뭘 놓쳤나?)" value={reviewText} onChange={(ev) => setReviewText(ev.target.value)}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none resize-none" rows={2} />
+                      <div className="flex gap-2">
+                        <button onClick={() => saveReview(e.id)} className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white">저장</button>
+                        <button onClick={() => setEditId(null)} className="rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-400">취소</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── 추천 근거 패널 (슬라이드오버)
 const SCORE_ITEMS = [
   { key: "upsideScore",    label: "상승 여력",   color: "bg-emerald-500" },
@@ -672,6 +807,7 @@ export default function HomePage() {
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [capital, setCapital] = useState<number>(0);
+  const [showJournal, setShowJournal] = useState(false);
   const [clientReady, setClientReady] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
   const sessionClock = clock || new Date();
@@ -819,6 +955,8 @@ export default function HomePage() {
     <div className="space-y-6 p-4 md:p-6">
       {/* 추천 근거 패널 */}
       {selectedItem && <WhyPanel item={selectedItem} onClose={() => setSelectedItem(null)} />}
+      {/* 운용 일지 모달 */}
+      {showJournal && <JournalModal onClose={() => setShowJournal(false)} />}
 
       {/* 헤더 */}
       <div className="flex items-center justify-between gap-3">
@@ -841,6 +979,9 @@ export default function HomePage() {
               {choice === "auto" ? "자동" : choice === "kr" ? "국장" : "미장"}
             </button>
           ))}
+          <button onClick={() => setShowJournal(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
+            일지
+          </button>
           <button onClick={load} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> 새로고침
           </button>

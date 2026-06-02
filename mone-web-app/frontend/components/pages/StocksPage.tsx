@@ -206,6 +206,20 @@ export default function StocksPage() {
   const [searchResults, setSearchResults] = useState<MoneSymbol[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [, setCashVersion] = useState(0);
+  const [scoredWatch, setScoredWatch] = useState<any>(null);
+  const [scoredLoading, setScoredLoading] = useState(false);
+
+  async function loadScoredWatchlist() {
+    setScoredLoading(true);
+    try {
+      const data = await mone.watchlistScored({ market, mode, horizon });
+      setScoredWatch(data);
+    } catch {
+      setScoredWatch(null);
+    } finally {
+      setScoredLoading(false);
+    }
+  }
 
   async function loadWatchlist() {
     try {
@@ -480,6 +494,14 @@ export default function StocksPage() {
     { id: "mid", label: "중기", desc: "2주 이상" },
   ];
 
+  const SUGGEST_STYLE: Record<string, string> = {
+    "즉시 진입 검토": "border-emerald-600/40 bg-emerald-900/20 text-emerald-300",
+    "타이밍 대기":    "border-amber-600/40 bg-amber-900/20 text-amber-300",
+    "제거 고려":      "border-red-600/40 bg-red-900/20 text-red-300",
+    "모니터링":       "border-slate-700 bg-slate-800 text-slate-400",
+    "데이터 없음":    "border-slate-800 bg-slate-900 text-slate-600",
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div>
@@ -526,7 +548,54 @@ export default function StocksPage() {
           >
             보유·관심 현재가 새로고침
           </button>
+          <button
+            onClick={loadScoredWatchlist}
+            disabled={scoredLoading}
+            className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-300 disabled:opacity-50"
+          >
+            {scoredLoading ? "분석 중..." : "관심종목 점수 분석"}
+          </button>
         </div>
+
+        {/* 관심종목 자동선별 결과 */}
+        {scoredWatch && Array.isArray(scoredWatch.items) && scoredWatch.items.length > 0 && (
+          <div className="mt-5 rounded-2xl border border-violet-800/30 bg-violet-950/10 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <span className="text-sm font-semibold text-slate-100">관심종목 점수 분석</span>
+                <span className="ml-2 text-xs text-slate-500">{modeLabel(mode)} × {horizonLabel(horizon)}</span>
+              </div>
+              <div className="flex gap-2 text-[11px]">
+                {[
+                  { key: "immediate", label: "즉시", color: "text-emerald-300" },
+                  { key: "waiting",   label: "대기", color: "text-amber-300" },
+                  { key: "monitor",   label: "관찰", color: "text-slate-400" },
+                  { key: "remove",    label: "제거", color: "text-red-300" },
+                ].map(({ key, label, color }) => (
+                  scoredWatch.summary?.[key] > 0 && (
+                    <span key={key} className={color}>{label} {scoredWatch.summary[key]}</span>
+                  )
+                ))}
+              </div>
+              <button onClick={() => setScoredWatch(null)} className="text-slate-600 hover:text-slate-400">✕</button>
+            </div>
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {scoredWatch.items.map((it: any) => (
+                <div key={it.symbol} className={`flex items-center justify-between rounded-xl border px-3 py-2 text-[11px] ${SUGGEST_STYLE[it.suggestion] || SUGGEST_STYLE["모니터링"]}`}>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-semibold">{it.name || it.symbol}</span>
+                    <span className="ml-1.5 text-[10px] opacity-60">{it.symbol}</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {it.finalScore > 0 && <span className="font-mono">{it.finalScore.toFixed(0)}점</span>}
+                    {it.expectedValue !== 0 && <span className={`font-mono ${it.expectedValue >= 0 ? "opacity-80" : "text-red-400"}`}>EV {it.expectedValue >= 0 ? "+" : ""}{it.expectedValue?.toFixed(1)}%</span>}
+                    <span className="rounded-full border px-1.5 py-0.5 text-[10px]">{it.suggestion}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div>

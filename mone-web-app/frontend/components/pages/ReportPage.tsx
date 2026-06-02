@@ -5,7 +5,7 @@ import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { dedupeBySymbol, displayName, firstText, formatMoney, horizonLabel, modeLabel, pctText, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
 
-type Tab = "premarket" | "intraday" | "closing" | "virtual";
+type Tab = "premarket" | "intraday" | "closing" | "virtual" | "validation";
 
 function Metric({ label, value, accent = false }: { label: string; value: any; accent?: boolean }) {
   return (
@@ -50,13 +50,14 @@ export default function ReportPage() {
   const [holdings, setHoldings] = useState<any>({ status: "LOADING", items: [] });
   const [virtualLedger, setVirtualLedger] = useState<any>({ status: "LOADING", items: [] });
   const [virtualValidation, setVirtualValidation] = useState<any>({ status: "LOADING", items: [] });
+  const [valDashboard, setValDashboard] = useState<any>(null);
 
   useEffect(() => {
     let active = true;
     setData({ status: "LOADING", items: [] });
-    const task = tab === "virtual" || tab === "closing"
+    const task = tab === "virtual" || tab === "closing" || tab === "validation"
       ? mone.backtestTrades({ market, mode, horizon, limit: 300 })
-      : mone.report(tab, { market, mode, horizon, limit: 300 });
+      : mone.report(tab as "premarket" | "intraday", { market, mode, horizon, limit: 300 });
 
     task.then((response) => active && setData(response || { status: "OK", items: [] }))
       .catch((error) => active && setData({ status: "ERROR", error: String(error), items: [] }));
@@ -64,6 +65,9 @@ export default function ReportPage() {
     mone.virtualLedger({ market, mode, horizon, limit: 300 }).then((response) => active && setVirtualLedger(response || { items: [] })).catch(() => active && setVirtualLedger({ items: [] }));
     mone.virtualValidation({ market, mode, horizon, limit: 300 }).then((response) => active && setVirtualValidation(response || { items: [] })).catch(() => active && setVirtualValidation({ items: [] }));
     mone.holdingsClean({ market, limit: 500 }).then((response) => active && setHoldings(response || { items: [] })).catch(() => active && setHoldings({ items: [] }));
+    if (tab === "validation") {
+      mone.validationDashboard({ market }).then((r) => active && setValDashboard(r || null)).catch(() => active && setValDashboard(null));
+    }
     return () => {
       active = false;
     };
@@ -93,6 +97,7 @@ export default function ReportPage() {
     { id: "intraday", label: "장중 체크", desc: "현재가 기준 접근·위험 상태" },
     { id: "closing", label: "장마감 검증", desc: "실제 OHLCV 기준 체결 검증" },
     { id: "virtual", label: "가상운용", desc: "누적 체결률·승률·수익률" },
+    { id: "validation", label: "검증 대시보드", desc: "9개 전략 승률·수익률 매트릭스" },
   ];
 
   return (
@@ -270,6 +275,87 @@ export default function ReportPage() {
           </div>
         )}
       </div>
+
+      {/* ── 검증 대시보드 탭 */}
+      {tab === "validation" && (
+        <div className="space-y-6">
+          {!valDashboard ? (
+            <div className="py-12 text-center text-slate-500">불러오는 중...</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "전체 승률", value: valDashboard.summary?.overallWinRate != null ? `${valDashboard.summary.overallWinRate}%` : "—" },
+                  { label: "완료 검증", value: `${valDashboard.summary?.totalCompleted ?? 0}건` },
+                  { label: "검증 대기", value: `${valDashboard.summary?.totalPending ?? 0}건` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center">
+                    <div className="text-xs text-slate-500">{label}</div>
+                    <div className="mt-2 text-xl font-bold text-slate-100">{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-slate-300">전략별 승률 매트릭스</h3>
+                <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-900/80">
+                        <th className="px-3 py-2.5 text-left text-slate-500">전략</th>
+                        {["단기", "스윙", "중기"].map((h) => <th key={h} className="px-3 py-2.5 text-center text-slate-500">{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(["conservative", "balanced", "aggressive"] as const).map((m) => (
+                        <tr key={m} className="border-b border-slate-900">
+                          <td className="px-3 py-3 font-semibold text-slate-300">{modeLabel(m)}</td>
+                          {(["short", "swing", "mid"] as const).map((h) => {
+                            const s = valDashboard.stats?.[`${m}_${h}`];
+                            const wr = s?.winRate;
+                            return (
+                              <td key={h} className="px-3 py-3 text-center">
+                                <div className={`text-base font-bold ${wr == null ? "text-slate-600" : wr >= 55 ? "text-emerald-300" : wr >= 45 ? "text-amber-300" : "text-red-300"}`}>
+                                  {wr != null ? `${wr}%` : "—"}
+                                </div>
+                                <div className="mt-0.5 text-slate-500">{s?.completed ? `${s.wins}/${s.completed}` : `대기 ${s?.pendingCount ?? 0}`}</div>
+                                {s?.avgReturn != null && <div className={`text-[10px] font-mono ${s.avgReturn >= 0 ? "text-emerald-400" : "text-red-400"}`}>avg {s.avgReturn >= 0 ? "+" : ""}{s.avgReturn.toFixed(1)}%</div>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {Array.isArray(valDashboard.lifecycle) && valDashboard.lifecycle.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-slate-300">추천 생애주기</h3>
+                  <div className="max-h-96 space-y-2 overflow-y-auto">
+                    {valDashboard.lifecycle.map((lc: any) => {
+                      const s = String(lc.status || "PENDING");
+                      const sc = s === "PENDING" ? "bg-slate-700 text-slate-300" : s.includes("WIN") || s.includes("목표") ? "bg-emerald-700 text-white" : s.includes("LOSS") || s.includes("손절") ? "bg-red-700 text-white" : "bg-blue-700 text-white";
+                      return (
+                        <div key={lc.predictionId} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-[11px]">
+                          <div className="min-w-0 flex-1">
+                            <span className="font-semibold text-slate-200">{lc.name || lc.symbol}</span>
+                            <span className="ml-1.5 text-slate-500">{lc.symbol} · {modeLabel(lc.mode as Mode)} · {horizonLabel(lc.horizon as Horizon)}</span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="text-slate-500">{String(lc.createdAt || "").slice(0, 10)}</span>
+                            {lc.returnPct != null && <span className={`font-mono ${lc.returnPct >= 0 ? "text-emerald-300" : "text-red-300"}`}>{lc.returnPct >= 0 ? "+" : ""}{lc.returnPct.toFixed(1)}%</span>}
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${sc}`}>{s}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
