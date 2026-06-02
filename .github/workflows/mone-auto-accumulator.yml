@@ -321,6 +321,12 @@ jobs:
       - name: Generate KR recommendations from OHLCV
         run: |
           set +e
+          if [ -f scripts/refresh_kr_close_ohlcv.py ]; then
+            python scripts/refresh_kr_close_ohlcv.py
+            echo "refresh_kr_close_ohlcv: exit $?"
+          else
+            echo "scripts/refresh_kr_close_ohlcv.py not found; skip KR OHLCV refresh."
+          fi
           python scripts/generate_kr_recommendations.py
           echo "generate_kr_recommendations: exit $?"
           set -e
@@ -339,12 +345,6 @@ jobs:
       - name: Refresh KR close OHLCV and validations
         run: |
           set +e
-          if [ -f scripts/refresh_kr_close_ohlcv.py ]; then
-            python scripts/refresh_kr_close_ohlcv.py
-            echo "refresh_kr_close_ohlcv: exit $?"
-          else
-            echo "scripts/refresh_kr_close_ohlcv.py not found; skip."
-          fi
           if [ -f scripts/generate_kr_close_validation.py ]; then
             python scripts/generate_kr_close_validation.py
             echo "generate_kr_close_validation: exit $?"

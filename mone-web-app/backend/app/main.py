@@ -208,6 +208,23 @@ def api_watchlist_add(payload: dict) -> dict:
     return user_data.add_watchlist(payload)
 
 
+@app.get("/api/watchlist/auto-candidates")
+def api_watchlist_auto_candidates(
+    market: str = Query("all", pattern="^(all|kr|us)$"),
+    limitPerMarket: int = Query(12, ge=3, le=30),
+) -> dict:
+    return user_data.auto_watchlist_candidates(market, limitPerMarket)
+
+
+@app.post("/api/watchlist/auto-curate")
+def api_watchlist_auto_curate(payload: dict = Body(default={})) -> dict:
+    market = str((payload or {}).get("market") or "all").lower()
+    if market not in {"all", "kr", "us"}:
+        market = "all"
+    limit_per_market = int((payload or {}).get("limitPerMarket") or 12)
+    return user_data.apply_auto_watchlist(market, limit_per_market)
+
+
 @app.delete("/api/watchlist/{symbol}")
 def api_watchlist_delete(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return user_data.delete_watchlist(symbol, _market(market))

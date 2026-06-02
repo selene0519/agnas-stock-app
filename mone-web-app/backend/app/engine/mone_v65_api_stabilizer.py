@@ -636,17 +636,6 @@ def _recommendation_paths(market: str, mode: str, horizon: str) -> list[tuple[Pa
 @lru_cache(maxsize=1)
 def _watch_symbols() -> set[str]:
     symbols: set[str] = set()
-    for path in _direct_files("daily_watch_selection.json", "data/daily_watch_selection.json", "reports/daily_watch_selection.json"):
-        payload = _read_json(path)
-        values = payload.values() if isinstance(payload, dict) else payload if isinstance(payload, list) else []
-        for value in values:
-            if isinstance(value, dict):
-                value = value.get("symbols") or value.get("items") or value.get("watchlist") or value.get("codes")
-            if isinstance(value, list):
-                for item in value:
-                    symbols.add(_symbol(item) if isinstance(item, dict) else _symbol_value(item))
-            elif isinstance(value, str):
-                symbols.add(_symbol_value(value))
     for path in _direct_files(
         "watchlist_kr.csv",
         "watchlist_us.csv",
@@ -661,6 +650,20 @@ def _watch_symbols() -> set[str]:
             sym = _symbol(row)
             if sym:
                 symbols.add(sym)
+    if symbols:
+        return {s for s in symbols if s}
+
+    for path in _direct_files("daily_watch_selection.json", "data/daily_watch_selection.json", "reports/daily_watch_selection.json"):
+        payload = _read_json(path)
+        values = payload.values() if isinstance(payload, dict) else payload if isinstance(payload, list) else []
+        for value in values:
+            if isinstance(value, dict):
+                value = value.get("symbols") or value.get("items") or value.get("watchlist") or value.get("codes")
+            if isinstance(value, list):
+                for item in value:
+                    symbols.add(_symbol(item) if isinstance(item, dict) else _symbol_value(item))
+            elif isinstance(value, str):
+                symbols.add(_symbol_value(value))
     return {s for s in symbols if s}
 
 
