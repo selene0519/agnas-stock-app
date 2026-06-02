@@ -395,11 +395,17 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
         stop = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
 
     target = round(entry * (1.0 + (band["target"] - 1.0) * rwf))
-    # 승률 보정: score는 기술 품질 점수, 승률이 아님 (45~58% 범위)
-    _H_BASE  = {"short": 0.485, "swing": 0.505, "mid": 0.515}
-    _H_SCALE = {"short": 0.12,  "swing": 0.14,  "mid": 0.15}
-    base  = _H_BASE.get(horizon, 0.505)
-    scale = _H_SCALE.get(horizon, 0.14)
+    # 승률: strategy_win_rates.json 에서 로드 (가상운용 누적 시 자동 보정)
+    _rates_path = ROOT / "reports" / "strategy_win_rates.json"
+    try:
+        _rates_doc = json.loads(_rates_path.read_text(encoding="utf-8")) if _rates_path.exists() else {}
+    except Exception:
+        _rates_doc = {}
+    _win_rates = _rates_doc.get("winRates", {})
+    _defaults  = _rates_doc.get("defaultRates", {})
+    _rate_key  = f"{mode}_{horizon}"
+    base  = float(_win_rates.get(_rate_key) or _defaults.get(f"{horizon}_base") or 0.505)
+    scale = float(_defaults.get(f"{horizon}_scale") or 0.14)
     prob  = max(0.35, min(0.65, base + (score - 50.0) / 50.0 * scale))
 
     ev = None
@@ -460,6 +466,114 @@ def _strategy_tags(ind: dict) -> str:
     if (rsi and rsi >= 80) or (bb_b and bb_b > 1) or (gap and gap >= 15) or (cup and cup >= 5 and vr and vr < 0.7):
         tags.append("주의")
     return " | ".join(tags) if tags else "판단 대기"
+
+
+def _load_sector_map() -> dict[str, str]:
+    """섹터 맵 로드: {symbol: sector}"""
+    sector: dict[str, str] = {}
+    for path in [ROOT / "data" / "sector_map_kr.csv"]:
+        for row in _read_csv(path):
+            sym = str(row.get("symbol", "")).strip()
+            s   = str(row.get("sector", "")).strip()
+            if sym and s and s != "Unknown":
+                sector[sym] = s
+                sector[sym.lstrip("0")] = s
+    return sector
+
+
+def _sector_concentration(symbols: list[str], sector_map: dict[str, str]) -> dict[str, Any]:
+    """추천 종목의 섹터 집중도 계산. 50% 이상이면 경고."""
+    from collections import Counter
+    sectors = [sector_map.get(s, sector_map.get(s.lstrip("0"), "Unknown")) for s in symbols]
+    total = len(symbols)
+    if total == 0:
+        return {"warning": False, "topSector": "", "topPct": 0}
+    cnt = Counter(sectors)
+    top_sector, top_n = cnt.most_common(1)[0]
+    top_pct = round(top_n / total * 100, 1)
+    return {
+        "warning": top_pct >= 50,
+        "topSector": top_sector,
+        "topPct": top_pct,
+        "distribution": dict(cnt),
+        "diversificationScore": round(100 - top_pct, 1),
+    }
+
+
+def _load_dart_financial_data() -> dict[str, dict[str, Any]]:
+    """DART 재무 데이터 로드 (PEG, ROE, 부채비율, 영업이익률)"""
+    dart: dict[str, dict[str, Any]] = {}
+    path = ROOT / "reports" / "dart_financial_data_kr.csv"
+    for row in _read_csv(path):
+        sym  = str(row.get("symbol", "")).strip()
+        year = str(row.get("year", "")).strip()
+        if not sym:
+            continue
+        # 가장 최신 연도 우선
+        existing = dart.get(sym)
+        if existing is None or year > str(existing.get("year", "")):
+            dart[sym] = {
+                "roe":              _num(row.get("roe")),
+                "debt_ratio":       _num(row.get("debt_ratio")),
+                "operating_margin": _num(row.get("operating_margin")),
+                "net_margin":       _num(row.get("net_margin")),
+                "revenue_growth":   _num(row.get("revenue_growth")),
+                "eps_growth":       _num(row.get("eps_growth")),
+                "per":              _num(row.get("per")),
+                "pbr":              _num(row.get("pbr")),
+                "peg":              _num(row.get("peg")),
+                "quality_score":    _num(row.get("quality_score")),
+                "value_score":      _num(row.get("value_score")),
+                "growth_score":     _num(row.get("growth_score")),
+                "year": year,
+            }
+            dart[sym.lstrip("0")] = dart[sym]
+    return dart
+
+
+def _peg_tag(dart_row: dict | None) -> tuple[bool, str]:
+    """
+    PEG 기반 저평가 성장주 판단.
+    PEG = PER / EPS성장률
+    PEG < 1.0 → 저평가 성장주 (성장 대비 싸다)
+    PEG 1.0~1.5 → 적정
+    PEG > 2.0 → 고평가
+    """
+    if not dart_row:
+        return False, ""
+    peg = dart_row.get("peg")
+    roe = dart_row.get("roe")
+    eps_g = dart_row.get("eps_growth")
+    op_m = dart_row.get("operating_margin")
+    debt = dart_row.get("debt_ratio")
+
+    reasons = []
+
+    # PEG 기반 (데이터 있을 때)
+    if peg is not None and peg > 0:
+        if peg < 1.0:
+            reasons.append(f"PEG {peg:.2f} (저평가)")
+        elif peg > 2.0:
+            return False, f"PEG {peg:.2f} 고평가"
+
+    # ROE 기반
+    if roe and roe >= 15:
+        reasons.append(f"ROE {roe:.1f}%")
+
+    # 영업이익률
+    if op_m and op_m >= 15:
+        reasons.append(f"영업이익률 {op_m:.1f}%")
+
+    # 성장성
+    if eps_g and eps_g >= 15:
+        reasons.append(f"EPS성장 {eps_g:.1f}%")
+
+    # 재무 안정성 (부채비율)
+    if debt and debt > 200:
+        return False, f"부채비율 {debt:.0f}% 과다"
+
+    is_undervalued = len(reasons) >= 2
+    return is_undervalued, " · ".join(reasons) if reasons else ""
 
 
 def _load_market_regime() -> dict[str, Any]:
@@ -830,11 +944,14 @@ def generate_recommendations() -> dict[str, Any]:
     name_map = _load_name_map()
     regime = _load_market_regime()
     news_sentiment = _load_news_sentiment()
-    fin_data = _load_financial_data()
+    fin_data = _load_financial_data()        # v93 company 기반
+    dart_data = _load_dart_financial_data()  # DART API 기반 (더 정확)
     supply_data = _load_supply_data()
+    sector_map = _load_sector_map()
 
     print(f"  OHLCV: {len(ohlcv_all)}종목, KIS 현재가: {len(kis_prices)}종목")
-    print(f"  뉴스/공시 감성: {len(news_sentiment)}종목, 재무: {len(fin_data)//2}종목, 수급: {len(supply_data)//2}종목")
+    print(f"  뉴스감성: {len(news_sentiment)}종목, 재무(v93): {len(fin_data)//2}종목, DART: {len(dart_data)//2}종목")
+    print(f"  수급: {len(supply_data)//2}종목, 섹터맵: {len(sector_map)//2}종목")
     print(f"  마켓 레짐: {regime['label']} ({regime['description']})")
 
     regime_adjust = regime.get("scoreAdjust", 0.0)
@@ -935,8 +1052,15 @@ def generate_recommendations() -> dict[str, Any]:
                 # 최종 조정 점수 (뉴스 감점 + 수급 가산)
                 adj_score_final = max(0.0, min(100.0, adj_score - news_penalty + supply_adjust))
 
-                # A-2: 저평가 성장주 태그
-                is_undervalued, fin_reason = _is_undervalued_growth(sym, fin_data)
+                # A-2: 저평가 성장주 — DART 데이터 우선, fallback → v93 company
+                dart_row = dart_data.get(sym) or dart_data.get(sym.lstrip("0"))
+                if dart_row:
+                    is_undervalued, fin_reason = _peg_tag(dart_row)
+                    # DART에서 ROE도 업데이트
+                    if dart_row.get("roe") is not None:
+                        ind["roe"] = dart_row["roe"]
+                else:
+                    is_undervalued, fin_reason = _is_undervalued_growth(sym, fin_data)
 
                 sub = _sub_scores(ind)
                 tags_list = []
@@ -1009,15 +1133,22 @@ def generate_recommendations() -> dict[str, Any]:
                     "evNegative": ev_negative,
                     "rrActual": rr if rr is not None else "",
                     "maConvergence": ma_conv,
-                    # 재무 데이터
-                    "roe": fin_info.get("roe", ""),
-                    "per": fin_info.get("per", ""),
-                    "pbr": fin_info.get("pbr", ""),
-                    "finValueScore": fin_info.get("value_score", ""),
-                    "finGrowthScore": fin_info.get("growth_score", ""),
-                    "finStabilityScore": fin_info.get("stability_score", ""),
+                    # 재무 데이터 (DART 우선, v93 fallback)
+                    "roe": dart_row.get("roe", "") if dart_row else fin_info.get("roe", ""),
+                    "per": dart_row.get("per", "") if dart_row else fin_info.get("per", ""),
+                    "pbr": dart_row.get("pbr", "") if dart_row else fin_info.get("pbr", ""),
+                    "peg": dart_row.get("peg", "") if dart_row else "",
+                    "debtRatio": dart_row.get("debt_ratio", "") if dart_row else "",
+                    "operatingMargin": dart_row.get("operating_margin", "") if dart_row else "",
+                    "revenueGrowth": dart_row.get("revenue_growth", "") if dart_row else "",
+                    "epsGrowth": dart_row.get("eps_growth", "") if dart_row else "",
+                    "finValueScore": dart_row.get("value_score", fin_info.get("value_score", "")) if dart_row else fin_info.get("value_score", ""),
+                    "finGrowthScore": dart_row.get("growth_score", fin_info.get("growth_score", "")) if dart_row else fin_info.get("growth_score", ""),
+                    "finQualityScore": dart_row.get("quality_score", "") if dart_row else "",
                     "isUndervaluedGrowth": is_undervalued,
                     "finReason": fin_reason,
+                    # 섹터
+                    "sector": sector_map.get(sym, sector_map.get(sym.lstrip("0"), "")),
                     # 수급 데이터
                     "instBuy5d": supply_info.get("inst5d", ""),
                     "foreignBuy5d": supply_info.get("foreign5d", ""),
@@ -1045,6 +1176,11 @@ def generate_recommendations() -> dict[str, Any]:
                 }
                 rows_out.append(row)
                 count += 1
+
+            # 섹터 집중도 경고
+            sector_check = _sector_concentration([r["symbol"] for r in rows_out], sector_map)
+            if sector_check["warning"]:
+                print(f"    [WARN] Sector concentration: {sector_check['topSector']} {sector_check['topPct']}%")
 
             key = f"{mode}_{horizon}"
             out_path = REPORTS / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
