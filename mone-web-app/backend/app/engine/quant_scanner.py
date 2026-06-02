@@ -807,17 +807,29 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         "indicators": result.get("indicators", {}),
         "computedFields": computed,
     }
-    event_text = " ".join(
-        str(item.get(key) or "")
-        for key in ("warning_reason", "warningReason", "newsSummary", "disclosureTitle", "eventBadgesText", "riskReason")
-    )
-    if any(keyword in event_text for keyword in ("공시", "뉴스", "리스크", "과열", "감자", "소송", "유상증자", "적자", "관리종목")):
-        out["newsRiskPenalty"] = min(20.0, float(out.get("newsRiskPenalty") or 0) + 10.0)
-        if isinstance(out.get("finalScore"), (int, float)):
-            out["finalScore"] = max(0.0, round(float(out["finalScore"]) - 5.0, 1))
-            out["quantScore"] = out["finalScore"]
-        out.setdefault("riskFlags", []).append("NEWS_DISCLOSURE_RISK")
-        out.setdefault("computedFields", []).append("news_disclosure_risk_penalty")
+    # 뉴스/공시 감성 — CSV 파일에서 실데이터 우선, 없으면 텍스트 키워드 fallback
+    real_news_penalty = _num(item.get("newsRiskPenalty") or item.get("eventRiskScore"))
+    if real_news_penalty is not None and real_news_penalty > 0:
+        # generate_kr_recommendations.py에서 이미 계산된 실제 감성 점수 사용
+        out["newsRiskPenalty"] = real_news_penalty
+        out["newsSentimentSource"] = item.get("newsSentimentSource", "csv")
+        if real_news_penalty >= 10.0:
+            out.setdefault("riskFlags", []).append("NEWS_DISCLOSURE_RISK")
+    else:
+        # Fallback: 텍스트 키워드 스캔
+        event_text = " ".join(
+            str(item.get(key) or "")
+            for key in ("warning_reason", "warningReason", "newsSummary", "disclosureTitle", "eventBadgesText", "riskReason", "surgeLabel")
+        )
+        _RISK_KW = ("공시주의", "유상증자", "감자", "소송", "관리종목", "상장폐지", "횡령", "배임", "전환사채")
+        if any(kw in event_text for kw in _RISK_KW):
+            penalty = 12.0
+            out["newsRiskPenalty"] = min(20.0, float(out.get("newsRiskPenalty") or 0) + penalty)
+            if isinstance(out.get("finalScore"), (int, float)):
+                out["finalScore"] = max(0.0, round(float(out["finalScore"]) - penalty * 0.3, 1))
+                out["quantScore"] = out["finalScore"]
+            out.setdefault("riskFlags", []).append("NEWS_DISCLOSURE_RISK")
+            out.setdefault("computedFields", []).append("news_keyword_risk_penalty")
 
     # 현재가 fallback 반영 (OHLCV close 사용 시)
     current_source = result.get("currentPriceSource", "live")
