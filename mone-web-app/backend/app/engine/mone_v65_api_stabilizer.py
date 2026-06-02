@@ -2554,6 +2554,369 @@ def _save_edit_rows(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 
+_JOURNAL_PATH = None
+
+def _journal_path() -> Path:
+    global _JOURNAL_PATH
+    if _JOURNAL_PATH is None:
+        _JOURNAL_PATH = _repo_root() / "reports" / "trading_journal.json"
+    return _JOURNAL_PATH
+
+def _load_journal() -> list[dict[str, Any]]:
+    p = _journal_path()
+    if not p.exists():
+        return []
+    try:
+        import json as _json
+        return _json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+def _save_journal(entries: list[dict[str, Any]]) -> None:
+    import json as _json
+    p = _journal_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(_json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def _journal_payload(market: str) -> dict[str, Any]:
+    entries = _load_journal()
+    if market != "all":
+        entries = [e for e in entries if str(e.get("market") or "kr").lower() == market]
+    entries.sort(key=lambda e: str(e.get("createdAt") or ""), reverse=True)
+    return {"status": "OK", "market": market, "count": len(entries), "items": entries[:100]}
+
+def _journal_add_payload(data: dict[str, Any]) -> dict[str, Any]:
+    import uuid as _uuid
+    entries = _load_journal()
+    entry = {
+        "id":         str(_uuid.uuid4())[:8],
+        "createdAt":  datetime.now().isoformat(timespec="seconds"),
+        "market":     str(data.get("market") or "kr").lower(),
+        "symbol":     str(data.get("symbol") or ""),
+        "name":       str(data.get("name") or ""),
+        "action":     str(data.get("action") or "BUY"),   # BUY / SELL / NOTE
+        "price":      _num(data.get("price")),
+        "qty":        _num(data.get("qty")),
+        "memo":       str(data.get("memo") or "")[:100],  # 100자 제한
+        "review":     str(data.get("review") or ""),      # 청산 후 복기
+        "result":     str(data.get("result") or ""),      # WIN / LOSS / BREAK_EVEN
+        "returnPct":  _num(data.get("returnPct")),
+        "tags":       data.get("tags") or [],
+    }
+    entries.insert(0, entry)
+    _save_journal(entries)
+    return {"status": "OK", "entry": entry}
+
+def _journal_update_payload(entry_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    entries = _load_journal()
+    for e in entries:
+        if e.get("id") == entry_id:
+            for k in ("memo", "review", "result", "returnPct", "tags"):
+                if k in data:
+                    e[k] = data[k]
+            e["updatedAt"] = datetime.now().isoformat(timespec="seconds")
+            _save_journal(entries)
+            return {"status": "OK", "entry": e}
+    return {"status": "NOT_FOUND"}
+
+def _journal_delete_payload(entry_id: str) -> dict[str, Any]:
+    entries = _load_journal()
+    before = len(entries)
+    entries = [e for e in entries if e.get("id") != entry_id]
+    _save_journal(entries)
+    return {"status": "OK", "deleted": before - len(entries)}
+
+
+def _sector_exposure_payload(market: str) -> dict[str, Any]:
+    """보유종목 기준 섹터 노출도 + 최대 동시 손실 시뮬레이션."""
+    market = _market_norm(market)
+    repo   = _repo_root()
+
+    # sector_map 로드
+    sector_map: dict[str, str] = {}
+    for p in [repo / "data" / "sector_map_kr.csv", repo / "sector_map_kr.csv"]:
+        if p.exists():
+            for row in _read_csv(p, 100000):
+                sym = str(row.get("symbol") or "").strip().lstrip("0").zfill(6)
+                sec = str(row.get("sector") or "Other").strip() or "Other"
+                sector_map[sym] = sec
+            break
+
+    # 보유종목 로드
+    holdings: list[dict[str, Any]] = []
+    try:
+        from app.engine.mone_v802_holdings_clean import holdings_clean_payload
+        h = holdings_clean_payload(market=market, limit=200)
+        holdings = h.get("items", [])
+    except Exception:
+        pass
+
+    if not holdings:
+        return {"status": "NO_DATA", "market": market, "sectors": [], "maxLossSimulation": None}
+
+    # 종목별 평가금액
+    total_value = 0.0
+    items_with_val: list[dict[str, Any]] = []
+    for h in holdings:
+        qty       = _num(h.get("quantity") or h.get("qty") or 0)
+        cur_price = _num(h.get("currentPrice") or h.get("current_price") or 0)
+        avg_price = _num(h.get("avgPrice") or h.get("avg_price") or 0)
+        val       = qty * (cur_price if cur_price > 0 else avg_price)
+        stop_price = _num(h.get("stopPrice") or 0)
+        sym = str(h.get("symbol") or "").strip().lstrip("0").zfill(6)
+        sector = sector_map.get(sym) or str(h.get("sector") or h.get("sectorLabel") or "Other")
+        items_with_val.append({
+            "symbol":  sym,
+            "name":    str(h.get("name") or sym),
+            "sector":  sector,
+            "value":   val,
+            "qty":     qty,
+            "avgPrice": avg_price,
+            "currentPrice": cur_price if cur_price > 0 else avg_price,
+            "stopPrice": stop_price,
+        })
+        total_value += val
+
+    # 섹터별 집계
+    sector_totals: dict[str, float] = {}
+    sector_items:  dict[str, list]  = {}
+    for it in items_with_val:
+        sec = it["sector"]
+        sector_totals[sec] = sector_totals.get(sec, 0) + it["value"]
+        sector_items.setdefault(sec, []).append(it["name"])
+
+    sectors = sorted([
+        {
+            "sector":  sec,
+            "value":   round(val, 0),
+            "pct":     round(val / total_value * 100, 1) if total_value else 0,
+            "symbols": sector_items.get(sec, []),
+        }
+        for sec, val in sector_totals.items()
+    ], key=lambda x: -x["pct"])
+
+    # 최대 동시 손실 시뮬레이션 (전부 손절가 터치)
+    max_loss = 0.0
+    max_loss_items: list[dict[str, Any]] = []
+    for it in items_with_val:
+        if it["stopPrice"] > 0 and it["currentPrice"] > 0:
+            loss = (it["stopPrice"] - it["currentPrice"]) / it["currentPrice"] * it["value"]
+            max_loss += loss
+            max_loss_items.append({
+                "symbol": it["symbol"],
+                "name":   it["name"],
+                "lossPct": round((it["stopPrice"] - it["currentPrice"]) / it["currentPrice"] * 100, 1),
+                "lossAmt": round(loss, 0),
+            })
+
+    return {
+        "status": "OK",
+        "market": market,
+        "totalValue":  round(total_value, 0),
+        "holdingCount": len(items_with_val),
+        "sectors":     sectors,
+        "maxLossSimulation": {
+            "totalLoss":    round(max_loss, 0),
+            "totalLossPct": round(max_loss / total_value * 100, 1) if total_value else 0,
+            "items":        max_loss_items,
+        } if max_loss_items else None,
+        "concentration": {
+            "top1Pct": sectors[0]["pct"] if sectors else 0,
+            "top3Pct": sum(s["pct"] for s in sectors[:3]) if len(sectors) >= 3 else sum(s["pct"] for s in sectors),
+            "warning": sectors[0]["pct"] > 40 if sectors else False,
+        },
+    }
+
+
+def _validation_dashboard_payload(market: str) -> dict[str, Any]:
+    """9가지 전략 조합의 검증 통계 + 생애주기 요약."""
+    market = _market_norm(market)
+    repo   = _repo_root()
+    MODES_    = ("conservative", "balanced", "aggressive")
+    HORIZONS_ = ("short", "swing", "mid")
+
+    # ── 검증 통계 (trade_validation CSV 9개 집계)
+    stats: dict[str, Any] = {}
+    for m in MODES_:
+        for h in HORIZONS_:
+            key  = f"{m}_{h}"
+            path = repo / "reports" / f"mone_v36_final_trade_validation_{market}_{m}_{h}.csv"
+            rows = _read_csv(path, 100000)
+            completed = [r for r in rows if str(r.get("executionStatus") or "").strip() in {"체결", "HIT", "완료"}]
+            win  = [r for r in completed if str(r.get("exitStatus") or r.get("result") or "").strip() in {"목표달성", "TARGET_HIT", "WIN", "성공"}]
+            lose = [r for r in completed if str(r.get("exitStatus") or r.get("result") or "").strip() in {"손절", "STOP_HIT", "LOSS", "실패"}]
+            rets = []
+            for r in completed:
+                v = _num(_text(r, ["returnPct", "return_pct", "pnlPct"]))
+                if v != 0:
+                    rets.append(v)
+            stats[key] = {
+                "mode": m, "horizon": h,
+                "total":    len(rows),
+                "completed": len(completed),
+                "wins":     len(win),
+                "losses":   len(lose),
+                "winRate":  round(len(win) / len(completed) * 100, 1) if completed else None,
+                "avgReturn": round(sum(rets) / len(rets), 2) if rets else None,
+                "pendingCount": len([r for r in rows if str(r.get("validationStatus") or r.get("status") or "").strip() == "PENDING"]),
+            }
+
+    # ── 생애주기 (virtual_prediction_ledger.csv)
+    lifecycle: list[dict[str, Any]] = []
+    for p in [repo / "reports" / "virtual_prediction_ledger.csv", repo / "virtual_prediction_ledger.csv"]:
+        rows = _read_csv(p, 10000)
+        if rows:
+            for row in rows[:100]:
+                status = str(row.get("status") or "PENDING").strip()
+                lifecycle.append({
+                    "predictionId": row.get("predictionId", ""),
+                    "symbol":   row.get("symbol", ""),
+                    "name":     row.get("name", ""),
+                    "market":   row.get("market", market),
+                    "mode":     row.get("mode", ""),
+                    "horizon":  row.get("horizon", ""),
+                    "createdAt": row.get("createdAt", ""),
+                    "validationDueDate": row.get("validationDueDate", ""),
+                    "status":   status,
+                    "returnPct": _num(_text(row, ["returnPct", "return_pct"])) if status not in {"PENDING"} else None,
+                    "result":   _text(row, ["result", "exitStatus"]),
+                    "entryPrice": _num(_text(row, ["entryPrice", "entry"])),
+                    "targetPrice": _num(_text(row, ["targetPrice", "target"])),
+                    "stopPrice":  _num(_text(row, ["stopPrice", "stop"])),
+                })
+            break
+
+    # 전체 통계 요약
+    all_stats = list(stats.values())
+    total_win  = sum(s["wins"] for s in all_stats)
+    total_done = sum(s["completed"] for s in all_stats)
+    overall_wr = round(total_win / total_done * 100, 1) if total_done else None
+
+    return {
+        "status": "OK",
+        "market": market,
+        "generatedAt": datetime.now().isoformat(),
+        "stats": stats,
+        "summary": {
+            "overallWinRate": overall_wr,
+            "totalCompleted": total_done,
+            "totalPending":   sum(s["pendingCount"] for s in all_stats),
+        },
+        "lifecycle": lifecycle,
+    }
+
+
+def _watchlist_scored_payload(market: str, mode: str, horizon: str) -> dict[str, Any]:
+    """관심종목을 quant overlay로 점수화해 반환. 추가 추천/제거 제안 포함."""
+    market  = _market_norm(market)
+    mode    = _mode_norm(mode)
+    horizon = _horizon_norm(horizon)
+
+    # 관심종목 심볼 수집
+    watch_syms: list[str] = []
+    watch_names: dict[str, str] = {}
+    for p in [
+        _repo_root() / f"watchlist_{market}.csv",
+        _repo_root() / f"data/watchlist_{market}.csv",
+    ]:
+        for row in _read_csv(p, 10000):
+            sym = _symbol(row, market)
+            if sym and sym not in watch_syms:
+                watch_syms.append(sym)
+                watch_names[sym] = _text(row, ["name", "stockName", "company_name", "종목명"]) or sym
+
+    if not watch_syms:
+        return {"status": "NO_DATA", "market": market, "items": [], "count": 0}
+
+    # 추천 파일에서 해당 종목 데이터 수집
+    reco_map: dict[str, dict[str, Any]] = {}
+    path = _repo_root() / "reports" / f"mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv"
+    for row in _read_csv(path, 50000):
+        sym = _symbol(row, market)
+        if sym and sym not in reco_map:
+            reco_map[sym] = row
+
+    # 현재가 인덱스
+    quotes = _quote_index(market)
+
+    scored: list[dict[str, Any]] = []
+    for sym in watch_syms:
+        row = reco_map.get(sym, {})
+        quote = quotes.get(sym, {})
+        current = _num(_text(quote, ["currentPrice", "current_price", "last_price"]))
+        if not current:
+            current = _num(_text(row, ["currentPrice", "current_price"]))
+
+        ev         = _num(_text(row, ["expectedValue", "ev"]))
+        final_score = _num(_text(row, ["finalScore", "opportunityScore", "score"]))
+        decision   = _text(row, ["decisionBucket"]) or "관찰"
+        ev_neg     = ev < 0 if _text(row, ["expectedValue"]) else False
+        entry      = _num(_text(row, ["entry", "entryPrice"]))
+        target     = _num(_text(row, ["target", "targetPrice"]))
+        stop_price = _num(_text(row, ["stop", "stopPrice"]))
+        rr         = _num(_text(row, ["rrActual", "rr"]))
+        prob       = _num(_text(row, ["probability"])) or 55.0
+        supply     = _text(row, ["supplySignal"]) or "NEUTRAL"
+        tags       = _text(row, ["surgeLabel", "strategyTags"])
+
+        # 관심종목 선별 제안 (데이터 있을 때만)
+        suggestion: str
+        if not row:
+            suggestion = "데이터 없음"
+        elif decision == "오늘 진입" and not ev_neg:
+            suggestion = "즉시 진입 검토"
+        elif decision == "대기 관찰":
+            suggestion = "타이밍 대기"
+        elif ev_neg or final_score < 40:
+            suggestion = "제거 고려"
+        else:
+            suggestion = "모니터링"
+
+        scored.append({
+            "symbol":       sym,
+            "name":         watch_names.get(sym, sym),
+            "market":       market,
+            "currentPrice": current,
+            "entry":        entry,
+            "stop":         stop_price,
+            "target":       target,
+            "finalScore":   final_score,
+            "expectedValue": ev,
+            "evNegative":   ev_neg,
+            "rrActual":     rr,
+            "probability":  prob,
+            "decisionBucket": decision,
+            "supplySignal": supply,
+            "surgeLabel":   tags,
+            "suggestion":   suggestion,
+            "inReco":       bool(row),
+        })
+
+    scored.sort(key=lambda x: (
+        0 if x["suggestion"] == "즉시 진입 검토" else
+        1 if x["suggestion"] == "타이밍 대기" else
+        2 if x["suggestion"] == "모니터링" else
+        3 if x["suggestion"] == "데이터 없음" else 4,
+        -x["finalScore"],
+    ))
+
+    return {
+        "status": "OK",
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "count": len(scored),
+        "items": scored,
+        "summary": {
+            "immediate": sum(1 for x in scored if x["suggestion"] == "즉시 진입 검토"),
+            "waiting":   sum(1 for x in scored if x["suggestion"] == "타이밍 대기"),
+            "monitor":   sum(1 for x in scored if x["suggestion"] == "모니터링"),
+            "remove":    sum(1 for x in scored if x["suggestion"] == "제거 고려"),
+            "noData":    sum(1 for x in scored if x["suggestion"] == "데이터 없음"),
+        },
+    }
+
+
 def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
     """
     홈화면용 통합 페이로드.
@@ -2666,6 +3029,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         "/api/symbols",
         "/api/final/symbols",
         "/api/watchlist",
+        "/api/watchlist/scored",
         "/api/holdings-edit",
         "/api/holdings-edit/save",
         "/api/watchlist-edit",
@@ -2674,6 +3038,10 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         "/api/data/audit",
         "/api/health/github",
         "/api/home/summary",
+        "/api/validation/dashboard",
+        "/api/risk/sector-exposure",
+        "/api/journal",
+        "/api/journal/add",
         "/api/final/recommendations",
         "/api/v1/candidates",
         "/api/reports/premarket",
@@ -2695,6 +3063,10 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     @app.get("/api/watchlist")
     def watchlist(market: str = Query("all"), limit: int = Query(10000)) -> dict[str, Any]:
         return _safe_payload(lambda: _symbols_payload(market, "", True, limit), "/api/watchlist")
+
+    @app.get("/api/watchlist/scored")
+    def watchlist_scored(market: str = Query("kr"), mode: str = Query("balanced"), horizon: str = Query("swing")) -> dict[str, Any]:
+        return _safe_payload(lambda: _watchlist_scored_payload(market, mode, horizon), "/api/watchlist/scored")
 
 
     @app.get("/api/holdings-edit")
@@ -2726,6 +3098,30 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     @app.get("/api/health/github")
     def github() -> dict[str, Any]:
         return _safe_payload(_github_payload, "/api/health/github")
+
+    @app.get("/api/validation/dashboard")
+    def validation_dashboard(market: str = Query("kr")) -> dict[str, Any]:
+        return _safe_payload(lambda: _validation_dashboard_payload(market), "/api/validation/dashboard")
+
+    @app.get("/api/risk/sector-exposure")
+    def sector_exposure(market: str = Query("kr")) -> dict[str, Any]:
+        return _safe_payload(lambda: _sector_exposure_payload(market), "/api/risk/sector-exposure")
+
+    @app.get("/api/journal")
+    def journal_get(market: str = Query("all")) -> dict[str, Any]:
+        return _safe_payload(lambda: _journal_payload(market), "/api/journal")
+
+    @app.post("/api/journal/add")
+    def journal_add(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        return _safe_payload(lambda: _journal_add_payload(payload), "/api/journal/add")
+
+    @app.patch("/api/journal/{entry_id}")
+    def journal_update(entry_id: str, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        return _safe_payload(lambda: _journal_update_payload(entry_id, payload), "/api/journal/update")
+
+    @app.delete("/api/journal/{entry_id}")
+    def journal_delete(entry_id: str) -> dict[str, Any]:
+        return _safe_payload(lambda: _journal_delete_payload(entry_id), "/api/journal/delete")
 
     @app.get("/api/home/summary")
     def home_summary(

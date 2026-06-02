@@ -129,6 +129,7 @@ export default function HoldingsPage() {
   const [data, setData] = useState<any>({ items: [], summary: {} });
   const [loading, setLoading] = useState(false);
   const [editKey, setEditKey] = useState<string | null>(null);
+  const [sectorData, setSectorData] = useState<any>(null);
   const [editDraft, setEditDraft] = useState<EditableHolding | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [editMessage, setEditMessage] = useState("");
@@ -136,8 +137,13 @@ export default function HoldingsPage() {
   async function load() {
     setLoading(true);
     try {
-      const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
+      const m = market === "all" ? "kr" : market;
+      const [result, sector] = await Promise.all([
+        getJson(`/api/holdings-clean?market=${market}&limit=500`),
+        getJson(`/api/risk/sector-exposure?market=${m}`).catch(() => null),
+      ]);
       setData(result);
+      setSectorData(sector);
     } catch (error) {
       setData({ status: "ERROR", error: String(error), items: [], summary: {} });
     } finally {
@@ -269,6 +275,39 @@ export default function HoldingsPage() {
 
       {data.error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">{data.error}</div>}
       {editMessage && <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">{editMessage}</div>}
+
+      {/* 리스크 히트맵 */}
+      {sectorData && Array.isArray(sectorData.sectors) && sectorData.sectors.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-100">섹터 노출도 히트맵</h2>
+            {sectorData.concentration?.warning && (
+              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">⚠ 집중도 높음 ({sectorData.concentration.top1Pct}%)</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {sectorData.sectors.map((s: any) => {
+              const intensity = s.pct >= 30 ? "bg-red-700/60" : s.pct >= 20 ? "bg-orange-700/50" : s.pct >= 10 ? "bg-amber-700/40" : "bg-slate-700/50";
+              return (
+                <div key={s.sector} className={`rounded-xl ${intensity} px-3 py-2 text-center`} style={{ minWidth: `${Math.max(70, s.pct * 3)}px` }}>
+                  <div className="text-[11px] font-semibold text-slate-200 truncate max-w-[120px]">{s.sector}</div>
+                  <div className="mt-0.5 font-mono text-sm font-bold text-white">{s.pct.toFixed(1)}%</div>
+                  <div className="text-[10px] text-slate-300">{s.symbols.slice(0, 2).join(", ")}{s.symbols.length > 2 ? ` 외 ${s.symbols.length - 2}` : ""}</div>
+                </div>
+              );
+            })}
+          </div>
+          {sectorData.maxLossSimulation && (
+            <div className="mt-4 rounded-xl border border-red-800/30 bg-red-950/20 p-3 text-[11px]">
+              <span className="font-semibold text-red-300">최대 동시 손실 시뮬레이션</span>
+              <span className="ml-2 text-slate-400">(전 종목 손절가 터치 시)</span>
+              <span className="ml-3 font-mono font-bold text-red-300">
+                {sectorData.maxLossSimulation.totalLoss.toLocaleString()}원 ({sectorData.maxLossSimulation.totalLossPct.toFixed(1)}%)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {items.map((holding: any) => {

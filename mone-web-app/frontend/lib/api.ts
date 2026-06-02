@@ -145,6 +145,20 @@ export const mone = {
     apiGet<ApiList>("/api/watchlist", p),
   homeSummary: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/home/summary", p),
+  watchlistScored: (p?: { market?: Market; mode?: string; horizon?: string }) =>
+    apiGet<ApiList>("/api/watchlist/scored", p),
+  validationDashboard: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/validation/dashboard", p),
+  sectorExposure: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/risk/sector-exposure", p),
+  journalGet: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/journal", p),
+  journalAdd: (body: { market?: string; symbol?: string; name?: string; action?: string; price?: number; qty?: number; memo: string; review?: string; result?: string; returnPct?: number; tags?: string[] }) =>
+    apiPost<ApiList>("/api/journal/add", body),
+  journalUpdate: (id: string, body: Partial<{ memo: string; review: string; result: string; returnPct: number; tags: string[] }>) =>
+    fetch(`${typeof window !== "undefined" ? "" : "http://127.0.0.1:8050"}/mone-api/api/journal/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+  journalDelete: (id: string) =>
+    fetch(`${typeof window !== "undefined" ? "" : "http://127.0.0.1:8050"}/mone-api/api/journal/${id}`, { method: "DELETE" }).then(r => r.json()),
   recommendations: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>
     apiGet<ApiList>("/api/final/recommendations", p),
   candidates: (p?: { market?: Market; strategy?: Mode | string; term?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>
