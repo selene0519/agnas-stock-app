@@ -4197,10 +4197,38 @@ def disclosure_rows(market: str) -> dict[str, Any]:
         "items": items[:250],
     }
 
+def _load_dart_financial_map(market: str) -> dict[str, dict[str, Any]]:
+    """reports/dart_financial_data_kr.csv 에서 종목별 최신 재무 데이터 로드"""
+    dart: dict[str, dict[str, Any]] = {}
+    if market != "kr":
+        return dart
+    path = REPORT_DIR / "dart_financial_data_kr.csv"
+    if not path.exists():
+        return dart
+    # read_csv returns DataFrame — dataframe_records로 변환
+    df = read_csv(path)
+    rows = dataframe_records(df) if hasattr(df, "iterrows") else (df if isinstance(df, list) else [])
+    for row in rows:
+        raw_sym = str(row.get("symbol", "")).strip()
+        sym = normalize_symbol(raw_sym, market)
+        year = str(row.get("year", ""))
+        if not sym:
+            continue
+        existing = dart.get(sym)
+        if existing is None or year > str(existing.get("year", "")):
+            dart[sym] = dict(row)
+            # 앞에 0 없는 버전도 등록
+            sym_strip = sym.lstrip("0")
+            if sym_strip and sym_strip not in dart:
+                dart[sym_strip] = dict(row)
+    return dart
+
+
 def company_analysis(market: str) -> dict[str, Any]:
     base_map = _combine_symbol_maps(market)
     company_map, company_sources = _latest_data_maps((r"company_integrated", r"company", r"기업"), market, ("news", "sector", "action", "pullback", "risk", "flow", "node_modules"))
     financial_map, financial_sources = _latest_data_maps((r"financial", r"fundamental", r"finance", r"재무", r"income", r"eps"), market, ("sector", "node_modules"))
+    dart_map = _load_dart_financial_map(market)   # DART API 재무 데이터
     flow_map, flow_sources = _latest_data_maps((r"flow", r"supply", r"수급", r"investor"), market, ("sector", "node_modules"))
     source_list = []
     for src in company_sources + financial_sources + flow_sources:
@@ -4231,6 +4259,20 @@ def company_analysis(market: str) -> dict[str, Any]:
         merged = _merge_alias_values(merged, company_map.get(symbol, {}))
         merged = _merge_alias_values(merged, financial_map.get(symbol, {}))
         merged = _merge_alias_values(merged, flow_map.get(symbol, {}))
+        # DART API 재무 데이터 (가장 신뢰도 높음 — 덮어쓰기)
+        dart_row = dart_map.get(symbol)
+        if dart_row:
+            for dart_key, csv_key in [
+                ("roe", "ROE"), ("per", "PER"), ("pbr", "PBR"),
+                ("debt_ratio", "debtRatio"), ("operating_margin", "operatingMargin"),
+                ("revenue_growth", "revenueGrowth"), ("eps_growth", "epsGrowth"),
+                ("peg", "peg"), ("quality_score", "qualityScore"),
+                ("growth_score", "growthScore"), ("value_score", "valueScore"),
+            ]:
+                v = dart_row.get(dart_key)
+                if v and str(v).strip() not in ("", "None", "nan"):
+                    merged[csv_key] = v
+                    merged[dart_key] = v
         merged = apply_quote_cache(merged, market)
         normalized = normalize_security_row(merged, market)
         eps = _display_value(merged, ["EPS", "eps", "주당순이익", "basic_eps", "diluted_eps"], "EPS 데이터 없음")
@@ -4244,9 +4286,31 @@ def company_analysis(market: str) -> dict[str, Any]:
         quarterly = _display_value(merged, ["분기실적", "quarter_result", "quarterly_performance", "quarterly"], "분기실적 데이터 연결 대기")
         esg = _display_value(merged, ["ESG", "esg", "ESG등급"], "ESG 데이터 연결 대기")
         research = _display_value(merged, ["리서치", "research", "report", "투자의견", "target_opinion"], "리서치 데이터 연결 대기")
+        # DART 재무 정보 보강 (더 정확한 값으로 덮어씀)
+        dart_row = dart_map.get(symbol) or {}
+        def _dart_or(primary_key: str, dart_key: str, fallback: str) -> Any:
+            dart_val = dart_row.get(dart_key) or dart_row.get(primary_key)
+            if dart_val and str(dart_val).strip() not in ("", "None", "nan", "-"):
+                return dart_val
+            return _display_value(merged, [primary_key], fallback)
+
+        per_final  = _dart_or("PER", "per", "PER 데이터 없음")
+        pbr_final  = _dart_or("PBR", "pbr", "PBR 데이터 없음")
+        roe_final  = _dart_or("ROE", "roe", "ROE 데이터 없음")
+        peg_final  = dart_row.get("peg") or dart_row.get("peg") or ""
+        debt_final = dart_row.get("debt_ratio") or ""
+        op_margin  = dart_row.get("operating_margin") or ""
+        rev_growth = dart_row.get("revenue_growth") or ""
+        eps_growth = dart_row.get("eps_growth") or ""
+        dart_quality = dart_row.get("quality_score") or ""
+        dart_growth  = dart_row.get("growth_score") or ""
+        has_dart = bool(dart_row)
+        dart_year = dart_row.get("year") or ""
+
         items.append({
             "symbol": normalized.get("symbol", symbol),
             "name": normalized.get("name", symbol),
+            "market": market,
             "currentPriceText": normalized.get("currentPriceText", "현재가 없음"),
             "priceTime": normalized.get("priceTime", ""),
             "priceSource": normalized.get("priceSource", ""),
@@ -4257,11 +4321,20 @@ def company_analysis(market: str) -> dict[str, Any]:
             "flowStatus": normalized.get("statuses", {}).get("flow", "수급 데이터 없음"),
             "earningsStatus": normalized.get("statuses", {}).get("earnings", "재무 데이터 없음"),
             "valuationStatus": normalized.get("statuses", {}).get("valuation", "재무 데이터 없음"),
-            "dataStatus": normalized.get("dataStatus", "상태 없음"),
+            "dataStatus": "DART" if has_dart else normalized.get("dataStatus", "상태 없음"),
+            "dartYear": dart_year,
+            "hasDartData": has_dart,
             "eps": eps,
-            "per": per,
-            "pbr": pbr,
-            "roe": roe,
+            "per": per_final,
+            "pbr": pbr_final,
+            "roe": roe_final,
+            "peg": peg_final,
+            "debtRatio": debt_final,
+            "operatingMargin": op_margin,
+            "revenueGrowth": rev_growth,
+            "epsGrowth": eps_growth,
+            "qualityScore": dart_quality,
+            "growthScore": dart_growth,
             "revenue": revenue,
             "operatingIncome": operating_income,
             "netIncome": net_income,

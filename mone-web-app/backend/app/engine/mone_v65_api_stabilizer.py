@@ -1182,6 +1182,26 @@ def _write_financial_gap_report(items: list[dict[str, Any]]) -> None:
 
 
 @lru_cache(maxsize=32)
+def _load_dart_map(market: str) -> dict[str, dict[str, Any]]:
+    """reports/dart_financial_data_kr.csv → {symbol: row}"""
+    dart: dict[str, dict[str, Any]] = {}
+    if market not in ("kr", "all"):
+        return dart
+    path = _repo_root() / "reports" / "dart_financial_data_kr.csv"
+    if not path.exists():
+        return dart
+    for row in _read_csv(path, 10000):
+        sym = str(row.get("symbol", "")).strip()
+        if not sym:
+            continue
+        year = str(row.get("year", ""))
+        existing = dart.get(sym)
+        if existing is None or year > str(existing.get("year", "")):
+            dart[sym] = dict(row)
+            dart[sym.lstrip("0")] = dict(row)
+    return dart
+
+
 def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
     market = _market_norm(market)
     names = _build_name_map()
@@ -1221,6 +1241,31 @@ def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
                 target["market"],
                 "보유/추천/관심 종목에는 포함됐지만 재무 CSV에서 매칭되는 행을 찾지 못했습니다.",
             )
+
+    # ── DART 재무 데이터 오버레이 (가장 신뢰도 높음)
+    dart_map = _load_dart_map(market)
+    for item in merged.values():
+        sym = item.get("symbol", "")
+        dart_row = dart_map.get(sym) or dart_map.get(sym.lstrip("0")) or {}
+        if dart_row:
+            for dart_k, item_k in [
+                ("roe", "roe"), ("debt_ratio", "debtRatio"),
+                ("operating_margin", "operatingMargin"), ("net_margin", "netMargin"),
+                ("revenue_growth", "revenueGrowth"), ("eps_growth", "epsGrowth"),
+                ("peg", "peg"), ("per", "per"), ("pbr", "pbr"),
+                ("quality_score", "qualityScore"), ("growth_score", "growthScore"),
+            ]:
+                v = dart_row.get(dart_k)
+                if v is not None and str(v).strip() not in ("", "None", "nan", "-"):
+                    try:
+                        item[item_k] = float(str(v).replace(",", ""))
+                    except Exception:
+                        item[item_k] = v
+            item["hasDartData"] = True
+            item["dartYear"] = str(dart_row.get("year", ""))
+            # 매칭된 것으로 처리 (PARTIAL→DART_OK)
+            if int(item.get("matchedRows") or 0) <= 0:
+                item["matchedRows"] = 1
 
     items = [_company_finalize(item, has_sources) for item in merged.values()]
     if query:
