@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { displayName, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
 
-type ToggleKey = "ma5" | "ma20" | "rsi";
+type ToggleKey = "ma5" | "ma20" | "ma60" | "bb" | "volume";
 
 function toSymbol(item: any, index = 0): MoneSymbol | null {
   const symbol = normalizeSymbol(item);
@@ -138,6 +138,204 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   });
 }
 
+// ── TradingView Lightweight Charts 캔들 차트
+function TvChart({
+  rows,
+  levels,
+  market,
+  toggles,
+}: {
+  rows: any[];
+  levels: any;
+  market: string;
+  toggles: Record<ToggleKey, boolean>;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || rows.length === 0) return;
+
+    let chart: any = null;
+
+    async function init() {
+      try {
+        const LW = await import("lightweight-charts");
+
+        // 기존 차트 제거
+        if (chartRef.current) {
+          chartRef.current.remove();
+          chartRef.current = null;
+        }
+
+        chart = LW.createChart(containerRef.current!, {
+          width: containerRef.current!.clientWidth,
+          height: 380,
+          layout: { background: { color: "#020617" }, textColor: "#94a3b8" },
+          grid: {
+            vertLines: { color: "#1e293b" },
+            horzLines: { color: "#1e293b" },
+          },
+          crosshair: { mode: LW.CrosshairMode.Normal },
+          rightPriceScale: { borderColor: "#334155" },
+          timeScale: { borderColor: "#334155", timeVisible: true },
+        });
+        chartRef.current = chart;
+
+        // 캔들 시리즈
+        const candleSeries = chart.addCandlestickSeries({
+          upColor: "#22c55e",
+          downColor: "#ef4444",
+          borderUpColor: "#22c55e",
+          borderDownColor: "#ef4444",
+          wickUpColor: "#22c55e",
+          wickDownColor: "#ef4444",
+        });
+
+        const candleData = rows
+          .filter((r) => r.date || r.Date)
+          .map((r) => ({
+            time: (r.date || r.Date) as string,
+            open:  Number(r.open  || r.Open  || r.close || r.Close) || 0,
+            high:  Number(r.high  || r.High  || r.close || r.Close) || 0,
+            low:   Number(r.low   || r.Low   || r.close || r.Close) || 0,
+            close: Number(r.close || r.Close) || 0,
+          }))
+          .filter((d) => d.close > 0)
+          .sort((a, b) => a.time < b.time ? -1 : 1);
+
+        candleSeries.setData(candleData);
+
+        // 거래량 시리즈
+        if (toggles.volume) {
+          const volSeries = chart.addHistogramSeries({
+            color: "#334155",
+            priceFormat: { type: "volume" },
+            priceScaleId: "volume",
+          });
+          chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+          const volData = candleData.map((d, i) => ({
+            time: d.time,
+            value: Number((rows[i] || {}).volume || (rows[i] || {}).Volume || 0),
+            color: d.close >= d.open ? "#16a34a55" : "#dc262655",
+          }));
+          volSeries.setData(volData);
+        }
+
+        // 이동평균
+        const closes = candleData.map((d) => d.close);
+        const calcMA = (period: number): { time: string; value: number }[] =>
+          candleData
+            .map((d, i) => {
+              if (i < period - 1) return null;
+              const avg = closes.slice(i - period + 1, i + 1).reduce((s, v) => s + v, 0) / period;
+              return { time: d.time, value: avg };
+            })
+            .filter(Boolean) as { time: string; value: number }[];
+
+        if (toggles.ma5) {
+          const ma5s = chart.addLineSeries({ color: "#2dd4bf", lineWidth: 1, priceLineVisible: false });
+          ma5s.setData(calcMA(5));
+        }
+        if (toggles.ma20) {
+          const ma20s = chart.addLineSeries({ color: "#facc15", lineWidth: 1.5, priceLineVisible: false });
+          ma20s.setData(calcMA(20));
+        }
+        if (toggles.ma60) {
+          const ma60s = chart.addLineSeries({ color: "#f97316", lineWidth: 1.5, priceLineVisible: false });
+          ma60s.setData(calcMA(60));
+        }
+
+        // 볼린저 밴드
+        if (toggles.bb && closes.length >= 20) {
+          const bbData = candleData.map((d, i) => {
+            if (i < 19) return null;
+            const slice = closes.slice(i - 19, i + 1);
+            const mean = slice.reduce((s, v) => s + v, 0) / 20;
+            const std = Math.sqrt(slice.reduce((s, v) => s + (v - mean) ** 2, 0) / 20);
+            return { time: d.time, upper: mean + std * 2, lower: mean - std * 2 };
+          }).filter(Boolean) as { time: string; upper: number; lower: number }[];
+
+          const bbUpper = chart.addLineSeries({ color: "#7c3aed55", lineWidth: 1, priceLineVisible: false, lineStyle: 3 });
+          const bbLower = chart.addLineSeries({ color: "#7c3aed55", lineWidth: 1, priceLineVisible: false, lineStyle: 3 });
+          bbUpper.setData(bbData.map((d) => ({ time: d.time, value: d.upper })));
+          bbLower.setData(bbData.map((d) => ({ time: d.time, value: d.lower })));
+        }
+
+        // 진입/손절/목표 수평선
+        const addLine = (price: number, color: string, title: string) => {
+          if (!price || price <= 0) return;
+          candleSeries.createPriceLine({
+            price,
+            color,
+            lineWidth: 1,
+            lineStyle: LW.LineStyle.Dashed,
+            axisLabelVisible: true,
+            title,
+          });
+        };
+        if (levels) {
+          addLine(levelValue(levels, "entry"),   "#22c55e", "진입");
+          addLine(levelValue(levels, "stop"),    "#ef4444", "손절");
+          addLine(levelValue(levels, "target"),  "#06b6d4", "목표");
+        }
+
+        chart.timeScale().fitContent();
+
+        // 리사이즈 대응
+        const ro = new ResizeObserver(() => {
+          if (containerRef.current && chartRef.current) {
+            chartRef.current.resize(containerRef.current.clientWidth, 380);
+          }
+        });
+        ro.observe(containerRef.current!);
+        return () => ro.disconnect();
+      } catch (err) {
+        console.error("TradingView chart error:", err);
+      }
+    }
+
+    init();
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
+    };
+  }, [rows, levels, toggles]);
+
+  return <div ref={containerRef} className="h-[380px] w-full rounded-xl overflow-hidden" />;
+}
+
+// ── ATR 기반 진입 계획 계산
+function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative" | "balanced" | "aggressive", horizon: "short" | "swing" | "mid") {
+  if (!currentPrice || !atr) return null;
+
+  // 전략별 ATR 배수 (손절)
+  const stopMult  = { conservative: 1.5, balanced: 2.0, aggressive: 2.5 }[mode];
+  // 기간별 목표 ATR 배수
+  const tgt1Mult  = { short: 2.0, swing: 3.0, mid: 4.5 }[horizon];
+  const tgt2Mult  = { short: 3.0, swing: 5.0, mid: 7.0 }[horizon];
+
+  const entry  = Math.round(currentPrice);
+  const stop   = Math.round(entry - atr * stopMult);
+  const target1 = Math.round(entry + atr * tgt1Mult);
+  const target2 = Math.round(entry + atr * tgt2Mult);
+
+  const rr1 = ((target1 - entry) / (entry - stop));
+  const rr2 = ((target2 - entry) / (entry - stop));
+  const stopPct  = ((entry - stop) / entry * 100);
+  const tgt1Pct  = ((target1 - entry) / entry * 100);
+
+  // 분할 매수 계획 (50/30/20)
+  const split2Price = Math.round(entry - atr * 0.5);  // 1차 진입 후 눌림 구간
+  const split3Price = Math.round(entry - atr * 1.0);  // 마지막 저점 매수
+
+  return { entry, stop, target1, target2, rr1: rr1.toFixed(2), rr2: rr2.toFixed(2),
+           stopPct: stopPct.toFixed(1), tgt1Pct: tgt1Pct.toFixed(1),
+           split2Price, split3Price, atr: Math.round(atr) };
+}
+
 export default function ChartPage() {
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
@@ -146,7 +344,9 @@ export default function ChartPage() {
   const [news, setNews] = useState<any[]>([]);
   const [disclosures, setDisclosures] = useState<any[]>([]);
   const [company, setCompany] = useState<any | null>(null);
-  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({ ma5: true, ma20: true, rsi: true });
+  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({ ma5: true, ma20: true, ma60: false, bb: false, volume: true });
+  const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
+  const [atrHorizon, setAtrHorizon] = useState<"short"|"swing"|"mid">("swing");
   const [loading, setLoading] = useState(false);
   const [seedLoading, setSeedLoading] = useState(false);
 
@@ -224,27 +424,13 @@ export default function ChartPage() {
   }, [selected]);
 
   const latest = rows.at(-1);
-  const display = rows.slice(-90);
-  const closes = display.map(closeOf);
-  const ma5 = movingAverage(closes, 5);
-  const ma20 = movingAverage(closes, 20);
   const indicators = derivedIndicators(rows, latest, levels?.indicators || {});
   const latestRsi = indicators.rsi14 ?? rsi(rows.map(closeOf).filter(Boolean));
-  const levelNumbers = ["base", "entry", "stop", "target", "expected"].map((key) => levelValue(levels, key as any)).filter(Boolean);
-  const maNumbers = [...ma5, ...ma20].filter((value): value is number => Number.isFinite(value as number));
-  const max = Math.max(...display.map(highOf), ...levelNumbers, ...maNumbers, 1);
-  const min = Math.min(...display.map((row) => lowOf(row) || max), ...levelNumbers, ...maNumbers, max);
-  const y = (value: number) => (max === min ? 120 : 220 - ((value - min) / (max - min)) * 190);
-  const x = (index: number) => 20 + (index / Math.max(display.length - 1, 1)) * 900;
-  const points = closes.map((close, index) => `${x(index)},${y(close)}`).join(" ");
-  const maPoints = (series: Array<number | null>) => series.map((value, index) => (value ? `${x(index)},${y(value)}` : "")).filter(Boolean).join(" ");
-  const lines = [
-    { key: "base", label: "기준가", color: "rgb(148 163 184)", value: levelValue(levels, "base") },
-    { key: "entry", label: "진입가", color: "rgb(16 185 129)", value: levelValue(levels, "entry") },
-    { key: "stop", label: "손절가", color: "rgb(248 113 113)", value: levelValue(levels, "stop") },
-    { key: "target", label: "목표가", color: "rgb(34 211 238)", value: levelValue(levels, "target") },
-    { key: "expected", label: "예상가", color: "rgb(168 85 247)", value: levelValue(levels, "expected") },
-  ].filter((line) => line.value > 0);
+  const currentPrice = positiveNum(latest?.close) || positiveNum(latest?.Close) || levelValue(levels, "entry") || 0;
+  const atrValue = indicators.atr14 || 0;
+  const atrPlan = atrValue > 0 && currentPrice > 0
+    ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon)
+    : null;
 
   return (
     <div className="space-y-6 p-6">
@@ -293,14 +479,26 @@ export default function ChartPage() {
               </div>
             </div>
 
+            {/* 차트 토글 */}
             <div className="mb-3 flex flex-wrap gap-2">
-              {(["ma5", "ma20", "rsi"] as ToggleKey[]).map((key) => (
+              {([
+                ["ma5",    "MA5",   "#2dd4bf"],
+                ["ma20",   "MA20",  "#facc15"],
+                ["ma60",   "MA60",  "#f97316"],
+                ["bb",     "BB",    "#a855f7"],
+                ["volume", "거래량", "#64748b"],
+              ] as [ToggleKey, string, string][]).map(([key, label, color]) => (
                 <button
                   key={key}
                   onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
-                  className={`rounded-lg border px-3 py-1.5 text-xs ${toggles[key] ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950 text-slate-500"}`}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                    toggles[key]
+                      ? "border-current bg-slate-900"
+                      : "border-slate-800 bg-slate-950 text-slate-600"
+                  }`}
+                  style={toggles[key] ? { color, borderColor: color + "66" } : {}}
                 >
-                  {key === "ma5" ? "MA5" : key === "ma20" ? "MA20" : "RSI"}
+                  {label}
                 </button>
               ))}
             </div>
@@ -309,46 +507,113 @@ export default function ChartPage() {
 
             {!loading && rows.length === 0 && (
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-8 text-center text-amber-200">
-                이 종목의 OHLCV 데이터가 아직 연결되지 않았습니다. `data/market/ohlcv` 또는 `/api/ohlcv` 연결 상태를 확인해야 합니다.
+                OHLCV 데이터가 없습니다. GitHub Actions 실행 후 다시 확인하세요.
               </div>
             )}
 
             {!loading && rows.length > 0 && (
               <div className="space-y-4">
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                  <svg viewBox="0 0 960 260" className="h-80 w-full">
-                    {[0, 1, 2, 3].map((grid) => (
-                      <line key={grid} x1="20" x2="920" y1={35 + grid * 55} y2={35 + grid * 55} stroke="rgb(51 65 85)" strokeDasharray="4 4" />
-                    ))}
-                    {lines.map((line) => {
-                      const yy = y(line.value);
-                      return (
-                        <g key={line.key}>
-                          <line x1="20" x2="920" y1={yy} y2={yy} stroke={line.color} strokeDasharray={line.key === "entry" ? "0" : "6 5"} strokeWidth="1.5" />
-                          <text x="925" y={yy + 4} fill={line.color} fontSize="12">{line.label}</text>
-                        </g>
-                      );
-                    })}
-                    {toggles.ma20 && <polyline points={maPoints(ma20)} fill="none" stroke="rgb(250 204 21)" strokeWidth="1.5" opacity="0.8" />}
-                    {toggles.ma5 && <polyline points={maPoints(ma5)} fill="none" stroke="rgb(45 212 191)" strokeWidth="1.5" opacity="0.8" />}
-                    <polyline points={points} fill="none" stroke="rgb(59 130 246)" strokeWidth="3" />
-                  </svg>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500 md:grid-cols-5">
-                    <div>데이터: {rows.length}개</div>
-                    <div>최근 일자: {latest?.date || "-"}</div>
-                    <div>고가: {latest ? money(latest.high, selected.market) : "-"}</div>
-                    <div>저가: {latest ? money(latest.low, selected.market) : "-"}</div>
-                    <div>거래량: {Number(latest?.volume || 0).toLocaleString("ko-KR")}</div>
+                {/* TradingView 캔들차트 */}
+                <div className="rounded-xl border border-slate-800 bg-[#020617] p-2">
+                  <TvChart rows={rows} levels={levels} market={selected.market} toggles={toggles} />
+                  <div className="mt-2 flex flex-wrap gap-3 px-2 text-xs text-slate-500">
+                    <span>봉: {rows.length}개</span>
+                    <span>최근: {latest?.date || "-"}</span>
+                    <span>종가: {latest ? money(latest.close, selected.market) : "-"}</span>
+                    <span className="ml-auto flex gap-3">
+                      <span style={{ color: "#2dd4bf" }}>━ MA5</span>
+                      <span style={{ color: "#facc15" }}>━ MA20</span>
+                      {toggles.ma60 && <span style={{ color: "#f97316" }}>━ MA60</span>}
+                      {toggles.bb   && <span style={{ color: "#a855f7" }}>- - BB</span>}
+                      {levels && <><span style={{ color: "#22c55e" }}>-- 진입</span><span style={{ color: "#ef4444" }}>-- 손절</span><span style={{ color: "#06b6d4" }}>-- 목표</span></>}
+                    </span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
-                  <Info label="기준가" value={levels && levelValue(levels, "base") ? money(levelValue(levels, "base"), selected.market) : "추천 기준 없음"} />
-                  <Info label="진입가" value={levels ? priceText(levels, "entry", "추천 기준 없음") : "추천 기준 없음"} />
-                  <Info label="손절가" value={levels ? priceText(levels, "stop", "추천 기준 없음") : "추천 기준 없음"} />
-                  <Info label="목표가" value={levels ? priceText(levels, "target", "추천 기준 없음") : "추천 기준 없음"} />
-                  <Info label="예상가" value={levels ? priceText(levels, "expected", "추천 기준 없음") : "추천 기준 없음"} />
+                  <Info label="기준가" value={levels && levelValue(levels, "base") ? money(levelValue(levels, "base"), selected.market) : "-"} />
+                  <Info label="진입가" value={levels ? priceText(levels, "entry", "-") : "-"} />
+                  <Info label="손절가" value={levels ? priceText(levels, "stop", "-") : "-"} />
+                  <Info label="목표가" value={levels ? priceText(levels, "target", "-") : "-"} />
+                  <Info label="예상가" value={levels ? priceText(levels, "expected", "-") : "-"} />
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── ATR 기반 진입 계획 */}
+          <div className="rounded-2xl border border-blue-900/50 bg-blue-950/10 p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-slate-100">ATR 기반 진입 계획</h3>
+                <p className="text-xs text-slate-500">
+                  ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} ·
+                  분할매수 1차 50% / 2차 30% / 3차 20%
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {(["conservative", "balanced", "aggressive"] as const).map((m) => (
+                  <button key={m} onClick={() => setAtrMode(m)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${atrMode === m ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
+                    {m === "conservative" ? "보수" : m === "balanced" ? "균형" : "공격"}
+                  </button>
+                ))}
+                <span className="text-slate-700">|</span>
+                {(["short", "swing", "mid"] as const).map((h) => (
+                  <button key={h} onClick={() => setAtrHorizon(h)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${atrHorizon === h ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
+                    {h === "short" ? "단기" : h === "swing" ? "스윙" : "중기"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {atrPlan ? (
+              <div className="space-y-3">
+                {/* 진입 가격 표 */}
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {[
+                    { label: "1차 진입 (50%)", value: money(atrPlan.entry, selected.market), color: "text-emerald-300", sub: "현재가" },
+                    { label: "2차 진입 (30%)", value: money(atrPlan.split2Price, selected.market), color: "text-sky-300", sub: `현재가 -${(atrPlan.atr * 0.5 / atrPlan.entry * 100).toFixed(1)}%` },
+                    { label: "3차 진입 (20%)", value: money(atrPlan.split3Price, selected.market), color: "text-violet-300", sub: `현재가 -${(atrPlan.atr / atrPlan.entry * 100).toFixed(1)}%` },
+                    { label: "손절가", value: money(atrPlan.stop, selected.market), color: "text-red-300", sub: `-${atrPlan.stopPct}% (ATR×${atrMode === "conservative" ? "1.5" : atrMode === "balanced" ? "2.0" : "2.5"})` },
+                  ].map(({ label, value, color, sub }) => (
+                    <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                      <div className="text-xs text-slate-500">{label}</div>
+                      <div className={`mt-1 font-mono font-bold ${color}`}>{value}</div>
+                      <div className="text-[10px] text-slate-600">{sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 목표 + 손익비 */}
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {[
+                    { label: `1차 목표 (+${atrPlan.tgt1Pct}%)`, value: money(atrPlan.target1, selected.market), color: "text-cyan-300", sub: `RR ${atrPlan.rr1}` },
+                    { label: "2차 목표", value: money(atrPlan.target2, selected.market), color: "text-emerald-300", sub: `RR ${atrPlan.rr2}` },
+                    { label: "ATR 단위", value: money(atrPlan.atr, selected.market), color: "text-slate-300", sub: "14일 평균 변동폭" },
+                    { label: "목표1 손익비", value: `1 : ${atrPlan.rr1}`, color: Number(atrPlan.rr1) >= 1.8 ? "text-emerald-400" : "text-amber-400", sub: Number(atrPlan.rr1) >= 1.8 ? "기준 충족" : "기준 미달 (1.8↑)" },
+                  ].map(({ label, value, color, sub }) => (
+                    <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                      <div className="text-xs text-slate-500">{label}</div>
+                      <div className={`mt-1 font-mono font-bold ${color}`}>{value}</div>
+                      <div className="text-[10px] text-slate-600">{sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 매수 전략 요약 */}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-xs text-slate-400">
+                  <span className="font-semibold text-slate-300">분할매수 전략: </span>
+                  {money(atrPlan.entry, selected.market)} 도달 시 50% 진입 →
+                  {money(atrPlan.split2Price, selected.market)} 눌림 시 30% 추가 →
+                  {money(atrPlan.split3Price, selected.market)} 이탈 전 20% 마지막 진입.
+                  손절 {money(atrPlan.stop, selected.market)} 하향 이탈 시 전량 청산.
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">
+                ATR 데이터가 부족합니다. OHLCV 30일 이상 필요합니다.
               </div>
             )}
           </div>
