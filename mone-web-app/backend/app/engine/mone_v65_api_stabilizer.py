@@ -5,7 +5,7 @@ import json
 import math
 import re
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
@@ -446,11 +446,18 @@ def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
 
 
 def _strategy_profile(mode: str) -> dict[str, float]:
+    """
+    전략별 기본 가격 프로파일.
+    보수: 손절 짧고 목표 보수적 / 균형: 기본 / 공격: 손절 넓고 목표 크게
+    """
     if mode == "conservative":
-        return {"stop": 0.985, "target": 1.045, "prob": -3.0}
+        # 손절 -3.0%, 목표 +6.0%, 확률 보정 -2.0
+        return {"stop": 0.970, "target": 1.060, "prob": -2.0}
     if mode == "aggressive":
-        return {"stop": 0.94, "target": 1.16, "prob": 3.0}
-    return {"stop": 0.97, "target": 1.08, "prob": 0.0}
+        # 손절 -9.0%, 목표 +20.0%, 확률 보정 +2.0
+        return {"stop": 0.910, "target": 1.200, "prob": 2.0}
+    # balanced: 손절 -5.5%, 목표 +13.0%
+    return {"stop": 0.945, "target": 1.130, "prob": 0.0}
 
 
 def _prob_number(value: Any, default: float = 58.0) -> float:
@@ -797,8 +804,11 @@ def _company_paths(market: str) -> tuple[Path, ...]:
     return tuple(unique)
 
 
-def _field_value(row: dict[str, Any], keys: list[str]) -> float:
-    return _num(_text(row, keys, ""))
+def _field_value(row: dict[str, Any], keys: list[str]) -> float | None:
+    raw = _text(row, keys, "")
+    if not str(raw or "").strip() or str(raw).strip().lower() in {"nan", "none", "null", "na", "-", "데이터 없음", "연결 필요"}:
+        return None
+    return _num(raw)
 
 
 def _missing_fields(item: dict[str, Any]) -> list[str]:
@@ -990,16 +1000,16 @@ def _blank_company_item(symbol: str, name: str, market: str, reason: str) -> dic
         "symbol": symbol,
         "name": name,
         "market": market,
-        "eps": 0.0,
-        "per": 0.0,
-        "pbr": 0.0,
-        "roe": 0.0,
-        "revenue": 0.0,
-        "operatingProfit": 0.0,
-        "netIncome": 0.0,
-        "debtRatio": 0.0,
-        "fundamentalScore": 0.0,
-        "flowScore": 0.0,
+        "eps": None,
+        "per": None,
+        "pbr": None,
+        "roe": None,
+        "revenue": None,
+        "operatingProfit": None,
+        "netIncome": None,
+        "debtRatio": None,
+        "fundamentalScore": None,
+        "flowScore": None,
         "source": "",
         "sourceFiles": [],
         "matchedRows": 0,
@@ -1218,12 +1228,33 @@ def _recommendation_item(
     entry = _num(_text(row, ["entry", "entry_price", "entryPrice", "preferred_entry", "technical_entry", "support1", "진입가"], ""))
     if entry <= 0:
         entry = current
+
+    # ── 기간별 정량 기준으로 손절/목표가 산출
+    # short:  손절 -3~-5%, 목표 +4~+8%
+    # swing:  손절 -5~-8%, 목표 +8~+18%
+    # mid:    손절 -7~-12%, 목표 +15~+30%
+    _horizon_bands = {
+        "short": {"stop_mid": 0.961, "target_mid": 1.060},   # -3.9% / +6.0%
+        "swing": {"stop_mid": 0.935, "target_mid": 1.130},   # -6.5% / +13.0%
+        "mid":   {"stop_mid": 0.905, "target_mid": 1.220},   # -9.5% / +22.0%
+    }
+    _mode_risk = {"conservative": 0.85, "balanced": 1.0, "aggressive": 1.20}
+    _mode_reward = {"conservative": 0.80, "balanced": 1.0, "aggressive": 1.30}
+
+    band = _horizon_bands.get(horizon, _horizon_bands["swing"])
+    risk_factor = _mode_risk.get(mode, 1.0)
+    reward_factor = _mode_reward.get(mode, 1.0)
+
     stop = _num(_text(row, ["stop", "stop_loss", "stopLoss", "손절가"], ""))
     if stop <= 0 and entry > 0:
-        stop = entry * 0.97
+        raw_stop_pct = 1.0 - band["stop_mid"]
+        stop = entry * (1.0 - raw_stop_pct * risk_factor)
+
     target = _num(_text(row, ["target", "target_price", "targetPrice", "take_profit1", "resistance1", "목표가"], ""))
     if target <= 0 and entry > 0:
-        target = entry * 1.07
+        raw_target_pct = band["target_mid"] - 1.0
+        target = entry * (1.0 + raw_target_pct * reward_factor)
+
     expected = _num(_text(row, ["expectedPrice", "expected_price", "예상가"], "")) or target
 
     probability = _text(row, ["probability", "win_probability", "probSwing", "prob_3d", "prob_5d", "확률"], "58")
@@ -1416,6 +1447,168 @@ def _recommendation_item(
     }
 
 
+def _light_correction_summary(market: str, mode: str, horizon: str) -> dict[str, Any]:
+    path = _repo_root() / "reports" / "virtual_validation_results.csv"
+    rows = _read_csv(path, 100000)
+    filtered = [
+        row for row in rows
+        if str(row.get("market") or "").lower() == market
+        and str(row.get("mode") or "").lower() == mode
+        and str(row.get("horizon") or "").lower() == horizon
+    ]
+    filtered.sort(key=lambda row: str(row.get("validationDueDate") or row.get("createdAt") or row.get("date") or ""), reverse=True)
+    evaluated = [
+        row for row in filtered
+        if str(row.get("result") or "").upper() not in {"", "PENDING", "VALIDATABLE", "DATA_PENDING"}
+    ]
+    executed = [
+        row for row in evaluated
+        if str(row.get("isExecuted") or row.get("executed") or "").lower() in {"true", "1", "yes", "executed", "체결"}
+    ]
+    failures: list[dict[str, Any]] = []
+    for row in executed[:3]:
+        text = " ".join(str(row.get(key) or "") for key in ("result", "reason", "failureReason", "dataStatus")).lower()
+        return_pct = _num(row.get("returnPct"))
+        if "stop" in text or "손절" in text or (return_pct < 0):
+            failures.append(row)
+        else:
+            break
+    recent_evaluated = evaluated[:5]
+    not_executed = [
+        row for row in recent_evaluated
+        if str(row.get("result") or "").upper() in {"NOT_EXECUTED", "NO_TOUCH", "ENTRY_NOT_TOUCHED"}
+        or str(row.get("isExecuted") or "").lower() in {"false", "0", "no"}
+    ]
+    miss_rate = round(len(not_executed) / len(recent_evaluated) * 100, 2) if recent_evaluated else 0.0
+    stop_active = len(failures) >= 3
+    miss_active = len(recent_evaluated) >= 5 and miss_rate >= 60
+    active = stop_active or miss_active
+    penalty = (15.0 if stop_active else 0.0) + (8.0 if miss_active else 0.0)
+    reason_parts: list[str] = []
+    if stop_active:
+        reason_parts.append("최근 3회 연속 체결 손절로 승률 15% 감산")
+    if miss_active:
+        reason_parts.append(f"최근 검증 미체결률 {miss_rate:.1f}%로 진입 밴드 보정 필요")
+    return {
+        "status": "OK",
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "active": active,
+        "penaltyPct": penalty if active else 0.0,
+        "priorityDowngrade": active,
+        "consecutiveStopFailures": len(failures),
+        "recentEvaluatedCount": len(recent_evaluated),
+        "recentNotExecutedCount": len(not_executed),
+        "recentNotExecutedRate": miss_rate,
+        "entryBandAction": "PULL_ENTRY_CLOSER" if miss_active else "KEEP",
+        "threshold": 3,
+        "source": path.name if path.exists() else "virtual_validation_results_missing",
+        "correctionReasons": reason_parts,
+        "validationPolicy": "entry_touch_only: low<=entry<=high only, not executed is not a win, same-bar target/stop uses stop-first",
+        "reason": "최근 3회 연속 손절 실패로 승률 15% 감산" if active else "자가 보정 비활성",
+    }
+
+
+def _apply_light_correction(item: dict[str, Any], summary: dict[str, Any]) -> dict[str, Any]:
+    if not summary.get("active"):
+        return item
+    penalty = float(summary.get("penaltyPct") or 15.0)
+    adjusted = dict(item)
+    probability = _num(adjusted.get("probability"))
+    if probability > 0:
+        adjusted["probability"] = max(0.0, round(probability - penalty, 1))
+        adjusted["probabilityText"] = _pct_text(adjusted["probability"])
+    for key in ("finalScore", "quantScore"):
+        if isinstance(adjusted.get(key), (int, float)):
+            adjusted[key] = round(float(adjusted[key]) * 0.85, 1)
+    if summary.get("entryBandAction") == "PULL_ENTRY_CLOSER":
+        current = _num(adjusted.get("currentPrice"))
+        entry = _num(adjusted.get("entry"))
+        stop = _num(adjusted.get("stop"))
+        target = _num(adjusted.get("target"))
+        if current > 0 and entry > 0 and abs(entry - current) / current > 0.03:
+            risk_pct = abs(entry - stop) / entry if stop > 0 else 0.04
+            reward_pct = abs(target - entry) / entry if target > 0 else max(risk_pct * 2, 0.06)
+            risk_pct = min(max(risk_pct, 0.015), 0.12)
+            reward_pct = min(max(reward_pct, risk_pct * 1.8), 0.25)
+            new_entry = current * 0.98 if entry < current else current * 1.005
+            item_market = str(adjusted.get("market") or "kr")
+            adjusted["entry"] = round(new_entry, 2)
+            adjusted["entryText"] = _optional_price_text(adjusted["entry"], item_market)
+            adjusted["stop"] = round(new_entry * (1 - risk_pct), 2)
+            adjusted["stopText"] = _optional_price_text(adjusted["stop"], item_market)
+            adjusted["target"] = round(new_entry * (1 + reward_pct), 2)
+            adjusted["targetText"] = _optional_price_text(adjusted["target"], item_market)
+            adjusted.setdefault("computedFields", []).append("self_correction_entry_band_adjusted")
+            adjusted["entryBandCorrection"] = "recent no-touch rate was high, entry band pulled closer to current price with original risk width preserved"
+    adjusted["selfCorrectionPenaltyPct"] = penalty
+    adjusted["priorityDowngraded"] = True
+    adjusted["validationPolicy"] = summary.get("validationPolicy")
+    adjusted["warning_reason"] = (
+        f"{adjusted.get('warning_reason')} · {summary.get('reason')}"
+        if adjusted.get("warning_reason")
+        else str(summary.get("reason") or "자가 보정 감산 적용")
+    )
+    return adjusted
+
+
+def _scan_coverage(market: str) -> dict[str, Any]:
+    repo = _repo_root()
+    candidate_rows: list[dict[str, Any]] = []
+    for path in _direct_files(
+        f"candidate_universe_{market}.csv",
+        f"data/candidate_universe_{market}.csv",
+        f"reports/candidate_universe_{market}.csv",
+    ):
+        candidate_rows.extend(_read_csv(path, 100000))
+    candidate_symbols = {_symbol(row, market) for row in candidate_rows if _symbol(row, market)}
+    ohlcv_dir = repo / "data" / "market" / "ohlcv"
+    ohlcv_symbols = {
+        p.name[len(f"{market}_"):-len("_daily.csv")].upper()
+        for p in ohlcv_dir.glob(f"{market}_*_daily.csv")
+    } if ohlcv_dir.exists() else set()
+    quote_rows = _read_csv(repo / "reports" / "price_collection_coverage_audit.csv", 100000)
+    quote_market_rows = [row for row in quote_rows if str(row.get("market") or "").lower() == market]
+    quote_ok = [
+        row for row in quote_market_rows
+        if str(row.get("status") or "").upper() == "NORMAL"
+        or str(row.get("hasCurrentPrice") or "").lower() == "true"
+        or str(row.get("currentPriceStatus") or "").upper() == "NORMAL"
+    ]
+    full_threshold = 1500 if market == "kr" else 3000
+    universe_count = len(candidate_symbols | ohlcv_symbols)
+    is_full_market = universe_count >= full_threshold
+    return {
+        "market": market,
+        "universeScope": "FULL_MARKET_READY" if is_full_market else "CURATED_UNIVERSE",
+        "candidateUniverseCount": len(candidate_symbols),
+        "ohlcvSymbolCount": len(ohlcv_symbols),
+        "localScanUniverseCount": universe_count,
+        "fullMarketThreshold": full_threshold,
+        "quoteCoverageCount": len(quote_ok),
+        "quoteTargetCount": len(quote_market_rows),
+        "quoteCoveragePct": round(len(quote_ok) / len(quote_market_rows) * 100, 2) if quote_market_rows else 0.0,
+        "isFullMarket": is_full_market,
+        "message": (
+            "Full market scan ready"
+            if is_full_market
+            else "Curated universe only: expand symbol master, OHLCV, quote, news/disclosure/fundamental collection before labeling this as full-market scan."
+        ),
+    }
+
+
+def _validation_policy_payload() -> dict[str, Any]:
+    return {
+        "executionRule": "A recommendation is executed only when actual low <= entry <= high during the validation window.",
+        "successRule": "Only executed trades that hit target are counted as wins.",
+        "lossRule": "Executed trades that hit stop are counted as losses.",
+        "sameBarRule": "If target and stop both touch in the same daily bar, stop is assumed first.",
+        "notExecutedRule": "Not-executed predictions are excluded from win-rate and return, but feed entry-band correction.",
+        "dataRule": "Missing OHLCV remains DATA_PENDING and is never counted as success.",
+    }
+
+
 @lru_cache(maxsize=48)
 def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit: int, watch_only: bool) -> dict[str, Any]:
     market = _market_norm(market)
@@ -1447,6 +1640,8 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             "count": len(deduped),
             "uniqueCount": len(seen),
             "hiddenCount": 0,
+            "scanCoverage": {"kr": _scan_coverage("kr"), "us": _scan_coverage("us")},
+            "validationPolicy": _validation_policy_payload(),
             "sourceFiles": source_files[:20],
             "items": deduped,
         }
@@ -1457,6 +1652,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
     seen: set[str] = set()
     items: list[dict[str, Any]] = []
     source_files: list[str] = []
+    correction_state: dict[str, Any] = _light_correction_summary(market, mode, horizon)
 
     for path, source_status in _recommendation_paths(market, mode, horizon):
         if path.name not in source_files:
@@ -1483,6 +1679,15 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             item = _recommendation_item(row, market, mode, horizon, source_status, source_mode, source_horizon, names, quotes, watch)
             if not item:
                 continue
+            try:
+                from app.engine.quant_scanner import apply_quant_overlay
+
+                item = apply_quant_overlay(item, _repo_root(), mode, horizon)
+            except Exception:
+                item.setdefault("computedFields", []).append("quant_scanner_unavailable")
+            if correction_state.get("active"):
+                item = _apply_light_correction(item, correction_state)
+                item.setdefault("computedFields", []).append("self_correction_penalty")
             seen.add(key)
             items.append(item)
             if len(items) >= max(1, min(limit, 1000)):
@@ -1498,6 +1703,9 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         "count": len(items),
         "uniqueCount": len(seen),
         "hiddenCount": 0,
+        "selfCorrection": correction_state,
+        "scanCoverage": _scan_coverage(market),
+        "validationPolicy": _validation_policy_payload(),
         "sourceFiles": source_files[:20],
         "items": items,
     }
@@ -1505,6 +1713,10 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
 
 def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
     payload = _recommendations_payload_cached(market, mode, horizon, limit, watch_only)
+    try:
+        _record_virtual_ledger(payload.get("items", []), "api/final/recommendations")
+    except Exception:
+        pass
     return json.loads(json.dumps(payload, ensure_ascii=False))
 
 
@@ -1758,6 +1970,229 @@ def _append_collection_targets(rows: list[dict[str, Any]], default_reason: str) 
     return {"targetCount": updated_count, "targetFiles": updated_files}
 
 
+def _horizon_window_days(horizon: str) -> int:
+    return {"short": 3, "swing": 5, "mid": 20, "long": 20}.get(str(horizon or "swing"), 5)
+
+
+def _date_add_days(date_text: str, days: int) -> str:
+    try:
+        base = datetime.fromisoformat(str(date_text)[:10])
+    except Exception:
+        base = datetime.now()
+    return (base + timedelta(days=days)).date().isoformat()
+
+
+def _date_add_trading_days(date_text: str, days: int) -> str:
+    try:
+        current = datetime.fromisoformat(str(date_text)[:10])
+    except Exception:
+        current = datetime.now()
+    remaining = max(0, int(days or 0))
+    while remaining > 0:
+        current = current + timedelta(days=1)
+        if current.weekday() < 5:
+            remaining -= 1
+    return current.date().isoformat()
+
+
+def _ledger_path() -> Path:
+    return _repo_root() / "reports" / "virtual_prediction_ledger.csv"
+
+
+def _validation_path() -> Path:
+    return _repo_root() / "reports" / "virtual_validation_results.csv"
+
+
+def _normalize_ledger_due_dates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    changed = False
+    for row in rows:
+        created = str(row.get("createdAt") or "")[:10]
+        if not created:
+            continue
+        window = int(_num(row.get("validationWindowDays")) or _horizon_window_days(str(row.get("horizon") or "swing")))
+        due = _date_add_trading_days(created, window)
+        if str(row.get("validationDueDate") or "") != due:
+            row["validationWindowDays"] = window
+            row["validationDueDate"] = due
+            changed = True
+    if changed:
+        _write_csv_rows(_ledger_path(), [
+            "predictionId", "createdAt", "market", "symbol", "name", "mode", "horizon",
+            "entryPrice", "stopPrice", "targetPrice", "expectedPrice", "probability",
+            "validationWindowDays", "validationDueDate", "status", "source",
+        ], rows)
+    return rows
+
+
+def _prediction_id(item: dict[str, Any], created_date: str) -> str:
+    return "|".join([
+        str(item.get("market") or ""),
+        str(item.get("symbol") or ""),
+        str(item.get("mode") or ""),
+        str(item.get("horizon") or ""),
+        created_date,
+    ])
+
+
+def _record_virtual_ledger(items: list[dict[str, Any]], source: str = "recommendations") -> None:
+    if not items:
+        return
+    path = _ledger_path()
+    existing = _read_csv(path, 100000)
+    keyed = {str(row.get("predictionId") or ""): row for row in existing if row.get("predictionId")}
+    today = datetime.now().date().isoformat()
+    for item in items:
+        entry = _num(item.get("entry"))
+        stop = _num(item.get("stop"))
+        target = _num(item.get("target"))
+        if entry <= 0 or stop <= 0 or target <= 0:
+            continue
+        horizon = str(item.get("horizon") or "swing")
+        window = _horizon_window_days(horizon)
+        prediction_id = _prediction_id(item, today)
+        record = keyed.setdefault(prediction_id, {
+            "predictionId": prediction_id,
+            "createdAt": today,
+            "market": item.get("market", ""),
+            "symbol": item.get("symbol", ""),
+            "name": item.get("name", ""),
+            "mode": item.get("mode", ""),
+            "horizon": horizon,
+            "entryPrice": entry,
+            "stopPrice": stop,
+            "targetPrice": target,
+            "expectedPrice": _num(item.get("expectedPrice")),
+            "probability": _num(item.get("probability")),
+            "validationWindowDays": window,
+            "validationDueDate": _date_add_trading_days(today, window),
+            "status": "PENDING",
+            "source": source,
+        })
+        record["validationWindowDays"] = window
+        record["validationDueDate"] = _date_add_trading_days(str(record.get("createdAt") or today), window)
+    _write_csv_rows(path, [
+        "predictionId", "createdAt", "market", "symbol", "name", "mode", "horizon",
+        "entryPrice", "stopPrice", "targetPrice", "expectedPrice", "probability",
+        "validationWindowDays", "validationDueDate", "status", "source",
+    ], list(keyed.values()))
+
+
+def _ohlcv_rows_for(market: str, symbol: str) -> list[dict[str, Any]]:
+    paths = [
+        _repo_root() / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv",
+        _repo_root() / "data" / "stockapp" / f"{market}_{symbol}_daily.csv",
+        _repo_root() / "reports" / f"{market}_{symbol}_daily.csv",
+    ]
+    for path in paths:
+        rows = _read_csv(path, 100000)
+        if rows:
+            rows.sort(key=lambda row: _text(row, ["date", "Date", "날짜"], ""))
+            return rows
+    return []
+
+
+def _validate_virtual_ledger() -> dict[str, Any]:
+    ledger = _normalize_ledger_due_dates(_read_csv(_ledger_path(), 100000))
+    today = datetime.now().date().isoformat()
+    results: list[dict[str, Any]] = []
+    wins = 0
+    executed = 0
+    not_executed_count = 0
+    data_pending_count = 0
+    for row in ledger:
+        due = str(row.get("validationDueDate") or "")
+        status = "PENDING" if due > today else "VALIDATABLE"
+        market = str(row.get("market") or "kr").lower()
+        symbol = str(row.get("symbol") or "")
+        entry = _num(row.get("entryPrice"))
+        stop = _num(row.get("stopPrice"))
+        target = _num(row.get("targetPrice"))
+        created = str(row.get("createdAt") or "")
+        window_rows = [r for r in _ohlcv_rows_for(market, symbol) if created < _text(r, ["date", "Date", "날짜"], "") <= due]
+        result = {
+            **row,
+            "isExecuted": "false",
+            "targetHit": "false",
+            "stopHit": "false",
+            "exitPrice": "",
+            "returnPct": "",
+            "result": status,
+            "reason": "검증 대기" if status == "PENDING" else "",
+            "dataStatus": "NORMAL",
+        }
+        if status != "PENDING":
+            if not window_rows:
+                data_pending_count += 1
+                result.update({"result": "DATA_PENDING", "reason": "검증 기간 OHLCV 없음", "dataStatus": "DATA_PENDING"})
+            else:
+                touched = False
+                target_hit = False
+                stop_hit = False
+                close_price = 0.0
+                for bar in window_rows:
+                    high = _num(_text(bar, ["high", "High", "고가"], ""))
+                    low = _num(_text(bar, ["low", "Low", "저가"], ""))
+                    close_price = _num(_text(bar, ["close", "Close", "종가"], "")) or close_price
+                    if low <= entry <= high:
+                        touched = True
+                    if touched and high >= target:
+                        target_hit = True
+                    if touched and low <= stop:
+                        stop_hit = True
+                if not touched:
+                    not_executed_count += 1
+                    result.update({"result": "NOT_EXECUTED", "reason": "진입가 미도달"})
+                else:
+                    executed += 1
+                    if stop_hit and target_hit:
+                        exit_price = stop
+                        result_name = "STOP_FIRST"
+                        reason = "목표/손절 동시 터치, 보수적 손절 우선"
+                    elif stop_hit:
+                        exit_price = stop
+                        result_name = "STOP"
+                        reason = "손절가 도달"
+                    elif target_hit:
+                        exit_price = target
+                        result_name = "TARGET"
+                        reason = "목표가 도달"
+                        wins += 1
+                    else:
+                        exit_price = close_price
+                        result_name = "HOLDING_EVAL"
+                        reason = "목표/손절 미도달, 종가 평가"
+                    return_pct = (exit_price - entry) / entry * 100 if entry > 0 else 0
+                    result.update({
+                        "isExecuted": "true",
+                        "targetHit": "true" if target_hit else "false",
+                        "stopHit": "true" if stop_hit else "false",
+                        "exitPrice": exit_price,
+                        "returnPct": round(return_pct, 4),
+                        "result": result_name,
+                        "reason": reason,
+                        "validationRule": "entry_touch_only",
+                    })
+        results.append(result)
+    _write_csv_rows(_validation_path(), [
+        "predictionId", "createdAt", "market", "symbol", "name", "mode", "horizon",
+        "entryPrice", "stopPrice", "targetPrice", "expectedPrice", "probability",
+        "validationWindowDays", "validationDueDate", "status", "source", "isExecuted",
+        "targetHit", "stopHit", "exitPrice", "returnPct", "result", "reason", "dataStatus", "validationRule",
+    ], results)
+    evaluable_count = len([row for row in results if row.get("dataStatus") != "DATA_PENDING" and row.get("result") != "PENDING"])
+    return {
+        "status": "OK",
+        "count": len(results),
+        "executedCount": executed,
+        "notExecutedCount": not_executed_count,
+        "dataPendingCount": data_pending_count,
+        "executionRate": round(executed / max(1, evaluable_count) * 100, 2) if results else 0.0,
+        "winRate": round(wins / executed * 100, 2) if executed else 0.0,
+        "validationPolicy": _validation_policy_payload(),
+        "items": results,
+    }
+
+
 def _quote_map(*args, **kwargs):
     return {}
 
@@ -1876,6 +2311,8 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         "/api/reports/premarket",
         "/api/reports/intraday",
         "/api/predictions/table",
+        "/api/virtual/ledger",
+        "/api/virtual/validation",
     }
     app.router.routes = [route for route in app.router.routes if not (isinstance(route, APIRoute) and getattr(route, "path", "") in paths)]
 
@@ -1958,4 +2395,40 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     def predictions(market: str = Query("all"), mode: str = Query("balanced"), horizon: str = Query("swing"), limit: int = Query(300)) -> dict[str, Any]:
         return _safe_payload(lambda: _recommendations_payload(market, mode, horizon, 0, limit, False), "/api/predictions/table")
 
+    @app.get("/api/virtual/ledger")
+    def virtual_ledger(market: str = Query("all"), mode: str = Query("all"), horizon: str = Query("all"), limit: int = Query(300)) -> dict[str, Any]:
+        def payload() -> dict[str, Any]:
+            rows = _normalize_ledger_due_dates(_read_csv(_ledger_path(), 100000))
+            market_key = _market_norm(market)
+            mode_key = _mode_norm(mode) if mode != "all" else "all"
+            horizon_key = _horizon_norm(horizon) if horizon != "all" else "all"
+            filtered: list[dict[str, Any]] = []
+            for row in rows:
+                if market_key != "all" and str(row.get("market")) != market_key:
+                    continue
+                if mode_key != "all" and str(row.get("mode")) != mode_key:
+                    continue
+                if horizon_key != "all" and str(row.get("horizon")) != horizon_key:
+                    continue
+                filtered.append(row)
+            return {"status": "OK", "count": len(filtered[:limit]), "totalCount": len(filtered), "items": filtered[:limit]}
+        return _safe_payload(payload, "/api/virtual/ledger")
 
+    @app.get("/api/virtual/validation")
+    def virtual_validation(market: str = Query("all"), mode: str = Query("all"), horizon: str = Query("all"), limit: int = Query(300)) -> dict[str, Any]:
+        def payload() -> dict[str, Any]:
+            result = _validate_virtual_ledger()
+            market_key = _market_norm(market)
+            mode_key = _mode_norm(mode) if mode != "all" else "all"
+            horizon_key = _horizon_norm(horizon) if horizon != "all" else "all"
+            filtered: list[dict[str, Any]] = []
+            for row in result.get("items", []):
+                if market_key != "all" and str(row.get("market")) != market_key:
+                    continue
+                if mode_key != "all" and str(row.get("mode")) != mode_key:
+                    continue
+                if horizon_key != "all" and str(row.get("horizon")) != horizon_key:
+                    continue
+                filtered.append(row)
+            return {**result, "count": len(filtered[:limit]), "totalCount": len(filtered), "items": filtered[:limit]}
+        return _safe_payload(payload, "/api/virtual/validation")

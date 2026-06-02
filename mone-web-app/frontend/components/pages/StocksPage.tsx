@@ -14,6 +14,7 @@ import {
   probabilityText,
   toNumber,
 } from "@/lib/moneDisplay";
+import { getDefaultMarketBySession } from "@/lib/marketSession";
 
 type WatchRow = {
   market: Market;
@@ -136,11 +137,27 @@ function watchKey(row: { market?: any; symbol?: any }) {
 function statusText(status?: string) {
   const value = String(status || "").toUpperCase();
   if (value === "NORMAL") return "정상";
-  if (value === "PRICE_PENDING" || value === "NO_PRICE") return "KIS 수집 대기";
+  if (value === "PRICE_PENDING" || value === "NO_PRICE") return "현재가 수집 대기";
   if (value === "DATA_PENDING") return "데이터 수집 대기";
   if (value === "STALE") return "시세 갱신 필요";
   if (value === "ERROR") return "오류";
   return value || "";
+}
+
+async function copySymbolForKoreaInvestment(symbol: string) {
+  const clean = String(symbol || "").trim();
+  if (!clean) return;
+  try {
+    await navigator.clipboard.writeText(clean);
+  } catch {
+    // 일부 PC WebView에서는 clipboard 권한이 없어도 안내만 계속 표시한다.
+  }
+}
+
+async function openKoreaInvestment(symbol: string, market: string) {
+  await copySymbolForKoreaInvestment(symbol);
+  const marketLabel = market === "us" ? "미국" : "국내";
+  window.alert(`종목코드 ${symbol}을 복사했습니다.\n한국투자증권 앱에서 ${marketLabel} 종목코드 ${symbol}을 검색하세요.`);
 }
 
 function normalizeWatch(item: any): WatchRow {
@@ -171,7 +188,7 @@ function normalizeHoldingEdit(item: any): HoldingEditRow | null {
 }
 
 export default function StocksPage() {
-  const [market, setMarket] = useState<Market>("all");
+  const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
@@ -183,6 +200,8 @@ export default function StocksPage() {
   const [watchMessage, setWatchMessage] = useState("");
   const [holdingMessage, setHoldingMessage] = useState("");
   const [holdingSaving, setHoldingSaving] = useState(false);
+  const [quoteRefreshing, setQuoteRefreshing] = useState<string | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [searchResults, setSearchResults] = useState<MoneSymbol[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [, setCashVersion] = useState(0);
@@ -255,7 +274,7 @@ export default function StocksPage() {
     return () => {
       active = false;
     };
-  }, [market, mode, horizon, watchOnly, watchlist.length]);
+  }, [market, mode, horizon, watchOnly, watchlist.length, refreshVersion]);
 
   const visible = useMemo(() => {
     if (!selected) return items;
@@ -373,6 +392,52 @@ export default function StocksPage() {
     }
   }
 
+  async function refreshOneQuote(item: any) {
+    const itemMarket = cleanMarket(item.market || market || "kr");
+    const clean = itemMarket === "all" ? "kr" : itemMarket;
+    const symbol = cleanSymbol(item.symbol, clean);
+    const name = displayName(item) || symbol;
+    if (!symbol) return;
+    const key = `${clean}-${symbol}`;
+    setQuoteRefreshing(key);
+    setHoldingMessage("");
+    try {
+      const result = await mone.refreshOneQuote({ market: clean, symbol, name });
+      if (result?.status === "OK") {
+        setHoldingMessage(`${name} 현재가를 새로고침했습니다.`);
+        const refreshed = await mone.symbols({ market: clean, q: symbol, limit: 5 });
+        const next = Array.isArray(refreshed.items) ? refreshed.items : [];
+        if (next.length) {
+          setSearchResults((rows) => rows.map((row) => (cleanSymbol(row.symbol, clean) === symbol ? { ...row, ...next[0] } : row)));
+          if (selected && cleanSymbol(selected.symbol, clean) === symbol) setSelected({ ...selected, ...next[0] });
+        }
+      } else {
+        setHoldingMessage(`${name} 현재가 새로고침 실패: ${result?.error || "시세 수집 실패 / 다시 시도"}`);
+      }
+      setRefreshVersion((value) => value + 1);
+    } catch (error) {
+      setHoldingMessage(`현재가 새로고침 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setQuoteRefreshing(null);
+    }
+  }
+
+  async function refreshTargetQuotes() {
+    setQuoteRefreshing("batch");
+    setHoldingMessage("");
+    try {
+      const result = await mone.refreshTargetQuotes({ market, limit: 20 });
+      setHoldingMessage(
+        `현재가 새로고침: 성공 ${result?.successCount ?? 0}건 / 실패 ${result?.failureCount ?? 0}건 / 대기 ${result?.pendingCount ?? 0}건`,
+      );
+      setRefreshVersion((value) => value + 1);
+    } catch (error) {
+      setHoldingMessage(`전체 현재가 새로고침 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setQuoteRefreshing(null);
+    }
+  }
+
   const marketTabs: { id: Market; label: string }[] = [
     { id: "all", label: "전체" },
     { id: "kr", label: "국장" },
@@ -420,6 +485,13 @@ export default function StocksPage() {
             className={`rounded-xl px-4 py-2 text-sm ${watchOnly ? "bg-amber-500 text-slate-950" : "bg-slate-950 text-slate-400"}`}
           >
             관심종목만 보기
+          </button>
+          <button
+            onClick={refreshTargetQuotes}
+            disabled={quoteRefreshing === "batch"}
+            className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-300 disabled:opacity-50"
+          >
+            보유·관심 현재가 새로고침
           </button>
         </div>
 
@@ -568,7 +640,7 @@ export default function StocksPage() {
                       </span>
                     </div>
                   </button>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="mt-3 grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() =>
@@ -595,6 +667,14 @@ export default function StocksPage() {
                       className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/20 disabled:opacity-50"
                     >
                       보유 추가
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => refreshOneQuote(row)}
+                      disabled={quoteRefreshing === `${rowMarket}-${rowSymbol}`}
+                      className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
+                    >
+                      현재가 새로고침
                     </button>
                   </div>
                 </div>
@@ -714,7 +794,22 @@ export default function StocksPage() {
                 </div>
               )}
 
-              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {Array.isArray(item.strategyTags) && item.strategyTags.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {item.strategyTags.slice(0, 4).map((tag: string, tagIndex: number) => (
+                    <span key={tag} className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] font-bold text-slate-300">
+                      {Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels[tagIndex] || tag : tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {Array.isArray(item.cautionReasons) && item.cautionReasons.length > 0 && (
+                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+                  매수금지/주의: {item.cautionReasons.join(", ")}
+                </div>
+              )}
+
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-5">
                 <button
                   type="button"
                   className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold ${
@@ -737,14 +832,28 @@ export default function StocksPage() {
                 </button>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700"
-                  onClick={() =>
-                    window.location.assign(
-                      item.market === "kr" ? "mstock://" : "tossinvest://",
-                    )
-                  }
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
+                  onClick={() => refreshOneQuote(item)}
+                  disabled={quoteRefreshing === `${cleanMarket(item.market || market)}-${cleanSymbol(item.symbol, cleanMarket(item.market || market))}`}
                 >
-                  <ExternalLink size={13} /> MTS 열기
+                  현재가 새로고침
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700"
+                  onClick={() => {
+                    window.localStorage.setItem("mone_chart_symbol", String(item.symbol || ""));
+                    window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
+                  }}
+                >
+                  차트 보기
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700"
+                  onClick={() => openKoreaInvestment(String(item.symbol || ""), String(item.market || market))}
+                >
+                  <ExternalLink size={13} /> 한국투자에서 보기
                 </button>
               </div>
             </div>

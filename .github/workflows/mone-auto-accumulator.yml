@@ -2,6 +2,12 @@ name: MONE Auto Accumulator
 
 on:
   workflow_dispatch:
+  schedule:
+    # UTC 기준. KST 07:30 / 16:20 / 22:30 / 06:20 자동 수집.
+    - cron: "30 22 * * 0-4"
+    - cron: "20 7 * * 1-5"
+    - cron: "30 13 * * 1-5"
+    - cron: "20 21 * * 0-4"
 
 permissions:
   contents: write
@@ -278,6 +284,22 @@ jobs:
             echo "warning: operational_check.py returned $status; keep workflow running so generated data can still be committed."
           fi
 
+
+      - name: Generate KR recommendations from OHLCV
+        run: |
+          set +e
+          python scripts/generate_kr_recommendations.py
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "warning: generate_kr_recommendations.py returned $status; continuing."
+          fi
+
+      - name: Refresh KR close OHLCV and validations
+        run: |
+          python scripts/refresh_kr_close_ohlcv.py
+          python scripts/generate_kr_close_validation.py
+
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
@@ -311,6 +333,9 @@ jobs:
 
           # MONE v3.6 app-facing reports.
           git add reports/mone_v36_*.csv reports/mone_v36_*.json 2>/dev/null || true
+          git add reports/kr_recommendation_gen_status.json 2>/dev/null || true
+          git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
+          git add data/market/ohlcv/kr_*_daily.csv 2>/dev/null || true
           git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true
           git add reports/api_data_status_center*.csv reports/api_data_status_center*.json 2>/dev/null || true
           git add reports/gnews_*.csv reports/gnews_*.json reports/news_*.csv reports/news_*.json 2>/dev/null || true

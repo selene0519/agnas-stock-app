@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { mone, type Market } from "@/lib/api";
 import { dedupeBySymbol, displayName, firstText, horizonLabel, modeLabel, pctText, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
+import { getDefaultMarketBySession } from "@/lib/marketSession";
 
 type Strategy = "conservative" | "balanced" | "aggressive";
 type Term = "short" | "swing" | "mid";
@@ -31,7 +32,7 @@ function mergeBySymbol(predictions: any[], recommendations: any[]) {
 }
 
 export default function PredictionPage() {
-  const [market, setMarket] = useState<Market>("all");
+  const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [strategy, setStrategy] = useState<Strategy>("balanced");
   const [term, setTerm] = useState<Term>("swing");
   const [data, setData] = useState<any>({ items: [] });

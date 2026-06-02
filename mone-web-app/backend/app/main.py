@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, Query
+from fastapi import Body, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
@@ -15,6 +15,15 @@ from app.services import user_data
 
 
 app = FastAPI(title="MONE Web API", version="3.6.1-operational-stable")
+
+# 자동 동기화 초기화
+try:
+    from app.engine.auto_sync import register_auto_sync_routes, start_background_sync, startup_sync
+    register_auto_sync_routes(app)
+    startup_sync()           # MONE_STARTUP_SYNC=1 환경변수 설정 시 시작 시 pull
+    start_background_sync()  # 백그라운드 30분마다 pull (GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정)
+except Exception as _auto_sync_err:
+    print("[AutoSync] 초기화 실패:", _auto_sync_err)
 
 app.add_middleware(
     CORSMiddleware,
@@ -713,6 +722,15 @@ def _mone_dq_market(market: str) -> dict:
         data_status = "PARTIAL"
         warnings.append("price coverage is small")
 
+    coverage = {}
+    try:
+        import json as _mone_dq_json
+        summary_path = repo / "reports" / "kis_collection_coverage_summary.json"
+        if summary_path.exists():
+            coverage = _mone_dq_json.loads(summary_path.read_text(encoding="utf-8")).get("markets", {}).get(market, {})
+    except Exception:
+        coverage = {}
+
     return {
         "status": "OK",
         "market": market,
@@ -722,6 +740,10 @@ def _mone_dq_market(market: str) -> dict:
         "reviewMode": False,
         "message": message,
         "candidateCount": len(all_symbols),
+        "targetCount": coverage.get("targetCount"),
+        "currentPriceCount": coverage.get("currentPriceCount"),
+        "missingTargetCount": coverage.get("missingTargetCount"),
+        "currentPriceCoveragePct": coverage.get("currentPriceCoveragePct"),
         "files": files,
         "warnings": warnings,
         "errors": [] if good_files else ["core price data not found"],
@@ -752,6 +774,14 @@ def api_final_data_quality_live(market: str = "kr"):
             "killSwitch": kill,
             "reviewMode": False,
             "message": "combined kr/us data quality",
+            "targetCount": int(kr.get("targetCount") or 0) + int(us.get("targetCount") or 0),
+            "currentPriceCount": int(kr.get("currentPriceCount") or 0) + int(us.get("currentPriceCount") or 0),
+            "missingTargetCount": int(kr.get("missingTargetCount") or 0) + int(us.get("missingTargetCount") or 0),
+            "currentPriceCoveragePct": round(
+                ((int(kr.get("currentPriceCount") or 0) + int(us.get("currentPriceCount") or 0))
+                 / max(1, int(kr.get("targetCount") or 0) + int(us.get("targetCount") or 0))) * 100,
+                2,
+            ),
             "markets": {"kr": kr, "us": us},
             "warnings": list(kr.get("warnings", [])) + list(us.get("warnings", [])),
             "errors": list(kr.get("errors", [])) + list(us.get("errors", [])),
@@ -841,10 +871,19 @@ def _install_mone_authoritative_holdings_clean_v3():
                     price = _num(_text(row, ["currentPriceText", "priceText"], ""), 0)
                 if price <= 0:
                     continue
+                prev_close = _num(_text(row, ["prevClose", "previousClose", "prev_close", "basePrice", "stck_prdy_clpr", "전일종가", "기준가"], ""), 0)
+                change_pct = _num(_text(row, ["changePct", "changeRate", "prdy_ctrt", "등락률"], ""), 0)
+                if not change_pct and price > 0 and prev_close > 0:
+                    change_pct = (price - prev_close) / prev_close * 100
                 out[sym] = {
                     "currentPrice": price,
                     "currentPriceText": f"${price:,.2f}" if market == "us" else f"{round(price):,}원",
                     "priceSource": path.name,
+                    "prevClose": prev_close,
+                    "prevCloseText": f"${prev_close:,.2f}" if market == "us" and prev_close > 0 else f"{round(prev_close):,}원" if prev_close > 0 else "",
+                    "changePct": change_pct,
+                    "changePctText": f"{change_pct:+.2f}%" if change_pct else "",
+                    "prevCloseSource": path.name if prev_close > 0 else "",
                     "quoteTimestamp": _text(row, ["timestamp", "time", "updatedAt", "datetime", "date"], ""),
                 }
         return out
@@ -857,6 +896,24 @@ def _install_mone_authoritative_holdings_clean_v3():
             if sym:
                 out[sym] = row
         return out
+
+    def _ohlcv_prev_close(market: str, symbol: str) -> dict:
+        paths = [
+            _root() / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv",
+            _root() / "data" / "stockapp" / f"{market}_{symbol}_daily.csv",
+            _root() / "reports" / f"{market}_{symbol}_daily.csv",
+        ]
+        for path in paths:
+            closes = []
+            for row in _read_csv(path):
+                close = _num(_text(row, ["close", "Close", "종가"], ""), 0)
+                date = _text(row, ["date", "Date", "날짜"], "")
+                if close > 0:
+                    closes.append((date, close))
+            closes.sort(key=lambda item: item[0])
+            if len(closes) >= 2:
+                return {"prevClose": closes[-2][1], "prevCloseSource": "ohlcv_prev_close", "prevCloseDate": closes[-2][0]}
+        return {}
 
     def _read_authoritative_holdings(market: str) -> list[dict]:
         markets = ["kr", "us"] if market == "all" else [market]
@@ -910,6 +967,15 @@ def _install_mone_authoritative_holdings_clean_v3():
 
             current = _num(q.get("currentPrice"), 0) or _num(_text(v, ["currentPrice", "current", "price", "현재가"], ""), 0)
             current_text = q.get("currentPriceText") or (f"${current:,.2f}" if mk == "us" and current > 0 else f"{round(current):,}원" if current > 0 else "-")
+            prev_close = _num(q.get("prevClose"), 0) or _num(_text(v, ["prevClose", "previousClose", "prev_close", "전일종가", "기준가"], ""), 0)
+            prev_close_source = q.get("prevCloseSource") or ""
+            if prev_close <= 0:
+                ohlcv_prev = _ohlcv_prev_close(mk, sym)
+                prev_close = _num(ohlcv_prev.get("prevClose"), 0)
+                prev_close_source = ohlcv_prev.get("prevCloseSource", "")
+            change_pct = _num(q.get("changePct"), 0)
+            if not change_pct and current > 0 and prev_close > 0:
+                change_pct = (current - prev_close) / prev_close * 100
             pnl = (current - avg) * qty if current > 0 and avg > 0 else 0
             invested = avg * qty if avg > 0 else 0
             pnl_pct = (pnl / invested * 100) if invested > 0 else 0
@@ -922,6 +988,10 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "avgPriceText": f"${avg:,.2f}" if mk == "us" and avg > 0 else f"{round(avg):,}원" if avg > 0 else "-",
                 "currentPrice": current,
                 "currentPriceText": current_text,
+                "prevClose": prev_close if prev_close > 0 else None,
+                "prevCloseText": f"${prev_close:,.2f}" if mk == "us" and prev_close > 0 else f"{round(prev_close):,}원" if prev_close > 0 else "",
+                "changePct": change_pct if change_pct else None,
+                "changePctText": f"{change_pct:+.2f}%" if change_pct else ("전일 기준 없음" if current > 0 else "현재가 수집 대기"),
                 "marketValue": current * qty if current > 0 else 0,
                 "marketValueText": f"${current * qty:,.2f}" if mk == "us" and current > 0 else f"{round(current * qty):,}원" if current > 0 else "-",
                 "pnl": pnl,
@@ -937,6 +1007,8 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "source": row["source"],
                 "enrichSource": "v93_position_cards" if v else "",
                 "priceSource": q.get("priceSource") or "",
+                "prevCloseSource": prev_close_source,
+                "quoteTimestamp": q.get("quoteTimestamp") or "",
             })
             items.append(item)
 
@@ -1172,7 +1244,34 @@ def _install_mone_symbols_extra_master_v2():
             row["dataStatus"] = "NORMAL" if row.get("currentPrice") else "PRICE_PENDING"
             rows.append(row)
 
-        rows.sort(key=lambda r: (0 if str(r.get("name","")).lower().startswith(query) and query else 1, r.get("market",""), r.get("symbol","")))
+        def _search_rank(row: dict) -> tuple:
+            symbol = str(row.get("symbol") or "").lower()
+            name = str(row.get("name") or "").lower()
+            q = query
+            q_digits = query_digits
+            exact_symbol = bool(q and (symbol == q or (q_digits and symbol == q_digits.zfill(6))))
+            exact_name = bool(q and name == q)
+            starts_name = bool(q and name.startswith(q))
+            starts_symbol = bool(q and symbol.startswith(q))
+            contains_name = bool(q and q in name)
+            contains_symbol = bool(q and q in symbol)
+            derivative_words = ("우", "2우", "3우", "리츠", "etf", "etn", "스팩", "증권", "인버스", "레버리지")
+            derivative_penalty = 1 if any(word in name for word in derivative_words) and not exact_name else 0
+            has_price_penalty = 0 if row.get("currentPrice") else 1
+            return (
+                0 if exact_symbol else 1,
+                0 if exact_name else 1,
+                0 if starts_name else 1,
+                0 if starts_symbol else 1,
+                0 if contains_name else 1,
+                0 if contains_symbol else 1,
+                derivative_penalty,
+                has_price_penalty,
+                row.get("market", ""),
+                symbol,
+            )
+
+        rows.sort(key=_search_rank)
         limit = max(1, min(int(limit or 10000), 10000))
         return {
             "status": "OK",
@@ -1215,3 +1314,375 @@ try:
 except Exception as _mone_symbols_extra_error:
     print("[MONE] symbols extra master override failed:", _mone_symbols_extra_error)
 
+
+# __MONE_QUOTE_REFRESH_PATCH_V1__
+def _install_mone_quote_refresh_routes_v1():
+    from datetime import datetime as _MoneQrDatetime
+    from pathlib import Path as _MoneQrPath
+    import csv as _mone_qr_csv
+    import json as _mone_qr_json
+    import re as _mone_qr_re
+    from fastapi import Body as _MoneQrBody, Query as _MoneQrQuery
+
+    root = _MoneQrPath(__file__).resolve().parents[3]
+    stockapp = root / "data" / "stockapp"
+    reports = root / "reports"
+    fields = [
+        "symbol", "market", "ok", "currentPrice", "current_price", "last_price", "priceTime",
+        "priceSource", "source", "priceSourceType", "priceSourceFile", "priceSourceDate",
+        "kis_quote_success", "quote_available", "error", "updated_at",
+    ]
+
+    def _read_csv(path: _MoneQrPath) -> list[dict]:
+        if not path.exists() or path.stat().st_size <= 0:
+            return []
+        for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+            try:
+                with path.open("r", encoding=enc, newline="") as f:
+                    return [dict(row) for row in _mone_qr_csv.DictReader(f)]
+            except Exception:
+                continue
+        return []
+
+    def _write_csv(path: _MoneQrPath, fieldnames: list[str], rows: list[dict]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8-sig", newline="") as f:
+            writer = _mone_qr_csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({key: row.get(key, "") for key in fieldnames})
+
+    def _market(value: str, symbol: str = "") -> str:
+        raw = str(value or "").strip().lower()
+        if raw == "us":
+            return "us"
+        if raw == "kr":
+            return "kr"
+        return "kr" if _mone_qr_re.fullmatch(r"\d{1,6}", str(symbol or "")) else "us"
+
+    def _symbol(value: str, market: str) -> str:
+        raw = str(value or "").strip().upper()
+        if market == "kr":
+            digits = _mone_qr_re.sub(r"\D", "", raw)
+            return digits.zfill(6)[-6:] if digits else ""
+        return _mone_qr_re.sub(r"[^A-Z0-9.\-]", "", raw)
+
+    def _add_target(market: str, symbol: str, name: str, reason: str) -> None:
+        path = stockapp / f"kis_collection_targets_{market}.csv"
+        rows = _read_csv(path)
+        keyed = {}
+        for row in rows:
+            sym = _symbol(row.get("symbol", ""), market)
+            if sym:
+                keyed[sym] = {
+                    "market": market,
+                    "symbol": sym,
+                    "name": row.get("name") or sym,
+                    "reason": row.get("reason") or "existing",
+                    "updatedAt": row.get("updatedAt") or "",
+                }
+        keyed[symbol] = {
+            "market": market,
+            "symbol": symbol,
+            "name": name or symbol,
+            "reason": reason,
+            "updatedAt": _MoneQrDatetime.now().isoformat(timespec="seconds"),
+        }
+        _write_csv(path, ["market", "symbol", "name", "reason", "updatedAt"], sorted(keyed.values(), key=lambda row: row["symbol"]))
+
+    def _snapshot_row(market: str, symbol: str, quote: dict) -> dict:
+        price = quote.get("price") or quote.get("currentPrice") or quote.get("current_price") or quote.get("last_price") or ""
+        now = _MoneQrDatetime.now().strftime("%Y-%m-%d %H:%M:%S KST")
+        source = quote.get("priceSource") or quote.get("source") or ("KIS 현재가" if market == "kr" else "KIS/Finnhub 현재가")
+        return {
+            "symbol": symbol,
+            "market": market,
+            "ok": "true" if quote.get("ok") else "false",
+            "currentPrice": price,
+            "current_price": price,
+            "last_price": price,
+            "priceTime": quote.get("priceTime") or now,
+            "priceSource": source,
+            "source": source,
+            "priceSourceType": "manual_refresh",
+            "priceSourceFile": f"data/stockapp/kis_current_price_{market}.csv",
+            "priceSourceDate": quote.get("priceSourceDate") or now,
+            "kis_quote_success": "true" if quote.get("ok") else "false",
+            "quote_available": "true" if quote.get("ok") else "false",
+            "error": quote.get("error") or "",
+            "updated_at": now,
+        }
+
+    def _upsert_snapshot(market: str, row: dict) -> None:
+        for path in [
+            stockapp / f"kis_current_price_{market}.csv",
+            stockapp / f"intraday_realtime_snapshot_{market}.csv",
+            stockapp / f"intraday_quote_snapshot_{market}.csv",
+            reports / f"kis_current_price_{market}.csv",
+            reports / f"intraday_realtime_snapshot_{market}.csv",
+            reports / f"intraday_quote_snapshot_{market}.csv",
+        ]:
+            rows = _read_csv(path)
+            keyed = {str(existing.get("symbol") or "").upper(): existing for existing in rows}
+            keyed[str(row["symbol"]).upper()] = row
+            _write_csv(path, fields, sorted(keyed.values(), key=lambda item: str(item.get("symbol") or "")))
+
+    def _refresh_one(payload: dict) -> dict:
+        market = _market(payload.get("market", ""), payload.get("symbol", ""))
+        symbol = _symbol(payload.get("symbol", ""), market)
+        name = str(payload.get("name") or symbol).strip()
+        if not symbol:
+            return {"status": "ERROR", "error": "symbol is empty", "dataStatus": "PRICE_PENDING"}
+        _add_target(market, symbol, name, "manual_refresh_one")
+        quote = quotes._fetch_quote(symbol, market)
+        if quote.get("ok"):
+            row = _snapshot_row(market, symbol, quote)
+            _upsert_snapshot(market, row)
+            status = "OK"
+            data_status = "NORMAL"
+        else:
+            status = "ERROR"
+            data_status = "PRICE_PENDING"
+        return {
+            "status": status,
+            "market": market,
+            "symbol": symbol,
+            "name": name,
+            "dataStatus": data_status,
+            "quote": quote,
+            "error": quote.get("error", ""),
+            "updatedAt": _MoneQrDatetime.now().isoformat(),
+        }
+
+    def _targets(market: str) -> list[dict]:
+        paths = [
+            stockapp / f"price_collection_universe_{market}.csv",
+            stockapp / f"kis_collection_targets_{market}.csv",
+            root / f"holdings_{market}.csv",
+            root / "data" / f"holdings_{market}.csv",
+            root / f"watchlist_{market}.csv",
+            root / "data" / f"watchlist_{market}.csv",
+        ]
+        keyed = {}
+        for path in paths:
+            for row in _read_csv(path):
+                sym = _symbol(row.get("symbol") or row.get("ticker") or row.get("code") or row.get("종목코드") or "", market)
+                if sym and sym not in keyed:
+                    keyed[sym] = {"market": market, "symbol": sym, "name": row.get("name") or row.get("종목명") or sym}
+        return list(keyed.values())
+
+    def _write_batch_status(payload: dict) -> None:
+        reports.mkdir(parents=True, exist_ok=True)
+        (reports / "quote_refresh_batch_status.json").write_text(_mone_qr_json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    global app
+    app.router.routes = [
+        route for route in app.router.routes
+        if getattr(route, "path", "") not in {"/api/quotes/refresh-one", "/api/quotes/refresh-targets"}
+    ]
+
+    @app.post("/api/quotes/refresh-one")
+    def mone_quote_refresh_one(payload: dict = _MoneQrBody(...)) -> dict:
+        return _refresh_one(payload)
+
+    @app.post("/api/quotes/refresh-targets")
+    def mone_quote_refresh_targets(
+        payload: dict = _MoneQrBody(default={}),
+        market: str = _MoneQrQuery("all"),
+        limit: int = _MoneQrQuery(20),
+        max_symbols: int | None = _MoneQrQuery(None),
+    ) -> dict:
+        body_market = str((payload or {}).get("market") or market or "all").lower()
+        markets = ["kr", "us"] if body_market == "all" else [_market(body_market)]
+        requested_limit = (payload or {}).get("max_symbols") or (payload or {}).get("limit") or max_symbols or limit or 20
+        max_count = max(1, min(int(requested_limit), 50))
+        refreshed = []
+        failed = []
+        pending = 0
+        for mk in markets:
+            for target in _targets(mk)[:max_count]:
+                result = _refresh_one(target)
+                if result.get("status") == "OK":
+                    refreshed.append(result)
+                else:
+                    failed.append(result)
+            pending += max(0, len(_targets(mk)) - max_count)
+        out = {
+            "status": "OK" if refreshed else ("PARTIAL" if failed else "NO_DATA"),
+            "market": body_market,
+            "requestedLimit": max_count,
+            "successCount": len(refreshed),
+            "failureCount": len(failed),
+            "pendingCount": pending,
+            "lastRefreshAt": _MoneQrDatetime.now().isoformat(),
+            "items": refreshed[:20],
+            "failedItems": failed[:20],
+        }
+        _write_batch_status(out)
+        return out
+
+try:
+    _install_mone_quote_refresh_routes_v1()
+except Exception as _mone_quote_refresh_error:
+    print("[MONE] quote refresh patch failed:", _mone_quote_refresh_error)
+
+
+# __MONE_CLOSE_VALIDATION_ROUTES_V1__
+def _install_mone_close_validation_routes_v1():
+    from pathlib import Path as _MoneClosePath
+    import csv as _mone_close_csv
+    import json as _mone_close_json
+    import re as _mone_close_re
+    from fastapi import Query as _MoneCloseQuery
+
+    root = _MoneClosePath(__file__).resolve().parents[3]
+    reports = root / "reports"
+
+    def _read_csv(path: _MoneClosePath) -> list[dict]:
+        if not path.exists() or path.stat().st_size == 0:
+            return []
+        for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+            try:
+                with path.open("r", encoding=enc, newline="") as f:
+                    return [dict(row) for row in _mone_close_csv.DictReader(f)]
+            except Exception:
+                continue
+        return []
+
+    def _num(value):
+        try:
+            text = str(value if value is not None else "").replace(",", "").replace("%", "").strip()
+            return float(text) if text not in {"", "-", "None", "nan", "NaN"} else None
+        except Exception:
+            return None
+
+    def _validation_files(market: str, mode: str, horizon: str) -> list[_MoneClosePath]:
+        files = []
+        patterns = [
+            f"mone_v36_final_trade_validation_{market}_{mode}_{horizon}_*.csv",
+            f"mone_v36_final_trade_validation_{market}_{mode}_{horizon}.csv",
+        ]
+        for pattern in patterns:
+            files.extend(sorted(reports.glob(pattern), key=lambda p: p.name, reverse=True))
+        return list(dict.fromkeys(files))
+
+    def _date_from_file(path: _MoneClosePath) -> str:
+        m = _mone_close_re.search(r"(20\d{6})", path.name)
+        if not m:
+            return ""
+        raw = m.group(1)
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:]}"
+
+    def _latest_validation(market: str, mode: str, horizon: str) -> tuple[_MoneClosePath | None, list[dict]]:
+        for path in _validation_files(market, mode, horizon):
+            rows = _read_csv(path)
+            if rows:
+                return path, rows
+        return None, []
+
+    def _normalize_trade(row: dict, date_text: str, market: str, mode: str, horizon: str) -> dict:
+        return {
+            "date": row.get("date") or date_text,
+            "symbol": row.get("symbol") or row.get("ticker") or "",
+            "name": row.get("name") or row.get("companyName") or row.get("symbol") or "",
+            "market": row.get("market") or market,
+            "mode": row.get("mode") or mode,
+            "horizon": row.get("horizon") or horizon,
+            "executed": row.get("executed") if row.get("executed") not in (None, "") else row.get("체결", "false"),
+            "entryPrice": row.get("entryPrice") or row.get("entry") or "",
+            "entryText": row.get("entryText") or "",
+            "exitPrice": row.get("exitPrice") or "",
+            "exitText": row.get("exitText") or "",
+            "returnPct": row.get("returnPct") or row.get("수익률") or "",
+            "returnPctText": row.get("returnPctText") or "",
+            "result": row.get("result") or row.get("결과") or "검증 대기",
+            "dataStatus": row.get("dataStatus") or "NORMAL",
+            "reason": row.get("reason") or "",
+            "source": row.get("source") or "",
+        }
+
+    def _summary_payload(market: str, mode: str, horizon: str) -> dict:
+        path, rows = _latest_validation(market, mode, horizon)
+        if not path:
+            status_path = reports / "kr_close_validation_status.json" if market == "kr" else reports / "us_close_validation_status.json"
+            status = {}
+            if status_path.exists():
+                try:
+                    status = _mone_close_json.loads(status_path.read_text(encoding="utf-8"))
+                except Exception:
+                    status = {}
+            return {
+                "status": "OK",
+                "market": market,
+                "mode": mode,
+                "horizon": horizon,
+                "todayStatus": "NO_DATA",
+                "todayDate": "",
+                "todayMessage": "오늘 장마감 원본 없음",
+                "latestDate": "",
+                "count": 0,
+                "items": [],
+                "closeValidationStatus": status,
+            }
+        date_text = _date_from_file(path) or str(rows[0].get("date") or "")
+        normalized = [_normalize_trade(row, date_text, market, mode, horizon) for row in rows]
+        executed = [row for row in normalized if str(row.get("executed", "")).lower() in {"true", "1", "yes", "체결"}]
+        returns = [_num(row.get("returnPct")) for row in executed]
+        returns = [r for r in returns if r is not None]
+        win_count = sum(1 for r in returns if r > 0)
+        avg_return = sum(returns) / len(returns) if returns else 0.0
+        return {
+            "status": "OK",
+            "market": market,
+            "mode": mode,
+            "horizon": horizon,
+            "todayStatus": "NORMAL" if rows else "NO_DATA",
+            "todayDate": date_text,
+            "todayMessage": "장마감 검증 파일 연결됨" if rows else "오늘 장마감 원본 없음",
+            "latestDate": date_text,
+            "latestSource": path.name,
+            "latestRecommendations": len(normalized),
+            "latestExecutedTrades": len(executed),
+            "latestUnexecutedCount": max(0, len(normalized) - len(executed)),
+            "latestWinRate": round((win_count / len(returns)) * 100, 2) if returns else 0,
+            "latestAverageReturnPct": round(avg_return, 4),
+            "items": normalized[:100],
+            "count": len(normalized),
+        }
+
+    global app
+    app.router.routes = [
+        route for route in app.router.routes
+        if getattr(route, "path", "") not in {"/api/backtest/trades", "/api/backtest/summary", "/api/final/backtest-summary"}
+    ]
+
+    @app.get("/api/backtest/trades")
+    def mone_close_backtest_trades(
+        market: str = _MoneCloseQuery("kr", pattern="^(kr|us)$"),
+        mode: str = _MoneCloseQuery("balanced"),
+        horizon: str = _MoneCloseQuery("swing"),
+        limit: int = _MoneCloseQuery(250, ge=1, le=1000),
+    ) -> dict:
+        payload = _summary_payload("us" if str(market).lower() == "us" else "kr", mode, horizon)
+        return {**payload, "items": payload.get("items", [])[:limit], "count": min(len(payload.get("items", [])), limit)}
+
+    @app.get("/api/backtest/summary")
+    def mone_close_backtest_summary(
+        market: str = _MoneCloseQuery("kr", pattern="^(kr|us)$"),
+        mode: str = _MoneCloseQuery("balanced"),
+        horizon: str = _MoneCloseQuery("swing"),
+    ) -> dict:
+        return _summary_payload("us" if str(market).lower() == "us" else "kr", mode, horizon)
+
+    @app.get("/api/final/backtest-summary")
+    def mone_close_final_backtest_summary(
+        market: str = _MoneCloseQuery("kr", pattern="^(kr|us)$"),
+        mode: str = _MoneCloseQuery("balanced"),
+        horizon: str = _MoneCloseQuery("swing"),
+    ) -> dict:
+        return _summary_payload("us" if str(market).lower() == "us" else "kr", mode, horizon)
+
+try:
+    _install_mone_close_validation_routes_v1()
+except Exception as _mone_close_validation_error:
+    print("[MONE] close validation route patch failed:", _mone_close_validation_error)

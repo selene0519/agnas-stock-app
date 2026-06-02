@@ -252,6 +252,17 @@ def _refresh_targets(market: str, symbols: str | None, max_symbols: int) -> list
         raw = [item.strip() for item in symbols.split(",") if item.strip()]
         return [data.normalize_symbol(item, market) for item in raw][:max_symbols]
     target_symbols: list[str] = []
+    target_files = [
+        data.REPO_ROOT / "data" / "stockapp" / f"price_collection_universe_{market}.csv",
+        data.REPO_ROOT / "data" / "stockapp" / f"kis_collection_targets_{market}.csv",
+    ]
+    for path in target_files:
+        for item in data.dataframe_records(data.read_csv(path)):
+            symbol = data.normalize_symbol(item.get("symbol"), market)
+            if symbol and symbol not in target_symbols:
+                target_symbols.append(symbol)
+            if len(target_symbols) >= max_symbols:
+                return target_symbols
     for collection in (data.positions(market).get("items", []), data.symbols(market).get("items", [])):
         for item in collection:
             symbol = data.normalize_symbol(item.get("symbol"), market)

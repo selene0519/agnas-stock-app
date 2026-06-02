@@ -190,6 +190,16 @@ export const mone = {
     apiGet<ApiList>("/api/risk/near-alerts", p),
   kisTokenStatus: () =>
     apiGet<ApiList>("/api/kis/token/status"),
+  refreshOneQuote: (body: { market?: Market; symbol: string; name?: string }) =>
+    apiPost<ApiList>("/api/quotes/refresh-one", body),
+  refreshTargetQuotes: (body?: { market?: Market; limit?: number }) =>
+    apiPost<ApiList>("/api/quotes/refresh-targets", body || {}),
+  refreshWatchHoldingsQuotes: (body?: { market?: Market; limit?: number }) =>
+    apiPost<ApiList>("/api/quotes/refresh-targets", body || {}),
+  virtualLedger: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
+    apiGet<ApiList>("/api/virtual/ledger", p),
+  virtualValidation: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
+    apiGet<ApiList>("/api/virtual/validation", p),
 
 };
 

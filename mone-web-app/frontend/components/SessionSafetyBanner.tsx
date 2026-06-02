@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BellRing, RefreshCw, ShieldAlert, X } from "lucide-react";
 import { mone } from "@/lib/api";
+import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { priceSessionLabel, statusLabel } from "@/lib/utils";
 import { displayName, normalizeMarket, normalizeSymbol } from "@/lib/moneDisplay";
 
@@ -21,7 +22,13 @@ function alertTitle(alert: any) {
   return `${kind}: ${name}`;
 }
 
-export default function SessionSafetyBanner({ market = "kr", onRefresh }: { market?: Market; onRefresh?: () => void }) {
+export default function SessionSafetyBanner({
+  market = getDefaultMarketBySession(),
+  onRefresh,
+}: {
+  market?: Market;
+  onRefresh?: () => void;
+}) {
   const [quality, setQuality] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [hidden, setHidden] = useState(false);
@@ -31,10 +38,10 @@ export default function SessionSafetyBanner({ market = "kr", onRefresh }: { mark
     setLoading(true);
     try {
       const q: any = await mone.dataQuality({ market });
-      const payload = market === "all" ? q?.kr || q : q;
+      const payload = market === "all" ? q?.[getDefaultMarketBySession()] || q : q;
       setQuality(payload);
 
-      const alertMarket = market === "all" ? "kr" : market;
+      const alertMarket = market === "all" ? getDefaultMarketBySession() : market;
       const alertResult: any = await mone.nearAlerts({ market: alertMarket, thresholdPct: 1, limit: 5 });
       setAlerts(Array.isArray(alertResult?.items) ? alertResult.items : []);
 
@@ -42,7 +49,12 @@ export default function SessionSafetyBanner({ market = "kr", onRefresh }: { mark
       window.dispatchEvent(new CustomEvent("mone-data-quality", { detail: payload }));
       onRefresh?.();
     } catch (error) {
-      const payload = { status: "ERROR", dataStatus: "ERROR", killSwitch: true, error: error instanceof Error ? error.message : String(error) };
+      const payload = {
+        status: "ERROR",
+        dataStatus: "ERROR",
+        killSwitch: true,
+        error: error instanceof Error ? error.message : String(error),
+      };
       setQuality(payload);
       window.localStorage.setItem("mone_kill_switch", "1");
       window.dispatchEvent(new CustomEvent("mone-data-quality", { detail: payload }));
@@ -88,7 +100,9 @@ export default function SessionSafetyBanner({ market = "kr", onRefresh }: { mark
       <div className={`rounded-2xl border px-4 py-3 shadow-sm ${tone}`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">세션 · 데이터 보호</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
+              세션 · 데이터 보호 · {marketLabel(market)}
+            </div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
               <span>{labelSession(quality.priceSession, quality.sessionDescription)}</span>
               <span className="rounded-md bg-slate-950/50 px-2 py-0.5 font-mono text-xs">{statusLabel(quality.dataStatus || quality.status)}</span>
