@@ -1532,6 +1532,122 @@ def admin_prediction_insights(market: str = "kr") -> dict[str, Any]:
     }
 
 
+def prediction_accuracy_stats(market: str | None = None) -> dict[str, Any]:
+    """predictions.csv 전체에서 실제 결과 기반 정확도 통계를 계산합니다."""
+    pred_path = data.REPO_ROOT / "predictions.csv"
+    if not pred_path.exists():
+        return {"status": "NO_DATA", "message": "predictions.csv 없음"}
+
+    df = data.read_csv(pred_path)
+    if df.empty:
+        return {"status": "NO_DATA", "message": "predictions.csv 비어 있음"}
+
+    # 시장 필터
+    if market in ("kr", "us"):
+        mk_label = "한국주식" if market == "kr" else "미국주식"
+        df = df[df["market"].astype(str).str.contains("한국" if market == "kr" else "미국", na=False)]
+
+    df_actual = df[df["actual_close"].astype(str).str.strip().ne("")]
+    total = len(df_actual)
+    if total == 0:
+        return {"status": "NO_DATA", "message": "실제 결과 데이터 없음", "totalRows": len(df)}
+
+    def hit_rate(col: str) -> float | None:
+        if col not in df_actual.columns:
+            return None
+        hits = df_actual[col].astype(str).isin(["1", "1.0", "True", "true"]).sum()
+        return round(hits / total * 100, 1)
+
+    direction_hit = hit_rate("direction_hit")
+    open_in_range = hit_rate("open_in_range")
+    close_in_range = hit_rate("close_in_range")
+    entry_touched = hit_rate("entry_touched")
+    tp1_touched = hit_rate("tp1_touched")
+    stop_touched = hit_rate("stop_touched")
+
+    vr = pd.to_numeric(df_actual.get("virtual_return_pct", pd.Series(dtype=float)), errors="coerce").dropna()
+    avg_virtual_return = round(float(vr.mean()), 3) if len(vr) else None
+    positive_rate = round(float((vr > 0).sum() / len(vr) * 100), 1) if len(vr) else None
+
+    # 신뢰도 구간별 분석
+    by_bucket: list[dict[str, Any]] = []
+    if "confidence_score" in df_actual.columns and "direction_hit" in df_actual.columns:
+        df_work = df_actual.copy()
+        df_work["_conf"] = pd.to_numeric(df_work["confidence_score"], errors="coerce")
+        df_work["_hit"] = df_work["direction_hit"].astype(str).isin(["1", "1.0", "True", "true"])
+        bins = [(0, 50, "50미만"), (50, 65, "50~64"), (65, 80, "65~79"), (80, 101, "80이상")]
+        for lo, hi, label in bins:
+            subset = df_work[(df_work["_conf"] >= lo) & (df_work["_conf"] < hi)]
+            if len(subset):
+                by_bucket.append({
+                    "bucket": label,
+                    "count": int(len(subset)),
+                    "directionHitRate": round(float(subset["_hit"].mean() * 100), 1),
+                })
+
+    # virtual_result_label 분포
+    result_dist: dict[str, int] = {}
+    if "virtual_result_label" in df_actual.columns:
+        for label, cnt in df_actual["virtual_result_label"].value_counts().head(8).items():
+            result_dist[str(label)] = int(cnt)
+
+    # 날짜 범위
+    date_min = str(df_actual["target_date"].min()) if "target_date" in df_actual.columns else ""
+    date_max = str(df_actual["target_date"].max()) if "target_date" in df_actual.columns else ""
+
+    # prediction_learning_summary.csv 에서 진입가 도달률 보강
+    learning_path = data.REPORT_DIR / "prediction_learning_summary.csv"
+    learning_rows: list[dict[str, Any]] = []
+    if learning_path.exists():
+        ldf = data.read_csv(learning_path)
+        if not ldf.empty:
+            for _, row in ldf.iterrows():
+                mk_text = str(row.get("market", "")).strip()
+                if market == "kr" and "미국" in mk_text:
+                    continue
+                if market == "us" and "한국" in mk_text:
+                    continue
+                learning_rows.append({
+                    "market": mk_text,
+                    "confidenceBucket": str(row.get("confidence_bucket", "")),
+                    "sampleCount": data._safe_float(row.get("sample_count")),
+                    "entryHitRate": data._safe_float(row.get("entry_hit_rate_pct")),
+                    "tp1TouchRate": data._safe_float(row.get("tp1_touch_rate_pct")),
+                    "stopTouchRate": data._safe_float(row.get("stop_touch_rate_pct")),
+                })
+
+    # 최신 validation_summary JSON
+    import json, glob as _glob
+    val_summaries = sorted(_glob.glob(str(data.REPORT_DIR / "validation_summary_*.json")))
+    latest_validation: dict[str, Any] = {}
+    if val_summaries:
+        try:
+            latest_validation = json.loads(Path(val_summaries[-1]).read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    return {
+        "status": "OK",
+        "market": market or "all",
+        "totalRows": len(df),
+        "validatedRows": total,
+        "dateRange": {"from": date_min, "to": date_max},
+        "directionHitRate": direction_hit,
+        "openInRangeRate": open_in_range,
+        "closeInRangeRate": close_in_range,
+        "entryTouchedRate": entry_touched,
+        "tp1TouchedRate": tp1_touched,
+        "stopTouchedRate": stop_touched,
+        "avgVirtualReturn": avg_virtual_return,
+        "positiveReturnRate": positive_rate,
+        "byConfidenceBucket": by_bucket,
+        "virtualResultDist": result_dist,
+        "learningData": learning_rows,
+        "latestValidationSummary": latest_validation,
+        "updatedAt": _now(),
+    }
+
+
 def admin_backtest(market: str = "kr") -> dict[str, Any]:
     market = "us" if str(market).lower() == "us" else "kr"
     items: list[dict[str, Any]] = []
