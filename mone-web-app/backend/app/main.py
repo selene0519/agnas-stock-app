@@ -1005,12 +1005,16 @@ def _install_mone_authoritative_holdings_clean_v3():
                 if qty <= 0:
                     continue
                 seen_keys.add(key)
+                stop_csv = _num(_text(row, ["stopPrice", "stop_price", "stop", "손절가"], ""), 0)
+                target_csv = _num(_text(row, ["targetPrice", "target_price", "target", "목표가"], ""), 0)
                 rows.append({
                     "symbol": sym,
                     "name": _name(row, sym),
                     "market": mk,
                     "quantity": qty,
                     "avgPrice": avg,
+                    "stopPriceCsv": stop_csv,
+                    "targetPriceCsv": target_csv,
                     "source": path.name,
                     "holdingAuthority": "holdings_csv",
                     "holdingAuthoritySource": path.name,
@@ -1052,8 +1056,11 @@ def _install_mone_authoritative_holdings_clean_v3():
             invested = avg * qty if avg > 0 else 0
             pnl_pct = (pnl / invested * 100) if invested > 0 else 0
 
-            stop = _num(_text(v, ["stopPrice", "stop", "stopText", "손절가"], ""), 0)
-            target = _num(_text(v, ["targetPrice", "target", "targetText", "목표가"], ""), 0)
+            # 손절/목표: holdings CSV 값 우선, 없으면 v93_position_cards
+            stop_from_v93 = _num(_text(v, ["stopPrice", "stop", "stopText", "손절가"], ""), 0)
+            target_from_v93 = _num(_text(v, ["targetPrice", "target", "targetText", "목표가"], ""), 0)
+            stop = _num(row.get("stopPriceCsv"), 0) or stop_from_v93
+            target = _num(row.get("targetPriceCsv"), 0) or target_from_v93
 
             item = dict(row)
             item.update({
