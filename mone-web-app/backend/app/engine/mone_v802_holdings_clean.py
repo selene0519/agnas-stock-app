@@ -193,16 +193,12 @@ def _fmt_pct(v: float) -> str:
 
 @lru_cache(maxsize=1)
 def _holding_files_cached() -> tuple:
+    # 루트 원장만 단일 소스로 사용. data/ 폴더의 holdings는 제외해
+    # 삭제 후 되살아남 버그 방지 (user_data.py도 루트 파일만 씀).
     return tuple(_find([
-        "data/holdings*.csv",
-        "reports/holdings*.csv",
-        "backend/data/holdings*.csv",
-        "backend/reports/holdings*.csv",
-        "**/*holdings*.csv",
-        "**/*holding*.csv",
-        "**/*portfolio*.csv",
-        "**/*position*.csv",
-    ], max_files=40))
+        "holdings_kr.csv",
+        "holdings_us.csv",
+    ], max_files=2))
 
 def _holding_files() -> List[Path]:
     return list(_holding_files_cached())
@@ -454,12 +450,11 @@ def _project_root_exact() -> Path:
     return Path(__file__).resolve().parents[4]
 
 def _holding_files() -> List[Path]:
+    # 루트 원장만 단일 소스로 사용. data/ 폴더는 제외해 삭제 후 되살아남 방지.
     root = _project_root_exact()
     candidates = [
         root / "holdings_kr.csv",
         root / "holdings_us.csv",
-        root / "data" / "holdings_kr.csv",
-        root / "data" / "holdings_us.csv",
     ]
 
     out = []

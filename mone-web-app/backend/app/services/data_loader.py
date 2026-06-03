@@ -90,8 +90,8 @@ REQUIRED_FILES = [
     "watchlist_us.csv",
     "candidate_universe_kr.csv",
     "candidate_universe_us.csv",
-    "data/holdings_kr.csv",
-    "data/holdings_us.csv",
+    "holdings_kr.csv",
+    "holdings_us.csv",
     "daily_watch_selection.json",
 ]
 
@@ -3011,22 +3011,22 @@ def positions(market: str) -> dict[str, Any]:
     target_date = runner_target_date(market)
     if rows:
         rows = enrich_records_with_version_fallback("position_cards", market, rows)
-        rows = enrich_records_from_file(rows, DATA_DIR / f"holdings_{market}.csv", market)
+        rows = enrich_records_from_file(rows, REPO_ROOT / f"holdings_{market}.csv", market)
         rows = _annotate_source_rows(rows, market, source, target_date, fallback=_source_type_for_label(source, market, target_date) != preferred_source_type(market, target_date))
     else:
-        fallback = DATA_DIR / f"holdings_{market}.csv"
+        fallback = REPO_ROOT / f"holdings_{market}.csv"
         df = read_csv(fallback)
         source = fallback.relative_to(REPO_ROOT).as_posix() if not df.empty else ""
         rows = dataframe_records(df)
         rows = _annotate_source_rows(rows, market, source, target_date, fallback=True)
 
     # Include direct holdings rows that may not yet have a generated position_card report.
-    direct_holdings = dataframe_records(read_csv(DATA_DIR / f"holdings_{market}.csv"))
+    direct_holdings = dataframe_records(read_csv(REPO_ROOT / f"holdings_{market}.csv"))
     existing_symbols = {_row_symbol(row, market) for row in rows}
     for holding_row in direct_holdings:
         symbol = _row_symbol(holding_row, market)
         if symbol and symbol not in existing_symbols:
-            rows.extend(_annotate_source_rows([holding_row], market, f"data/holdings_{market}.csv", target_date, fallback=True))
+            rows.extend(_annotate_source_rows([holding_row], market, f"holdings_{market}.csv", target_date, fallback=True))
             existing_symbols.add(symbol)
 
     normalized_rows = []

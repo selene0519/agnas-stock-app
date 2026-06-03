@@ -638,6 +638,13 @@ export default function StocksPage() {
         )}
 
         {/* 관심종목 자동선별 결과 */}
+        {scoredWatch && Array.isArray(scoredWatch.items) && scoredWatch.items.length === 0 && (
+          <div className="mt-4 rounded-xl border border-slate-700/40 bg-slate-900/40 px-4 py-3 text-xs text-slate-500">
+            관심종목 점수 분석 결과가 없습니다.
+            {scoredWatch.reason && <span className="ml-1 text-amber-400">{scoredWatch.reason}</span>}
+            {!scoredWatch.reason && <span className="ml-1">관심종목({watchlist.length}개)이 추천 파일에 매칭되지 않았거나 추천 데이터가 없습니다. 핵심 관심 자동선별 후 다시 시도하세요.</span>}
+          </div>
+        )}
         {scoredWatch && Array.isArray(scoredWatch.items) && scoredWatch.items.length > 0 && (
           <div className="mt-5 rounded-2xl border border-violet-800/30 bg-violet-950/10 p-4">
             <div className="mb-3 flex items-center justify-between">
@@ -873,9 +880,20 @@ export default function StocksPage() {
       </div>
 
       {visible.length === 0 && !loading && (
-        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">
-          현재 조건에 맞는 후보가 없습니다. 시장, 관심종목, 투자 성향, 기간
-          필터를 변경해보세요.
+        <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center">
+          <p className="text-slate-400">현재 조건에 맞는 후보가 없습니다.</p>
+          <div className="mt-3 space-y-1 text-xs text-slate-600">
+            {watchOnly && items.length === 0 && <p>• 관심종목이 없거나 추천 파일에 매칭되지 않음 → "관심 자동선별" 또는 관심종목만 보기 해제</p>}
+            {watchOnly && items.length > 0 && visible.length === 0 && <p>• 관심종목 {watchlist.length}개 중 {modeLabel(mode)}/{horizonLabel(horizon)} 추천에 매칭된 종목 없음 → 성향·기간 변경 또는 관심종목만 보기 해제</p>}
+            {!watchOnly && items.length === 0 && <p>• 추천 파일({modeLabel(mode)}/{horizonLabel(horizon)})이 비어있음 — GitHub Actions 실행 후 데이터가 채워집니다</p>}
+            {!watchOnly && items.length > 0 && visible.length === 0 && sectorFilter && <p>• 섹터 필터 "{sectorFilter}" 에 해당하는 종목 없음 → 섹터 필터 해제</p>}
+            {!watchOnly && items.length > 0 && visible.length === 0 && groupFilter && <p>• 그룹 필터 "{groupFilter}" 에 해당하는 종목 없음 → 그룹 필터 해제</p>}
+          </div>
+          <div className="mt-4 flex justify-center gap-2">
+            {watchOnly && <button onClick={() => setWatchOnly(false)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">관심종목만 보기 해제</button>}
+            {sectorFilter && <button onClick={() => setSectorFilter(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">섹터 필터 해제</button>}
+            {groupFilter && <button onClick={() => setGroupFilter(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">그룹 필터 해제</button>}
+          </div>
         </div>
       )}
 

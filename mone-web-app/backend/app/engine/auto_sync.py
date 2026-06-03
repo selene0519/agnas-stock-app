@@ -105,6 +105,30 @@ def _save_status(status: dict[str, Any]) -> None:
         pass
 
 
+def _classify_git_error(code: int, out: str, err: str) -> str:
+    """git pull 실패 원인을 분류하여 상태 코드 반환."""
+    combined = (out + " " + err).lower()
+    if code == 0:
+        return "OK"
+    if "already up to date" in combined:
+        return "OK"
+    if "local changes" in combined or "unstaged changes" in combined or "uncommitted changes" in combined:
+        return "LOCAL_CHANGES"
+    if "would be overwritten" in combined or "your local changes" in combined:
+        return "LOCAL_CHANGES"
+    if "conflict" in combined or "merge conflict" in combined:
+        return "CONFLICT_RISK"
+    if "behind" in combined and "fast-forward" in combined:
+        return "BEHIND_REMOTE"
+    if "cannot pull" in combined or "need to merge" in combined:
+        return "BEHIND_REMOTE"
+    if "network" in combined or "could not resolve" in combined or "connection" in combined or "timeout" in combined:
+        return "NETWORK_ERROR"
+    if "not a git repository" in combined:
+        return "NOT_GIT_REPO"
+    return "ERROR"
+
+
 def pull_and_refresh(source: str = "manual") -> dict[str, Any]:
     """git pull + lru_cache 초기화. 스레드 안전."""
     with _LOCK:
@@ -116,18 +140,28 @@ def pull_and_refresh(source: str = "manual") -> dict[str, Any]:
         after = _latest_commit()
 
         if code != 0 and code != -1:
-            # 에러지만 이미 최신일 수도 있음
             if "Already up to date" in out or "already up to date" in out.lower():
                 code = 0
 
+        sync_status = _classify_git_error(code, out, err)
         changed = _files_changed(before, after)
-        cleared = _clear_all_caches() if changed > 0 or code == 0 else 0
-        auto_watchlist = _auto_curate_watchlist() if code == 0 and (changed > 0 or source in {"api_sync_now", "startup"}) else {"status": "SKIPPED", "count": 0}
+        cleared = _clear_all_caches() if changed > 0 or sync_status == "OK" else 0
+        auto_watchlist = _auto_curate_watchlist() if sync_status == "OK" and (changed > 0 or source in {"api_sync_now", "startup"}) else {"status": "SKIPPED", "count": 0}
         if auto_watchlist.get("status") == "OK":
             cleared += _clear_all_caches()
 
+        status_labels = {
+            "LOCAL_CHANGES": "로컬 수정사항 있음 — 커밋 또는 스태시 후 재시도",
+            "CONFLICT_RISK": "충돌 위험 — 원격과 로컬이 동시에 변경됨",
+            "BEHIND_REMOTE": "원격보다 뒤처짐 — pull 필요",
+            "NETWORK_ERROR": "네트워크 오류 — 인터넷 연결 확인",
+            "NOT_GIT_REPO": "Git 저장소가 아닙니다",
+            "ERROR": "알 수 없는 오류",
+        }
+
         status: dict[str, Any] = {
-            "status": "OK" if code == 0 else "ERROR",
+            "status": sync_status,
+            "statusLabel": status_labels.get(sync_status, ""),
             "source": source,
             "lastSyncAt": now,
             "beforeCommit": before,
@@ -136,7 +170,7 @@ def pull_and_refresh(source: str = "manual") -> dict[str, Any]:
             "cachesCleared": cleared,
             "autoWatchlist": auto_watchlist,
             "gitOutput": (out + "\n" + err).strip()[:500],
-            "error": err[:200] if code != 0 else "",
+            "error": err[:200] if sync_status not in {"OK"} else "",
         }
         _save_status(status)
         return status

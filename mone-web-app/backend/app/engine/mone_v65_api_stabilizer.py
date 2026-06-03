@@ -580,7 +580,6 @@ def _build_name_map() -> dict[str, str]:
             f"candidate_universe_{market}.csv",
             f"symbol_master_{market}_full.csv",
             f"symbol_master_{market}_extra.csv",
-            f"data/holdings_{market}.csv",
             f"data/watchlist_{market}.csv",
             f"data/watchlist_{market}_growth.csv",
             f"data/candidate_universe_{market}.csv",
@@ -707,7 +706,6 @@ def _all_symbol_rows() -> tuple[dict[str, Any], ...]:
             f"candidate_universe_{market}.csv",
             f"symbol_master_{market}_full.csv",
             f"symbol_master_{market}_extra.csv",
-            f"data/holdings_{market}.csv",
             f"data/watchlist_{market}.csv",
             f"data/watchlist_{market}_growth.csv",
             f"data/candidate_universe_{market}.csv",
@@ -2749,6 +2747,100 @@ def _benchmark_comparison_payload(market: str) -> dict[str, Any]:
     }
 
 
+def _index_chart_payload(index_symbol: str, market: str = "kr", limit: int = 260) -> dict[str, Any]:
+    market = _market_norm(market)
+    symbol = str(index_symbol or "").strip().upper()
+    if not symbol:
+        return {"status": "NO_SYMBOL", "market": market, "symbol": "", "items": [], "count": 0}
+
+    symbol_alias = {
+        "KS11": "KOSPI",
+        "^KS11": "KOSPI",
+        "KQ11": "KOSDAQ",
+        "^KQ11": "KOSDAQ",
+        "GSPC": "SP500",
+        "^GSPC": "SP500",
+        "S&P500": "SP500",
+        "SNP500": "SP500",
+    }
+    symbol = symbol_alias.get(symbol, symbol)
+
+    repo = _repo_root()
+    path = repo / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv"
+    if not path.exists() and market == "us" and symbol == "SP500":
+        path = repo / "data" / "market" / "ohlcv" / "us_SPY_daily.csv"
+        symbol = "SPY"
+
+    rows: list[dict[str, Any]] = []
+    for row in _read_csv(path, 10000):
+        date = _text(row, ["date", "Date", "날짜"])
+        close = _num(_text(row, ["close", "Close", "종가"]))
+        if not date or close <= 0:
+            continue
+        rows.append({
+            "date": date,
+            "open": _num(_text(row, ["open", "Open", "시가"]), close),
+            "high": _num(_text(row, ["high", "High", "고가"]), close),
+            "low": _num(_text(row, ["low", "Low", "저가"]), close),
+            "close": close,
+            "volume": _num(_text(row, ["volume", "Volume", "거래량"]), 0),
+            "source": _text(row, ["source", "_source_path"], path.name),
+        })
+
+    rows = sorted(rows, key=lambda r: r["date"])
+    if limit and limit > 0:
+        rows = rows[-min(limit, 2000):]
+
+    status = "OK" if rows else "NO_DATA"
+    return {
+        "status": status,
+        "market": market,
+        "symbol": symbol,
+        "source": _safe_rel(path),
+        "count": len(rows),
+        "latestDate": rows[-1]["date"] if rows else None,
+        "items": rows,
+    }
+
+
+def _portfolio_nav_payload(limit: int = 120) -> dict[str, Any]:
+    repo = _repo_root()
+    path = repo / "data" / "portfolio" / "portfolio_daily_nav.csv"
+    rows: list[dict[str, Any]] = []
+    for row in _read_csv(path, 5000):
+        date = _text(row, ["date", "Date", "날짜"])
+        total = _num(_text(row, ["total_value", "totalValue", "nav"]))
+        if not date or total <= 0:
+            continue
+        rows.append({
+            "date": date,
+            "updatedAt": _text(row, ["updated_at", "updatedAt"]),
+            "totalValue": total,
+            "cash": _num(_text(row, ["cash"]), 0),
+            "holdingsValue": _num(_text(row, ["holdings_value", "holdingsValue"]), total),
+            "dailyReturn": _num(_text(row, ["daily_return", "dailyReturn"]), 0),
+            "cumulativeReturn": _num(_text(row, ["cumulative_return", "cumulativeReturn"]), 0),
+            "krValue": _num(_text(row, ["kr_value", "krValue"]), 0),
+            "usValue": _num(_text(row, ["us_value", "usValue"]), 0),
+            "maxDrawdownPct": _num(_text(row, ["max_drawdown_pct", "maxDrawdownPct"]), 0),
+            "positionCount": int(_num(_text(row, ["position_count", "positionCount"]), 0)),
+            "benchmarkReturn": _num(_text(row, ["benchmark_return", "benchmarkReturn", "kospi_return"]), 0),
+            "isBackfill": str(_text(row, ["is_backfill", "isBackfill"], "")).lower() in {"1", "true", "yes"},
+        })
+
+    rows = sorted(rows, key=lambda r: r["date"])
+    if limit and limit > 0:
+        rows = rows[-min(limit, 1000):]
+
+    return {
+        "status": "OK" if rows else "NO_DATA",
+        "source": _safe_rel(path),
+        "count": len(rows),
+        "latestDate": rows[-1]["date"] if rows else None,
+        "items": rows,
+    }
+
+
 def _correlation_payload(market: str, days: int = 60) -> dict[str, Any]:
     """보유종목 간 일별 수익률 상관계수 매트릭스."""
     market = _market_norm(market)
@@ -3469,6 +3561,8 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         "/api/validation/dashboard",
         "/api/risk/sector-exposure",
         "/api/risk/benchmark",
+        "/api/chart/index/{index_symbol}",
+        "/api/portfolio/nav",
         "/api/risk/correlation",
         "/api/journal",
         "/api/journal/add",
@@ -3556,6 +3650,14 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     @app.get("/api/risk/benchmark")
     def benchmark(market: str = Query("kr")) -> dict[str, Any]:
         return _safe_payload(lambda: _benchmark_comparison_payload(market), "/api/risk/benchmark")
+
+    @app.get("/api/chart/index/{index_symbol}")
+    def chart_index(index_symbol: str, market: str = Query("kr"), limit: int = Query(260)) -> dict[str, Any]:
+        return _safe_payload(lambda: _index_chart_payload(index_symbol, market, limit), "/api/chart/index")
+
+    @app.get("/api/portfolio/nav")
+    def portfolio_nav(limit: int = Query(120)) -> dict[str, Any]:
+        return _safe_payload(lambda: _portfolio_nav_payload(limit), "/api/portfolio/nav")
 
     @app.get("/api/risk/correlation")
     def correlation(market: str = Query("kr"), days: int = Query(60)) -> dict[str, Any]:

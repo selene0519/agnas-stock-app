@@ -1031,14 +1031,16 @@ export default function HomePage() {
       {/* 요약 지표 */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { label: "오늘 진입 후보", value: loading ? "—" : `${todayEntries.length}개`, color: "text-emerald-400" },
-          { label: "대기 관찰 중", value: loading ? "—" : `${watchItems.length}개`, color: "text-amber-400" },
-          { label: "위험/주의 보유", value: loading ? "—" : `${riskCount}개`, color: riskCount > 0 ? "text-red-400" : "text-slate-300" },
-          { label: "총 평가손익", value: loading ? "—" : (summary?.totalPnlText ?? "0"), color: "text-slate-100" },
+          { label: "오늘 진입 후보", value: loading ? null : `${todayEntries.length}개`, color: "text-emerald-400" },
+          { label: "대기 관찰 중", value: loading ? null : `${watchItems.length}개`, color: "text-amber-400" },
+          { label: "위험/주의 보유", value: loading ? null : `${riskCount}개`, color: riskCount > 0 ? "text-red-400" : "text-slate-300" },
+          { label: "총 평가손익", value: loading ? null : (summary?.totalPnlText ?? "0"), color: "text-slate-100" },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="text-xs text-slate-500">{label}</div>
-            <div className={`mt-2 text-xl font-bold ${color}`}>{value}</div>
+            {value === null
+              ? <div className="mt-2 h-7 w-16 animate-pulse rounded-md bg-slate-800" />
+              : <div className={`mt-2 text-xl font-bold ${color}`}>{value}</div>}
           </div>
         ))}
       </div>
@@ -1062,8 +1064,14 @@ export default function HomePage() {
         {loading ? (
           <div className="py-8 text-center text-slate-500">불러오는 중...</div>
         ) : todayEntries.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-700 py-8 text-center text-sm text-slate-500">
-            {marketRegime?.regime === "BEAR" ? "약세장 — 진입 기준 상향 적용 중" : "현재 즉시 진입 후보가 없습니다."}
+          <div className="rounded-xl border border-dashed border-slate-700 py-6 text-center text-sm">
+            <p className="text-slate-500">
+              {marketRegime?.regime === "BEAR" ? "약세장 — 진입 기준 상향 적용 중" : "현재 즉시 진입 후보가 없습니다."}
+            </p>
+            <p className="mt-2 text-[11px] text-slate-600">
+              기준: finalScore ≥ 50 + EV 양수 + tradeBlockStatus OK.{" "}
+              {allItems.length === 0 ? "추천 데이터가 없습니다 — GitHub Actions 실행을 확인하세요." : `전략 매트릭스에는 ${allItems.length}개 종목이 있으나 즉시 진입 조건을 충족하지 않습니다.`}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">

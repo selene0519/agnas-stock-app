@@ -15,6 +15,31 @@ function avg(items: any[], getter: (item: any) => number | null) {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
+type ValidationStatus = "검증대기" | "미체결" | "체결" | "목표도달" | "손절" | "보류" | "오류";
+
+function resolveStatus(item: any): ValidationStatus {
+  const bucket = String(item.decisionBucket || item.decision_bucket || "").toLowerCase();
+  const block = String(item.tradeBlockStatus || item.trade_block_status || "").toUpperCase();
+  const outcome = String(item.outcome || item.result || "").toLowerCase();
+  if (outcome.includes("목표") || outcome.includes("target")) return "목표도달";
+  if (outcome.includes("손절") || outcome.includes("stop")) return "손절";
+  if (outcome.includes("체결") || outcome.includes("executed")) return "체결";
+  if (bucket === "보류" || bucket === "제외" || block === "CAUTION" || block === "BLOCK") return "보류";
+  if (bucket === "실행" || bucket === "즉시실행") return "체결";
+  if (bucket === "대기") return "미체결";
+  return "검증대기";
+}
+
+const STATUS_STYLE: Record<ValidationStatus, string> = {
+  "검증대기": "border-slate-700 bg-slate-800/60 text-slate-400",
+  "미체결":   "border-amber-600/30 bg-amber-900/20 text-amber-300",
+  "체결":     "border-blue-500/30 bg-blue-900/20 text-blue-300",
+  "목표도달": "border-emerald-500/30 bg-emerald-900/20 text-emerald-300",
+  "손절":     "border-red-500/30 bg-red-900/20 text-red-300",
+  "보류":     "border-slate-600/30 bg-slate-800/40 text-slate-500",
+  "오류":     "border-red-700/30 bg-red-950/20 text-red-400",
+};
+
 function scoreOf(item: any) {
   const direct = toNumber(item.score ?? item.finalScore ?? item.totalScore ?? item.riskScore);
   if (direct !== null && direct > 0) return direct;
@@ -62,6 +87,17 @@ export default function PredictionPage() {
 
   const items = Array.isArray(data.items) ? data.items : [];
   const top = useMemo(() => items.slice(0, 30), [items]);
+
+  const stats = useMemo(() => {
+    if (!top.length) return null;
+    const statuses = top.map(resolveStatus);
+    const targetCount = statuses.filter((s) => s === "목표도달").length;
+    const stopCount = statuses.filter((s) => s === "손절").length;
+    const executedCount = statuses.filter((s) => s === "체결" || s === "목표도달" || s === "손절").length;
+    const winRate = executedCount > 0 ? (targetCount / executedCount) * 100 : 0;
+    const avgEv = avg(top, (item) => toNumber(item.expectedValue ?? item.ev));
+    return { targetCount, stopCount, executedCount, winRate, avgEv, statusCounts: Object.fromEntries(["검증대기","미체결","체결","목표도달","손절","보류"].map((s) => [s, statuses.filter((x) => x === s).length])) };
+  }, [top]);
 
   const strategyTabs: { id: Strategy; label: string }[] = [
     { id: "conservative", label: "보수" },
@@ -120,6 +156,38 @@ export default function PredictionPage() {
         <Card label="평균 점수" value={`${avg(top, scoreOf).toFixed(1)}점`} />
       </div>
 
+      {stats && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className="mb-3 text-xs font-semibold text-slate-400">상태별 분포</div>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(stats.statusCounts).map(([status, count]) => count > 0 && (
+              <span key={status} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${STATUS_STYLE[status as ValidationStatus]}`}>
+                {status} {count}
+              </span>
+            ))}
+          </div>
+          {stats.executedCount > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-3 text-center text-xs">
+              <div className="rounded-xl bg-slate-950/60 py-2">
+                <div className="text-slate-500">체결 승률</div>
+                <div className={`mt-1 font-mono font-bold ${stats.winRate >= 50 ? "text-emerald-300" : "text-amber-300"}`}>{stats.winRate.toFixed(1)}%</div>
+              </div>
+              <div className="rounded-xl bg-slate-950/60 py-2">
+                <div className="text-slate-500">목표 / 손절</div>
+                <div className="mt-1 font-mono font-bold"><span className="text-emerald-300">{stats.targetCount}</span> / <span className="text-red-300">{stats.stopCount}</span></div>
+              </div>
+              <div className="rounded-xl bg-slate-950/60 py-2">
+                <div className="text-slate-500">평균 EV</div>
+                <div className={`mt-1 font-mono font-bold ${stats.avgEv >= 0 ? "text-emerald-300" : "text-red-300"}`}>{stats.avgEv >= 0 ? "+" : ""}{stats.avgEv.toFixed(1)}%</div>
+              </div>
+            </div>
+          )}
+          {stats.executedCount === 0 && (
+            <p className="mt-2 text-[11px] text-slate-600">체결/결과 데이터가 없습니다. decisionBucket이 "실행"인 종목이 없거나 outcome 필드가 채워지지 않았습니다.</p>
+          )}
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
         <div className="border-b border-slate-800 px-5 py-4 text-sm text-slate-400">
           predictions/table과 recommendations를 market+symbol 기준으로 병합했습니다. 진입/손절/목표가 비면 추천값으로 보강합니다.
@@ -165,7 +233,9 @@ export default function PredictionPage() {
                     <td className="px-4 py-3 font-mono text-emerald-300">{target}</td>
                     <td className="px-4 py-3 font-mono text-violet-300">{expected}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-300">{prob1d} / {prob3d} / {prob5d} / {prob10d}</td>
-                    <td className="px-4 py-3"><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-300">{item.dataStatus || item.sourceStatus || "OK"}</span></td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLE[resolveStatus(item)]}`}>{resolveStatus(item)}</span>
+                    </td>
                   </tr>
                 );
               })}
