@@ -1,0 +1,75 @@
+{
+  "updated_at": "2026-06-03 23:16:58 KST",
+  "market": "미국주식",
+  "strategy_mode": "위험장",
+  "market_regime": "이벤트 변동성장",
+  "market_risk_level": "매우 위험",
+  "market_risk_score": 85,
+  "new_buy_allowed": false,
+  "candidate_up_ratio": 0.2991,
+  "candidate_down_ratio": 0.6916,
+  "candidate_avg_change_pct": -1.7431,
+  "candidate_median_change_pct": -1.35,
+  "candidate_volume_strength": 0.2627,
+  "breadth_risk_score": 60,
+  "market_breadth_warning": "WARNING: 후보군 하락 비율 60% 이상",
+  "sector_internal_strength": [
+    {
+      "sector": "반도체/AI",
+      "sector_up_ratio": 0.6538,
+      "sector_avg_change_pct": 0.4669,
+      "sector_volume_strength": 0.2985,
+      "sector_breadth_score": 51,
+      "sector_spread_score": 0
+    },
+    {
+      "sector": "빅테크",
+      "sector_up_ratio": 0.6,
+      "sector_avg_change_pct": 0.126,
+      "sector_volume_strength": 0.312,
+      "sector_breadth_score": 46,
+      "sector_spread_score": 0
+    },
+    {
+      "sector": "지수형",
+      "sector_up_ratio": 0.2917,
+      "sector_avg_change_pct": -0.7408,
+      "sector_volume_strength": 0.2504,
+      "sector_breadth_score": 19,
+      "sector_spread_score": 0
+    },
+    {
+      "sector": "가상자산",
+      "sector_up_ratio": 0.0,
+      "sector_avg_change_pct": -3.12,
+      "sector_volume_strength": 0.3,
+      "sector_breadth_score": 0,
+      "sector_spread_score": 0
+    },
+    {
+      "sector": "전기차/성장주",
+      "sector_up_ratio": 0.1429,
+      "sector_avg_change_pct": -2.7814,
+      "sector_volume_strength": 0.2443,
+      "sector_breadth_score": 0,
+      "sector_spread_score": 0
+    },
+    {
+      "sector": "클라우드/소프트웨어",
+      "sector_up_ratio": 0.0435,
+      "sector_avg_change_pct": -4.3696,
+      "sector_volume_strength": 0.2452,
+      "sector_breadth_score": 0,
+      "sector_spread_score": 0
+    }
+  ],
+  "sector_spread_score": 0,
+  "market_hardblock": true,
+  "hardblock_level": "강함",
+  "hardblock_reasons": [
+    "코스닥 급락",
+    "원달러 급등",
+    "후보군 하락 비율 60% 이상"
+  ],
+  "new_buy_blocked": true
+}

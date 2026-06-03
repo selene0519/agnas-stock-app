@@ -473,6 +473,12 @@ def api_prediction_insights(market: str = Query("kr", pattern="^(kr|us)$")) -> d
     return final_engine.admin_prediction_insights(_market(market))
 
 
+@app.get("/api/insights/prediction-accuracy")
+def api_prediction_accuracy(market: str = Query("all", pattern="^(kr|us|all)$")) -> dict:
+    mk = None if market == "all" else _market(market)
+    return final_engine.prediction_accuracy_stats(mk)
+
+
 @app.get("/api/history/predictions")
 def api_prediction_history(market: str | None = Query(None, pattern="^(kr|us)$")) -> dict:
     return final_engine.admin_prediction_history(_market(market) if market else None)

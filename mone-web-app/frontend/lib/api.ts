@@ -189,6 +189,8 @@ export const mone = {
     apiGet<ApiList>("/api/company-analysis", p),
   predictions: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; strategy?: Mode | string; term?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/predictions/table", p),
+  predictionAccuracy: (p?: { market?: Market | "all" }) =>
+    apiGet<ApiList>("/api/insights/prediction-accuracy", p),
   holdings: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/holdings", p),
   holdingsClean: (p?: { market?: Market; limit?: number }) =>

@@ -61,19 +61,22 @@ export default function PredictionPage() {
   const [strategy, setStrategy] = useState<Strategy>("balanced");
   const [term, setTerm] = useState<Term>("swing");
   const [data, setData] = useState<any>({ items: [] });
+  const [accuracy, setAccuracy] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      const [pred, rec] = await Promise.all([
+      const [pred, rec, acc] = await Promise.all([
         mone.predictions({ market, mode: strategy, horizon: term, limit: 300 }),
         mone.recommendations({ market, mode: strategy, horizon: term, limit: 300 }),
+        mone.predictionAccuracy({ market: market === "all" ? "all" : market }),
       ]);
       const predItems = Array.isArray(pred.items) ? pred.items : [];
       const recItems = Array.isArray(rec.items) ? rec.items : [];
       const merged = predItems.length ? mergeBySymbol(predItems, recItems) : dedupeBySymbol(recItems);
       setData({ ...pred, items: merged, recommendationCount: recItems.length });
+      setAccuracy(acc?.status === "OK" ? acc : null);
     } catch (error) {
       setData({ status: "ERROR", error: String(error), items: [] });
     } finally {
@@ -155,6 +158,8 @@ export default function PredictionPage() {
         <Card label="평균 확률" value={`${avg(top, (item) => toNumber(item.probability ?? item.probabilityText ?? item.prob5d)).toFixed(1)}%`} />
         <Card label="평균 점수" value={`${avg(top, scoreOf).toFixed(1)}점`} />
       </div>
+
+      {accuracy && <AccuracyPanel accuracy={accuracy} />}
 
       {stats && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
@@ -250,4 +255,99 @@ export default function PredictionPage() {
 
 function Card({ label, value }: { label: string; value: string }) {
   return <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><div className="text-sm text-slate-500">{label}</div><div className="mt-2 font-mono text-2xl font-bold text-slate-100">{value}</div></div>;
+}
+
+function StatBar({ label, value, color = "bg-blue-500" }: { label: string; value: number | null; color?: string }) {
+  if (value === null || value === undefined) return null;
+  return (
+    <div>
+      <div className="mb-1 flex justify-between text-xs">
+        <span className="text-slate-400">{label}</span>
+        <span className="font-mono font-bold text-slate-200">{value.toFixed(1)}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, value)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function AccuracyPanel({ accuracy }: { accuracy: any }) {
+  const from = accuracy.dateRange?.from?.slice(0, 10) ?? "";
+  const to = accuracy.dateRange?.to?.slice(0, 10) ?? "";
+  const buckets: any[] = accuracy.byConfidenceBucket ?? [];
+  const dist: Record<string, number> = accuracy.virtualResultDist ?? {};
+  const totalResult = Object.values(dist).reduce((a: number, b: unknown) => a + Number(b), 0);
+
+  return (
+    <div className="rounded-2xl border border-indigo-800/40 bg-indigo-950/20 p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold text-indigo-300">과거 예측 성과</div>
+          <div className="mt-0.5 text-xs text-slate-500">
+            {from} ~ {to} · 검증 {accuracy.validatedRows?.toLocaleString()}건 / 전체 {accuracy.totalRows?.toLocaleString()}건
+          </div>
+        </div>
+        <span className="rounded-lg border border-indigo-700/40 bg-indigo-900/30 px-2 py-1 text-[10px] text-indigo-300">
+          3주 누적
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="space-y-3">
+          <StatBar label="방향 적중률" value={accuracy.directionHitRate} color="bg-emerald-500" />
+          <StatBar label="시초가 예측 범위" value={accuracy.openInRangeRate} color="bg-blue-500" />
+          <StatBar label="종가 예측 범위" value={accuracy.closeInRangeRate} color="bg-cyan-500" />
+          <StatBar label="진입가 도달률" value={accuracy.entryTouchedRate} color="bg-amber-500" />
+          <StatBar label="1차 목표 도달" value={accuracy.tp1TouchedRate} color="bg-violet-500" />
+          <StatBar label="손절 도달" value={accuracy.stopTouchedRate} color="bg-red-500" />
+        </div>
+
+        <div className="space-y-4">
+          {accuracy.avgVirtualReturn !== null && accuracy.avgVirtualReturn !== undefined && (
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 p-3">
+              <div className="text-xs text-slate-500">평균 가상수익률</div>
+              <div className={`mt-1 font-mono text-xl font-bold ${accuracy.avgVirtualReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                {accuracy.avgVirtualReturn >= 0 ? "+" : ""}{accuracy.avgVirtualReturn.toFixed(2)}%
+              </div>
+              {accuracy.positiveReturnRate !== null && (
+                <div className="mt-1 text-xs text-slate-500">수익 거래 {accuracy.positiveReturnRate}%</div>
+              )}
+            </div>
+          )}
+
+          {buckets.length > 0 && (
+            <div>
+              <div className="mb-2 text-xs text-slate-500">신뢰도 구간별 방향 적중</div>
+              <div className="space-y-1.5">
+                {buckets.map((b: any) => (
+                  <div key={b.bucket} className="flex items-center gap-2 text-xs">
+                    <span className="w-16 shrink-0 text-slate-400">{b.bucket}</span>
+                    <div className="flex-1 overflow-hidden rounded-full bg-slate-800 h-1.5">
+                      <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.min(100, b.directionHitRate)}%` }} />
+                    </div>
+                    <span className="w-12 text-right font-mono text-slate-300">{b.directionHitRate}%</span>
+                    <span className="text-slate-600">({b.count})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {totalResult > 0 && (
+            <div>
+              <div className="mb-2 text-xs text-slate-500">가상 결과 분포</div>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(dist).map(([label, cnt]) => (
+                  <span key={label} className="rounded border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[10px] text-slate-300">
+                    {label} <span className="font-mono text-slate-400">{cnt}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
