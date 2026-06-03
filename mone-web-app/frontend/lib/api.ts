@@ -1,4 +1,4 @@
-﻿export type Market = "kr" | "us" | "all";
+export type Market = "kr" | "us" | "all";
 export type Mode = "conservative" | "balanced" | "aggressive" | "all";
 export type Horizon = "short" | "swing" | "mid" | "long" | "all";
 
@@ -232,7 +232,12 @@ export const mone = {
     apiGet<ApiList>("/api/virtual/ledger", p),
   virtualValidation: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/virtual/validation", p),
-
+  orderbook: (p: { symbol: string; market: Market }) =>
+    apiGet<any>("/api/quotes/orderbook", p),
+  investor: (p: { symbol: string; market: Market }) =>
+    apiGet<any>("/api/quotes/investor", p),
+  chartIndex: (p: { indexSymbol: string; market: Market; limit?: number }) =>
+    apiGet<any>(`/api/chart/index/${p.indexSymbol}`, { market: p.market, limit: p.limit }),
 };
 
 export default mone;

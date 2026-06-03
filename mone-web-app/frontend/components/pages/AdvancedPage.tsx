@@ -28,8 +28,14 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 function firstRisk(item: any) {
   const flags = Array.isArray(item.riskFlags) ? item.riskFlags : [];
   if (flags.length) return flags.slice(0, 2).join(", ");
-  const status = item.financialDataStatus === "DATA_PENDING" ? item.financialDataMessage || "재무 데이터 보강 필요" : "";
-  return status || item.warningReason || item.warning_reason || "특이 리스크 없음";
+  if (item.financialDataStatus === "DATA_PENDING") {
+    const market = String(item.market || "kr").toLowerCase();
+    return market === "us" ? "재무 미수집 (Finnhub/SEC 연결 필요)" : "재무 미수집 (DART 연결 필요)";
+  }
+  const block = String(item.tradeBlockStatus || "").toUpperCase();
+  if (block === "CAUTION") return "진입 주의 (RSI 과열 또는 EV 음수)";
+  if (block === "BLOCK") return "진입 차단";
+  return item.warningReason || item.warning_reason || "특이 리스크 없음";
 }
 
 export default function AdvancedPage() {
@@ -130,6 +136,12 @@ export default function AdvancedPage() {
               OHLCV {Number(scanCoverage.ohlcvSymbolCount || 0).toLocaleString("ko-KR")}개 ·
               현재가 커버 {Number(scanCoverage.quoteCoveragePct || 0).toFixed(1)}%
               {!scanCoverage.isFullMarket && <span className="ml-2">전체시장 스캔 전환에는 종목 마스터와 현재가/OHLCV 수집 확대가 필요합니다.</span>}
+            </div>
+          )}
+          {!scanLoading && scanItems.length === 0 && (
+            <div className="mt-4 rounded-xl border border-dashed border-slate-700 px-5 py-8 text-center text-sm text-slate-500">
+              <p>스캐너 결과가 없습니다.</p>
+              <p className="mt-1 text-[11px] text-slate-600">추천 파일({modeLabel(mode)}/{horizonLabel(horizon)}/{marketLabel(market)})이 비어있거나 GitHub Actions 실행이 필요합니다.</p>
             </div>
           )}
           <div className="mt-5 overflow-hidden rounded-xl border border-slate-800">

@@ -43,6 +43,22 @@ def _market(value: str) -> str:
     return "us" if str(value).lower() == "us" else "kr"
 
 
+def _ensure_status(payload: dict, default_status: str = "OK") -> dict:
+    if not isinstance(payload, dict):
+        return {"status": "ERROR", "items": [], "count": 0, "error": "Invalid API payload"}
+    if not payload.get("status"):
+        count = payload.get("count")
+        items = payload.get("items")
+        if isinstance(items, list):
+            payload["status"] = default_status if items else "NO_DATA"
+            payload.setdefault("count", len(items))
+        elif isinstance(count, int):
+            payload["status"] = default_status if count > 0 else "NO_DATA"
+        else:
+            payload["status"] = default_status
+    return payload
+
+
 @app.get("/health")
 def health() -> dict:
     return {
@@ -265,7 +281,7 @@ def api_holdings_delete(symbol: str, market: str = Query("kr", pattern="^(kr|us)
 
 @app.get("/api/news")
 def api_news(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return data.news_rows(_market(market))
+    return _ensure_status(data.news_rows(_market(market)))
 
 
 @app.get("/api/disclosures")
@@ -424,7 +440,7 @@ def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dic
 
 @app.get("/api/advanced/scanner")
 def api_advanced_scanner(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return advanced.advanced_scanner(_market(market))
+    return _ensure_status(advanced.advanced_scanner(_market(market)))
 
 
 @app.post("/api/advanced/calculator/kelly")

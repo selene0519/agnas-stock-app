@@ -255,11 +255,24 @@ function CompanyDetail({ selected }: { selected: any }) {
       </div>
       {Array.isArray(selected.missingFields) && selected.missingFields.length > 0 && (
         <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
-          <div className="mb-2 flex items-center gap-2 font-semibold"><AlertTriangle size={15} />재무 데이터 연결 필요</div>
-          {selected.missingFields.join(", ")} 항목이 비어 있습니다. 원본 CSV/API에 값이 없거나 컬럼 매핑이 더 필요합니다.
+          <div className="mb-2 flex items-center gap-2 font-semibold"><AlertTriangle size={15} />재무 데이터 누락</div>
+          <p className="mb-2">{selected.missingFields.join(", ")} 항목이 비어 있습니다.</p>
+          {(() => {
+            const sym = String(selected.symbol || "").toUpperCase();
+            const market = String(selected.market || "kr").toLowerCase();
+            if (sym.includes("ETF") || sym.match(/^(SPY|QQQ|SCHD|VTI|IVV|VOO|TQQQ|SOXL)$/)) return <p className="text-[11px] text-amber-300/70">ETF는 EPS/PER/ROE 등 개별 재무 지표가 제공되지 않습니다.</p>;
+            if (market === "us") return <p className="text-[11px] text-amber-300/70">미국 주식: Finnhub 또는 SEC API 수집 필요. FINNHUB_API_KEY 설정 여부를 확인하세요.</p>;
+            return <p className="text-[11px] text-amber-300/70">국장: DART API 수집 필요. DART_API_KEY 설정 여부를 확인하거나 신규상장/소형주는 재무 데이터가 없을 수 있습니다.</p>;
+          })()}
         </div>
       )}
-      <div className="mt-5 text-xs text-slate-500">출처: {selected.source || "local csv/json"}</div>
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+        <span>출처:</span>
+        {(selected.dataSources || [selected.source]).filter(Boolean).map((src: string, i: number) => (
+          <span key={i} className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 font-mono">{src}</span>
+        ))}
+        {!selected.source && !selected.dataSources && <span className="italic text-slate-600">출처 정보 없음 (local CSV/json)</span>}
+      </div>
     </div>
   );
 }
