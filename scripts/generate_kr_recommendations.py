@@ -60,6 +60,10 @@ def _read_csv(path: Path) -> list[dict[str, Any]]:
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     if not rows:
+        # 빈 rows → 기존 파일이 있으면 보존 (operational_check.py가 생성한 파일 덮어씌우지 않음)
+        if path.exists() and path.stat().st_size > 10:
+            return
+        # 기존 파일도 없을 때만 빈 파일 생성
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8-sig")
         return
