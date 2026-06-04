@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: mone-backend
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r mone-web-app/backend/requirements.txt
+    startCommand: cd mone-web-app/backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: ALLOWED_ORIGINS
+        sync: false       # Render 대시보드에서 직접 입력 (Vercel URL 확정 후)
+      - key: KIS_APP_KEY
+        sync: false
+      - key: KIS_APP_SECRET
+        sync: false
+      - key: KIS_ACCOUNT_NO
+        sync: false
+      - key: KIS_CANO
+        sync: false
+      - key: KIS_ACNT_PRDT_CD
+        sync: false
+      - key: KIS_IS_MOCK
+        value: "false"
+      - key: DART_API_KEY
+        sync: false
+      - key: GNEWS_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: MONE_STARTUP_SYNC
+        value: "1"
