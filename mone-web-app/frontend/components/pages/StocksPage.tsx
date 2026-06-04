@@ -59,6 +59,21 @@ function Cell({
   );
 }
 
+function ScoreBar({ label, score }: { label: string; score: number | null | undefined }) {
+  if (score == null || !Number.isFinite(score)) return null;
+  const pct = Math.max(0, Math.min(100, score));
+  const barColor = pct >= 60 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-400" : "bg-red-400";
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-14 shrink-0 text-[10px] text-slate-500">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-7 shrink-0 text-right font-mono text-[10px] text-slate-400">{Math.round(pct)}</span>
+    </div>
+  );
+}
+
 function qtyText(item: any, mode: Mode) {
   if (typeof window === "undefined") return "";
   const cash = Number(window.localStorage.getItem("mone_cash_amount") || "0");
@@ -1040,6 +1055,24 @@ export default function StocksPage() {
               {Array.isArray(item.cautionReasons) && item.cautionReasons.length > 0 && (
                 <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
                   매수금지/주의: {item.cautionReasons.join(", ")}
+                </div>
+              )}
+
+              {hasRecommendation && (item.finalScore > 0 || item.riskScore > 0) && (
+                <div className="mt-3 rounded-xl bg-slate-950 p-3 space-y-1.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">퀀트 스코어</span>
+                    <div className="flex items-center gap-2 text-[10px]">
+                      {item.finalScore > 0 && <span className="font-mono font-bold text-slate-300">{item.finalScore.toFixed(0)}점</span>}
+                      {item.evGrade && <span className={`rounded px-1.5 py-0.5 ${item.evGrade === "우수" ? "bg-emerald-900/60 text-emerald-300" : item.evGrade === "양호" ? "bg-blue-900/60 text-blue-300" : "bg-slate-800 text-slate-400"}`}>{item.evGrade}</span>}
+                      {item.expectedValue != null && <span className={`font-mono ${item.expectedValue >= 0 ? "text-emerald-400" : "text-red-400"}`}>EV {item.expectedValue >= 0 ? "+" : ""}{Number(item.expectedValue).toFixed(1)}%</span>}
+                    </div>
+                  </div>
+                  <ScoreBar label="상승여력" score={item.upsideScore} />
+                  <ScoreBar label="리스크" score={item.riskScore} />
+                  <ScoreBar label="모멘텀" score={item.momentumScore} />
+                  <ScoreBar label="진입가" score={item.entryScore} />
+                  <ScoreBar label="손익비" score={item.rrScore} />
                 </div>
               )}
 

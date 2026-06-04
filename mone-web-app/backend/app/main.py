@@ -1723,8 +1723,10 @@ def _install_mone_close_validation_routes_v1():
             "latestRecommendations": len(normalized),
             "latestExecutedTrades": len(executed),
             "latestUnexecutedCount": max(0, len(normalized) - len(executed)),
+            "latestExecutionRate": round(len(executed) / len(normalized) * 100, 2) if normalized else 0,
             "latestWinRate": round((win_count / len(returns)) * 100, 2) if returns else 0,
             "latestAverageReturnPct": round(avg_return, 4),
+            "latestCumulativeReturnPct": round(sum(returns), 4),
             "items": normalized[:100],
             "count": len(normalized),
         }
@@ -2008,28 +2010,101 @@ def api_virtual_validation(
 
 @app.get("/api/validation/dashboard")
 def api_validation_dashboard(market: str = Query("kr")) -> dict:
+    import csv as _vd_csv
+    from pathlib import Path as _VDPath
+
+    def _read_vd_csv(path: _VDPath) -> list[dict]:
+        if not path.exists():
+            return []
+        for enc in ("utf-8-sig", "utf-8", "cp949"):
+            try:
+                with path.open("r", encoding=enc, newline="") as f:
+                    return [dict(row) for row in _vd_csv.DictReader(f)]
+            except Exception:
+                continue
+        return []
+
+    def _vd_pct(v) -> float | None:
+        try:
+            return float(str(v or "").replace(",", "").replace("%", "").replace("+", "").strip())
+        except Exception:
+            return None
+
     try:
-        acc = final_engine.prediction_accuracy_stats(None if market == "all" else _market(market))
-        history = operation_history.virtual_operation_history(
-            market=None if market == "all" else _market(market),
-            mode=None, limit=500
-        )
-        items = history.get("items", [])
-        total = len(items)
-        wins = len([r for r in items if _safe_float_v2(r.get("returnPct", 0)) > 0])
-        win_rate = (wins / total * 100) if total > 0 else 0.0
-        avg_return = (sum(_safe_float_v2(r.get("returnPct", 0)) for r in items) / total) if total > 0 else 0.0
+        mk = _market(market)
+        reports_dir = _VDPath(__file__).resolve().parents[3] / "reports"
+
+        modes = ["conservative", "balanced", "aggressive"]
+        horizons = ["short", "swing", "mid"]
+
+        stats: dict = {}
+        total_completed = 0
+        total_pending = 0
+        all_win_rates: list[float] = []
+
+        for mode in modes:
+            for horizon in horizons:
+                key = f"{mode}_{horizon}"
+                files = sorted(
+                    reports_dir.glob(f"mone_v36_final_trade_validation_{mk}_{mode}_{horizon}_*.csv"),
+                    key=lambda p: p.name, reverse=True,
+                )
+                if not files:
+                    fallback = reports_dir / f"mone_v36_final_trade_validation_{mk}_{mode}_{horizon}.csv"
+                    files = [fallback] if fallback.exists() else []
+                rows = _read_vd_csv(files[0]) if files else []
+                executed = [r for r in rows if str(r.get("executed", "")).lower() in {"true", "1", "yes", "체결"}]
+                pending_count = max(0, len(rows) - len(executed))
+                returns = [_vd_pct(r.get("returnPct")) for r in executed]
+                returns = [r for r in returns if r is not None]
+                wins = sum(1 for r in returns if r > 0)
+                win_rate = round(wins / len(returns) * 100, 1) if returns else None
+                avg_return = round(sum(returns) / len(returns), 2) if returns else None
+                stats[key] = {
+                    "completed": len(executed),
+                    "pending": pending_count,
+                    "pendingCount": pending_count,
+                    "wins": wins,
+                    "winRate": win_rate,
+                    "avgReturn": avg_return,
+                }
+                total_completed += len(executed)
+                total_pending += pending_count
+                if win_rate is not None:
+                    all_win_rates.append(win_rate)
+
+        overall_win_rate = round(sum(all_win_rates) / len(all_win_rates), 1) if all_win_rates else None
+
+        ledger_path = reports_dir / "virtual_prediction_ledger.csv"
+        lifecycle: list[dict] = []
+        for r in _read_vd_csv(ledger_path)[:100]:
+            if market != "all" and r.get("market", "").lower() != mk:
+                continue
+            lifecycle.append({
+                "predictionId": r.get("predictionId", ""),
+                "symbol": r.get("symbol", ""),
+                "name": r.get("name", ""),
+                "market": r.get("market", ""),
+                "mode": r.get("mode", ""),
+                "horizon": r.get("horizon", ""),
+                "createdAt": r.get("createdAt", ""),
+                "status": r.get("status", "PENDING"),
+                "returnPct": _vd_pct(r.get("returnPct")),
+            })
+
         return {
             "status": "OK",
-            "winRate": round(win_rate, 1),
-            "avgReturn": round(avg_return, 2),
-            "total": total,
-            "wins": wins,
-            "accuracy": acc,
+            "summary": {
+                "overallWinRate": overall_win_rate,
+                "totalCompleted": total_completed,
+                "totalPending": total_pending,
+            },
+            "stats": stats,
+            "lifecycle": lifecycle,
             "market": market,
         }
     except Exception as e:
-        return {"status": "ERROR", "error": str(e), "winRate": 0, "total": 0}
+        return {"status": "ERROR", "error": str(e), "summary": None, "stats": {}, "lifecycle": []}
 
 
 # ── 7. risk/sector-exposure ───────────────────────────────────────────

@@ -600,14 +600,21 @@ export default function ChartPage() {
     async function seed() {
       setSeedLoading(true);
       try {
-        const holdings = await mone.holdingsClean({ market, limit: 20 });
-        if (!active || selected) return;
-        const h = Array.isArray(holdings.items) ? holdings.items.map(toSymbol).find(Boolean) : null;
-        if (h) { setSelected(h); return; }
-        const rec = await mone.recommendations({ market, mode: "balanced", horizon: "swing", limit: 20 });
-        if (!active || selected) return;
-        const c = Array.isArray(rec.items) ? rec.items.map(toSymbol).find(Boolean) : null;
-        setSelected(c || fallbackSymbol(market));
+        let picked: MoneSymbol | null = null;
+        try {
+          const holdings = await mone.holdingsClean({ market, limit: 20 });
+          if (!active) return;
+          picked = Array.isArray(holdings.items) ? (holdings.items.map(toSymbol).find(Boolean) ?? null) : null;
+        } catch { /* try recommendations next */ }
+        if (!active) return;
+        if (!picked) {
+          try {
+            const rec = await mone.recommendations({ market, mode: "balanced", horizon: "swing", limit: 20 });
+            if (!active) return;
+            picked = Array.isArray(rec.items) ? (rec.items.map(toSymbol).find(Boolean) ?? null) : null;
+          } catch { /* use fallback */ }
+        }
+        if (active) setSelected(picked ?? fallbackSymbol(market));
       } finally { if (active) setSeedLoading(false); }
     }
     seed();
