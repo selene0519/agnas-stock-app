@@ -1181,13 +1181,6 @@ export default function StocksPage() {
                 >
                   차트 보기
                 </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700"
-                  onClick={() => openKoreaInvestment(String(item.symbol || ""), String(item.market || market))}
-                >
-                  <ExternalLink size={13} /> 한국투자에서 보기
-                </button>
               </div>
             </div>
           );
