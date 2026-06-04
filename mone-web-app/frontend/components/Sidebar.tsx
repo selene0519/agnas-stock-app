@@ -100,7 +100,7 @@ export default function Sidebar({ current, onChange }: Props) {
       </nav>
       {!collapsed && (
         <div className="border-t border-slate-800 p-3">
-          <div className="font-mono text-[10px] text-slate-600">v7.8 · MONE Stock App</div>
+          <div className="font-mono text-[10px] text-slate-600">v10.8 · MONE Stock App</div>
           <div className="mt-0.5 text-[10px] text-slate-600">© 2026 AGNAS</div>
         </div>
       )}
