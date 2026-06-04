@@ -68,6 +68,7 @@ export default function NewsPage() {
   const [calendarData, setCalendarData] = useState<any>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [watchOnly, setWatchOnly] = useState(true);
 
   useEffect(() => {
     if (tab === "calendar") {
@@ -87,7 +88,7 @@ export default function NewsPage() {
         tab === "news"
           ? mone.news({ market, limit: 200 })
           : tab === "disclosures"
-            ? mone.disclosures({ market, limit: 200 })
+            ? mone.disclosures({ market, limit: 200, watchOnly })
             : mone.companyAnalysis({ market, limit: 500, q: query || undefined });
       const result = await loader;
       setData(result);
@@ -101,7 +102,8 @@ export default function NewsPage() {
 
   useEffect(() => {
     load();
-  }, [market, tab]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [market, tab, watchOnly]);
 
   const items = useMemo(() => {
     const source = Array.isArray(data.items) ? data.items : [];
@@ -141,6 +143,14 @@ export default function NewsPage() {
             {item === "news" ? "뉴스 요약" : item === "disclosures" ? "공시" : item === "calendar" ? "공시 캘린더" : "기업분석"}
           </button>
         ))}
+        {(tab === "disclosures" || tab === "news") && (
+          <button
+            onClick={() => setWatchOnly(!watchOnly)}
+            className={`rounded-xl px-4 py-2 text-sm font-bold ${watchOnly ? "bg-amber-500 text-slate-950" : "bg-slate-900 text-slate-400"}`}
+          >
+            {watchOnly ? "보유·관심만" : "전체 보기"}
+          </button>
+        )}
       </div>
 
       <div className="relative max-w-xl">

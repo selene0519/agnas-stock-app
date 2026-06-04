@@ -285,8 +285,58 @@ def api_news(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
 
 
 @app.get("/api/disclosures")
-def api_disclosures(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return data.disclosure_rows(_market(market))
+def api_disclosures(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    watch_only: bool = Query(True),
+) -> dict:
+    from pathlib import Path as _DP
+    import csv as _DC
+
+    mk = _market(market)
+    result = data.disclosure_rows(mk)
+
+    if watch_only:
+        # 보유종목 + 관심종목 심볼 수집
+        relevant: set[str] = set()
+        repo = _DP(__file__).resolve().parents[3]
+
+        def _read_symbols(path: _DP) -> None:
+            if not path.exists():
+                return
+            for enc in ("utf-8-sig", "utf-8", "cp949"):
+                try:
+                    with path.open("r", encoding=enc, newline="") as f:
+                        for row in _DC.DictReader(f):
+                            sym = data.normalize_symbol(
+                                row.get("symbol") or row.get("종목코드") or row.get("ticker") or "", mk
+                            )
+                            if sym:
+                                relevant.add(sym)
+                    return
+                except Exception:
+                    continue
+
+        # 보유종목 CSV
+        for fname in (f"holdings_{mk}.csv", f"data/holdings_{mk}.csv"):
+            _read_symbols(repo / fname)
+        # 관심종목 CSV
+        for fname in (f"watchlist_{mk}.csv", f"data/watchlist_{mk}.csv"):
+            _read_symbols(repo / fname)
+        # 추천 종목 (balanced swing 기준)
+        for fname in (f"reports/mone_v36_final_recommendations_{mk}_balanced_swing.csv",):
+            _read_symbols(repo / fname)
+
+        if relevant:
+            filtered = [
+                item for item in result.get("items", [])
+                if data.normalize_symbol(item.get("symbol", ""), mk) in relevant
+            ]
+            result = {**result, "items": filtered, "count": len(filtered),
+                      "watchOnly": True, "relevantSymbols": len(relevant)}
+        else:
+            result = {**result, "watchOnly": True, "relevantSymbols": 0}
+
+    return result
 
 
 @app.post("/api/disclosures/refresh")
