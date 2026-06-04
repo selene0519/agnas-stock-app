@@ -374,7 +374,7 @@ export default function HoldingsPage() {
     const m = market === "all" ? "kr" : market;
     try {
       // 보유목록 먼저 — 빠르게 표시
-      const result = await getJson(`/api/holdings?market=${market}&limit=500`);
+      const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
       setData(result);
       setLoading(false);
       // 리스크 데이터는 백그라운드 로딩
