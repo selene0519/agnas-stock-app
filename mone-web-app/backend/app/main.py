@@ -2976,7 +2976,15 @@ def _try_open_er_api(base: str) -> float | None:
 
 def _try_exchangerate_api(base: str) -> float | None:
     try:
-        import requests as _req
+        import os as _os, requests as _req
+        key = _os.getenv("EXCHANGERATE_API_KEY", "")
+        if key:
+            # 인증 엔드포인트 (더 정확, 더 높은 한도)
+            resp = _req.get(f"https://v6.exchangerate-api.com/v6/{key}/latest/{base}", timeout=8)
+            data = resp.json()
+            if data.get("result") == "success":
+                return float(data["conversion_rates"].get("KRW", 0)) or None
+        # 무료 폴백
         resp = _req.get(f"https://api.exchangerate-api.com/v4/latest/{base}", timeout=8)
         data = resp.json()
         return float(data["rates"].get("KRW", 0)) or None
