@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 
 type Market = "all" | "kr" | "us";
+const HOLDINGS_API_TIMEOUT_MS = 8000;
 
 type EditableHolding = {
   market: "kr" | "us";
@@ -16,12 +17,23 @@ type EditableHolding = {
 function apiUrl(path: string) { return `/mone-api${path}`; }
 
 async function getJson(path: string) {
-  const res = await fetch(apiUrl(path), { cache: "no-store" });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText} ${detail}`.trim());
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HOLDINGS_API_TIMEOUT_MS);
+  try {
+    const res = await fetch(apiUrl(path), { cache: "no-store", signal: controller.signal });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(`${res.status} ${res.statusText} ${detail}`.trim());
+    }
+    return res.json();
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`요청 시간이 ${HOLDINGS_API_TIMEOUT_MS / 1000}초를 넘었습니다.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 
 async function postJson(path: string, body: any) {
@@ -368,20 +380,29 @@ export default function HoldingsPage() {
   const [sectorData, setSectorData] = useState<any>(null);
   const [benchmarkData, setBenchmarkData] = useState<any>(null);
   const [corrData, setCorrData] = useState<any>(null);
+  const [riskNote, setRiskNote] = useState("");
+  const [refreshingAllQuotes, setRefreshingAllQuotes] = useState(false);
 
   async function load() {
     setLoading(true);
-    const m = market === "all" ? "kr" : market;
     try {
       // 보유목록 먼저 — 빠르게 표시
       const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
       setData(result);
       setLoading(false);
+      if (market === "all") {
+        setSectorData(null);
+        setBenchmarkData(null);
+        setCorrData(null);
+        setRiskNote("전체 보기에서는 KR/US 통화와 벤치마크가 달라 리스크 패널을 합산하지 않습니다. 국장 또는 미장 탭에서 개별 리스크를 확인하세요.");
+        return;
+      }
+      setRiskNote("");
       // 리스크 데이터는 백그라운드 로딩
       Promise.all([
-        getJson(`/api/risk/sector-exposure?market=${m}`).catch(() => null),
-        getJson(`/api/risk/benchmark?market=${m}`).catch(() => null),
-        getJson(`/api/risk/correlation?market=${m}&days=60`).catch(() => null),
+        getJson(`/api/risk/sector-exposure?market=${market}`).catch((error) => ({ status: "ERROR", error: String(error), sectors: [] })),
+        getJson(`/api/risk/benchmark?market=${market}`).catch((error) => ({ status: "ERROR", error: String(error), items: [] })),
+        getJson(`/api/risk/correlation?market=${market}&days=60`).catch((error) => ({ status: "ERROR", error: String(error), matrix: [] })),
       ]).then(([sector, bench, corr]) => {
         setSectorData(sector); setBenchmarkData(bench); setCorrData(corr);
       });
@@ -393,11 +414,6 @@ export default function HoldingsPage() {
 
   useEffect(() => {
     load();
-    // 백그라운드 현재가 새로고침
-    const m = market === "all" ? "kr" : market;
-    postJson("/api/quotes/refresh-targets", { market: m, limit: 30 })
-      .then(() => load())
-      .catch(() => {});
   }, [market]);
 
   async function loadEditableHoldings() {
@@ -460,6 +476,20 @@ export default function HoldingsPage() {
     } finally { setSavingKey(null); }
   }
 
+  async function refreshVisibleQuotes() {
+    const m = market === "all" ? "all" : market;
+    setRefreshingAllQuotes(true); setMessage("");
+    try {
+      const res = await postJson("/api/quotes/refresh-targets", { market: m, limit: 30 });
+      setMessage(`현재가 수동 갱신: 성공 ${res?.successCount ?? 0}건 / 실패 ${res?.failureCount ?? 0}건 / 대기 ${res?.pendingCount ?? 0}건`);
+      await load();
+    } catch (error) {
+      setMessage(`현재가 수동 갱신 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setRefreshingAllQuotes(false);
+    }
+  }
+
   async function addHolding(draft: EditableHolding) {
     setAddSaving(true); setMessage("");
     try {
@@ -477,9 +507,34 @@ export default function HoldingsPage() {
 
   const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
   const summary = data.summary || {};
-  const riskCount = items.filter((item) => ["HIGH","WATCH"].includes(String(item.riskStatus || ""))).length;
+  const riskCount = Number(summary.riskCount ?? items.filter((item) => ["HIGH","WATCH"].includes(String(item.riskStatus || ""))).length);
   const totalValueText = summary.totalValueText || (items.length > 0 ?
     items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
+  const actionItems = useMemo(() => {
+    const rows: { key: string; tone: "red" | "amber" | "blue"; title: string; detail: string }[] = [];
+    for (const holding of items) {
+      const name = displayName(holding);
+      const symbol = String(holding.symbol || "");
+      const stopMissing = !holding.stopText || holding.stopText === "-";
+      const targetMissing = !holding.targetText || holding.targetText === "-";
+      const stopGapPct = holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
+      const targetGapPct = holding.targetGapPct != null ? Number(holding.targetGapPct) : null;
+      if (!holding.currentPrice || Number(holding.currentPrice) <= 0) {
+        rows.push({ key: `${symbol}-price`, tone: "amber", title: `${name} 현재가 없음`, detail: "수동 갱신 또는 다음 수집 필요" });
+      }
+      if (stopMissing) rows.push({ key: `${symbol}-stop`, tone: "amber", title: `${name} 손절가 필요`, detail: "보유 리스크 판단 기준 없음" });
+      if (targetMissing) rows.push({ key: `${symbol}-target`, tone: "blue", title: `${name} 목표가 필요`, detail: "익절 판단 기준 없음" });
+      if (stopGapPct !== null && stopGapPct <= 2) {
+        rows.push({ key: `${symbol}-stop-near`, tone: "red", title: `${name} 손절 근접`, detail: `${stopGapPct.toFixed(2)}% 여유` });
+      } else if (stopGapPct !== null && stopGapPct <= 5) {
+        rows.push({ key: `${symbol}-stop-watch`, tone: "amber", title: `${name} 손절권 주의`, detail: `${stopGapPct.toFixed(2)}% 여유` });
+      }
+      if (targetGapPct !== null && targetGapPct >= 0 && targetGapPct <= 3) {
+        rows.push({ key: `${symbol}-target-near`, tone: "blue", title: `${name} 목표가 근접`, detail: `${targetGapPct.toFixed(2)}% 남음` });
+      }
+    }
+    return rows.slice(0, 8);
+  }, [items]);
 
   return (
     <div className="space-y-6 p-6">
@@ -496,7 +551,11 @@ export default function HoldingsPage() {
           </button>
           <button onClick={load}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 새로고침
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 화면 새로고침
+          </button>
+          <button onClick={refreshVisibleQuotes} disabled={refreshingAllQuotes}
+            className="inline-flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-200 hover:bg-blue-500/20 disabled:opacity-50">
+            <Zap size={14} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 수동 갱신
           </button>
         </div>
       </div>
@@ -531,6 +590,43 @@ export default function HoldingsPage() {
         <SummaryCard label="주의/위험" value={`${riskCount}개`}
           accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
       </div>
+
+      {summary.mixedCurrency && (
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200">
+          KR/US 혼합 보유라 평가금액과 손익은 통화별로 분리 표시합니다. 통합 수익률은 환율 기준이 들어온 뒤 계산하는 것이 안전합니다.
+        </div>
+      )}
+
+      {actionItems.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-100">오늘 확인할 보유 리스크</h2>
+            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{actionItems.length}건</span>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            {actionItems.map((item) => (
+              <div key={item.key} className={`rounded-xl border px-3 py-2 ${
+                item.tone === "red" ? "border-red-500/30 bg-red-500/10" :
+                item.tone === "blue" ? "border-blue-500/30 bg-blue-500/10" :
+                "border-amber-500/30 bg-amber-500/10"
+              }`}>
+                <div className={`text-xs font-bold ${
+                  item.tone === "red" ? "text-red-300" :
+                  item.tone === "blue" ? "text-blue-300" :
+                  "text-amber-300"
+                }`}>{item.title}</div>
+                <div className="mt-1 text-[11px] text-slate-400">{item.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {riskNote && (
+        <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs text-slate-300">
+          {riskNote}
+        </div>
+      )}
 
       {data.error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{data.error}</div>}
 
@@ -665,7 +761,7 @@ export default function HoldingsPage() {
                     {(() => {
                       const status = String(holding.dataStatus || "");
                       const missing = Array.isArray(holding.missingFields) ? holding.missingFields : [];
-                      if (status === "OK") return <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">현재가 정상</span>;
+                      if (status === "OK" || status === "NORMAL") return <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">현재가 정상</span>;
                       if (!holding.currentPrice || holding.currentPrice <= 0) return <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">현재가 없음</span>;
                       if (missing.length > 0) return <span className="rounded-md border border-slate-600/40 bg-slate-700/20 px-2 py-0.5 text-[10px] text-slate-400">OHLCV 기준가 ({missing.slice(0,2).join("·")} 없음)</span>;
                       return <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300">부분 데이터</span>;

@@ -32,6 +32,8 @@ type HoldingEditRow = {
   targetReason?: string;
 };
 
+const RECOMMENDATION_LIMIT = 120;
+
 function Cell({
   label,
   value,
@@ -209,6 +211,7 @@ export default function StocksPage() {
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
   const [watchOnly, setWatchOnly] = useState(false);
   const [items, setItems] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [watchlist, setWatchlist] = useState<WatchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [watchSaving, setWatchSaving] = useState(false);
@@ -326,13 +329,26 @@ export default function StocksPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setLoadError("");
     mone
-      .recommendations({ market, mode, horizon, limit: 500, watchOnly })
+      .recommendations({ market, mode, horizon, limit: RECOMMENDATION_LIMIT, watchOnly })
       .then((data) => {
         if (!active) return;
+        if (data?.status === "ERROR") {
+          setItems([]);
+          setLoadError(data.error || "추천 후보를 불러오지 못했습니다.");
+          return;
+        }
         setItems(dedupeBySymbol(Array.isArray(data.items) ? data.items : []));
+        if (data?.status && data.status !== "OK" && data.status !== "NO_DATA") {
+          setLoadError(`추천 데이터 상태: ${data.status}`);
+        }
       })
-      .catch(() => active && setItems([]))
+      .catch((error) => {
+        if (!active) return;
+        setItems([]);
+        setLoadError(error instanceof Error ? error.message : String(error));
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -897,7 +913,12 @@ export default function StocksPage() {
         <div className="text-sm text-slate-500">
           {loading
             ? "후보를 불러오는 중..."
-            : `${modeLabel(mode)} · ${horizonLabel(horizon)} / 표시 ${visible.length.toLocaleString("ko-KR")}개 / 전체 ${items.length.toLocaleString("ko-KR")}개`}
+            : `${modeLabel(mode)} · ${horizonLabel(horizon)} / 표시 ${visible.length.toLocaleString("ko-KR")}개 / 우선 로딩 ${items.length.toLocaleString("ko-KR")}개`}
+          {!loading && items.length >= RECOMMENDATION_LIMIT && (
+            <span className="ml-2 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-[11px] text-slate-400">
+              상위 {RECOMMENDATION_LIMIT}개 우선
+            </span>
+          )}
         </div>
         {!selected && (
           <select
@@ -912,6 +933,13 @@ export default function StocksPage() {
           </select>
         )}
       </div>
+
+      {loadError && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          추천 후보 로딩이 지연되거나 실패했습니다. 조건을 줄이거나 잠시 후 다시 시도하세요.
+          <span className="ml-2 text-xs text-amber-300/80">{loadError}</span>
+        </div>
+      )}
 
       {visible.length === 0 && !loading && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center">
@@ -1189,4 +1217,3 @@ export default function StocksPage() {
     </div>
   );
 }
-

@@ -1143,6 +1143,16 @@ def _install_mone_authoritative_holdings_clean_v3():
             target_from_v93 = _num(_text(v, ["targetPrice", "target", "targetText", "목표가"], ""), 0)
             stop = _num(row.get("stopPriceCsv"), 0) or stop_from_v93
             target = _num(row.get("targetPriceCsv"), 0) or target_from_v93
+            stop_gap_pct = round((current - stop) / current * 100, 2) if current > 0 and stop > 0 else None
+            target_gap_pct = round((target - current) / current * 100, 2) if current > 0 and target > 0 else None
+            if current <= 0:
+                risk_status = "WATCH"
+            elif stop_gap_pct is not None and stop_gap_pct <= 2:
+                risk_status = "HIGH"
+            elif stop <= 0 or target <= 0 or (stop_gap_pct is not None and stop_gap_pct <= 5) or (target_gap_pct is not None and 0 <= target_gap_pct <= 3):
+                risk_status = "WATCH"
+            else:
+                risk_status = "NORMAL"
 
             item = dict(row)
             item.update({
@@ -1161,9 +1171,12 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "pnlPctText": f"{pnl_pct:+.2f}%",
                 "stopPrice": stop,
                 "stopText": f"${stop:,.2f}" if mk == "us" and stop > 0 else f"{round(stop):,}원" if stop > 0 else "-",
+                "stopGapPct": stop_gap_pct,
                 "targetPrice": target,
                 "targetText": f"${target:,.2f}" if mk == "us" and target > 0 else f"{round(target):,}원" if target > 0 else "-",
+                "targetGapPct": target_gap_pct,
                 "riskLevel": _text(v, ["riskLevel", "risk", "status", "판정"], "NORMAL") or "NORMAL",
+                "riskStatus": risk_status,
                 "dataStatus": "NORMAL" if current > 0 else "NO_PRICE",
                 "source": row["source"],
                 "enrichSource": "v93_position_cards" if v else "",
@@ -1173,16 +1186,72 @@ def _install_mone_authoritative_holdings_clean_v3():
             })
             items.append(item)
 
+        def _money(amount: float, mk: str) -> str:
+            if mk == "us":
+                return f"${amount:,.2f}"
+            return f"{round(amount):,}원"
+
+        def _summary(rows: list[dict]) -> dict:
+            by_market: dict[str, dict] = {
+                "kr": {"market": "kr", "count": 0, "totalValue": 0.0, "totalPnl": 0.0, "missingPriceCount": 0, "missingStopCount": 0, "missingTargetCount": 0},
+                "us": {"market": "us", "count": 0, "totalValue": 0.0, "totalPnl": 0.0, "missingPriceCount": 0, "missingStopCount": 0, "missingTargetCount": 0},
+            }
+            for it in rows:
+                mk = "us" if str(it.get("market", "")).lower() == "us" else "kr"
+                bucket = by_market[mk]
+                bucket["count"] += 1
+                bucket["totalValue"] += _num(it.get("marketValue"), 0)
+                bucket["totalPnl"] += _num(it.get("pnl"), 0)
+                if _num(it.get("currentPrice"), 0) <= 0:
+                    bucket["missingPriceCount"] += 1
+                if _num(it.get("stopPrice"), 0) <= 0:
+                    bucket["missingStopCount"] += 1
+                if _num(it.get("targetPrice"), 0) <= 0:
+                    bucket["missingTargetCount"] += 1
+            active = [v for v in by_market.values() if v["count"] > 0]
+            for bucket in active:
+                mk = bucket["market"]
+                bucket["totalValueText"] = _money(bucket["totalValue"], mk)
+                bucket["totalPnlText"] = _money(bucket["totalPnl"], mk)
+            mixed = len(active) > 1
+            if mixed:
+                total_value_text = " / ".join(v["totalValueText"] for v in active)
+                total_pnl_text = " / ".join(v["totalPnlText"] for v in active)
+                total_pnl = sum(v["totalPnl"] for v in active)
+            elif active:
+                total_value_text = active[0]["totalValueText"]
+                total_pnl_text = active[0]["totalPnlText"]
+                total_pnl = active[0]["totalPnl"]
+            else:
+                total_value_text = "-"
+                total_pnl_text = "-"
+                total_pnl = 0.0
+            return {
+                "count": len(rows),
+                "totalValue": sum(v["totalValue"] for v in active),
+                "totalValueText": total_value_text,
+                "totalPnl": total_pnl,
+                "totalPnlText": total_pnl_text,
+                "mixedCurrency": mixed,
+                "marketBreakdown": active,
+                "missingPriceCount": sum(v["missingPriceCount"] for v in active),
+                "missingStopCount": sum(v["missingStopCount"] for v in active),
+                "missingTargetCount": sum(v["missingTargetCount"] for v in active),
+                "riskCount": sum(1 for it in rows if str(it.get("riskStatus", "")).upper() in {"HIGH", "WATCH"}),
+            }
+
         unique = {(i["market"], i["symbol"]) for i in items}
         limit = max(1, min(int(limit or 100), 10000))
+        limited_items = items[:limit]
         return {
             "status": "OK",
             "routeVersion": "holdings-authoritative-csv-v3",
             "market": market_key,
-            "count": len(items[:limit]),
+            "count": len(limited_items),
             "totalCount": len(items),
             "uniqueCount": len(unique),
-            "items": items[:limit],
+            "items": limited_items,
+            "summary": _summary(limited_items),
             "updatedAt": _mone_datetime.now().isoformat(),
             "authority": "holdings_kr.csv/holdings_us.csv",
         }
