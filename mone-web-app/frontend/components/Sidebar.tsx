@@ -87,19 +87,20 @@ export default function Sidebar({ current, onChange, mobileOpen: mobileOpenProp,
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
         {navItems.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`nav-item w-full ${current === item.id ? "active" : ""} ${collapsed ? "justify-center px-2" : ""} ${item.desktopOnly ? "hidden md:flex" : ""}`}
-            onClick={() => {
-              onChange(item.id);
-              setMobileOpen(false);
-            }}
-            title={collapsed ? item.label : undefined}
-          >
-            <span className="shrink-0">{item.icon}</span>
-            {!collapsed && <span>{item.label}</span>}
-          </button>
+          <div key={item.id} className={item.desktopOnly ? "hidden md:block" : ""}>
+            <button
+              type="button"
+              className={`nav-item w-full ${current === item.id ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
+              onClick={() => {
+                onChange(item.id);
+                setMobileOpen(false);
+              }}
+              title={collapsed ? item.label : undefined}
+            >
+              <span className="shrink-0">{item.icon}</span>
+              {!collapsed && <span>{item.label}</span>}
+            </button>
+          </div>
         ))}
       </nav>
       {!collapsed && (
