@@ -1,44 +1,23 @@
 {
-  "name": "MONE 주식 운용 보드",
+  "name": "MONE",
   "short_name": "MONE",
-  "description": "국장·미장 의사결정 운용 보드 — 장전·장중·장마감 실전 운용",
+  "description": "AI 투자 리서치 및 리스크 관리 보드",
   "start_url": "/",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0a0f1a",
-  "theme_color": "#0a0f1a",
-  "lang": "ko",
   "scope": "/",
-  "icons": [
-    {
-      "src": "/brand/mone-logo-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/brand/mone-logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    }
-  ],
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020817",
+  "theme_color": "#020817",
   "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
   "shortcuts": [
-    {
-      "name": "시장 홈",
-      "url": "/?page=home",
-      "description": "오늘 진입 후보 확인"
-    },
-    {
-      "name": "보유·리스크",
-      "url": "/?page=holdings",
-      "description": "보유종목 현황"
-    },
-    {
-      "name": "차트",
-      "url": "/?page=chart",
-      "description": "기술 분석 차트"
-    }
+    { "name": "시장 홈", "url": "/?page=home", "description": "오늘 진입 후보 확인" },
+    { "name": "보유·리스크", "url": "/?page=holdings", "description": "보유종목 현황" },
+    { "name": "차트", "url": "/?page=chart", "description": "기술 분석 차트" }
   ]
 }
