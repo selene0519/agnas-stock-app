@@ -27,7 +27,8 @@ function kstNowParts(now = new Date()) {
     hour: "2-digit", minute: "2-digit", hour12: false,
   }).formatToParts(now);
   const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0);
-  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute") };
+  const hour = get("hour") % 24;
+  return { year: get("year"), month: get("month"), day: get("day"), hour, minute: get("minute") };
 }
 
 function getDefaultMarketBySession(now = new Date()): "kr" | "us" {
@@ -63,8 +64,8 @@ function getSessionCountdown(market: "kr" | "us", now = new Date()): string {
     const open = 9 * 60, close = 15 * 60 + 30;
     if (t < open)  return `국장 시작까지 ${fmt(open - t)}`;
     if (t <= close) return `장마감까지 ${fmt(close - t)}`;
-    const nextOpen = (24 + open) - t;   // 다음 날 09:00까지
-    return `다음 국장 시작까지 ${fmt(nextOpen)}`;
+    const nextOpen = (24 * 60 + open) - t;   // 다음 날 09:00까지
+    return `내일 국장 시작까지 ${fmt(nextOpen)}`;
   }
   // 미장 22:30 ~ 05:00 KST
   const usOpen = 22 * 60 + 30, usClose = 5 * 60;

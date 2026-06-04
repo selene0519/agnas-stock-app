@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import csv
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -245,6 +246,231 @@ def _fetch_quote(symbol: str, market: str) -> dict[str, Any]:
         return finnhub
     finnhub["fallbackFrom"] = kis.get("error", "")
     return finnhub
+
+
+def _ohlcv_path(symbol: str, market: str) -> Path:
+    normalized = data.normalize_symbol(symbol, market)
+    return data.REPO_ROOT / "data" / "market" / "ohlcv" / f"{market}_{normalized}_daily.csv"
+
+
+def _write_ohlcv(symbol: str, market: str, rows: list[dict[str, Any]], source: str) -> dict[str, Any]:
+    normalized = data.normalize_symbol(symbol, market)
+    cleaned: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        date_text = str(row.get("date") or "").strip()
+        close = _safe_float(row.get("close"))
+        if not date_text or not close or close <= 0:
+            continue
+        cleaned[date_text] = {
+            "date": date_text,
+            "open": row.get("open") or close,
+            "high": row.get("high") or close,
+            "low": row.get("low") or close,
+            "close": close,
+            "volume": row.get("volume") or "",
+            "source": source,
+            "updated_at": _now_label(),
+        }
+    ordered = [cleaned[key] for key in sorted(cleaned.keys())]
+    if not ordered:
+        return {"status": "NO_DATA", "market": market, "symbol": normalized, "count": 0, "error": "empty OHLCV rows"}
+
+    path = _ohlcv_path(normalized, market)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fields = ["date", "open", "high", "low", "close", "volume", "source", "updated_at"]
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        for row in ordered:
+            writer.writerow({key: row.get(key, "") for key in fields})
+    return {
+        "status": "OK",
+        "market": market,
+        "symbol": normalized,
+        "count": len(ordered),
+        "path": path.relative_to(data.REPO_ROOT).as_posix(),
+        "source": source,
+        "latestDate": ordered[-1]["date"],
+    }
+
+
+def _fetch_kis_kr_daily_ohlcv(symbol: str, days: int = 120) -> dict[str, Any]:
+    normalized = data.normalize_symbol(symbol, "kr")
+    if not _kis_enabled():
+        return {"status": "ERROR", "market": "kr", "symbol": normalized, "error": "KIS_APP_KEY/KIS_APP_SECRET 미설정"}
+    if not normalized.isdigit():
+        return {"status": "ERROR", "market": "kr", "symbol": normalized, "error": "국장 종목코드 형식 아님"}
+
+    cfg = _kis_config()
+    end = datetime.now(KST).strftime("%Y%m%d")
+    start = (datetime.now(KST) - timedelta(days=max(20, days * 2))).strftime("%Y%m%d")
+    url = f"{cfg['base_url']}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"
+    params = {
+        "FID_COND_MRKT_DIV_CODE": "J",
+        "FID_INPUT_ISCD": normalized.zfill(6),
+        "FID_INPUT_DATE_1": start,
+        "FID_INPUT_DATE_2": end,
+        "FID_PERIOD_DIV_CODE": "D",
+        "FID_ORG_ADJ_PRC": "1",
+    }
+    last_error = ""
+    for force in (False, True):
+        headers = _kis_headers("FHKST03010100", force_refresh=force)
+        if not headers:
+            return {"status": "ERROR", "market": "kr", "symbol": normalized, "error": "KIS token 발급 실패"}
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=12)
+            payload = response.json() if response.text else {}
+            if response.status_code == 200 and payload.get("rt_cd") == "0":
+                rows = []
+                for item in payload.get("output2", []) or []:
+                    rows.append({
+                        "date": str(item.get("stck_bsop_date") or "").strip(),
+                        "open": _safe_float(item.get("stck_oprc")),
+                        "high": _safe_float(item.get("stck_hgpr")),
+                        "low": _safe_float(item.get("stck_lwpr")),
+                        "close": _safe_float(item.get("stck_clpr")),
+                        "volume": _safe_float(item.get("acml_vol")),
+                    })
+                return _write_ohlcv(normalized, "kr", rows[-days:], "KIS 국내주식기간별시세")
+            last_error = f"{response.status_code}/{payload.get('msg_cd','')}/{payload.get('msg1','')}"
+        except Exception as exc:
+            last_error = str(exc)[:160]
+    return {"status": "ERROR", "market": "kr", "symbol": normalized, "error": last_error or "KIS 국내 OHLCV 실패"}
+
+
+def _fetch_kis_us_daily_ohlcv(symbol: str, days: int = 120) -> dict[str, Any]:
+    clean = _us_symbol(symbol)
+    if not _kis_enabled():
+        return {"status": "ERROR", "market": "us", "symbol": clean, "error": "KIS_APP_KEY/KIS_APP_SECRET 미설정"}
+    candidates = _us_exchange_candidates(clean)
+    if not candidates:
+        return {"status": "ERROR", "market": "us", "symbol": clean, "error": "미장 종목 형식 아님"}
+
+    cfg = _kis_config()
+    bymd = datetime.now(KST).strftime("%Y%m%d")
+    url = f"{cfg['base_url']}/uapi/overseas-price/v1/quotations/dailyprice"
+    last_error = ""
+    for exchange in candidates:
+        params = {"AUTH": "", "EXCD": exchange, "SYMB": clean, "GUBN": "0", "BYMD": bymd, "MODP": "1"}
+        for force in (False, True):
+            headers = _kis_headers("HHDFS76240000", force_refresh=force)
+            if not headers:
+                return {"status": "ERROR", "market": "us", "symbol": clean, "error": "KIS token 발급 실패"}
+            try:
+                response = requests.get(url, headers=headers, params=params, timeout=12)
+                payload = response.json() if response.text else {}
+                if response.status_code == 200 and payload.get("rt_cd") == "0":
+                    rows = []
+                    for item in payload.get("output2", []) or []:
+                        rows.append({
+                            "date": str(item.get("xymd") or item.get("date") or "").strip(),
+                            "open": _safe_float(item.get("open")),
+                            "high": _safe_float(item.get("high")),
+                            "low": _safe_float(item.get("low")),
+                            "close": _safe_float(item.get("clos") or item.get("last")),
+                            "volume": _safe_float(item.get("tvol") or item.get("evol")),
+                        })
+                    result = _write_ohlcv(clean, "us", rows[-days:], f"KIS 해외주식기간별시세 · {exchange}")
+                    if result.get("status") == "OK":
+                        result["exchange"] = exchange
+                        return result
+                    last_error = f"{exchange}: empty OHLCV rows"
+                else:
+                    last_error = f"{exchange}:{response.status_code}/{payload.get('msg_cd','')}/{payload.get('msg1','')}"
+            except Exception as exc:
+                last_error = f"{exchange}:{str(exc)[:120]}"
+    return {"status": "ERROR", "market": "us", "symbol": clean, "error": last_error or "KIS 해외 OHLCV 실패"}
+
+
+def _fetch_finnhub_daily_ohlcv(symbol: str, days: int = 120) -> dict[str, Any]:
+    clean = _us_symbol(symbol)
+    key = _env("FINNHUB_API_KEY")
+    if not key:
+        return {"status": "ERROR", "market": "us", "symbol": clean, "error": "FINNHUB_API_KEY 미설정"}
+    if not _is_finnhub_symbol(clean):
+        return {"status": "ERROR", "market": "us", "symbol": clean, "error": "Finnhub 지원 종목 형식 아님"}
+    now = int(datetime.now(timezone.utc).timestamp())
+    start = now - max(30, days * 3) * 86400
+    try:
+        response = requests.get(
+            "https://finnhub.io/api/v1/stock/candle",
+            params={"symbol": clean, "resolution": "D", "from": start, "to": now, "token": key},
+            timeout=12,
+        )
+        payload = response.json() if response.text else {}
+        if response.status_code != 200 or payload.get("s") != "ok":
+            return {"status": "ERROR", "market": "us", "symbol": clean, "error": f"Finnhub candle {response.status_code}/{payload.get('s', '')}"}
+        rows = []
+        closes = payload.get("c") or []
+        for idx, close in enumerate(closes):
+            ts = (payload.get("t") or [])[idx] if idx < len(payload.get("t") or []) else 0
+            date_text = datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y%m%d") if ts else ""
+            rows.append({
+                "date": date_text,
+                "open": (payload.get("o") or [])[idx] if idx < len(payload.get("o") or []) else close,
+                "high": (payload.get("h") or [])[idx] if idx < len(payload.get("h") or []) else close,
+                "low": (payload.get("l") or [])[idx] if idx < len(payload.get("l") or []) else close,
+                "close": close,
+                "volume": (payload.get("v") or [])[idx] if idx < len(payload.get("v") or []) else "",
+            })
+        return _write_ohlcv(clean, "us", rows[-days:], "Finnhub daily candle")
+    except Exception as exc:
+        return {"status": "ERROR", "market": "us", "symbol": clean, "error": str(exc)[:160]}
+
+
+def _fetch_yahoo_daily_ohlcv(symbol: str, days: int = 120) -> dict[str, Any]:
+    clean = _us_symbol(symbol)
+    if not _is_finnhub_symbol(clean):
+        return {"status": "ERROR", "market": "us", "symbol": clean, "error": "Yahoo 지원 종목 형식 아님"}
+    try:
+        response = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{clean}",
+            params={"range": "6mo", "interval": "1d", "includePrePost": "false"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=12,
+        )
+        payload = response.json() if response.text else {}
+        result = ((payload.get("chart") or {}).get("result") or [None])[0] or {}
+        timestamps = result.get("timestamp") or []
+        quote = (((result.get("indicators") or {}).get("quote") or [None])[0]) or {}
+        closes = quote.get("close") or []
+        rows = []
+        for idx, close in enumerate(closes):
+            if close is None:
+                continue
+            ts = timestamps[idx] if idx < len(timestamps) else 0
+            date_text = datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y%m%d") if ts else ""
+            rows.append({
+                "date": date_text,
+                "open": (quote.get("open") or [])[idx] if idx < len(quote.get("open") or []) else close,
+                "high": (quote.get("high") or [])[idx] if idx < len(quote.get("high") or []) else close,
+                "low": (quote.get("low") or [])[idx] if idx < len(quote.get("low") or []) else close,
+                "close": close,
+                "volume": (quote.get("volume") or [])[idx] if idx < len(quote.get("volume") or []) else "",
+            })
+        return _write_ohlcv(clean, "us", rows[-days:], "Yahoo daily chart")
+    except Exception as exc:
+        return {"status": "ERROR", "market": "us", "symbol": clean, "error": str(exc)[:160]}
+
+
+def backfill_daily_ohlcv(symbol: str, market: str, days: int = 120) -> dict[str, Any]:
+    normalized_market = "us" if str(market).lower() == "us" else "kr"
+    if normalized_market == "kr":
+        return _fetch_kis_kr_daily_ohlcv(symbol, days=days)
+    kis = _fetch_kis_us_daily_ohlcv(symbol, days=days)
+    if str(kis.get("status", "")).upper() == "OK":
+        return kis
+    fallback = _fetch_finnhub_daily_ohlcv(symbol, days=days)
+    if str(fallback.get("status", "")).upper() == "OK":
+        fallback["fallbackFrom"] = kis.get("error", "")
+        return fallback
+    yahoo = _fetch_yahoo_daily_ohlcv(symbol, days=days)
+    if str(yahoo.get("status", "")).upper() == "OK":
+        yahoo["fallbackFrom"] = f"KIS: {kis.get('error', '')}; Finnhub: {fallback.get('error', '')}"
+        return yahoo
+    yahoo["fallbackFrom"] = f"KIS: {kis.get('error', '')}; Finnhub: {fallback.get('error', '')}"
+    return yahoo
 
 
 def _refresh_targets(market: str, symbols: str | None, max_symbols: int) -> list[str]:
