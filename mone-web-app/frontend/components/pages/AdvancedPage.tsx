@@ -52,6 +52,19 @@ export default function AdvancedPage() {
   const [scanCoverage, setScanCoverage] = useState<any>(null);
   const [scanLoading, setScanLoading] = useState(false);
 
+  // 몬테카를로
+  const [mcPrice, setMcPrice] = useState(100000);
+  const [mcReturn, setMcReturn] = useState(8);
+  const [mcVol, setMcVol] = useState(25);
+  const [mcDays, setMcDays] = useState(60);
+  const [mcSims, setMcSims] = useState(500);
+  const [mcResult, setMcResult] = useState<any>(null);
+  const [mcLoading, setMcLoading] = useState(false);
+
+  // 상관관계
+  const [corrData, setCorrData] = useState<any>(null);
+  const [corrLoading, setCorrLoading] = useState(false);
+
   const rr = useMemo(() => {
     const risk = Math.max(entry - stop, 0);
     const reward = Math.max(target - entry, 0);
@@ -83,10 +96,26 @@ export default function AdvancedPage() {
         setScanItems(dedupeBySymbol(Array.isArray(data.items) ? data.items : []).slice(0, 20));
       })
       .finally(() => active && setScanLoading(false));
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [tab, market, mode, horizon]);
+
+  useEffect(() => {
+    if (tab !== "correlation") return;
+    setCorrLoading(true);
+    mone.correlationMatrix({ market, days: 120 })
+      .then((r) => setCorrData(r))
+      .catch(() => setCorrData(null))
+      .finally(() => setCorrLoading(false));
+  }, [tab, market]);
+
+  async function runMonteCarlo() {
+    setMcLoading(true);
+    try {
+      const r = await mone.monteCarlo({ currentPrice: mcPrice, expectedReturn: mcReturn, volatility: mcVol, days: mcDays, simulations: mcSims });
+      setMcResult(r);
+    } catch { setMcResult(null); }
+    finally { setMcLoading(false); }
+  }
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "scanner", label: "스캐너" },
@@ -209,28 +238,121 @@ export default function AdvancedPage() {
       )}
 
       {tab === "montecarlo" && (
-        <Card title="몬테카를로">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Metric label="시뮬레이션 상태" value="가상운용 수익률 연결 필요" />
-            <Metric label="기본 반복 횟수" value="1000" />
-            <Metric label="출력" value="리스크 범위" />
+        <Card title="몬테카를로 시뮬레이션">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            {([
+              ["현재가", mcPrice, setMcPrice, 1],
+              ["기대수익률 %", mcReturn, setMcReturn, 0.1],
+              ["변동성 %", mcVol, setMcVol, 0.1],
+              ["기간(일)", mcDays, setMcDays, 1],
+              ["시뮬레이션 수", mcSims, setMcSims, 100],
+            ] as [string, number, (v: number) => void, number][]).map(([label, val, setter, step]) => (
+              <label key={label} className="space-y-1.5 text-xs text-slate-400">
+                {label}
+                <input type="number" step={step} value={val}
+                  onChange={(e) => setter(Number(e.target.value))}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100" />
+              </label>
+            ))}
           </div>
-          <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-400">
-            포트폴리오 단위 시뮬레이션 영역입니다. 백테스트/가상운용 수익률 데이터가 충분히 쌓이면 기본 분포로 사용할 수 있습니다.
-          </div>
+          <button onClick={runMonteCarlo} disabled={mcLoading}
+            className="mt-4 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50">
+            {mcLoading ? "시뮬레이션 중..." : "시뮬레이션 실행"}
+          </button>
+          {mcResult && (
+            <div className="mt-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Metric label="상승 확률" value={`${mcResult.upProbability}%`} />
+                <Metric label="P50 (중간값)" value={Number(mcResult.p50).toLocaleString("ko-KR", { maximumFractionDigits: 0 })} />
+                <Metric label="P5 (하방)" value={Number(mcResult.p5).toLocaleString("ko-KR", { maximumFractionDigits: 0 })} />
+                <Metric label="P95 (상방)" value={Number(mcResult.p95).toLocaleString("ko-KR", { maximumFractionDigits: 0 })} />
+                <Metric label="VaR (5%)" value={mcResult.varText} />
+                <Metric label="CVaR" value={mcResult.cvarText} />
+                <Metric label="기대 최종가" value={Number(mcResult.expectedFinalPrice).toLocaleString("ko-KR", { maximumFractionDigits: 0 })} />
+                <Metric label="기간" value={`${mcResult.inputs?.days}일`} />
+              </div>
+              {Array.isArray(mcResult.chart) && mcResult.chart.length > 0 && (() => {
+                const pts = mcResult.chart;
+                const allVals = pts.flatMap((p: any) => [p.p5, p.p50, p.p95]);
+                const minV = Math.min(...allVals), maxV = Math.max(...allVals);
+                const H = 140, W = 100;
+                const scaleY = (v: number) => H - ((v - minV) / (maxV - minV + 0.0001)) * (H - 10);
+                const mkPath = (key: string) => pts.map((p: any, i: number) =>
+                  `${i === 0 ? "M" : "L"}${(i / (pts.length - 1)) * W},${scaleY(p[key]).toFixed(1)}`
+                ).join(" ");
+                return (
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <div className="mb-2 flex items-center gap-4 text-[10px]">
+                      {[["P95 (상방)", "#10b981"], ["P50 (중간)", "#60a5fa"], ["P5 (하방)", "#f87171"]].map(([l, c]) => (
+                        <span key={l} className="flex items-center gap-1"><span className="h-2 w-4 rounded" style={{ background: c }} /><span className="text-slate-400">{l}</span></span>
+                      ))}
+                    </div>
+                    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-36 w-full">
+                      <path d={mkPath("p95")} fill="none" stroke="#10b981" strokeWidth="0.8" />
+                      <path d={mkPath("p50")} fill="none" stroke="#60a5fa" strokeWidth="1.2" strokeDasharray="2 1" />
+                      <path d={mkPath("p5")} fill="none" stroke="#f87171" strokeWidth="0.8" />
+                    </svg>
+                    <div className="mt-1 flex justify-between text-[9px] text-slate-600">
+                      <span>0일</span><span>{mcResult.inputs?.days}일</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </Card>
       )}
 
       {tab === "correlation" && (
-        <Card title="상관관계">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Metric label="시장" value="국장 / 미장" />
-            <Metric label="데이터 출처" value="OHLCV" />
-            <Metric label="상태" value="상관계수 계산 연결 필요" />
+        <Card title="지수 상관관계 매트릭스">
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(["kr", "us"] as Market[]).map((m) => (
+              <button key={m} onClick={() => setMarket(m)} className={`rounded-xl px-3 py-1.5 text-xs ${market === m ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}>{marketLabel(m)}</button>
+            ))}
           </div>
-          <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-400">
-            상관관계 분석은 정제된 가격 이력을 사용하고, 누락되었거나 오래된 OHLCV 종목은 제외해야 합니다.
-          </div>
+          {corrLoading && <div className="py-8 text-center text-sm text-slate-500">상관관계 계산 중...</div>}
+          {!corrLoading && corrData?.status === "NO_DATA" && (
+            <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-400">
+              {corrData.reason || "benchmark_daily.csv 데이터 부족"} — 최소 20일 이상 데이터가 필요합니다.
+            </div>
+          )}
+          {!corrLoading && Array.isArray(corrData?.matrix) && corrData.matrix.length > 0 && (() => {
+            const assets: string[] = corrData.matrix.map((r: any) => r.asset);
+            return (
+              <div className="overflow-x-auto">
+                <table className="text-[11px]">
+                  <thead>
+                    <tr>
+                      <th className="px-2 py-1 text-left text-slate-500">지수</th>
+                      {assets.map((a) => <th key={a} className="px-2 py-1 text-center text-slate-500">{a}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {corrData.matrix.map((row: any) => (
+                      <tr key={row.asset} className="border-t border-slate-800">
+                        <td className="px-2 py-2 font-semibold text-slate-300">{row.asset}</td>
+                        {assets.map((a) => {
+                          const v = typeof row[a] === "number" ? row[a] : null;
+                          const isDiag = a === row.asset;
+                          const bg = isDiag ? "bg-slate-700" : v == null ? "" : v >= 0.7 ? "bg-emerald-900/50" : v >= 0.3 ? "bg-emerald-900/20" : v <= -0.7 ? "bg-red-900/50" : v <= -0.3 ? "bg-red-900/20" : "";
+                          return (
+                            <td key={a} className={`px-3 py-2 text-center font-mono ${bg} ${isDiag ? "text-slate-300" : v != null && v >= 0.3 ? "text-emerald-300" : v != null && v <= -0.3 ? "text-red-300" : "text-slate-400"}`}>
+                              {v != null ? v.toFixed(2) : "—"}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="mt-3 flex gap-3 text-[10px] text-slate-500">
+                  <span><span className="inline-block h-2 w-3 rounded bg-emerald-900/50 mr-1" />≥0.7 강한 양의 상관</span>
+                  <span><span className="inline-block h-2 w-3 rounded bg-red-900/50 mr-1" />≤-0.7 강한 음의 상관</span>
+                  <span>기간: 최근 {corrData.days ?? 120}일</span>
+                </div>
+              </div>
+            );
+          })()}
         </Card>
       )}
     </div>

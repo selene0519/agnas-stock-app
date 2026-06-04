@@ -62,21 +62,28 @@ export default function PredictionPage() {
   const [term, setTerm] = useState<Term>("swing");
   const [data, setData] = useState<any>({ items: [] });
   const [accuracy, setAccuracy] = useState<any>(null);
+  const [valDash, setValDash] = useState<any>(null);
+  const [btItems, setBtItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      const [pred, rec, acc] = await Promise.all([
+      const mk = market === "all" ? "kr" : market;
+      const [pred, rec, acc, vd, bt] = await Promise.all([
         mone.predictions({ market, mode: strategy, horizon: term, limit: 300 }),
         mone.recommendations({ market, mode: strategy, horizon: term, limit: 300 }),
         mone.predictionAccuracy({ market: market === "all" ? "all" : market }),
+        mone.validationDashboard({ market: mk }),
+        mone.backtestTrades({ market: mk, mode: strategy, horizon: term, limit: 200 }),
       ]);
       const predItems = Array.isArray(pred.items) ? pred.items : [];
       const recItems = Array.isArray(rec.items) ? rec.items : [];
       const merged = predItems.length ? mergeBySymbol(predItems, recItems) : dedupeBySymbol(recItems);
       setData({ ...pred, items: merged, recommendationCount: recItems.length });
       setAccuracy(acc?.status === "OK" ? acc : null);
+      setValDash(vd?.summary ? vd : null);
+      setBtItems(Array.isArray(bt.items) ? bt.items : []);
     } catch (error) {
       setData({ status: "ERROR", error: String(error), items: [] });
     } finally {
@@ -86,10 +93,30 @@ export default function PredictionPage() {
 
   useEffect(() => {
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [market, strategy, term]);
 
   const items = Array.isArray(data.items) ? data.items : [];
   const top = useMemo(() => items.slice(0, 30), [items]);
+
+  // 수익률 분포 (btItems 기반)
+  const retDist = useMemo(() => {
+    const rets = btItems
+      .map((r: any) => Number(r.returnPct ?? r.virtual_return_pct ?? 0))
+      .filter((v: number) => v !== 0);
+    if (!rets.length) return null;
+    const buckets = [
+      { label: "< -5%", min: -Infinity, max: -5 },
+      { label: "-5~0%", min: -5, max: 0 },
+      { label: "0~5%", min: 0, max: 5 },
+      { label: "5~10%", min: 5, max: 10 },
+      { label: "> 10%", min: 10, max: Infinity },
+    ].map((b) => ({ ...b, count: rets.filter((v: number) => v >= b.min && v < b.max).length }));
+    const maxCount = Math.max(...buckets.map((b) => b.count), 1);
+    const executed = btItems.filter((r: any) => String(r.executed ?? "").toLowerCase() === "true").length;
+    const wins = btItems.filter((r: any) => Number(r.returnPct ?? r.virtual_return_pct ?? 0) > 0).length;
+    return { buckets, maxCount, total: rets.length, executed, wins, winRate: rets.length > 0 ? (wins / rets.length * 100).toFixed(1) : "0.0" };
+  }, [btItems]);
 
   const stats = useMemo(() => {
     if (!top.length) return null;
@@ -160,6 +187,74 @@ export default function PredictionPage() {
       </div>
 
       {accuracy && <AccuracyPanel accuracy={accuracy} />}
+
+      {/* ── 백테스트 9전략 매트릭스 ──────────────────────────────────── */}
+      {valDash && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-sm font-semibold text-slate-200">9전략 백테스트 매트릭스</div>
+            <div className="text-xs text-slate-500">완료 {valDash.summary?.totalCompleted ?? 0}건 · 대기 {valDash.summary?.totalPending ?? 0}건 · 전략평균 승률 {valDash.summary?.overallWinRate != null ? `${valDash.summary.overallWinRate}%` : "—"}</div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="py-2 pr-4 text-left text-slate-500">전략</th>
+                  {["단기", "스윙", "중기"].map((h) => <th key={h} className="px-3 py-2 text-center text-slate-500">{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {(["conservative", "balanced", "aggressive"] as const).map((m) => (
+                  <tr key={m} className={`border-b border-slate-800/60 ${m === strategy ? "bg-slate-800/30" : ""}`}>
+                    <td className={`py-2.5 pr-4 font-semibold ${m === strategy ? "text-emerald-300" : "text-slate-300"}`}>{modeLabel(m)}</td>
+                    {(["short", "swing", "mid"] as const).map((h) => {
+                      const s = valDash.stats?.[`${m}_${h}`];
+                      const wr = s?.winRate;
+                      const isActive = m === strategy && h === term;
+                      return (
+                        <td key={h} className={`px-3 py-2.5 text-center ${isActive ? "ring-1 ring-inset ring-emerald-500/40" : ""}`}>
+                          <div className={`text-base font-bold ${wr == null ? "text-slate-600" : wr >= 55 ? "text-emerald-300" : wr >= 45 ? "text-amber-300" : "text-red-300"}`}>
+                            {wr != null ? `${wr}%` : "—"}
+                          </div>
+                          <div className="mt-0.5 text-slate-500">{s?.completed ? `${s.wins}/${s.completed}` : `대기 ${s?.pendingCount ?? 0}`}</div>
+                          {s?.avgReturn != null && <div className={`text-[10px] font-mono ${s.avgReturn >= 0 ? "text-emerald-400" : "text-red-400"}`}>{s.avgReturn >= 0 ? "+" : ""}{s.avgReturn.toFixed(1)}%</div>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── 수익률 분포 히스토그램 ────────────────────────────────────── */}
+      {retDist && retDist.total > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-sm font-semibold text-slate-200">수익률 분포 ({modeLabel(strategy)} · {horizonLabel(term)})</div>
+            <div className="flex gap-3 text-xs">
+              <span className="text-slate-400">체결 {retDist.executed}건</span>
+              <span className="text-emerald-400">수익 {retDist.wins}건</span>
+              <span className={retDist.wins / retDist.total >= 0.5 ? "font-bold text-emerald-300" : "font-bold text-amber-300"}>승률 {retDist.winRate}%</span>
+            </div>
+          </div>
+          <div className="flex items-end gap-2 h-24">
+            {retDist.buckets.map((b: any) => {
+              const heightPct = retDist.maxCount > 0 ? (b.count / retDist.maxCount) * 100 : 0;
+              const isPos = b.min >= 0;
+              return (
+                <div key={b.label} className="flex flex-1 flex-col items-center gap-1">
+                  <span className="text-[10px] font-mono text-slate-400">{b.count > 0 ? b.count : ""}</span>
+                  <div className="w-full rounded-t" style={{ height: `${Math.max(heightPct, b.count > 0 ? 8 : 0)}%`, background: isPos ? "#10b981" : "#ef4444", opacity: 0.7 + heightPct * 0.003 }} />
+                  <span className="text-[9px] text-slate-500 whitespace-nowrap">{b.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {stats && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
