@@ -2924,15 +2924,69 @@ def api_data_audit() -> dict:
         return {"status": "ERROR", "error": str(e), "files": []}
 
 
-# ── 22-A. exchange-rate (한국수출입은행) ──────────────────────────────
+# ── 22-A. exchange-rate ───────────────────────────────────────────────
+# 1순위: 한국수출입은행 API (KOREAEXIM_API_KEY)
+# 2순위: open.er-api.com (무료, 키 불필요)
+# 3순위: api.exchangerate-api.com (무료, 키 불필요)
 
 _EXRATE_CACHE: dict = {}
 _EXRATE_TTL = 4 * 3600  # 4시간 캐시
 
+def _try_koreaexim(base: str, api_key: str) -> float | None:
+    try:
+        import requests as _req
+        from datetime import date as _date, timedelta as _td
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+            "Referer": "https://www.koreaexim.go.kr/site/main/index006",
+        }
+        for delta in range(5):
+            search_date = (_date.today() - _td(days=delta)).strftime("%Y%m%d")
+            try:
+                resp = _req.get(
+                    "https://www.koreaexim.go.kr/site/program/financial/exchangeJSON",
+                    params={"authkey": api_key, "searchdate": search_date, "data": "AP01"},
+                    headers=headers, timeout=8,
+                )
+                items = resp.json()
+                if isinstance(items, list):
+                    for item in items:
+                        if item.get("cur_unit") == base:
+                            rate_str = str(item.get("deal_bas_r", "")).replace(",", "")
+                            rate = float(rate_str)
+                            if rate > 0:
+                                return rate
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return None
+
+def _try_open_er_api(base: str) -> float | None:
+    try:
+        import requests as _req
+        resp = _req.get(f"https://open.er-api.com/v6/latest/{base}", timeout=8)
+        data = resp.json()
+        if data.get("result") == "success":
+            return float(data["rates"].get("KRW", 0)) or None
+    except Exception:
+        pass
+    return None
+
+def _try_exchangerate_api(base: str) -> float | None:
+    try:
+        import requests as _req
+        resp = _req.get(f"https://api.exchangerate-api.com/v4/latest/{base}", timeout=8)
+        data = resp.json()
+        return float(data["rates"].get("KRW", 0)) or None
+    except Exception:
+        pass
+    return None
+
 @app.get("/api/exchange-rate")
 def api_exchange_rate(base: str = Query("USD"), target: str = Query("KRW")) -> dict:
     import os as _os, time as _time
-    from datetime import date as _date, timedelta as _td
 
     cache_key = f"{base}_{target}"
     now_ts = _time.time()
@@ -2941,42 +2995,34 @@ def api_exchange_rate(base: str = Query("USD"), target: str = Query("KRW")) -> d
         return {k: v for k, v in cached.items() if k != "ts"}
 
     api_key = _os.getenv("KOREAEXIM_API_KEY", "")
-    if not api_key:
-        return {"status": "NO_KEY", "rate": None, "base": base, "target": target,
-                "message": "KOREAEXIM_API_KEY 환경변수 미설정 — .env에 추가하세요"}
 
-    try:
-        import requests as _req
-    except ImportError:
-        return {"status": "ERROR", "rate": None, "base": base, "target": target,
-                "message": "requests 패키지 없음"}
+    # 1순위: 한국수출입은행
+    if api_key:
+        rate = _try_koreaexim(base, api_key)
+        if rate:
+            result = {"status": "OK", "rate": rate, "base": base, "target": target,
+                      "source": "koreaexim"}
+            _EXRATE_CACHE[cache_key] = {**result, "ts": now_ts}
+            return result
 
-    for delta in range(5):
-        search_date = (_date.today() - _td(days=delta)).strftime("%Y%m%d")
-        try:
-            resp = _req.get(
-                "https://www.koreaexim.go.kr/site/program/financial/exchangeJSON",
-                params={"authkey": api_key, "searchdate": search_date, "data": "AP01"},
-                timeout=5,
-            )
-            items = resp.json()
-            if isinstance(items, list):
-                for item in items:
-                    if item.get("cur_unit") == base:
-                        rate_str = str(item.get("deal_bas_r", "")).replace(",", "")
-                        try:
-                            rate = float(rate_str)
-                            if rate > 0:
-                                result = {"status": "OK", "rate": rate,
-                                          "base": base, "target": target, "date": search_date}
-                                _EXRATE_CACHE[cache_key] = {**result, "ts": now_ts}
-                                return result
-                        except ValueError:
-                            pass
-        except Exception:
-            pass
+    # 2순위: open.er-api.com
+    rate = _try_open_er_api(base)
+    if rate:
+        result = {"status": "OK", "rate": rate, "base": base, "target": target,
+                  "source": "open.er-api.com"}
+        _EXRATE_CACHE[cache_key] = {**result, "ts": now_ts}
+        return result
 
-    return {"status": "NO_DATA", "rate": None, "base": base, "target": target}
+    # 3순위: exchangerate-api.com
+    rate = _try_exchangerate_api(base)
+    if rate:
+        result = {"status": "OK", "rate": rate, "base": base, "target": target,
+                  "source": "exchangerate-api.com"}
+        _EXRATE_CACHE[cache_key] = {**result, "ts": now_ts}
+        return result
+
+    msg = "KOREAEXIM_API_KEY 미설정 — .env에 추가하세요" if not api_key else "모든 환율 소스 응답 없음"
+    return {"status": "NO_DATA", "rate": None, "base": base, "target": target, "message": msg}
 
 
 # ── 22. position/size ─────────────────────────────────────────────────
