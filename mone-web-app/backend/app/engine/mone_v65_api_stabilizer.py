@@ -597,6 +597,43 @@ def _build_name_map() -> dict[str, str]:
     return names
 
 
+@lru_cache(maxsize=128)
+def _build_recommendation_name_map(market: str, mode: str, horizon: str, _ver: int = 0) -> dict[str, str]:
+    names: dict[str, str] = {}
+    for symbol, name in KR_NAME_FALLBACK.items():
+        names[f"kr-{symbol}"] = name
+    for symbol, name in US_NAME_FALLBACK.items():
+        names[f"us-{symbol}"] = name
+
+    for item_market in ("kr", "us"):
+        for path in _direct_files(
+            f"holdings_{item_market}.csv",
+            f"watchlist_{item_market}.csv",
+            f"watchlist_{item_market}_growth.csv",
+            f"data/watchlist_{item_market}.csv",
+            f"reports/mone_v36_final_recommendations_{item_market}_balanced_swing.csv",
+        ):
+            for row in _read_csv(path, 2000):
+                sym = _symbol(row, item_market)
+                if not sym:
+                    continue
+                raw_name = _text(row, NAME_KEYS, "")
+                if not _bad_name(raw_name, sym):
+                    names.setdefault(f"{item_market}-{sym}", raw_name)
+
+    target_market = _market_norm(market)
+    if target_market != "all":
+        for path, _source_status in _recommendation_paths(target_market, _mode_norm(mode), _horizon_norm(horizon)):
+            for row in _read_csv(path, 500):
+                sym = _symbol(row, target_market)
+                if not sym:
+                    continue
+                raw_name = _text(row, NAME_KEYS, "")
+                if not _bad_name(raw_name, sym):
+                    names.setdefault(f"{target_market}-{sym}", raw_name)
+    return names
+
+
 def _quote_files(market: str) -> list[Path]:
     return _direct_files(
         f"kis_current_price_{market}.csv",
@@ -1714,6 +1751,7 @@ def _apply_light_correction(item: dict[str, Any], summary: dict[str, Any]) -> di
     return adjusted
 
 
+@lru_cache(maxsize=8)
 def _scan_coverage(market: str) -> dict[str, Any]:
     repo = _repo_root()
     candidate_rows: list[dict[str, Any]] = []
@@ -1756,6 +1794,15 @@ def _scan_coverage(market: str) -> dict[str, Any]:
             if is_full_market
             else "Curated universe only: expand symbol master, OHLCV, quote, news/disclosure/fundamental collection before labeling this as full-market scan."
         ),
+    }
+
+
+def _scan_coverage_fast(market: str) -> dict[str, Any]:
+    return {
+        "market": _market_norm(market),
+        "universeScope": "CURATED_UNIVERSE",
+        "isFullMarket": False,
+        "message": "Curated universe only. Detailed scan coverage is deferred to the data audit endpoints.",
     }
 
 
@@ -1815,13 +1862,13 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             "count": len(deduped),
             "uniqueCount": len(seen),
             "hiddenCount": 0,
-            "scanCoverage": {"kr": _scan_coverage("kr"), "us": _scan_coverage("us")},
+            "scanCoverage": {"kr": _scan_coverage_fast("kr"), "us": _scan_coverage_fast("us")},
             "validationPolicy": _validation_policy_payload(),
             "sourceFiles": source_files[:20],
             "items": deduped,
         }
 
-    names = _build_name_map()
+    names = _build_recommendation_name_map(market, mode, horizon, _ver)
     quotes = _quote_index(market)
     watch = _watch_symbols()
     seen: set[str] = set()
@@ -1926,7 +1973,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         "evNegativeFiltered": ev_hard_filtered_count + (ev_negative_count - ev_hard_filtered_count if mode == "conservative" else 0),
         "marketRegime": market_regime,
         "selfCorrection": correction_state,
-        "scanCoverage": _scan_coverage(market),
+        "scanCoverage": _scan_coverage_fast(market),
         "validationPolicy": _validation_policy_payload(),
         "sourceFiles": source_files[:20],
         "items": filtered_items,
@@ -3693,7 +3740,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         mode: str = Query("balanced"),
         horizon: str = Query("swing"),
         cash: float = Query(0),
-        limit: int = Query(300),
+        limit: int = Query(120),
         watchOnly: bool = Query(False),
     ) -> dict[str, Any]:
         return _safe_payload(lambda: _recommendations_payload(market, mode, horizon, cash, limit, watchOnly), "/api/final/recommendations")
@@ -3704,7 +3751,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         strategy: str = Query("balanced"),
         term: str = Query("swing"),
         cash: float = Query(0),
-        limit: int = Query(300),
+        limit: int = Query(120),
         watchOnly: bool = Query(False),
     ) -> dict[str, Any]:
         return _safe_payload(lambda: _recommendations_payload(market, strategy, term, cash, limit, watchOnly), "/api/v1/candidates")

@@ -33,11 +33,16 @@ function buildUrl(baseUrl: string, path: string, params?: Record<string, string 
   return url.toString();
 }
 
+const API_TIMEOUT_MS = 8000;
+
 async function fetchJson<T>(url: string): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   try {
     const response = await fetch(url, {
       cache: "no-store",
       headers: { Accept: "application/json" },
+      signal: controller.signal,
     });
 
     const text = await response.text().catch(() => "");
@@ -64,10 +69,14 @@ async function fetchJson<T>(url: string): Promise<T> {
   } catch (error) {
     return {
       status: "ERROR",
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof DOMException && error.name === "AbortError"
+        ? `Request timed out after ${API_TIMEOUT_MS / 1000}s`
+        : error instanceof Error ? error.message : String(error),
       items: [],
       count: 0,
     } as T;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -245,7 +254,5 @@ export const mone = {
 };
 
 export default mone;
-
-
 
 
