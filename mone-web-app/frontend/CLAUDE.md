@@ -49,21 +49,38 @@ watchlist_kr.csv / watchlist_us.csv       ← 관심종목
 
 ---
 
-## 현재 상태 (2026-06-02 기준)
+## 현재 상태 (2026-06-04 기준)
 
 ### 완료된 것
-- V2 Scoring 패치 적용 (quant_scanner.py, mone_v65_api_stabilizer.py, HomePage.tsx)
+- V2 Scoring 패치 (quant_scanner.py, mone_v65_api_stabilizer.py, HomePage.tsx)
 - OHLCV fallback: 현재가 없으면 OHLCV 최신 close 자동 사용
 - 진입가 괴리 15% 초과 시 현재가 기준 자동 재산출
-- 전략별 가중치 기반 finalScore 계산
-- EV(기댓값) 계산 및 표시
+- 전략별 가중치 기반 finalScore 계산, EV(기댓값) 계산 및 표시
+- lightweight-charts v4.2.3 다운그레이드 (v5 API 제거 대응)
+- holdings_kr/us.csv stopPrice/targetPrice 컬럼 추가
+- ATR 기반 진입 계획 UI (ChartPage.tsx)
+- 3주 예측 히스토리 + 정확도 통계 패널
+- GitHub Secrets KIS 키 설정 완료 (priority 1)
+- Actions cron 스케줄 추가 (priority 2)
+- 이격도 수렴 신호 추가 (priority 3)
+- 기관 순매수 신호 연결 (priority 4)
+- **v10.2 누락 API 엔드포인트 28개 일괄 구현 (2026-06-04)**
+  - holdings-edit, watchlist-edit (GET/POST)
+  - predictions/table, virtual/ledger, virtual/validation
+  - validation/dashboard, risk/sector-exposure, risk/benchmark
+  - risk/correlation, risk/near-alerts, chart/index/{symbol}
+  - portfolio/nav, home/summary (3×3 matrix + 마켓 레짐)
+  - sectors, watchlist/groups, watchlist/set-group, watchlist/scored
+  - disclosure-calendar, journal (CRUD), health/github, data/audit
+  - position/size, kis/token/status
+  - final/recommendations-ev-filtered (EV 양수 필터, priority 5)
+  - home/summary 내 마켓 레짐 감지 KOSPI/SPY 20일선 기반 (priority 9)
 
 ### 미완료 / 이슈
-- KIS 현재가: 9종목만 수집됨 (GitHub Secrets KIS 키 설정 필요)
-- GitHub Actions 스케줄 미설정 (수동 실행만)
+- KIS 현재가: 부분 수집 중 (API 호출 제한 있음)
 - 재무 데이터 CSV 매핑 불완전
-- 뉴스 감성 분석 미연결
-- TradingView 차트 미도입
+- 뉴스 감성 분석 미연결 (priority 6)
+- 앙상블 모델 5개 (데이터 500건 이상 후, priority 10)
 
 ---
 
@@ -203,16 +220,18 @@ GITHUB_TOKEN
 ## 다음 작업 우선순위
 
 ```
-1. GitHub Secrets KIS 키 설정 → 현재가 100종목 수집
-2. Actions cron 스케줄 추가 (매일 16:00 KST)
-3. 이격도 수렴 신호 추가 (quant_scanner.py _strategy_tags)
-4. 기관 순매수 신호 연결 (수급 데이터)
-5. EV 음수 종목 자동 필터링
-6. 뉴스 감성 분석 (Claude API)
-7. TradingView 차트 교체 (ChartPage.tsx)
-8. ATR 기반 진입 계획 UI
-9. 마켓 레짐 감지 (KOSPI 20일선 기반)
+완료: 1.KIS 키 설정 2.Actions 스케줄 3.이격도 수렴 신호 4.기관 순매수
+완료: 5.EV 음수 필터 (/api/final/recommendations-ev-filtered)
+완료: 8.ATR 기반 진입 계획 UI (ChartPage.tsx)
+완료: 9.마켓 레짐 감지 (/api/home/summary 내 KOSPI/SPY 20일선)
+완료: 28개 누락 API 엔드포인트 (v10.2)
+
+다음:
+6. 뉴스 감성 분석 (Claude API — ai_research.py 연결)
+7. StocksPage 종목 그룹/스크리너 UI 완성
 10. 앙상블 모델 5개 (데이터 500건 이상 후)
+11. 마켓 레짐 → HomePage 배너로 표시
+12. 뉴스 감성 태그 → 추천 카드에 표시
 ```
 
 ---

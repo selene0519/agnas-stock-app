@@ -1765,3 +1765,923 @@ try:
     _install_mone_close_validation_routes_v1()
 except Exception as _mone_close_validation_error:
     print("[MONE] close validation route patch failed:", _mone_close_validation_error)
+
+
+# ════════════════════════════════════════════════════════════════════════
+# MONE v10.2 — 누락 API 엔드포인트 일괄 구현 (2026-06-04)
+# 프론트엔드에서 호출하지만 백엔드에 없던 28개 엔드포인트 추가
+# ════════════════════════════════════════════════════════════════════════
+
+import csv as _csv
+import json as _json
+import os as _os
+import re as _re
+import uuid as _uuid
+from datetime import datetime as _dt
+from pathlib import Path as _Path
+from typing import Any as _Any
+
+_REPO = data.REPO_ROOT
+_DATA = _REPO / "data"
+_REPORTS = _REPO / "reports"
+_OHLCV_DIR = _DATA / "market" / "ohlcv"
+_JOURNAL_FILE = _DATA / "journal.csv"
+_JOURNAL_COLS = ["id", "date", "market", "symbol", "name", "action", "price", "qty", "memo", "review", "result", "returnPct", "tags", "createdAt"]
+
+
+def _read_csv_safe(path: _Path) -> list[dict]:
+    if not path.exists():
+        return []
+    for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+        try:
+            with path.open("r", encoding=enc, newline="") as f:
+                return [dict(row) for row in _csv.DictReader(f)]
+        except Exception:
+            continue
+    return []
+
+
+def _write_csv_safe_v2(path: _Path, rows: list[dict], cols: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8-sig", newline="") as f:
+        w = _csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    tmp.replace(path)
+
+
+def _safe_float_v2(v: _Any, default: float = 0.0) -> float:
+    try:
+        return float(str(v).replace(",", "").strip()) if v not in (None, "", "nan") else default
+    except Exception:
+        return default
+
+
+def _normalize_sym(sym: _Any, market: str = "kr") -> str:
+    s = str(sym or "").strip()
+    if market == "kr":
+        return _re.sub(r"[^0-9]", "", s).zfill(6)[-6:] if _re.search(r"\d", s) else s
+    return s.upper()
+
+
+# ── 1. holdings-edit ──────────────────────────────────────────────────
+
+@app.get("/api/holdings-edit")
+def api_holdings_edit(market: str = Query("all")) -> dict:
+    markets = ["kr", "us"] if market == "all" else [market]
+    items: list[dict] = []
+    for mk in markets:
+        path = _REPO / f"holdings_{mk}.csv"
+        for row in _read_csv_safe(path):
+            sym = str(row.get("symbol", "")).strip()
+            if not sym:
+                continue
+            items.append({
+                "market": mk,
+                "symbol": sym,
+                "name": str(row.get("name", sym)).strip(),
+                "quantity": str(row.get("quantity", "0")).strip(),
+                "avgPrice": str(row.get("avgPrice", "0")).strip(),
+                "stopPrice": str(row.get("stopPrice", "")).strip(),
+                "targetPrice": str(row.get("targetPrice", "")).strip(),
+            })
+    return {"status": "OK", "count": len(items), "items": items}
+
+
+@app.post("/api/holdings-edit/save")
+def api_holdings_edit_save(payload: dict = Body(...)) -> dict:
+    items = payload.get("items", [])
+    if not isinstance(items, list):
+        return {"status": "ERROR", "error": "items must be a list"}
+    # market별 분리
+    by_market: dict[str, list] = {"kr": [], "us": []}
+    for item in items:
+        mk = "us" if str(item.get("market", "kr")).lower() == "us" else "kr"
+        by_market[mk].append(item)
+    cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
+    for mk, rows in by_market.items():
+        path = _REPO / f"holdings_{mk}.csv"
+        norm_rows = []
+        for r in rows:
+            sym = _normalize_sym(r.get("symbol", ""), mk)
+            if not sym:
+                continue
+            norm_rows.append({
+                "symbol": sym,
+                "name": str(r.get("name", sym)).strip(),
+                "market": mk,
+                "quantity": str(r.get("quantity", "0")).strip(),
+                "avgPrice": str(r.get("avgPrice", "0")).strip(),
+                "stopPrice": str(r.get("stopPrice", "")).strip(),
+                "targetPrice": str(r.get("targetPrice", "")).strip(),
+            })
+        _write_csv_safe_v2(path, norm_rows, cols)
+    return {"status": "OK", "saved": len(items)}
+
+
+# ── 2. watchlist-edit ─────────────────────────────────────────────────
+
+@app.get("/api/watchlist-edit")
+def api_watchlist_edit(market: str = Query("all")) -> dict:
+    markets = ["kr", "us"] if market == "all" else [market]
+    items: list[dict] = []
+    for mk in markets:
+        path = _REPO / f"watchlist_{mk}.csv"
+        for row in _read_csv_safe(path):
+            sym = str(row.get("symbol", "")).strip()
+            if not sym:
+                continue
+            items.append({
+                "market": mk,
+                "symbol": sym,
+                "name": str(row.get("name", sym)).strip(),
+                "memo": str(row.get("memo", "")).strip(),
+                "group": str(row.get("group", row.get("memo", ""))).strip(),
+                "targetReason": str(row.get("targetReason", "")).strip(),
+                "finalScore": _safe_float_v2(row.get("finalScore")),
+                "mode": str(row.get("mode", "")).strip(),
+                "horizon": str(row.get("horizon", "")).strip(),
+            })
+    return {"status": "OK", "count": len(items), "items": items}
+
+
+@app.post("/api/watchlist-edit/save")
+def api_watchlist_edit_save(payload: dict = Body(...)) -> dict:
+    items = payload.get("items", [])
+    if not isinstance(items, list):
+        return {"status": "ERROR", "error": "items must be a list"}
+    by_market: dict[str, list] = {"kr": [], "us": []}
+    for item in items:
+        mk = "us" if str(item.get("market", "kr")).lower() == "us" else "kr"
+        by_market[mk].append(item)
+    cols = ["market", "symbol", "name", "memo", "targetReason", "autoWatchCategory",
+            "autoWatchScore", "finalScore", "expectedValue", "mode", "horizon",
+            "decisionBucket", "timingLabel", "candidateTypeLabel", "updated_at", "group"]
+    for mk, rows in by_market.items():
+        path = _REPO / f"watchlist_{mk}.csv"
+        existing = {str(r.get("symbol", "")).strip(): r for r in _read_csv_safe(path)}
+        norm_rows = []
+        for r in rows:
+            sym = _normalize_sym(r.get("symbol", ""), mk)
+            if not sym:
+                continue
+            base = existing.get(sym, {})
+            norm_rows.append({**base, **{
+                "market": mk,
+                "symbol": sym,
+                "name": str(r.get("name", base.get("name", sym))).strip(),
+                "memo": str(r.get("memo", base.get("memo", ""))).strip(),
+                "group": str(r.get("group", base.get("group", ""))).strip(),
+                "updated_at": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }})
+        _write_csv_safe_v2(path, norm_rows, cols)
+    return {"status": "OK", "saved": len(items)}
+
+
+# ── 3. predictions/table ──────────────────────────────────────────────
+
+@app.get("/api/predictions/table")
+def api_predictions_table(
+    market: str = Query("kr"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+    strategy: str = Query(""),
+    term: str = Query(""),
+    limit: int = Query(300),
+) -> dict:
+    # strategy/term 파라미터 폴백 처리
+    eff_mode = strategy or mode
+    eff_horizon = term or horizon
+    try:
+        rec = final_engine.final_recommendations(_market(market), eff_mode, eff_horizon)
+        items = rec.get("items", [])
+        return {"status": "OK", "count": len(items[:limit]), "items": items[:limit], "market": market}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": [], "count": 0}
+
+
+# ── 4. virtual/ledger ─────────────────────────────────────────────────
+
+@app.get("/api/virtual/ledger")
+def api_virtual_ledger(
+    market: str = Query("kr"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+    limit: int = Query(300),
+) -> dict:
+    try:
+        result = operation_history.virtual_operation_history(
+            market=None if market == "all" else _market(market),
+            mode=None,
+            limit=limit,
+        )
+        return _ensure_status(result)
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": [], "count": 0}
+
+
+# ── 5. virtual/validation ─────────────────────────────────────────────
+
+@app.get("/api/virtual/validation")
+def api_virtual_validation(
+    market: str = Query("kr"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+    limit: int = Query(300),
+) -> dict:
+    try:
+        result = operation_history.virtual_operation_history(
+            market=None if market == "all" else _market(market),
+            mode=None,
+            limit=limit,
+        )
+        items = result.get("items", [])
+        # 검증 데이터만 필터링 (result 필드 있는 것)
+        validated = [r for r in items if r.get("result") and r.get("result") != "PENDING"]
+        return {"status": "OK", "count": len(validated), "items": validated, "totalCount": len(items)}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": [], "count": 0}
+
+
+# ── 6. validation/dashboard ───────────────────────────────────────────
+
+@app.get("/api/validation/dashboard")
+def api_validation_dashboard(market: str = Query("kr")) -> dict:
+    try:
+        acc = final_engine.prediction_accuracy_stats(None if market == "all" else _market(market))
+        history = operation_history.virtual_operation_history(
+            market=None if market == "all" else _market(market),
+            mode=None, limit=500
+        )
+        items = history.get("items", [])
+        total = len(items)
+        wins = len([r for r in items if _safe_float_v2(r.get("returnPct", 0)) > 0])
+        win_rate = (wins / total * 100) if total > 0 else 0.0
+        avg_return = (sum(_safe_float_v2(r.get("returnPct", 0)) for r in items) / total) if total > 0 else 0.0
+        return {
+            "status": "OK",
+            "winRate": round(win_rate, 1),
+            "avgReturn": round(avg_return, 2),
+            "total": total,
+            "wins": wins,
+            "accuracy": acc,
+            "market": market,
+        }
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "winRate": 0, "total": 0}
+
+
+# ── 7. risk/sector-exposure ───────────────────────────────────────────
+
+@app.get("/api/risk/sector-exposure")
+def api_risk_sector_exposure(market: str = Query("kr")) -> dict:
+    try:
+        from app.engine.mone_v77_holdings_risk import holdings_payload
+        hp = holdings_payload(_market(market) if market != "all" else "all", 200)
+        items = hp.get("items", [])
+        # 기업분석에서 섹터 가져오기
+        ca = data.company_analysis(_market(market) if market != "all" else "kr")
+        sector_map = {str(r.get("symbol", "")).strip(): str(r.get("sector", "기타")) for r in ca.get("items", [])}
+        by_sector: dict[str, dict] = {}
+        total_val = 0.0
+        for h in items:
+            sym = str(h.get("symbol", "")).strip()
+            val = _safe_float_v2(h.get("valuation", 0) or h.get("marketValue", 0))
+            stop = _safe_float_v2(h.get("stop", 0) or h.get("stopPrice", 0))
+            current = _safe_float_v2(h.get("currentPrice", 0))
+            sector = sector_map.get(sym, "기타")
+            total_val += val
+            if sector not in by_sector:
+                by_sector[sector] = {"sector": sector, "value": 0.0, "symbols": [], "maxLoss": 0.0}
+            by_sector[sector]["value"] += val
+            by_sector[sector]["symbols"].append(sym)
+            if stop > 0 and current > 0:
+                by_sector[sector]["maxLoss"] += (current - stop) * _safe_float_v2(h.get("quantity", 0))
+        sectors = []
+        for s in sorted(by_sector.values(), key=lambda x: x["value"], reverse=True):
+            pct = (s["value"] / total_val * 100) if total_val > 0 else 0
+            sectors.append({**s, "pct": round(pct, 1)})
+        top1 = sectors[0]["pct"] if sectors else 0
+        total_loss = sum(s["maxLoss"] for s in by_sector.values())
+        total_loss_pct = (total_loss / total_val * 100) if total_val > 0 else 0
+        return {
+            "status": "OK",
+            "sectors": sectors,
+            "concentration": {"top1Pct": round(top1, 1), "warning": top1 > 40},
+            "maxLossSimulation": {"totalLoss": round(total_loss), "totalLossPct": round(total_loss_pct, 1)},
+            "market": market,
+        }
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "sectors": []}
+
+
+# ── 8. risk/benchmark ────────────────────────────────────────────────
+
+@app.get("/api/risk/benchmark")
+def api_risk_benchmark(market: str = Query("kr")) -> dict:
+    try:
+        mk = _market(market) if market != "all" else "kr"
+        from app.engine.mone_v77_holdings_risk import holdings_payload
+        hp = holdings_payload(mk, 200)
+        items = hp.get("items", [])
+        # 벤치마크: KOSPI (kr) / SPY (us)
+        bench_sym = "KOSPI" if mk == "kr" else "SPY"
+        bench_prefix = "kr" if mk == "kr" else "us"
+        bench_path = _OHLCV_DIR / f"{bench_prefix}_{bench_sym}_daily.csv"
+        bench_rows = _read_csv_safe(bench_path)[-30:]
+        bench_latest = _safe_float_v2(bench_rows[-1].get("close", 0) if bench_rows else 0)
+        bench_base = _safe_float_v2(bench_rows[0].get("close", 0) if bench_rows else 0)
+        bench_return = ((bench_latest - bench_base) / bench_base * 100) if bench_base > 0 else 0.0
+        result_items = []
+        total_port_val = 0.0
+        total_port_cost = 0.0
+        for h in items:
+            sym = str(h.get("symbol", "")).strip()
+            name = str(h.get("name", sym)).strip()
+            qty = _safe_float_v2(h.get("quantity", 0))
+            avg = _safe_float_v2(h.get("avgPrice", 0))
+            current = _safe_float_v2(h.get("currentPrice", 0))
+            if qty <= 0 or avg <= 0:
+                continue
+            val = qty * current if current > 0 else qty * avg
+            cost = qty * avg
+            port_ret = ((current - avg) / avg * 100) if avg > 0 and current > 0 else 0.0
+            alpha = port_ret - bench_return
+            total_port_val += val
+            total_port_cost += cost
+            result_items.append({
+                "symbol": sym, "name": name,
+                "portfolioReturn": round(port_ret, 1),
+                "benchmarkReturn": round(bench_return, 1),
+                "alpha": round(alpha, 1),
+            })
+        total_port_return = ((total_port_val - total_port_cost) / total_port_cost * 100) if total_port_cost > 0 else 0.0
+        return {
+            "status": "OK" if result_items else "NO_DATA",
+            "benchmark": bench_sym,
+            "benchmarkReturn": round(bench_return, 1),
+            "totalPortfolioReturn": round(total_port_return, 1),
+            "benchmarkLatestDate": bench_rows[-1].get("date", "") if bench_rows else "",
+            "items": result_items,
+            "count": len(result_items),
+        }
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+# ── 9. risk/correlation ───────────────────────────────────────────────
+
+@app.get("/api/risk/correlation")
+def api_risk_correlation(market: str = Query("kr"), days: int = Query(60)) -> dict:
+    try:
+        result = advanced.correlation(_market(market) if market != "all" else "kr")
+        return _ensure_status(result)
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "matrix": []}
+
+
+# ── 10. risk/near-alerts ──────────────────────────────────────────────
+
+@app.get("/api/risk/near-alerts")
+def api_risk_near_alerts(
+    market: str = Query("all"),
+    thresholdPct: float = Query(1.0),
+    limit: int = Query(5),
+) -> dict:
+    try:
+        from app.engine.mone_v77_holdings_risk import holdings_payload
+        markets = ["kr", "us"] if market == "all" else [_market(market)]
+        alerts = []
+        for mk in markets:
+            hp = holdings_payload(mk, 100)
+            for h in hp.get("items", []):
+                current = _safe_float_v2(h.get("currentPrice", 0))
+                stop = _safe_float_v2(h.get("stop", 0) or h.get("stopPrice", 0))
+                target = _safe_float_v2(h.get("target", 0) or h.get("targetPrice", 0))
+                sym = str(h.get("symbol", "")).strip()
+                name = str(h.get("name", sym)).strip()
+                if current > 0 and stop > 0:
+                    gap_pct = (current - stop) / current * 100
+                    if 0 < gap_pct <= thresholdPct * 5:
+                        alerts.append({
+                            "type": "STOP", "symbol": sym, "name": name, "market": mk,
+                            "currentPrice": current, "stopPrice": stop,
+                            "gapPct": round(gap_pct, 2),
+                            "message": f"손절가 {gap_pct:.1f}% 이내",
+                        })
+                if current > 0 and target > 0 and current < target:
+                    gap_pct = (target - current) / current * 100
+                    if 0 < gap_pct <= thresholdPct * 5:
+                        alerts.append({
+                            "type": "TARGET", "symbol": sym, "name": name, "market": mk,
+                            "currentPrice": current, "targetPrice": target,
+                            "gapPct": round(gap_pct, 2),
+                            "message": f"목표가 {gap_pct:.1f}% 근접",
+                        })
+        alerts.sort(key=lambda x: x["gapPct"])
+        return {"status": "OK" if alerts else "NO_DATA", "count": len(alerts[:limit]), "items": alerts[:limit]}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+# ── 11. chart/index/{symbol} ──────────────────────────────────────────
+
+@app.get("/api/chart/index/{index_symbol}")
+def api_chart_index(
+    index_symbol: str,
+    market: str = Query("kr"),
+    limit: int = Query(520),
+) -> dict:
+    try:
+        mk = "kr" if str(market).lower() == "kr" else "us"
+        sym = index_symbol.upper()
+        path = _OHLCV_DIR / f"{mk}_{sym}_daily.csv"
+        if not path.exists():
+            # fallback: kr=KOSPI, us=SPY
+            fallback = "KOSPI" if mk == "kr" else "SPY"
+            path = _OHLCV_DIR / f"{mk}_{fallback}_daily.csv"
+        rows = _read_csv_safe(path)
+        items = []
+        for r in rows[-limit:]:
+            date = str(r.get("date") or r.get("Date") or "").strip()
+            close = _safe_float_v2(r.get("close") or r.get("Close") or 0)
+            if date and close > 0:
+                items.append({"date": date, "close": close,
+                               "open": _safe_float_v2(r.get("open") or close),
+                               "high": _safe_float_v2(r.get("high") or close),
+                               "low": _safe_float_v2(r.get("low") or close)})
+        return {"status": "OK" if items else "NO_DATA", "count": len(items), "items": items, "symbol": sym}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+# ── 12. portfolio/nav ─────────────────────────────────────────────────
+
+@app.get("/api/portfolio/nav")
+def api_portfolio_nav(market: str = Query("kr"), days: int = Query(180)) -> dict:
+    try:
+        mk = _market(market) if market != "all" else "kr"
+        from app.engine.mone_v77_holdings_risk import holdings_payload
+        hp = holdings_payload(mk, 100)
+        holdings = hp.get("items", [])
+        if not holdings:
+            return {"status": "NO_DATA", "items": [], "count": 0}
+        # 각 보유종목의 OHLCV 읽어서 NAV 시계열 계산
+        prefix = "kr" if mk == "kr" else "us"
+        date_nav: dict[str, float] = {}
+        date_cost: dict[str, float] = {}
+        for h in holdings:
+            sym = str(h.get("symbol", "")).strip()
+            qty = _safe_float_v2(h.get("quantity", 0))
+            avg = _safe_float_v2(h.get("avgPrice", 0))
+            if qty <= 0 or avg <= 0:
+                continue
+            cost = qty * avg
+            ohlcv_path = _OHLCV_DIR / f"{prefix}_{sym}_daily.csv"
+            rows = _read_csv_safe(ohlcv_path)[-days:]
+            for r in rows:
+                date = str(r.get("date") or r.get("Date") or "").strip()
+                close = _safe_float_v2(r.get("close") or r.get("Close") or 0)
+                if date and close > 0:
+                    date_nav[date] = date_nav.get(date, 0) + qty * close
+                    date_cost[date] = date_cost.get(date, 0) + cost
+        if not date_nav:
+            return {"status": "NO_DATA", "items": [], "count": 0}
+        first_nav = None
+        items = []
+        for date in sorted(date_nav.keys()):
+            nav = date_nav[date]
+            cost = date_cost.get(date, nav)
+            if first_nav is None:
+                first_nav = cost
+            cum_return = ((nav - first_nav) / first_nav * 100) if first_nav > 0 else 0.0
+            items.append({
+                "date": date,
+                "nav": round(nav),
+                "cumulative_return": round(cum_return, 2),
+                "is_backfill": "false",
+            })
+        return {"status": "OK", "count": len(items), "items": items}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+# ── 13. home/summary ──────────────────────────────────────────────────
+
+@app.get("/api/home/summary")
+def api_home_summary(market: str = Query("kr"), limit: int = Query(12)) -> dict:
+    """HomePage 3×3 매트릭스용 통합 응답 — 9개 전략 셀 + 보유종목 + 마켓 레짐"""
+    try:
+        mk = _market(market) if market != "all" else "kr"
+        MODES = ("conservative", "balanced", "aggressive")
+        HORIZONS = ("short", "swing", "mid")
+
+        # 마켓 레짐 (KOSPI/SPY 20일선 기반 — priority 9)
+        regime = "UNKNOWN"
+        regime_detail: dict = {}
+        try:
+            bench_sym = "KOSPI" if mk == "kr" else "SPY"
+            bench_rows = _read_csv_safe(_OHLCV_DIR / f"{mk}_{bench_sym}_daily.csv")[-60:]
+            closes = [_safe_float_v2(r.get("close") or r.get("Close") or 0) for r in bench_rows]
+            closes = [c for c in closes if c > 0]
+            if len(closes) >= 20:
+                ma20 = sum(closes[-20:]) / 20
+                ma60 = sum(closes[-60:]) / len(closes[-60:]) if len(closes) >= 60 else ma20
+                current = closes[-1]
+                if current > ma20 * 1.02:
+                    regime = "BULL"
+                elif current < ma20 * 0.98:
+                    regime = "BEAR"
+                else:
+                    regime = "SIDEWAYS"
+                regime_detail = {
+                    "regime": regime,
+                    "current": round(current, 2),
+                    "ma20": round(ma20, 2),
+                    "ma60": round(ma60, 2),
+                    "distanceMa20Pct": round((current - ma20) / ma20 * 100, 2),
+                    "benchmark": bench_sym,
+                    "label": {"BULL": "강세장 (MA20 상회)", "BEAR": "약세장 (MA20 하회)", "SIDEWAYS": "중립"}[regime],
+                }
+        except Exception:
+            pass
+
+        # 3×3 매트릭스 병렬 수집
+        matrix: dict = {}
+        for mode in MODES:
+            for horizon in HORIZONS:
+                cell_key = f"{mode}_{horizon}"
+                try:
+                    rec = final_engine.final_recommendations(mk, mode, horizon)
+                    cell_items = rec.get("items", [])
+                    # EV 양수 우선 정렬 (priority 5)
+                    pos_ev = [i for i in cell_items if _safe_float_v2(i.get("expectedValue", 0)) > 0]
+                    display = (pos_ev if pos_ev else cell_items)[:5]
+                    matrix[cell_key] = {
+                        "status": "OK" if display else "NO_DATA",
+                        "items": display,
+                        "count": len(cell_items),
+                        "positiveEvCount": len(pos_ev),
+                    }
+                except Exception as e:
+                    matrix[cell_key] = {"status": "ERROR", "error": str(e), "items": [], "count": 0}
+
+        # 보유종목 (holdingsClean 엔드포인트 재사용)
+        holdings_payload: dict = {"items": [], "summary": {}}
+        try:
+            from app.engine.mone_v77_holdings_risk import holdings_payload as _hp
+            holdings_payload = _hp(mk, 50)
+        except Exception:
+            pass
+
+        # 데이터 헬스
+        data_health: dict = {}
+        try:
+            data_health = data.runner_status(mk)
+        except Exception:
+            pass
+
+        return {
+            "status": "OK",
+            "market": mk,
+            "matrix": matrix,
+            "holdings": holdings_payload,
+            "marketRegime": regime_detail if regime_detail else {"regime": regime},
+            "dataHealth": data_health,
+        }
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "matrix": {}, "holdings": {"items": []}}
+
+
+# ── 14. sectors ───────────────────────────────────────────────────────
+
+@app.get("/api/sectors")
+def api_sectors(market: str = Query("kr")) -> dict:
+    try:
+        mk = _market(market) if market != "all" else "kr"
+        ca = data.company_analysis(mk)
+        sector_map: dict[str, list] = {}
+        for r in ca.get("items", []):
+            sector = str(r.get("sector", "기타")).strip() or "기타"
+            sym = str(r.get("symbol", "")).strip()
+            name = str(r.get("name", sym)).strip()
+            if sym:
+                sector_map.setdefault(sector, []).append({"symbol": sym, "name": name})
+        items = [{"sector": s, "count": len(v), "symbols": v} for s, v in sorted(sector_map.items())]
+        return {"status": "OK", "count": len(items), "items": items, "market": mk}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+# ── 15. watchlist/groups ──────────────────────────────────────────────
+
+@app.get("/api/watchlist/groups")
+def api_watchlist_groups(market: str = Query("kr")) -> dict:
+    try:
+        markets = ["kr", "us"] if market == "all" else [_market(market) if market != "all" else "kr"]
+        group_map: dict[str, list] = {}
+        for mk in markets:
+            path = _REPO / f"watchlist_{mk}.csv"
+            for r in _read_csv_safe(path):
+                sym = str(r.get("symbol", "")).strip()
+                group = str(r.get("group", r.get("memo", "기본"))).strip() or "기본"
+                if sym:
+                    group_map.setdefault(group, []).append({
+                        "market": mk, "symbol": sym,
+                        "name": str(r.get("name", sym)).strip(),
+                        "group": group,
+                        "finalScore": _safe_float_v2(r.get("finalScore", 0)),
+                    })
+        items = [{"group": g, "count": len(v), "items": v} for g, v in sorted(group_map.items())]
+        return {"status": "OK", "count": len(items), "items": items, "groups": list(group_map.keys())}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+# ── 16. watchlist/set-group ───────────────────────────────────────────
+
+@app.post("/api/watchlist/set-group")
+def api_watchlist_set_group(payload: dict = Body(...)) -> dict:
+    try:
+        sym = str(payload.get("symbol", "")).strip()
+        group = str(payload.get("group", "기본")).strip() or "기본"
+        mk = "us" if str(payload.get("market", "kr")).lower() == "us" else "kr"
+        path = _REPO / f"watchlist_{mk}.csv"
+        rows = _read_csv_safe(path)
+        updated = False
+        for r in rows:
+            if str(r.get("symbol", "")).strip() == sym:
+                r["group"] = group
+                updated = True
+        if not updated:
+            return {"status": "NOT_FOUND", "error": f"{sym} not in watchlist_{mk}"}
+        # 기존 컬럼 유지 + group 추가
+        existing_cols = []
+        if rows:
+            existing_cols = list(rows[0].keys())
+        if "group" not in existing_cols:
+            existing_cols.append("group")
+        _write_csv_safe_v2(path, rows, existing_cols)
+        return {"status": "OK", "symbol": sym, "group": group, "market": mk}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+# ── 17. watchlist/scored ──────────────────────────────────────────────
+
+@app.get("/api/watchlist/scored")
+def api_watchlist_scored(
+    market: str = Query("kr"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+) -> dict:
+    try:
+        mk = _market(market) if market != "all" else "kr"
+        # 관심종목 심볼 목록
+        watch_syms: set[str] = set()
+        for wm in (["kr", "us"] if market == "all" else [mk]):
+            for r in _read_csv_safe(_REPO / f"watchlist_{wm}.csv"):
+                s = str(r.get("symbol", "")).strip()
+                if s:
+                    watch_syms.add(s)
+        # 추천 리스트에서 관심종목만 필터
+        rec = final_engine.final_recommendations(mk, mode, horizon)
+        items = [i for i in rec.get("items", []) if str(i.get("symbol", "")).strip() in watch_syms]
+        if not items:
+            items = rec.get("items", [])[:20]
+        return {"status": "OK", "count": len(items), "items": items, "watchlistCount": len(watch_syms)}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+# ── 18. disclosure-calendar ───────────────────────────────────────────
+
+@app.get("/api/disclosure-calendar")
+def api_disclosure_calendar(market: str = Query("kr"), days: int = Query(30)) -> dict:
+    try:
+        mk = _market(market) if market != "all" else "kr"
+        disc = data.disclosure_rows(mk)
+        items = disc.get("items", []) if isinstance(disc, dict) else []
+        result = []
+        for d in items[:50]:
+            date_str = str(d.get("date") or d.get("disclosedAt") or d.get("publishedAt") or "").strip()
+            result.append({
+                "date": date_str,
+                "title": str(d.get("title") or d.get("reportName") or "").strip(),
+                "symbol": str(d.get("symbol", "")).strip(),
+                "name": str(d.get("name") or d.get("company") or "").strip(),
+                "type": str(d.get("type") or d.get("category") or "공시").strip(),
+            })
+        return {"status": "OK" if result else "NO_DATA", "count": len(result), "items": result}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+# ── 19. journal (투자장부) ────────────────────────────────────────────
+
+def _ensure_journal() -> None:
+    _JOURNAL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if not _JOURNAL_FILE.exists():
+        with _JOURNAL_FILE.open("w", encoding="utf-8-sig", newline="") as f:
+            _csv.DictWriter(f, fieldnames=_JOURNAL_COLS).writeheader()
+
+
+@app.get("/api/journal")
+def api_journal_get(market: str = Query("all"), limit: int = Query(200)) -> dict:
+    try:
+        _ensure_journal()
+        rows = _read_csv_safe(_JOURNAL_FILE)
+        if market != "all":
+            rows = [r for r in rows if r.get("market", "").lower() == market.lower()]
+        rows = sorted(rows, key=lambda r: r.get("createdAt", ""), reverse=True)
+        return {"status": "OK", "count": len(rows[:limit]), "items": rows[:limit]}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+@app.post("/api/journal/add")
+def api_journal_add(payload: dict = Body(...)) -> dict:
+    try:
+        _ensure_journal()
+        rows = _read_csv_safe(_JOURNAL_FILE)
+        new_row = {
+            "id": str(_uuid.uuid4())[:8],
+            "date": str(payload.get("date", _dt.now().strftime("%Y-%m-%d"))).strip(),
+            "market": str(payload.get("market", "kr")).strip(),
+            "symbol": str(payload.get("symbol", "")).strip(),
+            "name": str(payload.get("name", "")).strip(),
+            "action": str(payload.get("action", "메모")).strip(),
+            "price": str(_safe_float_v2(payload.get("price", 0))),
+            "qty": str(_safe_float_v2(payload.get("qty", 0))),
+            "memo": str(payload.get("memo", "")).strip(),
+            "review": str(payload.get("review", "")).strip(),
+            "result": str(payload.get("result", "PENDING")).strip(),
+            "returnPct": str(_safe_float_v2(payload.get("returnPct", 0))),
+            "tags": _json.dumps(payload.get("tags", []), ensure_ascii=False),
+            "createdAt": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        rows.append(new_row)
+        _write_csv_safe_v2(_JOURNAL_FILE, rows, _JOURNAL_COLS)
+        return {"status": "OK", "item": new_row}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+@app.patch("/api/journal/{entry_id}")
+def api_journal_update(entry_id: str, payload: dict = Body(...)) -> dict:
+    try:
+        _ensure_journal()
+        rows = _read_csv_safe(_JOURNAL_FILE)
+        updated = False
+        for r in rows:
+            if r.get("id") == entry_id:
+                for k in ("memo", "review", "result", "returnPct", "tags"):
+                    if k in payload:
+                        r[k] = _json.dumps(payload[k], ensure_ascii=False) if k == "tags" else str(payload[k])
+                updated = True
+        if not updated:
+            return {"status": "NOT_FOUND", "error": f"id={entry_id} not found"}
+        _write_csv_safe_v2(_JOURNAL_FILE, rows, _JOURNAL_COLS)
+        return {"status": "OK", "id": entry_id}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+@app.delete("/api/journal/{entry_id}")
+def api_journal_delete(entry_id: str) -> dict:
+    try:
+        _ensure_journal()
+        rows = _read_csv_safe(_JOURNAL_FILE)
+        before = len(rows)
+        rows = [r for r in rows if r.get("id") != entry_id]
+        if len(rows) == before:
+            return {"status": "NOT_FOUND", "error": f"id={entry_id} not found"}
+        _write_csv_safe_v2(_JOURNAL_FILE, rows, _JOURNAL_COLS)
+        return {"status": "OK", "deleted": entry_id}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+# ── 20. health/github ─────────────────────────────────────────────────
+
+@app.get("/api/health/github")
+def api_health_github() -> dict:
+    try:
+        from app.engine.auto_sync import get_sync_status
+        return _ensure_status(get_sync_status())
+    except Exception:
+        pass
+    try:
+        status = data.runner_status("kr")
+        return {"status": "OK", "kr": status, "source": "runner_status"}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+# ── 21. data/audit ───────────────────────────────────────────────────
+
+@app.get("/api/data/audit")
+def api_data_audit() -> dict:
+    try:
+        result: dict = {"status": "OK", "files": [], "summary": {}}
+        report_files = list(_REPORTS.glob("*.csv")) if _REPORTS.exists() else []
+        ohlcv_files = list(_OHLCV_DIR.glob("*.csv")) if _OHLCV_DIR.exists() else []
+        holdings_files = [_REPO / f"holdings_{m}.csv" for m in ["kr", "us"]]
+        watchlist_files = [_REPO / f"watchlist_{m}.csv" for m in ["kr", "us"]]
+        audit_items = []
+        for path in report_files[:20] + ohlcv_files[:10] + holdings_files + watchlist_files:
+            if path.exists():
+                stat = path.stat()
+                audit_items.append({
+                    "file": path.name,
+                    "path": str(path.relative_to(_REPO)) if _REPO in path.parents else path.name,
+                    "size": stat.st_size,
+                    "mtime": _dt.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                    "rows": len(_read_csv_safe(path)),
+                })
+        result["files"] = audit_items
+        result["summary"] = {
+            "reportFiles": len(report_files),
+            "ohlcvFiles": len(ohlcv_files),
+            "totalAuditFiles": len(audit_items),
+        }
+        return result
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "files": []}
+
+
+# ── 22. position/size ─────────────────────────────────────────────────
+
+@app.get("/api/position/size")
+def api_position_size(
+    entry: float = Query(...),
+    cash: float = Query(...),
+    strategy: str = Query("balanced"),
+    market: str = Query("kr"),
+) -> dict:
+    try:
+        # Kelly 기반 포지션 계산
+        kelly_map = {"conservative": 0.10, "balanced": 0.15, "aggressive": 0.20}
+        kelly_f = kelly_map.get(strategy, 0.15)
+        position_value = cash * kelly_f
+        shares = int(position_value / entry) if entry > 0 else 0
+        actual_value = shares * entry
+        return {
+            "status": "OK",
+            "entry": entry,
+            "cash": cash,
+            "strategy": strategy,
+            "kellyFraction": kelly_f,
+            "positionValue": round(actual_value),
+            "shares": shares,
+            "pctOfCash": round(actual_value / cash * 100, 1) if cash > 0 else 0,
+        }
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+# ── 23. kis/token/status ──────────────────────────────────────────────
+
+@app.get("/api/kis/token/status")
+def api_kis_token_status() -> dict:
+    kis_key = _os.environ.get("KIS_APP_KEY", "")
+    kis_secret = _os.environ.get("KIS_APP_SECRET", "")
+    kis_account = _os.environ.get("KIS_ACCOUNT_NO", "")
+    configured = bool(kis_key and kis_secret and kis_account)
+    return {
+        "status": "OK" if configured else "NO_KEY",
+        "hasKey": bool(kis_key),
+        "hasSecret": bool(kis_secret),
+        "hasAccount": bool(kis_account),
+        "configured": configured,
+        "message": "KIS API 설정 완료" if configured else "KIS_APP_KEY / KIS_APP_SECRET / KIS_ACCOUNT_NO 환경변수 미설정",
+    }
+
+
+# ── 24. EV 필터 추천 (priority 5) ─────────────────────────────────────
+
+@app.get("/api/final/recommendations-ev-filtered")
+def api_recommendations_ev_filtered(
+    market: str = Query("kr", pattern="^(kr|us|all)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+    limit: int = Query(20),
+) -> dict:
+    """EV(기댓값) 양수인 종목만 반환하는 필터드 추천 엔드포인트"""
+    try:
+        mk_list = ["kr", "us"] if market == "all" else [_market(market)]
+        all_items = []
+        for mk in mk_list:
+            rec = final_engine.final_recommendations(mk, mode, horizon)
+            for item in rec.get("items", []):
+                ev = _safe_float_v2(item.get("expectedValue", 0))
+                if ev > 0:
+                    all_items.append(item)
+        all_items.sort(key=lambda x: _safe_float_v2(x.get("expectedValue", 0)), reverse=True)
+        return {"status": "OK" if all_items else "NO_DATA", "count": len(all_items[:limit]), "items": all_items[:limit]}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+print("[MONE v10.2] 누락 API 엔드포인트 24종 등록 완료")
