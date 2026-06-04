@@ -28,7 +28,7 @@ export type PageId =
   | "advanced"
   | "admin";
 
-const navItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
+const navItems: { id: PageId; label: string; icon: React.ReactNode; desktopOnly?: boolean }[] = [
   { id: "home", label: "시장 홈", icon: <LayoutDashboard size={16} /> },
   { id: "report", label: "운용 리포트", icon: <FileBarChart2 size={16} /> },
   { id: "stocks", label: "종목 탐색", icon: <Search size={16} /> },
@@ -37,7 +37,7 @@ const navItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "news", label: "뉴스·기업분석", icon: <Newspaper size={16} /> },
   { id: "prediction", label: "예측·검증", icon: <Brain size={16} /> },
   { id: "advanced", label: "고급분석", icon: <Cpu size={16} /> },
-  { id: "admin", label: "관리자 모드", icon: <Settings size={16} /> },
+  { id: "admin", label: "관리자 모드", icon: <Settings size={16} />, desktopOnly: true },
 ];
 
 interface Props {
@@ -90,7 +90,7 @@ export default function Sidebar({ current, onChange, mobileOpen: mobileOpenProp,
           <button
             key={item.id}
             type="button"
-            className={`nav-item w-full ${current === item.id ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
+            className={`nav-item w-full ${current === item.id ? "active" : ""} ${collapsed ? "justify-center px-2" : ""} ${item.desktopOnly ? "hidden md:flex" : ""}`}
             onClick={() => {
               onChange(item.id);
               setMobileOpen(false);

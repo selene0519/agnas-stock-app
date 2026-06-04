@@ -1,4 +1,4 @@
-const CACHE = "mone-v1";
+const CACHE = "mone-v2";
 const STATIC = ["/", "/manifest.json", "/brand/mone-logo-192.png", "/brand/mone-logo.png"];
 
 self.addEventListener("install", (event) => {
