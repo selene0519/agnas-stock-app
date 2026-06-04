@@ -248,6 +248,8 @@ export const mone = {
     apiGet<ApiList>("/api/risk/near-alerts", p),
   kisTokenStatus: () =>
     apiGet<ApiList>("/api/kis/token/status"),
+  exchangeRate: (p?: { base?: string; target?: string }) =>
+    apiGet<any>("/api/exchange-rate", p),
   refreshOneQuote: (body: { market?: Market; symbol: string; name?: string }) =>
     apiPost<ApiList>("/api/quotes/refresh-one", body),
   refreshTargetQuotes: (body?: { market?: Market; limit?: number }) =>

@@ -5,6 +5,10 @@ import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info, Calculator, 
 import type { PageId } from "../Sidebar";
 import { mone, type Horizon, type Mode } from "@/lib/api";
 import {
+  getDefaultMarketBySession, getMarketSessionStatus, getSessionCountdown,
+  kstNowParts, type SessionPhase,
+} from "@/lib/marketSession";
+import {
   dedupeBySymbol,
   displayName,
   firstText,
@@ -20,70 +24,15 @@ const HORIZONS: Horizon[] = ["short", "swing", "mid"];
 type StrategyCell = { mode: Mode; horizon: Horizon; items: any[]; count: number; status: string };
 type MarketChoice = "auto" | "kr" | "us";
 
-// ── 시간대 유틸
-function kstNowParts(now = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  }).formatToParts(now);
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0);
-  const hour = get("hour") % 24;
-  return { year: get("year"), month: get("month"), day: get("day"), hour, minute: get("minute") };
-}
-
-function getDefaultMarketBySession(now = new Date()): "kr" | "us" {
-  const { hour, minute } = kstNowParts(now);
-  const t = hour * 60 + minute;
-  return (t >= 7 * 60 && t < 17 * 60) ? "kr" : "us";
-}
-
-function getMarketSessionStatus(market: "kr" | "us", now = new Date()) {
-  const { hour, minute } = kstNowParts(now);
-  const t = hour * 60 + minute;
-  if (market === "kr") {
-    if (t >= 9 * 60 && t <= 15 * 60 + 30) return "장중";
-    if (t > 15 * 60 + 30) return "장마감";
-    return "장전";
-  }
-  if (t >= 22 * 60 + 30 || t <= 5 * 60) return "장중";
-  if (t > 15 * 60 + 30 && t < 22 * 60 + 30) return "개장 전";
-  return "마감 후";
-}
-
-function getSessionCountdown(market: "kr" | "us", now = new Date()): string {
-  const { hour, minute } = kstNowParts(now);
-  const t = hour * 60 + minute;
-
-  const fmt = (rem: number) => {
-    const h = Math.floor(rem / 60);
-    const m = rem % 60;
-    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
-  };
-
-  if (market === "kr") {
-    const open = 9 * 60, close = 15 * 60 + 30;
-    if (t < open)  return `국장 시작까지 ${fmt(open - t)}`;
-    if (t <= close) return `장마감까지 ${fmt(close - t)}`;
-    const nextOpen = (24 * 60 + open) - t;   // 다음 날 09:00까지
-    return `내일 국장 시작까지 ${fmt(nextOpen)}`;
-  }
-  // 미장 22:30 ~ 05:00 KST
-  const usOpen = 22 * 60 + 30, usClose = 5 * 60;
-  if (t < usClose)  return `미장 마감까지 ${fmt(usClose - t)}`;
-  if (t < usOpen)   return `미장 시작까지 ${fmt(usOpen - t)}`;
-  return `미장 마감까지 ${fmt(24 * 60 - t + usClose)}`;
-}
-
-type SessionPhase = "장전" | "장중" | "장마감" | "개장 전" | "마감 후";
-
 function getSessionContext(session: SessionPhase) {
   switch (session) {
-    case "장전":   return { focus: "today",    hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하고 알림을 등록하세요." };
-    case "장중":   return { focus: "intraday", hint: "장중 — 진입가에 근접한 종목을 우선 확인하세요." };
-    case "장마감": return { focus: "review",   hint: "장마감 후 — 오늘 결과를 검증하고 내일 후보를 보강하세요." };
-    case "개장 전": return { focus: "today",   hint: "미장 개장 전 — 오늘 미장 진입 후보와 포지션을 점검하세요." };
-    case "마감 후": return { focus: "review",  hint: "미장 마감 후 — 결과 검토 및 다음 날 전략을 준비하세요." };
-    default:       return { focus: "today",    hint: "오늘 진입 후보와 대기 관찰 종목을 확인하세요." };
+    case "장전":    return { focus: "today",    hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하고 알림을 등록하세요." };
+    case "장중":    return { focus: "intraday", hint: "장중 — 진입가에 근접한 종목을 우선 확인하세요." };
+    case "장마감":  return { focus: "review",   hint: "장마감 후 — 오늘 결과를 검증하고 내일 후보를 보강하세요." };
+    case "개장 전": return { focus: "today",    hint: "미장 개장 전 — 오늘 미장 진입 후보와 포지션을 점검하세요." };
+    case "마감 후": return { focus: "review",   hint: "미장 마감 후 — 결과 검토 및 다음 날 전략을 준비하세요." };
+    case "휴장":    return { focus: "rest",     hint: "오늘은 휴장입니다. 다음 거래일 전략을 미리 준비하세요." };
+    default:        return { focus: "today",    hint: "오늘 진입 후보와 대기 관찰 종목을 확인하세요." };
   }
 }
 
@@ -1045,6 +994,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
               sessionPhase === "장중" ? "bg-emerald-900/50 text-emerald-300"
               : sessionPhase === "장마감" ? "bg-blue-900/50 text-blue-300"
+              : sessionPhase === "휴장" ? "bg-red-900/30 text-red-400"
               : "bg-slate-800 text-slate-400"
             }`}>{sessionStatus}</span>
             {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}

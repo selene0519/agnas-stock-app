@@ -382,6 +382,7 @@ export default function HoldingsPage() {
   const [corrData, setCorrData] = useState<any>(null);
   const [riskNote, setRiskNote] = useState("");
   const [refreshingAllQuotes, setRefreshingAllQuotes] = useState(false);
+  const [usdToKrw, setUsdToKrw] = useState<{ rate: number; date: string } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -415,6 +416,15 @@ export default function HoldingsPage() {
   useEffect(() => {
     load();
   }, [market]);
+
+  // 환율은 마운트 시 1회만 fetch (4시간 캐시)
+  useEffect(() => {
+    import("@/lib/api").then(({ mone }) =>
+      mone.exchangeRate({ base: "USD", target: "KRW" })
+        .then((r) => { if (r?.rate) setUsdToKrw({ rate: r.rate, date: r.date || "" }); })
+        .catch(() => {})
+    );
+  }, []);
 
   async function loadEditableHoldings() {
     const result = await getJson("/api/holdings-edit?market=all");
@@ -596,8 +606,30 @@ export default function HoldingsPage() {
       </div>
 
       {summary.mixedCurrency && (
-        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200">
-          KR/US 혼합 보유라 평가금액과 손익은 통화별로 분리 표시합니다. 통합 수익률은 환율 기준이 들어온 뒤 계산하는 것이 안전합니다.
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200 space-y-1">
+          <div>KR/US 혼합 보유 — 평가금액·손익은 통화별로 분리 표시합니다.</div>
+          {usdToKrw ? (() => {
+            const usBucket = summary.marketBreakdown?.find((b: any) => b.market === "us");
+            const krBucket = summary.marketBreakdown?.find((b: any) => b.market === "kr");
+            const usValueKrw = usBucket ? Math.round((usBucket.totalValue || 0) * usdToKrw.rate) : 0;
+            const krValue = krBucket ? (krBucket.totalValue || 0) : 0;
+            const combined = krValue + usValueKrw;
+            const usPnlKrw = usBucket ? Math.round((usBucket.totalPnl || 0) * usdToKrw.rate) : 0;
+            const krPnl = krBucket ? (krBucket.totalPnl || 0) : 0;
+            const combinedPnl = krPnl + usPnlKrw;
+            return (
+              <div className="font-mono text-blue-100">
+                환율 기준 합산 ({usdToKrw.rate.toLocaleString("ko-KR")}원/USD · {usdToKrw.date}){" "}
+                평가금액 <span className="font-bold">{combined.toLocaleString("ko-KR")}원</span>
+                {" "}· 손익{" "}
+                <span className={combinedPnl >= 0 ? "text-emerald-300 font-bold" : "text-red-300 font-bold"}>
+                  {combinedPnl >= 0 ? "+" : ""}{combinedPnl.toLocaleString("ko-KR")}원
+                </span>
+              </div>
+            );
+          })() : (
+            <div className="text-blue-300/60">환율 API 연결 시 합산 KRW 값을 표시합니다. (.env에 KOREAEXIM_API_KEY 추가)</div>
+          )}
         </div>
       )}
 

@@ -2924,6 +2924,61 @@ def api_data_audit() -> dict:
         return {"status": "ERROR", "error": str(e), "files": []}
 
 
+# ── 22-A. exchange-rate (한국수출입은행) ──────────────────────────────
+
+_EXRATE_CACHE: dict = {}
+_EXRATE_TTL = 4 * 3600  # 4시간 캐시
+
+@app.get("/api/exchange-rate")
+def api_exchange_rate(base: str = Query("USD"), target: str = Query("KRW")) -> dict:
+    import os as _os, time as _time
+    from datetime import date as _date, timedelta as _td
+
+    cache_key = f"{base}_{target}"
+    now_ts = _time.time()
+    cached = _EXRATE_CACHE.get(cache_key, {})
+    if cached and now_ts - cached.get("ts", 0) < _EXRATE_TTL:
+        return {k: v for k, v in cached.items() if k != "ts"}
+
+    api_key = _os.getenv("KOREAEXIM_API_KEY", "")
+    if not api_key:
+        return {"status": "NO_KEY", "rate": None, "base": base, "target": target,
+                "message": "KOREAEXIM_API_KEY 환경변수 미설정 — .env에 추가하세요"}
+
+    try:
+        import requests as _req
+    except ImportError:
+        return {"status": "ERROR", "rate": None, "base": base, "target": target,
+                "message": "requests 패키지 없음"}
+
+    for delta in range(5):
+        search_date = (_date.today() - _td(days=delta)).strftime("%Y%m%d")
+        try:
+            resp = _req.get(
+                "https://www.koreaexim.go.kr/site/program/financial/exchangeJSON",
+                params={"authkey": api_key, "searchdate": search_date, "data": "AP01"},
+                timeout=5,
+            )
+            items = resp.json()
+            if isinstance(items, list):
+                for item in items:
+                    if item.get("cur_unit") == base:
+                        rate_str = str(item.get("deal_bas_r", "")).replace(",", "")
+                        try:
+                            rate = float(rate_str)
+                            if rate > 0:
+                                result = {"status": "OK", "rate": rate,
+                                          "base": base, "target": target, "date": search_date}
+                                _EXRATE_CACHE[cache_key] = {**result, "ts": now_ts}
+                                return result
+                        except ValueError:
+                            pass
+        except Exception:
+            pass
+
+    return {"status": "NO_DATA", "rate": None, "base": base, "target": target}
+
+
 # ── 22. position/size ─────────────────────────────────────────────────
 
 @app.get("/api/position/size")
