@@ -59,7 +59,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case "home":
-        return <HomePage />;
+        return <HomePage onNavigate={setPage} />;
       case "report":
         return <ReportPage />;
       case "stocks":
