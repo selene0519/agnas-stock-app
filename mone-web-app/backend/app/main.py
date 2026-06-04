@@ -2303,6 +2303,11 @@ def api_home_summary(market: str = Query("kr"), limit: int = Query(12)) -> dict:
                     "distanceMa20Pct": round((current - ma20) / ma20 * 100, 2),
                     "benchmark": bench_sym,
                     "label": {"BULL": "강세장 (MA20 상회)", "BEAR": "약세장 (MA20 하회)", "SIDEWAYS": "중립"}[regime],
+                    "description": {
+                        "BULL": f"{bench_sym} 현재가 {current:,.0f} > MA20 {ma20:,.0f} (+{abs((current-ma20)/ma20*100):.1f}%) — 공격적 진입 허용",
+                        "BEAR": f"{bench_sym} 현재가 {current:,.0f} < MA20 {ma20:,.0f} (-{abs((current-ma20)/ma20*100):.1f}%) — 보수적 접근 권장",
+                        "SIDEWAYS": f"{bench_sym} 현재가 {current:,.0f} ≈ MA20 {ma20:,.0f} (±2%) — 중립, 종목별 선별",
+                    }[regime],
                 }
         except Exception:
             pass
