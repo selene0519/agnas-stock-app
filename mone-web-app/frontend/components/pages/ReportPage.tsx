@@ -284,15 +284,20 @@ export default function ReportPage() {
   const intraday = tab === "intraday";
 
   const holdingItems = Array.isArray(holdings.items) ? holdings.items : [];
-  const holdingValue = holdingItems.reduce((s: number, i: any) => s + (toNumber(i.valuation) || 0), 0);
+  // v3 backend: marketValue (not valuation), avgPrice*quantity for cost
+  const holdingValue = holdingItems.reduce((s: number, i: any) => s + (toNumber(i.marketValue) || toNumber(i.valuation) || 0), 0);
   const holdingPnl   = holdingItems.reduce((s: number, i: any) => s + (toNumber(i.pnl) || 0), 0);
-  const holdingCost  = holdingItems.reduce((s: number, i: any) => s + (toNumber(i.cost) || 0), 0);
+  const holdingCost  = holdingItems.reduce((s: number, i: any) => {
+    const avg = toNumber(i.avgPrice) || 0;
+    const qty = toNumber(i.quantity) || 0;
+    return s + (avg * qty) || (toNumber(i.cost) || 0);
+  }, 0);
   const holdingDayPnl = holdingItems.reduce((s: number, i: any) => {
     const cur = toNumber(i.currentPrice), prev = toNumber(i.prevClose), qty = toNumber(i.quantity);
     return cur && prev && qty ? s + (cur - prev) * qty : s;
   }, 0);
   const holdingPnlPct    = holdingCost > 0 ? (holdingPnl / holdingCost) * 100 : 0;
-  const holdingDayPnlPct = holdingValue - holdingDayPnl > 0 ? (holdingDayPnl / (holdingValue - holdingDayPnl)) * 100 : 0;
+  const holdingDayPnlPct = holdingValue > 0 ? (holdingDayPnl / (holdingValue - holdingDayPnl || holdingValue)) * 100 : 0;
 
   // 당일 체결 기준 평균 수익률 (합계 아닌 평균)
   const todayExecuted = todayItems.filter((i) => !String(i.executionStatus || i.result || "").includes("not_executed"));
