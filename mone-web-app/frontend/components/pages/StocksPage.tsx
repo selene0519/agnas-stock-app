@@ -327,14 +327,17 @@ export default function StocksPage() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     let active = true;
     setLoading(true);
     setLoadError("");
     mone
-      .recommendations({ market, mode, horizon, limit: RECOMMENDATION_LIMIT, watchOnly })
+      .recommendations({ market, mode, horizon, limit: RECOMMENDATION_LIMIT, watchOnly }, controller.signal)
       .then((data) => {
         if (!active) return;
         if (data?.status === "ERROR") {
+          // 취소된 요청의 에러는 무시
+          if (controller.signal.aborted) return;
           setItems([]);
           setLoadError(data.error || "추천 후보를 불러오지 못했습니다.");
           return;
@@ -352,6 +355,7 @@ export default function StocksPage() {
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
+      controller.abort();
     };
   }, [market, mode, horizon, watchOnly, watchlist.length, refreshVersion]);
 
@@ -941,7 +945,7 @@ export default function StocksPage() {
         </div>
       )}
 
-      {visible.length === 0 && !loading && (
+      {visible.length === 0 && !loading && !loadError && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center">
           <p className="text-slate-400">현재 조건에 맞는 후보가 없습니다.</p>
           <div className="mt-3 space-y-1 text-xs text-slate-600">
