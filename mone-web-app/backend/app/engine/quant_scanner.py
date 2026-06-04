@@ -222,14 +222,52 @@ def indicators(rows: list[dict[str, Any]]) -> dict[str, float | None]:
         if past_widths and bb_width <= min(past_widths) * 1.15:
             bb_squeeze = True
 
+    ma5      = _ma(close, 5)
+    ma5_prev = sum(close[-6:-1]) / 5  if len(close) >= 6  else None
+    ma60_prev = sum(close[-61:-1]) / 60 if len(close) >= 61 else None
+    atr14    = _atr(high, low, close)
+
+    # 골든크로스/데드크로스: 오늘 ma5 vs ma20 / 어제 ma5_prev vs ma20_prev
+    golden_cross = bool(
+        ma5 is not None and ma20 is not None and
+        ma5_prev is not None and ma20_prev is not None and
+        ma5 > ma20 and ma5_prev <= ma20_prev
+    )
+    death_cross = bool(
+        ma5 is not None and ma20 is not None and
+        ma5_prev is not None and ma20_prev is not None and
+        ma5 < ma20 and ma5_prev >= ma20_prev
+    )
+    mid_golden_cross = bool(
+        ma20 is not None and ma60 is not None and
+        ma20_prev is not None and ma60_prev is not None and
+        ma20 > ma60 and ma20_prev <= ma60_prev
+    )
+    mid_death_cross = bool(
+        ma20 is not None and ma60 is not None and
+        ma20_prev is not None and ma60_prev is not None and
+        ma20 < ma60 and ma20_prev >= ma60_prev
+    )
+
+    # 트레일링 스탑: 20일 최고가 − ATR×2
+    recent_high20 = max(high[-20:]) if len(high) >= 20 else (max(high) if high else None)
+    trailing_stop = None
+    trailing_stop_pct = None
+    if recent_high20 and atr14 and latest:
+        trailing_stop = recent_high20 - atr14 * 2
+        trailing_stop_pct = (latest - trailing_stop) / latest * 100 if trailing_stop > 0 else None
+
     return {
         "latest": latest,
-        "ma5": _ma(close, 5),
+        "ma5": ma5,
         "ma20": ma20,
         "ma60": ma60,
         "ma120": _ma(close, 120),
+        "ma5Prev": ma5_prev,
+        "ma20Prev": ma20_prev,
+        "ma60Prev": ma60_prev,
         "rsi14": _rsi(close),
-        "atr14": _atr(high, low, close),
+        "atr14": atr14,
         "mdd20": _mdd(close),
         "volumeValue": (latest * volume[-1]) if latest is not None and volume else None,
         "volumeRatio20": (volume[-1] / volume_ma20) if volume and volume_ma20 else None,
@@ -239,14 +277,21 @@ def indicators(rows: list[dict[str, Any]]) -> dict[str, float | None]:
         "recentMomentum5": _momentum(close, 5),
         "recentMomentum20": _momentum(close, 20),
         "high52w": high52w,
+        "recentHigh20": recent_high20,
         "distanceTo52wHigh": ((latest - high52w) / high52w * 100) if latest is not None and high52w else None,
         "bbWidth20": bb_width,
         "bbPercentB": bb_percent_b,
         "bbSqueeze": bb_squeeze,
         "consecutiveUpDays": float(_consecutive_up(close)),
         "gapUpPct": gap_up_pct,
-        # ATR 기반 손절가 계산용
-        "atr14Pct": (_atr(high, low, close) / latest * 100) if latest and _atr(high, low, close) else None,
+        "atr14Pct": (atr14 / latest * 100) if latest and atr14 else None,
+        # v10.3 크로스 + 트레일링 스탑
+        "goldenCross": golden_cross,
+        "deathCross": death_cross,
+        "midGoldenCross": mid_golden_cross,
+        "midDeathCross": mid_death_cross,
+        "trailingStop": trailing_stop,
+        "trailingStopPct": trailing_stop_pct,
     }
 
 
@@ -727,6 +772,12 @@ TAG_LABELS = {
     "STABLE_LOW_RISK": "안정형",
     "CAUTION": "주의",
     "EV_NEGATIVE": "EV음수",
+    # v10.3 신규 크로스 + 트레일링 스탑
+    "GOLDEN_CROSS": "골든크로스",           # MA5 > MA20 단기 골든크로스
+    "DEATH_CROSS": "데드크로스",            # MA5 < MA20 단기 데드크로스 (주의)
+    "MID_GOLDEN_CROSS": "중기 골든크로스",  # MA20 > MA60 중기 골든크로스
+    "MID_DEATH_CROSS": "중기 데드크로스",   # MA20 < MA60 중기 데드크로스 (주의)
+    "TRAILING_STOP_ALERT": "트레일링 손절", # 20일 고점 ATR×2 이탈 근접
 }
 
 
@@ -897,11 +948,32 @@ def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str]
     consecutive_up = ind.get("consecutiveUpDays")
     gap_up_pct = ind.get("gapUpPct")
     distance_52w = ind.get("distanceTo52wHigh")
-
     bb_squeeze = ind.get("bbSqueeze")
+    # v10.3 크로스 + 트레일링 스탑 시그널
+    golden_cross     = bool(ind.get("goldenCross", False))
+    death_cross      = bool(ind.get("deathCross", False))
+    mid_golden_cross = bool(ind.get("midGoldenCross", False))
+    mid_death_cross  = bool(ind.get("midDeathCross", False))
+    trailing_stop_pct = ind.get("trailingStopPct")
 
     if status in {"PRICE_PENDING", "DATA_PENDING"}:
         tags.append("CAUTION")
+
+    # ── 골든크로스 (MA5 > MA20 교차)
+    if golden_cross and (rsi is None or rsi < 75):
+        tags.append("GOLDEN_CROSS")
+    # ── 중기 골든크로스 (MA20 > MA60 교차)
+    if mid_golden_cross and not death_cross:
+        tags.append("MID_GOLDEN_CROSS")
+    # ── 데드크로스 (MA5 < MA20 교차, 하락 전환)
+    if death_cross:
+        tags.append("DEATH_CROSS")
+    # ── 중기 데드크로스 (MA20 < MA60 교차)
+    if mid_death_cross:
+        tags.append("MID_DEATH_CROSS")
+    # ── 트레일링 스탑 근접 경보 (5% 이내)
+    if trailing_stop_pct is not None and 0 < trailing_stop_pct <= 5.0:
+        tags.append("TRAILING_STOP_ALERT")
 
     # ── 52주 신고가 돌파 (실제 신고가 이상 + 거래량)
     if distance_52w is not None and distance_52w >= 0 and volume_ratio is not None and volume_ratio >= 1.5:
@@ -934,6 +1006,8 @@ def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str]
         or (bb_percent_b is not None and bb_percent_b > 1)
         or (gap_up_pct is not None and gap_up_pct >= 15)
         or (consecutive_up is not None and consecutive_up >= 5 and volume_ratio is not None and volume_ratio < 0.7)
+        or death_cross      # 데드크로스 → 주의
+        or mid_death_cross  # 중기 데드크로스 → 주의
     ):
         tags.append("CAUTION")
 
@@ -1445,5 +1519,17 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         _ps, _pr = get_pullback_state_from_ohlcv(_ohlcv, _ind2, _entry_v, _is_leader)  # type: ignore[name-defined]
         out["pullbackState"] = _ps
         out["pullbackReason"] = _pr
+
+    # ── v10.3 크로스 + 트레일링 스탑 (모든 종목)
+    _ind3 = result.get("indicators", {})
+    out["goldenCross"]    = bool(_ind3.get("goldenCross", False))
+    out["deathCross"]     = bool(_ind3.get("deathCross", False))
+    out["midGoldenCross"] = bool(_ind3.get("midGoldenCross", False))
+    out["midDeathCross"]  = bool(_ind3.get("midDeathCross", False))
+    _ts = _ind3.get("trailingStop")
+    _tsp = _ind3.get("trailingStopPct")
+    out["trailingStop"]    = round(_ts, 2)  if _ts  is not None else None
+    out["trailingStopPct"] = round(_tsp, 2) if _tsp is not None else None
+    out["recentHigh20"]    = _ind3.get("recentHigh20")
 
     return out
