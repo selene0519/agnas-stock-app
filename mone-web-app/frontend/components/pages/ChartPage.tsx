@@ -1213,18 +1213,25 @@ export default function ChartPage() {
                   )}
                   {!company.hasDartData && <div className="mt-2 text-[10px] text-slate-600">DART 재무 데이터 수집 대기 (매주 월요일 자동 갱신)</div>}
                 </>
+              ) : loading ? (
+                <div className="text-sm text-slate-500">불러오는 중...</div>
               ) : (
-                <div className="text-sm text-slate-500">기업분석 데이터를 불러오는 중...</div>
+                <div className="text-sm text-slate-500">
+                  기업분석 데이터 없음 —{" "}
+                  {loadState.companyStatus === "TIMEOUT"
+                    ? "조회 시간 초과. 재조회 버튼을 눌러주세요."
+                    : "DART / Finnhub 수집 후 자동으로 연결됩니다."}
+                </div>
               )}
             </Panel>
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Panel title="관련 뉴스">
-              {news.length === 0 ? <Empty text="연결된 뉴스가 없습니다." /> : news.map((item, i) => <Related key={`news-${i}`} item={item} />)}
+              {loading ? <Empty text="불러오는 중..." /> : news.length === 0 ? <Empty text="연결된 뉴스가 없습니다." /> : news.map((item, i) => <Related key={`news-${i}`} item={item} />)}
             </Panel>
             <Panel title="관련 공시·리서치">
-              {disclosures.length === 0 ? <Empty text="연결된 공시/리서치 원본이 없습니다." /> : disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} />)}
+              {loading ? <Empty text="불러오는 중..." /> : disclosures.length === 0 ? <Empty text="연결된 공시/리서치 원본이 없습니다." /> : disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} />)}
             </Panel>
           </div>
         </div>
