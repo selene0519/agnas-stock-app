@@ -1016,24 +1016,85 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         </div>
       </div>
 
-      {/* 마켓 레짐 배지 */}
+      {/* 마켓 레짐 배너 */}
       {marketRegime && (
-        <div className={`flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-3 text-sm ${
-          marketRegime.regime === "BULL" ? "border-emerald-800/60 bg-emerald-950/20 text-emerald-300"
-          : marketRegime.regime === "BEAR" ? "border-red-800/60 bg-red-950/20 text-red-300"
-          : "border-slate-700 bg-slate-900/40 text-slate-400"}`}>
-          <span className="font-bold">
-            {marketRegime.regime === "BULL" ? "📈" : marketRegime.regime === "BEAR" ? "📉" : "➡️"}{" "}
-            {marketRegime.label}
-          </span>
-          <span className="text-xs opacity-70">{marketRegime.description}</span>
-          <span className={`ml-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-            marketRegime.regime === "BULL" ? "bg-emerald-900/50 text-emerald-200"
-            : marketRegime.regime === "BEAR" ? "bg-red-900/50 text-red-200"
-            : "bg-slate-800 text-slate-300"}`}>
-            {getRegimeStance(marketRegime.regime, selectedMarket)}
-          </span>
-          {marketRegime.regime === "BEAR" && <span className="ml-auto rounded bg-red-900/60 px-2 py-0.5 text-xs text-red-200">보수형 우선 권장</span>}
+        <div className={`relative overflow-hidden rounded-2xl border-l-4 px-5 py-4 ${
+          marketRegime.regime === "BULL"
+            ? "border-l-emerald-500 border border-emerald-800/40 bg-emerald-950/30"
+            : marketRegime.regime === "BEAR"
+            ? "border-l-red-500 border border-red-800/40 bg-red-950/30"
+            : "border-l-slate-500 border border-slate-700 bg-slate-900/50"}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            {/* 레짐 타이틀 + 수치 */}
+            <div className="flex items-center gap-3">
+              <span className={`text-3xl font-black leading-none ${
+                marketRegime.regime === "BULL" ? "text-emerald-400"
+                : marketRegime.regime === "BEAR" ? "text-red-400"
+                : "text-slate-400"}`}>
+                {marketRegime.regime === "BULL" ? "↑" : marketRegime.regime === "BEAR" ? "↓" : "→"}
+              </span>
+              <div>
+                <div className={`text-base font-bold ${
+                  marketRegime.regime === "BULL" ? "text-emerald-200"
+                  : marketRegime.regime === "BEAR" ? "text-red-200"
+                  : "text-slate-200"}`}>
+                  {marketRegime.label}
+                </div>
+                <div className="mt-0.5 text-xs text-slate-400">{marketRegime.description}</div>
+              </div>
+            </div>
+            {/* MA20/MA60 수치 */}
+            <div className="flex flex-wrap items-center gap-3">
+              {marketRegime.current != null && (
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500">{marketRegime.benchmark || "KOSPI"} 현재가</div>
+                  <div className="font-mono text-sm font-bold text-slate-100">{Number(marketRegime.current).toLocaleString("ko-KR")}</div>
+                </div>
+              )}
+              {marketRegime.ma20 != null && (
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500">MA20</div>
+                  <div className={`font-mono text-sm font-bold ${(marketRegime.distanceMa20Pct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                    {Number(marketRegime.ma20).toLocaleString("ko-KR")}
+                    {marketRegime.distanceMa20Pct != null && (
+                      <span className="ml-1 text-[11px]">({marketRegime.distanceMa20Pct >= 0 ? "+" : ""}{Number(marketRegime.distanceMa20Pct).toFixed(1)}%)</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {marketRegime.ma60 != null && (
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500">MA60</div>
+                  <div className="font-mono text-sm text-slate-300">{Number(marketRegime.ma60).toLocaleString("ko-KR")}</div>
+                </div>
+              )}
+            </div>
+          </div>
+          {/* 전략 권고 바 */}
+          <div className={`mt-3 flex flex-wrap items-center gap-2 border-t pt-3 ${
+            marketRegime.regime === "BULL" ? "border-emerald-800/30"
+            : marketRegime.regime === "BEAR" ? "border-red-800/30"
+            : "border-slate-700/50"}`}>
+            <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+              marketRegime.regime === "BULL" ? "bg-emerald-900/60 text-emerald-200"
+              : marketRegime.regime === "BEAR" ? "bg-red-900/60 text-red-200"
+              : "bg-slate-800 text-slate-300"}`}>
+              {getRegimeStance(marketRegime.regime, selectedMarket)}
+            </span>
+            {marketRegime.regime === "BEAR" && (
+              <span className="rounded-full bg-red-900/50 px-3 py-1 text-[11px] font-semibold text-red-200">
+                공격형 진입 보류 권장
+              </span>
+            )}
+            {marketRegime.regime === "BULL" && (
+              <span className="rounded-full bg-emerald-900/40 px-3 py-1 text-[11px] text-emerald-300">
+                균형·공격형 전략 정상 작동 중
+              </span>
+            )}
+            <span className="ml-auto text-[10px] text-slate-600">
+              20일선 기준 · 매일 갱신
+            </span>
+          </div>
         </div>
       )}
 
