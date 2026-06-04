@@ -100,7 +100,10 @@ export default function TopHoldingTicker() {
 
       <div
         className="relative min-w-0 flex-1 overflow-hidden"
-        style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}
+        style={{
+          maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+          WebkitMaskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+        }}
       >
         {error ? (
           <div className="text-xs text-red-300">티커 데이터 연결 확인 필요</div>
