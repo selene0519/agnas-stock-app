@@ -11,7 +11,7 @@
       "status": "NORMAL",
       "version": "v3.6.1-operational-stable",
       "market": "kr",
-      "updatedAt": "2026-06-04 22:18:27 KST",
+      "updatedAt": "2026-06-04 23:17:48 KST",
       "readinessScore": 90,
       "readinessLabel": "운영 가능",
       "warnings": [
@@ -52,42 +52,42 @@
           "exists": true,
           "status": "OK",
           "ageHours": 0.08,
-          "updatedAt": "2026-06-04 22:20:37"
+          "updatedAt": "2026-06-04 23:19:56"
         },
         {
           "path": "reports/mone_v36_final_trade_validation_kr_balanced_swing.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.08,
-          "updatedAt": "2026-06-04 22:20:47"
+          "updatedAt": "2026-06-04 23:20:05"
         },
         {
           "path": "reports/mone_v36_final_prediction_validation_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.1,
-          "updatedAt": "2026-06-04 22:19:12"
+          "updatedAt": "2026-06-04 23:18:33"
         },
         {
           "path": "reports/mone_v36_final_macro_events_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.11,
-          "updatedAt": "2026-06-04 22:19:06"
+          "updatedAt": "2026-06-04 23:18:28"
         },
         {
           "path": "reports/mone_v36_final_data_center_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.11,
-          "updatedAt": "2026-06-04 22:19:06"
+          "updatedAt": "2026-06-04 23:18:28"
         },
         {
           "path": "predictions.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.59,
-          "updatedAt": "2026-06-04 21:50:23"
+          "ageHours": 0.57,
+          "updatedAt": "2026-06-04 22:50:27"
         }
       ],
       "summary": [
@@ -108,7 +108,7 @@
         },
         {
           "label": "마지막 업데이트",
-          "value": "2026-06-04 22:18:27 KST",
+          "value": "2026-06-04 23:17:48 KST",
           "note": "reports/data 기준"
         },
         {
@@ -140,8 +140,8 @@
             "status": "OK",
             "files": 4,
             "csvFiles": 4,
-            "rows": 1920,
-            "latestUpdatedAt": "2026-06-04 21:50:55",
+            "rows": 1922,
+            "latestUpdatedAt": "2026-06-04 22:50:59",
             "target": "차트·기술분석 > 차트 보기",
             "examples": [
               "data/market/benchmark_daily.csv",
@@ -158,7 +158,7 @@
             "files": 49,
             "csvFiles": 49,
             "rows": 91,
-            "latestUpdatedAt": "2026-06-04 22:15:51",
+            "latestUpdatedAt": "2026-06-04 23:15:55",
             "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
             "examples": [
               "reports/v92_flow_cards_us.csv",
@@ -176,7 +176,7 @@
             "files": 5,
             "csvFiles": 5,
             "rows": 232,
-            "latestUpdatedAt": "2026-06-04 22:18:27",
+            "latestUpdatedAt": "2026-06-04 23:17:48",
             "target": "장중 체크 / 오늘 매수 검토",
             "examples": [
               "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -194,7 +194,7 @@
             "files": 3,
             "csvFiles": 3,
             "rows": 197,
-            "latestUpdatedAt": "2026-06-04 22:22:00",
+            "latestUpdatedAt": "2026-06-04 23:21:18",
             "target": "뉴스·기업분석 > 공시",
             "examples": [
               "data/disclosures/disclosures_us.csv",
@@ -250,7 +250,7 @@
       "status": "NORMAL",
       "version": "v3.6.1-operational-stable",
       "market": "us",
-      "updatedAt": "2026-06-04 22:18:27 KST",
+      "updatedAt": "2026-06-04 23:17:48 KST",
       "readinessScore": 90,
       "readinessLabel": "운영 가능",
       "warnings": [
@@ -273,10 +273,10 @@
       "disclosureData": "OK",
       "reportData": "OK",
       "premarketData": "OK",
-      "intradayData": "PARTIAL",
+      "intradayData": "OK",
       "closingData": "OK",
-      "activeReportPhase": "us_premarket",
-      "activeReportLabel": "미장 전 · 오전 업데이트 기준",
+      "activeReportPhase": "us_intraday",
+      "activeReportLabel": "미장 장중 · 현재가 기준",
       "activeReportMissingReason": "",
       "companyData": "PARTIAL",
       "companyQuality": {
@@ -291,42 +291,42 @@
           "exists": true,
           "status": "OK",
           "ageHours": 0.03,
-          "updatedAt": "2026-06-04 22:24:06"
+          "updatedAt": "2026-06-04 23:23:22"
         },
         {
           "path": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.03,
-          "updatedAt": "2026-06-04 22:24:14"
+          "updatedAt": "2026-06-04 23:23:31"
         },
         {
           "path": "reports/mone_v36_final_prediction_validation_us.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.05,
-          "updatedAt": "2026-06-04 22:22:39"
+          "ageHours": 0.06,
+          "updatedAt": "2026-06-04 23:21:56"
         },
         {
           "path": "reports/mone_v36_final_macro_events_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.06,
-          "updatedAt": "2026-06-04 22:22:34"
+          "updatedAt": "2026-06-04 23:21:51"
         },
         {
           "path": "reports/mone_v36_final_data_center_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.06,
-          "updatedAt": "2026-06-04 22:22:34"
+          "updatedAt": "2026-06-04 23:21:51"
         },
         {
           "path": "predictions.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.59,
-          "updatedAt": "2026-06-04 21:50:23"
+          "ageHours": 0.58,
+          "updatedAt": "2026-06-04 22:50:27"
         }
       ],
       "summary": [
@@ -347,7 +347,7 @@
         },
         {
           "label": "마지막 업데이트",
-          "value": "2026-06-04 22:18:27 KST",
+          "value": "2026-06-04 23:17:48 KST",
           "note": "reports/data 기준"
         },
         {
@@ -363,7 +363,7 @@
         {
           "label": "리포트 데이터",
           "value": "OK",
-          "note": "active=us_premarket · pre=OK · intra=PARTIAL · close=OK"
+          "note": "active=us_intraday · pre=OK · intra=OK · close=OK"
         },
         {
           "label": "기업분석 데이터",
@@ -379,8 +379,8 @@
             "status": "OK",
             "files": 4,
             "csvFiles": 4,
-            "rows": 1920,
-            "latestUpdatedAt": "2026-06-04 21:50:55",
+            "rows": 1922,
+            "latestUpdatedAt": "2026-06-04 22:50:59",
             "target": "차트·기술분석 > 차트 보기",
             "examples": [
               "data/market/benchmark_daily.csv",
@@ -397,7 +397,7 @@
             "files": 49,
             "csvFiles": 49,
             "rows": 91,
-            "latestUpdatedAt": "2026-06-04 22:15:51",
+            "latestUpdatedAt": "2026-06-04 23:15:55",
             "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
             "examples": [
               "reports/v92_flow_cards_us.csv",
@@ -415,7 +415,7 @@
             "files": 5,
             "csvFiles": 5,
             "rows": 232,
-            "latestUpdatedAt": "2026-06-04 22:18:27",
+            "latestUpdatedAt": "2026-06-04 23:17:48",
             "target": "장중 체크 / 오늘 매수 검토",
             "examples": [
               "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -433,7 +433,7 @@
             "files": 3,
             "csvFiles": 3,
             "rows": 197,
-            "latestUpdatedAt": "2026-06-04 22:22:00",
+            "latestUpdatedAt": "2026-06-04 23:21:18",
             "target": "뉴스·기업분석 > 공시",
             "examples": [
               "data/disclosures/disclosures_us.csv",
@@ -650,7 +650,7 @@
       "recommendations": 8,
       "universeCount": 8,
       "conditionalOrders": 8,
-      "filledCount": 1,
+      "filledCount": 2,
       "avgReturn": "체결 기준 산출됨",
       "recommendationReport": "reports/mone_v36_final_recommendations_us_balanced_short.csv",
       "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_balanced_short.csv",
@@ -663,7 +663,7 @@
       "recommendations": 5,
       "universeCount": 5,
       "conditionalOrders": 5,
-      "filledCount": 2,
+      "filledCount": 3,
       "avgReturn": "체결 기준 산출됨",
       "recommendationReport": "reports/mone_v36_final_recommendations_us_balanced_swing.csv",
       "tradeValidationReport": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
@@ -730,5 +730,5 @@
     "kr": 21,
     "us": 1
   },
-  "generatedAt": "2026-06-04 22:26:36"
+  "generatedAt": "2026-06-04 23:25:55"
 }
