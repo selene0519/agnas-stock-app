@@ -157,6 +157,8 @@ export const mone = {
     apiPost<ApiList>("/api/watchlist/set-group", body),
   correlationMatrix: (p?: { market?: Market; days?: number }) =>
     apiGet<ApiList>("/api/risk/correlation", p),
+  monteCarlo: (body: { currentPrice?: number; expectedReturn?: number; volatility?: number; days?: number; simulations?: number }) =>
+    apiPost<any>("/api/advanced/monte-carlo", body),
   benchmarkComparison: (p?: { market?: Market }) =>
     apiGet<ApiList>("/api/risk/benchmark", p),
   validationDashboard: (p?: { market?: Market }) =>
