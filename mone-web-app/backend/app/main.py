@@ -649,6 +649,15 @@ def api_ohlcv_core(
     normalized_market = _market(market)
     payload = data.chart_data(symbol, normalized_market)
     rows = payload.get("items") or payload.get("rows") or []
+    if not rows:
+        try:
+            backfill = quotes.backfill_daily_ohlcv(symbol, normalized_market, days=max(limit, 120))
+            if str(backfill.get("status", "")).upper() == "OK":
+                payload = data.chart_data(symbol, normalized_market)
+                rows = payload.get("items") or payload.get("rows") or []
+                payload["backfill"] = backfill
+        except Exception as exc:
+            payload["backfill"] = {"status": "ERROR", "error": str(exc)[:160]}
     payload["items"] = rows[-limit:] if len(rows) > limit else rows
     payload["count"] = len(payload["items"])
     return payload
@@ -1031,16 +1040,33 @@ def _install_mone_authoritative_holdings_clean_v3():
             _root() / "data" / "stockapp" / f"{market}_{symbol}_daily.csv",
             _root() / "reports" / f"{market}_{symbol}_daily.csv",
         ]
-        for path in paths:
-            closes = []
-            for row in _read_csv(path):
-                close = _num(_text(row, ["close", "Close", "종가"], ""), 0)
-                date = _text(row, ["date", "Date", "날짜"], "")
-                if close > 0:
-                    closes.append((date, close))
-            closes.sort(key=lambda item: item[0])
-            if len(closes) >= 2:
-                return {"prevClose": closes[-2][1], "prevCloseSource": "ohlcv_prev_close", "prevCloseDate": closes[-2][0]}
+        def _read_prev_close() -> dict:
+            for path in paths:
+                closes = []
+                for row in _read_csv(path):
+                    close = _num(_text(row, ["close", "Close", "종가"], ""), 0)
+                    date = _text(row, ["date", "Date", "날짜"], "")
+                    if close > 0:
+                        closes.append((date, close))
+                closes.sort(key=lambda item: item[0])
+                if len(closes) >= 2:
+                    return {"prevClose": closes[-2][1], "prevCloseSource": "ohlcv_prev_close", "prevCloseDate": closes[-2][0]}
+            return {}
+
+        found = _read_prev_close()
+        if found:
+            return found
+
+        try:
+            backfill = quotes.backfill_daily_ohlcv(symbol, market, days=120)
+            if str(backfill.get("status", "")).upper() == "OK":
+                found = _read_prev_close()
+                if found:
+                    found["prevCloseSource"] = "kis_ohlcv_backfill"
+                    found["ohlcvBackfill"] = backfill
+                    return found
+        except Exception:
+            pass
         return {}
 
     def _read_authoritative_holdings(market: str) -> list[dict]:
@@ -1591,12 +1617,12 @@ def _install_mone_quote_refresh_routes_v1():
 
     def _targets(market: str) -> list[dict]:
         paths = [
-            stockapp / f"price_collection_universe_{market}.csv",
-            stockapp / f"kis_collection_targets_{market}.csv",
             root / f"holdings_{market}.csv",
             root / "data" / f"holdings_{market}.csv",
             root / f"watchlist_{market}.csv",
             root / "data" / f"watchlist_{market}.csv",
+            stockapp / f"kis_collection_targets_{market}.csv",
+            stockapp / f"price_collection_universe_{market}.csv",
         ]
         keyed = {}
         for path in paths:

@@ -13,7 +13,7 @@ export function kstNowParts(now = new Date()) {
     hour12: false,
   }).formatToParts(now);
   const get = (type: string) => Number(parts.find((part) => part.type === type)?.value || 0);
-  return { hour: get("hour"), minute: get("minute") };
+  return { hour: get("hour") % 24, minute: get("minute") };
 }
 
 export function getDefaultMarketBySession(now = new Date()): SessionMarket {
