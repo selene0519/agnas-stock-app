@@ -246,7 +246,9 @@ function RsiChart({ rows }: { rows: any[] }) {
   const chartRef = useRef<any>(null);
 
   const rsiData = useMemo(() => {
-    const closes = rows.map(closeOf).filter((v) => v > 0);
+    // close > 0 인 행만 추려 closes와 날짜가 1:1로 대응되게 함
+    const validRows = rows.filter((r) => closeOf(r) > 0);
+    const closes = validRows.map(closeOf);
     if (closes.length < 16) return [];
     const period = 14;
     const result: { time: string; value: number }[] = [];
@@ -258,7 +260,7 @@ function RsiChart({ rows }: { rows: any[] }) {
       }
       const rs = loss === 0 ? 100 : (gain / period) / (loss / period);
       const rsiVal = loss === 0 ? 100 : 100 - 100 / (1 + rs);
-      const row = rows[i]; const date = row?.date || row?.Date;
+      const date = validRows[i]?.date || validRows[i]?.Date;
       if (date) result.push({ time: date as string, value: Math.round(rsiVal * 10) / 10 });
     }
     return result;
@@ -434,7 +436,11 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
         if (toggles.volume) {
           const volSeries = chart.addHistogramSeries({ color: "#334155", priceFormat: { type: "volume" }, priceScaleId: "volume" });
           chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
-          volSeries.setData(candleData.map((d, i) => ({ time: d.time, value: Number((rows[i] || {}).volume || (rows[i] || {}).Volume || 0), color: d.close >= d.open ? "#16a34a55" : "#dc262655" })));
+          const rowByDate = new Map(rows.map((r) => [r.date || r.Date, r]));
+          volSeries.setData(candleData.map((d) => {
+            const r = rowByDate.get(d.time) || {};
+            return { time: d.time, value: Number(r.volume || r.Volume || 0), color: d.close >= d.open ? "#16a34a55" : "#dc262655" };
+          }));
         }
 
         const closes = candleData.map((d) => d.close);
