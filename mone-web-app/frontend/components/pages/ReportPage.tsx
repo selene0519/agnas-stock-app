@@ -242,13 +242,22 @@ export default function ReportPage() {
                       <div className="font-mono text-xs text-slate-500">{item.symbol || "-"} · {(item.market || market).toUpperCase()}</div>
                     </td>
                     {closing || virtualTab ? (
-                      <>
-                        <td className="px-4 py-4 font-mono text-slate-300">{item.date || item.tradeDate || "-"}</td>
-                        <td className="px-4 py-4 text-emerald-400">{item.executionStatus || item.executed || "조건 확인"}</td>
-                        <td className="px-4 py-4 text-slate-200">{item.outcomeResult || item.result || "검증 대기"}</td>
-                        <td className="px-4 py-4 font-mono text-emerald-400">{Number(item.realizedReturnPct || item.returnPct || 0).toFixed(2)}%</td>
-                        <td className="px-4 py-4 text-xs text-slate-500">{item.sourceFile || item.source || "-"}</td>
-                      </>
+                      (() => {
+                        const execRaw = item.executionStatus || item.executed;
+                        const isExec = execRaw === "체결" || execRaw === "true" || execRaw === true || execRaw === "1";
+                        const execLabel = item.executionStatus || (isExec ? "체결" : execRaw === "false" || execRaw === false ? "미체결" : execRaw || "조건 확인");
+                        const retPct = Number(item.realizedReturnPct ?? item.returnPct ?? item.virtual_return_pct ?? 0);
+                        const retColor = retPct > 0 ? "text-emerald-400" : retPct < 0 ? "text-red-400" : "text-slate-400";
+                        return (
+                          <>
+                            <td className="px-4 py-4 font-mono text-slate-300">{item.date || item.tradeDate || "-"}</td>
+                            <td className={`px-4 py-4 font-medium ${isExec ? "text-emerald-400" : "text-slate-500"}`}>{execLabel}</td>
+                            <td className="px-4 py-4 text-slate-200">{item.outcomeResult || item.result || "검증 대기"}</td>
+                            <td className={`px-4 py-4 font-mono ${retColor}`}>{retPct !== 0 ? `${retPct >= 0 ? "+" : ""}${retPct.toFixed(2)}%` : "-"}</td>
+                            <td className="px-4 py-4 text-xs text-slate-500">{item.sourceFile || item.source || "-"}</td>
+                          </>
+                        );
+                      })()
                     ) : intraday ? (
                       <>
                         <td className="px-4 py-4 font-mono text-slate-100">{priceText(item, "current", "-")}</td>
