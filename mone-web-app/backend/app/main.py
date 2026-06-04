@@ -286,8 +286,50 @@ def api_holdings_delete(symbol: str, market: str = Query("kr", pattern="^(kr|us)
     return user_data.delete_holding(symbol, _market(market))
 
 @app.get("/api/news")
-def api_news(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return _ensure_status(data.news_rows(_market(market)))
+def api_news(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    watch_only: bool = Query(False),
+    watchOnly: bool | None = Query(None),
+) -> dict:
+    from pathlib import Path as _NP
+    import csv as _NC
+
+    mk = _market(market)
+    result = _ensure_status(data.news_rows(mk))
+    effective_watch_only = watch_only if watchOnly is None else watchOnly
+    if not effective_watch_only:
+        return result
+
+    relevant: set[str] = set()
+    repo = _NP(__file__).resolve().parents[3]
+
+    def _read_symbols(path: _NP) -> None:
+        if not path.exists():
+            return
+        for enc in ("utf-8-sig", "utf-8", "cp949"):
+            try:
+                with path.open("r", encoding=enc, newline="") as f:
+                    for row in _NC.DictReader(f):
+                        sym = data.normalize_symbol(
+                            row.get("symbol") or row.get("종목코드") or row.get("ticker") or "", mk
+                        )
+                        if sym:
+                            relevant.add(sym)
+                return
+            except Exception:
+                continue
+
+    for fname in (f"holdings_{mk}.csv", f"data/holdings_{mk}.csv", f"watchlist_{mk}.csv", f"data/watchlist_{mk}.csv"):
+        _read_symbols(repo / fname)
+
+    if not relevant:
+        return {**result, "items": [], "count": 0, "watchOnly": True, "relevantSymbols": 0}
+
+    filtered = [
+        item for item in result.get("items", [])
+        if data.normalize_symbol(item.get("symbol", ""), mk) in relevant
+    ]
+    return {**result, "items": filtered, "count": len(filtered), "watchOnly": True, "relevantSymbols": len(relevant)}
 
 
 @app.get("/api/disclosures")

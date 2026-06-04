@@ -126,6 +126,113 @@ function coverageTone(count: number, required = 1) {
   return count >= required ? statusTone("ok") : statusTone("warn");
 }
 
+function dateOf(row: any) {
+  return row?.date || row?.Date || row?.tradeDate || row?.time || "";
+}
+
+function parseDate(value: any) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const normalized = /^\d{8}$/.test(raw) ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}` : raw;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function freshnessInfo(rows: any[]) {
+  const last = dateOf(rows.at(-1));
+  const date = parseDate(last);
+  if (!date) {
+    return { label: "최근일 없음", detail: "날짜 필드가 들어오면 자동 계산됩니다.", cls: statusTone("warn") };
+  }
+  const days = Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+  if (days <= 4) return { label: "신선", detail: `${last} 기준`, cls: statusTone("ok") };
+  if (days <= 10) return { label: "확인 필요", detail: `${days}일 전 OHLCV`, cls: statusTone("warn") };
+  return { label: "오래됨", detail: `${days}일 전 OHLCV`, cls: statusTone("bad") };
+}
+
+function firstTouch(rows: any[], price: number, fromIndex = 0) {
+  if (!price || price <= 0) return null;
+  for (let i = Math.max(0, fromIndex); i < rows.length; i += 1) {
+    if (lowOf(rows[i]) <= price && highOf(rows[i]) >= price) {
+      return { index: i, date: dateOf(rows[i]) || `${i + 1}번째 봉` };
+    }
+  }
+  return null;
+}
+
+function recommendationTouchReview(rows: any[], levels: any, currentPrice: number, market: Market) {
+  const entry = levelValue(levels, "entry");
+  const stop = levelValue(levels, "stop");
+  const target = levelValue(levels, "target");
+  if (!levels || !entry || rows.length < 5) {
+    return {
+      label: "검증 대기",
+      detail: "추천선과 OHLCV가 충분해지면 진입/목표/손절 터치를 자동 판정합니다.",
+      cls: statusTone("neutral"),
+      cards: [
+        { label: "진입 터치", value: "-", sub: "추천선 필요" },
+        { label: "목표 터치", value: "-", sub: "추천선 필요" },
+        { label: "손절 터치", value: "-", sub: "추천선 필요" },
+      ],
+    };
+  }
+  const reviewRows = rows.slice(-80);
+  const entryTouch = firstTouch(reviewRows, entry);
+  const fromEntry = entryTouch ? entryTouch.index : 0;
+  const targetTouch = firstTouch(reviewRows, target, fromEntry);
+  const stopTouch = firstTouch(reviewRows, stop, fromEntry);
+  const gapPct = currentPrice > 0 ? ((currentPrice - entry) / entry) * 100 : null;
+  const gapText = gapPct == null ? "현재가 없음" : `${gapPct >= 0 ? "+" : ""}${gapPct.toFixed(1)}%`;
+
+  if (!entryTouch) {
+    return {
+      label: "진입 대기",
+      detail: `진입가까지 ${gapText}. 실제 저가/고가가 닿으면 자동으로 진입 터치로 전환됩니다.`,
+      cls: statusTone("warn"),
+      cards: [
+        { label: "진입 터치", value: "대기", sub: money(entry, market) },
+        { label: "목표 터치", value: "-", sub: target ? money(target, market) : "목표 없음" },
+        { label: "손절 터치", value: "-", sub: stop ? money(stop, market) : "손절 없음" },
+      ],
+    };
+  }
+  const stoppedBeforeTarget = stopTouch && (!targetTouch || stopTouch.index <= targetTouch.index);
+  if (stoppedBeforeTarget) {
+    return {
+      label: "손절선 터치",
+      detail: `${entryTouch.date} 진입 후 ${stopTouch.date} 손절선에 닿았습니다.`,
+      cls: statusTone("bad"),
+      cards: [
+        { label: "진입 터치", value: entryTouch.date, sub: money(entry, market) },
+        { label: "목표 터치", value: targetTouch?.date || "미도달", sub: target ? money(target, market) : "목표 없음" },
+        { label: "손절 터치", value: stopTouch.date, sub: stop ? money(stop, market) : "손절 없음" },
+      ],
+    };
+  }
+  if (targetTouch) {
+    return {
+      label: "목표선 터치",
+      detail: `${entryTouch.date} 진입 후 ${targetTouch.date} 목표선에 닿았습니다.`,
+      cls: statusTone("ok"),
+      cards: [
+        { label: "진입 터치", value: entryTouch.date, sub: money(entry, market) },
+        { label: "목표 터치", value: targetTouch.date, sub: target ? money(target, market) : "목표 없음" },
+        { label: "손절 터치", value: stopTouch?.date || "미터치", sub: stop ? money(stop, market) : "손절 없음" },
+      ],
+    };
+  }
+  return {
+    label: "진입 후 진행",
+    detail: `${entryTouch.date} 진입선 터치 후 목표/손절 미확정입니다.`,
+    cls: statusTone("neutral"),
+    cards: [
+      { label: "진입 터치", value: entryTouch.date, sub: money(entry, market) },
+      { label: "목표 터치", value: "미도달", sub: target ? money(target, market) : "목표 없음" },
+      { label: "손절 터치", value: "미터치", sub: stop ? money(stop, market) : "손절 없음" },
+    ],
+  };
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise((resolve) => {
     const timer = window.setTimeout(() => resolve(fallback), ms);
@@ -785,8 +892,10 @@ export default function ChartPage() {
   })();
   const atrPlan = atrValue > 0 && currentPrice > 0 ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon) : null;
   const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
+  const freshness = freshnessInfo(rows);
+  const touchReview = recommendationTouchReview(rows, levels, currentPrice, selected?.market || market);
   const dataCards = [
-    { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: loadStatusText(loadState.ohlcvStatus), cls: loadState.ohlcvCount >= 20 ? statusTone("ok") : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
+    { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`, cls: loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
     { label: "추천선", value: levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
     { label: "뉴스", value: `${loadState.newsCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.newsCount) },
     { label: "공시", value: `${loadState.disclosureCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.disclosureCount) },
@@ -861,6 +970,25 @@ export default function ChartPage() {
                 일부 데이터 API 오류: {loadState.errors.slice(0, 2).join(" / ")}
               </div>
             )}
+            <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-200">추천선 터치 검증</div>
+                  <div className="mt-1 text-xs text-slate-500">{touchReview.detail}</div>
+                </div>
+                <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${touchReview.cls}`}>{touchReview.label}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {touchReview.cards.map((card) => (
+                  <div key={card.label} className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                    <div className="text-[10px] text-slate-500">{card.label}</div>
+                    <div className="mt-1 break-words font-mono text-sm font-bold text-slate-100">{card.value}</div>
+                    <div className="text-[10px] text-slate-600">{card.sub}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-[10px] text-slate-600">OHLCV 최근일: {freshness.detail}</div>
+            </div>
 
             {/* 기간 필터 + 인디케이터 토글 */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
