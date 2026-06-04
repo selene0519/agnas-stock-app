@@ -209,7 +209,7 @@ export const mone = {
     apiPost<ApiList>("/api/watchlist/auto-curate", body || {}),
   news: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/news", p),
-  disclosures: (p?: { market?: Market; limit?: number }) =>
+  disclosures: (p?: { market?: Market; limit?: number; watchOnly?: boolean }) =>
     apiGet<ApiList>("/api/disclosures", p),
   audit: () => apiGet<ApiList>("/api/data/audit"),
   github: () => apiGet<ApiList>("/api/health/github"),

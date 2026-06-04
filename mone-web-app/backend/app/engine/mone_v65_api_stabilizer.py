@@ -1115,9 +1115,10 @@ def _company_finalize(item: dict[str, Any], has_sources: bool) -> dict[str, Any]
         item["dataStatus"] = "NO_DATA"
         item["connectionStatus"] = "재무 원본 없음"
     elif matched_rows <= 0:
-        item["missingReason"] = item.get("_missingReason") or "재무 CSV에 종목코드가 없거나 종목명 매핑이 필요합니다."
+        # ETF·채권·소형주 등 재무 CSV 미수록 → 사용자에게 "재무 원본 없음"으로 표시
+        item["missingReason"] = item.get("_missingReason") or "재무 원본 없음 (ETF·채권·소형주 등은 재무 데이터가 수집되지 않을 수 있습니다.)"
         item["dataStatus"] = "NO_DATA"
-        item["connectionStatus"] = "컬럼 매핑 필요"
+        item["connectionStatus"] = "재무 원본 없음"
     elif item["missingFields"] or not has_values:
         item["missingReason"] = "재무 원본 행은 연결됐지만 일부 항목 값이 비어 있습니다."
         item["dataStatus"] = "PARTIAL"
