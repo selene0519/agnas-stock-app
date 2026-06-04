@@ -977,13 +977,18 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         });
     }
 
-    // 권한 요청 후 주기 체크
+    // 권한 요청 후 주기 체크 — cleanup은 useEffect 반환값으로 등록
+    let intervalId: number | null = null;
+
     Notification.requestPermission().then((perm) => {
       if (perm !== "granted") return;
       checkAndNotify();
-      const id = window.setInterval(checkAndNotify, 60_000);
-      return () => window.clearInterval(id);
+      intervalId = window.setInterval(checkAndNotify, 60_000) as unknown as number;
     });
+
+    return () => {
+      if (intervalId !== null) window.clearInterval(intervalId);
+    };
   }, [clientReady, allItems, selectedMarket]);
 
   // ── 오늘 진입 후보: EV 높은 순, 종목 중복 제거
@@ -1078,7 +1083,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             : "bg-slate-800 text-slate-300"}`}>
             {getRegimeStance(marketRegime.regime, selectedMarket)}
           </span>
-          {marketRegime.regime === "BEAR" && <span className="ml-auto rounded bg-red-900/60 px-2 py-0.5 text-xs text-red-200">공격형 비활성화</span>}
+          {marketRegime.regime === "BEAR" && <span className="ml-auto rounded bg-red-900/60 px-2 py-0.5 text-xs text-red-200">보수형 우선 권장</span>}
         </div>
       )}
 
