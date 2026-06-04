@@ -250,6 +250,7 @@ export default function ReportPage() {
   useEffect(() => {
     let active = true;
     setData({ status: "LOADING", items: [] });
+    setValDashboard(null); // 탭/마켓 변경 시 stale 데이터 방지
     const task =
       tab === "virtual" || tab === "closing" || tab === "validation"
         ? mone.backtestTrades({ market, mode, horizon, limit: 300 })
@@ -366,7 +367,7 @@ export default function ReportPage() {
               <Metric label="보유 평가금액" value={formatMoney(holdingValue, market)} />
               <Metric label="보유 평가손익" value={signedMoney(holdingPnl, market)} accent={holdingPnl >= 0} />
               <Metric label="보유 수익률" value={pctText(holdingPnlPct)} />
-              <Metric label="보유 당일손익" value={`${signedMoney(holdingDayPnl, market)}`} />
+              <Metric label="보유 당일손익" value={`${signedMoney(holdingDayPnl, market)} · ${pctText(holdingDayPnlPct)}`} />
             </div>
           </div>
 
