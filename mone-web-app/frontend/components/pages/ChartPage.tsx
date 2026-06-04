@@ -17,6 +17,18 @@ const PERIODS: { label: string; bars: number | null }[] = [
   { label: "전체", bars: null },
 ];
 
+type ChartLoadState = {
+  ohlcvStatus: string;
+  ohlcvCount: number;
+  recStatus: string;
+  recCount: number;
+  newsCount: number;
+  disclosureCount: number;
+  companyStatus: string;
+  errors: string[];
+  updatedAt: string;
+};
+
 function toSymbol(item: any, index = 0): MoneSymbol | null {
   const symbol = normalizeSymbol(item);
   if (!symbol) return null;
@@ -90,6 +102,28 @@ function relatedItems(items: any[], selected: MoneSymbol | null) {
     const text = [item.symbol, item.name, item.company, item.title, item.reportName, item.summary].filter(Boolean).join(" ").toLowerCase();
     return query.split(" ").some((p) => p && text.includes(p));
   }).slice(0, 4);
+}
+
+function loadStatusText(status: any) {
+  const s = String(status || "").toUpperCase();
+  if (s === "OK" || s === "NORMAL") return "정상";
+  if (s === "PARTIAL") return "부분";
+  if (s === "STALE") return "오래됨";
+  if (s === "ERROR") return "오류";
+  if (s === "TIMEOUT") return "시간초과";
+  if (s === "NO_DATA") return "없음";
+  return status ? String(status) : "확인 필요";
+}
+
+function statusTone(kind: "ok" | "warn" | "bad" | "neutral") {
+  if (kind === "ok") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  if (kind === "warn") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+  if (kind === "bad") return "border-red-500/30 bg-red-500/10 text-red-300";
+  return "border-slate-700 bg-slate-950 text-slate-300";
+}
+
+function coverageTone(count: number, required = 1) {
+  return count >= required ? statusTone("ok") : statusTone("warn");
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -577,6 +611,50 @@ function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative"|"ba
   };
 }
 
+function technicalStance(rows: any[], indicators: any, latestRsi: number | null, atrPlan: ReturnType<typeof calcAtrPlan>) {
+  if (rows.length < 20) {
+    return {
+      label: "판단 대기",
+      detail: "OHLCV 20일 이상이 필요합니다.",
+      cls: statusTone("neutral"),
+    };
+  }
+  const distance = Number(indicators.distanceToMa20);
+  const volumeRatio = Number(indicators.volumeRatio20);
+  const rr = atrPlan ? Number(atrPlan.rr1) : 0;
+  const rsiValue = latestRsi ?? Number.NaN;
+  const bullish = Number.isFinite(distance) && distance > 0 && rsiValue >= 45 && rsiValue <= 68;
+  const overheated = rsiValue >= 72 || (Number.isFinite(distance) && distance > 12);
+  const weak = Number.isFinite(distance) && distance < -5 && rsiValue < 45;
+
+  if (overheated) {
+    return {
+      label: "과열 주의",
+      detail: "추격 매수보다 눌림·분할 기준 확인이 우선입니다.",
+      cls: statusTone("warn"),
+    };
+  }
+  if (bullish && rr >= 1.8) {
+    return {
+      label: volumeRatio >= 1.2 ? "상승 우위" : "조건부 유효",
+      detail: volumeRatio >= 1.2 ? "추세·거래량·손익비가 같이 맞습니다." : "추세와 손익비는 양호하나 거래량 확인이 필요합니다.",
+      cls: statusTone("ok"),
+    };
+  }
+  if (weak) {
+    return {
+      label: "방어 우선",
+      detail: "MA20 하회와 약한 RSI 구간입니다.",
+      cls: statusTone("bad"),
+    };
+  }
+  return {
+    label: "중립 관찰",
+    detail: "진입선 터치, 거래량, 공시 이벤트를 같이 확인하세요.",
+    cls: statusTone("neutral"),
+  };
+}
+
 // ── 메인 ─────────────────────────────────────────────────────────────
 export default function ChartPage() {
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
@@ -593,6 +671,18 @@ export default function ChartPage() {
   const [atrHorizon, setAtrHorizon] = useState<"short"|"swing"|"mid">("swing");
   const [loading, setLoading] = useState(false);
   const [seedLoading, setSeedLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [loadState, setLoadState] = useState<ChartLoadState>({
+    ohlcvStatus: "IDLE",
+    ohlcvCount: 0,
+    recStatus: "IDLE",
+    recCount: 0,
+    newsCount: 0,
+    disclosureCount: 0,
+    companyStatus: "IDLE",
+    errors: [],
+    updatedAt: "",
+  });
 
   useEffect(() => {
     let active = true;
@@ -623,34 +713,59 @@ export default function ChartPage() {
 
   useEffect(() => {
     if (!selected) { setRows([]); setLevels(null); setNews([]); setDisclosures([]); setCompany(null); return; }
-    let active = true; setLoading(true);
+    let active = true;
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadState((prev) => ({ ...prev, errors: [], updatedAt: "" }));
     Promise.allSettled([
-      mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260 }),
-      mone.recommendations({ market: selected.market, mode: "balanced", horizon: "swing", limit: 300 }),
-      mone.news({ market: selected.market, limit: 200 }),
-      mone.disclosures({ market: selected.market, limit: 200 }),
-      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }), 6000, { status: "TIMEOUT", items: [] }),
+      mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260 }, controller.signal),
+      mone.recommendations({ market: selected.market, mode: "balanced", horizon: "swing", limit: 120 }, controller.signal),
+      mone.news({ market: selected.market, limit: 200 }, controller.signal),
+      mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal),
+      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 6000, { status: "TIMEOUT", items: [] }),
     ]).then((results) => {
       if (!active) return;
-      const [cd, rd, nd, dd, company_d] = results.map((r) => r.status === "fulfilled" ? r.value : { items: [] });
-      setRows(Array.isArray(cd.items) ? cd.items : []);
-      const matched = Array.isArray(rd.items) ? rd.items.find((item: any) => normalizeSymbol(item) === selected.symbol) : null;
+      const [cd, rd, nd, dd, company_d] = results.map((r) => r.status === "fulfilled" ? r.value : { items: [] }) as any[];
+      const chartRows = Array.isArray(cd.items) ? cd.items : [];
+      const recItems = Array.isArray(rd.items) ? rd.items : [];
+      const newsItems = Array.isArray(nd.items) ? nd.items : [];
+      const disclosureItems = Array.isArray(dd.items) ? dd.items : [];
+      const errors = [cd, rd, nd, dd, company_d]
+        .map((item: any) => item?.status === "ERROR" ? item.error || "API 오류" : "")
+        .filter(Boolean);
+      setRows(chartRows);
+      const matched = recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
       setLevels(matched || null);
-      setNews(relatedItems(Array.isArray(nd.items) ? nd.items : [], selected));
-      setDisclosures(relatedItems(Array.isArray(dd.items) ? dd.items : [], selected));
+      const relatedNews = relatedItems(newsItems, selected);
+      const relatedDisclosures = relatedItems(disclosureItems, selected);
+      setNews(relatedNews);
+      setDisclosures(relatedDisclosures);
       const cm = Array.isArray(company_d.items) ? company_d.items.find((item: any) => normalizeSymbol(item) === selected.symbol) || company_d.items[0] : null;
       setCompany(cm || null);
+      setLoadState({
+        ohlcvStatus: cd.status || (chartRows.length ? "OK" : "NO_DATA"),
+        ohlcvCount: chartRows.length,
+        recStatus: rd.status || (recItems.length ? "OK" : "NO_DATA"),
+        recCount: recItems.length,
+        newsCount: relatedNews.length,
+        disclosureCount: relatedDisclosures.length,
+        companyStatus: company_d.status || (cm ? (cm.dataStatus || "OK") : "NO_DATA"),
+        errors,
+        updatedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      });
     }).finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, [selected]);
+    return () => { active = false; controller.abort(); };
+  }, [selected, reloadKey]);
 
   // 지수 비교 데이터 (날짜 기반 join)
   useEffect(() => {
     if (!selected) { setIndexRows([]); return; }
+    const controller = new AbortController();
     const indexSym = selected.market === "us" ? "SPY" : "KOSPI";
-    mone.chartIndex({ indexSymbol: indexSym, market: selected.market as any, limit: 520 })
+    mone.chartIndex({ indexSymbol: indexSym, market: selected.market as any, limit: 520 }, controller.signal)
       .then((d) => setIndexRows(Array.isArray(d.items) ? d.items : []))
       .catch(() => setIndexRows([]));
+    return () => controller.abort();
   }, [selected?.symbol, selected?.market]);
 
   const filteredRows = period ? rows.slice(-period) : rows;
@@ -669,6 +784,14 @@ export default function ChartPage() {
     return trs.reduce((s, v) => s + v, 0) / trs.length;
   })();
   const atrPlan = atrValue > 0 && currentPrice > 0 ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon) : null;
+  const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
+  const dataCards = [
+    { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: loadStatusText(loadState.ohlcvStatus), cls: loadState.ohlcvCount >= 20 ? statusTone("ok") : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
+    { label: "추천선", value: levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
+    { label: "뉴스", value: `${loadState.newsCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.newsCount) },
+    { label: "공시", value: `${loadState.disclosureCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.disclosureCount) },
+    { label: "기업분석", value: company ? "연결됨" : "없음", sub: loadStatusText(loadState.companyStatus), cls: company ? statusTone("ok") : statusTone("warn") },
+  ];
 
   return (
     <div className="space-y-6 p-6">
@@ -702,6 +825,19 @@ export default function ChartPage() {
               <div>
                 <h2 className="text-xl font-bold text-slate-100">{selected.name}</h2>
                 <p className="font-mono text-sm text-slate-500">{selected.symbol} · {selected.market.toUpperCase()}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${stance.cls}`}>{stance.label}</span>
+                  <span className="text-xs text-slate-500">{stance.detail}</span>
+                  {loadState.updatedAt && <span className="text-[11px] text-slate-600">갱신 {loadState.updatedAt}</span>}
+                  <button
+                    onClick={() => setReloadKey((v) => v + 1)}
+                    disabled={loading}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+                    재조회
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-right sm:grid-cols-4">
                 <Info label="최근 종가" value={latest ? money(latest.close, selected.market) : "-"} />
@@ -710,6 +846,21 @@ export default function ChartPage() {
                 <Info label="MDD20" value={indicators.mdd20 ? `${Number(indicators.mdd20).toFixed(2)}%` : "데이터 부족"} />
               </div>
             </div>
+
+            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5">
+              {dataCards.map((card) => (
+                <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.cls}`}>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{card.label}</div>
+                  <div className="mt-1 font-mono text-sm font-bold">{card.value}</div>
+                  <div className="text-[10px] opacity-75">{card.sub}</div>
+                </div>
+              ))}
+            </div>
+            {loadState.errors.length > 0 && (
+              <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
+                일부 데이터 API 오류: {loadState.errors.slice(0, 2).join(" / ")}
+              </div>
+            )}
 
             {/* 기간 필터 + 인디케이터 토글 */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -738,8 +889,11 @@ export default function ChartPage() {
 
             {loading && <div className="py-20 text-center text-slate-500">차트 데이터를 불러오는 중...</div>}
             {!loading && rows.length === 0 && (
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-8 text-center text-amber-200">
-                OHLCV 데이터가 없습니다. GitHub Actions 실행 후 다시 확인하세요.
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-6 text-amber-100">
+                <div className="font-semibold">OHLCV 원본이 없어 차트를 그릴 수 없습니다.</div>
+                <div className="mt-1 text-sm text-amber-200/80">
+                  추천선·뉴스·기업분석은 별도 원본이므로 위 상태판에서 연결 여부를 확인하세요. 가격 수집은 GitHub Actions 또는 KIS/시세 수집 실행 후 복구됩니다.
+                </div>
               </div>
             )}
 

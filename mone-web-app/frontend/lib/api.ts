@@ -171,8 +171,8 @@ export const mone = {
     apiGet<ApiList>("/api/watchlist/scored", p),
   sectorsList: (p?: { market?: Market }) =>
     apiGet<ApiList>("/api/sectors", p),
-  disclosureCalendar: (p?: { market?: Market; days?: number }) =>
-    apiGet<ApiList>("/api/disclosure-calendar", p),
+  disclosureCalendar: (p?: { market?: Market; days?: number }, signal?: AbortSignal) =>
+    apiGet<ApiList>("/api/disclosure-calendar", p, signal),
   watchlistGroups: (p?: { market?: Market }) =>
     apiGet<ApiList>("/api/watchlist/groups", p),
   watchlistSetGroup: (body: { market?: string; symbol: string; group: string }) =>
@@ -207,10 +207,10 @@ export const mone = {
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/backtest/trades", p),
-  ohlcv: (p: { market?: Market | "auto"; symbol: string; limit?: number }) =>
-    apiGet<ApiList>("/api/ohlcv", p),
-  companyAnalysis: (p?: { market?: Market; limit?: number; q?: string }) =>
-    apiGet<ApiList>("/api/company-analysis", p),
+  ohlcv: (p: { market?: Market | "auto"; symbol: string; limit?: number }, signal?: AbortSignal) =>
+    apiGet<ApiList>("/api/ohlcv", p, signal),
+  companyAnalysis: (p?: { market?: Market; limit?: number; q?: string }, signal?: AbortSignal) =>
+    apiGet<ApiList>("/api/company-analysis", p, signal),
   predictions: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; strategy?: Mode | string; term?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/predictions/table", p),
   predictionAccuracy: (p?: { market?: Market | "all" }) =>
@@ -231,10 +231,10 @@ export const mone = {
     apiGet<ApiList>("/api/watchlist/auto-candidates", p),
   applyAutoWatchlist: (body?: { market?: Market; limitPerMarket?: number }) =>
     apiPost<ApiList>("/api/watchlist/auto-curate", body || {}),
-  news: (p?: { market?: Market; limit?: number }) =>
-    apiGet<ApiList>("/api/news", p),
-  disclosures: (p?: { market?: Market; limit?: number; watchOnly?: boolean }) =>
-    apiGet<ApiList>("/api/disclosures", p),
+  news: (p?: { market?: Market; limit?: number }, signal?: AbortSignal) =>
+    apiGet<ApiList>("/api/news", p, signal),
+  disclosures: (p?: { market?: Market; limit?: number; watchOnly?: boolean }, signal?: AbortSignal) =>
+    apiGet<ApiList>("/api/disclosures", p, signal),
   audit: () => apiGet<ApiList>("/api/data/audit"),
   github: () => apiGet<ApiList>("/api/health/github"),
 
@@ -262,10 +262,8 @@ export const mone = {
     apiGet<any>("/api/quotes/orderbook", p),
   investor: (p: { symbol: string; market: Market }) =>
     apiGet<any>("/api/quotes/investor", p),
-  chartIndex: (p: { indexSymbol: string; market: Market; limit?: number }) =>
-    apiGet<any>(`/api/chart/index/${p.indexSymbol}`, { market: p.market, limit: p.limit }),
+  chartIndex: (p: { indexSymbol: string; market: Market; limit?: number }, signal?: AbortSignal) =>
+    apiGet<any>(`/api/chart/index/${p.indexSymbol}`, { market: p.market, limit: p.limit }, signal),
 };
 
 export default mone;
-
-

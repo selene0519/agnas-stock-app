@@ -294,14 +294,16 @@ def api_news(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
 def api_disclosures(
     market: str = Query("kr", pattern="^(kr|us)$"),
     watch_only: bool = Query(True),
+    watchOnly: bool | None = Query(None),
 ) -> dict:
     from pathlib import Path as _DP
     import csv as _DC
 
     mk = _market(market)
     result = data.disclosure_rows(mk)
+    effective_watch_only = watch_only if watchOnly is None else watchOnly
 
-    if watch_only:
+    if effective_watch_only:
         # 보유종목 + 관심종목 심볼 수집
         relevant: set[str] = set()
         repo = _DP(__file__).resolve().parents[3]
