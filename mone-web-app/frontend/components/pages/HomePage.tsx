@@ -1044,18 +1044,18 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {(["auto", "kr", "us"] as MarketChoice[]).map((choice) => (
             <button key={choice} onClick={() => updateMarketChoice(choice)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${marketChoice === choice ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${marketChoice === choice ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
               {choice === "auto" ? "자동" : choice === "kr" ? "국장" : "미장"}
             </button>
           ))}
-          <button onClick={() => setShowJournal(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
+          <button onClick={() => setShowJournal(true)} className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
             일지
           </button>
-          <button onClick={load} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> 새로고침
+          <button onClick={load} title="새로고침" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800">
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
       </div>

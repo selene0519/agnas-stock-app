@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Menu, X } from "lucide-react";
 import Sidebar, { type PageId } from "../components/Sidebar";
 import TopHoldingTicker from "../components/TopHoldingTicker";
 import SessionSafetyBanner from "../components/SessionSafetyBanner";
@@ -33,6 +33,7 @@ export default function App() {
   const [notifications, setNotifications] = useState(initialNotifications);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [, setDataVersion] = useState(0);
 
   useEffect(() => setMounted(true), []);
@@ -87,11 +88,19 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
-      <Sidebar current={page} onChange={setPage} />
+      <Sidebar current={page} onChange={(id) => { setPage(id); setMobileNavOpen(false); }} mobileOpen={mobileNavOpen} onMobileToggle={() => setMobileNavOpen(v => !v)} />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900/60 px-4 backdrop-blur md:px-5">
-          <TopHoldingTicker />
-          <div className="ml-3 flex items-center gap-2">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900/60 px-3 backdrop-blur md:px-5">
+          <button
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 md:hidden"
+            onClick={() => setMobileNavOpen(v => !v)}
+          >
+            {mobileNavOpen ? <X size={15} /> : <Menu size={15} />}
+          </button>
+          <div className="min-w-0 flex-1">
+            <TopHoldingTicker />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <span className="hidden font-mono text-xs text-slate-500 md:block">{headerDate}</span>
             <span className="hidden text-slate-700 md:block">·</span>
             <span className="hidden text-xs text-slate-500 md:block">{mounted ? "실시간 동기화" : "방금 전"}</span>

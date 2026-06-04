@@ -43,6 +43,8 @@ const navItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
 interface Props {
   current: PageId;
   onChange: (id: PageId) => void;
+  mobileOpen?: boolean;
+  onMobileToggle?: () => void;
 }
 
 function BrandMark({ collapsed }: { collapsed: boolean }) {
@@ -65,9 +67,11 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-export default function Sidebar({ current, onChange }: Props) {
+export default function Sidebar({ current, onChange, mobileOpen: mobileOpenProp, onMobileToggle }: Props) {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpenInternal, setMobileOpenInternal] = useState(false);
+  const mobileOpen = mobileOpenProp ?? mobileOpenInternal;
+  const setMobileOpen = onMobileToggle ? () => onMobileToggle() : setMobileOpenInternal;
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
@@ -109,13 +113,6 @@ export default function Sidebar({ current, onChange }: Props) {
 
   return (
     <>
-      <button
-        className="fixed left-4 top-4 z-50 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-300 md:hidden"
-        onClick={() => setMobileOpen(!mobileOpen)}
-        title="메뉴"
-      >
-        {mobileOpen ? <X size={16} /> : <Menu size={16} />}
-      </button>
       <aside className={`hidden h-screen shrink-0 border-r border-slate-800 bg-slate-950/95 transition-all duration-300 md:block ${collapsed ? "w-16" : "w-60"}`}>
         <SidebarContent />
       </aside>
