@@ -60,6 +60,22 @@ function secFormExplain(form: string) {
   return "SEC 공시";
 }
 
+function tabLabel(tab: Tab) {
+  if (tab === "news") return "뉴스";
+  if (tab === "disclosures") return "공시";
+  if (tab === "calendar") return "공시 캘린더";
+  return "기업분석";
+}
+
+function emptyMessage(tab: Tab, data: any, query: string, watchOnly: boolean) {
+  if (data?.status === "ERROR") return `API 오류: ${data.error || "원인을 확인하세요."}`;
+  if (query.trim()) return "검색 조건과 일치하는 항목이 없습니다.";
+  if (tab === "news") return "뉴스 원본이 비어 있습니다. 수집 전에는 관련 뉴스 카드만 비어 있는 것이 정상입니다.";
+  if (tab === "disclosures" && watchOnly) return "보유·관심 종목에 연결된 공시가 없습니다. 전체 보기로 원본 존재 여부를 확인할 수 있습니다.";
+  if (tab === "disclosures") return "공시 원본이 비어 있습니다. DART/SEC 수집 후 다시 확인하세요.";
+  return "기업분석 원본이 비어 있습니다. 재무 원본 부족은 수집/API 영역이며, 화면은 누락 상태를 그대로 표시합니다.";
+}
+
 export default function NewsPage() {
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [tab, setTab] = useState<Tab>("company");
@@ -69,41 +85,47 @@ export default function NewsPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [watchOnly, setWatchOnly] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (tab === "calendar") {
+      const controller = new AbortController();
       setLoading(true);
-      mone.disclosureCalendar({ market, days: 30 })
+      mone.disclosureCalendar({ market, days: 30 }, controller.signal)
         .then((r) => setCalendarData(r))
         .catch(() => setCalendarData(null))
         .finally(() => setLoading(false));
+      return () => controller.abort();
     }
-  }, [tab, market]);
+  }, [tab, market, reloadKey]);
 
-  async function load() {
+  async function load(signal?: AbortSignal) {
     if (tab === "calendar") return;
     setLoading(true);
     try {
       const loader =
         tab === "news"
-          ? mone.news({ market, limit: 200 })
+          ? mone.news({ market, limit: 200 }, signal)
           : tab === "disclosures"
-            ? mone.disclosures({ market, limit: 200, watchOnly })
-            : mone.companyAnalysis({ market, limit: 500, q: query || undefined });
+            ? mone.disclosures({ market, limit: 200, watchOnly }, signal)
+            : mone.companyAnalysis({ market, limit: 240, q: query || undefined }, signal);
       const result = await loader;
+      if (signal?.aborted) return;
       setData(result);
       setSelectedIndex(0);
     } catch (error) {
       setData({ status: "ERROR", error: String(error), items: [] });
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }
 
   useEffect(() => {
-    load();
+    const controller = new AbortController();
+    load(controller.signal);
+    return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [market, tab, watchOnly]);
+  }, [market, tab, watchOnly, reloadKey]);
 
   const items = useMemo(() => {
     const source = Array.isArray(data.items) ? data.items : [];
@@ -118,6 +140,32 @@ export default function NewsPage() {
     );
   }, [data.items, query]);
   const selected = items[Math.min(selectedIndex, Math.max(items.length - 1, 0))];
+  const sourceItems = Array.isArray(data.items) ? data.items : [];
+  const sourceFiles = Array.isArray(data.sourceFiles) ? data.sourceFiles : [];
+  const sentimentCounts = useMemo(() => {
+    return sourceItems.reduce((acc: Record<string, number>, item: any) => {
+      const sentiment = newsSentiment(item)?.label || "중립";
+      acc[sentiment] = (acc[sentiment] || 0) + 1;
+      return acc;
+    }, {});
+  }, [sourceItems]);
+  const latestDate = useMemo(() => {
+    const values = sourceItems
+      .map((item: any) => item.publishedAt || item.disclosedAt || item.date)
+      .filter(Boolean)
+      .sort();
+    return values.at(-1) || "";
+  }, [sourceItems]);
+  const summaryCards = [
+    { label: "상태", value: statusLabel(data.status), sub: data.message || `${tabLabel(tab)} 데이터 연결`, tone: data.status === "ERROR" ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
+    { label: "표시", value: `${items.length}건`, sub: `원본 ${sourceItems.length}건`, tone: items.length > 0 ? "border-sky-500/30 bg-sky-500/10 text-sky-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300" },
+    tab === "company"
+      ? { label: "재무 커버리지", value: `정상 ${data.normalCount ?? 0}`, sub: `부분 ${data.partialCount ?? 0} · 없음 ${data.noDataCount ?? 0}`, tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" }
+      : tab === "news"
+        ? { label: "감성", value: `긍정 ${sentimentCounts["긍정"] || 0}`, sub: `부정 ${sentimentCounts["부정"] || 0} · 혼재 ${sentimentCounts["혼재"] || 0}`, tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" }
+        : { label: "필터", value: watchOnly ? "보유·관심" : "전체", sub: data.relevantSymbols != null ? `연결 심볼 ${data.relevantSymbols}개` : "원본 기준", tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" },
+    { label: "원본", value: sourceFiles.length ? `${sourceFiles.length}개` : "로컬/API", sub: latestDate ? `최근 ${dateText(latestDate)}` : "최근일 확인 필요", tone: "border-slate-700 bg-slate-950 text-slate-300" },
+  ];
 
   return (
     <div className="space-y-6 p-6">
@@ -126,7 +174,7 @@ export default function NewsPage() {
           <h1 className="text-2xl font-bold text-slate-100">뉴스·기업분석</h1>
           <p className="mt-1 text-sm text-slate-400">뉴스, 공시, 기업분석 데이터의 연결 상태와 누락 사유를 분리해서 확인합니다.</p>
         </div>
-        <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300">
+        <button onClick={() => setReloadKey((v) => v + 1)} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 disabled:opacity-50">
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           새로고침
         </button>
@@ -158,17 +206,29 @@ export default function NewsPage() {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && load()}
+          onKeyDown={(event) => event.key === "Enter" && setReloadKey((v) => v + 1)}
           placeholder="종목명, 코드, 키워드 검색"
           className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 pl-9 pr-3 text-sm text-slate-100 outline-none placeholder:text-slate-500"
         />
       </div>
 
+      {tab !== "calendar" && (
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {summaryCards.map((card) => (
+            <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.tone}`}>
+              <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{card.label}</div>
+              <div className="mt-1 font-mono text-sm font-bold">{card.value}</div>
+              <div className="line-clamp-1 text-[10px] opacity-75">{card.sub}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[420px_1fr]">
         <div className="space-y-2">
           {items.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center text-slate-500">
-              {loading ? "불러오는 중..." : "표시할 데이터가 없습니다."}
+              {loading ? "불러오는 중..." : emptyMessage(tab, data, query, watchOnly)}
             </div>
           )}
           {items.map((item: any, index: number) => (
