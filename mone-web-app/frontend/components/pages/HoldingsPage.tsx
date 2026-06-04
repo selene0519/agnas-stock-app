@@ -585,7 +585,11 @@ export default function HoldingsPage() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <SummaryCard label="평가금액 합계" value={totalValueText} />
         <SummaryCard label="총 평가손익" value={summary.totalPnlText || "-"}
-          accent={Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
+          accent={
+            summary.mixedCurrency
+              ? "text-slate-300"
+              : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"
+          } />
         <SummaryCard label="보유 종목" value={`${items.length}개`} />
         <SummaryCard label="주의/위험" value={`${riskCount}개`}
           accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />

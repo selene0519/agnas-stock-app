@@ -35,9 +35,16 @@ function buildUrl(baseUrl: string, path: string, params?: Record<string, string 
 
 const API_TIMEOUT_MS = 8000;
 
-async function fetchJson<T>(url: string): Promise<T> {
+async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  // 외부 signal이 이미 abort 됐으면 즉시 반환
+  if (externalSignal?.aborted) {
+    clearTimeout(timer);
+    return { status: "ERROR", error: "Request cancelled", items: [], count: 0 } as T;
+  }
+  // 외부 signal abort 시 내부 controller도 취소
+  externalSignal?.addEventListener("abort", () => controller.abort(), { once: true });
   try {
     const response = await fetch(url, {
       cache: "no-store",
@@ -82,17 +89,23 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export async function apiGet<T = any>(
   path: string,
-  params?: Record<string, string | number | boolean | undefined | null>
+  params?: Record<string, string | number | boolean | undefined | null>,
+  signal?: AbortSignal
 ): Promise<T> {
   const proxyUrl = buildUrl(API_BASE, path, params);
-  const proxyResult: any = await fetchJson<T>(proxyUrl);
+  const proxyResult: any = await fetchJson<T>(proxyUrl, signal);
 
   if (proxyResult?.status !== "ERROR") {
     return proxyResult as T;
   }
 
+  // 취소된 경우 direct fallback 시도하지 않음
+  if (signal?.aborted) {
+    return proxyResult as T;
+  }
+
   const directUrl = buildUrl(DIRECT_BACKEND, path, params);
-  const directResult: any = await fetchJson<T>(directUrl);
+  const directResult: any = await fetchJson<T>(directUrl, signal);
 
   if (directResult?.status === "ERROR") {
     directResult.proxyError = proxyResult.error;
@@ -182,8 +195,8 @@ export const mone = {
     fetch(`${typeof window !== "undefined" ? "" : "http://127.0.0.1:8050"}/mone-api/api/journal/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   journalDelete: (id: string) =>
     fetch(`${typeof window !== "undefined" ? "" : "http://127.0.0.1:8050"}/mone-api/api/journal/${id}`, { method: "DELETE" }).then(r => r.json()),
-  recommendations: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>
-    apiGet<ApiList>("/api/final/recommendations", p),
+  recommendations: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }, signal?: AbortSignal) =>
+    apiGet<ApiList>("/api/final/recommendations", p, signal),
   candidates: (p?: { market?: Market; strategy?: Mode | string; term?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>
     apiGet<ApiList>("/api/v1/candidates", p),
   report: (type: "premarket" | "intraday" | "closing", p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
