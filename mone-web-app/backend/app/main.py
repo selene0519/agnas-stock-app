@@ -2066,26 +2066,64 @@ def api_virtual_ledger(
 
 
 # ── 5. virtual/validation ─────────────────────────────────────────────
+# reports/virtual_validation_results.csv 를 소스로 사용
+# (virtual_operation_history.csv 에는 result/returnPct 필드가 없어 항상 빈 배열 반환됐음)
 
 @app.get("/api/virtual/validation")
 def api_virtual_validation(
     market: str = Query("kr"),
-    mode: str = Query("balanced"),
-    horizon: str = Query("swing"),
+    mode: str = Query(""),
+    horizon: str = Query(""),
     limit: int = Query(300),
 ) -> dict:
+    import csv as _vv_csv
+    from pathlib import Path as _VVPath
+
+    def _read_vv_csv(path: "_VVPath") -> list[dict]:
+        if not path.exists():
+            return []
+        for enc in ("utf-8-sig", "utf-8", "cp949"):
+            try:
+                with path.open("r", encoding=enc, newline="") as f:
+                    return [dict(row) for row in _vv_csv.DictReader(f)]
+            except Exception:
+                continue
+        return []
+
     try:
-        result = operation_history.virtual_operation_history(
-            market=None if market == "all" else _market(market),
-            mode=None,
-            limit=limit,
-        )
-        items = result.get("items", [])
-        # 검증 데이터만 필터링 (result 필드 있는 것)
-        validated = [r for r in items if r.get("result") and r.get("result") != "PENDING"]
-        return {"status": "OK", "count": len(validated), "items": validated, "totalCount": len(items)}
+        reports_dir = _VVPath(__file__).resolve().parents[3] / "reports"
+        rows = _read_vv_csv(reports_dir / "virtual_validation_results.csv")
+
+        # 깨진 행 제거: symbol 비어있거나 market 이 정상 값이 아닌 행
+        def _valid_row(r: dict) -> bool:
+            sym = str(r.get("symbol", "")).strip()
+            mkt = str(r.get("market", "")).strip().lower()
+            return bool(sym) and mkt in ("kr", "us")
+
+        rows = [r for r in rows if _valid_row(r)]
+
+        mk = _market(market)
+        if market not in ("all", ""):
+            rows = [r for r in rows if str(r.get("market", "")).lower() == mk]
+
+        # mode/horizon 는 선택 필터 (비어있으면 전체)
+        if mode and mode not in ("all", ""):
+            rows = [r for r in rows if str(r.get("mode", "")).lower() == mode.lower()]
+        if horizon and horizon not in ("all", ""):
+            rows = [r for r in rows if str(r.get("horizon", "")).lower() == horizon.lower()]
+
+        pending   = [r for r in rows if str(r.get("status", r.get("result", ""))).upper() in ("PENDING", "DATA_PENDING", "")]
+        validated = [r for r in rows if str(r.get("status", r.get("result", ""))).upper() not in ("PENDING", "DATA_PENDING", "")]
+
+        return {
+            "status": "OK",
+            "count": len(validated),
+            "items": rows[:limit],
+            "totalCount": len(rows),
+            "pendingCount": len(pending),
+        }
     except Exception as e:
-        return {"status": "ERROR", "error": str(e), "items": [], "count": 0}
+        return {"status": "ERROR", "error": str(e), "items": [], "count": 0, "pendingCount": 0}
 
 
 # ── 6. validation/dashboard ───────────────────────────────────────────
