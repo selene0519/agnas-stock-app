@@ -16,8 +16,23 @@
     { "src": "/icons/maskable-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "시장 홈", "url": "/?page=home", "description": "오늘 진입 후보 확인" },
-    { "name": "보유·리스크", "url": "/?page=holdings", "description": "보유종목 현황" },
-    { "name": "차트", "url": "/?page=chart", "description": "기술 분석 차트" }
+    {
+      "name": "시장 홈",
+      "url": "/?page=home",
+      "description": "오늘 진입 후보 확인",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "보유·리스크",
+      "url": "/?page=holdings",
+      "description": "보유종목 현황",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "차트",
+      "url": "/?page=chart",
+      "description": "기술 분석 차트",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    }
   ]
 }
