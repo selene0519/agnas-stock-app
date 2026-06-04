@@ -14,6 +14,19 @@ function fmtNum(value: any, suffix = "") {
   return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${suffix}`;
 }
 
+const POS_KEYWORDS = ["상승", "급등", "돌파", "신고가", "호실적", "흑자", "성장", "수주", "배당", "목표가 상향", "매수", "긍정", "수혜", "강세", "인수", "확대", "개선", "증가"];
+const NEG_KEYWORDS = ["하락", "급락", "하한가", "손실", "적자", "부진", "매도", "하향", "위기", "리스크", "불확실", "주의", "감소", "축소", "악화", "소송", "과징금", "조사", "제재"];
+
+function newsSentiment(item: any): { label: string; cls: string } | null {
+  const text = [item.title, item.headline, item.summary].filter(Boolean).join(" ");
+  const posHit = POS_KEYWORDS.filter((k) => text.includes(k)).length;
+  const negHit = NEG_KEYWORDS.filter((k) => text.includes(k)).length;
+  if (posHit === 0 && negHit === 0) return null;
+  if (negHit > posHit) return { label: "부정", cls: "border-red-500/40 bg-red-500/10 text-red-300" };
+  if (posHit > negHit) return { label: "긍정", cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" };
+  return { label: "혼재", cls: "border-amber-500/40 bg-amber-500/10 text-amber-300" };
+}
+
 function statusLabel(status?: string) {
   if (status === "NORMAL" || status === "OK" || status === "정상") return "정상";
   if (status === "PARTIAL" || status === "값 비어 있음") return "값 비어 있음";
@@ -154,16 +167,20 @@ export default function NewsPage() {
               onClick={() => setSelectedIndex(index)}
               className={`block w-full rounded-2xl border p-4 text-left ${index === selectedIndex ? "border-blue-500/50 bg-blue-500/10" : "border-slate-800 bg-slate-900/60"}`}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start justify-between gap-2">
                 <div className="line-clamp-2 font-semibold text-slate-100">{titleOf(item, tab)}</div>
-                {tab === "company" && <span className={`shrink-0 rounded-lg border px-2 py-1 text-[10px] font-bold ${statusBadge(item.dataStatus)}`}>{statusLabel(item.connectionStatus || item.dataStatus)}</span>}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {tab === "company" && <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${statusBadge(item.dataStatus)}`}>{statusLabel(item.connectionStatus || item.dataStatus)}</span>}
+                  {tab === "news" && (() => { const s = newsSentiment(item); return s ? <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${s.cls}`}>{s.label}</span> : null; })()}
+                </div>
               </div>
               <div className="mt-1 font-mono text-xs text-slate-500">{item.symbol || item.company || ""} · {(item.market || market).toString().toUpperCase()}</div>
               {tab === "disclosures" && <div className="mt-2 text-xs text-amber-300">{secFormExplain(item.formType || item.title || item.reportName)}</div>}
-              {tab === "company" && Array.isArray(item.missingFields) && item.missingFields.length > 0 && (
+              {tab === "company" && (
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {item.missingFields.slice(0, 4).map((field: string) => (
-                    <span key={field} className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">{field} 연결 필요</span>
+                  {item.hasQuantData && <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">퀀트 {item.quantScore != null ? Math.round(item.quantScore) + "점" : "분석 가능"}</span>}
+                  {Array.isArray(item.missingFields) && item.missingFields.length > 0 && item.missingFields.slice(0, 3).map((field: string) => (
+                    <span key={field} className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">{field} 누락</span>
                   ))}
                 </div>
               )}
@@ -232,46 +249,105 @@ export default function NewsPage() {
   );
 }
 
-function CompanyDetail({ selected }: { selected: any }) {
+function QuantBar({ label, score }: { label: string; score: number | null | undefined }) {
+  if (score == null || !Number.isFinite(score)) return null;
+  const pct = Math.max(0, Math.min(100, score));
+  const barColor = pct >= 60 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-400" : "bg-red-400";
   return (
-    <div>
+    <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 text-[11px] text-slate-500">{label}</span>
+      <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
+        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-8 shrink-0 text-right font-mono text-[11px] text-slate-300">{Math.round(pct)}</span>
+    </div>
+  );
+}
+
+function CompanyDetail({ selected }: { selected: any }) {
+  const hasFinData = Array.isArray(selected.missingFields) ? selected.missingFields.length < 4 : false;
+  const hasQuant = selected.hasQuantData || selected.quantScore != null;
+  const connStatus = selected.connectionStatus || statusLabel(selected.dataStatus);
+
+  return (
+    <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 text-xl font-bold text-slate-100"><Building2 size={20} />{displayName(selected)}</h2>
-          <div className="mt-1 font-mono text-sm text-slate-500">{selected.symbol} · {selected.market}</div>
+          <div className="mt-1 font-mono text-sm text-slate-500">{selected.symbol} · {String(selected.market || "").toUpperCase()}</div>
         </div>
-        <div className={`rounded-xl border px-3 py-2 text-xs font-bold ${statusBadge(selected.dataStatus)}`}>{selected.connectionStatus || selected.missingReason || statusLabel(selected.dataStatus)}</div>
+        <div className={`rounded-xl border px-3 py-2 text-xs font-bold ${statusBadge(selected.dataStatus)}`}>{connStatus}</div>
       </div>
-      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
-        <Metric label="EPS" value={fmtNum(selected.eps)} />
-        <Metric label="PER" value={fmtNum(selected.per)} />
-        <Metric label="PBR" value={fmtNum(selected.pbr)} />
-        <Metric label="ROE" value={fmtNum(selected.roe, "%")} />
-        <Metric label="매출" value={fmtNum(selected.revenue)} />
-        <Metric label="영업이익" value={fmtNum(selected.operatingProfit)} />
-        <Metric label="순이익" value={fmtNum(selected.netIncome)} />
-        <Metric label="부채비율" value={fmtNum(selected.debtRatio, "%")} />
-        <Metric label="펀더멘털 점수" value={fmtNum(selected.fundamentalScore, "점")} />
+
+      {/* ── 퀀트 분석 섹션 ─────────────────────────────────────────── */}
+      {hasQuant && (
+        <div className="rounded-2xl border border-slate-700 bg-slate-950/60 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">퀀트 기술분석</span>
+            {selected.quantProbability > 0 && (
+              <span className="font-mono text-sm font-bold text-emerald-300">{Number(selected.quantProbability).toFixed(1)}% 확률</span>
+            )}
+          </div>
+          <div className="space-y-2">
+            <QuantBar label="종합 점수" score={selected.quantScore} />
+            <QuantBar label="진입 적기" score={selected.quantEntryScore} />
+            <QuantBar label="리스크" score={selected.quantRiskScore} />
+            <QuantBar label="상승여력" score={selected.quantGrowthScore} />
+          </div>
+          {selected.surgeLabel && selected.surgeLabel !== "판단 대기" && (
+            <div className="mt-3 flex flex-wrap gap-1">
+              {String(selected.surgeLabel).split("|").map((t: string) => t.trim()).filter(Boolean).map((t: string) => (
+                <span key={t} className={`rounded-md border px-2 py-1 text-[11px] font-bold ${
+                  t.includes("주의") ? "border-red-500/30 bg-red-500/10 text-red-300"
+                  : t.includes("저평가") ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                  : t.includes("수렴") ? "border-violet-500/30 bg-violet-500/10 text-violet-300"
+                  : t.includes("기관") || t.includes("외국인") ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                  : "border-slate-700 bg-slate-800 text-slate-300"
+                }`}>{t}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 재무 지표 ──────────────────────────────────────────────── */}
+      <div>
+        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500">재무 지표</div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <Metric label="EPS" value={fmtNum(selected.eps)} />
+          <Metric label="PER" value={fmtNum(selected.per)} />
+          <Metric label="PBR" value={fmtNum(selected.pbr)} />
+          <Metric label="ROE" value={fmtNum(selected.roe, "%")} />
+          <Metric label="매출" value={fmtNum(selected.revenue)} />
+          <Metric label="영업이익" value={fmtNum(selected.operatingIncome || selected.operatingProfit)} />
+          <Metric label="순이익" value={fmtNum(selected.netIncome)} />
+          <Metric label="부채비율" value={fmtNum(selected.debtRatio, "%")} />
+          {selected.qualityScore && <Metric label="펀더멘털 점수" value={fmtNum(selected.qualityScore, "점")} />}
+        </div>
       </div>
+
+      {/* ── 재무 데이터 누락 안내 ──────────────────────────────────── */}
       {Array.isArray(selected.missingFields) && selected.missingFields.length > 0 && (
-        <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
           <div className="mb-2 flex items-center gap-2 font-semibold"><AlertTriangle size={15} />재무 데이터 누락</div>
           <p className="mb-2">{selected.missingFields.join(", ")} 항목이 비어 있습니다.</p>
           {(() => {
             const sym = String(selected.symbol || "").toUpperCase();
-            const market = String(selected.market || "kr").toLowerCase();
+            const mkt = String(selected.market || "kr").toLowerCase();
             if (sym.includes("ETF") || sym.match(/^(SPY|QQQ|SCHD|VTI|IVV|VOO|TQQQ|SOXL)$/)) return <p className="text-[11px] text-amber-300/70">ETF는 EPS/PER/ROE 등 개별 재무 지표가 제공되지 않습니다.</p>;
-            if (market === "us") return <p className="text-[11px] text-amber-300/70">미국 주식: Finnhub 또는 SEC API 수집 필요. FINNHUB_API_KEY 설정 여부를 확인하세요.</p>;
+            if (mkt === "us") return <p className="text-[11px] text-amber-300/70">미국 주식: Finnhub 또는 SEC API 수집 필요. FINNHUB_API_KEY 설정 여부를 확인하세요.</p>;
             return <p className="text-[11px] text-amber-300/70">국장: DART API 수집 필요. DART_API_KEY 설정 여부를 확인하거나 신규상장/소형주는 재무 데이터가 없을 수 있습니다.</p>;
           })()}
         </div>
       )}
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
         <span>출처:</span>
         {(selected.dataSources || [selected.source]).filter(Boolean).map((src: string, i: number) => (
           <span key={i} className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 font-mono">{src}</span>
         ))}
         {!selected.source && !selected.dataSources && <span className="italic text-slate-600">출처 정보 없음 (local CSV/json)</span>}
+        {selected.dartYear && <span className="rounded-md border border-blue-700/40 bg-blue-800/20 px-2 py-0.5 text-blue-300">DART {selected.dartYear}년</span>}
       </div>
     </div>
   );
@@ -279,10 +355,14 @@ function CompanyDetail({ selected }: { selected: any }) {
 
 function NewsDetail({ selected }: { selected: any }) {
   const tags = Array.isArray(selected.tags) ? selected.tags : selected.tag ? [selected.tag] : [];
+  const sentiment = newsSentiment(selected);
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-slate-100">{selected.title || selected.headline || "뉴스 제목 없음"}</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-xl font-bold text-slate-100">{selected.title || selected.headline || "뉴스 제목 없음"}</h2>
+          {sentiment && <span className={`shrink-0 rounded-xl border px-3 py-1.5 text-xs font-bold ${sentiment.cls}`}>{sentiment.label}</span>}
+        </div>
         <p className="mt-2 text-sm text-slate-500">{selected.source || selected.publisher || "출처 미확인"} · {dateText(selected.publishedAt || selected.date)}</p>
       </div>
       {tags.length > 0 && <div className="flex flex-wrap gap-2">{tags.map((tag: string) => <span key={tag} className="rounded-lg bg-blue-500/10 px-2 py-1 text-xs text-blue-300">{tag}</span>)}</div>}

@@ -4307,6 +4307,39 @@ def company_analysis(market: str) -> dict[str, Any]:
         has_dart = bool(dart_row)
         dart_year = dart_row.get("year") or ""
 
+        # ── 누락 필드 계산 ────────────────────────────────────────────────
+        _fin_vals = [("EPS", eps), ("PER", per_final), ("PBR", pbr_final), ("ROE", roe_final),
+                     ("매출", revenue), ("영업이익", operating_income), ("순이익", net_income)]
+        missing_fields = [name for name, v in _fin_vals if not v or any(x in str(v) for x in ("데이터 없음", "연결 대기", "원본 없음"))]
+
+        # ── 퀀트/기술분석 점수 (추천 파일 or 통합 파일에서) ──────────────
+        def _qnum(keys: list[str]) -> float | None:
+            for k in keys:
+                v = merged.get(k)
+                if v and str(v).strip() not in ("", "None", "nan", "-", "0"):
+                    try:
+                        return float(str(v).replace("%", "").replace(",", "").strip())
+                    except Exception:
+                        pass
+            return None
+        quant_score   = _qnum(["finalScore", "opportunityScore", "finalRankScore", "종합점수"])
+        quant_entry   = _qnum(["entryScore", "가치점수"])
+        quant_risk    = _qnum(["riskScore", "안정성점수"])
+        quant_growth  = _qnum(["upsideScore", "성장점수"])
+        quant_prob    = _qnum(["probability"])
+        surge_label   = str(merged.get("surgeLabel") or "")
+        has_quant     = quant_score is not None
+
+        # ── connectionStatus 결정 ─────────────────────────────────────────
+        if has_dart:
+            conn_status = "재무(DART) 연결"
+        elif not missing_fields:
+            conn_status = "정상"
+        elif has_quant:
+            conn_status = "퀀트 분석 가능"
+        else:
+            conn_status = "재무 원본 없음"
+
         items.append({
             "symbol": normalized.get("symbol", symbol),
             "name": normalized.get("name", symbol),
@@ -4343,6 +4376,17 @@ def company_analysis(market: str) -> dict[str, Any]:
             "incomeStatementStatus": "손익계산서 연결" if any("데이터" not in str(v) and "대기" not in str(v) for v in (revenue, operating_income, net_income, annual, quarterly)) else "손익계산서 데이터 연결 대기",
             "esg": esg,
             "research": research,
+            # ── 퀀트 분석 ──────────────────────────────────────────────────
+            "quantScore": quant_score,
+            "quantEntryScore": quant_entry,
+            "quantRiskScore": quant_risk,
+            "quantGrowthScore": quant_growth,
+            "quantProbability": quant_prob,
+            "surgeLabel": surge_label,
+            "hasQuantData": has_quant,
+            # ── 연결 상태 ──────────────────────────────────────────────────
+            "missingFields": missing_fields,
+            "connectionStatus": conn_status,
             "raw": merged,
         })
         if len(items) >= 120:
