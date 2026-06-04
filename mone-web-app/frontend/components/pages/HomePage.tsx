@@ -700,18 +700,37 @@ function WhyPanel({ item, onClose }: { item: any; onClose: () => void }) {
             <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
               <div className="mb-2 text-xs font-semibold text-slate-300">전략 태그</div>
               <div className="flex flex-wrap gap-1.5">
-                {tags.map((tag: string) => (
-                  <span key={tag} className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                    tag === "CAUTION" ? "border-red-600/40 bg-red-600/10 text-red-300"
-                    : tag === "MA_CONVERGENCE" ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
-                    : tag === "PULLBACK_BUY" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                    : tag === "MOMENTUM" ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
-                    : tag === "VOLUME_BREAKOUT" ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-300"
-                    : "border-slate-600 bg-slate-800 text-slate-300"
-                  }`}>
-                    {tag === "CAUTION" ? "⚠ 주의" : tag === "MA_CONVERGENCE" ? "이격도 수렴" : tag === "PULLBACK_BUY" ? "눌림목" : tag === "MOMENTUM" ? "모멘텀" : tag === "VOLUME_BREAKOUT" ? "거래량 증가" : tag}
-                  </span>
-                ))}
+                {tags.map((tag: string, ti: number) => {
+                  const labelMap: Record<string, string> = {
+                    CAUTION:"⚠ 주의", MA_CONVERGENCE:"이격도 수렴", PULLBACK_BUY:"눌림목",
+                    MOMENTUM:"모멘텀", VOLUME_BREAKOUT:"거래량 증가", BREAKOUT_52W:"52주 신고가 돌파",
+                    NEAR_52W_HIGH:"신고가 근접", BB_SQUEEZE:"볼린저 스퀴즈", STABLE_LOW_RISK:"안정형",
+                    UNDERVALUED_GROWTH:"저평가 성장주", GOLDEN_CROSS:"🔼 골든크로스",
+                    DEATH_CROSS:"🔽 데드크로스", MID_GOLDEN_CROSS:"📈 중기 골든크로스",
+                    MID_DEATH_CROSS:"📉 중기 데드크로스", TRAILING_STOP_ALERT:"⚡ 트레일링 손절",
+                  };
+                  const colorMap: Record<string, string> = {
+                    CAUTION:"border-red-600/40 bg-red-600/10 text-red-300",
+                    DEATH_CROSS:"border-red-600/40 bg-red-600/10 text-red-300",
+                    MID_DEATH_CROSS:"border-red-700/40 bg-red-700/10 text-red-400",
+                    TRAILING_STOP_ALERT:"border-amber-500/40 bg-amber-500/10 text-amber-300",
+                    GOLDEN_CROSS:"border-emerald-400/40 bg-emerald-400/10 text-emerald-300",
+                    MID_GOLDEN_CROSS:"border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+                    MA_CONVERGENCE:"border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
+                    PULLBACK_BUY:"border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+                    MOMENTUM:"border-orange-500/40 bg-orange-500/10 text-orange-300",
+                    VOLUME_BREAKOUT:"border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
+                    BREAKOUT_52W:"border-violet-500/40 bg-violet-500/10 text-violet-300",
+                    NEAR_52W_HIGH:"border-violet-400/30 bg-violet-400/5 text-violet-400",
+                    BB_SQUEEZE:"border-sky-500/40 bg-sky-500/10 text-sky-300",
+                    STABLE_LOW_RISK:"border-teal-500/40 bg-teal-500/10 text-teal-300",
+                    UNDERVALUED_GROWTH:"border-green-500/40 bg-green-500/10 text-green-300",
+                  };
+                  const tagLabels = Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels as string[] : [];
+                  const lbl = labelMap[tag] ?? tagLabels[ti] ?? tag;
+                  const cls = colorMap[tag] ?? "border-slate-600 bg-slate-800 text-slate-300";
+                  return <span key={tag} className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${cls}`}>{lbl}</span>;
+                })}
               </div>
             </div>
           )}
@@ -720,6 +739,50 @@ function WhyPanel({ item, onClose }: { item: any; onClose: () => void }) {
           {maConv && (
             <div className="rounded-xl border border-cyan-800/40 bg-cyan-950/20 p-3 text-[11px] text-cyan-300">
               이격도 수렴 — 5일/20일/60일선이 근접 구간에 있습니다. 변동성 확대 이전 진입 적기입니다.
+            </div>
+          )}
+
+          {/* 골든크로스 / 데드크로스 배너 */}
+          {item.goldenCross && (
+            <div className="rounded-xl border border-emerald-700/40 bg-emerald-950/20 p-3 text-[11px] text-emerald-300">
+              🔼 골든크로스 — MA5가 MA20을 상향 돌파했습니다. 단기 상승 모멘텀 전환 신호.
+            </div>
+          )}
+          {item.midGoldenCross && (
+            <div className="rounded-xl border border-emerald-600/40 bg-emerald-950/20 p-3 text-[11px] text-emerald-200">
+              📈 중기 골든크로스 — MA20이 MA60을 상향 돌파했습니다. 중기 추세 전환 신호.
+            </div>
+          )}
+          {item.deathCross && (
+            <div className="rounded-xl border border-red-800/40 bg-red-950/20 p-3 text-[11px] text-red-300">
+              🔽 데드크로스 — MA5가 MA20을 하향 이탈했습니다. 단기 하락 전환 주의.
+            </div>
+          )}
+          {item.midDeathCross && (
+            <div className="rounded-xl border border-red-700/40 bg-red-950/20 p-3 text-[11px] text-red-400">
+              📉 중기 데드크로스 — MA20이 MA60을 하향 이탈했습니다. 중기 약세 전환 주의.
+            </div>
+          )}
+
+          {/* 트레일링 스탑 패널 */}
+          {item.trailingStop != null && item.trailingStop > 0 && (
+            <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-3 text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-amber-300">⚡ 트레일링 스탑</span>
+                <span className="font-mono text-amber-200">
+                  {item.market === "us"
+                    ? `$${Number(item.trailingStop).toLocaleString(undefined, {maximumFractionDigits: 2})}`
+                    : `${Math.round(Number(item.trailingStop)).toLocaleString()}원`}
+                </span>
+              </div>
+              <div className="mt-1 text-slate-400">
+                20일 최고가 기준 ATR×2 하락선 — 현재가로부터{" "}
+                {item.trailingStopPct != null ? (
+                  <span className={`font-mono font-bold ${Number(item.trailingStopPct) <= 3 ? "text-red-400" : "text-amber-300"}`}>
+                    -{Number(item.trailingStopPct).toFixed(1)}%
+                  </span>
+                ) : "-"}
+              </div>
             </div>
           )}
 
