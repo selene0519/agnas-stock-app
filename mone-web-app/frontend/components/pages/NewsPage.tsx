@@ -16,6 +16,8 @@ function fmtNum(value: any, suffix = "") {
 
 const POS_KEYWORDS = ["상승", "급등", "돌파", "신고가", "호실적", "흑자", "성장", "수주", "배당", "목표가 상향", "매수", "긍정", "수혜", "강세", "인수", "확대", "개선", "증가"];
 const NEG_KEYWORDS = ["하락", "급락", "하한가", "손실", "적자", "부진", "매도", "하향", "위기", "리스크", "불확실", "주의", "감소", "축소", "악화", "소송", "과징금", "조사", "제재"];
+const IMPACT_KEYWORDS = ["실적", "가이던스", "합병", "인수", "유상증자", "감자", "배당", "자사주", "소송", "제재", "공급계약", "수주", "임상", "승인", "리콜", "파산", "상장폐지", "10-K", "10-Q", "8-K", "FORM 4"];
+const FIN_FIELDS = ["eps", "per", "pbr", "roe", "revenue", "operatingIncome", "operatingProfit", "netIncome", "debtRatio"];
 
 function newsSentiment(item: any): { label: string; cls: string } | null {
   const text = [item.title, item.headline, item.summary].filter(Boolean).join(" ");
@@ -43,6 +45,28 @@ function dateText(value: any) {
   return date.toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
 }
 
+function itemDateValue(item: any) {
+  return item.publishedAt || item.disclosedAt || item.date || item.reportDate || "";
+}
+
+function ageDays(value: any) {
+  const raw = itemDateValue({ date: value }) || value;
+  if (!raw) return null;
+  const text = String(raw).trim();
+  const normalized = /^\d{8}$/.test(text) ? `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}` : text;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+}
+
+function freshnessLabel(value: any) {
+  const days = ageDays(value);
+  if (days == null) return "날짜 없음";
+  if (days <= 3) return "신규";
+  if (days <= 14) return `${days}일 전`;
+  return `오래됨 ${days}일`;
+}
+
 function titleOf(item: any, tab: Tab) {
   if (tab === "company") return displayName(item);
   if (tab === "disclosures") return item.title || item.reportName || item.formType || item.company || "공시 제목 확인";
@@ -58,6 +82,52 @@ function secFormExplain(form: string) {
   if (f.includes("10-Q")) return "분기보고서";
   if (f.includes("8-K")) return "주요 이벤트 보고";
   return "SEC 공시";
+}
+
+function impactScore(item: any, tab: Tab) {
+  const text = [titleOf(item, tab), item.summary, item.description, item.formType, item.reportName].filter(Boolean).join(" ").toUpperCase();
+  let score = 10;
+  score += IMPACT_KEYWORDS.reduce((sum, key) => sum + (text.includes(key.toUpperCase()) ? 14 : 0), 0);
+  if (tab === "disclosures") score += 15;
+  if (item.isWarning) score += 25;
+  const sentiment = newsSentiment(item)?.label;
+  if (sentiment === "부정" || sentiment === "혼재") score += 10;
+  const days = ageDays(itemDateValue(item));
+  if (days != null && days <= 3) score += 15;
+  if (days != null && days > 30) score -= 10;
+  return Math.max(0, Math.min(100, score));
+}
+
+function impactLabel(score: number) {
+  if (score >= 70) return "높음";
+  if (score >= 40) return "중간";
+  return "낮음";
+}
+
+function impactTone(score: number) {
+  if (score >= 70) return "border-red-500/40 bg-red-500/10 text-red-300";
+  if (score >= 40) return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+  return "border-slate-700 bg-slate-800 text-slate-300";
+}
+
+function companyReadiness(item: any) {
+  const present = FIN_FIELDS.filter((key) => {
+    const value = item?.[key];
+    return value !== undefined && value !== null && value !== "" && Number(value) !== 0;
+  }).length;
+  const missing = Array.isArray(item?.missingFields) ? item.missingFields.length : Math.max(0, FIN_FIELDS.length - present);
+  const pct = Math.round((present / FIN_FIELDS.length) * 100);
+  const label = pct >= 75 ? "분석 가능" : pct >= 35 ? "부분 분석" : "원본 대기";
+  return { present, missing, pct, label };
+}
+
+function dataAction(item: any) {
+  const mkt = String(item?.market || "").toLowerCase();
+  const sym = String(item?.symbol || "").toUpperCase();
+  if (companyReadiness(item).pct >= 75) return "재무·퀀트가 충분합니다. 밸류에이션과 기술 점수를 함께 보세요.";
+  if (sym.includes("ETF") || sym.match(/^(SPY|QQQ|SCHD|VTI|IVV|VOO|TQQQ|SOXL)$/)) return "ETF는 개별 재무 지표 대신 가격·보유 비중·변동성 중심으로 판단하세요.";
+  if (mkt === "us") return "FINNHUB/SEC 원본이 채워지면 EPS·PER·ROE 카드가 자동으로 정상 전환됩니다.";
+  return "DART 원본이 채워지면 재무 커버리지와 누락 배지가 자동으로 정상 전환됩니다.";
 }
 
 function tabLabel(tab: Tab) {
@@ -105,7 +175,7 @@ export default function NewsPage() {
     try {
       const loader =
         tab === "news"
-          ? mone.news({ market, limit: 200 }, signal)
+          ? mone.news({ market, limit: 200, watchOnly }, signal)
           : tab === "disclosures"
             ? mone.disclosures({ market, limit: 200, watchOnly }, signal)
             : mone.companyAnalysis({ market, limit: 240, q: query || undefined }, signal);
@@ -130,15 +200,22 @@ export default function NewsPage() {
   const items = useMemo(() => {
     const source = Array.isArray(data.items) ? data.items : [];
     const q = query.trim().toLowerCase();
-    if (!q) return source;
-    return source.filter((item: any) =>
+    const filtered = !q ? source : source.filter((item: any) =>
       [item.symbol, displayName(item), item.company, item.title, item.summary, item.source, item.formType]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(q),
     );
-  }, [data.items, query]);
+    if (tab === "news" || tab === "disclosures") {
+      return [...filtered].sort((a, b) => {
+        const impactDiff = impactScore(b, tab) - impactScore(a, tab);
+        if (impactDiff !== 0) return impactDiff;
+        return String(itemDateValue(b)).localeCompare(String(itemDateValue(a)));
+      });
+    }
+    return [...filtered].sort((a, b) => companyReadiness(b).pct - companyReadiness(a).pct);
+  }, [data.items, query, tab]);
   const selected = items[Math.min(selectedIndex, Math.max(items.length - 1, 0))];
   const sourceItems = Array.isArray(data.items) ? data.items : [];
   const sourceFiles = Array.isArray(data.sourceFiles) ? data.sourceFiles : [];
@@ -162,9 +239,9 @@ export default function NewsPage() {
     tab === "company"
       ? { label: "재무 커버리지", value: `정상 ${data.normalCount ?? 0}`, sub: `부분 ${data.partialCount ?? 0} · 없음 ${data.noDataCount ?? 0}`, tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" }
       : tab === "news"
-        ? { label: "감성", value: `긍정 ${sentimentCounts["긍정"] || 0}`, sub: `부정 ${sentimentCounts["부정"] || 0} · 혼재 ${sentimentCounts["혼재"] || 0}`, tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" }
+        ? { label: "감성·중요도", value: `긍정 ${sentimentCounts["긍정"] || 0}`, sub: `높은 영향 ${sourceItems.filter((item: any) => impactScore(item, tab) >= 70).length}건`, tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" }
         : { label: "필터", value: watchOnly ? "보유·관심" : "전체", sub: data.relevantSymbols != null ? `연결 심볼 ${data.relevantSymbols}개` : "원본 기준", tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" },
-    { label: "원본", value: sourceFiles.length ? `${sourceFiles.length}개` : "로컬/API", sub: latestDate ? `최근 ${dateText(latestDate)}` : "최근일 확인 필요", tone: "border-slate-700 bg-slate-950 text-slate-300" },
+    { label: "원본", value: sourceFiles.length ? `${sourceFiles.length}개` : "로컬/API", sub: latestDate ? `${freshnessLabel(latestDate)} · ${dateText(latestDate)}` : "최근일 확인 필요", tone: "border-slate-700 bg-slate-950 text-slate-300" },
   ];
 
   return (
@@ -241,6 +318,7 @@ export default function NewsPage() {
                 <div className="line-clamp-2 font-semibold text-slate-100">{titleOf(item, tab)}</div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   {tab === "company" && <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${statusBadge(item.dataStatus)}`}>{statusLabel(item.connectionStatus || item.dataStatus)}</span>}
+                  {(tab === "news" || tab === "disclosures") && (() => { const score = impactScore(item, tab); return <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${impactTone(score)}`}>영향 {impactLabel(score)}</span>; })()}
                   {tab === "news" && (() => { const s = newsSentiment(item); return s ? <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${s.cls}`}>{s.label}</span> : null; })()}
                 </div>
               </div>
@@ -248,13 +326,14 @@ export default function NewsPage() {
               {tab === "disclosures" && <div className="mt-2 text-xs text-amber-300">{secFormExplain(item.formType || item.title || item.reportName)}</div>}
               {tab === "company" && (
                 <div className="mt-2 flex flex-wrap gap-1">
+                  <span className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">준비도 {companyReadiness(item).pct}%</span>
                   {item.hasQuantData && <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">퀀트 {item.quantScore != null ? Math.round(item.quantScore) + "점" : "분석 가능"}</span>}
                   {Array.isArray(item.missingFields) && item.missingFields.length > 0 && item.missingFields.slice(0, 3).map((field: string) => (
                     <span key={field} className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">{field} 누락</span>
                   ))}
                 </div>
               )}
-              {tab !== "company" && <div className="mt-2 text-xs text-slate-500">{item.source || item.publisher || "출처 미확인"} · {dateText(item.publishedAt || item.disclosedAt || item.date)}</div>}
+              {tab !== "company" && <div className="mt-2 text-xs text-slate-500">{item.source || item.publisher || "출처 미확인"} · {freshnessLabel(itemDateValue(item))} · {dateText(itemDateValue(item))}</div>}
             </button>
           ))}
         </div>
@@ -338,6 +417,7 @@ function CompanyDetail({ selected }: { selected: any }) {
   const hasFinData = Array.isArray(selected.missingFields) ? selected.missingFields.length < 4 : false;
   const hasQuant = selected.hasQuantData || selected.quantScore != null;
   const connStatus = selected.connectionStatus || statusLabel(selected.dataStatus);
+  const readiness = companyReadiness(selected);
 
   return (
     <div className="space-y-5">
@@ -347,6 +427,25 @@ function CompanyDetail({ selected }: { selected: any }) {
           <div className="mt-1 font-mono text-sm text-slate-500">{selected.symbol} · {String(selected.market || "").toUpperCase()}</div>
         </div>
         <div className={`rounded-xl border px-3 py-2 text-xs font-bold ${statusBadge(selected.dataStatus)}`}>{connStatus}</div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-slate-200">분석 준비도</div>
+            <div className="mt-1 text-xs text-slate-500">{dataAction(selected)}</div>
+          </div>
+          <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${readiness.pct >= 75 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : readiness.pct >= 35 ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-slate-700 bg-slate-800 text-slate-300"}`}>
+            {readiness.label} · {readiness.pct}%
+          </span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+          <div className={`h-full rounded-full ${readiness.pct >= 75 ? "bg-emerald-500" : readiness.pct >= 35 ? "bg-amber-400" : "bg-slate-500"}`} style={{ width: `${readiness.pct}%` }} />
+        </div>
+        <div className="mt-2 flex justify-between text-[10px] text-slate-600">
+          <span>채워진 지표 {readiness.present}/{FIN_FIELDS.length}</span>
+          <span>{hasFinData ? "재무 분석 가능" : "재무 원본 보강 대기"}</span>
+        </div>
       </div>
 
       {/* ── 퀀트 분석 섹션 ─────────────────────────────────────────── */}
@@ -426,6 +525,7 @@ function CompanyDetail({ selected }: { selected: any }) {
 function NewsDetail({ selected }: { selected: any }) {
   const tags = Array.isArray(selected.tags) ? selected.tags : selected.tag ? [selected.tag] : [];
   const sentiment = newsSentiment(selected);
+  const score = impactScore(selected, "news");
   return (
     <div className="space-y-4">
       <div>
@@ -434,6 +534,10 @@ function NewsDetail({ selected }: { selected: any }) {
           {sentiment && <span className={`shrink-0 rounded-xl border px-3 py-1.5 text-xs font-bold ${sentiment.cls}`}>{sentiment.label}</span>}
         </div>
         <p className="mt-2 text-sm text-slate-500">{selected.source || selected.publisher || "출처 미확인"} · {dateText(selected.publishedAt || selected.date)}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Metric label="영향도" value={`${impactLabel(score)} (${score}점)`} />
+        <Metric label="신선도" value={freshnessLabel(itemDateValue(selected))} />
       </div>
       {tags.length > 0 && <div className="flex flex-wrap gap-2">{tags.map((tag: string) => <span key={tag} className="rounded-lg bg-blue-500/10 px-2 py-1 text-xs text-blue-300">{tag}</span>)}</div>}
       <p className="rounded-2xl bg-slate-950 p-4 text-sm leading-6 text-slate-300">{selected.summary || selected.description || "요약 데이터가 없습니다."}</p>
@@ -444,6 +548,7 @@ function NewsDetail({ selected }: { selected: any }) {
 
 function DisclosureDetail({ selected }: { selected: any }) {
   const form = selected.formType || selected.title || selected.reportName;
+  const score = impactScore(selected, "disclosures");
   return (
     <div className="space-y-4">
       <div>
@@ -459,6 +564,8 @@ function DisclosureDetail({ selected }: { selected: any }) {
         <Metric label="종목코드" value={selected.symbol || "-"} />
         <Metric label="공시 유형" value={String(form || "-")} />
         <Metric label="공시일" value={dateText(selected.disclosedAt || selected.date)} />
+        <Metric label="영향도" value={`${impactLabel(score)} (${score}점)`} />
+        <Metric label="신선도" value={freshnessLabel(itemDateValue(selected))} />
       </div>
       {selected.url && <a href={selected.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"><ExternalLink size={14} />공시 원문 보기</a>}
     </div>
