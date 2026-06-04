@@ -65,7 +65,7 @@ def _ensure_status(payload: dict, default_status: str = "OK") -> dict:
     return payload
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health() -> dict:
     return {
         "status": "OK",
