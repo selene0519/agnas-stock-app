@@ -228,6 +228,7 @@ export default function StocksPage() {
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [groupsList, setGroupsList] = useState<string[]>([]);
   const [groupAssigning, setGroupAssigning] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"finalScore" | "expectedValue" | "upsideScore" | "rrScore">("finalScore");
 
   useEffect(() => {
     if (market === "kr") {
@@ -353,33 +354,36 @@ export default function StocksPage() {
   }, [items, sectorFilter, groupFilter]);
 
   const visible = useMemo(() => {
-    const base = sectorFilter ? sectorFiltered : items;
-    if (!selected) return base;
-    const selectedMarket = cleanMarket(selected.market || market || "kr");
-    const selectedSymbol = cleanSymbol(selected.symbol, selectedMarket);
-    const matched = base.filter((item) => {
-      const itemMarket = cleanMarket(item.market || selectedMarket);
-      return (
-        cleanSymbol(item.symbol, itemMarket) === selectedSymbol &&
-        (market === "all" || itemMarket === market)
-      );
-    });
-    if (matched.length > 0) return matched;
-    return [
-      {
-        market: selectedMarket === "all" ? "kr" : selectedMarket,
-        symbol: selectedSymbol,
-        name: selected.name || selectedSymbol,
-        companyName: selected.name || selectedSymbol,
-        currentPrice: selected.currentPrice,
-        currentPriceText: selected.currentPriceText,
-        priceSource: selected.priceSource,
-        priceTime: selected.priceTime,
-        sourceStatus: "SEARCH_ONLY",
-        isSearchOnly: true,
-      },
-    ];
-  }, [items, selected, market]);
+    const base = sectorFilter || groupFilter ? sectorFiltered : items;
+    let result = base;
+    if (selected) {
+      const selectedMarket = cleanMarket(selected.market || market || "kr");
+      const selectedSymbol = cleanSymbol(selected.symbol, selectedMarket);
+      const matched = base.filter((item) => {
+        const itemMarket = cleanMarket(item.market || selectedMarket);
+        return (
+          cleanSymbol(item.symbol, itemMarket) === selectedSymbol &&
+          (market === "all" || itemMarket === market)
+        );
+      });
+      if (matched.length > 0) return matched;
+      return [
+        {
+          market: selectedMarket === "all" ? "kr" : selectedMarket,
+          symbol: selectedSymbol,
+          name: selected.name || selectedSymbol,
+          companyName: selected.name || selectedSymbol,
+          currentPrice: selected.currentPrice,
+          currentPriceText: selected.currentPriceText,
+          priceSource: selected.priceSource,
+          priceTime: selected.priceTime,
+          sourceStatus: "SEARCH_ONLY",
+          isSearchOnly: true,
+        },
+      ];
+    }
+    return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
+  }, [items, selected, market, sectorFiltered, sectorFilter, groupFilter, sortBy]);
 
   const selectedWatchRow = useMemo(() => {
     if (!selected) return null;
@@ -639,6 +643,7 @@ export default function StocksPage() {
         {/* 섹터 필터 */}
         {sectorsList.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
+            <span className="text-[10px] text-slate-500 self-center">섹터:</span>
             <button onClick={() => setSectorFilter(null)}
               className={`rounded-full px-3 py-1 text-[11px] font-medium ${!sectorFilter ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
               전체
@@ -888,10 +893,24 @@ export default function StocksPage() {
         </div>
       )}
 
-      <div className="text-sm text-slate-500">
-        {loading
-          ? "후보를 불러오는 중..."
-          : `${modeLabel(mode)} · ${horizonLabel(horizon)} 조건 / 표시 ${visible.length.toLocaleString("ko-KR")}개 / 전체 ${items.length.toLocaleString("ko-KR")}개`}
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-slate-500">
+          {loading
+            ? "후보를 불러오는 중..."
+            : `${modeLabel(mode)} · ${horizonLabel(horizon)} / 표시 ${visible.length.toLocaleString("ko-KR")}개 / 전체 ${items.length.toLocaleString("ko-KR")}개`}
+        </div>
+        {!selected && (
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-slate-500"
+          >
+            <option value="finalScore">종합점수순</option>
+            <option value="expectedValue">EV순</option>
+            <option value="upsideScore">상승여력순</option>
+            <option value="rrScore">손익비순</option>
+          </select>
+        )}
       </div>
 
       {visible.length === 0 && !loading && (
@@ -1024,11 +1043,44 @@ export default function StocksPage() {
                   ))
                 }
                 {/* 기존 strategyTags */}
-                {Array.isArray(item.strategyTags) && item.strategyTags.slice(0, 3).map((tag: string, tagIndex: number) => (
-                  <span key={tag} className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] font-bold text-slate-300">
-                    {Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels[tagIndex] || tag : tag}
-                  </span>
-                ))}
+                {Array.isArray(item.strategyTags) && item.strategyTags.slice(0, 3).map((tag: string, tagIndex: number) => {
+                  const TAG_LABEL: Record<string, string> = {
+                    CAUTION:"⚠ 주의", MA_CONVERGENCE:"이격도 수렴", PULLBACK_BUY:"눌림목",
+                    MOMENTUM:"모멘텀", VOLUME_BREAKOUT:"거래량 증가", BREAKOUT_52W:"52주 돌파",
+                    NEAR_52W_HIGH:"신고가 근접", BB_SQUEEZE:"볼린저 스퀴즈", STABLE_LOW_RISK:"안정형",
+                    UNDERVALUED_GROWTH:"저평가 성장주", GOLDEN_CROSS:"🔼 골든크로스",
+                    DEATH_CROSS:"🔽 데드크로스", MID_GOLDEN_CROSS:"📈 중기 골든크로스",
+                    MID_DEATH_CROSS:"📉 중기 데드크로스", TRAILING_STOP_ALERT:"⚡ 트레일링 손절",
+                    LOW_RISK_STABLE:"안정형", BREAKOUT:"돌파",
+                  };
+                  const TAG_COLOR: Record<string, string> = {
+                    CAUTION:"border-red-600/40 bg-red-600/10 text-red-300",
+                    DEATH_CROSS:"border-red-600/40 bg-red-600/10 text-red-300",
+                    MID_DEATH_CROSS:"border-red-700/40 bg-red-700/10 text-red-400",
+                    TRAILING_STOP_ALERT:"border-amber-500/40 bg-amber-500/10 text-amber-300",
+                    GOLDEN_CROSS:"border-emerald-400/40 bg-emerald-400/10 text-emerald-300",
+                    MID_GOLDEN_CROSS:"border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+                    MA_CONVERGENCE:"border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
+                    PULLBACK_BUY:"border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+                    MOMENTUM:"border-orange-500/40 bg-orange-500/10 text-orange-300",
+                    VOLUME_BREAKOUT:"border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
+                    BREAKOUT_52W:"border-violet-500/40 bg-violet-500/10 text-violet-300",
+                    BREAKOUT:"border-violet-500/40 bg-violet-500/10 text-violet-300",
+                    NEAR_52W_HIGH:"border-violet-400/30 bg-violet-400/5 text-violet-400",
+                    BB_SQUEEZE:"border-sky-500/40 bg-sky-500/10 text-sky-300",
+                    STABLE_LOW_RISK:"border-teal-500/40 bg-teal-500/10 text-teal-300",
+                    LOW_RISK_STABLE:"border-teal-500/40 bg-teal-500/10 text-teal-300",
+                    UNDERVALUED_GROWTH:"border-green-500/40 bg-green-500/10 text-green-300",
+                  };
+                  const tagLabels = Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels as string[] : [];
+                  const lbl = TAG_LABEL[tag] ?? tagLabels[tagIndex] ?? tag;
+                  const cls = TAG_COLOR[tag] ?? "border-slate-600 bg-slate-800 text-slate-300";
+                  return (
+                    <span key={tag} className={`rounded-md border px-2 py-1 text-[11px] font-bold ${cls}`}>
+                      {lbl}
+                    </span>
+                  );
+                })}
                 {/* 재무 정보 배지 */}
                 {item.isUndervaluedGrowth && (
                   <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-300">
