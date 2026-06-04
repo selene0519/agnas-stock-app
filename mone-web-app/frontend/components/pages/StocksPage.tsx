@@ -232,6 +232,12 @@ export default function StocksPage() {
   const [groupsList, setGroupsList] = useState<string[]>([]);
   const [groupAssigning, setGroupAssigning] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"finalScore" | "expectedValue" | "upsideScore" | "rrScore">("finalScore");
+  const [screenerOpen, setScreenerOpen] = useState(false);
+  const [minScore, setMinScore] = useState(0);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [hideDataPending, setHideDataPending] = useState(false);
+  const [hideBlockedOnly, setHideBlockedOnly] = useState(false);
+  const [nameQuery, setNameQuery] = useState("");
 
   useEffect(() => {
     if (market === "kr") {
@@ -370,11 +376,45 @@ export default function StocksPage() {
     if (groupFilter) {
       result = result.filter((item) => String(item.group || "미분류").trim() === groupFilter);
     }
+    if (minScore > 0) {
+      result = result.filter((item) => Number(item.finalScore ?? 0) >= minScore);
+    }
+    if (tagFilter) {
+      result = result.filter((item) => {
+        const tags: string[] = Array.isArray(item.strategyTags) ? item.strategyTags : [];
+        return tags.includes(tagFilter);
+      });
+    }
+    if (hideDataPending) {
+      result = result.filter((item) => !["DATA_PENDING", "STALE"].includes(String(item.dataStatus || "")));
+    }
+    if (hideBlockedOnly) {
+      result = result.filter((item) => String(item.tradeBlockStatus || "") !== "BLOCK");
+    }
+    if (nameQuery.trim()) {
+      const needle = nameQuery.trim().toLowerCase();
+      result = result.filter((item) =>
+        `${displayName(item)} ${item.symbol}`.toLowerCase().includes(needle)
+      );
+    }
     return result;
-  }, [items, sectorFilter, groupFilter]);
+  }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery]);
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    items.forEach((item) => {
+      (Array.isArray(item.strategyTags) ? item.strategyTags : []).forEach((t: string) => tagSet.add(t));
+    });
+    return Array.from(tagSet).sort();
+  }, [items]);
+
+  const activeFilterCount = [
+    minScore > 0, tagFilter != null, hideDataPending, hideBlockedOnly,
+    nameQuery.trim() !== "", sectorFilter != null, groupFilter != null,
+  ].filter(Boolean).length;
 
   const visible = useMemo(() => {
-    const base = sectorFilter || groupFilter ? sectorFiltered : items;
+    const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() ? sectorFiltered : items;
     let result = base;
     if (selected) {
       const selectedMarket = cleanMarket(selected.market || market || "kr");
@@ -403,7 +443,7 @@ export default function StocksPage() {
       ];
     }
     return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
-  }, [items, selected, market, sectorFiltered, sectorFilter, groupFilter, sortBy]);
+  }, [items, selected, market, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy]);
 
   const selectedWatchRow = useMemo(() => {
     if (!selected) return null;
@@ -676,6 +716,102 @@ export default function StocksPage() {
             ))}
           </div>
         )}
+
+        {/* 스크리너 패널 토글 */}
+        <div className="mt-4">
+          <button
+            onClick={() => setScreenerOpen((v) => !v)}
+            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${screenerOpen ? "border-sky-600/60 bg-sky-900/20 text-sky-300" : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"}`}>
+            스크리너
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{activeFilterCount}</span>
+            )}
+            <span className="ml-1 text-[10px] opacity-60">{screenerOpen ? "▲" : "▼"}</span>
+          </button>
+
+          {screenerOpen && (
+            <div className="mt-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 space-y-4">
+              {/* 이름/티커 검색 */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
+                <input
+                  type="text"
+                  value={nameQuery}
+                  onChange={(e) => setNameQuery(e.target.value)}
+                  placeholder="이름 또는 티커 입력"
+                  className="mt-1 w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-sky-600"
+                />
+              </div>
+
+              {/* 최소 점수 */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">최소 finalScore</label>
+                  <span className="font-mono text-xs text-slate-300">{minScore} 이상</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[0, 30, 40, 50, 60].map((val) => (
+                    <button key={val} onClick={() => setMinScore(val)}
+                      className={`rounded-full px-3 py-1 text-[11px] font-medium ${minScore === val ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                      {val === 0 ? "전체" : `${val}+`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 전략 태그 */}
+              {allTags.length > 0 && (
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">전략 태그</label>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <button onClick={() => setTagFilter(null)}
+                      className={`rounded-full px-3 py-1 text-[11px] font-medium ${!tagFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                      전체
+                    </button>
+                    {allTags.map((tag) => (
+                      <button key={tag} onClick={() => setTagFilter(tag === tagFilter ? null : tag)}
+                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${tagFilter === tag ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 데이터 상태 필터 */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">데이터·진입 상태</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={hideDataPending} onChange={(e) => setHideDataPending(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                    DATA_PENDING / STALE 숨기기
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={hideBlockedOnly} onChange={(e) => setHideBlockedOnly(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                    BLOCK 종목 숨기기
+                  </label>
+                </div>
+              </div>
+
+              {/* 결과 요약 + 전체 초기화 */}
+              <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
+                <span className="text-xs text-slate-500">
+                  필터 결과: <span className="font-mono text-slate-200">{sectorFiltered.length}</span> / {items.length}개
+                </span>
+                {activeFilterCount > 0 && (
+                  <button onClick={() => {
+                    setMinScore(0); setTagFilter(null); setHideDataPending(false);
+                    setHideBlockedOnly(false); setNameQuery(""); setSectorFilter(null); setGroupFilter(null);
+                  }} className="rounded-lg border border-slate-700 px-3 py-1 text-[11px] text-slate-400 hover:bg-slate-800">
+                    필터 전체 초기화
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* 관심종목 자동선별 결과 */}
         {scoredWatch && Array.isArray(scoredWatch.items) && scoredWatch.items.length === 0 && (

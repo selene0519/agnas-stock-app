@@ -17,13 +17,33 @@ function avg(items: any[], getter: (item: any) => number | null) {
 
 type ValidationStatus = "검증대기" | "미체결" | "체결" | "목표도달" | "손절" | "보류" | "오류";
 
+function fieldText(item: any, keys: string[]) {
+  for (const key of keys) {
+    const value = item?.[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
+  }
+  return "";
+}
+
+function lowerToken(value: string) {
+  return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function isTruthyExecution(value: any) {
+  return ["true", "1", "yes", "y", "체결", "executed", "hit", "완료"].includes(lowerToken(String(value ?? "")));
+}
+
 function resolveStatus(item: any): ValidationStatus {
-  const bucket = String(item.decisionBucket || item.decision_bucket || "").toLowerCase();
+  const bucket = lowerToken(fieldText(item, ["decisionBucket", "decision_bucket", "bucket"]));
   const block = String(item.tradeBlockStatus || item.trade_block_status || "").toUpperCase();
-  const outcome = String(item.outcome || item.result || "").toLowerCase();
-  if (outcome.includes("목표") || outcome.includes("target")) return "목표도달";
-  if (outcome.includes("손절") || outcome.includes("stop")) return "손절";
-  if (outcome.includes("체결") || outcome.includes("executed")) return "체결";
+  const outcome = lowerToken(fieldText(item, ["outcome", "result", "status", "virtualResult", "executionStatus", "execution_status"]));
+  const executed = fieldText(item, ["isExecuted", "is_executed", "executed"]);
+
+  if (["data_pending", "pending", "validatable"].includes(outcome)) return "검증대기";
+  if (["not_executed", "no_touch", "missed_entry", "unexecuted", "미체결", "진입가_미터치"].includes(outcome)) return "미체결";
+  if (outcome.includes("target") || outcome.includes("tp") || outcome.includes("win") || outcome.includes("목표")) return "목표도달";
+  if (outcome.includes("stop") || outcome.includes("loss") || outcome.includes("손절")) return "손절";
+  if (isTruthyExecution(executed) || ["executed", "hit", "체결", "완료"].includes(outcome)) return "체결";
   if (bucket === "보류" || bucket === "제외" || block === "CAUTION" || block === "BLOCK") return "보류";
   if (bucket === "실행" || bucket === "즉시실행") return "체결";
   if (bucket === "대기") return "미체결";
@@ -56,6 +76,149 @@ function mergeBySymbol(predictions: any[], recommendations: any[]) {
   });
 }
 
+function keyOf(item: any) {
+  const market = String(item?.market || "").toLowerCase();
+  const symbol = String(item?.symbol || item?.code || item?.ticker || "").trim().toUpperCase();
+  return `${market}-${symbol}`;
+}
+
+function fulfilled<T>(result: PromiseSettledResult<T>, fallback: T): T {
+  return result.status === "fulfilled" ? result.value : fallback;
+}
+
+function combineValidationDashboards(results: any[]) {
+  const dashboards = results.filter((item) => item?.summary || item?.stats);
+  if (!dashboards.length) return null;
+  const stats: Record<string, any> = {};
+  const keys = new Set<string>();
+  dashboards.forEach((dash) => Object.keys(dash.stats || {}).forEach((key) => keys.add(key)));
+  keys.forEach((key) => {
+    const rows = dashboards.map((dash) => dash.stats?.[key]).filter(Boolean);
+    const completed = rows.reduce((sum, row) => sum + Number(row.completed || 0), 0);
+    const wins = rows.reduce((sum, row) => sum + Number(row.wins || 0), 0);
+    const pendingCount = rows.reduce((sum, row) => sum + Number(row.pendingCount || 0), 0);
+    const returns = rows.map((row) => Number(row.avgReturn)).filter(Number.isFinite);
+    stats[key] = {
+      completed,
+      wins,
+      pendingCount,
+      winRate: completed > 0 ? Number(((wins / completed) * 100).toFixed(1)) : null,
+      avgReturn: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
+    };
+  });
+  const totalCompleted = dashboards.reduce((sum, dash) => sum + Number(dash.summary?.totalCompleted || 0), 0);
+  const totalPending = dashboards.reduce((sum, dash) => sum + Number(dash.summary?.totalPending || 0), 0);
+  const totalWins = dashboards.reduce((sum, dash) => sum + Number(dash.summary?.totalWins || 0), 0);
+  return {
+    status: "OK",
+    market: dashboards.length > 1 ? "all" : dashboards[0].market,
+    stats,
+    summary: {
+      totalCompleted,
+      totalPending,
+      overallWinRate: totalCompleted > 0 ? Number(((totalWins / totalCompleted) * 100).toFixed(1)) : null,
+    },
+  };
+}
+
+const PLAYBOOK: Record<Strategy, { enter: string; avoid: string; size: string; regime: string; failure: string }> = {
+  conservative: {
+    enter: "시장 변동성이 낮고 손절폭이 좁으며 진입가가 현재가와 가까울 때",
+    avoid: "거래대금 부족, 손절폭 과다, DATA_PENDING, 진입가 괴리 확대",
+    size: "기본 3~5%, half-Kelly가 낮으면 더 줄임",
+    regime: "BEAR/NEUTRAL에서도 우선 확인",
+    failure: "미체결이 많으면 진입가를 보수적으로 낮추고 목표 기간을 늘림",
+  },
+  balanced: {
+    enter: "확률·EV·손익비가 동시에 양호하고 최근 검증 승률이 45~55% 이상일 때",
+    avoid: "뉴스 리스크, 반복 손절, 목표가 대비 기대수익 부족",
+    size: "기본 5~10%, 손절폭과 승률로 자동 축소",
+    regime: "NEUTRAL/BULL에서 기본 전략",
+    failure: "목표 도달 전에 기간 만료가 많으면 보유 기간과 목표폭을 재조정",
+  },
+  aggressive: {
+    enter: "BULL 또는 강한 모멘텀에서 확률·거래대금·상승 여지가 모두 맞을 때",
+    avoid: "BEAR 레짐, 변동성 과열, 최근 공격형 반복 실패, 현재가가 진입가에서 멀 때",
+    size: "기본 10~15%, 과열·손절폭 확대 시 자동 보류 또는 축소",
+    regime: "BULL 적합, BEAR에서는 공격 보류",
+    failure: "손절 선행이 많으면 목표가 과대 추정과 진입 밴드를 동시에 보정",
+  },
+};
+
+function touchEvidence(row: any) {
+  if (!row) {
+    return {
+      label: "검증대기",
+      detail: "검증 행 없음",
+      style: "border-slate-700 bg-slate-800/60 text-slate-400",
+    };
+  }
+  const result = lowerToken(fieldText(row, ["result", "status", "outcome", "executionStatus", "execution_status"]));
+  const reason = fieldText(row, ["reason", "dataStatus", "data_status", "validationRule", "validation_rule"]);
+  if (result === "data_pending" || String(row.dataStatus || row.data_status || "").toUpperCase() === "DATA_PENDING") {
+    return { label: "DATA_PENDING", detail: reason || "OHLCV 수집 필요", style: "border-amber-500/30 bg-amber-500/10 text-amber-200" };
+  }
+  if (["not_executed", "no_touch", "missed_entry", "unexecuted"].includes(result)) {
+    return { label: "미터치", detail: reason || "실제 저가/고가가 진입가를 통과하지 않음", style: "border-slate-600/40 bg-slate-800/50 text-slate-300" };
+  }
+  if (isTruthyExecution(row.isExecuted ?? row.is_executed ?? row.executed) || ["target", "tp1", "win", "stop", "loss", "executed"].some((key) => result.includes(key))) {
+    return { label: "터치 확인", detail: reason || "entry_touch_only", style: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
+  }
+  return { label: "검증대기", detail: reason || "결과 대기", style: "border-slate-700 bg-slate-800/60 text-slate-400" };
+}
+
+function StrategyPlaybookPanel({ strategy, term, data, valDash }: { strategy: Strategy; term: Term; data: any; valDash: any }) {
+  const book = PLAYBOOK[strategy];
+  const active = valDash?.stats?.[`${strategy}_${term}`];
+  const correction = data?.selfCorrection || {};
+  const penalty = correction.selfCorrectionPenaltyPct ?? correction.penaltyPct ?? correction.recentNotExecutedRate;
+  return (
+    <div className="grid grid-cols-1 gap-3 xl:grid-cols-5">
+      {[
+        ["진입 조건", book.enter],
+        ["진입 금지", book.avoid],
+        ["포지션 크기", book.size],
+        ["레짐 적합도", book.regime],
+        ["실패 보정", penalty != null ? `최근 검증 기준 보정값 ${Number(penalty).toFixed(2)}% 반영` : book.failure],
+      ].map(([label, value]) => (
+        <div key={label} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div className="text-xs font-semibold text-slate-500">{label}</div>
+          <div className="mt-2 text-sm leading-5 text-slate-200">{value}</div>
+        </div>
+      ))}
+      {active?.winRate != null && (
+        <div className="xl:col-span-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100">
+          현재 전략 검증: 완료 {active.completed ?? 0}건, 대기 {active.pendingCount ?? 0}건, 승률 {active.winRate}%입니다. DATA_PENDING과 미체결은 승률 계산에서 제외하고 진입가 보정 신호로만 봅니다.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ValidationPolicyPanel({ market, data, validationRows }: { market: Market; data: any; validationRows: any[] }) {
+  const pending = validationRows.filter((row) => resolveStatus(row) === "검증대기").length;
+  const noTouch = validationRows.filter((row) => resolveStatus(row) === "미체결").length;
+  const policy = data?.validationPolicy || {};
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm font-semibold text-slate-200">검증 정책</div>
+        <div className="text-xs text-slate-500">행 단위 검증 {validationRows.length.toLocaleString("ko-KR")}건 · DATA_PENDING/대기 {pending}건 · 진입 미터치 {noTouch}건</div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">실제 저가 ≤ 진입가 ≤ 실제 고가일 때만 체결</div>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">미체결은 승률·수익률에서 제외</div>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">목표·손절 동시 터치 시 손절 우선</div>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">OHLCV 누락은 DATA_PENDING으로 보류</div>
+      </div>
+      <div className="mt-3 text-[11px] text-slate-500">
+        {market === "all" ? "전체 탭은 KR/US 검증을 분리 호출한 뒤 합산합니다." : `${market.toUpperCase()} 검증 기준입니다.`}
+        {policy.executionRule && <span className="ml-2">{policy.executionRule}</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function PredictionPage() {
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [strategy, setStrategy] = useState<Strategy>("balanced");
@@ -64,28 +227,54 @@ export default function PredictionPage() {
   const [accuracy, setAccuracy] = useState<any>(null);
   const [valDash, setValDash] = useState<any>(null);
   const [btItems, setBtItems] = useState<any[]>([]);
+  const [validationRows, setValidationRows] = useState<any[]>([]);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ValidationStatus | "all">("all");
   const [loading, setLoading] = useState(false);
 
   async function load() {
     setLoading(true);
+    setData((prev: any) => ({ ...prev, status: "LOADING" }));
     try {
-      const mk = market === "all" ? "kr" : market;
-      const [pred, rec, acc, vd, bt] = await Promise.all([
-        mone.predictions({ market, mode: strategy, horizon: term, limit: 300 }),
-        mone.recommendations({ market, mode: strategy, horizon: term, limit: 300 }),
-        mone.predictionAccuracy({ market: market === "all" ? "all" : market }),
-        mone.validationDashboard({ market: mk }),
-        mone.backtestTrades({ market: mk, mode: strategy, horizon: term, limit: 200 }),
-      ]);
+      const validationMarkets = market === "all" ? (["kr", "us"] as const) : ([market] as const);
+      const predPromise = mone.predictions({ market, mode: strategy, horizon: term, limit: 300 });
+      const recPromise = mone.recommendations({ market, mode: strategy, horizon: term, limit: 300 });
+      const accPromise = mone.predictionAccuracy({ market: market === "all" ? "all" : market });
+      const vdPromise = Promise.all(validationMarkets.map((mk) => mone.validationDashboard({ market: mk }))).then(combineValidationDashboards);
+      const btPromise = Promise.all(validationMarkets.map((mk) => mone.backtestTrades({ market: mk, mode: strategy, horizon: term, limit: 200 })))
+        .then((rows) => rows.flatMap((row) => Array.isArray(row.items) ? row.items : []));
+      const validationPromise = mone.virtualValidation({ market, mode: strategy, horizon: term, limit: 300 });
+
+      const [predResult, recResult] = await Promise.allSettled([predPromise, recPromise]);
+      const pred = fulfilled(predResult, { status: "ERROR", items: [] });
+      const rec = fulfilled(recResult, { status: "ERROR", items: [] });
       const predItems = Array.isArray(pred.items) ? pred.items : [];
       const recItems = Array.isArray(rec.items) ? rec.items : [];
       const merged = predItems.length ? mergeBySymbol(predItems, recItems) : dedupeBySymbol(recItems);
-      setData({ ...pred, items: merged, recommendationCount: recItems.length });
+      setData({
+        ...pred,
+        items: merged,
+        recommendationCount: recItems.length,
+        validationPolicy: pred.validationPolicy || rec.validationPolicy,
+        selfCorrection: pred.selfCorrection || rec.selfCorrection,
+        scanCoverage: rec.scanCoverage || pred.scanCoverage,
+      });
+
+      const [accResult, vdResult, btResult, validationResult] = await Promise.allSettled([accPromise, vdPromise, btPromise, validationPromise]);
+      const acc = fulfilled(accResult, null);
+      const vd = fulfilled(vdResult, null);
+      const bt = fulfilled(btResult, []);
+      const vv = fulfilled(validationResult, { status: "ERROR", items: [] });
       setAccuracy(acc?.status === "OK" ? acc : null);
       setValDash(vd?.summary ? vd : null);
-      setBtItems(Array.isArray(bt.items) ? bt.items : []);
+      setBtItems(Array.isArray(bt) ? bt : []);
+      setValidationRows(Array.isArray(vv.items) ? vv.items : []);
     } catch (error) {
       setData({ status: "ERROR", error: String(error), items: [] });
+      setAccuracy(null);
+      setValDash(null);
+      setBtItems([]);
+      setValidationRows([]);
     } finally {
       setLoading(false);
     }
@@ -97,7 +286,28 @@ export default function PredictionPage() {
   }, [market, strategy, term]);
 
   const items = Array.isArray(data.items) ? data.items : [];
-  const top = useMemo(() => items.slice(0, 30), [items]);
+  const validationBySymbol = useMemo(() => {
+    const map = new Map<string, any>();
+    validationRows.forEach((row) => {
+      const key = keyOf(row);
+      if (key !== "-") map.set(key, row);
+    });
+    return map;
+  }, [validationRows]);
+  const enrichedItems = useMemo(() => items.map((item) => {
+    const validation = validationBySymbol.get(keyOf(item));
+    return validation ? { ...item, validation } : item;
+  }), [items, validationBySymbol]);
+  const top = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return enrichedItems
+      .filter((item) => {
+        if (statusFilter !== "all" && resolveStatus(item.validation || item) !== statusFilter) return false;
+        if (!needle) return true;
+        return `${displayName(item)} ${item.symbol}`.toLowerCase().includes(needle);
+      })
+      .slice(0, 30);
+  }, [enrichedItems, query, statusFilter]);
 
   // 수익률 분포 (btItems 기반)
   const retDist = useMemo(() => {
@@ -120,7 +330,7 @@ export default function PredictionPage() {
 
   const stats = useMemo(() => {
     if (!top.length) return null;
-    const statuses = top.map(resolveStatus);
+    const statuses = top.map((item) => resolveStatus(item.validation || item));
     const targetCount = statuses.filter((s) => s === "목표도달").length;
     const stopCount = statuses.filter((s) => s === "손절").length;
     const executedCount = statuses.filter((s) => s === "체결" || s === "목표도달" || s === "손절").length;
@@ -178,6 +388,10 @@ export default function PredictionPage() {
           </div>
         </div>
       </div>
+
+      <StrategyPlaybookPanel strategy={strategy} term={term} data={data} valDash={valDash} />
+
+      <ValidationPolicyPanel market={market} data={data} validationRows={validationRows} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card label="표시 후보" value={`${top.length}개`} />
@@ -289,11 +503,33 @@ export default function PredictionPage() {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
-        <div className="border-b border-slate-800 px-5 py-4 text-sm text-slate-400">
-          predictions/table과 recommendations를 market+symbol 기준으로 병합했습니다. 진입/손절/목표가 비면 추천값으로 보강합니다.
+        <div className="border-b border-slate-800 px-5 py-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="text-sm text-slate-400">
+              predictions/table과 recommendations를 market+symbol 기준으로 병합했습니다. 진입/손절/목표가 비면 추천값으로 보강합니다.
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="종목 검색"
+                className="w-44 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none"
+              />
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as ValidationStatus | "all")}
+                className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none"
+              >
+                <option value="all">상태 전체</option>
+                {(["검증대기", "미체결", "체결", "목표도달", "손절", "보류"] as ValidationStatus[]).map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1200px] text-left text-sm">
+          <table className="w-full min-w-[1400px] text-left text-sm">
             <thead className="border-b border-slate-800 text-xs text-slate-500">
               <tr>
                 <th className="px-4 py-3">종목</th>
@@ -306,6 +542,8 @@ export default function PredictionPage() {
                 <th className="px-4 py-3">목표가</th>
                 <th className="px-4 py-3">예상가</th>
                 <th className="px-4 py-3">1/3/5/10일</th>
+                <th className="px-4 py-3">터치 검증</th>
+                <th className="px-4 py-3">대기/보정 사유</th>
                 <th className="px-4 py-3">상태</th>
               </tr>
             </thead>
@@ -321,6 +559,8 @@ export default function PredictionPage() {
                 const stop = priceText(item, "stop", priceText(item.recommendation || {}, "stop", "손절 확인"));
                 const target = priceText(item, "target", priceText(item.recommendation || {}, "target", "목표 확인"));
                 const expected = priceText(item, "expected", target);
+                const evidence = touchEvidence(item.validation);
+                const status = resolveStatus(item.validation || item);
                 return (
                   <tr key={`${item.market}-${item.symbol}-${index}`} className="border-b border-slate-800/60">
                     <td className="px-4 py-3"><div className="font-semibold text-slate-100">{displayName(item)}</div><div className="font-mono text-xs text-slate-500">{item.symbol}</div></td>
@@ -334,12 +574,16 @@ export default function PredictionPage() {
                     <td className="px-4 py-3 font-mono text-violet-300">{expected}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-300">{prob1d} / {prob3d} / {prob5d} / {prob10d}</td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLE[resolveStatus(item)]}`}>{resolveStatus(item)}</span>
+                      <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${evidence.style}`}>{evidence.label}</span>
+                    </td>
+                    <td className="max-w-[220px] px-4 py-3 text-xs text-slate-400">{evidence.detail}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLE[status]}`}>{status}</span>
                     </td>
                   </tr>
                 );
               })}
-              {top.length === 0 && <tr><td colSpan={11} className="px-4 py-10 text-center text-slate-500">예측 데이터가 없습니다.</td></tr>}
+              {top.length === 0 && <tr><td colSpan={13} className="px-4 py-10 text-center text-slate-500">예측 데이터가 없습니다.</td></tr>}
             </tbody>
           </table>
         </div>

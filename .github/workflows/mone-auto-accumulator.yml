@@ -318,6 +318,17 @@ jobs:
           fi
           set -e
 
+      - name: Backfill OHLCV history for DATA_PENDING stocks
+        run: |
+          set +e
+          if [ -f scripts/backfill_ohlcv_history.py ]; then
+            python scripts/backfill_ohlcv_history.py --min-rows 30 --days 120
+            echo "backfill_ohlcv_history: exit $?"
+          else
+            echo "scripts/backfill_ohlcv_history.py not found; skip backfill."
+          fi
+          set -e
+
       - name: Generate KR recommendations from OHLCV
         run: |
           set +e
