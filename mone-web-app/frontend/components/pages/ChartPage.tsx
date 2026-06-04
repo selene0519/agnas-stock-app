@@ -27,6 +27,7 @@ type ChartLoadState = {
   companyStatus: string;
   errors: string[];
   updatedAt: string;
+  recoDate: string;  // 추천 CSV 생성일 (YYYY-MM-DD)
 };
 
 function toSymbol(item: any, index = 0): MoneSymbol | null {
@@ -160,7 +161,7 @@ function firstTouch(rows: any[], price: number, fromIndex = 0) {
   return null;
 }
 
-function recommendationTouchReview(rows: any[], levels: any, currentPrice: number, market: Market) {
+function recommendationTouchReview(rows: any[], levels: any, currentPrice: number, market: Market, recoDate?: string) {
   const entry = levelValue(levels, "entry");
   const stop = levelValue(levels, "stop");
   const target = levelValue(levels, "target");
@@ -176,7 +177,20 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
       ],
     };
   }
-  const reviewRows = rows.slice(-80);
+
+  // 추천 생성일 기준으로 시작봉 결정
+  let fromIndex = Math.max(0, rows.length - 80); // 기본값: 최근 80봉
+  let rangeLabel = "최근 80봉";
+  if (recoDate) {
+    const recoDay = recoDate.slice(0, 10);
+    const idx = rows.findIndex((r) => dateOf(r) >= recoDay);
+    if (idx >= 0) {
+      fromIndex = idx;
+      const barsFromReco = rows.length - idx;
+      rangeLabel = `추천일(${recoDay}) 이후 ${barsFromReco}봉`;
+    }
+  }
+  const reviewRows = rows.slice(fromIndex);
   const entryTouch = firstTouch(reviewRows, entry);
   const fromEntry = entryTouch ? entryTouch.index : 0;
   const targetTouch = firstTouch(reviewRows, target, fromEntry);
@@ -795,6 +809,7 @@ export default function ChartPage() {
     companyStatus: "IDLE",
     errors: [],
     updatedAt: "",
+    recoDate: "",
   });
 
   useEffect(() => {
@@ -855,6 +870,8 @@ export default function ChartPage() {
       setDisclosures(relatedDisclosures);
       const cm = Array.isArray(company_d.items) ? company_d.items.find((item: any) => normalizeSymbol(item) === selected.symbol) || company_d.items[0] : null;
       setCompany(cm || null);
+      // 추천 생성일: dataHealth.recoGeneratedAt (날짜 부분만)
+      const recoDate = String(rd?.dataHealth?.recoGeneratedAt || "").slice(0, 10);
       setLoadState({
         ohlcvStatus: cd.status || (chartRows.length ? "OK" : "NO_DATA"),
         ohlcvCount: chartRows.length,
@@ -865,6 +882,7 @@ export default function ChartPage() {
         companyStatus: company_d.status || (cm ? (cm.dataStatus || "OK") : "NO_DATA"),
         errors,
         updatedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        recoDate,
       });
     }).finally(() => active && setLoading(false));
     return () => { active = false; controller.abort(); };
@@ -899,7 +917,7 @@ export default function ChartPage() {
   const atrPlan = atrValue > 0 && currentPrice > 0 ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon) : null;
   const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
   const freshness = freshnessInfo(rows);
-  const touchReview = recommendationTouchReview(rows, levels, currentPrice, selected?.market || market);
+  const touchReview = recommendationTouchReview(rows, levels, currentPrice, selected?.market || market, loadState.recoDate || undefined);
   const dataCards = [
     { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`, cls: loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
     { label: "추천선", value: levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
@@ -993,7 +1011,10 @@ export default function ChartPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-2 text-[10px] text-slate-600">OHLCV 최근일: {freshness.detail}</div>
+              <div className="mt-2 text-[10px] text-slate-600">
+                OHLCV 최근일: {freshness.detail}
+                {loadState.recoDate && <span className="ml-3 text-violet-400/70">추천 생성: {loadState.recoDate.slice(0, 10)}</span>}
+              </div>
             </div>
 
             {/* 기간 필터 + 인디케이터 토글 */}
