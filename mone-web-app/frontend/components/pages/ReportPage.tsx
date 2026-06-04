@@ -246,6 +246,13 @@ export default function ReportPage() {
   const [virtualLedger, setVirtualLedger] = useState<any>({ status: "LOADING", items: [] });
   const [virtualValidation, setVirtualValidation] = useState<any>({ status: "LOADING", items: [] });
   const [valDashboard, setValDashboard] = useState<any>(null);
+  const [usdToKrw, setUsdToKrw] = useState<number>(1300); // 환율 기본값, API로 갱신
+
+  useEffect(() => {
+    mone.exchangeRate({ base: "USD", target: "KRW" })
+      .then((r) => { if (r?.rate) setUsdToKrw(r.rate); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -285,12 +292,18 @@ export default function ReportPage() {
 
   const holdingItems = Array.isArray(holdings.items) ? holdings.items : [];
   // v3 backend: marketValue (not valuation), avgPrice*quantity for cost
-  const holdingValue = holdingItems.reduce((s: number, i: any) => s + (toNumber(i.marketValue) || toNumber(i.valuation) || 0), 0);
-  const holdingPnl   = holdingItems.reduce((s: number, i: any) => s + (toNumber(i.pnl) || 0), 0);
+  // USD 항목은 usdToKrw 환율로 KRW 환산
+  const fx = (item: any, value: number) =>
+    String(item.market || "").toLowerCase() === "us" ? value * usdToKrw : value;
+  const holdingValue = holdingItems.reduce((s: number, i: any) =>
+    s + fx(i, toNumber(i.marketValue) || toNumber(i.valuation) || 0), 0);
+  const holdingPnl   = holdingItems.reduce((s: number, i: any) =>
+    s + fx(i, toNumber(i.pnl) || 0), 0);
   const holdingCost  = holdingItems.reduce((s: number, i: any) => {
     const avg = toNumber(i.avgPrice) || 0;
     const qty = toNumber(i.quantity) || 0;
-    return s + (avg * qty) || (toNumber(i.cost) || 0);
+    const cost = avg * qty || (toNumber(i.cost) || 0);
+    return s + fx(i, cost);
   }, 0);
   const holdingDayPnl = holdingItems.reduce((s: number, i: any) => {
     const cur = toNumber(i.currentPrice), prev = toNumber(i.prevClose), qty = toNumber(i.quantity);
