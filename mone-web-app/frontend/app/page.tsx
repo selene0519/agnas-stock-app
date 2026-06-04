@@ -57,6 +57,12 @@ export default function App() {
     return () => window.removeEventListener("focus", refresh);
   }, [refresh]);
 
+  useEffect(() => {
+    const handler = () => setPage("chart");
+    window.addEventListener("mone-open-chart", handler);
+    return () => window.removeEventListener("mone-open-chart", handler);
+  }, []);
+
   const renderPage = () => {
     switch (page) {
       case "home":
