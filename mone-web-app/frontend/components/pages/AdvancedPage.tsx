@@ -313,7 +313,49 @@ export default function AdvancedPage() {
               <p className="mt-1 text-[11px] text-slate-600">추천 파일({modeLabel(mode)}/{horizonLabel(horizon)}/{marketLabel(market)})이 비어있거나 GitHub Actions 실행이 필요합니다.</p>
             </div>
           )}
-          <div className="mt-5 overflow-x-auto rounded-xl border border-slate-800">
+          {/* 모바일 카드 뷰 */}
+          <div className="mt-5 block sm:hidden space-y-2">
+            {scanItems.map((item) => {
+              const ev = item.expectedValuePct != null ? Number(item.expectedValuePct).toFixed(2) : item.expectedValue != null ? Number(item.expectedValue).toFixed(2) : null;
+              return (
+                <div key={`m-${item.market}-${item.symbol}`} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-slate-100 text-sm">{displayName(item)}</div>
+                      <div className="font-mono text-[10px] text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => applyCandidate(item, "calculator")} className="rounded-md bg-slate-800 px-2 py-1 text-[10px] text-slate-200">계산</button>
+                      <button onClick={() => applyCandidate(item, "montecarlo")} className="rounded-md bg-slate-800 px-2 py-1 text-[10px] text-slate-200">MC</button>
+                    </div>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                    <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
+                      <div className="text-slate-500">현재가 / 진입가</div>
+                      <div className="font-mono text-slate-200">{priceText(item, "current", "-")} / <span className="text-sky-300">{priceText(item, "entry", "-")}</span></div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
+                      <div className="text-slate-500">확률 / EV</div>
+                      <div className="font-mono"><span className="text-emerald-300">{probabilityText(item, "-")}</span>{ev && <span className="text-violet-300"> / {ev}%</span>}</div>
+                    </div>
+                  </div>
+                  {((item.strategyTagLabels || item.strategyTags || []).slice(0, 2).join(", ") || firstRisk(item) !== "특이 리스크 없음") && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {(item.strategyTagLabels || item.strategyTags || []).slice(0, 2).map((t: string) => (
+                        <span key={t} className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">{t}</span>
+                      ))}
+                      {firstRisk(item) !== "특이 리스크 없음" && (
+                        <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">{firstRisk(item)}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 데스크톱 테이블 뷰 */}
+          <div className="mt-5 hidden overflow-x-auto rounded-xl border border-slate-800 sm:block">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="bg-slate-950/60 text-xs text-slate-500">
                 <tr>

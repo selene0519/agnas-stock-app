@@ -1333,7 +1333,7 @@ export default function StocksPage() {
                 </div>
               )}
 
-              {hasRecommendation && (item.finalScore > 0 || item.riskScore > 0) && (
+              {hasRecommendation && (
                 <div className="mt-3 rounded-xl bg-slate-950 p-3 space-y-1.5">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">퀀트 스코어</span>
@@ -1343,11 +1343,21 @@ export default function StocksPage() {
                       {item.expectedValue != null && <span className={`font-mono ${item.expectedValue >= 0 ? "text-emerald-400" : "text-red-400"}`}>EV {item.expectedValue >= 0 ? "+" : ""}{Number(item.expectedValue).toFixed(1)}%</span>}
                     </div>
                   </div>
-                  <ScoreBar label="상승여력" score={item.upsideScore} />
-                  <ScoreBar label="리스크" score={item.riskScore} />
-                  <ScoreBar label="모멘텀" score={item.momentumScore} />
-                  <ScoreBar label="진입가" score={item.entryScore} />
-                  <ScoreBar label="손익비" score={item.rrScore} />
+                  {(item.finalScore > 0 || item.riskScore > 0) ? (
+                    <>
+                      <ScoreBar label="상승여력" score={item.upsideScore} />
+                      <ScoreBar label="리스크" score={item.riskScore} />
+                      <ScoreBar label="모멘텀" score={item.momentumScore} />
+                      <ScoreBar label="진입가" score={item.entryScore} />
+                      <ScoreBar label="손익비" score={item.rrScore} />
+                    </>
+                  ) : (
+                    <div className="text-[10px] text-slate-600">
+                      {String(item.dataStatus || "").toUpperCase() === "DATA_PENDING"
+                        ? "OHLCV 30일 미만 — 데이터 수집 후 자동 산출됩니다."
+                        : "퀀트 스코어 데이터 준비 중입니다. 추천 파일 갱신 후 표시됩니다."}
+                    </div>
+                  )}
                 </div>
               )}
 

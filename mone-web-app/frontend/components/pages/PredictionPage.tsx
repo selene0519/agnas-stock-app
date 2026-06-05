@@ -351,14 +351,15 @@ export default function PredictionPage() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">예측·검증</h1>
-          <p className="mt-1 text-sm text-slate-400">확률 예측, 예상가, 진입/손절/목표를 기간과 성향별로 확인합니다.</p>
+          <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">예측·검증</h1>
+          <p className="mt-1 text-xs text-slate-400 sm:text-sm">확률 예측, 예상가, 진입/손절/목표를 기간과 성향별로 확인합니다.</p>
         </div>
-        <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300">
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 새로고침
+        <button onClick={load} disabled={loading} className="inline-flex shrink-0 flex-col items-center gap-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[11px] font-medium text-slate-300 disabled:opacity-50">
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          <span>새로<br />고침</span>
         </button>
       </div>
 
@@ -503,17 +504,17 @@ export default function PredictionPage() {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
-        <div className="border-b border-slate-800 px-5 py-4">
+        <div className="border-b border-slate-800 px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-sm text-slate-400">
-              예측 데이터와 추천 데이터를 종목 기준으로 통합해 보여줍니다. 진입·손절·목표가가 없는 경우 추천값으로 자동 보강됩니다.
+            <div className="text-xs text-slate-400 sm:text-sm">
+              예측·추천 데이터를 종목 기준으로 통합합니다. 진입·손절·목표가가 없으면 추천값으로 자동 보강됩니다.
             </div>
             <div className="flex flex-wrap gap-2">
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="종목 검색"
-                className="w-44 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none"
+                className="w-36 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none sm:w-44"
               />
               <select
                 value={statusFilter}
@@ -528,62 +529,96 @@ export default function PredictionPage() {
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1400px] text-left text-sm">
+
+        {/* 모바일 카드 뷰 */}
+        <div className="block sm:hidden divide-y divide-slate-800/60">
+          {top.map((item: any, index: number) => {
+            const score = scoreOf(item);
+            const current = priceText(item, "current", priceText(item.recommendation || {}, "current", "확인"));
+            const entry = priceText(item, "entry", priceText(item.recommendation || {}, "entry", current));
+            const stop = priceText(item, "stop", priceText(item.recommendation || {}, "stop", "-"));
+            const target = priceText(item, "target", priceText(item.recommendation || {}, "target", "-"));
+            const evidence = touchEvidence(item.validation);
+            const status = resolveStatus(item.validation || item);
+            return (
+              <div key={`m-${item.market}-${item.symbol}-${index}`} className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-slate-100 text-sm">{displayName(item)}</div>
+                    <div className="font-mono text-[10px] text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div>
+                  </div>
+                  <span className={`shrink-0 rounded-lg border px-2 py-0.5 text-[10px] font-bold ${STATUS_STYLE[status]}`}>{status}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                  <div className="rounded-lg bg-slate-950/60 px-2 py-1.5">
+                    <div className="text-slate-500">확률 / 점수</div>
+                    <div className="font-mono text-emerald-300">{probabilityText(item, "-")} / {score !== null ? `${score.toFixed(0)}` : "-"}</div>
+                  </div>
+                  <div className="rounded-lg bg-slate-950/60 px-2 py-1.5">
+                    <div className="text-slate-500">현재가 / 진입가</div>
+                    <div className="font-mono text-slate-200">{current} / <span className="text-sky-300">{entry}</span></div>
+                  </div>
+                  <div className="rounded-lg bg-slate-950/60 px-2 py-1.5">
+                    <div className="text-slate-500">손절 / 목표</div>
+                    <div className="font-mono"><span className="text-red-300">{stop}</span> / <span className="text-emerald-300">{target}</span></div>
+                  </div>
+                  <div className="rounded-lg bg-slate-950/60 px-2 py-1.5">
+                    <div className="text-slate-500">터치 검증</div>
+                    <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${evidence.style}`}>{evidence.label}</span>
+                  </div>
+                </div>
+                {evidence.detail && evidence.detail !== "결과 대기" && (
+                  <div className="text-[10px] text-slate-500">{evidence.detail}</div>
+                )}
+              </div>
+            );
+          })}
+          {top.length === 0 && <div className="px-4 py-10 text-center text-sm text-slate-500">예측 데이터가 없습니다.</div>}
+        </div>
+
+        {/* 데스크톱 테이블 뷰 */}
+        <div className="hidden overflow-x-auto sm:block">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="border-b border-slate-800 text-xs text-slate-500">
               <tr>
                 <th className="px-4 py-3">종목</th>
-                <th className="px-4 py-3">시장</th>
-                <th className="px-4 py-3">확률</th>
-                <th className="px-4 py-3">점수</th>
+                <th className="px-4 py-3">확률/점수</th>
                 <th className="px-4 py-3">현재가</th>
                 <th className="px-4 py-3">진입가</th>
                 <th className="px-4 py-3">손절가</th>
                 <th className="px-4 py-3">목표가</th>
-                <th className="px-4 py-3">예상가</th>
-                <th className="px-4 py-3">1/3/5/10일</th>
                 <th className="px-4 py-3">터치 검증</th>
-                <th className="px-4 py-3">대기/보정 사유</th>
                 <th className="px-4 py-3">상태</th>
               </tr>
             </thead>
             <tbody>
               {top.map((item: any, index: number) => {
                 const score = scoreOf(item);
-                const prob1d = firstText(item.prob1dText, item.prob1d ? pctText(item.prob1d) : null, probabilityText(item));
-                const prob3d = firstText(item.prob3dText, item.prob3d ? pctText(item.prob3d) : null, probabilityText(item));
-                const prob5d = firstText(item.prob5dText, item.prob5d ? pctText(item.prob5d) : null, probabilityText(item));
-                const prob10d = firstText(item.prob10dText, item.prob10d ? pctText(item.prob10d) : null, probabilityText(item));
                 const current = priceText(item, "current", priceText(item.recommendation || {}, "current", "가격 확인"));
                 const entry = priceText(item, "entry", priceText(item.recommendation || {}, "entry", current));
                 const stop = priceText(item, "stop", priceText(item.recommendation || {}, "stop", "손절 확인"));
                 const target = priceText(item, "target", priceText(item.recommendation || {}, "target", "목표 확인"));
-                const expected = priceText(item, "expected", target);
                 const evidence = touchEvidence(item.validation);
                 const status = resolveStatus(item.validation || item);
                 return (
                   <tr key={`${item.market}-${item.symbol}-${index}`} className="border-b border-slate-800/60">
-                    <td className="px-4 py-3"><div className="font-semibold text-slate-100">{displayName(item)}</div><div className="font-mono text-xs text-slate-500">{item.symbol}</div></td>
-                    <td className="px-4 py-3 uppercase text-slate-400">{item.market}</td>
-                    <td className="px-4 py-3 font-mono text-emerald-300">{probabilityText(item, "확률 확인")}</td>
-                    <td className="px-4 py-3 font-mono text-cyan-300">{score !== null ? score.toFixed(1) : "점수 확인"}</td>
+                    <td className="px-4 py-3"><div className="font-semibold text-slate-100">{displayName(item)}</div><div className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div></td>
+                    <td className="px-4 py-3 font-mono"><span className="text-emerald-300">{probabilityText(item, "-")}</span><span className="text-slate-600"> / </span><span className="text-cyan-300">{score !== null ? score.toFixed(1) : "-"}</span></td>
                     <td className="px-4 py-3 font-mono">{current}</td>
                     <td className="px-4 py-3 font-mono text-sky-300">{entry}</td>
                     <td className="px-4 py-3 font-mono text-red-300">{stop}</td>
                     <td className="px-4 py-3 font-mono text-emerald-300">{target}</td>
-                    <td className="px-4 py-3 font-mono text-violet-300">{expected}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-300">{prob1d} / {prob3d} / {prob5d} / {prob10d}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${evidence.style}`}>{evidence.label}</span>
+                      <div className="mt-0.5 max-w-[180px] text-[10px] text-slate-500 truncate">{evidence.detail}</div>
                     </td>
-                    <td className="max-w-[220px] px-4 py-3 text-xs text-slate-400">{evidence.detail}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLE[status]}`}>{status}</span>
                     </td>
                   </tr>
                 );
               })}
-              {top.length === 0 && <tr><td colSpan={13} className="px-4 py-10 text-center text-slate-500">예측 데이터가 없습니다.</td></tr>}
+              {top.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">예측 데이터가 없습니다.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -626,6 +661,11 @@ function AccuracyPanel({ accuracy }: { accuracy: any }) {
           <div className="mt-0.5 text-xs text-slate-500">
             {from} ~ {to} · 검증 {accuracy.validatedRows?.toLocaleString()}건 / 전체 {accuracy.totalRows?.toLocaleString()}건
           </div>
+          {to && to < new Date().toISOString().slice(0, 10) && (
+            <div className="mt-0.5 text-[10px] text-amber-400/70">
+              최신까지 반영하려면 실제 OHLCV 검증 파이프라인 재실행 필요
+            </div>
+          )}
         </div>
         <span className="rounded-lg border border-indigo-700/40 bg-indigo-900/30 px-2 py-1 text-[10px] text-indigo-300">
           3주 누적

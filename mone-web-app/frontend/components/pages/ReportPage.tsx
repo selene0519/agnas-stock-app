@@ -322,11 +322,11 @@ export default function ReportPage() {
   const virtualItems = Array.isArray(virtualValidation.items) ? virtualValidation.items : [];
 
   const tabs: { id: Tab; label: string; desc: string }[] = [
-    { id: "premarket",  label: "장전 리포트",   desc: "오늘 추천 후보와 매매 계획" },
-    { id: "intraday",   label: "장중 체크",      desc: "현재가 기준 접근·위험 상태" },
-    { id: "closing",    label: "장마감 검증",    desc: "실제 OHLCV 기준 체결 검증" },
-    { id: "virtual",    label: "가상운용",       desc: "누적 체결률·승률·수익률" },
-    { id: "validation", label: "검증 대시보드",  desc: "9개 전략 승률·수익률 매트릭스" },
+    { id: "premarket",  label: "장전 리포트",   desc: "오늘 추천 후보 · 홈 매트릭스와 동일 데이터" },
+    { id: "intraday",   label: "장중 체크",      desc: "현재가 기준 진입·위험 접근도" },
+    { id: "closing",    label: "장마감 검증",    desc: "OHLCV 실제 고·저가 기준 체결 여부" },
+    { id: "virtual",    label: "가상운용",       desc: "누적 체결·승률·수익률 + PnL 곡선" },
+    { id: "validation", label: "검증 대시보드",  desc: "9전략 매트릭스 승률·평균수익률" },
   ];
 
   return (
@@ -354,10 +354,32 @@ export default function ReportPage() {
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`rounded-xl px-2 py-2.5 text-left text-xs sm:text-sm ${tab === t.id ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>
             <div className="font-bold leading-tight">{t.label}</div>
-            <div className="mt-0.5 hidden text-[10px] opacity-70 sm:block">{t.desc}</div>
+            <div className="mt-0.5 text-[10px] opacity-70 leading-tight">{t.desc}</div>
           </button>
         ))}
       </div>
+
+      {/* ── 탭별 용도 설명 배너 ── */}
+      {tab === "closing" && (
+        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
+          <span className="font-semibold text-slate-200">장마감 검증</span>은 추천 당일의 실제 OHLCV(고·저가)를 기준으로, 진입가에 실제로 닿았는지(체결), 목표가/손절가 어느 쪽에 먼저 닿았는지를 자동 판정합니다.
+        </div>
+      )}
+      {tab === "virtual" && (
+        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
+          <span className="font-semibold text-slate-200">가상운용</span>은 장마감 검증으로 체결 확인된 거래들의 누적 승률·수익률·PnL 곡선을 보여줍니다. 실제 주문은 없으며, 추천 전략의 성과를 시뮬레이션합니다.
+        </div>
+      )}
+      {tab === "validation" && (
+        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
+          <span className="font-semibold text-slate-200">검증 대시보드</span>는 보수/균형/공격 × 단기/스윙/중기 9가지 전략 조합별로 승률과 평균 수익률을 매트릭스로 요약합니다. 어떤 전략 조합이 실제로 잘 맞는지 비교할 때 사용하세요.
+        </div>
+      )}
+      {tab === "premarket" && (
+        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
+          <span className="font-semibold text-slate-200">장전 리포트</span>는 홈 화면 3×3 매트릭스와 동일한 추천 CSV를 기반으로, 오늘 진입 검토 후보와 매매 계획을 보여줍니다.
+        </div>
+      )}
 
       {/* ── 전략·기간 필터 ── */}
       <div className="flex flex-wrap gap-1.5">
