@@ -12,11 +12,37 @@ export interface ApiList<T = any> {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/mone-api";
-const DIRECT_BACKEND = process.env.NEXT_PUBLIC_DIRECT_API_BASE_URL || "http://127.0.0.1:8050";
+const DIRECT_BACKEND = process.env.NEXT_PUBLIC_DIRECT_API_BASE_URL || "";
+const configuredTimeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 90000);
+const API_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
+  ? configuredTimeout
+  : 90000;
+
+function isAbsoluteUrl(value: string) {
+  return value.startsWith("http://") || value.startsWith("https://");
+}
+
+function isLocalhostUrl(value: string) {
+  try {
+    const hostname = new URL(value).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function canUseDirectBackendFallback() {
+  if (!DIRECT_BACKEND || !isAbsoluteUrl(DIRECT_BACKEND)) return false;
+  if (typeof window === "undefined") return true;
+
+  const pageHost = window.location.hostname;
+  const pageIsLocal = pageHost === "localhost" || pageHost === "127.0.0.1" || pageHost === "::1";
+  return pageIsLocal || !isLocalhostUrl(DIRECT_BACKEND);
+}
 
 function buildUrl(baseUrl: string, path: string, params?: Record<string, string | number | boolean | undefined | null>) {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const isAbsolute = baseUrl.startsWith("http://") || baseUrl.startsWith("https://");
+  const isAbsolute = isAbsoluteUrl(baseUrl);
   const origin = typeof window === "undefined" ? "http://localhost:3200" : window.location.origin;
   const url = new URL(`${baseUrl}${cleanPath}`, isAbsolute ? undefined : origin);
 
@@ -32,8 +58,6 @@ function buildUrl(baseUrl: string, path: string, params?: Record<string, string 
 
   return url.toString();
 }
-
-const API_TIMEOUT_MS = 8000;
 
 async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<T> {
   const controller = new AbortController();
@@ -104,6 +128,16 @@ export async function apiGet<T = any>(
     return proxyResult as T;
   }
 
+  if (!canUseDirectBackendFallback()) {
+    return {
+      ...proxyResult,
+      directFallbackSkipped: true,
+      directFallbackReason: DIRECT_BACKEND
+        ? "Direct localhost backend fallback is disabled outside local development"
+        : "Direct backend fallback is not configured",
+    } as T;
+  }
+
   const directUrl = buildUrl(DIRECT_BACKEND, path, params);
   const directResult: any = await fetchJson<T>(directUrl, signal);
 
@@ -153,6 +187,16 @@ export async function apiPost<T = any>(
   const proxyResult: any = await postJson(proxyUrl);
   if (proxyResult?.status !== "ERROR") return proxyResult as T;
 
+  if (!canUseDirectBackendFallback()) {
+    return {
+      ...proxyResult,
+      directFallbackSkipped: true,
+      directFallbackReason: DIRECT_BACKEND
+        ? "Direct localhost backend fallback is disabled outside local development"
+        : "Direct backend fallback is not configured",
+    } as T;
+  }
+
   const directUrl = buildUrl(DIRECT_BACKEND, path, params);
   const directResult: any = await postJson(directUrl);
   if (directResult?.status === "ERROR") directResult.proxyError = proxyResult.error;
@@ -198,9 +242,9 @@ export const mone = {
   journalAdd: (body: { market?: string; symbol?: string; name?: string; action?: string; price?: number; qty?: number; memo: string; review?: string; result?: string; returnPct?: number; tags?: string[] }) =>
     apiPost<ApiList>("/api/journal/add", body),
   journalUpdate: (id: string, body: Partial<{ memo: string; review: string; result: string; returnPct: number; tags: string[] }>) =>
-    fetch(`${typeof window !== "undefined" ? "" : "http://127.0.0.1:8050"}/mone-api/api/journal/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+    fetch(buildUrl(API_BASE, `/api/journal/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   journalDelete: (id: string) =>
-    fetch(`${typeof window !== "undefined" ? "" : "http://127.0.0.1:8050"}/mone-api/api/journal/${id}`, { method: "DELETE" }).then(r => r.json()),
+    fetch(buildUrl(API_BASE, `/api/journal/${id}`), { method: "DELETE" }).then(r => r.json()),
   recommendations: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }, signal?: AbortSignal) =>
     apiGet<ApiList>("/api/final/recommendations", p, signal),
   candidates: (p?: { market?: Market; strategy?: Mode | string; term?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>

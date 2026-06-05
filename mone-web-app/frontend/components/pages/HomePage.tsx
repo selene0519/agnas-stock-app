@@ -1000,14 +1000,14 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}
           </div>
         </div>
-        <div className="no-scrollbar -mx-1 flex w-full flex-nowrap items-center gap-1.5 overflow-x-auto px-1 sm:mx-0 sm:w-auto sm:px-0">
+        <div className="grid w-full grid-cols-5 gap-1.5 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end">
           {(["auto", "kr", "us"] as MarketChoice[]).map((choice) => (
             <button key={choice} onClick={() => updateMarketChoice(choice)}
-              className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${marketChoice === choice ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+              className={`min-w-0 rounded-lg px-2 py-1.5 text-xs font-semibold sm:px-2.5 ${marketChoice === choice ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
               {choice === "auto" ? "자동" : choice === "kr" ? "국장" : "미장"}
             </button>
           ))}
-          <button onClick={() => setShowJournal(true)} className="shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
+          <button onClick={() => setShowJournal(true)} className="min-w-0 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-300 hover:bg-slate-800 sm:px-2.5">
             일지
           </button>
           <button onClick={load} title="새로고침" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800">
@@ -1071,23 +1071,23 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             </div>
           </div>
           {/* 전략 권고 바 */}
-          <div className={`no-scrollbar -mx-1 mt-3 flex flex-nowrap items-center gap-2 overflow-x-auto border-t px-1 pt-3 ${
+          <div className={`mt-3 grid grid-cols-1 items-center gap-2 border-t pt-3 sm:flex sm:flex-wrap ${
             marketRegime.regime === "BULL" ? "border-emerald-800/30"
             : marketRegime.regime === "BEAR" ? "border-red-800/30"
             : "border-slate-700/50"}`}>
-            <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${
+            <span className={`min-w-0 rounded-full px-3 py-1 text-center text-[11px] font-semibold sm:text-left ${
               marketRegime.regime === "BULL" ? "bg-emerald-900/60 text-emerald-200"
               : marketRegime.regime === "BEAR" ? "bg-red-900/60 text-red-200"
               : "bg-slate-800 text-slate-300"}`}>
               {getRegimeStance(marketRegime.regime, selectedMarket)}
             </span>
             {marketRegime.regime === "BEAR" && (
-              <span className="shrink-0 rounded-full bg-red-900/50 px-3 py-1 text-[11px] font-semibold text-red-200">
+              <span className="min-w-0 rounded-full bg-red-900/50 px-3 py-1 text-center text-[11px] font-semibold text-red-200 sm:text-left">
                 공격형 진입 보류 권장
               </span>
             )}
             {marketRegime.regime === "BULL" && (
-              <span className="shrink-0 rounded-full bg-emerald-900/40 px-3 py-1 text-[11px] text-emerald-300">
+              <span className="min-w-0 rounded-full bg-emerald-900/40 px-3 py-1 text-center text-[11px] text-emerald-300 sm:text-left">
                 균형·공격형 전략 정상 작동 중
               </span>
             )}

@@ -641,7 +641,7 @@ export default function StocksPage() {
         <div className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
           시장
         </div>
-        <div className="no-scrollbar -mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1">
+        <div className="grid grid-cols-4 gap-2">
           {marketTabs.map((item) => (
             <button
               key={item.id}
@@ -649,51 +649,53 @@ export default function StocksPage() {
                 setMarket(item.id);
                 setSelected(null);
               }}
-              className={`shrink-0 rounded-xl px-4 py-2 text-sm ${market === item.id ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}
+              className={`min-w-0 rounded-xl px-2 py-2 text-sm ${market === item.id ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}
             >
               {item.label}
             </button>
           ))}
           <button
             onClick={() => setWatchOnly(!watchOnly)}
-            className={`shrink-0 rounded-xl px-4 py-2 text-sm ${watchOnly ? "bg-amber-500 text-slate-950" : "bg-slate-950 text-slate-400"}`}
+            className={`min-w-0 rounded-xl px-2 py-2 text-sm ${watchOnly ? "bg-amber-500 text-slate-950" : "bg-slate-950 text-slate-400"}`}
           >
-            관심종목만 보기
+            관심종목
           </button>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2">
           <button
             onClick={applySmartWatchlist}
             disabled={autoCurating || watchSaving}
-            className="shrink-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 disabled:opacity-50"
+            className="min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-xs font-bold text-emerald-300 disabled:opacity-50 sm:text-sm"
           >
-            {autoCurating ? "핵심 선별 중..." : "핵심 관심 자동선별"}
+            {autoCurating ? "선별 중..." : "자동선별"}
           </button>
           <button
             onClick={refreshTargetQuotes}
             disabled={quoteRefreshing === "batch"}
-            className="shrink-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-300 disabled:opacity-50"
+            className="min-w-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2 py-2 text-xs font-bold text-cyan-300 disabled:opacity-50 sm:text-sm"
           >
-            보유·관심 현재가 새로고침
+            현재가 갱신
           </button>
           <button
             onClick={loadScoredWatchlist}
             disabled={scoredLoading}
-            className="shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-300 disabled:opacity-50"
+            className="min-w-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs font-bold text-violet-300 disabled:opacity-50 sm:text-sm"
           >
-            {scoredLoading ? "분석 중..." : "관심종목 점수 분석"}
+            {scoredLoading ? "분석 중..." : "점수 분석"}
           </button>
         </div>
 
         {/* 그룹 필터 */}
         {groupsList.length > 0 && (
-          <div className="no-scrollbar -mx-1 mt-3 flex flex-nowrap gap-1.5 overflow-x-auto px-1">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             <span className="text-[10px] text-slate-500 self-center">그룹:</span>
             <button onClick={() => setGroupFilter(null)}
-              className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-medium ${!groupFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+              className={`rounded-full px-3 py-1 text-[11px] font-medium ${!groupFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
               전체
             </button>
             {groupsList.map((g) => (
               <button key={g} onClick={() => setGroupFilter(g === groupFilter ? null : g)}
-                className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-medium ${groupFilter === g ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                className={`rounded-full px-3 py-1 text-[11px] font-medium ${groupFilter === g ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
                 {g}
               </button>
             ))}
@@ -702,15 +704,15 @@ export default function StocksPage() {
 
         {/* 섹터 필터 */}
         {sectorsList.length > 0 && (
-          <div className="no-scrollbar -mx-1 mt-4 flex flex-nowrap gap-1.5 overflow-x-auto px-1">
+          <div className="mt-4 flex flex-wrap gap-1.5">
             <span className="text-[10px] text-slate-500 self-center">섹터:</span>
             <button onClick={() => setSectorFilter(null)}
-              className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-medium ${!sectorFilter ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+              className={`rounded-full px-3 py-1 text-[11px] font-medium ${!sectorFilter ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
               전체
             </button>
             {sectorsList.map((sec) => (
               <button key={sec} onClick={() => setSectorFilter(sec === sectorFilter ? null : sec)}
-                className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-medium ${sectorFilter === sec ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                className={`rounded-full px-3 py-1 text-[11px] font-medium ${sectorFilter === sec ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
                 {sec}
               </button>
             ))}
