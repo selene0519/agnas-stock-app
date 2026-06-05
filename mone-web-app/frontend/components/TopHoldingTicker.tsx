@@ -26,23 +26,24 @@ type TickerItem = {
 function derivePrice(row: any, market: string) {
   const text = String(row.currentPriceText || row.priceText || "").trim();
   if (text && text !== "-") return text;
-  return formatMoney(row.currentPrice ?? row.price, market, "현재가 수집 대기");
+  return formatMoney(row.currentPrice ?? row.price, market, "가격 대기");
 }
 
 function deriveChange(row: any): { text: string; status: TickerItem["changeStatus"] } {
+  const current = toNumber(row.currentPrice ?? row.price ?? row.currentPriceText);
+  if (current === null || current <= 0) return { text: "가격 대기", status: "pending" };
+
   const direct = String(row.changePctText || row.changeText || "").trim();
   if (direct && direct !== "-" && direct.includes("%")) return { text: direct, status: "normal" };
 
   const numeric = toNumber(row.changePct ?? row.changeRate);
   if (numeric !== null && Number.isFinite(numeric)) return { text: pctText(numeric), status: "normal" };
 
-  const current = toNumber(row.currentPrice ?? row.price ?? row.currentPriceText);
   const prev = toNumber(row.prevClose ?? row.previousClose ?? row.prevCloseText);
   if (current !== null && prev !== null && prev > 0) {
     return { text: pctText(((current - prev) / prev) * 100), status: "normal" };
   }
 
-  if (current === null || current <= 0) return { text: "현재가 수집 대기", status: "pending" };
   return { text: "전일 기준 없음", status: "no-base" };
 }
 
@@ -115,14 +116,17 @@ export default function TopHoldingTicker() {
               const isDown = item.changePctText.startsWith("-");
               const needsPrice = item.changeStatus === "pending";
               const needsBase = item.changeStatus !== "normal" && item.changeStatus !== "pending";
+              const showChange = item.changeStatus !== "pending";
               return (
                 <span key={`${item.id}-${index}`} className="inline-flex items-center gap-2 text-xs">
                   <span className="font-semibold text-slate-200">{item.name}</span>
                   <span className="font-mono text-slate-500">{item.symbol}</span>
                   <span className={`font-mono ${needsPrice ? "text-amber-300" : "text-slate-100"}`}>{item.currentPriceText}</span>
-                  <span className={isDown ? "font-mono text-red-400" : needsBase ? "font-mono text-amber-300" : "font-mono text-emerald-400"}>
-                    {item.changePctText}
-                  </span>
+                  {showChange && (
+                    <span className={isDown ? "font-mono text-red-400" : needsBase ? "font-mono text-amber-300" : "font-mono text-emerald-400"}>
+                      {item.changePctText}
+                    </span>
+                  )}
                 </span>
               );
             })}

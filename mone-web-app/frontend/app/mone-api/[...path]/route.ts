@@ -3,10 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const BACKEND_URL =
+const CONFIGURED_BACKEND_URL = (
   process.env.MONE_BACKEND_URL ||
   process.env.NEXT_PUBLIC_MONE_BACKEND_URL ||
-  "http://127.0.0.1:8050";
+  ""
+).trim();
+
+const BACKEND_URL =
+  CONFIGURED_BACKEND_URL ||
+  (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8050");
 
 type RouteContext = {
   params: Promise<{ path?: string[] }>;
@@ -18,6 +23,10 @@ async function getPathSegments(context: RouteContext): Promise<string[]> {
 }
 
 function buildTargetUrl(pathSegments: string[], request: NextRequest): string {
+  if (!BACKEND_URL) {
+    throw new Error("MONE_BACKEND_URL is not configured for the frontend proxy");
+  }
+
   const incomingUrl = new URL(request.url);
   const joinedPath = pathSegments.join("/");
 
@@ -34,30 +43,30 @@ function buildTargetUrl(pathSegments: string[], request: NextRequest): string {
 }
 
 async function proxyRequest(request: NextRequest, context: RouteContext) {
-  const pathSegments = await getPathSegments(context);
-  const targetUrl = buildTargetUrl(pathSegments, request);
-
-  const headers = new Headers();
-  const accept = request.headers.get("accept");
-  const contentType = request.headers.get("content-type");
-  const authorization = request.headers.get("authorization");
-
-  if (accept) headers.set("accept", accept);
-  if (contentType) headers.set("content-type", contentType);
-  if (authorization) headers.set("authorization", authorization);
-
-  const method = request.method.toUpperCase();
-  const init: RequestInit = {
-    method,
-    headers,
-    cache: "no-store",
-  };
-
-  if (!["GET", "HEAD"].includes(method)) {
-    init.body = await request.text();
-  }
-
   try {
+    const pathSegments = await getPathSegments(context);
+    const targetUrl = buildTargetUrl(pathSegments, request);
+
+    const headers = new Headers();
+    const accept = request.headers.get("accept");
+    const contentType = request.headers.get("content-type");
+    const authorization = request.headers.get("authorization");
+
+    if (accept) headers.set("accept", accept);
+    if (contentType) headers.set("content-type", contentType);
+    if (authorization) headers.set("authorization", authorization);
+
+    const method = request.method.toUpperCase();
+    const init: RequestInit = {
+      method,
+      headers,
+      cache: "no-store",
+    };
+
+    if (!["GET", "HEAD"].includes(method)) {
+      init.body = await request.text();
+    }
+
     const backendRes = await fetch(targetUrl, init);
     const body = await backendRes.arrayBuffer();
     const responseHeaders = new Headers();
@@ -82,7 +91,7 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
         status: "ERROR",
         error: "FRONTEND_PROXY_FAILED",
         detail: String(error),
-        targetUrl,
+        backendConfigured: Boolean(BACKEND_URL),
       },
       { status: 502 }
     );
