@@ -3,7 +3,8 @@ MONE 일일 요약 텔레그램 알림.
 
 추천 데이터 생성 후 자동 호출:
   - 국장/미장 오늘 진입 후보 TOP 3
-  - 이번 주 실적발표 일정 (Finnhub)
+  - 이번 주 국장 실적발표 일정 (Alpha Vantage)
+  - 이번 주 미장 실적발표 일정 (Finnhub)
   - 주요 경제 지표 일정 (Finnhub)
   - DART 주요 공시
 
@@ -12,6 +13,7 @@ MONE 일일 요약 텔레그램 알림.
   TELEGRAM_CHAT_ID
   FINNHUB_API_KEY
   DART_API_KEY
+  ALPHA_VANTAGE_KEY
 """
 from __future__ import annotations
 
@@ -33,8 +35,9 @@ HORIZONS = ("short", "swing", "mid")
 BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID", "")
 FINNHUB_KEY = os.environ.get("FINNHUB_API_KEY", "")
-DART_KEY   = os.environ.get("DART_API_KEY", "")
-DRY_RUN    = os.environ.get("NOTIFY_DRY_RUN", "0") == "1"
+DART_KEY    = os.environ.get("DART_API_KEY", "")
+AV_KEY      = os.environ.get("ALPHA_VANTAGE_KEY", "")
+DRY_RUN     = os.environ.get("NOTIFY_DRY_RUN", "0") == "1"
 
 
 # ── 텔레그램 전송 ─────────────────────────────────────────────────────────────
@@ -163,6 +166,79 @@ def build_recommendation_section(market: str) -> str:
     return "\n".join(lines)
 
 
+# ── Alpha Vantage 실적 캘린더 (KR) ───────────────────────────────────────────
+
+def build_kr_earnings_section() -> str:
+    """Alpha Vantage EARNINGS_CALENDAR로 국장 실적발표 일정 조회.
+    KRX 종목은 005930.KS (KOSPI) / 000660.KQ (KOSDAQ) 형태.
+    """
+    if not AV_KEY:
+        return ""
+    today = datetime.now()
+    end   = today + timedelta(days=14)
+
+    # 추천/보유 종목 심볼 수집
+    symbols: list[str] = []
+    for mode in MODES:
+        for horizon in HORIZONS:
+            for row in _read_csv(REPORTS / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"):
+                s = str(row.get("symbol", "")).strip()
+                if s and s not in symbols:
+                    symbols.append(s)
+    holdings_path = ROOT / "holdings_kr.csv"
+    for row in _read_csv(holdings_path):
+        s = str(row.get("symbol", "")).strip()
+        if s and s not in symbols:
+            symbols.append(s)
+
+    if not symbols:
+        return ""
+
+    hits: list[dict] = []
+    # 각 종목별로 조회 (상위 15개만 — API 호출 횟수 절약)
+    for sym in symbols[:15]:
+        # KOSPI: 6자리 → .KS, KOSDAQ 종목은 구분이 어려워 .KS 우선
+        av_sym = f"{sym}.KS"
+        url = (
+            f"https://www.alphavantage.co/query"
+            f"?function=EARNINGS_CALENDAR&symbol={av_sym}&horizon=3month&apikey={AV_KEY}"
+        )
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "MONE/1.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                content = r.read().decode("utf-8")
+            # CSV 형식으로 반환됨
+            reader = csv.DictReader(content.splitlines())
+            for row in reader:
+                report_date = row.get("reportDate", "")
+                if not report_date:
+                    continue
+                try:
+                    rd = datetime.strptime(report_date, "%Y-%m-%d")
+                except Exception:
+                    continue
+                if today <= rd <= end:
+                    hits.append({
+                        "symbol": sym,
+                        "name": row.get("name", sym),
+                        "date": report_date,
+                        "estimate": row.get("estimate", ""),
+                        "currency": row.get("currency", "KRW"),
+                    })
+        except Exception:
+            continue
+
+    if not hits:
+        return ""
+
+    hits.sort(key=lambda x: x["date"])
+    lines = ["\n📅 <b>국장 실적발표 일정 (2주 이내)</b>"]
+    for h in hits[:6]:
+        est = f" — EPS 예상 {h['estimate']}" if h.get("estimate") else ""
+        lines.append(f"  • {h['date']} <b>{h['name']}</b> ({h['symbol']}){est}")
+    return "\n".join(lines)
+
+
 # ── Finnhub 실적 캘린더 (US) ─────────────────────────────────────────────────
 
 def _finnhub_get(path: str) -> Any:
@@ -288,12 +364,17 @@ def main() -> None:
     if us_section:
         sections.append("\n" + us_section)
 
-    # 실적 캘린더
+    # 국장 실적 캘린더 (Alpha Vantage)
+    kr_earnings = build_kr_earnings_section()
+    if kr_earnings:
+        sections.append(kr_earnings)
+
+    # 미장 실적 캘린더 (Finnhub)
     earnings = build_earnings_section()
     if earnings:
         sections.append(earnings)
 
-    # 경제 지표
+    # 경제 지표 (Finnhub)
     economic = build_economic_section()
     if economic:
         sections.append(economic)
