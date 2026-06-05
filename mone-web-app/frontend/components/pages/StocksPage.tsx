@@ -413,6 +413,30 @@ export default function StocksPage() {
     nameQuery.trim() !== "", sectorFilter != null, groupFilter != null,
   ].filter(Boolean).length;
 
+  function applyScreenerPreset(preset: "quality" | "entry" | "clean" | "watch") {
+    if (preset === "quality") {
+      setMinScore(60);
+      setHideBlockedOnly(true);
+      setHideDataPending(true);
+      setTagFilter(null);
+    } else if (preset === "entry") {
+      setMinScore(50);
+      setHideBlockedOnly(true);
+      setHideDataPending(false);
+      setTagFilter(null);
+    } else if (preset === "clean") {
+      setMinScore(0);
+      setHideBlockedOnly(true);
+      setHideDataPending(true);
+      setTagFilter(null);
+    } else if (preset === "watch") {
+      setWatchOnly(true);
+      setMinScore(40);
+      setHideBlockedOnly(false);
+      setHideDataPending(false);
+    }
+  }
+
   const visible = useMemo(() => {
     const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() ? sectorFiltered : items;
     let result = base;
@@ -444,6 +468,13 @@ export default function StocksPage() {
     }
     return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
   }, [items, selected, market, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy]);
+
+  const filterStats = useMemo(() => {
+    const normal = sectorFiltered.filter((item) => String(item.dataStatus || "").toUpperCase() === "NORMAL").length;
+    const blocked = sectorFiltered.filter((item) => String(item.tradeBlockStatus || "").toUpperCase() === "BLOCK").length;
+    const caution = sectorFiltered.filter((item) => String(item.tradeBlockStatus || "").toUpperCase() === "CAUTION").length;
+    return { normal, blocked, caution };
+  }, [sectorFiltered]);
 
   const selectedWatchRow = useMemo(() => {
     if (!selected) return null;
@@ -733,6 +764,26 @@ export default function StocksPage() {
 
           {screenerOpen && (
             <div className="mt-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 space-y-4">
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 선별</label>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    { id: "quality", label: "상위·정상", hint: "60점+ 데이터 정상" },
+                    { id: "entry", label: "진입 후보", hint: "50점+ 차단 제외" },
+                    { id: "clean", label: "데이터 정상", hint: "대기/차단 제외" },
+                    { id: "watch", label: "관심만", hint: "관심 후보 집중" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => applyScreenerPreset(preset.id as "quality" | "entry" | "clean" | "watch")}
+                      className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-left hover:border-sky-600/60 hover:bg-sky-950/20"
+                    >
+                      <div className="text-xs font-bold text-slate-100">{preset.label}</div>
+                      <div className="mt-0.5 text-[10px] text-slate-500">{preset.hint}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
               {/* 이름/티커 검색 */}
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
@@ -1116,6 +1167,8 @@ export default function StocksPage() {
           const target = hasRecommendation ? adjustedText(item, "target", mode, marketValue) : "추천 데이터 없음";
           const prob = hasRecommendation ? probabilityText(item, "추천 데이터 없음") : "추천 데이터 없음";
           const watched = isWatched(item);
+          const itemGroup = String(item.group || "").trim();
+          const showGroupSelector = watched && (groupsList.length > 1 || itemGroup.length > 0);
           return (
             <div
               key={`${item.market}-${item.symbol}-${index}`}
@@ -1311,7 +1364,7 @@ export default function StocksPage() {
                 >
                   <Star size={13} /> {watched ? "관심 해제" : "관심 등록"}
                 </button>
-                {watched && (
+                {showGroupSelector && (
                   <div className="flex items-center gap-1">
                     <select
                       className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-teal-500"
@@ -1346,6 +1399,10 @@ export default function StocksPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700"
                   onClick={() => {
                     window.localStorage.setItem("mone_chart_symbol", String(item.symbol || ""));
+                    window.localStorage.setItem("mone_chart_market", cleanMarket(item.market || market));
+                    window.localStorage.setItem("mone_chart_name", displayName(item) || String(item.symbol || ""));
+                    window.localStorage.setItem("mone_chart_price", String(item.currentPrice || item.price || ""));
+                    window.localStorage.setItem("mone_chart_price_text", priceText(item, "current", ""));
                     window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
                   }}
                 >

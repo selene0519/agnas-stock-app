@@ -555,24 +555,24 @@ export default function HoldingsPage() {
   }, [items]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* 헤더 */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">보유·리스크</h1>
           <p className="mt-1 text-sm text-slate-400">보유종목 현황, 리스크 지표, 포트폴리오 구성 분석</p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
           <button onClick={() => { setShowAdd(!showAdd); setMessage(""); }}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-medium text-white hover:bg-emerald-500 sm:text-sm">
             <Plus size={14} /> 종목 추가
           </button>
           <button onClick={load}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 sm:text-sm">
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 화면 새로고침
           </button>
           <button onClick={refreshVisibleQuotes} disabled={refreshingAllQuotes}
-            className="inline-flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-200 hover:bg-blue-500/20 disabled:opacity-50">
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2 py-2 text-xs text-blue-200 hover:bg-blue-500/20 disabled:opacity-50 sm:text-sm">
             <Zap size={14} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 수동 갱신
           </button>
         </div>
@@ -798,10 +798,10 @@ export default function HoldingsPage() {
             <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-slate-100">{displayName(holding)}</h2>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <h2 className="max-w-[8rem] break-keep text-base font-bold leading-snug text-slate-100 sm:max-w-none">{displayName(holding)}</h2>
                     <span className="font-mono text-xs text-slate-500">{holding.symbol}</span>
-                    <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{holding.market === "kr" ? "국장" : "미장"}</span>
+                    <span className="whitespace-nowrap rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{holding.market === "kr" ? "국장" : "미장"}</span>
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(() => {

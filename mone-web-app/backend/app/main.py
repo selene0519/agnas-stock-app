@@ -1113,6 +1113,35 @@ def _install_mone_authoritative_holdings_clean_v3():
             pass
         return {}
 
+    def _ohlcv_price_ref(market: str, symbol: str) -> dict:
+        paths = [
+            _root() / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv",
+            _root() / "data" / "stockapp" / f"{market}_{symbol}_daily.csv",
+            _root() / "reports" / f"{market}_{symbol}_daily.csv",
+        ]
+        for path in paths:
+            closes = []
+            for row in _read_csv(path):
+                close = _num(_text(row, ["close", "Close", "stck_clpr", "종가"], ""), 0)
+                date = _text(row, ["date", "Date", "tradeDate", "일자"], "")
+                if close > 0:
+                    closes.append((date, close))
+            closes.sort(key=lambda item: item[0])
+            if closes:
+                prev = closes[-2][1] if len(closes) >= 2 else 0
+                prev_date = closes[-2][0] if len(closes) >= 2 else ""
+                return {
+                    "currentPrice": closes[-1][1],
+                    "currentPriceSource": "ohlcv_close",
+                    "currentPriceDate": closes[-1][0],
+                    "prevClose": prev,
+                    "prevCloseSource": "ohlcv_prev_close",
+                    "prevCloseDate": prev_date,
+                    "ohlcvCount": len(closes),
+                    "ohlcvSource": path.name,
+                }
+        return {}
+
     def _read_authoritative_holdings(market: str) -> list[dict]:
         markets = ["kr", "us"] if market == "all" else [market]
         rows = []
@@ -1168,9 +1197,21 @@ def _install_mone_authoritative_holdings_clean_v3():
             v = (v93_kr if mk == "kr" else v93_us).get(sym, {})
 
             current = _num(q.get("currentPrice"), 0) or _num(_text(v, ["currentPrice", "current", "price", "현재가"], ""), 0)
+            ohlcv_ref = {}
+            price_source_type = "live_quote" if _num(q.get("currentPrice"), 0) > 0 else ""
+            price_source = q.get("priceSource") or ""
+            if current <= 0:
+                ohlcv_ref = _ohlcv_price_ref(mk, sym)
+                current = _num(ohlcv_ref.get("currentPrice"), 0)
+                if current > 0:
+                    price_source_type = "ohlcv_close"
+                    price_source = ohlcv_ref.get("ohlcvSource", "")
             current_text = q.get("currentPriceText") or (f"${current:,.2f}" if mk == "us" and current > 0 else f"{round(current):,}원" if current > 0 else "-")
             prev_close = _num(q.get("prevClose"), 0) or _num(_text(v, ["prevClose", "previousClose", "prev_close", "전일종가", "기준가"], ""), 0)
             prev_close_source = q.get("prevCloseSource") or ""
+            if prev_close <= 0 and ohlcv_ref:
+                prev_close = _num(ohlcv_ref.get("prevClose"), 0)
+                prev_close_source = ohlcv_ref.get("prevCloseSource", "")
             if prev_close <= 0:
                 ohlcv_prev = _ohlcv_prev_close(mk, sym)
                 prev_close = _num(ohlcv_prev.get("prevClose"), 0)
@@ -1221,10 +1262,13 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "targetGapPct": target_gap_pct,
                 "riskLevel": _text(v, ["riskLevel", "risk", "status", "판정"], "NORMAL") or "NORMAL",
                 "riskStatus": risk_status,
-                "dataStatus": "NORMAL" if current > 0 else "NO_PRICE",
+                "dataStatus": "NORMAL" if price_source_type == "live_quote" else ("PARTIAL" if current > 0 else "NO_PRICE"),
                 "source": row["source"],
                 "enrichSource": "v93_position_cards" if v else "",
-                "priceSource": q.get("priceSource") or "",
+                "priceSource": price_source,
+                "priceSourceType": price_source_type or ("missing" if current <= 0 else "derived"),
+                "ohlcvCount": ohlcv_ref.get("ohlcvCount", ""),
+                "ohlcvDate": ohlcv_ref.get("currentPriceDate", ""),
                 "prevCloseSource": prev_close_source,
                 "quoteTimestamp": q.get("quoteTimestamp") or "",
             })
