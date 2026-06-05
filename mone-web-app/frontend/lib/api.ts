@@ -324,6 +324,8 @@ export const mone = {
     apiPost<any>("/api/kis/holdings/sync", body || {}),
   importHoldingsCsv: (body: { market: Market; csv_text: string; mode?: "merge" | "replace" }) =>
     apiPost<any>("/api/holdings/import-csv", body),
+  earningsCalendar: (p?: { market?: "kr" | "us" | "all"; days?: number }) =>
+    apiGet<ApiList>("/api/earnings-calendar", p),
   refreshNews: (market?: "kr" | "us" | "all") =>
     apiPost<any>("/api/news/refresh", {}, market ? { market } : {}),
   refreshDisclosures: (market?: "kr" | "us" | "all") =>

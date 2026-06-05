@@ -3194,6 +3194,78 @@ def api_disclosure_calendar(market: str = Query("kr"), days: int = Query(30)) ->
         return {"status": "ERROR", "error": str(e), "items": []}
 
 
+# ── 19-0. earnings-calendar (실적발표 일정) ───────────────────────────
+
+@app.get("/api/earnings-calendar")
+def api_earnings_calendar(market: str = Query("all"), days: int = Query(14)) -> dict:
+    """Alpha Vantage(KR) + Finnhub(US) 실적발표 일정 조회."""
+    import urllib.request as _ur
+    import csv as _ecsv
+
+    av_key = os.environ.get("ALPHA_VANTAGE_KEY", "").strip()
+    fh_key = os.environ.get("FINNHUB_API_KEY", "").strip()
+    now = __import__("datetime").datetime.now()
+    today_s = now.strftime("%Y-%m-%d")
+    end_s   = (now + __import__("datetime").timedelta(days=days)).strftime("%Y-%m-%d")
+    items: list[dict] = []
+
+    # ── 국장 (Alpha Vantage) ──
+    if market in ("kr", "all") and av_key:
+        # 추천 종목 심볼 수집
+        symbols: list[str] = []
+        for mode in ("conservative", "balanced", "aggressive"):
+            for horizon in ("short", "swing", "mid"):
+                p = _REPO / "reports" / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
+                for row in _read_csv_safe(p):
+                    s = str(row.get("symbol", "")).strip()
+                    if s and s not in symbols:
+                        symbols.append(s)
+        for sym in symbols[:20]:
+            av_sym = f"{sym}.KS"
+            try:
+                url = f"https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&symbol={av_sym}&horizon=3month&apikey={av_key}"
+                req = _ur.Request(url, headers={"User-Agent": "MONE/1.0"})
+                with _ur.urlopen(req, timeout=8) as r:
+                    content = r.read().decode("utf-8")
+                for row in _ecsv.DictReader(content.splitlines()):
+                    rd = str(row.get("reportDate", "")).strip()
+                    if today_s <= rd <= end_s:
+                        items.append({
+                            "market": "kr", "symbol": sym,
+                            "name": str(row.get("name", sym)),
+                            "date": rd,
+                            "estimate": str(row.get("estimate", "")),
+                            "currency": "KRW",
+                        })
+            except Exception:
+                continue
+
+    # ── 미장 (Finnhub) ──
+    if market in ("us", "all") and fh_key:
+        try:
+            url = f"https://finnhub.io/api/v1/calendar/earnings?from={today_s}&to={end_s}&token={fh_key}"
+            with _ur.urlopen(url, timeout=10) as r:
+                fh_data = __import__("json").loads(r.read())
+            for x in (fh_data.get("earningsCalendar") or []):
+                eps = x.get("epsEstimate")
+                if not eps:
+                    continue
+                items.append({
+                    "market": "us",
+                    "symbol": x.get("symbol", ""),
+                    "name": x.get("symbol", ""),
+                    "date": x.get("date", ""),
+                    "estimate": str(eps),
+                    "hour": x.get("hour", ""),
+                    "currency": "USD",
+                })
+        except Exception:
+            pass
+
+    items.sort(key=lambda x: x["date"])
+    return {"status": "OK" if items else "NO_DATA", "count": len(items), "days": days, "items": items[:30]}
+
+
 # ── 19. journal (투자장부) ────────────────────────────────────────────
 
 def _ensure_journal() -> None:
