@@ -52,9 +52,14 @@ export default function SymbolSearchSelect({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const suppressNextSearchRef = useRef(false);
 
   useEffect(() => {
+    suppressNextSearchRef.current = true;
     setQuery(value || "");
+    setItems([]);
+    setOpen(false);
+    setLoading(false);
   }, [value]);
 
   useEffect(() => {
@@ -69,6 +74,12 @@ export default function SymbolSearchSelect({
   useEffect(() => {
     let active = true;
     const q = query.trim();
+
+    if (suppressNextSearchRef.current) {
+      suppressNextSearchRef.current = false;
+      onResults?.([], q);
+      return;
+    }
 
     if (!q) {
       setItems([]);

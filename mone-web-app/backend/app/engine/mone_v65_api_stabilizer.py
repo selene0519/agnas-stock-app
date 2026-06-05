@@ -1645,6 +1645,56 @@ def _recommendation_item(
     }
 
 
+@lru_cache(maxsize=2048)
+def _ohlcv_row_count(market: str, symbol: str) -> int:
+    market = _market_norm(market)
+    sym = _symbol({"symbol": symbol}, market)
+    path = _repo_root() / "data" / "market" / "ohlcv" / f"{market}_{sym}_daily.csv"
+    count = 0
+    for row in _read_csv(path, 1000):
+        close = _num(_text(row, ["close", "Close", "stck_clpr", "종가"], ""))
+        if close > 0:
+            count += 1
+    return count
+
+
+def _clear_stale_ohlcv_short_warning(item: dict[str, Any]) -> dict[str, Any]:
+    market = _market_norm(str(item.get("market") or "kr"))
+    symbol = str(item.get("symbol") or "")
+    count = _ohlcv_row_count(market, symbol)
+    item["ohlcvCount"] = max(int(item.get("ohlcvCount") or 0), count)
+    if count < 30:
+        return item
+
+    def is_ohlcv_short(value: Any) -> bool:
+        text = str(value or "").lower()
+        return "ohlcv" in text and ("30" in text or "거래일" in text or "미만" in text or "short" in text)
+
+    if is_ohlcv_short(item.get("quantReason")):
+        item["quantReason"] = ""
+    if str(item.get("quantDataStatus") or "").upper() == "DATA_PENDING":
+        item["quantDataStatus"] = "PARTIAL"
+    if str(item.get("dataStatus") or "").upper() == "DATA_PENDING":
+        item["dataStatus"] = "PARTIAL" if item.get("currentPrice") else "PRICE_PENDING"
+
+    for key in ("cautionReasons", "infoReasons"):
+        values = item.get(key)
+        if isinstance(values, list):
+            item[key] = [value for value in values if not is_ohlcv_short(value)]
+
+    if item.get("tradeBlockStatus") == "CAUTION" and not item.get("cautionReasons"):
+        item["tradeBlockStatus"] = "OK"
+
+    tags = item.get("strategyTags")
+    if isinstance(tags, list) and item.get("tradeBlockStatus") == "OK":
+        item["strategyTags"] = [tag for tag in tags if str(tag).upper() != "CAUTION"]
+
+    fields = item.setdefault("computedFields", [])
+    if isinstance(fields, list) and "ohlcv_status_refreshed_from_file" not in fields:
+        fields.append("ohlcv_status_refreshed_from_file")
+    return item
+
+
 def _light_correction_summary(market: str, mode: str, horizon: str) -> dict[str, Any]:
     path = _repo_root() / "reports" / "virtual_validation_results.csv"
     rows = _read_csv(path, 100000)
@@ -1907,6 +1957,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
                 item = apply_quant_overlay(item, _repo_root(), mode, horizon)
             except Exception:
                 item.setdefault("computedFields", []).append("quant_scanner_unavailable")
+            item = _clear_stale_ohlcv_short_warning(item)
             if correction_state.get("active"):
                 item = _apply_light_correction(item, correction_state)
                 item.setdefault("computedFields", []).append("self_correction_penalty")

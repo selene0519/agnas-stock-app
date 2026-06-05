@@ -812,6 +812,43 @@ export default function ChartPage() {
     recoDate: "",
   });
 
+  function readStoredChartSymbol(): MoneSymbol | null {
+    if (typeof window === "undefined") return null;
+    const symbol = normalizeSymbol({ symbol: window.localStorage.getItem("mone_chart_symbol") || "" });
+    if (!symbol) return null;
+    const storedMarket = normalizeMarket(window.localStorage.getItem("mone_chart_market"), symbol) as Market;
+    const name = window.localStorage.getItem("mone_chart_name") || symbol;
+    const currentPrice = window.localStorage.getItem("mone_chart_price") || null;
+    const currentPriceText = window.localStorage.getItem("mone_chart_price_text") || "";
+    return {
+      id: `${storedMarket}-${symbol}`,
+      symbol,
+      name,
+      market: storedMarket,
+      label: `${name} (${symbol})`,
+      isWatch: true,
+      currentPrice,
+      currentPriceText,
+    };
+  }
+
+  useEffect(() => {
+    const picked = readStoredChartSymbol();
+    if (picked) {
+      setMarket(picked.market);
+      setSelected(picked);
+    }
+    const onOpenChart = () => {
+      const next = readStoredChartSymbol();
+      if (next) {
+        setMarket(next.market);
+        setSelected(next);
+      }
+    };
+    window.addEventListener("mone-open-chart", onOpenChart);
+    return () => window.removeEventListener("mone-open-chart", onOpenChart);
+  }, []);
+
   useEffect(() => {
     let active = true;
     if (selected) return;

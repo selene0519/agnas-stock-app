@@ -24,14 +24,14 @@ const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
   { id: "home",     label: "홈",   Icon: LayoutDashboard },
   { id: "stocks",   label: "탐색", Icon: Search },
   { id: "holdings", label: "보유", Icon: Briefcase },
-  { id: "chart",    label: "분석", Icon: BarChart2 },
+  { id: "chart",    label: "차트", Icon: BarChart2 },
 ];
 
-const moreTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
-  { id: "report",     label: "운용 리포트",   Icon: FileBarChart2 },
-  { id: "news",       label: "뉴스·기업분석", Icon: Newspaper },
-  { id: "prediction", label: "예측·검증",     Icon: Brain },
-  { id: "advanced",   label: "고급분석",       Icon: Cpu },
+const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
+  { id: "report",     label: "운용 리포트",   desc: "장전·장중·마감 리포트", Icon: FileBarChart2 },
+  { id: "news",       label: "뉴스·기업분석", desc: "뉴스, 공시, 기업분석", Icon: Newspaper },
+  { id: "prediction", label: "예측·검증",     desc: "추천 결과와 적중 검증", Icon: Brain },
+  { id: "advanced",   label: "고급분석",       desc: "스캐너, 상관, 계산기", Icon: Cpu },
 ];
 
 const moreIds = new Set<PageId>(moreTabs.map((t) => t.id));
@@ -72,8 +72,8 @@ export default function BottomNav({ current, onChange }: BottomNavProps) {
                 <X size={14} />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 pb-4">
-              {moreTabs.map(({ id, label, Icon }) => (
+            <div className="grid gap-2 pb-4">
+              {moreTabs.map(({ id, label, desc, Icon }) => (
                 <button
                   key={id}
                   onClick={() => handleMore(id)}
@@ -83,8 +83,13 @@ export default function BottomNav({ current, onChange }: BottomNavProps) {
                       : "bg-slate-800 text-slate-300 active:bg-slate-700"
                   }`}
                 >
-                  <Icon size={18} />
-                  <span className="text-[13px] font-medium">{label}</span>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-950/70">
+                    <Icon size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-bold">{label}</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-500">{desc}</span>
+                  </span>
                 </button>
               ))}
             </div>

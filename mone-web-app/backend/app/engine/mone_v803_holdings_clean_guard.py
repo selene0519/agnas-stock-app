@@ -118,6 +118,30 @@ def _position_index(market: str) -> dict[str, dict[str, Any]]:
     return out
 
 
+@lru_cache(maxsize=512)
+def _ohlcv_ref(symbol: str, market: str) -> dict[str, Any]:
+    root = _repo_root()
+    sym = _symbol(symbol, market)
+    path = root / "data" / "market" / "ohlcv" / f"{market}_{sym}_daily.csv"
+    rows: list[dict[str, Any]] = []
+    for row in _read_csv(path):
+        close = _num(_text(row, ["close", "Close", "stck_clpr", "종가"], "0"))
+        date = _text(row, ["date", "Date", "tradeDate", "일자"], "")
+        if close > 0:
+            rows.append({"close": close, "date": date})
+    if not rows:
+        return {"latest": 0.0, "prev": 0.0, "source": "", "date": "", "count": 0}
+    latest = rows[-1]
+    prev = rows[-2] if len(rows) >= 2 else {"close": 0.0, "date": ""}
+    return {
+        "latest": latest["close"],
+        "prev": prev["close"],
+        "source": path.name,
+        "date": latest["date"],
+        "count": len(rows),
+    }
+
+
 def _holding_files(market: str) -> list[Path]:
     root = _repo_root()
     return [
@@ -160,6 +184,7 @@ def _enrich_item(item: dict[str, Any]) -> dict[str, Any]:
     symbol = str(item.get("symbol") or "").upper()
     quote = _quote_index(market).get(symbol, {})
     position = _position_index(market).get(symbol, {})
+    ohlcv = _ohlcv_ref(symbol, market)
     computed: list[str] = []
 
     quantity = _num(item.get("quantity"))
@@ -167,12 +192,18 @@ def _enrich_item(item: dict[str, Any]) -> dict[str, Any]:
 
     quote_current = _num(_text(quote, ["currentPrice", "current_price", "last_price", "price", "현재가"], "0"))
     current = quote_current or _num(item.get("currentPrice")) or _num(_text(position, ["currentPrice", "current_price", "last_price", "현재가"], "0"))
+    if current <= 0 and ohlcv.get("latest", 0) > 0:
+        current = float(ohlcv["latest"])
+        computed.append("current_price_from_ohlcv")
 
     prev_close = (
         _num(_text(quote, ["prevClose", "previousClose", "prev_close", "basePrice", "stck_prdy_clpr", "전일종가", "기준가"], "0"))
         or _num(item.get("prevClose"))
         or _num(_text(position, ["prevClose", "prev_close", "전일종가"], "0"))
     )
+    if prev_close <= 0 and ohlcv.get("prev", 0) > 0:
+        prev_close = float(ohlcv["prev"])
+        computed.append("prev_close_from_ohlcv")
     raw_change = _num(_text(quote, ["changePct", "changeRate", "prdy_ctrt", "등락률"], "0"))
 
     valuation = quantity * current if quantity > 0 and current > 0 else 0.0
@@ -236,9 +267,12 @@ def _enrich_item(item: dict[str, Any]) -> dict[str, Any]:
         "targetText": _fmt_price(target, market),
         "changePctText": _fmt_pct(change_pct) if change_pct is not None else "",
         "quoteSource": _text(quote, ["priceSource", "source", "_source_file"], "") if quote_current > 0 else "",
-        "priceSource": _text(quote, ["priceSource", "source", "_source_file"], "") if quote_current > 0 else "",
+        "priceSource": _text(quote, ["priceSource", "source", "_source_file"], "") if quote_current > 0 else ohlcv.get("source", ""),
         "quoteTimestamp": _text(quote, ["timestamp", "updatedAt", "priceTime", "quoteTimestamp"], ""),
-        "dataStatus": "NORMAL" if current > 0 else "PRICE_PENDING",
+        "priceSourceType": "live_quote" if quote_current > 0 else ("ohlcv_close" if ohlcv.get("latest", 0) > 0 else "missing"),
+        "ohlcvCount": ohlcv.get("count", 0),
+        "ohlcvDate": ohlcv.get("date", ""),
+        "dataStatus": "NORMAL" if quote_current > 0 else ("PARTIAL" if current > 0 else "PRICE_PENDING"),
         "computedFields": computed,
         "missingFields": missing,
         "enrichSource": _text(position, ["_source_file"], ""),
