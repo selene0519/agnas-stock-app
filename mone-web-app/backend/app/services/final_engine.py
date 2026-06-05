@@ -919,6 +919,128 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
     }
 
 
+def _recommendation_detail_score(row: dict[str, Any]) -> float:
+    for key in ("finalRankScore", "finalScore", "opportunityScore", "probability", "entryScore"):
+        value = _num(row.get(key))
+        if value is not None:
+            return float(value)
+    return 0.0
+
+
+def _recommendation_detail_rows(market: str, symbol: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    target = data.normalize_symbol(symbol, market)
+    if not target:
+        return rows
+    for mode in MODES:
+        for horizon in HORIZONS:
+            for kind in ("recommendations", "trade_validation"):
+                path = data.REPORT_DIR / f"mone_v36_final_{kind}_{market}_{mode}_{horizon}.csv"
+                if not path.exists() or path.stat().st_size <= 0:
+                    continue
+                for raw in data.dataframe_records(data.read_csv(path)):
+                    row_symbol = data.normalize_symbol(data.first_value(raw, data.SYMBOL_ALIASES + ["ticker", "code", "stock_code"], ""), market)
+                    if row_symbol != target:
+                        continue
+                    normalized = data.normalize_security_row(raw, market)
+                    merged = {**normalized, **raw}
+                    current_price = _num(merged.get("currentPrice") or merged.get("current_price") or merged.get("close"))
+                    if current_price is not None and current_price > 0:
+                        merged["basePrice"] = current_price
+                        merged["base"] = current_price
+                        merged["currentPrice"] = current_price
+                        merged.setdefault("currentPriceText", data.format_price(current_price, market))
+                    for key in ("entry", "stop", "target"):
+                        value = _num(merged.get(key))
+                        if value is not None and value > 0:
+                            merged[key] = value
+                    expected = _num(merged.get("expectedPrice") or merged.get("expected") or merged.get(HORIZON_PRICE_FIELD[horizon]))
+                    if expected is not None and expected > 0:
+                        merged["expectedPrice"] = expected
+                        merged["expected"] = expected
+                        merged.setdefault("expectedPriceText", data.format_price(expected, market))
+                    merged.update({
+                        "symbol": target,
+                        "market": market,
+                        "mode": mode,
+                        "modeLabel": MODE_LABELS[mode],
+                        "horizon": horizon,
+                        "horizonLabel": HORIZON_LABELS[horizon],
+                        "sourceFile": path.name,
+                        "sourceKind": kind,
+                        "detailScore": _recommendation_detail_score(merged),
+                    })
+                    rows.append(merged)
+    for path_name in ("virtual_validation_results.csv", "virtual_prediction_ledger.csv"):
+        path = data.REPORT_DIR / path_name
+        if not path.exists() or path.stat().st_size <= 0:
+            continue
+        for raw in data.dataframe_records(data.read_csv(path)):
+            row_market = "us" if str(raw.get("market", "")).lower() == "us" else "kr" if str(raw.get("market", "")).lower() == "kr" else ""
+            if row_market != market:
+                continue
+            row_symbol = data.normalize_symbol(data.first_value(raw, data.SYMBOL_ALIASES + ["ticker", "code", "stock_code"], ""), market)
+            if row_symbol != target:
+                continue
+            normalized = data.normalize_security_row(raw, market)
+            merged = {**normalized, **raw}
+            mode = str(merged.get("mode") or "balanced").lower()
+            horizon = str(merged.get("horizon") or "swing").lower()
+            if mode not in MODES:
+                mode = "balanced"
+            if horizon not in HORIZONS:
+                horizon = "swing"
+            for src_key, dst_key in (("entryPrice", "entry"), ("stopPrice", "stop"), ("targetPrice", "target"), ("expectedPrice", "expectedPrice")):
+                value = _num(merged.get(src_key))
+                if value is not None and value > 0:
+                    merged.setdefault(dst_key, value)
+            expected = _num(merged.get("expectedPrice") or merged.get("expected"))
+            if expected is not None and expected > 0:
+                merged.setdefault("expected", expected)
+                merged.setdefault("expectedPriceText", data.format_price(expected, market))
+            merged.update({
+                "symbol": target,
+                "market": market,
+                "mode": mode,
+                "modeLabel": MODE_LABELS[mode],
+                "horizon": horizon,
+                "horizonLabel": HORIZON_LABELS[horizon],
+                "sourceFile": path.name,
+                "sourceKind": "virtual_prediction",
+                "detailScore": _recommendation_detail_score(merged) - 5,
+            })
+            rows.append(merged)
+    rows.sort(key=lambda r: (float(r.get("detailScore") or 0), str(r.get("generatedAt") or "")), reverse=True)
+    return rows
+
+
+def recommendation_detail(market: str = "kr", symbol: str = "") -> dict[str, Any]:
+    market = "us" if str(market).lower() == "us" else "kr"
+    target = data.normalize_symbol(symbol, market)
+    rows = _recommendation_detail_rows(market, target)
+    if not rows:
+        return {
+            "status": "NO_DATA",
+            "market": market,
+            "symbol": target,
+            "count": 0,
+            "items": [],
+            "item": None,
+            "generatedAt": _now(),
+        }
+    best = rows[0]
+    return {
+        "status": "OK",
+        "market": market,
+        "symbol": target,
+        "count": len(rows),
+        "items": rows[:9],
+        "item": best,
+        "source": best.get("sourceFile", ""),
+        "generatedAt": _now(),
+    }
+
+
 def conditional_execution_summary(market: str = "kr", mode: str = "balanced", horizon: str = "swing") -> dict[str, Any]:
     payload = final_recommendations(market, mode, horizon, limit=int(MODE_RULES.get(mode, MODE_RULES["balanced"])["max_items"]))
     items = payload.get("items", [])

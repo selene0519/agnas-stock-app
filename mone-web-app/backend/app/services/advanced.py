@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from app.engine import quant_scanner
 from app.services import data_loader as data
 
 
@@ -65,8 +66,8 @@ def _to_number_series(series: pd.Series) -> pd.Series:
 def _parse_date_series(series: pd.Series) -> pd.Series:
     text = series.astype(str).str.strip()
     parsed = pd.to_datetime(text, errors="coerce")
-    if parsed.notna().sum() == 0:
-        parsed = pd.to_datetime(text, format="%Y%m%d", errors="coerce")
+    compact = pd.to_datetime(text, format="%Y%m%d", errors="coerce")
+    parsed = parsed.fillna(compact)
     return parsed
 
 
@@ -117,6 +118,58 @@ def _normalize_ohlcv_frame(path: Path, market: str) -> tuple[pd.DataFrame, str]:
         work[col] = work[col].fillna(work["close"])
     work = work[(work["close"] > 0)].reset_index(drop=True)
     return work, "OK" if not work.empty else "정상 가격 row 없음"
+
+
+def _eligible_ohlcv_universe(market: str, min_days: int = 30) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    insufficient: list[dict[str, Any]] = []
+    schema_errors: list[dict[str, Any]] = []
+    paths = _ohlcv_files(market)
+
+    for path in paths:
+        symbol = _symbol_from_ohlcv_path(path, market)
+        if not symbol:
+            continue
+        frame, status = _normalize_ohlcv_frame(path, market)
+        if frame.empty or status != "OK":
+            schema_errors.append({"symbol": symbol, "file": path.name, "reason": status})
+            continue
+        if len(frame) <= min_days:
+            insufficient.append({"symbol": symbol, "file": path.name, "rows": len(frame), "reason": f"{min_days} bars or fewer"})
+            continue
+
+        latest = frame.iloc[-1]
+        latest_close = float(latest["close"])
+        latest_date = latest["date"].strftime("%Y-%m-%d") if pd.notna(latest["date"]) else ""
+        item = data.normalize_security_row({
+            "symbol": symbol,
+            "ticker": symbol,
+            "code": symbol,
+            "current_price": latest_close,
+            "basis_ohlc_date": latest_date,
+            "sourceFile": path.relative_to(data.REPO_ROOT).as_posix(),
+            "sourceDate": latest_date,
+        }, market)
+        item.update({
+            "bucket": "OHLCV_30_PLUS",
+            "theme": "OHLCV",
+            "group": "OHLCV",
+            "riskLevel": "QUANT_READY",
+            "score": "quant pending",
+            "reason": f"OHLCV {len(frame)} bars available",
+            "watchlistAction": "quant score from OHLCV",
+            "ohlcvRows": len(frame),
+            "ohlcvLatestDate": latest_date,
+        })
+        rows.append(item)
+
+    return rows, {
+        "files": len(paths),
+        "eligibleSymbols": len(rows),
+        "minDaysRequired": min_days + 1,
+        "insufficient": insufficient[:30],
+        "schemaErrors": schema_errors[:30],
+    }
 
 
 def _rsi(close: pd.Series, period: int = 14) -> pd.Series:
@@ -365,13 +418,32 @@ def _scanner_source_rows(market: str) -> list[dict[str, Any]]:
     return unique
 
 
-def advanced_scanner(market: str) -> dict[str, Any]:
+def _number_sort_key(value: Any) -> float:
+    num = data._safe_float(value)
+    return float(num) if num is not None and math.isfinite(float(num)) else -1.0
+
+
+def advanced_scanner(market: str, mode: str = "balanced", horizon: str = "swing") -> dict[str, Any]:
     rows = _scanner_source_rows(market)
+    ohlcv_rows, ohlcv_summary = _eligible_ohlcv_universe(market, min_days=30)
+    seen_symbols = {data.normalize_symbol(item.get("symbol"), market) for item in rows}
+    rows.extend([item for item in ohlcv_rows if data.normalize_symbol(item.get("symbol"), market) not in seen_symbols])
     positions = {data.normalize_symbol(item.get("symbol"), market) for item in data.positions(market).get("items", [])}
     for row in rows:
         row["isHolding"] = data.normalize_symbol(row.get("symbol"), market) in positions
+        scored = quant_scanner.apply_quant_overlay(row, data.REPO_ROOT, mode, horizon)
+        if scored.get("finalScore") is not None:
+            scored["score"] = scored.get("finalScore")
+        row.clear()
+        row.update(scored)
+    rows.sort(key=lambda item: (_number_sort_key(item.get("finalScore")), _number_sort_key(item.get("quantScore"))), reverse=True)
+    quant_ready_count = sum(1 for item in rows if item.get("quantScore") is not None and item.get("quantDataStatus") != "DATA_PENDING")
+    quote_ready_count = sum(1 for item in rows if data._safe_float(item.get("currentPrice")) is not None)
+    quote_coverage_pct = (quote_ready_count / len(rows) * 100) if rows else 0.0
     return {
         "market": market,
+        "mode": quant_scanner.normalize_mode(mode),
+        "horizon": quant_scanner.normalize_horizon(horizon),
         "count": len(rows),
         "filters": ["전체", "BUY", "주의", "눌림목", "수급", "저평가", "보유 제외"],
         "sources": [
@@ -381,7 +453,21 @@ def advanced_scanner(market: str) -> dict[str, Any]:
             f"reports/v92_pullback_cards_{market}.csv",
             f"reports/v92_flow_cards_{market}.csv",
             f"reports/v92_risk_cards_{market}.csv",
+            "data/market/ohlcv/*_daily.csv",
         ],
+        "scanCoverage": {
+            "universeScope": "OHLCV_30_PLUS",
+            "isFullMarket": False,
+            "localScanUniverseCount": len(rows),
+            "ohlcvSymbolCount": ohlcv_summary["eligibleSymbols"],
+            "quoteCoveragePct": round(quote_coverage_pct, 1),
+            "quantReadyCount": quant_ready_count,
+            "quoteReadyCount": quote_ready_count,
+            "minOhlcvRowsRequired": ohlcv_summary["minDaysRequired"],
+            "ohlcvFiles": ohlcv_summary["files"],
+            "insufficient": ohlcv_summary["insufficient"],
+            "schemaErrors": ohlcv_summary["schemaErrors"],
+        },
         "items": rows,
     }
 

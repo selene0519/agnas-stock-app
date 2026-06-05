@@ -164,7 +164,7 @@ export default function AdvancedPage() {
     const apiMarket = market === "all" ? "kr" : market;
     setScanLoading(true);
     Promise.allSettled([
-      mone.advancedScanner({ market: apiMarket }),
+      mone.advancedScanner({ market: apiMarket, mode, horizon }),
       mone.recommendations({ market: apiMarket, mode, horizon, limit: 60 }),
     ])
       .then(([scannerResult, recoResult]) => {
@@ -173,7 +173,7 @@ export default function AdvancedPage() {
         const reco = recoResult.status === "fulfilled" ? recoResult.value : { items: [], status: "ERROR" };
         const scannerItems = Array.isArray(scanner.items) ? scanner.items : [];
         const recoItems = Array.isArray(reco.items) ? reco.items : [];
-        setScanCoverage(reco.scanCoverage || null);
+        setScanCoverage(scanner.scanCoverage || reco.scanCoverage || null);
         setScanMeta({
           scannerStatus: scanner.status,
           scannerCount: scanner.count ?? scannerItems.length,

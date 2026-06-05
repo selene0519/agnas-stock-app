@@ -269,15 +269,22 @@ export default function ReportPage() {
     setData({ status: "LOADING", items: [] });
     setValDashboard(null); // 탭/마켓 변경 시 stale 데이터 방지
     const task =
-      tab === "virtual" || tab === "closing" || tab === "validation"
+      tab === "closing"
         ? mone.backtestTrades({ market, mode, horizon, limit: 300 })
-        : mone.report(tab as "premarket" | "intraday", { market, mode, horizon, limit: 300 });
+        : tab === "virtual"
+          ? mone.virtualValidation({ market, limit: 300 })
+          : tab === "validation"
+            ? mone.virtualValidation({ market, limit: 300 })
+            : mone.report(tab as "premarket" | "intraday", { market, mode, horizon, limit: 300 });
 
     task
       .then((r) => active && setData(r || { status: "OK", items: [] }))
       .catch((e) => active && setData({ status: "ERROR", error: String(e), items: [] }));
 
-    mone.backtestSummary({ market, mode, horizon })
+    const summaryTask = tab === "virtual"
+      ? mone.virtualSummary({ market, mode: "all", horizon: "all" })
+      : mone.backtestSummary({ market, mode, horizon });
+    summaryTask
       .then((r) => active && setVirtual(r || {})).catch(() => active && setVirtual({}));
     mone.virtualLedger({ market, mode, horizon, limit: 300 })
       .then((r) => active && setVirtualLedger(r || { items: [] })).catch(() => active && setVirtualLedger({ items: [] }));

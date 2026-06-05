@@ -111,6 +111,48 @@ function relatedItems(items: any[], selected: MoneSymbol | null) {
   }).slice(0, 4);
 }
 
+function reportNewsFallback(levels: any) {
+  if (!levels) return [];
+  const text = [levels.eventContext, levels.timingReason, levels.decisionReason, levels.surgeReason]
+    .filter(Boolean)
+    .join(" / ");
+  const count = Number(levels.newsCount || 0);
+  return [{
+    title: "Recommendation report news context",
+    summary: text || (count > 0
+      ? `${count} linked news item(s) were counted in the recommendation report.`
+      : "No separate news URL was attached; using the recommendation/validation source context."),
+    source: levels.sourceFile || levels.priceSource || "recommendation report",
+    date: String(levels.generatedAt || levels.sourceDate || "").slice(0, 10),
+  }];
+}
+
+function reportDisclosureFallback(levels: any) {
+  if (!levels) return [];
+  const text = [levels.eventBadgesText, levels.eventContext, levels.riskReason]
+    .filter(Boolean)
+    .join(" / ");
+  const count = Number(levels.disclosureCount || 0);
+  return [{
+    title: "Recommendation report disclosure/research context",
+    summary: text || (count > 0
+      ? `${count} linked disclosure/research item(s) were counted in the recommendation report.`
+      : "No separate disclosure/research URL was attached; using the recommendation/validation source context."),
+    source: levels.sourceFile || "recommendation report",
+    date: String(levels.generatedAt || levels.sourceDate || "").slice(0, 10),
+  }];
+}
+
+function companyFallback(levels: any) {
+  if (!levels) return null;
+  const keys = ["per", "pbr", "peg", "roe", "debtRatio", "operatingMargin", "qualityScore", "earningsScore"];
+  return {
+    ...levels,
+    dataStatus: keys.some((key) => levels[key] != null && levels[key] !== "") ? "REPORT_FALLBACK" : "SOURCE_CONTEXT",
+    summary: levels.financialSummary || levels.decisionReason || "No separate company-analysis file was attached; using recommendation/validation source context.",
+  };
+}
+
 function loadStatusText(status: any) {
   const s = String(status || "").toUpperCase();
   if (s === "OK" || s === "NORMAL") return "정상";
@@ -932,7 +974,7 @@ export default function ChartPage() {
     setLoadState((prev) => ({ ...prev, errors: [], updatedAt: "" }));
     Promise.allSettled([
       mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260 }, controller.signal),
-      mone.recommendations({ market: selected.market, mode: "balanced", horizon: "swing", limit: 120 }, controller.signal),
+      mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal),
       mone.news({ market: selected.market, limit: 200 }, controller.signal),
       mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal),
       withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 6000, { status: "TIMEOUT", items: [] }),
@@ -947,24 +989,28 @@ export default function ChartPage() {
         .map((item: any) => item?.status === "ERROR" ? item.error || "API 오류" : "")
         .filter(Boolean);
       setRows(chartRows);
-      const matched = recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
+      const detailItem = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
+      const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
       setLevels(matched || null);
       const relatedNews = relatedItems(newsItems, selected);
       const relatedDisclosures = relatedItems(disclosureItems, selected);
-      setNews(relatedNews);
-      setDisclosures(relatedDisclosures);
+      const displayNews = relatedNews.length ? relatedNews : reportNewsFallback(matched);
+      const displayDisclosures = relatedDisclosures.length ? relatedDisclosures : reportDisclosureFallback(matched);
+      setNews(displayNews);
+      setDisclosures(displayDisclosures);
       const cm = Array.isArray(company_d.items) ? company_d.items.find((item: any) => normalizeSymbol(item) === selected.symbol) || company_d.items[0] : null;
-      setCompany(cm || null);
+      const fallbackCompany = companyFallback(matched);
+      setCompany(cm || fallbackCompany);
       // 추천 생성일: dataHealth.recoGeneratedAt (날짜 부분만)
-      const recoDate = String(rd?.dataHealth?.recoGeneratedAt || "").slice(0, 10);
+      const recoDate = String(rd?.item?.generatedAt || rd?.generatedAt || rd?.dataHealth?.recoGeneratedAt || "").slice(0, 10);
       setLoadState({
         ohlcvStatus: cd.status || (chartRows.length ? "OK" : "NO_DATA"),
         ohlcvCount: chartRows.length,
-        recStatus: rd.status || (recItems.length ? "OK" : "NO_DATA"),
-        recCount: recItems.length,
-        newsCount: relatedNews.length,
-        disclosureCount: relatedDisclosures.length,
-        companyStatus: company_d.status || (cm ? (cm.dataStatus || "OK") : "NO_DATA"),
+        recStatus: rd.status || (matched ? "OK" : "NO_DATA"),
+        recCount: Number(rd.count ?? recItems.length ?? (matched ? 1 : 0)),
+        newsCount: displayNews.length,
+        disclosureCount: displayDisclosures.length,
+        companyStatus: company_d.status || (cm ? (cm.dataStatus || "OK") : fallbackCompany ? "REPORT_FALLBACK" : "NO_DATA"),
         errors,
         updatedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         recoDate,
