@@ -2350,25 +2350,13 @@ def api_kis_holdings_sync(
         storage = "csv"
 
     return {
-        total = added + updated
-        return {
-            "status": "OK",
-            "mode": mode,
-            "added": added,
-            "updated": updated,
-            "total": total,
-            "isMock": result.get("isMock", False),
-            "storage": storage,
-        }
-    # uid 없는 경우 CSV 경로에서 total 계산
-    return {
         "status": "OK",
         "mode": mode,
         "added": added,
         "updated": updated,
         "total": added + updated,
         "isMock": result.get("isMock", False),
-        "storage": "csv",
+        "storage": storage,
     }
 
 
