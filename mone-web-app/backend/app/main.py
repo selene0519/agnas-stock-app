@@ -3240,27 +3240,57 @@ def api_earnings_calendar(market: str = Query("all"), days: int = Query(14)) -> 
             except Exception:
                 continue
 
-    # ── 미장 (Finnhub) ──
-    if market in ("us", "all") and fh_key:
-        try:
-            url = f"https://finnhub.io/api/v1/calendar/earnings?from={today_s}&to={end_s}&token={fh_key}"
-            with _ur.urlopen(url, timeout=10) as r:
-                fh_data = __import__("json").loads(r.read())
-            for x in (fh_data.get("earningsCalendar") or []):
-                eps = x.get("epsEstimate")
-                if not eps:
-                    continue
-                items.append({
-                    "market": "us",
-                    "symbol": x.get("symbol", ""),
-                    "name": x.get("symbol", ""),
-                    "date": x.get("date", ""),
-                    "estimate": str(eps),
-                    "hour": x.get("hour", ""),
-                    "currency": "USD",
-                })
-        except Exception:
-            pass
+    # ── 미장 (Finnhub → Alpha Vantage 폴백) ──
+    if market in ("us", "all"):
+        us_items: list[dict] = []
+
+        # 1차: Finnhub
+        if fh_key:
+            try:
+                url = f"https://finnhub.io/api/v1/calendar/earnings?from={today_s}&to={end_s}&token={fh_key}"
+                with _ur.urlopen(url, timeout=10) as r:
+                    fh_data = __import__("json").loads(r.read())
+                for x in (fh_data.get("earningsCalendar") or []):
+                    eps = x.get("epsEstimate")
+                    if not eps:
+                        continue
+                    us_items.append({
+                        "market": "us", "source": "finnhub",
+                        "symbol": x.get("symbol", ""),
+                        "name": x.get("symbol", ""),
+                        "date": x.get("date", ""),
+                        "estimate": str(eps),
+                        "hour": x.get("hour", ""),
+                        "currency": "USD",
+                    })
+            except Exception:
+                pass
+
+        # 2차: Finnhub 실패 시 Alpha Vantage 폴백
+        if not us_items and av_key:
+            try:
+                url = f"https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&horizon=3month&apikey={av_key}"
+                req = _ur.Request(url, headers={"User-Agent": "MONE/1.0"})
+                with _ur.urlopen(req, timeout=10) as r:
+                    content = r.read().decode("utf-8")
+                import io as _io
+                for row in __import__("csv").DictReader(_io.StringIO(content)):
+                    sym = str(row.get("symbol", ""))
+                    rd  = str(row.get("reportDate", "")).strip()
+                    if ".KS" in sym or ".KQ" in sym or not rd:
+                        continue
+                    if today_s <= rd <= end_s and row.get("estimate"):
+                        us_items.append({
+                            "market": "us", "source": "alpha_vantage",
+                            "symbol": sym, "name": sym,
+                            "date": rd,
+                            "estimate": str(row.get("estimate", "")),
+                            "currency": row.get("currency", "USD"),
+                        })
+            except Exception:
+                pass
+
+        items.extend(us_items[:10])
 
     items.sort(key=lambda x: x["date"])
     return {"status": "OK" if items else "NO_DATA", "count": len(items), "days": days, "items": items[:30]}

@@ -253,23 +253,70 @@ def _finnhub_get(path: str) -> Any:
         return None
 
 
+def _av_us_earnings(today: datetime, end: datetime) -> list[dict]:
+    """Alpha Vantage로 미장 실적발표 조회 (Finnhub 폴백용)."""
+    if not AV_KEY:
+        return []
+    today_s = today.strftime("%Y-%m-%d")
+    end_s   = end.strftime("%Y-%m-%d")
+    # 심볼 없이 전체 조회 → US 주요 종목 CSV 반환
+    url = f"https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&horizon=3month&apikey={AV_KEY}"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "MONE/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            content = r.read().decode("utf-8")
+        results = []
+        for row in csv.DictReader(content.splitlines()):
+            sym = str(row.get("symbol", ""))
+            rd  = str(row.get("reportDate", "")).strip()
+            # KR 종목(.KS/.KQ) 제외, US 종목만
+            if ".KS" in sym or ".KQ" in sym or not rd:
+                continue
+            if today_s <= rd <= end_s:
+                est = row.get("estimate", "")
+                if est:
+                    results.append({
+                        "date": rd,
+                        "symbol": sym,
+                        "estimate": est,
+                        "currency": row.get("currency", "USD"),
+                    })
+        return sorted(results, key=lambda x: x["date"])[:8]
+    except Exception as e:
+        print(f"Alpha Vantage US 폴백 오류: {e}")
+        return []
+
+
 def build_earnings_section() -> str:
     today = datetime.now()
     end   = today + timedelta(days=5)
+
+    # 1차: Finnhub
     data  = _finnhub_get(
         f"/calendar/earnings?from={today.strftime('%Y-%m-%d')}&to={end.strftime('%Y-%m-%d')}"
     )
-    if not data:
-        return ""
-    items = data.get("earningsCalendar", []) or []
-    # 주요 종목만 (시총 상위 — 여기선 epsEstimate 있는 것만)
-    important = [
-        x for x in items
-        if x.get("epsEstimate") and abs(_num(x.get("epsEstimate"))) > 0
-    ][:8]
+    important = []
+    source = "Finnhub"
+    if data:
+        all_items = data.get("earningsCalendar", []) or []
+        important = [
+            x for x in all_items
+            if x.get("epsEstimate") and abs(_num(x.get("epsEstimate"))) > 0
+        ][:8]
+
+    # 2차: Finnhub 실패 또는 결과 없으면 Alpha Vantage 폴백
     if not important:
+        print("Finnhub 미장 실적 없음 → Alpha Vantage 폴백")
+        av_items = _av_us_earnings(today, end)
+        if av_items:
+            source = "Alpha Vantage"
+            lines = [f"\n📅 <b>이번 주 미장 실적발표</b> <i>(via {source})</i>"]
+            for x in av_items:
+                lines.append(f"  • {x['date']} <b>{x['symbol']}</b> — EPS 예상 ${x['estimate']}")
+            return "\n".join(lines)
         return ""
-    lines = ["\n📅 <b>이번 주 미장 실적발표</b>"]
+
+    lines = [f"\n📅 <b>이번 주 미장 실적발표</b>"]
     for x in important:
         date = x.get("date", "")
         sym  = x.get("symbol", "")
