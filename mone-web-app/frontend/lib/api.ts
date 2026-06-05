@@ -223,7 +223,7 @@ export const mone = {
     apiPost<ApiList>("/api/watchlist/set-group", body),
   correlationMatrix: (p?: { market?: Market; days?: number }) =>
     apiGet<ApiList>("/api/advanced/correlation", p),
-  advancedScanner: (p?: { market?: Market }) =>
+  advancedScanner: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/advanced/scanner", p),
   calculatorKelly: (body: { winRate?: number; payoffRatio?: number; capital?: number }) =>
     apiPost<any>("/api/advanced/calculator/kelly", body),
@@ -247,6 +247,8 @@ export const mone = {
     fetch(buildUrl(API_BASE, `/api/journal/${id}`), { method: "DELETE" }).then(r => r.json()),
   recommendations: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }, signal?: AbortSignal) =>
     apiGet<ApiList>("/api/final/recommendations", p, signal),
+  recommendationDetail: (p: { market?: Market; symbol: string }, signal?: AbortSignal) =>
+    apiGet<ApiList>("/api/final/recommendation-detail", p, signal),
   candidates: (p?: { market?: Market; strategy?: Mode | string; term?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>
     apiGet<ApiList>("/api/v1/candidates", p),
   report: (type: "premarket" | "intraday" | "closing", p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>

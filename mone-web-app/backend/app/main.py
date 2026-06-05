@@ -88,6 +88,14 @@ def api_final_recommendations(
     return final_engine.final_recommendations(_market(market), mode, horizon)
 
 
+@app.get("/api/final/recommendation-detail")
+def api_final_recommendation_detail(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    symbol: str = Query(..., min_length=1),
+) -> dict:
+    return final_engine.recommendation_detail(_market(market), symbol)
+
+
 @app.get("/api/final/conditional-executions")
 def api_final_conditional_executions(
     market: str = Query("kr", pattern="^(kr|us)$"),
@@ -539,8 +547,12 @@ def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dic
 
 
 @app.get("/api/advanced/scanner")
-def api_advanced_scanner(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return _ensure_status(advanced.advanced_scanner(_market(market)))
+def api_advanced_scanner(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+) -> dict:
+    return _ensure_status(advanced.advanced_scanner(_market(market), mode, horizon))
 
 
 @app.post("/api/advanced/calculator/kelly")
@@ -661,13 +673,90 @@ def api_backtest_summary_core(
     return backtest.summary(_market(market), mode, horizon)
 
 
+def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: str = "swing") -> dict:
+    def _truth(value: object) -> bool:
+        return str(value).strip().lower() in {"1", "true", "yes", "y", "filled", "executed", "체결"}
+
+    def _num(value: object) -> float | None:
+        try:
+            text = str(value).replace("%", "").replace(",", "").strip()
+            if not text:
+                return None
+            return float(text)
+        except Exception:
+            return None
+
+    def _rows(name: str) -> list[dict]:
+        path = data.REPORT_DIR / name
+        if not path.exists() or path.stat().st_size <= 0:
+            return []
+        return data.dataframe_records(data.read_csv(path))
+
+    market = _market(market)
+    validations = [
+        row for row in _rows("virtual_validation_results.csv")
+        if str(row.get("market", "")).lower() == market
+    ]
+    ledger = [
+        row for row in _rows("virtual_prediction_ledger.csv")
+        if str(row.get("market", "")).lower() == market
+    ]
+    if mode and mode not in {"all", ""}:
+        validations = [row for row in validations if str(row.get("mode", "")).lower() == mode.lower()]
+        ledger = [row for row in ledger if str(row.get("mode", "")).lower() == mode.lower()]
+    if horizon and horizon not in {"all", ""}:
+        validations = [row for row in validations if str(row.get("horizon", "")).lower() == horizon.lower()]
+        ledger = [row for row in ledger if str(row.get("horizon", "")).lower() == horizon.lower()]
+
+    executed = [row for row in validations if _truth(row.get("isExecuted"))]
+    unexecuted = [row for row in validations if not _truth(row.get("isExecuted"))]
+    returns = [_num(row.get("returnPct")) for row in executed]
+    returns = [value for value in returns if value is not None]
+    wins = [value for value in returns if value > 0]
+    cumulative = sum(returns)
+    avg = cumulative / len(returns) if returns else 0.0
+    pending = [
+        row for row in ledger
+        if str(row.get("status", "")).strip().upper() in {"", "PENDING", "DATA_PENDING"}
+    ]
+    latest_date = ""
+    for row in validations:
+        latest_date = max(latest_date, str(row.get("validatedAt") or row.get("validationDate") or row.get("createdAt") or ""))
+    return {
+        "status": "OK" if validations or ledger else "NO_DATA",
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "source": "virtual_validation_results.csv + virtual_prediction_ledger.csv",
+        "returnBasis": "virtual_validation_results executed rows; portfolio aggregate curve, not per-symbol curve",
+        "pnlCurveScope": "portfolio_aggregate",
+        "totalRecommendations": len(ledger) or len(validations),
+        "latestRecommendations": len(validations),
+        "executedTrades": len(executed),
+        "latestExecutedTrades": len(executed),
+        "unexecutedCount": len(unexecuted),
+        "latestUnexecutedCount": len(unexecuted),
+        "pendingCount": len(pending),
+        "executionRate": round((len(executed) / len(validations)) * 100, 2) if validations else 0,
+        "latestExecutionRate": round((len(executed) / len(validations)) * 100, 2) if validations else 0,
+        "winRate": round((len(wins) / len(returns)) * 100, 2) if returns else 0,
+        "latestWinRate": round((len(wins) / len(returns)) * 100, 2) if returns else 0,
+        "executedReturnPct": round(avg, 3),
+        "cumulativeReturnPct": round(cumulative, 3),
+        "latestCumulativeReturnPct": round(cumulative, 3),
+        "latestDate": latest_date[:10],
+        "items": validations[:300],
+        "count": len(validations),
+    }
+
+
 @app.get("/api/virtual/summary")
 def api_virtual_summary_core(
     market: str = Query("kr", pattern="^(kr|us)$"),
     mode: str = Query("balanced"),
     horizon: str = Query("swing"),
 ) -> dict:
-    return backtest.summary(_market(market), mode, horizon)
+    return _virtual_summary_from_reports(_market(market), mode, horizon)
 
 
 @app.get("/api/admin/pipeline")
@@ -1253,12 +1342,12 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "prevCloseText": f"${prev_close:,.2f}" if mk == "us" and prev_close > 0 else f"{round(prev_close):,}원" if prev_close > 0 else "",
                 "change": change_value if change_value else None,
                 "changeText": change_text,
-                "changePct": change_pct if change_pct else None,
+                "changePct": change_pct if current > 0 and prev_close > 0 else None,
                 "changePctText": change_pct_text,
-                "changePercent": change_pct if change_pct else None,
+                "changePercent": change_pct if current > 0 and prev_close > 0 else None,
                 "priceChange": change_value if change_value else None,
                 "priceChangeText": change_text,
-                "priceChangePercent": change_pct if change_pct else None,
+                "priceChangePercent": change_pct if current > 0 and prev_close > 0 else None,
                 "priceChangePercentText": change_pct_text,
                 "marketValue": current * qty if current > 0 else 0,
                 "marketValueText": f"${current * qty:,.2f}" if mk == "us" and current > 0 else f"{round(current * qty):,}원" if current > 0 else "-",
