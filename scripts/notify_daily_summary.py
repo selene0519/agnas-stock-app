@@ -34,10 +34,11 @@ HORIZONS = ("short", "swing", "mid")
 
 BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID", "")
-FINNHUB_KEY = os.environ.get("FINNHUB_API_KEY", "")
-DART_KEY    = os.environ.get("DART_API_KEY", "")
-AV_KEY      = os.environ.get("ALPHA_VANTAGE_KEY", "")
-DRY_RUN     = os.environ.get("NOTIFY_DRY_RUN", "0") == "1"
+FINNHUB_KEY   = os.environ.get("FINNHUB_API_KEY", "")
+DART_KEY      = os.environ.get("DART_API_KEY", "")
+AV_KEY        = os.environ.get("ALPHA_VANTAGE_KEY", "")
+GNEWS_API_KEY = os.environ.get("GNEWS_API_KEY", "")
+DRY_RUN       = os.environ.get("NOTIFY_DRY_RUN", "0") == "1"
 
 
 # ── 텔레그램 전송 ─────────────────────────────────────────────────────────────
@@ -163,7 +164,136 @@ def build_recommendation_section(market: str) -> str:
             f"| 목표 {_fmt_price(r['target'], market)}"
         )
         lines.append(f"   EV <b>{r['ev']:+.1f}%</b>  점수 {r['score']:.0f}점")
+
+        # 종목별 최신 뉴스 1줄
+        news_list = (
+            _finnhub_company_news(r["symbol"]) if market == "us"
+            else _gnews_company_news(r["name"], r["symbol"])
+        )
+        if news_list:
+            art   = news_list[0]
+            title = _shorten(art.get("headline") or art.get("title") or "", 50)
+            src   = art.get("source") or ""
+            if isinstance(src, dict):
+                src = src.get("name", "")
+            if title:
+                lines.append(f"   📰 <i>{title}</i>" + (f" ({src})" if src else ""))
+
     return "\n".join(lines)
+
+
+# ── 종목별 뉴스 + 시장 뉴스 ──────────────────────────────────────────────────
+
+def _finnhub_company_news(symbol: str, days: int = 3) -> list[dict]:
+    """Finnhub 종목별 최신 뉴스 (미장용)."""
+    if not FINNHUB_KEY:
+        return []
+    today = datetime.now()
+    frm   = (today - timedelta(days=days)).strftime("%Y-%m-%d")
+    to    = today.strftime("%Y-%m-%d")
+    data  = _finnhub_get(f"/company-news?symbol={symbol}&from={frm}&to={to}")
+    if not data or not isinstance(data, list):
+        return []
+    return data[:2]
+
+
+def _gnews_company_news(name: str, symbol: str) -> list[dict]:
+    """GNews 종목별 최신 뉴스 (국장용)."""
+    if not AV_KEY and not GNEWS_API_KEY:
+        return []
+    query = urllib.parse.quote(name or symbol)
+    url = (
+        f"https://gnews.io/api/v4/search"
+        f"?q={query}&lang=ko&max=2&apikey={GNEWS_API_KEY}"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "MONE/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read())
+        return data.get("articles", [])[:2]
+    except Exception:
+        return []
+
+
+def _finnhub_market_news(category: str = "general") -> list[dict]:
+    """Finnhub 시장 전체 뉴스."""
+    data = _finnhub_get(f"/news?category={category}")
+    if not data or not isinstance(data, list):
+        return []
+    return data[:4]
+
+
+def _gnews_market_news() -> list[dict]:
+    """GNews 국장 시장 뉴스."""
+    if not GNEWS_API_KEY:
+        return []
+    url = (
+        f"https://gnews.io/api/v4/top-headlines"
+        f"?topic=business&lang=ko&country=kr&max=4&apikey={GNEWS_API_KEY}"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "MONE/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read())
+        return data.get("articles", [])[:4]
+    except Exception:
+        return []
+
+
+def _shorten(text: str, max_len: int = 50) -> str:
+    text = str(text or "").strip()
+    return text if len(text) <= max_len else text[:max_len - 1] + "…"
+
+
+def build_stock_news_for(items: list[dict], market: str) -> str:
+    """추천 종목별 최신 뉴스 1줄씩."""
+    lines = []
+    for r in items[:3]:
+        sym  = r["symbol"]
+        name = r["name"]
+        news_list = (
+            _finnhub_company_news(sym) if market == "us"
+            else _gnews_company_news(name, sym)
+        )
+        if not news_list:
+            continue
+        art = news_list[0]
+        title = _shorten(
+            art.get("headline") or art.get("title") or "", 50
+        )
+        src = art.get("source") or art.get("source", {})
+        if isinstance(src, dict):
+            src = src.get("name", "")
+        if title:
+            lines.append(f"   📰 <i>{title}</i> ({src})")
+        # 해당 종목 섹션 아래 삽입될 수 있도록 종목명 태그
+        r["_news_line"] = lines[-1] if lines else ""
+    return ""  # 종목 카드 안에 삽입하는 방식으로 변경
+
+
+def build_market_news_section(market: str) -> str:
+    """시장 전체 뉴스 요약."""
+    if market == "us":
+        articles = _finnhub_market_news("general")
+        label = "🌐 <b>미장 시장 뉴스</b>"
+    else:
+        articles = _gnews_market_news()
+        label = "🌐 <b>국장 시장 뉴스</b>"
+
+    if not articles:
+        return ""
+
+    lines = [f"\n{label}"]
+    for art in articles[:4]:
+        title = _shorten(
+            art.get("headline") or art.get("title") or "", 55
+        )
+        src = art.get("source") or ""
+        if isinstance(src, dict):
+            src = src.get("name", "")
+        if title:
+            lines.append(f"  • {title}" + (f" ({src})" if src else ""))
+    return "\n".join(lines) if len(lines) > 1 else ""
 
 
 # ── Alpha Vantage 실적 캘린더 (KR) ───────────────────────────────────────────
@@ -401,12 +531,22 @@ def main() -> None:
     # 헤더
     sections.append(f"🤖 <b>MONE 일일 투자 점검</b>\n{now}")
 
-    # 국장 추천
+    # 국장 시장 뉴스
+    kr_mkt_news = build_market_news_section("kr")
+    if kr_mkt_news:
+        sections.append(kr_mkt_news)
+
+    # 국장 추천 (종목별 뉴스 포함)
     kr_section = build_recommendation_section("kr")
     if kr_section:
         sections.append("\n" + kr_section)
 
-    # 미장 추천
+    # 미장 시장 뉴스
+    us_mkt_news = build_market_news_section("us")
+    if us_mkt_news:
+        sections.append(us_mkt_news)
+
+    # 미장 추천 (종목별 뉴스 포함)
     us_section = build_recommendation_section("us")
     if us_section:
         sections.append("\n" + us_section)
