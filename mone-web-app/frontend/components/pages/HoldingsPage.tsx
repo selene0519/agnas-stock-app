@@ -277,6 +277,11 @@ function NavCurve() {
           ℹ 추정 백필: 현재 보유종목 기준 과거 OHLCV로 역산한 추정값입니다. 실제 과거 포트폴리오 수익률과 다를 수 있습니다.
         </div>
       )}
+      {Math.abs(cumReturn) < 0.005 && actualCount <= 2 && (
+        <div className="mb-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-1.5 text-[10px] text-slate-400">
+          실제 NAV 이력이 부족해 누적 수익률이 평평하게 보입니다. 보유 스냅샷이 쌓이면 곡선이 의미 있게 표시됩니다.
+        </div>
+      )}
       <canvas ref={canvasRef} width={800} height={110} className="w-full rounded-lg" style={{ height: "110px" }} />
     </div>
   );
@@ -927,18 +932,18 @@ export default function HoldingsPage() {
 
 function SummaryCard({ label, value, accent = "text-slate-100" }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
       <div className="text-sm text-slate-500">{label}</div>
-      <div className={`mt-2 font-mono text-xl font-bold ${accent}`}>{value}</div>
+      <div className={`mt-2 min-w-0 break-words font-mono text-[clamp(1rem,4.8vw,1.25rem)] font-bold leading-tight ${accent}`}>{value}</div>
     </div>
   );
 }
 
 function Mini({ label, value, accent = "text-slate-100" }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl bg-slate-950 p-3">
+    <div className="min-w-0 rounded-xl bg-slate-950 p-3">
       <div className="text-[10px] text-slate-500">{label}</div>
-      <div className={`mt-1.5 font-mono text-sm font-bold ${accent}`}>{value}</div>
+      <div className={`mt-1.5 min-w-0 break-words font-mono text-xs font-bold leading-tight sm:text-sm ${accent}`}>{value}</div>
     </div>
   );
 }

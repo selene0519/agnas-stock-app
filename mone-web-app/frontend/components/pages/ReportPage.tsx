@@ -11,9 +11,9 @@ type Tab = "premarket" | "intraday" | "closing" | "virtual" | "validation";
 
 function Metric({ label, value, accent = false }: { label: string; value: any; accent?: boolean }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+    <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
       <div className="text-xs text-slate-500">{label}</div>
-      <div className={`mt-2 font-mono text-xl font-bold leading-tight ${accent ? "text-emerald-400" : "text-slate-100"}`}>{value}</div>
+      <div className={`mt-2 min-w-0 break-words font-mono text-[clamp(1rem,4.5vw,1.25rem)] font-bold leading-tight ${accent ? "text-emerald-400" : "text-slate-100"}`}>{value}</div>
     </div>
   );
 }
@@ -233,6 +233,16 @@ function EmptyState({ tab, error }: { tab: Tab; error?: string }) {
   );
 }
 
+function hasConflictMarker(value: any): boolean {
+  if (value == null) return false;
+  const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+  return /<<<<<<<|=======|>>>>>>>|UPDATED UPSTREAM|STASHED CHANGES/i.test(text);
+}
+
+function cleanReportRows(rows: any[]) {
+  return (rows || []).filter((row) => !hasConflictMarker(row));
+}
+
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────────
 
 export default function ReportPage() {
@@ -284,7 +294,9 @@ export default function ReportPage() {
   }, [market, mode, horizon, tab]);
 
   const rawItems = Array.isArray(data.items) ? data.items : [];
-  const items = useMemo(() => (tab === "closing" || tab === "virtual" ? rawItems : dedupeBySymbol(rawItems)), [rawItems, tab]);
+  const conflictRowCount = useMemo(() => rawItems.filter(hasConflictMarker).length, [rawItems]);
+  const cleanItems = useMemo(() => cleanReportRows(rawItems), [rawItems]);
+  const items = useMemo(() => (tab === "closing" || tab === "virtual" ? cleanItems : dedupeBySymbol(cleanItems)), [cleanItems, tab]);
   const todayItems = useMemo(() => latestOnly(items), [items]);
   const closing = tab === "closing";
   const virtualTab = tab === "virtual";
@@ -319,7 +331,9 @@ export default function ReportPage() {
       ? todayExecuted.reduce((s, i) => s + Number(i.realizedReturnPct || i.returnPct || 0), 0) / todayExecuted.length
       : 0;
 
-  const virtualItems = Array.isArray(virtualValidation.items) ? virtualValidation.items : [];
+  const virtualRawItems = Array.isArray(virtualValidation.items) ? virtualValidation.items : [];
+  const virtualConflictRowCount = useMemo(() => virtualRawItems.filter(hasConflictMarker).length, [virtualRawItems]);
+  const virtualItems = useMemo(() => cleanReportRows(virtualRawItems), [virtualRawItems]);
 
   const tabs: { id: Tab; label: string; desc: string }[] = [
     { id: "premarket",  label: "장전 리포트",   desc: "오늘 추천 후보 · 홈 매트릭스와 동일 데이터" },
@@ -400,10 +414,15 @@ export default function ReportPage() {
       {/* ── 보유종목 + 가상운용 요약 (장마감·가상운용 탭) ── */}
       {(closing || virtualTab) && (
         <div className="space-y-4">
+          {(conflictRowCount > 0 || virtualConflictRowCount > 0) && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              리포트 원본에 병합 충돌 마커가 있어 화면에서 {conflictRowCount + virtualConflictRowCount}개 행을 제외했습니다. reports CSV/JSON 원본 정리가 필요합니다.
+            </div>
+          )}
           {/* 보유종목 실제 평가손익 */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:p-5">
             <div className="mb-3 text-sm font-semibold text-slate-200">보유종목 실제 평가손익</div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 md:grid-cols-4">
               <Metric label="보유 평가금액" value={formatMoney(holdingValue, market)} />
               <Metric label="보유 평가손익" value={signedMoney(holdingPnl, market)} accent={holdingPnl >= 0} />
               <Metric label="보유 수익률" value={pctText(holdingPnlPct)} />
