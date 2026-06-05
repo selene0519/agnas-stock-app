@@ -3084,6 +3084,63 @@ def news_rows(market: str) -> dict[str, Any]:
     return {"market": market, "count": len(rows), "source": source, "items": rows}
 
 
+# ── GNews 실시간 수집 ──────────────────────────────────────────────────
+
+def _gnews_output_file(market: str) -> Path:
+    return REPORT_DIR / f"news_summary_{market}.csv"
+
+
+def collect_gnews(market: str = "all") -> dict[str, Any]:
+    """GNews API로 주식 뉴스를 수집해 news_summary_{kr|us}.csv로 저장한다."""
+    api_key = os.environ.get("GNEWS_API_KEY", "").strip()
+    if not api_key:
+        return {"status": "MISSING_KEY", "message": "GNEWS_API_KEY가 없습니다.", "count": 0}
+
+    results: list[dict[str, Any]] = []
+    markets = ["kr", "us"] if market == "all" else [market]
+
+    for mk in markets:
+        if mk == "kr":
+            params = {"token": api_key, "lang": "ko", "country": "kr", "topic": "business", "max": 10}
+        else:
+            params = {"token": api_key, "lang": "en", "country": "us", "topic": "business", "q": "stock market investing", "max": 10}
+
+        try:
+            resp = requests.get("https://gnews.io/api/v4/top-headlines", params=params, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            results.append({"status": "ERROR", "market": mk, "error": str(exc)[:200], "count": 0})
+            continue
+
+        articles = data.get("articles", [])
+        rows = []
+        for art in articles:
+            rows.append({
+                "시장": "한국주식" if mk == "kr" else "미국주식",
+                "제목": art.get("title", ""),
+                "3줄요약": art.get("description", art.get("title", "")),
+                "출처": art.get("source", {}).get("name", "GNews"),
+                "URL": art.get("url", ""),
+                "게시시간": art.get("publishedAt", ""),
+                "다음행동": "뉴스만으로 매수하지 말고 가격·수급·재무를 함께 확인",
+                "종목코드": "",
+                "종목명": "종목",
+            })
+
+        out_file = _gnews_output_file(mk)
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        _write_csv_records(out_file, rows)
+        results.append({"status": "OK", "market": mk, "count": len(rows), "file": out_file.relative_to(REPO_ROOT).as_posix()})
+
+    overall_ok = any(r.get("status") == "OK" for r in results)
+    return {
+        "status": "OK" if overall_ok else "ERROR",
+        "results": results,
+        "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
 def predictions(market: str) -> dict[str, Any]:
     rows, source, target_date = read_primary_predictions(market)
     if not rows:
