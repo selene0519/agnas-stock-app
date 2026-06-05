@@ -428,17 +428,33 @@ def _raw_holdings_for_user(user_id: str) -> List[Dict[str, Any]]:
 
 def holdings_clean_payload_for_user(user_id: str, market: str = "all", limit: int = 500) -> Dict[str, Any]:
     uid = _sanitize_user_id(user_id)
-    if uid:
-        user_rows = _raw_holdings_for_user(uid)
-        if user_rows:
-            # Temporarily swap raw holdings source
-            original = []
-            for row in user_rows:
-                sym = _symbol(row)
-                m = _market(sym, row)
-                original.append(row)
-            # Use modified payload logic with user rows
-            return _holdings_payload_from_rows(original, market=market, limit=limit)
+    if not uid:
+        return holdings_clean_payload(market=market, limit=limit)
+
+    # SQLite 우선 조회
+    try:
+        import sys
+        # db 모듈 경로 동적 검색
+        for p in sys.path:
+            db_path = __import__('pathlib').Path(p) / "app" / "db.py"
+            if db_path.exists():
+                break
+        from app import db as _db_mod
+        sqlite_items = _db_mod.get_holdings(uid, market)
+        if sqlite_items:
+            raw_rows = [{
+                "symbol": it["symbol"], "market": it["market"], "name": it["name"],
+                "quantity": it["quantity"], "avgPrice": it["avgPrice"],
+                "stopPrice": it["stopPrice"], "targetPrice": it["targetPrice"],
+            } for it in sqlite_items]
+            return _holdings_payload_from_rows(raw_rows, market=market, limit=limit)
+    except Exception:
+        pass
+
+    # SQLite에 없으면 파일 폴백
+    user_rows = _raw_holdings_for_user(uid)
+    if user_rows:
+        return _holdings_payload_from_rows(user_rows, market=market, limit=limit)
     return holdings_clean_payload(market=market, limit=limit)
 
 def _holdings_payload_from_rows(raw_rows: List[Dict[str, Any]], market: str = "all", limit: int = 500) -> Dict[str, Any]:

@@ -324,6 +324,10 @@ export const mone = {
     apiPost<any>("/api/kis/holdings/sync", body || {}),
   importHoldingsCsv: (body: { market: Market; csv_text: string; mode?: "merge" | "replace" }) =>
     apiPost<any>("/api/holdings/import-csv", body),
+  refreshNews: (market?: "kr" | "us" | "all") =>
+    apiPost<any>("/api/news/refresh", {}, market ? { market } : {}),
+  refreshDisclosures: (market?: "kr" | "us" | "all") =>
+    apiPost<any>("/api/disclosures/refresh", {}, market ? { market } : {}),
   virtualLedger: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/virtual/ledger", p),
   virtualValidation: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>

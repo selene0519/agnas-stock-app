@@ -152,6 +152,8 @@ export default function NewsPage() {
   const [loading, setLoading] = useState(false);
   const [watchOnly, setWatchOnly] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState("");
 
   async function load(signal?: AbortSignal) {
     setLoading(true);
@@ -234,10 +236,48 @@ export default function NewsPage() {
           <h1 className="text-2xl font-bold text-slate-100">뉴스·기업분석</h1>
           <p className="mt-1 text-sm text-slate-400">뉴스, 공시, 기업분석 데이터의 연결 상태와 누락 사유를 분리해서 확인합니다.</p>
         </div>
-        <button onClick={() => setReloadKey((v) => v + 1)} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 disabled:opacity-50">
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          새로고침
-        </button>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex gap-2">
+            {(tab === "news") && (
+              <button onClick={async () => {
+                setRefreshing(true); setRefreshMsg("");
+                try {
+                  const r = await mone.refreshNews(market === "all" ? "all" : market);
+                  const total = (r.results || []).reduce((s: number, x: any) => s + (x.count || 0), 0);
+                  setRefreshMsg(`뉴스 ${total}건 갱신 완료`);
+                  setTimeout(() => setReloadKey(v => v + 1), 500);
+                } catch { setRefreshMsg("갱신 실패"); }
+                finally { setRefreshing(false); }
+              }} disabled={refreshing}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">
+                <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+                뉴스 갱신
+              </button>
+            )}
+            {(tab === "disclosures") && (
+              <button onClick={async () => {
+                setRefreshing(true); setRefreshMsg("");
+                try {
+                  const r = await mone.refreshDisclosures(market === "all" ? "all" : market);
+                  const total = (r.results || []).reduce((s: number, x: any) => s + (x.count || 0), 0);
+                  setRefreshMsg(`공시 ${total}건 갱신 완료`);
+                  setTimeout(() => setReloadKey(v => v + 1), 500);
+                } catch { setRefreshMsg("갱신 실패"); }
+                finally { setRefreshing(false); }
+              }} disabled={refreshing}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-200 hover:bg-blue-500/20 disabled:opacity-50">
+                <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+                공시 갱신 (DART)
+              </button>
+            )}
+            <button onClick={() => setReloadKey((v) => v + 1)} disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 disabled:opacity-50">
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              새로고침
+            </button>
+          </div>
+          {refreshMsg && <span className="text-xs text-emerald-400">{refreshMsg}</span>}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">

@@ -14,6 +14,7 @@ from app.services import insights
 from app.services import operation_history
 from app.services import quotes
 from app.services import user_data
+from app import db as _db
 
 
 app = FastAPI(title="MONE Web API", version="3.6.1-operational-stable")
@@ -400,6 +401,12 @@ def api_disclosures(
 @app.post("/api/disclosures/refresh")
 def api_disclosures_refresh(market: str = Query("all", pattern="^(kr|us|all)$"), days: int = Query(30, ge=1, le=365)) -> dict:
     return data.refresh_disclosures(market=market, days=days)
+
+
+@app.post("/api/news/refresh")
+def api_news_refresh(market: str = Query("all", pattern="^(kr|us|all)$")) -> dict:
+    """GNews API를 호출해 최신 주식 뉴스를 수집하고 CSV에 저장한다."""
+    return data.collect_gnews(market=market)
 
 
 @app.get("/api/company-analysis")
@@ -2192,27 +2199,41 @@ def api_holdings_edit(
     x_mone_user: str = _Header(default="", alias="x-mone-user"),
 ) -> dict:
     uid = _sanitize_uid(x_mone_user)
-    markets = ["kr", "us"] if market == "all" else [market]
-    items: list[dict] = []
-    for mk in markets:
-        path = _holdings_path(mk, uid)
-        if not path.exists():
-            # 사용자 파일 없으면 기본 파일 시도
-            path = _REPO / f"holdings_{mk}.csv"
+
+    # uid가 있으면 SQLite 우선
+    if uid:
+        items = _db.get_holdings(uid, market)
+        # SQLite에 없으면 CSV 폴백 (최초 사용자)
+        if not items:
+            csv_items: list[dict] = []
+            for mk in (["kr", "us"] if market == "all" else [market]):
+                for row in _read_csv_safe(_REPO / f"holdings_{mk}.csv"):
+                    sym = str(row.get("symbol", "")).strip()
+                    if sym:
+                        csv_items.append({"market": mk, "symbol": sym,
+                            "name": str(row.get("name", sym)).strip(),
+                            "quantity": str(row.get("quantity", "0")).strip(),
+                            "avgPrice": str(row.get("avgPrice", "0")).strip(),
+                            "stopPrice": str(row.get("stopPrice", "")).strip(),
+                            "targetPrice": str(row.get("targetPrice", "")).strip()})
+            items = csv_items
+        return {"status": "OK", "count": len(items), "items": items, "userId": uid, "storage": "sqlite"}
+
+    # uid 없으면 기존 CSV (관리자 모드)
+    items_csv: list[dict] = []
+    for mk in (["kr", "us"] if market == "all" else [market]):
+        path = _REPO / f"holdings_{mk}.csv"
         for row in _read_csv_safe(path):
             sym = str(row.get("symbol", "")).strip()
             if not sym:
                 continue
-            items.append({
-                "market": mk,
-                "symbol": sym,
+            items_csv.append({"market": mk, "symbol": sym,
                 "name": str(row.get("name", sym)).strip(),
                 "quantity": str(row.get("quantity", "0")).strip(),
                 "avgPrice": str(row.get("avgPrice", "0")).strip(),
                 "stopPrice": str(row.get("stopPrice", "")).strip(),
-                "targetPrice": str(row.get("targetPrice", "")).strip(),
-            })
-    return {"status": "OK", "count": len(items), "items": items, "userId": uid or "default"}
+                "targetPrice": str(row.get("targetPrice", "")).strip()})
+    return {"status": "OK", "count": len(items_csv), "items": items_csv, "userId": "default", "storage": "csv"}
 
 
 @app.post("/api/holdings-edit/save")
@@ -2224,34 +2245,33 @@ def api_holdings_edit_save(
     items = payload.get("items", [])
     if not isinstance(items, list):
         return {"status": "ERROR", "error": "items must be a list"}
+
+    # uid가 있으면 SQLite에 저장
+    if uid:
+        saved = _db.save_holdings(uid, items)
+        return {"status": "OK", "saved": saved, "userId": uid, "storage": "sqlite"}
+
+    # uid 없으면 CSV (관리자 모드)
     by_market: dict[str, list] = {"kr": [], "us": []}
     for item in items:
         mk = "us" if str(item.get("market", "kr")).lower() == "us" else "kr"
         by_market[mk].append(item)
     cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
     for mk, rows in by_market.items():
-        path = _holdings_path(mk, uid)
+        path = _REPO / f"holdings_{mk}.csv"
         norm_rows = []
         for r in rows:
             sym = _normalize_sym(r.get("symbol", ""), mk)
             if not sym:
                 continue
-            norm_rows.append({
-                "symbol": sym,
-                "name": str(r.get("name", sym)).strip(),
-                "market": mk,
-                "quantity": str(r.get("quantity", "0")).strip(),
-                "avgPrice": str(r.get("avgPrice", "0")).strip(),
-                "stopPrice": str(r.get("stopPrice", "")).strip(),
-                "targetPrice": str(r.get("targetPrice", "")).strip(),
-            })
+            norm_rows.append({"symbol": sym, "name": str(r.get("name", sym)).strip(), "market": mk,
+                "quantity": str(r.get("quantity", "0")).strip(), "avgPrice": str(r.get("avgPrice", "0")).strip(),
+                "stopPrice": str(r.get("stopPrice", "")).strip(), "targetPrice": str(r.get("targetPrice", "")).strip()})
         _write_csv_safe_v2(path, norm_rows, cols)
-        # 기본 사용자(uid 없음)는 data/ 하위도 동기화
-        if not uid:
-            data_copy = _REPO / "data" / f"holdings_{mk}.csv"
-            if data_copy.exists():
-                _write_csv_safe_v2(data_copy, norm_rows, cols)
-    return {"status": "OK", "saved": len(items), "userId": uid or "default"}
+        data_copy = _REPO / "data" / f"holdings_{mk}.csv"
+        if data_copy.exists():
+            _write_csv_safe_v2(data_copy, norm_rows, cols)
+    return {"status": "OK", "saved": len(items), "userId": "default", "storage": "csv"}
 
 
 # ── KIS 보유종목 가져오기 ───────────────────────────────────────────────
@@ -2267,9 +2287,7 @@ def api_kis_holdings_sync(
     payload: dict = Body(default={}),
     x_mone_user: str = _Header(default="", alias="x-mone-user"),
 ) -> dict:
-    """KIS 계좌 잔고를 가져와 holdings_kr.csv에 병합 저장.
-    mode: 'merge'(기존+신규, 기본값) | 'replace'(전체 교체)
-    """
+    """KIS 계좌 잔고를 가져와 SQLite(uid 있음) 또는 CSV(관리자)에 병합 저장."""
     uid = _sanitize_uid(x_mone_user)
     mode = str(payload.get("mode", "merge"))
     result = quotes.fetch_kis_holdings_kr()
@@ -2280,52 +2298,77 @@ def api_kis_holdings_sync(
     if not kis_items:
         return {"status": "NO_DATA", "error": "KIS 계좌에 보유종목이 없습니다."}
 
-    cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
-    path = _holdings_path("kr", uid)
+    added, updated = 0, 0
 
-    existing: dict[str, dict] = {}
-    if mode == "merge":
-        for row in _read_csv_safe(path):
-            sym = str(row.get("symbol", "")).strip()
-            if sym:
-                existing[sym] = row
-
-    added = 0
-    updated = 0
-    for item in kis_items:
-        sym = str(item["symbol"]).strip()
-        if not sym:
-            continue
-        if sym in existing:
-            existing[sym]["quantity"] = str(item["quantity"])
-            existing[sym]["avgPrice"] = str(item["avgPrice"])
-            updated += 1
-        else:
-            existing[sym] = {
-                "symbol": sym,
-                "name": item.get("name", sym),
-                "market": "kr",
-                "quantity": str(item["quantity"]),
-                "avgPrice": str(item["avgPrice"]),
-                "stopPrice": "",
-                "targetPrice": "",
-            }
-            added += 1
-
-    norm_rows = list(existing.values())
-    _write_csv_safe_v2(path, norm_rows, cols)
-    if not uid:
+    if uid:
+        # SQLite: 기존 보유 로드 후 병합
+        existing_list = _db.get_holdings(uid, "kr") if mode == "merge" else []
+        existing: dict[str, dict] = {r["symbol"]: r for r in existing_list}
+        for item in kis_items:
+            sym = str(item["symbol"]).strip()
+            if not sym:
+                continue
+            if sym in existing:
+                existing[sym]["quantity"] = str(item["quantity"])
+                existing[sym]["avgPrice"] = str(item["avgPrice"])
+                updated += 1
+            else:
+                existing[sym] = {"symbol": sym, "name": item.get("name", sym), "market": "kr",
+                    "quantity": str(item["quantity"]), "avgPrice": str(item["avgPrice"]),
+                    "stopPrice": "", "targetPrice": ""}
+                added += 1
+        _db.save_holdings(uid, list(existing.values()))
+        storage = "sqlite"
+    else:
+        # CSV 관리자 모드
+        cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
+        path = _REPO / "holdings_kr.csv"
+        existing_csv: dict[str, dict] = {}
+        if mode == "merge":
+            for row in _read_csv_safe(path):
+                sym = str(row.get("symbol", "")).strip()
+                if sym:
+                    existing_csv[sym] = row
+        for item in kis_items:
+            sym = str(item["symbol"]).strip()
+            if not sym:
+                continue
+            if sym in existing_csv:
+                existing_csv[sym]["quantity"] = str(item["quantity"])
+                existing_csv[sym]["avgPrice"] = str(item["avgPrice"])
+                updated += 1
+            else:
+                existing_csv[sym] = {"symbol": sym, "name": item.get("name", sym), "market": "kr",
+                    "quantity": str(item["quantity"]), "avgPrice": str(item["avgPrice"]),
+                    "stopPrice": "", "targetPrice": ""}
+                added += 1
+        norm_rows = list(existing_csv.values())
+        _write_csv_safe_v2(path, norm_rows, cols)
         data_copy = _REPO / "data" / "holdings_kr.csv"
         if data_copy.exists():
             _write_csv_safe_v2(data_copy, norm_rows, cols)
+        storage = "csv"
 
+    return {
+        total = added + updated
+        return {
+            "status": "OK",
+            "mode": mode,
+            "added": added,
+            "updated": updated,
+            "total": total,
+            "isMock": result.get("isMock", False),
+            "storage": storage,
+        }
+    # uid 없는 경우 CSV 경로에서 total 계산
     return {
         "status": "OK",
         "mode": mode,
         "added": added,
         "updated": updated,
-        "total": len(norm_rows),
+        "total": added + updated,
         "isMock": result.get("isMock", False),
+        "storage": "csv",
     }
 
 
