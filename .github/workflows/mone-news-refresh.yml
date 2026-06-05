@@ -1,0 +1,177 @@
+name: MONE News & Disclosure Refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    # KST 기준 (UTC+9)
+    # 07:00 — 국장 장전
+    - cron: "0 22 * * 0-4"
+    # 10:00 — 국장 장중
+    - cron: "0 1 * * 1-5"
+    # 16:30 — 국장 마감 직후
+    - cron: "30 7 * * 1-5"
+    # 23:00 — 미장 장중
+    - cron: "0 14 * * 1-5"
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mone-news-refresh-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      TZ: Asia/Seoul
+      PYTHONUTF8: "1"
+      GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+      DART_API_KEY: ${{ secrets.DART_API_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests python-dotenv pandas numpy 2>/dev/null || true
+          # FastAPI 백엔드 의존성 (data_loader.py 임포트용)
+          if [ -f mone-web-app/backend/requirements.txt ]; then
+            pip install -r mone-web-app/backend/requirements.txt --quiet 2>/dev/null || true
+          fi
+
+      - name: Refresh GNews (KR + US)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import os, json, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+
+          key = os.environ.get("GNEWS_API_KEY", "").strip()
+          if not key:
+              print("GNEWS_API_KEY 없음 → 건너뜀")
+              exit(0)
+
+          from app.services import data_loader as data
+          result = data.collect_gnews("all")
+          status = result.get("status", "?")
+          print(f"GNews 수집 상태: {status}")
+          for r in result.get("results", []):
+              mk = r.get("market", "?")
+              cnt = r.get("count", 0)
+              fp  = r.get("file", "")
+              err = r.get("error", "")
+              print(f"  [{mk}] {cnt}건 → {fp}" + (f" (오류: {err})" if err else ""))
+          PY
+          echo "gnews exit=$?"
+          set -e
+
+      - name: Refresh DART disclosures (KR)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import os, json, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+
+          key = os.environ.get("DART_API_KEY", "").strip()
+          if not key:
+              print("DART_API_KEY 없음 → 건너뜀")
+              exit(0)
+
+          from app.services import data_loader as data
+          result = data.refresh_disclosures(market="kr", days=7)
+          print(f"DART 수집 상태: {result.get('status')}")
+          for r in result.get("results", []):
+              print(f"  [{r.get('market','?')}] {r.get('count',0)}건 → {r.get('file','')}")
+          PY
+          echo "dart exit=$?"
+          set -e
+
+      - name: Ping deployed backend (선택)
+        run: |
+          BASE="${MONE_BACKEND_URL%/}"
+          if [ -z "$BASE" ]; then
+            echo "MONE_BACKEND_URL 미설정 → 건너뜀"
+            exit 0
+          fi
+          echo "백엔드 ping → $BASE"
+          set +e
+          curl -sf -X POST "$BASE/api/news/refresh?market=all" \
+            -H "Content-Type: application/json" --max-time 30 \
+            && echo "뉴스 refresh OK" || echo "뉴스 refresh 실패 (무시)"
+          curl -sf -X POST "$BASE/api/disclosures/refresh?market=kr" \
+            -H "Content-Type: application/json" --max-time 60 \
+            && echo "공시 refresh OK" || echo "공시 refresh 실패 (무시)"
+          set -e
+
+      - name: Show news file status
+        run: |
+          echo "=== reports/news_summary_*.csv ==="
+          wc -l reports/news_summary_*.csv 2>/dev/null || echo "(없음)"
+          echo "=== data/disclosures/ ==="
+          ls -lah data/disclosures/ 2>/dev/null || echo "(없음)"
+
+      - name: Commit news & disclosures
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --mixed "origin/${GITHUB_REF_NAME}"
+
+            # 뉴스·공시만 커밋
+            git add reports/news_summary_kr.csv reports/news_summary_us.csv 2>/dev/null || true
+            git add reports/gnews_*.csv reports/gnews_*.json 2>/dev/null || true
+            git add data/disclosures/ 2>/dev/null || true
+
+            # 비밀 파일 절대 포함 금지
+            git reset -- .env .env.local "*.env" "*token_cache*.json" 2>/dev/null || true
+            git reset -- mone-web-app/frontend/.next mone-web-app/frontend/node_modules 2>/dev/null || true
+
+            if git diff --cached --quiet; then
+              echo "변경 없음 — 커밋 건너뜀"
+              exit 0
+            fi
+
+            COUNT_NEWS=$(git diff --cached --name-only | grep -c "news_summary" || true)
+            COUNT_DISC=$(git diff --cached --name-only | grep -c "disclosures" || true)
+            git commit -m "chore: refresh news(${COUNT_NEWS}) disclosures(${COUNT_DISC}) [skip ci]"
+
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "Push 성공"
+              exit 0
+            fi
+            echo "Push 충돌 재시도 (${attempt}/3)"
+            sleep 5
+          done
+
+          echo "Push 실패"
+          exit 1

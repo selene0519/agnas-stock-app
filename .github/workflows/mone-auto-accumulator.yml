@@ -294,6 +294,77 @@ jobs:
           fi
           set -e
 
+      - name: Refresh GNews news (매일 장전/장후)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+          GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+        run: |
+          set +e
+          python - <<'PY'
+          import os, json, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services import data_loader as data
+          key = os.environ.get("GNEWS_API_KEY", "")
+          if not key:
+              print("GNEWS_API_KEY 없음 — 뉴스 수집 건너뜀")
+              exit(0)
+          result = data.collect_gnews("all")
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          if result.get("status") == "OK":
+              for r in result.get("results", []):
+                  print(f"  [{r['market']}] {r.get('count',0)}건 → {r.get('file','')}")
+          PY
+          echo "gnews refresh: exit $?"
+          set -e
+
+      - name: Refresh DART disclosures (매일)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+        run: |
+          set +e
+          python - <<'PY'
+          import os, json, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services import data_loader as data
+          key = os.environ.get("DART_API_KEY", "")
+          if not key:
+              print("DART_API_KEY 없음 — 공시 수집 건너뜀")
+              exit(0)
+          result = data.refresh_disclosures(market="all", days=7)
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          for r in result.get("results", []):
+              print(f"  [{r.get('market','?')}] {r.get('count',0)}건 → {r.get('file','')}")
+          PY
+          echo "dart refresh: exit $?"
+          set -e
+
+      - name: Ping backend API (배포 서버가 있으면 캐시 갱신)
+        env:
+          MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL }}
+        run: |
+          if [ -z "${MONE_BACKEND_URL}" ]; then
+            echo "MONE_BACKEND_URL 미설정 — 백엔드 ping 건너뜀"
+            exit 0
+          fi
+          BASE="${MONE_BACKEND_URL%/}"
+          echo "백엔드 ping: ${BASE}"
+          set +e
+          curl -sf -X POST "${BASE}/api/news/refresh?market=all" \
+            -H "Content-Type: application/json" --max-time 30 \
+            -o /tmp/news_refresh.json && cat /tmp/news_refresh.json || true
+          curl -sf -X POST "${BASE}/api/disclosures/refresh?market=all" \
+            -H "Content-Type: application/json" --max-time 60 \
+            -o /tmp/disc_refresh.json && cat /tmp/disc_refresh.json || true
+          curl -sf -X POST "${BASE}/api/quotes/refresh-targets" \
+            -H "Content-Type: application/json" --max-time 30 || true
+          set -e
+          echo "백엔드 ping 완료"
+
       - name: Fetch DART financials (weekly on Monday)
         run: |
           set +e
