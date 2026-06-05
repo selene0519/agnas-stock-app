@@ -496,92 +496,137 @@ export default function ReportPage() {
         ) : items.length === 0 ? (
           <EmptyState tab={tab} error={data.status === "ERROR" ? data.error : undefined} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="bg-slate-950/50 text-xs text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">종목</th>
-                  {closing || virtualTab ? (
-                    <>
-                      <th className="px-4 py-3">일자</th>
-                      <th className="px-4 py-3">체결</th>
-                      <th className="px-4 py-3">결과</th>
-                      <th className="px-4 py-3">수익률</th>
-                      <th className="px-4 py-3">출처</th>
-                    </>
-                  ) : intraday ? (
-                    <>
-                      <th className="px-4 py-3">현재가</th>
-                      <th className="px-4 py-3">진입가까지</th>
-                      <th className="px-4 py-3">손절가까지</th>
-                      <th className="px-4 py-3">목표가까지</th>
-                      <th className="px-4 py-3">장중 상태</th>
-                      <th className="px-4 py-3">근거</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="px-4 py-3">현재가</th>
-                      <th className="px-4 py-3">진입가</th>
-                      <th className="px-4 py-3">손절가</th>
-                      <th className="px-4 py-3">목표가</th>
-                      <th className="px-4 py-3">확률</th>
-                      <th className="px-4 py-3">예상가</th>
-                    </>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item: any, index: number) => (
-                  <tr key={`${item.id || item.symbol || "r"}-${index}`} className="border-t border-slate-800/70 hover:bg-slate-900/30">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-100">{displayName(item)}</div>
-                      <div className="mt-0.5 font-mono text-xs text-slate-500">{item.symbol || "-"} · {(item.market || market).toUpperCase()}</div>
-                    </td>
+          <>
+            {/* 모바일 카드 뷰 */}
+            <div className="block sm:hidden divide-y divide-slate-800/60">
+              {items.slice(0, 30).map((item: any, index: number) => {
+                const execRaw = item.executionStatus || item.executed;
+                const isExec = execRaw === "체결" || execRaw === "true" || execRaw === true || execRaw === "1";
+                const execLabel = item.executionStatus || (isExec ? "체결" : execRaw === "false" || execRaw === false ? "미체결" : execRaw || "확인");
+                const retPct = Number(item.realizedReturnPct ?? item.returnPct ?? item.virtual_return_pct ?? 0);
+                return (
+                  <div key={`m-${item.id || item.symbol || index}`} className="p-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <span className="font-semibold text-slate-100 text-sm">{displayName(item)}</span>
+                        <span className="ml-1.5 font-mono text-[10px] text-slate-500">{item.symbol} · {(item.market || market).toUpperCase()}</span>
+                      </div>
+                      {(closing || virtualTab) && retPct !== 0 && (
+                        <span className={`font-mono text-sm font-bold ${retPct > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {retPct >= 0 ? "+" : ""}{retPct.toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                    {(closing || virtualTab) ? (
+                      <div className="flex flex-wrap gap-2 text-[11px]">
+                        <span className="text-slate-500">{item.date || item.tradeDate || "-"}</span>
+                        <span className={isExec ? "text-emerald-400" : "text-slate-500"}>{execLabel}</span>
+                        <span className="text-slate-300">{item.outcomeResult || item.result || "검증 대기"}</span>
+                      </div>
+                    ) : intraday ? (
+                      <div className="grid grid-cols-2 gap-1 text-[11px]">
+                        <span className="text-slate-500">현재 <span className="font-mono text-slate-200">{priceText(item, "current", "-")}</span></span>
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] w-fit ${statusTone(String(item.intradayStatus || ""))}`}>{item.intradayStatus || "관망"}</span>
+                        <span className="text-slate-500">진입까지 <span className="font-mono text-blue-300">{firstText(item.entryDistanceText, "-")}</span></span>
+                        <span className="text-slate-500">손절까지 <span className="font-mono text-red-300">{firstText(item.stopDistanceText, "-")}</span></span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-1 text-[11px]">
+                        <span className="text-slate-500">현재 <span className="font-mono text-slate-200">{priceText(item, "current", "-")}</span></span>
+                        <span className="text-slate-500">진입 <span className="font-mono text-blue-300">{priceText(item, "entry", "-")}</span></span>
+                        <span className="text-slate-500">손절 <span className="font-mono text-red-300">{priceText(item, "stop", "-")}</span></span>
+                        <span className="text-slate-500">목표 <span className="font-mono text-emerald-300">{priceText(item, "target", "-")}</span></span>
+                        <span className="text-slate-500">확률 <span className="font-mono text-amber-300">{probabilityText(item, "-")}</span></span>
+                        <span className="text-slate-500">예상 <span className="font-mono text-violet-300">{priceText(item, "expected", "-")}</span></span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 데스크톱 테이블 뷰 */}
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead className="bg-slate-950/50 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">종목</th>
                     {closing || virtualTab ? (
-                      (() => {
-                        const execRaw = item.executionStatus || item.executed;
-                        const isExec = execRaw === "체결" || execRaw === "true" || execRaw === true || execRaw === "1";
-                        const execLabel = item.executionStatus || (isExec ? "체결" : execRaw === "false" || execRaw === false ? "미체결" : execRaw || "조건 확인");
-                        const retPct = Number(item.realizedReturnPct ?? item.returnPct ?? item.virtual_return_pct ?? 0);
-                        const retColor = retPct > 0 ? "text-emerald-400" : retPct < 0 ? "text-red-400" : "text-slate-400";
-                        return (
-                          <>
-                            <td className="px-4 py-3 font-mono text-xs text-slate-300">{item.date || item.tradeDate || "-"}</td>
-                            <td className={`px-4 py-3 text-sm font-medium ${isExec ? "text-emerald-400" : "text-slate-500"}`}>{execLabel}</td>
-                            <td className="px-4 py-3 text-sm text-slate-200">{item.outcomeResult || item.result || "검증 대기"}</td>
-                            <td className={`px-4 py-3 font-mono text-sm ${retColor}`}>{retPct !== 0 ? `${retPct >= 0 ? "+" : ""}${retPct.toFixed(2)}%` : "-"}</td>
-                            <td className="px-4 py-3 text-xs text-slate-500">{item.sourceFile || item.source || "-"}</td>
-                          </>
-                        );
-                      })()
+                      <>
+                        <th className="px-4 py-3">일자</th>
+                        <th className="px-4 py-3">체결</th>
+                        <th className="px-4 py-3">결과</th>
+                        <th className="px-4 py-3">수익률</th>
+                        <th className="px-4 py-3">출처</th>
+                      </>
                     ) : intraday ? (
                       <>
-                        <td className="px-4 py-3 font-mono text-sm text-slate-100">{priceText(item, "current", "-")}</td>
-                        <td className="px-4 py-3 font-mono text-sm text-blue-300">{firstText(item.entryDistanceText, "-")}</td>
-                        <td className="px-4 py-3 font-mono text-sm text-red-300">{firstText(item.stopDistanceText, "-")}</td>
-                        <td className="px-4 py-3 font-mono text-sm text-emerald-300">{firstText(item.targetDistanceText, "-")}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded border px-2 py-0.5 text-xs ${statusTone(String(item.intradayStatus || ""))}`}>
-                            {item.intradayStatus || "관망"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-slate-500">{item.intradayReason || item.priceSource || "-"}</td>
+                        <th className="px-4 py-3">현재가</th>
+                        <th className="px-4 py-3">진입가까지</th>
+                        <th className="px-4 py-3">손절가까지</th>
+                        <th className="px-4 py-3">장중 상태</th>
                       </>
                     ) : (
                       <>
-                        <td className="px-4 py-3 font-mono text-sm text-slate-100">{priceText(item, "current", "-")}</td>
-                        <td className="px-4 py-3 font-mono text-sm text-blue-300">{priceText(item, "entry", "-")}</td>
-                        <td className="px-4 py-3 font-mono text-sm text-red-300">{priceText(item, "stop", "-")}</td>
-                        <td className="px-4 py-3 font-mono text-sm text-emerald-300">{priceText(item, "target", "-")}</td>
-                        <td className="px-4 py-3 font-mono text-sm text-amber-300">{probabilityText(item, "-")}</td>
-                        <td className="px-4 py-3 font-mono text-sm text-violet-300">{priceText(item, "expected", "-")}</td>
+                        <th className="px-4 py-3">현재가</th>
+                        <th className="px-4 py-3">진입가</th>
+                        <th className="px-4 py-3">손절가</th>
+                        <th className="px-4 py-3">목표가</th>
+                        <th className="px-4 py-3">확률</th>
                       </>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {items.map((item: any, index: number) => (
+                    <tr key={`${item.id || item.symbol || "r"}-${index}`} className="border-t border-slate-800/70 hover:bg-slate-900/30">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-slate-100">{displayName(item)}</div>
+                        <div className="mt-0.5 font-mono text-xs text-slate-500">{item.symbol || "-"} · {(item.market || market).toUpperCase()}</div>
+                      </td>
+                      {closing || virtualTab ? (
+                        (() => {
+                          const execRaw = item.executionStatus || item.executed;
+                          const isExec = execRaw === "체결" || execRaw === "true" || execRaw === true || execRaw === "1";
+                          const execLabel = item.executionStatus || (isExec ? "체결" : execRaw === "false" || execRaw === false ? "미체결" : execRaw || "조건 확인");
+                          const retPct = Number(item.realizedReturnPct ?? item.returnPct ?? item.virtual_return_pct ?? 0);
+                          const retColor = retPct > 0 ? "text-emerald-400" : retPct < 0 ? "text-red-400" : "text-slate-400";
+                          return (
+                            <>
+                              <td className="px-4 py-3 font-mono text-xs text-slate-300">{item.date || item.tradeDate || "-"}</td>
+                              <td className={`px-4 py-3 text-sm font-medium ${isExec ? "text-emerald-400" : "text-slate-500"}`}>{execLabel}</td>
+                              <td className="px-4 py-3 text-sm text-slate-200">{item.outcomeResult || item.result || "검증 대기"}</td>
+                              <td className={`px-4 py-3 font-mono text-sm ${retColor}`}>{retPct !== 0 ? `${retPct >= 0 ? "+" : ""}${retPct.toFixed(2)}%` : "-"}</td>
+                              <td className="px-4 py-3 text-xs text-slate-500">{item.sourceFile || item.source || "-"}</td>
+                            </>
+                          );
+                        })()
+                      ) : intraday ? (
+                        <>
+                          <td className="px-4 py-3 font-mono text-sm text-slate-100">{priceText(item, "current", "-")}</td>
+                          <td className="px-4 py-3 font-mono text-sm text-blue-300">{firstText(item.entryDistanceText, "-")}</td>
+                          <td className="px-4 py-3 font-mono text-sm text-red-300">{firstText(item.stopDistanceText, "-")}</td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded border px-2 py-0.5 text-xs ${statusTone(String(item.intradayStatus || ""))}`}>
+                              {item.intradayStatus || "관망"}
+                            </span>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3 font-mono text-sm text-slate-100">{priceText(item, "current", "-")}</td>
+                          <td className="px-4 py-3 font-mono text-sm text-blue-300">{priceText(item, "entry", "-")}</td>
+                          <td className="px-4 py-3 font-mono text-sm text-red-300">{priceText(item, "stop", "-")}</td>
+                          <td className="px-4 py-3 font-mono text-sm text-emerald-300">{priceText(item, "target", "-")}</td>
+                          <td className="px-4 py-3 font-mono text-sm text-amber-300">{probabilityText(item, "-")}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

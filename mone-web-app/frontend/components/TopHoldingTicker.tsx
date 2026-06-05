@@ -33,18 +33,24 @@ function deriveChange(row: any): { text: string; status: TickerItem["changeStatu
   const current = toNumber(row.currentPrice ?? row.price ?? row.currentPriceText);
   if (current === null || current <= 0) return { text: "가격 대기", status: "pending" };
 
-  const direct = String(row.changePctText || row.changeText || "").trim();
+  // 문자열 등락률 우선
+  const direct = String(
+    row.changePctText || row.priceChangePercentText || row.changeText || row.priceChangeText || ""
+  ).trim();
   if (direct && direct !== "-" && direct.includes("%")) return { text: direct, status: "normal" };
 
-  const numeric = toNumber(row.changePct ?? row.changeRate);
+  // 숫자 등락률
+  const numeric = toNumber(row.changePct ?? row.changePercent ?? row.priceChangePercent ?? row.changeRate);
   if (numeric !== null && Number.isFinite(numeric)) return { text: pctText(numeric), status: "normal" };
 
+  // prevClose 직접 계산
   const prev = toNumber(row.prevClose ?? row.previousClose ?? row.prevCloseText);
-  if (current !== null && prev !== null && prev > 0) {
+  if (prev !== null && prev > 0) {
     return { text: pctText(((current - prev) / prev) * 100), status: "normal" };
   }
 
-  return { text: "전일 기준 없음", status: "no-base" };
+  // OHLCV 미수집 — 짧게 표시
+  return { text: "전일比 미확보", status: "no-base" };
 }
 
 async function fetchTickerRows(): Promise<TickerItem[]> {
