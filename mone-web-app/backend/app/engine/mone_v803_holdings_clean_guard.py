@@ -226,6 +226,11 @@ def _enrich_item(item: dict[str, Any]) -> dict[str, Any]:
         computed.append("target_from_risk_rule")
 
     change_pct = raw_change if raw_change else ((current - prev_close) / prev_close * 100 if current > 0 and prev_close > 0 else None)
+    change_value = _num(_text(quote, ["change", "priceChange", "prdy_vrss"], "0"))
+    if not change_value and current > 0 and prev_close > 0:
+        change_value = current - prev_close
+    change_text = f"{change_value:+,.2f}" if market == "us" and change_value else (f"{round(change_value):+,}" if change_value else "")
+    change_pct_text = _fmt_pct(change_pct) if change_pct is not None else ""
     stop_gap = (current - stop) / current * 100 if current > 0 and stop > 0 else None
     target_gap = (target - current) / current * 100 if current > 0 and target > 0 else None
 
@@ -255,7 +260,14 @@ def _enrich_item(item: dict[str, Any]) -> dict[str, Any]:
         "targetPrice": target,
         "stopGapPct": stop_gap,
         "targetGapPct": target_gap,
+        "change": change_value if change_value else None,
+        "changeText": change_text,
         "changePct": change_pct,
+        "changePercent": change_pct,
+        "priceChange": change_value if change_value else None,
+        "priceChangeText": change_text,
+        "priceChangePercent": change_pct,
+        "priceChangePercentText": change_pct_text,
         "riskStatus": risk_status,
         "currentPriceText": _fmt_price(current, market),
         "prevCloseText": _fmt_price(prev_close, market) if prev_close > 0 else "",
@@ -265,7 +277,7 @@ def _enrich_item(item: dict[str, Any]) -> dict[str, Any]:
         "pnlPctText": _fmt_pct(pnl_pct),
         "stopText": _fmt_price(stop, market),
         "targetText": _fmt_price(target, market),
-        "changePctText": _fmt_pct(change_pct) if change_pct is not None else "",
+        "changePctText": change_pct_text,
         "quoteSource": _text(quote, ["priceSource", "source", "_source_file"], "") if quote_current > 0 else "",
         "priceSource": _text(quote, ["priceSource", "source", "_source_file"], "") if quote_current > 0 else ohlcv.get("source", ""),
         "quoteTimestamp": _text(quote, ["timestamp", "updatedAt", "priceTime", "quoteTimestamp"], ""),
