@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 
 type Market = "all" | "kr" | "us";
-const HOLDINGS_API_TIMEOUT_MS = 8000;
+const HOLDINGS_API_TIMEOUT_MS = 90000;
 
 type EditableHolding = {
   market: "kr" | "us";
@@ -12,6 +12,8 @@ type EditableHolding = {
   name: string;
   quantity: string;
   avgPrice: string;
+  stopPrice?: string;
+  targetPrice?: string;
 };
 
 function apiUrl(path: string) { return `/mone-api${path}`; }
@@ -82,6 +84,8 @@ function toEditableHolding(item: any): EditableHolding {
     name: String(item.name || "").trim(),
     quantity: String(item.quantity ?? "").replace(/[^0-9.]/g, ""),
     avgPrice: String(item.avgPrice ?? "").replace(/[^0-9.]/g, ""),
+    stopPrice: String(item.stopPrice ?? "").replace(/[^0-9.]/g, "") || undefined,
+    targetPrice: String(item.targetPrice ?? "").replace(/[^0-9.]/g, "") || undefined,
   };
 }
 function normalizeForSave(item: EditableHolding) {
@@ -91,6 +95,8 @@ function normalizeForSave(item: EditableHolding) {
     name: item.name.trim(),
     quantity: Number(String(item.quantity).replace(/,/g, "")),
     avgPrice: Number(String(item.avgPrice).replace(/,/g, "")),
+    stopPrice: item.stopPrice ? Number(String(item.stopPrice).replace(/,/g, "")) : "",
+    targetPrice: item.targetPrice ? Number(String(item.targetPrice).replace(/,/g, "")) : "",
   };
 }
 function validateHoldingDraft(item: EditableHolding) {
@@ -448,7 +454,7 @@ export default function HoldingsPage() {
       const rows = await loadEditableHoldings();
       const n = normalizeForSave(editDraft);
       const nextRows = rows.filter((r) => editableKey(r) !== key)
-        .concat([{ market: n.market, symbol: n.symbol, name: n.name, quantity: String(n.quantity), avgPrice: String(n.avgPrice) }]);
+        .concat([{ market: n.market, symbol: n.symbol, name: n.name, quantity: String(n.quantity), avgPrice: String(n.avgPrice), stopPrice: String(n.stopPrice ?? ""), targetPrice: String(n.targetPrice ?? "") }]);
       await saveRows(nextRows, "보유종목을 저장했습니다.");
       setEditKey(null); setEditDraft(null);
     } catch (error) {
@@ -507,7 +513,7 @@ export default function HoldingsPage() {
       const n = normalizeForSave(draft);
       const key = `${n.market}-${n.symbol}`;
       const nextRows = rows.filter((r) => editableKey(r) !== key)
-        .concat([{ market: n.market, symbol: n.symbol, name: n.name, quantity: String(n.quantity), avgPrice: String(n.avgPrice) }]);
+        .concat([{ market: n.market, symbol: n.symbol, name: n.name, quantity: String(n.quantity), avgPrice: String(n.avgPrice), stopPrice: String(n.stopPrice ?? ""), targetPrice: String(n.targetPrice ?? "") }]);
       await saveRows(nextRows, `${n.name || n.symbol} 종목을 추가했습니다.`);
       setShowAdd(false);
     } catch (error) {
