@@ -297,10 +297,12 @@ export default function AdvancedPage() {
               {!scanCoverage.isFullMarket && <span className="ml-2">전체시장 스캔 전환에는 종목 마스터와 현재가/OHLCV 수집 확대가 필요합니다.</span>}
             </div>
           )}
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-            {Object.entries(STRATEGY_RULES[mode === "all" ? "balanced" : mode]).map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-slate-950/50 p-3">
-                <div className="text-[11px] font-semibold uppercase text-slate-500">{label}</div>
+          <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+            {Object.entries(STRATEGY_RULES[mode === "all" ? "balanced" : mode]).map(([key, value]) => (
+              <div key={key} className="rounded-xl bg-slate-950/50 p-3">
+                <div className="text-[11px] font-semibold text-slate-500">
+                  {{ entry: "진입 조건", block: "매수 제한", regime: "시장 국면", failure: "실패 패턴" }[key] ?? key}
+                </div>
                 <div className="mt-1 text-xs leading-5 text-slate-300">{value}</div>
               </div>
             ))}
@@ -311,8 +313,8 @@ export default function AdvancedPage() {
               <p className="mt-1 text-[11px] text-slate-600">추천 파일({modeLabel(mode)}/{horizonLabel(horizon)}/{marketLabel(market)})이 비어있거나 GitHub Actions 실행이 필요합니다.</p>
             </div>
           )}
-          <div className="mt-5 overflow-hidden rounded-xl border border-slate-800">
-            <table className="w-full min-w-[960px] text-left text-sm">
+          <div className="mt-5 overflow-x-auto rounded-xl border border-slate-800">
+            <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="bg-slate-950/60 text-xs text-slate-500">
                 <tr>
                   <th className="px-3 py-2">종목</th>

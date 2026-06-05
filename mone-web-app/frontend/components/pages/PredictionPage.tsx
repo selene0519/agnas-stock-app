@@ -506,7 +506,7 @@ export default function PredictionPage() {
         <div className="border-b border-slate-800 px-5 py-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="text-sm text-slate-400">
-              predictions/table과 recommendations를 market+symbol 기준으로 병합했습니다. 진입/손절/목표가 비면 추천값으로 보강합니다.
+              예측 데이터와 추천 데이터를 종목 기준으로 통합해 보여줍니다. 진입·손절·목표가가 없는 경우 추천값으로 자동 보강됩니다.
             </div>
             <div className="flex flex-wrap gap-2">
               <input
