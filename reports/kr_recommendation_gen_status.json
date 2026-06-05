@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-05 08:55:46",
+  "generatedAt": "2026-06-05 16:40:35",
   "source": "ohlcv_quant_scanner",
   "symbols": 100,
   "kisSymbols": 100,
@@ -7,14 +7,14 @@
   "financialSymbols": 5,
   "supplySymbols": 53,
   "marketRegime": {
-    "regime": "BULL",
-    "label": "강세장",
-    "scoreAdjust": 5.0,
-    "description": "KOSPI 20일선 +12.6%, 5일 +9.4%",
-    "kospiLatest": 8801.0,
-    "distToMa20": 12.64
+    "regime": "SIDE",
+    "label": "횡보장",
+    "scoreAdjust": 0.0,
+    "description": "KOSPI 20일선 +2.8%, 5일 -0.3%",
+    "kospiLatest": 8161.0,
+    "distToMa20": 2.8
   },
-  "evFiltered": 41,
+  "evFiltered": 29,
   "regimeFiltered": 0,
   "results": {
     "conservative_short": 12,
