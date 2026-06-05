@@ -97,7 +97,6 @@ def _quote_files(market: str) -> list[Path]:
     return [path for path in candidates if path.is_file() and path.stat().st_size > 0]
 
 
-@lru_cache(maxsize=8)
 def _quote_index(market: str) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for path in _quote_files(market):
@@ -108,7 +107,6 @@ def _quote_index(market: str) -> dict[str, dict[str, Any]]:
     return out
 
 
-@lru_cache(maxsize=4)
 def _position_index(market: str) -> dict[str, dict[str, Any]]:
     root = _repo_root()
     out: dict[str, dict[str, Any]] = {}
