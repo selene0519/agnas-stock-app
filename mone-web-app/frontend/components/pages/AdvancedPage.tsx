@@ -30,7 +30,7 @@ function firstRisk(item: any) {
   if (flags.length) return flags.slice(0, 2).join(", ");
   if (item.financialDataStatus === "DATA_PENDING") {
     const market = String(item.market || "kr").toLowerCase();
-    return market === "us" ? "재무 미수집 (Finnhub/SEC 연결 필요)" : "재무 미수집 (DART 연결 필요)";
+    return "재무 데이터 수집 중";
   }
   const block = String(item.tradeBlockStatus || "").toUpperCase();
   if (block === "CAUTION") return "진입 주의 (RSI 과열 또는 EV 음수)";
@@ -310,7 +310,7 @@ export default function AdvancedPage() {
           {!scanLoading && scanItems.length === 0 && (
             <div className="mt-4 rounded-xl border border-dashed border-slate-700 px-5 py-8 text-center text-sm text-slate-500">
               <p>스캐너 결과가 없습니다.</p>
-              <p className="mt-1 text-[11px] text-slate-600">추천 파일({modeLabel(mode)}/{horizonLabel(horizon)}/{marketLabel(market)})이 비어있거나 GitHub Actions 실행이 필요합니다.</p>
+              <p className="mt-1 text-[11px] text-slate-600">매일 오전 데이터가 갱신됩니다. 전략·기간·시장 조건을 바꿔보세요.</p>
             </div>
           )}
           {/* 모바일 카드 뷰 */}

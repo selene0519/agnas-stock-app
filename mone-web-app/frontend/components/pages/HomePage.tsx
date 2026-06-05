@@ -1170,7 +1170,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             </p>
             <p className="mt-2 text-[11px] text-slate-600">
               기준: finalScore ≥ 50 + EV 양수 + tradeBlockStatus OK.{" "}
-              {allItems.length === 0 ? "추천 데이터가 없습니다 — GitHub Actions 실행을 확인하세요." : `전략 매트릭스에는 ${allItems.length}개 종목이 있으나 즉시 진입 조건을 충족하지 않습니다.`}
+              {allItems.length === 0 ? "오늘 추천 데이터가 아직 없습니다. 오전 데이터 갱신 후 다시 확인해 주세요." : `전략 매트릭스에는 ${allItems.length}개 종목이 있으나 즉시 진입 조건을 충족하지 않습니다.`}
             </p>
           </div>
         ) : (

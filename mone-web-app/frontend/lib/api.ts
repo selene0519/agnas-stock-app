@@ -2,6 +2,16 @@ export type Market = "kr" | "us" | "all";
 export type Mode = "conservative" | "balanced" | "aggressive" | "all";
 export type Horizon = "short" | "swing" | "mid" | "long" | "all";
 
+function getMoneUserHeader(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const id = localStorage.getItem("mone:userId");
+    return id ? { "x-mone-user": id } : {};
+  } catch {
+    return {};
+  }
+}
+
 export interface ApiList<T = any> {
   status: string;
   market?: string;
@@ -72,7 +82,7 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<
   try {
     const response = await fetch(url, {
       cache: "no-store",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", ...getMoneUserHeader() },
       signal: controller.signal,
     });
 
@@ -166,7 +176,7 @@ export async function apiPost<T = any>(
       const response = await fetch(url, {
         method: "POST",
         cache: "no-store",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        headers: { Accept: "application/json", "Content-Type": "application/json", ...getMoneUserHeader() },
         body: JSON.stringify(body || {}),
       });
       const text = await response.text().catch(() => "");
@@ -308,6 +318,12 @@ export const mone = {
     apiPost<ApiList>("/api/quotes/refresh-targets", body || {}),
   refreshWatchHoldingsQuotes: (body?: { market?: Market; limit?: number }) =>
     apiPost<ApiList>("/api/quotes/refresh-targets", body || {}),
+  kisHoldingsPreview: () =>
+    apiGet<ApiList>("/api/kis/holdings"),
+  kisHoldingsSync: (body?: { mode?: "merge" | "replace" }) =>
+    apiPost<any>("/api/kis/holdings/sync", body || {}),
+  importHoldingsCsv: (body: { market: Market; csv_text: string; mode?: "merge" | "replace" }) =>
+    apiPost<any>("/api/holdings/import-csv", body),
   virtualLedger: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/virtual/ledger", p),
   virtualValidation: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>

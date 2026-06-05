@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
+import { Download, FileText, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 
 type Market = "all" | "kr" | "us";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
@@ -385,6 +385,7 @@ export default function HoldingsPage() {
   const [editKey, setEditKey] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditableHolding | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [addSaving, setAddSaving] = useState(false);
@@ -394,6 +395,11 @@ export default function HoldingsPage() {
   const [riskNote, setRiskNote] = useState("");
   const [refreshingAllQuotes, setRefreshingAllQuotes] = useState(false);
   const [usdToKrw, setUsdToKrw] = useState<{ rate: number; date: string } | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importMarket, setImportMarket] = useState<"kr" | "us">("kr");
+  const [importCsvText, setImportCsvText] = useState("");
+  const [importSaving, setImportSaving] = useState(false);
+  const [kisSyncing, setKisSyncing] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -469,8 +475,7 @@ export default function HoldingsPage() {
 
   async function deleteHolding(holding: any) {
     const key = editableKey(holding);
-    if (typeof window !== "undefined" && !window.confirm(`${displayName(holding)} 보유종목을 삭제할까요?`)) return;
-    setSavingKey(key); setMessage("");
+    setSavingKey(key); setMessage(""); setDeleteConfirmKey(null);
     try {
       const rows = await loadEditableHoldings();
       const nextRows = rows.filter((r) => editableKey(r) !== key);
@@ -509,6 +514,34 @@ export default function HoldingsPage() {
     } finally {
       setRefreshingAllQuotes(false);
     }
+  }
+
+  async function syncKisHoldings() {
+    setKisSyncing(true); setMessage("");
+    try {
+      const res = await import("@/lib/api").then(({ mone }) => mone.kisHoldingsSync({ mode: "merge" }));
+      if (res?.status === "ERROR") throw new Error(res.error || "KIS 동기화 실패");
+      setMessage(`KIS 보유종목 동기화 완료 — 추가 ${res.added ?? 0}개, 갱신 ${res.updated ?? 0}개${res.isMock ? " (모의계좌)" : ""}`);
+      await load();
+    } catch (error) {
+      setMessage(`KIS 동기화 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally { setKisSyncing(false); }
+  }
+
+  async function importCsv() {
+    if (!importCsvText.trim()) { setMessage("CSV 텍스트를 입력해 주세요."); return; }
+    setImportSaving(true); setMessage("");
+    try {
+      const res = await import("@/lib/api").then(({ mone }) =>
+        mone.importHoldingsCsv({ market: importMarket, csv_text: importCsvText, mode: "merge" })
+      );
+      if (res?.status === "ERROR") throw new Error(res.error || "CSV 가져오기 실패");
+      setMessage(`CSV 가져오기 완료 — 추가 ${res.added ?? 0}개, 갱신 ${res.updated ?? 0}개 (${importMarket === "kr" ? "국장" : "미장"})`);
+      setImportCsvText(""); setShowImport(false);
+      await load();
+    } catch (error) {
+      setMessage(`CSV 가져오기 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally { setImportSaving(false); }
   }
 
   async function addHolding(draft: EditableHolding) {
@@ -567,18 +600,26 @@ export default function HoldingsPage() {
           <h1 className="text-2xl font-bold text-slate-100">보유·리스크</h1>
           <p className="mt-1 text-sm text-slate-400">보유종목 현황, 리스크 지표, 포트폴리오 구성 분석</p>
         </div>
-        <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
-          <button onClick={() => { setShowAdd(!showAdd); setMessage(""); }}
+        <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:grid-cols-5">
+          <button onClick={() => { setShowAdd(!showAdd); setShowImport(false); setMessage(""); }}
             className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-medium text-white hover:bg-emerald-500 sm:text-sm">
             <Plus size={14} /> 종목 추가
           </button>
+          <button onClick={() => { setShowImport(!showImport); setShowAdd(false); setMessage(""); }}
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs text-violet-200 hover:bg-violet-500/20 sm:text-sm">
+            <FileText size={14} /> 가져오기
+          </button>
+          <button onClick={syncKisHoldings} disabled={kisSyncing}
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-xs text-amber-200 hover:bg-amber-500/20 disabled:opacity-50 sm:text-sm">
+            <Download size={14} className={kisSyncing ? "animate-bounce" : ""} /> KIS 동기화
+          </button>
           <button onClick={load}
             className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 sm:text-sm">
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 화면 새로고침
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 새로고침
           </button>
           <button onClick={refreshVisibleQuotes} disabled={refreshingAllQuotes}
             className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2 py-2 text-xs text-blue-200 hover:bg-blue-500/20 disabled:opacity-50 sm:text-sm">
-            <Zap size={14} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 수동 갱신
+            <Zap size={14} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 갱신
           </button>
         </div>
       </div>
@@ -595,6 +636,44 @@ export default function HoldingsPage() {
 
       {/* 종목 추가 폼 */}
       {showAdd && <AddHoldingForm onSave={addHolding} onCancel={() => setShowAdd(false)} saving={addSaving} />}
+
+      {/* CSV 가져오기 패널 */}
+      {showImport && (
+        <div className="rounded-2xl border border-violet-500/30 bg-violet-500/5 p-5">
+          <div className="mb-3 text-sm font-bold text-violet-200">보유종목 가져오기 (나무·토스·키움 등)</div>
+          <p className="mb-4 text-xs text-slate-400">
+            증권사 앱/웹에서 보유종목 표를 복사해 아래에 붙여넣으세요.
+            <br />헤더 포함 권장: <span className="font-mono text-slate-300">종목코드, 종목명, 수량, 평균단가</span>
+            <br />헤더 없이 붙여넣으면 순서대로 <span className="font-mono text-slate-300">코드, 종목명, 수량, 평균단가</span> 로 처리합니다.
+          </p>
+          <div className="mb-3 flex items-center gap-3">
+            <label className="text-xs text-slate-400">시장
+              <select value={importMarket} onChange={(e) => setImportMarket(e.target.value as "kr" | "us")}
+                className="ml-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-violet-400">
+                <option value="kr">국장 (KR)</option>
+                <option value="us">미장 (US)</option>
+              </select>
+            </label>
+          </div>
+          <textarea
+            value={importCsvText}
+            onChange={(e) => setImportCsvText(e.target.value)}
+            placeholder={"종목코드\t종목명\t수량\t평균단가\n005930\t삼성전자\t10\t72000\n000660\tSK하이닉스\t5\t190000"}
+            rows={7}
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-100 outline-none focus:border-violet-400"
+          />
+          <div className="mt-3 flex gap-2">
+            <button onClick={importCsv} disabled={importSaving || !importCsvText.trim()}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-50">
+              <FileText size={13} /> {importSaving ? "처리 중…" : "가져오기"}
+            </button>
+            <button onClick={() => { setShowImport(false); setImportCsvText(""); }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">
+              <X size={13} /> 취소
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 메시지 */}
       {message && (
@@ -830,14 +909,27 @@ export default function HoldingsPage() {
                         className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs text-blue-300 hover:bg-blue-500/20 disabled:opacity-50" title="현재가 새로고침">
                         <Zap size={11} />
                       </button>
-                      <button onClick={() => { setEditKey(key); setEditDraft(toEditableHolding(holding)); setMessage(""); }}
+                      <button onClick={() => { setEditKey(key); setEditDraft(toEditableHolding(holding)); setDeleteConfirmKey(null); setMessage(""); }}
                         className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800">
                         <Pencil size={11} /> 수정
                       </button>
-                      <button onClick={() => deleteHolding(holding)} disabled={savingKey === key}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20 disabled:opacity-50">
-                        <Trash2 size={11} /> 삭제
-                      </button>
+                      {deleteConfirmKey === key ? (
+                        <>
+                          <button onClick={() => deleteHolding(holding)} disabled={savingKey === key}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-500/60 bg-red-500/20 px-2 py-1 text-xs font-bold text-red-300 hover:bg-red-500/30 disabled:opacity-50">
+                            <Trash2 size={11} /> 확인
+                          </button>
+                          <button onClick={() => setDeleteConfirmKey(null)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:bg-slate-800">
+                            <X size={11} />
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => setDeleteConfirmKey(key)} disabled={savingKey === key}
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20 disabled:opacity-50">
+                          <Trash2 size={11} /> 삭제
+                        </button>
+                      )}
                     </>
                   )}
                 </div>

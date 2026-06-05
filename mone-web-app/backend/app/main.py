@@ -2167,14 +2167,38 @@ def _normalize_sym(sym: _Any, market: str = "kr") -> str:
     return s.upper()
 
 
+import re as _uid_re
+from fastapi import Header as _Header
+
+def _sanitize_uid(raw: str) -> str:
+    return _uid_re.sub(r"[^a-zA-Z0-9_\-]", "", str(raw or ""))[:64]
+
+def _user_holdings_dir(user_id: str) -> "Path":
+    uid = _sanitize_uid(user_id)
+    if not uid:
+        return _REPO
+    d = _REPO / "data" / "users" / uid
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+def _holdings_path(mk: str, user_id: str = "") -> "Path":
+    return _user_holdings_dir(user_id) / f"holdings_{mk}.csv"
+
 # ── 1. holdings-edit ──────────────────────────────────────────────────
 
 @app.get("/api/holdings-edit")
-def api_holdings_edit(market: str = Query("all")) -> dict:
+def api_holdings_edit(
+    market: str = Query("all"),
+    x_mone_user: str = _Header(default="", alias="x-mone-user"),
+) -> dict:
+    uid = _sanitize_uid(x_mone_user)
     markets = ["kr", "us"] if market == "all" else [market]
     items: list[dict] = []
     for mk in markets:
-        path = _REPO / f"holdings_{mk}.csv"
+        path = _holdings_path(mk, uid)
+        if not path.exists():
+            # 사용자 파일 없으면 기본 파일 시도
+            path = _REPO / f"holdings_{mk}.csv"
         for row in _read_csv_safe(path):
             sym = str(row.get("symbol", "")).strip()
             if not sym:
@@ -2188,22 +2212,25 @@ def api_holdings_edit(market: str = Query("all")) -> dict:
                 "stopPrice": str(row.get("stopPrice", "")).strip(),
                 "targetPrice": str(row.get("targetPrice", "")).strip(),
             })
-    return {"status": "OK", "count": len(items), "items": items}
+    return {"status": "OK", "count": len(items), "items": items, "userId": uid or "default"}
 
 
 @app.post("/api/holdings-edit/save")
-def api_holdings_edit_save(payload: dict = Body(...)) -> dict:
+def api_holdings_edit_save(
+    payload: dict = Body(...),
+    x_mone_user: str = _Header(default="", alias="x-mone-user"),
+) -> dict:
+    uid = _sanitize_uid(x_mone_user)
     items = payload.get("items", [])
     if not isinstance(items, list):
         return {"status": "ERROR", "error": "items must be a list"}
-    # market별 분리
     by_market: dict[str, list] = {"kr": [], "us": []}
     for item in items:
         mk = "us" if str(item.get("market", "kr")).lower() == "us" else "kr"
         by_market[mk].append(item)
     cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
     for mk, rows in by_market.items():
-        path = _REPO / f"holdings_{mk}.csv"
+        path = _holdings_path(mk, uid)
         norm_rows = []
         for r in rows:
             sym = _normalize_sym(r.get("symbol", ""), mk)
@@ -2219,11 +2246,206 @@ def api_holdings_edit_save(payload: dict = Body(...)) -> dict:
                 "targetPrice": str(r.get("targetPrice", "")).strip(),
             })
         _write_csv_safe_v2(path, norm_rows, cols)
-        # data/ 하위 복사본도 동기화 — 두 파일 중복으로 인한 삭제 후 재출현 버그 방지
-        data_copy = _REPO / "data" / f"holdings_{mk}.csv"
+        # 기본 사용자(uid 없음)는 data/ 하위도 동기화
+        if not uid:
+            data_copy = _REPO / "data" / f"holdings_{mk}.csv"
+            if data_copy.exists():
+                _write_csv_safe_v2(data_copy, norm_rows, cols)
+    return {"status": "OK", "saved": len(items), "userId": uid or "default"}
+
+
+# ── KIS 보유종목 가져오기 ───────────────────────────────────────────────
+
+@app.get("/api/kis/holdings")
+def api_kis_holdings_preview() -> dict:
+    """KIS 계좌 잔고 조회 (미리보기 — CSV 저장 안 함)"""
+    return quotes.fetch_kis_holdings_kr()
+
+
+@app.post("/api/kis/holdings/sync")
+def api_kis_holdings_sync(
+    payload: dict = Body(default={}),
+    x_mone_user: str = _Header(default="", alias="x-mone-user"),
+) -> dict:
+    """KIS 계좌 잔고를 가져와 holdings_kr.csv에 병합 저장.
+    mode: 'merge'(기존+신규, 기본값) | 'replace'(전체 교체)
+    """
+    uid = _sanitize_uid(x_mone_user)
+    mode = str(payload.get("mode", "merge"))
+    result = quotes.fetch_kis_holdings_kr()
+    if result.get("status") != "OK":
+        return result
+
+    kis_items = result.get("items", [])
+    if not kis_items:
+        return {"status": "NO_DATA", "error": "KIS 계좌에 보유종목이 없습니다."}
+
+    cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
+    path = _holdings_path("kr", uid)
+
+    existing: dict[str, dict] = {}
+    if mode == "merge":
+        for row in _read_csv_safe(path):
+            sym = str(row.get("symbol", "")).strip()
+            if sym:
+                existing[sym] = row
+
+    added = 0
+    updated = 0
+    for item in kis_items:
+        sym = str(item["symbol"]).strip()
+        if not sym:
+            continue
+        if sym in existing:
+            existing[sym]["quantity"] = str(item["quantity"])
+            existing[sym]["avgPrice"] = str(item["avgPrice"])
+            updated += 1
+        else:
+            existing[sym] = {
+                "symbol": sym,
+                "name": item.get("name", sym),
+                "market": "kr",
+                "quantity": str(item["quantity"]),
+                "avgPrice": str(item["avgPrice"]),
+                "stopPrice": "",
+                "targetPrice": "",
+            }
+            added += 1
+
+    norm_rows = list(existing.values())
+    _write_csv_safe_v2(path, norm_rows, cols)
+    if not uid:
+        data_copy = _REPO / "data" / "holdings_kr.csv"
         if data_copy.exists():
             _write_csv_safe_v2(data_copy, norm_rows, cols)
-    return {"status": "OK", "saved": len(items)}
+
+    return {
+        "status": "OK",
+        "mode": mode,
+        "added": added,
+        "updated": updated,
+        "total": len(norm_rows),
+        "isMock": result.get("isMock", False),
+    }
+
+
+@app.post("/api/holdings/import-csv")
+def api_holdings_import_csv(payload: dict = Body(...)) -> dict:
+    """나무·토스 등에서 붙여넣은 CSV/탭 텍스트를 파싱해 holdings에 병합.
+    body: { market: 'kr'|'us', csv_text: '...', mode: 'merge'|'replace' }
+    필수 컬럼: symbol(종목코드), quantity(수량), avgPrice(평균단가)
+    선택 컬럼: name(종목명)
+    헤더 없이 붙여넣을 경우 열 순서: symbol, name, quantity, avgPrice
+    """
+    import io
+    import csv as _csv
+
+    market = "us" if str(payload.get("market", "kr")).lower() == "us" else "kr"
+    mode = str(payload.get("mode", "merge"))
+    raw = str(payload.get("csv_text", "")).strip()
+    if not raw:
+        return {"status": "ERROR", "error": "csv_text가 비어 있습니다."}
+
+    # 탭/콤마/파이프 자동 감지
+    sample = raw[:500]
+    delimiter = "\t" if raw.count("\t") >= raw.count(",") else ","
+
+    reader = _csv.reader(io.StringIO(raw), delimiter=delimiter)
+    rows_raw = [r for r in reader if any(c.strip() for c in r)]
+    if not rows_raw:
+        return {"status": "ERROR", "error": "파싱 가능한 행이 없습니다."}
+
+    # 헤더 감지 (숫자가 있으면 데이터행, 없으면 헤더)
+    def _is_header(row: list[str]) -> bool:
+        return not any(c.strip().replace(".", "").replace("-", "").isdigit() for c in row)
+
+    header_aliases = {
+        "symbol": ["symbol", "종목코드", "code", "ticker", "종목번호"],
+        "name": ["name", "종목명", "종목", "company"],
+        "quantity": ["quantity", "수량", "qty", "보유수량", "잔량"],
+        "avgPrice": ["avgprice", "평균단가", "avg", "평단가", "매입단가", "단가", "평균가"],
+    }
+
+    col_map: dict[str, int] = {}
+    data_rows: list[list[str]] = []
+
+    if _is_header(rows_raw[0]):
+        header = [c.strip().lower() for c in rows_raw[0]]
+        for field, aliases in header_aliases.items():
+            for alias in aliases:
+                if alias.lower() in header:
+                    col_map[field] = header.index(alias.lower())
+                    break
+        data_rows = rows_raw[1:]
+    else:
+        # 헤더 없음: symbol, name, quantity, avgPrice 순 가정
+        ncols = len(rows_raw[0])
+        if ncols >= 4:
+            col_map = {"symbol": 0, "name": 1, "quantity": 2, "avgPrice": 3}
+        elif ncols == 3:
+            col_map = {"symbol": 0, "quantity": 1, "avgPrice": 2}
+        elif ncols == 2:
+            col_map = {"symbol": 0, "quantity": 1}
+        data_rows = rows_raw
+
+    if "symbol" not in col_map or "quantity" not in col_map:
+        return {"status": "ERROR", "error": "종목코드(symbol)와 수량(quantity) 컬럼을 찾지 못했습니다. 헤더를 포함해 붙여넣어 주세요."}
+
+    parsed: list[dict] = []
+    for row in data_rows:
+        try:
+            sym_raw = row[col_map["symbol"]].strip().replace(",", "").replace(" ", "")
+            if not sym_raw:
+                continue
+            sym = _normalize_sym(sym_raw, market)
+            qty_raw = row[col_map["quantity"]].strip().replace(",", "") if len(row) > col_map["quantity"] else "0"
+            qty = int(float(qty_raw)) if qty_raw else 0
+            if qty <= 0:
+                continue
+            avg_raw = row[col_map.get("avgPrice", -1)].strip().replace(",", "") if col_map.get("avgPrice") is not None and len(row) > col_map["avgPrice"] else "0"
+            avg = float(avg_raw) if avg_raw else 0
+            name = row[col_map["name"]].strip() if "name" in col_map and len(row) > col_map["name"] else sym
+            parsed.append({"symbol": sym, "name": name, "market": market, "quantity": qty, "avgPrice": avg})
+        except Exception:
+            continue
+
+    if not parsed:
+        return {"status": "ERROR", "error": "유효한 종목 데이터를 파싱하지 못했습니다. 형식을 확인해 주세요."}
+
+    cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
+    path = _REPO / f"holdings_{market}.csv"
+
+    existing: dict[str, dict] = {}
+    if mode == "merge":
+        for row in _read_csv_safe(path):
+            s = str(row.get("symbol", "")).strip()
+            if s:
+                existing[s] = row
+
+    added, updated = 0, 0
+    for item in parsed:
+        sym = item["symbol"]
+        if sym in existing:
+            existing[sym]["quantity"] = str(item["quantity"])
+            existing[sym]["avgPrice"] = str(item["avgPrice"])
+            if item["name"] and item["name"] != sym:
+                existing[sym]["name"] = item["name"]
+            updated += 1
+        else:
+            existing[sym] = {
+                "symbol": sym, "name": item["name"], "market": market,
+                "quantity": str(item["quantity"]), "avgPrice": str(item["avgPrice"]),
+                "stopPrice": "", "targetPrice": "",
+            }
+            added += 1
+
+    norm_rows = list(existing.values())
+    _write_csv_safe_v2(path, norm_rows, cols)
+    data_copy = _REPO / "data" / f"holdings_{market}.csv"
+    if data_copy.exists():
+        _write_csv_safe_v2(data_copy, norm_rows, cols)
+
+    return {"status": "OK", "market": market, "mode": mode, "added": added, "updated": updated, "total": len(norm_rows), "parsed": len(parsed)}
 
 
 # ── 2. watchlist-edit ─────────────────────────────────────────────────
@@ -3256,3 +3478,61 @@ def api_recommendations_ev_filtered(
 
 
 print("[MONE v10.2] 누락 API 엔드포인트 24종 등록 완료")
+def _install_mone_virtual_report_routes_v1():
+    from fastapi import Query as _MoneVirtualQuery
+
+    app.router.routes = [
+        route for route in app.router.routes
+        if getattr(route, "path", "") not in {"/api/virtual/summary", "/api/virtual/trades"}
+    ]
+
+    @app.get("/api/virtual/summary")
+    def mone_virtual_summary(
+        market: str = _MoneVirtualQuery("kr", pattern="^(kr|us|all)$"),
+        mode: str = _MoneVirtualQuery("all"),
+        horizon: str = _MoneVirtualQuery("all"),
+    ) -> dict:
+        if str(market).lower() == "all":
+            kr = _virtual_summary_from_reports("kr", mode, horizon)
+            us = _virtual_summary_from_reports("us", mode, horizon)
+            total = int(kr.get("totalRecommendations") or 0) + int(us.get("totalRecommendations") or 0)
+            executed = int(kr.get("executedTrades") or 0) + int(us.get("executedTrades") or 0)
+            unexecuted = int(kr.get("unexecutedCount") or 0) + int(us.get("unexecutedCount") or 0)
+            cumulative = float(kr.get("cumulativeReturnPct") or 0) + float(us.get("cumulativeReturnPct") or 0)
+            rate = round((executed / (executed + unexecuted)) * 100, 2) if executed + unexecuted else 0
+            return {
+                **us,
+                "market": "all",
+                "status": "OK" if total else "NO_DATA",
+                "totalRecommendations": total,
+                "latestRecommendations": int(kr.get("latestRecommendations") or 0) + int(us.get("latestRecommendations") or 0),
+                "executedTrades": executed,
+                "latestExecutedTrades": executed,
+                "unexecutedCount": unexecuted,
+                "latestUnexecutedCount": unexecuted,
+                "executionRate": rate,
+                "latestExecutionRate": rate,
+                "cumulativeReturnPct": round(cumulative, 3),
+                "latestCumulativeReturnPct": round(cumulative, 3),
+                "items": (kr.get("items") or []) + (us.get("items") or []),
+                "count": int(kr.get("count") or 0) + int(us.get("count") or 0),
+                "source": "virtual_validation_results.csv + virtual_prediction_ledger.csv",
+            }
+        return _virtual_summary_from_reports(_market(market), mode, horizon)
+
+    @app.get("/api/virtual/trades")
+    def mone_virtual_trades(
+        market: str = _MoneVirtualQuery("kr", pattern="^(kr|us|all)$"),
+        mode: str = _MoneVirtualQuery("all"),
+        horizon: str = _MoneVirtualQuery("all"),
+        limit: int = _MoneVirtualQuery(300, ge=1, le=1000),
+    ) -> dict:
+        payload = mone_virtual_summary(market, mode, horizon)
+        items = payload.get("items") if isinstance(payload.get("items"), list) else []
+        return {**payload, "items": items[:limit], "count": min(len(items), limit)}
+
+
+try:
+    _install_mone_virtual_report_routes_v1()
+except Exception as _mone_virtual_report_error:
+    print("[MONE] virtual report route patch failed:", _mone_virtual_report_error)

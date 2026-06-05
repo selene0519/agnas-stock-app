@@ -406,7 +406,72 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
         "updatedAt": datetime.now(KST).isoformat(),
     }
 
+import re as _re_uid
+
+def _sanitize_user_id(raw: str) -> str:
+    clean = _re_uid.sub(r"[^a-zA-Z0-9_\-]", "", str(raw or ""))
+    return clean[:64]
+
+def _raw_holdings_for_user(user_id: str) -> List[Dict[str, Any]]:
+    app_root = _app_root()
+    user_dir = app_root / "data" / "users" / user_id
+    rows = []
+    for mk in ("kr", "us"):
+        path = user_dir / f"holdings_{mk}.csv"
+        if path.exists() and path.stat().st_size > 0:
+            for row in _read_csv(path):
+                sym = _symbol(row)
+                if not sym:
+                    continue
+                rows.append(row)
+    return rows
+
+def holdings_clean_payload_for_user(user_id: str, market: str = "all", limit: int = 500) -> Dict[str, Any]:
+    uid = _sanitize_user_id(user_id)
+    if uid:
+        user_rows = _raw_holdings_for_user(uid)
+        if user_rows:
+            # Temporarily swap raw holdings source
+            original = []
+            for row in user_rows:
+                sym = _symbol(row)
+                m = _market(sym, row)
+                original.append(row)
+            # Use modified payload logic with user rows
+            return _holdings_payload_from_rows(original, market=market, limit=limit)
+    return holdings_clean_payload(market=market, limit=limit)
+
+def _holdings_payload_from_rows(raw_rows: List[Dict[str, Any]], market: str = "all", limit: int = 500) -> Dict[str, Any]:
+    """Same logic as holdings_clean_payload but from provided rows instead of _raw_holdings()."""
+    market = (market or "all").lower()
+    best: Dict[str, Dict[str, Any]] = {}
+    for row in raw_rows:
+        sym = _symbol(row)
+        if not sym:
+            continue
+        m = _market(sym, row)
+        if market != "all" and m != market:
+            continue
+        key = f"{m}-{sym}"
+        current_score = _candidate_score(row)
+        old = best.get(key)
+        if old is None or current_score > old["_score"]:
+            best[key] = {**row, "_score": current_score}
+    # Reuse holdings_clean_payload's item assembly by temporarily monkey-patching _raw_holdings
+    # Instead, call the full payload function after writing to a temp context
+    # Simpler: just call holdings_clean_payload with the same rows via the existing logic
+    import sys
+    mod = sys.modules[__name__]
+    original_fn = mod._raw_holdings
+    mod._raw_holdings = lambda: raw_rows
+    try:
+        result = holdings_clean_payload(market=market, limit=limit)
+    finally:
+        mod._raw_holdings = original_fn
+    return result
+
 def register_mone_v802_holdings_clean_routes(app):
+    from fastapi import Header
     replace_paths = {
         "/api/holdings",
         "/api/holdings-clean",
@@ -417,25 +482,56 @@ def register_mone_v802_holdings_clean_routes(app):
     app.router.routes = [r for r in app.router.routes if not (isinstance(r, APIRoute) and getattr(r, "path", "") in replace_paths)]
 
     @app.get("/api/holdings-clean")
-    def holdings_clean(market: str = Query("all"), limit: int = Query(500)):
+    def holdings_clean(
+        market: str = Query("all"),
+        limit: int = Query(500),
+        x_mone_user: str = Header(default="", alias="x-mone-user"),
+    ):
+        uid = _sanitize_user_id(x_mone_user)
+        if uid:
+            return holdings_clean_payload_for_user(uid, market=market, limit=limit)
         return holdings_clean_payload(market=market, limit=limit)
 
     @app.get("/api/final/holdings-clean")
-    def final_holdings_clean(market: str = Query("all"), limit: int = Query(500)):
+    def final_holdings_clean(
+        market: str = Query("all"),
+        limit: int = Query(500),
+        x_mone_user: str = Header(default="", alias="x-mone-user"),
+    ):
+        uid = _sanitize_user_id(x_mone_user)
+        if uid:
+            return holdings_clean_payload_for_user(uid, market=market, limit=limit)
         return holdings_clean_payload(market=market, limit=limit)
 
     @app.get("/api/holdings")
-    def holdings(market: str = Query("all"), limit: int = Query(500)):
+    def holdings(
+        market: str = Query("all"),
+        limit: int = Query(500),
+        x_mone_user: str = Header(default="", alias="x-mone-user"),
+    ):
+        uid = _sanitize_user_id(x_mone_user)
+        if uid:
+            return holdings_clean_payload_for_user(uid, market=market, limit=limit)
         return holdings_clean_payload(market=market, limit=limit)
 
     @app.get("/api/holdings/summary")
-    def holdings_summary(market: str = Query("all")):
-        payload = holdings_clean_payload(market=market, limit=1000)
+    def holdings_summary(
+        market: str = Query("all"),
+        x_mone_user: str = Header(default="", alias="x-mone-user"),
+    ):
+        uid = _sanitize_user_id(x_mone_user)
+        payload = (holdings_clean_payload_for_user(uid, market=market, limit=1000)
+                   if uid else holdings_clean_payload(market=market, limit=1000))
         return {"status": "OK", "routeVersion": "v80.2-clean", "market": market, **payload["summary"], "updatedAt": payload["updatedAt"]}
 
     @app.get("/api/holdings/risk")
-    def holdings_risk(market: str = Query("all")):
-        payload = holdings_clean_payload(market=market, limit=1000)
+    def holdings_risk(
+        market: str = Query("all"),
+        x_mone_user: str = Header(default="", alias="x-mone-user"),
+    ):
+        uid = _sanitize_user_id(x_mone_user)
+        payload = (holdings_clean_payload_for_user(uid, market=market, limit=1000)
+                   if uid else holdings_clean_payload(market=market, limit=1000))
         items = [x for x in payload["items"] if x["riskStatus"] in {"위험", "주의"}]
         return {"status": "OK", "routeVersion": "v80.2-clean", "market": market, "count": len(items), "items": items, "updatedAt": payload["updatedAt"]}
 
