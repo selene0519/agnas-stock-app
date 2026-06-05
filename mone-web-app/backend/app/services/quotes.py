@@ -550,3 +550,87 @@ def refresh_quotes(market: str = "all", symbols: str | None = None, max_symbols:
             "finnhub": "OK" if bool(_env("FINNHUB_API_KEY")) else "MISSING",
         },
     }
+
+
+def fetch_kis_holdings_kr() -> dict[str, Any]:
+    """KIS API TTTC8434R — 국내 주식잔고 조회 (실전/모의 자동 구분)"""
+    if not _kis_enabled():
+        return {"status": "ERROR", "error": "KIS_APP_KEY/KIS_APP_SECRET 미설정", "items": []}
+
+    cano = _env("KIS_CANO") or _env("KIS_ACCOUNT_NO")[:8]
+    acnt = _env("KIS_ACNT_PRDT_CD") or _env("KIS_ACCOUNT_NO")[8:10] if _env("KIS_ACCOUNT_NO") else ""
+    if not cano or not acnt:
+        return {"status": "ERROR", "error": "KIS_CANO / KIS_ACNT_PRDT_CD 미설정 (.env 확인)", "items": []}
+
+    cfg = _kis_config()
+    tr_id = "VTTC8434R" if cfg["is_mock"] else "TTTC8434R"
+    url = f"{cfg['base_url']}/uapi/domestic-stock/v1/trading/inquire-balance"
+
+    all_items: list[dict[str, Any]] = []
+    ctx_fk = ""
+    ctx_nk = ""
+
+    for _ in range(5):
+        params = {
+            "CANO": cano,
+            "ACNT_PRDT_CD": acnt,
+            "AFHR_FLPR_YN": "N",
+            "OFL_YN": "N",
+            "INQR_DVSN": "02",
+            "UNPR_DVSN": "01",
+            "FUND_STTL_ICLD_YN": "N",
+            "FNCG_AMT_AUTO_RDPT_YN": "N",
+            "PRCS_DVSN": "00",
+            "CTX_AREA_FK100": ctx_fk,
+            "CTX_AREA_NK100": ctx_nk,
+        }
+        for force in (False, True):
+            headers = _kis_headers(tr_id, force_refresh=force)
+            if not headers:
+                return {"status": "ERROR", "error": "KIS token 발급 실패", "items": []}
+            try:
+                resp = requests.get(url, headers=headers, params=params, timeout=10)
+                payload = resp.json() if resp.text else {}
+                if resp.status_code == 200 and payload.get("rt_cd") == "0":
+                    for row in payload.get("output1", []):
+                        qty = int(_safe_float(row.get("hldg_qty", "0")) or 0)
+                        if qty <= 0:
+                            continue
+                        symbol = str(row.get("pdno", "")).strip().zfill(6)
+                        if not symbol or not symbol.isdigit():
+                            continue
+                        avg = _safe_float(row.get("pchs_avg_pric", "0")) or 0
+                        current = _safe_float(row.get("prpr", "0")) or 0
+                        all_items.append({
+                            "market": "kr",
+                            "symbol": symbol,
+                            "name": str(row.get("prdt_name", "")).strip() or symbol,
+                            "quantity": qty,
+                            "avgPrice": round(avg, 2),
+                            "currentPrice": round(current, 2),
+                            "valuation": round(current * qty),
+                            "pnlPct": _safe_float(row.get("evlu_pfls_rt", "0")) or 0,
+                        })
+                    ctx_fk = payload.get("ctx_area_fk100", "").strip()
+                    ctx_nk = payload.get("ctx_area_nk100", "").strip()
+                    break
+                else:
+                    if force:
+                        return {"status": "ERROR", "error": f"KIS API 오류: {payload.get('msg1','')}", "items": []}
+            except Exception as exc:
+                if force:
+                    return {"status": "ERROR", "error": str(exc)[:200], "items": []}
+        else:
+            break
+
+        if not ctx_nk:
+            break
+
+    seen: set[str] = set()
+    unique: list[dict] = []
+    for item in all_items:
+        if item["symbol"] not in seen:
+            seen.add(item["symbol"])
+            unique.append(item)
+
+    return {"status": "OK", "count": len(unique), "items": unique, "isMock": cfg["is_mock"]}

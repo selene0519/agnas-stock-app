@@ -218,11 +218,11 @@ function StrategyBreakdown({ items }: { items: any[] }) {
 // ── 빈 상태 ────────────────────────────────────────────────────────────
 
 const EMPTY_MSGS: Record<Tab, string> = {
-  premarket: "장전 추천 데이터가 없습니다. GitHub Actions가 최신 추천 CSV를 생성했는지 확인하세요.",
-  intraday: "장중 데이터가 없습니다. 장 중에 현재가를 수집한 후 다시 확인하세요.",
-  closing: "장마감 검증 데이터가 없습니다. 장 마감 후 체결 검증이 실행되어야 합니다.",
-  virtual: "가상운용 데이터가 없습니다. 추천이 생성되면 자동으로 기록됩니다.",
-  validation: "검증 대시보드 데이터가 없습니다.",
+  premarket: "오늘 장전 추천 데이터가 없습니다. 매일 오전 6시 이후 데이터가 갱신됩니다.",
+  intraday: "장중 데이터가 없습니다. 장 시간 중에 다시 확인해 주세요.",
+  closing: "장마감 검증 데이터가 없습니다. 장 마감 후 자동으로 집계됩니다.",
+  virtual: "가상운용 기록이 없습니다. 추천 종목을 선택하면 자동으로 기록됩니다.",
+  validation: "검증 데이터가 아직 없습니다. 더 많은 추천이 쌓이면 집계됩니다.",
 };
 
 function EmptyState({ tab, error }: { tab: Tab; error?: string }) {
@@ -267,36 +267,43 @@ export default function ReportPage() {
   useEffect(() => {
     let active = true;
     setData({ status: "LOADING", items: [] });
-    setValDashboard(null); // 탭/마켓 변경 시 stale 데이터 방지
+    setValDashboard(null);
+
     const task =
       tab === "closing"
-        ? mone.backtestTrades({ market, mode, horizon, limit: 300 })
+        ? mone.backtestTrades({ market, mode, horizon, limit: 200 })
         : tab === "virtual"
-          ? mone.virtualValidation({ market, limit: 300 })
+          ? mone.virtualValidation({ market, limit: 100 })
           : tab === "validation"
-            ? mone.virtualValidation({ market, limit: 300 })
-            : mone.report(tab as "premarket" | "intraday", { market, mode, horizon, limit: 300 });
+            ? mone.virtualValidation({ market, limit: 50 })
+            : mone.report(tab as "premarket" | "intraday", { market, mode, horizon, limit: 200 });
 
     task
       .then((r) => active && setData(r || { status: "OK", items: [] }))
       .catch((e) => active && setData({ status: "ERROR", error: String(e), items: [] }));
 
-    const summaryTask = tab === "virtual"
-      ? mone.virtualSummary({ market, mode: "all", horizon: "all" })
-      : mone.backtestSummary({ market, mode, horizon });
-    summaryTask
-      .then((r) => active && setVirtual(r || {})).catch(() => active && setVirtual({}));
-    mone.virtualLedger({ market, mode, horizon, limit: 300 })
-      .then((r) => active && setVirtualLedger(r || { items: [] })).catch(() => active && setVirtualLedger({ items: [] }));
-    // mode/horizon 없이 전체 — StrategyBreakdown이 9개 전략 전체 집계용
-    mone.virtualValidation({ market, limit: 300 })
-      .then((r) => active && setVirtualValidation(r || { items: [] })).catch(() => active && setVirtualValidation({ items: [] }));
-    mone.holdingsClean({ market, limit: 500 })
+    // holdings 요약 — 리포트 상단 포트폴리오 카드용
+    mone.holdingsClean({ market, limit: 200 })
       .then((r) => active && setHoldings(r || { items: [] })).catch(() => active && setHoldings({ items: [] }));
+
+    // 가상운용/검증 탭에서만 무거운 데이터 요청
+    if (tab === "virtual" || tab === "validation") {
+      const summaryTask = mone.virtualSummary({ market, mode: "all", horizon: "all" });
+      summaryTask
+        .then((r) => active && setVirtual(r || {})).catch(() => active && setVirtual({}));
+      // StrategyBreakdown 전략 집계용 (limit 낮춤)
+      mone.virtualValidation({ market, limit: 100 })
+        .then((r) => active && setVirtualValidation(r || { items: [] })).catch(() => active && setVirtualValidation({ items: [] }));
+    } else {
+      mone.backtestSummary({ market, mode, horizon })
+        .then((r) => active && setVirtual(r || {})).catch(() => active && setVirtual({}));
+    }
+
     if (tab === "validation") {
       mone.validationDashboard({ market })
         .then((r) => active && setValDashboard(r || null)).catch(() => active && setValDashboard(null));
     }
+
     return () => { active = false; };
   }, [market, mode, horizon, tab]);
 

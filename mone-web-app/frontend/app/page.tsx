@@ -17,6 +17,7 @@ import NewsPage from "../components/pages/NewsPage";
 import PredictionPage from "../components/pages/PredictionPage";
 import AdvancedPage from "../components/pages/AdvancedPage";
 import { mone } from "../lib/api";
+import { getUserId } from "../lib/userId";
 import { getDefaultMarketBySession } from "../lib/marketSession";
 
 const initialNotifications = [
@@ -36,7 +37,10 @@ export default function App() {
   const [error, setError] = useState("");
   const [, setDataVersion] = useState(0);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    getUserId(); // 최초 방문 시 UUID 생성 및 localStorage 저장
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
