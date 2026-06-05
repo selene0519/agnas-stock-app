@@ -245,7 +245,7 @@ export default function NewsPage() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 p-4 md:space-y-6 md:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">뉴스·기업분석</h1>
@@ -257,25 +257,29 @@ export default function NewsPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {(["kr", "us"] as Market[]).map((item) => (
-          <button key={item} onClick={() => setMarket(item)} className={`rounded-xl px-4 py-2 text-sm ${market === item ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
-            {marketLabel(item)}
-          </button>
-        ))}
-        {(["news", "disclosures", "company", "calendar"] as Tab[]).map((item) => (
-          <button key={item} onClick={() => setTab(item)} className={`rounded-xl px-4 py-2 text-sm ${tab === item ? "bg-emerald-600 text-white" : "bg-slate-900 text-slate-400"}`}>
-            {item === "news" ? "뉴스 요약" : item === "disclosures" ? "공시" : item === "calendar" ? "공시 캘린더" : "기업분석"}
-          </button>
-        ))}
-        {(tab === "disclosures" || tab === "news") && (
-          <button
-            onClick={() => setWatchOnly(!watchOnly)}
-            className={`rounded-xl px-4 py-2 text-sm font-bold ${watchOnly ? "bg-amber-500 text-slate-950" : "bg-slate-900 text-slate-400"}`}
-          >
-            {watchOnly ? "보유·관심만" : "전체 보기"}
-          </button>
-        )}
+      <div className="flex flex-col gap-2">
+        {/* 시장 + 컨텐츠 탭 한 줄 */}
+        <div className="flex flex-wrap gap-1.5">
+          {(["kr", "us"] as Market[]).map((item) => (
+            <button key={item} onClick={() => setMarket(item)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${market === item ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+              {marketLabel(item)}
+            </button>
+          ))}
+          <span className="self-center text-slate-700">|</span>
+          {(["news", "disclosures", "company", "calendar"] as Tab[]).map((item) => (
+            <button key={item} onClick={() => setTab(item)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${tab === item ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+              {item === "news" ? "뉴스" : item === "disclosures" ? "공시" : item === "calendar" ? "캘린더" : "기업분석"}
+            </button>
+          ))}
+          {(tab === "disclosures" || tab === "news") && (
+            <button
+              onClick={() => setWatchOnly(!watchOnly)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${watchOnly ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-400"}`}
+            >
+              {watchOnly ? "보유·관심" : "전체"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="relative max-w-xl">
@@ -301,7 +305,7 @@ export default function NewsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[420px_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[420px_1fr]">
         <div className="space-y-2">
           {items.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center text-slate-500">
@@ -338,9 +342,9 @@ export default function NewsPage() {
           ))}
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+        <div className={`rounded-2xl border border-slate-800 bg-slate-900/60 p-4 md:p-6 ${!selected ? "hidden lg:block" : ""}`}>
           {!selected ? (
-            <div className="py-20 text-center text-slate-500">왼쪽에서 항목을 선택하거나 검색하세요.</div>
+            <div className="py-20 text-center text-slate-500">목록에서 항목을 선택하거나 검색하세요.</div>
           ) : tab === "company" ? (
             <CompanyDetail selected={selected} />
           ) : tab === "news" ? (

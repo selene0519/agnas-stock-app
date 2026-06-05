@@ -1296,7 +1296,7 @@ export default function StocksPage() {
                 </div>
               )}
 
-              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-5">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <button
                   type="button"
                   className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold ${
