@@ -416,6 +416,13 @@ jobs:
           echo "generate_kr_recommendations: exit $?"
           set -e
 
+      - name: Send KR summary to Telegram
+        run: |
+          set +e
+          python scripts/notify_daily_summary.py --market kr
+          echo "notify KR: exit $?"
+          set -e
+
       - name: Generate US recommendations from OHLCV
         run: |
           set +e
@@ -425,6 +432,13 @@ jobs:
           else
             echo "scripts/generate_us_recommendations.py not found; skip."
           fi
+          set -e
+
+      - name: Send US summary to Telegram
+        run: |
+          set +e
+          python scripts/notify_daily_summary.py --market us
+          echo "notify US: exit $?"
           set -e
 
       - name: Refresh KR close OHLCV and validations
@@ -461,13 +475,6 @@ jobs:
             python scripts/analyze_history.py
             echo "analyze_history: exit $?"
           fi
-          set -e
-
-      - name: Send daily summary to Telegram
-        run: |
-          set +e
-          python scripts/notify_daily_summary.py
-          echo "notify_daily_summary: exit $?"
           set -e
 
       - name: Remove local token/cache files before commit

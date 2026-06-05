@@ -20,11 +20,7 @@ import { mone } from "../lib/api";
 import { getUserId } from "../lib/userId";
 import { getDefaultMarketBySession } from "../lib/marketSession";
 
-const initialNotifications = [
-  { msg: "데이터 연결 상태를 확인했습니다.", time: "방금 전", warn: false },
-  { msg: "진입가는 실제 도달 시에만 체결로 봅니다.", time: "12분 전", warn: false },
-  { msg: "오래된 데이터는 정상으로 표시하지 않습니다.", time: "1시간 전", warn: true },
-];
+const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +56,41 @@ export default function App() {
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
   }, [refresh]);
+
+  // 실적 일정 + 진입 근접 알림 로드
+  useEffect(() => {
+    async function loadNotifications() {
+      const items: { msg: string; time: string; warn: boolean }[] = [];
+      try {
+        // 실적 발표 일정 (7일 이내)
+        const earn = await mone.earningsCalendar({ market: "all", days: 7 });
+        const today = new Date();
+        for (const e of (earn.items || []).slice(0, 5)) {
+          const rd = new Date(e.date);
+          const diff = Math.ceil((rd.getTime() - today.getTime()) / 86400000);
+          if (diff >= 0 && diff <= 7) {
+            const label = e.market === "kr" ? "국장" : "미장";
+            items.push({
+              msg: `[${label}] ${e.name || e.symbol} 실적발표 D-${diff}${e.estimate ? ` (EPS 예상 ${e.estimate})` : ""}`,
+              time: e.date,
+              warn: diff <= 2,
+            });
+          }
+        }
+        // 진입 근접 알림
+        const alerts = await mone.nearAlerts({ thresholdPct: 3, limit: 5 });
+        for (const a of (alerts.items || [])) {
+          items.push({
+            msg: `${a.name || a.symbol} 진입가 근접 (${a.gapPct != null ? `${Number(a.gapPct).toFixed(1)}% 차이` : "확인 필요"})`,
+            time: "지금",
+            warn: true,
+          });
+        }
+      } catch {}
+      if (items.length > 0) setNotifications(items);
+    }
+    loadNotifications();
+  }, []);
 
   useEffect(() => {
     const handler = () => setPage("chart");

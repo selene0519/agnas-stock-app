@@ -522,58 +522,67 @@ def build_dart_section() -> str:
 
 # ── 메인 ──────────────────────────────────────────────────────────────────────
 
+def _parse_market_arg() -> str:
+    """CLI: python notify_daily_summary.py --market kr|us|all"""
+    args = sys.argv[1:]
+    for i, a in enumerate(args):
+        if a == "--market" and i + 1 < len(args):
+            return args[i + 1].lower()
+        if a.startswith("--market="):
+            return a.split("=", 1)[1].lower()
+    return "all"
+
+
 def main() -> None:
+    market = _parse_market_arg()
+    if market not in ("kr", "us", "all"):
+        market = "all"
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M KST")
-    print(f"[{now}] 일일 요약 알림 시작")
+    mkt_label = {"kr": "🇰🇷 국장", "us": "🇺🇸 미장", "all": "국장+미장"}[market]
+    print(f"[{now}] 일일 요약 알림 시작 (market={market})")
 
-    sections = []
+    sections = [f"🤖 <b>MONE {mkt_label} 투자 점검</b>\n{now}"]
 
-    # 헤더
-    sections.append(f"🤖 <b>MONE 일일 투자 점검</b>\n{now}")
+    # 국장 블록
+    if market in ("kr", "all"):
+        kr_mkt = build_market_news_section("kr")
+        if kr_mkt:
+            sections.append(kr_mkt)
+        kr_rec = build_recommendation_section("kr")
+        if kr_rec:
+            sections.append("\n" + kr_rec)
+        kr_earn = build_kr_earnings_section()
+        if kr_earn:
+            sections.append(kr_earn)
+        dart = build_dart_section()
+        if dart:
+            sections.append(dart)
 
-    # 국장 시장 뉴스
-    kr_mkt_news = build_market_news_section("kr")
-    if kr_mkt_news:
-        sections.append(kr_mkt_news)
+    # 미장 블록
+    if market in ("us", "all"):
+        us_mkt = build_market_news_section("us")
+        if us_mkt:
+            sections.append(us_mkt)
+        us_rec = build_recommendation_section("us")
+        if us_rec:
+            sections.append("\n" + us_rec)
+        us_earn = build_earnings_section()
+        if us_earn:
+            sections.append(us_earn)
 
-    # 국장 추천 (종목별 뉴스 포함)
-    kr_section = build_recommendation_section("kr")
-    if kr_section:
-        sections.append("\n" + kr_section)
-
-    # 미장 시장 뉴스
-    us_mkt_news = build_market_news_section("us")
-    if us_mkt_news:
-        sections.append(us_mkt_news)
-
-    # 미장 추천 (종목별 뉴스 포함)
-    us_section = build_recommendation_section("us")
-    if us_section:
-        sections.append("\n" + us_section)
-
-    # 국장 실적 캘린더 (Alpha Vantage)
-    kr_earnings = build_kr_earnings_section()
-    if kr_earnings:
-        sections.append(kr_earnings)
-
-    # 미장 실적 캘린더 (Finnhub)
-    earnings = build_earnings_section()
-    if earnings:
-        sections.append(earnings)
-
-    # 경제 지표 (Finnhub)
-    economic = build_economic_section()
-    if economic:
-        sections.append(economic)
-
-    # DART 공시
-    dart = build_dart_section()
-    if dart:
-        sections.append(dart)
+    # 공통 매크로 (경제지표) — 미장 포함 시에만
+    if market in ("us", "all"):
+        economic = build_economic_section()
+        if economic:
+            sections.append(economic)
 
     sections.append("\n<a href='https://mone-by-agnas.vercel.app'>📱 MONE 앱 열기</a>")
 
     message = "\n".join(sections)
+    # 텔레그램 최대 4096자 제한
+    if len(message) > 4000:
+        message = message[:3980] + "\n...(생략)"
     print(f"메시지 길이: {len(message)}자")
 
     ok = _send(message)
