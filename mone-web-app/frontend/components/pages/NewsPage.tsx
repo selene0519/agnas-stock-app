@@ -122,12 +122,10 @@ function companyReadiness(item: any) {
 }
 
 function dataAction(item: any) {
-  const mkt = String(item?.market || "").toLowerCase();
   const sym = String(item?.symbol || "").toUpperCase();
-  if (companyReadiness(item).pct >= 75) return "재무·퀀트가 충분합니다. 밸류에이션과 기술 점수를 함께 보세요.";
-  if (sym.includes("ETF") || sym.match(/^(SPY|QQQ|SCHD|VTI|IVV|VOO|TQQQ|SOXL)$/)) return "ETF는 개별 재무 지표 대신 가격·보유 비중·변동성 중심으로 판단하세요.";
-  if (mkt === "us") return "FINNHUB/SEC 원본이 채워지면 EPS·PER·ROE 카드가 자동으로 정상 전환됩니다.";
-  return "DART 원본이 채워지면 재무 커버리지와 누락 배지가 자동으로 정상 전환됩니다.";
+  if (companyReadiness(item).pct >= 75) return "재무·퀀트 데이터가 충분합니다. 밸류에이션과 기술 점수를 함께 확인하세요.";
+  if (sym.includes("ETF") || sym.match(/^(SPY|QQQ|SCHD|VTI|IVV|VOO|TQQQ|SOXL)$/)) return "ETF는 개별 재무 지표 대신 가격·비중·변동성 중심으로 분석합니다.";
+  return "재무 데이터를 수집 중입니다. 데이터가 채워지면 자동으로 전환됩니다.";
 }
 
 function tabLabel(tab: Tab) {
@@ -137,12 +135,12 @@ function tabLabel(tab: Tab) {
 }
 
 function emptyMessage(tab: Tab, data: any, query: string, watchOnly: boolean) {
-  if (data?.status === "ERROR") return `API 오류: ${data.error || "원인을 확인하세요."}`;
+  if (data?.status === "ERROR") return "데이터를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
   if (query.trim()) return "검색 조건과 일치하는 항목이 없습니다.";
-  if (tab === "news") return "뉴스 원본이 비어 있습니다. 수집 전에는 관련 뉴스 카드만 비어 있는 것이 정상입니다.";
-  if (tab === "disclosures" && watchOnly) return "보유·관심 종목에 연결된 공시가 없습니다. 전체 보기로 원본 존재 여부를 확인할 수 있습니다.";
-  if (tab === "disclosures") return "공시 원본이 비어 있습니다. DART/SEC 수집 후 다시 확인하세요.";
-  return "기업분석 원본이 비어 있습니다. 재무 원본 부족은 수집/API 영역이며, 화면은 누락 상태를 그대로 표시합니다.";
+  if (tab === "news") return "뉴스가 없습니다. 뉴스는 하루 여러 번 자동으로 갱신됩니다.";
+  if (tab === "disclosures" && watchOnly) return "보유·관심 종목의 최근 공시가 없습니다. '전체 보기'로 전환하거나 종목을 추가해 보세요.";
+  if (tab === "disclosures") return "최근 공시가 없습니다.";
+  return "기업 분석 데이터가 없습니다. 종목 검색으로 특정 종목을 찾아보세요.";
 }
 
 export default function NewsPage() {

@@ -609,7 +609,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
         return () => ro.disconnect();
       } catch (err) {
         console.error("chart error:", err);
-        setRenderError("차트 렌더링 실패: 날짜/가격 원본을 확인해야 합니다.");
+        setRenderError("차트를 표시하는 중 오류가 발생했습니다. 다른 종목을 선택하거나 재조회해 주세요.");
       }
     }
     init();
@@ -618,8 +618,10 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
 
   if (candleData.length < 2) {
     return (
-      <div className="flex h-[220px] w-full items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center text-sm text-amber-100">
-        유효한 OHLCV 캔들이 2개 미만입니다. 원본 날짜/가격 수집 상태를 확인하세요.
+      <div className="flex h-[220px] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-700 bg-slate-950/60 p-6 text-center">
+        <div className="text-2xl">📊</div>
+        <div className="text-sm font-medium text-slate-300">차트 데이터 수집 중</div>
+        <div className="text-xs text-slate-500">이 종목의 OHLCV가 아직 수집되지 않았습니다. 상단의 "재조회" 버튼을 눌러 데이터 수집을 시작하거나, 잠시 후 다시 확인해 주세요.</div>
       </div>
     );
   }
@@ -1058,10 +1060,10 @@ export default function ChartPage() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-5 p-4 sm:p-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">차트·기술분석</h1>
-        <p className="mt-1 text-sm text-slate-400">OHLCV, 추천 기준선, 기술지표, 관련 뉴스·공시·기업분석</p>
+        <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">차트·기술분석</h1>
+        <p className="mt-1 text-xs text-slate-400 sm:text-sm">OHLCV, 추천 기준선, 기술지표, 관련 뉴스·공시·기업분석</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
