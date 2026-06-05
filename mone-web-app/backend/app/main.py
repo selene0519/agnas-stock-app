@@ -2130,6 +2130,10 @@ def api_holdings_edit_save(payload: dict = Body(...)) -> dict:
                 "targetPrice": str(r.get("targetPrice", "")).strip(),
             })
         _write_csv_safe_v2(path, norm_rows, cols)
+        # data/ 하위 복사본도 동기화 — 두 파일 중복으로 인한 삭제 후 재출현 버그 방지
+        data_copy = _REPO / "data" / f"holdings_{mk}.csv"
+        if data_copy.exists():
+            _write_csv_safe_v2(data_copy, norm_rows, cols)
     return {"status": "OK", "saved": len(items)}
 
 

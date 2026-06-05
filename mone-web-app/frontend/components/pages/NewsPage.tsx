@@ -6,7 +6,7 @@ import { mone, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { displayName, statusBadge } from "@/lib/moneDisplay";
 
-type Tab = "news" | "disclosures" | "company" | "calendar";
+type Tab = "news" | "disclosures" | "company";
 
 function fmtNum(value: any, suffix = "") {
   const n = Number(value);
@@ -133,7 +133,6 @@ function dataAction(item: any) {
 function tabLabel(tab: Tab) {
   if (tab === "news") return "뉴스";
   if (tab === "disclosures") return "공시";
-  if (tab === "calendar") return "공시 캘린더";
   return "기업분석";
 }
 
@@ -151,26 +150,12 @@ export default function NewsPage() {
   const [tab, setTab] = useState<Tab>("company");
   const [query, setQuery] = useState("");
   const [data, setData] = useState<any>({ items: [] });
-  const [calendarData, setCalendarData] = useState<any>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [watchOnly, setWatchOnly] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    if (tab === "calendar") {
-      const controller = new AbortController();
-      setLoading(true);
-      mone.disclosureCalendar({ market, days: 30 }, controller.signal)
-        .then((r) => setCalendarData(r))
-        .catch(() => setCalendarData(null))
-        .finally(() => setLoading(false));
-      return () => controller.abort();
-    }
-  }, [tab, market, reloadKey]);
-
   async function load(signal?: AbortSignal) {
-    if (tab === "calendar") return;
     setLoading(true);
     try {
       const loader =
@@ -266,9 +251,9 @@ export default function NewsPage() {
             </button>
           ))}
           <span className="self-center text-slate-700">|</span>
-          {(["news", "disclosures", "company", "calendar"] as Tab[]).map((item) => (
+          {(["news", "disclosures", "company"] as Tab[]).map((item) => (
             <button key={item} onClick={() => setTab(item)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${tab === item ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
-              {item === "news" ? "뉴스" : item === "disclosures" ? "공시" : item === "calendar" ? "캘린더" : "기업분석"}
+              {tabLabel(item)}
             </button>
           ))}
           {(tab === "disclosures" || tab === "news") && (
@@ -293,7 +278,7 @@ export default function NewsPage() {
         />
       </div>
 
-      {tab !== "calendar" && (
+      {(
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {summaryCards.map((card) => (
             <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.tone}`}>
@@ -304,7 +289,6 @@ export default function NewsPage() {
           ))}
         </div>
       )}
-
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[420px_1fr]">
         <div className="space-y-2">
           {items.length === 0 && (
@@ -355,53 +339,6 @@ export default function NewsPage() {
         </div>
       </div>
 
-      {/* ── 공시 캘린더 탭 */}
-      {tab === "calendar" && (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
-            <span className="font-semibold text-slate-200">공시 캘린더</span>는 DART(국장) 또는 SEC(미장) 공시 데이터 기반으로 최근 30일간 기업 공시를 날짜별로 정렬해 보여줍니다.
-            관심·보유 종목의 공시가 포함되어 있으면 강조 표시됩니다. 실적 발표일, 주요 공시, 감자·합병 등 이벤트를 미리 확인하는 용도입니다.
-          </div>
-          {loading ? (
-            <div className="py-12 text-center text-slate-500">불러오는 중...</div>
-          ) : !calendarData || calendarData.status === "NO_DATA" ? (
-            <div className="rounded-2xl border border-dashed border-slate-700 py-12 text-center text-slate-500">
-              공시 데이터가 없습니다. DART API 수집 후 다시 확인하세요.
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-3 text-xs text-slate-500">
-                <span>총 {calendarData.totalDisclosures}건</span>
-                {calendarData.watchedCount > 0 && <span className="text-amber-300">관심/보유 종목 {calendarData.watchedCount}건 포함</span>}
-                <span>{calendarData.fromDate} ~ {calendarData.toDate}</span>
-              </div>
-              {(calendarData.calendar || []).map((day: any) => (
-                <div key={day.date} className={`rounded-2xl border p-4 ${day.isToday ? "border-blue-600/50 bg-blue-950/20" : day.isPast ? "border-slate-800 opacity-60" : "border-slate-700"}`}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className={`font-semibold ${day.isToday ? "text-blue-300" : "text-slate-200"}`}>
-                      {day.date}{day.isToday && " (오늘)"}
-                    </span>
-                    <span className="text-xs text-slate-500">{day.count}건</span>
-                    {day.watched > 0 && <span className="rounded-full bg-amber-700/40 px-2 py-0.5 text-[10px] text-amber-300">관심 {day.watched}</span>}
-                  </div>
-                  <div className="space-y-1.5">
-                    {day.items.map((item: any, idx: number) => (
-                      <div key={idx} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-[11px] ${item.inWatchlist ? "bg-amber-950/30 border border-amber-800/30" : "bg-slate-950/50"}`}>
-                        <div>
-                          <span className={`font-medium ${item.inWatchlist ? "text-amber-200" : "text-slate-300"}`}>{item.name || item.symbol}</span>
-                          <span className="ml-1.5 text-slate-500">{item.symbol}</span>
-                          {item.kind !== "기타" && <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] ${item.kind === "실적" ? "bg-emerald-900/50 text-emerald-300" : item.kind === "주요공시" ? "bg-red-900/50 text-red-300" : "bg-slate-800 text-slate-400"}`}>{item.kind}</span>}
-                        </div>
-                        <span className="max-w-[200px] truncate text-slate-400">{item.title}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }
