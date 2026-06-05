@@ -1219,6 +1219,11 @@ def _install_mone_authoritative_holdings_clean_v3():
             change_pct = _num(q.get("changePct"), 0)
             if not change_pct and current > 0 and prev_close > 0:
                 change_pct = (current - prev_close) / prev_close * 100
+            change_value = _num(q.get("change"), 0)
+            if not change_value and current > 0 and prev_close > 0:
+                change_value = current - prev_close
+            change_text = f"{change_value:+,.2f}" if mk == "us" and change_value else (f"{round(change_value):+,}" if change_value else "")
+            change_pct_text = f"{change_pct:+.2f}%" if change_pct else ("전일 기준 없음" if current > 0 else "현재가 수집 대기")
             pnl = (current - avg) * qty if current > 0 and avg > 0 else 0
             invested = avg * qty if avg > 0 else 0
             pnl_pct = (pnl / invested * 100) if invested > 0 else 0
@@ -1246,8 +1251,15 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "currentPriceText": current_text,
                 "prevClose": prev_close if prev_close > 0 else None,
                 "prevCloseText": f"${prev_close:,.2f}" if mk == "us" and prev_close > 0 else f"{round(prev_close):,}원" if prev_close > 0 else "",
+                "change": change_value if change_value else None,
+                "changeText": change_text,
                 "changePct": change_pct if change_pct else None,
-                "changePctText": f"{change_pct:+.2f}%" if change_pct else ("전일 기준 없음" if current > 0 else "현재가 수집 대기"),
+                "changePctText": change_pct_text,
+                "changePercent": change_pct if change_pct else None,
+                "priceChange": change_value if change_value else None,
+                "priceChangeText": change_text,
+                "priceChangePercent": change_pct if change_pct else None,
+                "priceChangePercentText": change_pct_text,
                 "marketValue": current * qty if current > 0 else 0,
                 "marketValueText": f"${current * qty:,.2f}" if mk == "us" and current > 0 else f"{round(current * qty):,}원" if current > 0 else "-",
                 "pnl": pnl,
