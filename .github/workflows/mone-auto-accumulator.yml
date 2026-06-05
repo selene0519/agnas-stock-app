@@ -345,7 +345,7 @@ jobs:
 
       - name: Ping backend API (배포 서버가 있으면 캐시 갱신)
         env:
-          MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL }}
+          MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
         run: |
           if [ -z "${MONE_BACKEND_URL}" ]; then
             echo "MONE_BACKEND_URL 미설정 — 백엔드 ping 건너뜀"

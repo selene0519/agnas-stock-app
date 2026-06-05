@@ -35,7 +35,7 @@ jobs:
       GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
       DART_API_KEY: ${{ secrets.DART_API_KEY }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
-      MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL }}
+      MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
 
     steps:
       - name: Checkout
