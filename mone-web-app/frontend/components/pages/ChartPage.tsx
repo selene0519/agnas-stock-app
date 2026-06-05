@@ -50,6 +50,12 @@ function positiveNum(value: any) { const n = num(value); return n !== null && n 
 function closeOf(row: any) { return num(row.close ?? row.Close ?? row.closePrice ?? row.currentPrice) || 0; }
 function highOf(row: any)  { return num(row.high ?? row.High ?? row.highPrice) || closeOf(row); }
 function lowOf(row: any)   { return num(row.low ?? row.Low ?? row.lowPrice) || closeOf(row); }
+function chartTime(row: any): string {
+  const raw = String(row?.date ?? row?.Date ?? row?.tradeDate ?? row?.일자 ?? "").trim();
+  if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  return raw;
+}
 
 function levelValue(levels: any, key: "entry"|"stop"|"target"|"expected"|"base") {
   const keys: Record<typeof key, string[]> = {
@@ -274,7 +280,7 @@ function RsiChart({ rows }: { rows: any[] }) {
       }
       const rs = loss === 0 ? 100 : (gain / period) / (loss / period);
       const rsiVal = loss === 0 ? 100 : 100 - 100 / (1 + rs);
-      const date = validRows[i]?.date || validRows[i]?.Date;
+      const date = chartTime(validRows[i]);
       if (date) result.push({ time: date as string, value: Math.round(rsiVal * 10) / 10 });
     }
     return result;
@@ -349,7 +355,7 @@ function MacdChart({ rows }: { rows: any[] }) {
     const ema12 = ema(closes, 12), ema26 = ema(closes, 26);
     const macdLine = closes.map((_, i) => ema12[i] != null && ema26[i] != null ? (ema12[i] as number) - (ema26[i] as number) : null).filter((v): v is number => v !== null);
     const signalLine = ema(macdLine, 9);
-    const dates = rows.slice(-macdLine.length).map((r: any) => r.date || r.Date).filter(Boolean);
+    const dates = rows.slice(-macdLine.length).map((r: any) => chartTime(r)).filter(Boolean);
     const macd = dates.map((t, i) => ({ time: t as string, value: macdLine[i] }));
     const signal = dates.map((t, i) => signalLine[i] != null ? { time: t as string, value: signalLine[i] as number } : null).filter(Boolean) as { time: string; value: number }[];
     const hist = dates.map((t, i) => ({
@@ -420,15 +426,36 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
+  const [renderError, setRenderError] = useState("");
+
+  const candleData = useMemo(() => rows
+    .map((r) => {
+      const time = chartTime(r);
+      const close = Number(r.close || r.Close) || 0;
+      if (!time || close <= 0) return null;
+      return {
+        time,
+        open: Number(r.open || r.Open || r.close || r.Close) || close,
+        high: Number(r.high || r.High || r.close || r.Close) || close,
+        low: Number(r.low || r.Low || r.close || r.Close) || close,
+        close,
+      };
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => a.time < b.time ? -1 : 1) as {
+      time: string; open: number; high: number; low: number; close: number;
+    }[], [rows]);
 
   useEffect(() => {
-    if (!containerRef.current || rows.length === 0) return;
+    setRenderError("");
+    if (!containerRef.current || candleData.length < 2) return;
     async function init() {
       try {
         const LW = await import("lightweight-charts");
         if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; }
+        const chartHeight = containerRef.current!.clientHeight || 320;
         const chartRaw = LW.createChart(containerRef.current!, {
-          width: containerRef.current!.clientWidth, height: 380,
+          width: containerRef.current!.clientWidth, height: chartHeight,
           layout: { background: { color: "#020617" }, textColor: "#94a3b8" },
           grid: { vertLines: { color: "#1e293b" }, horzLines: { color: "#1e293b" } },
           crosshair: { mode: LW.CrosshairMode.Normal },
@@ -442,15 +469,12 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
           borderUpColor: "#22c55e", borderDownColor: "#ef4444",
           wickUpColor: "#22c55e", wickDownColor: "#ef4444",
         });
-        const candleData = rows.filter((r) => r.date || r.Date)
-          .map((r) => ({ time: (r.date || r.Date) as string, open: Number(r.open || r.Open || r.close || r.Close) || 0, high: Number(r.high || r.High || r.close || r.Close) || 0, low: Number(r.low || r.Low || r.close || r.Close) || 0, close: Number(r.close || r.Close) || 0 }))
-          .filter((d) => d.close > 0).sort((a, b) => a.time < b.time ? -1 : 1);
         candleSeries.setData(candleData);
 
         if (toggles.volume) {
           const volSeries = chart.addHistogramSeries({ color: "#334155", priceFormat: { type: "volume" }, priceScaleId: "volume" });
           chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
-          const rowByDate = new Map(rows.map((r) => [r.date || r.Date, r]));
+          const rowByDate = new Map(rows.map((r) => [chartTime(r), r]));
           volSeries.setData(candleData.map((d) => {
             const r = rowByDate.get(d.time) || {};
             return { time: d.time, value: Number(r.volume || r.Volume || 0), color: d.close >= d.open ? "#16a34a55" : "#dc262655" };
@@ -463,17 +487,17 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
           return { time: d.time, value: closes.slice(i - period + 1, i + 1).reduce((s, v) => s + v, 0) / period };
         }).filter(Boolean) as { time: string; value: number }[];
 
-        const apiMA5  = rows.filter(r => r.date && r.ma5  > 0).map(r => ({ time: r.date as string, value: Number(r.ma5) }));
-        const apiMA20 = rows.filter(r => r.date && r.ma20 > 0).map(r => ({ time: r.date as string, value: Number(r.ma20) }));
-        const apiMA60 = rows.filter(r => r.date && r.ma60 > 0).map(r => ({ time: r.date as string, value: Number(r.ma60) }));
+        const apiMA5  = rows.filter(r => chartTime(r) && r.ma5  > 0).map(r => ({ time: chartTime(r), value: Number(r.ma5) }));
+        const apiMA20 = rows.filter(r => chartTime(r) && r.ma20 > 0).map(r => ({ time: chartTime(r), value: Number(r.ma20) }));
+        const apiMA60 = rows.filter(r => chartTime(r) && r.ma60 > 0).map(r => ({ time: chartTime(r), value: Number(r.ma60) }));
 
         if (toggles.ma5)  { const s = chart.addLineSeries({ color: "#2dd4bf", lineWidth: 1, priceLineVisible: false }); s.setData(apiMA5.length > 5 ? apiMA5 : calcMA(5)); }
         if (toggles.ma20) { const s = chart.addLineSeries({ color: "#facc15", lineWidth: 1.5, priceLineVisible: false }); s.setData(apiMA20.length > 5 ? apiMA20 : calcMA(20)); }
         if (toggles.ma60) { const s = chart.addLineSeries({ color: "#f97316", lineWidth: 1.5, priceLineVisible: false }); s.setData(apiMA60.length > 5 ? apiMA60 : calcMA(60)); }
 
         if (toggles.bb) {
-          const apiBBU = rows.filter(r => r.date && r.bbUpper > 0).map(r => ({ time: r.date as string, value: Number(r.bbUpper) }));
-          const apiBBL = rows.filter(r => r.date && r.bbLower > 0).map(r => ({ time: r.date as string, value: Number(r.bbLower) }));
+          const apiBBU = rows.filter(r => chartTime(r) && r.bbUpper > 0).map(r => ({ time: chartTime(r), value: Number(r.bbUpper) }));
+          const apiBBL = rows.filter(r => chartTime(r) && r.bbLower > 0).map(r => ({ time: chartTime(r), value: Number(r.bbLower) }));
           let bbU = apiBBU, bbL = apiBBL;
           if (bbU.length < 5 && closes.length >= 20) {
             const calc = candleData.map((d, i) => {
@@ -496,7 +520,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
           const startDate = candleData[0].time as string;
           // 날짜 문자열로 필터링 (국장/미장 휴장일 무관하게 교집합만)
           const indexFiltered = indexRows.filter((r: any) => {
-            const d = r.date || r.Date;
+            const d = chartTime(r);
             return d && d >= startDate;
           });
           if (indexFiltered.length > 2) {
@@ -507,7 +531,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
               const indexByDate = new Map(
                 indexFiltered.map((r: any) => {
                   const close = Number(r.close || r.Close || 0);
-                  return [r.date || r.Date, close > 0 ? (close / baseClose) * baseStock : null];
+                  return [chartTime(r), close > 0 ? (close / baseClose) * baseStock : null];
                 })
               );
               // candleData 날짜에 지수 값 대응 (없는 날짜 건너뜀)
@@ -534,16 +558,40 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
         }
 
         chart.timeScale().fitContent();
-        const ro = new ResizeObserver(() => { if (containerRef.current && chartRef.current) chartRef.current.resize(containerRef.current.clientWidth, 380); });
+        const ro = new ResizeObserver(() => {
+          if (containerRef.current && chartRef.current) {
+            chartRef.current.resize(containerRef.current.clientWidth, containerRef.current.clientHeight || 320);
+          }
+        });
         ro.observe(containerRef.current!);
         return () => ro.disconnect();
-      } catch (err) { console.error("chart error:", err); }
+      } catch (err) {
+        console.error("chart error:", err);
+        setRenderError("차트 렌더링 실패: 날짜/가격 원본을 확인해야 합니다.");
+      }
     }
     init();
     return () => { if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; } };
-  }, [rows, levels, toggles, indexRows]);
+  }, [candleData, rows, levels, toggles, indexRows]);
 
-  return <div ref={containerRef} className="h-[380px] w-full overflow-hidden rounded-xl" />;
+  if (candleData.length < 2) {
+    return (
+      <div className="flex h-[220px] w-full items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center text-sm text-amber-100">
+        유효한 OHLCV 캔들이 2개 미만입니다. 원본 날짜/가격 수집 상태를 확인하세요.
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <div ref={containerRef} className="h-[320px] w-full overflow-hidden rounded-xl sm:h-[380px]" />
+      {renderError && (
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-amber-500/20 bg-slate-950/90 p-4 text-center text-sm text-amber-100">
+          {renderError}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── 호가창 + 투자자 동향 패널 ─────────────────────────────────────────
@@ -1286,11 +1334,23 @@ export default function ChartPage() {
               ) : loading ? (
                 <div className="text-sm text-slate-500">불러오는 중...</div>
               ) : (
-                <div className="text-sm text-slate-500">
-                  기업분석 데이터 없음 —{" "}
-                  {loadState.companyStatus === "TIMEOUT"
-                    ? "조회 시간 초과. 재조회 버튼을 눌러주세요."
-                    : "DART / Finnhub 수집 후 자동으로 연결됩니다."}
+                <div className="space-y-2 text-sm text-slate-500">
+                  <div>
+                    기업분석 데이터 없음 —{" "}
+                    {loadState.companyStatus === "TIMEOUT"
+                      ? "조회 시간 초과입니다."
+                      : "DART / Finnhub 수집 후 자동으로 연결됩니다."}
+                  </div>
+                  {loadState.companyStatus === "TIMEOUT" && (
+                    <button
+                      onClick={() => setReloadKey((v) => v + 1)}
+                      disabled={loading}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                    >
+                      <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+                      재조회
+                    </button>
+                  )}
                 </div>
               )}
             </Panel>

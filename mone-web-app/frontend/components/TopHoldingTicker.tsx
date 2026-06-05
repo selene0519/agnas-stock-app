@@ -23,13 +23,28 @@ type TickerItem = {
   changeStatus: "normal" | "pending" | "no-base" | "stale" | "error";
 };
 
+function closeValue(row: any) {
+  return toNumber(row?.close ?? row?.Close ?? row?.stck_clpr ?? row?.currentPrice);
+}
+
+function ohlcvFallbackChange(rows: any[], current: number | null): { text: string; status: TickerItem["changeStatus"] } | null {
+  const closes = (rows || [])
+    .map((row) => closeValue(row))
+    .filter((value): value is number => value !== null && Number.isFinite(value) && value > 0);
+  if (closes.length < 2) return null;
+  const latest = current && current > 0 ? current : closes.at(-1)!;
+  const prev = closes.at(-2)!;
+  if (prev <= 0) return null;
+  return { text: pctText(((latest - prev) / prev) * 100), status: "normal" };
+}
+
 function derivePrice(row: any, market: string) {
   const text = String(row.currentPriceText || row.priceText || "").trim();
   if (text && text !== "-") return text;
   return formatMoney(row.currentPrice ?? row.price, market, "가격 대기");
 }
 
-function deriveChange(row: any): { text: string; status: TickerItem["changeStatus"] } {
+function deriveChange(row: any, fallbackRows: any[] = []): { text: string; status: TickerItem["changeStatus"] } {
   const current = toNumber(row.currentPrice ?? row.price ?? row.currentPriceText);
   if (current === null || current <= 0) return { text: "가격 대기", status: "pending" };
 
@@ -49,17 +64,31 @@ function deriveChange(row: any): { text: string; status: TickerItem["changeStatu
     return { text: pctText(((current - prev) / prev) * 100), status: "normal" };
   }
 
-  // OHLCV 미수집 — 짧게 표시
-  return { text: "전일比 미확보", status: "no-base" };
+  const fallback = ohlcvFallbackChange(fallbackRows, current);
+  if (fallback) return fallback;
+
+  return { text: "", status: "no-base" };
 }
 
 async function fetchTickerRows(): Promise<TickerItem[]> {
   const data: any = await mone.holdingsClean({ market: "all", limit: 50 });
-  const rows = dedupeBySymbol(Array.isArray(data?.items) ? data.items : []);
-  return rows.map((row: any, index: number) => {
+  const rows = dedupeBySymbol(Array.isArray(data?.items) ? data.items : []).slice(0, 13);
+  const enriched = await Promise.all(rows.map(async (row: any) => {
     const symbol = normalizeSymbol(row);
     const market = normalizeMarket(row.market, symbol);
-    const change = deriveChange(row);
+    const preliminary = deriveChange(row);
+    if (preliminary.status === "normal" || preliminary.status === "pending") return { row, ohlcvRows: [] };
+    try {
+      const data = await mone.ohlcv({ market, symbol, limit: 5 });
+      return { row, ohlcvRows: Array.isArray(data?.items) ? data.items : [] };
+    } catch {
+      return { row, ohlcvRows: [] };
+    }
+  }));
+  return enriched.map(({ row, ohlcvRows }: any, index: number) => {
+    const symbol = normalizeSymbol(row);
+    const market = normalizeMarket(row.market, symbol);
+    const change = deriveChange(row, ohlcvRows);
     return {
       id: `holding-${market}-${symbol}-${index}`,
       symbol,
@@ -122,7 +151,7 @@ export default function TopHoldingTicker() {
               const isDown = item.changePctText.startsWith("-");
               const needsPrice = item.changeStatus === "pending";
               const needsBase = item.changeStatus !== "normal" && item.changeStatus !== "pending";
-              const showChange = item.changeStatus !== "pending";
+              const showChange = item.changeStatus === "normal" && item.changePctText;
               return (
                 <span key={`${item.id}-${index}`} className="inline-flex items-center gap-2 text-xs">
                   <span className="font-semibold text-slate-200">{item.name}</span>
