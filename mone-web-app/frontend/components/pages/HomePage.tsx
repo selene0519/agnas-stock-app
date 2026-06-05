@@ -986,7 +986,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       {showJournal && <JournalModal onClose={() => setShowJournal(false)} />}
 
       {/* 헤더 */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-100">시장 홈</h1>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
@@ -1000,14 +1000,14 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="no-scrollbar -mx-1 flex w-full flex-nowrap items-center gap-1.5 overflow-x-auto px-1 sm:mx-0 sm:w-auto sm:px-0">
           {(["auto", "kr", "us"] as MarketChoice[]).map((choice) => (
             <button key={choice} onClick={() => updateMarketChoice(choice)}
-              className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${marketChoice === choice ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+              className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${marketChoice === choice ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
               {choice === "auto" ? "자동" : choice === "kr" ? "국장" : "미장"}
             </button>
           ))}
-          <button onClick={() => setShowJournal(true)} className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
+          <button onClick={() => setShowJournal(true)} className="shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
             일지
           </button>
           <button onClick={load} title="새로고침" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800">
@@ -1018,33 +1018,33 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
 
       {/* 마켓 레짐 배너 */}
       {marketRegime && (
-        <div className={`relative overflow-hidden rounded-2xl border-l-4 px-5 py-4 ${
+        <div className={`relative overflow-hidden rounded-2xl border-l-4 px-4 py-4 sm:px-5 ${
           marketRegime.regime === "BULL"
             ? "border-l-emerald-500 border border-emerald-800/40 bg-emerald-950/30"
             : marketRegime.regime === "BEAR"
             ? "border-l-red-500 border border-red-800/40 bg-red-950/30"
             : "border-l-slate-500 border border-slate-700 bg-slate-900/50"}`}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             {/* 레짐 타이틀 + 수치 */}
-            <div className="flex items-center gap-3">
-              <span className={`text-3xl font-black leading-none ${
+            <div className="flex min-w-0 items-center gap-3">
+              <span className={`shrink-0 text-3xl font-black leading-none ${
                 marketRegime.regime === "BULL" ? "text-emerald-400"
                 : marketRegime.regime === "BEAR" ? "text-red-400"
                 : "text-slate-400"}`}>
                 {marketRegime.regime === "BULL" ? "↑" : marketRegime.regime === "BEAR" ? "↓" : "→"}
               </span>
-              <div>
+              <div className="min-w-0">
                 <div className={`text-base font-bold ${
                   marketRegime.regime === "BULL" ? "text-emerald-200"
                   : marketRegime.regime === "BEAR" ? "text-red-200"
                   : "text-slate-200"}`}>
                   {marketRegime.label}
                 </div>
-                <div className="mt-0.5 text-xs text-slate-400">{marketRegime.description}</div>
+                <div className="mt-0.5 text-[11px] leading-4 text-slate-400 sm:text-xs">{marketRegime.description}</div>
               </div>
             </div>
             {/* MA20/MA60 수치 */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="hidden flex-wrap items-center gap-3 sm:flex">
               {marketRegime.current != null && (
                 <div className="text-right">
                   <div className="text-[10px] text-slate-500">{marketRegime.benchmark || "KOSPI"} 현재가</div>
@@ -1071,27 +1071,27 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             </div>
           </div>
           {/* 전략 권고 바 */}
-          <div className={`mt-3 flex flex-wrap items-center gap-2 border-t pt-3 ${
+          <div className={`no-scrollbar -mx-1 mt-3 flex flex-nowrap items-center gap-2 overflow-x-auto border-t px-1 pt-3 ${
             marketRegime.regime === "BULL" ? "border-emerald-800/30"
             : marketRegime.regime === "BEAR" ? "border-red-800/30"
             : "border-slate-700/50"}`}>
-            <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+            <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${
               marketRegime.regime === "BULL" ? "bg-emerald-900/60 text-emerald-200"
               : marketRegime.regime === "BEAR" ? "bg-red-900/60 text-red-200"
               : "bg-slate-800 text-slate-300"}`}>
               {getRegimeStance(marketRegime.regime, selectedMarket)}
             </span>
             {marketRegime.regime === "BEAR" && (
-              <span className="rounded-full bg-red-900/50 px-3 py-1 text-[11px] font-semibold text-red-200">
+              <span className="shrink-0 rounded-full bg-red-900/50 px-3 py-1 text-[11px] font-semibold text-red-200">
                 공격형 진입 보류 권장
               </span>
             )}
             {marketRegime.regime === "BULL" && (
-              <span className="rounded-full bg-emerald-900/40 px-3 py-1 text-[11px] text-emerald-300">
+              <span className="shrink-0 rounded-full bg-emerald-900/40 px-3 py-1 text-[11px] text-emerald-300">
                 균형·공격형 전략 정상 작동 중
               </span>
             )}
-            <span className="ml-auto text-[10px] text-slate-600">
+            <span className="ml-auto hidden shrink-0 text-[10px] text-slate-600 sm:inline">
               20일선 기준 · 매일 갱신
             </span>
           </div>
