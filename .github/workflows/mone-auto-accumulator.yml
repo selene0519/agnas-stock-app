@@ -34,6 +34,8 @@ jobs:
       DART_API_KEY: ${{ secrets.DART_API_KEY }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
       GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
       KIS_APPKEY: ${{ secrets.KIS_APPKEY }}
@@ -458,6 +460,13 @@ jobs:
             python scripts/analyze_history.py
             echo "analyze_history: exit $?"
           fi
+          set -e
+
+      - name: Send daily summary to Telegram
+        run: |
+          set +e
+          python scripts/notify_daily_summary.py
+          echo "notify_daily_summary: exit $?"
           set -e
 
       - name: Remove local token/cache files before commit
