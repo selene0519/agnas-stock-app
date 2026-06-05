@@ -525,8 +525,10 @@ export default function HoldingsPage() {
     for (const holding of items) {
       const name = displayName(holding);
       const symbol = String(holding.symbol || "");
-      const stopMissing = !holding.stopText || holding.stopText === "-";
-      const targetMissing = !holding.targetText || holding.targetText === "-";
+      const hasStopPrice = Number(holding.stopPrice ?? holding.stop ?? 0) > 0;
+      const hasTargetPrice = Number(holding.targetPrice ?? holding.target ?? 0) > 0;
+      const stopMissing = (!holding.stopText || holding.stopText === "-") && !hasStopPrice;
+      const targetMissing = (!holding.targetText || holding.targetText === "-") && !hasTargetPrice;
       const stopGapPct = holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
       const targetGapPct = holding.targetGapPct != null ? Number(holding.targetGapPct) : null;
       if (!holding.currentPrice || Number(holding.currentPrice) <= 0) {
@@ -780,8 +782,10 @@ export default function HoldingsPage() {
         {items.map((holding: any) => {
           const key = editableKey(holding);
           const isEditing = editKey === key && !!editDraft;
-          const stopMissing = !holding.stopText || holding.stopText === "-";
-          const targetMissing = !holding.targetText || holding.targetText === "-";
+          const hasStopPrice = Number(holding.stopPrice ?? holding.stop ?? 0) > 0;
+          const hasTargetPrice = Number(holding.targetPrice ?? holding.target ?? 0) > 0;
+          const stopMissing = (!holding.stopText || holding.stopText === "-") && !hasStopPrice;
+          const targetMissing = (!holding.targetText || holding.targetText === "-") && !hasTargetPrice;
           const stopGapPct = holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
           const targetGapPct = holding.targetGapPct != null ? Number(holding.targetGapPct) : null;
           return (
@@ -879,7 +883,7 @@ export default function HoldingsPage() {
                 <div className="rounded-xl bg-slate-950 px-3 py-2.5">
                   <div className="flex justify-between text-[10px] text-slate-400">
                     <span>손절 여유</span>
-                    <span className="font-mono">{stopGapPct === null ? "손절가 없음" : `${stopGapPct.toFixed(2)}% 여유`}</span>
+                    <span className="font-mono">{stopGapPct !== null ? `${stopGapPct.toFixed(2)}% 여유` : stopMissing ? "손절가 없음" : "현재가 필요"}</span>
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800">
                     <div className={`h-full rounded-full ${stopGapPct !== null && stopGapPct <= 2 ? "bg-red-500" : stopGapPct !== null && stopGapPct <= 5 ? "bg-amber-400" : "bg-emerald-500"}`}

@@ -461,7 +461,16 @@ export default function ReportPage() {
         </div>
 
         {data.status === "LOADING" ? (
-          <div className="py-12 text-center text-slate-500">불러오는 중...</div>
+          <div className="space-y-2 p-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex gap-3 rounded-xl bg-slate-800/40 px-4 py-3 animate-pulse">
+                <div className="h-4 w-24 rounded bg-slate-700/60" />
+                <div className="h-4 w-16 rounded bg-slate-700/40" />
+                <div className="h-4 w-16 rounded bg-slate-700/40" />
+                <div className="h-4 w-16 rounded bg-slate-700/40" />
+              </div>
+            ))}
+          </div>
         ) : items.length === 0 ? (
           <EmptyState tab={tab} error={data.status === "ERROR" ? data.error : undefined} />
         ) : (
@@ -558,7 +567,17 @@ export default function ReportPage() {
       {tab === "validation" && (
         <div className="space-y-5">
           {!valDashboard ? (
-            <div className="py-12 text-center text-slate-500">불러오는 중...</div>
+            <div className="space-y-3 animate-pulse">
+              <div className="grid grid-cols-3 gap-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                    <div className="h-3 w-16 rounded bg-slate-700/60 mx-auto" />
+                    <div className="mt-3 h-6 w-12 rounded bg-slate-700/40 mx-auto" />
+                  </div>
+                ))}
+              </div>
+              <div className="h-32 rounded-2xl border border-slate-800 bg-slate-800/40" />
+            </div>
           ) : (
             <>
               {/* 요약 카드 */}
