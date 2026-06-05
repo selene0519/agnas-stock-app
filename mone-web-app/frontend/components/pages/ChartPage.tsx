@@ -1086,6 +1086,12 @@ export default function ChartPage() {
                 <div className="mt-1 text-sm text-amber-200/80">
                   추천선·뉴스·기업분석은 별도 원본이므로 위 상태판에서 연결 여부를 확인하세요. 가격 수집은 GitHub Actions 또는 KIS/시세 수집 실행 후 복구됩니다.
                 </div>
+                {selected?.market === "kr" && (
+                  <div className="mt-2 text-xs text-amber-300/70">
+                    국장 OHLCV: <code className="font-mono">data/market/ohlcv/kr_{selected.symbol}_daily.csv</code> 파일 확인 필요.
+                    탐색 → 현재가 새로고침을 누르면 KIS API로 자동 수집됩니다.
+                  </div>
+                )}
               </div>
             )}
 

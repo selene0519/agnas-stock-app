@@ -358,6 +358,10 @@ export default function NewsPage() {
       {/* ── 공시 캘린더 탭 */}
       {tab === "calendar" && (
         <div className="space-y-4">
+          <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
+            <span className="font-semibold text-slate-200">공시 캘린더</span>는 DART(국장) 또는 SEC(미장) 공시 데이터 기반으로 최근 30일간 기업 공시를 날짜별로 정렬해 보여줍니다.
+            관심·보유 종목의 공시가 포함되어 있으면 강조 표시됩니다. 실적 발표일, 주요 공시, 감자·합병 등 이벤트를 미리 확인하는 용도입니다.
+          </div>
           {loading ? (
             <div className="py-12 text-center text-slate-500">불러오는 중...</div>
           ) : !calendarData || calendarData.status === "NO_DATA" ? (
