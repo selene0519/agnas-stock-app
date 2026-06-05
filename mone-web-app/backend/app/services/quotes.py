@@ -552,6 +552,23 @@ def refresh_quotes(market: str = "all", symbols: str | None = None, max_symbols:
     }
 
 
+def fetch_quotes_bulk(market: str, symbols: list[str]) -> list[dict[str, Any]]:
+    """심볼 리스트를 받아 현재가를 일괄 조회한다 (notify 워크플로우용)."""
+    results: list[dict[str, Any]] = []
+    cache = data.quote_cache()
+    cache.setdefault("markets", {}).setdefault(market, {})
+    for symbol in symbols:
+        quote = _fetch_quote(symbol, market)
+        normalized = data.normalize_symbol(symbol, market)
+        if quote.get("ok"):
+            cache["markets"][market][normalized] = quote
+        results.append(quote)
+    if results:
+        cache["updatedAt"] = _now_label()
+        data.save_quote_cache(cache)
+    return results
+
+
 def fetch_kis_holdings_kr() -> dict[str, Any]:
     """KIS API TTTC8434R — 국내 주식잔고 조회 (실전/모의 자동 구분)"""
     if not _kis_enabled():
