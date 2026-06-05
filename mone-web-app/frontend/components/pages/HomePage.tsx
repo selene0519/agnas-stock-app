@@ -83,8 +83,22 @@ function TagChips({ item }: { item: any }) {
   );
 }
 
+// ── 실적발표 D-day 뱃지
+function EarningsBadge({ dday }: { dday: number }) {
+  const color = dday <= 2
+    ? "border-red-500/50 bg-red-500/15 text-red-300"
+    : dday <= 5
+      ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+      : "border-slate-600 bg-slate-800 text-slate-400";
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${color}`}>
+      실적 D-{dday}
+    </span>
+  );
+}
+
 // ── 오늘 진입 카드 (상세)
-function TodayEntryCard({ item, rank, onSelect }: { item: any; rank: number; onSelect: (item: any) => void }) {
+function TodayEntryCard({ item, rank, onSelect, earningsMap }: { item: any; rank: number; onSelect: (item: any) => void; earningsMap?: Record<string, number> }) {
   const ev = Number(item.expectedValue || 0);
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
@@ -95,7 +109,12 @@ function TodayEntryCard({ item, rank, onSelect }: { item: any; rank: number; onS
       <div className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate font-semibold text-slate-100">{displayName(item)}</div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="truncate font-semibold text-slate-100">{displayName(item)}</span>
+            {earningsMap && earningsMap[item.symbol] != null && (
+              <EarningsBadge dday={earningsMap[item.symbol]} />
+            )}
+          </div>
           <div className="mt-0.5 text-[11px] text-slate-500">{item.symbol} · {modeLabel(mode as Mode)} · {horizonLabel(horizon as Horizon)}</div>
         </div>
         <div className="shrink-0 text-right">
@@ -832,6 +851,8 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [showJournal, setShowJournal] = useState(false);
   const [clientReady, setClientReady] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
+  // 실적발표 일정 맵: symbol → D-day
+  const [earningsMap, setEarningsMap] = useState<Record<string, number>>({});
   const sessionClock = clock || new Date();
   const selectedMarket = marketChoice === "auto" ? (clientReady ? getDefaultMarketBySession(sessionClock) : "kr") : marketChoice;
   const sessionStatus = clientReady ? getMarketSessionStatus(selectedMarket, sessionClock) : "확인 중";
@@ -892,6 +913,21 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   useEffect(() => {
     if (clientReady) load();
   }, [clientReady, selectedMarket]);
+
+  // 실적발표 일정 로드 (마운트 1회)
+  useEffect(() => {
+    mone.earningsCalendar({ market: selectedMarket as any, days: 14 })
+      .then((res) => {
+        const map: Record<string, number> = {};
+        const today = new Date();
+        for (const e of (res.items || [])) {
+          const diff = Math.ceil((new Date(e.date).getTime() - today.getTime()) / 86400000);
+          if (diff >= 0 && diff <= 14) map[e.symbol] = diff;
+        }
+        setEarningsMap(map);
+      })
+      .catch(() => {});
+  }, [selectedMarket]);
 
   // ── 브라우저 알림: 장중 진입 임박 종목 감지 (1분 주기)
   useEffect(() => {
@@ -1176,7 +1212,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {todayEntries.map((item, i) => (
-              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onSelect={setSelectedItem} />
+              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onSelect={setSelectedItem} earningsMap={earningsMap} />
             ))}
           </div>
         )}
