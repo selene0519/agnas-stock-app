@@ -5,7 +5,7 @@ import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { dedupeBySymbol, displayName, firstText, formatMoney, horizonLabel, modeLabel, pctText, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
 
-type Tab = "premarket" | "intraday" | "closing" | "virtual" | "validation";
+type Tab = "premarket" | "closing" | "performance";
 
 // ── Metric 카드 ────────────────────────────────────────────────────────
 
@@ -218,11 +218,9 @@ function StrategyBreakdown({ items }: { items: any[] }) {
 // ── 빈 상태 ────────────────────────────────────────────────────────────
 
 const EMPTY_MSGS: Record<Tab, string> = {
-  premarket: "오늘 장전 추천 데이터가 없습니다. 매일 오전 6시 이후 데이터가 갱신됩니다.",
-  intraday: "장중 데이터가 없습니다. 장 시간 중에 다시 확인해 주세요.",
+  premarket: "오늘 추천 데이터가 없습니다. 매일 오전 데이터가 갱신됩니다.",
   closing: "장마감 검증 데이터가 없습니다. 장 마감 후 자동으로 집계됩니다.",
-  virtual: "가상운용 기록이 없습니다. 추천 종목을 선택하면 자동으로 기록됩니다.",
-  validation: "검증 데이터가 아직 없습니다. 더 많은 추천이 쌓이면 집계됩니다.",
+  performance: "검증 기록이 아직 없습니다. 추천이 누적되면 자동으로 표시됩니다.",
 };
 
 function EmptyState({ tab, error }: { tab: Tab; error?: string }) {
@@ -250,6 +248,7 @@ export default function ReportPage() {
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
   const [tab, setTab] = useState<Tab>("premarket");
+  const [showAllItems, setShowAllItems] = useState(false);
   const [data, setData] = useState<any>({ status: "LOADING", items: [] });
   const [virtual, setVirtual] = useState<any>({ status: "LOADING" });
   const [holdings, setHoldings] = useState<any>({ status: "LOADING", items: [] });
@@ -269,39 +268,33 @@ export default function ReportPage() {
     setData({ status: "LOADING", items: [] });
     setValDashboard(null);
 
+    setShowAllItems(false);
+
     const task =
       tab === "closing"
         ? mone.backtestTrades({ market, mode, horizon, limit: 200 })
-        : tab === "virtual"
-          ? mone.virtualValidation({ market, limit: 100 })
-          : tab === "validation"
-            ? mone.virtualValidation({ market, limit: 50 })
-            : mone.report(tab as "premarket" | "intraday", { market, mode, horizon, limit: 200 });
+        : tab === "performance"
+          ? mone.virtualValidation({ market, limit: 80 })
+          : mone.report("premarket", { market, mode, horizon, limit: 200 });
 
     task
       .then((r) => active && setData(r || { status: "OK", items: [] }))
       .catch((e) => active && setData({ status: "ERROR", error: String(e), items: [] }));
 
     // holdings 요약 — 리포트 상단 포트폴리오 카드용
-    mone.holdingsClean({ market, limit: 200 })
+    mone.holdingsClean({ market, limit: 100 })
       .then((r) => active && setHoldings(r || { items: [] })).catch(() => active && setHoldings({ items: [] }));
 
-    // 가상운용/검증 탭에서만 무거운 데이터 요청
-    if (tab === "virtual" || tab === "validation") {
-      const summaryTask = mone.virtualSummary({ market, mode: "all", horizon: "all" });
-      summaryTask
+    if (tab === "performance" || tab === "closing") {
+      mone.virtualSummary({ market, mode: "all", horizon: "all" })
         .then((r) => active && setVirtual(r || {})).catch(() => active && setVirtual({}));
-      // StrategyBreakdown 전략 집계용 (limit 낮춤)
-      mone.virtualValidation({ market, limit: 100 })
+      mone.virtualValidation({ market, limit: 80 })
         .then((r) => active && setVirtualValidation(r || { items: [] })).catch(() => active && setVirtualValidation({ items: [] }));
+      mone.validationDashboard({ market })
+        .then((r) => active && setValDashboard(r || null)).catch(() => active && setValDashboard(null));
     } else {
       mone.backtestSummary({ market, mode, horizon })
         .then((r) => active && setVirtual(r || {})).catch(() => active && setVirtual({}));
-    }
-
-    if (tab === "validation") {
-      mone.validationDashboard({ market })
-        .then((r) => active && setValDashboard(r || null)).catch(() => active && setValDashboard(null));
     }
 
     return () => { active = false; };
@@ -310,11 +303,11 @@ export default function ReportPage() {
   const rawItems = Array.isArray(data.items) ? data.items : [];
   const conflictRowCount = useMemo(() => rawItems.filter(hasConflictMarker).length, [rawItems]);
   const cleanItems = useMemo(() => cleanReportRows(rawItems), [rawItems]);
-  const items = useMemo(() => (tab === "closing" || tab === "virtual" ? cleanItems : dedupeBySymbol(cleanItems)), [cleanItems, tab]);
+  const items = useMemo(() => (tab === "closing" || tab === "performance" ? cleanItems : dedupeBySymbol(cleanItems)), [cleanItems, tab]);
   const todayItems = useMemo(() => latestOnly(items), [items]);
   const closing = tab === "closing";
-  const virtualTab = tab === "virtual";
-  const intraday = tab === "intraday";
+  const performanceTab = tab === "performance";
+  const virtualTab = performanceTab;
 
   const holdingItems = Array.isArray(holdings.items) ? holdings.items : [];
   // v3 backend: marketValue (not valuation), avgPrice*quantity for cost
@@ -350,11 +343,9 @@ export default function ReportPage() {
   const virtualItems = useMemo(() => cleanReportRows(virtualRawItems), [virtualRawItems]);
 
   const tabs: { id: Tab; label: string; desc: string }[] = [
-    { id: "premarket",  label: "장전 리포트",   desc: "오늘 추천 후보 · 홈 매트릭스와 동일 데이터" },
-    { id: "intraday",   label: "장중 체크",      desc: "현재가 기준 진입·위험 접근도" },
-    { id: "closing",    label: "장마감 검증",    desc: "OHLCV 실제 고·저가 기준 체결 여부" },
-    { id: "virtual",    label: "가상운용",       desc: "누적 체결·승률·수익률 + PnL 곡선" },
-    { id: "validation", label: "검증 대시보드",  desc: "9전략 매트릭스 승률·평균수익률" },
+    { id: "premarket",   label: "오늘 추천",   desc: "진입 후보 · EV·손익비·전략 태그" },
+    { id: "closing",     label: "장마감 검증", desc: "당일 OHLCV 기준 체결 자동 판정" },
+    { id: "performance", label: "검증 성과",   desc: "누적 PnL · 전략별 승률·수익률" },
   ];
 
   return (
@@ -364,7 +355,7 @@ export default function ReportPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">운용 리포트</h1>
-          <p className="mt-1 text-xs text-slate-400 sm:text-sm">장전 계획, 장중 접근도, 장마감 검증, 가상운용을 분리해서 확인합니다.</p>
+          <p className="mt-1 text-xs text-slate-400 sm:text-sm">오늘 추천 후보, 장마감 체결 검증, 누적 전략 성과를 확인합니다.</p>
         </div>
         <div className="flex gap-2">
           {(["kr", "us"] as Market[]).map((m) => (
@@ -376,8 +367,8 @@ export default function ReportPage() {
         </div>
       </div>
 
-      {/* ── 탭 — 모바일 2열, 태블릿 3열, 데스크톱 5열 ── */}
-      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-slate-900/60 p-1.5 sm:grid-cols-3 md:grid-cols-5">
+      {/* ── 탭 — 3열 고정 ── */}
+      <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-900/60 p-1.5">
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`rounded-xl px-2 py-2.5 text-left text-xs sm:text-sm ${tab === t.id ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>
@@ -387,25 +378,15 @@ export default function ReportPage() {
         ))}
       </div>
 
-      {/* ── 탭별 용도 설명 배너 ── */}
+      {/* ── 탭별 설명 배너 ── */}
       {tab === "closing" && (
         <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
-          <span className="font-semibold text-slate-200">장마감 검증</span>은 추천 당일의 실제 OHLCV(고·저가)를 기준으로, 진입가에 실제로 닿았는지(체결), 목표가/손절가 어느 쪽에 먼저 닿았는지를 자동 판정합니다.
+          실제 당일 고·저가를 기준으로 진입가가 터치됐는지, 목표/손절 중 어느 쪽이 먼저 닿았는지를 자동 판정합니다.
         </div>
       )}
-      {tab === "virtual" && (
+      {tab === "performance" && (
         <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
-          <span className="font-semibold text-slate-200">가상운용</span>은 장마감 검증으로 체결 확인된 거래들의 누적 승률·수익률·PnL 곡선을 보여줍니다. 실제 주문은 없으며, 추천 전략의 성과를 시뮬레이션합니다.
-        </div>
-      )}
-      {tab === "validation" && (
-        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
-          <span className="font-semibold text-slate-200">검증 대시보드</span>는 보수/균형/공격 × 단기/스윙/중기 9가지 전략 조합별로 승률과 평균 수익률을 매트릭스로 요약합니다. 어떤 전략 조합이 실제로 잘 맞는지 비교할 때 사용하세요.
-        </div>
-      )}
-      {tab === "premarket" && (
-        <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-xs text-slate-400">
-          <span className="font-semibold text-slate-200">장전 리포트</span>는 홈 화면 3×3 매트릭스와 동일한 추천 CSV를 기반으로, 오늘 진입 검토 후보와 매매 계획을 보여줍니다.
+          체결 확인된 거래들의 누적 PnL 곡선과 9가지 전략별 승률·평균수익률을 보여줍니다. 어떤 전략이 실제로 잘 맞는지 비교하는 데 사용하세요.
         </div>
       )}
 
@@ -556,13 +537,6 @@ export default function ReportPage() {
                         <span className={isExec ? "text-emerald-400" : "text-slate-500"}>{execLabel}</span>
                         <span className="text-slate-300">{item.outcomeResult || item.result || "검증 대기"}</span>
                       </div>
-                    ) : intraday ? (
-                      <div className="grid grid-cols-2 gap-1 text-[11px]">
-                        <span className="text-slate-500">현재 <span className="font-mono text-slate-200">{priceText(item, "current", "-")}</span></span>
-                        <span className={`rounded border px-1.5 py-0.5 text-[10px] w-fit ${statusTone(String(item.intradayStatus || ""))}`}>{item.intradayStatus || "관망"}</span>
-                        <span className="text-slate-500">진입까지 <span className="font-mono text-blue-300">{firstText(item.entryDistanceText, "-")}</span></span>
-                        <span className="text-slate-500">손절까지 <span className="font-mono text-red-300">{firstText(item.stopDistanceText, "-")}</span></span>
-                      </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-1 text-[11px]">
                         <span className="text-slate-500">현재 <span className="font-mono text-slate-200">{priceText(item, "current", "-")}</span></span>
@@ -591,13 +565,6 @@ export default function ReportPage() {
                         <th className="px-4 py-3">결과</th>
                         <th className="px-4 py-3">수익률</th>
                         <th className="px-4 py-3">출처</th>
-                      </>
-                    ) : intraday ? (
-                      <>
-                        <th className="px-4 py-3">현재가</th>
-                        <th className="px-4 py-3">진입가까지</th>
-                        <th className="px-4 py-3">손절가까지</th>
-                        <th className="px-4 py-3">장중 상태</th>
                       </>
                     ) : (
                       <>
@@ -634,17 +601,6 @@ export default function ReportPage() {
                             </>
                           );
                         })()
-                      ) : intraday ? (
-                        <>
-                          <td className="px-4 py-3 font-mono text-sm text-slate-100">{priceText(item, "current", "-")}</td>
-                          <td className="px-4 py-3 font-mono text-sm text-blue-300">{firstText(item.entryDistanceText, "-")}</td>
-                          <td className="px-4 py-3 font-mono text-sm text-red-300">{firstText(item.stopDistanceText, "-")}</td>
-                          <td className="px-4 py-3">
-                            <span className={`rounded border px-2 py-0.5 text-xs ${statusTone(String(item.intradayStatus || ""))}`}>
-                              {item.intradayStatus || "관망"}
-                            </span>
-                          </td>
-                        </>
                       ) : (
                         <>
                           <td className="px-4 py-3 font-mono text-sm text-slate-100">{priceText(item, "current", "-")}</td>
@@ -663,8 +619,8 @@ export default function ReportPage() {
         )}
       </div>
 
-      {/* ── 검증 대시보드 탭 ── */}
-      {tab === "validation" && (
+      {/* ── 검증 성과 탭 — 전략별 매트릭스 ── */}
+      {tab === "performance" && (
         <div className="space-y-5">
           {!valDashboard ? (
             <div className="space-y-3 animate-pulse">

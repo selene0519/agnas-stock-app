@@ -410,6 +410,11 @@ export default function PredictionPage() {
             <div className="text-sm font-semibold text-slate-200">9전략 백테스트 매트릭스</div>
             <div className="text-xs text-slate-500">완료 {valDash.summary?.totalCompleted ?? 0}건 · 대기 {valDash.summary?.totalPending ?? 0}건 · 전략평균 승률 {valDash.summary?.overallWinRate != null ? `${valDash.summary.overallWinRate}%` : "—"}</div>
           </div>
+          {(valDash.summary?.totalCompleted ?? 0) < 10 && (
+            <div className="mb-3 rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2 text-xs text-sky-400">
+              데이터 누적 중 ({valDash.summary?.totalCompleted ?? 0}건 완료) — 30건 이상 쌓이면 통계가 의미 있어집니다. 현재 수치는 참고용입니다.
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-[11px]">
               <thead>

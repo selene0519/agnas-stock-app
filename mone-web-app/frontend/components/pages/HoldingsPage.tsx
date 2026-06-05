@@ -22,7 +22,7 @@ async function getJson(path: string) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), HOLDINGS_API_TIMEOUT_MS);
   try {
-    const res = await fetch(apiUrl(path), { cache: "no-store", signal: controller.signal });
+    const res = await fetch(apiUrl(path), { cache: "no-store", signal: controller.signal, headers: getMoneUserHeader() });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       throw new Error(`${res.status} ${res.statusText} ${detail}`.trim());
@@ -38,10 +38,35 @@ async function getJson(path: string) {
   }
 }
 
+function getMoneUserHeader(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const id = localStorage.getItem("mone:userId");
+    return id ? { "x-mone-user": id } : {};
+  } catch { return {}; }
+}
+
+const LS_HOLDINGS_KEY = "mone:holdings_backup";
+
+function saveHoldingsToLocalStorage(items: any[]) {
+  try {
+    localStorage.setItem(LS_HOLDINGS_KEY, JSON.stringify({ items, savedAt: new Date().toISOString() }));
+  } catch {}
+}
+
+function loadHoldingsFromLocalStorage(): any[] {
+  try {
+    const raw = localStorage.getItem(LS_HOLDINGS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.items) ? parsed.items : [];
+  } catch { return []; }
+}
+
 async function postJson(path: string, body: any) {
   const res = await fetch(apiUrl(path), {
     method: "POST", cache: "no-store",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    headers: { Accept: "application/json", "Content-Type": "application/json", ...getMoneUserHeader() },
     body: JSON.stringify(body || {}),
   });
   const text = await res.text().catch(() => "");
@@ -400,13 +425,24 @@ export default function HoldingsPage() {
   const [importCsvText, setImportCsvText] = useState("");
   const [importSaving, setImportSaving] = useState(false);
   const [kisSyncing, setKisSyncing] = useState(false);
+  const [localBackupCount, setLocalBackupCount] = useState(0);
+  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      // 보유목록 먼저 — 빠르게 표시
       const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
       setData(result);
+      // 서버 데이터가 비어있을 때 localStorage 백업 확인
+      const serverItems = Array.isArray(result.items) ? result.items : [];
+      const localItems = loadHoldingsFromLocalStorage();
+      if (serverItems.length === 0 && localItems.length > 0) {
+        setLocalBackupCount(localItems.length);
+        setShowRestorePrompt(true);
+      } else {
+        setShowRestorePrompt(false);
+        if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems); // 서버 데이터로 백업 갱신
+      }
       setLoading(false);
       if (market === "all") {
         setSectorData(null);
@@ -449,9 +485,16 @@ export default function HoldingsPage() {
   }
 
   async function saveRows(nextRows: any[], successMsg: string) {
-    const result = await postJson("/api/holdings-edit/save", { items: nextRows });
-    if (result?.status === "ERROR") throw new Error(result.error || "저장 실패");
-    setMessage(successMsg);
+    // localStorage에 먼저 백업
+    saveHoldingsToLocalStorage(nextRows);
+    try {
+      const result = await postJson("/api/holdings-edit/save", { items: nextRows });
+      if (result?.status === "ERROR") throw new Error(result.error || "저장 실패");
+      setMessage(successMsg);
+    } catch (err) {
+      // 서버 저장 실패 시 localStorage 백업 안내
+      setMessage(`⚠ 서버 저장에 실패했지만 이 기기에는 임시 저장됐습니다. (${err instanceof Error ? err.message : "네트워크 오류"})`);
+    }
     await load();
   }
 
@@ -670,6 +713,27 @@ export default function HoldingsPage() {
             <button onClick={() => { setShowImport(false); setImportCsvText(""); }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">
               <X size={13} /> 취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* localStorage 복원 프롬프트 */}
+      {showRestorePrompt && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-bold text-amber-200">이 기기에 저장된 보유종목이 있습니다</div>
+              <div className="mt-1 text-xs text-amber-300/70">{localBackupCount}개 종목 · 서버에 동기화되지 않은 데이터입니다.</div>
+            </div>
+            <button onClick={async () => {
+              const items = loadHoldingsFromLocalStorage();
+              if (items.length > 0) {
+                await saveRows(items, `로컬 백업 ${items.length}개 종목을 복원했습니다.`);
+                setShowRestorePrompt(false);
+              }
+            }} className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-500">
+              복원하기
             </button>
           </div>
         </div>
