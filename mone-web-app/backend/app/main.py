@@ -73,6 +73,7 @@ def health() -> dict:
         "app": "mone-web-app",
         "repoRoot": str(data.REPO_ROOT),
         "updatedAt": data.latest_updated_at(),
+        "db": _db.backend_info(),
     }
 
 
