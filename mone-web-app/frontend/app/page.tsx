@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, Menu, X } from "lucide-react";
+import { Bell } from "lucide-react";
+import Image from "next/image";
 import Sidebar, { type PageId } from "../components/Sidebar";
+import BottomNav from "../components/BottomNav";
 import TopHoldingTicker from "../components/TopHoldingTicker";
 import SessionSafetyBanner from "../components/SessionSafetyBanner";
 import CashInputBar from "../components/CashInputBar";
@@ -14,7 +16,6 @@ import ChartPage from "../components/pages/ChartPage";
 import NewsPage from "../components/pages/NewsPage";
 import PredictionPage from "../components/pages/PredictionPage";
 import AdvancedPage from "../components/pages/AdvancedPage";
-import AdminPage from "../components/pages/AdminPage";
 import { mone } from "../lib/api";
 import { getDefaultMarketBySession } from "../lib/marketSession";
 
@@ -33,7 +34,6 @@ export default function App() {
   const [notifications, setNotifications] = useState(initialNotifications);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [, setDataVersion] = useState(0);
 
   useEffect(() => setMounted(true), []);
@@ -81,8 +81,6 @@ export default function App() {
         return <PredictionPage />;
       case "advanced":
         return <AdvancedPage />;
-      case "admin":
-        return <AdminPage />;
       default:
         return <HomePage />;
     }
@@ -94,22 +92,28 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
-      <Sidebar current={page} onChange={(id) => { setPage(id); setMobileNavOpen(false); }} mobileOpen={mobileNavOpen} onMobileToggle={() => setMobileNavOpen(v => !v)} />
+      {/* 데스크톱 사이드바 */}
+      <Sidebar current={page} onChange={setPage} />
+
       <div className="flex flex-1 flex-col overflow-hidden">
+        {/* 헤더 */}
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900/60 px-3 backdrop-blur md:px-5">
-          <button
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 md:hidden"
-            onClick={() => setMobileNavOpen(v => !v)}
-          >
-            {mobileNavOpen ? <X size={15} /> : <Menu size={15} />}
-          </button>
+          {/* 모바일: MONE 로고 */}
+          <div className="flex shrink-0 items-center gap-2 md:hidden">
+            <Image src="/brand/mone-symbol.png" alt="MONE" width={26} height={26} className="h-6 w-6 object-contain" priority />
+            <span className="font-mono text-[13px] font-semibold tracking-widest text-slate-200">MONE</span>
+          </div>
+
           <div className="min-w-0 flex-1">
             <TopHoldingTicker />
           </div>
+
           <div className="flex shrink-0 items-center gap-2">
             <span className="hidden font-mono text-xs text-slate-500 md:block">{headerDate}</span>
             <span className="hidden text-slate-700 md:block">·</span>
             <span className="hidden text-xs text-slate-500 md:block">{mounted ? "실시간 동기화" : "방금 전"}</span>
+
+            {/* 알림 */}
             <div className="relative">
               <button
                 className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 transition-colors hover:border-slate-600 hover:text-white"
@@ -117,7 +121,9 @@ export default function App() {
                 title="알림"
               >
                 <Bell size={14} />
-                {notifications.length > 0 && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-400" />}
+                {notifications.length > 0 && (
+                  <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-400" />
+                )}
               </button>
               {notifOpen && (
                 <>
@@ -151,24 +157,43 @@ export default function App() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+
+        {/* 메인 콘텐츠 — 모바일은 하단 탭바 높이(56px) + safe area 만큼 여백 */}
+        <main className="flex-1 overflow-y-auto p-4 pb-[calc(56px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
           <div className="mx-auto max-w-7xl space-y-4">
             <SessionSafetyBanner market={getDefaultMarketBySession()} />
             <CashInputBar />
             {loading && (
-              <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">
-                데이터를 불러오는 중입니다...
+              <div className="space-y-3">
+                <div className="skeleton h-16 w-full" />
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  <div className="skeleton h-24" />
+                  <div className="skeleton h-24" />
+                  <div className="skeleton col-span-2 h-24 md:col-span-1" />
+                </div>
+                <div className="skeleton h-40 w-full" />
               </div>
             )}
             {error && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                데이터 연결 오류: {error}
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-red-200">데이터 연결 오류: {error}</span>
+                  <button
+                    onClick={refresh}
+                    className="ml-3 shrink-0 rounded-lg border border-red-500/40 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10"
+                  >
+                    재시도
+                  </button>
+                </div>
               </div>
             )}
             {renderPage()}
           </div>
         </main>
       </div>
+
+      {/* 모바일 하단 탭바 */}
+      <BottomNav current={page} onChange={setPage} />
     </div>
   );
 }

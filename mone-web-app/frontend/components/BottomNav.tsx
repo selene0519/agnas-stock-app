@@ -1,0 +1,131 @@
+"use client";
+
+import {
+  BarChart2,
+  Brain,
+  Briefcase,
+  Cpu,
+  FileBarChart2,
+  LayoutDashboard,
+  MoreHorizontal,
+  Newspaper,
+  Search,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+import type { PageId } from "./Sidebar";
+
+interface BottomNavProps {
+  current: PageId;
+  onChange: (id: PageId) => void;
+}
+
+const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
+  { id: "home",     label: "홈",   Icon: LayoutDashboard },
+  { id: "stocks",   label: "탐색", Icon: Search },
+  { id: "holdings", label: "보유", Icon: Briefcase },
+  { id: "chart",    label: "분석", Icon: BarChart2 },
+];
+
+const moreTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
+  { id: "report",     label: "운용 리포트",   Icon: FileBarChart2 },
+  { id: "news",       label: "뉴스·기업분석", Icon: Newspaper },
+  { id: "prediction", label: "예측·검증",     Icon: Brain },
+  { id: "advanced",   label: "고급분석",       Icon: Cpu },
+];
+
+const moreIds = new Set<PageId>(moreTabs.map((t) => t.id));
+
+export default function BottomNav({ current, onChange }: BottomNavProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const isMoreActive = moreIds.has(current);
+
+  const handlePrimary = (id: PageId) => {
+    onChange(id);
+    setMoreOpen(false);
+  };
+
+  const handleMore = (id: PageId) => {
+    onChange(id);
+    setMoreOpen(false);
+  };
+
+  return (
+    <>
+      {/* 더보기 드로어 */}
+      {moreOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 md:hidden"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div
+            className="fixed left-0 right-0 z-50 rounded-t-2xl border-t border-slate-700 bg-slate-900 px-4 pt-4 md:hidden"
+            style={{ bottom: "56px" }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-200">더보기</span>
+              <button
+                onClick={() => setMoreOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-slate-400"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pb-4">
+              {moreTabs.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => handleMore(id)}
+                  className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-95 ${
+                    current === id
+                      ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30"
+                      : "bg-slate-800 text-slate-300 active:bg-slate-700"
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span className="text-[13px] font-medium">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 하단 탭바 */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex h-14">
+          {primaryTabs.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => handlePrimary(id)}
+              className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-95 ${
+                current === id ? "text-blue-400" : "text-slate-500"
+              }`}
+            >
+              <Icon size={20} strokeWidth={current === id ? 2.5 : 1.8} />
+              <span className="text-[10px] font-medium">{label}</span>
+            </button>
+          ))}
+
+          {/* 더보기 탭 */}
+          <button
+            onClick={() => setMoreOpen((v) => !v)}
+            className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-95 ${
+              isMoreActive || moreOpen ? "text-blue-400" : "text-slate-500"
+            }`}
+          >
+            <MoreHorizontal size={20} strokeWidth={isMoreActive || moreOpen ? 2.5 : 1.8} />
+            <span className="text-[10px] font-medium">더보기</span>
+            {isMoreActive && (
+              <span className="absolute mt-0 h-1 w-1 rounded-full bg-blue-400" style={{ marginTop: "-18px" }} />
+            )}
+          </button>
+        </div>
+      </nav>
+    </>
+  );
+}

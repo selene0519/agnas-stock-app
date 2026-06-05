@@ -152,3 +152,50 @@ select.input-base { cursor: pointer; }
   100% { transform: translateX(-50%); }
 }
 
+/* ── Mobile PWA ── */
+html {
+  /* iOS 노치·홈바 safe area 변수 사용 가능하도록 */
+  padding-top: env(safe-area-inset-top);
+}
+
+/* iOS 모바일 웹 터치 최적화 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 스크롤 바운스 (iOS 기본값 유지, Android 오버스크롤 방지) */
+body {
+  overscroll-behavior: none;
+}
+
+/* 모바일에서 선택 방지 (버튼/탭바) */
+.select-none {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 탭 버튼 active 피드백 */
+@media (max-width: 767px) {
+  button:active {
+    opacity: 0.7;
+    transition: opacity 0.1s;
+  }
+}
+
+/* 스켈레톤 shimmer 애니메이션 */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 25%,
+    #1e2d4a 50%,
+    var(--bg-elevated) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
