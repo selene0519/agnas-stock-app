@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileText, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
+import PositionManager from "../PositionManager";
+import { mone } from "@/lib/api";
 
 type Market = "all" | "kr" | "us";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
@@ -80,6 +82,20 @@ function dedupe(items: any[]) {
     const key = `${item.market}-${item.symbol}`;
     if (seen.has(key)) return false;
     seen.add(key); return true;
+  });
+}
+
+function extractPositionCandidates(summary: any) {
+  const matrix = summary?.matrix || {};
+  return Object.entries(matrix).flatMap(([key, cell]: [string, any]) => {
+    const [mode, horizon] = key.split("_");
+    const rows = Array.isArray(cell?.items) ? cell.items : [];
+    return rows.map((item: any) => ({
+      ...item,
+      _mode: item._mode || item.mode || mode,
+      _horizon: item._horizon || item.horizon || horizon,
+      market: item.market || summary?.market,
+    }));
   });
 }
 
@@ -427,6 +443,23 @@ export default function HoldingsPage() {
   const [kisSyncing, setKisSyncing] = useState(false);
   const [localBackupCount, setLocalBackupCount] = useState(0);
   const [showRestorePrompt, setShowRestorePrompt] = useState(false);
+  const [positionCandidates, setPositionCandidates] = useState<any[]>([]);
+  const [positionLoading, setPositionLoading] = useState(false);
+
+  async function loadPositionCandidates(nextMarket: Market) {
+    setPositionLoading(true);
+    try {
+      const markets = nextMarket === "all" ? ["kr", "us"] : [nextMarket];
+      const results = await Promise.all(
+        markets.map((m) => mone.homeSummary({ market: m as any, limit: 12 }).catch(() => null))
+      );
+      setPositionCandidates(dedupe(results.flatMap((result) => extractPositionCandidates(result))));
+    } catch {
+      setPositionCandidates([]);
+    } finally {
+      setPositionLoading(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -443,6 +476,7 @@ export default function HoldingsPage() {
         setShowRestorePrompt(false);
         if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems); // 서버 데이터로 백업 갱신
       }
+      loadPositionCandidates(market);
       setLoading(false);
       if (market === "all") {
         setSectorData(null);
@@ -760,6 +794,8 @@ export default function HoldingsPage() {
         <SummaryCard label="주의/위험" value={`${riskCount}개`}
           accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
       </div>
+
+      <PositionManager items={positionCandidates} loading={positionLoading} />
 
       {summary.mixedCurrency && (
         <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200 space-y-1">

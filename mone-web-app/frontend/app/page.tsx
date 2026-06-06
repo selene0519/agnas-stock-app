@@ -7,7 +7,6 @@ import Sidebar, { type PageId } from "../components/Sidebar";
 import BottomNav from "../components/BottomNav";
 import TopHoldingTicker from "../components/TopHoldingTicker";
 import SessionSafetyBanner from "../components/SessionSafetyBanner";
-import CashInputBar from "../components/CashInputBar";
 import HomePage from "../components/pages/HomePage";
 import ReportPage from "../components/pages/ReportPage";
 import StocksPage from "../components/pages/StocksPage";
@@ -197,7 +196,6 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-4 pb-[calc(56px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
           <div className="mx-auto max-w-7xl space-y-4">
             <SessionSafetyBanner market={getDefaultMarketBySession()} />
-            <CashInputBar />
             {loading && (
               <div className="space-y-3">
                 <div className="skeleton h-16 w-full" />

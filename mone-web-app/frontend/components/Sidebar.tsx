@@ -100,7 +100,7 @@ export default function Sidebar({ current, onChange }: Props) {
               관리자
             </div>
           )}
-          {adminItems.map((item) => (
+          {adminItems.filter((item) => item.id !== "report").map((item) => (
             <button
               key={item.id}
               type="button"

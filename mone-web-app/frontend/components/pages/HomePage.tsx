@@ -1120,6 +1120,59 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
 }
 
 // ── 메인 컴포넌트
+function ReportDigestCard({ digest, loading }: { digest: any; loading: boolean }) {
+  const premarket = digest?.premarket || {};
+  const closing = digest?.closing || {};
+  const backtest = digest?.backtest || {};
+  const preItems = Array.isArray(premarket.items) ? premarket.items : [];
+  const closingItems = Array.isArray(closing.items) ? closing.items : [];
+  const stat = backtest.summary || backtest.stats || backtest;
+  const winRate = Number(stat.winRate ?? stat.win_rate ?? stat.accuracy ?? NaN);
+  const avgReturn = Number(stat.avgReturn ?? stat.avg_return ?? stat.averageReturn ?? NaN);
+  const sample = Number(stat.totalTrades ?? stat.total ?? stat.count ?? stat.sample ?? 0);
+  const top = preItems[0] || {};
+
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-100">운용 리포트 요약</h2>
+          <p className="mt-0.5 text-xs text-slate-500">장전 후보, 장마감 검증, 전략 성과를 홈에서 바로 확인합니다.</p>
+        </div>
+        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+          loading ? "border-slate-700 bg-slate-800 text-slate-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+        }`}>
+          {loading ? "갱신 중" : "요약"}
+        </span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+          <div className="text-[11px] text-slate-500">장전 후보</div>
+          <div className="mt-1 font-mono text-lg font-bold text-emerald-300">{loading ? "-" : `${preItems.length}개`}</div>
+          <div className="mt-1 truncate text-[11px] text-slate-400">{top.name || top.companyName || top.symbol || "후보 없음"}</div>
+        </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+          <div className="text-[11px] text-slate-500">장마감 검증</div>
+          <div className="mt-1 font-mono text-lg font-bold text-sky-300">{loading ? "-" : `${closingItems.length}건`}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{closing.status || "대기"}</div>
+        </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+          <div className="text-[11px] text-slate-500">승률</div>
+          <div className="mt-1 font-mono text-lg font-bold text-violet-300">{Number.isFinite(winRate) ? `${winRate.toFixed(1)}%` : "-"}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{sample > 0 ? `${sample}회 표본` : "검증 누적 대기"}</div>
+        </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+          <div className="text-[11px] text-slate-500">평균 수익률</div>
+          <div className={`mt-1 font-mono text-lg font-bold ${Number.isFinite(avgReturn) && avgReturn < 0 ? "text-red-300" : "text-emerald-300"}`}>
+            {Number.isFinite(avgReturn) ? `${avgReturn >= 0 ? "+" : ""}${avgReturn.toFixed(2)}%` : "-"}
+          </div>
+          <div className="mt-1 text-[11px] text-slate-400">balanced / swing</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) => void }) {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [matrix, setMatrix] = useState<StrategyCell[]>([]);
@@ -1130,10 +1183,11 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [loading, setLoading] = useState(true);
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [capital, setCapital] = useState<number>(0);
   const [showJournal, setShowJournal] = useState(false);
   const [showMatrix, setShowMatrix] = useState(false);
   const [badgeMap, setBadgeMap] = useState<Record<string, any>>({});
+  const [reportDigest, setReportDigest] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [storyMap, setStoryMap] = useState<Record<string, any>>({});
   const [editStory, setEditStory] = useState<string | null>(null);
   const [storyForm, setStoryForm] = useState({ why: "", invalidation: "", reviewDate: "" });
@@ -1190,8 +1244,6 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
     setClientReady(true);
     const saved = window.localStorage.getItem("mone:selectedMarketMode");
     if (saved === "kr" || saved === "us" || saved === "auto") setMarketChoice(saved);
-    const savedCapital = Number(window.localStorage.getItem("mone:capital") || 0);
-    if (savedCapital >= 100_000) setCapital(savedCapital);
     try {
       const savedStories = JSON.parse(window.localStorage.getItem("mone:stories") || "{}");
       setStoryMap(savedStories);
@@ -1204,6 +1256,23 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
 
   useEffect(() => {
     if (clientReady) load();
+  }, [clientReady, selectedMarket]);
+
+  useEffect(() => {
+    if (!clientReady) return;
+    setReportLoading(true);
+    Promise.allSettled([
+      mone.report("premarket", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
+      mone.report("closing", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
+      mone.backtestSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" }),
+    ]).then(([premarket, closing, backtest]) => {
+      setReportDigest({
+        premarket: premarket.status === "fulfilled" ? premarket.value : null,
+        closing: closing.status === "fulfilled" ? closing.value : null,
+        backtest: backtest.status === "fulfilled" ? backtest.value : null,
+      });
+    }).catch(() => setReportDigest(null))
+      .finally(() => setReportLoading(false));
   }, [clientReady, selectedMarket]);
 
   // 실적발표 일정 로드 (마운트 1회)
@@ -1554,6 +1623,8 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         ))}
       </div>
 
+      <ReportDigestCard digest={reportDigest} loading={reportLoading} />
+
       {/* ━━ 오늘 진입 후보 ━━ */}
       <section className="rounded-2xl border border-emerald-900/50 bg-emerald-950/10 p-5">
         <div className="mb-4 flex items-center gap-2">
@@ -1594,9 +1665,6 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           </div>
         )}
       </section>
-
-      {/* ━━ 포지션 사이징 ━━ */}
-      {!loading && <PositionSizingSection items={allItems} capital={capital} setCapital={setCapital} />}
 
       {/* ━━ 대기 관찰 후보 ━━ */}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
