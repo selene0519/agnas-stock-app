@@ -458,8 +458,8 @@ function calcZigZag(data: CandleBar[], winSize = 5): { time: string; value: numb
     let isH = true, isL = true;
     for (let j = i - winSize; j <= i + winSize; j++) {
       if (j === i) continue;
-      if (data[j].high >= h) isH = false;
-      if (data[j].low <= l) isL = false;
+      if (data[j].high > h) isH = false;   // 수정: >= → > (동일값 허용)
+      if (data[j].low < l)  isL = false;   // 수정: <= → < (동일값 허용)
     }
     if (isH) raw.push({ time: data[i].time, value: h, type: "H" });
     else if (isL) raw.push({ time: data[i].time, value: l, type: "L" });
@@ -477,11 +477,25 @@ function calcZigZag(data: CandleBar[], winSize = 5): { time: string; value: numb
       filtered[filtered.length - 1] = p;
     }
   }
-  return filtered.map(({ time, value }) => ({ time, value }));
+
+  // 마지막 피벗 이후 최근봉 극값 추가 (선이 끊기지 않도록)
+  const result = filtered.map(({ time, value }) => ({ time, value }));
+  if (result.length > 0) {
+    const lastFiltered = filtered[filtered.length - 1];
+    const lastBar = data[data.length - 1];
+    const lastType = lastFiltered.type;
+    const tail = lastType === "H"
+      ? { time: lastBar.time, value: Math.min(...data.slice(-winSize).map(d => d.low)) }
+      : { time: lastBar.time, value: Math.max(...data.slice(-winSize).map(d => d.high)) };
+    if (tail.time !== result[result.length - 1].time) result.push(tail);
+  }
+  return result;
 }
 
-/** 매물대: 거래량 가중 가격 밀집 구간 상위 N개 */
-function calcSupplyZones(data: CandleBar[], volumes: number[], topN = 3): { price: number; strength: number }[] {
+/** 매물대: 거래량 가중 가격 밀집 구간 상위 N개 — 상·하단 가격 포함 */
+function calcSupplyZones(
+  data: CandleBar[], volumes: number[], topN = 3
+): { upper: number; lower: number; center: number; strength: number }[] {
   if (data.length < 10) return [];
   const prices = data.map((d) => (d.high + d.low) / 2);
   const minP = Math.min(...prices), maxP = Math.max(...prices);
@@ -496,7 +510,12 @@ function calcSupplyZones(data: CandleBar[], volumes: number[], topN = 3): { pric
   });
   const maxVol = Math.max(...buckets);
   return buckets
-    .map((vol, idx) => ({ price: minP + (idx + 0.5) * binSize, strength: vol / (maxVol || 1) }))
+    .map((vol, idx) => ({
+      lower:   minP + idx * binSize,
+      center:  minP + (idx + 0.5) * binSize,
+      upper:   minP + (idx + 1) * binSize,
+      strength: vol / (maxVol || 1),
+    }))
     .filter((z) => z.strength > 0.4)
     .sort((a, b) => b.strength - a.strength)
     .slice(0, topN);
@@ -669,29 +688,25 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
           }
         }
 
-        // ── Phase 6: 매물대 압축
+        // ── Phase 6: 매물대 압축 (상·하단 밴드 표시)
         if (toggles.supply && candleData.length >= 20) {
-          const vols = candleData.map((d) => {
-            const r = rows.find((row: any) => chartTime(row) === d.time);
-            return r ? Number(r.volume || r.Volume || 0) : 0;
-          });
+          const volMap = new Map(rows.map((row: any) => [chartTime(row), Number(row.volume || row.Volume || 0)]));
+          const vols = candleData.map((d) => volMap.get(d.time) || 0);
           const zones = calcSupplyZones(candleData, vols, 3);
           zones.forEach((zone) => {
-            const alpha = Math.round(zone.strength * 120).toString(16).padStart(2, "0");
-            candleSeries.createPriceLine({
-              price: zone.price,
-              color: `#f59e0b${alpha}`,
-              lineWidth: 2,
-              lineStyle: LW.LineStyle.Dotted,
-              axisLabelVisible: false,
-              title: zone.strength > 0.7 ? "매물대" : "",
-            });
+            const alpha = Math.round(zone.strength * 150).toString(16).padStart(2, "0");
+            const color = `#f59e0b${alpha}`;
+            // 상단선
+            candleSeries.createPriceLine({ price: zone.upper, color, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: zone.strength > 0.75 ? "매물대" : "" });
+            // 하단선
+            candleSeries.createPriceLine({ price: zone.lower, color, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: "" });
           });
         }
 
-        // ── Phase 6: 가짜 돌파 감지
+        // ── Phase 6: 가짜 돌파 감지 (시간순 정렬 보장)
         if (toggles.fakeBreak && candleData.length >= 25) {
-          const markers = calcFakeBreakouts(candleData, 20);
+          const markers = calcFakeBreakouts(candleData, 20)
+            .sort((a, b) => (a.time < b.time ? -1 : 1));
           if (markers.length > 0) {
             candleSeries.setMarkers(markers);
           }
