@@ -1501,7 +1501,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
                   {dataHealth.kisLiveCount ?? 0}<span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}</span>
                 </span>
                 {priceStatus === "PARTIAL" && <span className="text-amber-500">부분 수집</span>}
-                {priceStatus === "ERROR" && <span className="text-red-400">수집 오류</span>}
+                {priceStatus === "ERROR" && <span className="text-red-400">장외/KIS 미수집</span>}
               </span>
 
               {/* OHLCV 상태 */}

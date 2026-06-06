@@ -104,44 +104,25 @@ function derivedIndicators(rows: any[], latest: any, recInd: any) {
 
 function relatedItems(items: any[], selected: MoneSymbol | null) {
   if (!selected) return [];
-  const query = `${selected.symbol} ${selected.name}`.toLowerCase();
+  const sym = selected.symbol.toLowerCase();
+  const nameParts = selected.name.toLowerCase().split(/[\s·\-]+/).filter((p) => p.length >= 2);
+
+  // 1순위: symbol 정확 매칭 (공시는 symbol 컬럼 있음)
+  const bySymbol = items.filter((item) => String(item.symbol || "").toLowerCase() === sym);
+  if (bySymbol.length) return bySymbol.slice(0, 5);
+
+  // 2순위: 종목명 텍스트 포함 매칭
   return items.filter((item) => {
-    const text = [item.symbol, item.name, item.company, item.title, item.reportName, item.summary].filter(Boolean).join(" ").toLowerCase();
-    return query.split(" ").some((p) => p && text.includes(p));
-  }).slice(0, 4);
+    const text = [item.symbol, item.name, item.company, item.title, item.reportName, item.summary]
+      .filter(Boolean).join(" ").toLowerCase();
+    return sym === text.slice(0, sym.length) // 심볼로 시작하거나
+      || nameParts.some((p) => text.includes(p)); // 종목명 단어 포함
+  }).slice(0, 5);
 }
 
-function reportNewsFallback(levels: any) {
-  if (!levels) return [];
-  const text = [levels.eventContext, levels.timingReason, levels.decisionReason, levels.surgeReason]
-    .filter(Boolean)
-    .join(" / ");
-  const count = Number(levels.newsCount || 0);
-  return [{
-    title: "Recommendation report news context",
-    summary: text || (count > 0
-      ? `${count} linked news item(s) were counted in the recommendation report.`
-      : "No separate news URL was attached; using the recommendation/validation source context."),
-    source: levels.sourceFile || levels.priceSource || "recommendation report",
-    date: String(levels.generatedAt || levels.sourceDate || "").slice(0, 10),
-  }];
-}
-
-function reportDisclosureFallback(levels: any) {
-  if (!levels) return [];
-  const text = [levels.eventBadgesText, levels.eventContext, levels.riskReason]
-    .filter(Boolean)
-    .join(" / ");
-  const count = Number(levels.disclosureCount || 0);
-  return [{
-    title: "Recommendation report disclosure/research context",
-    summary: text || (count > 0
-      ? `${count} linked disclosure/research item(s) were counted in the recommendation report.`
-      : "No separate disclosure/research URL was attached; using the recommendation/validation source context."),
-    source: levels.sourceFile || "recommendation report",
-    date: String(levels.generatedAt || levels.sourceDate || "").slice(0, 10),
-  }];
-}
+// fallback 제거 — 혼란스러운 "Recommendation report" 항목 대신 빈 상태 표시
+function reportNewsFallback(_levels: any) { return []; }
+function reportDisclosureFallback(_levels: any) { return []; }
 
 function companyFallback(levels: any) {
   if (!levels) return null;
@@ -979,7 +960,7 @@ export default function ChartPage() {
       mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal),
       mone.news({ market: selected.market, limit: 200 }, controller.signal),
       mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal),
-      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 6000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 15000, { status: "TIMEOUT", items: [] }),
     ]).then((results) => {
       if (!active) return;
       const [cd, rd, nd, dd, company_d] = results.map((r) => r.status === "fulfilled" ? r.value : { items: [] }) as any[];
@@ -994,10 +975,8 @@ export default function ChartPage() {
       const detailItem = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
       const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
       setLevels(matched || null);
-      const relatedNews = relatedItems(newsItems, selected);
-      const relatedDisclosures = relatedItems(disclosureItems, selected);
-      const displayNews = relatedNews.length ? relatedNews : reportNewsFallback(matched);
-      const displayDisclosures = relatedDisclosures.length ? relatedDisclosures : reportDisclosureFallback(matched);
+      const displayNews = relatedItems(newsItems, selected);
+      const displayDisclosures = relatedItems(disclosureItems, selected);
       setNews(displayNews);
       setDisclosures(displayDisclosures);
       const cm = Array.isArray(company_d.items) ? company_d.items.find((item: any) => normalizeSymbol(item) === selected.symbol) || company_d.items[0] : null;
@@ -1406,10 +1385,32 @@ export default function ChartPage() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Panel title="관련 뉴스">
-              {loading ? <Empty text="불러오는 중..." /> : news.length === 0 ? <Empty text="연결된 뉴스가 없습니다." /> : news.map((item, i) => <Related key={`news-${i}`} item={item} />)}
+              {loading
+                ? <Empty text="데이터 확인 중..." />
+                : news.length === 0
+                  ? <Empty text={`이 종목 관련 뉴스가 없습니다. 뉴스는 장전·장후 자동 수집됩니다.`} />
+                  : <div className="space-y-2">{news.map((item, i) => <Related key={`news-${i}`} item={item} />)}</div>}
             </Panel>
-            <Panel title="관련 공시·리서치">
-              {loading ? <Empty text="불러오는 중..." /> : disclosures.length === 0 ? <Empty text="연결된 공시/리서치 원본이 없습니다." /> : disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} />)}
+            <Panel title="관련 공시 (DART)">
+              {loading
+                ? <Empty text="데이터 확인 중..." />
+                : disclosures.length === 0
+                  ? (
+                    <div className="space-y-2">
+                      <Empty text="이 종목 관련 공시가 없습니다. 매주 월요일 자동 수집됩니다." />
+                      {selected && (
+                        <a
+                          href={`https://dart.fss.or.kr/dsab007/main.do`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-sky-400 hover:bg-slate-800 transition-colors"
+                        >
+                          <span>DART 전자공시 바로가기 →</span>
+                        </a>
+                      )}
+                    </div>
+                  )
+                  : <div className="space-y-2">{disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} />)}</div>}
             </Panel>
           </div>
         </div>
@@ -1437,13 +1438,44 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 function Empty({ text }: { text: string }) {
   return <div className="rounded-xl border border-dashed border-slate-800 p-4 text-sm text-slate-500">{text}</div>;
 }
+function formatKoreanDate(raw: string): string {
+  if (!raw) return "";
+  const s = String(raw).replace(/[^0-9]/g, "");
+  if (s.length === 8) return `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
+  const d = raw.slice(0, 10);
+  return d || raw;
+}
+
 function Related({ item }: { item: any }) {
   const title = item.title || item.reportName || item.headline || item.summary || "제목 없음";
-  const date = item.date || item.publishedAt || item.disclosedAt || "";
+  const rawDate = item.date || item.publishedAt || item.disclosedAt || "";
+  const date = formatKoreanDate(rawDate);
+  const link = item.url || item.link || item.articleUrl || "";
+  const source = item.source || item.sourceName || item.publisher || "";
+
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-      <div className="line-clamp-2 text-sm font-medium text-slate-100">{title}</div>
-      <div className="mt-1 text-xs text-slate-500">{item.source || item.publisher || "출처 확인 필요"} · {date || "날짜 없음"}</div>
+    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-1.5">
+      <div className="line-clamp-2 text-sm font-medium text-slate-100 leading-snug">{title}</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs text-slate-500">
+          {source && <span className="text-slate-400">{source}</span>}
+          {source && date && <span className="mx-1 text-slate-700">·</span>}
+          {date && <span>{date}</span>}
+        </div>
+        {link ? (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 rounded-lg border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-sky-400 hover:bg-slate-700 hover:text-sky-300 transition-colors"
+          >
+            원문 →
+          </a>
+        ) : (
+          <span className="shrink-0 text-[10px] text-slate-600">링크 없음</span>
+        )}
+      </div>
     </div>
   );
 }
