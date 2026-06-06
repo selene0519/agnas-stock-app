@@ -18,7 +18,7 @@ function alertTitle(alert: any) {
   const symbol = normalizeSymbol(alert);
   const market = normalizeMarket(alert.market, symbol);
   const name = displayName(symbol, market, alert.name || alert.company);
-  const kind = String(alert.message || alert.type || "진입가 임박").replace(symbol, "").trim() || "진입가 임박";
+  const kind = String(alert.message || alert.type || "기준가 임박").replace(symbol, "").trim() || "기준가 임박";
   return `${kind}: ${name}`;
 }
 
@@ -114,7 +114,7 @@ export default function SessionSafetyBanner({
             ) : quality.isHoliday ? (
               <p className="mt-1 text-xs text-blue-200">시장 휴장일입니다. 신규 진입보다 지난 운용 리포트와 검증 결과를 확인하세요.</p>
             ) : alerts.length > 0 ? (
-              <p className="mt-1 text-xs text-amber-200">현재 진입가/손절가 1% 이내 근접 알림 {alerts.length}건이 있습니다.</p>
+              <p className="mt-1 text-xs text-amber-200">현재 기준가/손절가 1% 이내 근접 알림 {alerts.length}건이 있습니다.</p>
             ) : (
               <p className="mt-1 text-xs text-slate-400">화면 복귀 시 세션과 데이터 상태를 자동으로 다시 동기화합니다.</p>
             )}

@@ -642,7 +642,7 @@ export default function HoldingsPage() {
   const totalValueText = summary.totalValueText || (items.length > 0 ?
     items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
   const actionItems = useMemo(() => {
-    const rows: { key: string; tone: "red" | "amber" | "blue"; title: string; detail: string }[] = [];
+    const rows: { key: string; tone: "red" | "amber" | "blue"; title: string; detail: string; action?: "stop" | "target" }[] = [];
     for (const holding of items) {
       const name = displayName(holding);
       const symbol = String(holding.symbol || "");
@@ -655,8 +655,8 @@ export default function HoldingsPage() {
       if (!holding.currentPrice || Number(holding.currentPrice) <= 0) {
         rows.push({ key: `${symbol}-price`, tone: "amber", title: `${name} 현재가 없음`, detail: "수동 갱신 또는 다음 수집 필요" });
       }
-      if (stopMissing) rows.push({ key: `${symbol}-stop`, tone: "amber", title: `${name} 손절가 필요`, detail: "보유 리스크 판단 기준 없음" });
-      if (targetMissing) rows.push({ key: `${symbol}-target`, tone: "blue", title: `${name} 목표가 필요`, detail: "익절 판단 기준 없음" });
+      if (stopMissing) rows.push({ key: `${symbol}-stop`, tone: "amber", title: `${name} 손절가 필요`, detail: "보유 리스크 판단 기준 없음", action: "stop" });
+      if (targetMissing) rows.push({ key: `${symbol}-target`, tone: "blue", title: `${name} 목표가 필요`, detail: "익절 판단 기준 없음", action: "target" });
       if (stopGapPct !== null && stopGapPct <= 2) {
         rows.push({ key: `${symbol}-stop-near`, tone: "red", title: `${name} 손절 근접`, detail: `${stopGapPct.toFixed(2)}% 여유` });
       } else if (stopGapPct !== null && stopGapPct <= 5) {
@@ -668,6 +668,17 @@ export default function HoldingsPage() {
     }
     return rows.slice(0, 8);
   }, [items]);
+
+  function openEditFromAction(actionKey: string) {
+    const symbol = actionKey.replace(/-(stop|target|price|stop-near|stop-watch|target-near)$/g, "");
+    const holding = items.find((item) => String(item.symbol || "") === symbol);
+    if (!holding) return;
+    const key = editableKey(holding);
+    setEditKey(key);
+    setEditDraft(toEditableHolding(holding));
+    setDeleteConfirmKey(null);
+    setMessage("");
+  }
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -800,6 +811,18 @@ export default function HoldingsPage() {
       {summary.mixedCurrency && (
         <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200 space-y-1">
           <div>KR/US 혼합 보유 — 평가금액·손익은 통화별로 분리 표시합니다.</div>
+          {(() => {
+            const usBucket = summary.marketBreakdown?.find((b: any) => b.market === "us") || {};
+            const krBucket = summary.marketBreakdown?.find((b: any) => b.market === "kr") || {};
+            return (
+              <div className="grid gap-2 pt-2 sm:grid-cols-2 lg:grid-cols-4">
+                <Mini label="원화 평가금액" value={`${Math.round(Number(krBucket.totalValue || 0)).toLocaleString("ko-KR")}원`} />
+                <Mini label="달러 평가금액" value={`$${Number(usBucket.totalValue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
+                <Mini label="원화 평가손익" value={`${Number(krBucket.totalPnl || 0) >= 0 ? "+" : ""}${Math.round(Number(krBucket.totalPnl || 0)).toLocaleString("ko-KR")}원`} accent={Number(krBucket.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
+                <Mini label="달러 평가손익" value={`${Number(usBucket.totalPnl || 0) >= 0 ? "+$" : "-$"}${Math.abs(Number(usBucket.totalPnl || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`} accent={Number(usBucket.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
+              </div>
+            );
+          })()}
           {usdToKrw ? (() => {
             const usBucket = summary.marketBreakdown?.find((b: any) => b.market === "us");
             const krBucket = summary.marketBreakdown?.find((b: any) => b.market === "kr");
@@ -844,6 +867,15 @@ export default function HoldingsPage() {
                   "text-amber-300"
                 }`}>{item.title}</div>
                 <div className="mt-1 text-[11px] text-slate-400">{item.detail}</div>
+                {item.action && (
+                  <button
+                    type="button"
+                    onClick={() => openEditFromAction(item.key)}
+                    className="mt-2 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800"
+                  >
+                    {item.action === "stop" ? "손절가 설정" : "목표가 설정"}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -1006,8 +1038,9 @@ export default function HoldingsPage() {
                   {!isEditing && (
                     <>
                       <button onClick={() => refreshOneQuote(holding)} disabled={savingKey === key}
-                        className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs text-blue-300 hover:bg-blue-500/20 disabled:opacity-50" title="현재가 새로고침">
+                        className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs text-blue-300 hover:bg-blue-500/20 disabled:opacity-50" title="빠른점검: 현재가 새로고침" aria-label="빠른점검: 현재가 새로고침">
                         <Zap size={11} />
+                        <span>빠른점검</span>
                       </button>
                       <button onClick={() => { setEditKey(key); setEditDraft(toEditableHolding(holding)); setDeleteConfirmKey(null); setMessage(""); }}
                         className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800">

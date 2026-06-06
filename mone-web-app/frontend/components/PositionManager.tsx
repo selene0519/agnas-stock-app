@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Calculator } from "lucide-react";
 import type { Horizon, Mode } from "@/lib/api";
-import { displayName, horizonLabel, modeLabel } from "@/lib/moneDisplay";
+import { displayName, horizonLabel, modeLabel, shouldHideSizingForTrust } from "@/lib/moneDisplay";
 
 const LS_CAPITAL_KEY = "mone:capital";
 const LEGACY_CASH_KEY = "mone_cash_amount";
@@ -42,6 +42,7 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
   const seen = new Set<string>();
   return (items || [])
     .filter(isEntryCandidate)
+    .filter((item) => !shouldHideSizingForTrust(item))
     .flatMap((item) => {
       const mode = String(item._mode || item.mode || "balanced");
       const horizon = String(item._horizon || item.horizon || "swing");
@@ -117,7 +118,7 @@ export default function PositionManager({ items, loading = false }: { items: any
           <Calculator size={18} className="shrink-0 text-violet-300" />
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-slate-100">포지션 매니저</h2>
-            <p className="text-xs text-slate-500">가용 예수금 기준으로 오늘 진입 후보의 권장 수량을 계산합니다.</p>
+            <p className="text-xs text-slate-500">후보별 참고 금액과 모의 수량을 계산합니다.</p>
           </div>
         </div>
         <label className="flex items-center gap-2 text-xs text-slate-500">
@@ -137,9 +138,9 @@ export default function PositionManager({ items, loading = false }: { items: any
       {loading ? (
         <div className="py-6 text-center text-sm text-slate-500">후보를 불러오는 중입니다.</div>
       ) : capital <= 0 ? (
-        <div className="py-6 text-center text-sm text-slate-500">가용 예수금을 입력하면 후보별 금액과 수량을 계산합니다.</div>
+        <div className="py-6 text-center text-sm text-slate-500">가용 예수금을 입력하면 후보별 참고 금액과 모의 수량을 계산합니다.</div>
       ) : rows.length === 0 ? (
-        <div className="py-6 text-center text-sm text-slate-500">현재 계산 가능한 오늘 진입 후보가 없습니다.</div>
+        <div className="py-6 text-center text-sm text-slate-500">현재 계산 가능한 관찰 후보가 없습니다. 지연/오류 데이터 후보는 모의 수량에서 제외됩니다.</div>
       ) : (
         <>
           <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
@@ -153,7 +154,7 @@ export default function PositionManager({ items, loading = false }: { items: any
                 style={{ width: `${Math.min(100, Math.max(0, allocPct))}%` }}
               />
             </div>
-            <div className="mt-1.5 text-[10px] text-slate-500">자동 주문은 없고, 수량 산출만 제공합니다.</div>
+            <div className="mt-1.5 text-[10px] text-slate-500">자동 주문은 없고, 모의 수량 산출만 제공합니다.</div>
           </div>
 
           <div className="overflow-x-auto">
@@ -162,11 +163,11 @@ export default function PositionManager({ items, loading = false }: { items: any
                 <tr className="border-b border-slate-800 text-slate-500">
                   <th className="pb-2 text-left font-medium">종목</th>
                   <th className="pb-2 text-left font-medium">전략</th>
-                  <th className="pb-2 text-right font-medium">진입가</th>
+                  <th className="pb-2 text-right font-medium">기준가</th>
                   <th className="pb-2 text-right font-medium">확률</th>
                   <th className="pb-2 text-right font-medium">Half-Kelly</th>
                   <th className="pb-2 text-right font-medium">금액</th>
-                  <th className="pb-2 text-right font-medium">수량</th>
+                  <th className="pb-2 text-right font-medium">모의 수량</th>
                   <th className="pb-2 text-right font-medium">EV</th>
                 </tr>
               </thead>
