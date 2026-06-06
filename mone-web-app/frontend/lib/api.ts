@@ -326,6 +326,18 @@ export const mone = {
     apiPost<any>("/api/holdings/import-csv", body),
   earningsCalendar: (p?: { market?: "kr" | "us" | "all"; days?: number }) =>
     apiGet<ApiList>("/api/earnings-calendar", p),
+  // Phase 3 — Signal Ledger
+  signalsRecord: (body: Record<string, any>) =>
+    apiPost<any>("/api/signals/record", body),
+  signalsBadge: (p: { symbol: string; horizon?: string; mode?: string }) =>
+    apiGet<any>("/api/signals/badge", p),
+  signalsVerify: () =>
+    apiPost<any>("/api/signals/verify", {}),
+  signalsLedger: (p?: { market?: string; limit?: number }) =>
+    apiGet<any>("/api/signals/ledger", p),
+  // Phase 4 — Portfolio Conflict
+  portfolioConflict: (p: { symbol: string; market?: string; sector?: string }) =>
+    apiGet<any>("/api/portfolio/conflict", p),
   refreshNews: (market?: "kr" | "us" | "all") =>
     apiPost<any>("/api/news/refresh", {}, market ? { market } : {}),
   refreshDisclosures: (market?: "kr" | "us" | "all") =>

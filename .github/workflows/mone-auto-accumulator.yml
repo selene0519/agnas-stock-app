@@ -477,6 +477,23 @@ jobs:
           fi
           set -e
 
+      - name: Verify signal ledger outcomes (호라이즌별 자동 결과 검증)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services import signal_ledger as sl
+          result = sl.verify()
+          print(f"[signal_ledger] verified={result.get('verified', 0)}, skipped={result.get('skipped', 0)}")
+          PY
+          echo "signal_ledger verify: exit $?"
+          set -e
+
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
@@ -532,6 +549,7 @@ jobs:
 
             # Data files used by the app as source/cache.
             git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
+            git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
 
             # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
             git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true

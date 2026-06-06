@@ -98,7 +98,7 @@ function EarningsBadge({ dday }: { dday: number }) {
 }
 
 // ── 오늘 진입 카드 (상세)
-function TodayEntryCard({ item, rank, onSelect, earningsMap }: { item: any; rank: number; onSelect: (item: any) => void; earningsMap?: Record<string, number> }) {
+function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item: any; rank: number; onSelect: (item: any) => void; earningsMap?: Record<string, number>; badgeMap?: Record<string, any> }) {
   const ev = Number(item.expectedValue || 0);
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
@@ -114,6 +114,7 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap }: { item: any; rank
             {earningsMap && earningsMap[item.symbol] != null && (
               <EarningsBadge dday={earningsMap[item.symbol]} />
             )}
+            {badgeMap && <BacktestBadge item={item} badgeMap={badgeMap} />}
           </div>
           <div className="mt-0.5 text-[11px] text-slate-500">{item.symbol} · {modeLabel(mode as Mode)} · {horizonLabel(horizon as Horizon)}</div>
         </div>
@@ -159,6 +160,20 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap }: { item: any; rank
         }`}>
           {item.timingLabel === "돌파 진입" ? "🚀" : item.timingLabel === "스퀴즈 돌파" ? "💥" : "✓"}{" "}
           {item.timingReason || item.timingLabel}
+        </div>
+      )}
+
+      {/* 매수 금지/주의 사유 인라인 */}
+      {Array.isArray(item.cautionReasons) && item.cautionReasons.length > 0 && (
+        <div className="mt-2 rounded-lg border border-amber-800/40 bg-amber-950/20 px-2.5 py-2 text-[10px]">
+          <span className="font-semibold text-amber-400">주의 —</span>
+          <span className="ml-1 text-amber-300">{item.cautionReasons.slice(0, 2).join(" · ")}</span>
+        </div>
+      )}
+      {item.tradeBlockStatus && item.tradeBlockStatus !== "OK" && (
+        <div className="mt-2 rounded-lg border border-red-800/50 bg-red-950/25 px-2.5 py-2 text-[10px]">
+          <span className="font-semibold text-red-400">진입 주의 —</span>
+          <span className="ml-1 text-red-300">{String(item.tradeBlockStatus)}</span>
         </div>
       )}
     </div>
@@ -547,7 +562,170 @@ const RISK_FLAG_LABEL: Record<string, string> = {
   NEWS_DISCLOSURE_RISK:  "공시/뉴스 리스크",
 };
 
-function WhyPanel({ item, onClose }: { item: any; onClose: () => void }) {
+// ── 백테스트 뱃지
+function BacktestBadge({ item, badgeMap }: { item: any; badgeMap: Record<string, any> }) {
+  const horizon = String(item._horizon || item.horizon || "swing");
+  const mode    = String(item._mode    || item.mode    || "balanced");
+  const key = `${item.symbol}::${horizon}::${mode}`;
+  const badge = badgeMap[key];
+  if (!badge) return null;
+
+  if (badge.pending) {
+    return (
+      <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-[10px] text-slate-500">
+        검증 준비 중 ({badge.sample}회)
+      </span>
+    );
+  }
+  const wr  = Number(badge.winRate ?? 0);
+  const avg = Number(badge.avgReturn ?? 0);
+  const wrCls  = wr  >= 60 ? "text-emerald-300" : wr  >= 50 ? "text-amber-300" : "text-red-300";
+  const avgCls = avg >= 2  ? "text-emerald-300" : avg >= 0  ? "text-slate-300"  : "text-red-300";
+
+  return (
+    <span className="flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/70 px-2 py-0.5 text-[10px]">
+      <span className="text-slate-500">과거</span>
+      <span className={`font-mono font-semibold ${wrCls}`}>{wr}%</span>
+      <span className="text-slate-600">·</span>
+      <span className={`font-mono ${avgCls}`}>{avg >= 0 ? "+" : ""}{avg}%</span>
+      <span className="text-slate-600">·</span>
+      <span className="text-slate-500">{badge.sample}회 (D+{badge.windowDays})</span>
+    </span>
+  );
+}
+
+// ── 시장 컨디션 게이트
+function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }) {
+  const base = regime?.regime === "BULL" ? 70 : regime?.regime === "BEAR" ? 22 : 50;
+  const maDist = Number(regime?.distanceMa20Pct ?? 0);
+  const maAdj = maDist >= 3 ? 10 : maDist >= 1 ? 5 : maDist >= -1 ? 0 : maDist >= -3 ? -8 : -15;
+
+  const recoAt = dataHealth?.recoGeneratedAt ? new Date(dataHealth.recoGeneratedAt) : null;
+  const hoursOld = recoAt ? (Date.now() - recoAt.getTime()) / 3600000 : null;
+  const liveRatio = (dataHealth?.kisTargetCount ?? 0) > 0
+    ? (dataHealth?.kisLiveCount ?? 0) / dataHealth.kisTargetCount : 1;
+  const dataAdj = hoursOld != null && hoursOld > 24 ? -15 : liveRatio < 0.1 ? -20 : liveRatio < 0.5 ? -5 : 0;
+
+  const strength = Math.max(0, Math.min(100, base + maAdj + dataAdj));
+
+  const levelText = strength >= 75 ? "적극 진입" : strength >= 55 ? "정상 진입" : strength >= 35 ? "선별 진입" : "진입 자제";
+  const isHigh = strength >= 55;
+  const isMid = strength >= 35 && strength < 55;
+  const isLow = strength < 35;
+
+  const borderCls = isHigh ? "border-emerald-800/40 bg-emerald-950/15" : isMid ? "border-amber-800/40 bg-amber-950/15" : "border-red-800/40 bg-red-950/15";
+  const textCls   = isHigh ? "text-emerald-300" : isMid ? "text-amber-300" : "text-red-300";
+  const barCls    = isHigh ? "bg-emerald-500" : isMid ? "bg-amber-500" : "bg-red-500";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${borderCls}`}>
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">시장 컨디션 게이트</div>
+          <div className={`mt-1 text-lg font-bold ${textCls}`}>{levelText}</div>
+          <div className="mt-0.5 text-[11px] text-slate-500">
+            {isHigh ? "시장 상태 양호 — 조건을 충족한 종목은 정상 진입 가능합니다."
+             : isMid ? "선별 진입 구간 — EV·손익비 조건을 더 엄격하게 확인하세요."
+             : "진입 자제 구간 — 신규 매수보다 보유 종목 관리에 집중하세요."}
+          </div>
+        </div>
+        <div className={`shrink-0 text-right font-mono font-black ${textCls}`}>
+          <span className="text-4xl">{strength}</span>
+          <span className="text-base text-slate-500">/100</span>
+        </div>
+      </div>
+
+      <div className="h-2 w-full rounded-full bg-slate-800 mb-3">
+        <div className={`h-2 rounded-full transition-all duration-500 ${barCls}`} style={{ width: `${strength}%` }} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-[11px]">
+        <div className="rounded-lg bg-slate-900/60 px-2 py-2 text-center">
+          <div className="text-slate-500">시장 추세</div>
+          <div className={`mt-0.5 font-semibold ${regime?.regime === "BULL" ? "text-emerald-300" : regime?.regime === "BEAR" ? "text-red-300" : "text-slate-300"}`}>
+            {regime?.regime === "BULL" ? "강세" : regime?.regime === "BEAR" ? "약세" : "중립"}
+          </div>
+        </div>
+        <div className="rounded-lg bg-slate-900/60 px-2 py-2 text-center">
+          <div className="text-slate-500">MA20 이격</div>
+          <div className={`mt-0.5 font-mono font-semibold ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+            {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}%
+          </div>
+        </div>
+        <div className="rounded-lg bg-slate-900/60 px-2 py-2 text-center">
+          <div className="text-slate-500">데이터</div>
+          <div className={`mt-0.5 font-semibold ${dataAdj === 0 ? "text-emerald-300" : dataAdj <= -15 ? "text-red-300" : "text-amber-300"}`}>
+            {dataAdj === 0 ? "정상" : dataAdj <= -15 ? "오류" : "부분"}
+          </div>
+        </div>
+      </div>
+
+      {isLow && (
+        <div className="mt-3 rounded-lg border border-red-800/40 bg-red-950/30 px-3 py-2 text-[11px] text-red-300">
+          ⚠ 신규 진입 시 평소보다 엄격한 기준을 적용하세요. 보유 손절가를 재확인하세요.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── 보유종목 판단 함수
+function getHoldingJudgment(item: any): { text: string; cls: string } {
+  const risk = String(item.riskStatus || "");
+  if (["HIGH", "위험"].includes(risk)) return { text: "손절 검토", cls: "bg-red-900/40 border-red-700/40 text-red-300" };
+  if (["WATCH", "주의"].includes(risk)) return { text: "주의 필요", cls: "bg-amber-900/30 border-amber-700/40 text-amber-300" };
+
+  const current = Number(item.currentPrice || 0);
+  const avg     = Number(item.avgPrice || item.avgBuyPrice || 0);
+  const target  = Number(item.targetPrice || 0);
+  if (current > 0 && avg > 0 && target > avg) {
+    const progress = (current - avg) / (target - avg);
+    if (progress >= 0.8) return { text: "일부익절 검토", cls: "bg-emerald-900/30 border-emerald-700/40 text-emerald-300" };
+    if (progress >= 0.5) return { text: "목표가 근접", cls: "bg-sky-900/30 border-sky-700/40 text-sky-300" };
+  }
+  return { text: "유지", cls: "bg-slate-800/60 border-slate-700/40 text-slate-400" };
+}
+
+// ── 온보딩 패널 (보유종목 없을 때)
+function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }) {
+  return (
+    <section className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-6 text-center">
+      <div className="mx-auto max-w-sm">
+        <div className="mb-2 text-2xl">📋</div>
+        <h2 className="text-base font-semibold text-slate-100">보유종목을 등록해주세요</h2>
+        <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+          내 종목을 기준으로 오늘의 위험과 기회를 1분 안에 점검해드립니다.<br />
+          <span className="text-slate-500 text-xs">MONE은 추천보다 먼저 하면 안 되는 거래를 알려줍니다.</span>
+        </p>
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <button
+            onClick={() => onNavigate?.("holdings")}
+            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+          >
+            보유종목 등록하기
+          </button>
+          <button
+            onClick={() => onNavigate?.("stocks")}
+            className="rounded-xl border border-slate-700 bg-slate-900 px-5 py-2.5 text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+          >
+            종목 탐색 먼저 보기
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => void; marketRegime?: any }) {
+  const [conflict, setConflict] = useState<any>(null);
+  useEffect(() => {
+    if (!item.symbol) return;
+    mone.portfolioConflict({
+      symbol: item.symbol,
+      market: item.market || "kr",
+      sector: item.sector || "",
+    }).then(setConflict).catch(() => {});
+  }, [item.symbol]);
   const mode    = String(item.mode || item._mode || "balanced") as Mode;
   const horizon = String(item.horizon || item._horizon || "swing") as Horizon;
   const ev      = Number(item.expectedValue ?? 0);
@@ -632,6 +810,111 @@ function WhyPanel({ item, onClose }: { item: any; onClose: () => void }) {
               </div>
             </div>
           </div>
+
+          {/* 진입 전 체크리스트 */}
+          {(() => {
+            const current = Number(item.currentPrice || 0);
+            const entry   = Number(item.entry || 0);
+            const gapPct  = entry > 0 && current > 0 ? Math.abs((current - entry) / entry * 100) : null;
+            const inRange = gapPct != null && gapPct <= 5;
+            const evOk    = ev > 0;
+            const regimeOk = !marketRegime || marketRegime.regime !== "BEAR";
+            const dataOk  = !["STALE", "ERROR", "DATA_PENDING"].includes(String(item.dataStatus || ""));
+            const noCaution = !Array.isArray(item.cautionReasons) || item.cautionReasons.length === 0;
+
+            const checks = [
+              { label: "EV 양수", ok: evOk, detail: evOk ? `+${ev.toFixed(1)}%` : `${ev.toFixed(1)}% (음수)` },
+              { label: "진입가 범위", ok: inRange, detail: gapPct != null ? `현재가 ±${gapPct.toFixed(1)}%` : "가격 데이터 없음" },
+              { label: "시장 레짐", ok: regimeOk, detail: marketRegime ? (marketRegime.regime === "BULL" ? "강세장 정상" : marketRegime.regime === "BEAR" ? "약세장 — 주의" : "중립") : "확인 불가" },
+              { label: "데이터 상태", ok: dataOk, detail: dataOk ? "정상" : String(item.dataStatus || "미확인") },
+              { label: "주의사항", ok: noCaution, detail: noCaution ? "없음" : `${item.cautionReasons.length}개` },
+            ];
+            const passCount = checks.filter((c) => c.ok).length;
+
+            return (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-xs font-semibold text-slate-300">진입 전 체크리스트</div>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    passCount === checks.length ? "bg-emerald-900/50 text-emerald-300"
+                    : passCount >= 3 ? "bg-amber-900/40 text-amber-300"
+                    : "bg-red-900/40 text-red-300"
+                  }`}>
+                    {passCount}/{checks.length} 통과
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {checks.map(({ label, ok, detail }) => (
+                    <div key={label} className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <span className={ok ? "text-emerald-400" : "text-red-400"}>{ok ? "✓" : "✗"}</span>
+                        <span className={ok ? "text-slate-300" : "text-slate-400"}>{label}</span>
+                      </div>
+                      <span className={`font-mono ${ok ? "text-slate-400" : "text-amber-400"}`}>{detail}</span>
+                    </div>
+                  ))}
+                </div>
+                {passCount < 3 && (
+                  <div className="mt-2 rounded-lg bg-red-950/30 px-2.5 py-1.5 text-[10px] text-red-300">
+                    조건 미충족이 많습니다. 진입 전 충분히 검토하세요.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 포트폴리오 충돌 검사 */}
+          {conflict && Array.isArray(conflict.conflicts) && conflict.conflicts.length > 0 && (
+            <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-4">
+              <div className="mb-2 text-xs font-semibold text-amber-400">포트폴리오 충돌 감지</div>
+              <div className="mb-2 text-[11px] text-amber-300">{conflict.message}</div>
+              <div className="space-y-1">
+                {conflict.conflicts.map((c: any) => (
+                  <div key={c.symbol} className="flex items-center gap-2 text-[11px] text-amber-400">
+                    <span className="text-amber-600">•</span>
+                    <span>{c.name} ({c.symbol})</span>
+                    <span className="ml-auto rounded-full bg-amber-900/40 px-1.5 py-0.5 text-[10px]">{c.type}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-[10px] text-slate-500">같은 섹터에 집중하면 분산 효과가 줄어듭니다.</div>
+            </div>
+          )}
+
+          {/* 위험 예산 기반 수량 계산 */}
+          {(() => {
+            const entryP = Number(item.entry || 0);
+            const stopP  = Number(item.stop  || 0);
+            const riskPerShare = entryP > stopP && stopP > 0 ? entryP - stopP : 0;
+            if (riskPerShare <= 0) return null;
+            const scenarios = [
+              { label: "50만원", budget: 500_000 },
+              { label: "100만원", budget: 1_000_000 },
+              { label: "200만원", budget: 2_000_000 },
+            ];
+            return (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                <div className="mb-1 text-xs font-semibold text-slate-300">위험 예산 기반 수량</div>
+                <div className="mb-3 text-[11px] text-slate-500">
+                  손절가 기준 주당 손실 <span className="font-mono text-red-300">{riskPerShare.toLocaleString()}원</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {scenarios.map(({ label, budget }) => {
+                    const qty = Math.floor(budget / riskPerShare);
+                    const totalAmt = qty * entryP;
+                    return (
+                      <div key={label} className="rounded-lg bg-slate-900/60 p-2 text-center">
+                        <div className="text-[10px] text-slate-500">최대손실 {label}</div>
+                        <div className="mt-0.5 font-mono text-base font-bold text-slate-200">{qty}주</div>
+                        <div className="text-[10px] text-slate-500">{totalAmt > 0 ? `${Math.round(totalAmt / 10000)}만원` : "—"}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 text-[10px] text-slate-600">최대 손실 금액 ÷ (진입가 − 손절가) · 참고용</div>
+              </div>
+            );
+          })()}
 
           {/* EV 계산 근거 */}
           {evBase !== null && (
@@ -808,7 +1091,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
         <span className="text-[10px] text-slate-500">{cell.count}개</span>
       </div>
       {top.length === 0 ? (
-        <div className="py-4 text-center text-[11px] text-slate-600">후보 없음</div>
+        <div className="py-4 text-center text-[11px] text-slate-600">현재 조건 없음</div>
       ) : (
         <div className="space-y-1.5">
           {top.map((item) => {
@@ -821,7 +1104,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
               }`}>
                 <div className="min-w-0 flex-1">
                   <span className="truncate text-[11px] font-medium text-slate-200">{displayName(item)}</span>
-                  {isToday && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">진입</span>}
+                  {isToday && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">검토</span>}
                   {isWatch && item.timingLabel && <span className="ml-1 rounded bg-amber-900/40 px-1 text-[9px] text-amber-400">{item.timingLabel}</span>}
                 </div>
                 <span className={`font-mono text-[10px] ${ev >= 1 ? "text-emerald-400" : ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
@@ -849,6 +1132,11 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [capital, setCapital] = useState<number>(0);
   const [showJournal, setShowJournal] = useState(false);
+  const [showMatrix, setShowMatrix] = useState(false);
+  const [badgeMap, setBadgeMap] = useState<Record<string, any>>({});
+  const [storyMap, setStoryMap] = useState<Record<string, any>>({});
+  const [editStory, setEditStory] = useState<string | null>(null);
+  const [storyForm, setStoryForm] = useState({ why: "", invalidation: "", reviewDate: "" });
   const [clientReady, setClientReady] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
   // 실적발표 일정 맵: symbol → D-day
@@ -904,6 +1192,10 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
     if (saved === "kr" || saved === "us" || saved === "auto") setMarketChoice(saved);
     const savedCapital = Number(window.localStorage.getItem("mone:capital") || 0);
     if (savedCapital >= 100_000) setCapital(savedCapital);
+    try {
+      const savedStories = JSON.parse(window.localStorage.getItem("mone:stories") || "{}");
+      setStoryMap(savedStories);
+    } catch {};
     const refreshClock = () => setClock(new Date());
     refreshClock();
     const timer = window.setInterval(refreshClock, 60_000);
@@ -1012,12 +1304,57 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       .slice(0, 6);
   }, [allItems]);
 
+  // ── 신호 자동 기록 (매수 검토 후보 로드 시)
+  useEffect(() => {
+    if (!todayEntries.length) return;
+    todayEntries.forEach((item) => {
+      mone.signalsRecord({
+        market: item.market || selectedMarket,
+        symbol: item.symbol,
+        name: item.name || item.companyName || "",
+        mode: item._mode || item.mode || "balanced",
+        horizon: item._horizon || item.horizon || "swing",
+        entry: Number(item.entry || 0),
+        stop: Number(item.stop || 0),
+        target: Number(item.target || 0),
+        ev: Number(item.expectedValue || 0),
+        probability: Number(item.probability || 0),
+        score: Number(item.finalScore || 0),
+        decisionBucket: item.decisionBucket || "",
+        sector: item.sector || "",
+      }).catch(() => {});
+    });
+  }, [todayEntries]);
+
+  // ── 백테스트 뱃지 fetch (매수 검토 + 대기 관찰 종목)
+  useEffect(() => {
+    const items = [...todayEntries, ...watchItems];
+    if (!items.length) return;
+    const unique = Array.from(new Set(items.map((i) =>
+      `${i.symbol}::${i._horizon || i.horizon || "swing"}::${i._mode || i.mode || "balanced"}`
+    )));
+    Promise.all(
+      unique.map((key) => {
+        const [symbol, horizon, mode] = key.split("::");
+        return mone.signalsBadge({ symbol, horizon, mode })
+          .then((res: any) => ({ key, data: res }))
+          .catch(() => ({ key, data: null }));
+      })
+    ).then((results) => {
+      const map: Record<string, any> = {};
+      results.forEach(({ key, data }) => {
+        if (data && (data.sample > 0 || data.pending)) map[key] = data;
+      });
+      setBadgeMap(map);
+    });
+  }, [todayEntries, watchItems]);
+
   const riskCount = holdings.filter((h) => ["위험", "주의", "HIGH", "WATCH"].includes(String(h.riskStatus || ""))).length;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* 추천 근거 패널 */}
-      {selectedItem && <WhyPanel item={selectedItem} onClose={() => setSelectedItem(null)} />}
+      {selectedItem && <WhyPanel item={selectedItem} onClose={() => setSelectedItem(null)} marketRegime={marketRegime} />}
       {/* 운용 일지 모달 */}
       {showJournal && <JournalModal onClose={() => setShowJournal(false)} />}
 
@@ -1051,6 +1388,11 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           </button>
         </div>
       </div>
+
+      {/* 시장 컨디션 게이트 */}
+      {!loading && marketRegime && (
+        <MarketGateCard regime={marketRegime} dataHealth={dataHealth} />
+      )}
 
       {/* 마켓 레짐 배너 */}
       {marketRegime && (
@@ -1134,35 +1476,71 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         </div>
       )}
 
-      {/* 데이터 상태 바 */}
-      {dataHealth && !loading && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-2.5 text-[11px] text-slate-400">
-          <span className="flex items-center gap-1">
-            <span className={`h-1.5 w-1.5 rounded-full ${(dataHealth.kisLiveCount ?? 0) >= 50 ? "bg-emerald-400" : (dataHealth.kisLiveCount ?? 0) >= 10 ? "bg-amber-400" : "bg-red-400"}`} />
-            현재가 <span className="font-mono text-slate-200">{dataHealth.kisLiveCount ?? 0}</span>
-            <span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-            OHLCV <span className="font-mono text-slate-200">{dataHealth.ohlcvCount ?? 0}종목</span>
-            {dataHealth.ohlcvLatestDate && <span className="text-slate-500">({dataHealth.ohlcvLatestDate})</span>}
-          </span>
-          {dataHealth.recoGeneratedAt && (
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-              추천 생성 <span className="font-mono text-slate-300">{String(dataHealth.recoGeneratedAt).slice(0, 16).replace("T", " ")}</span>
-            </span>
-          )}
-          <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${dataHealth.scanScope === "FULL_MARKET_READY" ? "bg-emerald-900/40 text-emerald-400" : "bg-slate-800 text-slate-400"}`}>
-            {dataHealth.scanScope === "FULL_MARKET_READY" ? "전종목" : "선별 유니버스"}
-          </span>
-        </div>
-      )}
+      {/* 데이터 상태 카드 */}
+      {!loading && (() => {
+        if (!dataHealth) return null;
+        const recoAt = dataHealth.recoGeneratedAt ? new Date(dataHealth.recoGeneratedAt) : null;
+        const hoursOld = recoAt ? (Date.now() - recoAt.getTime()) / 3600000 : null;
+        const isStale = hoursOld != null && hoursOld > 24;
+        const isError = (dataHealth.kisLiveCount ?? 0) === 0 && (dataHealth.ohlcvCount ?? 0) === 0;
+        const liveRatio = dataHealth.kisTargetCount > 0 ? (dataHealth.kisLiveCount ?? 0) / dataHealth.kisTargetCount : 1;
+        const priceStatus = liveRatio >= 0.5 ? "NORMAL" : liveRatio >= 0.1 ? "PARTIAL" : "ERROR";
+
+        return (
+          <div className={`rounded-xl border px-4 py-3 text-[11px] ${
+            isError ? "border-red-800/60 bg-red-950/20"
+            : isStale ? "border-amber-800/40 bg-amber-950/15"
+            : "border-slate-800 bg-slate-900/40"
+          }`}>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+              {/* 현재가 상태 */}
+              <span className="flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${priceStatus === "NORMAL" ? "bg-emerald-400" : priceStatus === "PARTIAL" ? "bg-amber-400" : "bg-red-400"}`} />
+                <span className="text-slate-500">현재가</span>
+                <span className={`font-mono font-medium ${priceStatus === "NORMAL" ? "text-slate-200" : priceStatus === "PARTIAL" ? "text-amber-300" : "text-red-300"}`}>
+                  {dataHealth.kisLiveCount ?? 0}<span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}</span>
+                </span>
+                {priceStatus === "PARTIAL" && <span className="text-amber-500">부분 수집</span>}
+                {priceStatus === "ERROR" && <span className="text-red-400">수집 오류</span>}
+              </span>
+
+              {/* OHLCV 상태 */}
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+                <span className="text-slate-500">OHLCV</span>
+                <span className="font-mono text-slate-200">{dataHealth.ohlcvCount ?? 0}종목</span>
+                {dataHealth.ohlcvLatestDate && <span className="text-slate-500">· {dataHealth.ohlcvLatestDate}</span>}
+              </span>
+
+              {/* 추천 생성 시각 */}
+              {recoAt && (
+                <span className="flex items-center gap-1.5">
+                  <span className={`h-1.5 w-1.5 rounded-full ${isStale ? "bg-amber-400" : "bg-violet-400"}`} />
+                  <span className="text-slate-500">추천 기준</span>
+                  <span className={`font-mono ${isStale ? "text-amber-300" : "text-slate-300"}`}>
+                    {String(dataHealth.recoGeneratedAt).slice(0, 16).replace("T", " ")}
+                  </span>
+                  {isStale && <span className="text-amber-400">({Math.floor(hoursOld!)}h 전)</span>}
+                </span>
+              )}
+
+              {/* 스캔 범위 + 경고 */}
+              <div className="ml-auto flex items-center gap-2">
+                {isError && <span className="rounded-full border border-red-700/60 bg-red-900/30 px-2 py-0.5 text-[10px] font-medium text-red-300">데이터 오류</span>}
+                {isStale && !isError && <span className="rounded-full border border-amber-700/40 bg-amber-900/20 px-2 py-0.5 text-[10px] font-medium text-amber-300">데이터 오래됨</span>}
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${dataHealth.scanScope === "FULL_MARKET_READY" ? "bg-emerald-900/40 text-emerald-400" : "bg-slate-800 text-slate-400"}`}>
+                  {dataHealth.scanScope === "FULL_MARKET_READY" ? "전종목" : "선별 유니버스"}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 요약 지표 */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { label: "오늘 진입 후보", value: loading ? null : `${todayEntries.length}개`, color: "text-emerald-400" },
+          { label: "매수 검토 후보", value: loading ? null : `${todayEntries.length}개`, color: "text-emerald-400" },
           { label: "대기 관찰 중", value: loading ? null : `${watchItems.length}개`, color: "text-amber-400" },
           { label: "위험/주의 보유", value: loading ? null : `${riskCount}개`, color: riskCount > 0 ? "text-red-400" : "text-slate-300" },
           { label: "총 평가손익", value: loading ? null : (summary?.totalPnlText ?? "0"), color: "text-slate-100" },
@@ -1182,7 +1560,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           <TrendingUp size={18} className="text-emerald-400" />
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-slate-100">
-              {sessionPhase === "장중" ? "진입가 근접 종목" : "오늘 진입 후보"}
+              {sessionPhase === "장중" ? "진입가 근접 종목" : "매수 검토 후보"}
             </h2>
             <p className="text-xs text-slate-500">
               {sessionCtx.hint || "진입 구간 + EV 양수 + 추세 조건을 동시에 충족한 종목입니다."}
@@ -1198,21 +1576,20 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           )}
         </div>
         {loading ? (
-          <div className="py-8 text-center text-slate-500">불러오는 중...</div>
+          <div className="py-8 text-center text-slate-500">데이터 확인 중...</div>
         ) : todayEntries.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-700 py-6 text-center text-sm">
             <p className="text-slate-500">
               {marketRegime?.regime === "BEAR" ? "약세장 — 진입 기준 상향 적용 중" : "현재 즉시 진입 후보가 없습니다."}
             </p>
             <p className="mt-2 text-[11px] text-slate-600">
-              기준: finalScore ≥ 50 + EV 양수 + tradeBlockStatus OK.{" "}
-              {allItems.length === 0 ? "오늘 추천 데이터가 아직 없습니다. 오전 데이터 갱신 후 다시 확인해 주세요." : `전략 매트릭스에는 ${allItems.length}개 종목이 있으나 즉시 진입 조건을 충족하지 않습니다.`}
+              {allItems.length === 0 ? "오늘 추천 데이터가 아직 없습니다. 오전 데이터 갱신 후 다시 확인해 주세요." : `현재 조건에 맞는 진입 후보가 없습니다. 전략 매트릭스에 ${allItems.length}개 종목이 있으나 EV 양수 + 진입 조건을 충족하지 않습니다.`}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {todayEntries.map((item, i) => (
-              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onSelect={setSelectedItem} earningsMap={earningsMap} />
+              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onSelect={setSelectedItem} earningsMap={earningsMap} badgeMap={badgeMap} />
             ))}
           </div>
         )}
@@ -1239,7 +1616,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           )}
         </div>
         {loading ? (
-          <div className="py-6 text-center text-slate-500">불러오는 중...</div>
+          <div className="py-6 text-center text-slate-500">데이터 확인 중...</div>
         ) : watchItems.length === 0 ? (
           <div className="py-6 text-center text-sm text-slate-500">대기 관찰 종목이 없습니다.</div>
         ) : (
@@ -1253,36 +1630,50 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
 
       {/* ━━ 3×3 전략 매트릭스 (상세 비교) ━━ */}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <div className="mb-4 flex items-center justify-between">
+        <button
+          className="flex w-full items-center justify-between text-left"
+          onClick={() => setShowMatrix((v) => !v)}
+        >
           <div>
             <h2 className="text-base font-semibold text-slate-100">전략 × 기간 매트릭스</h2>
             <p className="text-xs text-slate-500">보수·균형·공격 × 단기·스윙·중기 9개 조합 전체 비교</p>
           </div>
-          <span className="text-xs text-slate-500">{loading ? "불러오는 중" : "9개 조합"}</span>
-        </div>
+          <span className="ml-4 shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-400 hover:bg-slate-800">
+            {showMatrix ? "접기 ▲" : "펼치기 ▼"}
+          </span>
+        </button>
 
-        {/* 헤더 행 */}
-        <div className="mb-2 hidden grid-cols-[100px_repeat(3,1fr)] gap-2 xl:grid">
-          <div />
-          {HORIZONS.map((h) => (
-            <div key={h} className="rounded-xl bg-slate-950/60 py-2 text-center text-xs font-semibold text-slate-400">{horizonLabel(h)}</div>
-          ))}
-        </div>
-
-        <div className="space-y-2">
-          {MODES.map((mode) => (
-            <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
-              <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-300">
-                {modeLabel(mode)}
-              </div>
-              {HORIZONS.map((horizon) => {
-                const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
-                return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={setSelectedItem} />;
-              })}
+        {showMatrix && (
+          <div className="mt-4">
+            {/* 헤더 행 */}
+            <div className="mb-2 hidden grid-cols-[100px_repeat(3,1fr)] gap-2 xl:grid">
+              <div />
+              {HORIZONS.map((h) => (
+                <div key={h} className="rounded-xl bg-slate-950/60 py-2 text-center text-xs font-semibold text-slate-400">{horizonLabel(h)}</div>
+              ))}
             </div>
-          ))}
-        </div>
+
+            <div className="space-y-2">
+              {MODES.map((mode) => (
+                <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
+                  <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-300">
+                    {modeLabel(mode)}
+                  </div>
+                  {HORIZONS.map((horizon) => {
+                    const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
+                    return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={setSelectedItem} />;
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
+
+      {/* ━━ 온보딩 패널 (보유종목 없을 때) ━━ */}
+      {!loading && holdings.length === 0 && (
+        <OnboardingPanel onNavigate={onNavigate} />
+      )}
 
       {/* ━━ 보유종목 요약 ━━ */}
       {holdings.length > 0 && (
@@ -1307,19 +1698,76 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
               const change = firstText(item.changePctText, "");
               const down = String(change).startsWith("-");
               const isRisk = ["위험", "주의", "HIGH", "WATCH"].includes(String(item.riskStatus || ""));
+              const judgment = getHoldingJudgment(item);
               return (
-                <div key={`${item.market}-${item.symbol}`} className={`flex items-center justify-between rounded-xl border p-3 ${isRisk ? "border-red-800/40 bg-red-950/10" : "border-slate-800 bg-slate-950/50"}`}>
-                  <div>
-                    <div className="text-sm font-medium text-slate-200">{displayName(item)}</div>
-                    <div className="text-[11px] text-slate-500">{item.symbol} · {probabilityText(item, "-")}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-mono text-sm ${String(item.pnlText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"}`}>
-                      {firstText(item.pnlText, "0")}
+                <div key={`${item.market}-${item.symbol}`} className={`rounded-xl border p-3 ${isRisk ? "border-red-800/40 bg-red-950/10" : "border-slate-800 bg-slate-950/50"}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-slate-200">{displayName(item)}</div>
+                      <div className="text-[11px] text-slate-500">{item.symbol} · {probabilityText(item, "-")}</div>
                     </div>
-                    {change && <div className={`font-mono text-[11px] ${down ? "text-red-400" : "text-emerald-400"}`}>{change}</div>}
-                    {isRisk && <div className="text-[10px] text-red-400">{item.riskStatus}</div>}
+                    <div className="text-right shrink-0">
+                      <div className={`font-mono text-sm ${String(item.pnlText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"}`}>
+                        {firstText(item.pnlText, "0")}
+                      </div>
+                      {change && <div className={`font-mono text-[11px] ${down ? "text-red-400" : "text-emerald-400"}`}>{change}</div>}
+                    </div>
                   </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${judgment.cls}`}>
+                      {judgment.text}
+                    </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); const k = `${item.market}-${item.symbol}`; setEditStory(k); setStoryForm(storyMap[k] || { why: "", invalidation: "", reviewDate: "" }); }}
+                      className="rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] text-slate-400 hover:bg-slate-800"
+                    >
+                      {storyMap[`${item.market}-${item.symbol}`] ? "스토리 수정" : "+ 스토리"}
+                    </button>
+                  </div>
+                  {editStory === `${item.market}-${item.symbol}` && (
+                    <div className="mt-2 space-y-2 rounded-xl border border-slate-700 bg-slate-900/60 p-3 text-[11px]">
+                      <input
+                        placeholder="왜 샀는지 (진입 근거)"
+                        value={storyForm.why}
+                        onChange={(e) => setStoryForm((f) => ({ ...f, why: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                      />
+                      <input
+                        placeholder="무효화 조건 (이 가격 깨지면 틀린 것)"
+                        value={storyForm.invalidation}
+                        onChange={(e) => setStoryForm((f) => ({ ...f, invalidation: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                      />
+                      <input
+                        type="date"
+                        value={storyForm.reviewDate}
+                        onChange={(e) => setStoryForm((f) => ({ ...f, reviewDate: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100 focus:outline-none focus:border-blue-500"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const k = `${item.market}-${item.symbol}`;
+                            const updated = { ...storyMap, [k]: storyForm };
+                            setStoryMap(updated);
+                            window.localStorage.setItem("mone:stories", JSON.stringify(updated));
+                            setEditStory(null);
+                          }}
+                          className="rounded-lg bg-blue-600 px-3 py-1 text-[11px] font-semibold text-white hover:bg-blue-500"
+                        >저장</button>
+                        <button onClick={() => setEditStory(null)} className="rounded-lg bg-slate-800 px-3 py-1 text-[11px] text-slate-400">취소</button>
+                      </div>
+                      {storyMap[`${item.market}-${item.symbol}`] && (
+                        <div className="border-t border-slate-700 pt-2 text-slate-400">
+                          <div>근거: {storyMap[`${item.market}-${item.symbol}`].why || "—"}</div>
+                          <div>무효화: {storyMap[`${item.market}-${item.symbol}`].invalidation || "—"}</div>
+                          {storyMap[`${item.market}-${item.symbol}`].reviewDate && (
+                            <div>재점검: {storyMap[`${item.market}-${item.symbol}`].reviewDate}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
