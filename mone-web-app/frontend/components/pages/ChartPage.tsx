@@ -7,7 +7,8 @@ import { mone, money, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { displayName, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
 
-type ToggleKey = "ma5" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index" | "zigzag" | "supply" | "fakeBreak";
+type ToggleKey = "ma5" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index"
+              | "zigzag" | "trendline" | "retracement" | "supply" | "fakeBreak";
 
 const PERIODS: { label: string; bars: number | null }[] = [
   { label: "1M", bars: 21 },
@@ -442,77 +443,197 @@ function MacdChart({ rows }: { rows: any[] }) {
   );
 }
 
-// ── Phase 6 차트 분석 헬퍼 ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// Phase 6 — 고급 차트 분석 (빗각 · 지그재그 · 매물대 · 0.868 되돌림)
+//
+// 4개 요소의 연계 구조:
+//   ① ZigZag     → 단기 조정 구간 확인, 고점/저점 구조 파악
+//   ② 빗각       → 추세선 (저점 연결 / 고점 연결) + 돌파 감지
+//   ③ 매물대     → 거래 집중 구간 = 진입·청산·스톱 기준
+//   ④ 0.868      → 가장 최근 ZigZag 스윙의 피보나치 되돌림 레벨
+//                  매물대와 겹칠 때 = 강력 진입/청산 신호
+// ══════════════════════════════════════════════════════════════════════
 
-type CandleBar = { time: string; open: number; high: number; low: number; close: number };
+type CandleBar   = { time: string; open: number; high: number; low: number; close: number };
+type ZigZagPoint = { time: string; value: number; type: "H" | "L" };
 
+// ── ① ZigZag ──────────────────────────────────────────────────────────
 /**
- * ZigZag 피벗 계산 — % 임계값 방식 (전통적 방식)
- * threshold: 이전 극값 대비 최소 반전 비율 (기본 5%)
- * winSize: 피벗 확인용 좌우 봉 수 (기본 3)
+ * ZigZag 계산 — % 임계값 방식
+ *
+ * 알고리즘:
+ *   1) 로컬 고점/저점 후보 추출 (winSize 좌우 봉 기준)
+ *   2) 방향 전환 시 threshold% 이상일 때만 새 피벗으로 인정 (노이즈 제거)
+ *   3) 연속 같은 방향이면 더 극단적인 값으로 교체
+ *   4) 마지막 확정 피벗 이후 최근봉 극값 추가 (선 끊김 방지)
+ *
+ * @param threshold  최소 반전 비율 (기본 5%) — 변동성 큰 종목은 8~10% 권장
+ * @param winSize    로컬 극값 확인 좌우 봉 수 (기본 3)
  */
-function calcZigZag(data: CandleBar[], threshold = 0.05, winSize = 3): { time: string; value: number }[] {
+function calcZigZagFull(data: CandleBar[], threshold = 0.05, winSize = 3): ZigZagPoint[] {
   if (data.length < winSize * 2 + 2) return [];
-  type Pivot = { time: string; value: number; type: "H" | "L" };
 
-  // 1단계: 로컬 고점/저점 후보 수집
-  const candidates: Pivot[] = [];
+  // 1단계: 로컬 고점/저점 후보
+  const candidates: ZigZagPoint[] = [];
   for (let i = winSize; i < data.length - winSize; i++) {
-    const h = data[i].high;
-    const l = data[i].low;
+    const h = data[i].high, l = data[i].low;
     let isH = true, isL = true;
     for (let j = i - winSize; j <= i + winSize; j++) {
       if (j === i) continue;
       if (data[j].high > h) isH = false;
       if (data[j].low  < l) isL = false;
     }
-    if (isH) candidates.push({ time: data[i].time, value: h, type: "H" });
-    else if (isL) candidates.push({ time: data[i].time, value: l, type: "L" });
+    if      (isH && !isL) candidates.push({ time: data[i].time, value: h, type: "H" });
+    else if (isL && !isH) candidates.push({ time: data[i].time, value: l, type: "L" });
   }
 
-  // 2단계: % 임계값 필터 — threshold 미만 반전은 노이즈로 제거
-  const filtered: Pivot[] = [];
+  // 2단계: 임계값 필터 + 연속 같은 방향 병합
+  const filtered: ZigZagPoint[] = [];
   for (const p of candidates) {
     const last = filtered[filtered.length - 1];
     if (!last) { filtered.push(p); continue; }
-
     if (last.type === p.type) {
-      // 같은 방향이면 더 극단적인 값으로 교체
       if ((p.type === "H" && p.value > last.value) ||
-          (p.type === "L" && p.value < last.value)) {
+          (p.type === "L" && p.value < last.value))
         filtered[filtered.length - 1] = p;
-      }
     } else {
-      // 방향 전환: 임계값 이상 반전했을 때만 새 피벗으로 인정
       const chg = Math.abs(p.value - last.value) / last.value;
       if (chg >= threshold) filtered.push(p);
       else if ((p.type === "H" && p.value > last.value) ||
-               (p.type === "L" && p.value < last.value)) {
-        filtered[filtered.length - 1] = p; // 같은 방향 연속이면 업데이트
-      }
+               (p.type === "L" && p.value < last.value))
+        filtered[filtered.length - 1] = p;
     }
   }
 
-  // 3단계: 최근봉 연장 (선이 끊기지 않도록)
-  const result = filtered.map(({ time, value }) => ({ time, value }));
-  if (result.length > 0) {
+  // 3단계: 마지막 피벗 이후 최근봉 극값 추가
+  if (filtered.length > 0) {
     const lastPivot = filtered[filtered.length - 1];
     const lastBar   = data[data.length - 1];
     if (lastPivot.time !== lastBar.time) {
-      const tail = lastPivot.type === "H"
-        ? { time: lastBar.time, value: Math.min(...data.slice(-winSize - 1).map(d => d.low)) }
-        : { time: lastBar.time, value: Math.max(...data.slice(-winSize - 1).map(d => d.high)) };
-      result.push(tail);
+      const recentSlice = data.slice(-Math.min(winSize + 2, data.length));
+      filtered.push(lastPivot.type === "H"
+        ? { time: lastBar.time, value: Math.min(...recentSlice.map(d => d.low)),  type: "L" }
+        : { time: lastBar.time, value: Math.max(...recentSlice.map(d => d.high)), type: "H" });
     }
   }
-  return result;
+  return filtered;
 }
 
+// ── ② 빗각 (대각 추세선) ──────────────────────────────────────────────
 /**
- * 매물대: 거래량 가중 가격 밀집 구간
- * - 60 bins (촘촘하게)
- * - 볼륨 없는 종목은 캔들 수로 대체 (fallback)
- * - 인접 고밀도 bin 병합 → 실제 매물대 zone
+ * 빗각 추세선 계산
+ *
+ * - 상승 추세선: ZigZag 저점(L) 중 최근 2개를 직선으로 연결 → 현재봉까지 연장
+ * - 하락 추세선: ZigZag 고점(H) 중 최근 2개를 직선으로 연결 → 현재봉까지 연장
+ *
+ * 활용:
+ *   - 상승 추세선 하향 이탈 → 단기 하락 전환 신호
+ *   - 하락 추세선 상향 돌파 → 단기 상승 전환 신호
+ *   - 돌파 후 추세선 부근으로 리트레이스 → 빗각 패턴 진입 구간
+ *
+ * 주의: 피벗이 2개 미만이면 null 반환 (추세선 없음)
+ */
+function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
+  uptrend:   { time: string; value: number }[] | null;  // 저점 연결 (상승)
+  downtrend: { time: string; value: number }[] | null;  // 고점 연결 (하락)
+  uptrendVal:   number | null;  // 현재봉 기준 상승 추세선 값
+  downtrendVal: number | null;  // 현재봉 기준 하락 추세선 값
+} {
+  const timeToIdx = new Map(data.map((d, i) => [d.time, i]));
+  const lows  = pivots.filter(p => p.type === "L");
+  const highs = pivots.filter(p => p.type === "H");
+
+  /**
+   * p1 → p2 직선을 p1 위치에서 데이터 끝까지 연장
+   * 값이 0 이하이거나 가격 범위 대비 크게 벗어나면 해당 점 제외
+   */
+  const makeLine = (p1: ZigZagPoint, p2: ZigZagPoint) => {
+    const i1 = timeToIdx.get(p1.time), i2 = timeToIdx.get(p2.time);
+    if (i1 == null || i2 == null || i1 >= i2) return null;
+    const slope = (p2.value - p1.value) / (i2 - i1);
+    const priceRange = Math.max(...data.map(d => d.high)) - Math.min(...data.map(d => d.low));
+    const segment = data.slice(i1).map((d, j) => ({
+      time:  d.time,
+      value: p1.value + slope * j,
+    })).filter(pt => pt.value > 0 && pt.value < p1.value + priceRange * 3);
+    return segment.length >= 2 ? segment : null;
+  };
+
+  const upLine   = lows.length  >= 2 ? makeLine(lows[lows.length - 2],   lows[lows.length - 1])   : null;
+  const downLine = highs.length >= 2 ? makeLine(highs[highs.length - 2], highs[highs.length - 1]) : null;
+
+  return {
+    uptrend:      upLine,
+    downtrend:    downLine,
+    uptrendVal:   upLine   ? upLine[upLine.length - 1].value   : null,
+    downtrendVal: downLine ? downLine[downLine.length - 1].value : null,
+  };
+}
+
+// ── ③ 0.868 되돌림 (피보나치 + 핵심 레벨) ────────────────────────────
+/**
+ * 피보나치 되돌림 계산 — 가장 최근 완성된 ZigZag 스윙 기준
+ *
+ * 레벨:
+ *   0.236, 0.382, 0.500, 0.618, 0.786 — 표준 피보나치
+ *   0.868 — 핵심 레벨 (매물대와 겹치면 강력 진입/청산 신호)
+ *
+ * 산출 방법:
+ *   상승 스윙(저점→고점) 이후 되돌림 = 고점 - ratio × (고점 - 저점)
+ *   하락 스윙(고점→저점) 이후 되돌림 = 저점 + ratio × (고점 - 저점)
+ *
+ * 주의: 마지막 미완성 피벗(현재봉 쪽 꼬리)은 제외하고 확정 스윙만 사용
+ */
+function calcRetracements(pivots: ZigZagPoint[]): {
+  price: number; ratio: number; label: string; color: string; isKey: boolean;
+}[] {
+  // 마지막 피벗은 현재봉 연장값이므로 제외, 확정 스윙 2개 필요
+  const confirmed = pivots.slice(0, -1);
+  if (confirmed.length < 2) return [];
+
+  const swingEnd   = confirmed[confirmed.length - 1];
+  const swingStart = confirmed[confirmed.length - 2];
+
+  const high  = swingEnd.type === "H" ? swingEnd.value : swingStart.value;
+  const low   = swingEnd.type === "L" ? swingEnd.value : swingStart.value;
+  const swing = high - low;
+  if (swing <= 0) return [];
+
+  // isUpSwing: 최근 스윙이 상승(저점→고점)이면 true → 되돌림은 아래 방향
+  const isUpSwing = swingEnd.type === "H";
+
+  const LEVELS: { ratio: number; label: string; color: string; isKey: boolean }[] = [
+    { ratio: 0.236, label: "23.6%", color: "#64748b", isKey: false },
+    { ratio: 0.382, label: "38.2%", color: "#94a3b8", isKey: false },
+    { ratio: 0.500, label: "50.0%", color: "#94a3b8", isKey: false },
+    { ratio: 0.618, label: "61.8%", color: "#f97316", isKey: false },
+    { ratio: 0.786, label: "78.6%", color: "#fbbf24", isKey: false },
+    { ratio: 0.868, label: "86.8%", color: "#06b6d4", isKey: true  },  // 핵심
+  ];
+
+  return LEVELS.map(({ ratio, label, color, isKey }) => {
+    const price = isUpSwing
+      ? high - ratio * swing   // 상승 스윙 후 하향 되돌림
+      : low  + ratio * swing;  // 하락 스윙 후 상향 되돌림
+    return { price, ratio, label, color, isKey };
+  });
+}
+
+// ── ④ 매물대 ──────────────────────────────────────────────────────────
+/**
+ * 매물대 계산 — 거래량 가중 가격 밀집 구간
+ *
+ * 알고리즘:
+ *   1) 전체 가격 범위를 60개 bin으로 분할
+ *   2) 각 캔들의 고-저 범위에 걸쳐 거래량을 균등 분산 (일봉 근사)
+ *   3) 볼륨 데이터 없으면 캔들 수로 fallback
+ *   4) 강도 35% 이상 bin만 추출
+ *   5) 인접 bin 병합 → 실제 매물대 구간
+ *
+ * 활용:
+ *   - 매물대 상단: 저항 → 청산/스톱 기준
+ *   - 매물대 하단: 지지 → 진입/스톱 기준
+ *   - 스톱은 매물대 바깥에 위치시킴
  */
 function calcSupplyZones(
   data: CandleBar[], volumes: number[], topN = 3
@@ -522,39 +643,34 @@ function calcSupplyZones(
   const minP = Math.min(...allPrices), maxP = Math.max(...allPrices);
   if (maxP <= minP) return [];
 
-  const bins = 60;
+  const bins    = 60;
   const binSize = (maxP - minP) / bins;
   const buckets = Array.from({ length: bins }, () => 0);
   const totalVol = volumes.reduce((s, v) => s + v, 0);
-  const useVol = totalVol > 0;
+  const useVol   = totalVol > 0;
 
-  // 각 캔들의 고-저 범위에 걸쳐 볼륨 분산
   data.forEach((d, i) => {
-    const lo = Math.floor((d.low  - minP) / binSize);
-    const hi = Math.ceil ((d.high - minP) / binSize);
+    const lo   = Math.max(0, Math.floor((d.low  - minP) / binSize));
+    const hi   = Math.min(bins, Math.ceil ((d.high - minP) / binSize));
     const span = Math.max(1, hi - lo);
-    const weight = useVol ? (volumes[i] || 0) : 1;
-    for (let b = lo; b < hi && b < bins; b++) {
-      if (b >= 0) buckets[b] += weight / span;
-    }
+    const w    = useVol ? (volumes[i] || 0) : 1;
+    for (let b = lo; b < hi; b++) buckets[b] += w / span;
   });
 
   const maxVol = Math.max(...buckets);
   if (maxVol <= 0) return [];
 
-  // 강도 0.35 이상 bin만 후보
-  const hot = buckets.map((v, idx) => ({ idx, strength: v / maxVol }))
-                     .filter(b => b.strength > 0.35);
+  const hot = buckets
+    .map((v, idx) => ({ idx, strength: v / maxVol }))
+    .filter(b => b.strength > 0.35);
 
-  // 인접 bin 병합
   type Zone = { lower: number; upper: number; center: number; strength: number };
   const merged: Zone[] = [];
   for (const b of hot) {
-    const last = merged[merged.length - 1];
     const lower = minP + b.idx * binSize;
     const upper = lower + binSize;
+    const last  = merged[merged.length - 1];
     if (last && lower <= last.upper + binSize * 1.5) {
-      // 인접 → 병합
       last.upper    = Math.max(last.upper, upper);
       last.center   = (last.lower + last.upper) / 2;
       last.strength = Math.max(last.strength, b.strength);
@@ -562,47 +678,68 @@ function calcSupplyZones(
       merged.push({ lower, upper, center: (lower + upper) / 2, strength: b.strength });
     }
   }
-
   return merged.sort((a, b) => b.strength - a.strength).slice(0, topN);
 }
 
+// ── 연계 신호: 0.868 되돌림 × 매물대 겹침 ────────────────────────────
+/**
+ * 0.868 되돌림 레벨이 매물대 zone 안에 있는지 확인
+ * → 겹치면 진입/청산 강력 신호
+ * (공차 ±0.5% 허용)
+ */
+function findOverlapSignals(
+  rets: { price: number; ratio: number; isKey: boolean }[],
+  zones: { upper: number; lower: number; strength: number }[]
+): { price: number; ratio: number; isKey: boolean; strength: number }[] {
+  const out: { price: number; ratio: number; isKey: boolean; strength: number }[] = [];
+  for (const r of rets) {
+    for (const z of zones) {
+      const tol = r.price * 0.005;
+      if (r.price >= z.lower - tol && r.price <= z.upper + tol) {
+        out.push({ price: r.price, ratio: r.ratio, isKey: r.isKey, strength: z.strength });
+      }
+    }
+  }
+  return out;
+}
+
+// ── ⑤ 가짜 돌파 (False Breakout) ─────────────────────────────────────
 /**
  * 가짜 돌파 감지
- * 정의: 종가가 전 N봉 고점을 최소 minPct% 이상 돌파 → 다음 N봉 내 종가가 돌파 기준 아래로 복귀
  *
- * ※ "장중 고점만 넘고 음봉 마감"은 저항 거부(rejection)이지 가짜 돌파가 아님 → 제외
+ * 정의:
+ *   "종가"가 전 lookback봉 고점 대비 minPct% 이상 돌파
+ *   → confirmBars봉 내에 다시 돌파 기준선 아래로 종가 복귀
+ *
+ * 제외:
+ *   장중 고점만 넘고 음봉 마감 (저항 거부/Rejection) → 가짜돌파 아님
+ *   → 반드시 종가 기준으로 돌파 확인
+ *
+ * 파라미터:
+ *   lookback    = 20봉 (단기 저항 기준)
+ *   minPct      = 0.3% (최소 의미있는 돌파폭)
+ *   confirmBars = 3봉  (복귀 확인 기간)
  */
 function calcFakeBreakouts(
   data: CandleBar[], lookback = 20, minPct = 0.003, confirmBars = 3
 ): { time: string; position: "aboveBar"; shape: "arrowDown"; color: string; text: string }[] {
   type Marker = { time: string; position: "aboveBar"; shape: "arrowDown"; color: string; text: string };
   const markers: Marker[] = [];
-  const used = new Set<number>(); // 중복 마커 방지
+  const used = new Set<number>();
 
   for (let i = lookback; i < data.length - 1; i++) {
-    const prevHigh = Math.max(...data.slice(i - lookback, i).map(d => d.high));
-    const breakLevel = prevHigh * (1 + minPct); // 최소 0.3% 이상 돌파해야 유효
-    const cur = data[i];
-
-    // 종가로 돌파 기준 초과 (장중만 넘는 건 제외)
-    if (cur.close <= breakLevel) continue;
-
-    // 이후 confirmBars 봉 안에 종가가 다시 prevHigh 아래로 복귀했는지 확인
+    const prevHigh   = Math.max(...data.slice(i - lookback, i).map(d => d.high));
+    const breakLevel = prevHigh * (1 + minPct);
+    if (data[i].close <= breakLevel) continue;
     for (let k = 1; k <= confirmBars && i + k < data.length; k++) {
       if (data[i + k].close < prevHigh && !used.has(i + k)) {
-        markers.push({
-          time: data[i + k].time,
-          position: "aboveBar",
-          shape: "arrowDown",
-          color: "#ef4444",
-          text: "FB",  // FakeBreakout
-        });
+        markers.push({ time: data[i + k].time, position: "aboveBar", shape: "arrowDown", color: "#ef4444", text: "FB" });
         used.add(i + k);
         break;
       }
     }
   }
-  return markers;
+  return markers.sort((a, b) => a.time < b.time ? -1 : 1);
 }
 
 // ── TvChart (캔들 + 지수 비교선) ─────────────────────────────────────
@@ -743,40 +880,101 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
           addLine(levelValue(levels, "target"), "#06b6d4", "목표");
         }
 
-        // ── Phase 6: ZigZag 추세선 (5% 반전 임계값)
-        if (toggles.zigzag && candleData.length >= 15) {
-          const pivots = calcZigZag(candleData, 0.05, 3);
-          if (pivots.length >= 2) {
-            const zzSeries = chart.addLineSeries({
-              color: "#f472b6", lineWidth: 2, priceLineVisible: false,
+        // ══ Phase 6 — 고급 차트 분석 ══════════════════════════════════════
+        // 공통 데이터: ZigZag + 매물대 (다른 기능들이 참조)
+        const volMap = new Map(rows.map((row: any) => [chartTime(row), Number(row.volume || row.Volume || 0)]));
+        const vols   = candleData.map(d => volMap.get(d.time) || 0);
+        const pivots = candleData.length >= 12 ? calcZigZagFull(candleData, 0.05, 3) : [];
+        const zones  = candleData.length >= 20 ? calcSupplyZones(candleData, vols, 3) : [];
+        const rets   = pivots.length >= 2 ? calcRetracements(pivots) : [];
+        const overlaps = rets.length > 0 && zones.length > 0 ? findOverlapSignals(rets, zones) : [];
+
+        // ① ZigZag 선
+        if (toggles.zigzag && pivots.length >= 2) {
+          const zzData = pivots.map(({ time, value }) => ({ time, value }));
+          const zzSeries = chart.addLineSeries({
+            color: "#f472b6", lineWidth: 1.5, priceLineVisible: false,
+            crosshairMarkerVisible: false, lastValueVisible: false,
+          });
+          zzSeries.setData(zzData);
+        }
+
+        // ② 빗각 (대각 추세선) — 상승/하락 추세선 + 돌파 감지
+        if (toggles.trendline && pivots.length >= 4) {
+          const tl = calcTrendlines(candleData, pivots);
+          if (tl.uptrend && tl.uptrend.length >= 2) {
+            const s = chart.addLineSeries({
+              color: "#22c55e", lineWidth: 1.5, priceLineVisible: false,
               crosshairMarkerVisible: false, lastValueVisible: false,
+              lineStyle: 2,  // Dashed
             });
-            zzSeries.setData(pivots);
+            s.setData(tl.uptrend);
+            // 현재 종가 < 상승 추세선 → 이탈 표시
+            if (tl.uptrendVal != null) {
+              const lastClose = candleData[candleData.length - 1].close;
+              if (lastClose < tl.uptrendVal * 0.998) {
+                candleSeries.createPriceLine({ price: tl.uptrendVal, color: "#22c55e44", lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: "빗각↑" });
+              }
+            }
+          }
+          if (tl.downtrend && tl.downtrend.length >= 2) {
+            const s = chart.addLineSeries({
+              color: "#ef4444", lineWidth: 1.5, priceLineVisible: false,
+              crosshairMarkerVisible: false, lastValueVisible: false,
+              lineStyle: 2,
+            });
+            s.setData(tl.downtrend);
+            if (tl.downtrendVal != null) {
+              const lastClose = candleData[candleData.length - 1].close;
+              if (lastClose > tl.downtrendVal * 1.002) {
+                candleSeries.createPriceLine({ price: tl.downtrendVal, color: "#ef444444", lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: "빗각↓" });
+              }
+            }
           }
         }
 
-        // ── Phase 6: 매물대 압축 (상·하단 밴드 표시)
-        if (toggles.supply && candleData.length >= 20) {
-          const volMap = new Map(rows.map((row: any) => [chartTime(row), Number(row.volume || row.Volume || 0)]));
-          const vols = candleData.map((d) => volMap.get(d.time) || 0);
-          const zones = calcSupplyZones(candleData, vols, 3);
-          zones.forEach((zone) => {
-            const alpha = Math.round(zone.strength * 150).toString(16).padStart(2, "0");
+        // ③ 되돌림 레벨 (0.868 포함)
+        if (toggles.retracement && rets.length > 0) {
+          rets.forEach(ret => {
+            candleSeries.createPriceLine({
+              price: ret.price,
+              color: ret.isKey ? "#06b6d4" : ret.color + "99",
+              lineWidth: ret.isKey ? 2 : 1,
+              lineStyle: ret.isKey ? LW.LineStyle.Solid : LW.LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: ret.isKey ? `0.868★` : ret.label,
+            });
+          });
+        }
+
+        // ④ 매물대 (진입/청산/스톱 기준)
+        if (toggles.supply && zones.length > 0) {
+          zones.forEach(zone => {
+            const alpha = Math.round(zone.strength * 160).toString(16).padStart(2, "0");
             const color = `#f59e0b${alpha}`;
-            // 상단선
-            candleSeries.createPriceLine({ price: zone.upper, color, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: zone.strength > 0.75 ? "매물대" : "" });
-            // 하단선
+            candleSeries.createPriceLine({ price: zone.upper, color, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: zone.strength > 0.8 ? "매물대" : "" });
             candleSeries.createPriceLine({ price: zone.lower, color, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: "" });
           });
         }
 
-        // ── Phase 6: 가짜 돌파 감지 (시간순 정렬 보장)
+        // ★ 겹침 신호: 0.868 되돌림 × 매물대 → 강력 진입/청산 포인트
+        if ((toggles.retracement || toggles.supply) && overlaps.length > 0) {
+          overlaps.forEach(sig => {
+            candleSeries.createPriceLine({
+              price: sig.price,
+              color: sig.isKey ? "#06b6d4" : "#a78bfa",
+              lineWidth: 3,
+              lineStyle: LW.LineStyle.Solid,
+              axisLabelVisible: true,
+              title: sig.isKey ? "★0.868+매물대" : `★${(sig.ratio * 100).toFixed(0)}%+매물대`,
+            });
+          });
+        }
+
+        // ⑤ 가짜 돌파
         if (toggles.fakeBreak && candleData.length >= 25) {
-          const markers = calcFakeBreakouts(candleData, 20)
-            .sort((a, b) => (a.time < b.time ? -1 : 1));
-          if (markers.length > 0) {
-            candleSeries.setMarkers(markers);
-          }
+          const markers = calcFakeBreakouts(candleData, 20);
+          if (markers.length > 0) candleSeries.setMarkers(markers);
         }
 
         chart.timeScale().fitContent();
@@ -1063,7 +1261,10 @@ export default function ChartPage() {
   const [news, setNews] = useState<any[]>([]);
   const [disclosures, setDisclosures] = useState<any[]>([]);
   const [company, setCompany] = useState<any | null>(null);
-  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({ ma5: true, ma20: true, ma60: false, bb: false, volume: true, rsi: true, macd: false, index: true, zigzag: false, supply: false, fakeBreak: false });
+  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
+    ma5: true, ma20: true, ma60: false, bb: false, volume: true, rsi: true, macd: false, index: true,
+    zigzag: false, trendline: false, retracement: false, supply: false, fakeBreak: false,
+  });
   const [period, setPeriod] = useState<number | null>(126);
   const [indexRows, setIndexRows] = useState<any[]>([]);
   const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
@@ -1344,9 +1545,11 @@ export default function ChartPage() {
                 ["bb","BB","#a855f7"],["volume","거래량","#64748b"],["rsi","RSI","#38bdf8"],
                 ["macd","MACD","#f97316"],
                 ["index", selected?.market === "us" ? "vs SPY" : "vs KOSPI", "#94a3b8"],
-                ["zigzag","ZigZag","#f472b6"],
-                ["supply","매물대","#f59e0b"],
-                ["fakeBreak","가짜돌파","#ef4444"],
+                ["zigzag",    "ZigZag", "#f472b6"],
+                ["trendline", "빗각",   "#22c55e"],
+                ["retracement","되돌림","#06b6d4"],
+                ["supply",    "매물대", "#f59e0b"],
+                ["fakeBreak", "가짜돌파","#ef4444"],
               ] as [ToggleKey, string, string][]).map(([key, label, color]) => (
                 <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 bg-slate-950 text-slate-600"}`}
@@ -1385,9 +1588,11 @@ export default function ChartPage() {
                       {toggles.ma60 && <span style={{ color: "#f97316" }}>━ MA60</span>}
                       {toggles.bb   && <span style={{ color: "#a855f7" }}>- - BB</span>}
                       {toggles.index && <span className="text-slate-500">- - {selected.market === "us" ? "SPY" : "KOSPI"}</span>}
-                      {toggles.zigzag && <span style={{ color: "#f472b6" }}>━ ZigZag</span>}
-                      {toggles.supply && <span style={{ color: "#f59e0b" }}>··· 매물대</span>}
-                      {toggles.fakeBreak && <span style={{ color: "#ef4444" }}>▼ 가짜돌파</span>}
+                      {toggles.zigzag     && <span style={{ color: "#f472b6" }}>━ ZigZag</span>}
+                      {toggles.trendline  && <span style={{ color: "#22c55e" }}>╌ 빗각</span>}
+                      {toggles.retracement && <span style={{ color: "#06b6d4" }}>── 0.868</span>}
+                      {toggles.supply     && <span style={{ color: "#f59e0b" }}>··· 매물대</span>}
+                      {toggles.fakeBreak  && <span style={{ color: "#ef4444" }}>▼ 가짜돌파</span>}
                       {levels && <><span style={{ color: "#22c55e" }}>-- 진입</span><span style={{ color: "#ef4444" }}>-- 손절</span><span style={{ color: "#06b6d4" }}>-- 목표</span></>}
                     </span>
                   </div>
