@@ -870,9 +870,11 @@ def _normalize_ohlcv_dataframe(df: pd.DataFrame, symbol: str, market: str) -> pd
     work = df.copy()
     symbol_col = _ohlcv_column(work, ["symbol", "ticker", "code", "종목코드"])
     if symbol_col:
-        norm = work[symbol_col].map(lambda v: normalize_symbol(v, market))
+        # 빈 symbol 행은 파일명 기준 종목으로 간주 (DRAM/MRVL 혼재 케이스 대응)
+        is_empty = work[symbol_col].astype(str).str.strip().isin(["", "nan", "NaN"])
+        norm = work[symbol_col].map(lambda v: normalize_symbol(v, market) if str(v).strip() not in ("", "nan", "NaN") else "")
         target = normalize_symbol(symbol, market)
-        filtered = work[norm == target]
+        filtered = work[is_empty | (norm == target)]
         if not filtered.empty:
             work = filtered
     date_col = _ohlcv_column(work, ["date", "날짜", "일자", "datetime", "time"])

@@ -134,8 +134,8 @@ def _eligible_ohlcv_universe(market: str, min_days: int = 30) -> tuple[list[dict
         if frame.empty or status != "OK":
             schema_errors.append({"symbol": symbol, "file": path.name, "reason": status})
             continue
-        if len(frame) <= min_days:
-            insufficient.append({"symbol": symbol, "file": path.name, "rows": len(frame), "reason": f"{min_days} bars or fewer"})
+        if len(frame) < min_days:
+            insufficient.append({"symbol": symbol, "file": path.name, "rows": len(frame), "reason": f"fewer than {min_days} bars"})
             continue
 
         latest = frame.iloc[-1]

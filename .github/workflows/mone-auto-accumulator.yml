@@ -533,6 +533,7 @@ jobs:
             git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
             git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
             git add data/market/ohlcv/kr_*_daily.csv 2>/dev/null || true
+            git add data/market/ohlcv/us_*_daily.csv 2>/dev/null || true
             git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true
             git add reports/api_data_status_center*.csv reports/api_data_status_center*.json 2>/dev/null || true
             git add reports/gnews_*.csv reports/gnews_*.json reports/news_*.csv reports/news_*.json 2>/dev/null || true
