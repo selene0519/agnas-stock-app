@@ -3670,3 +3670,70 @@ try:
     _install_mone_virtual_report_routes_v1()
 except Exception as _mone_virtual_report_error:
     print("[MONE] virtual report route patch failed:", _mone_virtual_report_error)
+
+# ═══════════════════════════════════════════════════════════
+# Phase 3 — Signal Ledger & 호라이즌별 자동 결과 검증
+# ═══════════════════════════════════════════════════════════
+
+@app.post("/api/signals/record")
+def api_signals_record(payload: dict = Body(...)) -> dict:
+    """신호를 원장에 기록 (당일 동일 symbol+mode+horizon 중복 제거)."""
+    from app.services import signal_ledger as sl
+    return sl.record(
+        market=str(payload.get("market", "kr")),
+        symbol=str(payload.get("symbol", "")),
+        name=str(payload.get("name", "")),
+        mode=str(payload.get("mode", "balanced")),
+        horizon=str(payload.get("horizon", "swing")),
+        entry=float(payload.get("entry", 0) or 0),
+        stop=float(payload.get("stop", 0) or 0),
+        target=float(payload.get("target", 0) or 0),
+        ev=float(payload.get("ev", 0) or 0),
+        probability=float(payload.get("probability", 0) or 0),
+        score=float(payload.get("score", 0) or 0),
+        decision_bucket=str(payload.get("decisionBucket", "")),
+        sector=str(payload.get("sector", "")),
+    )
+
+
+@app.get("/api/signals/ledger")
+def api_signals_ledger(
+    market: str = Query("all"),
+    limit: int = Query(100, ge=1, le=500),
+) -> dict:
+    """신호 원장 조회 (검증 결과 포함)."""
+    from app.services import signal_ledger as sl
+    return sl.ledger_list(market=market, limit=limit)
+
+
+@app.post("/api/signals/verify")
+def api_signals_verify() -> dict:
+    """대기 중인 신호에 대해 OHLCV 기반 호라이즌별 결과 검증 실행."""
+    from app.services import signal_ledger as sl
+    return sl.verify()
+
+
+@app.get("/api/signals/badge")
+def api_signals_badge(
+    symbol: str = Query(...),
+    horizon: str = Query("all"),
+    mode: str = Query("all"),
+) -> dict:
+    """종목별 백테스트 뱃지 통계 (승률·평균수익·샘플 수)."""
+    from app.services import signal_ledger as sl
+    return sl.badge(symbol=symbol, horizon=horizon, mode=mode)
+
+
+# ═══════════════════════════════════════════════════════════
+# Phase 4 — Portfolio Conflict
+# ═══════════════════════════════════════════════════════════
+
+@app.get("/api/portfolio/conflict")
+def api_portfolio_conflict(
+    symbol: str = Query(...),
+    market: str = Query("kr"),
+    sector: str = Query(""),
+) -> dict:
+    """신규 후보와 보유종목의 섹터 충돌 검사."""
+    from app.services import signal_ledger as sl
+    return sl.portfolio_conflict(symbol=symbol, market=market, sector=sector)

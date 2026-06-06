@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js Frontend (port 3001)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:mobile"],
+      "port": 3001,
+      "cwd": "mone-web-app/frontend"
+    },
+    {
+      "name": "FastAPI Backend (port 8050)",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8050"],
+      "port": 8050,
+      "cwd": "mone-web-app/backend"
+    },
+    {
+      "name": "Streamlit App (port 8501)",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "streamlit", "run", "app.py"],
+      "port": 8501,
+      "cwd": "."
+    }
+  ]
+}
