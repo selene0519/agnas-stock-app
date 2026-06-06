@@ -2,13 +2,10 @@
 
 import {
   BarChart2,
-  Brain,
   Briefcase,
   Cpu,
-  FileBarChart2,
   LayoutDashboard,
   MoreHorizontal,
-  Newspaper,
   Search,
   X,
 } from "lucide-react";
@@ -28,10 +25,7 @@ const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
 ];
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
-  { id: "report",     label: "운용 리포트",   desc: "장전·장중·마감 리포트", Icon: FileBarChart2 },
-  { id: "news",       label: "뉴스·기업분석", desc: "뉴스, 공시, 기업분석", Icon: Newspaper },
-  { id: "prediction", label: "예측·검증",     desc: "추천 결과와 적중 검증", Icon: Brain },
-  { id: "advanced",   label: "고급분석",       desc: "스캐너, 상관, 계산기", Icon: Cpu },
+  { id: "advanced", label: "고급분석", desc: "스캐너, 상관, 계산기", Icon: Cpu },
 ];
 
 const moreIds = new Set<PageId>(moreTabs.map((t) => t.id));
