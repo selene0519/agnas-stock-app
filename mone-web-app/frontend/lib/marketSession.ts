@@ -121,7 +121,8 @@ export function getSessionCountdown(market: "kr" | "us", now = new Date()): stri
 export function getDefaultMarketBySession(now = new Date()): SessionMarket {
   const { hour, minute } = kstNowParts(now);
   const total = hour * 60 + minute;
-  return total >= 7 * 60 && total < 17 * 60 ? "kr" : "us";
+  const marketByTime = total >= 8 * 60 && total < 20 * 60 ? "kr" : "us";
+  return isMarketClosed(marketByTime, now) ? "kr" : marketByTime;
 }
 
 export function marketLabel(market: Market | SessionMarket) {
@@ -131,7 +132,7 @@ export function marketLabel(market: Market | SessionMarket) {
 }
 
 export function marketSessionNote(market: Market | SessionMarket) {
-  if (market === "kr") return "07:00~17:00 KST 기본 국장 모드";
-  if (market === "us") return "17:00~07:00 KST 기본 미장 모드";
+  if (market === "kr") return "08:00~20:00 KST 기본 국장 모드";
+  if (market === "us") return "20:00~08:00 KST 기본 미장 모드";
   return "국장·미장 통합 보기";
 }
