@@ -446,93 +446,160 @@ function MacdChart({ rows }: { rows: any[] }) {
 
 type CandleBar = { time: string; open: number; high: number; low: number; close: number };
 
-/** ZigZag 피벗 계산: window 내 최고/최저를 교대로 연결 */
-function calcZigZag(data: CandleBar[], winSize = 5): { time: string; value: number }[] {
-  if (data.length < winSize * 2 + 1) return [];
+/**
+ * ZigZag 피벗 계산 — % 임계값 방식 (전통적 방식)
+ * threshold: 이전 극값 대비 최소 반전 비율 (기본 5%)
+ * winSize: 피벗 확인용 좌우 봉 수 (기본 3)
+ */
+function calcZigZag(data: CandleBar[], threshold = 0.05, winSize = 3): { time: string; value: number }[] {
+  if (data.length < winSize * 2 + 2) return [];
   type Pivot = { time: string; value: number; type: "H" | "L" };
-  const raw: Pivot[] = [];
 
+  // 1단계: 로컬 고점/저점 후보 수집
+  const candidates: Pivot[] = [];
   for (let i = winSize; i < data.length - winSize; i++) {
     const h = data[i].high;
     const l = data[i].low;
     let isH = true, isL = true;
     for (let j = i - winSize; j <= i + winSize; j++) {
       if (j === i) continue;
-      if (data[j].high > h) isH = false;   // 수정: >= → > (동일값 허용)
-      if (data[j].low < l)  isL = false;   // 수정: <= → < (동일값 허용)
+      if (data[j].high > h) isH = false;
+      if (data[j].low  < l) isL = false;
     }
-    if (isH) raw.push({ time: data[i].time, value: h, type: "H" });
-    else if (isL) raw.push({ time: data[i].time, value: l, type: "L" });
+    if (isH) candidates.push({ time: data[i].time, value: h, type: "H" });
+    else if (isL) candidates.push({ time: data[i].time, value: l, type: "L" });
   }
 
-  // 연속 같은 타입 제거 (더 높은 H / 더 낮은 L 유지)
+  // 2단계: % 임계값 필터 — threshold 미만 반전은 노이즈로 제거
   const filtered: Pivot[] = [];
-  for (const p of raw) {
+  for (const p of candidates) {
     const last = filtered[filtered.length - 1];
-    if (!last || last.type !== p.type) {
-      filtered.push(p);
-    } else if (p.type === "H" && p.value > last.value) {
-      filtered[filtered.length - 1] = p;
-    } else if (p.type === "L" && p.value < last.value) {
-      filtered[filtered.length - 1] = p;
+    if (!last) { filtered.push(p); continue; }
+
+    if (last.type === p.type) {
+      // 같은 방향이면 더 극단적인 값으로 교체
+      if ((p.type === "H" && p.value > last.value) ||
+          (p.type === "L" && p.value < last.value)) {
+        filtered[filtered.length - 1] = p;
+      }
+    } else {
+      // 방향 전환: 임계값 이상 반전했을 때만 새 피벗으로 인정
+      const chg = Math.abs(p.value - last.value) / last.value;
+      if (chg >= threshold) filtered.push(p);
+      else if ((p.type === "H" && p.value > last.value) ||
+               (p.type === "L" && p.value < last.value)) {
+        filtered[filtered.length - 1] = p; // 같은 방향 연속이면 업데이트
+      }
     }
   }
 
-  // 마지막 피벗 이후 최근봉 극값 추가 (선이 끊기지 않도록)
+  // 3단계: 최근봉 연장 (선이 끊기지 않도록)
   const result = filtered.map(({ time, value }) => ({ time, value }));
   if (result.length > 0) {
-    const lastFiltered = filtered[filtered.length - 1];
-    const lastBar = data[data.length - 1];
-    const lastType = lastFiltered.type;
-    const tail = lastType === "H"
-      ? { time: lastBar.time, value: Math.min(...data.slice(-winSize).map(d => d.low)) }
-      : { time: lastBar.time, value: Math.max(...data.slice(-winSize).map(d => d.high)) };
-    if (tail.time !== result[result.length - 1].time) result.push(tail);
+    const lastPivot = filtered[filtered.length - 1];
+    const lastBar   = data[data.length - 1];
+    if (lastPivot.time !== lastBar.time) {
+      const tail = lastPivot.type === "H"
+        ? { time: lastBar.time, value: Math.min(...data.slice(-winSize - 1).map(d => d.low)) }
+        : { time: lastBar.time, value: Math.max(...data.slice(-winSize - 1).map(d => d.high)) };
+      result.push(tail);
+    }
   }
   return result;
 }
 
-/** 매물대: 거래량 가중 가격 밀집 구간 상위 N개 — 상·하단 가격 포함 */
+/**
+ * 매물대: 거래량 가중 가격 밀집 구간
+ * - 60 bins (촘촘하게)
+ * - 볼륨 없는 종목은 캔들 수로 대체 (fallback)
+ * - 인접 고밀도 bin 병합 → 실제 매물대 zone
+ */
 function calcSupplyZones(
   data: CandleBar[], volumes: number[], topN = 3
 ): { upper: number; lower: number; center: number; strength: number }[] {
   if (data.length < 10) return [];
-  const prices = data.map((d) => (d.high + d.low) / 2);
-  const minP = Math.min(...prices), maxP = Math.max(...prices);
+  const allPrices = data.flatMap(d => [d.high, d.low]);
+  const minP = Math.min(...allPrices), maxP = Math.max(...allPrices);
   if (maxP <= minP) return [];
-  const bins = 30;
+
+  const bins = 60;
   const binSize = (maxP - minP) / bins;
   const buckets = Array.from({ length: bins }, () => 0);
+  const totalVol = volumes.reduce((s, v) => s + v, 0);
+  const useVol = totalVol > 0;
+
+  // 각 캔들의 고-저 범위에 걸쳐 볼륨 분산
   data.forEach((d, i) => {
-    const mid = (d.high + d.low) / 2;
-    const idx = Math.min(bins - 1, Math.floor((mid - minP) / binSize));
-    buckets[idx] += volumes[i] || 0;
+    const lo = Math.floor((d.low  - minP) / binSize);
+    const hi = Math.ceil ((d.high - minP) / binSize);
+    const span = Math.max(1, hi - lo);
+    const weight = useVol ? (volumes[i] || 0) : 1;
+    for (let b = lo; b < hi && b < bins; b++) {
+      if (b >= 0) buckets[b] += weight / span;
+    }
   });
+
   const maxVol = Math.max(...buckets);
-  return buckets
-    .map((vol, idx) => ({
-      lower:   minP + idx * binSize,
-      center:  minP + (idx + 0.5) * binSize,
-      upper:   minP + (idx + 1) * binSize,
-      strength: vol / (maxVol || 1),
-    }))
-    .filter((z) => z.strength > 0.4)
-    .sort((a, b) => b.strength - a.strength)
-    .slice(0, topN);
+  if (maxVol <= 0) return [];
+
+  // 강도 0.35 이상 bin만 후보
+  const hot = buckets.map((v, idx) => ({ idx, strength: v / maxVol }))
+                     .filter(b => b.strength > 0.35);
+
+  // 인접 bin 병합
+  type Zone = { lower: number; upper: number; center: number; strength: number };
+  const merged: Zone[] = [];
+  for (const b of hot) {
+    const last = merged[merged.length - 1];
+    const lower = minP + b.idx * binSize;
+    const upper = lower + binSize;
+    if (last && lower <= last.upper + binSize * 1.5) {
+      // 인접 → 병합
+      last.upper    = Math.max(last.upper, upper);
+      last.center   = (last.lower + last.upper) / 2;
+      last.strength = Math.max(last.strength, b.strength);
+    } else {
+      merged.push({ lower, upper, center: (lower + upper) / 2, strength: b.strength });
+    }
+  }
+
+  return merged.sort((a, b) => b.strength - a.strength).slice(0, topN);
 }
 
-/** 가짜 돌파: 전 N봉 고점 돌파 후 당일·다음날 되돌림 */
-function calcFakeBreakouts(data: CandleBar[], lookback = 20): { time: string; position: "aboveBar"; shape: "arrowDown"; color: string; text: string }[] {
-  const markers: { time: string; position: "aboveBar"; shape: "arrowDown"; color: string; text: string }[] = [];
+/**
+ * 가짜 돌파 감지
+ * 정의: 종가가 전 N봉 고점을 최소 minPct% 이상 돌파 → 다음 N봉 내 종가가 돌파 기준 아래로 복귀
+ *
+ * ※ "장중 고점만 넘고 음봉 마감"은 저항 거부(rejection)이지 가짜 돌파가 아님 → 제외
+ */
+function calcFakeBreakouts(
+  data: CandleBar[], lookback = 20, minPct = 0.003, confirmBars = 3
+): { time: string; position: "aboveBar"; shape: "arrowDown"; color: string; text: string }[] {
+  type Marker = { time: string; position: "aboveBar"; shape: "arrowDown"; color: string; text: string };
+  const markers: Marker[] = [];
+  const used = new Set<number>(); // 중복 마커 방지
+
   for (let i = lookback; i < data.length - 1; i++) {
-    const prevHigh = Math.max(...data.slice(i - lookback, i).map((d) => d.high));
+    const prevHigh = Math.max(...data.slice(i - lookback, i).map(d => d.high));
+    const breakLevel = prevHigh * (1 + minPct); // 최소 0.3% 이상 돌파해야 유효
     const cur = data[i];
-    const next = data[i + 1];
-    // 돌파: 이전 고점 위로 종가, 다음날 종가가 이전 고점 아래로 복귀
-    if (cur.high > prevHigh && cur.close < prevHigh) {
-      markers.push({ time: cur.time, position: "aboveBar", shape: "arrowDown", color: "#f59e0b", text: "가짜" });
-    } else if (cur.close > prevHigh && next.close < prevHigh) {
-      markers.push({ time: next.time, position: "aboveBar", shape: "arrowDown", color: "#ef4444", text: "되돌림" });
+
+    // 종가로 돌파 기준 초과 (장중만 넘는 건 제외)
+    if (cur.close <= breakLevel) continue;
+
+    // 이후 confirmBars 봉 안에 종가가 다시 prevHigh 아래로 복귀했는지 확인
+    for (let k = 1; k <= confirmBars && i + k < data.length; k++) {
+      if (data[i + k].close < prevHigh && !used.has(i + k)) {
+        markers.push({
+          time: data[i + k].time,
+          position: "aboveBar",
+          shape: "arrowDown",
+          color: "#ef4444",
+          text: "FB",  // FakeBreakout
+        });
+        used.add(i + k);
+        break;
+      }
     }
   }
   return markers;
@@ -676,9 +743,9 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
           addLine(levelValue(levels, "target"), "#06b6d4", "목표");
         }
 
-        // ── Phase 6: ZigZag 추세선
+        // ── Phase 6: ZigZag 추세선 (5% 반전 임계값)
         if (toggles.zigzag && candleData.length >= 15) {
-          const pivots = calcZigZag(candleData, 5);
+          const pivots = calcZigZag(candleData, 0.05, 3);
           if (pivots.length >= 2) {
             const zzSeries = chart.addLineSeries({
               color: "#f472b6", lineWidth: 2, priceLineVisible: false,
