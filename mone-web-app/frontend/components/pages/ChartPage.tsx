@@ -7,7 +7,7 @@ import { mone, money, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { displayName, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
 
-type ToggleKey = "ma5" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index";
+type ToggleKey = "ma5" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index" | "zigzag" | "supply" | "fakeBreak";
 
 const PERIODS: { label: string; bars: number | null }[] = [
   { label: "1M", bars: 21 },
@@ -442,6 +442,83 @@ function MacdChart({ rows }: { rows: any[] }) {
   );
 }
 
+// ── Phase 6 차트 분석 헬퍼 ────────────────────────────────────────────
+
+type CandleBar = { time: string; open: number; high: number; low: number; close: number };
+
+/** ZigZag 피벗 계산: window 내 최고/최저를 교대로 연결 */
+function calcZigZag(data: CandleBar[], winSize = 5): { time: string; value: number }[] {
+  if (data.length < winSize * 2 + 1) return [];
+  type Pivot = { time: string; value: number; type: "H" | "L" };
+  const raw: Pivot[] = [];
+
+  for (let i = winSize; i < data.length - winSize; i++) {
+    const h = data[i].high;
+    const l = data[i].low;
+    let isH = true, isL = true;
+    for (let j = i - winSize; j <= i + winSize; j++) {
+      if (j === i) continue;
+      if (data[j].high >= h) isH = false;
+      if (data[j].low <= l) isL = false;
+    }
+    if (isH) raw.push({ time: data[i].time, value: h, type: "H" });
+    else if (isL) raw.push({ time: data[i].time, value: l, type: "L" });
+  }
+
+  // 연속 같은 타입 제거 (더 높은 H / 더 낮은 L 유지)
+  const filtered: Pivot[] = [];
+  for (const p of raw) {
+    const last = filtered[filtered.length - 1];
+    if (!last || last.type !== p.type) {
+      filtered.push(p);
+    } else if (p.type === "H" && p.value > last.value) {
+      filtered[filtered.length - 1] = p;
+    } else if (p.type === "L" && p.value < last.value) {
+      filtered[filtered.length - 1] = p;
+    }
+  }
+  return filtered.map(({ time, value }) => ({ time, value }));
+}
+
+/** 매물대: 거래량 가중 가격 밀집 구간 상위 N개 */
+function calcSupplyZones(data: CandleBar[], volumes: number[], topN = 3): { price: number; strength: number }[] {
+  if (data.length < 10) return [];
+  const prices = data.map((d) => (d.high + d.low) / 2);
+  const minP = Math.min(...prices), maxP = Math.max(...prices);
+  if (maxP <= minP) return [];
+  const bins = 30;
+  const binSize = (maxP - minP) / bins;
+  const buckets = Array.from({ length: bins }, () => 0);
+  data.forEach((d, i) => {
+    const mid = (d.high + d.low) / 2;
+    const idx = Math.min(bins - 1, Math.floor((mid - minP) / binSize));
+    buckets[idx] += volumes[i] || 0;
+  });
+  const maxVol = Math.max(...buckets);
+  return buckets
+    .map((vol, idx) => ({ price: minP + (idx + 0.5) * binSize, strength: vol / (maxVol || 1) }))
+    .filter((z) => z.strength > 0.4)
+    .sort((a, b) => b.strength - a.strength)
+    .slice(0, topN);
+}
+
+/** 가짜 돌파: 전 N봉 고점 돌파 후 당일·다음날 되돌림 */
+function calcFakeBreakouts(data: CandleBar[], lookback = 20): { time: string; position: "aboveBar"; shape: "arrowDown"; color: string; text: string }[] {
+  const markers: { time: string; position: "aboveBar"; shape: "arrowDown"; color: string; text: string }[] = [];
+  for (let i = lookback; i < data.length - 1; i++) {
+    const prevHigh = Math.max(...data.slice(i - lookback, i).map((d) => d.high));
+    const cur = data[i];
+    const next = data[i + 1];
+    // 돌파: 이전 고점 위로 종가, 다음날 종가가 이전 고점 아래로 복귀
+    if (cur.high > prevHigh && cur.close < prevHigh) {
+      markers.push({ time: cur.time, position: "aboveBar", shape: "arrowDown", color: "#f59e0b", text: "가짜" });
+    } else if (cur.close > prevHigh && next.close < prevHigh) {
+      markers.push({ time: next.time, position: "aboveBar", shape: "arrowDown", color: "#ef4444", text: "되돌림" });
+    }
+  }
+  return markers;
+}
+
 // ── TvChart (캔들 + 지수 비교선) ─────────────────────────────────────
 function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
   rows: any[]; levels: any; market: string;
@@ -578,6 +655,46 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
           addLine(levelValue(levels, "entry"), "#22c55e", "진입");
           addLine(levelValue(levels, "stop"),  "#ef4444", "손절");
           addLine(levelValue(levels, "target"), "#06b6d4", "목표");
+        }
+
+        // ── Phase 6: ZigZag 추세선
+        if (toggles.zigzag && candleData.length >= 15) {
+          const pivots = calcZigZag(candleData, 5);
+          if (pivots.length >= 2) {
+            const zzSeries = chart.addLineSeries({
+              color: "#f472b6", lineWidth: 2, priceLineVisible: false,
+              crosshairMarkerVisible: false, lastValueVisible: false,
+            });
+            zzSeries.setData(pivots);
+          }
+        }
+
+        // ── Phase 6: 매물대 압축
+        if (toggles.supply && candleData.length >= 20) {
+          const vols = candleData.map((d) => {
+            const r = rows.find((row: any) => chartTime(row) === d.time);
+            return r ? Number(r.volume || r.Volume || 0) : 0;
+          });
+          const zones = calcSupplyZones(candleData, vols, 3);
+          zones.forEach((zone) => {
+            const alpha = Math.round(zone.strength * 120).toString(16).padStart(2, "0");
+            candleSeries.createPriceLine({
+              price: zone.price,
+              color: `#f59e0b${alpha}`,
+              lineWidth: 2,
+              lineStyle: LW.LineStyle.Dotted,
+              axisLabelVisible: false,
+              title: zone.strength > 0.7 ? "매물대" : "",
+            });
+          });
+        }
+
+        // ── Phase 6: 가짜 돌파 감지
+        if (toggles.fakeBreak && candleData.length >= 25) {
+          const markers = calcFakeBreakouts(candleData, 20);
+          if (markers.length > 0) {
+            candleSeries.setMarkers(markers);
+          }
         }
 
         chart.timeScale().fitContent();
@@ -864,7 +981,7 @@ export default function ChartPage() {
   const [news, setNews] = useState<any[]>([]);
   const [disclosures, setDisclosures] = useState<any[]>([]);
   const [company, setCompany] = useState<any | null>(null);
-  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({ ma5: true, ma20: true, ma60: false, bb: false, volume: true, rsi: true, macd: false, index: true });
+  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({ ma5: true, ma20: true, ma60: false, bb: false, volume: true, rsi: true, macd: false, index: true, zigzag: false, supply: false, fakeBreak: false });
   const [period, setPeriod] = useState<number | null>(126);
   const [indexRows, setIndexRows] = useState<any[]>([]);
   const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
@@ -1145,6 +1262,9 @@ export default function ChartPage() {
                 ["bb","BB","#a855f7"],["volume","거래량","#64748b"],["rsi","RSI","#38bdf8"],
                 ["macd","MACD","#f97316"],
                 ["index", selected?.market === "us" ? "vs SPY" : "vs KOSPI", "#94a3b8"],
+                ["zigzag","ZigZag","#f472b6"],
+                ["supply","매물대","#f59e0b"],
+                ["fakeBreak","가짜돌파","#ef4444"],
               ] as [ToggleKey, string, string][]).map(([key, label, color]) => (
                 <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 bg-slate-950 text-slate-600"}`}
@@ -1183,6 +1303,9 @@ export default function ChartPage() {
                       {toggles.ma60 && <span style={{ color: "#f97316" }}>━ MA60</span>}
                       {toggles.bb   && <span style={{ color: "#a855f7" }}>- - BB</span>}
                       {toggles.index && <span className="text-slate-500">- - {selected.market === "us" ? "SPY" : "KOSPI"}</span>}
+                      {toggles.zigzag && <span style={{ color: "#f472b6" }}>━ ZigZag</span>}
+                      {toggles.supply && <span style={{ color: "#f59e0b" }}>··· 매물대</span>}
+                      {toggles.fakeBreak && <span style={{ color: "#ef4444" }}>▼ 가짜돌파</span>}
                       {levels && <><span style={{ color: "#22c55e" }}>-- 진입</span><span style={{ color: "#ef4444" }}>-- 손절</span><span style={{ color: "#06b6d4" }}>-- 목표</span></>}
                     </span>
                   </div>

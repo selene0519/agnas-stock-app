@@ -244,11 +244,11 @@ def main() -> None:
             t = futures[future]
             try:
                 result = future.result()
-                tag = "✓" if result["added"] > 0 else "="
+                tag = "OK" if result["added"] > 0 else "=="
                 print(f"  {tag} {result['symbol']:8s} fetched={result['fetched']:4d} added={result['added']:4d} total={result['total']:4d} [{result['source']}]")
                 ok += 1
             except Exception as exc:
-                print(f"  ✗ {t['symbol']:8s} ERROR: {exc}")
+                print(f"  NG {t['symbol']:8s} ERROR: {exc}")
                 err += 1
 
     print(f"[backfill] 완료: 성공 {ok}, 오류 {err}")

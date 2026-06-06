@@ -128,6 +128,23 @@ def _quote_result(symbol: str, market: str, ok: bool, source: str, error: str = 
     }
 
 
+def _ohlcv_prev_close(symbol: str, market: str) -> dict[str, Any] | None:
+    """장외/API 실패 시 OHLCV 파일의 최근 종가를 현재가로 반환한다."""
+    try:
+        normalized = data.normalize_symbol(symbol, market)
+        stats = data._ohlcv_stats(normalized, market)
+        last_close = _safe_float(stats.get("lastClose"))
+        last_date = str(stats.get("lastDate", "")).strip()
+        if last_close and last_close > 0 and last_date:
+            result = _quote_result(normalized, market, True, f"전일 종가 · OHLCV {last_date}", price=last_close)
+            result["priceSourceType"] = "ohlcv_fallback"
+            result["ohlcvDate"] = last_date
+            return result
+    except Exception:
+        pass
+    return None
+
+
 def _fetch_kis_kr(symbol: str) -> dict[str, Any]:
     normalized = data.normalize_symbol(symbol, "kr")
     if not _kis_enabled():
@@ -236,7 +253,14 @@ def _fetch_finnhub(symbol: str) -> dict[str, Any]:
 
 def _fetch_quote(symbol: str, market: str) -> dict[str, Any]:
     if market == "kr":
-        return _fetch_kis_kr(symbol)
+        result = _fetch_kis_kr(symbol)
+        if result.get("ok"):
+            return result
+        fallback = _ohlcv_prev_close(symbol, market)
+        if fallback:
+            fallback["fallbackFrom"] = result.get("error", "")
+            return fallback
+        return result
     kis = _fetch_kis_us(symbol)
     if kis.get("ok"):
         return kis
@@ -244,6 +268,10 @@ def _fetch_quote(symbol: str, market: str) -> dict[str, Any]:
     if finnhub.get("ok"):
         finnhub["fallbackFrom"] = kis.get("error", "")
         return finnhub
+    fallback = _ohlcv_prev_close(symbol, market)
+    if fallback:
+        fallback["fallbackFrom"] = f"KIS: {kis.get('error', '')}; Finnhub: {finnhub.get('error', '')}"
+        return fallback
     finnhub["fallbackFrom"] = kis.get("error", "")
     return finnhub
 

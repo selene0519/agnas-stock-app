@@ -656,7 +656,10 @@ def apply_quote_cache(row: dict[str, Any], market: str) -> dict[str, Any]:
     # even when 5/29 order-plan/report rows were already loaded.
     cache_time = cached.get("priceTime", "") or quote_cache().get("updatedAt", "")
     if cache_time and not _date_is_today(cache_time):
-        return row
+        # 주말·장외 시간대에는 최근 3일 이내 전일 종가 캐시를 현재가로 허용
+        cache_key = _date_key(cache_time)
+        if not (_is_market_closed_now() and _days_since(cache_key) <= 3):
+            return row
     row_date = first_value(row, ["sourceDate", "report_generated_at", "created_at", "updated_at", "basis_ohlc_date", "date", "일자"], "")
     if row_date and cache_time and _date_is_older(cache_time, row_date):
         return row
@@ -1689,6 +1692,27 @@ def _kst_now() -> datetime:
     except Exception:
         return datetime.now()
 
+
+def _is_market_closed_now() -> bool:
+    """주말이거나 국장·미장 모두 장외 시간인지 판단한다."""
+    now = _kst_now()
+    if now.weekday() >= 5:  # 토(5)/일(6)
+        return True
+    hhmm = now.hour * 100 + now.minute
+    kr_open = 900 <= hhmm < 1530
+    us_open = hhmm >= 2230 or hhmm < 500
+    return not (kr_open or us_open)
+
+
+def _days_since(date_key: str) -> int:
+    """YYYYMMDD 형식 date_key로부터 오늘(KST)까지 경과 일수를 반환한다."""
+    if len(date_key) < 8:
+        return 9999
+    try:
+        d = datetime.strptime(date_key[:8], "%Y%m%d")
+        return (_kst_now() - d).days
+    except Exception:
+        return 9999
 
 
 def _has_kr_premarket_update_for_date(date_text: str) -> bool:

@@ -24,12 +24,15 @@ export type PageId =
   | "prediction"
   | "advanced";
 
-const navItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "home",       label: "시장 홈",      icon: <LayoutDashboard size={16} /> },
+const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
+  { id: "home",     label: "시장 홈",      icon: <LayoutDashboard size={16} /> },
+  { id: "stocks",   label: "종목 탐색",     icon: <Search size={16} /> },
+  { id: "holdings", label: "보유·리스크",   icon: <Briefcase size={16} /> },
+  { id: "chart",    label: "차트·기술분석", icon: <BarChart2 size={16} /> },
+];
+
+const adminItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "report",     label: "운용 리포트",   icon: <FileBarChart2 size={16} /> },
-  { id: "stocks",     label: "종목 탐색",     icon: <Search size={16} /> },
-  { id: "holdings",   label: "보유·리스크",   icon: <Briefcase size={16} /> },
-  { id: "chart",      label: "차트·기술분석", icon: <BarChart2 size={16} /> },
   { id: "news",       label: "뉴스·기업분석", icon: <Newspaper size={16} /> },
   { id: "prediction", label: "예측·검증",     icon: <Brain size={16} /> },
   { id: "advanced",   label: "고급분석",       icon: <Cpu size={16} /> },
@@ -75,19 +78,41 @@ export default function Sidebar({ current, onChange }: Props) {
           <ChevronRight size={14} className={`transition-transform ${collapsed ? "" : "rotate-180"}`} />
         </button>
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`nav-item w-full ${current === item.id ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
-            onClick={() => onChange(item.id)}
-            title={collapsed ? item.label : undefined}
-          >
-            <span className="shrink-0">{item.icon}</span>
-            {!collapsed && <span>{item.label}</span>}
-          </button>
-        ))}
+      <nav className="flex flex-1 flex-col gap-0 overflow-y-auto p-2">
+        <div className="space-y-0.5">
+          {primaryItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-item w-full ${current === item.id ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
+              onClick={() => onChange(item.id)}
+              title={collapsed ? item.label : undefined}
+            >
+              <span className="shrink-0">{item.icon}</span>
+              {!collapsed && <span>{item.label}</span>}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-auto space-y-0.5 border-t border-slate-800/60 pt-2">
+          {!collapsed && (
+            <div className="px-2 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-600">
+              관리자
+            </div>
+          )}
+          {adminItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-item w-full opacity-60 hover:opacity-100 ${current === item.id ? "active opacity-100" : ""} ${collapsed ? "justify-center px-2" : ""}`}
+              onClick={() => onChange(item.id)}
+              title={collapsed ? item.label : undefined}
+            >
+              <span className="shrink-0">{item.icon}</span>
+              {!collapsed && <span>{item.label}</span>}
+            </button>
+          ))}
+        </div>
       </nav>
       {!collapsed && (
         <div className="border-t border-slate-800 p-3">
