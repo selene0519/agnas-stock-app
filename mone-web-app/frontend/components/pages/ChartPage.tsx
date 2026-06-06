@@ -135,6 +135,26 @@ function companyFallback(levels: any) {
   };
 }
 
+function companyOneLine(company: any): string {
+  const roe = Number(company?.roe);
+  const margin = Number(company?.operatingMargin);
+  const per = Number(company?.per);
+  const peg = Number(company?.peg);
+  const profit =
+    (Number.isFinite(roe) && roe >= 15) || (Number.isFinite(margin) && margin >= 15)
+      ? "수익성 양호"
+      : (Number.isFinite(roe) && roe < 5) || (Number.isFinite(margin) && margin < 5)
+        ? "수익성 확인 필요"
+        : "수익성 중립";
+  const valuation =
+    (Number.isFinite(peg) && peg > 2) || (Number.isFinite(per) && per > 30)
+      ? "밸류에이션 부담 높음"
+      : Number.isFinite(peg) && peg > 0 && peg < 1
+        ? "밸류에이션 매력 있음"
+        : "밸류에이션 중립";
+  return `${profit}, ${valuation}.`;
+}
+
 function loadStatusText(status: any) {
   const s = String(status || "").toUpperCase();
   if (s === "OK" || s === "NORMAL") return "정상";
@@ -198,10 +218,10 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
   if (!levels || !entry || rows.length < 5) {
     return {
       label: "검증 대기",
-      detail: "추천선과 OHLCV가 충분해지면 진입/목표/손절 터치를 자동 판정합니다.",
+      detail: "추천선과 OHLCV가 충분해지면 기준가/목표/손절 터치를 자동 판정합니다.",
       cls: statusTone("neutral"),
       cards: [
-        { label: "진입 터치", value: "-", sub: "추천선 필요" },
+        { label: "기준가 터치", value: "-", sub: "추천선 필요" },
         { label: "목표 터치", value: "-", sub: "추천선 필요" },
         { label: "손절 터치", value: "-", sub: "추천선 필요" },
       ],
@@ -230,11 +250,11 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
 
   if (!entryTouch) {
     return {
-      label: "진입 대기",
-      detail: `진입가까지 ${gapText}. 실제 저가/고가가 닿으면 자동으로 진입 터치로 전환됩니다.`,
+      label: "기준가 대기",
+      detail: `기준가까지 ${gapText}. 실제 저가/고가가 닿으면 자동으로 기준가 터치로 전환됩니다.`,
       cls: statusTone("warn"),
       cards: [
-        { label: "진입 터치", value: "대기", sub: money(entry, market) },
+        { label: "기준가 터치", value: "대기", sub: money(entry, market) },
         { label: "목표 터치", value: "-", sub: target ? money(target, market) : "목표 없음" },
         { label: "손절 터치", value: "-", sub: stop ? money(stop, market) : "손절 없음" },
       ],
@@ -244,10 +264,10 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
   if (stoppedBeforeTarget) {
     return {
       label: "손절선 터치",
-      detail: `${entryTouch.date} 진입 후 ${stopTouch.date} 손절선에 닿았습니다.`,
+      detail: `${entryTouch.date} 기준가 터치 후 ${stopTouch.date} 손절선에 닿았습니다.`,
       cls: statusTone("bad"),
       cards: [
-        { label: "진입 터치", value: entryTouch.date, sub: money(entry, market) },
+        { label: "기준가 터치", value: entryTouch.date, sub: money(entry, market) },
         { label: "목표 터치", value: targetTouch?.date || "미도달", sub: target ? money(target, market) : "목표 없음" },
         { label: "손절 터치", value: stopTouch.date, sub: stop ? money(stop, market) : "손절 없음" },
       ],
@@ -256,21 +276,21 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
   if (targetTouch) {
     return {
       label: "목표선 터치",
-      detail: `${entryTouch.date} 진입 후 ${targetTouch.date} 목표선에 닿았습니다.`,
+      detail: `${entryTouch.date} 기준가 터치 후 ${targetTouch.date} 목표선에 닿았습니다.`,
       cls: statusTone("ok"),
       cards: [
-        { label: "진입 터치", value: entryTouch.date, sub: money(entry, market) },
+        { label: "기준가 터치", value: entryTouch.date, sub: money(entry, market) },
         { label: "목표 터치", value: targetTouch.date, sub: target ? money(target, market) : "목표 없음" },
         { label: "손절 터치", value: stopTouch?.date || "미터치", sub: stop ? money(stop, market) : "손절 없음" },
       ],
     };
   }
   return {
-    label: "진입 후 진행",
-    detail: `${entryTouch.date} 진입선 터치 후 목표/손절 미확정입니다.`,
+    label: "기준가 터치 후 진행",
+    detail: `${entryTouch.date} 기준가 터치 후 목표/손절 미확정입니다.`,
     cls: statusTone("neutral"),
     cards: [
-      { label: "진입 터치", value: entryTouch.date, sub: money(entry, market) },
+      { label: "기준가 터치", value: entryTouch.date, sub: money(entry, market) },
       { label: "목표 터치", value: "미도달", sub: target ? money(target, market) : "목표 없음" },
       { label: "손절 터치", value: "미터치", sub: stop ? money(stop, market) : "손절 없음" },
     ],
@@ -875,7 +895,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
             if (!price || price <= 0) return;
             candleSeries.createPriceLine({ price, color, lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title });
           };
-          addLine(levelValue(levels, "entry"), "#22c55e", "진입");
+          addLine(levelValue(levels, "entry"), "#22c55e", "기준");
           addLine(levelValue(levels, "stop"),  "#ef4444", "손절");
           addLine(levelValue(levels, "target"), "#06b6d4", "목표");
         }
@@ -1191,7 +1211,7 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
   );
 }
 
-// ── ATR 기반 진입 계획 ────────────────────────────────────────────────
+// ── ATR 기반 관찰 계획 ────────────────────────────────────────────────
 function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative"|"balanced"|"aggressive", horizon: "short"|"swing"|"mid") {
   if (!currentPrice || !atr) return null;
   const stopMult  = { conservative: 1.5, balanced: 2.0, aggressive: 2.5 }[mode];
@@ -1247,7 +1267,7 @@ function technicalStance(rows: any[], indicators: any, latestRsi: number | null,
   }
   return {
     label: "중립 관찰",
-    detail: "진입선 터치, 거래량, 공시 이벤트를 같이 확인하세요.",
+    detail: "기준가 터치, 거래량, 공시 이벤트를 같이 확인하세요.",
     cls: statusTone("neutral"),
   };
 }
@@ -1433,8 +1453,7 @@ export default function ChartPage() {
   const dataCards = [
     { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`, cls: loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
     { label: "추천선", value: levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
-    { label: "뉴스", value: `${loadState.newsCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.newsCount) },
-    { label: "공시", value: `${loadState.disclosureCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.disclosureCount) },
+    { label: "뉴스·공시", value: `${loadState.newsCount}건 · ${loadState.disclosureCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.newsCount + loadState.disclosureCount) },
     { label: "기업분석", value: company ? "연결됨" : "없음", sub: loadStatusText(loadState.companyStatus), cls: company ? statusTone("ok") : statusTone("warn") },
   ];
 
@@ -1487,8 +1506,8 @@ export default function ChartPage() {
               <div className="grid grid-cols-2 gap-2 text-right sm:grid-cols-4">
                 <Info label="최근 종가" value={latest ? money(latest.close, selected.market) : "-"} />
                 <Info label="RSI14" value={latestRsi ? Number(latestRsi).toFixed(1) : "데이터 부족"} />
-                <Info label="ATR14" value={indicators.atr14 ? money(indicators.atr14, selected.market) : "데이터 부족"} />
-                <Info label="MDD20" value={indicators.mdd20 ? `${Number(indicators.mdd20).toFixed(2)}%` : "데이터 부족"} />
+                <Info label="ATR14" value={indicators.atr14 ? money(indicators.atr14, selected.market) : "추가 데이터 필요 · 최소 14봉 필요"} />
+                <Info label="MDD20" value={indicators.mdd20 ? `${Number(indicators.mdd20).toFixed(2)}%` : "추가 데이터 필요 · 최소 20봉 필요"} />
               </div>
             </div>
 
@@ -1593,7 +1612,7 @@ export default function ChartPage() {
                       {toggles.retracement && <span style={{ color: "#06b6d4" }}>── 0.868</span>}
                       {toggles.supply     && <span style={{ color: "#f59e0b" }}>··· 매물대</span>}
                       {toggles.fakeBreak  && <span style={{ color: "#ef4444" }}>▼ 가짜돌파</span>}
-                      {levels && <><span style={{ color: "#22c55e" }}>-- 진입</span><span style={{ color: "#ef4444" }}>-- 손절</span><span style={{ color: "#06b6d4" }}>-- 목표</span></>}
+                      {levels && <><span style={{ color: "#22c55e" }}>-- 기준</span><span style={{ color: "#ef4444" }}>-- 손절</span><span style={{ color: "#06b6d4" }}>-- 목표</span></>}
                     </span>
                   </div>
                 </div>
@@ -1601,7 +1620,7 @@ export default function ChartPage() {
                 {toggles.macd && <MacdChart rows={filteredRows} />}
                 <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
                   <Info label="기준가" value={levels && levelValue(levels,"base") ? money(levelValue(levels,"base"), selected.market) : "-"} />
-                  <Info label="진입가" value={levels ? priceText(levels,"entry","-") : "-"} />
+                  <Info label="기준가" value={levels ? priceText(levels,"entry","-") : "-"} />
                   <Info label="손절가" value={levels ? priceText(levels,"stop","-") : "-"} />
                   <Info label="목표가" value={levels ? priceText(levels,"target","-") : "-"} />
                   <Info label="예상가" value={levels ? priceText(levels,"expected","-") : "-"} />
@@ -1610,11 +1629,11 @@ export default function ChartPage() {
             )}
           </div>
 
-          {/* ATR 진입 계획 */}
+          {/* ATR 관찰 계획 */}
           <div className="rounded-2xl border border-blue-900/50 bg-blue-950/10 p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="font-semibold text-slate-100">ATR 기반 진입 계획</h3>
+                <h3 className="font-semibold text-slate-100">ATR 기반 관찰 계획</h3>
                 <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할매수 50/30/20</p>
               </div>
               <div className="flex gap-2">
@@ -1637,9 +1656,9 @@ export default function ChartPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                   {[
-                    { label: "1차 진입 (50%)", value: money(atrPlan.entry, selected.market), color: "text-emerald-300", sub: "현재가 기준" },
-                    { label: "2차 진입 (30%)", value: money(atrPlan.split2Price, selected.market), color: "text-sky-300", sub: `-${(atrPlan.atr * 0.5 / atrPlan.entry * 100).toFixed(1)}%` },
-                    { label: "3차 진입 (20%)", value: money(atrPlan.split3Price, selected.market), color: "text-violet-300", sub: `-${(atrPlan.atr / atrPlan.entry * 100).toFixed(1)}%` },
+                    { label: "1차 관찰 기준 (50%)", value: money(atrPlan.entry, selected.market), color: "text-emerald-300", sub: "현재가 기준" },
+                    { label: "2차 관찰 기준 (30%)", value: money(atrPlan.split2Price, selected.market), color: "text-sky-300", sub: `-${(atrPlan.atr * 0.5 / atrPlan.entry * 100).toFixed(1)}%` },
+                    { label: "3차 관찰 기준 (20%)", value: money(atrPlan.split3Price, selected.market), color: "text-violet-300", sub: `-${(atrPlan.atr / atrPlan.entry * 100).toFixed(1)}%` },
                     { label: "손절가", value: money(atrPlan.stop, selected.market), color: "text-red-300", sub: `-${atrPlan.stopPct}%` },
                   ].map(({ label, value, color, sub }) => (
                     <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
@@ -1721,6 +1740,9 @@ export default function ChartPage() {
             <Panel title={`기업분석${company?.hasDartData ? ` · DART ${company.dartYear || ""}` : ""}`}>
               {company ? (
                 <>
+                  <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                    {companyOneLine(company)}
+                  </div>
                   <div className="grid grid-cols-3 gap-2 mb-2">
                     {[{ label: "PER", value: company.per }, { label: "PBR", value: company.pbr }, { label: "PEG", value: company.peg }].map(({ label, value }) => (
                       <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2 text-center">
@@ -1794,34 +1816,44 @@ export default function ChartPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Panel title="관련 뉴스">
-              {loading
-                ? <Empty text="데이터 확인 중..." />
-                : news.length === 0
-                  ? <Empty text={`이 종목 관련 뉴스가 없습니다. 뉴스는 장전·장후 자동 수집됩니다.`} />
-                  : <div className="space-y-2">{news.map((item, i) => <Related key={`news-${i}`} item={item} />)}</div>}
-            </Panel>
-            <Panel title="관련 공시 (DART)">
-              {loading
-                ? <Empty text="데이터 확인 중..." />
-                : disclosures.length === 0
-                  ? (
-                    <div className="space-y-2">
-                      <Empty text="이 종목 관련 공시가 없습니다. 매주 월요일 자동 수집됩니다." />
-                      {selected && (
-                        <a
-                          href={`https://dart.fss.or.kr/dsab007/main.do`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-sky-400 hover:bg-slate-800 transition-colors"
-                        >
-                          <span>DART 전자공시 바로가기 →</span>
-                        </a>
-                      )}
-                    </div>
-                  )
-                  : <div className="space-y-2">{disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} />)}</div>}
-            </Panel>
+            {!loading && news.length === 0 && disclosures.length === 0 ? (
+              <div className="lg:col-span-2">
+                <Panel title="뉴스·공시">
+                  <Empty text="뉴스 0건 · 공시 0건입니다. 뉴스는 장전·장후, 공시는 주기적으로 자동 수집됩니다." />
+                </Panel>
+              </div>
+            ) : (
+              <>
+                <Panel title="관련 뉴스">
+                  {loading
+                    ? <Empty text="데이터 확인 중..." />
+                    : news.length === 0
+                      ? <Empty text="뉴스 0건" />
+                      : <div className="space-y-2">{news.map((item, i) => <Related key={`news-${i}`} item={item} />)}</div>}
+                </Panel>
+                <Panel title="관련 공시 (DART)">
+                  {loading
+                    ? <Empty text="데이터 확인 중..." />
+                    : disclosures.length === 0
+                      ? (
+                        <div className="space-y-2">
+                          <Empty text="공시 0건" />
+                          {selected && (
+                            <a
+                              href={`https://dart.fss.or.kr/dsab007/main.do`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-sky-400 hover:bg-slate-800 transition-colors"
+                            >
+                              <span>DART 전자공시 바로가기 →</span>
+                            </a>
+                          )}
+                        </div>
+                      )
+                      : <div className="space-y-2">{disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} />)}</div>}
+                </Panel>
+              </>
+            )}
           </div>
         </div>
       )}

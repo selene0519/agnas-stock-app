@@ -6,12 +6,18 @@ import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import {
   dedupeBySymbol,
+  dataTrustBadgeClass,
+  dataTrustLabel,
+  dataTrustNotice,
   displayName,
   formatMoney,
   horizonLabel,
   modeLabel,
   priceText,
   probabilityText,
+  sourceStatusLabel,
+  strategyTagLabel,
+  shouldHideSizingForTrust,
   toNumber,
 } from "@/lib/moneDisplay";
 import { getDefaultMarketBySession } from "@/lib/marketSession";
@@ -769,7 +775,7 @@ export default function StocksPage() {
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
                     { id: "quality", label: "상위·정상", hint: "60점+ 데이터 정상" },
-                    { id: "entry", label: "진입 후보", hint: "50점+ 차단 제외" },
+                    { id: "entry", label: "관찰 후보", hint: "50점+ 차단 제외" },
                     { id: "clean", label: "데이터 정상", hint: "대기/차단 제외" },
                     { id: "watch", label: "관심만", hint: "관심 후보 집중" },
                   ].map((preset) => (
@@ -1046,7 +1052,7 @@ export default function StocksPage() {
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <span className="text-slate-500">현재가</span>
                       <span className={`font-mono ${row.currentPriceText ? "text-cyan-300" : "text-amber-300"}`}>
-                        {row.currentPriceText || "가격 확인 필요"}
+                        {row.currentPriceText || "실시간 현재가 없음"}
                       </span>
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
@@ -1155,7 +1161,7 @@ export default function StocksPage() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {visible.map((item: any, index: number) => {
           const hasRecommendation = !item.isSearchOnly;
-          const quantity = hasRecommendation ? qtyText(item, mode) : "";
+          const quantity = hasRecommendation && !shouldHideSizingForTrust(item) ? qtyText(item, mode) : "";
           const marketValue = String(item.market || market);
           const current = priceText(
             item,
@@ -1191,7 +1197,7 @@ export default function StocksPage() {
                     {String(item.market || market).toUpperCase()}
                   </p>
                   <p className="mt-1 text-[11px] text-slate-600">
-                    요청: {modeLabel(mode)} / {horizonLabel(horizon)} · 소스:{" "}
+                    요청: {modeLabel(mode)} / {horizonLabel(horizon)} · 반영 조건:{" "}
                     {modeLabel(item.sourceMode || item.mode || mode)} /{" "}
                     {horizonLabel(
                       item.sourceHorizon || item.horizon || horizon,
@@ -1200,7 +1206,10 @@ export default function StocksPage() {
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300">
-                    {item.sourceStatus || "MATCH"}
+                    {sourceStatusLabel(item.sourceStatus)}
+                  </span>
+                  <span className={`rounded border px-2 py-1 text-xs ${dataTrustBadgeClass(item)}`}>
+                    {dataTrustLabel(item)}
                   </span>
                   {item.isSearchOnly ? (
                     <span className="rounded bg-blue-500/10 px-2 py-1 text-xs text-blue-300">
@@ -1221,7 +1230,7 @@ export default function StocksPage() {
                   value={current}
                   tone={current.includes("확인") ? "amber" : "normal"}
                 />
-                <Cell label="진입가" value={entry} tone={hasRecommendation ? "blue" : "amber"} />
+                <Cell label="기준가" value={entry} tone={hasRecommendation ? "blue" : "amber"} />
                 <Cell label="손절가" value={stop} tone={hasRecommendation ? "red" : "amber"} />
                 <Cell label="목표가" value={target} tone={hasRecommendation ? "green" : "amber"} />
               </div>
@@ -1237,17 +1246,19 @@ export default function StocksPage() {
               {quantity && (
                 <div className="mt-2 flex items-center justify-between text-sm">
                   <span className="text-slate-500">
-                    {modeLabel(mode)} 비중 기준 수량
+                    {modeLabel(mode)} 비중 기준 모의 수량
                   </span>
                   <span className="font-mono text-emerald-300">{quantity}</span>
                 </div>
               )}
               {(item.computedFields || item.fallbackReason) && (
                 <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-xs text-slate-400">
-                  자동/보강:{" "}
-                  {Array.isArray(item.computedFields)
-                    ? item.computedFields.join(", ")
-                    : item.fallbackReason || "계산값 포함"}
+                  데이터 보강됨 · 전략·기간 조건과 현재가 데이터를 반영했습니다.
+                </div>
+              )}
+              {dataTrustNotice(item) && (
+                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+                  {dataTrustNotice(item)}
                 </div>
               )}
 
@@ -1262,7 +1273,7 @@ export default function StocksPage() {
                       : t.includes("수렴") ? "border-violet-500/30 bg-violet-500/10 text-violet-300"
                       : t.includes("기관") || t.includes("외국인") ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
                       : "border-slate-700 bg-slate-950 text-slate-300"
-                    }`}>{t}</span>
+                    }`}>{strategyTagLabel(t)}</span>
                   ))
                 }
                 {/* 기존 strategyTags */}
@@ -1270,7 +1281,7 @@ export default function StocksPage() {
                   const TAG_LABEL: Record<string, string> = {
                     CAUTION:"⚠ 주의", MA_CONVERGENCE:"이격도 수렴", PULLBACK_BUY:"눌림목",
                     MOMENTUM:"모멘텀", VOLUME_BREAKOUT:"거래량 증가", BREAKOUT_52W:"52주 돌파",
-                    NEAR_52W_HIGH:"신고가 근접", BB_SQUEEZE:"볼린저 스퀴즈", STABLE_LOW_RISK:"안정형",
+                    NEAR_52W_HIGH:"신고가 근접", BB_SQUEEZE:"변동성 압축", STABLE_LOW_RISK:"안정형",
                     UNDERVALUED_GROWTH:"저평가 성장주", GOLDEN_CROSS:"🔼 골든크로스",
                     DEATH_CROSS:"🔽 데드크로스", MID_GOLDEN_CROSS:"📈 중기 골든크로스",
                     MID_DEATH_CROSS:"📉 중기 데드크로스", TRAILING_STOP_ALERT:"⚡ 트레일링 손절",
@@ -1296,7 +1307,7 @@ export default function StocksPage() {
                     UNDERVALUED_GROWTH:"border-green-500/40 bg-green-500/10 text-green-300",
                   };
                   const tagLabels = Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels as string[] : [];
-                  const lbl = TAG_LABEL[tag] ?? tagLabels[tagIndex] ?? tag;
+                  const lbl = TAG_LABEL[tag] ?? tagLabels[tagIndex] ?? strategyTagLabel(tag);
                   const cls = TAG_COLOR[tag] ?? "border-slate-600 bg-slate-800 text-slate-300";
                   return (
                     <span key={tag} className={`rounded-md border px-2 py-1 text-[11px] font-bold ${cls}`}>
@@ -1348,7 +1359,7 @@ export default function StocksPage() {
                       <ScoreBar label="상승여력" score={item.upsideScore} />
                       <ScoreBar label="리스크" score={item.riskScore} />
                       <ScoreBar label="모멘텀" score={item.momentumScore} />
-                      <ScoreBar label="진입가" score={item.entryScore} />
+                      <ScoreBar label="기준가" score={item.entryScore} />
                       <ScoreBar label="손익비" score={item.rrScore} />
                     </>
                   ) : (

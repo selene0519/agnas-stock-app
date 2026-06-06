@@ -333,6 +333,96 @@ export function statusBadge(status?: string): string {
   return "border-amber-500/30 bg-amber-500/10 text-amber-300";
 }
 
+export type DataTrustState = "normal" | "partial" | "stale" | "error";
+
+export function dataTrustState(item: any): DataTrustState {
+  const raw = [
+    item?.dataStatus,
+    item?.dataQuality,
+    item?.priceStatus,
+    item?.ohlcvStatus,
+    item?.financialDataStatus,
+    item?.sourceStatus,
+  ].map((value) => String(value || "").toUpperCase()).filter(Boolean);
+  const text = raw.join(" ");
+  if (/(ERROR|NO_DATA|NO_PRICE|FAIL|BROKEN)/.test(text)) return "error";
+  if (/(STALE|OLD|DELAY)/.test(text)) return "stale";
+  if (/(PARTIAL|DATA_PENDING|PENDING|FALLBACK|MISSING|CAUTION)/.test(text)) return "partial";
+  return "normal";
+}
+
+export function dataTrustLabel(item: any): string {
+  const state = dataTrustState(item);
+  if (state === "normal") return "정상";
+  if (state === "partial") return "일부 데이터 기준";
+  if (state === "stale") return "지연 데이터 기준";
+  return "데이터 오류 - 신규 판단 주의";
+}
+
+export function dataTrustBadgeClass(item: any): string {
+  const state = dataTrustState(item);
+  if (state === "normal") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  if (state === "partial") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+  if (state === "stale") return "border-orange-500/30 bg-orange-500/10 text-orange-300";
+  return "border-red-500/40 bg-red-500/10 text-red-300";
+}
+
+export function dataTrustNotice(item: any): string {
+  const state = dataTrustState(item);
+  if (state === "error") return "데이터 오류로 후보 신뢰도를 낮췄습니다. 전일/부분 데이터 기준일 수 있습니다.";
+  if (state === "stale") return "지연 데이터 기준입니다. 최신 가격 확인 전까지 모의 수량을 보수적으로 봅니다.";
+  if (state === "partial") return "일부 데이터 기준입니다. 가격·재무·수급 연결 상태를 함께 확인하세요.";
+  return "";
+}
+
+export function shouldHideSizingForTrust(item: any): boolean {
+  const state = dataTrustState(item);
+  return state === "stale" || state === "error";
+}
+
+export function sourceStatusLabel(status?: string): string {
+  const value = String(status || "").trim();
+  const upper = value.toUpperCase();
+  if (!value || upper === "MATCH" || upper === "OK" || upper === "NORMAL") return "조건일치";
+  if (upper.includes("PARTIAL")) return "일부 조건일치";
+  if (upper.includes("STALE")) return "지연 데이터";
+  if (upper.includes("ERROR") || upper.includes("NO_DATA")) return "데이터 확인 필요";
+  if (/(strategy_horizon|quant_scanner|ohlcv_status|from_source|_v\d+)/i.test(value)) {
+    return "전략·기간 조건과 현재가 데이터를 반영했습니다.";
+  }
+  return value;
+}
+
+export function strategyTagLabel(tag?: string): string {
+  const value = String(tag || "").trim();
+  const upper = value.toUpperCase();
+  const labels: Record<string, string> = {
+    BB_SQUEEZE: "변동성 압축",
+    PULLBACK_BUY: "눌림목",
+    STABLE_LOW_RISK: "안정형",
+    LOW_RISK_STABLE: "안정형",
+    CAUTION: "주의",
+    MOMENTUM: "모멘텀",
+    FINANCIAL_WEAK: "재무 미확보",
+    FINANCIAL_DATA_PENDING: "재무 미확보",
+    DATA_PENDING: "재무 미확보",
+    MA_CONVERGENCE: "이격도 수렴",
+    VOLUME_BREAKOUT: "거래량 증가",
+    BREAKOUT_52W: "52주 신고가 돌파",
+    NEAR_52W_HIGH: "신고가 근접",
+    UNDERVALUED_GROWTH: "저평가 성장주",
+    GOLDEN_CROSS: "골든크로스",
+    DEATH_CROSS: "데드크로스",
+    MID_GOLDEN_CROSS: "중기 골든크로스",
+    MID_DEATH_CROSS: "중기 데드크로스",
+    TRAILING_STOP_ALERT: "트레일링 손절 주의",
+    BREAKOUT: "돌파",
+  };
+  if (labels[upper]) return labels[upper];
+  if (upper.includes("FINANCIAL") && (upper.includes("WEAK") || upper.includes("PENDING"))) return "재무 미확보";
+  return value.replaceAll("_", " ");
+}
+
 export function sortByValue(items: any[]): any[] {
   return [...items].sort((a, b) => {
     const av = toNumber(a.valuation || a.valuationText || a.currentPrice) || 0;

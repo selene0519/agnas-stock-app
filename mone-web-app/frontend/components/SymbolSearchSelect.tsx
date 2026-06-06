@@ -216,7 +216,7 @@ export default function SymbolSearchSelect({
                 </div>
                 <div className="shrink-0 text-right">
                   <div className={`font-mono text-xs ${item.currentPriceText ? "text-slate-300" : "text-amber-300"}`}>
-                    {item.currentPriceText || "가격 확인 필요"}
+                    {item.currentPriceText || "실시간 현재가 없음"}
                   </div>
                   <div className="text-[10px] text-slate-600">
                     {item.priceSource || item.source || (String(item.dataStatus || "").toUpperCase() === "PRICE_PENDING" ? "KIS 수집 대기" : item.dataStatus) || ""}

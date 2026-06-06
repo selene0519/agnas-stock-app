@@ -119,7 +119,7 @@ export default function StockCard({ stock, onClick }: Props) {
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3 text-xs">
         <PriceCell label="현재가" value={fmtPrice(stock.currentPrice, stock.market)} />
-        <PriceCell label="진입가" value={fmtPrice(stock.entryPrice, stock.market)} tone="text-blue-300" />
+        <PriceCell label="기준가" value={fmtPrice(stock.entryPrice, stock.market)} tone="text-blue-300" />
         <PriceCell label="손절가" value={fmtPrice(stock.stopLoss, stock.market)} tone="text-red-400" />
         <PriceCell label="목표가" value={fmtPrice(stock.targetPrice, stock.market)} tone="text-emerald-400" />
       </div>

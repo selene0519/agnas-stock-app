@@ -10,12 +10,16 @@ import {
 } from "@/lib/marketSession";
 import {
   dedupeBySymbol,
+  dataTrustBadgeClass,
+  dataTrustLabel,
+  dataTrustNotice,
   displayName,
   firstText,
   horizonLabel,
   modeLabel,
   priceText,
   probabilityText,
+  strategyTagLabel,
 } from "@/lib/moneDisplay";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
@@ -27,7 +31,7 @@ type MarketChoice = "auto" | "kr" | "us";
 function getSessionContext(session: SessionPhase) {
   switch (session) {
     case "장전":    return { focus: "today",    hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하고 알림을 등록하세요." };
-    case "장중":    return { focus: "intraday", hint: "장중 — 진입가에 근접한 종목을 우선 확인하세요." };
+    case "장중":    return { focus: "intraday", hint: "장중 — 기준가에 근접한 종목을 우선 확인하세요." };
     case "장마감":  return { focus: "review",   hint: "장마감 후 — 오늘 결과를 검증하고 내일 후보를 보강하세요." };
     case "개장 전": return { focus: "today",    hint: "미장 개장 전 — 오늘 미장 진입 후보와 포지션을 점검하세요." };
     case "마감 후": return { focus: "review",   hint: "미장 마감 후 — 결과 검토 및 다음 날 전략을 준비하세요." };
@@ -74,7 +78,7 @@ function TagChips({ item }: { item: any }) {
       {item.supplySignal === "STRONG_BUY" && <span className="rounded-full border border-blue-400/40 bg-blue-400/10 px-2 py-0.5 text-[10px] text-blue-300">기관+외국인</span>}
       {item.supplySignal === "INST_BUY" && <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] text-sky-300">기관매수</span>}
       {tags.filter((t) => !["저평가성장주", "공시주의"].includes(t)).slice(0, 2).map((t) => (
-        <span key={t} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">{t}</span>
+        <span key={t} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">{strategyTagLabel(t)}</span>
       ))}
       {Number(item.newsRiskPenalty) >= 10 && <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-300">공시주의</span>}
       {item.financialDataStatus === "DATA_PENDING" && <span className="rounded-full border border-slate-600 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">재무미확보</span>}
@@ -115,6 +119,9 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item:
               <EarningsBadge dday={earningsMap[item.symbol]} />
             )}
             {badgeMap && <BacktestBadge item={item} badgeMap={badgeMap} />}
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${dataTrustBadgeClass(item)}`}>
+              {dataTrustLabel(item)}
+            </span>
           </div>
           <div className="mt-0.5 text-[11px] text-slate-500">{item.symbol} · {modeLabel(mode as Mode)} · {horizonLabel(horizon as Horizon)}</div>
         </div>
@@ -128,7 +135,7 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item:
 
       <div className="mt-3 grid grid-cols-4 gap-2 text-[11px]">
         <div><div className="text-slate-500">현재가</div><div className="font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
-        <div><div className="text-slate-500">진입가</div><div className="font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
+        <div><div className="text-slate-500">기준가</div><div className="font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
         <div><div className="text-slate-500">손절가</div><div className="font-mono text-red-300">{priceText(item, "stop", "-")}</div></div>
         <div><div className="text-slate-500">목표가</div><div className="font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
       </div>
@@ -150,6 +157,12 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item:
       </div>
 
       <TagChips item={item} />
+
+      {dataTrustNotice(item) && (
+        <div className="mt-2 rounded-lg border border-amber-800/40 bg-amber-950/20 px-2.5 py-2 text-[10px] text-amber-300">
+          {dataTrustNotice(item)}
+        </div>
+      )}
 
       {item.timingLabel && (
         <div className={`mt-2 rounded-lg px-2 py-1 text-[10px] ${
@@ -778,7 +791,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
           <div className="grid grid-cols-4 gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center text-[11px]">
             {[
               { label: "현재가", key: "current", color: "text-slate-200" },
-              { label: "진입가", key: "entry",   color: "text-sky-300" },
+              { label: "기준가", key: "entry",   color: "text-sky-300" },
               { label: "손절가", key: "stop",    color: "text-red-300" },
               { label: "목표가", key: "target",  color: "text-emerald-300" },
             ].map(({ label, key, color }) => (
@@ -811,7 +824,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             </div>
           </div>
 
-          {/* 진입 전 체크리스트 */}
+          {/* 검토 체크리스트 */}
           {(() => {
             const current = Number(item.currentPrice || 0);
             const entry   = Number(item.entry || 0);
@@ -824,7 +837,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
 
             const checks = [
               { label: "EV 양수", ok: evOk, detail: evOk ? `+${ev.toFixed(1)}%` : `${ev.toFixed(1)}% (음수)` },
-              { label: "진입가 범위", ok: inRange, detail: gapPct != null ? `현재가 ±${gapPct.toFixed(1)}%` : "가격 데이터 없음" },
+              { label: "기준가 범위", ok: inRange, detail: gapPct != null ? `현재가 ±${gapPct.toFixed(1)}%` : "가격 데이터 없음" },
               { label: "시장 레짐", ok: regimeOk, detail: marketRegime ? (marketRegime.regime === "BULL" ? "강세장 정상" : marketRegime.regime === "BEAR" ? "약세장 — 주의" : "중립") : "확인 불가" },
               { label: "데이터 상태", ok: dataOk, detail: dataOk ? "정상" : String(item.dataStatus || "미확인") },
               { label: "주의사항", ok: noCaution, detail: noCaution ? "없음" : `${item.cautionReasons.length}개` },
@@ -834,7 +847,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             return (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <div className="text-xs font-semibold text-slate-300">진입 전 체크리스트</div>
+                  <div className="text-xs font-semibold text-slate-300">검토 체크리스트</div>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                     passCount === checks.length ? "bg-emerald-900/50 text-emerald-300"
                     : passCount >= 3 ? "bg-amber-900/40 text-amber-300"
@@ -856,7 +869,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                 </div>
                 {passCount < 3 && (
                   <div className="mt-2 rounded-lg bg-red-950/30 px-2.5 py-1.5 text-[10px] text-red-300">
-                    조건 미충족이 많습니다. 진입 전 충분히 검토하세요.
+                    조건 미충족이 많습니다. 신규 판단 전 충분히 검토하세요.
                   </div>
                 )}
               </div>
@@ -911,7 +924,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                     );
                   })}
                 </div>
-                <div className="mt-2 text-[10px] text-slate-600">최대 손실 금액 ÷ (진입가 − 손절가) · 참고용</div>
+                <div className="mt-2 text-[10px] text-slate-600">최대 손실 금액 ÷ (기준가 − 손절가) · 참고용 모의 계산</div>
               </div>
             );
           })()}
@@ -965,7 +978,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                   const labelMap: Record<string, string> = {
                     CAUTION:"⚠ 주의", MA_CONVERGENCE:"이격도 수렴", PULLBACK_BUY:"눌림목",
                     MOMENTUM:"모멘텀", VOLUME_BREAKOUT:"거래량 증가", BREAKOUT_52W:"52주 신고가 돌파",
-                    NEAR_52W_HIGH:"신고가 근접", BB_SQUEEZE:"볼린저 스퀴즈", STABLE_LOW_RISK:"안정형",
+                    NEAR_52W_HIGH:"신고가 근접", BB_SQUEEZE:"변동성 압축", STABLE_LOW_RISK:"안정형",
                     UNDERVALUED_GROWTH:"저평가 성장주", GOLDEN_CROSS:"🔼 골든크로스",
                     DEATH_CROSS:"🔽 데드크로스", MID_GOLDEN_CROSS:"📈 중기 골든크로스",
                     MID_DEATH_CROSS:"📉 중기 데드크로스", TRAILING_STOP_ALERT:"⚡ 트레일링 손절",
@@ -1316,7 +1329,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           if (gapPct <= 2.0) {
             notifiedKeys.add(key);
             new Notification(`🎯 진입 임박 — ${item.name || item.symbol}`, {
-              body: `현재가 ${current.toLocaleString()}원  진입가 ${entry.toLocaleString()}원 (±${gapPct.toFixed(1)}%)`,
+              body: `현재가 ${current.toLocaleString()}원  기준가 ${entry.toLocaleString()}원 (±${gapPct.toFixed(1)}%)`,
               tag: key,
             });
           }
@@ -1631,7 +1644,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           <TrendingUp size={18} className="text-emerald-400" />
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-slate-100">
-              {sessionPhase === "장중" ? "진입가 근접 종목" : "매수 검토 후보"}
+              {sessionPhase === "장중" ? "기준가 근접 종목" : "검토 후보"}
             </h2>
             <p className="text-xs text-slate-500">
               {sessionCtx.hint || "진입 구간 + EV 양수 + 추세 조건을 동시에 충족한 종목입니다."}
