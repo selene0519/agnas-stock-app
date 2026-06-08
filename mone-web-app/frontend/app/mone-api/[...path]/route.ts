@@ -42,32 +42,54 @@ function buildTargetUrl(pathSegments: string[], request: NextRequest): string {
   return targetUrl.toString();
 }
 
+// Render free tier cold-start: 첫 요청 최대 60초 소요
+// Vercel nodejs 함수 최대 실행 60초 → 55초 제한으로 여유 확보
+const PROXY_TIMEOUT_MS = 55000;
+
+// 전달할 헤더 목록 (사용자 식별 포함)
+const FORWARDED_HEADERS = [
+  "accept",
+  "content-type",
+  "authorization",
+  "x-mone-user",   // 사용자별 SQLite 데이터 격리에 필요
+  "x-forwarded-for",
+];
+
 async function proxyRequest(request: NextRequest, context: RouteContext) {
   try {
     const pathSegments = await getPathSegments(context);
     const targetUrl = buildTargetUrl(pathSegments, request);
 
     const headers = new Headers();
-    const accept = request.headers.get("accept");
-    const contentType = request.headers.get("content-type");
-    const authorization = request.headers.get("authorization");
-
-    if (accept) headers.set("accept", accept);
-    if (contentType) headers.set("content-type", contentType);
-    if (authorization) headers.set("authorization", authorization);
+    for (const name of FORWARDED_HEADERS) {
+      const val = request.headers.get(name);
+      if (val) headers.set(name, val);
+    }
 
     const method = request.method.toUpperCase();
+
+    // timeout: 25초 — Render cold-start가 길어지면 클라이언트에 503 반환
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), PROXY_TIMEOUT_MS);
+
     const init: RequestInit = {
       method,
       headers,
       cache: "no-store",
+      signal: timeoutController.signal,
     };
 
     if (!["GET", "HEAD"].includes(method)) {
       init.body = await request.text();
     }
 
-    const backendRes = await fetch(targetUrl, init);
+    let backendRes: Response;
+    try {
+      backendRes = await fetch(targetUrl, init);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
     const body = await backendRes.arrayBuffer();
     const responseHeaders = new Headers();
 
@@ -77,7 +99,6 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
     } else {
       responseHeaders.set("content-type", "application/json; charset=utf-8");
     }
-
     responseHeaders.set("cache-control", "no-store");
 
     return new NextResponse(body, {
@@ -86,14 +107,19 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
       headers: responseHeaders,
     });
   } catch (error) {
+    const isTimeout = String(error).includes("abort") || String(error).includes("AbortError");
+    const status = isTimeout ? 503 : 502;
     return NextResponse.json(
       {
         status: "ERROR",
-        error: "FRONTEND_PROXY_FAILED",
-        detail: String(error),
+        error: isTimeout ? "BACKEND_COLD_START_TIMEOUT" : "FRONTEND_PROXY_FAILED",
+        detail: isTimeout
+          ? "백엔드 서버가 초기화 중입니다. 잠시 후 다시 시도해 주세요. (Render cold-start)"
+          : String(error),
+        retryAfter: isTimeout ? 15 : 0,
         backendConfigured: Boolean(BACKEND_URL),
       },
-      { status: 502 }
+      { status }
     );
   }
 }

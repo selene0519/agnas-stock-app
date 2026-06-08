@@ -35,6 +35,8 @@ export default function App() {
   useEffect(() => {
     setMounted(true);
     getUserId(); // 최초 방문 시 UUID 생성 및 localStorage 저장
+    // Render free-tier cold-start 방지: 앱 로드 즉시 백엔드 warm-up ping (결과 무시)
+    fetch("/mone-api/health", { cache: "no-store" }).catch(() => {});
   }, []);
 
   const refresh = useCallback(async () => {
