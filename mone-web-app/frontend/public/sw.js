@@ -1,4 +1,4 @@
-const CACHE = "mone-v5";
+const CACHE = "mone-v6";
 const STATIC = ["/manifest.json", "/brand/mone-logo-192.png", "/brand/mone-logo.png"];
 const OFFLINE_FALLBACK = "/__offline";
 
@@ -26,6 +26,11 @@ self.addEventListener("fetch", (event) => {
 
   // API 요청은 캐시 우회 (항상 네트워크 직접)
   if (url.pathname.startsWith("/mone-api") || url.pathname.startsWith("/api")) {
+    return;
+  }
+
+  if (url.pathname.startsWith("/_next/")) {
+    event.respondWith(fetch(event.request));
     return;
   }
 

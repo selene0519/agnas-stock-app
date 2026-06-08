@@ -96,7 +96,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       setGithub({ status: "ERROR", error: String(error) });
       setVirtualSummary({ status: "ERROR" });
     }
-    mone.trendlineAccuracy({ market: "all", futureBars: 20, symbolLimit: 12, maxCutoffs: 6 })
+    mone.trendlineAccuracy({ market: "all", futureBars: 5, symbolLimit: 30, maxCutoffs: 12 })
       .then((a) => setTrendlineAccuracy(a || { status: "ERROR" }))
       .catch((error) => setTrendlineAccuracy({ status: "ERROR", error: String(error) }));
     setAudit({ status: "LOADING", items: [] });
@@ -261,18 +261,19 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">빗각 과거 검증</h2>
-            <p className="text-sm text-slate-500">과거 시점에서 그은 지지·저항 빗각을 다음 20봉 실제 고저가로 검증합니다.</p>
+            <p className="text-sm text-slate-500">과거 시점에서 그은 지지·저항 빗각을 다음 5봉 실제 고저가와 뉴스 리스크로 검증합니다.</p>
           </div>
           <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{trendlineAccuracy.status || "UNKNOWN"}</span>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <Metric label="표본" value={trendlineAccuracy.sampleCount ?? "-"} />
           <Metric label="전체 존중률" value={pct(trendlineAccuracy.respectRatePct)} accent />
-          <Metric label="지지선 존중률" value={pct(trendlineAccuracy.supportRespectRatePct)} />
-          <Metric label="저항선 존중률" value={pct(trendlineAccuracy.resistanceRespectRatePct)} />
-          <Metric label="고신뢰 존중률" value={pct(trendlineAccuracy.highConfidenceRespectRatePct)} accent />
+          <Metric label="VERIFIED_90" value={trendlineAccuracy.verified90Count ?? "-"} accent />
+          <Metric label="검증선 존중률" value={pct(trendlineAccuracy.verified90RespectRatePct)} accent />
+          <Metric label="뉴스 차단" value={trendlineAccuracy.newsBlockedCount ?? "-"} />
         </div>
-        {trendlineAccuracy.policy && <div className="mt-3 text-xs text-slate-500">{trendlineAccuracy.policy}</div>}
+        {trendlineAccuracy.verifiedPolicy && <div className="mt-3 text-xs text-amber-200/80">{trendlineAccuracy.verifiedPolicy}</div>}
+        {trendlineAccuracy.policy && <div className="mt-2 text-xs text-slate-500">{trendlineAccuracy.policy}</div>}
         {trendlineAccuracy.error && <div className="mt-3 break-all text-xs text-red-300">{trendlineAccuracy.error}</div>}
       </div>
 
