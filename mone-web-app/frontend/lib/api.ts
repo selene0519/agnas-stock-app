@@ -89,6 +89,20 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<
     const text = await response.text().catch(() => "");
 
     if (!response.ok) {
+      // 503: Render cold-start timeout → 사용자 친화적 메시지
+      if (response.status === 503) {
+        let body: any = {};
+        try { body = JSON.parse(text); } catch { /* ignore */ }
+        if (body?.error === "BACKEND_COLD_START_TIMEOUT") {
+          return {
+            status: "ERROR",
+            error: "서버 초기화 중입니다. 잠시 후 새로고침해 주세요. (약 30~60초 소요)",
+            retryAfter: body.retryAfter || 30,
+            items: [],
+            count: 0,
+          } as T;
+        }
+      }
       return {
         status: "ERROR",
         error: `${response.status} ${response.statusText} ${text.slice(0, 500)}`,

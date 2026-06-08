@@ -483,16 +483,19 @@ export default function HoldingsPage() {
     return rows.map((row) => {
       const match = displayMap.get(editableKey(row));
       if (!match) return row;
-      const merged = toEditableHolding({ ...match, ...row });
+      // 서버 row의 빈 값이 화면(match)의 기존 값을 덮지 않도록
+      // stop/target은 서버값 → 화면값 → "" 순으로 fallback
+      const stopVal = row.stopPrice || match.stopPrice || match.stop || "";
+      const targetVal = row.targetPrice || match.targetPrice || match.target || "";
       return {
         ...row,
-        market: merged.market,
-        symbol: merged.symbol,
-        name: row.name || merged.name,
-        quantity: row.quantity ?? merged.quantity,
-        avgPrice: row.avgPrice ?? merged.avgPrice,
-        stopPrice: row.stopPrice || merged.stopPrice || "",
-        targetPrice: row.targetPrice || merged.targetPrice || "",
+        market: row.market || match.market,
+        symbol: row.symbol || match.symbol,
+        name: row.name || match.name,
+        quantity: row.quantity ?? match.quantity,
+        avgPrice: row.avgPrice ?? match.avgPrice,
+        stopPrice: stopVal,
+        targetPrice: targetVal,
       };
     });
   }
