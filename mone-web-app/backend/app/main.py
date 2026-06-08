@@ -245,8 +245,15 @@ def api_chart_analysis(symbol: str, market: str = Query("kr", pattern="^(kr|us)$
             regime_score = float(regime.get("regimeScore") or 50.0)
         except Exception:
             regime_score = 50.0
+        try:
+            from app.engine.news_sentiment_engine import load_sentiment_cache, score_news_sentiment
+            _scache = load_sentiment_cache(mkt)
+            news_pen = float(score_news_sentiment(mkt, symbol, symbol, cache=_scache).get("penalty", 0.0))
+        except Exception:
+            news_pen = 0.0
         state = build_chart_analysis(rows, symbol=symbol, market=mkt,
-                                      market_regime_score=regime_score)
+                                      market_regime_score=regime_score,
+                                      news_penalty=news_pen)
         return state_to_dict(state)
     except Exception as exc:
         import traceback
@@ -284,12 +291,20 @@ def api_chart_analysis(
 
         horizon_bars = {"short": 20, "swing": 50, "mid": 100}.get(horizon, 50)
 
+        try:
+            from app.engine.news_sentiment_engine import load_sentiment_cache, score_news_sentiment
+            _scache2 = load_sentiment_cache(market_key)
+            news_pen2 = float(score_news_sentiment(market_key, symbol, symbol, cache=_scache2).get("penalty", 0.0))
+        except Exception:
+            news_pen2 = 0.0
+
         chart_state = build_chart_analysis(
             rows=rows,
             symbol=symbol,
             market=market_key,
             market_regime_score=max(0.0, min(100.0, regime_score)),
             horizon_bars=horizon_bars,
+            news_penalty=news_pen2,
         )
         result = state_to_dict(chart_state)
         result["ok"] = True
@@ -478,8 +493,16 @@ def api_disclosures_refresh(market: str = Query("all", pattern="^(kr|us|all)$"),
 
 @app.post("/api/news/refresh")
 def api_news_refresh(market: str = Query("all", pattern="^(kr|us|all)$")) -> dict:
-    """GNews API를 호출해 최신 주식 뉴스를 수집하고 CSV에 저장한다."""
-    return data.collect_gnews(market=market)
+    """GNews(일반) + Finnhub(종목별) 뉴스를 수집해 CSV에 저장한다."""
+    gnews_result = data.collect_gnews(market=market)
+    # US 종목별 뉴스 추가 수집 (Finnhub company-news)
+    if market in ("us", "all"):
+        try:
+            finnhub_result = data._collect_us_company_news(days=7)
+            gnews_result["finnhub_news"] = finnhub_result
+        except Exception as exc:
+            gnews_result["finnhub_news"] = {"status": "ERROR", "error": str(exc)}
+    return gnews_result
 
 
 @app.post("/api/news/sentiment/refresh")

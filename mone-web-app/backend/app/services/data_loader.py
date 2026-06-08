@@ -3989,6 +3989,91 @@ def _collect_us_filings(days: int = 60, max_symbols: int = 35) -> dict[str, Any]
     return {"status": status, "market": "us", "message": "SEC/Finnhub filing 수집 완료" if rows else "SEC/Finnhub filing 결과가 없습니다.", "count": len(rows), "file": out_file.relative_to(REPO_ROOT).as_posix(), "errors": errors[:10]}
 
 
+def _collect_us_company_news(days: int = 45, max_symbols: int = 60) -> dict[str, Any]:
+    """Finnhub /company-news로 종목별 뉴스를 수집해 news_summary_us.csv에 추가한다."""
+    token = os.environ.get("FINNHUB_API_KEY", "").strip()
+    out_file = _gnews_output_file("us")
+    if not token:
+        return {"status": "MISSING_KEY", "market": "us", "message": "FINNHUB_API_KEY 없음", "count": 0}
+
+    # OHLCV 파일 목록에서 US 티커 수집 (symbol master보다 더 넓은 커버리지)
+    ohlcv_dir = DATA_DIR / "market" / "ohlcv"
+    tickers: list[str] = []
+    if ohlcv_dir.is_dir():
+        for path in sorted(ohlcv_dir.glob("us_*_daily.csv")):
+            sym = path.name.replace("us_", "").replace("_daily.csv", "")
+            if sym and sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
+                tickers.append(sym)
+            if len(tickers) >= max_symbols:
+                break
+    # 폴백: symbol master
+    if not tickers:
+        for item in symbols("us").get("items", []):
+            sym = normalize_symbol(item.get("symbol"), "us")
+            if sym and sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
+                tickers.append(sym)
+            if len(tickers) >= max_symbols:
+                break
+    if not tickers:
+        return {"status": "NO_SYMBOLS", "market": "us", "count": 0}
+
+    end = pd.Timestamp.today().normalize()
+    start = end - pd.Timedelta(days=max(1, days))
+    rows: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for sym in tickers:
+        try:
+            res = requests.get(
+                "https://finnhub.io/api/v1/company-news",
+                params={"symbol": sym, "from": start.strftime("%Y-%m-%d"), "to": end.strftime("%Y-%m-%d"), "token": token},
+                timeout=8,
+            )
+            if res.status_code >= 400:
+                errors.append(f"{sym}: HTTP {res.status_code}")
+                continue
+            articles = res.json()
+            if not isinstance(articles, list):
+                continue
+            # 날짜순 오름차순: 가장 오래된 기사부터 저장 (신호 발생 시점 근처 기사 보존)
+            articles_sorted = sorted(articles, key=lambda x: x.get("datetime", 0))
+            for art in articles_sorted[:20]:
+                rows.append({
+                    "시장": "미국주식",
+                    "제목": art.get("headline", ""),
+                    "3줄요약": art.get("summary", art.get("headline", ""))[:200],
+                    "출처": art.get("source", "Finnhub"),
+                    "URL": art.get("url", ""),
+                    "게시시간": art.get("datetime", ""),
+                    "다음행동": "",
+                    "종목코드": sym,
+                    "종목명": sym,
+                })
+        except Exception as exc:
+            errors.append(f"{sym}: {exc}")
+
+    if rows:
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        # 기존 파일과 병합 (덮어쓰지 않고 추가)
+        existing: list[dict[str, Any]] = []
+        if out_file.exists():
+            try:
+                import csv as _csv
+                for enc in ("utf-8-sig", "utf-8", "cp949"):
+                    try:
+                        with out_file.open("r", encoding=enc, newline="") as f:
+                            existing = [dict(r) for r in _csv.DictReader(f)]
+                        break
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+        # 종목코드가 없는 기존 행(GNews 일반 뉴스)은 유지, Finnhub 행은 교체
+        keep = [r for r in existing if not (r.get("종목코드") or r.get("symbol", "")).strip()]
+        merged = keep + rows
+        _write_csv_records(out_file, merged)
+    return {"status": "OK" if rows else "NO_DATA", "market": "us", "count": len(rows), "errors": errors[:5]}
+
+
 def refresh_disclosures(market: str = "all", days: int = 30) -> dict[str, Any]:
     market = market if market in {"kr", "us", "all"} else "all"
     results: list[dict[str, Any]] = []
@@ -3996,6 +4081,7 @@ def refresh_disclosures(market: str = "all", days: int = 30) -> dict[str, Any]:
         results.append(_collect_dart_disclosures(days=days))
     if market in {"us", "all"}:
         results.append(_collect_us_filings(days=max(days, 60)))
+        results.append(_collect_us_company_news(days=45))
     return {
         "status": "OK" if any(r.get("status") == "OK" for r in results) else "NO_DATA",
         "results": results,

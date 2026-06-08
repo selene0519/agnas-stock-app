@@ -339,11 +339,17 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
     mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
 
     # 레짐 판단: 20일선 위 + 최근 5일 양봉 → BULL
-    if dist > 0 and mom5 > 0:
-        regime, label, adjust = REGIME_BULL, "강세장", +5.0
+    if dist > 2.0 and mom5 > 1.0:
+        regime, label, adjust = REGIME_BULL, "강세장", +8.0
         desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 강세 (공격/균형 우선)"
+    elif dist > 0 and mom5 > 0:
+        regime, label, adjust = REGIME_BULL, "약한 강세장", +3.0
+        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 완만한 강세"
+    elif mom5 < -5.0 or dist < -5.0:
+        regime, label, adjust = REGIME_BEAR, "급락장", -30.0
+        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 급락 이벤트 (신호 강력 억제)"
     elif dist < -2.0 or mom5 < -2.0:
-        regime, label, adjust = REGIME_BEAR, "약세장", -8.0
+        regime, label, adjust = REGIME_BEAR, "약세장", -18.0
         desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 약세 (보수 우선, 추천 축소)"
     else:
         regime, label, adjust = REGIME_SIDE, "횡보장", 0.0
@@ -1058,9 +1064,42 @@ def score_candidate(
     if current_source == "ohlcv_close":
         status = "PARTIAL"  # 현재가가 live가 아님을 표시
 
-    # ── Phase 6: 차트 분석 신호 통합 (blueprint §2 연계) ─────────────────────
-    # chart_signal_score (0~100) → finalScore에 최대 ±12점 조정
-    # confirmed bullish: +12 / developing bullish: +5 / invalidated: -8 / confirmed bearish: -10
+    # ── Phase 6: 뉴스/공시 감성 신호 통합 (차트 분석 앞에 실행) ────────────────
+    news_sentiment_tag = "NEUTRAL"
+    news_sentiment_reasons: list = []
+    _news_penalty_for_chart = 0.0
+    try:
+        from app.engine.news_sentiment_engine import score_news_sentiment, load_sentiment_cache
+        _name = str(row.get("name") or row.get("종목명") or "")
+        if not hasattr(score_candidate, "_sentiment_cache"):
+            score_candidate._sentiment_cache = {}  # type: ignore[attr-defined]
+        _mkt = context.market
+        if _mkt not in score_candidate._sentiment_cache:  # type: ignore[attr-defined]
+            score_candidate._sentiment_cache[_mkt] = load_sentiment_cache(_mkt)  # type: ignore[attr-defined]
+        _sent = score_news_sentiment(
+            _mkt, str(symbol or ""), _name,
+            cache=score_candidate._sentiment_cache[_mkt],  # type: ignore[attr-defined]
+        )
+        _news_penalty_for_chart = float(_sent.get("penalty", 0.0))
+        news_sentiment_tag = str(_sent.get("tag", "NEUTRAL"))
+        news_sentiment_reasons = list(_sent.get("reasons", []))
+
+        if _sent.get("disclosureHits", 0) > 0 or abs(_sent.get("newsAdj", 0.0)) > 0.5:
+            sub["newsRiskPenalty"] = _news_penalty_for_chart
+
+        if news_sentiment_tag == "HIGH_RISK":
+            score = max(0.0, round(score - 8.0, 1))
+            reasons_str = ", ".join(news_sentiment_reasons[:2])
+            note = (note + f"; 공시 리스크({reasons_str})").lstrip("; ")
+        elif news_sentiment_tag == "POSITIVE" and _news_penalty_for_chart <= 0:
+            score = min(100.0, round(score + 3.0, 1))
+            reasons_str = ", ".join(news_sentiment_reasons[:2])
+            if reasons_str:
+                note = (note + f"; 긍정 공시({reasons_str})").lstrip("; ")
+    except Exception:
+        pass
+
+    # ── Phase 6: 차트 분석 신호 통합 (뉴스 패널티 반영) ──────────────────────
     chart_signal_score = 0.0
     chart_signal_tag = "NO_SIGNAL"
     chart_signal_status = "none"
@@ -1075,6 +1114,7 @@ def score_candidate(
             symbol=str(symbol or ""),
             market=context.market,
             market_regime_score=_regime_score_map.get(regime, 50.0),
+            news_penalty=_news_penalty_for_chart,
         )
         chart_signal_score = _chart_state.chart_signal_score
         chart_signal_tag = _chart_state.chart_signal_tag
@@ -1085,7 +1125,6 @@ def score_candidate(
             {"price": o.price, "ratio": o.ratio, "isKey": o.is_key, "label": o.label}
             for o in _chart_state.overlap_signals
         ]
-        # Score adjustment (non-breaking: clamped to ±12)
         if chart_signal_status == "confirmed":
             if chart_signal_direction == "bullish":
                 score = min(100.0, round(score + 12.0, 1))
@@ -1101,46 +1140,7 @@ def score_candidate(
             score = max(0.0, round(score - 8.0, 1))
             note = (note + "; 차트 신호 무효화 (Phase 6 — 진입 보류)").lstrip("; ")
     except Exception:
-        pass  # chart analysis is non-blocking — recommendation fallback to price-only scoring
-
-    # ── Phase 6: 뉴스/공시 감성 신호 통합 ───────────────────────────────────
-    # newsRiskPenalty를 RSI 대리값에서 실제 감성 데이터로 교체
-    news_sentiment_tag = "NEUTRAL"
-    news_sentiment_reasons: list = []
-    try:
-        from app.engine.news_sentiment_engine import score_news_sentiment, load_sentiment_cache
-        _name = str(row.get("name") or row.get("종목명") or "")
-        # 캐시를 한 번만 로드하도록 모듈 수준 캐시 변수 활용
-        if not hasattr(score_candidate, "_sentiment_cache"):
-            score_candidate._sentiment_cache = {}  # type: ignore[attr-defined]
-        _mkt = context.market
-        if _mkt not in score_candidate._sentiment_cache:  # type: ignore[attr-defined]
-            score_candidate._sentiment_cache[_mkt] = load_sentiment_cache(_mkt)  # type: ignore[attr-defined]
-        _sent = score_news_sentiment(
-            _mkt, str(symbol or ""), _name,
-            cache=score_candidate._sentiment_cache[_mkt],  # type: ignore[attr-defined]
-        )
-        real_penalty = float(_sent.get("penalty", 0.0))
-        news_sentiment_tag = str(_sent.get("tag", "NEUTRAL"))
-        news_sentiment_reasons = list(_sent.get("reasons", []))
-
-        # sub_scores의 newsRiskPenalty를 실제 감성 데이터로 덮어쓰기
-        # 데이터가 있을 때만 교체 (공시 히트 or 뉴스 조정 있을 때)
-        if _sent.get("disclosureHits", 0) > 0 or abs(_sent.get("newsAdj", 0.0)) > 0.5:
-            sub["newsRiskPenalty"] = real_penalty
-
-        # HIGH_RISK 공시 감지 → 스코어 직접 차감 및 노트 추가
-        if news_sentiment_tag == "HIGH_RISK":
-            score = max(0.0, round(score - 8.0, 1))
-            reasons_str = ", ".join(news_sentiment_reasons[:2])
-            note = (note + f"; 공시 리스크({reasons_str})").lstrip("; ")
-        elif news_sentiment_tag == "POSITIVE" and real_penalty <= 0:
-            score = min(100.0, round(score + 3.0, 1))
-            reasons_str = ", ".join(news_sentiment_reasons[:2])
-            if reasons_str:
-                note = (note + f"; 긍정 공시({reasons_str})").lstrip("; ")
-    except Exception:
-        pass  # 감성 분석 실패 시 RSI 대리값 유지 (non-blocking)
+        pass
 
     # 기간별 price band 기준
     band = _HORIZON_PRICE_BANDS.get(context.horizon, _HORIZON_PRICE_BANDS["swing"])

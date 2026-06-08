@@ -9,6 +9,48 @@ from app.engine.quant_scanner import load_market_regime, load_ohlcv
 from app.services import data_loader as data
 
 
+def _load_benchmark_closes(market: str) -> list[tuple[str, float]]:
+    """Load (date, close) pairs from benchmark_daily.csv for the given market."""
+    import csv
+    key = "KOSPI" if market == "kr" else "NASDAQ"
+    path = data.REPO_ROOT / "data" / "market" / "benchmark_daily.csv"
+    rows: list[tuple[str, float]] = []
+    if not path.is_file():
+        return rows
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            if str(r.get("benchmark", "")).upper() != key:
+                continue
+            try:
+                rows.append((str(r["date"]).strip(), float(str(r.get("close") or 0).replace(",", ""))))
+            except Exception:
+                pass
+    rows.sort(key=lambda x: x[0])
+    return rows
+
+
+def _historical_regime_score(benchmark: list[tuple[str, float]], as_of_date: str) -> float:
+    """Compute market regime score using only benchmark data up to as_of_date."""
+    closes = [c for d, c in benchmark if d <= as_of_date and c > 0]
+    if len(closes) < 20:
+        return 50.0
+    ma20 = sum(closes[-20:]) / 20
+    latest = closes[-1]
+    dist = (latest - ma20) / ma20 * 100 if ma20 else 0.0
+    mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
+    if dist > 2.0 and mom5 > 1.0:
+        adjust = +8.0
+    elif dist > 0 and mom5 > 0:
+        adjust = +3.0
+    elif mom5 < -5.0 or dist < -5.0:
+        adjust = -30.0
+    elif dist < -2.0 or mom5 < -2.0:
+        adjust = -18.0
+    else:
+        adjust = 0.0
+    return max(0.0, min(100.0, 50.0 + adjust))
+
+
 DEFAULT_SYMBOLS = {
     "kr": ["005930", "000660", "005380", "035420", "035720", "051910", "068270", "207940"],
     "us": ["NVDA", "AAPL", "MSFT", "AMZN", "AMD", "TSLA", "AVGO", "META"],
@@ -107,8 +149,7 @@ def chart_analysis_accuracy(
     symbol_count = 0
 
     for mk in markets:
-        regime = load_market_regime(Path(data.REPO_ROOT), mk)
-        regime_score = max(0.0, min(100.0, 50.0 + float(regime.get("scoreAdjust") or 0.0)))
+        benchmark = _load_benchmark_closes(mk)
         for symbol in _symbol_universe(mk, symbol_limit):
             rows = load_ohlcv(data.REPO_ROOT, mk, symbol)
             if not rows:
@@ -120,11 +161,16 @@ def chart_analysis_accuracy(
                 if current is None or current <= 0 or len(future_rows) < future_bars:
                     continue
 
+                # Use historical regime and benchmark closes at the cutoff date
+                cutoff_date = _date(rows[cutoff])
+                regime_score = _historical_regime_score(benchmark, cutoff_date)
+                bench_closes = [c for d, c in benchmark if d <= cutoff_date]
                 state = build_chart_analysis(
                     rows=rows[:cutoff + 1],
                     symbol=symbol,
                     market=mk,
                     market_regime_score=regime_score,
+                    benchmark_closes=bench_closes,
                     horizon_bars=future_bars,
                     freshness_reference_date=_date(rows[cutoff]),
                 )
@@ -132,7 +178,12 @@ def chart_analysis_accuracy(
                 direction = str(payload.get("confluenceDirection") or "neutral")
                 score = float(payload.get("confluenceScore") or 0)
                 status = str(payload.get("signalStatus") or "none")
-                actionable = direction in {"bullish", "bearish"} and score >= 60 and status in {"developing", "confirmed"}
+                # confirmed signals: score >= 65 (FSM validated, sustained above threshold)
+                # developing signals: score >= 70 (higher bar — not yet FSM-confirmed)
+                actionable = direction in {"bullish", "bearish"} and (
+                    (status == "confirmed" and score >= 65) or
+                    (status == "developing" and score >= 70)
+                )
                 stats = _future_stats(current, future_rows)
                 future_return = stats["futureReturnPct"]
                 directional_hit = None
