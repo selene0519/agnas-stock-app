@@ -94,6 +94,10 @@ def _admin_password_hash() -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
 
 
+def _admin_id() -> str:
+    return (os.environ.get("MONE_ADMIN_ID") or os.environ.get("MONE_ADMIN_USERNAME") or "").strip()
+
+
 def _admin_auth_secret() -> bytes:
     secret = os.environ.get("MONE_AUTH_SECRET", "").strip()
     if secret:
@@ -102,12 +106,15 @@ def _admin_auth_secret() -> bytes:
 
 
 def _admin_auth_configured() -> bool:
-    return bool(_admin_password_hash())
+    return bool(_admin_id() and _admin_password_hash())
 
 
-def _check_admin_password(password: str) -> bool:
+def _check_admin_credentials(admin_id: str, password: str) -> bool:
+    expected_id = _admin_id()
     expected = _admin_password_hash()
-    if not expected:
+    if not expected_id or not expected:
+        return False
+    if not hmac.compare_digest(str(admin_id or "").strip(), expected_id):
         return False
     actual = hashlib.sha256(str(password).encode("utf-8")).hexdigest()
     return hmac.compare_digest(actual, expected)
@@ -116,7 +123,7 @@ def _check_admin_password(password: str) -> bool:
 def _create_admin_token() -> tuple[str, int]:
     ttl_seconds = int(os.environ.get("MONE_ADMIN_TOKEN_TTL_SECONDS", str(12 * 60 * 60)))
     expires_at = int(time.time() + ttl_seconds)
-    payload = {"role": "admin", "exp": expires_at}
+    payload = {"role": "admin", "adminId": _admin_id(), "exp": expires_at}
     body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     signature = hmac.new(_admin_auth_secret(), body.encode("ascii"), hashlib.sha256).digest()
     return f"{body}.{_b64url_encode(signature)}", expires_at
@@ -140,7 +147,11 @@ def _verify_admin_token(token: str) -> bool:
         payload = json.loads(_b64url_decode(body).decode("utf-8"))
     except Exception:
         return False
-    return payload.get("role") == "admin" and int(payload.get("exp", 0)) > int(time.time())
+    return (
+        payload.get("role") == "admin"
+        and hmac.compare_digest(str(payload.get("adminId") or ""), _admin_id())
+        and int(payload.get("exp", 0)) > int(time.time())
+    )
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
@@ -221,17 +232,18 @@ def api_admin_login(payload: dict = Body(...)):
                 "ok": False,
                 "status": "ERROR",
                 "code": "ADMIN_AUTH_NOT_CONFIGURED",
-                "message": "Set MONE_ADMIN_PASSWORD or MONE_ADMIN_PASSWORD_SHA256.",
+                "message": "Set MONE_ADMIN_ID and MONE_ADMIN_PASSWORD or MONE_ADMIN_PASSWORD_SHA256.",
             },
         )
+    admin_id = str(payload.get("adminId") or payload.get("username") or payload.get("id") or "")
     password = str(payload.get("password") or "")
-    if not _check_admin_password(password):
+    if not _check_admin_credentials(admin_id, password):
         return JSONResponse(
             status_code=401,
-            content={"ok": False, "status": "ERROR", "code": "INVALID_ADMIN_PASSWORD"},
+            content={"ok": False, "status": "ERROR", "code": "INVALID_ADMIN_CREDENTIALS"},
         )
     token, expires_at = _create_admin_token()
-    return {"ok": True, "status": "OK", "role": "admin", "token": token, "expiresAt": expires_at}
+    return {"ok": True, "status": "OK", "role": "admin", "adminId": _admin_id(), "token": token, "expiresAt": expires_at}
 
 
 @app.get("/api/auth/admin-status")
@@ -241,6 +253,7 @@ def api_admin_status(authorization: str | None = Header(None)) -> dict:
         "ok": True,
         "status": "OK",
         "configured": _admin_auth_configured(),
+        "adminIdConfigured": bool(_admin_id()),
         "authenticated": _verify_admin_token(token),
     }
 
@@ -891,6 +904,16 @@ def api_chart_analysis_accuracy(
     maxCutoffs: int = Query(4, ge=1, le=12),
 ) -> dict:
     return chart_accuracy.chart_analysis_accuracy(market, futureBars, symbolLimit, maxCutoffs)
+
+
+@app.get("/api/insights/trendline-accuracy")
+def api_trendline_accuracy(
+    market: str = Query("all", pattern="^(kr|us|all)$"),
+    futureBars: int = Query(20, ge=5, le=60),
+    symbolLimit: int = Query(12, ge=2, le=30),
+    maxCutoffs: int = Query(6, ge=1, le=12),
+) -> dict:
+    return chart_accuracy.trendline_accuracy(market, futureBars, symbolLimit, maxCutoffs)
 
 
 @app.get("/api/history/predictions")

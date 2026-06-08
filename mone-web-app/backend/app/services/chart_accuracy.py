@@ -4,7 +4,14 @@ import math
 from pathlib import Path
 from typing import Any
 
-from app.engine.chart_analysis_engine import build_chart_analysis, state_to_dict
+from app.engine.chart_analysis_engine import (
+    _calc_atr_threshold,
+    _calc_trendlines,
+    _calc_zigzag,
+    _rows_to_candles,
+    build_chart_analysis,
+    state_to_dict,
+)
 from app.engine.quant_scanner import load_market_regime, load_ohlcv
 from app.services import data_loader as data
 
@@ -76,6 +83,14 @@ def _close(row: dict[str, Any]) -> float | None:
     return _num(row.get("close") or row.get("Close") or row.get("종가") or row.get("stck_clpr"))
 
 
+def _high(row: dict[str, Any]) -> float | None:
+    return _num(row.get("high") or row.get("High") or row.get("고가") or row.get("stck_hgpr")) or _close(row)
+
+
+def _low(row: dict[str, Any]) -> float | None:
+    return _num(row.get("low") or row.get("Low") or row.get("저가") or row.get("stck_lwpr")) or _close(row)
+
+
 def _ohlcv_files(market: str) -> list[str]:
     base = data.REPO_ROOT / "data" / "market" / "ohlcv"
     if not base.is_dir():
@@ -120,6 +135,120 @@ def _future_stats(current: float, future_rows: list[dict[str, Any]]) -> dict[str
         "futureReturnPct": round(returns[-1], 2),
         "maxReturnPct": round(max(returns), 2),
         "minReturnPct": round(min(returns), 2),
+    }
+
+
+def _line_outcome(line: Any, future_rows: list[dict[str, Any]], kind: str, tolerance_pct: float = 0.015) -> dict[str, Any]:
+    broken = False
+    broken_at = ""
+    worst_break_pct = 0.0
+    for offset, row in enumerate(future_rows, start=1):
+        future_index = int(line.end_index) + offset
+        line_price = float(line.price_at(future_index))
+        if line_price <= 0:
+            continue
+        if kind == "support":
+            observed = _low(row)
+            if observed is None:
+                continue
+            break_pct = (line_price - observed) / line_price
+        else:
+            observed = _high(row)
+            if observed is None:
+                continue
+            break_pct = (observed - line_price) / line_price
+        if break_pct > worst_break_pct:
+            worst_break_pct = break_pct
+        if break_pct > tolerance_pct and not broken:
+            broken = True
+            broken_at = _date(row)
+    return {
+        "respected": not broken,
+        "broken": broken,
+        "brokenAt": broken_at,
+        "worstBreakPct": round(worst_break_pct * 100, 2),
+    }
+
+
+def trendline_accuracy(
+    market: str = "all",
+    future_bars: int = 20,
+    symbol_limit: int = 12,
+    max_cutoffs: int = 6,
+    min_history: int = 80,
+) -> dict[str, Any]:
+    markets = ["kr", "us"] if market == "all" else [market]
+    records: list[dict[str, Any]] = []
+    examples: list[dict[str, Any]] = []
+    symbol_count = 0
+
+    for mk in markets:
+        for symbol in _symbol_universe(mk, symbol_limit):
+            rows = load_ohlcv(data.REPO_ROOT, mk, symbol)
+            if not rows:
+                continue
+            symbol_count += 1
+            for cutoff in _cutoff_indexes(len(rows), future_bars, min_history, max_cutoffs):
+                future_rows = rows[cutoff + 1:cutoff + 1 + future_bars]
+                if len(future_rows) < future_bars:
+                    continue
+                candles = _rows_to_candles(rows[:cutoff + 1])
+                if len(candles) < min_history:
+                    continue
+                threshold = _calc_atr_threshold(candles)
+                pivots = _calc_zigzag(candles, threshold=threshold, win_size=3)
+                support, resistance = _calc_trendlines(candles, pivots) if len(pivots) >= 4 else (None, None)
+                cutoff_date = _date(rows[cutoff])
+
+                for kind, line in (("support", support), ("resistance", resistance)):
+                    if line is None:
+                        continue
+                    outcome = _line_outcome(line, future_rows, kind)
+                    record = {
+                        "market": mk,
+                        "symbol": symbol,
+                        "asOf": cutoff_date,
+                        "futureEnd": _date(future_rows[-1]),
+                        "kind": kind,
+                        "lineDirection": line.line_direction,
+                        "structurallyValid": bool(line.is_structurally_valid),
+                        "touchCount": int(line.touch_count),
+                        "slopePctPerBar": line.slope_pct_per_bar,
+                        "linePriceAtT": round(float(line.end_price), 4),
+                        **outcome,
+                    }
+                    records.append(record)
+                    if len(examples) < 10:
+                        examples.append({
+                            **record,
+                            "chart": _chart_rows(rows, cutoff, future_bars),
+                        })
+
+    high_confidence = [r for r in records if r["structurallyValid"] and int(r["touchCount"]) >= 3]
+    support_rows = [r for r in records if r["kind"] == "support"]
+    resistance_rows = [r for r in records if r["kind"] == "resistance"]
+
+    def respect_rate(rows: list[dict[str, Any]]) -> float | None:
+        if not rows:
+            return None
+        return round(sum(1 for row in rows if row["respected"]) / len(rows) * 100, 1)
+
+    return {
+        "status": "OK" if records else "NO_DATA",
+        "market": market,
+        "policy": "Trendline snapshot backtest: draw support/resistance using OHLCV only through asOf, then check whether the next futureBars candles violate the projected line by more than 1.5%.",
+        "futureBars": future_bars,
+        "symbolCount": symbol_count,
+        "sampleCount": len(records),
+        "supportCount": len(support_rows),
+        "resistanceCount": len(resistance_rows),
+        "highConfidenceCount": len(high_confidence),
+        "respectRatePct": respect_rate(records),
+        "supportRespectRatePct": respect_rate(support_rows),
+        "resistanceRespectRatePct": respect_rate(resistance_rows),
+        "highConfidenceRespectRatePct": respect_rate(high_confidence),
+        "items": records,
+        "examples": examples,
     }
 
 
