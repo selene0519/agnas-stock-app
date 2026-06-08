@@ -131,6 +131,7 @@ PRICE_KEYS = [
 ]
 
 
+@lru_cache(maxsize=1)
 def _app_root() -> Path:
     here = Path(__file__).resolve()
     for parent in [here.parent, *here.parents]:
@@ -142,10 +143,12 @@ def _app_root() -> Path:
     return here.parents[3]
 
 
+@lru_cache(maxsize=1)
 def _repo_root() -> Path:
     return _app_root().parent
 
 
+@lru_cache(maxsize=1)
 def _search_roots() -> list[Path]:
     app = _app_root()
     repo = _repo_root()
@@ -164,6 +167,7 @@ def _search_roots() -> list[Path]:
     return out
 
 
+@lru_cache(maxsize=4096)
 def _safe_rel(path: Path) -> str:
     for root in _search_roots():
         try:
@@ -1316,7 +1320,6 @@ def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
     status_order = {"NORMAL": 0, "PARTIAL": 1, "NO_DATA": 2, "ERROR": 3}
     items.sort(key=lambda item: (status_order.get(item.get("dataStatus"), 9), item["market"], item["name"], item["symbol"]))
     max_limit = max(1, min(limit, 10000))
-    _write_financial_gap_report(items)
     items = items[:max_limit]
 
     normal_count = sum(1 for item in items if item.get("dataStatus") == "NORMAL")

@@ -8,6 +8,7 @@ from fastapi.routing import APIRoute
 
 from app.engine import backtest, correction, data_quality, risk, session
 from app.services import advanced
+from app.services import chart_accuracy
 from app.services import data_loader as data
 from app.services import final_engine
 from app.services import insights
@@ -660,8 +661,9 @@ def api_advanced_scanner(
     market: str = Query("kr", pattern="^(kr|us)$"),
     mode: str = Query("balanced"),
     horizon: str = Query("swing"),
+    limit: int = Query(24, ge=24, le=200),
 ) -> dict:
-    return _ensure_status(advanced.advanced_scanner(_market(market), mode, horizon))
+    return _ensure_status(advanced.advanced_scanner(_market(market), mode, horizon, limit))
 
 
 @app.post("/api/advanced/calculator/kelly")
@@ -698,6 +700,16 @@ def api_prediction_insights(market: str = Query("kr", pattern="^(kr|us)$")) -> d
 def api_prediction_accuracy(market: str = Query("all", pattern="^(kr|us|all)$")) -> dict:
     mk = None if market == "all" else _market(market)
     return final_engine.prediction_accuracy_stats(mk)
+
+
+@app.get("/api/insights/chart-analysis-accuracy")
+def api_chart_analysis_accuracy(
+    market: str = Query("all", pattern="^(kr|us|all)$"),
+    futureBars: int = Query(20, ge=5, le=60),
+    symbolLimit: int = Query(8, ge=2, le=30),
+    maxCutoffs: int = Query(4, ge=1, le=12),
+) -> dict:
+    return chart_accuracy.chart_analysis_accuracy(market, futureBars, symbolLimit, maxCutoffs)
 
 
 @app.get("/api/history/predictions")

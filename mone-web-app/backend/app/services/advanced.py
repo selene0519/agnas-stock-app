@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -423,19 +424,29 @@ def _number_sort_key(value: Any) -> float:
     return float(num) if num is not None and math.isfinite(float(num)) else -1.0
 
 
-def advanced_scanner(market: str, mode: str = "balanced", horizon: str = "swing") -> dict[str, Any]:
+def advanced_scanner(market: str, mode: str = "balanced", horizon: str = "swing", limit: int = 24) -> dict[str, Any]:
     rows = _scanner_source_rows(market)
     ohlcv_rows, ohlcv_summary = _eligible_ohlcv_universe(market, min_days=30)
     seen_symbols = {data.normalize_symbol(item.get("symbol"), market) for item in rows}
     rows.extend([item for item in ohlcv_rows if data.normalize_symbol(item.get("symbol"), market) not in seen_symbols])
+    eligible_before_limit = len(rows)
+    scan_limit = max(24, min(int(limit or 24), 200))
+    rows = rows[:scan_limit]
     positions = {data.normalize_symbol(item.get("symbol"), market) for item in data.positions(market).get("items", [])}
-    for row in rows:
+    def _score_row(row: dict[str, Any]) -> dict[str, Any]:
+        row = dict(row)
         row["isHolding"] = data.normalize_symbol(row.get("symbol"), market) in positions
         scored = quant_scanner.apply_quant_overlay(row, data.REPO_ROOT, mode, horizon)
         if scored.get("finalScore") is not None:
             scored["score"] = scored.get("finalScore")
-        row.clear()
-        row.update(scored)
+        return scored
+
+    if len(rows) > 1:
+        workers = min(16, len(rows))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            rows = list(executor.map(_score_row, rows))
+    else:
+        rows = [_score_row(row) for row in rows]
     rows.sort(key=lambda item: (_number_sort_key(item.get("finalScore")), _number_sort_key(item.get("quantScore"))), reverse=True)
     quant_ready_count = sum(1 for item in rows if item.get("quantScore") is not None and item.get("quantDataStatus") != "DATA_PENDING")
     quote_ready_count = sum(1 for item in rows if data._safe_float(item.get("currentPrice")) is not None)
@@ -459,6 +470,8 @@ def advanced_scanner(market: str, mode: str = "balanced", horizon: str = "swing"
             "universeScope": "OHLCV_30_PLUS",
             "isFullMarket": False,
             "localScanUniverseCount": len(rows),
+            "eligibleBeforeLimit": eligible_before_limit,
+            "defaultScanLimit": scan_limit,
             "ohlcvSymbolCount": ohlcv_summary["eligibleSymbols"],
             "quoteCoveragePct": round(quote_coverage_pct, 1),
             "quantReadyCount": quant_ready_count,

@@ -13,6 +13,8 @@ import {
   toNumber,
 } from "@/lib/moneDisplay";
 
+type TickerSource = "holdings" | "watchlist" | "recommendations";
+
 type TickerItem = {
   id: string;
   symbol: string;
@@ -21,6 +23,7 @@ type TickerItem = {
   currentPriceText: string;
   changePctText: string;
   changeStatus: "normal" | "pending" | "no-base" | "stale" | "error";
+  source: TickerSource;
 };
 
 function closeValue(row: any) {
@@ -39,26 +42,23 @@ function ohlcvFallbackChange(rows: any[], current: number | null): { text: strin
 }
 
 function derivePrice(row: any, market: string) {
-  const text = String(row.currentPriceText || row.priceText || "").trim();
+  const text = String(row.currentPriceText || row.priceText || row.closeText || "").trim();
   if (text && text !== "-") return text;
-  return formatMoney(row.currentPrice ?? row.price, market, "가격 대기");
+  return formatMoney(row.currentPrice ?? row.price ?? row.close, market, "가격 대기");
 }
 
 function deriveChange(row: any, fallbackRows: any[] = []): { text: string; status: TickerItem["changeStatus"] } {
-  const current = toNumber(row.currentPrice ?? row.price ?? row.currentPriceText);
+  const current = toNumber(row.currentPrice ?? row.price ?? row.close ?? row.currentPriceText);
   if (current === null || current <= 0) return { text: "가격 대기", status: "pending" };
 
-  // 문자열 등락률 우선
   const direct = String(
     row.changePctText || row.priceChangePercentText || row.changeText || row.priceChangeText || ""
   ).trim();
   if (direct && direct !== "-" && direct.includes("%")) return { text: direct, status: "normal" };
 
-  // 숫자 등락률
   const numeric = toNumber(row.changePct ?? row.changePercent ?? row.priceChangePercent ?? row.changeRate);
   if (numeric !== null && Number.isFinite(numeric)) return { text: pctText(numeric), status: "normal" };
 
-  // prevClose 직접 계산
   const prev = toNumber(row.prevClose ?? row.previousClose ?? row.prevCloseText);
   if (prev !== null && prev > 0) {
     return { text: pctText(((current - prev) / prev) * 100), status: "normal" };
@@ -70,35 +70,78 @@ function deriveChange(row: any, fallbackRows: any[] = []): { text: string; statu
   return { text: "", status: "no-base" };
 }
 
-async function fetchTickerRows(): Promise<TickerItem[]> {
-  const data: any = await mone.holdingsClean({ market: "all", limit: 50 });
-  const rows = dedupeBySymbol(Array.isArray(data?.items) ? data.items : []).slice(0, 13);
-  const enriched = await Promise.all(rows.map(async (row: any) => {
-    const symbol = normalizeSymbol(row);
-    const market = normalizeMarket(row.market, symbol);
-    const preliminary = deriveChange(row);
-    if (preliminary.status === "normal" || preliminary.status === "pending") return { row, ohlcvRows: [] };
-    try {
-      const data = await mone.ohlcv({ market, symbol, limit: 5 });
-      return { row, ohlcvRows: Array.isArray(data?.items) ? data.items : [] };
-    } catch {
-      return { row, ohlcvRows: [] };
-    }
-  }));
+async function enrichRows(rows: any[], source: TickerSource): Promise<TickerItem[]> {
+  const sliced = dedupeBySymbol(rows).slice(0, 13);
+  const enriched = await Promise.all(
+    sliced.map(async (row: any) => {
+      const symbol = normalizeSymbol(row);
+      const market = normalizeMarket(row.market, symbol);
+      const preliminary = deriveChange(row);
+      if (preliminary.status === "normal" || preliminary.status === "pending") return { row, ohlcvRows: [] };
+      try {
+        const data = await mone.ohlcv({ market, symbol, limit: 5 });
+        return { row, ohlcvRows: Array.isArray(data?.items) ? data.items : [] };
+      } catch {
+        return { row, ohlcvRows: [] };
+      }
+    })
+  );
+
   return enriched.map(({ row, ohlcvRows }: any, index: number) => {
     const symbol = normalizeSymbol(row);
     const market = normalizeMarket(row.market, symbol);
     const change = deriveChange(row, ohlcvRows);
     return {
-      id: `holding-${market}-${symbol}-${index}`,
+      id: `${source}-${market}-${symbol}-${index}`,
       symbol,
       market,
       name: displayName(row),
       currentPriceText: derivePrice(row, market),
       changePctText: change.text,
       changeStatus: change.status,
+      source,
     };
   });
+}
+
+async function fetchWatchlistRows(): Promise<any[]> {
+  const [kr, us] = await Promise.all([
+    mone.watchlist({ market: "kr", limit: 20 }).catch(() => null),
+    mone.watchlist({ market: "us", limit: 20 }).catch(() => null),
+  ]);
+  return [
+    ...(Array.isArray(kr?.items) ? kr.items : []),
+    ...(Array.isArray(us?.items) ? us.items : []),
+  ];
+}
+
+async function fetchRecommendationRows(): Promise<any[]> {
+  const [kr, us] = await Promise.all([
+    mone.recommendations({ market: "kr", mode: "balanced", horizon: "swing", limit: 20 }).catch(() => null),
+    mone.recommendations({ market: "us", mode: "balanced", horizon: "swing", limit: 20 }).catch(() => null),
+  ]);
+  return [
+    ...(Array.isArray(kr?.items) ? kr.items : []),
+    ...(Array.isArray(us?.items) ? us.items : []),
+  ];
+}
+
+async function fetchTickerRows(): Promise<TickerItem[]> {
+  const data: any = await mone.holdingsClean({ market: "all", limit: 50 });
+  const holdingsRows = Array.isArray(data?.items) ? data.items : [];
+  if (holdingsRows.length > 0) return enrichRows(holdingsRows, "holdings");
+
+  const watchlistRows = await fetchWatchlistRows();
+  if (watchlistRows.length > 0) return enrichRows(watchlistRows, "watchlist");
+
+  return enrichRows(await fetchRecommendationRows(), "recommendations");
+}
+
+function labelForSource(item?: TickerItem) {
+  if (!item) return "추천 대기";
+  if (item.source === "holdings") return "보유 티커";
+  if (item.source === "watchlist") return "관심 티커";
+  return "추천 티커";
 }
 
 export default function TopHoldingTicker() {
@@ -110,8 +153,8 @@ export default function TopHoldingTicker() {
     setLoading(true);
     setError("");
     try {
-      const holdings = await fetchTickerRows();
-      setItems(holdings.slice(0, 13));
+      const tickerRows = await fetchTickerRows();
+      setItems(tickerRows.slice(0, 13));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setItems([]);
@@ -123,15 +166,22 @@ export default function TopHoldingTicker() {
   useEffect(() => {
     load();
     window.addEventListener("focus", load);
-    return () => window.removeEventListener("focus", load);
+    window.addEventListener("mone-holdings-updated", load);
+    window.addEventListener("mone-watchlist-updated", load);
+    return () => {
+      window.removeEventListener("focus", load);
+      window.removeEventListener("mone-holdings-updated", load);
+      window.removeEventListener("mone-watchlist-updated", load);
+    };
   }, []);
 
   const displayItems = useMemo(() => (items.length ? [...items, ...items] : []), [items]);
+  const tickerLabel = labelForSource(items[0]);
 
   return (
     <div className="flex h-8 min-w-0 flex-1 items-center gap-3 overflow-hidden">
       <span className="hidden shrink-0 rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-slate-500 lg:inline">
-        보유 티커 {items.length ? `${items.length}개` : loading ? "불러오는 중" : "대기"}
+        {tickerLabel} {items.length ? `${items.length}개` : loading ? "로딩" : "0개"}
       </span>
 
       <div
@@ -144,7 +194,7 @@ export default function TopHoldingTicker() {
         {error ? (
           <div className="text-xs text-red-300">티커 데이터 연결 확인 필요</div>
         ) : displayItems.length === 0 ? (
-          <div className="text-xs text-slate-500">보유종목 티커를 불러오는 중...</div>
+          <div className="text-xs text-slate-500">추천/관심 티커를 불러오는 중...</div>
         ) : (
           <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-7 whitespace-nowrap">
             {displayItems.map((item, index) => {
