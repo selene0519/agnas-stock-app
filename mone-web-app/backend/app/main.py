@@ -2363,6 +2363,21 @@ def api_holdings_edit(
     return {"status": "OK", "count": len(items_csv), "items": items_csv, "userId": "default", "storage": "csv"}
 
 
+# ── holdings-edit GET 중복 라우트 정리 ────────────────────────────────────
+# stabilizer가 먼저 /api/holdings-edit GET을 등록(first-match 승리)하므로
+# 우리 핸들러(마지막 등록, stopPrice/targetPrice 포함)만 남기고 나머지 제거
+_HDEDIT_DUPE_PATH = "/api/holdings-edit"
+_hde_all = [r for r in app.router.routes
+            if isinstance(r, _APIR) and getattr(r, "path", "") == _HDEDIT_DUPE_PATH
+            and "GET" in (getattr(r, "methods", None) or set())]
+if len(_hde_all) > 1:
+    for _r in _hde_all[:-1]:
+        try:
+            app.router.routes.remove(_r)
+        except ValueError:
+            pass
+
+
 @app.post("/api/holdings-edit/save")
 def api_holdings_edit_save(
     payload: dict = Body(...),
@@ -2399,6 +2414,20 @@ def api_holdings_edit_save(
         if data_copy.exists():
             _write_csv_safe_v2(data_copy, norm_rows, cols)
     return {"status": "OK", "saved": len(items), "userId": "default", "storage": "csv"}
+
+
+# ── holdings-edit/save POST 중복 라우트 정리 ──────────────────────────────
+# stabilizer의 _save_edit_rows가 stopPrice/targetPrice를 누락하므로 우리 핸들러만 유지
+_HDESAVE_DUPE_PATH = "/api/holdings-edit/save"
+_hds_all = [r for r in app.router.routes
+            if isinstance(r, _APIR) and getattr(r, "path", "") == _HDESAVE_DUPE_PATH
+            and "POST" in (getattr(r, "methods", None) or set())]
+if len(_hds_all) > 1:
+    for _r in _hds_all[:-1]:
+        try:
+            app.router.routes.remove(_r)
+        except ValueError:
+            pass
 
 
 # ── KIS 보유종목 가져오기 ───────────────────────────────────────────────
