@@ -315,6 +315,8 @@ export const mone = {
     apiGet<ApiList>("/api/insights/prediction-accuracy", p),
   chartAnalysisAccuracy: (p?: { market?: Market | "all"; futureBars?: number; symbolLimit?: number; maxCutoffs?: number }) =>
     apiGet<ApiList>("/api/insights/chart-analysis-accuracy", p),
+  trendlineAccuracy: (p?: { market?: Market | "all"; futureBars?: number; symbolLimit?: number; maxCutoffs?: number }) =>
+    apiGet<ApiList>("/api/insights/trendline-accuracy", p),
   holdings: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/holdings", p),
   holdingsClean: (p?: { market?: Market; limit?: number }) =>

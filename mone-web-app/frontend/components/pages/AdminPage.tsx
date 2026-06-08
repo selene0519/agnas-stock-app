@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { mone } from "@/lib/api";
 import { adminAuthHeaders } from "@/lib/adminAuth";
+import AdvancedPage from "./AdvancedPage";
+import NewsPage from "./NewsPage";
+import PredictionPage from "./PredictionPage";
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   OK:             { text: "정상",              cls: "text-emerald-400" },
@@ -46,6 +49,19 @@ function ActionBtn({ label, onClick, loading, variant = "default" }: {
 }
 
 const USER_FILES = ["holdings_kr.csv", "holdings_us.csv", "watchlist_kr.csv", "watchlist_us.csv"];
+type AdminTab = "overview" | "prediction" | "news" | "advanced";
+
+const ADMIN_TABS: { id: AdminTab; label: string }[] = [
+  { id: "overview", label: "운영" },
+  { id: "prediction", label: "예측분석" },
+  { id: "news", label: "뉴스·공시" },
+  { id: "advanced", label: "고급분석" },
+];
+
+function pct(value: any) {
+  const n = Number(value);
+  return Number.isFinite(n) ? `${n.toFixed(1)}%` : "-";
+}
 
 interface AdminPageProps {
   authToken: string;
@@ -53,9 +69,11 @@ interface AdminPageProps {
 }
 
 export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
+  const [tab, setTab] = useState<AdminTab>("overview");
   const [audit, setAudit] = useState<any>({ status: "LOADING", items: [] });
   const [github, setGithub] = useState<any>({ status: "LOADING" });
   const [virtualSummary, setVirtualSummary] = useState<any>({ status: "LOADING" });
+  const [trendlineAccuracy, setTrendlineAccuracy] = useState<any>({ status: "LOADING" });
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
   const [cacheClearing, setCacheClearing] = useState(false);
@@ -78,6 +96,9 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       setGithub({ status: "ERROR", error: String(error) });
       setVirtualSummary({ status: "ERROR" });
     }
+    mone.trendlineAccuracy({ market: "all", futureBars: 20, symbolLimit: 12, maxCutoffs: 6 })
+      .then((a) => setTrendlineAccuracy(a || { status: "ERROR" }))
+      .catch((error) => setTrendlineAccuracy({ status: "ERROR", error: String(error) }));
     setAudit({ status: "LOADING", items: [] });
     mone.audit()
       .then((a) => setAudit(a || { status: "ERROR", items: [] }))
@@ -128,7 +149,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [authToken]);
 
   const items = Array.isArray(audit.items) ? audit.items : [];
   const githubOk = github.status === "OK" && github.isGitRepo === true;
@@ -156,6 +177,26 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
           )}
         </div>
       </div>
+
+      <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+        {ADMIN_TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setTab(item.id)}
+            className={`rounded-xl border px-3 py-2 text-sm font-medium ${tab === item.id ? "border-blue-500 bg-blue-600 text-white" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "prediction" && <PredictionPage />}
+      {tab === "news" && <NewsPage />}
+      {tab === "advanced" && <AdvancedPage />}
+      {tab !== "overview" && null}
+      {tab === "overview" && (
+        <>
 
       {message && (
         <div className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
@@ -214,6 +255,25 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         <Metric label="가상 체결" value={virtualSummary.executedTrades ?? "-"} />
         <Metric label="승률" value={virtualSummary.winRate !== undefined ? `${Number(virtualSummary.winRate).toFixed(2)}%` : "-"} />
         <Metric label="누적 수익률" value={virtualSummary.cumulativeReturnPct !== undefined ? `${Number(virtualSummary.cumulativeReturnPct).toFixed(2)}%` : "-"} accent />
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-100">빗각 과거 검증</h2>
+            <p className="text-sm text-slate-500">과거 시점에서 그은 지지·저항 빗각을 다음 20봉 실제 고저가로 검증합니다.</p>
+          </div>
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{trendlineAccuracy.status || "UNKNOWN"}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <Metric label="표본" value={trendlineAccuracy.sampleCount ?? "-"} />
+          <Metric label="전체 존중률" value={pct(trendlineAccuracy.respectRatePct)} accent />
+          <Metric label="지지선 존중률" value={pct(trendlineAccuracy.supportRespectRatePct)} />
+          <Metric label="저항선 존중률" value={pct(trendlineAccuracy.resistanceRespectRatePct)} />
+          <Metric label="고신뢰 존중률" value={pct(trendlineAccuracy.highConfidenceRespectRatePct)} accent />
+        </div>
+        {trendlineAccuracy.policy && <div className="mt-3 text-xs text-slate-500">{trendlineAccuracy.policy}</div>}
+        {trendlineAccuracy.error && <div className="mt-3 break-all text-xs text-red-300">{trendlineAccuracy.error}</div>}
       </div>
 
       {/* 데이터 점검 */}
@@ -282,6 +342,8 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

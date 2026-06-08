@@ -1,35 +1,37 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck, UserRound } from "lucide-react";
 
 interface AdminLoginPageProps {
   onSuccess: (token: string) => void;
 }
 
 export default function AdminLoginPage({ onSuccess }: AdminLoginPageProps) {
+  const [adminId, setAdminId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!password.trim()) return;
+    if (!adminId.trim() || !password.trim()) return;
     setLoading(true);
     setMessage("");
     try {
       const res = await fetch("/mone-api/api/auth/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ adminId, password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.token) {
         const code = data.code || data.status || "LOGIN_FAILED";
-        setMessage(code === "ADMIN_AUTH_NOT_CONFIGURED" ? "관리자 비밀번호 환경변수가 아직 설정되지 않았습니다." : "관리자 비밀번호를 확인해주세요.");
+        setMessage(code === "ADMIN_AUTH_NOT_CONFIGURED" ? "관리자 ID/비밀번호 환경변수가 아직 설정되지 않았습니다." : "관리자 ID 또는 비밀번호를 확인해주세요.");
         return;
       }
       onSuccess(String(data.token));
+      setAdminId("");
       setPassword("");
     } catch (error) {
       setMessage(`로그인 요청 실패: ${error}`);
@@ -51,7 +53,23 @@ export default function AdminLoginPage({ onSuccess }: AdminLoginPageProps) {
           </div>
         </div>
 
-        <label className="mt-5 block text-xs font-medium text-slate-400" htmlFor="admin-password">
+        <label className="mt-5 block text-xs font-medium text-slate-400" htmlFor="admin-id">
+          관리자 ID
+        </label>
+        <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 focus-within:border-blue-500/70">
+          <UserRound size={16} className="shrink-0 text-slate-500" />
+          <input
+            id="admin-id"
+            type="text"
+            value={adminId}
+            onChange={(event) => setAdminId(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-700"
+            placeholder="등록된 관리자 ID"
+            autoComplete="username"
+          />
+        </div>
+
+        <label className="mt-4 block text-xs font-medium text-slate-400" htmlFor="admin-password">
           비밀번호
         </label>
         <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 focus-within:border-blue-500/70">
@@ -71,7 +89,7 @@ export default function AdminLoginPage({ onSuccess }: AdminLoginPageProps) {
 
         <button
           type="submit"
-          disabled={loading || !password.trim()}
+          disabled={loading || !adminId.trim() || !password.trim()}
           className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? "로그인 중..." : "로그인"}
