@@ -5,8 +5,10 @@ import {
   Briefcase,
   Cpu,
   LayoutDashboard,
+  LogIn,
   MoreHorizontal,
   Search,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -15,6 +17,8 @@ import type { PageId } from "./Sidebar";
 interface BottomNavProps {
   current: PageId;
   onChange: (id: PageId) => void;
+  isAdmin?: boolean;
+  onAdminLogin?: () => void;
 }
 
 const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
@@ -28,11 +32,17 @@ const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementTy
   { id: "advanced", label: "고급분석", desc: "스캐너, 상관, 계산기", Icon: Cpu },
 ];
 
-const moreIds = new Set<PageId>(moreTabs.map((t) => t.id));
+const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementType } = {
+  id: "admin",
+  label: "관리자",
+  desc: "동기화, 캐시, 데이터 점검",
+  Icon: ShieldCheck,
+};
 
-export default function BottomNav({ current, onChange }: BottomNavProps) {
+export default function BottomNav({ current, onChange, isAdmin = false, onAdminLogin }: BottomNavProps) {
   const [moreOpen, setMoreOpen] = useState(false);
-  const isMoreActive = moreIds.has(current);
+  const visibleMoreTabs = isAdmin ? [...moreTabs, adminTab] : moreTabs;
+  const isMoreActive = current === "admin" || visibleMoreTabs.some((t) => t.id === current);
 
   const handlePrimary = (id: PageId) => {
     onChange(id);
@@ -67,7 +77,7 @@ export default function BottomNav({ current, onChange }: BottomNavProps) {
               </button>
             </div>
             <div className="grid gap-2 pb-4">
-              {moreTabs.map(({ id, label, desc, Icon }) => (
+              {visibleMoreTabs.map(({ id, label, desc, Icon }) => (
                 <button
                   key={id}
                   onClick={() => handleMore(id)}
@@ -86,6 +96,26 @@ export default function BottomNav({ current, onChange }: BottomNavProps) {
                   </span>
                 </button>
               ))}
+              {!isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAdminLogin?.();
+                    setMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-95 ${
+                    current === "admin" ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30" : "bg-slate-800 text-slate-300 active:bg-slate-700"
+                  }`}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-950/70">
+                    <LogIn size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-bold">관리자 로그인</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-500">로그인 후 관리자 메뉴 표시</span>
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </>

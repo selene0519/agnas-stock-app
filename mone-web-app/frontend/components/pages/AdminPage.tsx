@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mone } from "@/lib/api";
+import { adminAuthHeaders } from "@/lib/adminAuth";
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   OK:             { text: "정상",              cls: "text-emerald-400" },
@@ -46,7 +47,12 @@ function ActionBtn({ label, onClick, loading, variant = "default" }: {
 
 const USER_FILES = ["holdings_kr.csv", "holdings_us.csv", "watchlist_kr.csv", "watchlist_us.csv"];
 
-export default function AdminPage() {
+interface AdminPageProps {
+  authToken: string;
+  onLogout?: () => void;
+}
+
+export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
   const [audit, setAudit] = useState<any>({ status: "LOADING", items: [] });
   const [github, setGithub] = useState<any>({ status: "LOADING" });
   const [virtualSummary, setVirtualSummary] = useState<any>({ status: "LOADING" });
@@ -63,7 +69,7 @@ export default function AdminPage() {
       const [g, v, s] = await Promise.all([
         mone.github(),
         mone.virtualSummary({ market: "all" }),
-        fetch("/mone-api/api/admin/sync-status").then((r) => r.json()).catch(() => null),
+        fetch("/mone-api/api/admin/sync-status", { headers: adminAuthHeaders(authToken) }).then((r) => r.json()).catch(() => null),
       ]);
       setGithub(g || { status: "ERROR" });
       setVirtualSummary(v || { status: "ERROR" });
@@ -82,7 +88,7 @@ export default function AdminPage() {
     setSyncing(true);
     setMessage("");
     try {
-      const res = await fetch("/mone-api/api/admin/sync-now", { method: "POST" });
+      const res = await fetch("/mone-api/api/admin/sync-now", { method: "POST", headers: adminAuthHeaders(authToken) });
       const data = await res.json();
       setSyncStatus(data);
       setMessage(data.statusLabel || (data.status === "OK" ? "동기화 완료" : `동기화 실패: ${data.status}`));
@@ -98,7 +104,7 @@ export default function AdminPage() {
     setCacheClearing(true);
     setMessage("");
     try {
-      const res = await fetch("/mone-api/api/admin/cache-clear", { method: "POST" });
+      const res = await fetch("/mone-api/api/admin/cache-clear", { method: "POST", headers: adminAuthHeaders(authToken) });
       const data = await res.json();
       setMessage(`캐시 ${data.cachesCleared ?? 0}개 초기화 완료`);
     } catch (e) {
@@ -112,7 +118,7 @@ export default function AdminPage() {
     setQuoteRefreshing(true);
     setMessage("");
     try {
-      const res = await fetch("/mone-api/api/quotes/refresh-targets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ market: "all", limit: 100 }) });
+      const res = await fetch("/mone-api/api/quotes/refresh-targets", { method: "POST", headers: { "Content-Type": "application/json", ...adminAuthHeaders(authToken) }, body: JSON.stringify({ market: "all", limit: 100 }) });
       const data = await res.json();
       setMessage(`현재가 갱신 완료: 성공 ${data.successCount ?? 0} / 실패 ${data.failureCount ?? 0}`);
     } catch (e) {
@@ -141,7 +147,14 @@ export default function AdminPage() {
           </h1>
           <p className="mt-1 text-sm text-slate-400">데이터 파이프라인, GitHub 상태, 가상운용 결과를 점검합니다.</p>
         </div>
-        <button onClick={load} className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">새로고침</button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button onClick={load} className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">새로고침</button>
+          {onLogout && (
+            <button onClick={onLogout} className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200 hover:bg-red-500/20">
+              로그아웃
+            </button>
+          )}
+        </div>
       </div>
 
       {message && (
