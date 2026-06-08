@@ -7,6 +7,7 @@ import Sidebar, { type PageId } from "../components/Sidebar";
 import BottomNav from "../components/BottomNav";
 import TopHoldingTicker from "../components/TopHoldingTicker";
 import SessionSafetyBanner from "../components/SessionSafetyBanner";
+import UserAuthButtons from "../components/UserAuthButtons";
 import HomePage from "../components/pages/HomePage";
 import ReportPage from "../components/pages/ReportPage";
 import StocksPage from "../components/pages/StocksPage";
@@ -120,6 +121,10 @@ export default function App() {
     setPage("admin");
   }, []);
 
+  const openUserLogin = useCallback((provider: "google" | "kakao") => {
+    window.location.href = `/mone-api/api/auth/oauth/${provider}/start`;
+  }, []);
+
   const renderPage = () => {
     switch (page) {
       case "home":
@@ -173,6 +178,7 @@ export default function App() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <UserAuthButtons />
             <span className="hidden font-mono text-xs text-slate-500 md:block">{headerDate}</span>
             <span className="hidden text-slate-700 md:block">·</span>
             <span className="hidden text-xs text-slate-500 md:block">{mounted ? "실시간 동기화" : "방금 전"}</span>
@@ -256,7 +262,7 @@ export default function App() {
       </div>
 
       {/* 모바일 하단 탭바 */}
-      <BottomNav current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} />
+      <BottomNav current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} onUserLogin={openUserLogin} />
     </div>
   );
 }

@@ -56,6 +56,8 @@ const FORWARDED_HEADERS = [
   "authorization",
   "x-mone-user",   // 사용자별 SQLite 데이터 격리에 필요
   "x-forwarded-for",
+  "x-forwarded-host",
+  "x-forwarded-proto",
 ];
 
 async function proxyRequest(request: NextRequest, context: RouteContext) {
@@ -68,6 +70,8 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
       const val = request.headers.get(name);
       if (val) headers.set(name, val);
     }
+    headers.set("x-forwarded-host", request.headers.get("host") || "");
+    headers.set("x-forwarded-proto", request.nextUrl.protocol.replace(":", "") || "https");
 
     const method = request.method.toUpperCase();
 

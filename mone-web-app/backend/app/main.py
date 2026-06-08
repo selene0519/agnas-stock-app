@@ -6,11 +6,13 @@ import hmac
 import json
 import os
 import time
+import urllib.parse
+import urllib.request
 from collections import defaultdict
 
 from fastapi import Body, FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.routing import APIRoute
 
 from app.engine import backtest, correction, data_quality, risk, session
@@ -153,6 +155,102 @@ def _verify_admin_token(token: str) -> bool:
         and int(payload.get("exp", 0)) > int(time.time())
     )
 
+
+def _public_frontend_base(request: Request) -> str:
+    configured = os.environ.get("MONE_FRONTEND_URL", "").strip().rstrip("/")
+    if configured:
+        return configured
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:3001"
+    proto = request.headers.get("x-forwarded-proto") or ("http" if "localhost" in host or "127.0.0.1" in host else "https")
+    return f"{proto}://{host}".rstrip("/")
+
+
+def _public_oauth_callback(request: Request, provider: str) -> str:
+    override = os.environ.get(f"{provider.upper()}_OAUTH_REDIRECT_URI", "").strip()
+    if override:
+        return override
+    return f"{_public_frontend_base(request)}/mone-api/api/auth/oauth/{provider}/callback"
+
+
+def _signed_auth_state(provider: str) -> str:
+    payload = {"provider": provider, "exp": int(time.time() + 10 * 60)}
+    body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    signature = hmac.new(_admin_auth_secret() or b"mone-oauth", body.encode("ascii"), hashlib.sha256).digest()
+    return f"{body}.{_b64url_encode(signature)}"
+
+
+def _verify_auth_state(state: str, provider: str) -> bool:
+    try:
+        body, signature = str(state or "").split(".", 1)
+        expected_sig = hmac.new(_admin_auth_secret() or b"mone-oauth", body.encode("ascii"), hashlib.sha256).digest()
+        if not hmac.compare_digest(_b64url_encode(expected_sig), signature):
+            return False
+        payload = json.loads(_b64url_decode(body).decode("utf-8"))
+    except Exception:
+        return False
+    return payload.get("provider") == provider and int(payload.get("exp", 0)) > int(time.time())
+
+
+def _create_user_token(provider: str, subject: str, email: str = "", name: str = "") -> tuple[str, int, str]:
+    ttl_seconds = int(os.environ.get("MONE_USER_TOKEN_TTL_SECONDS", str(30 * 24 * 60 * 60)))
+    expires_at = int(time.time() + ttl_seconds)
+    user_id = f"{provider}:{subject}"
+    payload = {"role": "user", "provider": provider, "sub": subject, "userId": user_id, "email": email, "name": name, "exp": expires_at}
+    body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    signature = hmac.new(_admin_auth_secret() or b"mone-user", body.encode("ascii"), hashlib.sha256).digest()
+    return f"{body}.{_b64url_encode(signature)}", expires_at, user_id
+
+
+def _post_form(url: str, form: dict[str, str]) -> dict:
+    data_bytes = urllib.parse.urlencode(form).encode("utf-8")
+    req = urllib.request.Request(url, data=data_bytes, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=15) as res:
+        return json.loads(res.read().decode("utf-8"))
+
+
+def _get_json(url: str, token: str) -> dict:
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=15) as res:
+        return json.loads(res.read().decode("utf-8"))
+
+
+def _oauth_config(provider: str) -> dict[str, str]:
+    if provider == "google":
+        return {
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID", "").strip(),
+            "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET", "").strip(),
+            "auth_url": "https://accounts.google.com/o/oauth2/v2/auth",
+            "token_url": "https://oauth2.googleapis.com/token",
+            "userinfo_url": "https://www.googleapis.com/oauth2/v3/userinfo",
+            "scope": "openid email profile",
+        }
+    if provider == "kakao":
+        return {
+            "client_id": (os.environ.get("KAKAO_REST_API_KEY") or os.environ.get("KAKAO_CLIENT_ID") or "").strip(),
+            "client_secret": os.environ.get("KAKAO_CLIENT_SECRET", "").strip(),
+            "auth_url": "https://kauth.kakao.com/oauth/authorize",
+            "token_url": "https://kauth.kakao.com/oauth/token",
+            "userinfo_url": "https://kapi.kakao.com/v2/user/me",
+            "scope": "profile_nickname account_email",
+        }
+    return {}
+
+
+def _normalize_oauth_user(provider: str, payload: dict) -> dict[str, str]:
+    if provider == "google":
+        return {
+            "sub": str(payload.get("sub") or ""),
+            "email": str(payload.get("email") or ""),
+            "name": str(payload.get("name") or payload.get("email") or "Google user"),
+        }
+    kakao_account = payload.get("kakao_account") or {}
+    profile = kakao_account.get("profile") or {}
+    return {
+        "sub": str(payload.get("id") or ""),
+        "email": str(kakao_account.get("email") or ""),
+        "name": str(profile.get("nickname") or kakao_account.get("email") or "Kakao user"),
+    }
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     path = request.url.path
@@ -256,6 +354,71 @@ def api_admin_status(authorization: str | None = Header(None)) -> dict:
         "adminIdConfigured": bool(_admin_id()),
         "authenticated": _verify_admin_token(token),
     }
+
+
+@app.get("/api/auth/oauth/{provider}/start")
+def api_oauth_start(provider: str, request: Request):
+    provider = provider.lower().strip()
+    cfg = _oauth_config(provider)
+    if provider not in {"google", "kakao"}:
+        return JSONResponse(status_code=404, content={"ok": False, "status": "ERROR", "code": "UNKNOWN_PROVIDER"})
+    if not cfg.get("client_id") or (provider == "google" and not cfg.get("client_secret")):
+        return JSONResponse(
+            status_code=503,
+            content={"ok": False, "status": "ERROR", "code": "OAUTH_NOT_CONFIGURED", "provider": provider},
+        )
+    params = {
+        "client_id": cfg["client_id"],
+        "redirect_uri": _public_oauth_callback(request, provider),
+        "response_type": "code",
+        "scope": cfg["scope"],
+        "state": _signed_auth_state(provider),
+    }
+    if provider == "google":
+        params["access_type"] = "offline"
+        params["prompt"] = "select_account"
+    url = f"{cfg['auth_url']}?{urllib.parse.urlencode(params)}"
+    return RedirectResponse(url)
+
+
+@app.get("/api/auth/oauth/{provider}/callback")
+def api_oauth_callback(provider: str, request: Request, code: str = Query(""), state: str = Query("")):
+    provider = provider.lower().strip()
+    frontend = _public_frontend_base(request)
+    if provider not in {"google", "kakao"} or not code or not _verify_auth_state(state, provider):
+        return RedirectResponse(f"{frontend}/auth/callback?error=oauth_state")
+    cfg = _oauth_config(provider)
+    try:
+        token_form = {
+            "grant_type": "authorization_code",
+            "client_id": cfg["client_id"],
+            "redirect_uri": _public_oauth_callback(request, provider),
+            "code": code,
+        }
+        if cfg.get("client_secret"):
+            token_form["client_secret"] = cfg["client_secret"]
+        token_payload = _post_form(cfg["token_url"], token_form)
+        access_token = str(token_payload.get("access_token") or "")
+        if not access_token:
+            raise RuntimeError("missing access token")
+        user_payload = _get_json(cfg["userinfo_url"], access_token)
+        user = _normalize_oauth_user(provider, user_payload)
+        if not user.get("sub"):
+            raise RuntimeError("missing user subject")
+        user_token, expires_at, user_id = _create_user_token(provider, user["sub"], user.get("email", ""), user.get("name", ""))
+    except Exception as exc:
+        detail = urllib.parse.quote(str(exc)[:160])
+        return RedirectResponse(f"{frontend}/auth/callback?error=oauth_failed&detail={detail}")
+
+    params = urllib.parse.urlencode({
+        "token": user_token,
+        "userId": user_id,
+        "provider": provider,
+        "email": user.get("email", ""),
+        "name": user.get("name", ""),
+        "expiresAt": str(expires_at),
+    })
+    return RedirectResponse(f"{frontend}/auth/callback?{params}")
 
 
 

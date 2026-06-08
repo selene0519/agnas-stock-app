@@ -15,6 +15,9 @@ from app.engine.chart_analysis_engine import (
 from app.engine.quant_scanner import load_market_regime, load_ohlcv
 from app.services import data_loader as data
 
+TRENDLINE_VERIFIED_TARGET_PCT = 90.0
+TRENDLINE_VERIFIED_MIN_SAMPLES = 3
+
 
 def _load_benchmark_closes(market: str) -> list[tuple[str, float]]:
     """Load (date, close) pairs from benchmark_daily.csv for the given market."""
@@ -170,6 +173,40 @@ def _line_outcome(line: Any, future_rows: list[dict[str, Any]], kind: str, toler
     }
 
 
+def _news_sentiment(market: str, symbol: str, as_of_date: str) -> dict[str, Any]:
+    try:
+        from app.engine.news_sentiment_engine import score_news_sentiment
+        return score_news_sentiment(market, symbol, symbol, as_of_date=as_of_date)
+    except Exception:
+        return {"penalty": 0.0, "tag": "NEUTRAL", "reasons": []}
+
+
+def _apply_verified_trendline_gate(records: list[dict[str, Any]], target_pct: float = TRENDLINE_VERIFIED_TARGET_PCT) -> list[dict[str, Any]]:
+    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for row in records:
+        groups.setdefault((str(row["market"]), str(row["symbol"]), str(row["kind"])), []).append(row)
+
+    for row in records:
+        group = groups.get((str(row["market"]), str(row["symbol"]), str(row["kind"])), [])
+        group_rate = None
+        if len(group) >= TRENDLINE_VERIFIED_MIN_SAMPLES:
+            group_rate = round(sum(1 for item in group if item["respected"]) / len(group) * 100, 1)
+        news_penalty = float(row.get("newsRiskPenalty") or 0.0)
+        news_allowed = news_penalty < 6.0
+        verified = (
+            group_rate is not None
+            and group_rate >= target_pct
+            and bool(row.get("structurallyValid"))
+            and news_allowed
+        )
+        row["calibratedRespectRatePct"] = group_rate
+        row["calibrationSampleCount"] = len(group)
+        row["newsAllowed"] = news_allowed
+        row["verified90"] = verified
+        row["confidenceLabel"] = "VERIFIED_90" if verified else ("NEWS_BLOCKED" if not news_allowed else "WATCH_ONLY")
+    return records
+
+
 def trendline_accuracy(
     market: str = "all",
     future_bars: int = 20,
@@ -204,6 +241,7 @@ def trendline_accuracy(
                     if line is None:
                         continue
                     outcome = _line_outcome(line, future_rows, kind)
+                    sentiment = _news_sentiment(mk, symbol, cutoff_date)
                     record = {
                         "market": mk,
                         "symbol": symbol,
@@ -215,6 +253,9 @@ def trendline_accuracy(
                         "touchCount": int(line.touch_count),
                         "slopePctPerBar": line.slope_pct_per_bar,
                         "linePriceAtT": round(float(line.end_price), 4),
+                        "newsRiskPenalty": float(sentiment.get("penalty") or 0.0),
+                        "newsSentimentTag": sentiment.get("tag", "NEUTRAL"),
+                        "newsSentimentReasons": sentiment.get("reasons", [])[:3],
                         **outcome,
                     }
                     records.append(record)
@@ -224,7 +265,10 @@ def trendline_accuracy(
                             "chart": _chart_rows(rows, cutoff, future_bars),
                         })
 
+    records = _apply_verified_trendline_gate(records)
     high_confidence = [r for r in records if r["structurallyValid"] and int(r["touchCount"]) >= 3]
+    verified_90 = [r for r in records if r.get("verified90")]
+    news_blocked = [r for r in records if not r.get("newsAllowed", True)]
     support_rows = [r for r in records if r["kind"] == "support"]
     resistance_rows = [r for r in records if r["kind"] == "resistance"]
 
@@ -237,16 +281,21 @@ def trendline_accuracy(
         "status": "OK" if records else "NO_DATA",
         "market": market,
         "policy": "Trendline snapshot backtest: draw support/resistance using OHLCV only through asOf, then check whether the next futureBars candles violate the projected line by more than 1.5%.",
+        "verifiedPolicy": "VERIFIED_90 is shown only when the same symbol/direction has at least 3 historical samples, calibrated respect rate is >= 90%, structure is valid, and news/disclosure risk penalty is below 6.",
+        "targetRespectRatePct": TRENDLINE_VERIFIED_TARGET_PCT,
         "futureBars": future_bars,
         "symbolCount": symbol_count,
         "sampleCount": len(records),
         "supportCount": len(support_rows),
         "resistanceCount": len(resistance_rows),
         "highConfidenceCount": len(high_confidence),
+        "verified90Count": len(verified_90),
+        "newsBlockedCount": len(news_blocked),
         "respectRatePct": respect_rate(records),
         "supportRespectRatePct": respect_rate(support_rows),
         "resistanceRespectRatePct": respect_rate(resistance_rows),
         "highConfidenceRespectRatePct": respect_rate(high_confidence),
+        "verified90RespectRatePct": respect_rate(verified_90),
         "items": records,
         "examples": examples,
     }

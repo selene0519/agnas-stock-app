@@ -19,6 +19,7 @@ interface BottomNavProps {
   onChange: (id: PageId) => void;
   isAdmin?: boolean;
   onAdminLogin?: () => void;
+  onUserLogin?: (provider: "google" | "kakao") => void;
 }
 
 const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
@@ -39,7 +40,7 @@ const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementTy
   Icon: ShieldCheck,
 };
 
-export default function BottomNav({ current, onChange, isAdmin = false, onAdminLogin }: BottomNavProps) {
+export default function BottomNav({ current, onChange, isAdmin = false, onAdminLogin, onUserLogin }: BottomNavProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const visibleMoreTabs = isAdmin ? [...moreTabs, adminTab] : moreTabs;
   const isMoreActive = current === "admin" || visibleMoreTabs.some((t) => t.id === current);
@@ -77,6 +78,28 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
               </button>
             </div>
             <div className="grid gap-2 pb-4">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUserLogin?.("google");
+                    setMoreOpen(false);
+                  }}
+                  className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-center text-[12px] font-semibold text-slate-200 active:bg-slate-700"
+                >
+                  Google 로그인
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUserLogin?.("kakao");
+                    setMoreOpen(false);
+                  }}
+                  className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-[12px] font-semibold text-amber-200 active:bg-amber-500/20"
+                >
+                  Kakao 로그인
+                </button>
+              </div>
               {visibleMoreTabs.map(({ id, label, desc, Icon }) => (
                 <button
                   key={id}
