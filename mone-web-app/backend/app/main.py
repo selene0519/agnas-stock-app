@@ -259,6 +259,47 @@ def api_chart_data(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) 
     return data.chart_data(symbol, _market(market))
 
 
+@app.get("/api/chart/analysis/{symbol}")
+def api_chart_analysis(
+    symbol: str,
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+) -> dict:
+    """
+    Phase 6 차트 분석 엔진 — Core Analysis (T) + Forward Projection (T+H).
+    FSM 신호 상태, 컨플루언스 점수, 추천 통합용 chartSignalScore 반환.
+    """
+    try:
+        from app.engine.chart_analysis_engine import build_chart_analysis, state_to_dict
+        from app.engine.quant_scanner import load_ohlcv, load_market_regime
+
+        market_key = _market(market)
+        rows = load_ohlcv(data.REPO_ROOT, market_key, symbol)
+        if not rows:
+            return {"ok": False, "error": "OHLCV 데이터 없음", "symbol": symbol, "market": market_key}
+
+        regime = load_market_regime(data.REPO_ROOT, market_key)
+        regime_score = 50.0 + regime.get("scoreAdjust", 0.0)
+
+        horizon_bars = {"short": 20, "swing": 50, "mid": 100}.get(horizon, 50)
+
+        chart_state = build_chart_analysis(
+            rows=rows,
+            symbol=symbol,
+            market=market_key,
+            market_regime_score=max(0.0, min(100.0, regime_score)),
+            horizon_bars=horizon_bars,
+        )
+        result = state_to_dict(chart_state)
+        result["ok"] = True
+        result["regime"] = regime.get("regime", "SIDE")
+        result["regimeLabel"] = regime.get("label", "횡보장")
+        return result
+    except Exception as exc:
+        import traceback
+        return {"ok": False, "error": str(exc), "trace": traceback.format_exc()[-500:]}
+
+
 @app.get("/api/candidates")
 def api_candidates(
     market: str = Query("kr", pattern="^(kr|us)$"),
@@ -438,6 +479,36 @@ def api_disclosures_refresh(market: str = Query("all", pattern="^(kr|us|all)$"),
 def api_news_refresh(market: str = Query("all", pattern="^(kr|us|all)$")) -> dict:
     """GNews API를 호출해 최신 주식 뉴스를 수집하고 CSV에 저장한다."""
     return data.collect_gnews(market=market)
+
+
+@app.post("/api/news/sentiment/refresh")
+def api_news_sentiment_refresh(market: str = Query("all", pattern="^(kr|us|all)$")) -> dict:
+    """뉴스/공시 감성 캐시를 재빌드한다. 공시 CSV + 뉴스 CSV → reports/news_sentiment_cache_{market}.json"""
+    from app.engine.news_sentiment_engine import build_sentiment_cache
+    markets = ["kr", "us"] if market == "all" else [market]
+    results = []
+    for mk in markets:
+        # 워치리스트 + 추천 종목 전체로 캐시 빌드
+        symbols: list[tuple[str, str]] = []
+        try:
+            wl = data.watchlist_rows(mk)
+            for item in wl.get("items", []):
+                sym = str(item.get("symbol", "") or "")
+                name = str(item.get("name", "") or "")
+                if sym:
+                    symbols.append((sym, name))
+        except Exception:
+            pass
+        payload = build_sentiment_cache(mk, symbols)
+        results.append({"market": mk, "count": payload.get("count", 0), "status": "OK"})
+    # 다음 score_candidate 호출 시 캐시 재로드되도록 플래그 초기화
+    try:
+        from app.engine.quant_scanner import score_candidate
+        if hasattr(score_candidate, "_sentiment_cache"):
+            del score_candidate._sentiment_cache  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    return {"ok": True, "results": results}
 
 
 @app.get("/api/company-analysis")

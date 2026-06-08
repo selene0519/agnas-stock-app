@@ -78,7 +78,8 @@ def _read_csv(path: Path) -> list[dict[str, Any]]:
     return []
 
 
-def load_ohlcv(repo_root: Path, market: str, symbol: str) -> list[dict[str, Any]]:
+def load_ohlcv(repo_root: "Path | str", market: str, symbol: str) -> list[dict[str, Any]]:
+    repo_root = Path(repo_root)
     candidates = [
         repo_root / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv",
         repo_root / "data" / "stockapp" / f"{market}_{symbol}_daily.csv",
@@ -1057,6 +1058,90 @@ def score_candidate(
     if current_source == "ohlcv_close":
         status = "PARTIAL"  # 현재가가 live가 아님을 표시
 
+    # ── Phase 6: 차트 분석 신호 통합 (blueprint §2 연계) ─────────────────────
+    # chart_signal_score (0~100) → finalScore에 최대 ±12점 조정
+    # confirmed bullish: +12 / developing bullish: +5 / invalidated: -8 / confirmed bearish: -10
+    chart_signal_score = 0.0
+    chart_signal_tag = "NO_SIGNAL"
+    chart_signal_status = "none"
+    chart_signal_direction = "neutral"
+    chart_confluence_score = 0.0
+    chart_overlap_signals: list = []
+    try:
+        from app.engine.chart_analysis_engine import build_chart_analysis
+        _regime_score_map = {"BULL": 70.0, "BEAR": 30.0, "SIDE": 50.0}
+        _chart_state = build_chart_analysis(
+            rows=ohlcv_rows,
+            symbol=str(symbol or ""),
+            market=context.market,
+            market_regime_score=_regime_score_map.get(regime, 50.0),
+        )
+        chart_signal_score = _chart_state.chart_signal_score
+        chart_signal_tag = _chart_state.chart_signal_tag
+        chart_signal_status = _chart_state.signal_status
+        chart_signal_direction = _chart_state.confluence_direction
+        chart_confluence_score = _chart_state.confluence_score
+        chart_overlap_signals = [
+            {"price": o.price, "ratio": o.ratio, "isKey": o.is_key, "label": o.label}
+            for o in _chart_state.overlap_signals
+        ]
+        # Score adjustment (non-breaking: clamped to ±12)
+        if chart_signal_status == "confirmed":
+            if chart_signal_direction == "bullish":
+                score = min(100.0, round(score + 12.0, 1))
+                if "차트 확정 매수 신호" not in note:
+                    note = (note + "; 차트 확정 매수 신호 (Phase 6)").lstrip("; ")
+            elif chart_signal_direction == "bearish":
+                score = max(0.0, round(score - 10.0, 1))
+                note = (note + "; 차트 확정 매도 신호 (Phase 6 — 진입 주의)").lstrip("; ")
+        elif chart_signal_status == "developing" and chart_signal_direction == "bullish":
+            score = min(100.0, round(score + 5.0, 1))
+            note = (note + "; 차트 신호 발달 중 (Phase 6)").lstrip("; ")
+        elif chart_signal_status == "invalidated":
+            score = max(0.0, round(score - 8.0, 1))
+            note = (note + "; 차트 신호 무효화 (Phase 6 — 진입 보류)").lstrip("; ")
+    except Exception:
+        pass  # chart analysis is non-blocking — recommendation fallback to price-only scoring
+
+    # ── Phase 6: 뉴스/공시 감성 신호 통합 ───────────────────────────────────
+    # newsRiskPenalty를 RSI 대리값에서 실제 감성 데이터로 교체
+    news_sentiment_tag = "NEUTRAL"
+    news_sentiment_reasons: list = []
+    try:
+        from app.engine.news_sentiment_engine import score_news_sentiment, load_sentiment_cache
+        _name = str(row.get("name") or row.get("종목명") or "")
+        # 캐시를 한 번만 로드하도록 모듈 수준 캐시 변수 활용
+        if not hasattr(score_candidate, "_sentiment_cache"):
+            score_candidate._sentiment_cache = {}  # type: ignore[attr-defined]
+        _mkt = context.market
+        if _mkt not in score_candidate._sentiment_cache:  # type: ignore[attr-defined]
+            score_candidate._sentiment_cache[_mkt] = load_sentiment_cache(_mkt)  # type: ignore[attr-defined]
+        _sent = score_news_sentiment(
+            _mkt, str(symbol or ""), _name,
+            cache=score_candidate._sentiment_cache[_mkt],  # type: ignore[attr-defined]
+        )
+        real_penalty = float(_sent.get("penalty", 0.0))
+        news_sentiment_tag = str(_sent.get("tag", "NEUTRAL"))
+        news_sentiment_reasons = list(_sent.get("reasons", []))
+
+        # sub_scores의 newsRiskPenalty를 실제 감성 데이터로 덮어쓰기
+        # 데이터가 있을 때만 교체 (공시 히트 or 뉴스 조정 있을 때)
+        if _sent.get("disclosureHits", 0) > 0 or abs(_sent.get("newsAdj", 0.0)) > 0.5:
+            sub["newsRiskPenalty"] = real_penalty
+
+        # HIGH_RISK 공시 감지 → 스코어 직접 차감 및 노트 추가
+        if news_sentiment_tag == "HIGH_RISK":
+            score = max(0.0, round(score - 8.0, 1))
+            reasons_str = ", ".join(news_sentiment_reasons[:2])
+            note = (note + f"; 공시 리스크({reasons_str})").lstrip("; ")
+        elif news_sentiment_tag == "POSITIVE" and real_penalty <= 0:
+            score = min(100.0, round(score + 3.0, 1))
+            reasons_str = ", ".join(news_sentiment_reasons[:2])
+            if reasons_str:
+                note = (note + f"; 긍정 공시({reasons_str})").lstrip("; ")
+    except Exception:
+        pass  # 감성 분석 실패 시 RSI 대리값 유지 (non-blocking)
+
     # 기간별 price band 기준
     band = _HORIZON_PRICE_BANDS.get(context.horizon, _HORIZON_PRICE_BANDS["swing"])
 
@@ -1190,6 +1275,16 @@ def score_candidate(
         "indicators": ind,
         "maConvergence": _ma_convergence(ind),
         "regime": regime,
+        # Phase 6 차트 분석 신호
+        "chartSignalScore": chart_signal_score,
+        "chartSignalTag": chart_signal_tag,
+        "chartSignalStatus": chart_signal_status,
+        "chartSignalDirection": chart_signal_direction,
+        "chartConfluenceScore": chart_confluence_score,
+        "chartOverlapSignals": chart_overlap_signals,
+        # Phase 6 뉴스/공시 감성 신호
+        "newsSentimentTag": news_sentiment_tag,
+        "newsSentimentReasons": news_sentiment_reasons,
         # 수급 신호 (거래량 패턴 기반 추론)
         **dict(zip(
             ("supplySignal", "supplySignalReason"),
