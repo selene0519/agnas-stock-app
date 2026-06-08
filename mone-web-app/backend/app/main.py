@@ -720,8 +720,9 @@ def api_advanced_scanner(
     mode: str = Query("balanced"),
     horizon: str = Query("swing"),
     limit: int = Query(24, ge=24, le=200),
+    deep: bool = Query(False),
 ) -> dict:
-    return _ensure_status(advanced.advanced_scanner(_market(market), mode, horizon, limit))
+    return _ensure_status(advanced.advanced_scanner(_market(market), mode, horizon, limit, deep))
 
 
 @app.post("/api/advanced/calculator/kelly")

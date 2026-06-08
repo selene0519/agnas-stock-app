@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 import math
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -10,6 +12,10 @@ import pandas as pd
 
 from app.engine import quant_scanner
 from app.services import data_loader as data
+
+_SCANNER_CACHE_TTL_SEC = 300
+_SCANNER_FAST_PRECISE_COUNT = 0
+_scanner_cache: dict[tuple[str, str, str, int, bool], tuple[float, dict[str, Any]]] = {}
 
 
 def _num(value: Any, default: float = 0.0) -> float:
@@ -374,7 +380,62 @@ def advanced_backtest(market: str) -> dict[str, Any]:
     }
 
 
-def _scanner_source_rows(market: str) -> list[dict[str, Any]]:
+def _scanner_price_text(value: float | None, market: str) -> str:
+    if value is None or not math.isfinite(float(value)) or value <= 0:
+        return "-"
+    return f"{float(value):,.2f}" if market == "us" else f"{round(float(value)):,}원"
+
+
+def _scanner_light_security_row(row: dict[str, Any], market: str) -> dict[str, Any]:
+    symbol = data.normalize_symbol(data.first_value(row, ["symbol", "ticker", "code", "stock_code"], ""), market)
+    name = data.first_value(row, ["name", "company", "stock_name", "displayName"], symbol)
+    current = data._safe_float(data.first_value(row, ["currentPrice", "current_price", "last_price", "price", "close", "quote_fallback_price"], ""))
+    item = dict(row)
+    item.update({
+        "symbol": symbol,
+        "name": name or symbol,
+        "market": market,
+        "marketLabel": _market_text(market),
+        "currentPrice": current,
+        "currentPriceText": _scanner_price_text(current, market),
+        "dataStatus": data.first_value(row, ["dataStatus", "data_status", "priceDataStatus"], "PARTIAL"),
+        "priceDataStatus": data.first_value(row, ["priceDataStatus", "price_data_status"], "PARTIAL"),
+        "sourceType": data.first_value(row, ["sourceType", "source_type"], "local_file"),
+    })
+    return item
+
+
+def _scanner_source_rows_fast(market: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path in (
+        data.REPO_ROOT / f"candidate_universe_{market}.csv",
+        data.REPO_ROOT / f"watchlist_{market}_growth.csv",
+    ):
+        for row in data.dataframe_records(_read_any_csv(path)):
+            item = _scanner_light_security_row(row, market)
+            item.update({
+                "bucket": "ALL",
+                "theme": data.first_value(row, ["theme"], "theme pending"),
+                "group": data.first_value(row, ["group"], "group pending"),
+                "riskLevel": data.first_value(row, ["risk_level"], "risk pending"),
+                "score": data.first_value(row, ["score"], "50"),
+                "reason": data.first_value(row, ["why_watch", "watch_trigger"], "fast scanner source"),
+                "watchlistAction": "watch candidate",
+            })
+            rows.append(item)
+
+    seen: set[tuple[str, str]] = set()
+    unique: list[dict[str, Any]] = []
+    for item in rows:
+        key = (str(item.get("bucket", "")), data.normalize_symbol(item.get("symbol"), market))
+        if not key[1] or key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+    return unique
+
+
+def _scanner_source_rows(market: str, include_cards: bool = True) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     base_files = [
         data.REPO_ROOT / f"candidate_universe_{market}.csv",
@@ -382,7 +443,7 @@ def _scanner_source_rows(market: str) -> list[dict[str, Any]]:
     ]
     for path in base_files:
         for row in data.dataframe_records(_read_any_csv(path)):
-            item = data.normalize_security_row(data.apply_quote_cache(row, market), market)
+            item = _scanner_light_security_row(row, market)
             item.update({
                 "bucket": "전체",
                 "theme": data.first_value(row, ["theme", "테마"], "테마 없음"),
@@ -424,13 +485,70 @@ def _number_sort_key(value: Any) -> float:
     return float(num) if num is not None and math.isfinite(float(num)) else -1.0
 
 
-def advanced_scanner(market: str, mode: str = "balanced", horizon: str = "swing", limit: int = 24) -> dict[str, Any]:
-    rows = _scanner_source_rows(market)
-    ohlcv_rows, ohlcv_summary = _eligible_ohlcv_universe(market, min_days=30)
-    seen_symbols = {data.normalize_symbol(item.get("symbol"), market) for item in rows}
-    rows.extend([item for item in ohlcv_rows if data.normalize_symbol(item.get("symbol"), market) not in seen_symbols])
-    eligible_before_limit = len(rows)
+def _cached_scanner_payload(key: tuple[str, str, str, int, bool]) -> dict[str, Any] | None:
+    cached = _scanner_cache.get(key)
+    if not cached:
+        return None
+    cached_at, payload = cached
+    age = time.time() - cached_at
+    if age > _SCANNER_CACHE_TTL_SEC:
+        _scanner_cache.pop(key, None)
+        return None
+    out = copy.deepcopy(payload)
+    out["cache"] = {"status": "HIT", "ageSec": round(age, 1), "ttlSec": _SCANNER_CACHE_TTL_SEC}
+    return out
+
+
+def _store_scanner_payload(key: tuple[str, str, str, int, bool], payload: dict[str, Any]) -> dict[str, Any]:
+    _scanner_cache[key] = (time.time(), copy.deepcopy(payload))
+    payload["cache"] = {"status": "MISS", "ageSec": 0, "ttlSec": _SCANNER_CACHE_TTL_SEC}
+    return payload
+
+
+def _fast_scanner_row(row: dict[str, Any], market: str, positions: set[str]) -> dict[str, Any]:
+    out = dict(row)
+    symbol = data.normalize_symbol(out.get("symbol"), market)
+    out["isHolding"] = symbol in positions
+    score = (
+        data._safe_float(out.get("finalScore"))
+        or data._safe_float(out.get("score"))
+        or data._safe_float(out.get("probability"))
+        or data._safe_float(out.get("prob5d"))
+        or 50.0
+    )
+    score = max(0.0, min(float(score), 100.0))
+    out.setdefault("quantScore", score)
+    out.setdefault("finalScore", score)
+    out["score"] = out.get("finalScore") or score
+    out.setdefault("quantDataStatus", "FAST_PENDING")
+    out.setdefault("quantReason", "fast scanner: detailed quant/chart/news overlay deferred")
+    computed = list(out.get("computedFields") or [])
+    if "scanner_fast_mode" not in computed:
+        computed.append("scanner_fast_mode")
+    out["computedFields"] = computed
+    return out
+
+
+def advanced_scanner(market: str, mode: str = "balanced", horizon: str = "swing", limit: int = 24, deep: bool = False) -> dict[str, Any]:
+    cache_key = (market, quant_scanner.normalize_mode(mode), quant_scanner.normalize_horizon(horizon), int(limit or 24), bool(deep))
+    cached = _cached_scanner_payload(cache_key)
+    if cached:
+        return cached
+
+    rows = _scanner_source_rows(market) if deep else _scanner_source_rows_fast(market)
     scan_limit = max(24, min(int(limit or 24), 200))
+    ohlcv_summary: dict[str, Any] = {
+        "files": len(_ohlcv_files(market)),
+        "eligibleSymbols": 0,
+        "minDaysRequired": 31,
+        "insufficient": [],
+        "schemaErrors": [],
+    }
+    if deep or len(rows) < scan_limit:
+        ohlcv_rows, ohlcv_summary = _eligible_ohlcv_universe(market, min_days=30)
+        seen_symbols = {data.normalize_symbol(item.get("symbol"), market) for item in rows}
+        rows.extend([item for item in ohlcv_rows if data.normalize_symbol(item.get("symbol"), market) not in seen_symbols])
+    eligible_before_limit = len(rows)
     rows = rows[:scan_limit]
     positions = {data.normalize_symbol(item.get("symbol"), market) for item in data.positions(market).get("items", [])}
     def _score_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -441,20 +559,28 @@ def advanced_scanner(market: str, mode: str = "balanced", horizon: str = "swing"
             scored["score"] = scored.get("finalScore")
         return scored
 
-    if len(rows) > 1:
-        workers = min(16, len(rows))
+    precise_count = len(rows) if deep else min(_SCANNER_FAST_PRECISE_COUNT, len(rows))
+    precise_rows = rows[:precise_count]
+    fast_rows = rows[precise_count:]
+    if len(precise_rows) > 1:
+        workers = min(8, len(precise_rows))
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            rows = list(executor.map(_score_row, rows))
+            rows = list(executor.map(_score_row, precise_rows))
     else:
-        rows = [_score_row(row) for row in rows]
+        rows = [_score_row(row) for row in precise_rows]
+    if fast_rows:
+        rows.extend(_fast_scanner_row(row, market, positions) for row in fast_rows)
     rows.sort(key=lambda item: (_number_sort_key(item.get("finalScore")), _number_sort_key(item.get("quantScore"))), reverse=True)
     quant_ready_count = sum(1 for item in rows if item.get("quantScore") is not None and item.get("quantDataStatus") != "DATA_PENDING")
     quote_ready_count = sum(1 for item in rows if data._safe_float(item.get("currentPrice")) is not None)
     quote_coverage_pct = (quote_ready_count / len(rows) * 100) if rows else 0.0
-    return {
+    return _store_scanner_payload(cache_key, {
         "market": market,
         "mode": quant_scanner.normalize_mode(mode),
         "horizon": quant_scanner.normalize_horizon(horizon),
+        "analysisDepth": "DEEP" if deep else "FAST",
+        "deepScoredCount": precise_count,
+        "fastPendingCount": len(fast_rows),
         "count": len(rows),
         "filters": ["전체", "BUY", "주의", "눌림목", "수급", "저평가", "보유 제외"],
         "sources": [
@@ -482,7 +608,7 @@ def advanced_scanner(market: str, mode: str = "balanced", horizon: str = "swing"
             "schemaErrors": ohlcv_summary["schemaErrors"],
         },
         "items": rows,
-    }
+    })
 
 
 def kelly(payload: dict[str, Any]) -> dict[str, Any]:

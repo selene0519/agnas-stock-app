@@ -269,7 +269,7 @@ export const mone = {
     apiPost<ApiList>("/api/watchlist/set-group", body),
   correlationMatrix: (p?: { market?: Market; days?: number }) =>
     apiGet<ApiList>("/api/advanced/correlation", p),
-  advancedScanner: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
+  advancedScanner: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number; deep?: boolean }) =>
     apiGet<ApiList>("/api/advanced/scanner", p),
   calculatorKelly: (body: { winRate?: number; payoffRatio?: number; capital?: number }) =>
     apiPost<any>("/api/advanced/calculator/kelly", body),
