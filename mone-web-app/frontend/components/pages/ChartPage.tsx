@@ -565,52 +565,179 @@ function calcZigZagFull(data: CandleBar[], threshold = 0.05, winSize = 3): ZigZa
 
 // ── ② 빗각 (대각 추세선) ──────────────────────────────────────────────
 /**
- * 빗각 추세선 계산
+ * Sperandeo 빗각 추세선 계산
  *
- * - 상승 추세선: ZigZag 저점(L) 중 최근 2개를 직선으로 연결 → 현재봉까지 연장
- * - 하락 추세선: ZigZag 고점(H) 중 최근 2개를 직선으로 연결 → 현재봉까지 연장
+ * 구조 검증:
+ *   - 상승 추세선: 반드시 저점이 점점 높아지는 쌍 (p2.value > p1.value)
+ *   - 하락 추세선: 반드시 고점이 점점 낮아지는 쌍 (p2.value < p1.value)
+ *   - 중간 피벗 위반 없음 (Victor Sperandeo 3-pivot 조건)
+ *   - 피벗 간 최소 5봉 이상 간격
+ *   - 기울기 과도 필터: 1.2%/봉 초과 시 제외
  *
- * 활용:
- *   - 상승 추세선 하향 이탈 → 단기 하락 전환 신호
- *   - 하락 추세선 상향 돌파 → 단기 상승 전환 신호
- *   - 돌파 후 추세선 부근으로 리트레이스 → 빗각 패턴 진입 구간
+ * 신뢰도:
+ *   - touchCount: 선에 ±1.5% 이내로 접촉한 피벗 수 (3회↑=고신뢰)
+ *   - isStructurallyValid: 상승저점/하락고점 구조 충족 여부
  *
- * 주의: 피벗이 2개 미만이면 null 반환 (추세선 없음)
+ * 구조 미충족 시 fallback으로 검증만 통과한 선 반환 (isStructurallyValid=false)
  */
 function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
-  uptrend:   { time: string; value: number }[] | null;  // 저점 연결 (상승)
-  downtrend: { time: string; value: number }[] | null;  // 고점 연결 (하락)
-  uptrendVal:   number | null;  // 현재봉 기준 상승 추세선 값
-  downtrendVal: number | null;  // 현재봉 기준 하락 추세선 값
+  uptrend:        { time: string; value: number }[] | null;
+  downtrend:      { time: string; value: number }[] | null;
+  uptrendVal:     number | null;
+  downtrendVal:   number | null;
+  uptrendTouchCount:   number;  // ≥3 = 고신뢰
+  downtrendTouchCount: number;
+  uptrendValid:   boolean;      // 구조 검증 통과 여부
+  downtrendValid: boolean;
+  uptrendDistPct: number | null;   // 현재가 → 상승선 거리 %
+  downtrendDistPct: number | null; // 현재가 → 하락선 거리 %
 } {
   const timeToIdx = new Map(data.map((d, i) => [d.time, i]));
   const lows  = pivots.filter(p => p.type === "L");
   const highs = pivots.filter(p => p.type === "H");
 
-  /**
-   * p1 → p2 직선을 p1 위치에서 데이터 끝까지 연장
-   * 값이 0 이하이거나 가격 범위 대비 크게 벗어나면 해당 점 제외
-   */
-  const makeLine = (p1: ZigZagPoint, p2: ZigZagPoint) => {
+  const avgPrice = data.slice(-20).reduce((s, d) => s + d.close, 0) / Math.min(20, data.length);
+  const priceRange = Math.max(...data.map(d => d.high)) - Math.min(...data.map(d => d.low));
+  const MIN_BAR_GAP = 5;
+  const MAX_SLOPE_PCT = 0.012;  // 1.2%/봉 초과 = 너무 가파름
+  const TOUCH_TOL = 0.015;      // ±1.5% 이내 = 접촉으로 인정
+
+  const makeLine = (p1: ZigZagPoint, p2: ZigZagPoint): { segment: { time: string; value: number }[]; slope: number; i1: number } | null => {
     const i1 = timeToIdx.get(p1.time), i2 = timeToIdx.get(p2.time);
     if (i1 == null || i2 == null || i1 >= i2) return null;
+    if ((i2 - i1) < MIN_BAR_GAP) return null;
     const slope = (p2.value - p1.value) / (i2 - i1);
-    const priceRange = Math.max(...data.map(d => d.high)) - Math.min(...data.map(d => d.low));
+    if (Math.abs(slope) / avgPrice > MAX_SLOPE_PCT) return null;
     const segment = data.slice(i1).map((d, j) => ({
       time:  d.time,
       value: p1.value + slope * j,
     })).filter(pt => pt.value > 0 && pt.value < p1.value + priceRange * 3);
-    return segment.length >= 2 ? segment : null;
+    return segment.length >= 2 ? { segment, slope, i1 } : null;
   };
 
-  const upLine   = lows.length  >= 2 ? makeLine(lows[lows.length - 2],   lows[lows.length - 1])   : null;
-  const downLine = highs.length >= 2 ? makeLine(highs[highs.length - 2], highs[highs.length - 1]) : null;
+  const countTouches = (p1: ZigZagPoint, slope: number, i1: number, points: ZigZagPoint[]): number => {
+    const hits = points.filter(p => {
+      const idx = timeToIdx.get(p.time);
+      if (idx == null) return false;
+      const linePrice = p1.value + slope * (idx - i1);
+      return linePrice > 0 && Math.abs(p.value - linePrice) / linePrice <= TOUCH_TOL;
+    }).length;
+    return Math.max(hits, 2);
+  };
+
+  // ── 상승 추세선 탐색 ──
+  let upLine: { time: string; value: number }[] | null = null;
+  let uptrendTouchCount = 2, uptrendValid = false;
+
+  // Pass 1: 구조 검증 (상승 저점)
+  outer_up: for (let i = lows.length - 1; i > 0; i--) {
+    const p2 = lows[i];
+    for (let j = Math.max(0, i - 5); j < i; j++) {
+      const p1 = lows[j];
+      if (p2.value <= p1.value) continue;  // 상승 저점 조건
+      const res = makeLine(p1, p2);
+      if (!res) continue;
+      // 중간 저점 위반 없음
+      const between = lows.slice(j + 1, i);
+      const valid = between.every(p => {
+        const idx = timeToIdx.get(p.time);
+        if (idx == null) return true;
+        return p.value >= (p1.value + res.slope * (idx - res.i1)) * 0.995;
+      });
+      if (valid) {
+        upLine = res.segment;
+        uptrendTouchCount = countTouches(p1, res.slope, res.i1, lows);
+        uptrendValid = true;
+        break outer_up;
+      }
+    }
+  }
+  // Pass 2: fallback (구조 조건 완화)
+  if (!upLine) {
+    outer_up2: for (let i = lows.length - 1; i > 0; i--) {
+      const p2 = lows[i];
+      for (let j = Math.max(0, i - 4); j < i; j++) {
+        const p1 = lows[j];
+        const res = makeLine(p1, p2);
+        if (!res) continue;
+        const between = lows.slice(j + 1, i);
+        const valid = between.every(p => {
+          const idx = timeToIdx.get(p.time);
+          if (idx == null) return true;
+          return p.value >= (p1.value + res.slope * (idx - res.i1)) * 0.995;
+        });
+        if (valid) {
+          upLine = res.segment;
+          uptrendTouchCount = countTouches(p1, res.slope, res.i1, lows);
+          uptrendValid = false;
+          break outer_up2;
+        }
+      }
+    }
+  }
+
+  // ── 하락 추세선 탐색 ──
+  let downLine: { time: string; value: number }[] | null = null;
+  let downtrendTouchCount = 2, downtrendValid = false;
+
+  // Pass 1: 구조 검증 (하락 고점)
+  outer_dn: for (let i = highs.length - 1; i > 0; i--) {
+    const p2 = highs[i];
+    for (let j = Math.max(0, i - 5); j < i; j++) {
+      const p1 = highs[j];
+      if (p2.value >= p1.value) continue;  // 하락 고점 조건
+      const res = makeLine(p1, p2);
+      if (!res) continue;
+      const between = highs.slice(j + 1, i);
+      const valid = between.every(p => {
+        const idx = timeToIdx.get(p.time);
+        if (idx == null) return true;
+        return p.value <= (p1.value + res.slope * (idx - res.i1)) * 1.005;
+      });
+      if (valid) {
+        downLine = res.segment;
+        downtrendTouchCount = countTouches(p1, res.slope, res.i1, highs);
+        downtrendValid = true;
+        break outer_dn;
+      }
+    }
+  }
+  // Pass 2: fallback
+  if (!downLine) {
+    outer_dn2: for (let i = highs.length - 1; i > 0; i--) {
+      const p2 = highs[i];
+      for (let j = Math.max(0, i - 4); j < i; j++) {
+        const p1 = highs[j];
+        const res = makeLine(p1, p2);
+        if (!res) continue;
+        const between = highs.slice(j + 1, i);
+        const valid = between.every(p => {
+          const idx = timeToIdx.get(p.time);
+          if (idx == null) return true;
+          return p.value <= (p1.value + res.slope * (idx - res.i1)) * 1.005;
+        });
+        if (valid) {
+          downLine = res.segment;
+          downtrendTouchCount = countTouches(p1, res.slope, res.i1, highs);
+          downtrendValid = false;
+          break outer_dn2;
+        }
+      }
+    }
+  }
+
+  const lastClose = data.length > 0 ? data[data.length - 1].close : 0;
+  const uptrendVal   = upLine   ? upLine[upLine.length - 1].value   : null;
+  const downtrendVal = downLine ? downLine[downLine.length - 1].value : null;
+  const uptrendDistPct   = (uptrendVal && lastClose > 0)   ? ((lastClose - uptrendVal)   / lastClose * 100) : null;
+  const downtrendDistPct = (downtrendVal && lastClose > 0) ? ((lastClose - downtrendVal) / lastClose * 100) : null;
 
   return {
-    uptrend:      upLine,
-    downtrend:    downLine,
-    uptrendVal:   upLine   ? upLine[upLine.length - 1].value   : null,
-    downtrendVal: downLine ? downLine[downLine.length - 1].value : null,
+    uptrend: upLine, downtrend: downLine,
+    uptrendVal, downtrendVal,
+    uptrendTouchCount, downtrendTouchCount,
+    uptrendValid, downtrendValid,
+    uptrendDistPct, downtrendDistPct,
   };
 }
 
@@ -943,36 +1070,62 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
           zzSeries.setData(zzData);
         }
 
-        // ② 빗각 (대각 추세선) — 상승/하락 추세선 + 돌파 감지
+        // ② 빗각 (대각 추세선) — 구조검증·신뢰도·대각선 시각화
         if (toggles.trendline && pivots.length >= 4) {
           const tl = calcTrendlines(candleData, pivots);
+          const lastClose = candleData[candleData.length - 1].close;
+
           if (tl.uptrend && tl.uptrend.length >= 2) {
-            const s = chart.addLineSeries({
-              color: "#22c55e", lineWidth: 1.5, priceLineVisible: false,
+            // 신뢰도에 따라 선 스타일 차별화
+            // 구조 유효 + 3회↑: 밝은 초록 실선 / 구조 유효 2회: 초록 점선 / fallback: 흐린 점선
+            const isHighConf = tl.uptrendValid && tl.uptrendTouchCount >= 3;
+            const isMedConf  = tl.uptrendValid && tl.uptrendTouchCount < 3;
+            const upColor    = isHighConf ? "#22c55e" : isMedConf ? "#4ade80" : "#86efac66";
+            const upWidth: 1 | 2 = isHighConf ? 2 : 1;
+            const upStyle    = isHighConf ? 0 : 2;  // 0=Solid, 2=Dashed
+            const upSeries   = chart.addLineSeries({
+              color: upColor, lineWidth: upWidth, priceLineVisible: false,
               crosshairMarkerVisible: false, lastValueVisible: false,
-              lineStyle: 2,  // Dashed
+              lineStyle: upStyle,
             });
-            s.setData(tl.uptrend);
-            // 현재 종가 < 상승 추세선 → 이탈 표시
+            upSeries.setData(tl.uptrend);
+
             if (tl.uptrendVal != null) {
-              const lastClose = candleData[candleData.length - 1].close;
-              if (lastClose < tl.uptrendVal * 0.998) {
-                candleSeries.createPriceLine({ price: tl.uptrendVal, color: "#22c55e44", lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: "빗각↑" });
-              }
+              const isBroken = lastClose < tl.uptrendVal * 0.998;
+              const touchTag = tl.uptrendTouchCount >= 3 ? `(${tl.uptrendTouchCount}회)` : "";
+              const label    = isBroken ? `빗각↑이탈${touchTag}` : `빗각↑${touchTag}`;
+              candleSeries.createPriceLine({
+                price: tl.uptrendVal,
+                color: isBroken ? "#22c55e33" : `${upColor}99`,
+                lineWidth: 1, lineStyle: LW.LineStyle.Dashed,
+                axisLabelVisible: true, title: label,
+              });
             }
           }
+
           if (tl.downtrend && tl.downtrend.length >= 2) {
-            const s = chart.addLineSeries({
-              color: "#ef4444", lineWidth: 1.5, priceLineVisible: false,
+            const isHighConf = tl.downtrendValid && tl.downtrendTouchCount >= 3;
+            const isMedConf  = tl.downtrendValid && tl.downtrendTouchCount < 3;
+            const dnColor    = isHighConf ? "#ef4444" : isMedConf ? "#f87171" : "#fca5a566";
+            const dnWidth: 1 | 2 = isHighConf ? 2 : 1;
+            const dnStyle    = isHighConf ? 0 : 2;
+            const dnSeries   = chart.addLineSeries({
+              color: dnColor, lineWidth: dnWidth, priceLineVisible: false,
               crosshairMarkerVisible: false, lastValueVisible: false,
-              lineStyle: 2,
+              lineStyle: dnStyle,
             });
-            s.setData(tl.downtrend);
+            dnSeries.setData(tl.downtrend);
+
             if (tl.downtrendVal != null) {
-              const lastClose = candleData[candleData.length - 1].close;
-              if (lastClose > tl.downtrendVal * 1.002) {
-                candleSeries.createPriceLine({ price: tl.downtrendVal, color: "#ef444444", lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: "빗각↓" });
-              }
+              const isBroken = lastClose > tl.downtrendVal * 1.002;
+              const touchTag = tl.downtrendTouchCount >= 3 ? `(${tl.downtrendTouchCount}회)` : "";
+              const label    = isBroken ? `빗각↓돌파${touchTag}` : `빗각↓${touchTag}`;
+              candleSeries.createPriceLine({
+                price: tl.downtrendVal,
+                color: isBroken ? "#ef444433" : `${dnColor}99`,
+                lineWidth: 1, lineStyle: LW.LineStyle.Dashed,
+                axisLabelVisible: true, title: label,
+              });
             }
           }
         }
@@ -1761,12 +1914,59 @@ export default function ChartPage() {
                           <span className="ml-1 text-slate-500">(86.8% 황금비율)</span>
                         </div>
                       )}
-                      {ca.supportLine && (
-                        <div className="text-xs mb-2 flex gap-4">
-                          <span><span className="text-slate-500">지지선 현재값</span> <span className="ml-1 font-mono text-emerald-400">{money(ca.supportLine.endPrice, selected.market)}</span></span>
-                          <span><span className="text-slate-500">저항선 현재값</span> <span className="ml-1 font-mono text-red-400">{money(ca.resistanceLine?.endPrice, selected.market)}</span></span>
-                        </div>
-                      )}
+                      {ca.supportLine && (() => {
+                        const curPrice = rows.length > 0 ? (Number(rows[rows.length - 1]?.close || rows[rows.length - 1]?.Close || 0)) : 0;
+                        const supEnd = ca.supportLine.endPrice;
+                        const resEnd = ca.resistanceLine?.endPrice;
+                        const supDist = (curPrice > 0 && supEnd > 0) ? ((curPrice - supEnd) / curPrice * 100) : null;
+                        const resDist = (curPrice > 0 && resEnd > 0) ? ((resEnd - curPrice) / curPrice * 100) : null;
+
+                        const dirLabel = (dir: string | undefined) => {
+                          if (dir === "ascending_support")     return <span className="text-emerald-600">↗상승지지</span>;
+                          if (dir === "falling_support")       return <span className="text-amber-500">↘하락지지</span>;
+                          if (dir === "flat_support")          return <span className="text-slate-500">→횡보지지</span>;
+                          if (dir === "descending_resistance") return <span className="text-red-600">↘하락저항</span>;
+                          if (dir === "rising_resistance")     return <span className="text-amber-500">↗상승저항</span>;
+                          return null;
+                        };
+                        const touchBadge = (cnt: number, valid: boolean) => {
+                          if (cnt >= 3 && valid) return <span className="ml-1 rounded px-1 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400">{cnt}회검증</span>;
+                          if (cnt >= 3)          return <span className="ml-1 rounded px-1 py-0.5 text-[10px] font-medium bg-amber-500/20 text-amber-400">{cnt}회</span>;
+                          if (!valid)            return <span className="ml-1 rounded px-1 py-0.5 text-[10px] text-slate-600 bg-slate-800">구조미확인</span>;
+                          return null;
+                        };
+
+                        return (
+                          <div className="text-xs mb-2 space-y-1">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="flex items-center gap-1">
+                                <span className="text-slate-500">지지선</span>
+                                <span className="font-mono text-emerald-400">{money(supEnd, selected.market)}</span>
+                                {touchBadge(ca.supportLine.touchCount ?? 2, ca.supportLine.isStructurallyValid ?? true)}
+                                {dirLabel(ca.supportLine.lineDirection)}
+                                {supDist !== null && (
+                                  <span className={`ml-1 font-mono ${supDist >= 0 ? "text-slate-400" : "text-amber-400"}`}>
+                                    {supDist >= 0 ? `+${supDist.toFixed(1)}%위` : `${supDist.toFixed(1)}%아래(이탈)`}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            {resEnd > 0 && (
+                              <div className="flex flex-wrap items-center gap-3">
+                                <span className="flex items-center gap-1">
+                                  <span className="text-slate-500">저항선</span>
+                                  <span className="font-mono text-red-400">{money(resEnd, selected.market)}</span>
+                                  {touchBadge(ca.resistanceLine?.touchCount ?? 2, ca.resistanceLine?.isStructurallyValid ?? true)}
+                                  {dirLabel(ca.resistanceLine?.lineDirection)}
+                                  {resDist !== null && (
+                                    <span className="ml-1 font-mono text-slate-400">+{resDist.toFixed(1)}%위</span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {Array.isArray(ca.overlapSignals) && ca.overlapSignals.length > 0 && (
                         <div className="text-xs mb-2">
                           <span className="text-slate-500">신호 겹침 구간</span>

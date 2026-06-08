@@ -70,6 +70,10 @@ class Trendline:
     end_index: int
     start_price: float
     end_price: float
+    touch_count: int = 2              # pivots within ±1.5% of line (min 2)
+    slope_pct_per_bar: float = 0.0    # |slope| / avg_price per bar (%)
+    is_structurally_valid: bool = True # ascending lows / descending highs
+    line_direction: str = "support"    # ascending_support | descending_resistance | falling_support | rising_resistance | flat
 
     def price_at(self, index: int) -> float:
         return self.slope * index + self.intercept
@@ -306,20 +310,35 @@ def _calc_zigzag(
 def _calc_trendlines(
     candles: list[Candle],
     pivots: list[Pivot],
+    min_bar_gap: int = 5,
+    max_slope_pct: float = 0.012,   # max 1.2%/bar; steeper = unsustainably steep
+    touch_tolerance: float = 0.015,  # ±1.5% counts as a valid touch
 ) -> tuple[Optional[Trendline], Optional[Trendline]]:
     """
-    Support line: connect last 2 lows. Validates no intermediate low pivot violates the line.
-    Resistance line: connect last 2 highs. Same validation.
-    Falls back to older pivot pair if the primary pair is violated.
+    Sperandeo-based trendline detection.
+
+    Support: connects ASCENDING lows (each successive low must be higher).
+    Resistance: connects DESCENDING highs (each successive high must be lower).
+    Both: validated that no intermediate same-type pivot violates the line.
+    Touch count: how many pivots of same type lie within ±1.5% of the line.
+
+    Falls back to any structurally valid pair if ascending/descending pair not found,
+    flagging is_structurally_valid=False so callers can down-weight the signal.
     """
     lows = [p for p in pivots if p.pivot_type == "L"]
     highs = [p for p in pivots if p.pivot_type == "H"]
     n = len(candles)
+    avg_price = (sum(c.close for c in candles[-20:]) / min(20, len(candles))) if candles else 1.0
 
     def make_line(p1: Pivot, p2: Pivot) -> Optional[Trendline]:
         if p1.index >= p2.index:
             return None
+        if (p2.index - p1.index) < min_bar_gap:
+            return None  # too close — not a meaningful pivot pair
         slope = (p2.price - p1.price) / (p2.index - p1.index)
+        slope_pct = abs(slope) / avg_price if avg_price > 0 else 0.0
+        if slope_pct > max_slope_pct:
+            return None  # unsustainably steep
         intercept = p1.price - slope * p1.index
         end_price = slope * (n - 1) + intercept
         if end_price <= 0:
@@ -331,24 +350,41 @@ def _calc_trendlines(
             slope=slope, intercept=intercept,
             start_index=p1.index, end_index=n - 1,
             start_price=p1.price, end_price=end_price,
+            slope_pct_per_bar=round(slope_pct * 100, 4),
         )
 
-    def is_valid_support(line: Trendline, between_pivots: list[Pivot]) -> bool:
-        """No intermediate low pivot should fall below the support line."""
-        for p in between_pivots:
-            if p.price < line.slope * p.index + line.intercept * 0.995:
-                return False
-        return True
+    def count_touches(line: Trendline, same_type_pivots: list[Pivot]) -> int:
+        """Count pivots whose price is within touch_tolerance of the line at that index."""
+        count = 0
+        for p in same_type_pivots:
+            line_price = line.price_at(p.index)
+            if line_price > 0 and abs(p.price - line_price) / line_price <= touch_tolerance:
+                count += 1
+        return max(count, 2)
 
-    def is_valid_resistance(line: Trendline, between_pivots: list[Pivot]) -> bool:
-        """No intermediate high pivot should rise above the resistance line."""
-        for p in between_pivots:
-            if p.price > line.slope * p.index + line.intercept * 1.005:
-                return False
-        return True
+    def is_valid_support(line: Trendline, between: list[Pivot]) -> bool:
+        return all(p.price >= line.price_at(p.index) * 0.995 for p in between)
 
-    def best_line(points: list[Pivot], validate_fn) -> Optional[Trendline]:
-        """Try pairs from most recent, skip if intermediate pivots violate the line."""
+    def is_valid_resistance(line: Trendline, between: list[Pivot]) -> bool:
+        return all(p.price <= line.price_at(p.index) * 1.005 for p in between)
+
+    def best_support_line(points: list[Pivot]) -> Optional[Trendline]:
+        # Pass 1: structurally valid — ascending lows (p2 > p1)
+        for i in range(len(points) - 1, 0, -1):
+            p2 = points[i]
+            for j in range(i - 1, max(i - 5, -1), -1):
+                p1 = points[j]
+                if p2.price <= p1.price:
+                    continue  # must be ascending
+                line = make_line(p1, p2)
+                if line is None:
+                    continue
+                if is_valid_support(line, points[j + 1:i]):
+                    line.touch_count = count_touches(line, points)
+                    line.is_structurally_valid = True
+                    line.line_direction = "ascending_support"
+                    return line
+        # Pass 2: fallback — any pair (could be flat or falling support)
         for i in range(len(points) - 1, 0, -1):
             p2 = points[i]
             for j in range(i - 1, max(i - 4, -1), -1):
@@ -356,13 +392,46 @@ def _calc_trendlines(
                 line = make_line(p1, p2)
                 if line is None:
                     continue
-                between = points[j + 1:i]
-                if validate_fn(line, between):
+                if is_valid_support(line, points[j + 1:i]):
+                    line.touch_count = count_touches(line, points)
+                    line.is_structurally_valid = False
+                    line.line_direction = "falling_support" if line.slope < -1e-6 else "flat_support"
                     return line
         return None
 
-    support = best_line(lows, is_valid_support) if len(lows) >= 2 else None
-    resistance = best_line(highs, is_valid_resistance) if len(highs) >= 2 else None
+    def best_resistance_line(points: list[Pivot]) -> Optional[Trendline]:
+        # Pass 1: structurally valid — descending highs (p2 < p1)
+        for i in range(len(points) - 1, 0, -1):
+            p2 = points[i]
+            for j in range(i - 1, max(i - 5, -1), -1):
+                p1 = points[j]
+                if p2.price >= p1.price:
+                    continue  # must be descending
+                line = make_line(p1, p2)
+                if line is None:
+                    continue
+                if is_valid_resistance(line, points[j + 1:i]):
+                    line.touch_count = count_touches(line, points)
+                    line.is_structurally_valid = True
+                    line.line_direction = "descending_resistance"
+                    return line
+        # Pass 2: fallback
+        for i in range(len(points) - 1, 0, -1):
+            p2 = points[i]
+            for j in range(i - 1, max(i - 4, -1), -1):
+                p1 = points[j]
+                line = make_line(p1, p2)
+                if line is None:
+                    continue
+                if is_valid_resistance(line, points[j + 1:i]):
+                    line.touch_count = count_touches(line, points)
+                    line.is_structurally_valid = False
+                    line.line_direction = "rising_resistance" if line.slope > 1e-6 else "flat_resistance"
+                    return line
+        return None
+
+    support = best_support_line(lows) if len(lows) >= 2 else None
+    resistance = best_resistance_line(highs) if len(highs) >= 2 else None
     return support, resistance
 
 
@@ -603,16 +672,29 @@ def _calc_confluence(
                 momentum -= 20.0
                 reasons.append("단기 역배열 (현재가 < MA20)")
     if breakout_direction == "UP":
-        momentum += 15.0
-        reasons.append("하락 추세선 상향 돌파 감지")
+        # Breakout from structurally valid descending resistance = stronger signal
+        resist_bonus = 5.0 if (resistance and resistance.is_structurally_valid and resistance.touch_count >= 3) else 0.0
+        momentum += 15.0 + resist_bonus
+        touch_note = f" ({resistance.touch_count}회 검증)" if resistance and resistance.touch_count >= 3 else ""
+        reasons.append(f"하락 추세선 상향 돌파{touch_note}")
     elif breakout_direction == "DOWN":
         momentum -= 15.0
         reasons.append("상승 추세선 하향 이탈 감지")
-    if support and support.slope > 0 and len(candles) >= 2:
+
+    if support and support.is_structurally_valid and support.slope > 0 and len(candles) >= 2:
         sup_cur = support.price_at(candles[-1].index)
         if candles[-1].close > sup_cur:
-            momentum += 10.0
-            reasons.append("상승 추세선 위 유지")
+            # High-reliability line (3+ touches) gets extra credit
+            touch_bonus = 8.0 if support.touch_count >= 3 else 0.0
+            momentum += 10.0 + touch_bonus
+            touch_note = f" ({support.touch_count}회 검증 고신뢰)" if support.touch_count >= 3 else ""
+            reasons.append(f"상승 추세선 위 유지{touch_note}")
+    elif support and not support.is_structurally_valid and support.slope > 0 and len(candles) >= 2:
+        # Fallback line — partial credit only
+        sup_cur = support.price_at(candles[-1].index)
+        if candles[-1].close > sup_cur:
+            momentum += 5.0
+            reasons.append("지지선 위 유지 (구조 미확인)")
     components.momentum = max(0.0, min(100.0, momentum))
 
     # 3. Volume score (with buying-climax detection at key fibonacci levels)
@@ -1091,6 +1173,10 @@ def state_to_dict(state: ChartAnalysisState) -> dict[str, Any]:
             "slope": round(t.slope, 6), "intercept": round(t.intercept, 4),
             "startIndex": t.start_index, "endIndex": t.end_index,
             "startPrice": round(t.start_price, 4), "endPrice": round(t.end_price, 4),
+            "touchCount": t.touch_count,
+            "slopePctPerBar": t.slope_pct_per_bar,
+            "isStructurallyValid": t.is_structurally_valid,
+            "lineDirection": t.line_direction,
         }
 
     def zone_d(z: SupplyDemandZone) -> dict:
