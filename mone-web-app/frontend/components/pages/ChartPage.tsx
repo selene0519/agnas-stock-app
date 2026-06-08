@@ -51,6 +51,28 @@ function positiveNum(value: any) { const n = num(value); return n !== null && n 
 function closeOf(row: any) { return num(row.close ?? row.Close ?? row.closePrice ?? row.currentPrice) || 0; }
 function highOf(row: any)  { return num(row.high ?? row.High ?? row.highPrice) || closeOf(row); }
 function lowOf(row: any)   { return num(row.low ?? row.Low ?? row.lowPrice) || closeOf(row); }
+function calcAtr14(rows: any[]) {
+  const recent = rows.slice(-14);
+  if (recent.length < 14) return null;
+  const trs = recent.map((r, i) => {
+    const prev = i > 0 ? recent[i - 1] : rows[rows.length - recent.length - 1];
+    const range = highOf(r) - lowOf(r);
+    if (!prev) return range;
+    return Math.max(range, Math.abs(highOf(r) - closeOf(prev)), Math.abs(lowOf(r) - closeOf(prev)));
+  }).filter((v) => Number.isFinite(v) && v >= 0);
+  return trs.length >= 14 ? trs.reduce((s, v) => s + v, 0) / trs.length : null;
+}
+function calcMdd20(rows: any[]) {
+  const closes = rows.slice(-20).map(closeOf).filter((v) => Number.isFinite(v) && v > 0);
+  if (closes.length < 20) return null;
+  let peak = closes[0];
+  let mdd = 0;
+  for (const close of closes) {
+    peak = Math.max(peak, close);
+    mdd = Math.min(mdd, ((close - peak) / peak) * 100);
+  }
+  return mdd;
+}
 function chartTime(row: any): string {
   const raw = String(row?.date ?? row?.Date ?? row?.tradeDate ?? row?.일자 ?? "").trim();
   if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
@@ -94,8 +116,8 @@ function derivedIndicators(rows: any[], latest: any, recInd: any) {
   return {
     ...recInd,
     rsi14: positiveNum(recInd?.rsi14 ?? latest?.rsi ?? latest?.RSI),
-    atr14: positiveNum(recInd?.atr14 ?? latest?.atr14 ?? latest?.ATR14),
-    mdd20: positiveNum(recInd?.mdd20 ?? latest?.mdd20 ?? latest?.MDD20),
+    atr14: positiveNum(recInd?.atr14 ?? latest?.atr14 ?? latest?.ATR14) ?? calcAtr14(rows),
+    mdd20: num(recInd?.mdd20 ?? latest?.mdd20 ?? latest?.MDD20) ?? calcMdd20(rows),
     distanceToMa20: recInd?.distanceToMa20 ?? (close && ma20 ? ((close - ma20) / ma20) * 100 : null),
     bbPercentB: recInd?.bbPercentB ?? (close && bbUpper && bbLower && bbUpper !== bbLower ? (close - bbLower) / (bbUpper - bbLower) : null),
     volumeRatio20: recInd?.volumeRatio20 ?? (latestVol && volAvg20 ? latestVol / volAvg20 : null),
@@ -1454,7 +1476,12 @@ export default function ChartPage() {
     { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`, cls: loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
     { label: "추천선", value: levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
     { label: "뉴스·공시", value: `${loadState.newsCount}건 · ${loadState.disclosureCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.newsCount + loadState.disclosureCount) },
-    { label: "기업분석", value: company ? "연결됨" : "없음", sub: loadStatusText(loadState.companyStatus), cls: company ? statusTone("ok") : statusTone("warn") },
+    {
+      label: "기업분석",
+      value: String(loadState.companyStatus || "").toUpperCase() === "TIMEOUT" ? "시간초과" : company?.dataStatus === "SOURCE_CONTEXT" || company?.dataStatus === "REPORT_FALLBACK" ? "보조" : company ? "연결됨" : "없음",
+      sub: String(loadState.companyStatus || "").toUpperCase() === "TIMEOUT" ? "기업분석 API 응답 지연" : company?.dataStatus === "SOURCE_CONTEXT" || company?.dataStatus === "REPORT_FALLBACK" ? "추천 원본 기준" : loadStatusText(loadState.companyStatus),
+      cls: String(loadState.companyStatus || "").toUpperCase() === "TIMEOUT" || company?.dataStatus === "SOURCE_CONTEXT" || company?.dataStatus === "REPORT_FALLBACK" ? statusTone("warn") : company ? statusTone("ok") : statusTone("warn"),
+    },
   ];
 
   return (
