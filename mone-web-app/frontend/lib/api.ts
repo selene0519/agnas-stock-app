@@ -352,6 +352,8 @@ export const mone = {
     apiGet<any>("/api/quotes/investor", p),
   chartIndex: (p: { indexSymbol: string; market: Market; limit?: number }, signal?: AbortSignal) =>
     apiGet<any>(`/api/chart/index/${p.indexSymbol}`, { market: p.market, limit: p.limit }, signal),
+  chartAnalysis: (p: { symbol: string; market: Market }, signal?: AbortSignal) =>
+    apiGet<any>(`/api/chart/analysis/${p.symbol}`, { market: p.market }, signal),
 };
 
 export default mone;

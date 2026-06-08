@@ -488,14 +488,20 @@ def _holdings_payload_from_rows(raw_rows: List[Dict[str, Any]], market: str = "a
 
 def register_mone_v802_holdings_clean_routes(app):
     from fastapi import Header
+    # NOTE: "/api/holdings" 경로는 삭제하지 않는다 — POST/PATCH/DELETE CRUD가 등록되어 있음
+    # GET /api/holdings 만 교체 (v80.2 clean 버전으로)
     replace_paths = {
-        "/api/holdings",
         "/api/holdings-clean",
         "/api/final/holdings-clean",
         "/api/holdings/summary",
         "/api/holdings/risk",
     }
     app.router.routes = [r for r in app.router.routes if not (isinstance(r, APIRoute) and getattr(r, "path", "") in replace_paths)]
+    # GET /api/holdings 만 선택적으로 교체
+    app.router.routes = [
+        r for r in app.router.routes
+        if not (isinstance(r, APIRoute) and getattr(r, "path", "") == "/api/holdings" and "GET" in getattr(r, "methods", set()))
+    ]
 
     @app.get("/api/holdings-clean")
     def holdings_clean(

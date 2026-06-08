@@ -306,13 +306,17 @@ def _prepare_holding_row(df: pd.DataFrame, payload: dict[str, Any], market: str)
     name = data._safe_str(payload.get("name"), symbol)
     avg_price = data._safe_str(payload.get("avgPrice") or payload.get("avg_price") or payload.get("평균단가"), "")
     quantity = data._safe_str(payload.get("quantity") or payload.get("shares") or payload.get("보유수량"), "")
+    stop_price = data._safe_str(payload.get("stopPrice") or payload.get("stop_price") or payload.get("손절가"), "")
+    target_price = data._safe_str(payload.get("targetPrice") or payload.get("target_price") or payload.get("목표가"), "")
     memo = data._safe_str(payload.get("memo"), "수동 저장")
     row = {col: "" for col in df.columns}
     _set_first_existing(row, ["symbol", "ticker", "code", "종목코드"], symbol, "symbol")
     _set_first_existing(row, ["name", "종목명", "stock_name", "종목"], name, "name")
     _set_first_existing(row, ["market", "시장"], "미국주식" if market == "us" else "한국주식", "market")
-    _set_first_existing(row, ["avg_price", "평균단가", "평단가"], avg_price, "avg_price")
+    _set_first_existing(row, ["avgPrice", "avg_price", "평균단가", "평단가"], avg_price, "avg_price")
     _set_first_existing(row, ["quantity", "shares", "보유수량"], quantity, "quantity")
+    _set_first_existing(row, ["stopPrice", "stop_price", "손절가"], stop_price, "stopPrice")
+    _set_first_existing(row, ["targetPrice", "target_price", "목표가"], target_price, "targetPrice")
     _set_first_existing(row, ["memo", "메모"], memo, "memo")
     if "holding_type" in row and not row.get("holding_type"):
         row["holding_type"] = "core"

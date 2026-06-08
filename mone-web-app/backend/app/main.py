@@ -224,6 +224,36 @@ def api_symbol_detail(symbol: str, market: str = Query("kr", pattern="^(kr|us)$"
     return data.symbol_detail(symbol, _market(market))
 
 
+@app.get("/api/chart/analysis/{symbol}")
+def api_chart_analysis(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    """Phase 6 Chart Analysis — 빗각(추세선), 매물대(공급구간), AI 오버레이 신호"""
+    try:
+        from app.engine.chart_analysis_engine import build_chart_analysis, state_to_dict
+        mkt = _market(market)
+        # OHLCV 로드
+        chart = data.chart_data(symbol, mkt)
+        rows = chart.get("items") or chart.get("candles") or chart.get("data") or []
+        if not rows:
+            return {"ok": False, "signalStatus": "none", "data_quality": "no_data",
+                    "confluenceScore": 0, "warnings": ["OHLCV 데이터 없음"]}
+        # 마켓 레짐 점수 (없으면 50)
+        try:
+            from app.engine.quant_scanner import load_market_regime
+            from pathlib import Path as _Path
+            regime = load_market_regime(_Path(data.REPO_ROOT), mkt)
+            regime_score = float(regime.get("regimeScore") or 50.0)
+        except Exception:
+            regime_score = 50.0
+        state = build_chart_analysis(rows, symbol=symbol, market=mkt,
+                                      market_regime_score=regime_score)
+        return state_to_dict(state)
+    except Exception as exc:
+        import traceback
+        return {"ok": False, "signalStatus": "none", "data_quality": "error",
+                "confluenceScore": 0, "warnings": [str(exc)],
+                "traceback": traceback.format_exc()[-500:]}
+
+
 @app.get("/api/chart/{symbol}")
 def api_chart_data(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return data.chart_data(symbol, _market(market))
@@ -857,6 +887,31 @@ try:
     register_mone_v803_holdings_clean_guard(app)
 except Exception as exc:
     print("[MONE v8.0.3] holdings clean guard route failed:", exc)
+
+# ── v8.0.4: POST/PATCH/DELETE /api/holdings 복원 ──────────────────────────────
+# mone_v802가 GET만 남기고 나머지를 삭제하므로 여기서 다시 등록
+from fastapi.routing import APIRoute as _APIR
+_HOLDINGS_RESTORE_PATHS = {"/api/holdings"}
+app.router.routes = [
+    r for r in app.router.routes
+    if not (isinstance(r, _APIR) and getattr(r, "path", "") in _HOLDINGS_RESTORE_PATHS
+            and bool(getattr(r, "methods", set()) - {"GET", "HEAD"}))
+]
+
+@app.post("/api/holdings")
+def _api_holdings_add_v804(payload: dict) -> dict:
+    """보유종목 추가 (v8.0.4 복원)"""
+    return user_data.upsert_holding(payload, mode="post")
+
+@app.patch("/api/holdings/{symbol}")
+def _api_holdings_patch_v804(symbol: str, payload: dict) -> dict:
+    """보유종목 수정 (v8.0.4 복원)"""
+    return user_data.upsert_holding(payload, mode="patch", symbol_arg=symbol)
+
+@app.delete("/api/holdings/{symbol}")
+def _api_holdings_delete_v804(symbol: str, market: str = Query("kr")) -> dict:
+    """보유종목 삭제 (v8.0.4 복원)"""
+    return user_data.delete_holding(symbol, _market(market))
 
 # --- MONE live data-quality route patch v2 ascii ---
 from pathlib import Path as _MONE_DQ_Path

@@ -785,9 +785,9 @@ function calcFakeBreakouts(
 }
 
 // ── TvChart (캔들 + 지수 비교선) ─────────────────────────────────────
-function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
+function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis = null }: {
   rows: any[]; levels: any; market: string;
-  toggles: Record<ToggleKey, boolean>; indexRows?: any[];
+  toggles: Record<ToggleKey, boolean>; indexRows?: any[]; chartAnalysis?: any;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -1019,6 +1019,66 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
           if (markers.length > 0) candleSeries.setMarkers(markers);
         }
 
+        // ⑥ Phase 6 백엔드 AI 오버레이 (FSM 신호 + 되돌림 + 추세선 현재값)
+        if (chartAnalysis?.ok) {
+          const ca = chartAnalysis;
+          const isConfirmed = ca.signalStatus === "confirmed";
+          const isDeveloping = ca.signalStatus === "developing";
+
+          // 피보나치 primary 되돌림선 (AI 강조)
+          if (ca.primaryRetracementLevel > 0 && (isConfirmed || isDeveloping)) {
+            const retColor = isConfirmed ? "#06b6d4" : "#a78bfa";
+            candleSeries.createPriceLine({
+              price: ca.primaryRetracementLevel,
+              color: retColor,
+              lineWidth: isConfirmed ? 2 : 1,
+              lineStyle: isConfirmed ? LW.LineStyle.Solid : LW.LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: isConfirmed ? "★AI확정" : "◈AI발달",
+            });
+          }
+
+          // 오버랩 신호 (최대 3개)
+          if (Array.isArray(ca.overlapSignals)) {
+            ca.overlapSignals.slice(0, 3).forEach((sig: any) => {
+              if (sig.price > 0) {
+                candleSeries.createPriceLine({
+                  price: sig.price,
+                  color: sig.isKey ? "#06b6d4cc" : "#a78bfacc",
+                  lineWidth: 2,
+                  lineStyle: LW.LineStyle.Solid,
+                  axisLabelVisible: true,
+                  title: sig.label || "AI중첩",
+                });
+              }
+            });
+          }
+
+          // 백엔드 지지선 현재값
+          if (ca.supportLine?.endPrice > 0) {
+            candleSeries.createPriceLine({
+              price: ca.supportLine.endPrice,
+              color: "#22c55e66",
+              lineWidth: 1,
+              lineStyle: LW.LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: "AI지지",
+            });
+          }
+
+          // 백엔드 저항선 현재값
+          if (ca.resistanceLine?.endPrice > 0) {
+            candleSeries.createPriceLine({
+              price: ca.resistanceLine.endPrice,
+              color: "#ef444466",
+              lineWidth: 1,
+              lineStyle: LW.LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: "AI저항",
+            });
+          }
+        }
+
         chart.timeScale().fitContent();
         const ro = new ResizeObserver(() => {
           if (containerRef.current && chartRef.current) {
@@ -1034,7 +1094,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [] }: {
     }
     init();
     return () => { if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; } };
-  }, [candleData, rows, levels, toggles, indexRows]);
+  }, [candleData, rows, levels, toggles, indexRows, chartAnalysis]);
 
   if (candleData.length < 2) {
     return (
@@ -1309,6 +1369,7 @@ export default function ChartPage() {
   });
   const [period, setPeriod] = useState<number | null>(126);
   const [indexRows, setIndexRows] = useState<any[]>([]);
+  const [chartAnalysis, setChartAnalysis] = useState<any | null>(null);
   const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
   const [atrHorizon, setAtrHorizon] = useState<"short"|"swing"|"mid">("swing");
   const [loading, setLoading] = useState(false);
@@ -1450,6 +1511,16 @@ export default function ChartPage() {
     mone.chartIndex({ indexSymbol: indexSym, market: selected.market as any, limit: 520 }, controller.signal)
       .then((d) => setIndexRows(Array.isArray(d.items) ? d.items : []))
       .catch(() => setIndexRows([]));
+    return () => controller.abort();
+  }, [selected?.symbol, selected?.market]);
+
+  // Phase 6 — 백엔드 AI 차트 분석 (FSM 신호·빗각·되돌림·매물대)
+  useEffect(() => {
+    if (!selected) { setChartAnalysis(null); return; }
+    const controller = new AbortController();
+    mone.chartAnalysis({ symbol: selected.symbol, market: selected.market as any }, controller.signal)
+      .then((d) => setChartAnalysis(d?.ok ? d : null))
+      .catch(() => setChartAnalysis(null));
     return () => controller.abort();
   }, [selected?.symbol, selected?.market]);
 
@@ -1624,7 +1695,7 @@ export default function ChartPage() {
             {!loading && rows.length > 0 && (
               <div className="space-y-2">
                 <div className="rounded-xl border border-slate-800 bg-[#020617] p-2">
-                  <TvChart rows={filteredRows} levels={levels} market={selected.market} toggles={toggles} indexRows={indexRows} />
+                  <TvChart rows={filteredRows} levels={levels} market={selected.market} toggles={toggles} indexRows={indexRows} chartAnalysis={chartAnalysis} />
                   <div className="mt-2 flex flex-wrap gap-3 px-2 text-xs text-slate-500">
                     <span>봉: {filteredRows.length}개 (전체 {rows.length})</span>
                     <span>최근: {latest?.date || "-"}</span>
@@ -1645,6 +1716,77 @@ export default function ChartPage() {
                 </div>
                 {toggles.rsi  && <RsiChart rows={filteredRows} />}
                 {toggles.macd && <MacdChart rows={filteredRows} />}
+
+                {/* Phase 6 AI 차트 분석 패널 */}
+                {chartAnalysis?.ok && (() => {
+                  const ca = chartAnalysis;
+                  const isConfirmed = ca.signalStatus === "confirmed";
+                  const isDeveloping = ca.signalStatus === "developing";
+                  const hasSignal = isConfirmed || isDeveloping;
+                  const isInvalidated = ca.signalStatus === "invalidated";
+                  const statusColor = isConfirmed ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10"
+                    : isDeveloping ? "text-amber-300 border-amber-500/40 bg-amber-500/10"
+                    : isInvalidated ? "text-red-400 border-red-500/40 bg-red-500/10"
+                    : "text-slate-400 border-slate-700 bg-slate-900/40";
+                  const statusLabel = isConfirmed ? "★ 신호 확정" : isDeveloping ? "◈ 신호 발달 중" : isInvalidated ? "✕ 신호 무효" : "신호 없음";
+                  return (
+                    <div className={`rounded-xl border p-4 ${statusColor}`}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="font-semibold text-sm">AI 차트 분석</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
+                        <span className="ml-auto text-xs text-slate-500">컨플루언스 {ca.confluenceScore?.toFixed(1) ?? "-"}/100</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs mb-3 md:grid-cols-4">
+                        <div><span className="text-slate-500">방향</span> <span className="ml-1 font-medium">{ca.direction === "BULL" ? "📈 상승" : ca.direction === "BEAR" ? "📉 하락" : "-"}</span></div>
+                        <div><span className="text-slate-500">돌파</span> <span className="ml-1 font-medium">{ca.breakoutDirection === "UP" ? "상향" : ca.breakoutDirection === "DOWN" ? "하향 이탈" : "-"}</span></div>
+                        <div><span className="text-slate-500">품질</span> <span className="ml-1 font-medium">{ca.dataQuality}</span></div>
+                        <div><span className="text-slate-500">봉 수</span> <span className="ml-1 font-medium">{ca.inputCandleCount}개</span></div>
+                      </div>
+                      {ca.primaryRetracementLevel > 0 && (
+                        <div className="text-xs mb-2">
+                          <span className="text-slate-500">주요 되돌림 레벨</span>
+                          <span className="ml-2 font-mono font-semibold">{money(ca.primaryRetracementLevel, selected.market)}</span>
+                          <span className="ml-1 text-slate-500">(86.8% 황금비율)</span>
+                        </div>
+                      )}
+                      {ca.supportLine && (
+                        <div className="text-xs mb-2 flex gap-4">
+                          <span><span className="text-slate-500">지지선 현재값</span> <span className="ml-1 font-mono text-emerald-400">{money(ca.supportLine.endPrice, selected.market)}</span></span>
+                          <span><span className="text-slate-500">저항선 현재값</span> <span className="ml-1 font-mono text-red-400">{money(ca.resistanceLine?.endPrice, selected.market)}</span></span>
+                        </div>
+                      )}
+                      {Array.isArray(ca.overlapSignals) && ca.overlapSignals.length > 0 && (
+                        <div className="text-xs mb-2">
+                          <span className="text-slate-500">신호 겹침 구간</span>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {ca.overlapSignals.slice(0, 4).map((s: any, i: number) => (
+                              <span key={i} className="rounded bg-slate-800 px-2 py-0.5 font-mono">
+                                {money(s.price, selected.market)} <span className="text-slate-500">{s.label}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {Array.isArray(ca.confluenceReasons) && ca.confluenceReasons.length > 0 && (
+                        <div className="text-xs mb-2">
+                          <span className="text-slate-500">분석 근거</span>
+                          <div className="mt-1 space-y-0.5">
+                            {ca.confluenceReasons.map((r: string, i: number) => (
+                              <div key={i} className="text-slate-400">• {r}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {Array.isArray(ca.warnings) && ca.warnings.length > 0 && (
+                        <div className="text-xs text-amber-400 mb-1">⚠ {ca.warnings.join(" | ")}</div>
+                      )}
+                      <div className="text-[10px] text-slate-600 mt-2 leading-relaxed">
+                        본 분석은 투자 권유가 아닌 조건부 감시 정보입니다. 추세선·되돌림 레벨은 감시 기준선으로만 활용하세요.
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
                   <Info label="기준가" value={levels && levelValue(levels,"base") ? money(levelValue(levels,"base"), selected.market) : "-"} />
                   <Info label="기준가" value={levels ? priceText(levels,"entry","-") : "-"} />
