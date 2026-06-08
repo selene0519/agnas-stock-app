@@ -1825,6 +1825,44 @@ def _scan_coverage(market: str) -> dict[str, Any]:
         or str(row.get("hasCurrentPrice") or "").lower() == "true"
         or str(row.get("currentPriceStatus") or "").upper() == "NORMAL"
     ]
+    latest_quote_rows: list[dict[str, Any]] = []
+    for path in _direct_files(
+        f"reports/kis_current_price_{market}.csv",
+        f"data/stockapp/kis_current_price_{market}.csv",
+        f"kis_current_price_{market}.csv",
+    ):
+        rows = _read_csv(path, 100000)
+        if rows:
+            latest_quote_rows = rows
+            break
+    latest_quote_symbols = {
+        _symbol(row, market)
+        for row in latest_quote_rows
+        if _symbol(row, market)
+        and (
+            str(row.get("ok") or "").lower() == "true"
+            or _num(row.get("currentPrice")) is not None
+            or _num(row.get("current_price")) is not None
+            or _num(row.get("last_price")) is not None
+        )
+    }
+    target_rows: list[dict[str, Any]] = []
+    for path in _direct_files(
+        f"data/stockapp/kis_collection_targets_{market}.csv",
+        f"reports/kis_collection_targets_{market}.csv",
+        f"kis_collection_targets_{market}.csv",
+    ):
+        rows = _read_csv(path, 100000)
+        if rows:
+            target_rows = rows
+            break
+    target_symbols = {
+        _symbol(row, market)
+        for row in target_rows
+        if _symbol(row, market)
+    }
+    quote_coverage_count = max(len(quote_ok), len(latest_quote_symbols))
+    quote_target_count = max(len(quote_market_rows), len(target_symbols))
     full_threshold = 1500 if market == "kr" else 3000
     universe_count = len(candidate_symbols | ohlcv_symbols)
     is_full_market = universe_count >= full_threshold
@@ -1835,9 +1873,9 @@ def _scan_coverage(market: str) -> dict[str, Any]:
         "ohlcvSymbolCount": len(ohlcv_symbols),
         "localScanUniverseCount": universe_count,
         "fullMarketThreshold": full_threshold,
-        "quoteCoverageCount": len(quote_ok),
-        "quoteTargetCount": len(quote_market_rows),
-        "quoteCoveragePct": round(len(quote_ok) / len(quote_market_rows) * 100, 2) if quote_market_rows else 0.0,
+        "quoteCoverageCount": quote_coverage_count,
+        "quoteTargetCount": quote_target_count,
+        "quoteCoveragePct": round(quote_coverage_count / quote_target_count * 100, 2) if quote_target_count else 0.0,
         "isFullMarket": is_full_market,
         "message": (
             "Full market scan ready"
@@ -3543,6 +3581,28 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
     matrix: dict[str, Any] = {}
     market_regime: dict[str, Any] = {}
 
+    def _normalize_date_text(value: Any) -> str:
+        raw = _text({"v": value}, ["v"], "")
+        if len(raw) == 8 and raw.isdigit():
+            return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+        return raw
+
+    def _regime_with_home_aliases(payload: dict[str, Any]) -> dict[str, Any]:
+        if not payload:
+            return {}
+        normalized = dict(payload)
+        benchmark = normalized.get("benchmark")
+        if not benchmark:
+            benchmark = "KOSPI" if market == "kr" else "NASDAQ"
+        normalized["benchmark"] = benchmark
+        if normalized.get("current") is None:
+            normalized["current"] = normalized.get("kospiLatest")
+        if normalized.get("ma20") is None:
+            normalized["ma20"] = normalized.get("kospiMa20")
+        if normalized.get("distanceMa20Pct") is None:
+            normalized["distanceMa20Pct"] = normalized.get("distanceToMa20Pct")
+        return normalized
+
     for mode in MODES:
         for horizon in HORIZONS:
             key = f"{mode}_{horizon}"
@@ -3551,7 +3611,7 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
                 payload = _recommendations_payload_cached(market, mode, horizon, limit_per_cell, False, _ver)
                 # 마켓 레짐은 balanced_swing 응답에서 우선 획득
                 if not market_regime and payload.get("marketRegime", {}).get("regime"):
-                    market_regime = payload["marketRegime"]
+                    market_regime = _regime_with_home_aliases(payload["marketRegime"])
                 items = payload.get("items", [])
                 matrix[key] = {
                     "mode": mode,
@@ -3576,7 +3636,7 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
     if not market_regime:
         try:
             from app.engine.quant_scanner import load_market_regime
-            market_regime = load_market_regime(_repo_root(), market)
+            market_regime = _regime_with_home_aliases(load_market_regime(_repo_root(), market))
         except Exception:
             pass
 
@@ -3586,14 +3646,14 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
         cov = _scan_coverage(market)
         repo = _repo_root()
 
-        # OHLCV 최신 날짜 (샘플 5개 파일에서 마지막 행의 date 읽기)
+        # OHLCV 최신 날짜 (전 파일 기준으로 마지막 거래일 집계)
         ohlcv_dates: list[str] = []
         ohlcv_dir = repo / "data" / "market" / "ohlcv"
         if ohlcv_dir.exists():
-            for p in list(ohlcv_dir.glob(f"{market}_*_daily.csv"))[:5]:
-                rows = _read_csv(p, 5)
+            for p in ohlcv_dir.glob(f"{market}_*_daily.csv"):
+                rows = _read_csv(p)
                 if rows:
-                    d = _text(rows[-1], ["date", "Date", "날짜"], "")
+                    d = _normalize_date_text(_text(rows[-1], ["date", "Date", "날짜"], ""))
                     if d:
                         ohlcv_dates.append(d)
         ohlcv_latest = max(ohlcv_dates) if ohlcv_dates else None

@@ -28,6 +28,34 @@ const HORIZONS: Horizon[] = ["short", "swing", "mid"];
 type StrategyCell = { mode: Mode; horizon: Horizon; items: any[]; count: number; status: string };
 type MarketChoice = "auto" | "kr" | "us";
 
+function normalizeDateText(value: any) {
+  const raw = String(value || "").trim();
+  if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  return raw;
+}
+
+function normalizeMarketRegime(raw: any, market: "kr" | "us") {
+  if (!raw || typeof raw !== "object") return null;
+  const benchmark = String(raw.benchmark || (market === "kr" ? "KOSPI" : "NASDAQ"));
+  const normalized = {
+    ...raw,
+    benchmark,
+    current: raw.current ?? raw.kospiLatest ?? null,
+    ma20: raw.ma20 ?? raw.kospiMa20 ?? null,
+    ma60: raw.ma60 ?? raw.kospiMa60 ?? null,
+    distanceMa20Pct: raw.distanceMa20Pct ?? raw.distanceToMa20Pct ?? null,
+  };
+  return normalized;
+}
+
+function normalizeDataHealth(raw: any) {
+  if (!raw || typeof raw !== "object") return null;
+  return {
+    ...raw,
+    ohlcvLatestDate: normalizeDateText(raw.ohlcvLatestDate),
+  };
+}
+
 function getSessionContext(session: SessionPhase) {
   switch (session) {
     case "장전":    return { focus: "today",    hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하고 알림을 등록하세요." };
@@ -610,14 +638,15 @@ function BacktestBadge({ item, badgeMap }: { item: any; badgeMap: Record<string,
 // ── 시장 컨디션 게이트
 function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }) {
   const base = regime?.regime === "BULL" ? 70 : regime?.regime === "BEAR" ? 22 : 50;
-  const maDist = Number(regime?.distanceMa20Pct ?? 0);
+  const maDist = Number(regime?.distanceMa20Pct ?? regime?.distanceToMa20Pct ?? 0);
   const maAdj = maDist >= 3 ? 10 : maDist >= 1 ? 5 : maDist >= -1 ? 0 : maDist >= -3 ? -8 : -15;
 
   const recoAt = dataHealth?.recoGeneratedAt ? new Date(dataHealth.recoGeneratedAt) : null;
   const hoursOld = recoAt ? (Date.now() - recoAt.getTime()) / 3600000 : null;
   const liveRatio = (dataHealth?.kisTargetCount ?? 0) > 0
     ? (dataHealth?.kisLiveCount ?? 0) / dataHealth.kisTargetCount : 1;
-  const dataAdj = hoursOld != null && hoursOld > 24 ? -15 : liveRatio < 0.1 ? -20 : liveRatio < 0.5 ? -5 : 0;
+  const hasOhlcv = Number(dataHealth?.ohlcvCount ?? 0) > 0;
+  const dataAdj = hoursOld != null && hoursOld > 24 ? -15 : liveRatio < 0.1 ? (hasOhlcv ? -8 : -20) : liveRatio < 0.5 ? -5 : 0;
 
   const strength = Math.max(0, Math.min(100, base + maAdj + dataAdj));
 
@@ -668,7 +697,7 @@ function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }
         <div className="rounded-lg bg-slate-900/60 px-2 py-2 text-center">
           <div className="text-slate-500">데이터</div>
           <div className={`mt-0.5 font-semibold ${dataAdj === 0 ? "text-emerald-300" : dataAdj <= -15 ? "text-red-300" : "text-amber-300"}`}>
-            {dataAdj === 0 ? "정상" : dataAdj <= -15 ? "오류" : "부분"}
+            {dataAdj === 0 ? "정상" : dataAdj <= -15 ? "오류" : hasOhlcv ? "종가 기준" : "부분"}
           </div>
         </div>
       </div>
@@ -1243,8 +1272,8 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       setHoldings(dedupeBySymbol(Array.isArray(h.items) ? h.items : []));
       setSummary(h.summary || null);
       setMatrix(matrixResult);
-      setMarketRegime(result.marketRegime || null);
-      setDataHealth(result.dataHealth || null);
+      setMarketRegime(normalizeMarketRegime(result.marketRegime, selectedMarket));
+      setDataHealth(normalizeDataHealth(result.dataHealth));
       setAllItems(matrixResult.flatMap((cell) => cell.items));
     } catch {
       setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setDataHealth(null);
@@ -1566,6 +1595,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         const isStale = hoursOld != null && hoursOld > 24;
         const isError = (dataHealth.kisLiveCount ?? 0) === 0 && (dataHealth.ohlcvCount ?? 0) === 0;
         const liveRatio = dataHealth.kisTargetCount > 0 ? (dataHealth.kisLiveCount ?? 0) / dataHealth.kisTargetCount : 1;
+        const hasOhlcv = (dataHealth.ohlcvCount ?? 0) > 0;
         const priceStatus = liveRatio >= 0.5 ? "NORMAL" : liveRatio >= 0.1 ? "PARTIAL" : "ERROR";
 
         return (
@@ -1583,7 +1613,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
                   {dataHealth.kisLiveCount ?? 0}<span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}</span>
                 </span>
                 {priceStatus === "PARTIAL" && <span className="text-amber-500">부분 수집</span>}
-                {priceStatus === "ERROR" && <span className="text-red-400">장외/KIS 미수집</span>}
+                {priceStatus === "ERROR" && <span className={hasOhlcv ? "text-amber-400" : "text-red-400"}>{hasOhlcv ? "실시간 미수집 · 종가 기준" : "장외/KIS 미수집"}</span>}
               </span>
 
               {/* OHLCV 상태 */}

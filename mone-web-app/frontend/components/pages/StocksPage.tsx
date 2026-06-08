@@ -741,18 +741,23 @@ export default function StocksPage() {
 
         {/* 섹터 필터 */}
         {sectorsList.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            <span className="text-[10px] text-slate-500 self-center">섹터:</span>
-            <button onClick={() => setSectorFilter(null)}
-              className={`rounded-full px-3 py-1 text-[11px] font-medium ${!sectorFilter ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
-              전체
-            </button>
-            {sectorsList.map((sec) => (
-              <button key={sec} onClick={() => setSectorFilter(sec === sectorFilter ? null : sec)}
-                className={`rounded-full px-3 py-1 text-[11px] font-medium ${sectorFilter === sec ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
-                {sec}
-              </button>
-            ))}
+          <div className="mt-4 flex flex-col gap-1.5 sm:max-w-xs">
+            <label htmlFor="stocks-sector-filter" className="text-[10px] text-slate-500">
+              섹터
+            </label>
+            <select
+              id="stocks-sector-filter"
+              value={sectorFilter || ""}
+              onChange={(e) => setSectorFilter(e.target.value || null)}
+              className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-violet-500"
+            >
+              <option value="">전체</option>
+              {sectorsList.map((sec) => (
+                <option key={sec} value={sec}>
+                  {sec}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
