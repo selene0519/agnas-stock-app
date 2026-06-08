@@ -6,6 +6,8 @@ import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { displayName, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { ChartSkeleton } from "@/components/ui/Skeleton";
 
 type ToggleKey = "ma5" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index"
               | "zigzag" | "trendline" | "retracement" | "supply" | "fakeBreak";
@@ -1711,6 +1713,7 @@ export default function ChartPage() {
   ];
 
   return (
+    <ErrorBoundary>
     <div className="space-y-5 p-4 sm:p-6">
       <div>
         <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">차트·기술분석</h1>
@@ -1732,6 +1735,13 @@ export default function ChartPage() {
       {!selected && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">
           {seedLoading ? "기본 종목을 불러오는 중..." : "종목명 또는 코드로 검색하세요."}
+        </div>
+      )}
+
+      {selected && loading && rows.length === 0 && (
+        <div className="space-y-4">
+          <ChartSkeleton />
+          <ChartSkeleton />
         </div>
       )}
 
@@ -2239,6 +2249,7 @@ export default function ChartPage() {
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
 

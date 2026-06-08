@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import os
+import time
+from collections import defaultdict
 
-from fastapi import Body, FastAPI, Header, Query
+from fastapi import Body, FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
 from app.engine import backtest, correction, data_quality, risk, session
@@ -42,9 +45,51 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept", "Authorization", "x-mone-user"],
 )
+
+# ── 글로벌 예외 핸들러 ────────────────────────────────────────────────────────
+# FastAPI가 처리하지 못한 모든 500 에러를 HTML이 아닌 JSON으로 반환
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    import traceback
+    return JSONResponse(
+        status_code=500,
+        content={
+            "ok": False,
+            "status": "ERROR",
+            "error": str(exc),
+            "path": str(request.url.path),
+            "trace": traceback.format_exc()[-800:],
+        },
+    )
+
+# ── 인메모리 Rate Limiter ──────────────────────────────────────────────────────
+# 무거운 수집/갱신 엔드포인트 보호: IP당 최대 1회/60초
+_rate_limit_store: dict[str, float] = defaultdict(float)
+_RATE_LIMITED_PREFIXES = ("/api/news/refresh", "/api/disclosures/refresh",
+                          "/api/quotes/refresh", "/api/final/generate-reports")
+_RATE_LIMIT_WINDOW_SEC = 60
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    path = request.url.path
+    if request.method == "POST" and any(path.startswith(p) for p in _RATE_LIMITED_PREFIXES):
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"{client_ip}:{path}"
+        now = time.time()
+        last = _rate_limit_store.get(key, 0.0)
+        if now - last < _RATE_LIMIT_WINDOW_SEC:
+            remaining = int(_RATE_LIMIT_WINDOW_SEC - (now - last))
+            return JSONResponse(
+                status_code=429,
+                content={"ok": False, "error": f"요청이 너무 잦습니다. {remaining}초 후 재시도하세요.",
+                         "retryAfter": remaining},
+                headers={"Retry-After": str(remaining)},
+            )
+        _rate_limit_store[key] = now
+    return await call_next(request)
 
 
 def _market(value: str) -> str:
@@ -217,49 +262,18 @@ def api_sector_strength(
 
 @app.get("/api/symbols")
 def api_symbols(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return data.symbols(_market(market))
+    try:
+        return data.symbols(_market(market))
+    except Exception as exc:
+        return {"ok": False, "status": "ERROR", "error": str(exc), "items": [], "count": 0}
 
 
 @app.get("/api/symbols/{symbol}")
 def api_symbol_detail(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return data.symbol_detail(symbol, _market(market))
-
-
-@app.get("/api/chart/analysis/{symbol}")
-def api_chart_analysis(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    """Phase 6 Chart Analysis — 빗각(추세선), 매물대(공급구간), AI 오버레이 신호"""
     try:
-        from app.engine.chart_analysis_engine import build_chart_analysis, state_to_dict
-        mkt = _market(market)
-        # OHLCV 로드
-        chart = data.chart_data(symbol, mkt)
-        rows = chart.get("items") or chart.get("candles") or chart.get("data") or []
-        if not rows:
-            return {"ok": False, "signalStatus": "none", "data_quality": "no_data",
-                    "confluenceScore": 0, "warnings": ["OHLCV 데이터 없음"]}
-        # 마켓 레짐 점수 (없으면 50)
-        try:
-            from app.engine.quant_scanner import load_market_regime
-            from pathlib import Path as _Path
-            regime = load_market_regime(_Path(data.REPO_ROOT), mkt)
-            regime_score = float(regime.get("regimeScore") or 50.0)
-        except Exception:
-            regime_score = 50.0
-        try:
-            from app.engine.news_sentiment_engine import load_sentiment_cache, score_news_sentiment
-            _scache = load_sentiment_cache(mkt)
-            news_pen = float(score_news_sentiment(mkt, symbol, symbol, cache=_scache).get("penalty", 0.0))
-        except Exception:
-            news_pen = 0.0
-        state = build_chart_analysis(rows, symbol=symbol, market=mkt,
-                                      market_regime_score=regime_score,
-                                      news_penalty=news_pen)
-        return state_to_dict(state)
+        return data.symbol_detail(symbol, _market(market))
     except Exception as exc:
-        import traceback
-        return {"ok": False, "signalStatus": "none", "data_quality": "error",
-                "confluenceScore": 0, "warnings": [str(exc)],
-                "traceback": traceback.format_exc()[-500:]}
+        return {"ok": False, "status": "ERROR", "error": str(exc)}
 
 
 @app.get("/api/chart/{symbol}")
@@ -321,24 +335,36 @@ def api_candidates(
     market: str = Query("kr", pattern="^(kr|us)$"),
     type: str = Query("action", pattern="^(action|pullback|flow|risk)$"),
 ) -> dict:
-    return data.candidate_rows(_market(market), type)
+    try:
+        return data.candidate_rows(_market(market), type)
+    except Exception as exc:
+        return {"ok": False, "status": "ERROR", "error": str(exc), "items": [], "count": 0}
 
 
 @app.get("/api/positions")
 def api_positions(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return data.positions(_market(market))
+    try:
+        return data.positions(_market(market))
+    except Exception as exc:
+        return {"ok": False, "status": "ERROR", "error": str(exc), "items": [], "count": 0}
 
 
 
 
 @app.get("/api/watchlist")
 def api_watchlist(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return user_data.get_watchlist(_market(market))
+    try:
+        return user_data.get_watchlist(_market(market))
+    except Exception as exc:
+        return {"ok": False, "status": "ERROR", "error": str(exc), "items": [], "count": 0}
 
 
 @app.post("/api/watchlist")
 def api_watchlist_add(payload: dict) -> dict:
-    return user_data.add_watchlist(payload)
+    try:
+        return user_data.add_watchlist(payload)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 
 @app.get("/api/watchlist/auto-candidates")
@@ -365,17 +391,26 @@ def api_watchlist_delete(symbol: str, market: str = Query("kr", pattern="^(kr|us
 
 @app.get("/api/holdings")
 def api_holdings(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return user_data.get_holdings(_market(market))
+    try:
+        return user_data.get_holdings(_market(market))
+    except Exception as exc:
+        return {"ok": False, "status": "ERROR", "error": str(exc), "items": [], "count": 0}
 
 
 @app.post("/api/holdings")
 def api_holdings_add(payload: dict) -> dict:
-    return user_data.upsert_holding(payload, mode="post")
+    try:
+        return user_data.upsert_holding(payload, mode="post")
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 
 @app.patch("/api/holdings/{symbol}")
 def api_holdings_patch(symbol: str, payload: dict) -> dict:
-    return user_data.upsert_holding(payload, mode="patch", symbol_arg=symbol)
+    try:
+        return user_data.upsert_holding(payload, mode="patch", symbol_arg=symbol)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 
 @app.delete("/api/holdings/{symbol}")

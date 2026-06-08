@@ -71,16 +71,23 @@ function buildUrl(baseUrl: string, path: string, params?: Record<string, string 
   return url.toString();
 }
 
-async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<T> {
+// 일시적 오류에만 재시도 (네트워크 단절, 503 cold-start)
+// 비즈니스 오류(404, 400, 422)는 재시도 하지 않음
+function isRetryableStatus(status: number) {
+  return status === 503 || status === 502 || status === 504;
+}
+
+async function fetchJson<T>(url: string, externalSignal?: AbortSignal, retryCount = 0): Promise<T> {
+  const MAX_RETRIES = 2;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  // 외부 signal이 이미 abort 됐으면 즉시 반환
+
   if (externalSignal?.aborted) {
     clearTimeout(timer);
     return { status: "ERROR", error: "Request cancelled", items: [], count: 0 } as T;
   }
-  // 외부 signal abort 시 내부 controller도 취소
   externalSignal?.addEventListener("abort", () => controller.abort(), { once: true });
+
   try {
     const response = await fetch(url, {
       cache: "no-store",
@@ -91,7 +98,6 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<
     const text = await response.text().catch(() => "");
 
     if (!response.ok) {
-      // 503: Render cold-start timeout → 사용자 친화적 메시지
       if (response.status === 503) {
         let body: any = {};
         try { body = JSON.parse(text); } catch { /* ignore */ }
@@ -100,16 +106,25 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<
             status: "ERROR",
             error: "서버 초기화 중입니다. 잠시 후 새로고침해 주세요. (약 30~60초 소요)",
             retryAfter: body.retryAfter || 30,
-            items: [],
-            count: 0,
+            items: [], count: 0,
           } as T;
         }
+        // 일반 503: 지수 백오프 재시도
+        if (retryCount < MAX_RETRIES && !externalSignal?.aborted) {
+          const delay = Math.min(2000 * 2 ** retryCount, 10000);
+          await new Promise(r => setTimeout(r, delay));
+          return fetchJson<T>(url, externalSignal, retryCount + 1);
+        }
+      }
+      if (isRetryableStatus(response.status) && retryCount < MAX_RETRIES && !externalSignal?.aborted) {
+        const delay = Math.min(1500 * 2 ** retryCount, 8000);
+        await new Promise(r => setTimeout(r, delay));
+        return fetchJson<T>(url, externalSignal, retryCount + 1);
       }
       return {
         status: "ERROR",
-        error: `${response.status} ${response.statusText} ${text.slice(0, 500)}`,
-        items: [],
-        count: 0,
+        error: `${response.status} ${response.statusText} ${text.slice(0, 300)}`,
+        items: [], count: 0,
       } as T;
     }
 
@@ -118,19 +133,24 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<
     } catch {
       return {
         status: "ERROR",
-        error: `Invalid JSON response: ${text.slice(0, 500)}`,
-        items: [],
-        count: 0,
+        error: `Invalid JSON response: ${text.slice(0, 300)}`,
+        items: [], count: 0,
       } as T;
     }
   } catch (error) {
+    const isAbort = error instanceof DOMException && error.name === "AbortError";
+    // 네트워크 단절은 재시도
+    if (!isAbort && retryCount < MAX_RETRIES && !externalSignal?.aborted) {
+      const delay = Math.min(1000 * 2 ** retryCount, 6000);
+      await new Promise(r => setTimeout(r, delay));
+      return fetchJson<T>(url, externalSignal, retryCount + 1);
+    }
     return {
       status: "ERROR",
-      error: error instanceof DOMException && error.name === "AbortError"
-        ? `Request timed out after ${API_TIMEOUT_MS / 1000}s`
+      error: isAbort
+        ? `요청 시간 초과 (${API_TIMEOUT_MS / 1000}초)`
         : error instanceof Error ? error.message : String(error),
-      items: [],
-      count: 0,
+      items: [], count: 0,
     } as T;
   } finally {
     clearTimeout(timer);
