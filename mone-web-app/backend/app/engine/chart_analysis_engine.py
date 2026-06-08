@@ -101,6 +101,7 @@ class OverlapSignal:
     is_key: bool
     zone_strength: float
     label: str
+    zone_type: str = "unknown"  # "supply" | "demand"
 
 
 @dataclass
@@ -243,6 +244,21 @@ def _rows_to_candles(rows: list[dict[str, Any]]) -> list[Candle]:
 
 # ─── Core Calculations ────────────────────────────────────────────────────────
 
+def _calc_atr_threshold(candles: list[Candle], period: int = 14) -> float:
+    """ATR(14) as % of price → adaptive zigzag threshold. Clamped 2%~10%."""
+    if len(candles) < period + 1:
+        return 0.05
+    recent = candles[-(period + 1):]
+    tr_sum = 0.0
+    for i in range(1, len(recent)):
+        h, l, pc = recent[i].high, recent[i].low, recent[i - 1].close
+        tr_sum += max(h - l, abs(h - pc), abs(l - pc))
+    atr = tr_sum / period
+    avg_price = sum(c.close for c in recent) / len(recent)
+    atr_pct = atr / avg_price if avg_price > 0 else 0.05
+    return max(0.02, min(0.10, atr_pct * 1.5))
+
+
 def _calc_zigzag(
     candles: list[Candle],
     threshold: float = 0.05,
@@ -292,21 +308,20 @@ def _calc_trendlines(
     pivots: list[Pivot],
 ) -> tuple[Optional[Trendline], Optional[Trendline]]:
     """
-    Support line: connect last 2 lows (up-slope trendline)
-    Resistance line: connect last 2 highs (down-slope trendline)
-    Returns (support, resistance).
+    Support line: connect last 2 lows. Validates no intermediate low pivot violates the line.
+    Resistance line: connect last 2 highs. Same validation.
+    Falls back to older pivot pair if the primary pair is violated.
     """
     lows = [p for p in pivots if p.pivot_type == "L"]
     highs = [p for p in pivots if p.pivot_type == "H"]
     n = len(candles)
 
-    def make_line(p1: Pivot, p2: Pivot, kind: str) -> Optional[Trendline]:
+    def make_line(p1: Pivot, p2: Pivot) -> Optional[Trendline]:
         if p1.index >= p2.index:
             return None
         slope = (p2.price - p1.price) / (p2.index - p1.index)
         intercept = p1.price - slope * p1.index
         end_price = slope * (n - 1) + intercept
-        # Defensive guard: extended price must be positive and within ±60% of current
         if end_price <= 0:
             return None
         current = candles[-1].close if candles else 0
@@ -318,8 +333,36 @@ def _calc_trendlines(
             start_price=p1.price, end_price=end_price,
         )
 
-    support = make_line(lows[-2], lows[-1], "support") if len(lows) >= 2 else None
-    resistance = make_line(highs[-2], highs[-1], "resistance") if len(highs) >= 2 else None
+    def is_valid_support(line: Trendline, between_pivots: list[Pivot]) -> bool:
+        """No intermediate low pivot should fall below the support line."""
+        for p in between_pivots:
+            if p.price < line.slope * p.index + line.intercept * 0.995:
+                return False
+        return True
+
+    def is_valid_resistance(line: Trendline, between_pivots: list[Pivot]) -> bool:
+        """No intermediate high pivot should rise above the resistance line."""
+        for p in between_pivots:
+            if p.price > line.slope * p.index + line.intercept * 1.005:
+                return False
+        return True
+
+    def best_line(points: list[Pivot], validate_fn) -> Optional[Trendline]:
+        """Try pairs from most recent, skip if intermediate pivots violate the line."""
+        for i in range(len(points) - 1, 0, -1):
+            p2 = points[i]
+            for j in range(i - 1, max(i - 4, -1), -1):
+                p1 = points[j]
+                line = make_line(p1, p2)
+                if line is None:
+                    continue
+                between = points[j + 1:i]
+                if validate_fn(line, between):
+                    return line
+        return None
+
+    support = best_line(lows, is_valid_support) if len(lows) >= 2 else None
+    resistance = best_line(highs, is_valid_resistance) if len(highs) >= 2 else None
     return support, resistance
 
 
@@ -354,7 +397,8 @@ def _calc_supply_zones(
 ) -> list[SupplyDemandZone]:
     """
     Volume-weighted price density histogram → supply/demand zones.
-    60 bins across price range, merge adjacent hot bins (strength > 35%).
+    Bin size = 0.5x ATR so granularity scales with each symbol's volatility.
+    Merge gap = 1x ATR so adjacent hot bins consolidate at a meaningful distance.
     """
     if len(candles) < 10:
         return []
@@ -364,8 +408,22 @@ def _calc_supply_zones(
     if max_p <= min_p:
         return []
 
-    bins = 60
+    # ATR for adaptive bin sizing
+    lookback = min(14, len(candles) - 1)
+    tr_values = [
+        max(candles[i].high - candles[i].low,
+            abs(candles[i].high - candles[i - 1].close),
+            abs(candles[i].low - candles[i - 1].close))
+        for i in range(len(candles) - lookback, len(candles))
+    ]
+    atr = sum(tr_values) / len(tr_values) if tr_values else (max_p - min_p) / 60
+
+    # Target bin = 0.5 ATR; clamp bins to [20, 100]
+    target_bin_size = max(atr * 0.5, (max_p - min_p) / 100)
+    bins = int(max(20, min(100, math.ceil((max_p - min_p) / target_bin_size))))
     bin_size = (max_p - min_p) / bins
+    merge_gap = atr  # merge zones within 1 ATR of each other
+
     buckets = [0.0] * bins
     total_vol = sum(c.volume for c in candles)
     use_vol = total_vol > 0
@@ -388,7 +446,7 @@ def _calc_supply_zones(
     for idx, strength in hot:
         lower = min_p + idx * bin_size
         upper = lower + bin_size
-        if zones and lower <= zones[-1]["upper"] + bin_size * 1.5:
+        if zones and lower <= zones[-1]["upper"] + merge_gap:
             zones[-1]["upper"] = max(zones[-1]["upper"], upper)
             zones[-1]["center"] = (zones[-1]["lower"] + zones[-1]["upper"]) / 2
             zones[-1]["strength"] = max(zones[-1]["strength"], strength)
@@ -434,6 +492,7 @@ def _find_overlap_signals(
                     is_key=r.is_key,
                     zone_strength=z.strength_score,
                     label=f"{'★' if r.is_key else ''}{r.label}+{'매물대' if z.zone_type == 'supply' else '지지대'}",
+                    zone_type=z.zone_type,
                 ))
     return signals
 
@@ -477,6 +536,8 @@ def _calc_confluence(
     breakout_direction: Optional[str],
     market_regime_score: float = 50.0,
     data_quality: str = "normal",
+    benchmark_closes: Optional[list[float]] = None,
+    news_penalty: float = 0.0,
 ) -> tuple[float, str, ConfluenceComponents, list[str]]:
     """
     Confluence score (0~100) combining all chart signals.
@@ -492,15 +553,39 @@ def _calc_confluence(
     volumes = [c.volume for c in candles]
 
     # 1. Overlap score (retracement × zone confluence)
+    # direction is not yet determined here — use momentum pre-calc to estimate
+    _pre_momentum = 50.0
+    if len(closes) >= 20:
+        _ma5 = sum(closes[-5:]) / 5 if len(closes) >= 5 else None
+        _ma20 = sum(closes[-20:]) / 20
+        if _ma5:
+            if closes[-1] > _ma20 and _ma5 > _ma20:
+                _pre_momentum = 70.0
+            elif closes[-1] < _ma20 and _ma5 < _ma20:
+                _pre_momentum = 30.0
+    _tentative_bullish = _pre_momentum >= 60.0
+
     if overlaps:
         key_overlaps = [o for o in overlaps if o.is_key]
-        base_overlap = min(60.0, len(overlaps) * 15.0)
-        key_bonus = min(20.0, len(key_overlaps) * 15.0)
-        components.overlap = min(80.0, base_overlap + key_bonus)
-        if key_overlaps:
-            reasons.append(f"0.868 되돌림×매물대 겹침 {len(key_overlaps)}개 (강력 진입 구간)")
-        else:
-            reasons.append(f"피보나치×매물대 겹침 {len(overlaps)}개")
+        # Split by zone alignment: demand zone = support, supply zone = resistance
+        aligned = [o for o in overlaps if
+                   (o.zone_type == "demand" and _tentative_bullish) or
+                   (o.zone_type == "supply" and not _tentative_bullish)]
+        counter = [o for o in overlaps if o not in aligned]
+        key_aligned = [o for o in key_overlaps if o in aligned]
+
+        base_overlap = min(60.0, len(aligned) * 15.0)
+        key_bonus = min(20.0, len(key_aligned) * 15.0)
+        # Counter-directional overlaps (e.g., supply zone on bullish signal) reduce score
+        counter_penalty = min(25.0, len(counter) * 10.0 + sum(5.0 for o in counter if o.is_key))
+        components.overlap = max(0.0, min(80.0, base_overlap + key_bonus - counter_penalty))
+
+        if key_aligned:
+            reasons.append(f"0.868 되돌림×{'지지대' if _tentative_bullish else '매물대'} 겹침 {len(key_aligned)}개 (강력 진입 구간)")
+        elif aligned:
+            reasons.append(f"피보나치×{'지지대' if _tentative_bullish else '매물대'} 겹침 {len(aligned)}개")
+        if counter:
+            reasons.append(f"역방향 구간 겹침 {len(counter)}개 (신호 신뢰도 감소)")
     else:
         components.overlap = 0.0
 
@@ -530,14 +615,25 @@ def _calc_confluence(
             reasons.append("상승 추세선 위 유지")
     components.momentum = max(0.0, min(100.0, momentum))
 
-    # 3. Volume score
+    # 3. Volume score (with buying-climax detection at key fibonacci levels)
     vol_score = 50.0
+    _climax_penalty = 0.0
     if len(volumes) >= 20 and sum(volumes) > 0:
         vol_avg20 = sum(volumes[-20:]) / 20
         vol_latest = volumes[-1]
         if vol_avg20 > 0:
             ratio = vol_latest / vol_avg20
-            if ratio >= 2.0:
+            if ratio >= 3.0:
+                # Extreme volume: check for buying climax at key fibonacci overlap
+                has_key_overlap = any(o.is_key for o in overlaps)
+                if has_key_overlap:
+                    vol_score = 50.0        # neutral — ambiguous at exhaustion level
+                    _climax_penalty = 15.0  # applied later in penalty section
+                    reasons.append(f"0.868 레벨 거래량 급증 ({ratio:.1f}x) — 매수 클라이맥스 경고")
+                else:
+                    vol_score = 85.0
+                    reasons.append(f"거래량 급증 ({ratio:.1f}x)")
+            elif ratio >= 2.0:
                 vol_score = 85.0
                 reasons.append(f"거래량 급증 ({ratio:.1f}x)")
             elif ratio >= 1.5:
@@ -563,20 +659,83 @@ def _calc_confluence(
     else:
         components.data_quality = 0.0
 
-    # 6. Penalty
+    # 6. Penalty (RSI + volatility spike)
     penalty = 0.0
     if len(closes) >= 14:
-        # RSI
         gains = [max(closes[i] - closes[i-1], 0) for i in range(len(closes)-14, len(closes))]
         losses = [abs(min(closes[i] - closes[i-1], 0)) for i in range(len(closes)-14, len(closes))]
         avg_gain = sum(gains) / 14
         avg_loss = sum(losses) / 14
         rsi = (100 - 100 / (1 + avg_gain / avg_loss)) if avg_loss > 0 else 100.0
         if rsi > 80:
-            penalty = 20.0
+            penalty += 20.0
             reasons.append(f"RSI 과열 ({rsi:.0f}) — 추격 진입 주의")
         elif rsi > 75:
-            penalty = 10.0
+            penalty += 10.0
+
+    # High-volatility individual stock penalty (e.g. pre-revenue small caps)
+    atr_pct = _calc_atr_threshold(candles)
+    if atr_pct >= 0.09:
+        hv_penalty = min(18.0, (atr_pct - 0.09) * 200 + 10)
+        penalty += hv_penalty
+        reasons.append(f"고변동성 종목 (ATR {atr_pct*100:.1f}%) — 예측 불확실성 증가")
+    elif atr_pct >= 0.07:
+        hv_penalty = min(6.0, (atr_pct - 0.07) * 150 + 2)
+        penalty += hv_penalty
+
+    # Relative strength vs benchmark: stock significantly underperforming rising market
+    # Threshold is intentionally wide to avoid penalizing normal sector rotation
+    if benchmark_closes and len(benchmark_closes) >= 21 and len(closes) >= 21:
+        bench_ret = (benchmark_closes[-1] - benchmark_closes[-21]) / benchmark_closes[-21] if benchmark_closes[-21] else 0
+        stock_ret = (closes[-1] - closes[-21]) / closes[-21] if closes[-21] else 0
+        # Cap benchmark return at 12% to prevent exceptional surges from distorting RS calculation
+        bench_ret_capped = min(bench_ret, 0.12)
+        rs_gap = (stock_ret - bench_ret_capped) * 100
+        if rs_gap < -20:
+            rs_penalty = min(22.0, (abs(rs_gap) - 20) * 1.0 + 10)
+            penalty += rs_penalty
+            reasons.append(f"시장 대비 강한 약세 (RS {rs_gap:+.1f}%) — 기관 분산 가능성")
+        elif rs_gap < -12:
+            rs_penalty = min(8.0, (abs(rs_gap) - 12) * 0.8 + 3)
+            penalty += rs_penalty
+            reasons.append(f"시장 대비 약세 (RS {rs_gap:+.1f}%)")
+
+    # Volatility spike: recent 5-bar ATR vs 20-bar baseline
+    # Detects event-driven market turbulence that chart patterns cannot anticipate
+    if len(candles) >= 25:
+        def _mean_atr(bars: int, offset: int) -> float:
+            vals = []
+            for i in range(len(candles) - offset - bars, len(candles) - offset):
+                if i < 1:
+                    continue
+                h, l, pc = candles[i].high, candles[i].low, candles[i - 1].close
+                vals.append(max(h - l, abs(h - pc), abs(l - pc)))
+            return sum(vals) / len(vals) if vals else 0.0
+
+        atr5 = _mean_atr(5, 0)
+        atr20 = _mean_atr(20, 0)
+        if atr20 > 0:
+            spike = atr5 / atr20
+            if spike >= 2.5:
+                vol_penalty = min(25.0, (spike - 2.5) * 15 + 15)
+                penalty += vol_penalty
+                reasons.append(f"변동성 급등 ({spike:.1f}x 평균) — 이벤트 장세 위험")
+            elif spike >= 2.0:
+                vol_penalty = min(12.0, (spike - 2.0) * 20 + 5)
+                penalty += vol_penalty
+                reasons.append(f"변동성 증가 ({spike:.1f}x 평균) — 신호 신뢰도 감소")
+
+    penalty += _climax_penalty
+
+    # News / disclosure penalty (0~20 → score penalty 0~25)
+    if news_penalty > 0:
+        scaled_news = min(25.0, news_penalty * 1.25)
+        penalty += scaled_news
+        if news_penalty >= 12:
+            reasons.append(f"뉴스/공시 고위험 (risk={news_penalty:.0f}) — 진입 위험")
+        elif news_penalty >= 6:
+            reasons.append(f"뉴스/공시 주의 (risk={news_penalty:.0f})")
+
     components.penalty = penalty
 
     # Weighted total
@@ -789,6 +948,8 @@ def build_chart_analysis(
     config: Optional[EngineConfig] = None,
     horizon_bars: int = 50,
     freshness_reference_date: Optional[str] = None,
+    benchmark_closes: Optional[list[float]] = None,
+    news_penalty: float = 0.0,
 ) -> ChartAnalysisState:
     """
     Main entry point. Builds complete ChartAnalysisState from OHLCV rows.
@@ -824,7 +985,13 @@ def build_chart_analysis(
                 pass
 
     # ── Core Analysis (T only) ─────────────────────────────────────────────────
-    pivots = _calc_zigzag(candles, cfg.zigzag_threshold_pct)
+    # Use ATR-based threshold unless config explicitly overrides the default
+    zigzag_thr = (
+        _calc_atr_threshold(candles)
+        if cfg.zigzag_threshold_pct == EngineConfig().zigzag_threshold_pct
+        else cfg.zigzag_threshold_pct
+    )
+    pivots = _calc_zigzag(candles, zigzag_thr)
     state.completed_pivots = pivots
 
     support, resistance = _calc_trendlines(candles, pivots) if len(pivots) >= 4 else (None, None)
@@ -848,6 +1015,8 @@ def build_chart_analysis(
     score, direction, components, reasons = _calc_confluence(
         candles, pivots, support, resistance, zones, rets, overlaps,
         breakout_dir, market_regime_score, state.data_quality,
+        benchmark_closes=benchmark_closes,
+        news_penalty=news_penalty,
     )
     state.confluence_score = score
     state.confluence_direction = direction

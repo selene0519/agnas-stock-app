@@ -19,7 +19,7 @@ from typing import Any
 
 # ── 경로 ─────────────────────────────────────────────────────────────────
 import os
-_APP_DIR = Path(__file__).resolve().parents[3]
+_APP_DIR = Path(__file__).resolve().parents[4]  # backend/app/engine → backend/app → backend → mone-web-app → repo root
 REPO_ROOT = Path(os.environ.get("MONE_REPO_ROOT", _APP_DIR)).resolve()
 REPORT_DIR = REPO_ROOT / "reports"
 DISCLOSURE_DIR = REPO_ROOT / "data" / "disclosures"
@@ -28,7 +28,7 @@ CACHE_TTL_SEC = 6 * 3600  # 6시간
 # ── 공시 키워드 분류 ──────────────────────────────────────────────────────
 # penalty: 0~20 (높을수록 나쁨)
 _DISCLOSURE_RULES: list[tuple[list[str], float, str]] = [
-    # 강한 매도 신호
+    # 강한 매도 신호 (KR)
     (["유상증자", "주주배정", "일반공모증자"], 15.0, "유상증자(주식 희석)"),
     (["불성실공시", "공시변경"], 12.0, "불성실공시"),
     (["상장폐지", "관리종목지정", "투자주의종목"], 18.0, "상장폐지/관리종목"),
@@ -36,17 +36,28 @@ _DISCLOSURE_RULES: list[tuple[list[str], float, str]] = [
     (["감자", "주식병합"], 14.0, "감자(자본 축소)"),
     (["정정신고서제출요구"], 10.0, "정정신고 요구"),
     (["손실", "부도", "파산", "기업회생"], 18.0, "재무 위기"),
-    # 중간 신호
+    # 중간 신호 (KR)
     (["소송", "분쟁", "제재"], 8.0, "법적 분쟁"),
     (["임원변경", "대표이사변경"], 4.0, "경영진 변동"),
-    # 강한 매수 신호 (penalty 감소 — 음수 허용, clamp 처리)
+    # 강한 매수 신호 (KR)
     (["자기주식취득결정", "자기주식매입", "자사주매입"], -6.0, "자사주매입(주주환원)"),
     (["무상증자"], -4.0, "무상증자(주주친화)"),
     (["실적개선", "흑자전환", "최대실적"], -5.0, "실적 개선"),
     (["계약체결", "수주", "협약체결"], -3.0, "수주/계약"),
     (["임상시험계획승인", "품목허가", "FDA"], -3.0, "임상/허가 승인"),
-    # 중립 (변화 없음)
+    # 중립 (KR)
     (["기재정정", "분기보고서", "반기보고서", "사업보고서"], 0.0, "정기보고"),
+    # SEC / 영어 공시 (US)
+    (["SEC investigation", "SEC probe", "SEC charges", "SEC enforcement"], 16.0, "SEC 조사/제재"),
+    (["class action", "shareholder lawsuit", "securities fraud"], 14.0, "집단소송"),
+    (["delisted", "delisting", "going concern"], 18.0, "상장폐지 위험"),
+    (["bankruptcy", "Chapter 11", "Chapter 7", "insolvency"], 18.0, "파산"),
+    (["restatement", "material weakness", "accounting error"], 14.0, "회계 오류"),
+    (["DOJ", "DOJ investigation", "criminal charges", "indicted"], 15.0, "형사 조사"),
+    (["buyback", "share repurchase", "stock buyback"], -5.0, "자사주매입"),
+    (["dividend increase", "special dividend"], -4.0, "배당 증가"),
+    (["acquisition", "merger agreement", "definitive agreement"], -3.0, "M&A 계약"),
+    (["FDA approval", "approved by FDA", "NDA approval"], -5.0, "FDA 승인"),
 ]
 
 # ── 뉴스 감성 키워드 ──────────────────────────────────────────────────────
@@ -54,11 +65,25 @@ _NEWS_POSITIVE: list[str] = [
     "상승", "급등", "신고가", "매수", "호재", "흑자", "실적 개선", "반등",
     "돌파", "강세", "외국인 순매수", "기관 순매수", "수출 증가", "성장",
     "투자확대", "수주", "계약", "승인", "허가", "반등",
+    # English
+    "surges", "jumps", "rally", "bullish", "upgrade", "beat", "record high",
+    "breakthrough", "approved", "contract", "buyback", "dividend",
 ]
 _NEWS_NEGATIVE: list[str] = [
     "하락", "급락", "매도", "악재", "적자", "손실", "리콜", "소송",
     "약세", "외국인 순매도", "기관 순매도", "수출 감소", "위기",
     "파산", "검찰", "횡령", "제재", "경고", "경계",
+    # English
+    "plunges", "drops", "falls", "declines", "decline", "slides", "tumbles",
+    "crash", "slumps", "downgrade", "cuts price", "lowers price", "cut price",
+    "price target cut", "price target lower", "reduces price",
+    "loss", "losses", "lawsuit", "probe", "investigation", "regulatory",
+    "violation", "fine", "recall", "bankruptcy", "fraud",
+    "warning", "concern", "risk", "rejected", "blocked", "halted",
+    "suspended", "delisted", "underperform", "underperforms",
+    "more than market", "below expectations", "misses",
+    "weakness", "headwind", "selloff", "sell-off", "pressured",
+    "weighs on", "underperforming",
 ]
 
 
@@ -75,10 +100,11 @@ def _read_csv_rows(path: Path) -> list[dict[str, str]]:
 
 
 def _norm_sym(s: str, market: str) -> str:
-    s = re.sub(r"\D", "", str(s or ""))
+    raw = str(s or "").strip()
     if market == "kr":
-        return s.zfill(6) if s else ""
-    return s
+        digits = re.sub(r"\D", "", raw)
+        return digits.zfill(6) if digits else ""
+    return raw.upper()
 
 
 def _score_disclosure_title(title: str) -> tuple[float, str]:
@@ -95,12 +121,16 @@ def _score_disclosure_title(title: str) -> tuple[float, str]:
     return best_delta, best_reason
 
 
-def _score_news_title(title: str, name: str) -> float:
-    """뉴스 제목에서 종목명 언급 확인 후 감성 점수 반환 (-3~+5)."""
-    if name and len(name) >= 2 and name not in title:
-        return 0.0  # 종목명 미언급 → 무관 뉴스
-    pos = sum(1 for kw in _NEWS_POSITIVE if kw in title)
-    neg = sum(1 for kw in _NEWS_NEGATIVE if kw in title)
+def _score_news_title(title: str, name: str, *, symbol_matched: bool = False) -> float:
+    """뉴스 제목 감성 점수 반환 (-3~+5).
+    symbol_matched=True이면 종목코드로 이미 매칭된 기사 → 이름 확인 생략.
+    """
+    title_lower = title.lower()
+    if not symbol_matched:
+        if name and len(name) >= 2 and name not in title and name.lower() not in title_lower:
+            return 0.0  # 종목명 미언급 → 무관 뉴스
+    pos = sum(1 for kw in _NEWS_POSITIVE if kw in title or kw in title_lower)
+    neg = sum(1 for kw in _NEWS_NEGATIVE if kw in title or kw in title_lower)
     if neg > pos:
         return min(5.0, (neg - pos) * 2.5)
     if pos > neg:
@@ -108,9 +138,24 @@ def _score_news_title(title: str, name: str) -> float:
     return 0.0
 
 
+def _parse_news_date(row: dict[str, str]) -> str:
+    """뉴스 행의 게시시간을 YYYY-MM-DD 형식으로 반환. 파싱 실패 시 ''."""
+    raw = str(row.get("게시시간", "") or row.get("publishedAt", "") or row.get("published_at", "")).strip()
+    if not raw:
+        return ""
+    if raw.isdigit():
+        try:
+            import datetime
+            return datetime.datetime.fromtimestamp(int(raw)).strftime("%Y-%m-%d")
+        except Exception:
+            return ""
+    return raw[:10]  # ISO 형식 앞 10자
+
+
 def _build_symbol_sentiment(
     market: str,
     symbols: list[tuple[str, str]],  # [(symbol, name), ...]
+    as_of_date: str = "",
 ) -> dict[str, dict[str, Any]]:
     """종목별 감성 점수 계산. 결과 dict key = symbol."""
     result: dict[str, dict[str, Any]] = {}
@@ -128,6 +173,18 @@ def _build_symbol_sentiment(
     news_path = REPORT_DIR / f"news_summary_{market}.csv"
     news_rows = _read_csv_rows(news_path)
 
+    # 종목코드별 뉴스 인덱스 (날짜 필터 적용)
+    news_by_sym: dict[str, list[dict[str, str]]] = {}
+    for row in news_rows:
+        sym = _norm_sym(row.get("종목코드", "") or row.get("symbol", ""), market)
+        if not sym:
+            continue
+        if as_of_date:
+            row_date = _parse_news_date(row)
+            if row_date and row_date > as_of_date:
+                continue  # 신호 날짜 이후 기사 제외
+        news_by_sym.setdefault(sym, []).append(row)
+
     for symbol, name in symbols:
         sym_norm = _norm_sym(symbol, market)
         reasons: list[str] = []
@@ -143,12 +200,22 @@ def _build_symbol_sentiment(
                 if reason and reason not in reasons:
                     reasons.append(reason)
 
-        # 2) 뉴스 신호 (종목명 언급 기사)
+        # 2) 뉴스 신호: 종목코드 매칭 우선, 없으면 이름 매칭
         news_adj = 0.0
-        for row in news_rows[:30]:
-            title = row.get("제목", "") or row.get("title", "")
-            adj = _score_news_title(title, name)
-            news_adj += adj
+        sym_news = news_by_sym.get(sym_norm, [])
+        if sym_news:
+            # 종목코드로 직접 매칭된 뉴스 (이름 확인 불필요)
+            for row in sym_news[:20]:
+                title = row.get("제목", "") or row.get("title", "")
+                news_adj += _score_news_title(title, name, symbol_matched=True)
+        else:
+            # 일반 뉴스에서 종목명 언급 검색 (날짜 필터 + 최대 30건)
+            filtered_news = news_rows
+            if as_of_date:
+                filtered_news = [r for r in news_rows if not _parse_news_date(r) or _parse_news_date(r) <= as_of_date]
+            for row in filtered_news[:30]:
+                title = row.get("제목", "") or row.get("title", "")
+                news_adj += _score_news_title(title, name)
         news_adj = max(-3.0, min(5.0, news_adj))
         penalty += news_adj
 
@@ -218,6 +285,7 @@ def score_news_sentiment(
     name: str,
     *,
     cache: dict[str, dict[str, Any]] | None = None,
+    as_of_date: str = "",
 ) -> dict[str, Any]:
     """
     단일 종목 감성 점수 반환.
@@ -228,10 +296,12 @@ def score_news_sentiment(
         tag       str    NEUTRAL / POSITIVE / CAUTION / HIGH_RISK
         reasons   list[str]
     """
-    _cache = cache if cache is not None else load_sentiment_cache(market)
     sym_norm = _norm_sym(symbol, market)
-    if sym_norm in _cache:
-        return _cache[sym_norm]
-    # 캐시 미스 → 즉시 계산 (단일 종목, 빠름)
-    result = _build_symbol_sentiment(market, [(symbol, name)])
+    # 날짜 필터가 있으면 캐시 우회 (캐시는 날짜 비구분으로 저장됨)
+    if not as_of_date:
+        _cache = cache if cache is not None else load_sentiment_cache(market)
+        if sym_norm in _cache:
+            return _cache[sym_norm]
+    # 캐시 미스 또는 날짜 필터 요청 → 즉시 계산
+    result = _build_symbol_sentiment(market, [(symbol, name)], as_of_date=as_of_date)
     return result.get(sym_norm, {"penalty": 0.0, "tag": "NEUTRAL", "reasons": []})
