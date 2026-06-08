@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info, Calculator, ArrowRight } from "lucide-react";
 import type { PageId } from "../Sidebar";
 import { mone, type Horizon, type Mode } from "@/lib/api";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { CardSkeleton } from "@/components/ui/Skeleton";
 import {
   getDefaultMarketBySession, getMarketSessionStatus, getSessionCountdown,
   kstNowParts, type SessionPhase,
@@ -1484,7 +1486,19 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
 
   const riskCount = holdings.filter((h) => ["위험", "주의", "HIGH", "WATCH"].includes(String(h.riskStatus || ""))).length;
 
+  if (loading && !allItems.length) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="h-8 w-32 animate-pulse rounded bg-slate-800" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} rows={4} />)}
+        </div>
+      </div>
+    );
+  }
+
   return (
+    <ErrorBoundary>
     <div className="space-y-6 p-4 md:p-6">
       {/* 추천 근거 패널 */}
       {selectedItem && <WhyPanel item={selectedItem} onClose={() => setSelectedItem(null)} marketRegime={marketRegime} />}
@@ -1913,5 +1927,6 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         </section>
       )}
     </div>
+    </ErrorBoundary>
   );
 }

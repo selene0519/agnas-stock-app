@@ -1060,9 +1060,12 @@ def build_chart_analysis(
                 if freshness_reference_date:
                     reference_dt = datetime.strptime(freshness_reference_date[:10], "%Y-%m-%d")
                 days_old = (reference_dt - last_dt).days
-                if days_old > 5:
+                if days_old > 10:
                     state.data_quality = "stale"
-                    state.warnings.append(f"OHLCV 오래됨 ({days_old}일 전)")
+                    state.warnings.append(f"OHLCV {days_old}일 이상 미갱신 — 신호 신뢰 불가")
+                elif days_old > 5:
+                    state.data_quality = "stale"
+                    state.warnings.append(f"OHLCV 오래됨 ({days_old}일 전) — 신호 참고용 한정")
             except Exception:
                 pass
 
@@ -1136,6 +1139,11 @@ def build_chart_analysis(
         state.confirmed_index = prev_state.confirmed_index
         state.created_index = prev_state.created_index
         state.expires_at_index = prev_state.expires_at_index
+
+    # Stale data hard lock: never produce "confirmed" signal on stale/error data
+    if new_status == "confirmed" and state.data_quality in ("stale", "error"):
+        new_status = "developing"  # downgrade — preserve score but block position sizing
+        state.warnings.append("데이터 오래됨: confirmed → developing으로 하향 (진입 보류)")
 
     # Position sizing guardrail (blueprint §2)
     if new_status == "confirmed" and state.data_quality not in ("stale", "error"):
