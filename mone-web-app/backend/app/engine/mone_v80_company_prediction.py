@@ -62,8 +62,11 @@ def _roots() -> List[Path]:
 
 def _find(patterns: Iterable[str], max_files: int = 200) -> List[Path]:
     found: List[Path] = []
+    app_parent = _app_root().parent
     for root in _roots():
         for pattern in patterns:
+            if root == app_parent and str(pattern).startswith("**/"):
+                continue
             try:
                 for p in root.glob(pattern):
                     if p.is_file() and p.stat().st_size > 0 and p not in found:
@@ -148,9 +151,21 @@ def _fmt_pct(v: float) -> str:
 def _company_files(market: str) -> List[Path]:
     return _find([
         f"reports/v93_company_integrated_{market}.csv",
+        f"reports/v92_company_integrated_{market}.csv",
+        f"reports/v92_company_summary_cards_{market}.csv",
+        f"reports/v92_company_clean_{market}.csv",
+        f"reports/v92_company_cards_{market}.csv",
+        f"reports/v91_company_integrated_{market}.csv",
+        f"reports/v85_company_integrated_{market}.csv",
+        f"reports/v84_company_integrated_{market}.csv",
+        f"reports/v83_company_integrated_{market}.csv",
+        f"reports/v82_company_integrated_{market}.csv",
+        f"reports/v81_company_summary_cards_{market}.csv",
+        f"reports/v81_company_cards_{market}.csv",
+        f"reports/v80_company_cards_{market}.csv",
         f"reports/*company*{market}*.csv",
-        f"**/*company*{market}*.csv",
-        f"**/*fundamental*{market}*.csv",
+        f"data/*company*{market}*.csv",
+        f"data/*fundamental*{market}*.csv",
     ], max_files=50)
 
 def _prediction_files(market: str) -> List[Path]:

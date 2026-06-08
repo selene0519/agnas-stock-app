@@ -17,6 +17,7 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Literal, Optional
 
 
@@ -787,6 +788,7 @@ def build_chart_analysis(
     prev_state: Optional[ChartAnalysisState] = None,
     config: Optional[EngineConfig] = None,
     horizon_bars: int = 50,
+    freshness_reference_date: Optional[str] = None,
 ) -> ChartAnalysisState:
     """
     Main entry point. Builds complete ChartAnalysisState from OHLCV rows.
@@ -810,9 +812,11 @@ def build_chart_analysis(
         last_date = candles[-1].date
         if last_date:
             try:
-                from datetime import datetime, timezone
                 last_dt = datetime.strptime(last_date[:10], "%Y-%m-%d")
-                days_old = (datetime.now() - last_dt).days
+                reference_dt = datetime.now()
+                if freshness_reference_date:
+                    reference_dt = datetime.strptime(freshness_reference_date[:10], "%Y-%m-%d")
+                days_old = (reference_dt - last_dt).days
                 if days_old > 5:
                     state.data_quality = "stale"
                     state.warnings.append(f"OHLCV 오래됨 ({days_old}일 전)")

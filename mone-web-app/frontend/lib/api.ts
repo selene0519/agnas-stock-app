@@ -249,7 +249,7 @@ export const mone = {
     apiPost<ApiList>("/api/watchlist/set-group", body),
   correlationMatrix: (p?: { market?: Market; days?: number }) =>
     apiGet<ApiList>("/api/advanced/correlation", p),
-  advancedScanner: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
+  advancedScanner: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/advanced/scanner", p),
   calculatorKelly: (body: { winRate?: number; payoffRatio?: number; capital?: number }) =>
     apiPost<any>("/api/advanced/calculator/kelly", body),
@@ -293,6 +293,8 @@ export const mone = {
     apiGet<ApiList>("/api/predictions/table", p),
   predictionAccuracy: (p?: { market?: Market | "all" }) =>
     apiGet<ApiList>("/api/insights/prediction-accuracy", p),
+  chartAnalysisAccuracy: (p?: { market?: Market | "all"; futureBars?: number; symbolLimit?: number; maxCutoffs?: number }) =>
+    apiGet<ApiList>("/api/insights/chart-analysis-accuracy", p),
   holdings: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/holdings", p),
   holdingsClean: (p?: { market?: Market; limit?: number }) =>
