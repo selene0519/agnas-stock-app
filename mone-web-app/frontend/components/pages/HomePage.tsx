@@ -780,6 +780,8 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   const supplySignal   = String(item.supplySignal || "NEUTRAL");
   const maConv         = Boolean(item.maConvergence);
   const cautionReasons = Array.isArray(item.cautionReasons) ? item.cautionReasons : [];
+  const newsSentimentTag     = String(item.newsSentimentTag || "NEUTRAL");
+  const newsSentimentReasons = Array.isArray(item.newsSentimentReasons) ? item.newsSentimentReasons : [];
 
   const bucketColor =
     decisionBucket === "오늘 진입"  ? "bg-emerald-600 text-white"
@@ -1097,6 +1099,26 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
               : "border-red-600/40 bg-red-900/20 text-red-300"
             }`}>
               수급 신호 — {SUPPLY_LABEL[supplySignal] ?? supplySignal}
+            </div>
+          )}
+
+          {/* 뉴스/공시 감성 신호 */}
+          {(newsSentimentTag === "HIGH_RISK" || newsSentimentTag === "POSITIVE") && (
+            <div className={`rounded-xl border p-4 ${
+              newsSentimentTag === "HIGH_RISK"
+                ? "border-orange-800/40 bg-orange-950/20"
+                : "border-emerald-800/40 bg-emerald-950/20"
+            }`}>
+              <div className={`mb-1 text-xs font-semibold ${newsSentimentTag === "HIGH_RISK" ? "text-orange-400" : "text-emerald-400"}`}>
+                {newsSentimentTag === "HIGH_RISK" ? "⚠ 공시 리스크 감지" : "✓ 긍정 공시 감지"}
+              </div>
+              <ul className="space-y-0.5 text-[11px]">
+                {newsSentimentReasons.map((r: string) => (
+                  <li key={r} className={newsSentimentTag === "HIGH_RISK" ? "text-orange-300" : "text-emerald-300"}>
+                    • {r}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

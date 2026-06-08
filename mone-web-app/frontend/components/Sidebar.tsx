@@ -2,13 +2,11 @@
 
 import {
   BarChart2,
-  Brain,
   Briefcase,
   ChevronRight,
   Cpu,
-  FileBarChart2,
   LayoutDashboard,
-  Newspaper,
+  MoreHorizontal,
   Search,
 } from "lucide-react";
 import Image from "next/image";
@@ -31,11 +29,8 @@ const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "chart",    label: "차트·기술분석", icon: <BarChart2 size={16} /> },
 ];
 
-const adminItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "report",     label: "운용 리포트",   icon: <FileBarChart2 size={16} /> },
-  { id: "news",       label: "뉴스·기업분석", icon: <Newspaper size={16} /> },
-  { id: "prediction", label: "예측·검증",     icon: <Brain size={16} /> },
-  { id: "advanced",   label: "고급분석",       icon: <Cpu size={16} /> },
+const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
+  { id: "advanced", label: "고급분석", icon: <Cpu size={16} /> },
 ];
 
 interface Props {
@@ -94,17 +89,18 @@ export default function Sidebar({ current, onChange }: Props) {
           ))}
         </div>
 
-        <div className="mt-auto space-y-0.5 border-t border-slate-800/60 pt-2">
+        <div className="mt-auto space-y-0.5 border-t border-slate-800/40 pt-2">
           {!collapsed && (
-            <div className="px-2 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-600">
-              관리자
+            <div className="flex items-center gap-1 px-2 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-700">
+              <MoreHorizontal size={10} />
+              <span>더보기</span>
             </div>
           )}
-          {adminItems.filter((item) => item.id !== "report").map((item) => (
+          {moreItems.map((item) => (
             <button
               key={item.id}
               type="button"
-              className={`nav-item w-full opacity-60 hover:opacity-100 ${current === item.id ? "active opacity-100" : ""} ${collapsed ? "justify-center px-2" : ""}`}
+              className={`nav-item w-full opacity-50 hover:opacity-80 ${current === item.id ? "active opacity-100" : ""} ${collapsed ? "justify-center px-2" : ""}`}
               onClick={() => onChange(item.id)}
               title={collapsed ? item.label : undefined}
             >

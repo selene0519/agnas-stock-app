@@ -124,6 +124,11 @@ export default function App() {
     ? new Date().toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" })
     : "날짜";
 
+  // SSR / hydration mismatch 방지 — 클라이언트 마운트 전에는 빈 배경만 렌더
+  if (!mounted) {
+    return <div className="flex h-screen" style={{ background: "var(--bg-primary)" }} />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
       {/* 데스크톱 사이드바 */}
