@@ -6,8 +6,11 @@ import {
   ChevronRight,
   Cpu,
   LayoutDashboard,
+  LogIn,
+  LogOut,
   MoreHorizontal,
   Search,
+  ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -20,7 +23,8 @@ export type PageId =
   | "chart"
   | "news"
   | "prediction"
-  | "advanced";
+  | "advanced"
+  | "admin";
 
 const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "home",     label: "시장 홈",      icon: <LayoutDashboard size={16} /> },
@@ -33,9 +37,18 @@ const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "advanced", label: "고급분석", icon: <Cpu size={16} /> },
 ];
 
+const adminItem: { id: PageId; label: string; icon: React.ReactNode } = {
+  id: "admin",
+  label: "관리자",
+  icon: <ShieldCheck size={16} />,
+};
+
 interface Props {
   current: PageId;
   onChange: (id: PageId) => void;
+  isAdmin?: boolean;
+  onAdminLogin?: () => void;
+  onAdminLogout?: () => void;
 }
 
 function BrandMark({ collapsed }: { collapsed: boolean }) {
@@ -58,8 +71,9 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-export default function Sidebar({ current, onChange }: Props) {
+export default function Sidebar({ current, onChange, isAdmin = false, onAdminLogin, onAdminLogout }: Props) {
   const [collapsed, setCollapsed] = useState(false);
+  const visibleMoreItems = isAdmin ? [...moreItems, adminItem] : moreItems;
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
@@ -96,7 +110,7 @@ export default function Sidebar({ current, onChange }: Props) {
               <span>더보기</span>
             </div>
           )}
-          {moreItems.map((item) => (
+          {visibleMoreItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -108,6 +122,16 @@ export default function Sidebar({ current, onChange }: Props) {
               {!collapsed && <span>{item.label}</span>}
             </button>
           ))}
+          {!collapsed && (
+            <button
+              type="button"
+              className={`nav-item w-full opacity-70 hover:opacity-100 ${current === "admin" && !isAdmin ? "active opacity-100" : ""}`}
+              onClick={isAdmin ? onAdminLogout : onAdminLogin}
+            >
+              <span className="shrink-0">{isAdmin ? <LogOut size={16} /> : <LogIn size={16} />}</span>
+              <span>{isAdmin ? "관리자 로그아웃" : "관리자 로그인"}</span>
+            </button>
+          )}
         </div>
       </nav>
       {!collapsed && (

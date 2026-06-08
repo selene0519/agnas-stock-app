@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
 import os
 import time
 from collections import defaultdict
@@ -72,6 +76,72 @@ _RATE_LIMITED_PREFIXES = ("/api/news/refresh", "/api/disclosures/refresh",
                           "/api/quotes/refresh", "/api/final/generate-reports")
 _RATE_LIMIT_WINDOW_SEC = 60
 
+
+def _b64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _b64url_decode(value: str) -> bytes:
+    padded = value + ("=" * (-len(value) % 4))
+    return base64.urlsafe_b64decode(padded.encode("ascii"))
+
+
+def _admin_password_hash() -> str:
+    configured_hash = os.environ.get("MONE_ADMIN_PASSWORD_SHA256", "").strip().lower()
+    if configured_hash:
+        return configured_hash
+    password = os.environ.get("MONE_ADMIN_PASSWORD", "")
+    return hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
+
+
+def _admin_auth_secret() -> bytes:
+    secret = os.environ.get("MONE_AUTH_SECRET", "").strip()
+    if secret:
+        return secret.encode("utf-8")
+    return _admin_password_hash().encode("utf-8")
+
+
+def _admin_auth_configured() -> bool:
+    return bool(_admin_password_hash())
+
+
+def _check_admin_password(password: str) -> bool:
+    expected = _admin_password_hash()
+    if not expected:
+        return False
+    actual = hashlib.sha256(str(password).encode("utf-8")).hexdigest()
+    return hmac.compare_digest(actual, expected)
+
+
+def _create_admin_token() -> tuple[str, int]:
+    ttl_seconds = int(os.environ.get("MONE_ADMIN_TOKEN_TTL_SECONDS", str(12 * 60 * 60)))
+    expires_at = int(time.time() + ttl_seconds)
+    payload = {"role": "admin", "exp": expires_at}
+    body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    signature = hmac.new(_admin_auth_secret(), body.encode("ascii"), hashlib.sha256).digest()
+    return f"{body}.{_b64url_encode(signature)}", expires_at
+
+
+def _extract_bearer_token(authorization: str | None) -> str:
+    value = str(authorization or "").strip()
+    if value.lower().startswith("bearer "):
+        return value[7:].strip()
+    return ""
+
+
+def _verify_admin_token(token: str) -> bool:
+    if not token or not _admin_auth_configured():
+        return False
+    try:
+        body, signature = token.split(".", 1)
+        expected_sig = hmac.new(_admin_auth_secret(), body.encode("ascii"), hashlib.sha256).digest()
+        if not hmac.compare_digest(_b64url_encode(expected_sig), signature):
+            return False
+        payload = json.loads(_b64url_decode(body).decode("utf-8"))
+    except Exception:
+        return False
+    return payload.get("role") == "admin" and int(payload.get("exp", 0)) > int(time.time())
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     path = request.url.path
@@ -89,6 +159,25 @@ async def rate_limit_middleware(request: Request, call_next):
                 headers={"Retry-After": str(remaining)},
             )
         _rate_limit_store[key] = now
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def admin_auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/admin/"):
+        token = _extract_bearer_token(request.headers.get("authorization"))
+        if not _verify_admin_token(token):
+            status_code = 503 if not _admin_auth_configured() else 401
+            return JSONResponse(
+                status_code=status_code,
+                content={
+                    "ok": False,
+                    "status": "AUTH_REQUIRED",
+                    "code": "ADMIN_AUTH_NOT_CONFIGURED" if status_code == 503 else "ADMIN_AUTH_REQUIRED",
+                    "message": "Admin login is required.",
+                },
+            )
     return await call_next(request)
 
 
@@ -120,6 +209,39 @@ def health() -> dict:
         "repoRoot": str(data.REPO_ROOT),
         "updatedAt": data.latest_updated_at(),
         "db": _db.backend_info(),
+    }
+
+
+@app.post("/api/auth/admin-login")
+def api_admin_login(payload: dict = Body(...)):
+    if not _admin_auth_configured():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "ok": False,
+                "status": "ERROR",
+                "code": "ADMIN_AUTH_NOT_CONFIGURED",
+                "message": "Set MONE_ADMIN_PASSWORD or MONE_ADMIN_PASSWORD_SHA256.",
+            },
+        )
+    password = str(payload.get("password") or "")
+    if not _check_admin_password(password):
+        return JSONResponse(
+            status_code=401,
+            content={"ok": False, "status": "ERROR", "code": "INVALID_ADMIN_PASSWORD"},
+        )
+    token, expires_at = _create_admin_token()
+    return {"ok": True, "status": "OK", "role": "admin", "token": token, "expiresAt": expires_at}
+
+
+@app.get("/api/auth/admin-status")
+def api_admin_status(authorization: str | None = Header(None)) -> dict:
+    token = _extract_bearer_token(authorization)
+    return {
+        "ok": True,
+        "status": "OK",
+        "configured": _admin_auth_configured(),
+        "authenticated": _verify_admin_token(token),
     }
 
 
