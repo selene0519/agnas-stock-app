@@ -44,7 +44,9 @@ function fallbackSymbol(market: Market): MoneSymbol {
 }
 
 function num(value: any) {
-  const n = Number(String(value ?? "").replace(/[$,%원,\s]/g, ""));
+  const cleaned = String(value ?? "").replace(/[$,%원,\s]/g, "");
+  if (!cleaned) return null;
+  const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 function positiveNum(value: any) { const n = num(value); return n !== null && n > 0 ? n : null; }
@@ -1604,8 +1606,18 @@ export default function ChartPage() {
               <div className="grid grid-cols-2 gap-2 text-right sm:grid-cols-4">
                 <Info label="최근 종가" value={latest ? money(latest.close, selected.market) : "-"} />
                 <Info label="RSI14" value={latestRsi ? Number(latestRsi).toFixed(1) : "데이터 부족"} />
-                <Info label="ATR14" value={indicators.atr14 ? money(indicators.atr14, selected.market) : "추가 데이터 필요 · 최소 14봉 필요"} />
-                <Info label="MDD20" value={indicators.mdd20 ? `${Number(indicators.mdd20).toFixed(2)}%` : "추가 데이터 필요 · 최소 20봉 필요"} />
+                <Info
+                  label="ATR14"
+                  value={loadState.ohlcvCount >= 14 && Number.isFinite(Number(indicators.atr14))
+                    ? money(indicators.atr14, selected.market)
+                    : "추가 데이터 필요 · 최소 14봉 필요"}
+                />
+                <Info
+                  label="MDD20"
+                  value={loadState.ohlcvCount >= 20 && Number.isFinite(Number(indicators.mdd20))
+                    ? `${Number(indicators.mdd20).toFixed(2)}%`
+                    : "추가 데이터 필요 · 최소 20봉 필요"}
+                />
               </div>
             </div>
 

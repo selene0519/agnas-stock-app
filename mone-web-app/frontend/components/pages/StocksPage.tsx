@@ -218,6 +218,7 @@ export default function StocksPage() {
   const [watchOnly, setWatchOnly] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const [loadError, setLoadError] = useState("");
+  const [loadNotice, setLoadNotice] = useState("");
   const [watchlist, setWatchlist] = useState<WatchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [watchSaving, setWatchSaving] = useState(false);
@@ -343,13 +344,39 @@ export default function StocksPage() {
     let active = true;
     setLoading(true);
     setLoadError("");
+    setLoadNotice("");
     mone
       .recommendations({ market, mode, horizon, limit: RECOMMENDATION_LIMIT, watchOnly }, controller.signal)
-      .then((data) => {
+      .then(async (data) => {
         if (!active) return;
         if (data?.status === "ERROR") {
           // 취소된 요청의 에러는 무시
           if (controller.signal.aborted) return;
+          const fallback = await mone.candidates({
+            market,
+            strategy: mode,
+            term: horizon,
+            limit: Math.min(RECOMMENDATION_LIMIT, 60),
+          });
+          if (!active || controller.signal.aborted) return;
+          if (fallback?.status !== "ERROR") {
+            const fallbackItems = dedupeBySymbol(Array.isArray(fallback.items) ? fallback.items : []);
+            const watchKeys = new Set(watchlist.map((row) => watchKey(row)));
+            const filteredFallback = watchOnly
+              ? fallbackItems.filter((item) => {
+                  const itemMarket = cleanMarket(item.market || market || "kr");
+                  return watchKeys.has(
+                    watchKey({
+                      market: itemMarket,
+                      symbol: cleanSymbol(item.symbol, itemMarket),
+                    }),
+                  );
+                })
+              : fallbackItems;
+            setItems(filteredFallback);
+            setLoadNotice("추천 요약 API가 지연되어 후보 API 기준으로 표시 중입니다.");
+            return;
+          }
           setItems([]);
           setLoadError(data.error || "추천 후보를 불러오지 못했습니다.");
           return;
@@ -1142,6 +1169,12 @@ export default function StocksPage() {
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           추천 후보 로딩이 지연되거나 실패했습니다. 조건을 줄이거나 잠시 후 다시 시도하세요.
           <span className="ml-2 text-xs text-amber-300/80">{loadError}</span>
+        </div>
+      )}
+
+      {loadNotice && !loadError && (
+        <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">
+          {loadNotice}
         </div>
       )}
 
