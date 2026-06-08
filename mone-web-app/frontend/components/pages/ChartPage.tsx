@@ -743,6 +743,16 @@ function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
   };
 }
 
+function chartColorWithAlpha(color: string, alpha: number): string {
+  const match = /^#([0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?$/.exec(color.trim());
+  if (!match) return color;
+  const hex = match[1];
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // ── ③ 0.868 되돌림 (피보나치 + 핵심 레벨) ────────────────────────────
 /**
  * 피보나치 되돌림 계산 — 가장 최근 완성된 ZigZag 스윙 기준
@@ -1098,7 +1108,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
               const label    = isBroken ? `빗각↑이탈${touchTag}` : `빗각↑${touchTag}`;
               candleSeries.createPriceLine({
                 price: tl.uptrendVal,
-                color: isBroken ? "#22c55e33" : `${upColor}99`,
+                color: chartColorWithAlpha(isBroken ? "#22c55e" : upColor, isBroken ? 0.2 : 0.6),
                 lineWidth: 1, lineStyle: LW.LineStyle.Dashed,
                 axisLabelVisible: true, title: label,
               });
@@ -1124,7 +1134,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
               const label    = isBroken ? `빗각↓돌파${touchTag}` : `빗각↓${touchTag}`;
               candleSeries.createPriceLine({
                 price: tl.downtrendVal,
-                color: isBroken ? "#ef444433" : `${dnColor}99`,
+                color: chartColorWithAlpha(isBroken ? "#ef4444" : dnColor, isBroken ? 0.2 : 0.6),
                 lineWidth: 1, lineStyle: LW.LineStyle.Dashed,
                 axisLabelVisible: true, title: label,
               });
@@ -1137,7 +1147,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
           rets.forEach(ret => {
             candleSeries.createPriceLine({
               price: ret.price,
-              color: ret.isKey ? "#06b6d4" : ret.color + "99",
+              color: ret.isKey ? "#06b6d4" : chartColorWithAlpha(ret.color, 0.6),
               lineWidth: ret.isKey ? 2 : 1,
               lineStyle: ret.isKey ? LW.LineStyle.Solid : LW.LineStyle.Dashed,
               axisLabelVisible: true,
