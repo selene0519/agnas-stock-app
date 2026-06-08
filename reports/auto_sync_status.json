@@ -1,16 +1,16 @@
 {
-  "status": "OK",
-  "statusLabel": "",
+  "status": "ERROR",
+  "statusLabel": "알 수 없는 오류",
   "source": "background_scheduler",
-  "lastSyncAt": "2026-06-06 19:11:38",
-  "beforeCommit": "431e895c",
-  "afterCommit": "431e895c",
+  "lastSyncAt": "2026-06-08 17:13:39",
+  "beforeCommit": "df33284d",
+  "afterCommit": "df33284d",
   "filesChanged": 0,
-  "cachesCleared": 22,
+  "cachesCleared": 0,
   "autoWatchlist": {
     "status": "SKIPPED",
     "count": 0
   },
-  "gitOutput": "Already up to date.\nFrom https://github.com/selene0519/agnas-stock-app\n * branch              main       -> FETCH_HEAD",
-  "error": ""
+  "gitOutput": "Updating df33284d..1b5320b1\nFrom https://github.com/selene0519/agnas-stock-app\n * branch              main       -> FETCH_HEAD\nwarning: in the working copy of 'holdings_kr.csv', CRLF will be replaced by LF the next time Git touches it\nwarning: in the working copy of 'mone-web-app/backend/app/services/user_data.py', CRLF will be replaced by LF the next time Git touches it\nwarning: in the working copy of 'reports/auto_sync_status.json', CRLF will be replaced by LF the next time Git touches it\nfata",
+  "error": "From https://github.com/selene0519/agnas-stock-app\n * branch              main       -> FETCH_HEAD\nwarning: in the working copy of 'holdings_kr.csv', CRLF will be replaced by LF the next time Git touc"
 }
