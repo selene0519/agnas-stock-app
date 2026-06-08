@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import Body, FastAPI, Query
+from fastapi import Body, FastAPI, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
@@ -1399,12 +1399,38 @@ def _install_mone_authoritative_holdings_clean_v3():
                 })
         return rows
 
-    def _payload(market: str = "all", limit: int = 100) -> dict:
+    def _sanitize_user_id(raw: str) -> str:
+        return _mone_re.sub(r"[^a-zA-Z0-9_\-]", "", str(raw or ""))[:64]
+
+    def _read_personal_holdings(user_id: str, market: str) -> list[dict]:
+        rows = []
+        for row in _db.get_holdings(user_id, market):
+            mk = "us" if str(row.get("market", "kr")).lower() == "us" else "kr"
+            sym = _row_symbol(row, mk)
+            qty = _num(_text(row, ["quantity", "qty"], ""), 0)
+            avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice"], ""), 0)
+            if not sym or qty <= 0 or avg <= 0:
+                continue
+            rows.append({
+                "symbol": sym,
+                "name": _name(row, sym),
+                "market": mk,
+                "quantity": qty,
+                "avgPrice": avg,
+                "stopPriceCsv": _num(_text(row, ["stopPrice", "stop_price", "stop"], ""), 0),
+                "targetPriceCsv": _num(_text(row, ["targetPrice", "target_price", "target"], ""), 0),
+                "source": "user_holdings",
+                "holdingAuthority": "personal_user_holdings",
+                "holdingAuthoritySource": "user_holdings",
+            })
+        return rows
+
+    def _payload(market: str = "all", limit: int = 100, rows_override: list[dict] | None = None, authority: str = "holdings_kr.csv/holdings_us.csv") -> dict:
         market_key = str(market or "all").lower()
         if market_key not in ("all", "kr", "us"):
             market_key = "all"
 
-        rows = _read_authoritative_holdings(market_key)
+        rows = rows_override if rows_override is not None else _read_authoritative_holdings(market_key)
         quote_kr = _price_index("kr") if market_key in ("all", "kr") else {}
         quote_us = _price_index("us") if market_key in ("all", "us") else {}
         v93_kr = _v93_index("kr") if market_key in ("all", "kr") else {}
@@ -1576,8 +1602,15 @@ def _install_mone_authoritative_holdings_clean_v3():
             "items": limited_items,
             "summary": _summary(limited_items),
             "updatedAt": _mone_datetime.now().isoformat(),
-            "authority": "holdings_kr.csv/holdings_us.csv",
+            "authority": authority,
         }
+
+    def _personal_payload(user_id: str, market: str = "all", limit: int = 100) -> dict:
+        rows = _read_personal_holdings(user_id, market)
+        payload = _payload(market, limit, rows_override=rows, authority="personal_user_holdings")
+        payload["userId"] = user_id
+        payload["storage"] = _db.backend_info().get("backend", "user_db")
+        return payload
 
     global app
     app.router.routes = [
@@ -1586,11 +1619,25 @@ def _install_mone_authoritative_holdings_clean_v3():
     ]
 
     @app.get("/api/holdings-clean")
-    def mone_authoritative_holdings_clean_v3(market: str = _MoneQuery("all"), limit: int = _MoneQuery(100)) -> dict:
+    def mone_authoritative_holdings_clean_v3(
+        market: str = _MoneQuery("all"),
+        limit: int = _MoneQuery(100),
+        x_mone_user: str = Header(default="", alias="x-mone-user"),
+    ) -> dict:
+        uid = _sanitize_user_id(x_mone_user)
+        if uid:
+            return _personal_payload(uid, market, limit)
         return _payload(market, limit)
 
     @app.get("/api/final/holdings-clean")
-    def mone_authoritative_final_holdings_clean_v3(market: str = _MoneQuery("all"), limit: int = _MoneQuery(100)) -> dict:
+    def mone_authoritative_final_holdings_clean_v3(
+        market: str = _MoneQuery("all"),
+        limit: int = _MoneQuery(100),
+        x_mone_user: str = Header(default="", alias="x-mone-user"),
+    ) -> dict:
+        uid = _sanitize_user_id(x_mone_user)
+        if uid:
+            return _personal_payload(uid, market, limit)
         return _payload(market, limit)
 
 try:
@@ -2327,23 +2374,9 @@ def api_holdings_edit(
 ) -> dict:
     uid = _sanitize_uid(x_mone_user)
 
-    # uid가 있으면 SQLite 우선
+    # uid가 있으면 사용자별 저장소만 사용한다. 공용 CSV는 개인 모바일 화면에 노출하지 않는다.
     if uid:
         items = _db.get_holdings(uid, market)
-        # SQLite에 없으면 CSV 폴백 (최초 사용자)
-        if not items:
-            csv_items: list[dict] = []
-            for mk in (["kr", "us"] if market == "all" else [market]):
-                for row in _read_csv_safe(_REPO / f"holdings_{mk}.csv"):
-                    sym = str(row.get("symbol", "")).strip()
-                    if sym:
-                        csv_items.append({"market": mk, "symbol": sym,
-                            "name": str(row.get("name", sym)).strip(),
-                            "quantity": str(row.get("quantity", "0")).strip(),
-                            "avgPrice": str(row.get("avgPrice", "0")).strip(),
-                            "stopPrice": str(row.get("stopPrice", "")).strip(),
-                            "targetPrice": str(row.get("targetPrice", "")).strip()})
-            items = csv_items
         return {"status": "OK", "count": len(items), "items": items, "userId": uid, "storage": "sqlite"}
 
     # uid 없으면 기존 CSV (관리자 모드)

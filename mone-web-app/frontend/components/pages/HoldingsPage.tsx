@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileText, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 import PositionManager from "../PositionManager";
 import { mone } from "@/lib/api";
+import { getUserId } from "@/lib/userId";
 
 type Market = "all" | "kr" | "us";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
@@ -43,12 +44,12 @@ async function getJson(path: string) {
 function getMoneUserHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    const id = localStorage.getItem("mone:userId");
+    const id = getUserId();
     return id ? { "x-mone-user": id } : {};
   } catch { return {}; }
 }
 
-const LS_HOLDINGS_KEY = "mone:holdings_backup";
+const LS_HOLDINGS_KEY = "mone:personal_holdings_v2";
 
 function saveHoldingsToLocalStorage(items: any[]) {
   try {
@@ -140,6 +141,64 @@ function normalizeForSave(item: EditableHolding) {
     avgPrice: Number(String(item.avgPrice).replace(/,/g, "")),
     stopPrice: item.stopPrice ? Number(String(item.stopPrice).replace(/,/g, "")) : "",
     targetPrice: item.targetPrice ? Number(String(item.targetPrice).replace(/,/g, "")) : "",
+  };
+}
+
+function formatHoldingMoney(value: number, market: "kr" | "us") {
+  if (!Number.isFinite(value) || value <= 0) return "-";
+  return market === "us"
+    ? `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    : `KRW ${Math.round(value).toLocaleString("ko-KR")}`;
+}
+
+function localHoldingDisplayRows(rows: any[]) {
+  return dedupe(rows.map((row) => {
+    const item = toEditableHolding(row);
+    const market = item.market;
+    const quantity = Number(item.quantity || 0);
+    const avgPrice = Number(item.avgPrice || 0);
+    const costBasis = quantity * avgPrice;
+    return {
+      ...item,
+      quantity,
+      avgPrice,
+      avgPriceText: formatHoldingMoney(avgPrice, market),
+      currentPrice: 0,
+      currentPriceText: "price pending",
+      marketValue: 0,
+      marketValueText: "price pending",
+      costBasis,
+      costBasisText: formatHoldingMoney(costBasis, market),
+      pnl: 0,
+      pnlText: "-",
+      pnlPctText: "-",
+      riskStatus: "WATCH",
+      dataStatus: "LOCAL_ONLY",
+      priceSource: "local_personal_record",
+    };
+  }));
+}
+
+function localHoldingsPayload(rows: any[], market: Market) {
+  const filtered = localHoldingDisplayRows(rows).filter((item) => market === "all" || item.market === market);
+  const totalCost = filtered.reduce((acc, item) => acc + Number(item.costBasis || 0), 0);
+  const mixedCurrency = new Set(filtered.map((item) => item.market)).size > 1;
+  return {
+    status: "OK",
+    routeVersion: "local-personal-holdings",
+    authority: "personal_local_storage",
+    items: filtered,
+    count: filtered.length,
+    summary: {
+      count: filtered.length,
+      totalValue: totalCost,
+      totalValueText: mixedCurrency ? "KR/US separated" : formatHoldingMoney(totalCost, filtered[0]?.market || "kr"),
+      totalPnl: 0,
+      totalPnlText: "-",
+      mixedCurrency,
+      riskCount: filtered.length,
+      missingPriceCount: filtered.length,
+    },
   };
 }
 function validateHoldingDraft(item: EditableHolding) {
@@ -472,8 +531,6 @@ export default function HoldingsPage() {
   const [importCsvText, setImportCsvText] = useState("");
   const [importSaving, setImportSaving] = useState(false);
   const [kisSyncing, setKisSyncing] = useState(false);
-  const [localBackupCount, setLocalBackupCount] = useState(0);
-  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
   const [positionCandidates, setPositionCandidates] = useState<any[]>([]);
   const [positionLoading, setPositionLoading] = useState(false);
   const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
@@ -519,16 +576,13 @@ export default function HoldingsPage() {
     setLoading(true);
     try {
       const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
-      setData(result);
-      // 서버 데이터가 비어있을 때 localStorage 백업 확인
       const serverItems = Array.isArray(result.items) ? result.items : [];
       const localItems = loadHoldingsFromLocalStorage();
       if (serverItems.length === 0 && localItems.length > 0) {
-        setLocalBackupCount(localItems.length);
-        setShowRestorePrompt(true);
+        setData(localHoldingsPayload(localItems, market));
       } else {
-        setShowRestorePrompt(false);
-        if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems); // 서버 데이터로 백업 갱신
+        if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems);
+        setData(result);
       }
       loadPositionCandidates(market);
       setLoading(false);
@@ -549,7 +603,10 @@ export default function HoldingsPage() {
         setSectorData(sector); setBenchmarkData(bench); setCorrData(corr);
       });
     } catch (error) {
-      setData({ status: "ERROR", error: String(error), items: [], summary: {} });
+      const localItems = loadHoldingsFromLocalStorage();
+      setData(localItems.length > 0
+        ? localHoldingsPayload(localItems, market)
+        : { status: "ERROR", error: String(error), items: [], summary: {} });
       setLoading(false);
     }
   }
@@ -568,8 +625,12 @@ export default function HoldingsPage() {
   }, []);
 
   async function loadEditableHoldings() {
-    const result = await getJson("/api/holdings-edit?market=all");
-    return Array.isArray(result.items) ? mergeEditableRows(result.items.map(toEditableHolding)) : [];
+    try {
+      const result = await getJson("/api/holdings-edit?market=all");
+      return Array.isArray(result.items) ? mergeEditableRows(result.items.map(toEditableHolding)) : [];
+    } catch {
+      return loadHoldingsFromLocalStorage().map(toEditableHolding);
+    }
   }
 
   async function saveRows(nextRows: any[], successMsg: string) {
@@ -811,27 +872,6 @@ export default function HoldingsPage() {
             <button onClick={() => { setShowImport(false); setImportCsvText(""); }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">
               <X size={13} /> 취소
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* localStorage 복원 프롬프트 */}
-      {showRestorePrompt && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-bold text-amber-200">이 기기에 저장된 보유종목이 있습니다</div>
-              <div className="mt-1 text-xs text-amber-300/70">{localBackupCount}개 종목 · 서버에 동기화되지 않은 데이터입니다.</div>
-            </div>
-            <button onClick={async () => {
-              const items = loadHoldingsFromLocalStorage();
-              if (items.length > 0) {
-                await saveRows(items, `로컬 백업 ${items.length}개 종목을 복원했습니다.`);
-                setShowRestorePrompt(false);
-              }
-            }} className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-500">
-              복원하기
             </button>
           </div>
         </div>

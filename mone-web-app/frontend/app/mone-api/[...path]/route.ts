@@ -32,7 +32,10 @@ function buildTargetUrl(pathSegments: string[], request: NextRequest): string {
 
   // /mone-api/api/xxx  -> backend /api/xxx
   // /mone-api/xxx      -> backend /api/xxx
-  const targetPath = joinedPath.startsWith("api/")
+  // /mone-api/health   -> backend /health
+  const targetPath = joinedPath === "health"
+    ? "/health"
+    : joinedPath.startsWith("api/")
     ? `/${joinedPath}`
     : `/api/${joinedPath}`;
 
