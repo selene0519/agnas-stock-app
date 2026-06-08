@@ -119,14 +119,16 @@ function editableKey(item: { market?: any; symbol?: any }) {
 }
 function toEditableHolding(item: any): EditableHolding {
   const market = cleanHoldingMarket(item.market);
+  const stopValue = item.stopPrice ?? item.stop ?? "";
+  const targetValue = item.targetPrice ?? item.target ?? "";
   return {
     market,
     symbol: cleanHoldingSymbol(item.symbol, market),
     name: String(item.name || "").trim(),
     quantity: String(item.quantity ?? "").replace(/[^0-9.]/g, ""),
     avgPrice: String(item.avgPrice ?? "").replace(/[^0-9.]/g, ""),
-    stopPrice: String(item.stopPrice ?? "").replace(/[^0-9.]/g, "") || undefined,
-    targetPrice: String(item.targetPrice ?? "").replace(/[^0-9.]/g, "") || undefined,
+    stopPrice: String(stopValue).replace(/[^0-9.]/g, "") || undefined,
+    targetPrice: String(targetValue).replace(/[^0-9.]/g, "") || undefined,
   };
 }
 function normalizeForSave(item: EditableHolding) {
@@ -374,7 +376,15 @@ function PortfolioCompositionBar({ items }: { items: any[] }) {
 
 // ── 종목 추가 폼 ───────────────────────────────────────────────────────
 function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHolding) => void; onCancel: () => void; saving: boolean }) {
-  const [draft, setDraft] = useState<EditableHolding>({ market: "kr", symbol: "", name: "", quantity: "", avgPrice: "" });
+  const [draft, setDraft] = useState<EditableHolding>({
+    market: "kr",
+    symbol: "",
+    name: "",
+    quantity: "",
+    avgPrice: "",
+    stopPrice: "",
+    targetPrice: "",
+  });
   const [error, setError] = useState("");
   function handleSave() {
     const err = validateHoldingDraft(draft);
@@ -384,7 +394,7 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
   return (
     <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
       <div className="mb-4 text-sm font-bold text-emerald-200">새 보유 종목 추가</div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <label className="text-xs text-slate-400">마켓
           <select value={draft.market} onChange={(e) => setDraft({ ...draft, market: e.target.value as "kr"|"us" })}
             className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400">
@@ -402,7 +412,28 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
               className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400" />
           </label>
         ))}
+        <label className="text-xs text-slate-400">
+          손절가
+          <input
+            type="number"
+            value={draft.stopPrice || ""}
+            onChange={(e) => setDraft({ ...draft, stopPrice: e.target.value })}
+            placeholder={draft.market === "kr" ? "65000" : "118.5"}
+            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
+          />
+        </label>
+        <label className="text-xs text-slate-400">
+          목표가
+          <input
+            type="number"
+            value={draft.targetPrice || ""}
+            onChange={(e) => setDraft({ ...draft, targetPrice: e.target.value })}
+            placeholder={draft.market === "kr" ? "82000" : "145"}
+            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
+          />
+        </label>
       </div>
+      <p className="mt-2 text-[11px] text-slate-500">손절가·목표가는 선택 입력입니다. 비워 두면 현재가만 저장됩니다.</p>
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       <div className="mt-4 flex gap-2">
         <button onClick={handleSave} disabled={saving}
@@ -445,6 +476,26 @@ export default function HoldingsPage() {
   const [showRestorePrompt, setShowRestorePrompt] = useState(false);
   const [positionCandidates, setPositionCandidates] = useState<any[]>([]);
   const [positionLoading, setPositionLoading] = useState(false);
+  const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
+
+  function mergeEditableRows(rows: any[]) {
+    const displayMap = new Map(items.map((item: any) => [editableKey(item), item]));
+    return rows.map((row) => {
+      const match = displayMap.get(editableKey(row));
+      if (!match) return row;
+      const merged = toEditableHolding({ ...match, ...row });
+      return {
+        ...row,
+        market: merged.market,
+        symbol: merged.symbol,
+        name: row.name || merged.name,
+        quantity: row.quantity ?? merged.quantity,
+        avgPrice: row.avgPrice ?? merged.avgPrice,
+        stopPrice: row.stopPrice || merged.stopPrice || "",
+        targetPrice: row.targetPrice || merged.targetPrice || "",
+      };
+    });
+  }
 
   async function loadPositionCandidates(nextMarket: Market) {
     setPositionLoading(true);
@@ -515,7 +566,7 @@ export default function HoldingsPage() {
 
   async function loadEditableHoldings() {
     const result = await getJson("/api/holdings-edit?market=all");
-    return Array.isArray(result.items) ? result.items.map(toEditableHolding) : [];
+    return Array.isArray(result.items) ? mergeEditableRows(result.items.map(toEditableHolding)) : [];
   }
 
   async function saveRows(nextRows: any[], successMsg: string) {
@@ -636,7 +687,6 @@ export default function HoldingsPage() {
     } finally { setAddSaving(false); }
   }
 
-  const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
   const summary = data.summary || {};
   const riskCount = Number(summary.riskCount ?? items.filter((item) => ["HIGH","WATCH"].includes(String(item.riskStatus || ""))).length);
   const totalValueText = summary.totalValueText || (items.length > 0 ?
@@ -1071,7 +1121,7 @@ export default function HoldingsPage() {
               {isEditing && editDraft && (
                 <div className="mt-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
                   <div className="mb-3 text-sm font-bold text-blue-200">보유종목 수정</div>
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
                     {(["name","symbol","quantity","avgPrice"] as const).map((field) => (
                       <label key={field} className="text-xs text-slate-400">
                         {field === "name" ? "종목명" : field === "symbol" ? "종목코드/티커" : field === "quantity" ? "수량" : "평균단가"}
@@ -1081,6 +1131,24 @@ export default function HoldingsPage() {
                           className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400" />
                       </label>
                     ))}
+                    <label className="text-xs text-slate-400">
+                      손절가
+                      <input
+                        type="number"
+                        value={editDraft.stopPrice || ""}
+                        onChange={(e) => setEditDraft({ ...editDraft, stopPrice: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-400">
+                      목표가
+                      <input
+                        type="number"
+                        value={editDraft.targetPrice || ""}
+                        onChange={(e) => setEditDraft({ ...editDraft, targetPrice: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                      />
+                    </label>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button onClick={() => saveEdit(holding)} disabled={savingKey === key}
