@@ -74,6 +74,10 @@ class Trendline:
     slope_pct_per_bar: float = 0.0    # |slope| / avg_price per bar (%)
     is_structurally_valid: bool = True # ascending lows / descending highs
     line_direction: str = "support"    # ascending_support | descending_resistance | falling_support | rising_resistance | flat
+    anchor2_index: int = 0
+    anchor2_price: float = 0.0
+    anchor_score: float = 0.0
+    event_spike_tag: str = "none"
 
     def price_at(self, index: int) -> float:
         return self.slope * index + self.intercept
@@ -461,6 +465,163 @@ def _calc_trendlines(
     support = best_support_line(lows) if len(lows) >= 2 else None
     resistance = best_resistance_line(highs) if len(highs) >= 2 else None
     return support, resistance
+
+
+def _calc_trendlines(
+    candles: list[Candle],
+    pivots: list[Pivot],
+    min_bar_gap: int = 5,
+    max_slope_pct: float = 0.012,
+    touch_tolerance: float = 0.015,
+) -> tuple[Optional[Trendline], Optional[Trendline]]:
+    """Score many pivot-pair candidates and select the best support/resistance."""
+    lows = [p for p in pivots if p.pivot_type == "L"]
+    highs = [p for p in pivots if p.pivot_type == "H"]
+    n = len(candles)
+    avg_price = (sum(c.close for c in candles[-20:]) / min(20, len(candles))) if candles else 1.0
+
+    def event_spike_tag(p: Pivot) -> str:
+        if not candles or p.index <= 0 or p.index >= len(candles):
+            return "none"
+        candle = candles[p.index]
+        recent = candles[max(0, p.index - 20):p.index]
+        avg_volume = sum(c.volume for c in recent) / len(recent) if recent else 0.0
+        if avg_volume > 0 and candle.volume >= avg_volume * 2.0:
+            return "volume_spike"
+        body = abs(candle.close - candle.open)
+        total_range = max(candle.high - candle.low, 1e-9)
+        wick_ratio = 1.0 - (body / total_range)
+        if total_range / max(candle.close, 1e-9) >= 0.08 and wick_ratio >= 0.55:
+            return "long_wick"
+        return "none"
+
+    def make_line(p1: Pivot, p2: Pivot) -> Optional[Trendline]:
+        if p1.index >= p2.index or (p2.index - p1.index) < min_bar_gap:
+            return None
+        slope = (p2.price - p1.price) / (p2.index - p1.index)
+        slope_pct = abs(slope) / avg_price if avg_price > 0 else 0.0
+        if slope_pct > max_slope_pct:
+            return None
+        intercept = p1.price - slope * p1.index
+        end_price = slope * (n - 1) + intercept
+        if end_price <= 0:
+            return None
+        current = candles[-1].close if candles else 0.0
+        if current > 0 and abs(end_price - current) / current > 0.60:
+            return None
+        tag1 = event_spike_tag(p1)
+        tag2 = event_spike_tag(p2)
+        return Trendline(
+            slope=slope,
+            intercept=intercept,
+            start_index=p1.index,
+            end_index=n - 1,
+            start_price=p1.price,
+            end_price=end_price,
+            slope_pct_per_bar=round(slope_pct * 100, 4),
+            anchor2_index=p2.index,
+            anchor2_price=p2.price,
+            event_spike_tag=tag1 if tag1 != "none" else tag2,
+        )
+
+    def count_touches(line: Trendline, same_type_pivots: list[Pivot]) -> int:
+        count = 0
+        for p in same_type_pivots:
+            line_price = line.price_at(p.index)
+            if line_price > 0 and abs(p.price - line_price) / line_price <= touch_tolerance:
+                count += 1
+        return max(count, 2)
+
+    def valid_support(line: Trendline, between: list[Pivot]) -> bool:
+        return all(p.price >= line.price_at(p.index) * 0.995 for p in between)
+
+    def valid_resistance(line: Trendline, between: list[Pivot]) -> bool:
+        return all(p.price <= line.price_at(p.index) * 1.005 for p in between)
+
+    def reaction_score(line: Trendline, kind: str) -> float:
+        anchor2_idx = max(0, min(line.anchor2_index, len(candles) - 1))
+        future = candles[anchor2_idx + 1:min(len(candles), anchor2_idx + 6)]
+        if not future:
+            return 0.0
+        anchor_price = max(line.anchor2_price, 1e-9)
+        if kind == "support":
+            best = max((c.high - anchor_price) / anchor_price for c in future)
+        else:
+            best = max((anchor_price - c.low) / anchor_price for c in future)
+        return max(0.0, min(best * 300.0, 12.0))
+
+    def volume_score(line: Trendline) -> float:
+        idx = max(0, min(line.anchor2_index, len(candles) - 1))
+        recent = candles[max(0, idx - 20):idx]
+        if not recent:
+            return 0.0
+        avg_volume = sum(c.volume for c in recent) / len(recent)
+        if avg_volume <= 0:
+            return 0.0
+        return max(0.0, min(((candles[idx].volume / avg_volume) - 1.0) * 4.0, 8.0))
+
+    def anomaly_penalty(line: Trendline) -> float:
+        if line.event_spike_tag == "long_wick":
+            return 6.0
+        if line.event_spike_tag == "volume_spike":
+            return 3.0
+        return 0.0
+
+    def score_line(line: Trendline, points: list[Pivot], between: list[Pivot], kind: str, structural: bool) -> float:
+        touches = count_touches(line, points)
+        line.touch_count = touches
+        age = max(0, (len(candles) - 1) - line.anchor2_index)
+        recency = max(0.0, 12.0 - age * 0.15)
+        structure = 18.0 if structural else 4.0
+        slope_quality = max(0.0, 10.0 - min(abs(line.slope_pct_per_bar), 1.2) * 6.0)
+        if kind == "support":
+            violations = sum(1 for p in between if p.price < line.price_at(p.index) * 0.99)
+        else:
+            violations = sum(1 for p in between if p.price > line.price_at(p.index) * 1.01)
+        score = (
+            28.0
+            + min(touches, 5) * 8.0
+            + structure
+            + recency
+            + slope_quality
+            + reaction_score(line, kind)
+            + volume_score(line)
+            - anomaly_penalty(line)
+            - violations * 6.0
+        )
+        return max(0.0, min(score, 100.0))
+
+    def best_line(points: list[Pivot], kind: str) -> Optional[Trendline]:
+        if len(points) < 2:
+            return None
+        scan = points[-14:] if len(points) > 14 else points
+        candidates: list[Trendline] = []
+        for i in range(len(scan) - 1, 0, -1):
+            p2 = scan[i]
+            for j in range(i - 1, -1, -1):
+                p1 = scan[j]
+                line = make_line(p1, p2)
+                if line is None:
+                    continue
+                between = [p for p in points if p1.index < p.index < p2.index]
+                if kind == "support":
+                    if not valid_support(line, between):
+                        continue
+                    structural = p2.price > p1.price
+                    line.line_direction = "ascending_support" if structural else ("falling_support" if line.slope < -1e-6 else "flat_support")
+                else:
+                    if not valid_resistance(line, between):
+                        continue
+                    structural = p2.price < p1.price
+                    line.line_direction = "descending_resistance" if structural else ("rising_resistance" if line.slope > 1e-6 else "flat_resistance")
+                line.is_structurally_valid = structural
+                line.anchor_score = round(score_line(line, points, between, kind, structural), 2)
+                candidates.append(line)
+        if not candidates:
+            return None
+        return sorted(candidates, key=lambda line: (line.anchor_score, line.touch_count, line.anchor2_index), reverse=True)[0]
+
+    return best_line(lows, "support"), best_line(highs, "resistance")
 
 
 def _calc_retracements(pivots: list[Pivot]) -> list[RetracementLevel]:
@@ -1223,6 +1384,10 @@ def state_to_dict(state: ChartAnalysisState) -> dict[str, Any]:
             "slopePctPerBar": t.slope_pct_per_bar,
             "isStructurallyValid": t.is_structurally_valid,
             "lineDirection": t.line_direction,
+            "anchor2Index": t.anchor2_index,
+            "anchor2Price": round(t.anchor2_price, 4),
+            "anchorScore": round(t.anchor_score, 2),
+            "eventSpikeTag": t.event_spike_tag,
         }
 
     def zone_d(z: SupplyDemandZone) -> dict:
