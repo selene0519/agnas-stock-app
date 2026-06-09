@@ -70,7 +70,7 @@ def _kis_access_token(force_refresh: bool = False) -> str:
             cache = data.read_json(KIS_TOKEN_CACHE_FILE)
             token = str(cache.get("access_token", "") or "")
             expires_at = _safe_float(cache.get("expires_at")) or 0
-            if token and expires_at > time.time() + 180:
+            if token and expires_at > time.time() + 600:  # 만료 10분 전 미리 갱신
                 return token
     except Exception:
         pass
