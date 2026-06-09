@@ -6,19 +6,24 @@ import {
   Cpu,
   LayoutDashboard,
   LogIn,
+  LogOut,
   MoreHorizontal,
   Search,
   ShieldCheck,
+  UserRound,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import type { PageId } from "./Sidebar";
+import type { MoneUserProfile } from "@/lib/userId";
 
 interface BottomNavProps {
   current: PageId;
   onChange: (id: PageId) => void;
   isAdmin?: boolean;
   onAdminLogin?: () => void;
+  userProfile?: MoneUserProfile | null;
+  onUserLogout?: () => void;
 }
 
 const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
@@ -39,7 +44,7 @@ const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementTy
   Icon: ShieldCheck,
 };
 
-export default function BottomNav({ current, onChange, isAdmin = false, onAdminLogin }: BottomNavProps) {
+export default function BottomNav({ current, onChange, isAdmin = false, onAdminLogin, userProfile, onUserLogout }: BottomNavProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const visibleMoreTabs = isAdmin ? [...moreTabs, adminTab] : moreTabs;
   const isMoreActive = current === "admin" || visibleMoreTabs.some((t) => t.id === current);
@@ -94,24 +99,47 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                 </button>
               ))}
               {!isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onAdminLogin?.();
-                    setMoreOpen(false);
-                  }}
-                  className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-95 ${
-                    current === "admin" ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30" : "bg-slate-800 text-slate-300 active:bg-slate-700"
-                  }`}
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-950/70">
-                    <LogIn size={18} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-bold">로그인</span>
-                    <span className="mt-0.5 block text-[11px] text-slate-500">관리자, 카카오, 구글 로그인</span>
-                  </span>
-                </button>
+                userProfile ? (
+                  /* OAuth 로그인 상태 */
+                  <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 p-3 ring-1 ring-amber-500/20">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
+                      <UserRound size={18} className="text-amber-300" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-bold text-amber-200">
+                        {userProfile.name || userProfile.email || userProfile.provider || "사용자"}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500">로그인됨 · {userProfile.provider || "oauth"}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { onUserLogout?.(); setMoreOpen(false); }}
+                      className="shrink-0 text-slate-500 hover:text-slate-200"
+                      title="로그아웃"
+                    >
+                      <LogOut size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAdminLogin?.();
+                      setMoreOpen(false);
+                    }}
+                    className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-95 ${
+                      current === "admin" ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30" : "bg-slate-800 text-slate-300 active:bg-slate-700"
+                    }`}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-950/70">
+                      <LogIn size={18} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-bold">로그인</span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500">관리자, 카카오, 구글 로그인</span>
+                    </span>
+                  </button>
+                )
               )}
             </div>
           </div>
