@@ -383,22 +383,22 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     rf = _MODE_RISK[mode]; rwf = _MODE_REWARD[mode]
     entry = current
 
-    # ATR 기반 손절가 (데이터 있으면 우선, 없으면 고정 %)
+    # ATR 기반 손절가/목표가 (6중필터 고도화: 손절 ATR×1.5, 목표 ATR×4.5 → RR 3.0 목표)
     atr14 = ind.get("atr14") if ind else None
-    atr_mult = {"conservative": 1.5, "balanced": 2.0, "aggressive": 2.5}.get(mode, 2.0)
     if atr14 and atr14 > 0 and current > 0:
-        atr_stop = round(entry - atr14 * atr_mult)
-        fixed_stop = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
-        # ATR 손절이 합리적 범위(-3% ~ -15%) 내에 있으면 ATR 우선
+        atr_stop = round(entry - atr14 * 1.5)
+        atr_target = round(entry + atr14 * 4.5)
+        # ATR 손절이 합리적 범위(-2% ~ -15%) 내에 있으면 ATR 우선
         atr_pct = (entry - atr_stop) / entry * 100
         if 2.0 <= atr_pct <= 15.0:
             stop = atr_stop
+            target = atr_target
         else:
-            stop = fixed_stop
+            stop = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
+            target = round(entry * (1.0 + (band["target"] - 1.0) * rwf))
     else:
         stop = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
-
-    target = round(entry * (1.0 + (band["target"] - 1.0) * rwf))
+        target = round(entry * (1.0 + (band["target"] - 1.0) * rwf))
     # 승률: strategy_win_rates.json 에서 로드 (가상운용 누적 시 자동 보정)
     _rates_path = ROOT / "reports" / "strategy_win_rates.json"
     try:
@@ -962,9 +962,9 @@ def generate_recommendations() -> dict[str, Any]:
     regime_label = regime.get("label", "횡보장")
     regime_type = regime.get("regime", "SIDE")
 
-    # 약세장: 보수형만 허용, 최소 점수 상향
-    min_score_by_regime = {"BULL": 45.0, "SIDE": 50.0, "BEAR": 58.0}
-    min_score_global = min_score_by_regime.get(regime_type, 50.0)
+    # 6중필터 고도화: 최소 점수 상향 (상위 35%만 통과)
+    min_score_by_regime = {"BULL": 55.0, "SIDE": 65.0, "BEAR": 68.0}
+    min_score_global = min_score_by_regime.get(regime_type, 65.0)
 
     # 전체 종목 스코어 계산
     all_scored: list[dict] = []
@@ -1035,6 +1035,39 @@ def generate_recommendations() -> dict[str, Any]:
                 sym = c["symbol"]
                 current = c["current"]
                 ind = c["ind"]
+
+                # ── 6중 필터 (전략고도화 v2) ──────────────────────────────
+                # 필터 A: 삼중 MA 정배열 (MA5 > MA20 > MA60)
+                _ma5 = ind.get("ma5"); _ma20 = ind.get("ma20"); _ma60 = ind.get("ma60")
+                if not (_ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60):
+                    continue
+
+                # 필터 B: RSI 스윗존 40-70
+                _rsi = ind.get("rsi14")
+                if _rsi is None or not (40 <= _rsi <= 70):
+                    continue
+
+                # 필터 C: 거래량 평균 120% 이상
+                _vr = ind.get("volumeRatio20")
+                if _vr is None or _vr < 1.2:
+                    continue
+
+                # 필터 D: 이격도 -15% ~ +10%
+                _d20 = ind.get("distanceToMa20")
+                if _d20 is None or _d20 > 10 or _d20 < -15:
+                    continue
+
+                # 필터 E: 손익비 2.0 이상 (예비 계산)
+                _atr14 = ind.get("atr14")
+                if _atr14 and _atr14 > 0 and current > 0:
+                    _pre_stop = current - _atr14 * 1.5
+                    _pre_target = current + _atr14 * 4.5
+                    _pre_risk = abs(current - _pre_stop) / current * 100 if current > 0 else 0
+                    _pre_rr = (_pre_target - current) / max(current - _pre_stop, 1e-9)
+                    if _pre_rr < 2.0:
+                        continue
+                # ─────────────────────────────────────────────────────────
+
                 entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon, ind)
 
                 # EV 음수 필터링 (보수형은 엄격, 균형/공격은 경고만)
