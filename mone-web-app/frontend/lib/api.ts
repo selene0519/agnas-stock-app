@@ -23,6 +23,52 @@ export interface ApiList<T = any> {
   [key: string]: any;
 }
 
+/** 추천 카드 아이템 타입 — 4차 이벤트 필드 포함 */
+export interface RecommendationItem {
+  symbol: string;
+  name?: string;
+  market?: string;
+  mode?: string;
+  horizon?: string;
+  currentPrice?: number;
+  entry?: number;
+  stop?: number;
+  target?: number;
+  opportunityScore?: number;
+  entryScore?: number;
+  riskScore?: number;
+  finalRankScore?: number;
+  decisionBucket?: string;
+  buyTiming?: string;
+  sellTiming?: string;
+  newEntryDecision?: string;
+  holderDecision?: string;
+  recommended?: boolean;
+  executionStatus?: string;
+  exitStatus?: string;
+  pnlText?: string;
+  eventBadges?: string[];
+  eventBadgesText?: string;
+  eventRiskScore?: number;
+  newsReliabilityScore?: number;
+  surgeLabel?: string;
+  surgeReason?: string;
+  eventContext?: string;
+  dataSourceType?: string;
+  // 4차 이벤트 컨텍스트 필드
+  eventContextUsed?: boolean;
+  newsEventTag?: string;
+  disclosureEventTag?: string;
+  earningsEventTag?: string;
+  macroEventTag?: string;
+  sectorEventTag?: string;
+  eventReliabilityScore?: number;
+  eventSummary?: string;
+  eventDataSourceType?: string;
+  eventScoreAdjustment?: number;
+  [key: string]: any;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/mone-api";
 const DIRECT_BACKEND = process.env.NEXT_PUBLIC_DIRECT_API_BASE_URL || "";
 const configuredTimeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 90000);
@@ -300,7 +346,7 @@ export const mone = {
   journalDelete: (id: string) =>
     fetch(buildUrl(API_BASE, `/api/journal/${id}`), { method: "DELETE" }).then(r => r.json()),
   recommendations: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }, signal?: AbortSignal) =>
-    apiGet<ApiList>("/api/final/recommendations", p, signal),
+    apiGet<ApiList<RecommendationItem>>("/api/final/recommendations", p, signal),
   recommendationDetail: (p: { market?: Market; symbol: string }, signal?: AbortSignal) =>
     apiGet<ApiList>("/api/final/recommendation-detail", p, signal),
   candidates: (p?: { market?: Market; strategy?: Mode | string; term?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }) =>
