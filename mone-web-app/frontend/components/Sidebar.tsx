@@ -11,9 +11,11 @@ import {
   MoreHorizontal,
   Search,
   ShieldCheck,
+  UserRound,
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import type { MoneUserProfile } from "@/lib/userId";
 
 export type PageId =
   | "home"
@@ -49,6 +51,8 @@ interface Props {
   isAdmin?: boolean;
   onAdminLogin?: () => void;
   onAdminLogout?: () => void;
+  userProfile?: MoneUserProfile | null;
+  onUserLogout?: () => void;
 }
 
 function BrandMark({ collapsed }: { collapsed: boolean }) {
@@ -71,7 +75,7 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-export default function Sidebar({ current, onChange, isAdmin = false, onAdminLogin, onAdminLogout }: Props) {
+export default function Sidebar({ current, onChange, isAdmin = false, onAdminLogin, onAdminLogout, userProfile, onUserLogout }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const visibleMoreItems = isAdmin ? [...moreItems, adminItem] : moreItems;
 
@@ -123,14 +127,28 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
             </button>
           ))}
           {!collapsed && (
-            <button
-              type="button"
-              className={`nav-item w-full opacity-70 hover:opacity-100 ${current === "admin" && !isAdmin ? "active opacity-100" : ""}`}
-              onClick={isAdmin ? onAdminLogout : onAdminLogin}
-            >
-              <span className="shrink-0">{isAdmin ? <LogOut size={16} /> : <LogIn size={16} />}</span>
-              <span>{isAdmin ? "관리자 로그아웃" : "로그인"}</span>
-            </button>
+            userProfile ? (
+              /* OAuth 로그인 상태 */
+              <div className="flex items-center gap-2 rounded-lg px-3 py-2">
+                <UserRound size={14} className="shrink-0 text-amber-400" />
+                <span className="min-w-0 flex-1 truncate text-xs text-slate-300">
+                  {userProfile.name || userProfile.email || userProfile.provider || "사용자"}
+                </span>
+                <button type="button" onClick={onUserLogout} title="로그아웃" className="shrink-0 text-slate-500 hover:text-slate-200">
+                  <LogOut size={13} />
+                </button>
+              </div>
+            ) : (
+              /* 비로그인 / 관리자 상태 */
+              <button
+                type="button"
+                className={`nav-item w-full opacity-70 hover:opacity-100 ${current === "admin" && !isAdmin ? "active opacity-100" : ""}`}
+                onClick={isAdmin ? onAdminLogout : onAdminLogin}
+              >
+                <span className="shrink-0">{isAdmin ? <LogOut size={16} /> : <LogIn size={16} />}</span>
+                <span>{isAdmin ? "관리자 로그아웃" : "로그인"}</span>
+              </button>
+            )
           )}
         </div>
       </nav>

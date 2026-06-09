@@ -19,7 +19,7 @@ import AdminPage from "../components/pages/AdminPage";
 import AdminLoginPage from "../components/pages/AdminLoginPage";
 import { mone } from "../lib/api";
 import { clearAdminToken, getAdminToken, saveAdminToken } from "../lib/adminAuth";
-import { getUserId } from "../lib/userId";
+import { clearAuthenticatedUser, getUserId, getUserProfile, type MoneUserProfile } from "../lib/userId";
 import { getDefaultMarketBySession } from "../lib/marketSession";
 
 const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
@@ -35,10 +35,12 @@ export default function App() {
   const [error, setError] = useState("");
   const [, setDataVersion] = useState(0);
   const [adminToken, setAdminTokenState] = useState("");
+  const [userProfile, setUserProfile] = useState<MoneUserProfile | null>(null);
 
   useEffect(() => {
     setMounted(true);
     setAdminTokenState(getAdminToken());
+    setUserProfile(getUserProfile());
     getUserId(); // 최초 방문 시 UUID 생성 및 localStorage 저장
     // Render free-tier cold-start 방지: 앱 로드 즉시 백엔드 warm-up ping (결과 무시)
     fetch("/mone-api/health", { cache: "no-store" }).catch(() => {});
@@ -116,6 +118,12 @@ export default function App() {
     setPage("home");
   }, []);
 
+  const handleUserLogout = useCallback(() => {
+    clearAuthenticatedUser();
+    setUserProfile(null);
+    setPage("home");
+  }, []);
+
   const openAdminLogin = useCallback(() => {
     setPage("admin");
   }, []);
@@ -143,7 +151,9 @@ export default function App() {
       case "advanced":
         return <AdvancedPage />;
       case "admin":
-        return adminToken ? <AdminPage authToken={adminToken} onLogout={handleAdminLogout} /> : <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
+        if (adminToken) return <AdminPage authToken={adminToken} onLogout={handleAdminLogout} />;
+        if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} />; }
+        return <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       default:
         return <HomePage />;
     }
@@ -161,7 +171,7 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
       {/* 데스크톱 사이드바 */}
-      <Sidebar current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} onAdminLogout={handleAdminLogout} />
+      <Sidebar current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} onAdminLogout={handleAdminLogout} userProfile={userProfile} onUserLogout={handleUserLogout} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* 헤더 */}
@@ -260,7 +270,7 @@ export default function App() {
       </div>
 
       {/* 모바일 하단 탭바 */}
-      <BottomNav current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} />
+      <BottomNav current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} userProfile={userProfile} onUserLogout={handleUserLogout} />
     </div>
   );
 }
