@@ -1151,6 +1151,17 @@ def api_trendline_accuracy(
     return chart_accuracy.trendline_accuracy(market, futureBars, symbolLimit, maxCutoffs, include_items=includeItems)
 
 
+@app.get("/api/insights/trendline-anchor-learning")
+def api_trendline_anchor_learning(
+    market: str = Query("all", pattern="^(kr|us|all)$"),
+    symbol: str = Query(""),
+    limit: int = Query(200, ge=1, le=1000),
+) -> dict:
+    from app.services import trendline_learning
+
+    return trendline_learning.learning_report(market.lower(), symbol.upper().strip(), limit)
+
+
 @app.get("/api/history/predictions")
 def api_prediction_history(market: str | None = Query(None, pattern="^(kr|us)$")) -> dict:
     return final_engine.admin_prediction_history(_market(market) if market else None)

@@ -12,6 +12,7 @@ import pandas as pd
 
 from app.engine.chart_analysis_engine import build_chart_analysis, state_to_dict
 from app.services import data_loader as data
+from app.services import trendline_learning
 
 MARKETS = ("kr", "us")
 MODES = ("conservative", "balanced", "aggressive")
@@ -193,6 +194,18 @@ def _chart_signal_overlay(symbol: str, market: str, normalized: dict[str, Any], 
         "trendlineDistancePct": None,
         "riskRewardRatio": None,
         "chartScoreAdjustment": 0.0,
+        "trendlineProjected5d": None,
+        "trendlineProjected20d": None,
+        "trendlineProjected60d": None,
+        "trendlineBandUpper": None,
+        "trendlineBandLower": None,
+        "trendlineAnchorScore": 0.0,
+        "trendlineHistoricalWinRate": None,
+        "trendlineLearningStatus": "NO_DATA",
+        "trendlineDataSourceType": data_source_type,
+        "trendlineLearningEligible": data_source_type == "actual_ohlcv",
+        "trendlineBandPct": 0.0,
+        "trendlineBandAllowed": False,
     }
     if df.empty or len(df) < 20:
         base["chartSignalSummary"]["notes"].append("OHLCV unavailable or insufficient; chart signals not applied")
@@ -211,6 +224,14 @@ def _chart_signal_overlay(symbol: str, market: str, normalized: dict[str, Any], 
         base["chartSignalSummary"]["status"] = "error"
         base["chartSignalSummary"]["notes"].append(f"chart analysis failed: {exc}")
         return base
+    trendline_overlay = trendline_learning.analyze(
+        market=market,
+        symbol=symbol,
+        rows=rows,
+        chart=chart,
+        horizon=horizon,
+        data_source_type=data_source_type,
+    )
 
     current = _num(normalized.get("currentPrice")) or _num(df["close"].iloc[-1] if "close" in df and len(df) else None)
     entry = _num(normalized.get("entry"))
@@ -250,6 +271,12 @@ def _chart_signal_overlay(symbol: str, market: str, normalized: dict[str, Any], 
     )
     resistance_line = chart.get("resistanceLine") if isinstance(chart.get("resistanceLine"), dict) else {}
     falling_resistance_break = resistance_break and resistance_line.get("lineDirection") in {"descending_resistance", "falling_resistance"}
+    trendline_status = _as_text(trendline_overlay.get("trendlineLearningStatus"))
+    trendline_verified = trendline_status == "VERIFIED" and bool(trendline_overlay.get("trendlineLearningEligible")) and bool(trendline_overlay.get("trendlineBandAllowed"))
+    trendline_failed_history = trendline_status == "FAILED_ANCHOR_HISTORY"
+    learned_line_type = _as_text(trendline_overlay.get("trendlineLineType"))
+    trendline_hold = bool(trendline_hold and trendline_verified and learned_line_type == "support")
+    falling_resistance_break = bool(falling_resistance_break and trendline_verified and learned_line_type == "resistance")
     fake_breakout_risk = False
     if breakout == "UP" and resistance is not None and current is not None and current < resistance * 1.012:
         fake_breakout_risk = True
@@ -278,6 +305,9 @@ def _chart_signal_overlay(symbol: str, market: str, normalized: dict[str, Any], 
     if falling_resistance_break:
         adjustment += 4.0
         used.append("falling_trendline_break")
+    if trendline_failed_history:
+        adjustment -= 4.0
+        used.append("failed_anchor_history")
     if fake_breakout_risk:
         adjustment -= 6.0
         used.append("fake_breakout_risk")
@@ -293,13 +323,24 @@ def _chart_signal_overlay(symbol: str, market: str, normalized: dict[str, Any], 
     adjustment = float(data._clamp(adjustment, -12, 12))  # type: ignore[attr-defined]
     chart_used = bool(used) or data_source_type != "actual_ohlcv"
     if chart_used:
-        badges.append("차트 신호 반영")
-        badges.append("추천 반영")
+        badges.append("chart_signal_used")
+        badges.append("recommendation_reflected")
     else:
-        badges.append("차트 표시만")
+        badges.append("chart_display_only")
+    trendline_recommendation_used = bool(trendline_hold or falling_resistance_break)
+    if trendline_verified:
+        badges.append("verified_trendline")
+    if trendline_recommendation_used:
+        badges.append("trendline_recommendation_used")
+    else:
+        badges.append("trendline_chart_display_only")
+    if trendline_status == "INSUFFICIENT_SAMPLE":
+        badges.append("insufficient_trendline_samples")
+    badges.append("actual_ohlcv_based" if data_source_type == "actual_ohlcv" else "fallback_based")
 
     return {
         **base,
+        **trendline_overlay,
         "chartSignalUsed": chart_used,
         "lineSignalUsed": bool(support_used or resistance_break or trendline_hold or falling_resistance_break),
         "supportResistanceUsed": bool(support_used or resistance_break or resistance_near),
@@ -328,6 +369,7 @@ def _chart_signal_overlay(symbol: str, market: str, normalized: dict[str, Any], 
             "displayOnly": display_only,
             "usedSignals": used,
             "badges": list(dict.fromkeys(badges)),
+            "trendlineLearning": trendline_overlay,
             "source": source,
             "dataQuality": chart.get("dataQuality"),
             "supportLine": chart.get("supportLine"),

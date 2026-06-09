@@ -325,6 +325,8 @@ export const mone = {
     apiGet<ApiList>("/api/insights/chart-analysis-accuracy", p),
   trendlineAccuracy: (p?: { market?: Market | "all"; futureBars?: number; symbolLimit?: number; maxCutoffs?: number; includeItems?: boolean }) =>
     apiGet<ApiList>("/api/insights/trendline-accuracy", p),
+  trendlineAnchorLearning: (p?: { market?: Market | "all"; symbol?: string; limit?: number }) =>
+    apiGet<ApiList>("/api/insights/trendline-anchor-learning", p),
   holdings: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/holdings", p),
   holdingsClean: (p?: { market?: Market; limit?: number }) =>
