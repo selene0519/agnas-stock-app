@@ -83,6 +83,7 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
       method,
       headers,
       cache: "no-store",
+      redirect: "manual",
       signal: timeoutController.signal,
     };
 
@@ -101,10 +102,14 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
     const responseHeaders = new Headers();
 
     const backendContentType = backendRes.headers.get("content-type");
+    const backendLocation = backendRes.headers.get("location");
     if (backendContentType) {
       responseHeaders.set("content-type", backendContentType);
     } else {
       responseHeaders.set("content-type", "application/json; charset=utf-8");
+    }
+    if (backendLocation && backendRes.status >= 300 && backendRes.status < 400) {
+      responseHeaders.set("location", backendLocation);
     }
     responseHeaders.set("cache-control", "no-store");
 
