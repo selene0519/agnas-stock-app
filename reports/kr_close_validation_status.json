@@ -1,61 +1,70 @@
 {
   "date": "2026-06-09",
-  "created": [],
-  "skipped": [
+  "created": [
     {
       "mode": "conservative",
       "horizon": "short",
-      "rows": 8,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_conservative_short_20260609.csv",
+      "rows": 5,
+      "normalRows": 5
     },
     {
       "mode": "conservative",
       "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_kr_conservative_swing_20260609.csv",
       "rows": 11,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 11
     },
     {
       "mode": "conservative",
       "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_conservative_mid_20260609.csv",
       "rows": 11,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 11
     },
     {
       "mode": "balanced",
       "horizon": "short",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_balanced_short_20260609.csv",
+      "rows": 1,
+      "normalRows": 1
     },
     {
       "mode": "balanced",
       "horizon": "swing",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_balanced_swing_20260609.csv",
+      "rows": 4,
+      "normalRows": 4
     },
     {
       "mode": "balanced",
       "horizon": "mid",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_balanced_mid_20260609.csv",
+      "rows": 9,
+      "normalRows": 9
     },
     {
       "mode": "aggressive",
       "horizon": "short",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_aggressive_short_20260609.csv",
+      "rows": 20,
+      "normalRows": 20
     },
     {
       "mode": "aggressive",
       "horizon": "swing",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_aggressive_swing_20260609.csv",
+      "rows": 20,
+      "normalRows": 20
     },
     {
       "mode": "aggressive",
       "horizon": "mid",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_aggressive_mid_20260609.csv",
+      "rows": 20,
+      "normalRows": 20
     }
   ],
-  "updatedAt": "2026-06-09T08:55:36"
+  "skipped": [],
+  "updatedAt": "2026-06-09T20:26:40"
 }
