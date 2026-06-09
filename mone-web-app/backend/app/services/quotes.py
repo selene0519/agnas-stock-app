@@ -281,11 +281,18 @@ def _ohlcv_path(symbol: str, market: str) -> Path:
     return data.REPO_ROOT / "data" / "market" / "ohlcv" / f"{market}_{normalized}_daily.csv"
 
 
+def _normalize_ohlcv_date(value: Any) -> str:
+    raw = str(value or "").strip()
+    if len(raw) == 8 and raw.isdigit():
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:]}"
+    return raw[:10]
+
+
 def _write_ohlcv(symbol: str, market: str, rows: list[dict[str, Any]], source: str) -> dict[str, Any]:
     normalized = data.normalize_symbol(symbol, market)
     cleaned: dict[str, dict[str, Any]] = {}
     for row in rows:
-        date_text = str(row.get("date") or "").strip()
+        date_text = _normalize_ohlcv_date(row.get("date"))
         close = _safe_float(row.get("close"))
         if not date_text or not close or close <= 0:
             continue

@@ -141,6 +141,9 @@ class ProjectionLine:
     kind: Literal["support", "resistance", "retracement"]
     source_status: str
     active: bool
+    band_top: float = 0.0
+    band_bottom: float = 0.0
+    band_width: float = 0.0
 
 
 @dataclass
@@ -261,6 +264,31 @@ def _calc_atr_threshold(candles: list[Candle], period: int = 14) -> float:
     avg_price = sum(c.close for c in recent) / len(recent)
     atr_pct = atr / avg_price if avg_price > 0 else 0.05
     return max(0.02, min(0.10, atr_pct * 1.5))
+
+
+def _calc_atr_value(candles: list[Candle], period: int = 14) -> float:
+    if len(candles) < 2:
+        return 0.0
+    recent = candles[-min(len(candles), period + 1):]
+    values = []
+    for i in range(1, len(recent)):
+        h, l, pc = recent[i].high, recent[i].low, recent[i - 1].close
+        values.append(max(h - l, abs(h - pc), abs(l - pc)))
+    return sum(values) / len(values) if values else 0.0
+
+
+def _projection_band_width(candles: list[Candle], horizon_bars: int) -> float:
+    current_price = candles[-1].close if candles else 0.0
+    atr = _calc_atr_value(candles)
+    if current_price <= 0 or atr <= 0:
+        return 0.0
+    if horizon_bars <= 20:
+        atr_mult, max_pct = 0.35, 0.008
+    elif horizon_bars <= 60:
+        atr_mult, max_pct = 0.50, 0.012
+    else:
+        atr_mult, max_pct = 0.70, 0.018
+    return max(0.0, min(atr * atr_mult, current_price * max_pct))
 
 
 def _calc_zigzag(
@@ -930,6 +958,7 @@ def _build_projection(
     to_index = T + horizon_bars
     current_price = candles[-1].close if candles else 0
     proj = ChartProjectionState(horizon_bars=horizon_bars, notes=list(COMPLIANCE_NOTES))
+    band_width = _projection_band_width(candles, horizon_bars)
 
     # Extend trendlines
     if support:
@@ -942,6 +971,9 @@ def _build_projection(
             kind="support",
             source_status=signal_status,
             active=active,
+            band_top=to_price + band_width,
+            band_bottom=max(0.0, to_price - band_width),
+            band_width=band_width,
         ))
 
     if resistance:
@@ -953,6 +985,9 @@ def _build_projection(
             kind="resistance",
             source_status=signal_status,
             active=active,
+            band_top=to_price + band_width,
+            band_bottom=max(0.0, to_price - band_width),
+            band_width=band_width,
         ))
 
     # Extend zones
@@ -976,6 +1011,9 @@ def _build_projection(
                 kind="retracement",
                 source_status=signal_status,
                 active=active,
+                band_top=r.price + band_width,
+                band_bottom=max(0.0, r.price - band_width),
+                band_width=band_width,
             ))
 
     return proj
@@ -1205,7 +1243,9 @@ def state_to_dict(state: ChartAnalysisState) -> dict[str, Any]:
     def proj_line_d(p: ProjectionLine) -> dict:
         return {"fromIndex": p.from_index, "toIndex": p.to_index,
                 "fromPrice": round(p.from_price, 4), "toPrice": round(p.to_price, 4),
-                "kind": p.kind, "sourceStatus": p.source_status, "active": p.active}
+                "kind": p.kind, "sourceStatus": p.source_status, "active": p.active,
+                "bandTop": round(p.band_top, 4), "bandBottom": round(p.band_bottom, 4),
+                "bandWidth": round(p.band_width, 4)}
 
     def proj_zone_d(p: ProjectionZone) -> dict:
         return {"zoneId": p.zone_id, "fromIndex": p.from_index, "toIndex": p.to_index,
