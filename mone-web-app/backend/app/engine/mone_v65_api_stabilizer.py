@@ -14,6 +14,8 @@ from typing import Any, Callable
 from fastapi import Body, Query
 from fastapi.routing import APIRoute
 
+from app.services import runtime_limits
+
 
 KR_NAME_FALLBACK: dict[str, str] = {
     "005930": "삼성전자",
@@ -1978,6 +1980,8 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
     market = _market_norm(market)
     mode = _mode_norm(mode)
     horizon = _horizon_norm(horizon)
+    max_allowed = min(50, runtime_limits.recommendation_max_symbols())
+    limit = runtime_limits.clamp_limit(limit, 20, max_allowed)
 
     if market == "all":
         merged: list[dict[str, Any]] = []
@@ -1995,8 +1999,15 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
                 continue
             seen.add(key)
             deduped.append(item)
-            if len(deduped) >= max(1, min(limit, 1000)):
+            if len(deduped) >= limit:
                 break
+        limit_meta = runtime_limits.limit_meta(
+            total_count=len(merged),
+            processed_count=len(deduped),
+            limit=limit,
+            max_allowed=max_allowed,
+            dataSourceType="mixed",
+        )
         return {
             "status": "OK" if deduped else "NO_DATA",
             "market": "all",
@@ -2005,6 +2016,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             "count": len(deduped),
             "uniqueCount": len(seen),
             "hiddenCount": 0,
+            **limit_meta,
             "scanCoverage": {"kr": _scan_coverage_fast("kr"), "us": _scan_coverage_fast("us")},
             "validationPolicy": _validation_policy_payload(),
             "sourceFiles": source_files[:20],
@@ -2019,10 +2031,13 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
     source_files: list[str] = []
     correction_state: dict[str, Any] = _light_correction_summary(market, mode, horizon)
 
+    scanned_count = 0
+    scan_limit = min(max(limit * 3, limit), max_allowed * 3)
     for path, source_status in _recommendation_paths(market, mode, horizon):
         if path.name not in source_files:
             source_files.append(path.name)
-        rows = _read_csv(path, 50000)
+        rows = _read_csv(path, scan_limit)
+        scanned_count += len(rows)
         for row in rows:
             source_mode, source_horizon = _extract_source_mode_horizon(path, row)
             if source_status == "MATCH":
@@ -2057,9 +2072,9 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             item = _apply_chart_signal_overlay(item, mode, horizon)
             seen.add(key)
             items.append(item)
-            if len(items) >= max(1, min(limit, 1000)):
+            if len(items) >= limit:
                 break
-        if len(items) >= max(1, min(limit, 1000)):
+        if len(items) >= limit:
             break
 
     # ── EV 필터링 및 마켓 레짐 정보 수집
@@ -2105,6 +2120,13 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
     except Exception:
         pass
 
+    limit_meta = runtime_limits.limit_meta(
+        total_count=max(scanned_count, len(items)),
+        processed_count=len(items),
+        limit=limit,
+        max_allowed=max_allowed,
+        dataSourceType="mixed",
+    )
     return {
         "status": "OK" if filtered_items else "NO_DATA",
         "market": market,
@@ -2113,6 +2135,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         "count": len(filtered_items),
         "uniqueCount": len(seen),
         "hiddenCount": hidden_count,
+        **limit_meta,
         "evNegativeCount": ev_negative_count,
         "evHardFiltered": ev_hard_filtered_count,
         "evNegativeFiltered": ev_hard_filtered_count + (ev_negative_count - ev_hard_filtered_count if mode == "conservative" else 0),
@@ -3886,7 +3909,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         market: str = Query("all"),
         mode: str = Query("all"),
         horizon: str = Query("all"),
-        limit: int = Query(300),
+        limit: int = Query(50, ge=1, le=200),
     ) -> dict[str, Any]:
         def payload() -> dict[str, Any]:
             from app.services import signal_ledger as sl
@@ -3895,7 +3918,9 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
                 market=_market_norm(market),
                 mode=_mode_norm(mode) if mode != "all" else "all",
                 horizon=_horizon_norm(horizon) if horizon != "all" else "all",
-                limit=max(1, min(limit, 1000)),
+                limit=limit,
+                max_rows=runtime_limits.validation_max_rows(),
+                limit_max_allowed=200,
             )
         return _safe_payload(payload, "/api/validation/recommendations")
 
@@ -3904,6 +3929,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         market: str = Query("all"),
         mode: str = Query("all"),
         horizon: str = Query("all"),
+        max_rows: int = Query(500, ge=1, le=5000),
     ) -> dict[str, Any]:
         def payload() -> dict[str, Any]:
             from app.services import signal_ledger as sl
@@ -3912,6 +3938,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
                 market=_market_norm(market),
                 mode=_mode_norm(mode) if mode != "all" else "all",
                 horizon=_horizon_norm(horizon) if horizon != "all" else "all",
+                max_rows=max_rows,
             )
         return _safe_payload(payload, "/api/validation/recommendations/summary")
 
@@ -3920,6 +3947,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         market: str = Query("all"),
         mode: str = Query("all"),
         horizon: str = Query("all"),
+        max_rows: int = Query(500, ge=1, le=5000),
     ) -> dict[str, Any]:
         def payload() -> dict[str, Any]:
             from app.services import signal_ledger as sl
@@ -3928,6 +3956,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
                 market=_market_norm(market),
                 mode=_mode_norm(mode) if mode != "all" else "all",
                 horizon=_horizon_norm(horizon) if horizon != "all" else "all",
+                max_rows=max_rows,
             )
         return _safe_payload(payload, "/api/validation/recommendations/by-signal")
 
@@ -3980,7 +4009,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         mode: str = Query("balanced"),
         horizon: str = Query("swing"),
         cash: float = Query(0),
-        limit: int = Query(120),
+        limit: int = Query(20, ge=1, le=50),
         watchOnly: bool = Query(False),
     ) -> dict[str, Any]:
         return _safe_payload(lambda: _recommendations_payload(market, mode, horizon, cash, limit, watchOnly), "/api/final/recommendations")
@@ -3991,7 +4020,7 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         strategy: str = Query("balanced"),
         term: str = Query("swing"),
         cash: float = Query(0),
-        limit: int = Query(120),
+        limit: int = Query(20, ge=1, le=50),
         watchOnly: bool = Query(False),
     ) -> dict[str, Any]:
         return _safe_payload(lambda: _recommendations_payload(market, strategy, term, cash, limit, watchOnly), "/api/v1/candidates")

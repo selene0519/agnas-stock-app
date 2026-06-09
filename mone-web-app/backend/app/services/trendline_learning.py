@@ -12,6 +12,7 @@ import pandas as pd
 
 from app.engine.chart_analysis_engine import _calc_atr_threshold, _calc_trendlines, _calc_zigzag, _rows_to_candles
 from app.services import data_loader as data
+from app.services import runtime_limits
 
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -54,11 +55,16 @@ def _ensure() -> None:
             csv.DictWriter(f, fieldnames=ANCHOR_COLS).writeheader()
 
 
-def _read_rows() -> list[dict[str, Any]]:
+def _read_rows(limit: int | None = None) -> list[dict[str, Any]]:
     _ensure()
     try:
         with open(TRENDLINE_ANCHOR_LEDGER_CSV, newline="", encoding="utf-8-sig") as f:
-            return [dict(row) for row in csv.DictReader(f)]
+            rows: list[dict[str, Any]] = []
+            for row in csv.DictReader(f):
+                rows.append(dict(row))
+                if limit is not None and len(rows) >= limit:
+                    break
+            return rows
     except Exception:
         return []
 
@@ -215,7 +221,7 @@ def _historical_samples(rows: list[dict[str, Any]], market: str, symbol: str, da
 def _upsert_ledger(rows: list[dict[str, Any]]) -> None:
     if not rows:
         return
-    existing = _read_rows()
+    existing = _read_rows(runtime_limits.validation_max_rows())
     merged = {str(row.get("anchor_id")): row for row in existing if row.get("anchor_id")}
     for row in rows:
         merged[str(row.get("anchor_id"))] = {key: row.get(key, "") for key in ANCHOR_COLS}
@@ -224,7 +230,7 @@ def _upsert_ledger(rows: list[dict[str, Any]]) -> None:
 
 def _stats(market: str, symbol: str, line_type: str, event_tag: str) -> dict[str, Any]:
     rows = [
-        row for row in _read_rows()
+        row for row in _read_rows(runtime_limits.validation_max_rows())
         if row.get("market") == market
         and row.get("symbol") == symbol
         and row.get("lineType") == line_type
@@ -252,8 +258,10 @@ def analyze(
 ) -> dict[str, Any]:
     """Return learned trendline projection and record anchor samples."""
     learning_eligible = data_source_type == "actual_ohlcv"
-    samples = _historical_samples(rows, market, symbol, data_source_type)
-    _upsert_ledger(samples)
+    write_enabled = runtime_limits.trendline_learning_enabled()
+    if write_enabled:
+        samples = _historical_samples(rows, market, symbol, data_source_type)
+        _upsert_ledger(samples)
 
     candidates: list[tuple[str, dict[str, Any]]] = []
     for line_type in ("support", "resistance"):
@@ -335,7 +343,8 @@ def analyze(
         "falseBreakout": "",
         "result": "PENDING",
     }
-    _upsert_ledger([current_record])
+    if write_enabled:
+        _upsert_ledger([current_record])
 
     return {
         **projected,
@@ -353,6 +362,7 @@ def analyze(
         "trendlineAnchorId": current_record["anchor_id"],
         "trendlineSampleCount": sample_count,
         "trendlineLedgerPath": str(TRENDLINE_ANCHOR_LEDGER_CSV),
+        "trendlineLearningWriteEnabled": write_enabled,
     }
 
 
@@ -375,11 +385,15 @@ def _empty_result(data_source_type: str, learning_eligible: bool, status: str) -
         "trendlineAnchorId": "",
         "trendlineSampleCount": 0,
         "trendlineLedgerPath": str(TRENDLINE_ANCHOR_LEDGER_CSV),
+        "trendlineLearningWriteEnabled": runtime_limits.trendline_learning_enabled(),
     }
 
 
 def learning_report(market: str = "all", symbol: str = "", limit: int = 200) -> dict[str, Any]:
-    rows = _read_rows()
+    max_allowed = min(200, runtime_limits.trendline_learning_max_symbols() * runtime_limits.trendline_learning_batch_size())
+    safe_limit = runtime_limits.clamp_limit(limit, 50, max_allowed)
+    max_rows = max(safe_limit, runtime_limits.validation_max_rows())
+    rows = _read_rows(max_rows)
     filtered: list[dict[str, Any]] = []
     for row in rows:
         if market not in {"", "all"} and row.get("market") != market:
@@ -394,11 +408,18 @@ def learning_report(market: str = "all", symbol: str = "", limit: int = 200) -> 
         "status": "OK" if filtered else "NO_DATA",
         "market": market,
         "symbol": symbol,
-        "count": len(filtered[:limit]),
+        "count": len(filtered[:safe_limit]),
         "totalCount": len(filtered),
+        "limited": len(filtered) > safe_limit or len(rows) >= max_rows,
+        "limit": safe_limit,
+        "processedCount": len(filtered[:safe_limit]),
+        "skippedCount": max(0, len(filtered) - safe_limit),
+        "maxAllowed": max_allowed,
+        "batchSize": runtime_limits.trendline_learning_batch_size(),
         "learningEligibleCount": len(eligible),
         "completedCount": len(completed),
         "winRate": round(len(wins) / len(completed) * 100, 2) if completed else None,
         "source": str(TRENDLINE_ANCHOR_LEDGER_CSV),
-        "items": filtered[:limit],
+        "dataSourceType": "ledger",
+        "items": filtered[:safe_limit],
     }

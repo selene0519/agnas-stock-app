@@ -23,6 +23,7 @@ from app.services import final_engine
 from app.services import insights
 from app.services import operation_history
 from app.services import quotes
+from app.services import runtime_limits
 from app.services import user_data
 from app import db as _db
 
@@ -33,8 +34,9 @@ app = FastAPI(title="MONE Web API", version="3.6.1-operational-stable")
 try:
     from app.engine.auto_sync import register_auto_sync_routes, start_background_sync, startup_sync
     register_auto_sync_routes(app)
-    startup_sync()           # MONE_STARTUP_SYNC=1 환경변수 설정 시 시작 시 pull
-    start_background_sync()  # 백그라운드 30분마다 pull (GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정)
+    if runtime_limits.heavy_jobs_enabled():
+        startup_sync()           # MONE_STARTUP_SYNC=1 환경변수 설정 시 시작 시 pull
+        start_background_sync()  # 백그라운드 30분마다 pull (GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정)
 except Exception as _auto_sync_err:
     print("[AutoSync] 초기화 실패:", _auto_sync_err)
 
@@ -454,8 +456,9 @@ def api_final_recommendations(
     market: str = Query("kr", pattern="^(kr|us)$"),
     mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
     horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+    limit: int = Query(20, ge=1, le=50),
 ) -> dict:
-    return final_engine.final_recommendations(_market(market), mode, horizon)
+    return final_engine.final_recommendations(_market(market), mode, horizon, limit=limit)
 
 
 @app.get("/api/final/recommendation-detail")
@@ -1155,7 +1158,7 @@ def api_trendline_accuracy(
 def api_trendline_anchor_learning(
     market: str = Query("all", pattern="^(kr|us|all)$"),
     symbol: str = Query(""),
-    limit: int = Query(200, ge=1, le=1000),
+    limit: int = Query(50, ge=1, le=200),
 ) -> dict:
     from app.services import trendline_learning
 

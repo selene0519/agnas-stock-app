@@ -524,12 +524,12 @@ def normalize_symbol(symbol: Any, market: str = "") -> str:
     return text
 
 
-def read_csv(path: Path) -> pd.DataFrame:
+def read_csv(path: Path, usecols: list[str] | None = None, nrows: int | None = None) -> pd.DataFrame:
     if not path.exists() or path.stat().st_size <= 0:
         return pd.DataFrame()
     for encoding in ("utf-8-sig", "utf-8", "cp949"):
         try:
-            return pd.read_csv(path, dtype=str, encoding=encoding, low_memory=False).fillna("")
+            return pd.read_csv(path, dtype=str, encoding=encoding, low_memory=False, usecols=usecols, nrows=nrows).fillna("")
         except Exception:
             continue
     return pd.DataFrame()
