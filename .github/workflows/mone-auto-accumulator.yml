@@ -3,11 +3,9 @@ name: MONE Auto Accumulator
 on:
   workflow_dispatch:
   schedule:
-    # UTC 기준. KST 07:30 / 16:20 / 22:30 / 06:20 자동 수집.
-    - cron: "30 22 * * 0-4"
-    - cron: "20 7 * * 1-5"
-    - cron: "30 13 * * 1-5"
-    - cron: "20 21 * * 0-4"
+    # UTC 기준. KST 07:30 (장전) / 16:30 (장마감 후) — 4회/일 → 2회/일로 축소
+    - cron: "30 22 * * 0-4"   # KST 07:30 (장전 데이터 수집)
+    - cron: "30 7 * * 1-5"    # KST 16:30 (장 마감 후 수집 - 가장 중요)
 
 permissions:
   contents: write

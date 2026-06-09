@@ -3,15 +3,11 @@ name: MONE News & Disclosure Refresh
 on:
   workflow_dispatch:
   schedule:
-    # KST 기준 (UTC+9)
+    # KST 기준 (UTC+9) — 4회/일 → 2회/일로 축소
     # 07:00 — 국장 장전
     - cron: "0 22 * * 0-4"
-    # 10:00 — 국장 장중
-    - cron: "0 1 * * 1-5"
     # 16:30 — 국장 마감 직후
     - cron: "30 7 * * 1-5"
-    # 23:00 — 미장 장중
-    - cron: "0 14 * * 1-5"
 
 permissions:
   contents: write
