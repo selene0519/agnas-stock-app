@@ -558,6 +558,23 @@ def recommendation_validation_summary(market: str = "all", mode: str = "all", ho
     payload = validate_recommendation_snapshots(market=market, mode=mode, horizon=horizon, limit=safe_max_rows, max_rows=safe_max_rows)
     rows = payload.get("items", [])
     summary = _validation_summary_from_rows(rows)
+
+    # 4차: postmortem 기반 failureType 집계 추가
+    postmortem_summary: dict[str, Any] = {}
+    try:
+        from app.services import postmortem as _pm
+        pm_data = _pm.postmortem_summary(market=market if market != "all" else "all")
+        postmortem_summary = {
+            "byFailureType": pm_data.get("byFailureType", {}),
+            "byNewsEventTag": pm_data.get("byNewsEventTag", {}),
+            "byEarningsEventTag": pm_data.get("byEarningsEventTag", {}),
+            "byMacroEventTag": pm_data.get("byMacroEventTag", {}),
+            "bySectorEventTag": pm_data.get("bySectorEventTag", {}),
+            "postmortemCount": pm_data.get("count", 0),
+        }
+    except Exception:
+        postmortem_summary = {}
+
     return {
         "status": payload.get("status"),
         "market": market,
@@ -572,6 +589,13 @@ def recommendation_validation_summary(market: str = "all", mode: str = "all", ho
         "byResistanceUsed": _group_summary(rows, "resistanceUsed"),
         "byFakeBreakoutRiskUsed": _group_summary(rows, "fakeBreakoutRiskUsed"),
         "byDataSourceType": _group_summary(rows, "dataSourceType"),
+        # 4차 이벤트 태그 집계
+        "byNewsEventTag": _group_summary(rows, "newsEventTag"),
+        "byDisclosureEventTag": _group_summary(rows, "disclosureEventTag"),
+        "byEarningsEventTag": _group_summary(rows, "earningsEventTag"),
+        "byMacroEventTag": _group_summary(rows, "macroEventTag"),
+        "byFailureType": postmortem_summary.get("byFailureType", {}),
+        "postmortemAnalysis": postmortem_summary,
         "count": len(rows),
         "limited": payload.get("limited", False),
         "limit": payload.get("limit", safe_max_rows),
