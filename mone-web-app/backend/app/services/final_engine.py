@@ -14,6 +14,7 @@ from app.engine.chart_analysis_engine import build_chart_analysis, state_to_dict
 from app.services import data_loader as data
 from app.services import runtime_limits
 from app.services import trendline_learning
+from app.services import event_context as _ec
 
 MARKETS = ("kr", "us")
 MODES = ("conservative", "balanced", "aggressive")
@@ -1274,6 +1275,57 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         n_rows = news_map.get(sym, [])
         d_rows = disc_map.get(sym, [])
         badges, event_risk, news_reliability, event_text = _event_badges(normalized, n_rows, d_rows)
+
+        # ── 4차: 이벤트 컨텍스트 연동 ──────────────────────────────────────────
+        try:
+            evt_ctx = _ec.get_event_context(sym, market)
+        except Exception:
+            evt_ctx = {
+                "newsEventTag": "unknown", "disclosureEventTag": "unknown",
+                "earningsEventTag": "unknown", "macroEventTag": "unknown",
+                "sectorEventTag": "unknown", "eventRiskScore": 0.0,
+                "eventReliabilityScore": 0.0, "eventSummary": "",
+                "eventDataSourceType": "unavailable", "eventLearningEligible": False,
+            }
+
+        # 이벤트 점수 반영 (eventLearningEligible=True 이고 actual_api/csv 소스일 때만)
+        event_score_adj = 0.0
+        if evt_ctx.get("eventLearningEligible") and evt_ctx.get("eventDataSourceType") in {"actual_api", "csv"}:
+            _n_tag = evt_ctx.get("newsEventTag", "")
+            _d_tag = evt_ctx.get("disclosureEventTag", "")
+            _e_tag = evt_ctx.get("earningsEventTag", "")
+            _m_tag = evt_ctx.get("macroEventTag", "")
+            _s_tag = evt_ctx.get("sectorEventTag", "")
+            # 음수 조정
+            if _n_tag == "negative_news":
+                event_score_adj -= 2.5
+            if _d_tag == "negative_disclosure":
+                event_score_adj -= 4.0
+            if _e_tag == "earnings_miss":
+                event_score_adj -= 5.0
+            elif _e_tag == "guidance_down":
+                event_score_adj -= 4.0
+            if _m_tag in {"rate_risk", "fomc_risk"}:
+                event_score_adj -= 2.5
+            elif _m_tag in {"inflation_risk", "volatility_risk"}:
+                event_score_adj -= 3.0
+            if _s_tag == "sector_weak":
+                event_score_adj -= 2.0
+            # 양수 조정
+            if _n_tag == "positive_news":
+                event_score_adj += 1.5
+            if _d_tag == "positive_disclosure":
+                event_score_adj += 1.5
+            if _e_tag == "earnings_beat":
+                event_score_adj += 2.0
+            elif _e_tag == "guidance_up":
+                event_score_adj += 1.5
+            if _s_tag == "sector_strong":
+                event_score_adj += 1.0
+        # 이벤트 하나만으로 추천 안 뒤집음: ±8 상한
+        event_score_adj = float(data._clamp(event_score_adj, -8.0, 8.0))  # type: ignore[attr-defined]
+        # ────────────────────────────────────────────────────────────────────
+
         df, ohlcv_source = _evaluation_window(sym, market, horizon)
         surge, surge_reason = _surge_label(normalized, df)
         bucket, buy_timing, decision_reason = _decision_bucket(mode, horizon, scores, event_risk, surge)
@@ -1287,6 +1339,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         if execution.get("executionStatus") == "체결":
             rank_score += 4
         rank_score += float(chart_overlay.get("chartScoreAdjustment") or 0)
+        rank_score += event_score_adj
         row = {
             **normalized,
             **chart_overlay,
@@ -1314,7 +1367,26 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             "newsCount": len(n_rows),
             "disclosureCount": len(d_rows),
             "eventContext": event_text[:300],
+            # ── 4차 이벤트 필드 ──
+            "eventContextUsed": evt_ctx.get("eventLearningEligible", False),
+            "newsEventTag": evt_ctx.get("newsEventTag", "unknown"),
+            "disclosureEventTag": evt_ctx.get("disclosureEventTag", "unknown"),
+            "earningsEventTag": evt_ctx.get("earningsEventTag", "unknown"),
+            "macroEventTag": evt_ctx.get("macroEventTag", "unknown"),
+            "sectorEventTag": evt_ctx.get("sectorEventTag", "unknown"),
+            "eventReliabilityScore": evt_ctx.get("eventReliabilityScore", 0.0),
+            "eventSummary": evt_ctx.get("eventSummary", ""),
+            "eventDataSourceType": evt_ctx.get("eventDataSourceType", "unavailable"),
+            "eventScoreAdjustment": round(event_score_adj, 2),
         }
+        # ── 4차: postmortem 저장 (실패 케이스) ──────────────────────────────
+        try:
+            if execution.get("filled"):
+                from app.services import postmortem as _pm
+                _pm.save_postmortem(row)
+        except Exception:
+            pass
+        # ───────────────────────────────────────────────────────────────────
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
     selected = rows[:requested_limit]
