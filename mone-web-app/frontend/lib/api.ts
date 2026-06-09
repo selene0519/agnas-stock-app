@@ -23,7 +23,7 @@ export interface ApiList<T = any> {
   [key: string]: any;
 }
 
-/** 추천 카드 아이템 타입 — 4차 이벤트 필드 포함 */
+/** 추천 카드 아이템 타입 — 4차 이벤트 필드 + 5차 adaptive 필드 포함 */
 export interface RecommendationItem {
   symbol: string;
   name?: string;
@@ -66,6 +66,13 @@ export interface RecommendationItem {
   eventSummary?: string;
   eventDataSourceType?: string;
   eventScoreAdjustment?: number;
+  // 5차 adaptive score 자가보정 필드
+  adaptiveScoreUsed?: boolean;
+  adaptiveScoreAdjustment?: number;
+  adaptiveScoreSummary?: string;
+  adaptiveSignalBreakdown?: Record<string, number>;
+  adaptiveConfidence?: number;
+  adaptiveLearningStatus?: "ACTIVE" | "LOW_SAMPLE" | "DISABLED" | "DATA_INSUFFICIENT";
   [key: string]: any;
 }
 
@@ -450,6 +457,11 @@ export const mone = {
     apiGet<any>(`/api/chart/index/${p.indexSymbol}`, { market: p.market, limit: p.limit }, signal),
   chartAnalysis: (p: { symbol: string; market: Market }, signal?: AbortSignal) =>
     apiGet<any>(`/api/chart/analysis/${p.symbol}`, { market: p.market }, signal),
+  // Phase 5 — Adaptive Score
+  adaptiveWeights: (p?: { limit?: number }) =>
+    apiGet<ApiList>("/api/insights/adaptive-weights", p),
+  validationRecommendationsSummary: (p?: { market?: Market | "all"; mode?: Mode | string; horizon?: Horizon | string }) =>
+    apiGet<ApiList>("/api/validation/recommendations/summary", p),
 };
 
 export default mone;

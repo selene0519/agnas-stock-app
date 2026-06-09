@@ -15,6 +15,7 @@ from app.services import data_loader as data
 from app.services import runtime_limits
 from app.services import trendline_learning
 from app.services import event_context as _ec
+from app.services import adaptive_weights as _aw
 
 MARKETS = ("kr", "us")
 MODES = ("conservative", "balanced", "aggressive")
@@ -1233,6 +1234,11 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
     requested_limit = runtime_limits.clamp_limit(limit, 20, max_allowed)
     news_map = _news_context(market)
     disc_map = _disclosure_context(market)
+    # ── 5차: adaptive weight table 로드 (루프 외부에서 1회) ──────────────────
+    try:
+        _adaptive_table = _aw.load_adaptive_weights()
+    except Exception:
+        _adaptive_table = {}
     if market == "us" and mode == "balanced" and horizon == "swing":
         universe, sources = _us_balanced_swing_universe()
     else:
@@ -1333,16 +1339,44 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         execution = _conditional_execution(normalized, mode, horizon, df, ohlcv_source)
         holding_decision = "보유 유지" if surge in {"추세 지속 후보", "보유 유지 후보"} and event_risk < 55 else "비중 축소/손절선 확인" if event_risk >= 55 else "보유자는 목표가·손절가 대응"
         sell_timing = "목표가 도달 시 분할익절 / 손절가 이탈 시 종료 / 보유기간 종료 시 재검토"
-        rank_score = float(scores["opportunityScore"]) * 0.45 + float(scores["entryScore"]) * 0.35 - (float(scores["riskScore"]) + event_risk * 0.4) * 0.25 + news_reliability * 0.08
+        base_rank = float(scores["opportunityScore"]) * 0.45 + float(scores["entryScore"]) * 0.35 - (float(scores["riskScore"]) + event_risk * 0.4) * 0.25 + news_reliability * 0.08
         if bucket == "오늘 진입":
-            rank_score += 8
+            base_rank += 8
         if execution.get("executionStatus") == "체결":
-            rank_score += 4
-        rank_score += float(chart_overlay.get("chartScoreAdjustment") or 0)
-        rank_score += event_score_adj
-        row = {
+            base_rank += 4
+        chart_adj = float(chart_overlay.get("chartScoreAdjustment") or 0)
+        base_rank += chart_adj
+        base_rank += event_score_adj
+
+        # ── 5차: adaptive score 보정 ─────────────────────────────────────────
+        # chart_overlay에 usedSignals를 담아 넘길 수 있도록 임시 dict 구성
+        _pre_row: dict[str, Any] = {
             **normalized,
             **chart_overlay,
+            "newsEventTag": evt_ctx.get("newsEventTag", "unknown"),
+            "disclosureEventTag": evt_ctx.get("disclosureEventTag", "unknown"),
+            "earningsEventTag": evt_ctx.get("earningsEventTag", "unknown"),
+            "macroEventTag": evt_ctx.get("macroEventTag", "unknown"),
+            "sectorEventTag": evt_ctx.get("sectorEventTag", "unknown"),
+        }
+        try:
+            _adaptive_row = _aw.apply_adaptive_adjustment(_pre_row, _adaptive_table)
+        except Exception:
+            _adaptive_row = {
+                **_pre_row,
+                "adaptiveScoreUsed": False,
+                "adaptiveScoreAdjustment": 0.0,
+                "adaptiveScoreSummary": "",
+                "adaptiveSignalBreakdown": {},
+                "adaptiveConfidence": 0.0,
+                "adaptiveLearningStatus": "DISABLED",
+            }
+        adaptive_adj = float(_adaptive_row.get("adaptiveScoreAdjustment") or 0.0)
+        rank_score = base_rank + adaptive_adj
+        # ────────────────────────────────────────────────────────────────────
+
+        row = {
+            **_adaptive_row,
             "decisionBucket": bucket,
             "buyTiming": buy_timing,
             "sellTiming": sell_timing,
