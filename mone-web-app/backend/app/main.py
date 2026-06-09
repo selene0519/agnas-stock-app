@@ -206,16 +206,34 @@ def _create_user_token(provider: str, subject: str, email: str = "", name: str =
 
 
 def _post_form(url: str, form: dict[str, str]) -> dict:
+    import urllib.error as _ue
     data_bytes = urllib.parse.urlencode(form).encode("utf-8")
     req = urllib.request.Request(url, data=data_bytes, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=15) as res:
-        return json.loads(res.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=15) as res:
+            return json.loads(res.read().decode("utf-8"))
+    except _ue.HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        raise RuntimeError(f"HTTP {exc.code} {exc.reason} | {body}") from exc
 
 
 def _get_json(url: str, token: str) -> dict:
+    import urllib.error as _ue
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=15) as res:
-        return json.loads(res.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=15) as res:
+            return json.loads(res.read().decode("utf-8"))
+    except _ue.HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        raise RuntimeError(f"HTTP {exc.code} {exc.reason} | {body}") from exc
 
 
 def _oauth_config(provider: str) -> dict[str, str]:
