@@ -1,35 +1,46 @@
 {
-  "generatedAt": "2026-06-09T23:51:33.043036",
-  "horizons": {
-    "short": {
-      "n": 500,
-      "winRate": 48.2,
-      "avgNetReturn": 0.139,
-      "sharpe": 0.14,
-      "maxDrawdown": -14.681,
-      "costApplied": "0.09% (수수료+슬리피지)"
-    },
-    "swing": {
-      "n": 500,
-      "winRate": 48.2,
-      "avgNetReturn": 1.26,
-      "sharpe": 0.62,
-      "maxDrawdown": -21.112,
-      "costApplied": "0.09% (수수료+슬리피지)"
-    },
-    "mid": {
-      "n": 500,
-      "winRate": 44.4,
-      "avgNetReturn": 1.707,
-      "sharpe": 0.45,
-      "maxDrawdown": -21.112,
-      "costApplied": "0.09% (수수료+슬리피지)"
-    }
+  "generatedAt": "2026-06-10T00:05:19.213798",
+  "totalTrades": 44,
+  "filledTrades": 32,
+  "winRate": 40.62,
+  "avgReturn": -2.619,
+  "sharpe": -3.242,
+  "maxDrawdownPct": 59.52,
+  "outcomeBreakdown": {
+    "손절": 13,
+    "기간종료": 19
   },
-  "overall": {
-    "n": 1500,
-    "winRate": 46.9,
-    "avgNetReturn": 1.035,
-    "dateRange": "2026-02-09 ~ 2026-05-15"
+  "targetsMet": {
+    "winRate_58pct": false,
+    "avgReturn_1p8pct": false,
+    "sharpe_1p0": false
+  },
+  "baseline": {
+    "winRate": 48.2,
+    "avgReturn": 1.26,
+    "sharpe": 0.62,
+    "label": "SWING 기준선 (필터 적용 전)"
+  },
+  "delta": {
+    "winRate": -7.58,
+    "avgReturn": -3.879,
+    "sharpe": -3.862
+  },
+  "filters": {
+    "minScore": 65,
+    "maAlignment": "MA5>MA20>MA60",
+    "rsiRange": "40-70",
+    "volRatio": ">=1.2",
+    "d20Range": "-15% to +10%",
+    "rrMin": "2.0",
+    "stopMult": "ATR×1.5",
+    "targetMult": "ATR×4.5"
+  },
+  "dataQualityNote": {
+    "ohlcvFilesTotal": 214,
+    "medianRowsPerSymbol": 128,
+    "filesOver200rows": 5,
+    "warning": "OHLCV 아카이브가 얕음 (중앙값 128행/종목). 44개 트레이드 중 목표가 도달 0건 — ATR×4.5 목표는 5일 보유로 도달 어려움. 라이브 환경(500+행/종목)에서는 더 많은 목표 도달 예상.",
+    "statisticalConfidence": "LOW: n=32 (최소 100+ 체결 필요)"
   }
 }

@@ -245,8 +245,9 @@ def generate_us_recommendations() -> dict[str, Any]:
     regime_adjust = regime.get("scoreAdjust", 0.0)
     regime_label = regime.get("label", "횡보장")
     regime_type = regime.get("regime", "SIDE")
-    min_score_by_regime = {"BULL": 45.0, "SIDE": 50.0, "BEAR": 58.0}
-    min_score_global = min_score_by_regime.get(regime_type, 50.0)
+    # 6중필터 고도화: 최소 점수 상향 (상위 35%만 통과)
+    min_score_by_regime = {"BULL": 55.0, "SIDE": 65.0, "BEAR": 68.0}
+    min_score_global = min_score_by_regime.get(regime_type, 65.0)
 
     # 전체 스코어 계산
     all_scored: list[dict] = []
@@ -303,6 +304,35 @@ def generate_us_recommendations() -> dict[str, Any]:
                 sym = c["symbol"]
                 current = c["current"]
                 ind = c["ind"]
+
+                # ── 6중 필터 (전략고도화 v2) ──────────────────────────────
+                # 필터 A: 삼중 MA 정배열 (MA5 > MA20 > MA60)
+                _ma5 = ind.get("ma5"); _ma20 = ind.get("ma20"); _ma60 = ind.get("ma60")
+                if not (_ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60):
+                    continue
+
+                # 필터 B: RSI 스윗존 40-70
+                _rsi = ind.get("rsi14")
+                if _rsi is None or not (40 <= _rsi <= 70):
+                    continue
+
+                # 필터 C: 거래량 평균 120% 이상
+                _vr = ind.get("volumeRatio20")
+                if _vr is None or _vr < 1.2:
+                    continue
+
+                # 필터 D: 이격도 -15% ~ +10%
+                _d20 = ind.get("distanceToMa20")
+                if _d20 is None or _d20 > 10 or _d20 < -15:
+                    continue
+
+                # 필터 E: 손익비 2.0 이상 (예비 계산)
+                _atr14 = ind.get("atr14")
+                if _atr14 and _atr14 > 0 and current > 0:
+                    _pre_rr = (_atr14 * 4.5) / max(_atr14 * 1.5, 1e-9)
+                    if _pre_rr < 2.0:
+                        continue
+                # ─────────────────────────────────────────────────────────
 
                 entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon, ind)
 

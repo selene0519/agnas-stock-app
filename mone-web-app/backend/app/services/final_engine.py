@@ -1079,9 +1079,9 @@ def _decision_bucket(mode: str, horizon: str, scores: dict[str, Any], event_risk
         return "주의", "신규 진입 제한", f"위험 {risk:.1f} · {surge_label} · {gap_text}"
     if _mode_allowed(mode, horizon, scores, event_risk) and entry >= 66:
         return "오늘 진입", "조건부 매수 등록", f"기회 {opp:.1f} / 진입 {entry:.1f} / 위험 {risk:.1f} · {gap_text}"
-    if opp >= 58 and risk < 62:
+    if opp >= 65 and risk < 62:
         return "기다림", "기준가 도달 대기", f"좋은 후보이나 {gap_text} · 체결 조건 확인 필요"
-    if opp >= 50 and risk < 70:
+    if opp >= 65 and risk < 70:
         return "다음 진입", "다음 장전 재검토", f"기회는 있으나 진입점수 {entry:.1f}로 보수적 확인 필요"
     return "주의", "관망/제외", f"기회 {opp:.1f} / 위험 {risk:.1f}"
 
