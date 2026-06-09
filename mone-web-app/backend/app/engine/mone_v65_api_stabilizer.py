@@ -1804,6 +1804,58 @@ def _apply_light_correction(item: dict[str, Any], summary: dict[str, Any]) -> di
     return adjusted
 
 
+def _apply_chart_signal_overlay(item: dict[str, Any], mode: str, horizon: str) -> dict[str, Any]:
+    adjusted = dict(item)
+    market = _market_norm(str(adjusted.get("market") or "kr"))
+    symbol = str(adjusted.get("symbol") or "").strip()
+    if not symbol:
+        return adjusted
+    try:
+        from app.services import final_engine
+
+        overlay = final_engine._chart_signal_overlay(symbol, market, adjusted, _mode_norm(mode), _horizon_norm(horizon))  # type: ignore[attr-defined]
+    except Exception as exc:
+        overlay = {
+            "chartSignalUsed": False,
+            "lineSignalUsed": False,
+            "supportResistanceUsed": False,
+            "trendlineUsed": False,
+            "supportUsed": False,
+            "resistanceUsed": False,
+            "volumeZoneUsed": False,
+            "fakeBreakoutRiskUsed": False,
+            "dataSourceType": "unavailable",
+            "chartSignalBadges": ["fallback 데이터", "차트 표시만"],
+            "chartSignalSummary": {
+                "status": "error",
+                "recommendedIntegration": "chart display only / recommendation not used",
+                "displayOnly": ["ZigZag", "retracement", "fakeBreakout"],
+                "usedSignals": [],
+                "badges": ["fallback 데이터", "차트 표시만"],
+                "notes": [f"chart overlay failed: {exc}"],
+            },
+            "entryBasis": "unavailable",
+            "targetBasis": "unavailable",
+            "stopBasis": "unavailable",
+            "supportDistancePct": None,
+            "resistanceDistancePct": None,
+            "trendlineDistancePct": None,
+            "riskRewardRatio": None,
+            "chartScoreAdjustment": 0.0,
+        }
+    adjusted.update(overlay)
+    score_adjustment = _num(overlay.get("chartScoreAdjustment"))
+    if score_adjustment:
+        for key in ("finalScore", "finalRankScore", "quantScore"):
+            score = _num(adjusted.get(key))
+            if score > 0:
+                adjusted[key] = round(_clamp(score + score_adjustment, 0, 100), 1)
+        fields = adjusted.setdefault("computedFields", [])
+        if isinstance(fields, list) and "chart_signal_overlay" not in fields:
+            fields.append("chart_signal_overlay")
+    return adjusted
+
+
 @lru_cache(maxsize=8)
 def _scan_coverage(market: str) -> dict[str, Any]:
     repo = _repo_root()
@@ -2002,6 +2054,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             if correction_state.get("active"):
                 item = _apply_light_correction(item, correction_state)
                 item.setdefault("computedFields", []).append("self_correction_penalty")
+            item = _apply_chart_signal_overlay(item, mode, horizon)
             seen.add(key)
             items.append(item)
             if len(items) >= max(1, min(limit, 1000)):
@@ -3721,6 +3774,10 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         "/api/health/github",
         "/api/home/summary",
         "/api/validation/dashboard",
+        "/api/validation/recommendations",
+        "/api/validation/recommendations/snapshot",
+        "/api/validation/recommendations/summary",
+        "/api/validation/recommendations/by-signal",
         "/api/risk/sector-exposure",
         "/api/risk/benchmark",
         "/api/chart/index/{index_symbol}",
@@ -3804,6 +3861,75 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
     @app.get("/api/validation/dashboard")
     def validation_dashboard(market: str = Query("kr")) -> dict[str, Any]:
         return _safe_payload(lambda: _validation_dashboard_payload(market), "/api/validation/dashboard")
+
+    @app.post("/api/validation/recommendations/snapshot")
+    def recommendation_validation_snapshot(
+        market: str = Query("kr"),
+        mode: str = Query("balanced"),
+        horizon: str = Query("swing"),
+        limit: int = Query(5),
+        snapshotDate: str = Query(""),
+    ) -> dict[str, Any]:
+        def payload() -> dict[str, Any]:
+            from app.services import signal_ledger as sl
+
+            rec = _recommendations_payload(market, mode, horizon, 0, max(1, min(limit, 50)), False)
+            return sl.record_recommendation_snapshots(
+                rec.get("items", [])[: max(1, min(limit, 50))],
+                snapshot_date=snapshotDate or None,
+                source="/api/final/recommendations",
+            )
+        return _safe_payload(payload, "/api/validation/recommendations/snapshot")
+
+    @app.get("/api/validation/recommendations")
+    def recommendation_validation(
+        market: str = Query("all"),
+        mode: str = Query("all"),
+        horizon: str = Query("all"),
+        limit: int = Query(300),
+    ) -> dict[str, Any]:
+        def payload() -> dict[str, Any]:
+            from app.services import signal_ledger as sl
+
+            return sl.validate_recommendation_snapshots(
+                market=_market_norm(market),
+                mode=_mode_norm(mode) if mode != "all" else "all",
+                horizon=_horizon_norm(horizon) if horizon != "all" else "all",
+                limit=max(1, min(limit, 1000)),
+            )
+        return _safe_payload(payload, "/api/validation/recommendations")
+
+    @app.get("/api/validation/recommendations/summary")
+    def recommendation_validation_summary(
+        market: str = Query("all"),
+        mode: str = Query("all"),
+        horizon: str = Query("all"),
+    ) -> dict[str, Any]:
+        def payload() -> dict[str, Any]:
+            from app.services import signal_ledger as sl
+
+            return sl.recommendation_validation_summary(
+                market=_market_norm(market),
+                mode=_mode_norm(mode) if mode != "all" else "all",
+                horizon=_horizon_norm(horizon) if horizon != "all" else "all",
+            )
+        return _safe_payload(payload, "/api/validation/recommendations/summary")
+
+    @app.get("/api/validation/recommendations/by-signal")
+    def recommendation_validation_by_signal(
+        market: str = Query("all"),
+        mode: str = Query("all"),
+        horizon: str = Query("all"),
+    ) -> dict[str, Any]:
+        def payload() -> dict[str, Any]:
+            from app.services import signal_ledger as sl
+
+            return sl.recommendation_validation_by_signal(
+                market=_market_norm(market),
+                mode=_mode_norm(mode) if mode != "all" else "all",
+                horizon=_horizon_norm(horizon) if horizon != "all" else "all",
+            )
+        return _safe_payload(payload, "/api/validation/recommendations/by-signal")
 
     @app.get("/api/risk/sector-exposure")
     def sector_exposure(market: str = Query("kr")) -> dict[str, Any]:
