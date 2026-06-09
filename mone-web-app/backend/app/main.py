@@ -574,9 +574,55 @@ def api_symbol_detail(symbol: str, market: str = Query("kr", pattern="^(kr|us)$"
         return {"ok": False, "status": "ERROR", "error": str(exc)}
 
 
+def _chart_rows(payload: dict) -> list:
+    rows = payload.get("items") or payload.get("rows") or []
+    return rows if isinstance(rows, list) else []
+
+
+def _latest_chart_date(rows: list) -> str:
+    for row in reversed(rows or []):
+        value = str(row.get("date") or row.get("Date") or row.get("날짜") or "").strip()
+        if value:
+            if len(value) == 8 and value.isdigit():
+                return f"{value[:4]}-{value[4:6]}-{value[6:]}"
+            return value[:10]
+    return ""
+
+
+def _chart_needs_backfill(rows: list, market: str) -> bool:
+    if market != "us":
+        return False
+    latest = _latest_chart_date(rows)
+    if not latest:
+        return True
+    try:
+        from datetime import datetime, timedelta
+        latest_day = datetime.strptime(latest, "%Y-%m-%d").date()
+        return latest_day < (datetime.now().date() - timedelta(days=3))
+    except Exception:
+        return False
+
+
+def _chart_data_with_backfill(symbol: str, market: str, days: int = 180) -> dict:
+    payload = data.chart_data(symbol, market)
+    rows = _chart_rows(payload)
+    if _chart_needs_backfill(rows, market):
+        try:
+            backfill = quotes.backfill_daily_ohlcv(symbol, market, days=days)
+            if str(backfill.get("status", "")).upper() == "OK":
+                payload = data.chart_data(symbol, market)
+                payload["backfill"] = backfill
+            else:
+                payload["backfill"] = backfill
+        except Exception as exc:
+            payload["backfill"] = {"status": "ERROR", "error": str(exc)[:160]}
+    payload["latestDate"] = _latest_chart_date(_chart_rows(payload))
+    return payload
+
+
 @app.get("/api/chart/{symbol}")
 def api_chart_data(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return data.chart_data(symbol, _market(market))
+    return _chart_data_with_backfill(symbol, _market(market))
 
 
 @app.get("/api/chart/analysis/{symbol}")
@@ -594,6 +640,7 @@ def api_chart_analysis(
         from app.engine.quant_scanner import load_ohlcv, load_market_regime
 
         market_key = _market(market)
+        _chart_data_with_backfill(symbol, market_key)
         rows = load_ohlcv(data.REPO_ROOT, market_key, symbol)
         if not rows:
             return {"ok": False, "error": "OHLCV 데이터 없음", "symbol": symbol, "market": market_key}
@@ -3547,8 +3594,45 @@ def api_portfolio_nav(market: str = Query("kr"), days: int = Query(180)) -> dict
 
 # ── 13. home/summary ──────────────────────────────────────────────────
 
+def _empty_home_holdings(market: str) -> dict:
+    return {
+        "status": "OK",
+        "routeVersion": "personal-user-holdings-empty",
+        "market": market,
+        "count": 0,
+        "totalCount": 0,
+        "uniqueCount": 0,
+        "items": [],
+        "summary": {
+            "count": 0,
+            "totalValue": 0,
+            "totalValueText": "-",
+            "totalPnl": 0,
+            "totalPnlText": "0",
+            "riskCount": 0,
+            "mixedCurrency": False,
+            "marketBreakdown": [],
+        },
+        "authority": "personal_user_holdings",
+    }
+
+
+def _clean_user_id(raw: str) -> str:
+    return "".join(ch for ch in str(raw or "") if ch.isalnum() or ch in "_-")[:64]
+
+
+app.router.routes = [
+    r for r in app.router.routes
+    if getattr(r, "path", "") != "/api/home/summary"
+]
+
+
 @app.get("/api/home/summary")
-def api_home_summary(market: str = Query("kr"), limit: int = Query(12)) -> dict:
+def api_home_summary(
+    market: str = Query("kr"),
+    limit: int = Query(12),
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
+) -> dict:
     """HomePage 3×3 매트릭스용 통합 응답 — 9개 전략 셀 + 보유종목 + 마켓 레짐"""
     try:
         mk = _market(market) if market != "all" else "kr"
@@ -3611,12 +3695,16 @@ def api_home_summary(market: str = Query("kr"), limit: int = Query(12)) -> dict:
                     matrix[cell_key] = {"status": "ERROR", "error": str(e), "items": [], "count": 0}
 
         # 보유종목 (holdingsClean 엔드포인트 재사용)
-        holdings_payload: dict = {"items": [], "summary": {}}
+        holdings_payload: dict = _empty_home_holdings(mk)
         try:
-            from app.engine.mone_v77_holdings_risk import holdings_payload as _hp
-            holdings_payload = _hp(mk, 50)
+            uid = _clean_user_id(x_mone_user)
+            if uid:
+                personal_rows = _db.get_holdings(uid, mk)
+                if personal_rows:
+                    from app.engine.mone_v802_holdings_clean import holdings_clean_payload_for_user
+                    holdings_payload = holdings_clean_payload_for_user(uid, market=mk, limit=50)
         except Exception:
-            pass
+            holdings_payload = _empty_home_holdings(mk)
 
         # 데이터 헬스
         data_health: dict = {}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { mone } from "@/lib/api";
+import { getUserId } from "@/lib/userId";
 import {
   dedupeBySymbol,
   displayName,
@@ -127,9 +128,11 @@ async function fetchRecommendationRows(): Promise<any[]> {
 }
 
 async function fetchTickerRows(): Promise<TickerItem[]> {
+  const userId = getUserId();
   const data: any = await mone.holdingsClean({ market: "all", limit: 50 });
   const holdingsRows = Array.isArray(data?.items) ? data.items : [];
-  if (holdingsRows.length > 0) return enrichRows(holdingsRows, "holdings");
+  const isPersonalHoldings = Boolean(userId) && data?.authority === "personal_user_holdings";
+  if (isPersonalHoldings && holdingsRows.length > 0) return enrichRows(holdingsRows, "holdings");
 
   const watchlistRows = await fetchWatchlistRows();
   if (watchlistRows.length > 0) return enrichRows(watchlistRows, "watchlist");
