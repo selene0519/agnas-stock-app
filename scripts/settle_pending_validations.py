@@ -26,6 +26,14 @@ WIN_RESULTS  = {"target_hit", "TARGET_HIT", "WIN", "목표달성", "성공"}
 LOSS_RESULTS = {"stop_hit",   "STOP_HIT",   "LOSS", "손절",    "실패"}
 EXEC_RESULTS = WIN_RESULTS | LOSS_RESULTS | {"close_exit"}
 
+# horizon별 검증 창 (거래일 기준)
+# mid 전략은 D+21까지 열어두어야 중기 전략 검증 가능
+HORIZON_VALIDATION_DAYS = {
+    "short": 5,
+    "swing": 10,
+    "mid":   21,
+}
+
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
     if not path.exists() or path.stat().st_size == 0:
@@ -85,10 +93,24 @@ def _build_validation_index(market: str) -> dict[str, dict[str, Any]]:
     return index
 
 
+def _date_add_days(date_text: str, days: int) -> str:
+    from datetime import timedelta
+    try:
+        base = datetime.fromisoformat(str(date_text)[:10])
+    except Exception:
+        base = datetime.now()
+    return (base + timedelta(days=days)).date().isoformat()
+
+
 def _find_result(sym: str, mode: str, horizon: str, due_date: str,
                  market: str, index: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
-    """due_date 이후 가장 빠른 체결 결과를 찾는다."""
-    # 검증 기간: 생성일 ~ due_date + 5일 허용
+    """due_date 이후 가장 빠른 체결 결과를 찾는다.
+
+    horizon별 검증 창을 넉넉히 부여해 mid 전략(D+21)까지 커버한다.
+    """
+    # horizon별 추가 허용 일수 (달력일 기준, 주말 포함)
+    extra_days = HORIZON_VALIDATION_DAYS.get(str(horizon or "swing").lower(), 10) + 7
+    cutoff = _date_add_days(due_date[:10], extra_days)
     best = None
     for key, val in index.items():
         k_sym, k_mode, k_horizon, k_date = key.split("|")
@@ -96,7 +118,7 @@ def _find_result(sym: str, mode: str, horizon: str, due_date: str,
             continue
         if k_mode != mode or k_horizon != horizon:
             continue
-        if k_date > due_date[:10]:   # due_date 이후면 무시
+        if k_date > cutoff:   # 검증 창 초과면 무시
             continue
         if best is None or k_date > best[0]:
             best = (k_date, val)

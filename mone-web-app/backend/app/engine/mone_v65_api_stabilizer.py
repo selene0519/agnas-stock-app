@@ -2459,7 +2459,8 @@ def _append_collection_targets(rows: list[dict[str, Any]], default_reason: str) 
 
 
 def _horizon_window_days(horizon: str) -> int:
-    return {"short": 3, "swing": 5, "mid": 20, "long": 20}.get(str(horizon or "swing"), 5)
+    # mid 전략까지 커버하기 위해 mid는 D+21로 확장 (기존: short=3, swing=5, mid=20)
+    return {"short": 5, "swing": 10, "mid": 21, "long": 21}.get(str(horizon or "swing"), 10)
 
 
 def _date_add_days(date_text: str, days: int) -> str:

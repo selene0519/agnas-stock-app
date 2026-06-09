@@ -127,20 +127,23 @@ def _momentum(values: list[float], period: int) -> float | None:
 
 
 def _rsi(values: list[float], period: int = 14) -> float | None:
-    if len(values) <= period:
+    """Wilder's Smoothed RSI — 업계 표준 (EMA 방식)"""
+    if len(values) < period + 1:
         return None
-    gains: list[float] = []
-    losses: list[float] = []
-    for idx in range(len(values) - period, len(values)):
-        diff = values[idx] - values[idx - 1]
-        gains.append(max(diff, 0))
-        losses.append(abs(min(diff, 0)))
-    avg_gain = sum(gains) / period
-    avg_loss = sum(losses) / period
+    deltas = [values[i] - values[i - 1] for i in range(1, len(values))]
+    gains = [max(d, 0.0) for d in deltas]
+    losses = [max(-d, 0.0) for d in deltas]
+    # 초기 평균 (첫 period개)
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+    # Wilder's smoothing (나머지 구간)
+    for i in range(period, len(gains)):
+        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
     if avg_loss == 0:
         return 100.0
     rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+    return round(100.0 - (100.0 / (1.0 + rs)), 2)
 
 
 def _atr(high: list[float], low: list[float], close: list[float], period: int = 14) -> float | None:

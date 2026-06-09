@@ -14,6 +14,12 @@ YYYYMMDD = DATE.replace("-", "")
 MODES = ["conservative", "balanced", "aggressive"]
 HORIZONS = ["short", "swing", "mid"]
 
+# ── 수수료 + 슬리피지 (현실적 비용 반영)
+# KR: 편도 수수료 0.015% × 2 + 슬리피지 0.03% × 2 = 0.09%
+# US: 무료 브로커 가정, 슬리피지만 0.03% × 2 = 0.06%
+COST_KR_PCT = 0.09
+COST_US_PCT = 0.06
+
 
 def read_csv(path: Path) -> list[dict]:
     if not path.exists() or path.stat().st_size == 0:
@@ -122,14 +128,21 @@ def validate_one(row: dict, mode: str, horizon: str) -> dict:
         return {"date": DATE, "symbol": sym, "name": name, "market": "kr", "mode": mode, "horizon": horizon, "executed": "false", "entryPrice": entry, "entryText": text_price(entry), "exitPrice": "", "returnPct": "", "result": "not_executed", "dataStatus": "NORMAL", "reason": "entry_not_touched", "low": low, "high": high, "close": close, "source": row.get("_source", "")}
     result = "close_exit"
     exit_price = close
-    if target and high and high >= target:
+    target_hit = bool(target and high and high >= target)
+    stop_hit = bool(stop and low and low <= stop)
+    # 동시 도달 시 손절 우선 (보수적 가정 — 어느 쪽이 먼저인지 알 수 없음)
+    if target_hit and stop_hit:
+        target_hit = False  # 손절이 먼저 났다고 가정
+    if target_hit:
         result = "target_hit"
         exit_price = target
-    elif stop and low and low <= stop:
+    elif stop_hit:
         result = "stop_hit"
         exit_price = stop
-    ret = ((exit_price - entry) / entry) * 100 if entry else 0
-    return {"date": DATE, "symbol": sym, "name": name, "market": "kr", "mode": mode, "horizon": horizon, "executed": "true", "entryPrice": entry, "entryText": text_price(entry), "stopPrice": stop or "", "targetPrice": target or "", "exitPrice": exit_price, "exitText": text_price(exit_price), "returnPct": round(ret, 4), "returnPctText": f"{ret:+.2f}%", "result": result, "dataStatus": "NORMAL", "reason": "", "low": low, "high": high, "close": close, "source": row.get("_source", "")}
+    ret_gross = ((exit_price - entry) / entry) * 100 if entry else 0
+    # 수수료 + 슬리피지 차감 (한국 기준)
+    ret = round(ret_gross - COST_KR_PCT, 4)
+    return {"date": DATE, "symbol": sym, "name": name, "market": "kr", "mode": mode, "horizon": horizon, "executed": "true", "entryPrice": entry, "entryText": text_price(entry), "stopPrice": stop or "", "targetPrice": target or "", "exitPrice": exit_price, "exitText": text_price(exit_price), "returnPct": ret, "returnPctText": f"{ret:+.2f}%", "result": result, "dataStatus": "NORMAL", "reason": "", "low": low, "high": high, "close": close, "source": row.get("_source", "")}
 
 
 def main() -> None:
