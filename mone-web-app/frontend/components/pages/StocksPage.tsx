@@ -38,7 +38,7 @@ type HoldingEditRow = {
   targetReason?: string;
 };
 
-const RECOMMENDATION_LIMIT = 120;
+const RECOMMENDATION_LIMIT = 50;
 
 function Cell({
   label,

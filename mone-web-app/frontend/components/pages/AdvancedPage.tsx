@@ -165,7 +165,7 @@ export default function AdvancedPage() {
     setScanLoading(true);
     Promise.allSettled([
       mone.advancedScanner({ market: apiMarket, mode, horizon }),
-      mone.recommendations({ market: apiMarket, mode, horizon, limit: 60 }),
+      mone.recommendations({ market: apiMarket, mode, horizon, limit: 50 }),
     ])
       .then(([scannerResult, recoResult]) => {
         if (!active) return;

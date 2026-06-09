@@ -238,7 +238,7 @@ export default function PredictionPage() {
     try {
       const validationMarkets = market === "all" ? (["kr", "us"] as const) : ([market] as const);
       const predPromise = mone.predictions({ market, mode: strategy, horizon: term, limit: 300 });
-      const recPromise = mone.recommendations({ market, mode: strategy, horizon: term, limit: 300 });
+      const recPromise = mone.recommendations({ market, mode: strategy, horizon: term, limit: 50 });
       const accPromise = mone.predictionAccuracy({ market: market === "all" ? "all" : market });
       const vdPromise = Promise.all(validationMarkets.map((mk) => mone.validationDashboard({ market: mk }))).then(combineValidationDashboards);
       const btPromise = Promise.all(validationMarkets.map((mk) => mone.backtestTrades({ market: mk, mode: strategy, horizon: term, limit: 200 })))
@@ -666,11 +666,11 @@ function AccuracyPanel({ accuracy }: { accuracy: any }) {
           <div className="mt-0.5 text-xs text-slate-500">
             {from} ~ {to} · 검증 {accuracy.validatedRows?.toLocaleString()}건 / 전체 {accuracy.totalRows?.toLocaleString()}건
           </div>
-          {to && to < new Date().toISOString().slice(0, 10) && (
-            <div className="mt-0.5 text-[10px] text-amber-400/70">
-              최신까지 반영하려면 실제 OHLCV 검증 파이프라인 재실행 필요
-            </div>
-          )}
+          <div className="mt-0.5 text-[10px] text-emerald-300/75">
+            최신 OHLCV 자동 반영
+            {accuracy.autoOhlcvMatchedRows ? ` · ${accuracy.autoOhlcvMatchedRows.toLocaleString()}건 보강` : ""}
+            {accuracy.latestOhlcvDate ? ` · 최근 ${accuracy.latestOhlcvDate}` : ""}
+          </div>
         </div>
         <span className="rounded-lg border border-indigo-700/40 bg-indigo-900/30 px-2 py-1 text-[10px] text-indigo-300">
           3주 누적
