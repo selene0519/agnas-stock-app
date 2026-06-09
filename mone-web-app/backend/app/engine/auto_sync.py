@@ -51,6 +51,27 @@ def _latest_commit() -> str:
     return out if code == 0 else ""
 
 
+def _git_repo_state() -> dict[str, Any]:
+    code, out, err = _run_git(["rev-parse", "--is-inside-work-tree"])
+    if code != 0 or out.strip().lower() != "true":
+        return {
+            "ok": False,
+            "status": "DEPLOYMENT_NO_GIT",
+            "statusLabel": "배포 환경에 git 원격 저장소가 없어 pull을 생략했습니다",
+            "gitOutput": (out + "\n" + err).strip(),
+        }
+    code, out, err = _run_git(["remote", "get-url", "origin"])
+    remote = out.strip()
+    if code != 0 or not remote:
+        return {
+            "ok": False,
+            "status": "NO_GIT_REMOTE",
+            "statusLabel": "origin 원격 저장소가 없어 GitHub Actions/재배포 데이터 기준으로 동작합니다",
+            "gitOutput": (out + "\n" + err).strip(),
+        }
+    return {"ok": True, "remote": remote}
+
+
 def _files_changed(before: str, after: str) -> int:
     if not before or not after or before == after:
         return 0
@@ -124,8 +145,12 @@ def _classify_git_error(code: int, out: str, err: str) -> str:
         return "BEHIND_REMOTE"
     if "network" in combined or "could not resolve" in combined or "connection" in combined or "timeout" in combined:
         return "NETWORK_ERROR"
-    if "not a git repository" in combined:
-        return "NOT_GIT_REPO"
+    if (
+        "not a git repository" in combined
+        or "origin does not appear to be a git repository" in combined
+        or "could not read from remote repository" in combined
+    ):
+        return "NO_GIT_REMOTE"
     return "ERROR"
 
 
@@ -134,6 +159,24 @@ def pull_and_refresh(source: str = "manual") -> dict[str, Any]:
     with _LOCK:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         before = _latest_commit()
+        repo_state = _git_repo_state()
+        if not repo_state.get("ok"):
+            cleared = _clear_all_caches()
+            status = {
+                "status": repo_state.get("status", "NO_GIT_REMOTE"),
+                "statusLabel": repo_state.get("statusLabel", ""),
+                "source": source,
+                "lastSyncAt": now,
+                "beforeCommit": before,
+                "afterCommit": before,
+                "filesChanged": 0,
+                "cachesCleared": cleared,
+                "autoWatchlist": {"status": "SKIPPED", "count": 0},
+                "gitOutput": str(repo_state.get("gitOutput") or "")[:500],
+                "error": "",
+            }
+            _save_status(status)
+            return status
 
         # git pull
         code, out, err = _run_git(["pull", "--rebase", "--autostash", "origin", "main"])
@@ -156,6 +199,8 @@ def pull_and_refresh(source: str = "manual") -> dict[str, Any]:
             "BEHIND_REMOTE": "원격보다 뒤처짐 — pull 필요",
             "NETWORK_ERROR": "네트워크 오류 — 인터넷 연결 확인",
             "NOT_GIT_REPO": "Git 저장소가 아닙니다",
+            "NO_GIT_REMOTE": "origin 원격 저장소가 없어 GitHub Actions/재배포 데이터 기준으로 동작합니다",
+            "DEPLOYMENT_NO_GIT": "배포 환경에 git 원격 저장소가 없어 pull을 생략했습니다",
             "ERROR": "알 수 없는 오류",
         }
 

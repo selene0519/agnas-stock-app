@@ -653,12 +653,12 @@ def _calc_confluence(
     # direction is not yet determined here — use momentum pre-calc to estimate
     _pre_momentum = 50.0
     if len(closes) >= 20:
-        _ma5 = sum(closes[-5:]) / 5 if len(closes) >= 5 else None
+        _ma10 = sum(closes[-10:]) / 10 if len(closes) >= 10 else None
         _ma20 = sum(closes[-20:]) / 20
-        if _ma5:
-            if closes[-1] > _ma20 and _ma5 > _ma20:
+        if _ma10:
+            if closes[-1] > _ma20 and _ma10 > _ma20:
                 _pre_momentum = 70.0
-            elif closes[-1] < _ma20 and _ma5 < _ma20:
+            elif closes[-1] < _ma20 and _ma10 < _ma20:
                 _pre_momentum = 30.0
     _tentative_bullish = _pre_momentum >= 60.0
 
@@ -689,14 +689,14 @@ def _calc_confluence(
     # 2. Momentum score (trendline direction + MA alignment)
     momentum = 50.0
     if len(closes) >= 20:
-        ma5 = sum(closes[-5:]) / 5 if len(closes) >= 5 else None
+        ma10 = sum(closes[-10:]) / 10 if len(closes) >= 10 else None
         ma20 = sum(closes[-20:]) / 20
         current = closes[-1]
-        if ma5 and ma20:
-            if current > ma20 and ma5 > ma20:
+        if ma10 and ma20:
+            if current > ma20 and ma10 > ma20:
                 momentum += 20.0
-                reasons.append("단기 정배열 (현재가 > MA20, MA5 > MA20)")
-            elif current < ma20 and ma5 < ma20:
+                reasons.append("단기 정배열 (현재가 > MA20, MA10 > MA20)")
+            elif current < ma20 and ma10 < ma20:
                 momentum -= 20.0
                 reasons.append("단기 역배열 (현재가 < MA20)")
     if breakout_direction == "UP":

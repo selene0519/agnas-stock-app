@@ -4202,6 +4202,7 @@ def chart_data(symbol: str, market: str) -> dict[str, Any]:
         }
     work = df.copy()
     work["ma5"] = work["close"].rolling(5).mean()
+    work["ma10"] = work["close"].rolling(10).mean()
     work["ma20"] = work["close"].rolling(20).mean()
     work["ma60"] = work["close"].rolling(60).mean()
     ma20 = work["close"].rolling(20).mean()
@@ -4218,7 +4219,7 @@ def chart_data(symbol: str, market: str) -> dict[str, Any]:
     macd = ema12 - ema26
     work["macd"] = macd
     work["macdSignal"] = macd.ewm(span=9, adjust=False).mean()
-    cols = ["date", "open", "high", "low", "close", "volume", "ma5", "ma20", "ma60", "bbUpper", "bbLower", "rsi", "macd", "macdSignal"]
+    cols = ["date", "open", "high", "low", "close", "volume", "ma5", "ma10", "ma20", "ma60", "bbUpper", "bbLower", "rsi", "macd", "macdSignal"]
     items = []
     for row in work.tail(160)[cols].replace({np.nan: None}).to_dict(orient="records"):
         items.append({k: (round(v, 4) if isinstance(v, float) and np.isfinite(v) else v) for k, v in row.items()})

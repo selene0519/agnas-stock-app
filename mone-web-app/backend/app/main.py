@@ -1126,8 +1126,9 @@ def api_trendline_accuracy(
     futureBars: int = Query(20, ge=5, le=60),
     symbolLimit: int = Query(12, ge=2, le=30),
     maxCutoffs: int = Query(6, ge=1, le=12),
+    includeItems: bool = Query(False),
 ) -> dict:
-    return chart_accuracy.trendline_accuracy(market, futureBars, symbolLimit, maxCutoffs)
+    return chart_accuracy.trendline_accuracy(market, futureBars, symbolLimit, maxCutoffs, include_items=includeItems)
 
 
 @app.get("/api/history/predictions")
@@ -1212,6 +1213,27 @@ def api_backtest_summary_core(
     return backtest.summary(_market(market), mode, horizon)
 
 
+def _safe_pct(value: object) -> float | None:
+    try:
+        text = str(value).replace("%", "").replace(",", "").strip()
+        if not text:
+            return None
+        return float(text)
+    except Exception:
+        return None
+
+
+def _portfolio_return_pct(returns: list[float], allocation_pct: float = 10.0) -> float:
+    """Equal-slot virtual portfolio return. Avoids misleading raw return sums."""
+    if not returns:
+        return 0.0
+    slot = max(0.0, min(allocation_pct, 100.0)) / 100.0
+    capital = 1.0
+    for value in returns:
+        capital *= max(0.0, 1.0 + (float(value) / 100.0) * slot)
+    return (capital - 1.0) * 100.0
+
+
 def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: str = "swing") -> dict:
     def _truth(value: object) -> bool:
         return str(value).strip().lower() in {"1", "true", "yes", "y", "filled", "executed", "체결"}
@@ -1252,8 +1274,9 @@ def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: 
     returns = [_num(row.get("returnPct")) for row in executed]
     returns = [value for value in returns if value is not None]
     wins = [value for value in returns if value > 0]
-    cumulative = sum(returns)
-    avg = cumulative / len(returns) if returns else 0.0
+    raw_sum = sum(returns)
+    cumulative = _portfolio_return_pct(returns)
+    avg = raw_sum / len(returns) if returns else 0.0
     pending = [
         row for row in ledger
         if str(row.get("status", "")).strip().upper() in {"", "PENDING", "DATA_PENDING"}
@@ -1267,8 +1290,9 @@ def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: 
         "mode": mode,
         "horizon": horizon,
         "source": "virtual_validation_results.csv + virtual_prediction_ledger.csv",
-        "returnBasis": "virtual_validation_results executed rows; portfolio aggregate curve, not per-symbol curve",
+        "returnBasis": "executed rows; cumulativeReturnPct is a 10% equal-slot virtual portfolio compound return, not raw return sum",
         "pnlCurveScope": "portfolio_aggregate",
+        "rawReturnSumPct": round(raw_sum, 3),
         "totalRecommendations": len(ledger) or len(validations),
         "latestRecommendations": len(validations),
         "executedTrades": len(executed),
@@ -2661,6 +2685,7 @@ def _install_mone_close_validation_routes_v1():
         returns = [r for r in returns if r is not None]
         win_count = sum(1 for r in returns if r > 0)
         avg_return = sum(returns) / len(returns) if returns else 0.0
+        cumulative_return = _portfolio_return_pct(returns)
         return {
             "status": "OK",
             "market": market,
@@ -2677,7 +2702,8 @@ def _install_mone_close_validation_routes_v1():
             "latestExecutionRate": round(len(executed) / len(normalized) * 100, 2) if normalized else 0,
             "latestWinRate": round((win_count / len(returns)) * 100, 2) if returns else 0,
             "latestAverageReturnPct": round(avg_return, 4),
-            "latestCumulativeReturnPct": round(sum(returns), 4),
+            "latestCumulativeReturnPct": round(cumulative_return, 4),
+            "rawReturnSumPct": round(sum(returns), 4),
             "items": normalized[:100],
             "count": len(normalized),
         }
@@ -4291,7 +4317,14 @@ def _install_mone_virtual_report_routes_v1():
             total = int(kr.get("totalRecommendations") or 0) + int(us.get("totalRecommendations") or 0)
             executed = int(kr.get("executedTrades") or 0) + int(us.get("executedTrades") or 0)
             unexecuted = int(kr.get("unexecutedCount") or 0) + int(us.get("unexecutedCount") or 0)
-            cumulative = float(kr.get("cumulativeReturnPct") or 0) + float(us.get("cumulativeReturnPct") or 0)
+            combined_items = (kr.get("items") or []) + (us.get("items") or [])
+            combined_returns = [
+                value for value in (_safe_pct(row.get("returnPct")) for row in combined_items if isinstance(row, dict))
+                if value is not None
+            ]
+            cumulative = _portfolio_return_pct(combined_returns)
+            raw_sum = sum(combined_returns)
+            avg_return = raw_sum / len(combined_returns) if combined_returns else 0.0
             rate = round((executed / (executed + unexecuted)) * 100, 2) if executed + unexecuted else 0
             return {
                 **us,
@@ -4305,9 +4338,12 @@ def _install_mone_virtual_report_routes_v1():
                 "latestUnexecutedCount": unexecuted,
                 "executionRate": rate,
                 "latestExecutionRate": rate,
+                "executedReturnPct": round(avg_return, 3),
                 "cumulativeReturnPct": round(cumulative, 3),
                 "latestCumulativeReturnPct": round(cumulative, 3),
-                "items": (kr.get("items") or []) + (us.get("items") or []),
+                "rawReturnSumPct": round(raw_sum, 3),
+                "returnBasis": "executed rows; cumulativeReturnPct is a 10% equal-slot virtual portfolio compound return, not raw return sum",
+                "items": combined_items,
                 "count": int(kr.get("count") or 0) + int(us.get("count") or 0),
                 "source": "virtual_validation_results.csv + virtual_prediction_ledger.csv",
             }
