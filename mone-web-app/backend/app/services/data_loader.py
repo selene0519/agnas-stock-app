@@ -4206,14 +4206,17 @@ def chart_data(symbol: str, market: str) -> dict[str, Any]:
     work["ma20"] = work["close"].rolling(20).mean()
     work["ma60"] = work["close"].rolling(60).mean()
     ma20 = work["close"].rolling(20).mean()
-    std20 = work["close"].rolling(20).std()
+    std20 = work["close"].rolling(20).std(ddof=0)  # 모집단 표준편차 (John Bollinger 원저 기준)
     work["bbUpper"] = ma20 + std20 * 2
     work["bbLower"] = ma20 - std20 * 2
+    # Wilder's Smoothed RSI (EMA 방식, 업계 표준)
     delta = work["close"].diff()
-    gain = delta.clip(lower=0).rolling(14).mean()
-    loss = (-delta.clip(upper=0)).rolling(14).mean()
-    rs = gain / loss.replace(0, np.nan)
-    work["rsi"] = 100 - (100 / (1 + rs))
+    gain = delta.clip(lower=0)
+    loss = (-delta).clip(lower=0)
+    avg_gain = gain.ewm(alpha=1 / 14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / 14, adjust=False).mean()
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    work["rsi"] = (100 - (100 / (1 + rs))).round(2)
     ema12 = work["close"].ewm(span=12, adjust=False).mean()
     ema26 = work["close"].ewm(span=26, adjust=False).mean()
     macd = ema12 - ema26
