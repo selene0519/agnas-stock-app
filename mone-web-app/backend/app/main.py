@@ -1165,6 +1165,176 @@ def api_trendline_anchor_learning(
     return trendline_learning.learning_report(market.lower(), symbol.upper().strip(), limit)
 
 
+# ── 5차: adaptive weights ─────────────────────────────────────────────────
+
+@app.get("/api/insights/adaptive-weights")
+def api_adaptive_weights(
+    limit: int = Query(50, ge=1, le=200),
+) -> dict:
+    from app.services import adaptive_weights as _aw
+    from datetime import datetime
+
+    max_allowed = min(200, runtime_limits.clamp_limit(limit, 50, 200))
+    try:
+        table = _aw.load_adaptive_weights()
+        summary = _aw.weight_summary(table)
+        return {
+            "status": "OK" if table else "NO_DATA",
+            "totalSignals": summary["totalSignals"],
+            "eligibleSignals": summary["eligibleSignals"],
+            "bySignalKey": summary["bySignalKey"][:max_allowed],
+            "bySignalType": summary["bySignalType"],
+            "byHorizon": summary["byHorizon"],
+            "byMode": summary["byMode"],
+            "byMarket": summary["byMarket"],
+            "source": str(_aw.ADAPTIVE_WEIGHT_CSV),
+            "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    except Exception as exc:
+        return {
+            "status": "ERROR",
+            "error": str(exc),
+            "totalSignals": 0,
+            "eligibleSignals": 0,
+            "bySignalKey": [],
+            "bySignalType": {},
+            "byHorizon": {},
+            "byMode": {},
+            "byMarket": {},
+        }
+
+
+@app.get("/api/validation/recommendations/summary")
+def api_validation_recommendations_summary(
+    market: str = Query("kr", pattern="^(kr|us|all)$"),
+    mode: str = Query(""),
+    horizon: str = Query(""),
+) -> dict:
+    """검증 결과 다차원 집계 요약 — bySignalKey, bySignalType, byHorizon, byMode, byMarket, byEventTag 등."""
+    import csv as _sum_csv
+    from pathlib import Path as _SumPath
+    from datetime import datetime as _SumDT
+    from collections import defaultdict as _sdd
+
+    def _safe_num(v: object) -> float | None:
+        try:
+            fv = float(str(v).replace(",", "").strip())
+            import math
+            return fv if math.isfinite(fv) else None
+        except Exception:
+            return None
+
+    def _truth(v: object) -> bool:
+        return str(v).lower() in {"true", "1", "yes", "1.0"}
+
+    reports = _SumPath(__file__).resolve().parents[3] / "reports"
+    rows_v: list[dict] = []
+    rows_l: list[dict] = []
+
+    for fname in ("virtual_validation_results.csv", "virtual_prediction_ledger.csv"):
+        fpath = reports / fname
+        if not fpath.exists():
+            continue
+        try:
+            with open(fpath, newline="", encoding="utf-8") as f:
+                reader = _sum_csv.DictReader(f)
+                for row in reader:
+                    mk = str(row.get("market", "")).lower()
+                    if market not in {"all", ""} and mk != market:
+                        continue
+                    if mode and mode not in {"all", ""} and str(row.get("mode", "")).lower() != mode.lower():
+                        continue
+                    if horizon and horizon not in {"all", ""} and str(row.get("horizon", "")).lower() != horizon.lower():
+                        continue
+                    if fname.startswith("virtual_validation"):
+                        rows_v.append(row)
+                    else:
+                        rows_l.append(row)
+        except Exception:
+            pass
+
+    all_rows = rows_v or rows_l
+
+    by_signal_key: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
+    by_signal_type: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
+    by_horizon: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
+    by_mode_d: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
+    by_market_d: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
+    by_event_tag: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
+    by_trendline: dict[str, int] = _sdd(int)
+    by_data_src: dict[str, int] = _sdd(int)
+
+    from app.services import adaptive_weights as _aw_sum
+
+    for row in all_rows:
+        pnl = _safe_num(row.get("pnlPct") or row.get("returnPct") or row.get("virtual_return_pct"))
+        is_win = pnl is not None and pnl >= 0
+        ret = pnl or 0.0
+
+        keys = _aw_sum._make_signal_keys(row)
+        for k in keys:
+            st = _aw_sum._signal_type(k)
+            by_signal_key[k]["count"] += 1
+            by_signal_type[st]["count"] += 1
+            if is_win:
+                by_signal_key[k]["wins"] += 1
+                by_signal_type[st]["wins"] += 1
+            by_signal_key[k]["returnSum"] = round(by_signal_key[k]["returnSum"] + ret, 4)
+            by_signal_type[st]["returnSum"] = round(by_signal_type[st]["returnSum"] + ret, 4)
+
+        h = str(row.get("horizon") or "all").lower()
+        m = str(row.get("mode") or "all").lower()
+        mk = str(row.get("market") or "all").lower()
+        by_horizon[h]["count"] += 1
+        by_mode_d[m]["count"] += 1
+        by_market_d[mk]["count"] += 1
+        if is_win:
+            by_horizon[h]["wins"] += 1
+            by_mode_d[m]["wins"] += 1
+            by_market_d[mk]["wins"] += 1
+        by_horizon[h]["returnSum"] = round(by_horizon[h]["returnSum"] + ret, 4)
+        by_mode_d[m]["returnSum"] = round(by_mode_d[m]["returnSum"] + ret, 4)
+        by_market_d[mk]["returnSum"] = round(by_market_d[mk]["returnSum"] + ret, 4)
+
+        for tf in ("newsEventTag", "disclosureEventTag", "earningsEventTag", "macroEventTag", "sectorEventTag"):
+            tag = str(row.get(tf) or "").lower()
+            if tag and tag not in {"unknown", "none", "neutral", ""}:
+                by_event_tag[tag]["count"] += 1
+                if is_win:
+                    by_event_tag[tag]["wins"] += 1
+                by_event_tag[tag]["returnSum"] = round(by_event_tag[tag]["returnSum"] + ret, 4)
+
+        tl_status = str(row.get("trendlineLearningStatus") or "").upper() or "UNKNOWN"
+        by_trendline[tl_status] += 1
+
+        ds = str(row.get("dataSourceType") or row.get("chartDataSourceType") or "unknown").lower()
+        by_data_src[ds] += 1
+
+    def _fmt(d: dict) -> dict:
+        return {k: {
+            "count": v["count"],
+            "winRate": round(v["wins"] / v["count"], 4) if v["count"] else 0.0,
+            "avgReturn": round(v["returnSum"] / v["count"], 4) if v["count"] else 0.0,
+        } for k, v in d.items()}
+
+    return {
+        "status": "OK" if all_rows else "NO_DATA",
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "totalRows": len(all_rows),
+        "bySignalKey": _fmt(by_signal_key),
+        "bySignalType": _fmt(by_signal_type),
+        "byHorizon": _fmt(by_horizon),
+        "byMode": _fmt(by_mode_d),
+        "byMarket": _fmt(by_market_d),
+        "byEventTag": _fmt(by_event_tag),
+        "byTrendlineLearningStatus": dict(by_trendline),
+        "byDataSourceType": dict(by_data_src),
+        "generatedAt": _SumDT.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
 @app.get("/api/history/predictions")
 def api_prediction_history(market: str | None = Query(None, pattern="^(kr|us)$")) -> dict:
     return final_engine.admin_prediction_history(_market(market) if market else None)
