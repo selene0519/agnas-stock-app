@@ -10,6 +10,7 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
+from app.engine.chart_analysis_engine import build_chart_analysis, state_to_dict
 from app.services import data_loader as data
 
 MARKETS = ("kr", "us")
@@ -85,6 +86,259 @@ def _latest_ohlcv(symbol: str, market: str) -> tuple[pd.DataFrame, str]:
         return data._load_ohlcv(symbol, market)  # type: ignore[attr-defined]
     except Exception:
         return pd.DataFrame(), ""
+
+
+def _chart_data_source_type(df: pd.DataFrame, source: str, normalized: dict[str, Any] | None = None) -> str:
+    source_text = _as_text(source).lower()
+    row_source = _as_text((normalized or {}).get("sourceType")).lower()
+    price_source = _as_text((normalized or {}).get("priceSourceType")).lower()
+    if "mock" in source_text or "mock" in row_source or "mock" in price_source:
+        return "mock"
+    if df.empty:
+        if row_source in {"stockapp_snapshot", "github_actions", "local_fallback", "stale"}:
+            return "csv"
+        if row_source in {"placeholder", "fallback"}:
+            return "placeholder"
+        return "unavailable"
+    if "close-history fallback" in source_text:
+        return "close_history_fallback"
+    if "api" in source_text or any(token in source_text for token in ("kis", "finnhub", "yfinance", "yahoo")):
+        return "api"
+    if source_text.endswith(".csv") or ".csv" in source_text:
+        return "actual_ohlcv"
+    if row_source in {"stockapp_snapshot", "github_actions", "local_fallback", "stale"}:
+        return "csv"
+    return "actual_ohlcv"
+
+
+def _line_price(line: dict[str, Any] | None, index: int) -> float | None:
+    if not line:
+        return None
+    slope = _num(line.get("slope"))
+    intercept = _num(line.get("intercept"))
+    if slope is None or intercept is None:
+        return None
+    price = slope * index + intercept
+    return price if price > 0 else None
+
+
+def _distance_pct(price: float | None, reference: float | None) -> float | None:
+    if price is None or reference is None or reference <= 0:
+        return None
+    return (price - reference) / reference * 100
+
+
+def _basis_label(value: float | None, support: float | None, resistance: float | None, atr: float | None, fallback: str) -> str:
+    if value is None:
+        return "unavailable"
+    matches: list[str] = []
+    tolerance = max((atr or 0) * 0.75, value * 0.015)
+    if support is not None and abs(value - support) <= tolerance:
+        matches.append("support")
+    if resistance is not None and abs(value - resistance) <= tolerance:
+        matches.append("resistance")
+    if atr and atr > 0:
+        matches.append("atr")
+    return "+".join(matches) if matches else fallback
+
+
+def _compute_atr(df: pd.DataFrame, period: int = 14) -> float | None:
+    if df.empty or len(df) < 2:
+        return None
+    work = df.tail(period + 1).copy()
+    for col in ("high", "low", "close"):
+        if col not in work:
+            return None
+        work[col] = pd.to_numeric(work[col], errors="coerce")
+    prev_close = work["close"].shift(1)
+    tr = pd.concat([
+        work["high"] - work["low"],
+        (work["high"] - prev_close).abs(),
+        (work["low"] - prev_close).abs(),
+    ], axis=1).max(axis=1).dropna()
+    if tr.empty:
+        return None
+    atr = float(tr.tail(period).mean())
+    return atr if np.isfinite(atr) and atr > 0 else None
+
+
+def _chart_signal_overlay(symbol: str, market: str, normalized: dict[str, Any], mode: str, horizon: str) -> dict[str, Any]:
+    df, source = _latest_ohlcv(symbol, market)
+    data_source_type = _chart_data_source_type(df, source, normalized)
+    base = {
+        "chartSignalUsed": False,
+        "lineSignalUsed": False,
+        "supportResistanceUsed": False,
+        "trendlineUsed": False,
+        "supportUsed": False,
+        "resistanceUsed": False,
+        "volumeZoneUsed": False,
+        "fakeBreakoutRiskUsed": False,
+        "dataSourceType": data_source_type,
+        "chartSignalSummary": {
+            "status": "unavailable",
+            "recommendedIntegration": "chart display only / recommendation not used",
+            "displayOnly": ["ZigZag", "retracement", "fakeBreakout"],
+            "usedSignals": [],
+            "badges": ["fallback 데이터" if data_source_type != "actual_ohlcv" else "실측 데이터"],
+            "source": source,
+            "notes": [],
+        },
+        "chartSignalBadges": ["fallback 데이터" if data_source_type != "actual_ohlcv" else "실측 데이터"],
+        "entryBasis": "unavailable",
+        "targetBasis": "unavailable",
+        "stopBasis": "unavailable",
+        "supportDistancePct": None,
+        "resistanceDistancePct": None,
+        "trendlineDistancePct": None,
+        "riskRewardRatio": None,
+        "chartScoreAdjustment": 0.0,
+    }
+    if df.empty or len(df) < 20:
+        base["chartSignalSummary"]["notes"].append("OHLCV unavailable or insufficient; chart signals not applied")
+        if data_source_type in {"unavailable", "placeholder"}:
+            base["chartScoreAdjustment"] = -8.0
+        elif data_source_type != "actual_ohlcv":
+            base["chartScoreAdjustment"] = -4.0
+        return base
+
+    rows = df.tail(180).replace({np.nan: None}).to_dict(orient="records")
+    horizon_bars = {"short": 5, "swing": 20, "mid": 60}.get(horizon, 20)
+    try:
+        state = build_chart_analysis(rows, symbol=symbol, market=market, horizon_bars=horizon_bars)
+        chart = state_to_dict(state)
+    except Exception as exc:
+        base["chartSignalSummary"]["status"] = "error"
+        base["chartSignalSummary"]["notes"].append(f"chart analysis failed: {exc}")
+        return base
+
+    current = _num(normalized.get("currentPrice")) or _num(df["close"].iloc[-1] if "close" in df and len(df) else None)
+    entry = _num(normalized.get("entry"))
+    target = _num(normalized.get("target"))
+    stop = _num(normalized.get("stop"))
+    support = _line_price(chart.get("supportLine"), len(rows) - 1)
+    resistance = _line_price(chart.get("resistanceLine"), len(rows) - 1)
+    atr = _compute_atr(df)
+    zones = chart.get("zones") if isinstance(chart.get("zones"), list) else []
+    overlap_signals = chart.get("overlapSignals") if isinstance(chart.get("overlapSignals"), list) else []
+    direction = _as_text(chart.get("confluenceDirection"))
+    signal_status = _as_text(chart.get("signalStatus"))
+    breakout = _as_text(chart.get("breakoutDirection"))
+    support_dist = _distance_pct(current, support)
+    resistance_dist = _distance_pct(current, resistance)
+    trend_dist_candidates = [abs(v) for v in (support_dist, resistance_dist) if v is not None]
+    trend_dist = min(trend_dist_candidates) if trend_dist_candidates else None
+    rr = None
+    if entry and stop and target and entry > 0 and target > entry and stop < entry:
+        rr = (target - entry) / max(entry - stop, 1e-9)
+
+    used: list[str] = []
+    display_only = ["ZigZag", "retracement", "fakeBreakout"]
+    badges = ["실측 데이터" if data_source_type == "actual_ohlcv" else "fallback 데이터"]
+    adjustment = 0.0
+
+    support_used = support is not None and support_dist is not None and 0 <= support_dist <= 3.0
+    resistance_break = resistance is not None and current is not None and resistance * 1.002 < current <= resistance * 1.06
+    resistance_near = resistance is not None and resistance_dist is not None and -4.0 <= resistance_dist <= 0.8
+    trendline_hold = (
+        support is not None
+        and current is not None
+        and direction == "bullish"
+        and current >= support
+        and support_dist is not None
+        and 0 <= support_dist <= 6.0
+    )
+    resistance_line = chart.get("resistanceLine") if isinstance(chart.get("resistanceLine"), dict) else {}
+    falling_resistance_break = resistance_break and resistance_line.get("lineDirection") in {"descending_resistance", "falling_resistance"}
+    fake_breakout_risk = False
+    if breakout == "UP" and resistance is not None and current is not None and current < resistance * 1.012:
+        fake_breakout_risk = True
+    supply_near = False
+    for zone in zones:
+        if not isinstance(zone, dict) or zone.get("zoneType") != "supply" or current is None:
+            continue
+        top = _num(zone.get("top"))
+        bottom = _num(zone.get("bottom"))
+        if top and bottom and bottom <= current <= top * 1.015:
+            supply_near = True
+            break
+
+    if support_used:
+        adjustment += 4.0
+        used.append("support_near")
+        badges.append("지지선 근접")
+    if resistance_break:
+        adjustment += 4.0
+        used.append("resistance_break")
+        badges.append("저항 돌파")
+    if trendline_hold:
+        adjustment += 3.0
+        used.append("trendline_hold")
+        badges.append("빗각 유지")
+    if falling_resistance_break:
+        adjustment += 4.0
+        used.append("falling_trendline_break")
+    if fake_breakout_risk:
+        adjustment -= 6.0
+        used.append("fake_breakout_risk")
+        badges.append("가짜돌파 주의")
+    if supply_near or resistance_near:
+        adjustment -= 4.0
+        used.append("volume_or_resistance_overhead")
+    if data_source_type in {"close_history_fallback", "csv", "api"} and data_source_type != "actual_ohlcv":
+        adjustment -= 3.0
+    if data_source_type in {"unavailable", "placeholder", "mock"}:
+        adjustment -= 8.0
+
+    adjustment = float(data._clamp(adjustment, -12, 12))  # type: ignore[attr-defined]
+    chart_used = bool(used) or data_source_type != "actual_ohlcv"
+    if chart_used:
+        badges.append("차트 신호 반영")
+        badges.append("추천 반영")
+    else:
+        badges.append("차트 표시만")
+
+    return {
+        **base,
+        "chartSignalUsed": chart_used,
+        "lineSignalUsed": bool(support_used or resistance_break or trendline_hold or falling_resistance_break),
+        "supportResistanceUsed": bool(support_used or resistance_break or resistance_near),
+        "trendlineUsed": bool(trendline_hold or falling_resistance_break),
+        "supportUsed": bool(support_used),
+        "resistanceUsed": bool(resistance_break or resistance_near),
+        "volumeZoneUsed": bool(supply_near),
+        "fakeBreakoutRiskUsed": bool(fake_breakout_risk),
+        "entryBasis": _basis_label(entry, support, resistance, atr, "recommendation_level"),
+        "targetBasis": _basis_label(target, support, resistance, atr, "recommendation_level"),
+        "stopBasis": _basis_label(stop, support, resistance, atr, "recommendation_level"),
+        "supportDistancePct": round(support_dist, 3) if support_dist is not None else None,
+        "resistanceDistancePct": round(resistance_dist, 3) if resistance_dist is not None else None,
+        "trendlineDistancePct": round(trend_dist, 3) if trend_dist is not None else None,
+        "riskRewardRatio": round(rr, 3) if rr is not None else None,
+        "chartScoreAdjustment": round(adjustment, 2),
+        "chartSignalBadges": list(dict.fromkeys(badges)),
+        "chartSignalSummary": {
+            "status": signal_status or "none",
+            "direction": direction or "neutral",
+            "chartSignalScore": chart.get("chartSignalScore"),
+            "chartSignalTag": chart.get("chartSignalTag"),
+            "confluenceScore": chart.get("confluenceScore"),
+            "breakoutDirection": breakout or "",
+            "recommendedIntegration": "recommendation reflected" if chart_used else "chart display only / recommendation not used",
+            "displayOnly": display_only,
+            "usedSignals": used,
+            "badges": list(dict.fromkeys(badges)),
+            "source": source,
+            "dataQuality": chart.get("dataQuality"),
+            "supportLine": chart.get("supportLine"),
+            "resistanceLine": chart.get("resistanceLine"),
+            "supportPrice": round(support, 4) if support is not None else None,
+            "resistancePrice": round(resistance, 4) if resistance is not None else None,
+            "nearestSupplyZone": next((z for z in zones if isinstance(z, dict) and z.get("zoneType") == "supply"), None),
+            "overlapSignalCount": len(overlap_signals),
+            "notes": chart.get("warnings", []),
+        },
+    }
 
 
 OPERATIONAL_VERSION = "v3.6.1-operational-stable"
@@ -245,6 +499,119 @@ def _actual_close_after(symbol: str, market: str, base_date: pd.Timestamp | None
     close = _num(row.get("close"))
     date_text = _as_text(row.get("date"))
     return close, source, date_text
+
+
+def _prediction_market(row: pd.Series, fallback: str | None = None) -> str:
+    text = _as_text(row.get("market")).lower()
+    if "us" in text or "미국" in text or "nasdaq" in text or "nyse" in text:
+        return "us"
+    if "kr" in text or "한국" in text or "국장" in text or "kospi" in text or "kosdaq" in text:
+        return "kr"
+    return fallback if fallback in MARKETS else "kr"
+
+
+def _fill_prediction_accuracy_actuals(df: pd.DataFrame, requested_market: str | None = None) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Fill missing prediction actuals from stored OHLCV for read-time accuracy stats."""
+    if df.empty:
+        return df, {"matchedRows": 0, "latestOhlcvDate": "", "source": "predictions.csv"}
+    work = df.copy()
+    cache: dict[tuple[str, str], tuple[pd.DataFrame, str]] = {}
+    matched = 0
+    latest_ohlcv_date = ""
+
+    for idx, row in work.iterrows():
+        if _as_text(row.get("actual_close")):
+            latest_ohlcv_date = max(latest_ohlcv_date, _as_text(row.get("actual_date"))[:10])
+            continue
+        mk = _prediction_market(row, requested_market)
+        if requested_market in MARKETS and mk != requested_market:
+            continue
+        raw = row.to_dict()
+        symbol = data.normalize_symbol(data.first_value(raw, data.SYMBOL_ALIASES + ["ticker", "stock_code"], ""), mk)
+        target_date = _to_ts(row.get("target_date") or row.get("actual_date") or row.get("created_at"))
+        if not symbol or target_date is None:
+            continue
+        key = (mk, symbol)
+        if key not in cache:
+            cache[key] = _ohlcv_with_dates(symbol, mk)
+        ohlcv, source = cache[key]
+        if ohlcv.empty:
+            continue
+        future = ohlcv[ohlcv["_date_ts"] >= target_date]
+        if future.empty:
+            continue
+        actual = future.iloc[0]
+        actual_date = _row_date_text(actual)[:10]
+        actual_open = _num(actual.get("open"))
+        actual_high = _num(actual.get("high"))
+        actual_low = _num(actual.get("low"))
+        actual_close = _num(actual.get("close"))
+        if actual_close is None:
+            continue
+
+        pred_open_low = data.first_number(raw, ["pred_open_low", "open_low"])
+        pred_open_high = data.first_number(raw, ["pred_open_high", "open_high"])
+        pred_close_low = data.first_number(raw, ["pred_close_low", "close_low"])
+        pred_close_high = data.first_number(raw, ["pred_close_high", "close_high"])
+        pred_close_mid = data.first_number(raw, ["pred_close_mid", "expected_price_1d", "take_profit1"])
+        prev_close = data.first_number(raw, ["prev_close", "basis_close", "current_price_at_prediction"])
+        entry = data.first_number(raw, ["preferred_entry", "entryPrice", "entry_price", "technical_entry", "conservative_entry"])
+        stop = data.first_number(raw, ["stop_loss", "stopLoss"])
+        tp1 = data.first_number(raw, ["take_profit1", "targetPrice", "target_price"])
+
+        open_in_range = actual_open is not None and pred_open_low is not None and pred_open_high is not None and pred_open_low <= actual_open <= pred_open_high
+        close_in_range = pred_close_low is not None and pred_close_high is not None and pred_close_low <= actual_close <= pred_close_high
+        entry_touched = entry is not None and actual_low is not None and actual_low <= entry <= (actual_high or entry)
+        stop_touched = stop is not None and actual_low is not None and actual_low <= stop
+        tp1_touched = tp1 is not None and actual_high is not None and actual_high >= tp1
+        direction_hit = False
+        if prev_close not in (None, 0) and pred_close_mid is not None:
+            direction_hit = (pred_close_mid - prev_close) * (actual_close - prev_close) >= 0
+
+        virtual_return = None
+        virtual_label = "미체결"
+        exit_price = None
+        if entry_touched and entry not in (None, 0):
+            if stop_touched:
+                exit_price = stop
+                virtual_label = "손절"
+            elif tp1_touched:
+                exit_price = tp1
+                virtual_label = "목표"
+            else:
+                exit_price = actual_close
+                virtual_label = "종가청산"
+            virtual_return = ((exit_price - entry) / entry) * 100 if exit_price is not None else None
+
+        updates = {
+            "actual_source": source or "OHLCV 자동 매칭",
+            "actual_date": actual_date,
+            "actual_open": actual_open,
+            "actual_high": actual_high,
+            "actual_low": actual_low,
+            "actual_close": actual_close,
+            "actual_volume": _num(actual.get("volume")),
+            "actual_quality_flag": "OHLCV_AUTO",
+            "actual_quality_note": "prediction_accuracy_stats read-time OHLCV match",
+            "open_in_range": float(bool(open_in_range)),
+            "close_in_range": float(bool(close_in_range)),
+            "direction_hit": float(bool(direction_hit)),
+            "entry_touched": bool(entry_touched),
+            "stop_touched": bool(stop_touched),
+            "tp1_touched": bool(tp1_touched),
+            "virtual_entry_filled": float(bool(entry_touched)),
+            "virtual_exit_price": exit_price if exit_price is not None else "",
+            "virtual_result_label": virtual_label,
+            "virtual_return_pct": virtual_return if virtual_return is not None else "",
+        }
+        for col, value in updates.items():
+            if col not in work.columns:
+                work[col] = ""
+            work.at[idx, col] = value
+        matched += 1
+        latest_ohlcv_date = max(latest_ohlcv_date, actual_date)
+
+    return work, {"matchedRows": matched, "latestOhlcvDate": latest_ohlcv_date, "source": "predictions.csv + OHLCV read-time match"}
 
 
 @lru_cache(maxsize=256)
@@ -844,6 +1211,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             normalized = _apply_final_price_overlay(normalized, price_overlay)
         for key, value in item.items():
             normalized.setdefault(key, value)
+        chart_overlay = _chart_signal_overlay(sym, market, normalized, mode, horizon)
         normalized.update({
             "symbol": sym,
             "market": market,
@@ -872,8 +1240,10 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             rank_score += 8
         if execution.get("executionStatus") == "체결":
             rank_score += 4
+        rank_score += float(chart_overlay.get("chartScoreAdjustment") or 0)
         row = {
             **normalized,
+            **chart_overlay,
             "decisionBucket": bucket,
             "buyTiming": buy_timing,
             "sellTiming": sell_timing,
@@ -1669,6 +2039,7 @@ def prediction_accuracy_stats(market: str | None = None) -> dict[str, Any]:
         mk_label = "한국주식" if market == "kr" else "미국주식"
         df = df[df["market"].astype(str).str.contains("한국" if market == "kr" else "미국", na=False)]
 
+    df, ohlcv_match = _fill_prediction_accuracy_actuals(df, market)
     df_actual = df[df["actual_close"].astype(str).str.strip().ne("")]
     total = len(df_actual)
     if total == 0:
@@ -1766,6 +2137,9 @@ def prediction_accuracy_stats(market: str | None = None) -> dict[str, Any]:
         "virtualResultDist": result_dist,
         "learningData": learning_rows,
         "latestValidationSummary": latest_validation,
+        "actualSource": ohlcv_match.get("source"),
+        "autoOhlcvMatchedRows": ohlcv_match.get("matchedRows", 0),
+        "latestOhlcvDate": ohlcv_match.get("latestOhlcvDate", ""),
         "updatedAt": _now(),
     }
 

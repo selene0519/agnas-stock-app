@@ -281,6 +281,14 @@ export const mone = {
     apiGet<ApiList>("/api/risk/benchmark", p),
   validationDashboard: (p?: { market?: Market }) =>
     apiGet<ApiList>("/api/validation/dashboard", p),
+  recommendationValidationSnapshot: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number; snapshotDate?: string }) =>
+    apiPost<ApiList>("/api/validation/recommendations/snapshot", {}, p),
+  recommendationValidation: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
+    apiGet<ApiList>("/api/validation/recommendations", p),
+  recommendationValidationSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
+    apiGet<ApiList>("/api/validation/recommendations/summary", p),
+  recommendationValidationBySignal: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
+    apiGet<ApiList>("/api/validation/recommendations/by-signal", p),
   sectorExposure: (p?: { market?: Market }) =>
     apiGet<ApiList>("/api/risk/sector-exposure", p),
   journalGet: (p?: { market?: Market }) =>
