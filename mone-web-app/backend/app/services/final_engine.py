@@ -12,6 +12,7 @@ import pandas as pd
 
 from app.engine.chart_analysis_engine import build_chart_analysis, state_to_dict
 from app.services import data_loader as data
+from app.services import runtime_limits
 from app.services import trendline_learning
 
 MARKETS = ("kr", "us")
@@ -1227,15 +1228,18 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
     market = "us" if str(market).lower() == "us" else "kr"
     mode = mode if mode in MODES else "balanced"
     horizon = horizon if horizon in HORIZONS else "swing"
+    max_allowed = min(50, runtime_limits.recommendation_max_symbols())
+    requested_limit = runtime_limits.clamp_limit(limit, 20, max_allowed)
     news_map = _news_context(market)
     disc_map = _disclosure_context(market)
     if market == "us" and mode == "balanced" and horizon == "swing":
         universe, sources = _us_balanced_swing_universe()
     else:
         universe, sources = _candidate_universe(market)
+    process_universe = universe[:requested_limit]
     price_overlay_map = _final_price_overlay_map(market)
     rows: list[dict[str, Any]] = []
-    for item in universe:
+    for item in process_universe:
         sym = _symbol(item, market)
         if not sym:
             continue
@@ -1313,8 +1317,14 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         }
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
-    max_items = limit or int(MODE_RULES[mode]["max_items"])
-    selected = rows[:max_items]
+    selected = rows[:requested_limit]
+    limit_meta = runtime_limits.limit_meta(
+        total_count=len(universe),
+        processed_count=len(process_universe),
+        limit=requested_limit,
+        max_allowed=max_allowed,
+        dataSourceType="mixed",
+    )
     return {
         "status": "OK",
         "market": market,
@@ -1323,7 +1333,8 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         "horizon": horizon,
         "horizonLabel": HORIZON_LABELS[horizon],
         "count": len(selected),
-        "universeCount": len(rows),
+        "universeCount": len(universe),
+        **limit_meta,
         "sources": sources[:12],
         "rule": "국장/미장 후보군을 StockApp raw·MONE reports·CSV/OHLCV·뉴스·공시로 합친 뒤 MONE 점수로 재분류",
         "items": selected,

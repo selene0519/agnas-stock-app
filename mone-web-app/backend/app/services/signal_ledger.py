@@ -11,11 +11,14 @@ import csv
 import json
 import math
 import uuid
+from collections import deque
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+from app.services import runtime_limits
 
 # Repo root: signal_ledger.py → services/ → app/ → backend/ → mone-web-app/ → ROOT
 ROOT = Path(__file__).resolve().parents[4]
@@ -96,16 +99,33 @@ def _read_outcomes() -> pd.DataFrame:
         return pd.DataFrame(columns=OUTCOME_COLS)
 
 
-def _read_recommendation_snapshots() -> pd.DataFrame:
+def _read_csv_tail_frame(path: Path, columns: list[str], max_rows: int | None = None) -> pd.DataFrame:
+    if not path.exists() or path.stat().st_size <= 0:
+        return pd.DataFrame(columns=columns)
+    row_limit = max_rows if max_rows is not None and max_rows > 0 else runtime_limits.validation_max_rows()
+    for encoding in ("utf-8-sig", "utf-8", "cp949"):
+        try:
+            with open(path, newline="", encoding=encoding) as f:
+                reader = csv.DictReader(f)
+                rows = deque(maxlen=row_limit)
+                for row in reader:
+                    rows.append({str(k): v for k, v in row.items() if k is not None})
+            return pd.DataFrame(list(rows), columns=columns)
+        except Exception:
+            continue
+    return pd.DataFrame(columns=columns)
+
+
+def _read_recommendation_snapshots(max_rows: int | None = None) -> pd.DataFrame:
     try:
-        return pd.read_csv(RECOMMENDATION_SNAPSHOTS_CSV, dtype=str)
+        return _read_csv_tail_frame(RECOMMENDATION_SNAPSHOTS_CSV, RECOMMENDATION_SNAPSHOT_COLS, max_rows)
     except Exception:
         return pd.DataFrame(columns=RECOMMENDATION_SNAPSHOT_COLS)
 
 
-def _read_recommendation_validations() -> pd.DataFrame:
+def _read_recommendation_validations(max_rows: int | None = None) -> pd.DataFrame:
     try:
-        return pd.read_csv(RECOMMENDATION_VALIDATION_CSV, dtype=str)
+        return _read_csv_tail_frame(RECOMMENDATION_VALIDATION_CSV, RECOMMENDATION_VALIDATION_COLS, max_rows)
     except Exception:
         return pd.DataFrame(columns=RECOMMENDATION_VALIDATION_COLS)
 
@@ -231,7 +251,7 @@ def record_recommendation_snapshots(items: list[dict[str, Any]], snapshot_date: 
     """Persist final recommendation rows for later OHLCV validation."""
     _ensure()
     snapshot_date = (snapshot_date or date.today().isoformat())[:10]
-    existing = _read_recommendation_snapshots()
+    existing = _read_recommendation_snapshots(runtime_limits.validation_max_rows())
     existing_rows = existing.to_dict("records") if not existing.empty else []
     seen = {str(row.get("snapshot_id")) for row in existing_rows}
     added: list[dict[str, Any]] = []
@@ -437,9 +457,19 @@ def _validate_snapshot(row: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def validate_recommendation_snapshots(market: str = "all", mode: str = "all", horizon: str = "all", limit: int = 500) -> dict:
+def validate_recommendation_snapshots(
+    market: str = "all",
+    mode: str = "all",
+    horizon: str = "all",
+    limit: int = 50,
+    max_rows: int | None = None,
+    limit_max_allowed: int | None = None,
+) -> dict:
     _ensure()
-    snapshots = _read_recommendation_snapshots()
+    safe_max_rows = runtime_limits.clamp_limit(max_rows, runtime_limits.validation_max_rows(), runtime_limits.validation_max_rows())
+    max_allowed = int(limit_max_allowed or max(200, safe_max_rows))
+    safe_limit = runtime_limits.clamp_limit(limit, 50, max_allowed)
+    snapshots = _read_recommendation_snapshots(safe_max_rows)
     if snapshots.empty:
         return {"status": "NO_DATA", "count": 0, "items": [], "message": "No recommendation snapshots recorded"}
     rows = snapshots.to_dict("records")
@@ -452,21 +482,29 @@ def validate_recommendation_snapshots(market: str = "all", mode: str = "all", ho
         if horizon not in {"", "all"} and str(row.get("horizon")) != horizon:
             continue
         filtered.append(row)
-    results = [_validate_snapshot(row) for row in filtered]
-    existing = _read_recommendation_validations()
+    to_validate = filtered[:safe_limit]
+    results = [_validate_snapshot(row) for row in to_validate]
+    existing = _read_recommendation_validations(safe_max_rows)
     existing_rows = existing.to_dict("records") if not existing.empty else []
     result_map = {str(row.get("snapshot_id")): row for row in existing_rows}
     for result in results:
         result_map[str(result.get("snapshot_id"))] = result
     _write_frame(RECOMMENDATION_VALIDATION_CSV, list(result_map.values()), RECOMMENDATION_VALIDATION_COLS)
-    items = [{**_clean_record(snap), **_clean_record(res)} for snap, res in zip(filtered, results)]
+    items = [{**_clean_record(snap), **_clean_record(res)} for snap, res in zip(to_validate, results)]
     items.sort(key=lambda r: str(r.get("date") or ""), reverse=True)
     return {
         "status": "OK" if items else "NO_DATA",
-        "count": len(items[:limit]),
-        "totalCount": len(items),
+        "count": len(items),
+        "totalCount": len(filtered),
+        "limited": len(filtered) > safe_limit or len(rows) >= safe_max_rows,
+        "limit": safe_limit,
+        "processedCount": len(items),
+        "skippedCount": max(0, len(filtered) - len(items)),
+        "maxAllowed": max_allowed,
+        "maxRows": safe_max_rows,
+        "dataSourceType": "mixed",
         "source": str(RECOMMENDATION_VALIDATION_CSV),
-        "items": items[:limit],
+        "items": items,
     }
 
 
@@ -515,8 +553,9 @@ def _group_summary(rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
     return {label: _validation_summary_from_rows(group_rows) for label, group_rows in sorted(groups.items())}
 
 
-def recommendation_validation_summary(market: str = "all", mode: str = "all", horizon: str = "all") -> dict:
-    payload = validate_recommendation_snapshots(market=market, mode=mode, horizon=horizon, limit=100000)
+def recommendation_validation_summary(market: str = "all", mode: str = "all", horizon: str = "all", max_rows: int = 500) -> dict:
+    safe_max_rows = runtime_limits.clamp_limit(max_rows, runtime_limits.validation_max_rows(), runtime_limits.validation_max_rows())
+    payload = validate_recommendation_snapshots(market=market, mode=mode, horizon=horizon, limit=safe_max_rows, max_rows=safe_max_rows)
     rows = payload.get("items", [])
     summary = _validation_summary_from_rows(rows)
     return {
@@ -534,11 +573,19 @@ def recommendation_validation_summary(market: str = "all", mode: str = "all", ho
         "byFakeBreakoutRiskUsed": _group_summary(rows, "fakeBreakoutRiskUsed"),
         "byDataSourceType": _group_summary(rows, "dataSourceType"),
         "count": len(rows),
+        "limited": payload.get("limited", False),
+        "limit": payload.get("limit", safe_max_rows),
+        "processedCount": payload.get("processedCount", len(rows)),
+        "skippedCount": payload.get("skippedCount", 0),
+        "maxAllowed": payload.get("maxAllowed", 200),
+        "maxRows": safe_max_rows,
+        "dataSourceType": payload.get("dataSourceType", "mixed"),
     }
 
 
-def recommendation_validation_by_signal(market: str = "all", mode: str = "all", horizon: str = "all") -> dict:
-    payload = validate_recommendation_snapshots(market=market, mode=mode, horizon=horizon, limit=100000)
+def recommendation_validation_by_signal(market: str = "all", mode: str = "all", horizon: str = "all", max_rows: int = 500) -> dict:
+    safe_max_rows = runtime_limits.clamp_limit(max_rows, runtime_limits.validation_max_rows(), runtime_limits.validation_max_rows())
+    payload = validate_recommendation_snapshots(market=market, mode=mode, horizon=horizon, limit=safe_max_rows, max_rows=safe_max_rows)
     rows = payload.get("items", [])
     signal_keys = [
         "chartSignalUsed", "trendlineUsed", "supportUsed", "resistanceUsed",
@@ -551,6 +598,13 @@ def recommendation_validation_by_signal(market: str = "all", mode: str = "all", 
         "horizon": horizon,
         "signals": {key: _group_summary(rows, key) for key in signal_keys},
         "count": len(rows),
+        "limited": payload.get("limited", False),
+        "limit": payload.get("limit", safe_max_rows),
+        "processedCount": payload.get("processedCount", len(rows)),
+        "skippedCount": payload.get("skippedCount", 0),
+        "maxAllowed": payload.get("maxAllowed", 200),
+        "maxRows": safe_max_rows,
+        "dataSourceType": payload.get("dataSourceType", "mixed"),
     }
 
 
