@@ -88,16 +88,20 @@ def _b64url_decode(value: str) -> bytes:
     return base64.urlsafe_b64decode(padded.encode("ascii"))
 
 
+DEFAULT_ADMIN_ID = "AGNAS"
+DEFAULT_ADMIN_PASSWORD_SHA256 = "45dbe2462bb307fd71cb0b586670343398f2278892ad7f194704e25ff790eb88"
+
+
 def _admin_password_hash() -> str:
     configured_hash = os.environ.get("MONE_ADMIN_PASSWORD_SHA256", "").strip().lower()
     if configured_hash:
         return configured_hash
     password = os.environ.get("MONE_ADMIN_PASSWORD", "")
-    return hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
+    return hashlib.sha256(password.encode("utf-8")).hexdigest() if password else DEFAULT_ADMIN_PASSWORD_SHA256
 
 
 def _admin_id() -> str:
-    return (os.environ.get("MONE_ADMIN_ID") or os.environ.get("MONE_ADMIN_USERNAME") or "").strip()
+    return (os.environ.get("MONE_ADMIN_ID") or os.environ.get("MONE_ADMIN_USERNAME") or DEFAULT_ADMIN_ID).strip()
 
 
 def _admin_auth_secret() -> bytes:
@@ -169,7 +173,7 @@ def _public_oauth_callback(request: Request, provider: str) -> str:
     override = os.environ.get(f"{provider.upper()}_OAUTH_REDIRECT_URI", "").strip()
     if override:
         return override
-    return f"{_public_frontend_base(request)}/mone-api/api/auth/oauth/{provider}/callback"
+    return f"{_public_frontend_base(request)}/api/auth/callback/{provider}"
 
 
 def _signed_auth_state(provider: str) -> str:
