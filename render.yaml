@@ -31,5 +31,11 @@ services:
         sync: false
       - key: GITHUB_TOKEN
         sync: false
+      - key: KAKAO_REST_API_KEY
+        sync: false
+      - key: KAKAO_CLIENT_SECRET
+        sync: false
+      - key: KAKAO_OAUTH_REDIRECT_URI
+        sync: false
       - key: MONE_STARTUP_SYNC
         value: "1"
