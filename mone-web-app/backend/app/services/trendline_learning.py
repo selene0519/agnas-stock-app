@@ -26,6 +26,13 @@ ANCHOR_COLS = [
     "bandPct", "atrBand", "eventSpikeTag", "dataSourceType", "learningEligible",
     "createdAt", "outcome5d", "outcome20d", "outcome60d",
     "respectedTrendline", "brokenTrendline", "falseBreakout", "result",
+    # 4차 이벤트 필드 (이탈 원인 후보 분석용) — 인과관계 단정 금지, candidate_reason으로 표시
+    "anchorFailureEventTag",
+    "eventDrivenBreak",
+    "macroDrivenBreak",
+    "disclosureDrivenBreak",
+    "earningsDrivenBreak",
+    "eventAdjustedResult",
 ]
 
 BAND_RULES = {
@@ -191,6 +198,39 @@ def _historical_samples(rows: list[dict[str, Any]], market: str, symbol: str, da
             width, pct = band_width(history, "swing")
             as_of = _date_at(history, len(history) - 1)
             anchor2_date = _date_at(history, line.anchor2_index)
+            outcome_fields = _line_outcome(line, future, line_type, width)
+            broken = bool(outcome_fields.get("brokenTrendline"))
+            # 4차: 이탈일 주변 ±3거래일 내 악재 이벤트 후보 태그
+            # (인과관계 단정 금지 — candidate_reason 표시용)
+            anchor_failure_event_tag = ""
+            event_driven_break = False
+            macro_driven_break = False
+            disclosure_driven_break = False
+            earnings_driven_break = False
+            if broken:
+                try:
+                    from app.services import event_context as _evt
+                    evt = _evt.get_event_context(symbol, market)
+                    n_tag = str(evt.get("newsEventTag", ""))
+                    d_tag = str(evt.get("disclosureEventTag", ""))
+                    e_tag = str(evt.get("earningsEventTag", ""))
+                    m_tag = str(evt.get("macroEventTag", ""))
+                    if n_tag == "negative_news" or d_tag == "negative_disclosure" or e_tag in {"earnings_miss", "guidance_down"}:
+                        event_driven_break = True
+                        anchor_failure_event_tag = f"candidate_reason:{n_tag}|{d_tag}|{e_tag}"
+                    if m_tag in {"fomc_risk", "rate_risk", "inflation_risk", "volatility_risk"}:
+                        macro_driven_break = True
+                        anchor_failure_event_tag = (anchor_failure_event_tag + f"|macro:{m_tag}").lstrip("|")
+                    if d_tag == "negative_disclosure":
+                        disclosure_driven_break = True
+                    if e_tag in {"earnings_miss", "guidance_down"}:
+                        earnings_driven_break = True
+                except Exception:
+                    pass
+            event_adjusted_result = (
+                "candidate_event_break" if event_driven_break or macro_driven_break
+                else (outcome_fields.get("result") or "")
+            )
             sample = {
                 "anchor_id": _anchor_id(market, symbol, as_of, line_type, float(line.slope), anchor2_date),
                 "market": market,
@@ -212,7 +252,14 @@ def _historical_samples(rows: list[dict[str, Any]], market: str, symbol: str, da
                 "dataSourceType": data_source_type,
                 "learningEligible": data_source_type == "actual_ohlcv",
                 "createdAt": datetime.now().isoformat(timespec="seconds"),
-                **_line_outcome(line, future, line_type, width),
+                **outcome_fields,
+                # 4차 이벤트 필드
+                "anchorFailureEventTag": anchor_failure_event_tag,
+                "eventDrivenBreak": event_driven_break,
+                "macroDrivenBreak": macro_driven_break,
+                "disclosureDrivenBreak": disclosure_driven_break,
+                "earningsDrivenBreak": earnings_driven_break,
+                "eventAdjustedResult": event_adjusted_result,
             }
             samples.append(sample)
     return samples
@@ -342,6 +389,13 @@ def analyze(
         "brokenTrendline": "",
         "falseBreakout": "",
         "result": "PENDING",
+        # 4차 이벤트 필드 (현재 시점에서는 PENDING — 이후 결과 확인 시 갱신)
+        "anchorFailureEventTag": "",
+        "eventDrivenBreak": "",
+        "macroDrivenBreak": "",
+        "disclosureDrivenBreak": "",
+        "earningsDrivenBreak": "",
+        "eventAdjustedResult": "PENDING",
     }
     if write_enabled:
         _upsert_ledger([current_record])
