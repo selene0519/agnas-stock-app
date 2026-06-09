@@ -9,6 +9,7 @@ import time
 import urllib.parse
 import urllib.request
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from fastapi import Body, FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -3908,25 +3909,29 @@ def api_home_summary(
         except Exception:
             pass
 
-        # 3×3 매트릭스 병렬 수집
+        # 3×3 매트릭스 병렬 수집 (ThreadPoolExecutor — 9셀 동시 처리)
+        def _fetch_matrix_cell(args: tuple[str, str]) -> tuple[str, dict]:
+            _mode, _horizon = args
+            _key = f"{_mode}_{_horizon}"
+            try:
+                rec = final_engine.final_recommendations(mk, _mode, _horizon)
+                cell_items = rec.get("items", [])
+                pos_ev = [i for i in cell_items if _safe_float_v2(i.get("expectedValue", 0)) > 0]
+                display = (pos_ev if pos_ev else cell_items)[:5]
+                return _key, {
+                    "status": "OK" if display else "NO_DATA",
+                    "items": display,
+                    "count": len(cell_items),
+                    "positiveEvCount": len(pos_ev),
+                }
+            except Exception as exc:
+                return _key, {"status": "ERROR", "error": str(exc), "items": [], "count": 0}
+
         matrix: dict = {}
-        for mode in MODES:
-            for horizon in HORIZONS:
-                cell_key = f"{mode}_{horizon}"
-                try:
-                    rec = final_engine.final_recommendations(mk, mode, horizon)
-                    cell_items = rec.get("items", [])
-                    # EV 양수 우선 정렬 (priority 5)
-                    pos_ev = [i for i in cell_items if _safe_float_v2(i.get("expectedValue", 0)) > 0]
-                    display = (pos_ev if pos_ev else cell_items)[:5]
-                    matrix[cell_key] = {
-                        "status": "OK" if display else "NO_DATA",
-                        "items": display,
-                        "count": len(cell_items),
-                        "positiveEvCount": len(pos_ev),
-                    }
-                except Exception as e:
-                    matrix[cell_key] = {"status": "ERROR", "error": str(e), "items": [], "count": 0}
+        _cells = [(m, h) for m in MODES for h in HORIZONS]
+        with ThreadPoolExecutor(max_workers=4) as _pool:
+            for _cell_key, _cell_val in _pool.map(_fetch_matrix_cell, _cells):
+                matrix[_cell_key] = _cell_val
 
         # 보유종목 (holdingsClean 엔드포인트 재사용)
         holdings_payload: dict = _empty_home_holdings(mk)

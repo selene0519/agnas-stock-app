@@ -1424,6 +1424,28 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
     selected = rows[:requested_limit]
+
+    # ── 이름 보정: name == symbol(숫자) 인 경우 sector_map에서 실제 이름 조회 ──
+    try:
+        import csv as _csv
+        _sector_name_map: dict[str, str] = {}
+        _sector_path = data.REPO_ROOT / "data" / f"sector_map_{market}.csv"
+        if _sector_path.exists():
+            with _sector_path.open("r", encoding="utf-8-sig") as _sf:
+                for _sr in _csv.DictReader(_sf):
+                    _sym = str(_sr.get("symbol", "")).strip()
+                    _nm = str(_sr.get("name", "")).strip()
+                    if _sym and _nm:
+                        _sector_name_map[_sym] = _nm
+        for _row in selected:
+            _nm = str(_row.get("name", "")).strip()
+            _sym = str(_row.get("symbol", "")).strip()
+            # name이 심볼과 동일(숫자코드) 이거나 비어있는 경우만 보정
+            if (_nm == _sym or not _nm) and _sym in _sector_name_map:
+                _row["name"] = _sector_name_map[_sym]
+    except Exception:
+        pass
+
     limit_meta = runtime_limits.limit_meta(
         total_count=len(universe),
         processed_count=len(process_universe),
