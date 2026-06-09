@@ -143,7 +143,7 @@ export default function App() {
       case "advanced":
         return <AdvancedPage />;
       case "admin":
-        return adminToken ? <AdminPage authToken={adminToken} onLogout={handleAdminLogout} /> : <AdminLoginPage onSuccess={handleAdminLogin} />;
+        return adminToken ? <AdminPage authToken={adminToken} onLogout={handleAdminLogout} /> : <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       default:
         return <HomePage />;
     }
@@ -260,7 +260,7 @@ export default function App() {
       </div>
 
       {/* 모바일 하단 탭바 */}
-      <BottomNav current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} onUserLogin={openUserLogin} />
+      <BottomNav current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} />
     </div>
   );
 }

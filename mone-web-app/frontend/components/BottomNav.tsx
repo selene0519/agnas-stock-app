@@ -19,18 +19,17 @@ interface BottomNavProps {
   onChange: (id: PageId) => void;
   isAdmin?: boolean;
   onAdminLogin?: () => void;
-  onUserLogin?: (provider: "google" | "kakao") => void;
 }
 
 const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
-  { id: "home",     label: "홈",   Icon: LayoutDashboard },
-  { id: "stocks",   label: "탐색", Icon: Search },
+  { id: "home", label: "홈", Icon: LayoutDashboard },
+  { id: "stocks", label: "탐색", Icon: Search },
   { id: "holdings", label: "보유", Icon: Briefcase },
-  { id: "chart",    label: "차트", Icon: BarChart2 },
+  { id: "chart", label: "차트", Icon: BarChart2 },
 ];
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
-  { id: "advanced", label: "고급분석", desc: "스캐너, 상관, 계산기", Icon: Cpu },
+  { id: "advanced", label: "고급분석", desc: "스캐너, 계산기, 상관분석", Icon: Cpu },
 ];
 
 const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementType } = {
@@ -40,7 +39,7 @@ const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementTy
   Icon: ShieldCheck,
 };
 
-export default function BottomNav({ current, onChange, isAdmin = false, onAdminLogin, onUserLogin }: BottomNavProps) {
+export default function BottomNav({ current, onChange, isAdmin = false, onAdminLogin }: BottomNavProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const visibleMoreTabs = isAdmin ? [...moreTabs, adminTab] : moreTabs;
   const isMoreActive = current === "admin" || visibleMoreTabs.some((t) => t.id === current);
@@ -57,13 +56,9 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
 
   return (
     <>
-      {/* 더보기 드로어 */}
       {moreOpen && (
         <>
-          <div
-            className="fixed inset-0 z-40 md:hidden"
-            onClick={() => setMoreOpen(false)}
-          />
+          <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMoreOpen(false)} />
           <div
             className="fixed left-0 right-0 z-50 rounded-t-2xl border-t border-slate-700 bg-slate-900 px-4 pt-4 md:hidden"
             style={{ bottom: "56px" }}
@@ -73,33 +68,12 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
               <button
                 onClick={() => setMoreOpen(false)}
                 className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-slate-400"
+                aria-label="닫기"
               >
                 <X size={14} />
               </button>
             </div>
             <div className="grid gap-2 pb-4">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onUserLogin?.("google");
-                    setMoreOpen(false);
-                  }}
-                  className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-center text-[12px] font-semibold text-slate-200 active:bg-slate-700"
-                >
-                  Google 로그인
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onUserLogin?.("kakao");
-                    setMoreOpen(false);
-                  }}
-                  className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-[12px] font-semibold text-amber-200 active:bg-amber-500/20"
-                >
-                  Kakao 로그인
-                </button>
-              </div>
               {visibleMoreTabs.map(({ id, label, desc, Icon }) => (
                 <button
                   key={id}
@@ -134,8 +108,8 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                     <LogIn size={18} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-bold">관리자 로그인</span>
-                    <span className="mt-0.5 block text-[11px] text-slate-500">로그인 후 관리자 메뉴 표시</span>
+                    <span className="block text-[13px] font-bold">로그인</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-500">관리자, 카카오, 구글 로그인</span>
                   </span>
                 </button>
               )}
@@ -144,7 +118,6 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
         </>
       )}
 
-      {/* 하단 탭바 */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -163,7 +136,6 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
             </button>
           ))}
 
-          {/* 더보기 탭 */}
           <button
             onClick={() => setMoreOpen((v) => !v)}
             className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-95 ${

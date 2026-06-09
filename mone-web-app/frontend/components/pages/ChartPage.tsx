@@ -260,6 +260,19 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
   if (recoDate) {
     const recoDay = recoDate.slice(0, 10);
     const idx = rows.findIndex((r) => dateOf(r) >= recoDay);
+    if (idx < 0) {
+      const latestDate = dateOf(rows[rows.length - 1]) || "-";
+      return {
+        label: "검증 대기",
+        detail: `추천 생성일(${recoDay}) 이후 OHLCV가 아직 없습니다. 과거 터치 기록은 이번 추천의 목표/손절 판정에 쓰지 않습니다.`,
+        cls: statusTone("neutral"),
+        cards: [
+          { label: "기준가 터치", value: "대기", sub: `OHLCV 최근일 ${latestDate}` },
+          { label: "목표 터치", value: "대기", sub: target ? money(target, market) : "목표 없음" },
+          { label: "손절 터치", value: "대기", sub: stop ? money(stop, market) : "손절 없음" },
+        ],
+      };
+    }
     if (idx >= 0) {
       fromIndex = idx;
       const barsFromReco = rows.length - idx;
