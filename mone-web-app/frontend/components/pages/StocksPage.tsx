@@ -346,7 +346,7 @@ export default function StocksPage() {
     setLoadError("");
     setLoadNotice("");
     mone
-      .recommendations({ market, mode, horizon, limit: RECOMMENDATION_LIMIT, watchOnly }, controller.signal)
+      .recommendations({ market, mode, horizon, limit: Math.min(RECOMMENDATION_LIMIT, 50), watchOnly }, controller.signal) // /api/final/recommendations le=50
       .then(async (data) => {
         if (!active) return;
         if (data?.status === "ERROR") {

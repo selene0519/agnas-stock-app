@@ -3,9 +3,12 @@ name: MONE Entry Proximity Notifier
 on:
   workflow_dispatch:
   schedule:
-    # 국장 장중 30분 주기: KST 09:00~15:30 → UTC 00:00~06:30
-    # UTC: 00:00, 00:30, 01:00, 01:30, 02:00, 02:30, 03:00, 03:30, 04:00, 04:30, 05:00, 05:30, 06:00
-    - cron: "0,30 0-6 * * 1-5"
+    # KST 핵심 장중 시간만 (1시간 간격, 5회/일) — 14회/일 → 5회/일로 축소
+    - cron: "0 0 * * 1-5"    # KST 09:00
+    - cron: "0 1 * * 1-5"    # KST 10:00
+    - cron: "0 3 * * 1-5"    # KST 12:00
+    - cron: "0 5 * * 1-5"    # KST 14:00
+    - cron: "0 6 * * 1-5"    # KST 15:00
 
 permissions:
   contents: write

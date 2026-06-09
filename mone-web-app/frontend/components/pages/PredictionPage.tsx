@@ -238,7 +238,7 @@ export default function PredictionPage() {
     try {
       const validationMarkets = market === "all" ? (["kr", "us"] as const) : ([market] as const);
       const predPromise = mone.predictions({ market, mode: strategy, horizon: term, limit: 300 });
-      const recPromise = mone.recommendations({ market, mode: strategy, horizon: term, limit: 50 });
+      const recPromise = mone.recommendations({ market, mode: strategy, horizon: term, limit: 50 }); // /api/final/recommendations le=50
       const accPromise = mone.predictionAccuracy({ market: market === "all" ? "all" : market });
       const vdPromise = Promise.all(validationMarkets.map((mk) => mone.validationDashboard({ market: mk }))).then(combineValidationDashboards);
       const btPromise = Promise.all(validationMarkets.map((mk) => mone.backtestTrades({ market: mk, mode: strategy, horizon: term, limit: 200 })))
