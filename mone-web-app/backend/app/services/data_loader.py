@@ -5,6 +5,9 @@ MONE_LEGACY_PRICE_FILTER_PATCH_VERSION = "v7_intraday_baseline_rebuild"
 import json
 import os
 import re
+import time
+import threading as _threading
+import urllib.request as _url_req
 import requests
 from datetime import datetime
 from pathlib import Path
@@ -4831,3 +4834,53 @@ def data_source_status() -> dict[str, Any]:
         "message": f"KR={preferred_source_type('kr', handoff.get('kr_handoff_date'))}, US={preferred_source_type('us', handoff.get('us_handoff_date'))}, handoff_at_kst={handoff.get('handoff_at_kst')}",
     })
     return {"items": items}
+
+
+# ── GitHub raw 폴백 / 파일 신선도 보장 ───────────────────────────────────
+
+_GITHUB_RAW_BASE = "https://raw.githubusercontent.com/selene0519/agnas-stock-app/main"
+_GITHUB_CACHE_TTL = 3600  # 1시간 캐시
+_github_fetch_lock = _threading.Lock()
+
+
+def _refresh_from_github(rel_path: str) -> bool:
+    """GitHub raw에서 최신 파일 가져오기 (백그라운드 호출용)"""
+    target = REPO_ROOT / rel_path
+    try:
+        url = f"{_GITHUB_RAW_BASE}/{rel_path}"
+        req = _url_req.Request(url, headers={"User-Agent": "MONE-DataLoader/1.0"})
+        with _url_req.urlopen(req, timeout=15) as resp:
+            if resp.status == 200:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(resp.read())
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def ensure_fresh(path: Path, max_age_hours: float = 6.0) -> Path:
+    """
+    파일이 없거나 오래된 경우 GitHub raw에서 백그라운드 갱신.
+    1순위: 로컬 파일 (신선할 때)
+    2순위: GitHub raw 다운로드 후 로컬 캐시 (백그라운드, 응답 속도 영향 없음)
+    항상 로컬 Path 반환 (없으면 원래 path 반환하여 상위에서 처리)
+    """
+    max_age_sec = max_age_hours * 3600
+    needs_refresh = (
+        not path.exists()
+        or (time.time() - path.stat().st_mtime) > max_age_sec
+    )
+    if not needs_refresh:
+        return path
+    try:
+        rel = path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return path
+
+    def _bg() -> None:
+        with _github_fetch_lock:
+            _refresh_from_github(rel)
+
+    _threading.Thread(target=_bg, daemon=True).start()
+    return path  # 현재 있는 파일 우선 반환 (없으면 None 처리는 호출부에서)

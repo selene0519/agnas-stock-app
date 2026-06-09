@@ -1386,6 +1386,8 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [clock, setClock] = useState<Date | null>(null);
   // 실적발표 일정 맵: symbol → D-day
   const [earningsMap, setEarningsMap] = useState<Record<string, number>>({});
+  // 데이터 소스 신선도
+  const [dataSources, setDataSources] = useState<any>(null);
   const sessionClock = clock || new Date();
   const selectedMarket = marketChoice === "auto" ? (clientReady ? getDefaultMarketBySession(sessionClock) : "kr") : marketChoice;
   const sessionStatus = clientReady ? getMarketSessionStatus(selectedMarket, sessionClock) : "확인 중";
@@ -1480,6 +1482,15 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       })
       .catch(() => {});
   }, [selectedMarket]);
+
+  // 데이터 소스 신선도 로드 (마운트 1회)
+  useEffect(() => {
+    if (!clientReady) return;
+    fetch("/api/health/data-sources")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setDataSources(d); })
+      .catch(() => {});
+  }, [clientReady]);
 
   // ── 브라우저 알림: 장중 진입 임박 종목 감지 (1분 주기)
   useEffect(() => {
@@ -1660,6 +1671,31 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           </button>
         </div>
       </div>
+
+      {/* 데이터 신선도 배지 */}
+      {dataSources && (() => {
+        const freshness = dataSources.recommendationFreshness as Record<string, { ageHours: number; fresh: boolean }> | undefined;
+        if (!freshness) return null;
+        const ages = Object.values(freshness).map((v) => v.ageHours);
+        if (!ages.length) return null;
+        const maxAge = Math.max(...ages);
+        const allFresh = ages.every((a) => a < 6);
+        const anyStale = ages.some((a) => a >= 24);
+        const dot = allFresh ? "bg-emerald-400" : anyStale ? "bg-red-400" : "bg-yellow-400";
+        const label = allFresh ? "신선" : anyStale ? "오래됨" : "보통";
+        const textClass = allFresh ? "text-emerald-300" : anyStale ? "text-red-300" : "text-yellow-300";
+        const src = dataSources.sources?.local_collector ? "로컬 수집기" : dataSources.sources?.github_actions ? "GitHub Actions" : null;
+        return (
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${anyStale ? "border-red-800/50 bg-red-950/30" : allFresh ? "border-emerald-800/50 bg-emerald-950/20" : "border-yellow-800/50 bg-yellow-950/20"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+              <span className={textClass}>데이터 {label}</span>
+              <span className="text-slate-500">({maxAge.toFixed(0)}h 전)</span>
+            </span>
+            {src && <span className="text-slate-600">{src}</span>}
+          </div>
+        );
+      })()}
 
       {/* 시장 컨디션 게이트 */}
       {!loading && marketRegime && (
