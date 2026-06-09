@@ -3914,7 +3914,10 @@ def api_home_summary(
             import csv as _csv_mod
             key_ = f"{mode_}_{horizon_}"
             try:
-                csv_path = data.REPORT_DIR / f"mone_v36_final_recommendations_{mk}_{mode_}_{horizon_}.csv"
+                csv_path = data.ensure_fresh(
+                    data.REPORT_DIR / f"mone_v36_final_recommendations_{mk}_{mode_}_{horizon_}.csv",
+                    max_age_hours=6.0,
+                )
                 if not csv_path.exists() or csv_path.stat().st_size < 20:
                     return key_, {"status": "NO_DATA", "items": [], "count": 0, "positiveEvCount": 0, "source": "csv_missing"}
                 rows_: list[dict] = []
@@ -4691,3 +4694,57 @@ def api_portfolio_conflict(
     """신규 후보와 보유종목의 섹터 충돌 검사."""
     from app.services import signal_ledger as sl
     return sl.portfolio_conflict(symbol=symbol, market=market, sector=sector)
+
+
+# ── 데이터 소스 상태 API ───────────────────────────────────────────────────
+
+MODES = ("conservative", "balanced", "aggressive")
+HORIZONS = ("short", "swing", "mid")
+
+
+@app.get("/api/health/data-sources")
+def api_data_sources() -> dict:
+    """데이터 수집 소스 상태 (GitHub Actions vs 로컬 수집기) 및 추천 CSV 신선도"""
+    sources: dict = {}
+
+    # GitHub Actions 마지막 실행 상태
+    for f in ("reports/kis_live_refresh_status.json", "reports/auto_sync_status.json"):
+        p = data.REPO_ROOT / f
+        if p.exists():
+            try:
+                d = json.loads(p.read_text(encoding="utf-8"))
+                sources["github_actions"] = {
+                    "lastUpdate": d.get("updatedAt") or d.get("timestamp", ""),
+                    "status": d.get("status", "UNKNOWN"),
+                    "file": f,
+                }
+                break
+            except Exception:
+                pass
+
+    # 로컬 수집기 상태
+    p2 = data.REPO_ROOT / "reports" / "local_collector_status.json"
+    if p2.exists():
+        try:
+            d2 = json.loads(p2.read_text(encoding="utf-8"))
+            sources["local_collector"] = {
+                "lastUpdate": d2.get("completedAt", ""),
+                "source": d2.get("source", "local_task_scheduler"),
+                "pushed": d2.get("pushed", False),
+            }
+        except Exception:
+            pass
+
+    # 추천 CSV 신선도 (3×3 매트릭스)
+    rec_freshness: dict = {}
+    for mode in MODES:
+        for horizon in HORIZONS:
+            p3 = data.REPORT_DIR / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
+            if p3.exists():
+                age_h = (time.time() - p3.stat().st_mtime) / 3600
+                rec_freshness[f"{mode}_{horizon}"] = {
+                    "ageHours": round(age_h, 1),
+                    "fresh": age_h < 24,
+                }
+
+    return {"status": "OK", "sources": sources, "recommendationFreshness": rec_freshness}
