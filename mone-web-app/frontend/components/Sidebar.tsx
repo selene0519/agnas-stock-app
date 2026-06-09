@@ -27,10 +27,10 @@ export type PageId =
   | "admin";
 
 const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "home",     label: "시장 홈",      icon: <LayoutDashboard size={16} /> },
-  { id: "stocks",   label: "종목 탐색",     icon: <Search size={16} /> },
-  { id: "holdings", label: "보유·리스크",   icon: <Briefcase size={16} /> },
-  { id: "chart",    label: "차트·기술분석", icon: <BarChart2 size={16} /> },
+  { id: "home", label: "시장 홈", icon: <LayoutDashboard size={16} /> },
+  { id: "stocks", label: "종목 탐색", icon: <Search size={16} /> },
+  { id: "holdings", label: "보유·리스크", icon: <Briefcase size={16} /> },
+  { id: "chart", label: "차트·기술분석", icon: <BarChart2 size={16} /> },
 ];
 
 const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
@@ -129,7 +129,7 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
               onClick={isAdmin ? onAdminLogout : onAdminLogin}
             >
               <span className="shrink-0">{isAdmin ? <LogOut size={16} /> : <LogIn size={16} />}</span>
-              <span>{isAdmin ? "관리자 로그아웃" : "관리자 로그인"}</span>
+              <span>{isAdmin ? "관리자 로그아웃" : "로그인"}</span>
             </button>
           )}
         </div>
