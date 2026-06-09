@@ -14,6 +14,8 @@ const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   CONFLICT_RISK:  { text: "충돌 위험",           cls: "text-red-400" },
   NETWORK_ERROR:  { text: "네트워크 오류",        cls: "text-orange-400" },
   NOT_GIT_REPO:   { text: "Git 저장소 아님",      cls: "text-red-400" },
+  NO_GIT_REMOTE:  { text: "원격 없음",            cls: "text-amber-300" },
+  DEPLOYMENT_NO_GIT: { text: "배포 pull 생략",     cls: "text-sky-300" },
   NOT_RUN:        { text: "미실행",              cls: "text-slate-500" },
   SYNC_STARTED:   { text: "동기화 시작됨",        cls: "text-blue-300" },
   ERROR:          { text: "오류",               cls: "text-red-400" },
@@ -96,7 +98,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       setGithub({ status: "ERROR", error: String(error) });
       setVirtualSummary({ status: "ERROR" });
     }
-    mone.trendlineAccuracy({ market: "all", futureBars: 5, symbolLimit: 30, maxCutoffs: 12 })
+    mone.trendlineAccuracy({ market: "all", futureBars: 5, symbolLimit: 30, maxCutoffs: 12, includeItems: false })
       .then((a) => setTrendlineAccuracy(a || { status: "ERROR" }))
       .catch((error) => setTrendlineAccuracy({ status: "ERROR", error: String(error) }));
     setAudit({ status: "LOADING", items: [] });

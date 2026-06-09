@@ -9,7 +9,7 @@ import { displayName, normalizeMarket, normalizeSymbol, priceText } from "@/lib/
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
 
-type ToggleKey = "ma5" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index"
+type ToggleKey = "ma10" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index"
               | "zigzag" | "trendline" | "retracement" | "supply" | "fakeBreak";
 
 const PERIODS: { label: string; bars: number | null }[] = [
@@ -766,6 +766,13 @@ function chartColorWithAlpha(color: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function shouldRenderTrendline(distPct: number | null, valid: boolean, touchCount: number): boolean {
+  if (distPct == null || !Number.isFinite(distPct)) return false;
+  const absDist = Math.abs(distPct);
+  const maxDist = valid && touchCount >= 3 ? 25 : valid ? 18 : 10;
+  return absDist <= maxDist;
+}
+
 // ── ③ 0.868 되돌림 (피보나치 + 핵심 레벨) ────────────────────────────
 /**
  * 피보나치 되돌림 계산 — 가장 최근 완성된 ZigZag 스윙 기준
@@ -1006,11 +1013,11 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
           return { time: d.time, value: closes.slice(i - period + 1, i + 1).reduce((s, v) => s + v, 0) / period };
         }).filter(Boolean) as { time: string; value: number }[];
 
-        const apiMA5  = rows.filter(r => chartTime(r) && r.ma5  > 0).map(r => ({ time: chartTime(r), value: Number(r.ma5) }));
+        const apiMA10 = rows.filter(r => chartTime(r) && r.ma10 > 0).map(r => ({ time: chartTime(r), value: Number(r.ma10) }));
         const apiMA20 = rows.filter(r => chartTime(r) && r.ma20 > 0).map(r => ({ time: chartTime(r), value: Number(r.ma20) }));
         const apiMA60 = rows.filter(r => chartTime(r) && r.ma60 > 0).map(r => ({ time: chartTime(r), value: Number(r.ma60) }));
 
-        if (toggles.ma5)  { const s = chart.addLineSeries({ color: "#2dd4bf", lineWidth: 1, priceLineVisible: false }); s.setData(apiMA5.length > 5 ? apiMA5 : calcMA(5)); }
+        if (toggles.ma10) { const s = chart.addLineSeries({ color: "#2dd4bf", lineWidth: 1, priceLineVisible: false }); s.setData(apiMA10.length > 5 ? apiMA10 : calcMA(10)); }
         if (toggles.ma20) { const s = chart.addLineSeries({ color: "#facc15", lineWidth: 1.5, priceLineVisible: false }); s.setData(apiMA20.length > 5 ? apiMA20 : calcMA(20)); }
         if (toggles.ma60) { const s = chart.addLineSeries({ color: "#f97316", lineWidth: 1.5, priceLineVisible: false }); s.setData(apiMA60.length > 5 ? apiMA60 : calcMA(60)); }
 
@@ -1099,8 +1106,10 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         if (toggles.trendline && pivots.length >= 4) {
           const tl = calcTrendlines(candleData, pivots);
           const lastClose = candleData[candleData.length - 1].close;
+          const showUptrend = shouldRenderTrendline(tl.uptrendDistPct, tl.uptrendValid, tl.uptrendTouchCount);
+          const showDowntrend = shouldRenderTrendline(tl.downtrendDistPct, tl.downtrendValid, tl.downtrendTouchCount);
 
-          if (tl.uptrend && tl.uptrend.length >= 2) {
+          if (showUptrend && tl.uptrend && tl.uptrend.length >= 2) {
             // 신뢰도에 따라 선 스타일 차별화
             // 구조 유효 + 3회↑: 밝은 초록 실선 / 구조 유효 2회: 초록 점선 / fallback: 흐린 점선
             const isHighConf = tl.uptrendValid && tl.uptrendTouchCount >= 3;
@@ -1118,7 +1127,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
             if (tl.uptrendVal != null) {
               const isBroken = lastClose < tl.uptrendVal * 0.998;
               const touchTag = tl.uptrendTouchCount >= 3 ? `(${tl.uptrendTouchCount}회)` : "";
-              const label    = isBroken ? `빗각↑이탈${touchTag}` : `빗각↑${touchTag}`;
+              const label    = isBroken ? `빗각 이탈${touchTag}` : `빗각 지지${touchTag}`;
               candleSeries.createPriceLine({
                 price: tl.uptrendVal,
                 color: chartColorWithAlpha(isBroken ? "#22c55e" : upColor, isBroken ? 0.2 : 0.6),
@@ -1128,7 +1137,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
             }
           }
 
-          if (tl.downtrend && tl.downtrend.length >= 2) {
+          if (showDowntrend && tl.downtrend && tl.downtrend.length >= 2) {
             const isHighConf = tl.downtrendValid && tl.downtrendTouchCount >= 3;
             const isMedConf  = tl.downtrendValid && tl.downtrendTouchCount < 3;
             const dnColor    = isHighConf ? "#ef4444" : isMedConf ? "#f87171" : "#fca5a566";
@@ -1144,7 +1153,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
             if (tl.downtrendVal != null) {
               const isBroken = lastClose > tl.downtrendVal * 1.002;
               const touchTag = tl.downtrendTouchCount >= 3 ? `(${tl.downtrendTouchCount}회)` : "";
-              const label    = isBroken ? `빗각↓돌파${touchTag}` : `빗각↓${touchTag}`;
+              const label    = isBroken ? `빗각 돌파${touchTag}` : `빗각 저항${touchTag}`;
               candleSeries.createPriceLine({
                 price: tl.downtrendVal,
                 color: chartColorWithAlpha(isBroken ? "#ef4444" : dnColor, isBroken ? 0.2 : 0.6),
@@ -1544,7 +1553,7 @@ export default function ChartPage() {
   const [disclosures, setDisclosures] = useState<any[]>([]);
   const [company, setCompany] = useState<any | null>(null);
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
-    ma5: true, ma20: true, ma60: false, bb: false, volume: true, rsi: true, macd: false, index: true,
+    ma10: true, ma20: true, ma60: false, bb: false, volume: true, rsi: true, macd: false, index: true,
     zigzag: false, trendline: false, retracement: false, supply: false, fakeBreak: false,
   });
   const [period, setPeriod] = useState<number | null>(126);
@@ -1856,7 +1865,7 @@ export default function ChartPage() {
               </div>
               <span className="text-slate-700">|</span>
               {([
-                ["ma5","MA5","#2dd4bf"],["ma20","MA20","#facc15"],["ma60","MA60","#f97316"],
+                ["ma10","MA10","#2dd4bf"],["ma20","MA20","#facc15"],["ma60","MA60","#f97316"],
                 ["bb","BB","#a855f7"],["volume","거래량","#64748b"],["rsi","RSI","#38bdf8"],
                 ["macd","MACD","#f97316"],
                 ["index", selected?.market === "us" ? "vs SPY" : "vs KOSPI", "#94a3b8"],
@@ -1898,7 +1907,7 @@ export default function ChartPage() {
                     <span>봉: {filteredRows.length}개 (전체 {rows.length})</span>
                     <span>최근: {latest?.date || "-"}</span>
                     <span className="ml-auto flex gap-3">
-                      {toggles.ma5  && <span style={{ color: "#2dd4bf" }}>━ MA5</span>}
+                      {toggles.ma10 && <span style={{ color: "#2dd4bf" }}>━ MA10</span>}
                       {toggles.ma20 && <span style={{ color: "#facc15" }}>━ MA20</span>}
                       {toggles.ma60 && <span style={{ color: "#f97316" }}>━ MA60</span>}
                       {toggles.bb   && <span style={{ color: "#a855f7" }}>- - BB</span>}

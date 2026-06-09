@@ -82,6 +82,16 @@ def _num(v: Any, default: float = 0.0) -> float:
         return default
 
 
+def _portfolio_return_pct(returns: List[float], allocation_pct: float = 10.0) -> float:
+    if not returns:
+        return 0.0
+    slot = max(0.0, min(allocation_pct, 100.0)) / 100.0
+    capital = 1.0
+    for value in returns:
+        capital *= max(0.0, 1.0 + (float(value) / 100.0) * slot)
+    return (capital - 1.0) * 100.0
+
+
 def _symbol_value(v: Any) -> str:
     s = str(v or "").strip()
     if s.endswith(".0"):
@@ -330,11 +340,12 @@ def _virtual_summary(market: str = "all", mode: str = "all", horizon: str = "all
 
     win_rate = round(len(wins) / len(executed) * 100, 2) if executed else 0
     avg_return = round(sum(returns) / len(returns), 2) if returns else 0
-    cumulative = round(sum(returns), 2) if returns else 0
+    raw_return_sum = round(sum(returns), 2) if returns else 0
+    cumulative = round(_portfolio_return_pct(returns), 2) if returns else 0
     latest_win_count = sum(1 for r in latest_executed if _is_win(r))
     latest_win_rate = round(latest_win_count / len(latest_executed) * 100, 2) if latest_executed else 0
     latest_avg_return = round(sum(latest_returns) / len(latest_returns), 2) if latest_returns else 0
-    latest_cumulative = round(sum(latest_returns), 2) if latest_returns else 0
+    latest_cumulative = round(_portfolio_return_pct(latest_returns), 2) if latest_returns else 0
 
     return {
         "status": "OK" if filtered else "NO_DATA",
@@ -356,8 +367,9 @@ def _virtual_summary(market: str = "all", mode: str = "all", horizon: str = "all
         "avgReturnPct": avg_return,
         "averageReturnPct": avg_return,
         "cumulativeReturnPct": cumulative,
-        "executedReturnPct": cumulative,
-        "returnBasis": "체결 종목 기준, 미체결 제외",
+        "executedReturnPct": avg_return,
+        "rawReturnSumPct": raw_return_sum,
+        "returnBasis": "executed rows; cumulativeReturnPct is a 10% equal-slot virtual portfolio compound return, not raw return sum",
         "unexecutedExcludedFromReturn": True,
         "latestRecommendations": len(latest_rows),
         "latestExecutedTrades": len(latest_executed),

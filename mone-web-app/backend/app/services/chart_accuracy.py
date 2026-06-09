@@ -213,6 +213,7 @@ def trendline_accuracy(
     symbol_limit: int = 12,
     max_cutoffs: int = 6,
     min_history: int = 80,
+    include_items: bool = True,
 ) -> dict[str, Any]:
     markets = ["kr", "us"] if market == "all" else [market]
     records: list[dict[str, Any]] = []
@@ -277,7 +278,7 @@ def trendline_accuracy(
             return None
         return round(sum(1 for row in rows if row["respected"]) / len(rows) * 100, 1)
 
-    return {
+    payload = {
         "status": "OK" if records else "NO_DATA",
         "market": market,
         "policy": "Trendline snapshot backtest: draw support/resistance using OHLCV only through asOf, then check whether the next futureBars candles violate the projected line by more than 1.5%.",
@@ -296,9 +297,11 @@ def trendline_accuracy(
         "resistanceRespectRatePct": respect_rate(resistance_rows),
         "highConfidenceRespectRatePct": respect_rate(high_confidence),
         "verified90RespectRatePct": respect_rate(verified_90),
-        "items": records,
-        "examples": examples,
     }
+    if include_items:
+        payload["items"] = records
+        payload["examples"] = examples
+    return payload
 
 
 def _chart_rows(rows: list[dict[str, Any]], cutoff: int, future_bars: int, history_bars: int = 80) -> dict[str, Any]:
