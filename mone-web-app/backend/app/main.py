@@ -3909,29 +3909,79 @@ def api_home_summary(
         except Exception:
             pass
 
-        # 3×3 매트릭스 병렬 수집 (ThreadPoolExecutor — 9셀 동시 처리)
-        def _fetch_matrix_cell(args: tuple[str, str]) -> tuple[str, dict]:
-            _mode, _horizon = args
-            _key = f"{_mode}_{_horizon}"
+        # 3×3 매트릭스 — 사전 생성 CSV 직접 읽기 (재계산 없이 <100ms)
+        def _csv_matrix_cell(mode_: str, horizon_: str) -> tuple[str, dict]:
+            import csv as _csv_mod
+            key_ = f"{mode_}_{horizon_}"
             try:
-                rec = final_engine.final_recommendations(mk, _mode, _horizon)
-                cell_items = rec.get("items", [])
-                pos_ev = [i for i in cell_items if _safe_float_v2(i.get("expectedValue", 0)) > 0]
-                display = (pos_ev if pos_ev else cell_items)[:5]
-                return _key, {
-                    "status": "OK" if display else "NO_DATA",
-                    "items": display,
-                    "count": len(cell_items),
-                    "positiveEvCount": len(pos_ev),
-                }
-            except Exception as exc:
-                return _key, {"status": "ERROR", "error": str(exc), "items": [], "count": 0}
+                csv_path = data.REPORT_DIR / f"mone_v36_final_recommendations_{mk}_{mode_}_{horizon_}.csv"
+                if not csv_path.exists() or csv_path.stat().st_size < 20:
+                    return key_, {"status": "NO_DATA", "items": [], "count": 0, "positiveEvCount": 0, "source": "csv_missing"}
+                rows_: list[dict] = []
+                for enc_ in ("utf-8-sig", "utf-8", "cp949"):
+                    try:
+                        with csv_path.open("r", encoding=enc_) as _fh:
+                            rows_ = [dict(r) for r in _csv_mod.DictReader(_fh)]
+                        break
+                    except Exception:
+                        continue
+                if not rows_:
+                    return key_, {"status": "NO_DATA", "items": [], "count": 0, "positiveEvCount": 0, "source": "csv_empty"}
+                # 이름 보정: name == symbol 인 경우 sector_map에서 조회
+                try:
+                    sm_path = data.REPO_ROOT / "data" / f"sector_map_{mk}.csv"
+                    nm_map_: dict[str, str] = {}
+                    if sm_path.exists():
+                        with sm_path.open("r", encoding="utf-8-sig") as _smf:
+                            for _smr in _csv_mod.DictReader(_smf):
+                                _s, _n = str(_smr.get("symbol", "")).strip(), str(_smr.get("name", "")).strip()
+                                if _s and _n:
+                                    nm_map_[_s] = _n
+                    for _row in rows_:
+                        _sym, _nm = str(_row.get("symbol", "")).strip(), str(_row.get("name", "")).strip()
+                        if (_nm == _sym or not _nm) and _sym in nm_map_:
+                            _row["name"] = nm_map_[_sym]
+                except Exception:
+                    pass
+                # EV 양수 우선 정렬
+                def _fv(v: object) -> float:
+                    try:
+                        return float(v or 0)  # type: ignore[arg-type]
+                    except Exception:
+                        return 0.0
+                rows_.sort(key=lambda r: (_fv(r.get("expectedValue", 0)) > 0, _fv(r.get("finalRankScore") or r.get("finalScore") or 0)), reverse=True)
+                pos_ev_ = [r for r in rows_ if _fv(r.get("expectedValue", 0)) > 0]
+                display_ = (pos_ev_ if pos_ev_ else rows_)[:5]
+                return key_, {"status": "OK", "items": display_, "count": len(rows_), "positiveEvCount": len(pos_ev_), "source": "csv"}
+            except Exception as exc_:
+                return key_, {"status": "ERROR", "error": str(exc_), "items": [], "count": 0, "positiveEvCount": 0}
 
         matrix: dict = {}
-        _cells = [(m, h) for m in MODES for h in HORIZONS]
-        with ThreadPoolExecutor(max_workers=4) as _pool:
-            for _cell_key, _cell_val in _pool.map(_fetch_matrix_cell, _cells):
-                matrix[_cell_key] = _cell_val
+        # CSV 읽기: 각 셀 <5ms → 9셀 전체 <50ms
+        _csv_ok = any(
+            (data.REPORT_DIR / f"mone_v36_final_recommendations_{mk}_{m}_{h}.csv").exists()
+            for m in MODES for h in HORIZONS
+        )
+        if _csv_ok:
+            for _m, _h in [(m, h) for m in MODES for h in HORIZONS]:
+                _ck, _cv = _csv_matrix_cell(_m, _h)
+                matrix[_ck] = _cv
+        else:
+            # CSV 없으면 실시간 계산 (ThreadPool 병렬)
+            def _fetch_matrix_cell(args: tuple[str, str]) -> tuple[str, dict]:
+                _mode, _horizon = args
+                _key = f"{_mode}_{_horizon}"
+                try:
+                    rec = final_engine.final_recommendations(mk, _mode, _horizon)
+                    cell_items = rec.get("items", [])
+                    pos_ev = [i for i in cell_items if _safe_float_v2(i.get("expectedValue", 0)) > 0]
+                    display = (pos_ev if pos_ev else cell_items)[:5]
+                    return _key, {"status": "OK" if display else "NO_DATA", "items": display, "count": len(cell_items), "positiveEvCount": len(pos_ev)}
+                except Exception as exc:
+                    return _key, {"status": "ERROR", "error": str(exc), "items": [], "count": 0}
+            with ThreadPoolExecutor(max_workers=4) as _pool:
+                for _cell_key, _cell_val in _pool.map(_fetch_matrix_cell, [(m, h) for m in MODES for h in HORIZONS]):
+                    matrix[_cell_key] = _cell_val
 
         # 보유종목 (holdingsClean 엔드포인트 재사용)
         holdings_payload: dict = _empty_home_holdings(mk)
