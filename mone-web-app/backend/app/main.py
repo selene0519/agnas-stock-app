@@ -235,7 +235,7 @@ def _oauth_config(provider: str) -> dict[str, str]:
             "auth_url": "https://kauth.kakao.com/oauth/authorize",
             "token_url": "https://kauth.kakao.com/oauth/token",
             "userinfo_url": "https://kapi.kakao.com/v2/user/me",
-            "scope": "profile_nickname account_email",
+            "scope": "profile_nickname profile_image",
         }
     return {}
 
@@ -249,10 +249,12 @@ def _normalize_oauth_user(provider: str, payload: dict) -> dict[str, str]:
         }
     kakao_account = payload.get("kakao_account") or {}
     profile = kakao_account.get("profile") or {}
+    # account_email scope를 요청하지 않으므로 email 필드 없음 (KOE205 방지)
     return {
         "sub": str(payload.get("id") or ""),
-        "email": str(kakao_account.get("email") or ""),
-        "name": str(profile.get("nickname") or kakao_account.get("email") or "Kakao user"),
+        "email": "",  # account_email 미승인 — scope에서 제거됨
+        "name": str(profile.get("nickname") or "Kakao user"),
+        "picture": str(profile.get("profile_image_url") or profile.get("thumbnail_image_url") or ""),
     }
 
 @app.middleware("http")
