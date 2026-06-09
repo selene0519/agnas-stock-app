@@ -23,6 +23,8 @@ import {
   probabilityText,
   strategyTagLabel,
 } from "@/lib/moneDisplay";
+import { RecommendationBadges } from "@/components/RecommendationBadges";
+import { dataSourceLabel } from "@/lib/dataSourceLabel";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
 const HORIZONS: Horizon[] = ["short", "swing", "mid"];
@@ -187,6 +189,9 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item:
       </div>
 
       <TagChips item={item} />
+
+      {/* 6차: 신뢰도·반영여부 배지 */}
+      <RecommendationBadges item={item} maxVisible={5} className="mt-2" />
 
       {dataTrustNotice(item) && (
         <div className="mt-2 rounded-lg border border-amber-800/40 bg-amber-950/20 px-2.5 py-2 text-[10px] text-amber-300">
@@ -760,6 +765,123 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
   );
 }
 
+// ── 6차: 반영 여부 배지 + Score Breakdown 아코디언 패널
+function ScoreBreakdownPanel({ item }: { item: any }) {
+  const [open, setOpen] = useState(false);
+  if (!item) return null;
+
+  const hasBreakdown = (
+    item.baseScore != null ||
+    item.chartScoreAdjustment != null ||
+    item.eventScoreAdjustment != null ||
+    item.adaptiveScoreAdjustment != null ||
+    item.finalScore != null ||
+    item.chartSignalSummary ||
+    item.eventSummary ||
+    item.adaptiveScoreSummary ||
+    item.entryBasis ||
+    item.targetBasis ||
+    item.stopBasis ||
+    item.dataSourceType ||
+    item.eventDataSourceType ||
+    item.validationConfidence != null
+  );
+
+  if (!hasBreakdown) return null;
+
+  function row(label: string, value: any, unit?: string) {
+    const v = value ?? null;
+    const display = v === null || v === undefined || v === "" ? "-"
+      : unit ? `${typeof v === "number" ? v.toFixed(typeof v === "number" && Math.abs(v) < 10 ? 2 : 0) : v}${unit}`
+      : String(v);
+    return (
+      <div key={label} className="flex items-start justify-between gap-2 text-[11px]">
+        <span className="shrink-0 text-slate-500">{label}</span>
+        <span className="text-right font-mono text-slate-300">{display}</span>
+      </div>
+    );
+  }
+
+  const { label: dsLabel, badgeClass: dsBadge } = dataSourceLabel(item.dataSourceType);
+
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/40">
+      {/* 헤더 + 배지 행 */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-semibold text-slate-300">반영 상세</span>
+          {/* 인라인 핵심 배지 미리보기 */}
+          <RecommendationBadges item={item} maxVisible={3} />
+        </div>
+        <span className="ml-2 shrink-0 text-[10px] text-slate-500">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-800 px-4 pb-4 pt-3 space-y-2">
+          {/* Score breakdown */}
+          {(item.baseScore != null || item.finalScore != null || item.chartScoreAdjustment != null || item.eventScoreAdjustment != null || item.adaptiveScoreAdjustment != null) && (
+            <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">점수 흐름</div>
+              {row("기본 점수 (baseScore)", item.baseScore != null ? Number(item.baseScore).toFixed(1) : null)}
+              {row("차트 조정 (chartScoreAdjustment)", item.chartScoreAdjustment != null ? (Number(item.chartScoreAdjustment) >= 0 ? "+" : "") + Number(item.chartScoreAdjustment).toFixed(1) : null)}
+              {row("이벤트 조정 (eventScoreAdjustment)", item.eventScoreAdjustment != null ? (Number(item.eventScoreAdjustment) >= 0 ? "+" : "") + Number(item.eventScoreAdjustment).toFixed(1) : null)}
+              {row("Adaptive 조정 (adaptiveScoreAdjustment)", item.adaptiveScoreAdjustment != null ? (Number(item.adaptiveScoreAdjustment) >= 0 ? "+" : "") + Number(item.adaptiveScoreAdjustment).toFixed(1) : null)}
+              {item.finalScore != null && (
+                <div className="flex items-center justify-between border-t border-slate-800 pt-1.5 text-[11px]">
+                  <span className="font-semibold text-slate-300">최종 점수 (finalScore)</span>
+                  <span className={`font-mono font-bold ${Number(item.finalScore) >= 60 ? "text-emerald-300" : Number(item.finalScore) >= 45 ? "text-amber-300" : "text-slate-400"}`}>
+                    {Number(item.finalScore).toFixed(1)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 요약 문자열 */}
+          {(item.chartSignalSummary || item.eventSummary || item.adaptiveScoreSummary) && (
+            <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">신호 요약</div>
+              {item.chartSignalSummary && <div className="text-[11px] text-slate-400"><span className="text-sky-400 font-medium">차트 </span>{item.chartSignalSummary}</div>}
+              {item.eventSummary && <div className="text-[11px] text-slate-400"><span className="text-amber-400 font-medium">이벤트 </span>{item.eventSummary}</div>}
+              {item.adaptiveScoreSummary && <div className="text-[11px] text-slate-400"><span className="text-emerald-400 font-medium">AI보정 </span>{item.adaptiveScoreSummary}</div>}
+            </div>
+          )}
+
+          {/* 진입·목표·손절 근거 */}
+          {(item.entryBasis || item.targetBasis || item.stopBasis) && (
+            <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">가격 근거</div>
+              {item.entryBasis && <div className="text-[11px] text-slate-400"><span className="text-sky-400 font-medium">진입 </span>{item.entryBasis}</div>}
+              {item.targetBasis && <div className="text-[11px] text-slate-400"><span className="text-emerald-400 font-medium">목표 </span>{item.targetBasis}</div>}
+              {item.stopBasis && <div className="text-[11px] text-slate-400"><span className="text-red-400 font-medium">손절 </span>{item.stopBasis}</div>}
+            </div>
+          )}
+
+          {/* 데이터 소스 + 검증 신뢰도 */}
+          <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">데이터 상태</div>
+            {item.dataSourceType && (
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-500">데이터 소스</span>
+                {dsLabel ? (
+                  <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${dsBadge}`}>{dsLabel}</span>
+                ) : (
+                  <span className="font-mono text-slate-400">{item.dataSourceType}</span>
+                )}
+              </div>
+            )}
+            {item.eventDataSourceType && row("이벤트 소스", item.eventDataSourceType)}
+            {item.validationConfidence != null && row("검증 신뢰도", `${(Number(item.validationConfidence) * 100).toFixed(0)}%`)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => void; marketRegime?: any }) {
   const [conflict, setConflict] = useState<any>(null);
   useEffect(() => {
@@ -1001,6 +1123,9 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
               })}
             </div>
           </div>
+
+          {/* 6차: 반영 여부 배지 + 상세 breakdown */}
+          <ScoreBreakdownPanel item={item} />
 
           {/* 전략 태그 */}
           {tags.length > 0 && (

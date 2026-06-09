@@ -73,6 +73,25 @@ export interface RecommendationItem {
   adaptiveSignalBreakdown?: Record<string, number>;
   adaptiveConfidence?: number;
   adaptiveLearningStatus?: "ACTIVE" | "LOW_SAMPLE" | "DISABLED" | "DATA_INSUFFICIENT";
+  // 6차 UI 반영 여부 필드 (차트신호·빗각·지지·저항·가짜돌파)
+  chartSignalUsed?: boolean;
+  chartSignalSummary?: string;
+  trendlineUsed?: boolean;
+  trendlineLearningStatus?: string;
+  trendlineProjected5d?: number;
+  trendlineProjected20d?: number;
+  trendlineProjected60d?: number;
+  supportUsed?: boolean;
+  resistanceUsed?: boolean;
+  fakeBreakoutRiskUsed?: boolean;
+  // 6차 score breakdown 필드
+  baseScore?: number;
+  chartScoreAdjustment?: number;
+  finalScore?: number;
+  validationConfidence?: number;
+  entryBasis?: string;
+  targetBasis?: string;
+  stopBasis?: string;
   [key: string]: any;
 }
 
