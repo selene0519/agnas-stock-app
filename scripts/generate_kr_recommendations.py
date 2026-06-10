@@ -652,18 +652,24 @@ def _load_kis_prices() -> dict[str, float]:
 
 def _load_name_map() -> dict[str, str]:
     names: dict[str, str] = {}
-    candidates = [
+    # sector_map_kr.csv 우선 — 102종목 전체 이름 포함
+    for row in _read_csv(ROOT / "data" / "sector_map_kr.csv"):
+        sym  = str(row.get("symbol", "")).strip()
+        name = str(row.get("name", "")).strip()
+        if sym and name:
+            names[sym] = name
+            names[sym.lstrip("0")] = name
+    # watchlist/holdings으로 보완
+    for path in [
         ROOT / "watchlist_kr.csv",
         ROOT / "data" / "watchlist_kr.csv",
         ROOT / "holdings_kr.csv",
         ROOT / "data" / "holdings_kr.csv",
-    ]
-    # OHLCV 파일명에서 심볼 추출
-    for path in candidates:
+    ]:
         for row in _read_csv(path):
-            sym = str(row.get("symbol") or row.get("종목코드") or "").strip()
+            sym  = str(row.get("symbol") or row.get("종목코드") or "").strip()
             name = str(row.get("name") or row.get("종목명") or "").strip()
-            if sym and name:
+            if sym and name and sym not in names:
                 names[sym] = name
     return names
 
@@ -946,6 +952,8 @@ def _load_ohlcv_all() -> dict[str, list[dict]]:
     return print(f"  OHLCV 로드: {len(result)}종목") or result  # type: ignore[func-returns-value]
 
 
+_INDEX_SYMBOLS = {"KOSPI", "KOSDAQ", "KRX", "KRX100", "KOSPI200", "KOSDAQ150"}
+
 def _load_ohlcv_all_quiet() -> dict[str, list[dict]]:
     result: dict[str, list[dict]] = {}
     for path in sorted(OHLCV_DIR.glob("kr_*_daily.csv")):
@@ -953,6 +961,9 @@ def _load_ohlcv_all_quiet() -> dict[str, list[dict]]:
         if not m:
             continue
         sym = m.group(1)
+        # 지수/벤치마크 파일 제외 (KOSPI, KOSDAQ 등 숫자가 아닌 심볼)
+        if not sym.isdigit() or len(sym) != 6 or sym in _INDEX_SYMBOLS:
+            continue
         rows = _read_csv(path)
         rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
         if len(rows) >= MIN_OHLCV_ROWS:
@@ -1044,6 +1055,10 @@ def generate_recommendations() -> dict[str, Any]:
                 scored_combo.append((adj_score, base_score, c))
             scored_combo.sort(key=lambda x: x[0], reverse=True)
 
+            # 섹터 다양성 — 같은 섹터 최대 N종목 (편중 방지)
+            _MAX_PER_SECTOR = {"conservative": 2, "balanced": 3, "aggressive": 4}.get(mode, 3)
+            _sector_counts: dict[str, int] = {}
+
             count = 0
             for adj_score, base_score, c in scored_combo:
                 if count >= TOP_N:
@@ -1106,6 +1121,11 @@ def generate_recommendations() -> dict[str, Any]:
                 # 필터 G: 과도한 갭업 제거 (추격 방지)
                 _gap = ind.get("gapUpPct")
                 if _gap and _gap >= 12.0:
+                    continue
+
+                # 필터 H: 섹터 다양성 — 같은 섹터 최대 _MAX_PER_SECTOR 종목
+                _sec = sector_map.get(sym, sector_map.get(sym.lstrip("0"), "Unknown")) or "Unknown"
+                if _sector_counts.get(_sec, 0) >= _MAX_PER_SECTOR:
                     continue
                 # ─────────────────────────────────────────────────────────
 
@@ -1252,6 +1272,7 @@ def generate_recommendations() -> dict[str, Any]:
                     "currentPrice": current,
                     "generatedAt": now,
                 }
+                _sector_counts[_sec] = _sector_counts.get(_sec, 0) + 1
                 rows_out.append(row)
                 count += 1
 

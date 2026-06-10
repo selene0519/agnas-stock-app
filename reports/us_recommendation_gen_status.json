@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-10 08:56:42",
+  "generatedAt": "2026-06-10 16:03:21",
   "source": "us_ohlcv_quant_scanner",
-  "symbols": 112,
+  "symbols": 140,
   "liveSymbols": 50,
   "marketRegime": {
-    "regime": "BEAR",
-    "label": "약세장",
-    "scoreAdjust": -8.0,
-    "description": "US 시장 MA20 +2.0%, 5일 -5.2%"
+    "regime": "SIDE",
+    "label": "횡보장",
+    "scoreAdjust": 0.0,
+    "description": "US 시장 MA20 +6.4%, 5일 -0.3%"
   },
-  "evFiltered": 2,
+  "evFiltered": 0,
   "results": {
     "conservative_short": 12,
     "conservative_swing": 12,
@@ -17,8 +17,8 @@
     "balanced_short": 12,
     "balanced_swing": 12,
     "balanced_mid": 12,
-    "aggressive_short": 0,
-    "aggressive_swing": 0,
-    "aggressive_mid": 0
+    "aggressive_short": 12,
+    "aggressive_swing": 12,
+    "aggressive_mid": 12
   }
 }

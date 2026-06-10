@@ -34,6 +34,8 @@ MIN_SCORE    = 65   # 6중필터 최소 점수 (SIDE 기준)
 ATR_STOP     = 1.5  # 손절 배수
 ATR_TARGET   = 4.5  # 목표 배수 (56.3% 달성 검증값)
 HORIZON_DAYS = 5    # SWING 보유일수 (7일은 손절 과다 발생)
+# 거래비용: 매수수수료 0.015% + 매도세 0.18% + 슬리피지 0.15% ≈ 총 0.345%
+TRADE_COST_PCT = 0.345
 # ─────────────────────────────────────────────────────────────────────
 
 
@@ -398,7 +400,10 @@ def simulate_trade(
             result["outcome"] = "기간종료"
 
     if result["filled"] and result["exit_price"] is not None and entry > 0:
-        result["return_pct"] = round((result["exit_price"] - entry) / entry * 100, 3)
+        raw_pct = (result["exit_price"] - entry) / entry * 100
+        # 거래비용 차감 (매수수수료 + 매도세 + 슬리피지)
+        result["return_pct"] = round(raw_pct - TRADE_COST_PCT, 3)
+        result["return_pct_gross"] = round(raw_pct, 3)
     return result
 
 
