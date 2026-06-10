@@ -12,9 +12,13 @@ from app.services import final_engine
 
 # 날짜 컬럼 후보 (우선순위순)
 _DATE_COLS = [
-    "generatedAt", "recommendationDate", "asOfDate", "createdAt",
-    "date", "tradeDate", "priceDate", "updatedAt",
+    "generatedAt", "recommendationDate", "asOfDate", "asOf",
+    "createdAt", "date", "tradeDate", "priceDate", "updatedAt",
+    "baseDate", "dataDate", "recordDate", "reportDate",
 ]
+
+# OHLCV 심볼 유효성 검사 — 이 값이면 파일 선택 제외
+_INVALID_OHLCV_SYMBOLS = {"NAN", "NONE", "NULL", "N/A", "NA", "", "UNDEFINED"}
 
 # 결측률 검사 대상 컬럼
 _QUALITY_COLS = [
@@ -72,14 +76,33 @@ def _deep_csv_inspect(path: Path, market: str) -> dict[str, Any]:
             "emptyResult": True,
         }
 
-    # 최신 내부 날짜
+    # 최신 내부 날짜 — 대소문자 구분 없이 컬럼 탐색
     latest_date: str | None = None
+    date_col_found: str | None = None
+    warnings_inner: list[str] = []
+
+    # 실제 헤더 소문자화 맵
+    if rows:
+        header_lower = {k.lower(): k for k in rows[0].keys()}
+    else:
+        header_lower = {}
+
     for col in _DATE_COLS:
-        dates = [_parse_date_str(r.get(col)) for r in rows]
+        actual_col = header_lower.get(col.lower()) or col
+        dates = [_parse_date_str(r.get(actual_col)) for r in rows]
         dates = [d for d in dates if d]
         if dates:
             latest_date = max(dates)
+            date_col_found = actual_col
             break
+
+    # 폴백: 파일 mtime
+    if not latest_date:
+        try:
+            latest_date = datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d")
+            warnings_inner.append("date_column_missing")
+        except Exception:
+            warnings_inner.append("date_parse_failed")
 
     # STALE 여부: 내부 날짜 기준
     stale_reason: str | None = None
@@ -109,7 +132,7 @@ def _deep_csv_inspect(path: Path, market: str) -> dict[str, Any]:
         mixed_market_count = sum(1 for m in mkt_values if m and m != expected)
 
     # 종합 상태
-    warnings: list[str] = []
+    warnings: list[str] = list(warnings_inner)
     deep_status = "NORMAL"
 
     if stale_reason:
@@ -198,18 +221,54 @@ def _candidate_files(market: str) -> list[dict[str, Any]]:
     ]
 
 
+def _filter_ohlcv_files(files: list[Path], market: str) -> tuple[list[Path], list[str]]:
+    """
+    OHLCV 파일 목록에서 market 접두사가 맞고 심볼이 유효한 파일만 반환.
+    반환: (valid_files, warning_messages)
+    """
+    market_prefix = market.lower() + "_"
+    valid: list[Path] = []
+    warnings: list[str] = []
+    for f in files:
+        stem_parts = f.stem.split("_")  # kr_000100_daily → ["kr", "000100", "daily"]
+        # market 접두사 검사
+        if not f.name.startswith(market_prefix):
+            warnings.append(f"market_mismatch_file:{f.name}")
+            continue
+        # 심볼 유효성 검사 (두 번째 파트)
+        sym = stem_parts[1].upper() if len(stem_parts) >= 2 else ""
+        if sym in _INVALID_OHLCV_SYMBOLS or not sym:
+            warnings.append(f"invalid_ohlcv_file:{f.name}")
+            continue
+        valid.append(f)
+    return valid, warnings
+
+
 def _status_for_path(path: Path | None, market: str, role: str) -> dict[str, Any]:
     if path is None:
         return {"status": "NO_DATA", "reason": "경로 없음", "path": None, "role": role}
     if path.is_dir():
-        files = [item for item in path.glob("*.csv") if item.is_file()]
-        if not files:
+        all_files = [item for item in path.glob("*.csv") if item.is_file()]
+        if not all_files:
             return {"status": "NO_DATA", "reason": "CSV 없음", "path": str(path), "role": role}
-        newest = max(files, key=lambda item: item.stat().st_mtime)
+
+        extra_warnings: list[str] = []
+        if role == "price_priority_3":
+            # OHLCV 디렉토리: market 접두사 + 유효 심볼 필터
+            filtered, extra_warnings = _filter_ohlcv_files(all_files, market)
+            files_to_use = filtered if filtered else all_files
+        else:
+            files_to_use = all_files
+
+        newest = max(files_to_use, key=lambda item: item.stat().st_mtime)
         result = session.evaluate_file_status(newest, market, required_today=role in {"price_priority_1", "price_priority_2"})
         result["path"] = str(newest)
         result["role"] = role
-        result["fileCount"] = len(files)
+        result["fileCount"] = len(files_to_use)
+        result["mtimeDate"] = datetime.fromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d")
+        if extra_warnings:
+            result.setdefault("warnings", [])
+            result["warnings"] = list(result.get("warnings") or []) + extra_warnings
         if role == "price_priority_3" and result["status"] == "STALE":
             result["status"] = "PARTIAL"
             result["reason"] = "OHLCV 최신 파일이 당일은 아니지만 백테스트용 보조 데이터로 사용 가능"
@@ -287,15 +346,71 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
         recommendation_status = "ERROR"
         files.append({"name": "Recommendation engine", "role": "engine", "path": None, "status": "ERROR", "reason": str(exc)})
 
-    file_status = session.worst_status(item.get("status") for item in files)
-    combined = session.worst_status([file_status, recommendation_status])
+    # ── 세션 타입 파악 ────────────────────────────────────────────────────────
+    price_session_str = state.get("priceSession", "")
+    is_after_close = any(x in price_session_str for x in ("after_close", "AFTER_CLOSE", "장마감"))
+    is_review = bool(state.get("isReviewMode"))
 
-    if state.get("isReviewMode"):
+    # ── 파일 상태를 realtime / data 로 분리 ──────────────────────────────────
+    # realtime: KIS snapshot, intraday snapshot (장 중에만 존재 기대)
+    # data: OHLCV, premarket report, fallback, recommendation CSV
+    realtime_roles = {"price_priority_1", "price_priority_2"}
+    realtime_files = [f for f in files if f.get("role") in realtime_roles]
+    data_files     = [f for f in files if f.get("role") not in realtime_roles]
+
+    realtime_status = session.worst_status(f.get("status") for f in realtime_files)
+    data_status_raw = session.worst_status(f.get("status") for f in data_files)
+
+    # 추천 CSV 기준 status 반영
+    data_status_combined = session.worst_status([data_status_raw, recommendation_status])
+
+    # ── combined 결정 ─────────────────────────────────────────────────────────
+    rec_has_data = (rec_csv_inspect.get("rowCount", 0) > 0
+                    and rec_csv_inspect.get("validSymbolCount", 0) > 0
+                    and not rec_csv_inspect.get("emptyResult"))
+
+    extra_warnings: list[str] = list(rec_csv_inspect.get("warnings", []))
+    # OHLCV 파일 수준 경고 집계 → 최상위 요약으로 버블업
+    mismatch_count = 0
+    invalid_count  = 0
+    for f in files:
+        for fw in (f.get("warnings") or []):
+            if fw.startswith("market_mismatch_file"):
+                mismatch_count += 1
+            elif fw.startswith("invalid_ohlcv_file"):
+                invalid_count += 1
+    if mismatch_count:
+        extra_warnings.append(f"market_mismatch_file:{mismatch_count}개 (요청 market={normalized_market}와 다른 파일 제외됨)")
+    if invalid_count:
+        extra_warnings.append(f"invalid_ohlcv_file:{invalid_count}개 (NAN/NULL 심볼 제외됨)")
+
+    if is_after_close or is_review:
+        # 장마감/복기 모드: 실시간 파일 없음은 정상 — data 파일만으로 판정
+        combined = data_status_combined
+        if any(f.get("status") == "NO_DATA" for f in realtime_files):
+            extra_warnings.append("realtime_price_missing_after_close")
+        # 추천 데이터가 있으면 NO_DATA 완화
+        if combined == "NO_DATA" and rec_has_data:
+            combined = "PARTIAL"
+        if is_review and combined in {"NO_DATA", "ERROR"}:
+            combined = "PARTIAL" if rec_has_data else combined
+    else:
+        # 장 중: 실시간 파일도 포함해서 worst_status
+        combined = session.worst_status([data_status_combined, realtime_status])
+        if combined == "NO_DATA" and rec_has_data:
+            combined = "PARTIAL_PRICE"
+
+    # ── killSwitch 결정 ───────────────────────────────────────────────────────
+    # 추천 데이터가 존재하면 killSwitch=False (실시간 가격 없음은 killSwitch 사유가 아님)
+    if rec_has_data:
+        kill_switch = combined in {"ERROR"}
+    elif is_review:
         kill_switch = False
-        if combined in {"NO_DATA", "ERROR"}:
-            combined = "PARTIAL" if rows else combined
     else:
         kill_switch = session.is_kill_status(combined)
+
+    # PARTIAL_PRICE는 프론트에 친숙한 PARTIAL로 노출
+    display_combined = "PARTIAL" if combined == "PARTIAL_PRICE" else combined
 
     return {
         # 기존 필드 유지
@@ -303,11 +418,11 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
         "market": normalized_market,
         "priceSession": state["priceSession"],
         "session": state,
-        "dataStatus": combined,
-        "priceDataStatus": price_status,
+        "dataStatus": display_combined,
+        "priceDataStatus": price_status if rows else ("NO_REALTIME" if is_after_close else "NO_DATA"),
         "killSwitch": kill_switch,
-        "reviewMode": bool(state.get("isReviewMode")),
-        "message": "시장 휴장일 - 지난 운용 복기 모드" if state.get("isReviewMode") else "데이터 상태 점검 완료",
+        "reviewMode": is_review,
+        "message": "시장 휴장일 - 지난 운용 복기 모드" if is_review else "데이터 상태 점검 완료",
         "files": files,
         "candidateCount": len(rows),
         "updatedAt": datetime.now(session.KST).isoformat(),
@@ -321,8 +436,8 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
         "invalidMarketCount": rec_csv_inspect.get("invalidMarketCount", 0),
         "mixedMarketCount": rec_csv_inspect.get("mixedMarketCount", 0),
         "emptyResult": rec_csv_inspect.get("emptyResult", False),
-        "staleReason": rec_csv_inspect.get("warnings", [None])[0] if rec_csv_inspect.get("warnings") else None,
-        "warnings": rec_csv_inspect.get("warnings", []),
+        "staleReason": next((w for w in extra_warnings if "stale" in w.lower()), None),
+        "warnings": extra_warnings,
         "checkedFiles": [f.get("path") for f in files if f.get("path")],
     }
 
