@@ -133,6 +133,91 @@ function EarningsBadge({ dday }: { dday: number }) {
   );
 }
 
+// ── 매크로/실적 이벤트 배너 ──────────────────────────────────────────────
+function EventBanner({ alert }: { alert: any }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (!alert || dismissed) return null;
+
+  const highMacro: any[] = alert.todayHighMacro || [];
+  const allMacro: any[] = alert.todayAllMacro || [];
+  const todayEarnings: any[] = alert.todayEarnings || [];
+  const tmrwHigh: any[] = alert.tomorrowHighMacro || [];
+  const tmrwEarnings: any[] = alert.tomorrowEarnings || [];
+
+  const hasHigh   = highMacro.length > 0;
+  const hasMed    = allMacro.length > 0 || todayEarnings.length > 0;
+  const hasTomorrow = tmrwHigh.length > 0 || tmrwEarnings.length > 0;
+
+  if (!hasHigh && !hasMed && !hasTomorrow) return null;
+
+  const bgClass = hasHigh
+    ? "border-red-500/40 bg-red-500/10"
+    : hasMed
+    ? "border-amber-500/40 bg-amber-500/10"
+    : "border-slate-600/60 bg-slate-800/60";
+  const textClass = hasHigh ? "text-red-300" : hasMed ? "text-amber-300" : "text-slate-400";
+  const iconClass = hasHigh ? "text-red-400" : hasMed ? "text-amber-400" : "text-slate-500";
+
+  return (
+    <div className={`relative flex items-start gap-3 rounded-xl border px-3.5 py-2.5 text-sm ${bgClass}`}>
+      <AlertTriangle size={15} className={`mt-0.5 shrink-0 ${iconClass}`} />
+      <div className="min-w-0 flex-1">
+        {/* 오늘 HIGH 매크로 */}
+        {highMacro.length > 0 && (
+          <div className="font-semibold text-red-200">
+            🔴 오늘 주요 지표:
+            {highMacro.slice(0, 3).map((e: any, i: number) => (
+              <span key={i} className="ml-1 rounded-full border border-red-500/30 bg-red-500/15 px-1.5 py-0.5 text-[11px]">
+                {e.event}
+                {e.forecast ? ` (예상 ${e.forecast})` : ""}
+              </span>
+            ))}
+          </div>
+        )}
+        {/* 오늘 MEDIUM 매크로 (HIGH가 없을 때) */}
+        {!hasHigh && allMacro.length > 0 && (
+          <div className={`font-medium ${textClass}`}>
+            ⚠️ 오늘 경제지표:
+            {allMacro.slice(0, 3).map((e: any, i: number) => (
+              <span key={i} className="ml-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[11px] text-amber-200">
+                {e.event}
+              </span>
+            ))}
+          </div>
+        )}
+        {/* 오늘 실적발표 */}
+        {todayEarnings.length > 0 && (
+          <div className={`mt-0.5 text-xs ${textClass}`}>
+            📊 오늘 실적:
+            {todayEarnings.slice(0, 5).map((e: any, i: number) => (
+              <span key={i} className="ml-1 font-semibold">{e.symbol || e.name}</span>
+            ))}
+          </div>
+        )}
+        {/* 내일 예고 */}
+        {!hasHigh && !hasMed && (tmrwHigh.length > 0 || tmrwEarnings.length > 0) && (
+          <div className="text-xs text-slate-400">
+            📅 내일 예정:
+            {[...tmrwHigh.slice(0, 2), ...tmrwEarnings.slice(0, 2)].map((e: any, i: number) => (
+              <span key={i} className="ml-1">{e.event || e.symbol || e.name}</span>
+            ))}
+          </div>
+        )}
+        <div className="mt-1 text-[10px] text-slate-500">
+          오늘 진입 시 리스크 관리 강화 권고 · 변동성 확대 구간
+        </div>
+      </div>
+      <button
+        onClick={() => setDismissed(true)}
+        className="absolute top-2 right-2 text-slate-500 hover:text-slate-300"
+        aria-label="닫기"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
+
 // ── 오늘 진입 카드 (상세)
 function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item: any; rank: number; onSelect: (item: any) => void; earningsMap?: Record<string, number>; badgeMap?: Record<string, any> }) {
   const ev = Number(item.expectedValue || 0);
@@ -1388,6 +1473,8 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [earningsMap, setEarningsMap] = useState<Record<string, number>>({});
   // 데이터 소스 신선도
   const [dataSources, setDataSources] = useState<any>(null);
+  // 매크로/실적 이벤트 배너
+  const [calendarAlert, setCalendarAlert] = useState<any>(null);
   const sessionClock = clock || new Date();
   const selectedMarket = marketChoice === "auto" ? (clientReady ? getDefaultMarketBySession(sessionClock) : "kr") : marketChoice;
   const sessionStatus = clientReady ? getMarketSessionStatus(selectedMarket, sessionClock) : "확인 중";
@@ -1468,7 +1555,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       .finally(() => setReportLoading(false));
   }, [clientReady, selectedMarket]);
 
-  // 실적발표 일정 로드 (마운트 1회)
+  // 실적발표 일정 로드 + earningsMap 구성
   useEffect(() => {
     mone.earningsCalendar({ market: selectedMarket as any, days: 14 })
       .then((res) => {
@@ -1482,6 +1569,16 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       })
       .catch(() => {});
   }, [selectedMarket]);
+
+  // 매크로/실적 이벤트 배너 로드 (마운트 1회, 시장 변경 시 갱신)
+  useEffect(() => {
+    if (!clientReady) return;
+    mone.calendarToday({ market: selectedMarket as any })
+      .then((res) => {
+        if (res?.status === "OK") setCalendarAlert(res);
+      })
+      .catch(() => {});
+  }, [clientReady, selectedMarket]);
 
   // 데이터 소스 신선도 로드 (마운트 1회)
   useEffect(() => {
@@ -1671,6 +1768,9 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           </button>
         </div>
       </div>
+
+      {/* 매크로/실적 이벤트 배너 */}
+      <EventBanner alert={calendarAlert} />
 
       {/* 데이터 신선도 배지 */}
       {dataSources && (() => {

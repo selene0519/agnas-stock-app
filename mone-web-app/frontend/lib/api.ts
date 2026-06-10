@@ -448,6 +448,13 @@ export const mone = {
     apiPost<any>("/api/holdings/import-csv", body),
   earningsCalendar: (p?: { market?: "kr" | "us" | "all"; days?: number }) =>
     apiGet<ApiList>("/api/earnings-calendar", p),
+  // Calendar API (event_calendar.py 기반)
+  calendarToday: (p?: { market?: "kr" | "us" | "all" }) =>
+    apiGet<any>("/api/calendar/today", p),
+  calendarMacro: (p?: { market?: "kr" | "us"; days?: number; impact?: "low" | "medium" | "high" }) =>
+    apiGet<ApiList>("/api/calendar/macro", p),
+  calendarEarnings: (p?: { market?: "kr" | "us"; days?: number; tracked?: boolean }) =>
+    apiGet<ApiList>("/api/calendar/earnings", p),
   // Phase 3 — Signal Ledger
   signalsRecord: (body: Record<string, any>) =>
     apiPost<any>("/api/signals/record", body),
