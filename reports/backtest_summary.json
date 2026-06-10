@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-10T15:17:36.121268",
-  "totalTrades": 103,
-  "filledTrades": 87,
-  "winRate": 48.28,
-  "avgReturn": 1.043,
-  "sharpe": 0.808,
-  "maxDrawdownPct": 29.15,
+  "generatedAt": "2026-06-10T15:33:57.532619",
+  "totalTrades": 118,
+  "filledTrades": 100,
+  "winRate": 53.0,
+  "avgReturn": 0.826,
+  "sharpe": 0.827,
+  "maxDrawdownPct": 31.99,
   "outcomeBreakdown": {
-    "기간종료": 51,
+    "기간종료": 70,
     "손절": 26,
-    "목표": 10
+    "목표": 4
   },
   "targetsMet": {
     "winRate_58pct": false,
@@ -23,9 +23,9 @@
     "label": "SWING 기준선 (필터 적용 전)"
   },
   "delta": {
-    "winRate": 0.08,
-    "avgReturn": -0.217,
-    "sharpe": 0.188
+    "winRate": 4.8,
+    "avgReturn": -0.434,
+    "sharpe": 0.207
   },
   "filters": {
     "minScore": 65,
@@ -35,6 +35,6 @@
     "d20Range": "-15% to +10%",
     "rrMin": "2.0",
     "stopMult": "ATR×1.5",
-    "targetMult": "ATR×3.5"
+    "targetMult": "ATR×4.5"
   }
 }
