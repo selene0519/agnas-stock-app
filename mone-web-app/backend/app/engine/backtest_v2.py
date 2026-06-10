@@ -193,6 +193,21 @@ def evaluate_recommendation(
         exit_status = "기간종료"
         bars_held   = len(holding_df)
 
+    # ── MFE / MAE 계산 (체결 이후 보유 구간 기준) ─────────────────────────
+    # MFE: 체결 후 최대 유리한 가격 (고가 기준)
+    # MAE: 체결 후 최대 불리한 가격 (저가 기준)
+    mfe_pct: float | None = None
+    mae_pct: float | None = None
+    if entry and not holding_df.empty:
+        highs = [_num(r.get("high")) or _num(r.get("close")) for _, r in holding_df.iterrows()]
+        lows  = [_num(r.get("low"))  or _num(r.get("close")) for _, r in holding_df.iterrows()]
+        highs_ok = [h for h in highs if h is not None]
+        lows_ok  = [l for l in lows  if l is not None]
+        if highs_ok:
+            mfe_pct = round((max(highs_ok) - entry) / entry * 100, 3)
+        if lows_ok:
+            mae_pct = round((min(lows_ok)  - entry) / entry * 100, 3)
+
     # ── PnL 계산 (슬리피지 포함) ───────────────────────────────────────────
     gross_pnl   = (exit_price - entry) / entry * 100 if entry else None
     actual_buy  = entry * (1 + slip)
@@ -214,6 +229,8 @@ def evaluate_recommendation(
         "barsHeld": bars_held,
         "exitStatus": exit_status,
         "reason": exit_status,
+        "mfePct": mfe_pct,
+        "maePct": mae_pct,
         "slippagePct": slip,
         "entryWindowDays": entry_window,
         "holdingDays": holding_days,

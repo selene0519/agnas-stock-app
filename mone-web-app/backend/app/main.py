@@ -1205,6 +1205,114 @@ def api_adaptive_weights(
         }
 
 
+@app.get("/api/validation/self-correction")
+def api_validation_self_correction(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+) -> dict:
+    """현재 적용 중인 보정값과 샘플 통계 조회."""
+    from app.engine import correction_store as _cs, self_correction_v2 as _scv2
+    try:
+        params = _cs.load_params()
+        key = f"{_market(market)}_{mode}_{horizon}"
+        correction = params.get("markets", {}).get(key) or _cs.load_correction(_market(market), mode, horizon)
+        return {
+            "status": "OK",
+            "market": _market(market),
+            "mode": mode,
+            "horizon": horizon,
+            "version": params.get("version", 0),
+            "generatedAt": params.get("generatedAt"),
+            "totalSamples": params.get("totalSamples", 0),
+            "sampleCount": correction.get("sampleCount", 0),
+            "confidence": correction.get("confidence", 0.0),
+            "correctionActive": correction.get("confidence", 0.0) >= 0.3,
+            "activeAdjustments": {
+                "weightAdjustments": correction.get("weightAdjustments", {}),
+                "priceAdjustments": correction.get("priceAdjustments", {}),
+                "filterAdjustments": correction.get("filterAdjustments", {}),
+            },
+            "topFailureReasons": correction.get("topFailureReasons", []),
+            "reasonCounts": correction.get("reasonCounts", {}),
+        }
+    except Exception as exc:
+        return {"status": "ERROR", "error": str(exc)}
+
+
+@app.post("/api/validation/self-correction/rebuild")
+def api_validation_self_correction_rebuild(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+) -> dict:
+    """검증 CSV에서 보정 파라미터를 재생성한다 (관리자 전용)."""
+    from app.engine import self_correction_v2 as _scv2
+    try:
+        result = _scv2.build_correction_params(_market(market))
+        return {
+            "status": "OK",
+            "version": result.get("version"),
+            "totalSamples": result.get("totalSamples", 0),
+            "generatedAt": result.get("generatedAt"),
+            "marketKeys": list(result.get("markets", {}).keys()),
+        }
+    except Exception as exc:
+        return {"status": "ERROR", "error": str(exc)}
+
+
+@app.get("/api/validation/outcomes")
+def api_validation_outcomes(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query(""),
+    horizon: str = Query(""),
+    limit: int = Query(50, ge=1, le=200),
+) -> dict:
+    """최근 추천 검증 결과와 outcomeReason 조회."""
+    import csv as _oc_csv
+    from app.engine import outcome_analyzer as _oa
+    mk = _market(market)
+    rows: list[dict] = []
+    reports = __import__("pathlib").Path(__file__).resolve().parents[3] / "reports"
+    pattern = f"mone_v36_final_trade_validation_{mk}_*.csv"
+    for path in sorted(reports.glob(pattern))[:9]:
+        try:
+            for enc in ("utf-8-sig", "utf-8", "cp949"):
+                try:
+                    with path.open("r", encoding=enc, newline="") as f:
+                        for row in _oc_csv.DictReader(f):
+                            if mode and str(row.get("mode", "")) != mode:
+                                continue
+                            if horizon and str(row.get("horizon", "")) != horizon:
+                                continue
+                            row["outcomeReason"] = _oa.classify_outcome(row, row)
+                            rows.append(row)
+                    break
+                except UnicodeDecodeError:
+                    continue
+        except Exception:
+            pass
+    rows = rows[-limit:]
+    reason_counts = _oa.reason_counts(rows)
+    return {
+        "status": "OK",
+        "market": mk,
+        "count": len(rows),
+        "reasonCounts": reason_counts,
+        "topFailureReasons": _oa.top_failure_reasons(rows),
+        "items": rows,
+    }
+
+
+@app.get("/api/admin/correction-history")
+def api_admin_correction_history() -> dict:
+    """보정 파라미터 버전 이력 조회."""
+    from app.engine import correction_store as _cs
+    try:
+        versions = _cs.list_versions()
+        return {"status": "OK", "count": len(versions), "versions": versions}
+    except Exception as exc:
+        return {"status": "ERROR", "error": str(exc)}
+
+
 @app.get("/api/validation/recommendations/summary")
 def api_validation_recommendations_summary(
     market: str = Query("kr", pattern="^(kr|us|all)$"),
