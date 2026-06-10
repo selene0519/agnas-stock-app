@@ -1448,6 +1448,71 @@ def api_admin_correction_history() -> dict:
         return {"status": "ERROR", "error": str(exc)}
 
 
+@app.get("/api/validation/walkforward")
+def api_validation_walkforward(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("", description="비어 있으면 모든 mode"),
+    horizon: str = Query("", description="비어 있으면 모든 horizon"),
+    run: bool = Query(False, description="True이면 즉시 재실행 (느림)"),
+) -> dict:
+    """Walk-Forward 자가보정 검증 결과 반환. run=true이면 재계산."""
+    import json as _wf_json
+    from pathlib import Path as _WFPath
+    from app.engine import walkforward_backtest as _wfb
+
+    mk = _market(market)
+    reports = _WFPath(__file__).resolve().parents[3] / "reports"
+    summary_path = reports / f"walkforward_summary_{mk}.json"
+
+    if run:
+        try:
+            if mode and horizon:
+                result = _wfb.run_walkforward(mk, mode, horizon)
+                return result
+            else:
+                result = _wfb.run_all(mk)
+                return result
+        except Exception as exc:
+            return {"status": "ERROR", "error": str(exc)}
+
+    # 저장된 결과 반환
+    if summary_path.exists():
+        try:
+            data = _wf_json.loads(summary_path.read_text(encoding="utf-8"))
+            if mode and horizon:
+                key = f"{mk}_{mode}_{horizon}"
+                combo = data.get("combos", {}).get(key)
+                if combo:
+                    return combo
+                return {"status": "NOT_FOUND", "key": key}
+            # 요약만 반환 (전체 raw는 크므로)
+            combos_summary = {
+                k: {
+                    "status":           v.get("status"),
+                    "windowCount":      v.get("windowCount"),
+                    "dataRange":        v.get("dataRange"),
+                    "baselineStats":    v.get("baselineStats"),
+                    "correctedStats":   v.get("correctedStats"),
+                    "diff":             v.get("diff"),
+                }
+                for k, v in data.get("combos", {}).items()
+            }
+            return {
+                "status":      "OK",
+                "market":      mk,
+                "generatedAt": data.get("generatedAt"),
+                "combos":      combos_summary,
+            }
+        except Exception as exc:
+            return {"status": "ERROR", "error": str(exc)}
+
+    return {
+        "status":  "NOT_RUN",
+        "message": f"결과 없음. ?run=true 로 실행하거나 scripts/run_walkforward.py 를 실행하세요.",
+        "summaryPath": str(summary_path),
+    }
+
+
 @app.get("/api/validation/recommendations/summary")
 def api_validation_recommendations_summary(
     market: str = Query("kr", pattern="^(kr|us|all)$"),
