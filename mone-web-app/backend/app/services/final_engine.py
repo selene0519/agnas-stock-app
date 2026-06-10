@@ -1334,6 +1334,26 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         except Exception:
             pass
         # ───────────────────────────────────────────────────────────────────
+
+        # ── Pattern Strategy Layer (v1) ───────────────────────────────────
+        try:
+            from app.engine.pattern_strategy import analyze as _ps_analyze
+            _ps_df, _ = _latest_ohlcv(sym, market)
+            if not _ps_df.empty and len(_ps_df) >= 20:
+                _ps_rows = _ps_df.to_dict("records")
+                _ps_result = _ps_analyze(sym, market, _ps_rows)
+                row["patternStrategy"] = _ps_result
+                # Propagate isBlocked signal to finalRankScore
+                if _ps_result.get("isBlocked"):
+                    row["finalRankScore"] = round(
+                        max(0.0, float(row.get("finalRankScore", 0)) - 12.0), 1
+                    )
+                    row["recommended"] = False
+            else:
+                row["patternStrategy"] = None
+        except Exception:
+            row["patternStrategy"] = None
+        # ───────────────────────────────────────────────────────────────────
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
     selected = rows[:requested_limit]
