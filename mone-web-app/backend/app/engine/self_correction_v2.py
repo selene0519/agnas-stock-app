@@ -15,11 +15,25 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from app.engine import correction_store, outcome_analyzer
+
+# ── 킬스위치 & 적용 강도 (환경변수) ───────────────────────────────────────
+# SELF_CORRECTION_ENABLED=false → 전체 보정 비활성화
+# CORRECTION_STRENGTH=0.25/0.5/1.0 → 보정 폭 배율 (기본 1.0)
+def _correction_enabled() -> bool:
+    return os.environ.get("SELF_CORRECTION_ENABLED", "true").lower() not in {"false", "0", "no", "off"}
+
+def _correction_strength() -> float:
+    try:
+        val = float(os.environ.get("CORRECTION_STRENGTH", "1.0"))
+        return max(0.0, min(1.0, val))
+    except Exception:
+        return 1.0
 
 # ── 안전장치 상수 ──────────────────────────────────────────────────────────
 _MIN_SAMPLES       = 30     # 이 미만이면 보정 안 함
@@ -368,9 +382,24 @@ def apply_correction(
         "appliedCorrectionVersion": int,
     }
     """
+    version = correction_store.load_params().get("version", 0)
+
+    # 킬스위치: SELF_CORRECTION_ENABLED=false → 즉시 원래 값 반환
+    if not _correction_enabled():
+        return {
+            "adjustedScores": score_components,
+            "adjustedEntry": entry,
+            "adjustedTarget": target,
+            "adjustedStop": stop,
+            "correctionApplied": False,
+            "correctionConfidence": 0.0,
+            "correctionSummary": "보정 비활성화 (SELF_CORRECTION_ENABLED=false)",
+            "appliedCorrectionVersion": version,
+        }
+
+    strength = _correction_strength()
     params = correction_store.load_correction(market, mode, horizon)
     confidence = float(params.get("confidence") or 0.0)
-    version = correction_store.load_params().get("version", 0)
 
     if confidence < _MIN_CONFIDENCE or int(params.get("sampleCount", 0)) < _MIN_SAMPLES:
         return {
@@ -384,28 +413,30 @@ def apply_correction(
             "appliedCorrectionVersion": version,
         }
 
-    # 점수 보정
+    # 점수 보정 (strength 배율 적용)
     adjusted_scores = dict(score_components)
     weight_adj = params.get("weightAdjustments") or {}
     for comp, delta in weight_adj.items():
         if comp in adjusted_scores:
             adjusted_scores[comp] = round(
-                _clamp(adjusted_scores[comp] + delta * 10, 0, 100), 2
+                _clamp(adjusted_scores[comp] + delta * 10 * strength, 0, 100), 2
             )
 
-    # 가격 보정
+    # 가격 보정 (strength 배율 적용)
     price_adj = params.get("priceAdjustments") or {}
-    entry_delta   = float(price_adj.get("entryAggressiveness", 0.0))
-    target_delta  = float(price_adj.get("targetMultiplier", 0.0))
-    stop_delta    = float(price_adj.get("stopAtrMultiplier", 0.0))
+    entry_delta  = float(price_adj.get("entryAggressiveness", 0.0)) * strength
+    target_delta = float(price_adj.get("targetMultiplier", 0.0)) * strength
+    stop_delta   = float(price_adj.get("stopAtrMultiplier", 0.0)) * strength
 
-    # entryAggressiveness: 양수 → 진입가 높임 (더 공격적), 음수 → 낮춤
     adj_entry  = entry  * (1 + entry_delta * 0.01) if entry else entry
     adj_target = target * (1 + target_delta)        if target else target
     adj_stop   = stop   * (1 - stop_delta * 0.1)   if stop else stop
 
     top_reasons = params.get("topFailureReasons") or []
-    summary = f"보정 적용 (confidence={confidence:.2f}, 주요실패={','.join(top_reasons[:3])})"
+    summary = (
+        f"보정 적용 (confidence={confidence:.2f}, strength={strength:.2f}, "
+        f"주요실패={','.join(top_reasons[:3])})"
+    )
 
     return {
         "adjustedScores": adjusted_scores,
@@ -414,6 +445,7 @@ def apply_correction(
         "adjustedStop": round(adj_stop, 2) if adj_stop else stop,
         "correctionApplied": True,
         "correctionConfidence": confidence,
+        "correctionStrength": strength,
         "correctionSummary": summary,
         "appliedCorrectionVersion": version,
     }

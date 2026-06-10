@@ -51,18 +51,259 @@ function ActionBtn({ label, onClick, loading, variant = "default" }: {
 }
 
 const USER_FILES = ["holdings_kr.csv", "holdings_us.csv", "watchlist_kr.csv", "watchlist_us.csv"];
-type AdminTab = "overview" | "prediction" | "news" | "advanced";
+type AdminTab = "overview" | "prediction" | "news" | "advanced" | "correction";
 
 const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "overview", label: "운영" },
   { id: "prediction", label: "예측분석" },
   { id: "news", label: "뉴스·공시" },
   { id: "advanced", label: "고급분석" },
+  { id: "correction", label: "자가보정" },
 ];
 
 function pct(value: any) {
   const n = Number(value);
   return Number.isFinite(n) ? `${n.toFixed(1)}%` : "-";
+}
+
+interface CorrectionTabProps {
+  authToken: string;
+  market: string; mode: string; horizon: string;
+  dash: any; preview: any;
+  loading: boolean; rebuildLoading: boolean;
+  onMarketChange: (m: string) => void;
+  onModeChange: (m: string) => void;
+  onHorizonChange: (h: string) => void;
+  onLoadDash: () => void;
+  onLoadPreview: () => void;
+  onRebuild: () => void;
+  message: string;
+  setMessage: (m: string) => void;
+}
+
+function ConfidenceBar({ value }: { value: number }) {
+  const pct = Math.min(100, Math.max(0, value * 100));
+  const color = pct >= 60 ? "bg-emerald-500" : pct >= 35 ? "bg-amber-400" : "bg-red-500/60";
+  return (
+    <div className="mt-1 h-1.5 w-full rounded-full bg-slate-800">
+      <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildLoading,
+  onMarketChange, onModeChange, onHorizonChange, onLoadDash, onLoadPreview, onRebuild }: CorrectionTabProps) {
+
+  const MODES = ["conservative", "balanced", "aggressive"];
+  const HORIZONS = ["short", "swing", "mid"];
+
+  const corr = dash?.correctionsByKey ?? {};
+  const perf = dash?.performanceStats ?? {};
+  const enabledStr = dash?.correctionEnabled === false ? "비활성" : "활성";
+  const enabledCls = dash?.correctionEnabled === false ? "text-red-400" : "text-emerald-400";
+  const strength = dash?.correctionStrength ?? 1.0;
+
+  return (
+    <div className="space-y-6">
+      {/* 헤더 & 컨트롤 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-slate-100">자가보정 대시보드</h2>
+          <p className="text-sm text-slate-400">가상검증 결과 기반 추천 파라미터 자동 보정 현황을 점검합니다.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {["kr", "us"].map((m) => (
+            <button key={m} onClick={() => onMarketChange(m)}
+              className={`rounded-xl border px-3 py-1.5 text-sm font-medium ${market === m ? "border-blue-500 bg-blue-600 text-white" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
+              {m.toUpperCase()}
+            </button>
+          ))}
+          <button onClick={onLoadDash} disabled={loading}
+            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50">
+            {loading ? "불러오는 중..." : "대시보드 갱신"}
+          </button>
+          <button onClick={onRebuild} disabled={rebuildLoading}
+            className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-200 hover:bg-amber-500/20 disabled:opacity-50">
+            {rebuildLoading ? "재계산 중..." : "보정 파라미터 재계산"}
+          </button>
+        </div>
+      </div>
+
+      {!dash && !loading && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-slate-400">
+          대시보드를 불러오려면 &quot;대시보드 갱신&quot; 버튼을 누르세요.
+        </div>
+      )}
+      {loading && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-slate-400">불러오는 중...</div>
+      )}
+
+      {dash && !loading && (
+        <>
+          {/* 킬스위치 & 환경 상태 */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <Metric label="킬스위치" value={<span className={enabledCls}>{enabledStr}</span>} />
+            <Metric label="보정 강도" value={`${(strength * 100).toFixed(0)}%`} />
+            <Metric label="파라미터 버전" value={`v${dash.paramsVersion ?? "-"}`} />
+            <Metric label="전체 샘플" value={dash.totalSamples ?? "-"} />
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400 space-y-1">
+            <div><span className="text-amber-300 font-semibold">킬스위치 제어:</span> Render 환경변수 <code className="font-mono bg-slate-800 px-1 rounded">SELF_CORRECTION_ENABLED=false</code> → 즉시 비활성</div>
+            <div><span className="text-amber-300 font-semibold">보정 강도:</span> <code className="font-mono bg-slate-800 px-1 rounded">CORRECTION_STRENGTH=0.25</code> (0.0~1.0, 기본 1.0)</div>
+            <div className="text-slate-500">파라미터 생성: {dash.paramsGeneratedAt ? new Date(dash.paramsGeneratedAt).toLocaleString("ko-KR") : "-"}</div>
+          </div>
+
+          {/* 성과 지표 */}
+          {perf.settledCount > 0 && (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+              <h3 className="mb-3 text-sm font-semibold text-slate-300">가상검증 성과 지표</h3>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Metric label="체결 / 정산" value={`${perf.executedCount ?? 0} / ${perf.settledCount ?? 0}`} />
+                <Metric label="승률" value={`${perf.winRate ?? 0}%`} accent />
+                <Metric label="손절률" value={`${perf.stopRate ?? 0}%`} />
+                <Metric label="미체결률" value={`${perf.missRate ?? 0}%`} />
+              </div>
+              {perf.avgNetPnl !== undefined && (
+                <div className={`mt-3 text-sm font-semibold ${perf.avgNetPnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  평균 수익률: {perf.avgNetPnl >= 0 ? "+" : ""}{Number(perf.avgNetPnl).toFixed(2)}%
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 전략별 보정 현황 */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+            <h3 className="mb-4 text-sm font-semibold text-slate-300">{market.toUpperCase()} 전략별 보정 상태</h3>
+            <div className="space-y-3">
+              {Object.entries(corr).length === 0 && (
+                <div className="text-sm text-slate-500">데이터 없음 — 보정 파라미터를 재계산해 주세요.</div>
+              )}
+              {Object.entries(corr).map(([key, c]: [string, any]) => {
+                const parts = key.split("_");
+                const keyMode = parts[1] ?? "";
+                const keyHorizon = parts[2] ?? "";
+                const isActive = c.correctionActive && dash?.correctionEnabled !== false;
+                return (
+                  <div key={key} className={`rounded-xl border p-4 ${isActive ? "border-emerald-800/50 bg-emerald-950/10" : "border-slate-800 bg-slate-900/40"}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <span className="font-mono text-sm font-semibold text-slate-200">{keyMode} / {keyHorizon}</span>
+                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-medium ${isActive ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-400"}`}>
+                          {isActive ? "보정 적용 중" : "보정 미적용"}
+                        </span>
+                      </div>
+                      <div className="text-right text-xs text-slate-400">
+                        <div>샘플 {c.sampleCount ?? 0}건 (학습 {c.learnableSampleCount ?? 0}건)</div>
+                        <div>신뢰도 {((c.confidence ?? 0) * 100).toFixed(0)}%</div>
+                      </div>
+                    </div>
+                    <ConfidenceBar value={c.confidence ?? 0} />
+                    {c.topFailureReasons?.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {c.topFailureReasons.map((r: string) => (
+                          <span key={r} className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-300 border border-red-500/20">{r}</span>
+                        ))}
+                      </div>
+                    )}
+                    {c.priceAdjustments && Object.keys(c.priceAdjustments).length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-slate-400">
+                        {Object.entries(c.priceAdjustments).map(([k, v]: [string, any]) => (
+                          <span key={k}>{k}: <span className={Number(v) >= 0 ? "text-emerald-400" : "text-red-400"}>{Number(v) >= 0 ? "+" : ""}{Number(v).toFixed(3)}</span></span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 전후 미리보기 */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-slate-300">보정 전/후 미리보기</h3>
+              <div className="flex flex-wrap gap-2">
+                {MODES.map((m) => (
+                  <button key={m} onClick={() => onModeChange(m)}
+                    className={`rounded-lg border px-2.5 py-1 text-xs ${mode === m ? "border-blue-500 bg-blue-600 text-white" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+                    {m}
+                  </button>
+                ))}
+                {HORIZONS.map((h) => (
+                  <button key={h} onClick={() => onHorizonChange(h)}
+                    className={`rounded-lg border px-2.5 py-1 text-xs ${horizon === h ? "border-purple-500 bg-purple-600 text-white" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+                    {h}
+                  </button>
+                ))}
+                <button onClick={onLoadPreview}
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-800">
+                  미리보기 로드
+                </button>
+              </div>
+            </div>
+
+            {!preview && <div className="text-sm text-slate-500">전략을 선택하고 &quot;미리보기 로드&quot;를 누르세요.</div>}
+            {preview?.status === "ERROR" && <div className="text-sm text-red-400">{preview.error}</div>}
+            {preview?.items?.length > 0 && (
+              <>
+                <div className="mb-2 flex gap-3 text-xs text-slate-400">
+                  <span>보정 적용: <span className={preview.correctionEnabled ? "text-emerald-400" : "text-red-400"}>{preview.correctionEnabled ? "ON" : "OFF"}</span></span>
+                  <span>강도: {((preview.correctionStrength ?? 1) * 100).toFixed(0)}%</span>
+                  <span>신뢰도: {((preview.confidence ?? 0) * 100).toFixed(0)}%</span>
+                  <span>샘플: {preview.sampleCount ?? 0}건</span>
+                </div>
+                {preview.topFailureReasons?.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-1">
+                    {preview.topFailureReasons.map((r: string) => (
+                      <span key={r} className="rounded bg-orange-500/10 px-1.5 py-0.5 text-[10px] text-orange-300 border border-orange-500/20">{r}</span>
+                    ))}
+                  </div>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-slate-800 text-slate-500">
+                      <tr>
+                        <th className="py-2 pr-3">종목</th>
+                        <th className="py-2 pr-3 text-right">진입 전</th>
+                        <th className="py-2 pr-3 text-right">진입 후</th>
+                        <th className="py-2 pr-3 text-right">Δ%</th>
+                        <th className="py-2 pr-3 text-right">목표 Δ%</th>
+                        <th className="py-2 pr-3 text-right">손절 Δ%</th>
+                        <th className="py-2 pr-3">비고</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.items.map((item: any, idx: number) => (
+                        <tr key={idx} className="border-b border-slate-900 hover:bg-slate-900/40">
+                          <td className="py-2 pr-3 font-mono text-slate-300">{item.symbol}<br /><span className="text-slate-500">{item.name}</span></td>
+                          <td className="py-2 pr-3 text-right text-slate-400">{Number(item.before?.entry || 0).toLocaleString()}</td>
+                          <td className={`py-2 pr-3 text-right font-semibold ${item.correctionApplied ? "text-emerald-300" : "text-slate-400"}`}>{Number(item.after?.entry || 0).toLocaleString()}</td>
+                          <td className={`py-2 pr-3 text-right ${(item.entryDeltaPct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{(item.entryDeltaPct ?? 0) >= 0 ? "+" : ""}{Number(item.entryDeltaPct ?? 0).toFixed(2)}%</td>
+                          <td className={`py-2 pr-3 text-right ${(item.targetDeltaPct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{(item.targetDeltaPct ?? 0) >= 0 ? "+" : ""}{Number(item.targetDeltaPct ?? 0).toFixed(2)}%</td>
+                          <td className={`py-2 pr-3 text-right ${(item.stopDeltaPct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{(item.stopDeltaPct ?? 0) >= 0 ? "+" : ""}{Number(item.stopDeltaPct ?? 0).toFixed(2)}%</td>
+                          <td className="py-2 pr-3 text-slate-500 text-[10px] max-w-[120px] truncate">{item.correctionSummary || (item.correctionApplied ? "보정됨" : "미보정")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            {preview?.items?.length === 0 && <div className="text-sm text-slate-500">해당 전략 추천 데이터가 없습니다.</div>}
+          </div>
+
+          {/* 롤백 안내 */}
+          <div className="rounded-xl border border-slate-700 bg-slate-900/40 px-4 py-3 text-xs text-slate-400 space-y-1">
+            <div className="font-semibold text-slate-300 mb-1">롤백 방법</div>
+            <div>1. Render 환경변수 <code className="font-mono bg-slate-800 px-1 rounded">SELF_CORRECTION_ENABLED=false</code> 설정 후 재배포 → 즉시 전체 비활성</div>
+            <div>2. 백업 버전 복원: <code className="font-mono bg-slate-800 px-1 rounded">reports/self_correction_params_v{"{N}"}.json</code> → <code className="font-mono bg-slate-800 px-1 rounded">self_correction_params.json</code> 으로 복사</div>
+            <div>3. <code className="font-mono bg-slate-800 px-1 rounded">CORRECTION_STRENGTH=0.0</code> 설정 → 보정 계산은 하되 실제 반영 없음 (soft disable)</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 interface AdminPageProps {
@@ -78,6 +319,13 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
   const [trendlineAccuracy, setTrendlineAccuracy] = useState<any>({ status: "LOADING" });
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
+  const [correctionDash, setCorrectionDash] = useState<any>(null);
+  const [correctionPreview, setCorrectionPreview] = useState<any>(null);
+  const [correctionMarket, setCorrectionMarket] = useState<"kr" | "us">("kr");
+  const [correctionMode, setCorrectionMode] = useState("balanced");
+  const [correctionHorizon, setCorrectionHorizon] = useState("swing");
+  const [correctionLoading, setCorrectionLoading] = useState(false);
+  const [rebuildLoading, setRebuildLoading] = useState(false);
   const [cacheClearing, setCacheClearing] = useState(false);
   const [quoteRefreshing, setQuoteRefreshing] = useState(false);
   const [message, setMessage] = useState("");
@@ -151,6 +399,43 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
     }
   }
 
+  async function loadCorrectionDash(market: string) {
+    setCorrectionLoading(true);
+    try {
+      const res = await fetch(`/mone-api/api/admin/correction-dashboard?market=${market}`, { headers: adminAuthHeaders(authToken) });
+      const data = await res.json();
+      setCorrectionDash(data);
+    } catch (e) {
+      setCorrectionDash({ status: "ERROR", error: String(e) });
+    } finally {
+      setCorrectionLoading(false);
+    }
+  }
+
+  async function loadCorrectionPreview(market: string, mode: string, horizon: string) {
+    try {
+      const res = await fetch(`/mone-api/api/admin/correction-preview?market=${market}&mode=${mode}&horizon=${horizon}&limit=8`, { headers: adminAuthHeaders(authToken) });
+      const data = await res.json();
+      setCorrectionPreview(data);
+    } catch (e) {
+      setCorrectionPreview({ status: "ERROR", error: String(e) });
+    }
+  }
+
+  async function rebuildCorrection() {
+    setRebuildLoading(true);
+    try {
+      const res = await fetch("/mone-api/api/validation/self-correction/rebuild", { method: "POST", headers: adminAuthHeaders(authToken) });
+      const data = await res.json();
+      setMessage(`보정 파라미터 재계산 완료: 버전 ${data.version ?? "-"}, ${data.totalSamples ?? "-"}개 샘플`);
+      await loadCorrectionDash(correctionMarket);
+    } catch (e) {
+      setMessage(`재계산 실패: ${e}`);
+    } finally {
+      setRebuildLoading(false);
+    }
+  }
+
   useEffect(() => { load(); }, [authToken]);
 
   const items = Array.isArray(audit.items) ? audit.items : [];
@@ -196,7 +481,27 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       {tab === "prediction" && <PredictionPage />}
       {tab === "news" && <NewsPage />}
       {tab === "advanced" && <AdvancedPage />}
-      {tab !== "overview" && null}
+      {tab === "correction" && (
+        <CorrectionTab
+          authToken={authToken}
+          market={correctionMarket}
+          mode={correctionMode}
+          horizon={correctionHorizon}
+          dash={correctionDash}
+          preview={correctionPreview}
+          loading={correctionLoading}
+          rebuildLoading={rebuildLoading}
+          onMarketChange={(m) => { setCorrectionMarket(m as "kr" | "us"); setCorrectionDash(null); setCorrectionPreview(null); loadCorrectionDash(m); }}
+          onModeChange={setCorrectionMode}
+          onHorizonChange={setCorrectionHorizon}
+          onLoadDash={() => loadCorrectionDash(correctionMarket)}
+          onLoadPreview={() => loadCorrectionPreview(correctionMarket, correctionMode, correctionHorizon)}
+          onRebuild={rebuildCorrection}
+          message={message}
+          setMessage={setMessage}
+        />
+      )}
+      {tab !== "overview" && tab !== "correction" && null}
       {tab === "overview" && (
         <>
 
