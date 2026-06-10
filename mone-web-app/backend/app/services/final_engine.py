@@ -1128,16 +1128,31 @@ def _conditional_execution(item: dict[str, Any], mode: str, horizon: str, df: pd
     if "_date_ts" not in work.columns:
         work["_date_ts"] = pd.to_datetime(work.get("date"), errors="coerce").dt.normalize()
     work = work.dropna(subset=["_date_ts"]).sort_values("_date_ts").reset_index(drop=True)
-    # 추천일 기준 이후 봉만 사용 (generatedAt 있을 때). 없으면 최신 N봉 fallback.
+    # 추천일 기준 이후 봉만 사용. generatedAt 없으면 스키마부족으로 명시 반환.
     _rec_date_str = str(item.get("generatedAt", ""))[:10]
-    if _rec_date_str and len(_rec_date_str) == 10:
-        try:
-            _rec_ts = pd.Timestamp(_rec_date_str)
-            work = work[work["_date_ts"] > _rec_ts].head(max(1, hold_days)).reset_index(drop=True)
-        except Exception:
-            work = work.tail(max(1, hold_days)).reset_index(drop=True)
-    else:
-        work = work.tail(max(1, hold_days)).reset_index(drop=True)
+    if not _rec_date_str or len(_rec_date_str) != 10:
+        return {
+            "executionStatus": "검증 대기",
+            "executionReason": "추천일(generatedAt) 없음 — 날짜 기준 검증 불가",
+            "filled": False,
+            "excludedFromReturn": True,
+            "pnlPct": "",
+            "pnlText": "스키마부족",
+            "ohlcvSource": source,
+        }
+    try:
+        _rec_ts = pd.Timestamp(_rec_date_str)
+        work = work[work["_date_ts"] > _rec_ts].head(max(1, hold_days)).reset_index(drop=True)
+    except Exception:
+        return {
+            "executionStatus": "검증 대기",
+            "executionReason": f"추천일 파싱 실패 ({_rec_date_str})",
+            "filled": False,
+            "excludedFromReturn": True,
+            "pnlPct": "",
+            "pnlText": "스키마부족",
+            "ohlcvSource": source,
+        }
     if work.empty:
         return {
             "executionStatus": "검증 대기",
