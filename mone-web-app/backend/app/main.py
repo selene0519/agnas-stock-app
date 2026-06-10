@@ -4004,6 +4004,46 @@ def api_home_summary(
             data_health = data.runner_status(mk)
         except Exception:
             pass
+        # runner_status_kr.json 없으면 _scan_coverage로 직접 계산
+        if not data_health or (not data_health.get("kisLiveCount") and not data_health.get("ohlcvCount")):
+            try:
+                from app.engine.mone_v65_api_stabilizer import _scan_coverage, _repo_root as _stab_root
+                import json as _dh_json
+                _cov = _scan_coverage(mk)
+                _repo = _stab_root()
+                _ohlcv_dates: list[str] = []
+                _ohlcv_dir = _repo / "data" / "market" / "ohlcv"
+                if _ohlcv_dir.exists():
+                    for _p in _ohlcv_dir.glob(f"{mk}_*_daily.csv"):
+                        try:
+                            import csv as _dh_csv
+                            with _p.open("r", encoding="utf-8") as _f:
+                                _rows = list(_dh_csv.DictReader(_f))
+                            if _rows:
+                                _d = str(_rows[-1].get("date") or _rows[-1].get("Date") or "")[:10]
+                                if _d:
+                                    _ohlcv_dates.append(_d)
+                        except Exception:
+                            pass
+                _reco_gen: str | None = None
+                for _sp in [_repo / "reports" / f"{mk}_recommendation_gen_status.json", _repo / f"{mk}_recommendation_gen_status.json"]:
+                    if _sp.exists():
+                        try:
+                            _st = _dh_json.loads(_sp.read_text(encoding="utf-8"))
+                            _reco_gen = _st.get("generatedAt") or _st.get("completedAt")
+                        except Exception:
+                            pass
+                        break
+                data_health = {
+                    "kisLiveCount":    _cov.get("quoteCoverageCount", 0),
+                    "kisTargetCount":  _cov.get("quoteTargetCount", 0),
+                    "ohlcvCount":      _cov.get("ohlcvSymbolCount", 0),
+                    "ohlcvLatestDate": max(_ohlcv_dates) if _ohlcv_dates else None,
+                    "recoGeneratedAt": _reco_gen,
+                    "scanScope":       _cov.get("universeScope", "CURATED_UNIVERSE"),
+                }
+            except Exception:
+                pass
 
         return {
             "status": "OK",
