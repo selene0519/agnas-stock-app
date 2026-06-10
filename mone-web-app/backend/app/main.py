@@ -512,6 +512,82 @@ def api_final_macro_events(market: str = Query("kr", pattern="^(kr|us)$")) -> di
     return final_engine.macro_event_risk(_market(market))
 
 
+# ── Pattern Strategy Learning Engine v1 ──────────────────────────────────
+
+@app.get("/api/pattern/strategy")
+def api_pattern_strategy(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    symbol: str = Query(..., min_length=1, max_length=20),
+) -> dict:
+    """단일 종목 패턴 전략 분석."""
+    try:
+        from app.engine.pattern_strategy import analyze as _ps_analyze
+        from app.services import data_loader as _dl
+        df, _ = _dl._load_ohlcv(symbol, _market(market))
+        if df.empty or len(df) < 5:
+            return {"status": "NO_DATA", "symbol": symbol, "market": market}
+        rows = df.to_dict("records")
+        result = _ps_analyze(symbol, _market(market), rows)
+        return {"status": "OK", **result}
+    except Exception as e:
+        return {"status": "ERROR", "message": str(e)}
+
+
+@app.get("/api/pattern/summary")
+def api_pattern_summary(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    limit:  int  = Query(20, ge=1, le=100),
+) -> dict:
+    """추천 종목들의 패턴 전략 요약 (현재 추천 목록 기준)."""
+    try:
+        from app.engine.pattern_strategy import analyze as _ps_analyze
+        from app.services import data_loader as _dl
+        from app.services import final_engine as _fe
+        recs = _fe.final_recommendations(_market(market), limit=limit)
+        items = recs.get("items", [])
+        summary = []
+        for item in items:
+            sym = str(item.get("symbol", ""))
+            ps  = item.get("patternStrategy")
+            if ps:
+                summary.append({
+                    "symbol":          sym,
+                    "name":            item.get("name", ""),
+                    "marketStructure": ps.get("marketStructure"),
+                    "trendPhase":      ps.get("trendPhase"),
+                    "primaryPattern":  ps.get("primaryPattern"),
+                    "action":          ps.get("action"),
+                    "riskStatus":      ps.get("riskStatus"),
+                    "isBlocked":       ps.get("isBlocked"),
+                    "confidence":      ps.get("confidence"),
+                    "message":         ps.get("message"),
+                    "finalRankScore":  item.get("finalRankScore"),
+                })
+        return {"status": "OK", "market": market, "count": len(summary), "items": summary}
+    except Exception as e:
+        return {"status": "ERROR", "message": str(e)}
+
+
+@app.get("/api/validation/pattern-walkforward")
+def api_pattern_walkforward(
+    market:       str = Query("kr", pattern="^(kr|us)$"),
+    from_date:    str = Query(None),
+    to_date:      str = Query(None),
+    horizon_days: int = Query(5, ge=1, le=20),
+) -> dict:
+    """패턴 Walk-Forward 검증 (미래 데이터 누출 없이 과거 성과 측정)."""
+    try:
+        from app.engine.pattern_strategy import run_walkforward
+        return run_walkforward(
+            market       = _market(market),
+            from_date    = from_date,
+            to_date      = to_date,
+            horizon_days = horizon_days,
+        )
+    except Exception as e:
+        return {"status": "ERROR", "message": str(e)}
+
+
 # ── 캘린더 통합 API (event_calendar 서비스) ──────────────────────────────
 
 from app.services import event_calendar as _ec_cal
