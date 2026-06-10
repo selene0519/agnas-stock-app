@@ -189,6 +189,236 @@ def _consecutive_up(values: list[float]) -> int:
     return count
 
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  차트 패턴 인식 엔진
+#  참고: 실전 주식 투자 차트 패턴 가이드북 (기술적 분석)
+#  빅터 3대 원칙: ①종가 안착 ②거래량 컨플루언스(1.5×) ③손익비 우선(≥1:2)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def _find_local_minima(values: list[float], window: int = 3) -> list[int]:
+    """window 내 최솟값 인덱스 반환"""
+    result = []
+    for i in range(window, len(values) - window):
+        if values[i] == min(values[i - window:i + window + 1]):
+            result.append(i)
+    return result
+
+
+def _find_local_maxima(values: list[float], window: int = 3) -> list[int]:
+    """window 내 최댓값 인덱스 반환"""
+    result = []
+    for i in range(window, len(values) - window):
+        if values[i] == max(values[i - window:i + window + 1]):
+            result.append(i)
+    return result
+
+
+def detect_chart_patterns(rows: list[dict[str, Any]]) -> list[dict]:
+    """
+    PDF 가이드북 5개 차트 패턴 감지.
+    반환: [{"pattern": str, "confidence": 0~100, "entry": float, "stop": float, "target": float, "desc": str}]
+    빅터 원칙①: 종가(close) 기준만 사용
+    빅터 원칙②: 돌파 거래량 20일평균 1.5배 이상 확인
+    빅터 원칙③: 손익비(target-entry)/(entry-stop) >= 2.0
+    """
+    if not rows or len(rows) < 20:
+        return []
+
+    closes = _series(rows, "close")
+    highs  = _series(rows, "high")
+    lows   = _series(rows, "low")
+    vols   = _series(rows, "volume")
+    opens  = _series(rows, "open")
+    if not closes or len(closes) < 20:
+        return []
+
+    current   = closes[-1]
+    vol_ma20  = _ma(vols, min(20, len(vols))) or 1.0
+    atr14     = _atr(highs, lows, closes, min(14, len(closes) - 1)) or (current * 0.02)
+    patterns: list[dict] = []
+
+    # ────────────────────────────────────────────────────
+    # 패턴 1: 쌍바닥 (Double Bottom) — 상승 반전
+    # 조건: 두 저점이 ±3% 내, 2번째 거래량 < 1번째, 중간 고점 돌파
+    # ────────────────────────────────────────────────────
+    if len(closes) >= 30:
+        mins_idx = _find_local_minima(closes, window=3)
+        if len(mins_idx) >= 2:
+            # 최근 두 저점
+            b1_i, b2_i = mins_idx[-2], mins_idx[-1]
+            b1_price = closes[b1_i]
+            b2_price = closes[b2_i]
+            price_diff_pct = abs(b1_price - b2_price) / b1_price * 100
+            # 중간 고점 (두 저점 사이)
+            mid_highs = highs[b1_i:b2_i + 1] if b2_i > b1_i else []
+            mid_peak  = max(mid_highs) if mid_highs else None
+            # 두 번째 저점 이후 현재가
+            b2_vol = vols[b2_i] if b2_i < len(vols) else 0
+            b1_vol = vols[b1_i] if b1_i < len(vols) else 1
+            vol_decrease = b2_vol < b1_vol * 1.1  # 2번째 저점 거래량 감소
+            # 현재가가 중간 고점 근처 또는 이미 돌파 (빅터 원칙①: 종가 기준)
+            if (mid_peak and price_diff_pct <= 4.0 and vol_decrease
+                    and b2_i >= len(closes) - 25  # 최근 25봉 이내
+                    and current >= mid_peak * 0.98):  # 종가 돌파 확인
+                # 빅터 원칙②: 돌파 거래량 확인
+                breakout_vol = vols[-1]
+                vol_ok = breakout_vol >= vol_ma20 * 1.3
+                stop   = b2_price * 0.985  # 두번째 저점 바로 아래
+                target = mid_peak + (mid_peak - b2_price)  # 높이만큼 상향 투영
+                rr = (target - current) / (current - stop) if current > stop else 0
+                conf = 60
+                if vol_ok:   conf += 20
+                if rr >= 2:  conf += 15
+                if price_diff_pct <= 2: conf += 5
+                patterns.append({
+                    "pattern": "DOUBLE_BOTTOM",
+                    "confidence": min(conf, 100),
+                    "entry": round(current, 0),
+                    "stop":  round(stop, 0),
+                    "target": round(target, 0),
+                    "rr": round(rr, 2),
+                    "desc": f"쌍바닥: 두 저점 ±{price_diff_pct:.1f}% | 중간 고점 종가 돌파",
+                })
+
+    # ────────────────────────────────────────────────────
+    # 패턴 2: 역헤드앤숄더 (Inverse Head & Shoulders) — 상승 반전
+    # 조건: 3개 저점 중 가운데(머리)가 가장 낮음, 양쪽 어깨 유사
+    # ────────────────────────────────────────────────────
+    if len(closes) >= 40:
+        mins_idx = _find_local_minima(closes, window=4)
+        if len(mins_idx) >= 3:
+            ls_i, head_i, rs_i = mins_idx[-3], mins_idx[-2], mins_idx[-1]
+            ls_p   = closes[ls_i]
+            head_p = closes[head_i]
+            rs_p   = closes[rs_i]
+            shoulder_diff = abs(ls_p - rs_p) / ls_p * 100
+            head_lower = head_p < ls_p and head_p < rs_p
+            # 넥라인: 두 어깨 사이 고점들의 평균
+            neck_highs = highs[ls_i:rs_i + 1] if rs_i > ls_i else []
+            if neck_highs:
+                neckline = sum(sorted(neck_highs)[-3:]) / 3  # 상위 3개 평균
+            else:
+                neckline = ls_p * 1.05
+            # 오른쪽 어깨 이후 넥라인 돌파 여부 (빅터 원칙①: 종가 기준)
+            if (head_lower and shoulder_diff <= 5.0
+                    and rs_i >= len(closes) - 20
+                    and current >= neckline * 0.99):
+                breakout_vol = vols[-1]
+                vol_ok = breakout_vol >= vol_ma20 * 1.4
+                head_height = neckline - head_p
+                target = neckline + head_height
+                stop   = rs_p * 0.985
+                rr = (target - current) / (current - stop) if current > stop else 0
+                conf = 55
+                if vol_ok:   conf += 20
+                if rr >= 2:  conf += 15
+                if shoulder_diff <= 3: conf += 10
+                patterns.append({
+                    "pattern": "INV_HEAD_SHOULDERS",
+                    "confidence": min(conf, 100),
+                    "entry": round(current, 0),
+                    "stop":  round(stop, 0),
+                    "target": round(target, 0),
+                    "rr": round(rr, 2),
+                    "desc": f"역헤드앤숄더: 어깨 대칭 {shoulder_diff:.1f}% | 넥라인 {neckline:,.0f} 돌파",
+                })
+
+    # ────────────────────────────────────────────────────
+    # 패턴 3: 깃발형/페너트형 (Bull Flag / Pennant) — 상승 지속
+    # 조건: 3봉+ 장대양봉 폴(극강 거래량) → 좁은 조정(거래량 급감) → 채널 상단 돌파
+    # ────────────────────────────────────────────────────
+    if len(closes) >= 20:
+        # 폴 탐색: 최근 5~20봉 내 장대양봉(2%+) + 고거래량
+        pole_i = None
+        for i in range(max(0, len(closes) - 20), len(closes) - 5):
+            candle_pct = (closes[i] - opens[i]) / opens[i] * 100 if opens[i] > 0 else 0
+            if candle_pct >= 2.5 and vols[i] >= vol_ma20 * 1.8:
+                pole_i = i
+        if pole_i is not None:
+            pole_height = closes[pole_i] - opens[pole_i]
+            # 폴 이후 조정 구간
+            consol = closes[pole_i + 1:]
+            consol_vols = vols[pole_i + 1:]
+            if len(consol) >= 3:
+                consol_high = max(consol)
+                consol_low  = min(consol)
+                consol_range_pct = (consol_high - consol_low) / pole_height * 100 if pole_height > 0 else 999
+                consol_vol_avg = sum(consol_vols) / len(consol_vols) if consol_vols else vol_ma20
+                # 조정 구간: 폴 크기의 50% 이내 + 거래량 급감
+                flag_ok = consol_range_pct <= 60 and consol_vol_avg < vol_ma20 * 0.85
+                # 현재가 채널 상단 돌파 (빅터 원칙①: 종가 기준)
+                breakout = current >= consol_high * 0.99
+                if flag_ok and breakout:
+                    vol_ok = vols[-1] >= vol_ma20 * 1.5  # 빅터 원칙②
+                    target = consol_high + pole_height
+                    stop   = consol_low * 0.99
+                    rr = (target - current) / (current - stop) if current > stop else 0
+                    conf = 60
+                    if vol_ok:   conf += 20
+                    if rr >= 2:  conf += 15
+                    if consol_range_pct <= 30: conf += 5
+                    patterns.append({
+                        "pattern": "BULL_FLAG",
+                        "confidence": min(conf, 100),
+                        "entry": round(current, 0),
+                        "stop":  round(stop, 0),
+                        "target": round(target, 0),
+                        "rr": round(rr, 2),
+                        "desc": f"깃발형: 폴 +{pole_height/closes[pole_i]*100:.1f}% | 조정 {consol_range_pct:.0f}% | 채널 돌파",
+                    })
+
+    # ────────────────────────────────────────────────────
+    # 패턴 4: 대칭삼각형 상향돌파 (Symmetrical Triangle Breakout) — 중립→상승
+    # 조건: 고점 하강 + 저점 상승 수렴 → 70~80% 완성 시 거래량+돌파
+    # ────────────────────────────────────────────────────
+    if len(closes) >= 30:
+        maxs_idx = _find_local_maxima(closes, window=3)
+        mins_idx = _find_local_minima(closes, window=3)
+        if len(maxs_idx) >= 2 and len(mins_idx) >= 2:
+            # 최근 고점 하강 추세
+            h1_i, h2_i = maxs_idx[-2], maxs_idx[-1]
+            l1_i, l2_i = mins_idx[-2], mins_idx[-1]
+            descend_highs = closes[h2_i] < closes[h1_i]
+            ascend_lows   = closes[l2_i] > closes[l1_i]
+            # 삼각형 시작 넓이와 현재 수렴률
+            base_high = closes[h1_i]
+            base_low  = closes[l1_i]
+            base_width = base_high - base_low
+            curr_width = max(current, closes[h2_i]) - min(current, closes[l2_i])
+            converge_pct = curr_width / base_width if base_width > 0 else 1.0
+            # 70~80% 수렴 구간 (빅터: 꼭짓점에 너무 근접 전 돌파)
+            in_breakout_zone = 0.15 <= converge_pct <= 0.45
+            # 상향 돌파: 현재가가 직전 하강 고점 위로 종가 안착
+            upper_break = current > closes[h2_i] * 0.99
+            if descend_highs and ascend_lows and in_breakout_zone and upper_break:
+                vol_ok = vols[-1] >= vol_ma20 * 1.5  # 빅터 원칙②: 1.5배
+                target = current + base_width  # 베이스 높이만큼 상방 투영
+                stop   = closes[l2_i] * 0.985
+                rr = (target - current) / (current - stop) if current > stop else 0
+                conf = 50
+                if vol_ok:   conf += 25
+                if rr >= 2:  conf += 15
+                if converge_pct <= 0.30: conf += 10
+                patterns.append({
+                    "pattern": "SYMM_TRIANGLE_UP",
+                    "confidence": min(conf, 100),
+                    "entry": round(current, 0),
+                    "stop":  round(stop, 0),
+                    "target": round(target, 0),
+                    "rr": round(rr, 2),
+                    "desc": f"대칭삼각형 상향돌파: 수렴 {converge_pct*100:.0f}% | 베이스 {base_width:,.0f}",
+                })
+
+    # ────────────────────────────────────────────────────
+    # 빅터 원칙③ 최종 필터: 손익비 2.0 미만 패턴 제거
+    # ────────────────────────────────────────────────────
+    patterns = [p for p in patterns if p.get("rr", 0) >= 2.0]
+
+    # 신뢰도 내림차순 정렬
+    patterns.sort(key=lambda x: x["confidence"], reverse=True)
+    return patterns
+
+
 def indicators(rows: list[dict[str, Any]]) -> dict[str, float | None]:
     open_prices = _series(rows, "open")
     close = _series(rows, "close")
@@ -788,6 +1018,11 @@ TAG_LABELS = {
     "MID_GOLDEN_CROSS": "중기 골든크로스",  # MA20 > MA60 중기 골든크로스
     "MID_DEATH_CROSS": "중기 데드크로스",   # MA20 < MA60 중기 데드크로스 (주의)
     "TRAILING_STOP_ALERT": "트레일링 손절", # 20일 고점 ATR×2 이탈 근접
+    # 차트 패턴 (PDF 가이드북)
+    "DOUBLE_BOTTOM":      "쌍바닥 패턴",        # 상승 반전 — 두 저점 + 중간 고점 돌파
+    "INV_HEAD_SHOULDERS": "역헤드앤숄더",        # 상승 반전 — 3저점 중 가운데 최저
+    "BULL_FLAG":          "깃발형 돌파",         # 상승 지속 — 폴+조정+채널 상단 돌파
+    "SYMM_TRIANGLE_UP":   "대칭삼각형 상향돌파", # 방향 확정 — 수렴 후 거래량 돌파
 }
 
 
@@ -1509,6 +1744,44 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     tags = deduped_tags
     primary = tags[0]
     label = TAG_LABELS.get(primary, primary)
+
+    # ── 차트 패턴 인식 (PDF 가이드북 4개 매수 패턴)
+    chart_patterns = detect_chart_patterns(_ohlcv)
+    if chart_patterns:
+        best_pattern = chart_patterns[0]
+        pattern_tag  = best_pattern["pattern"]
+        # 패턴 태그를 strategyTags 앞에 추가
+        if pattern_tag not in tags:
+            tags.insert(0, pattern_tag)
+        primary = tags[0]
+        label   = TAG_LABELS.get(primary, primary)
+        # 패턴 신뢰도로 finalScore 보너스 (+0~+10)
+        pconf = best_pattern.get("confidence", 0)
+        if isinstance(out.get("finalScore"), (int, float)) and pconf >= 70:
+            bonus = round((pconf - 70) / 30 * 10, 1)  # 70→0점, 100→10점
+            out["finalScore"] = min(100.0, round(float(out["finalScore"]) + bonus, 1))
+            out["quantScore"]  = out["finalScore"]
+        # 패턴이 더 나은 entry/stop/target 제시하면 덮어씌우기
+        p_entry  = best_pattern.get("entry")
+        p_stop   = best_pattern.get("stop")
+        p_target = best_pattern.get("target")
+        cur_entry  = _num(out.get("entry"))
+        if p_entry and p_stop and p_target and cur_entry:
+            p_rr = (p_target - p_entry) / (p_entry - p_stop) if p_entry > p_stop else 0
+            cur_rr = ((_num(out.get("target")) or 0) - cur_entry) / (cur_entry - (_num(out.get("stop")) or 0)) if cur_entry > (_num(out.get("stop")) or 0) else 0
+            if p_rr > cur_rr + 0.5:  # 패턴이 0.5 이상 더 좋은 RR이면 대체
+                out["entry"]  = p_entry
+                out["stop"]   = p_stop
+                out["target"] = p_target
+                out["rrActual"] = round(p_rr, 2)
+                market_ = str(out.get("market") or "kr").lower()
+                sfx = "원" if market_ == "kr" else "$"
+                out["entryText"]  = f"{p_entry:,}{sfx}"
+                out["stopText"]   = f"{p_stop:,}{sfx}"
+                out["targetText"] = f"{p_target:,}{sfx}"
+                out.setdefault("computedFields", []).append("entry_from_chart_pattern")
+    out["chartPatterns"] = chart_patterns
+    out["chartPatternCount"] = len(chart_patterns)
 
     out["strategyTags"] = tags
     out["strategyTagLabels"] = [TAG_LABELS.get(tag, tag) for tag in tags]

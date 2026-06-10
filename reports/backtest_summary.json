@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-10T00:05:19.213798",
+  "generatedAt": "2026-06-10T11:49:48.404472",
   "totalTrades": 44,
   "filledTrades": 32,
   "winRate": 40.62,
@@ -35,12 +35,5 @@
     "rrMin": "2.0",
     "stopMult": "ATR×1.5",
     "targetMult": "ATR×4.5"
-  },
-  "dataQualityNote": {
-    "ohlcvFilesTotal": 214,
-    "medianRowsPerSymbol": 128,
-    "filesOver200rows": 5,
-    "warning": "OHLCV 아카이브가 얕음 (중앙값 128행/종목). 44개 트레이드 중 목표가 도달 0건 — ATR×4.5 목표는 5일 보유로 도달 어려움. 라이브 환경(500+행/종목)에서는 더 많은 목표 도달 예상.",
-    "statisticalConfidence": "LOW: n=32 (최소 100+ 체결 필요)"
   }
 }
