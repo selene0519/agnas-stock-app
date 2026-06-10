@@ -115,6 +115,107 @@ def _momentum(vals: list[float], p: int) -> float | None:
     return (vals[-1] - vals[-p-1]) / vals[-p-1] * 100
 
 
+def _find_local_minima(values: list[float], window: int = 3) -> list[int]:
+    result = []
+    for i in range(window, len(values) - window):
+        if values[i] == min(values[i - window:i + window + 1]):
+            result.append(i)
+    return result
+
+
+def _find_local_maxima(values: list[float], window: int = 3) -> list[int]:
+    result = []
+    for i in range(window, len(values) - window):
+        if values[i] == max(values[i - window:i + window + 1]):
+            result.append(i)
+    return result
+
+
+def _detect_patterns(rows: list[dict]) -> list[dict]:
+    """PDF 가이드북 4개 매수 패턴 감지 (백테스트용)"""
+    close = _series(rows, "close")
+    high  = _series(rows, "high")
+    low   = _series(rows, "low")
+    vols  = _series(rows, "volume")
+    opens = _series(rows, "open")
+    if len(close) < 20:
+        return []
+
+    current  = close[-1]
+    vol_ma20 = _ma(vols, min(20, len(vols))) or 1.0
+    atr14    = _atr(high, low, close, min(14, len(close) - 1)) or (current * 0.02)
+    patterns: list[dict] = []
+
+    # 쌍바닥
+    if len(close) >= 30:
+        mins_idx = _find_local_minima(close, window=3)
+        if len(mins_idx) >= 2:
+            b1_i, b2_i = mins_idx[-2], mins_idx[-1]
+            b1_p, b2_p = close[b1_i], close[b2_i]
+            diff_pct = abs(b1_p - b2_p) / b1_p * 100
+            mid_highs = high[b1_i:b2_i + 1] if b2_i > b1_i else []
+            mid_peak = max(mid_highs) if mid_highs else None
+            b2_vol = vols[b2_i] if b2_i < len(vols) else 0
+            b1_vol = vols[b1_i] if b1_i < len(vols) else 1
+            if (mid_peak and diff_pct <= 4.0 and b2_vol < b1_vol * 1.1
+                    and b2_i >= len(close) - 25 and current >= mid_peak * 0.98):
+                stop   = b2_p * 0.985
+                target = mid_peak + (mid_peak - b2_p)
+                rr = (target - current) / (current - stop) if current > stop else 0
+                if rr >= 2.0:
+                    conf = 60 + (20 if vols[-1] >= vol_ma20 * 1.3 else 0) + (15 if rr >= 2 else 0)
+                    patterns.append({"pattern": "DOUBLE_BOTTOM", "confidence": min(conf, 100),
+                                     "entry": current, "stop": stop, "target": target, "rr": rr})
+
+    # 깃발형
+    if len(close) >= 20:
+        pole_i = None
+        for i in range(max(0, len(close) - 20), len(close) - 5):
+            c_pct = (close[i] - opens[i]) / opens[i] * 100 if opens[i] > 0 else 0
+            if c_pct >= 2.5 and vols[i] >= vol_ma20 * 1.8:
+                pole_i = i
+        if pole_i is not None:
+            pole_h = close[pole_i] - opens[pole_i]
+            consol = close[pole_i + 1:]
+            consol_v = vols[pole_i + 1:]
+            if len(consol) >= 3:
+                c_high = max(consol)
+                c_low  = min(consol)
+                c_range = (c_high - c_low) / pole_h * 100 if pole_h > 0 else 999
+                c_vol_avg = sum(consol_v) / len(consol_v) if consol_v else vol_ma20
+                if c_range <= 60 and c_vol_avg < vol_ma20 * 0.85 and current >= c_high * 0.99:
+                    stop   = c_low * 0.99
+                    target = c_high + pole_h
+                    rr = (target - current) / (current - stop) if current > stop else 0
+                    if rr >= 2.0:
+                        conf = 60 + (20 if vols[-1] >= vol_ma20 * 1.5 else 0) + (15 if rr >= 2 else 0)
+                        patterns.append({"pattern": "BULL_FLAG", "confidence": min(conf, 100),
+                                         "entry": current, "stop": stop, "target": target, "rr": rr})
+
+    # 대칭삼각형 상향돌파
+    if len(close) >= 30:
+        maxs_idx = _find_local_maxima(close, window=3)
+        mins_idx = _find_local_minima(close, window=3)
+        if len(maxs_idx) >= 2 and len(mins_idx) >= 2:
+            h1_i, h2_i = maxs_idx[-2], maxs_idx[-1]
+            l1_i, l2_i = mins_idx[-2], mins_idx[-1]
+            if (close[h2_i] < close[h1_i] and close[l2_i] > close[l1_i]):
+                base_w = (close[h1_i] - close[l1_i])
+                curr_w = max(current, close[h2_i]) - min(current, close[l2_i])
+                conv   = curr_w / base_w if base_w > 0 else 1.0
+                if 0.15 <= conv <= 0.45 and current > close[h2_i] * 0.99:
+                    stop   = close[l2_i] * 0.985
+                    target = current + base_w
+                    rr = (target - current) / (current - stop) if current > stop else 0
+                    if rr >= 2.0:
+                        conf = 50 + (25 if vols[-1] >= vol_ma20 * 1.5 else 0) + (15 if rr >= 2 else 0)
+                        patterns.append({"pattern": "SYMM_TRIANGLE_UP", "confidence": min(conf, 100),
+                                         "entry": current, "stop": stop, "target": target, "rr": rr})
+
+    patterns.sort(key=lambda x: x["confidence"], reverse=True)
+    return patterns
+
+
 def _compute_score(rows: list[dict]) -> dict[str, Any] | None:
     """Score a candidate as of the last bar in rows."""
     close = _series(rows, "close")
@@ -217,6 +318,20 @@ def _compute_score(rows: list[dict]) -> dict[str, Any] | None:
     stop_px   = round(current - atr * ATR_STOP,  2) if atr else current * 0.935
     target_px = round(current + atr * ATR_TARGET, 2) if atr else current * 1.130
 
+    # 차트 패턴 인식 보너스 (PDF 4개 패턴)
+    cp = _detect_patterns(rows)
+    pattern_name = cp[0]["pattern"] if cp else None
+    if cp and cp[0]["confidence"] >= 70:
+        bonus = round((cp[0]["confidence"] - 70) / 30 * 10, 1)
+        final = min(100.0, round(final + bonus, 1))
+        # 패턴 entry/stop/target이 더 좋은 RR이면 대체
+        p = cp[0]
+        p_rr = p.get("rr", 0)
+        cur_rr = (target_px - current) / (current - stop_px) if current > stop_px else 0
+        if p_rr > cur_rr + 0.5:
+            stop_px   = round(p["stop"], 2)
+            target_px = round(p["target"], 2)
+
     return {
         "current": current,
         "ma5": ma5, "ma20": ma20, "ma60": ma60,
@@ -230,6 +345,7 @@ def _compute_score(rows: list[dict]) -> dict[str, Any] | None:
         "momentumScore": momentumScore,
         "entryScore": entryScore,
         "rrScore": rrScore,
+        "chart_pattern": pattern_name or "",
     }
 
 
