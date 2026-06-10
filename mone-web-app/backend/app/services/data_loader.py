@@ -1365,7 +1365,7 @@ TRADE_MODE_SETTINGS: dict[str, dict[str, Any]] = {
         "buy_rule": "현재가 또는 예상 시초가 기준 체결",
         "entry_tolerance_pct": 0.025,
         "hold_days": 1,
-        "target_first": True,
+        "target_first": False,
         "slippage_pct": 0.001,
     },
 }

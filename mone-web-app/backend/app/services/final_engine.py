@@ -1203,7 +1203,10 @@ def _conditional_execution(item: dict[str, Any], mode: str, horizon: str, df: pd
 
     if exit_price is None:
         exit_price = entry
-    pnl = ((exit_price - entry) / entry) * 100 if entry else None
+    slip = float(settings.get("slippage_pct", 0.002))
+    actual_entry = entry * (1 + slip)
+    actual_exit = exit_price * (1 - slip)
+    pnl = ((actual_exit - actual_entry) / actual_entry) * 100 if actual_entry else None
     return {
         "executionStatus": "체결",
         "executionReason": f"{_row_date_text(fill_row)} 진입가 도달 · {exit_date or _row_date_text(latest)} {outcome}",
@@ -1342,8 +1345,6 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         base_rank = float(scores["opportunityScore"]) * 0.45 + float(scores["entryScore"]) * 0.35 - (float(scores["riskScore"]) + event_risk * 0.4) * 0.25 + news_reliability * 0.08
         if bucket == "오늘 진입":
             base_rank += 8
-        if execution.get("executionStatus") == "체결":
-            base_rank += 4
         chart_adj = float(chart_overlay.get("chartScoreAdjustment") or 0)
         base_rank += chart_adj
         base_rank += event_score_adj
