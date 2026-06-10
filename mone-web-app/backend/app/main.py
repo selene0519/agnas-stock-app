@@ -512,6 +512,61 @@ def api_final_macro_events(market: str = Query("kr", pattern="^(kr|us)$")) -> di
     return final_engine.macro_event_risk(_market(market))
 
 
+# ── 캘린더 통합 API (event_calendar 서비스) ──────────────────────────────
+
+from app.services import event_calendar as _ec_cal
+
+
+@app.get("/api/calendar/today")
+def api_calendar_today(market: str = Query("us", pattern="^(kr|us|all)$")) -> dict:
+    """오늘 + 내일 HIGH/MEDIUM 이벤트 요약 (프론트 배너용)"""
+    try:
+        if market == "all":
+            kr = _ec_cal.today_high_impact("kr")
+            us = _ec_cal.today_high_impact("us")
+            combined_level = "high" if kr["riskLevel"] == "high" or us["riskLevel"] == "high" else \
+                             "medium" if kr["riskLevel"] == "medium" or us["riskLevel"] == "medium" else "low"
+            return {
+                "status": "OK", "market": "all",
+                "riskLevel": combined_level,
+                "kr": kr, "us": us,
+                "hasHighAlert": kr["hasHighAlert"] or us["hasHighAlert"],
+                "hasMedAlert":  kr["hasMedAlert"]  or us["hasMedAlert"],
+            }
+        result = _ec_cal.today_high_impact(_market(market))
+        return {"status": "OK", **result}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "riskLevel": "low", "hasHighAlert": False}
+
+
+@app.get("/api/calendar/macro")
+def api_calendar_macro(
+    market: str = Query("us", pattern="^(kr|us)$"),
+    days: int = Query(30, ge=1, le=90),
+    impact: str = Query("low"),
+) -> dict:
+    """매크로 경제지표 일정 목록"""
+    try:
+        items = _ec_cal.upcoming_macro(_market(market), days=days, impact_min=impact)
+        return {"status": "OK", "market": market, "days": days, "count": len(items), "items": items}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
+@app.get("/api/calendar/earnings")
+def api_calendar_earnings_v2(
+    market: str = Query("us", pattern="^(kr|us)$"),
+    days: int = Query(14, ge=1, le=60),
+    tracked: bool = Query(False),
+) -> dict:
+    """실적발표 일정 (CSV 기반 — generate_event_calendar.py 데이터)"""
+    try:
+        items = _ec_cal.upcoming_earnings(_market(market), days=days, tracked_only=tracked)
+        return {"status": "OK", "market": market, "days": days, "count": len(items), "items": items}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "items": []}
+
+
 @app.get("/api/final/portfolio-risk")
 def api_final_portfolio_risk(
     market: str = Query("kr", pattern="^(kr|us)$"),
@@ -4493,7 +4548,19 @@ def api_disclosure_calendar(market: str = Query("kr"), days: int = Query(30)) ->
 
 @app.get("/api/earnings-calendar")
 def api_earnings_calendar(market: str = Query("all"), days: int = Query(14)) -> dict:
-    """Alpha Vantage(KR) + Finnhub(US) 실적발표 일정 조회."""
+    """CSV 우선 + Finnhub(US) / Alpha Vantage(KR) 폴백."""
+    # ── 1차: CSV 파일 (generate_event_calendar.py 데이터) ──
+    try:
+        csv_items: list[dict] = []
+        for mkt in (["kr", "us"] if market == "all" else [market]):
+            csv_items.extend(_ec_cal.upcoming_earnings(mkt, days=days))
+        if csv_items:
+            csv_items.sort(key=lambda x: x.get("date", ""))
+            return {"status": "OK", "count": len(csv_items), "days": days, "items": csv_items, "source": "csv"}
+    except Exception:
+        pass
+
+    # ── 2차: 라이브 API 폴백 ──
     import urllib.request as _ur
     import csv as _ecsv
 

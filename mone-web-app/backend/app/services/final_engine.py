@@ -1182,6 +1182,21 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         d_rows = disc_map.get(sym, [])
         badges, event_risk, news_reliability, event_text = _event_badges(normalized, n_rows, d_rows)
 
+        # ── 캘린더 이벤트 리스크 가산 ─────────────────────────────────────────
+        # data/calendar/macro_calendar.csv + earnings_calendar.csv 기반
+        # 오늘 HIGH 매크로 이벤트 → +25, MEDIUM → +12, 내일 HIGH → +10, 종목 실적 3일 이내 → +8
+        try:
+            from app.services.event_calendar import event_risk_boost as _cal_boost
+            _cal_boost_val = _cal_boost(market, sym)
+            if _cal_boost_val > 0:
+                event_risk = min(100, event_risk + _cal_boost_val)
+                if _cal_boost_val >= 20 and "매크로 주의" not in badges:
+                    badges.append("매크로 주의")
+                elif _cal_boost_val >= 8 and "실적 이벤트" not in badges and "매크로 주의" not in badges:
+                    badges.append("실적 이벤트")
+        except Exception:
+            pass
+
         # ── 4차: 이벤트 컨텍스트 연동 ──────────────────────────────────────────
         try:
             evt_ctx = _ec.get_event_context(sym, market)
