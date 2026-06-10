@@ -317,48 +317,60 @@ def get_holdings(user_id: str, market: str = "all") -> list[dict]:
     uid = sanitize_uid(user_id)
     if not uid:
         return []
-    try:
-        if _use_postgres():
+    if _use_postgres():
+        try:
             return _pg_get_holdings(uid, market)
+        except Exception as e:
+            print(f"[db] get_holdings pg error (fallback to sqlite): {e}")
+    try:
         return _sqlite_get_holdings(uid, market)
     except Exception as e:
-        print(f"[db] get_holdings error: {e}")
+        print(f"[db] get_holdings sqlite error: {e}")
         return []
 
 def save_holdings(user_id: str, items: list[dict]) -> int:
     uid = sanitize_uid(user_id)
     if not uid:
         return 0
-    try:
-        if _use_postgres():
+    if _use_postgres():
+        try:
             return _pg_save_holdings(uid, items)
+        except Exception as e:
+            print(f"[db] save_holdings pg error (fallback to sqlite): {e}")
+    try:
         return _sqlite_save_holdings(uid, items)
     except Exception as e:
-        print(f"[db] save_holdings error: {e}")
+        print(f"[db] save_holdings sqlite error: {e}")
         return 0
 
 def get_watchlist(user_id: str, market: str = "all") -> list[dict]:
     uid = sanitize_uid(user_id)
     if not uid:
         return []
-    try:
-        if _use_postgres():
+    if _use_postgres():
+        try:
             return _pg_get_watchlist(uid, market)
+        except Exception as e:
+            print(f"[db] get_watchlist pg error (fallback to sqlite): {e}")
+    try:
         return _sqlite_get_watchlist(uid, market)
     except Exception as e:
-        print(f"[db] get_watchlist error: {e}")
+        print(f"[db] get_watchlist sqlite error: {e}")
         return []
 
 def save_watchlist(user_id: str, items: list[dict]) -> int:
     uid = sanitize_uid(user_id)
     if not uid:
         return 0
-    try:
-        if _use_postgres():
+    if _use_postgres():
+        try:
             return _pg_save_watchlist(uid, items)
+        except Exception as e:
+            print(f"[db] save_watchlist pg error (fallback to sqlite): {e}")
+    try:
         return _sqlite_save_watchlist(uid, items)
     except Exception as e:
-        print(f"[db] save_watchlist error: {e}")
+        print(f"[db] save_watchlist sqlite error: {e}")
         return 0
 
 def backend_info() -> dict:
