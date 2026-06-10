@@ -87,11 +87,20 @@ def get_kr_symbols() -> list[str]:
     return syms[:100]
 
 
-def generate_recommendations() -> dict:
-    """generate_kr_recommendations.py 실행"""
-    script = REPO_ROOT / "scripts" / "generate_kr_recommendations.py"
+def generate_recommendations(market: str = "kr") -> dict:
+    """국장(kr)/미장(us) 추천 생성 스크립트 실행"""
+    script_map = {
+        "kr": REPO_ROOT / "scripts" / "generate_kr_recommendations.py",
+        "us": REPO_ROOT / "scripts" / "generate_us_recommendations.py",
+    }
+    script = script_map.get(market, script_map["kr"])
     if not script.exists():
-        return {"status": "SKIP", "reason": "script not found"}
+        # 해당 마켓 스크립트 없으면 공통 스크립트 시도
+        fallback = REPO_ROOT / "scripts" / "generate_kr_recommendations.py"
+        if fallback.exists():
+            script = fallback
+        else:
+            return {"status": "SKIP", "reason": f"script not found for market={market}"}
     try:
         result = subprocess.run(
             [sys.executable, str(script)],
@@ -102,6 +111,7 @@ def generate_recommendations() -> dict:
         )
         return {
             "status": "OK" if result.returncode == 0 else "ERROR",
+            "market": market,
             "stderr": result.stderr[-500:],
         }
     except Exception as e:
@@ -117,6 +127,7 @@ def git_push(commit_msg: str) -> bool:
         ]
         stage_cmds = [
             ["git", "add", "data/market/ohlcv/kr_*_daily.csv"],
+            ["git", "add", "data/market/ohlcv/us_*_daily.csv"],
             ["git", "add", "reports/mone_v36_final_recommendations_*.csv"],
             ["git", "add", "reports/local_collector_status.json"],
             ["git", "add", "reports/kis_current_price_kr.csv"],
@@ -157,35 +168,100 @@ def git_push(commit_msg: str) -> bool:
         return False
 
 
+def get_us_symbols() -> list[str]:
+    """data/sector_map_us.csv 또는 고정 US 심볼 목록"""
+    path = REPO_ROOT / "data" / "sector_map_us.csv"
+    syms = []
+    if path.exists():
+        with open(path, encoding="utf-8-sig") as f:
+            for r in csv.DictReader(f):
+                s = str(r.get("symbol", "")).strip().upper()
+                if s:
+                    syms.append(s)
+    if not syms:
+        # 기본 US 대형주 목록
+        syms = ["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","BRK-B",
+                "JPM","V","UNH","JNJ","XOM","PG","HD","CVX","MA","BAC","ABBV","PFE"]
+    return syms[:50]
+
+
+def collect_ohlcv_us(symbols: list[str], days: int = 30) -> dict:
+    """yfinance로 US 종목 OHLCV 수집"""
+    try:
+        import yfinance as yf
+    except ImportError:
+        subprocess.run([sys.executable, "-m", "pip", "install", "yfinance", "-q"])
+        import yfinance as yf
+
+    from datetime import timedelta
+    end = datetime.today()
+    start = end - timedelta(days=days + 10)
+    ok, fail = 0, 0
+    ohlcv_dir = REPO_ROOT / "data" / "market" / "ohlcv"
+    ohlcv_dir.mkdir(parents=True, exist_ok=True)
+
+    for sym in symbols:
+        try:
+            df = yf.download(sym, start=start.strftime("%Y-%m-%d"),
+                             end=end.strftime("%Y-%m-%d"), progress=False, auto_adjust=True)
+            if df is None or df.empty:
+                fail += 1; continue
+            df = df.reset_index()
+            df.columns = [c.lower() if isinstance(c, str) else c[0].lower() for c in df.columns]
+            df["date"] = df["date"].dt.strftime("%Y-%m-%d")
+            df = df[["date","open","high","low","close","volume"]].dropna()
+
+            path = ohlcv_dir / f"us_{sym}_daily.csv"
+            if path.exists():
+                import pandas as pd
+                existing = pd.read_csv(path, encoding="utf-8-sig")
+                existing.columns = [c.lower() for c in existing.columns]
+                import pandas as pd2
+                df = pd.concat([existing, df]).drop_duplicates("date", keep="last")
+                df = df.sort_values("date").reset_index(drop=True)
+            df.to_csv(path, index=False, encoding="utf-8-sig")
+            ok += 1
+        except Exception as e:
+            log(f"  오류 [{sym}]: {e}"); fail += 1
+    return {"ok": ok, "fail": fail}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--push", action="store_true", help="수집 후 GitHub push")
-    parser.add_argument("--days", type=int, default=30, help="OHLCV 수집 일수")
-    parser.add_argument("--no-ohlcv", action="store_true", help="OHLCV 수집 건너뜀")
+    parser.add_argument("--push",     action="store_true", help="수집 후 GitHub push")
+    parser.add_argument("--days",     type=int, default=5,  help="OHLCV 수집 일수")
+    parser.add_argument("--no-ohlcv", action="store_true",  help="OHLCV 수집 건너뜀")
+    parser.add_argument("--market",   default="kr",         help="수집 대상 시장: kr / us / all")
     args = parser.parse_args()
 
+    markets = ["kr", "us"] if args.market == "all" else [args.market]
     start_time = time.time()
-    status: dict = {"startedAt": datetime.now().isoformat(), "steps": {}}
+    status: dict = {"startedAt": datetime.now().isoformat(), "market": args.market, "steps": {}}
 
     log("=" * 50)
-    log("MONE 로컬 데이터 수집 시작")
+    log(f"MONE 로컬 데이터 수집 시작 — market={args.market}")
     log(f"push: {args.push}, days: {args.days}")
     log("=" * 50)
 
     # Step 1: OHLCV 수집
     if not args.no_ohlcv:
-        log("Step 1: OHLCV 수집...")
-        symbols = get_kr_symbols()
-        log(f"  대상 {len(symbols)}종목")
-        ohlcv_result = collect_ohlcv_fdr(symbols, days=args.days)
-        log(f"  완료: {ohlcv_result}")
-        status["steps"]["ohlcv"] = ohlcv_result
+        for mkt in markets:
+            log(f"Step 1: OHLCV 수집 [{mkt.upper()}]...")
+            if mkt == "kr":
+                symbols = get_kr_symbols()
+                ohlcv_result = collect_ohlcv_fdr(symbols, days=args.days)
+            else:
+                symbols = get_us_symbols()
+                ohlcv_result = collect_ohlcv_us(symbols, days=args.days)
+            log(f"  완료 [{mkt.upper()}]: {ohlcv_result}")
+            status["steps"][f"ohlcv_{mkt}"] = ohlcv_result
 
     # Step 2: 추천 생성
-    log("Step 2: 추천 생성...")
-    rec_result = generate_recommendations()
-    log(f"  결과: {rec_result['status']}")
-    status["steps"]["recommendations"] = rec_result
+    for mkt in markets:
+        log(f"Step 2: 추천 생성 [{mkt.upper()}]...")
+        rec_result = generate_recommendations(market=mkt)
+        log(f"  결과: {rec_result['status']}")
+        status["steps"][f"recommendations_{mkt}"] = rec_result
 
     # 상태 저장
     status["elapsedSec"] = round(time.time() - start_time, 1)
