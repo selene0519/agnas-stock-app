@@ -4748,3 +4748,41 @@ def api_data_sources() -> dict:
                 }
 
     return {"status": "OK", "sources": sources, "recommendationFreshness": rec_freshness}
+
+
+@app.post("/api/cache/refresh")
+def api_cache_refresh(market: str = "kr", secret: str = "") -> dict:
+    """
+    작업스케줄러 push 완료 후 추천 CSV 즉시 강제 갱신.
+    GitHub raw에서 최신 파일을 즉시(동기) 다운로드.
+    secret: 환경변수 CACHE_REFRESH_SECRET 또는 기본값 'mone-refresh'
+    """
+    import os as _os
+    expected = _os.getenv("CACHE_REFRESH_SECRET", "mone-refresh")
+    if secret and secret != expected:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="invalid secret")
+
+    refreshed, failed = 0, 0
+    markets = ["kr", "us"] if market == "all" else [market]
+    for mk in markets:
+        for mode_ in MODES:
+            for horizon_ in HORIZONS:
+                rel = f"reports/mone_v36_final_recommendations_{mk}_{mode_}_{horizon_}.csv"
+                ok = data._refresh_from_github(rel)
+                if ok:
+                    refreshed += 1
+                else:
+                    failed += 1
+    # 패턴 성과 / 지지저항도 갱신
+    for extra in ("reports/pattern_performance.json", "reports/support_resistance_zones.json",
+                  "reports/local_collector_status.json"):
+        data._refresh_from_github(extra)
+
+    return {
+        "status": "OK",
+        "market": market,
+        "refreshed": refreshed,
+        "failed": failed,
+        "timestamp": datetime.now().isoformat(),
+    }

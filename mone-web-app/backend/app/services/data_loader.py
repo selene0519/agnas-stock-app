@@ -4859,9 +4859,10 @@ def _refresh_from_github(rel_path: str) -> bool:
     return False
 
 
-def ensure_fresh(path: Path, max_age_hours: float = 6.0) -> Path:
+def ensure_fresh(path: Path, max_age_hours: float = 1.0) -> Path:
     """
     파일이 없거나 오래된 경우 GitHub raw에서 백그라운드 갱신.
+    TTL: 1시간 (작업스케줄러 장전·장후 수집과 동기화)
     1순위: 로컬 파일 (신선할 때)
     2순위: GitHub raw 다운로드 후 로컬 캐시 (백그라운드, 응답 속도 영향 없음)
     항상 로컬 Path 반환 (없으면 원래 path 반환하여 상위에서 처리)
@@ -4884,3 +4885,21 @@ def ensure_fresh(path: Path, max_age_hours: float = 6.0) -> Path:
 
     _threading.Thread(target=_bg, daemon=True).start()
     return path  # 현재 있는 파일 우선 반환 (없으면 None 처리는 호출부에서)
+
+
+def force_refresh_recommendations(market: str = "kr") -> int:
+    """
+    추천 CSV 파일 즉시 강제 갱신 (작업스케줄러 push 후 호출용).
+    로컬 파일 mtime을 0으로 리셋 → 다음 ensure_fresh() 호출 시 즉시 재다운로드.
+    반환: 갱신 대상 파일 수
+    """
+    pattern = f"mone_v36_final_recommendations_{market}_*.csv"
+    count = 0
+    for p in REPORT_DIR.glob(pattern):
+        try:
+            import os as _os
+            _os.utime(str(p), (0, 0))  # mtime을 1970년으로 리셋
+            count += 1
+        except Exception:
+            pass
+    return count
