@@ -1,3 +1,17 @@
+"""
+data_quality.py — MONE 데이터 품질 판정 엔진
+
+인코딩 참고 (작업 5):
+  Starlette JSONResponse.render() 는 ensure_ascii=False + .encode("utf-8") 을 사용한다.
+  즉 API 응답 JSON에는 한글이 raw UTF-8 바이트로 포함된다.
+  브라우저와 올바르게 구성된 HTTP 클라이언트는 Content-Type: application/json; charset=utf-8 에
+  따라 정상 표시한다.
+  PowerShell 콘솔이 cp1252 (Windows 기본) 로 설정된 경우 한글이 mojibake 로 깨져 보인다.
+  서버·코드 문제가 아니라 터미널 인코딩 문제이므로 아래 명령으로 해결:
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+  (또는 PowerShell 에서 chcp 65001 실행)
+"""
 from __future__ import annotations
 
 import csv
@@ -80,12 +94,10 @@ def _deep_csv_inspect(path: Path, market: str) -> dict[str, Any]:
     latest_date: str | None = None
     date_col_found: str | None = None
     warnings_inner: list[str] = []
+    # date 컬럼 미발견 → mtime 폴백 정보 (info 레벨, 치명 아님)
+    date_missing_info: dict[str, Any] | None = None
 
-    # 실제 헤더 소문자화 맵
-    if rows:
-        header_lower = {k.lower(): k for k in rows[0].keys()}
-    else:
-        header_lower = {}
+    header_lower = {k.lower(): k for k in rows[0].keys()} if rows else {}
 
     for col in _DATE_COLS:
         actual_col = header_lower.get(col.lower()) or col
@@ -96,11 +108,15 @@ def _deep_csv_inspect(path: Path, market: str) -> dict[str, Any]:
             date_col_found = actual_col
             break
 
-    # 폴백: 파일 mtime
+    # 폴백: 파일 mtime — info 레벨로 기록
     if not latest_date:
         try:
             latest_date = datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d")
-            warnings_inner.append("date_column_missing")
+            date_missing_info = {
+                "severity": "info",
+                "file": str(path),
+                "note": "latestDataDate was inferred from file mtime",
+            }
         except Exception:
             warnings_inner.append("date_parse_failed")
 
@@ -122,7 +138,8 @@ def _deep_csv_inspect(path: Path, market: str) -> dict[str, Any]:
             missing = sum(1 for r in rows if not str(r.get(col, "")).strip())
             missing_rate[col] = round(missing / row_count * 100, 1)
 
-    # 시장 구분 검사
+    # 시장 구분 검사 — CSV 내부 market 컬럼 혼입만 카운트
+    # (OHLCV 폴더에 다른 시장 파일이 있다는 이유만으로는 증가시키지 않음)
     invalid_market_count = 0
     mixed_market_count = 0
     if any("market" in r for r in rows[:1]):
@@ -165,6 +182,8 @@ def _deep_csv_inspect(path: Path, market: str) -> dict[str, Any]:
         "mixedMarketCount": mixed_market_count,
         "emptyResult": False,
         "warnings": warnings,
+        # info 레벨 — 최상위 warnings 에 노출하지 않음
+        "dateMissingInfo": date_missing_info,
     }
 
 
@@ -221,27 +240,37 @@ def _candidate_files(market: str) -> list[dict[str, Any]]:
     ]
 
 
-def _filter_ohlcv_files(files: list[Path], market: str) -> tuple[list[Path], list[str]]:
+def _filter_ohlcv_files(
+    files: list[Path], market: str
+) -> tuple[list[Path], dict[str, Any]]:
     """
     OHLCV 파일 목록에서 market 접두사가 맞고 심볼이 유효한 파일만 반환.
-    반환: (valid_files, warning_messages)
+    반환: (valid_files, filter_info)
+      filter_info = {
+        mismatch_count, mismatch_samples(최대10),
+        invalid_count,  invalid_samples(최대5)
+      }
     """
     market_prefix = market.lower() + "_"
     valid: list[Path] = []
-    warnings: list[str] = []
+    mismatch_names: list[str] = []
+    invalid_names: list[str] = []
     for f in files:
-        stem_parts = f.stem.split("_")  # kr_000100_daily → ["kr", "000100", "daily"]
-        # market 접두사 검사
+        stem_parts = f.stem.split("_")
         if not f.name.startswith(market_prefix):
-            warnings.append(f"market_mismatch_file:{f.name}")
+            mismatch_names.append(f.name)
             continue
-        # 심볼 유효성 검사 (두 번째 파트)
         sym = stem_parts[1].upper() if len(stem_parts) >= 2 else ""
         if sym in _INVALID_OHLCV_SYMBOLS or not sym:
-            warnings.append(f"invalid_ohlcv_file:{f.name}")
+            invalid_names.append(f.name)
             continue
         valid.append(f)
-    return valid, warnings
+    return valid, {
+        "mismatch_count": len(mismatch_names),
+        "mismatch_samples": mismatch_names[:10],
+        "invalid_count": len(invalid_names),
+        "invalid_samples": invalid_names[:5],
+    }
 
 
 def _status_for_path(path: Path | None, market: str, role: str) -> dict[str, Any]:
@@ -252,11 +281,19 @@ def _status_for_path(path: Path | None, market: str, role: str) -> dict[str, Any
         if not all_files:
             return {"status": "NO_DATA", "reason": "CSV 없음", "path": str(path), "role": role}
 
-        extra_warnings: list[str] = []
+        warning_summary: dict[str, int] = {}
+        warning_samples: dict[str, list[str]] = {}
+
         if role == "price_priority_3":
             # OHLCV 디렉토리: market 접두사 + 유효 심볼 필터
-            filtered, extra_warnings = _filter_ohlcv_files(all_files, market)
+            filtered, filter_info = _filter_ohlcv_files(all_files, market)
             files_to_use = filtered if filtered else all_files
+            if filter_info["mismatch_count"]:
+                warning_summary["market_mismatch_file"] = filter_info["mismatch_count"]
+                warning_samples["market_mismatch_file"] = filter_info["mismatch_samples"]
+            if filter_info["invalid_count"]:
+                warning_summary["invalid_ohlcv_file"] = filter_info["invalid_count"]
+                warning_samples["invalid_ohlcv_file"] = filter_info["invalid_samples"]
         else:
             files_to_use = all_files
 
@@ -266,9 +303,10 @@ def _status_for_path(path: Path | None, market: str, role: str) -> dict[str, Any
         result["role"] = role
         result["fileCount"] = len(files_to_use)
         result["mtimeDate"] = datetime.fromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d")
-        if extra_warnings:
-            result.setdefault("warnings", [])
-            result["warnings"] = list(result.get("warnings") or []) + extra_warnings
+        # warningSummary / warningSamples — 파일별 진단 (긴 목록 대신 요약)
+        if warning_summary:
+            result["warningSummary"] = warning_summary
+            result["warningSamples"] = warning_samples
         if role == "price_priority_3" and result["status"] == "STALE":
             result["status"] = "PARTIAL"
             result["reason"] = "OHLCV 최신 파일이 당일은 아니지만 백테스트용 보조 데이터로 사용 가능"
@@ -288,7 +326,6 @@ def _recommendation_csv_inspect(market: str) -> dict[str, Any]:
     mtime_result = session.evaluate_file_status(csv_path, normalized, required_today=True)
     deep = _deep_csv_inspect(csv_path, normalized)
 
-    # 파일은 오늘인데 내부 날짜가 오래됐으면 STALE 상향
     combined_status = mtime_result["status"]
     if deep.get("deepStatus") == "STALE" and combined_status == "NORMAL":
         combined_status = "STALE"
@@ -309,6 +346,8 @@ def _recommendation_csv_inspect(market: str) -> dict[str, Any]:
         "mixedMarketCount": deep.get("mixedMarketCount", 0),
         "emptyResult": deep.get("emptyResult", False),
         "warnings": deep.get("warnings", []),
+        # info 레벨 — 상위로 전달해 warningsDetail 에 합산
+        "dateMissingInfo": deep.get("dateMissingInfo"),
         "path": str(csv_path),
         "role": "recommendation_csv",
     }
@@ -323,7 +362,6 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
         status = _status_for_path(item["path"], normalized_market, item["role"])
         files.append({**item, **status, "path": status.get("path") or (str(item["path"]) if item["path"] else None)})
 
-    # 추천 CSV 상세 검사 (기존 engine 호출과 병행)
     rec_csv_inspect = _recommendation_csv_inspect(normalized_market)
     files.append(rec_csv_inspect)
 
@@ -352,56 +390,95 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
     is_review = bool(state.get("isReviewMode"))
 
     # ── 파일 상태를 realtime / data 로 분리 ──────────────────────────────────
-    # realtime: KIS snapshot, intraday snapshot (장 중에만 존재 기대)
-    # data: OHLCV, premarket report, fallback, recommendation CSV
     realtime_roles = {"price_priority_1", "price_priority_2"}
     realtime_files = [f for f in files if f.get("role") in realtime_roles]
     data_files     = [f for f in files if f.get("role") not in realtime_roles]
 
     realtime_status = session.worst_status(f.get("status") for f in realtime_files)
     data_status_raw = session.worst_status(f.get("status") for f in data_files)
-
-    # 추천 CSV 기준 status 반영
     data_status_combined = session.worst_status([data_status_raw, recommendation_status])
 
-    # ── combined 결정 ─────────────────────────────────────────────────────────
+    # ── rec_has_data ──────────────────────────────────────────────────────────
     rec_has_data = (rec_csv_inspect.get("rowCount", 0) > 0
                     and rec_csv_inspect.get("validSymbolCount", 0) > 0
                     and not rec_csv_inspect.get("emptyResult"))
 
-    extra_warnings: list[str] = list(rec_csv_inspect.get("warnings", []))
-    # OHLCV 파일 수준 경고 집계 → 최상위 요약으로 버블업
-    mismatch_count = 0
-    invalid_count  = 0
-    for f in files:
-        for fw in (f.get("warnings") or []):
-            if fw.startswith("market_mismatch_file"):
-                mismatch_count += 1
-            elif fw.startswith("invalid_ohlcv_file"):
-                invalid_count += 1
-    if mismatch_count:
-        extra_warnings.append(f"market_mismatch_file:{mismatch_count}개 (요청 market={normalized_market}와 다른 파일 제외됨)")
-    if invalid_count:
-        extra_warnings.append(f"invalid_ohlcv_file:{invalid_count}개 (NAN/NULL 심볼 제외됨)")
+    # ── warningsDetail & top_warnings 빌드 ───────────────────────────────────
+    warnings_detail: dict[str, Any] = {}
+    top_warnings: list[str] = []
 
+    # 1) date_column_missing — info 레벨 (top_warnings 에는 올리지 않음)
+    date_missing_files: list[str] = []
+    for f in [rec_csv_inspect] + files:
+        dmi = f.get("dateMissingInfo")
+        if dmi and dmi.get("file"):
+            fp = dmi["file"]
+            if fp not in date_missing_files:
+                date_missing_files.append(fp)
+    if date_missing_files:
+        warnings_detail["date_column_missing"] = {
+            "severity": "info",
+            "count": len(date_missing_files),
+            "files": date_missing_files,
+            "note": "latestDataDate was inferred from file mtime or fallback source",
+        }
+
+    # 2) market_mismatch_file — count만 top_warnings, 상세는 warningsDetail
+    total_mismatch = 0
+    mismatch_samples: list[str] = []
+    total_invalid_ohlcv = 0
+    for f in files:
+        ws = f.get("warningSummary") or {}
+        ws_samp = f.get("warningSamples") or {}
+        cnt = ws.get("market_mismatch_file", 0)
+        total_mismatch += cnt
+        for s in ws_samp.get("market_mismatch_file", []):
+            if s not in mismatch_samples:
+                mismatch_samples.append(s)
+        total_invalid_ohlcv += ws.get("invalid_ohlcv_file", 0)
+    if total_mismatch:
+        top_warnings.append(f"market_mismatch_file:{total_mismatch}")
+        warnings_detail["market_mismatch_file"] = {
+            "severity": "info",
+            "count": total_mismatch,
+            "samples": mismatch_samples[:10],
+            "note": f"Ignored because requested market={normalized_market}",
+        }
+    if total_invalid_ohlcv:
+        top_warnings.append(f"invalid_ohlcv_file:{total_invalid_ohlcv}")
+
+    # 3) rec_csv 자체 warnings (date_column_missing 제외 — 이미 warningsDetail에 있음)
+    for w in rec_csv_inspect.get("warnings", []):
+        if "date_column_missing" not in w:
+            top_warnings.append(w)
+
+    # ── combined 판정 & after_close 처리 ─────────────────────────────────────
     if is_after_close or is_review:
-        # 장마감/복기 모드: 실시간 파일 없음은 정상 — data 파일만으로 판정
         combined = data_status_combined
+        # 장마감/복기 모드: 실시간 가격 없음은 info 레벨 — killSwitch 사유 아님
         if any(f.get("status") == "NO_DATA" for f in realtime_files):
-            extra_warnings.append("realtime_price_missing_after_close")
-        # 추천 데이터가 있으면 NO_DATA 완화
+            warnings_detail["realtime_price_missing_after_close"] = {
+                "severity": "info",
+                "priceSession": price_session_str,
+                "priceDataStatus": "AFTER_CLOSE",
+                "note": (
+                    "Realtime price snapshot is not required after close "
+                    "when OHLCV/recommendation data is available"
+                ),
+            }
         if combined == "NO_DATA" and rec_has_data:
             combined = "PARTIAL"
         if is_review and combined in {"NO_DATA", "ERROR"}:
             combined = "PARTIAL" if rec_has_data else combined
     else:
-        # 장 중: 실시간 파일도 포함해서 worst_status
         combined = session.worst_status([data_status_combined, realtime_status])
         if combined == "NO_DATA" and rec_has_data:
             combined = "PARTIAL_PRICE"
+        if any(f.get("status") == "NO_DATA" for f in realtime_files):
+            top_warnings.append("realtime_price_missing")
 
     # ── killSwitch 결정 ───────────────────────────────────────────────────────
-    # 추천 데이터가 존재하면 killSwitch=False (실시간 가격 없음은 killSwitch 사유가 아님)
+    # 추천 데이터가 있으면 killSwitch=False
     if rec_has_data:
         kill_switch = combined in {"ERROR"}
     elif is_review:
@@ -409,8 +486,10 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
     else:
         kill_switch = session.is_kill_status(combined)
 
-    # PARTIAL_PRICE는 프론트에 친숙한 PARTIAL로 노출
     display_combined = "PARTIAL" if combined == "PARTIAL_PRICE" else combined
+
+    # mixedMarketCount — OHLCV 폴더 파일 존재가 아닌, CSV 내부 혼합만 카운트
+    mixed_market_count = rec_csv_inspect.get("mixedMarketCount", 0)
 
     return {
         # 기존 필드 유지
@@ -422,11 +501,12 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
         "priceDataStatus": price_status if rows else ("NO_REALTIME" if is_after_close else "NO_DATA"),
         "killSwitch": kill_switch,
         "reviewMode": is_review,
+        # 신규: 장마감 후 복기 가능 여부
+        "afterCloseReviewAvailable": is_after_close and rec_has_data,
         "message": "시장 휴장일 - 지난 운용 복기 모드" if is_review else "데이터 상태 점검 완료",
         "files": files,
         "candidateCount": len(rows),
         "updatedAt": datetime.now(session.KST).isoformat(),
-        # 신규 필드
         "latestFileModifiedAt": rec_csv_inspect.get("latestFileModifiedAt"),
         "latestDataDate": rec_csv_inspect.get("latestDataDate"),
         "rowCount": rec_csv_inspect.get("rowCount", 0),
@@ -434,10 +514,11 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
         "duplicatedSymbolCount": rec_csv_inspect.get("duplicatedSymbolCount", 0),
         "missingRateByColumn": rec_csv_inspect.get("missingRateByColumn", {}),
         "invalidMarketCount": rec_csv_inspect.get("invalidMarketCount", 0),
-        "mixedMarketCount": rec_csv_inspect.get("mixedMarketCount", 0),
+        "mixedMarketCount": mixed_market_count,
         "emptyResult": rec_csv_inspect.get("emptyResult", False),
-        "staleReason": next((w for w in extra_warnings if "stale" in w.lower()), None),
-        "warnings": extra_warnings,
+        "staleReason": next((w for w in top_warnings if "stale" in w.lower()), None),
+        "warnings": top_warnings,
+        "warningsDetail": warnings_detail,
         "checkedFiles": [f.get("path") for f in files if f.get("path")],
     }
 
