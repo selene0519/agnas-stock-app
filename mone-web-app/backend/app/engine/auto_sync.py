@@ -19,6 +19,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from fastapi import BackgroundTasks
+
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 _STATUS_FILE = _REPO_ROOT / "reports" / "auto_sync_status.json"
 _LOCK = threading.Lock()
@@ -280,8 +282,6 @@ def startup_sync() -> None:
 
 
 def register_auto_sync_routes(app: Any) -> None:
-    from fastapi import BackgroundTasks
-
     @app.post("/api/admin/sync")
     def admin_sync(background_tasks: BackgroundTasks) -> dict[str, Any]:
         """즉시 GitHub 동기화 (git pull + 캐시 초기화)."""

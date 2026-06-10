@@ -201,7 +201,7 @@ def get_us_symbols() -> list[str]:
         # 기본 US 대형주 목록
         syms = ["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","BRK-B",
                 "JPM","V","UNH","JNJ","XOM","PG","HD","CVX","MA","BAC","ABBV","PFE"]
-    return syms[:50]
+    return syms[:120]
 
 
 def collect_ohlcv_us(symbols: list[str], days: int = 30) -> dict:
