@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import datetime
 from functools import lru_cache
+import os
 import re
 from pathlib import Path
 from typing import Any, Iterable
@@ -1256,9 +1257,10 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         universe, sources = _us_balanced_swing_universe()
     else:
         universe, sources = _candidate_universe(market)
+    _max_scoring = int(os.getenv("MONE_MAX_SCORING_UNIVERSE", "500"))
     price_overlay_map = _final_price_overlay_map(market)
     rows: list[dict[str, Any]] = []
-    for item in universe:
+    for item in universe[:_max_scoring]:
         sym = _symbol(item, market)
         if not sym:
             continue
@@ -1458,7 +1460,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
 
     limit_meta = runtime_limits.limit_meta(
         total_count=len(universe),
-        processed_count=len(rows),
+        processed_count=min(len(universe), _max_scoring),
         limit=requested_limit,
         max_allowed=max_allowed,
         dataSourceType="mixed",
