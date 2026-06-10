@@ -13,11 +13,13 @@ Windows 작업 스케줄러 설정:
   시작위치: C:\\dev\\agnas-stock-app
 """
 from __future__ import annotations
-import argparse, csv, json, os, subprocess, sys, time
+import argparse, csv, json, os, subprocess, sys, time, urllib.request
 from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parents[1]
+RENDER_API_BASE = "https://agnas-stock-app.onrender.com"
+CACHE_REFRESH_SECRET = os.getenv("CACHE_REFRESH_SECRET", "mone-refresh")
 sys.path.insert(0, str(REPO_ROOT / "mone-web-app" / "backend"))
 
 LOG_PATH = REPO_ROOT / "data" / "collector_log.json"
@@ -27,6 +29,23 @@ STATUS_PATH = REPO_ROOT / "reports" / "local_collector_status.json"
 def log(msg: str) -> None:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] {msg}")
+
+
+def _render_refresh(market: str = "kr") -> bool:
+    """
+    GitHub push 완료 후 Render 백엔드에 캐시 즉시 갱신 요청.
+    작업스케줄러 데이터가 앱에 1분 내 반영되도록 함.
+    """
+    try:
+        url = f"{RENDER_API_BASE}/api/cache/refresh?market={market}&secret={CACHE_REFRESH_SECRET}"
+        req = urllib.request.Request(url, method="POST", data=b"")
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode()
+            log(f"  Render 캐시 갱신 완료: {body[:120]}")
+            return True
+    except Exception as e:
+        log(f"  Render 캐시 갱신 실패 (Render 슬립 중일 수 있음): {e}")
+        return False
 
 
 def collect_ohlcv_fdr(symbols: list[str], days: int = 30) -> dict:
@@ -277,6 +296,11 @@ def main() -> None:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         push_ok = git_push(f"chore: local collector update {now_str}")
         status["pushed"] = push_ok
+
+        # Step 4: Render 캐시 즉시 갱신 (push 성공 시만)
+        if push_ok:
+            log("Step 4: Render 캐시 즉시 갱신...")
+            _render_refresh(args.market)
 
     log(f"완료 ({status['elapsedSec']}초)")
 
