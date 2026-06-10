@@ -1088,29 +1088,14 @@ def _decision_bucket(mode: str, horizon: str, scores: dict[str, Any], event_risk
 
 
 def _conditional_execution(item: dict[str, Any], mode: str, horizon: str, df: pd.DataFrame, source: str) -> dict[str, Any]:
-    """Operational conditional trade validation.
+    """Operational conditional trade validation — delegates to backtest_v2."""
+    from app.engine import backtest_v2 as _bv2  # 지연 import (순환 방지)
 
-    Recommended != bought. A trade is filled only when entry_price is touched by
-    OHLCV low/high inside the evaluation window. Returns are calculated only for
-    filled orders. If both target and stop are touched in the same daily bar, the
-    mode setting decides whether to use the conservative stop-first rule.
-    """
     settings = data.TRADE_MODE_SETTINGS.get(mode, data.TRADE_MODE_SETTINGS["balanced"])
+    market = str(item.get("market", "kr"))
     entry = _num(item.get("entry"))
-    stop = _num(item.get("stop"))
-    target = _num(item.get("target"))
-    market = item.get("market", "kr")
-    hold_days = HORIZON_DAYS[horizon]
-    if entry is None or stop is None or target is None:
-        return {
-            "executionStatus": "검증 대기",
-            "executionReason": "진입가/손절가/목표가 부족",
-            "filled": False,
-            "excludedFromReturn": True,
-            "pnlPct": "",
-            "pnlText": "수익률 제외",
-            "ohlcvSource": source,
-        }
+
+    # OHLCV 없으면 현재가 기준 사전 판단만
     if df.empty:
         status = data._execution_status_for_plan(item.get("currentPrice"), entry, mode)  # type: ignore[attr-defined]
         return {
@@ -1123,135 +1108,21 @@ def _conditional_execution(item: dict[str, Any], mode: str, horizon: str, df: pd
             "ohlcvSource": source,
         }
 
-    # If caller passed a raw dataframe, normalize dates/window again.
-    work = df.copy()
-    if "_date_ts" not in work.columns:
-        work["_date_ts"] = pd.to_datetime(work.get("date"), errors="coerce").dt.normalize()
-    work = work.dropna(subset=["_date_ts"]).sort_values("_date_ts").reset_index(drop=True)
-    # 추천일 기준 이후 봉만 사용. generatedAt 없으면 스키마부족으로 명시 반환.
-    _rec_date_str = str(item.get("generatedAt", ""))[:10]
-    if not _rec_date_str or len(_rec_date_str) != 10:
-        return {
-            "executionStatus": "검증 대기",
-            "executionReason": "추천일(generatedAt) 없음 — 날짜 기준 검증 불가",
-            "filled": False,
-            "excludedFromReturn": True,
-            "pnlPct": "",
-            "pnlText": "스키마부족",
-            "ohlcvSource": source,
-        }
-    try:
-        _rec_ts = pd.Timestamp(_rec_date_str)
-        work = work[work["_date_ts"] > _rec_ts].head(max(1, hold_days)).reset_index(drop=True)
-    except Exception:
-        return {
-            "executionStatus": "검증 대기",
-            "executionReason": f"추천일 파싱 실패 ({_rec_date_str})",
-            "filled": False,
-            "excludedFromReturn": True,
-            "pnlPct": "",
-            "pnlText": "스키마부족",
-            "ohlcvSource": source,
-        }
-    if work.empty:
-        return {
-            "executionStatus": "검증 대기",
-            "executionReason": "평가 구간 OHLCV 부족",
-            "filled": False,
-            "excludedFromReturn": True,
-            "pnlPct": "",
-            "pnlText": "수익률 제외",
-            "ohlcvSource": source,
-        }
+    # backtest_v2 위임
+    result = _bv2.evaluate_recommendation(item, df, settings, horizon)
 
-    fill_idx: int | None = None
-    fill_row: pd.Series | None = None
-    for idx, row in work.iterrows():
-        hi = _num(row.get("high")) or _num(row.get("close"))
-        lo = _num(row.get("low")) or _num(row.get("close"))
-        if hi is None or lo is None:
-            continue
-        if lo <= entry <= hi:
-            fill_idx = int(idx)
-            fill_row = row
-            break
+    # 기존 API 호환 필드 보완
+    pnl = result.get("pnlPct")
+    result.setdefault("pnlText", data.format_percent(pnl) if pnl is not None else result.get("exitStatus", "수익률 제외"))  # type: ignore[attr-defined]
+    result.setdefault("ohlcvSource", source)
+    result.setdefault("evaluationDays", _bv2.HORIZON_SETTINGS.get(horizon, {}).get("holding_days", 5))
+    if result.get("filled") and result.get("entryPrice") is not None:
+        result.setdefault("entryFilledPrice", data.format_price(result["entryPrice"], market))  # type: ignore[attr-defined]
+        result.setdefault("entryFilledDate", result.get("entryDate", ""))
+    if result.get("exitPrice") is not None:
+        result["exitPrice"] = data.format_price(result["exitPrice"], market)  # type: ignore[attr-defined]
 
-    latest = work.iloc[-1]
-    day_high = _num(latest.get("high")) or _num(latest.get("close"))
-    day_low = _num(latest.get("low")) or _num(latest.get("close"))
-    if fill_idx is None or fill_row is None:
-        return {
-            "executionStatus": "미체결",
-            "executionReason": f"평가 구간 {hold_days}거래일 내 진입가 미도달",
-            "filled": False,
-            "excludedFromReturn": True,
-            "pnlPct": "",
-            "pnlText": "미체결 · 수익률 제외",
-            "dayHigh": data.format_price(day_high, market) if day_high is not None else "",
-            "dayLow": data.format_price(day_low, market) if day_low is not None else "",
-            "ohlcvDate": _row_date_text(latest),
-            "ohlcvSource": source,
-            "evaluationDays": hold_days,
-        }
-
-    exit_price = None
-    outcome = "보유중"
-    exit_date = ""
-    target_first = bool(settings.get("target_first"))
-    for idx in range(fill_idx, len(work)):
-        row = work.iloc[idx]
-        hi = _num(row.get("high")) or _num(row.get("close"))
-        lo = _num(row.get("low")) or _num(row.get("close"))
-        close = _num(row.get("close"))
-        if hi is None or lo is None:
-            continue
-        target_hit = hi >= target
-        stop_hit = lo <= stop
-        if target_hit and stop_hit:
-            exit_price = target if target_first else stop
-            outcome = "목표/손절 동시 · 목표 우선" if target_first else "목표/손절 동시 · 보수적 손절 우선"
-            exit_date = _row_date_text(row)
-            break
-        if target_hit:
-            exit_price = target
-            outcome = "목표 도달"
-            exit_date = _row_date_text(row)
-            break
-        if stop_hit:
-            exit_price = stop
-            outcome = "손절 도달"
-            exit_date = _row_date_text(row)
-            break
-        if idx == len(work) - 1:
-            exit_price = close if close is not None else entry
-            outcome = "기간종료" if len(work) >= hold_days else "보유중"
-            exit_date = _row_date_text(row)
-
-    if exit_price is None:
-        exit_price = entry
-    slip = float(settings.get("slippage_pct", 0.002))
-    actual_entry = entry * (1 + slip)
-    actual_exit = exit_price * (1 - slip)
-    pnl = ((actual_exit - actual_entry) / actual_entry) * 100 if actual_entry else None
-    return {
-        "executionStatus": "체결",
-        "executionReason": f"{_row_date_text(fill_row)} 진입가 도달 · {exit_date or _row_date_text(latest)} {outcome}",
-        "filled": True,
-        "excludedFromReturn": False,
-        "entryFilledPrice": data.format_price(entry, market),
-        "entryFilledDate": _row_date_text(fill_row),
-        "exitStatus": outcome,
-        "exitDate": exit_date,
-        "exitPrice": data.format_price(exit_price, market),
-        "pnlPct": round(pnl, 3) if pnl is not None else "",
-        "pnlText": data.format_percent(pnl) if pnl is not None else "수익률 산출 대기",
-        "dayHigh": data.format_price(day_high, market) if day_high is not None else "",
-        "dayLow": data.format_price(day_low, market) if day_low is not None else "",
-        "ohlcvDate": _row_date_text(latest),
-        "ohlcvSource": source,
-        "evaluationDays": hold_days,
-        "rule": "진입가 도달 종목만 체결 · 체결 이후 목표/손절/기간종료 판정 · 미체결 수익률 제외",
-    }
+    return result
 
 
 @lru_cache(maxsize=256)
