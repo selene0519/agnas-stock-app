@@ -1185,6 +1185,37 @@ def generate_recommendations() -> dict[str, Any]:
                     tags_list.append("안정형")
                 tags = " | ".join(tags_list)
 
+                # Self-Correction v2 적용 (7-F)
+                _corr_applied = False
+                _corr_confidence = 0.0
+                _corr_summary = ""
+                _corr_version = 0
+                try:
+                    import sys as _sys, os as _os
+                    _backend = _os.path.join(_os.path.dirname(__file__), "..", "mone-web-app", "backend")
+                    if _backend not in _sys.path:
+                        _sys.path.insert(0, _backend)
+                    from app.engine.self_correction_v2 import apply_correction as _apply_corr
+                    _sub_scores_dict = {
+                        "upsideScore": sub["upsideScore"],
+                        "momentumScore": sub["momentumScore"],
+                        "riskScore": sub["riskScore"],
+                        "entryScore": sub["entryScore"],
+                        "rrScore": sub["rrScore"],
+                        "qualityScore": sub["qualityScore"],
+                    }
+                    _corr = _apply_corr(_sub_scores_dict, entry, target, stop, "kr", mode, horizon)
+                    if _corr.get("correctionApplied"):
+                        entry  = int(_corr["adjustedEntry"])
+                        target = int(_corr["adjustedTarget"])
+                        stop   = int(_corr["adjustedStop"])
+                        _corr_applied = True
+                    _corr_confidence = _corr.get("correctionConfidence", 0.0)
+                    _corr_summary = _corr.get("correctionSummary", "")
+                    _corr_version = _corr.get("appliedCorrectionVersion", 0)
+                except Exception:
+                    pass
+
                 rr = round((target - entry) / max(entry - stop, 1), 2) if stop < entry else None
                 rank_score = adj_score_final
                 ev_negative = ev is not None and ev < 0
@@ -1271,6 +1302,11 @@ def generate_recommendations() -> dict[str, Any]:
                     "priceSource": c["price_source"],
                     "currentPrice": current,
                     "generatedAt": now,
+                    # Self-Correction v2 메타데이터
+                    "correctionApplied": _corr_applied,
+                    "correctionConfidence": _corr_confidence,
+                    "correctionSummary": _corr_summary,
+                    "appliedCorrectionVersion": _corr_version,
                 }
                 _sector_counts[_sec] = _sector_counts.get(_sec, 0) + 1
                 rows_out.append(row)
