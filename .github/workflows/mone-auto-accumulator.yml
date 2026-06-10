@@ -475,6 +475,15 @@ jobs:
           fi
           set -e
 
+      - name: Update pattern performance + support/resistance zones
+        run: |
+          set +e
+          if [ -f scripts/pattern_performance_tracker.py ]; then
+            python scripts/pattern_performance_tracker.py --all
+            echo "pattern_performance_tracker: exit $?"
+          fi
+          set -e
+
       - name: Verify signal ledger outcomes (호라이즌별 자동 결과 검증)
         working-directory: mone-web-app/backend
         env:

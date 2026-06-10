@@ -1783,6 +1783,45 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     out["chartPatterns"] = chart_patterns
     out["chartPatternCount"] = len(chart_patterns)
 
+    # ── 방법 1: 패턴 누적 성과 보너스 적용
+    # ── 방법 2: 지지/저항 구역 근접도 확인
+    try:
+        from scripts.pattern_performance_tracker import get_pattern_score_bonus, check_sr_proximity  # type: ignore[import]
+        _pt_regime = _regime if "_regime" in dir() else out.get("regime", "SIDE")
+        # 방법 1: 각 태그 중 가장 좋은 보너스 적용
+        _best_bonus = 0.0
+        for _tag in tags:
+            _b = get_pattern_score_bonus(_tag, str(_pt_regime))
+            if _b > _best_bonus:
+                _best_bonus = _b
+        if _best_bonus != 0.0 and isinstance(out.get("finalScore"), (int, float)):
+            out["finalScore"] = min(100.0, max(0.0, round(float(out["finalScore"]) + _best_bonus, 1)))
+            out["quantScore"] = out["finalScore"]
+            out["patternPerfBonus"] = _best_bonus
+        # 방법 2: 목표가가 강한 저항선에 근접하면 주의 플래그
+        _target_price = _num(out.get("target"))
+        _stop_price   = _num(out.get("stop"))
+        if _target_price:
+            _sr = check_sr_proximity(_target_price, tolerance_pct=2.0)
+            if _sr["nearResistance"] and _sr["strength"] >= 30:
+                out["targetNearResistance"] = True
+                out["targetSRLevel"] = _sr["level"]
+                out["targetSRStrength"] = _sr["strength"]
+                out.setdefault("infoReasons", []).append(
+                    f"목표가 강저항대 근접 ({_sr['level']:,.0f} 강도{_sr['strength']})"
+                )
+        if _stop_price:
+            _sr2 = check_sr_proximity(_stop_price, tolerance_pct=2.0)
+            if _sr2["nearSupport"] and _sr2["strength"] >= 30:
+                out["stopNearSupport"] = True
+                out["stopSRLevel"] = _sr2["level"]
+                # 지지선 근처 손절 → 손절 품질 좋음
+                out.setdefault("computedFields", []).append("stop_anchored_to_support")
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
     out["strategyTags"] = tags
     out["strategyTagLabels"] = [TAG_LABELS.get(tag, tag) for tag in tags]
     out["primaryStrategyTag"] = primary
