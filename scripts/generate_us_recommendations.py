@@ -398,6 +398,36 @@ def generate_us_recommendations() -> dict[str, Any]:
                 _, timing_label, timing_reason = _decide_timing(adj_score, ind, mode, horizon, ev)
                 ev_negative = ev is not None and ev < 0
                 ma_conv = _ma_convergence(ind)
+
+                # Self-Correction v2 적용 (7-F US)
+                _corr_applied = False
+                _corr_confidence = 0.0
+                _corr_summary = ""
+                _corr_version = 0
+                try:
+                    import sys as _sys, os as _os
+                    _backend = _os.path.join(_os.path.dirname(__file__), "..", "mone-web-app", "backend")
+                    if _backend not in _sys.path:
+                        _sys.path.insert(0, _backend)
+                    from app.engine.self_correction_v2 import apply_correction as _apply_corr
+                    _sub = _sub_scores(ind)
+                    _corr = _apply_corr(
+                        {"upsideScore": _sub["upsideScore"], "momentumScore": _sub["momentumScore"],
+                         "riskScore": _sub["riskScore"], "entryScore": _sub["entryScore"],
+                         "rrScore": _sub["rrScore"], "qualityScore": _sub["qualityScore"]},
+                        entry, target, stop, "us", mode, horizon
+                    )
+                    if _corr.get("correctionApplied"):
+                        entry  = round(_corr["adjustedEntry"], 2)
+                        target = round(_corr["adjustedTarget"], 2)
+                        stop   = round(_corr["adjustedStop"], 2)
+                        _corr_applied = True
+                    _corr_confidence = _corr.get("correctionConfidence", 0.0)
+                    _corr_summary = _corr.get("correctionSummary", "")
+                    _corr_version = _corr.get("appliedCorrectionVersion", 0)
+                except Exception:
+                    pass
+
                 rr = round((target - entry) / max(entry - stop, 1), 2) if stop < entry else None
 
                 # 전략 태그 (US 버전)
@@ -479,6 +509,10 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "priceSource": c["price_source"],
                     "currentPrice": current,
                     "generatedAt": now,
+                    "correctionApplied": _corr_applied,
+                    "correctionConfidence": _corr_confidence,
+                    "correctionSummary": _corr_summary,
+                    "appliedCorrectionVersion": _corr_version,
                 }
                 _sector_counts_us[_sec_us] = _sector_counts_us.get(_sec_us, 0) + 1
                 rows_out.append(row)

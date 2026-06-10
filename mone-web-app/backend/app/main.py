@@ -1302,6 +1302,141 @@ def api_validation_outcomes(
     }
 
 
+@app.get("/api/admin/correction-preview")
+def api_admin_correction_preview(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+    limit: int = Query(10, ge=1, le=30),
+) -> dict:
+    """보정 적용 전/후 추천 차이 미리보기."""
+    import csv as _cp_csv
+    from app.engine import self_correction_v2 as _scv2, correction_store as _cs
+    mk = _market(market)
+    reports = __import__("pathlib").Path(__file__).resolve().parents[3] / "reports"
+    csv_path = reports / f"mone_v36_final_recommendations_{mk}_{mode}_{horizon}.csv"
+    rows: list[dict] = []
+    if csv_path.exists():
+        for enc in ("utf-8-sig", "utf-8", "cp949"):
+            try:
+                with csv_path.open("r", encoding=enc, newline="") as f:
+                    rows = list(_cp_csv.DictReader(f))[:limit]
+                break
+            except UnicodeDecodeError:
+                continue
+
+    def _num_safe(v: object) -> float:
+        try: return float(str(v or "").replace(",", "").replace("₩", "").replace("$", "").replace("%", ""))
+        except Exception: return 0.0
+
+    diff_rows = []
+    for row in rows:
+        entry_before = _num_safe(row.get("entry"))
+        target_before = _num_safe(row.get("target"))
+        stop_before = _num_safe(row.get("stop"))
+        score_before = _num_safe(row.get("finalRankScore"))
+        corr = _scv2.apply_correction(
+            {"finalRankScore": score_before, "riskScore": _num_safe(row.get("riskScore"))},
+            entry_before, target_before, stop_before, mk, mode, horizon
+        )
+        diff_rows.append({
+            "symbol": row.get("symbol"),
+            "name": row.get("name"),
+            "correctionApplied": corr.get("correctionApplied"),
+            "before": {"entry": entry_before, "target": target_before, "stop": stop_before, "finalRankScore": score_before},
+            "after": {"entry": corr["adjustedEntry"], "target": corr["adjustedTarget"], "stop": corr["adjustedStop"]},
+            "entryDeltaPct": round((corr["adjustedEntry"] - entry_before) / max(entry_before, 1) * 100, 3) if entry_before else 0,
+            "targetDeltaPct": round((corr["adjustedTarget"] - target_before) / max(target_before, 1) * 100, 3) if target_before else 0,
+            "stopDeltaPct": round((corr["adjustedStop"] - stop_before) / max(stop_before, 1) * 100, 3) if stop_before else 0,
+            "correctionSummary": corr.get("correctionSummary"),
+        })
+    params = _cs.load_params()
+    key = f"{mk}_{mode}_{horizon}"
+    correction = params.get("markets", {}).get(key, {})
+    return {
+        "status": "OK",
+        "market": mk, "mode": mode, "horizon": horizon,
+        "correctionEnabled": __import__("os").environ.get("SELF_CORRECTION_ENABLED", "true").lower() not in {"false", "0", "no", "off"},
+        "correctionStrength": float(__import__("os").environ.get("CORRECTION_STRENGTH", "1.0")),
+        "sampleCount": correction.get("sampleCount", 0),
+        "confidence": correction.get("confidence", 0.0),
+        "topFailureReasons": correction.get("topFailureReasons", []),
+        "items": diff_rows,
+    }
+
+
+@app.get("/api/admin/correction-dashboard")
+def api_admin_correction_dashboard(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+) -> dict:
+    """자가보정 종합 대시보드 — 성과 지표, 보정 상태, 데이터 품질."""
+    import csv as _db_csv, os as _db_os
+    from app.engine import correction_store as _cs, outcome_analyzer as _oa
+    mk = _market(market)
+    reports = __import__("pathlib").Path(__file__).resolve().parents[3] / "reports"
+
+    # 보정 파라미터 전체
+    params = _cs.load_params()
+    all_corrections = params.get("markets", {})
+    corrections_by_key = {
+        k: {
+            "sampleCount": v.get("sampleCount", 0),
+            "learnableSampleCount": v.get("learnableSampleCount", 0),
+            "confidence": v.get("confidence", 0.0),
+            "correctionActive": v.get("confidence", 0.0) >= 0.3,
+            "topFailureReasons": v.get("topFailureReasons", []),
+            "priceAdjustments": v.get("priceAdjustments", {}),
+            "weightAdjustments": v.get("weightAdjustments", {}),
+        }
+        for k, v in all_corrections.items()
+        if k.startswith(mk)
+    }
+
+    # 성과 지표 집계 (virtual_validation_results.csv)
+    perf_stats: dict[str, Any] = {}
+    vvr_path = reports / "virtual_validation_results.csv"
+    if vvr_path.exists():
+        rows: list[dict] = []
+        for enc in ("utf-8-sig", "utf-8", "cp949"):
+            try:
+                with vvr_path.open("r", encoding=enc, newline="") as f:
+                    rows = [r for r in _db_csv.DictReader(f) if (r.get("market") or "").lower() == mk]
+                break
+            except UnicodeDecodeError:
+                continue
+        settled = [r for r in rows if (r.get("status") or "").upper() in {"WIN", "LOSS", "CLOSED", "SETTLED", "EXPIRED"}]
+        executed = [r for r in settled if str(r.get("isExecuted") or "").lower() == "true"]
+        wins = [r for r in executed if str(r.get("targetHit") or "").lower() == "true" and str(r.get("stopHit") or "").lower() != "true"]
+        stops = [r for r in executed if str(r.get("result") or "").upper() in {"STOP", "STOP_HIT", "STOP_FIRST", "LOSS"}]
+        pnls = []
+        for r in executed:
+            try: pnls.append(float(r.get("returnPct") or 0))
+            except Exception: pass
+        perf_stats = {
+            "totalSamples": len(rows),
+            "settledCount": len(settled),
+            "executedCount": len(executed),
+            "winCount": len(wins),
+            "stopCount": len(stops),
+            "winRate": round(len(wins) / max(len(executed), 1) * 100, 1),
+            "stopRate": round(len(stops) / max(len(executed), 1) * 100, 1),
+            "missRate": round((len(settled) - len(executed)) / max(len(settled), 1) * 100, 1),
+            "avgNetPnl": round(sum(pnls) / max(len(pnls), 1), 3),
+        }
+
+    return {
+        "status": "OK",
+        "market": mk,
+        "correctionEnabled": _db_os.environ.get("SELF_CORRECTION_ENABLED", "true").lower() not in {"false", "0", "no", "off"},
+        "correctionStrength": float(_db_os.environ.get("CORRECTION_STRENGTH", "1.0")),
+        "paramsVersion": params.get("version", 0),
+        "paramsGeneratedAt": params.get("generatedAt"),
+        "totalSamples": params.get("totalSamples", 0),
+        "correctionsByKey": corrections_by_key,
+        "performanceStats": perf_stats,
+    }
+
+
 @app.get("/api/admin/correction-history")
 def api_admin_correction_history() -> dict:
     """보정 파라미터 버전 이력 조회."""
