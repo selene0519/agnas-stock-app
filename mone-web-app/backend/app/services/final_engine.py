@@ -1146,6 +1146,13 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
     _max_scoring = int(os.getenv("MONE_MAX_SCORING_UNIVERSE", "500"))
     price_overlay_map = _final_price_overlay_map(market)
     rows: list[dict[str, Any]] = []
+    _PS_FALLBACK = {
+        "status": "ERROR",
+        "riskStatus": "DATA_QUALITY_RISK",
+        "isBlocked": False,
+        "action": "WATCH_ONLY",
+        "message": "Pattern strategy unavailable",
+    }
     for item in universe[:_max_scoring]:
         sym = _symbol(item, market)
         if not sym:
@@ -1343,16 +1350,15 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
                 _ps_rows = _ps_df.to_dict("records")
                 _ps_result = _ps_analyze(sym, market, _ps_rows)
                 row["patternStrategy"] = _ps_result
-                # Propagate isBlocked signal to finalRankScore
+                # Propagate isBlocked signal to finalRankScore (완화: -5)
                 if _ps_result.get("isBlocked"):
                     row["finalRankScore"] = round(
-                        max(0.0, float(row.get("finalRankScore", 0)) - 12.0), 1
+                        max(0.0, float(row.get("finalRankScore", 0)) - 5.0), 1
                     )
-                    row["recommended"] = False
             else:
-                row["patternStrategy"] = None
+                row["patternStrategy"] = {**_PS_FALLBACK, "message": "Insufficient OHLCV data"}
         except Exception:
-            row["patternStrategy"] = None
+            row["patternStrategy"] = _PS_FALLBACK
         # ───────────────────────────────────────────────────────────────────
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
