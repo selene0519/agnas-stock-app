@@ -245,9 +245,9 @@ def generate_us_recommendations() -> dict[str, Any]:
     regime_adjust = regime.get("scoreAdjust", 0.0)
     regime_label = regime.get("label", "횡보장")
     regime_type = regime.get("regime", "SIDE")
-    # 6중필터 고도화: 최소 점수 상향 (상위 35%만 통과)
-    min_score_by_regime = {"BULL": 55.0, "SIDE": 65.0, "BEAR": 68.0}
-    min_score_global = min_score_by_regime.get(regime_type, 65.0)
+    # 최소 점수 기준 — 7중 필터가 품질 보장하므로 레짐 기준 완화
+    min_score_by_regime = {"BULL": 50.0, "SIDE": 55.0, "BEAR": 60.0}
+    min_score_global = min_score_by_regime.get(regime_type, 55.0)
 
     # 전체 스코어 계산
     all_scored: list[dict] = []
@@ -305,33 +305,54 @@ def generate_us_recommendations() -> dict[str, Any]:
                 current = c["current"]
                 ind = c["ind"]
 
-                # ── 6중 필터 (전략고도화 v2) ──────────────────────────────
-                # 필터 A: 삼중 MA 정배열 (MA5 > MA20 > MA60)
+                # ── 7중 필터 (v3: 정확도 최적화) ──────────────────────────
                 _ma5 = ind.get("ma5"); _ma20 = ind.get("ma20"); _ma60 = ind.get("ma60")
-                if not (_ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60):
-                    continue
-
-                # 필터 B: RSI 스윗존 40-70
                 _rsi = ind.get("rsi14")
-                if _rsi is None or not (40 <= _rsi <= 70):
-                    continue
-
-                # 필터 C: 거래량 평균 120% 이상
-                _vr = ind.get("volumeRatio20")
-                if _vr is None or _vr < 1.2:
-                    continue
-
-                # 필터 D: 이격도 -15% ~ +10%
+                _vr  = ind.get("volumeRatio20")
                 _d20 = ind.get("distanceToMa20")
-                if _d20 is None or _d20 > 10 or _d20 < -15:
+                _atr14 = ind.get("atr14")
+                _bull5 = ind.get("bullRatio5", 0.0)
+
+                # 필터 A: MA 추세 — 완전 정배열 OR 부분 정배열
+                _ma_full_align = _ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60
+                _ma_partial = (_ma5 and _ma20 and _ma5 > _ma20 and
+                               _ma60 and _ma20 > _ma60 * 0.90)
+                if not (_ma_full_align or _ma_partial):
                     continue
 
-                # 필터 E: 손익비 2.0 이상 (예비 계산)
-                _atr14 = ind.get("atr14")
+                # 필터 B: RSI — mode별 차등 (US 강세장 반영)
+                _rsi_lo = {"conservative": 38, "balanced": 35, "aggressive": 30}.get(mode, 35)
+                _rsi_hi = {"conservative": 72, "balanced": 75, "aggressive": 78}.get(mode, 75)
+                if _rsi is None or not (_rsi_lo <= _rsi <= _rsi_hi):
+                    continue
+
+                # 필터 C: 거래량 — mode별 최소 비율 (당일 제외 VR 기준)
+                _min_vr = {"conservative": 0.7, "balanced": 0.5, "aggressive": 0.3}.get(mode, 0.5)
+                if _vr is None or _vr < _min_vr:
+                    continue
+
+                # 필터 D: 이격도 — horizon별 허용 범위 (US는 더 넓게)
+                _d20_max = {"short": 12, "swing": 15, "mid": 20}.get(horizon, 15)
+                _d20_min = {"short": -12, "swing": -18, "mid": -25}.get(horizon, -18)
+                if _d20 is None or _d20 > _d20_max or _d20 < _d20_min:
+                    continue
+
+                # 필터 E: 손익비 — horizon별 ATR 배수로 계산
+                _stop_mult_e = {"short": 1.2, "swing": 1.5, "mid": 2.0}.get(horizon, 1.5)
+                _tgt_mult_e  = {"short": 2.8, "swing": 4.5, "mid": 5.5}.get(horizon, 4.5)
                 if _atr14 and _atr14 > 0 and current > 0:
-                    _pre_rr = (_atr14 * 4.5) / max(_atr14 * 1.5, 1e-9)
-                    if _pre_rr < 2.0:
+                    if _tgt_mult_e / _stop_mult_e < 2.0:
                         continue
+
+                # 필터 F: 양봉 품질
+                _min_bull = {"conservative": 0.4, "balanced": 0.4, "aggressive": 0.2}.get(mode, 0.4)
+                if _bull5 < _min_bull:
+                    continue
+
+                # 필터 G: 과도한 갭업 제거
+                _gap = ind.get("gapUpPct")
+                if _gap and _gap >= 12.0:
+                    continue
                 # ─────────────────────────────────────────────────────────
 
                 entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon, ind)

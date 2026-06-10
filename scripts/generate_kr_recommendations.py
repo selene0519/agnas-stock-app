@@ -130,10 +130,18 @@ def _momentum(vals: list[float], p: int) -> float | None:
 
 
 def indicators(rows: list[dict]) -> dict[str, float | None]:
+    # 오늘 날짜(장중 반일 데이터) 포함 여부 감지 → 거래량 계산 기준에서 제외
+    from datetime import date as _date
+    _today = _date.today().isoformat()
+    _rows_v = rows  # 거래량 계산용 — 당일 제외 시 사용
+    if rows and str(rows[-1].get("date", "")).startswith(_today):
+        _rows_v = rows[:-1] if len(rows) > 1 else rows  # 당일 제외
+
     c = _series(rows, "close")
     h = _series(rows, "high")
     l = _series(rows, "low")
-    v = _series(rows, "volume")
+    v = _series(_rows_v, "volume")   # 당일 제외된 거래량 사용
+    v_latest_row = _series(rows, "volume")  # 최신 거래량(당일 포함)은 별도 보관
     latest = c[-1] if c else None
     ma20 = _ma(c, 20)
     ma60 = _ma(c, 60)
@@ -154,16 +162,26 @@ def indicators(rows: list[dict]) -> dict[str, float | None]:
             consec += 1
         else:
             break
+    # 최근 5거래일 양봉 비율 (종가>전일종가) — 추세 품질 필터에 사용
+    _n5 = min(5, len(c) - 1)
+    bull5 = sum(1 for i in range(len(c) - _n5, len(c)) if i > 0 and c[i] > c[i-1])
+    bull_ratio5 = bull5 / _n5 if _n5 > 0 else 0.0
+    # 볼린저 스퀴즈 (밴드폭 최근 20일 최소값 근접)
+    atr14 = _atr(h, l, c)
+    bb_width = (bb_u - bb_l) / ma20 * 100 if bb_u and bb_l and ma20 else None
     return {
         "ma5":  _ma(c, 5), "ma20": ma20, "ma60": ma60, "ma120": _ma(c, 120),
-        "rsi14": _rsi(c), "atr14": _atr(h, l, c), "mdd20": _mdd(c),
-        "volumeRatio20": (v[-1]/vm20 if v and vm20 else None),
-        "volumeValue": (latest * v[-1] if latest and v else None),
+        "rsi14": _rsi(c), "atr14": atr14, "mdd20": _mdd(c),
+        "volumeRatio20": (v[-1]/vm20 if v and vm20 else None),      # 당일 제외 거래량 기준
+        "volumeValue": (latest * v_latest_row[-1] if latest and v_latest_row else None),
         "distanceToMa20": ((latest - ma20)/ma20*100 if latest and ma20 else None),
         "distanceToMa60": ((latest - ma60)/ma60*100 if latest and ma60 else None),
         "recentMomentum5": _momentum(c, 5), "recentMomentum20": _momentum(c, 20),
         "distanceTo52wHigh": ((latest - h52)/h52*100 if latest and h52 else None),
         "bbPercentB": bb_b, "consecutiveUpDays": float(consec), "gapUpPct": gap,
+        "bullRatio5": round(bull_ratio5, 2),
+        "bbWidth": round(bb_width, 2) if bb_width else None,
+        "atr14Pct": round(atr14 / latest * 100, 2) if atr14 and latest else None,
         "latest": latest,
     }
 
@@ -383,14 +401,17 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     rf = _MODE_RISK[mode]; rwf = _MODE_REWARD[mode]
     entry = current
 
-    # ATR 기반 손절가/목표가 (6중필터 고도화: 손절 ATR×1.5, 목표 ATR×4.5 → RR 3.0 목표)
+    # ATR 기반 손절가/목표가 — horizon별 차등 배수 (달성 가능성 최적화)
+    # short: RR=2.3, swing: RR=3.0, mid: RR=2.75
+    _ATR_MULT = {"short": (1.2, 2.8), "swing": (1.5, 4.5), "mid": (2.0, 5.5)}
+    _stop_mult, _target_mult = _ATR_MULT.get(horizon, (1.5, 4.5))
     atr14 = ind.get("atr14") if ind else None
     if atr14 and atr14 > 0 and current > 0:
-        atr_stop = round(entry - atr14 * 1.5)
-        atr_target = round(entry + atr14 * 4.5)
-        # ATR 손절이 합리적 범위(-2% ~ -15%) 내에 있으면 ATR 우선
+        atr_stop = round(entry - atr14 * _stop_mult)
+        atr_target = round(entry + atr14 * _target_mult)
+        # ATR 손절이 합리적 범위(-1.5% ~ -15%) 내에 있으면 ATR 우선
         atr_pct = (entry - atr_stop) / entry * 100
-        if 2.0 <= atr_pct <= 15.0:
+        if 1.5 <= atr_pct <= 15.0:
             stop = atr_stop
             target = atr_target
         else:
@@ -962,8 +983,8 @@ def generate_recommendations() -> dict[str, Any]:
     regime_label = regime.get("label", "횡보장")
     regime_type = regime.get("regime", "SIDE")
 
-    # 6중필터 고도화: 최소 점수 상향 (상위 35%만 통과)
-    min_score_by_regime = {"BULL": 55.0, "SIDE": 65.0, "BEAR": 68.0}
+    # 최소 점수 기준 — 7중 필터가 품질 보장하므로 레짐 기준 완화
+    min_score_by_regime = {"BULL": 50.0, "SIDE": 55.0, "BEAR": 60.0}
     min_score_global = min_score_by_regime.get(regime_type, 65.0)
 
     # 전체 종목 스코어 계산
@@ -1036,36 +1057,56 @@ def generate_recommendations() -> dict[str, Any]:
                 current = c["current"]
                 ind = c["ind"]
 
-                # ── 6중 필터 (전략고도화 v2) ──────────────────────────────
-                # 필터 A: 삼중 MA 정배열 (MA5 > MA20 > MA60)
+                # ── 7중 필터 (v3: 정확도 최적화) ──────────────────────────
                 _ma5 = ind.get("ma5"); _ma20 = ind.get("ma20"); _ma60 = ind.get("ma60")
-                if not (_ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60):
-                    continue
-
-                # 필터 B: RSI 스윗존 40-70
                 _rsi = ind.get("rsi14")
-                if _rsi is None or not (40 <= _rsi <= 70):
-                    continue
-
-                # 필터 C: 거래량 평균 120% 이상
-                _vr = ind.get("volumeRatio20")
-                if _vr is None or _vr < 1.2:
-                    continue
-
-                # 필터 D: 이격도 -15% ~ +10%
+                _vr  = ind.get("volumeRatio20")
                 _d20 = ind.get("distanceToMa20")
-                if _d20 is None or _d20 > 10 or _d20 < -15:
+                _atr14 = ind.get("atr14")
+                _bull5 = ind.get("bullRatio5", 0.0)
+
+                # 필터 A: MA 추세 확인 — 완전 정배열 OR (MA5>MA20 + MA60 낙폭 -10% 이내)
+                # 완전 정배열 요구 시 추천 수 급감 → 눌림목 후 반등 중인 종목도 포함
+                _ma_full_align = _ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60
+                _ma_partial = (_ma5 and _ma20 and _ma5 > _ma20 and
+                               _ma60 and _ma20 > _ma60 * 0.90)  # MA20이 MA60의 90% 이상
+                if not (_ma_full_align or _ma_partial):
                     continue
 
-                # 필터 E: 손익비 2.0 이상 (예비 계산)
-                _atr14 = ind.get("atr14")
+                # 필터 B: RSI 구간 — mode별 차등 (완화)
+                _rsi_lo = {"conservative": 38, "balanced": 35, "aggressive": 30}.get(mode, 35)
+                _rsi_hi = {"conservative": 72, "balanced": 75, "aggressive": 78}.get(mode, 75)
+                if _rsi is None or not (_rsi_lo <= _rsi <= _rsi_hi):
+                    continue
+
+                # 필터 C: 거래량 — mode별 최소 비율 (당일 제외 VR 기준)
+                _min_vr = {"conservative": 0.7, "balanced": 0.5, "aggressive": 0.3}.get(mode, 0.5)
+                if _vr is None or _vr < _min_vr:
+                    continue
+
+                # 필터 D: 이격도 — horizon별 허용 범위
+                _d20_max = {"short": 10, "swing": 12, "mid": 15}.get(horizon, 12)
+                _d20_min = {"short": -12, "swing": -18, "mid": -22}.get(horizon, -18)
+                if _d20 is None or _d20 > _d20_max or _d20 < _d20_min:
+                    continue
+
+                # 필터 E: 손익비 — horizon별 ATR 배수로 계산
+                _stop_mult_e = {"short": 1.2, "swing": 1.5, "mid": 2.0}.get(horizon, 1.5)
+                _tgt_mult_e  = {"short": 2.8, "swing": 4.5, "mid": 5.5}.get(horizon, 4.5)
                 if _atr14 and _atr14 > 0 and current > 0:
-                    _pre_stop = current - _atr14 * 1.5
-                    _pre_target = current + _atr14 * 4.5
-                    _pre_risk = abs(current - _pre_stop) / current * 100 if current > 0 else 0
-                    _pre_rr = (_pre_target - current) / max(current - _pre_stop, 1e-9)
+                    _pre_rr = _tgt_mult_e / _stop_mult_e  # RR = target_mult/stop_mult (항상 2.0+)
                     if _pre_rr < 2.0:
                         continue
+
+                # 필터 F: 양봉 품질 — 최근 5일 중 최소 비율 (하락 추세 종목 제거)
+                _min_bull = {"conservative": 0.4, "balanced": 0.4, "aggressive": 0.2}.get(mode, 0.4)
+                if _bull5 < _min_bull:
+                    continue
+
+                # 필터 G: 과도한 갭업 제거 (추격 방지)
+                _gap = ind.get("gapUpPct")
+                if _gap and _gap >= 12.0:
+                    continue
                 # ─────────────────────────────────────────────────────────
 
                 entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon, ind)
