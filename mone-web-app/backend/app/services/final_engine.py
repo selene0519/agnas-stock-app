@@ -1126,7 +1126,17 @@ def _conditional_execution(item: dict[str, Any], mode: str, horizon: str, df: pd
     work = df.copy()
     if "_date_ts" not in work.columns:
         work["_date_ts"] = pd.to_datetime(work.get("date"), errors="coerce").dt.normalize()
-    work = work.dropna(subset=["_date_ts"]).sort_values("_date_ts").tail(max(1, hold_days)).reset_index(drop=True)
+    work = work.dropna(subset=["_date_ts"]).sort_values("_date_ts").reset_index(drop=True)
+    # 추천일 기준 이후 봉만 사용 (generatedAt 있을 때). 없으면 최신 N봉 fallback.
+    _rec_date_str = str(item.get("generatedAt", ""))[:10]
+    if _rec_date_str and len(_rec_date_str) == 10:
+        try:
+            _rec_ts = pd.Timestamp(_rec_date_str)
+            work = work[work["_date_ts"] > _rec_ts].head(max(1, hold_days)).reset_index(drop=True)
+        except Exception:
+            work = work.tail(max(1, hold_days)).reset_index(drop=True)
+    else:
+        work = work.tail(max(1, hold_days)).reset_index(drop=True)
     if work.empty:
         return {
             "executionStatus": "검증 대기",
@@ -1246,10 +1256,9 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         universe, sources = _us_balanced_swing_universe()
     else:
         universe, sources = _candidate_universe(market)
-    process_universe = universe[:requested_limit]
     price_overlay_map = _final_price_overlay_map(market)
     rows: list[dict[str, Any]] = []
-    for item in process_universe:
+    for item in universe:
         sym = _symbol(item, market)
         if not sym:
             continue
@@ -1449,7 +1458,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
 
     limit_meta = runtime_limits.limit_meta(
         total_count=len(universe),
-        processed_count=len(process_universe),
+        processed_count=len(rows),
         limit=requested_limit,
         max_allowed=max_allowed,
         dataSourceType="mixed",
