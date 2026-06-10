@@ -54,6 +54,25 @@ def _load_us_prices() -> dict[str, float]:
     return prices
 
 
+_ETF_SYMBOLS = {
+    "SPY", "QQQ", "IWM", "DIA", "VTI", "VOO", "GLD", "SLV",
+    "SMH", "SOXX", "IBIT", "SOXL", "SOXS", "TQQQ", "SQQQ",
+    "ARKK", "XLF", "XLE", "XLK", "XLV", "XLY",
+    "SP500", "DRAM", "BTC-USD",
+}
+
+
+def _load_us_sector_map() -> dict[str, str]:
+    sector: dict[str, str] = {}
+    path = ROOT / "data" / "sector_map_us.csv"
+    for row in _read_csv(path):
+        sym = str(row.get("symbol") or "").strip().upper()
+        sec = str(row.get("sector") or "").strip()
+        if sym and sec:
+            sector[sym] = sec
+    return sector
+
+
 def _load_us_name_map() -> dict[str, str]:
     names: dict[str, str] = {}
     for path in [
@@ -218,6 +237,7 @@ def generate_us_recommendations() -> dict[str, Any]:
 
     prices = _load_us_prices()
     name_map = _load_us_name_map()
+    sector_map_us = _load_us_sector_map()
     regime = _load_us_market_regime()
 
     print(f"  US OHLCV: {len(ohlcv_all)}종목, 현재가: {len(prices)}종목")
@@ -252,6 +272,8 @@ def generate_us_recommendations() -> dict[str, Any]:
     # 전체 스코어 계산
     all_scored: list[dict] = []
     for sym, rows in ohlcv_all.items():
+        if sym in _ETF_SYMBOLS or "-" in sym:
+            continue
         ind = indicators(rows)
         latest = ind.get("latest")
         if not latest or latest <= 0:
@@ -269,6 +291,7 @@ def generate_us_recommendations() -> dict[str, Any]:
             "ind": ind,
             "score_base": score_bal,
             "price_source": "live" if prices.get(sym) else "ohlcv",
+            "sector": sector_map_us.get(sym, "Unknown"),
         })
 
     all_scored.sort(key=lambda x: x["score_base"], reverse=True)
@@ -294,6 +317,10 @@ def generate_us_recommendations() -> dict[str, Any]:
                 adj = max(0.0, min(100.0, base + regime_adjust))
                 scored_combo.append((adj, base, c))
             scored_combo.sort(key=lambda x: x[0], reverse=True)
+
+            # 섹터 다양성
+            _MAX_PER_SECTOR_US = {"conservative": 2, "balanced": 3, "aggressive": 4}.get(mode, 3)
+            _sector_counts_us: dict[str, int] = {}
 
             count = 0
             for adj_score, base_score, c in scored_combo:
@@ -352,6 +379,11 @@ def generate_us_recommendations() -> dict[str, Any]:
                 # 필터 G: 과도한 갭업 제거
                 _gap = ind.get("gapUpPct")
                 if _gap and _gap >= 12.0:
+                    continue
+
+                # 필터 H: 섹터 다양성
+                _sec_us = c.get("sector", "Unknown") or "Unknown"
+                if _sector_counts_us.get(_sec_us, 0) >= _MAX_PER_SECTOR_US:
                     continue
                 # ─────────────────────────────────────────────────────────
 
@@ -448,6 +480,7 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "currentPrice": current,
                     "generatedAt": now,
                 }
+                _sector_counts_us[_sec_us] = _sector_counts_us.get(_sec_us, 0) + 1
                 rows_out.append(row)
                 count += 1
 
