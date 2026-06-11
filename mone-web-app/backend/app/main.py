@@ -1823,8 +1823,11 @@ def api_session_core(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
 
 
 @app.get("/api/final/data-quality")
-def api_final_data_quality_core(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return data_quality.data_quality(_market(market))
+def api_final_data_quality_core(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("quick", pattern="^(quick|full)$"),
+) -> dict:
+    return data_quality.data_quality(_market(market), mode=mode)
 
 
 @app.get("/api/v1/candidates")
