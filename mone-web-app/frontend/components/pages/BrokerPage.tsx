@@ -17,6 +17,7 @@ interface BrokerStatus {
 interface BrokerPageProps {
   userToken?: string | null;
   onLogin?: () => void;
+  onNavigate?: (page: string) => void;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -77,14 +78,41 @@ function TossConnectForm({
 }) {
   const [appKey, setAppKey] = useState("");
   const [appSecret, setAppSecret] = useState("");
-  const [accountNo, setAccountNo] = useState("");
+  const [step, setStep] = useState<"auth" | "account" | "save">("auth");
+  const [selectedAccount, setSelectedAccount] = useState("");
   const [loading, setLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const handleConnect = async () => {
-    if (!appKey.trim() || !appSecret.trim() || !accountNo.trim()) {
-      setMsg({ ok: false, text: "App Key, App Secret, 계좌번호를 모두 입력해 주세요." });
+  const handleAuthTest = async () => {
+    if (!appKey.trim() || !appSecret.trim()) {
+      setMsg({ ok: false, text: "App Key 또는 App Secret을 확인해주세요." });
+      return;
+    }
+    setLoading(true);
+    setMsg(null);
+    try {
+      const res = await mone.brokerTest(token, {
+        broker: "toss",
+        appKey: appKey.trim(),
+        appSecret: appSecret.trim(),
+      });
+      if (res.ok) {
+        setStep("account");
+        setMsg({ ok: false, text: "토큰 발급은 성공했지만 계좌 목록을 불러오지 못했습니다. 계좌 권한 또는 토스증권 계좌 API 사용 설정을 확인해주세요." });
+      } else {
+        setMsg({ ok: false, text: res.error ?? res.message ?? "App Key 또는 App Secret을 확인해주세요." });
+      }
+    } catch {
+      setMsg({ ok: false, text: "토스증권 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedAccount) {
+      setMsg({ ok: false, text: "계좌를 선택한 뒤 저장할 수 있습니다." });
       return;
     }
     setLoading(true);
@@ -94,13 +122,14 @@ function TossConnectForm({
         broker: "toss",
         appKey: appKey.trim(),
         appSecret: appSecret.trim(),
-        accountNo: accountNo.trim(),
+        accountNo: selectedAccount,
       });
       if (res.ok) {
         setMsg({ ok: true, text: res.message ?? "토스증권 연동이 완료되었습니다." });
         setAppKey("");
         setAppSecret("");
-        setAccountNo("");
+        setSelectedAccount("");
+        setStep("auth");
         onRefresh();
       } else {
         setMsg({ ok: false, text: res.error ?? res.message ?? "연동 실패" });
@@ -150,7 +179,7 @@ function TossConnectForm({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 space-y-4">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3 space-y-4 sm:p-4">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm font-semibold text-slate-200">토스증권</div>
@@ -165,44 +194,74 @@ function TossConnectForm({
 
       {!status.connected ? (
         <div className="space-y-3">
-          <div className="rounded-lg bg-slate-800/60 px-3 py-2 text-[11px] text-slate-400 leading-relaxed">
-            토스증권 Open API에서 발급받은 App Key / App Secret을 입력하세요.
-            입력한 Secret은 서버에 암호화 저장되며 이후 화면에 다시 표시되지 않습니다.
+          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+            {[
+              ["auth", "1 API 인증"],
+              ["account", "2 계좌 선택"],
+              ["save", "3 저장·동기화"],
+            ].map(([key, label]) => (
+              <div key={key} className={`rounded-lg border px-2 py-1.5 text-center font-semibold ${step === key ? "border-blue-500/40 bg-blue-500/10 text-blue-200" : "border-slate-800 bg-slate-950 text-slate-500"}`}>
+                {label}
+              </div>
+            ))}
           </div>
-          <div className="space-y-2">
-            <input
-              type="text"
-              placeholder="App Key"
-              value={appKey}
-              onChange={(e) => setAppKey(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-slate-500"
-              autoComplete="off"
-            />
-            <input
-              type="password"
-              placeholder="App Secret"
-              value={appSecret}
-              onChange={(e) => setAppSecret(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-slate-500"
-              autoComplete="new-password"
-            />
-            <input
-              type="text"
-              placeholder="계좌번호 (예: 12345678901)"
-              value={accountNo}
-              onChange={(e) => setAccountNo(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-slate-500"
-              autoComplete="off"
-            />
-          </div>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={handleConnect}
-            className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50 active:bg-blue-700"
-          >
-            {loading ? "연결 테스트 중…" : "연결 테스트 후 저장"}
-          </button>
+          {step === "auth" && (
+            <>
+              <div className="rounded-lg bg-slate-800/60 px-3 py-2 text-[11px] text-slate-400 leading-relaxed">
+                토스증권 Open API에서 발급받은 App Key / App Secret으로 토큰 발급만 먼저 테스트합니다.
+                계좌번호는 이 단계에서 요구하지 않습니다.
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="App Key"
+                  value={appKey}
+                  onChange={(e) => setAppKey(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-slate-500"
+                  autoComplete="off"
+                />
+                <input
+                  type="password"
+                  placeholder="App Secret"
+                  value={appSecret}
+                  onChange={(e) => setAppSecret(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-slate-500"
+                  autoComplete="new-password"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleAuthTest}
+                className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50 active:bg-blue-700"
+              >
+                {loading ? "연결 테스트 중…" : "연결 테스트"}
+              </button>
+            </>
+          )}
+          {step === "account" && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-xs leading-5 text-amber-100">
+              토큰 발급은 성공했지만 계좌 목록을 불러오지 못했습니다.
+              계좌 권한이 없거나 API 사용 설정이 완료되지 않았을 수 있습니다.
+              <button
+                type="button"
+                onClick={() => setStep("auth")}
+                className="mt-3 block rounded-lg border border-amber-400/30 px-3 py-1.5 text-[11px] font-semibold text-amber-100"
+              >
+                API 인증 다시 하기
+              </button>
+            </div>
+          )}
+          {step === "save" && (
+            <button
+              type="button"
+              disabled={loading || !selectedAccount}
+              onClick={handleSave}
+              className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50 active:bg-blue-700"
+            >
+              저장 및 보유종목 동기화
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex gap-2">
@@ -266,7 +325,7 @@ function KisConnectForm({
         accountNo: accountNo.trim(),
       });
       if (res.ok) {
-        setMsg({ ok: true, text: res.message ?? "KIS 연동이 완료되었습니다." });
+        setMsg({ ok: true, text: res.message ?? "한국투자 연동이 완료되었습니다." });
         setAppKey("");
         setAppSecret("");
         setAccountNo("");
@@ -282,7 +341,7 @@ function KisConnectForm({
   };
 
   const handleDisconnect = async () => {
-    if (!confirm("KIS 연동을 해제하면 저장된 API 키가 완전히 삭제됩니다. 계속하시겠습니까?")) return;
+    if (!confirm("한국투자 연동을 해제하면 저장된 API 키가 완전히 삭제됩니다. 계속하시겠습니까?")) return;
     setLoading(true);
     setMsg(null);
     try {
@@ -301,10 +360,10 @@ function KisConnectForm({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 space-y-4">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3 space-y-4 sm:p-4">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm font-semibold text-slate-200">한국투자증권 (KIS)</div>
+          <div className="text-sm font-semibold text-slate-200">한국투자</div>
           {status.connected && status.accountNoHint && (
             <div className="text-[11px] text-slate-500 mt-0.5">
               계좌 {status.accountNoHint} · 연결 {fmtTime(status.connectedAt)}
@@ -382,7 +441,7 @@ function KisConnectForm({
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
-export default function BrokerPage({ userToken, onLogin }: BrokerPageProps) {
+export default function BrokerPage({ userToken, onLogin, onNavigate }: BrokerPageProps) {
   const [connections, setConnections] = useState<BrokerStatus[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -419,8 +478,11 @@ export default function BrokerPage({ userToken, onLogin }: BrokerPageProps) {
           <div className="text-base font-semibold text-slate-200">계좌 연동</div>
           <div className="text-sm text-slate-500 leading-relaxed">
             로그인 후 계좌 연동을 사용할 수 있습니다.
+            <br />
+            계좌를 연동하면 MONE이 보유종목, 평가손익, 손절 기준, 위험 상태를 자동으로 점검합니다.
           </div>
         </div>
+        <div className="flex flex-wrap justify-center gap-2">
         {onLogin && (
           <button
             type="button"
@@ -430,6 +492,14 @@ export default function BrokerPage({ userToken, onLogin }: BrokerPageProps) {
             로그인하기
           </button>
         )}
+          <button
+            type="button"
+            onClick={() => onNavigate?.("holdings")}
+            className="rounded-xl border border-slate-700 bg-slate-900 px-6 py-2.5 text-sm font-semibold text-slate-200 active:bg-slate-800"
+          >
+            직접 추가로 체험하기
+          </button>
+        </div>
         <div className="mt-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 text-left w-full max-w-sm">
           <div className="text-xs font-semibold text-slate-400 mb-2">계좌 연동으로 할 수 있는 것</div>
           <ul className="space-y-1.5 text-xs text-slate-500">
@@ -444,7 +514,7 @@ export default function BrokerPage({ userToken, onLogin }: BrokerPageProps) {
 
   // ── 로그인 상태 ───────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 px-4 py-6 pb-24">
+      <div className="space-y-6 pb-24">
       <div>
         <div className="text-base font-bold text-slate-100">계좌 연동</div>
         <div className="mt-1 text-xs text-slate-500">

@@ -139,7 +139,7 @@ export default function StockCard({ stock, onClick }: Props) {
 
   return (
     <div
-      className={`card p-4 cursor-pointer animate-slide-up transition-all ${
+      className={`card p-3 sm:p-4 cursor-pointer animate-slide-up transition-all ${
         isBanned ? 'opacity-60' : 'hover:border-blue-500/40 hover:shadow-glow'
       }`}
       onClick={onClick}
@@ -176,7 +176,7 @@ export default function StockCard({ stock, onClick }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3 text-xs">
+      <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
         <PriceCell label="현재가" value={fmtPrice(stock.currentPrice, stock.market)} />
         <PriceCell label="기준가" value={fmtPrice(stock.entryPrice, stock.market)} tone="text-blue-300" />
         <PriceCell label="손절가" value={fmtPrice(stock.stopLoss, stock.market)} tone="text-red-400" />
@@ -228,9 +228,9 @@ export default function StockCard({ stock, onClick }: Props) {
 
 function PriceCell({ label, value, tone = 'text-white' }: { label: string; value: string; tone?: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-slate-500 mb-0.5">{label}</div>
-      <div className={`font-mono font-semibold text-sm ${tone}`}>{value}</div>
+      <div className={`break-keep font-mono text-xs font-semibold leading-tight sm:text-sm ${tone}`}>{value}</div>
     </div>
   );
 }
