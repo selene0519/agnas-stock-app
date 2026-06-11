@@ -2148,6 +2148,44 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
     }
 
 
+_PS_ITEM_FALLBACK: dict[str, Any] = {
+    "status": "ERROR",
+    "riskStatus": "DATA_QUALITY_RISK",
+    "isBlocked": False,
+    "action": "WATCH_ONLY",
+    "message": "Pattern strategy unavailable",
+}
+
+
+def _inject_pattern_strategy(items: list[dict[str, Any]], default_market: str) -> None:
+    """각 item에 patternStrategy 필드가 없거나 None이면 패턴 분석 결과를 주입."""
+    try:
+        from app.engine.pattern_strategy import analyze as _ps_analyze
+        from app.services import data_loader as _dl
+    except Exception:
+        for item in items:
+            if not isinstance(item.get("patternStrategy"), dict):
+                item["patternStrategy"] = _PS_ITEM_FALLBACK
+        return
+
+    for item in items:
+        if isinstance(item.get("patternStrategy"), dict):
+            continue
+        sym = str(item.get("symbol", ""))
+        mkt = str(item.get("market") or default_market)
+        if mkt not in ("kr", "us"):
+            mkt = "kr"
+        try:
+            df, _ = _dl._load_ohlcv(sym, mkt)
+            if df is not None and not df.empty and len(df) >= 20:
+                rows = df.to_dict("records")
+                item["patternStrategy"] = _ps_analyze(sym, mkt, rows)
+            else:
+                item["patternStrategy"] = {**_PS_ITEM_FALLBACK, "symbol": sym, "message": "Insufficient OHLCV data"}
+        except Exception:
+            item["patternStrategy"] = {**_PS_ITEM_FALLBACK, "symbol": sym}
+
+
 def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
     _ver = _reco_file_version(_market_norm(market), _mode_norm(mode), _horizon_norm(horizon))
     payload = _recommendations_payload_cached(market, mode, horizon, limit, watch_only, _ver)
@@ -2155,6 +2193,7 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
         _record_virtual_ledger(payload.get("items", []), "api/final/recommendations")
     except Exception:
         pass
+    _inject_pattern_strategy(payload.get("items", []), _market_norm(market))
     return json.loads(json.dumps(payload, ensure_ascii=False))
 
 
