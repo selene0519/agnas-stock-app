@@ -4466,8 +4466,8 @@ def api_home_summary(
             data_health = data.runner_status(mk)
         except Exception:
             pass
-        # runner_status_kr.json 없으면 _scan_coverage로 직접 계산
-        if not data_health or (not data_health.get("kisLiveCount") and not data_health.get("ohlcvCount")):
+        # runner_status에 ohlcvLatestDate 없거나 data_health 자체가 비어 있으면 _scan_coverage로 보완
+        if not data_health or not data_health.get("ohlcvLatestDate"):
             try:
                 from app.engine.mone_v65_api_stabilizer import _scan_coverage, _repo_root as _stab_root
                 import json as _dh_json
@@ -4479,12 +4479,16 @@ def api_home_summary(
                     for _p in _ohlcv_dir.glob(f"{mk}_*_daily.csv"):
                         try:
                             import csv as _dh_csv
-                            with _p.open("r", encoding="utf-8") as _f:
+                            # utf-8-sig: BOM 있는 CSV도 첫 컬럼명 'date' 로 정상 파싱
+                            with _p.open("r", encoding="utf-8-sig") as _f:
                                 _rows = list(_dh_csv.DictReader(_f))
                             if _rows:
-                                _d = str(_rows[-1].get("date") or _rows[-1].get("Date") or "")[:10]
-                                if _d:
-                                    _ohlcv_dates.append(_d)
+                                # 마지막 행부터 역순으로 유효한 날짜 탐색
+                                for _row in reversed(_rows):
+                                    _d = str(_row.get("date") or _row.get("Date") or "").strip()[:10]
+                                    if _d and len(_d) == 10 and _d[4] == "-":
+                                        _ohlcv_dates.append(_d)
+                                        break
                         except Exception:
                             pass
                 _reco_gen: str | None = None

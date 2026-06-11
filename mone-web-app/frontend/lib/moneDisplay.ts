@@ -479,7 +479,10 @@ export function dataFreshnessInfo(item: any, now = new Date()): {
   );
   const generatedAt = firstText(item?.recoGeneratedAt, item?.generatedAt, item?.updatedAt, item?.createdAt, "");
 
-  if (!latestDate || status === "NO_DATA") {
+  // ohlcvLatestDate 없으면 recoGeneratedAt 날짜를 대체 사용
+  const effectiveDate = latestDate || (status !== "NO_DATA" ? normalizeDataDateValue(generatedAt) : "");
+
+  if (!effectiveDate || status === "NO_DATA") {
     return {
       state: "unknown",
       label: "확인 필요",
@@ -488,19 +491,22 @@ export function dataFreshnessInfo(item: any, now = new Date()): {
     };
   }
 
-  const date = parseDataDate(latestDate);
+  const date = parseDataDate(effectiveDate);
   if (!date) {
-    return { state: "unknown", label: "확인 필요", basisText: `데이터 기준: ${latestDate}`, latestDate };
+    return { state: "unknown", label: "확인 필요", basisText: `데이터 기준: ${effectiveDate}`, latestDate: effectiveDate };
   }
 
   const age = businessDaysBetween(date, now);
   const state: DataFreshnessState = age <= 0 ? "fresh" : age === 1 ? "caution" : "old";
   const label = state === "fresh" ? "최신" : state === "caution" ? "주의" : "오래됨";
+  const basisText = latestDate
+    ? `데이터 기준: ${latestDate}`
+    : `추천 생성: ${generatedAt.slice(0, 16).replace("T", " ")}`;
   return {
     state,
     label,
-    basisText: `데이터 기준: ${latestDate}`,
-    latestDate,
+    basisText,
+    latestDate: effectiveDate,
   };
 }
 
