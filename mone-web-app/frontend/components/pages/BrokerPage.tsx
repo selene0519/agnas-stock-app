@@ -99,9 +99,9 @@ function TossConnectForm({
       });
       if (res.ok) {
         setStep("account");
-        setMsg({ ok: false, text: "토큰 발급은 성공했지만 계좌 목록을 불러오지 못했습니다. 계좌 권한 또는 토스증권 계좌 API 사용 설정을 확인해주세요." });
+        setMsg({ ok: true, text: res.message ?? "토스증권 토큰 발급이 확인되었습니다." });
       } else {
-        setMsg({ ok: false, text: res.error ?? res.message ?? "App Key 또는 App Secret을 확인해주세요." });
+        setMsg({ ok: false, text: res.message ?? res.error ?? "App Key 또는 App Secret을 확인해주세요." });
       }
     } catch {
       setMsg({ ok: false, text: "토스증권 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요." });
@@ -132,7 +132,7 @@ function TossConnectForm({
         setStep("auth");
         onRefresh();
       } else {
-        setMsg({ ok: false, text: res.error ?? res.message ?? "연동 실패" });
+        setMsg({ ok: false, text: res.message ?? res.error ?? "연동 실패" });
       }
     } catch {
       setMsg({ ok: false, text: "서버 오류가 발생했습니다." });
@@ -150,7 +150,7 @@ function TossConnectForm({
         setMsg({ ok: true, text: `동기화 완료 — ${res.count ?? 0}개 종목` });
         onRefresh();
       } else {
-        setMsg({ ok: false, text: res.error ?? "동기화 실패" });
+        setMsg({ ok: false, text: res.message ?? res.error ?? "동기화 실패" });
       }
     } catch {
       setMsg({ ok: false, text: "서버 오류가 발생했습니다." });
@@ -169,7 +169,7 @@ function TossConnectForm({
         setMsg({ ok: true, text: "연동이 해제되었습니다." });
         onRefresh();
       } else {
-        setMsg({ ok: false, text: res.error ?? "해제 실패" });
+        setMsg({ ok: false, text: res.message ?? res.error ?? "해제 실패" });
       }
     } catch {
       setMsg({ ok: false, text: "서버 오류가 발생했습니다." });
@@ -331,7 +331,7 @@ function KisConnectForm({
         setAccountNo("");
         onRefresh();
       } else {
-        setMsg({ ok: false, text: res.error ?? res.message ?? "연동 실패" });
+        setMsg({ ok: false, text: res.message ?? res.error ?? "연동 실패" });
       }
     } catch {
       setMsg({ ok: false, text: "서버 오류가 발생했습니다." });
@@ -350,7 +350,7 @@ function KisConnectForm({
         setMsg({ ok: true, text: "연동이 해제되었습니다." });
         onRefresh();
       } else {
-        setMsg({ ok: false, text: res.error ?? "해제 실패" });
+        setMsg({ ok: false, text: res.message ?? res.error ?? "해제 실패" });
       }
     } catch {
       setMsg({ ok: false, text: "서버 오류가 발생했습니다." });
