@@ -1322,265 +1322,116 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             );
           }
 
+          // ── 추천 카드 ──────────────────────────────────────────────
+          const ps = item.patternStrategy && typeof item.patternStrategy === "object" ? item.patternStrategy : null;
+          const psActionRaw = ps?.action && typeof ps.action === "string" ? ps.action
+            : patternAction && patternAction !== "-" ? patternAction : null;
+          const psRiskRaw = ps?.riskStatus && typeof ps.riskStatus === "string" ? ps.riskStatus : null;
+          const psPatternRaw = ps?.primaryPattern && typeof ps.primaryPattern === "string" ? ps.primaryPattern : null;
+          const psConf = ps?.confidence != null ? Math.round(Number(ps.confidence))
+            : item.finalScore > 0 ? Math.round(item.finalScore) : null;
+          const actionText = psActionRaw ? (PATTERN_ACTION_KO[psActionRaw.toUpperCase()] ?? psActionRaw) : null;
+          const riskText = psRiskRaw ? (PATTERN_RISK_KO[psRiskRaw.toUpperCase()] ?? psRiskRaw) : "정상";
+          const patternText = psPatternRaw ? (PATTERN_TYPE_KO[psPatternRaw] ?? psPatternRaw) : null;
+          const isRisk = psRiskRaw && psRiskRaw.toUpperCase() !== "NONE";
+
+          // 태그: 최대 2개, 중요 신호 우선
+          const TAG_LABEL: Record<string, string> = {
+            CAUTION:"⚠ 주의", MA_CONVERGENCE:"이격도 수렴", PULLBACK_BUY:"눌림목",
+            MOMENTUM:"모멘텀", VOLUME_BREAKOUT:"거래량 증가", BREAKOUT_52W:"52주 돌파",
+            NEAR_52W_HIGH:"신고가 근접", BB_SQUEEZE:"변동성 압축", STABLE_LOW_RISK:"안정형",
+            UNDERVALUED_GROWTH:"저평가 성장주", GOLDEN_CROSS:"🔼 골든크로스",
+            DEATH_CROSS:"🔽 데드크로스", MID_GOLDEN_CROSS:"📈 중기 골든크로스",
+            MID_DEATH_CROSS:"📉 중기 데드크로스", TRAILING_STOP_ALERT:"⚡ 트레일링 손절",
+            LOW_RISK_STABLE:"안정형", BREAKOUT:"돌파",
+          };
+          const TAG_COLOR: Record<string, string> = {
+            CAUTION:"border-red-600/40 bg-red-600/10 text-red-300",
+            DEATH_CROSS:"border-red-600/40 bg-red-600/10 text-red-300",
+            MID_DEATH_CROSS:"border-red-700/40 bg-red-700/10 text-red-400",
+            TRAILING_STOP_ALERT:"border-amber-500/40 bg-amber-500/10 text-amber-300",
+            GOLDEN_CROSS:"border-emerald-400/40 bg-emerald-400/10 text-emerald-300",
+            MID_GOLDEN_CROSS:"border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+            MA_CONVERGENCE:"border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
+            PULLBACK_BUY:"border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+            MOMENTUM:"border-orange-500/40 bg-orange-500/10 text-orange-300",
+            VOLUME_BREAKOUT:"border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
+            BREAKOUT_52W:"border-violet-500/40 bg-violet-500/10 text-violet-300",
+            BREAKOUT:"border-violet-500/40 bg-violet-500/10 text-violet-300",
+            LOW_RISK_STABLE:"border-teal-500/40 bg-teal-500/10 text-teal-300",
+          };
+          const visibleTags: { key: string; label: string; cls: string }[] = [];
+          if (Array.isArray(item.strategyTags)) {
+            for (const tag of item.strategyTags) {
+              if (visibleTags.length >= 2) break;
+              const lbl = TAG_LABEL[tag] ?? strategyTagLabel(tag);
+              if (lbl) visibleTags.push({ key: tag, label: lbl, cls: TAG_COLOR[tag] ?? "border-slate-600 bg-slate-800 text-slate-300" });
+            }
+          }
+          if (item.supplySignal === "STRONG_BUY" && visibleTags.length < 2)
+            visibleTags.push({ key: "supply_strong", label: "기관+외국인 동반매수", cls: "border-blue-400/40 bg-blue-400/10 text-blue-300" });
+          else if (item.supplySignal === "INST_BUY" && visibleTags.length < 2)
+            visibleTags.push({ key: "supply_inst", label: "기관 순매수", cls: "border-sky-500/30 bg-sky-500/10 text-sky-300" });
+
           return (
             <div
               key={`${item.market}-${item.symbol}-${index}`}
-              className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+              className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
             >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-bold text-slate-100">
-                      {displayName(item)}
-                    </h3>
-                    {watched && (
-                      <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                        관심
-                      </span>
-                    )}
+              {/* 헤더 */}
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-slate-100 leading-tight">{displayName(item)}</h3>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <span className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || market).toUpperCase()}</span>
+                    <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{sourceStatusLabel(item.sourceStatus)}</span>
+                    <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
+                    {watched && <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">관심</span>}
                   </div>
-                  <p className="font-mono text-sm text-slate-500">
-                    {item.symbol} ·{" "}
-                    {String(item.market || market).toUpperCase()}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-600">
-                    요청: {modeLabel(mode)} / {horizonLabel(horizon)} · 반영 조건:{" "}
-                    {modeLabel(item.sourceMode || item.mode || mode)} /{" "}
-                    {horizonLabel(
-                      item.sourceHorizon || item.horizon || horizon,
-                    )}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300">
-                    {sourceStatusLabel(item.sourceStatus)}
-                  </span>
-                  <span className={`rounded border px-2 py-1 text-xs ${dataTrustBadgeClass(item)}`}>
-                    {dataTrustLabel(item)}
-                  </span>
-                  {item.isSearchOnly ? (
-                    <span className="rounded bg-blue-500/10 px-2 py-1 text-xs text-blue-300">
-                      검색종목
-                    </span>
-                  ) : null}
-                  {(item.warning_reason || item.warningReason) && (
-                    <span className="rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-400">
-                      주의
-                    </span>
-                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <Cell
-                  label="현재가"
-                  value={current}
-                  tone={current.includes("확인") ? "amber" : "normal"}
-                />
-                <Cell label="기준가" value={entry} tone={hasRecommendation ? "blue" : "amber"} />
-                <Cell label="손절가" value={stop} tone={hasRecommendation ? "red" : "amber"} />
-                <Cell label="목표가" value={target} tone={hasRecommendation ? "green" : "amber"} />
+              {/* MONE 판단 */}
+              <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2">
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">MONE 판단</div>
+                <div className="text-xs text-slate-200 leading-relaxed">
+                  {[
+                    actionText,
+                    `위험 ${riskText}`,
+                    patternText ? `패턴 ${patternText}` : null,
+                    psConf != null ? `신뢰도 ${psConf}` : null,
+                  ].filter(Boolean).join(" · ")}
+                </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <Cell label="확률" value={prob} tone="green" />
-                <Cell
-                  label="예상가"
-                  value={hasRecommendation ? priceText(item, "expected", target) : "추천 데이터 없음"}
-                  tone={hasRecommendation ? "blue" : "amber"}
-                />
+              {/* 가격 3개 */}
+              <div className="grid grid-cols-3 gap-2 text-sm mb-3">
+                <Cell label="현재가" value={current} tone={current.includes("확인") ? "amber" : "normal"} />
+                <Cell label="기준가" value={entry} tone="blue" />
+                <Cell label="목표가" value={target} tone="green" />
               </div>
-              {quantity && (
-                <div className="mt-2 flex items-center justify-between text-sm">
-                  <span className="text-slate-500">
-                    {modeLabel(mode)} 비중 기준 모의 수량
-                  </span>
-                  <span className="font-mono text-emerald-300">{quantity}</span>
-                </div>
-              )}
-              {(item.computedFields || item.fallbackReason) && (
-                <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-xs text-slate-400">
-                  데이터 보강됨 · 전략·기간 조건과 현재가 데이터를 반영했습니다.
-                </div>
-              )}
-              {dataTrustNotice(item) && (
-                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-                  {dataTrustNotice(item)}
+
+              {/* 태그 */}
+              {visibleTags.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  {visibleTags.map((t) => (
+                    <span key={t.key} className={`rounded-md border px-2 py-0.5 text-[11px] font-bold ${t.cls}`}>{t.label}</span>
+                  ))}
                 </div>
               )}
 
-              {/* 전략 태그 + 새 신호 */}
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {/* surgeLabel (ohlcv_quant 파일에서 오는 태그) */}
-                {!Array.isArray(item.strategyTags) && item.surgeLabel && item.surgeLabel !== "판단 대기" &&
-                  String(item.surgeLabel).split("|").map((t: string) => t.trim()).filter(Boolean).map((t: string) => (
-                    <span key={t} className={`rounded-md border px-2 py-1 text-[11px] font-bold ${
-                      t.includes("주의") || t.includes("공시") ? "border-red-500/30 bg-red-500/10 text-red-300"
-                      : t.includes("저평가") ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                      : t.includes("수렴") ? "border-violet-500/30 bg-violet-500/10 text-violet-300"
-                      : t.includes("기관") || t.includes("외국인") ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
-                      : "border-slate-700 bg-slate-950 text-slate-300"
-                    }`}>{strategyTagLabel(t)}</span>
-                  ))
-                }
-                {/* 기존 strategyTags */}
-                {Array.isArray(item.strategyTags) && item.strategyTags.slice(0, 3).map((tag: string, tagIndex: number) => {
-                  const TAG_LABEL: Record<string, string> = {
-                    CAUTION:"⚠ 주의", MA_CONVERGENCE:"이격도 수렴", PULLBACK_BUY:"눌림목",
-                    MOMENTUM:"모멘텀", VOLUME_BREAKOUT:"거래량 증가", BREAKOUT_52W:"52주 돌파",
-                    NEAR_52W_HIGH:"신고가 근접", BB_SQUEEZE:"변동성 압축", STABLE_LOW_RISK:"안정형",
-                    UNDERVALUED_GROWTH:"저평가 성장주", GOLDEN_CROSS:"🔼 골든크로스",
-                    DEATH_CROSS:"🔽 데드크로스", MID_GOLDEN_CROSS:"📈 중기 골든크로스",
-                    MID_DEATH_CROSS:"📉 중기 데드크로스", TRAILING_STOP_ALERT:"⚡ 트레일링 손절",
-                    LOW_RISK_STABLE:"안정형", BREAKOUT:"돌파",
-                  };
-                  const TAG_COLOR: Record<string, string> = {
-                    CAUTION:"border-red-600/40 bg-red-600/10 text-red-300",
-                    DEATH_CROSS:"border-red-600/40 bg-red-600/10 text-red-300",
-                    MID_DEATH_CROSS:"border-red-700/40 bg-red-700/10 text-red-400",
-                    TRAILING_STOP_ALERT:"border-amber-500/40 bg-amber-500/10 text-amber-300",
-                    GOLDEN_CROSS:"border-emerald-400/40 bg-emerald-400/10 text-emerald-300",
-                    MID_GOLDEN_CROSS:"border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
-                    MA_CONVERGENCE:"border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
-                    PULLBACK_BUY:"border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-                    MOMENTUM:"border-orange-500/40 bg-orange-500/10 text-orange-300",
-                    VOLUME_BREAKOUT:"border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
-                    BREAKOUT_52W:"border-violet-500/40 bg-violet-500/10 text-violet-300",
-                    BREAKOUT:"border-violet-500/40 bg-violet-500/10 text-violet-300",
-                    NEAR_52W_HIGH:"border-violet-400/30 bg-violet-400/5 text-violet-400",
-                    BB_SQUEEZE:"border-sky-500/40 bg-sky-500/10 text-sky-300",
-                    STABLE_LOW_RISK:"border-teal-500/40 bg-teal-500/10 text-teal-300",
-                    LOW_RISK_STABLE:"border-teal-500/40 bg-teal-500/10 text-teal-300",
-                    UNDERVALUED_GROWTH:"border-green-500/40 bg-green-500/10 text-green-300",
-                  };
-                  const tagLabels = Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels as string[] : [];
-                  const lbl = TAG_LABEL[tag] ?? tagLabels[tagIndex] ?? strategyTagLabel(tag);
-                  const cls = TAG_COLOR[tag] ?? "border-slate-600 bg-slate-800 text-slate-300";
-                  return (
-                    <span key={tag} className={`rounded-md border px-2 py-1 text-[11px] font-bold ${cls}`}>
-                      {lbl}
-                    </span>
-                  );
-                })}
-                {/* 재무 정보 배지 */}
-                {item.isUndervaluedGrowth && (
-                  <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-300">
-                    저평가성장주{item.finReason ? ` (${item.finReason})` : ""}
-                  </span>
-                )}
-                {/* 수급 신호 */}
-                {item.supplySignal === "STRONG_BUY" && (
-                  <span className="rounded-md border border-blue-400/40 bg-blue-400/10 px-2 py-1 text-[11px] font-bold text-blue-300">기관+외국인 동반매수</span>
-                )}
-                {item.supplySignal === "INST_BUY" && (
-                  <span className="rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-[11px] text-sky-300">기관 순매수</span>
-                )}
-                {item.supplySignal === "SELL_PRESSURE" && (
-                  <span className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">수급 매도압력</span>
-                )}
-                {/* 뉴스 감점 */}
-                {Number(item.newsRiskPenalty) >= 10 && (
-                  <span className="rounded-md border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-[11px] text-orange-300">
-                    공시주의 (-{item.newsRiskPenalty}점)
-                  </span>
-                )}
-              </div>
+              {/* 주의 사유 */}
               {Array.isArray(item.cautionReasons) && item.cautionReasons.length > 0 && (
-                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-                  매수금지/주의: {item.cautionReasons.join(", ")}
+                <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  ⚠ {item.cautionReasons.join(", ")}
                 </div>
               )}
 
-              {hasRecommendation && (() => {
-                const ps = item.patternStrategy && typeof item.patternStrategy === "object" ? item.patternStrategy : null;
-                const psActionRaw = ps?.action ? String(ps.action) : patternAction !== "-" ? patternAction : null;
-                const psRiskRaw = ps?.riskStatus ? String(ps.riskStatus) : null;
-                const psPatternRaw = ps?.primaryPattern ? String(ps.primaryPattern) : null;
-                const psConf = ps?.confidence != null ? Math.round(Number(ps.confidence)) : item.finalScore > 0 ? Math.round(item.finalScore) : null;
-                const actionText = psActionRaw ? (PATTERN_ACTION_KO[psActionRaw.toUpperCase()] ?? psActionRaw) : null;
-                const riskText = psRiskRaw ? (PATTERN_RISK_KO[psRiskRaw.toUpperCase()] ?? psRiskRaw) : "정상";
-                const patternText = psPatternRaw ? (PATTERN_TYPE_KO[psPatternRaw] ?? psPatternRaw) : null;
-                const isRisk = psRiskRaw && psRiskRaw.toUpperCase() !== "NONE";
-                return (
-                  <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">MONE 판단</div>
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      {actionText && (
-                        <div>
-                          <div className="text-slate-500">전략</div>
-                          <div className={`font-semibold mt-0.5 ${actionText === "진입 차단" || actionText === "추격 금지" ? "text-red-300" : "text-sky-300"}`}>{actionText}</div>
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-slate-500">위험</div>
-                        <div className={`font-semibold mt-0.5 ${isRisk ? "text-amber-300" : "text-emerald-300"}`}>{riskText}</div>
-                      </div>
-                      {patternText && (
-                        <div>
-                          <div className="text-slate-500">패턴</div>
-                          <div className="font-semibold text-slate-200 mt-0.5">{patternText}</div>
-                        </div>
-                      )}
-                      {psConf != null && (
-                        <div>
-                          <div className="text-slate-500">신뢰도</div>
-                          <div className="font-mono font-semibold text-blue-300 mt-0.5">{psConf}</div>
-                        </div>
-                      )}
-                    </div>
-                    {patternReason !== "-" && patternReason && (
-                      <div className="mt-2 text-[10px] text-slate-400 line-clamp-2">{patternReason}</div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {/* 버튼 */}
+              <div className="flex gap-2">
                 <button
                   type="button"
-                  className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold ${
-                    watched
-                      ? "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
-                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                  }`}
-                  onClick={() => toggleWatch(item)}
-                  disabled={watchSaving}
-                >
-                  <Star size={13} /> {watched ? "관심 해제" : "관심 등록"}
-                </button>
-                {showGroupSelector && (
-                  <div className="flex items-center gap-1">
-                    <select
-                      className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-teal-500"
-                      value={String(item.group || "")}
-                      disabled={groupAssigning === String(item.symbol)}
-                      onChange={(e) => assignGroup(String(item.symbol), cleanMarket(item.market || market), e.target.value)}
-                    >
-                      <option value="">그룹 없음</option>
-                      {groupsList.map((g) => <option key={g} value={g}>{g}</option>)}
-                      <option value="__new__">+ 새 그룹...</option>
-                    </select>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/20 disabled:opacity-50"
-                  onClick={() => addHoldingFromItem(item)}
-                  disabled={holdingSaving}
-                >
-                  보유 추가
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
-                  onClick={() => refreshOneQuote(item)}
-                  disabled={quoteRefreshing === `${cleanMarket(item.market || market)}-${cleanSymbol(item.symbol, cleanMarket(item.market || market))}`}
-                >
-                  현재가 새로고침
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-600/40 bg-blue-600/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-600/20"
+                  className="flex-1 inline-flex items-center justify-center rounded-xl border border-blue-600/40 bg-blue-600/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-600/20"
                   onClick={() => {
                     window.localStorage.setItem("mone_chart_symbol", String(item.symbol || ""));
                     window.localStorage.setItem("mone_chart_market", cleanMarket(item.market || market));
@@ -1592,6 +1443,18 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                   }}
                 >
                   분석 보기 →
+                </button>
+                <button
+                  type="button"
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold disabled:opacity-50 ${
+                    watched
+                      ? "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                  }`}
+                  onClick={() => toggleWatch(item)}
+                  disabled={watchSaving}
+                >
+                  <Star size={12} /> {watched ? "관심 해제" : "관심"}
                 </button>
               </div>
             </div>
