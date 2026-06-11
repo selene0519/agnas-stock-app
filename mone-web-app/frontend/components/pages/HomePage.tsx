@@ -1637,6 +1637,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [badgeMap, setBadgeMap] = useState<Record<string, any>>({});
   const [reportDigest, setReportDigest] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [showDigest, setShowDigest] = useState(false);
   const [storyMap, setStoryMap] = useState<Record<string, any>>({});
   const [editStory, setEditStory] = useState<string | null>(null);
   const [storyForm, setStoryForm] = useState({ why: "", invalidation: "", reviewDate: "" });
@@ -2153,24 +2154,22 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         );
       })()}
 
-      {/* 요약 지표 */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[
-          { label: "매수 검토 후보", value: loading ? null : `${todayEntries.length}개`, color: "text-emerald-400" },
-          { label: "대기 관찰 중", value: loading ? null : `${watchItems.length}개`, color: "text-amber-400" },
-          { label: "위험/주의 보유", value: loading ? null : `${riskCount}개`, color: riskCount > 0 ? "text-red-400" : "text-slate-300" },
-          { label: "총 평가손익", value: loading ? null : (summary?.totalPnlText ?? "0"), color: "text-slate-100" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="text-xs text-slate-500">{label}</div>
-            {value === null
-              ? <div className="mt-2 h-7 w-16 animate-pulse rounded-md bg-slate-800" />
-              : <div className={`mt-2 text-xl font-bold ${color}`}>{value}</div>}
+      {/* 오늘 운용 요약 — 접힘 가능 */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/40">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between px-4 py-3 text-left"
+          onClick={() => setShowDigest((v) => !v)}
+        >
+          <span className="text-xs font-semibold text-slate-400">오늘 운용 요약</span>
+          <span className="text-[10px] text-slate-600">{showDigest ? "▲ 닫기" : "▼ 펼치기"}</span>
+        </button>
+        {showDigest && (
+          <div className="border-t border-slate-800 px-4 pb-4 pt-3">
+            <ReportDigestCard digest={reportDigest} loading={reportLoading} />
           </div>
-        ))}
+        )}
       </div>
-
-      <ReportDigestCard digest={reportDigest} loading={reportLoading} />
 
       {/* ━━ 오늘 진입 후보 ━━ */}
       <section className="rounded-2xl border border-emerald-900/50 bg-emerald-950/10 p-5">
