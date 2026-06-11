@@ -1,11 +1,10 @@
-"use client";
+﻿"use client";
 
 import {
   BarChart2,
   Briefcase,
   Cpu,
   LayoutDashboard,
-  Link2,
   LogIn,
   LogOut,
   MoreHorizontal,
@@ -28,21 +27,21 @@ interface BottomNavProps {
 }
 
 const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
-  { id: "home", label: "홈", Icon: LayoutDashboard },
-  { id: "stocks", label: "탐색", Icon: Search },
-  { id: "holdings", label: "보유", Icon: Briefcase },
-  { id: "chart", label: "분석", Icon: BarChart2 },
+  { id: "home", label: "??, Icon: LayoutDashboard },
+  { id: "stocks", label: "?먯깋", Icon: Search },
+  { id: "holdings", label: "蹂댁쑀", Icon: Briefcase },
+  { id: "chart", label: "遺꾩꽍", Icon: BarChart2 },
 ];
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
-  { id: "advanced", label: "전략도구", desc: "스캐너, 계산기, 상관분석", Icon: Cpu },
-  { id: "broker", label: "계좌 연동", desc: "토스증권·KIS 연동", Icon: Link2 },
+  { id: "advanced", label: "?꾨왂?꾧뎄", desc: "?ㅼ틦?? 怨꾩궛湲? ?곴?遺꾩꽍", Icon: Cpu },
+  { id: "broker", label: "怨꾩쥖 ?곕룞", desc: "?좎뒪利앷텒쨌KIS ?곕룞", Icon:},
 ];
 
 const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementType } = {
   id: "admin",
-  label: "관리자",
-  desc: "동기화, 캐시, 데이터 점검",
+  label: "愿由ъ옄",
+  desc: "?숆린?? 罹먯떆, ?곗씠???먭?",
   Icon: ShieldCheck,
 };
 
@@ -71,11 +70,11 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
             style={{ bottom: "56px" }}
           >
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-200">더보기</span>
+              <span className="text-sm font-semibold text-slate-200">?붾낫湲?/span>
               <button
                 onClick={() => setMoreOpen(false)}
                 className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-slate-400"
-                aria-label="닫기"
+                aria-label="?リ린"
               >
                 <X size={14} />
               </button>
@@ -102,22 +101,22 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
               ))}
               {!isAdmin && (
                 userProfile ? (
-                  /* OAuth 로그인 상태 */
+                  /* OAuth 濡쒓렇???곹깭 */
                   <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 p-3 ring-1 ring-amber-500/20">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
                       <UserRound size={18} className="text-amber-300" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-bold text-amber-200">
-                        {userProfile.name || userProfile.email || userProfile.provider || "사용자"}
+                        {userProfile.name || userProfile.email || userProfile.provider || "?ъ슜??}
                       </span>
-                      <span className="mt-0.5 block text-[11px] text-slate-500">로그인됨 · {userProfile.provider || "oauth"}</span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500">濡쒓렇?몃맖 쨌 {userProfile.provider || "oauth"}</span>
                     </span>
                     <button
                       type="button"
                       onClick={() => { onUserLogout?.(); setMoreOpen(false); }}
                       className="shrink-0 text-slate-500 hover:text-slate-200"
-                      title="로그아웃"
+                      title="濡쒓렇?꾩썐"
                     >
                       <LogOut size={16} />
                     </button>
@@ -137,8 +136,8 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                       <LogIn size={18} />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-bold">로그인</span>
-                      <span className="mt-0.5 block text-[11px] text-slate-500">관리자, 카카오, 구글 로그인</span>
+                      <span className="block text-[13px] font-bold">濡쒓렇??/span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500">愿由ъ옄, 移댁뭅?? 援ш? 濡쒓렇??/span>
                     </span>
                   </button>
                 )
@@ -173,7 +172,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
             }`}
           >
             <MoreHorizontal size={20} strokeWidth={isMoreActive || moreOpen ? 2.5 : 1.8} />
-            <span className="text-[10px] font-medium">더보기</span>
+            <span className="text-[10px] font-medium">?붾낫湲?/span>
             {isMoreActive && (
               <span className="absolute mt-0 h-1 w-1 rounded-full bg-blue-400" style={{ marginTop: "-18px" }} />
             )}
@@ -183,3 +182,4 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
     </>
   );
 }
+

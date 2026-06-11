@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   BarChart2,
@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Cpu,
   LayoutDashboard,
-  Link2,
   LogIn,
   LogOut,
   MoreHorizontal,
@@ -31,20 +30,20 @@ export type PageId =
   | "admin";
 
 const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "home", label: "시장 홈", icon: <LayoutDashboard size={16} /> },
-  { id: "stocks", label: "종목 탐색", icon: <Search size={16} /> },
-  { id: "holdings", label: "보유·리스크", icon: <Briefcase size={16} /> },
-  { id: "chart", label: "분석", icon: <BarChart2 size={16} /> },
+  { id: "home", label: "?쒖옣 ??, icon: <LayoutDashboard size={16} /> },
+  { id: "stocks", label: "醫낅ぉ ?먯깋", icon: <Search size={16} /> },
+  { id: "holdings", label: "蹂댁쑀쨌由ъ뒪??, icon: <Briefcase size={16} /> },
+  { id: "chart", label: "遺꾩꽍", icon: <BarChart2 size={16} /> },
 ];
 
 const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "advanced", label: "전략도구", icon: <Cpu size={16} /> },
-  { id: "broker", label: "계좌 연동", icon: <Link2 size={16} /> },
+  { id: "advanced", label: "?꾨왂?꾧뎄", icon: <Cpu size={16} /> },
+  { id: "broker", label: "怨꾩쥖 ?곕룞", icon: <size={16} /> },
 ];
 
 const adminItem: { id: PageId; label: string; icon: React.ReactNode } = {
   id: "admin",
-  label: "관리자",
+  label: "愿由ъ옄",
   icon: <ShieldCheck size={16} />,
 };
 
@@ -89,7 +88,7 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="ml-auto hidden text-slate-500 transition-colors hover:text-slate-300 md:block"
-          title={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          title={collapsed ? "硫붾돱 ?쇱튂湲? : "硫붾돱 ?묎린"}
         >
           <ChevronRight size={14} className={`transition-transform ${collapsed ? "" : "rotate-180"}`} />
         </button>
@@ -114,7 +113,7 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
           {!collapsed && (
             <div className="flex items-center gap-1 px-2 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-700">
               <MoreHorizontal size={10} />
-              <span>더보기</span>
+              <span>?붾낫湲?/span>
             </div>
           )}
           {visibleMoreItems.map((item) => (
@@ -131,25 +130,25 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
           ))}
           {!collapsed && (
             userProfile ? (
-              /* OAuth 로그인 상태 */
+              /* OAuth 濡쒓렇???곹깭 */
               <div className="flex items-center gap-2 rounded-lg px-3 py-2">
                 <UserRound size={14} className="shrink-0 text-amber-400" />
                 <span className="min-w-0 flex-1 truncate text-xs text-slate-300">
-                  {userProfile.name || userProfile.email || userProfile.provider || "사용자"}
+                  {userProfile.name || userProfile.email || userProfile.provider || "?ъ슜??}
                 </span>
-                <button type="button" onClick={onUserLogout} title="로그아웃" className="shrink-0 text-slate-500 hover:text-slate-200">
+                <button type="button" onClick={onUserLogout} title="濡쒓렇?꾩썐" className="shrink-0 text-slate-500 hover:text-slate-200">
                   <LogOut size={13} />
                 </button>
               </div>
             ) : (
-              /* 비로그인 / 관리자 상태 */
+              /* 鍮꾨줈洹몄씤 / 愿由ъ옄 ?곹깭 */
               <button
                 type="button"
                 className={`nav-item w-full opacity-70 hover:opacity-100 ${current === "admin" && !isAdmin ? "active opacity-100" : ""}`}
                 onClick={isAdmin ? onAdminLogout : onAdminLogin}
               >
                 <span className="shrink-0">{isAdmin ? <LogOut size={16} /> : <LogIn size={16} />}</span>
-                <span>{isAdmin ? "관리자 로그아웃" : "로그인"}</span>
+                <span>{isAdmin ? "愿由ъ옄 濡쒓렇?꾩썐" : "濡쒓렇??}</span>
               </button>
             )
           )}
@@ -157,8 +156,8 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
       </nav>
       {!collapsed && (
         <div className="border-t border-slate-800 p-3">
-          <div className="font-mono text-[10px] text-slate-600">v10.8 · MONE Stock App</div>
-          <div className="mt-0.5 text-[10px] text-slate-600">© 2026 AGNAS</div>
+          <div className="font-mono text-[10px] text-slate-600">v10.8 쨌 MONE Stock App</div>
+          <div className="mt-0.5 text-[10px] text-slate-600">짤 2026 AGNAS</div>
         </div>
       )}
     </div>
@@ -170,3 +169,4 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
     </aside>
   );
 }
+
