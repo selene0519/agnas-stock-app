@@ -794,7 +794,7 @@ function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }
             </span>
             <span>{freshness.basisText}</span>
             {dataHealth?.recoGeneratedAt && (
-              <span>추천 생성: {String(dataHealth.recoGeneratedAt).slice(11, 16) || String(dataHealth.recoGeneratedAt).slice(0, 16)}</span>
+              <span>데이터 기준: {String(dataHealth.recoGeneratedAt).slice(0, 16).replace("T", " ")}</span>
             )}
           </div>
         );
@@ -828,15 +828,20 @@ function TodayConclusionCard({
     recoGeneratedAt: dataHealth?.recoGeneratedAt,
     dataStatus: dataHealth?.dataStatus || dataHealth?.status,
   });
+  const dataBasis = dataHealth?.recoGeneratedAt
+    ? String(dataHealth.recoGeneratedAt).slice(0, 16).replace("T", " ")
+    : freshness.latestDate || "확인 필요";
+  const priceCount = `${dataHealth?.kisLiveCount ?? 0}/${dataHealth?.kisTargetCount ?? 0}`;
+  const ohlcvCount = `${dataHealth?.ohlcvCount ?? 0}종목`;
   const title = gate.isLow || riskCount > 0
-    ? "오늘은 신규 진입 자제"
+    ? "오늘은 선별 진입만 허용"
     : gate.isMid
       ? "오늘은 조건 충족 종목만 선별"
       : "오늘은 기준가 근접 후보 우선";
-  const subtitle = riskCount > 0
-    ? "보유 종목 리스크 관리 우선"
-    : gate.isLow
-      ? "보유 손절 기준을 먼저 재확인하세요."
+  const subtitle = gate.isLow
+    ? "시장 약세로 보수적 기준을 적용하세요."
+    : riskCount > 0
+      ? "보유 종목 리스크도 함께 점검하세요."
       : gate.isMid
         ? "EV·손익비 조건을 더 엄격히 확인하세요."
         : "검토 후보의 기준가 접근 여부를 확인하세요.";
@@ -863,8 +868,9 @@ function TodayConclusionCard({
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
             <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(freshness.state)}`}>{freshness.label}</span>
-            <span>{freshness.basisText}</span>
-            {dataHealth?.recoGeneratedAt && <span>추천 생성: {String(dataHealth.recoGeneratedAt).slice(11, 16) || String(dataHealth.recoGeneratedAt).slice(0, 16)}</span>}
+            <span>데이터 기준: {dataBasis}</span>
+            <span>가격 데이터: {priceCount}</span>
+            <span>OHLCV: {ohlcvCount}</span>
           </div>
         </div>
         <div className="w-full shrink-0 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 lg:w-72">
@@ -902,6 +908,62 @@ function TodayConclusionCard({
           </div>
         </div>
       </div>
+    </section>
+  );
+}
+
+function MarketRegimeSummaryCard({
+  regime,
+  selectedMarket,
+  expanded,
+  onToggle,
+}: {
+  regime: any;
+  selectedMarket: "kr" | "us";
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const maDist = Number(regime?.distanceMa20Pct ?? regime?.distanceToMa20Pct ?? 0);
+  const isBear = regime?.regime === "BEAR";
+  const isBull = regime?.regime === "BULL";
+  const title = isBear ? "시장 경고" : "시장 요약";
+  const regimeText = isBear ? "약세장" : isBull ? "강세장" : "중립";
+  const recommendation = isBear ? "보수적 접근 권장" : isBull ? "조건 충족 후보 우선" : "선별 접근 권장";
+  const borderCls = isBear
+    ? "border-amber-700/40 bg-amber-950/15"
+    : isBull
+      ? "border-emerald-800/40 bg-emerald-950/15"
+      : "border-slate-800 bg-slate-900/40";
+  const textCls = isBear ? "text-amber-200" : isBull ? "text-emerald-200" : "text-slate-200";
+
+  return (
+    <section className={`rounded-2xl border px-4 py-3 ${borderCls}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className={`text-sm font-bold ${textCls}`}>{title}</div>
+          <div className="mt-0.5 text-xs text-slate-400">
+            {regimeText} · MA20 {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}% · {recommendation}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="shrink-0 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-900"
+        >
+          {expanded ? "접기" : "자세히"}
+        </button>
+      </div>
+      {expanded && (
+        <div className="mt-3 border-t border-slate-800 pt-3 text-xs leading-5 text-slate-400">
+          <div className="font-semibold text-slate-200">{regime?.label || regimeText}</div>
+          {regime?.description && <div className="mt-1">{regime.description}</div>}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className="rounded-full bg-slate-950/60 px-3 py-1">{getRegimeStance(regime?.regime, selectedMarket)}</span>
+            {isBear && <span className="rounded-full bg-amber-900/30 px-3 py-1 text-amber-200">공격형 진입 보류 권장</span>}
+            {isBull && <span className="rounded-full bg-emerald-900/30 px-3 py-1 text-emerald-200">균형·공격형 전략 정상 작동 중</span>}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1528,7 +1590,9 @@ function ReportDigestCard({ digest, loading }: { digest: any; loading: boolean }
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
           <div className="text-[11px] text-slate-500">오늘 검토 후보</div>
           <div className="mt-1 font-mono text-lg font-bold text-emerald-300">{loading ? "-" : `${preItems.length}개`}</div>
-          <div className="mt-1 truncate text-[11px] text-slate-400">{top.name || top.companyName || top.symbol || "후보 없음"}</div>
+          <div className="mt-1 truncate text-[11px] text-slate-400">
+            {top.name || top.companyName || top.symbol ? `상위 후보: ${top.name || top.companyName || top.symbol}` : "상위 후보: 없음"}
+          </div>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
           <div className="text-[11px] text-slate-500">검증 완료</div>
@@ -1573,6 +1637,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [clientReady, setClientReady] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
   const [alertsExpanded, setAlertsExpanded] = useState(false);
+  const [marketDetailExpanded, setMarketDetailExpanded] = useState(false);
   // 실적발표 일정 맵: symbol → D-day
   const [earningsMap, setEarningsMap] = useState<Record<string, number>>({});
   // 데이터 소스 신선도
@@ -2011,86 +2076,13 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         );
       })()}
 
-      {/* 마켓 레짐 배너 */}
       {marketRegime && (
-        <div className={`relative overflow-hidden rounded-2xl border-l-4 px-4 py-4 sm:px-5 ${
-          marketRegime.regime === "BULL"
-            ? "border-l-emerald-500 border border-emerald-800/40 bg-emerald-950/30"
-            : marketRegime.regime === "BEAR"
-            ? "border-l-red-500 border border-red-800/40 bg-red-950/30"
-            : "border-l-slate-500 border border-slate-700 bg-slate-900/50"}`}>
-          <div className="flex items-start justify-between gap-3">
-            {/* 레짐 타이틀 + 수치 */}
-            <div className="flex min-w-0 items-center gap-3">
-              <span className={`shrink-0 text-3xl font-black leading-none ${
-                marketRegime.regime === "BULL" ? "text-emerald-400"
-                : marketRegime.regime === "BEAR" ? "text-red-400"
-                : "text-slate-400"}`}>
-                {marketRegime.regime === "BULL" ? "↑" : marketRegime.regime === "BEAR" ? "↓" : "→"}
-              </span>
-              <div className="min-w-0">
-                <div className={`text-base font-bold ${
-                  marketRegime.regime === "BULL" ? "text-emerald-200"
-                  : marketRegime.regime === "BEAR" ? "text-red-200"
-                  : "text-slate-200"}`}>
-                  {marketRegime.label}
-                </div>
-                <div className="mt-0.5 text-[11px] leading-4 text-slate-400 sm:text-xs">{marketRegime.description}</div>
-              </div>
-            </div>
-            {/* MA20/MA60 수치 */}
-            <div className="hidden flex-wrap items-center gap-3 sm:flex">
-              {marketRegime.current != null && (
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500">{marketRegime.benchmark || "KOSPI"} 현재가</div>
-                  <div className="font-mono text-sm font-bold text-slate-100">{Number(marketRegime.current).toLocaleString("ko-KR")}</div>
-                </div>
-              )}
-              {marketRegime.ma20 != null && (
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500">MA20</div>
-                  <div className={`font-mono text-sm font-bold ${(marketRegime.distanceMa20Pct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                    {Number(marketRegime.ma20).toLocaleString("ko-KR")}
-                    {marketRegime.distanceMa20Pct != null && (
-                      <span className="ml-1 text-[11px]">({marketRegime.distanceMa20Pct >= 0 ? "+" : ""}{Number(marketRegime.distanceMa20Pct).toFixed(1)}%)</span>
-                    )}
-                  </div>
-                </div>
-              )}
-              {marketRegime.ma60 != null && (
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500">MA60</div>
-                  <div className="font-mono text-sm text-slate-300">{Number(marketRegime.ma60).toLocaleString("ko-KR")}</div>
-                </div>
-              )}
-            </div>
-          </div>
-          {/* 전략 권고 바 */}
-          <div className={`mt-3 grid grid-cols-1 items-center gap-2 border-t pt-3 sm:flex sm:flex-wrap ${
-            marketRegime.regime === "BULL" ? "border-emerald-800/30"
-            : marketRegime.regime === "BEAR" ? "border-red-800/30"
-            : "border-slate-700/50"}`}>
-            <span className={`min-w-0 rounded-full px-3 py-1 text-center text-[11px] font-semibold sm:text-left ${
-              marketRegime.regime === "BULL" ? "bg-emerald-900/60 text-emerald-200"
-              : marketRegime.regime === "BEAR" ? "bg-red-900/60 text-red-200"
-              : "bg-slate-800 text-slate-300"}`}>
-              {getRegimeStance(marketRegime.regime, selectedMarket)}
-            </span>
-            {marketRegime.regime === "BEAR" && (
-              <span className="min-w-0 rounded-full bg-red-900/50 px-3 py-1 text-center text-[11px] font-semibold text-red-200 sm:text-left">
-                공격형 진입 보류 권장
-              </span>
-            )}
-            {marketRegime.regime === "BULL" && (
-              <span className="min-w-0 rounded-full bg-emerald-900/40 px-3 py-1 text-center text-[11px] text-emerald-300 sm:text-left">
-                균형·공격형 전략 정상 작동 중
-              </span>
-            )}
-            <span className="ml-auto hidden shrink-0 text-[10px] text-slate-600 sm:inline">
-              20일선 기준 · 매일 갱신
-            </span>
-          </div>
-        </div>
+        <MarketRegimeSummaryCard
+          regime={marketRegime}
+          selectedMarket={selectedMarket}
+          expanded={marketDetailExpanded}
+          onToggle={() => setMarketDetailExpanded((value) => !value)}
+        />
       )}
 
       {/* 데이터 상태 카드 */}
@@ -2111,10 +2103,10 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             : "border-slate-800 bg-slate-900/40"
           }`}>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-              {/* 현재가 상태 */}
+              {/* 가격 데이터 상태 */}
               <span className="flex items-center gap-1.5">
                 <span className={`h-1.5 w-1.5 rounded-full ${priceStatus === "NORMAL" ? "bg-emerald-400" : priceStatus === "PARTIAL" ? "bg-amber-400" : "bg-red-400"}`} />
-                <span className="text-slate-500">현재가</span>
+                <span className="text-slate-500">가격 데이터</span>
                 <span className={`font-mono font-medium ${priceStatus === "NORMAL" ? "text-slate-200" : priceStatus === "PARTIAL" ? "text-amber-300" : "text-red-300"}`}>
                   {dataHealth.kisLiveCount ?? 0}<span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}</span>
                 </span>
@@ -2130,11 +2122,11 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
                 {dataHealth.ohlcvLatestDate && <span className="text-slate-500">· {dataHealth.ohlcvLatestDate}</span>}
               </span>
 
-              {/* 추천 생성 시각 */}
+              {/* 데이터 기준 시각 */}
               {recoAt && (
                 <span className="flex items-center gap-1.5">
                   <span className={`h-1.5 w-1.5 rounded-full ${isStale ? "bg-amber-400" : "bg-violet-400"}`} />
-                  <span className="text-slate-500">추천 기준</span>
+                  <span className="text-slate-500">데이터 기준</span>
                   <span className={`font-mono ${isStale ? "text-amber-300" : "text-slate-300"}`}>
                     {String(dataHealth.recoGeneratedAt).slice(0, 16).replace("T", " ")}
                   </span>
