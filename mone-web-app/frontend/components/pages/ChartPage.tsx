@@ -5,7 +5,7 @@ import { RefreshCw } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
-import { displayName, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
+import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
 
@@ -1553,9 +1553,11 @@ export default function ChartPage() {
   const [disclosures, setDisclosures] = useState<any[]>([]);
   const [company, setCompany] = useState<any | null>(null);
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
-    ma10: true, ma20: true, ma60: false, bb: false, volume: true, rsi: true, macd: false, index: true,
+    ma10: false, ma20: false, ma60: false, bb: false, volume: false, rsi: false, macd: false, index: false,
     zigzag: false, trendline: false, retracement: false, supply: false, fakeBreak: false,
   });
+  const [precisionEvidence, setPrecisionEvidence] = useState(false);
+  const [showPrecisionHint, setShowPrecisionHint] = useState(false);
   const [period, setPeriod] = useState<number | null>(126);
   const [indexRows, setIndexRows] = useState<any[]>([]);
   const [chartAnalysis, setChartAnalysis] = useState<any | null>(null);
@@ -1613,6 +1615,32 @@ export default function ChartPage() {
     window.addEventListener("mone-open-chart", onOpenChart);
     return () => window.removeEventListener("mone-open-chart", onOpenChart);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = window.localStorage.getItem("mone_precision_evidence_hint_seen");
+    if (!seen) setShowPrecisionHint(true);
+  }, []);
+
+  function applyPrecisionEvidence(next: boolean) {
+    setPrecisionEvidence(next);
+    setToggles((prev) => ({
+      ...prev,
+      ma10: next,
+      ma20: next,
+      volume: next,
+      rsi: next,
+      index: next,
+      trendline: next,
+      retracement: next,
+      supply: next,
+      fakeBreak: next,
+    }));
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("mone_precision_evidence_hint_seen", "1");
+    }
+    setShowPrecisionHint(false);
+  }
 
   useEffect(() => {
     let active = true;
@@ -1731,6 +1759,11 @@ export default function ChartPage() {
   const atrPlan = atrValue > 0 && currentPrice > 0 ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon) : null;
   const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
   const freshness = freshnessInfo(rows);
+  const analysisFreshness = dataFreshnessInfo({
+    latestDataDate: dateOf(rows.at(-1)),
+    recoGeneratedAt: loadState.recoDate,
+    dataStatus: loadState.ohlcvStatus,
+  });
   const touchReview = recommendationTouchReview(rows, levels, currentPrice, selected?.market || market, loadState.recoDate || undefined);
   const dataCards = [
     { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`, cls: loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
@@ -1783,6 +1816,12 @@ export default function ChartPage() {
             <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <h2 className="text-xl font-bold text-slate-100">{selected.name}</h2>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                  <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(analysisFreshness.state)}`}>
+                    {analysisFreshness.label}
+                  </span>
+                  <span>{analysisFreshness.basisText}</span>
+                </div>
                 <p className="font-mono text-sm text-slate-500">{selected.symbol} · {selected.market.toUpperCase()}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${stance.cls}`}>{stance.label}</span>
@@ -1864,6 +1903,22 @@ export default function ChartPage() {
                 ))}
               </div>
               <span className="text-slate-700">|</span>
+              <button
+                type="button"
+                onClick={() => applyPrecisionEvidence(!precisionEvidence)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
+                  precisionEvidence
+                    ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-200"
+                    : "border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                정밀 근거 보기
+              </button>
+              {showPrecisionHint && (
+                <span className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-400">
+                  더 자세한 차트 근거가 필요하면 '정밀 근거 보기'를 켜보세요.
+                </span>
+              )}
               {([
                 ["ma10","MA10","#2dd4bf"],["ma20","MA20","#facc15"],["ma60","MA60","#f97316"],
                 ["bb","BB","#a855f7"],["volume","거래량","#64748b"],["rsi","RSI","#38bdf8"],

@@ -6,10 +6,13 @@ import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import {
   dedupeBySymbol,
+  dataFreshnessBadgeClass,
+  dataFreshnessInfo,
   dataTrustBadgeClass,
   dataTrustLabel,
   dataTrustNotice,
   displayName,
+  firstText,
   formatMoney,
   horizonLabel,
   modeLabel,
@@ -508,6 +511,15 @@ export default function StocksPage() {
     const caution = sectorFiltered.filter((item) => String(item.tradeBlockStatus || "").toUpperCase() === "CAUTION").length;
     return { normal, blocked, caution };
   }, [sectorFiltered]);
+
+  const recommendationFreshness = useMemo(() => {
+    const sample = visible.find((item) => !item.isSearchOnly) || items[0] || {};
+    return dataFreshnessInfo({
+      latestDataDate: firstText(sample.latestDataDate, sample.dataDate, sample.sourceDate, sample.ohlcvLatestDate, sample.priceDate, ""),
+      recoGeneratedAt: firstText(sample.recoGeneratedAt, sample.generatedAt, sample.updatedAt, ""),
+      dataStatus: loadError ? "NO_DATA" : sample.dataStatus,
+    });
+  }, [items, visible, loadError]);
 
   const selectedWatchRow = useMemo(() => {
     if (!selected) return null;
@@ -1165,6 +1177,17 @@ export default function StocksPage() {
         )}
       </div>
 
+      <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-slate-200">추천 목록</span>
+          <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(recommendationFreshness.state)}`}>
+            {recommendationFreshness.label}
+          </span>
+          <span>{recommendationFreshness.basisText}</span>
+          <span className="text-slate-600">· 상세 판단은 카드의 MONE 판단 보기에서 분석 탭으로 이어집니다.</span>
+        </div>
+      </div>
+
       {loadError && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           추천 후보 로딩이 지연되거나 실패했습니다. 조건을 줄이거나 잠시 후 다시 시도하세요.
@@ -1213,6 +1236,21 @@ export default function StocksPage() {
           const watched = isWatched(item);
           const itemGroup = String(item.group || "").trim();
           const showGroupSelector = watched && (groupsList.length > 1 || itemGroup.length > 0);
+          const patternAction = firstText(
+            item.patternStrategy?.action,
+            item.patternStrategyAction,
+            item.patternAction,
+            item.newEntryDecision,
+            item.buyTiming,
+            "",
+          );
+          const patternReason = firstText(
+            item.patternStrategy?.reason,
+            item.patternStrategy?.summary,
+            item.patternStrategySummary,
+            item.chartSignalSummary,
+            "",
+          );
           return (
             <div
               key={`${item.market}-${item.symbol}-${index}`}
@@ -1382,6 +1420,13 @@ export default function StocksPage() {
                 </div>
               )}
 
+              {patternAction !== "-" && (
+                <div className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+                  <div className="font-semibold">MONE 패턴 판단: {patternAction}</div>
+                  {patternReason !== "-" && <div className="mt-1 line-clamp-2 text-cyan-200/80">{patternReason}</div>}
+                </div>
+              )}
+
               {hasRecommendation && (
                 <div className="mt-3 rounded-xl bg-slate-950 p-3 space-y-1.5">
                   <div className="flex items-center justify-between mb-2">
@@ -1465,7 +1510,7 @@ export default function StocksPage() {
                     window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
                   }}
                 >
-                  차트 보기
+                  MONE 판단 보기
                 </button>
               </div>
             </div>

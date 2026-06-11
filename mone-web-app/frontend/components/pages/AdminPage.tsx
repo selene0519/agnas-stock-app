@@ -57,7 +57,7 @@ const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "overview", label: "운영" },
   { id: "prediction", label: "예측분석" },
   { id: "news", label: "뉴스·공시" },
-  { id: "advanced", label: "고급분석" },
+  { id: "advanced", label: "전략도구" },
   { id: "correction", label: "자가보정" },
 ];
 

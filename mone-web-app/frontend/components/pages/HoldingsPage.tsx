@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileText, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 import PositionManager from "../PositionManager";
 import { mone } from "@/lib/api";
+import { dataFreshnessBadgeClass, dataFreshnessInfo } from "@/lib/moneDisplay";
 import { getUserId } from "@/lib/userId";
 
 type Market = "all" | "kr" | "us";
@@ -533,6 +534,7 @@ export default function HoldingsPage() {
   const [kisSyncing, setKisSyncing] = useState(false);
   const [positionCandidates, setPositionCandidates] = useState<any[]>([]);
   const [positionLoading, setPositionLoading] = useState(false);
+  const [holdingsLoadedAt, setHoldingsLoadedAt] = useState("");
   const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
 
   function mergeEditableRows(rows: any[]) {
@@ -584,6 +586,7 @@ export default function HoldingsPage() {
         if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems);
         setData(result);
       }
+      setHoldingsLoadedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
       loadPositionCandidates(market);
       setLoading(false);
       if (market === "all") {
@@ -607,6 +610,7 @@ export default function HoldingsPage() {
       setData(localItems.length > 0
         ? localHoldingsPayload(localItems, market)
         : { status: "ERROR", error: String(error), items: [], summary: {} });
+      setHoldingsLoadedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
       setLoading(false);
     }
   }
@@ -752,6 +756,11 @@ export default function HoldingsPage() {
   }
 
   const summary = data.summary || {};
+  const holdingFreshness = dataFreshnessInfo({
+    latestDataDate: summary.latestDataDate || summary.ohlcvLatestDate || items[0]?.latestDataDate || items[0]?.priceDate || items[0]?.date,
+    recoGeneratedAt: summary.updatedAt || data.updatedAt || holdingsLoadedAt,
+    dataStatus: data.status,
+  });
   const riskCount = Number(summary.riskCount ?? items.filter((item) => ["HIGH","WATCH"].includes(String(item.riskStatus || ""))).length);
   const totalValueText = summary.totalValueText || (items.length > 0 ?
     items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
@@ -897,6 +906,17 @@ export default function HoldingsPage() {
         <SummaryCard label="보유 종목" value={`${items.length}개`} />
         <SummaryCard label="주의/위험" value={`${riskCount}개`}
           accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
+      </div>
+
+      <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-slate-200">보유종목 데이터</span>
+          <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(holdingFreshness.state)}`}>
+            {holdingFreshness.label}
+          </span>
+          <span>{holdingFreshness.basisText}</span>
+          {holdingsLoadedAt && <span>현재가 갱신: {holdingsLoadedAt}</span>}
+        </div>
       </div>
 
       <PositionManager items={positionCandidates} loading={positionLoading} />
