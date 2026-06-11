@@ -2004,22 +2004,53 @@ export default function ChartPage() {
               >
                 정밀 근거 보기
               </button>
-              {showPrecisionHint && (
+              {showPrecisionHint && !precisionEvidence && (
                 <span className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-400">
                   더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.
                 </span>
               )}
-              {([
-                ["ma10","MA10","#2dd4bf"],["ma20","MA20","#facc15"],["ma60","MA60","#f97316"],
-                ["bb","BB","#a855f7"],["volume","거래량","#64748b"],["rsi","RSI","#38bdf8"],
-                ["macd","MACD","#f97316"],
-                ["index", selected?.market === "us" ? "vs SPY" : "vs KOSPI", "#94a3b8"],
-                ["zigzag",    "ZigZag", "#f472b6"],
-                ["trendline", "빗각",   "#22c55e"],
-                ["retracement","되돌림","#06b6d4"],
-                ["supply",    "매물대", "#f59e0b"],
-                ["fakeBreak", "가짜돌파","#ef4444"],
-              ] as [ToggleKey, string, string][]).map(([key, label, color]) => (
+              {/* 정밀 근거 서브 토글 그룹 */}
+              {precisionEvidence && ([
+                { group: "가격선", keys: [["ma10","MA10","#2dd4bf"],["ma20","MA20","#facc15"],["ma60","MA60","#f97316"],["bb","BB","#a855f7"]] },
+                { group: "지지저항", keys: [["trendline","빗각","#22c55e"],["supply","매물대","#f59e0b"]] },
+                { group: "되돌림", keys: [["retracement","되돌림","#06b6d4"],["zigzag","ZigZag","#f472b6"]] },
+                { group: "비교지수", keys: [["index", selected?.market === "us" ? "vs SPY" : "vs KOSPI", "#94a3b8"]] },
+                { group: "위험신호", keys: [["fakeBreak","가짜돌파","#ef4444"]] },
+              ] as { group: string; keys: [ToggleKey, string, string][] }[]).map(({ group, keys }) => {
+                const allOn = keys.every(([k]) => toggles[k as ToggleKey]);
+                const someOn = keys.some(([k]) => toggles[k as ToggleKey]);
+                return (
+                  <div key={group} className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !allOn;
+                        setToggles((prev) => {
+                          const u = { ...prev };
+                          keys.forEach(([k]) => { u[k as ToggleKey] = next; });
+                          return u;
+                        });
+                      }}
+                      className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-bold ${
+                        allOn ? "border-cyan-600/50 bg-cyan-600/15 text-cyan-300"
+                        : someOn ? "border-slate-600 bg-slate-900 text-slate-300"
+                        : "border-slate-800 bg-slate-950 text-slate-600 hover:text-slate-400"
+                      }`}
+                    >
+                      {group}
+                    </button>
+                    {someOn && keys.map(([key, label, color]) => (
+                      <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key as ToggleKey] }))}
+                        className={`rounded border px-1.5 py-1 text-[10px] ${toggles[key as ToggleKey] ? "border-current" : "border-slate-800 text-slate-700"}`}
+                        style={toggles[key as ToggleKey] ? { color, borderColor: color + "55" } : {}}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+              {/* 기본 인디케이터 (항상 표시) */}
+              {([["volume","거래량","#64748b"],["rsi","RSI","#38bdf8"],["macd","MACD","#f97316"]] as [ToggleKey,string,string][]).map(([key, label, color]) => (
                 <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 bg-slate-950 text-slate-600"}`}
                   style={toggles[key] ? { color, borderColor: color + "66" } : {}}>

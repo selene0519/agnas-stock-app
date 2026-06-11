@@ -17,9 +17,10 @@ import PredictionPage from "../components/pages/PredictionPage";
 import AdvancedPage from "../components/pages/AdvancedPage";
 import AdminPage from "../components/pages/AdminPage";
 import AdminLoginPage from "../components/pages/AdminLoginPage";
+import BrokerPage from "../components/pages/BrokerPage";
 import { mone } from "../lib/api";
 import { clearAdminToken, getAdminToken, saveAdminToken } from "../lib/adminAuth";
-import { clearAuthenticatedUser, getUserId, getUserProfile, type MoneUserProfile } from "../lib/userId";
+import { clearAuthenticatedUser, getUserId, getUserProfile, getUserToken, type MoneUserProfile } from "../lib/userId";
 import { getDefaultMarketBySession } from "../lib/marketSession";
 
 const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
@@ -36,11 +37,13 @@ export default function App() {
   const [, setDataVersion] = useState(0);
   const [adminToken, setAdminTokenState] = useState("");
   const [userProfile, setUserProfile] = useState<MoneUserProfile | null>(null);
+  const [userToken, setUserTokenState] = useState("");
 
   useEffect(() => {
     setMounted(true);
     setAdminTokenState(getAdminToken());
     setUserProfile(getUserProfile());
+    setUserTokenState(getUserToken());
     getUserId(); // 최초 방문 시 UUID 생성 및 localStorage 저장
     // Render free-tier cold-start 방지: 앱 로드 즉시 백엔드 warm-up ping (결과 무시)
     fetch("/mone-api/health", { cache: "no-store" }).catch(() => {});
@@ -150,6 +153,13 @@ export default function App() {
         return <PredictionPage />;
       case "advanced":
         return <AdvancedPage />;
+      case "broker":
+        return (
+          <BrokerPage
+            userToken={userToken || null}
+            onLogin={() => setPage("admin")}
+          />
+        );
       case "admin":
         if (adminToken) return <AdminPage authToken={adminToken} onLogout={handleAdminLogout} />;
         if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} />; }

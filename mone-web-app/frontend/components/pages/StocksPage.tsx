@@ -1128,7 +1128,23 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                       </span>
                     </div>
                   </button>
-                  <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div className="mt-2 text-[10px] text-slate-600">현재 추천 후보는 아닙니다 · 분석 화면에서 상세 확인 가능</div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      className="flex-1 inline-flex items-center justify-center rounded-xl border border-blue-600/40 bg-blue-600/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-600/20"
+                      onClick={() => {
+                        window.localStorage.setItem("mone_chart_symbol", rowSymbol);
+                        window.localStorage.setItem("mone_chart_market", rowMarket);
+                        window.localStorage.setItem("mone_chart_name", row.name || rowSymbol);
+                        window.localStorage.setItem("mone_chart_price", String(row.currentPrice || ""));
+                        window.localStorage.setItem("mone_chart_price_text", row.currentPriceText || "");
+                        window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: row }));
+                        onNavigate?.("chart");
+                      }}
+                    >
+                      분석 보기 →
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -1140,29 +1156,13 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                         })
                       }
                       disabled={watchSaving}
-                      className={`rounded-xl border px-3 py-2 text-xs font-bold disabled:opacity-50 ${
+                      className={`flex-1 rounded-xl border px-3 py-2 text-xs font-bold disabled:opacity-50 ${
                         watched
                           ? "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
                           : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
                       }`}
                     >
                       {watched ? "관심 해제" : "관심 등록"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => addHoldingFromItem(row)}
-                      disabled={holdingSaving}
-                      className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/20 disabled:opacity-50"
-                    >
-                      보유 추가
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => refreshOneQuote(row)}
-                      disabled={quoteRefreshing === `${rowMarket}-${rowSymbol}`}
-                      className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
-                    >
-                      현재가 새로고침
                     </button>
                   </div>
                 </div>
@@ -1271,6 +1271,57 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             item.chartSignalSummary,
             "",
           );
+          // ── 비추천 검색종목: 간단 카드 ──
+          if (item.isSearchOnly) {
+            const soMarket = cleanMarket(item.market || market || "kr");
+            const soSymbol = cleanSymbol(item.symbol, soMarket);
+            return (
+              <div key={`search-only-${soMarket}-${soSymbol}-${index}`} className="rounded-2xl border border-slate-700/50 bg-slate-900/30 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-100">{displayName(item)}</div>
+                    <div className="mt-0.5 font-mono text-xs text-slate-500">{soSymbol} · {soMarket.toUpperCase()}</div>
+                  </div>
+                  {watched && (
+                    <span className="shrink-0 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">관심</span>
+                  )}
+                </div>
+                <div className="mt-2 text-xs text-slate-500">현재 추천 후보는 아니지만 분석할 수 있습니다.</div>
+                {current && !current.includes("없음") && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-slate-500">현재가</span>
+                    <span className="font-mono text-sm font-bold text-cyan-300">{current}</span>
+                  </div>
+                )}
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    className="flex-1 inline-flex items-center justify-center rounded-xl border border-blue-600/40 bg-blue-600/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-600/20"
+                    onClick={() => {
+                      window.localStorage.setItem("mone_chart_symbol", soSymbol);
+                      window.localStorage.setItem("mone_chart_market", soMarket);
+                      window.localStorage.setItem("mone_chart_name", displayName(item) || soSymbol);
+                      window.localStorage.setItem("mone_chart_price", String(item.currentPrice || ""));
+                      window.localStorage.setItem("mone_chart_price_text", current);
+                      window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
+                      onNavigate?.("chart");
+                    }}
+                  >
+                    분석 보기 →
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex-1 inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-bold disabled:opacity-50 ${watched ? "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"}`}
+                    onClick={() => toggleWatch({ market: soMarket, symbol: soSymbol, name: displayName(item) || soSymbol })}
+                    disabled={watchSaving}
+                  >
+                    {watched ? "관심 해제" : "관심 등록"}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={`${item.market}-${item.symbol}-${index}`}
