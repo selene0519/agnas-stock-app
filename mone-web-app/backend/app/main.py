@@ -5461,6 +5461,29 @@ def api_broker_connect(body: dict = Body(...), authorization: str | None = Heade
             "status": _broker.get_connection_status(user_id, broker)}
 
 
+@app.post("/api/broker/test")
+def api_broker_test(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    """broker 토큰 발급 테스트만 수행한다. 인증정보는 저장하지 않는다."""
+    try:
+        _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+
+    broker = str(body.get("broker", "")).lower().strip()
+    app_key = str(body.get("appKey", "")).strip()
+    app_secret = str(body.get("appSecret", "")).strip()
+
+    if broker not in ("toss", "kis"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "broker는 toss 또는 kis만 지원합니다."})
+    if not app_key or not app_secret:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "App Key와 App Secret이 필요합니다."})
+
+    test = _broker.test_toss_connection(app_key, app_secret) if broker == "toss" else _broker.test_kis_connection(app_key, app_secret)
+    if not test.get("ok"):
+        return {"ok": False, "testPassed": False, "error": test.get("message", "토큰 발급 실패")}
+    return {"ok": True, "testPassed": True, "message": test.get("message", "토큰 발급 성공")}
+
+
 @app.post("/api/broker/sync-holdings")
 def api_broker_sync_holdings(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
     """broker 보유종목 동기화 (로그인 필수)."""
