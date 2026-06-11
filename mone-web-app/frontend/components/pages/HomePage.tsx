@@ -12,6 +12,8 @@ import {
 } from "@/lib/marketSession";
 import {
   dedupeBySymbol,
+  dataFreshnessBadgeClass,
+  dataFreshnessInfo,
   dataTrustBadgeClass,
   dataTrustLabel,
   dataTrustNotice,
@@ -793,6 +795,25 @@ function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }
           </div>
         </div>
       </div>
+
+      {(() => {
+        const freshness = dataFreshnessInfo({
+          latestDataDate: dataHealth?.ohlcvLatestDate,
+          recoGeneratedAt: dataHealth?.recoGeneratedAt,
+          dataStatus: dataHealth?.dataStatus || dataHealth?.status,
+        });
+        return (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-800/70 pt-3 text-[11px] text-slate-500">
+            <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(freshness.state)}`}>
+              {freshness.label}
+            </span>
+            <span>{freshness.basisText}</span>
+            {dataHealth?.recoGeneratedAt && (
+              <span>추천 생성: {String(dataHealth.recoGeneratedAt).slice(11, 16) || String(dataHealth.recoGeneratedAt).slice(0, 16)}</span>
+            )}
+          </div>
+        );
+      })()}
 
       {isLow && (
         <div className="mt-3 rounded-lg border border-red-800/40 bg-red-950/30 px-3 py-2 text-[11px] text-red-300">
@@ -1673,6 +1694,51 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   }, [allItems]);
 
   // ── 신호 자동 기록 (매수 검토 후보 로드 시)
+  const dashboardAlerts = useMemo(() => {
+    const alerts: { key: string; title: string; detail: string; tone: "amber" | "red" | "emerald" }[] = [];
+    const add = (key: string, title: string, detail: string, tone: "amber" | "red" | "emerald" = "amber") => {
+      if (alerts.some((alert) => alert.key === key)) return;
+      alerts.push({ key, title, detail, tone });
+    };
+
+    [...todayEntries, ...watchItems].forEach((item) => {
+      const symbol = String(item.symbol || "");
+      const current = Number(item.currentPrice || item.price || 0);
+      const entry = Number(item.entry || item.entryPrice || 0);
+      const target = Number(item.target || item.targetPrice || 0);
+      if (symbol && current > 0 && entry > 0) {
+        const gap = Math.abs((current - entry) / entry) * 100;
+        if (gap <= 3) add(`entry-${symbol}`, `${displayName(item)}이 기준가에 근접했습니다.`, `현재가와 기준가 차이 ${gap.toFixed(1)}%`, "emerald");
+      }
+      if (symbol && current > 0 && target > 0) {
+        const gap = Math.abs((target - current) / target) * 100;
+        if (gap <= 3) add(`target-${symbol}`, `${displayName(item)}이 목표가에 근접했습니다.`, `목표가까지 ${gap.toFixed(1)}%`, "amber");
+      }
+      const action = firstText(item.patternStrategy?.action, item.patternStrategyAction, item.newEntryDecision, "");
+      if (symbol && action !== "-") add(`action-${symbol}`, `${displayName(item)}의 MONE 판단이 ${action}로 변경되었습니다.`, "분석 화면에서 진입·손절 계획을 확인하세요.", "amber");
+      const risk = String(item.riskStatus || item.tradeBlockStatus || "").toUpperCase();
+      if (symbol && risk && risk !== "NONE" && risk !== "OK" && risk !== "NORMAL") add(`risk-${symbol}`, `${displayName(item)}에 위험 패턴이 감지되었습니다.`, `상태: ${risk}`, "red");
+    });
+
+    const stopNear = holdings.filter((item: any) => {
+      const current = Number(item.currentPrice || 0);
+      const stop = Number(item.stopPrice || item.stop || 0);
+      return current > 0 && stop > 0 && Math.abs((current - stop) / stop) * 100 <= 3;
+    }).length;
+    if (stopNear > 0) add("holdings-stop", `보유 종목 중 ${stopNear}개가 손절 기준에 가까워졌습니다.`, "보유 탭에서 손절가와 비중을 재점검하세요.", "red");
+
+    const freshness = dataFreshnessInfo({
+      latestDataDate: dataHealth?.ohlcvLatestDate,
+      recoGeneratedAt: dataHealth?.recoGeneratedAt,
+      dataStatus: dataHealth?.dataStatus || dataHealth?.status,
+    });
+    if (freshness.state === "old" || freshness.state === "unknown") {
+      add("freshness", "관심종목/보유종목 데이터 신선도 확인이 필요합니다.", freshness.basisText, "amber");
+    }
+
+    return alerts.slice(0, 4);
+  }, [todayEntries, watchItems, holdings, dataHealth]);
+
   useEffect(() => {
     if (!todayEntries.length) return;
     todayEntries.forEach((item) => {
@@ -1798,6 +1864,34 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       })()}
 
       {/* 시장 컨디션 게이트 */}
+      {!loading && dashboardAlerts.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-bold text-amber-100">MONE 알림</div>
+              <div className="text-[11px] text-amber-200/70">진입 조건, 위험 상태, 데이터 신선도 변화를 먼저 확인하세요.</div>
+            </div>
+            <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+              {dashboardAlerts.length}개
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {dashboardAlerts.map((alert) => (
+              <div key={alert.key} className={`rounded-xl border px-3 py-2 text-xs ${
+                alert.tone === "red"
+                  ? "border-red-500/30 bg-red-500/10 text-red-100"
+                  : alert.tone === "emerald"
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
+                    : "border-amber-500/30 bg-slate-950/30 text-amber-100"
+              }`}>
+                <div className="font-semibold">{alert.title}</div>
+                <div className="mt-0.5 text-[11px] opacity-75">{alert.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!loading && marketRegime && (
         <MarketGateCard regime={marketRegime} dataHealth={dataHealth} />
       )}

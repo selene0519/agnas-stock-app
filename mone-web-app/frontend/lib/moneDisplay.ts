@@ -430,3 +430,83 @@ export function sortByValue(items: any[]): any[] {
     return bv - av;
   });
 }
+
+export type DataFreshnessState = "fresh" | "caution" | "old" | "unknown";
+
+function normalizeDataDateValue(value: any): string {
+  const raw = String(value ?? "").trim();
+  if (!raw || raw === "-" || raw.toLowerCase() === "nan") return "";
+  if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  return raw;
+}
+
+function parseDataDate(value: any): Date | null {
+  const normalized = normalizeDataDateValue(value);
+  if (!normalized) return null;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function businessDaysBetween(from: Date, to: Date): number {
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  if (start >= end) return 0;
+  let days = 0;
+  for (let cursor = new Date(start); cursor < end; cursor.setDate(cursor.getDate() + 1)) {
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) days += 1;
+  }
+  return days;
+}
+
+export function dataFreshnessInfo(item: any, now = new Date()): {
+  state: DataFreshnessState;
+  label: string;
+  basisText: string;
+  latestDate: string;
+} {
+  const status = String(item?.dataStatus || item?.status || "").toUpperCase();
+  const latestDate = normalizeDataDateValue(
+    item?.latestDataDate ||
+      item?.dataDate ||
+      item?.sourceDate ||
+      item?.ohlcvLatestDate ||
+      item?.priceDate ||
+      item?.tradeDate ||
+      item?.date,
+  );
+  const generatedAt = firstText(item?.recoGeneratedAt, item?.generatedAt, item?.updatedAt, item?.createdAt, "");
+
+  if (!latestDate || status === "NO_DATA") {
+    return {
+      state: "unknown",
+      label: "확인 필요",
+      basisText: generatedAt !== "-" ? `추천 생성: ${generatedAt.slice(0, 16).replace("T", " ")}` : "데이터 기준: 확인 필요",
+      latestDate: "",
+    };
+  }
+
+  const date = parseDataDate(latestDate);
+  if (!date) {
+    return { state: "unknown", label: "확인 필요", basisText: `데이터 기준: ${latestDate}`, latestDate };
+  }
+
+  const age = businessDaysBetween(date, now);
+  const state: DataFreshnessState = age <= 0 ? "fresh" : age === 1 ? "caution" : "old";
+  const label = state === "fresh" ? "최신" : state === "caution" ? "주의" : "오래됨";
+  return {
+    state,
+    label,
+    basisText: `데이터 기준: ${latestDate}`,
+    latestDate,
+  };
+}
+
+export function dataFreshnessBadgeClass(state: DataFreshnessState): string {
+  if (state === "fresh") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  if (state === "caution") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+  if (state === "old") return "border-orange-500/30 bg-orange-500/10 text-orange-300";
+  return "border-red-500/30 bg-red-500/10 text-red-300";
+}
