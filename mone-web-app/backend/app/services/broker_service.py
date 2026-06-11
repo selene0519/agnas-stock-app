@@ -142,33 +142,126 @@ def update_sync_status(user_id: str, broker: str, status: str, sync_time: float 
 
 # ── 토스증권 API 테스트 (실제 API 호출) ───────────────────────────────
 
-def test_toss_connection(app_key: str, app_secret: str) -> dict[str, Any]:
-    """토스증권 토큰 발급 테스트."""
+_TOSS_TOKEN_URL = os.environ.get(
+    "TOSSINVEST_TOKEN_URL",
+    "https://openapi.tossinvest.com/oauth2/token",
+).strip()
+
+
+def _broker_error(code: str, message: str, *, status: int | None = None) -> dict[str, Any]:
+    """프론트에 raw exception이 노출되지 않도록 표준 broker 오류를 만든다."""
+    payload: dict[str, Any] = {"ok": False, "code": code, "message": message}
+    if status is not None:
+        payload["httpStatus"] = status
+    return payload
+
+
+def _is_timeout_exception(exc: BaseException) -> bool:
+    import socket
+    import urllib.error
+
+    if isinstance(exc, (TimeoutError, socket.timeout)):
+        return True
+    if isinstance(exc, urllib.error.URLError):
+        reason = getattr(exc, "reason", None)
+        return isinstance(reason, (TimeoutError, socket.timeout)) or "timed out" in str(reason).lower()
+    return "timed out" in str(exc).lower()
+
+
+def _read_http_error_body(exc: BaseException, limit: int = 500) -> str:
+    try:
+        return exc.read().decode("utf-8", errors="replace")[:limit]  # type: ignore[attr-defined]
+    except Exception:
+        return ""
+
+
+def _classify_toss_http_error(status: int, body_txt: str = "") -> dict[str, Any]:
+    body_lower = (body_txt or "").lower()
+    if status in (401, 403):
+        return _broker_error(
+            "TOSS_AUTH_FAILED",
+            "App Key 또는 App Secret을 확인해주세요.",
+            status=status,
+        )
+    if status in (400, 404, 415) and ("permission" in body_lower or "scope" in body_lower or "account" in body_lower):
+        return _broker_error(
+            "TOSS_PERMISSION_REQUIRED",
+            "토스증권 Open API 사용 설정 또는 계좌 권한을 확인해주세요.",
+            status=status,
+        )
+    if status >= 500:
+        return _broker_error(
+            "TOSS_SERVER_ERROR",
+            "토스증권 서버 응답이 불안정합니다. 잠시 후 다시 시도해주세요.",
+            status=status,
+        )
+    return _broker_error(
+        "TOSS_AUTH_FAILED",
+        "App Key 또는 App Secret을 확인해주세요.",
+        status=status,
+    )
+
+
+def _request_toss_token(app_key: str, app_secret: str) -> dict[str, Any]:
+    """토스증권 OAuth2 Client Credentials 토큰 발급."""
     import urllib.error
     import urllib.request
+
+    body = json.dumps({
+        "appkey": app_key,
+        "appsecret": app_secret,
+        "grant_type": "client_credentials",
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        _TOSS_TOKEN_URL,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "MONE/1.0",
+        },
+        method="POST",
+    )
     try:
-        body = json.dumps({"appkey": app_key, "appsecret": app_secret,
-                           "grant_type": "client_credentials"}).encode()
-        req = urllib.request.Request(
-            "https://openapi.toss.im/oauth2/token",
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as res:
-            payload = json.loads(res.read().decode())
-            if payload.get("access_token"):
-                return {"ok": True, "message": "토스증권 연결 성공"}
-            return {"ok": False, "message": f"토큰 없음: {payload}"}
-    except urllib.error.HTTPError as e:
-        body_txt = ""
-        try:
-            body_txt = e.read().decode("utf-8", errors="replace")
-        except Exception:
-            pass
-        return {"ok": False, "message": f"HTTP {e.code}: {body_txt[:200]}"}
+        started = time.time()
+        with urllib.request.urlopen(req, timeout=15) as res:
+            payload = json.loads(res.read().decode("utf-8"))
+        payload["_elapsedMs"] = int((time.time() - started) * 1000)
+        return payload
+    except urllib.error.HTTPError as exc:
+        body_txt = _read_http_error_body(exc)
+        classified = _classify_toss_http_error(exc.code, body_txt)
+        classified["provider"] = "toss"
+        classified["endpoint"] = _TOSS_TOKEN_URL.replace(app_key, "***")
+        return classified
     except Exception as exc:
-        return {"ok": False, "message": str(exc)}
+        if _is_timeout_exception(exc):
+            return _broker_error(
+                "TOSS_TIMEOUT",
+                "토스증권 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.",
+            )
+        return _broker_error(
+            "TOSS_NETWORK_ERROR",
+            "토스증권 연결 중 네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        )
+
+
+def test_toss_connection(app_key: str, app_secret: str) -> dict[str, Any]:
+    """토스증권 토큰 발급 테스트. 저장하지 않고 성공 여부만 반환한다."""
+    payload = _request_toss_token(app_key, app_secret)
+    if not payload.get("ok", True):
+        return payload
+    if payload.get("access_token"):
+        return {
+            "ok": True,
+            "code": "TOSS_TOKEN_OK",
+            "message": "토스증권 토큰 발급 성공",
+            "elapsedMs": payload.get("_elapsedMs"),
+        }
+    return _broker_error(
+        "TOSS_AUTH_FAILED",
+        "App Key 또는 App Secret을 확인해주세요.",
+    )
 
 
 def test_kis_connection(app_key: str, app_secret: str) -> dict[str, Any]:
@@ -211,43 +304,55 @@ def sync_toss_holdings(user_id: str) -> dict[str, Any]:
     import urllib.request
     try:
         # 1. 토큰 발급
-        body = json.dumps({"appkey": creds["app_key"], "appsecret": creds["app_secret"],
-                           "grant_type": "client_credentials"}).encode()
-        req = urllib.request.Request(
-            "https://openapi.toss.im/oauth2/token",
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as res:
-            token_payload = json.loads(res.read().decode())
+        token_payload = _request_toss_token(creds["app_key"], creds["app_secret"])
+        if not token_payload.get("ok", True):
+            update_sync_status(user_id, "toss", "ERROR")
+            return {
+                "ok": False,
+                "code": token_payload.get("code", "TOSS_TOKEN_FAILED"),
+                "message": token_payload.get("message", "토스증권 토큰 발급에 실패했습니다."),
+                "error": token_payload.get("message", "토스증권 토큰 발급에 실패했습니다."),
+            }
         access_token = token_payload.get("access_token", "")
         if not access_token:
-            return {"ok": False, "error": "토큰 발급 실패"}
+            update_sync_status(user_id, "toss", "ERROR")
+            return {"ok": False, "code": "TOSS_TOKEN_FAILED", "error": "토스증권 토큰 발급에 실패했습니다."}
 
-        # 2. 보유종목 조회 (실제 endpoint는 토스증권 API 문서 확인 필요)
+        # 2. 보유종목 조회
         account_no = creds["account_no"]
+        holdings_url = os.environ.get(
+            "TOSSINVEST_HOLDINGS_URL",
+            "https://openapi.tossinvest.com/api/v1/domestic/account/balance",
+        ).strip()
         req2 = urllib.request.Request(
-            f"https://openapi.toss.im/api/v1/domestic/account/balance?accountNumber={account_no}",
-            headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+            holdings_url,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "X-Tossinvest-Account": account_no,
+                "Accept": "application/json",
+                "User-Agent": "MONE/1.0",
+            },
         )
-        with urllib.request.urlopen(req2, timeout=10) as res2:
-            holdings_payload = json.loads(res2.read().decode())
+        with urllib.request.urlopen(req2, timeout=15) as res2:
+            holdings_payload = json.loads(res2.read().decode("utf-8"))
 
         items = _normalize_toss_holdings(holdings_payload, user_id)
         update_sync_status(user_id, "toss", "OK", time.time())
         return {"ok": True, "items": items, "count": len(items)}
     except urllib.error.HTTPError as e:
-        body_txt = ""
-        try:
-            body_txt = e.read().decode("utf-8", errors="replace")
-        except Exception:
-            pass
         update_sync_status(user_id, "toss", "ERROR")
-        return {"ok": False, "error": f"HTTP {e.code}: {body_txt[:300]}"}
+        if e.code in (401, 403):
+            msg = "토스증권 Open API 사용 설정 또는 계좌 권한을 확인해주세요."
+            return {"ok": False, "code": "TOSS_PERMISSION_REQUIRED", "message": msg, "error": msg}
+        msg = "토스증권 보유종목 동기화에 실패했습니다. 잠시 후 다시 시도해주세요."
+        return {"ok": False, "code": "TOSS_SYNC_FAILED", "message": msg, "error": msg}
     except Exception as exc:
         update_sync_status(user_id, "toss", "ERROR")
-        return {"ok": False, "error": str(exc)}
+        if _is_timeout_exception(exc):
+            msg = "토스증권 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+            return {"ok": False, "code": "TOSS_TIMEOUT", "message": msg, "error": msg}
+        msg = "토스증권 연결 중 네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        return {"ok": False, "code": "TOSS_NETWORK_ERROR", "message": msg, "error": msg}
 
 
 def _normalize_toss_holdings(payload: dict, user_id: str) -> list[dict[str, Any]]:
