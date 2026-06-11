@@ -242,7 +242,7 @@ function safeKoreanLabel(
 function recommendationBadgeLabel(item: any, actionCode: string, actionText: string | null): string | null {
   const baseLabel = sourceStatusLabel(item.sourceStatus);
   if (!baseLabel) return null;
-  if (actionCode === "HOLD_CASH" || actionText === "현금 대기") return "관찰 후보";
+  if (actionCode === "HOLD_CASH" || actionCode === "WATCH_ONLY" || actionText === "현금 대기") return "관찰 후보";
   if (ENTRY_ACTION_CODES.has(actionCode)) return "진입 후보";
   if (OBSERVE_ACTION_CODES.has(actionCode) && baseLabel === "조건일치") return "조건 포착";
   return baseLabel === "조건일치" ? "조건 포착" : baseLabel;
