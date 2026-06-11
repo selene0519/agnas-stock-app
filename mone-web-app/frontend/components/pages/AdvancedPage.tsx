@@ -250,7 +250,7 @@ export default function AdvancedPage() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
-        <h1 className="text-xl font-bold text-white">고급분석</h1>
+        <h1 className="text-xl font-bold text-white">전략도구</h1>
         <p className="mt-1 text-xs text-slate-400">추천 API의 퀀트 오버레이를 스캐너로 보고, EV·손익비·포지션 리스크를 점검합니다.</p>
       </div>
 

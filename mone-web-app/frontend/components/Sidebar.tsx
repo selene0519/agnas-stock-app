@@ -32,11 +32,11 @@ const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "home", label: "시장 홈", icon: <LayoutDashboard size={16} /> },
   { id: "stocks", label: "종목 탐색", icon: <Search size={16} /> },
   { id: "holdings", label: "보유·리스크", icon: <Briefcase size={16} /> },
-  { id: "chart", label: "차트·기술분석", icon: <BarChart2 size={16} /> },
+  { id: "chart", label: "분석", icon: <BarChart2 size={16} /> },
 ];
 
 const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "advanced", label: "고급분석", icon: <Cpu size={16} /> },
+  { id: "advanced", label: "전략도구", icon: <Cpu size={16} /> },
 ];
 
 const adminItem: { id: PageId; label: string; icon: React.ReactNode } = {

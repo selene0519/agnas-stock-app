@@ -30,11 +30,11 @@ const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
   { id: "home", label: "홈", Icon: LayoutDashboard },
   { id: "stocks", label: "탐색", Icon: Search },
   { id: "holdings", label: "보유", Icon: Briefcase },
-  { id: "chart", label: "차트", Icon: BarChart2 },
+  { id: "chart", label: "분석", Icon: BarChart2 },
 ];
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
-  { id: "advanced", label: "고급분석", desc: "스캐너, 계산기, 상관분석", Icon: Cpu },
+  { id: "advanced", label: "전략도구", desc: "스캐너, 계산기, 상관분석", Icon: Cpu },
 ];
 
 const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementType } = {
