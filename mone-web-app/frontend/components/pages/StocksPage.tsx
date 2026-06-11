@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ExternalLink, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import {
@@ -17,11 +17,9 @@ import {
   horizonLabel,
   modeLabel,
   priceText,
-  probabilityText,
   sanitizeCodeLabel,
   sourceStatusLabel,
   strategyTagLabel,
-  shouldHideSizingForTrust,
   toNumber,
 } from "@/lib/moneDisplay";
 import { getDefaultMarketBySession } from "@/lib/marketSession";
@@ -69,39 +67,6 @@ function Cell({
       <div className={`font-mono ${color}`}>{value || "-"}</div>
     </div>
   );
-}
-
-function ScoreBar({ label, score }: { label: string; score: number | null | undefined }) {
-  if (score == null || !Number.isFinite(score)) return null;
-  const pct = Math.max(0, Math.min(100, score));
-  const barColor = pct >= 60 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-400" : "bg-red-400";
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-14 shrink-0 text-[10px] text-slate-500">{label}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-slate-800 overflow-hidden">
-        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="w-7 shrink-0 text-right font-mono text-[10px] text-slate-400">{Math.round(pct)}</span>
-    </div>
-  );
-}
-
-function qtyText(item: any, mode: Mode) {
-  if (typeof window === "undefined") return "";
-  const cash = Number(window.localStorage.getItem("mone_cash_amount") || "0");
-  const price = toNumber(
-    item.entryPrice ||
-      item.entry ||
-      item.entryText ||
-      item.currentPrice ||
-      item.currentPriceText,
-  );
-  if (!Number.isFinite(cash) || cash <= 0 || price === null || price <= 0)
-    return "";
-  const ratio =
-    mode === "conservative" ? 0.02 : mode === "aggressive" ? 0.12 : 0.05;
-  const qty = Math.floor((cash * ratio) / price);
-  return qty > 0 ? `${qty.toLocaleString("ko-KR")}주` : "1주 미만";
 }
 
 function adjustedText(
@@ -233,6 +198,43 @@ const PATTERN_TYPE_KO: Record<string, string> = {
   overheated_chase_risk: "과열 추격 위험", false_breakout_risk: "가짜 돌파 위험",
   downtrend_bounce_trap: "하락 반등 함정", resistance_chase_risk: "저항 추격 위험",
 };
+const ENTRY_ACTION_CODES = new Set(["SCALE_IN", "WAIT_PULLBACK", "BUY", "STRONG_BUY", "ENTER"]);
+const OBSERVE_ACTION_CODES = new Set(["HOLD_CASH", "WATCH_ONLY", "WAIT", "HOLD", "AVOID_CHASE", "BLOCKED"]);
+
+function firstPlainText(...values: any[]): string {
+  for (const value of values) {
+    if (typeof value !== "string" && typeof value !== "number") continue;
+    const text = String(value).trim();
+    if (text && text !== "-" && text !== "NaN" && text !== "null" && text !== "undefined") return text;
+  }
+  return "-";
+}
+
+function safeKoreanLabel(
+  value: any,
+  map: Record<string, string> = {},
+  fallback: string | null = null,
+): string | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const text = String(value).trim();
+  if (!text || text === "-") return null;
+  const upper = text.toUpperCase();
+  if (map[text]) return map[text];
+  if (map[upper]) return map[upper];
+  const sanitized = sanitizeCodeLabel(text);
+  if (sanitized && sanitized !== text) return sanitized;
+  if (/[가-힣]/.test(text) && !/^[A-Z0-9_./-]+$/.test(text)) return text;
+  return fallback;
+}
+
+function recommendationBadgeLabel(item: any, actionCode: string, actionText: string | null): string | null {
+  const baseLabel = sourceStatusLabel(item.sourceStatus);
+  if (!baseLabel) return null;
+  if (actionCode === "HOLD_CASH" || actionText === "현금 대기") return "관찰 후보";
+  if (ENTRY_ACTION_CODES.has(actionCode)) return "진입 후보";
+  if (OBSERVE_ACTION_CODES.has(actionCode) && baseLabel === "조건일치") return "조건 포착";
+  return baseLabel === "조건일치" ? "조건 포착" : baseLabel;
+}
 
 export default function StocksPage({ onNavigate }: { onNavigate?: (page: string) => void } = {}) {
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
@@ -1243,7 +1245,6 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {visible.map((item: any, index: number) => {
           const hasRecommendation = !item.isSearchOnly;
-          const quantity = hasRecommendation && !shouldHideSizingForTrust(item) ? qtyText(item, mode) : "";
           const marketValue = String(item.market || market);
           const current = priceText(
             item,
@@ -1251,25 +1252,14 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             priceText(item, "entry", "현재가 없음"),
           );
           const entry = hasRecommendation ? adjustedText(item, "entry", mode, marketValue) : "추천 데이터 없음";
-          const stop = hasRecommendation ? adjustedText(item, "stop", mode, marketValue) : "추천 데이터 없음";
           const target = hasRecommendation ? adjustedText(item, "target", mode, marketValue) : "추천 데이터 없음";
-          const prob = hasRecommendation ? probabilityText(item, "추천 데이터 없음") : "추천 데이터 없음";
           const watched = isWatched(item);
-          const itemGroup = String(item.group || "").trim();
-          const showGroupSelector = watched && (groupsList.length > 1 || itemGroup.length > 0);
-          const patternAction = firstText(
+          const patternAction = firstPlainText(
             item.patternStrategy?.action,
             item.patternStrategyAction,
             item.patternAction,
             item.newEntryDecision,
             item.buyTiming,
-            "",
-          );
-          const patternReason = firstText(
-            item.patternStrategy?.reason,
-            item.patternStrategy?.summary,
-            item.patternStrategySummary,
-            item.chartSignalSummary,
             "",
           );
           // ── 비추천 검색종목: 간단 카드 ──
@@ -1331,10 +1321,11 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           const psPatternRaw = ps?.primaryPattern && typeof ps.primaryPattern === "string" ? ps.primaryPattern : null;
           const psConf = ps?.confidence != null ? Math.round(Number(ps.confidence))
             : item.finalScore > 0 ? Math.round(item.finalScore) : null;
-          const actionText = psActionRaw ? (PATTERN_ACTION_KO[psActionRaw.toUpperCase()] ?? psActionRaw) : null;
-          const riskText = psRiskRaw ? (PATTERN_RISK_KO[psRiskRaw.toUpperCase()] ?? psRiskRaw) : "정상";
-          const patternText = psPatternRaw ? (PATTERN_TYPE_KO[psPatternRaw] ?? psPatternRaw) : null;
-          const isRisk = psRiskRaw && psRiskRaw.toUpperCase() !== "NONE";
+          const actionCode = String(psActionRaw || "").trim().toUpperCase();
+          const actionText = safeKoreanLabel(psActionRaw, PATTERN_ACTION_KO);
+          const riskText = psRiskRaw ? safeKoreanLabel(psRiskRaw, PATTERN_RISK_KO, "확인 필요") : "정상";
+          const patternText = safeKoreanLabel(psPatternRaw, PATTERN_TYPE_KO);
+          const topBadgeLabel = recommendationBadgeLabel(item, actionCode, actionText);
 
           // 태그: 최대 2개, 중요 신호 우선
           const TAG_LABEL: Record<string, string> = {
@@ -1365,7 +1356,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           if (Array.isArray(item.strategyTags)) {
             for (const tag of item.strategyTags) {
               if (visibleTags.length >= 2) break;
-              const lbl = TAG_LABEL[tag] ?? sanitizeCodeLabel(tag);
+              const lbl = TAG_LABEL[tag] ?? safeKoreanLabel(tag);
               if (lbl) visibleTags.push({ key: tag, label: lbl, cls: TAG_COLOR[tag] ?? "border-slate-600 bg-slate-800 text-slate-300" });
             }
           }
@@ -1373,7 +1364,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           if (!Array.isArray(item.strategyTags) && item.surgeLabel && item.surgeLabel !== "판단 대기" && visibleTags.length < 2) {
             for (const t of String(item.surgeLabel).split("|").map((s: string) => s.trim()).filter(Boolean)) {
               if (visibleTags.length >= 2) break;
-              const lbl = sanitizeCodeLabel(t) ?? ((/[가-힣]/.test(t)) ? t : null);
+              const lbl = safeKoreanLabel(t);
               if (lbl) visibleTags.push({ key: t, label: lbl, cls: "border-slate-700 bg-slate-950 text-slate-300" });
             }
           }
@@ -1393,10 +1384,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                   <h3 className="text-base font-bold text-slate-100 leading-tight">{displayName(item)}</h3>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <span className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || market).toUpperCase()}</span>
-                    {(() => {
-                      const srcLbl = sourceStatusLabel(item.sourceStatus);
-                      return srcLbl ? <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{srcLbl}</span> : null;
-                    })()}
+                    {topBadgeLabel && <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{topBadgeLabel}</span>}
                     {dataTrustLabel(item) !== "정상" && (
                       <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
                     )}
@@ -1437,7 +1425,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
               {/* 주의 사유 */}
               {Array.isArray(item.cautionReasons) && (() => {
                 const reasons = item.cautionReasons
-                  .map((r: any) => sanitizeCodeLabel(r))
+                  .map((r: any) => safeKoreanLabel(r))
                   .filter((r: string | null): r is string => Boolean(r));
                 return reasons.length > 0 ? (
                   <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">

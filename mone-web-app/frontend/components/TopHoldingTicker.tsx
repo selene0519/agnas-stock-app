@@ -57,7 +57,11 @@ function derivePrice(row: any, market: string, ohlcvRows: any[] = []) {
 
 function deriveChange(row: any, fallbackRows: any[] = []): { text: string; status: TickerItem["changeStatus"] } {
   const current = toNumber(row.currentPrice ?? row.price ?? row.close ?? row.currentPriceText);
-  if (current === null || current <= 0) return { text: "가격 대기", status: "pending" };
+  if (current === null || current <= 0) {
+    const ohlcvFallback = ohlcvFallbackChange(fallbackRows, null);
+    if (ohlcvFallback) return ohlcvFallback;
+    return { text: "가격 대기", status: "pending" };
+  }
 
   const direct = String(
     row.changePctText || row.priceChangePercentText || row.changeText || row.priceChangeText || ""
