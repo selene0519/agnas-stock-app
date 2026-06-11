@@ -88,7 +88,7 @@ async function enrichRows(rows: any[], source: TickerSource): Promise<TickerItem
       // "normal"이면 OHLCV 불필요, 그 외(pending 포함)는 가격·등락률 보완용 조회
       if (preliminary.status === "normal") return { row, ohlcvRows: [] };
       try {
-        const data = await mone.ohlcv({ market, symbol, limit: 5 });
+        const data = await mone.ohlcv({ market, symbol, limit: 10 });
         return { row, ohlcvRows: Array.isArray(data?.items) ? data.items : [] };
       } catch {
         return { row, ohlcvRows: [] };
