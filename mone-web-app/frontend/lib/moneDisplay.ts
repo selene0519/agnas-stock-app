@@ -510,3 +510,53 @@ export function dataFreshnessBadgeClass(state: DataFreshnessState): string {
   if (state === "old") return "border-orange-500/30 bg-orange-500/10 text-orange-300";
   return "border-red-500/30 bg-red-500/10 text-red-300";
 }
+
+export function moneReasonLines(item: any): string[] {
+  const explicit = firstText(
+    item?.moneReason,
+    item?.decisionReason,
+    item?.reason,
+    item?.patternStrategy?.reason,
+    item?.patternReason,
+    item?.entryReason,
+    item?.summary,
+    "",
+  );
+  if (explicit !== "-") {
+    const split = explicit
+      .replace(/\r?\n/g, " ")
+      .split(/(?:[.!?。]| · | \| )\s*/)
+      .map((line) => line.trim())
+      .filter((line) => line.length >= 4 && !/^[-–—]+$/.test(line));
+    if (split.length) return split.slice(0, 3);
+  }
+
+  const lines: string[] = [];
+  const finalScore = toNumber(item?.finalScore);
+  const upsideScore = toNumber(item?.upsideScore);
+  const entryScore = toNumber(item?.entryScore);
+  const current = toNumber(item?.currentPrice ?? item?.price);
+  const entry = toNumber(item?.entryPrice ?? item?.entry);
+  const risk = String(item?.riskStatus || item?.tradeBlockStatus || item?.riskLevel || "").toUpperCase();
+  const gapPct = current && entry ? Math.abs((current - entry) / entry) * 100 : null;
+
+  if ((upsideScore ?? finalScore ?? 0) >= 65 || String(item?.trend || item?.direction || "").toUpperCase().includes("UP")) {
+    lines.push("상승 추세가 유지되고 있습니다.");
+  } else {
+    lines.push("추세 조건을 확인하며 선별 접근이 필요합니다.");
+  }
+
+  if ((entryScore ?? 0) >= 60 || (gapPct !== null && gapPct <= 5)) {
+    lines.push("기준가 근처에서 진입 접근성이 높습니다.");
+  } else {
+    lines.push("기준가와 현재가 차이를 확인한 뒤 접근하세요.");
+  }
+
+  if (!risk || ["NONE", "OK", "NORMAL", "LOW"].includes(risk)) {
+    lines.push("위험 패턴은 아직 감지되지 않았습니다.");
+  } else {
+    lines.push("위험 상태가 있어 손절 기준을 먼저 확인해야 합니다.");
+  }
+
+  return lines.slice(0, 3);
+}

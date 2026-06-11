@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info, Calculator, ArrowRight } from "lucide-react";
 import type { PageId } from "../Sidebar";
 import { mone, type Horizon, type Mode } from "@/lib/api";
@@ -20,7 +20,9 @@ import {
   displayName,
   firstText,
   horizonLabel,
+  moneReasonLines,
   modeLabel,
+  normalizeMarket,
   priceText,
   probabilityText,
   strategyTagLabel,
@@ -220,15 +222,27 @@ function EventBanner({ alert }: { alert: any }) {
   );
 }
 
-// ── 오늘 진입 카드 (상세)
-function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item: any; rank: number; onSelect: (item: any) => void; earningsMap?: Record<string, number>; badgeMap?: Record<string, any> }) {
-  const ev = Number(item.expectedValue || 0);
+// ── 오늘 검토 후보 카드 (홈 압축형)
+function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; rank: number; onAnalyze: (item: any) => void; earningsMap?: Record<string, number> }) {
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
   const horizon = String(item.horizon || item._horizon || "");
+  const decision = firstText(
+    item.patternStrategy?.action,
+    item.moneDecision,
+    item.newEntryDecision,
+    item.decision,
+    item.decisionBucket,
+    "분석 필요",
+  );
+  const riskRaw = String(item.riskStatus || item.tradeBlockStatus || item.riskLevel || "").toUpperCase();
+  const riskText = !riskRaw || ["NONE", "OK", "NORMAL", "LOW"].includes(riskRaw) ? "위험 낮음" : riskRaw.includes("WATCH") || riskRaw.includes("주의") ? "주의" : "위험 확인";
+  const riskClass = riskText === "위험 낮음" ? "text-emerald-300" : riskText === "주의" ? "text-amber-300" : "text-red-300";
+  const confidence = probabilityText(item, score > 0 ? `${score.toFixed(0)}점` : "-");
+  const reasons = moneReasonLines(item).slice(0, 3);
 
   return (
-    <div onClick={() => onSelect(item)} className="relative cursor-pointer rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/30 to-slate-950 p-4 transition-colors hover:border-emerald-600/70 hover:bg-emerald-950/20">
+    <div className="relative rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4">
       <div className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -237,7 +251,6 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item:
             {earningsMap && earningsMap[item.symbol] != null && (
               <EarningsBadge dday={earningsMap[item.symbol]} />
             )}
-            {badgeMap && <BacktestBadge item={item} badgeMap={badgeMap} />}
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${dataTrustBadgeClass(item)}`}>
               {dataTrustLabel(item)}
             </span>
@@ -245,40 +258,25 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item:
           <div className="mt-0.5 text-[11px] text-slate-500">{item.symbol} · {modeLabel(mode as Mode)} · {horizonLabel(horizon as Horizon)}</div>
         </div>
         <div className="shrink-0 text-right">
-          <div className={`font-mono text-sm font-bold ${ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-300" : "text-red-300"}`}>
-            EV {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
-          </div>
-          <div className="text-[11px] text-slate-500">종합 {score.toFixed(0)}점</div>
+          <div className="text-[10px] text-slate-500">MONE 판단</div>
+          <div className="text-sm font-bold text-emerald-300">{decision}</div>
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-4 gap-2 text-[11px]">
+      <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-5">
         <div><div className="text-slate-500">현재가</div><div className="font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
         <div><div className="text-slate-500">기준가</div><div className="font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
-        <div><div className="text-slate-500">손절가</div><div className="font-mono text-red-300">{priceText(item, "stop", "-")}</div></div>
         <div><div className="text-slate-500">목표가</div><div className="font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
+        <div><div className="text-slate-500">신뢰도</div><div className="font-mono text-blue-300">{confidence}</div></div>
+        <div><div className="text-slate-500">위험 상태</div><div className={`font-semibold ${riskClass}`}>{riskText}</div></div>
       </div>
 
-      <div className="mt-3 space-y-1">
-        {mode === "conservative" && <>
-          <ScoreBar label="리스크 안정성" value={item.riskScore} color="bg-sky-500" />
-          <ScoreBar label="진입 접근성" value={item.entryScore} color="bg-emerald-500" />
-        </>}
-        {mode === "balanced" && <>
-          <ScoreBar label="상승 여력" value={item.upsideScore} color="bg-emerald-500" />
-          <ScoreBar label="리스크" value={item.riskScore} color="bg-sky-500" />
-        </>}
-        {mode === "aggressive" && <>
-          <ScoreBar label="상승 여력" value={item.upsideScore} color="bg-orange-500" />
-          <ScoreBar label="모멘텀" value={item.momentumScore} color="bg-yellow-500" />
-        </>}
-        <ScoreBar label="손익비" value={item.rrScore} color="bg-violet-500" />
+      <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-950/50 px-3 py-2">
+        <div className="text-[11px] font-semibold text-slate-300">MONE 판단 이유</div>
+        <ol className="mt-1 space-y-0.5 text-[11px] leading-5 text-slate-400">
+          {reasons.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)}
+        </ol>
       </div>
-
-      <TagChips item={item} />
-
-      {/* 6차: 신뢰도·반영여부 배지 */}
-      <RecommendationBadges item={item} maxVisible={5} className="mt-2" />
 
       {dataTrustNotice(item) && (
         <div className="mt-2 rounded-lg border border-amber-800/40 bg-amber-950/20 px-2.5 py-2 text-[10px] text-amber-300">
@@ -286,31 +284,13 @@ function TodayEntryCard({ item, rank, onSelect, earningsMap, badgeMap }: { item:
         </div>
       )}
 
-      {item.timingLabel && (
-        <div className={`mt-2 rounded-lg px-2 py-1 text-[10px] ${
-          item.timingLabel === "돌파 진입" ? "bg-orange-950/40 text-orange-400"
-          : item.timingLabel === "스퀴즈 돌파" ? "bg-violet-950/40 text-violet-400"
-          : item.timingLabel === "수렴 진입" ? "bg-cyan-950/40 text-cyan-400"
-          : "bg-emerald-950/40 text-emerald-400"
-        }`}>
-          {item.timingLabel === "돌파 진입" ? "🚀" : item.timingLabel === "스퀴즈 돌파" ? "💥" : "✓"}{" "}
-          {item.timingReason || item.timingLabel}
-        </div>
-      )}
-
-      {/* 매수 금지/주의 사유 인라인 */}
-      {Array.isArray(item.cautionReasons) && item.cautionReasons.length > 0 && (
-        <div className="mt-2 rounded-lg border border-amber-800/40 bg-amber-950/20 px-2.5 py-2 text-[10px]">
-          <span className="font-semibold text-amber-400">주의 —</span>
-          <span className="ml-1 text-amber-300">{item.cautionReasons.slice(0, 2).join(" · ")}</span>
-        </div>
-      )}
-      {item.tradeBlockStatus && item.tradeBlockStatus !== "OK" && (
-        <div className="mt-2 rounded-lg border border-red-800/50 bg-red-950/25 px-2.5 py-2 text-[10px]">
-          <span className="font-semibold text-red-400">진입 주의 —</span>
-          <span className="ml-1 text-red-300">{String(item.tradeBlockStatus)}</span>
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={() => onAnalyze(item)}
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+      >
+        분석 보기 <ArrowRight size={14} />
+      </button>
     </div>
   );
 }
@@ -729,8 +709,7 @@ function BacktestBadge({ item, badgeMap }: { item: any; badgeMap: Record<string,
   );
 }
 
-// ── 시장 컨디션 게이트
-function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }) {
+function getMarketGateInfo(regime: any, dataHealth: any) {
   const base = regime?.regime === "BULL" ? 70 : regime?.regime === "BEAR" ? 22 : 50;
   const maDist = Number(regime?.distanceMa20Pct ?? regime?.distanceToMa20Pct ?? 0);
   const maAdj = maDist >= 3 ? 10 : maDist >= 1 ? 5 : maDist >= -1 ? 0 : maDist >= -3 ? -8 : -15;
@@ -743,11 +722,17 @@ function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }
   const dataAdj = hoursOld != null && hoursOld > 24 ? -15 : liveRatio < 0.1 ? (hasOhlcv ? -8 : -20) : liveRatio < 0.5 ? -5 : 0;
 
   const strength = Math.max(0, Math.min(100, base + maAdj + dataAdj));
-
   const levelText = strength >= 75 ? "적극 진입" : strength >= 55 ? "정상 진입" : strength >= 35 ? "선별 진입" : "진입 자제";
   const isHigh = strength >= 55;
   const isMid = strength >= 35 && strength < 55;
   const isLow = strength < 35;
+
+  return { strength, levelText, isHigh, isMid, isLow, maDist, dataAdj, hasOhlcv };
+}
+
+// ── 시장 컨디션 게이트
+function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }) {
+  const { strength, levelText, isHigh, isMid, isLow, maDist, dataAdj, hasOhlcv } = getMarketGateInfo(regime, dataHealth);
 
   const borderCls = isHigh ? "border-emerald-800/40 bg-emerald-950/15" : isMid ? "border-amber-800/40 bg-amber-950/15" : "border-red-800/40 bg-red-950/15";
   const textCls   = isHigh ? "text-emerald-300" : isMid ? "text-amber-300" : "text-red-300";
@@ -821,6 +806,103 @@ function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }
         </div>
       )}
     </div>
+  );
+}
+
+function TodayConclusionCard({
+  regime,
+  dataHealth,
+  todayCount,
+  watchCount,
+  riskCount,
+}: {
+  regime: any;
+  dataHealth: any;
+  todayCount: number;
+  watchCount: number;
+  riskCount: number;
+}) {
+  const gate = getMarketGateInfo(regime, dataHealth);
+  const freshness = dataFreshnessInfo({
+    latestDataDate: dataHealth?.ohlcvLatestDate,
+    recoGeneratedAt: dataHealth?.recoGeneratedAt,
+    dataStatus: dataHealth?.dataStatus || dataHealth?.status,
+  });
+  const title = gate.isLow || riskCount > 0
+    ? "오늘은 신규 진입 자제"
+    : gate.isMid
+      ? "오늘은 조건 충족 종목만 선별"
+      : "오늘은 기준가 근접 후보 우선";
+  const subtitle = riskCount > 0
+    ? "보유 종목 리스크 관리 우선"
+    : gate.isLow
+      ? "보유 손절 기준을 먼저 재확인하세요."
+      : gate.isMid
+        ? "EV·손익비 조건을 더 엄격히 확인하세요."
+        : "검토 후보의 기준가 접근 여부를 확인하세요.";
+  const textCls = gate.isHigh ? "text-emerald-200" : gate.isMid ? "text-amber-200" : "text-red-200";
+  const barCls = gate.isHigh ? "bg-emerald-500" : gate.isMid ? "bg-amber-500" : "bg-red-500";
+
+  return (
+    <section className="rounded-2xl border border-blue-500/30 bg-blue-950/20 p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-300/80">오늘의 MONE 결론</div>
+          <h2 className={`mt-1 text-2xl font-black tracking-normal ${textCls}`}>{title}</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-200">{subtitle}</p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
+              검토 후보 {todayCount}개
+            </span>
+            <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
+              대기 후보 {watchCount}개
+            </span>
+            <span className={`rounded-full border px-3 py-1 ${riskCount > 0 ? "border-red-500/40 bg-red-500/10 text-red-300" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"}`}>
+              위험 보유 {riskCount}개
+            </span>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+            <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(freshness.state)}`}>{freshness.label}</span>
+            <span>{freshness.basisText}</span>
+            {dataHealth?.recoGeneratedAt && <span>추천 생성: {String(dataHealth.recoGeneratedAt).slice(11, 16) || String(dataHealth.recoGeneratedAt).slice(0, 16)}</span>}
+          </div>
+        </div>
+        <div className="w-full shrink-0 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 lg:w-72">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <div className="text-xs text-slate-500">시장 컨디션</div>
+              <div className={`mt-0.5 text-lg font-bold ${textCls}`}>{gate.levelText}</div>
+            </div>
+            <div className={`font-mono text-4xl font-black ${textCls}`}>
+              {gate.strength}<span className="text-base text-slate-500">/100</span>
+            </div>
+          </div>
+          <div className="mt-3 h-2 rounded-full bg-slate-800">
+            <div className={`h-2 rounded-full ${barCls}`} style={{ width: `${gate.strength}%` }} />
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
+            <div>
+              <div className="text-slate-500">시장 추세</div>
+              <div className={regime?.regime === "BULL" ? "text-emerald-300" : regime?.regime === "BEAR" ? "text-red-300" : "text-slate-300"}>
+                {regime?.regime === "BULL" ? "강세" : regime?.regime === "BEAR" ? "약세" : "중립"}
+              </div>
+            </div>
+            <div>
+              <div className="text-slate-500">MA20 이격</div>
+              <div className={`font-mono ${gate.maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                {gate.maDist >= 0 ? "+" : ""}{gate.maDist.toFixed(1)}%
+              </div>
+            </div>
+            <div>
+              <div className="text-slate-500">데이터</div>
+              <div className={gate.dataAdj === 0 ? "text-emerald-300" : gate.dataAdj <= -15 ? "text-red-300" : "text-amber-300"}>
+                {gate.dataAdj === 0 ? "정상" : gate.dataAdj <= -15 ? "확인 필요" : gate.hasOhlcv ? "종가 기준" : "부분"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1098,7 +1180,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
 
             const checks = [
               { label: "EV 양수", ok: evOk, detail: evOk ? `+${ev.toFixed(1)}%` : `${ev.toFixed(1)}% (음수)` },
-              { label: "기준가 범위", ok: inRange, detail: gapPct != null ? `현재가 ±${gapPct.toFixed(1)}%` : "가격 데이터 없음" },
+              { label: "기준가 범위", ok: inRange, detail: gapPct != null ? `현재가 ±${gapPct.toFixed(1)}%` : "가격 데이터 확인 중" },
               { label: "시장 레짐", ok: regimeOk, detail: marketRegime ? (marketRegime.regime === "BULL" ? "강세장 정상" : marketRegime.regime === "BEAR" ? "약세장 — 주의" : "중립") : "확인 불가" },
               { label: "데이터 상태", ok: dataOk, detail: dataOk ? "정상" : String(item.dataStatus || "미확인") },
               { label: "주의사항", ok: noCaution, detail: noCaution ? "없음" : `${item.cautionReasons.length}개` },
@@ -1433,8 +1515,8 @@ function ReportDigestCard({ digest, loading }: { digest: any; loading: boolean }
     <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-slate-100">운용 리포트 요약</h2>
-          <p className="mt-0.5 text-xs text-slate-500">장전 후보, 장마감 검증, 전략 성과를 홈에서 바로 확인합니다.</p>
+          <h2 className="text-base font-semibold text-slate-100">오늘 운용 요약</h2>
+          <p className="mt-0.5 text-xs text-slate-500">오늘 검토 후보, 검증 완료, 전략 성과를 홈에서 바로 확인합니다.</p>
         </div>
         <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
           loading ? "border-slate-700 bg-slate-800 text-slate-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
@@ -1444,19 +1526,19 @@ function ReportDigestCard({ digest, loading }: { digest: any; loading: boolean }
       </div>
       <div className="grid gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-          <div className="text-[11px] text-slate-500">장전 후보</div>
+          <div className="text-[11px] text-slate-500">오늘 검토 후보</div>
           <div className="mt-1 font-mono text-lg font-bold text-emerald-300">{loading ? "-" : `${preItems.length}개`}</div>
           <div className="mt-1 truncate text-[11px] text-slate-400">{top.name || top.companyName || top.symbol || "후보 없음"}</div>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-          <div className="text-[11px] text-slate-500">장마감 검증</div>
+          <div className="text-[11px] text-slate-500">검증 완료</div>
           <div className="mt-1 font-mono text-lg font-bold text-sky-300">{loading ? "-" : `${closingItems.length}건`}</div>
           <div className="mt-1 text-[11px] text-slate-400">{closing.status || "대기"}</div>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-          <div className="text-[11px] text-slate-500">승률</div>
-          <div className="mt-1 font-mono text-lg font-bold text-violet-300">{Number.isFinite(winRate) ? `${winRate.toFixed(1)}%` : "-"}</div>
-          <div className="mt-1 text-[11px] text-slate-400">{sample > 0 ? `${sample}회 표본` : "검증 누적 대기"}</div>
+          <div className="text-[11px] text-slate-500">성과 통계</div>
+          <div className="mt-1 font-mono text-lg font-bold text-violet-300">{sample > 0 && Number.isFinite(winRate) ? `${winRate.toFixed(1)}%` : "대기"}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{sample > 0 ? `${sample}회 표본` : "성과 통계는 표본 누적 후 표시"}</div>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
           <div className="text-[11px] text-slate-500">평균 수익률</div>
@@ -1490,6 +1572,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [storyForm, setStoryForm] = useState({ why: "", invalidation: "", reviewDate: "" });
   const [clientReady, setClientReady] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
+  const [alertsExpanded, setAlertsExpanded] = useState(false);
   // 실적발표 일정 맵: symbol → D-day
   const [earningsMap, setEarningsMap] = useState<Record<string, number>>({});
   // 데이터 소스 신선도
@@ -1508,6 +1591,20 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
     setMarketChoice(next);
     if (typeof window !== "undefined") window.localStorage.setItem("mone:selectedMarketMode", next);
   }
+
+  const openAnalysis = useCallback((item: any) => {
+    const symbol = String(item.symbol || item.code || item.ticker || "").trim();
+    if (typeof window !== "undefined" && symbol) {
+      const market = normalizeMarket(item.market || selectedMarket, symbol);
+      window.localStorage.setItem("mone_chart_symbol", symbol);
+      window.localStorage.setItem("mone_chart_market", market);
+      window.localStorage.setItem("mone_chart_name", displayName(item));
+      window.localStorage.setItem("mone_chart_price", String(item.currentPrice || item.price || ""));
+      window.localStorage.setItem("mone_chart_price_text", priceText(item, "current", ""));
+      window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: { symbol, market } }));
+    }
+    onNavigate?.("chart");
+  }, [onNavigate, selectedMarket]);
 
   async function load() {
     setLoading(true);
@@ -1835,6 +1932,57 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         </div>
       </div>
 
+      {!loading && (
+        <TodayConclusionCard
+          regime={marketRegime}
+          dataHealth={dataHealth}
+          todayCount={todayEntries.length}
+          watchCount={watchItems.length}
+          riskCount={riskCount}
+        />
+      )}
+
+      {!loading && dashboardAlerts.length > 0 && (() => {
+        const first = dashboardAlerts[0];
+        const summary = dashboardAlerts.length > 1
+          ? `${first.title.replace(/[.。]$/, "")} 외 ${dashboardAlerts.length - 1}개 알림`
+          : first.title;
+        const visibleAlerts = alertsExpanded ? dashboardAlerts : dashboardAlerts.slice(0, 1);
+        return (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-amber-100">MONE 알림 {dashboardAlerts.length}개</div>
+                <div className="mt-0.5 text-xs text-amber-100/80">{summary}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAlertsExpanded((value) => !value)}
+                className="shrink-0 rounded-lg border border-amber-400/30 bg-slate-950/40 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-slate-950/70"
+              >
+                {alertsExpanded ? "접기" : "알림 보기"}
+              </button>
+            </div>
+            {alertsExpanded && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {visibleAlerts.map((alert) => (
+                  <div key={alert.key} className={`rounded-xl border px-3 py-2 text-xs ${
+                    alert.tone === "red"
+                      ? "border-red-500/30 bg-red-500/10 text-red-100"
+                      : alert.tone === "emerald"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
+                        : "border-amber-500/30 bg-slate-950/30 text-amber-100"
+                  }`}>
+                    <div className="font-semibold">{alert.title}</div>
+                    <div className="mt-0.5 text-[11px] opacity-75">{alert.detail}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* 매크로/실적 이벤트 배너 */}
       <EventBanner alert={calendarAlert} />
 
@@ -1862,39 +2010,6 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           </div>
         );
       })()}
-
-      {/* 시장 컨디션 게이트 */}
-      {!loading && dashboardAlerts.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-bold text-amber-100">MONE 알림</div>
-              <div className="text-[11px] text-amber-200/70">진입 조건, 위험 상태, 데이터 신선도 변화를 먼저 확인하세요.</div>
-            </div>
-            <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
-              {dashboardAlerts.length}개
-            </span>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {dashboardAlerts.map((alert) => (
-              <div key={alert.key} className={`rounded-xl border px-3 py-2 text-xs ${
-                alert.tone === "red"
-                  ? "border-red-500/30 bg-red-500/10 text-red-100"
-                  : alert.tone === "emerald"
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
-                    : "border-amber-500/30 bg-slate-950/30 text-amber-100"
-              }`}>
-                <div className="font-semibold">{alert.title}</div>
-                <div className="mt-0.5 text-[11px] opacity-75">{alert.detail}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {!loading && marketRegime && (
-        <MarketGateCard regime={marketRegime} dataHealth={dataHealth} />
-      )}
 
       {/* 마켓 레짐 배너 */}
       {marketRegime && (
@@ -2094,7 +2209,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {todayEntries.map((item, i) => (
-              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onSelect={setSelectedItem} earningsMap={earningsMap} badgeMap={badgeMap} />
+              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onAnalyze={openAnalysis} earningsMap={earningsMap} />
             ))}
           </div>
         )}

@@ -5,7 +5,7 @@ import { RefreshCw } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
-import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
+import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, moneReasonLines, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
 
@@ -1765,6 +1765,7 @@ export default function ChartPage() {
     dataStatus: loadState.ohlcvStatus,
   });
   const touchReview = recommendationTouchReview(rows, levels, currentPrice, selected?.market || market, loadState.recoDate || undefined);
+  const analysisReasonLines = moneReasonLines(levels || selected || {}).slice(0, 3);
   const dataCards = [
     { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`, cls: loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
     { label: "추천선", value: levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
@@ -1855,6 +1856,28 @@ export default function ChartPage() {
               </div>
             </div>
 
+            {showPrecisionHint && (
+              <div className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span>더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.</span>
+                  <button
+                    type="button"
+                    onClick={() => applyPrecisionEvidence(true)}
+                    className="shrink-0 rounded-lg border border-blue-400/40 bg-blue-600/30 px-3 py-1.5 text-xs font-semibold text-blue-50 hover:bg-blue-600/50"
+                  >
+                    정밀 근거 보기
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
+              <div className="text-sm font-semibold text-slate-200">MONE 판단 이유</div>
+              <ol className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
+                {analysisReasonLines.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)}
+              </ol>
+            </div>
+
             <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5">
               {dataCards.map((card) => (
                 <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.cls}`}>
@@ -1916,7 +1939,7 @@ export default function ChartPage() {
               </button>
               {showPrecisionHint && (
                 <span className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-400">
-                  더 자세한 차트 근거가 필요하면 '정밀 근거 보기'를 켜보세요.
+                  더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.
                 </span>
               )}
               {([
