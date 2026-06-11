@@ -5453,11 +5453,19 @@ def api_broker_connect(body: dict = Body(...), authorization: str | None = Heade
         test = _broker.test_kis_connection(app_key, app_secret)
 
     if not test.get("ok"):
-        return {"ok": False, "testPassed": False, "error": test.get("message", "연결 실패")}
+        msg = test.get("message", "연결 실패")
+        return {
+            "ok": False,
+            "testPassed": False,
+            "code": test.get("code", "BROKER_CONNECT_FAILED"),
+            "message": msg,
+            "error": msg,
+        }
 
     # 저장
     _broker.save_connection(user_id, broker, app_key, app_secret, account_no)
-    return {"ok": True, "testPassed": True, "message": test.get("message", "연결됨"),
+    return {"ok": True, "testPassed": True, "code": test.get("code", "BROKER_CONNECTED"),
+            "message": test.get("message", "연결됨"),
             "status": _broker.get_connection_status(user_id, broker)}
 
 
@@ -5480,8 +5488,21 @@ def api_broker_test(body: dict = Body(...), authorization: str | None = Header(d
 
     test = _broker.test_toss_connection(app_key, app_secret) if broker == "toss" else _broker.test_kis_connection(app_key, app_secret)
     if not test.get("ok"):
-        return {"ok": False, "testPassed": False, "error": test.get("message", "토큰 발급 실패")}
-    return {"ok": True, "testPassed": True, "message": test.get("message", "토큰 발급 성공")}
+        msg = test.get("message", "토큰 발급 실패")
+        return {
+            "ok": False,
+            "testPassed": False,
+            "code": test.get("code", "BROKER_TEST_FAILED"),
+            "message": msg,
+            "error": msg,
+        }
+    return {
+        "ok": True,
+        "testPassed": True,
+        "code": test.get("code", "BROKER_TOKEN_OK"),
+        "message": test.get("message", "토큰 발급 성공"),
+        "elapsedMs": test.get("elapsedMs"),
+    }
 
 
 @app.post("/api/broker/sync-holdings")
