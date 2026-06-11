@@ -247,9 +247,9 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
       detail: "추천선과 OHLCV가 충분해지면 기준가/목표/손절 터치를 자동 판정합니다.",
       cls: statusTone("neutral"),
       cards: [
-        { label: "기준가 터치", value: "-", sub: "추천선 필요" },
-        { label: "목표 터치", value: "-", sub: "추천선 필요" },
-        { label: "손절 터치", value: "-", sub: "추천선 필요" },
+        { label: "기준가", value: "-", sub: "추천선 필요" },
+        { label: "목표가", value: "-", sub: "추천선 필요" },
+        { label: "손절가", value: "-", sub: "추천선 필요" },
       ],
     };
   }
@@ -267,9 +267,9 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
         detail: `추천 생성일(${recoDay}) 이후 OHLCV가 아직 없습니다. 과거 터치 기록은 이번 추천의 목표/손절 판정에 쓰지 않습니다.`,
         cls: statusTone("neutral"),
         cards: [
-          { label: "기준가 터치", value: "대기", sub: `OHLCV 최근일 ${latestDate}` },
-          { label: "목표 터치", value: "대기", sub: target ? money(target, market) : "목표 없음" },
-          { label: "손절 터치", value: "대기", sub: stop ? money(stop, market) : "손절 없음" },
+          { label: "기준가", value: "대기", sub: `OHLCV 최근일 ${latestDate}` },
+          { label: "목표가", value: "대기", sub: target ? money(target, market) : "목표 없음" },
+          { label: "손절가", value: "대기", sub: stop ? money(stop, market) : "손절 없음" },
         ],
       };
     }
@@ -293,9 +293,9 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
       detail: `기준가까지 ${gapText}. 실제 저가/고가가 닿으면 자동으로 기준가 터치로 전환됩니다.`,
       cls: statusTone("warn"),
       cards: [
-        { label: "기준가 터치", value: "대기", sub: money(entry, market) },
-        { label: "목표 터치", value: "-", sub: target ? money(target, market) : "목표 없음" },
-        { label: "손절 터치", value: "-", sub: stop ? money(stop, market) : "손절 없음" },
+        { label: "기준가", value: "대기", sub: money(entry, market) },
+        { label: "목표가", value: "-", sub: target ? money(target, market) : "목표 없음" },
+        { label: "손절가", value: "-", sub: stop ? money(stop, market) : "손절 없음" },
       ],
     };
   }
@@ -306,9 +306,9 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
       detail: `${entryTouch.date} 기준가 터치 후 ${stopTouch.date} 손절선에 닿았습니다.`,
       cls: statusTone("bad"),
       cards: [
-        { label: "기준가 터치", value: entryTouch.date, sub: money(entry, market) },
-        { label: "목표 터치", value: targetTouch?.date || "미도달", sub: target ? money(target, market) : "목표 없음" },
-        { label: "손절 터치", value: stopTouch.date, sub: stop ? money(stop, market) : "손절 없음" },
+        { label: "기준가", value: "터치 완료", sub: `${entryTouch.date} · ${money(entry, market)}` },
+        { label: "목표가", value: targetTouch?.date ? "터치 완료" : "미도달", sub: targetTouch?.date ? `${targetTouch.date} · ${target ? money(target, market) : ""}` : target ? money(target, market) : "목표 없음" },
+        { label: "손절가", value: "터치 완료", sub: `${stopTouch.date} · ${stop ? money(stop, market) : ""}` },
       ],
     };
   }
@@ -318,9 +318,9 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
       detail: `${entryTouch.date} 기준가 터치 후 ${targetTouch.date} 목표선에 닿았습니다.`,
       cls: statusTone("ok"),
       cards: [
-        { label: "기준가 터치", value: entryTouch.date, sub: money(entry, market) },
-        { label: "목표 터치", value: targetTouch.date, sub: target ? money(target, market) : "목표 없음" },
-        { label: "손절 터치", value: stopTouch?.date || "미터치", sub: stop ? money(stop, market) : "손절 없음" },
+        { label: "기준가", value: "터치 완료", sub: `${entryTouch.date} · ${money(entry, market)}` },
+        { label: "목표가", value: "터치 완료", sub: `${targetTouch.date} · ${target ? money(target, market) : ""}` },
+        { label: "손절가", value: stopTouch?.date ? "터치 완료" : "미터치", sub: stopTouch?.date ? `${stopTouch.date} · ${stop ? money(stop, market) : ""}` : stop ? money(stop, market) : "손절 없음" },
       ],
     };
   }
@@ -329,9 +329,9 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
     detail: `${entryTouch.date} 기준가 터치 후 목표/손절 미확정입니다.`,
     cls: statusTone("neutral"),
     cards: [
-      { label: "기준가 터치", value: entryTouch.date, sub: money(entry, market) },
-      { label: "목표 터치", value: "미도달", sub: target ? money(target, market) : "목표 없음" },
-      { label: "손절 터치", value: "미터치", sub: stop ? money(stop, market) : "손절 없음" },
+      { label: "기준가", value: "터치 완료", sub: `${entryTouch.date} · ${money(entry, market)}` },
+      { label: "목표가", value: "미도달", sub: target ? money(target, market) : "목표 없음" },
+      { label: "손절가", value: "미터치", sub: stop ? money(stop, market) : "손절 없음" },
     ],
   };
 }
@@ -1337,11 +1337,11 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
 
   if (market !== "kr") {
     return (
-      <Panel title="호가·수급">
+      <>
         <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-400">
           호가창은 국장(KR)만 지원합니다.
         </div>
-      </Panel>
+      </>
     );
   }
 
@@ -1351,7 +1351,7 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
   const maxQty = Math.max(...[...asks, ...bids].map((r) => r.qty), 1);
 
   return (
-    <Panel title="호가·수급">
+    <>
       {/* 버튼 영역 */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <button onClick={fetchOb} disabled={loading}
@@ -1478,7 +1478,7 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
           투자자 데이터 미제공: {investor.error || "조회 실패"}
         </div>
       )}
-    </Panel>
+    </>
   );
 }
 
@@ -1541,6 +1541,19 @@ function technicalStance(rows: any[], indicators: any, latestRsi: number | null,
     detail: "기준가 터치, 거래량, 공시 이벤트를 같이 확인하세요.",
     cls: statusTone("neutral"),
   };
+}
+
+function CollapsibleOrderbook({ symbol, market }: { symbol: string; market: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+      <button type="button" className="flex w-full items-center justify-between gap-2" onClick={() => setOpen((v) => !v)}>
+        <div className="text-sm font-semibold text-slate-200">호가·수급</div>
+        <span className="shrink-0 text-[10px] text-slate-500">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div className="mt-3"><OrderbookPanel symbol={symbol} market={market} /></div>}
+    </div>
+  );
 }
 
 // ── 메인 ─────────────────────────────────────────────────────────────
@@ -1871,6 +1884,60 @@ export default function ChartPage() {
               </div>
             )}
 
+            {/* MONE 결론 카드 */}
+            {levels && (() => {
+              const ps = levels.patternStrategy && typeof levels.patternStrategy === "object" ? levels.patternStrategy as Record<string, unknown> : null;
+              const actionRaw = ps?.action ? String(ps.action) : null;
+              const riskRaw = ps?.riskStatus ? String(ps.riskStatus) : null;
+              const conf = ps?.confidence != null ? Math.round(Number(ps.confidence)) : null;
+              const ACT: Record<string, string> = {
+                SCALE_IN: "분할 접근", WATCH_ONLY: "관찰", WAIT_PULLBACK: "눌림 대기",
+                HOLD_CASH: "현금 대기", AVOID_CHASE: "추격 금지", BLOCKED: "진입 차단",
+                BUY: "매수", STRONG_BUY: "강력매수", SELL: "매도", HOLD: "보유", ENTER: "진입", EXIT: "청산", WAIT: "대기",
+              };
+              const RSK: Record<string, string> = {
+                NONE: "정상", PULLBACK_RISK: "눌림 위험", OVERHEATED_CHASE_RISK: "과열 추격 주의",
+                FALSE_BREAKOUT_RISK: "가짜 돌파 주의", STRUCTURE_BREAKDOWN: "구조 이탈",
+                DATA_QUALITY_RISK: "데이터 확인 필요",
+              };
+              const actionText = actionRaw ? (ACT[actionRaw.toUpperCase()] ?? actionRaw) : null;
+              const riskText = riskRaw ? (RSK[riskRaw.toUpperCase()] ?? riskRaw) : null;
+              const isRisk = riskRaw && riskRaw.toUpperCase() !== "NONE";
+              const conclusionText =
+                actionRaw === "BLOCKED" ? "진입 차단 — 현재 진입 불가"
+                : actionRaw === "AVOID_CHASE" ? "추격 금지 — 현재 가격에서 진입 위험"
+                : actionRaw === "HOLD_CASH" ? "현금 대기 — 더 나은 기회를 기다립니다"
+                : actionRaw === "WATCH_ONLY" ? "관찰 단계 — 조건 충족 시 진입 검토"
+                : actionRaw === "WAIT_PULLBACK" ? "눌림 대기 — 조정 후 진입 구간 접근 중"
+                : actionRaw === "SCALE_IN" ? "분할 접근 — 단계적 진입 전략"
+                : actionRaw === "ENTER" || actionRaw === "BUY" ? "진입 검토 — 기준가 근접 시 진입"
+                : actionText ?? null;
+              if (!actionText && !riskText) return null;
+              return (
+                <div className={`mb-4 rounded-xl border p-4 ${isRisk ? "border-amber-700/40 bg-amber-950/20" : "border-emerald-800/40 bg-emerald-950/15"}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">MONE 결론</div>
+                      {conclusionText && (
+                        <div className={`text-sm font-bold ${isRisk ? "text-amber-200" : "text-emerald-200"}`}>{conclusionText}</div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      {actionText && (
+                        <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${isRisk ? "border-amber-600/40 text-amber-300" : "border-emerald-600/40 text-emerald-300"}`}>{actionText}</span>
+                      )}
+                      {riskText && (
+                        <span className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${isRisk ? "border-red-700/40 text-red-300" : "border-slate-700 text-slate-400"}`}>{riskText}</span>
+                      )}
+                      {conf != null && (
+                        <span className="rounded-lg border border-slate-700 px-2.5 py-1 font-mono text-xs text-slate-400">신뢰도 {conf}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
               <div className="text-sm font-semibold text-slate-200">MONE 판단 이유</div>
               <ol className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
@@ -2154,13 +2221,35 @@ export default function ChartPage() {
             };
             const actionKo = (a?: string) => {
               if (!a) return "-";
-              const m: Record<string, string> = { BUY:"매수", STRONG_BUY:"강력매수", SELL:"매도", STRONG_SELL:"강력매도", WATCH_ONLY:"관망", HOLD:"보유", ENTER:"진입", EXIT:"청산", WAIT:"대기" };
+              const m: Record<string, string> = {
+                BUY:"매수", STRONG_BUY:"강력매수", SELL:"매도", STRONG_SELL:"강력매도",
+                WATCH_ONLY:"관찰", HOLD:"보유", ENTER:"진입", EXIT:"청산", WAIT:"대기",
+                SCALE_IN:"분할 접근", WAIT_PULLBACK:"눌림 대기", HOLD_CASH:"현금 대기",
+                AVOID_CHASE:"추격 금지", BLOCKED:"진입 차단",
+              };
               return m[a.toUpperCase()] ?? a;
             };
             const riskKo = (r?: string) => {
               if (!r) return "-";
-              const m: Record<string, string> = { LOW_RISK:"낮음", MEDIUM_RISK:"보통", HIGH_RISK:"높음", SAFE:"안전", CAUTION:"주의", DANGER:"위험", DATA_QUALITY_RISK:"데이터 제한", WATCH:"주의" };
+              const m: Record<string, string> = {
+                LOW_RISK:"낮음", MEDIUM_RISK:"보통", HIGH_RISK:"높음", SAFE:"안전",
+                CAUTION:"주의", DANGER:"위험", DATA_QUALITY_RISK:"데이터 확인 필요", WATCH:"주의",
+                NONE:"정상", PULLBACK_RISK:"눌림 위험", OVERHEATED_CHASE_RISK:"과열 추격 주의",
+                FALSE_BREAKOUT_RISK:"가짜 돌파 주의", STRUCTURE_BREAKDOWN:"구조 이탈",
+              };
               return m[r.toUpperCase()] ?? r;
+            };
+            const patternKo = (p?: string) => {
+              if (!p) return "-";
+              const m: Record<string, string> = {
+                horizontal_support_rebound:"지지 반등", relative_strength:"상대강도 우위",
+                resistance_breakout:"저항 돌파", breakout_retest:"돌파 후 재확인",
+                trend_up_pullback:"상승 추세 눌림", range_bottom_rebound:"박스 하단 반등",
+                volatility_contraction_expansion:"변동성 수축 후 확장", volume_turnaround:"거래량 전환",
+                overheated_chase_risk:"과열 추격 위험", false_breakout_risk:"가짜 돌파 위험",
+                downtrend_bounce_trap:"하락 반등 함정", resistance_chase_risk:"저항 추격 위험",
+              };
+              return m[p] ?? p;
             };
             const supports = (ps.historicalSupportLevels ?? []).slice(0, 3);
             return (
@@ -2172,7 +2261,7 @@ export default function ChartPage() {
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm mb-4">
                   <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                     <div className="text-[10px] text-slate-500 mb-1">MONE 패턴</div>
-                    <div className="font-semibold text-slate-200 text-sm truncate">{ps.primaryPattern ?? "-"}</div>
+                    <div className="font-semibold text-slate-200 text-sm truncate">{patternKo(ps.primaryPattern)}</div>
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                     <div className="text-[10px] text-slate-500 mb-1">전략</div>
@@ -2201,7 +2290,7 @@ export default function ChartPage() {
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">보조 패턴</div>
                     <div className="text-slate-200">
-                      {ps.secondaryPatterns?.length ? ps.secondaryPatterns.slice(0, 3).join(", ") : "-"}
+                      {ps.secondaryPatterns?.length ? ps.secondaryPatterns.slice(0, 3).map((p: string) => patternKo(p)).join(", ") : "-"}
                     </div>
                   </div>
                 </div>
@@ -2281,16 +2370,16 @@ export default function ChartPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <Panel title="상세 지표">
+            <CollapsiblePanel title="상세 지표">
               <Info label="MA20 이격도" value={indicators.distanceToMa20 != null ? `${Number(indicators.distanceToMa20).toFixed(2)}%` : "데이터 부족"} />
               <Info label="볼린저 %B" value={indicators.bbPercentB != null ? Number(indicators.bbPercentB).toFixed(2) : "데이터 부족"} />
               <Info label="20일 거래량비" value={indicators.volumeRatio20 != null ? `${Number(indicators.volumeRatio20).toFixed(2)}x` : "데이터 부족"} />
               <Info label="52주 고점 이격" value={indicators.distanceTo52wHigh != null ? `${Number(indicators.distanceTo52wHigh).toFixed(2)}%` : "데이터 부족"} />
-            </Panel>
+            </CollapsiblePanel>
 
-            <OrderbookPanel symbol={selected.symbol} market={selected.market} />
+            <CollapsibleOrderbook symbol={selected.symbol} market={selected.market} />
 
-            <Panel title="거래량·모멘텀 분석">
+            <CollapsiblePanel title="거래량·모멘텀 분석">
               {rows.length >= 20 ? (() => {
                 const r20 = rows.slice(-20).map((r: any) => Number(r.volume || r.Volume || 0));
                 const r5  = rows.slice(-5).map((r: any)  => Number(r.volume || r.Volume || 0));
@@ -2327,9 +2416,9 @@ export default function ChartPage() {
                   </div>
                 );
               })() : <div className="text-sm text-slate-500">OHLCV 20일 이상 필요합니다.</div>}
-            </Panel>
+            </CollapsiblePanel>
 
-            <Panel title={`기업분석${company?.hasDartData ? ` · DART ${company.dartYear || ""}` : ""}`}>
+            <CollapsiblePanel title={`기업분석${company?.hasDartData ? ` · DART ${company.dartYear || ""}` : ""}`}>
               {company ? (
                 <>
                   <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
@@ -2404,26 +2493,26 @@ export default function ChartPage() {
                   )}
                 </div>
               )}
-            </Panel>
+            </CollapsiblePanel>
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {!loading && news.length === 0 && disclosures.length === 0 ? (
               <div className="lg:col-span-2">
-                <Panel title="뉴스·공시">
+                <CollapsiblePanel title="뉴스·공시">
                   <Empty text="뉴스 0건 · 공시 0건입니다. 뉴스는 장전·장후, 공시는 주기적으로 자동 수집됩니다." />
-                </Panel>
+                </CollapsiblePanel>
               </div>
             ) : (
               <>
-                <Panel title="관련 뉴스">
+                <CollapsiblePanel title="관련 뉴스">
                   {loading
                     ? <Empty text="데이터 확인 중..." />
                     : news.length === 0
                       ? <Empty text="뉴스 0건" />
                       : <div className="space-y-2">{news.map((item, i) => <Related key={`news-${i}`} item={item} />)}</div>}
-                </Panel>
-                <Panel title="관련 공시 (DART)">
+                </CollapsiblePanel>
+                <CollapsiblePanel title="관련 공시 (DART)">
                   {loading
                     ? <Empty text="데이터 확인 중..." />
                     : disclosures.length === 0
@@ -2443,7 +2532,7 @@ export default function ChartPage() {
                         </div>
                       )
                       : <div className="space-y-2">{disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} />)}</div>}
-                </Panel>
+                </CollapsiblePanel>
               </>
             )}
           </div>
@@ -2467,6 +2556,18 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
     <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
       <div className="text-sm font-semibold text-slate-200">{title}</div>
       {children}
+    </div>
+  );
+}
+function CollapsiblePanel({ title, children, defaultOpen = false }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+      <button type="button" className="flex w-full items-center justify-between gap-2" onClick={() => setOpen((v) => !v)}>
+        <div className="text-sm font-semibold text-slate-200">{title}</div>
+        <span className="shrink-0 text-[10px] text-slate-500">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div className="mt-3 space-y-3">{children}</div>}
     </div>
   );
 }

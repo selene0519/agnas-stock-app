@@ -139,7 +139,7 @@ export default function App() {
       case "report":
         return <ReportPage />;
       case "stocks":
-        return <StocksPage />;
+        return <StocksPage onNavigate={(p) => setPage(p as PageId)} />;
       case "holdings":
         return <HoldingsPage />;
       case "chart":
