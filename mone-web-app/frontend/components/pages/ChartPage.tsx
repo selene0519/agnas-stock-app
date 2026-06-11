@@ -1905,6 +1905,7 @@ export default function ChartPage() {
     dataStatus: loadState.ohlcvStatus,
   });
   const touchReview = recommendationTouchReview(rows, levels, currentPrice, selected?.market || market, loadState.recoDate || undefined);
+  const visibleTouchReviewCards = touchReview.cards.filter((card) => card.value && card.value !== "-");
   const analysisReasonLines = moneReasonLines(levels || selected || {})
     .map((line) => safeLabel(line, {}, ""))
     .filter(Boolean)
@@ -1926,6 +1927,7 @@ export default function ChartPage() {
     const actionText = safeLabel(actionRaw, ACTION_LABELS, "");
     const riskText = safeLabel(riskRaw, RISK_LABELS, "정상");
     const conf = ps?.confidence != null ? Math.round(Number(ps.confidence)) : num(source.finalScore);
+    const confidence = conf !== null && Number.isFinite(conf) ? Math.round(Number(conf)) : null;
     const entry = levels ? priceText(levels, "entry", "기준가 대기") : "추천선 대기";
     const stop = levels ? priceText(levels, "stop", "손절선 대기") : "손절선 대기";
     const isRisk = isRiskCode(riskRaw) || actionCode === "BLOCKED" || actionCode === "AVOID_CHASE";
@@ -1949,13 +1951,14 @@ export default function ChartPage() {
       headline,
       actionText: actionText || "대기",
       riskText,
-      conf: conf !== null && Number.isFinite(conf) ? Math.round(Number(conf)) : null,
+      conf: confidence,
       isRisk,
       rows: [
         { label: "신규 진입", value: newEntry },
         { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다." },
         { label: "관심종목", value: levels ? `기준가 ${entry} 근접 시 알림` : "기준가 확정 후 알림 기준을 설정합니다." },
         { label: "위험 상태", value: riskText },
+        ...(confidence != null ? [{ label: "신뢰도", value: String(confidence) }] : []),
       ],
     };
   })();
@@ -2113,31 +2116,6 @@ export default function ChartPage() {
               </div>
             </div>
 
-            {showPrecisionHint && (
-              <div className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <span>더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.</span>
-                  <button
-                    type="button"
-                    onClick={() => applyPrecisionEvidence(true)}
-                    className="shrink-0 rounded-lg border border-blue-400/40 bg-blue-600/30 px-3 py-1.5 text-xs font-semibold text-blue-50 hover:bg-blue-600/50"
-                  >
-                    정밀 근거 보기
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-              {dataCards.map((card) => (
-                <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.cls}`}>
-                  <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{card.label}</div>
-                  <div className="mt-1 text-sm font-bold">{card.value}</div>
-                  <div className="text-[10px] opacity-75">{card.sub}</div>
-                </div>
-              ))}
-            </div>
-
             {moneConclusion && (
               <div className={`mb-4 rounded-xl border p-4 ${moneConclusion.isRisk ? "border-amber-700/40 bg-amber-950/20" : "border-emerald-800/40 bg-emerald-950/15"}`}>
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -2176,6 +2154,31 @@ export default function ChartPage() {
               </ol>
             </div>
 
+            {showPrecisionHint && (
+              <div className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span>더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.</span>
+                  <button
+                    type="button"
+                    onClick={() => applyPrecisionEvidence(true)}
+                    className="shrink-0 rounded-lg border border-blue-400/40 bg-blue-600/30 px-3 py-1.5 text-xs font-semibold text-blue-50 hover:bg-blue-600/50"
+                  >
+                    정밀 근거 보기
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+              {dataCards.map((card) => (
+                <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.cls}`}>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{card.label}</div>
+                  <div className="mt-1 text-sm font-bold">{card.value}</div>
+                  <div className="text-[10px] opacity-75">{card.sub}</div>
+                </div>
+              ))}
+            </div>
+
             {loadState.errors.length > 0 && (
               <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
                 일부 데이터 API 오류: {loadState.errors.slice(0, 2).join(" / ")}
@@ -2189,15 +2192,17 @@ export default function ChartPage() {
                 </div>
                 <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${touchReview.cls}`}>{touchReview.label}</span>
               </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {touchReview.cards.map((card) => (
-                  <div key={card.label} className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-                    <div className="text-[10px] text-slate-500">{card.label}</div>
-                    <div className="mt-1 break-words font-mono text-sm font-bold text-slate-100">{card.value}</div>
-                    <div className="text-[10px] text-slate-600">{card.sub}</div>
-                  </div>
-                ))}
-              </div>
+              {visibleTouchReviewCards.length > 0 && (
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {visibleTouchReviewCards.map((card) => (
+                    <div key={card.label} className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                      <div className="text-[10px] text-slate-500">{card.label}</div>
+                      <div className="mt-1 break-words font-mono text-sm font-bold text-slate-100">{card.value}</div>
+                      <div className="text-[10px] text-slate-600">{card.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="mt-2 text-[10px] text-slate-600">
                 OHLCV 최근일: {freshness.detail}
                 {loadState.recoDate && <span className="ml-3 text-violet-400/70">추천 생성: {loadState.recoDate.slice(0, 10)}</span>}
@@ -2467,12 +2472,17 @@ export default function ChartPage() {
                   </CollapsiblePanel>
                 )}
 
-                <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
-                  <Info label="기준가" value={levels && levelValue(levels,"base") ? money(levelValue(levels,"base"), selected.market) : "-"} />
-                  <Info label="기준가" value={levels ? priceText(levels,"entry","-") : "-"} />
-                  <Info label="손절가" value={levels ? priceText(levels,"stop","-") : "-"} />
-                  <Info label="목표가" value={levels ? priceText(levels,"target","-") : "-"} />
-                  <Info label="예상가" value={levels ? priceText(levels,"expected","-") : "-"} />
+                <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+                  {[
+                    { label: "기준가", value: levels ? priceText(levels, "entry", "") : "" },
+                    { label: "손절가", value: levels ? priceText(levels, "stop", "") : "" },
+                    { label: "목표가", value: levels ? priceText(levels, "target", "") : "" },
+                    { label: "예상가", value: levels ? priceText(levels, "expected", "") : "" },
+                  ]
+                    .filter((card) => card.value && card.value !== "-")
+                    .map((card) => (
+                      <Info key={card.label} label={card.label} value={card.value} />
+                    ))}
                 </div>
               </div>
             )}
