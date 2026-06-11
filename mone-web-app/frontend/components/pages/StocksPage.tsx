@@ -62,11 +62,23 @@ function Cell({
             ? "text-amber-300"
             : "text-slate-100";
   return (
-    <div className="rounded-xl bg-slate-950 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`font-mono ${color}`}>{value || "-"}</div>
+    <div className="min-w-0 rounded-xl bg-slate-950 px-2 py-2">
+      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className={`mt-0.5 min-w-0 break-keep font-mono text-[11px] font-semibold leading-tight sm:text-xs ${color}`}>
+        {value || "-"}
+      </div>
     </div>
   );
+}
+
+function compactPriceText(value: string, market: string) {
+  const text = String(value || "").trim();
+  if (!text || text === "-") return text || "-";
+  if (String(market).toLowerCase() === "us" || text.startsWith("$")) return text;
+  const n = toNumber(text);
+  if (n === null) return text;
+  if (n >= 1_000_000) return `${Math.round(n / 1000).toLocaleString("ko-KR")}천원`;
+  return `${Math.round(n).toLocaleString("ko-KR")}원`;
 }
 
 function adjustedText(
@@ -728,7 +740,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   };
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-100">종목 탐색</h1>
         <p className="mt-1 text-sm text-slate-400">
@@ -1246,13 +1258,16 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
         {visible.map((item: any, index: number) => {
           const hasRecommendation = !item.isSearchOnly;
           const marketValue = String(item.market || market);
-          const current = priceText(
+          const currentRaw = priceText(
             item,
             "current",
             priceText(item, "entry", "현재가 없음"),
           );
-          const entry = hasRecommendation ? adjustedText(item, "entry", mode, marketValue) : "추천 데이터 없음";
-          const target = hasRecommendation ? adjustedText(item, "target", mode, marketValue) : "추천 데이터 없음";
+          const entryRaw = hasRecommendation ? adjustedText(item, "entry", mode, marketValue) : "추천 데이터 없음";
+          const targetRaw = hasRecommendation ? adjustedText(item, "target", mode, marketValue) : "추천 데이터 없음";
+          const current = compactPriceText(currentRaw, marketValue);
+          const entry = compactPriceText(entryRaw, marketValue);
+          const target = compactPriceText(targetRaw, marketValue);
           const watched = isWatched(item);
           const patternAction = firstPlainText(
             item.patternStrategy?.action,
@@ -1267,7 +1282,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             const soMarket = cleanMarket(item.market || market || "kr");
             const soSymbol = cleanSymbol(item.symbol, soMarket);
             return (
-              <div key={`search-only-${soMarket}-${soSymbol}-${index}`} className="rounded-2xl border border-slate-700/50 bg-slate-900/30 p-4">
+              <div key={`search-only-${soMarket}-${soSymbol}-${index}`} className="rounded-2xl border border-slate-700/50 bg-slate-900/30 p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-bold text-slate-100">{displayName(item)}</div>
@@ -1281,7 +1296,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                 {current && !current.includes("없음") && (
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-xs text-slate-500">현재가</span>
-                    <span className="font-mono text-sm font-bold text-cyan-300">{current}</span>
+                    <span className="break-keep font-mono text-sm font-bold text-cyan-300">{current}</span>
                   </div>
                 )}
                 <div className="mt-3 flex gap-2">
@@ -1293,7 +1308,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                       window.localStorage.setItem("mone_chart_market", soMarket);
                       window.localStorage.setItem("mone_chart_name", displayName(item) || soSymbol);
                       window.localStorage.setItem("mone_chart_price", String(item.currentPrice || ""));
-                      window.localStorage.setItem("mone_chart_price_text", current);
+                      window.localStorage.setItem("mone_chart_price_text", currentRaw);
                       window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
                       onNavigate?.("chart");
                     }}
@@ -1376,7 +1391,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           return (
             <div
               key={`${item.market}-${item.symbol}-${index}`}
-              className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
+              className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4"
             >
               {/* 헤더 */}
               <div className="mb-3 flex items-start justify-between gap-3">
@@ -1407,7 +1422,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
               </div>
 
               {/* 가격 3개 */}
-              <div className="grid grid-cols-3 gap-2 text-sm mb-3">
+              <div className="mb-3 grid grid-cols-3 gap-1.5 text-sm sm:gap-2">
                 <Cell label="현재가" value={current} tone={current.includes("확인") ? "amber" : "normal"} />
                 <Cell label="기준가" value={entry} tone="blue" />
                 <Cell label="목표가" value={target} tone="green" />

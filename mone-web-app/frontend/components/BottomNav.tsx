@@ -67,7 +67,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
         <>
           <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMoreOpen(false)} />
           <div
-            className="fixed left-0 right-0 z-50 rounded-t-2xl border-t border-slate-700 bg-slate-900 px-4 pt-4 md:hidden"
+            className="fixed left-0 right-0 z-50 rounded-t-2xl border-t border-slate-700 bg-slate-900 px-3 pt-4 md:hidden"
             style={{ bottom: "56px" }}
           >
             <div className="mb-3 flex items-center justify-between">

@@ -496,6 +496,12 @@ export const mone = {
     fetch(buildUrl(API_BASE, "/api/broker/connections"), {
       headers: { Authorization: `Bearer ${token}` },
     }).then((r) => r.json()),
+  brokerTest: (token: string, body: { broker: string; appKey: string; appSecret: string }) =>
+    fetch(buildUrl(API_BASE, "/api/broker/test"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }).then((r) => r.json()),
   brokerConnect: (token: string, body: { broker: string; appKey: string; appSecret: string; accountNo: string }) =>
     fetch(buildUrl(API_BASE, "/api/broker/connect"), {
       method: "POST",

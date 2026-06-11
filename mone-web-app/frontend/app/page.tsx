@@ -144,7 +144,7 @@ export default function App() {
       case "stocks":
         return <StocksPage onNavigate={(p) => setPage(p as PageId)} />;
       case "holdings":
-        return <HoldingsPage />;
+        return <HoldingsPage userToken={userToken || null} onNavigate={(p) => setPage(p as PageId)} />;
       case "chart":
         return <ChartPage />;
       case "news":
@@ -158,6 +158,7 @@ export default function App() {
           <BrokerPage
             userToken={userToken || null}
             onLogin={() => setPage("admin")}
+            onNavigate={(p) => setPage(p as PageId)}
           />
         );
       case "admin":
@@ -247,7 +248,7 @@ export default function App() {
         </header>
 
         {/* 메인 콘텐츠 — 모바일은 하단 탭바 높이(56px) + safe area 만큼 여백 */}
-        <main className="flex-1 overflow-y-auto p-4 pb-[calc(56px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
+        <main className="flex-1 overflow-y-auto p-3 pb-[calc(56px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
           <div className="mx-auto max-w-7xl space-y-4">
             <SessionSafetyBanner market={getDefaultMarketBySession()} />
             {loading && (

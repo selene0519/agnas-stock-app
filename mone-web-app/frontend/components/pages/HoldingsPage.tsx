@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileText, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
+import { Download, FileText, Link2, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 import PositionManager from "../PositionManager";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo } from "@/lib/moneDisplay";
@@ -9,6 +9,20 @@ import { getUserId } from "@/lib/userId";
 
 type Market = "all" | "kr" | "us";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
+
+type BrokerStatus = {
+  broker: string;
+  connected: boolean;
+  status: string;
+  lastSync?: number | null;
+  connectedAt?: number | null;
+  accountNoHint?: string;
+};
+
+type HoldingsPageProps = {
+  userToken?: string | null;
+  onNavigate?: (page: string) => void;
+};
 
 type EditableHolding = {
   market: "kr" | "us";
@@ -219,6 +233,27 @@ function riskLabel(risk: string) {
   if (risk === "HIGH") return "위험";
   if (risk === "WATCH") return "주의";
   return "정상";
+}
+function brokerLabel(value: any) {
+  const broker = String(value || "").toLowerCase();
+  if (broker === "toss") return "토스증권 연동";
+  if (broker === "kis") return "한국투자 연동";
+  if (broker === "manual") return "직접 추가";
+  if (broker === "file") return "파일 가져오기";
+  if (broker.includes("local")) return "직접 추가";
+  return broker ? `${broker} 연동` : "직접 추가";
+}
+function brokerStatusLabel(status?: BrokerStatus) {
+  if (!status || !status.connected) return "미연결";
+  if (status.status === "OK") return "연결됨";
+  if (status.status === "SYNCING") return "동기화 중";
+  if (status.status === "ERROR") return "동기화 실패";
+  return "연결됨";
+}
+function brokerSyncText(status?: BrokerStatus) {
+  const ts = status?.lastSync || status?.connectedAt;
+  if (!ts) return "";
+  return `마지막 동기화 ${new Date(ts * 1000).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 // ── NAV 수익률 곡선 (실제/추정 구분) ─────────────────────────────────
@@ -453,7 +488,7 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
   }
   return (
     <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
-      <div className="mb-4 text-sm font-bold text-emerald-200">새 보유 종목 추가</div>
+      <div className="mb-4 text-sm font-bold text-emerald-200">직접 추가</div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <label className="text-xs text-slate-400">마켓
           <select value={draft.market} onChange={(e) => setDraft({ ...draft, market: e.target.value as "kr"|"us" })}
@@ -510,7 +545,7 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
 }
 
 // ── 메인 페이지 ────────────────────────────────────────────────────────
-export default function HoldingsPage() {
+export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProps) {
   const [market, setMarket] = useState<Market>("all");
   const [data, setData] = useState<any>({ items: [], summary: {} });
   const [loading, setLoading] = useState(false);
@@ -535,6 +570,7 @@ export default function HoldingsPage() {
   const [positionCandidates, setPositionCandidates] = useState<any[]>([]);
   const [positionLoading, setPositionLoading] = useState(false);
   const [holdingsLoadedAt, setHoldingsLoadedAt] = useState("");
+  const [brokerConnections, setBrokerConnections] = useState<BrokerStatus[]>([]);
   const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
 
   function mergeEditableRows(rows: any[]) {
@@ -618,6 +654,18 @@ export default function HoldingsPage() {
   useEffect(() => {
     load();
   }, [market]);
+
+  useEffect(() => {
+    if (!userToken) {
+      setBrokerConnections([]);
+      return;
+    }
+    import("@/lib/api").then(({ mone }) =>
+      mone.brokerConnections(userToken)
+        .then((res: any) => setBrokerConnections(Array.isArray(res?.connections) ? res.connections : Array.isArray(res) ? res : []))
+        .catch(() => setBrokerConnections([]))
+    );
+  }, [userToken]);
 
   // 환율은 마운트 시 1회만 fetch (4시간 캐시)
   useEffect(() => {
@@ -716,11 +764,11 @@ export default function HoldingsPage() {
     setKisSyncing(true); setMessage("");
     try {
       const res = await import("@/lib/api").then(({ mone }) => mone.kisHoldingsSync({ mode: "merge" }));
-      if (res?.status === "ERROR") throw new Error(res.error || "KIS 동기화 실패");
-      setMessage(`KIS 보유종목 동기화 완료 — 추가 ${res.added ?? 0}개, 갱신 ${res.updated ?? 0}개${res.isMock ? " (모의계좌)" : ""}`);
+      if (res?.status === "ERROR") throw new Error(res.error || "한국투자 동기화 실패");
+      setMessage(`한국투자 보유종목 동기화 완료 — 추가 ${res.added ?? 0}개, 갱신 ${res.updated ?? 0}개${res.isMock ? " (모의계좌)" : ""}`);
       await load();
     } catch (error) {
-      setMessage(`KIS 동기화 실패: ${error instanceof Error ? error.message : String(error)}`);
+      setMessage(`한국투자 동기화 실패: ${error instanceof Error ? error.message : String(error)}`);
     } finally { setKisSyncing(false); }
   }
 
@@ -756,6 +804,8 @@ export default function HoldingsPage() {
   }
 
   const summary = data.summary || {};
+  const tossStatus = brokerConnections.find((conn) => conn.broker === "toss");
+  const kisStatus = brokerConnections.find((conn) => conn.broker === "kis");
   const holdingFreshness = dataFreshnessInfo({
     latestDataDate: summary.latestDataDate || summary.ohlcvLatestDate || items[0]?.latestDataDate || items[0]?.priceDate || items[0]?.date,
     recoGeneratedAt: summary.updatedAt || data.updatedAt || holdingsLoadedAt,
@@ -804,33 +854,25 @@ export default function HoldingsPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">보유·리스크</h1>
           <p className="mt-1 text-sm text-slate-400">보유종목 현황, 리스크 지표, 포트폴리오 구성 분석</p>
         </div>
-        <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:grid-cols-5">
+        <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
+          <button onClick={() => onNavigate?.("broker")}
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2 py-2 text-xs font-semibold text-sky-200 hover:bg-sky-500/20 sm:text-sm">
+            <Link2 size={14} /> 토스증권 연결
+          </button>
+          <button onClick={() => onNavigate?.("broker")}
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/20 sm:text-sm">
+            <Download size={14} /> 한국투자 연결
+          </button>
           <button onClick={() => { setShowAdd(!showAdd); setShowImport(false); setMessage(""); }}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-medium text-white hover:bg-emerald-500 sm:text-sm">
-            <Plus size={14} /> 종목 추가
-          </button>
-          <button onClick={() => { setShowImport(!showImport); setShowAdd(false); setMessage(""); }}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs text-violet-200 hover:bg-violet-500/20 sm:text-sm">
-            <FileText size={14} /> 가져오기
-          </button>
-          <button onClick={syncKisHoldings} disabled={kisSyncing}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-xs text-amber-200 hover:bg-amber-500/20 disabled:opacity-50 sm:text-sm">
-            <Download size={14} className={kisSyncing ? "animate-bounce" : ""} /> KIS 동기화
-          </button>
-          <button onClick={load}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 sm:text-sm">
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 새로고침
-          </button>
-          <button onClick={refreshVisibleQuotes} disabled={refreshingAllQuotes}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2 py-2 text-xs text-blue-200 hover:bg-blue-500/20 disabled:opacity-50 sm:text-sm">
-            <Zap size={14} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 갱신
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-semibold text-white hover:bg-emerald-500 sm:text-sm">
+            <Plus size={14} /> 직접 추가
           </button>
         </div>
       </div>
@@ -843,6 +885,72 @@ export default function HoldingsPage() {
             {item === "all" ? "전체" : item === "kr" ? "국장" : "미장"}
           </button>
         ))}
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3 sm:p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-100">계좌 연동</h2>
+            <p className="mt-0.5 text-xs text-slate-500">보유종목, 평가손익, 손절 기준, 위험 상태를 자동 점검합니다.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate?.("broker")}
+            className="shrink-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800"
+          >
+            관리
+          </button>
+        </div>
+        {!userToken ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3 text-xs text-slate-400">
+            로그인 후 계좌 연동을 사용할 수 있습니다.
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { broker: "toss", name: "토스증권", status: tossStatus, tone: "sky" },
+              { broker: "kis", name: "한국투자", status: kisStatus, tone: "amber" },
+            ].map(({ broker, name, status, tone }) => {
+              const connected = Boolean(status?.connected);
+              return (
+                <div key={broker} className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-100">{name}</div>
+                      <div className={`mt-0.5 text-xs ${connected ? "text-emerald-300" : "text-slate-500"}`}>
+                        {brokerStatusLabel(status)}
+                        {connected && status?.accountNoHint ? ` · ${status.accountNoHint}` : ""}
+                      </div>
+                      {connected && brokerSyncText(status) && <div className="mt-0.5 text-[10px] text-slate-600">{brokerSyncText(status)}</div>}
+                    </div>
+                    {connected ? (
+                      <button
+                        type="button"
+                        disabled={broker === "kis" ? kisSyncing : false}
+                        onClick={broker === "kis" ? syncKisHoldings : () => onNavigate?.("broker")}
+                        className="rounded-lg border border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                      >
+                        {broker === "kis" && kisSyncing ? "동기화 중" : broker === "kis" ? "동기화" : "관리"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate?.("broker")}
+                        className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                          tone === "sky"
+                            ? "border-sky-500/30 bg-sky-500/10 text-sky-200"
+                            : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                        }`}
+                      >
+                        연결하기
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 종목 추가 폼 */}
@@ -916,6 +1024,15 @@ export default function HoldingsPage() {
           </span>
           <span>{holdingFreshness.basisText}</span>
           {holdingsLoadedAt && <span>현재가 갱신: {holdingsLoadedAt}</span>}
+          <span className="flex-1" />
+          <button onClick={load}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800">
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> 새로고침
+          </button>
+          <button onClick={refreshVisibleQuotes} disabled={refreshingAllQuotes}
+            className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] text-blue-200 hover:bg-blue-500/20 disabled:opacity-50">
+            <Zap size={12} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 갱신
+          </button>
         </div>
       </div>
 
@@ -1123,8 +1240,11 @@ export default function HoldingsPage() {
           const targetMissing = (!holding.targetText || holding.targetText === "-") && !hasTargetPrice;
           const stopGapPct = holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
           const targetGapPct = holding.targetGapPct != null ? Number(holding.targetGapPct) : null;
+          const holdingBroker = brokerLabel(holding.broker || holding.sourceBroker || holding.sourceType || holding.priceSource);
+          const weightText = holding.weightText || holding.weightPctText || holding.portfolioWeightText || (holding.weightPct != null ? `${Number(holding.weightPct).toFixed(1)}%` : "-");
+          const pnlText = `${holding.pnlText || "-"}${holding.pnlPctText && holding.pnlPctText !== "-" ? ` / ${holding.pnlPctText}` : ""}`;
           return (
-            <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+            <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -1132,6 +1252,7 @@ export default function HoldingsPage() {
                     <span className="font-mono text-xs text-slate-500">{holding.symbol}</span>
                     <span className="whitespace-nowrap rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{holding.market === "kr" ? "국장" : "미장"}</span>
                   </div>
+                  <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(() => {
                       const status = String(holding.dataStatus || "");
@@ -1179,6 +1300,32 @@ export default function HoldingsPage() {
                     </>
                   )}
                 </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <Mini
+                  label="손절선까지"
+                  value={stopGapPct !== null ? `${stopGapPct >= 0 ? "+" : ""}${stopGapPct.toFixed(1)}%` : stopMissing ? "손절선 필요" : "현재가 필요"}
+                  accent={stopGapPct !== null && stopGapPct <= 2 ? "text-red-300" : stopGapPct !== null && stopGapPct <= 5 ? "text-amber-300" : "text-emerald-300"}
+                />
+                <Mini label="평가손익" value={pnlText} accent={Number(holding.pnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
+                <Mini label="보유 비중" value={weightText} />
+                <Mini label="MONE 리스크" value={riskLabel(holding.riskStatus)} accent={String(holding.riskStatus) === "HIGH" ? "text-red-300" : String(holding.riskStatus) === "WATCH" ? "text-amber-300" : "text-emerald-300"} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.localStorage.setItem("mone_chart_symbol", String(holding.symbol || ""));
+                    window.localStorage.setItem("mone_chart_market", cleanHoldingMarket(holding.market));
+                    window.localStorage.setItem("mone_chart_name", displayName(holding));
+                    window.localStorage.setItem("mone_chart_price", String(holding.currentPrice || ""));
+                    window.localStorage.setItem("mone_chart_price_text", holding.currentPriceText || "");
+                    window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: holding }));
+                    onNavigate?.("chart");
+                  }}
+                  className="col-span-2 inline-flex min-h-[52px] items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-200 hover:bg-blue-500/20 sm:col-span-1"
+                >
+                  분석 보기
+                </button>
               </div>
 
               {isEditing && editDraft && (
@@ -1277,7 +1424,7 @@ export default function HoldingsPage() {
             <p className="text-slate-500">보유 종목이 없습니다.</p>
             <button onClick={() => setShowAdd(true)}
               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-500">
-              <Plus size={14} /> 첫 종목 추가하기
+              <Plus size={14} /> 첫 종목 직접 추가
             </button>
           </div>
         )}
@@ -1297,9 +1444,9 @@ function SummaryCard({ label, value, accent = "text-slate-100" }: { label: strin
 
 function Mini({ label, value, accent = "text-slate-100" }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="min-w-0 rounded-xl bg-slate-950 p-3">
+    <div className="min-w-0 rounded-xl bg-slate-950 px-2.5 py-2">
       <div className="text-[10px] text-slate-500">{label}</div>
-      <div className={`mt-1.5 min-w-0 break-words font-mono text-xs font-bold leading-tight sm:text-sm ${accent}`}>{value}</div>
+      <div className={`mt-1 min-w-0 break-keep font-mono text-[11px] font-bold leading-tight sm:text-sm ${accent}`}>{value}</div>
     </div>
   );
 }
