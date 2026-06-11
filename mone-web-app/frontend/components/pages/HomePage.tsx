@@ -68,7 +68,7 @@ function getSessionContext(session: SessionPhase) {
   switch (session) {
     case "장전":    return { focus: "today",    hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하고 알림을 등록하세요." };
     case "장중":    return { focus: "intraday", hint: "장중 — 기준가에 근접한 종목을 우선 확인하세요." };
-    case "장마감":  return { focus: "review",   hint: "장마감 후 — 오늘 결과를 검증하고 내일 후보를 보강하세요." };
+    case "장마감":  return { focus: "review",   hint: "오늘 결과를 반영해 내일 볼 후보를 정리했습니다." };
     case "개장 전": return { focus: "today",    hint: "미장 개장 전 — 오늘 미장 진입 후보와 포지션을 점검하세요." };
     case "마감 후": return { focus: "review",   hint: "미장 마감 후 — 결과 검토 및 다음 날 전략을 준비하세요." };
     case "휴장":    return { focus: "rest",     hint: "오늘은 휴장입니다. 다음 거래일 전략을 미리 준비하세요." };
@@ -1597,12 +1597,18 @@ function ReportDigestCard({ digest, loading }: { digest: any; loading: boolean }
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
           <div className="text-[11px] text-slate-500">검증 완료</div>
           <div className="mt-1 font-mono text-lg font-bold text-sky-300">{loading ? "-" : `${closingItems.length}건`}</div>
-          <div className="mt-1 text-[11px] text-slate-400">{closing.status || "대기"}</div>
+          <div className="mt-1 text-[11px] text-slate-400">
+            {!loading && (
+              String(closing.status || "").toUpperCase() === "OK" ? "이상 없음"
+              : String(closing.status || "").includes("확인") ? "검토 필요"
+              : closing.status || "대기"
+            )}
+          </div>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
           <div className="text-[11px] text-slate-500">성과 통계</div>
           <div className="mt-1 font-mono text-lg font-bold text-violet-300">{sample > 0 && Number.isFinite(winRate) ? `${winRate.toFixed(1)}%` : "대기"}</div>
-          <div className="mt-1 text-[11px] text-slate-400">{sample > 0 ? `${sample}회 표본` : "성과 통계는 표본 누적 후 표시"}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{sample > 0 ? `${sample}회 표본 누적 후 표시` : "성과 통계는 표본 누적 후 표시"}</div>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
           <div className="text-[11px] text-slate-500">평균 수익률</div>
@@ -2106,9 +2112,9 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
               {/* 가격 데이터 상태 */}
               <span className="flex items-center gap-1.5">
                 <span className={`h-1.5 w-1.5 rounded-full ${priceStatus === "NORMAL" ? "bg-emerald-400" : priceStatus === "PARTIAL" ? "bg-amber-400" : "bg-red-400"}`} />
-                <span className="text-slate-500">가격 데이터</span>
+                <span className="text-slate-500">실시간 가격</span>
                 <span className={`font-mono font-medium ${priceStatus === "NORMAL" ? "text-slate-200" : priceStatus === "PARTIAL" ? "text-amber-300" : "text-red-300"}`}>
-                  {dataHealth.kisLiveCount ?? 0}<span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}</span>
+                  {dataHealth.kisLiveCount ?? 0}<span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}종목</span>
                 </span>
                 {priceStatus === "PARTIAL" && <span className="text-amber-500">부분 수집</span>}
                 {priceStatus === "ERROR" && <span className={hasOhlcv ? "text-amber-400" : "text-red-400"}>{hasOhlcv ? "실시간 미수집 · 종가 기준" : "장외/KIS 미수집"}</span>}
@@ -2117,7 +2123,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
               {/* OHLCV 상태 */}
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                <span className="text-slate-500">OHLCV</span>
+                <span className="text-slate-500">차트 데이터</span>
                 <span className="font-mono text-slate-200">{dataHealth.ohlcvCount ?? 0}종목</span>
                 {dataHealth.ohlcvLatestDate && <span className="text-slate-500">· {dataHealth.ohlcvLatestDate}</span>}
               </span>
@@ -2213,7 +2219,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           <Eye size={18} className="text-amber-400" />
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-slate-100">대기 관찰 후보</h2>
-            <p className="text-xs text-slate-500">지금보다 1~수일 후 진입 타이밍이 더 유리할 것으로 예상됩니다.</p>
+            <p className="text-xs text-slate-500">지금은 기다리고, 눌림 후 다시 볼 후보입니다.</p>
           </div>
           <span className="shrink-0 rounded-full border border-amber-800/50 bg-amber-900/20 px-3 py-1 text-xs text-amber-400">
             {loading ? "..." : `${watchItems.length}개`}
