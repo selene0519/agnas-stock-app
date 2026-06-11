@@ -18,6 +18,7 @@ import {
   modeLabel,
   priceText,
   probabilityText,
+  sanitizeCodeLabel,
   sourceStatusLabel,
   strategyTagLabel,
   shouldHideSizingForTrust,
@@ -1364,8 +1365,16 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           if (Array.isArray(item.strategyTags)) {
             for (const tag of item.strategyTags) {
               if (visibleTags.length >= 2) break;
-              const lbl = TAG_LABEL[tag] ?? strategyTagLabel(tag);
+              const lbl = TAG_LABEL[tag] ?? sanitizeCodeLabel(tag);
               if (lbl) visibleTags.push({ key: tag, label: lbl, cls: TAG_COLOR[tag] ?? "border-slate-600 bg-slate-800 text-slate-300" });
+            }
+          }
+          // surgeLabel 처리 (strategyTags 없을 때)
+          if (!Array.isArray(item.strategyTags) && item.surgeLabel && item.surgeLabel !== "판단 대기" && visibleTags.length < 2) {
+            for (const t of String(item.surgeLabel).split("|").map((s: string) => s.trim()).filter(Boolean)) {
+              if (visibleTags.length >= 2) break;
+              const lbl = sanitizeCodeLabel(t) ?? ((/[가-힣]/.test(t)) ? t : null);
+              if (lbl) visibleTags.push({ key: t, label: lbl, cls: "border-slate-700 bg-slate-950 text-slate-300" });
             }
           }
           if (item.supplySignal === "STRONG_BUY" && visibleTags.length < 2)
@@ -1384,8 +1393,13 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                   <h3 className="text-base font-bold text-slate-100 leading-tight">{displayName(item)}</h3>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <span className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || market).toUpperCase()}</span>
-                    <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{sourceStatusLabel(item.sourceStatus)}</span>
-                    <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
+                    {(() => {
+                      const srcLbl = sourceStatusLabel(item.sourceStatus);
+                      return srcLbl ? <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{srcLbl}</span> : null;
+                    })()}
+                    {dataTrustLabel(item) !== "정상" && (
+                      <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
+                    )}
                     {watched && <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">관심</span>}
                   </div>
                 </div>
@@ -1421,11 +1435,16 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
               )}
 
               {/* 주의 사유 */}
-              {Array.isArray(item.cautionReasons) && item.cautionReasons.length > 0 && (
-                <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                  ⚠ {item.cautionReasons.join(", ")}
-                </div>
-              )}
+              {Array.isArray(item.cautionReasons) && (() => {
+                const reasons = item.cautionReasons
+                  .map((r: any) => sanitizeCodeLabel(r))
+                  .filter((r: string | null): r is string => Boolean(r));
+                return reasons.length > 0 ? (
+                  <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    ⚠ {reasons.join(" · ")}
+                  </div>
+                ) : null;
+              })()}
 
               {/* 버튼 */}
               <div className="flex gap-2">

@@ -386,26 +386,43 @@ export function sourceStatusLabel(status?: string): string {
   if (!value || upper === "MATCH" || upper === "OK" || upper === "NORMAL") return "조건일치";
   if (upper.includes("PARTIAL")) return "일부 조건일치";
   if (upper.includes("STALE")) return "지연 데이터";
-  if (upper.includes("ERROR") || upper.includes("NO_DATA")) return "데이터 확인 필요";
-  if (/(strategy_horizon|quant_scanner|ohlcv_status|from_source|_v\d+)/i.test(value)) {
-    return "전략·기간 조건과 현재가 데이터를 반영했습니다.";
-  }
-  return value;
+  if (upper.includes("ERROR") || upper.includes("NO_DATA")) return "데이터 한정";
+  if (/(strategy_horizon|quant_scanner|ohlcv_status|from_source|_v\d+)/i.test(value)) return "조건일치";
+  return "조건일치";
 }
 
 export function strategyTagLabel(tag?: string): string {
   const value = String(tag || "").trim();
+  if (!value) return "";
   const upper = value.toUpperCase();
+  // prefix 패턴 먼저
+  if (upper.startsWith("RR_BELOW_MIN")) return "손익비 부족";
+  if (upper.startsWith("DATA_QUALITY")) return "데이터 확인 권장";
   const labels: Record<string, string> = {
     BB_SQUEEZE: "변동성 압축",
+    BOLLINGER_SQUEEZE: "변동성 압축",
+    VOLATILITY_COMPRESSION: "변동성 압축",
     PULLBACK_BUY: "눌림목",
     STABLE_LOW_RISK: "안정형",
     LOW_RISK_STABLE: "안정형",
     CAUTION: "주의",
+    OVERHEATED: "과열 주의",
     MOMENTUM: "모멘텀",
+    RELATIVE_STRENGTH: "상대강도 우위",
     FINANCIAL_WEAK: "재무 미확보",
     FINANCIAL_DATA_PENDING: "재무 미확보",
     DATA_PENDING: "재무 미확보",
+    DATA_MISSING: "데이터 부족",
+    PRICE_MISSING: "가격 확인 중",
+    ENTRY_MISSING: "진입 기준 미생성",
+    TARGET_MISSING: "목표가 미생성",
+    STOP_MISSING: "손절가 미생성",
+    PARTIAL_DATA: "일부 데이터 기준",
+    MARKET_MISMATCH: "시장 데이터 확인",
+    INVALID_OHLCV: "차트 데이터 확인",
+    VOLUME_SPIKE: "거래량 증가",
+    LOW_RR: "손익비 부족",
+    RR_BELOW_MIN: "손익비 부족",
     MA_CONVERGENCE: "이격도 수렴",
     VOLUME_BREAKOUT: "거래량 증가",
     BREAKOUT_52W: "52주 신고가 돌파",
@@ -420,7 +437,25 @@ export function strategyTagLabel(tag?: string): string {
   };
   if (labels[upper]) return labels[upper];
   if (upper.includes("FINANCIAL") && (upper.includes("WEAK") || upper.includes("PENDING"))) return "재무 미확보";
-  return value.replaceAll("_", " ");
+  // 미매핑 UPPER_CASE/snake_case 코드값은 숨김
+  if (/^[A-Z][A-Z0-9_./-]*$/.test(value)) return "";
+  return value;
+}
+
+/**
+ * 카드 표시용: 모든 코드값·객체를 안전하게 한글 레이블로 변환.
+ * 매핑 불가 내부 코드는 null 반환 (표시하지 않음).
+ */
+export function sanitizeCodeLabel(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  if (!text) return null;
+  const label = strategyTagLabel(text);
+  if (label) return label;
+  // 사용자에게 의미 있는 문자열(한글 포함)은 그대로
+  if (/[가-힣]/.test(text)) return text;
+  return null;
 }
 
 export function sortByValue(items: any[]): any[] {
