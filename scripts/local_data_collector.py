@@ -298,9 +298,10 @@ def main() -> None:
         status["pushed"] = push_ok
 
         # Step 4: Render 캐시 즉시 갱신 (push 성공 시만)
+        # market=all 로 고정: kr 전용 실행이어도 us lru_cache까지 함께 초기화
         if push_ok:
             log("Step 4: Render 캐시 즉시 갱신...")
-            _render_refresh(args.market)
+            _render_refresh("all")
 
     log(f"완료 ({status['elapsedSec']}초)")
 
