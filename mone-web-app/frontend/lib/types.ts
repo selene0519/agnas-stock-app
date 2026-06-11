@@ -23,6 +23,20 @@ export type InvestPeriod = "단기" | "스윙" | "중기" | "장기" | "short" |
 export type RiskLevel = "안전" | "주의" | "위험" | "손절필요" | "LOW" | "WATCH" | "HIGH";
 export type HoldingJudgment = "보유 유지" | "일부 익절" | "손절 근접" | "손절 실행 필요" | "추가 매수 금지" | "관망";
 
+export interface PatternStrategy {
+  status?: string;
+  action?: string;
+  riskStatus?: string;
+  confidence?: number;
+  primaryPattern?: string;
+  secondaryPatterns?: string[];
+  marketStructure?: string;
+  trendPhase?: string;
+  historicalSupportLevels?: number[];
+  isBlocked?: boolean;
+  message?: string;
+}
+
 export interface StockCandidate {
   id: string;
   symbol: string;
@@ -51,6 +65,7 @@ export interface StockCandidate {
   volume: number | null;
   sector: string | null;
   updatedAt: string;
+  patternStrategy?: PatternStrategy;
 }
 
 export interface Holding {

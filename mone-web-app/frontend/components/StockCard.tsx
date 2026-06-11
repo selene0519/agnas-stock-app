@@ -2,9 +2,68 @@
 
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Ban, Shield, TrendingDown, TrendingUp } from 'lucide-react';
-import type { StockCandidate } from '@/lib/types';
+import type { PatternStrategy, StockCandidate } from '@/lib/types';
 import { changeColor, fmtPct, fmtPrice, stockLabel } from '@/lib/utils';
 import StatusBadge from './ui/StatusBadge';
+
+function psActionColor(action?: string) {
+  if (!action) return 'text-slate-400';
+  const a = action.toUpperCase();
+  if (a.includes('BUY') || a === 'ENTER') return 'text-emerald-400';
+  if (a.includes('SELL') || a === 'EXIT') return 'text-red-400';
+  return 'text-amber-400';
+}
+function psRiskColor(risk?: string) {
+  if (!risk) return 'text-slate-400';
+  const r = risk.toUpperCase();
+  if (r.includes('LOW') || r === 'SAFE') return 'text-emerald-400';
+  if (r.includes('HIGH') || r.includes('DANGER') || r.includes('BLOCK')) return 'text-red-400';
+  return 'text-amber-400';
+}
+function psActionLabel(action?: string) {
+  if (!action) return '-';
+  const map: Record<string, string> = {
+    BUY: '매수', STRONG_BUY: '강력매수', SELL: '매도', STRONG_SELL: '강력매도',
+    WATCH_ONLY: '관망', HOLD: '보유', ENTER: '진입', EXIT: '청산', WAIT: '대기',
+  };
+  return map[action.toUpperCase()] ?? action;
+}
+function psRiskLabel(risk?: string) {
+  if (!risk) return '-';
+  const map: Record<string, string> = {
+    LOW_RISK: '낮음', MEDIUM_RISK: '보통', HIGH_RISK: '높음',
+    SAFE: '안전', CAUTION: '주의', DANGER: '위험',
+    DATA_QUALITY_RISK: '데이터 제한', WATCH: '주의',
+  };
+  return map[risk.toUpperCase()] ?? risk;
+}
+
+function PatternStrategyBadges({ ps }: { ps: PatternStrategy }) {
+  const hasData = ps.primaryPattern || ps.action || ps.riskStatus;
+  if (!hasData) return null;
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/40 p-2.5">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[9px] uppercase tracking-wide text-slate-500">MONE 패턴</span>
+        <span className="text-[11px] font-semibold text-slate-200 truncate">{ps.primaryPattern ?? '-'}</span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[9px] uppercase tracking-wide text-slate-500">전략</span>
+        <span className={`text-[11px] font-bold ${psActionColor(ps.action)}`}>{psActionLabel(ps.action)}</span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[9px] uppercase tracking-wide text-slate-500">위험</span>
+        <span className={`text-[11px] font-semibold ${psRiskColor(ps.riskStatus)}`}>{psRiskLabel(ps.riskStatus)}</span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[9px] uppercase tracking-wide text-slate-500">신뢰도</span>
+        <span className="text-[11px] font-mono font-bold text-slate-200">
+          {ps.confidence != null ? `${Math.round(ps.confidence)}%` : '-'}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   stock: StockCandidate;
@@ -142,8 +201,12 @@ export default function StockCard({ stock, onClick }: Props) {
         <Metric label="예상가" value={fmtPrice(stock.expectedPrice, stock.market)} />
       </div>
 
+      {stock.patternStrategy && (
+        <PatternStrategyBadges ps={stock.patternStrategy} />
+      )}
+
       {stock.warnings.length > 0 && (
-        <div className="flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-1">
           {stock.warnings.map((warning, index) => (
             <span key={`${warning}-${index}`} className="inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded px-1.5 py-0.5">
               <AlertTriangle size={9} />
