@@ -4511,6 +4511,26 @@ def api_home_summary(
             except Exception:
                 pass
 
+        # 최후 fallback: _scan_coverage 실패해도 gen_status JSON에서 recoGeneratedAt 직접 보완
+        if not data_health.get("recoGeneratedAt"):
+            import json as _fj2
+            _repo_root_fb = data.APP_DIR.parent
+            for _fb_path in [
+                _repo_root_fb / "reports" / f"{mk}_recommendation_gen_status.json",
+                data.APP_DIR / "reports" / f"{mk}_recommendation_gen_status.json",
+            ]:
+                if _fb_path.exists():
+                    try:
+                        _fst = _fj2.loads(_fb_path.read_text(encoding="utf-8"))
+                        if not isinstance(data_health, dict):
+                            data_health = {}
+                        data_health["recoGeneratedAt"] = (
+                            _fst.get("generatedAt") or _fst.get("completedAt") or ""
+                        )
+                    except Exception:
+                        pass
+                    break
+
         return {
             "status": "OK",
             "market": mk,

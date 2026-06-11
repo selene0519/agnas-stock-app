@@ -177,16 +177,34 @@ def _read_http_error_body(exc: BaseException, limit: int = 500) -> str:
 
 def _classify_toss_http_error(status: int, body_txt: str = "") -> dict[str, Any]:
     body_lower = (body_txt or "").lower()
+    if status == 404:
+        return _broker_error(
+            "TOSS_ENDPOINT_NOT_FOUND",
+            "토스증권 API 엔드포인트를 찾을 수 없습니다. 관리자에게 문의하세요.",
+            status=status,
+        )
     if status in (401, 403):
+        if "permission" in body_lower or "scope" in body_lower:
+            return _broker_error(
+                "TOSS_PERMISSION_REQUIRED",
+                "토스증권 Open API 사용 설정 또는 계좌 권한을 확인해주세요.",
+                status=status,
+            )
         return _broker_error(
             "TOSS_AUTH_FAILED",
             "App Key 또는 App Secret을 확인해주세요.",
             status=status,
         )
-    if status in (400, 404, 415) and ("permission" in body_lower or "scope" in body_lower or "account" in body_lower):
+    if status == 400:
+        if "permission" in body_lower or "scope" in body_lower:
+            return _broker_error(
+                "TOSS_PERMISSION_REQUIRED",
+                "토스증권 Open API 사용 설정 또는 계좌 권한을 확인해주세요.",
+                status=status,
+            )
         return _broker_error(
-            "TOSS_PERMISSION_REQUIRED",
-            "토스증권 Open API 사용 설정 또는 계좌 권한을 확인해주세요.",
+            "TOSS_AUTH_FAILED",
+            "App Key 또는 App Secret을 확인해주세요.",
             status=status,
         )
     if status >= 500:
@@ -203,20 +221,32 @@ def _classify_toss_http_error(status: int, body_txt: str = "") -> dict[str, Any]
 
 
 def _request_toss_token(app_key: str, app_secret: str) -> dict[str, Any]:
-    """토스증권 OAuth2 Client Credentials 토큰 발급."""
+    """토스증권 OAuth2 Client Credentials 토큰 발급.
+
+    Spec (openapi.tossinvest.com/openapi-docs/latest/openapi.json):
+      POST /oauth2/token
+      Content-Type: application/x-www-form-urlencoded
+      Body: grant_type=client_credentials&client_id=...&client_secret=...
+      No Authorization header.
+    """
+    import logging
     import urllib.error
+    import urllib.parse
     import urllib.request
 
-    body = json.dumps({
-        "appkey": app_key,
-        "appsecret": app_secret,
+    _log = logging.getLogger(__name__)
+
+    form_data = urllib.parse.urlencode({
         "grant_type": "client_credentials",
+        "client_id": app_key,
+        "client_secret": app_secret,
     }).encode("utf-8")
+
     req = urllib.request.Request(
         _TOSS_TOKEN_URL,
-        data=body,
+        data=form_data,
         headers={
-            "Content-Type": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "application/json",
             "User-Agent": "MONE/1.0",
         },
@@ -230,9 +260,9 @@ def _request_toss_token(app_key: str, app_secret: str) -> dict[str, Any]:
         return payload
     except urllib.error.HTTPError as exc:
         body_txt = _read_http_error_body(exc)
+        _log.warning("TOSS token HTTP %s | body=%s", exc.code, body_txt[:300])
         classified = _classify_toss_http_error(exc.code, body_txt)
         classified["provider"] = "toss"
-        classified["endpoint"] = _TOSS_TOKEN_URL.replace(app_key, "***")
         return classified
     except Exception as exc:
         if _is_timeout_exception(exc):
@@ -240,6 +270,7 @@ def _request_toss_token(app_key: str, app_secret: str) -> dict[str, Any]:
                 "TOSS_TIMEOUT",
                 "토스증권 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.",
             )
+        _log.warning("TOSS token network error: %s", type(exc).__name__)
         return _broker_error(
             "TOSS_NETWORK_ERROR",
             "토스증권 연결 중 네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
