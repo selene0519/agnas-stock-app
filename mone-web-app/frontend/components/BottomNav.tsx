@@ -5,6 +5,7 @@ import {
   Briefcase,
   Cpu,
   LayoutDashboard,
+  Link2,
   LogIn,
   LogOut,
   MoreHorizontal,
@@ -35,6 +36,7 @@ const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
   { id: "advanced", label: "전략도구", desc: "스캐너, 계산기, 상관분석", Icon: Cpu },
+  { id: "broker", label: "계좌 연동", desc: "토스증권·KIS 연동", Icon: Link2 },
 ];
 
 const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementType } = {
