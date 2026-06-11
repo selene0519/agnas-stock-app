@@ -5270,10 +5270,15 @@ def api_cache_refresh(market: str = "kr", secret: str = "") -> dict:
                   "reports/local_collector_status.json"):
         data._refresh_from_github(extra)
 
+    # 파일 갱신 후 lru_cache 강제 삭제 — 5분 버킷 내 재호출 시도 구 데이터 반환 방지
+    from app.engine.auto_sync import _clear_all_caches
+    caches_cleared = _clear_all_caches()
+
     return {
         "status": "OK",
         "market": market,
         "refreshed": refreshed,
         "failed": failed,
+        "cachesCleared": caches_cleared,
         "timestamp": datetime.now().isoformat(),
     }
