@@ -42,10 +42,17 @@ function ohlcvFallbackChange(rows: any[], current: number | null): { text: strin
   return { text: pctText(((latest - prev) / prev) * 100), status: "normal" };
 }
 
-function derivePrice(row: any, market: string) {
+function derivePrice(row: any, market: string, ohlcvRows: any[] = []) {
   const text = String(row.currentPriceText || row.priceText || row.closeText || "").trim();
   if (text && text !== "-") return text;
-  return formatMoney(row.currentPrice ?? row.price ?? row.close, market, "가격 대기");
+  const direct = toNumber(row.currentPrice ?? row.price ?? row.close);
+  if (direct && direct > 0) return formatMoney(direct, market, "가격 대기");
+  // OHLCV latest close 사용
+  const closes = ohlcvRows
+    .map((r) => toNumber(r?.close ?? r?.Close ?? r?.stck_clpr))
+    .filter((v): v is number => v !== null && v > 0);
+  if (closes.length > 0) return formatMoney(closes.at(-1)!, market, "가격 대기");
+  return "가격 대기";
 }
 
 function deriveChange(row: any, fallbackRows: any[] = []): { text: string; status: TickerItem["changeStatus"] } {
@@ -78,7 +85,8 @@ async function enrichRows(rows: any[], source: TickerSource): Promise<TickerItem
       const symbol = normalizeSymbol(row);
       const market = normalizeMarket(row.market, symbol);
       const preliminary = deriveChange(row);
-      if (preliminary.status === "normal" || preliminary.status === "pending") return { row, ohlcvRows: [] };
+      // "normal"이면 OHLCV 불필요, 그 외(pending 포함)는 가격·등락률 보완용 조회
+      if (preliminary.status === "normal") return { row, ohlcvRows: [] };
       try {
         const data = await mone.ohlcv({ market, symbol, limit: 5 });
         return { row, ohlcvRows: Array.isArray(data?.items) ? data.items : [] };
@@ -97,7 +105,7 @@ async function enrichRows(rows: any[], source: TickerSource): Promise<TickerItem
       symbol,
       market,
       name: displayName(row),
-      currentPriceText: derivePrice(row, market),
+      currentPriceText: derivePrice(row, market, ohlcvRows),
       changePctText: change.text,
       changeStatus: change.status,
       source,
