@@ -5,7 +5,7 @@ import { RefreshCw } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
-import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, moneReasonLines, normalizeMarket, normalizeSymbol, priceText } from "@/lib/moneDisplay";
+import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
 
@@ -25,8 +25,12 @@ type ChartLoadState = {
   ohlcvCount: number;
   recStatus: string;
   recCount: number;
+  newsStatus: string;
   newsCount: number;
+  newsSourceCount: number;
+  disclosureStatus: string;
   disclosureCount: number;
+  disclosureSourceCount: number;
   companyStatus: string;
   errors: string[];
   updatedAt: string;
@@ -201,6 +205,115 @@ function statusTone(kind: "ok" | "warn" | "bad" | "neutral") {
 
 function coverageTone(count: number, required = 1) {
   return count >= required ? statusTone("ok") : statusTone("warn");
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  SCALE_IN: "분할 접근",
+  WATCH_ONLY: "관찰",
+  WAIT_PULLBACK: "눌림 대기",
+  HOLD_CASH: "현금 대기",
+  AVOID_CHASE: "추격 금지",
+  BLOCKED: "진입 차단",
+  BUY: "매수",
+  STRONG_BUY: "강력매수",
+  SELL: "매도",
+  STRONG_SELL: "강력매도",
+  HOLD: "보유",
+  ENTER: "진입",
+  EXIT: "청산",
+  WAIT: "대기",
+};
+
+const RISK_LABELS: Record<string, string> = {
+  NONE: "정상",
+  OK: "정상",
+  NORMAL: "정상",
+  LOW_RISK: "낮음",
+  MEDIUM_RISK: "보통",
+  HIGH_RISK: "높음",
+  SAFE: "안전",
+  CAUTION: "주의",
+  DANGER: "위험",
+  WATCH: "주의",
+  PULLBACK_RISK: "눌림 위험",
+  OVERHEATED_CHASE_RISK: "과열 추격 주의",
+  FALSE_BREAKOUT_RISK: "가짜 돌파 주의",
+  STRUCTURE_BREAKDOWN: "구조 이탈",
+  DATA_QUALITY_RISK: "데이터 확인 필요",
+};
+
+const PATTERN_LABELS: Record<string, string> = {
+  horizontal_support_rebound: "지지 반등",
+  relative_strength: "상대강도 우위",
+  resistance_breakout: "저항 돌파",
+  breakout_retest: "돌파 후 재확인",
+  trend_up_pullback: "상승 추세 눌림",
+  range_bottom_rebound: "박스 하단 반등",
+  volatility_contraction_expansion: "변동성 수축 후 확장",
+  volume_turnaround: "거래량 전환",
+  overheated_chase_risk: "과열 추격 위험",
+  false_breakout_risk: "가짜 돌파 위험",
+  downtrend_bounce_trap: "하락 반등 함정",
+  resistance_chase_risk: "저항 추격 위험",
+};
+
+function firstPlainText(...values: any[]): string {
+  for (const value of values) {
+    if (typeof value !== "string" && typeof value !== "number") continue;
+    const text = String(value).trim();
+    if (text && text !== "-" && text !== "NaN" && text !== "null" && text !== "undefined") return text;
+  }
+  return "";
+}
+
+function safeLabel(value: any, map: Record<string, string> = {}, fallback = ""): string {
+  if (typeof value !== "string" && typeof value !== "number") return fallback;
+  const text = String(value).trim();
+  if (!text || text === "-") return fallback;
+  const upper = text.toUpperCase();
+  if (map[text]) return map[text];
+  if (map[upper]) return map[upper];
+  const sanitized = sanitizeCodeLabel(text);
+  if (sanitized && sanitized !== text) return sanitized;
+  if (/[가-힣]/.test(text) && !/^[A-Z0-9_./-]+$/.test(text)) return text;
+  return fallback;
+}
+
+function isRiskCode(value: any) {
+  const risk = String(value || "").toUpperCase();
+  return Boolean(risk && !["NONE", "OK", "NORMAL", "LOW", "LOW_RISK", "SAFE"].includes(risk));
+}
+
+function collectionStatusCard(loadState: ChartLoadState, loading: boolean) {
+  const newsStatus = String(loadState.newsStatus || "").toUpperCase();
+  const disclosureStatus = String(loadState.disclosureStatus || "").toUpperCase();
+  const related = loadState.newsCount + loadState.disclosureCount;
+  const sourceTotal = loadState.newsSourceCount + loadState.disclosureSourceCount;
+  const failed = [newsStatus, disclosureStatus].some((s) => s === "ERROR" || s === "TIMEOUT");
+  if (loading) return { value: "수집 대기", sub: "데이터 확인 중", cls: statusTone("warn") };
+  if (failed) return { value: "수집 실패", sub: "뉴스·공시 API 확인 필요", cls: statusTone("bad") };
+  if (related > 0) {
+    const partial = loadState.newsCount === 0 || loadState.disclosureCount === 0;
+    return {
+      value: partial ? "일부 수집" : "연결됨",
+      sub: `관련 ${related}건 표시`,
+      cls: partial ? statusTone("warn") : statusTone("ok"),
+    };
+  }
+  if (sourceTotal > 0) return { value: "데이터 없음", sub: "원본 수집됨 · 선택 종목 관련 없음", cls: statusTone("neutral") };
+  return { value: "수집 대기", sub: "장전/장마감 후 자동 수집됩니다.", cls: statusTone("warn") };
+}
+
+function companyStatusCard(company: any, loadState: ChartLoadState) {
+  const status = String(loadState.companyStatus || "").toUpperCase();
+  if (status === "TIMEOUT" || status === "ERROR") {
+    return { value: status === "TIMEOUT" ? "수집 대기" : "수집 실패", sub: "기업분석 API 응답 확인 필요", cls: statusTone("warn") };
+  }
+  if (company?.dataStatus === "SOURCE_CONTEXT" || company?.dataStatus === "REPORT_FALLBACK") {
+    return { value: "일부 수집", sub: "추천 원본 기준", cls: statusTone("warn") };
+  }
+  if (company) return { value: "연결됨", sub: company?.hasDartData ? "DART/재무 데이터 정상" : loadStatusText(status), cls: statusTone("ok") };
+  return { value: "수집 대기", sub: "DART/재무 데이터 자동 수집 대기", cls: statusTone("warn") };
 }
 
 function dateOf(row: any) {
@@ -946,9 +1059,9 @@ function calcFakeBreakouts(
 }
 
 // ── TvChart (캔들 + 지수 비교선) ─────────────────────────────────────
-function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis = null }: {
+function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis = null, precisionEvidence = false }: {
   rows: any[]; levels: any; market: string;
-  toggles: Record<ToggleKey, boolean>; indexRows?: any[]; chartAnalysis?: any;
+  toggles: Record<ToggleKey, boolean>; indexRows?: any[]; chartAnalysis?: any; precisionEvidence?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -1209,13 +1322,13 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         }
 
         // ⑥ Phase 6 백엔드 AI 오버레이 (FSM 신호 + 되돌림 + 추세선 현재값)
-        if (chartAnalysis?.ok) {
+        if (precisionEvidence && chartAnalysis?.ok) {
           const ca = chartAnalysis;
           const isConfirmed = ca.signalStatus === "confirmed";
           const isDeveloping = ca.signalStatus === "developing";
 
           // 피보나치 primary 되돌림선 (AI 강조)
-          if (ca.primaryRetracementLevel > 0 && (isConfirmed || isDeveloping)) {
+          if (toggles.retracement && ca.primaryRetracementLevel > 0 && (isConfirmed || isDeveloping)) {
             const retColor = isConfirmed ? "#06b6d4" : "#a78bfa";
             candleSeries.createPriceLine({
               price: ca.primaryRetracementLevel,
@@ -1228,7 +1341,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
           }
 
           // 오버랩 신호 (최대 3개)
-          if (Array.isArray(ca.overlapSignals)) {
+          if ((toggles.retracement || toggles.supply) && Array.isArray(ca.overlapSignals)) {
             ca.overlapSignals.slice(0, 3).forEach((sig: any) => {
               if (sig.price > 0) {
                 candleSeries.createPriceLine({
@@ -1283,7 +1396,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
     }
     init();
     return () => { if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; } };
-  }, [candleData, rows, levels, toggles, indexRows, chartAnalysis]);
+  }, [candleData, rows, levels, toggles, indexRows, chartAnalysis, precisionEvidence]);
 
   if (candleData.length < 2) {
     return (
@@ -1566,10 +1679,11 @@ export default function ChartPage() {
   const [disclosures, setDisclosures] = useState<any[]>([]);
   const [company, setCompany] = useState<any | null>(null);
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
-    ma10: false, ma20: false, ma60: false, bb: false, volume: false, rsi: false, macd: false, index: false,
+    ma10: false, ma20: true, ma60: false, bb: false, volume: false, rsi: true, macd: false, index: false,
     zigzag: false, trendline: false, retracement: false, supply: false, fakeBreak: false,
   });
   const [precisionEvidence, setPrecisionEvidence] = useState(false);
+  const [showAdvancedIndicators, setShowAdvancedIndicators] = useState(false);
   const [showPrecisionHint, setShowPrecisionHint] = useState(false);
   const [period, setPeriod] = useState<number | null>(126);
   const [indexRows, setIndexRows] = useState<any[]>([]);
@@ -1584,8 +1698,12 @@ export default function ChartPage() {
     ohlcvCount: 0,
     recStatus: "IDLE",
     recCount: 0,
+    newsStatus: "IDLE",
     newsCount: 0,
+    newsSourceCount: 0,
+    disclosureStatus: "IDLE",
     disclosureCount: 0,
+    disclosureSourceCount: 0,
     companyStatus: "IDLE",
     errors: [],
     updatedAt: "",
@@ -1639,16 +1757,21 @@ export default function ChartPage() {
     setPrecisionEvidence(next);
     setToggles((prev) => ({
       ...prev,
-      ma10: next,
-      ma20: next,
-      volume: next,
-      rsi: next,
-      index: next,
-      trendline: next,
-      retracement: next,
-      supply: next,
-      fakeBreak: next,
+      ma10: false,
+      ma20: true,
+      ma60: false,
+      bb: false,
+      volume: false,
+      rsi: true,
+      macd: false,
+      index: false,
+      zigzag: false,
+      trendline: false,
+      retracement: false,
+      supply: false,
+      fakeBreak: false,
     }));
+    if (!next) setShowAdvancedIndicators(false);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("mone_precision_evidence_hint_seen", "1");
     }
@@ -1722,8 +1845,12 @@ export default function ChartPage() {
         ohlcvCount: chartRows.length,
         recStatus: rd.status || (matched ? "OK" : "NO_DATA"),
         recCount: Number(rd.count ?? recItems.length ?? (matched ? 1 : 0)),
+        newsStatus: nd.status || (newsItems.length ? "OK" : "NO_DATA"),
         newsCount: displayNews.length,
+        newsSourceCount: newsItems.length,
+        disclosureStatus: dd.status || (disclosureItems.length ? "OK" : "NO_DATA"),
         disclosureCount: displayDisclosures.length,
+        disclosureSourceCount: disclosureItems.length,
         companyStatus: company_d.status || (cm ? (cm.dataStatus || "OK") : fallbackCompany ? "REPORT_FALLBACK" : "NO_DATA"),
         errors,
         updatedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
@@ -1778,18 +1905,135 @@ export default function ChartPage() {
     dataStatus: loadState.ohlcvStatus,
   });
   const touchReview = recommendationTouchReview(rows, levels, currentPrice, selected?.market || market, loadState.recoDate || undefined);
-  const analysisReasonLines = moneReasonLines(levels || selected || {}).slice(0, 3);
+  const analysisReasonLines = moneReasonLines(levels || selected || {})
+    .map((line) => safeLabel(line, {}, ""))
+    .filter(Boolean)
+    .slice(0, 3);
+  const newsDisclosureState = collectionStatusCard(loadState, loading);
+  const companyState = companyStatusCard(company, loadState);
   const dataCards = [
     { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`, cls: loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
     { label: "추천선", value: levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
-    { label: "뉴스·공시", value: `${loadState.newsCount}건 · ${loadState.disclosureCount}건`, sub: "선택 종목 관련", cls: coverageTone(loadState.newsCount + loadState.disclosureCount) },
-    {
-      label: "기업분석",
-      value: String(loadState.companyStatus || "").toUpperCase() === "TIMEOUT" ? "시간초과" : company?.dataStatus === "SOURCE_CONTEXT" || company?.dataStatus === "REPORT_FALLBACK" ? "보조" : company ? "연결됨" : "없음",
-      sub: String(loadState.companyStatus || "").toUpperCase() === "TIMEOUT" ? "기업분석 API 응답 지연" : company?.dataStatus === "SOURCE_CONTEXT" || company?.dataStatus === "REPORT_FALLBACK" ? "추천 원본 기준" : loadStatusText(loadState.companyStatus),
-      cls: String(loadState.companyStatus || "").toUpperCase() === "TIMEOUT" || company?.dataStatus === "SOURCE_CONTEXT" || company?.dataStatus === "REPORT_FALLBACK" ? statusTone("warn") : company ? statusTone("ok") : statusTone("warn"),
-    },
+    { label: "뉴스·공시", value: newsDisclosureState.value, sub: newsDisclosureState.sub, cls: newsDisclosureState.cls },
+    { label: "기업분석", value: companyState.value, sub: companyState.sub, cls: companyState.cls },
   ];
+  const moneConclusion = (() => {
+    const source = levels || {};
+    const ps = source.patternStrategy && typeof source.patternStrategy === "object" ? source.patternStrategy as Record<string, unknown> : null;
+    const actionRaw = firstPlainText(ps?.action, source.patternStrategyAction, source.patternAction, source.newEntryDecision, source.buyTiming);
+    const riskRaw = firstPlainText(ps?.riskStatus, source.riskStatus, source.tradeBlockStatus, source.riskLevel);
+    const actionCode = actionRaw.toUpperCase();
+    const actionText = safeLabel(actionRaw, ACTION_LABELS, "");
+    const riskText = safeLabel(riskRaw, RISK_LABELS, "정상");
+    const conf = ps?.confidence != null ? Math.round(Number(ps.confidence)) : num(source.finalScore);
+    const entry = levels ? priceText(levels, "entry", "기준가 대기") : "추천선 대기";
+    const stop = levels ? priceText(levels, "stop", "손절선 대기") : "손절선 대기";
+    const isRisk = isRiskCode(riskRaw) || actionCode === "BLOCKED" || actionCode === "AVOID_CHASE";
+    const headline =
+      isRisk ? "위험 관리 우선"
+      : actionCode === "SCALE_IN" ? "분할 접근 검토"
+      : actionCode === "HOLD_CASH" ? "현금 대기"
+      : actionCode === "WATCH_ONLY" || actionCode === "WAIT" ? "중립 관찰"
+      : actionCode === "WAIT_PULLBACK" ? "눌림 대기"
+      : actionCode === "ENTER" || actionCode === "BUY" || actionCode === "STRONG_BUY" ? "진입 검토"
+      : actionText || (levels ? stance.label : "판단 대기");
+    const newEntry =
+      isRisk ? "신규 진입보다 리스크 관리가 우선입니다."
+      : actionCode === "SCALE_IN" ? "기준가 유지와 거래량 확인 시 분할 접근을 검토하세요."
+      : actionCode === "HOLD_CASH" ? "시장 조건 회복 전까지 신규 진입을 보류하세요."
+      : actionCode === "WATCH_ONLY" || actionCode === "WAIT" ? "지금은 기다리고 눌림 후 다시 확인하세요."
+      : actionCode === "WAIT_PULLBACK" ? "눌림 확인 후 기준가 접근을 검토하세요."
+      : actionCode === "ENTER" || actionCode === "BUY" || actionCode === "STRONG_BUY" ? "기준가 근접 시 진입 조건을 확인하세요."
+      : levels ? stance.detail : "추천선과 OHLCV 연결 후 최종 판단을 확정합니다.";
+    return {
+      headline,
+      actionText: actionText || "대기",
+      riskText,
+      conf: conf !== null && Number.isFinite(conf) ? Math.round(Number(conf)) : null,
+      isRisk,
+      rows: [
+        { label: "신규 진입", value: newEntry },
+        { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다." },
+        { label: "관심종목", value: levels ? `기준가 ${entry} 근접 시 알림` : "기준가 확정 후 알림 기준을 설정합니다." },
+        { label: "위험 상태", value: riskText },
+      ],
+    };
+  })();
+  const newsDisclosureEmptyText =
+    newsDisclosureState.value === "수집 실패"
+      ? "뉴스·공시 수집 실패 — API 상태를 확인해 주세요."
+      : newsDisclosureState.value === "데이터 없음"
+        ? "뉴스·공시 데이터 없음 — 원본은 수집됐지만 선택 종목 관련 항목은 없습니다."
+        : "뉴스·공시 수집 대기 — 장전/장마감 후 자동 수집됩니다.";
+  const newsEmptyText =
+    loading ? "데이터 확인 중..."
+    : String(loadState.newsStatus || "").toUpperCase() === "ERROR" ? "뉴스 수집 실패"
+    : loadState.newsSourceCount > 0 ? "선택 종목 관련 뉴스가 없습니다."
+    : "뉴스 수집 대기";
+  const disclosureEmptyText =
+    loading ? "데이터 확인 중..."
+    : String(loadState.disclosureStatus || "").toUpperCase() === "ERROR" ? "공시 수집 실패"
+    : loadState.disclosureSourceCount > 0 ? "선택 종목 관련 공시가 없습니다."
+    : "공시 수집 대기";
+  const entryPlanSection = selected ? (
+    <div className="rounded-2xl border border-blue-900/50 bg-blue-950/10 p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-slate-100">진입·손절 계획</h3>
+          <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할매수 50/30/20</p>
+        </div>
+        <div className="flex gap-2">
+          {(["conservative","balanced","aggressive"] as const).map((m) => (
+            <button key={m} onClick={() => setAtrMode(m)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium ${atrMode === m ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
+              {m === "conservative" ? "보수" : m === "balanced" ? "균형" : "공격"}
+            </button>
+          ))}
+          <span className="text-slate-700">|</span>
+          {(["short","swing","mid"] as const).map((h) => (
+            <button key={h} onClick={() => setAtrHorizon(h)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium ${atrHorizon === h ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
+              {h === "short" ? "단기" : h === "swing" ? "스윙" : "중기"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {atrPlan ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {[
+              { label: "1차 관찰 기준 (50%)", value: money(atrPlan.entry, selected.market), color: "text-emerald-300", sub: "현재가 기준" },
+              { label: "2차 관찰 기준 (30%)", value: money(atrPlan.split2Price, selected.market), color: "text-sky-300", sub: `-${(atrPlan.atr * 0.5 / atrPlan.entry * 100).toFixed(1)}%` },
+              { label: "3차 관찰 기준 (20%)", value: money(atrPlan.split3Price, selected.market), color: "text-violet-300", sub: `-${(atrPlan.atr / atrPlan.entry * 100).toFixed(1)}%` },
+              { label: "손절가", value: money(atrPlan.stop, selected.market), color: "text-red-300", sub: `-${atrPlan.stopPct}%` },
+            ].map(({ label, value, color, sub }) => (
+              <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                <div className="text-xs text-slate-500">{label}</div>
+                <div className={`mt-1 font-mono font-bold ${color}`}>{value}</div>
+                <div className="text-[10px] text-slate-600">{sub}</div>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {[
+              { label: `1차 목표 (+${atrPlan.tgt1Pct}%)`, value: money(atrPlan.target1, selected.market), color: "text-cyan-300", sub: `RR ${atrPlan.rr1}` },
+              { label: "2차 목표", value: money(atrPlan.target2, selected.market), color: "text-emerald-300", sub: `RR ${atrPlan.rr2}` },
+              { label: "ATR 단위", value: money(atrPlan.atr, selected.market), color: "text-slate-300", sub: "14일 평균 변동폭" },
+              { label: "목표1 손익비", value: `1 : ${atrPlan.rr1}`, color: Number(atrPlan.rr1) >= 1.8 ? "text-emerald-400" : "text-amber-400", sub: Number(atrPlan.rr1) >= 1.8 ? "기준 충족" : "기준 미달 (1.8↑)" },
+            ].map(({ label, value, color, sub }) => (
+              <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                <div className="text-xs text-slate-500">{label}</div>
+                <div className={`mt-1 font-mono font-bold ${color}`}>{value}</div>
+                <div className="text-[10px] text-slate-600">{sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">ATR 데이터 부족(OHLCV 30일 이상 필요)</div>
+      )}
+    </div>
+  ) : null;
 
   return (
     <ErrorBoundary>
@@ -1884,76 +2128,54 @@ export default function ChartPage() {
               </div>
             )}
 
-            {/* MONE 결론 카드 */}
-            {levels && (() => {
-              const ps = levels.patternStrategy && typeof levels.patternStrategy === "object" ? levels.patternStrategy as Record<string, unknown> : null;
-              const actionRaw = ps?.action ? String(ps.action) : null;
-              const riskRaw = ps?.riskStatus ? String(ps.riskStatus) : null;
-              const conf = ps?.confidence != null ? Math.round(Number(ps.confidence)) : null;
-              const ACT: Record<string, string> = {
-                SCALE_IN: "분할 접근", WATCH_ONLY: "관찰", WAIT_PULLBACK: "눌림 대기",
-                HOLD_CASH: "현금 대기", AVOID_CHASE: "추격 금지", BLOCKED: "진입 차단",
-                BUY: "매수", STRONG_BUY: "강력매수", SELL: "매도", HOLD: "보유", ENTER: "진입", EXIT: "청산", WAIT: "대기",
-              };
-              const RSK: Record<string, string> = {
-                NONE: "정상", PULLBACK_RISK: "눌림 위험", OVERHEATED_CHASE_RISK: "과열 추격 주의",
-                FALSE_BREAKOUT_RISK: "가짜 돌파 주의", STRUCTURE_BREAKDOWN: "구조 이탈",
-                DATA_QUALITY_RISK: "데이터 확인 필요",
-              };
-              const actionText = actionRaw ? (ACT[actionRaw.toUpperCase()] ?? actionRaw) : null;
-              const riskText = riskRaw ? (RSK[riskRaw.toUpperCase()] ?? riskRaw) : null;
-              const isRisk = riskRaw && riskRaw.toUpperCase() !== "NONE";
-              const conclusionText =
-                actionRaw === "BLOCKED" ? "진입 차단 — 현재 진입 불가"
-                : actionRaw === "AVOID_CHASE" ? "추격 금지 — 현재 가격에서 진입 위험"
-                : actionRaw === "HOLD_CASH" ? "현금 대기 — 더 나은 기회를 기다립니다"
-                : actionRaw === "WATCH_ONLY" ? "관찰 단계 — 조건 충족 시 진입 검토"
-                : actionRaw === "WAIT_PULLBACK" ? "눌림 대기 — 조정 후 진입 구간 접근 중"
-                : actionRaw === "SCALE_IN" ? "분할 접근 — 단계적 진입 전략"
-                : actionRaw === "ENTER" || actionRaw === "BUY" ? "진입 검토 — 기준가 근접 시 진입"
-                : actionText ?? null;
-              if (!actionText && !riskText) return null;
-              return (
-                <div className={`mb-4 rounded-xl border p-4 ${isRisk ? "border-amber-700/40 bg-amber-950/20" : "border-emerald-800/40 bg-emerald-950/15"}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">MONE 결론</div>
-                      {conclusionText && (
-                        <div className={`text-sm font-bold ${isRisk ? "text-amber-200" : "text-emerald-200"}`}>{conclusionText}</div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      {actionText && (
-                        <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${isRisk ? "border-amber-600/40 text-amber-300" : "border-emerald-600/40 text-emerald-300"}`}>{actionText}</span>
-                      )}
-                      {riskText && (
-                        <span className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${isRisk ? "border-red-700/40 text-red-300" : "border-slate-700 text-slate-400"}`}>{riskText}</span>
-                      )}
-                      {conf != null && (
-                        <span className="rounded-lg border border-slate-700 px-2.5 py-1 font-mono text-xs text-slate-400">신뢰도 {conf}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
-              <div className="text-sm font-semibold text-slate-200">MONE 판단 이유</div>
-              <ol className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
-                {analysisReasonLines.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)}
-              </ol>
-            </div>
-
-            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5">
+            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
               {dataCards.map((card) => (
                 <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.cls}`}>
                   <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{card.label}</div>
-                  <div className="mt-1 font-mono text-sm font-bold">{card.value}</div>
+                  <div className="mt-1 text-sm font-bold">{card.value}</div>
                   <div className="text-[10px] opacity-75">{card.sub}</div>
                 </div>
               ))}
             </div>
+
+            {moneConclusion && (
+              <div className={`mb-4 rounded-xl border p-4 ${moneConclusion.isRisk ? "border-amber-700/40 bg-amber-950/20" : "border-emerald-800/40 bg-emerald-950/15"}`}>
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">MONE 결론</div>
+                    <div className={`text-lg font-bold ${moneConclusion.isRisk ? "text-amber-200" : "text-emerald-200"}`}>
+                      현재는 {moneConclusion.headline}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${moneConclusion.isRisk ? "border-amber-600/40 text-amber-300" : "border-emerald-600/40 text-emerald-300"}`}>
+                      {moneConclusion.actionText}
+                    </span>
+                    {moneConclusion.conf != null && (
+                      <span className="rounded-lg border border-slate-700 px-2.5 py-1 font-mono text-xs text-slate-400">신뢰도 {moneConclusion.conf}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
+                  {moneConclusion.rows.map((row) => (
+                    <div key={row.label} className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2">
+                      <div className="text-[10px] text-slate-500">{row.label}</div>
+                      <div className="mt-1 leading-5 text-slate-200">{row.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
+              <div className="text-sm font-semibold text-slate-200">MONE 판단 이유</div>
+              <ol className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
+                {analysisReasonLines.length
+                  ? analysisReasonLines.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)
+                  : <li>1. 추천 데이터 연결 후 판단 이유가 표시됩니다.</li>}
+              </ol>
+            </div>
+
             {loadState.errors.length > 0 && (
               <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
                 일부 데이터 API 오류: {loadState.errors.slice(0, 2).join(" / ")}
@@ -1982,6 +2204,8 @@ export default function ChartPage() {
               </div>
             </div>
 
+            {entryPlanSection}
+
             {/* 기간 필터 + 인디케이터 토글 */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div className="flex gap-1 rounded-lg border border-slate-800 bg-slate-950 p-0.5">
@@ -2009,12 +2233,22 @@ export default function ChartPage() {
                   더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.
                 </span>
               )}
-              {/* 정밀 근거 서브 토글 그룹 */}
+              <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-800 bg-slate-950 p-1">
+                <span className="px-2 text-[10px] font-semibold text-slate-500">기본</span>
+                <span className="rounded border border-emerald-600/30 px-2 py-1 text-[10px] text-emerald-300">가격선</span>
+                {([["ma20","MA20","#facc15"],["rsi","RSI","#38bdf8"]] as [ToggleKey,string,string][]).map(([key, label, color]) => (
+                  <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
+                    className={`rounded border px-2 py-1 text-[10px] font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 text-slate-600"}`}
+                    style={toggles[key] ? { color, borderColor: color + "66" } : {}}>
+                    {label}
+                  </button>
+                ))}
+              </div>
               {precisionEvidence && ([
-                { group: "가격선", keys: [["ma10","MA10","#2dd4bf"],["ma20","MA20","#facc15"],["ma60","MA60","#f97316"],["bb","BB","#a855f7"]] },
-                { group: "지지저항", keys: [["trendline","빗각","#22c55e"],["supply","매물대","#f59e0b"]] },
-                { group: "되돌림", keys: [["retracement","되돌림","#06b6d4"],["zigzag","ZigZag","#f472b6"]] },
-                { group: "비교지수", keys: [["index", selected?.market === "us" ? "vs SPY" : "vs KOSPI", "#94a3b8"]] },
+                { group: "지지저항", keys: [["trendline","빗각","#22c55e"]] },
+                { group: "되돌림", keys: [["retracement","되돌림","#06b6d4"]] },
+                { group: "매물대", keys: [["supply","매물대","#f59e0b"]] },
+                { group: "비교지수", keys: [["index", selected?.market === "us" ? "SPY" : "KOSPI", "#94a3b8"]] },
                 { group: "위험신호", keys: [["fakeBreak","가짜돌파","#ef4444"]] },
               ] as { group: string; keys: [ToggleKey, string, string][] }[]).map(({ group, keys }) => {
                 const allOn = keys.every(([k]) => toggles[k as ToggleKey]);
@@ -2049,14 +2283,26 @@ export default function ChartPage() {
                   </div>
                 );
               })}
-              {/* 기본 인디케이터 (항상 표시) */}
-              {([["volume","거래량","#64748b"],["rsi","RSI","#38bdf8"],["macd","MACD","#f97316"]] as [ToggleKey,string,string][]).map(([key, label, color]) => (
-                <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 bg-slate-950 text-slate-600"}`}
-                  style={toggles[key] ? { color, borderColor: color + "66" } : {}}>
-                  {label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setShowAdvancedIndicators((v) => !v)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
+                  showAdvancedIndicators
+                    ? "border-violet-500/50 bg-violet-500/10 text-violet-200"
+                    : "border-slate-800 bg-slate-950 text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                고급 지표
+              </button>
+              {showAdvancedIndicators && ([
+                ["volume","거래량","#64748b"],["macd","MACD","#f97316"],["bb","BB","#a855f7"],["ma10","MA10","#2dd4bf"],["ma60","MA60","#f97316"],["zigzag","ZigZag","#f472b6"]
+              ] as [ToggleKey,string,string][]).map(([key, label, color]) => (
+                  <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
+                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 bg-slate-950 text-slate-600"}`}
+                    style={toggles[key] ? { color, borderColor: color + "66" } : {}}>
+                    {label}
+                  </button>
+                ))}
             </div>
 
             {loading && <div className="py-20 text-center text-slate-500">차트 데이터를 불러오는 중...</div>}
@@ -2078,7 +2324,7 @@ export default function ChartPage() {
             {!loading && rows.length > 0 && (
               <div className="space-y-2">
                 <div className="rounded-xl border border-slate-800 bg-[#020617] p-2">
-                  <TvChart rows={filteredRows} levels={levels} market={selected.market} toggles={toggles} indexRows={indexRows} chartAnalysis={chartAnalysis} />
+                  <TvChart rows={filteredRows} levels={levels} market={selected.market} toggles={toggles} indexRows={indexRows} chartAnalysis={chartAnalysis} precisionEvidence={precisionEvidence} />
                   <div className="mt-2 flex flex-wrap gap-3 px-2 text-xs text-slate-500">
                     <span>봉: {filteredRows.length}개 (전체 {rows.length})</span>
                     <span>최근: {latest?.date || "-"}</span>
@@ -2101,7 +2347,9 @@ export default function ChartPage() {
                 {toggles.macd && <MacdChart rows={filteredRows} />}
 
                 {/* Phase 6 AI 차트 분석 패널 */}
-                {chartAnalysis?.ok && (() => {
+                {precisionEvidence && chartAnalysis?.ok && (
+                  <CollapsiblePanel title="MONE 차트 신호">
+                  {(() => {
                   const ca = chartAnalysis;
                   const isConfirmed = ca.signalStatus === "confirmed";
                   const isDeveloping = ca.signalStatus === "developing";
@@ -2216,6 +2464,8 @@ export default function ChartPage() {
                     </div>
                   );
                 })()}
+                  </CollapsiblePanel>
+                )}
 
                 <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
                   <Info label="기준가" value={levels && levelValue(levels,"base") ? money(levelValue(levels,"base"), selected.market) : "-"} />
@@ -2252,43 +2502,20 @@ export default function ChartPage() {
             };
             const actionKo = (a?: string) => {
               if (!a) return "-";
-              const m: Record<string, string> = {
-                BUY:"매수", STRONG_BUY:"강력매수", SELL:"매도", STRONG_SELL:"강력매도",
-                WATCH_ONLY:"관찰", HOLD:"보유", ENTER:"진입", EXIT:"청산", WAIT:"대기",
-                SCALE_IN:"분할 접근", WAIT_PULLBACK:"눌림 대기", HOLD_CASH:"현금 대기",
-                AVOID_CHASE:"추격 금지", BLOCKED:"진입 차단",
-              };
-              return m[a.toUpperCase()] ?? a;
+              return safeLabel(a, ACTION_LABELS, "-");
             };
             const riskKo = (r?: string) => {
               if (!r) return "-";
-              const m: Record<string, string> = {
-                LOW_RISK:"낮음", MEDIUM_RISK:"보통", HIGH_RISK:"높음", SAFE:"안전",
-                CAUTION:"주의", DANGER:"위험", DATA_QUALITY_RISK:"데이터 확인 필요", WATCH:"주의",
-                NONE:"정상", PULLBACK_RISK:"눌림 위험", OVERHEATED_CHASE_RISK:"과열 추격 주의",
-                FALSE_BREAKOUT_RISK:"가짜 돌파 주의", STRUCTURE_BREAKDOWN:"구조 이탈",
-              };
-              return m[r.toUpperCase()] ?? r;
+              return safeLabel(r, RISK_LABELS, "-");
             };
             const patternKo = (p?: string) => {
               if (!p) return "-";
-              const m: Record<string, string> = {
-                horizontal_support_rebound:"지지 반등", relative_strength:"상대강도 우위",
-                resistance_breakout:"저항 돌파", breakout_retest:"돌파 후 재확인",
-                trend_up_pullback:"상승 추세 눌림", range_bottom_rebound:"박스 하단 반등",
-                volatility_contraction_expansion:"변동성 수축 후 확장", volume_turnaround:"거래량 전환",
-                overheated_chase_risk:"과열 추격 위험", false_breakout_risk:"가짜 돌파 위험",
-                downtrend_bounce_trap:"하락 반등 함정", resistance_chase_risk:"저항 추격 위험",
-              };
-              return m[p] ?? p;
+              return safeLabel(p, PATTERN_LABELS, "-");
             };
             const supports = (ps.historicalSupportLevels ?? []).slice(0, 3);
             return (
-              <div className="rounded-2xl border border-violet-900/40 bg-violet-950/10 p-5">
-                <div className="mb-4 flex items-center justify-between gap-2">
-                  <h3 className="font-semibold text-slate-100">MONE 패턴 전략</h3>
-                  {ps.status === "ERROR" && <span className="text-[10px] text-slate-500">{ps.message ?? "분석 제한"}</span>}
-                </div>
+              <CollapsiblePanel title="고급 차트 신호">
+                {ps.status === "ERROR" && <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-500">{safeLabel(ps.message, {}, "분석 제한")}</div>}
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm mb-4">
                   <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                     <div className="text-[10px] text-slate-500 mb-1">MONE 패턴</div>
@@ -2312,11 +2539,11 @@ export default function ChartPage() {
                 <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-3">
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">시장 구조</div>
-                    <div className="text-slate-200">{ps.marketStructure ?? "-"}</div>
+                    <div className="text-slate-200">{safeLabel(ps.marketStructure, {}, "-")}</div>
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">추세 국면</div>
-                    <div className="text-slate-200">{ps.trendPhase ?? "-"}</div>
+                    <div className="text-slate-200">{safeLabel(ps.trendPhase, {}, "-")}</div>
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">보조 패턴</div>
@@ -2337,68 +2564,9 @@ export default function ChartPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </CollapsiblePanel>
             );
           })()}
-
-          {/* 진입·손절 계획 */}
-          <div className="rounded-2xl border border-blue-900/50 bg-blue-950/10 p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="font-semibold text-slate-100">진입·손절 계획</h3>
-                <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할매수 50/30/20</p>
-              </div>
-              <div className="flex gap-2">
-                {(["conservative","balanced","aggressive"] as const).map((m) => (
-                  <button key={m} onClick={() => setAtrMode(m)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${atrMode === m ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
-                    {m === "conservative" ? "보수" : m === "balanced" ? "균형" : "공격"}
-                  </button>
-                ))}
-                <span className="text-slate-700">|</span>
-                {(["short","swing","mid"] as const).map((h) => (
-                  <button key={h} onClick={() => setAtrHorizon(h)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${atrHorizon === h ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
-                    {h === "short" ? "단기" : h === "swing" ? "스윙" : "중기"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {atrPlan ? (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                  {[
-                    { label: "1차 관찰 기준 (50%)", value: money(atrPlan.entry, selected.market), color: "text-emerald-300", sub: "현재가 기준" },
-                    { label: "2차 관찰 기준 (30%)", value: money(atrPlan.split2Price, selected.market), color: "text-sky-300", sub: `-${(atrPlan.atr * 0.5 / atrPlan.entry * 100).toFixed(1)}%` },
-                    { label: "3차 관찰 기준 (20%)", value: money(atrPlan.split3Price, selected.market), color: "text-violet-300", sub: `-${(atrPlan.atr / atrPlan.entry * 100).toFixed(1)}%` },
-                    { label: "손절가", value: money(atrPlan.stop, selected.market), color: "text-red-300", sub: `-${atrPlan.stopPct}%` },
-                  ].map(({ label, value, color, sub }) => (
-                    <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                      <div className="text-xs text-slate-500">{label}</div>
-                      <div className={`mt-1 font-mono font-bold ${color}`}>{value}</div>
-                      <div className="text-[10px] text-slate-600">{sub}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                  {[
-                    { label: `1차 목표 (+${atrPlan.tgt1Pct}%)`, value: money(atrPlan.target1, selected.market), color: "text-cyan-300", sub: `RR ${atrPlan.rr1}` },
-                    { label: "2차 목표", value: money(atrPlan.target2, selected.market), color: "text-emerald-300", sub: `RR ${atrPlan.rr2}` },
-                    { label: "ATR 단위", value: money(atrPlan.atr, selected.market), color: "text-slate-300", sub: "14일 평균 변동폭" },
-                    { label: "목표1 손익비", value: `1 : ${atrPlan.rr1}`, color: Number(atrPlan.rr1) >= 1.8 ? "text-emerald-400" : "text-amber-400", sub: Number(atrPlan.rr1) >= 1.8 ? "기준 충족" : "기준 미달 (1.8↑)" },
-                  ].map(({ label, value, color, sub }) => (
-                    <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                      <div className="text-xs text-slate-500">{label}</div>
-                      <div className={`mt-1 font-mono font-bold ${color}`}>{value}</div>
-                      <div className="text-[10px] text-slate-600">{sub}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">ATR 데이터 부족 (OHLCV 30일 이상 필요)</div>
-            )}
-          </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <CollapsiblePanel title="상세 지표">
@@ -2531,7 +2699,7 @@ export default function ChartPage() {
             {!loading && news.length === 0 && disclosures.length === 0 ? (
               <div className="lg:col-span-2">
                 <CollapsiblePanel title="뉴스·공시">
-                  <Empty text="뉴스 0건 · 공시 0건입니다. 뉴스는 장전·장후, 공시는 주기적으로 자동 수집됩니다." />
+                  <Empty text={newsDisclosureEmptyText} />
                 </CollapsiblePanel>
               </div>
             ) : (
@@ -2540,7 +2708,7 @@ export default function ChartPage() {
                   {loading
                     ? <Empty text="데이터 확인 중..." />
                     : news.length === 0
-                      ? <Empty text="뉴스 0건" />
+                      ? <Empty text={newsEmptyText} />
                       : <div className="space-y-2">{news.map((item, i) => <Related key={`news-${i}`} item={item} />)}</div>}
                 </CollapsiblePanel>
                 <CollapsiblePanel title="관련 공시 (DART)">
@@ -2549,7 +2717,7 @@ export default function ChartPage() {
                     : disclosures.length === 0
                       ? (
                         <div className="space-y-2">
-                          <Empty text="공시 0건" />
+                          <Empty text={disclosureEmptyText} />
                           {selected && (
                             <a
                               href={`https://dart.fss.or.kr/dsab007/main.do`}
