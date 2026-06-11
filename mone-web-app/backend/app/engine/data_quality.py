@@ -1,16 +1,8 @@
 """
 data_quality.py — MONE 데이터 품질 판정 엔진
 
-인코딩 참고 (작업 5):
-  Starlette JSONResponse.render() 는 ensure_ascii=False + .encode("utf-8") 을 사용한다.
-  즉 API 응답 JSON에는 한글이 raw UTF-8 바이트로 포함된다.
-  브라우저와 올바르게 구성된 HTTP 클라이언트는 Content-Type: application/json; charset=utf-8 에
-  따라 정상 표시한다.
-  PowerShell 콘솔이 cp1252 (Windows 기본) 로 설정된 경우 한글이 mojibake 로 깨져 보인다.
-  서버·코드 문제가 아니라 터미널 인코딩 문제이므로 아래 명령으로 해결:
-    $OutputEncoding = [System.Text.Encoding]::UTF8
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-  (또는 PowerShell 에서 chcp 65001 실행)
+mode=quick (기본): OHLCV 샘플 30개, final_engine 호출 생략 → 30초 내 응답 보장
+mode=full : 전체 파일 검사 + final_engine 실행 (느릴 수 있음)
 """
 from __future__ import annotations
 
@@ -23,6 +15,9 @@ from app.engine import session
 from app.engine.symbols import normalize_market
 from app.services import data_loader as data
 from app.services import final_engine
+
+# quick 모드에서 검사할 OHLCV 파일 최대 수
+_MAX_OHLCV_SAMPLE = 30
 
 # 날짜 컬럼 후보 (우선순위순)
 _DATE_COLS = [
@@ -273,7 +268,12 @@ def _filter_ohlcv_files(
     }
 
 
-def _status_for_path(path: Path | None, market: str, role: str) -> dict[str, Any]:
+def _status_for_path(
+    path: Path | None, market: str, role: str, max_files: int = 0
+) -> dict[str, Any]:
+    """
+    max_files > 0 이면 OHLCV 디렉토리 검사를 해당 수만큼 제한한다 (quick 모드).
+    """
     if path is None:
         return {"status": "NO_DATA", "reason": "경로 없음", "path": None, "role": role}
     if path.is_dir():
@@ -288,6 +288,12 @@ def _status_for_path(path: Path | None, market: str, role: str) -> dict[str, Any
             # OHLCV 디렉토리: market 접두사 + 유효 심볼 필터
             filtered, filter_info = _filter_ohlcv_files(all_files, market)
             files_to_use = filtered if filtered else all_files
+            total_file_count = len(files_to_use)
+            # quick 모드: 파일 수 제한 (mtime 기준 최신 N개만)
+            if max_files > 0 and len(files_to_use) > max_files:
+                files_to_use = sorted(
+                    files_to_use, key=lambda f: f.stat().st_mtime, reverse=True
+                )[:max_files]
             if filter_info["mismatch_count"]:
                 warning_summary["market_mismatch_file"] = filter_info["mismatch_count"]
                 warning_samples["market_mismatch_file"] = filter_info["mismatch_samples"]
@@ -296,14 +302,15 @@ def _status_for_path(path: Path | None, market: str, role: str) -> dict[str, Any
                 warning_samples["invalid_ohlcv_file"] = filter_info["invalid_samples"]
         else:
             files_to_use = all_files
+            total_file_count = len(files_to_use)
 
         newest = max(files_to_use, key=lambda item: item.stat().st_mtime)
         result = session.evaluate_file_status(newest, market, required_today=role in {"price_priority_1", "price_priority_2"})
         result["path"] = str(newest)
         result["role"] = role
-        result["fileCount"] = len(files_to_use)
+        result["fileCount"] = total_file_count
+        result["checkedFileCount"] = len(files_to_use)
         result["mtimeDate"] = datetime.fromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d")
-        # warningSummary / warningSamples — 파일별 진단 (긴 목록 대신 요약)
         if warning_summary:
             result["warningSummary"] = warning_summary
             result["warningSamples"] = warning_samples
@@ -353,36 +360,90 @@ def _recommendation_csv_inspect(market: str) -> dict[str, Any]:
     }
 
 
-def data_quality(market: str = "kr") -> dict[str, Any]:
+def data_quality(market: str = "kr", mode: str = "quick") -> dict[str, Any]:
+    """
+    mode="quick" (기본): OHLCV 샘플 30개, final_engine 호출 생략 — 30초 내 응답
+    mode="full" : 전체 파일 검사 + final_engine 실행
+    """
+    warnings: list[str] = []
+    try:
+        return _data_quality_inner(market, mode)
+    except Exception as exc:
+        warnings.append(f"internal_error:{exc!r:.200}")
+        return {
+            "status": "OK",
+            "market": normalize_market(market),
+            "dataStatus": "PARTIAL",
+            "killSwitch": False,
+            "latestDataDate": None,
+            "rowCount": 0,
+            "candidateCount": 0,
+            "fullScan": mode == "full",
+            "warnings": warnings,
+        }
+
+
+def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
     normalized_market = normalize_market(market)
+    quick = mode != "full"
+    max_ohlcv = _MAX_OHLCV_SAMPLE if quick else 0
+
     state = session.get_price_session(normalized_market)
 
     files = []
     for item in _candidate_files(normalized_market):
-        status = _status_for_path(item["path"], normalized_market, item["role"])
-        files.append({**item, **status, "path": status.get("path") or (str(item["path"]) if item["path"] else None)})
+        try:
+            status = _status_for_path(
+                item["path"], normalized_market, item["role"],
+                max_files=max_ohlcv if item["role"] == "price_priority_3" else 0,
+            )
+            files.append({**item, **status, "path": status.get("path") or (str(item["path"]) if item["path"] else None)})
+        except Exception as exc:
+            files.append({"name": item.get("name", ""), "role": item.get("role", ""), "path": None,
+                          "status": "ERROR", "reason": str(exc)[:200]})
 
-    rec_csv_inspect = _recommendation_csv_inspect(normalized_market)
-    files.append(rec_csv_inspect)
-
+    rec_csv_inspect: dict[str, Any] = {}
     try:
-        recommendations = final_engine.final_recommendations(normalized_market, "balanced", "swing", 30)
-        rows = recommendations.get("items") or []
-        row_status = session.worst_status(row.get("dataStatus") for row in rows)
-        price_status = session.worst_status(row.get("priceDataStatus") for row in rows)
-        if rows and row_status == "NORMAL":
+        rec_csv_inspect = _recommendation_csv_inspect(normalized_market)
+        files.append(rec_csv_inspect)
+    except Exception as exc:
+        rec_csv_inspect = {"status": "ERROR", "reason": str(exc)[:200], "rowCount": 0,
+                           "emptyResult": True, "warnings": [], "role": "recommendation_csv"}
+        files.append(rec_csv_inspect)
+
+    # quick 모드: final_engine 호출 생략 — CSV 메타에서 후보 수 추정
+    rows: list[dict] = []
+    price_status = "NO_DATA"
+    recommendation_status: str
+    if quick:
+        rc = rec_csv_inspect.get("rowCount", 0)
+        if rc > 0 and not rec_csv_inspect.get("emptyResult"):
             recommendation_status = "NORMAL"
-        elif rows:
-            recommendation_status = "PARTIAL"
+            price_status = "PARTIAL"
         elif rec_csv_inspect.get("emptyResult"):
             recommendation_status = "EMPTY_RESULT"
         else:
             recommendation_status = "NO_DATA"
-    except Exception as exc:
-        rows = []
-        price_status = "ERROR"
-        recommendation_status = "ERROR"
-        files.append({"name": "Recommendation engine", "role": "engine", "path": None, "status": "ERROR", "reason": str(exc)})
+    else:
+        try:
+            recommendations = final_engine.final_recommendations(normalized_market, "balanced", "swing", 30)
+            rows = recommendations.get("items") or []
+            row_status = session.worst_status(row.get("dataStatus") for row in rows)
+            price_status = session.worst_status(row.get("priceDataStatus") for row in rows)
+            if rows and row_status == "NORMAL":
+                recommendation_status = "NORMAL"
+            elif rows:
+                recommendation_status = "PARTIAL"
+            elif rec_csv_inspect.get("emptyResult"):
+                recommendation_status = "EMPTY_RESULT"
+            else:
+                recommendation_status = "NO_DATA"
+        except Exception as exc:
+            rows = []
+            price_status = "ERROR"
+            recommendation_status = "ERROR"
+            files.append({"name": "Recommendation engine", "role": "engine", "path": None,
+                          "status": "ERROR", "reason": str(exc)[:200]})
 
     # ── 세션 타입 파악 ────────────────────────────────────────────────────────
     price_session_str = state.get("priceSession", "")
@@ -491,8 +552,20 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
     # mixedMarketCount — OHLCV 폴더 파일 존재가 아닌, CSV 내부 혼합만 카운트
     mixed_market_count = rec_csv_inspect.get("mixedMarketCount", 0)
 
+    # quick 모드: candidateCount는 CSV rowCount로 대체
+    candidate_count = len(rows) if not quick else rec_csv_inspect.get("rowCount", 0)
+
+    # OHLCV 샘플 검사 수 집계
+    ohlcv_checked = next(
+        (f.get("checkedFileCount", f.get("fileCount", 0)) for f in files if f.get("role") == "price_priority_3"),
+        0,
+    )
+    ohlcv_total = next(
+        (f.get("fileCount", 0) for f in files if f.get("role") == "price_priority_3"),
+        0,
+    )
+
     return {
-        # 기존 필드 유지
         "status": "OK",
         "market": normalized_market,
         "priceSession": state["priceSession"],
@@ -501,11 +574,10 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
         "priceDataStatus": price_status if rows else ("NO_REALTIME" if is_after_close else "NO_DATA"),
         "killSwitch": kill_switch,
         "reviewMode": is_review,
-        # 신규: 장마감 후 복기 가능 여부
         "afterCloseReviewAvailable": is_after_close and rec_has_data,
         "message": "시장 휴장일 - 지난 운용 복기 모드" if is_review else "데이터 상태 점검 완료",
         "files": files,
-        "candidateCount": len(rows),
+        "candidateCount": candidate_count,
         "updatedAt": datetime.now(session.KST).isoformat(),
         "latestFileModifiedAt": rec_csv_inspect.get("latestFileModifiedAt"),
         "latestDataDate": rec_csv_inspect.get("latestDataDate"),
@@ -520,6 +592,10 @@ def data_quality(market: str = "kr") -> dict[str, Any]:
         "warnings": top_warnings,
         "warningsDetail": warnings_detail,
         "checkedFiles": [f.get("path") for f in files if f.get("path")],
+        # 스캔 범위 정보
+        "fullScan": not quick,
+        "checkedFilesSample": ohlcv_checked,
+        "totalOhlcvFiles": ohlcv_total,
     }
 
 
