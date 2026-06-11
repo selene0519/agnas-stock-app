@@ -213,7 +213,27 @@ function normalizeHoldingEdit(item: any): HoldingEditRow | null {
   };
 }
 
-export default function StocksPage() {
+const PATTERN_ACTION_KO: Record<string, string> = {
+  SCALE_IN: "분할 접근", WATCH_ONLY: "관찰", WAIT_PULLBACK: "눌림 대기",
+  HOLD_CASH: "현금 대기", AVOID_CHASE: "추격 금지", BLOCKED: "진입 차단",
+  BUY: "매수", STRONG_BUY: "강력매수", SELL: "매도", STRONG_SELL: "강력매도",
+  HOLD: "보유", ENTER: "진입", EXIT: "청산", WAIT: "대기",
+};
+const PATTERN_RISK_KO: Record<string, string> = {
+  NONE: "정상", PULLBACK_RISK: "눌림 위험", OVERHEATED_CHASE_RISK: "과열 추격 주의",
+  FALSE_BREAKOUT_RISK: "가짜 돌파 주의", STRUCTURE_BREAKDOWN: "구조 이탈",
+  DATA_QUALITY_RISK: "데이터 확인 필요",
+};
+const PATTERN_TYPE_KO: Record<string, string> = {
+  horizontal_support_rebound: "지지 반등", relative_strength: "상대강도 우위",
+  resistance_breakout: "저항 돌파", breakout_retest: "돌파 후 재확인",
+  trend_up_pullback: "상승 추세 눌림", range_bottom_rebound: "박스 하단 반등",
+  volatility_contraction_expansion: "변동성 수축 후 확장", volume_turnaround: "거래량 전환",
+  overheated_chase_risk: "과열 추격 위험", false_breakout_risk: "가짜 돌파 위험",
+  downtrend_bounce_trap: "하락 반등 함정", resistance_chase_risk: "저항 추격 위험",
+};
+
+export default function StocksPage({ onNavigate }: { onNavigate?: (page: string) => void } = {}) {
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
@@ -1420,40 +1440,49 @@ export default function StocksPage() {
                 </div>
               )}
 
-              {patternAction !== "-" && (
-                <div className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-                  <div className="font-semibold">MONE 패턴 판단: {patternAction}</div>
-                  {patternReason !== "-" && <div className="mt-1 line-clamp-2 text-cyan-200/80">{patternReason}</div>}
-                </div>
-              )}
-
-              {hasRecommendation && (
-                <div className="mt-3 rounded-xl bg-slate-950 p-3 space-y-1.5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">퀀트 스코어</span>
-                    <div className="flex items-center gap-2 text-[10px]">
-                      {item.finalScore > 0 && <span className="font-mono font-bold text-slate-300">{item.finalScore.toFixed(0)}점</span>}
-                      {item.evGrade && <span className={`rounded px-1.5 py-0.5 ${item.evGrade === "우수" ? "bg-emerald-900/60 text-emerald-300" : item.evGrade === "양호" ? "bg-blue-900/60 text-blue-300" : "bg-slate-800 text-slate-400"}`}>{item.evGrade}</span>}
-                      {item.expectedValue != null && <span className={`font-mono ${item.expectedValue >= 0 ? "text-emerald-400" : "text-red-400"}`}>EV {item.expectedValue >= 0 ? "+" : ""}{Number(item.expectedValue).toFixed(1)}%</span>}
+              {hasRecommendation && (() => {
+                const ps = item.patternStrategy && typeof item.patternStrategy === "object" ? item.patternStrategy : null;
+                const psActionRaw = ps?.action ? String(ps.action) : patternAction !== "-" ? patternAction : null;
+                const psRiskRaw = ps?.riskStatus ? String(ps.riskStatus) : null;
+                const psPatternRaw = ps?.primaryPattern ? String(ps.primaryPattern) : null;
+                const psConf = ps?.confidence != null ? Math.round(Number(ps.confidence)) : item.finalScore > 0 ? Math.round(item.finalScore) : null;
+                const actionText = psActionRaw ? (PATTERN_ACTION_KO[psActionRaw.toUpperCase()] ?? psActionRaw) : null;
+                const riskText = psRiskRaw ? (PATTERN_RISK_KO[psRiskRaw.toUpperCase()] ?? psRiskRaw) : "정상";
+                const patternText = psPatternRaw ? (PATTERN_TYPE_KO[psPatternRaw] ?? psPatternRaw) : null;
+                const isRisk = psRiskRaw && psRiskRaw.toUpperCase() !== "NONE";
+                return (
+                  <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">MONE 판단</div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      {actionText && (
+                        <div>
+                          <div className="text-slate-500">전략</div>
+                          <div className={`font-semibold mt-0.5 ${actionText === "진입 차단" || actionText === "추격 금지" ? "text-red-300" : "text-sky-300"}`}>{actionText}</div>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-slate-500">위험</div>
+                        <div className={`font-semibold mt-0.5 ${isRisk ? "text-amber-300" : "text-emerald-300"}`}>{riskText}</div>
+                      </div>
+                      {patternText && (
+                        <div>
+                          <div className="text-slate-500">패턴</div>
+                          <div className="font-semibold text-slate-200 mt-0.5">{patternText}</div>
+                        </div>
+                      )}
+                      {psConf != null && (
+                        <div>
+                          <div className="text-slate-500">신뢰도</div>
+                          <div className="font-mono font-semibold text-blue-300 mt-0.5">{psConf}</div>
+                        </div>
+                      )}
                     </div>
+                    {patternReason !== "-" && patternReason && (
+                      <div className="mt-2 text-[10px] text-slate-400 line-clamp-2">{patternReason}</div>
+                    )}
                   </div>
-                  {(item.finalScore > 0 || item.riskScore > 0) ? (
-                    <>
-                      <ScoreBar label="상승여력" score={item.upsideScore} />
-                      <ScoreBar label="리스크" score={item.riskScore} />
-                      <ScoreBar label="모멘텀" score={item.momentumScore} />
-                      <ScoreBar label="기준가" score={item.entryScore} />
-                      <ScoreBar label="손익비" score={item.rrScore} />
-                    </>
-                  ) : (
-                    <div className="text-[10px] text-slate-600">
-                      {String(item.dataStatus || "").toUpperCase() === "DATA_PENDING"
-                        ? "OHLCV 30일 미만 — 데이터 수집 후 자동 산출됩니다."
-                        : "퀀트 스코어 데이터 준비 중입니다. 추천 파일 갱신 후 표시됩니다."}
-                    </div>
-                  )}
-                </div>
-              )}
+                );
+              })()}
 
               <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <button
@@ -1500,7 +1529,7 @@ export default function StocksPage() {
                 </button>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-600/40 bg-blue-600/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-600/20"
                   onClick={() => {
                     window.localStorage.setItem("mone_chart_symbol", String(item.symbol || ""));
                     window.localStorage.setItem("mone_chart_market", cleanMarket(item.market || market));
@@ -1508,9 +1537,10 @@ export default function StocksPage() {
                     window.localStorage.setItem("mone_chart_price", String(item.currentPrice || item.price || ""));
                     window.localStorage.setItem("mone_chart_price_text", priceText(item, "current", ""));
                     window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
+                    onNavigate?.("chart");
                   }}
                 >
-                  MONE 판단 보기
+                  분석 보기 →
                 </button>
               </div>
             </div>
