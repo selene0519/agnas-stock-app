@@ -145,6 +145,26 @@ def _extract_bearer_token(authorization: str | None) -> str:
     return ""
 
 
+def _verify_user_token(token: str) -> dict | None:
+    """OAuth 사용자 토큰을 검증하고 payload를 반환한다. 유효하지 않으면 None."""
+    if not token:
+        return None
+    try:
+        body, signature = token.split(".", 1)
+        secret = _admin_auth_secret() or b"mone-user"
+        expected_sig = hmac.new(secret, body.encode("ascii"), hashlib.sha256).digest()
+        if not hmac.compare_digest(_b64url_encode(expected_sig), signature):
+            return None
+        payload = json.loads(_b64url_decode(body).decode("utf-8"))
+    except Exception:
+        return None
+    if payload.get("role") != "user":
+        return None
+    if int(payload.get("exp", 0)) <= int(time.time()):
+        return None
+    return payload
+
+
 def _verify_admin_token(token: str) -> bool:
     if not token or not _admin_auth_configured():
         return False
@@ -5285,3 +5305,185 @@ def api_cache_refresh(market: str = "kr", secret: str = "") -> dict:
         "cachesCleared": caches_cleared,
         "timestamp": datetime.now().isoformat(),
     }
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 데이터 커버리지 상태 (경량 메타데이터 기반)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/data/coverage")
+def api_data_coverage(market: str = "kr") -> dict:
+    """파일 메타데이터 기반 데이터 수집 현황 반환 (경량)."""
+    result: dict = {"status": "OK", "market": market, "sources": {}}
+
+    # OHLCV
+    ohlcv_dir = data.REPO_ROOT / "data" / "market" / "ohlcv"
+    if ohlcv_dir.exists():
+        prefix = f"{market}_"
+        files = [f for f in ohlcv_dir.glob(f"{market}_*_daily.csv") if f.is_file()]
+        count = len(files)
+        newest = max((f.stat().st_mtime for f in files), default=0)
+        age_h = (time.time() - newest) / 3600 if newest else 9999
+        result["sources"]["ohlcv"] = {
+            "label": "OHLCV",
+            "count": count,
+            "unit": "종목",
+            "ageHours": round(age_h, 1),
+            "status": "NORMAL" if count > 0 and age_h < 48 else ("STALE" if count > 0 else "EMPTY"),
+        }
+    else:
+        result["sources"]["ohlcv"] = {"label": "OHLCV", "count": 0, "status": "EMPTY"}
+
+    # 추천선
+    reco_files = list((data.REPO_ROOT / "reports").glob(f"mone_v36_final_recommendations_{market}_*.csv"))
+    if reco_files:
+        reco_newest = max(f.stat().st_mtime for f in reco_files)
+        reco_age_h = (time.time() - reco_newest) / 3600
+        total_rows = 0
+        for f in reco_files:
+            try:
+                import pandas as _pd
+                total_rows += max(0, len(_pd.read_csv(f)) - 1)
+            except Exception:
+                pass
+        result["sources"]["recommendations"] = {
+            "label": "추천선",
+            "count": total_rows,
+            "unit": "후보",
+            "ageHours": round(reco_age_h, 1),
+            "status": "NORMAL" if total_rows > 0 and reco_age_h < 48 else ("STALE" if total_rows > 0 else "EMPTY"),
+        }
+    else:
+        result["sources"]["recommendations"] = {"label": "추천선", "count": 0, "status": "EMPTY"}
+
+    # 뉴스
+    news_file = data.REPO_ROOT / f"data/news/news_{market}.json"
+    if news_file.exists():
+        age_h = (time.time() - news_file.stat().st_mtime) / 3600
+        try:
+            import json as _json
+            items = _json.loads(news_file.read_text(encoding="utf-8"))
+            count = len(items) if isinstance(items, list) else 0
+        except Exception:
+            count = 0
+        result["sources"]["news"] = {
+            "label": "뉴스",
+            "count": count,
+            "unit": "건",
+            "ageHours": round(age_h, 1),
+            "status": "NORMAL" if count > 0 and age_h < 24 else ("STALE" if count > 0 else "PENDING"),
+        }
+    else:
+        result["sources"]["news"] = {"label": "뉴스", "count": 0, "status": "PENDING"}
+
+    # 기업분석
+    dart_dir = data.REPO_ROOT / "data" / "company"
+    if dart_dir.exists():
+        dart_files = list(dart_dir.glob("*.json")) + list(dart_dir.glob("*.csv"))
+        count = len(dart_files)
+        newest = max((f.stat().st_mtime for f in dart_files), default=0)
+        age_d = (time.time() - newest) / 86400 if newest else 9999
+        result["sources"]["company"] = {
+            "label": "기업분석",
+            "count": count,
+            "unit": "종목",
+            "ageDays": round(age_d, 1),
+            "status": "NORMAL" if count > 0 and age_d < 14 else ("STALE" if count > 0 else "PENDING"),
+        }
+    else:
+        result["sources"]["company"] = {"label": "기업분석", "count": 0, "status": "PENDING"}
+
+    return result
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Broker 계좌연동 (로그인 필수)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+from app.services import broker_service as _broker
+
+
+def _require_user(authorization: str | None) -> dict:
+    """Bearer 토큰 검증 후 payload 반환. 인증 실패 시 JSONResponse 예외 raise."""
+    token = _extract_bearer_token(authorization)
+    payload = _verify_user_token(token)
+    if not payload:
+        raise ValueError("로그인이 필요합니다.")
+    return payload
+
+
+@app.get("/api/broker/connections")
+def api_broker_connections(authorization: str | None = Header(default=None)) -> dict:
+    """현재 사용자의 broker 연결 목록 반환 (로그인 필수)."""
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    user_id = payload.get("userId", "")
+    return {"ok": True, "connections": _broker.get_all_connections(user_id)}
+
+
+@app.post("/api/broker/connect")
+def api_broker_connect(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    """broker 연결 테스트 후 암호화 저장 (로그인 필수)."""
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    user_id = payload.get("userId", "")
+
+    broker = str(body.get("broker", "")).lower().strip()
+    app_key = str(body.get("appKey", "")).strip()
+    app_secret = str(body.get("appSecret", "")).strip()
+    account_no = str(body.get("accountNo", "")).strip()
+
+    if broker not in ("toss", "kis"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "broker는 toss 또는 kis만 지원합니다."})
+    if not app_key or not app_secret:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "appKey와 appSecret이 필요합니다."})
+
+    # 연결 테스트
+    if broker == "toss":
+        test = _broker.test_toss_connection(app_key, app_secret)
+    else:
+        test = _broker.test_kis_connection(app_key, app_secret)
+
+    if not test.get("ok"):
+        return {"ok": False, "testPassed": False, "error": test.get("message", "연결 실패")}
+
+    # 저장
+    _broker.save_connection(user_id, broker, app_key, app_secret, account_no)
+    return {"ok": True, "testPassed": True, "message": test.get("message", "연결됨"),
+            "status": _broker.get_connection_status(user_id, broker)}
+
+
+@app.post("/api/broker/sync-holdings")
+def api_broker_sync_holdings(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    """broker 보유종목 동기화 (로그인 필수)."""
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    user_id = payload.get("userId", "")
+    broker = str(body.get("broker", "")).lower().strip()
+
+    if broker == "toss":
+        return _broker.sync_toss_holdings(user_id)
+    elif broker == "kis":
+        return JSONResponse(status_code=501, content={"ok": False, "error": "KIS 동기화는 준비 중입니다."})
+    return JSONResponse(status_code=400, content={"ok": False, "error": "지원하지 않는 broker입니다."})
+
+
+@app.delete("/api/broker/disconnect")
+def api_broker_disconnect(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    """broker 연결 해제 및 저장된 키 삭제 (로그인 필수)."""
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    user_id = payload.get("userId", "")
+    broker = str(body.get("broker", "")).lower().strip()
+    if not broker:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "broker 필드가 필요합니다."})
+    _broker.disconnect(user_id, broker)
+    return {"ok": True, "message": f"{broker} 연결이 해제되었습니다."}

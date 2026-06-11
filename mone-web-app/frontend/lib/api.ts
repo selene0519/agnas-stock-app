@@ -488,6 +488,32 @@ export const mone = {
     apiGet<ApiList>("/api/insights/adaptive-weights", p),
   validationRecommendationsSummary: (p?: { market?: Market | "all"; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/validation/recommendations/summary", p),
+  // Data Coverage
+  dataCoverage: () =>
+    apiGet<any>("/api/data/coverage"),
+  // Broker — 계좌 연동
+  brokerConnections: (token: string) =>
+    fetch(buildUrl(API_BASE, "/api/broker/connections"), {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json()),
+  brokerConnect: (token: string, body: { broker: string; appKey: string; appSecret: string; accountNo: string }) =>
+    fetch(buildUrl(API_BASE, "/api/broker/connect"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }).then((r) => r.json()),
+  brokerSyncHoldings: (token: string, body: { broker: string }) =>
+    fetch(buildUrl(API_BASE, "/api/broker/sync-holdings"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }).then((r) => r.json()),
+  brokerDisconnect: (token: string, body: { broker: string }) =>
+    fetch(buildUrl(API_BASE, "/api/broker/disconnect"), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }).then((r) => r.json()),
 };
 
 export default mone;

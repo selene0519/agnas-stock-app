@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Cpu,
   LayoutDashboard,
+  Link2,
   LogIn,
   LogOut,
   MoreHorizontal,
@@ -26,6 +27,7 @@ export type PageId =
   | "news"
   | "prediction"
   | "advanced"
+  | "broker"
   | "admin";
 
 const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
@@ -37,6 +39,7 @@ const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
 
 const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "advanced", label: "전략도구", icon: <Cpu size={16} /> },
+  { id: "broker", label: "계좌 연동", icon: <Link2 size={16} /> },
 ];
 
 const adminItem: { id: PageId; label: string; icon: React.ReactNode } = {
