@@ -263,12 +263,12 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-5">
-        <div><div className="text-slate-500">현재가</div><div className="font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
-        <div><div className="text-slate-500">기준가</div><div className="font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
-        <div><div className="text-slate-500">목표가</div><div className="font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
-        <div><div className="text-slate-500">신뢰도</div><div className="font-mono text-blue-300">{confidence}</div></div>
-        <div><div className="text-slate-500">위험 상태</div><div className={`font-semibold ${riskClass}`}>{riskText}</div></div>
+      <div className="mt-3 grid grid-cols-3 gap-1.5 text-[11px] sm:grid-cols-5 sm:gap-2">
+        <div className="min-w-0"><div className="text-slate-500">현재가</div><div className="break-keep font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">기준가</div><div className="break-keep font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">목표가</div><div className="break-keep font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">신뢰도</div><div className="break-keep font-mono text-blue-300">{confidence}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">위험 상태</div><div className={`font-semibold ${riskClass}`}>{riskText}</div></div>
       </div>
 
       <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-950/50 px-3 py-2">
@@ -1956,7 +1956,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
 
   if (loading && !allItems.length) {
     return (
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6">
         <div className="h-8 w-32 animate-pulse rounded bg-slate-800" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} rows={4} />)}
@@ -1967,7 +1967,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
 
   return (
     <ErrorBoundary>
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6">
       {/* 추천 근거 패널 */}
       {selectedItem && <WhyPanel item={selectedItem} onClose={() => setSelectedItem(null)} marketRegime={marketRegime} />}
       {/* 운용 일지 모달 */}

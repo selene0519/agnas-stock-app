@@ -2040,7 +2040,7 @@ export default function ChartPage() {
 
   return (
     <ErrorBoundary>
-    <div className="space-y-5 p-4 sm:p-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">분석</h1>
         <p className="mt-1 text-xs text-slate-400 sm:text-sm">OHLCV, 추천 기준선, 기술지표, 관련 뉴스·공시·기업분석</p>
@@ -2754,9 +2754,9 @@ export default function ChartPage() {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="mt-1 break-words font-mono font-semibold text-slate-100">{value}</div>
+    <div className="min-w-0 rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2">
+      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="mt-1 break-keep font-mono text-xs font-semibold leading-tight text-slate-100 sm:text-sm">{value}</div>
     </div>
   );
 }
