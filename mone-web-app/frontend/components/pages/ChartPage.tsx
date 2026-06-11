@@ -1748,7 +1748,7 @@ export default function ChartPage() {
     <ErrorBoundary>
     <div className="space-y-5 p-4 sm:p-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">차트·기술분석</h1>
+        <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">분석</h1>
         <p className="mt-1 text-xs text-slate-400 sm:text-sm">OHLCV, 추천 기준선, 기술지표, 관련 뉴스·공시·기업분석</p>
       </div>
 
@@ -1833,7 +1833,7 @@ export default function ChartPage() {
             <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-slate-200">추천선 터치 검증</div>
+                  <div className="text-sm font-semibold text-slate-200">추천 후 결과 확인</div>
                   <div className="mt-1 text-xs text-slate-500">{touchReview.detail}</div>
                 </div>
                 <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${touchReview.cls}`}>{touchReview.label}</span>
@@ -1939,7 +1939,7 @@ export default function ChartPage() {
                   return (
                     <div className={`rounded-xl border p-4 ${statusColor}`}>
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="font-semibold text-sm">AI 차트 분석</span>
+                        <span className="font-semibold text-sm">MONE 차트 판단</span>
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
                         <span className="ml-auto text-xs text-slate-500">컨플루언스 {ca.confluenceScore?.toFixed(1) ?? "-"}/100</span>
                       </div>
@@ -2052,11 +2052,102 @@ export default function ChartPage() {
             )}
           </div>
 
-          {/* ATR 관찰 계획 */}
+          {/* MONE 패턴 전략 패널 */}
+          {levels?.patternStrategy && (() => {
+            const ps = levels.patternStrategy as {
+              status?: string; action?: string; riskStatus?: string; confidence?: number;
+              primaryPattern?: string; secondaryPatterns?: string[];
+              marketStructure?: string; trendPhase?: string;
+              historicalSupportLevels?: number[]; message?: string;
+            };
+            const actionColor = (a?: string) => {
+              if (!a) return "text-slate-400";
+              const u = a.toUpperCase();
+              if (u.includes("BUY") || u === "ENTER") return "text-emerald-300";
+              if (u.includes("SELL") || u === "EXIT") return "text-red-400";
+              return "text-amber-300";
+            };
+            const riskColor = (r?: string) => {
+              if (!r) return "text-slate-400";
+              const u = r.toUpperCase();
+              if (u.includes("LOW") || u === "SAFE") return "text-emerald-300";
+              if (u.includes("HIGH") || u.includes("DANGER") || u.includes("BLOCK")) return "text-red-400";
+              return "text-amber-300";
+            };
+            const actionKo = (a?: string) => {
+              if (!a) return "-";
+              const m: Record<string, string> = { BUY:"매수", STRONG_BUY:"강력매수", SELL:"매도", STRONG_SELL:"강력매도", WATCH_ONLY:"관망", HOLD:"보유", ENTER:"진입", EXIT:"청산", WAIT:"대기" };
+              return m[a.toUpperCase()] ?? a;
+            };
+            const riskKo = (r?: string) => {
+              if (!r) return "-";
+              const m: Record<string, string> = { LOW_RISK:"낮음", MEDIUM_RISK:"보통", HIGH_RISK:"높음", SAFE:"안전", CAUTION:"주의", DANGER:"위험", DATA_QUALITY_RISK:"데이터 제한", WATCH:"주의" };
+              return m[r.toUpperCase()] ?? r;
+            };
+            const supports = (ps.historicalSupportLevels ?? []).slice(0, 3);
+            return (
+              <div className="rounded-2xl border border-violet-900/40 bg-violet-950/10 p-5">
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <h3 className="font-semibold text-slate-100">MONE 패턴 전략</h3>
+                  {ps.status === "ERROR" && <span className="text-[10px] text-slate-500">{ps.message ?? "분석 제한"}</span>}
+                </div>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm mb-4">
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                    <div className="text-[10px] text-slate-500 mb-1">MONE 패턴</div>
+                    <div className="font-semibold text-slate-200 text-sm truncate">{ps.primaryPattern ?? "-"}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                    <div className="text-[10px] text-slate-500 mb-1">전략</div>
+                    <div className={`font-bold text-sm ${actionColor(ps.action)}`}>{actionKo(ps.action)}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                    <div className="text-[10px] text-slate-500 mb-1">위험</div>
+                    <div className={`font-semibold text-sm ${riskColor(ps.riskStatus)}`}>{riskKo(ps.riskStatus)}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                    <div className="text-[10px] text-slate-500 mb-1">신뢰도</div>
+                    <div className="font-mono font-bold text-sm text-slate-200">
+                      {ps.confidence != null ? `${Math.round(ps.confidence)}%` : "-"}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-3">
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+                    <div className="text-slate-500 mb-1">시장 구조</div>
+                    <div className="text-slate-200">{ps.marketStructure ?? "-"}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+                    <div className="text-slate-500 mb-1">추세 국면</div>
+                    <div className="text-slate-200">{ps.trendPhase ?? "-"}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+                    <div className="text-slate-500 mb-1">보조 패턴</div>
+                    <div className="text-slate-200">
+                      {ps.secondaryPatterns?.length ? ps.secondaryPatterns.slice(0, 3).join(", ") : "-"}
+                    </div>
+                  </div>
+                </div>
+                {supports.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-[10px] text-slate-500 mb-1.5">주요 지지 레벨 (상위 3개)</div>
+                    <div className="flex flex-wrap gap-2">
+                      {supports.map((lvl, i) => (
+                        <span key={i} className="rounded-lg border border-emerald-800/40 bg-emerald-950/20 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-300">
+                          {money(lvl, selected.market)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 진입·손절 계획 */}
           <div className="rounded-2xl border border-blue-900/50 bg-blue-950/10 p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="font-semibold text-slate-100">ATR 기반 관찰 계획</h3>
+                <h3 className="font-semibold text-slate-100">진입·손절 계획</h3>
                 <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할매수 50/30/20</p>
               </div>
               <div className="flex gap-2">
@@ -2112,7 +2203,7 @@ export default function ChartPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <Panel title="고급 기술지표">
+            <Panel title="상세 지표">
               <Info label="MA20 이격도" value={indicators.distanceToMa20 != null ? `${Number(indicators.distanceToMa20).toFixed(2)}%` : "데이터 부족"} />
               <Info label="볼린저 %B" value={indicators.bbPercentB != null ? Number(indicators.bbPercentB).toFixed(2) : "데이터 부족"} />
               <Info label="20일 거래량비" value={indicators.volumeRatio20 != null ? `${Number(indicators.volumeRatio20).toFixed(2)}x` : "데이터 부족"} />
