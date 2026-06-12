@@ -35,8 +35,19 @@ def read_items(path: Path) -> list[dict[str, Any]]:
             return [dict(item) for item in payload if isinstance(item, dict)]
         items = payload.get("items") or payload.get("holdings") or []
         return [dict(item) for item in items if isinstance(item, dict)]
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        return [dict(row) for row in csv.DictReader(handle)]
+    # CSV: KIS 등 증권사 내보내기는 CP949/EUC-KR을 사용하는 경우가 많으므로 순서대로 시도
+    for enc in ("utf-8-sig", "cp949", "euc-kr", "utf-8"):
+        try:
+            with path.open("r", encoding=enc, newline="") as handle:
+                rows = [dict(row) for row in csv.DictReader(handle)]
+            if rows:
+                print(f"[bridge] CSV decoded with {enc} ({len(rows)} rows)", flush=True)
+            return rows
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+        except Exception:
+            break
+    raise ValueError(f"Cannot decode CSV {path} — tried utf-8-sig, cp949, euc-kr, utf-8")
 
 
 def post_json(url: str, token: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:

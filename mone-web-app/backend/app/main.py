@@ -668,8 +668,35 @@ def api_final_portfolio_risk(
     market: str = Query("kr", pattern="^(kr|us)$"),
     mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
     horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
 ) -> dict:
-    return final_engine.portfolio_risk(_market(market), mode, horizon)
+    result = final_engine.portfolio_risk(_market(market), mode, horizon)
+    uid = _db.sanitize_uid(x_mone_user)
+    if uid:
+        bridge_rows = _db.get_holdings(uid, _market(market))
+        if bridge_rows:
+            bridge_items = [
+                {
+                    "symbol": r.get("symbol", ""),
+                    "name": r.get("name", ""),
+                    "market": r.get("market", market),
+                    "quantity": r.get("quantity"),
+                    "avgPrice": r.get("avgPrice"),
+                    "currentPrice": r.get("currentPrice"),
+                    "evalAmount": r.get("evalAmount") or r.get("valuation"),
+                    "profitLoss": r.get("profitLoss"),
+                    "profitLossRate": r.get("profitLossRate"),
+                    "broker": r.get("broker") or r.get("source") or "manual",
+                    "source": "local_bridge" if (r.get("broker") or "") not in ("manual", "") else "user_holdings",
+                    "brokerSource": r.get("broker") or "",
+                    "syncedAt": r.get("syncedAt"),
+                }
+                for r in bridge_rows if r.get("symbol")
+            ]
+            result["actualHoldings"] = bridge_items
+            result["actualHoldingCount"] = len(bridge_items)
+            result["userId"] = uid
+    return result
 
 
 @app.post("/api/final/generate-reports")
@@ -2530,19 +2557,32 @@ def _install_mone_authoritative_holdings_clean_v3():
             sym = _row_symbol(row, mk)
             qty = _num(_text(row, ["quantity", "qty"], ""), 0)
             avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice"], ""), 0)
-            if not sym or qty <= 0 or avg <= 0:
+            broker = str(row.get("broker") or row.get("source") or "manual").strip() or "manual"
+            is_bridge = broker not in ("manual", "user_holdings", "")
+            # bridge 항목: avgPrice=0 허용 (KIS CSV에서 누락 가능); manual: qty>0, avg>0 모두 필요
+            if not sym or qty <= 0 or (avg <= 0 and not is_bridge):
                 continue
+            bridge_current = _num(row.get("currentPrice"), 0)
+            # avgPrice가 없는 bridge 항목은 currentPrice를 임시 사용
+            effective_avg = avg if avg > 0 else bridge_current
             rows.append({
                 "symbol": sym,
                 "name": _name(row, sym),
                 "market": mk,
                 "quantity": qty,
-                "avgPrice": avg,
+                "avgPrice": effective_avg,
                 "stopPriceCsv": _num(_text(row, ["stopPrice", "stop_price", "stop"], ""), 0),
                 "targetPriceCsv": _num(_text(row, ["targetPrice", "target_price", "target"], ""), 0),
-                "source": "user_holdings",
+                "source": "local_bridge" if is_bridge else "user_holdings",
+                "broker": broker,
+                "brokerSource": broker if is_bridge else "",
                 "holdingAuthority": "personal_user_holdings",
-                "holdingAuthoritySource": "user_holdings",
+                "holdingAuthoritySource": f"local_bridge_{broker}" if is_bridge else "user_holdings",
+                # bridge에서 가져온 가격 데이터 (live quote 없을 때 fallback)
+                "_bridgeCurrentPrice": bridge_current,
+                "_bridgeProfitLoss": _num(row.get("profitLoss"), 0),
+                "_bridgeProfitLossRate": _num(row.get("profitLossRate"), 0),
+                "_bridgeEvalAmount": _num(row.get("evalAmount") or row.get("valuation"), 0),
             })
         return rows
 
@@ -2576,6 +2616,13 @@ def _install_mone_authoritative_holdings_clean_v3():
                 if current > 0:
                     price_source_type = "ohlcv_close"
                     price_source = ohlcv_ref.get("ohlcvSource", "")
+            # bridge snapshot 가격 최후 fallback
+            if current <= 0:
+                _bp = _num(row.get("_bridgeCurrentPrice"), 0)
+                if _bp > 0:
+                    current = _bp
+                    price_source_type = "bridge_snapshot"
+                    price_source = str(row.get("brokerSource") or row.get("broker") or "bridge")
             current_text = q.get("currentPriceText") or (f"${current:,.2f}" if mk == "us" and current > 0 else f"{round(current):,}원" if current > 0 else "-")
             prev_close = _num(q.get("prevClose"), 0) or _num(_text(v, ["prevClose", "previousClose", "prev_close", "전일종가", "기준가"], ""), 0)
             prev_close_source = q.get("prevCloseSource") or ""
@@ -2597,6 +2644,10 @@ def _install_mone_authoritative_holdings_clean_v3():
             pnl = (current - avg) * qty if current > 0 and avg > 0 else 0
             invested = avg * qty if avg > 0 else 0
             pnl_pct = (pnl / invested * 100) if invested > 0 else 0
+            # bridge P&L fallback: 계산값이 0이고 bridge 제공값이 있으면 사용
+            if pnl == 0 and row.get("_bridgeProfitLoss"):
+                pnl = _num(row.get("_bridgeProfitLoss"), 0)
+                pnl_pct = _num(row.get("_bridgeProfitLossRate"), 0)
 
             # 손절/목표: holdings CSV 값 우선, 없으면 v93_position_cards
             stop_from_v93 = _num(_text(v, ["stopPrice", "stop", "stopText", "손절가"], ""), 0)
@@ -2646,6 +2697,8 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "riskStatus": risk_status,
                 "dataStatus": "NORMAL" if price_source_type == "live_quote" else ("PARTIAL" if current > 0 else "NO_PRICE"),
                 "source": row["source"],
+                "broker": row.get("broker", ""),
+                "brokerSource": row.get("brokerSource", ""),
                 "enrichSource": "v93_position_cards" if v else "",
                 "priceSource": price_source,
                 "priceSourceType": price_source_type or ("missing" if current <= 0 else "derived"),
@@ -2654,6 +2707,9 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "prevCloseSource": prev_close_source,
                 "quoteTimestamp": q.get("quoteTimestamp") or "",
             })
+            # 내부 전달용 bridge 키 제거
+            for _bk in ("_bridgeCurrentPrice", "_bridgeProfitLoss", "_bridgeProfitLossRate", "_bridgeEvalAmount"):
+                item.pop(_bk, None)
             items.append(item)
 
         def _money(amount: float, mk: str) -> str:
@@ -5585,6 +5641,21 @@ def _bridge_num(value, default: float = 0.0) -> float:
         return default
 
 
+def _bridge_decode_str(value) -> str:
+    """CP949/EUC-KR로 잘못 디코딩된 문자열을 복구 시도 후 strip."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    # latin-1로 인코딩 후 cp949로 재디코딩하면 깨진 한글 복구 가능
+    try:
+        recovered = text.encode("latin-1").decode("cp949")
+        if any("가" <= c <= "힣" for c in recovered):
+            return recovered
+    except Exception:
+        pass
+    return text
+
+
 def _bridge_market(value) -> str:
     return "us" if str(value or "kr").lower().strip() == "us" else "kr"
 
@@ -5615,7 +5686,7 @@ def _normalize_bridge_holding(item: dict, broker: str) -> dict | None:
         "source": broker,
         "market": market,
         "symbol": symbol,
-        "name": str(item.get("name") or item.get("stockName") or symbol).strip(),
+        "name": _bridge_decode_str(item.get("name") or item.get("stockName") or symbol),
         "quantity": str(quantity),
         "avgPrice": str(avg_price),
         "stopPrice": str(item.get("stopPrice") or item.get("stop") or ""),
