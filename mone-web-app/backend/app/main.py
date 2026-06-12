@@ -1588,6 +1588,36 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
         "ohlcv_latest_close" if latest_close else "",
     )
     current_price_date = _chart_first(item, ["currentPriceDate", "priceSourceDate", "priceTime"], ohlcv_latest_date)[:10]
+    # Direct snapshot override — bypass stale recommendation cache for current price
+    _snap_missing_reason = ""
+    _snap_status_override = ""
+    try:
+        _snap_phase = data._market_price_phase(market)
+        _snap = data._realtime_snapshot_price_candidate(target, market, _snap_phase)
+        if _snap and str(_snap.get("status", "")).upper() not in ("STALE", ""):
+            _snap_price = _chart_float(_snap.get("currentPrice"))
+            if _snap_price and _snap_price > 0:
+                current_price = _snap_price
+                current_price_source = (
+                    _snap.get("priceSourceFile")
+                    or _snap.get("source")
+                    or current_price_source
+                )
+                current_price_date = (
+                    str(_snap.get("priceSourceDate") or _snap.get("priceTime") or current_price_date)
+                )[:10]
+                _snap_status_override = "NORMAL"
+        else:
+            if market == "us":
+                _snap_missing_reason = "US snapshot 미수집 — collect_us_prices.py 재실행 후 push 필요"
+            if current_price and current_price == latest_close:
+                current_price_source = (
+                    f"ohlcv_close · {ohlcv_source}".strip(" ·")
+                    if ohlcv_source else "ohlcv_close"
+                )
+                _snap_status_override = "PARTIAL"
+    except Exception:
+        pass
     asset_type = _mone_asset_type(target, _chart_first(item, ["name", "company", "stockName"], ""), market, item)
     holding_purpose = _mone_holding_purpose(asset_type, item)
 
@@ -1626,6 +1656,11 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
         data_status = "PARTIAL" if data_status == "OK" else data_status
     if not rows:
         data_status = "NO_DATA"
+    if _snap_status_override:
+        if _snap_status_override == "NORMAL" and data_status not in ("NO_DATA",):
+            data_status = "NORMAL"
+        elif _snap_status_override == "PARTIAL" and data_status == "OK":
+            data_status = "PARTIAL"
 
     pivot_lows, pivot_highs = _chart_pivots(rows, ohlcv_source)
     stale = "precision_base_stale" in warnings
@@ -1757,6 +1792,8 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
         **line_fields,
         "futureProjectionBars": future_bars,
         "dataStatus": data_status,
+        "priceDataStatus": data_status,
+        "missingPriceReason": _snap_missing_reason,
         "overlayWarnings": warnings,
         "symbolMismatch": symbol_mismatch,
         "pivotLow": pivot_lows,
@@ -1797,6 +1834,8 @@ def api_chart_debug(
         "market": enriched.get("market"),
         "currentPrice": enriched.get("currentPrice"),
         "currentPriceSource": enriched.get("currentPriceSource"),
+        "priceDataStatus": enriched.get("priceDataStatus") or enriched.get("dataStatus"),
+        "missingPriceReason": enriched.get("missingPriceReason", ""),
         "ohlcvSource": enriched.get("ohlcvSource"),
         "ohlcvLatestDate": enriched.get("ohlcvLatestDate"),
         "precisionBaseDate": enriched.get("precisionBaseDate"),
