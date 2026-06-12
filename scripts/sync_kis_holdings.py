@@ -83,19 +83,23 @@ def _safe_float(v: Any) -> float:
 
 
 # ── KIS 설정 ───────────────────────────────────────────────────────────
-_TOKEN_CACHE = Path(__file__).resolve().parents[1] / "data" / "kis_token_cache.json"
+_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
-def _kis_base_url(is_mock: bool) -> str:
-    override = _env("KIS_BASE_URL")
+def _token_cache_path(prefix: str) -> Path:
+    safe = prefix.lower().replace("_", "").replace("-", "") or "kis"
+    return _DATA_DIR / f"{safe}_token_cache.json"
+
+def _kis_base_url(is_mock: bool, prefix: str = "KIS") -> str:
+    override = _env(f"{prefix}_BASE_URL")
     if override:
         return override.rstrip("/")
     return "https://openapivts.koreainvestment.com:29443" if is_mock else "https://openapi.koreainvestment.com:9443"
 
-def _parse_account(account_no: str) -> tuple[str, str]:
+def _parse_account(account_no: str, prefix: str = "KIS") -> tuple[str, str]:
     """KIS_ACCOUNT_NO (10자리) → (CANO 8자리, ACNT_PRDT_CD 2자리)"""
     raw = account_no.replace("-", "").replace(" ", "")
-    cano_override = _env("KIS_CANO")
-    acnt_override = _env("KIS_ACNT_PRDT_CD") or _env("KIS_ACCOUNT_PRODUCT_CODE")
+    cano_override = _env(f"{prefix}_CANO")
+    acnt_override = _env(f"{prefix}_ACNT_PRDT_CD") or _env(f"{prefix}_ACCOUNT_PRODUCT_CODE")
     cano = cano_override or raw[:8]
     acnt = acnt_override or raw[8:10]
     if not cano or not acnt:
@@ -105,10 +109,11 @@ def _parse_account(account_no: str) -> tuple[str, str]:
 
 
 # ── 토큰 발급 (파일 캐시) ────────────────────────────────────────────
-def _get_token(app_key: str, app_secret: str, is_mock: bool, force: bool = False) -> str:
-    if not force and _TOKEN_CACHE.exists():
+def _get_token(app_key: str, app_secret: str, is_mock: bool, force: bool = False, prefix: str = "KIS") -> str:
+    cache_path = _token_cache_path(prefix)
+    if not force and cache_path.exists():
         try:
-            cache = json.loads(_TOKEN_CACHE.read_text(encoding="utf-8"))
+            cache = json.loads(cache_path.read_text(encoding="utf-8"))
             token = str(cache.get("access_token", "") or "")
             exp = float(cache.get("expires_at", 0) or 0)
             if token and exp > time.time() + 600:
@@ -118,7 +123,7 @@ def _get_token(app_key: str, app_secret: str, is_mock: bool, force: bool = False
             pass
 
     print("[token] KIS 토큰 발급 중...")
-    base = _kis_base_url(is_mock)
+    base = _kis_base_url(is_mock, prefix)
     body = json.dumps({
         "grant_type": "client_credentials",
         "appkey": app_key,
@@ -151,8 +156,8 @@ def _get_token(app_key: str, app_secret: str, is_mock: bool, force: bool = False
         sys.exit(1)
 
     expires_in = int(_safe_float(payload.get("expires_in")) or 86400)
-    _TOKEN_CACHE.parent.mkdir(parents=True, exist_ok=True)
-    _TOKEN_CACHE.write_text(json.dumps({
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps({
         "access_token": token,
         "expires_at": time.time() + max(60, expires_in - 300),
         "issued_at": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -163,11 +168,11 @@ def _get_token(app_key: str, app_secret: str, is_mock: bool, force: bool = False
 
 
 # ── 보유종목 조회 ────────────────────────────────────────────────────
-def _fetch_holdings(app_key: str, app_secret: str, is_mock: bool) -> list[dict[str, Any]]:
-    token = _get_token(app_key, app_secret, is_mock)
-    cano, acnt = _parse_account(_env("KIS_ACCOUNT_NO"))
+def _fetch_holdings(app_key: str, app_secret: str, is_mock: bool, prefix: str = "KIS") -> list[dict[str, Any]]:
+    token = _get_token(app_key, app_secret, is_mock, prefix=prefix)
+    cano, acnt = _parse_account(_env(f"{prefix}_ACCOUNT_NO"), prefix)
     tr_id = "VTTC8434R" if is_mock else "TTTC8434R"
-    base = _kis_base_url(is_mock)
+    base = _kis_base_url(is_mock, prefix)
     url = f"{base}/uapi/domestic-stock/v1/trading/inquire-balance"
 
     all_items: list[dict[str, Any]] = []
@@ -308,30 +313,43 @@ def main() -> int:
     parser.add_argument("--upload", action="store_true", help="조회 후 MONE에 자동 업로드")
     parser.add_argument("--backend-url", default=_env("MONE_BACKEND_URL", "http://localhost:8050"))
     parser.add_argument("--user-token", default=_env("MONE_USER_TOKEN", ""), help="업로드 시 필요")
-    parser.add_argument("--output", default=str(Path(__file__).parents[1] / "data" / "kis_holdings_kr.csv"))
+    parser.add_argument("--output", default="")
     parser.add_argument("--mock", action="store_true", help="모의투자 모드")
+    parser.add_argument(
+        "--prefix", default="KIS",
+        help="환경변수 prefix (기본: KIS → KIS_APP_KEY 등. 2번째 계좌: KIS_2 → KIS_2_APP_KEY 등)"
+    )
     args = parser.parse_args()
 
-    # 필수 환경변수 확인
-    _require_env("KIS_APP_KEY", "KIS_APP_SECRET", "KIS_ACCOUNT_NO")
-    app_key = _env("KIS_APP_KEY")
-    app_secret = _env("KIS_APP_SECRET")
-    is_mock = args.mock or _env("KIS_IS_MOCK").lower() in {"1", "true", "yes", "y", "mock", "모의"}
-    mode = "모의" if is_mock else "실전"
+    prefix = args.prefix.upper().rstrip("_")
 
-    print(f"[KIS] 보유종목 조회 ({mode} 투자)")
-    items = _fetch_holdings(app_key, app_secret, is_mock)
+    # 필수 환경변수 확인
+    _require_env(f"{prefix}_APP_KEY", f"{prefix}_APP_SECRET", f"{prefix}_ACCOUNT_NO")
+    app_key = _env(f"{prefix}_APP_KEY")
+    app_secret = _env(f"{prefix}_APP_SECRET")
+    is_mock = args.mock or _env(f"{prefix}_IS_MOCK").lower() in {"1", "true", "yes", "y", "mock", "모의"}
+    mode = "모의" if is_mock else "실전"
+    label = prefix if prefix != "KIS" else "KIS"
+
+    # 출력 파일명: prefix가 KIS면 kis_holdings_kr.csv, KIS_2면 kis_2_holdings_kr.csv
+    if args.output:
+        out_path = Path(args.output)
+    else:
+        slug = prefix.lower().replace("_", "_")
+        out_path = _DATA_DIR / f"{slug}_holdings_kr.csv"
+
+    print(f"[{label}] 보유종목 조회 ({mode} 투자)")
+    items = _fetch_holdings(app_key, app_secret, is_mock, prefix=prefix)
 
     if not items:
-        print("[WARN] 조회된 보유종목이 없습니다. 계좌에 보유종목이 없거나 계좌정보를 확인해주세요.")
+        print(f"[WARN] 조회된 보유종목이 없습니다. 계좌에 보유종목이 없거나 계좌정보를 확인해주세요.")
     else:
-        print(f"[KIS] 총 {len(items)}건 조회")
+        print(f"[{label}] 총 {len(items)}건 조회")
         for it in items:
             avg_str = f"{it['avgPrice']:,.0f}원" if it["avgPrice"] else "-"
             cur_str = f"{it['currentPrice']:,.0f}원" if it["currentPrice"] else "-"
             print(f"  {it['symbol']} {it['name']:12s}  수량:{it['quantity']:>6}  평단:{avg_str:>10}  현재:{cur_str:>10}  손익:{it['pnlPct']:+.2f}%")
 
-    out_path = Path(args.output)
     _save_csv(items, out_path)
 
     if args.upload:
