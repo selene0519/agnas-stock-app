@@ -1531,6 +1531,14 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
                 or ohlcv_source
                 or "OHLCV"
             ),
+            "missingPriceReason": (
+                "US snapshot 미수집 — collect_us_prices.py 재실행 후 push 필요"
+                if market == "us" and not any(
+                    t in _as_text(normalized.get("priceSourceType") or "").lower()
+                    for t in ("kis", "finnhub", "yfinance", "quote", "intraday", "snapshot")
+                )
+                else ""
+            ),
             "dataAsOf": ohlcv_latest_date or (reco_generated_at[:10] if reco_generated_at and len(reco_generated_at) >= 10 else ""),
             "priceLevelWarning": _price_level_warning(
                 _num(normalized.get("entry")),

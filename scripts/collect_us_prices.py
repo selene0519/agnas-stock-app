@@ -357,22 +357,84 @@ def fetch_price(symbol: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # 심볼 유니버스 로드
 # ---------------------------------------------------------------------------
-def load_symbols() -> list[str]:
-    symbols: list[str] = []
-    if SECTOR_MAP.exists():
-        with open(SECTOR_MAP, encoding="utf-8-sig") as f:
+_SYMBOL_COLS = ("symbol", "ticker", "code", "종목코드")
+
+def _csv_symbols(path: Path, market_filter: str = "") -> list[str]:
+    """CSV 파일에서 symbol 컬럼을 읽어 반환. market_filter가 있으면 market 컬럼 검사."""
+    if not path.exists():
+        return []
+    syms: list[str] = []
+    try:
+        with open(path, encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                sym = _clean_symbol(row.get("symbol", ""))
-                mkt = str(row.get("market", "")).lower()
-                if sym and mkt == "us":
-                    symbols.append(sym)
-    if not symbols:
-        symbols = [
+                sym = ""
+                for col in _SYMBOL_COLS:
+                    v = str(row.get(col, "") or "").strip()
+                    if v:
+                        sym = _clean_symbol(v)
+                        break
+                if not sym:
+                    continue
+                if market_filter:
+                    mkt = str(row.get("market", "")).strip().lower()
+                    if mkt and mkt != market_filter:
+                        continue
+                if sym and not sym.isdigit() and len(sym) <= 10:
+                    syms.append(sym)
+    except Exception:
+        pass
+    return syms
+
+
+def load_symbols() -> list[str]:
+    """
+    전체 US 심볼 유니버스를 아래 소스에서 합산:
+      1. data/sector_map_us.csv
+      2. data/candidate_universe_us.csv
+      3. reports/mone_v36_final_recommendations_us_*.csv  (추천 CSV 전체)
+      4. watchlist_us.csv / data/watchlist_us.csv
+      5. holdings_us.csv / data/holdings_us.csv
+    """
+    collected: list[str] = []
+
+    # 1. sector_map
+    collected += _csv_symbols(SECTOR_MAP, market_filter="us")
+
+    # 2. candidate_universe
+    for p in (
+        REPO_ROOT / "data" / "candidate_universe_us.csv",
+        REPO_ROOT / "data" / "market" / "candidate_universe_us.csv",
+    ):
+        collected += _csv_symbols(p, market_filter="us")
+
+    # 3. 추천 CSV 전체 (reports/mone_v36_final_recommendations_us_*.csv)
+    for rec_csv in sorted((REPO_ROOT / "reports").glob("mone_v36_final_recommendations_us_*.csv")):
+        collected += _csv_symbols(rec_csv)
+
+    # 4. watchlist
+    for p in (
+        REPO_ROOT / "watchlist_us.csv",
+        REPO_ROOT / "data" / "watchlist_us.csv",
+        REPO_ROOT / "watchlist_us_growth.csv",
+    ):
+        collected += _csv_symbols(p, market_filter="us")
+
+    # 5. holdings
+    for p in (
+        REPO_ROOT / "holdings_us.csv",
+        REPO_ROOT / "data" / "holdings_us.csv",
+    ):
+        collected += _csv_symbols(p)
+
+    # 중복 제거 + 순서 유지 + 최소 fallback
+    result = list(dict.fromkeys(s for s in collected if s))
+    if not result:
+        result = [
             "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "META", "TSLA", "AVGO",
             "AMD", "PLTR", "TSM", "QQQ", "SPY", "SMH", "SOXL", "TQQQ",
         ]
-    return list(dict.fromkeys(symbols))  # 중복 제거, 순서 유지
+    return result
 
 
 # ---------------------------------------------------------------------------
