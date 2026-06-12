@@ -82,7 +82,14 @@ def _status_rank(status: object) -> int:
     value = str(status or "").upper()
     if value in {"OK", "GOOD", "NORMAL"}:
         return 0
-    if value in {"PARTIAL", "PARTIAL_PRICE", "PRICE_PENDING", "DATA_PENDING"}:
+    if value in {
+        "PARTIAL",
+        "PARTIAL_PRICE",
+        "PRICE_PENDING",
+        "DATA_PENDING",
+        "PREVIOUS_CLOSE_BASIS",
+        "INTRADAY_OBSERVE",
+    }:
         return 1
     if value in {"STALE", "NO_DATA", "NO_REALTIME", "TIMEOUT"}:
         return 2
@@ -152,22 +159,31 @@ def _build_health_payload() -> dict:
         try:
             quality = data_quality.data_quality(market, mode="quick")
             status = str(quality.get("dataStatus") or quality.get("status") or "PARTIAL").upper()
+            root_causes = list(quality.get("rootCauses") or [])
+            next_actions = list(quality.get("nextActions") or [])
+            summary = str(quality.get("summary") or "").strip()
             market_quality[market] = {
                 "status": quality.get("status"),
                 "dataStatus": status,
+                "summary": summary,
+                "rootCauses": root_causes,
+                "nextActions": next_actions,
                 "latestDataDate": quality.get("latestDataDate"),
                 "latestFileModifiedAt": quality.get("latestFileModifiedAt"),
                 "rowCount": quality.get("rowCount"),
                 "candidateCount": quality.get("candidateCount"),
                 "warnings": list(quality.get("warnings") or [])[:5],
+                "warningsDetail": quality.get("warningsDetail") or {},
+                "recommendationStatus": quality.get("recommendationStatus"),
+                "recommendationBasisStatus": quality.get("recommendationBasisStatus"),
                 "source": "/api/final/data-quality",
             }
             steps.append(_health_step(
                 f"{market}-data-quality",
                 _status_from_rank(_status_rank(status)),
-                f"dataStatus={status}, latestDataDate={quality.get('latestDataDate') or '-'}, rows={quality.get('rowCount') or 0}",
+                summary or f"dataStatus={status}, latestDataDate={quality.get('latestDataDate') or '-'}, rows={quality.get('rowCount') or 0}",
                 source="/api/final/data-quality",
-                next_action="Refresh collector/GitHub Actions data if status is STALE or ERROR.",
+                next_action=next_actions[0] if next_actions else "Refresh collector/GitHub Actions data if status is STALE or ERROR.",
             ))
         except Exception as exc:
             market_quality[market] = {"status": "ERROR", "error": str(exc), "source": "/api/final/data-quality"}
@@ -199,11 +215,21 @@ def _build_health_payload() -> dict:
             next_action="Inspect source status JSON files.",
         ))
 
+    active_gaps: list[str] = []
+    gap_next_actions: dict[str, str] = {}
+    for quality in market_quality.values():
+        for gap in quality.get("rootCauses") or []:
+            if gap not in active_gaps:
+                active_gaps.append(gap)
+        for gap, action in zip(quality.get("rootCauses") or [], quality.get("nextActions") or []):
+            if action and gap not in gap_next_actions:
+                gap_next_actions[gap] = action
+
     checklist = [
-        {"range": "11-15", "status": "PARTIAL", "coverage": ["performance guardrails", "deployment config", "debug APIs"], "gap": "Need live latency samples per endpoint."},
-        {"range": "16-25", "status": "PARTIAL", "coverage": ["dataStatus", "source fields", "user data storage", "error JSON"], "gap": "Need full per-user permission audit and alert preference UX."},
-        {"range": "26-35", "status": "PARTIAL", "coverage": ["market regime", "session", "currency helpers", "asset type labels"], "gap": "Need formal over-optimization and identifier test suite."},
-        {"range": "36-45", "status": "PARTIAL", "coverage": ["portfolio risk", "correlation", "validation ledger", "admin page"], "gap": "Need broker cash/unsettled funds and fee/tax model completion."},
+        {"range": "11-15", "status": "PARTIAL", "coverage": ["performance guardrails", "deployment config", "debug APIs"], "gap": "Need live latency samples per endpoint.", "activeGaps": []},
+        {"range": "16-25", "status": "PARTIAL", "coverage": ["dataStatus", "source fields", "user data storage", "error JSON"], "gap": "Remaining data-quality gaps are listed explicitly.", "activeGaps": active_gaps, "gapNextActions": gap_next_actions},
+        {"range": "26-35", "status": "PARTIAL", "coverage": ["market regime", "session", "currency helpers", "asset type labels"], "gap": "Need formal over-optimization and identifier test suite.", "activeGaps": []},
+        {"range": "36-45", "status": "PARTIAL", "coverage": ["portfolio risk", "correlation", "validation ledger", "admin page"], "gap": "Need broker cash/unsettled funds and fee/tax model completion.", "activeGaps": []},
     ]
 
     worst_rank = max((_status_rank(step.get("status")) for step in steps), default=1)
@@ -222,6 +248,8 @@ def _build_health_payload() -> dict:
             "registeredCount": len(route_paths),
         },
         "marketQuality": market_quality,
+        "activeGaps": active_gaps,
+        "gapNextActions": gap_next_actions,
         "dataSources": data_sources,
         "steps": steps,
         "checklist11to45": checklist,
@@ -248,6 +276,8 @@ def api_ops_checklist() -> dict:
         "status": payload.get("status"),
         "dataStatus": payload.get("dataStatus"),
         "generatedAt": payload.get("generatedAt"),
+        "activeGaps": payload.get("activeGaps"),
+        "gapNextActions": payload.get("gapNextActions"),
         "checklist11to45": payload.get("checklist11to45"),
         "steps": payload.get("steps"),
         "source": "/api/health",

@@ -281,6 +281,13 @@ def _ohlcv_path(symbol: str, market: str) -> Path:
     return data.REPO_ROOT / "data" / "market" / "ohlcv" / f"{market}_{normalized}_daily.csv"
 
 
+_INVALID_OHLCV_SYMBOLS = {"", "NAN", "NONE", "NULL", "N/A", "NA", "UNDEFINED"}
+
+
+def _valid_ohlcv_symbol(symbol: str) -> bool:
+    return bool(symbol) and symbol.upper() not in _INVALID_OHLCV_SYMBOLS
+
+
 def _normalize_ohlcv_date(value: Any) -> str:
     raw = str(value or "").strip()
     if len(raw) == 8 and raw.isdigit():
@@ -290,6 +297,14 @@ def _normalize_ohlcv_date(value: Any) -> str:
 
 def _write_ohlcv(symbol: str, market: str, rows: list[dict[str, Any]], source: str) -> dict[str, Any]:
     normalized = data.normalize_symbol(symbol, market)
+    if not _valid_ohlcv_symbol(normalized):
+        return {
+            "status": "SKIP",
+            "market": market,
+            "symbol": normalized,
+            "count": 0,
+            "error": "invalid OHLCV symbol",
+        }
     cleaned: dict[str, dict[str, Any]] = {}
     for row in rows:
         date_text = _normalize_ohlcv_date(row.get("date"))

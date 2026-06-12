@@ -332,6 +332,8 @@ def _recommendation_csv_inspect(market: str) -> dict[str, Any]:
 
     mtime_result = session.evaluate_file_status(csv_path, normalized, required_today=True)
     deep = _deep_csv_inspect(csv_path, normalized)
+    price_state = session.get_price_session(normalized)
+    price_session = str(price_state.get("priceSession") or "")
 
     combined_status = mtime_result["status"]
     if deep.get("deepStatus") == "STALE" and combined_status == "NORMAL":
@@ -340,9 +342,20 @@ def _recommendation_csv_inspect(market: str) -> dict[str, Any]:
         combined_status = "EMPTY_RESULT"
     elif deep.get("deepStatus") in {"PARTIAL", "ERROR"}:
         combined_status = deep["deepStatus"]
+    previous_close_basis = (
+        normalized == "us"
+        and combined_status == "STALE"
+        and price_session in {"us_premarket", "us_intraday"}
+        and bool(deep.get("latestDataDate"))
+    )
+    if previous_close_basis:
+        combined_status = "PREVIOUS_CLOSE_BASIS"
 
     return {
         "status": combined_status,
+        "basisStatus": "recommendation_previous_close_basis" if previous_close_basis else "",
+        "basisLabel": "US recommendation uses previous close while live session is open" if previous_close_basis else "",
+        "priceSession": price_session,
         "latestFileModifiedAt": mtime_result.get("mtimeDate"),
         "latestDataDate": deep.get("latestDataDate"),
         "rowCount": deep.get("rowCount", 0),
@@ -352,7 +365,8 @@ def _recommendation_csv_inspect(market: str) -> dict[str, Any]:
         "invalidMarketCount": deep.get("invalidMarketCount", 0),
         "mixedMarketCount": deep.get("mixedMarketCount", 0),
         "emptyResult": deep.get("emptyResult", False),
-        "warnings": deep.get("warnings", []),
+        "warnings": [] if previous_close_basis else deep.get("warnings", []),
+        "info": ["recommendation_previous_close_basis"] if previous_close_basis else [],
         # info 레벨 — 상위로 전달해 warningsDetail 에 합산
         "dateMissingInfo": deep.get("dateMissingInfo"),
         "path": str(csv_path),
@@ -418,7 +432,7 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
     if quick:
         rc = rec_csv_inspect.get("rowCount", 0)
         if rc > 0 and not rec_csv_inspect.get("emptyResult"):
-            recommendation_status = "NORMAL"
+            recommendation_status = str(rec_csv_inspect.get("status") or "NORMAL")
             price_status = "PARTIAL"
         elif rec_csv_inspect.get("emptyResult"):
             recommendation_status = "EMPTY_RESULT"
@@ -484,7 +498,7 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
             "note": "latestDataDate was inferred from file mtime or fallback source",
         }
 
-    # 2) market_mismatch_file — count만 top_warnings, 상세는 warningsDetail
+    # 2) market_mismatch_file — info only, not a top warning
     total_mismatch = 0
     mismatch_samples: list[str] = []
     total_invalid_ohlcv = 0
@@ -498,7 +512,6 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
                 mismatch_samples.append(s)
         total_invalid_ohlcv += ws.get("invalid_ohlcv_file", 0)
     if total_mismatch:
-        top_warnings.append(f"market_mismatch_file:{total_mismatch}")
         warnings_detail["market_mismatch_file"] = {
             "severity": "info",
             "count": total_mismatch,
@@ -507,8 +520,28 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
         }
     if total_invalid_ohlcv:
         top_warnings.append(f"invalid_ohlcv_file:{total_invalid_ohlcv}")
+        warnings_detail["invalid_ohlcv_file"] = {
+            "severity": "warning",
+            "count": total_invalid_ohlcv,
+            "samples": [
+                sample
+                for f in files
+                for sample in (f.get("warningSamples") or {}).get("invalid_ohlcv_file", [])
+            ][:10],
+            "nextAction": "Delete invalid OHLCV files and fix the collector symbol guard.",
+        }
 
     # 3) rec_csv 자체 warnings (date_column_missing 제외 — 이미 warningsDetail에 있음)
+    for info in rec_csv_inspect.get("info", []):
+        if info == "recommendation_previous_close_basis":
+            warnings_detail["recommendation_previous_close_basis"] = {
+                "severity": "info",
+                "status": rec_csv_inspect.get("status"),
+                "latestDataDate": rec_csv_inspect.get("latestDataDate"),
+                "priceSession": price_session_str,
+                "note": "US recommendation CSV is based on the previous close during an open live session.",
+                "nextAction": "Observe intraday with live quote snapshot or regenerate recommendations after close.",
+            }
     for w in rec_csv_inspect.get("warnings", []):
         if "date_column_missing" not in w:
             top_warnings.append(w)
@@ -537,6 +570,21 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
             combined = "PARTIAL_PRICE"
         if any(f.get("status") == "NO_DATA" for f in realtime_files):
             top_warnings.append("realtime_price_missing")
+            warnings_detail["us_realtime_price_missing" if normalized_market == "us" else "realtime_price_missing"] = {
+                "severity": "warning",
+                "priceSession": price_session_str,
+                "priceDataStatus": "NO_DATA",
+                "missingFiles": [
+                    str(f.get("path") or "")
+                    for f in realtime_files
+                    if f.get("status") == "NO_DATA"
+                ],
+                "nextAction": (
+                    "Run US intraday/current price collector"
+                    if normalized_market == "us"
+                    else "Run intraday/current price collector"
+                ),
+            }
 
     # ── killSwitch 결정 ───────────────────────────────────────────────────────
     # 추천 데이터가 있으면 killSwitch=False
@@ -565,6 +613,50 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
         0,
     )
 
+    root_causes: list[str] = []
+    next_actions: list[str] = []
+
+    def add_gap(key: str, action: str = "") -> None:
+        if key not in root_causes:
+            root_causes.append(key)
+        if action and action not in next_actions:
+            next_actions.append(action)
+
+    invalid_detail = warnings_detail.get("invalid_ohlcv_file") or {}
+    if invalid_detail:
+        add_gap("invalid_ohlcv_file", str(invalid_detail.get("nextAction") or "Delete invalid OHLCV files."))
+
+    realtime_key = "us_realtime_price_missing" if normalized_market == "us" else "realtime_price_missing"
+    realtime_detail = warnings_detail.get(realtime_key) or {}
+    if realtime_detail:
+        add_gap(realtime_key, str(realtime_detail.get("nextAction") or "Run intraday/current price collector."))
+
+    previous_close_detail = warnings_detail.get("recommendation_previous_close_basis") or {}
+    if previous_close_detail:
+        add_gap(
+            "recommendation_previous_close_basis",
+            str(previous_close_detail.get("nextAction") or "Observe intraday or regenerate recommendations after close."),
+        )
+
+    if not root_causes and display_combined not in {"NORMAL", "OK", "GOOD"}:
+        if is_review or is_after_close:
+            add_gap(
+                f"{normalized_market}_closed_session_review_basis",
+                "No action required unless live-session data is expected.",
+            )
+        else:
+            add_gap(f"data_status_{str(display_combined).lower()}")
+
+    summary_parts: list[str] = []
+    if root_causes:
+        summary_parts.append(f"{normalized_market.upper()} dataStatus={display_combined}: {', '.join(root_causes)}")
+    else:
+        summary_parts.append(f"{normalized_market.upper()} dataStatus={display_combined}")
+    if price_session_str:
+        summary_parts.append(f"session={price_session_str}")
+    if rec_csv_inspect.get("latestDataDate"):
+        summary_parts.append(f"recommendationDate={rec_csv_inspect.get('latestDataDate')}")
+
     return {
         "status": "OK",
         "market": normalized_market,
@@ -588,6 +680,12 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
         "invalidMarketCount": rec_csv_inspect.get("invalidMarketCount", 0),
         "mixedMarketCount": mixed_market_count,
         "emptyResult": rec_csv_inspect.get("emptyResult", False),
+        "recommendationStatus": rec_csv_inspect.get("status"),
+        "recommendationBasisStatus": rec_csv_inspect.get("basisStatus", ""),
+        "recommendationBasisLabel": rec_csv_inspect.get("basisLabel", ""),
+        "rootCauses": root_causes,
+        "nextActions": next_actions,
+        "summary": " / ".join(summary_parts),
         "staleReason": next((w for w in top_warnings if "stale" in w.lower()), None),
         "warnings": top_warnings,
         "warningsDetail": warnings_detail,
