@@ -550,6 +550,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   const recommendationFreshness = useMemo(() => {
     const sample = visible.find((item) => !item.isSearchOnly) || items[0] || {};
     return dataFreshnessInfo({
+      market: sample.market || market,
       latestDataDate: firstText(sample.latestDataDate, sample.dataDate, sample.sourceDate, sample.ohlcvLatestDate, sample.priceDate, ""),
       recoGeneratedAt: firstText(sample.recoGeneratedAt, sample.generatedAt, sample.updatedAt, ""),
       dataStatus: loadError ? "NO_DATA" : sample.dataStatus,
@@ -1342,7 +1343,8 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           const patternText = safeKoreanLabel(psPatternRaw, PATTERN_TYPE_KO);
           const topBadgeLabel = recommendationBadgeLabel(item, actionCode, actionText);
 
-          // 태그: 최대 2개, 중요 신호 우선
+          // 태그: 넓어진 카드 폭에 맞춰 핵심 신호를 한 줄에 최대 5개까지 표시
+          const MAX_VISIBLE_TAGS = 5;
           const TAG_LABEL: Record<string, string> = {
             CAUTION:"⚠ 주의", MA_CONVERGENCE:"이격도 수렴", PULLBACK_BUY:"눌림목",
             MOMENTUM:"모멘텀", VOLUME_BREAKOUT:"거래량 증가", BREAKOUT_52W:"52주 돌파",
@@ -1368,25 +1370,31 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             LOW_RISK_STABLE:"border-teal-500/40 bg-teal-500/10 text-teal-300",
           };
           const visibleTags: { key: string; label: string; cls: string }[] = [];
+          const addVisibleTag = (key: string, label: string | null, cls = "border-slate-600 bg-slate-800 text-slate-300") => {
+            if (!label || visibleTags.length >= MAX_VISIBLE_TAGS) return;
+            if (visibleTags.some((tag) => tag.key === key || tag.label === label)) return;
+            visibleTags.push({ key, label, cls });
+          };
           if (Array.isArray(item.strategyTags)) {
-            for (const tag of item.strategyTags) {
-              if (visibleTags.length >= 2) break;
-              const lbl = TAG_LABEL[tag] ?? safeKoreanLabel(tag);
-              if (lbl) visibleTags.push({ key: tag, label: lbl, cls: TAG_COLOR[tag] ?? "border-slate-600 bg-slate-800 text-slate-300" });
+            const tagLabels = Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels : [];
+            for (let i = 0; i < item.strategyTags.length; i += 1) {
+              const tag = item.strategyTags[i];
+              const lbl = tagLabels[i] || TAG_LABEL[tag] || strategyTagLabel(tag) || safeKoreanLabel(tag);
+              addVisibleTag(tag, lbl, TAG_COLOR[tag]);
             }
           }
-          // surgeLabel 처리 (strategyTags 없을 때)
-          if (!Array.isArray(item.strategyTags) && item.surgeLabel && item.surgeLabel !== "판단 대기" && visibleTags.length < 2) {
+          // surgeLabel 처리
+          if (item.surgeLabel && item.surgeLabel !== "판단 대기" && visibleTags.length < MAX_VISIBLE_TAGS) {
             for (const t of String(item.surgeLabel).split("|").map((s: string) => s.trim()).filter(Boolean)) {
-              if (visibleTags.length >= 2) break;
-              const lbl = safeKoreanLabel(t);
-              if (lbl) visibleTags.push({ key: t, label: lbl, cls: "border-slate-700 bg-slate-950 text-slate-300" });
+              addVisibleTag(t, safeKoreanLabel(t), "border-slate-700 bg-slate-950 text-slate-300");
             }
           }
-          if (item.supplySignal === "STRONG_BUY" && visibleTags.length < 2)
-            visibleTags.push({ key: "supply_strong", label: "기관+외국인 동반매수", cls: "border-blue-400/40 bg-blue-400/10 text-blue-300" });
-          else if (item.supplySignal === "INST_BUY" && visibleTags.length < 2)
-            visibleTags.push({ key: "supply_inst", label: "기관 순매수", cls: "border-sky-500/30 bg-sky-500/10 text-sky-300" });
+          if (item.maConvergence)
+            addVisibleTag("ma_convergence", "이격도 수렴", "border-cyan-500/40 bg-cyan-500/10 text-cyan-300");
+          if (item.supplySignal === "STRONG_BUY")
+            addVisibleTag("supply_strong", "기관+외국인", "border-blue-400/40 bg-blue-400/10 text-blue-300");
+          else if (item.supplySignal === "INST_BUY")
+            addVisibleTag("supply_inst", "기관 순매수", "border-sky-500/30 bg-sky-500/10 text-sky-300");
 
           return (
             <div
@@ -1430,9 +1438,9 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
 
               {/* 태그 */}
               {visibleTags.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-1.5">
+                <div className="mb-3 flex flex-nowrap gap-1 overflow-hidden">
                   {visibleTags.map((t) => (
-                    <span key={t.key} className={`rounded-md border px-2 py-0.5 text-[11px] font-bold ${t.cls}`}>{t.label}</span>
+                    <span key={t.key} className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold leading-4 ${t.cls}`}>{t.label}</span>
                   ))}
                 </div>
               )}

@@ -496,6 +496,26 @@ function businessDaysBetween(from: Date, to: Date): number {
   return days;
 }
 
+function previousBusinessDate(date: Date): Date {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  do {
+    result.setDate(result.getDate() - 1);
+  } while (result.getDay() === 0 || result.getDay() === 6);
+  return result;
+}
+
+function sameDate(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function marketExpectedCloseDate(market: string, now: Date): Date {
+  const normalized = String(market || "").toLowerCase();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (normalized === "us") return previousBusinessDate(today);
+  if (today.getDay() === 0 || today.getDay() === 6) return previousBusinessDate(today);
+  return today;
+}
+
 export function dataFreshnessInfo(item: any, now = new Date()): {
   state: DataFreshnessState;
   label: string;
@@ -503,6 +523,7 @@ export function dataFreshnessInfo(item: any, now = new Date()): {
   latestDate: string;
 } {
   const status = String(item?.dataStatus || item?.status || "").toUpperCase();
+  const market = String(item?.market || "").toLowerCase();
   const latestDate = normalizeDataDateValue(
     item?.latestDataDate ||
       item?.dataDate ||
@@ -531,11 +552,14 @@ export function dataFreshnessInfo(item: any, now = new Date()): {
     return { state: "unknown", label: "확인 필요", basisText: `데이터 기준: ${effectiveDate}`, latestDate: effectiveDate };
   }
 
-  const age = businessDaysBetween(date, now);
+  const expected = marketExpectedCloseDate(market, now);
+  const age = businessDaysBetween(date, expected);
   const state: DataFreshnessState = age <= 0 ? "fresh" : age === 1 ? "caution" : "old";
   const label = state === "fresh" ? "최신" : state === "caution" ? "주의" : "오래됨";
+  const basisPrefix = market === "us" ? "미장 장마감 기준" : market === "kr" ? "국장 장마감 기준" : "데이터 기준";
+  const suffix = market && !sameDate(date, expected) ? ` · 기준일 확인 ${effectiveDate}` : "";
   const basisText = latestDate
-    ? `데이터 기준: ${latestDate}`
+    ? `${basisPrefix}: ${latestDate}${suffix}`
     : `추천 생성: ${generatedAt.slice(0, 16).replace("T", " ")}`;
   return {
     state,
