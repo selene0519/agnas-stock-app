@@ -30,6 +30,8 @@ from app import db as _db
 
 
 app = FastAPI(title="MONE Web API", version="3.6.1-operational-stable")
+_APP_STARTED_AT = time.time()
+_HEALTH_CACHE: dict[str, object] = {"ts": 0.0, "payload": None}
 
 # 자동 동기화 초기화
 try:
@@ -76,6 +78,182 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 # ── 인메모리 Rate Limiter ──────────────────────────────────────────────────────
 # 무거운 수집/갱신 엔드포인트 보호: IP당 최대 1회/60초
+def _status_rank(status: object) -> int:
+    value = str(status or "").upper()
+    if value in {"OK", "GOOD", "NORMAL"}:
+        return 0
+    if value in {"PARTIAL", "PARTIAL_PRICE", "PRICE_PENDING", "DATA_PENDING"}:
+        return 1
+    if value in {"STALE", "NO_DATA", "NO_REALTIME", "TIMEOUT"}:
+        return 2
+    if value in {"ERROR", "FAILED"}:
+        return 3
+    return 1
+
+
+def _status_from_rank(rank: int) -> str:
+    if rank <= 0:
+        return "GOOD"
+    if rank == 1:
+        return "PARTIAL"
+    if rank == 2:
+        return "STALE"
+    return "ERROR"
+
+
+def _health_step(name: str, status: str, detail: str, *, source: str = "", next_action: str = "") -> dict:
+    return {
+        "name": name,
+        "status": status,
+        "detail": detail,
+        "source": source,
+        "nextAction": next_action,
+    }
+
+
+def _registered_api_paths() -> set[str]:
+    return {
+        str(getattr(route, "path", ""))
+        for route in app.router.routes
+        if isinstance(route, APIRoute)
+    }
+
+
+def _build_health_payload() -> dict:
+    now = time.time()
+    cached_payload = _HEALTH_CACHE.get("payload")
+    if isinstance(cached_payload, dict) and now - float(_HEALTH_CACHE.get("ts") or 0) < 30:
+        return {**cached_payload, "cached": True}
+
+    route_paths = _registered_api_paths()
+    required_routes = [
+        "/api/final/data-quality",
+        "/api/final/data-quality-live",
+        "/api/holdings-clean",
+        "/api/final/portfolio-risk",
+        "/api/chart/debug/{symbol}",
+        "/api/final/recommendations",
+        "/api/health/data-sources",
+        "/api/data/audit",
+    ]
+    missing_routes = [path for path in required_routes if path not in route_paths]
+    steps: list[dict] = [
+        _health_step(
+            "api-route-registry",
+            "GOOD" if not missing_routes else "ERROR",
+            "Required operational API routes are registered." if not missing_routes else f"Missing routes: {', '.join(missing_routes)}",
+            source="FastAPI route registry",
+            next_action="" if not missing_routes else "Check route registration order and duplicate route removal.",
+        )
+    ]
+
+    market_quality: dict[str, dict] = {}
+    for market in ("kr", "us"):
+        try:
+            quality = data_quality.data_quality(market, mode="quick")
+            status = str(quality.get("dataStatus") or quality.get("status") or "PARTIAL").upper()
+            market_quality[market] = {
+                "status": quality.get("status"),
+                "dataStatus": status,
+                "latestDataDate": quality.get("latestDataDate"),
+                "latestFileModifiedAt": quality.get("latestFileModifiedAt"),
+                "rowCount": quality.get("rowCount"),
+                "candidateCount": quality.get("candidateCount"),
+                "warnings": list(quality.get("warnings") or [])[:5],
+                "source": "/api/final/data-quality",
+            }
+            steps.append(_health_step(
+                f"{market}-data-quality",
+                _status_from_rank(_status_rank(status)),
+                f"dataStatus={status}, latestDataDate={quality.get('latestDataDate') or '-'}, rows={quality.get('rowCount') or 0}",
+                source="/api/final/data-quality",
+                next_action="Refresh collector/GitHub Actions data if status is STALE or ERROR.",
+            ))
+        except Exception as exc:
+            market_quality[market] = {"status": "ERROR", "error": str(exc), "source": "/api/final/data-quality"}
+            steps.append(_health_step(
+                f"{market}-data-quality",
+                "ERROR",
+                str(exc)[:240],
+                source="/api/final/data-quality",
+                next_action="Inspect backend logs and data_quality.data_quality().",
+            ))
+
+    try:
+        data_sources = api_data_sources()
+        sources = data_sources.get("sources") or {}
+        steps.append(_health_step(
+            "source-tracking",
+            "GOOD" if sources else "PARTIAL",
+            f"Detected source groups: {', '.join(sorted(sources.keys())) if sources else 'none'}",
+            source="/api/health/data-sources",
+            next_action="" if sources else "Check reports/local_collector_status.json and GitHub Actions status files.",
+        ))
+    except Exception as exc:
+        data_sources = {"status": "ERROR", "error": str(exc)}
+        steps.append(_health_step(
+            "source-tracking",
+            "ERROR",
+            str(exc)[:240],
+            source="/api/health/data-sources",
+            next_action="Inspect source status JSON files.",
+        ))
+
+    checklist = [
+        {"range": "11-15", "status": "PARTIAL", "coverage": ["performance guardrails", "deployment config", "debug APIs"], "gap": "Need live latency samples per endpoint."},
+        {"range": "16-25", "status": "PARTIAL", "coverage": ["dataStatus", "source fields", "user data storage", "error JSON"], "gap": "Need full per-user permission audit and alert preference UX."},
+        {"range": "26-35", "status": "PARTIAL", "coverage": ["market regime", "session", "currency helpers", "asset type labels"], "gap": "Need formal over-optimization and identifier test suite."},
+        {"range": "36-45", "status": "PARTIAL", "coverage": ["portfolio risk", "correlation", "validation ledger", "admin page"], "gap": "Need broker cash/unsettled funds and fee/tax model completion."},
+    ]
+
+    worst_rank = max((_status_rank(step.get("status")) for step in steps), default=1)
+    payload = {
+        "ok": worst_rank < 3,
+        "status": "OK" if worst_rank < 3 else "ERROR",
+        "dataStatus": _status_from_rank(worst_rank),
+        "service": "mone-web-api",
+        "version": app.version,
+        "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "uptimeSec": round(now - _APP_STARTED_AT, 1),
+        "heavyJobsEnabled": runtime_limits.heavy_jobs_enabled(),
+        "routes": {
+            "required": required_routes,
+            "missing": missing_routes,
+            "registeredCount": len(route_paths),
+        },
+        "marketQuality": market_quality,
+        "dataSources": data_sources,
+        "steps": steps,
+        "checklist11to45": checklist,
+    }
+    _HEALTH_CACHE["ts"] = now
+    _HEALTH_CACHE["payload"] = payload
+    return payload
+
+
+@app.get("/health")
+def health_root() -> dict:
+    return _build_health_payload()
+
+
+@app.get("/api/health")
+def api_health_root() -> dict:
+    return _build_health_payload()
+
+
+@app.get("/api/ops/checklist")
+def api_ops_checklist() -> dict:
+    payload = _build_health_payload()
+    return {
+        "status": payload.get("status"),
+        "dataStatus": payload.get("dataStatus"),
+        "generatedAt": payload.get("generatedAt"),
+        "checklist11to45": payload.get("checklist11to45"),
+        "steps": payload.get("steps"),
+        "source": "/api/health",
+    }
+
+
 _rate_limit_store: dict[str, float] = defaultdict(float)
 _RATE_LIMITED_PREFIXES = ("/api/news/refresh", "/api/disclosures/refresh",
                           "/api/quotes/refresh", "/api/final/generate-reports")
