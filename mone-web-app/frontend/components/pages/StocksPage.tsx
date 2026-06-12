@@ -557,9 +557,21 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
 
   const recommendationFreshness = useMemo(() => {
     const sample = visible.find((item) => !item.isSearchOnly) || items[0] || {};
+    const predictionBasisDate = firstText(
+      sample.predictionDate,
+      sample.recommendationDate,
+      sample.recoGeneratedAt,
+      sample.generatedAt,
+      sample.latestFileModifiedAt,
+      sample.updatedAt,
+      "",
+    );
+    const ohlcvBasisDate = firstText(sample.ohlcvLatestDate, sample.latestDataDate, sample.dataDate, sample.sourceDate, "");
     return dataFreshnessInfo({
       market: sample.market || resolvedMarket,
-      latestDataDate: firstText(sample.latestDataDate, sample.dataDate, sample.sourceDate, sample.ohlcvLatestDate, sample.priceDate, ""),
+      // 탐색 목록의 신선도는 "예측 데이터 기준일"을 우선 보여준다.
+      // US 장중에는 OHLCV latest date(예: 2026-06-11)가 아니라 추천 CSV generatedAt/latestFileModifiedAt(예: 2026-06-12)을 기준으로 표시해야 한다.
+      latestDataDate: resolvedMarket === "us" ? firstText(predictionBasisDate, ohlcvBasisDate, "") : firstText(ohlcvBasisDate, predictionBasisDate, ""),
       recoGeneratedAt: firstText(sample.recoGeneratedAt, sample.generatedAt, sample.updatedAt, ""),
       dataStatus: loadError ? "NO_DATA" : sample.dataStatus,
     });
@@ -576,10 +588,22 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
       || sourceLc.includes("kis_snapshot")
       || sourceLc.includes("finnhub")
       || sourceLc.includes("yfinance");
-    const priceDate = firstText(sample.currentPriceDate, sample.priceSourceDate, sample.priceTime, sample.updatedAt, sample.generatedAt, "");
-    const ohlcvDate = firstText(sample.ohlcvLatestDate, sample.latestDataDate, sample.dataDate, "");
+    const predictionDate = firstText(
+      sample.predictionDate,
+      sample.recommendationDate,
+      sample.recoGeneratedAt,
+      sample.generatedAt,
+      sample.latestFileModifiedAt,
+      sample.updatedAt,
+      "",
+    );
+    const priceDate = firstText(sample.currentPriceDate, sample.priceSourceDate, sample.priceTime, sample.priceSnapshotDate, sample.updatedAt, sample.generatedAt, "");
+    const ohlcvDate = firstText(sample.ohlcvLatestDate, sample.dataDate, sample.sourceDate, sample.latestDataDate, "");
     return {
       source,
+      predictionText: predictionDate
+        ? `${marketLabel(resolvedMarket)} 예측 기준: ${predictionDate.slice(0, 10)}`
+        : `${marketLabel(resolvedMarket)} 예측 기준: 확인 중`,
       priceText: resolvedMarket === "us" && snapshot
         ? `현재가 기준: 미장 snapshot${priceDate ? ` · ${priceDate.slice(0, 10)}` : ""}`
         : `현재가 기준: ${snapshot ? "snapshot" : "OHLCV/추천 fallback"}${priceDate ? ` · ${priceDate.slice(0, 10)}` : ""}`,
@@ -1253,6 +1277,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             {recommendationFreshness.label}
           </span>
           <span>{recommendationFreshness.basisText}</span>
+          <span className="text-emerald-300">{priceBasisInfo.predictionText}</span>
           <span className="text-cyan-300">{priceBasisInfo.priceText}</span>
           <span>{priceBasisInfo.ohlcvText}</span>
           <span className="text-slate-600">· 상세 판단은 카드의 MONE 판단 보기에서 분석 탭으로 이어집니다.</span>
