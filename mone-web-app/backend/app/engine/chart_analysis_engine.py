@@ -92,6 +92,11 @@ class SupplyDemandZone:
     strength_score: float
     is_mitigated: bool = False
     created_index: int = 0
+    raw_strength_score: float = 0.0
+    rank_score: float = 0.0
+    distance_pct: float = 0.0
+    touch_count: int = 0
+    last_touch_index: int = 0
 
 
 @dataclass
@@ -649,7 +654,7 @@ def _calc_retracements(pivots: list[Pivot]) -> list[RetracementLevel]:
     return result
 
 
-def _calc_supply_zones(
+def _calc_supply_zones_legacy(
     candles: list[Candle],
     top_n: int = 3,
 ) -> list[SupplyDemandZone]:
@@ -726,6 +731,118 @@ def _calc_supply_zones(
             strength_score=round(z["strength"], 3),
             is_mitigated=False,
             created_index=len(candles) - 1,
+        ))
+    return result
+
+
+def _calc_supply_zones(
+    candles: list[Candle],
+    top_n: int = 3,
+) -> list[SupplyDemandZone]:
+    if len(candles) < 10:
+        return []
+
+    window_size = min(len(candles), 120)
+    recent = candles[-window_size:]
+    current_price = recent[-1].close
+    if current_price <= 0:
+        return []
+
+    all_prices = [p for c in recent for p in (c.high, c.low)]
+    min_p, max_p = min(all_prices), max(all_prices)
+    if max_p <= min_p:
+        return []
+
+    lookback = min(14, len(recent) - 1)
+    tr_values = [
+        max(
+            recent[i].high - recent[i].low,
+            abs(recent[i].high - recent[i - 1].close),
+            abs(recent[i].low - recent[i - 1].close),
+        )
+        for i in range(len(recent) - lookback, len(recent))
+    ]
+    atr = sum(tr_values) / len(tr_values) if tr_values else (max_p - min_p) / 60
+
+    target_bin_size = max(atr * 0.5, (max_p - min_p) / 100)
+    bins = int(max(20, min(100, math.ceil((max_p - min_p) / target_bin_size))))
+    bin_size = (max_p - min_p) / bins
+    merge_gap = atr
+
+    buckets = [0.0] * bins
+    touches = [0.0] * bins
+    last_touch = [-1] * bins
+    total_vol = sum(c.volume for c in recent)
+    use_vol = total_vol > 0
+
+    for pos, c in enumerate(recent):
+        lo = max(0, int((c.low - min_p) / bin_size))
+        hi = min(bins, math.ceil((c.high - min_p) / bin_size))
+        span = max(1, hi - lo)
+        recency_weight = 0.35 + 0.65 * (((pos + 1) / window_size) ** 1.5)
+        w = (c.volume if use_vol else 1.0) * recency_weight
+        for b in range(lo, hi):
+            buckets[b] += w / span
+            touches[b] += 1 / span
+            last_touch[b] = max(last_touch[b], pos)
+
+    max_vol = max(buckets) if buckets else 0
+    if max_vol <= 0:
+        return []
+
+    hot = [(i, v / max_vol) for i, v in enumerate(buckets) if v / max_vol > 0.30]
+    zones: list[dict] = []
+    for idx, strength in hot:
+        lower = min_p + idx * bin_size
+        upper = lower + bin_size
+        if zones and lower <= zones[-1]["upper"] + merge_gap:
+            zones[-1]["upper"] = max(zones[-1]["upper"], upper)
+            zones[-1]["center"] = (zones[-1]["lower"] + zones[-1]["upper"]) / 2
+            zones[-1]["strength"] = max(zones[-1]["strength"], strength)
+            zones[-1]["touches"] += touches[idx]
+            zones[-1]["last_touch"] = max(zones[-1]["last_touch"], last_touch[idx])
+        else:
+            zones.append({
+                "lower": lower,
+                "upper": upper,
+                "center": (lower + upper) / 2,
+                "strength": strength,
+                "touches": touches[idx],
+                "last_touch": last_touch[idx],
+            })
+
+    atr_pct = (atr / current_price) * 100 if current_price else 0.0
+    max_distance_pct = max(12.0, min(28.0, atr_pct * 8.0 if atr_pct > 0 else 18.0))
+    ranked_zones: list[dict] = []
+    for z in zones:
+        distance_pct = abs(z["center"] - current_price) / current_price * 100
+        if distance_pct > max_distance_pct:
+            continue
+        recency_score = 0.35 + 0.65 * (((int(z["last_touch"]) + 1) / window_size) if int(z["last_touch"]) >= 0 else 0)
+        distance_score = max(0.15, 1.0 - distance_pct / (max_distance_pct * 1.15))
+        touch_score = min(1.25, 0.75 + float(z["touches"]) / window_size * 4.0)
+        z["distance_pct"] = distance_pct
+        z["rank_score"] = float(z["strength"]) * recency_score * distance_score * touch_score
+        ranked_zones.append(z)
+
+    ranked_zones.sort(key=lambda z: z["rank_score"], reverse=True)
+
+    result: list[SupplyDemandZone] = []
+    for i, z in enumerate(ranked_zones[:top_n]):
+        zone_type: Literal["supply", "demand"] = "supply" if z["center"] > current_price else "demand"
+        result.append(SupplyDemandZone(
+            zone_id=f"zone_{i}",
+            zone_type=zone_type,
+            top=round(z["upper"], 4),
+            bottom=round(z["lower"], 4),
+            strength_score=round(z["rank_score"], 3),
+            is_mitigated=False,
+            created_index=len(candles) - 1,
+            raw_strength_score=round(z["strength"], 3),
+            rank_score=round(z["rank_score"], 3),
+            distance_pct=round(z["distance_pct"], 2),
+            touch_count=int(round(z["touches"])),
+            last_touch_index=max(0, len(candles) - window_size + int(z["last_touch"])),
         ))
     return result
 
@@ -1395,6 +1512,11 @@ def state_to_dict(state: ChartAnalysisState) -> dict[str, Any]:
             "id": z.zone_id, "zoneType": z.zone_type,
             "top": round(z.top, 4), "bottom": round(z.bottom, 4),
             "strengthScore": round(z.strength_score, 3),
+            "rawStrengthScore": round(z.raw_strength_score, 3),
+            "rankScore": round(z.rank_score, 3),
+            "distancePct": round(z.distance_pct, 2),
+            "touchCount": z.touch_count,
+            "lastTouchIndex": z.last_touch_index,
             "isMitigated": z.is_mitigated,
         }
 

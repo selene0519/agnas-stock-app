@@ -6,6 +6,7 @@ from typing import Any
 
 from app.engine.chart_analysis_engine import (
     _calc_atr_threshold,
+    _calc_supply_zones,
     _calc_trendlines,
     _calc_zigzag,
     _rows_to_candles,
@@ -297,6 +298,140 @@ def trendline_accuracy(
         "resistanceRespectRatePct": respect_rate(resistance_rows),
         "highConfidenceRespectRatePct": respect_rate(high_confidence),
         "verified90RespectRatePct": respect_rate(verified_90),
+    }
+    if include_items:
+        payload["items"] = records
+        payload["examples"] = examples
+    return payload
+
+
+def _zone_outcome(zone: Any, future_rows: list[dict[str, Any]], tolerance_pct: float = 0.015, min_reaction_pct: float = 1.5) -> dict[str, Any]:
+    touched = False
+    touched_at = ""
+    broken = False
+    broken_at = ""
+    reaction_pct = 0.0
+
+    for row in future_rows:
+        high = _high(row)
+        low = _low(row)
+        close = _close(row)
+        if high is None or low is None or close is None:
+            continue
+        intersects = low <= float(zone.top) and high >= float(zone.bottom)
+        if intersects and not touched:
+            touched = True
+            touched_at = _date(row)
+        if not touched:
+            continue
+        if zone.zone_type == "demand":
+            if close < float(zone.bottom) * (1 - tolerance_pct) and not broken:
+                broken = True
+                broken_at = _date(row)
+            reaction_pct = max(reaction_pct, (high - float(zone.top)) / float(zone.top) * 100)
+        else:
+            if close > float(zone.top) * (1 + tolerance_pct) and not broken:
+                broken = True
+                broken_at = _date(row)
+            reaction_pct = max(reaction_pct, (float(zone.bottom) - low) / float(zone.bottom) * 100)
+
+    respected = touched and not broken and reaction_pct >= min_reaction_pct
+    return {
+        "touched": touched,
+        "touchedAt": touched_at,
+        "respected": respected,
+        "broken": broken,
+        "brokenAt": broken_at,
+        "reactionPct": round(reaction_pct, 2),
+    }
+
+
+def supply_zone_accuracy(
+    market: str = "all",
+    future_bars: int = 20,
+    symbol_limit: int = 12,
+    max_cutoffs: int = 6,
+    min_history: int = 80,
+    include_items: bool = True,
+) -> dict[str, Any]:
+    markets = ["kr", "us"] if market == "all" else [market]
+    records: list[dict[str, Any]] = []
+    examples: list[dict[str, Any]] = []
+    symbol_count = 0
+
+    for mk in markets:
+        for symbol in _symbol_universe(mk, symbol_limit):
+            rows = load_ohlcv(data.REPO_ROOT, mk, symbol)
+            if not rows:
+                continue
+            symbol_count += 1
+            for cutoff in _cutoff_indexes(len(rows), future_bars, min_history, max_cutoffs):
+                future_rows = rows[cutoff + 1:cutoff + 1 + future_bars]
+                if len(future_rows) < future_bars:
+                    continue
+                candles = _rows_to_candles(rows[:cutoff + 1])
+                if len(candles) < min_history:
+                    continue
+                current = candles[-1].close
+                zones = _calc_supply_zones(candles, top_n=3)
+                cutoff_date = _date(rows[cutoff])
+                for zone in zones:
+                    outcome = _zone_outcome(zone, future_rows)
+                    record = {
+                        "market": mk,
+                        "symbol": symbol,
+                        "asOf": cutoff_date,
+                        "futureEnd": _date(future_rows[-1]),
+                        "currentClose": round(current, 4),
+                        "zoneType": zone.zone_type,
+                        "top": zone.top,
+                        "bottom": zone.bottom,
+                        "center": round((zone.top + zone.bottom) / 2, 4),
+                        "distancePct": zone.distance_pct,
+                        "rankScore": zone.rank_score,
+                        "rawStrengthScore": zone.raw_strength_score,
+                        "touchCount": zone.touch_count,
+                        **outcome,
+                    }
+                    records.append(record)
+                    if len(examples) < 10:
+                        examples.append({
+                            **record,
+                            "chart": _chart_rows(rows, cutoff, future_bars),
+                        })
+
+    touched_rows = [row for row in records if row["touched"]]
+    respected_rows = [row for row in touched_rows if row["respected"]]
+    demand_rows = [row for row in touched_rows if row["zoneType"] == "demand"]
+    supply_rows = [row for row in touched_rows if row["zoneType"] == "supply"]
+
+    def rate(rows: list[dict[str, Any]], key: str) -> float | None:
+        if not rows:
+            return None
+        return round(sum(1 for row in rows if row[key]) / len(rows) * 100, 1)
+
+    avg_distance = None
+    if records:
+        avg_distance = round(sum(float(row["distancePct"] or 0) for row in records) / len(records), 2)
+
+    payload = {
+        "status": "OK" if records else "NO_DATA",
+        "market": market,
+        "policy": "Supply-zone snapshot backtest: draw zones using OHLCV only through asOf, then check whether the next futureBars candles touch the zone, break it by more than 1.5%, and react by at least 1.5%.",
+        "futureBars": future_bars,
+        "symbolCount": symbol_count,
+        "sampleCount": len(records),
+        "touchCount": len(touched_rows),
+        "touchRatePct": rate(records, "touched"),
+        "respectRatePct": rate(touched_rows, "respected"),
+        "demandRespectRatePct": rate(demand_rows, "respected"),
+        "supplyRespectRatePct": rate(supply_rows, "respected"),
+        "avgDistancePct": avg_distance,
+        "calibration": {
+            "lookbackBars": 120,
+            "maxDistancePctRange": "12-28",
+            "rankFactors": ["volumeDensity", "recency", "distanceFromCurrent", "touchCount"],
+        },
     }
     if include_items:
         payload["items"] = records

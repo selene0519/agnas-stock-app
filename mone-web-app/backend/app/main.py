@@ -995,8 +995,21 @@ def _line_from_pivots(
             if any(p.get("type") != required_type for p in (p1, p2)):
                 valid = False
                 invalid_reason = "support_requires_low_low" if line_type == "supportLine" else "resistance_requires_high_high"
+            between = [p for p in recent if i1 < int(p.get("index", 0)) < i2]
+            if line_type == "supportLine":
+                violated = any(_chart_float(p.get("price")) is not None and float(p.get("price")) < (price1 + slope * (int(p.get("index", 0)) - i1)) * 0.995 for p in between)
+                if violated:
+                    valid = False
+                    invalid_reason = "support_intermediate_low_broken"
+                    warnings.append("support_intermediate_low_broken")
+            else:
+                violated = any(_chart_float(p.get("price")) is not None and float(p.get("price")) > (price1 + slope * (int(p.get("index", 0)) - i1)) * 1.005 for p in between)
+                if violated:
+                    valid = False
+                    invalid_reason = "resistance_intermediate_high_broken"
+                    warnings.append("resistance_intermediate_high_broken")
             if current_price and line_type == "supportLine":
-                if base_price > current_price * 1.03:
+                if base_price > current_price * 1.005:
                     valid = False
                     invalid_reason = "support_above_current_price"
                 if gap is not None and gap > 35:
@@ -1004,11 +1017,13 @@ def _line_from_pivots(
                     invalid_reason = "support_far_below_current"
                     warnings.append("support_far_below_current")
             if current_price and line_type == "resistanceLine":
-                if base_price < current_price * 0.97:
+                if base_price < current_price * 0.995:
                     valid = False
                     invalid_reason = "resistance_below_current_price"
                 gap_above = (base_price - current_price) / current_price * 100
                 if gap_above > 35:
+                    valid = False
+                    invalid_reason = "resistance_far_above_current"
                     warnings.append("resistance_far_above_current")
             score = (1 if valid else 0) * 1000 + float(p1.get("strength") or 0) + float(p2.get("strength") or 0) + i2
             candidate = {
@@ -1051,6 +1066,12 @@ def _validate_overlay(overlay: dict) -> dict:
     elif otype == "resistanceLine" and any(p.get("type") != "high" for p in points):
         out["valid"] = False
         out["invalidReason"] = "resistance_requires_high_high"
+    elif otype == "supportLine" and current and price and price > current * 1.005:
+        out["valid"] = False
+        out["invalidReason"] = "support_above_current_price"
+    elif otype == "resistanceLine" and current and price and price < current * 0.995:
+        out["valid"] = False
+        out["invalidReason"] = "resistance_below_current_price"
     elif otype in {"stopPrice", "stopLine"} and current and price and price >= current:
         out["valid"] = False
         out["invalidReason"] = "stop_above_current_price"
@@ -2065,6 +2086,17 @@ def api_trendline_accuracy(
     includeItems: bool = Query(False),
 ) -> dict:
     return chart_accuracy.trendline_accuracy(market, futureBars, symbolLimit, maxCutoffs, include_items=includeItems)
+
+
+@app.get("/api/insights/supply-zone-accuracy")
+def api_supply_zone_accuracy(
+    market: str = Query("all", pattern="^(kr|us|all)$"),
+    futureBars: int = Query(20, ge=5, le=60),
+    symbolLimit: int = Query(12, ge=2, le=30),
+    maxCutoffs: int = Query(6, ge=1, le=12),
+    includeItems: bool = Query(False),
+) -> dict:
+    return chart_accuracy.supply_zone_accuracy(market, futureBars, symbolLimit, maxCutoffs, include_items=includeItems)
 
 
 @app.get("/api/insights/trendline-anchor-learning")
