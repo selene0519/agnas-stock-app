@@ -158,5 +158,5 @@ export function marketLabel(market: Market | SessionMarket | "auto") {
 export function marketSessionNote(market: Market | SessionMarket | "auto") {
   if (market === "kr") return "08:00~20:00 KST 기본 국장 모드";
   if (market === "us") return "20:00~08:00 KST 기본 미장 모드";
-  return "자동: 08:00~20:00 국장 · 20:00~08:00 미장 · 휴장/공휴일은 국장 기준";
+  return "자동: 08:00~20:00 국장 · 20:00~08:00 미장";
 }

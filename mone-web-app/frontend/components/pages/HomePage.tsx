@@ -2078,7 +2078,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
             <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
               sessionPhase === "장중" ? "bg-emerald-900/50 text-emerald-300"
               : sessionPhase === "장마감" ? "bg-blue-900/50 text-blue-300"
-              : sessionPhase === "휴장" ? "bg-red-900/30 text-red-400"
+              : sessionPhase === "휴장" ? "bg-slate-800 text-slate-400"
               : "bg-slate-800 text-slate-400"
             }`}>{sessionStatus}</span>
             {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}

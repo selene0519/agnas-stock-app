@@ -386,15 +386,6 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   }, []);
 
   useEffect(() => {
-    // Debug: market resolution 확인
-    if (typeof window !== "undefined") {
-      console.log("[StocksPage] market resolve:", {
-        resolvedMarket,
-        manualMarket: market,
-        isAutoMarket: market === "all",
-        recommendationsUrl: `/api/final/recommendations?market=${resolvedMarket}&mode=${mode}&horizon=${horizon}&limit=50`,
-      });
-    }
     const controller = new AbortController();
     let active = true;
     setLoading(true);
@@ -838,13 +829,6 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
         </div>
         <div className="mt-2 text-xs text-slate-500">
           {market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · 현재 적용 시장: {marketLabel(resolvedMarket)}
-        </div>
-        {/* 시장 resolve debug 배지 */}
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-600 font-mono">
-          <span>resolvedMarket=<span className="text-slate-400">{resolvedMarket}</span></span>
-          <span>manualMarket=<span className="text-slate-400">{market}</span></span>
-          <span>isAutoMarket=<span className="text-slate-400">{String(market === "all")}</span></span>
-          <span>url=<span className="text-slate-400">?market={resolvedMarket}&mode={mode}&horizon={horizon}</span></span>
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2">
           <button
@@ -1295,13 +1279,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           <span className="text-emerald-300 font-semibold">{priceBasisInfo.predictionText}</span>
           <span className="text-cyan-300">{priceBasisInfo.priceText}</span>
           <span>{priceBasisInfo.ohlcvText}</span>
-          <span className="text-slate-500">상태: {recommendationFreshness.label}</span>
           <span className="text-slate-600">· 상세 판단은 카드의 MONE 판단 보기에서 분석 탭으로 이어집니다.</span>
-        </div>
-        {/* debug: basis/price source */}
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-700 font-mono">
-          <span>dataBasisLabel=<span className="text-slate-500">{recommendationFreshness.label}</span></span>
-          <span>priceSource=<span className="text-slate-500">{priceBasisInfo.source ? priceBasisInfo.source.split("/").pop() : "-"}</span></span>
         </div>
       </div>
 
