@@ -1217,6 +1217,67 @@ def _conditional_execution(item: dict[str, Any], mode: str, horizon: str, df: pd
     return result
 
 
+@lru_cache(maxsize=4)
+def _load_walkforward_metrics(market: str) -> dict[str, dict[str, Any]]:
+    """walk-forward 결과에서 전략별(mode×horizon) 최근 성과 로드 — @lru_cache.
+
+    Returns: {"conservative_short": {winRate, avgReturn, confidence, adjustment, ...}}
+    Cleared by _clear_all_caches() via cache_clear().
+    """
+    result: dict[str, dict[str, Any]] = {}
+    csv_path = data.REPORT_DIR / f"walkforward_results_{market}.csv"
+    if not csv_path.exists():
+        return result
+    try:
+        wf_df = data.read_csv(csv_path)
+        if wf_df.empty:
+            return result
+        # corrected strategy 우선 사용 (baseline 제외)
+        if "strategy" in wf_df.columns:
+            corrected = wf_df[wf_df["strategy"] == "corrected"]
+            if not corrected.empty:
+                wf_df = corrected
+        for keys, grp in wf_df.groupby(["mode", "horizon"]):
+            mode_k, horizon_k = str(keys[0]), str(keys[1])
+            key = f"{mode_k}_{horizon_k}"
+            if "windowIndex" in grp.columns:
+                grp = grp.sort_values("windowIndex")
+            recent = grp.tail(3)  # 최근 3개 윈도우 기준
+            def _col_mean(col: str) -> float:
+                if col not in recent.columns:
+                    return 0.0
+                return float(pd.to_numeric(recent[col], errors="coerce").dropna().mean() or 0)
+            def _col_sum(col: str) -> int:
+                if col not in recent.columns:
+                    return 0
+                return int(pd.to_numeric(recent[col], errors="coerce").dropna().sum() or 0)
+            win_rate = _col_mean("winRate")
+            avg_ret  = _col_mean("avgNetPnlPct")
+            sample   = _col_sum("executionCount")
+            windows  = int(len(grp))
+            last_win = str(grp.iloc[-1]["window"]) if len(grp) > 0 and "window" in grp.columns else ""
+            # 신뢰도 등급: 최근 3윈도우 승률 + 평균 수익률 기반
+            confidence = (
+                "HIGH" if win_rate >= 55 and avg_ret > 0 else
+                "LOW"  if (win_rate < 35 or avg_ret < -2.0) else
+                "MED"
+            )
+            # ±3점 조정 — 전략 신뢰도가 검증된/부진한 경우 반영
+            adj = 3.0 if confidence == "HIGH" else (-3.0 if confidence == "LOW" else 0.0)
+            result[key] = {
+                "winRate":     round(win_rate, 1),
+                "avgReturn":   round(avg_ret, 2),
+                "sampleCount": sample,
+                "windows":     windows,
+                "lastWindow":  last_win,
+                "confidence":  confidence,
+                "adjustment":  adj,
+            }
+    except Exception:
+        pass
+    return result
+
+
 def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: str = "swing", limit: int | None = None) -> dict[str, Any]:
     market = "us" if str(market).lower() == "us" else "kr"
     mode = mode if mode in MODES else "balanced"
@@ -1234,6 +1295,13 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         _adaptive_table = _aw.load_adaptive_weights()
     except Exception:
         _adaptive_table = {}
+    # ── walk-forward 전략 신뢰도 테이블 (루프 외부에서 1회) ─────────────────
+    try:
+        _wf_table = _load_walkforward_metrics(market)
+    except Exception:
+        _wf_table = {}
+    _wf_key  = f"{mode}_{horizon}"
+    _wf_info = _wf_table.get(_wf_key, {})
     if market == "us" and mode == "balanced" and horizon == "swing":
         universe, sources = _us_balanced_swing_universe()
     else:
@@ -1403,7 +1471,9 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
                 "adaptiveLearningStatus": "DISABLED",
             }
         adaptive_adj = float(_adaptive_row.get("adaptiveScoreAdjustment") or 0.0)
-        rank_score = base_rank + adaptive_adj
+        # walk-forward 전략 신뢰도 보정 (±3점, 전략 수준)
+        _wf_adj = float(_wf_info.get("adjustment", 0.0))
+        rank_score = base_rank + adaptive_adj + _wf_adj
         # ────────────────────────────────────────────────────────────────────
 
         row = {
@@ -1471,6 +1541,9 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
                 "mode": mode,
                 "weights": _MODE_RANK_WEIGHTS.get(mode, _MODE_RANK_WEIGHTS["balanced"]),
             },
+            # ── walk-forward 전략 신뢰도 ────────────────────────────────────
+            "walkforwardMetrics": _wf_info,
+            "walkforwardAdjustment": round(_wf_adj, 1),
         }
         # ── 레버리지/인버스 ETF 경고 ─────────────────────────────────────────
         _name_lower = _as_text(row.get("name")).lower()
@@ -1562,6 +1635,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         "rule": "국장/미장 후보군을 StockApp raw·MONE reports·CSV/OHLCV·뉴스·공시로 합친 뒤 MONE 점수로 재분류",
         "items": selected,
         "generatedAt": _now(),
+        "walkforwardSummary": _wf_info,
     }
     _RECO_CACHE[_cache_key] = _result
     _RECO_CACHE_TS[_cache_key] = _time.monotonic()

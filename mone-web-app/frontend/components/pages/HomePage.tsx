@@ -1372,6 +1372,45 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             );
           })()}
 
+          {/* Walk-Forward 전략 검증 */}
+          {item.walkforwardMetrics && typeof item.walkforwardMetrics === "object" && (item.walkforwardMetrics as any).winRate !== undefined && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-[11px]">
+              <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-300">
+                <span>Walk-Forward 전략 검증</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  (item.walkforwardMetrics as any).confidence === "HIGH" ? "bg-emerald-900/50 text-emerald-300"
+                  : (item.walkforwardMetrics as any).confidence === "LOW"  ? "bg-red-900/40 text-red-300"
+                  : "bg-slate-700 text-slate-400"
+                }`}>
+                  {(item.walkforwardMetrics as any).confidence === "HIGH" ? "전략 신뢰 ↑" : (item.walkforwardMetrics as any).confidence === "LOW" ? "전략 부진 ↓" : "보통"}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 font-mono text-[10px]">
+                <div>
+                  <div className="text-slate-500">승률 (최근 3W)</div>
+                  <div className={`mt-0.5 font-semibold ${Number((item.walkforwardMetrics as any).winRate) >= 55 ? "text-emerald-300" : Number((item.walkforwardMetrics as any).winRate) < 35 ? "text-red-300" : "text-slate-300"}`}>
+                    {Number((item.walkforwardMetrics as any).winRate).toFixed(1)}%
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-500">평균수익</div>
+                  <div className={`mt-0.5 font-semibold ${Number((item.walkforwardMetrics as any).avgReturn) > 0 ? "text-emerald-300" : "text-red-300"}`}>
+                    {Number((item.walkforwardMetrics as any).avgReturn) >= 0 ? "+" : ""}{Number((item.walkforwardMetrics as any).avgReturn).toFixed(2)}%
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-500">점수 보정</div>
+                  <div className={`mt-0.5 font-semibold ${Number(item.walkforwardAdjustment) > 0 ? "text-emerald-300" : Number(item.walkforwardAdjustment) < 0 ? "text-red-300" : "text-slate-400"}`}>
+                    {Number(item.walkforwardAdjustment) >= 0 ? "+" : ""}{Number(item.walkforwardAdjustment)}점
+                  </div>
+                </div>
+              </div>
+              {(item.walkforwardMetrics as any).lastWindow && (
+                <div className="mt-1.5 text-[10px] text-slate-600">기준: {(item.walkforwardMetrics as any).windows}개 윈도우 · 최근 {(item.walkforwardMetrics as any).lastWindow}</div>
+              )}
+            </div>
+          )}
+
           {/* EV 계산 근거 */}
           {evBase !== null && (
             <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-[11px]">
