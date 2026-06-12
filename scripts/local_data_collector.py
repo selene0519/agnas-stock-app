@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MONE 로컬 데이터 수집기 — Windows 작업 스케줄러용
+MONE 로컬 데이터 수집기 - Windows 작업 스케줄러용
 GitHub Actions 실패 시 2순위 폴백으로 동작.
 
 실행: python scripts/local_data_collector.py [--push]
@@ -162,6 +162,9 @@ def git_push(commit_msg: str) -> bool:
             ["git", "add", "data/market/ohlcv/kr_*_daily.csv"],
             ["git", "add", "data/market/ohlcv/us_*_daily.csv"],
             ["git", "add", "reports/mone_v36_final_recommendations_*.csv"],
+            ["git", "add", "reports/mone_v36_final_trade_validation_*.csv"],
+            ["git", "add", "reports/kr_recommendation_gen_status.json"],
+            ["git", "add", "reports/us_recommendation_gen_status.json"],
             ["git", "add", "reports/local_collector_status.json"],
             ["git", "add", "reports/kis_current_price_kr.csv"],
         ]
@@ -175,7 +178,7 @@ def git_push(commit_msg: str) -> bool:
             capture_output=True,
         )
         if diff.returncode == 0:
-            log("변경 없음 — push 건너뜀")
+            log("변경 없음 - push 건너뜀")
             return True
 
         subprocess.run(
@@ -216,7 +219,11 @@ def get_us_symbols() -> list[str]:
         # 기본 US 대형주 목록
         syms = ["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","BRK-B",
                 "JPM","V","UNH","JNJ","XOM","PG","HD","CVX","MA","BAC","ABBV","PFE"]
-    return syms[:120]
+    for file_path in sorted((REPO_ROOT / "data" / "market" / "ohlcv").glob("us_*_daily.csv")):
+        sym = file_path.name.removeprefix("us_").removesuffix("_daily.csv").upper()
+        if sym and sym not in syms:
+            syms.append(sym)
+    return syms[:200]
 
 
 def collect_ohlcv_us(symbols: list[str], days: int = 30) -> dict:
@@ -273,7 +280,7 @@ def main() -> None:
     status: dict = {"startedAt": datetime.now().isoformat(), "market": args.market, "steps": {}}
 
     log("=" * 50)
-    log(f"MONE 로컬 데이터 수집 시작 — market={args.market}")
+    log(f"MONE 로컬 데이터 수집 시작 - market={args.market}")
     log(f"push: {args.push}, days: {args.days}")
     log("=" * 50)
 
@@ -311,6 +318,7 @@ def main() -> None:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         push_ok = git_push(f"chore: local collector update {now_str}")
         status["pushed"] = push_ok
+        STATUS_PATH.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
 
         # Step 4: Render 캐시 즉시 갱신 (push 성공 시만)
         # market=all 로 고정: kr 전용 실행이어도 us lru_cache까지 함께 초기화
