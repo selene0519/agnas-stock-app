@@ -1233,23 +1233,34 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             </div>
           </div>
 
+          {/* 가격 레벨 경고 (손절가≥기준가 등) */}
+          {item.priceLevelWarning && (
+            <div className="flex items-center gap-2 rounded-xl border border-red-600/40 bg-red-950/20 px-4 py-2.5 text-[11px]">
+              <span className="text-red-400">⚠</span>
+              <span className="font-semibold text-red-300">가격 설정 오류: {item.priceLevelWarning}</span>
+            </div>
+          )}
+
           {/* 검토 체크리스트 */}
           {(() => {
             const current = Number(item.currentPrice || 0);
             const entry   = Number(item.entry || 0);
+            // mode별 허용 최대 이격 (MODE_RULES와 동기화)
+            const modeMaxGap = mode === "conservative" ? 3.5 : mode === "aggressive" ? 13 : 7.5;
             const gapPct  = entry > 0 && current > 0 ? Math.abs((current - entry) / entry * 100) : null;
-            const inRange = gapPct != null && gapPct <= 5;
+            const inRange = gapPct != null && gapPct <= modeMaxGap;
             const evOk    = ev > 0;
             const regimeOk = !marketRegime || marketRegime.regime !== "BEAR";
             const dataOk  = !["STALE", "ERROR", "DATA_PENDING"].includes(String(item.dataStatus || ""));
             const noCaution = !Array.isArray(item.cautionReasons) || item.cautionReasons.length === 0;
+            const noPlWarning = !item.priceLevelWarning;
 
             const checks = [
               { label: "EV 양수", ok: evOk, detail: evOk ? `+${ev.toFixed(1)}%` : `${ev.toFixed(1)}% (음수)` },
-              { label: "기준가 범위", ok: inRange, detail: gapPct != null ? `현재가 ±${gapPct.toFixed(1)}%` : "가격 데이터 확인 중" },
+              { label: "기준가 범위", ok: inRange, detail: gapPct != null ? `현재가 ±${gapPct.toFixed(1)}% (한도 ${modeMaxGap}%)` : "가격 데이터 확인 중" },
               { label: "시장 레짐", ok: regimeOk, detail: marketRegime ? (marketRegime.regime === "BULL" ? "강세장 정상" : marketRegime.regime === "BEAR" ? "약세장 — 주의" : "중립") : "확인 불가" },
-              { label: "데이터 상태", ok: dataOk, detail: dataOk ? "정상" : String(item.dataStatus || "미확인") },
-              { label: "주의사항", ok: noCaution, detail: noCaution ? "없음" : `${item.cautionReasons.length}개` },
+              { label: "데이터 상태", ok: dataOk, detail: dataOk ? (item.dataAsOf ? `정상 · 기준일 ${item.dataAsOf}` : "정상") : String(item.dataStatus || "미확인") },
+              { label: "주의사항", ok: noCaution && noPlWarning, detail: !noPlWarning ? item.priceLevelWarning : (noCaution ? "없음" : `${item.cautionReasons?.length}개`) },
             ];
             const passCount = checks.filter((c) => c.ok).length;
 
@@ -1276,6 +1287,21 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                     </div>
                   ))}
                 </div>
+                {/* 데이터 출처 + 기준일 */}
+                {(item.dataAsOf || item.currentPriceSource) && (
+                  <div className="mt-3 border-t border-slate-800 pt-2.5 space-y-0.5 text-[10px] text-slate-500">
+                    {item.dataAsOf && <div>데이터 기준일 <span className="text-slate-400 font-mono">{item.dataAsOf}</span></div>}
+                    {item.currentPriceSource && (
+                      <div>현재가 소스 <span className="text-slate-400 font-mono">{
+                        item.currentPriceSource === "actual_ohlcv" ? "OHLCV 종가" :
+                        item.currentPriceSource === "api" ? "KIS API 실시간" :
+                        item.currentPriceSource === "csv" ? "보고서 기준" :
+                        item.currentPriceSource === "close_history_fallback" ? "이전 종가 대체" :
+                        item.currentPriceSource
+                      }</span></div>
+                    )}
+                  </div>
+                )}
                 {passCount < 3 && (
                   <div className="mt-2 rounded-lg bg-red-950/30 px-2.5 py-1.5 text-[10px] text-red-300">
                     조건 미충족이 많습니다. 신규 판단 전 충분히 검토하세요.
@@ -1284,6 +1310,14 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
               </div>
             );
           })()}
+
+          {/* 리스크 근거 */}
+          {item.riskReason && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-[11px]">
+              <div className="mb-1.5 text-xs font-semibold text-slate-400">리스크 근거</div>
+              <div className="text-slate-300">{item.riskReason}</div>
+            </div>
+          )}
 
           {/* 포트폴리오 충돌 검사 */}
           {conflict && Array.isArray(conflict.conflicts) && conflict.conflicts.length > 0 && (
@@ -1500,6 +1534,14 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* 레버리지 ETF 경고 */}
+          {item.isLeveragedEtf && item.leverageWarning && (
+            <div className="rounded-xl border border-orange-600/40 bg-orange-950/20 p-3 text-[11px]">
+              <div className="mb-1 font-semibold text-orange-300">⚡ 레버리지/인버스 ETF</div>
+              <div className="text-orange-400/90">{item.leverageWarning}</div>
             </div>
           )}
 

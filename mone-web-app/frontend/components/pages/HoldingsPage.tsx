@@ -269,15 +269,20 @@ function brokerLabel(value: any) {
 }
 function brokerStatusLabel(status?: BrokerStatus) {
   if (!status || !status.connected) return "미연결";
-  if (status.status === "OK") return "연결됨";
   if (status.status === "SYNCING") return "동기화 중";
   if (status.status === "ERROR") return "동기화 실패";
-  return "연결됨";
+  // "connected" = 파일이 업로드·로드됨 (실시간 계좌 조회 아님)
+  return "파일 업로드됨";
 }
 function brokerSyncText(status?: BrokerStatus) {
   const ts = status?.lastSync || status?.connectedAt;
   if (!ts) return "";
-  return `마지막 동기화 ${new Date(ts * 1000).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
+  const d = new Date(ts * 1000);
+  const today = new Date();
+  const isToday = d.toDateString() === today.toDateString();
+  const timeStr = d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  const dateStr = isToday ? "" : `${d.getMonth() + 1}/${d.getDate()} `;
+  return `업로드 ${dateStr}${timeStr} (파일 기준)`;
 }
 
 // ── NAV 수익률 곡선 (실제/추정 구분) ─────────────────────────────────

@@ -110,3 +110,12 @@ mone-web-app/frontend/mone-app-verification.png
 data/no_buy_filter_history.csv
 reports/paper_trading_log_legacy.csv
 .vercel
+
+# backtest/walkforward output (may contain symbol history — local only)
+reports/walkforward_results*.csv
+reports/backtest_beta*.csv
+reports/backtest_summary*.csv
+
+# runtime-generated data files (not secrets but not for git)
+data/history/
+data/stockapp/kis_current_price_*.csv

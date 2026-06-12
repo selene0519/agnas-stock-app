@@ -65,7 +65,7 @@ def save_bridge_status(
     try:
         _db.save_broker_connection(user_id, broker, record)
     except Exception as e:
-        print(f"[broker] db save error: {e}")
+        print(f"[broker] db save error: {type(e).__name__}")
     # File fallback (for local dev / backward compat)
     try:
         _ensure_dir()
@@ -81,7 +81,7 @@ def get_bridge_status(user_id: str, broker: str) -> dict[str, Any] | None:
         if db_result:
             return db_result
     except Exception as e:
-        print(f"[broker] db get error: {e}")
+        print(f"[broker] db get error: {type(e).__name__}")
     # Fall back to file
     path = _bridge_path(user_id, broker)
     if not path.exists():
