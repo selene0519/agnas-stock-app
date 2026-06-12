@@ -132,7 +132,15 @@ export function resolveAutoMarket(
 
   const { hour, minute } = kstNowParts(now);
   const total = hour * 60 + minute;
-  // 순수 시간 기반 — 휴장/공휴일 fallback 없음
+  const dow = kstDayOfWeek(now); // 0=일, 1=월, ..., 6=토
+
+  // 토 08:00 ~ 월 20:00: 전 구간 국장
+  //   일요일 전체, 월요일 20:00 이전, 토요일 08:00 이후
+  if (dow === 0) return "kr";                            // 일 전체
+  if (dow === 1 && total < 20 * 60) return "kr";        // 월 ~20:00
+  if (dow === 6 && total >= 8 * 60) return "kr";        // 토 08:00~
+
+  // 그 외: 시간 기반 (월~토 08:00~20:00 → KR, 나머지 → US)
   return total >= 8 * 60 && total < 20 * 60 ? "kr" : "us";
 }
 
