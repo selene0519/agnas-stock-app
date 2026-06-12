@@ -2782,6 +2782,30 @@ export default function ChartPage() {
                   </CollapsiblePanel>
                 )}
 
+                {/* 가격 레벨 유효성 경고 */}
+                {(() => {
+                  if (!levels) return null;
+                  const entryV = levelValue(levels, "entry");
+                  const stopV  = levelValue(levels, "stop");
+                  const targetV = levelValue(levels, "target");
+                  const warns: string[] = [];
+                  if (entryV > 0 && stopV > 0 && stopV >= entryV)  warns.push("손절가 ≥ 기준가");
+                  if (entryV > 0 && targetV > 0 && targetV <= entryV) warns.push("목표가 ≤ 기준가");
+                  if (warns.length === 0) return null;
+                  return (
+                    <div className="mb-2 flex items-center gap-2 rounded-lg border border-red-600/40 bg-red-950/20 px-3 py-2 text-[11px] text-red-300">
+                      <span>⚠</span>
+                      <span className="font-semibold">가격 설정 오류: {warns.join(" / ")}</span>
+                    </div>
+                  );
+                })()}
+                {/* 백엔드 priceLevelWarning 필드 (있을 경우) */}
+                {levels?.priceLevelWarning && (
+                  <div className="mb-2 flex items-center gap-2 rounded-lg border border-red-600/40 bg-red-950/20 px-3 py-2 text-[11px] text-red-300">
+                    <span>⚠</span>
+                    <span className="font-semibold">가격 설정 오류: {levels.priceLevelWarning}</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
                   {[
                     { label: "기준가", value: levels ? priceText(levels, "entry", "") : "" },

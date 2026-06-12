@@ -1109,9 +1109,42 @@ def _surge_label(item: dict[str, Any], df: pd.DataFrame) -> tuple[str, str]:
 
 
 def _entry_gap(current: float | None, entry: float | None) -> float | None:
-    if current is None or entry is None or entry <= 0:
+    if current is None or entry is None or entry <= 0 or current <= 0:
         return None
     return (current - entry) / entry
+
+
+def _price_level_warning(entry: float | None, stop: float | None, target: float | None) -> str:
+    """진입가/손절가/목표가 유효성 경고 반환."""
+    warnings: list[str] = []
+    if entry is not None and entry > 0:
+        if stop is not None and stop > 0 and stop >= entry:
+            warnings.append("손절가≥기준가")
+        if target is not None and target > 0 and target <= entry:
+            warnings.append("목표가≤기준가")
+    return " / ".join(warnings) if warnings else ""
+
+
+def _risk_reason(scores: dict[str, Any], event_risk: int, surge_label: str) -> str:
+    """리스크 점수 근거 텍스트 생성 — 설명 가능성용."""
+    risk = float(scores.get("riskScore") or 0)
+    opp  = float(scores.get("opportunityScore") or 0)
+    parts: list[str] = []
+    if surge_label == "과열 주의":
+        parts.append("단기 과열")
+    if event_risk >= 50:
+        parts.append(f"이벤트위험 {event_risk}점")
+    elif event_risk >= 30:
+        parts.append(f"이벤트주의 {event_risk}점")
+    if risk >= 65:
+        parts.append(f"고변동성·MDD ({risk:.0f}점)")
+    elif risk >= 45:
+        parts.append(f"중간 리스크 ({risk:.0f}점)")
+    else:
+        parts.append(f"안정권 ({risk:.0f}점)")
+    if opp < 48:
+        parts.append("상승여력 부족")
+    return " · ".join(parts) if parts else f"안정 ({risk:.0f}점)"
 
 
 def _mode_allowed(mode: str, horizon: str, scores: dict[str, Any], event_risk: int) -> bool:
@@ -1416,7 +1449,43 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             "eventSummary": evt_ctx.get("eventSummary", ""),
             "eventDataSourceType": evt_ctx.get("eventDataSourceType", "unavailable"),
             "eventScoreAdjustment": round(event_score_adj, 2),
+            # ── 설명 가능성 / 데이터 품질 투명성 ────────────────────────────
+            "riskReason": _risk_reason(scores, event_risk, surge),
+            "gapWarningPct": (
+                round(abs(float(scores["gap"])) * 100, 1)
+                if scores.get("gap") is not None else None
+            ),
+            "currentPriceSource": _as_text(
+                normalized.get("priceSourceType")
+                or normalized.get("dataSourceType")
+                or ohlcv_source
+                or "OHLCV"
+            ),
+            "dataAsOf": ohlcv_latest_date or (reco_generated_at[:10] if reco_generated_at and len(reco_generated_at) >= 10 else ""),
+            "priceLevelWarning": _price_level_warning(
+                _num(normalized.get("entry")),
+                _num(normalized.get("stop")),
+                _num(normalized.get("target")),
+            ),
+            "scoreWeightBreakdown": {
+                "mode": mode,
+                "weights": _MODE_RANK_WEIGHTS.get(mode, _MODE_RANK_WEIGHTS["balanced"]),
+            },
         }
+        # ── 레버리지/인버스 ETF 경고 ─────────────────────────────────────────
+        _name_lower = _as_text(row.get("name")).lower()
+        _lev_keywords = ("레버리지", "인버스", "2x", "3x", "곱버스", "bear", "bull x")
+        if any(kw in _name_lower for kw in _lev_keywords):
+            row["isLeveragedEtf"] = True
+            row["leverageWarning"] = "레버리지/인버스 ETF — 단기 변동성 매우 크며 복리 손실 위험 있음"
+            # conservative 모드에서는 권장하지 않음
+            if mode == "conservative":
+                row["recommended"] = False
+                row["decisionBucket"] = "주의"
+                row["buyTiming"] = "레버리지 ETF — 보수적 전략 비적합"
+        else:
+            row["isLeveragedEtf"] = False
+            row["leverageWarning"] = ""
         # ── 4차: postmortem 저장 (실패 케이스) ──────────────────────────────
         try:
             if execution.get("filled"):
