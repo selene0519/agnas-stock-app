@@ -503,8 +503,8 @@ function RsiChart({ rows }: { rows: any[] }) {
         const times = rsiData.map(({ time }) => time);
         const ob = c.addLineSeries({ color: "#ef444440", lineWidth: 1, priceLineVisible: false, lineStyle: 2 });
         const os = c.addLineSeries({ color: "#22c55e40", lineWidth: 1, priceLineVisible: false, lineStyle: 2 });
-        ob.setData(times.map((time) => ({ time, value: 70 })));
-        os.setData(times.map((time) => ({ time, value: 30 })));
+        ob.setData(times.map((time) => ({ time, value: 80 })));
+        os.setData(times.map((time) => ({ time, value: 20 })));
         chart.timeScale().fitContent();
         const ro = new ResizeObserver(() => { if (containerRef.current && chartRef.current) chartRef.current.resize(containerRef.current.clientWidth, 100); });
         ro.observe(containerRef.current!);
@@ -517,15 +517,15 @@ function RsiChart({ rows }: { rows: any[] }) {
 
   if (rsiData.length === 0) return null;
   const latest = rsiData.at(-1);
-  const rsiColor = latest ? (latest.value >= 70 ? "text-red-400" : latest.value <= 30 ? "text-emerald-400" : "text-slate-400") : "text-slate-400";
+  const rsiColor = latest ? (latest.value >= 80 ? "text-red-400" : latest.value <= 20 ? "text-emerald-400" : "text-slate-400") : "text-slate-400";
   return (
     <div className="rounded-xl border border-slate-800 bg-[#020617]">
       <div className="flex items-center gap-3 px-3 pt-2 pb-1">
         <span className="text-[10px] font-medium text-slate-500">RSI(14)</span>
         {latest && <span className={`font-mono text-xs font-bold ${rsiColor}`}>{latest.value.toFixed(1)}</span>}
-        {latest?.value >= 70 && <span className="text-[10px] text-red-400">과매수</span>}
-        {latest?.value <= 30 && <span className="text-[10px] text-emerald-400">과매도</span>}
-        <span className="ml-auto text-[10px] text-slate-600">70 / 30 기준선</span>
+        {latest?.value >= 80 && <span className="text-[10px] text-red-400">과매수</span>}
+        {latest?.value <= 20 && <span className="text-[10px] text-emerald-400">과매도</span>}
+        <span className="ml-auto text-[10px] text-slate-600">80 / 20 기준선</span>
       </div>
       <div ref={containerRef} className="h-[100px] w-full" />
     </div>
@@ -1892,8 +1892,8 @@ function technicalStance(rows: any[], indicators: any, latestRsi: number | null,
   const volumeRatio = Number(indicators.volumeRatio20);
   const rr = atrPlan ? Number(atrPlan.rr1) : 0;
   const rsiValue = latestRsi ?? Number.NaN;
-  const bullish = Number.isFinite(distance) && distance > 0 && rsiValue >= 45 && rsiValue <= 68;
-  const overheated = rsiValue >= 72 || (Number.isFinite(distance) && distance > 12);
+  const bullish = Number.isFinite(distance) && distance > 0 && rsiValue >= 45 && rsiValue <= 75;
+  const overheated = rsiValue >= 80 || (Number.isFinite(distance) && distance > 12);
   const weak = Number.isFinite(distance) && distance < -5 && rsiValue < 45;
 
   if (overheated) {
@@ -2798,13 +2798,26 @@ export default function ChartPage() {
             )}
           </div>
 
+          {/* 패턴 차단 배너 — isBlocked=true 시 상단에 강조 표시 */}
+          {levels?.patternStrategy && (levels.patternStrategy as any)?.isBlocked && (
+            <div className="mb-3 flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm">
+              <span className="text-lg">⛔</span>
+              <div>
+                <div className="font-bold text-red-300">패턴 차단 — 신규 진입 보류</div>
+                <div className="text-[11px] text-red-400/80">
+                  {(levels.patternStrategy as any)?.message || "패턴 분석이 현재 진입을 차단했습니다. 조건이 해소될 때까지 대기하세요."}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* MONE 패턴 전략 패널 */}
           {levels?.patternStrategy && (() => {
             const ps = levels.patternStrategy as {
               status?: string; action?: string; riskStatus?: string; confidence?: number;
               primaryPattern?: string; secondaryPatterns?: string[];
               marketStructure?: string; trendPhase?: string;
-              historicalSupportLevels?: number[]; message?: string;
+              historicalSupportLevels?: number[]; message?: string; isBlocked?: boolean;
             };
             const actionColor = (a?: string) => {
               if (!a) return "text-slate-400";

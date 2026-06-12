@@ -2653,6 +2653,22 @@ def _mone_classifier_scores(row: dict[str, Any], market: str) -> dict[str, Any]:
     opportunity = round(_clamp(opportunity, 0, 100), 1)
     entry_score = round(_clamp(entry_score, 0, 100), 1)
     risk_score = round(_clamp(event_penalty + max(0.0, 45.0 - opportunity) * 0.45 + (15.0 if rr and rr < 1.0 else 0.0), 0, 100), 1)
+
+    # ── Extended sub-scores (V2 7-factor) ────────────────────────────────────
+    # rrScore: RR ratio → 0-100 (RR 1.5=33, 2.0=44, 3.0=67, 4.5=100)
+    rr_score = round(_clamp(rr * 22.2, 0, 100), 1)
+
+    # momentumScore: trade_fit + ensemble as momentum proxy
+    momentum_raw = 50.0 + _clamp(trade_fit, -30, 60) * 0.40 + _clamp(ensemble, -50, 100) * 0.20
+    momentum_score = round(_clamp(momentum_raw, 0, 100), 1)
+
+    # qualityScore: quality field + fundamental + supply/demand
+    quality_raw = 50.0 + _clamp(quality, -50, 100) * 0.30 + fundamental_bonus * 2.5 + supply_bonus * 2.0
+    quality_score = round(_clamp(quality_raw, 0, 100), 1)
+
+    # newsRiskPenalty: event_penalty severity → 0-100 (higher = more dangerous)
+    news_risk_penalty = round(_clamp(event_penalty * 1.8, 0, 100), 1)
+
     return {
         "symbol": symbol,
         "current": current,
@@ -2663,8 +2679,13 @@ def _mone_classifier_scores(row: dict[str, Any], market: str) -> dict[str, Any]:
         "gap": gap,
         "riskPct": risk_pct,
         "opportunityScore": opportunity,
+        "upsideScore": opportunity,       # alias: same value, explicit name
         "entryScore": entry_score,
         "riskScore": risk_score,
+        "rrScore": rr_score,
+        "momentumScore": momentum_score,
+        "qualityScore": quality_score,
+        "newsRiskPenalty": news_risk_penalty,
         "riskText": risk_text,
         "supplyText": supply_text,
         "fundamentalText": fundamental_text,
