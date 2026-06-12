@@ -87,6 +87,20 @@ def _pg_init_schema():
                 updated_at BIGINT NOT NULL,
                 PRIMARY KEY (user_id, market, symbol)
             );
+            CREATE TABLE IF NOT EXISTS broker_connections (
+                user_id        TEXT NOT NULL,
+                broker         TEXT NOT NULL,
+                connected      INTEGER NOT NULL DEFAULT 1,
+                connection_mode TEXT DEFAULT 'local_bridge',
+                sync_status    TEXT DEFAULT 'OK',
+                last_sync      DOUBLE PRECISION,
+                connected_at   DOUBLE PRECISION,
+                account_no_hint TEXT DEFAULT '',
+                item_count     INTEGER DEFAULT 0,
+                source         TEXT DEFAULT 'local_bridge',
+                updated_at     BIGINT NOT NULL,
+                PRIMARY KEY (user_id, broker)
+            );
             """)
             conn.commit()
     finally:
@@ -262,6 +276,17 @@ def _sqlite_get_conn() -> sqlite3.Connection:
             name TEXT NOT NULL DEFAULT '', memo TEXT DEFAULT '', updated_at INTEGER NOT NULL,
             PRIMARY KEY (user_id, market, symbol)
         );
+        CREATE TABLE IF NOT EXISTS broker_connections (
+            user_id TEXT NOT NULL, broker TEXT NOT NULL,
+            connected INTEGER NOT NULL DEFAULT 1,
+            connection_mode TEXT DEFAULT 'local_bridge',
+            sync_status TEXT DEFAULT 'OK',
+            last_sync REAL, connected_at REAL,
+            account_no_hint TEXT DEFAULT '', item_count INTEGER DEFAULT 0,
+            source TEXT DEFAULT 'local_bridge',
+            updated_at INTEGER NOT NULL,
+            PRIMARY KEY (user_id, broker)
+        );
         """)
         cols = {row["name"] for row in _sqlite_conn.execute("PRAGMA table_info(user_holdings)").fetchall()}
         migrations = {
@@ -422,6 +447,111 @@ def save_watchlist(user_id: str, items: list[dict]) -> int:
     except Exception as e:
         print(f"[db] save_watchlist error: {e}")
         return 0
+
+def save_broker_connection(user_id: str, broker: str, record: dict) -> None:
+    uid = sanitize_uid(user_id)
+    if not uid:
+        return
+    now = int(time.time())
+    try:
+        if _use_postgres():
+            conn = _pg_conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO broker_connections
+                        (user_id,broker,connected,connection_mode,sync_status,last_sync,
+                         connected_at,account_no_hint,item_count,source,updated_at)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        ON CONFLICT (user_id,broker) DO UPDATE SET
+                            connected=EXCLUDED.connected,
+                            connection_mode=EXCLUDED.connection_mode,
+                            sync_status=EXCLUDED.sync_status,
+                            last_sync=EXCLUDED.last_sync,
+                            connected_at=EXCLUDED.connected_at,
+                            account_no_hint=EXCLUDED.account_no_hint,
+                            item_count=EXCLUDED.item_count,
+                            source=EXCLUDED.source,
+                            updated_at=EXCLUDED.updated_at
+                    """, (
+                        uid, broker.lower().strip(),
+                        1 if record.get("connected", True) else 0,
+                        record.get("connection_mode", "local_bridge"),
+                        record.get("sync_status", "OK"),
+                        record.get("last_sync"), record.get("connected_at"),
+                        record.get("account_no_hint", ""),
+                        int(record.get("item_count", 0)),
+                        record.get("source", "local_bridge"),
+                        now,
+                    ))
+                conn.commit()
+            finally:
+                _pg_release(conn)
+        else:
+            conn = _sqlite_get_conn()
+            conn.execute("""
+                INSERT OR REPLACE INTO broker_connections
+                (user_id,broker,connected,connection_mode,sync_status,last_sync,
+                 connected_at,account_no_hint,item_count,source,updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                uid, broker.lower().strip(),
+                1 if record.get("connected", True) else 0,
+                record.get("connection_mode", "local_bridge"),
+                record.get("sync_status", "OK"),
+                record.get("last_sync"), record.get("connected_at"),
+                record.get("account_no_hint", ""),
+                int(record.get("item_count", 0)),
+                record.get("source", "local_bridge"),
+                now,
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"[db] save_broker_connection error: {e}")
+
+
+def get_broker_connection(user_id: str, broker: str) -> dict | None:
+    uid = sanitize_uid(user_id)
+    if not uid:
+        return None
+    bk = broker.lower().strip()
+    try:
+        if _use_postgres():
+            conn = _pg_conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT connected,connection_mode,sync_status,last_sync,connected_at,"
+                        "account_no_hint,item_count,source FROM broker_connections "
+                        "WHERE user_id=%s AND broker=%s", (uid, bk)
+                    )
+                    row = cur.fetchone()
+            finally:
+                _pg_release(conn)
+        else:
+            conn = _sqlite_get_conn()
+            row = conn.execute(
+                "SELECT connected,connection_mode,sync_status,last_sync,connected_at,"
+                "account_no_hint,item_count,source FROM broker_connections "
+                "WHERE user_id=? AND broker=?", (uid, bk)
+            ).fetchone()
+        if not row:
+            return None
+        return {
+            "broker": bk,
+            "connected": bool(row[0]),
+            "connectionMode": row[1] or "local_bridge",
+            "status": row[2] or "OK",
+            "lastSync": row[3],
+            "connectedAt": row[4],
+            "accountNoHint": row[5] or "",
+            "itemCount": row[6] or 0,
+            "source": row[7] or "local_bridge",
+        }
+    except Exception as e:
+        print(f"[db] get_broker_connection error: {e}")
+        return None
+
 
 def backend_info() -> dict:
     return {
