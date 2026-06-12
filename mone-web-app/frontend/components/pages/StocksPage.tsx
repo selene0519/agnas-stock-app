@@ -1370,16 +1370,32 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             LOW_RISK_STABLE:"border-teal-500/40 bg-teal-500/10 text-teal-300",
           };
           const visibleTags: { key: string; label: string; cls: string }[] = [];
+          const canonicalTagKey = (key: string, label: string | null) => {
+            const upper = String(key || "").trim().toUpperCase();
+            const compact = String(label || key || "").replace(/\s+/g, "");
+            if (["BB_SQUEEZE", "BOLLINGER_SQUEEZE", "VOLATILITY_COMPRESSION"].includes(upper) || /볼린저|변동성/.test(compact)) return "volatility_compression";
+            if (upper === "MA_CONVERGENCE" || /이격도수렴/.test(compact)) return "ma_convergence";
+            if (upper === "PULLBACK_BUY" || /눌림목/.test(compact)) return "pullback";
+            if (upper === "MOMENTUM" || /모멘텀/.test(compact)) return "momentum";
+            if (upper === "VOLUME_BREAKOUT" || /거래량|거래대금/.test(compact)) return "volume_breakout";
+            if (upper === "UNDERVALUED_GROWTH" || /저평가성장/.test(compact)) return "undervalued_growth";
+            if (upper === "STABLE_LOW_RISK" || upper === "LOW_RISK_STABLE" || /안정형/.test(compact)) return "stable_low_risk";
+            if (upper === "GOLDEN_CROSS" || /골든크로스/.test(compact)) return "golden_cross";
+            if (upper === "TRAILING_STOP_ALERT" || /트레일링/.test(compact)) return "trailing_stop";
+            if (upper === "CAUTION" || /주의/.test(compact)) return "caution";
+            return upper || compact;
+          };
           const addVisibleTag = (key: string, label: string | null, cls = "border-slate-600 bg-slate-800 text-slate-300") => {
             if (!label || visibleTags.length >= MAX_VISIBLE_TAGS) return;
-            if (visibleTags.some((tag) => tag.key === key || tag.label === label)) return;
+            const canonical = canonicalTagKey(key, label);
+            if (visibleTags.some((tag) => canonicalTagKey(tag.key, tag.label) === canonical)) return;
             visibleTags.push({ key, label, cls });
           };
           if (Array.isArray(item.strategyTags)) {
             const tagLabels = Array.isArray(item.strategyTagLabels) ? item.strategyTagLabels : [];
             for (let i = 0; i < item.strategyTags.length; i += 1) {
               const tag = item.strategyTags[i];
-              const lbl = tagLabels[i] || TAG_LABEL[tag] || strategyTagLabel(tag) || safeKoreanLabel(tag);
+              const lbl = TAG_LABEL[tag] || strategyTagLabel(tag) || tagLabels[i] || safeKoreanLabel(tag);
               addVisibleTag(tag, lbl, TAG_COLOR[tag]);
             }
           }
