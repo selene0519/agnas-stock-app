@@ -15,7 +15,11 @@ from typing import Any
 # ── 백엔드 감지 ───────────────────────────────────────────────────────
 
 def _database_url() -> str:
-    return os.environ.get("DATABASE_URL", "").strip()
+    url = os.environ.get("DATABASE_URL", "").strip()
+    # Render provides postgres:// but psycopg2 requires postgresql://
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    return url
 
 def _use_postgres() -> bool:
     return bool(_database_url())
