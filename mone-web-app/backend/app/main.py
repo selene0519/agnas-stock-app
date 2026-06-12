@@ -5555,3 +5555,212 @@ def api_broker_disconnect(body: dict = Body(...), authorization: str | None = He
         return JSONResponse(status_code=400, content={"ok": False, "error": "broker 필드가 필요합니다."})
     _broker.disconnect(user_id, broker)
     return {"ok": True, "message": f"{broker} 연결이 해제되었습니다."}
+
+
+# Local broker bridge override.
+# The legacy broker routes above used to test tokens and sync holdings from the
+# server process. Cloud IPs are blocked by some brokers, so the active routes
+# below accept only sanitized holdings uploaded from the user's PC.
+_BROKER_ROUTE_PATHS = {
+    "/api/broker/connections",
+    "/api/broker/connect",
+    "/api/broker/test",
+    "/api/broker/sync-holdings",
+    "/api/broker/disconnect",
+}
+for _route in list(app.router.routes):
+    if isinstance(_route, APIRoute) and getattr(_route, "path", "") in _BROKER_ROUTE_PATHS:
+        try:
+            app.router.routes.remove(_route)
+        except ValueError:
+            pass
+
+
+def _bridge_num(value, default: float = 0.0) -> float:
+    try:
+        if value in (None, "", "nan"):
+            return default
+        return float(str(value).replace(",", "").strip())
+    except Exception:
+        return default
+
+
+def _bridge_market(value) -> str:
+    return "us" if str(value or "kr").lower().strip() == "us" else "kr"
+
+
+def _bridge_symbol(value, market: str) -> str:
+    raw = str(value or "").strip()
+    if market == "kr":
+        digits = "".join(ch for ch in raw if ch.isdigit())
+        return digits.zfill(6)[-6:] if digits else raw
+    return raw.upper()
+
+
+def _normalize_bridge_holding(item: dict, broker: str) -> dict | None:
+    market = _bridge_market(item.get("market"))
+    symbol = _bridge_symbol(item.get("symbol") or item.get("code") or item.get("ticker"), market)
+    if not symbol:
+        return None
+    quantity = _bridge_num(item.get("quantity") or item.get("qty"))
+    avg_price = _bridge_num(item.get("avgPrice") or item.get("averagePrice") or item.get("avg_price"))
+    current_price = _bridge_num(item.get("currentPrice") or item.get("price") or item.get("current_price"))
+    eval_amount = _bridge_num(item.get("evalAmount") or item.get("valuation") or item.get("marketValue"))
+    if not eval_amount and quantity and current_price:
+        eval_amount = quantity * current_price
+    profit_loss = _bridge_num(item.get("profitLoss") or item.get("pnl") or item.get("profit_loss"))
+    profit_loss_rate = _bridge_num(item.get("profitLossRate") or item.get("pnlRate") or item.get("profit_loss_rate"))
+    return {
+        "broker": broker,
+        "source": broker,
+        "market": market,
+        "symbol": symbol,
+        "name": str(item.get("name") or item.get("stockName") or symbol).strip(),
+        "quantity": str(quantity),
+        "avgPrice": str(avg_price),
+        "stopPrice": str(item.get("stopPrice") or item.get("stop") or ""),
+        "targetPrice": str(item.get("targetPrice") or item.get("target") or ""),
+        "currentPrice": current_price,
+        "evalAmount": eval_amount,
+        "valuation": eval_amount,
+        "profitLoss": profit_loss,
+        "profitLossRate": profit_loss_rate,
+        "syncedAt": int(time.time()),
+    }
+
+
+def _save_bridge_holdings(user_id: str, broker: str, items: list[dict], mode: str = "replace_broker") -> dict:
+    normalized = [row for row in (_normalize_bridge_holding(item, broker) for item in items) if row]
+    if not normalized:
+        return {"ok": False, "code": "NO_HOLDINGS", "message": "No holdings were provided for upload.", "count": 0}
+    existing = _db.get_holdings(user_id, "all") if mode != "replace_all" else []
+    by_key: dict[tuple[str, str], dict] = {
+        (_bridge_market(row.get("market")), str(row.get("symbol") or "").strip()): dict(row)
+        for row in existing
+        if str(row.get("symbol") or "").strip()
+    }
+    if mode in ("replace", "replace_broker"):
+        by_key = {
+            key: row
+            for key, row in by_key.items()
+            if str(row.get("broker") or row.get("source") or "manual").lower() != broker
+        }
+    added = 0
+    updated = 0
+    for row in normalized:
+        key = (_bridge_market(row.get("market")), str(row.get("symbol") or "").strip())
+        if key in by_key:
+            updated += 1
+        else:
+            added += 1
+        by_key[key] = row
+    saved = _db.save_holdings(user_id, list(by_key.values()))
+    return {"ok": True, "status": "OK", "count": len(normalized), "added": added, "updated": updated, "saved": saved}
+
+
+@app.get("/api/broker/connections")
+def api_broker_connections_bridge(authorization: str | None = Header(default=None)) -> dict:
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    return {"ok": True, "connections": _broker.get_all_connections(payload.get("userId", ""))}
+
+
+@app.post("/api/broker/test")
+def api_broker_test_bridge(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    try:
+        _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    broker = str(body.get("broker", "")).lower().strip()
+    if broker not in ("toss", "kis"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "broker must be toss or kis."})
+    return _broker.local_bridge_mode_response(broker)
+
+
+@app.post("/api/broker/connect")
+def api_broker_connect_bridge(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    broker = str(body.get("broker", "")).lower().strip()
+    if broker not in ("toss", "kis"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "broker must be toss or kis."})
+    return {
+        **_broker.local_bridge_mode_response(broker),
+        "status": _broker.get_connection_status(payload.get("userId", ""), broker),
+    }
+
+
+@app.post("/api/broker/local-bridge/upload")
+def api_broker_local_bridge_upload(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    user_id = payload.get("userId", "")
+    broker = str(body.get("broker", "")).lower().strip()
+    if broker not in ("toss", "kis", "manual", "file"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "broker must be toss, kis, manual, or file."})
+    items = body.get("items") or body.get("holdings") or []
+    if not isinstance(items, list):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "items must be an array."})
+    result = _save_bridge_holdings(user_id, broker, items, str(body.get("mode", "replace_broker")).lower().strip())
+    if not result.get("ok"):
+        return JSONResponse(status_code=400, content=result)
+    _broker.save_bridge_status(
+        user_id,
+        broker,
+        account_no_hint=str(body.get("accountNoHint") or body.get("accountHint") or ""),
+        item_count=int(result.get("count") or 0),
+        sync_time=time.time(),
+        source=str(body.get("source") or "local_bridge"),
+    )
+    return {
+        **result,
+        "broker": broker,
+        "connection": _broker.get_connection_status(user_id, broker),
+        "message": f"{broker} local bridge snapshot applied: {result.get('count', 0)} holdings.",
+    }
+
+
+@app.post("/api/broker/sync-holdings")
+def api_broker_sync_holdings_bridge(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    broker = str(body.get("broker", "")).lower().strip()
+    if broker not in ("toss", "kis"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "broker must be toss or kis."})
+    status = _broker.get_connection_status(payload.get("userId", ""), broker)
+    if status.get("connected"):
+        return {
+            "ok": True,
+            "status": "OK",
+            "broker": broker,
+            "count": status.get("itemCount", 0),
+            "lastSync": status.get("lastSync"),
+            "message": "The latest local bridge snapshot is already applied.",
+        }
+    return JSONResponse(status_code=409, content={
+        "ok": False,
+        "code": "LOCAL_BRIDGE_UPLOAD_REQUIRED",
+        "broker": broker,
+        "message": "Run the local bridge upload from your PC first.",
+    })
+
+
+@app.delete("/api/broker/disconnect")
+def api_broker_disconnect_bridge(body: dict = Body(...), authorization: str | None = Header(default=None)) -> dict:
+    try:
+        payload = _require_user(authorization)
+    except ValueError as e:
+        return JSONResponse(status_code=401, content={"ok": False, "error": str(e)})
+    broker = str(body.get("broker", "")).lower().strip()
+    if broker not in ("toss", "kis", "manual", "file"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "Invalid broker value."})
+    _broker.disconnect(payload.get("userId", ""), broker)
+    return {"ok": True, "message": f"{broker} local bridge status disconnected."}

@@ -59,9 +59,21 @@ def _pg_init_schema():
                 avg_price    DOUBLE PRECISION NOT NULL DEFAULT 0,
                 stop_price   DOUBLE PRECISION,
                 target_price DOUBLE PRECISION,
+                broker       TEXT DEFAULT 'manual',
+                current_price DOUBLE PRECISION,
+                eval_amount  DOUBLE PRECISION,
+                profit_loss  DOUBLE PRECISION,
+                profit_loss_rate DOUBLE PRECISION,
+                synced_at    BIGINT,
                 updated_at   BIGINT NOT NULL,
                 PRIMARY KEY (user_id, market, symbol)
             );
+            ALTER TABLE user_holdings ADD COLUMN IF NOT EXISTS broker TEXT DEFAULT 'manual';
+            ALTER TABLE user_holdings ADD COLUMN IF NOT EXISTS current_price DOUBLE PRECISION;
+            ALTER TABLE user_holdings ADD COLUMN IF NOT EXISTS eval_amount DOUBLE PRECISION;
+            ALTER TABLE user_holdings ADD COLUMN IF NOT EXISTS profit_loss DOUBLE PRECISION;
+            ALTER TABLE user_holdings ADD COLUMN IF NOT EXISTS profit_loss_rate DOUBLE PRECISION;
+            ALTER TABLE user_holdings ADD COLUMN IF NOT EXISTS synced_at BIGINT;
             CREATE TABLE IF NOT EXISTS user_watchlist (
                 user_id    TEXT NOT NULL,
                 market     TEXT NOT NULL CHECK(market IN ('kr','us')),
@@ -82,13 +94,13 @@ def _pg_get_holdings(uid: str, market: str) -> list[dict]:
         with conn.cursor() as cur:
             if market == "all":
                 cur.execute(
-                    "SELECT market,symbol,name,quantity,avg_price,stop_price,target_price "
+                    "SELECT market,symbol,name,quantity,avg_price,stop_price,target_price,broker,current_price,eval_amount,profit_loss,profit_loss_rate,synced_at "
                     "FROM user_holdings WHERE user_id=%s ORDER BY market,symbol",
                     (uid,)
                 )
             else:
                 cur.execute(
-                    "SELECT market,symbol,name,quantity,avg_price,stop_price,target_price "
+                    "SELECT market,symbol,name,quantity,avg_price,stop_price,target_price,broker,current_price,eval_amount,profit_loss,profit_loss_rate,synced_at "
                     "FROM user_holdings WHERE user_id=%s AND market=%s ORDER BY symbol",
                     (uid, market)
                 )
@@ -112,12 +124,15 @@ def _pg_save_holdings(uid: str, items: list[dict]) -> int:
                     continue
                 cur.execute("""
                     INSERT INTO user_holdings
-                    (user_id,market,symbol,name,quantity,avg_price,stop_price,target_price,updated_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    (user_id,market,symbol,name,quantity,avg_price,stop_price,target_price,broker,current_price,eval_amount,profit_loss,profit_loss_rate,synced_at,updated_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (user_id,market,symbol) DO UPDATE SET
                         name=EXCLUDED.name, quantity=EXCLUDED.quantity,
                         avg_price=EXCLUDED.avg_price, stop_price=EXCLUDED.stop_price,
-                        target_price=EXCLUDED.target_price, updated_at=EXCLUDED.updated_at
+                        target_price=EXCLUDED.target_price, broker=EXCLUDED.broker,
+                        current_price=EXCLUDED.current_price, eval_amount=EXCLUDED.eval_amount,
+                        profit_loss=EXCLUDED.profit_loss, profit_loss_rate=EXCLUDED.profit_loss_rate,
+                        synced_at=EXCLUDED.synced_at, updated_at=EXCLUDED.updated_at
                 """, (
                     uid, mk, sym,
                     str(item.get("name", sym)).strip(),
@@ -125,6 +140,12 @@ def _pg_save_holdings(uid: str, items: list[dict]) -> int:
                     _to_float(item.get("avgPrice", 0)),
                     _opt_float(item.get("stopPrice")),
                     _opt_float(item.get("targetPrice")),
+                    str(item.get("broker") or item.get("source") or "manual").strip() or "manual",
+                    _to_float(item.get("currentPrice")),
+                    _to_float(item.get("evalAmount") or item.get("valuation")),
+                    _to_float(item.get("profitLoss")),
+                    _to_float(item.get("profitLossRate")),
+                    int(_to_float(item.get("syncedAt") or now) or now),
                     now,
                 ))
                 saved += 1
@@ -188,6 +209,14 @@ def _pg_holding_row(r) -> dict:
         "quantity": str(r[3]), "avgPrice": str(r[4]),
         "stopPrice": str(r[5]) if r[5] is not None else "",
         "targetPrice": str(r[6]) if r[6] is not None else "",
+        "broker": r[7] or "manual",
+        "source": r[7] or "manual",
+        "currentPrice": r[8],
+        "evalAmount": r[9],
+        "valuation": r[9],
+        "profitLoss": r[10],
+        "profitLossRate": r[11],
+        "syncedAt": r[12],
     }
 
 def _pg_watch_row(r) -> dict:
@@ -220,6 +249,8 @@ def _sqlite_get_conn() -> sqlite3.Connection:
             user_id TEXT NOT NULL, market TEXT NOT NULL, symbol TEXT NOT NULL,
             name TEXT NOT NULL DEFAULT '', quantity REAL NOT NULL DEFAULT 0,
             avg_price REAL NOT NULL DEFAULT 0, stop_price REAL, target_price REAL,
+            broker TEXT DEFAULT 'manual', current_price REAL, eval_amount REAL,
+            profit_loss REAL, profit_loss_rate REAL, synced_at INTEGER,
             updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, market, symbol)
         );
         CREATE TABLE IF NOT EXISTS user_watchlist (
@@ -228,6 +259,18 @@ def _sqlite_get_conn() -> sqlite3.Connection:
             PRIMARY KEY (user_id, market, symbol)
         );
         """)
+        cols = {row["name"] for row in _sqlite_conn.execute("PRAGMA table_info(user_holdings)").fetchall()}
+        migrations = {
+            "broker": "ALTER TABLE user_holdings ADD COLUMN broker TEXT DEFAULT 'manual'",
+            "current_price": "ALTER TABLE user_holdings ADD COLUMN current_price REAL",
+            "eval_amount": "ALTER TABLE user_holdings ADD COLUMN eval_amount REAL",
+            "profit_loss": "ALTER TABLE user_holdings ADD COLUMN profit_loss REAL",
+            "profit_loss_rate": "ALTER TABLE user_holdings ADD COLUMN profit_loss_rate REAL",
+            "synced_at": "ALTER TABLE user_holdings ADD COLUMN synced_at INTEGER",
+        }
+        for col, sql in migrations.items():
+            if col not in cols:
+                _sqlite_conn.execute(sql)
         _sqlite_conn.commit()
     return _sqlite_conn
 
@@ -246,6 +289,14 @@ def _sqlite_get_holdings(uid: str, market: str) -> list[dict]:
         "quantity": str(r["quantity"]), "avgPrice": str(r["avg_price"]),
         "stopPrice": str(r["stop_price"]) if r["stop_price"] is not None else "",
         "targetPrice": str(r["target_price"]) if r["target_price"] is not None else "",
+        "broker": r["broker"] or "manual",
+        "source": r["broker"] or "manual",
+        "currentPrice": r["current_price"],
+        "evalAmount": r["eval_amount"],
+        "valuation": r["eval_amount"],
+        "profitLoss": r["profit_loss"],
+        "profitLossRate": r["profit_loss_rate"],
+        "syncedAt": r["synced_at"],
     } for r in rows]
 
 def _sqlite_save_holdings(uid: str, items: list[dict]) -> int:
@@ -262,11 +313,18 @@ def _sqlite_save_holdings(uid: str, items: list[dict]) -> int:
             continue
         conn.execute("""
             INSERT OR REPLACE INTO user_holdings
-            (user_id,market,symbol,name,quantity,avg_price,stop_price,target_price,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?)
+            (user_id,market,symbol,name,quantity,avg_price,stop_price,target_price,broker,current_price,eval_amount,profit_loss,profit_loss_rate,synced_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (uid, mk, sym, str(item.get("name",sym)).strip(),
               _to_float(item.get("quantity",0)), _to_float(item.get("avgPrice",0)),
-              _opt_float(item.get("stopPrice")), _opt_float(item.get("targetPrice")), now))
+              _opt_float(item.get("stopPrice")), _opt_float(item.get("targetPrice")),
+              str(item.get("broker") or item.get("source") or "manual").strip() or "manual",
+              _to_float(item.get("currentPrice")),
+              _to_float(item.get("evalAmount") or item.get("valuation")),
+              _to_float(item.get("profitLoss")),
+              _to_float(item.get("profitLossRate")),
+              int(_to_float(item.get("syncedAt") or now) or now),
+              now))
         saved += 1
     conn.commit()
     return saved
