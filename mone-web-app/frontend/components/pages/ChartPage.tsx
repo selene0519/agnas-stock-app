@@ -886,6 +886,113 @@ function shouldRenderTrendline(distPct: number | null, valid: boolean, touchCoun
   return absDist <= maxDist;
 }
 
+type ChartOverlayMeta = {
+  type?: string;
+  precisionType?: string;
+  price?: number;
+  baseDate?: string;
+  source?: string;
+  precisionGapPct?: number | null;
+  stale?: boolean;
+  extendFutureBars?: number;
+  reason?: string;
+  warnings?: string[];
+};
+
+function futureBarsForPeriod(bars: number | null) {
+  if (bars == null || bars >= 252) return 20;
+  if (bars <= 21) return 5;
+  return 12;
+}
+
+function addBusinessDays(dateText: string, count: number) {
+  const date = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateText;
+  let added = 0;
+  while (added < count) {
+    date.setDate(date.getDate() + 1);
+    const day = date.getDay();
+    if (day !== 0 && day !== 6) added += 1;
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+function futureTimes(lastTime: string, bars: number) {
+  return Array.from({ length: Math.max(0, bars) }, (_, i) => addBusinessDays(lastTime, i + 1));
+}
+
+function overlayColor(type = "", precisionType = "") {
+  const key = `${type}:${precisionType}`.toLowerCase();
+  if (key.includes("stop")) return "#ef4444";
+  if (key.includes("target") || key.includes("resistance")) return "#06b6d4";
+  if (key.includes("support")) return "#22c55e";
+  if (key.includes("precision")) return "#f59e0b";
+  if (key.includes("breakout")) return "#a78bfa";
+  return "#22c55e";
+}
+
+function overlayLabel(overlay: ChartOverlayMeta, projected = false) {
+  const type = String(overlay.type || "overlay");
+  const precisionType = String(overlay.precisionType || type);
+  const base =
+    type === "precision" ? `정밀근거:${precisionType}`
+    : type === "supportLine" ? "저점-저점 지지선"
+    : type === "resistanceLine" ? "고점-고점 저항선"
+    : type === "entryPrice" ? "진입가"
+    : type === "stopPrice" ? "손절가"
+    : type === "targetPrice" ? "목표가"
+    : type === "historicalSupportLevels" ? "과거 지지선"
+    : precisionType;
+  return projected ? `${base} 연장` : base;
+}
+
+function splitHorizontalOverlay(overlay: ChartOverlayMeta, actualTimes: string[], projectedTimes: string[]) {
+  const price = Number(overlay.price);
+  if (!Number.isFinite(price) || price <= 0 || actualTimes.length === 0) {
+    return { actualSegment: [], projectedSegment: [] };
+  }
+  const first = actualTimes[0];
+  const last = actualTimes[actualTimes.length - 1];
+  return {
+    actualSegment: [{ time: first, value: price }, { time: last, value: price }],
+    projectedSegment: projectedTimes.length ? [{ time: last, value: price }, ...projectedTimes.map((time) => ({ time, value: price }))] : [],
+  };
+}
+
+function splitTrendlineProjection(
+  points: { time: string; value: number }[],
+  timeToIndex: Map<string, number>,
+  projectedTimes: string[],
+) {
+  const clean = points.filter((p) => p.time && Number.isFinite(Number(p.value)));
+  if (clean.length < 2) return { actualSegment: clean, projectedSegment: [] };
+  const p1 = clean[clean.length - 2];
+  const p2 = clean[clean.length - 1];
+  const i1 = timeToIndex.get(p1.time) ?? clean.length - 2;
+  const i2 = timeToIndex.get(p2.time) ?? clean.length - 1;
+  const slope = i2 !== i1 ? (p2.value - p1.value) / (i2 - i1) : 0;
+  const projectedSegment = projectedTimes.map((time, offset) => ({
+    time,
+    value: Math.max(0, p2.value + slope * (offset + 1)),
+  }));
+  return {
+    actualSegment: clean,
+    projectedSegment: projectedSegment.length ? [p2, ...projectedSegment] : [],
+  };
+}
+
+function precisionWarnings(meta: any) {
+  const warnings = new Set<string>(Array.isArray(meta?.overlayWarnings) ? meta.overlayWarnings : []);
+  const out: string[] = [];
+  if (warnings.has("symbol_mismatch")) out.push("symbol mismatch");
+  if (warnings.has("missing_currentPrice")) out.push("missing currentPrice");
+  if (warnings.has("missing_precisionBasePrice")) out.push("missing precisionBasePrice");
+  if (warnings.has("precision_gap_large")) out.push("현재가와 기준선 괴리 큼");
+  if (warnings.has("precision_base_stale")) out.push("정밀근거 기준일 오래됨");
+  if (warnings.has("current_ohlcv_date_mismatch")) out.push("최신 봉과 현재가 기준일 불일치");
+  return out;
+}
+
 // ── ③ 0.868 되돌림 (피보나치 + 핵심 레벨) ────────────────────────────
 /**
  * 피보나치 되돌림 계산 — 가장 최근 완성된 ZigZag 스윙 기준
@@ -1059,13 +1166,14 @@ function calcFakeBreakouts(
 }
 
 // ── TvChart (캔들 + 지수 비교선) ─────────────────────────────────────
-function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis = null, precisionEvidence = false }: {
+function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis = null, precisionEvidence = false, chartMeta = null, futureProjectionBars = 12 }: {
   rows: any[]; levels: any; market: string;
-  toggles: Record<ToggleKey, boolean>; indexRows?: any[]; chartAnalysis?: any; precisionEvidence?: boolean;
+  toggles: Record<ToggleKey, boolean>; indexRows?: any[]; chartAnalysis?: any; precisionEvidence?: boolean; chartMeta?: any; futureProjectionBars?: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const [renderError, setRenderError] = useState("");
+  const [projectionHover, setProjectionHover] = useState(false);
 
   const candleData = useMemo(() => rows
     .map((r) => {
@@ -1109,6 +1217,56 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
           wickUpColor: "#22c55e", wickDownColor: "#ef4444",
         });
         candleSeries.setData(candleData);
+        const actualTimes = candleData.map((d) => d.time);
+        const timeToIndex = new Map(actualTimes.map((time, index) => [time, index]));
+        const projectedTimes = futureTimes(actualTimes[actualTimes.length - 1], futureProjectionBars);
+        const projectedTimeSet = new Set(projectedTimes);
+        const addSegmentedLine = (
+          actualSegment: { time: string; value: number }[],
+          projectedSegment: { time: string; value: number }[],
+          color: string,
+          title: string,
+          width: 1 | 2 | 3 = 1,
+        ) => {
+          if (actualSegment.length >= 2) {
+            const actual = chart.addLineSeries({
+              color,
+              lineWidth: width,
+              priceLineVisible: false,
+              crosshairMarkerVisible: false,
+              lastValueVisible: false,
+              title,
+            });
+            actual.setData(actualSegment);
+          }
+          if (projectedSegment.length >= 2) {
+            const projected = chart.addLineSeries({
+              color: chartColorWithAlpha(color, 0.45),
+              lineWidth: width,
+              lineStyle: LW.LineStyle.Dashed,
+              priceLineVisible: false,
+              crosshairMarkerVisible: false,
+              lastValueVisible: true,
+              title: `${title} 연장`,
+            });
+            projected.setData(projectedSegment);
+          }
+        };
+        const addHorizontalOverlay = (overlay: ChartOverlayMeta) => {
+          const color = overlayColor(overlay.type, overlay.precisionType);
+          const points = Array.isArray((overlay as any).points)
+            ? (overlay as any).points
+                .map((point: any) => ({ time: String(point.date || point.time || ""), value: Number(point.price) }))
+                .filter((point: { time: string; value: number }) => point.time && Number.isFinite(point.value) && point.value > 0)
+            : [];
+          if (points.length >= 2) {
+            const { actualSegment, projectedSegment } = splitTrendlineProjection(points, timeToIndex, projectedTimes);
+            addSegmentedLine(actualSegment, projectedSegment, color, overlayLabel(overlay), overlay.type === "supportLine" || overlay.type === "resistanceLine" ? 2 : 1);
+            return;
+          }
+          const { actualSegment, projectedSegment } = splitHorizontalOverlay(overlay, actualTimes, projectedTimes);
+          addSegmentedLine(actualSegment, projectedSegment, color, overlayLabel(overlay), overlay.type === "precision" ? 2 : 1);
+        };
 
         if (toggles.volume) {
           const volSeries = chart.addHistogramSeries({ color: "#334155", priceFormat: { type: "volume" }, priceScaleId: "volume" });
@@ -1186,10 +1344,12 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         }
 
         // 진입/손절/목표 수평선
-        if (levels) {
+        if (levels && !Array.isArray(chartMeta?.overlays)) {
           const addLine = (price: number, color: string, title: string) => {
             if (!price || price <= 0) return;
-            candleSeries.createPriceLine({ price, color, lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title });
+            const overlay: ChartOverlayMeta = { type: title, precisionType: title, price };
+            const { actualSegment, projectedSegment } = splitHorizontalOverlay(overlay, actualTimes, projectedTimes);
+            addSegmentedLine(actualSegment, projectedSegment, color, title, 1);
           };
           addLine(levelValue(levels, "entry"), "#22c55e", "기준");
           addLine(levelValue(levels, "stop"),  "#ef4444", "손절");
@@ -1198,6 +1358,14 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
 
         // ══ Phase 6 — 고급 차트 분석 ══════════════════════════════════════
         // 공통 데이터: ZigZag + 매물대 (다른 기능들이 참조)
+        if (Array.isArray(chartMeta?.overlays)) {
+          chartMeta.overlays
+            .filter((overlay: ChartOverlayMeta) => Number(overlay.price) > 0)
+            .filter((overlay: any) => overlay.valid !== false)
+            .slice(0, 12)
+            .forEach(addHorizontalOverlay);
+        }
+
         const volMap = new Map(rows.map((row: any) => [chartTime(row), Number(row.volume || row.Volume || 0)]));
         const vols   = candleData.map(d => volMap.get(d.time) || 0);
         const pivots = candleData.length >= 12 ? calcZigZagFull(candleData, 0.05, 3) : [];
@@ -1235,7 +1403,16 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
               crosshairMarkerVisible: false, lastValueVisible: false,
               lineStyle: upStyle,
             });
-            upSeries.setData(tl.uptrend);
+            const upProjected = splitTrendlineProjection(tl.uptrend, timeToIndex, projectedTimes);
+            upSeries.setData(upProjected.actualSegment);
+            if (upProjected.projectedSegment.length >= 2) {
+              const upExt = chart.addLineSeries({
+                color: chartColorWithAlpha(upColor, 0.45), lineWidth: upWidth, priceLineVisible: false,
+                crosshairMarkerVisible: false, lastValueVisible: true, lineStyle: LW.LineStyle.Dashed,
+                title: "추세 기준선 연장",
+              });
+              upExt.setData(upProjected.projectedSegment);
+            }
 
             if (tl.uptrendVal != null) {
               const isBroken = lastClose < tl.uptrendVal * 0.998;
@@ -1261,7 +1438,16 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
               crosshairMarkerVisible: false, lastValueVisible: false,
               lineStyle: dnStyle,
             });
-            dnSeries.setData(tl.downtrend);
+            const dnProjected = splitTrendlineProjection(tl.downtrend, timeToIndex, projectedTimes);
+            dnSeries.setData(dnProjected.actualSegment);
+            if (dnProjected.projectedSegment.length >= 2) {
+              const dnExt = chart.addLineSeries({
+                color: chartColorWithAlpha(dnColor, 0.45), lineWidth: dnWidth, priceLineVisible: false,
+                crosshairMarkerVisible: false, lastValueVisible: true, lineStyle: LW.LineStyle.Dashed,
+                title: "저항 추세선 연장",
+              });
+              dnExt.setData(dnProjected.projectedSegment);
+            }
 
             if (tl.downtrendVal != null) {
               const isBroken = lastClose > tl.downtrendVal * 1.002;
@@ -1381,7 +1567,12 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
           }
         }
 
+        chart.subscribeCrosshairMove((param: any) => {
+          const time = typeof param?.time === "string" ? param.time : "";
+          setProjectionHover(Boolean(time && projectedTimeSet.has(time)));
+        });
         chart.timeScale().fitContent();
+        chart.timeScale().applyOptions({ rightOffset: Math.max(2, Math.floor(futureProjectionBars / 3)) });
         const ro = new ResizeObserver(() => {
           if (containerRef.current && chartRef.current) {
             chartRef.current.resize(containerRef.current.clientWidth, containerRef.current.clientHeight || 320);
@@ -1396,7 +1587,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
     }
     init();
     return () => { if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; } };
-  }, [candleData, rows, levels, toggles, indexRows, chartAnalysis, precisionEvidence]);
+  }, [candleData, rows, levels, toggles, indexRows, chartAnalysis, precisionEvidence, chartMeta, futureProjectionBars]);
 
   if (candleData.length < 2) {
     return (
@@ -1411,6 +1602,11 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
   return (
     <div className="relative">
       <div ref={containerRef} className="h-[320px] w-full overflow-hidden rounded-xl sm:h-[380px]" />
+      {projectionHover && (
+        <div className="pointer-events-none absolute right-3 top-3 rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-[11px] text-slate-300 shadow-lg">
+          실제 봉 없음 / 기준선 연장 구간
+        </div>
+      )}
       {renderError && (
         <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-amber-500/20 bg-slate-950/90 p-4 text-center text-sm text-amber-100">
           {renderError}
@@ -1675,6 +1871,7 @@ export default function ChartPage() {
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [levels, setLevels] = useState<any | null>(null);
+  const [chartMeta, setChartMeta] = useState<any | null>(null);
   const [news, setNews] = useState<any[]>([]);
   const [disclosures, setDisclosures] = useState<any[]>([]);
   const [company, setCompany] = useState<any | null>(null);
@@ -1709,6 +1906,7 @@ export default function ChartPage() {
     updatedAt: "",
     recoDate: "",
   });
+  const futureProjectionBars = futureBarsForPeriod(period);
 
   function readStoredChartSymbol(): MoneSymbol | null {
     if (typeof window === "undefined") return null;
@@ -1806,13 +2004,13 @@ export default function ChartPage() {
   }, [market, selected]);
 
   useEffect(() => {
-    if (!selected) { setRows([]); setLevels(null); setNews([]); setDisclosures([]); setCompany(null); return; }
+    if (!selected) { setRows([]); setLevels(null); setChartMeta(null); setNews([]); setDisclosures([]); setCompany(null); return; }
     let active = true;
     const controller = new AbortController();
     setLoading(true);
     setLoadState((prev) => ({ ...prev, errors: [], updatedAt: "" }));
     Promise.allSettled([
-      mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260 }, controller.signal),
+      mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }, controller.signal),
       mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal),
       mone.news({ market: selected.market, limit: 200 }, controller.signal),
       mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal),
@@ -1828,6 +2026,7 @@ export default function ChartPage() {
         .map((item: any) => item?.status === "ERROR" ? item.error || "API 오류" : "")
         .filter(Boolean);
       setRows(chartRows);
+      setChartMeta(cd || null);
       const detailItem = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
       const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
       setLevels(matched || null);
@@ -1858,7 +2057,7 @@ export default function ChartPage() {
       });
     }).finally(() => active && setLoading(false));
     return () => { active = false; controller.abort(); };
-  }, [selected, reloadKey]);
+  }, [selected, reloadKey, futureProjectionBars]);
 
   // 지수 비교 데이터 (날짜 기반 join)
   useEffect(() => {
@@ -1906,6 +2105,10 @@ export default function ChartPage() {
     dataStatus: loadState.ohlcvStatus,
   });
   const touchReview = recommendationTouchReview(rows, levels, currentPrice, selected?.market || market, loadState.recoDate || undefined);
+  const precisionWarningBadges = precisionWarnings(chartMeta);
+  const precisionGapText = Number.isFinite(Number(chartMeta?.precisionGapPct))
+    ? `${Number(chartMeta.precisionGapPct) >= 0 ? "+" : ""}${Number(chartMeta.precisionGapPct).toFixed(1)}%`
+    : "";
   const visibleTouchReviewCards = touchReview.cards.filter((card) => card.value && card.value !== "-");
   const analysisReasonLines = moneReasonLines(levels || selected || {})
     .map((line) => safeLabel(line, {}, ""))
@@ -2329,8 +2532,41 @@ export default function ChartPage() {
 
             {!loading && rows.length > 0 && (
               <div className="space-y-2">
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                    <span className="font-semibold text-slate-200">정밀근거 기준</span>
+                    <span>기준일 {chartMeta?.precisionBaseDate || "-"}</span>
+                    <span>기준가 {chartMeta?.precisionBasePrice ? money(chartMeta.precisionBasePrice, selected.market) : "-"}</span>
+                    <span>현재가 {chartMeta?.currentPrice ? money(chartMeta.currentPrice, selected.market) : "-"}</span>
+                    {precisionGapText && <span className={Math.abs(Number(chartMeta?.precisionGapPct)) >= 10 ? "font-mono text-amber-300" : "font-mono text-slate-300"}>괴리 {precisionGapText}</span>}
+                    <span className="text-slate-500">currentPriceSource: {chartMeta?.currentPriceSource || "-"}</span>
+                    <span className="text-slate-500">ohlcvSource: {chartMeta?.ohlcvSource || chartMeta?.source || "-"}</span>
+                    <span className="text-slate-500">precisionSource: {chartMeta?.precisionSource || "-"}</span>
+                    <span className="text-slate-500">추천일 {chartMeta?.recommendationDate || loadState.recoDate || "-"}</span>
+                    <span className="text-slate-500">연장 {futureProjectionBars}봉</span>
+                  </div>
+                  {precisionWarningBadges.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {precisionWarningBadges.map((warning) => (
+                        <span key={warning} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
+                          {warning}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="rounded-xl border border-slate-800 bg-[#020617] p-2">
-                  <TvChart rows={filteredRows} levels={levels} market={selected.market} toggles={toggles} indexRows={indexRows} chartAnalysis={chartAnalysis} precisionEvidence={precisionEvidence} />
+                  <TvChart
+                    rows={filteredRows}
+                    levels={levels}
+                    market={selected.market}
+                    toggles={toggles}
+                    indexRows={indexRows}
+                    chartAnalysis={chartAnalysis}
+                    precisionEvidence={precisionEvidence}
+                    chartMeta={chartMeta}
+                    futureProjectionBars={futureProjectionBars}
+                  />
                   <div className="mt-2 flex flex-wrap gap-3 px-2 text-xs text-slate-500">
                     <span>봉: {filteredRows.length}개 (전체 {rows.length})</span>
                     <span>최근: {latest?.date || "-"}</span>
@@ -2346,6 +2582,7 @@ export default function ChartPage() {
                       {toggles.supply     && <span style={{ color: "#f59e0b" }}>··· 매물대</span>}
                       {toggles.fakeBreak  && <span style={{ color: "#ef4444" }}>▼ 가짜돌파</span>}
                       {levels && <><span style={{ color: "#22c55e" }}>-- 기준</span><span style={{ color: "#ef4444" }}>-- 손절</span><span style={{ color: "#06b6d4" }}>-- 목표</span></>}
+                      <span className="text-slate-500">-- 연장선 = 기준선 연장, 미래 캔들 아님</span>
                     </span>
                   </div>
                 </div>
