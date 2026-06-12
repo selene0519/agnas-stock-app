@@ -1159,8 +1159,12 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
 
   const bucketColor =
     decisionBucket === "오늘 진입"  ? "bg-emerald-600 text-white"
+    : decisionBucket === "기다림"   ? "bg-sky-600 text-white"
+    : decisionBucket === "다음 진입" ? "bg-blue-600 text-white"
+    : decisionBucket === "관찰"     ? "bg-slate-500 text-slate-100"
     : decisionBucket === "대기 관찰" ? "bg-amber-600 text-white"
     : decisionBucket === "매수금지"  ? "bg-red-700 text-white"
+    : decisionBucket === "주의"     ? "bg-red-700/80 text-white"
     : "bg-slate-700 text-slate-300";
 
   // EV 근거 (백엔드 probability 필드 활용)
@@ -1536,16 +1540,27 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
       ) : (
         <div className="space-y-1.5">
           {top.map((item) => {
-            const isToday = item.decisionBucket === "오늘 진입";
-            const isWatch = item.decisionBucket === "대기 관찰";
+            const bucket = String(item.decisionBucket || "");
+            const isToday  = bucket === "오늘 진입";
+            const isWait   = bucket === "기다림";
+            const isNext   = bucket === "다음 진입";
+            const isWatch  = bucket === "관찰" || bucket === "대기 관찰";
+            const isCaution = bucket === "주의";
             const ev = Number(item.expectedValue || 0);
+            const rowCls = isToday  ? "bg-emerald-950/40 border border-emerald-800/30"
+              : isWait   ? "bg-sky-950/40 border border-sky-800/30"
+              : isNext   ? "bg-blue-950/40 border border-blue-800/20"
+              : isWatch  ? "bg-slate-900/60"
+              : isCaution ? "bg-red-950/30 border border-red-900/20 opacity-50"
+              : "bg-slate-950/50 opacity-60";
             return (
-              <div key={item.symbol} onClick={() => onSelect(item)} className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:brightness-125 ${
-                isToday ? "bg-emerald-950/40 border border-emerald-800/30" : isWatch ? "bg-slate-900/60" : "bg-slate-950/50 opacity-60"
-              }`}>
+              <div key={item.symbol} onClick={() => onSelect(item)} className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:brightness-125 ${rowCls}`}>
                 <div className="min-w-0 flex-1">
                   <span className="truncate text-[11px] font-medium text-slate-200">{displayName(item)}</span>
-                  {isToday && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">검토</span>}
+                  {isToday  && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">검토</span>}
+                  {isWait   && <span className="ml-1 rounded bg-sky-700/50 px-1 text-[9px] text-sky-300">대기</span>}
+                  {isNext   && <span className="ml-1 rounded bg-blue-700/50 px-1 text-[9px] text-blue-300">다음</span>}
+                  {isCaution && <span className="ml-1 rounded bg-red-700/50 px-1 text-[9px] text-red-300">주의</span>}
                   {isWatch && item.timingLabel && <span className="ml-1 rounded bg-amber-900/40 px-1 text-[9px] text-amber-400">{item.timingLabel}</span>}
                 </div>
                 <span className={`font-mono text-[10px] ${ev >= 1 ? "text-emerald-400" : ev >= 0 ? "text-slate-400" : "text-red-400"}`}>

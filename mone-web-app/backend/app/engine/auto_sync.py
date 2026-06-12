@@ -82,7 +82,7 @@ def _files_changed(before: str, after: str) -> int:
 
 
 def _clear_all_caches() -> int:
-    """lru_cache를 사용하는 모든 모듈의 캐시 초기화."""
+    """lru_cache 및 TTL 캐시를 사용하는 모든 모듈의 캐시 초기화."""
     cleared = 0
     targets = [
         "app.services.data_loader",
@@ -102,6 +102,14 @@ def _clear_all_caches() -> int:
                     cleared += 1
             except Exception:
                 pass
+        # TTL cache dicts (final_engine)
+        try:
+            if hasattr(mod, "_RECO_CACHE"):
+                mod._RECO_CACHE.clear()
+                mod._RECO_CACHE_TS.clear()
+                cleared += 1
+        except Exception:
+            pass
     gc.collect()
     return cleared
 

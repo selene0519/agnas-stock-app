@@ -5,8 +5,14 @@ from datetime import datetime
 from functools import lru_cache
 import os
 import re
+import time as _time
 from pathlib import Path
 from typing import Any, Iterable
+
+# ── TTL cache for final_recommendations (invalidates every 5 min) ─────────────
+_RECO_CACHE: dict[tuple, dict[str, Any]] = {}
+_RECO_CACHE_TS: dict[tuple, float] = {}
+_RECO_CACHE_TTL_SEC: int = 300  # 5 minutes
 
 import numpy as np
 import pandas as pd
@@ -32,6 +38,43 @@ MODE_RULES = {
     "conservative": {"min_opportunity": 68, "min_entry": 64, "max_risk": 38, "max_gap": 0.035, "max_items": 5, "risk_mult": 0.82},
     "balanced": {"min_opportunity": 58, "min_entry": 54, "max_risk": 56, "max_gap": 0.075, "max_items": 8, "risk_mult": 1.0},
     "aggressive": {"min_opportunity": 48, "min_entry": 42, "max_risk": 74, "max_gap": 0.13, "max_items": 12, "risk_mult": 1.25},
+}
+
+# Consistent event-risk weighting across mode filtering, decision bucket, and rank score.
+_EVENT_RISK_WEIGHT: float = 0.4
+
+# Mode-specific rank weights for all 7 sub-scores.
+# Conservative: prioritise safety (strong risk penalty, entry quality, RR, quality).
+# Balanced:     balanced opportunity + entry + moderate risk penalty.
+# Aggressive:   maximise upside + momentum, lighter risk penalty.
+_MODE_RANK_WEIGHTS: dict[str, dict[str, float]] = {
+    "conservative": {
+        "opportunityScore": 0.28,
+        "entryScore":       0.30,
+        "rrScore":          0.14,
+        "qualityScore":     0.10,
+        "momentumScore":    0.05,
+        "risk_neg":         0.32,
+        "newsReliability":  0.06,
+    },
+    "balanced": {
+        "opportunityScore": 0.38,
+        "entryScore":       0.26,
+        "rrScore":          0.10,
+        "momentumScore":    0.08,
+        "qualityScore":     0.05,
+        "risk_neg":         0.25,
+        "newsReliability":  0.08,
+    },
+    "aggressive": {
+        "opportunityScore": 0.48,
+        "entryScore":       0.16,
+        "momentumScore":    0.14,
+        "rrScore":          0.08,
+        "qualityScore":     0.02,
+        "risk_neg":         0.18,
+        "newsReliability":  0.05,
+    },
 }
 
 EVENT_KEYWORDS = {
@@ -1075,7 +1118,7 @@ def _mode_allowed(mode: str, horizon: str, scores: dict[str, Any], event_risk: i
     rule = MODE_RULES.get(mode, MODE_RULES["balanced"])
     opp = float(scores.get("opportunityScore") or 0)
     entry = float(scores.get("entryScore") or 0)
-    risk = float(scores.get("riskScore") or 0) + event_risk * 0.35
+    risk = float(scores.get("riskScore") or 0) + event_risk * _EVENT_RISK_WEIGHT
     gap = scores.get("gap")
     if mode == "aggressive" and horizon == "short":
         return opp >= 45 and entry >= 38 and risk <= 82 and (gap is None or gap <= 0.16)
@@ -1087,7 +1130,7 @@ def _mode_allowed(mode: str, horizon: str, scores: dict[str, Any], event_risk: i
 def _decision_bucket(mode: str, horizon: str, scores: dict[str, Any], event_risk: int, surge_label: str) -> tuple[str, str, str]:
     opp = float(scores.get("opportunityScore") or 0)
     entry = float(scores.get("entryScore") or 0)
-    risk = float(scores.get("riskScore") or 0) + event_risk * 0.35
+    risk = float(scores.get("riskScore") or 0) + event_risk * _EVENT_RISK_WEIGHT
     gap = scores.get("gap")
     gap_text = "기준가 거리 없음" if gap is None else f"기준가 대비 {gap * 100:+.1f}%"
     if risk >= 70 or surge_label == "과열 주의":
@@ -1098,6 +1141,8 @@ def _decision_bucket(mode: str, horizon: str, scores: dict[str, Any], event_risk
         return "기다림", "기준가 도달 대기", f"좋은 후보이나 {gap_text} · 체결 조건 확인 필요"
     if opp >= 65 and risk < 70:
         return "다음 진입", "다음 장전 재검토", f"기회는 있으나 진입점수 {entry:.1f}로 보수적 확인 필요"
+    if opp >= 50 and risk < 65:
+        return "관찰", "중립 관망", f"기회 {opp:.1f} · 기준 미달 — {gap_text}"
     return "주의", "관망/제외", f"기회 {opp:.1f} / 위험 {risk:.1f}"
 
 
@@ -1139,11 +1184,14 @@ def _conditional_execution(item: dict[str, Any], mode: str, horizon: str, df: pd
     return result
 
 
-@lru_cache(maxsize=256)
 def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: str = "swing", limit: int | None = None) -> dict[str, Any]:
     market = "us" if str(market).lower() == "us" else "kr"
     mode = mode if mode in MODES else "balanced"
     horizon = horizon if horizon in HORIZONS else "swing"
+    _cache_key = (market, mode, horizon, limit)
+    _now_ts = _time.monotonic()
+    if _cache_key in _RECO_CACHE and _now_ts - _RECO_CACHE_TS.get(_cache_key, 0.0) < _RECO_CACHE_TTL_SEC:
+        return _RECO_CACHE[_cache_key]
     max_allowed = min(50, runtime_limits.recommendation_max_symbols())
     requested_limit = runtime_limits.clamp_limit(limit, 20, max_allowed)
     news_map = _news_context(market)
@@ -1281,7 +1329,17 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         execution = _conditional_execution(normalized, mode, horizon, df, ohlcv_source)
         holding_decision = "보유 유지" if surge in {"추세 지속 후보", "보유 유지 후보"} and event_risk < 55 else "비중 축소/손절선 확인" if event_risk >= 55 else "보유자는 목표가·손절가 대응"
         sell_timing = "목표가 도달 시 분할익절 / 손절가 이탈 시 종료 / 보유기간 종료 시 재검토"
-        base_rank = float(scores["opportunityScore"]) * 0.45 + float(scores["entryScore"]) * 0.35 - (float(scores["riskScore"]) + event_risk * 0.4) * 0.25 + news_reliability * 0.08
+        w = _MODE_RANK_WEIGHTS.get(mode, _MODE_RANK_WEIGHTS["balanced"])
+        effective_risk = float(scores["riskScore"]) + event_risk * _EVENT_RISK_WEIGHT
+        base_rank = (
+            float(scores["opportunityScore"]) * w["opportunityScore"]
+            + float(scores["entryScore"]) * w["entryScore"]
+            + float(scores.get("rrScore") or 0) * w.get("rrScore", 0)
+            + float(scores.get("momentumScore") or 0) * w.get("momentumScore", 0)
+            + float(scores.get("qualityScore") or 0) * w.get("qualityScore", 0)
+            - effective_risk * w["risk_neg"]
+            + news_reliability * w["newsReliability"]
+        )
         if bucket == "오늘 진입":
             base_rank += 8
         chart_adj = float(chart_overlay.get("chartScoreAdjustment") or 0)
@@ -1376,11 +1434,14 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
                 _ps_rows = _ps_df.to_dict("records")
                 _ps_result = _ps_analyze(sym, market, _ps_rows)
                 row["patternStrategy"] = _ps_result
-                # Propagate isBlocked signal to finalRankScore (완화: -5)
+                # isBlocked → meaningful penalty (-15) + force decision bucket to 주의
                 if _ps_result.get("isBlocked"):
                     row["finalRankScore"] = round(
-                        max(0.0, float(row.get("finalRankScore", 0)) - 5.0), 1
+                        max(0.0, float(row.get("finalRankScore", 0)) - 15.0), 1
                     )
+                    row["recommended"] = False
+                    row["decisionBucket"] = "주의"
+                    row["buyTiming"] = "패턴 차단 — 진입 보류"
             else:
                 row["patternStrategy"] = {**_PS_FALLBACK, "message": "Insufficient OHLCV data"}
         except Exception:
@@ -1418,7 +1479,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         max_allowed=max_allowed,
         dataSourceType="mixed",
     )
-    return {
+    _result = {
         "status": "OK",
         "market": market,
         "mode": mode,
@@ -1433,6 +1494,9 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         "items": selected,
         "generatedAt": _now(),
     }
+    _RECO_CACHE[_cache_key] = _result
+    _RECO_CACHE_TS[_cache_key] = _time.monotonic()
+    return _result
 
 
 def _recommendation_detail_score(row: dict[str, Any]) -> float:
