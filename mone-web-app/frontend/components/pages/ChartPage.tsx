@@ -1011,7 +1011,6 @@ function precisionWarnings(meta: any) {
   if (warnings.has("missing_precisionBasePrice")) out.push("missing precisionBasePrice");
   if (warnings.has("precision_gap_large")) out.push("현재가와 기준선 괴리 큼");
   if (warnings.has("precision_base_stale")) out.push("정밀근거 기준일 오래됨");
-  if (warnings.has("current_ohlcv_date_mismatch")) out.push("최신 봉과 현재가 기준일 불일치");
   return out;
 }
 
@@ -2619,11 +2618,6 @@ export default function ChartPage() {
                     <span>기준가 {chartMeta?.precisionBasePrice ? money(chartMeta.precisionBasePrice, selected.market) : "-"}</span>
                     <span>현재가 {chartMeta?.currentPrice ? money(chartMeta.currentPrice, selected.market) : "-"}</span>
                     {precisionGapText && <span className={Math.abs(Number(chartMeta?.precisionGapPct)) >= 10 ? "font-mono text-amber-300" : "font-mono text-slate-300"}>괴리 {precisionGapText}</span>}
-                    <span className="text-slate-500">currentPriceSource: {chartMeta?.currentPriceSource || "-"}</span>
-                    <span className="text-slate-500">ohlcvSource: {chartMeta?.ohlcvSource || chartMeta?.source || "-"}</span>
-                    <span className="text-slate-500">precisionSource: {chartMeta?.precisionSource || "-"}</span>
-                    <span className="text-slate-500">추천일 {chartMeta?.recommendationDate || loadState.recoDate || "-"}</span>
-                    <span className="text-slate-500">연장 {futureProjectionBars}봉</span>
                   </div>
                   {precisionWarningBadges.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
