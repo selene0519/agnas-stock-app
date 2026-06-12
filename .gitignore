@@ -4,10 +4,18 @@
 *.env
 *token_cache*.json
 kis_token_cache*.json
+toss_token_cache*.json
 data/kis_token_cache*.json
+data/toss_token_cache*.json
 reports/kis_token_cache*.json
 **/kis_token_cache*.json
+**/toss_token_cache*.json
 **/*token_cache*.json
+# broker holdings snapshots (local only, uploaded via bridge)
+data/kis_holdings_kr.csv
+data/toss_holdings_kr.csv
+data/toss_holdings*.csv
+data/toss_holdings*.json
 
 # local/runtime
 __pycache__/
