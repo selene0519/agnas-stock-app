@@ -52,11 +52,29 @@ const US_HOLIDAYS = new Set([
   "2027-11-25","2027-12-24",
 ]);
 
+function etDateStr(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const get = (type: string) => String(parts.find((p) => p.type === type)?.value || "0").padStart(2, "0");
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function etDayOfWeek(now = new Date()): number {
+  const d = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(now);
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(d);
+}
+
 export function isMarketClosed(market: "kr" | "us", now = new Date()): boolean {
+  if (market === "us") {
+    const dow = etDayOfWeek(now); // ET 기준 요일로 주말 판단
+    if (dow === 0 || dow === 6) return true;
+    return US_HOLIDAYS.has(etDateStr(now));
+  }
   const dow = kstDayOfWeek(now);
-  if (dow === 0 || dow === 6) return true; // 주말
-  const d = kstDateStr(now);
-  return market === "kr" ? KR_HOLIDAYS.has(d) : US_HOLIDAYS.has(d);
+  if (dow === 0 || dow === 6) return true;
+  return KR_HOLIDAYS.has(kstDateStr(now));
 }
 
 // ── 다음 거래일 ───────────────────────────────────────────────────────
