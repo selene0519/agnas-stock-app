@@ -21,6 +21,25 @@ def _database_url() -> str:
         url = "postgresql://" + url[len("postgres://"):]
     return url
 
+
+def _resolve_ipv4_dsn(url: str) -> str:
+    """Replace hostname with IPv4 address to avoid IPv6-only hosts on Render."""
+    import socket, urllib.parse
+    try:
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.hostname or ""
+        if not host or host.replace(".", "").isdigit():
+            return url  # already IP or empty
+        infos = socket.getaddrinfo(host, parsed.port or 5432, socket.AF_INET, socket.SOCK_STREAM)
+        if infos:
+            ipv4 = infos[0][4][0]
+            # rebuild URL replacing hostname with ipv4
+            netloc = parsed.netloc.replace(host, ipv4)
+            return urllib.parse.urlunparse(parsed._replace(netloc=netloc))
+    except Exception:
+        pass
+    return url
+
 def _use_postgres() -> bool:
     return bool(_database_url())
 
@@ -35,7 +54,7 @@ def _pg_pool_get():
     global _pg_pool
     if _pg_pool is None:
         import psycopg2.pool
-        url = _database_url()
+        url = _resolve_ipv4_dsn(_database_url())
         _pg_pool = psycopg2.pool.ThreadedConnectionPool(1, 10, dsn=url)
         _pg_init_schema()
     return _pg_pool
