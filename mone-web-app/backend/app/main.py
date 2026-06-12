@@ -5276,6 +5276,67 @@ def api_home_summary(
                         continue
                 if not rows_:
                     return key_, {"status": "NO_DATA", "items": [], "count": 0, "positiveEvCount": 0, "source": "csv_empty"}
+                # ── CSV rows 신규 필드 보강 (riskReason 등 live 계산) ───────
+                try:
+                    _lev_kw = ("레버리지", "인버스", "2x", "3x", "곱버스")
+                    _wf_cache = final_engine._load_walkforward_metrics(mk)
+                    _wf_cell  = _wf_cache.get(f"{mode_}_{horizon_}", {})
+                    for _r in rows_:
+                        # riskReason
+                        if not _r.get("riskReason"):
+                            _sc = {
+                                "riskScore":        float(_r.get("riskScore") or 0),
+                                "opportunityScore": float(_r.get("opportunityScore") or 0),
+                            }
+                            _r["riskReason"] = final_engine._risk_reason(
+                                _sc,
+                                int(float(_r.get("eventRiskScore") or 0)),
+                                str(_r.get("surgeLabel") or ""),
+                            )
+                        # priceLevelWarning
+                        if not _r.get("priceLevelWarning"):
+                            def _pf(v: object) -> "float | None":
+                                try:
+                                    f = float(v or 0); return f if f > 0 else None
+                                except Exception: return None
+                            _r["priceLevelWarning"] = final_engine._price_level_warning(
+                                _pf(_r.get("entry")), _pf(_r.get("stop")), _pf(_r.get("target"))
+                            )
+                        # dataAsOf
+                        if not _r.get("dataAsOf"):
+                            _r["dataAsOf"] = str(
+                                _r.get("ohlcvLatestDate") or _r.get("latestDataDate") or _r.get("dataDate") or ""
+                            )
+                        # gapWarningPct
+                        if _r.get("gapWarningPct") is None:
+                            try:
+                                _g = float(_r.get("gap") or 0)
+                                _r["gapWarningPct"] = round(abs(_g) * 100, 1) if _g else None
+                            except Exception:
+                                _r["gapWarningPct"] = None
+                        # currentPriceSource
+                        if not _r.get("currentPriceSource"):
+                            _r["currentPriceSource"] = str(
+                                _r.get("priceSourceType") or _r.get("dataSourceType") or "OHLCV"
+                            )
+                        # isLeveragedEtf / leverageWarning
+                        if "isLeveragedEtf" not in _r:
+                            _nm_l = str(_r.get("name", "")).lower()
+                            _is_lev = any(kw in _nm_l for kw in _lev_kw)
+                            _r["isLeveragedEtf"] = _is_lev
+                            _r["leverageWarning"] = (
+                                "레버리지/인버스 ETF — 단기 변동성 매우 크며 복리 손실 위험 있음"
+                                if _is_lev else ""
+                            )
+                        # walkforwardMetrics
+                        if not _r.get("walkforwardMetrics"):
+                            _r["walkforwardMetrics"] = _wf_cell
+                        # walkforwardAdjustment
+                        if _r.get("walkforwardAdjustment") is None:
+                            _r["walkforwardAdjustment"] = round(float(_wf_cell.get("adjustment", 0.0)), 1)
+                except Exception:
+                    pass
+                # ─────────────────────────────────────────────────────────────
                 # 이름 보정: name == symbol 인 경우 sector_map에서 조회
                 try:
                     sm_path = data.REPO_ROOT / "data" / f"sector_map_{mk}.csv"
