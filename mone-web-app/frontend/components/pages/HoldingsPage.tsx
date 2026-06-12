@@ -166,6 +166,30 @@ function formatHoldingMoney(value: number, market: "kr" | "us") {
     : `KRW ${Math.round(value).toLocaleString("ko-KR")}`;
 }
 
+function holdingAssetLabel(assetType: any) {
+  const type = String(assetType || "stock");
+  if (type === "stock") return "개별주";
+  if (type === "leveraged_etf") return "레버리지 ETF";
+  if (type === "inverse_etf") return "인버스 ETF";
+  if (type === "dividend_etf") return "배당 ETF";
+  if (type === "bond_etf") return "채권 ETF";
+  if (type === "broad_etf") return "대표지수 ETF";
+  if (type === "theme_etf") return "테마 ETF";
+  if (type === "sector_etf") return "섹터 ETF";
+  if (type === "long_term_etf") return "장기 ETF";
+  return "유형 확인";
+}
+
+function holdingPurposeLabel(purpose: any) {
+  const value = String(purpose || "");
+  if (value === "short_trade") return "단기";
+  if (value === "swing") return "스윙";
+  if (value === "long_term") return "장기";
+  if (value === "savings_plan") return "적립";
+  if (value === "dividend") return "배당";
+  return "전략 확인";
+}
+
 function localHoldingDisplayRows(rows: any[]) {
   return dedupe(rows.map((row) => {
     const item = toEditableHolding(row);
@@ -824,24 +848,28 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
     for (const holding of items) {
       const name = displayName(holding);
       const symbol = String(holding.symbol || "");
-      const hasStopPrice = Number(holding.stopPrice ?? holding.stop ?? 0) > 0;
-      const hasTargetPrice = Number(holding.targetPrice ?? holding.target ?? 0) > 0;
-      const stopMissing = (!holding.stopText || holding.stopText === "-") && !hasStopPrice;
-      const targetMissing = (!holding.targetText || holding.targetText === "-") && !hasTargetPrice;
-      const stopGapPct = holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
+      const assetType = String(holding.assetType || holding.instrumentType || "stock");
+      const isEtf = assetType.includes("etf");
+      const downsideLabel = String(holding.downsideLineLabel || (isEtf ? "리스크 기준선" : "손절선"));
+      const upsideLabel = String(holding.upsideLineLabel || (isEtf ? "수익실현 기준선" : "목표가"));
+      const hasDownside = Number(holding.downsideLine ?? holding.stopPrice ?? holding.stop ?? 0) > 0;
+      const hasUpside = Number(holding.upsideLine ?? holding.targetPrice ?? holding.target ?? 0) > 0;
+      const downsideMissing = !hasDownside;
+      const targetMissing = !hasUpside;
+      const stopGapPct = holding.downsideGapPct != null ? Number(holding.downsideGapPct) : holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
       const targetGapPct = holding.targetGapPct != null ? Number(holding.targetGapPct) : null;
       if (!holding.currentPrice || Number(holding.currentPrice) <= 0) {
         rows.push({ key: `${symbol}-price`, tone: "amber", title: `${name} 현재가 없음`, detail: "수동 갱신 또는 다음 수집 필요" });
       }
-      if (stopMissing) rows.push({ key: `${symbol}-stop`, tone: "amber", title: `${name} 손절가 필요`, detail: "보유 리스크 판단 기준 없음", action: "stop" });
-      if (targetMissing) rows.push({ key: `${symbol}-target`, tone: "blue", title: `${name} 목표가 필요`, detail: "익절 판단 기준 없음", action: "target" });
+      if (downsideMissing) rows.push({ key: `${symbol}-stop`, tone: "amber", title: `${name} ${downsideLabel} 필요`, detail: isEtf ? "ETF 비중 조절 기준 없음" : "보유 리스크 판단 기준 없음", action: "stop" });
+      if (targetMissing) rows.push({ key: `${symbol}-target`, tone: "blue", title: `${name} ${upsideLabel} 필요`, detail: isEtf ? "ETF 상단 조절 기준 없음" : "익절 판단 기준 없음", action: "target" });
       if (stopGapPct !== null && stopGapPct <= 2) {
-        rows.push({ key: `${symbol}-stop-near`, tone: "red", title: `${name} 손절 근접`, detail: `${stopGapPct.toFixed(2)}% 여유` });
+        rows.push({ key: `${symbol}-stop-near`, tone: "red", title: `${name} ${downsideLabel} 근접`, detail: `${stopGapPct.toFixed(2)}% 여유` });
       } else if (stopGapPct !== null && stopGapPct <= 5) {
-        rows.push({ key: `${symbol}-stop-watch`, tone: "amber", title: `${name} 손절권 주의`, detail: `${stopGapPct.toFixed(2)}% 여유` });
+        rows.push({ key: `${symbol}-stop-watch`, tone: "amber", title: `${name} ${downsideLabel} 주의`, detail: `${stopGapPct.toFixed(2)}% 여유` });
       }
       if (targetGapPct !== null && targetGapPct >= 0 && targetGapPct <= 3) {
-        rows.push({ key: `${symbol}-target-near`, tone: "blue", title: `${name} 목표가 근접`, detail: `${targetGapPct.toFixed(2)}% 남음` });
+        rows.push({ key: `${symbol}-target-near`, tone: "blue", title: `${name} ${upsideLabel} 근접`, detail: `${targetGapPct.toFixed(2)}% 남음` });
       }
     }
     return rows.slice(0, 8);
@@ -1239,15 +1267,25 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
         {items.map((holding: any) => {
           const key = editableKey(holding);
           const isEditing = editKey === key && !!editDraft;
-          const hasStopPrice = Number(holding.stopPrice ?? holding.stop ?? 0) > 0;
-          const hasTargetPrice = Number(holding.targetPrice ?? holding.target ?? 0) > 0;
-          const stopMissing = (!holding.stopText || holding.stopText === "-") && !hasStopPrice;
-          const targetMissing = (!holding.targetText || holding.targetText === "-") && !hasTargetPrice;
-          const stopGapPct = holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
+          const assetType = String(holding.assetType || holding.instrumentType || "stock");
+          const isEtf = assetType.includes("etf");
+          const holdingPurpose = String(holding.holdingPurpose || holding.strategyType || "");
+          const downsideLabel = String(holding.downsideLineLabel || (isEtf ? "리스크 기준선" : "손절선"));
+          const upsideLabel = String(holding.upsideLineLabel || (isEtf ? "수익실현 기준선" : "목표가"));
+          const downsideValue = Number(holding.downsideLine ?? holding.stopPrice ?? holding.stop ?? 0);
+          const upsideValue = Number(holding.upsideLine ?? holding.targetPrice ?? holding.target ?? 0);
+          const hasStopPrice = downsideValue > 0;
+          const hasTargetPrice = upsideValue > 0;
+          const stopMissing = !hasStopPrice;
+          const targetMissing = !hasTargetPrice;
+          const stopGapPct = holding.downsideGapPct != null ? Number(holding.downsideGapPct) : holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
           const targetGapPct = holding.targetGapPct != null ? Number(holding.targetGapPct) : null;
           const holdingBroker = brokerLabel(holding.broker || holding.sourceBroker || holding.sourceType || holding.priceSource);
           const weightText = holding.weightText || holding.weightPctText || holding.portfolioWeightText || (holding.weightPct != null ? `${Number(holding.weightPct).toFixed(1)}%` : "-");
           const pnlText = `${holding.pnlText || "-"}${holding.pnlPctText && holding.pnlPctText !== "-" ? ` / ${holding.pnlPctText}` : ""}`;
+          const holdingMarket = cleanHoldingMarket(holding.market);
+          const downsideText = formatHoldingMoney(downsideValue, holdingMarket);
+          const upsideText = formatHoldingMoney(upsideValue, holdingMarket);
           return (
             <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
               <div className="flex items-start justify-between gap-3">
@@ -1256,6 +1294,8 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
                     <h2 className="max-w-[8rem] break-keep text-base font-bold leading-snug text-slate-100 sm:max-w-none">{displayName(holding)}</h2>
                     <span className="font-mono text-xs text-slate-500">{holding.symbol}</span>
                     <span className="whitespace-nowrap rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{holding.market === "kr" ? "국장" : "미장"}</span>
+                    <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-300">{holdingAssetLabel(assetType)}</span>
+                    <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-400">{holdingPurposeLabel(holdingPurpose)}</span>
                   </div>
                   <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                   <div className="mt-1 flex flex-wrap gap-1">
@@ -1309,8 +1349,8 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
 
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
                 <Mini
-                  label="손절선까지"
-                  value={stopGapPct !== null ? `${stopGapPct >= 0 ? "+" : ""}${stopGapPct.toFixed(1)}%` : stopMissing ? "손절선 필요" : "현재가 필요"}
+                  label={`${downsideLabel}까지`}
+                  value={stopGapPct !== null ? `${stopGapPct >= 0 ? "+" : ""}${stopGapPct.toFixed(1)}%` : stopMissing ? `${downsideLabel} 필요` : "현재가 필요"}
                   accent={stopGapPct !== null && stopGapPct <= 2 ? "text-red-300" : stopGapPct !== null && stopGapPct <= 5 ? "text-amber-300" : "text-emerald-300"}
                 />
                 <Mini label="평가손익" value={pnlText} accent={Number(holding.pnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
@@ -1380,8 +1420,8 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
 
               {(stopMissing || targetMissing) && (
                 <div className="mt-3 flex flex-wrap gap-1">
-                  {stopMissing && <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">손절가 필요</span>}
-                  {targetMissing && <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">목표가 필요</span>}
+                  {stopMissing && <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">{downsideLabel} 필요</span>}
+                  {targetMissing && <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">{upsideLabel} 필요</span>}
                 </div>
               )}
 
@@ -1394,15 +1434,15 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
                 <Mini label="평가금액" value={holding.valuationText || holding.marketValueText || "-"} />
                 <Mini label="손익" value={holding.pnlText || "0"}
                   accent={Number(holding.pnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
-                <Mini label="손절가" value={holding.stopText || "-"} accent={stopMissing ? "text-amber-300" : "text-red-300"} />
-                <Mini label="목표가" value={holding.targetText || "-"} accent={targetMissing ? "text-amber-300" : "text-emerald-300"} />
+                <Mini label={downsideLabel} value={downsideText} accent={stopMissing ? "text-amber-300" : "text-red-300"} />
+                <Mini label={upsideLabel} value={upsideText} accent={targetMissing ? "text-amber-300" : "text-emerald-300"} />
               </div>
 
               <div className="mt-4 space-y-2">
                 <div className="rounded-xl bg-slate-950 px-3 py-2.5">
                   <div className="flex justify-between text-[10px] text-slate-400">
-                    <span>손절 여유</span>
-                    <span className="font-mono">{stopGapPct !== null ? `${stopGapPct.toFixed(2)}% 여유` : stopMissing ? "손절가 없음" : "현재가 필요"}</span>
+                    <span>{downsideLabel} 여유</span>
+                    <span className="font-mono">{stopGapPct !== null ? `${stopGapPct.toFixed(2)}% 여유` : stopMissing ? `${downsideLabel} 없음` : "현재가 필요"}</span>
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800">
                     <div className={`h-full rounded-full ${stopGapPct !== null && stopGapPct <= 2 ? "bg-red-500" : stopGapPct !== null && stopGapPct <= 5 ? "bg-amber-400" : "bg-emerald-500"}`}
@@ -1412,7 +1452,7 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
                 {targetGapPct !== null && targetGapPct > 0 && (
                   <div className="rounded-xl bg-slate-950 px-3 py-2.5">
                     <div className="flex justify-between text-[10px] text-slate-400">
-                      <span>목표 여유</span>
+                      <span>{upsideLabel} 여유</span>
                       <span className="font-mono">{targetGapPct.toFixed(2)}% 남음</span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800">
