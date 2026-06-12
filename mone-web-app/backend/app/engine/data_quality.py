@@ -193,6 +193,8 @@ def _candidate_files(market: str) -> list[dict[str, Any]]:
                     _repo_path("data", "market", "snapshots", f"{normalized_market}_kis_current.json"),
                     _repo_path("data", "market", "quotes", f"{normalized_market}_latest_quotes.csv"),
                     _repo_path("reports", f"kis_current_snapshot_{normalized_market}.csv"),
+                    _repo_path("reports", f"kis_current_price_{normalized_market}.csv"),
+                    _repo_path("data", "stockapp", f"kis_current_price_{normalized_market}.csv"),
                 ]
             ),
         },
@@ -203,6 +205,7 @@ def _candidate_files(market: str) -> list[dict[str, Any]]:
                 [
                     _repo_path("data", "market", "intraday", f"{normalized_market}_intraday_snapshot.csv"),
                     _repo_path("reports", f"{normalized_market}_intraday_report.csv"),
+                    _repo_path("reports", f"intraday_realtime_snapshot_{normalized_market}.csv"),
                 ]
             ),
         },
