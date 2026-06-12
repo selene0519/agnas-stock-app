@@ -1051,12 +1051,15 @@ def _validate_overlay(overlay: dict) -> dict:
     elif otype == "resistanceLine" and any(p.get("type") != "high" for p in points):
         out["valid"] = False
         out["invalidReason"] = "resistance_requires_high_high"
-    elif otype == "stopPrice" and current and price and price >= current:
+    elif otype in {"stopPrice", "stopLine"} and current and price and price >= current:
         out["valid"] = False
         out["invalidReason"] = "stop_above_current_price"
-    elif otype == "targetPrice" and current and price and price <= current:
+    elif otype in {"riskLine", "rebalanceLine"} and current and price and price >= current:
         out["valid"] = False
-        out["invalidReason"] = "target_below_current_price"
+        out["invalidReason"] = "downside_line_above_current"
+    elif otype in {"targetPrice", "targetLine", "takeProfitLine", "rebalanceTargetLine"} and current and price and price <= current:
+        out["valid"] = False
+        out["invalidReason"] = "upside_line_below_current"
     elif otype == "precision" and current and price and abs((current - price) / current * 100) >= 15:
         warnings.append("precision_far_from_current")
     out.setdefault("valid", not bool(out.get("invalidReason")))
@@ -1072,6 +1075,231 @@ def _overlay_validation_summary(overlays: list[dict]) -> dict:
         "valid": sum(1 for o in checked if o.get("valid")),
         "invalid": sum(1 for o in checked if not o.get("valid")),
         "warnings": sum(1 for o in checked if o.get("warnings")),
+    }
+
+
+_ETF_BRANDS_KR = (
+    "KODEX", "TIGER", "ACE", "KBSTAR", "ARIRANG", "HANARO", "KOSEF",
+    "SOL", "TIMEFOLIO", "RISE", "PLUS", "WOORI", "FOCUS",
+)
+_BROAD_ETF_MARKERS = (
+    "SPY", "QQQ", "VOO", "IVV", "VTI", "DIA", "KOSPI", "KOSDAQ",
+    "S&P500", "S&P 500", "NASDAQ", "나스닥", "코스피", "코스닥", "200",
+)
+_LEVERAGED_ETF_MARKERS = (
+    "TQQQ", "SQQQ", "SOXL", "SOXS", "QLD", "TNA", "TZA", "UVXY",
+    "레버리지", "인버스", "곱버스", "2X", "3X", "LEVERAGED", "INVERSE",
+    "BULL", "BEAR", "SHORT", "ULTRA",
+)
+_DIVIDEND_ETF_MARKERS = ("SCHD", "DIVIDEND", "배당", "고배당", "월배당")
+_BOND_ETF_MARKERS = ("TLT", "IEF", "SHY", "BND", "AGG", "BOND", "TREASURY", "채권", "국채")
+_THEME_ETF_MARKERS = (
+    "SOXX", "SMH", "XLE", "XLF", "XLK", "반도체", "2차전지", "바이오",
+    "로봇", "AI", "소프트웨어", "은행", "금융", "에너지", "테마",
+)
+_MONE_SYMBOL_NAME_CACHE: dict[str, dict[str, str]] = {}
+
+
+def _mone_symbol_name(symbol: str, market: str = "") -> str:
+    mk = "us" if str(market or "").lower() == "us" else "kr"
+    symbol_key = str(symbol or "").upper().strip()
+    if not symbol_key:
+        return ""
+    if mk not in _MONE_SYMBOL_NAME_CACHE:
+        root = __import__("pathlib").Path(__file__).resolve().parents[3]
+        paths = [root / "data" / "symbol_master_kr_full.csv", root / "data" / "stock_master_kr.csv"]
+        names: dict[str, str] = {}
+        csv_mod = __import__("csv")
+        for path in paths:
+            if not path.exists():
+                continue
+            for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+                try:
+                    with path.open("r", encoding=enc, newline="") as handle:
+                        for row in csv_mod.DictReader(handle):
+                            code = str(row.get("symbol") or row.get("code") or "").upper().strip()
+                            code = code.replace(".KS", "").replace(".KQ", "")
+                            name = str(row.get("name") or row.get("name_kr") or row.get("company") or "").strip()
+                            if code and name and code not in names:
+                                names[code] = name
+                    break
+                except Exception:
+                    continue
+        _MONE_SYMBOL_NAME_CACHE[mk] = names
+    return _MONE_SYMBOL_NAME_CACHE.get(mk, {}).get(symbol_key, "")
+
+
+def _mone_asset_type(symbol: str, name: str = "", market: str = "", row: dict | None = None) -> str:
+    row = row or {}
+    explicit = str(row.get("assetType") or row.get("instrumentType") or "").strip().lower()
+    allowed = {
+        "stock", "broad_etf", "sector_etf", "theme_etf", "leveraged_etf",
+        "inverse_etf", "bond_etf", "dividend_etf", "long_term_etf", "unknown",
+    }
+    if explicit in allowed:
+        return explicit
+    symbol_u = str(symbol or "").upper().strip()
+    resolved_name = str(name or row.get("name") or row.get("company") or _mone_symbol_name(symbol_u, market) or "")
+    name_u = resolved_name.upper()
+    haystack = f"{symbol_u} {name_u}"
+    is_etf = (
+        "ETF" in haystack
+        or any(marker in haystack for marker in _ETF_BRANDS_KR)
+        or symbol_u in {
+            "SPY", "QQQ", "VOO", "IVV", "VTI", "DIA", "IWM", "SCHD", "TLT",
+            "BND", "AGG", "GLD", "SLV", "SOXX", "SMH", "XLE", "XLF", "XLK",
+            "TQQQ", "SQQQ", "SOXL", "SOXS", "QLD", "TNA", "TZA", "UVXY",
+        }
+    )
+    if not is_etf:
+        return "stock" if symbol_u else "unknown"
+    if "INVERSE" in haystack or "인버스" in haystack or symbol_u in {"SQQQ", "SOXS", "TZA"}:
+        return "inverse_etf"
+    if any(marker in haystack for marker in _LEVERAGED_ETF_MARKERS):
+        return "leveraged_etf"
+    if any(marker in haystack for marker in _DIVIDEND_ETF_MARKERS):
+        return "dividend_etf"
+    if any(marker in haystack for marker in _BOND_ETF_MARKERS):
+        return "bond_etf"
+    if any(marker in haystack for marker in _THEME_ETF_MARKERS):
+        return "theme_etf"
+    if any(marker in haystack for marker in _BROAD_ETF_MARKERS):
+        return "broad_etf"
+    return "sector_etf"
+
+
+def _mone_holding_purpose(asset_type: str, row: dict | None = None) -> str:
+    row = row or {}
+    explicit = str(row.get("holdingPurpose") or row.get("strategyType") or row.get("purpose") or "").strip().lower()
+    allowed = {"short_trade", "swing", "long_term", "savings_plan", "dividend", "unknown"}
+    if explicit in allowed:
+        return explicit
+    if asset_type == "stock":
+        return "swing"
+    if asset_type in {"leveraged_etf", "inverse_etf"}:
+        return "short_trade"
+    if asset_type == "dividend_etf":
+        return "dividend"
+    if asset_type in {"broad_etf", "sector_etf", "theme_etf", "bond_etf", "long_term_etf"}:
+        return "long_term"
+    return "unknown"
+
+
+def _mone_line_defaults(asset_type: str, holding_purpose: str) -> dict:
+    if asset_type == "stock":
+        return {
+            "downside_label": "손절선",
+            "downside_type": "stopLine",
+            "downside_mode": "stop",
+            "downside_ratio": 0.92,
+            "upside_label": "목표가",
+            "upside_type": "targetLine",
+            "target_mode": "take_profit",
+            "upside_ratio": 1.12,
+            "reason": "일반 종목 리스크 기준 계산값",
+        }
+    if asset_type in {"leveraged_etf", "inverse_etf"}:
+        return {
+            "downside_label": "ETF 단기 손절선",
+            "downside_type": "stopLine",
+            "downside_mode": "stop",
+            "downside_ratio": 0.94,
+            "upside_label": "ETF 단기 목표가",
+            "upside_type": "takeProfitLine",
+            "target_mode": "take_profit",
+            "upside_ratio": 1.07,
+            "reason": "레버리지/인버스 ETF 단기 리스크 기준",
+        }
+    if holding_purpose in {"long_term", "savings_plan", "dividend"} or asset_type in {"broad_etf", "dividend_etf", "bond_etf", "long_term_etf"}:
+        return {
+            "downside_label": "리밸런싱 기준선",
+            "downside_type": "rebalanceLine",
+            "downside_mode": "rebalance",
+            "downside_ratio": 0.88,
+            "upside_label": "비중 조절 목표선",
+            "upside_type": "rebalanceTargetLine",
+            "target_mode": "rebalance",
+            "upside_ratio": 1.15,
+            "reason": "장기 ETF 비중 조절 기준",
+        }
+    return {
+        "downside_label": "ETF 리스크 기준선",
+        "downside_type": "riskLine",
+        "downside_mode": "risk",
+        "downside_ratio": 0.90,
+        "upside_label": "ETF 수익실현 기준선",
+        "upside_type": "takeProfitLine",
+        "target_mode": "take_profit",
+        "upside_ratio": 1.12,
+        "reason": "ETF 리스크/수익실현 기준",
+    }
+
+
+def _mone_gap_pct(current: float, price: float, direction: str) -> float | None:
+    if not current or not price:
+        return None
+    if direction == "upside":
+        return round((price - current) / current * 100, 2)
+    return round((current - price) / current * 100, 2)
+
+
+def _mone_holding_lines(
+    current: float,
+    avg: float,
+    stop: float,
+    target: float,
+    asset_type: str,
+    holding_purpose: str,
+    source_hint: str = "",
+) -> dict:
+    if asset_type == "unknown" and stop <= 0 and target <= 0:
+        base_price = current if current > 0 else avg
+        return {
+            "downsideLine": None,
+            "downsideLineLabel": "기준선 확인 필요",
+            "downsideLineType": "unknownLine",
+            "downsideMode": "unknown",
+            "downsideSource": "",
+            "downsideBasePrice": base_price if base_price > 0 else None,
+            "downsideGapPct": None,
+            "downsideReason": "종목 유형 또는 가격 데이터 부족",
+            "upsideLine": None,
+            "upsideLineLabel": "목표 기준 확인 필요",
+            "upsideLineType": "unknownLine",
+            "targetMode": "unknown",
+            "targetSource": "",
+            "targetBasePrice": base_price if base_price > 0 else None,
+            "targetGapPct": None,
+            "targetReason": "종목 유형 또는 가격 데이터 부족",
+        }
+    defaults = _mone_line_defaults(asset_type, holding_purpose)
+    base_price = current if current > 0 else avg
+    source = source_hint or "computed_holding_rule"
+    downside = stop if stop > 0 else 0
+    upside = target if target > 0 else 0
+    if base_price > 0:
+        if downside <= 0:
+            downside = round(base_price * defaults["downside_ratio"], 4)
+            source = "computed_holding_rule"
+        if upside <= 0:
+            upside = round(base_price * defaults["upside_ratio"], 4)
+    return {
+        "downsideLine": downside if downside > 0 else None,
+        "downsideLineLabel": defaults["downside_label"],
+        "downsideLineType": defaults["downside_type"],
+        "downsideMode": defaults["downside_mode"],
+        "downsideSource": source if downside > 0 else "",
+        "downsideBasePrice": base_price if base_price > 0 else None,
+        "downsideGapPct": _mone_gap_pct(current, downside, "downside") if downside > 0 else None,
+        "downsideReason": defaults["reason"] if downside > 0 else "가격 데이터 부족",
+        "upsideLine": upside if upside > 0 else None,
+        "upsideLineLabel": defaults["upside_label"],
+        "upsideLineType": defaults["upside_type"],
+        "targetMode": defaults["target_mode"],
+        "targetSource": source if upside > 0 else "",
+        "targetBasePrice": base_price if base_price > 0 else None,
+        "targetGapPct": _mone_gap_pct(current, upside, "upside") if upside > 0 else None,
+        "targetReason": defaults["reason"] if upside > 0 else "가격 데이터 부족",
     }
 
 
@@ -1104,6 +1332,8 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
         "ohlcv_latest_close" if latest_close else "",
     )
     current_price_date = _chart_first(item, ["currentPriceDate", "priceSourceDate", "priceTime"], ohlcv_latest_date)[:10]
+    asset_type = _mone_asset_type(target, _chart_first(item, ["name", "company", "stockName"], ""), market, item)
+    holding_purpose = _mone_holding_purpose(asset_type, item)
 
     precision_base_price = _chart_float(item.get("entry") or item.get("entryPrice"))
     precision_source = "final_recommendations"
@@ -1170,22 +1400,54 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
     )
     if precision_overlay:
         overlays.append(precision_overlay)
-    for overlay_type, field, source_label in (
-        ("entryPrice", "entry", recommendation_source),
-        ("stopPrice", "stop", recommendation_source),
-        ("targetPrice", "target", recommendation_source),
+    entry_overlay = _chart_overlay(
+        "entryPrice",
+        _chart_float(item.get("entry") or item.get("entryPrice")),
+        recommendation_date or precision_base_date or ohlcv_latest_date,
+        recommendation_source,
+        future_bars,
+        precision_type="entryPrice",
+        warnings=["symbol_mismatch"] if symbol_mismatch else [],
+        extra={
+            "label": "진입가",
+            "currentPrice": round(current_price, 4) if current_price else None,
+            "assetType": asset_type,
+            "holdingPurpose": holding_purpose,
+        },
+    )
+    if entry_overlay and not symbol_mismatch:
+        overlays.append(entry_overlay)
+
+    line_fields = _mone_holding_lines(
+        current_price or 0,
+        _chart_float(item.get("avgPrice") or item.get("averagePrice")) or 0,
+        _chart_float(item.get("stop") or item.get("stopPrice")) or 0,
+        _chart_float(item.get("target") or item.get("targetPrice")) or 0,
+        asset_type,
+        holding_purpose,
+        recommendation_source,
+    )
+    for overlay_type, price_key, label_key, gap_key, reason_key in (
+        (line_fields.get("downsideLineType"), "downsideLine", "downsideLineLabel", "downsideGapPct", "downsideReason"),
+        (line_fields.get("upsideLineType"), "upsideLine", "upsideLineLabel", "targetGapPct", "targetReason"),
     ):
         overlay = _chart_overlay(
-            overlay_type,
-            _chart_float(item.get(field) or item.get(f"{field}Price")),
+            str(overlay_type or ""),
+            _chart_float(line_fields.get(price_key)),
             recommendation_date or precision_base_date or ohlcv_latest_date,
-            source_label,
+            recommendation_source if item else str(line_fields.get("downsideSource") or line_fields.get("targetSource") or "computed_holding_rule"),
             future_bars,
-            precision_type=overlay_type,
+            precision_type=str(overlay_type or ""),
             warnings=["symbol_mismatch"] if symbol_mismatch else [],
             extra={
-                "label": overlay_type,
+                "label": line_fields.get(label_key),
+                "reason": line_fields.get(reason_key),
+                "gapPctFromCurrent": line_fields.get(gap_key),
                 "currentPrice": round(current_price, 4) if current_price else None,
+                "assetType": asset_type,
+                "holdingPurpose": holding_purpose,
+                "downsideMode": line_fields.get("downsideMode"),
+                "targetMode": line_fields.get("targetMode"),
             },
         )
         if overlay and not symbol_mismatch:
@@ -1232,6 +1494,11 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
         "recommendationDate": recommendation_date,
         "recommendationSource": recommendation_source,
         "precisionGapPct": round(precision_gap_pct, 3) if precision_gap_pct is not None else None,
+        "assetType": asset_type,
+        "instrumentType": asset_type,
+        "holdingPurpose": holding_purpose,
+        "strategyType": holding_purpose,
+        **line_fields,
         "futureProjectionBars": future_bars,
         "dataStatus": data_status,
         "overlayWarnings": warnings,
@@ -1280,6 +1547,16 @@ def api_chart_debug(
         "precisionBasePrice": enriched.get("precisionBasePrice"),
         "precisionSource": enriched.get("precisionSource"),
         "precisionGapPct": enriched.get("precisionGapPct"),
+        "assetType": enriched.get("assetType"),
+        "holdingPurpose": enriched.get("holdingPurpose"),
+        "downsideLine": enriched.get("downsideLine"),
+        "downsideLineLabel": enriched.get("downsideLineLabel"),
+        "downsideLineType": enriched.get("downsideLineType"),
+        "downsideGapPct": enriched.get("downsideGapPct"),
+        "upsideLine": enriched.get("upsideLine"),
+        "upsideLineLabel": enriched.get("upsideLineLabel"),
+        "upsideLineType": enriched.get("upsideLineType"),
+        "targetGapPct": enriched.get("targetGapPct"),
         "pivotLow": enriched.get("pivotLow", []),
         "pivotHigh": enriched.get("pivotHigh", []),
         "lineCandidates": enriched.get("lineCandidates", {}),
@@ -3108,11 +3385,23 @@ def _install_mone_authoritative_holdings_clean_v3():
                 pnl = _num(row.get("_bridgeProfitLoss"), 0)
                 pnl_pct = _num(row.get("_bridgeProfitLossRate"), 0)
 
+            asset_type = _mone_asset_type(sym, row.get("name") or _text(v, ["name", "company"], ""), mk, {**v, **row})
+            holding_purpose = _mone_holding_purpose(asset_type, {**v, **row})
+
             # 손절/목표: holdings CSV 값 우선, 없으면 v93_position_cards
             stop_from_v93 = _num(_text(v, ["stopPrice", "stop", "stopText", "손절가"], ""), 0)
             target_from_v93 = _num(_text(v, ["targetPrice", "target", "targetText", "목표가"], ""), 0)
             stop = _num(row.get("stopPriceCsv"), 0) or stop_from_v93
             target = _num(row.get("targetPriceCsv"), 0) or target_from_v93
+            line_source = "holdings_csv" if _num(row.get("stopPriceCsv"), 0) > 0 or _num(row.get("targetPriceCsv"), 0) > 0 else ("v93_position_cards" if stop_from_v93 > 0 or target_from_v93 > 0 else "")
+            if asset_type == "stock" and current > 0:
+                if stop <= 0:
+                    stop = round(current * 0.92, 4)
+                    line_source = line_source or "computed_stock_risk"
+                if target <= 0:
+                    target = round(current * 1.12, 4)
+                    line_source = line_source or "computed_stock_risk"
+            line_fields = _mone_holding_lines(current, avg, stop, target, asset_type, holding_purpose, line_source)
             stop_gap_pct = round((current - stop) / current * 100, 2) if current > 0 and stop > 0 else None
             target_gap_pct = round((target - current) / current * 100, 2) if current > 0 and target > 0 else None
             if current <= 0:
@@ -3152,6 +3441,11 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "targetPrice": target,
                 "targetText": f"${target:,.2f}" if mk == "us" and target > 0 else f"{round(target):,}원" if target > 0 else "-",
                 "targetGapPct": target_gap_pct,
+                "assetType": asset_type,
+                "instrumentType": asset_type,
+                "holdingPurpose": holding_purpose,
+                "strategyType": holding_purpose,
+                **line_fields,
                 "riskLevel": _text(v, ["riskLevel", "risk", "status", "판정"], "NORMAL") or "NORMAL",
                 "riskStatus": risk_status,
                 "dataStatus": "NORMAL" if price_source_type == "live_quote" else ("PARTIAL" if current > 0 else "NO_PRICE"),
@@ -3170,6 +3464,22 @@ def _install_mone_authoritative_holdings_clean_v3():
             for _bk in ("_bridgeCurrentPrice", "_bridgeProfitLoss", "_bridgeProfitLossRate", "_bridgeEvalAmount"):
                 item.pop(_bk, None)
             items.append(item)
+
+        totals_by_market: dict[str, float] = {}
+        for item in items:
+            mk = "us" if str(item.get("market", "")).lower() == "us" else "kr"
+            totals_by_market[mk] = totals_by_market.get(mk, 0.0) + _num(item.get("marketValue"), 0)
+        total_all_value = sum(totals_by_market.values())
+        for item in items:
+            mk = "us" if str(item.get("market", "")).lower() == "us" else "kr"
+            market_value = _num(item.get("marketValue"), 0)
+            market_total = totals_by_market.get(mk, 0.0)
+            weight_pct = (market_value / market_total * 100) if market_total > 0 else None
+            all_weight_pct = (market_value / total_all_value * 100) if total_all_value > 0 else None
+            item["weightPct"] = round(weight_pct, 2) if weight_pct is not None else None
+            item["weightText"] = f"{weight_pct:.1f}%" if weight_pct is not None else "-"
+            item["portfolioWeightPct"] = round(all_weight_pct, 2) if all_weight_pct is not None else None
+            item["portfolioWeightText"] = f"{all_weight_pct:.1f}%" if all_weight_pct is not None else "-"
 
         def _money(amount: float, mk: str) -> str:
             if mk == "us":

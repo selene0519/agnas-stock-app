@@ -890,13 +890,17 @@ type ChartOverlayMeta = {
   type?: string;
   precisionType?: string;
   price?: number;
+  label?: string;
   baseDate?: string;
   source?: string;
   precisionGapPct?: number | null;
+  gapPctFromCurrent?: number | null;
   stale?: boolean;
   extendFutureBars?: number;
   reason?: string;
   warnings?: string[];
+  assetType?: string;
+  holdingPurpose?: string;
 };
 
 function futureBarsForPeriod(bars: number | null) {
@@ -924,7 +928,8 @@ function futureTimes(lastTime: string, bars: number) {
 function overlayColor(type = "", precisionType = "") {
   const key = `${type}:${precisionType}`.toLowerCase();
   if (key.includes("stop")) return "#ef4444";
-  if (key.includes("target") || key.includes("resistance")) return "#06b6d4";
+  if (key.includes("risk") || key.includes("rebalance")) return "#f97316";
+  if (key.includes("takeprofit") || key.includes("target") || key.includes("resistance")) return "#06b6d4";
   if (key.includes("support")) return "#22c55e";
   if (key.includes("precision")) return "#f59e0b";
   if (key.includes("breakout")) return "#a78bfa";
@@ -934,15 +939,22 @@ function overlayColor(type = "", precisionType = "") {
 function overlayLabel(overlay: ChartOverlayMeta, projected = false) {
   const type = String(overlay.type || "overlay");
   const precisionType = String(overlay.precisionType || type);
+  const custom = String(overlay.label || "").trim();
   const base =
-    type === "precision" ? `정밀근거:${precisionType}`
+    custom || (type === "precision" ? `정밀근거:${precisionType}`
     : type === "supportLine" ? "저점-저점 지지선"
     : type === "resistanceLine" ? "고점-고점 저항선"
     : type === "entryPrice" ? "진입가"
+    : type === "stopLine" ? "손절선"
+    : type === "riskLine" ? "ETF 리스크 기준선"
+    : type === "rebalanceLine" ? "리밸런싱 기준선"
     : type === "stopPrice" ? "손절가"
+    : type === "targetLine" ? "목표가"
+    : type === "takeProfitLine" ? "수익실현 기준선"
+    : type === "rebalanceTargetLine" ? "비중 조절 목표선"
     : type === "targetPrice" ? "목표가"
     : type === "historicalSupportLevels" ? "과거 지지선"
-    : precisionType;
+    : precisionType);
   return projected ? `${base} 연장` : base;
 }
 
