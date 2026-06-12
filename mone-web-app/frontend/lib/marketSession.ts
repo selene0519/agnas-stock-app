@@ -121,8 +121,9 @@ export function getSessionCountdown(market: "kr" | "us", now = new Date()): stri
 // 자동 모드 기준:
 // - KST 08:00 이상 20:00 미만 → KR
 // - KST 20:00 이상 또는 08:00 미만 → US
-// - 자동 대상 시장이 휴장/공휴일이면 KR 기준 화면으로 고정
 // - 수동 KR/US 선택은 자동보다 우선
+// - 탐색 화면은 실제 시장 개장 여부와 무관하게 시간대 기준으로 결정
+//   (주말/공휴일이라도 20:00~08:00 KST이면 US 예측 데이터를 보여줌)
 export function resolveAutoMarket(
   now = new Date(),
   manualMarket?: Market | SessionMarket | "auto" | null,
@@ -131,9 +132,8 @@ export function resolveAutoMarket(
 
   const { hour, minute } = kstNowParts(now);
   const total = hour * 60 + minute;
-  const marketByTime: SessionMarket = total >= 8 * 60 && total < 20 * 60 ? "kr" : "us";
-
-  return isMarketClosed(marketByTime, now) ? "kr" : marketByTime;
+  // 순수 시간 기반 — 휴장/공휴일 fallback 없음
+  return total >= 8 * 60 && total < 20 * 60 ? "kr" : "us";
 }
 
 // ── 기본 마켓 선택 (세션 기반) ────────────────────────────────────────
