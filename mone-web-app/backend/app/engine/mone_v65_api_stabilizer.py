@@ -1642,6 +1642,7 @@ def _recommendation_item(
         "marketRegime": _text(row, ["marketRegime", "market_regime"], ""),
         # ── 세부 점수 (quant_overlay 전 CSV 원본; overlay가 덮어씀)
         "finalScore": _num(_text(row, ["finalScore", "final_score", "finalRankScore"], "")) or None,
+        "finalRankScore": _num(_text(row, ["finalRankScore", "finalScore", "final_score"], "")) or None,
         "upsideScore": _num(_text(row, ["upsideScore", "upside_score"], "")) or None,
         "riskScore": _num(_text(row, ["riskScore", "risk_score"], "")) or None,
         "momentumScore": _num(_text(row, ["momentumScore", "momentum_score"], "")) or None,
@@ -1788,6 +1789,15 @@ def _light_correction_summary(market: str, mode: str, horizon: str) -> dict[str,
     }
 
 
+def _sync_final_rank_score(item: dict[str, Any]) -> dict[str, Any]:
+    for key in ("finalScore", "quantScore", "finalRankScore"):
+        score = _num(item.get(key))
+        if score > 0:
+            item["finalRankScore"] = round(_clamp(score, 0, 100), 1)
+            break
+    return item
+
+
 def _apply_light_correction(item: dict[str, Any], summary: dict[str, Any]) -> dict[str, Any]:
     if not summary.get("active"):
         return item
@@ -1797,7 +1807,7 @@ def _apply_light_correction(item: dict[str, Any], summary: dict[str, Any]) -> di
     if probability > 0:
         adjusted["probability"] = max(0.0, round(probability - penalty, 1))
         adjusted["probabilityText"] = _pct_text(adjusted["probability"])
-    for key in ("finalScore", "quantScore"):
+    for key in ("finalScore", "finalRankScore", "quantScore"):
         if isinstance(adjusted.get(key), (int, float)):
             adjusted[key] = round(float(adjusted[key]) * 0.85, 1)
     if summary.get("entryBandAction") == "PULL_ENTRY_CLOSER":
@@ -1828,7 +1838,7 @@ def _apply_light_correction(item: dict[str, Any], summary: dict[str, Any]) -> di
         if adjusted.get("warning_reason")
         else str(summary.get("reason") or "자가 보정 감산 적용")
     )
-    return adjusted
+    return _sync_final_rank_score(adjusted)
 
 
 def _apply_chart_signal_overlay(item: dict[str, Any], mode: str, horizon: str) -> dict[str, Any]:
@@ -1880,7 +1890,7 @@ def _apply_chart_signal_overlay(item: dict[str, Any], mode: str, horizon: str) -
         fields = adjusted.setdefault("computedFields", [])
         if isinstance(fields, list) and "chart_signal_overlay" not in fields:
             fields.append("chart_signal_overlay")
-    return adjusted
+    return _sync_final_rank_score(adjusted)
 
 
 @lru_cache(maxsize=8)

@@ -1530,6 +1530,82 @@ def _recommendation_detail_rows(market: str, symbol: str) -> list[dict[str, Any]
     return rows
 
 
+def _sync_detail_rank_score(item: dict[str, Any]) -> dict[str, Any]:
+    for key in ("finalScore", "quantScore", "finalRankScore", "detailScore"):
+        score = _num(item.get(key))
+        if score is not None and score > 0:
+            item["finalRankScore"] = round(float(max(0.0, min(100.0, score))), 1)
+            break
+    return item
+
+
+def _enrich_recommendation_detail_item(item: dict[str, Any], market: str, symbol: str) -> dict[str, Any]:
+    enriched = dict(item)
+    mode = str(enriched.get("mode") or "balanced").lower()
+    horizon = str(enriched.get("horizon") or "swing").lower()
+    if mode not in MODES:
+        mode = "balanced"
+    if horizon not in HORIZONS:
+        horizon = "swing"
+    enriched["mode"] = mode
+    enriched["modeLabel"] = MODE_LABELS[mode]
+    enriched["horizon"] = horizon
+    enriched["horizonLabel"] = HORIZON_LABELS[horizon]
+
+    try:
+        from app.engine.quant_scanner import apply_quant_overlay
+
+        enriched = apply_quant_overlay(enriched, data.REPO_ROOT, mode, horizon)
+    except Exception:
+        enriched.setdefault("computedFields", []).append("quant_scanner_unavailable")
+
+    try:
+        chart_overlay = _chart_signal_overlay(symbol, market, enriched, mode, horizon)
+        enriched.update(chart_overlay)
+        chart_adj = _num(chart_overlay.get("chartScoreAdjustment")) or 0.0
+        if chart_adj:
+            for key in ("finalScore", "finalRankScore", "quantScore"):
+                score = _num(enriched.get(key))
+                if score is not None and score > 0:
+                    enriched[key] = round(float(max(0.0, min(100.0, score + chart_adj))), 1)
+            enriched.setdefault("computedFields", []).append("chart_signal_overlay")
+    except Exception as exc:
+        enriched.setdefault("chartSignalSummary", {
+            "status": "error",
+            "recommendedIntegration": "chart display only / recommendation not used",
+            "displayOnly": ["ZigZag", "retracement", "fakeBreakout"],
+            "usedSignals": [],
+            "badges": ["chart unavailable"],
+            "notes": [f"chart overlay failed: {exc}"],
+        })
+
+    if not isinstance(enriched.get("patternStrategy"), dict):
+        try:
+            from app.engine.pattern_strategy import analyze as _ps_analyze
+
+            df, _ = _latest_ohlcv(symbol, market)
+            if not df.empty and len(df) >= 20:
+                enriched["patternStrategy"] = _ps_analyze(symbol, market, df.to_dict("records"))
+            else:
+                enriched["patternStrategy"] = {
+                    "status": "ERROR",
+                    "riskStatus": "DATA_QUALITY_RISK",
+                    "isBlocked": False,
+                    "action": "WATCH_ONLY",
+                    "message": "Insufficient OHLCV data",
+                }
+        except Exception:
+            enriched["patternStrategy"] = {
+                "status": "ERROR",
+                "riskStatus": "DATA_QUALITY_RISK",
+                "isBlocked": False,
+                "action": "WATCH_ONLY",
+                "message": "Pattern strategy unavailable",
+            }
+
+    return _sync_detail_rank_score(enriched)
+
+
 def recommendation_detail(market: str = "kr", symbol: str = "") -> dict[str, Any]:
     market = "us" if str(market).lower() == "us" else "kr"
     target = data.normalize_symbol(symbol, market)
@@ -1544,13 +1620,14 @@ def recommendation_detail(market: str = "kr", symbol: str = "") -> dict[str, Any
             "item": None,
             "generatedAt": _now(),
         }
-    best = rows[0]
+    enriched_rows = [_enrich_recommendation_detail_item(row, market, target) for row in rows[:9]]
+    best = enriched_rows[0]
     return {
         "status": "OK",
         "market": market,
         "symbol": target,
         "count": len(rows),
-        "items": rows[:9],
+        "items": enriched_rows,
         "item": best,
         "source": best.get("sourceFile", ""),
         "generatedAt": _now(),
