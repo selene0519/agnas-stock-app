@@ -93,6 +93,20 @@ def _latest_ohlcv(symbol: str, market: str) -> tuple[pd.DataFrame, str]:
         return pd.DataFrame(), ""
 
 
+def _latest_ohlcv_date(df: pd.DataFrame) -> str:
+    if df.empty or "date" not in df.columns:
+        return ""
+    try:
+        value = str(df["date"].iloc[-1] or "").strip()
+    except Exception:
+        return ""
+    if re.fullmatch(r"\d{8}", value):
+        return f"{value[:4]}-{value[4:6]}-{value[6:8]}"
+    if re.match(r"\d{4}-\d{2}-\d{2}", value):
+        return value[:10]
+    return value[:10] if value else ""
+
+
 def _chart_data_source_type(df: pd.DataFrame, source: str, normalized: dict[str, Any] | None = None) -> str:
     source_text = _as_text(source).lower()
     row_source = _as_text((normalized or {}).get("sourceType")).lower()
@@ -1255,6 +1269,12 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         # ────────────────────────────────────────────────────────────────────
 
         df, ohlcv_source = _evaluation_window(sym, market, horizon)
+        ohlcv_latest_date = _latest_ohlcv_date(df)
+        reco_generated_at = data.first_value(
+            merged,
+            ["generatedAt", "recoGeneratedAt", "recommendationDate", "updatedAt", "createdAt"],
+            "",
+        )
         surge, surge_reason = _surge_label(normalized, df)
         bucket, buy_timing, decision_reason = _decision_bucket(mode, horizon, scores, event_risk, surge)
         allowed = _mode_allowed(mode, horizon, scores, event_risk)
@@ -1318,6 +1338,12 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             "exitStatus": execution.get("exitStatus", ""),
             "pnlText": execution.get("pnlText", ""),
             "sourceBucket": item.get("baseBucket", item.get("category", "")),
+            "generatedAt": reco_generated_at,
+            "recoGeneratedAt": reco_generated_at,
+            "ohlcvLatestDate": ohlcv_latest_date,
+            "latestDataDate": ohlcv_latest_date,
+            "dataDate": ohlcv_latest_date,
+            "dataBasisLabel": "미장 장마감 기준" if market == "us" else "국장 장마감 기준",
             "newsCount": len(n_rows),
             "disclosureCount": len(d_rows),
             "eventContext": event_text[:300],

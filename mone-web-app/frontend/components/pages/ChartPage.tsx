@@ -1900,6 +1900,7 @@ export default function ChartPage() {
   const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
   const freshness = freshnessInfo(rows);
   const analysisFreshness = dataFreshnessInfo({
+    market: selected?.market || market,
     latestDataDate: dateOf(rows.at(-1)),
     recoGeneratedAt: loadState.recoDate,
     dataStatus: loadState.ohlcvStatus,

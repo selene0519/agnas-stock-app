@@ -1613,6 +1613,8 @@ def _recommendation_item(
         "warning_reason": "자동 보강값 포함" if computed_fields else "",
         "priceSource": _text(quote, ["_source_file"], "") or _text(row, ["_source_file", "sourceFile", "source"], ""),
         "source": _text(row, ["_source_file", "sourceFile", "source"], ""),
+        "generatedAt": _text(row, ["generatedAt", "recoGeneratedAt", "recommendationDate", "updatedAt", "createdAt"], ""),
+        "recoGeneratedAt": _text(row, ["generatedAt", "recoGeneratedAt", "recommendationDate", "updatedAt", "createdAt"], ""),
         "computedFields": computed_fields,
         "isWatch": sym in watch,
         # ── CSV에서 직접 전달되는 새 필드 (generate_kr_recommendations 출력)
@@ -1663,11 +1665,34 @@ def _ohlcv_row_count(market: str, symbol: str) -> int:
     return count
 
 
+@lru_cache(maxsize=2048)
+def _ohlcv_latest_date(market: str, symbol: str) -> str:
+    market = _market_norm(market)
+    sym = _symbol({"symbol": symbol}, market)
+    path = _repo_root() / "data" / "market" / "ohlcv" / f"{market}_{sym}_daily.csv"
+    latest = ""
+    for row in _read_csv(path, 5000):
+        value = str(row.get("date") or row.get("Date") or "").strip()
+        if value:
+            latest = value
+    if re.fullmatch(r"\d{8}", latest):
+        return f"{latest[:4]}-{latest[4:6]}-{latest[6:8]}"
+    if re.match(r"\d{4}-\d{2}-\d{2}", latest):
+        return latest[:10]
+    return latest[:10] if latest else ""
+
+
 def _clear_stale_ohlcv_short_warning(item: dict[str, Any]) -> dict[str, Any]:
     market = _market_norm(str(item.get("market") or "kr"))
     symbol = str(item.get("symbol") or "")
     count = _ohlcv_row_count(market, symbol)
+    latest_date = _ohlcv_latest_date(market, symbol)
     item["ohlcvCount"] = max(int(item.get("ohlcvCount") or 0), count)
+    if latest_date:
+        item["ohlcvLatestDate"] = latest_date
+        item["latestDataDate"] = latest_date
+        item["dataDate"] = latest_date
+        item["dataBasisLabel"] = "미장 장마감 기준" if market == "us" else "국장 장마감 기준"
     if count < 30:
         return item
 
