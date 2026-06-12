@@ -24,6 +24,11 @@ sys.path.insert(0, str(REPO_ROOT / "mone-web-app" / "backend"))
 
 LOG_PATH = REPO_ROOT / "data" / "collector_log.json"
 STATUS_PATH = REPO_ROOT / "reports" / "local_collector_status.json"
+GIT_AUTHOR_NAME = os.getenv("MONE_GIT_AUTHOR_NAME", "selene0519")
+GIT_AUTHOR_EMAIL = os.getenv(
+    "MONE_GIT_AUTHOR_EMAIL",
+    "287042011+selene0519@users.noreply.github.com",
+)
 
 
 def log(msg: str) -> None:
@@ -140,9 +145,18 @@ def generate_recommendations(market: str = "kr") -> dict:
 def git_push(commit_msg: str) -> bool:
     """수집 데이터 GitHub push"""
     try:
+        git_env = os.environ.copy()
+        git_env.update(
+            {
+                "GIT_AUTHOR_NAME": GIT_AUTHOR_NAME,
+                "GIT_AUTHOR_EMAIL": GIT_AUTHOR_EMAIL,
+                "GIT_COMMITTER_NAME": GIT_AUTHOR_NAME,
+                "GIT_COMMITTER_EMAIL": GIT_AUTHOR_EMAIL,
+            }
+        )
         cmds = [
-            ["git", "config", "user.email", "local-collector@mone.app"],
-            ["git", "config", "user.name", "MONE Local Collector"],
+            ["git", "config", "user.email", GIT_AUTHOR_EMAIL],
+            ["git", "config", "user.name", GIT_AUTHOR_NAME],
         ]
         stage_cmds = [
             ["git", "add", "data/market/ohlcv/kr_*_daily.csv"],
@@ -168,6 +182,7 @@ def git_push(commit_msg: str) -> bool:
             ["git", "commit", "-m", f"{commit_msg} [skip ci]"],
             cwd=str(REPO_ROOT),
             capture_output=True,
+            env=git_env,
         )
         result = subprocess.run(
             ["git", "push", "origin", "main"],
