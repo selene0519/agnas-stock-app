@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from app.services import data_loader as data
+from app import db as _db
 
 _LEGACY_BROKER_DIR = data.APP_DIR / "backend" / "broker_credentials"
 _BRIDGE_DIR = data.APP_DIR / "backend" / "broker_bridge_status"
@@ -44,11 +45,10 @@ def save_bridge_status(
     sync_time: float | None = None,
     source: str = "local_bridge",
 ) -> None:
-    """Persist sanitized local bridge status only."""
+    """Persist sanitized local bridge status — DB primary, file fallback."""
     broker = broker.lower().strip()
     if broker not in ("toss", "kis", "manual", "file"):
         broker = "manual"
-    _ensure_dir()
     now = float(sync_time or time.time())
     record = {
         "broker": broker,
@@ -61,10 +61,28 @@ def save_bridge_status(
         "item_count": int(item_count or 0),
         "source": source,
     }
-    _bridge_path(user_id, broker).write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+    # DB (Supabase/SQLite) — survives Render restarts
+    try:
+        _db.save_broker_connection(user_id, broker, record)
+    except Exception as e:
+        print(f"[broker] db save error: {e}")
+    # File fallback (for local dev / backward compat)
+    try:
+        _ensure_dir()
+        _bridge_path(user_id, broker).write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
 
 
 def get_bridge_status(user_id: str, broker: str) -> dict[str, Any] | None:
+    # Try DB first (persistent across restarts)
+    try:
+        db_result = _db.get_broker_connection(user_id, broker)
+        if db_result:
+            return db_result
+    except Exception as e:
+        print(f"[broker] db get error: {e}")
+    # Fall back to file
     path = _bridge_path(user_id, broker)
     if not path.exists():
         return None
