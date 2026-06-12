@@ -368,41 +368,6 @@ def health() -> dict:
     }
 
 
-@app.get("/api/debug/db-test")
-def api_debug_db_test() -> dict:
-    """Temporary diagnostic — checks PostgreSQL write/read round-trip."""
-    import os
-    result: dict = {"backend": _db.backend_info(), "db_url_set": bool(os.environ.get("DATABASE_URL", ""))}
-    try:
-        saved = _db.save_holdings("__dbtest__", [
-            {"symbol": "TEST", "name": "test", "market": "kr", "quantity": 1,
-             "avgPrice": 1, "currentPrice": 1, "evalAmount": 1, "broker": "manual"}
-        ])
-        result["save_result"] = saved
-    except Exception as e:
-        result["save_error"] = str(e)
-    try:
-        rows = _db.get_holdings("__dbtest__", "all")
-        result["read_result"] = len(rows)
-        result["read_items"] = [r.get("symbol") for r in rows]
-    except Exception as e:
-        result["read_error"] = str(e)
-    # direct pg error
-    try:
-        if os.environ.get("DATABASE_URL"):
-            import psycopg2
-            url = os.environ["DATABASE_URL"]
-            if url.startswith("postgres://"):
-                url = "postgresql://" + url[len("postgres://"):]
-            conn = psycopg2.connect(dsn=url, connect_timeout=5)
-            cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM user_holdings WHERE user_id='__dbtest__'")
-            result["direct_count"] = cur.fetchone()[0]
-            conn.close()
-    except Exception as e:
-        result["direct_error"] = str(e)
-    return result
-
 
 @app.post("/api/auth/admin-login")
 def api_admin_login(payload: dict = Body(...)):
