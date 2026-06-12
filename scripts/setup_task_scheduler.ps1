@@ -1,48 +1,69 @@
-# MONE 로컬 수집기 - 작업 스케줄러 등록
-# 사용법: PowerShell에서 .\scripts\setup_task_scheduler.ps1
-# (권한 오류 시 관리자 PowerShell로 재실행)
+# MONE local collection tasks - Windows Task Scheduler registration
+# Usage: PowerShell에서 .\scripts\setup_task_scheduler.ps1
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$python   = (Get-Command python -ErrorAction SilentlyContinue).Source
+$preferredPython = "C:\Users\minbo\AppData\Local\Programs\Python\Python312\python.exe"
+$python = if (Test-Path $preferredPython) { $preferredPython } else { (Get-Command python -ErrorAction SilentlyContinue).Source }
 if (-not $python) { $python = "python" }
-$script   = Join-Path $repoRoot "scripts\local_data_collector.py"
+$collector = Join-Path $repoRoot "scripts\local_data_collector.py"
+$syncAll = Join-Path $repoRoot "sync_all.bat"
+$weekdays = "Monday","Tuesday","Wednesday","Thursday","Friday"
 
 Write-Host "[MONE] 작업 스케줄러 등록..." -ForegroundColor Cyan
 Write-Host "  RepoRoot : $repoRoot"
 Write-Host "  Python   : $python"
 Write-Host ""
 
-# 기존 작업 제거
-"MONE_Morning_Collect","MONE_Evening_Collect","MONE_KR_Morning","MONE_KR_Close","MONE_US_Collect" | ForEach-Object {
+$taskNames = @(
+    "MONE_Morning_Collect",
+    "MONE_Evening_Collect",
+    "MONE_KR_PreMarket",
+    "MONE_KR_PostMarket",
+    "MONE_US_PreMarket",
+    "MONE_US_PostMarket",
+    "MONE_sync_holdings",
+    "MONE_KR_Morning",
+    "MONE_KR_Close",
+    "MONE_US_Collect"
+)
+$taskNames | ForEach-Object {
     Unregister-ScheduledTask -TaskName $_ -Confirm:$false -ErrorAction SilentlyContinue
 }
 
-$settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable
-$weekdays = "Monday","Tuesday","Wednesday","Thursday","Friday"
+$settings = New-ScheduledTaskSettingsSet `
+    -StartWhenAvailable `
+    -WakeToRun `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -MultipleInstances IgnoreNew `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 
-# [06:00] 미장 전날 종가 수집 + 예측
-#   미장 마감: 04:00~05:00 KST → 06:00에 수집하면 전날 종가 반영됨
-$actionUS = New-ScheduledTaskAction `
-    -Execute $python `
-    -Argument "`"$script`" --push --market us --days 5" `
-    -WorkingDirectory $repoRoot
-$triggerUS = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $weekdays -At "06:00"
-Register-ScheduledTask -TaskName "MONE_US_Collect" -Action $actionUS -Trigger $triggerUS -Settings $settings -RunLevel Limited -Force | Out-Null
-Write-Host "[OK] 미장 수집 + 예측 등록 (평일 06:00 KST) — 전날 종가 기반" -ForegroundColor Green
+function Register-MoneCollectorTask {
+    param(
+        [Parameter(Mandatory=$true)][string]$Name,
+        [Parameter(Mandatory=$true)][string]$At,
+        [Parameter(Mandatory=$true)][string]$Arguments
+    )
+    $action = New-ScheduledTaskAction `
+        -Execute $python `
+        -Argument "`"$collector`" $Arguments" `
+        -WorkingDirectory $repoRoot
+    $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $weekdays -At $At
+    Register-ScheduledTask -TaskName $Name -Action $action -Trigger $trigger -Settings $settings -RunLevel Limited -Force | Out-Null
+    Write-Host "[OK] $Name 등록 ($At)" -ForegroundColor Green
+}
 
-# [07:30] 국장 당일 오전 예측
-$actionKR = New-ScheduledTaskAction `
-    -Execute $python `
-    -Argument "`"$script`" --push --market kr --days 5" `
-    -WorkingDirectory $repoRoot
-$triggerKRMorning = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $weekdays -At "07:30"
-Register-ScheduledTask -TaskName "MONE_KR_Morning" -Action $actionKR -Trigger $triggerKRMorning -Settings $settings -RunLevel Limited -Force | Out-Null
-Write-Host "[OK] 국장 오전 예측 등록  (평일 07:30 KST) — 전일 종가 기반" -ForegroundColor Green
+Register-MoneCollectorTask -Name "MONE_Morning_Collect" -At "07:30" -Arguments "--push --days 5"
+Register-MoneCollectorTask -Name "MONE_KR_PreMarket" -At "08:30" -Arguments "--market kr --push --days 5"
+Register-MoneCollectorTask -Name "MONE_Evening_Collect" -At "16:30" -Arguments "--push --days 5"
+Register-MoneCollectorTask -Name "MONE_KR_PostMarket" -At "16:40" -Arguments "--market kr --push --days 5"
+Register-MoneCollectorTask -Name "MONE_US_PostMarket" -At "06:20" -Arguments "--market us --push --days 5"
+Register-MoneCollectorTask -Name "MONE_US_PreMarket" -At "21:50" -Arguments "--market us --push --days 5"
 
-# [16:30] 국장 마감 후 데이터 업데이트
-$triggerKRClose = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $weekdays -At "16:30"
-Register-ScheduledTask -TaskName "MONE_KR_Close" -Action $actionKR -Trigger $triggerKRClose -Settings $settings -RunLevel Limited -Force | Out-Null
-Write-Host "[OK] 국장 마감 업데이트 등록 (평일 16:30 KST) — 당일 종가 반영" -ForegroundColor Green
+$syncAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"$syncAll`"" -WorkingDirectory $repoRoot
+$syncTrigger = New-ScheduledTaskTrigger -Daily -At "08:00"
+Register-ScheduledTask -TaskName "MONE_sync_holdings" -Action $syncAction -Trigger $syncTrigger -Settings $settings -RunLevel Limited -Force | Out-Null
+Write-Host "[OK] MONE_sync_holdings 등록 (매일 08:00)" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "=== 등록된 작업 ===" -ForegroundColor Cyan
@@ -51,5 +72,5 @@ Get-ScheduledTask | Where-Object { $_.TaskName -like "MONE_*" } |
     Format-Table -AutoSize
 
 Write-Host "수동 테스트 실행:"
-Write-Host "  Start-ScheduledTask -TaskName 'MONE_US_Collect'" -ForegroundColor Yellow
-Write-Host "  Start-ScheduledTask -TaskName 'MONE_KR_Morning'" -ForegroundColor Yellow
+Write-Host "  Start-ScheduledTask -TaskName 'MONE_US_PreMarket'" -ForegroundColor Yellow
+Write-Host "  Start-ScheduledTask -TaskName 'MONE_sync_holdings'" -ForegroundColor Yellow

@@ -918,7 +918,10 @@ function addBusinessDays(dateText: string, count: number) {
     const day = date.getDay();
     if (day !== 0 && day !== 6) added += 1;
   }
-  return date.toISOString().slice(0, 10);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function futureTimes(lastTime: string, bars: number) {
@@ -983,13 +986,20 @@ function splitTrendlineProjection(
   const i1 = timeToIndex.get(p1.time) ?? clean.length - 2;
   const i2 = timeToIndex.get(p2.time) ?? clean.length - 1;
   const slope = i2 !== i1 ? (p2.value - p1.value) / (i2 - i1) : 0;
+  const indexEntries = Array.from(timeToIndex.entries());
+  const lastIndex = indexEntries.reduce((max, [, index]) => Math.max(max, index), i2);
+  const lastTime = indexEntries.find(([, index]) => index === lastIndex)?.[0] || p2.time;
+  const lastValue = Math.max(0, p2.value + slope * Math.max(0, lastIndex - i2));
+  const actualSegment = lastIndex > i2 && lastTime !== p2.time
+    ? [...clean, { time: lastTime, value: lastValue }]
+    : clean;
   const projectedSegment = projectedTimes.map((time, offset) => ({
     time,
-    value: Math.max(0, p2.value + slope * (offset + 1)),
+    value: Math.max(0, lastValue + slope * (offset + 1)),
   }));
   return {
-    actualSegment: clean,
-    projectedSegment: projectedSegment.length ? [p2, ...projectedSegment] : [],
+    actualSegment,
+    projectedSegment: projectedSegment.length ? [{ time: lastTime, value: lastValue }, ...projectedSegment] : [],
   };
 }
 
@@ -1072,24 +1082,39 @@ function calcRetracements(pivots: ZigZagPoint[]): {
  */
 function calcSupplyZones(
   data: CandleBar[], volumes: number[], topN = 3
-): { upper: number; lower: number; center: number; strength: number }[] {
+): { upper: number; lower: number; center: number; strength: number; rawStrength: number; distancePct: number; touchCount: number }[] {
   if (data.length < 10) return [];
-  const allPrices = data.flatMap(d => [d.high, d.low]);
+  const windowSize = Math.min(data.length, 120);
+  const recent = data.slice(-windowSize);
+  const recentVolumes = volumes.slice(-windowSize);
+  const currentPrice = recent[recent.length - 1]?.close || 0;
+  if (currentPrice <= 0) return [];
+
+  const allPrices = recent.flatMap(d => [d.high, d.low]);
   const minP = Math.min(...allPrices), maxP = Math.max(...allPrices);
   if (maxP <= minP) return [];
 
-  const bins    = 60;
+  const atr = calcAtr14(recent) || ((maxP - minP) / 60);
+  const targetBinSize = Math.max(atr * 0.5, (maxP - minP) / 100);
+  const bins = Math.max(20, Math.min(100, Math.ceil((maxP - minP) / targetBinSize)));
   const binSize = (maxP - minP) / bins;
   const buckets = Array.from({ length: bins }, () => 0);
-  const totalVol = volumes.reduce((s, v) => s + v, 0);
+  const touches = Array.from({ length: bins }, () => 0);
+  const lastTouch = Array.from({ length: bins }, () => -1);
+  const totalVol = recentVolumes.reduce((s, v) => s + v, 0);
   const useVol   = totalVol > 0;
 
-  data.forEach((d, i) => {
+  recent.forEach((d, i) => {
     const lo   = Math.max(0, Math.floor((d.low  - minP) / binSize));
     const hi   = Math.min(bins, Math.ceil ((d.high - minP) / binSize));
     const span = Math.max(1, hi - lo);
-    const w    = useVol ? (volumes[i] || 0) : 1;
-    for (let b = lo; b < hi; b++) buckets[b] += w / span;
+    const recencyWeight = 0.35 + 0.65 * Math.pow((i + 1) / windowSize, 1.5);
+    const w = (useVol ? (recentVolumes[i] || 0) : 1) * recencyWeight;
+    for (let b = lo; b < hi; b++) {
+      buckets[b] += w / span;
+      touches[b] += 1 / span;
+      lastTouch[b] = Math.max(lastTouch[b], i);
+    }
   });
 
   const maxVol = Math.max(...buckets);
@@ -1097,23 +1122,38 @@ function calcSupplyZones(
 
   const hot = buckets
     .map((v, idx) => ({ idx, strength: v / maxVol }))
-    .filter(b => b.strength > 0.35);
+    .filter(b => b.strength > 0.30);
 
-  type Zone = { lower: number; upper: number; center: number; strength: number };
+  type Zone = { lower: number; upper: number; center: number; strength: number; touchCount: number; lastTouch: number };
   const merged: Zone[] = [];
   for (const b of hot) {
     const lower = minP + b.idx * binSize;
     const upper = lower + binSize;
     const last  = merged[merged.length - 1];
-    if (last && lower <= last.upper + binSize * 1.5) {
+    if (last && lower <= last.upper + atr) {
       last.upper    = Math.max(last.upper, upper);
       last.center   = (last.lower + last.upper) / 2;
       last.strength = Math.max(last.strength, b.strength);
+      last.touchCount += touches[b.idx];
+      last.lastTouch = Math.max(last.lastTouch, lastTouch[b.idx]);
     } else {
-      merged.push({ lower, upper, center: (lower + upper) / 2, strength: b.strength });
+      merged.push({ lower, upper, center: (lower + upper) / 2, strength: b.strength, touchCount: touches[b.idx], lastTouch: lastTouch[b.idx] });
     }
   }
-  return merged.sort((a, b) => b.strength - a.strength).slice(0, topN);
+
+  const atrPct = atr > 0 ? (atr / currentPrice) * 100 : 0;
+  const maxDistancePct = Math.max(12, Math.min(28, atrPct > 0 ? atrPct * 8 : 18));
+  return merged
+    .map((z) => {
+      const distancePct = Math.abs(z.center - currentPrice) / currentPrice * 100;
+      const recencyScore = 0.35 + 0.65 * (z.lastTouch >= 0 ? (z.lastTouch + 1) / windowSize : 0);
+      const distanceScore = Math.max(0.15, 1 - distancePct / (maxDistancePct * 1.15));
+      const touchScore = Math.min(1.25, 0.75 + z.touchCount / windowSize * 4);
+      return { ...z, rawStrength: z.strength, distancePct, strength: z.strength * recencyScore * distanceScore * touchScore };
+    })
+    .filter((z) => z.distancePct <= maxDistancePct)
+    .sort((a, b) => b.strength - a.strength)
+    .slice(0, topN);
 }
 
 // ── 연계 신호: 0.868 되돌림 × 매물대 겹침 ────────────────────────────
@@ -1291,6 +1331,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         }
 
         const closes = candleData.map((d) => d.close);
+        const latestClose = closes[closes.length - 1] || 0;
         const calcMA = (period: number) => candleData.map((d, i) => {
           if (i < period - 1) return null;
           return { time: d.time, value: closes.slice(i - period + 1, i + 1).reduce((s, v) => s + v, 0) / period };
@@ -1492,9 +1533,10 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         // ④ 매물대 (진입/청산/스톱 기준)
         if (toggles.supply && zones.length > 0) {
           zones.forEach(zone => {
-            const alpha = Math.round(zone.strength * 160).toString(16).padStart(2, "0");
+            const alpha = Math.max(48, Math.min(180, Math.round(zone.strength * 180))).toString(16).padStart(2, "0");
             const color = `#f59e0b${alpha}`;
-            candleSeries.createPriceLine({ price: zone.upper, color, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: zone.strength > 0.8 ? "매물대" : "" });
+            const title = zone.strength > 0.45 ? `매물대 ${zone.distancePct.toFixed(1)}%` : "";
+            candleSeries.createPriceLine({ price: zone.upper, color, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title });
             candleSeries.createPriceLine({ price: zone.lower, color, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: "" });
           });
         }
@@ -1524,6 +1566,28 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
           const ca = chartAnalysis;
           const isConfirmed = ca.signalStatus === "confirmed";
           const isDeveloping = ca.signalStatus === "developing";
+          const backendTrendlineSegments = (line: any) => {
+            const startIndex = Number(line?.startIndex);
+            const endIndex = Number(line?.endIndex);
+            const startPrice = Number(line?.startPrice);
+            const endPrice = Number(line?.endPrice);
+            if (!Number.isFinite(startIndex) || !Number.isFinite(endIndex) || !Number.isFinite(startPrice) || !Number.isFinite(endPrice)) {
+              return null;
+            }
+            const startTime = actualTimes[Math.max(0, Math.min(actualTimes.length - 1, Math.round(startIndex)))];
+            const endTime = actualTimes[Math.max(0, Math.min(actualTimes.length - 1, Math.round(endIndex)))];
+            if (!startTime || !endTime || startTime === endTime || startPrice <= 0 || endPrice <= 0) return null;
+            return splitTrendlineProjection([
+              { time: startTime, value: startPrice },
+              { time: endTime, value: endPrice },
+            ], timeToIndex, projectedTimes);
+          };
+          const shouldShowBackendTrendline = (line: any) => {
+            const endPrice = Number(line?.endPrice);
+            if (!latestClose || !Number.isFinite(endPrice) || endPrice <= 0) return false;
+            const distPct = (latestClose - endPrice) / latestClose * 100;
+            return shouldRenderTrendline(distPct, Boolean(line?.isStructurallyValid), Number(line?.touchCount || 2));
+          };
 
           // 피보나치 primary 되돌림선 (AI 강조)
           if (toggles.retracement && ca.primaryRetracementLevel > 0 && (isConfirmed || isDeveloping)) {
@@ -1556,26 +1620,22 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
 
           // 백엔드 지지선 현재값
           if (ca.supportLine?.endPrice > 0) {
-            candleSeries.createPriceLine({
-              price: ca.supportLine.endPrice,
-              color: "#22c55e66",
-              lineWidth: 1,
-              lineStyle: LW.LineStyle.Dashed,
-              axisLabelVisible: true,
-              title: "AI지지",
-            });
+            if (ca.supportLine?.endPrice > 0 && shouldShowBackendTrendline(ca.supportLine)) {
+              const segments = backendTrendlineSegments(ca.supportLine);
+              if (segments) {
+                addSegmentedLine(segments.actualSegment, segments.projectedSegment, "#22c55e", "AI지지", 1);
+              }
+            }
           }
 
           // 백엔드 저항선 현재값
           if (ca.resistanceLine?.endPrice > 0) {
-            candleSeries.createPriceLine({
-              price: ca.resistanceLine.endPrice,
-              color: "#ef444466",
-              lineWidth: 1,
-              lineStyle: LW.LineStyle.Dashed,
-              axisLabelVisible: true,
-              title: "AI저항",
-            });
+            if (ca.resistanceLine?.endPrice > 0 && shouldShowBackendTrendline(ca.resistanceLine)) {
+              const segments = backendTrendlineSegments(ca.resistanceLine);
+              if (segments) {
+                addSegmentedLine(segments.actualSegment, segments.projectedSegment, "#ef4444", "AI저항", 1);
+              }
+            }
           }
         }
 
