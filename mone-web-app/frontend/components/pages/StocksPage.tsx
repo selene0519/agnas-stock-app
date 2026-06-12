@@ -22,7 +22,7 @@ import {
   strategyTagLabel,
   toNumber,
 } from "@/lib/moneDisplay";
-import { getDefaultMarketBySession } from "@/lib/marketSession";
+import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
 
 type WatchRow = {
   market: Market;
@@ -249,7 +249,7 @@ function recommendationBadgeLabel(item: any, actionCode: string, actionText: str
 }
 
 export default function StocksPage({ onNavigate }: { onNavigate?: (page: string) => void } = {}) {
-  const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
+  const [market, setMarket] = useState<Market>("all");
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
@@ -283,17 +283,25 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   const [hideDataPending, setHideDataPending] = useState(false);
   const [hideBlockedOnly, setHideBlockedOnly] = useState(false);
   const [nameQuery, setNameQuery] = useState("");
+  const [sessionTick, setSessionTick] = useState(0);
+  const autoMarket = getDefaultMarketBySession(new Date(Date.now() + sessionTick * 0));
+  const resolvedMarket: Exclude<Market, "all"> = market === "all" ? autoMarket : market;
 
   useEffect(() => {
-    if (market === "kr") {
-      mone.sectorsList({ market }).then((r) => {
+    const timer = window.setInterval(() => setSessionTick((value) => value + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (resolvedMarket === "kr") {
+      mone.sectorsList({ market: resolvedMarket }).then((r) => {
         setSectorsList(Array.isArray(r.items) ? r.items.slice(0, 20).map((s: any) => s.sector) : []);
       }).catch(() => setSectorsList([]));
     }
-    mone.watchlistGroups({ market }).then((r) => {
+    mone.watchlistGroups({ market: resolvedMarket }).then((r) => {
       setGroupsList(Array.isArray(r.groups) ? r.groups.filter((g: string) => g !== "미분류") : []);
     }).catch(() => setGroupsList([]));
-  }, [market]);
+  }, [resolvedMarket]);
 
   async function assignGroup(symbol: string, marketStr: string, group: string) {
     let finalGroup = group;
@@ -314,7 +322,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   async function loadScoredWatchlist() {
     setScoredLoading(true);
     try {
-      const data = await mone.watchlistScored({ market, mode, horizon });
+      const data = await mone.watchlistScored({ market: resolvedMarket, mode, horizon });
       setScoredWatch(data);
     } catch {
       setScoredWatch(null);
@@ -384,14 +392,14 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
     setLoadError("");
     setLoadNotice("");
     mone
-      .recommendations({ market, mode, horizon, limit: Math.min(RECOMMENDATION_LIMIT, 50), watchOnly }, controller.signal) // /api/final/recommendations le=50
+      .recommendations({ market: resolvedMarket, mode, horizon, limit: Math.min(RECOMMENDATION_LIMIT, 50), watchOnly }, controller.signal) // /api/final/recommendations le=50
       .then(async (data) => {
         if (!active) return;
         if (data?.status === "ERROR") {
           // 취소된 요청의 에러는 무시
           if (controller.signal.aborted) return;
           const fallback = await mone.candidates({
-            market,
+            market: resolvedMarket,
             strategy: mode,
             term: horizon,
             limit: Math.min(RECOMMENDATION_LIMIT, 60),
@@ -402,7 +410,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             const watchKeys = new Set(watchlist.map((row) => watchKey(row)));
             const filteredFallback = watchOnly
               ? fallbackItems.filter((item) => {
-                  const itemMarket = cleanMarket(item.market || market || "kr");
+                  const itemMarket = cleanMarket(item.market || resolvedMarket || "kr");
                   return watchKeys.has(
                     watchKey({
                       market: itemMarket,
@@ -434,7 +442,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
       active = false;
       controller.abort();
     };
-  }, [market, mode, horizon, watchOnly, watchlist.length, refreshVersion]);
+  }, [resolvedMarket, mode, horizon, watchOnly, watchlist.length, refreshVersion]);
 
   const sectorFiltered = useMemo(() => {
     let result = items;
@@ -512,13 +520,13 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
     const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() ? sectorFiltered : items;
     let result = base;
     if (selected) {
-      const selectedMarket = cleanMarket(selected.market || market || "kr");
+      const selectedMarket = cleanMarket(selected.market || resolvedMarket || "kr");
       const selectedSymbol = cleanSymbol(selected.symbol, selectedMarket);
       const matched = base.filter((item) => {
         const itemMarket = cleanMarket(item.market || selectedMarket);
         return (
           cleanSymbol(item.symbol, itemMarket) === selectedSymbol &&
-          (market === "all" || itemMarket === market)
+          (itemMarket === resolvedMarket)
         );
       });
       if (matched.length > 0) return matched;
@@ -538,7 +546,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
       ];
     }
     return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
-  }, [items, selected, market, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy]);
+  }, [items, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy]);
 
   const filterStats = useMemo(() => {
     const normal = sectorFiltered.filter((item) => String(item.dataStatus || "").toUpperCase() === "NORMAL").length;
@@ -550,22 +558,44 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   const recommendationFreshness = useMemo(() => {
     const sample = visible.find((item) => !item.isSearchOnly) || items[0] || {};
     return dataFreshnessInfo({
-      market: sample.market || market,
+      market: sample.market || resolvedMarket,
       latestDataDate: firstText(sample.latestDataDate, sample.dataDate, sample.sourceDate, sample.ohlcvLatestDate, sample.priceDate, ""),
       recoGeneratedAt: firstText(sample.recoGeneratedAt, sample.generatedAt, sample.updatedAt, ""),
       dataStatus: loadError ? "NO_DATA" : sample.dataStatus,
     });
-  }, [items, visible, loadError]);
+  }, [items, visible, loadError, resolvedMarket]);
+
+  const priceBasisInfo = useMemo(() => {
+    const sample = visible.find((item) => !item.isSearchOnly) || items[0] || {};
+    const source = firstText(sample.currentPriceSource, sample.priceSource, sample.priceSourceFile, sample.priceSourceType, "");
+    const sourceLc = source.toLowerCase();
+    const snapshot = sourceLc.includes("kis_current_price")
+      || sourceLc.includes("intraday_realtime_snapshot")
+      || sourceLc.includes("us_kis_current")
+      || sourceLc.includes("us_intraday_snapshot")
+      || sourceLc.includes("kis_snapshot")
+      || sourceLc.includes("finnhub")
+      || sourceLc.includes("yfinance");
+    const priceDate = firstText(sample.currentPriceDate, sample.priceSourceDate, sample.priceTime, sample.updatedAt, sample.generatedAt, "");
+    const ohlcvDate = firstText(sample.ohlcvLatestDate, sample.latestDataDate, sample.dataDate, "");
+    return {
+      source,
+      priceText: resolvedMarket === "us" && snapshot
+        ? `현재가 기준: 미장 snapshot${priceDate ? ` · ${priceDate.slice(0, 10)}` : ""}`
+        : `현재가 기준: ${snapshot ? "snapshot" : "OHLCV/추천 fallback"}${priceDate ? ` · ${priceDate.slice(0, 10)}` : ""}`,
+      ohlcvText: ohlcvDate ? `차트·지표 기준: OHLCV ${ohlcvDate.slice(0, 10)}` : "차트·지표 기준: 확인 중",
+    };
+  }, [items, visible, resolvedMarket]);
 
   const selectedWatchRow = useMemo(() => {
     if (!selected) return null;
-    const selectedMarket = cleanMarket(selected.market || market || "kr");
+    const selectedMarket = cleanMarket(selected.market || resolvedMarket || "kr");
     return {
       market: selectedMarket === "all" ? "kr" : selectedMarket,
       symbol: cleanSymbol(selected.symbol, selectedMarket),
       name: selected.name || selected.symbol,
     } satisfies WatchRow;
-  }, [selected, market]);
+  }, [selected, resolvedMarket]);
 
   const watchSet = useMemo(() => new Set(watchlist.map(watchKey)), [watchlist]);
 
@@ -586,7 +616,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
 
   function toggleWatch(item: any) {
     const row = normalizeWatch({
-      market: item.market || market,
+      market: item.market || resolvedMarket,
       symbol: item.symbol,
       name: displayName(item),
       targetReason: item.targetReason || "search_watch_added",
@@ -609,7 +639,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
     setAutoCurating(true);
     setWatchMessage("");
     try {
-      const targetMarket = market === "all" ? "all" : market;
+      const targetMarket = resolvedMarket;
       const result = await mone.applyAutoWatchlist({ market: targetMarket, limitPerMarket: 12 });
       if (result?.status === "ERROR") throw new Error(result.error || "자동 선별 실패");
       const saved = Array.isArray(result.items)
@@ -631,7 +661,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   }
 
   async function addHoldingFromItem(item: any) {
-    const itemMarket = cleanMarket(item.market || market || "kr");
+    const itemMarket = cleanMarket(item.market || resolvedMarket || "kr");
     const clean = itemMarket === "all" ? "kr" : itemMarket;
     const symbol = cleanSymbol(item.symbol, clean);
     const name = displayName(item) || symbol;
@@ -671,7 +701,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   }
 
   async function refreshOneQuote(item: any) {
-    const itemMarket = cleanMarket(item.market || market || "kr");
+    const itemMarket = cleanMarket(item.market || resolvedMarket || "kr");
     const clean = itemMarket === "all" ? "kr" : itemMarket;
     const symbol = cleanSymbol(item.symbol, clean);
     const name = displayName(item) || symbol;
@@ -704,7 +734,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
     setQuoteRefreshing("batch");
     setHoldingMessage("");
     try {
-      const result = await mone.refreshTargetQuotes({ market, limit: 20 });
+      const result = await mone.refreshTargetQuotes({ market: resolvedMarket, limit: 20 });
       setHoldingMessage(
         `현재가 새로고침: 성공 ${result?.successCount ?? 0}건 / 실패 ${result?.failureCount ?? 0}건 / 대기 ${result?.pendingCount ?? 0}건`,
       );
@@ -717,7 +747,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   }
 
   const marketTabs: { id: Market; label: string }[] = [
-    { id: "all", label: "전체" },
+    { id: "all", label: `자동(${marketLabel(autoMarket)})` },
     { id: "kr", label: "국장" },
     { id: "us", label: "미장" },
   ];
@@ -772,6 +802,9 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           >
             관심종목
           </button>
+        </div>
+        <div className="mt-2 text-xs text-slate-500">
+          {market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · 현재 적용 시장: {marketLabel(resolvedMarket)}
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2">
           <button
@@ -1043,7 +1076,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto]">
         <SymbolSearchSelect
-          market={market}
+          market={resolvedMarket}
           watchOnly={false}
           value={selected?.symbol || ""}
           onChange={setSelected}
@@ -1101,7 +1134,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
             {searchResults.slice(0, 12).map((row) => {
-              const rowMarket = cleanMarket(row.market || market || "kr");
+              const rowMarket = cleanMarket(row.market || resolvedMarket || "kr");
               const rowSymbol = cleanSymbol(row.symbol, rowMarket);
               const watched = watchSet.has(watchKey({ market: rowMarket, symbol: rowSymbol }));
               return (
@@ -1220,6 +1253,8 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             {recommendationFreshness.label}
           </span>
           <span>{recommendationFreshness.basisText}</span>
+          <span className="text-cyan-300">{priceBasisInfo.priceText}</span>
+          <span>{priceBasisInfo.ohlcvText}</span>
           <span className="text-slate-600">· 상세 판단은 카드의 MONE 판단 보기에서 분석 탭으로 이어집니다.</span>
         </div>
       </div>
@@ -1258,7 +1293,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {visible.map((item: any, index: number) => {
           const hasRecommendation = !item.isSearchOnly;
-          const marketValue = String(item.market || market);
+          const marketValue = String(item.market || resolvedMarket);
           const currentRaw = priceText(
             item,
             "current",
@@ -1280,7 +1315,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           );
           // ── 비추천 검색종목: 간단 카드 ──
           if (item.isSearchOnly) {
-            const soMarket = cleanMarket(item.market || market || "kr");
+            const soMarket = cleanMarket(item.market || resolvedMarket || "kr");
             const soSymbol = cleanSymbol(item.symbol, soMarket);
             return (
               <div key={`search-only-${soMarket}-${soSymbol}-${index}`} className="rounded-2xl border border-slate-700/50 bg-slate-900/30 p-3 sm:p-4">
@@ -1422,7 +1457,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                 <div className="min-w-0">
                   <h3 className="text-base font-bold text-slate-100 leading-tight">{displayName(item)}</h3>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <span className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || market).toUpperCase()}</span>
+                    <span className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || resolvedMarket).toUpperCase()}</span>
                     {topBadgeLabel && <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{topBadgeLabel}</span>}
                     {dataTrustLabel(item) !== "정상" && (
                       <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
@@ -1480,7 +1515,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                   className="flex-1 inline-flex items-center justify-center rounded-xl border border-blue-600/40 bg-blue-600/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-600/20"
                   onClick={() => {
                     window.localStorage.setItem("mone_chart_symbol", String(item.symbol || ""));
-                    window.localStorage.setItem("mone_chart_market", cleanMarket(item.market || market));
+                    window.localStorage.setItem("mone_chart_market", cleanMarket(item.market || resolvedMarket));
                     window.localStorage.setItem("mone_chart_name", displayName(item) || String(item.symbol || ""));
                     window.localStorage.setItem("mone_chart_price", String(item.currentPrice || item.price || ""));
                     window.localStorage.setItem("mone_chart_price_text", priceText(item, "current", ""));

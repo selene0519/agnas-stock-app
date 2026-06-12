@@ -1659,8 +1659,29 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
     if _snap_status_override:
         if _snap_status_override == "NORMAL" and data_status not in ("NO_DATA",):
             data_status = "NORMAL"
+            _snap_missing_reason = ""
         elif _snap_status_override == "PARTIAL" and data_status == "OK":
             data_status = "PARTIAL"
+
+    # If chart/debug is already using a realtime snapshot source, the price status must
+    # be NORMAL and the missing reason must be cleared. This prevents contradictory
+    # responses such as currentPriceSource=reports/kis_current_price_us.csv with
+    # priceDataStatus=PARTIAL.
+    current_price_source_lc = str(current_price_source or "").lower()
+    if market == "us" and current_price and any(
+        token in current_price_source_lc
+        for token in (
+            "kis_current_price_us.csv",
+            "intraday_realtime_snapshot_us.csv",
+            "us_kis_current.json",
+            "us_intraday_snapshot.csv",
+            "kis_snapshot",
+            "finnhub",
+            "yfinance",
+        )
+    ):
+        data_status = "NORMAL"
+        _snap_missing_reason = ""
 
     pivot_lows, pivot_highs = _chart_pivots(rows, ohlcv_source)
     stale = "precision_base_stale" in warnings
