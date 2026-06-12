@@ -368,6 +368,42 @@ def health() -> dict:
     }
 
 
+@app.get("/api/debug/db-test")
+def api_debug_db_test() -> dict:
+    """Temporary diagnostic — checks PostgreSQL write/read round-trip."""
+    import os
+    result: dict = {"backend": _db.backend_info(), "db_url_set": bool(os.environ.get("DATABASE_URL", ""))}
+    try:
+        saved = _db.save_holdings("__dbtest__", [
+            {"symbol": "TEST", "name": "test", "market": "kr", "quantity": 1,
+             "avgPrice": 1, "currentPrice": 1, "evalAmount": 1, "broker": "manual"}
+        ])
+        result["save_result"] = saved
+    except Exception as e:
+        result["save_error"] = str(e)
+    try:
+        rows = _db.get_holdings("__dbtest__", "all")
+        result["read_result"] = len(rows)
+        result["read_items"] = [r.get("symbol") for r in rows]
+    except Exception as e:
+        result["read_error"] = str(e)
+    # direct pg error
+    try:
+        if os.environ.get("DATABASE_URL"):
+            import psycopg2
+            url = os.environ["DATABASE_URL"]
+            if url.startswith("postgres://"):
+                url = "postgresql://" + url[len("postgres://"):]
+            conn = psycopg2.connect(dsn=url, connect_timeout=5)
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM user_holdings WHERE user_id='__dbtest__'")
+            result["direct_count"] = cur.fetchone()[0]
+            conn.close()
+    except Exception as e:
+        result["direct_error"] = str(e)
+    return result
+
+
 @app.post("/api/auth/admin-login")
 def api_admin_login(payload: dict = Body(...)):
     if not _admin_auth_configured():
@@ -826,9 +862,465 @@ def _chart_data_with_backfill(symbol: str, market: str, days: int = 180) -> dict
     return payload
 
 
+def _chart_float(value) -> float | None:
+    try:
+        if value in (None, ""):
+            return None
+        number = float(str(value).replace(",", "").replace("%", "").strip())
+        return number if number > 0 else None
+    except Exception:
+        return None
+
+
+def _chart_first(row: dict, keys: list[str], default: str = "") -> str:
+    for key in keys:
+        value = row.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return default
+
+
+def _chart_precision_type(item: dict) -> str:
+    ps = item.get("patternStrategy") if isinstance(item.get("patternStrategy"), dict) else {}
+    action = str(ps.get("action") or item.get("patternStrategyAction") or item.get("buyTiming") or "").lower()
+    reason = " ".join([
+        str(ps.get("primary") or ps.get("primaryPattern") or ""),
+        str(item.get("decisionReason") or ""),
+        str(item.get("entryBasis") or ""),
+    ]).lower()
+    if "stop" in action or "stop" in reason or "손절" in reason:
+        return "stop"
+    if "breakout" in action or "breakout" in reason or "돌파" in reason:
+        return "breakout_base"
+    if "pullback" in action or "pullback" in reason or "눌림" in reason:
+        return "pullback_entry"
+    if "trendline" in reason:
+        return "trendline"
+    return "support"
+
+
+def _chart_overlay(
+    overlay_type: str,
+    price: float | None,
+    base_date: str,
+    source: str,
+    future_bars: int,
+    *,
+    precision_type: str = "",
+    reason: str = "",
+    gap_pct: float | None = None,
+    stale: bool = False,
+    warnings: list[str] | None = None,
+    extra: dict | None = None,
+) -> dict | None:
+    if price is None or price <= 0:
+        return None
+    overlay = {
+        "type": overlay_type,
+        "precisionType": precision_type or overlay_type,
+        "price": round(price, 4),
+        "basePrice": round(price, 4),
+        "baseDate": base_date,
+        "source": source,
+        "precisionGapPct": round(gap_pct, 3) if gap_pct is not None else None,
+        "stale": stale,
+        "extendFutureBars": future_bars,
+        "extendedFutureBars": future_bars,
+        "reason": reason,
+        "warnings": warnings or [],
+    }
+    if extra:
+        overlay.update(extra)
+    return overlay
+
+
+def _chart_row_date(row: dict) -> str:
+    return _chart_first(row, ["date", "Date", "tradeDate", "time"], "")[:10]
+
+
+def _chart_pivots(rows: list[dict], source: str, window: int = 2) -> tuple[list[dict], list[dict]]:
+    lows: list[dict] = []
+    highs: list[dict] = []
+    if len(rows) < window * 2 + 1:
+        return lows, highs
+    for idx in range(window, len(rows) - window):
+        row = rows[idx]
+        low = _chart_float(row.get("low") or row.get("Low"))
+        high = _chart_float(row.get("high") or row.get("High"))
+        if low is None or high is None:
+            continue
+        neighbors = rows[idx - window:idx + window + 1]
+        neighbor_lows = [_chart_float(r.get("low") or r.get("Low")) for r in neighbors]
+        neighbor_highs = [_chart_float(r.get("high") or r.get("High")) for r in neighbors]
+        clean_lows = [v for v in neighbor_lows if v is not None]
+        clean_highs = [v for v in neighbor_highs if v is not None]
+        date = _chart_row_date(row)
+        if clean_lows and low <= min(clean_lows):
+            next_low = min([v for i, v in enumerate(clean_lows) if i != window] or clean_lows)
+            strength = ((next_low - low) / low * 100) if low > 0 else 0
+            lows.append({
+                "date": date,
+                "index": idx,
+                "price": round(low, 4),
+                "type": "low",
+                "strength": round(max(0.0, strength), 3),
+                "source": source or "ohlcv",
+            })
+        if clean_highs and high >= max(clean_highs):
+            next_high = max([v for i, v in enumerate(clean_highs) if i != window] or clean_highs)
+            strength = ((high - next_high) / high * 100) if high > 0 else 0
+            highs.append({
+                "date": date,
+                "index": idx,
+                "price": round(high, 4),
+                "type": "high",
+                "strength": round(max(0.0, strength), 3),
+                "source": source or "ohlcv",
+            })
+    return lows, highs
+
+
+def _line_from_pivots(
+    line_type: str,
+    pivots: list[dict],
+    current_price: float | None,
+    future_bars: int,
+    source: str,
+) -> dict | None:
+    required_type = "low" if line_type == "supportLine" else "high"
+    label = "low-low support" if line_type == "supportLine" else "high-high resistance"
+    recent = [p for p in pivots if p.get("type") == required_type][-5:]
+    best: dict | None = None
+    if len(recent) < 2:
+        return {
+            "type": line_type,
+            "label": label,
+            "valid": False,
+            "invalidReason": f"{line_type}_requires_two_{required_type}_pivots",
+            "points": recent,
+            "pivotTypes": [p.get("type") for p in recent],
+            "source": source or "pivot_detector",
+            "baseDate": recent[-1].get("date") if recent else "",
+            "basePrice": recent[-1].get("price") if recent else None,
+            "currentPrice": current_price,
+            "gapPctFromCurrent": None,
+            "extendFutureBars": future_bars,
+            "extendedFutureBars": future_bars,
+            "warnings": ["insufficient_pivots"],
+        }
+
+    for i in range(len(recent) - 1):
+        for j in range(i + 1, len(recent)):
+            p1, p2 = recent[i], recent[j]
+            i1, i2 = int(p1.get("index", 0)), int(p2.get("index", 0))
+            if i2 <= i1 or i2 - i1 < 3:
+                continue
+            price1, price2 = _chart_float(p1.get("price")), _chart_float(p2.get("price"))
+            if price1 is None or price2 is None:
+                continue
+            slope = (price2 - price1) / (i2 - i1)
+            last_idx = max(int(recent[-1].get("index", i2)), i2)
+            base_price = price1 + slope * (last_idx - i1)
+            if base_price <= 0:
+                continue
+            gap = ((current_price - base_price) / current_price * 100) if current_price else None
+            warnings: list[str] = []
+            valid = True
+            invalid_reason = None
+            if any(p.get("type") != required_type for p in (p1, p2)):
+                valid = False
+                invalid_reason = "support_requires_low_low" if line_type == "supportLine" else "resistance_requires_high_high"
+            if current_price and line_type == "supportLine":
+                if base_price > current_price * 1.03:
+                    valid = False
+                    invalid_reason = "support_above_current_price"
+                if gap is not None and gap > 35:
+                    valid = False
+                    invalid_reason = "support_far_below_current"
+                    warnings.append("support_far_below_current")
+            if current_price and line_type == "resistanceLine":
+                if base_price < current_price * 0.97:
+                    valid = False
+                    invalid_reason = "resistance_below_current_price"
+                gap_above = (base_price - current_price) / current_price * 100
+                if gap_above > 35:
+                    warnings.append("resistance_far_above_current")
+            score = (1 if valid else 0) * 1000 + float(p1.get("strength") or 0) + float(p2.get("strength") or 0) + i2
+            candidate = {
+                "type": line_type,
+                "label": label,
+                "valid": valid,
+                "invalidReason": invalid_reason,
+                "points": [p1, p2],
+                "pivotTypes": [p1.get("type"), p2.get("type")],
+                "source": source or "pivot_detector",
+                "baseDate": p2.get("date"),
+                "basePrice": round(base_price, 4),
+                "price": round(base_price, 4),
+                "currentPrice": round(current_price, 4) if current_price else None,
+                "gapPctFromCurrent": round(gap, 3) if gap is not None else None,
+                "slope": round(slope, 8),
+                "intercept": round(price1 - slope * i1, 4),
+                "extendFutureBars": future_bars,
+                "extendedFutureBars": future_bars,
+                "warnings": warnings,
+            }
+            if best is None or score > float(best.get("_score", -1)):
+                best = {**candidate, "_score": score}
+    if best is None:
+        return None
+    best.pop("_score", None)
+    return best
+
+
+def _validate_overlay(overlay: dict) -> dict:
+    out = dict(overlay)
+    warnings = list(out.get("warnings") or [])
+    current = _chart_float(out.get("currentPrice"))
+    price = _chart_float(out.get("basePrice") or out.get("price"))
+    otype = str(out.get("type") or "")
+    points = out.get("points") if isinstance(out.get("points"), list) else []
+    if otype == "supportLine" and any(p.get("type") != "low" for p in points):
+        out["valid"] = False
+        out["invalidReason"] = "support_requires_low_low"
+    elif otype == "resistanceLine" and any(p.get("type") != "high" for p in points):
+        out["valid"] = False
+        out["invalidReason"] = "resistance_requires_high_high"
+    elif otype == "stopPrice" and current and price and price >= current:
+        out["valid"] = False
+        out["invalidReason"] = "stop_above_current_price"
+    elif otype == "targetPrice" and current and price and price <= current:
+        out["valid"] = False
+        out["invalidReason"] = "target_below_current_price"
+    elif otype == "precision" and current and price and abs((current - price) / current * 100) >= 15:
+        warnings.append("precision_far_from_current")
+    out.setdefault("valid", not bool(out.get("invalidReason")))
+    out.setdefault("invalidReason", None)
+    out["warnings"] = list(dict.fromkeys(warnings))
+    return out
+
+
+def _overlay_validation_summary(overlays: list[dict]) -> dict:
+    checked = [_validate_overlay(o) for o in overlays]
+    return {
+        "total": len(checked),
+        "valid": sum(1 for o in checked if o.get("valid")),
+        "invalid": sum(1 for o in checked if not o.get("valid")),
+        "warnings": sum(1 for o in checked if o.get("warnings")),
+    }
+
+
+def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars: int = 12) -> dict:
+    rows = _chart_rows(payload)
+    ohlcv_latest_date = payload.get("latestDate") or _latest_chart_date(rows)
+    ohlcv_source = str(payload.get("source") or "")
+    target = data.normalize_symbol(symbol, market)
+    latest = rows[-1] if rows else {}
+    latest_close = _chart_float(latest.get("close") or latest.get("Close"))
+
+    try:
+        detail = final_engine.recommendation_detail(market, target)
+    except Exception as exc:
+        detail = {"status": "ERROR", "error": str(exc), "item": None, "source": ""}
+    item = detail.get("item") if isinstance(detail.get("item"), dict) else {}
+    rec_symbol = data.normalize_symbol(item.get("symbol") or detail.get("symbol") or target, market) if item else target
+    symbol_mismatch = bool(item and rec_symbol and rec_symbol != target)
+
+    recommendation_date = _chart_first(
+        item,
+        ["recoGeneratedAt", "generatedAt", "recommendationDate", "sourceDate", "priceSourceDate"],
+        str(detail.get("generatedAt") or ""),
+    )[:10]
+    recommendation_source = str(detail.get("source") or item.get("sourceFile") or "final_recommendations")
+    current_price = _chart_float(item.get("currentPrice")) or latest_close
+    current_price_source = _chart_first(
+        item,
+        ["currentPriceSource", "priceSourceFile", "priceSource", "priceSourceType"],
+        "ohlcv_latest_close" if latest_close else "",
+    )
+    current_price_date = _chart_first(item, ["currentPriceDate", "priceSourceDate", "priceTime"], ohlcv_latest_date)[:10]
+
+    precision_base_price = _chart_float(item.get("entry") or item.get("entryPrice"))
+    precision_source = "final_recommendations"
+    ps = item.get("patternStrategy") if isinstance(item.get("patternStrategy"), dict) else {}
+    if ps and str(ps.get("status") or "").upper() not in {"", "ERROR"}:
+        precision_source = "pattern_strategy"
+    precision_base_date = ohlcv_latest_date if precision_source == "pattern_strategy" else (recommendation_date or ohlcv_latest_date)
+    precision_type = _chart_precision_type(item)
+    precision_reason = _chart_first(
+        {**item, **ps},
+        ["message", "decisionReason", "primary", "primaryPattern", "entryBasis", "chartSignalTag"],
+        precision_type,
+    )
+    precision_gap_pct = None
+    if current_price and precision_base_price:
+        precision_gap_pct = (current_price - precision_base_price) / current_price * 100
+
+    warnings: list[str] = []
+    if symbol_mismatch:
+        warnings.append("symbol_mismatch")
+    if not current_price:
+        warnings.append("missing_currentPrice")
+    if not precision_base_price:
+        warnings.append("missing_precisionBasePrice")
+    if precision_gap_pct is not None and abs(precision_gap_pct) >= 10:
+        warnings.append("precision_gap_large")
+    if precision_base_date and ohlcv_latest_date and precision_base_date < ohlcv_latest_date:
+        warnings.append("precision_base_stale")
+    if current_price_date and ohlcv_latest_date and current_price_date[:10] != ohlcv_latest_date:
+        warnings.append("current_ohlcv_date_mismatch")
+
+    data_status = str(payload.get("dataStatus") or payload.get("status") or "OK").upper()
+    if any(w in warnings for w in ("current_ohlcv_date_mismatch", "precision_base_stale")):
+        data_status = "PARTIAL" if data_status == "OK" else data_status
+    if not rows:
+        data_status = "NO_DATA"
+
+    pivot_lows, pivot_highs = _chart_pivots(rows, ohlcv_source)
+    stale = "precision_base_stale" in warnings
+    overlays: list[dict] = []
+    support_line = _line_from_pivots("supportLine", pivot_lows, current_price, future_bars, "pivot_detector")
+    resistance_line = _line_from_pivots("resistanceLine", pivot_highs, current_price, future_bars, "pivot_detector")
+    for line in (support_line, resistance_line):
+        if line and line.get("valid"):
+            overlays.append(line)
+    precision_overlay = None if symbol_mismatch or not precision_base_price else _chart_overlay(
+        "precision",
+        precision_base_price,
+        precision_base_date,
+        precision_source,
+        future_bars,
+        precision_type=precision_type,
+        reason=precision_reason,
+        gap_pct=precision_gap_pct,
+        stale=stale,
+        warnings=warnings,
+        extra={
+            "label": "precision evidence",
+            "valid": not bool({"symbol_mismatch", "missing_currentPrice", "missing_precisionBasePrice"} & set(warnings)),
+            "invalidReason": None,
+            "currentPrice": round(current_price, 4) if current_price else None,
+            "gapPctFromCurrent": round(precision_gap_pct, 3) if precision_gap_pct is not None else None,
+        },
+    )
+    if precision_overlay:
+        overlays.append(precision_overlay)
+    for overlay_type, field, source_label in (
+        ("entryPrice", "entry", recommendation_source),
+        ("stopPrice", "stop", recommendation_source),
+        ("targetPrice", "target", recommendation_source),
+    ):
+        overlay = _chart_overlay(
+            overlay_type,
+            _chart_float(item.get(field) or item.get(f"{field}Price")),
+            recommendation_date or precision_base_date or ohlcv_latest_date,
+            source_label,
+            future_bars,
+            precision_type=overlay_type,
+            warnings=["symbol_mismatch"] if symbol_mismatch else [],
+            extra={
+                "label": overlay_type,
+                "currentPrice": round(current_price, 4) if current_price else None,
+            },
+        )
+        if overlay and not symbol_mismatch:
+            overlays.append(overlay)
+    for level in (ps.get("historicalSupportLevels") or [])[:5]:
+        if isinstance(level, dict):
+            level_price = _chart_float(level.get("level") or level.get("price"))
+            level_warnings: list[str] = []
+            invalid_reason = None
+            if current_price and level_price and level_price > current_price:
+                invalid_reason = "historical_support_above_current"
+                level_warnings.append("historical_support_above_current")
+            overlay = _chart_overlay(
+                "historicalSupportLevels",
+                level_price,
+                str(level.get("date") or precision_base_date or ohlcv_latest_date)[:10],
+                "pattern_strategy",
+                future_bars,
+                precision_type=str(level.get("role") or "support"),
+                warnings=(warnings if symbol_mismatch else []) + level_warnings,
+                extra={
+                    "label": "historical support",
+                    "valid": invalid_reason is None,
+                    "invalidReason": invalid_reason,
+                    "currentPrice": round(current_price, 4) if current_price else None,
+                    "gapPctFromCurrent": round((current_price - level_price) / current_price * 100, 3) if current_price and level_price else None,
+                },
+            )
+            if overlay and not symbol_mismatch:
+                overlays.append(overlay)
+    overlays = [_validate_overlay(o) for o in overlays]
+
+    payload.update({
+        "precisionBaseDate": precision_base_date,
+        "precisionBasePrice": round(precision_base_price, 4) if precision_base_price else None,
+        "precisionSource": precision_source,
+        "precisionReason": precision_reason,
+        "precisionType": precision_type,
+        "currentPrice": round(current_price, 4) if current_price else None,
+        "currentPriceSource": current_price_source,
+        "currentPriceDate": current_price_date,
+        "ohlcvSource": ohlcv_source,
+        "ohlcvLatestDate": ohlcv_latest_date,
+        "recommendationDate": recommendation_date,
+        "recommendationSource": recommendation_source,
+        "precisionGapPct": round(precision_gap_pct, 3) if precision_gap_pct is not None else None,
+        "futureProjectionBars": future_bars,
+        "dataStatus": data_status,
+        "overlayWarnings": warnings,
+        "symbolMismatch": symbol_mismatch,
+        "pivotLow": pivot_lows,
+        "pivotHigh": pivot_highs,
+        "lineCandidates": {
+            "supportLine": _validate_overlay(support_line) if support_line else None,
+            "resistanceLine": _validate_overlay(resistance_line) if resistance_line else None,
+        },
+        "overlays": overlays,
+        "overlayValidationSummary": _overlay_validation_summary(overlays),
+    })
+    return payload
+
+
 @app.get("/api/chart/{symbol}")
-def api_chart_data(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
-    return _chart_data_with_backfill(symbol, _market(market))
+def api_chart_data(
+    symbol: str,
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    futureProjectionBars: int = Query(12, ge=0, le=60),
+) -> dict:
+    normalized_market = _market(market)
+    payload = _chart_data_with_backfill(symbol, normalized_market)
+    return _enrich_chart_precision(payload, symbol, normalized_market, futureProjectionBars)
+
+
+@app.get("/api/chart/debug/{symbol}")
+def api_chart_debug(
+    symbol: str,
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    futureProjectionBars: int = Query(12, ge=0, le=60),
+) -> dict:
+    normalized_market = _market(market)
+    payload = _chart_data_with_backfill(symbol, normalized_market)
+    enriched = _enrich_chart_precision(payload, symbol, normalized_market, futureProjectionBars)
+    return {
+        "status": enriched.get("status"),
+        "symbol": enriched.get("symbol"),
+        "market": enriched.get("market"),
+        "currentPrice": enriched.get("currentPrice"),
+        "currentPriceSource": enriched.get("currentPriceSource"),
+        "ohlcvSource": enriched.get("ohlcvSource"),
+        "ohlcvLatestDate": enriched.get("ohlcvLatestDate"),
+        "precisionBaseDate": enriched.get("precisionBaseDate"),
+        "precisionBasePrice": enriched.get("precisionBasePrice"),
+        "precisionSource": enriched.get("precisionSource"),
+        "precisionGapPct": enriched.get("precisionGapPct"),
+        "pivotLow": enriched.get("pivotLow", []),
+        "pivotHigh": enriched.get("pivotHigh", []),
+        "lineCandidates": enriched.get("lineCandidates", {}),
+        "overlays": enriched.get("overlays", []),
+        "overlayValidationSummary": enriched.get("overlayValidationSummary", {}),
+    }
 
 
 @app.get("/api/chart/analysis/{symbol}")
@@ -2035,6 +2527,7 @@ def api_ohlcv_core(
     symbol: str = Query(..., min_length=1),
     market: str = Query("kr"),
     limit: int = Query(120, ge=1, le=500),
+    futureProjectionBars: int = Query(12, ge=0, le=60),
 ) -> dict:
     normalized_market = _market(market)
     payload = data.chart_data(symbol, normalized_market)
@@ -2050,7 +2543,8 @@ def api_ohlcv_core(
             payload["backfill"] = {"status": "ERROR", "error": str(exc)[:160]}
     payload["items"] = rows[-limit:] if len(rows) > limit else rows
     payload["count"] = len(payload["items"])
-    return payload
+    payload["latestDate"] = _latest_chart_date(payload["items"])
+    return _enrich_chart_precision(payload, symbol, normalized_market, futureProjectionBars)
 
 
 try:
