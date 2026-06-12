@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, type Market } from "@/lib/api";
-import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
+import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
@@ -1939,7 +1939,7 @@ function CollapsibleOrderbook({ symbol, market }: { symbol: string; market: stri
 
 // ── 메인 ─────────────────────────────────────────────────────────────
 export default function ChartPage() {
-  const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
+  const [market, setMarket] = useState<Market>("all");
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [levels, setLevels] = useState<any | null>(null);
@@ -1978,7 +1978,15 @@ export default function ChartPage() {
     updatedAt: "",
     recoDate: "",
   });
+  const [sessionTick, setSessionTick] = useState(0);
+  const autoMarket = getDefaultMarketBySession(new Date(Date.now() + sessionTick * 0));
+  const resolvedMarket: Exclude<Market, "all"> = market === "all" ? autoMarket : market;
   const futureProjectionBars = futureBarsForPeriod(period);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setSessionTick((value) => value + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   function readStoredChartSymbol(): MoneSymbol | null {
     if (typeof window === "undefined") return null;
@@ -2056,24 +2064,24 @@ export default function ChartPage() {
       try {
         let picked: MoneSymbol | null = null;
         try {
-          const holdings = await mone.holdingsClean({ market, limit: 20 });
+          const holdings = await mone.holdingsClean({ market: resolvedMarket, limit: 20 });
           if (!active) return;
           picked = Array.isArray(holdings.items) ? (holdings.items.map(toSymbol).find(Boolean) ?? null) : null;
         } catch { /* try recommendations next */ }
         if (!active) return;
         if (!picked) {
           try {
-            const rec = await mone.recommendations({ market, mode: "balanced", horizon: "swing", limit: 20 });
+            const rec = await mone.recommendations({ market: resolvedMarket, mode: "balanced", horizon: "swing", limit: 20 });
             if (!active) return;
             picked = Array.isArray(rec.items) ? (rec.items.map(toSymbol).find(Boolean) ?? null) : null;
           } catch { /* use fallback */ }
         }
-        if (active) setSelected(picked ?? fallbackSymbol(market));
+        if (active) setSelected(picked ?? fallbackSymbol(resolvedMarket));
       } finally { if (active) setSeedLoading(false); }
     }
     seed();
     return () => { active = false; };
-  }, [market, selected]);
+  }, [resolvedMarket, selected]);
 
   useEffect(() => {
     if (!selected) { setRows([]); setLevels(null); setChartMeta(null); setNews([]); setDisclosures([]); setCompany(null); return; }
@@ -2323,16 +2331,16 @@ export default function ChartPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {(["kr","us","all"] as Market[]).map((item) => (
+        {(["all","kr","us"] as Market[]).map((item) => (
           <button key={item} onClick={() => { setMarket(item); setSelected(null); }}
             className={`rounded-xl px-4 py-2 text-sm ${market === item ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
-            {marketLabel(item)}
+            {item === "all" ? `자동(${marketLabel(autoMarket)})` : marketLabel(item)}
           </button>
         ))}
-        <span className="text-xs text-slate-500">기본값: {marketLabel(getDefaultMarketBySession())}</span>
+        <span className="text-xs text-slate-500">{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · 현재 적용 시장: {marketLabel(resolvedMarket)}</span>
       </div>
 
-      <SymbolSearchSelect market={market} value={selected?.symbol || ""} onChange={setSelected} />
+      <SymbolSearchSelect market={resolvedMarket} value={selected?.symbol || ""} onChange={setSelected} />
 
       {!selected && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">

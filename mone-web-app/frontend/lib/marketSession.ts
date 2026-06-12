@@ -117,22 +117,38 @@ export function getSessionCountdown(market: "kr" | "us", now = new Date()): stri
   return `미장 마감까지 ${fmt(24 * 60 - t + usClose)}`;
 }
 
-// ── 기본 마켓 선택 (세션 기반) ────────────────────────────────────────
-export function getDefaultMarketBySession(now = new Date()): SessionMarket {
+// ── 자동 마켓 선택 (사용자 지정 시간 규칙) ─────────────────────────────
+// 자동 모드 기준:
+// - KST 08:00 이상 20:00 미만 → KR
+// - KST 20:00 이상 또는 08:00 미만 → US
+// - 자동 대상 시장이 휴장/공휴일이면 KR 기준 화면으로 고정
+// - 수동 KR/US 선택은 자동보다 우선
+export function resolveAutoMarket(
+  now = new Date(),
+  manualMarket?: Market | SessionMarket | "auto" | null,
+): SessionMarket {
+  if (manualMarket === "kr" || manualMarket === "us") return manualMarket;
+
   const { hour, minute } = kstNowParts(now);
   const total = hour * 60 + minute;
-  const marketByTime = total >= 8 * 60 && total < 20 * 60 ? "kr" : "us";
+  const marketByTime: SessionMarket = total >= 8 * 60 && total < 20 * 60 ? "kr" : "us";
+
   return isMarketClosed(marketByTime, now) ? "kr" : marketByTime;
 }
 
-export function marketLabel(market: Market | SessionMarket) {
-  if (market === "kr") return "국장";
-  if (market === "us") return "미장";
-  return "전체";
+// ── 기본 마켓 선택 (세션 기반) ────────────────────────────────────────
+export function getDefaultMarketBySession(now = new Date()): SessionMarket {
+  return resolveAutoMarket(now);
 }
 
-export function marketSessionNote(market: Market | SessionMarket) {
+export function marketLabel(market: Market | SessionMarket | "auto") {
+  if (market === "kr") return "국장";
+  if (market === "us") return "미장";
+  return "자동";
+}
+
+export function marketSessionNote(market: Market | SessionMarket | "auto") {
   if (market === "kr") return "08:00~20:00 KST 기본 국장 모드";
   if (market === "us") return "20:00~08:00 KST 기본 미장 모드";
-  return "국장·미장 통합 보기";
+  return "자동: 08:00~20:00 국장 · 20:00~08:00 미장 · 휴장/공휴일은 국장 기준";
 }
