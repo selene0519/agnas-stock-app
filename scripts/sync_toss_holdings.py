@@ -195,7 +195,9 @@ def _get_accounts(token: str) -> list[dict[str, Any]]:
         print("[ERROR] 계좌 목록 조회 실패", file=sys.stderr)
         sys.exit(1)
 
-    accounts = data if isinstance(data, list) else (data.get("accounts") or data.get("data") or [])
+    accounts = data if isinstance(data, list) else (
+        data.get("result") or data.get("accounts") or data.get("data") or []
+    )
     if not accounts:
         print("[ERROR] 계좌를 찾을 수 없습니다. 토스증권 Open API 계좌 접근 권한을 확인하세요.", file=sys.stderr)
         sys.exit(1)
@@ -224,13 +226,19 @@ def _get_holdings(token: str, account_seq: str) -> list[dict[str, Any]]:
     except Exception:
         sys.exit(1)
 
-    raw = (
-        data.get("holdings")
-        or data.get("accountBalances")
-        or data.get("items")
-        or data.get("data")
-        or (data if isinstance(data, list) else [])
-    )
+    result = data.get("result") or data
+    if isinstance(result, dict):
+        raw = (
+            result.get("items")
+            or result.get("holdings")
+            or result.get("accountBalances")
+            or result.get("data")
+            or []
+        )
+    elif isinstance(result, list):
+        raw = result
+    else:
+        raw = []
     return raw
 
 
@@ -253,25 +261,38 @@ def _normalize_item(raw: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
     avg = _safe_float(
-        raw.get("averagePrice") or raw.get("purchaseUnitPrice") or raw.get("avgPrice")
-        or raw.get("avg_price") or 0
+        raw.get("averagePurchasePrice") or raw.get("averagePrice")
+        or raw.get("purchaseUnitPrice") or raw.get("avgPrice") or raw.get("avg_price") or 0
     )
     current = _safe_float(
-        raw.get("currentPrice") or raw.get("closePrice") or raw.get("price") or 0
+        raw.get("lastPrice") or raw.get("currentPrice") or raw.get("closePrice")
+        or raw.get("price") or 0
     )
+    # marketValue: {"amount":"...", "purchaseAmount":"..."} (Toss response)
+    mv = raw.get("marketValue")
+    eval_amount = 0.0
+    if isinstance(mv, dict):
+        eval_amount = _safe_float(mv.get("amount") or mv.get("purchaseAmount") or 0)
+    elif mv is not None:
+        eval_amount = _safe_float(mv)
     valuation = _safe_float(
-        raw.get("evaluationAmount") or raw.get("evalAmount") or raw.get("marketValue")
+        raw.get("evaluationAmount") or raw.get("evalAmount") or eval_amount
         or (current * qty if current else 0)
     )
-    pnl = _safe_float(
-        raw.get("profitLoss") or raw.get("profitLossAmount") or raw.get("pnl")
-        or ((current - avg) * qty if current and avg else 0)
-    )
-    pnl_pct = _safe_float(
-        raw.get("profitLossRate") or raw.get("profitLossRatio") or raw.get("pnlPct")
-        or raw.get("profitLossPct")
-        or (pnl / (avg * qty) * 100 if avg and qty and avg * qty > 0 else 0)
-    )
+    # profitLoss: {"amount":"...", "rate":"0.36"} — rate is decimal (0.36 = 36%)
+    pl = raw.get("profitLoss")
+    if isinstance(pl, dict):
+        pnl = _safe_float(pl.get("amount") or pl.get("amountAfterCost") or 0)
+        pnl_pct = _safe_float(pl.get("rate") or pl.get("rateAfterCost") or 0) * 100
+    else:
+        pnl = _safe_float(
+            raw.get("profitLoss") or raw.get("profitLossAmount") or raw.get("pnl")
+            or ((current - avg) * qty if current and avg else 0)
+        )
+        pnl_pct = _safe_float(
+            raw.get("profitLossRate") or raw.get("profitLossRatio") or raw.get("pnlPct")
+            or (pnl / (avg * qty) * 100 if avg and qty and avg * qty > 0 else 0)
+        )
     name = str(
         raw.get("stockName") or raw.get("name") or raw.get("issueName") or symbol
     ).strip()
@@ -286,12 +307,14 @@ def _normalize_item(raw: dict[str, Any]) -> dict[str, Any] | None:
         market_raw = "kr" if symbol.isdigit() else "us"
     market = _normalize_market(market_raw)
 
+    # Keep fractional quantities (Toss supports fractional shares)
+    qty_out = round(qty, 6) if qty != int(qty) else int(qty)
     return {
         "symbol": symbol,
         "name": name,
         "market": market,
-        "quantity": int(qty),
-        "avgPrice": round(avg, 2),
+        "quantity": qty_out,
+        "avgPrice": round(avg, 4),
         "currentPrice": round(current, 2),
         "valuation": round(valuation),
         "pnl": round(pnl),
