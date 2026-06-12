@@ -566,7 +566,7 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
   const [importMarket, setImportMarket] = useState<"kr" | "us">("kr");
   const [importCsvText, setImportCsvText] = useState("");
   const [importSaving, setImportSaving] = useState(false);
-  const [kisSyncing, setKisSyncing] = useState(false);
+  const [brokerSyncing, setBrokerSyncing] = useState<string | null>(null);
   const [positionCandidates, setPositionCandidates] = useState<any[]>([]);
   const [positionLoading, setPositionLoading] = useState(false);
   const [holdingsLoadedAt, setHoldingsLoadedAt] = useState("");
@@ -760,16 +760,21 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
     }
   }
 
-  async function syncKisHoldings() {
-    setKisSyncing(true); setMessage("");
+  async function syncBrokerHoldings(broker: string) {
+    if (!userToken) {
+      setMessage("로그인 후 계좌 연동을 사용할 수 있습니다.");
+      return;
+    }
+    const brokerName = broker === "toss" ? "토스증권" : "한국투자";
+    setBrokerSyncing(broker); setMessage("");
     try {
-      const res = await import("@/lib/api").then(({ mone }) => mone.kisHoldingsSync({ mode: "merge" }));
-      if (res?.status === "ERROR") throw new Error(res.error || "한국투자 동기화 실패");
-      setMessage(`한국투자 보유종목 동기화 완료 — 추가 ${res.added ?? 0}개, 갱신 ${res.updated ?? 0}개${res.isMock ? " (모의계좌)" : ""}`);
+      const res = await import("@/lib/api").then(({ mone }) => mone.brokerSyncHoldings(userToken, { broker }));
+      if (!res?.ok) throw new Error(res?.message || res?.error || `${brokerName} 브릿지 스냅샷 확인 실패`);
+      setMessage(res.message || `${brokerName} 로컬 브릿지 스냅샷이 반영되어 있습니다.`);
       await load();
     } catch (error) {
-      setMessage(`한국투자 동기화 실패: ${error instanceof Error ? error.message : String(error)}`);
-    } finally { setKisSyncing(false); }
+      setMessage(`${brokerName} 브릿지 확인 실패: ${error instanceof Error ? error.message : String(error)}`);
+    } finally { setBrokerSyncing(null); }
   }
 
   async function importCsv() {
@@ -926,11 +931,11 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
                     {connected ? (
                       <button
                         type="button"
-                        disabled={broker === "kis" ? kisSyncing : false}
-                        onClick={broker === "kis" ? syncKisHoldings : () => onNavigate?.("broker")}
+                        disabled={brokerSyncing === broker}
+                        onClick={() => syncBrokerHoldings(broker)}
                         className="rounded-lg border border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
                       >
-                        {broker === "kis" && kisSyncing ? "동기화 중" : broker === "kis" ? "동기화" : "관리"}
+                        {brokerSyncing === broker ? "확인 중" : "스냅샷 확인"}
                       </button>
                     ) : (
                       <button

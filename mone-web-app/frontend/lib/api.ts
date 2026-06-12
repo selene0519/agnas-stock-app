@@ -514,6 +514,12 @@ export const mone = {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     }).then((r) => r.json()),
+  brokerLocalBridgeUpload: (token: string, body: { broker: string; accountNoHint?: string; mode?: string; items: any[] }) =>
+    fetch(buildUrl(API_BASE, "/api/broker/local-bridge/upload"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }).then((r) => r.json()),
   brokerDisconnect: (token: string, body: { broker: string }) =>
     fetch(buildUrl(API_BASE, "/api/broker/disconnect"), {
       method: "DELETE",
