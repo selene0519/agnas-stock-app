@@ -9,7 +9,15 @@ from zoneinfo import ZoneInfo
 KST = ZoneInfo("Asia/Seoul")
 NY = ZoneInfo("America/New_York")
 
-DATA_STATUS_VALUES = {"NORMAL", "PARTIAL", "STALE", "NO_DATA", "ERROR"}
+DATA_STATUS_VALUES = {
+    "NORMAL",
+    "PARTIAL",
+    "STALE",
+    "NO_DATA",
+    "ERROR",
+    "PREVIOUS_CLOSE_BASIS",
+    "INTRADAY_OBSERVE",
+}
 KILL_STATUSES = {"STALE", "NO_DATA", "ERROR"}
 KR_SESSIONS = {"kr_premarket", "kr_intraday", "kr_after_close", "kr_closed"}
 US_SESSIONS = {"us_premarket", "us_intraday", "us_after_close", "us_closed"}
@@ -190,7 +198,15 @@ def evaluate_file_status(
 
 
 def worst_status(statuses: Iterable[str | None]) -> str:
-    rank = {"NORMAL": 0, "PARTIAL": 1, "STALE": 2, "NO_DATA": 3, "ERROR": 4}
+    rank = {
+        "NORMAL": 0,
+        "PREVIOUS_CLOSE_BASIS": 1,
+        "INTRADAY_OBSERVE": 1,
+        "PARTIAL": 1,
+        "STALE": 2,
+        "NO_DATA": 3,
+        "ERROR": 4,
+    }
     normalized = [str(s or "NO_DATA").upper() for s in statuses]
     if not normalized:
         return "NO_DATA"

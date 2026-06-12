@@ -29,11 +29,22 @@ GIT_AUTHOR_EMAIL = os.getenv(
     "MONE_GIT_AUTHOR_EMAIL",
     "287042011+selene0519@users.noreply.github.com",
 )
+INVALID_SYMBOL_TOKENS = {"", "NAN", "NONE", "NULL", "N/A", "NA", "UNDEFINED"}
 
 
 def log(msg: str) -> None:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] {msg}")
+
+
+def clean_symbol(value: object, market: str = "") -> str:
+    text = str(value or "").strip().upper().replace("$", "")
+    if text in INVALID_SYMBOL_TOKENS or text.lower() == "nan":
+        return ""
+    if market == "kr":
+        digits = "".join(ch for ch in text if ch.isdigit())
+        return digits.zfill(6) if digits and len(digits) <= 6 else ""
+    return text.replace(".US", "")
 
 
 def _render_refresh(market: str = "kr") -> bool:
@@ -71,7 +82,11 @@ def collect_ohlcv_fdr(symbols: list[str], days: int = 30) -> dict:
     ohlcv_dir = REPO_ROOT / "data" / "market" / "ohlcv"
     ohlcv_dir.mkdir(parents=True, exist_ok=True)
 
-    for sym in symbols:
+    for raw_sym in symbols:
+        sym = clean_symbol(raw_sym, "kr")
+        if not sym:
+            fail += 1
+            continue
         try:
             df = fdr.DataReader(sym, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
             if df is None or df.empty:
@@ -105,8 +120,8 @@ def get_kr_symbols() -> list[str]:
     if path.exists():
         with open(path, encoding="utf-8-sig") as f:
             for r in csv.DictReader(f):
-                s = str(r.get("symbol", "")).strip()
-                if s and s.isdigit():
+                s = clean_symbol(r.get("symbol", ""), "kr")
+                if s:
                     syms.append(s)
     return syms[:100]
 
@@ -212,7 +227,7 @@ def get_us_symbols() -> list[str]:
     if path.exists():
         with open(path, encoding="utf-8-sig") as f:
             for r in csv.DictReader(f):
-                s = str(r.get("symbol", "")).strip().upper()
+                s = clean_symbol(r.get("symbol", ""), "us")
                 if s:
                     syms.append(s)
     if not syms:
@@ -220,7 +235,7 @@ def get_us_symbols() -> list[str]:
         syms = ["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","BRK-B",
                 "JPM","V","UNH","JNJ","XOM","PG","HD","CVX","MA","BAC","ABBV","PFE"]
     for file_path in sorted((REPO_ROOT / "data" / "market" / "ohlcv").glob("us_*_daily.csv")):
-        sym = file_path.name.removeprefix("us_").removesuffix("_daily.csv").upper()
+        sym = clean_symbol(file_path.name.removeprefix("us_").removesuffix("_daily.csv"), "us")
         if sym and sym not in syms:
             syms.append(sym)
     return syms[:200]
@@ -241,7 +256,11 @@ def collect_ohlcv_us(symbols: list[str], days: int = 30) -> dict:
     ohlcv_dir = REPO_ROOT / "data" / "market" / "ohlcv"
     ohlcv_dir.mkdir(parents=True, exist_ok=True)
 
-    for sym in symbols:
+    for raw_sym in symbols:
+        sym = clean_symbol(raw_sym, "us")
+        if not sym:
+            fail += 1
+            continue
         try:
             df = yf.download(sym, start=start.strftime("%Y-%m-%d"),
                              end=end.strftime("%Y-%m-%d"), progress=False, auto_adjust=True)
