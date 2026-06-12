@@ -1276,10 +1276,10 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(recommendationFreshness.state)}`}>
             {recommendationFreshness.label}
           </span>
-          <span>{recommendationFreshness.basisText}</span>
-          <span className="text-emerald-300">{priceBasisInfo.predictionText}</span>
+          <span className="text-emerald-300 font-semibold">{priceBasisInfo.predictionText}</span>
           <span className="text-cyan-300">{priceBasisInfo.priceText}</span>
           <span>{priceBasisInfo.ohlcvText}</span>
+          <span className="text-slate-500">상태: {recommendationFreshness.label}</span>
           <span className="text-slate-600">· 상세 판단은 카드의 MONE 판단 보기에서 분석 탭으로 이어집니다.</span>
         </div>
       </div>
@@ -1402,6 +1402,23 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
           const riskText = psRiskRaw ? safeKoreanLabel(psRiskRaw, PATTERN_RISK_KO, "확인 필요") : "정상";
           const patternText = safeKoreanLabel(psPatternRaw, PATTERN_TYPE_KO);
           const topBadgeLabel = recommendationBadgeLabel(item, actionCode, actionText);
+          const cardMarket = String(item.market || resolvedMarket).toLowerCase();
+          const cardPredictionDate = firstText(
+            item.recoGeneratedAt,
+            item.generatedAt,
+            item.predictionDate,
+            item.recommendationDate,
+            item.latestFileModifiedAt,
+            item.updatedAt,
+            "",
+          );
+          const cardOhlcvDate = firstText(item.ohlcvLatestDate, item.dataDate, item.sourceDate, item.latestDataDate, "");
+          const cardPriceSource = firstText(item.currentPriceSource, item.priceSource, item.priceSourceFile, "");
+          const cardUsesSnapshot = cardPriceSource.toLowerCase().includes("kis_current_price")
+            || cardPriceSource.toLowerCase().includes("intraday")
+            || cardPriceSource.toLowerCase().includes("snapshot")
+            || cardPriceSource.toLowerCase().includes("finnhub")
+            || cardPriceSource.toLowerCase().includes("yfinance");
 
           // 태그: 넓어진 카드 폭에 맞춰 핵심 신호를 한 줄에 최대 5개까지 표시
           const MAX_VISIBLE_TAGS = 5;
@@ -1488,6 +1505,17 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                       <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
                     )}
                     {watched && <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">관심</span>}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] leading-4">
+                    <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-300">
+                      {cardMarket === "us" ? "미장" : "국장"} 예측 {cardPredictionDate ? cardPredictionDate.slice(0, 10) : "확인중"}
+                    </span>
+                    <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-cyan-300">
+                      현재가 {cardUsesSnapshot ? "snapshot" : "fallback"}
+                    </span>
+                    <span className="rounded-md border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-slate-400">
+                      차트·지표 {cardOhlcvDate ? cardOhlcvDate.slice(0, 10) : "확인중"}
+                    </span>
                   </div>
                 </div>
               </div>
