@@ -475,6 +475,9 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
     realtime_status = session.worst_status(f.get("status") for f in realtime_files)
     data_status_raw = session.worst_status(f.get("status") for f in data_files)
     data_status_combined = session.worst_status([data_status_raw, recommendation_status])
+    # quick 모드: final_engine 미호출로 rows=[] — realtime 파일 실제 상태로 price_status 반영
+    if quick and realtime_status not in ("NO_DATA", "ERROR"):
+        price_status = realtime_status
 
     # ── rec_has_data ──────────────────────────────────────────────────────────
     rec_has_data = (rec_csv_inspect.get("rowCount", 0) > 0
@@ -666,7 +669,7 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
         "priceSession": state["priceSession"],
         "session": state,
         "dataStatus": display_combined,
-        "priceDataStatus": price_status if rows else ("NO_REALTIME" if is_after_close else "NO_DATA"),
+        "priceDataStatus": price_status if (rows or quick) else ("NO_REALTIME" if is_after_close else "NO_DATA"),
         "killSwitch": kill_switch,
         "reviewMode": is_review,
         "afterCloseReviewAvailable": is_after_close and rec_has_data,
