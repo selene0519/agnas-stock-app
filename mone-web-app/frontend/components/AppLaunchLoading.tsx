@@ -59,7 +59,7 @@ export default function AppLaunchLoading({
 
         {/* MONE 텍스트 */}
         <p
-          className="mt-3 tracking-[0.35em] text-white drop-shadow-[0_0_18px_rgba(66,223,212,0.25)] sm:mt-4"
+          className="mt-1 tracking-[0.35em] text-white drop-shadow-[0_0_18px_rgba(66,223,212,0.25)] sm:mt-1"
           style={{
             fontFamily: "'Orbitron', sans-serif",
             fontWeight: 300,
