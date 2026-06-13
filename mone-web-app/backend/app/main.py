@@ -1101,6 +1101,43 @@ def _chart_precision_type(item: dict) -> str:
     return "support"
 
 
+_CHART_OVERLAY_POLICY_VERSION = "chart-overlay-policy-v2"
+_CHART_OVERLAY_MAX_DEFAULT = 6
+_CHART_OVERLAY_CORE_TYPES = {
+    "currentPrice",
+    "entryPrice",
+    "stopLine",
+    "stopPrice",
+    "targetLine",
+    "targetPrice",
+    "riskLine",
+    "takeProfitLine",
+    "rebalanceLine",
+    "rebalanceTargetLine",
+}
+_CHART_OVERLAY_DEBUG_TYPES = {"precision", "extension", "overheated"}
+_CHART_OVERLAY_RANKS = {
+    "currentPrice": 10,
+    "entryPrice": 20,
+    "stopLine": 30,
+    "stopPrice": 31,
+    "riskLine": 32,
+    "rebalanceLine": 33,
+    "targetLine": 40,
+    "targetPrice": 41,
+    "takeProfitLine": 42,
+    "rebalanceTargetLine": 43,
+    "supportLine": 50,
+    "resistanceLine": 60,
+    "historicalSupportLevels": 70,
+    "precision": 900,
+}
+
+
+def _chart_overlay_rank(overlay_type: str) -> int:
+    return _CHART_OVERLAY_RANKS.get(str(overlay_type or ""), 500)
+
+
 def _chart_overlay(
     overlay_type: str,
     price: float | None,
@@ -1133,9 +1170,13 @@ def _chart_overlay(
         "extendedFutureBars": future_bars,
         "reason": reason,
         "warnings": warnings or [],
+        "valid": True,
+        "invalidReason": None,
         "displayByDefault": display_by_default,
         "debugOnly": debug_only,
         "hideReason": hide_reason,
+        "gapPctFromCurrent": round(gap_pct, 3) if gap_pct is not None else None,
+        "displayRank": _chart_overlay_rank(overlay_type),
     }
     if extra:
         overlay.update(extra)
@@ -1349,17 +1390,141 @@ def _validate_overlay(overlay: dict) -> dict:
         warnings.append("precision_far_from_current")
     out.setdefault("valid", not bool(out.get("invalidReason")))
     out.setdefault("invalidReason", None)
+    out.setdefault("displayByDefault", False)
+    out.setdefault("debugOnly", not bool(out.get("displayByDefault")))
+    out.setdefault("hideReason", None if out.get("displayByDefault") else out.get("invalidReason"))
+    out.setdefault("displayRank", _chart_overlay_rank(otype))
+    if current and price and out.get("gapPctFromCurrent") is None:
+        out["gapPctFromCurrent"] = round((price - current) / current * 100, 3)
     out["warnings"] = list(dict.fromkeys(warnings))
     return out
 
 
+def _finalize_chart_overlays(overlays: list[dict], current_price: float | None) -> list[dict]:
+    current = _chart_float(current_price)
+    checked = [_validate_overlay(o) for o in overlays]
+    historical_support: list[tuple[int, float]] = []
+
+    for idx, overlay in enumerate(checked):
+        otype = str(overlay.get("type") or "")
+        price = _chart_float(overlay.get("price") or overlay.get("basePrice"))
+        valid = bool(overlay.get("valid"))
+        overlay["displayRank"] = int(overlay.get("displayRank") or _chart_overlay_rank(otype))
+        overlay.setdefault("invalidReason", None)
+        overlay.setdefault("warnings", [])
+        overlay["displayByDefault"] = False
+        overlay["debugOnly"] = True
+        overlay["hideReason"] = overlay.get("hideReason") or overlay.get("invalidReason")
+
+        gap_abs = None
+        if current and price:
+            gap_signed = (price - current) / current * 100
+            overlay["gapPctFromCurrent"] = round(gap_signed, 3)
+            gap_abs = abs(gap_signed)
+        elif overlay.get("gapPctFromCurrent") is None:
+            overlay["gapPctFromCurrent"] = None
+
+        if otype in _CHART_OVERLAY_DEBUG_TYPES or "precision" in otype.lower():
+            overlay["displayByDefault"] = False
+            overlay["debugOnly"] = True
+            overlay["hideReason"] = overlay.get("hideReason") or "precision_evidence"
+            continue
+
+        if otype in _CHART_OVERLAY_CORE_TYPES:
+            overlay["displayByDefault"] = bool(price and price > 0)
+            overlay["debugOnly"] = False
+            overlay["hideReason"] = None if overlay["displayByDefault"] else "missing_price"
+            continue
+
+        if otype == "supportLine":
+            if not valid:
+                overlay["hideReason"] = overlay.get("invalidReason") or "invalid_line"
+            elif current and price and price >= current:
+                overlay["hideReason"] = "support_above_current"
+            elif gap_abs is not None and gap_abs > 30:
+                overlay["hideReason"] = "far_from_current"
+            else:
+                overlay["displayByDefault"] = True
+                overlay["debugOnly"] = False
+                overlay["hideReason"] = None
+            continue
+
+        if otype == "resistanceLine":
+            if not valid:
+                overlay["hideReason"] = overlay.get("invalidReason") or "invalid_line"
+            elif current and price and price <= current:
+                overlay["hideReason"] = "resistance_below_current"
+            elif gap_abs is not None and gap_abs > 30:
+                overlay["hideReason"] = "far_from_current"
+            else:
+                overlay["displayByDefault"] = True
+                overlay["debugOnly"] = False
+                overlay["hideReason"] = None
+            continue
+
+        if otype == "historicalSupportLevels":
+            if not valid:
+                overlay["hideReason"] = overlay.get("invalidReason") or "invalid_line"
+            elif current and price and price >= current:
+                overlay["hideReason"] = "support_above_current"
+            elif gap_abs is not None and gap_abs > 30:
+                overlay["hideReason"] = "far_from_current"
+            else:
+                historical_support.append((idx, gap_abs if gap_abs is not None else 999999.0))
+                overlay["hideReason"] = "historical_support_extra"
+            continue
+
+        overlay["hideReason"] = overlay.get("hideReason") or "extension_hidden"
+
+    if historical_support:
+        keep_idx = sorted(historical_support, key=lambda item: item[1])[0][0]
+        for idx, _ in historical_support:
+            overlay = checked[idx]
+            if idx == keep_idx:
+                overlay["displayByDefault"] = True
+                overlay["debugOnly"] = False
+                overlay["hideReason"] = None
+            else:
+                overlay["displayByDefault"] = False
+                overlay["debugOnly"] = True
+                overlay["hideReason"] = "historical_support_extra"
+
+    default_indices = [
+        idx for idx, overlay in enumerate(checked)
+        if overlay.get("displayByDefault")
+    ]
+    default_indices.sort(key=lambda idx: (
+        int(checked[idx].get("displayRank") or _chart_overlay_rank(str(checked[idx].get("type") or ""))),
+        abs(float(checked[idx].get("gapPctFromCurrent") or 0)),
+    ))
+    for idx in default_indices[_CHART_OVERLAY_MAX_DEFAULT:]:
+        checked[idx]["displayByDefault"] = False
+        checked[idx]["debugOnly"] = True
+        checked[idx]["hideReason"] = "display_limit_exceeded"
+
+    return checked
+
+
 def _overlay_validation_summary(overlays: list[dict]) -> dict:
     checked = [_validate_overlay(o) for o in overlays]
+    default_overlays = [o for o in checked if o.get("displayByDefault")]
+    core_overlays = [o for o in checked if str(o.get("type") or "") in _CHART_OVERLAY_CORE_TYPES]
     return {
+        "policyVersion": _CHART_OVERLAY_POLICY_VERSION,
         "total": len(checked),
         "valid": sum(1 for o in checked if o.get("valid")),
         "invalid": sum(1 for o in checked if not o.get("valid")),
         "warnings": sum(1 for o in checked if o.get("warnings")),
+        "coreOverlayCount": len(core_overlays),
+        "rangeDerivedOverlayCount": len(checked) - len(core_overlays),
+        "displayOverlayCount": len(default_overlays),
+        "debugOverlayCount": sum(1 for o in checked if o.get("debugOnly")),
+        "maxDefaultOverlays": _CHART_OVERLAY_MAX_DEFAULT,
+        "coreOverlayPrices": {
+            str(o.get("type")): o.get("price")
+            for o in core_overlays
+            if o.get("price") is not None
+        },
     }
 
 
@@ -1715,6 +1880,21 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
     pivot_lows, pivot_highs = _chart_pivots(rows, ohlcv_source)
     stale = "precision_base_stale" in warnings
     overlays: list[dict] = []
+    current_overlay = _chart_overlay(
+        "currentPrice",
+        current_price,
+        current_price_date or ohlcv_latest_date,
+        current_price_source or "current_price",
+        future_bars,
+        precision_type="currentPrice",
+        reason="current price",
+        extra={
+            "label": "current price",
+            "currentPrice": round(current_price, 4) if current_price else None,
+        },
+    )
+    if current_overlay:
+        overlays.append(current_overlay)
     support_line = _line_from_pivots("supportLine", pivot_lows, current_price, future_bars, "pivot_detector", rows)
     resistance_line = _line_from_pivots("resistanceLine", pivot_highs, current_price, future_bars, "pivot_detector", rows)
     for line in (support_line, resistance_line):
@@ -1822,7 +2002,7 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
             )
             if overlay and not symbol_mismatch:
                 overlays.append(overlay)
-    overlays = [_validate_overlay(o) for o in overlays]
+    overlays = _finalize_chart_overlays(overlays, current_price)
 
     payload.update({
         "precisionBaseDate": precision_base_date,
@@ -1861,6 +2041,218 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
     return payload
 
 
+def _chart_bar_touch(row: dict, price: float, tolerance_pct: float = 0.005) -> bool:
+    high = _chart_float(row.get("high") or row.get("High"))
+    low = _chart_float(row.get("low") or row.get("Low"))
+    if high is None or low is None or price <= 0:
+        return False
+    return low <= price * (1 + tolerance_pct) and high >= price * (1 - tolerance_pct)
+
+
+def _chart_line_validation_stats(items: list[dict], line_type: str) -> dict:
+    subset = [item for item in items if item.get("type") == line_type]
+    scores = [float(item.get("confidenceScore") or 0) for item in subset]
+    return {
+        "evaluated": len(subset),
+        "touches": sum(int(item.get("forwardTouchCount") or 0) for item in subset),
+        "bounces": sum(int(item.get("forwardBounceCount") or 0) for item in subset),
+        "breaks": sum(int(item.get("forwardBreakCount") or 0) for item in subset),
+        "pending": sum(1 for item in subset if item.get("validationResult") == "NO_FUTURE_BARS"),
+        "avgConfidenceScore": round(sum(scores) / len(scores), 3) if scores else None,
+    }
+
+
+def _chart_target_stop_stats(items: list[dict]) -> dict:
+    target_stop_types = {
+        "stopLine", "stopPrice", "targetLine", "targetPrice", "takeProfitLine",
+        "rebalanceTargetLine", "riskLine", "rebalanceLine",
+    }
+    subset = [item for item in items if item.get("type") in target_stop_types]
+    return {
+        "evaluated": len(subset),
+        "hit": sum(1 for item in subset if item.get("validationResult") in {"TARGET_HIT", "STOP_HIT"}),
+        "pending": sum(1 for item in subset if item.get("validationResult") == "NO_FUTURE_BARS"),
+    }
+
+
+def _chart_line_validation_from_enriched(
+    enriched: dict,
+    symbol: str,
+    market: str,
+    lookback: int = 250,
+    forward_bars: int = 20,
+) -> dict:
+    rows = _chart_rows(enriched)[-max(1, lookback):]
+    overlays = enriched.get("overlays") if isinstance(enriched.get("overlays"), list) else []
+    warnings: list[str] = []
+    empty_stats = _chart_line_validation_stats([], "supportLine")
+    if not rows:
+        return {
+            "status": "NO_OHLCV",
+            "symbol": symbol,
+            "market": market,
+            "lookback": lookback,
+            "forwardBars": forward_bars,
+            "evaluatedLineCount": 0,
+            "supportLineStats": empty_stats,
+            "resistanceLineStats": _chart_line_validation_stats([], "resistanceLine"),
+            "historicalSupportStats": _chart_line_validation_stats([], "historicalSupportLevels"),
+            "targetStopStats": _chart_target_stop_stats([]),
+            "overallAccuracyScore": None,
+            "warnings": ["missing_ohlcv"],
+            "items": [],
+        }
+
+    date_to_index = {_chart_row_date(row): idx for idx, row in enumerate(rows) if _chart_row_date(row)}
+    evaluable_types = {
+        "supportLine", "resistanceLine", "historicalSupportLevels", "entryPrice",
+        "stopLine", "stopPrice", "targetLine", "targetPrice", "takeProfitLine",
+        "rebalanceTargetLine", "riskLine", "rebalanceLine",
+    }
+    downside_types = {"supportLine", "historicalSupportLevels", "entryPrice", "stopLine", "stopPrice", "riskLine", "rebalanceLine"}
+    items: list[dict] = []
+
+    for overlay in overlays:
+        otype = str(overlay.get("type") or "")
+        if otype not in evaluable_types:
+            continue
+        price = _chart_float(overlay.get("price") or overlay.get("basePrice"))
+        if not price or price <= 0:
+            continue
+        base_date = str(overlay.get("baseDate") or "")[:10]
+        base_idx = date_to_index.get(base_date)
+        if base_idx is None:
+            base_idx = len(rows) - 1
+            if base_date:
+                warnings.append(f"base_date_not_found:{otype}:{base_date}")
+
+        before = rows[max(0, base_idx - lookback):base_idx + 1]
+        future = rows[base_idx + 1:base_idx + 1 + max(0, forward_bars)]
+        touch_before = sum(1 for row in before if _chart_bar_touch(row, price))
+        future_touch = 0
+        future_bounce = 0
+        future_break = 0
+        future_close_break = 0
+        highs: list[float] = []
+        lows: list[float] = []
+
+        for row in future:
+            high = _chart_float(row.get("high") or row.get("High"))
+            low = _chart_float(row.get("low") or row.get("Low"))
+            close = _chart_float(row.get("close") or row.get("Close"))
+            if high is not None:
+                highs.append(high)
+            if low is not None:
+                lows.append(low)
+            touched = _chart_bar_touch(row, price)
+            if touched:
+                future_touch += 1
+            if otype in downside_types:
+                if touched and close is not None and close >= price:
+                    future_bounce += 1
+                if low is not None and low < price * 0.985:
+                    future_break += 1
+                if close is not None and close < price * 0.985:
+                    future_close_break += 1
+            else:
+                if touched and close is not None and close <= price:
+                    future_bounce += 1
+                if high is not None and high > price * 1.015:
+                    future_break += 1
+                if close is not None and close > price * 1.015:
+                    future_close_break += 1
+
+        if lows and highs and otype in downside_types:
+            max_adverse = max((price - low) / price * 100 for low in lows)
+            max_favorable = max((high - price) / price * 100 for high in highs)
+        elif lows and highs:
+            max_adverse = max((high - price) / price * 100 for high in highs)
+            max_favorable = max((price - low) / price * 100 for low in lows)
+        else:
+            max_adverse = None
+            max_favorable = None
+
+        if not future:
+            validation_result = "NO_FUTURE_BARS"
+            reason = "No OHLCV bars after baseDate yet."
+        elif otype in {"targetLine", "targetPrice", "takeProfitLine", "rebalanceTargetLine"} and any(high >= price for high in highs):
+            validation_result = "TARGET_HIT"
+            reason = "Future high touched or exceeded target."
+        elif otype in {"stopLine", "stopPrice", "riskLine", "rebalanceLine"} and any(low <= price for low in lows):
+            validation_result = "STOP_HIT"
+            reason = "Future low touched or fell below stop/risk line."
+        elif future_close_break > 0:
+            validation_result = "CLOSE_BREAK"
+            reason = "Future close broke the line."
+        elif future_break > 0:
+            validation_result = "INTRADAY_BREAK"
+            reason = "Future intraday range broke the line."
+        elif future_bounce > 0:
+            validation_result = "BOUNCE_CONFIRMED"
+            reason = "Future bar touched and closed back on the expected side."
+        elif future_touch > 0:
+            validation_result = "TOUCHED"
+            reason = "Future bar touched the line."
+        else:
+            validation_result = "NOT_TOUCHED"
+            reason = "Future bars did not touch the line."
+
+        confidence = 0.0
+        if validation_result in {"BOUNCE_CONFIRMED", "TARGET_HIT", "STOP_HIT"}:
+            confidence = 1.0
+        elif validation_result in {"TOUCHED", "INTRADAY_BREAK"}:
+            confidence = 0.55
+        elif validation_result == "NOT_TOUCHED":
+            confidence = 0.35
+        if overlay.get("displayByDefault"):
+            confidence += 0.1
+        if touch_before >= 2:
+            confidence += 0.1
+
+        items.append({
+            "label": overlay.get("label") or otype,
+            "type": otype,
+            "price": round(price, 4),
+            "baseDate": base_date,
+            "displayByDefault": bool(overlay.get("displayByDefault")),
+            "debugOnly": bool(overlay.get("debugOnly")),
+            "touchCountBefore": touch_before,
+            "forwardTouchCount": future_touch,
+            "forwardBounceCount": future_bounce,
+            "forwardBreakCount": future_break,
+            "forwardCloseBreakCount": future_close_break,
+            "maxAdverseMovePct": round(max_adverse, 3) if max_adverse is not None else None,
+            "maxFavorableMovePct": round(max_favorable, 3) if max_favorable is not None else None,
+            "validationResult": validation_result,
+            "confidenceScore": round(max(0.0, min(1.0, confidence)), 3),
+            "reason": reason,
+        })
+
+    scores = [float(item.get("confidenceScore") or 0) for item in items if item.get("validationResult") != "NO_FUTURE_BARS"]
+    return {
+        "status": "OK" if items else "NO_LINES",
+        "symbol": enriched.get("symbol") or symbol,
+        "market": enriched.get("market") or market,
+        "lookback": lookback,
+        "forwardBars": forward_bars,
+        "evaluatedLineCount": len(items),
+        "supportLineStats": _chart_line_validation_stats(items, "supportLine"),
+        "resistanceLineStats": _chart_line_validation_stats(items, "resistanceLine"),
+        "historicalSupportStats": _chart_line_validation_stats(items, "historicalSupportLevels"),
+        "targetStopStats": _chart_target_stop_stats(items),
+        "overallAccuracyScore": round(sum(scores) / len(scores), 3) if scores else None,
+        "warnings": list(dict.fromkeys(warnings)),
+        "items": items,
+    }
+
+
+def _chart_line_validation(symbol: str, market: str, lookback: int = 250, forward_bars: int = 20) -> dict:
+    normalized_market = _market(market)
+    payload = _chart_data_with_backfill(symbol, normalized_market)
+    enriched = _enrich_chart_precision(payload, symbol, normalized_market, forward_bars)
+    return _chart_line_validation_from_enriched(enriched, symbol, normalized_market, lookback, forward_bars)
+
+
 @app.get("/api/chart/{symbol}")
 def api_chart_data(
     symbol: str,
@@ -1870,6 +2262,16 @@ def api_chart_data(
     normalized_market = _market(market)
     payload = _chart_data_with_backfill(symbol, normalized_market)
     return _enrich_chart_precision(payload, symbol, normalized_market, futureProjectionBars)
+
+
+@app.get("/api/chart/line-validation/{symbol}")
+def api_chart_line_validation(
+    symbol: str,
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    lookback: int = Query(250, ge=20, le=1000),
+    forwardBars: int = Query(20, ge=0, le=120),
+) -> dict:
+    return _chart_line_validation(symbol, market, lookback, forwardBars)
 
 
 @app.get("/api/chart/debug/{symbol}")
@@ -1910,6 +2312,13 @@ def api_chart_debug(
         "lineCandidates": enriched.get("lineCandidates", {}),
         "overlays": enriched.get("overlays", []),
         "overlayValidationSummary": enriched.get("overlayValidationSummary", {}),
+        "lineValidation": _chart_line_validation_from_enriched(
+            enriched,
+            symbol,
+            normalized_market,
+            250,
+            max(1, futureProjectionBars or 20),
+        ),
     }
 
 
