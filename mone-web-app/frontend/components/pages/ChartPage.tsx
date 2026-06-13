@@ -501,15 +501,17 @@ function RsiChart({ rows }: { rows: any[] }) {
         const line = c.addLineSeries({ color: "#94a3b8", lineWidth: 1.5, priceLineVisible: false });
         line.setData(rsiData);
         const times = rsiData.map(({ time }) => time);
-        const ob = c.addLineSeries({ color: "#ef444440", lineWidth: 1, priceLineVisible: false, lineStyle: 2 });
-        const os = c.addLineSeries({ color: "#22c55e40", lineWidth: 1, priceLineVisible: false, lineStyle: 2 });
+        const ob = c.addLineSeries({ color: "#ef444440", lineWidth: 1, priceLineVisible: false, lineStyle: LW.LineStyle.Dashed });
+        const os = c.addLineSeries({ color: "#22c55e40", lineWidth: 1, priceLineVisible: false, lineStyle: LW.LineStyle.Dashed });
         ob.setData(times.map((time) => ({ time, value: 80 })));
         os.setData(times.map((time) => ({ time, value: 20 })));
         chart.timeScale().fitContent();
         const ro = new ResizeObserver(() => { if (containerRef.current && chartRef.current) chartRef.current.resize(containerRef.current.clientWidth, 100); });
         ro.observe(containerRef.current!);
         return () => ro.disconnect();
-      } catch {}
+      } catch (err) {
+        console.warn("[RsiChart] 차트 초기화 오류:", err);
+      }
     }
     init();
     return () => { if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; } };
@@ -582,13 +584,16 @@ function MacdChart({ rows }: { rows: any[] }) {
         histSeries.setData(macdData.hist);
         const macdSeries = mc.addLineSeries({ color: "#38bdf8", lineWidth: 1.5, priceLineVisible: false, priceScaleId: "macd" });
         macdSeries.setData(macdData.macd);
-        const signalSeries = mc.addLineSeries({ color: "#f97316", lineWidth: 1, priceLineVisible: false, lineStyle: 2, priceScaleId: "macd" });
+        const signalSeries = mc.addLineSeries({ color: "#f97316", lineWidth: 1, priceLineVisible: false, lineStyle: LW.LineStyle.Dashed, priceScaleId: "macd" });
         signalSeries.setData(macdData.signal);
+        chart.priceScale("macd").applyOptions({ scaleMargins: { top: 0.65, bottom: 0 } });
         chart.timeScale().fitContent();
         const ro = new ResizeObserver(() => { if (containerRef.current && chartRef.current) chartRef.current.resize(containerRef.current.clientWidth, 100); });
         ro.observe(containerRef.current!);
         return () => ro.disconnect();
-      } catch {}
+      } catch (err) {
+        console.warn("[MacdChart] 차트 초기화 오류:", err);
+      }
     }
     init();
     return () => { if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; } };
@@ -757,20 +762,20 @@ function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
   let upLine: { time: string; value: number }[] | null = null;
   let uptrendTouchCount = 2, uptrendValid = false;
 
-  // Pass 1: 구조 검증 (상승 저점)
+  // Pass 1: 구조 검증 (상승 저점 + 캔들 종가 이탈 없음)
   outer_up: for (let i = lows.length - 1; i > 0; i--) {
     const p2 = lows[i];
     for (let j = Math.max(0, i - 5); j < i; j++) {
       const p1 = lows[j];
-      if (p2.value <= p1.value) continue;  // 상승 저점 조건
+      if (p2.value <= p1.value) continue;  // Higher Low 조건
       const res = makeLine(p1, p2);
       if (!res) continue;
-      // 중간 저점 위반 없음
-      const between = lows.slice(j + 1, i);
-      const valid = between.every(p => {
-        const idx = timeToIdx.get(p.time);
-        if (idx == null) return true;
-        return p.value >= (p1.value + res.slope * (idx - res.i1)) * 0.995;
+      // OrderFlow 명세: 중간 캔들 종가가 선 아래로 이탈하면 무효
+      const di2 = timeToIdx.get(p2.time) ?? -1;
+      if (di2 < 0) continue;
+      const valid = data.slice(res.i1 + 1, di2).every((c, offset) => {
+        const linePrice = p1.value + res.slope * (offset + 1);
+        return c.close >= linePrice * 0.995;
       });
       if (valid) {
         upLine = res.segment;
@@ -780,7 +785,7 @@ function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
       }
     }
   }
-  // Pass 2: fallback (구조 조건 완화)
+  // Pass 2: fallback (구조 조건 완화 — 기본 화면 비표시, debugOnly 용도)
   if (!upLine) {
     outer_up2: for (let i = lows.length - 1; i > 0; i--) {
       const p2 = lows[i];
@@ -788,11 +793,11 @@ function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
         const p1 = lows[j];
         const res = makeLine(p1, p2);
         if (!res) continue;
-        const between = lows.slice(j + 1, i);
-        const valid = between.every(p => {
-          const idx = timeToIdx.get(p.time);
-          if (idx == null) return true;
-          return p.value >= (p1.value + res.slope * (idx - res.i1)) * 0.995;
+        const di2 = timeToIdx.get(p2.time) ?? -1;
+        if (di2 < 0) continue;
+        const valid = data.slice(res.i1 + 1, di2).every((c, offset) => {
+          const linePrice = p1.value + res.slope * (offset + 1);
+          return c.close >= linePrice * 0.995;
         });
         if (valid) {
           upLine = res.segment;
@@ -808,19 +813,20 @@ function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
   let downLine: { time: string; value: number }[] | null = null;
   let downtrendTouchCount = 2, downtrendValid = false;
 
-  // Pass 1: 구조 검증 (하락 고점)
+  // Pass 1: 구조 검증 (하락 고점 + 캔들 종가 이탈 없음)
   outer_dn: for (let i = highs.length - 1; i > 0; i--) {
     const p2 = highs[i];
     for (let j = Math.max(0, i - 5); j < i; j++) {
       const p1 = highs[j];
-      if (p2.value >= p1.value) continue;  // 하락 고점 조건
+      if (p2.value >= p1.value) continue;  // Lower High 조건
       const res = makeLine(p1, p2);
       if (!res) continue;
-      const between = highs.slice(j + 1, i);
-      const valid = between.every(p => {
-        const idx = timeToIdx.get(p.time);
-        if (idx == null) return true;
-        return p.value <= (p1.value + res.slope * (idx - res.i1)) * 1.005;
+      // OrderFlow 명세: 중간 캔들 종가가 선 위로 이탈하면 무효
+      const di2 = timeToIdx.get(p2.time) ?? -1;
+      if (di2 < 0) continue;
+      const valid = data.slice(res.i1 + 1, di2).every((c, offset) => {
+        const linePrice = p1.value + res.slope * (offset + 1);
+        return c.close <= linePrice * 1.005;
       });
       if (valid) {
         downLine = res.segment;
@@ -830,7 +836,7 @@ function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
       }
     }
   }
-  // Pass 2: fallback
+  // Pass 2: fallback (기본 화면 비표시, debugOnly 용도)
   if (!downLine) {
     outer_dn2: for (let i = highs.length - 1; i > 0; i--) {
       const p2 = highs[i];
@@ -838,11 +844,11 @@ function calcTrendlines(data: CandleBar[], pivots: ZigZagPoint[]): {
         const p1 = highs[j];
         const res = makeLine(p1, p2);
         if (!res) continue;
-        const between = highs.slice(j + 1, i);
-        const valid = between.every(p => {
-          const idx = timeToIdx.get(p.time);
-          if (idx == null) return true;
-          return p.value <= (p1.value + res.slope * (idx - res.i1)) * 1.005;
+        const di2 = timeToIdx.get(p2.time) ?? -1;
+        if (di2 < 0) continue;
+        const valid = data.slice(res.i1 + 1, di2).every((c, offset) => {
+          const linePrice = p1.value + res.slope * (offset + 1);
+          return c.close <= linePrice * 1.005;
         });
         if (valid) {
           downLine = res.segment;
@@ -880,9 +886,11 @@ function chartColorWithAlpha(color: string, alpha: number): string {
 }
 
 function shouldRenderTrendline(distPct: number | null, valid: boolean, touchCount: number): boolean {
+  // Pass 2 fallback(valid=false) 선은 기본 화면에 표시하지 않음 (debugOnly)
+  if (!valid) return false;
   if (distPct == null || !Number.isFinite(distPct)) return false;
   const absDist = Math.abs(distPct);
-  const maxDist = valid && touchCount >= 3 ? 25 : valid ? 18 : 10;
+  const maxDist = touchCount >= 3 ? 25 : 18;
   return absDist <= maxDist;
 }
 
@@ -1449,7 +1457,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
             const isMedConf  = tl.uptrendValid && tl.uptrendTouchCount < 3;
             const upColor    = isHighConf ? "#22c55e" : isMedConf ? "#4ade80" : "#86efac66";
             const upWidth: 1 | 2 = isHighConf ? 2 : 1;
-            const upStyle    = isHighConf ? 0 : 2;  // 0=Solid, 2=Dashed
+            const upStyle    = isHighConf ? LW.LineStyle.Solid : LW.LineStyle.Dashed;
             const upSeries   = chart.addLineSeries({
               color: upColor, lineWidth: upWidth, priceLineVisible: false,
               crosshairMarkerVisible: false, lastValueVisible: false,
@@ -1484,7 +1492,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
             const isMedConf  = tl.downtrendValid && tl.downtrendTouchCount < 3;
             const dnColor    = isHighConf ? "#ef4444" : isMedConf ? "#f87171" : "#fca5a566";
             const dnWidth: 1 | 2 = isHighConf ? 2 : 1;
-            const dnStyle    = isHighConf ? 0 : 2;
+            const dnStyle    = isHighConf ? LW.LineStyle.Solid : LW.LineStyle.Dashed;
             const dnSeries   = chart.addLineSeries({
               color: dnColor, lineWidth: dnWidth, priceLineVisible: false,
               crosshairMarkerVisible: false, lastValueVisible: false,
@@ -2152,11 +2160,12 @@ export default function ChartPage() {
   // Phase 6 — 백엔드 AI 차트 분석 (FSM 신호·빗각·되돌림·매물대)
   useEffect(() => {
     if (!selected) { setChartAnalysis(null); return; }
+    let active = true;
     const controller = new AbortController();
     mone.chartAnalysis({ symbol: selected.symbol, market: selected.market as any }, controller.signal)
-      .then((d) => setChartAnalysis(d?.ok ? d : null))
-      .catch(() => setChartAnalysis(null));
-    return () => controller.abort();
+      .then((d) => { if (active) setChartAnalysis(d?.ok ? d : null); })
+      .catch(() => { if (active) setChartAnalysis(null); });
+    return () => { active = false; controller.abort(); };
   }, [selected?.symbol, selected?.market]);
 
   const filteredRows = period ? rows.slice(-period) : rows;
