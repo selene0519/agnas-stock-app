@@ -385,6 +385,10 @@ export const mone = {
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/backtest/trades", p),
+  adminPipeline: (p?: { market?: Market }) =>
+    apiGet<ApiList>("/api/admin/pipeline", p),
+  operationSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
+    apiGet<ApiList>("/api/final/operation-summary", p),
   ohlcv: (p: { market?: Market | "auto"; symbol: string; limit?: number; futureProjectionBars?: number }, signal?: AbortSignal) =>
     apiGet<ApiList>("/api/ohlcv", p, signal),
   companyAnalysis: (p?: { market?: Market; limit?: number; q?: string }, signal?: AbortSignal) =>

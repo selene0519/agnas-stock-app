@@ -1725,6 +1725,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [summary, setSummary] = useState<any>(null);
   const [marketRegime, setMarketRegime] = useState<any>(null);
   const [dataHealth, setDataHealth] = useState<any>(null);
+  const [operationSummary, setOperationSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -1799,8 +1800,11 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       setMarketRegime(normalizeMarketRegime(result.marketRegime, selectedMarket));
       setDataHealth(normalizeDataHealth(result.dataHealth));
       setAllItems(matrixResult.flatMap((cell) => cell.items));
+      mone.operationSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" })
+        .then((payload) => setOperationSummary(payload || null))
+        .catch(() => setOperationSummary(null));
     } catch {
-      setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setDataHealth(null);
+      setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setDataHealth(null); setOperationSummary(null);
     } finally {
       setLoading(false);
     }
@@ -2052,10 +2056,13 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
 
   if (loading && !allItems.length) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 w-32 animate-pulse rounded bg-slate-800" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} rows={4} />)}
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <svg className="h-8 w-8 animate-spin text-slate-600" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-sm text-slate-500">데이터 불러오는 중...</span>
         </div>
       </div>
     );
@@ -2108,6 +2115,51 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           watchCount={watchItems.length}
           riskCount={riskCount}
         />
+      )}
+
+      {!loading && operationSummary && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-100">Operation status</div>
+              <div className="mt-1 text-xs text-slate-500">
+                {String(operationSummary.market || selectedMarket).toUpperCase()} / {operationSummary.sessionLabel || sessionStatus}
+              </div>
+            </div>
+            <span className={`w-fit rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+              ["ERROR", "NO_DATA"].includes(String(operationSummary.dataStatus || "").toUpperCase())
+                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                : String(operationSummary.dataStatus || "").toUpperCase() === "PARTIAL"
+                  ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+            }`}>
+              {operationSummary.dataStatus || "UNKNOWN"}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+            <div className="rounded-xl bg-slate-950/50 px-3 py-2">
+              <div className="text-slate-500">Recommendation basis</div>
+              <div className="mt-1 font-mono text-slate-200">{operationSummary.recommendationDate || operationSummary.generatedAt || "-"}</div>
+            </div>
+            <div className="rounded-xl bg-slate-950/50 px-3 py-2">
+              <div className="text-slate-500">Current price basis</div>
+              <div className="mt-1 font-mono text-slate-200">{operationSummary.currentPriceBasisDate || operationSummary.priceDataStatus || "-"}</div>
+            </div>
+            <div className="rounded-xl bg-slate-950/50 px-3 py-2">
+              <div className="text-slate-500">Chart/OHLCV basis</div>
+              <div className="mt-1 font-mono text-slate-200">{operationSummary.ohlcvLatestDate || "-"}</div>
+            </div>
+          </div>
+          {((operationSummary.activeGaps || []).length > 0 || (operationSummary.nextActions || []).length > 0) && (
+            <details className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400">
+              <summary className="cursor-pointer font-semibold text-slate-300">Gaps and next actions</summary>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div>{(operationSummary.activeGaps || []).slice(0, 4).map((item: string) => <div key={item}>gap: {item}</div>)}</div>
+                <div>{(operationSummary.nextActions || []).slice(0, 4).map((item: string) => <div key={item}>next: {item}</div>)}</div>
+              </div>
+            </details>
+          )}
+        </div>
       )}
 
       {!loading && dashboardAlerts.length > 0 && (() => {
