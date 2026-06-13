@@ -420,6 +420,12 @@ def register_mone_v61_virtual_summary(app):
         if real_data and isinstance(real_data, dict) and "winRate" in real_data:
             real_data.setdefault("source", "backtest_v2")
             real_data.setdefault("status", "OK")
+            real_data.setdefault("survivorshipNote",
+                "유니버스 = 현재 존재하는 종목만 포함 (상장폐지 종목 제외). "
+                "실제 성과는 이보다 낮을 수 있습니다.")
+            real_data.setdefault("calibrationNote",
+                "probability 필드는 기술점수이며 실제 승률이 아닙니다. "
+                "calibratedWinRate(35~65%) 참조.")
             return real_data
         return _virtual_summary(market, mode, horizon, 200)
 

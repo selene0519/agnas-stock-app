@@ -310,7 +310,7 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
         <div className="min-w-0"><div className="text-slate-500">현재가</div><div className="break-keep font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
         <div className="min-w-0"><div className="text-slate-500">기준가</div><div className="break-keep font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
         <div className="min-w-0"><div className="text-slate-500">목표가</div><div className="break-keep font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
-        <div className="min-w-0"><div className="text-slate-500">신뢰도</div><div className="break-keep font-mono text-blue-300">{confidence}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">기술점수</div><div className="break-keep font-mono text-blue-300">{confidence}</div></div>
         <div className="min-w-0"><div className="text-slate-500">위험 상태</div><div className={`font-semibold ${riskClass}`}>{riskText}</div></div>
       </div>
 
