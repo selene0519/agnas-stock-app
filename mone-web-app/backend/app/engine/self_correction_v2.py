@@ -291,6 +291,14 @@ def build_correction_params(market: str = "kr") -> dict[str, Any]:
             rec_index[f"{sym}_{gen}_{mode}_{horizon}"] = r
 
     # 각 validation row에 outcomeReason 부여
+    # 포인트-인-타임 가드: 검증 결과의 정산일이 추천일 이후여야 학습에 사용
+    def _date_str(row: dict[str, Any], *keys: str) -> str:
+        for k in keys:
+            v = str(row.get(k) or "")[:10]
+            if len(v) == 10 and v[:4].isdigit():
+                return v
+        return ""
+
     analyzed: list[dict[str, Any]] = []
     for row in all_rows:
         sym = str(row.get("symbol") or "")
@@ -298,6 +306,11 @@ def build_correction_params(market: str = "kr") -> dict[str, Any]:
         mode = str(row.get("mode") or "")
         horizon = str(row.get("horizon") or "")
         rec = rec_index.get(f"{sym}_{gen}_{mode}_{horizon}", row)
+        # 시점 누수 방지: 정산일이 추천일보다 명확히 이른 경우 제외
+        settled_date = _date_str(row, "settledDate", "exitDate", "tradeDate", "evaluatedAt")
+        gen_date     = _date_str(row, "generatedAt") or _date_str(rec, "generatedAt")
+        if settled_date and gen_date and settled_date < gen_date:
+            continue  # 추천 이전에 정산된 행 → 미래 데이터 누출 가능성
         reason = outcome_analyzer.classify_outcome(rec, row)
         analyzed.append({**row, "outcomeReason": reason})
 

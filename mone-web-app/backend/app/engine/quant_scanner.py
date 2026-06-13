@@ -631,17 +631,34 @@ def _compute_sub_scores(ind: dict[str, float | None]) -> dict[str, float]:
     consecutive_up = ind.get("consecutiveUpDays")
     distance_52w = ind.get("distanceTo52wHigh")
 
-    # ── upsideScore: 상승 여력 (0~100)
-    # mom5/mom20 양수일수록, d20/d60 정배열일수록 높음
+    # ── upsideScore: 상승 여력 (0~100) — 가격 위치 기반
+    # 52주 고가 거리, MA 이격도, BB 위치로 구성 (mom5/mom20 이중집계 제거)
     upside = 50.0
-    if mom5 is not None:
-        upside += max(-15.0, min(20.0, mom5 * 1.5))
-    if mom20 is not None:
-        upside += max(-10.0, min(15.0, mom20 * 0.8))
-    if d60 is not None and d60 > 0:
-        upside += min(8.0, d60 * 0.4)
-    if distance_52w is not None and -2.0 <= distance_52w <= 0:
-        upside += 8.0
+    if distance_52w is not None:
+        if distance_52w <= -20.0:
+            upside += 18.0   # 52주 고가 대비 20%+ 하락 → 반등 여력 큼
+        elif distance_52w <= -10.0:
+            upside += 10.0
+        elif distance_52w <= -5.0:
+            upside += 4.0
+        elif distance_52w >= 0:
+            upside -= 5.0    # 신고가 돌파 → 과열 경계
+    if d60 is not None:
+        if 0.0 < d60 <= 8.0:
+            upside += 8.0    # 60일선 위 소폭 → 추세 건전
+        elif d60 > 10.0:
+            upside -= 8.0    # 과도 이격 → 되돌림 위험
+        elif d60 < -10.0:
+            upside += 12.0   # 큰 하락 이후 반등 여력
+        elif -10.0 <= d60 < 0.0:
+            upside += 4.0    # 60일선 살짝 아래 → 중립
+    if bb_percent_b is not None:
+        if 0.1 <= bb_percent_b <= 0.4:
+            upside += 10.0   # BB 하단~중간 → 매수 적정 구간
+        elif bb_percent_b > 0.85:
+            upside -= 12.0   # BB 상단 → 과매수
+        elif bb_percent_b < 0.1:
+            upside += 2.0    # BB 하단 반등 가능
     upsideScore = max(0.0, min(100.0, upside))
 
     # ── riskScore: 리스크 안정성 (0~100, 높을수록 안전)
@@ -1423,24 +1440,61 @@ def score_candidate(
         entry_raw = current
         entry_recomputed = True
 
-    # 손절/목표 재산출 (없거나 재계산 필요할 때)
-    _mode_risk = {"conservative": 0.85, "balanced": 1.0, "aggressive": 1.20}
-    _mode_reward = {"conservative": 0.80, "balanced": 1.0, "aggressive": 1.30}
+    # ── 손절/목표 재산출 ────────────────────────────────────────────────────
+    # 우선순위: 1) ATR×배수 + 스윙저점  2) 고정 % fallback
+    # 결과는 price band 범위 내로 클램프 (극단값 방지)
+    _ATR_STOP_MULT: dict[tuple[str, str], float] = {
+        ("conservative", "short"): 1.2, ("conservative", "swing"): 1.5, ("conservative", "mid"): 2.0,
+        ("balanced",     "short"): 1.5, ("balanced",     "swing"): 2.0, ("balanced",     "mid"): 2.5,
+        ("aggressive",   "short"): 1.5, ("aggressive",   "swing"): 2.0, ("aggressive",   "mid"): 2.5,
+    }
+    _ATR_TARGET_MULT: dict[tuple[str, str], float] = {
+        ("conservative", "short"): 2.5, ("conservative", "swing"): 3.5, ("conservative", "mid"): 5.0,
+        ("balanced",     "short"): 2.5, ("balanced",     "swing"): 4.0, ("balanced",     "mid"): 6.0,
+        ("aggressive",   "short"): 3.0, ("aggressive",   "swing"): 4.5, ("aggressive",   "mid"): 7.0,
+    }
+    # 고정 % fallback (ATR 없을 때)
     _horizon_mid = {
         "short": {"stop": 0.961, "target": 1.060},
         "swing": {"stop": 0.935, "target": 1.130},
         "mid":   {"stop": 0.905, "target": 1.220},
     }
+    _mode_risk   = {"conservative": 0.85, "balanced": 1.0, "aggressive": 1.20}
+    _mode_reward = {"conservative": 0.80, "balanced": 1.0, "aggressive": 1.30}
     hmid = _horizon_mid.get(context.horizon, _horizon_mid["swing"])
-    rf = _mode_risk.get(context.mode, 1.0)
-    rwf = _mode_reward.get(context.mode, 1.0)
+    rf   = _mode_risk.get(context.mode, 1.0)
+    rwf  = _mode_reward.get(context.mode, 1.0)
+
+    atr_val = ind.get("atr14")  # 절대값 (원화 기준)
+    # 최근 10봉 스윙 저점 (손절 참고)
+    _recent_lows = [float(r["low"]) for r in ohlcv_rows[-10:] if r.get("low")]
+    swing_low = min(_recent_lows) if len(_recent_lows) >= 3 else None
 
     if entry_raw and (not stop_raw or stop_raw <= 0):
-        raw_stop_pct = 1.0 - hmid["stop"]
-        stop_raw = entry_raw * (1.0 - raw_stop_pct * rf)
+        band_stop_floor = entry_raw * (1.0 + band["stop_pct"][0] / 100.0)  # 최대 허용 손절 깊이
+        band_stop_ceil  = entry_raw * (1.0 + band["stop_pct"][1] / 100.0)  # 최소 허용 손절 깊이
+        if atr_val and atr_val > 0:
+            s_mult   = _ATR_STOP_MULT.get((context.mode, context.horizon), 2.0)
+            atr_stop = entry_raw - atr_val * s_mult
+            # 스윙 저점이 ATR 손절보다 높고 band 내에 있으면 더 보수적(작은 손실) 기준 사용
+            if swing_low and swing_low > atr_stop and swing_low > band_stop_floor:
+                stop_raw = max(band_stop_floor, min(band_stop_ceil, swing_low * 0.995))
+            else:
+                stop_raw = max(band_stop_floor, min(band_stop_ceil, atr_stop))
+        else:
+            raw_stop_pct = 1.0 - hmid["stop"]
+            stop_raw     = entry_raw * (1.0 - raw_stop_pct * rf)
+
     if entry_raw and (not target_raw or target_raw <= 0):
-        raw_target_pct = hmid["target"] - 1.0
-        target_raw = entry_raw * (1.0 + raw_target_pct * rwf)
+        band_target_floor = entry_raw * (1.0 + band["target_pct"][0] / 100.0)
+        band_target_ceil  = entry_raw * (1.0 + band["target_pct"][1] / 100.0)
+        if atr_val and atr_val > 0:
+            t_mult     = _ATR_TARGET_MULT.get((context.mode, context.horizon), 4.0)
+            atr_target = entry_raw + atr_val * t_mult
+            target_raw = max(band_target_floor, min(band_target_ceil, atr_target))
+        else:
+            raw_target_pct = hmid["target"] - 1.0
+            target_raw     = entry_raw * (1.0 + raw_target_pct * rwf)
 
     # EV (기댓값) 계산
     # ── 승률 보정: score는 기술적 품질 점수이지 승률이 아님
