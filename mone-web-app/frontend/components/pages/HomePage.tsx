@@ -408,7 +408,11 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
       seen.add(key);
 
       const entry = Number(i.entry || i.entryPrice || 0);
-      const prob  = Math.min(Math.max(Number(i.probability || 55) / 100, 0.3), 0.8);
+      // calibratedWinRate(35~65%) 우선; 없으면 probability 기반이지만 기술점수이므로 0.65로 상한
+      const rawProb = i.calibratedWinRate != null
+        ? Number(i.calibratedWinRate) / 100
+        : Number(i.probability || 55) / 100;
+      const prob  = Math.min(Math.max(rawProb, 0.3), 0.65);
       const rr    = Math.max(Number(i.rrActual || i.rr || 1.5), 0.5);
       const mode  = String(i._mode || i.mode || "balanced");
       if (entry <= 0 || capital <= 0) return [];
@@ -1210,9 +1214,10 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
     : decisionBucket === "주의"     ? "bg-red-700/80 text-white"
     : "bg-slate-700 text-slate-300";
 
-  // EV 근거 (백엔드 probability 필드 활용)
+  // EV 근거: calibratedWinRate(실증 보정 35~65%) 우선, 없으면 probability 기반
   const prob = Number(item.probability ?? 0);
-  const evBase = prob > 0 ? prob / 100 : null;
+  const calibratedWR = item.calibratedWinRate != null ? Number(item.calibratedWinRate) : null;
+  const evBase = calibratedWR != null ? calibratedWR / 100 : (prob > 0 ? prob / 100 : null);
 
   return (
     <>
@@ -1461,7 +1466,9 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                 <Info size={13} /> EV 계산 근거
               </div>
               <div className="space-y-1 font-mono text-slate-400">
-                <div>승률 <span className="text-emerald-400">{(evBase * 100).toFixed(0)}%</span>
+                <div>
+                  {calibratedWR != null ? "예상 승률(보정)" : "기술점수 기반 승률"}{" "}
+                  <span className="text-emerald-400">{(evBase * 100).toFixed(0)}%</span>
                   {" × "}목표 <span className="text-emerald-400">{priceText(item, "target", "—")}</span>
                 </div>
                 <div>패율 <span className="text-red-400">{((1 - evBase) * 100).toFixed(0)}%</span>

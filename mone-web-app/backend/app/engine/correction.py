@@ -6,8 +6,9 @@ from typing import Any
 from app.engine import backtest, session
 from app.engine.symbols import normalize_market
 
-PENALTY_PCT = 15.0
-CONSECUTIVE_FAILURE_THRESHOLD = 3
+PENALTY_PCT = 10.0
+CONSECUTIVE_FAILURE_THRESHOLD = 5
+_MIN_SAMPLE_BASE = 20  # backtest 최소 표본수 (미달 시 보정 비활성)
 
 
 def _mode(value: Any) -> str:
@@ -49,6 +50,22 @@ def correction_summary(market: str = "kr", mode: str = "balanced", horizon: str 
     normalized_horizon = _horizon(horizon)
     trade_payload = backtest.trades(normalized_market, normalized_mode, normalized_horizon, limit=30)
     rows = [row for row in trade_payload.get("items") or [] if row.get("is_executed")]
+
+    if len(rows) < _MIN_SAMPLE_BASE:
+        return {
+            "status": "OK",
+            "market": normalized_market,
+            "mode": normalized_mode,
+            "horizon": normalized_horizon,
+            "active": False,
+            "penaltyPct": 0.0,
+            "priorityDowngrade": False,
+            "consecutiveStopFailures": 0,
+            "threshold": CONSECUTIVE_FAILURE_THRESHOLD,
+            "reason": f"자가 보정 비활성 (표본 {len(rows)}건 < 최소 {_MIN_SAMPLE_BASE}건)",
+            "recentFailures": [],
+            "generatedAt": datetime.now(session.KST).isoformat(),
+        }
 
     consecutive_failures = 0
     recent_failures: list[dict[str, Any]] = []

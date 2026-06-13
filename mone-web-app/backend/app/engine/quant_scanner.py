@@ -66,6 +66,25 @@ def _num(value: Any) -> float | None:
         return None
 
 
+def round_to_kr_tick(price: float) -> int:
+    """Round price to Korean market 호가단위 (tick size per KRX rules)."""
+    if price < 2_000:
+        tick = 1
+    elif price < 5_000:
+        tick = 5
+    elif price < 20_000:
+        tick = 10
+    elif price < 50_000:
+        tick = 50
+    elif price < 200_000:
+        tick = 100
+    elif price < 500_000:
+        tick = 500
+    else:
+        tick = 1_000
+    return int(round(price / tick) * tick)
+
+
 def _read_csv(path: Path) -> list[dict[str, Any]]:
     if not path.is_file() or path.stat().st_size <= 0:
         return []
@@ -1502,9 +1521,10 @@ def score_candidate(
         "currentPriceUsed": current,
         "currentPriceSource": current_source,
         "entryRecomputed": entry_recomputed,
-        "entryUsed": round(entry_raw) if entry_raw else None,
-        "stopUsed": round(stop_raw) if stop_raw else None,
-        "targetUsed": round(target_raw) if target_raw else None,
+        "calibratedWinRate": round(calibrated_prob * 100.0, 1),
+        "entryUsed": (round_to_kr_tick(entry_raw) if context.market == "kr" else round(entry_raw, 2)) if entry_raw else None,
+        "stopUsed": (round_to_kr_tick(stop_raw) if context.market == "kr" else round(stop_raw, 2)) if stop_raw else None,
+        "targetUsed": (round_to_kr_tick(target_raw) if context.market == "kr" else round(target_raw, 2)) if target_raw else None,
         "priceBand": band,
         "dataStatus": status,
         "reason": note,
@@ -1558,6 +1578,10 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         "rrScore": result.get("rrScore"),
         "qualityScore": result.get("qualityScore"),
         "newsRiskPenalty": result.get("newsRiskPenalty"),
+        # 실증 기반 승률 (35~65%) — probability/finalScore와 구분
+        "calibratedWinRate": result.get("calibratedWinRate"),
+        # safetyScore: quant_scanner riskScore (높을수록 안전) 명시적 표기
+        "safetyScore": result.get("riskScore"),
         # EV 및 실제 손익비
         "expectedValue": result.get("expectedValue"),
         "rrActual": result.get("rrActual"),

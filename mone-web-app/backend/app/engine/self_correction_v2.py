@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from app.engine import correction_store, outcome_analyzer
+from app.engine.quant_scanner import round_to_kr_tick
 
 # ── 킬스위치 & 적용 강도 (환경변수) ───────────────────────────────────────
 # SELF_CORRECTION_ENABLED=false → 전체 보정 비활성화
@@ -438,11 +439,28 @@ def apply_correction(
         f"주요실패={','.join(top_reasons[:3])})"
     )
 
+    def _price_round(p: float | None, fallback: float) -> float:
+        if not p:
+            return fallback
+        return float(round_to_kr_tick(p)) if market == "kr" else round(p, 2)
+
+    adj_entry_out  = _price_round(adj_entry, entry)
+    adj_target_out = _price_round(adj_target, target)
+    adj_stop_out   = _price_round(adj_stop, stop)
+
+    rr_actual = None
+    if adj_entry_out and adj_stop_out and adj_target_out and adj_entry_out > 0:
+        reward_pct = (adj_target_out - adj_entry_out) / adj_entry_out * 100.0
+        risk_pct   = abs((adj_entry_out - adj_stop_out) / adj_entry_out * 100.0)
+        if risk_pct > 0:
+            rr_actual = round(reward_pct / risk_pct, 2)
+
     return {
         "adjustedScores": adjusted_scores,
-        "adjustedEntry": round(adj_entry, 2) if adj_entry else entry,
-        "adjustedTarget": round(adj_target, 2) if adj_target else target,
-        "adjustedStop": round(adj_stop, 2) if adj_stop else stop,
+        "adjustedEntry": adj_entry_out,
+        "adjustedTarget": adj_target_out,
+        "adjustedStop": adj_stop_out,
+        "adjustedRrActual": rr_actual,
         "correctionApplied": True,
         "correctionConfidence": confidence,
         "correctionStrength": strength,

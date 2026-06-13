@@ -414,10 +414,18 @@ def register_mone_v61_virtual_summary(app):
 
     @app.get("/api/backtest/summary")
     def backtest_summary(market: str = Query("all"), mode: str = Query("all"), horizon: str = Query("all")):
+        # backtest_v2 실행 결과(backtest_summary.json) 우선 제공; 없으면 CSV 스크래핑 fallback
+        summary_path = _root() / "reports" / "backtest_summary.json"
+        real_data = _read_json(summary_path)
+        if real_data and isinstance(real_data, dict) and "winRate" in real_data:
+            real_data.setdefault("source", "backtest_v2")
+            real_data.setdefault("status", "OK")
+            return real_data
         return _virtual_summary(market, mode, horizon, 200)
 
     @app.get("/api/backtest/trades")
     def backtest_trades(market: str = Query("all"), mode: str = Query("all"), horizon: str = Query("all"), limit: int = Query(300)):
+        # virtual summary를 trades fallback으로 유지 (backtest_v2 trade-level CSV 미지원 시)
         return _virtual_summary(market, mode, horizon, limit)
 
     @app.get("/api/final/trade-validation")
