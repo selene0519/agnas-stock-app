@@ -72,7 +72,7 @@ export default function AppLaunchLoading({
 
         {/* 태그라인 */}
         <p
-          className="mb-10 mt-1 text-[#3dd8d0]/70 sm:mb-12"
+          className="mb-16 mt-1 text-[#3dd8d0]/70 sm:mb-20"
           style={{
             fontFamily: "'Orbitron', sans-serif",
             fontWeight: 300,
