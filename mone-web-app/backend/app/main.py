@@ -4482,33 +4482,36 @@ def _install_mone_close_validation_routes_v1():
                 return candidate
         return None
 
-    def _read_ohlcv_window(market: str, symbol: str, start_day: str, horizon: str) -> tuple[list[dict], str]:
+    def _read_ohlcv_window(market: str, symbol: str, start_day: str, horizon: str) -> tuple[list[dict], str, str]:
         path = _ohlcv_path(market, symbol)
         if not path:
-            return [], ""
+            return [], "", ""
         rows = _read_csv(path)
         if not rows:
-            return [], path.name
+            return [], path.name, ""
+        parsed_rows: list[tuple[str, dict]] = []
+        for item in rows:
+            day = _parse_day(item.get("date") or item.get("Date") or item.get("timestamp"))
+            if day:
+                parsed_rows.append((day, item))
+        latest_day = max((day for day, _ in parsed_rows), default="")
         if not start_day:
-            return rows[-1:], path.name
+            return ([parsed_rows[-1][1]] if parsed_rows else rows[-1:]), path.name, latest_day
         try:
             start = _MoneCloseDateTime.strptime(start_day[:10], "%Y-%m-%d").date()
         except Exception:
-            return rows[-1:], path.name
+            return ([parsed_rows[-1][1]] if parsed_rows else rows[-1:]), path.name, latest_day
         days = {"short": 5, "swing": 20, "mid": 60}.get(str(horizon).lower(), 20)
         end = start + _MoneCloseTimedelta(days=days)
         window = []
-        for item in rows:
-            day = _parse_day(item.get("date") or item.get("Date") or item.get("timestamp"))
-            if not day:
-                continue
+        for day, item in parsed_rows:
             try:
                 current = _MoneCloseDateTime.strptime(day[:10], "%Y-%m-%d").date()
             except Exception:
                 continue
-            if start <= current <= end:
+            if start < current <= end:
                 window.append(item)
-        return window, path.name
+        return window, path.name, latest_day
 
     def _market_latest_ohlcv_date(market: str) -> str:
         latest = ""
@@ -4530,11 +4533,21 @@ def _install_mone_close_validation_routes_v1():
         ohlcv_source = str(_first(row, ("ohlcvSource", "sourceFile"), ""))
         latest_ohlcv_date = ""
         holding_days = _num(_first(row, ("holdingDays", "holding_days")))
+        pending_status = ""
+        pending_reason = ""
 
         if actual_low is None or actual_high is None or actual_close is None or not ohlcv_source or holding_days is None:
-            window, source = _read_ohlcv_window(market, symbol, recommendation_date, horizon)
+            window, source, source_latest_day = _read_ohlcv_window(market, symbol, recommendation_date, horizon)
             if source:
                 ohlcv_source = ohlcv_source or source
+            if source_latest_day:
+                latest_ohlcv_date = source_latest_day
+            if source and recommendation_date and source_latest_day and source_latest_day <= recommendation_date and not window:
+                pending_status = "PENDING_NEXT_OHLCV"
+                pending_reason = (
+                    "No OHLCV bars after recommendationDate yet. "
+                    f"latestOhlcvDate={source_latest_day}, recommendationDate={recommendation_date}"
+                )
             lows = [_num(item.get("low") or item.get("Low")) for item in window]
             highs = [_num(item.get("high") or item.get("High")) for item in window]
             closes = [_num(item.get("close") or item.get("Close")) for item in window]
@@ -4543,22 +4556,25 @@ def _install_mone_close_validation_routes_v1():
             highs = [value for value in highs if value is not None]
             closes = [value for value in closes if value is not None]
             days = [value for value in days if value]
-            if actual_low is None and lows:
+            if lows:
                 actual_low = min(lows)
-            if actual_high is None and highs:
+            if highs:
                 actual_high = max(highs)
-            if actual_close is None and closes:
+            if closes:
                 actual_close = closes[-1]
-            if holding_days is None and days:
-                holding_days = len(set(days))
             if days:
+                holding_days = len(set(days))
                 latest_ohlcv_date = max(days)
 
         has_range = actual_low is not None and actual_high is not None
         filled = bool(has_range and entry is not None and actual_low <= entry <= actual_high)
         target_hit = bool(filled and target is not None and actual_high is not None and actual_high >= target)
         stop_hit = bool(filled and stop is not None and actual_low is not None and actual_low <= stop)
-        if not ohlcv_source and not has_range:
+        if pending_status:
+            data_status = pending_status
+            result_status = pending_status
+            reason = pending_reason
+        elif not ohlcv_source and not has_range:
             data_status = "NO_OHLCV"
             result_status = "PENDING_OHLCV"
             reason = "OHLCV file is missing, so touch validation is pending"
@@ -4687,6 +4703,7 @@ def _install_mone_close_validation_routes_v1():
                 "targetHitRate": 0,
                 "stopHitRate": 0,
                 "pendingCount": 0,
+                "pendingNextOhlcvCount": 0,
                 "failedCount": 0,
                 "failedReasonTop": [],
                 "dataStatus": "NO_DATA",
@@ -4713,7 +4730,8 @@ def _install_mone_close_validation_routes_v1():
         win_count = sum(1 for r in returns if r > 0)
         target_count = sum(1 for row in normalized if bool(row.get("targetHit")))
         stop_count = sum(1 for row in normalized if bool(row.get("stopHit")))
-        pending_count = sum(1 for row in normalized if str(row.get("dataStatus", "")).upper() in {"PENDING_OHLCV", "NO_OHLCV", "DATA_PENDING"})
+        pending_count = sum(1 for row in normalized if str(row.get("dataStatus", "")).upper() in {"PENDING_NEXT_OHLCV", "PENDING_OHLCV", "NO_OHLCV", "DATA_PENDING"})
+        next_ohlcv_pending_count = sum(1 for row in normalized if str(row.get("dataStatus", "")).upper() == "PENDING_NEXT_OHLCV")
         failed_rows = [
             row for row in normalized
             if str(row.get("resultStatus", "")).upper() in {"NOT_FILLED", "STOP_FIRST_ASSUMED", "STOP_HIT"}
@@ -4730,7 +4748,9 @@ def _install_mone_close_validation_routes_v1():
         data_status = "OK"
         if pending_count:
             data_status = "PARTIAL"
-        if normalized and pending_count == len(normalized):
+        if normalized and next_ohlcv_pending_count == len(normalized):
+            data_status = "PENDING_NEXT_OHLCV"
+        elif normalized and pending_count == len(normalized):
             data_status = "PENDING_OHLCV"
         latest_ohlcv = max([str(row.get("latestOhlcvDate") or "") for row in normalized] + [_market_latest_ohlcv_date(market)])
         return {
@@ -4753,6 +4773,7 @@ def _install_mone_close_validation_routes_v1():
             "targetHitRate": round(target_count / len(executed) * 100, 2) if executed else 0,
             "stopHitRate": round(stop_count / len(executed) * 100, 2) if executed else 0,
             "pendingCount": pending_count,
+            "pendingNextOhlcvCount": next_ohlcv_pending_count,
             "failedCount": len(failed_rows),
             "failedReasonTop": [{"reason": reason, "count": count} for reason, count in failed_reasons.most_common(5)],
             "dataStatus": data_status,
