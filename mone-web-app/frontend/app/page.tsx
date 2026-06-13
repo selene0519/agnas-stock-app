@@ -7,6 +7,7 @@ import Sidebar, { type PageId } from "../components/Sidebar";
 import BottomNav from "../components/BottomNav";
 import TopHoldingTicker from "../components/TopHoldingTicker";
 import SessionSafetyBanner from "../components/SessionSafetyBanner";
+import AppLaunchLoading, { type AppLaunchLoadingStep } from "../components/AppLaunchLoading";
 import HomePage from "../components/pages/HomePage";
 import ReportPage from "../components/pages/ReportPage";
 import StocksPage from "../components/pages/StocksPage";
@@ -38,6 +39,15 @@ export default function App() {
   const [adminToken, setAdminTokenState] = useState("");
   const [userProfile, setUserProfile] = useState<MoneUserProfile | null>(null);
   const [userToken, setUserTokenState] = useState("");
+  const [booting, setBooting] = useState(true);
+  const [bootProgress, setBootProgress] = useState(8);
+  const [bootMessage, setBootMessage] = useState("서버를 확인하고 있어요");
+  const [bootDelayed, setBootDelayed] = useState(false);
+  const [bootSteps, setBootSteps] = useState<AppLaunchLoadingStep[]>([
+    { label: "서버 연결 확인", status: "active" },
+    { label: "최신 데이터 동기화", status: "pending" },
+    { label: "추천 후보 계산", status: "pending" },
+  ]);
 
   useEffect(() => {
     setMounted(true);
@@ -48,6 +58,91 @@ export default function App() {
     // Render free-tier cold-start 방지: 앱 로드 즉시 백엔드 warm-up ping (결과 무시)
     fetch("/mone-api/health", { cache: "no-store" }).catch(() => {});
   }, []);
+
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    let cancelled = false;
+    const delayTimer = window.setTimeout(() => {
+      if (!cancelled) setBootDelayed(true);
+    }, 10000);
+
+    const updateBoot = (progress: number, message: string, steps: AppLaunchLoadingStep[]) => {
+      if (cancelled) return;
+      setBootProgress(progress);
+      setBootMessage(message);
+      setBootSteps(steps);
+    };
+
+    async function runBootChecks() {
+      try {
+        updateBoot(20, "서버 연결을 확인하고 있어요", [
+          { label: "서버 연결 확인", status: "active" },
+          { label: "최신 데이터 동기화", status: "pending" },
+          { label: "추천 후보 계산", status: "pending" },
+        ]);
+
+        await fetch("/mone-api/health", { cache: "no-store" });
+        if (cancelled) return;
+
+        updateBoot(48, "최신 데이터를 동기화하고 있어요", [
+          { label: "서버 연결 확인", status: "done" },
+          { label: "최신 데이터 동기화", status: "active" },
+          { label: "추천 후보 계산", status: "pending" },
+        ]);
+
+        await Promise.allSettled([
+          fetch("/mone-api/final/data-quality?market=kr&mode=quick", { cache: "no-store" }),
+          fetch("/mone-api/final/data-quality?market=us&mode=quick", { cache: "no-store" }),
+        ]);
+        if (cancelled) return;
+
+        updateBoot(72, "오늘의 추천 후보를 확인하고 있어요", [
+          { label: "서버 연결 확인", status: "done" },
+          { label: "최신 데이터 동기화", status: "done" },
+          { label: "추천 후보 계산", status: "active" },
+        ]);
+
+        await Promise.allSettled([
+          fetch("/mone-api/final/recommendations?market=kr&limit=5", { cache: "no-store" }),
+          fetch("/mone-api/final/recommendations?market=us&limit=5", { cache: "no-store" }),
+        ]);
+        if (cancelled) return;
+
+        updateBoot(100, "화면을 준비하고 있어요", [
+          { label: "서버 연결 확인", status: "done" },
+          { label: "최신 데이터 동기화", status: "done" },
+          { label: "추천 후보 계산", status: "done" },
+        ]);
+
+        window.setTimeout(() => {
+          if (!cancelled) setBooting(false);
+        }, 450);
+      } catch (err) {
+        console.warn("MONE launch loading failed:", err);
+        if (!cancelled) {
+          updateBoot(100, "일부 데이터를 불러오지 못했지만 화면을 열고 있어요", [
+            { label: "서버 연결 확인", status: "done" },
+            { label: "최신 데이터 동기화", status: "done" },
+            { label: "추천 후보 계산", status: "done" },
+          ]);
+          window.setTimeout(() => {
+            if (!cancelled) setBooting(false);
+          }, 700);
+        }
+      } finally {
+        window.clearTimeout(delayTimer);
+      }
+    }
+
+    runBootChecks();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(delayTimer);
+    };
+  }, [mounted]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -181,6 +276,15 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+      {booting && (
+        <AppLaunchLoading
+          progress={bootProgress}
+          message={bootMessage}
+          steps={bootSteps}
+          delayed={bootDelayed}
+        />
+      )}
+
       {/* 데스크톱 사이드바 */}
       <Sidebar current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} onAdminLogout={handleAdminLogout} userProfile={userProfile} onUserLogout={handleUserLogout} />
 
