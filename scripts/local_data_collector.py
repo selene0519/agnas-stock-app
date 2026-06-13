@@ -202,6 +202,14 @@ def git_push(commit_msg: str) -> bool:
             capture_output=True,
             env=git_env,
         )
+        # 원격 커밋이 앞서 있을 수 있으므로 rebase 후 push
+        subprocess.run(
+            ["git", "pull", "--rebase", "origin", "main"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            env=git_env,
+            timeout=60,
+        )
         result = subprocess.run(
             ["git", "push", "origin", "main"],
             cwd=str(REPO_ROOT),
