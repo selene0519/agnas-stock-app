@@ -50,12 +50,38 @@ export default function AppLaunchLoading({
 
       {/* 메인 콘텐츠 */}
       <div className="relative flex w-full max-w-[360px] flex-col items-center px-6 sm:max-w-[420px]">
-        {/* MONE 로고 */}
+        {/* MONE 로고 (헬릭스 심볼) */}
         <img
           src="/loading/mone-logo.png"
-          alt="MONE"
-          className="mb-10 w-[min(60vw,240px)] object-contain drop-shadow-[0_0_28px_rgba(66,223,212,0.28)] sm:mb-12 sm:w-[min(55vw,280px)]"
+          alt=""
+          className="w-[min(52vw,200px)] object-contain drop-shadow-[0_0_28px_rgba(66,223,212,0.28)] sm:w-[min(46vw,220px)]"
         />
+
+        {/* MONE 텍스트 */}
+        <p
+          className="mt-1 tracking-[0.35em] text-white drop-shadow-[0_0_18px_rgba(66,223,212,0.25)] sm:mt-1"
+          style={{
+            fontFamily: "'Orbitron', sans-serif",
+            fontWeight: 300,
+            fontSize: "clamp(22px, 7vw, 32px)",
+            letterSpacing: "0.35em",
+          }}
+        >
+          MONE
+        </p>
+
+        {/* 태그라인 */}
+        <p
+          className="mb-24 mt-1 text-[#3dd8d0]/70 sm:mb-28"
+          style={{
+            fontFamily: "'Orbitron', sans-serif",
+            fontWeight: 300,
+            fontSize: "clamp(7px, 2vw, 9px)",
+            letterSpacing: "0.25em",
+          }}
+        >
+          WHERE MOMENTUM BEGINS.
+        </p>
 
         {/* 곰돌이 + 카드 */}
         <div className="flex w-full flex-col items-center">
