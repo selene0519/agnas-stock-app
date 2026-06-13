@@ -34,6 +34,15 @@ function Metric({ label, value, accent = false }: { label: string; value: any; a
   );
 }
 
+function Mini({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2">
+      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="mt-1 truncate font-mono text-xs text-slate-200" title={value}>{value}</div>
+    </div>
+  );
+}
+
 function ActionBtn({ label, onClick, loading, variant = "default" }: {
   label: string; onClick: () => void; loading?: boolean; variant?: "default" | "danger" | "blue" | "green";
 }) {
@@ -316,6 +325,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
   const [audit, setAudit] = useState<any>({ status: "LOADING", items: [] });
   const [github, setGithub] = useState<any>({ status: "LOADING" });
   const [virtualSummary, setVirtualSummary] = useState<any>({ status: "LOADING" });
+  const [pipelineStatus, setPipelineStatus] = useState<any[]>([]);
   const [trendlineAccuracy, setTrendlineAccuracy] = useState<any>({ status: "LOADING" });
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
@@ -346,6 +356,9 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       setGithub({ status: "ERROR", error: String(error) });
       setVirtualSummary({ status: "ERROR" });
     }
+    Promise.allSettled([mone.adminPipeline({ market: "kr" as any }), mone.adminPipeline({ market: "us" as any })])
+      .then((results) => setPipelineStatus(results.map((result) => result.status === "fulfilled" ? result.value : { status: "ERROR" })))
+      .catch(() => setPipelineStatus([]));
     mone.trendlineAccuracy({ market: "all", futureBars: 5, symbolLimit: 30, maxCutoffs: 12, includeItems: false })
       .then((a) => setTrendlineAccuracy(a || { status: "ERROR" }))
       .catch((error) => setTrendlineAccuracy({ status: "ERROR", error: String(error) }));
@@ -520,6 +533,50 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       </div>
 
       {/* GitHub 동기화 상태 */}
+      {pipelineStatus.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-3">
+            <div className="text-sm font-semibold text-slate-200">Collection pipeline status</div>
+            <div className="mt-0.5 text-xs text-slate-500">GitHub Actions, local collector, Render readable files</div>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {pipelineStatus.map((row: any, idx: number) => (
+              <div key={row.market || idx} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="font-mono text-sm font-bold text-slate-100">{String(row.market || "-").toUpperCase()}</div>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                    row.localCollectorPushed ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  }`}>
+                    local {row.localCollectorStatus || "UNKNOWN"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <Mini label="GitHub Actions" value={`${row.githubActionsStatus || "UNKNOWN"}`} />
+                  <Mini label="Collector pushed" value={row.localCollectorPushed === true ? "true" : row.localCollectorPushed === false ? "false" : "unknown"} />
+                  <Mini label="Render latest file" value={row.renderLatestFileDate || "-"} />
+                  <Mini label="Recommendation" value={row.recommendationLatestDate || "-"} />
+                  <Mini label="Snapshot" value={row.snapshotLatestDate || "-"} />
+                  <Mini label="OHLCV" value={row.ohlcvLatestDate || "-"} />
+                  <Mini label="Price source" value={row.currentPriceSourceStatus || "-"} />
+                  <Mini label="Data status" value={row.dataStatus || "-"} />
+                </div>
+                {row.localCollectorLastError && <div className="mt-2 break-all text-xs text-red-300">{row.localCollectorLastError}</div>}
+                {((row.activeGaps || []).length > 0 || (row.nextActions || []).length > 0 || (row.checkedFiles || []).length > 0) && (
+                  <details className="mt-3 rounded-lg border border-slate-800 px-3 py-2 text-xs text-slate-400">
+                    <summary className="cursor-pointer text-slate-300">Details</summary>
+                    <div className="mt-2 space-y-1">
+                      {(row.activeGaps || []).slice(0, 5).map((item: string) => <div key={`gap-${item}`}>gap: {item}</div>)}
+                      {(row.nextActions || []).slice(0, 5).map((item: string) => <div key={`next-${item}`}>next: {item}</div>)}
+                      {(row.checkedFiles || []).slice(0, 8).map((item: string) => <div key={`file-${item}`} className="font-mono text-slate-500">{item}</div>)}
+                    </div>
+                  </details>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={`rounded-2xl border p-5 ${syncStatus?.status === "OK" ? "border-blue-900/50 bg-blue-950/10" : syncStatus?.status ? "border-amber-900/50 bg-amber-950/10" : "border-slate-800 bg-slate-900/40"}`}>
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-semibold text-slate-300">GitHub 데이터 동기화</div>

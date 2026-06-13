@@ -529,6 +529,8 @@ async def rate_limit_middleware(request: Request, call_next):
 @app.middleware("http")
 async def admin_auth_middleware(request: Request, call_next):
     path = request.url.path
+    if request.method == "GET" and path == "/api/admin/pipeline":
+        return await call_next(request)
     if path.startswith("/api/admin/"):
         token = _extract_bearer_token(request.headers.get("authorization"))
         if not _verify_admin_token(token):
@@ -4406,10 +4408,13 @@ def _install_mone_close_validation_routes_v1():
     import csv as _mone_close_csv
     import json as _mone_close_json
     import re as _mone_close_re
+    from collections import Counter as _MoneCloseCounter
+    from datetime import datetime as _MoneCloseDateTime, timedelta as _MoneCloseTimedelta
     from fastapi import Query as _MoneCloseQuery
 
     root = _MoneClosePath(__file__).resolve().parents[3]
     reports = root / "reports"
+    ohlcv_dir = root / "data" / "market" / "ohlcv"
 
     def _read_csv(path: _MoneClosePath) -> list[dict]:
         if not path.exists() or path.stat().st_size == 0:
@@ -4425,9 +4430,186 @@ def _install_mone_close_validation_routes_v1():
     def _num(value):
         try:
             text = str(value if value is not None else "").replace(",", "").replace("%", "").strip()
+            text = _mone_close_re.sub(r"[^0-9.\-]", "", text)
             return float(text) if text not in {"", "-", "None", "nan", "NaN"} else None
         except Exception:
             return None
+
+    def _truth(value) -> bool:
+        return str(value if value is not None else "").strip().lower() in {
+            "1", "true", "yes", "y", "executed", "filled", "hit", "체결", "泥닿껐"
+        }
+
+    def _first(row: dict, keys: tuple[str, ...], default: str = ""):
+        for key in keys:
+            value = row.get(key)
+            if value not in (None, ""):
+                return value
+        return default
+
+    def _parse_day(value) -> str:
+        text = str(value or "").strip()
+        if not text:
+            return ""
+        if _mone_close_re.fullmatch(r"\d{8}", text[:8]):
+            return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+        match = _mone_close_re.search(r"(20\d{2})[-/.]?(\d{2})[-/.]?(\d{2})", text)
+        if match:
+            return f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
+        return ""
+
+    def _row_recommendation_date(row: dict, fallback: str) -> str:
+        for key in ("recommendationDate", "generatedAt", "date", "asOfDate", "createdAt", "validationDate"):
+            parsed = _parse_day(row.get(key))
+            if parsed:
+                return parsed
+        return _parse_day(fallback)
+
+    def _ohlcv_path(market: str, symbol: str) -> _MoneClosePath | None:
+        raw = str(symbol or "").strip().upper()
+        if not raw:
+            return None
+        candidates: list[_MoneClosePath] = []
+        if market == "kr":
+            digits = _mone_close_re.sub(r"[^0-9]", "", raw)
+            if digits:
+                candidates.append(ohlcv_dir / f"kr_{digits.zfill(6)[-6:]}_daily.csv")
+                candidates.append(ohlcv_dir / f"kr_{digits}_daily.csv")
+        else:
+            candidates.append(ohlcv_dir / f"us_{raw}_daily.csv")
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return None
+
+    def _read_ohlcv_window(market: str, symbol: str, start_day: str, horizon: str) -> tuple[list[dict], str]:
+        path = _ohlcv_path(market, symbol)
+        if not path:
+            return [], ""
+        rows = _read_csv(path)
+        if not rows:
+            return [], path.name
+        if not start_day:
+            return rows[-1:], path.name
+        try:
+            start = _MoneCloseDateTime.strptime(start_day[:10], "%Y-%m-%d").date()
+        except Exception:
+            return rows[-1:], path.name
+        days = {"short": 5, "swing": 20, "mid": 60}.get(str(horizon).lower(), 20)
+        end = start + _MoneCloseTimedelta(days=days)
+        window = []
+        for item in rows:
+            day = _parse_day(item.get("date") or item.get("Date") or item.get("timestamp"))
+            if not day:
+                continue
+            try:
+                current = _MoneCloseDateTime.strptime(day[:10], "%Y-%m-%d").date()
+            except Exception:
+                continue
+            if start <= current <= end:
+                window.append(item)
+        return window, path.name
+
+    def _market_latest_ohlcv_date(market: str) -> str:
+        latest = ""
+        for path in ohlcv_dir.glob(f"{market}_*_daily.csv"):
+            rows = _read_csv(path)
+            if rows:
+                latest = max(latest, _parse_day(rows[-1].get("date") or rows[-1].get("Date")))
+        return latest
+
+    def _enrich_trade(row: dict, base: dict, date_text: str, market: str, horizon: str) -> dict:
+        recommendation_date = _row_recommendation_date(row, date_text)
+        symbol = str(base.get("symbol") or "").strip()
+        entry = _num(_first(row, ("entryPrice", "entry", "expectedEntryPrice")))
+        target = _num(_first(row, ("targetPrice", "target")))
+        stop = _num(_first(row, ("stopPrice", "stop")))
+        actual_low = _num(_first(row, ("actualLow", "low", "validationLow")))
+        actual_high = _num(_first(row, ("actualHigh", "high", "validationHigh")))
+        actual_close = _num(_first(row, ("actualClose", "close", "validationClose")))
+        ohlcv_source = str(_first(row, ("ohlcvSource", "sourceFile"), ""))
+        latest_ohlcv_date = ""
+        holding_days = _num(_first(row, ("holdingDays", "holding_days")))
+
+        if actual_low is None or actual_high is None or actual_close is None:
+            window, source = _read_ohlcv_window(market, symbol, recommendation_date, horizon)
+            if source:
+                ohlcv_source = ohlcv_source or source
+            lows = [_num(item.get("low") or item.get("Low")) for item in window]
+            highs = [_num(item.get("high") or item.get("High")) for item in window]
+            closes = [_num(item.get("close") or item.get("Close")) for item in window]
+            days = [_parse_day(item.get("date") or item.get("Date")) for item in window]
+            lows = [value for value in lows if value is not None]
+            highs = [value for value in highs if value is not None]
+            closes = [value for value in closes if value is not None]
+            days = [value for value in days if value]
+            if actual_low is None and lows:
+                actual_low = min(lows)
+            if actual_high is None and highs:
+                actual_high = max(highs)
+            if actual_close is None and closes:
+                actual_close = closes[-1]
+            if holding_days is None and days:
+                holding_days = len(set(days))
+            if days:
+                latest_ohlcv_date = max(days)
+
+        has_range = actual_low is not None and actual_high is not None
+        filled = bool(has_range and entry is not None and actual_low <= entry <= actual_high)
+        target_hit = bool(filled and target is not None and actual_high is not None and actual_high >= target)
+        stop_hit = bool(filled and stop is not None and actual_low is not None and actual_low <= stop)
+        if not ohlcv_source and not has_range:
+            data_status = "NO_OHLCV"
+            result_status = "PENDING_OHLCV"
+            reason = "OHLCV file is missing, so touch validation is pending"
+        elif not has_range:
+            data_status = "PENDING_OHLCV"
+            result_status = "PENDING_OHLCV"
+            reason = "OHLCV range is unavailable, so touch validation is pending"
+        elif target_hit and stop_hit:
+            data_status = str(base.get("dataStatus") or row.get("dataStatus") or "NORMAL")
+            result_status = "STOP_FIRST_ASSUMED"
+            reason = "Target and stop were both touched in the validation window"
+        elif stop_hit:
+            data_status = str(base.get("dataStatus") or row.get("dataStatus") or "NORMAL")
+            result_status = "STOP_HIT"
+            reason = str(base.get("reason") or row.get("failure_reason") or "")
+        elif target_hit:
+            data_status = str(base.get("dataStatus") or row.get("dataStatus") or "NORMAL")
+            result_status = "TARGET_HIT"
+            reason = str(base.get("reason") or "")
+        elif filled:
+            data_status = str(base.get("dataStatus") or row.get("dataStatus") or "NORMAL")
+            result_status = "FILLED_OPEN"
+            reason = str(base.get("reason") or "")
+        else:
+            data_status = str(base.get("dataStatus") or row.get("dataStatus") or "NORMAL")
+            result_status = "NOT_FILLED"
+            reason = str(base.get("reason") or "Entry was not touched in the validation window")
+
+        return {
+            **base,
+            "recommendationDate": recommendation_date,
+            "generatedAt": row.get("generatedAt") or base.get("generatedAt") or "",
+            "filled": filled,
+            "targetHit": target_hit,
+            "stopHit": stop_hit,
+            "resultStatus": result_status,
+            "actualLow": actual_low,
+            "actualHigh": actual_high,
+            "actualClose": actual_close,
+            "holdingDays": int(holding_days) if holding_days is not None else None,
+            "priceSource": row.get("priceSource") or base.get("priceSource") or "",
+            "ohlcvSource": ohlcv_source,
+            "dataStatus": data_status,
+            "is_executed": filled,
+            "is_win": target_hit,
+            "is_loss": stop_hit,
+            "virtual_return_pct": _num(base.get("returnPct")) or 0,
+            "failure_reason": reason,
+            "reason": reason,
+            "latestOhlcvDate": latest_ohlcv_date,
+        }
 
     def _validation_files(market: str, mode: str, horizon: str) -> list[_MoneClosePath]:
         files = []
@@ -4454,7 +4636,8 @@ def _install_mone_close_validation_routes_v1():
         return None, []
 
     def _normalize_trade(row: dict, date_text: str, market: str, mode: str, horizon: str) -> dict:
-        return {
+        base = {
+            **row,
             "date": row.get("date") or date_text,
             "symbol": row.get("symbol") or row.get("ticker") or "",
             "name": row.get("name") or row.get("companyName") or row.get("symbol") or "",
@@ -4473,6 +4656,7 @@ def _install_mone_close_validation_routes_v1():
             "reason": row.get("reason") or "",
             "source": row.get("source") or "",
         }
+        return _enrich_trade(row, base, date_text, market, horizon)
 
     def _summary_payload(market: str, mode: str, horizon: str) -> dict:
         path, rows = _latest_validation(market, mode, horizon)
@@ -4493,6 +4677,29 @@ def _install_mone_close_validation_routes_v1():
                 "todayDate": "",
                 "todayMessage": "오늘 장마감 원본 없음",
                 "latestDate": "",
+                "recommendationDate": "",
+                "generatedAt": "",
+                "checkedCount": 0,
+                "virtualFilledCount": 0,
+                "fillRate": 0,
+                "avgReturnPct": 0,
+                "cumulativeReturnPct": 0,
+                "targetHitRate": 0,
+                "stopHitRate": 0,
+                "pendingCount": 0,
+                "failedCount": 0,
+                "failedReasonTop": [],
+                "dataStatus": "NO_DATA",
+                "sourceFile": "",
+                "latestOhlcvDate": _market_latest_ohlcv_date(market),
+                "updatedAt": _MoneCloseDateTime.now(session.KST).isoformat(),
+                "total_trades": 0,
+                "executed_trades": 0,
+                "win_count": 0,
+                "loss_count": 0,
+                "win_rate": 0,
+                "profit_loss_ratio": 0,
+                "total_return_pct": 0,
                 "count": 0,
                 "items": [],
                 "closeValidationStatus": status,
@@ -4500,11 +4707,32 @@ def _install_mone_close_validation_routes_v1():
         date_text = _date_from_file(path) or str(rows[0].get("date") or "")
         normalized = [_normalize_trade(row, date_text, market, mode, horizon) for row in rows]
         executed = [row for row in normalized if str(row.get("executed", "")).lower() in {"true", "1", "yes", "체결"}]
+        executed = [row for row in normalized if bool(row.get("filled"))]
         returns = [_num(row.get("returnPct")) for row in executed]
         returns = [r for r in returns if r is not None]
         win_count = sum(1 for r in returns if r > 0)
+        target_count = sum(1 for row in normalized if bool(row.get("targetHit")))
+        stop_count = sum(1 for row in normalized if bool(row.get("stopHit")))
+        pending_count = sum(1 for row in normalized if str(row.get("dataStatus", "")).upper() in {"PENDING_OHLCV", "NO_OHLCV", "DATA_PENDING"})
+        failed_rows = [
+            row for row in normalized
+            if str(row.get("resultStatus", "")).upper() in {"NOT_FILLED", "STOP_FIRST_ASSUMED", "STOP_HIT"}
+        ]
+        failed_reasons = _MoneCloseCounter(
+            str(row.get("failure_reason") or row.get("reason") or row.get("resultStatus") or "unknown")[:80]
+            for row in failed_rows
+        )
         avg_return = sum(returns) / len(returns) if returns else 0.0
         cumulative_return = _portfolio_return_pct(returns)
+        avg_win = sum(r for r in returns if r > 0) / win_count if win_count else 0.0
+        loss_values = [abs(r) for r in returns if r < 0]
+        avg_loss = sum(loss_values) / len(loss_values) if loss_values else 0.0
+        data_status = "OK"
+        if pending_count:
+            data_status = "PARTIAL"
+        if normalized and pending_count == len(normalized):
+            data_status = "PENDING_OHLCV"
+        latest_ohlcv = max([str(row.get("latestOhlcvDate") or "") for row in normalized] + [_market_latest_ohlcv_date(market)])
         return {
             "status": "OK",
             "market": market,
@@ -4515,6 +4743,29 @@ def _install_mone_close_validation_routes_v1():
             "todayMessage": "장마감 검증 파일 연결됨" if rows else "오늘 장마감 원본 없음",
             "latestDate": date_text,
             "latestSource": path.name,
+            "recommendationDate": date_text,
+            "generatedAt": rows[0].get("generatedAt") if rows else "",
+            "checkedCount": len(normalized),
+            "virtualFilledCount": len(executed),
+            "fillRate": round(len(executed) / len(normalized) * 100, 2) if normalized else 0,
+            "avgReturnPct": round(avg_return, 4),
+            "cumulativeReturnPct": round(cumulative_return, 4),
+            "targetHitRate": round(target_count / len(executed) * 100, 2) if executed else 0,
+            "stopHitRate": round(stop_count / len(executed) * 100, 2) if executed else 0,
+            "pendingCount": pending_count,
+            "failedCount": len(failed_rows),
+            "failedReasonTop": [{"reason": reason, "count": count} for reason, count in failed_reasons.most_common(5)],
+            "dataStatus": data_status,
+            "sourceFile": path.name,
+            "latestOhlcvDate": latest_ohlcv,
+            "updatedAt": _MoneCloseDateTime.now(session.KST).isoformat(),
+            "total_trades": len(normalized),
+            "executed_trades": len(executed),
+            "win_count": win_count,
+            "loss_count": len(loss_values),
+            "win_rate": round((win_count / len(returns)) * 100, 2) if returns else 0,
+            "profit_loss_ratio": round(avg_win / avg_loss, 2) if avg_loss > 0 else (round(avg_win, 2) if avg_win else 0),
+            "total_return_pct": round(sum(returns), 4),
             "latestRecommendations": len(normalized),
             "latestExecutedTrades": len(executed),
             "latestUnexecutedCount": max(0, len(normalized) - len(executed)),
@@ -4558,6 +4809,63 @@ def _install_mone_close_validation_routes_v1():
         horizon: str = _MoneCloseQuery("swing"),
     ) -> dict:
         return _summary_payload("us" if str(market).lower() == "us" else "kr", mode, horizon)
+
+    app.router.routes = [
+        route for route in app.router.routes
+        if getattr(route, "path", "") != "/api/final/operation-summary"
+    ]
+
+    @app.get("/api/final/operation-summary")
+    def mone_operation_summary(
+        market: str = _MoneCloseQuery("kr", pattern="^(kr|us)$"),
+        mode: str = _MoneCloseQuery("balanced"),
+        horizon: str = _MoneCloseQuery("swing"),
+    ) -> dict:
+        normalized_market = "us" if str(market).lower() == "us" else "kr"
+
+        def safe_section(name: str, loader):
+            try:
+                payload = loader()
+                if isinstance(payload, dict):
+                    return payload
+                return {"status": "ERROR", "section": name, "error": "non-dict payload"}
+            except Exception as exc:
+                return {"status": "ERROR", "section": name, "error": str(exc)[:240]}
+
+        quality = safe_section("dataQuality", lambda: data_quality.data_quality(normalized_market, mode="quick"))
+        backtest_summary = safe_section("backtestSummary", lambda: _summary_payload(normalized_market, mode, horizon))
+        pipeline_summary = safe_section("pipelineSummary", lambda: data_quality.admin_pipeline(normalized_market))
+        active_gaps = []
+        for source in (quality, pipeline_summary):
+            values = source.get("activeGaps") or source.get("rootCauses") or source.get("warnings") or []
+            if isinstance(values, list):
+                active_gaps.extend([str(value) for value in values if value])
+        next_actions = []
+        for source in (quality, pipeline_summary):
+            values = source.get("nextActions") or []
+            if isinstance(values, list):
+                next_actions.extend([str(value) for value in values if value])
+        session_state = session.get_price_session(normalized_market)
+        return {
+            "status": "OK",
+            "market": normalized_market,
+            "autoResolvedMarket": normalized_market,
+            "sessionLabel": session_state.get("label") or session_state.get("phase") or "",
+            "reviewMode": bool(quality.get("reviewMode")),
+            "dataStatus": quality.get("dataStatus") or pipeline_summary.get("dataStatus") or "UNKNOWN",
+            "priceDataStatus": quality.get("priceDataStatus") or pipeline_summary.get("currentPriceSourceStatus") or "UNKNOWN",
+            "recommendationStatus": quality.get("recommendationStatus") or pipeline_summary.get("recommendationStatus") or "UNKNOWN",
+            "recommendationDate": backtest_summary.get("recommendationDate") or quality.get("latestDataDate") or pipeline_summary.get("recommendationLatestDate"),
+            "generatedAt": backtest_summary.get("generatedAt") or quality.get("latestFileModifiedAt") or "",
+            "currentPriceBasisDate": quality.get("latestDataDate") or pipeline_summary.get("snapshotLatestDate"),
+            "ohlcvLatestDate": backtest_summary.get("latestOhlcvDate") or pipeline_summary.get("ohlcvLatestDate"),
+            "snapshotLatestDate": pipeline_summary.get("snapshotLatestDate"),
+            "activeGaps": list(dict.fromkeys(active_gaps))[:8],
+            "nextActions": list(dict.fromkeys(next_actions))[:8],
+            "backtestSummary": backtest_summary,
+            "pipelineSummary": pipeline_summary,
+            "updatedAt": _MoneCloseDateTime.now(session.KST).isoformat(),
+        }
 
 try:
     _install_mone_close_validation_routes_v1()

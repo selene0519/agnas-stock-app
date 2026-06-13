@@ -1303,6 +1303,11 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
                     <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-400">{holdingPurposeLabel(holdingPurpose)}</span>
                   </div>
                   <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
+                  <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
+                    {(holding.currentPriceSource || holding.priceSource || holding.quoteSource) && <span>source: {holding.currentPriceSource || holding.priceSource || holding.quoteSource}</span>}
+                    {(holding.priceDataStatus || holding.dataStatus) && <span>status: {holding.priceDataStatus || holding.dataStatus}</span>}
+                    {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
+                  </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(() => {
                       const status = String(holding.dataStatus || "");

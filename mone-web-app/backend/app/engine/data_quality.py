@@ -7,6 +7,7 @@ mode=full : 전체 파일 검사 + final_engine 실행 (느릴 수 있음)
 from __future__ import annotations
 
 import csv
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -704,7 +705,8 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
 
 
 def admin_pipeline(market: str = "kr") -> dict[str, Any]:
-    quality = data_quality(market)
+    normalized_market = normalize_market(market)
+    quality = data_quality(normalized_market)
     status = quality.get("dataStatus", "NO_DATA")
     files = quality.get("files", [])
 
@@ -719,6 +721,79 @@ def admin_pipeline(market: str = "kr") -> dict[str, Any]:
     latest_data_date = quality.get("latestDataDate", "")
     row_count = quality.get("rowCount", 0)
 
+    def read_json_status(path: Path) -> dict[str, Any]:
+        if not path.exists():
+            return {}
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            return {"status": "ERROR", "error": str(exc)[:160], "file": str(path)}
+
+    def latest_file_date(patterns: list[str]) -> str | None:
+        matches: list[Path] = []
+        for pattern in patterns:
+            matches.extend(_repo_path(*pattern.split("/")).parent.glob(Path(pattern).name))
+        newest = max((path.stat().st_mtime for path in matches if path.exists()), default=0)
+        return datetime.fromtimestamp(newest, session.KST).date().isoformat() if newest else None
+
+    def latest_ohlcv_date() -> str | None:
+        latest: str | None = None
+        for path in _repo_path("data", "market", "ohlcv").glob(f"{normalized_market}_*_daily.csv"):
+            rows = _read_csv_safe(path)
+            if not rows:
+                continue
+            day = _parse_date_str(rows[-1].get("date") or rows[-1].get("Date"))
+            if day and (latest is None or day > latest):
+                latest = day
+        return latest
+
+    collector_path = _repo_path("reports", "local_collector_status.json")
+    collector = read_json_status(collector_path)
+    collector_pushed = collector.get("pushed") if collector else None
+    collector_error = collector.get("lastError") or collector.get("error") or collector.get("stderr")
+    if not collector:
+        local_collector_status = "UNKNOWN"
+        local_push_reason = "local_status_only"
+    elif collector_pushed is True:
+        local_collector_status = "PUSHED"
+        local_push_reason = "pushed"
+    elif collector_error:
+        local_collector_status = "FAILED"
+        local_push_reason = "git_push_failed" if "git" in str(collector_error).lower() else "local_collector_ran_but_not_pushed"
+    elif collector_pushed is False:
+        local_collector_status = "NOT_PUSHED"
+        local_push_reason = collector.get("pushReason") or "no_changes_to_push"
+    else:
+        local_collector_status = "UNKNOWN"
+        local_push_reason = "unknown"
+
+    github_status_payload = {}
+    for rel in ("reports/kis_live_refresh_status.json", "reports/auto_sync_status.json"):
+        github_status_payload = read_json_status(_repo_path(*rel.split("/")))
+        if github_status_payload:
+            break
+    github_status = github_status_payload.get("status") or "UNKNOWN"
+    github_last_update = github_status_payload.get("updatedAt") or github_status_payload.get("timestamp")
+    active_gaps = list(quality.get("rootCauses") or quality.get("warnings") or [])
+    next_actions = list(quality.get("nextActions") or [])
+    if github_status == "UNKNOWN":
+        next_actions.append("GitHub status unavailable")
+    if local_collector_status in {"UNKNOWN", "FAILED", "NOT_PUSHED"}:
+        next_actions.append(f"local collector: {local_push_reason}")
+
+    recommendation_latest_date = latest_data_date or latest_file_date([f"reports/mone_v36_final_recommendations_{normalized_market}_*.csv"])
+    snapshot_latest_date = latest_file_date([
+        f"reports/kis_current_price_{normalized_market}.csv",
+        f"data/current_prices_{normalized_market}.csv",
+        f"cache/quotes_cache.json",
+    ])
+    ohlcv_latest_date = latest_ohlcv_date()
+    render_latest_file_date = latest_file_date([
+        f"reports/mone_v36_final_recommendations_{normalized_market}_*.csv",
+        f"reports/mone_v36_final_trade_validation_{normalized_market}_*.csv",
+        "reports/local_collector_status.json",
+    ])
+
     steps = [
         step("GitHub Actions 실행 확인", any(f.get("status") != "NO_DATA" for f in files), "원천 파일 존재 여부 확인"),
         step("CSV/JSON 생성 확인", any(f.get("path") for f in files), "백엔드가 읽을 수 있는 파일 경로 확인"),
@@ -730,7 +805,36 @@ def admin_pipeline(market: str = "kr") -> dict[str, Any]:
 
     return {
         "status": "OK",
-        "market": normalize_market(market),
+        "market": normalized_market,
+        "githubActionsStatus": github_status,
+        "githubActionsLastUpdate": github_last_update,
+        "localCollectorStatus": local_collector_status,
+        "localCollectorLastUpdate": collector.get("completedAt") or collector.get("updatedAt") or collector.get("startedAt"),
+        "localCollectorPushed": collector_pushed,
+        "localCollectorLastError": collector_error,
+        "localCollectorPushReason": local_push_reason,
+        "renderLatestFileDate": render_latest_file_date,
+        "recommendationLatestDate": recommendation_latest_date,
+        "snapshotLatestDate": snapshot_latest_date,
+        "ohlcvLatestDate": ohlcv_latest_date,
+        "currentPriceSourceStatus": quality.get("priceDataStatus"),
+        "recommendationStatus": quality.get("recommendationStatus"),
+        "dataStatus": quality.get("dataStatus"),
+        "activeGaps": active_gaps,
+        "nextActions": list(dict.fromkeys(next_actions)),
+        "checkedFiles": quality.get("checkedFiles") or [f.get("path") for f in files if f.get("path")],
+        "updatedAt": datetime.now(session.KST).isoformat(),
+        "summary": {
+            "market": normalized_market,
+            "githubActionsStatus": github_status,
+            "localCollectorStatus": local_collector_status,
+            "localCollectorPushed": collector_pushed,
+            "recommendationLatestDate": recommendation_latest_date,
+            "ohlcvLatestDate": ohlcv_latest_date,
+            "dataStatus": quality.get("dataStatus"),
+            "activeGaps": active_gaps,
+            "nextActions": list(dict.fromkeys(next_actions)),
+        },
         "dataQuality": quality,
         "pipeline": steps,
         "files": files,

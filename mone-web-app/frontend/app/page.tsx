@@ -251,17 +251,6 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-3 pb-[calc(56px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
           <div className="mx-auto max-w-7xl space-y-4">
             <SessionSafetyBanner market={getDefaultMarketBySession()} />
-            {loading && (
-              <div className="space-y-3">
-                <div className="skeleton h-16 w-full" />
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  <div className="skeleton h-24" />
-                  <div className="skeleton h-24" />
-                  <div className="skeleton col-span-2 h-24 md:col-span-1" />
-                </div>
-                <div className="skeleton h-40 w-full" />
-              </div>
-            )}
             {error && (
               <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
                 <div className="flex items-center justify-between">

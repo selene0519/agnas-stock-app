@@ -226,6 +226,7 @@ export default function PredictionPage() {
   const [data, setData] = useState<any>({ items: [] });
   const [accuracy, setAccuracy] = useState<any>(null);
   const [valDash, setValDash] = useState<any>(null);
+  const [btSummary, setBtSummary] = useState<any>(null);
   const [btItems, setBtItems] = useState<any[]>([]);
   const [validationRows, setValidationRows] = useState<any[]>([]);
   const [query, setQuery] = useState("");
@@ -241,6 +242,26 @@ export default function PredictionPage() {
       const recPromise = mone.recommendations({ market, mode: strategy, horizon: term, limit: 50 }); // /api/final/recommendations le=50
       const accPromise = mone.predictionAccuracy({ market: market === "all" ? "all" : market });
       const vdPromise = Promise.all(validationMarkets.map((mk) => mone.validationDashboard({ market: mk }))).then(combineValidationDashboards);
+      const bsPromise = Promise.all(validationMarkets.map((mk) => mone.backtestSummary({ market: mk, mode: strategy, horizon: term })))
+        .then((rows) => {
+          if (rows.length === 1) return rows[0];
+          const checkedCount = rows.reduce((sum, row: any) => sum + Number(row.checkedCount || row.total_trades || 0), 0);
+          const virtualFilledCount = rows.reduce((sum, row: any) => sum + Number(row.virtualFilledCount || row.executed_trades || 0), 0);
+          const pendingCount = rows.reduce((sum, row: any) => sum + Number(row.pendingCount || 0), 0);
+          const failedCount = rows.reduce((sum, row: any) => sum + Number(row.failedCount || 0), 0);
+          return {
+            status: rows.some((row: any) => row.status === "ERROR") ? "PARTIAL" : "OK",
+            market: "all",
+            checkedCount,
+            virtualFilledCount,
+            fillRate: checkedCount > 0 ? (virtualFilledCount / checkedCount) * 100 : 0,
+            targetHitRate: avg(rows, (row: any) => toNumber(row.targetHitRate)),
+            stopHitRate: avg(rows, (row: any) => toNumber(row.stopHitRate)),
+            pendingCount,
+            failedCount,
+            failedReasonTop: rows.flatMap((row: any) => Array.isArray(row.failedReasonTop) ? row.failedReasonTop : []).slice(0, 5),
+          };
+        });
       const btPromise = Promise.all(validationMarkets.map((mk) => mone.backtestTrades({ market: mk, mode: strategy, horizon: term, limit: 200 })))
         .then((rows) => rows.flatMap((row) => Array.isArray(row.items) ? row.items : []));
       const validationPromise = mone.virtualValidation({ market, mode: strategy, horizon: term, limit: 300 });
@@ -260,19 +281,22 @@ export default function PredictionPage() {
         scanCoverage: rec.scanCoverage || pred.scanCoverage,
       });
 
-      const [accResult, vdResult, btResult, validationResult] = await Promise.allSettled([accPromise, vdPromise, btPromise, validationPromise]);
+      const [accResult, vdResult, bsResult, btResult, validationResult] = await Promise.allSettled([accPromise, vdPromise, bsPromise, btPromise, validationPromise]);
       const acc = fulfilled(accResult, null);
       const vd = fulfilled(vdResult, null);
+      const bs = fulfilled(bsResult, null);
       const bt = fulfilled(btResult, []);
       const vv = fulfilled(validationResult, { status: "ERROR", items: [] });
       setAccuracy(acc?.status === "OK" ? acc : null);
       setValDash(vd?.summary ? vd : null);
+      setBtSummary(bs);
       setBtItems(Array.isArray(bt) ? bt : []);
       setValidationRows(Array.isArray(vv.items) ? vv.items : []);
     } catch (error) {
       setData({ status: "ERROR", error: String(error), items: [] });
       setAccuracy(null);
       setValDash(null);
+      setBtSummary(null);
       setBtItems([]);
       setValidationRows([]);
     } finally {
@@ -323,7 +347,10 @@ export default function PredictionPage() {
       { label: "> 10%", min: 10, max: Infinity },
     ].map((b) => ({ ...b, count: rets.filter((v: number) => v >= b.min && v < b.max).length }));
     const maxCount = Math.max(...buckets.map((b) => b.count), 1);
-    const executed = btItems.filter((r: any) => String(r.executed ?? "").toLowerCase() === "true").length;
+    const executed = btItems.filter((r: any) => {
+      const value = r.filled ?? r.is_executed ?? r.executed;
+      return value === true || ["true", "1", "yes", "filled", "executed", "체결"].includes(String(value ?? "").toLowerCase());
+    }).length;
     const wins = btItems.filter((r: any) => Number(r.returnPct ?? r.virtual_return_pct ?? 0) > 0).length;
     return { buckets, maxCount, total: rets.length, executed, wins, winRate: rets.length > 0 ? (wins / rets.length * 100).toFixed(1) : "0.0" };
   }, [btItems]);
@@ -393,6 +420,35 @@ export default function PredictionPage() {
       <StrategyPlaybookPanel strategy={strategy} term={term} data={data} valDash={valDash} />
 
       <ValidationPolicyPanel market={market} data={data} validationRows={validationRows} />
+
+      {btSummary && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-semibold text-slate-200">Backtest touch summary</div>
+            <div className="text-[11px] text-slate-500">
+              source {btSummary.sourceFile || btSummary.latestSource || "-"} / OHLCV {btSummary.latestOhlcvDate || "-"}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Card label="Filled" value={`${btSummary.virtualFilledCount ?? btSummary.executed_trades ?? 0}/${btSummary.checkedCount ?? btSummary.total_trades ?? 0}`} />
+            <Card label="Fill rate" value={`${Number(btSummary.fillRate ?? 0).toFixed(1)}%`} />
+            <Card label="Target / Stop" value={`${Number(btSummary.targetHitRate ?? 0).toFixed(1)}% / ${Number(btSummary.stopHitRate ?? 0).toFixed(1)}%`} />
+            <Card label="Pending / Failed" value={`${btSummary.pendingCount ?? 0} / ${btSummary.failedCount ?? 0}`} />
+          </div>
+          {Array.isArray(btSummary.failedReasonTop) && btSummary.failedReasonTop.length > 0 && (
+            <details className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400">
+              <summary className="cursor-pointer font-semibold text-slate-300">Top failed reasons</summary>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {btSummary.failedReasonTop.map((item: any, idx: number) => (
+                  <span key={`${item.reason || idx}`} className="rounded-lg border border-slate-700 px-2 py-1">
+                    {item.reason || item} {item.count ? `(${item.count})` : ""}
+                  </span>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card label="표시 후보" value={`${top.length}개`} />
@@ -619,6 +675,12 @@ export default function PredictionPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLE[status]}`}>{status}</span>
+                      <div className="mt-1 font-mono text-[10px] text-slate-500">
+                        L/H/C {item.validation?.actualLow ?? item.actualLow ?? "-"} / {item.validation?.actualHigh ?? item.actualHigh ?? "-"} / {item.validation?.actualClose ?? item.actualClose ?? "-"}
+                      </div>
+                      <div className="font-mono text-[10px] text-slate-500">
+                        {item.validation?.resultStatus ?? item.resultStatus ?? "-"} / {item.validation?.dataStatus ?? item.dataStatus ?? "-"}
+                      </div>
                     </td>
                   </tr>
                 );
