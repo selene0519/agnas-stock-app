@@ -63,11 +63,11 @@ export default function AppLaunchLoading({
           <img
             src="/loading/mone-bear.png"
             alt="MONE bear"
-            className="relative z-10 mb-[-34px] w-[min(36vw,145px)] object-contain drop-shadow-[0_10px_28px_rgba(0,0,0,0.65)] sm:mb-[-40px] sm:w-[min(34vw,165px)]"
+            className="relative z-10 mb-[-20px] w-[min(44vw,175px)] object-contain drop-shadow-[0_10px_28px_rgba(0,0,0,0.65)] sm:mb-[-22px] sm:w-[min(40vw,190px)]"
           />
 
           {/* 진행 카드 */}
-          <div className="w-full rounded-[22px] bg-[#1a2a3a] px-6 pb-7 pt-12 shadow-[0_4px_40px_rgba(0,0,0,0.55)] sm:px-8 sm:pb-8 sm:pt-14">
+          <div className="w-full rounded-[22px] bg-[#1a2a3a] px-6 pb-7 pt-7 shadow-[0_4px_40px_rgba(0,0,0,0.55)] sm:px-8 sm:pb-8 sm:pt-8">
             {/* 제목 + 퍼센트 */}
             <p className="text-[20px] font-extrabold leading-snug text-white sm:text-[24px]">
               MONE 준비 중...{" "}
