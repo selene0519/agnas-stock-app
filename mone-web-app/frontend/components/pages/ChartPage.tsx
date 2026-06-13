@@ -912,7 +912,37 @@ type ChartOverlayMeta = {
   displayByDefault?: boolean;
   debugOnly?: boolean;
   hideReason?: string;
+  displayRank?: number;
 };
+
+const CORE_OVERLAY_FALLBACK_TYPES = new Set([
+  "currentPrice",
+  "entryPrice",
+  "stopLine",
+  "stopPrice",
+  "targetLine",
+  "targetPrice",
+]);
+const DEFAULT_OVERLAY_LIMIT = 6;
+
+function isCoreOverlayFallback(overlay: ChartOverlayMeta) {
+  return CORE_OVERLAY_FALLBACK_TYPES.has(String(overlay.type || ""));
+}
+
+function shouldRenderChartOverlay(overlay: ChartOverlayMeta, showAdvancedOverlays: boolean) {
+  if (!Number.isFinite(Number(overlay.price)) || Number(overlay.price) <= 0) return false;
+  if (showAdvancedOverlays) {
+    return overlay.displayByDefault === true || overlay.debugOnly === true || (overlay.displayByDefault == null && isCoreOverlayFallback(overlay));
+  }
+  if (overlay.displayByDefault === true) return true;
+  return overlay.displayByDefault == null && isCoreOverlayFallback(overlay);
+}
+
+function overlaySortRank(overlay: ChartOverlayMeta) {
+  const rank = Number(overlay.displayRank);
+  if (Number.isFinite(rank)) return rank;
+  return isCoreOverlayFallback(overlay) ? 20 : 500;
+}
 
 function futureBarsForPeriod(bars: number | null) {
   if (bars == null || bars >= 252) return 20;
@@ -1462,9 +1492,9 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         // 공통 데이터: ZigZag + 매물대 (다른 기능들이 참조)
         if (Array.isArray(chartMeta?.overlays)) {
           chartMeta.overlays
-            .filter((overlay: ChartOverlayMeta) => Number(overlay.price) > 0)
-            .filter((overlay: ChartOverlayMeta) => showAdvancedOverlays || overlay.displayByDefault !== false)
-            .slice(0, 5)
+            .filter((overlay: ChartOverlayMeta) => shouldRenderChartOverlay(overlay, showAdvancedOverlays))
+            .sort((a: ChartOverlayMeta, b: ChartOverlayMeta) => overlaySortRank(a) - overlaySortRank(b))
+            .slice(0, DEFAULT_OVERLAY_LIMIT)
             .forEach(addHorizontalOverlay);
         }
 
