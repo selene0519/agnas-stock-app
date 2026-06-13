@@ -4531,7 +4531,7 @@ def _install_mone_close_validation_routes_v1():
         latest_ohlcv_date = ""
         holding_days = _num(_first(row, ("holdingDays", "holding_days")))
 
-        if actual_low is None or actual_high is None or actual_close is None:
+        if actual_low is None or actual_high is None or actual_close is None or not ohlcv_source or holding_days is None:
             window, source = _read_ohlcv_window(market, symbol, recommendation_date, horizon)
             if source:
                 ohlcv_source = ohlcv_source or source
