@@ -1188,6 +1188,7 @@ def _line_from_pivots(
     current_price: float | None,
     future_bars: int,
     source: str,
+    rows: list[dict] | None = None,
 ) -> dict | None:
     required_type = "low" if line_type == "supportLine" else "high"
     label = "low-low support" if line_type == "supportLine" else "high-high resistance"
@@ -1232,19 +1233,36 @@ def _line_from_pivots(
             if any(p.get("type") != required_type for p in (p1, p2)):
                 valid = False
                 invalid_reason = "support_requires_low_low" if line_type == "supportLine" else "resistance_requires_high_high"
-            between = [p for p in recent if i1 < int(p.get("index", 0)) < i2]
-            if line_type == "supportLine":
-                violated = any(_chart_float(p.get("price")) is not None and float(p.get("price")) < (price1 + slope * (int(p.get("index", 0)) - i1)) * 0.995 for p in between)
-                if violated:
-                    valid = False
-                    invalid_reason = "support_intermediate_low_broken"
-                    warnings.append("support_intermediate_low_broken")
+            # OrderFlow 명세: 중간 캔들 종가 기준으로 이탈 여부 확인
+            violated = False
+            if rows:
+                for ri in range(i1 + 1, i2):
+                    if ri >= len(rows):
+                        break
+                    close = _chart_float(rows[ri].get("close") or rows[ri].get("Close"))
+                    if close is None:
+                        continue
+                    line_price = price1 + slope * (ri - i1)
+                    if line_type == "supportLine" and close < line_price * 0.995:
+                        violated = True
+                        break
+                    elif line_type == "resistanceLine" and close > line_price * 1.005:
+                        violated = True
+                        break
             else:
-                violated = any(_chart_float(p.get("price")) is not None and float(p.get("price")) > (price1 + slope * (int(p.get("index", 0)) - i1)) * 1.005 for p in between)
-                if violated:
-                    valid = False
-                    invalid_reason = "resistance_intermediate_high_broken"
-                    warnings.append("resistance_intermediate_high_broken")
+                between = [p for p in recent if i1 < int(p.get("index", 0)) < i2]
+                if line_type == "supportLine":
+                    violated = any(_chart_float(p.get("price")) is not None and float(p.get("price")) < (price1 + slope * (int(p.get("index", 0)) - i1)) * 0.995 for p in between)
+                else:
+                    violated = any(_chart_float(p.get("price")) is not None and float(p.get("price")) > (price1 + slope * (int(p.get("index", 0)) - i1)) * 1.005 for p in between)
+            if violated:
+                valid = False
+                if line_type == "supportLine":
+                    invalid_reason = "support_intermediate_close_broken"
+                    warnings.append("support_intermediate_close_broken")
+                else:
+                    invalid_reason = "resistance_intermediate_close_broken"
+                    warnings.append("resistance_intermediate_close_broken")
             if current_price and line_type == "supportLine":
                 if base_price > current_price * 1.005:
                     valid = False
@@ -1688,8 +1706,8 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
     pivot_lows, pivot_highs = _chart_pivots(rows, ohlcv_source)
     stale = "precision_base_stale" in warnings
     overlays: list[dict] = []
-    support_line = _line_from_pivots("supportLine", pivot_lows, current_price, future_bars, "pivot_detector")
-    resistance_line = _line_from_pivots("resistanceLine", pivot_highs, current_price, future_bars, "pivot_detector")
+    support_line = _line_from_pivots("supportLine", pivot_lows, current_price, future_bars, "pivot_detector", rows)
+    resistance_line = _line_from_pivots("resistanceLine", pivot_highs, current_price, future_bars, "pivot_detector", rows)
     for line in (support_line, resistance_line):
         if line and line.get("valid"):
             overlays.append(line)
@@ -4723,6 +4741,11 @@ def _install_mone_close_validation_routes_v1():
             }
         date_text = _date_from_file(path) or str(rows[0].get("date") or "")
         normalized = [_normalize_trade(row, date_text, market, mode, horizon) for row in rows]
+        recommendation_date = (
+            date_text
+            or str((normalized[0] if normalized else {}).get("recommendationDate") or "")
+            or _parse_day(rows[0].get("generatedAt") if rows else "")
+        )
         executed = [row for row in normalized if str(row.get("executed", "")).lower() in {"true", "1", "yes", "체결"}]
         executed = [row for row in normalized if bool(row.get("filled"))]
         returns = [_num(row.get("returnPct")) for row in executed]
@@ -4763,7 +4786,7 @@ def _install_mone_close_validation_routes_v1():
             "todayMessage": "장마감 검증 파일 연결됨" if rows else "오늘 장마감 원본 없음",
             "latestDate": date_text,
             "latestSource": path.name,
-            "recommendationDate": date_text,
+            "recommendationDate": recommendation_date,
             "generatedAt": rows[0].get("generatedAt") if rows else "",
             "checkedCount": len(normalized),
             "virtualFilledCount": len(executed),
