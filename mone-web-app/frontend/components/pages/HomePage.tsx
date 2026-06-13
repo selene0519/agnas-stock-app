@@ -29,12 +29,55 @@ import {
 } from "@/lib/moneDisplay";
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
+import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
 const HORIZONS: Horizon[] = ["short", "swing", "mid"];
 
 type StrategyCell = { mode: Mode; horizon: Horizon; items: any[]; count: number; status: string };
 type MarketChoice = "auto" | "kr" | "us";
+
+type HomeBootMarketData = {
+  operationSummary?: any;
+  dataQuality?: any;
+  recommendations?: any;
+};
+
+function bootMarketData(bootData: BootPreloadData | null | undefined, market: "kr" | "us"): HomeBootMarketData {
+  if (!bootData) return {};
+  return market === "kr"
+    ? {
+        operationSummary: bootData.krOperationSummary,
+        dataQuality: bootData.krDataQuality,
+        recommendations: bootData.krRecommendations,
+      }
+    : {
+        operationSummary: bootData.usOperationSummary,
+        dataQuality: bootData.usDataQuality,
+        recommendations: bootData.usRecommendations,
+      };
+}
+
+function hasBootMarketData(data: HomeBootMarketData) {
+  return Boolean(data.operationSummary || data.dataQuality || data.recommendations);
+}
+
+function bootRecommendationMatrix(recommendations: any, market: "kr" | "us"): StrategyCell[] {
+  const bootItems = dedupeBySymbol(Array.isArray(recommendations?.items) ? recommendations.items : [])
+    .slice(0, 5)
+    .map((item: any) => ({
+      ...item,
+      market: item.market || market,
+      _mode: item._mode || item.mode || "balanced",
+      _horizon: item._horizon || item.horizon || "swing",
+    }));
+  return MODES.flatMap((mode) =>
+    HORIZONS.map((horizon) => {
+      const items = mode === "balanced" && horizon === "swing" ? bootItems : [];
+      return { mode, horizon, items, count: items.length, status: recommendations?.status || "BOOT_CACHE" } satisfies StrategyCell;
+    })
+  );
+}
 
 function normalizeDateText(value: any) {
   const raw = String(value || "").trim();
@@ -1718,7 +1761,15 @@ function ReportDigestCard({ digest, loading }: { digest: any; loading: boolean }
   );
 }
 
-export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) => void }) {
+export default function HomePage({
+  onNavigate,
+  bootData,
+  bootStatus = "idle",
+}: {
+  onNavigate?: (page: PageId) => void;
+  bootData?: BootPreloadData | null;
+  bootStatus?: BootStatus;
+}) {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [matrix, setMatrix] = useState<StrategyCell[]>([]);
   const [holdings, setHoldings] = useState<any[]>([]);
@@ -1726,7 +1777,9 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   const [marketRegime, setMarketRegime] = useState<any>(null);
   const [dataHealth, setDataHealth] = useState<any>(null);
   const [operationSummary, setOperationSummary] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!bootData || !Object.keys(bootData).length);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshWarning, setRefreshWarning] = useState("");
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [showJournal, setShowJournal] = useState(false);
@@ -1775,9 +1828,31 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
     onNavigate?.("chart");
   }, [onNavigate, selectedMarket]);
 
-  async function load() {
-    setLoading(true);
-    setMarketRegime(null);
+  const applyBootDataForMarket = useCallback((market: "kr" | "us") => {
+    const cached = bootMarketData(bootData, market);
+    if (!hasBootMarketData(cached)) return false;
+
+    if (cached.dataQuality) setDataHealth(normalizeDataHealth(cached.dataQuality));
+    if (cached.operationSummary) setOperationSummary(cached.operationSummary);
+    if (cached.recommendations) {
+      const bootMatrix = bootRecommendationMatrix(cached.recommendations, market);
+      setMatrix(bootMatrix);
+      setAllItems(bootMatrix.flatMap((cell) => cell.items));
+    }
+    setLoading(false);
+    setRefreshWarning("");
+    return true;
+  }, [bootData]);
+
+  async function load(options: { background?: boolean } = {}) {
+    const hasCurrentData = options.background || allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth || operationSummary);
+    if (hasCurrentData) {
+      setRefreshing(true);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    setRefreshWarning("");
     try {
       // 단일 통합 API 호출 (기존 10회 → 1회)
       const result = await mone.homeSummary({ market: selectedMarket, limit: 12 });
@@ -1802,11 +1877,19 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
       setAllItems(matrixResult.flatMap((cell) => cell.items));
       mone.operationSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" })
         .then((payload) => setOperationSummary(payload || null))
-        .catch(() => setOperationSummary(null));
+        .catch(() => {
+          if (!hasCurrentData) setOperationSummary(null);
+          else setRefreshWarning("운영 요약 갱신에 실패해 기존 값을 유지합니다.");
+        });
     } catch {
-      setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setDataHealth(null); setOperationSummary(null);
+      if (!hasCurrentData) {
+        setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setDataHealth(null); setOperationSummary(null);
+      } else {
+        setRefreshWarning("데이터 갱신에 실패해 기존 값을 유지합니다.");
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -1825,12 +1908,15 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
   }, []);
 
   useEffect(() => {
-    if (clientReady) load();
+    if (clientReady) {
+      const usedBootData = applyBootDataForMarket(selectedMarket);
+      load({ background: usedBootData });
+    }
   }, [clientReady, selectedMarket]);
 
   useEffect(() => {
     if (!clientReady) return;
-    setReportLoading(true);
+    setReportLoading(!reportDigest);
     Promise.allSettled([
       mone.report("premarket", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
       mone.report("closing", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
@@ -1841,7 +1927,9 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         closing: closing.status === "fulfilled" ? closing.value : null,
         backtest: backtest.status === "fulfilled" ? backtest.value : null,
       });
-    }).catch(() => setReportDigest(null))
+    }).catch(() => {
+      if (!reportDigest) setReportDigest(null);
+    })
       .finally(() => setReportLoading(false));
   }, [clientReady, selectedMarket]);
 
@@ -2101,11 +2189,17 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
           <button onClick={() => setShowJournal(true)} className="min-w-0 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-300 hover:bg-slate-800 sm:px-2.5">
             일지
           </button>
-          <button onClick={load} title="새로고침" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800">
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          <button onClick={() => load()} title="새로고침" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800">
+            <RefreshCw size={13} className={loading || refreshing ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
+
+      {(refreshWarning || bootStatus === "degraded") && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          {refreshWarning || "일부 초기 데이터를 불러오지 못해 사용 가능한 캐시와 기본 화면을 먼저 표시합니다."}
+        </div>
+      )}
 
       {!loading && (
         <TodayConclusionCard
@@ -2314,7 +2408,7 @@ export default function HomePage({ onNavigate }: { onNavigate?: (page: PageId) =
         </button>
         {showDigest && (
           <div className="border-t border-slate-800 px-4 pb-4 pt-3">
-            <ReportDigestCard digest={reportDigest} loading={reportLoading} />
+            <ReportDigestCard digest={reportDigest} loading={reportLoading && !reportDigest} />
           </div>
         )}
       </div>
