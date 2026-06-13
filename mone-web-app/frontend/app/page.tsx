@@ -23,6 +23,7 @@ import { mone } from "../lib/api";
 import { clearAdminToken, getAdminToken, saveAdminToken } from "../lib/adminAuth";
 import { clearAuthenticatedUser, getUserId, getUserProfile, getUserToken, type MoneUserProfile } from "../lib/userId";
 import { getDefaultMarketBySession } from "../lib/marketSession";
+import { getCachedBootPreload, runBootPreload, type BootPreloadState } from "../lib/bootPreload";
 
 const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
 
@@ -41,22 +42,32 @@ export default function App() {
   const [userToken, setUserTokenState] = useState("");
   const [booting, setBooting] = useState(true);
   const [bootProgress, setBootProgress] = useState(8);
-  const [bootMessage, setBootMessage] = useState("서버를 확인하고 있어요");
+  const [bootMessage, setBootMessage] = useState("시장홈을 준비하고 있어요");
   const [bootDelayed, setBootDelayed] = useState(false);
+  const [bootState, setBootState] = useState<BootPreloadState>({
+    bootStatus: "idle",
+    bootData: {},
+    hasBootData: false,
+  });
   const [bootSteps, setBootSteps] = useState<AppLaunchLoadingStep[]>([
     { label: "서버 연결 확인", status: "active" },
-    { label: "최신 데이터 동기화", status: "pending" },
-    { label: "추천 후보 계산", status: "pending" },
+    { label: "시장 요약 미리 불러오기", status: "pending" },
+    { label: "추천 후보 준비", status: "pending" },
   ]);
 
   useEffect(() => {
-    setMounted(true);
+    const cachedBoot = getCachedBootPreload();
+    if (cachedBoot.hasBootData) {
+      setBootState(cachedBoot);
+      setBooting(false);
+    }
     setAdminTokenState(getAdminToken());
     setUserProfile(getUserProfile());
     setUserTokenState(getUserToken());
     getUserId(); // 최초 방문 시 UUID 생성 및 localStorage 저장
     // Render free-tier cold-start 방지: 앱 로드 즉시 백엔드 warm-up ping (결과 무시)
     fetch("/mone-api/health", { cache: "no-store" }).catch(() => {});
+    setMounted(true);
   }, []);
 
 
@@ -64,72 +75,59 @@ export default function App() {
     if (!mounted) return;
 
     let cancelled = false;
+    const cachedBoot = getCachedBootPreload();
+    const showLaunchLoading = !cachedBoot.hasBootData;
+    if (!showLaunchLoading) {
+      setBootState(cachedBoot);
+      setBooting(false);
+    } else {
+      setBooting(true);
+      setBootState({ bootStatus: "loading", bootData: {}, hasBootData: false });
+    }
+
     const delayTimer = window.setTimeout(() => {
-      if (!cancelled) setBootDelayed(true);
+      if (!cancelled && showLaunchLoading) setBootDelayed(true);
     }, 10000);
 
-    const updateBoot = (progress: number, message: string, steps: AppLaunchLoadingStep[]) => {
+    const updateBoot = (progress: number, message: string, step: "server" | "quality" | "recommendations" | "done") => {
       if (cancelled) return;
       setBootProgress(progress);
       setBootMessage(message);
-      setBootSteps(steps);
+      setBootSteps([
+        { label: "서버 연결 확인", status: step === "server" ? "active" : "done" },
+        { label: "시장 요약 미리 불러오기", status: step === "server" ? "pending" : step === "quality" ? "active" : "done" },
+        { label: "추천 후보 준비", status: step === "recommendations" ? "active" : step === "done" ? "done" : "pending" },
+      ]);
     };
 
     async function runBootChecks() {
       try {
-        updateBoot(20, "서버 연결을 확인하고 있어요", [
-          { label: "서버 연결 확인", status: "active" },
-          { label: "최신 데이터 동기화", status: "pending" },
-          { label: "추천 후보 계산", status: "pending" },
-        ]);
-
-        await fetch("/mone-api/health", { cache: "no-store" });
+        const nextBootState = await runBootPreload((progress) => {
+          if (showLaunchLoading) updateBoot(progress.progress, progress.message, progress.step);
+        });
         if (cancelled) return;
-
-        updateBoot(48, "최신 데이터를 동기화하고 있어요", [
-          { label: "서버 연결 확인", status: "done" },
-          { label: "최신 데이터 동기화", status: "active" },
-          { label: "추천 후보 계산", status: "pending" },
-        ]);
-
-        await Promise.allSettled([
-          fetch("/mone-api/final/data-quality?market=kr&mode=quick", { cache: "no-store" }),
-          fetch("/mone-api/final/data-quality?market=us&mode=quick", { cache: "no-store" }),
-        ]);
-        if (cancelled) return;
-
-        updateBoot(72, "오늘의 추천 후보를 확인하고 있어요", [
-          { label: "서버 연결 확인", status: "done" },
-          { label: "최신 데이터 동기화", status: "done" },
-          { label: "추천 후보 계산", status: "active" },
-        ]);
-
-        await Promise.allSettled([
-          fetch("/mone-api/final/recommendations?market=kr&limit=5", { cache: "no-store" }),
-          fetch("/mone-api/final/recommendations?market=us&limit=5", { cache: "no-store" }),
-        ]);
-        if (cancelled) return;
-
-        updateBoot(100, "화면을 준비하고 있어요", [
-          { label: "서버 연결 확인", status: "done" },
-          { label: "최신 데이터 동기화", status: "done" },
-          { label: "추천 후보 계산", status: "done" },
-        ]);
-
-        window.setTimeout(() => {
-          if (!cancelled) setBooting(false);
-        }, 450);
+        setBootState(nextBootState);
+        if (showLaunchLoading) {
+          window.setTimeout(() => {
+            if (!cancelled) setBooting(false);
+          }, 450);
+        }
       } catch (err) {
         console.warn("MONE launch loading failed:", err);
         if (!cancelled) {
-          updateBoot(100, "일부 데이터를 불러오지 못했지만 화면을 열고 있어요", [
-            { label: "서버 연결 확인", status: "done" },
-            { label: "최신 데이터 동기화", status: "done" },
-            { label: "추천 후보 계산", status: "done" },
-          ]);
-          window.setTimeout(() => {
-            if (!cancelled) setBooting(false);
-          }, 700);
+          const fallbackBoot = getCachedBootPreload();
+          setBootState(fallbackBoot.hasBootData ? fallbackBoot : {
+            bootStatus: "degraded",
+            bootData: {},
+            hasBootData: false,
+            errors: [err instanceof Error ? err.message : String(err)],
+          });
+          if (showLaunchLoading) {
+            updateBoot(100, "일부 데이터를 불러오지 못했지만 시장홈을 열고 있어요", "done");
+            window.setTimeout(() => {
+              if (!cancelled) setBooting(false);
+            }, 700);
+          }
         }
       } finally {
         window.clearTimeout(delayTimer);
@@ -233,7 +231,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case "home":
-        return <HomePage onNavigate={setPage} />;
+        return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} />;
       case "report":
         return <ReportPage />;
       case "stocks":
@@ -258,10 +256,10 @@ export default function App() {
         );
       case "admin":
         if (adminToken) return <AdminPage authToken={adminToken} onLogout={handleAdminLogout} />;
-        if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} />; }
+        if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} />; }
         return <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       default:
-        return <HomePage />;
+        return <HomePage bootData={bootState.bootData} bootStatus={bootState.bootStatus} />;
     }
   };
 
