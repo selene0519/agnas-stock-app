@@ -513,6 +513,41 @@ jobs:
           echo "signal_ledger verify: exit $?"
           set -e
 
+      - name: Auto-rebuild self-correction params (샘플 30건+ 시 자동 실행)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+
+          # 검증 결과 샘플 수 확인
+          from app.engine import self_correction_v2 as _scv2, correction_store
+          _MIN_AUTO = 30
+          all_rows = _scv2._load_validation_results("kr")
+          sample_count = len(all_rows)
+          print(f"[auto-correction] validation rows={sample_count}, threshold={_MIN_AUTO}")
+
+          if sample_count < _MIN_AUTO:
+              print(f"[auto-correction] 샘플 부족 ({sample_count} < {_MIN_AUTO}) — 스킵")
+          else:
+              old_v = correction_store.load_params().get("version", 0)
+              result_kr = _scv2.build_correction_params("kr")
+              new_v = result_kr.get("version", 0)
+              print(f"[auto-correction] KR 보정 파라미터 재계산 완료: v{old_v} → v{new_v}, "
+                    f"샘플={result_kr.get('totalSamples', 0)}")
+              # US 샘플도 있으면 재계산
+              us_rows = _scv2._load_validation_results("us")
+              if len(us_rows) >= _MIN_AUTO:
+                  result_us = _scv2.build_correction_params("us")
+                  print(f"[auto-correction] US 보정 파라미터 재계산 완료: 샘플={result_us.get('totalSamples', 0)}")
+          PY
+          echo "auto-correction: exit $?"
+          set -e
+
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
@@ -571,6 +606,7 @@ jobs:
             # Data files used by the app as source/cache.
             git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
             git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
+            git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
 
             # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
             git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true
