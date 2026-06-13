@@ -909,6 +909,9 @@ type ChartOverlayMeta = {
   warnings?: string[];
   assetType?: string;
   holdingPurpose?: string;
+  displayByDefault?: boolean;
+  debugOnly?: boolean;
+  hideReason?: string;
 };
 
 function futureBarsForPeriod(bars: number | null) {
@@ -1224,10 +1227,49 @@ function calcFakeBreakouts(
   return markers.sort((a, b) => a.time < b.time ? -1 : 1);
 }
 
+// ── OrderFlow S/R Zone (피벗 ±1.5% 클러스터링) ────────────────────────
+function calcSRZones(
+  data: CandleBar[], currentPrice: number
+): { support: { upper: number; lower: number } | null; resistance: { upper: number; lower: number } | null } {
+  if (data.length < 5 || currentPrice <= 0) return { support: null, resistance: null };
+
+  const peaks: number[] = [];
+  const troughs: number[] = [];
+  for (let i = 1; i < data.length - 1; i++) {
+    if (data[i].high > data[i - 1].high && data[i].high > data[i + 1].high) peaks.push(data[i].high);
+    if (data[i].low < data[i - 1].low && data[i].low < data[i + 1].low) troughs.push(data[i].low);
+  }
+
+  function cluster(prices: number[]): { center: number; min: number; max: number; count: number }[] {
+    if (prices.length === 0) return [];
+    const sorted = [...prices].sort((a, b) => a - b);
+    const groups: number[][] = [[sorted[0]]];
+    for (let i = 1; i < sorted.length; i++) {
+      const last = groups[groups.length - 1];
+      const center = last.reduce((s, v) => s + v, 0) / last.length;
+      if (Math.abs(sorted[i] - center) / center <= 0.015) last.push(sorted[i]);
+      else groups.push([sorted[i]]);
+    }
+    return groups
+      .filter(g => g.length >= 2)
+      .map(g => ({ center: g.reduce((s, v) => s + v, 0) / g.length, min: Math.min(...g), max: Math.max(...g), count: g.length }));
+  }
+
+  const supportClusters = cluster(troughs).filter(c => c.center < currentPrice).sort((a, b) => b.center - a.center);
+  const resistanceClusters = cluster(peaks).filter(c => c.center > currentPrice).sort((a, b) => a.center - b.center);
+
+  const nearest = supportClusters[0];
+  const nearestR = resistanceClusters[0];
+  return {
+    support: nearest ? { upper: nearest.max, lower: nearest.min } : null,
+    resistance: nearestR ? { upper: nearestR.max, lower: nearestR.min } : null,
+  };
+}
+
 // ── TvChart (캔들 + 지수 비교선) ─────────────────────────────────────
-function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis = null, precisionEvidence = false, chartMeta = null, futureProjectionBars = 12 }: {
+function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis = null, precisionEvidence = false, chartMeta = null, futureProjectionBars = 12, showAdvancedOverlays = false }: {
   rows: any[]; levels: any; market: string;
-  toggles: Record<ToggleKey, boolean>; indexRows?: any[]; chartAnalysis?: any; precisionEvidence?: boolean; chartMeta?: any; futureProjectionBars?: number;
+  toggles: Record<ToggleKey, boolean>; indexRows?: any[]; chartAnalysis?: any; precisionEvidence?: boolean; chartMeta?: any; futureProjectionBars?: number; showAdvancedOverlays?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -1320,11 +1362,11 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
             : [];
           if (points.length >= 2) {
             const { actualSegment, projectedSegment } = splitTrendlineProjection(points, timeToIndex, projectedTimes);
-            addSegmentedLine(actualSegment, projectedSegment, color, overlayLabel(overlay), overlay.type === "supportLine" || overlay.type === "resistanceLine" ? 2 : 1);
+            addSegmentedLine(actualSegment, showAdvancedOverlays ? projectedSegment : [], color, overlayLabel(overlay), overlay.type === "supportLine" || overlay.type === "resistanceLine" ? 2 : 1);
             return;
           }
           const { actualSegment, projectedSegment } = splitHorizontalOverlay(overlay, actualTimes, projectedTimes);
-          addSegmentedLine(actualSegment, projectedSegment, color, overlayLabel(overlay), overlay.type === "precision" ? 2 : 1);
+          addSegmentedLine(actualSegment, showAdvancedOverlays ? projectedSegment : [], color, overlayLabel(overlay), overlay.type === "precision" ? 2 : 1);
         };
 
         if (toggles.volume) {
@@ -1421,8 +1463,8 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         if (Array.isArray(chartMeta?.overlays)) {
           chartMeta.overlays
             .filter((overlay: ChartOverlayMeta) => Number(overlay.price) > 0)
-            .filter((overlay: any) => overlay.valid !== false)
-            .slice(0, 12)
+            .filter((overlay: ChartOverlayMeta) => showAdvancedOverlays || overlay.displayByDefault !== false)
+            .slice(0, 5)
             .forEach(addHorizontalOverlay);
         }
 
@@ -1432,6 +1474,17 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         const zones  = candleData.length >= 20 ? calcSupplyZones(candleData, vols, 3) : [];
         const rets   = pivots.length >= 2 ? calcRetracements(pivots) : [];
         const overlaps = rets.length > 0 && zones.length > 0 ? findOverlapSignals(rets, zones) : [];
+
+        // ─ OrderFlow S/R Zone (기본 차트에 항상 표시 — 가장 가까운 지지/저항 1개씩)
+        const srZones = candleData.length >= 5 ? calcSRZones(candleData, latestClose) : { support: null, resistance: null };
+        if (srZones.support) {
+          candleSeries.createPriceLine({ price: srZones.support.upper, color: "#22c55e80", lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: "지지상단" });
+          candleSeries.createPriceLine({ price: srZones.support.lower, color: "#22c55e50", lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: "" });
+        }
+        if (srZones.resistance) {
+          candleSeries.createPriceLine({ price: srZones.resistance.upper, color: "#ef444480", lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: "" });
+          candleSeries.createPriceLine({ price: srZones.resistance.lower, color: "#ef444450", lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false, title: "저항하단" });
+        }
 
         // ① ZigZag 선
         if (toggles.zigzag && pivots.length >= 2) {
@@ -1959,6 +2012,7 @@ export default function ChartPage() {
     zigzag: false, trendline: false, retracement: false, supply: false, fakeBreak: false,
   });
   const [precisionEvidence, setPrecisionEvidence] = useState(false);
+  const [showAdvancedOverlays, setShowAdvancedOverlays] = useState(false);
   const [showAdvancedIndicators, setShowAdvancedIndicators] = useState(false);
   const [showPrecisionHint, setShowPrecisionHint] = useState(false);
   const [period, setPeriod] = useState<number | null>(126);
@@ -2518,6 +2572,17 @@ export default function ChartPage() {
               >
                 정밀 근거 보기
               </button>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedOverlays((v) => !v)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
+                  showAdvancedOverlays
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-200"
+                    : "border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                오버레이 연장선
+              </button>
               {showPrecisionHint && !precisionEvidence && (
                 <span className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-400">
                   더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.
@@ -2642,6 +2707,7 @@ export default function ChartPage() {
                     precisionEvidence={precisionEvidence}
                     chartMeta={chartMeta}
                     futureProjectionBars={futureProjectionBars}
+                    showAdvancedOverlays={showAdvancedOverlays}
                   />
                   <div className="mt-2 flex flex-wrap gap-3 px-2 text-xs text-slate-500">
                     <span>봉: {filteredRows.length}개 (전체 {rows.length})</span>

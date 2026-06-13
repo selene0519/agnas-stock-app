@@ -1114,6 +1114,9 @@ def _chart_overlay(
     stale: bool = False,
     warnings: list[str] | None = None,
     extra: dict | None = None,
+    display_by_default: bool = True,
+    debug_only: bool = False,
+    hide_reason: str | None = None,
 ) -> dict | None:
     if price is None or price <= 0:
         return None
@@ -1130,6 +1133,9 @@ def _chart_overlay(
         "extendedFutureBars": future_bars,
         "reason": reason,
         "warnings": warnings or [],
+        "displayByDefault": display_by_default,
+        "debugOnly": debug_only,
+        "hideReason": hide_reason,
     }
     if extra:
         overlay.update(extra)
@@ -1299,6 +1305,9 @@ def _line_from_pivots(
                 "extendFutureBars": future_bars,
                 "extendedFutureBars": future_bars,
                 "warnings": warnings,
+                "displayByDefault": valid,
+                "debugOnly": not valid,
+                "hideReason": None if valid else (invalid_reason or "invalid_line"),
             }
             if best is None or score > float(best.get("_score", -1)):
                 best = {**candidate, "_score": score}
@@ -1722,6 +1731,9 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
         gap_pct=precision_gap_pct,
         stale=stale,
         warnings=warnings,
+        display_by_default=False,
+        debug_only=True,
+        hide_reason="precision_evidence",
         extra={
             "label": "precision evidence",
             "valid": not bool({"symbol_mismatch", "missing_currentPrice", "missing_precisionBasePrice"} & set(warnings)),
