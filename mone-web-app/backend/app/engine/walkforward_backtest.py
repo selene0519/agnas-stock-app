@@ -192,6 +192,40 @@ _EMPIRICAL_CALIBRATION = {
     "min_score_v2":       50.0,
 }
 
+# ─── 레짐별 매매 파라미터 ─────────────────────────────────────────────────────
+_REGIME_TRADE_PARAMS: dict[str, dict] = {
+    "BULL": {
+        # 대세 상승장: 더 길게 홀드, 목표 넓게, 트레일링 스탑
+        "atr_mult":       (2.0, 5.5),   # swing: 목표 5.5×ATR (vs 3.2)
+        "horizon_target": {"short": 1.060, "swing": 1.18, "mid": 1.30},
+        "horizon_stop":   {"short": 0.965, "swing": 0.94, "mid": 0.88},
+        "hold_days":      {"short": 3, "swing": 14, "mid": 30},
+        "entry_window":   {"short": 2, "swing": 3, "mid": 5},
+        "trail_pct":      0.10,          # 고가 대비 10% 트레일링
+        "min_score":      48.0,
+    },
+    "SIDE": {
+        # 현재 보정된 기본값 유지
+        "atr_mult":       (1.5, 3.2),
+        "horizon_target": {"short": 1.038, "swing": 1.085, "mid": 1.22},
+        "horizon_stop":   {"short": 0.965, "swing": 0.940, "mid": 0.882},
+        "hold_days":      {"short": 3, "swing": 7, "mid": 22},
+        "entry_window":   {"short": 2, "swing": 3, "mid": 4},
+        "trail_pct":      None,          # 고정 손절
+        "min_score":      50.0,
+    },
+    "BEAR": {
+        # 하락장: 초단기+보수적, 신규 공격형 금지
+        "atr_mult":       (1.2, 2.0),
+        "horizon_target": {"short": 1.035, "swing": 1.06, "mid": 1.10},
+        "horizon_stop":   {"short": 0.970, "swing": 0.955, "mid": 0.910},
+        "hold_days":      {"short": 2, "swing": 5, "mid": 15},
+        "entry_window":   {"short": 2, "swing": 2, "mid": 3},
+        "trail_pct":      0.04,
+        "min_score":      55.0,
+    },
+}
+
 
 def _sub_scores(ind: dict) -> dict[str, float]:
     rsi = ind.get("rsi14"); mdd = ind.get("mdd20"); d20 = ind.get("distanceToMa20")
@@ -294,15 +328,20 @@ def _final_score(ind: dict, mode: str, horizon: str) -> float:
 
 
 def _price_band(
-    score: float, current: float, mode: str, horizon: str, ind: dict | None = None
+    score: float,
+    current: float,
+    mode: str,
+    horizon: str,
+    ind: dict | None = None,
+    regime_params: dict | None = None,
 ) -> tuple[float, float, float]:
-    """entry, stop, target 반환"""
-    band = _HORIZON_BANDS[horizon]
-    rf   = _MODE_RISK[mode]
-    rwf  = _MODE_REWARD[mode]
+    """entry, stop, target 반환. regime_params 가 있으면 레짐 어댑티브 파라미터 사용."""
+    rp = regime_params or _REGIME_TRADE_PARAMS["SIDE"]
+    rf  = _MODE_RISK[mode]
+    rwf = _MODE_REWARD[mode]
     entry = current
 
-    sm, tm = _ATR_MULT.get(horizon, (1.5, 4.5))
+    sm, tm = rp["atr_mult"]
     atr14 = ind.get("atr14") if ind else None
     if atr14 and atr14 > 0 and current > 0:
         atr_stop   = round(entry - atr14 * sm)
@@ -311,8 +350,10 @@ def _price_band(
         if 1.5 <= atr_pct <= 15.0:
             return entry, atr_stop, atr_target
 
-    stop   = round(entry * (1.0 - (1.0 - band["stop"]) * rf))
-    target = round(entry * (1.0 + (band["target"] - 1.0) * rwf))
+    band_stop   = rp["horizon_stop"][horizon]
+    band_target = rp["horizon_target"][horizon]
+    stop   = round(entry * (1.0 - (1.0 - band_stop) * rf))
+    target = round(entry * (1.0 + (band_target - 1.0) * rwf))
     return entry, stop, target
 
 
@@ -327,7 +368,7 @@ def _load_ohlcv_all(market: str = "kr") -> dict[str, list[dict]]:
         if not m:
             continue
         sym = m.group(1)
-        if market == "kr" and (not sym.isdigit() or len(sym) != 6):
+        if market == "kr" and sym != "KOSPI" and (not sym.isdigit() or len(sym) != 6):
             continue
         rows: list[dict] = []
         for enc in ("utf-8-sig", "utf-8", "cp949"):
@@ -348,6 +389,35 @@ def _slice_rows(rows: list[dict], before_date: str) -> list[dict]:
     return [r for r in rows if str(r.get("date") or "") < before_date]
 
 
+# ─── 레짐 감지 ───────────────────────────────────────────────────────────────
+
+def _detect_regime_at_date(cutoff_date: str, ohlcv_all: dict[str, list[dict]]) -> str:
+    """
+    cutoff_date 이전 KOSPI 데이터로 레짐 감지.
+    BULL: KOSPI > MA20 AND MA20 기울기 양수 (5일 전 대비)
+    BEAR: KOSPI < MA20 AND MA20 기울기 음수
+    SIDE: 그 외
+    """
+    kospi_rows = _slice_rows(ohlcv_all.get("KOSPI", []), cutoff_date)
+    if len(kospi_rows) < 25:
+        return "SIDE"
+    c = _series(kospi_rows, "close")
+    if not c or len(c) < 25:
+        return "SIDE"
+    latest = c[-1]
+    ma20 = _ma(c, 20)
+    ma20_5ago = _ma(c[:-5], 20) if len(c) >= 25 else None
+    if ma20 is None:
+        return "SIDE"
+    above_ma = latest > ma20
+    ma_rising = (ma20 > ma20_5ago) if ma20_5ago else True
+    if above_ma and ma_rising:
+        return "BULL"
+    if not above_ma and not ma_rising:
+        return "BEAR"
+    return "SIDE"
+
+
 # ─── 추천 생성 (지정 날짜 기준) ───────────────────────────────────────────────
 
 def _generate_recs_at_date(
@@ -361,16 +431,26 @@ def _generate_recs_at_date(
 ) -> list[dict]:
     """
     cutoff_date 이전 OHLCV만 사용해 추천 목록 생성.
-    combo_params 가 있으면 _apply_wf_correction() 으로 entry/stop/target 직접 조정.
-    (JSON 스토어를 읽지 않으므로 미래 데이터 누출 없음)
+    레짐 감지 후 어댑티브 파라미터 적용 (미래 데이터 누출 없음).
     """
     ec            = _EMPIRICAL_CALIBRATION
     atr_pct_max   = ec["atr_pct_max"]
     min_vol_ratio = ec["min_volume_ratio"]
-    min_score_v2  = ec["min_score_v2"]
+
+    # ── 레짐 감지 (cutoff_date 이전 KOSPI만 사용) ──────────────────────────
+    regime = _detect_regime_at_date(cutoff_date, ohlcv_all)
+    rp     = _REGIME_TRADE_PARAMS[regime]
+
+    # BEAR 레짐에서 aggressive 모드 신규 진입 금지
+    if regime == "BEAR" and mode == "aggressive":
+        return []
+
+    effective_min_score = max(min_score, rp["min_score"])
 
     recs: list[dict] = []
     for sym, rows in ohlcv_all.items():
+        if sym == "KOSPI":      # 지수 제외
+            continue
         past_rows = _slice_rows(rows, cutoff_date)
         if len(past_rows) < 30:
             continue
@@ -379,20 +459,21 @@ def _generate_recs_at_date(
         if not current or current <= 0:
             continue
 
-        # ── 경험적 보정 필터 (VOLATILITY_TOO_HIGH / LOW_LIQUIDITY 제거) ──────
+        # ── 경험적 보정 필터 ───────────────────────────────────────────────
         atr_pct = ind.get("atr14Pct")
         if atr_pct and atr_pct > atr_pct_max:
-            continue  # 과변동성 제거
+            continue
 
         vr = ind.get("volumeRatio20")
         if vr is not None and vr < min_vol_ratio:
-            continue  # 저거래량 제거
-
-        score = _final_score(ind, mode, horizon)
-        if score < min_score:
             continue
 
-        entry, stop, target = _price_band(score, current, mode, horizon, ind)
+        score = _final_score(ind, mode, horizon)
+        if score < effective_min_score:
+            continue
+
+        # ── 레짐 어댑티브 가격 밴드 ────────────────────────────────────────
+        entry, stop, target = _price_band(score, current, mode, horizon, ind, rp)
         sub = _sub_scores(ind)
 
         corr_applied = False
@@ -402,15 +483,19 @@ def _generate_recs_at_date(
             )
 
         recs.append({
-            "symbol":      sym,
-            "market":      market,
-            "mode":        mode,
-            "horizon":     horizon,
-            "generatedAt": cutoff_date,
-            "entry":       entry,
-            "stop":        stop,
-            "target":      target,
-            "finalScore":  score,
+            "symbol":              sym,
+            "market":              market,
+            "mode":                mode,
+            "horizon":             horizon,
+            "generatedAt":         cutoff_date,
+            "entry":               entry,
+            "stop":                stop,
+            "target":              target,
+            "finalScore":          score,
+            "regime":              regime,
+            "holdDaysOverride":    rp["hold_days"][horizon],
+            "entryWindowOverride": rp["entry_window"][horizon],
+            "trailPct":            rp["trail_pct"],
             **sub,
             "correctionApplied": corr_applied,
         })
@@ -455,6 +540,7 @@ def _eval_recs(
             "stop":           rec["stop"],
             "target":         rec["target"],
             "finalScore":     rec.get("finalScore"),
+            "regime":         rec.get("regime"),
             "correctionApplied": rec.get("correctionApplied", False),
             # result fields
             "executionStatus": result.get("executionStatus"),
@@ -528,6 +614,19 @@ def _agg_stats(results: list[dict]) -> dict[str, Any]:
         rc = r.get("outcomeReason") or "UNKNOWN"
         reason_counts[rc] = reason_counts.get(rc, 0) + 1
 
+    # 레짐별 평균 PnL 집계 (어댑티브 효과 검증용)
+    regime_pnl: dict[str, list[float]] = {}
+    for r in executed:
+        reg = str(r.get("regime") or "UNKNOWN")
+        pv  = _num(r.get("netPnlPct"))
+        if pv is not None:
+            regime_pnl.setdefault(reg, []).append(pv)
+    regime_avg_pnl = {
+        reg: round(sum(vals) / len(vals), 3)
+        for reg, vals in regime_pnl.items()
+        if vals
+    }
+
     return {
         "status":               "OK",
         "recommendationCount":  n,
@@ -546,6 +645,7 @@ def _agg_stats(results: list[dict]) -> dict[str, Any]:
         "avgHoldingDays":       round(sum(hold_days) / len(hold_days), 1) if hold_days else None,
         "profitLossRatio":      pl_ratio,
         "reasonCounts":         reason_counts,
+        "regimeAvgPnl":         regime_avg_pnl,
     }
 
 

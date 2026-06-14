@@ -77,7 +77,7 @@ def classify_outcome(rec: dict[str, Any], result: dict[str, Any]) -> str:
         if abs(mae) / (mfe + 1e-6) > 1.2:
             return "VOLATILITY_TOO_HIGH"
 
-    if exit_status in {"손절", "손절(동시터치)"}:
+    if exit_status in {"손절", "손절(동시터치)", "추적손절"}:
         # 손절 후 MFE가 상당히 남아 있었다면 손절이 너무 타이트
         if mfe is not None and mfe > 1.5 and entry and stop:
             stop_dist_pct = abs(entry - stop) / entry * 100
