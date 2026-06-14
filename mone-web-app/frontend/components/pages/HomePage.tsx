@@ -1015,6 +1015,88 @@ function MarketRegimeSummaryCard({
   );
 }
 
+// ── 레짐 어댑티브 전략 배너
+function RegimeAdaptiveBanner({ regime }: { regime: any }) {
+  const tradeParams = regime?.tradeParams;
+  const regimeKey   = tradeParams?.regime ?? regime?.regime;
+  if (!tradeParams || !regimeKey) return null;
+
+  const isBull = regimeKey === "BULL";
+  const isBear = regimeKey === "BEAR";
+
+  const borderCls = isBull
+    ? "border-emerald-600/40 bg-emerald-950/20"
+    : isBear
+      ? "border-amber-600/40 bg-amber-950/20"
+      : "border-sky-800/40 bg-sky-950/15";
+  const dotCls = isBull ? "bg-emerald-400" : isBear ? "bg-amber-400" : "bg-sky-400";
+  const labelCls = isBull ? "text-emerald-300" : isBear ? "text-amber-300" : "text-sky-300";
+  const tagBgCls = isBull
+    ? "border-emerald-600/30 bg-emerald-900/20 text-emerald-200"
+    : isBear
+      ? "border-amber-600/30 bg-amber-900/20 text-amber-200"
+      : "border-sky-700/30 bg-sky-900/15 text-sky-200";
+
+  const regimeLabel = isBull ? "BULL 모드" : isBear ? "BEAR 모드" : "SIDE 모드";
+  const swingTarget = tradeParams.horizonTarget?.swing;
+  const swingHold   = tradeParams.holdDays?.swing;
+  const swingStop   = tradeParams.horizonStop?.swing;
+  const trailPct    = tradeParams.trailPct;
+  const minScore    = tradeParams.minScore;
+
+  const strategyDesc = swingTarget
+    ? `스윙 목표 ${((swingTarget - 1) * 100).toFixed(0)}% · ${swingHold ?? "-"}일 홀드${
+        trailPct ? ` · 트레일링 ${(trailPct * 100).toFixed(0)}%` : ""
+      }`
+    : null;
+
+  return (
+    <div className={`flex items-center gap-3 rounded-xl border px-3.5 py-2.5 ${borderCls}`}>
+      <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${dotCls}`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`text-sm font-bold ${labelCls}`}>{regimeLabel}</span>
+          {strategyDesc && (
+            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${tagBgCls}`}>
+              {strategyDesc}
+            </span>
+          )}
+          {isBull && (
+            <span className={`rounded-full border px-2 py-0.5 text-[11px] ${tagBgCls}`}>
+              목표 확대 · 홀드 연장
+            </span>
+          )}
+          {isBear && (
+            <span className={`rounded-full border px-2 py-0.5 text-[11px] ${tagBgCls}`}>
+              공격형 진입 차단 · 보수적 손절
+            </span>
+          )}
+          {minScore != null && (
+            <span className="rounded-full border border-slate-700/40 bg-slate-800/60 px-2 py-0.5 text-[11px] text-slate-400">
+              최소점수 {minScore}
+            </span>
+          )}
+        </div>
+        {isBull && swingStop && (
+          <div className="mt-0.5 text-[11px] text-slate-400">
+            손절 {((1 - swingStop) * 100).toFixed(0)}% · 상승장 파라미터 활성화됨
+          </div>
+        )}
+        {isBear && (
+          <div className="mt-0.5 text-[11px] text-slate-400">
+            하락장 감지 — 신규 공격형 추천 비활성, 보유기간 단축 적용 중
+          </div>
+        )}
+        {!isBull && !isBear && (
+          <div className="mt-0.5 text-[11px] text-slate-400">
+            횡보장 — 기본 파라미터 적용 중
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── 보유종목 판단 함수
 function getHoldingJudgment(item: any): { text: string; cls: string } {
   const risk = String(item.riskStatus || "");
@@ -2306,6 +2388,9 @@ export default function HomePage({
 
       {/* 매크로/실적 이벤트 배너 */}
       <EventBanner alert={calendarAlert} />
+
+      {/* 레짐 어댑티브 전략 배너 */}
+      {marketRegime && <RegimeAdaptiveBanner regime={marketRegime} />}
 
       {/* 데이터 신선도 배지 */}
       {dataSources && (() => {

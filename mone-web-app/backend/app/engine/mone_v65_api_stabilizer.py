@@ -2121,6 +2121,21 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         pass
     _regime_key = market_regime_pre.get("regime", "SIDE")  # "BULL" | "BEAR" | "SIDE"
 
+    # ── 레짐 어댑티브 매매 파라미터 로드
+    try:
+        from app.engine.walkforward_backtest import _REGIME_TRADE_PARAMS
+        _trade_params = _REGIME_TRADE_PARAMS.get(_regime_key, _REGIME_TRADE_PARAMS["SIDE"])
+    except Exception:
+        _trade_params = {
+            "atr_mult": (1.5, 3.2),
+            "horizon_target": {"short": 1.038, "swing": 1.085, "mid": 1.22},
+            "horizon_stop":   {"short": 0.965, "swing": 0.940, "mid": 0.882},
+            "hold_days":      {"short": 3, "swing": 7, "mid": 22},
+            "entry_window":   {"short": 2, "swing": 3, "mid": 4},
+            "trail_pct":      None,
+            "min_score":      50.0,
+        }
+
     # ── EV 필터링
     # 매매비용이 EV에 이미 반영됨 (KR -0.295%, US -0.15%)
     # EV < 0: 비용 차감 후 기댓값 음수 → 전 전략 제외
@@ -2210,7 +2225,19 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         "evNegativeFiltered": ev_hard_filtered_count + (ev_negative_count - ev_hard_filtered_count if mode == "conservative" else 0),
         "scoreBelowFloor": score_filtered_count,
         "scoreFloor": _min_score,
-        "marketRegime": market_regime,
+        "marketRegime": {
+            **market_regime,
+            "tradeParams": {
+                "regime": _regime_key,
+                "horizonTarget": _trade_params.get("horizon_target", {}),
+                "horizonStop":   _trade_params.get("horizon_stop", {}),
+                "holdDays":      _trade_params.get("hold_days", {}),
+                "entryWindow":   _trade_params.get("entry_window", {}),
+                "atrMult":       list(_trade_params.get("atr_mult", (1.5, 3.2))),
+                "trailPct":      _trade_params.get("trail_pct"),
+                "minScore":      _trade_params.get("min_score", 50.0),
+            },
+        },
         "selfCorrection": correction_state,
         "scanCoverage": _scan_coverage_fast(market),
         "validationPolicy": _validation_policy_payload(),
