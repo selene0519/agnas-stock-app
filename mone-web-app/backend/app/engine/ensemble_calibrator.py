@@ -143,15 +143,26 @@ def ensemble_score(
     bucket = table.get(bin_key) or {}
     fallback = table.get(f"{_bin_label(final_score)}|SIDE") or {}
 
-    calib_win = bucket.get("winRate") or fallback.get("winRate") or global_stats.get("winRate", 20.0)
-    calib_pnl = bucket.get("avgPnl") or fallback.get("avgPnl") or global_stats.get("avgPnl", 0.0)
-    count = bucket.get("count", fallback.get("count", 0))
-
-    # ensembleScore: 점수(50%) + 레짐(30%) + 손익비(20%)
+    # ensembleScore: 점수(50%) + 레짐(30%) + 손익비(20%) — 항상 계산
     regime_factor = _REGIME_FACTORS.get(regime, 1.0)
     rr_factor = min(max((rr_actual or 1.5) / 3.0, 0.3), 1.0)
     raw = (final_score / 100) * 0.5 + (regime_factor - 0.6) / 0.6 * 0.3 + rr_factor * 0.2
     ensemble = max(0.0, min(100.0, raw * 100))
+
+    primary_count = bucket.get("count", 0)   # fallback 제외, 해당 레짐 실측 건수만
+    count = primary_count or fallback.get("count", 0)  # 표시용 (fallback 포함)
+
+    # BEAR 레짐: 백테스트에서 진입 자체가 없어 실측 버킷이 비어 있음 → 승률 null 반환 (오해 방지)
+    if regime == "BEAR" and primary_count == 0:
+        return {
+            "ensembleScore": round(ensemble, 1),
+            "calibratedWinRate": None,
+            "calibratedAvgPnl": None,
+            "calibrationCount": 0,
+        }
+
+    calib_win = bucket.get("winRate") or fallback.get("winRate") or global_stats.get("winRate", 20.0)
+    calib_pnl = bucket.get("avgPnl") or fallback.get("avgPnl") or global_stats.get("avgPnl", 0.0)
 
     return {
         "ensembleScore": round(ensemble, 1),
