@@ -4,6 +4,7 @@ import csv
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -548,9 +549,30 @@ def indicators(rows: list[dict[str, Any]]) -> dict[str, float | None]:
     }
 
 
+def _regime_from_closes(closes: list[float], label_prefix: str) -> tuple[str, str, float, float, float, float]:
+    """closes 리스트로 레짐·레이블·조정값·dist·mom5·ma20을 반환."""
+    if len(closes) < 20:
+        return REGIME_SIDE, "횡보장", 0.0, 0.0, 0.0, 0.0
+    latest = closes[-1]
+    ma20 = sum(closes[-20:]) / 20
+    dist = (latest - ma20) / ma20 * 100 if ma20 else 0.0
+    mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
+    if dist > 2.0 and mom5 > 1.0:
+        return REGIME_BULL, "강세장", +8.0, dist, mom5, ma20
+    if dist > 0 and mom5 > 0:
+        return REGIME_BULL, "강세장", +3.0, dist, mom5, ma20
+    if mom5 < -5.0 or dist < -5.0:
+        return REGIME_BEAR, "약세장", -30.0, dist, mom5, ma20
+    if dist < -2.0 or mom5 < -2.0:
+        return REGIME_BEAR, "약세장", -18.0, dist, mom5, ma20
+    return REGIME_SIDE, "횡보장", 0.0, dist, mom5, ma20
+
+
 def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
     """
-    benchmark_daily.csv에서 KOSPI/KOSDAQ 최근 데이터를 읽어 마켓 레짐을 판단.
+    마켓 레짐 판단.
+    KR: benchmark_daily.csv의 KOSPI 기준
+    US: SPY + QQQ + DIA OHLCV 파일 3지수 다수결 (2/3 이상 일치)
 
     Returns:
         {
@@ -558,58 +580,82 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
             "label": "강세장" | "약세장" | "횡보장",
             "kospiLatest": float,
             "kospiMa20": float,
-            "distanceToMa20Pct": float,   # 현재가/20일선 이격도 (%)
-            "momentum5d": float,           # 최근 5일 수익률 (%)
-            "scoreAdjust": float,          # 추천 점수 가산/감점 기준값
+            "distanceMa20Pct": float,
+            "momentum5d": float,
+            "scoreAdjust": float,
             "description": str,
         }
     """
-    benchmark_key = "KOSPI" if market == "kr" else "NASDAQ"
+    default = {
+        "regime": REGIME_SIDE, "label": "횡보장", "kospiLatest": None,
+        "kospiMa20": None, "distanceMa20Pct": None, "distanceToMa20Pct": None,
+        "momentum5d": None, "scoreAdjust": 0.0,
+        "description": "벤치마크 데이터 부족 — 레짐 미적용",
+    }
+
+    if market == "us":
+        # ── 미장: SPY + QQQ + DIA 3지수 다수결 ────────────────────────────
+        index_regimes: list[tuple[str, float, float, float, float]] = []
+        for sym in ("SPY", "QQQ", "DIA"):
+            p = repo_root / "data" / "market" / "ohlcv" / f"us_{sym}_daily.csv"
+            if not p.exists():
+                continue
+            rows_i = _read_csv(p)
+            rows_i.sort(key=lambda r: str(r.get("date", "")))
+            c_list = [_num(r.get("close")) for r in rows_i]
+            c_list = [x for x in c_list if x is not None]
+            reg, lbl, adj, dist, mom5, ma20 = _regime_from_closes(c_list, sym)
+            index_regimes.append((reg, dist, mom5, ma20, adj))
+
+        if not index_regimes:
+            return default
+
+        bull_n = sum(1 for r in index_regimes if r[0] == REGIME_BULL)
+        bear_n = sum(1 for r in index_regimes if r[0] == REGIME_BEAR)
+        if bull_n >= 2:
+            regime, label = REGIME_BULL, "강세장"
+        elif bear_n >= 2:
+            regime, label = REGIME_BEAR, "약세장"
+        else:
+            regime, label = REGIME_SIDE, "횡보장"
+
+        avg_dist = sum(r[1] for r in index_regimes) / len(index_regimes)
+        avg_mom5 = sum(r[2] for r in index_regimes) / len(index_regimes)
+        avg_ma20 = sum(r[3] for r in index_regimes) / len(index_regimes)
+        avg_adj  = sum(r[4] for r in index_regimes) / len(index_regimes)
+        votes_str = f"SPY/QQQ/DIA={bull_n}강세/{bear_n}약세"
+        desc = f"미장 3지수 다수결({votes_str}) MA20 {avg_dist:+.1f}%, 5일 {avg_mom5:+.1f}%"
+        return {
+            "regime": regime, "label": label,
+            "kospiLatest": None, "kospiMa20": round(avg_ma20, 2),
+            "distanceMa20Pct": round(avg_dist, 2), "distanceToMa20Pct": round(avg_dist, 2),
+            "momentum5d": round(avg_mom5, 2), "scoreAdjust": round(avg_adj, 1),
+            "description": desc,
+        }
+
+    # ── 국장: benchmark_daily.csv KOSPI ──────────────────────────────────────
+    benchmark_key = "KOSPI"
     path = repo_root / "data" / "market" / "benchmark_daily.csv"
     rows: list[dict[str, Any]] = []
     if path.is_file():
         rows = _read_csv(path)
 
-    # 해당 벤치마크 데이터만 필터 후 날짜 정렬
     filtered = [r for r in rows if str(r.get("benchmark", "")).upper() == benchmark_key]
     filtered.sort(key=lambda r: str(r.get("date", "")))
-
     closes = [_num(r.get("close")) for r in filtered]
     closes = [c for c in closes if c is not None]
 
-    default = {
-        "regime": REGIME_SIDE, "label": "횡보장", "kospiLatest": None,
-        "kospiMa20": None, "distanceToMa20Pct": None, "momentum5d": None,
-        "scoreAdjust": 0.0, "description": "벤치마크 데이터 부족 — 레짐 미적용",
-    }
+    regime, label, adjust, dist, mom5, ma20 = _regime_from_closes(closes, benchmark_key)
     if len(closes) < 20:
         return default
 
     latest = closes[-1]
-    ma20 = sum(closes[-20:]) / 20
-    dist = (latest - ma20) / ma20 * 100 if ma20 else 0.0
-    mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
-
-    # 레짐 판단: 20일선 위 + 최근 5일 양봉 → BULL
-    if dist > 2.0 and mom5 > 1.0:
-        regime, label, adjust = REGIME_BULL, "강세장", +8.0
-        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 강세 (공격/균형 우선)"
-    elif dist > 0 and mom5 > 0:
-        regime, label, adjust = REGIME_BULL, "약한 강세장", +3.0
-        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 완만한 강세"
-    elif mom5 < -5.0 or dist < -5.0:
-        regime, label, adjust = REGIME_BEAR, "급락장", -30.0
-        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 급락 이벤트 (신호 강력 억제)"
-    elif dist < -2.0 or mom5 < -2.0:
-        regime, label, adjust = REGIME_BEAR, "약세장", -18.0
-        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 약세 (보수 우선, 추천 축소)"
-    else:
-        regime, label, adjust = REGIME_SIDE, "횡보장", 0.0
-        desc = f"{benchmark_key} 20일선 {dist:+.1f}%, 5일 수익 {mom5:+.1f}% → 횡보 (스윙 중심)"
+    desc = f"KOSPI MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%"
 
     return {
-        "regime": regime, "label": label, "kospiLatest": round(latest, 2),
-        "kospiMa20": round(ma20, 2), "distanceToMa20Pct": round(dist, 2),
+        "regime": regime, "label": label,
+        "kospiLatest": round(latest, 2), "kospiMa20": round(ma20, 2),
+        "distanceMa20Pct": round(dist, 2), "distanceToMa20Pct": round(dist, 2),
         "momentum5d": round(mom5, 2), "scoreAdjust": adjust, "description": desc,
     }
 
@@ -1335,6 +1381,14 @@ def score_candidate(
         }
 
     ind = indicators(ohlcv_rows)
+    # DART 재무 데이터 주입: row에 있는 재무 지표를 ind에 병합해 qualityScore에 반영
+    for _fk in ("roe", "debtRatio", "debt_ratio", "per", "pbr"):
+        _fv = row.get(_fk)
+        if _fv is not None:
+            try:
+                ind[_fk if _fk != "debt_ratio" else "debtRatio"] = float(str(_fv).replace(",", ""))
+            except Exception:
+                pass
     score, note = _score(ind, context, regime=regime)
     sub = _compute_sub_scores(ind)
     status = "NORMAL" if all(ind.get(key) is not None for key in ("ma5", "ma20", "rsi14", "atr14")) else "PARTIAL"
@@ -1612,11 +1666,52 @@ def score_candidate(
     }
 
 
+def _load_dart_financials(repo_root: Path, market: str) -> dict[str, dict]:
+    """dart_financial_data_kr.csv → {symbol: row} (KR 전용)"""
+    if market != "kr":
+        return {}
+    path = repo_root / "reports" / "dart_financial_data_kr.csv"
+    if not path.exists():
+        return {}
+    result: dict[str, dict] = {}
+    for row in _read_csv(path):
+        sym = str(row.get("symbol", "")).strip()
+        if not sym:
+            continue
+        yr = str(row.get("year", ""))
+        if sym not in result or yr > str(result[sym].get("year", "")):
+            result[sym] = dict(row)
+            result[sym.lstrip("0")] = dict(row)
+    return result
+
+
+@lru_cache(maxsize=4)
+def _dart_map_cached(repo_root_str: str, market: str) -> dict[str, dict]:
+    return _load_dart_financials(Path(repo_root_str), market)
+
+
 def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizon: str) -> dict[str, Any]:  # noqa: C901
     market = str(item.get("market") or "kr").lower()
     symbol = str(item.get("symbol") or "").upper()
     context = make_context(market, mode, horizon)
     _ohlcv = load_ohlcv(repo_root, market, symbol)
+
+    # DART 재무 데이터 주입 (item에 없는 재무지표를 보완)
+    dart_map = _dart_map_cached(str(repo_root), market)
+    dart_row = dart_map.get(symbol) or dart_map.get(symbol.lstrip("0")) or {}
+    if dart_row:
+        for dart_k, item_k in [
+            ("roe", "roe"), ("debt_ratio", "debtRatio"),
+            ("operating_margin", "operatingMargin"), ("per", "per"), ("pbr", "pbr"),
+        ]:
+            if item.get(item_k) is None:
+                v = dart_row.get(dart_k)
+                if v is not None and str(v).strip() not in ("", "None", "nan"):
+                    try:
+                        item = {**item, item_k: float(str(v).replace(",", ""))}
+                    except Exception:
+                        pass
+
     # 마켓 레짐 로드 (점수 가중치 결정)
     try:
         _regime_data = load_market_regime(repo_root, market)
@@ -1626,6 +1721,22 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     result = score_candidate(item, _ohlcv, context, regime=_regime)
     computed = list(item.get("computedFields") or [])
     computed.append("quant_scanner_v2")
+
+    # 앙상블 보정 점수 (백테스트 실증 기반)
+    _ensemble: dict[str, Any] = {}
+    try:
+        from app.engine.ensemble_calibrator import ensemble_score as _ens_score
+        _ensemble = _ens_score(
+            final_score=result.get("finalScore"),
+            regime=_regime,
+            rr_actual=result.get("rrActual"),
+            market=market,
+            mode=mode,
+            horizon=horizon,
+            repo_root=repo_root,
+        )
+    except Exception:
+        pass
 
     out = {
         **item,
@@ -1639,8 +1750,11 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         "rrScore": result.get("rrScore"),
         "qualityScore": result.get("qualityScore"),
         "newsRiskPenalty": result.get("newsRiskPenalty"),
-        # 실증 기반 승률 (35~65%) — probability/finalScore와 구분
-        "calibratedWinRate": result.get("calibratedWinRate"),
+        # 앙상블 보정 점수 (백테스트 실증 기반)
+        "ensembleScore": _ensemble.get("ensembleScore"),
+        "calibratedWinRate": _ensemble.get("calibratedWinRate") or result.get("calibratedWinRate"),
+        "calibratedAvgPnl": _ensemble.get("calibratedAvgPnl"),
+        "calibrationCount": _ensemble.get("calibrationCount", 0),
         # safetyScore: quant_scanner riskScore (높을수록 안전) 명시적 표기
         "safetyScore": result.get("riskScore"),
         # EV 및 실제 손익비

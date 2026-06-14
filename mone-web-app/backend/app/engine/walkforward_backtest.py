@@ -391,22 +391,12 @@ def _slice_rows(rows: list[dict], before_date: str) -> list[dict]:
 
 # ─── 레짐 감지 ───────────────────────────────────────────────────────────────
 
-def _detect_regime_at_date(
-    cutoff_date: str,
-    ohlcv_all: dict[str, list[dict]],
-    index_key: str = "KOSPI",
-) -> str:
-    """
-    cutoff_date 이전 지수 데이터로 레짐 감지.
-    KR: KOSPI, US: SPY
-    BULL: 지수 > MA20 AND MA20 기울기 양수 (5일 전 대비)
-    BEAR: 지수 < MA20 AND MA20 기울기 음수
-    SIDE: 그 외
-    """
-    kospi_rows = _slice_rows(ohlcv_all.get(index_key, []), cutoff_date)
-    if len(kospi_rows) < 25:
+def _single_index_regime(rows: list[dict], cutoff_date: str) -> str:
+    """단일 지수 rows로 레짐 판단 (내부 헬퍼)."""
+    past = _slice_rows(rows, cutoff_date)
+    if len(past) < 25:
         return "SIDE"
-    c = _series(kospi_rows, "close")
+    c = _series(past, "close")
     if not c or len(c) < 25:
         return "SIDE"
     latest = c[-1]
@@ -421,6 +411,33 @@ def _detect_regime_at_date(
     if not above_ma and not ma_rising:
         return "BEAR"
     return "SIDE"
+
+
+def _detect_regime_at_date(
+    cutoff_date: str,
+    ohlcv_all: dict[str, list[dict]],
+    index_key: str = "KOSPI",
+) -> str:
+    """
+    cutoff_date 이전 지수 데이터로 레짐 감지.
+    KR: KOSPI 단일 지수
+    US: SPY + QQQ + DIA 다수결 (2/3 이상 일치 시 해당 레짐, 아니면 SIDE)
+    """
+    if index_key == "SPY":
+        # 미장: 3지수 다수결 (SPY=S&P500, QQQ=나스닥, DIA=다우존스)
+        votes = [
+            _single_index_regime(ohlcv_all.get(k, []), cutoff_date)
+            for k in ("SPY", "QQQ", "DIA")
+        ]
+        bull_n = votes.count("BULL")
+        bear_n = votes.count("BEAR")
+        if bull_n >= 2:
+            return "BULL"
+        if bear_n >= 2:
+            return "BEAR"
+        return "SIDE"
+    # 국장: KOSPI 단일 지수
+    return _single_index_regime(ohlcv_all.get(index_key, []), cutoff_date)
 
 
 # ─── 추천 생성 (지정 날짜 기준) ───────────────────────────────────────────────
@@ -453,7 +470,7 @@ def _generate_recs_at_date(
 
     effective_min_score = max(min_score, rp["min_score"])
 
-    _INDEX_SYMS = {"KOSPI", "SPY"}   # 지수는 추천 대상 제외
+    _INDEX_SYMS = {"KOSPI", "SPY", "QQQ", "DIA"}   # 지수/ETF는 추천 대상 제외
     recs: list[dict] = []
     for sym, rows in ohlcv_all.items():
         if sym in _INDEX_SYMS:
@@ -751,6 +768,9 @@ def run_walkforward(
         })
 
         # 다음 창 학습을 위해 corrected 결과 누적 (실전 운영 모방)
+        # 개별 거래 기록에 창 날짜와 레짐 메타데이터 추가
+        for res in corrected_results:
+            res.setdefault("_window", w_start)
         past_outcomes.extend(corrected_results)
 
     # 전체 집계
@@ -771,6 +791,7 @@ def run_walkforward(
         "correctedStats": total_corrected_stats,
         "diff":           total_diff,
         "generatedAt":    datetime.utcnow().isoformat(),
+        "tradeRecords":   past_outcomes,   # 앙상블 모델 학습용 개별 거래 기록
     }
 
 

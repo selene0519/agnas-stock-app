@@ -1037,7 +1037,7 @@ function RegimeAdaptiveBanner({ regime }: { regime: any }) {
       ? "border-amber-600/30 bg-amber-900/20 text-amber-200"
       : "border-sky-700/30 bg-sky-900/15 text-sky-200";
 
-  const regimeLabel = isBull ? "BULL 모드" : isBear ? "BEAR 모드" : "SIDE 모드";
+  const regimeLabel = isBull ? "강세장" : isBear ? "약세장" : "횡보장";
   const swingTarget = tradeParams.horizonTarget?.swing;
   const swingHold   = tradeParams.holdDays?.swing;
   const swingStop   = tradeParams.horizonStop?.swing;
