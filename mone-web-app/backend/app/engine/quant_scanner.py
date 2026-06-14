@@ -1271,7 +1271,10 @@ def _strategy_tags(ind: dict[str, float | None], status: str) -> tuple[list[str]
     if _ma_convergence(ind) and (rsi is None or rsi < 75):
         tags.append("MA_CONVERGENCE")
 
-    if d20 is not None and -8 <= d20 <= 3 and (rsi is None or rsi < 80):
+    # PULLBACK_BUY: 20일선 이격 -8~+3% + RSI 과열/낙하 제외 + 최소 거래량 (유령주 방어)
+    if (d20 is not None and -8 <= d20 <= 3
+            and (rsi is None or (25 < rsi < 80))
+            and (volume_ratio is None or volume_ratio > 0.3)):
         tags.append("PULLBACK_BUY")
     if volume_ratio is not None and volume_ratio >= 1.5:
         tags.append("VOLUME_BREAKOUT")

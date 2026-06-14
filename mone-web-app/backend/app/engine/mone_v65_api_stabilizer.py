@@ -2112,10 +2112,22 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         if len(items) >= limit:
             break
 
-    # ── EV 필터링 및 마켓 레짐 정보 수집
-    # EV < -1%: 모든 전략에서 추천 제외 (기댓값이 명확히 음수인 종목)
-    # -1% <= EV < 0%: 보수형은 제외, 균형/공격형은 CAUTION 표시 후 유지
-    EV_HARD_CUTOFF = -1.0   # 모든 전략 공통 제외 임계값
+    # ── 마켓 레짐 로드 (EV/Score 필터 기준 조정에 사용)
+    market_regime_pre: dict[str, Any] = {}
+    try:
+        from app.engine.quant_scanner import load_market_regime
+        market_regime_pre = load_market_regime(_repo_root(), market)
+    except Exception:
+        pass
+    _regime_key = market_regime_pre.get("regime", "SIDE")  # "BULL" | "BEAR" | "SIDE"
+
+    # ── EV 필터링
+    # 매매비용이 EV에 이미 반영됨 (KR -0.295%, US -0.15%)
+    # EV < 0: 비용 차감 후 기댓값 음수 → 전 전략 제외
+    # 0 <= EV < 0.3: 보통 미만 → 보수형 제외, 균형/공격형 CAUTION
+    # BEAR 장세: 기준 추가 강화 (EV < 0.3 → 보수형 제외)
+    EV_HARD_CUTOFF = 0.0    # 비용 반영 후 EV 기준 (음수면 기댓값 손실)
+    EV_SOFT_CUTOFF = 0.3    # 보통 등급 미만 (보수형 제외, 나머지 CAUTION)
     ev_negative_count = 0
     ev_hard_filtered_count = 0
     filtered_items: list[dict[str, Any]] = []
@@ -2130,13 +2142,19 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         item["evNegative"] = ev_negative
         if ev_negative:
             ev_negative_count += 1
-        # EV < -1%: 전 전략 완전 제외
+        # EV < 0: 비용 반영 후 음수 → 전 전략 완전 제외
         if ev_val is not None and ev_val < EV_HARD_CUTOFF:
             ev_hard_filtered_count += 1
             continue
-        # -1% <= EV < 0%: 보수형 완전 제외, 균형/공격형은 CAUTION
-        if ev_negative:
+        # BEAR 장세에서 EV < 0.3: 보수형 완전 제외
+        if _regime_key == "BEAR" and ev_val is not None and ev_val < EV_SOFT_CUTOFF:
             if mode == "conservative":
+                ev_hard_filtered_count += 1
+                continue
+        # 0 <= EV < 0.3: 보수형 제외, 균형/공격형 CAUTION
+        if ev_val is not None and ev_val < EV_SOFT_CUTOFF:
+            if mode == "conservative":
+                ev_hard_filtered_count += 1
                 continue
             item["tradeBlockStatus"] = "EV_NEGATIVE"
             item["decisionBucket"] = "관찰"
@@ -2145,15 +2163,31 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
                 item["strategyTags"].append("CAUTION")
         filtered_items.append(item)
 
-    hidden_count = len(items) - len(filtered_items)  # EV < -1% 또는 보수형 EV < 0% 제외 포함
+    # ── finalScore 최소 임계치 필터 (전략 품질 보장)
+    # BEAR 장세: 각 모드 기준 +5점 상향
+    _score_floor: dict[str, float] = {
+        "conservative": 48.0, "balanced": 45.0, "aggressive": 42.0,
+    }
+    if _regime_key == "BEAR":
+        _score_floor = {k: v + 5.0 for k, v in _score_floor.items()}
+    _min_score = _score_floor.get(mode, 45.0)
+    score_filtered_items: list[dict[str, Any]] = []
+    score_filtered_count = 0
+    for item in filtered_items:
+        fs = item.get("finalScore")
+        try:
+            fs_val = float(fs) if fs not in (None, "", "nan") else None
+        except Exception:
+            fs_val = None
+        if fs_val is not None and fs_val < _min_score:
+            score_filtered_count += 1
+            continue
+        score_filtered_items.append(item)
+    filtered_items = score_filtered_items
 
-    # 마켓 레짐 로드
-    market_regime: dict[str, Any] = {}
-    try:
-        from app.engine.quant_scanner import load_market_regime
-        market_regime = load_market_regime(_repo_root(), market)
-    except Exception:
-        pass
+    hidden_count = len(items) - len(filtered_items)
+
+    market_regime = market_regime_pre  # 위에서 이미 로드
 
     limit_meta = runtime_limits.limit_meta(
         total_count=max(scanned_count, len(items)),
@@ -2174,6 +2208,8 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         "evNegativeCount": ev_negative_count,
         "evHardFiltered": ev_hard_filtered_count,
         "evNegativeFiltered": ev_hard_filtered_count + (ev_negative_count - ev_hard_filtered_count if mode == "conservative" else 0),
+        "scoreBelowFloor": score_filtered_count,
+        "scoreFloor": _min_score,
         "marketRegime": market_regime,
         "selfCorrection": correction_state,
         "scanCoverage": _scan_coverage_fast(market),
