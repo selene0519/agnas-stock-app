@@ -548,6 +548,34 @@ jobs:
           echo "auto-correction: exit $?"
           set -e
 
+      - name: Weekly walk-forward backtest (토요일 실행)
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && startsWith(github.run_id, ''))
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          # 토요일(6) 또는 수동 트리거일 때만 실행
+          DOW=$(date +%u)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$DOW" = "6" ]; then
+            set +e
+            python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.engine.walkforward_backtest import run_all
+          try:
+              result_kr = run_all("kr")
+              combo_count = len(result_kr.get("combos", {}))
+              print(f"[walk-forward] KR 완료: {combo_count}개 전략 조합")
+          except Exception as e:
+              print(f"[walk-forward] 오류: {e}")
+          PY
+            echo "walk-forward: exit $?"
+            set -e
+          else
+            echo "[walk-forward] 오늘은 토요일이 아님 (DOW=$DOW) — 스킵"
+          fi
+
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
@@ -607,6 +635,9 @@ jobs:
             git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
             git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
             git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
+            git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
+            git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
+            git add reports/backtest_summary.json 2>/dev/null || true
 
             # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
             git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true

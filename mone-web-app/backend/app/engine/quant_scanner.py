@@ -1520,7 +1520,11 @@ def score_candidate(
         if risk_pct > 0:
             rr_actual = round(reward_pct / risk_pct, 2)
             rr_ok = rr_actual >= min_rr
-            ev = round(calibrated_prob * reward_pct - (1 - calibrated_prob) * risk_pct, 2)
+            # KR 왕복 매매비용: 매수수수료 0.015% + 매도세 0.18% + 슬리피지 0.1% ≈ 0.295%
+            # US 왕복 매매비용: 수수료 0.1% + 슬리피지 0.05% ≈ 0.15%
+            _TRADE_COST = 0.295 if context.market == "kr" else 0.15
+            ev_gross = calibrated_prob * reward_pct - (1 - calibrated_prob) * risk_pct
+            ev = round(ev_gross - _TRADE_COST, 2)
 
     risk_flags: list[str] = []
     technical_signals: list[str] = []
@@ -1723,14 +1727,14 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         else:
             out["dataStatus"] = "PARTIAL"
 
-        # EV 기반 추천 적합성 등급
+        # EV 기반 추천 적합성 등급 (비용 반영 후 net EV 기준)
         ev = result.get("expectedValue")
         if ev is not None:
-            if ev >= 3.0:
+            if ev >= 2.5:
                 out["evGrade"] = "우수"
-            elif ev >= 1.0:
+            elif ev >= 1.5:
                 out["evGrade"] = "양호"
-            elif ev >= 0:
+            elif ev >= 0.3:
                 out["evGrade"] = "보통"
             else:
                 out["evGrade"] = "주의"
