@@ -188,7 +188,8 @@ _ATR_MULT = {"short": (1.2, 2.0), "swing": (1.5, 3.2), "mid": (2.4, 5.5)}
 # 과거 데이터 기반 경험적 보정값 (22창 walk-forward에서 도출)
 _EMPIRICAL_CALIBRATION = {
     "atr_pct_max":        4.0,   # VOLATILITY_TOO_HIGH 제거: ATR% > 4.0 종목 제외
-    "min_volume_ratio":   0.4,   # 저유동성 제거
+    "min_volume_ratio":   0.4,   # 저유동성 기본 필터 (0.8은 오히려 성능 저하 확인)
+    "min_score_v2":       50.0,
 }
 
 
@@ -363,8 +364,10 @@ def _generate_recs_at_date(
     combo_params 가 있으면 _apply_wf_correction() 으로 entry/stop/target 직접 조정.
     (JSON 스토어를 읽지 않으므로 미래 데이터 누출 없음)
     """
-    atr_pct_max   = _EMPIRICAL_CALIBRATION["atr_pct_max"]
-    min_vol_ratio = _EMPIRICAL_CALIBRATION["min_volume_ratio"]
+    ec            = _EMPIRICAL_CALIBRATION
+    atr_pct_max   = ec["atr_pct_max"]
+    min_vol_ratio = ec["min_volume_ratio"]
+    min_score_v2  = ec["min_score_v2"]
 
     recs: list[dict] = []
     for sym, rows in ohlcv_all.items():
@@ -379,10 +382,11 @@ def _generate_recs_at_date(
         # ── 경험적 보정 필터 (VOLATILITY_TOO_HIGH / LOW_LIQUIDITY 제거) ──────
         atr_pct = ind.get("atr14Pct")
         if atr_pct and atr_pct > atr_pct_max:
-            continue
+            continue  # 과변동성 제거
+
         vr = ind.get("volumeRatio20")
         if vr is not None and vr < min_vol_ratio:
-            continue
+            continue  # 저거래량 제거
 
         score = _final_score(ind, mode, horizon)
         if score < min_score:

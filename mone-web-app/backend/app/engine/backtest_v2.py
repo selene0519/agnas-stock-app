@@ -185,7 +185,6 @@ def evaluate_recommendation(
             exit_date   = _row_date(row)
             bars_held   = int(i) + 1
             break
-        # 기간 마지막 봉
         if int(i) == len(holding_df) - 1:
             exit_price  = close if close is not None else entry
             exit_status = "기간종료"
@@ -196,6 +195,8 @@ def evaluate_recommendation(
         exit_price  = entry
         exit_status = "기간종료"
         bars_held   = len(holding_df)
+
+    blended_exit = exit_price
 
     # ── MFE / MAE 계산 (체결 이후 보유 구간 기준) ─────────────────────────
     # MFE: 체결 후 최대 유리한 가격 (고가 기준)
@@ -213,9 +214,9 @@ def evaluate_recommendation(
             mae_pct = round((min(lows_ok)  - entry) / entry * 100, 3)
 
     # ── PnL 계산 (슬리피지 포함) ───────────────────────────────────────────
-    gross_pnl   = (exit_price - entry) / entry * 100 if entry else None
+    gross_pnl   = (blended_exit - entry) / entry * 100 if entry else None
     actual_buy  = entry * (1 + slip)
-    actual_sell = exit_price * (1 - slip)
+    actual_sell = blended_exit * (1 - slip)
     net_pnl     = (actual_sell - actual_buy) / actual_buy * 100 if actual_buy else None
 
     return {
