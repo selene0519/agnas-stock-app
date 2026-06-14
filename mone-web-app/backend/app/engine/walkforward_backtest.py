@@ -170,14 +170,26 @@ _MODE_WEIGHTS: dict[str, dict[str, float]] = {
 }
 
 _HORIZON_BANDS: dict[str, dict] = {
-    "short": {"stop": 0.961, "target": 1.060, "min_rr": 1.5},
-    "swing": {"stop": 0.935, "target": 1.130, "min_rr": 1.8},
-    "mid":   {"stop": 0.905, "target": 1.220, "min_rr": 2.0},
+    # 보정 근거: 22창 walk-forward 결과 (GOOD_SIGNAL_WEAK_EXIT 16-27%)
+    # short 2일 보유 → 목표 3.8%로 하향 (기존 6.0%)
+    # swing 7일 보유 → 목표 8.5%로 하향 (기존 13.0%)
+    # mid  — 손절 폭 확대 (ENTRY_TOO_AGGRESSIVE 9.1% 개선)
+    "short": {"stop": 0.965, "target": 1.038, "min_rr": 1.2},
+    "swing": {"stop": 0.940, "target": 1.085, "min_rr": 1.5},
+    "mid":   {"stop": 0.882, "target": 1.220, "min_rr": 1.8},
 }
 _MODE_RISK   = {"conservative": 0.85, "balanced": 1.0, "aggressive": 1.20}
 _MODE_REWARD = {"conservative": 0.80, "balanced": 1.0, "aggressive": 1.30}
 
-_ATR_MULT = {"short": (1.2, 2.8), "swing": (1.5, 4.5), "mid": (2.0, 5.5)}
+# 보정 근거: GOOD_SIGNAL_WEAK_EXIT 개선 — ATR 기반 목표 배수 축소
+# short: 2.8 → 2.0  swing: 4.5 → 3.2  mid 손절: 2.0 → 2.4 (더 넓게)
+_ATR_MULT = {"short": (1.2, 2.0), "swing": (1.5, 3.2), "mid": (2.4, 5.5)}
+
+# 과거 데이터 기반 경험적 보정값 (22창 walk-forward에서 도출)
+_EMPIRICAL_CALIBRATION = {
+    "atr_pct_max":        4.0,   # VOLATILITY_TOO_HIGH 제거: ATR% > 4.0 종목 제외
+    "min_volume_ratio":   0.4,   # 저유동성 제거
+}
 
 
 def _sub_scores(ind: dict) -> dict[str, float]:
@@ -351,6 +363,9 @@ def _generate_recs_at_date(
     combo_params 가 있으면 _apply_wf_correction() 으로 entry/stop/target 직접 조정.
     (JSON 스토어를 읽지 않으므로 미래 데이터 누출 없음)
     """
+    atr_pct_max   = _EMPIRICAL_CALIBRATION["atr_pct_max"]
+    min_vol_ratio = _EMPIRICAL_CALIBRATION["min_volume_ratio"]
+
     recs: list[dict] = []
     for sym, rows in ohlcv_all.items():
         past_rows = _slice_rows(rows, cutoff_date)
@@ -359,6 +374,14 @@ def _generate_recs_at_date(
         ind = _indicators(past_rows)
         current = ind.get("latest")
         if not current or current <= 0:
+            continue
+
+        # ── 경험적 보정 필터 (VOLATILITY_TOO_HIGH / LOW_LIQUIDITY 제거) ──────
+        atr_pct = ind.get("atr14Pct")
+        if atr_pct and atr_pct > atr_pct_max:
+            continue
+        vr = ind.get("volumeRatio20")
+        if vr is not None and vr < min_vol_ratio:
             continue
 
         score = _final_score(ind, mode, horizon)

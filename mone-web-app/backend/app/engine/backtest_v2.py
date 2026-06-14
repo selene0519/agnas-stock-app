@@ -16,10 +16,14 @@ from typing import Any
 import pandas as pd
 
 # horizon별 기본 설정
+# 보정 근거: MISS_ENTRY_TOO_LOW 25-42% — 진입 허용 기간 확대
+# short: 1→2일 (진입창), 2→3일 (보유창)
+# swing: 2→3일 (진입창), 5→7일 (보유창)
+# mid:   3→4일 (진입창), 20→22일 (보유창)
 HORIZON_SETTINGS: dict[str, dict[str, int]] = {
-    "short": {"entry_window_days": 1, "holding_days": 2},
-    "swing": {"entry_window_days": 2, "holding_days": 5},
-    "mid":   {"entry_window_days": 3, "holding_days": 20},
+    "short": {"entry_window_days": 2, "holding_days": 3},
+    "swing": {"entry_window_days": 3, "holding_days": 7},
+    "mid":   {"entry_window_days": 4, "holding_days": 22},
 }
 
 # priceSession 당일 포함 여부
