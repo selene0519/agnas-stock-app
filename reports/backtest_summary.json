@@ -1,19 +1,179 @@
 {
-  "generatedAt": "2026-06-13T16:02:35.968099",
-  "engine": "quant_scanner_v2_atr",
-  "totalTrades": 86,
-  "filledTrades": 0,
-  "winRate": 0,
-  "avgReturn": 0,
-  "sharpe": 0,
-  "costModel": "KR 왕복 0.295% (매수수수료+매도세+슬리피지)",
-  "maxDrawdownPct": null,
-  "outcomeBreakdown": {},
-  "targetsMet": {
-    "winRate_55pct": false,
-    "avgReturn_1p0pct": false,
-    "sharpe_0p8": false
+  "generatedAt": "2026-06-14T13:55:21.261314",
+  "market": "kr",
+  "engine": "walkforward_backtest_v2",
+  "validationMethod": "point_in_time_walk_forward",
+  "lookaheadBias": false,
+  "sliceMethod": "_slice_rows(rows, cutoff_date)",
+  "costModel": "KR 슬리피지 0.2% (왕복 buy+sell)",
+  "dataRange": "2024-06-10 ~ 2026-06-12",
+  "windowCount": 22,
+  "combosRun": 9,
+  "avgBaselineWinRate": 13.38,
+  "avgCorrectedWinRate": 13.58,
+  "avgNetPnlPct": 0.613,
+  "avgStopHitRate": 38.79,
+  "bestCombo": "kr_conservative_mid",
+  "combos": {
+    "kr_conservative_short": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 8.594,
+        "avgNetPnlPct": -0.039,
+        "stopHitRate": 30.352,
+        "executionRate": 58.308,
+        "recommendationCount": 1916,
+        "executionCount": 1117
+      },
+      "corrected": {
+        "winRate": 8.956,
+        "avgNetPnlPct": 0.055,
+        "stopHitRate": 28.938
+      }
+    },
+    "kr_conservative_swing": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 7.881,
+        "avgNetPnlPct": 0.131,
+        "stopHitRate": 37.527,
+        "executionRate": 68.552,
+        "recommendationCount": 2095,
+        "executionCount": 1436
+      },
+      "corrected": {
+        "winRate": 8.109,
+        "avgNetPnlPct": 0.158,
+        "stopHitRate": 37.139
+      }
+    },
+    "kr_conservative_mid": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 22.005,
+        "avgNetPnlPct": 1.662,
+        "stopHitRate": 46.441,
+        "executionRate": 75.208,
+        "recommendationCount": 2045,
+        "executionCount": 1538
+      },
+      "corrected": {
+        "winRate": 22.13,
+        "avgNetPnlPct": 1.713,
+        "stopHitRate": 46.026
+      }
+    },
+    "kr_balanced_short": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 9.209,
+        "avgNetPnlPct": -0.032,
+        "stopHitRate": 32.132,
+        "executionRate": 58.515,
+        "recommendationCount": 1651,
+        "executionCount": 966
+      },
+      "corrected": {
+        "winRate": 9.577,
+        "avgNetPnlPct": 0.044,
+        "stopHitRate": 30.39
+      }
+    },
+    "kr_balanced_swing": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 8.5,
+        "avgNetPnlPct": 0.169,
+        "stopHitRate": 37.631,
+        "executionRate": 68.013,
+        "recommendationCount": 1973,
+        "executionCount": 1342
+      },
+      "corrected": {
+        "winRate": 8.431,
+        "avgNetPnlPct": 0.22,
+        "stopHitRate": 37.088
+      }
+    },
+    "kr_balanced_mid": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 22.107,
+        "avgNetPnlPct": 1.582,
+        "stopHitRate": 46.777,
+        "executionRate": 75.3,
+        "recommendationCount": 1919,
+        "executionCount": 1445
+      },
+      "corrected": {
+        "winRate": 22.214,
+        "avgNetPnlPct": 1.622,
+        "stopHitRate": 46.435
+      }
+    },
+    "kr_aggressive_short": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 10.165,
+        "avgNetPnlPct": -0.017,
+        "stopHitRate": 33.569,
+        "executionRate": 58.292,
+        "recommendationCount": 1338,
+        "executionCount": 780
+      },
+      "corrected": {
+        "winRate": 10.562,
+        "avgNetPnlPct": 0.043,
+        "stopHitRate": 31.906
+      }
+    },
+    "kr_aggressive_swing": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 8.997,
+        "avgNetPnlPct": 0.327,
+        "stopHitRate": 38.295,
+        "executionRate": 68.526,
+        "recommendationCount": 1767,
+        "executionCount": 1211
+      },
+      "corrected": {
+        "winRate": 9.274,
+        "avgNetPnlPct": 0.36,
+        "stopHitRate": 37.819
+      }
+    },
+    "kr_aggressive_mid": {
+      "windowCount": 22,
+      "dataRange": "2024-06-10 ~ 2026-06-12",
+      "baseline": {
+        "winRate": 22.938,
+        "avgNetPnlPct": 1.732,
+        "stopHitRate": 46.385,
+        "executionRate": 75.632,
+        "recommendationCount": 1748,
+        "executionCount": 1322
+      },
+      "corrected": {
+        "winRate": 22.958,
+        "avgNetPnlPct": 1.733,
+        "stopHitRate": 46.013
+      }
+    }
   },
-  "universe": "KR 100종목 (16종목 평가)",
-  "survivorshipNote": "유니버스 = 현재 존재 종목만 (상장폐지 제외)"
+  "notes": [
+    "점수 최소값: 50.0 (모든 모드 동일)",
+    "진입 체결: entry_price 도달 여부 (일봉 고저 범위 기준)",
+    "win = 목표가 도달, stop = 손절가 도달, expire = 기간내 미도달",
+    "short 2일/swing 5일/mid 20일 보유 창",
+    "미래 데이터 누출 없음 — cutoff_date 이전 봉만 사용"
+  ]
 }
