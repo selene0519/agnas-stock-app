@@ -1,40 +1,19 @@
 {
-  "generatedAt": "2026-06-10T16:03:44.633337",
-  "totalTrades": 118,
-  "filledTrades": 100,
-  "winRate": 48.0,
-  "avgReturn": 0.481,
-  "sharpe": 0.482,
-  "maxDrawdownPct": 36.84,
-  "outcomeBreakdown": {
-    "기간종료": 70,
-    "손절": 26,
-    "목표": 4
-  },
+  "generatedAt": "2026-06-13T16:02:35.968099",
+  "engine": "quant_scanner_v2_atr",
+  "totalTrades": 86,
+  "filledTrades": 0,
+  "winRate": 0,
+  "avgReturn": 0,
+  "sharpe": 0,
+  "costModel": "KR 왕복 0.295% (매수수수료+매도세+슬리피지)",
+  "maxDrawdownPct": null,
+  "outcomeBreakdown": {},
   "targetsMet": {
-    "winRate_58pct": false,
-    "avgReturn_1p8pct": false,
-    "sharpe_1p0": false
+    "winRate_55pct": false,
+    "avgReturn_1p0pct": false,
+    "sharpe_0p8": false
   },
-  "baseline": {
-    "winRate": 48.2,
-    "avgReturn": 1.26,
-    "sharpe": 0.62,
-    "label": "SWING 기준선 (필터 적용 전)"
-  },
-  "delta": {
-    "winRate": -0.2,
-    "avgReturn": -0.779,
-    "sharpe": -0.138
-  },
-  "filters": {
-    "minScore": 65,
-    "maAlignment": "MA5>MA20>MA60",
-    "rsiRange": "40-70",
-    "volRatio": ">=1.2",
-    "d20Range": "-15% to +10%",
-    "rrMin": "2.0",
-    "stopMult": "ATR×1.5",
-    "targetMult": "ATR×4.5"
-  }
+  "universe": "KR 100종목 (16종목 평가)",
+  "survivorshipNote": "유니버스 = 현재 존재 종목만 (상장폐지 제외)"
 }

@@ -547,7 +547,7 @@ function PositionSizingSection({
                     <td className="py-2 pr-3 text-right font-mono text-violet-300">{(r.halfKelly * 100).toFixed(1)}%</td>
                     <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.amount.toLocaleString()}</td>
                     <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.qty > 0 ? `${r.qty}주` : "—"}</td>
-                    <td className={`py-2 text-right font-mono ${r.ev >= 2 ? "text-emerald-300" : r.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
+                    <td className={`py-2 text-right font-mono ${r.ev >= 1.5 ? "text-emerald-300" : r.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
                       {r.ev >= 0 ? "+" : ""}{r.ev.toFixed(1)}%
                     </td>
                   </tr>
@@ -1263,7 +1263,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-center">
               <div className="text-[10px] text-slate-500">기댓값 EV</div>
-              <div className={`mt-1 text-lg font-bold font-mono ${ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
+              <div className={`mt-1 text-lg font-bold font-mono ${ev >= 1.5 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
                 {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
               </div>
             </div>
