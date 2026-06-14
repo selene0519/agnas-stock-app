@@ -285,7 +285,7 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
   const reasons = moneReasonLines(item).slice(0, 3);
 
   return (
-    <div className="relative rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4 transition-all duration-200 hover:border-emerald-700/60 hover:shadow-lg hover:shadow-emerald-950/40">
+    <div className="relative rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4 transition-[transform,box-shadow,border-color] duration-200 hover:border-emerald-700/60 hover:shadow-lg hover:shadow-emerald-950/40">
       <div className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -330,7 +330,7 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
       <button
         type="button"
         onClick={() => onAnalyze(item)}
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-blue-500 active:scale-[0.98] active:brightness-90"
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-[transform,background-color,filter] duration-150 hover:bg-blue-500 active:scale-[0.96] active:brightness-90"
       >
         분석 보기 <ArrowRight size={14} />
       </button>
@@ -353,7 +353,7 @@ function WatchCard({ item, onSelect }: { item: any; onSelect: (item: any) => voi
     : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300";
 
   return (
-    <div onClick={() => onSelect(item)} className="cursor-pointer rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 transition-all duration-200 hover:border-amber-700/50 hover:bg-slate-900/80 hover:shadow-md hover:shadow-amber-950/30 active:scale-[0.99]">
+    <div onClick={() => onSelect(item)} className="cursor-pointer rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 transition-[transform,box-shadow,border-color,background-color] duration-200 hover:border-amber-700/50 hover:bg-slate-900/80 hover:shadow-md hover:shadow-amber-950/30 active:scale-[0.96]">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <span className="font-semibold text-slate-200">{displayName(item)}</span>
@@ -1661,7 +1661,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
   const watching = top.filter((i) => i.decisionBucket === "대기 관찰");
 
   return (
-    <div className="min-h-[140px] rounded-2xl border border-slate-800 bg-slate-950/50 p-3 transition-all duration-200 hover:border-slate-700 hover:shadow-md hover:shadow-slate-950/60">
+    <div className="min-h-[140px] rounded-2xl border border-slate-800 bg-slate-950/50 p-3 transition-[transform,box-shadow,border-color] duration-200 hover:scale-[1.01] hover:border-slate-700 hover:shadow-md hover:shadow-slate-950/60">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-300">{modeLabel(cell.mode)} · {horizonLabel(cell.horizon)}</span>
         <span className="rounded-full bg-slate-800/80 px-2 py-0.5 text-[10px] text-slate-400">{cell.count}</span>
@@ -1685,14 +1685,14 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
               : isCaution ? "bg-red-950/30 border border-red-900/20 opacity-50"
               : "bg-slate-950/50 border border-transparent opacity-60";
             return (
-              <div key={item.symbol} onClick={() => onSelect(item)} className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-all duration-150 hover:brightness-125 active:scale-[0.99] ${rowCls}`}>
+              <div key={item.symbol} onClick={() => onSelect(item)} className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-[transform,filter] duration-150 hover:brightness-125 active:scale-[0.96] ${rowCls}`}>
                 <div className="min-w-0 flex-1">
                   <span className="truncate text-[11px] font-medium text-slate-200">{displayName(item)}</span>
-                  {isToday  && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">검토</span>}
-                  {isWait   && <span className="ml-1 rounded bg-sky-700/50 px-1 text-[9px] text-sky-300">대기</span>}
-                  {isNext   && <span className="ml-1 rounded bg-blue-700/50 px-1 text-[9px] text-blue-300">다음</span>}
-                  {isCaution && <span className="ml-1 rounded bg-red-700/50 px-1 text-[9px] text-red-300">주의</span>}
-                  {isWatch && item.timingLabel && <span className="ml-1 rounded bg-amber-900/40 px-1 text-[9px] text-amber-400">{item.timingLabel}</span>}
+                  {isToday  && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[11px] text-emerald-300">검토</span>}
+                  {isWait   && <span className="ml-1 rounded bg-sky-700/50 px-1 text-[11px] text-sky-300">대기</span>}
+                  {isNext   && <span className="ml-1 rounded bg-blue-700/50 px-1 text-[11px] text-blue-300">다음</span>}
+                  {isCaution && <span className="ml-1 rounded bg-red-700/50 px-1 text-[11px] text-red-300">주의</span>}
+                  {isWatch && item.timingLabel && <span className="ml-1 rounded bg-amber-900/40 px-1 text-[11px] text-amber-400">{item.timingLabel}</span>}
                 </div>
                 <span className={`shrink-0 font-mono text-[10px] [font-variant-numeric:tabular-nums] ${ev >= 1.5 ? "text-emerald-400" : ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
                   {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
