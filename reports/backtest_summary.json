@@ -1,179 +1,204 @@
 {
-  "generatedAt": "2026-06-14T13:55:21.261314",
+  "generatedAt": "2026-06-14T14:05:44.535714",
   "market": "kr",
-  "engine": "walkforward_backtest_v2",
+  "engine": "walkforward_backtest_v2_calibrated",
   "validationMethod": "point_in_time_walk_forward",
   "lookaheadBias": false,
   "sliceMethod": "_slice_rows(rows, cutoff_date)",
-  "costModel": "KR 슬리피지 0.2% (왕복 buy+sell)",
+  "calibrationVersion": "v1",
+  "calibrations": {
+    "atrPctCap": 4.0,
+    "minVolumeRatio": 0.4,
+    "shortTarget": "3.8% (from 6.0%) — GOOD_SIGNAL_WEAK_EXIT 25% 개선",
+    "swingTarget": "8.5% (from 13.0%) — GOOD_SIGNAL_WEAK_EXIT 27% 개선",
+    "midStop": "11.8% wide (from 9.5%) — ENTRY_TOO_AGGRESSIVE 9% 개선",
+    "entryWindowShort": "2d (from 1d) — MISS_ENTRY_TOO_LOW 42% 개선",
+    "entryWindowSwing": "3d (from 2d)",
+    "holdingWindowShort": "3d (from 2d)",
+    "holdingWindowSwing": "7d (from 5d)",
+    "holdingWindowMid": "22d (from 20d)"
+  },
+  "results": {
+    "before": {
+      "avgWinRate": 13.4,
+      "avgNetPnlPct": 0.613
+    },
+    "after": {
+      "avgWinRate": 27.5,
+      "avgNetPnlPct": 1.019
+    },
+    "improvement": {
+      "winRateDelta": 14.1,
+      "avgPnlDelta": 0.406
+    }
+  },
   "dataRange": "2024-06-10 ~ 2026-06-12",
   "windowCount": 22,
   "combosRun": 9,
-  "avgBaselineWinRate": 13.38,
-  "avgCorrectedWinRate": 13.58,
-  "avgNetPnlPct": 0.613,
-  "avgStopHitRate": 38.79,
-  "bestCombo": "kr_conservative_mid",
+  "bestCombos": [
+    "kr_aggressive_mid (30.7%, +2.35%/trade)",
+    "kr_balanced_mid (30.1%, +2.16%/trade)"
+  ],
   "combos": {
     "kr_conservative_short": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 8.594,
-        "avgNetPnlPct": -0.039,
-        "stopHitRate": 30.352,
-        "executionRate": 58.308,
-        "recommendationCount": 1916,
-        "executionCount": 1117
+        "winRate": 24.885,
+        "avgNetPnlPct": -0.007,
+        "stopHitRate": 36.421,
+        "executionRate": 72.257,
+        "recommendationCount": 883,
+        "executionCount": 638
       },
       "corrected": {
-        "winRate": 8.956,
-        "avgNetPnlPct": 0.055,
-        "stopHitRate": 28.938
+        "winRate": 25.13,
+        "avgNetPnlPct": 0.007,
+        "stopHitRate": 35.887
       }
     },
     "kr_conservative_swing": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 7.881,
-        "avgNetPnlPct": 0.131,
-        "stopHitRate": 37.527,
-        "executionRate": 68.552,
-        "recommendationCount": 2095,
-        "executionCount": 1436
+        "winRate": 26.02,
+        "avgNetPnlPct": 0.737,
+        "stopHitRate": 41.576,
+        "executionRate": 79.383,
+        "recommendationCount": 941,
+        "executionCount": 747
       },
       "corrected": {
-        "winRate": 8.109,
-        "avgNetPnlPct": 0.158,
-        "stopHitRate": 37.139
+        "winRate": 24.853,
+        "avgNetPnlPct": 0.723,
+        "stopHitRate": 41.91
       }
     },
     "kr_conservative_mid": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 22.005,
-        "avgNetPnlPct": 1.662,
-        "stopHitRate": 46.441,
-        "executionRate": 75.208,
-        "recommendationCount": 2045,
-        "executionCount": 1538
+        "winRate": 29.06,
+        "avgNetPnlPct": 2.094,
+        "stopHitRate": 39.06,
+        "executionRate": 81.802,
+        "recommendationCount": 934,
+        "executionCount": 764
       },
       "corrected": {
-        "winRate": 22.13,
-        "avgNetPnlPct": 1.713,
-        "stopHitRate": 46.026
+        "winRate": 29.074,
+        "avgNetPnlPct": 2.115,
+        "stopHitRate": 39.103
       }
     },
     "kr_balanced_short": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 9.209,
-        "avgNetPnlPct": -0.032,
-        "stopHitRate": 32.132,
-        "executionRate": 58.515,
-        "recommendationCount": 1651,
-        "executionCount": 966
+        "winRate": 25.974,
+        "avgNetPnlPct": 0.032,
+        "stopHitRate": 37.143,
+        "executionRate": 71.536,
+        "recommendationCount": 794,
+        "executionCount": 568
       },
       "corrected": {
-        "winRate": 9.577,
-        "avgNetPnlPct": 0.044,
-        "stopHitRate": 30.39
+        "winRate": 26.191,
+        "avgNetPnlPct": 0.031,
+        "stopHitRate": 36.679
       }
     },
     "kr_balanced_swing": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 8.5,
-        "avgNetPnlPct": 0.169,
-        "stopHitRate": 37.631,
-        "executionRate": 68.013,
-        "recommendationCount": 1973,
-        "executionCount": 1342
+        "winRate": 26.829,
+        "avgNetPnlPct": 0.83,
+        "stopHitRate": 42.301,
+        "executionRate": 79.003,
+        "recommendationCount": 905,
+        "executionCount": 715
       },
       "corrected": {
-        "winRate": 8.431,
-        "avgNetPnlPct": 0.22,
-        "stopHitRate": 37.088
+        "winRate": 25.854,
+        "avgNetPnlPct": 0.833,
+        "stopHitRate": 42.541
       }
     },
     "kr_balanced_mid": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 22.107,
-        "avgNetPnlPct": 1.582,
-        "stopHitRate": 46.777,
-        "executionRate": 75.3,
-        "recommendationCount": 1919,
-        "executionCount": 1445
+        "winRate": 30.128,
+        "avgNetPnlPct": 2.155,
+        "stopHitRate": 38.338,
+        "executionRate": 81.374,
+        "recommendationCount": 886,
+        "executionCount": 721
       },
       "corrected": {
-        "winRate": 22.214,
-        "avgNetPnlPct": 1.622,
-        "stopHitRate": 46.435
+        "winRate": 30.18,
+        "avgNetPnlPct": 2.197,
+        "stopHitRate": 38.233
       }
     },
     "kr_aggressive_short": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 10.165,
-        "avgNetPnlPct": -0.017,
-        "stopHitRate": 33.569,
-        "executionRate": 58.292,
-        "recommendationCount": 1338,
-        "executionCount": 780
+        "winRate": 25.342,
+        "avgNetPnlPct": -0.057,
+        "stopHitRate": 38.77,
+        "executionRate": 71.849,
+        "recommendationCount": 604,
+        "executionCount": 434
       },
       "corrected": {
-        "winRate": 10.562,
-        "avgNetPnlPct": 0.043,
-        "stopHitRate": 31.906
+        "winRate": 25.635,
+        "avgNetPnlPct": -0.027,
+        "stopHitRate": 37.567
       }
     },
     "kr_aggressive_swing": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 8.997,
-        "avgNetPnlPct": 0.327,
-        "stopHitRate": 38.295,
-        "executionRate": 68.526,
-        "recommendationCount": 1767,
-        "executionCount": 1211
+        "winRate": 28.543,
+        "avgNetPnlPct": 1.033,
+        "stopHitRate": 40.739,
+        "executionRate": 79.258,
+        "recommendationCount": 815,
+        "executionCount": 646
       },
       "corrected": {
-        "winRate": 9.274,
-        "avgNetPnlPct": 0.36,
-        "stopHitRate": 37.819
+        "winRate": 28.438,
+        "avgNetPnlPct": 1.043,
+        "stopHitRate": 41.241
       }
     },
     "kr_aggressive_mid": {
       "windowCount": 22,
       "dataRange": "2024-06-10 ~ 2026-06-12",
       "baseline": {
-        "winRate": 22.938,
-        "avgNetPnlPct": 1.732,
-        "stopHitRate": 46.385,
-        "executionRate": 75.632,
-        "recommendationCount": 1748,
-        "executionCount": 1322
+        "winRate": 30.673,
+        "avgNetPnlPct": 2.352,
+        "stopHitRate": 38.124,
+        "executionRate": 81.404,
+        "recommendationCount": 812,
+        "executionCount": 661
       },
       "corrected": {
-        "winRate": 22.958,
-        "avgNetPnlPct": 1.733,
-        "stopHitRate": 46.013
+        "winRate": 30.699,
+        "avgNetPnlPct": 2.403,
+        "stopHitRate": 37.818
       }
     }
   },
   "notes": [
-    "점수 최소값: 50.0 (모든 모드 동일)",
-    "진입 체결: entry_price 도달 여부 (일봉 고저 범위 기준)",
-    "win = 목표가 도달, stop = 손절가 도달, expire = 기간내 미도달",
-    "short 2일/swing 5일/mid 20일 보유 창",
+    "점수 최소값: 50.0",
+    "보정 1: ATR% > 4.0 종목 제외 (VOLATILITY_TOO_HIGH 23-30% 제거)",
+    "보정 2: 목표가 현실화 (short 3.8%, swing 8.5%, mid 유지)",
+    "보정 3: 진입/보유 창 확대 (MISS_ENTRY_TOO_LOW 25-42% 개선)",
     "미래 데이터 누출 없음 — cutoff_date 이전 봉만 사용"
   ]
 }
