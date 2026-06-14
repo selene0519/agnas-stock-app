@@ -1,0 +1,1245 @@
+{
+  "status": "OK",
+  "market": "kr",
+  "mode": "aggressive",
+  "horizon": "swing",
+  "dataRange": "2024-06-10 ~ 2026-06-12",
+  "windowCount": 22,
+  "windows": [
+    {
+      "window": "2024-09-01",
+      "windowIndex": 0,
+      "correctionParamsUsed": false,
+      "pastSampleCount": 0,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 29,
+        "executionCount": 25,
+        "executionRate": 86.2,
+        "winCount": 3,
+        "winRate": 12.0,
+        "stopCount": 18,
+        "stopHitRate": 72.0,
+        "expiredCount": 4,
+        "missEntryCount": 4,
+        "missEntryRate": 13.8,
+        "avgNetPnlPct": -2.965,
+        "cumulativeNetPnlPct": -74.134,
+        "mddPct": -74.13,
+        "avgHoldingDays": 7.0,
+        "profitLossRatio": 0.94,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 18,
+          "GOOD_SIGNAL_WEAK_EXIT": 3,
+          "GOOD": 3,
+          "MISS_ENTRY_TOO_LOW": 4,
+          "ENTRY_TOO_AGGRESSIVE": 1
+        },
+        "regimeAvgPnl": {
+          "SIDE": -2.965
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 29,
+        "executionCount": 25,
+        "executionRate": 86.2,
+        "winCount": 3,
+        "winRate": 12.0,
+        "stopCount": 18,
+        "stopHitRate": 72.0,
+        "expiredCount": 4,
+        "missEntryCount": 4,
+        "missEntryRate": 13.8,
+        "avgNetPnlPct": -2.965,
+        "cumulativeNetPnlPct": -74.134,
+        "mddPct": -74.13,
+        "avgHoldingDays": 7.0,
+        "profitLossRatio": 0.94,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 18,
+          "GOOD_SIGNAL_WEAK_EXIT": 3,
+          "GOOD": 3,
+          "MISS_ENTRY_TOO_LOW": 4,
+          "ENTRY_TOO_AGGRESSIVE": 1
+        },
+        "regimeAvgPnl": {
+          "SIDE": -2.965
+        }
+      },
+      "diff": {
+        "winRateDiff": 0.0,
+        "stopHitRateDiff": 0.0,
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.0,
+        "cumulativeNetPnlPctDiff": 0.0,
+        "mddPctDiff": 0.0,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2024-10-01",
+      "windowIndex": 1,
+      "correctionParamsUsed": false,
+      "pastSampleCount": 29,
+      "baseline": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "corrected": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "diff": {}
+    },
+    {
+      "window": "2024-11-01",
+      "windowIndex": 2,
+      "correctionParamsUsed": false,
+      "pastSampleCount": 29,
+      "baseline": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "corrected": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "diff": {}
+    },
+    {
+      "window": "2024-12-01",
+      "windowIndex": 3,
+      "correctionParamsUsed": false,
+      "pastSampleCount": 29,
+      "baseline": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "corrected": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "diff": {}
+    },
+    {
+      "window": "2025-01-01",
+      "windowIndex": 4,
+      "correctionParamsUsed": false,
+      "pastSampleCount": 29,
+      "baseline": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "corrected": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "diff": {}
+    },
+    {
+      "window": "2025-02-01",
+      "windowIndex": 5,
+      "correctionParamsUsed": false,
+      "pastSampleCount": 29,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 50,
+        "executionCount": 37,
+        "executionRate": 74.0,
+        "winCount": 3,
+        "winRate": 8.1,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 17,
+        "missEntryCount": 13,
+        "missEntryRate": 26.0,
+        "avgNetPnlPct": 3.43,
+        "cumulativeNetPnlPct": 126.906,
+        "mddPct": -14.26,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.59,
+        "reasonCounts": {
+          "MISS_ENTRY_TOO_LOW": 13,
+          "GOOD": 3,
+          "ENTRY_TOO_AGGRESSIVE": 11,
+          "VOLATILITY_TOO_HIGH": 8,
+          "TARGET_TOO_FAR": 8,
+          "GOOD_SIGNAL_WEAK_EXIT": 7
+        },
+        "regimeAvgPnl": {
+          "BULL": 3.43
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 50,
+        "executionCount": 37,
+        "executionRate": 74.0,
+        "winCount": 3,
+        "winRate": 8.1,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 17,
+        "missEntryCount": 13,
+        "missEntryRate": 26.0,
+        "avgNetPnlPct": 3.43,
+        "cumulativeNetPnlPct": 126.906,
+        "mddPct": -14.26,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.59,
+        "reasonCounts": {
+          "MISS_ENTRY_TOO_LOW": 13,
+          "GOOD": 3,
+          "ENTRY_TOO_AGGRESSIVE": 11,
+          "VOLATILITY_TOO_HIGH": 8,
+          "TARGET_TOO_FAR": 8,
+          "GOOD_SIGNAL_WEAK_EXIT": 7
+        },
+        "regimeAvgPnl": {
+          "BULL": 3.43
+        }
+      },
+      "diff": {
+        "winRateDiff": 0.0,
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.0,
+        "cumulativeNetPnlPctDiff": 0.0,
+        "mddPctDiff": 0.0,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2025-03-01",
+      "windowIndex": 6,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 79,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 36,
+        "executionCount": 34,
+        "executionRate": 94.4,
+        "winCount": 5,
+        "winRate": 14.7,
+        "stopCount": 13,
+        "stopHitRate": 38.2,
+        "expiredCount": 16,
+        "missEntryCount": 2,
+        "missEntryRate": 5.6,
+        "avgNetPnlPct": -0.001,
+        "cumulativeNetPnlPct": -0.022,
+        "mddPct": -36.33,
+        "avgHoldingDays": 7.0,
+        "profitLossRatio": 1.43,
+        "reasonCounts": {
+          "TARGET_TOO_FAR": 4,
+          "GOOD": 5,
+          "GOOD_SIGNAL_WEAK_EXIT": 11,
+          "ENTRY_TOO_AGGRESSIVE": 7,
+          "VOLATILITY_TOO_HIGH": 7,
+          "MISS_ENTRY_TOO_LOW": 2
+        },
+        "regimeAvgPnl": {
+          "SIDE": -0.001
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 36,
+        "executionCount": 34,
+        "executionRate": 94.4,
+        "winCount": 5,
+        "winRate": 14.7,
+        "stopCount": 13,
+        "stopHitRate": 38.2,
+        "expiredCount": 16,
+        "missEntryCount": 2,
+        "missEntryRate": 5.6,
+        "avgNetPnlPct": 0.036,
+        "cumulativeNetPnlPct": 1.221,
+        "mddPct": -36.0,
+        "avgHoldingDays": 7.0,
+        "profitLossRatio": 1.45,
+        "reasonCounts": {
+          "TARGET_TOO_FAR": 4,
+          "GOOD": 5,
+          "GOOD_SIGNAL_WEAK_EXIT": 11,
+          "ENTRY_TOO_AGGRESSIVE": 5,
+          "VOLATILITY_TOO_HIGH": 9,
+          "MISS_ENTRY_TOO_LOW": 2
+        },
+        "regimeAvgPnl": {
+          "SIDE": 0.036
+        }
+      },
+      "diff": {
+        "winRateDiff": 0.0,
+        "stopHitRateDiff": 0.0,
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.037,
+        "cumulativeNetPnlPctDiff": 1.243,
+        "mddPctDiff": 0.33,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2025-04-01",
+      "windowIndex": 7,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 115,
+      "baseline": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "corrected": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "diff": {}
+    },
+    {
+      "window": "2025-05-01",
+      "windowIndex": 8,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 115,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 54,
+        "executionCount": 50,
+        "executionRate": 92.6,
+        "winCount": 7,
+        "winRate": 14.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 21,
+        "missEntryCount": 4,
+        "missEntryRate": 7.4,
+        "avgNetPnlPct": 2.89,
+        "cumulativeNetPnlPct": 144.5,
+        "mddPct": -19.31,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.6,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 13,
+          "GOOD_SIGNAL_WEAK_EXIT": 14,
+          "TARGET_TOO_CLOSE": 2,
+          "MISS_ENTRY_TOO_LOW": 4,
+          "TARGET_TOO_FAR": 6,
+          "GOOD": 5,
+          "ENTRY_TOO_AGGRESSIVE": 10
+        },
+        "regimeAvgPnl": {
+          "BULL": 2.89
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 54,
+        "executionCount": 50,
+        "executionRate": 92.6,
+        "winCount": 8,
+        "winRate": 16.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 21,
+        "missEntryCount": 4,
+        "missEntryRate": 7.4,
+        "avgNetPnlPct": 3.263,
+        "cumulativeNetPnlPct": 163.139,
+        "mddPct": -18.9,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.64,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 13,
+          "GOOD_SIGNAL_WEAK_EXIT": 14,
+          "TARGET_TOO_CLOSE": 2,
+          "MISS_ENTRY_TOO_LOW": 4,
+          "TARGET_TOO_FAR": 6,
+          "GOOD": 6,
+          "ENTRY_TOO_AGGRESSIVE": 9
+        },
+        "regimeAvgPnl": {
+          "BULL": 3.263
+        }
+      },
+      "diff": {
+        "winRateDiff": 2.0,
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.373,
+        "cumulativeNetPnlPctDiff": 18.639,
+        "mddPctDiff": 0.41,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2025-06-01",
+      "windowIndex": 9,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 169,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 54,
+        "executionCount": 50,
+        "executionRate": 92.6,
+        "winCount": 14,
+        "winRate": 28.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 20,
+        "missEntryCount": 4,
+        "missEntryRate": 7.4,
+        "avgNetPnlPct": 8.013,
+        "cumulativeNetPnlPct": 400.67,
+        "mddPct": -8.36,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 2.76,
+        "reasonCounts": {
+          "GOOD_SIGNAL_WEAK_EXIT": 12,
+          "TARGET_TOO_FAR": 5,
+          "TARGET_TOO_CLOSE": 3,
+          "GOOD": 11,
+          "MISS_ENTRY_TOO_LOW": 4,
+          "VOLATILITY_TOO_HIGH": 6,
+          "ENTRY_TOO_AGGRESSIVE": 13
+        },
+        "regimeAvgPnl": {
+          "BULL": 8.013
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 54,
+        "executionCount": 48,
+        "executionRate": 88.9,
+        "winCount": 13,
+        "winRate": 27.1,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 19,
+        "missEntryCount": 6,
+        "missEntryRate": 11.1,
+        "avgNetPnlPct": 8.131,
+        "cumulativeNetPnlPct": 390.269,
+        "mddPct": -8.2,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 2.89,
+        "reasonCounts": {
+          "GOOD_SIGNAL_WEAK_EXIT": 11,
+          "TARGET_TOO_FAR": 5,
+          "TARGET_TOO_CLOSE": 3,
+          "GOOD": 10,
+          "MISS_ENTRY_TOO_LOW": 6,
+          "VOLATILITY_TOO_HIGH": 6,
+          "ENTRY_TOO_AGGRESSIVE": 13
+        },
+        "regimeAvgPnl": {
+          "BULL": 8.131
+        }
+      },
+      "diff": {
+        "winRateDiff": -0.9,
+        "missEntryRateDiff": 3.7,
+        "avgNetPnlPctDiff": 0.118,
+        "cumulativeNetPnlPctDiff": -10.401,
+        "mddPctDiff": 0.16,
+        "executionRateDiff": -3.7
+      }
+    },
+    {
+      "window": "2025-07-01",
+      "windowIndex": 10,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 223,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 36,
+        "executionCount": 22,
+        "executionRate": 61.1,
+        "winCount": 4,
+        "winRate": 18.2,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 13,
+        "missEntryCount": 14,
+        "missEntryRate": 38.9,
+        "avgNetPnlPct": 2.576,
+        "cumulativeNetPnlPct": 56.68,
+        "mddPct": -11.84,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.89,
+        "reasonCounts": {
+          "MISS_ENTRY_TOO_LOW": 14,
+          "GOOD": 4,
+          "TARGET_TOO_FAR": 3,
+          "GOOD_SIGNAL_WEAK_EXIT": 7,
+          "VOLATILITY_TOO_HIGH": 7,
+          "ENTRY_TOO_AGGRESSIVE": 1
+        },
+        "regimeAvgPnl": {
+          "BULL": 2.576
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 36,
+        "executionCount": 19,
+        "executionRate": 52.8,
+        "winCount": 3,
+        "winRate": 15.8,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 11,
+        "missEntryCount": 17,
+        "missEntryRate": 47.2,
+        "avgNetPnlPct": 2.016,
+        "cumulativeNetPnlPct": 38.309,
+        "mddPct": -11.58,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.75,
+        "reasonCounts": {
+          "MISS_ENTRY_TOO_LOW": 17,
+          "GOOD": 3,
+          "GOOD_SIGNAL_WEAK_EXIT": 6,
+          "VOLATILITY_TOO_HIGH": 7,
+          "ENTRY_TOO_AGGRESSIVE": 1,
+          "TARGET_TOO_FAR": 2
+        },
+        "regimeAvgPnl": {
+          "BULL": 2.016
+        }
+      },
+      "diff": {
+        "winRateDiff": -2.4,
+        "missEntryRateDiff": 8.3,
+        "avgNetPnlPctDiff": -0.56,
+        "cumulativeNetPnlPctDiff": -18.371,
+        "mddPctDiff": 0.26,
+        "executionRateDiff": -8.3
+      }
+    },
+    {
+      "window": "2025-08-01",
+      "windowIndex": 11,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 259,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 55,
+        "executionCount": 40,
+        "executionRate": 72.7,
+        "winCount": 1,
+        "winRate": 2.5,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 19,
+        "missEntryCount": 15,
+        "missEntryRate": 27.3,
+        "avgNetPnlPct": -0.6,
+        "cumulativeNetPnlPct": -24.012,
+        "mddPct": -44.0,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.31,
+        "reasonCounts": {
+          "MISS_ENTRY_TOO_LOW": 15,
+          "VOLATILITY_TOO_HIGH": 16,
+          "ENTRY_TOO_AGGRESSIVE": 9,
+          "GOOD_SIGNAL_WEAK_EXIT": 13,
+          "GOOD": 1,
+          "TARGET_TOO_FAR": 1
+        },
+        "regimeAvgPnl": {
+          "BULL": -0.6
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 55,
+        "executionCount": 40,
+        "executionRate": 72.7,
+        "winCount": 1,
+        "winRate": 2.5,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 19,
+        "missEntryCount": 15,
+        "missEntryRate": 27.3,
+        "avgNetPnlPct": -0.54,
+        "cumulativeNetPnlPct": -21.587,
+        "mddPct": -42.72,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.35,
+        "reasonCounts": {
+          "MISS_ENTRY_TOO_LOW": 15,
+          "VOLATILITY_TOO_HIGH": 16,
+          "ENTRY_TOO_AGGRESSIVE": 9,
+          "GOOD_SIGNAL_WEAK_EXIT": 13,
+          "GOOD": 1,
+          "TARGET_TOO_FAR": 1
+        },
+        "regimeAvgPnl": {
+          "BULL": -0.54
+        }
+      },
+      "diff": {
+        "winRateDiff": 0.0,
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.06,
+        "cumulativeNetPnlPctDiff": 2.425,
+        "mddPctDiff": 1.28,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2025-09-01",
+      "windowIndex": 12,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 314,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 60,
+        "executionCount": 44,
+        "executionRate": 73.3,
+        "winCount": 18,
+        "winRate": 40.9,
+        "stopCount": 5,
+        "stopHitRate": 11.4,
+        "expiredCount": 21,
+        "missEntryCount": 16,
+        "missEntryRate": 26.7,
+        "avgNetPnlPct": 3.877,
+        "cumulativeNetPnlPct": 170.594,
+        "mddPct": -11.35,
+        "avgHoldingDays": 7.0,
+        "profitLossRatio": 1.83,
+        "reasonCounts": {
+          "GOOD": 14,
+          "GOOD_SIGNAL_WEAK_EXIT": 12,
+          "TARGET_TOO_CLOSE": 4,
+          "MISS_ENTRY_TOO_LOW": 16,
+          "VOLATILITY_TOO_HIGH": 11,
+          "TARGET_TOO_FAR": 2,
+          "ENTRY_TOO_AGGRESSIVE": 1
+        },
+        "regimeAvgPnl": {
+          "SIDE": 3.877
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 60,
+        "executionCount": 43,
+        "executionRate": 71.7,
+        "winCount": 18,
+        "winRate": 41.9,
+        "stopCount": 4,
+        "stopHitRate": 9.3,
+        "expiredCount": 21,
+        "missEntryCount": 17,
+        "missEntryRate": 28.3,
+        "avgNetPnlPct": 4.111,
+        "cumulativeNetPnlPct": 176.781,
+        "mddPct": -9.14,
+        "avgHoldingDays": 7.0,
+        "profitLossRatio": 2.23,
+        "reasonCounts": {
+          "GOOD": 14,
+          "GOOD_SIGNAL_WEAK_EXIT": 11,
+          "TARGET_TOO_CLOSE": 4,
+          "MISS_ENTRY_TOO_LOW": 17,
+          "VOLATILITY_TOO_HIGH": 11,
+          "TARGET_TOO_FAR": 2,
+          "ENTRY_TOO_AGGRESSIVE": 1
+        },
+        "regimeAvgPnl": {
+          "SIDE": 4.111
+        }
+      },
+      "diff": {
+        "winRateDiff": 1.0,
+        "stopHitRateDiff": -2.1,
+        "missEntryRateDiff": 1.6,
+        "avgNetPnlPctDiff": 0.234,
+        "cumulativeNetPnlPctDiff": 6.187,
+        "mddPctDiff": 2.21,
+        "executionRateDiff": -1.6
+      }
+    },
+    {
+      "window": "2025-10-01",
+      "windowIndex": 13,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 374,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 59,
+        "executionCount": 44,
+        "executionRate": 74.6,
+        "winCount": 11,
+        "winRate": 25.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 15,
+        "missEntryCount": 15,
+        "missEntryRate": 25.4,
+        "avgNetPnlPct": 5.095,
+        "cumulativeNetPnlPct": 224.196,
+        "mddPct": -16.66,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 2.45,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 9,
+          "TARGET_TOO_CLOSE": 6,
+          "MISS_ENTRY_TOO_LOW": 15,
+          "GOOD": 5,
+          "ENTRY_TOO_AGGRESSIVE": 12,
+          "TARGET_TOO_FAR": 4,
+          "GOOD_SIGNAL_WEAK_EXIT": 8
+        },
+        "regimeAvgPnl": {
+          "BULL": 5.095
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 59,
+        "executionCount": 43,
+        "executionRate": 72.9,
+        "winCount": 11,
+        "winRate": 25.6,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 15,
+        "missEntryCount": 16,
+        "missEntryRate": 27.1,
+        "avgNetPnlPct": 5.12,
+        "cumulativeNetPnlPct": 220.177,
+        "mddPct": -18.18,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 2.48,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 9,
+          "TARGET_TOO_CLOSE": 6,
+          "MISS_ENTRY_TOO_LOW": 16,
+          "GOOD": 5,
+          "ENTRY_TOO_AGGRESSIVE": 11,
+          "TARGET_TOO_FAR": 4,
+          "GOOD_SIGNAL_WEAK_EXIT": 8
+        },
+        "regimeAvgPnl": {
+          "BULL": 5.12
+        }
+      },
+      "diff": {
+        "winRateDiff": 0.6,
+        "missEntryRateDiff": 1.7,
+        "avgNetPnlPctDiff": 0.025,
+        "cumulativeNetPnlPctDiff": -4.019,
+        "mddPctDiff": -1.52,
+        "executionRateDiff": -1.7
+      }
+    },
+    {
+      "window": "2025-11-01",
+      "windowIndex": 14,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 433,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 34,
+        "executionCount": 29,
+        "executionRate": 85.3,
+        "winCount": 6,
+        "winRate": 20.7,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 7,
+        "missEntryCount": 5,
+        "missEntryRate": 14.7,
+        "avgNetPnlPct": 1.223,
+        "cumulativeNetPnlPct": 35.466,
+        "mddPct": -19.05,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.89,
+        "reasonCounts": {
+          "ENTRY_TOO_AGGRESSIVE": 8,
+          "VOLATILITY_TOO_HIGH": 9,
+          "GOOD": 5,
+          "GOOD_SIGNAL_WEAK_EXIT": 6,
+          "MISS_ENTRY_TOO_LOW": 5,
+          "TARGET_TOO_CLOSE": 1
+        },
+        "regimeAvgPnl": {
+          "BULL": 1.223
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 34,
+        "executionCount": 29,
+        "executionRate": 85.3,
+        "winCount": 6,
+        "winRate": 20.7,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 7,
+        "missEntryCount": 5,
+        "missEntryRate": 14.7,
+        "avgNetPnlPct": 1.289,
+        "cumulativeNetPnlPct": 37.383,
+        "mddPct": -18.85,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.93,
+        "reasonCounts": {
+          "ENTRY_TOO_AGGRESSIVE": 8,
+          "VOLATILITY_TOO_HIGH": 9,
+          "GOOD": 5,
+          "GOOD_SIGNAL_WEAK_EXIT": 6,
+          "MISS_ENTRY_TOO_LOW": 5,
+          "TARGET_TOO_CLOSE": 1
+        },
+        "regimeAvgPnl": {
+          "BULL": 1.289
+        }
+      },
+      "diff": {
+        "winRateDiff": 0.0,
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.066,
+        "cumulativeNetPnlPctDiff": 1.917,
+        "mddPctDiff": 0.2,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2025-12-01",
+      "windowIndex": 15,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 467,
+      "baseline": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "corrected": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "diff": {}
+    },
+    {
+      "window": "2026-01-01",
+      "windowIndex": 16,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 467,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 49,
+        "executionCount": 47,
+        "executionRate": 95.9,
+        "winCount": 14,
+        "winRate": 29.8,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 14,
+        "missEntryCount": 2,
+        "missEntryRate": 4.1,
+        "avgNetPnlPct": 6.374,
+        "cumulativeNetPnlPct": 299.566,
+        "mddPct": -10.0,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 2.51,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 7,
+          "TARGET_TOO_CLOSE": 5,
+          "GOOD": 9,
+          "TARGET_TOO_FAR": 5,
+          "ENTRY_TOO_AGGRESSIVE": 12,
+          "MISS_ENTRY_TOO_LOW": 2,
+          "GOOD_SIGNAL_WEAK_EXIT": 9
+        },
+        "regimeAvgPnl": {
+          "BULL": 6.374
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 49,
+        "executionCount": 45,
+        "executionRate": 91.8,
+        "winCount": 13,
+        "winRate": 28.9,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 15,
+        "missEntryCount": 4,
+        "missEntryRate": 8.2,
+        "avgNetPnlPct": 6.459,
+        "cumulativeNetPnlPct": 290.643,
+        "mddPct": -9.97,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 2.78,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 8,
+          "TARGET_TOO_CLOSE": 4,
+          "GOOD": 9,
+          "TARGET_TOO_FAR": 5,
+          "ENTRY_TOO_AGGRESSIVE": 10,
+          "MISS_ENTRY_TOO_LOW": 4,
+          "GOOD_SIGNAL_WEAK_EXIT": 9
+        },
+        "regimeAvgPnl": {
+          "BULL": 6.459
+        }
+      },
+      "diff": {
+        "winRateDiff": -0.9,
+        "missEntryRateDiff": 4.1,
+        "avgNetPnlPctDiff": 0.085,
+        "cumulativeNetPnlPctDiff": -8.923,
+        "mddPctDiff": 0.03,
+        "executionRateDiff": -4.1
+      }
+    },
+    {
+      "window": "2026-02-01",
+      "windowIndex": 17,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 516,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 24,
+        "executionCount": 18,
+        "executionRate": 75.0,
+        "winCount": 9,
+        "winRate": 50.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 1,
+        "missEntryCount": 6,
+        "missEntryRate": 25.0,
+        "avgNetPnlPct": 7.173,
+        "cumulativeNetPnlPct": 129.123,
+        "mddPct": -13.93,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 2.53,
+        "reasonCounts": {
+          "ENTRY_TOO_AGGRESSIVE": 6,
+          "GOOD": 7,
+          "TARGET_TOO_FAR": 1,
+          "TARGET_TOO_CLOSE": 2,
+          "MISS_ENTRY_TOO_LOW": 6,
+          "VOLATILITY_TOO_HIGH": 2
+        },
+        "regimeAvgPnl": {
+          "BULL": 7.173
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 24,
+        "executionCount": 18,
+        "executionRate": 75.0,
+        "winCount": 9,
+        "winRate": 50.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 1,
+        "missEntryCount": 6,
+        "missEntryRate": 25.0,
+        "avgNetPnlPct": 7.214,
+        "cumulativeNetPnlPct": 129.854,
+        "mddPct": -13.93,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 2.55,
+        "reasonCounts": {
+          "ENTRY_TOO_AGGRESSIVE": 6,
+          "GOOD": 7,
+          "TARGET_TOO_FAR": 1,
+          "TARGET_TOO_CLOSE": 2,
+          "MISS_ENTRY_TOO_LOW": 6,
+          "VOLATILITY_TOO_HIGH": 2
+        },
+        "regimeAvgPnl": {
+          "BULL": 7.214
+        }
+      },
+      "diff": {
+        "winRateDiff": 0.0,
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.041,
+        "cumulativeNetPnlPctDiff": 0.731,
+        "mddPctDiff": 0.0,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2026-03-01",
+      "windowIndex": 18,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 540,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 20,
+        "executionCount": 8,
+        "executionRate": 40.0,
+        "winCount": 0,
+        "winRate": 0.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 0,
+        "missEntryCount": 12,
+        "missEntryRate": 60.0,
+        "avgNetPnlPct": -7.023,
+        "cumulativeNetPnlPct": -56.185,
+        "mddPct": -56.19,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": null,
+        "reasonCounts": {
+          "MISS_ENTRY_TOO_LOW": 12,
+          "VOLATILITY_TOO_HIGH": 7,
+          "ENTRY_TOO_AGGRESSIVE": 1
+        },
+        "regimeAvgPnl": {
+          "BULL": -7.023
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 20,
+        "executionCount": 8,
+        "executionRate": 40.0,
+        "winCount": 0,
+        "winRate": 0.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 0,
+        "missEntryCount": 12,
+        "missEntryRate": 60.0,
+        "avgNetPnlPct": -7.014,
+        "cumulativeNetPnlPct": -56.11,
+        "mddPct": -56.11,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": null,
+        "reasonCounts": {
+          "MISS_ENTRY_TOO_LOW": 12,
+          "VOLATILITY_TOO_HIGH": 7,
+          "ENTRY_TOO_AGGRESSIVE": 1
+        },
+        "regimeAvgPnl": {
+          "BULL": -7.014
+        }
+      },
+      "diff": {
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.009,
+        "cumulativeNetPnlPctDiff": 0.075,
+        "mddPctDiff": 0.08,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2026-04-01",
+      "windowIndex": 19,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 560,
+      "baseline": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "corrected": {
+        "status": "DATA_INSUFFICIENT",
+        "count": 0
+      },
+      "diff": {}
+    },
+    {
+      "window": "2026-05-01",
+      "windowIndex": 20,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 560,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 37,
+        "executionCount": 27,
+        "executionRate": 73.0,
+        "winCount": 1,
+        "winRate": 3.7,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 0,
+        "missEntryCount": 10,
+        "missEntryRate": 27.0,
+        "avgNetPnlPct": -4.316,
+        "cumulativeNetPnlPct": -116.523,
+        "mddPct": -130.2,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.8,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 23,
+          "MISS_ENTRY_TOO_LOW": 10,
+          "GOOD": 1,
+          "ENTRY_TOO_AGGRESSIVE": 3
+        },
+        "regimeAvgPnl": {
+          "BULL": -4.316
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 37,
+        "executionCount": 27,
+        "executionRate": 73.0,
+        "winCount": 1,
+        "winRate": 3.7,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 0,
+        "missEntryCount": 10,
+        "missEntryRate": 27.0,
+        "avgNetPnlPct": -4.289,
+        "cumulativeNetPnlPct": -115.797,
+        "mddPct": -129.51,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 1.82,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 23,
+          "MISS_ENTRY_TOO_LOW": 10,
+          "GOOD": 1,
+          "ENTRY_TOO_AGGRESSIVE": 3
+        },
+        "regimeAvgPnl": {
+          "BULL": -4.289
+        }
+      },
+      "diff": {
+        "winRateDiff": 0.0,
+        "missEntryRateDiff": 0.0,
+        "avgNetPnlPctDiff": 0.027,
+        "cumulativeNetPnlPctDiff": 0.726,
+        "mddPctDiff": 0.69,
+        "executionRateDiff": 0.0
+      }
+    },
+    {
+      "window": "2026-06-01",
+      "windowIndex": 21,
+      "correctionParamsUsed": true,
+      "pastSampleCount": 597,
+      "baseline": {
+        "status": "OK",
+        "recommendationCount": 3,
+        "executionCount": 3,
+        "executionRate": 100.0,
+        "winCount": 0,
+        "winRate": 0.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 0,
+        "missEntryCount": 0,
+        "missEntryRate": 0.0,
+        "avgNetPnlPct": 0.923,
+        "cumulativeNetPnlPct": 2.768,
+        "mddPct": -6.97,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 0.7,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 1,
+          "ENTRY_TOO_AGGRESSIVE": 2
+        },
+        "regimeAvgPnl": {
+          "BULL": 0.923
+        }
+      },
+      "corrected": {
+        "status": "OK",
+        "recommendationCount": 3,
+        "executionCount": 3,
+        "executionRate": 100.0,
+        "winCount": 0,
+        "winRate": 0.0,
+        "stopCount": 0,
+        "stopHitRate": 0.0,
+        "expiredCount": 0,
+        "missEntryCount": 0,
+        "missEntryRate": 0.0,
+        "avgNetPnlPct": 0.994,
+        "cumulativeNetPnlPct": 2.981,
+        "mddPct": -6.91,
+        "avgHoldingDays": 14.0,
+        "profitLossRatio": 0.72,
+        "reasonCounts": {
+          "VOLATILITY_TOO_HIGH": 1,
+          "ENTRY_TOO_AGGRESSIVE": 2
+        },
+        "regimeAvgPnl": {
+          "BULL": 0.994
+        }
+      },
+      "diff": {
+        "avgNetPnlPctDiff": 0.071,
+        "cumulativeNetPnlPctDiff": 0.213,
+        "mddPctDiff": 0.06,
+        "executionRateDiff": 0.0
+      }
+    }
+  ],
+  "baselineStats": {
+    "status": "OK",
+    "windowCount": 15,
+    "recommendationCount": 600,
+    "executionCount": 478,
+    "executionRate": 79.661,
+    "winCount": 96,
+    "winRate": 20.403,
+    "stopCount": 36,
+    "stopHitRate": 33.178,
+    "missEntryRate": 20.441,
+    "avgNetPnlPct": 2.493,
+    "cumulativeNetPnlPct": 1319.593,
+    "mddPct": -130.2,
+    "profitLossRatio": 1.905,
+    "reasonCounts": {
+      "VOLATILITY_TOO_HIGH": 144,
+      "GOOD_SIGNAL_WEAK_EXIT": 102,
+      "GOOD": 73,
+      "MISS_ENTRY_TOO_LOW": 122,
+      "ENTRY_TOO_AGGRESSIVE": 97,
+      "TARGET_TOO_FAR": 39,
+      "TARGET_TOO_CLOSE": 23
+    }
+  },
+  "correctedStats": {
+    "status": "OK",
+    "windowCount": 15,
+    "recommendationCount": 600,
+    "executionCount": 469,
+    "executionRate": 78.168,
+    "winCount": 94,
+    "winRate": 20.446,
+    "stopCount": 35,
+    "stopHitRate": 32.17,
+    "missEntryRate": 21.941,
+    "avgNetPnlPct": 2.552,
+    "cumulativeNetPnlPct": 1310.035,
+    "mddPct": -129.51,
+    "profitLossRatio": 1.989,
+    "reasonCounts": {
+      "VOLATILITY_TOO_HIGH": 147,
+      "GOOD_SIGNAL_WEAK_EXIT": 99,
+      "GOOD": 72,
+      "MISS_ENTRY_TOO_LOW": 131,
+      "ENTRY_TOO_AGGRESSIVE": 91,
+      "TARGET_TOO_FAR": 38,
+      "TARGET_TOO_CLOSE": 22
+    }
+  },
+  "diff": {
+    "winRateDiff": 0.043,
+    "stopHitRateDiff": -1.008,
+    "missEntryRateDiff": 1.5,
+    "avgNetPnlPctDiff": 0.059,
+    "cumulativeNetPnlPctDiff": -9.558,
+    "mddPctDiff": 0.69,
+    "executionRateDiff": -1.493
+  },
+  "generatedAt": "2026-06-14T14:55:24.407287"
+}
