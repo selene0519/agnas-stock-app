@@ -136,7 +136,7 @@ function ScoreBar({ label, value, color = "bg-emerald-500" }: { label: string; v
         <span className="font-mono text-slate-400">{pct.toFixed(0)}</span>
       </div>
       <div className="mt-0.5 h-1 w-full rounded-full bg-slate-800">
-        <div className={`h-1 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+        <div className={`h-1 rounded-full transition-all duration-500 ease-out ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -285,7 +285,7 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
   const reasons = moneReasonLines(item).slice(0, 3);
 
   return (
-    <div className="relative rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4">
+    <div className="relative rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4 transition-all duration-200 hover:border-emerald-700/60 hover:shadow-lg hover:shadow-emerald-950/40">
       <div className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -314,7 +314,7 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
         <div className="min-w-0"><div className="text-slate-500">위험 상태</div><div className={`font-semibold ${riskClass}`}>{riskText}</div></div>
       </div>
 
-      <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-950/50 px-3 py-2">
+      <div className="mt-3 rounded-md border border-slate-800/70 bg-slate-950/50 px-3 py-2">
         <div className="text-[11px] font-semibold text-slate-300">MONE 판단 이유</div>
         <ol className="mt-1 space-y-0.5 text-[11px] leading-5 text-slate-400">
           {reasons.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)}
@@ -330,7 +330,7 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
       <button
         type="button"
         onClick={() => onAnalyze(item)}
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-blue-500 active:scale-[0.98] active:brightness-90"
       >
         분석 보기 <ArrowRight size={14} />
       </button>
@@ -353,7 +353,7 @@ function WatchCard({ item, onSelect }: { item: any; onSelect: (item: any) => voi
     : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300";
 
   return (
-    <div onClick={() => onSelect(item)} className="cursor-pointer rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 transition-colors hover:border-amber-700/50 hover:bg-slate-900/80">
+    <div onClick={() => onSelect(item)} className="cursor-pointer rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 transition-all duration-200 hover:border-amber-700/50 hover:bg-slate-900/80 hover:shadow-md hover:shadow-amber-950/30 active:scale-[0.99]">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <span className="font-semibold text-slate-200">{displayName(item)}</span>
@@ -615,8 +615,8 @@ function JournalModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-slate-950 shadow-2xl ring-1 ring-slate-800">
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-slate-950 shadow-2xl ring-1 ring-slate-800 animate-in slide-in-from-right">
         <div className="sticky top-0 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 px-5 py-4 backdrop-blur">
           <h2 className="font-bold text-slate-100">운용 일지</h2>
           <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800"><X size={18} /></button>
@@ -1222,10 +1222,10 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   return (
     <>
       {/* 배경 오버레이 */}
-      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
 
-      {/* 패널 */}
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col overflow-y-auto bg-slate-950 shadow-2xl ring-1 ring-slate-800">
+      {/* 패널 — slide in from right */}
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col overflow-y-auto bg-slate-950 shadow-2xl ring-1 ring-slate-800 animate-in slide-in-from-right">
         {/* 헤더 */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 px-5 py-4 backdrop-blur">
           <div>
@@ -1661,15 +1661,15 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
   const watching = top.filter((i) => i.decisionBucket === "대기 관찰");
 
   return (
-    <div className="min-h-[140px] rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+    <div className="min-h-[140px] rounded-2xl border border-slate-800 bg-slate-950/50 p-3 transition-all duration-200 hover:border-slate-700 hover:shadow-md hover:shadow-slate-950/60">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-300">{modeLabel(cell.mode)} · {horizonLabel(cell.horizon)}</span>
-        <span className="text-[10px] text-slate-500">{cell.count}개</span>
+        <span className="rounded-full bg-slate-800/80 px-2 py-0.5 text-[10px] text-slate-400">{cell.count}</span>
       </div>
       {top.length === 0 ? (
         <div className="py-4 text-center text-[11px] text-slate-600">현재 조건 없음</div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {top.map((item) => {
             const bucket = String(item.decisionBucket || "");
             const isToday  = bucket === "오늘 진입";
@@ -1678,14 +1678,14 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
             const isWatch  = bucket === "관찰" || bucket === "대기 관찰";
             const isCaution = bucket === "주의";
             const ev = Number(item.expectedValue || 0);
-            const rowCls = isToday  ? "bg-emerald-950/40 border border-emerald-800/30"
+            const rowCls = isToday  ? "bg-emerald-950/40 border border-emerald-800/30 shadow-sm shadow-emerald-950/30"
               : isWait   ? "bg-sky-950/40 border border-sky-800/30"
               : isNext   ? "bg-blue-950/40 border border-blue-800/20"
-              : isWatch  ? "bg-slate-900/60"
+              : isWatch  ? "bg-slate-900/60 border border-slate-800/40"
               : isCaution ? "bg-red-950/30 border border-red-900/20 opacity-50"
-              : "bg-slate-950/50 opacity-60";
+              : "bg-slate-950/50 border border-transparent opacity-60";
             return (
-              <div key={item.symbol} onClick={() => onSelect(item)} className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:brightness-125 ${rowCls}`}>
+              <div key={item.symbol} onClick={() => onSelect(item)} className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-all duration-150 hover:brightness-125 active:scale-[0.99] ${rowCls}`}>
                 <div className="min-w-0 flex-1">
                   <span className="truncate text-[11px] font-medium text-slate-200">{displayName(item)}</span>
                   {isToday  && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">검토</span>}
@@ -1694,7 +1694,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
                   {isCaution && <span className="ml-1 rounded bg-red-700/50 px-1 text-[9px] text-red-300">주의</span>}
                   {isWatch && item.timingLabel && <span className="ml-1 rounded bg-amber-900/40 px-1 text-[9px] text-amber-400">{item.timingLabel}</span>}
                 </div>
-                <span className={`font-mono text-[10px] ${ev >= 1 ? "text-emerald-400" : ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
+                <span className={`shrink-0 font-mono text-[10px] [font-variant-numeric:tabular-nums] ${ev >= 1.5 ? "text-emerald-400" : ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
                   {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
                 </span>
               </div>
