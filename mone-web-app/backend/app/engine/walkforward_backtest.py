@@ -391,14 +391,19 @@ def _slice_rows(rows: list[dict], before_date: str) -> list[dict]:
 
 # ─── 레짐 감지 ───────────────────────────────────────────────────────────────
 
-def _detect_regime_at_date(cutoff_date: str, ohlcv_all: dict[str, list[dict]]) -> str:
+def _detect_regime_at_date(
+    cutoff_date: str,
+    ohlcv_all: dict[str, list[dict]],
+    index_key: str = "KOSPI",
+) -> str:
     """
-    cutoff_date 이전 KOSPI 데이터로 레짐 감지.
-    BULL: KOSPI > MA20 AND MA20 기울기 양수 (5일 전 대비)
-    BEAR: KOSPI < MA20 AND MA20 기울기 음수
+    cutoff_date 이전 지수 데이터로 레짐 감지.
+    KR: KOSPI, US: SPY
+    BULL: 지수 > MA20 AND MA20 기울기 양수 (5일 전 대비)
+    BEAR: 지수 < MA20 AND MA20 기울기 음수
     SIDE: 그 외
     """
-    kospi_rows = _slice_rows(ohlcv_all.get("KOSPI", []), cutoff_date)
+    kospi_rows = _slice_rows(ohlcv_all.get(index_key, []), cutoff_date)
     if len(kospi_rows) < 25:
         return "SIDE"
     c = _series(kospi_rows, "close")
@@ -437,8 +442,9 @@ def _generate_recs_at_date(
     atr_pct_max   = ec["atr_pct_max"]
     min_vol_ratio = ec["min_volume_ratio"]
 
-    # ── 레짐 감지 (cutoff_date 이전 KOSPI만 사용) ──────────────────────────
-    regime = _detect_regime_at_date(cutoff_date, ohlcv_all)
+    # ── 레짐 감지 (KR: KOSPI, US: SPY) ─────────────────────────────────────
+    index_key = "SPY" if market == "us" else "KOSPI"
+    regime = _detect_regime_at_date(cutoff_date, ohlcv_all, index_key)
     rp     = _REGIME_TRADE_PARAMS[regime]
 
     # BEAR 레짐에서 aggressive 모드 신규 진입 금지
@@ -447,9 +453,10 @@ def _generate_recs_at_date(
 
     effective_min_score = max(min_score, rp["min_score"])
 
+    _INDEX_SYMS = {"KOSPI", "SPY"}   # 지수는 추천 대상 제외
     recs: list[dict] = []
     for sym, rows in ohlcv_all.items():
-        if sym == "KOSPI":      # 지수 제외
+        if sym in _INDEX_SYMS:
             continue
         past_rows = _slice_rows(rows, cutoff_date)
         if len(past_rows) < 30:
