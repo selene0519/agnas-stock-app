@@ -37,46 +37,9 @@ const HORIZONS: Horizon[] = ["short", "swing", "mid"];
 type StrategyCell = { mode: Mode; horizon: Horizon; items: any[]; count: number; status: string };
 type MarketChoice = "auto" | "kr" | "us";
 
-type HomeBootMarketData = {
-  operationSummary?: any;
-  dataQuality?: any;
-  recommendations?: any;
-};
-
-function bootMarketData(bootData: BootPreloadData | null | undefined, market: "kr" | "us"): HomeBootMarketData {
-  if (!bootData) return {};
-  return market === "kr"
-    ? {
-        operationSummary: bootData.krOperationSummary,
-        dataQuality: bootData.krDataQuality,
-        recommendations: bootData.krRecommendations,
-      }
-    : {
-        operationSummary: bootData.usOperationSummary,
-        dataQuality: bootData.usDataQuality,
-        recommendations: bootData.usRecommendations,
-      };
-}
-
-function hasBootMarketData(data: HomeBootMarketData) {
-  return Boolean(data.operationSummary || data.dataQuality || data.recommendations);
-}
-
-function bootRecommendationMatrix(recommendations: any, market: "kr" | "us"): StrategyCell[] {
-  const bootItems = dedupeBySymbol(Array.isArray(recommendations?.items) ? recommendations.items : [])
-    .slice(0, 5)
-    .map((item: any) => ({
-      ...item,
-      market: item.market || market,
-      _mode: item._mode || item.mode || "balanced",
-      _horizon: item._horizon || item.horizon || "swing",
-    }));
-  return MODES.flatMap((mode) =>
-    HORIZONS.map((horizon) => {
-      const items = mode === "balanced" && horizon === "swing" ? bootItems : [];
-      return { mode, horizon, items, count: items.length, status: recommendations?.status || "BOOT_CACHE" } satisfies StrategyCell;
-    })
-  );
+function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, market: "kr" | "us"): any | null {
+  if (!bootData) return null;
+  return market === "kr" ? (bootData.krHomeSummary ?? null) : (bootData.usHomeSummary ?? null);
 }
 
 function normalizeDateText(value: any) {
@@ -1847,16 +1810,25 @@ export default function HomePage({
   }, [onNavigate, selectedMarket]);
 
   const applyBootDataForMarket = useCallback((market: "kr" | "us") => {
-    const cached = bootMarketData(bootData, market);
-    if (!hasBootMarketData(cached)) return false;
+    const result = bootMarketHomeSummary(bootData, market);
+    if (!result) return false;
 
-    if (cached.dataQuality) setDataHealth(normalizeDataHealth(cached.dataQuality));
-    if (cached.operationSummary) setOperationSummary(cached.operationSummary);
-    if (cached.recommendations) {
-      const bootMatrix = bootRecommendationMatrix(cached.recommendations, market);
-      setMatrix(bootMatrix);
-      setAllItems(bootMatrix.flatMap((cell) => cell.items));
-    }
+    const matrixResult: StrategyCell[] = MODES.flatMap((mode) =>
+      HORIZONS.map((horizon) => {
+        const cell = (result.matrix as any)?.[`${mode}_${horizon}`] || {};
+        const cellItems = dedupeBySymbol(Array.isArray(cell.items) ? cell.items : [])
+          .slice(0, 5)
+          .map((item: any) => ({ ...item, _mode: mode, _horizon: horizon }));
+        return { mode, horizon, items: cellItems, count: Number(cell.count || cellItems.length || 0), status: String(cell.status || "OK") } satisfies StrategyCell;
+      })
+    );
+    const h = result.holdings || {};
+    setHoldings(dedupeBySymbol(Array.isArray(h.items) ? h.items : []));
+    setSummary(h.summary || null);
+    setMatrix(matrixResult);
+    setMarketRegime(normalizeMarketRegime(result.marketRegime, market));
+    setDataHealth(normalizeDataHealth(result.dataHealth));
+    setAllItems(matrixResult.flatMap((cell) => cell.items));
     setLoading(false);
     setRefreshWarning("");
     return true;
