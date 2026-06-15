@@ -282,6 +282,8 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [hideDataPending, setHideDataPending] = useState(false);
   const [hideBlockedOnly, setHideBlockedOnly] = useState(false);
+  const [filterEvPositive, setFilterEvPositive] = useState(false);
+  const [filterWinRate40, setFilterWinRate40] = useState(false);
   const [nameQuery, setNameQuery] = useState("");
   const [sessionTick, setSessionTick] = useState(0);
   const autoMarket = getDefaultMarketBySession(new Date(Date.now() + sessionTick * 0));
@@ -470,6 +472,16 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
     if (hideBlockedOnly) {
       result = result.filter((item) => String(item.tradeBlockStatus || "") !== "BLOCK");
     }
+    if (filterEvPositive) {
+      result = result.filter((item) => Number(item.expectedValue ?? 0) > 0);
+    }
+    if (filterWinRate40) {
+      result = result.filter((item) => {
+        const wr = item.calibratedWinRate;
+        if (wr == null) return true; // null이면 필터 적용 안 함
+        return Number(wr) >= 40;
+      });
+    }
     if (nameQuery.trim()) {
       const needle = nameQuery.trim().toLowerCase();
       result = result.filter((item) =>
@@ -477,7 +489,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
       );
     }
     return result;
-  }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery]);
+  }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, nameQuery]);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -489,6 +501,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
 
   const activeFilterCount = [
     minScore > 0, tagFilter != null, hideDataPending, hideBlockedOnly,
+    filterEvPositive, filterWinRate40,
     nameQuery.trim() !== "", sectorFilter != null, groupFilter != null,
   ].filter(Boolean).length;
 
@@ -991,6 +1004,23 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                 </div>
               </div>
 
+              {/* EV·실증 승률 필터 */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">기댓값·실증 승률</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={filterEvPositive} onChange={(e) => setFilterEvPositive(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                    EV 양수만
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={filterWinRate40} onChange={(e) => setFilterWinRate40(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                    실증 승률 40%+
+                  </label>
+                </div>
+              </div>
+
               {/* 결과 요약 + 전체 초기화 */}
               <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
                 <span className="text-xs text-slate-500">
@@ -999,7 +1029,8 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                 {activeFilterCount > 0 && (
                   <button onClick={() => {
                     setMinScore(0); setTagFilter(null); setHideDataPending(false);
-                    setHideBlockedOnly(false); setNameQuery(""); setSectorFilter(null); setGroupFilter(null);
+                    setHideBlockedOnly(false); setFilterEvPositive(false); setFilterWinRate40(false);
+                    setNameQuery(""); setSectorFilter(null); setGroupFilter(null);
                   }} className="rounded-lg border border-slate-700 px-3 py-1 text-[11px] text-slate-400 hover:bg-slate-800">
                     필터 전체 초기화
                   </button>
