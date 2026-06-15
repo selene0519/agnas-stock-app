@@ -6,6 +6,7 @@ import PositionManager from "../PositionManager";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo } from "@/lib/moneDisplay";
 import { getUserId } from "@/lib/userId";
+import type { BootPreloadData } from "@/lib/bootPreload";
 
 type Market = "all" | "kr" | "us";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
@@ -22,6 +23,7 @@ type BrokerStatus = {
 type HoldingsPageProps = {
   userToken?: string | null;
   onNavigate?: (page: string) => void;
+  bootData?: BootPreloadData | null;
 };
 
 type EditableHolding = {
@@ -588,10 +590,16 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
 }
 
 // ── 메인 페이지 ────────────────────────────────────────────────────────
-export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProps) {
+export default function HoldingsPage({ userToken, onNavigate, bootData }: HoldingsPageProps) {
+  const _bootHoldings = (() => {
+    const bc = bootData?.holdingsCache;
+    if (bc && Array.isArray(bc.items) && bc.items.length > 0) return bc;
+    return readHoldingsCache("all")?.data ?? null;
+  })();
+
   const [market, setMarket] = useState<Market>("all");
-  const [data, setData] = useState<any>(() => readHoldingsCache("all")?.data ?? { items: [], summary: {} });
-  const [loading, setLoading] = useState(() => !readHoldingsCache("all"));
+  const [data, setData] = useState<any>(_bootHoldings ?? { items: [], summary: {} });
+  const [loading, setLoading] = useState(!_bootHoldings);
   const [editKey, setEditKey] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditableHolding | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -707,7 +715,7 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
   }
 
   useEffect(() => {
-    const hasCached = Boolean(readHoldingsCache(market));
+    const hasCached = Boolean(_bootHoldings || readHoldingsCache(market));
     load({ background: hasCached });
   }, [market]);
 

@@ -246,7 +246,7 @@ export default function App() {
       case "stocks":
         return <StocksPage onNavigate={(p) => setPage(p as PageId)} bootData={bootState.bootData} />;
       case "holdings":
-        return <HoldingsPage userToken={userToken || null} onNavigate={(p) => setPage(p as PageId)} />;
+        return <HoldingsPage userToken={userToken || null} onNavigate={(p) => setPage(p as PageId)} bootData={bootState.bootData} />;
       case "chart":
         return <ChartPage />;
       case "news":

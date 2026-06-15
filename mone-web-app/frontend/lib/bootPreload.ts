@@ -7,6 +7,7 @@ export type BootPreloadData = {
   usHomeSummary?: any;
   krStocksCache?: any;   // balanced/swing recommendations for StocksPage
   usStocksCache?: any;
+  holdingsCache?: any;
 };
 
 export type BootPreloadState = {
@@ -109,18 +110,19 @@ async function settleBootJson(path: string): Promise<{ ok: true; value: any } | 
 export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
   onProgress?.({ progress: 20, message: "서버에 연결하는 중...", step: "server" });
 
-  // All 5 requests fire simultaneously.
+  // All 6 requests fire simultaneously.
   // On Render.com cold start (~30s), they all queue together and are served at once —
   // much faster than the previous sequential approach (health → home → stocks = 3× waits).
-  const [, krHomeSummary, usHomeSummary, krStocksCache, usStocksCache] = await Promise.all([
+  const [, krHomeSummary, usHomeSummary, krStocksCache, usStocksCache, holdingsCache] = await Promise.all([
     settleBootJson("/mone-api/health"),
     settleBootJson("/mone-api/home/summary?market=kr&limit=12"),
     settleBootJson("/mone-api/home/summary?market=us&limit=12"),
     settleBootJson("/mone-api/final/recommendations?market=kr&mode=balanced&horizon=swing&limit=50"),
     settleBootJson("/mone-api/final/recommendations?market=us&mode=balanced&horizon=swing&limit=50"),
+    settleBootJson("/mone-api/api/holdings-clean?market=all&limit=500"),
   ]);
 
-  const pairs = { krHomeSummary, usHomeSummary, krStocksCache, usStocksCache };
+  const pairs = { krHomeSummary, usHomeSummary, krStocksCache, usStocksCache, holdingsCache };
   const bootData: BootPreloadData = {};
   const errors: string[] = [];
   Object.entries(pairs).forEach(([key, result]) => {

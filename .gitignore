@@ -121,3 +121,22 @@ reports/backtest_summary*.csv
 # runtime-generated data files (not secrets but not for git)
 data/history/
 data/stockapp/kis_current_price_*.csv
+
+# 개인 포트폴리오/관심종목 (퍼블릭 저장소 보호)
+holdings_kr.csv
+holdings_us.csv
+watchlist_kr.csv
+watchlist_us.csv
+
+# 루트 레벨 백업 Python 파일
+/app_backup_*.py
+/app_v*.py
+/app_weird*.py
+/run_auto_accumulator.py
+
+# 로컬 경로/사용자명 노출 방지 (MONE 작업 결과 파일)
+/MONE_*.json
+/MONE_*.py
+/CHECK_STOCK_APP_DATA_RANGE.py
+/add_saturday_us_collect.bat
+/data/market/ohlcv/_import_summary.json
