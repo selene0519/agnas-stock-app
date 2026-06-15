@@ -5311,6 +5311,44 @@ def _install_mone_close_validation_routes_v1():
             if isinstance(values, list):
                 next_actions.extend([str(value) for value in values if value])
         session_state = session.get_price_session(normalized_market)
+        recommendation_basis_date = (
+            pipeline_summary.get("recommendationLatestDate")
+            or quality.get("latestDataDate")
+            or backtest_summary.get("recommendationDate")
+            or backtest_summary.get("latestDate")
+        )
+        current_price_basis_date = (
+            pipeline_summary.get("snapshotLatestDate")
+            or quality.get("currentPriceLatestDate")
+            or quality.get("latestDataDate")
+        )
+        ohlcv_basis_date = (
+            pipeline_summary.get("ohlcvLatestDate")
+            or backtest_summary.get("latestOhlcvDate")
+        )
+        basis_dates = {
+            "recommendation": recommendation_basis_date,
+            "currentPrice": current_price_basis_date,
+            "ohlcv": ohlcv_basis_date,
+            "validation": backtest_summary.get("recommendationDate") or backtest_summary.get("latestDate"),
+        }
+        comparable_basis_dates = [str(value)[:10] for value in (recommendation_basis_date, current_price_basis_date, ohlcv_basis_date) if value]
+        unique_basis_dates = sorted(set(comparable_basis_dates))
+        basis_aligned = len(unique_basis_dates) <= 1
+        if basis_aligned:
+            basis_alignment_status = "ALIGNED"
+            basis_alignment_message = f"All primary bases are {unique_basis_dates[0]}." if unique_basis_dates else "Basis dates unavailable."
+        else:
+            basis_alignment_status = "MIXED_BASIS"
+            basis_alignment_message = (
+                f"Recommendation/current/OHLCV bases differ: "
+                f"recommendation={recommendation_basis_date or '-'}, "
+                f"current={current_price_basis_date or '-'}, "
+                f"ohlcv={ohlcv_basis_date or '-'}. "
+                "This can be normal intraday before the daily OHLCV close is collected."
+            )
+            active_gaps.append("basis_dates_mixed")
+            next_actions.append("After market close, refresh OHLCV and regenerate validation to fully align basis dates.")
         return {
             "status": "OK",
             "market": normalized_market,
@@ -5320,11 +5358,15 @@ def _install_mone_close_validation_routes_v1():
             "dataStatus": quality.get("dataStatus") or pipeline_summary.get("dataStatus") or "UNKNOWN",
             "priceDataStatus": quality.get("priceDataStatus") or pipeline_summary.get("currentPriceSourceStatus") or "UNKNOWN",
             "recommendationStatus": quality.get("recommendationStatus") or pipeline_summary.get("recommendationStatus") or "UNKNOWN",
-            "recommendationDate": backtest_summary.get("recommendationDate") or quality.get("latestDataDate") or pipeline_summary.get("recommendationLatestDate"),
+            "recommendationDate": recommendation_basis_date,
             "generatedAt": backtest_summary.get("generatedAt") or quality.get("latestFileModifiedAt") or "",
-            "currentPriceBasisDate": quality.get("latestDataDate") or pipeline_summary.get("snapshotLatestDate"),
-            "ohlcvLatestDate": backtest_summary.get("latestOhlcvDate") or pipeline_summary.get("ohlcvLatestDate"),
+            "currentPriceBasisDate": current_price_basis_date,
+            "ohlcvLatestDate": ohlcv_basis_date,
             "snapshotLatestDate": pipeline_summary.get("snapshotLatestDate"),
+            "basisDates": basis_dates,
+            "basisAligned": basis_aligned,
+            "basisAlignmentStatus": basis_alignment_status,
+            "basisAlignmentMessage": basis_alignment_message,
             "activeGaps": list(dict.fromkeys(active_gaps))[:8],
             "nextActions": list(dict.fromkeys(next_actions))[:8],
             "backtestSummary": backtest_summary,

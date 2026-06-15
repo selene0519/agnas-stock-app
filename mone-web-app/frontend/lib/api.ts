@@ -489,6 +489,8 @@ export const mone = {
     apiGet<any>(`/api/chart/index/${p.indexSymbol}`, { market: p.market, limit: p.limit }, signal),
   chartAnalysis: (p: { symbol: string; market: Market }, signal?: AbortSignal) =>
     apiGet<any>(`/api/chart/analysis/${p.symbol}`, { market: p.market }, signal),
+  patternStrategy: (p: { symbol: string; market: Market }, signal?: AbortSignal) =>
+    apiGet<any>("/api/pattern/strategy", p, signal),
   // Phase 5 — Adaptive Score
   adaptiveWeights: (p?: { limit?: number }) =>
     apiGet<ApiList>("/api/insights/adaptive-weights", p),

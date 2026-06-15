@@ -587,6 +587,7 @@ export function moneReasonLines(item: any): string[] {
     item?.decisionReason,
     item?.reason,
     item?.patternStrategy?.reason,
+    item?.patternStrategy?.message,
     item?.patternReason,
     item?.entryReason,
     item?.summary,
@@ -595,7 +596,9 @@ export function moneReasonLines(item: any): string[] {
   if (explicit !== "-") {
     const split = explicit
       .replace(/\r?\n/g, " ")
+      .replace(/(\d)\.(\d)/g, "$1__DECIMAL__$2")
       .split(/(?:[.!?。]| · | \| )\s*/)
+      .map((line) => line.replace(/__DECIMAL__/g, "."))
       .map((line) => line.trim())
       .filter((line) => line.length >= 4 && !/^[-–—]+$/.test(line));
     if (split.length) return split.slice(0, 3);

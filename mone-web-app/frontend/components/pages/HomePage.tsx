@@ -2272,6 +2272,12 @@ export default function HomePage({
               <div className="mt-1 font-mono text-slate-200">{operationSummary.ohlcvLatestDate || "-"}</div>
             </div>
           </div>
+          {operationSummary.basisAlignmentStatus === "MIXED_BASIS" && (
+            <div className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              <span className="font-semibold">Mixed basis</span>
+              <span className="ml-2 text-amber-100/80">{operationSummary.basisAlignmentMessage}</span>
+            </div>
+          )}
           {((operationSummary.activeGaps || []).length > 0 || (operationSummary.nextActions || []).length > 0) && (
             <details className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400">
               <summary className="cursor-pointer font-semibold text-slate-300">Gaps and next actions</summary>
