@@ -108,6 +108,22 @@ def _status_from_rank(rank: int) -> str:
     return "ERROR"
 
 
+def _get_recommendation_data_versions() -> dict:
+    """Return ISO timestamps of when KR and US recommendation files were last modified."""
+    from datetime import datetime
+    import glob as _glob
+    result: dict = {}
+    for market in ("kr", "us"):
+        pattern = str(data.REPO_ROOT / "reports" / f"mone_v36_final_recommendations_{market}_*.csv")
+        files = _glob.glob(pattern)
+        if files:
+            latest_mtime = max(os.path.getmtime(f) for f in files)
+            result[market] = datetime.fromtimestamp(latest_mtime).strftime("%Y-%m-%dT%H:%M:%S")
+        else:
+            result[market] = None
+    return result
+
+
 def _health_step(name: str, status: str, detail: str, *, source: str = "", next_action: str = "") -> dict:
     return {
         "name": name,
@@ -253,6 +269,7 @@ def _build_health_payload() -> dict:
         "dataSources": data_sources,
         "steps": steps,
         "checklist11to45": checklist,
+        "dataVersions": _get_recommendation_data_versions(),
     }
     _HEALTH_CACHE["ts"] = now
     _HEALTH_CACHE["payload"] = payload
