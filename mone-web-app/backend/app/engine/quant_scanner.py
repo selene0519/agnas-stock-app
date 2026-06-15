@@ -1577,9 +1577,19 @@ def score_candidate(
         if risk_pct > 0:
             rr_actual = round(reward_pct / risk_pct, 2)
             rr_ok = rr_actual >= min_rr
-            # KR 왕복 매매비용: 매수수수료 0.015% + 매도세 0.18% + 슬리피지 0.1% ≈ 0.295%
-            # US 왕복 매매비용: 수수료 0.1% + 슬리피지 0.05% ≈ 0.15%
-            _TRADE_COST = 0.295 if context.market == "kr" else 0.15
+            # 동적 슬리피지: 거래량 비율 기반 (저유동성 종목일수록 슬리피지 증가)
+            _vr = ind.get("volumeRatio20") or 1.0
+            if _vr >= 1.5:
+                _slip = 0.07   # 거래 활발: 슬리피지 최소
+            elif _vr >= 0.8:
+                _slip = 0.10   # 평균 수준
+            elif _vr >= 0.4:
+                _slip = 0.18   # 거래 부진
+            else:
+                _slip = 0.28   # 저유동성
+            # KR: 세금 0.18% + 수수료 0.03% + 동적슬리피지
+            # US: 수수료 0.10% + 동적슬리피지 절반
+            _TRADE_COST = (0.21 + _slip) if context.market == "kr" else (0.10 + _slip * 0.5)
             ev_gross = calibrated_prob * reward_pct - (1 - calibrated_prob) * risk_pct
             ev = round(ev_gross - _TRADE_COST, 2)
 
