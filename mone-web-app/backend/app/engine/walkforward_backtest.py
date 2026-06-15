@@ -212,7 +212,7 @@ _REGIME_TRADE_PARAMS: dict[str, dict] = {
         "hold_days":      {"short": 3, "swing": 7, "mid": 22},
         "entry_window":   {"short": 2, "swing": 3, "mid": 4},
         "trail_pct":      None,          # 고정 손절
-        "min_score":      50.0,
+        "min_score":      60.0,          # 횡보장: 60점 미만 제외 (보정 데이터 반영)
     },
     "BEAR": {
         # 하락장: 초단기+보수적, 신규 공격형 금지
@@ -222,7 +222,7 @@ _REGIME_TRADE_PARAMS: dict[str, dict] = {
         "hold_days":      {"short": 2, "swing": 5, "mid": 15},
         "entry_window":   {"short": 2, "swing": 2, "mid": 3},
         "trail_pct":      0.04,
-        "min_score":      55.0,
+        "min_score":      65.0,          # 약세장: 65점 미만 제외 (보정 데이터 반영)
     },
 }
 
