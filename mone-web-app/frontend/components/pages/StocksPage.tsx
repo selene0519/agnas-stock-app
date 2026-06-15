@@ -43,6 +43,11 @@ type HoldingEditRow = {
 
 const RECOMMENDATION_LIMIT = 50;
 
+// Module-level re-entry cache — survives unmount/remount on navigation
+const STOCKS_CACHE_TTL = 5 * 60 * 1000; // 5 min
+type StocksCacheEntry = { items: any[]; market: "kr" | "us"; mode: Mode; horizon: Horizon; ts: number };
+let _stocksCache: StocksCacheEntry | null = null;
+
 function Cell({
   label,
   value,
@@ -253,11 +258,14 @@ function recommendationBadgeLabel(item: any, actionCode: string, actionText: str
 }
 
 export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (page: string) => void; bootData?: BootPreloadData | null } = {}) {
-  // Resolve boot cache for the default session market (balanced/swing only)
+  // Resolve initial items: prefer module-level re-entry cache, then boot preload data
   const _initBootItems = (() => {
+    // 1. Re-entry: module cache (user navigated away and came back)
+    if (_stocksCache && Date.now() - _stocksCache.ts < STOCKS_CACHE_TTL) return _stocksCache.items;
+    // 2. First load: boot preload from the loading screen (balanced/swing only)
     const initMarket = getDefaultMarketBySession(new Date());
-    const cache = initMarket === "us" ? bootData?.usStocksCache : bootData?.krStocksCache;
-    return Array.isArray(cache?.items) && cache.items.length > 0 ? (cache.items as any[]) : null;
+    const bc = initMarket === "us" ? bootData?.usStocksCache : bootData?.krStocksCache;
+    return Array.isArray(bc?.items) && bc.items.length > 0 ? (bc.items as any[]) : null;
   })();
   const bootSeedRef = useRef(Boolean(_initBootItems));
 
@@ -408,12 +416,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }, []);
 
   useEffect(() => {
-    // Skip the very first fetch when boot-seeded data covers the default balanced/swing params
-    if (bootSeedRef.current && mode === "balanced" && horizon === "swing" && refreshVersion === 0) {
+    // Skip the very first fetch when cached/pre-seeded data already covers current params
+    if (bootSeedRef.current) {
+      const cacheOk = _stocksCache && Date.now() - _stocksCache.ts < STOCKS_CACHE_TTL &&
+        _stocksCache.market === resolvedMarket && _stocksCache.mode === mode && _stocksCache.horizon === horizon;
+      const bootOk = !cacheOk && mode === "balanced" && horizon === "swing" && refreshVersion === 0;
       bootSeedRef.current = false;
-      return;
+      if (cacheOk || bootOk) return;
     }
-    bootSeedRef.current = false;
 
     const controller = new AbortController();
     let active = true;
@@ -456,7 +466,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           setLoadError(data.error || "추천 후보를 불러오지 못했습니다.");
           return;
         }
-        setItems(dedupeBySymbol(Array.isArray(data.items) ? data.items : []));
+        const deduped = dedupeBySymbol(Array.isArray(data.items) ? data.items : []);
+        setItems(deduped);
+        // Save to module cache so re-entry is instant
+        _stocksCache = { items: deduped, market: resolvedMarket, mode, horizon, ts: Date.now() };
         if (data?.status && data.status !== "OK" && data.status !== "NO_DATA") {
           setLoadError(`추천 데이터 상태: ${data.status}`);
         }

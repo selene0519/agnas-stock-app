@@ -42,6 +42,27 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
   return market === "kr" ? (bootData.krHomeSummary ?? null) : (bootData.usHomeSummary ?? null);
 }
 
+// Module-level re-entry cache: preserves data when user navigates away and back
+const HOME_PAGE_CACHE_TTL = 5 * 60 * 1000; // 5 min
+type HomeCacheEntry = {
+  matrix: StrategyCell[];
+  holdings: any[];
+  summary: any;
+  marketRegime: any;
+  dataHealth: any;
+  allItems: any[];
+  ts: number;
+};
+const _homeCache: Partial<Record<"kr" | "us", HomeCacheEntry>> = {};
+
+function readHomeCache(market: "kr" | "us"): HomeCacheEntry | null {
+  const c = _homeCache[market];
+  return c && Date.now() - c.ts < HOME_PAGE_CACHE_TTL ? c : null;
+}
+function writeHomeCache(market: "kr" | "us", e: Omit<HomeCacheEntry, "ts">) {
+  _homeCache[market] = { ...e, ts: Date.now() };
+}
+
 function normalizeDateText(value: any) {
   const raw = String(value || "").trim();
   if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
@@ -1755,7 +1776,6 @@ export default function HomePage({
   const [summary, setSummary] = useState<any>(null);
   const [marketRegime, setMarketRegime] = useState<any>(null);
   const [dataHealth, setDataHealth] = useState<any>(null);
-  const [operationSummary, setOperationSummary] = useState<any>(null);
   const [loading, setLoading] = useState(!bootData || !Object.keys(bootData).length);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshWarning, setRefreshWarning] = useState("");
@@ -1809,10 +1829,23 @@ export default function HomePage({
     onNavigate?.("chart");
   }, [onNavigate, selectedMarket]);
 
-  const applyBootDataForMarket = useCallback((market: "kr" | "us") => {
+  const applyCachedOrBootState = useCallback((market: "kr" | "us") => {
+    // 1. Re-entry: use module-level cache (user navigated away and came back)
+    const cached = readHomeCache(market);
+    if (cached) {
+      setMatrix(cached.matrix);
+      setHoldings(cached.holdings);
+      setSummary(cached.summary);
+      setMarketRegime(cached.marketRegime);
+      setDataHealth(cached.dataHealth);
+      setAllItems(cached.allItems);
+      setLoading(false);
+      setRefreshWarning("");
+      return true;
+    }
+    // 2. First load: use boot preload data from the loading screen
     const result = bootMarketHomeSummary(bootData, market);
     if (!result) return false;
-
     const matrixResult: StrategyCell[] = MODES.flatMap((mode) =>
       HORIZONS.map((horizon) => {
         const cell = (result.matrix as any)?.[`${mode}_${horizon}`] || {};
@@ -1835,7 +1868,7 @@ export default function HomePage({
   }, [bootData]);
 
   async function load(options: { background?: boolean } = {}) {
-    const hasCurrentData = options.background || allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth || operationSummary);
+    const hasCurrentData = options.background || allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth);
     if (hasCurrentData) {
       setRefreshing(true);
       setLoading(false);
@@ -1859,21 +1892,22 @@ export default function HomePage({
       );
 
       const h = result.holdings || {};
-      setHoldings(dedupeBySymbol(Array.isArray(h.items) ? h.items : []));
-      setSummary(h.summary || null);
+      const holdingItems = dedupeBySymbol(Array.isArray(h.items) ? h.items : []);
+      const holdingSummary = h.summary || null;
+      const regime = normalizeMarketRegime(result.marketRegime, selectedMarket);
+      const health = normalizeDataHealth(result.dataHealth);
+      const allItemsFlat = matrixResult.flatMap((cell) => cell.items);
+      setHoldings(holdingItems);
+      setSummary(holdingSummary);
       setMatrix(matrixResult);
-      setMarketRegime(normalizeMarketRegime(result.marketRegime, selectedMarket));
-      setDataHealth(normalizeDataHealth(result.dataHealth));
-      setAllItems(matrixResult.flatMap((cell) => cell.items));
-      mone.operationSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" })
-        .then((payload) => setOperationSummary(payload || null))
-        .catch(() => {
-          if (!hasCurrentData) setOperationSummary(null);
-          else setRefreshWarning("운영 요약 갱신에 실패해 기존 값을 유지합니다.");
-        });
+      setMarketRegime(regime);
+      setDataHealth(health);
+      setAllItems(allItemsFlat);
+      // Save to module cache so re-entry is instant
+      writeHomeCache(selectedMarket, { matrix: matrixResult, holdings: holdingItems, summary: holdingSummary, marketRegime: regime, dataHealth: health, allItems: allItemsFlat });
     } catch {
       if (!hasCurrentData) {
-        setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setDataHealth(null); setOperationSummary(null);
+        setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setDataHealth(null);
       } else {
         setRefreshWarning("데이터 갱신에 실패해 기존 값을 유지합니다.");
       }
@@ -1899,8 +1933,8 @@ export default function HomePage({
 
   useEffect(() => {
     if (clientReady) {
-      const usedBootData = applyBootDataForMarket(selectedMarket);
-      load({ background: usedBootData });
+      const hadCache = applyCachedOrBootState(selectedMarket);
+      load({ background: hadCache });
     }
   }, [clientReady, selectedMarket]);
 
@@ -2201,6 +2235,41 @@ export default function HomePage({
         </div>
       )}
 
+      {/* 마켓 레짐 배너 */}
+      {marketRegime && (
+        <div className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 text-xs ${
+          marketRegime.regime === "BULL"
+            ? "border-emerald-500/25 bg-emerald-500/8"
+            : marketRegime.regime === "BEAR"
+              ? "border-red-500/25 bg-red-500/8"
+              : "border-amber-500/25 bg-amber-500/8"
+        }`}>
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-bold ${
+            marketRegime.regime === "BULL" ? "bg-emerald-500/20 text-emerald-300"
+            : marketRegime.regime === "BEAR" ? "bg-red-500/20 text-red-300"
+            : "bg-amber-500/20 text-amber-300"
+          }`}>
+            {marketRegime.regime === "BULL" ? "↑" : marketRegime.regime === "BEAR" ? "↓" : "→"}
+          </span>
+          <span className={`font-semibold ${
+            marketRegime.regime === "BULL" ? "text-emerald-300"
+            : marketRegime.regime === "BEAR" ? "text-red-300"
+            : "text-amber-300"
+          }`}>
+            {marketRegime.regime === "BULL" ? "강세장" : marketRegime.regime === "BEAR" ? "약세장" : "중립장"}
+          </span>
+          <span className="text-slate-500">{marketRegime.benchmark}</span>
+          {marketRegime.distanceMa20Pct != null && (
+            <span className={`font-mono ${Number(marketRegime.distanceMa20Pct) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+              20MA {Number(marketRegime.distanceMa20Pct) >= 0 ? "+" : ""}{Number(marketRegime.distanceMa20Pct).toFixed(1)}%
+            </span>
+          )}
+          {marketRegime.regime === "BEAR" && (
+            <span className="ml-auto font-medium text-red-300">진입 기준 강화 적용 중</span>
+          )}
+        </div>
+      )}
+
       {!loading && (
         <TodayConclusionCard
           regime={marketRegime}
@@ -2209,57 +2278,6 @@ export default function HomePage({
           watchCount={watchItems.length}
           riskCount={riskCount}
         />
-      )}
-
-      {!loading && operationSummary && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="text-sm font-semibold text-slate-100">Operation status</div>
-              <div className="mt-1 text-xs text-slate-500">
-                {String(operationSummary.market || selectedMarket).toUpperCase()} / {operationSummary.sessionLabel || sessionStatus}
-              </div>
-            </div>
-            <span className={`w-fit rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-              ["ERROR", "NO_DATA"].includes(String(operationSummary.dataStatus || "").toUpperCase())
-                ? "border-red-500/30 bg-red-500/10 text-red-300"
-                : String(operationSummary.dataStatus || "").toUpperCase() === "PARTIAL"
-                  ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
-                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-            }`}>
-              {operationSummary.dataStatus || "UNKNOWN"}
-            </span>
-          </div>
-          <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
-            <div className="rounded-xl bg-slate-950/50 px-3 py-2">
-              <div className="text-slate-500">Recommendation basis</div>
-              <div className="mt-1 font-mono text-slate-200">{operationSummary.recommendationDate || operationSummary.generatedAt || "-"}</div>
-            </div>
-            <div className="rounded-xl bg-slate-950/50 px-3 py-2">
-              <div className="text-slate-500">Current price basis</div>
-              <div className="mt-1 font-mono text-slate-200">{operationSummary.currentPriceBasisDate || operationSummary.priceDataStatus || "-"}</div>
-            </div>
-            <div className="rounded-xl bg-slate-950/50 px-3 py-2">
-              <div className="text-slate-500">Chart/OHLCV basis</div>
-              <div className="mt-1 font-mono text-slate-200">{operationSummary.ohlcvLatestDate || "-"}</div>
-            </div>
-          </div>
-          {operationSummary.basisAlignmentStatus === "MIXED_BASIS" && (
-            <div className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-              <span className="font-semibold">Mixed basis</span>
-              <span className="ml-2 text-amber-100/80">{operationSummary.basisAlignmentMessage}</span>
-            </div>
-          )}
-          {((operationSummary.activeGaps || []).length > 0 || (operationSummary.nextActions || []).length > 0) && (
-            <details className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400">
-              <summary className="cursor-pointer font-semibold text-slate-300">Gaps and next actions</summary>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <div>{(operationSummary.activeGaps || []).slice(0, 4).map((item: string) => <div key={item}>gap: {item}</div>)}</div>
-                <div>{(operationSummary.nextActions || []).slice(0, 4).map((item: string) => <div key={item}>next: {item}</div>)}</div>
-              </div>
-            </details>
-          )}
-        </div>
       )}
 
       {!loading && dashboardAlerts.length > 0 && (() => {
