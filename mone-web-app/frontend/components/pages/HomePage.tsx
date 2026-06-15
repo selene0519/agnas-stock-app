@@ -284,6 +284,12 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
   const confidence = probabilityText(item, score > 0 ? `${score.toFixed(0)}점` : "-");
   const reasons = moneReasonLines(item).slice(0, 3);
 
+  // 앙상블/실증 뱃지 — 샘플 수 5개 이상일 때만 표시
+  const calibCount = Number(item.calibrationCount ?? 0);
+  const showCalibBadges = calibCount >= 5;
+  const ensembleScore = item.ensembleScore != null ? Number(item.ensembleScore) : null;
+  const calibratedWinRate = item.calibratedWinRate != null ? Number(item.calibratedWinRate) : null;
+
   return (
     <div className="relative rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4">
       <div className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
@@ -297,6 +303,16 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${dataTrustBadgeClass(item)}`}>
               {dataTrustLabel(item)}
             </span>
+            {showCalibBadges && calibratedWinRate != null && (
+              <span className="rounded-full border border-slate-600 bg-slate-700/60 px-2 py-0.5 text-[10px] font-medium text-slate-300 [font-variant-numeric:tabular-nums]">
+                실증 {calibratedWinRate.toFixed(0)}%
+              </span>
+            )}
+            {showCalibBadges && ensembleScore != null && (
+              <span className="rounded-full border border-slate-600 bg-slate-700/60 px-2 py-0.5 text-[10px] font-medium text-slate-300 [font-variant-numeric:tabular-nums]">
+                앙상블 {ensembleScore.toFixed(0)}
+              </span>
+            )}
           </div>
           <div className="mt-0.5 text-[11px] text-slate-500">{item.symbol} · {modeLabel(mode as Mode)} · {horizonLabel(horizon as Horizon)}</div>
         </div>
@@ -1801,6 +1817,8 @@ export default function HomePage({
   const [dataSources, setDataSources] = useState<any>(null);
   // 매크로/실적 이벤트 배너
   const [calendarAlert, setCalendarAlert] = useState<any>(null);
+  // 손절/목표가 근접 알림
+  const [nearAlerts, setNearAlerts] = useState<any[]>([]);
   const sessionClock = clock || new Date();
   const selectedMarket = marketChoice === "auto" ? (clientReady ? getDefaultMarketBySession(sessionClock) : "kr") : marketChoice;
   const sessionStatus = clientReady ? getMarketSessionStatus(selectedMarket, sessionClock) : "확인 중";
@@ -1956,6 +1974,16 @@ export default function HomePage({
         if (res?.status === "OK") setCalendarAlert(res);
       })
       .catch(() => {});
+  }, [clientReady, selectedMarket]);
+
+  // 손절/목표가 근접 알림 로드
+  useEffect(() => {
+    if (!clientReady) return;
+    mone.nearAlerts({ market: selectedMarket, thresholdPct: 5 })
+      .then((res) => {
+        setNearAlerts(Array.isArray(res.alerts) ? res.alerts : []);
+      })
+      .catch(() => setNearAlerts([]));
   }, [clientReady, selectedMarket]);
 
   // 데이터 소스 신선도 로드 (마운트 1회)
@@ -2299,6 +2327,38 @@ export default function HomePage({
 
       {/* 매크로/실적 이벤트 배너 */}
       <EventBanner alert={calendarAlert} />
+
+      {/* 손절/목표가 근접 알림 패널 */}
+      {nearAlerts.length > 0 && (
+        <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-3 space-y-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 px-0.5">가격 근접 알림</div>
+          {nearAlerts.map((alert: any) => {
+            const isStop = alert.type === "STOP";
+            const gapSign = isStop ? "-" : "+";
+            const currentFmt = Number(alert.currentPrice ?? 0).toLocaleString("ko-KR");
+            const priceFmt = isStop
+              ? Number(alert.stopPrice ?? 0).toLocaleString("ko-KR")
+              : Number(alert.targetPrice ?? 0).toLocaleString("ko-KR");
+            const priceLabel = isStop ? "손절" : "목표";
+            const gapPct = Number(alert.gapPct ?? 0).toFixed(1);
+            return (
+              <div
+                key={`${alert.symbol}-${alert.type}`}
+                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-[11px] ${
+                  isStop
+                    ? "border-red-700/40 bg-red-950/20 text-red-200"
+                    : "border-emerald-700/40 bg-emerald-950/20 text-emerald-200"
+                }`}
+              >
+                <span className="font-semibold truncate min-w-0">{alert.name || alert.symbol}</span>
+                <span className="shrink-0 text-[10px] opacity-80 [font-variant-numeric:tabular-nums]">
+                  {priceLabel}가 근접 (현재 {currentFmt} / {priceLabel} {priceFmt}, {gapSign}{gapPct}%)
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* 데이터 신선도 배지 */}
       {dataSources && (() => {

@@ -38,17 +38,22 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: #2e4060; }
 
 /* ── Keyframes ── */
-@keyframes fadeIn    { from { opacity: 0; }                              to { opacity: 1; } }
-@keyframes slideUp   { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pulseDot  { 0%, 100% { opacity: 1; }                          50% { opacity: 0.3; } }
-@keyframes ticker    { 0% { transform: translateX(0); }                  100% { transform: translateX(-50%); } }
-@keyframes spinAnim  { from { transform: rotate(0deg); }                 to { transform: rotate(360deg); } }
+@keyframes fadeIn         { from { opacity: 0; }                              to { opacity: 1; } }
+@keyframes slideUp        { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInRight   { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes pulseDot       { 0%, 100% { opacity: 1; }                          50% { opacity: 0.3; } }
+@keyframes ticker         { 0% { transform: translateX(0); }                  100% { transform: translateX(-50%); } }
+@keyframes spinAnim       { from { transform: rotate(0deg); }                 to { transform: rotate(360deg); } }
 
-.animate-fade-in   { animation: fadeIn  0.3s ease-out; }
-.animate-slide-up  { animation: slideUp 0.3s ease-out; }
-.animate-pulse-dot { animation: pulseDot 2s ease-in-out infinite; }
-.animate-ticker    { animation: ticker 32s linear infinite; }
-.animate-spin      { animation: spinAnim 0.9s linear infinite; }
+.animate-fade-in                  { animation: fadeIn       0.2s ease-out both; }
+.animate-slide-up                 { animation: slideUp      0.3s ease-out both; }
+.animate-pulse-dot                { animation: pulseDot     2s ease-in-out infinite; }
+.animate-ticker                   { animation: ticker       32s linear infinite; }
+.animate-spin                     { animation: spinAnim     0.9s linear infinite; }
+
+/* Panel/overlay animations (replaces tailwindcss-animate) */
+.animate-in.fade-in               { animation: fadeIn 0.2s ease-out both; }
+.animate-in.slide-in-from-right   { animation: slideInRight 0.3s ease-out both; }
 
 /* ── Card ── */
 .card {
@@ -145,7 +150,31 @@ select.input-base { cursor: pointer; }
 }
 
 /* ── Font mono ── */
-.font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-variant-numeric: tabular-nums;  /* prevent layout shift on number updates */
+}
+
+/* ── Headings ── */
+h1, h2, h3 { text-wrap: balance; }
+
+/* ── Button press feedback ── */
+button:not(:disabled) { cursor: pointer; }
+
+/* ── Reduced motion: disable all animations for users who prefer it ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Shadow scale (consistent elevation system) ── */
+.shadow-card    { box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3); }
+.shadow-card-md { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3); }
+.shadow-card-lg { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 4px 8px rgba(0,0,0,0.4); }
+.shadow-panel   { box-shadow: -8px 0 32px rgba(0,0,0,0.7), -2px 0 8px rgba(0,0,0,0.5); }
 
 @keyframes moneTicker {
   0% { transform: translateX(0); }

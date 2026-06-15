@@ -476,7 +476,7 @@ function PortfolioCompositionBar({ items }: { items: any[] }) {
           const pct = (item._val / sorted.total) * 100;
           return (
             <div key={`${item.market}-${item.symbol}`}
-              className={`${colors[i % colors.length]} transition-all`}
+              className={`${colors[i % colors.length]} transition-[width] duration-300`}
               style={{ width: `${pct}%` }}
               title={`${displayName(item)} ${pct.toFixed(1)}%`} />
           );

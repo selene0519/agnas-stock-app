@@ -16,10 +16,14 @@ from typing import Any
 import pandas as pd
 
 # horizon별 기본 설정
+# 보정 근거: MISS_ENTRY_TOO_LOW 25-42% — 진입 허용 기간 확대
+# short: 1→2일 (진입창), 2→3일 (보유창)
+# swing: 2→3일 (진입창), 5→7일 (보유창)
+# mid:   3→4일 (진입창), 20→22일 (보유창)
 HORIZON_SETTINGS: dict[str, dict[str, int]] = {
-    "short": {"entry_window_days": 1, "holding_days": 2},
-    "swing": {"entry_window_days": 2, "holding_days": 5},
-    "mid":   {"entry_window_days": 3, "holding_days": 20},
+    "short": {"entry_window_days": 2, "holding_days": 3},
+    "swing": {"entry_window_days": 3, "holding_days": 7},
+    "mid":   {"entry_window_days": 4, "holding_days": 22},
 }
 
 # priceSession 당일 포함 여부
@@ -67,8 +71,10 @@ def evaluate_recommendation(
     slip   = float(settings.get("slippage_pct", 0.002))
 
     h_cfg  = HORIZON_SETTINGS.get(horizon, HORIZON_SETTINGS["swing"])
-    entry_window = h_cfg["entry_window_days"]
-    holding_days = h_cfg["holding_days"]
+    # 레짐 어댑티브 오버라이드: rec에 holdDaysOverride / entryWindowOverride 가 있으면 우선 사용
+    entry_window = rec.get("entryWindowOverride") or h_cfg["entry_window_days"]
+    holding_days = rec.get("holdDaysOverride") or h_cfg["holding_days"]
+    trail_pct    = rec.get("trailPct")  # None = 고정손절, float = 추적손절 비율
 
     # ── 가격 부족 ──────────────────────────────────────────────────────────────
     if entry is None or stop is None or target is None:
@@ -151,6 +157,7 @@ def evaluate_recommendation(
     exit_date = ""
     exit_status = "기간종료"
     bars_held = 0
+    trailing_stop = stop  # 추적손절: 고가 갱신 시 상향 조정
 
     for i, row in holding_df.iterrows():
         hi = _num(row.get("high")) or _num(row.get("close"))
@@ -159,12 +166,19 @@ def evaluate_recommendation(
         if hi is None or lo is None:
             continue
 
+        # 추적손절 갱신: 고가 기준으로 trail_pct 아래를 새 손절선으로
+        if trail_pct is not None and hi is not None:
+            new_trail = hi * (1 - trail_pct)
+            if new_trail > trailing_stop:
+                trailing_stop = new_trail
+
+        effective_stop = trailing_stop if trail_pct is not None else stop
         target_hit = hi >= target
-        stop_hit   = lo <= stop
+        stop_hit   = lo <= effective_stop
 
         if target_hit and stop_hit:
             # 동시 터치 → 손절 우선 (일봉 일중 순서 불명)
-            exit_price  = stop
+            exit_price  = effective_stop
             exit_status = "손절(동시터치)"
             exit_date   = _row_date(row)
             bars_held   = int(i) + 1
@@ -176,12 +190,11 @@ def evaluate_recommendation(
             bars_held   = int(i) + 1
             break
         if stop_hit:
-            exit_price  = stop
-            exit_status = "손절"
+            exit_price  = effective_stop
+            exit_status = "추적손절" if trail_pct is not None else "손절"
             exit_date   = _row_date(row)
             bars_held   = int(i) + 1
             break
-        # 기간 마지막 봉
         if int(i) == len(holding_df) - 1:
             exit_price  = close if close is not None else entry
             exit_status = "기간종료"
@@ -192,6 +205,8 @@ def evaluate_recommendation(
         exit_price  = entry
         exit_status = "기간종료"
         bars_held   = len(holding_df)
+
+    blended_exit = exit_price
 
     # ── MFE / MAE 계산 (체결 이후 보유 구간 기준) ─────────────────────────
     # MFE: 체결 후 최대 유리한 가격 (고가 기준)
@@ -209,9 +224,9 @@ def evaluate_recommendation(
             mae_pct = round((min(lows_ok)  - entry) / entry * 100, 3)
 
     # ── PnL 계산 (슬리피지 포함) ───────────────────────────────────────────
-    gross_pnl   = (exit_price - entry) / entry * 100 if entry else None
+    gross_pnl   = (blended_exit - entry) / entry * 100 if entry else None
     actual_buy  = entry * (1 + slip)
-    actual_sell = exit_price * (1 - slip)
+    actual_sell = blended_exit * (1 - slip)
     net_pnl     = (actual_sell - actual_buy) / actual_buy * 100 if actual_buy else None
 
     return {
@@ -234,6 +249,7 @@ def evaluate_recommendation(
         "slippagePct": slip,
         "entryWindowDays": entry_window,
         "holdingDays": holding_days,
+        "trailPct": trail_pct,
         "evaluationSession": session or "CLOSING",
         "evalStartDate": str(eval_start.date()),
         "rule": (

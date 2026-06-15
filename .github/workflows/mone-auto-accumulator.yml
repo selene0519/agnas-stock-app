@@ -513,6 +513,85 @@ jobs:
           echo "signal_ledger verify: exit $?"
           set -e
 
+      - name: Auto-rebuild self-correction params (샘플 30건+ 시 자동 실행)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+
+          # 검증 결과 샘플 수 확인
+          from app.engine import self_correction_v2 as _scv2, correction_store
+          _MIN_AUTO = 30
+          all_rows = _scv2._load_validation_results("kr")
+          sample_count = len(all_rows)
+          print(f"[auto-correction] validation rows={sample_count}, threshold={_MIN_AUTO}")
+
+          if sample_count < _MIN_AUTO:
+              print(f"[auto-correction] 샘플 부족 ({sample_count} < {_MIN_AUTO}) — 스킵")
+          else:
+              old_v = correction_store.load_params().get("version", 0)
+              result_kr = _scv2.build_correction_params("kr")
+              new_v = result_kr.get("version", 0)
+              print(f"[auto-correction] KR 보정 파라미터 재계산 완료: v{old_v} → v{new_v}, "
+                    f"샘플={result_kr.get('totalSamples', 0)}")
+              # US 샘플도 있으면 재계산
+              us_rows = _scv2._load_validation_results("us")
+              if len(us_rows) >= _MIN_AUTO:
+                  result_us = _scv2.build_correction_params("us")
+                  print(f"[auto-correction] US 보정 파라미터 재계산 완료: 샘플={result_us.get('totalSamples', 0)}")
+          PY
+          echo "auto-correction: exit $?"
+          set -e
+
+      - name: Weekly walk-forward backtest (토요일 실행)
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && startsWith(github.run_id, ''))
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          # 토요일(6) 또는 수동 트리거일 때만 실행
+          DOW=$(date +%u)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$DOW" = "6" ]; then
+            set +e
+            python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.engine.walkforward_backtest import run_all
+          try:
+              result_kr = run_all("kr")
+              combo_count = len(result_kr.get("combos", {}))
+              print(f"[walk-forward] KR 완료: {combo_count}개 전략 조합")
+          except Exception as e:
+              print(f"[walk-forward] 오류: {e}")
+          PY
+            echo "walk-forward: exit $?"
+
+            # 앙상블 보정 테이블 갱신 (walk-forward 직후 실행)
+            python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          try:
+              from app.engine.ensemble_calibrator import run_ensemble_calibration
+              for market in ("kr", "us"):
+                  result = run_ensemble_calibration(market=market, repo_root=Path.cwd().parent.parent)
+                  for c in result.get("combos", []):
+                      print(f"[ensemble] {c['combo']}: {c['records']}건 보정 완료")
+          except Exception as e:
+              print(f"[ensemble] 오류: {e}")
+          PY
+            echo "ensemble-calibration: exit $?"
+            set -e
+          else
+            echo "[walk-forward] 오늘은 토요일이 아님 (DOW=$DOW) — 스킵"
+          fi
+
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
@@ -571,6 +650,11 @@ jobs:
             # Data files used by the app as source/cache.
             git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
             git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
+            git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
+            git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
+            git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
+            git add reports/backtest_summary.json 2>/dev/null || true
+            git add reports/ensemble_calibration_*.json 2>/dev/null || true
 
             # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
             git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true

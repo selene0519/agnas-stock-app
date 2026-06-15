@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from app.engine import correction_store, outcome_analyzer
+from app.engine.quant_scanner import round_to_kr_tick
 
 # ── 킬스위치 & 적용 강도 (환경변수) ───────────────────────────────────────
 # SELF_CORRECTION_ENABLED=false → 전체 보정 비활성화
@@ -290,6 +291,14 @@ def build_correction_params(market: str = "kr") -> dict[str, Any]:
             rec_index[f"{sym}_{gen}_{mode}_{horizon}"] = r
 
     # 각 validation row에 outcomeReason 부여
+    # 포인트-인-타임 가드: 검증 결과의 정산일이 추천일 이후여야 학습에 사용
+    def _date_str(row: dict[str, Any], *keys: str) -> str:
+        for k in keys:
+            v = str(row.get(k) or "")[:10]
+            if len(v) == 10 and v[:4].isdigit():
+                return v
+        return ""
+
     analyzed: list[dict[str, Any]] = []
     for row in all_rows:
         sym = str(row.get("symbol") or "")
@@ -297,6 +306,11 @@ def build_correction_params(market: str = "kr") -> dict[str, Any]:
         mode = str(row.get("mode") or "")
         horizon = str(row.get("horizon") or "")
         rec = rec_index.get(f"{sym}_{gen}_{mode}_{horizon}", row)
+        # 시점 누수 방지: 정산일이 추천일보다 명확히 이른 경우 제외
+        settled_date = _date_str(row, "settledDate", "exitDate", "tradeDate", "evaluatedAt")
+        gen_date     = _date_str(row, "generatedAt") or _date_str(rec, "generatedAt")
+        if settled_date and gen_date and settled_date < gen_date:
+            continue  # 추천 이전에 정산된 행 → 미래 데이터 누출 가능성
         reason = outcome_analyzer.classify_outcome(rec, row)
         analyzed.append({**row, "outcomeReason": reason})
 
@@ -438,11 +452,28 @@ def apply_correction(
         f"주요실패={','.join(top_reasons[:3])})"
     )
 
+    def _price_round(p: float | None, fallback: float) -> float:
+        if not p:
+            return fallback
+        return float(round_to_kr_tick(p)) if market == "kr" else round(p, 2)
+
+    adj_entry_out  = _price_round(adj_entry, entry)
+    adj_target_out = _price_round(adj_target, target)
+    adj_stop_out   = _price_round(adj_stop, stop)
+
+    rr_actual = None
+    if adj_entry_out and adj_stop_out and adj_target_out and adj_entry_out > 0:
+        reward_pct = (adj_target_out - adj_entry_out) / adj_entry_out * 100.0
+        risk_pct   = abs((adj_entry_out - adj_stop_out) / adj_entry_out * 100.0)
+        if risk_pct > 0:
+            rr_actual = round(reward_pct / risk_pct, 2)
+
     return {
         "adjustedScores": adjusted_scores,
-        "adjustedEntry": round(adj_entry, 2) if adj_entry else entry,
-        "adjustedTarget": round(adj_target, 2) if adj_target else target,
-        "adjustedStop": round(adj_stop, 2) if adj_stop else stop,
+        "adjustedEntry": adj_entry_out,
+        "adjustedTarget": adj_target_out,
+        "adjustedStop": adj_stop_out,
+        "adjustedRrActual": rr_actual,
         "correctionApplied": True,
         "correctionConfidence": confidence,
         "correctionStrength": strength,

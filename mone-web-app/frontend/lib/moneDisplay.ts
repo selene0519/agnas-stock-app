@@ -309,7 +309,12 @@ export function pctText(value: any, fallback = "-"): string {
 }
 
 export function probabilityText(item: any, fallback = "-"): string {
-  return firstText(item?.probabilityText, item?.probText, item?.probability ? pctText(item.probability) : null, item?.prob5d ? pctText(item.prob5d) : null, fallback);
+  // calibratedWinRate(35~65% 실증 보정) 우선; 없으면 기술점수(probability) 표시
+  if (item?.calibratedWinRate != null) {
+    const wr = Number(item.calibratedWinRate);
+    if (!isNaN(wr)) return `승률 ${wr.toFixed(1)}%`;
+  }
+  return firstText(item?.probabilityText, item?.probText, item?.probability ? `${Number(item.probability).toFixed(1)}점` : null, item?.prob5d ? pctText(item.prob5d) : null, fallback);
 }
 
 export function modeLabel(mode: Mode | string): string {
