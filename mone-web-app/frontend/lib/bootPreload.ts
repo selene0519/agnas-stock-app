@@ -25,7 +25,7 @@ type BootProgress = {
 };
 
 const BOOT_CACHE_KEY = "mone:boot-preload:v2";
-const BOOT_CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10분
+const BOOT_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12시간 (추천/요약 데이터는 Actions 1~2회/일만 변경)
 // Per-request timeout — prevents the loading screen hanging on Render.com cold start.
 // Render.com free tier takes up to ~30s to wake; requests queue and resolve together,
 // so 8s is generous for a warm server but won't cause infinite waits on cold start.
@@ -42,7 +42,7 @@ function isObject(value: unknown): value is Record<string, any> {
 }
 
 function hasPayload(value: unknown) {
-  return isObject(value) && String(value.status || "").toUpperCase() !== "ERROR";
+  return isObject(value) && String((value as any).status || "").toUpperCase() !== "ERROR";
 }
 
 function hasAnyBootData(data: BootPreloadData) {
