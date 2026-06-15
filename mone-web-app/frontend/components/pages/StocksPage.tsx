@@ -145,6 +145,9 @@ function statusText(status?: string) {
   if (value === "DATA_PENDING") return "데이터 수집 대기";
   if (value === "STALE") return "시세 갱신 필요";
   if (value === "ERROR") return "오류";
+  if (value === "SEARCH_ONLY") return "검색 전용";
+  if (value === "LOCAL_ONLY") return "로컬 임시";
+  if (value === "BLOCK") return "진입 차단";
   return value || "";
 }
 
@@ -295,10 +298,16 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   }, []);
 
   useEffect(() => {
+    // Reset market-specific filters when switching market to prevent orphaned results
+    setSectorFilter(null);
+    setGroupFilter(null);
+    setTagFilter(null);
     if (resolvedMarket === "kr") {
       mone.sectorsList({ market: resolvedMarket }).then((r) => {
         setSectorsList(Array.isArray(r.items) ? r.items.slice(0, 20).map((s: any) => s.sector) : []);
       }).catch(() => setSectorsList([]));
+    } else {
+      setSectorsList([]);
     }
     mone.watchlistGroups({ market: resolvedMarket }).then((r) => {
       setGroupsList(Array.isArray(r.groups) ? r.groups.filter((g: string) => g !== "미분류") : []);
@@ -437,7 +446,13 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
       .catch((error) => {
         if (!active) return;
         setItems([]);
-        setLoadError(error instanceof Error ? error.message : String(error));
+        const raw = error instanceof Error ? error.message : String(error);
+        const friendlyError = raw.startsWith("5") ? "서버 오류로 데이터를 불러오지 못했습니다. 잠시 후 다시 시도하세요."
+          : raw.startsWith("4") ? "요청 오류가 발생했습니다. 조건을 확인하고 다시 시도하세요."
+          : raw.toLowerCase().includes("abort") ? "요청이 취소됐습니다."
+          : raw.toLowerCase().includes("network") || raw.toLowerCase().includes("fetch") ? "네트워크 연결을 확인하세요."
+          : "추천 후보를 불러오지 못했습니다.";
+        setLoadError(friendlyError);
       })
       .finally(() => active && setLoading(false));
     return () => {
@@ -994,12 +1009,12 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                   <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                     <input type="checkbox" checked={hideDataPending} onChange={(e) => setHideDataPending(e.target.checked)}
                       className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                    DATA_PENDING / STALE 숨기기
+                    데이터 수집 대기 / 시세 오래됨 숨기기
                   </label>
                   <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                     <input type="checkbox" checked={hideBlockedOnly} onChange={(e) => setHideBlockedOnly(e.target.checked)}
                       className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                    BLOCK 종목 숨기기
+                    진입 차단 종목 숨기기
                   </label>
                 </div>
               </div>
@@ -1341,6 +1356,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             {watchOnly && <button onClick={() => setWatchOnly(false)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">관심종목만 보기 해제</button>}
             {sectorFilter && <button onClick={() => setSectorFilter(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">섹터 필터 해제</button>}
             {groupFilter && <button onClick={() => setGroupFilter(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">그룹 필터 해제</button>}
+            <button onClick={() => setRefreshVersion((v) => v + 1)} className="rounded-lg border border-sky-700/50 bg-sky-900/20 px-3 py-1.5 text-xs text-sky-300 hover:bg-sky-900/40">새로고침</button>
           </div>
         </div>
       )}
@@ -1462,7 +1478,7 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
             LOW_RISK_STABLE:"안정형", BREAKOUT:"돌파",
           };
           const TAG_COLOR: Record<string, string> = {
-            CAUTION:"border-red-600/40 bg-red-600/10 text-red-300",
+            CAUTION:"border-amber-500/40 bg-amber-500/10 text-amber-300",
             DEATH_CROSS:"border-red-600/40 bg-red-600/10 text-red-300",
             MID_DEATH_CROSS:"border-red-700/40 bg-red-700/10 text-red-400",
             TRAILING_STOP_ALERT:"border-amber-500/40 bg-amber-500/10 text-amber-300",
@@ -1563,12 +1579,19 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
                 </div>
               </div>
 
-              {/* 가격 3개 */}
-              <div className="mb-3 grid grid-cols-3 gap-1.5 text-sm sm:gap-2">
-                <Cell label="현재가" value={current} tone={current.includes("확인") ? "amber" : "normal"} />
-                <Cell label="기준가" value={entry} tone="blue" />
-                <Cell label="목표가" value={target} tone="green" />
-              </div>
+              {/* 가격 4개 */}
+              {(() => {
+                const stopRaw = hasRecommendation ? adjustedText(item, "stop", mode, marketValue) : null;
+                const stop = stopRaw ? compactPriceText(stopRaw, marketValue) : null;
+                return (
+                  <div className={`mb-3 grid gap-1.5 text-sm sm:gap-2 ${stop ? "grid-cols-4" : "grid-cols-3"}`}>
+                    <Cell label="현재가" value={current} tone={current.includes("확인") ? "amber" : "normal"} />
+                    <Cell label="기준가" value={entry} tone="blue" />
+                    <Cell label="목표가" value={target} tone="green" />
+                    {stop && <Cell label="손절가" value={stop} tone="red" />}
+                  </div>
+                );
+              })()}
 
               {/* 태그 */}
               {visibleTags.length > 0 && (

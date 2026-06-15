@@ -1034,25 +1034,40 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
 
       {/* 메시지 */}
       {message && (
-        <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
+        <div className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm ${
+          message.startsWith("⚠") || message.includes("실패")
+            ? "border-red-500/40 bg-red-500/10 text-red-200"
+            : "border-slate-700 bg-slate-900 text-slate-300"
+        }`}>
           <span>{message}</span>
-          <button onClick={() => setMessage("")} className="text-slate-500 hover:text-slate-300"><X size={14} /></button>
+          <button onClick={() => setMessage("")} className="ml-3 shrink-0 text-slate-500 hover:text-slate-300"><X size={14} /></button>
         </div>
       )}
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <SummaryCard label="평가금액 합계" value={totalValueText} />
-        <SummaryCard label="총 평가손익" value={summary.totalPnlText || "-"}
-          accent={
-            summary.mixedCurrency
-              ? "text-slate-300"
-              : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"
-          } />
-        <SummaryCard label="보유 종목" value={`${items.length}개`} />
-        <SummaryCard label="주의/위험" value={`${riskCount}개`}
-          accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse rounded-xl border border-slate-800 bg-slate-900 px-4 py-4">
+              <div className="h-3 w-16 rounded bg-slate-700" />
+              <div className="mt-2 h-6 w-24 rounded bg-slate-700" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <SummaryCard label="평가금액 합계" value={totalValueText} />
+          <SummaryCard label="총 평가손익" value={summary.totalPnlText || "-"}
+            accent={
+              summary.mixedCurrency
+                ? "text-slate-300"
+                : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"
+            } />
+          <SummaryCard label="보유 종목" value={`${items.length}개`} />
+          <SummaryCard label="주의/위험" value={`${riskCount}개`}
+            accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs text-slate-400">
         <div className="flex flex-wrap items-center gap-2">
@@ -1305,7 +1320,14 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
                   <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                   <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
                     {(holding.currentPriceSource || holding.priceSource || holding.quoteSource) && <span>source: {holding.currentPriceSource || holding.priceSource || holding.quoteSource}</span>}
-                    {(holding.priceDataStatus || holding.dataStatus) && <span>status: {holding.priceDataStatus || holding.dataStatus}</span>}
+                    {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
+                      const s = String(holding.priceDataStatus || holding.dataStatus || "");
+                      if (s === "LOCAL_ONLY") return "로컬 임시";
+                      if (s === "DATA_PENDING") return "데이터 수집 대기";
+                      if (s === "STALE") return "시세 갱신 필요";
+                      if (s === "NORMAL" || s === "OK") return "정상";
+                      return s;
+                    })()}</span>}
                     {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
