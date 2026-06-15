@@ -6,6 +6,7 @@ import PositionManager from "../PositionManager";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo } from "@/lib/moneDisplay";
 import { getUserId } from "@/lib/userId";
+import type { BootPreloadData } from "@/lib/bootPreload";
 
 type Market = "all" | "kr" | "us";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
@@ -22,6 +23,7 @@ type BrokerStatus = {
 type HoldingsPageProps = {
   userToken?: string | null;
   onNavigate?: (page: string) => void;
+  bootData?: BootPreloadData | null;
 };
 
 type EditableHolding = {
@@ -99,6 +101,20 @@ function dedupe(items: any[]) {
     if (seen.has(key)) return false;
     seen.add(key); return true;
   });
+}
+
+// Module-level re-entry cache: avoids reload spinner when navigating away and back
+const HOLDINGS_CACHE_TTL = 3 * 60 * 1000; // 3 min
+type HoldingsCacheEntry = { data: any; market: Market; loadedAt: string; ts: number };
+let _holdingsCache: HoldingsCacheEntry | null = null;
+function readHoldingsCache(market: Market): HoldingsCacheEntry | null {
+  if (!_holdingsCache) return null;
+  if (_holdingsCache.market !== market) return null;
+  if (Date.now() - _holdingsCache.ts > HOLDINGS_CACHE_TTL) return null;
+  return _holdingsCache;
+}
+function writeHoldingsCache(market: Market, data: any, loadedAt: string) {
+  _holdingsCache = { data, market, loadedAt, ts: Date.now() };
 }
 
 function extractPositionCandidates(summary: any) {
@@ -574,10 +590,16 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
 }
 
 // ── 메인 페이지 ────────────────────────────────────────────────────────
-export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProps) {
+export default function HoldingsPage({ userToken, onNavigate, bootData }: HoldingsPageProps) {
+  const _bootHoldings = (() => {
+    const bc = bootData?.holdingsCache;
+    if (bc && Array.isArray(bc.items) && bc.items.length > 0) return bc;
+    return readHoldingsCache("all")?.data ?? null;
+  })();
+
   const [market, setMarket] = useState<Market>("all");
-  const [data, setData] = useState<any>({ items: [], summary: {} });
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any>(_bootHoldings ?? { items: [], summary: {} });
+  const [loading, setLoading] = useState(!_bootHoldings);
   const [editKey, setEditKey] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditableHolding | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -639,19 +661,31 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
     }
   }
 
-  async function load() {
-    setLoading(true);
+  async function load(options: { background?: boolean } = {}) {
+    const cached = readHoldingsCache(market);
+    if (cached && !options.background) {
+      setData(cached.data);
+      setHoldingsLoadedAt(cached.loadedAt);
+      setLoading(false);
+    } else if (!cached) {
+      setLoading(true);
+    }
     try {
       const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
       const serverItems = Array.isArray(result.items) ? result.items : [];
       const localItems = loadHoldingsFromLocalStorage();
+      let finalData: any;
       if (serverItems.length === 0 && localItems.length > 0) {
-        setData(localHoldingsPayload(localItems, market));
+        finalData = localHoldingsPayload(localItems, market);
+        setData(finalData);
       } else {
         if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems);
-        setData(result);
+        finalData = result;
+        setData(finalData);
       }
-      setHoldingsLoadedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
+      const loadedAt = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+      setHoldingsLoadedAt(loadedAt);
+      writeHoldingsCache(market, finalData, loadedAt);
       loadPositionCandidates(market);
       setLoading(false);
       if (market === "all") {
@@ -681,7 +715,8 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
   }
 
   useEffect(() => {
-    load();
+    const hasCached = Boolean(_bootHoldings || readHoldingsCache(market));
+    load({ background: hasCached });
   }, [market]);
 
   useEffect(() => {
@@ -1034,25 +1069,40 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
 
       {/* 메시지 */}
       {message && (
-        <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
+        <div className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm ${
+          message.startsWith("⚠") || message.includes("실패")
+            ? "border-red-500/40 bg-red-500/10 text-red-200"
+            : "border-slate-700 bg-slate-900 text-slate-300"
+        }`}>
           <span>{message}</span>
-          <button onClick={() => setMessage("")} className="text-slate-500 hover:text-slate-300"><X size={14} /></button>
+          <button onClick={() => setMessage("")} className="ml-3 shrink-0 text-slate-500 hover:text-slate-300"><X size={14} /></button>
         </div>
       )}
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <SummaryCard label="평가금액 합계" value={totalValueText} />
-        <SummaryCard label="총 평가손익" value={summary.totalPnlText || "-"}
-          accent={
-            summary.mixedCurrency
-              ? "text-slate-300"
-              : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"
-          } />
-        <SummaryCard label="보유 종목" value={`${items.length}개`} />
-        <SummaryCard label="주의/위험" value={`${riskCount}개`}
-          accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse rounded-xl border border-slate-800 bg-slate-900 px-4 py-4">
+              <div className="h-3 w-16 rounded bg-slate-700" />
+              <div className="mt-2 h-6 w-24 rounded bg-slate-700" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <SummaryCard label="평가금액 합계" value={totalValueText} />
+          <SummaryCard label="총 평가손익" value={summary.totalPnlText || "-"}
+            accent={
+              summary.mixedCurrency
+                ? "text-slate-300"
+                : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"
+            } />
+          <SummaryCard label="보유 종목" value={`${items.length}개`} />
+          <SummaryCard label="주의/위험" value={`${riskCount}개`}
+            accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs text-slate-400">
         <div className="flex flex-wrap items-center gap-2">
@@ -1063,7 +1113,7 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
           <span>{holdingFreshness.basisText}</span>
           {holdingsLoadedAt && <span>현재가 갱신: {holdingsLoadedAt}</span>}
           <span className="flex-1" />
-          <button onClick={load}
+          <button onClick={() => load()}
             className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800">
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> 새로고침
           </button>
@@ -1305,7 +1355,14 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
                   <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                   <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
                     {(holding.currentPriceSource || holding.priceSource || holding.quoteSource) && <span>source: {holding.currentPriceSource || holding.priceSource || holding.quoteSource}</span>}
-                    {(holding.priceDataStatus || holding.dataStatus) && <span>status: {holding.priceDataStatus || holding.dataStatus}</span>}
+                    {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
+                      const s = String(holding.priceDataStatus || holding.dataStatus || "");
+                      if (s === "LOCAL_ONLY") return "로컬 임시";
+                      if (s === "DATA_PENDING") return "데이터 수집 대기";
+                      if (s === "STALE") return "시세 갱신 필요";
+                      if (s === "NORMAL" || s === "OK") return "정상";
+                      return s;
+                    })()}</span>}
                     {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">

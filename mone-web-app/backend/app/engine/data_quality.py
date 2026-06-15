@@ -206,6 +206,7 @@ def _candidate_files(market: str) -> list[dict[str, Any]]:
                 [
                     _repo_path("data", "market", "intraday", f"{normalized_market}_intraday_snapshot.csv"),
                     _repo_path("reports", f"{normalized_market}_intraday_report.csv"),
+                    _repo_path("reports", f"intraday_quote_snapshot_{normalized_market}.csv"),
                     _repo_path("reports", f"intraday_realtime_snapshot_{normalized_market}.csv"),
                 ]
             ),
@@ -473,7 +474,17 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
     realtime_files = [f for f in files if f.get("role") in realtime_roles]
     data_files     = [f for f in files if f.get("role") not in realtime_roles]
 
-    realtime_status = session.worst_status(f.get("status") for f in realtime_files)
+    def _effective_realtime_status(items: list[dict[str, Any]]) -> str:
+        statuses = [str(f.get("status") or "NO_DATA").upper() for f in items]
+        if any(status in {"NORMAL", "OK", "GOOD"} for status in statuses):
+            return "NORMAL"
+        if any(status == "PARTIAL" for status in statuses):
+            return "PARTIAL"
+        if any(status == "STALE" for status in statuses):
+            return "STALE"
+        return session.worst_status(statuses)
+
+    realtime_status = _effective_realtime_status(realtime_files)
     data_status_raw = session.worst_status(f.get("status") for f in data_files)
     data_status_combined = session.worst_status([data_status_raw, recommendation_status])
     # quick 모드: final_engine 미호출로 rows=[] — realtime 파일 실제 상태로 price_status 반영
@@ -784,6 +795,7 @@ def admin_pipeline(market: str = "kr") -> dict[str, Any]:
     recommendation_latest_date = latest_data_date or latest_file_date([f"reports/mone_v36_final_recommendations_{normalized_market}_*.csv"])
     snapshot_latest_date = latest_file_date([
         f"reports/kis_current_price_{normalized_market}.csv",
+        f"reports/intraday_quote_snapshot_{normalized_market}.csv",
         f"data/current_prices_{normalized_market}.csv",
         f"cache/quotes_cache.json",
     ])

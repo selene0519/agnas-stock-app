@@ -135,17 +135,17 @@ function TagChips({ item }: { item: any }) {
 
   return (
     <div className="mt-2 flex flex-wrap gap-1">
-      {item.evNegative && <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-300">EV음수</span>}
-      {item.maConvergence && <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-300">이격도수렴</span>}
-      {item.isUndervaluedGrowth === "True" && <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">저평가성장주</span>}
-      {item.supplySignal === "STRONG_BUY" && <span className="rounded-full border border-blue-400/40 bg-blue-400/10 px-2 py-0.5 text-[10px] text-blue-300">기관+외국인</span>}
-      {item.supplySignal === "INST_BUY" && <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] text-sky-300">기관매수</span>}
+      {item.evNegative && <span className="rounded-full border border-red-500/50 bg-red-500/15 px-2 py-1 text-xs font-semibold text-red-300">EV음수</span>}
+      {item.maConvergence && <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-xs text-violet-300">이격도수렴</span>}
+      {item.isUndervaluedGrowth === "True" && <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">저평가성장주</span>}
+      {item.supplySignal === "STRONG_BUY" && <span className="rounded-full border border-blue-400/40 bg-blue-400/10 px-2 py-1 text-xs text-blue-300">기관+외국인</span>}
+      {item.supplySignal === "INST_BUY" && <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300">기관매수</span>}
       {tags.filter((t) => !["저평가성장주", "공시주의"].includes(t)).slice(0, 2).map((t) => (
-        <span key={t} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">{strategyTagLabel(t)}</span>
+        <span key={t} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-200">{strategyTagLabel(t)}</span>
       ))}
-      {Number(item.newsRiskPenalty) >= 10 && <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-300">공시주의</span>}
-      {item.financialDataStatus === "DATA_PENDING" && <span className="rounded-full border border-slate-600 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">재무미확보</span>}
-      {item.finReason && item.financialDataStatus !== "DATA_PENDING" && item.finValueScore > 0 && <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] text-teal-300">재무확인</span>}
+      {Number(item.newsRiskPenalty) >= 10 && <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs text-orange-300">공시주의</span>}
+      {item.financialDataStatus === "DATA_PENDING" && <span className="rounded-full border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-400">재무미확보</span>}
+      {item.finReason && item.financialDataStatus !== "DATA_PENDING" && item.finValueScore > 0 && <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-1 text-xs text-teal-300">재무확인</span>}
     </div>
   );
 }
@@ -158,7 +158,7 @@ function EarningsBadge({ dday }: { dday: number }) {
       ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
       : "border-slate-600 bg-slate-800 text-slate-400";
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${color}`}>
+    <span className={`rounded-full border px-2 py-1 text-xs font-bold ${color}`}>
       실적 D-{dday}
     </span>
   );
@@ -240,10 +240,10 @@ function EventBanner({ alert }: { alert: any }) {
       </div>
       <button
         onClick={() => setDismissed(true)}
-        className="absolute top-2 right-2 text-slate-500 hover:text-slate-300"
+        className="absolute top-1.5 right-1.5 rounded-lg p-2 text-slate-500 hover:bg-slate-700/50 hover:text-slate-300"
         aria-label="닫기"
       >
-        <X size={13} />
+        <X size={14} />
       </button>
     </div>
   );
@@ -1765,10 +1765,12 @@ export default function HomePage({
   onNavigate,
   bootData,
   bootStatus = "idle",
+  booting = false,
 }: {
   onNavigate?: (page: PageId) => void;
   bootData?: BootPreloadData | null;
   bootStatus?: BootStatus;
+  booting?: boolean;
 }) {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [matrix, setMatrix] = useState<StrategyCell[]>([]);
@@ -1776,7 +1778,8 @@ export default function HomePage({
   const [summary, setSummary] = useState<any>(null);
   const [marketRegime, setMarketRegime] = useState<any>(null);
   const [dataHealth, setDataHealth] = useState<any>(null);
-  const [loading, setLoading] = useState(!bootData || !Object.keys(bootData).length);
+  // While the boot overlay is still showing, stay silent (no spinner) — boot data arrives before overlay lifts
+  const [loading, setLoading] = useState(booting ? false : (!bootData || !Object.keys(bootData).length));
   const [refreshing, setRefreshing] = useState(false);
   const [refreshWarning, setRefreshWarning] = useState("");
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
@@ -1932,11 +1935,12 @@ export default function HomePage({
   }, []);
 
   useEffect(() => {
-    if (clientReady) {
+    // Don't fetch while the boot overlay is still showing — boot data will seed us on dismiss
+    if (clientReady && !booting) {
       const hadCache = applyCachedOrBootState(selectedMarket);
       load({ background: hadCache });
     }
-  }, [clientReady, selectedMarket]);
+  }, [clientReady, selectedMarket, booting]);
 
   useEffect(() => {
     if (!clientReady) return;
@@ -2565,19 +2569,35 @@ export default function HomePage({
               ))}
             </div>
 
-            <div className="space-y-2">
-              {MODES.map((mode) => (
-                <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
-                  <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-300">
-                    {modeLabel(mode)}
+            {loading ? (
+              <div className="space-y-2">
+                {MODES.map((mode) => (
+                  <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
+                    <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-600">{modeLabel(mode)}</div>
+                    {HORIZONS.map((horizon) => (
+                      <div key={horizon} className="animate-pulse rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                        <div className="h-3 w-16 rounded bg-slate-800" />
+                        <div className="mt-2 h-5 w-10 rounded bg-slate-800" />
+                      </div>
+                    ))}
                   </div>
-                  {HORIZONS.map((horizon) => {
-                    const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
-                    return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={setSelectedItem} />;
-                  })}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {MODES.map((mode) => (
+                  <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
+                    <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-300">
+                      {modeLabel(mode)}
+                    </div>
+                    {HORIZONS.map((horizon) => {
+                      const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
+                      return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={setSelectedItem} />;
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>

@@ -7,6 +7,7 @@ export type BootPreloadData = {
   usHomeSummary?: any;
   krStocksCache?: any;   // balanced/swing recommendations for StocksPage
   usStocksCache?: any;
+  holdingsCache?: any;
 };
 
 export type BootPreloadState = {
@@ -25,6 +26,10 @@ type BootProgress = {
 
 const BOOT_CACHE_KEY = "mone:boot-preload:v2";
 const BOOT_CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10분
+// Per-request timeout — prevents the loading screen hanging on Render.com cold start.
+// Render.com free tier takes up to ~30s to wake; requests queue and resolve together,
+// so 8s is generous for a warm server but won't cause infinite waits on cold start.
+const BOOT_REQUEST_TIMEOUT_MS = 8000;
 
 const EMPTY_BOOT_STATE: BootPreloadState = {
   bootStatus: "idle",
@@ -80,10 +85,18 @@ function saveBootState(state: BootPreloadState) {
   }
 }
 
-async function fetchBootJson(path: string) {
-  const response = await fetch(path, { cache: "no-store" });
-  if (!response.ok) throw new Error(`${response.status} ${path}`);
-  return response.json();
+async function fetchBootJson(path: string): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BOOT_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(path, { cache: "no-store", signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) throw new Error(`${response.status} ${path}`);
+    return response.json();
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
+  }
 }
 
 async function settleBootJson(path: string): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
@@ -95,29 +108,21 @@ async function settleBootJson(path: string): Promise<{ ok: true; value: any } | 
 }
 
 export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
-  onProgress?.({ progress: 18, message: "서버 연결을 확인하고 있어요", step: "server" });
-  await settleBootJson("/mone-api/health");
+  onProgress?.({ progress: 20, message: "서버에 연결하는 중...", step: "server" });
 
-  onProgress?.({ progress: 50, message: "시장 홈 데이터를 미리 불러오고 있어요", step: "home" });
-  // Fetch home/summary for both markets — this is what HomePage actually uses
-  const [krHomeSummary, usHomeSummary] = await Promise.all([
+  // All 6 requests fire simultaneously.
+  // On Render.com cold start (~30s), they all queue together and are served at once —
+  // much faster than the previous sequential approach (health → home → stocks = 3× waits).
+  const [, krHomeSummary, usHomeSummary, krStocksCache, usStocksCache, holdingsCache] = await Promise.all([
+    settleBootJson("/mone-api/health"),
     settleBootJson("/mone-api/home/summary?market=kr&limit=12"),
     settleBootJson("/mone-api/home/summary?market=us&limit=12"),
-  ]);
-
-  onProgress?.({ progress: 80, message: "오늘의 추천 후보를 준비하고 있어요", step: "stocks" });
-  // Fetch default balanced/swing recommendations for StocksPage (most common first view)
-  const [krStocksCache, usStocksCache] = await Promise.all([
     settleBootJson("/mone-api/final/recommendations?market=kr&mode=balanced&horizon=swing&limit=50"),
     settleBootJson("/mone-api/final/recommendations?market=us&mode=balanced&horizon=swing&limit=50"),
+    settleBootJson("/mone-api/api/holdings-clean?market=all&limit=500"),
   ]);
 
-  const pairs = {
-    krHomeSummary,
-    usHomeSummary,
-    krStocksCache,
-    usStocksCache,
-  };
+  const pairs = { krHomeSummary, usHomeSummary, krStocksCache, usStocksCache, holdingsCache };
   const bootData: BootPreloadData = {};
   const errors: string[] = [];
   Object.entries(pairs).forEach(([key, result]) => {
@@ -134,6 +139,6 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
     errors,
   };
   saveBootState(state);
-  onProgress?.({ progress: 100, message: hasBootData ? "시장홈을 열고 있어요" : "기본 화면을 열고 있어요", step: "done" });
+  onProgress?.({ progress: 100, message: hasBootData ? "시장홈을 열고 있어요" : "앱을 여는 중...", step: "done" });
   return state;
 }

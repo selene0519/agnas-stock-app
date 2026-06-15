@@ -279,6 +279,14 @@ function safeLabel(value: any, map: Record<string, string> = {}, fallback = ""):
   return fallback;
 }
 
+function supportLevelPrice(level: any): number | null {
+  const raw = typeof level === "number" || typeof level === "string"
+    ? level
+    : level?.level ?? level?.price ?? level?.value;
+  const value = num(raw);
+  return value !== null && value > 0 ? value : null;
+}
+
 function isRiskCode(value: any) {
   const risk = String(value || "").toUpperCase();
   return Boolean(risk && !["NONE", "OK", "NORMAL", "LOW", "LOW_RISK", "SAFE"].includes(risk));
@@ -2050,7 +2058,11 @@ export default function ChartPage() {
   const [chartAnalysis, setChartAnalysis] = useState<any | null>(null);
   const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
   const [atrHorizon, setAtrHorizon] = useState<"short"|"swing"|"mid">("swing");
-  const [loading, setLoading] = useState(false);
+  // Start as true if we already have a symbol in localStorage (avoids "OHLCV 없음" flash before fetch begins)
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !!window.localStorage.getItem("mone_chart_symbol");
+  });
   const [seedLoading, setSeedLoading] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadState, setLoadState] = useState<ChartLoadState>({
@@ -2181,32 +2193,43 @@ export default function ChartPage() {
     setLoading(true);
     setLoadState((prev) => ({ ...prev, errors: [], updatedAt: "" }));
     Promise.allSettled([
-      mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }, controller.signal),
-      mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal),
-      mone.news({ market: selected.market, limit: 200 }, controller.signal),
-      mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal),
-      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 15000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }, controller.signal), 35000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal), 35000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.news({ market: selected.market, limit: 200 }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 20000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.patternStrategy({ market: selected.market, symbol: selected.symbol }, controller.signal), 20000, { status: "TIMEOUT" }),
     ]).then((results) => {
       if (!active) return;
-      const [cd, rd, nd, dd, company_d] = results.map((r) => r.status === "fulfilled" ? r.value : { items: [] }) as any[];
+      const [cd, rd, nd, dd, company_d, pattern_d] = results.map((r) => r.status === "fulfilled" ? r.value : { items: [] }) as any[];
       const chartRows = Array.isArray(cd.items) ? cd.items : [];
       const recItems = Array.isArray(rd.items) ? rd.items : [];
       const newsItems = Array.isArray(nd.items) ? nd.items : [];
       const disclosureItems = Array.isArray(dd.items) ? dd.items : [];
-      const errors = [cd, rd, nd, dd, company_d]
+      const errors = [cd, rd, nd, dd, company_d, pattern_d]
         .map((item: any) => item?.status === "ERROR" ? item.error || "API 오류" : "")
         .filter(Boolean);
       setRows(chartRows);
       setChartMeta(cd || null);
       const detailItem = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
       const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
-      setLevels(matched || null);
+      const patternStrategy = pattern_d?.status === "OK" ? pattern_d : null;
+      const existingPatternStrategy = matched?.patternStrategy && typeof matched.patternStrategy === "object" ? matched.patternStrategy : null;
+      const mergedPatternStrategy = (patternStrategy || existingPatternStrategy)
+        ? { ...(patternStrategy || {}), ...(existingPatternStrategy || {}) }
+        : null;
+      const mergedLevels = matched
+        ? { ...matched, patternStrategy: mergedPatternStrategy }
+        : patternStrategy
+          ? { symbol: selected.symbol, market: selected.market, name: selected.name, patternStrategy, dataStatus: "PATTERN_ONLY" }
+          : null;
+      setLevels(mergedLevels);
       const displayNews = relatedItems(newsItems, selected);
       const displayDisclosures = relatedItems(disclosureItems, selected);
       setNews(displayNews);
       setDisclosures(displayDisclosures);
       const cm = Array.isArray(company_d.items) ? company_d.items.find((item: any) => normalizeSymbol(item) === selected.symbol) || company_d.items[0] : null;
-      const fallbackCompany = companyFallback(matched);
+      const fallbackCompany = companyFallback(mergedLevels);
       setCompany(cm || fallbackCompany);
       // 추천 생성일: dataHealth.recoGeneratedAt (날짜 부분만)
       const recoDate = String(rd?.item?.generatedAt || rd?.generatedAt || rd?.dataHealth?.recoGeneratedAt || "").slice(0, 10);
@@ -2518,7 +2541,7 @@ export default function ChartPage() {
               <div className="text-sm font-semibold text-slate-200">MONE 판단 이유</div>
               <ol className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
                 {analysisReasonLines.length
-                  ? analysisReasonLines.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)
+                  ? analysisReasonLines.map((reason, index) => <li key={reason} className="break-keep">{index + 1}. {reason}</li>)
                   : <li>1. 추천 데이터 연결 후 판단 이유가 표시됩니다.</li>}
               </ol>
             </div>
@@ -2690,8 +2713,28 @@ export default function ChartPage() {
                 ))}
             </div>
 
-            {loading && <div className="py-20 text-center text-slate-500">차트 데이터를 불러오는 중...</div>}
-            {!loading && rows.length === 0 && (
+            {loading && (
+              <div className="flex flex-col items-center justify-center py-20 text-center text-slate-500">
+                <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-sky-500" />
+                <div>차트 데이터를 불러오는 중...</div>
+                <div className="mt-1 text-xs text-slate-600">서버 응답이 느린 경우 최대 20초 소요될 수 있습니다</div>
+              </div>
+            )}
+            {!loading && rows.length === 0 && loadState.ohlcvStatus === "TIMEOUT" && (
+              <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-6 text-sky-100">
+                <div className="font-semibold">서버 응답 지연</div>
+                <div className="mt-1 text-sm text-sky-200/80">
+                  백엔드 서버가 절전 상태에서 깨어나는 중이거나 네트워크가 불안정합니다. 잠시 후 재조회 버튼을 누르면 차트가 표시됩니다.
+                </div>
+                <button
+                  onClick={() => setReloadKey((v) => v + 1)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/15 px-3 py-1.5 text-sm text-sky-200 hover:bg-sky-500/25"
+                >
+                  <RefreshCw size={13} /> 재조회
+                </button>
+              </div>
+            )}
+            {!loading && rows.length === 0 && loadState.ohlcvStatus !== "TIMEOUT" && (
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-6 text-amber-100">
                 <div className="font-semibold">OHLCV 원본이 없어 차트를 그릴 수 없습니다.</div>
                 <div className="mt-1 text-sm text-amber-200/80">
@@ -2703,6 +2746,12 @@ export default function ChartPage() {
                     탐색 → 현재가 새로고침을 누르면 KIS API로 자동 수집됩니다.
                   </div>
                 )}
+                <button
+                  onClick={() => setReloadKey((v) => v + 1)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/15 px-3 py-1.5 text-sm text-amber-200 hover:bg-amber-500/25"
+                >
+                  <RefreshCw size={13} /> 재조회
+                </button>
               </div>
             )}
 
@@ -2941,7 +2990,7 @@ export default function ChartPage() {
               status?: string; action?: string; riskStatus?: string; confidence?: number;
               primaryPattern?: string; secondaryPatterns?: string[];
               marketStructure?: string; trendPhase?: string;
-              historicalSupportLevels?: number[]; message?: string; isBlocked?: boolean;
+              historicalSupportLevels?: any[]; message?: string; isBlocked?: boolean;
             };
             const actionColor = (a?: string) => {
               if (!a) return "text-slate-400";
@@ -2969,7 +3018,10 @@ export default function ChartPage() {
               if (!p) return "-";
               return safeLabel(p, PATTERN_LABELS, "-");
             };
-            const supports = (ps.historicalSupportLevels ?? []).slice(0, 3);
+            const supports = (ps.historicalSupportLevels ?? [])
+              .map((level: any) => ({ raw: level, price: supportLevelPrice(level) }))
+              .filter((level: any) => level.price !== null)
+              .slice(0, 3);
             return (
               <CollapsiblePanel title="고급 차트 신호">
                 {ps.status === "ERROR" && <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-500">{safeLabel(ps.message, {}, "분석 제한")}</div>}
@@ -3015,7 +3067,7 @@ export default function ChartPage() {
                     <div className="flex flex-wrap gap-2">
                       {supports.map((lvl, i) => (
                         <span key={i} className="rounded-lg border border-emerald-800/40 bg-emerald-950/20 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-300">
-                          {money(lvl, selected.market)}
+                          {money(lvl.price, selected.market)}
                         </span>
                       ))}
                     </div>

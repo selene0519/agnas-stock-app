@@ -538,7 +538,7 @@ def _eval_recs(
     from app.engine.backtest_v2 import evaluate_recommendation
     from app.engine.outcome_analyzer import classify_outcome
 
-    settings = {"slippage_pct": 0.002}
+    settings = {"slippage_pct": 0.001}  # 슬리피지 0.1% (세금/수수료 backtest_v2 내부 별도 처리)
     results: list[dict] = []
     for rec in recs:
         sym  = rec["symbol"]

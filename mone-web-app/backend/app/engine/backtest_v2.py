@@ -68,7 +68,10 @@ def evaluate_recommendation(
     stop   = _num(rec.get("stop")  or rec.get("stopPrice"))
     target = _num(rec.get("target") or rec.get("targetPrice"))
     market = str(rec.get("market", "kr")).lower()
-    slip   = float(settings.get("slippage_pct", 0.002))
+    slip   = float(settings.get("slippage_pct", 0.001))  # 슬리피지 0.1% (세금 별도)
+    # KR 실거래 비용: 매수수수료 0.015% + 매도수수료 0.015% + 거래세 0.18% = 0.21%
+    # US 실거래 비용: 왕복 수수료 0.10%
+    _tax_and_commission = 0.0021 if market == "kr" else 0.0010
 
     h_cfg  = HORIZON_SETTINGS.get(horizon, HORIZON_SETTINGS["swing"])
     # 레짐 어댑티브 오버라이드: rec에 holdDaysOverride / entryWindowOverride 가 있으면 우선 사용
@@ -223,10 +226,10 @@ def evaluate_recommendation(
         if lows_ok:
             mae_pct = round((min(lows_ok)  - entry) / entry * 100, 3)
 
-    # ── PnL 계산 (슬리피지 포함) ───────────────────────────────────────────
+    # ── PnL 계산 (슬리피지 + 세금/수수료 분리 반영) ──────────────────────────
     gross_pnl   = (blended_exit - entry) / entry * 100 if entry else None
-    actual_buy  = entry * (1 + slip)
-    actual_sell = blended_exit * (1 - slip)
+    actual_buy  = entry * (1 + slip)                              # 매수: 슬리피지
+    actual_sell = blended_exit * (1 - slip - _tax_and_commission) # 매도: 슬리피지 + 세금/수수료
     net_pnl     = (actual_sell - actual_buy) / actual_buy * 100 if actual_buy else None
 
     return {

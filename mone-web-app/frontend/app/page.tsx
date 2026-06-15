@@ -87,16 +87,23 @@ export default function App() {
 
     const delayTimer = window.setTimeout(() => {
       if (!cancelled && showLaunchLoading) setBootDelayed(true);
+    }, 5000); // 5초 후 "서버 응답이 늦어지고 있어요" 표시
+
+    // Hard maximum: 10초 후 로딩 화면을 강제로 닫고 앱 진입
+    // Render.com 콜드스타트(30s)에서 무한 대기하는 문제를 방지
+    const maxBootTimer = window.setTimeout(() => {
+      if (!cancelled && showLaunchLoading) setBooting(false);
     }, 10000);
 
     const updateBoot = (progress: number, message: string, step: "server" | "home" | "stocks" | "done") => {
       if (cancelled) return;
       setBootProgress(progress);
       setBootMessage(message);
+      // All requests fire in parallel, so all steps are "active" at once while loading
       setBootSteps([
-        { label: "서버 연결 확인", status: step === "server" ? "active" : "done" },
-        { label: "시장 요약 미리 불러오기", status: step === "server" ? "pending" : step === "home" ? "active" : "done" },
-        { label: "추천 후보 준비", status: step === "stocks" ? "active" : step === "done" ? "done" : "pending" },
+        { label: "서버 연결 확인", status: step === "done" ? "done" : "active" },
+        { label: "시장 홈 데이터", status: step === "done" ? "done" : "active" },
+        { label: "추천 후보 준비", status: step === "done" ? "done" : "active" },
       ]);
     };
 
@@ -131,6 +138,7 @@ export default function App() {
         }
       } finally {
         window.clearTimeout(delayTimer);
+        window.clearTimeout(maxBootTimer);
       }
     }
 
@@ -139,6 +147,7 @@ export default function App() {
     return () => {
       cancelled = true;
       window.clearTimeout(delayTimer);
+      window.clearTimeout(maxBootTimer);
     };
   }, [mounted]);
 
@@ -231,13 +240,13 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case "home":
-        return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} />;
+        return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
       case "report":
         return <ReportPage />;
       case "stocks":
         return <StocksPage onNavigate={(p) => setPage(p as PageId)} bootData={bootState.bootData} />;
       case "holdings":
-        return <HoldingsPage userToken={userToken || null} onNavigate={(p) => setPage(p as PageId)} />;
+        return <HoldingsPage userToken={userToken || null} onNavigate={(p) => setPage(p as PageId)} bootData={bootState.bootData} />;
       case "chart":
         return <ChartPage />;
       case "news":
@@ -256,10 +265,10 @@ export default function App() {
         );
       case "admin":
         if (adminToken) return <AdminPage authToken={adminToken} onLogout={handleAdminLogout} />;
-        if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} />; }
+        if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />; }
         return <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       default:
-        return <HomePage bootData={bootState.bootData} bootStatus={bootState.bootStatus} />;
+        return <HomePage bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
     }
   };
 
