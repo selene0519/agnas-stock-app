@@ -5,7 +5,7 @@ export type BootStatus = "idle" | "loading" | "ready" | "degraded";
 export type BootPreloadData = {
   krHomeSummary?: any;
   usHomeSummary?: any;
-  krStocksCache?: any;   // balanced/swing recommendations for StocksPage
+  krStocksCache?: any;
   usStocksCache?: any;
   holdingsCache?: any;
 };
@@ -24,12 +24,19 @@ type BootProgress = {
   step: "server" | "home" | "stocks" | "done";
 };
 
-const BOOT_CACHE_KEY = "mone:boot-preload:v2";
-const BOOT_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12시간 (추천/요약 데이터는 Actions 1~2회/일만 변경)
-// Per-request timeout — prevents the loading screen hanging on Render.com cold start.
-// Render.com free tier takes up to ~30s to wake; requests queue and resolve together,
-// so 8s is generous for a warm server but won't cause infinite waits on cold start.
+type StoredCache = BootPreloadState & {
+  krDataVersion?: string | null;
+  usDataVersion?: string | null;
+};
+
+const BOOT_CACHE_KEY = "mone:boot-preload:v3"; // v3 — version-based invalidation
+// Fallback TTL: if health check fails and we can't compare versions,
+// use cached data for up to 24 hours rather than forcing a full reload.
+const BOOT_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;
+// Per-request timeout for full data preload
 const BOOT_REQUEST_TIMEOUT_MS = 8000;
+// Health check timeout — short, we just need the version fields
+const HEALTH_CHECK_TIMEOUT_MS = 4000;
 
 const EMPTY_BOOT_STATE: BootPreloadState = {
   bootStatus: "idle",
@@ -49,77 +56,109 @@ function hasAnyBootData(data: BootPreloadData) {
   return Object.values(data).some(hasPayload);
 }
 
-function readStoredBootState(): BootPreloadState | null {
+function readStoredCache(): StoredCache | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(BOOT_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!isObject(parsed) || !isObject(parsed.bootData)) return null;
-    const completedAt = Date.parse(String(parsed.bootCompletedAt || ""));
-    if (!Number.isFinite(completedAt)) return null;
-    if (Date.now() - completedAt > BOOT_CACHE_MAX_AGE_MS) return null;
-    const state: BootPreloadState = {
-      bootStatus: parsed.bootStatus === "degraded" ? "degraded" : "ready",
-      bootData: parsed.bootData,
-      bootCompletedAt: parsed.bootCompletedAt,
-      hasBootData: hasAnyBootData(parsed.bootData),
-      errors: Array.isArray(parsed.errors) ? parsed.errors : [],
-    };
-    return state.hasBootData ? state : null;
+    return parsed as StoredCache;
   } catch {
     return null;
   }
 }
 
-export function getCachedBootPreload(): BootPreloadState {
-  return readStoredBootState() || EMPTY_BOOT_STATE;
-}
-
-function saveBootState(state: BootPreloadState) {
+function saveCache(state: BootPreloadState, krDataVersion?: string | null, usDataVersion?: string | null) {
   if (typeof window === "undefined" || !state.hasBootData) return;
   try {
-    window.localStorage.setItem(BOOT_CACHE_KEY, JSON.stringify(state));
+    const toStore: StoredCache = { ...state, krDataVersion, usDataVersion };
+    window.localStorage.setItem(BOOT_CACHE_KEY, JSON.stringify(toStore));
   } catch {
-    // Cache writes are best-effort; boot should never be blocked by storage.
+    // best-effort
   }
 }
 
-async function fetchBootJson(path: string): Promise<any> {
+export function getCachedBootPreload(): BootPreloadState {
+  const stored = readStoredCache();
+  if (!stored) return EMPTY_BOOT_STATE;
+  // Check fallback TTL — only used when version check is unavailable
+  const completedAt = Date.parse(String(stored.bootCompletedAt || ""));
+  if (Number.isFinite(completedAt) && Date.now() - completedAt > BOOT_FALLBACK_TTL_MS) return EMPTY_BOOT_STATE;
+  if (!stored.hasBootData) return EMPTY_BOOT_STATE;
+  return stored;
+}
+
+async function fetchWithTimeout(path: string, timeoutMs: number): Promise<any> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), BOOT_REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(path, { cache: "no-store", signal: controller.signal });
+    const res = await fetch(path, { cache: "no-store", signal: controller.signal });
     clearTimeout(timer);
-    if (!response.ok) throw new Error(`${response.status} ${path}`);
-    return response.json();
+    if (!res.ok) throw new Error(`${res.status} ${path}`);
+    return res.json();
   } catch (err) {
     clearTimeout(timer);
     throw err;
   }
 }
 
-async function settleBootJson(path: string): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
+async function settleJson(path: string, timeoutMs: number): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
   try {
-    return { ok: true, value: await fetchBootJson(path) };
+    return { ok: true, value: await fetchWithTimeout(path, timeoutMs) };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
-  onProgress?.({ progress: 20, message: "서버에 연결하는 중...", step: "server" });
+function extractDataVersions(health: any): { kr: string | null; us: string | null } {
+  const v = health?.dataVersions;
+  if (isObject(v)) {
+    return {
+      kr: v.kr ? String(v.kr) : null,
+      us: v.us ? String(v.us) : null,
+    };
+  }
+  // fallback: use latestFileModifiedAt from marketQuality
+  const mq = health?.marketQuality;
+  if (isObject(mq)) {
+    return {
+      kr: mq.kr?.latestFileModifiedAt ? String(mq.kr.latestFileModifiedAt) : null,
+      us: mq.us?.latestFileModifiedAt ? String(mq.us.latestFileModifiedAt) : null,
+    };
+  }
+  return { kr: null, us: null };
+}
 
-  // All 6 requests fire simultaneously.
-  // On Render.com cold start (~30s), they all queue together and are served at once —
-  // much faster than the previous sequential approach (health → home → stocks = 3× waits).
+export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
+  onProgress?.({ progress: 10, message: "데이터 버전 확인 중...", step: "server" });
+
+  // Step 1: Quick health check to get current data versions (4s timeout)
+  const healthResult = await settleJson("/mone-api/health", HEALTH_CHECK_TIMEOUT_MS);
+  const currentVersions = healthResult.ok ? extractDataVersions(healthResult.value) : null;
+
+  // Step 2: Compare with cached versions
+  const stored = readStoredCache();
+  if (stored?.hasBootData && currentVersions) {
+    const krMatch = !currentVersions.kr || stored.krDataVersion === currentVersions.kr;
+    const usMatch = !currentVersions.us || stored.usDataVersion === currentVersions.us;
+    if (krMatch && usMatch) {
+      // Versions match — use cache, no need to reload
+      onProgress?.({ progress: 100, message: "시장홈을 열고 있어요", step: "done" });
+      return stored;
+    }
+  }
+
+  // Step 3: Versions differ (or no cache) → full data reload
+  onProgress?.({ progress: 30, message: "새 예측 데이터 받는 중...", step: "home" });
+
   const [, krHomeSummary, usHomeSummary, krStocksCache, usStocksCache, holdingsCache] = await Promise.all([
-    settleBootJson("/mone-api/health"),
-    settleBootJson("/mone-api/home/summary?market=kr&limit=12"),
-    settleBootJson("/mone-api/home/summary?market=us&limit=12"),
-    settleBootJson("/mone-api/final/recommendations?market=kr&mode=balanced&horizon=swing&limit=50"),
-    settleBootJson("/mone-api/final/recommendations?market=us&mode=balanced&horizon=swing&limit=50"),
-    settleBootJson("/mone-api/api/holdings-clean?market=all&limit=500"),
+    settleJson("/mone-api/health", BOOT_REQUEST_TIMEOUT_MS),
+    settleJson("/mone-api/home/summary?market=kr&limit=12", BOOT_REQUEST_TIMEOUT_MS),
+    settleJson("/mone-api/home/summary?market=us&limit=12", BOOT_REQUEST_TIMEOUT_MS),
+    settleJson("/mone-api/final/recommendations?market=kr&mode=balanced&horizon=swing&limit=50", BOOT_REQUEST_TIMEOUT_MS),
+    settleJson("/mone-api/final/recommendations?market=us&mode=balanced&horizon=swing&limit=50", BOOT_REQUEST_TIMEOUT_MS),
+    settleJson("/mone-api/api/holdings-clean?market=all&limit=500", BOOT_REQUEST_TIMEOUT_MS),
   ]);
 
   const pairs = { krHomeSummary, usHomeSummary, krStocksCache, usStocksCache, holdingsCache };
@@ -138,7 +177,11 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
     hasBootData,
     errors,
   };
-  saveBootState(state);
+
+  if (hasBootData) {
+    saveCache(state, currentVersions?.kr, currentVersions?.us);
+  }
+
   onProgress?.({ progress: 100, message: hasBootData ? "시장홈을 열고 있어요" : "앱을 여는 중...", step: "done" });
   return state;
 }
