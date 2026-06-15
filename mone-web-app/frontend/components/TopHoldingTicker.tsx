@@ -208,8 +208,10 @@ export default function TopHoldingTicker() {
       >
         {error ? (
           <div className="text-xs text-red-300">티커 데이터 연결 확인 필요</div>
+        ) : loading && displayItems.length === 0 ? (
+          <div className="text-xs text-slate-500">티커 불러오는 중...</div>
         ) : displayItems.length === 0 ? (
-          <div className="text-xs text-slate-500">추천/관심 티커를 불러오는 중...</div>
+          <div className="text-xs text-slate-600">티커 없음</div>
         ) : (
           <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-7 whitespace-nowrap">
             {displayItems.map((item, index) => {

@@ -314,7 +314,15 @@ export function probabilityText(item: any, fallback = "-"): string {
     const wr = Number(item.calibratedWinRate);
     if (!isNaN(wr)) return `승률 ${wr.toFixed(1)}%`;
   }
-  return firstText(item?.probabilityText, item?.probText, item?.probability ? `${Number(item.probability).toFixed(1)}점` : null, item?.prob5d ? pctText(item.prob5d) : null, fallback);
+  const probNum = Number(item?.probability);
+  // probability may come from CSV as "77.6%" (string with %); use as-is if already formatted, else format the number
+  const probRaw = String(item?.probability ?? "").trim();
+  const probFormatted = Number.isFinite(probNum) && probNum > 0
+    ? `${probNum.toFixed(1)}점`
+    : probRaw.includes("%") && probRaw !== "NaN%"
+    ? probRaw
+    : null;
+  return firstText(item?.probabilityText, item?.probText, probFormatted, item?.prob5d ? pctText(item.prob5d) : null, fallback);
 }
 
 export function modeLabel(mode: Mode | string): string {
