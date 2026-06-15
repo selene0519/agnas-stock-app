@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { mone } from "@/lib/api";
 import { getUserId } from "@/lib/userId";
@@ -159,17 +159,22 @@ function labelForSource(item?: TickerItem) {
   return "추천 티커";
 }
 
+const TICKER_RELOAD_COOLDOWN_MS = 5 * 60 * 1000; // 5분 쿨다운
+
 export default function TopHoldingTicker() {
   const [items, setItems] = useState<TickerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const lastLoadedAt = useRef(0);
 
-  async function load() {
+  async function load(force = false) {
+    if (!force && Date.now() - lastLoadedAt.current < TICKER_RELOAD_COOLDOWN_MS) return;
     setLoading(true);
     setError("");
     try {
       const tickerRows = await fetchTickerRows();
       setItems(tickerRows.slice(0, 13));
+      lastLoadedAt.current = Date.now();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setItems([]);
@@ -179,14 +184,16 @@ export default function TopHoldingTicker() {
   }
 
   useEffect(() => {
-    load();
-    window.addEventListener("focus", load);
-    window.addEventListener("mone-holdings-updated", load);
-    window.addEventListener("mone-watchlist-updated", load);
+    load(true);
+    const onFocus = () => load(false);
+    const onForce = () => load(true);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("mone-holdings-updated", onForce);
+    window.addEventListener("mone-watchlist-updated", onForce);
     return () => {
-      window.removeEventListener("focus", load);
-      window.removeEventListener("mone-holdings-updated", load);
-      window.removeEventListener("mone-watchlist-updated", load);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("mone-holdings-updated", onForce);
+      window.removeEventListener("mone-watchlist-updated", onForce);
     };
   }, []);
 
@@ -237,7 +244,7 @@ export default function TopHoldingTicker() {
       </div>
 
       <button
-        onClick={load}
+        onClick={() => load(true)}
         className="shrink-0 rounded-lg border border-slate-800 bg-slate-900/70 p-1.5 text-slate-500 hover:text-slate-200"
         title="상단 티커 새로고침"
       >
