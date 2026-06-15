@@ -2200,6 +2200,32 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         score_filtered_items.append(item)
     filtered_items = score_filtered_items
 
+    # ── 앙상블 보정 품질 게이트 (calibrationCount >= 10인 경우만 적용)
+    # ensembleScore < 50: 충분한 실증 데이터가 있음에도 복합 점수 미달 → CAUTION
+    # 보수형: 완전 제외 / 균형·공격형: 태그 추가 후 유지
+    ensemble_filtered_count = 0
+    ensemble_caution_items: list[dict[str, Any]] = []
+    for item in filtered_items:
+        e_score = item.get("ensembleScore")
+        e_count = item.get("calibrationCount", 0)
+        try:
+            e_score_val = float(e_score) if e_score not in (None, "", "nan") else None
+            e_count_val = int(e_count) if e_count not in (None, "", "nan") else 0
+        except Exception:
+            e_score_val = None
+            e_count_val = 0
+        if e_score_val is not None and e_count_val >= 10 and e_score_val < 50.0:
+            if mode == "conservative":
+                ensemble_filtered_count += 1
+                continue
+            item["tradeBlockStatus"] = "ENSEMBLE_LOW"
+            item["decisionBucket"] = "관찰"
+            item.setdefault("strategyTags", [])
+            if "CAUTION" not in item["strategyTags"]:
+                item["strategyTags"].append("CAUTION")
+        ensemble_caution_items.append(item)
+    filtered_items = ensemble_caution_items
+
     hidden_count = len(items) - len(filtered_items)
 
     market_regime = market_regime_pre  # 위에서 이미 로드
@@ -2225,6 +2251,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
         "evNegativeFiltered": ev_hard_filtered_count + (ev_negative_count - ev_hard_filtered_count if mode == "conservative" else 0),
         "scoreBelowFloor": score_filtered_count,
         "scoreFloor": _min_score,
+        "ensembleLowFiltered": ensemble_filtered_count,
         "marketRegime": {
             **market_regime,
             "tradeParams": {
