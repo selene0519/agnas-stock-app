@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Star } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
+import type { BootPreloadData } from "@/lib/bootPreload";
 import {
   dedupeBySymbol,
   dataFreshnessBadgeClass,
@@ -248,17 +249,27 @@ function recommendationBadgeLabel(item: any, actionCode: string, actionText: str
   return baseLabel === "조건일치" ? "조건 포착" : baseLabel;
 }
 
-export default function StocksPage({ onNavigate }: { onNavigate?: (page: string) => void } = {}) {
+export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (page: string) => void; bootData?: BootPreloadData | null } = {}) {
+  // Resolve boot cache for the default session market (balanced/swing only)
+  const _initBootItems = (() => {
+    const initMarket = getDefaultMarketBySession(new Date());
+    const cache = initMarket === "us" ? bootData?.usStocksCache : bootData?.krStocksCache;
+    return Array.isArray(cache?.items) && cache.items.length > 0 ? (cache.items as any[]) : null;
+  })();
+  const bootSeedRef = useRef(Boolean(_initBootItems));
+
   const [market, setMarket] = useState<Market>("all");
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
   const [watchOnly, setWatchOnly] = useState(false);
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>(() =>
+    _initBootItems ? dedupeBySymbol(_initBootItems) : []
+  );
   const [loadError, setLoadError] = useState("");
   const [loadNotice, setLoadNotice] = useState("");
   const [watchlist, setWatchlist] = useState<WatchRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!_initBootItems);
   const [watchSaving, setWatchSaving] = useState(false);
   const [autoCurating, setAutoCurating] = useState(false);
   const [watchMessage, setWatchMessage] = useState("");
@@ -388,6 +399,13 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
   }, []);
 
   useEffect(() => {
+    // Skip the very first fetch when boot-seeded data covers the default balanced/swing params
+    if (bootSeedRef.current && mode === "balanced" && horizon === "swing" && refreshVersion === 0) {
+      bootSeedRef.current = false;
+      return;
+    }
+    bootSeedRef.current = false;
+
     const controller = new AbortController();
     let active = true;
     setLoading(true);

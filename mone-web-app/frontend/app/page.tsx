@@ -89,14 +89,14 @@ export default function App() {
       if (!cancelled && showLaunchLoading) setBootDelayed(true);
     }, 10000);
 
-    const updateBoot = (progress: number, message: string, step: "server" | "quality" | "recommendations" | "done") => {
+    const updateBoot = (progress: number, message: string, step: "server" | "home" | "stocks" | "done") => {
       if (cancelled) return;
       setBootProgress(progress);
       setBootMessage(message);
       setBootSteps([
         { label: "서버 연결 확인", status: step === "server" ? "active" : "done" },
-        { label: "시장 요약 미리 불러오기", status: step === "server" ? "pending" : step === "quality" ? "active" : "done" },
-        { label: "추천 후보 준비", status: step === "recommendations" ? "active" : step === "done" ? "done" : "pending" },
+        { label: "시장 요약 미리 불러오기", status: step === "server" ? "pending" : step === "home" ? "active" : "done" },
+        { label: "추천 후보 준비", status: step === "stocks" ? "active" : step === "done" ? "done" : "pending" },
       ]);
     };
 
@@ -235,7 +235,7 @@ export default function App() {
       case "report":
         return <ReportPage />;
       case "stocks":
-        return <StocksPage onNavigate={(p) => setPage(p as PageId)} />;
+        return <StocksPage onNavigate={(p) => setPage(p as PageId)} bootData={bootState.bootData} />;
       case "holdings":
         return <HoldingsPage userToken={userToken || null} onNavigate={(p) => setPage(p as PageId)} />;
       case "chart":

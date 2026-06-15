@@ -3,12 +3,10 @@
 export type BootStatus = "idle" | "loading" | "ready" | "degraded";
 
 export type BootPreloadData = {
-  krOperationSummary?: any;
-  usOperationSummary?: any;
-  krDataQuality?: any;
-  usDataQuality?: any;
-  krRecommendations?: any;
-  usRecommendations?: any;
+  krHomeSummary?: any;
+  usHomeSummary?: any;
+  krStocksCache?: any;   // balanced/swing recommendations for StocksPage
+  usStocksCache?: any;
 };
 
 export type BootPreloadState = {
@@ -22,11 +20,11 @@ export type BootPreloadState = {
 type BootProgress = {
   progress: number;
   message: string;
-  step: "server" | "quality" | "recommendations" | "done";
+  step: "server" | "home" | "stocks" | "done";
 };
 
-const BOOT_CACHE_KEY = "mone:boot-preload:v1";
-const BOOT_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
+const BOOT_CACHE_KEY = "mone:boot-preload:v2";
+const BOOT_CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10분
 
 const EMPTY_BOOT_STATE: BootPreloadState = {
   bootStatus: "idle",
@@ -100,27 +98,25 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
   onProgress?.({ progress: 18, message: "서버 연결을 확인하고 있어요", step: "server" });
   await settleBootJson("/mone-api/health");
 
-  onProgress?.({ progress: 42, message: "시장 요약과 데이터 상태를 미리 불러오고 있어요", step: "quality" });
-  const [krOperationSummary, usOperationSummary, krDataQuality, usDataQuality] = await Promise.all([
-    settleBootJson("/mone-api/final/operation-summary?market=kr"),
-    settleBootJson("/mone-api/final/operation-summary?market=us"),
-    settleBootJson("/mone-api/final/data-quality?market=kr&mode=quick"),
-    settleBootJson("/mone-api/final/data-quality?market=us&mode=quick"),
+  onProgress?.({ progress: 50, message: "시장 홈 데이터를 미리 불러오고 있어요", step: "home" });
+  // Fetch home/summary for both markets — this is what HomePage actually uses
+  const [krHomeSummary, usHomeSummary] = await Promise.all([
+    settleBootJson("/mone-api/home/summary?market=kr&limit=12"),
+    settleBootJson("/mone-api/home/summary?market=us&limit=12"),
   ]);
 
-  onProgress?.({ progress: 72, message: "오늘의 추천 후보를 준비하고 있어요", step: "recommendations" });
-  const [krRecommendations, usRecommendations] = await Promise.all([
-    settleBootJson("/mone-api/final/recommendations?market=kr&limit=5"),
-    settleBootJson("/mone-api/final/recommendations?market=us&limit=5"),
+  onProgress?.({ progress: 80, message: "오늘의 추천 후보를 준비하고 있어요", step: "stocks" });
+  // Fetch default balanced/swing recommendations for StocksPage (most common first view)
+  const [krStocksCache, usStocksCache] = await Promise.all([
+    settleBootJson("/mone-api/final/recommendations?market=kr&mode=balanced&horizon=swing&limit=50"),
+    settleBootJson("/mone-api/final/recommendations?market=us&mode=balanced&horizon=swing&limit=50"),
   ]);
 
   const pairs = {
-    krOperationSummary,
-    usOperationSummary,
-    krDataQuality,
-    usDataQuality,
-    krRecommendations,
-    usRecommendations,
+    krHomeSummary,
+    usHomeSummary,
+    krStocksCache,
+    usStocksCache,
   };
   const bootData: BootPreloadData = {};
   const errors: string[] = [];
