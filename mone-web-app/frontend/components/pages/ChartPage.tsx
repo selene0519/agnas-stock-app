@@ -2058,7 +2058,11 @@ export default function ChartPage() {
   const [chartAnalysis, setChartAnalysis] = useState<any | null>(null);
   const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
   const [atrHorizon, setAtrHorizon] = useState<"short"|"swing"|"mid">("swing");
-  const [loading, setLoading] = useState(false);
+  // Start as true if we already have a symbol in localStorage (avoids "OHLCV 없음" flash before fetch begins)
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !!window.localStorage.getItem("mone_chart_symbol");
+  });
   const [seedLoading, setSeedLoading] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadState, setLoadState] = useState<ChartLoadState>({
@@ -2189,12 +2193,12 @@ export default function ChartPage() {
     setLoading(true);
     setLoadState((prev) => ({ ...prev, errors: [], updatedAt: "" }));
     Promise.allSettled([
-      withTimeout(mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }, controller.signal), 20000, { status: "TIMEOUT", items: [] }),
-      withTimeout(mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal), 20000, { status: "TIMEOUT", items: [] }),
-      withTimeout(mone.news({ market: selected.market, limit: 200 }, controller.signal), 8000, { status: "TIMEOUT", items: [] }),
-      withTimeout(mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal), 8000, { status: "TIMEOUT", items: [] }),
-      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 15000, { status: "TIMEOUT", items: [] }),
-      withTimeout(mone.patternStrategy({ market: selected.market, symbol: selected.symbol }, controller.signal), 12000, { status: "TIMEOUT" }),
+      withTimeout(mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }, controller.signal), 35000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal), 35000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.news({ market: selected.market, limit: 200 }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 20000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.patternStrategy({ market: selected.market, symbol: selected.symbol }, controller.signal), 20000, { status: "TIMEOUT" }),
     ]).then((results) => {
       if (!active) return;
       const [cd, rd, nd, dd, company_d, pattern_d] = results.map((r) => r.status === "fulfilled" ? r.value : { items: [] }) as any[];
@@ -2709,8 +2713,28 @@ export default function ChartPage() {
                 ))}
             </div>
 
-            {loading && <div className="py-20 text-center text-slate-500">차트 데이터를 불러오는 중...</div>}
-            {!loading && rows.length === 0 && (
+            {loading && (
+              <div className="flex flex-col items-center justify-center py-20 text-center text-slate-500">
+                <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-sky-500" />
+                <div>차트 데이터를 불러오는 중...</div>
+                <div className="mt-1 text-xs text-slate-600">서버 응답이 느린 경우 최대 20초 소요될 수 있습니다</div>
+              </div>
+            )}
+            {!loading && rows.length === 0 && loadState.ohlcvStatus === "TIMEOUT" && (
+              <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-6 text-sky-100">
+                <div className="font-semibold">서버 응답 지연</div>
+                <div className="mt-1 text-sm text-sky-200/80">
+                  백엔드 서버가 절전 상태에서 깨어나는 중이거나 네트워크가 불안정합니다. 잠시 후 재조회 버튼을 누르면 차트가 표시됩니다.
+                </div>
+                <button
+                  onClick={() => setReloadKey((v) => v + 1)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/15 px-3 py-1.5 text-sm text-sky-200 hover:bg-sky-500/25"
+                >
+                  <RefreshCw size={13} /> 재조회
+                </button>
+              </div>
+            )}
+            {!loading && rows.length === 0 && loadState.ohlcvStatus !== "TIMEOUT" && (
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-6 text-amber-100">
                 <div className="font-semibold">OHLCV 원본이 없어 차트를 그릴 수 없습니다.</div>
                 <div className="mt-1 text-sm text-amber-200/80">
@@ -2722,6 +2746,12 @@ export default function ChartPage() {
                     탐색 → 현재가 새로고침을 누르면 KIS API로 자동 수집됩니다.
                   </div>
                 )}
+                <button
+                  onClick={() => setReloadKey((v) => v + 1)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/15 px-3 py-1.5 text-sm text-amber-200 hover:bg-amber-500/25"
+                >
+                  <RefreshCw size={13} /> 재조회
+                </button>
               </div>
             )}
 

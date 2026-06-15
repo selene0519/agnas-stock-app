@@ -900,6 +900,11 @@ export default function StocksPage({ onNavigate }: { onNavigate?: (page: string)
         )}
 
         {/* 섹터 필터 */}
+        {resolvedMarket === "us" && (
+          <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-900/50 px-3 py-2 text-xs text-slate-500">
+            미국 시장 섹터 필터는 미지원입니다 — 데이터 수집 후 추가 예정
+          </div>
+        )}
         {sectorsList.length > 0 && (
           <div className="mt-4 flex flex-col gap-1.5 sm:max-w-xs">
             <label htmlFor="stocks-sector-filter" className="text-[10px] text-slate-500">
