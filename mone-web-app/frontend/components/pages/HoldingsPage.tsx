@@ -101,6 +101,20 @@ function dedupe(items: any[]) {
   });
 }
 
+// Module-level re-entry cache: avoids reload spinner when navigating away and back
+const HOLDINGS_CACHE_TTL = 3 * 60 * 1000; // 3 min
+type HoldingsCacheEntry = { data: any; market: Market; loadedAt: string; ts: number };
+let _holdingsCache: HoldingsCacheEntry | null = null;
+function readHoldingsCache(market: Market): HoldingsCacheEntry | null {
+  if (!_holdingsCache) return null;
+  if (_holdingsCache.market !== market) return null;
+  if (Date.now() - _holdingsCache.ts > HOLDINGS_CACHE_TTL) return null;
+  return _holdingsCache;
+}
+function writeHoldingsCache(market: Market, data: any, loadedAt: string) {
+  _holdingsCache = { data, market, loadedAt, ts: Date.now() };
+}
+
 function extractPositionCandidates(summary: any) {
   const matrix = summary?.matrix || {};
   return Object.entries(matrix).flatMap(([key, cell]: [string, any]) => {
@@ -576,8 +590,8 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
 // ── 메인 페이지 ────────────────────────────────────────────────────────
 export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProps) {
   const [market, setMarket] = useState<Market>("all");
-  const [data, setData] = useState<any>({ items: [], summary: {} });
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any>(() => readHoldingsCache("all")?.data ?? { items: [], summary: {} });
+  const [loading, setLoading] = useState(() => !readHoldingsCache("all"));
   const [editKey, setEditKey] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditableHolding | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -639,19 +653,31 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
     }
   }
 
-  async function load() {
-    setLoading(true);
+  async function load(options: { background?: boolean } = {}) {
+    const cached = readHoldingsCache(market);
+    if (cached && !options.background) {
+      setData(cached.data);
+      setHoldingsLoadedAt(cached.loadedAt);
+      setLoading(false);
+    } else if (!cached) {
+      setLoading(true);
+    }
     try {
       const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
       const serverItems = Array.isArray(result.items) ? result.items : [];
       const localItems = loadHoldingsFromLocalStorage();
+      let finalData: any;
       if (serverItems.length === 0 && localItems.length > 0) {
-        setData(localHoldingsPayload(localItems, market));
+        finalData = localHoldingsPayload(localItems, market);
+        setData(finalData);
       } else {
         if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems);
-        setData(result);
+        finalData = result;
+        setData(finalData);
       }
-      setHoldingsLoadedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
+      const loadedAt = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+      setHoldingsLoadedAt(loadedAt);
+      writeHoldingsCache(market, finalData, loadedAt);
       loadPositionCandidates(market);
       setLoading(false);
       if (market === "all") {
@@ -681,7 +707,8 @@ export default function HoldingsPage({ userToken, onNavigate }: HoldingsPageProp
   }
 
   useEffect(() => {
-    load();
+    const hasCached = Boolean(readHoldingsCache(market));
+    load({ background: hasCached });
   }, [market]);
 
   useEffect(() => {

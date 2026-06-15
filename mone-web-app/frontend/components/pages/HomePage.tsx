@@ -1765,10 +1765,12 @@ export default function HomePage({
   onNavigate,
   bootData,
   bootStatus = "idle",
+  booting = false,
 }: {
   onNavigate?: (page: PageId) => void;
   bootData?: BootPreloadData | null;
   bootStatus?: BootStatus;
+  booting?: boolean;
 }) {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [matrix, setMatrix] = useState<StrategyCell[]>([]);
@@ -1776,7 +1778,8 @@ export default function HomePage({
   const [summary, setSummary] = useState<any>(null);
   const [marketRegime, setMarketRegime] = useState<any>(null);
   const [dataHealth, setDataHealth] = useState<any>(null);
-  const [loading, setLoading] = useState(!bootData || !Object.keys(bootData).length);
+  // While the boot overlay is still showing, stay silent (no spinner) — boot data arrives before overlay lifts
+  const [loading, setLoading] = useState(booting ? false : (!bootData || !Object.keys(bootData).length));
   const [refreshing, setRefreshing] = useState(false);
   const [refreshWarning, setRefreshWarning] = useState("");
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
@@ -1932,11 +1935,12 @@ export default function HomePage({
   }, []);
 
   useEffect(() => {
-    if (clientReady) {
+    // Don't fetch while the boot overlay is still showing — boot data will seed us on dismiss
+    if (clientReady && !booting) {
       const hadCache = applyCachedOrBootState(selectedMarket);
       load({ background: hadCache });
     }
-  }, [clientReady, selectedMarket]);
+  }, [clientReady, selectedMarket, booting]);
 
   useEffect(() => {
     if (!clientReady) return;

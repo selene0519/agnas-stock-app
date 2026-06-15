@@ -240,7 +240,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case "home":
-        return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} />;
+        return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
       case "report":
         return <ReportPage />;
       case "stocks":
@@ -265,10 +265,10 @@ export default function App() {
         );
       case "admin":
         if (adminToken) return <AdminPage authToken={adminToken} onLogout={handleAdminLogout} />;
-        if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} />; }
+        if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />; }
         return <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       default:
-        return <HomePage bootData={bootState.bootData} bootStatus={bootState.bootStatus} />;
+        return <HomePage bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
     }
   };
 
