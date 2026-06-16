@@ -1,17 +1,25 @@
 "use client";
 
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut, UserRound, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { clearAuthenticatedUser, getUserProfile, type MoneUserProfile } from "@/lib/userId";
 
 export default function UserAuthButtons() {
   const [profile, setProfile] = useState<MoneUserProfile | null>(null);
+  const [loggingIn, setLoggingIn] = useState<"google" | "kakao" | null>(null);
 
   useEffect(() => {
     setProfile(getUserProfile());
   }, []);
 
-  const login = (provider: "google" | "kakao") => {
+  const login = async (provider: "google" | "kakao") => {
+    setLoggingIn(provider);
+    // 백엔드 cold-start 대기: health check로 서버 깨우기
+    try {
+      await fetch("/mone-api/health", { method: "GET", cache: "no-store", signal: AbortSignal.timeout(55000) });
+    } catch {
+      // health check 실패해도 OAuth 시도는 계속 (에러는 OAuth 단에서 처리)
+    }
     window.location.href = `/mone-api/api/auth/oauth/${provider}/start`;
   };
 
@@ -43,16 +51,18 @@ export default function UserAuthButtons() {
       <button
         type="button"
         onClick={() => login("google")}
-        className="rounded-lg border border-slate-700 bg-slate-800/50 px-1.5 py-1 text-[11px] text-slate-300 hover:border-blue-500 hover:text-white sm:px-2 sm:text-xs"
+        disabled={loggingIn != null}
+        className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/50 px-1.5 py-1 text-[11px] text-slate-300 hover:border-blue-500 hover:text-white disabled:opacity-60 sm:px-2 sm:text-xs"
       >
-        Google
+        {loggingIn === "google" ? <><Loader2 size={11} className="animate-spin" />서버 연결중</> : "Google"}
       </button>
       <button
         type="button"
         onClick={() => login("kakao")}
-        className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-1.5 py-1 text-[11px] text-amber-200 hover:bg-amber-500/20 sm:px-2 sm:text-xs"
+        disabled={loggingIn != null}
+        className="flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-1.5 py-1 text-[11px] text-amber-200 hover:bg-amber-500/20 disabled:opacity-60 sm:px-2 sm:text-xs"
       >
-        Kakao
+        {loggingIn === "kakao" ? <><Loader2 size={11} className="animate-spin" />서버 연결중</> : "Kakao"}
       </button>
     </div>
   );
