@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart2, Briefcase, ChevronRight, Cpu, LayoutDashboard, LogIn, LogOut, MoreHorizontal, Search, ShieldCheck, UserRound } from "lucide-react";
+import { BarChart2, Briefcase, ChevronRight, Cpu, FlaskConical, LayoutDashboard, LogIn, LogOut, MoreHorizontal, Search, ShieldCheck, UserRound } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import type { MoneUserProfile } from "@/lib/userId";
@@ -14,6 +14,7 @@ export type PageId =
   | "news"
   | "prediction"
   | "advanced"
+  | "paper"
   | "broker"
   | "admin";
 
@@ -26,6 +27,7 @@ const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
 
 const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "advanced", label: "전략도구", icon: <Cpu size={16} /> },
+  { id: "paper", label: "페이퍼 트레이딩", icon: <FlaskConical size={16} /> },
 ];
 
 const adminItem: { id: PageId; label: string; icon: React.ReactNode } = {

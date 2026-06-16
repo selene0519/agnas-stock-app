@@ -545,6 +545,20 @@ export const mone = {
 
   // 공포·탐욕 지수
   fearGreed: (p?: { market?: string }) => apiGet<any>("/api/market/fear-greed", p),
+
+  // 페이퍼 트레이딩
+  paperPositions: (p?: { market?: string }) => apiGet<any>("/api/paper/positions", p),
+  paperHistory: (p?: { market?: string; limit?: number }) => apiGet<any>("/api/paper/history", p),
+  paperSummary: (p?: { market?: string }) => apiGet<any>("/api/paper/summary", p),
+  paperBuy: (body: { symbol: string; market: string; quantity: number; price?: number; name?: string; memo?: string }) =>
+    apiPost<any>("/api/paper/buy", body),
+  paperSell: (body: { symbol: string; market: string; quantity: number; price?: number; memo?: string }) =>
+    apiPost<any>("/api/paper/sell", body),
+  paperReset: (market?: string) =>
+    fetch(`${API_BASE}/api/paper/reset${market ? `?market=${market}` : ""}`, {
+      method: "DELETE",
+      headers: { ...getMoneUserHeader() },
+    }).then((r) => r.json()),
 };
 
 export default mone;
