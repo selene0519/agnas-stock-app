@@ -91,6 +91,24 @@ function normalizeDataHealth(raw: any) {
   };
 }
 
+function shortDate(value: any) {
+  const normalized = normalizeDateText(value);
+  return normalized ? String(normalized).slice(0, 10) : "";
+}
+
+function operationBasisWarning(operationSummary: any) {
+  if (!operationSummary || typeof operationSummary !== "object") return null;
+  const status = String(operationSummary.basisAlignmentStatus || "").toUpperCase();
+  const dates = operationSummary.basisDates || {};
+  const recommendation = shortDate(operationSummary.recommendationDate || dates.recommendation);
+  const current = shortDate(operationSummary.currentPriceBasisDate || dates.currentPrice);
+  const ohlcv = shortDate(operationSummary.ohlcvLatestDate || dates.ohlcv);
+  const knownDates = [recommendation, current, ohlcv].filter(Boolean);
+  const mixed = status.includes("MIXED") || new Set(knownDates).size > 1;
+  if (!mixed) return null;
+  return { recommendation, current, ohlcv };
+}
+
 function getSessionContext(session: SessionPhase) {
   switch (session) {
     case "장전":    return { focus: "today",    hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하고 알림을 등록하세요." };
@@ -1778,6 +1796,7 @@ export default function HomePage({
   const [summary, setSummary] = useState<any>(null);
   const [marketRegime, setMarketRegime] = useState<any>(null);
   const [dataHealth, setDataHealth] = useState<any>(null);
+  const [operationSummary, setOperationSummary] = useState<any>(null);
   // While the boot overlay is still showing, stay silent (no spinner) — boot data arrives before overlay lifts
   const [loading, setLoading] = useState(booting ? false : (!bootData || !Object.keys(bootData).length));
   const [refreshing, setRefreshing] = useState(false);
@@ -1961,6 +1980,19 @@ export default function HomePage({
       .finally(() => setReportLoading(false));
   }, [clientReady, selectedMarket]);
 
+  useEffect(() => {
+    if (!clientReady) return;
+    let active = true;
+    mone.operationSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" })
+      .then((res) => {
+        if (active) setOperationSummary(res || null);
+      })
+      .catch(() => {
+        if (active) setOperationSummary(null);
+      });
+    return () => { active = false; };
+  }, [clientReady, selectedMarket]);
+
   // 실적발표 일정 로드 + earningsMap 구성
   useEffect(() => {
     mone.earningsCalendar({ market: selectedMarket as any, days: 14 })
@@ -2133,6 +2165,8 @@ export default function HomePage({
 
     return alerts.slice(0, 4);
   }, [todayEntries, watchItems, holdings, dataHealth]);
+
+  const basisWarning = useMemo(() => operationBasisWarning(operationSummary), [operationSummary]);
 
   useEffect(() => {
     if (!todayEntries.length) return;
@@ -2455,6 +2489,27 @@ export default function HomePage({
           </div>
         );
       })()}
+
+      {basisWarning && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 font-semibold text-amber-200">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>기준일이 혼합되어 있습니다</span>
+              </div>
+              <p className="mt-1 text-amber-100/80">
+                추천·현재가·차트/OHLCV 기준일이 서로 달라 장중에는 일부 판단이 전일 종가 기준으로 보일 수 있습니다.
+              </p>
+            </div>
+            <div className="grid shrink-0 grid-cols-3 gap-1.5 font-mono text-[11px] tabular-nums sm:min-w-[310px]">
+              <span className="rounded-lg border border-amber-400/20 bg-slate-950/40 px-2 py-1 text-center">추천 {basisWarning.recommendation || "-"}</span>
+              <span className="rounded-lg border border-amber-400/20 bg-slate-950/40 px-2 py-1 text-center">현재가 {basisWarning.current || "-"}</span>
+              <span className="rounded-lg border border-amber-400/20 bg-slate-950/40 px-2 py-1 text-center">OHLCV {basisWarning.ohlcv || "-"}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 오늘 운용 요약 — 접힘 가능 */}
       <div className="rounded-2xl border border-slate-800 bg-slate-900/40">

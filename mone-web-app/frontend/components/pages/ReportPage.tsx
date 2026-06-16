@@ -241,6 +241,15 @@ function cleanReportRows(rows: any[]) {
   return (rows || []).filter((row) => !hasConflictMarker(row));
 }
 
+function completedValidationCount(dashboard: any, items: any[]) {
+  const summaryCount = Number(dashboard?.summary?.totalCompleted);
+  if (Number.isFinite(summaryCount) && summaryCount > 0) return summaryCount;
+  const stats = dashboard?.stats && typeof dashboard.stats === "object" ? Object.values(dashboard.stats) as any[] : [];
+  const statsCount = stats.reduce((sum, row) => sum + Number(row?.completed || 0), 0);
+  if (statsCount > 0) return statsCount;
+  return items.filter((row) => !isPending(row) && parseRet(row) !== null).length;
+}
+
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────────
 
 export default function ReportPage() {
@@ -341,6 +350,8 @@ export default function ReportPage() {
   const virtualRawItems = Array.isArray(virtualValidation.items) ? virtualValidation.items : [];
   const virtualConflictRowCount = useMemo(() => virtualRawItems.filter(hasConflictMarker).length, [virtualRawItems]);
   const virtualItems = useMemo(() => cleanReportRows(virtualRawItems), [virtualRawItems]);
+  const validationSampleCount = useMemo(() => completedValidationCount(valDashboard, virtualItems), [valDashboard, virtualItems]);
+  const lowSample = virtualTab && validationSampleCount < 30;
 
   const tabs: { id: Tab; label: string; desc: string }[] = [
     { id: "premarket",   label: "오늘 추천",   desc: "진입 후보 · EV·손익비·전략 태그" },
@@ -451,6 +462,15 @@ export default function ReportPage() {
             {/* 가상운용 탭: 누적 PnL 곡선 + 원장 카드 */}
             {virtualTab && (
               <div className="mt-4 space-y-3">
+                {lowSample && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 sm:text-sm">
+                    <div className="font-semibold text-amber-200">LOW_SAMPLE · 검증 표본이 아직 부족합니다</div>
+                    <p className="mt-1 text-amber-100/80">
+                      현재 검증 완료 표본은 <span className="font-mono tabular-nums text-amber-50">{validationSampleCount}</span>건입니다.
+                      30건 이상 누적되기 전까지 승률과 평균 수익률은 참고값으로만 보세요.
+                    </p>
+                  </div>
+                )}
                 <PnlCurve items={virtualItems} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 sm:p-4">
