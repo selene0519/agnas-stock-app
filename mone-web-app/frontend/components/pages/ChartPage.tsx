@@ -8,6 +8,7 @@ import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
+import StockResearchPanel from "@/components/StockResearchPanel";
 
 type ToggleKey = "ma10" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index"
               | "zigzag" | "trendline" | "retracement" | "supply" | "fakeBreak";
@@ -2602,6 +2603,14 @@ export default function ChartPage() {
             </div>
 
             {entryPlanSection}
+
+            {/* 리서치 분석 패널 (#2 재무건전성 / #3 다운사이드리스크 / #5 인지교정) */}
+            <div className="mb-4">
+              <StockResearchPanel
+                symbol={selected.symbol}
+                market={selected.market === "us" ? "us" : "kr"}
+              />
+            </div>
 
             {/* 기간 필터 + 인디케이터 토글 */}
             <div className="mb-3 flex flex-wrap items-center gap-2">

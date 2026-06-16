@@ -534,6 +534,8 @@ export const mone = {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     }).then((r) => r.json()),
+  stockAnalysis: (p: { symbol: string; market: string }) =>
+    apiGet<any>(`/api/analysis/${encodeURIComponent(p.symbol)}`, { market: p.market }),
 };
 
 export default mone;
