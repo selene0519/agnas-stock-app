@@ -111,6 +111,131 @@ def load_calibration(
     return data
 
 
+def ensemble_score_v2(
+    final_score: float | None,
+    regime: str,
+    rr_actual: float | None,
+    market: str,
+    mode: str,
+    horizon: str,
+    repo_root: Path,
+    *,
+    upside_score: float | None = None,
+    risk_score: float | None = None,
+    momentum_score: float | None = None,
+    entry_score: float | None = None,
+    rr_score: float | None = None,
+    quality_score: float | None = None,
+    news_risk_penalty: float | None = None,
+) -> dict[str, Any]:
+    """
+    5개 독립 모델 앙상블 점수 계산.
+
+    M1 전략 가중  — 현재 finalScore (전략·기간별 가중합)
+    M2 리스크 중심 — riskScore·rrScore·qualityScore 중심
+    M3 모멘텀 중심 — momentumScore·upsideScore·entryScore 중심
+    M4 밸류·진입  — entryScore·rrScore·riskScore 중심
+    M5 레짐 강화  — M1 × regime_factor²  (레짐 민감도 강화)
+
+    Returns
+    -------
+    ensembleScore, calibratedWinRate, calibratedAvgPnl, calibrationCount,
+    modelScores (M1~M5 개별 점수)
+    """
+    if final_score is None:
+        return {
+            "ensembleScore": None, "calibratedWinRate": None,
+            "calibratedAvgPnl": None, "calibrationCount": 0,
+            "modelScores": None,
+        }
+
+    regime_factor = _REGIME_FACTORS.get(regime, 1.0)
+    rr_actual_safe = max(0.5, rr_actual or 1.5)
+    news_penalty = min(max(news_risk_penalty or 0.0, 0.0), 30.0)
+
+    def _s(v: float | None, fallback: float = 50.0) -> float:
+        return max(0.0, min(100.0, float(v))) if v is not None else fallback
+
+    us = _s(upside_score)
+    rs = _s(risk_score)
+    ms = _s(momentum_score)
+    es = _s(entry_score)
+    rrs = _s(rr_score)
+    qs = _s(quality_score)
+
+    # M1: finalScore 그대로 사용 (전략 가중합)
+    m1 = max(0.0, min(100.0, float(final_score)))
+
+    # M2: 리스크·손익비 중심 (보수형 관점)
+    m2 = rs * 0.40 + rrs * 0.30 + qs * 0.20 + es * 0.10 - news_penalty * 0.05
+    m2 = max(0.0, min(100.0, m2))
+
+    # M3: 모멘텀·상승 여력 중심 (공격형 관점)
+    m3 = ms * 0.35 + us * 0.35 + es * 0.20 + rs * 0.10 - news_penalty * 0.05
+    m3 = max(0.0, min(100.0, m3))
+
+    # M4: 진입·가치 중심 (타이밍 관점)
+    m4 = es * 0.35 + rrs * 0.30 + rs * 0.20 + qs * 0.15 - news_penalty * 0.05
+    m4 = max(0.0, min(100.0, m4))
+
+    # M5: 레짐 강화 (시장 상황 민감형)
+    m5 = m1 * (regime_factor ** 2)
+    m5 = max(0.0, min(100.0, m5))
+
+    # 손익비 보정 계수 (1.5 기준, 3.0 이상 최대)
+    rr_boost = min(max((rr_actual_safe - 1.0) / 2.0, 0.0), 1.0)
+
+    # 5모델 가중 평균 (레짐 기반 동적 가중치)
+    if regime == "BEAR":
+        # 약세장: 리스크·레짐 모델 비중 높임
+        weights = [0.20, 0.35, 0.10, 0.15, 0.20]
+    elif regime == "BULL":
+        # 강세장: 모멘텀·M1 비중 높임
+        weights = [0.30, 0.15, 0.30, 0.15, 0.10]
+    else:
+        weights = [0.25, 0.20, 0.25, 0.20, 0.10]
+
+    raw_ensemble = (
+        m1 * weights[0] + m2 * weights[1] + m3 * weights[2]
+        + m4 * weights[3] + m5 * weights[4]
+    )
+    # 손익비 보정 최대 +5점
+    ensemble = max(0.0, min(100.0, raw_ensemble + rr_boost * 5.0))
+
+    # 보정 테이블 (백테스트 데이터 있을 때만 활용)
+    cal = load_calibration(market, mode, horizon, repo_root)
+    table = cal.get("table", {})
+    global_stats = cal.get("global", {})
+    bin_key = f"{_bin_label(ensemble)}|{regime}"
+    bucket = table.get(bin_key) or {}
+    fallback_bucket = table.get(f"{_bin_label(ensemble)}|SIDE") or {}
+    primary_count = bucket.get("count", 0)
+    count = primary_count or fallback_bucket.get("count", 0)
+
+    if regime == "BEAR" and primary_count == 0:
+        calib_win = None
+        calib_pnl = None
+    else:
+        calib_win_raw = bucket.get("winRate") or fallback_bucket.get("winRate") or global_stats.get("winRate")
+        calib_pnl_raw = bucket.get("avgPnl") or fallback_bucket.get("avgPnl") or global_stats.get("avgPnl")
+        calib_win = round(calib_win_raw, 1) if calib_win_raw is not None else None
+        calib_pnl = round(calib_pnl_raw, 3) if calib_pnl_raw is not None else None
+
+    return {
+        "ensembleScore": round(ensemble, 1),
+        "calibratedWinRate": calib_win,
+        "calibratedAvgPnl": calib_pnl,
+        "calibrationCount": count,
+        "modelScores": {
+            "m1_strategy": round(m1, 1),
+            "m2_risk": round(m2, 1),
+            "m3_momentum": round(m3, 1),
+            "m4_value": round(m4, 1),
+            "m5_regime": round(m5, 1),
+        },
+    }
+
+
 def ensemble_score(
     final_score: float | None,
     regime: str,

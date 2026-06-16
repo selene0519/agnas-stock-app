@@ -26,7 +26,7 @@ CACHE_TTL_SEC = 24 * 3600  # 24시간
 
 # ── Claude API 설정 ──────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL = "claude-opus-4-1"
+CLAUDE_MODEL = os.getenv("CLAUDE_SENTIMENT_MODEL", "claude-haiku-4-5-20251001")
 
 
 def _read_cache(market: str) -> dict[str, dict[str, Any]]:
