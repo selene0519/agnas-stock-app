@@ -222,16 +222,16 @@ GITHUB_TOKEN
 ```
 완료: 1.KIS 키 설정 2.Actions 스케줄 3.이격도 수렴 신호 4.기관 순매수
 완료: 5.EV 음수 필터 (/api/final/recommendations-ev-filtered)
+완료: 7.StocksPage 빠른 스크리닝 프리셋 + 그룹 필터
 완료: 8.ATR 기반 진입 계획 UI (ChartPage.tsx)
 완료: 9.마켓 레짐 감지 (/api/home/summary 내 KOSPI/SPY 20일선)
+완료: 11.마켓 레짐 배너 (HomePage 상단)
+완료: 12.감성 뱃지 (HomePage TodayEntryCard·WatchCard, StocksPage 종목카드)
 완료: 28개 누락 API 엔드포인트 (v10.2)
 
 다음:
-6. 뉴스 감성 분석 (Claude API — ai_research.py 연결)
-7. StocksPage 종목 그룹/스크리너 UI 완성
+6. 뉴스 감성 분석 (Claude API — ANTHROPIC_API_KEY Render 등록 후 자동 전환)
 10. 앙상블 모델 5개 (데이터 500건 이상 후)
-11. 마켓 레짐 → HomePage 배너로 표시
-12. 뉴스 감성 태그 → 추천 카드에 표시
 ```
 
 ---

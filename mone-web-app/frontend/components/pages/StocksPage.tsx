@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Star } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
+import { SentimentBadge } from "@/components/SentimentBadge";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import type { BootPreloadData } from "@/lib/bootPreload";
 import {
@@ -1637,6 +1638,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
                     )}
                     {watched && <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">관심</span>}
+                    <SentimentBadge
+                      symbol={item.symbol}
+                      market={String(item.market || resolvedMarket).toLowerCase() === "us" ? "us" : "kr"}
+                      name={displayName(item) || String(item.name || "")}
+                    />
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] leading-4">
                     <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-300">
