@@ -316,9 +316,8 @@ jobs:
               exit(0)
           result = data.collect_gnews("all")
           print(json.dumps(result, ensure_ascii=False, indent=2))
-          if result.get("status") == "OK":
-              for r in result.get("results", []):
-                  print(f"  [{r['market']}] {r.get('count',0)}건 → {r.get('file','')}")
+          for r in result.get("results", []):
+              print(f"  [{r['market']}] {r.get('status')} {r.get('count',0)}건 → {r.get('file','')}")
           PY
           echo "gnews refresh: exit $?"
           set -e
@@ -350,6 +349,7 @@ jobs:
       - name: Ping backend API (배포 서버가 있으면 캐시 갱신)
         env:
           MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
+          ENABLE_BACKEND_NEWS_REFRESH: ${{ vars.ENABLE_BACKEND_NEWS_REFRESH || '0' }}
         run: |
           if [ -z "${MONE_BACKEND_URL}" ]; then
             echo "MONE_BACKEND_URL 미설정 — 백엔드 ping 건너뜀"
@@ -358,9 +358,13 @@ jobs:
           BASE="${MONE_BACKEND_URL%/}"
           echo "백엔드 ping: ${BASE}"
           set +e
-          curl -sf -X POST "${BASE}/api/news/refresh?market=all" \
-            -H "Content-Type: application/json" --max-time 30 \
-            -o /tmp/news_refresh.json && cat /tmp/news_refresh.json || true
+          if [ "${ENABLE_BACKEND_NEWS_REFRESH}" = "1" ]; then
+            curl -sf -X POST "${BASE}/api/news/refresh?market=all" \
+              -H "Content-Type: application/json" --max-time 30 \
+              -o /tmp/news_refresh.json && cat /tmp/news_refresh.json || true
+          else
+            echo "backend news refresh skipped to conserve GNews quota"
+          fi
           curl -sf -X POST "${BASE}/api/disclosures/refresh?market=all" \
             -H "Content-Type: application/json" --max-time 60 \
             -o /tmp/disc_refresh.json && cat /tmp/disc_refresh.json || true

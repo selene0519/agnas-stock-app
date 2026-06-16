@@ -3140,6 +3140,25 @@ def _gnews_output_file(market: str) -> Path:
     return REPORT_DIR / f"news_summary_{market}.csv"
 
 
+def _existing_gnews_result(market: str, status: str, error: str) -> dict[str, Any]:
+    out_file = _gnews_output_file(market)
+    result: dict[str, Any] = {
+        "status": status,
+        "market": market,
+        "error": error[:200],
+        "count": 0,
+        "keptExisting": False,
+    }
+    if out_file.exists() and out_file.stat().st_size > 0:
+        try:
+            result["count"] = rows_for(out_file)
+            result["file"] = out_file.relative_to(REPO_ROOT).as_posix()
+            result["keptExisting"] = True
+        except Exception:
+            pass
+    return result
+
+
 def collect_gnews(market: str = "all") -> dict[str, Any]:
     """GNews API로 주식 뉴스를 수집해 news_summary_{kr|us}.csv로 저장한다."""
     api_key = os.environ.get("GNEWS_API_KEY", "").strip()
@@ -3159,8 +3178,15 @@ def collect_gnews(market: str = "all") -> dict[str, Any]:
             resp = requests.get("https://gnews.io/api/v4/top-headlines", params=params, timeout=15)
             resp.raise_for_status()
             data = resp.json()
+        except requests.HTTPError as exc:
+            status_code = getattr(exc.response, "status_code", None)
+            if status_code == 429:
+                results.append(_existing_gnews_result(mk, "RATE_LIMITED", "GNews 일일 요청 한도 초과"))
+            else:
+                results.append(_existing_gnews_result(mk, "ERROR", str(exc)))
+            continue
         except Exception as exc:
-            results.append({"status": "ERROR", "market": mk, "error": str(exc)[:200], "count": 0})
+            results.append(_existing_gnews_result(mk, "ERROR", str(exc)))
             continue
 
         articles = data.get("articles", [])
@@ -3183,9 +3209,19 @@ def collect_gnews(market: str = "all") -> dict[str, Any]:
         _write_csv_records(out_file, rows)
         results.append({"status": "OK", "market": mk, "count": len(rows), "file": out_file.relative_to(REPO_ROOT).as_posix()})
 
-    overall_ok = any(r.get("status") == "OK" for r in results)
+    ok_count = sum(1 for r in results if r.get("status") == "OK")
+    kept_count = sum(1 for r in results if r.get("keptExisting"))
+    rate_limited = any(r.get("status") == "RATE_LIMITED" for r in results)
+    if ok_count == len(results):
+        overall_status = "OK"
+    elif ok_count or kept_count:
+        overall_status = "PARTIAL"
+    elif rate_limited:
+        overall_status = "RATE_LIMITED"
+    else:
+        overall_status = "ERROR"
     return {
-        "status": "OK" if overall_ok else "ERROR",
+        "status": overall_status,
         "results": results,
         "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }

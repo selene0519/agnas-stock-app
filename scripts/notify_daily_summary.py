@@ -21,6 +21,7 @@ import csv
 import json
 import os
 import sys
+import time
 import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
@@ -39,6 +40,13 @@ DART_KEY      = os.environ.get("DART_API_KEY", "")
 AV_KEY        = os.environ.get("ALPHA_VANTAGE_KEY", "")
 GNEWS_API_KEY = os.environ.get("GNEWS_API_KEY", "")
 DRY_RUN       = os.environ.get("NOTIFY_DRY_RUN", "0") == "1"
+LIVE_GNEWS    = os.environ.get("MONE_NOTIFY_LIVE_GNEWS", "0") == "1"
+TG_TIMEOUT    = int(os.environ.get("TELEGRAM_TIMEOUT_SEC", "25"))
+TG_RETRIES    = int(os.environ.get("TELEGRAM_RETRY_COUNT", "3"))
+
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 # ── 텔레그램 전송 ─────────────────────────────────────────────────────────────
@@ -50,23 +58,26 @@ def _send(text: str) -> bool:
     if not BOT_TOKEN or not CHAT_ID:
         print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 없음 — 전송 생략")
         return False
-    try:
-        data = json.dumps({
-            "chat_id": CHAT_ID,
-            "text": text,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": True,
-        }).encode()
+    data = json.dumps({
+        "chat_id": CHAT_ID,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }).encode()
+    for attempt in range(1, max(1, TG_RETRIES) + 1):
         req = urllib.request.Request(
             f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
             data=data,
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=10) as r:
-            return r.status == 200
-    except Exception as e:
-        print(f"텔레그램 전송 오류: {e}")
-        return False
+        try:
+            with urllib.request.urlopen(req, timeout=TG_TIMEOUT) as r:
+                return r.status == 200
+        except Exception as e:
+            print(f"텔레그램 전송 오류({attempt}/{max(1, TG_RETRIES)}): {e}")
+            if attempt < max(1, TG_RETRIES):
+                time.sleep(min(2 * attempt, 5))
+    return False
 
 
 # ── CSV 읽기 ──────────────────────────────────────────────────────────────────
@@ -81,6 +92,20 @@ def _read_csv(path: Path) -> list[dict]:
         except Exception:
             continue
     return []
+
+
+def _cached_news_rows(market: str) -> list[dict]:
+    return _read_csv(REPORTS / f"news_summary_{market}.csv")
+
+
+def _row_to_article(row: dict) -> dict:
+    return {
+        "title": row.get("제목") or row.get("title") or "",
+        "headline": row.get("제목") or row.get("headline") or "",
+        "source": row.get("출처") or row.get("source") or "",
+        "url": row.get("URL") or row.get("url") or "",
+        "description": row.get("3줄요약") or row.get("description") or "",
+    }
 
 
 def _num(v: Any) -> float:
@@ -199,7 +224,18 @@ def _finnhub_company_news(symbol: str, days: int = 3) -> list[dict]:
 
 def _gnews_company_news(name: str, symbol: str) -> list[dict]:
     """GNews 종목별 최신 뉴스 (국장용)."""
-    if not AV_KEY and not GNEWS_API_KEY:
+    cached = []
+    needle_name = str(name or "").strip()
+    needle_symbol = str(symbol or "").strip()
+    for row in _cached_news_rows("kr"):
+        haystack = " ".join(str(row.get(k, "")) for k in ("종목코드", "종목명", "제목", "3줄요약"))
+        if (needle_symbol and needle_symbol in haystack) or (needle_name and needle_name in haystack):
+            cached.append(_row_to_article(row))
+    if cached:
+        return cached[:2]
+    if not LIVE_GNEWS:
+        return []
+    if not GNEWS_API_KEY:
         return []
     query = urllib.parse.quote(name or symbol)
     url = (
@@ -225,6 +261,11 @@ def _finnhub_market_news(category: str = "general") -> list[dict]:
 
 def _gnews_market_news() -> list[dict]:
     """GNews 국장 시장 뉴스."""
+    cached = [_row_to_article(row) for row in _cached_news_rows("kr")]
+    if cached:
+        return cached[:4]
+    if not LIVE_GNEWS:
+        return []
     if not GNEWS_API_KEY:
         return []
     url = (
