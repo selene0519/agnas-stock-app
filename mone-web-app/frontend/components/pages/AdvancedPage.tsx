@@ -5,8 +5,10 @@ import { mone, type Market, type Mode, type Horizon } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { dedupeBySymbol, displayName, horizonLabel, modeLabel, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
 import AlertsPanel from "@/components/AlertsPanel";
+import BacktestComparePanel from "@/components/BacktestComparePanel";
+import PortfolioOptimizePanel from "@/components/PortfolioOptimizePanel";
 
-type TabId = "scanner" | "calculator" | "montecarlo" | "correlation" | "alerts";
+type TabId = "scanner" | "calculator" | "montecarlo" | "correlation" | "backtest" | "portfolio" | "alerts";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -246,6 +248,8 @@ export default function AdvancedPage() {
     { id: "calculator", label: "계산기" },
     { id: "montecarlo", label: "몬테카를로" },
     { id: "correlation", label: "상관관계" },
+    { id: "backtest", label: "백테스트" },
+    { id: "portfolio", label: "포트폴리오" },
     { id: "alerts", label: "알림" },
   ];
 
@@ -566,6 +570,18 @@ export default function AdvancedPage() {
               </div>
             );
           })()}
+        </Card>
+      )}
+
+      {tab === "backtest" && (
+        <Card title="6전략 백테스트 비교">
+          <BacktestComparePanel />
+        </Card>
+      )}
+
+      {tab === "portfolio" && (
+        <Card title="포트폴리오 최적화">
+          <PortfolioOptimizePanel />
         </Card>
       )}
 
