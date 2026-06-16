@@ -56,6 +56,10 @@ export default function App() {
   ]);
 
   useEffect(() => {
+    // HTML 인라인 스플래시 제거 (layout.tsx의 #mone-html-splash)
+    const htmlSplash = document.getElementById("mone-html-splash");
+    if (htmlSplash) htmlSplash.style.display = "none";
+
     const cachedBoot = getCachedBootPreload();
     if (cachedBoot.hasBootData) {
       setBootState(cachedBoot);
