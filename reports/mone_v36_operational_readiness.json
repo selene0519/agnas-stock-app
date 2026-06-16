@@ -11,7 +11,7 @@
       "status": "NORMAL",
       "version": "v3.6.1-operational-stable",
       "market": "kr",
-      "updatedAt": "2026-06-17 05:25:55 KST",
+      "updatedAt": "2026-06-17 07:10:18 KST",
       "readinessScore": 100,
       "readinessLabel": "운영 가능",
       "warnings": [
@@ -51,42 +51,42 @@
           "exists": true,
           "status": "OK",
           "ageHours": 0.1,
-          "updatedAt": "2026-06-17 05:28:45"
+          "updatedAt": "2026-06-17 07:13:08"
         },
         {
           "path": "reports/mone_v36_final_trade_validation_kr_balanced_swing.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.1,
-          "updatedAt": "2026-06-17 05:29:00"
+          "updatedAt": "2026-06-17 07:13:23"
         },
         {
           "path": "reports/mone_v36_final_prediction_validation_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.14,
-          "updatedAt": "2026-06-17 05:26:39"
+          "updatedAt": "2026-06-17 07:11:02"
         },
         {
           "path": "reports/mone_v36_final_macro_events_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.14,
-          "updatedAt": "2026-06-17 05:26:34"
+          "updatedAt": "2026-06-17 07:10:57"
         },
         {
           "path": "reports/mone_v36_final_data_center_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.14,
-          "updatedAt": "2026-06-17 05:26:34"
+          "updatedAt": "2026-06-17 07:10:57"
         },
         {
           "path": "predictions.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.61,
-          "updatedAt": "2026-06-17 04:58:03"
+          "updatedAt": "2026-06-17 06:42:25"
         }
       ],
       "summary": [
@@ -107,7 +107,7 @@
         },
         {
           "label": "마지막 업데이트",
-          "value": "2026-06-17 05:25:55 KST",
+          "value": "2026-06-17 07:10:18 KST",
           "note": "reports/data 기준"
         },
         {
@@ -139,15 +139,15 @@
             "status": "OK",
             "files": 245,
             "csvFiles": 245,
-            "rows": 5102,
-            "latestUpdatedAt": "2026-06-17 04:58:03",
+            "rows": 4733,
+            "latestUpdatedAt": "2026-06-17 06:42:25",
             "target": "차트·기술분석 > 차트 보기",
             "examples": [
               "reports/kr_close_ohlcv_coverage_audit.csv",
-              "data/portfolio/position_daily_snapshot.csv",
               "data/portfolio/portfolio_daily_nav.csv",
-              "data/market/ohlcv/us_WMT_daily.csv",
-              "data/market/ohlcv/us_XLE_daily.csv"
+              "data/portfolio/position_daily_snapshot.csv",
+              "data/market/ohlcv/us_ZS_daily.csv",
+              "data/market/ohlcv/us_XOM_daily.csv"
             ],
             "message": "표시 가능한 CSV 행이 감지됨"
           },
@@ -158,7 +158,7 @@
             "files": 46,
             "csvFiles": 46,
             "rows": 45,
-            "latestUpdatedAt": "2026-06-17 05:23:25",
+            "latestUpdatedAt": "2026-06-17 07:07:47",
             "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
             "examples": [
               "reports/v92_flow_cards_us.csv",
@@ -176,7 +176,7 @@
             "files": 4,
             "csvFiles": 4,
             "rows": 200,
-            "latestUpdatedAt": "2026-06-17 05:25:55",
+            "latestUpdatedAt": "2026-06-17 07:10:18",
             "target": "장중 체크 / 오늘 매수 검토",
             "examples": [
               "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -193,7 +193,7 @@
             "files": 3,
             "csvFiles": 3,
             "rows": 295,
-            "latestUpdatedAt": "2026-06-17 05:31:03",
+            "latestUpdatedAt": "2026-06-17 07:15:24",
             "target": "뉴스·기업분석 > 공시",
             "examples": [
               "data/disclosures/disclosures_us.csv",
@@ -267,6 +267,16 @@
           ],
           "runs": [
             {
+              "name": "MONE Auto Accumulator",
+              "event": "workflow_dispatch",
+              "status": "in_progress",
+              "conclusion": null,
+              "created_at": "2026-06-16T21:42:09Z",
+              "updated_at": "2026-06-16T21:42:21Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27650060244"
+            },
+            {
               "name": "MONE News & Disclosure Refresh",
               "event": "schedule",
               "status": "completed",
@@ -279,10 +289,10 @@
             {
               "name": "MONE Auto Accumulator",
               "event": "schedule",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "created_at": "2026-06-16T19:57:55Z",
-              "updated_at": "2026-06-16T19:57:59Z",
+              "updated_at": "2026-06-16T20:39:02Z",
               "head_branch": "main",
               "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27644259406"
             },
@@ -335,16 +345,6 @@
               "updated_at": "2026-06-16T18:20:39Z",
               "head_branch": "main",
               "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27638731414"
-            },
-            {
-              "name": "MONE Entry Proximity Notifier",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-06-16T18:20:05Z",
-              "updated_at": "2026-06-16T18:20:52Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27638712197"
             }
           ],
           "latestScheduled": {
@@ -357,7 +357,16 @@
             "head_branch": "main",
             "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27644287702"
           },
-          "latestWorkflowDispatch": null,
+          "latestWorkflowDispatch": {
+            "name": "MONE Auto Accumulator",
+            "event": "workflow_dispatch",
+            "status": "in_progress",
+            "conclusion": null,
+            "created_at": "2026-06-16T21:42:09Z",
+            "updated_at": "2026-06-16T21:42:21Z",
+            "head_branch": "main",
+            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27650060244"
+          },
           "latestAutomationRun": {
             "name": "MONE News & Disclosure Refresh",
             "event": "schedule",
@@ -383,7 +392,7 @@
       "status": "NORMAL",
       "version": "v3.6.1-operational-stable",
       "market": "us",
-      "updatedAt": "2026-06-17 05:25:55 KST",
+      "updatedAt": "2026-06-17 07:10:18 KST",
       "readinessScore": 100,
       "readinessLabel": "운영 가능",
       "warnings": [
@@ -423,42 +432,42 @@
           "exists": true,
           "status": "OK",
           "ageHours": 0.04,
-          "updatedAt": "2026-06-17 05:33:11"
+          "updatedAt": "2026-06-17 07:17:35"
         },
         {
           "path": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.03,
-          "updatedAt": "2026-06-17 05:33:19"
+          "ageHours": 0.04,
+          "updatedAt": "2026-06-17 07:17:44"
         },
         {
           "path": "reports/mone_v36_final_prediction_validation_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.06,
-          "updatedAt": "2026-06-17 05:31:39"
+          "updatedAt": "2026-06-17 07:16:00"
         },
         {
           "path": "reports/mone_v36_final_macro_events_us.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.06,
-          "updatedAt": "2026-06-17 05:31:33"
+          "ageHours": 0.07,
+          "updatedAt": "2026-06-17 07:15:54"
         },
         {
           "path": "reports/mone_v36_final_data_center_us.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.06,
-          "updatedAt": "2026-06-17 05:31:33"
+          "ageHours": 0.07,
+          "updatedAt": "2026-06-17 07:15:54"
         },
         {
           "path": "predictions.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.62,
-          "updatedAt": "2026-06-17 04:58:03"
+          "updatedAt": "2026-06-17 06:42:25"
         }
       ],
       "summary": [
@@ -479,7 +488,7 @@
         },
         {
           "label": "마지막 업데이트",
-          "value": "2026-06-17 05:25:55 KST",
+          "value": "2026-06-17 07:10:18 KST",
           "note": "reports/data 기준"
         },
         {
@@ -511,15 +520,15 @@
             "status": "OK",
             "files": 245,
             "csvFiles": 245,
-            "rows": 5102,
-            "latestUpdatedAt": "2026-06-17 04:58:03",
+            "rows": 4733,
+            "latestUpdatedAt": "2026-06-17 06:42:25",
             "target": "차트·기술분석 > 차트 보기",
             "examples": [
               "reports/kr_close_ohlcv_coverage_audit.csv",
-              "data/portfolio/position_daily_snapshot.csv",
               "data/portfolio/portfolio_daily_nav.csv",
-              "data/market/ohlcv/us_WMT_daily.csv",
-              "data/market/ohlcv/us_XLE_daily.csv"
+              "data/portfolio/position_daily_snapshot.csv",
+              "data/market/ohlcv/us_ZS_daily.csv",
+              "data/market/ohlcv/us_XOM_daily.csv"
             ],
             "message": "표시 가능한 CSV 행이 감지됨"
           },
@@ -530,7 +539,7 @@
             "files": 46,
             "csvFiles": 46,
             "rows": 45,
-            "latestUpdatedAt": "2026-06-17 05:23:25",
+            "latestUpdatedAt": "2026-06-17 07:07:47",
             "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
             "examples": [
               "reports/v92_flow_cards_us.csv",
@@ -548,7 +557,7 @@
             "files": 4,
             "csvFiles": 4,
             "rows": 200,
-            "latestUpdatedAt": "2026-06-17 05:25:55",
+            "latestUpdatedAt": "2026-06-17 07:10:18",
             "target": "장중 체크 / 오늘 매수 검토",
             "examples": [
               "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -565,7 +574,7 @@
             "files": 3,
             "csvFiles": 3,
             "rows": 295,
-            "latestUpdatedAt": "2026-06-17 05:31:03",
+            "latestUpdatedAt": "2026-06-17 07:15:24",
             "target": "뉴스·기업분석 > 공시",
             "examples": [
               "data/disclosures/disclosures_us.csv",
@@ -639,6 +648,16 @@
           ],
           "runs": [
             {
+              "name": "MONE Auto Accumulator",
+              "event": "workflow_dispatch",
+              "status": "in_progress",
+              "conclusion": null,
+              "created_at": "2026-06-16T21:42:09Z",
+              "updated_at": "2026-06-16T21:42:21Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27650060244"
+            },
+            {
               "name": "MONE News & Disclosure Refresh",
               "event": "schedule",
               "status": "completed",
@@ -651,10 +670,10 @@
             {
               "name": "MONE Auto Accumulator",
               "event": "schedule",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "created_at": "2026-06-16T19:57:55Z",
-              "updated_at": "2026-06-16T19:57:59Z",
+              "updated_at": "2026-06-16T20:39:02Z",
               "head_branch": "main",
               "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27644259406"
             },
@@ -707,16 +726,6 @@
               "updated_at": "2026-06-16T18:20:39Z",
               "head_branch": "main",
               "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27638731414"
-            },
-            {
-              "name": "MONE Entry Proximity Notifier",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-06-16T18:20:05Z",
-              "updated_at": "2026-06-16T18:20:52Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27638712197"
             }
           ],
           "latestScheduled": {
@@ -729,7 +738,16 @@
             "head_branch": "main",
             "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27644287702"
           },
-          "latestWorkflowDispatch": null,
+          "latestWorkflowDispatch": {
+            "name": "MONE Auto Accumulator",
+            "event": "workflow_dispatch",
+            "status": "in_progress",
+            "conclusion": null,
+            "created_at": "2026-06-16T21:42:09Z",
+            "updated_at": "2026-06-16T21:42:21Z",
+            "head_branch": "main",
+            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/27650060244"
+          },
           "latestAutomationRun": {
             "name": "MONE News & Disclosure Refresh",
             "event": "schedule",
@@ -996,5 +1014,5 @@
     "kr": 68,
     "us": 1722
   },
-  "generatedAt": "2026-06-17 05:36:03"
+  "generatedAt": "2026-06-17 07:20:28"
 }
