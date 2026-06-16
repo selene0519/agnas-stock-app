@@ -8255,3 +8255,20 @@ def api_alerts_check(
         return check_and_send(threshold_pct=thresholdPct, force=force)
     except Exception as e:
         return {"status": "ERROR", "error": str(e)}
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 공포·탐욕 지수 API
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/market/fear-greed")
+def api_fear_greed(market: str = Query("all")) -> dict:
+    """공포·탐욕 지수 조회 (market: kr | us | all).
+    US는 CNN Fear & Greed API 시도 후 실패 시 SPY OHLCV 복합 지수로 폴백.
+    KR은 KOSPI OHLCV 기반 복합 지수 (RSI·MA이격·ATR역수·MDD역수).
+    """
+    try:
+        from app.services.fear_greed import get_fear_greed
+        return get_fear_greed(market)
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}

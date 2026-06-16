@@ -7,6 +7,7 @@ import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { SentimentBadge } from "@/components/SentimentBadge";
+import FearGreedWidget from "@/components/FearGreedWidget";
 import {
   getDefaultMarketBySession, getMarketSessionStatus, getSessionCountdown,
   kstNowParts, type SessionPhase,
@@ -2318,6 +2319,9 @@ export default function HomePage({
           )}
         </div>
       )}
+
+      {/* 공포·탐욕 지수 */}
+      <FearGreedWidget market={selectedMarket} />
 
       {!loading && (
         <TodayConclusionCard
