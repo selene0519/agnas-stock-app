@@ -269,7 +269,7 @@ def start_background_sync(interval_minutes: float | None = None) -> None:
             pass
 
     if interval_minutes is None:
-        interval_minutes = 30.0  # 기본 30분
+        interval_minutes = 5.0  # 기본 5분
 
     t = threading.Thread(target=_background_sync_loop, args=(interval_minutes,), daemon=True)
     t.start()

@@ -39,7 +39,7 @@ try:
     register_auto_sync_routes(app)
     if runtime_limits.heavy_jobs_enabled():
         startup_sync()           # MONE_STARTUP_SYNC=1 환경변수 설정 시 시작 시 pull
-        start_background_sync()  # 백그라운드 30분마다 pull (GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정)
+        start_background_sync()  # 백그라운드 5분마다 pull (GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정)
 except Exception as _auto_sync_err:
     print("[AutoSync] 초기화 실패:", _auto_sync_err)
 
