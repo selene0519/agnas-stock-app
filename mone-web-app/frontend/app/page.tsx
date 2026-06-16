@@ -16,6 +16,7 @@ import ChartPage from "../components/pages/ChartPage";
 import NewsPage from "../components/pages/NewsPage";
 import PredictionPage from "../components/pages/PredictionPage";
 import AdvancedPage from "../components/pages/AdvancedPage";
+import PaperTradingPage from "../components/pages/PaperTradingPage";
 import AdminPage from "../components/pages/AdminPage";
 import AdminLoginPage from "../components/pages/AdminLoginPage";
 import BrokerPage from "../components/pages/BrokerPage";
@@ -259,6 +260,8 @@ export default function App() {
         return <PredictionPage />;
       case "advanced":
         return <AdvancedPage />;
+      case "paper":
+        return <PaperTradingPage />;
       case "broker":
         return (
           <BrokerPage

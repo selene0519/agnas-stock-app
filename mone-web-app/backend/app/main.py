@@ -8272,3 +8272,85 @@ def api_fear_greed(market: str = Query("all")) -> dict:
         return get_fear_greed(market)
     except Exception as e:
         return {"status": "ERROR", "error": str(e)}
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 페이퍼 트레이딩 API
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/paper/positions")
+def api_paper_positions(market: str = Query("all")) -> dict:
+    """현재 보유 포지션 (미실현 손익 포함)."""
+    try:
+        from app.services.paper_trading import get_positions
+        return get_positions(market)
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+@app.get("/api/paper/history")
+def api_paper_history(
+    market: str = Query("all"),
+    limit: int = Query(100, ge=1, le=500),
+) -> dict:
+    """체결 내역 (최신순)."""
+    try:
+        from app.services.paper_trading import get_history
+        return get_history(market, limit)
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+@app.get("/api/paper/summary")
+def api_paper_summary(market: str = Query("all")) -> dict:
+    """포트폴리오 요약 (잔고 + 평가금액 + 총 손익률)."""
+    try:
+        from app.services.paper_trading import get_summary
+        return get_summary(market)
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+@app.post("/api/paper/buy")
+def api_paper_buy(body: dict = Body(...)) -> dict:
+    """가상 매수. {symbol, market, quantity, price(선택), name(선택), memo(선택)}"""
+    try:
+        from app.services.paper_trading import buy
+        symbol = str(body.get("symbol", "")).strip()
+        market = str(body.get("market", "kr")).lower()
+        quantity = float(body.get("quantity") or 0)
+        price = float(body["price"]) if body.get("price") else None
+        name = str(body.get("name", "")).strip()
+        memo = str(body.get("memo", "")).strip()
+        if not symbol or quantity <= 0:
+            return JSONResponse(status_code=400, content={"ok": False, "error": "symbol과 quantity(>0)가 필요합니다."})
+        return buy(symbol, market, quantity, price, name, memo)
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
+
+
+@app.post("/api/paper/sell")
+def api_paper_sell(body: dict = Body(...)) -> dict:
+    """가상 매도. {symbol, market, quantity, price(선택), memo(선택)}"""
+    try:
+        from app.services.paper_trading import sell
+        symbol = str(body.get("symbol", "")).strip()
+        market = str(body.get("market", "kr")).lower()
+        quantity = float(body.get("quantity") or 0)
+        price = float(body["price"]) if body.get("price") else None
+        memo = str(body.get("memo", "")).strip()
+        if not symbol or quantity <= 0:
+            return JSONResponse(status_code=400, content={"ok": False, "error": "symbol과 quantity(>0)가 필요합니다."})
+        return sell(symbol, market, quantity, price, memo)
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
+
+
+@app.delete("/api/paper/reset")
+def api_paper_reset(market: str = Query("all")) -> dict:
+    """페이퍼 트레이딩 전체 또는 특정 시장 초기화."""
+    try:
+        from app.services.paper_trading import reset
+        return reset(market)
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
