@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info, Calculator, ArrowRight } from "lucide-react";
 import type { PageId } from "../Sidebar";
-import { mone, type Horizon, type Mode } from "@/lib/api";
+import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { SentimentBadge } from "@/components/SentimentBadge";
 import {
   getDefaultMarketBySession, getMarketSessionStatus, getSessionCountdown,
   kstNowParts, type SessionPhase,
@@ -287,6 +288,11 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${dataTrustBadgeClass(item)}`}>
               {dataTrustLabel(item)}
             </span>
+            <SentimentBadge
+              symbol={item.symbol}
+              market={(String(item.market || item._market || "kr")).toLowerCase() as Market}
+              name={String(item.name || "")}
+            />
             {showCalibBadges && calibratedWinRate != null && (
               <span className="rounded-full border border-slate-600 bg-slate-700/60 px-2 py-0.5 text-[10px] font-medium text-slate-300 [font-variant-numeric:tabular-nums]">
                 실증 {calibratedWinRate.toFixed(0)}%
@@ -369,6 +375,11 @@ function WatchCard({ item, onSelect }: { item: any; onSelect: (item: any) => voi
         <span className={`font-mono ${Number(item.expectedValue || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
           EV {Number(item.expectedValue || 0) >= 0 ? "+" : ""}{Number(item.expectedValue || 0).toFixed(1)}%
         </span>
+        <SentimentBadge
+          symbol={item.symbol}
+          market={(String(item.market || item._market || "kr")).toLowerCase() as Market}
+          name={String(item.name || "")}
+        />
       </div>
       <TagChips item={item} />
     </div>
