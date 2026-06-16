@@ -202,14 +202,26 @@ def git_push(commit_msg: str) -> bool:
             capture_output=True,
             env=git_env,
         )
-        # 원격 커밋이 앞서 있을 수 있으므로 rebase 후 push
+        # 원격 최신 상태를 가져온 뒤 rebase
         subprocess.run(
-            ["git", "pull", "--rebase", "origin", "main"],
+            ["git", "fetch", "origin", "main"],
             cwd=str(REPO_ROOT),
             capture_output=True,
             env=git_env,
             timeout=60,
         )
+        rebase = subprocess.run(
+            ["git", "rebase", "origin/main"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            env=git_env,
+            timeout=60,
+        )
+        if rebase.returncode != 0:
+            subprocess.run(["git", "rebase", "--abort"], cwd=str(REPO_ROOT), capture_output=True)
+            log(f"rebase 실패 (push 중단): {rebase.stderr.strip()}")
+            return False
         result = subprocess.run(
             ["git", "push", "origin", "main"],
             cwd=str(REPO_ROOT),
@@ -221,7 +233,7 @@ def git_push(commit_msg: str) -> bool:
             log("GitHub push 성공")
             return True
         else:
-            log(f"push 실패: {result.stderr}")
+            log(f"push 실패: {result.stderr.strip()}")
             return False
     except Exception as e:
         log(f"git 오류: {e}")
@@ -345,6 +357,8 @@ def main() -> None:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         push_ok = git_push(f"chore: local collector update {now_str}")
         status["pushed"] = push_ok
+        if not push_ok:
+            status["pushError"] = "push failed — see log above"
         STATUS_PATH.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
 
         # Step 4: Render 캐시 즉시 갱신 (push 성공 시만)
@@ -352,6 +366,9 @@ def main() -> None:
         if push_ok:
             log("Step 4: Render 캐시 즉시 갱신...")
             _render_refresh("all")
+        else:
+            log("push 실패 — Render 캐시 갱신 건너뜀")
+            sys.exit(1)
 
     log(f"완료 ({status['elapsedSec']}초)")
 
