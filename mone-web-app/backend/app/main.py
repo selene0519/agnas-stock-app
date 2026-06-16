@@ -2654,6 +2654,362 @@ def api_symbol_sentiment(
         }
 
 
+
+
+@app.get("/api/analysis/{symbol}")
+def api_stock_analysis(
+    symbol: str,
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    x_mone_user: str = Header(None, alias="x-mone-user"),
+) -> dict:
+    """
+    #2 재무건전성, #3 다운사이드리스크, #5 인지교정 분석.
+    Claude API 없이 기존 점수·OHLCV 데이터만 사용.
+    """
+    try:
+        mkt = _market(market)
+        sym = symbol.strip()
+
+        # ── 추천 데이터 ─────────────────────────────────────
+        reco: dict = {}
+        try:
+            detail = final_engine.recommendation_detail(mkt, sym)
+            if detail.get("status") == "OK" and detail.get("item"):
+                reco = detail["item"]
+        except Exception:
+            pass
+
+        # ── OHLCV 데이터 ────────────────────────────────────
+        rows: list[dict] = []
+        try:
+            chart = _chart_data_with_backfill(sym, mkt, days=120)
+            rows = _chart_rows(chart)
+        except Exception:
+            pass
+
+        def _num(v) -> float | None:
+            try:
+                return float(v) if v not in (None, "") else None
+            except Exception:
+                return None
+
+        closes = [_num(r.get("close")) for r in rows if _num(r.get("close"))]
+
+        # RSI(14)
+        rsi_val: float | None = None
+        if len(closes) >= 15:
+            gains = [max(closes[i] - closes[i - 1], 0) for i in range(1, len(closes))]
+            losses = [max(closes[i - 1] - closes[i], 0) for i in range(1, len(closes))]
+            avg_g = sum(gains[-14:]) / 14
+            avg_l = sum(losses[-14:]) / 14
+            if avg_l > 0:
+                rsi_val = round(100 - 100 / (1 + avg_g / avg_l), 1)
+
+        # MDD (60일)
+        mdd: float | None = None
+        if len(closes) >= 20:
+            window = closes[-60:] if len(closes) >= 60 else closes
+            peak = window[0]
+            max_dd = 0.0
+            for c in window:
+                peak = max(peak, c)
+                dd = (c - peak) / peak * 100
+                max_dd = min(max_dd, dd)
+            mdd = round(max_dd, 1)
+
+        # ATR(14) %
+        atr_pct: float | None = None
+        if len(rows) >= 15 and closes:
+            trs = []
+            for i in range(1, min(15, len(rows))):
+                h = _num(rows[-i].get("high")) or 0
+                lo = _num(rows[-i].get("low")) or 0
+                cp = _num(rows[-(i + 1)].get("close")) or 0
+                trs.append(max(h - lo, abs(h - cp), abs(lo - cp)))
+            if trs:
+                atr_pct = round(sum(trs) / len(trs) / closes[-1] * 100, 2)
+
+        # 스코어
+        quality_score = _num(reco.get("qualityScore"))
+        risk_score = _num(reco.get("riskScore"))
+        final_score = _num(reco.get("finalScore"))
+        ev = _num(reco.get("expectedValue"))
+        rr_actual = _num(reco.get("rrActual"))
+        ev_negative = bool(reco.get("evNegative", False)) or (ev is not None and ev < 0)
+        news_risk = _num(reco.get("newsRiskPenalty")) or 0.0
+        data_status = str(reco.get("dataStatus") or "UNKNOWN")
+        current_price = _num(reco.get("currentPrice")) or (closes[-1] if closes else None)
+        stop_price = _num(reco.get("stop"))
+        target_price = _num(reco.get("target"))
+        entry_price = _num(reco.get("entry"))
+        strategy_tags = list(reco.get("strategyTags") or [])
+        risk_flags = list(reco.get("riskFlags") or [])
+        caution_reasons = list(reco.get("cautionReasons") or [])
+
+        # ── 보유/관심 여부 ───────────────────────────────────
+        in_holdings = False
+        holding_pnl: float | None = None
+        holding_avg: float | None = None
+        try:
+            hd = user_data.get_holdings(mkt)
+            for h in hd.get("items", []):
+                if str(h.get("symbol", "")).strip() == sym:
+                    in_holdings = True
+                    holding_avg = _num(h.get("avgPrice") or h.get("entryPrice"))
+                    if current_price and holding_avg:
+                        holding_pnl = round((current_price - holding_avg) / holding_avg * 100, 2)
+                    break
+        except Exception:
+            pass
+
+        in_watchlist = False
+        try:
+            wd = user_data.get_watchlist(mkt)
+            for w in wd.get("items", []):
+                if str(w.get("symbol", "")).strip() == sym:
+                    in_watchlist = True
+                    break
+        except Exception:
+            pass
+
+        # ════════════════════════════════════════════════════
+        # #2 재무건전성 / 밸류에이션 진단
+        # ════════════════════════════════════════════════════
+        fin_signals: list[dict] = []
+        fin_warnings: list[dict] = []
+
+        def _pos(text: str):
+            fin_signals.append({"type": "positive", "text": text})
+
+        def _neu(text: str):
+            fin_signals.append({"type": "neutral", "text": text})
+
+        def _warn(text: str):
+            fin_warnings.append({"type": "warning", "text": text})
+
+        if quality_score is not None:
+            if quality_score >= 70:
+                _pos(f"기업 안정성 양호 ({quality_score:.0f}/100)")
+            elif quality_score >= 50:
+                _neu(f"기업 안정성 보통 ({quality_score:.0f}/100)")
+            else:
+                _warn(f"기업 안정성 취약 ({quality_score:.0f}/100)")
+
+        if risk_score is not None:
+            if risk_score >= 70:
+                _pos(f"리스크 통제 양호 ({risk_score:.0f}/100)")
+            elif risk_score >= 50:
+                _neu(f"리스크 보통 ({risk_score:.0f}/100)")
+            else:
+                _warn(f"리스크 노출 높음 ({risk_score:.0f}/100)")
+
+        if rr_actual is not None:
+            if rr_actual >= 2.0:
+                _pos(f"손익비 양호 (1:{rr_actual:.1f})")
+            elif rr_actual >= 1.5:
+                _neu(f"손익비 보통 (1:{rr_actual:.1f})")
+            else:
+                _warn(f"손익비 불리 (1:{rr_actual:.1f}) — 재검토")
+
+        if ev is not None:
+            if ev >= 3:
+                _pos(f"기댓값 우수 (+{ev:.1f}%)")
+            elif ev >= 0:
+                _neu(f"기댓값 보통 (+{ev:.1f}%)")
+            else:
+                _warn(f"기댓값 음수 ({ev:.1f}%) — 진입 재고")
+
+        if rsi_val is not None:
+            if rsi_val >= 80:
+                _warn(f"RSI 과열 ({rsi_val}) — 단기 조정 가능성")
+            elif rsi_val <= 30:
+                _pos(f"RSI 과매도 ({rsi_val}) — 반등 가능성")
+            else:
+                _neu(f"RSI 정상 ({rsi_val})")
+
+        if mdd is not None:
+            if mdd >= -10:
+                _pos(f"최근 60일 낙폭 낮음 (최대 {mdd:.1f}%)")
+            elif mdd >= -20:
+                _neu(f"최근 60일 낙폭 보통 (최대 {mdd:.1f}%)")
+            else:
+                _warn(f"최근 60일 낙폭 큼 (최대 {mdd:.1f}%) — 변동성 주의")
+
+        if data_status not in ("NORMAL", "PARTIAL", "UNKNOWN"):
+            _warn(f"데이터 상태 이상 ({data_status}) — 수치 신뢰도 제한")
+
+        pos_n = len(fin_signals)
+        warn_n = len(fin_warnings)
+        if warn_n == 0 and pos_n >= 3:
+            fin_grade = "A"
+        elif warn_n <= 1 and pos_n >= 2:
+            fin_grade = "B"
+        elif warn_n <= 2:
+            fin_grade = "C"
+        else:
+            fin_grade = "D"
+
+        # ════════════════════════════════════════════════════
+        # #3 다운사이드 리스크 점검
+        # ════════════════════════════════════════════════════
+        risk_signals: list[dict] = []
+
+        def _rs(type_: str, text: str):
+            risk_signals.append({"type": type_, "text": text})
+
+        if atr_pct is not None:
+            if atr_pct <= 2:
+                _rs("positive", f"일일 변동성 낮음 (ATR {atr_pct:.1f}%)")
+            elif atr_pct <= 4:
+                _rs("neutral", f"일일 변동성 보통 (ATR {atr_pct:.1f}%)")
+            else:
+                _rs("warning", f"일일 변동성 높음 (ATR {atr_pct:.1f}%) — 포지션 크기 축소 고려")
+
+        if current_price and stop_price:
+            gap_stop = (current_price - stop_price) / current_price * 100
+            if gap_stop < 2:
+                _rs("warning", f"손절가 근접 (여유 {gap_stop:.1f}%) — 즉각 대응 필요")
+            elif gap_stop < 5:
+                _rs("neutral", f"손절가 여유 보통 ({gap_stop:.1f}%)")
+            else:
+                _rs("positive", f"손절가 여유 충분 ({gap_stop:.1f}%)")
+
+        if current_price and target_price and entry_price and target_price != entry_price:
+            prog = (current_price - entry_price) / (target_price - entry_price) * 100
+            if prog >= 80:
+                _rs("positive", f"목표가 {prog:.0f}% 달성 — 익절 시점 고려")
+            elif prog >= 50:
+                _rs("neutral", f"목표가 {prog:.0f}% 달성 진행 중")
+
+        if rsi_val and rsi_val >= 80:
+            _rs("warning", f"RSI 과열 ({rsi_val}) — 차익 실현 구간")
+
+        for flag in risk_flags[:3]:
+            _rs("warning", str(flag))
+        for reason in caution_reasons[:3]:
+            _rs("warning", str(reason))
+
+        risk_scenarios: list[dict] = []
+        if current_price:
+            for pct, label in [(-10, "조정 -10%"), (-20, "금리충격 -20%"), (-30, "코로나급 -30%")]:
+                risk_scenarios.append({
+                    "label": label,
+                    "price": round(current_price * (1 + pct / 100)),
+                    "pct": pct,
+                })
+
+        warn_n_risk = len([s for s in risk_signals if s["type"] == "warning"])
+        if warn_n_risk == 0:
+            risk_grade, risk_grade_label = "LOW", "낮음"
+        elif warn_n_risk <= 2:
+            risk_grade, risk_grade_label = "MEDIUM", "보통"
+        else:
+            risk_grade, risk_grade_label = "HIGH", "높음"
+
+        # ════════════════════════════════════════════════════
+        # #5 매매 판단 / 인지 교정
+        # ════════════════════════════════════════════════════
+        bias_checks: list[dict] = []
+
+        def _bias(type_: str, level: str, title: str, text: str, action: str | None = None):
+            bias_checks.append({"type": type_, "level": level, "title": title, "text": text, "action": action})
+
+        # 확증편향
+        if in_watchlist and ev_negative:
+            _bias("confirmation_bias", "warning", "확증편향 가능성",
+                  "관심종목이지만 기댓값(EV)이 음수입니다. 좋아하기 때문에 보유 의향이 있는 건 아닌지 확인하세요.",
+                  "EV 양수 전환 확인 후 진입 결정")
+        elif in_watchlist and "CAUTION" in strategy_tags:
+            _bias("confirmation_bias", "caution", "CAUTION 종목 관심 보유",
+                  "CAUTION 상태의 종목이 관심목록에 있습니다. 조건 개선 여부를 객관적으로 점검하세요.",
+                  "CAUTION 해제 조건 명시적 정의")
+        else:
+            _bias("confirmation_bias", "ok", "확증편향 체크",
+                  "관찰 가능한 확증편향 신호 없음")
+
+        # 손실회피
+        if in_holdings and current_price and stop_price and current_price <= stop_price:
+            _bias("loss_aversion", "warning", "손실회피 경보",
+                  f"현재가({current_price:,.0f})가 손절가({stop_price:,.0f})에 도달/이탈. 손실 회피 심리로 청산을 미루고 있는 건 아닌지 확인하세요.",
+                  "규칙 기반 청산 실행 (감정 개입 금지)")
+        elif in_holdings and holding_pnl is not None and holding_pnl < -10:
+            _bias("loss_aversion", "caution", "손실 중 보유",
+                  f"현재 {holding_pnl:.1f}% 손실 중. 손절 기준을 재확인하고 감정적 보유 여부를 점검하세요.",
+                  "손절가 대비 현재가 위치 확인")
+        else:
+            pnl_note = f" (수익: {holding_pnl:+.1f}%)" if holding_pnl is not None else ""
+            _bias("loss_aversion", "ok", "손실회피 체크", f"손실회피 경보 없음{pnl_note}")
+
+        # 내러티브 vs 숫자
+        news_positive = (reco.get("newsEventTag") == "positive_news"
+                         or reco.get("newsSentimentTag") == "POSITIVE")
+        if news_positive and ev_negative:
+            _bias("narrative_vs_data", "warning", "내러티브 ≠ 숫자",
+                  "뉴스는 긍정적이지만 기댓값(EV)이 음수입니다. 좋은 이야기에 현혹되어 숫자를 무시하고 있을 수 있습니다.",
+                  "진입·손절·목표 수치를 직접 계산하여 재확인")
+        elif news_risk >= 15:
+            _bias("narrative_vs_data", "caution", "뉴스 리스크 높음",
+                  f"뉴스 리스크 패널티 {news_risk:.0f}점 적용 중. 부정적 이슈가 점수에 반영돼 있습니다.",
+                  "뉴스/공시 직접 확인 후 판단")
+        else:
+            _bias("narrative_vs_data", "ok", "내러티브 vs 숫자", "명확한 불일치 없음")
+
+        # 기준가 오래됨
+        if current_price and entry_price:
+            entry_gap = abs(current_price - entry_price) / entry_price * 100
+            if entry_gap >= 20:
+                _bias("stale_entry", "warning", "기준가 오래됨",
+                      f"현재가와 기준가 이격 {entry_gap:.0f}%. 오래된 추천 기준가로 판단하고 있을 수 있습니다.",
+                      "최신 추천 파일 갱신 후 재확인")
+            elif entry_gap >= 10:
+                _bias("stale_entry", "caution", "기준가 이격",
+                      f"현재가와 기준가 이격 {entry_gap:.0f}%. 진입 조건 재검토를 고려하세요.",
+                      "진입 타이밍 재평가")
+
+        return {
+            "status": "OK",
+            "symbol": sym,
+            "market": mkt,
+            "name": reco.get("name", ""),
+            "currentPrice": current_price,
+            "hasRecommendation": bool(reco),
+            "inHoldings": in_holdings,
+            "holdingPnlPct": holding_pnl,
+            "inWatchlist": in_watchlist,
+            "indicators": {
+                "rsi14": rsi_val,
+                "mdd60": mdd,
+                "atrPct": atr_pct,
+                "qualityScore": quality_score,
+                "riskScore": risk_score,
+                "finalScore": final_score,
+                "ev": ev,
+                "rrActual": rr_actual,
+                "dataStatus": data_status,
+            },
+            "financialHealth": {
+                "grade": fin_grade,
+                "signals": fin_signals,
+                "warnings": fin_warnings,
+            },
+            "downsideRisk": {
+                "grade": risk_grade,
+                "gradeLabel": risk_grade_label,
+                "signals": risk_signals,
+                "scenarios": risk_scenarios,
+                "stopPrice": stop_price,
+                "targetPrice": target_price,
+            },
+            "cognitiveBias": {
+                "checks": bias_checks,
+                "warningCount": len([c for c in bias_checks if c["level"] == "warning"]),
+                "cautionCount": len([c for c in bias_checks if c["level"] == "caution"]),
+            },
+        }
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)[:200], "symbol": symbol}
+
+
 @app.get("/api/company-analysis")
 def api_company_analysis(
     market: str = Query("kr", pattern="^(kr|us)$"),
