@@ -290,7 +290,7 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
             </span>
             <SentimentBadge
               symbol={item.symbol}
-              market={(String(item.market || item._market || "kr")).toLowerCase() as Market}
+              market={(String(item.market || item._market || "kr")).toLowerCase() === "us" ? "us" : "kr"}
               name={String(item.name || "")}
             />
             {showCalibBadges && calibratedWinRate != null && (
@@ -377,7 +377,7 @@ function WatchCard({ item, onSelect }: { item: any; onSelect: (item: any) => voi
         </span>
         <SentimentBadge
           symbol={item.symbol}
-          market={(String(item.market || item._market || "kr")).toLowerCase() as Market}
+          market={(String(item.market || item._market || "kr")).toLowerCase() === "us" ? "us" : "kr"}
           name={String(item.name || "")}
         />
       </div>
