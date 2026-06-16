@@ -542,6 +542,9 @@ export const mone = {
   alertsTest: () => apiPost<any>("/api/alerts/test", {}),
   alertsCheck: (p?: { thresholdPct?: number; force?: boolean }) =>
     apiPost<any>("/api/alerts/check", {}, p as Record<string, string>),
+
+  // 공포·탐욕 지수
+  fearGreed: (p?: { market?: string }) => apiGet<any>("/api/market/fear-greed", p),
 };
 
 export default mone;
