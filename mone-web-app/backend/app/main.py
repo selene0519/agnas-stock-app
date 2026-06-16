@@ -2629,6 +2629,31 @@ def api_news_sentiment_refresh(market: str = Query("all", pattern="^(kr|us|all)$
     return {"ok": True, "results": results}
 
 
+@app.get("/api/sentiment/{symbol}")
+def api_symbol_sentiment(
+    symbol: str,
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    name: str = Query(""),
+) -> dict:
+    """
+    단일 종목의 뉴스/공시 감성 분석.
+    Claude API 기반 (가능 시) 또는 keyword-based 폴백.
+    """
+    try:
+        from app.services.claude_news_sentiment import get_symbol_sentiment
+        result = get_symbol_sentiment(market, symbol, name)
+        return {"ok": True, "symbol": symbol, "market": market, **result}
+    except Exception as e:
+        return {
+            "ok": False,
+            "symbol": symbol,
+            "error": str(e),
+            "sentiment": "neutral",
+            "confidence": 0,
+            "source": "error",
+        }
+
+
 @app.get("/api/company-analysis")
 def api_company_analysis(
     market: str = Query("kr", pattern="^(kr|us)$"),

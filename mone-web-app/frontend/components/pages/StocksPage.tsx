@@ -991,6 +991,56 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   ))}
                 </div>
               </div>
+              {/* 빠른 스크리닝 프리셋 */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 스크리닝</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setMinScore(0);
+                      setFilterEvPositive(false);
+                      setFilterWinRate40(false);
+                      setHideDataPending(false);
+                      setHideBlockedOnly(false);
+                    }}
+                    className="rounded-lg border border-slate-700 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                  >
+                    초기화
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMinScore(50);
+                      setFilterEvPositive(true);
+                      setHideDataPending(true);
+                      setHideBlockedOnly(true);
+                    }}
+                    className="rounded-lg border border-emerald-600/50 bg-emerald-600/10 px-3 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-600/20"
+                  >
+                    우선매수
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMinScore(40);
+                      setFilterEvPositive(true);
+                      setHideDataPending(true);
+                    }}
+                    className="rounded-lg border border-sky-600/50 bg-sky-600/10 px-3 py-1 text-xs font-medium text-sky-300 hover:bg-sky-600/20"
+                  >
+                    고EV
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMinScore(30);
+                      setHideDataPending(true);
+                      setHideBlockedOnly(true);
+                    }}
+                    className="rounded-lg border border-amber-600/50 bg-amber-600/10 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-amber-600/20"
+                  >
+                    저리스크
+                  </button>
+                </div>
+              </div>
+
               {/* 이름/티커 검색 */}
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
