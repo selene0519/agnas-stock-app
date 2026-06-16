@@ -550,50 +550,6 @@ jobs:
           echo "auto-correction: exit $?"
           set -e
 
-      - name: Weekly walk-forward backtest (토요일 실행)
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && startsWith(github.run_id, ''))
-        working-directory: mone-web-app/backend
-        env:
-          PYTHONPATH: .
-        run: |
-          # 토요일(6) 또는 수동 트리거일 때만 실행
-          DOW=$(date +%u)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$DOW" = "6" ]; then
-            set +e
-            python - <<'PY'
-          import sys, json
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          from app.engine.walkforward_backtest import run_all
-          try:
-              result_kr = run_all("kr")
-              combo_count = len(result_kr.get("combos", {}))
-              print(f"[walk-forward] KR 완료: {combo_count}개 전략 조합")
-          except Exception as e:
-              print(f"[walk-forward] 오류: {e}")
-          PY
-            echo "walk-forward: exit $?"
-
-            # 앙상블 보정 테이블 갱신 (walk-forward 직후 실행)
-            python - <<'PY'
-          import sys
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          try:
-              from app.engine.ensemble_calibrator import run_ensemble_calibration
-              for market in ("kr", "us"):
-                  result = run_ensemble_calibration(market=market, repo_root=Path.cwd().parent.parent)
-                  for c in result.get("combos", []):
-                      print(f"[ensemble] {c['combo']}: {c['records']}건 보정 완료")
-          except Exception as e:
-              print(f"[ensemble] 오류: {e}")
-          PY
-            echo "ensemble-calibration: exit $?"
-            set -e
-          else
-            echo "[walk-forward] 오늘은 토요일이 아님 (DOW=$DOW) — 스킵"
-          fi
-
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true

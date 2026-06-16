@@ -1,0 +1,109 @@
+name: MONE Weekly Walk-Forward Backtest
+
+on:
+  schedule:
+    # UTC 기준. KST 토요일 16:30 (미장 금요일 마감 후)
+    - cron: "30 7 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CI: "true"
+      TZ: Asia/Seoul
+      PYTHONUTF8: "1"
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          else
+            python -m pip install pandas numpy requests python-dotenv yfinance finance-datareader beautifulsoup4 lxml
+          fi
+
+      - name: Weekly walk-forward backtest
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.engine.walkforward_backtest import run_all
+          try:
+              result_kr = run_all("kr")
+              combo_count = len(result_kr.get("combos", {}))
+              print(f"[walk-forward] KR 완료: {combo_count}개 전략 조합")
+          except Exception as e:
+              print(f"[walk-forward] 오류: {e}")
+          PY
+          echo "walk-forward: exit $?"
+
+          # 앙상블 보정 테이블 갱신 (walk-forward 직후 실행)
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          try:
+              from app.engine.ensemble_calibrator import run_ensemble_calibration
+              for market in ("kr", "us"):
+                  result = run_ensemble_calibration(market=market, repo_root=Path.cwd().parent.parent)
+                  for c in result.get("combos", []):
+                      print(f"[ensemble] {c['combo']}: {c['records']}건 보정 완료")
+          except Exception as e:
+              print(f"[ensemble] 오류: {e}")
+          PY
+          echo "ensemble-calibration: exit $?"
+          set -e
+
+      - name: Commit backtest results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
+          git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
+          git add reports/ensemble_calibration_*.json 2>/dev/null || true
+
+          if git diff --cached --quiet; then
+            echo "No backtest changes to commit."
+            exit 0
+          fi
+
+          for attempt in 1 2 3; do
+            git commit -m "chore: weekly walk-forward backtest results [skip ci]"
+            if git push origin "HEAD:main"; then
+              exit 0
+            fi
+            echo "Push failed, retrying ($attempt/3)..."
+            sleep 5
+          done
+
+          echo "Failed to push backtest results after retries."
+          exit 1
