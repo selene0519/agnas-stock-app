@@ -43,6 +43,13 @@ try:
 except Exception as _auto_sync_err:
     print("[AutoSync] 초기화 실패:", _auto_sync_err)
 
+# Telegram 알림 스케줄러 초기화
+try:
+    from app.services.telegram_alert import start_scheduler as _tg_start
+    _tg_start()
+except Exception as _tg_err:
+    print("[TelegramAlert] 초기화 실패:", _tg_err)
+
 _default_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -8205,3 +8212,46 @@ def api_broker_disconnect_bridge(body: dict = Body(...), authorization: str | No
         return JSONResponse(status_code=400, content={"ok": False, "error": "Invalid broker value."})
     _broker.disconnect(payload.get("userId", ""), broker)
     return {"ok": True, "message": f"{broker} local bridge status disconnected."}
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Telegram 알림 API
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/alerts/status")
+def api_alerts_status() -> dict:
+    """Telegram 알림 설정 상태 조회."""
+    try:
+        from app.services.telegram_alert import get_status
+        return {"status": "OK", **get_status()}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+
+
+@app.post("/api/alerts/test")
+def api_alerts_test() -> dict:
+    """Telegram 연결 테스트 메시지 발송."""
+    try:
+        from app.services.telegram_alert import send_message, is_enabled
+        if not is_enabled():
+            return {"ok": False, "error": "TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 환경변수를 설정하세요."}
+        now = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        result = send_message(
+            f"✅ <b>MONE 알림 테스트</b>\n연결 성공! 알림 서비스가 정상 동작합니다.\n⏰ {now}"
+        )
+        return result
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.post("/api/alerts/check")
+def api_alerts_check(
+    thresholdPct: float = Query(None),
+    force: bool = Query(False),
+) -> dict:
+    """즉시 근접 알림 체크 (force=true 이면 쿨다운 무시)."""
+    try:
+        from app.services.telegram_alert import check_and_send
+        return check_and_send(threshold_pct=thresholdPct, force=force)
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}

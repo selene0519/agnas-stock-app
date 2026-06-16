@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { mone, type Market, type Mode, type Horizon } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { dedupeBySymbol, displayName, horizonLabel, modeLabel, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
+import AlertsPanel from "@/components/AlertsPanel";
 
-type TabId = "scanner" | "calculator" | "montecarlo" | "correlation";
+type TabId = "scanner" | "calculator" | "montecarlo" | "correlation" | "alerts";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -245,6 +246,7 @@ export default function AdvancedPage() {
     { id: "calculator", label: "계산기" },
     { id: "montecarlo", label: "몬테카를로" },
     { id: "correlation", label: "상관관계" },
+    { id: "alerts", label: "알림" },
   ];
 
   return (
@@ -564,6 +566,12 @@ export default function AdvancedPage() {
               </div>
             );
           })()}
+        </Card>
+      )}
+
+      {tab === "alerts" && (
+        <Card title="Telegram 알림 설정">
+          <AlertsPanel />
         </Card>
       )}
     </div>
