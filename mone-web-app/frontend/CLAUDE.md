@@ -229,9 +229,12 @@ GITHUB_TOKEN
 완료: 12.감성 뱃지 (HomePage TodayEntryCard·WatchCard, StocksPage 종목카드)
 완료: 28개 누락 API 엔드포인트 (v10.2)
 
-다음:
-6. 뉴스 감성 분석 (Claude API — ANTHROPIC_API_KEY Render 등록 후 자동 전환)
-10. 앙상블 모델 5개 (데이터 500건 이상 후)
+완료: 6.뉴스 감성 Claude API (ANTHROPIC_API_KEY 등록 시 자동 전환, 없으면 keyword fallback)
+완료: 10.앙상블 5모델 (M1전략·M2리스크·M3모멘텀·M4밸류·M5레짐 가중 앙상블)
+
+남은 항목:
+- 백테스트 데이터 500건+ 후 보정 테이블 재생성 (run_ensemble_calibration 호출)
+- ANTHROPIC_API_KEY Render 등록 → Claude API 감성 분석 활성화
 ```
 
 ---

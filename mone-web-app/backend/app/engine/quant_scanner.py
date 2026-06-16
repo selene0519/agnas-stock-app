@@ -1732,10 +1732,10 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     computed = list(item.get("computedFields") or [])
     computed.append("quant_scanner_v2")
 
-    # 앙상블 보정 점수 (백테스트 실증 기반)
+    # 앙상블 보정 점수 (5모델 앙상블 — M1전략·M2리스크·M3모멘텀·M4밸류·M5레짐)
     _ensemble: dict[str, Any] = {}
     try:
-        from app.engine.ensemble_calibrator import ensemble_score as _ens_score
+        from app.engine.ensemble_calibrator import ensemble_score_v2 as _ens_score
         _ensemble = _ens_score(
             final_score=result.get("finalScore"),
             regime=_regime,
@@ -1744,6 +1744,13 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
             mode=mode,
             horizon=horizon,
             repo_root=repo_root,
+            upside_score=result.get("upsideScore"),
+            risk_score=result.get("riskScore"),
+            momentum_score=result.get("momentumScore"),
+            entry_score=result.get("entryScore"),
+            rr_score=result.get("rrScore"),
+            quality_score=result.get("qualityScore"),
+            news_risk_penalty=result.get("newsRiskPenalty"),
         )
     except Exception:
         pass
@@ -1760,11 +1767,12 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         "rrScore": result.get("rrScore"),
         "qualityScore": result.get("qualityScore"),
         "newsRiskPenalty": result.get("newsRiskPenalty"),
-        # 앙상블 보정 점수 (백테스트 실증 기반)
+        # 5모델 앙상블 보정 점수
         "ensembleScore": _ensemble.get("ensembleScore"),
         "calibratedWinRate": _ensemble.get("calibratedWinRate") or result.get("calibratedWinRate"),
         "calibratedAvgPnl": _ensemble.get("calibratedAvgPnl"),
         "calibrationCount": _ensemble.get("calibrationCount", 0),
+        "modelScores": _ensemble.get("modelScores"),
         # safetyScore: quant_scanner riskScore (높을수록 안전) 명시적 표기
         "safetyScore": result.get("riskScore"),
         # EV 및 실제 손익비
