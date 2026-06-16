@@ -42,7 +42,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        {/* JS 로드 전 인라인 스플래시 — React 마운트 시 자동 제거 */}
+        <div
+          id="mone-html-splash"
+          style={{
+            position: "fixed", inset: 0, zIndex: 99999,
+            background: "#0b1220",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            fontFamily: "system-ui, sans-serif",
+          }}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 90% 45% at 50% 0%, rgba(20,180,175,0.18), transparent)", pointerEvents: "none" }} />
+          <img src="/loading/mone-logo.png" alt="" style={{ width: "min(52vw, 200px)", objectFit: "contain", filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))" }} />
+          <p style={{ marginTop: 4, letterSpacing: "0.35em", color: "#fff", fontWeight: 300, fontSize: "clamp(22px,7vw,32px)", textShadow: "0 0 18px rgba(66,223,212,0.25)" }}>MONE</p>
+          <p style={{ marginTop: 4, letterSpacing: "0.25em", color: "rgba(61,216,208,0.6)", fontWeight: 300, fontSize: "clamp(7px,2vw,9px)" }}>WHERE MOMENTUM BEGINS.</p>
+        </div>
+        {/* React가 마운트되면 page.tsx에서 제거 (removeHtmlSplash()) */}
+        {children}
+      </body>
     </html>
   );
 }
