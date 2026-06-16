@@ -652,3 +652,20 @@ jobs:
 
           echo "Failed to push generated data after retries."
           exit 1
+
+      - name: Trigger Render backend git pull (데이터 즉시 반영)
+        env:
+          MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
+          MONE_ADMIN_SECRET: ${{ secrets.MONE_ADMIN_SECRET }}
+        run: |
+          BASE="${MONE_BACKEND_URL%/}"
+          echo "Render 백엔드 git pull 요청: ${BASE}/api/admin/sync-now"
+          set +e
+          # 데이터가 GitHub에 push된 후 Render 백엔드에 즉시 pull 요청
+          curl -sf -X POST "${BASE}/api/admin/sync-now" \
+            -H "Content-Type: application/json" \
+            -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
+            --max-time 60 \
+            -o /tmp/sync_result.json && cat /tmp/sync_result.json || echo "sync-now 호출 실패 (무시)"
+          set -e
+          echo "Render sync 요청 완료"

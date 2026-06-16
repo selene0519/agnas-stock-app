@@ -9,8 +9,11 @@ import { displayName, normalizeMarket, normalizeSymbol } from "@/lib/moneDisplay
 
 type Market = "kr" | "us" | "all";
 
-function labelSession(session?: string, fallback?: string) {
-  if (!session) return fallback || "세션 확인 중";
+function labelSession(session?: string, fallback?: string, status?: string) {
+  if (!session) {
+    if (status === "ERROR") return fallback || "데이터 없음";
+    return fallback || "세션 확인 중";
+  }
   return priceSessionLabel(session) || fallback || session;
 }
 
@@ -104,7 +107,7 @@ export default function SessionSafetyBanner({
               세션 · 데이터 보호 · {marketLabel(market)}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
-              <span>{labelSession(quality.priceSession, quality.sessionDescription)}</span>
+              <span>{labelSession(quality.priceSession, quality.sessionDescription, quality.status || quality.dataStatus)}</span>
               <span className="rounded-md bg-slate-950/50 px-2 py-0.5 font-mono text-xs">{statusLabel(quality.dataStatus || quality.status)}</span>
               {quality.killSwitch && !quality.isHoliday && <span className="rounded-md bg-red-500/20 px-2 py-0.5 text-xs text-red-100">킬스위치</span>}
               {quality.isHoliday && <span className="rounded-md bg-blue-500/20 px-2 py-0.5 text-xs text-blue-100">복기 모드</span>}
@@ -115,6 +118,8 @@ export default function SessionSafetyBanner({
               <p className="mt-1 text-xs text-blue-200">시장 휴장일입니다. 신규 진입보다 지난 운용 리포트와 검증 결과를 확인하세요.</p>
             ) : alerts.length > 0 ? (
               <p className="mt-1 text-xs text-amber-200">현재 기준가/손절가 1% 이내 근접 알림 {alerts.length}건이 있습니다.</p>
+            ) : quality.status === "ERROR" || quality.dataStatus === "ERROR" ? (
+              <p className="mt-1 text-xs text-amber-300">GitHub Actions 또는 로컬 수집기를 실행해 데이터를 채워주세요. 동기화 버튼으로 재시도할 수 있습니다.</p>
             ) : (
               <p className="mt-1 text-xs text-slate-400">화면 복귀 시 세션과 데이터 상태를 자동으로 다시 동기화합니다.</p>
             )}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60; // Render cold-start 최대 60초 허용 (Vercel Hobby 최대값)
 
 const CONFIGURED_BACKEND_URL = (
   process.env.MONE_BACKEND_URL ||
