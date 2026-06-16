@@ -536,6 +536,12 @@ export const mone = {
     }).then((r) => r.json()),
   stockAnalysis: (p: { symbol: string; market: string }) =>
     apiGet<any>(`/api/analysis/${encodeURIComponent(p.symbol)}`, { market: p.market }),
+
+  // Telegram 알림
+  alertsStatus: () => apiGet<any>("/api/alerts/status"),
+  alertsTest: () => apiPost<any>("/api/alerts/test", {}),
+  alertsCheck: (p?: { thresholdPct?: number; force?: boolean }) =>
+    apiPost<any>("/api/alerts/check", {}, p as Record<string, string>),
 };
 
 export default mone;
