@@ -326,7 +326,8 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
         target = _num(_text(row, ["target", "targetPrice", "목표가"]), ref["target"])
         prev = _num(_text(row, ["prevClose", "previousClose", "prev_close", "전일종가"]), oh["prev"])
 
-        change = ((current - prev) / prev * 100) if current > 0 and prev > 0 else 0.0
+        has_change_base = current > 0 and prev > 0
+        change = ((current - prev) / prev * 100) if has_change_base else None
         valuation = qty * current if qty > 0 and current > 0 else 0.0
         cost = qty * avg if qty > 0 and avg > 0 else 0.0
         pnl = valuation - cost if valuation > 0 and cost > 0 else 0.0
@@ -370,7 +371,7 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
             "stopText": _fmt_price(stop, m),
             "targetText": _fmt_price(target, m),
             "prevCloseText": _fmt_price(prev, m),
-            "changePctText": _fmt_pct(change),
+            "changePctText": _fmt_pct(change) if has_change_base else "-",
             "source": row.get("_source_file", ""),
             "quoteSource": ref["source"],
             "ohlcvSource": oh["source"],
