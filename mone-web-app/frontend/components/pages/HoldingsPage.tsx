@@ -884,12 +884,21 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const totalValueText = summary.totalValueText || (items.length > 0 ?
     items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
 
-  const sortedItems = useMemo(() => {
-    return [...items].sort((a, b) => {
-      const assetTypeA = String(a.assetType || a.instrumentType || "stock").toLowerCase();
-      const assetTypeB = String(b.assetType || b.instrumentType || "stock").toLowerCase();
-      const isEtfA = assetTypeA.includes("etf");
-      const isEtfB = assetTypeB.includes("etf");
+  const { individualStocks, etfHoldings } = useMemo(() => {
+    const stocks: any[] = [];
+    const etfs: any[] = [];
+
+    for (const item of items) {
+      const assetType = String(item.assetType || item.instrumentType || "stock").toLowerCase();
+      const isEtf = assetType.includes("etf");
+      if (isEtf) {
+        etfs.push(item);
+      } else {
+        stocks.push(item);
+      }
+    }
+
+    stocks.sort((a, b) => {
       const riskA = String(a.riskStatus || "").toUpperCase();
       const riskB = String(b.riskStatus || "").toUpperCase();
       const stopGapA = a.downsideGapPct != null ? Number(a.downsideGapPct) : a.stopGapPct != null ? Number(a.stopGapPct) : null;
@@ -919,11 +928,6 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         if (!hasTarget) score += 100;
         if (weight > 0.2) score += 50;
 
-        if (isEtfA || isEtfB) {
-          const isEtf = assetTypeA.includes("etf");
-          if (isEtf) score -= 1000;
-        }
-
         return score;
       };
 
@@ -932,6 +936,14 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
       return scoreB - scoreA;
     });
+
+    etfs.sort((a, b) => {
+      const totalValueA = Number(a.valuation || a.marketValue || 0);
+      const totalValueB = Number(b.valuation || b.marketValue || 0);
+      return totalValueB - totalValueA;
+    });
+
+    return { individualStocks: stocks, etfHoldings: etfs };
   }, [items]);
   const actionItems = useMemo(() => {
     const rows: { key: string; tone: "red" | "amber" | "blue"; title: string; detail: string; action?: "stop" | "target" }[] = [];
@@ -1367,9 +1379,15 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       )}
 
-      {/* 보유종목 카드 */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {sortedItems.map((holding: any) => {
+      {/* 개별주 카드 */}
+      {individualStocks.length > 0 && (
+        <div>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-100">개별주 ({individualStocks.length})</h2>
+            <span className="text-xs text-slate-500">위험도·손절 근접 순 정렬</span>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {individualStocks.map((holding: any) => {
           const key = editableKey(holding);
           const isEditing = editKey === key && !!editDraft;
           const assetType = String(holding.assetType || holding.instrumentType || "stock");
@@ -1580,17 +1598,188 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               </div>
             </div>
           );
-        })}
-        {items.length === 0 && !loading && (
-          <div className="col-span-full rounded-2xl border border-dashed border-slate-800 p-12 text-center">
-            <p className="text-slate-500">보유 종목이 없습니다.</p>
-            <button onClick={() => setShowAdd(true)}
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-500">
-              <Plus size={14} /> 첫 종목 직접 추가
-            </button>
+            })}
+            {individualStocks.length === 0 && !loading && etfHoldings.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-slate-800 p-12 text-center">
+                <p className="text-slate-500">보유 종목이 없습니다.</p>
+                <button onClick={() => setShowAdd(true)}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-500">
+                  <Plus size={14} /> 첫 종목 직접 추가
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ETF 카드 */}
+      {etfHoldings.length > 0 && (
+        <div>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-100">ETF 적립 ({etfHoldings.length})</h2>
+            <span className="text-xs text-slate-500">평가금액 기준 정렬</span>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {etfHoldings.map((holding: any) => {
+              const key = editableKey(holding);
+              const isEditing = editKey === key && !!editDraft;
+              const assetType = String(holding.assetType || holding.instrumentType || "etf");
+              const holdingPurpose = String(holding.holdingPurpose || holding.strategyType || "");
+              const holdingBroker = brokerLabel(holding.broker || holding.sourceBroker || holding.sourceType || holding.priceSource);
+              const holdingMarket = cleanHoldingMarket(holding.market);
+              const weightText = holding.weightText || holding.weightPctText || holding.portfolioWeightText || (holding.weightPct != null ? `${Number(holding.weightPct).toFixed(1)}%` : "-");
+              const pnlText = `${holding.pnlText || "-"}${holding.pnlPctText && holding.pnlPctText !== "-" ? ` / ${holding.pnlPctText}` : ""}`;
+              const costBasis = Number(holding.avgPrice || 0) * Number(holding.quantity || 0);
+              const currentValue = Number(holding.valuation || holding.marketValue || 0);
+              const accumulationGapPct = costBasis > 0 ? ((currentValue - costBasis) / costBasis) * 100 : 0;
+
+              return (
+                <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <h2 className="max-w-[8rem] break-keep text-base font-bold leading-snug text-slate-100 sm:max-w-none">{displayName(holding)}</h2>
+                        <span className="font-mono text-xs text-slate-500">{holding.symbol}</span>
+                        <span className="whitespace-nowrap rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{holding.market === "kr" ? "국장" : "미장"}</span>
+                        <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-300">{holdingAssetLabel(assetType)}</span>
+                        <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-400">{holdingPurposeLabel(holdingPurpose)}</span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
+                      <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
+                        {(holding.currentPriceSource || holding.priceSource || holding.quoteSource) && <span>source: {holding.currentPriceSource || holding.priceSource || holding.quoteSource}</span>}
+                        {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
+                          const s = String(holding.priceDataStatus || holding.dataStatus || "");
+                          if (s === "LOCAL_ONLY") return "로컬 임시";
+                          if (s === "DATA_PENDING") return "데이터 수집 대기";
+                          if (s === "STALE") return "시세 갱신 필요";
+                          if (s === "NORMAL" || s === "OK") return "정상";
+                          return s;
+                        })()}</span>}
+                        {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {(() => {
+                          const status = String(holding.dataStatus || "");
+                          const missing = Array.isArray(holding.missingFields) ? holding.missingFields : [];
+                          if (status === "OK" || status === "NORMAL") return <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">현재가 정상</span>;
+                          if (!holding.currentPrice || holding.currentPrice <= 0) return <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">현재가 없음</span>;
+                          if (missing.length > 0) return <span className="rounded-md border border-slate-600/40 bg-slate-700/20 px-2 py-0.5 text-[10px] text-slate-400">OHLCV 기준가 ({missing.slice(0,2).join("·")} 없음)</span>;
+                          return <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300">부분 데이터</span>;
+                        })()}
+                        {holding.quoteSource && <span className="text-[10px] text-slate-600">출처: {holding.quoteSource}</span>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      {!isEditing && (
+                        <>
+                          <button onClick={() => refreshOneQuote(holding)} disabled={savingKey === key}
+                            className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs text-blue-300 hover:bg-blue-500/20 disabled:opacity-50" title="빠른점검: 현재가 새로고침" aria-label="빠른점검: 현재가 새로고침">
+                            <Zap size={11} />
+                            <span>빠른점검</span>
+                          </button>
+                          <button onClick={() => { setEditKey(key); setEditDraft(toEditableHolding(holding)); setDeleteConfirmKey(null); setMessage(""); }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800">
+                            <Pencil size={11} /> 수정
+                          </button>
+                          {deleteConfirmKey === key ? (
+                            <>
+                              <button onClick={() => deleteHolding(holding)} disabled={savingKey === key}
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-500/60 bg-red-500/20 px-2 py-1 text-xs font-bold text-red-300 hover:bg-red-500/30 disabled:opacity-50">
+                                <Trash2 size={11} /> 확인
+                              </button>
+                              <button onClick={() => setDeleteConfirmKey(null)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:bg-slate-800">
+                                <X size={11} />
+                              </button>
+                            </>
+                          ) : (
+                            <button onClick={() => setDeleteConfirmKey(key)} disabled={savingKey === key}
+                              className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20 disabled:opacity-50">
+                              <Trash2 size={11} /> 삭제
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <Mini label="포트폴리오 비중" value={weightText} />
+                    <Mini label="평가손익" value={pnlText} accent={Number(holding.pnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
+                    <Mini label="적립 수익률" value={accumulationGapPct >= 0 ? `+${accumulationGapPct.toFixed(1)}%` : `${accumulationGapPct.toFixed(1)}%`} accent={accumulationGapPct >= 0 ? "text-emerald-300" : "text-amber-300"} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.localStorage.setItem("mone_chart_symbol", String(holding.symbol || ""));
+                        window.localStorage.setItem("mone_chart_market", cleanHoldingMarket(holding.market));
+                        window.localStorage.setItem("mone_chart_name", displayName(holding));
+                        window.localStorage.setItem("mone_chart_price", String(holding.currentPrice || ""));
+                        window.localStorage.setItem("mone_chart_price_text", holding.currentPriceText || "");
+                        window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: holding }));
+                        onNavigate?.("chart");
+                      }}
+                      className="col-span-2 inline-flex min-h-[52px] items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-200 hover:bg-blue-500/20 sm:col-span-2"
+                    >
+                      분석 보기
+                    </button>
+                  </div>
+
+                  {isEditing && editDraft && (
+                    <div className="mt-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+                      <div className="mb-3 text-sm font-bold text-blue-200">보유종목 수정</div>
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+                        {(["name","symbol","quantity","avgPrice"] as const).map((field) => (
+                          <label key={field} className="text-xs text-slate-400">
+                            {field === "name" ? "종목명" : field === "symbol" ? "종목코드/티커" : field === "quantity" ? "수량" : "평균단가"}
+                            <input type={field === "quantity" || field === "avgPrice" ? "number" : "text"}
+                              value={editDraft[field]}
+                              onChange={(e) => setEditDraft({ ...editDraft, [field]: e.target.value })}
+                              className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400" />
+                          </label>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        <button onClick={() => saveEdit(holding)} disabled={savingKey === key}
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
+                          <Save size={12} /> 저장
+                        </button>
+                        <button onClick={() => { setEditKey(null); setEditDraft(null); }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">
+                          <X size={12} /> 취소
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                    <Mini label="수량" value={String(holding.quantity || "-")} />
+                    <Mini label="평단" value={holding.avgPriceText || "-"} />
+                    <Mini label="현재가" value={holding.currentPriceText || "수집 대기"} />
+                    <Mini label="등락률" value={holding.changePctText || "-"}
+                      accent={String(holding.changePctText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"} />
+                    <Mini label="평가금액" value={holding.valuationText || holding.marketValueText || "-"} />
+                    <Mini label="손익" value={holding.pnlText || "0"}
+                      accent={Number(holding.pnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
+                    <Mini label="총 투입금액" value={formatHoldingMoney(costBasis, holdingMarket)} />
+                    <Mini label="평가금액" value={formatHoldingMoney(currentValue, holdingMarket)} />
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-slate-950 px-3 py-2.5">
+                    <div className="flex justify-between text-[10px] text-slate-400">
+                      <span>적립 수익률</span>
+                      <span className="font-mono">{accumulationGapPct >= 0 ? `+${accumulationGapPct.toFixed(2)}%` : `${accumulationGapPct.toFixed(2)}%`}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                      <div className={`h-full rounded-full ${accumulationGapPct >= 10 ? "bg-emerald-500" : accumulationGapPct >= 0 ? "bg-sky-500" : "bg-amber-400"}`}
+                        style={{ width: `${Math.max(4, Math.min(100, (accumulationGapPct ?? 0) * 5))}%` }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
