@@ -4,6 +4,30 @@ import { useEffect, useState } from "react";
 import { mone, type Market, type Mode, type Horizon } from "@/lib/api";
 import { BarChart2, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 
+const BACKTEST_CACHE_KEY = "mone:backtest-compare-cache";
+const BACKTEST_CACHE_TTL = 30 * 60 * 1000;
+
+function readBacktestCache(market: Market): Record<string, any> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(BACKTEST_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.market !== market) return null;
+    if (Date.now() - (parsed.ts || 0) > BACKTEST_CACHE_TTL) return null;
+    return parsed.results || null;
+  } catch {
+    return null;
+  }
+}
+
+function writeBacktestCache(market: Market, results: Record<string, any>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(BACKTEST_CACHE_KEY, JSON.stringify({ market, results, ts: Date.now() }));
+  } catch {}
+}
+
 type StrategyResult = {
   mode: Mode;
   horizon: Horizon;
@@ -124,9 +148,22 @@ export default function BacktestComparePanel() {
   const [market, setMarket] = useState<Market>("kr");
   const [results, setResults] = useState<Record<string, StrategyResult | null>>({});
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  async function loadAll() {
-    setLoading(true);
+  async function loadAll(force = false) {
+    if (!force) {
+      const cached = readBacktestCache(market);
+      if (cached) {
+        setResults(cached);
+        setLoading(false);
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+    }
+
+    if (force) setIsRefreshing(true);
+
     const combos: { mode: Mode; horizon: Horizon }[] = [];
     for (const m of MODES) {
       for (const h of HORIZONS) {
@@ -158,15 +195,18 @@ export default function BacktestComparePanel() {
         };
         return [`${mode}:${horizon}`, result];
       });
-      setResults(Object.fromEntries(entries));
+      const newResults = Object.fromEntries(entries);
+      setResults(newResults);
+      writeBacktestCache(market, newResults);
     } catch {
       setResults(Object.fromEntries(combos.map(({ mode, horizon }) => [`${mode}:${horizon}`, null])));
     }
     setLoading(false);
+    setIsRefreshing(false);
   }
 
   useEffect(() => {
-    loadAll();
+    loadAll(false);
   }, [market]);
 
   const totalExecuted = Object.values(results).reduce(
@@ -201,11 +241,11 @@ export default function BacktestComparePanel() {
             </button>
           ))}
           <button
-            onClick={loadAll}
-            disabled={loading}
+            onClick={() => loadAll(true)}
+            disabled={loading || isRefreshing}
             className="flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
           >
-            <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={11} className={(loading || isRefreshing) ? "animate-spin" : ""} />
           </button>
         </div>
       </div>

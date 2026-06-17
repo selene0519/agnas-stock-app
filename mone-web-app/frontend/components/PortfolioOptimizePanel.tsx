@@ -4,6 +4,30 @@ import { useEffect, useState } from "react";
 import { mone, type Market } from "@/lib/api";
 import { PieChart, RefreshCw, AlertTriangle, CheckCircle2, TrendingDown } from "lucide-react";
 
+const PORTFOLIO_CACHE_KEY = "mone:portfolio-optimize-cache";
+const PORTFOLIO_CACHE_TTL = 30 * 60 * 1000;
+
+function readPortfolioCache(market: Market): { sectorData: any; holdings: any[] } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PORTFOLIO_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.market !== market) return null;
+    if (Date.now() - (parsed.ts || 0) > PORTFOLIO_CACHE_TTL) return null;
+    return parsed.data || null;
+  } catch {
+    return null;
+  }
+}
+
+function writePortfolioCache(market: Market, data: { sectorData: any; holdings: any[] }) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(PORTFOLIO_CACHE_KEY, JSON.stringify({ market, data, ts: Date.now() }));
+  } catch {}
+}
+
 type SectorRow = {
   sector: string;
   value: number;
@@ -92,9 +116,23 @@ export default function PortfolioOptimizePanel() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [holdingSource, setHoldingSource] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  async function load() {
-    setLoading(true);
+  async function load(force = false) {
+    if (!force) {
+      const cached = readPortfolioCache(market);
+      if (cached) {
+        setSectorData(cached.sectorData);
+        setHoldings(cached.holdings);
+        setLoading(false);
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+    }
+
+    if (force) setIsRefreshing(true);
+
     try {
       const [sectorResult, holdingsResult] = await Promise.allSettled([
         mone.sectorExposure({ market }) as Promise<any>,
@@ -117,18 +155,21 @@ export default function PortfolioOptimizePanel() {
         stop: h.stop || h.stopPrice ? Number(h.stop || h.stopPrice) : undefined,
         target: h.target || h.targetPrice ? Number(h.target || h.targetPrice) : undefined,
       }));
-      setHoldings(parsed.filter((h) => h.valuation > 0));
+      const filteredHoldings = parsed.filter((h) => h.valuation > 0);
+      setHoldings(filteredHoldings);
+      writePortfolioCache(market, { sectorData: sectorRes, holdings: filteredHoldings });
     } catch {
       setSectorData(null);
       setHoldingSource("");
       setHoldings([]);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }
 
   useEffect(() => {
-    load();
+    load(false);
   }, [market]);
 
   const totalValue = holdings.reduce((s, h) => s + h.valuation, 0);
@@ -165,11 +206,11 @@ export default function PortfolioOptimizePanel() {
             </button>
           ))}
           <button
-            onClick={load}
-            disabled={loading}
+            onClick={() => load(true)}
+            disabled={loading || isRefreshing}
             className="flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
           >
-            <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={11} className={(loading || isRefreshing) ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
