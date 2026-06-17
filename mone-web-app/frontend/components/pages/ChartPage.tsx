@@ -2057,6 +2057,7 @@ export default function ChartPage() {
   const [period, setPeriod] = useState<number | null>(126);
   const [indexRows, setIndexRows] = useState<any[]>([]);
   const [chartAnalysis, setChartAnalysis] = useState<any | null>(null);
+  const [similarPattern, setSimilarPattern] = useState<any | null>(null);
   const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
   const [atrHorizon, setAtrHorizon] = useState<"short"|"swing"|"mid">("swing");
   // Start as true if we already have a symbol in localStorage (avoids "OHLCV 없음" flash before fetch begins)
@@ -2273,6 +2274,17 @@ export default function ChartPage() {
     mone.chartAnalysis({ symbol: selected.symbol, market: selected.market as any }, controller.signal)
       .then((d) => { if (active) setChartAnalysis(d?.ok ? d : null); })
       .catch(() => { if (active) setChartAnalysis(null); });
+    return () => { active = false; controller.abort(); };
+  }, [selected?.symbol, selected?.market]);
+
+  // 유사 과거 패턴(RSI·MACD·볼린저밴드 위치) 기준 이후 수익률 통계
+  useEffect(() => {
+    if (!selected) { setSimilarPattern(null); return; }
+    let active = true;
+    const controller = new AbortController();
+    mone.similarPattern({ symbol: selected.symbol, market: selected.market as any }, controller.signal)
+      .then((d) => { if (active) setSimilarPattern(d || null); })
+      .catch(() => { if (active) setSimilarPattern(null); });
     return () => { active = false; controller.abort(); };
   }, [selected?.symbol, selected?.market]);
 
@@ -2940,6 +2952,11 @@ export default function ChartPage() {
                   </CollapsiblePanel>
                 )}
 
+                {/* 유사 과거 패턴 (RSI·MACD·BB 위치 유사 시점들의 이후 수익률) */}
+                <CollapsiblePanel title="유사 과거 패턴 통계">
+                  <SimilarPatternPanel data={similarPattern} />
+                </CollapsiblePanel>
+
                 {/* 가격 레벨 유효성 경고 */}
                 {(() => {
                   if (!levels) return null;
@@ -3290,6 +3307,91 @@ function CollapsiblePanel({ title, children, defaultOpen = false }: { title: str
 }
 function Empty({ text }: { text: string }) {
   return <div className="rounded-xl border border-dashed border-slate-800 p-4 text-sm text-slate-500">{text}</div>;
+}
+
+const SIMILAR_PATTERN_HORIZONS: { key: "d1" | "d5" | "d10"; label: string }[] = [
+  { key: "d1", label: "1일 후" },
+  { key: "d5", label: "5일 후" },
+  { key: "d10", label: "10일 후" },
+];
+
+function SimilarPatternWinRateBadge({ rate }: { rate: number }) {
+  const cls =
+    rate >= 60 ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+    : rate >= 45 ? "bg-sky-500/20 text-sky-300 border-sky-500/30"
+    : rate > 0 ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+    : "bg-slate-700/40 text-slate-500 border-slate-700";
+  return <span className={`rounded-md border px-1.5 py-0.5 text-xs font-bold ${cls}`}>{rate > 0 ? `${rate}%` : "—"}</span>;
+}
+
+function SimilarPatternReturnLabel({ pct }: { pct: number | null | undefined }) {
+  if (pct === null || pct === undefined || Number.isNaN(pct)) return <span className="text-slate-500 text-xs">—</span>;
+  const color = pct > 0 ? "text-emerald-400" : pct < 0 ? "text-red-400" : "text-slate-400";
+  const sign = pct > 0 ? "+" : "";
+  return <span className={`font-mono text-xs font-bold ${color}`}>{sign}{pct.toFixed(1)}%</span>;
+}
+
+function SimilarPatternPanel({ data }: { data: any | null }) {
+  if (!data) return <Empty text="유사 패턴 데이터를 불러오는 중입니다…" />;
+  if (data.status !== "OK") {
+    return <Empty text={data.message || "유사 패턴 분석을 위한 데이터가 부족합니다."} />;
+  }
+  const current = data.current || {};
+  const matches: any[] = Array.isArray(data.matches) ? data.matches : [];
+  const summary = data.summary || {};
+  return (
+    <div className="space-y-3">
+      <div className="text-xs text-slate-500">
+        현재 지표 — RSI <span className="font-mono text-slate-300">{current.rsi ?? "-"}</span>
+        {"  "}· 볼린저 위치 <span className="font-mono text-slate-300">{typeof current.bbPercent === "number" ? `${(current.bbPercent * 100).toFixed(0)}%` : "-"}</span>
+        {"  "}· MACD-시그널 <span className="font-mono text-slate-300">{typeof current.macdHistPct === "number" ? `${current.macdHistPct.toFixed(2)}%` : "-"}</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {SIMILAR_PATTERN_HORIZONS.map(({ key, label }) => {
+          const s = summary[key];
+          return (
+            <div key={key} className="rounded-xl border border-slate-700/40 bg-slate-800/30 px-3 py-2 text-center">
+              <div className="text-[10px] text-slate-500">{label}</div>
+              <div className="mt-1 flex items-center justify-center gap-1">
+                <SimilarPatternWinRateBadge rate={s?.winRate ?? 0} />
+              </div>
+              <div className="mt-1"><SimilarPatternReturnLabel pct={s?.avgReturn} /></div>
+              <div className="mt-0.5 text-[10px] text-slate-600">평균수익률 · {s?.count ?? 0}건</div>
+            </div>
+          );
+        })}
+      </div>
+      {matches.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-slate-500">
+                <th className="text-left py-1 pr-2">날짜</th>
+                <th className="text-right py-1 pr-2">유사도</th>
+                <th className="text-right py-1 pr-2">1일</th>
+                <th className="text-right py-1 pr-2">5일</th>
+                <th className="text-right py-1">10일</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matches.slice(0, 10).map((m, i) => (
+                <tr key={`${m.date}-${i}`} className="border-t border-slate-800/60">
+                  <td className="py-1 pr-2 text-slate-400">{m.date}</td>
+                  <td className="py-1 pr-2 text-right font-mono text-slate-500">{typeof m.similarity === "number" ? `${(m.similarity * 100).toFixed(0)}%` : "-"}</td>
+                  <td className="py-1 pr-2 text-right"><SimilarPatternReturnLabel pct={m.returns?.d1} /></td>
+                  <td className="py-1 pr-2 text-right"><SimilarPatternReturnLabel pct={m.returns?.d5} /></td>
+                  <td className="py-1 text-right"><SimilarPatternReturnLabel pct={m.returns?.d10} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="text-[10px] text-slate-600 leading-relaxed">
+        {data.message || "과거 유사 시점 기준 통계이며 투자 조언이 아닙니다."}
+      </div>
+    </div>
+  );
 }
 function formatKoreanDate(raw: string): string {
   if (!raw) return "";

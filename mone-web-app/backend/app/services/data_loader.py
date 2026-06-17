@@ -4307,6 +4307,146 @@ def chart_data(symbol: str, market: str) -> dict[str, Any]:
     return {"status": "OK", "symbol": target, "market": market, "source": source, "count": len(items), "latest": latest, "indicatorStatus": indicator_status, "items": items}
 
 
+def similar_pattern_history(
+    symbol: str,
+    market: str,
+    horizons: tuple[int, ...] = (1, 5, 10),
+    top_n: int = 10,
+) -> dict[str, Any]:
+    """현재 RSI·MACD·볼린저밴드 위치와 가장 비슷했던 과거 시점을 찾아 이후 수익률을 집계한다.
+
+    "Was It?" 스타일 — 지표 상태가 유사했던 과거 구간들의 1/5/10일 후 수익률과 승률을 보여준다.
+    """
+    target = normalize_symbol(symbol, market)
+    df, source = _load_ohlcv(target, market)
+    max_horizon = max(horizons)
+    min_rows = 40 + max_horizon
+    if df.empty or len(df) < min_rows:
+        return {
+            "status": "NO_DATA",
+            "symbol": target,
+            "market": market,
+            "message": f"유사 패턴 분석에는 최소 {min_rows}일 이상의 OHLCV가 필요합니다.",
+            "matches": [],
+            "summary": {},
+        }
+
+    work = df.copy().reset_index(drop=True)
+    close = work["close"]
+    ma20 = close.rolling(20).mean()
+    std20 = close.rolling(20).std(ddof=0)
+    bb_upper = ma20 + std20 * 2
+    bb_lower = ma20 - std20 * 2
+    bb_width = (bb_upper - bb_lower).replace(0, np.nan)
+    work["bbPercent"] = ((close - bb_lower) / bb_width).clip(-0.5, 1.5)
+
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = (-delta).clip(lower=0)
+    avg_gain = gain.ewm(alpha=1 / 14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / 14, adjust=False).mean()
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    work["rsi"] = 100 - (100 / (1 + rs))
+
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    macd = ema12 - ema26
+    macd_signal = macd.ewm(span=9, adjust=False).mean()
+    work["macdHistPct"] = ((macd - macd_signal) / close.replace(0, np.nan)) * 100
+
+    feature_cols = ["rsi", "bbPercent", "macdHistPct"]
+    valid = work.dropna(subset=feature_cols)
+    if valid.empty:
+        return {
+            "status": "NO_DATA",
+            "symbol": target,
+            "market": market,
+            "message": "지표를 계산할 데이터가 부족합니다.",
+            "matches": [],
+            "summary": {},
+        }
+
+    means = valid[feature_cols].mean()
+    stds = valid[feature_cols].std(ddof=0).replace(0, 1.0)
+    z = (valid[feature_cols] - means) / stds
+
+    current_idx = valid.index[-1]
+    current_row = valid.loc[current_idx]
+    current_z = z.loc[current_idx]
+
+    buffer_days = 5  # 직전 구간은 현재와 흐름이 이어져 있어 사실상 같은 패턴이므로 제외
+    eligible_idx = [
+        idx for idx in valid.index
+        if idx <= len(work) - 1 - max_horizon and idx <= current_idx - buffer_days
+    ]
+    if not eligible_idx:
+        return {
+            "status": "INSUFFICIENT_HISTORY",
+            "symbol": target,
+            "market": market,
+            "message": "이후 수익률을 계산할 수 있는 과거 유사 시점이 부족합니다.",
+            "matches": [],
+            "summary": {},
+        }
+
+    distances = ((z.loc[eligible_idx] - current_z) ** 2).sum(axis=1).pow(0.5)
+    ranked = distances.sort_values().head(top_n)
+
+    matches: list[dict[str, Any]] = []
+    horizon_returns: dict[int, list[float]] = {h: [] for h in horizons}
+    for idx, dist in ranked.items():
+        row = work.loc[idx]
+        base_close = float(row["close"])
+        if not base_close:
+            continue
+        entry = {
+            "date": str(row["date"]),
+            "rsi": round(float(row["rsi"]), 2),
+            "bbPercent": round(float(row["bbPercent"]), 3),
+            "macdHistPct": round(float(row["macdHistPct"]), 3),
+            "similarity": round(max(0.0, 1.0 - float(dist) / 4.0), 3),
+            "returns": {},
+        }
+        for h in horizons:
+            future_close = float(work.loc[idx + h, "close"])
+            ret_pct = (future_close - base_close) / base_close * 100
+            entry["returns"][f"d{h}"] = round(ret_pct, 2)
+            horizon_returns[h].append(ret_pct)
+        matches.append(entry)
+
+    summary: dict[str, Any] = {}
+    for h in horizons:
+        rets = horizon_returns[h]
+        if not rets:
+            continue
+        wins = sum(1 for r in rets if r > 0)
+        summary[f"d{h}"] = {
+            "count": len(rets),
+            "winRate": round(wins / len(rets) * 100, 1),
+            "avgReturn": round(sum(rets) / len(rets), 2),
+            "medianReturn": round(float(np.median(rets)), 2),
+            "bestReturn": round(max(rets), 2),
+            "worstReturn": round(min(rets), 2),
+        }
+
+    return {
+        "status": "OK",
+        "symbol": target,
+        "market": market,
+        "source": source,
+        "current": {
+            "date": str(work.loc[current_idx, "date"]),
+            "rsi": round(float(current_row["rsi"]), 2),
+            "bbPercent": round(float(current_row["bbPercent"]), 3),
+            "macdHistPct": round(float(current_row["macdHistPct"]), 3),
+        },
+        "matchCount": len(matches),
+        "matches": matches,
+        "summary": summary,
+        "message": f"과거 {len(matches)}개 유사 시점 기준 통계이며 투자 조언이 아닙니다.",
+    }
+
+
 
 
 def _preferred_disclosure_files(market: str) -> list[Path]:
