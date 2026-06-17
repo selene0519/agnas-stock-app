@@ -883,6 +883,56 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const riskCount = Number(summary.riskCount ?? items.filter((item) => ["HIGH","WATCH"].includes(String(item.riskStatus || ""))).length);
   const totalValueText = summary.totalValueText || (items.length > 0 ?
     items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
+
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const assetTypeA = String(a.assetType || a.instrumentType || "stock").toLowerCase();
+      const assetTypeB = String(b.assetType || b.instrumentType || "stock").toLowerCase();
+      const isEtfA = assetTypeA.includes("etf");
+      const isEtfB = assetTypeB.includes("etf");
+      const riskA = String(a.riskStatus || "").toUpperCase();
+      const riskB = String(b.riskStatus || "").toUpperCase();
+      const stopGapA = a.downsideGapPct != null ? Number(a.downsideGapPct) : a.stopGapPct != null ? Number(a.stopGapPct) : null;
+      const stopGapB = b.downsideGapPct != null ? Number(b.downsideGapPct) : b.stopGapPct != null ? Number(b.stopGapPct) : null;
+      const hasPriceA = a.currentPrice && Number(a.currentPrice) > 0;
+      const hasPriceB = b.currentPrice && Number(b.currentPrice) > 0;
+      const hasStopA = (a.downsideLine ?? a.stopPrice ?? a.stop ?? 0) > 0;
+      const hasStopB = (b.downsideLine ?? b.stopPrice ?? b.stop ?? 0) > 0;
+      const hasTargetA = (a.upsideLine ?? a.targetPrice ?? a.target ?? 0) > 0;
+      const hasTargetB = (b.upsideLine ?? b.targetPrice ?? b.target ?? 0) > 0;
+      const totalValueA = Number(a.valuation || a.marketValue || 0);
+      const totalValueB = Number(b.valuation || b.marketValue || 0);
+      const portTotalValue = items.reduce((s, x) => s + Number(x.valuation || x.marketValue || 0), 0);
+      const weightA = portTotalValue > 0 ? totalValueA / portTotalValue : 0;
+      const weightB = portTotalValue > 0 ? totalValueB / portTotalValue : 0;
+
+      const getRiskScore = (risk: string, stopGap: number | null, hasPrice: boolean, hasStop: boolean, hasTarget: boolean, weight: number) => {
+        let score = 0;
+        if (risk === "HIGH") score += 1000;
+        else if (risk === "WATCH") score += 500;
+
+        if (stopGap !== null && stopGap <= 2) score += 400;
+        else if (stopGap !== null && stopGap <= 5) score += 200;
+
+        if (!hasPrice) score += 300;
+        if (!hasStop) score += 150;
+        if (!hasTarget) score += 100;
+        if (weight > 0.2) score += 50;
+
+        if (isEtfA || isEtfB) {
+          const isEtf = assetTypeA.includes("etf");
+          if (isEtf) score -= 1000;
+        }
+
+        return score;
+      };
+
+      const scoreA = getRiskScore(riskA, stopGapA, hasPriceA, hasStopA, hasTargetA, weightA);
+      const scoreB = getRiskScore(riskB, stopGapB, hasPriceB, hasStopB, hasTargetB, weightB);
+
+      return scoreB - scoreA;
+    });
+  }, [items]);
   const actionItems = useMemo(() => {
     const rows: { key: string; tone: "red" | "amber" | "blue"; title: string; detail: string; action?: "stop" | "target" }[] = [];
     for (const holding of items) {
@@ -1319,7 +1369,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
       {/* 보유종목 카드 */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {items.map((holding: any) => {
+        {sortedItems.map((holding: any) => {
           const key = editableKey(holding);
           const isEditing = editKey === key && !!editDraft;
           const assetType = String(holding.assetType || holding.instrumentType || "stock");

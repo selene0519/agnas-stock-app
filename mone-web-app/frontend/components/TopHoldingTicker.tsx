@@ -66,9 +66,26 @@ function holdingRiskRank(row: any) {
   return 0;
 }
 
+function needsAction(row: any): boolean {
+  const stopGap = toNumber(row?.downsideGapPct ?? row?.stopGapPct);
+  const targetGap = toNumber(row?.targetGapPct);
+  const hasPrice = row?.currentPrice && toNumber(row.currentPrice) > 0;
+  const hasStop = (toNumber(row?.downsideLine ?? row?.stopPrice ?? row?.stop) ?? 0) > 0;
+  const hasTarget = (toNumber(row?.upsideLine ?? row?.targetPrice ?? row?.target) ?? 0) > 0;
+  const weight = toNumber(row?.weightPct);
+
+  if (!hasPrice) return true;
+  if (!hasStop) return true;
+  if (stopGap !== null && stopGap <= 2) return true;
+  if (targetGap !== null && targetGap >= 0 && targetGap <= 3) return true;
+  if (weight !== null && weight > 20) return true;
+
+  return false;
+}
+
 function prioritizeHoldingRows(rows: any[]) {
   return dedupeBySymbol(rows)
-    .filter((row) => !isEtfRow(row))
+    .filter((row) => !isEtfRow(row) && needsAction(row))
     .sort((a, b) => {
       const riskDiff = holdingRiskRank(b) - holdingRiskRank(a);
       if (riskDiff !== 0) return riskDiff;
