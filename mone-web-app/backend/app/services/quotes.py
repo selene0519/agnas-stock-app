@@ -632,8 +632,8 @@ def refresh_quotes(market: str = "all", symbols: str | None = None, max_symbols:
         "cachePath": data.QUOTE_CACHE_FILE.relative_to(data.APP_DIR).as_posix(),
         "refreshed": len(refreshed),
         "failed": len(failed),
-        "items": refreshed[:50],
-        "failedItems": failed[:50],
+        "items": refreshed,
+        "failedItems": failed,
         "providers": {
             "kis": "OK" if _kis_enabled() else "MISSING",
             "finnhub": "OK" if bool(_env("FINNHUB_API_KEY")) else "MISSING",

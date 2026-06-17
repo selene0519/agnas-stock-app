@@ -238,7 +238,7 @@ jobs:
                   print({"market": market, "status": "MISSING_KIS_SECRET", "refreshed": 0, "failed": 0})
                   continue
 
-              result = quotes.refresh_quotes(market=market, max_symbols=100)
+              result = quotes.refresh_quotes(market=market, max_symbols=150)
               kis_rows = build_rows(market, result, only_kis=True)
               all_rows = build_rows(market, result, only_kis=False)
               write_rows(kis_targets, kis_rows)
