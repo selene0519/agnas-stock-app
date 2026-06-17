@@ -140,6 +140,7 @@ jobs:
               "symbol", "market", "ok", "currentPrice", "current_price", "last_price",
               "priceTime", "priceSource", "source", "priceSourceType", "priceSourceFile",
               "priceSourceDate", "kis_quote_success", "quote_available", "error", "updated_at",
+              "prevClose", "changePct",
           ]
 
           def empty_csv(target: Path) -> None:
@@ -172,6 +173,8 @@ jobs:
                   ok = bool(item.get("ok")) and price not in (None, "")
                   price_source = item.get("priceSource") or item.get("source") or "KIS current price"
                   price_time = item.get("priceTime") or result.get("updatedAt", "")
+                  prev_close = item.get("prevClose")
+                  change_pct = item.get("changePct")
                   rows.append({
                       "symbol": item.get("symbol", ""),
                       "market": market,
@@ -189,6 +192,8 @@ jobs:
                       "quote_available": "true" if ok else "false",
                       "error": item.get("error", ""),
                       "updated_at": result.get("updatedAt", ""),
+                      "prevClose": prev_close if prev_close is not None else "",
+                      "changePct": change_pct if change_pct is not None else "",
                   })
               return rows
 
