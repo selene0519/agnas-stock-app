@@ -2288,6 +2288,16 @@ def api_chart_data(
     return _enrich_chart_precision(payload, symbol, normalized_market, futureProjectionBars)
 
 
+@app.get("/api/chart/similar-pattern/{symbol}")
+def api_similar_pattern(
+    symbol: str,
+    market: str = Query("kr", pattern="^(kr|us)$"),
+) -> dict:
+    """현재 RSI·MACD·볼린저밴드 위치와 유사했던 과거 시점들의 이후 수익률/승률을 반환한다."""
+    normalized_market = _market(market)
+    return data.similar_pattern_history(symbol, normalized_market)
+
+
 @app.get("/api/chart/line-validation/{symbol}")
 def api_chart_line_validation(
     symbol: str,
