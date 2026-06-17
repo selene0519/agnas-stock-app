@@ -5097,6 +5097,7 @@ def _install_mone_quote_refresh_routes_v1():
         "symbol", "market", "ok", "currentPrice", "current_price", "last_price", "priceTime",
         "priceSource", "source", "priceSourceType", "priceSourceFile", "priceSourceDate",
         "kis_quote_success", "quote_available", "error", "updated_at",
+        "prevClose", "changePct",
     ]
 
     def _read_csv(path: _MoneQrPath) -> list[dict]:
@@ -5160,6 +5161,8 @@ def _install_mone_quote_refresh_routes_v1():
         price = quote.get("price") or quote.get("currentPrice") or quote.get("current_price") or quote.get("last_price") or ""
         now = _MoneQrDatetime.now().strftime("%Y-%m-%d %H:%M:%S KST")
         source = quote.get("priceSource") or quote.get("source") or ("KIS 현재가" if market == "kr" else "KIS/Finnhub 현재가")
+        prev_close = quote.get("prevClose")
+        change_pct = quote.get("changePct")
         return {
             "symbol": symbol,
             "market": market,
@@ -5177,6 +5180,8 @@ def _install_mone_quote_refresh_routes_v1():
             "quote_available": "true" if quote.get("ok") else "false",
             "error": quote.get("error") or "",
             "updated_at": now,
+            "prevClose": prev_close if prev_close is not None else "",
+            "changePct": change_pct if change_pct is not None else "",
         }
 
     def _upsert_snapshot(market: str, row: dict) -> None:

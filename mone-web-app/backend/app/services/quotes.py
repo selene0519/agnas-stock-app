@@ -115,12 +115,23 @@ def _kis_headers(tr_id: str, force_refresh: bool = False) -> dict[str, str]:
     }
 
 
-def _quote_result(symbol: str, market: str, ok: bool, source: str, error: str = "", price: float | None = None) -> dict[str, Any]:
+def _quote_result(
+    symbol: str,
+    market: str,
+    ok: bool,
+    source: str,
+    error: str = "",
+    price: float | None = None,
+    prev_close: float | None = None,
+    change_pct: float | None = None,
+) -> dict[str, Any]:
     return {
         "symbol": data.normalize_symbol(symbol, market),
         "market": market,
         "ok": ok,
         "currentPrice": price,
+        "prevClose": prev_close,
+        "changePct": change_pct,
         "priceTime": _now_label() if ok else "",
         "priceSource": source if ok else "가격출처 없음",
         "source": source,
@@ -145,6 +156,20 @@ def _ohlcv_prev_close(symbol: str, market: str) -> dict[str, Any] | None:
     return None
 
 
+def _kis_kr_change(output: dict[str, Any], price: float) -> tuple[float | None, float | None]:
+    """KIS 국내 현재가 응답(prdy_vrss/prdy_ctrt)에서 전일종가·등락률을 부호까지 복원한다."""
+    vrss = _safe_float(output.get("prdy_vrss")) or 0.0
+    ctrt = _safe_float(output.get("prdy_ctrt")) or 0.0
+    sign = str(output.get("prdy_vrss_sign", "")).strip()
+    is_down = sign in {"4", "5"}
+    change_value = -abs(vrss) if is_down else abs(vrss)
+    change_pct = -abs(ctrt) if is_down else abs(ctrt)
+    if not change_value and not change_pct:
+        return None, None
+    prev_close = price - change_value if change_value else None
+    return prev_close, (change_pct or None)
+
+
 def _fetch_kis_kr(symbol: str) -> dict[str, Any]:
     normalized = data.normalize_symbol(symbol, "kr")
     if not _kis_enabled():
@@ -167,7 +192,11 @@ def _fetch_kis_kr(symbol: str) -> dict[str, Any]:
                 output = payload.get("output", {}) or {}
                 price = _safe_float(output.get("stck_prpr"))
                 if price and price > 0:
-                    return _quote_result(normalized, "kr", True, "KIS 현재가", price=price)
+                    prev_close, change_pct = _kis_kr_change(output, price)
+                    return _quote_result(
+                        normalized, "kr", True, "KIS 현재가",
+                        price=price, prev_close=prev_close, change_pct=change_pct,
+                    )
                 last_error = "현재가 응답 비어 있음"
             else:
                 last_error = f"{response.status_code}/{payload.get('msg_cd','')}/{payload.get('msg1','')}"
@@ -213,7 +242,12 @@ def _fetch_kis_us(symbol: str) -> dict[str, Any]:
                     output = payload.get("output", {}) or {}
                     price = _safe_float(output.get("last"))
                     if price and price > 0:
-                        result = _quote_result(clean, "us", True, f"KIS 해외 현재가 · {exchange}", price=price)
+                        prev_close = _safe_float(output.get("base"))
+                        change_pct = _safe_float(output.get("rate"))
+                        result = _quote_result(
+                            clean, "us", True, f"KIS 해외 현재가 · {exchange}",
+                            price=price, prev_close=prev_close, change_pct=change_pct,
+                        )
                         result["exchange"] = exchange
                         return result
                     last_error = f"{exchange}: 현재가 응답 비어 있음"
@@ -241,7 +275,12 @@ def _fetch_finnhub(symbol: str) -> dict[str, Any]:
         payload = response.json() if response.text else {}
         price = _safe_float(payload.get("c"))
         if response.status_code == 200 and price and price > 0:
-            result = _quote_result(clean, "us", True, "Finnhub 현재가", price=price)
+            prev_close = _safe_float(payload.get("pc"))
+            change_pct = _safe_float(payload.get("dp"))
+            result = _quote_result(
+                clean, "us", True, "Finnhub 현재가",
+                price=price, prev_close=prev_close, change_pct=change_pct,
+            )
             timestamp = _safe_float(payload.get("t"))
             if timestamp and timestamp > 0:
                 result["priceTime"] = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).astimezone(KST).strftime("%Y-%m-%d %H:%M:%S KST")
