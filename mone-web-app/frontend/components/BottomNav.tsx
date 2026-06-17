@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart2, Briefcase, Cpu, LayoutDashboard, LogIn, LogOut, MoreHorizontal, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { BarChart2, Briefcase, Cpu, FlaskConical, LayoutDashboard, LogIn, LogOut, MoreHorizontal, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import type { PageId } from "./Sidebar";
 import type { MoneUserProfile } from "@/lib/userId";
@@ -23,6 +23,7 @@ const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
   { id: "advanced", label: "전략도구", desc: "스캐너, 계산기, 상관분석", Icon: Cpu },
+  { id: "paper", label: "페이퍼 트레이딩", desc: "모의 포지션, 거래내역, 주문 실행", Icon: FlaskConical },
 ];
 
 const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementType } = {
