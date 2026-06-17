@@ -90,16 +90,20 @@ export default function PortfolioOptimizePanel() {
   const [market, setMarket] = useState<Market>("kr");
   const [sectorData, setSectorData] = useState<any>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [holdingSource, setHoldingSource] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      const [sectorRes, holdingsRes] = await Promise.all([
+      const [sectorResult, holdingsResult] = await Promise.allSettled([
         mone.sectorExposure({ market }) as Promise<any>,
-        mone.holdings({ market }) as Promise<any>,
+        mone.holdingsClean({ market, limit: 200 }) as Promise<any>,
       ]);
+      const sectorRes = sectorResult.status === "fulfilled" ? sectorResult.value : null;
+      const holdingsRes = holdingsResult.status === "fulfilled" ? holdingsResult.value : null;
       setSectorData(sectorRes);
+      setHoldingSource(String(holdingsRes?.authority || holdingsRes?.routeVersion || ""));
       const items = (holdingsRes?.items || []) as any[];
       const parsed: Holding[] = items.map((h: any) => ({
         symbol: h.symbol || "",
@@ -116,6 +120,8 @@ export default function PortfolioOptimizePanel() {
       setHoldings(parsed.filter((h) => h.valuation > 0));
     } catch {
       setSectorData(null);
+      setHoldingSource("");
+      setHoldings([]);
     } finally {
       setLoading(false);
     }
@@ -176,7 +182,7 @@ export default function PortfolioOptimizePanel() {
 
       {!loading && holdings.length === 0 && (
         <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-500">
-          보유 종목 없음 — holdings_{market}.csv에 추가하세요
+          보유 종목 없음 — holdings-clean 기준으로 확인했습니다{holdingSource ? ` (${holdingSource})` : ""}.
         </div>
       )}
 

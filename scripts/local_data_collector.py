@@ -182,6 +182,12 @@ def git_push(commit_msg: str) -> bool:
             ["git", "add", "reports/us_recommendation_gen_status.json"],
             ["git", "add", "reports/local_collector_status.json"],
             ["git", "add", "reports/kis_current_price_kr.csv"],
+            ["git", "add", "data/toss_holdings_kr.csv"],
+            ["git", "add", "data/kis_holdings_kr.csv"],
+            ["git", "add", "data/kis_2_holdings_kr.csv"],
+            ["git", "add", "data/toss_holdings_us.csv"],
+            ["git", "add", "data/kis_holdings_us.csv"],
+            ["git", "add", "data/kis_2_holdings_us.csv"],
         ]
         for cmd in cmds + stage_cmds:
             subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True)

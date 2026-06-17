@@ -74,7 +74,7 @@ function StrategyCell({ result, loading }: { result: StrategyResult | null; load
         <WinRateBadge rate={result.win_rate} />
       </div>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-500">누적수익</span>
+        <span className="text-[10px] text-slate-500">평균수익</span>
         <ReturnLabel pct={result.total_return_pct} />
       </div>
       <div className="flex items-center justify-between gap-2">
@@ -113,7 +113,7 @@ function BestStrategyBadge({ results }: { results: Record<string, StrategyResult
           최고 전략: {modeLabel} × {horizonLabel}
         </span>
         <span className="ml-2 text-[11px] text-slate-400">
-          승률 {best.result.win_rate}% · 누적 {best.result.total_return_pct > 0 ? "+" : ""}{best.result.total_return_pct.toFixed(1)}%
+          승률 {best.result.win_rate}% · 평균 {best.result.total_return_pct > 0 ? "+" : ""}{best.result.total_return_pct.toFixed(1)}%
         </span>
       </div>
     </div>
@@ -134,18 +134,34 @@ export default function BacktestComparePanel() {
       }
     }
 
-    const entries = await Promise.all(
-      combos.map(async ({ mode, horizon }) => {
-        try {
-          const res: any = await mone.backtestSummary({ market, mode, horizon });
-          return [`${mode}:${horizon}`, { ...res, mode, horizon }];
-        } catch {
-          return [`${mode}:${horizon}`, null];
-        }
-      })
-    );
-
-    setResults(Object.fromEntries(entries));
+    try {
+      const dashboard: any = await mone.validationDashboard({ market });
+      const stats = dashboard?.stats || {};
+      const entries = combos.map(({ mode, horizon }) => {
+        const raw = stats[`${mode}_${horizon}`] || {};
+        const completed = Number(raw.completed || 0);
+        const pending = Number(raw.pending ?? raw.pendingCount ?? 0);
+        const wins = Number(raw.wins || 0);
+        const winRate = Number(raw.winRate || 0);
+        const avgReturn = Number(raw.avgReturn || 0);
+        const result: StrategyResult = {
+          mode,
+          horizon,
+          status: completed + pending > 0 ? "OK" : "NO_DATA",
+          total_trades: completed + pending,
+          executed_trades: completed,
+          win_count: wins,
+          loss_count: Math.max(0, completed - wins),
+          win_rate: winRate,
+          profit_loss_ratio: 0,
+          total_return_pct: avgReturn,
+        };
+        return [`${mode}:${horizon}`, result];
+      });
+      setResults(Object.fromEntries(entries));
+    } catch {
+      setResults(Object.fromEntries(combos.map(({ mode, horizon }) => [`${mode}:${horizon}`, null])));
+    }
     setLoading(false);
   }
 
@@ -172,7 +188,7 @@ export default function BacktestComparePanel() {
         <div className="flex items-center gap-2">
           <BarChart2 size={14} className="text-cyan-400" />
           <span className="text-sm font-bold text-slate-200">6전략 백테스트 비교</span>
-          <span className="text-[10px] text-slate-500">(모의 체결 기준)</span>
+          <span className="text-[10px] text-slate-500">(검증 대시보드 기준)</span>
         </div>
         <div className="flex items-center gap-2">
           {(["kr", "us"] as Market[]).map((mk) => (

@@ -1,16 +1,11 @@
 """
-진입가 근접 / 손절 근접 알림 스크립트.
+Entry proximity and holdings-risk Telegram notifier.
 
-조건:
-  - 추천 종목: 현재가가 진입가 ±2% 이내  → "진입 임박" 알림
-  - 보유 종목: 현재가가 손절가 ±2% 이내  → "손절 근접" 경고
-  - 보유 종목: 현재가가 목표가 ±2% 이내  → "목표 도달" 알림
-
-환경변수:
-  TELEGRAM_BOT_TOKEN  텔레그램 봇 토큰
-  TELEGRAM_CHAT_ID    수신 Chat ID
-  ENTRY_PROXIMITY_PCT 진입 근접 임계값 (기본 2.0)
-  NOTIFY_DRY_RUN      "1" 이면 실제 전송 없이 로그만 출력
+Environment variables:
+  TELEGRAM_BOT_TOKEN
+  TELEGRAM_CHAT_ID
+  ENTRY_PROXIMITY_PCT  default 2.0
+  NOTIFY_DRY_RUN       "1" prints messages without sending
 """
 from __future__ import annotations
 
@@ -18,27 +13,31 @@ import csv
 import json
 import os
 import sys
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-import urllib.request
-import urllib.parse
 
 ROOT = Path(__file__).resolve().parents[1]
-REPORTS     = ROOT / "reports"
-DATA        = ROOT / "data" / "stockapp"
-HOLDINGS_CSV = ROOT / "holdings_kr.csv"
+REPORTS = ROOT / "reports"
+DATA = ROOT / "data" / "stockapp"
+CURRENT_HOLDINGS_SOURCES = [
+    ROOT / "data" / "toss_holdings_kr.csv",
+    ROOT / "data" / "kis_2_holdings_kr.csv",
+    ROOT / "data" / "kis_holdings_kr.csv",
+    ROOT / "data" / "holdings_kr.csv",
+    ROOT / "holdings_kr.csv",
+]
 
-MODES    = ("conservative", "balanced", "aggressive")
+MODES = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")
 
 ENTRY_PROXIMITY_PCT = float(os.environ.get("ENTRY_PROXIMITY_PCT", "2.0"))
-DRY_RUN             = os.environ.get("NOTIFY_DRY_RUN", "0") == "1"
-BOT_TOKEN           = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-CHAT_ID             = os.environ.get("TELEGRAM_CHAT_ID", "")
+DRY_RUN = os.environ.get("NOTIFY_DRY_RUN", "0") == "1"
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
-
-# ── 유틸 ──────────────────────────────────────────────────────────────────────
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
     if not path.exists():
@@ -54,9 +53,15 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
 
 def _num(val: Any) -> float:
     try:
-        return float(str(val).replace(",", "").strip())
+        return float(str(val).replace(",", "").replace("%", "").strip())
     except Exception:
         return 0.0
+
+
+def _symbol(row: dict[str, Any]) -> str:
+    raw = str(row.get("symbol") or row.get("code") or row.get("ticker") or "").strip()
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    return digits.zfill(6)[-6:] if digits else raw.upper()
 
 
 def _pct(current: float, level: float) -> float | None:
@@ -66,13 +71,12 @@ def _pct(current: float, level: float) -> float | None:
 
 
 def _current_price(symbol: str, market: str = "kr") -> float | None:
-    """KIS 현재가 CSV에서 종목 현재가 조회."""
-    for p in [
+    for path in [
         DATA / f"kis_current_price_{market}.csv",
         REPORTS / f"kis_current_price_{market}.csv",
     ]:
-        for row in _read_csv(p):
-            sym = str(row.get("symbol") or row.get("code") or "").strip()
+        for row in _read_csv(path):
+            sym = _symbol(row)
             if sym.lstrip("0") == symbol.lstrip("0") or sym == symbol:
                 price = _num(row.get("currentPrice") or row.get("current_price") or row.get("last_price") or 0)
                 if price > 0:
@@ -80,12 +84,41 @@ def _current_price(symbol: str, market: str = "kr") -> float | None:
     return None
 
 
+def _current_holdings_rows() -> tuple[str, list[dict[str, str]]]:
+    merged: list[dict[str, str]] = []
+    seen: set[str] = set()
+    sources: list[str] = []
+    for path in CURRENT_HOLDINGS_SOURCES:
+        if merged and path.name == "holdings_kr.csv":
+            continue
+        rows = [
+            row for row in _read_csv(path)
+            if _symbol(row) and str(row.get("market") or "kr").lower() == "kr" and _num(row.get("quantity") or row.get("qty")) > 0
+        ]
+        source_rows = []
+        for row in rows:
+            symbol = _symbol(row)
+            if symbol in seen:
+                continue
+            seen.add(symbol)
+            source_rows.append(row)
+        if source_rows:
+            merged.extend(source_rows)
+            sources.append(str(path.relative_to(ROOT)).replace("\\", "/"))
+    return "/".join(sources), merged
+
+
+def _current_holding_symbols() -> set[str]:
+    _, rows = _current_holdings_rows()
+    return {_symbol(row) for row in rows if _symbol(row)}
+
+
 def _send_telegram(text: str) -> bool:
     if DRY_RUN:
-        print("[DRY RUN] Telegram:", text[:120])
+        print("[DRY RUN] Telegram:", text[:180])
         return True
     if not BOT_TOKEN or not CHAT_ID:
-        print("[WARN] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 미설정 — 전송 생략")
+        print("[WARN] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID is missing. Skip send.")
         return False
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = urllib.parse.urlencode({
@@ -98,135 +131,122 @@ def _send_telegram(text: str) -> bool:
         with urllib.request.urlopen(url, data, timeout=10) as resp:
             result = json.loads(resp.read())
             return bool(result.get("ok"))
-    except Exception as e:
-        print(f"[ERROR] Telegram 전송 실패: {e}")
+    except Exception as exc:
+        print(f"[ERROR] Telegram send failed: {exc}")
         return False
 
-
-# ── 추천 종목 진입가 근접 체크 ──────────────────────────────────────────────
 
 def check_entry_proximity() -> list[dict[str, Any]]:
     alerts: list[dict[str, Any]] = []
     seen: set[str] = set()
+    held_symbols = _current_holding_symbols()
 
     for mode in MODES:
         for horizon in HORIZONS:
             path = REPORTS / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
             for row in _read_csv(path):
-                symbol = str(row.get("symbol") or row.get("code") or "").strip().lstrip("0").zfill(6)
+                symbol = _symbol(row)
                 if not symbol or symbol in seen:
                     continue
 
-                entry  = _num(row.get("entry") or row.get("entryPrice") or 0)
-                stop   = _num(row.get("stop")  or row.get("stopPrice")  or 0)
+                entry = _num(row.get("entry") or row.get("entryPrice") or 0)
+                stop = _num(row.get("stop") or row.get("stopPrice") or 0)
                 target = _num(row.get("target") or row.get("targetPrice") or 0)
-                name   = str(row.get("name") or row.get("stockName") or symbol)
+                name = str(row.get("name") or row.get("stockName") or symbol)
 
                 current = _current_price(symbol, "kr")
                 if not current or entry <= 0:
                     continue
 
                 gap = _pct(current, entry)
-                if gap is None:
+                if gap is None or abs(gap) > ENTRY_PROXIMITY_PCT:
                     continue
 
-                if abs(gap) <= ENTRY_PROXIMITY_PCT:
-                    seen.add(symbol)
-                    alerts.append({
-                        "type": "ENTRY",
-                        "symbol": symbol,
-                        "name": name,
-                        "mode": mode,
-                        "horizon": horizon,
-                        "current": current,
-                        "entry": entry,
-                        "stop": stop,
-                        "target": target,
-                        "gap_pct": gap,
-                    })
+                seen.add(symbol)
+                alerts.append({
+                    "type": "ENTRY",
+                    "symbol": symbol,
+                    "name": name,
+                    "mode": mode,
+                    "horizon": horizon,
+                    "current": current,
+                    "entry": entry,
+                    "stop": stop,
+                    "target": target,
+                    "gap_pct": gap,
+                    "already_held": symbol in held_symbols,
+                })
 
     return alerts
 
 
-# ── 보유종목 손절/목표 근접 체크 ────────────────────────────────────────────
-
 def check_holdings_risk() -> list[dict[str, Any]]:
     alerts: list[dict[str, Any]] = []
-    for row in _read_csv(HOLDINGS_CSV):
-        symbol   = str(row.get("symbol") or row.get("code") or "").strip().lstrip("0").zfill(6)
-        market   = str(row.get("market") or "kr").lower()
-        name     = str(row.get("name") or symbol)
+    source, rows = _current_holdings_rows()
+    for row in rows:
+        symbol = _symbol(row)
+        name = str(row.get("name") or symbol)
         avg_price = _num(row.get("avgPrice") or row.get("avg_price") or 0)
-        qty      = _num(row.get("quantity") or row.get("qty") or 0)
+        qty = _num(row.get("quantity") or row.get("qty") or 0)
 
-        if not symbol or market != "kr" or avg_price <= 0:
+        if not symbol or avg_price <= 0 or qty <= 0:
             continue
 
-        current = _current_price(symbol, "kr")
+        current = _current_price(symbol, "kr") or _num(row.get("currentPrice") or row.get("current_price") or 0)
         if not current:
             continue
 
         pnl_pct = (current - avg_price) / avg_price * 100.0
+        base = {
+            "symbol": symbol,
+            "name": name,
+            "current": current,
+            "avg_price": avg_price,
+            "qty": qty,
+            "pnl_pct": pnl_pct,
+            "source": source,
+        }
 
-        # 손절 근접: -7% 이하 (스윙 기준 손절폭 -5~-8%)
         if pnl_pct <= -6.0:
-            alerts.append({
-                "type": "STOP_RISK",
-                "symbol": symbol,
-                "name": name,
-                "current": current,
-                "avg_price": avg_price,
-                "qty": qty,
-                "pnl_pct": pnl_pct,
-            })
-        # 목표 근접: +8% 이상 (스윙 기준 목표 +8~+18%)
+            alerts.append({"type": "STOP_RISK", **base})
         elif pnl_pct >= 8.0:
-            alerts.append({
-                "type": "TARGET_NEAR",
-                "symbol": symbol,
-                "name": name,
-                "current": current,
-                "avg_price": avg_price,
-                "qty": qty,
-                "pnl_pct": pnl_pct,
-            })
+            alerts.append({"type": "TARGET_NEAR", **base})
 
     return alerts
 
 
-# ── 메시지 포맷 ──────────────────────────────────────────────────────────────
-
-MODE_KR    = {"conservative": "보수", "balanced": "균형", "aggressive": "공격"}
+MODE_KR = {"conservative": "보수", "balanced": "균형", "aggressive": "공격"}
 HORIZON_KR = {"short": "단기", "swing": "스윙", "mid": "중기"}
 
 
-def _fmt_entry_alert(a: dict) -> str:
-    gap_sign = "▲" if a["gap_pct"] > 0 else "▼"
+def _fmt_entry_alert(a: dict[str, Any]) -> str:
+    gap_sign = "위" if a["gap_pct"] > 0 else "아래"
+    held = "\n현재 보유 스냅샷에도 있는 종목입니다. 추가 진입 여부를 별도로 확인하세요." if a.get("already_held") else ""
     return (
-        f"🎯 <b>진입 임박</b> — {a['name']} ({a['symbol']})\n"
-        f"현재가 {a['current']:,.0f}원  진입가 {a['entry']:,.0f}원 ({gap_sign}{abs(a['gap_pct']):.1f}%)\n"
-        f"전략: {MODE_KR.get(a['mode'], a['mode'])} × {HORIZON_KR.get(a['horizon'], a['horizon'])}\n"
-        f"손절 {a['stop']:,.0f} | 목표 {a['target']:,.0f}"
+        f"<b>추천 후보 진입 임박</b> - {a['name']} ({a['symbol']})\n"
+        f"현재가 {a['current']:,.0f}원 / 진입가 {a['entry']:,.0f}원 ({gap_sign} {abs(a['gap_pct']):.1f}%)\n"
+        f"전략: {MODE_KR.get(a['mode'], a['mode'])} x {HORIZON_KR.get(a['horizon'], a['horizon'])}\n"
+        f"손절 {a['stop']:,.0f} | 목표 {a['target']:,.0f}{held}"
     )
 
 
-def _fmt_stop_alert(a: dict) -> str:
+def _fmt_stop_alert(a: dict[str, Any]) -> str:
     return (
-        f"⚠️ <b>손절 근접</b> — {a['name']} ({a['symbol']})\n"
-        f"현재가 {a['current']:,.0f}원  평단 {a['avg_price']:,.0f}원\n"
-        f"손익 <b>{a['pnl_pct']:+.1f}%</b>  수량 {int(a['qty'])}주"
+        f"<b>보유 종목 손절 근접</b> - {a['name']} ({a['symbol']})\n"
+        f"현재가 {a['current']:,.0f}원 / 평단 {a['avg_price']:,.0f}원\n"
+        f"수익률 <b>{a['pnl_pct']:+.1f}%</b> / 수량 {int(a['qty'])}주\n"
+        f"보유 기준: {a.get('source') or 'holdings csv'}"
     )
 
 
-def _fmt_target_alert(a: dict) -> str:
+def _fmt_target_alert(a: dict[str, Any]) -> str:
     return (
-        f"✅ <b>목표 도달</b> — {a['name']} ({a['symbol']})\n"
-        f"현재가 {a['current']:,.0f}원  평단 {a['avg_price']:,.0f}원\n"
-        f"수익 <b>{a['pnl_pct']:+.1f}%</b>  수량 {int(a['qty'])}주"
+        f"<b>보유 종목 목표 근접</b> - {a['name']} ({a['symbol']})\n"
+        f"현재가 {a['current']:,.0f}원 / 평단 {a['avg_price']:,.0f}원\n"
+        f"수익률 <b>{a['pnl_pct']:+.1f}%</b> / 수량 {int(a['qty'])}주\n"
+        f"보유 기준: {a.get('source') or 'holdings csv'}"
     )
 
-
-# ── 알림 상태 저장 (중복 전송 방지) ─────────────────────────────────────────
 
 ALERT_STATE_PATH = REPORTS / "notification_alert_state.json"
 
@@ -248,7 +268,7 @@ def _save_state(state: dict[str, str]) -> None:
         pass
 
 
-def _alert_key(a: dict) -> str:
+def _alert_key(a: dict[str, Any]) -> str:
     if a["type"] == "ENTRY":
         return f"entry_{a['symbol']}_{a['mode']}_{a['horizon']}"
     return f"{a['type']}_{a['symbol']}"
@@ -266,47 +286,51 @@ def _should_send(key: str, state: dict[str, str], cooldown_hours: float = 2.0) -
         return True
 
 
-# ── 메인 ──────────────────────────────────────────────────────────────────────
-
 def main() -> None:
     now_kst = datetime.now().strftime("%Y-%m-%d %H:%M KST")
-    print(f"[{now_kst}] 알림 체크 시작 (진입임박 ±{ENTRY_PROXIMITY_PCT}%, 손절 -6%, 목표 +8%)")
+    source_label, current_holdings = _current_holdings_rows()
+    source_label = source_label or "none"
+    print(f"[{now_kst}] alert check start (entry +/-{ENTRY_PROXIMITY_PCT}%, stop -6%, target +8%)")
+    print(f"  holdings source: {source_label} ({len(current_holdings)} rows)")
 
-    entry_alerts   = check_entry_proximity()
+    entry_alerts = check_entry_proximity()
     holdings_alerts = check_holdings_risk()
     all_alerts = entry_alerts + holdings_alerts
 
-    print(f"  진입 임박: {len(entry_alerts)}건  |  보유 위험/목표: {len(holdings_alerts)}건")
+    print(f"  recommendation entry alerts: {len(entry_alerts)} | holdings risk/target: {len(holdings_alerts)}")
 
     if not all_alerts:
-        print("  알림 없음.")
+        print("  no alerts.")
         return
 
     state = _load_state()
     sent_count = 0
 
-    for a in all_alerts:
-        key = _alert_key(a)
+    for alert in all_alerts:
+        key = _alert_key(alert)
         if not _should_send(key, state):
-            print(f"  [{key}] 쿨다운 중 — 생략")
+            print(f"  [{key}] cooldown skip")
             continue
 
-        if a["type"] == "ENTRY":
-            msg = _fmt_entry_alert(a)
-        elif a["type"] == "STOP_RISK":
-            msg = _fmt_stop_alert(a)
+        if alert["type"] == "ENTRY":
+            msg = _fmt_entry_alert(alert)
+        elif alert["type"] == "STOP_RISK":
+            msg = _fmt_stop_alert(alert)
         else:
-            msg = _fmt_target_alert(a)
+            msg = _fmt_target_alert(alert)
 
-        print(f"  전송: {key}")
-        ok = _send_telegram(msg)
-        if ok:
+        print(f"  send: {key}")
+        if _send_telegram(msg):
             state[key] = datetime.now().isoformat()
             sent_count += 1
 
     _save_state(state)
-    print(f"  완료: {sent_count}건 전송")
+    print(f"  done: {sent_count} sent")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        print(f"[ERROR] notify_entry_proximity failed: {exc}")
+        sys.exit(1)

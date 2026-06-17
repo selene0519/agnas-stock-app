@@ -101,13 +101,7 @@ function adjustedText(
         ? item.targetPrice || item.target || item.targetText
         : item.entryPrice || item.entry || item.entryText,
   );
-  const current = toNumber(
-    item.currentPrice ||
-      item.currentPriceText ||
-      item.entryPrice ||
-      item.entryText,
-  );
-  const price = base ?? current;
+  const price = base;
   if (price === null || price <= 0) return "-";
   if (key === "entry") return formatMoney(price, market);
   const modeAdj =

@@ -4422,38 +4422,68 @@ def _install_mone_authoritative_holdings_clean_v3():
                 }
         return {}
 
+    def _holding_source_candidates(market: str) -> list[_MonePath]:
+        if market == "kr":
+            return [
+                _root() / "data" / "toss_holdings_kr.csv",
+                _root() / "data" / "kis_2_holdings_kr.csv",
+                _root() / "data" / "kis_holdings_kr.csv",
+                _root() / "data" / "holdings_kr.csv",
+                _root() / "holdings_kr.csv",
+            ]
+        return [
+            _root() / "data" / f"toss_holdings_{market}.csv",
+            _root() / "data" / f"kis_2_holdings_{market}.csv",
+            _root() / "data" / f"kis_holdings_{market}.csv",
+            _root() / "data" / f"holdings_{market}.csv",
+            _root() / f"holdings_{market}.csv",
+        ]
+
     def _read_authoritative_holdings(market: str) -> list[dict]:
         markets = ["kr", "us"] if market == "all" else [market]
         rows = []
         seen_keys = set()
         for mk in markets:
-            path = _root() / f"holdings_{mk}.csv"
-            for row in _read_csv(path):
-                sym = _row_symbol(row, mk)
-                if not sym:
+            for path in _holding_source_candidates(mk):
+                if any(key_market == mk for key_market, _ in seen_keys) and path.name == f"holdings_{mk}.csv":
                     continue
-                key = (mk, sym)
-                if key in seen_keys:
-                    continue
-                qty = _num(_text(row, ["quantity", "qty", "수량"], ""), 0)
-                avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평균단가", "매입가"], ""), 0)
-                if qty <= 0:
-                    continue
-                seen_keys.add(key)
-                stop_csv = _num(_text(row, ["stopPrice", "stop_price", "stop", "손절가"], ""), 0)
-                target_csv = _num(_text(row, ["targetPrice", "target_price", "target", "목표가"], ""), 0)
-                rows.append({
-                    "symbol": sym,
-                    "name": _name(row, sym),
-                    "market": mk,
-                    "quantity": qty,
-                    "avgPrice": avg,
-                    "stopPriceCsv": stop_csv,
-                    "targetPriceCsv": target_csv,
-                    "source": path.name,
-                    "holdingAuthority": "holdings_csv",
-                    "holdingAuthoritySource": path.name,
-                })
+                source_rows = []
+                for row in _read_csv(path):
+                    sym = _row_symbol(row, mk)
+                    if not sym:
+                        continue
+                    key = (mk, sym)
+                    if key in seen_keys:
+                        continue
+                    qty = _num(_text(row, ["quantity", "qty", "수량"], ""), 0)
+                    avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평균단가", "매입가"], ""), 0)
+                    if qty <= 0:
+                        continue
+                    stop_csv = _num(_text(row, ["stopPrice", "stop_price", "stop", "손절가"], ""), 0)
+                    target_csv = _num(_text(row, ["targetPrice", "target_price", "target", "목표가"], ""), 0)
+                    source_current = _num(_text(row, ["currentPrice", "current_price", "price", "last", "lastPrice"], ""), 0)
+                    source_pnl = _num(_text(row, ["pnl", "profitLoss", "profit_loss"], ""), 0)
+                    source_pnl_pct = _num(_text(row, ["pnlPct", "profitLossRate", "profit_loss_rate"], ""), 0)
+                    rel_source = str(path.relative_to(_root())).replace("\\", "/")
+                    source_rows.append({
+                        "symbol": sym,
+                        "name": _name(row, sym),
+                        "market": mk,
+                        "quantity": qty,
+                        "avgPrice": avg,
+                        "stopPriceCsv": stop_csv,
+                        "targetPriceCsv": target_csv,
+                        "source": path.name,
+                        "holdingAuthority": "holdings_csv",
+                        "holdingAuthoritySource": rel_source,
+                        "_sourceCurrentPrice": source_current,
+                        "_sourceProfitLoss": source_pnl,
+                        "_sourceProfitLossRate": source_pnl_pct,
+                    })
+                if source_rows:
+                    for item in source_rows:
+                        seen_keys.add((mk, item["symbol"]))
+                    rows.extend(source_rows)
         return rows
 
     def _sanitize_user_id(raw: str) -> str:
@@ -4501,6 +4531,14 @@ def _install_mone_authoritative_holdings_clean_v3():
             market_key = "all"
 
         rows = rows_override if rows_override is not None else _read_authoritative_holdings(market_key)
+        if rows_override is None and rows:
+            sources = sorted({
+                str(row.get("holdingAuthoritySource") or row.get("source") or "")
+                for row in rows
+                if row.get("holdingAuthoritySource") or row.get("source")
+            })
+            if sources:
+                authority = "/".join(sources)
         quote_kr = _price_index("kr") if market_key in ("all", "kr") else {}
         quote_us = _price_index("us") if market_key in ("all", "us") else {}
         v93_kr = _v93_index("kr") if market_key in ("all", "kr") else {}
@@ -4532,6 +4570,12 @@ def _install_mone_authoritative_holdings_clean_v3():
                     current = _bp
                     price_source_type = "bridge_snapshot"
                     price_source = str(row.get("brokerSource") or row.get("broker") or "bridge")
+            if current <= 0:
+                _sp = _num(row.get("_sourceCurrentPrice"), 0)
+                if _sp > 0:
+                    current = _sp
+                    price_source_type = "holdings_snapshot"
+                    price_source = str(row.get("holdingAuthoritySource") or row.get("source") or "holdings_csv")
             current_text = q.get("currentPriceText") or (f"${current:,.2f}" if mk == "us" and current > 0 else f"{round(current):,}원" if current > 0 else "-")
             prev_close = _num(q.get("prevClose"), 0) or _num(_text(v, ["prevClose", "previousClose", "prev_close", "전일종가", "기준가"], ""), 0)
             prev_close_source = q.get("prevCloseSource") or ""
@@ -4557,6 +4601,9 @@ def _install_mone_authoritative_holdings_clean_v3():
             if pnl == 0 and row.get("_bridgeProfitLoss"):
                 pnl = _num(row.get("_bridgeProfitLoss"), 0)
                 pnl_pct = _num(row.get("_bridgeProfitLossRate"), 0)
+            if pnl == 0 and row.get("_sourceProfitLoss"):
+                pnl = _num(row.get("_sourceProfitLoss"), 0)
+                pnl_pct = _num(row.get("_sourceProfitLossRate"), 0)
 
             asset_type = _mone_asset_type(sym, row.get("name") or _text(v, ["name", "company"], ""), mk, {**v, **row})
             holding_purpose = _mone_holding_purpose(asset_type, {**v, **row})
@@ -4634,7 +4681,7 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "quoteTimestamp": q.get("quoteTimestamp") or "",
             })
             # 내부 전달용 bridge 키 제거
-            for _bk in ("_bridgeCurrentPrice", "_bridgeProfitLoss", "_bridgeProfitLossRate", "_bridgeEvalAmount"):
+            for _bk in ("_bridgeCurrentPrice", "_bridgeProfitLoss", "_bridgeProfitLossRate", "_bridgeEvalAmount", "_sourceCurrentPrice", "_sourceProfitLoss", "_sourceProfitLossRate"):
                 item.pop(_bk, None)
             items.append(item)
 
