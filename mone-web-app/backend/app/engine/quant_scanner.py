@@ -2000,6 +2000,24 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     out["chartPatterns"] = chart_patterns
     out["chartPatternCount"] = len(chart_patterns)
 
+    # ── 유사 과거 패턴 승률로 finalScore 미세조정 (RSI·볼린저·MACD 상태가 비슷했던 과거 시점 분석)
+    try:
+        from app.services import data_loader as _data_loader
+        _horizon_key = {"short": "d1", "swing": "d5", "mid": "d10"}.get(horizon, "d5")
+        _sp = _data_loader.similar_pattern_history(symbol, market)
+        if _sp.get("status") == "OK":
+            _sp_summary = _sp.get("summary", {}).get(_horizon_key)
+            if _sp_summary and _sp_summary.get("count", 0) >= 5 and isinstance(out.get("finalScore"), (int, float)):
+                _win_rate = float(_sp_summary.get("winRate", 50.0))
+                # 승률 50%를 중립으로 ±5점 범위에서만 보조 신호로 반영
+                _sp_bonus = round((_win_rate - 50.0) / 50.0 * 5.0, 1)
+                out["finalScore"] = min(100.0, max(0.0, round(float(out["finalScore"]) + _sp_bonus, 1)))
+                out["quantScore"] = out["finalScore"]
+                out["similarPatternWinRate"] = _win_rate
+                out["similarPatternBonus"] = _sp_bonus
+    except Exception:
+        pass
+
     # ── 방법 1: 패턴 누적 성과 보너스 적용
     # ── 방법 2: 지지/저항 구역 근접도 확인
     try:

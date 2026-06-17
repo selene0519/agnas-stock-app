@@ -22,6 +22,27 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
 DATA = ROOT / "data" / "stockapp"
+
+_BACKEND = str(ROOT / "mone-web-app" / "backend")
+if _BACKEND not in sys.path:
+    sys.path.insert(0, _BACKEND)
+
+HORIZON_TO_RETURN_KEY = {"short": "d1", "swing": "d5", "mid": "d10"}
+
+
+def _similar_pattern_win_rate(symbol: str, market: str, horizon: str) -> float | None:
+    """RSI·볼린저·MACD 상태가 비슷했던 과거 시점들의 승률 (참고용 보조 신호)."""
+    try:
+        from app.services import data_loader as data
+        result = data.similar_pattern_history(symbol, market)
+        if result.get("status") != "OK":
+            return None
+        summary = result.get("summary", {}).get(HORIZON_TO_RETURN_KEY.get(horizon, "d5"))
+        if not summary or summary.get("count", 0) < 5:
+            return None
+        return summary.get("winRate")
+    except Exception:
+        return None
 CURRENT_HOLDINGS_SOURCES = [
     ROOT / "data" / "toss_holdings_kr.csv",
     ROOT / "data" / "kis_2_holdings_kr.csv",
@@ -175,6 +196,7 @@ def check_entry_proximity() -> list[dict[str, Any]]:
                     "target": target,
                     "gap_pct": gap,
                     "already_held": symbol in held_symbols,
+                    "similar_win_rate": _similar_pattern_win_rate(symbol, "kr", horizon),
                 })
 
     return alerts
@@ -222,11 +244,13 @@ HORIZON_KR = {"short": "단기", "swing": "스윙", "mid": "중기"}
 def _fmt_entry_alert(a: dict[str, Any]) -> str:
     gap_sign = "위" if a["gap_pct"] > 0 else "아래"
     held = "\n현재 보유 스냅샷에도 있는 종목입니다. 추가 진입 여부를 별도로 확인하세요." if a.get("already_held") else ""
+    win_rate = a.get("similar_win_rate")
+    similar = f"\n과거 유사 패턴 승률 {win_rate:.0f}% (참고용, 투자 조언 아님)" if win_rate is not None else ""
     return (
         f"<b>추천 후보 진입 임박</b> - {a['name']} ({a['symbol']})\n"
         f"현재가 {a['current']:,.0f}원 / 진입가 {a['entry']:,.0f}원 ({gap_sign} {abs(a['gap_pct']):.1f}%)\n"
         f"전략: {MODE_KR.get(a['mode'], a['mode'])} x {HORIZON_KR.get(a['horizon'], a['horizon'])}\n"
-        f"손절 {a['stop']:,.0f} | 목표 {a['target']:,.0f}{held}"
+        f"손절 {a['stop']:,.0f} | 목표 {a['target']:,.0f}{similar}{held}"
     )
 
 
