@@ -38,7 +38,7 @@ function GaugeArc({ score, color }: { score: number; color: string }) {
   const fillPath = `M ${cx - R} ${cy} A ${R} ${R} 0 ${largeArc} 1 ${fex} ${fey}`;
 
   return (
-    <svg viewBox="0 0 120 70" className="w-full max-w-[160px]">
+    <svg viewBox="0 0 120 86" className="w-full max-w-[168px]" aria-label={`공포탐욕지수 ${Math.round(score)}점`}>
       {/* 배경 반원 */}
       <path d={bgPath} fill="none" stroke="#1e293b" strokeWidth="10" strokeLinecap="round" />
       {/* 채움 호 */}
@@ -64,14 +64,16 @@ function GaugeArc({ score, color }: { score: number; color: string }) {
       />
       <circle cx={cx} cy={cy} r="3.5" fill={color} />
       {/* 점수 */}
+      <rect x="43" y="64" width="34" height="18" rx="7" fill="#020617" fillOpacity="0.9" />
       <text
         x={cx}
-        y={cy + 14}
+        y={76}
         textAnchor="middle"
-        fontSize="14"
+        fontSize="15"
         fontWeight="bold"
         fill="white"
         fontFamily="monospace"
+        style={{ fontVariantNumeric: "tabular-nums" }}
       >
         {Math.round(score)}
       </text>
@@ -116,7 +118,7 @@ function FgCard({
 }) {
   if (!data) return null;
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1.5">
       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
       <GaugeArc score={data.score} color={data.color} />
       <span
@@ -126,7 +128,7 @@ function FgCard({
         {data.label}
       </span>
       {data.history && <MiniBar history={data.history} />}
-      <span className="text-[9px] text-slate-600 text-center leading-tight max-w-[120px]">{data.source}</span>
+      <span className="max-w-[140px] text-center text-[9px] leading-tight text-slate-600">{data.source}</span>
     </div>
   );
 }
@@ -215,6 +217,9 @@ export default function FearGreedWidget({ market = "all" }: { market?: string })
           ))}
         </div>
       )}
+      <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-950/50 px-2.5 py-2 text-[10px] leading-relaxed text-slate-500">
+        참고 지표입니다. 현재 차트선·종목추천 점수에는 직접 반영하지 않습니다.
+      </div>
     </div>
   );
 }

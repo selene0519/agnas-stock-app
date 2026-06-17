@@ -80,6 +80,7 @@ export function statusLabel(s: DataStatus | string): string {
   if (value === "NORMAL") return "정상";
   if (value === "PARTIAL") return "일부 누락";
   if (value === "STALE") return "오래된 데이터";
+  if (value === "NETWORK_ERROR") return "동기화 지연";
   if (value === "ERROR") return "오류";
   return value;
 }

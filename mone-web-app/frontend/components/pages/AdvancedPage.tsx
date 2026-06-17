@@ -38,7 +38,7 @@ function firstRisk(item: any) {
   const block = String(item.tradeBlockStatus || "").toUpperCase();
   if (block === "CAUTION") return "진입 주의 (RSI 과열 또는 EV 음수)";
   if (block === "BLOCK") return "진입 차단";
-  return item.warningReason || item.warning_reason || "특이 리스크 없음";
+  return item.warningReason || item.warning_reason || "리스크 신호 없음";
 }
 
 function itemKey(item: any) {
@@ -345,12 +345,12 @@ export default function AdvancedPage() {
                       <div className="font-mono"><span className="text-emerald-300">{probabilityText(item, "-")}</span>{ev && <span className="text-violet-300"> / {ev}%</span>}</div>
                     </div>
                   </div>
-                  {((item.strategyTagLabels || item.strategyTags || []).slice(0, 2).join(", ") || firstRisk(item) !== "특이 리스크 없음") && (
+                  {((item.strategyTagLabels || item.strategyTags || []).slice(0, 2).join(", ") || firstRisk(item) !== "리스크 신호 없음") && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {(item.strategyTagLabels || item.strategyTags || []).slice(0, 2).map((t: string) => (
                         <span key={t} className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">{t}</span>
                       ))}
-                      {firstRisk(item) !== "특이 리스크 없음" && (
+                      {firstRisk(item) !== "리스크 신호 없음" && (
                         <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">{firstRisk(item)}</span>
                       )}
                     </div>
@@ -382,11 +382,11 @@ export default function AdvancedPage() {
                       <div className="font-semibold text-slate-100">{displayName(item)}</div>
                       <div className="font-mono text-xs text-slate-500">{item.symbol}</div>
                     </td>
-                    <td className="px-3 py-2 text-xs text-sky-200">{(item.strategyTagLabels || item.strategyTags || []).slice(0, 2).join(", ") || item.candidateTypeLabel || "-"}</td>
-                    <td className="px-3 py-2 font-mono">{priceText(item, "current", "가격 확인")}</td>
-                    <td className="px-3 py-2 font-mono text-sky-300">{priceText(item, "entry", "진입 확인")}</td>
-                    <td className="px-3 py-2 font-mono text-emerald-300">{probabilityText(item, "확률 확인")}</td>
-                    <td className="px-3 py-2 font-mono text-violet-300">{item.expectedValuePct != null ? `${Number(item.expectedValuePct).toFixed(2)}%` : item.expectedValue != null ? `${Number(item.expectedValue).toFixed(2)}%` : "-"}</td>
+                    <td className="px-3 py-2 text-xs text-sky-200">{(item.strategyTagLabels || item.strategyTags || []).slice(0, 2).join(", ") || item.candidateTypeLabel || "태그 없음"}</td>
+                    <td className="px-3 py-2 font-mono">{priceText(item, "current", "가격 없음")}</td>
+                    <td className="px-3 py-2 font-mono text-sky-300">{priceText(item, "entry", "진입가 없음")}</td>
+                    <td className="px-3 py-2 font-mono text-emerald-300">{probabilityText(item, "확률 없음")}</td>
+                    <td className="px-3 py-2 font-mono text-violet-300">{item.expectedValuePct != null ? `${Number(item.expectedValuePct).toFixed(2)}%` : item.expectedValue != null ? `${Number(item.expectedValue).toFixed(2)}%` : "EV 없음"}</td>
                     <td className="px-3 py-2 text-xs text-amber-200">{firstRisk(item)}</td>
                     <td className="px-3 py-2">
                       <div className="flex gap-1">

@@ -11,6 +11,7 @@ type Market = "kr" | "us" | "all";
 
 function labelSession(session?: string, fallback?: string, status?: string) {
   if (!session) {
+    if (status === "NETWORK_ERROR") return fallback || "동기화 지연";
     if (status === "ERROR") return fallback || "데이터 없음";
     return fallback || "세션 확인 중";
   }
@@ -53,13 +54,15 @@ export default function SessionSafetyBanner({
       onRefresh?.();
     } catch (error) {
       const payload = {
-        status: "ERROR",
-        dataStatus: "ERROR",
-        killSwitch: true,
+        status: "NETWORK_ERROR",
+        dataStatus: "PARTIAL",
+        killSwitch: false,
+        networkError: true,
+        sessionDescription: "동기화 지연",
         error: error instanceof Error ? error.message : String(error),
       };
       setQuality(payload);
-      window.localStorage.setItem("mone_kill_switch", "1");
+      window.localStorage.setItem("mone_kill_switch", "0");
       window.dispatchEvent(new CustomEvent("mone-data-quality", { detail: payload }));
     } finally {
       setLoading(false);
@@ -79,6 +82,7 @@ export default function SessionSafetyBanner({
 
   const tone = useMemo(() => {
     if (quality?.killSwitch) return "border-red-500/40 bg-red-950/40 text-red-100";
+    if (quality?.networkError) return "border-amber-500/30 bg-amber-950/20 text-amber-100";
     if (quality?.isHoliday) return "border-blue-500/30 bg-blue-950/20 text-blue-100";
     if (quality?.dataStatus === "PARTIAL") return "border-amber-500/30 bg-amber-950/20 text-amber-100";
     return "border-emerald-500/20 bg-emerald-950/10 text-slate-200";
@@ -118,8 +122,10 @@ export default function SessionSafetyBanner({
               <p className="mt-1 text-xs text-blue-200">시장 휴장일입니다. 신규 진입보다 지난 운용 리포트와 검증 결과를 확인하세요.</p>
             ) : alerts.length > 0 ? (
               <p className="mt-1 text-xs text-amber-200">현재 기준가/손절가 1% 이내 근접 알림 {alerts.length}건이 있습니다.</p>
+            ) : quality.networkError ? (
+              <p className="mt-1 text-xs text-amber-300">데이터 품질 확인 요청이 지연되었습니다. 기존 화면 데이터는 유지하며, 동기화 버튼으로 다시 확인할 수 있습니다.</p>
             ) : quality.status === "ERROR" || quality.dataStatus === "ERROR" ? (
-              <p className="mt-1 text-xs text-amber-300">GitHub Actions 또는 로컬 수집기를 실행해 데이터를 채워주세요. 동기화 버튼으로 재시도할 수 있습니다.</p>
+              <p className="mt-1 text-xs text-amber-300">수집 결과를 확인하지 못했습니다. GitHub Actions 또는 로컬 수집기 실행 후 동기화하세요.</p>
             ) : (
               <p className="mt-1 text-xs text-slate-400">화면 복귀 시 세션과 데이터 상태를 자동으로 다시 동기화합니다.</p>
             )}
