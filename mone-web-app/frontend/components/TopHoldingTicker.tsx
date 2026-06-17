@@ -27,6 +27,80 @@ type TickerItem = {
   source: TickerSource;
 };
 
+const TICKER_CACHE_KEY = "mone:top-ticker:v2";
+const TICKER_CACHE_TTL_MS = 10 * 60 * 1000;
+const ETF_KEYWORDS = [
+  "ETF",
+  "ETN",
+  "KODEX",
+  "TIGER",
+  "ACE",
+  "SOL",
+  "KBSTAR",
+  "HANARO",
+  "KOSEF",
+  "ARIRANG",
+  "RISE",
+  "TIMEFOLIO",
+];
+
+function isEtfRow(row: any) {
+  const text = [
+    displayName(row),
+    row?.symbol,
+    row?.name,
+    row?.category,
+    row?.assetType,
+    row?.productType,
+  ].join(" ").toUpperCase();
+  return ETF_KEYWORDS.some((keyword) => text.includes(keyword));
+}
+
+function holdingRiskRank(row: any) {
+  const status = String(row?.riskStatus || row?.tradeBlockStatus || row?.judgment || "").toUpperCase();
+  if (status.includes("위험") || status.includes("HIGH") || status.includes("STOP")) return 4;
+  if (status.includes("주의") || status.includes("WATCH") || status.includes("CAUTION")) return 3;
+  const pnlPct = toNumber(row?.pnlPct ?? row?.profitLossPct ?? row?.returnPct);
+  if (pnlPct !== null && pnlPct <= -8) return 2;
+  if (pnlPct !== null && pnlPct < 0) return 1;
+  return 0;
+}
+
+function prioritizeHoldingRows(rows: any[]) {
+  return dedupeBySymbol(rows)
+    .filter((row) => !isEtfRow(row))
+    .sort((a, b) => {
+      const riskDiff = holdingRiskRank(b) - holdingRiskRank(a);
+      if (riskDiff !== 0) return riskDiff;
+      const aLoss = Math.abs(Math.min(toNumber(a?.pnlPct ?? a?.profitLossPct ?? a?.returnPct) ?? 0, 0));
+      const bLoss = Math.abs(Math.min(toNumber(b?.pnlPct ?? b?.profitLossPct ?? b?.returnPct) ?? 0, 0));
+      return bLoss - aLoss;
+    });
+}
+
+function readTickerCache(): TickerItem[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(TICKER_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.items)) return null;
+    if (Date.now() - Number(parsed.ts || 0) > TICKER_CACHE_TTL_MS) return null;
+    return parsed.items;
+  } catch {
+    return null;
+  }
+}
+
+function writeTickerCache(items: TickerItem[]) {
+  if (typeof window === "undefined" || !items.length) return;
+  try {
+    window.localStorage.setItem(TICKER_CACHE_KEY, JSON.stringify({ items, ts: Date.now() }));
+  } catch {
+    // best-effort cache only
+  }
+}
+
 function closeValue(row: any) {
   return toNumber(row?.close ?? row?.Close ?? row?.stck_clpr ?? row?.currentPrice);
 }
@@ -144,7 +218,8 @@ async function fetchTickerRows(): Promise<TickerItem[]> {
   const data: any = await mone.holdingsClean({ market: "all", limit: 50 });
   const holdingsRows = Array.isArray(data?.items) ? data.items : [];
   const isPersonalHoldings = Boolean(userId) && data?.authority === "personal_user_holdings";
-  if (isPersonalHoldings && holdingsRows.length > 0) return enrichRows(holdingsRows, "holdings");
+  const focusedHoldings = prioritizeHoldingRows(holdingsRows);
+  if (isPersonalHoldings && focusedHoldings.length > 0) return enrichRows(focusedHoldings, "holdings");
 
   const watchlistRows = await fetchWatchlistRows();
   if (watchlistRows.length > 0) return enrichRows(watchlistRows, "watchlist");
@@ -169,11 +244,20 @@ export default function TopHoldingTicker() {
 
   async function load(force = false) {
     if (!force && Date.now() - lastLoadedAt.current < TICKER_RELOAD_COOLDOWN_MS) return;
+    if (!force) {
+      const cached = readTickerCache();
+      if (cached) {
+        setItems(cached);
+        lastLoadedAt.current = Date.now();
+        return;
+      }
+    }
     setLoading(true);
     setError("");
     try {
       const tickerRows = await fetchTickerRows();
       setItems(tickerRows.slice(0, 13));
+      writeTickerCache(tickerRows.slice(0, 13));
       lastLoadedAt.current = Date.now();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -184,7 +268,7 @@ export default function TopHoldingTicker() {
   }
 
   useEffect(() => {
-    load(true);
+    load(false);
     const onFocus = () => load(false);
     const onForce = () => load(true);
     window.addEventListener("focus", onFocus);
