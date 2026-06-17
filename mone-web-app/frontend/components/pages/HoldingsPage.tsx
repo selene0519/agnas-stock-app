@@ -329,9 +329,9 @@ function NavCurve() {
     ctx.clearRect(0, 0, W, H);
 
     // 실제/추정 분리
-    const actual = navRows.filter((r) => String(r.is_backfill || "false").toLowerCase() !== "true");
-    const backfill = navRows.filter((r) => String(r.is_backfill || "false").toLowerCase() === "true");
-    const allReturns = navRows.map((r) => Number(r.cumulative_return ?? 0));
+    const actual = navRows.filter((r) => !r.isBackfill);
+    const backfill = navRows.filter((r) => !!r.isBackfill);
+    const allReturns = navRows.map((r) => Number(r.cumulativeReturn ?? 0));
 
     const minR = Math.min(...allReturns, 0);
     const maxR = Math.max(...allReturns, 0);
@@ -389,7 +389,7 @@ function NavCurve() {
       ctx.strokeStyle = "#38bdf840"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
       ctx.beginPath();
       backfill.forEach((row, i) => {
-        const x = toX(row.date); const y = toY(Number(row.cumulative_return ?? 0));
+        const x = toX(row.date); const y = toY(Number(row.cumulativeReturn ?? 0));
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.stroke(); ctx.setLineDash([]);
@@ -397,13 +397,13 @@ function NavCurve() {
 
     // 실제 구간 (solid)
     if (actual.length > 1) {
-      const lastReturn = Number(actual.at(-1)?.cumulative_return ?? 0);
+      const lastReturn = Number(actual.at(-1)?.cumulativeReturn ?? 0);
       const isPos = lastReturn >= 0;
       ctx.strokeStyle = isPos ? "#22c55e" : "#ef4444";
       ctx.lineWidth = 2.5;
       ctx.beginPath();
       actual.forEach((row, i) => {
-        const x = toX(row.date); const y = toY(Number(row.cumulative_return ?? 0));
+        const x = toX(row.date); const y = toY(Number(row.cumulativeReturn ?? 0));
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.stroke();
@@ -420,11 +420,11 @@ function NavCurve() {
 
   if (navRows.length < 2) return null;
 
-  const lastRow = navRows.filter((r) => String(r.is_backfill || "false").toLowerCase() !== "true").at(-1)
+  const lastRow = navRows.filter((r) => !r.isBackfill).at(-1)
     ?? navRows.at(-1);
-  const cumReturn = Number(lastRow?.cumulative_return ?? 0);
+  const cumReturn = Number(lastRow?.cumulativeReturn ?? 0);
   const isPos = cumReturn >= 0;
-  const actualCount = navRows.filter((r) => String(r.is_backfill || "false").toLowerCase() !== "true").length;
+  const actualCount = navRows.filter((r) => !r.isBackfill).length;
   const backfillCount = navRows.length - actualCount;
 
   return (
@@ -486,7 +486,7 @@ function PortfolioCompositionBar({ items }: { items: any[] }) {
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-      <h2 className="mb-3 text-sm font-semibold text-slate-100">포트폴리오 구성</h2>
+      <h2 className="mb-3 text-sm font-semibold text-slate-100">포트폴리오 구성 (개별주)</h2>
       <div className="flex h-4 w-full overflow-hidden rounded-full">
         {sorted.items.map((item, i) => {
           const pct = (item._val / sorted.total) * 100;
@@ -598,6 +598,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   })();
 
   const [market, setMarket] = useState<Market>("all");
+  const [holdingsViewTab, setHoldingsViewTab] = useState<"all" | "stock" | "etf">("all");
   const [data, setData] = useState<any>(_bootHoldings ?? { items: [], summary: {} });
   const [loading, setLoading] = useState(!_bootHoldings);
   const [editKey, setEditKey] = useState<string | null>(null);
@@ -1273,8 +1274,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       {/* NAV 곡선 */}
       <NavCurve />
 
-      {/* 포트폴리오 구성 바 */}
-      {items.length > 0 && <PortfolioCompositionBar items={items} />}
+      {/* 포트폴리오 구성 바 (개별주만, ETF 제외) */}
+      {individualStocks.length > 0 && <PortfolioCompositionBar items={individualStocks} />}
 
       {/* 벤치마크 비교 */}
       {benchmarkData?.status === "OK" && Array.isArray(benchmarkData.items) && benchmarkData.items.length > 0 && (
@@ -1379,8 +1380,26 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       )}
 
+      {/* 개별주/ETF 보기 전환 */}
+      {(individualStocks.length > 0 || etfHoldings.length > 0) && (
+        <div className="inline-flex rounded-xl border border-slate-800 bg-slate-900/50 p-1">
+          {([
+            { key: "all", label: `전체 (${individualStocks.length + etfHoldings.length})` },
+            { key: "stock", label: `개별주 (${individualStocks.length})` },
+            { key: "etf", label: `ETF (${etfHoldings.length})` },
+          ] as const).map((tab) => (
+            <button key={tab.key} onClick={() => setHoldingsViewTab(tab.key)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                holdingsViewTab === tab.key ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-slate-200"
+              }`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 개별주 카드 */}
-      {individualStocks.length > 0 && (
+      {individualStocks.length > 0 && holdingsViewTab !== "etf" && (
         <div>
           <div className="mb-4 flex items-center gap-2">
             <h2 className="text-lg font-bold text-slate-100">개별주 ({individualStocks.length})</h2>
@@ -1613,7 +1632,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       )}
 
       {/* ETF 카드 */}
-      {etfHoldings.length > 0 && (
+      {etfHoldings.length > 0 && holdingsViewTab !== "stock" && (
         <div>
           <div className="mb-4 flex items-center gap-2">
             <h2 className="text-lg font-bold text-slate-100">ETF 적립 ({etfHoldings.length})</h2>
@@ -1779,6 +1798,13 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             })}
           </div>
         </div>
+      )}
+
+      {holdingsViewTab === "stock" && individualStocks.length === 0 && etfHoldings.length > 0 && (
+        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">보유 중인 개별주가 없습니다.</div>
+      )}
+      {holdingsViewTab === "etf" && etfHoldings.length === 0 && individualStocks.length > 0 && (
+        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">보유 중인 ETF가 없습니다.</div>
       )}
     </div>
   );
