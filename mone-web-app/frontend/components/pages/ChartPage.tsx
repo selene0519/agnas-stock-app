@@ -2058,6 +2058,7 @@ export default function ChartPage() {
   const [indexRows, setIndexRows] = useState<any[]>([]);
   const [chartAnalysis, setChartAnalysis] = useState<any | null>(null);
   const [similarPattern, setSimilarPattern] = useState<any | null>(null);
+  const [eventContext, setEventContext] = useState<any | null>(null);
   const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
   const [atrHorizon, setAtrHorizon] = useState<"short"|"swing"|"mid">("swing");
   // Start as true if we already have a symbol in localStorage (avoids "OHLCV 없음" flash before fetch begins)
@@ -2285,6 +2286,17 @@ export default function ChartPage() {
     mone.similarPattern({ symbol: selected.symbol, market: selected.market as any }, controller.signal)
       .then((d) => { if (active) setSimilarPattern(d || null); })
       .catch(() => { if (active) setSimilarPattern(null); });
+    return () => { active = false; controller.abort(); };
+  }, [selected?.symbol, selected?.market]);
+
+  // 뉴스·공시·실적·매크로·섹터 이벤트 리스크
+  useEffect(() => {
+    if (!selected) { setEventContext(null); return; }
+    let active = true;
+    const controller = new AbortController();
+    mone.symbolEvents({ symbol: selected.symbol, market: selected.market as any }, controller.signal)
+      .then((d) => { if (active) setEventContext(d || null); })
+      .catch(() => { if (active) setEventContext(null); });
     return () => { active = false; controller.abort(); };
   }, [selected?.symbol, selected?.market]);
 
@@ -2957,6 +2969,11 @@ export default function ChartPage() {
                   <SimilarPatternPanel data={similarPattern} />
                 </CollapsiblePanel>
 
+                {/* 뉴스·공시·실적·매크로·섹터 이벤트 리스크 */}
+                <CollapsiblePanel title="이벤트 리스크">
+                  <EventContextPanel data={eventContext} />
+                </CollapsiblePanel>
+
                 {/* 가격 레벨 유효성 경고 */}
                 {(() => {
                   if (!levels) return null;
@@ -3393,6 +3410,74 @@ function SimilarPatternPanel({ data }: { data: any | null }) {
     </div>
   );
 }
+const EVENT_TAG_LABELS: Record<string, { label: string; tone: "pos" | "neg" | "neutral" }> = {
+  positive_news: { label: "긍정 뉴스", tone: "pos" },
+  negative_news: { label: "부정 뉴스", tone: "neg" },
+  neutral_news: { label: "중립 뉴스", tone: "neutral" },
+  no_news: { label: "뉴스 없음", tone: "neutral" },
+  positive_disclosure: { label: "긍정 공시", tone: "pos" },
+  negative_disclosure: { label: "부정 공시", tone: "neg" },
+  neutral_disclosure: { label: "중립 공시", tone: "neutral" },
+  no_disclosure: { label: "공시 없음", tone: "neutral" },
+  earnings_beat: { label: "실적 호조", tone: "pos" },
+  earnings_miss: { label: "실적 부진", tone: "neg" },
+  guidance_up: { label: "가이던스 상향", tone: "pos" },
+  guidance_down: { label: "가이던스 하향", tone: "neg" },
+  earnings_scheduled: { label: "실적 발표 예정", tone: "neutral" },
+  no_earnings: { label: "실적 이슈 없음", tone: "neutral" },
+  fomc_risk: { label: "FOMC/금리 리스크", tone: "neg" },
+  inflation_risk: { label: "인플레이션 리스크", tone: "neg" },
+  volatility_risk: { label: "변동성 확대", tone: "neg" },
+  fx_risk: { label: "환율 리스크", tone: "neg" },
+  rate_risk: { label: "매크로 리스크", tone: "neg" },
+  macro_positive: { label: "매크로 긍정", tone: "pos" },
+  macro_neutral: { label: "매크로 중립", tone: "neutral" },
+  sector_strong: { label: "섹터 강세", tone: "pos" },
+  sector_weak: { label: "섹터 약세", tone: "neg" },
+  sector_neutral: { label: "섹터 중립", tone: "neutral" },
+  unknown: { label: "알 수 없음", tone: "neutral" },
+};
+
+function EventTagBadge({ tag }: { tag: string | undefined }) {
+  const meta = EVENT_TAG_LABELS[tag || "unknown"] || EVENT_TAG_LABELS.unknown;
+  const cls = meta.tone === "pos"
+    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+    : meta.tone === "neg"
+      ? "bg-red-500/10 text-red-300 border-red-500/30"
+      : "bg-slate-700/30 text-slate-400 border-slate-700";
+  return <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>{meta.label}</span>;
+}
+
+function EventContextPanel({ data }: { data: any | null }) {
+  if (!data) return <Empty text="이벤트 컨텍스트를 불러오는 중입니다…" />;
+  if (data.eventDataSourceType === "unavailable") {
+    return <Empty text="뉴스·공시 데이터가 부족해 이벤트 컨텍스트를 산출할 수 없습니다." />;
+  }
+  const risk = Number(data.eventRiskScore ?? 0);
+  const riskCls = risk >= 6 ? "text-red-400" : risk >= 3 ? "text-amber-400" : "text-emerald-400";
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-slate-500">{data.eventSummary || "이벤트 특이사항 없음"}</div>
+        <div className="shrink-0 text-right">
+          <div className={`font-mono text-sm font-bold ${riskCls}`}>{risk.toFixed(1)}/10</div>
+          <div className="text-[10px] text-slate-600">이벤트 리스크</div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <EventTagBadge tag={data.newsEventTag} />
+        <EventTagBadge tag={data.disclosureEventTag} />
+        <EventTagBadge tag={data.earningsEventTag} />
+        <EventTagBadge tag={data.macroEventTag} />
+        <EventTagBadge tag={data.sectorEventTag} />
+      </div>
+      <div className="text-[10px] text-slate-600 leading-relaxed">
+        뉴스·공시·실적·매크로·섹터 키워드 기반 참고 신호이며 투자 조언이 아닙니다. (신뢰도 {Math.round((data.eventReliabilityScore ?? 0) * 100)}%)
+      </div>
+    </div>
+  );
+}
+
 function formatKoreanDate(raw: string): string {
   if (!raw) return "";
   const s = String(raw).replace(/[^0-9]/g, "");

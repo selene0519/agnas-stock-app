@@ -2298,6 +2298,18 @@ def api_similar_pattern(
     return data.similar_pattern_history(symbol, normalized_market)
 
 
+@app.get("/api/symbol/{symbol}/events")
+def api_symbol_events(
+    symbol: str,
+    market: str = Query("kr", pattern="^(kr|us)$"),
+) -> dict:
+    """뉴스·공시·실적·매크로·섹터 이벤트 태그와 리스크 점수를 반환한다."""
+    from app.services import event_context
+
+    normalized_market = _market(market)
+    return event_context.get_event_context(symbol, normalized_market)
+
+
 @app.get("/api/chart/line-validation/{symbol}")
 def api_chart_line_validation(
     symbol: str,
