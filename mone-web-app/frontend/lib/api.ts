@@ -421,6 +421,8 @@ export const mone = {
     apiGet<ApiList>("/api/watchlist/auto-candidates", p),
   applyAutoWatchlist: (body?: { market?: Market; limitPerMarket?: number }) =>
     apiPost<ApiList>("/api/watchlist/auto-curate", body || {}),
+  symbolEvents: (p: { symbol: string; market: Market }, signal?: AbortSignal) =>
+    apiGet<any>(`/api/symbol/${p.symbol}/events`, { market: p.market }, signal),
   news: (p?: { market?: Market; limit?: number; watchOnly?: boolean }, signal?: AbortSignal) =>
     apiGet<ApiList>("/api/news", p, signal),
   disclosures: (p?: { market?: Market; limit?: number; watchOnly?: boolean }, signal?: AbortSignal) =>
