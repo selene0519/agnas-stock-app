@@ -35,15 +35,12 @@ export default function App() {
   const [page, setPage] = useState<PageId>("home");
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [, setDataVersion] = useState(0);
   const [adminToken, setAdminTokenState] = useState("");
   const [userProfile, setUserProfile] = useState<MoneUserProfile | null>(null);
   const [userToken, setUserTokenState] = useState("");
   const [booting, setBooting] = useState(true);
   const [bootProgress, setBootProgress] = useState(8);
-  const [bootMessage, setBootMessage] = useState("시장홈을 준비하고 있어요");
+  const [bootMessage, setBootMessage] = useState("MONE을 여는 중...");
   const [bootDelayed, setBootDelayed] = useState(false);
   const [bootState, setBootState] = useState<BootPreloadState>({
     bootStatus: "idle",
@@ -51,9 +48,8 @@ export default function App() {
     hasBootData: false,
   });
   const [bootSteps, setBootSteps] = useState<AppLaunchLoadingStep[]>([
-    { label: "서버 연결 확인", status: "active" },
-    { label: "시장 요약 미리 불러오기", status: "pending" },
-    { label: "추천 후보 준비", status: "pending" },
+    { label: "서버 상태 확인", status: "active" },
+    { label: "화면 준비", status: "pending" },
   ]);
 
   useEffect(() => {
@@ -70,8 +66,6 @@ export default function App() {
     setUserProfile(getUserProfile());
     setUserTokenState(getUserToken());
     getUserId(); // 최초 방문 시 UUID 생성 및 localStorage 저장
-    // Render free-tier cold-start 방지: 앱 로드 즉시 백엔드 warm-up ping (결과 무시)
-    fetch("/mone-api/health", { cache: "no-store" }).catch(() => {});
     setMounted(true);
   }, []);
 
@@ -106,9 +100,8 @@ export default function App() {
       setBootMessage(message);
       // All requests fire in parallel, so all steps are "active" at once while loading
       setBootSteps([
-        { label: "서버 연결 확인", status: step === "done" ? "done" : "active" },
-        { label: "시장 홈 데이터", status: step === "done" ? "done" : "active" },
-        { label: "추천 후보 준비", status: step === "done" ? "done" : "active" },
+        { label: "서버 상태 확인", status: step === "done" ? "done" : "active" },
+        { label: "화면 준비", status: step === "done" ? "done" : "active" },
       ]);
     };
 
@@ -135,7 +128,7 @@ export default function App() {
             errors: [err instanceof Error ? err.message : String(err)],
           });
           if (showLaunchLoading) {
-            updateBoot(100, "일부 데이터를 불러오지 못했지만 시장홈을 열고 있어요", "done");
+            updateBoot(100, "서버 확인이 늦어져도 화면을 먼저 열게요", "done");
             window.setTimeout(() => {
               if (!cancelled) setBooting(false);
             }, 700);
@@ -156,27 +149,9 @@ export default function App() {
     };
   }, [mounted]);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      await mone.dataQuality({ market: getDefaultMarketBySession() });
-      setDataVersion((value) => value + 1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
-  }, [refresh]);
-
   // 실적 일정 + 진입 근접 알림 로드
   useEffect(() => {
+    if (!notifOpen) return;
     async function loadNotifications() {
       const items: { msg: string; time: string; warn: boolean }[] = [];
       try {
@@ -208,7 +183,7 @@ export default function App() {
       if (items.length > 0) setNotifications(items);
     }
     loadNotifications();
-  }, []);
+  }, [notifOpen]);
 
   useEffect(() => {
     const handler = () => setPage("chart");
@@ -369,19 +344,6 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-3 pb-[calc(56px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
           <div className="mx-auto max-w-7xl space-y-4">
             <SessionSafetyBanner market={getDefaultMarketBySession()} />
-            {error && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-red-200">데이터 연결 오류: {error}</span>
-                  <button
-                    onClick={refresh}
-                    className="ml-3 shrink-0 rounded-lg border border-red-500/40 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10"
-                  >
-                    재시도
-                  </button>
-                </div>
-              </div>
-            )}
             {renderPage()}
           </div>
         </main>

@@ -44,8 +44,11 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
   return market === "kr" ? (bootData.krHomeSummary ?? null) : (bootData.usHomeSummary ?? null);
 }
 
-// Module-level re-entry cache: preserves data when user navigates away and back
-const HOME_PAGE_CACHE_TTL = 5 * 60 * 1000; // 5 min
+// Home recommendations are prediction snapshots. Keep them across reloads and
+// refresh the changing price/alert surfaces separately.
+const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
+const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000; // refresh changing prices occasionally
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v4:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -57,12 +60,48 @@ type HomeCacheEntry = {
 };
 const _homeCache: Partial<Record<"kr" | "us", HomeCacheEntry>> = {};
 
+function isUsableHomeCache(c: HomeCacheEntry | null | undefined): c is HomeCacheEntry {
+  return Boolean(c && Number.isFinite(c.ts) && Date.now() - c.ts < HOME_PAGE_CACHE_TTL);
+}
+
+function homeCacheKey(market: "kr" | "us") {
+  return `${HOME_PAGE_STORAGE_PREFIX}${market}`;
+}
+
+function readStoredHomeCache(market: "kr" | "us"): HomeCacheEntry | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(homeCacheKey(market));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return isUsableHomeCache(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function readHomeCache(market: "kr" | "us"): HomeCacheEntry | null {
   const c = _homeCache[market];
-  return c && Date.now() - c.ts < HOME_PAGE_CACHE_TTL ? c : null;
+  if (isUsableHomeCache(c)) return c;
+  const stored = readStoredHomeCache(market);
+  if (stored) _homeCache[market] = stored;
+  return stored;
 }
+
 function writeHomeCache(market: "kr" | "us", e: Omit<HomeCacheEntry, "ts">) {
-  _homeCache[market] = { ...e, ts: Date.now() };
+  const entry = { ...e, ts: Date.now() };
+  _homeCache[market] = entry;
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(homeCacheKey(market), JSON.stringify(entry));
+    } catch {
+      // best-effort cache only
+    }
+  }
+}
+
+function shouldReuseHomeCache(c: HomeCacheEntry | null) {
+  return Boolean(c && Date.now() - c.ts < HOME_PAGE_REVALIDATE_TTL);
 }
 
 function normalizeDateText(value: any) {
@@ -1890,12 +1929,18 @@ export default function HomePage({
       })
     );
     const h = result.holdings || {};
-    setHoldings(dedupeBySymbol(Array.isArray(h.items) ? h.items : []));
-    setSummary(h.summary || null);
+    const holdingItems = dedupeBySymbol(Array.isArray(h.items) ? h.items : []);
+    const holdingSummary = h.summary || null;
+    const regime = normalizeMarketRegime(result.marketRegime, market);
+    const health = normalizeDataHealth(result.dataHealth);
+    const allItemsFlat = matrixResult.flatMap((cell) => cell.items);
+    setHoldings(holdingItems);
+    setSummary(holdingSummary);
     setMatrix(matrixResult);
-    setMarketRegime(normalizeMarketRegime(result.marketRegime, market));
-    setDataHealth(normalizeDataHealth(result.dataHealth));
-    setAllItems(matrixResult.flatMap((cell) => cell.items));
+    setMarketRegime(regime);
+    setDataHealth(health);
+    setAllItems(allItemsFlat);
+    writeHomeCache(market, { matrix: matrixResult, holdings: holdingItems, summary: holdingSummary, marketRegime: regime, dataHealth: health, allItems: allItemsFlat });
     setLoading(false);
     setRefreshWarning("");
     return true;
@@ -1968,85 +2013,130 @@ export default function HomePage({
   useEffect(() => {
     // Don't fetch while the boot overlay is still showing — boot data will seed us on dismiss
     if (clientReady && !booting) {
+      const cached = readHomeCache(selectedMarket);
       const hadCache = applyCachedOrBootState(selectedMarket);
+      if (hadCache && shouldReuseHomeCache(cached)) return;
       load({ background: hadCache });
     }
   }, [clientReady, selectedMarket, booting]);
 
   useEffect(() => {
     if (!clientReady) return;
-    setReportLoading(!reportDigest);
-    Promise.allSettled([
-      mone.report("premarket", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
-      mone.report("closing", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
-      mone.backtestSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" }),
-    ]).then(([premarket, closing, backtest]) => {
-      setReportDigest({
-        premarket: premarket.status === "fulfilled" ? premarket.value : null,
-        closing: closing.status === "fulfilled" ? closing.value : null,
-        backtest: backtest.status === "fulfilled" ? backtest.value : null,
-      });
-    }).catch(() => {
-      if (!reportDigest) setReportDigest(null);
-    })
-      .finally(() => setReportLoading(false));
+    let active = true;
+    const timer = window.setTimeout(() => {
+      if (!active) return;
+      setReportLoading(!reportDigest);
+      Promise.allSettled([
+        mone.report("premarket", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
+        mone.report("closing", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
+      ]).then(([premarket, closing]) => {
+        if (!active) return;
+        setReportDigest({
+          premarket: premarket.status === "fulfilled" ? premarket.value : null,
+          closing: closing.status === "fulfilled" ? closing.value : null,
+          backtest: null,
+        });
+      }).catch(() => {
+        if (active && !reportDigest) setReportDigest(null);
+      })
+        .finally(() => { if (active) setReportLoading(false); });
+    }, 2500);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [clientReady, selectedMarket]);
 
   useEffect(() => {
     if (!clientReady) return;
     let active = true;
-    mone.operationSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" })
-      .then((res) => {
-        if (active) setOperationSummary(res || null);
-      })
-      .catch(() => {
-        if (active) setOperationSummary(null);
-      });
-    return () => { active = false; };
+    const timer = window.setTimeout(() => {
+      mone.operationSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" })
+        .then((res) => {
+          if (active) setOperationSummary(res || null);
+        })
+        .catch(() => {
+          if (active) setOperationSummary(null);
+        });
+    }, 1500);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [clientReady, selectedMarket]);
 
   // 실적발표 일정 로드 + earningsMap 구성
   useEffect(() => {
-    mone.earningsCalendar({ market: selectedMarket as any, days: 14 })
-      .then((res) => {
-        const map: Record<string, number> = {};
-        const today = new Date();
-        for (const e of (res.items || [])) {
-          const diff = Math.ceil((new Date(e.date).getTime() - today.getTime()) / 86400000);
-          if (diff >= 0 && diff <= 14) map[e.symbol] = diff;
-        }
-        setEarningsMap(map);
-      })
-      .catch(() => {});
-  }, [selectedMarket]);
+    if (!clientReady) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      mone.earningsCalendar({ market: selectedMarket as any, days: 14 })
+        .then((res) => {
+          if (!active) return;
+          const map: Record<string, number> = {};
+          const today = new Date();
+          for (const e of (res.items || [])) {
+            const diff = Math.ceil((new Date(e.date).getTime() - today.getTime()) / 86400000);
+            if (diff >= 0 && diff <= 14) map[e.symbol] = diff;
+          }
+          setEarningsMap(map);
+        })
+        .catch(() => {});
+    }, 3500);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [clientReady, selectedMarket]);
 
   // 매크로/실적 이벤트 배너 로드 (마운트 1회, 시장 변경 시 갱신)
   useEffect(() => {
     if (!clientReady) return;
-    mone.calendarToday({ market: selectedMarket as any })
-      .then((res) => {
-        if (res?.status === "OK") setCalendarAlert(res);
-      })
-      .catch(() => {});
+    let active = true;
+    const timer = window.setTimeout(() => {
+      mone.calendarToday({ market: selectedMarket as any })
+        .then((res) => {
+          if (active && res?.status === "OK") setCalendarAlert(res);
+        })
+        .catch(() => {});
+    }, 4000);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [clientReady, selectedMarket]);
 
   // 손절/목표가 근접 알림 로드
   useEffect(() => {
     if (!clientReady) return;
-    mone.nearAlerts({ market: selectedMarket, thresholdPct: 5 })
-      .then((res) => {
-        setNearAlerts(Array.isArray(res.alerts) ? res.alerts : []);
-      })
-      .catch(() => setNearAlerts([]));
+    let active = true;
+    const timer = window.setTimeout(() => {
+      mone.nearAlerts({ market: selectedMarket, thresholdPct: 5 })
+        .then((res) => {
+          if (active) setNearAlerts(Array.isArray(res.alerts) ? res.alerts : []);
+        })
+        .catch(() => { if (active) setNearAlerts([]); });
+    }, 1800);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [clientReady, selectedMarket]);
 
   // 데이터 소스 신선도 로드 (마운트 1회)
   useEffect(() => {
     if (!clientReady) return;
-    fetch("/api/health/data-sources")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d) setDataSources(d); })
-      .catch(() => {});
+    let active = true;
+    const timer = window.setTimeout(() => {
+      fetch("/api/health/data-sources")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (active && d) setDataSources(d); })
+        .catch(() => {});
+    }, 5000);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [clientReady]);
 
   // ── 브라우저 알림: 장중 진입 임박 종목 감지 (1분 주기)
@@ -2182,24 +2272,27 @@ export default function HomePage({
 
   useEffect(() => {
     if (!todayEntries.length) return;
-    todayEntries.forEach((item) => {
-      mone.signalsRecord({
-        market: item.market || selectedMarket,
-        symbol: item.symbol,
-        name: item.name || item.companyName || "",
-        mode: item._mode || item.mode || "balanced",
-        horizon: item._horizon || item.horizon || "swing",
-        entry: Number(item.entry || 0),
-        stop: Number(item.stop || 0),
-        target: Number(item.target || 0),
-        ev: Number(item.expectedValue || 0),
-        probability: Number(item.probability || 0),
-        score: Number(item.finalScore || 0),
-        decisionBucket: item.decisionBucket || "",
-        sector: item.sector || "",
-      }).catch(() => {});
-    });
-  }, [todayEntries]);
+    const timer = window.setTimeout(() => {
+      todayEntries.slice(0, 12).forEach((item) => {
+        mone.signalsRecord({
+          market: item.market || selectedMarket,
+          symbol: item.symbol,
+          name: item.name || item.companyName || "",
+          mode: item._mode || item.mode || "balanced",
+          horizon: item._horizon || item.horizon || "swing",
+          entry: Number(item.entry || 0),
+          stop: Number(item.stop || 0),
+          target: Number(item.target || 0),
+          ev: Number(item.expectedValue || 0),
+          probability: Number(item.probability || 0),
+          score: Number(item.finalScore || 0),
+          decisionBucket: item.decisionBucket || "",
+          sector: item.sector || "",
+        }).catch(() => {});
+      });
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [todayEntries, selectedMarket]);
 
   // ── 백테스트 뱃지 fetch (매수 검토 + 대기 관찰 종목)
   useEffect(() => {
@@ -2207,21 +2300,24 @@ export default function HomePage({
     if (!items.length) return;
     const unique = Array.from(new Set(items.map((i) =>
       `${i.symbol}::${i._horizon || i.horizon || "swing"}::${i._mode || i.mode || "balanced"}`
-    )));
-    Promise.all(
-      unique.map((key) => {
-        const [symbol, horizon, mode] = key.split("::");
-        return mone.signalsBadge({ symbol, horizon, mode })
-          .then((res: any) => ({ key, data: res }))
-          .catch(() => ({ key, data: null }));
-      })
-    ).then((results) => {
-      const map: Record<string, any> = {};
-      results.forEach(({ key, data }) => {
-        if (data && (data.sample > 0 || data.pending)) map[key] = data;
+    ))).slice(0, 8);
+    const timer = window.setTimeout(() => {
+      Promise.all(
+        unique.map((key) => {
+          const [symbol, horizon, mode] = key.split("::");
+          return mone.signalsBadge({ symbol, horizon, mode })
+            .then((res: any) => ({ key, data: res }))
+            .catch(() => ({ key, data: null }));
+        })
+      ).then((results) => {
+        const map: Record<string, any> = {};
+        results.forEach(({ key, data }) => {
+          if (data && (data.sample > 0 || data.pending)) map[key] = data;
+        });
+        setBadgeMap(map);
       });
-      setBadgeMap(map);
-    });
+    }, 5500);
+    return () => window.clearTimeout(timer);
   }, [todayEntries, watchItems]);
 
   const riskCount = holdings.filter((h) => ["위험", "주의", "HIGH", "WATCH"].includes(String(h.riskStatus || ""))).length;
