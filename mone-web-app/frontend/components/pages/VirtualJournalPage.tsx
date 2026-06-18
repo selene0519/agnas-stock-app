@@ -42,6 +42,27 @@ function toneForOutcome(outcome: string) {
   return "border-slate-700 bg-slate-800 text-slate-300";
 }
 
+const OUTCOME_LABEL: Record<string, string> = {
+  TARGET_HIT: "목표달성",
+  STOP_HIT: "손절",
+  TIME_EXIT_NEAR_STOP: "만료(손)",
+  TIME_EXIT_PROFIT: "만료(익)",
+  TIME_EXIT_LOSS: "만료(손)",
+  TIME_EXIT: "기간만료",
+  PENDING: "진행중",
+  DATA_PENDING: "데이터 대기",
+  CANCELLED: "취소",
+  EXPIRED: "만료",
+  WIN: "수익",
+  LOSS: "손실",
+};
+function outcomeLabel(outcome: string) {
+  return OUTCOME_LABEL[outcome] ?? outcome;
+}
+
+const MODE_SHORT: Record<string, string> = { conservative: "보수", balanced: "균형", aggressive: "공격" };
+const HORIZON_SHORT: Record<string, string> = { short: "단기", swing: "스윙", mid: "중기" };
+
 function metric(label: string, value: any, tone = "text-slate-100") {
   return (
     <div className="rounded-lg bg-slate-950/60 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
@@ -193,7 +214,7 @@ export default function VirtualJournalPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
               <BookOpenCheck size={17} className="text-cyan-300" />
-              <span>가상 매매일지</span>
+              <span>AI 매매일지</span>
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
               추천 시점의 판단을 고정하고, 이후 체결과 결과를 보수적으로 평가합니다. 보정은 제안까지만 만들고 자동 반영하지 않습니다.
@@ -271,13 +292,17 @@ export default function VirtualJournalPage() {
                       <div className="font-mono text-[11px] text-slate-500">{item.symbol}</div>
                     </td>
                     <td className="py-3 pr-3">
-                      <div className="font-mono text-[11px] uppercase text-slate-400">{item.market} / {item.mode} / {item.horizon}</div>
+                      <div className="font-mono text-[11px] uppercase text-slate-400">
+                        {String(item.market || "").toUpperCase()} / {MODE_SHORT[item.mode] ?? item.mode} / {HORIZON_SHORT[item.horizon] ?? item.horizon}
+                      </div>
                       <div className="mt-1 text-[11px] text-slate-500">{item.as_of_date}</div>
-                      <div className={`mt-1 font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>{item.source_type}</div>
+                      <div className={`mt-1 font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>
+                        {item.source_type === "MANUAL_REVIEWED" ? "검토완료" : item.source_type === "FORWARD_PAPER_TRADE" ? "자동" : item.source_type}
+                      </div>
                     </td>
                     <td className="py-3 pr-3">
-                      <span className={`inline-flex rounded-md px-2 py-1 text-[11px] font-semibold ${toneForOutcome(String(item.outcome || "PENDING"))}`}>
-                        {item.outcome || "PENDING"}
+                      <span className={`inline-flex whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-semibold ${toneForOutcome(String(item.outcome || "PENDING"))}`}>
+                        {outcomeLabel(String(item.outcome || "PENDING"))}
                       </span>
                     </td>
                     <td className={`py-3 pr-3 text-right font-mono tabular-nums ${Number(item.net_pnl_pct) >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtNum(item.net_pnl_pct, "%")}</td>
