@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileText, Link2, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
+import { ChevronDown, Download, FileText, Link2, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 import PositionManager from "../PositionManager";
 import CashInputBar from "../CashInputBar";
 import PortfolioOptimizePanel from "../PortfolioOptimizePanel";
@@ -1813,17 +1813,31 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">보유 중인 ETF가 없습니다.</div>
       )}
 
-      {/* 포트폴리오 최적화 */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-4 text-base font-semibold text-slate-100">포트폴리오 최적화</h2>
+      {/* 포트폴리오 최적화 + 알림 — 접기 아코디언 */}
+      <CollapsibleSection title="포트폴리오 최적화">
         <PortfolioOptimizePanel />
-      </div>
+      </CollapsibleSection>
 
-      {/* Telegram 알림 설정 */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-4 text-base font-semibold text-slate-100">Telegram 알림 설정</h2>
+      <CollapsibleSection title="Telegram 알림 설정">
         <AlertsPanel />
-      </div>
+      </CollapsibleSection>
+    </div>
+  );
+}
+
+function CollapsibleSection({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left"
+      >
+        <span className="text-sm font-semibold text-slate-200">{title}</span>
+        <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="border-t border-slate-800 px-5 pb-5 pt-4">{children}</div>}
     </div>
   );
 }

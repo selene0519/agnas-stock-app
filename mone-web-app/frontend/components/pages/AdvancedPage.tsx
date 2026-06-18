@@ -256,9 +256,9 @@ export default function AdvancedPage() {
         <p className="mt-1 text-xs text-slate-400">추천 API의 퀀트 오버레이를 스캐너로 보고, EV·손익비·포지션 리스크를 점검합니다.</p>
       </div>
 
-      <div className="flex w-fit flex-wrap gap-1 rounded-lg bg-slate-800/50 p-1">
+      <div className="flex overflow-x-auto gap-1 rounded-lg bg-slate-800/50 p-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((item) => (
-          <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-md px-4 py-2 text-sm transition-colors ${tab === item.id ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}>
+          <button key={item.id} onClick={() => setTab(item.id)} className={`shrink-0 rounded-md px-4 py-2 text-sm transition-colors ${tab === item.id ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}>
             {item.label}
           </button>
         ))}
