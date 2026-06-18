@@ -385,13 +385,15 @@ def get_summary(market: str = "all") -> dict[str, Any]:
     return result
 
 
-def reset(market: str = "all") -> dict[str, Any]:
-    """페이퍼 트레이딩 초기화 (전체 또는 특정 시장)."""
+def reset(market: str = "all", seed_kr: float | None = None, seed_us: float | None = None) -> dict[str, Any]:
+    """페이퍼 트레이딩 초기화 (전체 또는 특정 시장). seed_kr/seed_us 미전달 시 환경변수 기본값 사용."""
+    sk = seed_kr if seed_kr and seed_kr > 0 else SEED_KR
+    su = seed_us if seed_us and seed_us > 0 else SEED_US
     with _LOCK:
         if market == "all":
             if _TRADES_CSV.exists():
                 _TRADES_CSV.unlink()
-            _save_balance({"kr": SEED_KR, "us": SEED_US})
+            _save_balance({"kr": sk, "us": su})
             return {"ok": True, "message": "전체 페이퍼 트레이딩 초기화 완료"}
         else:
             mk = market.lower()
@@ -403,6 +405,6 @@ def reset(market: str = "all") -> dict[str, Any]:
                 writer.writeheader()
                 writer.writerows(remaining)
             balance = _load_balance()
-            balance[mk] = SEED_KR if mk == "kr" else SEED_US
+            balance[mk] = sk if mk == "kr" else su
             _save_balance(balance)
             return {"ok": True, "message": f"{mk.upper()} 페이퍼 트레이딩 초기화 완료"}

@@ -686,3 +686,20 @@ jobs:
             -o /tmp/sync_result.json && cat /tmp/sync_result.json || echo "sync-now 호출 실패 (무시)"
           set -e
           echo "Render sync 요청 완료"
+
+      - name: VTJ 자동 캡처 (AI 매매일지 가상 체결 기록)
+        env:
+          MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
+          MONE_ADMIN_SECRET: ${{ secrets.MONE_ADMIN_SECRET }}
+        run: |
+          BASE="${MONE_BACKEND_URL%/}"
+          echo "VTJ 자동 캡처 요청: ${BASE}/api/journal/auto-capture/run"
+          set +e
+          curl -sf -X POST "${BASE}/api/journal/auto-capture/run" \
+            -H "Content-Type: application/json" \
+            -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
+            -d '{"market":"all"}' \
+            --max-time 120 \
+            -o /tmp/vtj_result.json && cat /tmp/vtj_result.json || echo "VTJ auto-capture 호출 실패 (무시)"
+          set -e
+          echo "VTJ 캡처 요청 완료"

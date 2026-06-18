@@ -34,6 +34,7 @@ export const dynamic = "force-dynamic";
 export default function App() {
   const [mounted, setMounted] = useState(false);
   const [page, setPage] = useState<PageId>("home");
+  const [tradeOrder, setTradeOrder] = useState<{ symbol: string; name: string; price: number; market: "kr" | "us" } | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
   const [adminToken, setAdminTokenState] = useState("");
@@ -221,7 +222,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case "home":
-        return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
+        return <HomePage onNavigate={setPage} onTradePaper={(order) => { setTradeOrder(order); setPage("advanced"); }} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
       case "report":
         return <ReportPage />;
       case "stocks":
@@ -235,7 +236,7 @@ export default function App() {
       case "prediction":
         return <PredictionPage />;
       case "advanced":
-        return <AdvancedPage />;
+        return <AdvancedPage initialOrder={tradeOrder ?? undefined} />;
       case "paper":
         return <PaperTradingPage />;
       case "journal":

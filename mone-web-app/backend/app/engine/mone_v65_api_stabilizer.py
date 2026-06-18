@@ -3428,7 +3428,13 @@ def _is_executed_row(r: dict[str, Any]) -> bool:
 
 def _is_win_row(r: dict[str, Any]) -> bool:
     result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
-    return result in {"target_hit", "TARGET_HIT", "WIN", "목표달성", "성공"}
+    if result in {"target_hit", "TARGET_HIT", "WIN", "목표달성", "성공", "TIME_EXIT_PROFIT"}:
+        return True
+    # 기간 만료(close_exit)는 실현 수익이 양수일 때만 승으로 인정
+    if result in {"close_exit", "TIME_EXIT", "time_exit"}:
+        pnl = _num(_text(r, ["returnPct", "realized_return_pct", "return_pct", "pnlPct"]))
+        return pnl > 0
+    return False
 
 
 def _is_loss_row(r: dict[str, Any]) -> bool:

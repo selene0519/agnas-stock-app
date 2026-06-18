@@ -50,8 +50,12 @@ function formatAmount(value: number, market: Market) {
     : `${Math.round(value).toLocaleString("ko-KR")}원`;
 }
 
-export default function AdvancedPage() {
-  const [tab, setTab] = useState<TabId>("paper");
+export default function AdvancedPage({
+  initialOrder,
+}: {
+  initialOrder?: { symbol: string; name: string; price: number; market: "kr" | "us" };
+} = {}) {
+  const [tab, setTab] = useState<TabId>(initialOrder ? "paper" : "paper");
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
@@ -311,7 +315,7 @@ export default function AdvancedPage() {
         </Card>
       )}
 
-      {tab === "paper" && <PaperTradingPage />}
+      {tab === "paper" && <PaperTradingPage initialOrder={initialOrder} />}
 
       {tab === "journal" && <VirtualJournalPage />}
 

@@ -580,11 +580,17 @@ export const mone = {
     apiPost<any>("/api/paper/buy", body),
   paperSell: (body: { symbol: string; market: string; quantity: number; price?: number; memo?: string }) =>
     apiPost<any>("/api/paper/sell", body),
-  paperReset: (market?: string) =>
-    fetch(`${API_BASE}/api/paper/reset${market ? `?market=${market}` : ""}`, {
+  paperReset: (market?: string, opts?: { seedKr?: number; seedUs?: number }) => {
+    const params = new URLSearchParams();
+    if (market) params.set("market", market);
+    if (opts?.seedKr != null && opts.seedKr > 0) params.set("seed_kr", String(opts.seedKr));
+    if (opts?.seedUs != null && opts.seedUs > 0) params.set("seed_us", String(opts.seedUs));
+    const qs = params.toString();
+    return fetch(`${API_BASE}/api/paper/reset${qs ? `?${qs}` : ""}`, {
       method: "DELETE",
       headers: { ...getMoneUserHeader() },
-    }).then((r) => r.json()),
+    }).then((r) => r.json());
+  },
 };
 
 export default mone;

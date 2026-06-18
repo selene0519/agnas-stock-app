@@ -89,15 +89,17 @@ function TradeForm({
   market,
   action,
   onDone,
+  initialValues,
 }: {
   market: Market;
   action: "buy" | "sell";
   onDone: () => void;
+  initialValues?: { symbol?: string; name?: string; price?: string };
 }) {
-  const [symbol, setSymbol] = useState("");
-  const [name, setName] = useState("");
+  const [symbol, setSymbol] = useState(initialValues?.symbol ?? "");
+  const [name, setName] = useState(initialValues?.name ?? "");
   const [quantity, setQuantity] = useState("");
-  const [price, setPrice] = useState("");
+  const [price, setPrice] = useState(initialValues?.price ?? "");
   const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -203,9 +205,13 @@ function TradeForm({
   );
 }
 
-export default function PaperTradingPage() {
-  const [market, setMarket] = useState<Market>("kr");
-  const [tab, setTab] = useState<TabId>("positions");
+export default function PaperTradingPage({
+  initialOrder,
+}: {
+  initialOrder?: { symbol: string; name: string; price: number; market: "kr" | "us" };
+} = {}) {
+  const [market, setMarket] = useState<Market>(initialOrder?.market ?? "kr");
+  const [tab, setTab] = useState<TabId>(initialOrder ? "trade" : "positions");
   const [tradeAction, setTradeAction] = useState<"buy" | "sell">("buy");
   const [positions, setPositions] = useState<Position[]>([]);
   const [history, setHistory] = useState<Trade[]>([]);
@@ -213,6 +219,8 @@ export default function PaperTradingPage() {
   const [cash, setCash] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [seedInput, setSeedInput] = useState<string>("");
+  const [showSeedInput, setShowSeedInput] = useState(false);
 
   async function loadAll() {
     setLoading(true);
@@ -235,9 +243,15 @@ export default function PaperTradingPage() {
   }
 
   async function handleReset() {
-    if (!resetConfirm) { setResetConfirm(true); return; }
-    await mone.paperReset(market);
+    if (!resetConfirm) { setResetConfirm(true); setShowSeedInput(true); return; }
+    const seedVal = parseFloat(seedInput);
+    const opts = market === "kr"
+      ? { seedKr: isFinite(seedVal) && seedVal > 0 ? seedVal : undefined }
+      : { seedUs: isFinite(seedVal) && seedVal > 0 ? seedVal : undefined };
+    await mone.paperReset(market, opts);
     setResetConfirm(false);
+    setShowSeedInput(false);
+    setSeedInput("");
     loadAll();
   }
 
@@ -397,15 +411,40 @@ export default function PaperTradingPage() {
           </div>
 
           <TradeForm
+            key={initialOrder ? `${initialOrder.symbol}-${initialOrder.market}` : "manual"}
             market={market}
             action={tradeAction}
             onDone={loadAll}
+            initialValues={initialOrder ? {
+              symbol: initialOrder.symbol,
+              name: initialOrder.name,
+              price: initialOrder.price > 0 ? String(Math.round(initialOrder.price)) : "",
+            } : undefined}
           />
         </div>
       )}
 
       {/* 초기화 */}
-      <div className="flex justify-end pt-2">
+      <div className="flex flex-col items-end gap-2 pt-2">
+        {showSeedInput && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500">새 시드 금액</span>
+            <input
+              type="number"
+              min="1"
+              value={seedInput}
+              onChange={(e) => setSeedInput(e.target.value)}
+              placeholder={market === "kr" ? "5000000" : "5000"}
+              className="w-36 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
+            />
+            <button
+              onClick={() => { setShowSeedInput(false); setResetConfirm(false); setSeedInput(""); }}
+              className="text-[11px] text-slate-600 hover:text-slate-400"
+            >
+              취소
+            </button>
+          </div>
+        )}
         <button
           onClick={handleReset}
           className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] text-slate-500 hover:border-red-500/40 hover:text-red-400"

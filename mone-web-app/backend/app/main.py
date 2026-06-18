@@ -8615,10 +8615,14 @@ def api_paper_sell(body: dict = Body(...)) -> dict:
 
 
 @app.delete("/api/paper/reset")
-def api_paper_reset(market: str = Query("all")) -> dict:
-    """페이퍼 트레이딩 전체 또는 특정 시장 초기화."""
+def api_paper_reset(
+    market: str = Query("all"),
+    seed_kr: float | None = Query(None),
+    seed_us: float | None = Query(None),
+) -> dict:
+    """페이퍼 트레이딩 전체 또는 특정 시장 초기화. seed_kr/seed_us로 시드 금액 지정 가능."""
     try:
         from app.services.paper_trading import reset
-        return reset(market)
+        return reset(market, seed_kr=seed_kr, seed_us=seed_us)
     except Exception as e:
         return {"ok": False, "error": str(e)}

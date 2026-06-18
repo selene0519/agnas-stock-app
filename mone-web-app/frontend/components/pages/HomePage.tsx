@@ -309,7 +309,7 @@ function EventBanner({ alert }: { alert: any }) {
 }
 
 // ── 오늘 검토 후보 카드 (홈 압축형)
-function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; rank: number; onAnalyze: (item: any) => void; earningsMap?: Record<string, number> }) {
+function TodayEntryCard({ item, rank, onAnalyze, onTradePaper, earningsMap }: { item: any; rank: number; onAnalyze: (item: any) => void; onTradePaper?: (item: any) => void; earningsMap?: Record<string, number> }) {
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
   const horizon = String(item.horizon || item._horizon || "");
@@ -391,13 +391,24 @@ function TodayEntryCard({ item, rank, onAnalyze, earningsMap }: { item: any; ran
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => onAnalyze(item)}
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-      >
-        분석 보기 <ArrowRight size={14} />
-      </button>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => onAnalyze(item)}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+        >
+          분석 보기 <ArrowRight size={14} />
+        </button>
+        {onTradePaper && (
+          <button
+            type="button"
+            onClick={() => onTradePaper(item)}
+            className="flex items-center justify-center gap-1 rounded-xl border border-emerald-700/50 bg-emerald-900/30 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/60"
+          >
+            모의투자
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -1832,11 +1843,13 @@ function ReportDigestCard({ digest, loading }: { digest: any; loading: boolean }
 
 export default function HomePage({
   onNavigate,
+  onTradePaper,
   bootData,
   bootStatus = "idle",
   booting = false,
 }: {
   onNavigate?: (page: PageId) => void;
+  onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us" }) => void;
   bootData?: BootPreloadData | null;
   bootStatus?: BootStatus;
   booting?: boolean;
@@ -2674,7 +2687,11 @@ export default function HomePage({
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {todayEntries.map((item, i) => (
-              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onAnalyze={openAnalysis} earningsMap={earningsMap} />
+              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onAnalyze={openAnalysis} earningsMap={earningsMap} onTradePaper={onTradePaper ? (it) => {
+                  const mkt = String(it.market || it._market || "kr").toLowerCase() === "us" ? "us" : "kr";
+                  const rawPrice = Number(it.currentPrice ?? it.price ?? it.entryPrice ?? 0);
+                  onTradePaper({ symbol: String(it.symbol), name: String(it.name || it.nameKr || it.symbol), price: rawPrice, market: mkt });
+                } : undefined} />
             ))}
           </div>
         )}
