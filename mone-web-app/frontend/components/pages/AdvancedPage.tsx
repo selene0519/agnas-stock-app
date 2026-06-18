@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { mone, type Market, type Mode, type Horizon } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { dedupeBySymbol, displayName, horizonLabel, modeLabel, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
 import BacktestComparePanel from "@/components/BacktestComparePanel";
+import PaperTradingPage from "@/components/pages/PaperTradingPage";
+import VirtualJournalPage from "@/components/pages/VirtualJournalPage";
 
-type TabId = "scanner" | "calculator" | "montecarlo" | "correlation" | "backtest";
+type TabId = "scanner" | "calculator" | "montecarlo" | "backtest" | "paper" | "journal";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -120,9 +123,7 @@ export default function AdvancedPage() {
   const [mcResult, setMcResult] = useState<any>(null);
   const [mcLoading, setMcLoading] = useState(false);
 
-  // 상관관계
-  const [corrData, setCorrData] = useState<any>(null);
-  const [corrLoading, setCorrLoading] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const rr = useMemo(() => {
     const risk = Math.max(entry - stop, 0);
@@ -203,14 +204,6 @@ export default function AdvancedPage() {
     return () => { active = false; };
   }, [entry, stop, target, winRate, rr, capital]);
 
-  useEffect(() => {
-    if (tab !== "correlation") return;
-    setCorrLoading(true);
-    mone.correlationMatrix({ market: market === "all" ? "kr" : market, days: 120 })
-      .then((r) => setCorrData(r))
-      .catch(() => setCorrData(null))
-      .finally(() => setCorrLoading(false));
-  }, [tab, market]);
 
   async function runMonteCarlo() {
     setMcLoading(true);
@@ -242,30 +235,52 @@ export default function AdvancedPage() {
   }
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: "scanner", label: "스캐너" },
+    { id: "scanner", label: "퀀트 뷰" },
     { id: "calculator", label: "계산기" },
     { id: "montecarlo", label: "몬테카를로" },
-    { id: "correlation", label: "상관관계" },
-    { id: "backtest", label: "백테스트" },
+    { id: "backtest", label: "전략 검증" },
+    { id: "paper", label: "모의투자" },
+    { id: "journal", label: "AI 매매일지" },
   ];
 
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
         <h1 className="text-xl font-bold text-white">전략도구</h1>
-        <p className="mt-1 text-xs text-slate-400">추천 API의 퀀트 오버레이를 스캐너로 보고, EV·손익비·포지션 리스크를 점검합니다.</p>
+        <p className="mt-1 text-xs text-slate-400">퀀트 뷰, 계산기, 전략 검증, 모의투자, AI 매매일지를 한 곳에서.</p>
       </div>
 
-      <div className="flex overflow-x-auto gap-1 rounded-lg bg-slate-800/50 p-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {tabs.map((item) => (
-          <button key={item.id} onClick={() => setTab(item.id)} className={`shrink-0 rounded-md px-4 py-2 text-sm transition-colors ${tab === item.id ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}>
-            {item.label}
-          </button>
-        ))}
+      {/* 탭 드롭다운 */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setDropdownOpen((v) => !v)}
+          className="flex w-full items-center justify-between rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+        >
+          <span>{tabs.find((t) => t.id === tab)?.label}</span>
+          <ChevronDown size={15} className={`shrink-0 text-slate-400 transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`} />
+        </button>
+        {dropdownOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+            <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-slate-700 bg-slate-900 py-1 shadow-xl">
+              {tabs.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => { setTab(item.id); setDropdownOpen(false); }}
+                  className={`flex w-full items-center px-4 py-2.5 text-left text-sm transition-colors ${tab === item.id ? "bg-slate-700/60 font-semibold text-white" : "text-slate-300 hover:bg-slate-800"}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {tab === "scanner" && (
-        <Card title="실전 스캐너">
+        <Card title="퀀트 뷰">
           <div className="mb-4 flex flex-wrap gap-2">
             {(["kr", "us"] as Market[]).map((item) => (
               <button key={item} onClick={() => setMarket(item)} className={`rounded-xl px-3 py-1.5 text-xs ${market === item ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}>{marketLabel(item)}</button>
@@ -505,75 +520,15 @@ export default function AdvancedPage() {
         </Card>
       )}
 
-      {tab === "correlation" && (
-        <Card title="지수 상관관계 매트릭스">
-          <div className="mb-4 flex flex-wrap gap-2">
-            {(["kr", "us"] as Market[]).map((m) => (
-              <button key={m} onClick={() => setMarket(m)} className={`rounded-xl px-3 py-1.5 text-xs ${market === m ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}>{marketLabel(m)}</button>
-            ))}
-          </div>
-          {corrLoading && <div className="py-8 text-center text-sm text-slate-500">상관관계 계산 중...</div>}
-          {!corrLoading && ["NO_DATA", "DATA_SHORT", "ERROR"].includes(String(corrData?.status || "")) && (
-            <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-400">
-              {corrData.reason || "benchmark_daily.csv 데이터 부족"} — 최소 20일 이상 데이터가 필요합니다.
-            </div>
-          )}
-          {!corrLoading && Array.isArray(corrData?.matrix) && corrData.matrix.length > 0 && (() => {
-            const assets: string[] = corrData.matrix.map((r: any) => r.asset);
-            return (
-              <div className="overflow-x-auto">
-                <table className="text-[11px]">
-                  <thead>
-                    <tr>
-                      <th className="px-2 py-1 text-left text-slate-500">지수</th>
-                      {assets.map((a) => <th key={a} className="px-2 py-1 text-center text-slate-500">{a}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {corrData.matrix.map((row: any) => (
-                      <tr key={row.asset} className="border-t border-slate-800">
-                        <td className="px-2 py-2 font-semibold text-slate-300">{row.asset}</td>
-                        {assets.map((a) => {
-                          const v = typeof row[a] === "number" ? row[a] : null;
-                          const isDiag = a === row.asset;
-                          const bg = isDiag ? "bg-slate-700" : v == null ? "" : v >= 0.7 ? "bg-emerald-900/50" : v >= 0.3 ? "bg-emerald-900/20" : v <= -0.7 ? "bg-red-900/50" : v <= -0.3 ? "bg-red-900/20" : "";
-                          return (
-                            <td key={a} className={`px-3 py-2 text-center font-mono ${bg} ${isDiag ? "text-slate-300" : v != null && v >= 0.3 ? "text-emerald-300" : v != null && v <= -0.3 ? "text-red-300" : "text-slate-400"}`}>
-                              {v != null ? v.toFixed(2) : "—"}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="mt-3 flex gap-3 text-[10px] text-slate-500">
-                  <span><span className="inline-block h-2 w-3 rounded bg-emerald-900/50 mr-1" />≥0.7 강한 양의 상관</span>
-                  <span><span className="inline-block h-2 w-3 rounded bg-red-900/50 mr-1" />≤-0.7 강한 음의 상관</span>
-                  <span>원본: {(corrData.sources || ["data/market/benchmark_daily.csv"]).join(", ")}</span>
-                </div>
-                {Array.isArray(corrData.items) && corrData.items.length > 0 && (
-                  <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {corrData.items.slice(0, 6).map((item: any) => (
-                      <div key={item.pair} className="rounded-lg bg-slate-950/50 px-3 py-2 text-xs text-slate-300">
-                        <span className="font-semibold text-slate-100">{item.pair}</span>
-                        <span className="ml-2 font-mono">{Number(item.correlation).toFixed(2)}</span>
-                        <span className="ml-2 text-slate-500">{item.interpretation}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-        </Card>
-      )}
-
       {tab === "backtest" && (
-        <Card title="6전략 백테스트 비교">
+        <Card title="전략 검증 (9전략)">
           <BacktestComparePanel />
         </Card>
       )}
+
+      {tab === "paper" && <PaperTradingPage />}
+
+      {tab === "journal" && <VirtualJournalPage />}
 
     </div>
   );
