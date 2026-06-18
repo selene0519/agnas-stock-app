@@ -7536,6 +7536,29 @@ def api_journal_auto_capture_run(payload: dict = Body(default_factory=dict)) -> 
     )
 
 
+@app.post("/api/journal/virtual-trades/{journal_id}/review")
+def api_journal_virtual_trade_review(journal_id: str, payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.upgrade_to_manual_reviewed(
+        journal_id=journal_id,
+        reviewed_by=str(payload.get("reviewedBy") or payload.get("reviewed_by") or "local_admin"),
+        reviewer_note=str(payload.get("reviewerNote") or payload.get("reviewer_note") or ""),
+    )
+
+
+@app.get("/api/journal/analytics")
+def api_journal_analytics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all"),
+) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.analytics(market=market, mode=mode, horizon=horizon, source_type=source_type)
+
+
 try:
     from app.services import virtual_trade_journal as _vtj_auto
 

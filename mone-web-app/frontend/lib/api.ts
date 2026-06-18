@@ -399,6 +399,10 @@ export const mone = {
     apiGet<ApiList>("/api/journal/auto-capture/status"),
   journalAutoCaptureRun: (body?: { market?: Market; sourceType?: string; limit?: number; includeEngine?: boolean; evaluateAfter?: boolean; force?: boolean }) =>
     apiPost<ApiList>("/api/journal/auto-capture/run", body || {}),
+  journalTradeReview: (journalId: string, body?: { reviewedBy?: string; reviewerNote?: string }) =>
+    apiPost<ApiList>(`/api/journal/virtual-trades/${encodeURIComponent(journalId)}/review`, body || {}),
+  journalAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string }) =>
+    apiGet<ApiList>("/api/journal/analytics", p),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>

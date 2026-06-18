@@ -22,7 +22,7 @@ const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
 ];
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
-  { id: "advanced", label: "전략도구", desc: "스캐너, 계산기, 상관분석", Icon: Cpu },
+  { id: "advanced", label: "전략도구", desc: "스캐너, 계산기, 백테스트, 상관관계", Icon: Cpu },
   { id: "paper", label: "페이퍼 트레이딩", desc: "모의 포지션, 거래내역, 주문 실행", Icon: FlaskConical },
   { id: "journal", label: "매매일지", desc: "가상 체결, 복기, 보정 후보", Icon: BookOpenCheck },
 ];

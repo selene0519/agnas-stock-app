@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, BookOpenCheck, CheckCircle2, Play, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
+import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 
 type ScopeMarket = Extract<Market, "kr" | "us" | "all">;
@@ -68,6 +68,7 @@ export default function VirtualJournalPage() {
   const [patterns, setPatterns] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [autoStatus, setAutoStatus] = useState<any>({});
+  const [analyticsData, setAnalyticsData] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE" }), [market, mode, horizon]);
 
@@ -75,17 +76,19 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
         mone.journalAutoCaptureStatus(),
+        mone.journalAnalytics(scope),
       ]);
       if (tradeRes.status === "ERROR") throw new Error(tradeRes.error || "journal load failed");
       setTrades(tradeRes.items || []);
       setPatterns(patternRes.items || []);
       setSuggestions(suggestionRes.items || []);
       setAutoStatus(statusRes || {});
+      setAnalyticsData(analyticsRes || {});
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -116,6 +119,19 @@ export default function VirtualJournalPage() {
       } else {
         await mone.journalAutoCaptureRun({ market, limit: 5, evaluateAfter: true, force: true });
       }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const reviewTrade = async (journalId: string) => {
+    setBusy(`review:${journalId}`);
+    setError("");
+    try {
+      await mone.journalTradeReview(journalId, { reviewedBy: "local_admin" });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -243,7 +259,8 @@ export default function VirtualJournalPage() {
                   <th className="py-2 pr-3 text-right">MFE</th>
                   <th className="py-2 pr-3 text-right">MAE</th>
                   <th className="py-2 pr-3">실패 태그</th>
-                  <th className="py-2">복기</th>
+                  <th className="py-2 pr-3">복기</th>
+                  <th className="py-2">검토</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/70">
@@ -256,6 +273,7 @@ export default function VirtualJournalPage() {
                     <td className="py-3 pr-3">
                       <div className="font-mono text-[11px] uppercase text-slate-400">{item.market} / {item.mode} / {item.horizon}</div>
                       <div className="mt-1 text-[11px] text-slate-500">{item.as_of_date}</div>
+                      <div className={`mt-1 font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>{item.source_type}</div>
                     </td>
                     <td className="py-3 pr-3">
                       <span className={`inline-flex rounded-md px-2 py-1 text-[11px] font-semibold ${toneForOutcome(String(item.outcome || "PENDING"))}`}>
@@ -265,13 +283,28 @@ export default function VirtualJournalPage() {
                     <td className={`py-3 pr-3 text-right font-mono tabular-nums ${Number(item.net_pnl_pct) >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtNum(item.net_pnl_pct, "%")}</td>
                     <td className="py-3 pr-3 text-right font-mono tabular-nums text-slate-300">{fmtNum(item.mfe_pct, "%")}</td>
                     <td className="py-3 pr-3 text-right font-mono tabular-nums text-slate-300">{fmtNum(item.mae_pct, "%")}</td>
-                    <td className="py-3 pr-3 font-mono text-[11px] text-amber-300">{item.failure_reason || "-"}</td>
-                    <td className="max-w-sm py-3 text-[12px] leading-5 text-slate-400">{item.review_text || "-"}</td>
+                    <td className="py-3 pr-3 font-mono text-[11px] text-amber-300">
+                      <div>{item.failure_reason || "-"}</div>
+                      {item.secondary_tags && <div className="mt-0.5 text-slate-500">{item.secondary_tags}</div>}
+                    </td>
+                    <td className="max-w-sm py-3 pr-3 text-[12px] leading-5 text-slate-400">{item.review_text || "-"}</td>
+                    <td className="py-3">
+                      {String(item.source_type) === "FORWARD_PAPER_TRADE" && String(item.status) === "EVALUATED" && (
+                        <button
+                          onClick={() => reviewTrade(item.journal_id)}
+                          disabled={busy === `review:${item.journal_id}`}
+                          title="검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.2 적용)"
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-300 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.20)] transition-transform active:scale-[0.95] disabled:opacity-40"
+                        >
+                          <ClipboardCheck size={11} /> 검토
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {!trades.length && (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-sm text-slate-500">아직 가상 매매일지가 없습니다.</td>
+                    <td colSpan={9} className="py-10 text-center text-sm text-slate-500">아직 가상 매매일지가 없습니다.</td>
                   </tr>
                 )}
               </tbody>
@@ -374,6 +407,100 @@ export default function VirtualJournalPage() {
               ))}
               {!approvedSuggestions.length && <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-500">승인됐지만 아직 적용되지 않은 보정 후보가 없습니다.</div>}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 애널리틱스 ───────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold text-slate-200">애널리틱스</h2>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {/* 레짐 전환 매트릭스 */}
+          <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">레짐 전환 × 결과</h3>
+            {(analyticsData.regimeTransition || []).length === 0 ? (
+              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
+            ) : (
+              <div className="space-y-1">
+                {(analyticsData.regimeTransition as any[]).map((row, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 rounded-md bg-slate-950/50 px-3 py-1.5">
+                    <span className="font-mono text-[11px] text-slate-400">
+                      {row.regime_entry ?? "-"} → {row.regime_exit ?? "-"}
+                    </span>
+                    <div className="flex gap-3">
+                      <span className="font-mono text-[11px] text-emerald-300">W:{row.win ?? 0}</span>
+                      <span className="font-mono text-[11px] text-red-300">L:{row.loss ?? 0}</span>
+                      <span className="font-mono text-[11px] text-slate-400">n:{row.count ?? 0}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 신호 신뢰도 × 실패 분류 */}
+          <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">신호 신뢰도 × 실패 태그</h3>
+            {(analyticsData.confidenceBreakdown || []).length === 0 ? (
+              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
+            ) : (
+              <div className="space-y-1">
+                {(analyticsData.confidenceBreakdown as any[]).map((row, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 rounded-md bg-slate-950/50 px-3 py-1.5">
+                    <span className="font-mono text-[11px] text-slate-400">
+                      {row.confidence_band ?? "-"}
+                    </span>
+                    <div className="flex gap-3">
+                      <span className="font-mono text-[11px] text-amber-300">{row.top_failure ?? "-"}</span>
+                      <span className="font-mono text-[11px] text-slate-400">n:{row.count ?? 0}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 진입 방식 비교 */}
+          <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">진입 방식 비교</h3>
+            {(analyticsData.entryTypeComparison || []).length === 0 ? (
+              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
+            ) : (
+              <div className="space-y-1">
+                {(analyticsData.entryTypeComparison as any[]).map((row, i) => (
+                  <div key={i} className="rounded-md bg-slate-950/50 px-3 py-2">
+                    <div className="font-mono text-[11px] text-slate-200">{row.entry_type ?? "-"}</div>
+                    <div className="mt-1 flex gap-3">
+                      <span className="font-mono text-[11px] text-emerald-300">승률 {row.win_rate != null ? `${(row.win_rate * 100).toFixed(0)}%` : "-"}</span>
+                      <span className="font-mono text-[11px] text-slate-400">평균PnL {row.avg_pnl != null ? `${Number(row.avg_pnl).toFixed(2)}%` : "-"}</span>
+                      <span className="font-mono text-[11px] text-slate-500">n:{row.count ?? 0}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 소스 유형 비교 */}
+          <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">소스 유형 비교</h3>
+            {(analyticsData.sourceComparison || []).length === 0 ? (
+              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
+            ) : (
+              <div className="space-y-1">
+                {(analyticsData.sourceComparison as any[]).map((row, i) => (
+                  <div key={i} className="rounded-md bg-slate-950/50 px-3 py-2">
+                    <div className={`font-mono text-[11px] ${row.source_type === "MANUAL_REVIEWED" ? "text-emerald-300" : "text-slate-200"}`}>{row.source_type ?? "-"}</div>
+                    <div className="mt-1 flex gap-3">
+                      <span className="font-mono text-[11px] text-emerald-300">승률 {row.win_rate != null ? `${(row.win_rate * 100).toFixed(0)}%` : "-"}</span>
+                      <span className="font-mono text-[11px] text-slate-400">평균PnL {row.avg_pnl != null ? `${Number(row.avg_pnl).toFixed(2)}%` : "-"}</span>
+                      <span className="font-mono text-[11px] text-slate-500">가중치 {row.weight ?? "-"} · n:{row.count ?? 0}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

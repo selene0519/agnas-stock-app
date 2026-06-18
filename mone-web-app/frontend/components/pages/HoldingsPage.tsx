@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileText, Link2, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 import PositionManager from "../PositionManager";
+import CashInputBar from "../CashInputBar";
+import PortfolioOptimizePanel from "../PortfolioOptimizePanel";
+import AlertsPanel from "../AlertsPanel";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo } from "@/lib/moneDisplay";
 import { getUserId } from "@/lib/userId";
@@ -1023,6 +1026,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         ))}
       </div>
 
+      {/* 가용 예수금 — 포지션 크기 계산 보조 */}
+      <CashInputBar />
+
       <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3 sm:p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
@@ -1806,6 +1812,18 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       {holdingsViewTab === "etf" && etfHoldings.length === 0 && individualStocks.length > 0 && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">보유 중인 ETF가 없습니다.</div>
       )}
+
+      {/* 포트폴리오 최적화 */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <h2 className="mb-4 text-base font-semibold text-slate-100">포트폴리오 최적화</h2>
+        <PortfolioOptimizePanel />
+      </div>
+
+      {/* Telegram 알림 설정 */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <h2 className="mb-4 text-base font-semibold text-slate-100">Telegram 알림 설정</h2>
+        <AlertsPanel />
+      </div>
     </div>
   );
 }

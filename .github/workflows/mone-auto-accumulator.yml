@@ -390,6 +390,18 @@ jobs:
           fi
           set -e
 
+      - name: Fetch KR financial data via yfinance (weekly on Monday)
+        run: |
+          set +e
+          DAY=$(date +%u)
+          if [ "$DAY" = "1" ] && [ -f scripts/fetch_kr_financial_data.py ]; then
+            python scripts/fetch_kr_financial_data.py
+            echo "fetch_kr_financial_data: exit $?"
+          else
+            echo "Not Monday or script missing — skip KR financial fetch."
+          fi
+          set -e
+
       - name: Fetch sector data (weekly on Monday)
         run: |
           set +e
