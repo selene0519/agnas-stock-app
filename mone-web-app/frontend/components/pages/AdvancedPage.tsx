@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { mone, type Market, type Mode, type Horizon } from "@/lib/api";
-import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
-import { dedupeBySymbol, displayName, horizonLabel, modeLabel, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
+import { getDefaultMarketBySession } from "@/lib/marketSession";
+import { toNumber } from "@/lib/moneDisplay";
 import BacktestComparePanel from "@/components/BacktestComparePanel";
+import PaperTradingPage from "@/components/pages/PaperTradingPage";
+import VirtualJournalPage from "@/components/pages/VirtualJournalPage";
 
-type TabId = "scanner" | "calculator" | "montecarlo" | "correlation" | "backtest";
+type TabId = "paper" | "journal" | "calculator" | "montecarlo" | "backtest";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -24,32 +27,6 @@ function Metric({ label, value }: { label: string; value: string | number }) {
       <div className="mt-2 text-lg font-bold text-slate-100">{value}</div>
     </div>
   );
-}
-
-function firstRisk(item: any) {
-  const flags = Array.isArray(item.riskFlags) ? item.riskFlags : [];
-  if (flags.length) return flags.slice(0, 2).join(", ");
-  if (item.financialDataStatus === "DATA_PENDING") {
-    const market = String(item.market || "kr").toLowerCase();
-    return "재무 데이터 수집 중";
-  }
-  const block = String(item.tradeBlockStatus || "").toUpperCase();
-  if (block === "CAUTION") return "진입 주의 (RSI 과열 또는 EV 음수)";
-  if (block === "BLOCK") return "진입 차단";
-  return item.warningReason || item.warning_reason || "리스크 신호 없음";
-}
-
-function itemKey(item: any) {
-  return `${String(item?.market || "").toLowerCase()}-${String(item?.symbol || item?.code || item?.ticker || "").trim().toUpperCase()}`;
-}
-
-function mergeScannerRows(scannerRows: any[], recommendationRows: any[]) {
-  const recoMap = new Map<string, any>();
-  dedupeBySymbol(recommendationRows).forEach((item) => recoMap.set(itemKey(item), item));
-  return dedupeBySymbol(scannerRows).map((item) => {
-    const reco = recoMap.get(itemKey(item)) || {};
-    return { ...reco, ...item, recommendation: reco, name: displayName({ ...reco, ...item }) };
-  });
 }
 
 function pickNumber(item: any, keys: string[]) {
@@ -73,29 +50,8 @@ function formatAmount(value: number, market: Market) {
     : `${Math.round(value).toLocaleString("ko-KR")}원`;
 }
 
-const STRATEGY_RULES: Record<Exclude<Mode, "all">, { entry: string; block: string; regime: string; failure: string }> = {
-  conservative: {
-    entry: "손절폭이 좁고 가격이 진입 밴드 근처일 때",
-    block: "거래대금 부족, DATA_PENDING, 손절폭 과다",
-    regime: "BEAR/NEUTRAL 방어 우선",
-    failure: "미체결이 많으면 진입가를 낮추고 기간을 늘림",
-  },
-  balanced: {
-    entry: "확률, EV, 손익비가 동시에 양호할 때",
-    block: "뉴스 리스크, 목표폭 부족, 반복 손절",
-    regime: "NEUTRAL/BULL 기본 전략",
-    failure: "기간 만료가 많으면 목표폭과 보유 기간 보정",
-  },
-  aggressive: {
-    entry: "BULL 또는 강한 모멘텀에서 거래대금과 상승 여지가 충분할 때",
-    block: "BEAR 레짐, 과열, 진입가 괴리, 최근 공격형 실패 반복",
-    regime: "BULL 적합, BEAR에서는 공격 보류",
-    failure: "손절 선행이 많으면 목표가 과대 추정 보정",
-  },
-};
-
 export default function AdvancedPage() {
-  const [tab, setTab] = useState<TabId>("scanner");
+  const [tab, setTab] = useState<TabId>("paper");
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
@@ -106,10 +62,6 @@ export default function AdvancedPage() {
   const [riskPct, setRiskPct] = useState(1);
   const [capital, setCapital] = useState(10_000_000);
   const [calcResult, setCalcResult] = useState<any>(null);
-  const [scanItems, setScanItems] = useState<any[]>([]);
-  const [scanCoverage, setScanCoverage] = useState<any>(null);
-  const [scanMeta, setScanMeta] = useState<any>(null);
-  const [scanLoading, setScanLoading] = useState(false);
 
   // 몬테카를로
   const [mcPrice, setMcPrice] = useState(100000);
@@ -120,9 +72,7 @@ export default function AdvancedPage() {
   const [mcResult, setMcResult] = useState<any>(null);
   const [mcLoading, setMcLoading] = useState(false);
 
-  // 상관관계
-  const [corrData, setCorrData] = useState<any>(null);
-  const [corrLoading, setCorrLoading] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const rr = useMemo(() => {
     const risk = Math.max(entry - stop, 0);
@@ -160,35 +110,6 @@ export default function AdvancedPage() {
   }, [capital, entry, stop, riskPct, kelly, mode]);
 
   useEffect(() => {
-    if (tab !== "scanner") return;
-    let active = true;
-    const apiMarket = market === "all" ? "kr" : market;
-    setScanLoading(true);
-    Promise.allSettled([
-      mone.advancedScanner({ market: apiMarket, mode, horizon }),
-      mone.recommendations({ market: apiMarket, mode, horizon, limit: 50 }),
-    ])
-      .then(([scannerResult, recoResult]) => {
-        if (!active) return;
-        const scanner = scannerResult.status === "fulfilled" ? scannerResult.value : { items: [], status: "ERROR" };
-        const reco = recoResult.status === "fulfilled" ? recoResult.value : { items: [], status: "ERROR" };
-        const scannerItems = Array.isArray(scanner.items) ? scanner.items : [];
-        const recoItems = Array.isArray(reco.items) ? reco.items : [];
-        setScanCoverage(scanner.scanCoverage || reco.scanCoverage || null);
-        setScanMeta({
-          scannerStatus: scanner.status,
-          scannerCount: scanner.count ?? scannerItems.length,
-          recommendationStatus: reco.status,
-          recommendationCount: reco.count ?? recoItems.length,
-          sources: scanner.sources || [],
-        });
-        setScanItems(mergeScannerRows(scannerItems.length ? scannerItems : recoItems, recoItems).slice(0, 24));
-      })
-      .finally(() => active && setScanLoading(false));
-    return () => { active = false; };
-  }, [tab, market, mode, horizon]);
-
-  useEffect(() => {
     let active = true;
     Promise.allSettled([
       mone.calculatorKelly({ winRate, payoffRatio: rr, capital }),
@@ -203,14 +124,6 @@ export default function AdvancedPage() {
     return () => { active = false; };
   }, [entry, stop, target, winRate, rr, capital]);
 
-  useEffect(() => {
-    if (tab !== "correlation") return;
-    setCorrLoading(true);
-    mone.correlationMatrix({ market: market === "all" ? "kr" : market, days: 120 })
-      .then((r) => setCorrData(r))
-      .catch(() => setCorrData(null))
-      .finally(() => setCorrLoading(false));
-  }, [tab, market]);
 
   async function runMonteCarlo() {
     setMcLoading(true);
@@ -242,161 +155,48 @@ export default function AdvancedPage() {
   }
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: "scanner", label: "스캐너" },
+    { id: "paper", label: "모의투자" },
+    { id: "journal", label: "AI 매매일지" },
     { id: "calculator", label: "계산기" },
     { id: "montecarlo", label: "몬테카를로" },
-    { id: "correlation", label: "상관관계" },
-    { id: "backtest", label: "백테스트" },
+    { id: "backtest", label: "전략 검증" },
   ];
 
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
-        <h1 className="text-xl font-bold text-white">전략도구</h1>
-        <p className="mt-1 text-xs text-slate-400">추천 API의 퀀트 오버레이를 스캐너로 보고, EV·손익비·포지션 리스크를 점검합니다.</p>
+        <h1 className="text-xl font-bold text-white">트레이딩</h1>
+        <p className="mt-1 text-xs text-slate-400">모의투자, AI 매매일지, 계산기, 몬테카를로, 전략 검증을 한 곳에서.</p>
       </div>
 
-      <div className="flex w-fit flex-wrap gap-1 rounded-lg bg-slate-800/50 p-1">
-        {tabs.map((item) => (
-          <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-md px-4 py-2 text-sm transition-colors ${tab === item.id ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}>
-            {item.label}
-          </button>
-        ))}
+      {/* 탭 드롭다운 */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setDropdownOpen((v) => !v)}
+          className="flex w-full items-center justify-between rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+        >
+          <span>{tabs.find((t) => t.id === tab)?.label}</span>
+          <ChevronDown size={15} className={`shrink-0 text-slate-400 transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`} />
+        </button>
+        {dropdownOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+            <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-slate-700 bg-slate-900 py-1 shadow-xl">
+              {tabs.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => { setTab(item.id); setDropdownOpen(false); }}
+                  className={`flex w-full items-center px-4 py-2.5 text-left text-sm transition-colors ${tab === item.id ? "bg-slate-700/60 font-semibold text-white" : "text-slate-300 hover:bg-slate-800"}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
-
-      {tab === "scanner" && (
-        <Card title="실전 스캐너">
-          <div className="mb-4 flex flex-wrap gap-2">
-            {(["kr", "us"] as Market[]).map((item) => (
-              <button key={item} onClick={() => setMarket(item)} className={`rounded-xl px-3 py-1.5 text-xs ${market === item ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}>{marketLabel(item)}</button>
-            ))}
-            {(["conservative", "balanced", "aggressive"] as Mode[]).map((item) => (
-              <button key={item} onClick={() => setMode(item)} className={`rounded-xl px-3 py-1.5 text-xs ${mode === item ? "bg-emerald-600 text-white" : "bg-slate-950 text-slate-400"}`}>{modeLabel(item)}</button>
-            ))}
-            {(["short", "swing", "mid"] as Horizon[]).map((item) => (
-              <button key={item} onClick={() => setHorizon(item)} className={`rounded-xl px-3 py-1.5 text-xs ${horizon === item ? "bg-cyan-600 text-white" : "bg-slate-950 text-slate-400"}`}>{horizonLabel(item)}</button>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <Metric label="신호 상태" value={scanLoading ? "불러오는 중" : "고급 스캐너 연결"} />
-            <Metric label="리스크 필터" value={`${modeLabel(mode)}·${horizonLabel(horizon)}`} />
-            <Metric label="표시 후보" value={`${scanItems.length}개`} />
-            <Metric label="기본 시장" value={marketLabel(market)} />
-          </div>
-          {scanMeta && (
-            <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
-              advanced/scanner {scanMeta.scannerStatus} {Number(scanMeta.scannerCount || 0).toLocaleString("ko-KR")}건 ·
-              추천 가격 보강 {scanMeta.recommendationStatus} {Number(scanMeta.recommendationCount || 0).toLocaleString("ko-KR")}건
-              {Array.isArray(scanMeta.sources) && scanMeta.sources.length > 0 && <span className="ml-2">원본 {scanMeta.sources.slice(0, 3).join(", ")}</span>}
-            </div>
-          )}
-          {scanCoverage && (
-            <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${scanCoverage.isFullMarket ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border-amber-500/30 bg-amber-500/10 text-amber-100"}`}>
-              스캔 범위: {scanCoverage.universeScope === "FULL_MARKET_READY" ? "전체시장 준비 완료" : "큐레이션 유니버스"} ·
-              로컬 스캔 {Number(scanCoverage.localScanUniverseCount || 0).toLocaleString("ko-KR")}개 ·
-              OHLCV {Number(scanCoverage.ohlcvSymbolCount || 0).toLocaleString("ko-KR")}개 ·
-              현재가 커버 {Number(scanCoverage.quoteCoveragePct || 0).toFixed(1)}%
-              {!scanCoverage.isFullMarket && <span className="ml-2">전체시장 스캔 전환에는 종목 마스터와 현재가/OHLCV 수집 확대가 필요합니다.</span>}
-            </div>
-          )}
-          <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-            {Object.entries(STRATEGY_RULES[mode === "all" ? "balanced" : mode]).map(([key, value]) => (
-              <div key={key} className="rounded-xl bg-slate-950/50 p-3">
-                <div className="text-[11px] font-semibold text-slate-500">
-                  {{ entry: "진입 조건", block: "매수 제한", regime: "시장 국면", failure: "실패 패턴" }[key] ?? key}
-                </div>
-                <div className="mt-1 text-xs leading-5 text-slate-300">{value}</div>
-              </div>
-            ))}
-          </div>
-          {!scanLoading && scanItems.length === 0 && (
-            <div className="mt-4 rounded-xl border border-dashed border-slate-700 px-5 py-8 text-center text-sm text-slate-500">
-              <p>스캐너 결과가 없습니다.</p>
-              <p className="mt-1 text-[11px] text-slate-600">매일 오전 데이터가 갱신됩니다. 전략·기간·시장 조건을 바꿔보세요.</p>
-            </div>
-          )}
-          {/* 모바일 카드 뷰 */}
-          <div className="mt-5 block sm:hidden space-y-2">
-            {scanItems.map((item) => {
-              const ev = item.expectedValuePct != null ? Number(item.expectedValuePct).toFixed(2) : item.expectedValue != null ? Number(item.expectedValue).toFixed(2) : null;
-              return (
-                <div key={`m-${item.market}-${item.symbol}`} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-semibold text-slate-100 text-sm">{displayName(item)}</div>
-                      <div className="font-mono text-[10px] text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button onClick={() => applyCandidate(item, "calculator")} className="rounded-md bg-slate-800 px-2 py-1 text-[10px] text-slate-200">계산</button>
-                      <button onClick={() => applyCandidate(item, "montecarlo")} className="rounded-md bg-slate-800 px-2 py-1 text-[10px] text-slate-200">MC</button>
-                    </div>
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
-                    <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
-                      <div className="text-slate-500">현재가 / 진입가</div>
-                      <div className="font-mono text-slate-200">{priceText(item, "current", "-")} / <span className="text-sky-300">{priceText(item, "entry", "-")}</span></div>
-                    </div>
-                    <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
-                      <div className="text-slate-500">확률 / EV</div>
-                      <div className="font-mono"><span className="text-emerald-300">{probabilityText(item, "-")}</span>{ev && <span className="text-violet-300"> / {ev}%</span>}</div>
-                    </div>
-                  </div>
-                  {((item.strategyTagLabels || item.strategyTags || []).slice(0, 2).join(", ") || firstRisk(item) !== "리스크 신호 없음") && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {(item.strategyTagLabels || item.strategyTags || []).slice(0, 2).map((t: string) => (
-                        <span key={t} className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">{t}</span>
-                      ))}
-                      {firstRisk(item) !== "리스크 신호 없음" && (
-                        <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">{firstRisk(item)}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 데스크톱 테이블 뷰 */}
-          <div className="mt-5 hidden overflow-x-auto rounded-xl border border-slate-800 sm:block">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="bg-slate-950/60 text-xs text-slate-500">
-                <tr>
-                  <th className="px-3 py-2">종목</th>
-                  <th className="px-3 py-2">전략 태그</th>
-                  <th className="px-3 py-2">현재가</th>
-                  <th className="px-3 py-2">진입가</th>
-                  <th className="px-3 py-2">확률</th>
-                  <th className="px-3 py-2">EV</th>
-                  <th className="px-3 py-2">리스크</th>
-                  <th className="px-3 py-2">연결</th>
-                </tr>
-              </thead>
-              <tbody>
-                {scanItems.map((item) => (
-                  <tr key={`${item.market}-${item.symbol}`} className="border-t border-slate-800">
-                    <td className="px-3 py-2">
-                      <div className="font-semibold text-slate-100">{displayName(item)}</div>
-                      <div className="font-mono text-xs text-slate-500">{item.symbol}</div>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-sky-200">{(item.strategyTagLabels || item.strategyTags || []).slice(0, 2).join(", ") || item.candidateTypeLabel || "태그 없음"}</td>
-                    <td className="px-3 py-2 font-mono">{priceText(item, "current", "가격 없음")}</td>
-                    <td className="px-3 py-2 font-mono text-sky-300">{priceText(item, "entry", "진입가 없음")}</td>
-                    <td className="px-3 py-2 font-mono text-emerald-300">{probabilityText(item, "확률 없음")}</td>
-                    <td className="px-3 py-2 font-mono text-violet-300">{item.expectedValuePct != null ? `${Number(item.expectedValuePct).toFixed(2)}%` : item.expectedValue != null ? `${Number(item.expectedValue).toFixed(2)}%` : "EV 없음"}</td>
-                    <td className="px-3 py-2 text-xs text-amber-200">{firstRisk(item)}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1">
-                        <button onClick={() => applyCandidate(item, "calculator")} className="rounded-md bg-slate-800 px-2 py-1 text-[10px] text-slate-200 hover:bg-slate-700">계산</button>
-                        <button onClick={() => applyCandidate(item, "montecarlo")} className="rounded-md bg-slate-800 px-2 py-1 text-[10px] text-slate-200 hover:bg-slate-700">MC</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
 
       {tab === "calculator" && (
         <Card title="EV 기반 리스크 계산기">
@@ -505,75 +305,15 @@ export default function AdvancedPage() {
         </Card>
       )}
 
-      {tab === "correlation" && (
-        <Card title="지수 상관관계 매트릭스">
-          <div className="mb-4 flex flex-wrap gap-2">
-            {(["kr", "us"] as Market[]).map((m) => (
-              <button key={m} onClick={() => setMarket(m)} className={`rounded-xl px-3 py-1.5 text-xs ${market === m ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}>{marketLabel(m)}</button>
-            ))}
-          </div>
-          {corrLoading && <div className="py-8 text-center text-sm text-slate-500">상관관계 계산 중...</div>}
-          {!corrLoading && ["NO_DATA", "DATA_SHORT", "ERROR"].includes(String(corrData?.status || "")) && (
-            <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-400">
-              {corrData.reason || "benchmark_daily.csv 데이터 부족"} — 최소 20일 이상 데이터가 필요합니다.
-            </div>
-          )}
-          {!corrLoading && Array.isArray(corrData?.matrix) && corrData.matrix.length > 0 && (() => {
-            const assets: string[] = corrData.matrix.map((r: any) => r.asset);
-            return (
-              <div className="overflow-x-auto">
-                <table className="text-[11px]">
-                  <thead>
-                    <tr>
-                      <th className="px-2 py-1 text-left text-slate-500">지수</th>
-                      {assets.map((a) => <th key={a} className="px-2 py-1 text-center text-slate-500">{a}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {corrData.matrix.map((row: any) => (
-                      <tr key={row.asset} className="border-t border-slate-800">
-                        <td className="px-2 py-2 font-semibold text-slate-300">{row.asset}</td>
-                        {assets.map((a) => {
-                          const v = typeof row[a] === "number" ? row[a] : null;
-                          const isDiag = a === row.asset;
-                          const bg = isDiag ? "bg-slate-700" : v == null ? "" : v >= 0.7 ? "bg-emerald-900/50" : v >= 0.3 ? "bg-emerald-900/20" : v <= -0.7 ? "bg-red-900/50" : v <= -0.3 ? "bg-red-900/20" : "";
-                          return (
-                            <td key={a} className={`px-3 py-2 text-center font-mono ${bg} ${isDiag ? "text-slate-300" : v != null && v >= 0.3 ? "text-emerald-300" : v != null && v <= -0.3 ? "text-red-300" : "text-slate-400"}`}>
-                              {v != null ? v.toFixed(2) : "—"}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="mt-3 flex gap-3 text-[10px] text-slate-500">
-                  <span><span className="inline-block h-2 w-3 rounded bg-emerald-900/50 mr-1" />≥0.7 강한 양의 상관</span>
-                  <span><span className="inline-block h-2 w-3 rounded bg-red-900/50 mr-1" />≤-0.7 강한 음의 상관</span>
-                  <span>원본: {(corrData.sources || ["data/market/benchmark_daily.csv"]).join(", ")}</span>
-                </div>
-                {Array.isArray(corrData.items) && corrData.items.length > 0 && (
-                  <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {corrData.items.slice(0, 6).map((item: any) => (
-                      <div key={item.pair} className="rounded-lg bg-slate-950/50 px-3 py-2 text-xs text-slate-300">
-                        <span className="font-semibold text-slate-100">{item.pair}</span>
-                        <span className="ml-2 font-mono">{Number(item.correlation).toFixed(2)}</span>
-                        <span className="ml-2 text-slate-500">{item.interpretation}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-        </Card>
-      )}
-
       {tab === "backtest" && (
-        <Card title="6전략 백테스트 비교">
+        <Card title="전략 검증 (9전략)">
           <BacktestComparePanel />
         </Card>
       )}
+
+      {tab === "paper" && <PaperTradingPage />}
+
+      {tab === "journal" && <VirtualJournalPage />}
 
     </div>
   );
