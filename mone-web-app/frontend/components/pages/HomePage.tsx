@@ -2769,12 +2769,12 @@ export default function HomePage({
       </section>
 
       {/* ━━ 온보딩 패널 (보유종목 없을 때) ━━ */}
-      {false && !loading && holdings.length === 0 && (
+      {!loading && holdings.length === 0 && (
         <OnboardingPanel onNavigate={onNavigate} />
       )}
 
       {/* ━━ 보유종목 요약 ━━ */}
-      {false && holdings.length > 0 && (
+      {holdings.length > 0 && (
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
           <div className="mb-3 flex items-center gap-2">
             {riskCount > 0 && <AlertTriangle size={16} className="text-red-400" />}
