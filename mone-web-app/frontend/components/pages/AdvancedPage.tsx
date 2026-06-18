@@ -165,8 +165,8 @@ export default function AdvancedPage() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
-        <h1 className="text-xl font-bold text-white">전략도구</h1>
-        <p className="mt-1 text-xs text-slate-400">퀀트 뷰, 계산기, 전략 검증, 모의투자, AI 매매일지를 한 곳에서.</p>
+        <h1 className="text-xl font-bold text-white">트레이딩</h1>
+        <p className="mt-1 text-xs text-slate-400">모의투자, AI 매매일지, 계산기, 몬테카를로, 전략 검증을 한 곳에서.</p>
       </div>
 
       {/* 탭 드롭다운 */}
