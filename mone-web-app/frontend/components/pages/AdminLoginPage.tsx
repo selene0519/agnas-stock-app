@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { Lock, LogIn, ShieldCheck, UserRound } from "lucide-react";
+import { getUserId } from "@/lib/userId";
 
 interface AdminLoginPageProps {
   onSuccess: (token: string) => void;
@@ -46,7 +47,8 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
       onUserLogin(provider);
       return;
     }
-    window.location.href = `/mone-api/api/auth/oauth/${provider}/start`;
+    const anonId = encodeURIComponent(getUserId());
+    window.location.href = `/mone-api/api/auth/oauth/${provider}/start?anonId=${anonId}`;
   };
 
   return (

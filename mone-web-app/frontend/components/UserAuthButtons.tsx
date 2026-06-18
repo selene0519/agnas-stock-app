@@ -2,7 +2,7 @@
 
 import { LogOut, UserRound, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { clearAuthenticatedUser, getUserProfile, type MoneUserProfile } from "@/lib/userId";
+import { clearAuthenticatedUser, getUserId, getUserProfile, type MoneUserProfile } from "@/lib/userId";
 
 export default function UserAuthButtons() {
   const [profile, setProfile] = useState<MoneUserProfile | null>(null);
@@ -20,7 +20,8 @@ export default function UserAuthButtons() {
     } catch {
       // health check 실패해도 OAuth 시도는 계속 (에러는 OAuth 단에서 처리)
     }
-    window.location.href = `/mone-api/api/auth/oauth/${provider}/start`;
+    const anonId = encodeURIComponent(getUserId());
+    window.location.href = `/mone-api/api/auth/oauth/${provider}/start?anonId=${anonId}`;
   };
 
   const logout = () => {

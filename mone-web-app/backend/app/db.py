@@ -120,6 +120,14 @@ def _pg_init_schema():
                 updated_at     BIGINT NOT NULL,
                 PRIMARY KEY (user_id, broker)
             );
+            CREATE TABLE IF NOT EXISTS users (
+                user_id       TEXT PRIMARY KEY,
+                provider      TEXT NOT NULL,
+                email         TEXT DEFAULT '',
+                name          TEXT DEFAULT '',
+                created_at    BIGINT NOT NULL,
+                last_login_at BIGINT NOT NULL
+            );
             """)
             conn.commit()
     finally:
@@ -305,6 +313,14 @@ def _sqlite_get_conn() -> sqlite3.Connection:
             source TEXT DEFAULT 'local_bridge',
             updated_at INTEGER NOT NULL,
             PRIMARY KEY (user_id, broker)
+        );
+        CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            provider TEXT NOT NULL,
+            email TEXT DEFAULT '',
+            name TEXT DEFAULT '',
+            created_at INTEGER NOT NULL,
+            last_login_at INTEGER NOT NULL
         );
         """)
         cols = {row["name"] for row in _sqlite_conn.execute("PRAGMA table_info(user_holdings)").fetchall()}
@@ -570,6 +586,132 @@ def get_broker_connection(user_id: str, broker: str) -> dict | None:
     except Exception as e:
         print(f"[db] get_broker_connection error: {e}")
         return None
+
+
+def upsert_user(user_id: str, provider: str, email: str = "", name: str = "") -> None:
+    """OAuth 로그인 시 사용자 프로필을 DB에 저장/갱신한다."""
+    uid = sanitize_uid(user_id)
+    if not uid:
+        return
+    now = int(time.time())
+    try:
+        if _use_postgres():
+            conn = _pg_conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO users (user_id, provider, email, name, created_at, last_login_at)
+                        VALUES (%s,%s,%s,%s,%s,%s)
+                        ON CONFLICT (user_id) DO UPDATE SET
+                            email=EXCLUDED.email, name=EXCLUDED.name, last_login_at=EXCLUDED.last_login_at
+                    """, (uid, provider, email, name, now, now))
+                conn.commit()
+            finally:
+                _pg_release(conn)
+        else:
+            conn = _sqlite_get_conn()
+            conn.execute("""
+                INSERT INTO users (user_id, provider, email, name, created_at, last_login_at)
+                VALUES (?,?,?,?,?,?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    email=excluded.email, name=excluded.name, last_login_at=excluded.last_login_at
+            """, (uid, provider, email, name, now, now))
+            conn.commit()
+    except Exception as e:
+        print(f"[db] upsert_user error: {e}")
+
+
+def migrate_user_data(old_user_id: str, new_user_id: str) -> dict:
+    """
+    익명 user_id(localStorage UUID)로 쌓인 holdings/watchlist/broker_connections를
+    로그인 후 실제 user_id로 이전한다. new_user_id에 이미 있는 항목(market+symbol/broker)은
+    덮어쓰지 않고 old 쪽 데이터를 버린다 (기존 로그인 데이터 우선).
+    """
+    old = sanitize_uid(old_user_id)
+    new = sanitize_uid(new_user_id)
+    if not old or not new or old == new:
+        return {"migrated": False}
+    try:
+        if _use_postgres():
+            return _pg_migrate_user_data(old, new)
+        return _sqlite_migrate_user_data(old, new)
+    except Exception as e:
+        print(f"[db] migrate_user_data error: {e}")
+        return {"migrated": False, "error": str(e)}
+
+
+def _pg_migrate_user_data(old: str, new: str) -> dict:
+    conn = _pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE user_holdings SET user_id=%s
+                WHERE user_id=%s AND NOT EXISTS (
+                    SELECT 1 FROM user_holdings e WHERE e.user_id=%s
+                    AND e.market=user_holdings.market AND e.symbol=user_holdings.symbol
+                )
+            """, (new, old, new))
+            moved_holdings = cur.rowcount
+            cur.execute("DELETE FROM user_holdings WHERE user_id=%s", (old,))
+
+            cur.execute("""
+                UPDATE user_watchlist SET user_id=%s
+                WHERE user_id=%s AND NOT EXISTS (
+                    SELECT 1 FROM user_watchlist e WHERE e.user_id=%s
+                    AND e.market=user_watchlist.market AND e.symbol=user_watchlist.symbol
+                )
+            """, (new, old, new))
+            moved_watchlist = cur.rowcount
+            cur.execute("DELETE FROM user_watchlist WHERE user_id=%s", (old,))
+
+            cur.execute("""
+                UPDATE broker_connections SET user_id=%s
+                WHERE user_id=%s AND NOT EXISTS (
+                    SELECT 1 FROM broker_connections e WHERE e.user_id=%s
+                    AND e.broker=broker_connections.broker
+                )
+            """, (new, old, new))
+            moved_brokers = cur.rowcount
+            cur.execute("DELETE FROM broker_connections WHERE user_id=%s", (old,))
+        conn.commit()
+        return {"migrated": True, "holdings": moved_holdings, "watchlist": moved_watchlist, "brokers": moved_brokers}
+    finally:
+        _pg_release(conn)
+
+
+def _sqlite_migrate_user_data(old: str, new: str) -> dict:
+    conn = _sqlite_get_conn()
+    cur = conn.execute("""
+        UPDATE user_holdings SET user_id=?
+        WHERE user_id=? AND NOT EXISTS (
+            SELECT 1 FROM user_holdings e WHERE e.user_id=?
+            AND e.market=user_holdings.market AND e.symbol=user_holdings.symbol
+        )
+    """, (new, old, new))
+    moved_holdings = cur.rowcount
+    conn.execute("DELETE FROM user_holdings WHERE user_id=?", (old,))
+
+    cur = conn.execute("""
+        UPDATE user_watchlist SET user_id=?
+        WHERE user_id=? AND NOT EXISTS (
+            SELECT 1 FROM user_watchlist e WHERE e.user_id=?
+            AND e.market=user_watchlist.market AND e.symbol=user_watchlist.symbol
+        )
+    """, (new, old, new))
+    moved_watchlist = cur.rowcount
+    conn.execute("DELETE FROM user_watchlist WHERE user_id=?", (old,))
+
+    cur = conn.execute("""
+        UPDATE broker_connections SET user_id=?
+        WHERE user_id=? AND NOT EXISTS (
+            SELECT 1 FROM broker_connections e WHERE e.user_id=?
+            AND e.broker=broker_connections.broker
+        )
+    """, (new, old, new))
+    moved_brokers = cur.rowcount
+    conn.execute("DELETE FROM broker_connections WHERE user_id=?", (old,))
+    conn.commit()
+    return {"migrated": True, "holdings": moved_holdings, "watchlist": moved_watchlist, "brokers": moved_brokers}
 
 
 def backend_info() -> dict:

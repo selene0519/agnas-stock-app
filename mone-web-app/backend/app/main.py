@@ -431,23 +431,31 @@ def _public_oauth_callback(request: Request, provider: str) -> str:
     return f"{_public_frontend_base(request)}/api/auth/callback/{provider}"
 
 
-def _signed_auth_state(provider: str) -> str:
+def _signed_auth_state(provider: str, anon_id: str = "") -> str:
     payload = {"provider": provider, "exp": int(time.time() + 10 * 60)}
+    if anon_id:
+        payload["anonId"] = anon_id[:64]
     body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     signature = hmac.new(_admin_auth_secret() or b"mone-oauth", body.encode("ascii"), hashlib.sha256).digest()
     return f"{body}.{_b64url_encode(signature)}"
 
 
-def _verify_auth_state(state: str, provider: str) -> bool:
+def _decode_auth_state(state: str, provider: str) -> dict | None:
     try:
         body, signature = str(state or "").split(".", 1)
         expected_sig = hmac.new(_admin_auth_secret() or b"mone-oauth", body.encode("ascii"), hashlib.sha256).digest()
         if not hmac.compare_digest(_b64url_encode(expected_sig), signature):
-            return False
+            return None
         payload = json.loads(_b64url_decode(body).decode("utf-8"))
     except Exception:
-        return False
-    return payload.get("provider") == provider and int(payload.get("exp", 0)) > int(time.time())
+        return None
+    if payload.get("provider") != provider or int(payload.get("exp", 0)) <= int(time.time()):
+        return None
+    return payload
+
+
+def _verify_auth_state(state: str, provider: str) -> bool:
+    return _decode_auth_state(state, provider) is not None
 
 
 def _create_user_token(provider: str, subject: str, email: str = "", name: str = "") -> tuple[str, int, str]:
@@ -666,7 +674,7 @@ def api_admin_status(authorization: str | None = Header(None)) -> dict:
 
 
 @app.get("/api/auth/oauth/{provider}/start")
-def api_oauth_start(provider: str, request: Request):
+def api_oauth_start(provider: str, request: Request, anonId: str = Query("")):
     provider = provider.lower().strip()
     cfg = _oauth_config(provider)
     if provider not in {"google", "kakao"}:
@@ -681,7 +689,7 @@ def api_oauth_start(provider: str, request: Request):
         "redirect_uri": _public_oauth_callback(request, provider),
         "response_type": "code",
         "scope": cfg["scope"],
-        "state": _signed_auth_state(provider),
+        "state": _signed_auth_state(provider, _db.sanitize_uid(anonId)),
     }
     if provider == "google":
         params["access_type"] = "offline"
@@ -694,7 +702,8 @@ def api_oauth_start(provider: str, request: Request):
 def api_oauth_callback(provider: str, request: Request, code: str = Query(""), state: str = Query("")):
     provider = provider.lower().strip()
     frontend = _public_frontend_base(request)
-    if provider not in {"google", "kakao"} or not code or not _verify_auth_state(state, provider):
+    state_payload = _decode_auth_state(state, provider)
+    if provider not in {"google", "kakao"} or not code or not state_payload:
         return RedirectResponse(f"{frontend}/auth/callback?error=oauth_state")
     cfg = _oauth_config(provider)
     try:
@@ -715,6 +724,10 @@ def api_oauth_callback(provider: str, request: Request, code: str = Query(""), s
         if not user.get("sub"):
             raise RuntimeError("missing user subject")
         user_token, expires_at, user_id = _create_user_token(provider, user["sub"], user.get("email", ""), user.get("name", ""))
+        _db.upsert_user(user_id, provider, user.get("email", ""), user.get("name", ""))
+        anon_id = str(state_payload.get("anonId") or "")
+        if anon_id and anon_id != user_id:
+            _db.migrate_user_data(anon_id, user_id)
     except Exception as exc:
         detail = urllib.parse.quote(str(exc)[:160])
         return RedirectResponse(f"{frontend}/auth/callback?error=oauth_failed&detail={detail}")

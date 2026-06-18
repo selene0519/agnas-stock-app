@@ -216,7 +216,8 @@ export default function App() {
   }, []);
 
   const openUserLogin = useCallback((provider: "google" | "kakao") => {
-    window.location.href = `/mone-api/api/auth/oauth/${provider}/start`;
+    const anonId = encodeURIComponent(getUserId());
+    window.location.href = `/mone-api/api/auth/oauth/${provider}/start?anonId=${anonId}`;
   }, []);
 
   const renderPage = () => {

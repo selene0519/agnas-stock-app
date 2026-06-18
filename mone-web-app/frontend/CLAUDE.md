@@ -93,7 +93,11 @@ reports/virtual_prediction_ledger.csv      ← VTJ 가상 체결 원장
 - Google / Kakao OAuth: `/api/auth/oauth/{provider}/start|callback` 구현 완료
 - 관리자 로그인: `/api/auth/admin-login`
 - BottomNav 더보기: 로그인 버튼 (미로그인) / 유저 프로필 + 로그아웃 (로그인 시)
-- 미완: localStorage 기반 임시 저장 → DB 연동 (PostgreSQL 미전환)
+- DB 연동 완료 (2026-06-18): `db.py`에 `users` 테이블 추가, OAuth 콜백에서 `upsert_user()`로
+  프로필 영속화. 로그인 시 익명 UUID(localStorage)의 holdings/watchlist/broker_connections를
+  `migrate_user_data()`로 실제 user_id에 병합(기존 로그인 데이터 우선, old 쪽 폐기) — 익명 상태로
+  쌓은 데이터가 로그인 후 고아 데이터가 되는 문제 해결. state 파라미터에 `anonId` 서명 포함(HMAC),
+  프론트 `getUserId()`로 OAuth start 호출 시 전달.
 
 #### VTJ (Virtual Trade Journal)
 - 가상 체결 원장 (immutable snapshots, conservative fill model)
@@ -251,6 +255,11 @@ GITHUB_TOKEN
 
 ```
 - ANTHROPIC_API_KEY Render 등록 → Claude API 감성 분석 활성화
-- 백테스트 데이터 500건+ 후 보정 테이블 재생성 (run_ensemble_calibration 호출)
 - localStorage → PostgreSQL DB 연동 (Phase 5 마무리)
 ```
+
+### 완료 확인 (2026-06-18)
+- 보정 테이블(run_ensemble_calibration): mone-walkforward.yml이 매주 토요일 자동 실행,
+  18개 조합(KR/US × 3모드 × 3기간) 모두 470~1113건으로 갱신 완료, quant_scanner.py의
+  ensemble_score_v2에서 실시간 로드/적용 중. walk-forward 구조 + self_correction_v2의
+  point-in-time 가드로 미래 데이터 누출 불가능.
