@@ -861,8 +861,11 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     net = _round_pct((actual_sell - actual_buy) / actual_buy * 100) if actual_buy else None
     mfe, mae = _mfe_mae(holding.iloc[: int(exit_info["bars_held"])], entry)
     target_progress, stop_progress = _progress(entry, target, stop, mfe, mae)
+    exit_ts = pd.Timestamp(exit_info["exit_date"]).normalize() if exit_info.get("exit_date") else None
+    regime_at_exit = _compute_regime(ohlcv, exit_ts) if exit_ts is not None else ""
     outcome = _outcome(exit_info["exit_kind"], target_progress, stop_progress, net)
-    failure = _failure_reason(row, outcome, mfe, mae, net)
+    failure = _failure_reason(row, outcome, mfe, mae, net, regime_at_exit)
+    sec_tags = _secondary_tags(outcome, failure, _text(row.get("sector")), mfe, mae)
     review_text = _review_text(row, outcome, failure, net, mfe, mae)
     return {
         "journal_id": row.get("journal_id"),
@@ -883,9 +886,9 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
         "target_progress": target_progress,
         "stop_progress": stop_progress,
         "failure_reason": failure,
-        "secondary_tags": "",
+        "secondary_tags": sec_tags,
         "regime_at_entry": row.get("market_regime_at_signal", ""),
-        "regime_at_exit": "",
+        "regime_at_exit": regime_at_exit,
         "signal_confidence": _signal_confidence(row),
         "data_confidence": "LOW" if source_type != "actual_ohlcv" else row.get("data_confidence", ""),
         "review_text": review_text,
@@ -1031,9 +1034,14 @@ def _outcome(exit_kind: str, target_progress: float | None, stop_progress: float
     return "TIME_EXIT_MID"
 
 
-def _failure_reason(row: dict[str, Any], outcome: str, mfe: float | None, mae: float | None, net: float | None) -> str:
-    # v1 does not yet compute exit-regime drift or sector-relative returns, so
-    # REGIME_MISMATCH and SECTOR_WEAKNESS are intentionally inactive tags.
+def _failure_reason(
+    row: dict[str, Any],
+    outcome: str,
+    mfe: float | None,
+    mae: float | None,
+    net: float | None,
+    regime_at_exit: str = "",
+) -> str:
     if outcome == "TARGET_HIT" and (net or 0.0) > 0:
         return "NONE"
     data_conf = _upper(row.get("data_confidence"))
@@ -1049,6 +1057,9 @@ def _failure_reason(row: dict[str, Any], outcome: str, mfe: float | None, mae: f
     if outcome == "TIME_EXIT_NEAR_STOP":
         return "ENTRY_TIMING"
     if outcome == "STOP_HIT":
+        regime_entry = _upper(row.get("market_regime_at_signal"))
+        if regime_at_exit == "RISK_OFF" and regime_entry in {"RISK_ON", "NEUTRAL"}:
+            return "REGIME_MISMATCH"
         if mfe is not None and mfe > 1.5:
             return "STOP_TOO_TIGHT"
         if mae is not None and abs(mae) > 3.0:
@@ -1087,6 +1098,35 @@ def _round_pct(value: float | None) -> float | None:
     if value is None or not math.isfinite(value):
         return None
     return round(value, 4)
+
+
+def _compute_regime(ohlcv: pd.DataFrame, as_of_ts: pd.Timestamp) -> str:
+    sub = ohlcv[ohlcv["_date_ts"] <= as_of_ts].tail(60)
+    close = pd.to_numeric(sub["close"], errors="coerce").dropna()
+    if len(close) < 20:
+        return ""
+    ma20 = float(close.tail(20).mean())
+    ma60 = float(close.tail(60).mean()) if len(close) >= 60 else float(close.mean())
+    ret20 = float(close.iloc[-1] / close.iloc[-21] - 1) if len(close) >= 21 else 0.0
+    if ma20 > ma60 and ret20 > 0:
+        return "RISK_ON"
+    if ma20 < ma60 and ret20 < 0:
+        return "RISK_OFF"
+    return "NEUTRAL"
+
+
+def _secondary_tags(outcome: str, failure: str, sector: str, mfe: float | None, mae: float | None) -> str:
+    tags: list[str] = []
+    if (
+        outcome == "STOP_HIT"
+        and failure not in {"REGIME_MISMATCH", "VOLATILITY_SPIKE", "OVEREXTENDED_ENTRY"}
+        and sector
+        and mae is not None
+        and -4.0 <= mae <= -0.5
+        and (mfe is None or mfe < 1.0)
+    ):
+        tags.append("SECTOR_WEAKNESS")
+    return ",".join(tags)
 
 
 def failure_patterns(
@@ -1481,7 +1521,10 @@ def _due_markets(now: datetime) -> list[str]:
 
 def _auto_trade_date(market: str, now: datetime) -> str:
     if market == "us":
-        return (now.date() - timedelta(days=1)).isoformat()
+        d = now.date() - timedelta(days=1)
+        while d.weekday() >= 5:  # Saturday=5, Sunday=6 → walk back to Friday
+            d -= timedelta(days=1)
+        return d.isoformat()
     return now.date().isoformat()
 
 
