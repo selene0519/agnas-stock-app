@@ -27,7 +27,7 @@ const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
 ];
 
 const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "advanced", label: "트레이딩", icon: <Cpu size={16} /> },
+  { id: "advanced", label: "MONE 트레이딩", icon: <Cpu size={16} /> },
 ];
 
 const adminItem: { id: PageId; label: string; icon: React.ReactNode } = {

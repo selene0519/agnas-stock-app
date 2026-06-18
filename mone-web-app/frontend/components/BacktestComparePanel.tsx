@@ -92,26 +92,14 @@ function StrategyCell({ result, loading }: { result: StrategyResult | null; load
     );
   }
   return (
-    <div className="space-y-1.5 py-2 px-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-500">승률</span>
+    <div className="py-2 px-1 space-y-1">
+      <div className="flex items-center justify-between">
         <WinRateBadge rate={result.win_rate} />
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-500">평균수익</span>
         <ReturnLabel pct={result.total_return_pct} />
       </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-500">손익비</span>
-        <span className="font-mono text-[11px] text-slate-300">
-          {result.profit_loss_ratio > 0 ? result.profit_loss_ratio.toFixed(1) : "—"}
-        </span>
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-500">체결</span>
-        <span className="font-mono text-[11px] text-slate-400">
-          {result.executed_trades}/{result.total_trades}
-        </span>
+      <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500">
+        <span className="font-mono text-slate-400">{result.executed_trades}<span className="text-slate-600">/{result.total_trades}</span></span>
+        <span className="font-mono">{result.profit_loss_ratio > 0 ? `RR ${result.profit_loss_ratio.toFixed(1)}` : "—"}</span>
       </div>
     </div>
   );
@@ -227,7 +215,7 @@ export default function BacktestComparePanel() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BarChart2 size={14} className="text-cyan-400" />
-          <span className="text-sm font-bold text-slate-200">6전략 백테스트 비교</span>
+          <span className="text-sm font-bold text-slate-200">전략 검증 (9전략)</span>
           <span className="text-[10px] text-slate-500">(검증 대시보드 기준)</span>
         </div>
         <div className="flex items-center gap-2">

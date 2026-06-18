@@ -165,7 +165,7 @@ export default function AdvancedPage() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
-        <h1 className="text-xl font-bold text-white">트레이딩</h1>
+        <h1 className="text-xl font-bold text-white">MONE 트레이딩</h1>
         <p className="mt-1 text-xs text-slate-400">모의투자, AI 매매일지, 계산기, 몬테카를로, 전략 검증을 한 곳에서.</p>
       </div>
 

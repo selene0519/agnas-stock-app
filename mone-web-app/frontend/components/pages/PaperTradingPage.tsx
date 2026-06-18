@@ -253,7 +253,7 @@ export default function PaperTradingPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">페이퍼 트레이딩</h1>
+          <h1 className="text-xl font-bold text-white">모의투자</h1>
           <p className="mt-1 text-xs text-slate-400">가상 자금으로 실전처럼 매매 연습 — 현재가 기준 자동 체결</p>
         </div>
         <div className="flex items-center gap-2">
