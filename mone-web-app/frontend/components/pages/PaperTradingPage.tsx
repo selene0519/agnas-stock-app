@@ -265,7 +265,7 @@ export default function PaperTradingPage({
   return (
     <div className="space-y-5 animate-fade-in">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">모의투자</h1>
           <p className="mt-1 text-xs text-slate-400">가상 자금으로 실전처럼 매매 연습 — 현재가 기준 자동 체결</p>

@@ -212,7 +212,7 @@ export default function BacktestComparePanel() {
   return (
     <div className="space-y-4">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <BarChart2 size={14} className="text-cyan-400" />
           <span className="text-sm font-bold text-slate-200">전략 검증 (9전략)</span>
@@ -255,8 +255,42 @@ export default function BacktestComparePanel() {
       {/* 베스트 전략 */}
       <BestStrategyBadge results={results} />
 
-      {/* 비교 그리드 */}
-      <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 overflow-hidden">
+      {/* 비교 카드 (모바일) */}
+      <div className="space-y-3 sm:hidden">
+        {MODES.map((mode) => (
+          <div key={mode.id} className="rounded-2xl border border-slate-700/60 bg-slate-900/50 overflow-hidden">
+            <div className="border-b border-slate-700/40 px-3 py-2">
+              <span className={`text-xs font-bold ${mode.color}`}>{mode.label}</span>
+            </div>
+            <div className="divide-y divide-slate-700/40">
+              {HORIZONS.map((horizon) => {
+                const key = `${mode.id}:${horizon.id}`;
+                const result = results[key] || null;
+                const cellLoading = loading && !result;
+                return (
+                  <div key={key} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <span className="w-10 shrink-0 text-[11px] font-semibold text-slate-400">{horizon.label}</span>
+                    {cellLoading ? (
+                      <span className="text-[10px] text-slate-600">…</span>
+                    ) : !result || result.status !== "OK" || result.total_trades === 0 ? (
+                      <span className="text-[10px] text-slate-600">데이터 없음</span>
+                    ) : (
+                      <div className="flex flex-1 items-center justify-end gap-3">
+                        <span className="font-mono text-[10px] text-slate-500">{result.executed_trades}<span className="text-slate-600">/{result.total_trades}</span></span>
+                        <ReturnLabel pct={result.total_return_pct} />
+                        <WinRateBadge rate={result.win_rate} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 비교 그리드 (데스크톱) */}
+      <div className="hidden rounded-2xl border border-slate-700/60 bg-slate-900/50 overflow-hidden sm:block">
         {/* 컬럼 헤더 (horizons) */}
         <div className="grid grid-cols-4 border-b border-slate-700/40">
           <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">
