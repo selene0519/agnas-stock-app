@@ -381,6 +381,24 @@ export const mone = {
     apiGet<ApiList>(`/api/reports/${type}`, p),
   virtualSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/virtual/summary", p),
+  virtualTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; status?: string; limit?: number }) =>
+    apiGet<ApiList>("/api/journal/virtual-trades", p),
+  virtualTradeCapture: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; limit?: number; includeEngine?: boolean }) =>
+    apiPost<ApiList>("/api/journal/virtual-trades/capture", body || {}),
+  virtualTradeEvaluate: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; limit?: number; force?: boolean }) =>
+    apiPost<ApiList>("/api/journal/virtual-trades/evaluate", body || {}),
+  journalFailurePatterns: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string }) =>
+    apiGet<ApiList>("/api/journal/failure-patterns", p),
+  journalCalibrationSuggestions: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string }) =>
+    apiGet<ApiList>("/api/journal/calibration-suggestions", p),
+  journalCalibrationApprove: (suggestionId: string, body?: { decision?: "APPROVED" | "REJECTED"; reviewedBy?: string; note?: string; beforeParams?: any; afterParams?: any }) =>
+    apiPost<ApiList>(`/api/journal/calibration-suggestions/${encodeURIComponent(suggestionId)}/approve`, body || {}),
+  journalHistoricalReplay: (body: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate: string; limit?: number; evaluateAfter?: boolean }) =>
+    apiPost<ApiList>("/api/journal/historical-replay", body),
+  journalAutoCaptureStatus: () =>
+    apiGet<ApiList>("/api/journal/auto-capture/status"),
+  journalAutoCaptureRun: (body?: { market?: Market; sourceType?: string; limit?: number; includeEngine?: boolean; evaluateAfter?: boolean; force?: boolean }) =>
+    apiPost<ApiList>("/api/journal/auto-capture/run", body || {}),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
