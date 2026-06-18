@@ -110,13 +110,11 @@ reports/virtual_prediction_ledger.csv      ← VTJ 가상 체결 원장
 ### 모바일 BottomNav
 ```
 [홈] [탐색] [보유] [분석]  [더보기 ▼]
-                         ┌─────────────────────────────┐
-                         │ 전략도구  스캐너·계산기·백테스트 │
-                         │ 페이퍼 트레이딩  모의 포지션    │
-                         │ 매매일지  가상 체결·복기·보정   │
-                         │ (관리자 - 어드민 로그인 시 표시) │
-                         │ [로그인 / 유저 프로필]         │
-                         └─────────────────────────────┘
+                         ┌──────────────────────────────────────┐
+                         │ 트레이딩  모의투자·AI매매일지·계산기 등  │
+                         │ (관리자 - 어드민 로그인 시 표시)         │
+                         │ [로그인 / 유저 프로필]                  │
+                         └──────────────────────────────────────┘
 ```
 
 ### 페이지별 주요 기능
@@ -126,12 +124,8 @@ reports/virtual_prediction_ledger.csv      ← VTJ 가상 체결 원장
 | stocks | StocksPage.tsx | 퀀트 스캐너, 프리셋, 그룹 필터, 감성 뱃지 |
 | holdings | HoldingsPage.tsx | 보유 리스크, 현금입력, 포트폴리오·알림(아코디언) |
 | chart | ChartPage.tsx | 종목 차트, ATR 진입계획 |
-| advanced | AdvancedPage.tsx | 스캐너·계산기·몬테카를로·상관분석·백테스트 (5탭, 가로 스크롤) |
-| paper | PaperTradingPage.tsx | 모의 포지션, 거래내역, 주문 실행 |
-| journal | VirtualJournalPage.tsx | VTJ 체결내역, 복기 버튼, 분석 4패널 |
-| admin | AdminPage.tsx | 운영·예측분석·뉴스공시·전략도구*·자가보정 (5탭) |
-
-*관리자 전략도구 탭은 main AdvancedPage와 중복 — 추후 제거 검토 대상
+| advanced | AdvancedPage.tsx | 모의투자·AI매매일지·계산기·몬테카를로·전략검증 (5탭, 드롭다운) |
+| admin | AdminPage.tsx | 운영·예측분석·뉴스공시·자가보정 (4탭) |
 
 ---
 
@@ -258,6 +252,5 @@ GITHUB_TOKEN
 ```
 - ANTHROPIC_API_KEY Render 등록 → Claude API 감성 분석 활성화
 - 백테스트 데이터 500건+ 후 보정 테이블 재생성 (run_ensemble_calibration 호출)
-- 관리자 AdminPage의 전략도구 탭 제거 검토 (main AdvancedPage 중복)
 - localStorage → PostgreSQL DB 연동 (Phase 5 마무리)
 ```

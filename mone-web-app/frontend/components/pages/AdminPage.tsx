@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { mone } from "@/lib/api";
 import { adminAuthHeaders } from "@/lib/adminAuth";
-import AdvancedPage from "./AdvancedPage";
 import NewsPage from "./NewsPage";
 import PredictionPage from "./PredictionPage";
 
@@ -60,13 +59,12 @@ function ActionBtn({ label, onClick, loading, variant = "default" }: {
 }
 
 const USER_FILES = ["holdings_kr.csv", "holdings_us.csv", "watchlist_kr.csv", "watchlist_us.csv"];
-type AdminTab = "overview" | "prediction" | "news" | "advanced" | "correction";
+type AdminTab = "overview" | "prediction" | "news" | "correction";
 
 const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "overview", label: "운영" },
   { id: "prediction", label: "예측분석" },
   { id: "news", label: "뉴스·공시" },
-  { id: "advanced", label: "트레이딩" },
   { id: "correction", label: "자가보정" },
 ];
 
@@ -493,7 +491,6 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
 
       {tab === "prediction" && <PredictionPage />}
       {tab === "news" && <NewsPage />}
-      {tab === "advanced" && <AdvancedPage />}
       {tab === "correction" && (
         <CorrectionTab
           authToken={authToken}
