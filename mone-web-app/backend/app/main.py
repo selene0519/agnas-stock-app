@@ -6764,6 +6764,45 @@ def _clean_user_id(raw: str) -> str:
     return "".join(ch for ch in str(raw or "") if ch.isalnum() or ch in "_-")[:64]
 
 
+def _exclude_etf_from_home_holdings(payload: dict, market: str) -> dict:
+    """홈 화면 보유종목 위젯에서 ETF는 제외한다 (개별 종목만 표시, 사용자 요청)."""
+    try:
+        items = payload.get("items") or []
+        kept = [
+            it for it in items
+            if _mone_asset_type(it.get("symbol", ""), it.get("name", ""), it.get("market", market)) == "stock"
+        ]
+        if len(kept) == len(items):
+            return payload
+        def _f(v: object) -> float:
+            try:
+                return float(v or 0)
+            except Exception:
+                return 0.0
+        total_value = sum(_f(it.get("valuation")) for it in kept)
+        total_cost = sum(_f(it.get("cost")) for it in kept)
+        total_pnl = total_value - total_cost if total_value and total_cost else 0.0
+        risk_count = sum(1 for it in kept if it.get("riskStatus") in {"위험", "주의"})
+        fmt = (lambda v: f"${v:,.2f}") if market == "us" else (lambda v: f"{round(v):,}원")
+        new_payload = {**payload, "items": kept, "count": len(kept), "totalCount": len(kept), "uniqueCount": len(kept)}
+        new_summary = dict(payload.get("summary") or {})
+        new_summary.update({
+            "holdingCount": len(kept),
+            "count": len(kept),
+            "riskCount": risk_count,
+            "totalValue": total_value,
+            "totalCost": total_cost,
+            "totalPnl": total_pnl,
+            "totalPnlPct": (total_pnl / total_cost * 100) if total_cost > 0 else 0,
+            "totalValueText": fmt(total_value) if total_value > 0 else "-",
+            "totalPnlText": fmt(total_pnl) if total_pnl else "0",
+        })
+        new_payload["summary"] = new_summary
+        return new_payload
+    except Exception:
+        return payload
+
+
 app.router.routes = [
     r for r in app.router.routes
     if getattr(r, "path", "") != "/api/home/summary"
@@ -6964,6 +7003,7 @@ def api_home_summary(
                 if personal_rows:
                     from app.engine.mone_v802_holdings_clean import holdings_clean_payload_for_user
                     holdings_payload = holdings_clean_payload_for_user(uid, market=mk, limit=50)
+                    holdings_payload = _exclude_etf_from_home_holdings(holdings_payload, mk)
         except Exception:
             holdings_payload = _empty_home_holdings(mk)
 
