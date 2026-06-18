@@ -864,9 +864,9 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     exit_ts = pd.Timestamp(exit_info["exit_date"]).normalize() if exit_info.get("exit_date") else None
     regime_at_exit = _compute_regime(ohlcv, exit_ts) if exit_ts is not None else ""
     outcome = _outcome(exit_info["exit_kind"], target_progress, stop_progress, net)
-    failure = _failure_reason(row, outcome, mfe, mae, net, regime_at_exit)
+    failure = _failure_reason(row, outcome, mfe, mae, net, regime_at_exit, fill_price=raw_fill)
     sec_tags = _secondary_tags(outcome, failure, _text(row.get("sector")), mfe, mae)
-    review_text = _review_text(row, outcome, failure, net, mfe, mae)
+    review_text = _review_text(row, outcome, failure, net, mfe, mae, regime_at_exit)
     return {
         "journal_id": row.get("journal_id"),
         "status": "EVALUATED" if outcome not in {"CANCELLED_NOT_FILLED", "PENDING"} else "CANCELLED",
@@ -1041,6 +1041,7 @@ def _failure_reason(
     mae: float | None,
     net: float | None,
     regime_at_exit: str = "",
+    fill_price: float | None = None,
 ) -> str:
     if outcome == "TARGET_HIT" and (net or 0.0) > 0:
         return "NONE"
@@ -1057,9 +1058,26 @@ def _failure_reason(
     if outcome == "TIME_EXIT_NEAR_STOP":
         return "ENTRY_TIMING"
     if outcome == "STOP_HIT":
+        entry = _safe_float(row.get("entry_price"))
+        # Gap at fill: next-open deviated > 2% from expected entry
+        if (
+            _upper(row.get("entry_type")) == "NEXT_OPEN"
+            and fill_price is not None
+            and entry is not None
+            and entry > 0
+            and abs(fill_price / entry - 1) > 0.02
+        ):
+            return "MARKET_GAP"
+        # Regime deterioration
         regime_entry = _upper(row.get("market_regime_at_signal"))
         if regime_at_exit == "RISK_OFF" and regime_entry in {"RISK_ON", "NEUTRAL"}:
             return "REGIME_MISMATCH"
+        # Stop too narrow relative to normal daily moves → effective overleveraging
+        stop = _safe_float(row.get("stop_price"))
+        if entry is not None and stop is not None and entry > 0:
+            stop_dist_pct = (entry - stop) / entry * 100
+            if stop_dist_pct < 2.5 and (mfe is None or mfe < 0.5):
+                return "POSITION_SIZE"
         if mfe is not None and mfe > 1.5:
             return "STOP_TOO_TIGHT"
         if mae is not None and abs(mae) > 3.0:
@@ -1080,18 +1098,69 @@ def _signal_confidence(row: dict[str, Any]) -> str:
     return "LOW"
 
 
-def _review_text(row: dict[str, Any], outcome: str, failure: str, net: float | None, mfe: float | None, mae: float | None) -> str:
-    symbol = _text(row.get("symbol"))
-    pnl = "pending" if net is None else f"{net:+.2f}%"
-    mfe_text = "n/a" if mfe is None else f"{mfe:+.2f}%"
-    mae_text = "n/a" if mae is None else f"{mae:+.2f}%"
-    if outcome == "TARGET_HIT":
-        return f"{symbol} reached the target. Net PnL {pnl}; MFE {mfe_text}, MAE {mae_text}. Failure tag: {failure}."
-    if outcome == "STOP_HIT":
-        return f"{symbol} hit the stop before the target. Net PnL {pnl}; MFE {mfe_text}, MAE {mae_text}. Failure tag: {failure}."
-    if outcome.startswith("TIME_EXIT"):
-        return f"{symbol} ended by time exit ({outcome}). Net PnL {pnl}; MFE {mfe_text}, MAE {mae_text}. Review tag: {failure}."
-    return f"{symbol} evaluation status is {outcome}. Review tag: {failure}."
+def _review_text(
+    row: dict[str, Any],
+    outcome: str,
+    failure: str,
+    net: float | None,
+    mfe: float | None,
+    mae: float | None,
+    regime_at_exit: str = "",
+) -> str:
+    name = _text(row.get("name")) or _text(row.get("symbol"))
+    pnl = f"{net:+.2f}%" if net is not None else "미확정"
+    mfe_text = f"{mfe:+.2f}%" if mfe is not None else "n/a"
+    mae_text = f"{mae:+.2f}%" if mae is not None else "n/a"
+    regime_entry = _upper(row.get("market_regime_at_signal")) or ""
+    signal_conf = _signal_confidence(row)
+
+    _regime_kr = {"RISK_ON": "상승 레짐", "RISK_OFF": "하락 레짐", "NEUTRAL": "중립 레짐"}
+    _conf_kr = {"HIGH": "높은 신호 신뢰도", "MED": "중간 신호 신뢰도", "LOW": "낮은 신호 신뢰도"}
+
+    ctx_signal = _conf_kr.get(signal_conf, "신호")
+    if regime_entry:
+        ctx_signal += f" ({_regime_kr.get(regime_entry, regime_entry)} 환경)"
+
+    _outcome_kr = {
+        "TARGET_HIT": "목표가에 도달하며 성공 종료됐습니다",
+        "STOP_HIT": "목표가 도달 전 손절가를 터치했습니다",
+        "TIME_EXIT_NEAR_TARGET": "목표가에 근접했으나 평가 기간 만료로 종료됐습니다",
+        "TIME_EXIT_NEAR_STOP": "손절 구간에 근접한 채 평가 기간이 만료됐습니다",
+        "TIME_EXIT_FLAT": "방향성 없이 평가 기간이 만료됐습니다",
+        "TIME_EXIT_MID": "중간 구간에서 평가 기간이 만료됐습니다",
+        "CANCELLED_NOT_FILLED": "진입가에 도달하지 못해 미체결 취소됐습니다",
+    }
+    ctx_outcome = _outcome_kr.get(outcome, f"{outcome}로 기록됐습니다")
+    ctx_move = f"손익 {pnl}"
+    if mfe is not None and mae is not None:
+        ctx_move += f" (MFE {mfe_text} / MAE {mae_text})"
+
+    _failure_kr: dict[str, str] = {
+        "NONE": "",
+        "REGIME_MISMATCH": (
+            f"진입 시 {_regime_kr.get(regime_entry, '양호')} 레짐이"
+            f" 종료 시 {_regime_kr.get(regime_at_exit, '하락')} 레짐으로 전환됐습니다."
+            " 종목 신호보다 시장 환경 리스크를 과소반영한 사례입니다"
+        ),
+        "ENTRY_TIMING": "진입 타이밍 또는 진입가 설정이 실제 가격 흐름과 맞지 않았습니다",
+        "FALSE_SIGNAL": "추천 당시 신호 강도에 비해 이후 가격 흐름이 뒷받침되지 않았습니다",
+        "OVEREXTENDED_ENTRY": "진입 시점이 고점 부근이거나 이미 과매수 구간이었습니다",
+        "POSITION_SIZE": "손절 폭이 평상시 변동폭 대비 좁아 포지션 크기 대비 리스크가 과했습니다",
+        "VOLATILITY_SPIKE": "보유 기간 중 비정상적 변동성 확대로 손절 구간이 빠르게 침범됐습니다",
+        "DATA_QUALITY": "데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다",
+        "SECTOR_WEAKNESS": "종목 개별 요인보다 섹터 전반의 약세가 결과에 영향을 줬을 수 있습니다",
+        "MARKET_GAP": "추천 후 갭 발생으로 예상 진입가와 실제 체결가 사이에 괴리가 생겼습니다",
+        "THESIS_VALID_BUT_SLOW": "방향성은 맞았지만 평가 기간 내 목표가 도달 속도가 예상보다 느렸습니다",
+        "STOP_TOO_TIGHT": "의미 있는 상승 이후 손절가가 좁아 되돌림에 청산됐습니다",
+        "TARGET_TOO_FAR": "목표가 설정이 평가 기간 내 달성 가능한 수준보다 높았습니다",
+    }
+    ctx_failure = _failure_kr.get(failure or "NONE", f"실패 원인 {failure}")
+
+    parts = [f"추천 당시 {ctx_signal}로 진입 검토됐습니다.", f"{ctx_outcome}, {ctx_move}."]
+    if ctx_failure:
+        parts.append(f"복기: {ctx_failure}.")
+    parts.append(f"[{failure or 'NONE'}] 유형으로 기록합니다.")
+    return " ".join(parts)
 
 
 def _round_pct(value: float | None) -> float | None:
@@ -1311,6 +1380,157 @@ def review_calibration_suggestion(
         "approval": row,
         "message": "Calibration suggestion reviewed. No strategy parameters were changed automatically.",
         "applied": False,
+    }
+
+
+def upgrade_to_manual_reviewed(
+    journal_id: str,
+    reviewed_by: str = "local_admin",
+    reviewer_note: str = "",
+) -> dict[str, Any]:
+    _ensure()
+    jid = _text(journal_id)
+    if not jid:
+        return {"status": "ERROR", "error": "MISSING_JOURNAL_ID"}
+    rows = _read_rows(JOURNAL_CSV, JOURNAL_COLS)
+    updated: list[dict[str, Any]] = []
+    found: dict[str, Any] | None = None
+    for row in rows:
+        if _text(row.get("journal_id")) == jid:
+            if _upper(row.get("source_type")) != "FORWARD_PAPER_TRADE":
+                return {
+                    "status": "ERROR",
+                    "error": "ONLY_FORWARD_PAPER_TRADE_CAN_BE_UPGRADED",
+                    "current_source_type": row.get("source_type"),
+                }
+            row = dict(row)
+            row["source_type"] = "MANUAL_REVIEWED"
+            found = row
+        updated.append(row)
+    if found is None:
+        return {"status": "ERROR", "error": "JOURNAL_ID_NOT_FOUND"}
+    _write_rows(JOURNAL_CSV, updated, JOURNAL_COLS)
+    return {
+        "status": "OK",
+        "journal_id": jid,
+        "source_type": "MANUAL_REVIEWED",
+        "reviewed_by": reviewed_by,
+        "reviewer_note": reviewer_note,
+        "message": "Source type upgraded to MANUAL_REVIEWED. Calibration weight 1.2 applies on next suggestion run.",
+    }
+
+
+def analytics(
+    market: str = "all",
+    mode: str = "all",
+    horizon: str = "all",
+    source_type: str = "all",
+) -> dict[str, Any]:
+    _ensure()
+    rows = _filter_rows(
+        _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)),
+        market, mode, horizon, source_type, "all",
+    )
+    evaluated = [r for r in rows if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}]
+
+    # 1. Regime transition matrix
+    regime_matrix: dict[str, dict[str, Any]] = {}
+    for r in evaluated:
+        re_entry = _upper(r.get("regime_at_entry") or r.get("market_regime_at_signal") or "UNKNOWN")
+        re_exit = _upper(r.get("regime_at_exit") or "UNKNOWN")
+        key = f"{re_entry}→{re_exit}"
+        if key not in regime_matrix:
+            regime_matrix[key] = {"count": 0, "wins": 0, "pnls": []}
+        regime_matrix[key]["count"] += 1
+        if _text(r.get("outcome")) == "TARGET_HIT":
+            regime_matrix[key]["wins"] += 1
+        pnl = _safe_float(r.get("net_pnl_pct"))
+        if pnl is not None:
+            regime_matrix[key]["pnls"].append(pnl)
+    regime_transition = [
+        {
+            "transition": key,
+            "count": data["count"],
+            "winRate": round(data["wins"] / data["count"], 4) if data["count"] else None,
+            "avgPnlPct": round(sum(data["pnls"]) / len(data["pnls"]), 4) if data["pnls"] else None,
+        }
+        for key, data in sorted(regime_matrix.items(), key=lambda x: -x[1]["count"])
+    ]
+
+    # 2. Failure × signal confidence breakdown
+    conf_failure: dict[str, dict[str, int]] = {}
+    for r in evaluated:
+        conf = _upper(r.get("signal_confidence") or "UNKNOWN")
+        fail = _text(r.get("failure_reason") or "UNKNOWN")
+        if conf not in conf_failure:
+            conf_failure[conf] = {}
+        conf_failure[conf][fail] = conf_failure[conf].get(fail, 0) + 1
+    confidence_breakdown = [
+        {"signalConfidence": conf, "failureCounts": counts, "total": sum(counts.values())}
+        for conf, counts in sorted(conf_failure.items())
+    ]
+
+    # 3. Entry type performance comparison
+    entry_perf: dict[str, dict[str, Any]] = {}
+    for r in evaluated:
+        et = _upper(r.get("entry_type") or "UNKNOWN")
+        if et not in entry_perf:
+            entry_perf[et] = {"count": 0, "wins": 0, "pnls": [], "cancelled": 0}
+        entry_perf[et]["count"] += 1
+        outcome_val = _text(r.get("outcome"))
+        if outcome_val == "TARGET_HIT":
+            entry_perf[et]["wins"] += 1
+        if outcome_val == "CANCELLED_NOT_FILLED":
+            entry_perf[et]["cancelled"] += 1
+        pnl = _safe_float(r.get("net_pnl_pct"))
+        if pnl is not None:
+            entry_perf[et]["pnls"].append(pnl)
+    entry_type_comparison = [
+        {
+            "entryType": et,
+            "count": data["count"],
+            "winRate": round(data["wins"] / data["count"], 4) if data["count"] else None,
+            "cancelRate": round(data["cancelled"] / data["count"], 4) if data["count"] else None,
+            "avgPnlPct": round(sum(data["pnls"]) / len(data["pnls"]), 4) if data["pnls"] else None,
+        }
+        for et, data in sorted(entry_perf.items())
+    ]
+
+    # 4. Source type comparison
+    source_perf: dict[str, dict[str, Any]] = {}
+    for r in evaluated:
+        st = _upper(r.get("source_type") or "UNKNOWN")
+        if st not in source_perf:
+            source_perf[st] = {"count": 0, "wins": 0, "pnls": [], "failure_counts": Counter()}
+        source_perf[st]["count"] += 1
+        if _text(r.get("outcome")) == "TARGET_HIT":
+            source_perf[st]["wins"] += 1
+        pnl = _safe_float(r.get("net_pnl_pct"))
+        if pnl is not None:
+            source_perf[st]["pnls"].append(pnl)
+        source_perf[st]["failure_counts"][_text(r.get("failure_reason") or "UNKNOWN")] += 1
+    source_comparison = [
+        {
+            "sourceType": st,
+            "count": data["count"],
+            "winRate": round(data["wins"] / data["count"], 4) if data["count"] else None,
+            "avgPnlPct": round(sum(data["pnls"]) / len(data["pnls"]), 4) if data["pnls"] else None,
+            "topFailures": [
+                {"reason": r, "share": round(c / data["count"], 4)}
+                for r, c in data["failure_counts"].most_common(5)
+                if r not in {"NONE", ""}
+            ],
+        }
+        for st, data in sorted(source_perf.items())
+    ]
+
+    return {
+        "status": "OK",
+        "evaluatedCount": len(evaluated),
+        "regimeTransition": regime_transition,
+        "confidenceBreakdown": confidence_breakdown,
+        "entryTypeComparison": entry_type_comparison,
+        "sourceComparison": source_comparison,
     }
 
 
