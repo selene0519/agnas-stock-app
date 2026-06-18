@@ -447,6 +447,13 @@ def holdings_clean_payload_for_user(user_id: str, market: str = "all", limit: in
                 "symbol": it["symbol"], "market": it["market"], "name": it["name"],
                 "quantity": it["quantity"], "avgPrice": it["avgPrice"],
                 "stopPrice": it["stopPrice"], "targetPrice": it["targetPrice"],
+                # 브로커 동기화 시 저장된 실제 현재가/평가손익을 전달해야
+                # holdings_clean_payload()가 ETF 등 스캔 유니버스 밖 종목까지
+                # 0으로 떨어지지 않고 브로커 보고값을 그대로 사용한다.
+                "currentPrice": it.get("currentPrice"),
+                "evalAmount": it.get("evalAmount"),
+                "profitLoss": it.get("profitLoss"),
+                "profitLossRate": it.get("profitLossRate"),
             } for it in sqlite_items]
             return _holdings_payload_from_rows(raw_rows, market=market, limit=limit)
     except Exception:
