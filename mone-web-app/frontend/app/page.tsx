@@ -17,6 +17,7 @@ import NewsPage from "../components/pages/NewsPage";
 import PredictionPage from "../components/pages/PredictionPage";
 import AdvancedPage from "../components/pages/AdvancedPage";
 import PaperTradingPage from "../components/pages/PaperTradingPage";
+import VirtualJournalPage from "../components/pages/VirtualJournalPage";
 import AdminPage from "../components/pages/AdminPage";
 import AdminLoginPage from "../components/pages/AdminLoginPage";
 import BrokerPage from "../components/pages/BrokerPage";
@@ -237,6 +238,8 @@ export default function App() {
         return <AdvancedPage />;
       case "paper":
         return <PaperTradingPage />;
+      case "journal":
+        return <VirtualJournalPage />;
       case "broker":
         return (
           <BrokerPage

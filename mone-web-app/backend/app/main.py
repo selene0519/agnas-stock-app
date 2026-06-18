@@ -7413,6 +7413,137 @@ def api_journal_delete(entry_id: str) -> dict:
         return {"status": "ERROR", "error": str(e)}
 
 
+@app.post("/api/journal/virtual-trades/capture")
+def api_journal_virtual_trades_capture(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.capture(
+        market=str(payload.get("market") or "kr"),
+        mode=str(payload.get("mode") or "balanced"),
+        horizon=str(payload.get("horizon") or "swing"),
+        source_type=str(payload.get("source_type") or payload.get("sourceType") or "FORWARD_PAPER_TRADE"),
+        limit=int(payload.get("limit") or 5),
+        include_engine=bool(payload.get("includeEngine", payload.get("include_engine", True))),
+    )
+
+
+@app.get("/api/journal/virtual-trades")
+def api_journal_virtual_trades(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    status: str = Query("all"),
+    limit: int = Query(100, ge=1, le=1000),
+) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.list_trades(
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        source_type=source_type,
+        status=status,
+        limit=limit,
+    )
+
+
+@app.post("/api/journal/virtual-trades/evaluate")
+def api_journal_virtual_trades_evaluate(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.evaluate(
+        market=str(payload.get("market") or "all"),
+        mode=str(payload.get("mode") or "all"),
+        horizon=str(payload.get("horizon") or "all"),
+        source_type=str(payload.get("source_type") or payload.get("sourceType") or "all"),
+        limit=int(payload.get("limit") or 200),
+        force=bool(payload.get("force") or False),
+    )
+
+
+@app.get("/api/journal/failure-patterns")
+def api_journal_failure_patterns(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.failure_patterns(market=market, mode=mode, horizon=horizon, source_type=source_type)
+
+
+@app.get("/api/journal/calibration-suggestions")
+def api_journal_calibration_suggestions(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.calibration_suggestions(market=market, mode=mode, horizon=horizon, source_type=source_type)
+
+
+@app.post("/api/journal/calibration-suggestions/{suggestion_id}/approve")
+def api_journal_calibration_suggestion_approve(suggestion_id: str, payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.review_calibration_suggestion(
+        suggestion_id=suggestion_id,
+        decision=str(payload.get("decision") or "APPROVED"),
+        reviewed_by=str(payload.get("reviewedBy") or payload.get("reviewed_by") or "local_admin"),
+        reviewer_note=str(payload.get("note") or payload.get("reviewerNote") or ""),
+        before_params=payload.get("beforeParams") or payload.get("before_params") or {},
+        after_params=payload.get("afterParams") or payload.get("after_params") or {},
+    )
+
+
+@app.post("/api/journal/historical-replay")
+def api_journal_historical_replay(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.historical_replay(
+        market=str(payload.get("market") or "kr"),
+        mode=str(payload.get("mode") or "balanced"),
+        horizon=str(payload.get("horizon") or "swing"),
+        as_of_date=str(payload.get("asOfDate") or payload.get("as_of_date") or ""),
+        limit=int(payload.get("limit") or 5),
+        evaluate_after=bool(payload.get("evaluateAfter", payload.get("evaluate_after", True))),
+    )
+
+
+@app.get("/api/journal/auto-capture/status")
+def api_journal_auto_capture_status() -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.auto_capture_status()
+
+
+@app.post("/api/journal/auto-capture/run")
+def api_journal_auto_capture_run(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.run_auto_capture(
+        market=str(payload.get("market") or "all"),
+        source_type=str(payload.get("source_type") or payload.get("sourceType") or "FORWARD_PAPER_TRADE"),
+        limit=int(payload.get("limit") or 5),
+        include_engine=bool(payload.get("includeEngine") or payload.get("include_engine") or False),
+        evaluate_after=bool(payload.get("evaluateAfter", payload.get("evaluate_after", True))),
+        force=bool(payload.get("force") or False),
+        source="api_manual",
+    )
+
+
+try:
+    from app.services import virtual_trade_journal as _vtj_auto
+
+    _vtj_auto.start_auto_capture_scheduler()
+except Exception as _vtj_auto_capture_error:
+    print("[MONE] virtual trade journal auto-capture failed:", _vtj_auto_capture_error)
+
+
 # ── 20. health/github ─────────────────────────────────────────────────
 
 @app.get("/api/health/github")
