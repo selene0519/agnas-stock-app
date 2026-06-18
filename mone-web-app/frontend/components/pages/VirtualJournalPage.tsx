@@ -220,15 +220,15 @@ export default function VirtualJournalPage() {
               추천 시점의 판단을 고정하고, 이후 체결과 결과를 보수적으로 평가합니다. 보정은 제안까지만 만들고 자동 반영하지 않습니다.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={load} disabled={loading || !!busy} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-slate-800 px-3 text-sm font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] transition-transform active:scale-[0.96] disabled:opacity-50">
-              <RefreshCw size={15} /> 새로고침
+          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:gap-2">
+            <button onClick={load} disabled={loading || !!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-slate-800 px-1 text-[11px] font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
+              <RefreshCw size={13} className="shrink-0" /> 새로고침
             </button>
-            <button onClick={() => runAction("evaluate")} disabled={!!busy} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-cyan-500/12 px-3 text-sm font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50">
-              <Activity size={15} /> 평가 실행
+            <button onClick={() => runAction("evaluate")} disabled={!!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-cyan-500/12 px-1 text-[11px] font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
+              <Activity size={13} className="shrink-0" /> 평가 실행
             </button>
-            <button onClick={() => runAction("auto")} disabled={!!busy} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-500/12 px-3 text-sm font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50">
-              <Play size={15} /> 자동 캡처 실행
+            <button onClick={() => runAction("auto")} disabled={!!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-emerald-500/12 px-1 text-[11px] font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
+              <Play size={13} className="shrink-0" /> 자동 캡처
             </button>
           </div>
         </div>
@@ -269,7 +269,70 @@ export default function VirtualJournalPage() {
             <h2 className="text-sm font-semibold text-slate-200">최근 일지</h2>
             <span className="font-mono text-xs tabular-nums text-slate-500">{loading ? "loading" : `${trades.length} rows`}</span>
           </div>
-          <div className="overflow-x-auto">
+          {/* 모바일 카드 뷰 */}
+          <div className="space-y-2.5 sm:hidden">
+            {trades.slice(0, 80).map((item) => (
+              <div key={item.journal_id} className="rounded-xl bg-slate-950/50 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-100">{item.name || item.symbol}</div>
+                    <div className="font-mono text-[11px] text-slate-500">{item.symbol}</div>
+                  </div>
+                  <span className={`inline-flex shrink-0 whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-semibold ${toneForOutcome(String(item.outcome || "PENDING"))}`}>
+                    {outcomeLabel(String(item.outcome || "PENDING"))}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+                  <span className="font-mono uppercase text-slate-400">
+                    {String(item.market || "").toUpperCase()} / {MODE_SHORT[item.mode] ?? item.mode} / {HORIZON_SHORT[item.horizon] ?? item.horizon}
+                  </span>
+                  <span>{item.as_of_date}</span>
+                  <span className={`font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>
+                    {item.source_type === "MANUAL_REVIEWED" ? "검토완료" : item.source_type === "FORWARD_PAPER_TRADE" ? "자동" : item.source_type}
+                  </span>
+                </div>
+                <div className="mt-2.5 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
+                    <div className="text-[10px] text-slate-500">PnL</div>
+                    <div className={`font-mono text-xs font-semibold tabular-nums ${Number(item.net_pnl_pct) >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtNum(item.net_pnl_pct, "%")}</div>
+                  </div>
+                  <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
+                    <div className="text-[10px] text-slate-500">MFE</div>
+                    <div className="font-mono text-xs font-semibold tabular-nums text-slate-300">{fmtNum(item.mfe_pct, "%")}</div>
+                  </div>
+                  <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
+                    <div className="text-[10px] text-slate-500">MAE</div>
+                    <div className="font-mono text-xs font-semibold tabular-nums text-slate-300">{fmtNum(item.mae_pct, "%")}</div>
+                  </div>
+                </div>
+                {item.failure_reason && (
+                  <div className="mt-2 font-mono text-[11px] text-amber-300">
+                    {item.failure_reason}
+                    {item.secondary_tags && <span className="ml-1 text-slate-500">{item.secondary_tags}</span>}
+                  </div>
+                )}
+                {item.review_text && (
+                  <div className="mt-2 text-[12px] leading-5 text-slate-400">{item.review_text}</div>
+                )}
+                {String(item.source_type) === "FORWARD_PAPER_TRADE" && String(item.status) === "EVALUATED" && (
+                  <button
+                    onClick={() => reviewTrade(item.journal_id)}
+                    disabled={busy === `review:${item.journal_id}`}
+                    title="검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.2 적용)"
+                    className="mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-300 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.20)] transition-transform active:scale-[0.95] disabled:opacity-40"
+                  >
+                    <ClipboardCheck size={11} /> 검토
+                  </button>
+                )}
+              </div>
+            ))}
+            {!trades.length && (
+              <div className="py-10 text-center text-sm text-slate-500">아직 가상 매매일지가 없습니다.</div>
+            )}
+          </div>
+
+          {/* 데스크톱 테이블 뷰 */}
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[900px] text-left text-xs">
               <thead className="text-slate-500">
                 <tr className="border-b border-slate-800">
