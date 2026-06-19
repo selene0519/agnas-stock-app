@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -12,6 +13,32 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.services import virtual_trade_journal as vtj  # noqa: E402
+
+
+def _valid_recommendation(symbol: str = "TEST") -> dict:
+    return {
+        "market": "kr",
+        "mode": "balanced",
+        "horizon": "swing",
+        "symbol": symbol,
+        "name": symbol,
+        "decisionBucket": vtj.TODAY_ENTRY,
+        "entry": 100,
+        "stop": 95,
+        "target": 112,
+        "currentPrice": 100,
+        "finalRankScore": 80,
+        "expectedValue": 3,
+        "riskRewardRatio": 2.4,
+        "probability": 65,
+        "riskScore": 70,
+        "eventRiskScore": 30,
+        "dataStatus": "NORMAL",
+        "tradeBlockStatus": "",
+        "priceSource": "pytest",
+        "marketRegime": "RISK_ON",
+        "generatedAt": "2026-06-18T08:20:00",
+    }
 
 
 @pytest.fixture()
@@ -103,6 +130,63 @@ def test_historical_replay_generation_receives_only_cutoff_bars(
     assert out["added"] == 1
     assert out["syntheticCutoffReplay"] is True
     assert out["replayMethod"] == vtj.HISTORICAL_REPLAY_METHOD
+
+
+def test_premarket_and_after_close_sessions_are_separate_journal_rows(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_source_recommendation_items", lambda *args, **kwargs: [_valid_recommendation()])
+
+    pre = vtj.capture("kr", "balanced", "swing", journal_session="PREMARKET_PLAN", as_of_date="2026-06-18")
+    close = vtj.capture("kr", "balanced", "swing", journal_session="AFTER_CLOSE_TRADE", as_of_date="2026-06-18")
+    listed = vtj.list_trades("kr", "balanced", "swing", "FORWARD_PAPER_TRADE", "all", limit=10)
+
+    assert pre["added"] == 1
+    assert close["added"] == 1
+    assert listed["count"] == 2
+    assert {item["journal_session"] for item in listed["items"]} == {"PREMARKET_PLAN", "AFTER_CLOSE_TRADE"}
+
+
+def test_premarket_plan_rows_are_never_trade_evaluated(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_source_recommendation_items", lambda *args, **kwargs: [_valid_recommendation()])
+    vtj.capture("kr", "balanced", "swing", journal_session="PREMARKET_PLAN", as_of_date="2026-06-18")
+
+    evaluated = vtj.evaluate(journal_session="PREMARKET_PLAN", force=True)
+
+    assert evaluated["evaluated"] == 0
+    assert vtj._read_rows(vtj.EVALUATION_CSV, vtj.EVALUATION_COLS) == []
+
+
+def test_us_juneteenth_auto_capture_is_marked_market_closed(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_kst_now", lambda: datetime(2026, 6, 20, 8, 0, tzinfo=vtj.ZoneInfo("Asia/Seoul")))
+    monkeypatch.setattr(vtj, "_source_recommendation_items", lambda *args, **kwargs: pytest.fail("holiday capture must not load recommendations"))
+
+    out = vtj.run_auto_capture("us", journal_session="AFTER_CLOSE_TRADE", force=True)
+
+    assert out["runs"][0]["tradeDate"] == "2026-06-19"
+    assert out["runs"][0]["status"] == "SKIPPED_MARKET_CLOSED"
+    assert out["runs"][0]["runKey"] in out["completedKeys"]
+
+
+def test_us_premarket_auto_capture_uses_same_day_us_trade_date(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_kst_now", lambda: datetime(2026, 6, 19, 21, 30, tzinfo=vtj.ZoneInfo("Asia/Seoul")))
+    monkeypatch.setattr(vtj, "_source_recommendation_items", lambda *args, **kwargs: pytest.fail("holiday capture must not load recommendations"))
+
+    out = vtj.run_auto_capture("us", journal_session="PREMARKET_PLAN", force=True)
+
+    assert out["runs"][0]["tradeDate"] == "2026-06-19"
+    assert out["runs"][0]["journalSession"] == "PREMARKET_PLAN"
+    assert out["runs"][0]["status"] == "SKIPPED_MARKET_CLOSED"
 
 
 def test_calibration_review_records_decision_but_never_auto_applies(isolated_vtj: Path) -> None:

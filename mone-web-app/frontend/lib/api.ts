@@ -381,15 +381,15 @@ export const mone = {
     apiGet<ApiList>(`/api/reports/${type}`, p),
   virtualSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/virtual/summary", p),
-  virtualTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; status?: string; limit?: number }) =>
+  virtualTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; status?: string; limit?: number }) =>
     apiGet<ApiList>("/api/journal/virtual-trades", p),
-  virtualTradeCapture: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; limit?: number; includeEngine?: boolean }) =>
+  virtualTradeCapture: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; limit?: number; includeEngine?: boolean }) =>
     apiPost<ApiList>("/api/journal/virtual-trades/capture", body || {}),
-  virtualTradeEvaluate: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; limit?: number; force?: boolean }) =>
+  virtualTradeEvaluate: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; limit?: number; force?: boolean }) =>
     apiPost<ApiList>("/api/journal/virtual-trades/evaluate", body || {}),
-  journalFailurePatterns: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string }) =>
+  journalFailurePatterns: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/failure-patterns", p),
-  journalCalibrationSuggestions: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string }) =>
+  journalCalibrationSuggestions: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/calibration-suggestions", p),
   journalCalibrationApprove: (suggestionId: string, body?: { decision?: "APPROVED" | "REJECTED"; reviewedBy?: string; note?: string; beforeParams?: any; afterParams?: any }) =>
     apiPost<ApiList>(`/api/journal/calibration-suggestions/${encodeURIComponent(suggestionId)}/approve`, body || {}),
@@ -397,11 +397,11 @@ export const mone = {
     apiPost<ApiList>("/api/journal/historical-replay", body),
   journalAutoCaptureStatus: () =>
     apiGet<ApiList>("/api/journal/auto-capture/status"),
-  journalAutoCaptureRun: (body?: { market?: Market; sourceType?: string; limit?: number; includeEngine?: boolean; evaluateAfter?: boolean; force?: boolean }) =>
+  journalAutoCaptureRun: (body?: { market?: Market; sourceType?: string; journalSession?: string; limit?: number; includeEngine?: boolean; evaluateAfter?: boolean; force?: boolean }) =>
     apiPost<ApiList>("/api/journal/auto-capture/run", body || {}),
   journalTradeReview: (journalId: string, body?: { reviewedBy?: string; reviewerNote?: string }) =>
     apiPost<ApiList>(`/api/journal/virtual-trades/${encodeURIComponent(journalId)}/review`, body || {}),
-  journalAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string }) =>
+  journalAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/analytics", p),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/backtest/summary", p),

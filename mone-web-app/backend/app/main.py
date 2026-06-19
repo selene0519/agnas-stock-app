@@ -7422,6 +7422,7 @@ def api_journal_virtual_trades_capture(payload: dict = Body(default_factory=dict
         mode=str(payload.get("mode") or "balanced"),
         horizon=str(payload.get("horizon") or "swing"),
         source_type=str(payload.get("source_type") or payload.get("sourceType") or "FORWARD_PAPER_TRADE"),
+        journal_session=str(payload.get("journal_session") or payload.get("journalSession") or "AFTER_CLOSE_TRADE"),
         limit=int(payload.get("limit") or 5),
         include_engine=bool(payload.get("includeEngine", payload.get("include_engine", True))),
     )
@@ -7433,6 +7434,7 @@ def api_journal_virtual_trades(
     mode: str = Query("all"),
     horizon: str = Query("all"),
     source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
     status: str = Query("all"),
     limit: int = Query(100, ge=1, le=1000),
 ) -> dict:
@@ -7443,6 +7445,7 @@ def api_journal_virtual_trades(
         mode=mode,
         horizon=horizon,
         source_type=source_type,
+        journal_session=journal_session,
         status=status,
         limit=limit,
     )
@@ -7457,6 +7460,7 @@ def api_journal_virtual_trades_evaluate(payload: dict = Body(default_factory=dic
         mode=str(payload.get("mode") or "all"),
         horizon=str(payload.get("horizon") or "all"),
         source_type=str(payload.get("source_type") or payload.get("sourceType") or "all"),
+        journal_session=str(payload.get("journal_session") or payload.get("journalSession") or "all"),
         limit=int(payload.get("limit") or 200),
         force=bool(payload.get("force") or False),
     )
@@ -7468,10 +7472,11 @@ def api_journal_failure_patterns(
     mode: str = Query("all"),
     horizon: str = Query("all"),
     source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
 ) -> dict:
     from app.services import virtual_trade_journal as vtj
 
-    return vtj.failure_patterns(market=market, mode=mode, horizon=horizon, source_type=source_type)
+    return vtj.failure_patterns(market=market, mode=mode, horizon=horizon, source_type=source_type, journal_session=journal_session)
 
 
 @app.get("/api/journal/calibration-suggestions")
@@ -7480,10 +7485,11 @@ def api_journal_calibration_suggestions(
     mode: str = Query("all"),
     horizon: str = Query("all"),
     source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
 ) -> dict:
     from app.services import virtual_trade_journal as vtj
 
-    return vtj.calibration_suggestions(market=market, mode=mode, horizon=horizon, source_type=source_type)
+    return vtj.calibration_suggestions(market=market, mode=mode, horizon=horizon, source_type=source_type, journal_session=journal_session)
 
 
 @app.post("/api/journal/calibration-suggestions/{suggestion_id}/approve")
@@ -7528,6 +7534,7 @@ def api_journal_auto_capture_run(payload: dict = Body(default_factory=dict)) -> 
     return vtj.run_auto_capture(
         market=str(payload.get("market") or "all"),
         source_type=str(payload.get("source_type") or payload.get("sourceType") or "FORWARD_PAPER_TRADE"),
+        journal_session=str(payload.get("journal_session") or payload.get("journalSession") or "AFTER_CLOSE_TRADE"),
         limit=int(payload.get("limit") or 5),
         include_engine=bool(payload.get("includeEngine") or payload.get("include_engine") or False),
         evaluate_after=bool(payload.get("evaluateAfter", payload.get("evaluate_after", True))),
@@ -7552,11 +7559,12 @@ def api_journal_analytics(
     market: str = Query("all"),
     mode: str = Query("all"),
     horizon: str = Query("all"),
-    source_type: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
 ) -> dict:
     from app.services import virtual_trade_journal as vtj
 
-    return vtj.analytics(market=market, mode=mode, horizon=horizon, source_type=source_type)
+    return vtj.analytics(market=market, mode=mode, horizon=horizon, source_type=source_type, journal_session=journal_session)
 
 
 try:

@@ -36,8 +36,28 @@ SOURCE_TYPES = {
     "HISTORICAL_REPLAY",
     "BACKTEST_EXPERIMENT",
 }
+JOURNAL_SESSIONS = {
+    "PREMARKET_PLAN",
+    "INTRADAY_CHECK",
+    "AFTER_CLOSE_TRADE",
+    "FOLLOWUP_EVALUATION",
+}
+PLAN_ONLY_SESSIONS = {"PREMARKET_PLAN", "INTRADAY_CHECK"}
+DEFAULT_JOURNAL_SESSION = "AFTER_CLOSE_TRADE"
 INACTIVE_V1_FAILURE_TAGS = {"REGIME_MISMATCH", "SECTOR_WEAKNESS"}
 HISTORICAL_REPLAY_METHOD = "synthetic_cutoff_ohlcv_v1"
+US_MARKET_HOLIDAYS_2026 = {
+    "2026-01-01",
+    "2026-01-19",
+    "2026-02-16",
+    "2026-04-03",
+    "2026-05-25",
+    "2026-06-19",
+    "2026-07-03",
+    "2026-09-07",
+    "2026-11-26",
+    "2026-12-25",
+}
 
 TODAY_ENTRY = "\uc624\ub298 \uc9c4\uc785"
 CONDITIONAL_ENTRY = "\uc870\uac74\ubd80 \uc9c4\uc785"
@@ -65,6 +85,8 @@ _SCHEDULER_STARTED = False
 JOURNAL_COLS = [
     "journal_id",
     "source_type",
+    "journal_session",
+    "session_note",
     "as_of_date",
     "generated_at",
     "captured_at",
@@ -133,6 +155,7 @@ CALIBRATION_APPROVAL_COLS = [
     "mode",
     "horizon",
     "source_type",
+    "journal_session",
     "reason",
     "suggestion_status",
     "sample_count",
@@ -219,6 +242,35 @@ def _upper(value: Any) -> str:
     return _text(value).upper()
 
 
+def _journal_session(value: Any, default: str = DEFAULT_JOURNAL_SESSION) -> str:
+    session = _upper(value)
+    if session in JOURNAL_SESSIONS:
+        return session
+    return default
+
+
+def _session_filter(value: Any) -> str:
+    session = _upper(value)
+    if session in JOURNAL_SESSIONS:
+        return session
+    return "ALL"
+
+
+def _read_journal_rows() -> list[dict[str, Any]]:
+    rows = _read_rows(JOURNAL_CSV, JOURNAL_COLS)
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        work = dict(row)
+        work["journal_session"] = _journal_session(work.get("journal_session"))
+        work.setdefault("session_note", "")
+        normalized.append(work)
+    return normalized
+
+
+def _is_trade_evaluation_session(row: dict[str, Any]) -> bool:
+    return _journal_session(row.get("journal_session")) not in PLAN_ONLY_SESSIONS
+
+
 def _json(value: Any) -> str:
     try:
         return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -240,6 +292,7 @@ def _journal_id(row: dict[str, Any]) -> str:
         _text(row.get(key))
         for key in (
             "source_type",
+            "journal_session",
             "as_of_date",
             "generated_at",
             "market",
@@ -335,7 +388,12 @@ def _reject_reason(item: dict[str, Any]) -> str:
     return ""
 
 
-def _snapshot_from_item(item: dict[str, Any], source_type: str, as_of_date: str) -> dict[str, Any]:
+def _snapshot_from_item(
+    item: dict[str, Any],
+    source_type: str,
+    as_of_date: str,
+    journal_session: str = DEFAULT_JOURNAL_SESSION,
+) -> dict[str, Any]:
     nums = _candidate_numbers(item)
     decision = _decision_bucket(item)
     generated_at = _text(item.get("generatedAt") or item.get("recoGeneratedAt") or item.get("recommendationDate"))
@@ -344,6 +402,8 @@ def _snapshot_from_item(item: dict[str, Any], source_type: str, as_of_date: str)
     data_status = _upper(item.get("dataStatus")) or "UNKNOWN"
     row = {
         "source_type": source_type,
+        "journal_session": _journal_session(journal_session),
+        "session_note": _text(item.get("sessionNote") or item.get("journalSessionNote")),
         "as_of_date": as_of_date,
         "generated_at": generated_at,
         "captured_at": _now_iso(),
@@ -384,16 +444,18 @@ def _relative(path: Path) -> str:
 
 
 def _append_new_snapshots(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
-    existing = _read_rows(JOURNAL_CSV, JOURNAL_COLS)
+    existing = _read_journal_rows()
     seen = {str(row.get("journal_id")) for row in existing}
     natural_seen = {
-        "|".join(_text(row.get(k)) for k in ("source_type", "as_of_date", "market", "mode", "horizon", "symbol"))
+        "|".join(_text(row.get(k)) for k in ("source_type", "journal_session", "as_of_date", "market", "mode", "horizon", "symbol"))
         for row in existing
     }
     added: list[dict[str, Any]] = []
     duplicates = 0
     for row in rows:
-        natural = "|".join(_text(row.get(k)) for k in ("source_type", "as_of_date", "market", "mode", "horizon", "symbol"))
+        row["journal_session"] = _journal_session(row.get("journal_session"))
+        row.setdefault("session_note", "")
+        natural = "|".join(_text(row.get(k)) for k in ("source_type", "journal_session", "as_of_date", "market", "mode", "horizon", "symbol"))
         if row["journal_id"] in seen or natural in natural_seen:
             duplicates += 1
             continue
@@ -410,6 +472,7 @@ def capture(
     mode: str = "balanced",
     horizon: str = "swing",
     source_type: str = "FORWARD_PAPER_TRADE",
+    journal_session: str = DEFAULT_JOURNAL_SESSION,
     limit: int = 5,
     as_of_date: str | None = None,
     include_engine: bool = True,
@@ -419,6 +482,7 @@ def capture(
     mode = mode.lower().strip()
     horizon = horizon.lower().strip()
     source_type = source_type.upper().strip()
+    journal_session = _journal_session(journal_session)
     if market not in MARKETS or mode not in MODES or horizon not in HORIZONS:
         return {"status": "ERROR", "error": "INVALID_SCOPE", "items": []}
     if source_type not in SOURCE_TYPES:
@@ -439,7 +503,7 @@ def capture(
     accepted_items.sort(key=_rank_key)
     selected = _unique_by_symbol(accepted_items)[:safe_limit]
     snap_date = (as_of_date or _infer_as_of_date(selected) or _today())[:10]
-    new_rows = [_snapshot_from_item(item, source_type, snap_date) for item in selected]
+    new_rows = [_snapshot_from_item(item, source_type, snap_date, journal_session) for item in selected]
     added, duplicates = _append_new_snapshots(new_rows)
     return {
         "status": "OK",
@@ -448,6 +512,7 @@ def capture(
         "mode": mode,
         "horizon": horizon,
         "sourceType": source_type,
+        "journalSession": journal_session,
         "asOfDate": snap_date,
         "includeEngine": include_engine,
         "selected": len(new_rows),
@@ -484,9 +549,9 @@ def historical_replay(
     source_items, rejected = _historical_replay_items(market, mode, horizon, snap_date)
     source_items.sort(key=_rank_key)
     selected = _unique_by_symbol(source_items)[:safe_limit]
-    new_rows = [_snapshot_from_item(item, "HISTORICAL_REPLAY", snap_date) for item in selected]
+    new_rows = [_snapshot_from_item(item, "HISTORICAL_REPLAY", snap_date, DEFAULT_JOURNAL_SESSION) for item in selected]
     added, duplicates = _append_new_snapshots(new_rows)
-    evaluation = evaluate(market, mode, horizon, "HISTORICAL_REPLAY", limit=500) if evaluate_after and added else {"status": "SKIPPED"}
+    evaluation = evaluate(market, mode, horizon, "HISTORICAL_REPLAY", DEFAULT_JOURNAL_SESSION, limit=500) if evaluate_after and added else {"status": "SKIPPED"}
     return {
         "status": "OK",
         "source": _relative(JOURNAL_CSV),
@@ -494,6 +559,7 @@ def historical_replay(
         "mode": mode,
         "horizon": horizon,
         "sourceType": "HISTORICAL_REPLAY",
+        "journalSession": DEFAULT_JOURNAL_SESSION,
         "asOfDate": snap_date,
         "futureDataPolicy": "generation_uses_ohlcv_date_lte_as_of_date_only",
         "replayMethod": HISTORICAL_REPLAY_METHOD,
@@ -685,12 +751,13 @@ def list_trades(
     mode: str = "all",
     horizon: str = "all",
     source_type: str = "all",
+    journal_session: str = "all",
     status: str = "all",
     limit: int = 100,
 ) -> dict[str, Any]:
     _ensure()
-    rows = _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS))
-    rows = _filter_rows(rows, market, mode, horizon, source_type, status)
+    rows = _merge_evaluations(_read_journal_rows())
+    rows = _filter_rows(rows, market, mode, horizon, source_type, journal_session, status)
     rows.sort(key=lambda r: _text(r.get("captured_at") or r.get("generated_at")), reverse=True)
     safe_limit = max(1, min(int(limit or 100), 1000))
     return {
@@ -707,12 +774,14 @@ def _filter_rows(
     mode: str = "all",
     horizon: str = "all",
     source_type: str = "all",
+    journal_session: str = "all",
     status: str = "all",
 ) -> list[dict[str, Any]]:
     market = market.lower().strip()
     mode = mode.lower().strip()
     horizon = horizon.lower().strip()
     source_type = source_type.upper().strip()
+    journal_session = _session_filter(journal_session)
     status = status.upper().strip()
     out = rows
     if market in MARKETS:
@@ -723,6 +792,8 @@ def _filter_rows(
         out = [row for row in out if _text(row.get("horizon")).lower() == horizon]
     if source_type in SOURCE_TYPES:
         out = [row for row in out if _upper(row.get("source_type")) == source_type]
+    if journal_session in JOURNAL_SESSIONS:
+        out = [row for row in out if _journal_session(row.get("journal_session")) == journal_session]
     if status != "ALL":
         out = [row for row in out if _upper(row.get("status") or "OPEN") == status]
     return out
@@ -758,13 +829,15 @@ def evaluate(
     mode: str = "all",
     horizon: str = "all",
     source_type: str = "all",
+    journal_session: str = "all",
     limit: int = 200,
     force: bool = False,
 ) -> dict[str, Any]:
     _ensure()
-    journal_rows = _read_rows(JOURNAL_CSV, JOURNAL_COLS)
+    journal_rows = _read_journal_rows()
     merged = _merge_evaluations(journal_rows)
-    scope = _filter_rows(merged, market, mode, horizon, source_type, "all")
+    scope = _filter_rows(merged, market, mode, horizon, source_type, journal_session, "all")
+    scope = [row for row in scope if _is_trade_evaluation_session(row)]
     if not force:
         scope = [row for row in scope if _upper(row.get("status") or "OPEN") not in {"EVALUATED", "CANCELLED", "DATA_INVALID"}]
     safe_limit = max(1, min(int(limit or 200), 1000))
@@ -1203,20 +1276,23 @@ def failure_patterns(
     mode: str = "all",
     horizon: str = "all",
     source_type: str = "all",
+    journal_session: str = "all",
 ) -> dict[str, Any]:
     _ensure()
-    rows = _filter_rows(_merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)), market, mode, horizon, source_type, "all")
+    rows = _filter_rows(_merge_evaluations(_read_journal_rows()), market, mode, horizon, source_type, journal_session, "all")
+    if _session_filter(journal_session) == "ALL":
+        rows = [row for row in rows if _is_trade_evaluation_session(row)]
     evaluated = [row for row in rows if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}]
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in evaluated:
         key = "|".join(
             _text(row.get(k))
-            for k in ("market", "mode", "horizon", "source_type")
+            for k in ("market", "mode", "horizon", "source_type", "journal_session")
         )
         groups[key].append(row)
     items: list[dict[str, Any]] = []
     for key, sub in sorted(groups.items()):
-        market_v, mode_v, horizon_v, source_v = key.split("|")
+        market_v, mode_v, horizon_v, source_v, session_v = key.split("|")
         counts = Counter(_text(row.get("failure_reason") or "UNKNOWN") for row in sub)
         outcome_counts = Counter(_text(row.get("outcome") or "UNKNOWN") for row in sub)
         returns = [_safe_float(row.get("net_pnl_pct")) for row in sub]
@@ -1227,6 +1303,7 @@ def failure_patterns(
             "mode": mode_v,
             "horizon": horizon_v,
             "sourceType": source_v,
+            "journalSession": session_v,
             "sampleCount": total,
             "avgNetPnlPct": round(sum(returns) / len(returns), 4) if returns else None,
             "failureCounts": dict(counts),
@@ -1250,8 +1327,9 @@ def calibration_suggestions(
     mode: str = "all",
     horizon: str = "all",
     source_type: str = "all",
+    journal_session: str = "all",
 ) -> dict[str, Any]:
-    patterns = failure_patterns(market, mode, horizon, source_type)
+    patterns = failure_patterns(market, mode, horizon, source_type, journal_session)
     suggestions: list[dict[str, Any]] = []
     for item in patterns.get("items", []):
         total = int(item.get("sampleCount") or 0)
@@ -1276,6 +1354,7 @@ def _suggestion_base(item: dict[str, Any]) -> dict[str, Any]:
         "mode": item.get("mode"),
         "horizon": item.get("horizon"),
         "sourceType": item.get("sourceType"),
+        "journalSession": item.get("journalSession"),
         "sampleCount": item.get("sampleCount"),
     }
 
@@ -1283,7 +1362,7 @@ def _suggestion_base(item: dict[str, Any]) -> dict[str, Any]:
 def _source_summary_id(item: dict[str, Any]) -> str:
     raw = "|".join(
         _text(item.get(key))
-        for key in ("market", "mode", "horizon", "sourceType", "sampleCount")
+        for key in ("market", "mode", "horizon", "sourceType", "journalSession", "sampleCount")
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
@@ -1296,6 +1375,7 @@ def _suggestion_id(item: dict[str, Any]) -> str:
             "mode",
             "horizon",
             "sourceType",
+            "journalSession",
             "status",
             "reason",
             "sampleCount",
@@ -1345,7 +1425,7 @@ def review_calibration_suggestion(
         normalized_decision = "REJECTED"
     else:
         return {"status": "ERROR", "error": "INVALID_DECISION"}
-    all_suggestions = calibration_suggestions("all", "all", "all", "all").get("items", [])
+    all_suggestions = calibration_suggestions("all", "all", "all", "all", "all").get("items", [])
     match = next((item for item in all_suggestions if _text(item.get("suggestionId")) == sid), None)
     if not match:
         return {"status": "ERROR", "error": "SUGGESTION_NOT_FOUND", "suggestionId": sid}
@@ -1362,6 +1442,7 @@ def review_calibration_suggestion(
         "mode": match.get("mode"),
         "horizon": match.get("horizon"),
         "source_type": match.get("sourceType"),
+        "journal_session": match.get("journalSession"),
         "reason": match.get("reason"),
         "suggestion_status": match.get("status"),
         "sample_count": match.get("sampleCount"),
@@ -1392,7 +1473,7 @@ def upgrade_to_manual_reviewed(
     jid = _text(journal_id)
     if not jid:
         return {"status": "ERROR", "error": "MISSING_JOURNAL_ID"}
-    rows = _read_rows(JOURNAL_CSV, JOURNAL_COLS)
+    rows = _read_journal_rows()
     updated: list[dict[str, Any]] = []
     found: dict[str, Any] | None = None
     for row in rows:
@@ -1425,12 +1506,15 @@ def analytics(
     mode: str = "all",
     horizon: str = "all",
     source_type: str = "all",
+    journal_session: str = "all",
 ) -> dict[str, Any]:
     _ensure()
     rows = _filter_rows(
-        _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)),
-        market, mode, horizon, source_type, "all",
+        _merge_evaluations(_read_journal_rows()),
+        market, mode, horizon, source_type, journal_session, "all",
     )
+    if _session_filter(journal_session) == "ALL":
+        rows = [row for row in rows if _is_trade_evaluation_session(row)]
     evaluated = [r for r in rows if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}]
 
     # 1. Regime transition matrix
@@ -1575,6 +1659,7 @@ def auto_capture_enabled() -> bool:
 def run_auto_capture(
     market: str = "all",
     source_type: str = "FORWARD_PAPER_TRADE",
+    journal_session: str = DEFAULT_JOURNAL_SESSION,
     limit: int = 5,
     include_engine: bool = False,
     evaluate_after: bool = True,
@@ -1582,16 +1667,27 @@ def run_auto_capture(
     source: str = "manual",
 ) -> dict[str, Any]:
     mk_list = ["kr", "us"] if str(market).lower() == "all" else [str(market).lower()]
+    source_type = _upper(source_type or "FORWARD_PAPER_TRADE")
+    journal_session = _journal_session(journal_session)
     now = _kst_now()
     runs: list[dict[str, Any]] = []
     before = _read_auto_status()
     for mk in mk_list:
         if mk not in MARKETS:
             continue
-        trade_date = _auto_trade_date(mk, now)
-        run_key = f"{mk}:{trade_date}:{source_type.upper()}"
+        trade_date = _auto_trade_date(mk, now, journal_session)
+        run_key = f"{mk}:{trade_date}:{source_type}:{journal_session}"
         if not force and run_key in set(before.get("completedKeys") or []):
-            runs.append({"market": mk, "tradeDate": trade_date, "status": "SKIPPED_DUPLICATE", "runKey": run_key})
+            runs.append({"market": mk, "tradeDate": trade_date, "journalSession": journal_session, "status": "SKIPPED_DUPLICATE", "runKey": run_key})
+            continue
+        if not _is_trading_day(mk, trade_date):
+            runs.append({
+                "market": mk,
+                "tradeDate": trade_date,
+                "journalSession": journal_session,
+                "status": "SKIPPED_MARKET_CLOSED",
+                "runKey": run_key,
+            })
             continue
         market_items: list[dict[str, Any]] = []
         added_total = 0
@@ -1604,6 +1700,7 @@ def run_auto_capture(
                     mode=mode,
                     horizon=horizon,
                     source_type=source_type,
+                    journal_session=journal_session,
                     limit=limit,
                     as_of_date=trade_date,
                     include_engine=include_engine,
@@ -1623,6 +1720,7 @@ def run_auto_capture(
         runs.append({
             "market": mk,
             "tradeDate": trade_date,
+            "journalSession": journal_session,
             "status": run_status,
             "runKey": run_key,
             "selected": selected_total,
@@ -1632,9 +1730,10 @@ def run_auto_capture(
         })
     completed = set(before.get("completedKeys") or [])
     for item in runs:
-        if item.get("status") in {"OK", "NO_CANDIDATES"}:
+        if item.get("status") in {"OK", "NO_CANDIDATES", "SKIPPED_MARKET_CLOSED"}:
             completed.add(str(item.get("runKey")))
-    evaluation = evaluate(market=market, source_type=source_type, limit=500) if evaluate_after else {"status": "SKIPPED"}
+    should_evaluate = evaluate_after and journal_session not in PLAN_ONLY_SESSIONS
+    evaluation = evaluate(market=market, source_type=source_type, journal_session=journal_session, limit=500) if should_evaluate else {"status": "SKIPPED", "reason": "PLAN_ONLY_SESSION" if evaluate_after else "EVALUATE_AFTER_FALSE"}
     status = {
         "status": "OK",
         "enabled": auto_capture_enabled(),
@@ -1643,6 +1742,7 @@ def run_auto_capture(
         "timezone": "Asia/Seoul",
         "includeEngine": include_engine,
         "evaluateAfter": evaluate_after,
+        "journalSession": journal_session,
         "evaluation": evaluation,
         "completedKeys": sorted(completed)[-120:],
         "runs": runs,
@@ -1657,7 +1757,7 @@ def run_due_auto_capture(source: str = "background_scheduler") -> dict[str, Any]
     if not auto_capture_enabled():
         return {"status": "DISABLED", "enabled": False}
     now = _kst_now()
-    due_markets = _due_markets(now)
+    due_markets = _due_markets(now, DEFAULT_JOURNAL_SESSION)
     evaluation = evaluate(limit=500)
     if not due_markets:
         return {
@@ -1669,7 +1769,7 @@ def run_due_auto_capture(source: str = "background_scheduler") -> dict[str, Any]
         }
     results: list[dict[str, Any]] = []
     for market in due_markets:
-        results.append(run_auto_capture(market=market, include_engine=False, evaluate_after=True, force=False, source=source))
+        results.append(run_auto_capture(market=market, journal_session=DEFAULT_JOURNAL_SESSION, include_engine=False, evaluate_after=True, force=False, source=source))
     return {
         "status": "OK",
         "checkedAt": now.isoformat(timespec="seconds"),
@@ -1715,8 +1815,10 @@ def _auto_capture_loop(interval_minutes: float) -> None:
 
 def _auto_capture_windows() -> dict[str, str]:
     return {
-        "kr": "KST 16:40-23:59, after KR close data should be available",
-        "us": "KST 07:10-15:00, after US close data should be available",
+        "krPremarket": "KST 08:20, records PREMARKET_PLAN before KR regular session",
+        "krAfterClose": "KST 16:40-23:59, records AFTER_CLOSE_TRADE after KR close data should be available",
+        "usPremarket": "KST 21:30, records PREMARKET_PLAN before US regular session",
+        "usAfterClose": "KST 07:10-15:00 Tue-Sat, records AFTER_CLOSE_TRADE after US close data should be available",
     }
 
 
@@ -1724,28 +1826,47 @@ def _kst_now() -> datetime:
     return datetime.now(ZoneInfo("Asia/Seoul"))
 
 
-def _due_markets(now: datetime) -> list[str]:
+def _due_markets(now: datetime, journal_session: str = DEFAULT_JOURNAL_SESSION) -> list[str]:
     weekday = now.weekday()
     minutes = now.hour * 60 + now.minute
     due: list[str] = []
-    # KR regular weekdays, after local close. Keep a wide window so a sleeping server can catch up later.
-    if weekday < 5 and (16 * 60 + 40) <= minutes <= (23 * 60 + 59):
-        due.append("kr")
-    # US close is the next Korean morning. Tue-Sat KST covers Mon-Fri US sessions.
-    if 1 <= weekday <= 5 and (7 * 60 + 10) <= minutes <= (15 * 60):
-        due.append("us")
+    session = _journal_session(journal_session)
+    if session == "PREMARKET_PLAN":
+        if weekday < 5 and (8 * 60 + 10) <= minutes <= (9 * 60 + 20):
+            due.append("kr")
+        if weekday < 5 and (21 * 60 + 20) <= minutes <= (22 * 60 + 20):
+            due.append("us")
+    else:
+        # KR regular weekdays, after local close. Keep a wide window so a sleeping server can catch up later.
+        if weekday < 5 and (16 * 60 + 40) <= minutes <= (23 * 60 + 59):
+            due.append("kr")
+        # US close is the next Korean morning. Tue-Sat KST covers Mon-Fri US sessions.
+        if 1 <= weekday <= 5 and (7 * 60 + 10) <= minutes <= (15 * 60):
+            due.append("us")
     status = _read_auto_status()
     completed = set(status.get("completedKeys") or [])
-    return [mk for mk in due if f"{mk}:{_auto_trade_date(mk, now)}:FORWARD_PAPER_TRADE" not in completed]
+    return [mk for mk in due if f"{mk}:{_auto_trade_date(mk, now, session)}:FORWARD_PAPER_TRADE:{session}" not in completed]
 
 
-def _auto_trade_date(market: str, now: datetime) -> str:
-    if market == "us":
+def _auto_trade_date(market: str, now: datetime, journal_session: str = DEFAULT_JOURNAL_SESSION) -> str:
+    if market == "us" and _journal_session(journal_session) != "PREMARKET_PLAN":
         d = now.date() - timedelta(days=1)
         while d.weekday() >= 5:  # Saturday=5, Sunday=6 → walk back to Friday
             d -= timedelta(days=1)
         return d.isoformat()
     return now.date().isoformat()
+
+
+def _is_trading_day(market: str, trade_date: str) -> bool:
+    try:
+        d = date.fromisoformat(str(trade_date)[:10])
+    except Exception:
+        return False
+    if d.weekday() >= 5:
+        return False
+    if market == "us" and d.isoformat() in US_MARKET_HOLIDAYS_2026:
+        return False
+    return True
 
 
 def _read_auto_status() -> dict[str, Any]:

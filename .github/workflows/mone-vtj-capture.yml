@@ -1,4 +1,4 @@
-name: MONE VTJ Capture
+name: MONE AI Journal Capture
 
 on:
   workflow_dispatch:
@@ -12,10 +12,20 @@ on:
           - all
           - kr
           - us
+      journalSession:
+        description: "AI journal session"
+        required: false
+        default: "AFTER_CLOSE_TRADE"
+        type: choice
+        options:
+          - PREMARKET_PLAN
+          - AFTER_CLOSE_TRADE
   schedule:
-    # UTC 기준. VTJ 전용 가벼운 재시도이며, 중복은 runKey로 서버가 차단한다.
+    # UTC based. Duplicate runs are blocked server-side by market/date/session runKey.
+    - cron: "20 23 * * 0-4"   # KST 08:20 Mon-Fri, KR premarket plan
     - cron: "50 7 * * 1-5"    # KST 16:50, KR close capture
     - cron: "30 8 * * 1-5"    # KST 17:30, KR retry after reports settle
+    - cron: "30 12 * * 1-5"   # KST 21:30, US premarket plan
     - cron: "20 22 * * 1-5"   # KST 07:20 Tue-Sat, US close capture
     - cron: "0 23 * * 1-5"    # KST 08:00 Tue-Sat, US retry after reports settle
 
@@ -24,7 +34,7 @@ defaults:
     shell: bash
 
 concurrency:
-  group: mone-vtj-capture-${{ github.ref }}
+  group: mone-ai-journal-capture-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -36,30 +46,42 @@ jobs:
       MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
       MONE_ADMIN_SECRET: ${{ secrets.MONE_ADMIN_SECRET }}
       DISPATCH_MARKET: ${{ github.event.inputs.market || 'all' }}
+      DISPATCH_SESSION: ${{ github.event.inputs.journalSession || 'AFTER_CLOSE_TRADE' }}
     steps:
-      - name: Capture VTJ paper trades
+      - name: Capture AI journal session
         run: |
           BASE="${MONE_BACKEND_URL%/}"
           MARKET="${DISPATCH_MARKET:-all}"
+          JOURNAL_SESSION="${DISPATCH_SESSION:-AFTER_CLOSE_TRADE}"
+
           if [ "${GITHUB_EVENT_NAME:-}" = "schedule" ]; then
             UTC_HOUR="$(date -u '+%H')"
-            case "${UTC_HOUR}" in
-              07|08) MARKET="kr" ;;
-              22|23) MARKET="us" ;;
+            UTC_MINUTE="$(date -u '+%M')"
+            case "${UTC_HOUR}:${UTC_MINUTE}" in
+              23:20) MARKET="kr"; JOURNAL_SESSION="PREMARKET_PLAN" ;;
+              07:50|08:30) MARKET="kr"; JOURNAL_SESSION="AFTER_CLOSE_TRADE" ;;
+              12:30) MARKET="us"; JOURNAL_SESSION="PREMARKET_PLAN" ;;
+              22:20|23:00) MARKET="us"; JOURNAL_SESSION="AFTER_CLOSE_TRADE" ;;
             esac
           fi
 
-          echo "VTJ capture request"
+          echo "AI journal capture request"
           echo "base=${BASE}"
           echo "market=${MARKET}"
+          echo "journal_session=${JOURNAL_SESSION}"
           echo "kst_now=$(date '+%Y-%m-%d %H:%M:%S %Z')"
+
+          EVALUATE_AFTER="true"
+          if [ "${JOURNAL_SESSION}" = "PREMARKET_PLAN" ]; then
+            EVALUATE_AFTER="false"
+          fi
 
           curl --fail-with-body --show-error --silent --retry 2 --retry-delay 10 \
             -X POST "${BASE}/api/journal/auto-capture/run" \
             -H "Content-Type: application/json" \
             -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
-            -d "{\"market\":\"${MARKET}\",\"limit\":5,\"evaluateAfter\":true,\"force\":false}" \
+            -d "{\"market\":\"${MARKET}\",\"journalSession\":\"${JOURNAL_SESSION}\",\"limit\":5,\"evaluateAfter\":${EVALUATE_AFTER},\"force\":false}" \
             --max-time 120 \
-            -o /tmp/vtj_result.json
+            -o /tmp/ai_journal_result.json
 
-          cat /tmp/vtj_result.json
+          cat /tmp/ai_journal_result.json

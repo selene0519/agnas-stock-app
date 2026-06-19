@@ -7,6 +7,7 @@ import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 type ScopeMarket = Extract<Market, "kr" | "us" | "all">;
 type ScopeMode = Extract<Mode, "conservative" | "balanced" | "aggressive" | "all">;
 type ScopeHorizon = Extract<Horizon, "short" | "swing" | "mid" | "all">;
+type ScopeSession = "all" | "PREMARKET_PLAN" | "INTRADAY_CHECK" | "AFTER_CLOSE_TRADE" | "FOLLOWUP_EVALUATION";
 
 const markets: { id: ScopeMarket; label: string }[] = [
   { id: "all", label: "전체" },
@@ -27,6 +28,20 @@ const horizons: { id: ScopeHorizon; label: string }[] = [
   { id: "swing", label: "스윙" },
   { id: "mid", label: "중기" },
 ];
+
+const sessions: { id: ScopeSession; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "PREMARKET_PLAN", label: "Premarket" },
+  { id: "AFTER_CLOSE_TRADE", label: "After close" },
+  { id: "FOLLOWUP_EVALUATION", label: "Follow-up" },
+];
+
+const SESSION_LABEL: Record<string, string> = {
+  PREMARKET_PLAN: "Premarket plan",
+  INTRADAY_CHECK: "Intraday check",
+  AFTER_CLOSE_TRADE: "After-close paper trade",
+  FOLLOWUP_EVALUATION: "Follow-up evaluation",
+};
 
 function fmtNum(value: any, suffix = "") {
   const n = Number(value);
@@ -81,6 +96,7 @@ export default function VirtualJournalPage() {
   const [market, setMarket] = useState<ScopeMarket>("all");
   const [mode, setMode] = useState<ScopeMode>("all");
   const [horizon, setHorizon] = useState<ScopeHorizon>("all");
+  const [journalSession, setJournalSession] = useState<ScopeSession>("all");
   const [replayDate, setReplayDate] = useState(defaultReplayDate);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
@@ -91,7 +107,8 @@ export default function VirtualJournalPage() {
   const [autoStatus, setAutoStatus] = useState<any>({});
   const [analyticsData, setAnalyticsData] = useState<any>({});
 
-  const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE" }), [market, mode, horizon]);
+  const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
+  const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -129,7 +146,7 @@ export default function VirtualJournalPage() {
         const targetMarket = market === "all" ? "kr" : market;
         const targetMode = mode === "all" ? "balanced" : mode;
         const targetHorizon = horizon === "all" ? "swing" : horizon;
-        await mone.virtualTradeCapture({ market: targetMarket, mode: targetMode, horizon: targetHorizon, limit: 5 });
+        await mone.virtualTradeCapture({ market: targetMarket, mode: targetMode, horizon: targetHorizon, journalSession: actionSession, limit: 5 });
       } else if (kind === "evaluate") {
         await mone.virtualTradeEvaluate({ ...scope, limit: 500 });
       } else if (kind === "replay") {
@@ -138,7 +155,7 @@ export default function VirtualJournalPage() {
         const targetHorizon = horizon === "all" ? "swing" : horizon;
         await mone.journalHistoricalReplay({ market: targetMarket, mode: targetMode, horizon: targetHorizon, asOfDate: replayDate, limit: 5, evaluateAfter: true });
       } else {
-        await mone.journalAutoCaptureRun({ market, limit: 5, evaluateAfter: true, force: true });
+        await mone.journalAutoCaptureRun({ market, journalSession: actionSession, limit: 5, evaluateAfter: actionSession === "AFTER_CLOSE_TRADE", force: true });
       }
       await load();
     } catch (err) {
@@ -258,6 +275,17 @@ export default function VirtualJournalPage() {
               })}
             </div>
           ))}
+          <div className="flex rounded-lg bg-slate-950/60 p-1 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+            {sessions.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setJournalSession(item.id)}
+                className={`min-h-9 rounded-md px-3 text-xs font-semibold transition-colors ${journalSession === item.id ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-200"}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && <div className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-200 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.22)]">{error}</div>}
@@ -287,6 +315,7 @@ export default function VirtualJournalPage() {
                     {String(item.market || "").toUpperCase()} / {MODE_SHORT[item.mode] ?? item.mode} / {HORIZON_SHORT[item.horizon] ?? item.horizon}
                   </span>
                   <span>{item.as_of_date}</span>
+                  <span className="font-mono text-[10px] text-cyan-400">{SESSION_LABEL[String(item.journal_session || item.journalSession)] ?? String(item.journal_session || item.journalSession || "AFTER_CLOSE_TRADE")}</span>
                   <span className={`font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>
                     {item.source_type === "MANUAL_REVIEWED" ? "검토완료" : item.source_type === "FORWARD_PAPER_TRADE" ? "자동" : item.source_type}
                   </span>
@@ -359,6 +388,7 @@ export default function VirtualJournalPage() {
                         {String(item.market || "").toUpperCase()} / {MODE_SHORT[item.mode] ?? item.mode} / {HORIZON_SHORT[item.horizon] ?? item.horizon}
                       </div>
                       <div className="mt-1 text-[11px] text-slate-500">{item.as_of_date}</div>
+                      <div className="mt-1 font-mono text-[10px] text-cyan-400">{SESSION_LABEL[String(item.journal_session || item.journalSession)] ?? String(item.journal_session || item.journalSession || "AFTER_CLOSE_TRADE")}</div>
                       <div className={`mt-1 font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>
                         {item.source_type === "MANUAL_REVIEWED" ? "검토완료" : item.source_type === "FORWARD_PAPER_TRADE" ? "자동" : item.source_type}
                       </div>
