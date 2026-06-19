@@ -2688,7 +2688,7 @@ export default function HomePage({
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {todayEntries.map((item, i) => (
               <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onAnalyze={openAnalysis} earningsMap={earningsMap} onTradePaper={onTradePaper ? (it) => {
-                  const mkt = String(it.market || it._market || "kr").toLowerCase() === "us" ? "us" : "kr";
+                  const mkt = normalizeMarket(it.market ?? it._market, it.symbol);
                   const rawPrice = Number(it.currentPrice ?? it.price ?? it.entryPrice ?? 0);
                   onTradePaper({ symbol: String(it.symbol), name: String(it.name || it.nameKr || it.symbol), price: rawPrice, market: mkt });
                 } : undefined} />

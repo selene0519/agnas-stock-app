@@ -258,6 +258,8 @@ export default function PaperTradingPage({
   useEffect(() => {
     loadAll();
     setResetConfirm(false);
+    setShowSeedInput(false);
+    setSeedInput("");
   }, [market]);
 
   const cashVal = cash[market] ?? 0;

@@ -236,7 +236,7 @@ export default function App() {
       case "prediction":
         return <PredictionPage />;
       case "advanced":
-        return <AdvancedPage initialOrder={tradeOrder ?? undefined} />;
+        return <AdvancedPage initialOrder={tradeOrder ?? undefined} onOrderConsumed={() => setTradeOrder(null)} />;
       case "paper":
         return <PaperTradingPage />;
       case "journal":
