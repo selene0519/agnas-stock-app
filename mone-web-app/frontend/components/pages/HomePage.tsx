@@ -526,7 +526,7 @@ function PositionSizingSection({
   items: any[];
   capital: number;
   setCapital: (v: number) => void;
-  onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us" }) => void;
+  onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number }) => void;
 }) {
   const [inputVal, setInputVal] = useState(capital > 0 ? String(capital) : "");
 
@@ -632,7 +632,7 @@ function PositionSizingSection({
                     {onTradePaper && (
                       <td className="py-2 text-right">
                         <button
-                          onClick={() => onTradePaper({ symbol: r.symbol, name: r.name, price: r.entry, market: r.symbol.match(/^[A-Z]{1,5}$/) ? "us" : "kr" })}
+                          onClick={() => onTradePaper({ symbol: r.symbol, name: r.name, price: r.entry, market: r.symbol.match(/^[A-Z]{1,5}$/) ? "us" : "kr", quantity: r.qty })}
                           className="rounded-lg bg-violet-600/20 px-2 py-1 text-[10px] font-semibold text-violet-300 hover:bg-violet-600/40 transition-colors"
                         >
                           모의투자
@@ -1862,7 +1862,7 @@ export default function HomePage({
   booting = false,
 }: {
   onNavigate?: (page: PageId) => void;
-  onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us" }) => void;
+  onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number }) => void;
   bootData?: BootPreloadData | null;
   bootStatus?: BootStatus;
   booting?: boolean;
