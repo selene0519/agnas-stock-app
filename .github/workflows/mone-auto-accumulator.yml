@@ -351,6 +351,25 @@ jobs:
           echo "dart refresh: exit $?"
           set -e
 
+      - name: News sentiment cache 갱신 (공시+뉴스 → 종목별 감성 점수)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.engine.news_sentiment_engine import build_sentiment_cache
+          for mk in ("kr", "us"):
+              result = build_sentiment_cache(mk)
+              cnt = result.get("count", 0)
+              print(f"[sentiment-cache/{mk}] {cnt}개 종목 감성 캐시 갱신")
+          PY
+          echo "sentiment-cache: exit $?"
+          set -e
+
       - name: Ping backend API (배포 서버가 있으면 캐시 갱신)
         env:
           MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}

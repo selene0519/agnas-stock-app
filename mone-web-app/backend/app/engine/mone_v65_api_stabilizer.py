@@ -11,6 +11,24 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
+# ── TTL 캐시 (quote / watchlist 등 분 단위로 바뀌는 데이터용) ────────────────
+_TTL_STORE: dict[str, tuple[float, Any]] = {}
+_QUOTE_TTL   = 300   # 5분 — 실시간 quote 갱신 주기
+_WATCH_TTL   = 300   # 5분 — 관심종목 변경 감지
+
+
+def _ttl_get(key: str, ttl: float) -> tuple[bool, Any]:
+    """Returns (hit, value). hit=False if expired or missing."""
+    entry = _TTL_STORE.get(key)
+    if entry is None:
+        return False, None
+    ts, val = entry
+    return (time.time() - ts < ttl), val
+
+
+def _ttl_set(key: str, value: Any) -> None:
+    _TTL_STORE[key] = (time.time(), value)
+
 from fastapi import Body, Query
 from fastapi.routing import APIRoute
 
@@ -676,8 +694,10 @@ def _recommendation_paths(market: str, mode: str, horizon: str) -> list[tuple[Pa
     return [(path, "FALLBACK") for path in fallback]
 
 
-@lru_cache(maxsize=1)
 def _watch_symbols() -> set[str]:
+    hit, val = _ttl_get("_watch_symbols", _WATCH_TTL)
+    if hit:
+        return val
     symbols: set[str] = set()
     for path in _direct_files(
         "watchlist_kr.csv",
@@ -694,7 +714,9 @@ def _watch_symbols() -> set[str]:
             if sym:
                 symbols.add(sym)
     if symbols:
-        return {s for s in symbols if s}
+        result = {s for s in symbols if s}
+        _ttl_set("_watch_symbols", result)
+        return result
 
     for path in _direct_files("daily_watch_selection.json", "data/daily_watch_selection.json", "reports/daily_watch_selection.json"):
         payload = _read_json(path)
@@ -707,7 +729,9 @@ def _watch_symbols() -> set[str]:
                     symbols.add(_symbol(item) if isinstance(item, dict) else _symbol_value(item))
             elif isinstance(value, str):
                 symbols.add(_symbol_value(value))
-    return {s for s in symbols if s}
+    result = {s for s in symbols if s}
+    _ttl_set("_watch_symbols", result)
+    return result
 
 
 def _rows_from_paths(paths: list[Path], limit_per_file: int = 50000) -> list[dict[str, Any]]:
@@ -728,13 +752,17 @@ def _quote_files(market: str) -> list[Path]:
     )
 
 
-@lru_cache(maxsize=4)
 def _quote_index(market: str) -> dict[str, dict[str, Any]]:
+    key = f"_quote_index_{market}"
+    hit, val = _ttl_get(key, _QUOTE_TTL)
+    if hit:
+        return val
     quotes: dict[str, dict[str, Any]] = {}
     for row in _rows_from_paths([p for p in _quote_files(market) if p.suffix.lower() == ".csv"], 50000):
         sym = _symbol(row, market)
         if sym and sym not in quotes:
             quotes[sym] = row
+    _ttl_set(key, quotes)
     return quotes
 
 

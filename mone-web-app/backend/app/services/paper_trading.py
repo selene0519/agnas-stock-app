@@ -155,13 +155,35 @@ def _enrich_positions(positions: dict[str, dict]) -> list[dict]:
 
 
 def _get_current_price(symbol: str, market: str) -> float | None:
-    """현재가를 OHLCV 최신 종가로 조회 (빠른 CSV 읽기)."""
+    """현재가 조회. KIS quote cache → OHLCV 최신 close 순서로 fallback."""
+    # 1) KIS 현재가 CSV (가장 최신, 장중 실시간에 근접)
+    for quote_file in (
+        _REPO_ROOT / "data" / "stockapp" / f"kis_current_price_{market}.csv",
+        _REPO_ROOT / "data" / "stockapp" / f"current_price_{market}.csv",
+        _REPO_ROOT / "data" / f"kis_current_price_{market}.csv",
+    ):
+        if not quote_file.exists():
+            continue
+        try:
+            with quote_file.open("r", encoding="utf-8-sig") as f:
+                for row in csv.DictReader(f):
+                    sym = (row.get("symbol") or row.get("ticker") or row.get("code") or "").strip()
+                    if sym == symbol:
+                        for key in ("currentPrice", "current_price", "stck_prpr", "close", "price"):
+                            v = row.get(key)
+                            if v:
+                                try:
+                                    return float(str(v).replace(",", ""))
+                                except ValueError:
+                                    pass
+        except Exception:
+            continue
+
+    # 2) OHLCV 최신 종가 fallback
     try:
-        ohlcv_dir = _REPO_ROOT / "data" / "market" / "ohlcv"
-        path = ohlcv_dir / f"{market}_{symbol}_daily.csv"
+        path = _REPO_ROOT / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv"
         if not path.exists():
             return None
-        # 마지막 줄만 읽어 현재가 취득
         with path.open("r", encoding="utf-8-sig") as f:
             rows = list(csv.DictReader(f))
         if not rows:

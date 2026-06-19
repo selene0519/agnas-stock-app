@@ -35,7 +35,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-VALIDATION_CSV = ROOT / "reports" / "virtual_validation_results.csv"
+VALIDATION_CSV      = ROOT / "reports" / "virtual_validation_results.csv"
+SIGNAL_LEDGER_CSV   = ROOT / "data" / "recommendation_validation_results.csv"
 WIN_RATES_JSON = ROOT / "reports" / "strategy_win_rates.json"
 
 MIN_SAMPLES   = 20     # 이 이상일 때만 실제 승률 반영
@@ -71,8 +72,10 @@ def _read_csv(path: Path) -> list[dict[str, Any]]:
 
 def _is_win(row: dict) -> bool | None:
     """검증 결과에서 승/패 판단. None = 데이터 불충분."""
-    result = str(row.get("result") or row.get("status") or "").upper()
-    if result in ("PENDING", "DATA_PENDING", ""):
+    result = str(
+        row.get("result") or row.get("status") or row.get("win_loss_result") or ""
+    ).upper()
+    if result in ("PENDING", "DATA_PENDING", "FLAT", ""):
         return None
     # 성공: 목표 도달
     if any(k in result for k in ("WIN", "SUCCESS", "TP", "TARGET", "목표")):
@@ -81,7 +84,7 @@ def _is_win(row: dict) -> bool | None:
     if any(k in result for k in ("LOSS", "FAIL", "STOP", "손절", "SL")):
         return False
     # 수익률 기반 판단
-    ret = row.get("returnPct") or row.get("return_pct") or row.get("virtualReturnPct")
+    ret = row.get("returnPct") or row.get("return_pct") or row.get("virtualReturnPct") or row.get("primaryReturn")
     if ret is not None:
         try:
             return float(str(ret).replace("%", "").strip()) > 0
@@ -91,7 +94,13 @@ def _is_win(row: dict) -> bool | None:
 
 
 def calculate_win_rates() -> dict[str, Any]:
+    # VTJ 검증 결과 + signal_ledger 검증 결과 병합 (중복 없이)
     rows = _read_csv(VALIDATION_CSV)
+    sig_rows = _read_csv(SIGNAL_LEDGER_CSV)
+    # signal_ledger 결과는 weight 0.7로 조정 (forward paper trade 대비 신뢰도 낮음)
+    for r in sig_rows:
+        r.setdefault("_source", "signal_ledger")
+    rows = rows + sig_rows
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # 전략별 집계
