@@ -2458,10 +2458,9 @@ def performance_by_strategy(
                 combo_data[key] = {"count": 0, "wins": 0, "pnls": [], "dates": []}
         for key in (f"{mk}_{md}_{hz}", f"all_{md}_{hz}", f"{mk}_all_{hz}", f"{mk}_{md}_all", "all_all_all"):
             combo_data[key]["count"] += 1
-            outcome = _text(r.get("outcome"))
-            if outcome in {"TARGET_HIT", "TIME_EXIT_PROFIT"}:
-                combo_data[key]["wins"] += 1
             pnl = _safe_float(r.get("net_pnl_pct"))
+            if (pnl is not None and pnl > 0) or _text(r.get("outcome")) == "TARGET_HIT":
+                combo_data[key]["wins"] += 1
             if pnl is not None:
                 combo_data[key]["pnls"].append(pnl)
                 combo_data[key]["dates"].append(str(r.get("as_of_date") or ""))
@@ -2512,7 +2511,7 @@ def performance_by_strategy(
 
     # ── 3. 전체 요약 ──────────────────────────────────────────────────────
     all_pnls = [p for r in evaluated for p in ([_safe_float(r.get("net_pnl_pct"))] if _safe_float(r.get("net_pnl_pct")) is not None else [])]
-    all_wins = sum(1 for r in evaluated if _text(r.get("outcome")) in {"TARGET_HIT", "TIME_EXIT_PROFIT"})
+    all_wins = sum(1 for r in evaluated if (_safe_float(r.get("net_pnl_pct")) or 0) > 0 or _text(r.get("outcome")) == "TARGET_HIT")
     total_count = len(evaluated)
 
     summary = {

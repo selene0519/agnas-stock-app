@@ -132,8 +132,9 @@ function EquityCurveSparkline({ points }: { points: Array<{ date: string; cumPnl
 
 function StrategyMatrix({ strategyRows }: { strategyRows: any[] }) {
   const lookup = new Map<string, any>();
+  // Use market="all" rollup rows so mixed-market data aggregates correctly
   for (const row of strategyRows) {
-    lookup.set(`${row.mode}_${row.horizon}`, row);
+    if (row.market === "all") lookup.set(`${row.mode}_${row.horizon}`, row);
   }
   const winRateTone = (wr: number | null) => {
     if (wr == null) return "bg-slate-800 text-slate-500";
