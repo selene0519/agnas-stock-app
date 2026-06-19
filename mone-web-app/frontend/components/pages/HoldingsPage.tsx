@@ -625,6 +625,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [positionCandidates, setPositionCandidates] = useState<any[]>([]);
   const [positionLoading, setPositionLoading] = useState(false);
   const [holdingsLoadedAt, setHoldingsLoadedAt] = useState("");
+  const [exitSignals, setExitSignals] = useState<Record<string, any>>({});
+  const [kellySizes, setKellySizes] = useState<any>(null);
   const [brokerConnections, setBrokerConnections] = useState<BrokerStatus[]>([]);
   const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
 
@@ -692,6 +694,16 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       writeHoldingsCache(market, finalData, loadedAt);
       loadPositionCandidates(market);
       setLoading(false);
+      // 청산 신호 비동기 로딩
+      getJson(`/api/holdings/exit-signals?market=${market}`).then((res) => {
+        if (Array.isArray(res?.signals)) {
+          const map: Record<string, any> = {};
+          for (const sig of res.signals) {
+            map[`${sig.market}-${sig.symbol}`] = sig;
+          }
+          setExitSignals(map);
+        }
+      }).catch(() => {});
       if (market === "all") {
         setSectorData(null);
         setBenchmarkData(null);
@@ -734,6 +746,13 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         .catch(() => setBrokerConnections([]))
     );
   }, [userToken]);
+
+  // Kelly 포지션 사이즈 마운트 시 1회 fetch
+  useEffect(() => {
+    getJson("/api/advanced/kelly-sizes").then((res) => {
+      if (res?.kellySizes) setKellySizes(res.kellySizes);
+    }).catch(() => {});
+  }, []);
 
   // 환율은 마운트 시 1회만 fetch (4시간 캐시)
   useEffect(() => {
@@ -1195,6 +1214,40 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
       <PositionManager items={positionCandidates} loading={positionLoading} />
 
+      {/* Kelly 포지션 사이즈 가이드 */}
+      {kellySizes && Object.keys(kellySizes).length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-100">Kelly 포지션 사이즈 가이드</h2>
+            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">Half-Kelly 상한 20%</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-9">
+            {(["conservative","balanced","aggressive"] as const).map((mode) =>
+              (["short","swing","mid"] as const).map((horizon) => {
+                const k = `${mode}_${horizon}`;
+                const entry = kellySizes[k];
+                if (!entry) return null;
+                const hk = entry.recommendedPct != null ? `${Number(entry.recommendedPct).toFixed(1)}%` : entry.kellyHalf != null ? `${(entry.kellyHalf * 100).toFixed(1)}%` : "—";
+                const modeLabel = { conservative: "보수", balanced: "균형", aggressive: "공격" }[mode];
+                const horizonLabel = { short: "단기", swing: "스윙", mid: "중기" }[horizon];
+                const color = mode === "conservative" ? "text-sky-300" : mode === "balanced" ? "text-emerald-300" : "text-orange-300";
+                return (
+                  <div key={k} className="rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-center">
+                    <div className={`font-semibold ${color}`}>{modeLabel}</div>
+                    <div className="text-slate-500">{horizonLabel}</div>
+                    <div className="mt-1 font-mono font-bold text-slate-100">{hk}</div>
+                    {entry.winRate != null && (
+                      <div className="mt-0.5 text-[10px] text-slate-500">승률 {(entry.winRate * 100).toFixed(0)}%</div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <p className="mt-2 text-[10px] text-slate-500">VTJ 실적 기반 Half-Kelly — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+        </div>
+      )}
+
       {summary.mixedCurrency && (
         <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200 space-y-1">
           <div>KR/US 혼합 보유 — 평가금액·손익은 통화별로 분리 표시합니다.</div>
@@ -1234,6 +1287,38 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           )}
         </div>
       )}
+
+      {/* 청산 신호 요약 배너 */}
+      {(() => {
+        const urgentSigs = Object.values(exitSignals).filter(
+          (s) => s.signal === "SELL_STRONG" || s.signal === "SELL"
+        );
+        if (urgentSigs.length === 0) return null;
+        return (
+          <div className="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-sm font-bold text-orange-300">청산 신호 감지 — {urgentSigs.length}종목</span>
+              <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-300">AI 자동 계산</span>
+            </div>
+            <div className="space-y-1.5">
+              {urgentSigs.map((sig) => (
+                <div key={`${sig.market}-${sig.symbol}`} className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-950/50 px-3 py-2 text-xs">
+                  <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+                    sig.signal === "SELL_STRONG"
+                      ? "border-red-500/60 bg-red-500/20 text-red-200"
+                      : "border-orange-500/60 bg-orange-500/20 text-orange-200"
+                  }`}>
+                    {sig.signal === "SELL_STRONG" ? "매도강력" : "매도검토"}
+                  </span>
+                  <span className="font-semibold text-slate-200">{sig.name}</span>
+                  <span className="font-mono text-slate-500">{sig.symbol}</span>
+                  <span className="text-slate-400">{Array.isArray(sig.reasons) ? sig.reasons[0] : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {actionItems.length > 0 && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
@@ -1474,6 +1559,23 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   <span className={`rounded-xl border px-2.5 py-1 text-xs font-bold ${riskBadgeClass(holding.riskStatus)}`}>
                     {riskLabel(holding.riskStatus)}
                   </span>
+                  {(() => {
+                    const sig = exitSignals[`${holding.market}-${holding.symbol}`];
+                    if (!sig || sig.signal === "HOLD" || sig.signal === "NO_DATA" || sig.urgency <= 0) return null;
+                    const cfg: Record<string, { cls: string; label: string }> = {
+                      SELL_STRONG: { cls: "border-red-500/60 bg-red-500/20 text-red-200", label: "매도강력" },
+                      SELL:        { cls: "border-orange-500/60 bg-orange-500/20 text-orange-200", label: "매도검토" },
+                      PARTIAL_EXIT:{ cls: "border-yellow-500/50 bg-yellow-500/15 text-yellow-200", label: "부분청산" },
+                      MONITOR:     { cls: "border-blue-500/40 bg-blue-500/10 text-blue-300", label: "모니터링" },
+                    };
+                    const c = cfg[sig.signal] || { cls: "border-slate-600 bg-slate-800 text-slate-300", label: sig.signal };
+                    return (
+                      <span className={`rounded-xl border px-2.5 py-1 text-xs font-bold ${c.cls}`}
+                        title={Array.isArray(sig.reasons) ? sig.reasons.join(" · ") : ""}>
+                        {c.label}
+                      </span>
+                    );
+                  })()}
                   {!isEditing && (
                     <>
                       <button onClick={() => refreshOneQuote(holding)} disabled={savingKey === key}

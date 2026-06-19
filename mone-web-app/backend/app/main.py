@@ -8849,6 +8849,13 @@ def api_supabase_migrate() -> dict:
 
 
 # ── 진입 관리: 두 화면 데이터 공유 ─────────────────────────────────────────
+@app.get("/api/holdings/exit-signals")
+def api_holdings_exit_signals(market: str = Query("all")) -> dict:
+    """보유 종목 청산 신호 — RSI/MA5/목표근접 기반 중간 익절 타이밍."""
+    from app.services.exit_signal import get_exit_signals
+    return get_exit_signals(market=market)
+
+
 @app.get("/api/entry/symbol-info/{market}/{symbol}")
 def api_entry_symbol_info(market: str, symbol: str) -> dict:
     """종목 통합 뷰 — 관심종목/보유중/최근 추천/Kelly 사이즈를 한 번에 반환.

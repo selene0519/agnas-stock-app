@@ -689,6 +689,15 @@ jobs:
           echo "vtj-self-learning: exit $?"
           set -e
 
+      - name: VTJ 기술지표 소급 채우기 (과거 RSI/거래량 역산)
+        run: |
+          set +e
+          if [ -f scripts/backfill_vtj_indicators.py ]; then
+            python scripts/backfill_vtj_indicators.py
+            echo "backfill_vtj_indicators: exit $?"
+          fi
+          set -e
+
       - name: 팩터 귀속분석 + Kelly 포지션 사이즈 계산
         run: |
           set +e
@@ -697,6 +706,15 @@ jobs:
             echo "factor_attribution: exit $?"
           else
             echo "scripts/factor_attribution.py not found; skip."
+          fi
+          set -e
+
+      - name: 팩터 회귀 기반 필터 임계값 자동 조정
+        run: |
+          set +e
+          if [ -f scripts/factor_filter_adjuster.py ]; then
+            python scripts/factor_filter_adjuster.py
+            echo "factor_filter_adjuster: exit $?"
           fi
           set -e
 
@@ -868,6 +886,8 @@ jobs:
             git add reports/backtest_summary.json 2>/dev/null || true
             git add reports/ensemble_calibration_*.json 2>/dev/null || true
             git add reports/factor_attribution.json reports/kelly_position_sizes.json 2>/dev/null || true
+            git add reports/factor_based_filter_adjustments.json 2>/dev/null || true
+            git add data/virtual_trade_journal.csv 2>/dev/null || true
 
             # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
             git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true

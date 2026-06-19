@@ -21,6 +21,22 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "mone-web-app" / "backend"))
 
 OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
+
+
+def _load_factor_adjustments() -> dict:
+    """팩터 회귀 기반 필터 조정값 로드. 없으면 빈 dict 반환."""
+    try:
+        p = ROOT / "reports" / "factor_based_filter_adjustments.json"
+        if p.exists():
+            doc = json.loads(p.read_text(encoding="utf-8"))
+            if doc.get("status") == "APPLIED":
+                return doc.get("adjustments", {})
+    except Exception:
+        pass
+    return {}
+
+
+_FACTOR_ADJ = _load_factor_adjustments()
 REPORTS = ROOT / "reports"
 DATA_STOCKAPP = ROOT / "data" / "stockapp"
 
@@ -1090,17 +1106,21 @@ def generate_recommendations() -> dict[str, Any]:
 
                 # 필터 B: RSI 구간 — mode별 차등 (완화)
                 _rsi_lo = {"conservative": 38, "balanced": 35, "aggressive": 30}.get(mode, 35)
-                _rsi_hi = {"conservative": 72, "balanced": 75, "aggressive": 78}.get(mode, 75)
+                _rsi_hi_default = {"conservative": 72, "balanced": 75, "aggressive": 78}.get(mode, 75)
+                # 팩터 회귀 기반 조정값 적용 (factor_filter_adjuster.py 생성)
+                _rsi_hi = float(_FACTOR_ADJ.get(f"rsi_upper_{mode}", _rsi_hi_default))
                 if _rsi is None or not (_rsi_lo <= _rsi <= _rsi_hi):
                     continue
 
                 # 필터 C: 거래량 — mode별 최소 비율 (당일 제외 VR 기준)
-                _min_vr = {"conservative": 0.7, "balanced": 0.5, "aggressive": 0.3}.get(mode, 0.5)
+                _min_vr_default = {"conservative": 0.7, "balanced": 0.5, "aggressive": 0.3}.get(mode, 0.5)
+                _min_vr = float(_FACTOR_ADJ.get(f"min_vr_{mode}", _min_vr_default))
                 if _vr is None or _vr < _min_vr:
                     continue
 
                 # 필터 D: 이격도 — horizon별 허용 범위
-                _d20_max = {"short": 10, "swing": 12, "mid": 15}.get(horizon, 12)
+                _d20_max_default = {"short": 10, "swing": 12, "mid": 15}.get(horizon, 12)
+                _d20_max = float(_FACTOR_ADJ.get(f"d20_max_{horizon}", _d20_max_default))
                 _d20_min = {"short": -12, "swing": -18, "mid": -22}.get(horizon, -18)
                 if _d20 is None or _d20 > _d20_max or _d20 < _d20_min:
                     continue
