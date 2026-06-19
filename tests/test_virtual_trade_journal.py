@@ -48,6 +48,7 @@ def isolated_vtj(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setattr(vtj, "EVALUATION_CSV", tmp_path / "evaluations.csv")
     monkeypatch.setattr(vtj, "CALIBRATION_APPROVALS_CSV", tmp_path / "approvals.csv")
     monkeypatch.setattr(vtj, "AUTO_CAPTURE_STATUS_JSON", tmp_path / "status.json")
+    monkeypatch.setattr(vtj, "_FEEDBACK_JSON", tmp_path / "attribution_feedback.json")
     vtj._ensure()
     return tmp_path
 
@@ -412,3 +413,122 @@ def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
     assert correction["journalCalibrationApplied"] is True
     assert correction["priceAdjustments"]["stopAtrMultiplier"] > 0
     assert refreshed_target["applicationStatus"] == "APPLIED"
+
+
+def test_entry_efficiency_stats_tracks_fill_rate_slippage_and_days(isolated_vtj: Path) -> None:
+    journal_rows = [
+        {
+            "journal_id": "jid-fill-1",
+            "source_type": "FORWARD_PAPER_TRADE",
+            "journal_session": "AFTER_CLOSE_TRADE",
+            "as_of_date": "2026-01-01",
+            "generated_at": "2026-01-01T09:00:00",
+            "captured_at": "2026-01-01T09:00:00",
+            "market": "kr",
+            "mode": "balanced",
+            "horizon": "swing",
+            "symbol": "A001",
+            "name": "A001",
+            "decision_bucket": vtj.TODAY_ENTRY,
+            "entry_price": 100,
+            "raw_recommendation_json": "{}",
+        },
+        {
+            "journal_id": "jid-fill-2",
+            "source_type": "FORWARD_PAPER_TRADE",
+            "journal_session": "AFTER_CLOSE_TRADE",
+            "as_of_date": "2026-01-01",
+            "generated_at": "2026-01-01T09:00:00",
+            "captured_at": "2026-01-01T09:00:00",
+            "market": "kr",
+            "mode": "balanced",
+            "horizon": "swing",
+            "symbol": "A002",
+            "name": "A002",
+            "decision_bucket": vtj.TODAY_ENTRY,
+            "entry_price": 200,
+            "raw_recommendation_json": "{}",
+        },
+        {
+            "journal_id": "jid-miss",
+            "source_type": "FORWARD_PAPER_TRADE",
+            "journal_session": "AFTER_CLOSE_TRADE",
+            "as_of_date": "2026-01-01",
+            "generated_at": "2026-01-01T09:00:00",
+            "captured_at": "2026-01-01T09:00:00",
+            "market": "kr",
+            "mode": "balanced",
+            "horizon": "short",
+            "symbol": "A003",
+            "name": "A003",
+            "decision_bucket": vtj.TODAY_ENTRY,
+            "entry_price": 300,
+            "raw_recommendation_json": "{}",
+        },
+    ]
+    eval_rows = [
+        {"journal_id": "jid-fill-1", "status": "EVALUATED", "filled": True, "fill_date": "2026-01-02", "fill_price": 101},
+        {"journal_id": "jid-fill-2", "status": "EVALUATED", "filled": True, "fill_date": "2026-01-03", "fill_price": 198},
+        {"journal_id": "jid-miss", "status": "CANCELLED", "filled": False},
+    ]
+    vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
+    vtj._write_rows(vtj.EVALUATION_CSV, eval_rows, vtj.EVALUATION_COLS)
+
+    out = vtj.entry_efficiency_stats("kr", "all")
+
+    assert out["status"] == "OK"
+    assert out["total"] == 3
+    assert out["filled"] == 2
+    assert out["fillRate"] == 0.6667
+    assert out["avgSlippagePct"] == 0.0
+    assert out["avgFillDays"] == 1.5
+    swing = next(row for row in out["byHorizon"] if row["horizon"] == "swing")
+    assert swing["fillRate"] == 1.0
+
+
+def test_attribution_feedback_suggests_boost_and_reduce_without_auto_apply(isolated_vtj: Path) -> None:
+    journal_rows = []
+    eval_rows = []
+    for idx in range(12):
+        is_winner = idx < 6
+        jid = f"jid-feedback-{idx}"
+        journal_rows.append(
+            {
+                "journal_id": jid,
+                "source_type": "FORWARD_PAPER_TRADE",
+                "journal_session": "AFTER_CLOSE_TRADE",
+                "as_of_date": "2026-01-01",
+                "generated_at": "2026-01-01T09:00:00",
+                "captured_at": "2026-01-01T09:00:00",
+                "market": "kr",
+                "mode": "balanced" if is_winner else "aggressive",
+                "horizon": "swing" if is_winner else "short",
+                "symbol": f"A{idx:03d}",
+                "name": f"A{idx:03d}",
+                "decision_bucket": vtj.TODAY_ENTRY,
+                "entry_price": 100,
+                "raw_recommendation_json": "{}",
+            }
+        )
+        eval_rows.append(
+            {
+                "journal_id": jid,
+                "status": "EVALUATED",
+                "outcome": "TARGET_HIT" if is_winner else "STOP_HIT",
+                "filled": True,
+                "fill_date": "2026-01-02",
+                "fill_price": 100,
+                "net_pnl_pct": 4 if is_winner else -2,
+            }
+        )
+    vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
+    vtj._write_rows(vtj.EVALUATION_CSV, eval_rows, vtj.EVALUATION_COLS)
+
+    out = vtj.attribution_feedback("kr")
+
+    assert out["status"] == "OK"
+    assert out["sampleCount"] == 12
+    by_key = {(row["mode"], row["horizon"]): row for row in out["adjustments"]}
+    assert by_key[("balanced", "swing")]["direction"] == "BOOST"
+    assert by_key[("aggressive", "short")]["direction"] == "REDUCE"
+    assert (isolated_vtj / "attribution_feedback.json").exists()

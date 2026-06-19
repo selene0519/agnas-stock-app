@@ -210,6 +210,8 @@ export default function VirtualJournalPage() {
   const [analogData, setAnalogData] = useState<any>({});
   const [perfData, setPerfData] = useState<any>(null);
   const [attrData, setAttrData] = useState<any>(null);
+  const [effData, setEffData] = useState<any>(null);
+  const [feedbackData, setFeedbackData] = useState<any>(null);
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -218,7 +220,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes, attrRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes, attrRes, effRes, feedbackRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -226,6 +228,8 @@ export default function VirtualJournalPage() {
         mone.journalAnalytics(scope),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
+        mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
+        mone.journalAttributionFeedback({ market: scope.market }),
       ]);
       if (tradeRes.status === "ERROR") throw new Error(tradeRes.error || "journal load failed");
       setTrades(tradeRes.items || []);
@@ -235,6 +239,8 @@ export default function VirtualJournalPage() {
       setAnalyticsData(analyticsRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
+      setEffData(effRes?.status === "OK" ? effRes : null);
+      setFeedbackData(feedbackRes?.status === "OK" || feedbackRes?.status === "LOW_SAMPLE" ? feedbackRes : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -960,6 +966,108 @@ export default function VirtualJournalPage() {
             })}
           </div>
         )}
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-slate-200">진입 효율</h2>
+            {effData && <span className="font-mono text-[11px] text-slate-500">{effData.filled ?? 0}/{effData.total ?? 0} filled</span>}
+          </div>
+          {!effData || (effData.total ?? 0) === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-500">
+              진입 효율을 계산할 평가 완료 거래가 아직 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "체결률", value: effData.fillRate != null ? `${(effData.fillRate * 100).toFixed(1)}%` : "-" },
+                  { label: "평균 슬리피지", value: effData.avgSlippagePct != null ? `${effData.avgSlippagePct >= 0 ? "+" : ""}${effData.avgSlippagePct.toFixed(2)}%` : "-" },
+                  { label: "평균 진입일", value: effData.avgFillDays != null ? `${effData.avgFillDays.toFixed(1)}일` : "-" },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-lg bg-slate-950/60 px-3 py-2">
+                    <div className="text-[10px] text-slate-500">{item.label}</div>
+                    <div className="mt-1 font-mono text-sm font-semibold text-slate-100">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1">
+                {(effData.byHorizon || []).map((row: any) => (
+                  <div key={row.horizon} className="grid grid-cols-[0.8fr_1fr_1fr_1fr] items-center gap-2 rounded-md bg-slate-950/50 px-3 py-2 text-xs">
+                    <span className="font-mono uppercase text-slate-300">{row.horizon}</span>
+                    <span className="text-right font-mono text-slate-400">n:{row.total ?? 0}</span>
+                    <span className={`text-right font-mono font-semibold ${(row.fillRate ?? 0) >= 0.6 ? "text-emerald-300" : "text-amber-300"}`}>
+                      {row.fillRate != null ? `${(row.fillRate * 100).toFixed(0)}%` : "-"}
+                    </span>
+                    <span className={`text-right font-mono ${(row.avgSlippagePct ?? 0) <= 0.2 ? "text-slate-300" : "text-red-300"}`}>
+                      {row.avgSlippagePct != null ? `${row.avgSlippagePct >= 0 ? "+" : ""}${row.avgSlippagePct.toFixed(2)}%` : "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-slate-200">모델 자기개선 피드백</h2>
+            {feedbackData && <span className="font-mono text-[11px] text-slate-500">{feedbackData.sampleCount ?? 0} samples</span>}
+          </div>
+          {!feedbackData || feedbackData.status === "LOW_SAMPLE" ? (
+            <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-500">
+              표본이 부족합니다. 최소 {feedbackData?.minRequired ?? 10}건 이상 평가 후 피드백이 생성됩니다.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="text-[10px] text-slate-500">기준 승률</div>
+                  <div className="mt-1 font-mono text-sm font-semibold text-slate-100">
+                    {feedbackData.baseWinRate != null ? `${(feedbackData.baseWinRate * 100).toFixed(1)}%` : "-"}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="text-[10px] text-slate-500">기준 평균 PnL</div>
+                  <div className={`mt-1 font-mono text-sm font-semibold ${(feedbackData.baseAvgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                    {feedbackData.baseAvgPnlPct != null ? `${feedbackData.baseAvgPnlPct >= 0 ? "+" : ""}${feedbackData.baseAvgPnlPct.toFixed(2)}%` : "-"}
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] text-xs">
+                  <thead className="text-[10px] text-slate-500">
+                    <tr>
+                      <th className="pb-2 text-left font-medium">전략</th>
+                      <th className="pb-2 text-right font-medium">n</th>
+                      <th className="pb-2 text-right font-medium">승률</th>
+                      <th className="pb-2 text-right font-medium">평균PnL</th>
+                      <th className="pb-2 text-right font-medium">배율</th>
+                      <th className="pb-2 text-right font-medium">방향</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {(feedbackData.adjustments || []).slice(0, 12).map((row: any) => (
+                      <tr key={`${row.mode}-${row.horizon}`}>
+                        <td className="py-2 font-mono text-slate-300">{row.mode}/{row.horizon}</td>
+                        <td className="py-2 text-right font-mono text-slate-400">{row.n}</td>
+                        <td className="py-2 text-right font-mono text-slate-300">{row.winRate != null ? `${(row.winRate * 100).toFixed(0)}%` : "-"}</td>
+                        <td className={`py-2 text-right font-mono ${(row.avgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                          {row.avgPnlPct != null ? `${row.avgPnlPct >= 0 ? "+" : ""}${row.avgPnlPct.toFixed(2)}%` : "-"}
+                        </td>
+                        <td className="py-2 text-right font-mono text-slate-200">{row.multiplier?.toFixed ? row.multiplier.toFixed(2) : row.multiplier}</td>
+                        <td className={`py-2 text-right font-mono font-semibold ${row.direction === "BOOST" ? "text-emerald-300" : row.direction === "REDUCE" ? "text-red-300" : "text-slate-400"}`}>
+                          {row.direction}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

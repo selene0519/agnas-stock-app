@@ -2696,3 +2696,143 @@ def attribution_analysis(
         "bySourceType": _factor_stats(evaluated, "source_type"),
         "evAccuracy": _ev_accuracy(evaluated),
     }
+
+
+def entry_efficiency_stats(market: str = "all", horizon: str = "all") -> dict[str, Any]:
+    """Measure how efficiently journal entries are actually filled."""
+    _ensure()
+    rows = _filter_rows(
+        _merge_evaluations(_read_journal_rows()),
+        market,
+        "all",
+        horizon,
+        "all",
+        "all",
+        "all",
+    )
+    total = [r for r in rows if _upper(r.get("status")) not in {"PENDING", "PENDING_FILL", "OPEN"}]
+    filled_rows = [r for r in total if str(r.get("filled", "")).lower() in {"true", "1", "yes"}]
+
+    def _parse_date(s: Any) -> date | None:
+        if not s:
+            return None
+        try:
+            return datetime.fromisoformat(str(s)[:10]).date()
+        except Exception:
+            return None
+
+    def _row_slippage(row: dict[str, Any]) -> float | None:
+        entry = _safe_float(row.get("entry_price"))
+        fill = _safe_float(row.get("fill_price"))
+        if entry is None or fill is None or entry <= 0:
+            return None
+        return (fill - entry) / entry * 100
+
+    def _row_fill_days(row: dict[str, Any]) -> int | None:
+        signal_date = _parse_date(row.get("as_of_date") or row.get("generated_at"))
+        fill_date = _parse_date(row.get("fill_date"))
+        if signal_date and fill_date and fill_date >= signal_date:
+            return (fill_date - signal_date).days
+        return None
+
+    def _avg(values: list[float]) -> float | None:
+        return round(sum(values) / len(values), 3) if values else None
+
+    slippages = [v for r in filled_rows if (v := _row_slippage(r)) is not None]
+    fill_days = [v for r in filled_rows if (v := _row_fill_days(r)) is not None]
+
+    def _horizon_stats(hz: str) -> dict[str, Any]:
+        sub_total = [r for r in total if _text(r.get("horizon")).lower() == hz]
+        sub_filled = [r for r in sub_total if str(r.get("filled", "")).lower() in {"true", "1", "yes"}]
+        sub_slippages = [v for r in sub_filled if (v := _row_slippage(r)) is not None]
+        sub_days = [v for r in sub_filled if (v := _row_fill_days(r)) is not None]
+        return {
+            "horizon": hz,
+            "total": len(sub_total),
+            "filled": len(sub_filled),
+            "fillRate": round(len(sub_filled) / len(sub_total), 4) if sub_total else None,
+            "avgSlippagePct": _avg(sub_slippages),
+            "avgFillDays": round(sum(sub_days) / len(sub_days), 1) if sub_days else None,
+        }
+
+    return {
+        "status": "OK",
+        "total": len(total),
+        "filled": len(filled_rows),
+        "fillRate": round(len(filled_rows) / len(total), 4) if total else None,
+        "avgSlippagePct": _avg(slippages),
+        "avgFillDays": round(sum(fill_days) / len(fill_days), 1) if fill_days else None,
+        "byHorizon": [_horizon_stats(h) for h in ("short", "swing", "mid")],
+    }
+
+
+_FEEDBACK_JSON = DATA_DIR / "attribution_feedback.json"
+
+
+def attribution_feedback(market: str = "all") -> dict[str, Any]:
+    """Generate manual score-adjustment suggestions from journal attribution."""
+    _ensure()
+    rows = _filter_rows(
+        _merge_evaluations(_read_journal_rows()),
+        market,
+        "all",
+        "all",
+        "all",
+        "all",
+        "all",
+    )
+    evaluated = [
+        r for r in rows
+        if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _safe_float(r.get("net_pnl_pct")) is not None
+    ]
+
+    if len(evaluated) < 10:
+        return {"status": "LOW_SAMPLE", "sampleCount": len(evaluated), "minRequired": 10, "adjustments": []}
+
+    all_pnls = [_safe_float(r.get("net_pnl_pct")) for r in evaluated if _safe_float(r.get("net_pnl_pct")) is not None]
+    wins = sum(1 for r in evaluated if (_safe_float(r.get("net_pnl_pct")) or 0) > 0 or _upper(r.get("outcome")) == "TARGET_HIT")
+    base_win_rate = wins / len(evaluated) if evaluated else 0.5
+    base_avg_pnl = sum(all_pnls) / len(all_pnls) if all_pnls else 0
+
+    adjustments: list[dict[str, Any]] = []
+    for mode in ("conservative", "balanced", "aggressive"):
+        for hz in ("short", "swing", "mid"):
+            sub = [
+                r for r in evaluated
+                if _text(r.get("mode")).lower() == mode and _text(r.get("horizon")).lower() == hz
+            ]
+            if len(sub) < 3:
+                continue
+            pnls = [_safe_float(r.get("net_pnl_pct")) for r in sub if _safe_float(r.get("net_pnl_pct")) is not None]
+            sub_wins = sum(1 for r in sub if (_safe_float(r.get("net_pnl_pct")) or 0) > 0 or _upper(r.get("outcome")) == "TARGET_HIT")
+            win_rate = sub_wins / len(sub)
+            avg_pnl = sum(pnls) / len(pnls) if pnls else 0
+            win_ratio = win_rate / base_win_rate if base_win_rate > 0 else 1.0
+            pnl_ratio = avg_pnl / base_avg_pnl if base_avg_pnl and avg_pnl else 1.0
+            multiplier = max(0.5, min(1.5, round(win_ratio * 0.6 + pnl_ratio * 0.4, 3)))
+            direction = "BOOST" if multiplier > 1.05 else ("REDUCE" if multiplier < 0.95 else "NEUTRAL")
+            adjustments.append({
+                "mode": mode,
+                "horizon": hz,
+                "n": len(sub),
+                "winRate": round(win_rate, 4),
+                "avgPnlPct": round(avg_pnl, 3),
+                "multiplier": multiplier,
+                "direction": direction,
+            })
+
+    result: dict[str, Any] = {
+        "status": "OK",
+        "sampleCount": len(evaluated),
+        "baseWinRate": round(base_win_rate, 4),
+        "baseAvgPnlPct": round(base_avg_pnl, 3),
+        "generatedAt": _now_iso(),
+        "adjustments": adjustments,
+    }
+    try:
+        _FEEDBACK_JSON.parent.mkdir(parents=True, exist_ok=True)
+        _FEEDBACK_JSON.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    return result
