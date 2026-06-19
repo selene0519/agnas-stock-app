@@ -521,10 +521,12 @@ function PositionSizingSection({
   items,
   capital,
   setCapital,
+  onTradePaper,
 }: {
   items: any[];
   capital: number;
   setCapital: (v: number) => void;
+  onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us" }) => void;
 }) {
   const [inputVal, setInputVal] = useState(capital > 0 ? String(capital) : "");
 
@@ -606,6 +608,7 @@ function PositionSizingSection({
                   <th className="pb-2 text-right font-medium">금액</th>
                   <th className="pb-2 text-right font-medium">수량</th>
                   <th className="pb-2 text-right font-medium">EV</th>
+                  {onTradePaper && <th className="pb-2 text-right font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -623,9 +626,19 @@ function PositionSizingSection({
                     <td className="py-2 pr-3 text-right font-mono text-violet-300">{(r.halfKelly * 100).toFixed(1)}%</td>
                     <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.amount.toLocaleString()}</td>
                     <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.qty > 0 ? `${r.qty}주` : "—"}</td>
-                    <td className={`py-2 text-right font-mono ${r.ev >= 2 ? "text-emerald-300" : r.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
+                    <td className={`py-2 ${onTradePaper ? "pr-3" : ""} text-right font-mono ${r.ev >= 2 ? "text-emerald-300" : r.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
                       {r.ev >= 0 ? "+" : ""}{r.ev.toFixed(1)}%
                     </td>
+                    {onTradePaper && (
+                      <td className="py-2 text-right">
+                        <button
+                          onClick={() => onTradePaper({ symbol: r.symbol, name: r.name, price: r.entry, market: r.symbol.match(/^[A-Z]{1,5}$/) ? "us" : "kr" })}
+                          className="rounded-lg bg-violet-600/20 px-2 py-1 text-[10px] font-semibold text-violet-300 hover:bg-violet-600/40 transition-colors"
+                        >
+                          모의투자
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -2703,7 +2716,7 @@ export default function HomePage({
       </section>
 
       {/* ━━ 포지션 사이징 ━━ */}
-      <PositionSizingSection items={allItems} capital={capital} setCapital={setCapital} />
+      <PositionSizingSection items={allItems} capital={capital} setCapital={setCapital} onTradePaper={onTradePaper} />
 
       {/* ━━ 대기 관찰 후보 ━━ */}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">

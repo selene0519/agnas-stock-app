@@ -209,6 +209,7 @@ export default function VirtualJournalPage() {
   const [analyticsData, setAnalyticsData] = useState<any>({});
   const [analogData, setAnalogData] = useState<any>({});
   const [perfData, setPerfData] = useState<any>(null);
+  const [attrData, setAttrData] = useState<any>(null);
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -217,13 +218,14 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes, attrRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
         mone.journalAutoCaptureStatus(),
         mone.journalAnalytics(scope),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
+        mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
       ]);
       if (tradeRes.status === "ERROR") throw new Error(tradeRes.error || "journal load failed");
       setTrades(tradeRes.items || []);
@@ -232,6 +234,7 @@ export default function VirtualJournalPage() {
       setAutoStatus(statusRes || {});
       setAnalyticsData(analyticsRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
+      setAttrData(attrRes?.status === "OK" ? attrRes : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -844,6 +847,119 @@ export default function VirtualJournalPage() {
             )}
           </div>
         </div>
+      </section>
+
+      {/* ── 귀속분석 ─────────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-slate-200">귀속분석</h2>
+          {attrData && <span className="font-mono text-[11px] text-slate-500">{attrData.count ?? 0}건 분석</span>}
+        </div>
+
+        {!attrData || (attrData.count ?? 0) === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-500">
+            평가 완료 데이터가 충분하지 않습니다 — 체결 평가 후 귀속분석이 활성화됩니다
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* EV 신호 정확도 */}
+            <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-xs font-semibold text-slate-400">EV 신호 정확도</div>
+                {attrData.evAccuracy?.correlation != null && (
+                  <span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${
+                    attrData.evAccuracy.correlation > 0.1 ? "bg-emerald-500/15 text-emerald-300"
+                    : attrData.evAccuracy.correlation < -0.1 ? "bg-red-500/15 text-red-300"
+                    : "bg-slate-700 text-slate-400"
+                  }`}>
+                    r={attrData.evAccuracy.correlation} — {attrData.evAccuracy.correlationLabel}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: "EV>0 신호 수", value: attrData.evAccuracy?.evPositive?.n ?? 0, unit: "건" },
+                  { label: "EV>0 실제 승률", value: attrData.evAccuracy?.evPositive?.winRate != null ? `${(attrData.evAccuracy.evPositive.winRate * 100).toFixed(1)}%` : "-", tone: (attrData.evAccuracy?.evPositive?.winRate ?? 0) >= 0.5 ? "text-emerald-300" : "text-amber-300" },
+                  { label: "EV>0 평균 PnL", value: attrData.evAccuracy?.evPositive?.avgPnlPct != null ? `${attrData.evAccuracy.evPositive.avgPnlPct >= 0 ? "+" : ""}${attrData.evAccuracy.evPositive.avgPnlPct.toFixed(2)}%` : "-", tone: (attrData.evAccuracy?.evPositive?.avgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300" },
+                  { label: "EV 상관계수", value: attrData.evAccuracy?.correlation != null ? String(attrData.evAccuracy.correlation) : "-", tone: (attrData.evAccuracy?.correlation ?? 0) > 0.1 ? "text-emerald-300" : (attrData.evAccuracy?.correlation ?? 0) < -0.1 ? "text-red-300" : "text-slate-400" },
+                ].map(({ label, value, unit, tone }: any) => (
+                  <div key={label} className="rounded-lg bg-slate-950/50 px-3 py-2">
+                    <div className="text-[10px] text-slate-500">{label}</div>
+                    <div className={`mt-1 font-mono text-sm font-bold ${tone || "text-slate-200"}`}>{value}{unit ? ` ${unit}` : ""}</div>
+                  </div>
+                ))}
+              </div>
+              {(attrData.evAccuracy?.evQuartileBuckets?.length ?? 0) > 0 && (
+                <div className="mt-3">
+                  <div className="mb-1.5 text-[10px] text-slate-500">EV 사분위별 실수익</div>
+                  <div className="flex gap-2">
+                    {attrData.evAccuracy.evQuartileBuckets.map((b: any) => (
+                      <div key={b.label} className="flex-1 rounded-lg bg-slate-800/60 px-2 py-1.5 text-center">
+                        <div className="text-[9px] text-slate-500">{b.label}</div>
+                        <div className={`font-mono text-xs font-bold ${(b.avgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                          {b.avgPnlPct != null ? `${b.avgPnlPct >= 0 ? "+" : ""}${b.avgPnlPct.toFixed(2)}%` : "-"}
+                        </div>
+                        <div className="text-[9px] text-slate-600">n={b.n}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 팩터별 기여도 테이블 */}
+            {[
+              { key: "byRegime", label: "마켓 레짐별" },
+              { key: "byMarket", label: "시장별" },
+              { key: "byMode", label: "전략 모드별" },
+              { key: "byHorizon", label: "투자 기간별" },
+              { key: "byEntryType", label: "진입 유형별" },
+              { key: "bySector", label: "섹터별" },
+            ].map(({ key, label }) => {
+              const rows: any[] = attrData[key] ?? [];
+              if (rows.length === 0) return null;
+              return (
+                <div key={key} className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+                  <div className="mb-2 text-xs font-semibold text-slate-400">{label}</div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-[10px] text-slate-500">
+                          <th className="pb-1.5 text-left font-medium">팩터</th>
+                          <th className="pb-1.5 text-right font-medium">n</th>
+                          <th className="pb-1.5 text-right font-medium">승률</th>
+                          <th className="pb-1.5 text-right font-medium">평균PnL</th>
+                          <th className="pb-1.5 text-right font-medium">IR</th>
+                          <th className="pb-1.5 text-right font-medium">기여%</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/40">
+                        {rows.map((r: any) => (
+                          <tr key={r.factor}>
+                            <td className="py-1.5 font-mono text-slate-300">{r.factor || "-"}</td>
+                            <td className="py-1.5 text-right text-slate-400">{r.count}</td>
+                            <td className={`py-1.5 text-right font-mono font-semibold ${(r.winRate ?? 0) >= 0.5 ? "text-emerald-400" : "text-amber-400"}`}>
+                              {r.winRate != null ? `${(r.winRate * 100).toFixed(0)}%` : "-"}
+                            </td>
+                            <td className={`py-1.5 text-right font-mono font-semibold ${(r.avgPnlPct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                              {r.avgPnlPct != null ? `${r.avgPnlPct >= 0 ? "+" : ""}${r.avgPnlPct.toFixed(2)}%` : "-"}
+                            </td>
+                            <td className={`py-1.5 text-right font-mono ${(r.ir ?? 0) >= 0.5 ? "text-emerald-300" : (r.ir ?? 0) >= 0 ? "text-slate-300" : "text-red-300"}`}>
+                              {r.ir != null ? r.ir.toFixed(2) : "-"}
+                            </td>
+                            <td className={`py-1.5 text-right font-mono ${(r.contribPct ?? 0) >= 0 ? "text-slate-300" : "text-red-400"}`}>
+                              {r.contribPct != null ? `${r.contribPct >= 0 ? "+" : ""}${r.contribPct.toFixed(1)}%` : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

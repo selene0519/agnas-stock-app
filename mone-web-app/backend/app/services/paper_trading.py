@@ -23,6 +23,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 _DATA_DIR = _REPO_ROOT / "data" / "paper"
 _TRADES_CSV = _DATA_DIR / "paper_trades.csv"
 _BALANCE_JSON = _DATA_DIR / "paper_balance.json"
+_STOPS_JSON = _DATA_DIR / "paper_stops.json"  # {market}:{symbol} → {stopPrice, targetPrice, note}
 
 SEED_KR = float(os.getenv("PAPER_SEED_KR", "5000000"))
 SEED_US = float(os.getenv("PAPER_SEED_US", "5000"))
@@ -453,3 +454,125 @@ def drawdown_summary(market: str = "all") -> dict[str, Any]:
         }
 
     return result
+
+
+# ──────────────────────────────────────────────────────────────────
+# 스탑/타겟 관리 (보유중 관리)
+# ──────────────────────────────────────────────────────────────────
+
+def _load_stops() -> dict[str, Any]:
+    _ensure_dirs()
+    if _STOPS_JSON.exists():
+        try:
+            return json.loads(_STOPS_JSON.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_stops(stops: dict[str, Any]) -> None:
+    _ensure_dirs()
+    _STOPS_JSON.write_text(json.dumps(stops, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def update_stop(
+    market: str,
+    symbol: str,
+    stop_price: float | None = None,
+    target_price: float | None = None,
+    note: str = "",
+) -> dict[str, Any]:
+    """포지션별 스탑/타겟 가격 업데이트."""
+    key = f"{market.lower()}:{symbol.upper()}"
+    with _LOCK:
+        stops = _load_stops()
+        entry = stops.get(key, {})
+        if stop_price is not None:
+            entry["stopPrice"] = round(float(stop_price), 2)
+        if target_price is not None:
+            entry["targetPrice"] = round(float(target_price), 2)
+        if note:
+            entry["note"] = note
+        entry["updatedAt"] = datetime.utcnow().isoformat()
+        stops[key] = entry
+        _save_stops(stops)
+    return {"ok": True, "key": key, "stop": entry}
+
+
+def get_stops(market: str = "all") -> dict[str, Any]:
+    """저장된 스탑/타겟 가격 조회."""
+    stops = _load_stops()
+    if market == "all":
+        return {"status": "OK", "stops": stops}
+    mk = market.lower()
+    filtered = {k: v for k, v in stops.items() if k.startswith(f"{mk}:")}
+    return {"status": "OK", "stops": filtered}
+
+
+def check_stops(market: str = "all") -> dict[str, Any]:
+    """현재가 vs 스탑/타겟 비교 — 경보 목록 반환.
+
+    alertLevel:
+      STOP_HIT    현재가 ≤ stopPrice
+      STOP_NEAR   현재가 < stopPrice × 1.05 (5% 이내)
+      TARGET_HIT  현재가 ≥ targetPrice
+      TARGET_NEAR 현재가 > targetPrice × 0.95 (5% 이내)
+    """
+    pos_res = get_positions(market)
+    stops = _load_stops()
+    alerts = []
+
+    for pos in pos_res.get("items", []):
+        mk = str(pos.get("market", "")).lower()
+        sym = str(pos.get("symbol", "")).upper()
+        key = f"{mk}:{sym}"
+        current = pos.get("currentPrice")
+        stop_entry = stops.get(key, {})
+        stop_price = stop_entry.get("stopPrice")
+        target_price = stop_entry.get("targetPrice")
+        avg_price = pos.get("avgPrice")
+
+        if current is None:
+            continue
+
+        alert_level = None
+        if stop_price and current <= stop_price:
+            alert_level = "STOP_HIT"
+        elif stop_price and current < stop_price * 1.05:
+            alert_level = "STOP_NEAR"
+        elif target_price and current >= target_price:
+            alert_level = "TARGET_HIT"
+        elif target_price and current > target_price * 0.95:
+            alert_level = "TARGET_NEAR"
+
+        stop_dist_pct = round((current - stop_price) / stop_price * 100, 2) if stop_price else None
+        target_dist_pct = round((target_price - current) / current * 100, 2) if target_price else None
+
+        alerts.append({
+            "market": mk,
+            "symbol": sym,
+            "name": pos.get("name", sym),
+            "currentPrice": current,
+            "avgPrice": avg_price,
+            "pnlPct": pos.get("pnlPct"),
+            "stopPrice": stop_price,
+            "targetPrice": target_price,
+            "stopDistPct": stop_dist_pct,
+            "targetDistPct": target_dist_pct,
+            "alertLevel": alert_level,
+            "note": stop_entry.get("note", ""),
+        })
+
+    # 경보 순서: STOP_HIT > STOP_NEAR > TARGET_HIT > TARGET_NEAR > None
+    _order = {"STOP_HIT": 0, "STOP_NEAR": 1, "TARGET_HIT": 2, "TARGET_NEAR": 3}
+    alerts.sort(key=lambda a: _order.get(a["alertLevel"] or "", 9))
+
+    hit_count = sum(1 for a in alerts if a["alertLevel"] in {"STOP_HIT", "TARGET_HIT"})
+    near_count = sum(1 for a in alerts if a["alertLevel"] in {"STOP_NEAR", "TARGET_NEAR"})
+
+    return {
+        "status": "OK",
+        "hitCount": hit_count,
+        "nearCount": near_count,
+        "alerts": alerts,
+    }
