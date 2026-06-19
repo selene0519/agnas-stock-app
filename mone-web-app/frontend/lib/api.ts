@@ -397,6 +397,8 @@ export const mone = {
     apiPost<ApiList>("/api/journal/calibration-suggestions/apply-approved", body || {}),
   journalHistoricalReplay: (body: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate: string; limit?: number; evaluateAfter?: boolean }) =>
     apiPost<ApiList>("/api/journal/historical-replay", body),
+  journalMarketAnalogsRun: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate?: string; analogLimit?: number; replayLimit?: number; runReplay?: boolean }) =>
+    apiPost<ApiList>("/api/journal/market-analogs/run", body || {}),
   journalAutoCaptureStatus: () =>
     apiGet<ApiList>("/api/journal/auto-capture/status"),
   journalAutoCaptureRun: (body?: { market?: Market; sourceType?: string; journalSession?: string; limit?: number; includeEngine?: boolean; evaluateAfter?: boolean; force?: boolean }) =>

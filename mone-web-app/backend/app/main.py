@@ -7529,6 +7529,21 @@ def api_journal_historical_replay(payload: dict = Body(default_factory=dict)) ->
     )
 
 
+@app.post("/api/journal/market-analogs/run")
+def api_journal_market_analogs_run(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.market_analog_replay(
+        market=str(payload.get("market") or "kr"),
+        mode=str(payload.get("mode") or "balanced"),
+        horizon=str(payload.get("horizon") or "swing"),
+        as_of_date=str(payload.get("asOfDate") or payload.get("as_of_date") or "") or None,
+        analog_limit=int(payload.get("analogLimit") or payload.get("analog_limit") or 5),
+        replay_limit=int(payload.get("replayLimit") or payload.get("replay_limit") or 5),
+        run_replay=bool(payload.get("runReplay", payload.get("run_replay", True))),
+    )
+
+
 @app.get("/api/journal/auto-capture/status")
 def api_journal_auto_capture_status() -> dict:
     from app.services import virtual_trade_journal as vtj

@@ -106,6 +106,7 @@ export default function VirtualJournalPage() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [autoStatus, setAutoStatus] = useState<any>({});
   const [analyticsData, setAnalyticsData] = useState<any>({});
+  const [analogData, setAnalogData] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -138,7 +139,7 @@ export default function VirtualJournalPage() {
     load();
   }, [load]);
 
-  const runAction = async (kind: "capture" | "evaluate" | "auto" | "replay") => {
+  const runAction = async (kind: "capture" | "evaluate" | "auto" | "replay" | "analog") => {
     setBusy(kind);
     setError("");
     try {
@@ -154,6 +155,13 @@ export default function VirtualJournalPage() {
         const targetMode = mode === "all" ? "balanced" : mode;
         const targetHorizon = horizon === "all" ? "swing" : horizon;
         await mone.journalHistoricalReplay({ market: targetMarket, mode: targetMode, horizon: targetHorizon, asOfDate: replayDate, limit: 5, evaluateAfter: true });
+      } else if (kind === "analog") {
+        const targetMarket = market === "all" ? "kr" : market;
+        const targetMode = mode === "all" ? "balanced" : mode;
+        const targetHorizon = horizon === "all" ? "swing" : horizon;
+        const res = await mone.journalMarketAnalogsRun({ market: targetMarket, mode: targetMode, horizon: targetHorizon, analogLimit: 5, replayLimit: 5, runReplay: true });
+        if (res.status === "ERROR") throw new Error(res.error || "market analog replay failed");
+        setAnalogData(res);
       } else {
         await mone.journalAutoCaptureRun({ market, journalSession: actionSession, limit: 5, evaluateAfter: actionSession === "AFTER_CLOSE_TRADE", force: true });
       }
@@ -259,6 +267,9 @@ export default function VirtualJournalPage() {
             </button>
             <button onClick={() => runAction("auto")} disabled={!!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-emerald-500/12 px-1 text-[11px] font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
               <Play size={13} className="shrink-0" /> 자동 캡처
+            </button>
+            <button onClick={() => runAction("analog")} disabled={!!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-indigo-500/12 px-1 text-[11px] font-semibold text-indigo-200 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
+              <Activity size={13} className="shrink-0" /> 유사 장세
             </button>
           </div>
         </div>
@@ -477,6 +488,41 @@ export default function VirtualJournalPage() {
               </button>
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-500">Synthetic cutoff replay v1입니다. 후보 생성은 입력 날짜까지의 OHLCV만 사용하고, 평가는 저장 후 별도로 수행합니다.</p>
+          </div>
+
+          <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-slate-200">유사 장세 복기</h2>
+              <span className="font-mono text-[11px] text-slate-500">{analogData.benchmarkSymbol || "-"}</span>
+            </div>
+            {analogData.summary && (
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="text-[10px] text-slate-500">평가 수</div>
+                  <div className="font-mono text-sm font-semibold text-slate-200">{analogData.summary.evaluated ?? 0}</div>
+                </div>
+                <div className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="text-[10px] text-slate-500">평균 PnL</div>
+                  <div className={`font-mono text-sm font-semibold ${(Number(analogData.summary.avgNetPnlPct) || 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                    {analogData.summary.avgNetPnlPct == null ? "-" : `${Number(analogData.summary.avgNetPnlPct).toFixed(2)}%`}
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              {(analogData.items || []).slice(0, 5).map((item: any) => (
+                <div key={item.date} className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] text-indigo-300">{item.date}</span>
+                    <span className="font-mono text-[11px] text-slate-500">sim {Math.round(Number(item.similarity || 0) * 100)}%</span>
+                  </div>
+                  <div className="mt-1 text-xs leading-5 text-slate-300">{item.lesson || "-"}</div>
+                </div>
+              ))}
+              {!(analogData.items || []).length && (
+                <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-500">유사 장세 replay 결과가 아직 없습니다.</div>
+              )}
+            </div>
           </div>
 
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">

@@ -85,6 +85,22 @@ MARKET_COSTS = {
     "kr": {"buy_slippage": 0.001, "sell_slippage": 0.001, "tax_commission": 0.0021},
     "us": {"buy_slippage": 0.001, "sell_slippage": 0.001, "tax_commission": 0.0010},
 }
+BENCHMARK_SYMBOLS = {
+    "kr": ["KOSPI", "KOSDAQ"],
+    "us": ["SPY", "QQQ", "SP500"],
+}
+ANALOG_FEATURES = {
+    "ret_1d_pct": 2.0,
+    "ret_5d_pct": 5.0,
+    "ret_20d_pct": 10.0,
+    "ret_60d_pct": 15.0,
+    "vol_20d_pct": 2.0,
+    "ma20_gap_pct": 6.0,
+    "ma60_gap_pct": 10.0,
+    "drawdown_20d_pct": 8.0,
+    "range_20d_pct": 10.0,
+    "volume_20d_ratio": 1.0,
+}
 
 _SCHEDULER_LOCK = threading.Lock()
 _SCHEDULER_STARTED = False
@@ -647,6 +663,259 @@ def historical_replay(
         "rejected": dict(rejected),
         "evaluation": evaluation,
         "items": _merge_evaluations(added),
+    }
+
+
+def market_analog_replay(
+    market: str = "kr",
+    mode: str = "balanced",
+    horizon: str = "swing",
+    as_of_date: str | None = None,
+    analog_limit: int = 5,
+    replay_limit: int = 5,
+    run_replay: bool = True,
+) -> dict[str, Any]:
+    _ensure()
+    market = market.lower().strip()
+    mode = mode.lower().strip()
+    horizon = horizon.lower().strip()
+    if market not in MARKETS or mode not in MODES or horizon not in HORIZONS:
+        return {"status": "ERROR", "error": "INVALID_SCOPE", "items": []}
+    try:
+        analogs_payload = _find_market_analogs(market, as_of_date=as_of_date, limit=analog_limit, horizon=horizon)
+    except Exception as exc:
+        return {"status": "ERROR", "error": f"ANALOG_BUILD_FAILED: {exc}", "items": []}
+    if analogs_payload.get("status") != "OK":
+        return analogs_payload
+
+    items: list[dict[str, Any]] = []
+    safe_replay_limit = max(1, min(int(replay_limit or 5), 10))
+    for analog in analogs_payload.get("items", []):
+        work = dict(analog)
+        replay_result: dict[str, Any] = {"status": "SKIPPED"}
+        if run_replay:
+            replay_result = historical_replay(
+                market=market,
+                mode=mode,
+                horizon=horizon,
+                as_of_date=str(analog.get("date") or ""),
+                limit=safe_replay_limit,
+                evaluate_after=True,
+            )
+        work["replay"] = {
+            "status": replay_result.get("status"),
+            "selected": replay_result.get("selected", 0),
+            "added": replay_result.get("added", 0),
+            "duplicates": replay_result.get("duplicates", 0),
+            "method": replay_result.get("replayMethod", HISTORICAL_REPLAY_METHOD),
+        }
+        work["outcomeSummary"] = _historical_replay_outcome_summary(market, mode, horizon, str(analog.get("date") or ""))
+        work["lesson"] = _analog_lesson(work)
+        items.append(work)
+    summary = _analog_items_summary(items)
+    return {
+        "status": "OK",
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "asOfDate": analogs_payload.get("asOfDate"),
+        "benchmarkSymbol": analogs_payload.get("benchmarkSymbol"),
+        "currentVector": analogs_payload.get("currentVector"),
+        "replayMethod": HISTORICAL_REPLAY_METHOD,
+        "futureDataPolicy": "analogs_use_benchmark_data_lte_as_of_date_then_evaluate_future_after_snapshot",
+        "count": len(items),
+        "summary": summary,
+        "items": items,
+    }
+
+
+def _find_market_analogs(
+    market: str,
+    as_of_date: str | None = None,
+    limit: int = 5,
+    horizon: str = "swing",
+) -> dict[str, Any]:
+    bench, benchmark_symbol = _load_benchmark_ohlcv(market)
+    if bench.empty:
+        return {"status": "ERROR", "error": "BENCHMARK_OHLCV_UNAVAILABLE", "items": []}
+    target_date = _text(as_of_date)[:10]
+    work = bench.copy()
+    if target_date:
+        target_ts = pd.Timestamp(target_date).normalize()
+        work = work[work["_date_ts"] <= target_ts].reset_index(drop=True)
+    if len(work) < 90:
+        return {"status": "ERROR", "error": "INSUFFICIENT_BENCHMARK_HISTORY", "items": []}
+    current_idx = len(work) - 1
+    current_vector = _market_vector_at(work, current_idx)
+    if not current_vector:
+        return {"status": "ERROR", "error": "CURRENT_VECTOR_UNAVAILABLE", "items": []}
+    eval_window = EVALUATION_WINDOWS.get(horizon, 20)
+    candidates: list[dict[str, Any]] = []
+    latest_ts = work.iloc[current_idx]["_date_ts"]
+    max_idx = current_idx - max(eval_window, 20)
+    for idx in range(60, max_idx + 1):
+        vector = _market_vector_at(work, idx)
+        if not vector:
+            continue
+        distance = _analog_distance(current_vector, vector)
+        if distance is None:
+            continue
+        candidates.append({
+            "date": str(work.iloc[idx]["_date_ts"].date()),
+            "similarity": round(max(0.0, 1.0 - distance / 4.0), 4),
+            "distance": round(distance, 4),
+            "marketVector": vector,
+            "futureWindowAvailableDays": int((work["_date_ts"] > work.iloc[idx]["_date_ts"]).sum()),
+        })
+    candidates.sort(key=lambda item: (item["distance"], item["date"]))
+    safe_limit = max(1, min(int(limit or 5), 20))
+    return {
+        "status": "OK",
+        "market": market,
+        "asOfDate": str(latest_ts.date()),
+        "benchmarkSymbol": benchmark_symbol,
+        "currentVector": current_vector,
+        "count": len(candidates[:safe_limit]),
+        "items": candidates[:safe_limit],
+    }
+
+
+def _load_benchmark_ohlcv(market: str) -> tuple[pd.DataFrame, str]:
+    for symbol in BENCHMARK_SYMBOLS.get(market, []):
+        df, _source, source_type = _load_ohlcv(market, symbol)
+        if df is not None and not df.empty and source_type == "actual_ohlcv":
+            return df, symbol
+    return pd.DataFrame(), ""
+
+
+def _market_vector_at(df: pd.DataFrame, idx: int) -> dict[str, Any]:
+    if idx < 60 or idx >= len(df):
+        return {}
+    sub = df.iloc[: idx + 1].copy()
+    close = pd.to_numeric(sub["close"], errors="coerce")
+    high = pd.to_numeric(sub.get("high", close), errors="coerce")
+    low = pd.to_numeric(sub.get("low", close), errors="coerce")
+    volume = pd.to_numeric(sub.get("volume", pd.Series([0] * len(sub))), errors="coerce").fillna(0)
+    if close.dropna().shape[0] < 61:
+        return {}
+    last = float(close.iloc[-1])
+    if not last:
+        return {}
+
+    def ret(days: int) -> float | None:
+        if len(close) <= days or not close.iloc[-days - 1]:
+            return None
+        return round((float(close.iloc[-1]) / float(close.iloc[-days - 1]) - 1.0) * 100.0, 4)
+
+    daily = close.pct_change().dropna()
+    ma20 = float(close.tail(20).mean())
+    ma60 = float(close.tail(60).mean())
+    high20 = float(high.tail(20).max())
+    low20 = float(low.tail(20).min())
+    volume5 = float(volume.tail(5).mean() or 0.0)
+    volume20 = float(volume.tail(20).mean() or 0.0)
+    vector = {
+        "date": str(sub.iloc[-1]["_date_ts"].date()),
+        "ret_1d_pct": ret(1),
+        "ret_5d_pct": ret(5),
+        "ret_20d_pct": ret(20),
+        "ret_60d_pct": ret(60),
+        "vol_20d_pct": round(float(daily.tail(20).std() or 0.0) * 100.0, 4),
+        "ma20_gap_pct": round((last / ma20 - 1.0) * 100.0, 4) if ma20 else None,
+        "ma60_gap_pct": round((last / ma60 - 1.0) * 100.0, 4) if ma60 else None,
+        "drawdown_20d_pct": round((last / high20 - 1.0) * 100.0, 4) if high20 else None,
+        "range_20d_pct": round((high20 - low20) / last * 100.0, 4) if last else None,
+        "volume_20d_ratio": round(volume5 / volume20, 4) if volume20 > 0 else None,
+    }
+    vector["regime"] = _compute_regime(df, sub.iloc[-1]["_date_ts"])
+    return vector
+
+
+def _analog_distance(current: dict[str, Any], candidate: dict[str, Any]) -> float | None:
+    total = 0.0
+    used = 0
+    for key, scale in ANALOG_FEATURES.items():
+        a = _safe_float(current.get(key))
+        b = _safe_float(candidate.get(key))
+        if a is None or b is None:
+            continue
+        total += ((a - b) / scale) ** 2
+        used += 1
+    if used < 6:
+        return None
+    return math.sqrt(total / used)
+
+
+def _historical_replay_outcome_summary(market: str, mode: str, horizon: str, as_of_date: str) -> dict[str, Any]:
+    rows = _merge_evaluations(_read_journal_rows())
+    filtered = [
+        row for row in rows
+        if _text(row.get("market")).lower() == market
+        and _text(row.get("mode")).lower() == mode
+        and _text(row.get("horizon")).lower() == horizon
+        and _upper(row.get("source_type")) == "HISTORICAL_REPLAY"
+        and _text(row.get("as_of_date"))[:10] == as_of_date[:10]
+        and _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
+    ]
+    returns = [_safe_float(row.get("net_pnl_pct")) for row in filtered]
+    returns = [value for value in returns if value is not None]
+    wins = [row for row in filtered if _is_positive_outcome(row)]
+    failures = Counter(_text(row.get("failure_reason") or "UNKNOWN") for row in filtered)
+    outcomes = Counter(_text(row.get("outcome") or "UNKNOWN") for row in filtered)
+    return {
+        "evaluated": len(filtered),
+        "winRate": round(len(wins) / len(filtered), 4) if filtered else None,
+        "avgNetPnlPct": round(sum(returns) / len(returns), 4) if returns else None,
+        "outcomeCounts": dict(outcomes),
+        "failureCounts": dict(failures),
+        "topFailures": [
+            {"reason": reason, "count": count, "share": round(count / len(filtered), 4) if filtered else 0.0}
+            for reason, count in failures.most_common(3)
+            if reason not in {"NONE", ""}
+        ],
+    }
+
+
+def _is_positive_outcome(row: dict[str, Any]) -> bool:
+    outcome = _text(row.get("outcome"))
+    pnl = _safe_float(row.get("net_pnl_pct"))
+    return outcome == "TARGET_HIT" or (pnl is not None and pnl > 0)
+
+
+def _analog_lesson(item: dict[str, Any]) -> str:
+    date_text = _text(item.get("date"))
+    summary = item.get("outcomeSummary") if isinstance(item.get("outcomeSummary"), dict) else {}
+    evaluated = int(summary.get("evaluated") or 0)
+    if evaluated <= 0:
+        return f"{date_text}와 유사한 장세를 찾았지만 아직 평가 가능한 replay 결과가 없습니다."
+    win_rate = summary.get("winRate")
+    avg = summary.get("avgNetPnlPct")
+    failures = summary.get("topFailures") if isinstance(summary.get("topFailures"), list) else []
+    top_failure = failures[0].get("reason") if failures else "NONE"
+    win_text = "-" if win_rate is None else f"{float(win_rate) * 100:.1f}%"
+    avg_text = "-" if avg is None else f"{float(avg):+.2f}%"
+    return f"{date_text} 유사 장세 replay {evaluated}건: 승률 {win_text}, 평균 {avg_text}, 주요 실패 {top_failure}."
+
+
+def _analog_items_summary(items: list[dict[str, Any]]) -> dict[str, Any]:
+    evaluated = sum(int((item.get("outcomeSummary") or {}).get("evaluated") or 0) for item in items)
+    returns: list[float] = []
+    failures: Counter[str] = Counter()
+    for item in items:
+        summary = item.get("outcomeSummary") if isinstance(item.get("outcomeSummary"), dict) else {}
+        avg = _safe_float(summary.get("avgNetPnlPct"))
+        count = int(summary.get("evaluated") or 0)
+        if avg is not None and count:
+            returns.extend([avg] * count)
+        failures.update(summary.get("failureCounts") or {})
+    return {
+        "evaluated": evaluated,
+        "avgNetPnlPct": round(sum(returns) / len(returns), 4) if returns else None,
+        "topFailures": [
+            {"reason": reason, "count": count, "share": round(count / evaluated, 4) if evaluated else 0.0}
+            for reason, count in failures.most_common(5)
+            if reason not in {"NONE", ""}
+        ],
     }
 
 

@@ -8,6 +8,7 @@ This spec covers:
 
 - forward paper trading from current recommendations
 - historical replay that blocks future data during recommendation generation
+- market-analog replay that finds past market movements similar to the current market and records what happened next
 - conservative fill and exit rules
 - structured postmortem tags plus human-readable review text
 - calibration suggestions that require human approval before affecting strategy weights
@@ -314,6 +315,45 @@ Any replay row that cannot prove its cutoff should be marked `DATA_INVALID` and 
 
 The current historical replay implementation is `synthetic_cutoff_ohlcv_v1`: it generates candidates from OHLCV available at `as_of_date`, not from a full point-in-time run of the production MONE recommendation engine. Treat it as a future-data firewall and evaluation harness, not as proof that MONE would have selected the same symbols on that historical date.
 
+## Market Analog Replay
+
+MONE can compare the current market movement with past benchmark movement using only benchmark data available up to the comparison date.
+
+Default benchmark sources:
+
+| market | benchmark candidates |
+|---|---|
+| `kr` | `KOSPI`, then `KOSDAQ` |
+| `us` | `SPY`, then `QQQ`, then `SP500` |
+
+The analog vector includes:
+
+```text
+ret_1d_pct
+ret_5d_pct
+ret_20d_pct
+ret_60d_pct
+vol_20d_pct
+ma20_gap_pct
+ma60_gap_pct
+drawdown_20d_pct
+range_20d_pct
+volume_20d_ratio
+regime
+```
+
+Flow:
+
+```text
+current benchmark vector
+-> nearest historical benchmark vectors before as_of_date
+-> historical_replay(as_of_date = analog date)
+-> evaluate future bars after the snapshot
+-> summarize win rate, average PnL, outcomes, and failure reasons
+```
+
+This answers: "When the market previously moved like this, what did MONE's cutoff replay select, how did those candidates move afterward, and what failure pattern was observed?"
+
 ## Calibration Flow
 
 Calibration must be suggestion-first, approval-later.
@@ -373,6 +413,7 @@ POST /api/journal/auto-capture/run
 POST /api/journal/calibration-suggestions/{id}/approve
 POST /api/journal/calibration-suggestions/apply-approved
 POST /api/journal/historical-replay
+POST /api/journal/market-analogs/run
 ```
 
 `capture` parameters:
@@ -458,6 +499,7 @@ Phase 5: historical replay
 - add `as_of_date` data firewall
 - create replay rows with `source_type = HISTORICAL_REPLAY`
 - prevent replay rows from being mixed with forward rows unless explicitly requested
+- add market-analog replay summaries that connect similar past market movement to future outcome/failure summaries
 
 ## Acceptance Criteria
 
@@ -469,6 +511,7 @@ Phase 5: historical replay
 - Failure summaries are queryable by structured tags, not by parsing narrative text.
 - Calibration suggestions are visible but not applied without approval.
 - `FORWARD_PAPER_TRADE` and `HISTORICAL_REPLAY` performance can be reported separately.
+- Market-analog replay can explain similar past market movement and what happened afterward without using future data during analog selection.
 
 ## Auto Capture Defaults
 

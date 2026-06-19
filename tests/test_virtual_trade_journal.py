@@ -193,6 +193,90 @@ def test_us_premarket_auto_capture_uses_same_day_us_trade_date(
     assert out["runs"][0]["status"] == "SKIPPED_MARKET_CLOSED"
 
 
+def test_market_analog_search_uses_only_cutoff_benchmark_history(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = []
+    for idx in range(150):
+        close = 100 + idx * 0.2 + (idx % 12 - 6) * 0.4
+        rows.append(
+            {
+                "date": (pd.Timestamp("2025-01-01") + pd.Timedelta(days=idx)).date().isoformat(),
+                "open": close * 0.99,
+                "high": close * 1.01,
+                "low": close * 0.98,
+                "close": close,
+                "volume": 1000 + (idx % 7) * 10,
+            }
+        )
+    bench = pd.DataFrame(rows)
+    bench["_date_ts"] = pd.to_datetime(bench["date"], errors="coerce").dt.normalize()
+    cutoff = bench.iloc[130]["date"]
+    monkeypatch.setattr(vtj, "_load_benchmark_ohlcv", lambda market: (bench.copy(), "TESTIDX"))
+
+    out = vtj._find_market_analogs("kr", as_of_date=cutoff, limit=3, horizon="swing")
+
+    assert out["status"] == "OK"
+    assert out["asOfDate"] == cutoff
+    assert out["benchmarkSymbol"] == "TESTIDX"
+    assert len(out["items"]) == 3
+    assert all(item["date"] < cutoff for item in out["items"])
+    assert all("ret_20d_pct" in item["marketVector"] for item in out["items"])
+
+
+def test_market_analog_replay_summarizes_future_outcomes_after_snapshot(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    analog_date = "2026-01-10"
+
+    monkeypatch.setattr(
+        vtj,
+        "_find_market_analogs",
+        lambda *args, **kwargs: {
+            "status": "OK",
+            "market": "kr",
+            "asOfDate": "2026-06-01",
+            "benchmarkSymbol": "TESTIDX",
+            "currentVector": {"ret_20d_pct": 3.2, "regime": "RISK_ON"},
+            "items": [{"date": analog_date, "similarity": 0.91, "distance": 0.3, "marketVector": {"ret_20d_pct": 2.9}}],
+        },
+    )
+
+    def fake_replay(**kwargs):
+        row = vtj._snapshot_from_item(_valid_recommendation("SIM"), "HISTORICAL_REPLAY", analog_date, vtj.DEFAULT_JOURNAL_SESSION)
+        vtj._write_rows(vtj.JOURNAL_CSV, [row], vtj.JOURNAL_COLS)
+        vtj._write_rows(
+            vtj.EVALUATION_CSV,
+            [
+                {
+                    "journal_id": row["journal_id"],
+                    "status": "EVALUATED",
+                    "outcome": "TIME_EXIT_NEAR_TARGET",
+                    "filled": True,
+                    "net_pnl_pct": 2.4,
+                    "mfe_pct": 5.0,
+                    "mae_pct": -1.0,
+                    "failure_reason": "TARGET_TOO_FAR",
+                    "evaluated_at": "2026-01-31T00:00:00",
+                }
+            ],
+            vtj.EVALUATION_COLS,
+        )
+        return {"status": "OK", "selected": 1, "added": 1, "duplicates": 0, "replayMethod": vtj.HISTORICAL_REPLAY_METHOD}
+
+    monkeypatch.setattr(vtj, "historical_replay", fake_replay)
+
+    out = vtj.market_analog_replay("kr", "balanced", "swing", analog_limit=1, replay_limit=1)
+
+    assert out["status"] == "OK"
+    assert out["items"][0]["outcomeSummary"]["evaluated"] == 1
+    assert out["items"][0]["outcomeSummary"]["avgNetPnlPct"] == 2.4
+    assert out["items"][0]["outcomeSummary"]["failureCounts"]["TARGET_TOO_FAR"] == 1
+    assert "승률" in out["items"][0]["lesson"]
+
+
 def test_calibration_review_records_decision_but_never_auto_applies(isolated_vtj: Path) -> None:
     journal_rows = []
     eval_rows = []
