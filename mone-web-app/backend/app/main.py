@@ -7571,6 +7571,18 @@ def api_journal_performance(
     return vtj.performance_by_strategy(market=market, mode=mode, horizon=horizon)
 
 
+@app.get("/api/journal/attribution")
+def api_journal_attribution(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+) -> dict:
+    """팩터별 PnL 귀속분석 — 레짐/섹터/전략별 기여도, EV 신호 정확도."""
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.attribution_analysis(market=market, mode=mode, horizon=horizon)
+
+
 try:
     from app.services import virtual_trade_journal as _vtj_auto
 
@@ -8648,3 +8660,34 @@ def api_paper_drawdown(market: str = Query("all")) -> dict:
         return drawdown_summary(market=market)
     except Exception as e:
         return {"status": "ERROR", "error": str(e)}
+
+
+@app.get("/api/paper/stops")
+def api_paper_stops(market: str = Query("all")) -> dict:
+    """저장된 스탑/타겟 가격 조회."""
+    from app.services.paper_trading import get_stops
+    return get_stops(market=market)
+
+
+@app.patch("/api/paper/stops/{market}/{symbol}")
+def api_paper_stop_update(
+    market: str,
+    symbol: str,
+    body: dict = Body({}),
+) -> dict:
+    """포지션 스탑/타겟 가격 업데이트."""
+    from app.services.paper_trading import update_stop
+    return update_stop(
+        market=market,
+        symbol=symbol,
+        stop_price=body.get("stopPrice"),
+        target_price=body.get("targetPrice"),
+        note=str(body.get("note") or ""),
+    )
+
+
+@app.get("/api/paper/stops/check")
+def api_paper_stops_check(market: str = Query("all")) -> dict:
+    """현재가 vs 스탑/타겟 비교 — 경보 목록."""
+    from app.services.paper_trading import check_stops
+    return check_stops(market=market)

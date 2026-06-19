@@ -1889,3 +1889,169 @@ def performance_by_strategy(
         "strategyRows": strategy_rows,
         "equityCurve": curve_points,
     }
+
+
+# ──────────────────────────────────────────────────────────────────
+# 귀속분석 (Attribution Analysis)
+# ──────────────────────────────────────────────────────────────────
+
+def _factor_stats(rows: list[dict[str, Any]], factor_key: str) -> list[dict[str, Any]]:
+    """주어진 팩터 키로 그룹화하여 PnL 귀속 통계 계산."""
+    groups: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        val = _text(r.get(factor_key)) or "UNKNOWN"
+        if val not in groups:
+            groups[val] = {"pnls": [], "wins": 0, "count": 0}
+        pnl = _safe_float(r.get("net_pnl_pct"))
+        groups[val]["count"] += 1
+        if pnl is not None:
+            groups[val]["pnls"].append(pnl)
+            if pnl > 0 or _text(r.get("outcome")) == "TARGET_HIT":
+                groups[val]["wins"] += 1
+
+    result = []
+    total_pnl_sum = sum(p for g in groups.values() for p in g["pnls"])
+    for val, d in sorted(groups.items(), key=lambda x: -(sum(x[1]["pnls"]) if x[1]["pnls"] else 0)):
+        pnls = d["pnls"]
+        n = d["count"]
+        n_pnl = len(pnls)
+        avg = sum(pnls) / n_pnl if n_pnl else None
+        total = sum(pnls) if pnls else None
+        variance = sum((p - (avg or 0)) ** 2 for p in pnls) / n_pnl if n_pnl > 1 else None
+        std = variance ** 0.5 if variance is not None else None
+        ir = round(avg / std, 3) if avg is not None and std and std > 0 else None
+        contrib_pct = round(total / total_pnl_sum * 100, 1) if total is not None and total_pnl_sum != 0 else None
+        result.append({
+            "factor": val,
+            "count": n,
+            "wins": d["wins"],
+            "winRate": round(d["wins"] / n, 4) if n else None,
+            "avgPnlPct": round(avg, 4) if avg is not None else None,
+            "totalPnlPct": round(total, 4) if total is not None else None,
+            "stdPnlPct": round(std, 4) if std is not None else None,
+            "ir": ir,
+            "contribPct": contrib_pct,
+        })
+    return result
+
+
+def _ev_accuracy(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """EV > 0 예측 신호의 실제 적중률 및 EV-실수익 상관 분석."""
+    ev_pos, ev_neg, ev_zero = [], [], []
+    for r in rows:
+        ev = _safe_float(r.get("expected_value") or r.get("ev"))
+        pnl = _safe_float(r.get("net_pnl_pct"))
+        if ev is None or pnl is None:
+            continue
+        bucket = ev_pos if ev > 0 else (ev_neg if ev < 0 else ev_zero)
+        bucket.append(pnl)
+
+    def _grp(pnls: list[float]) -> dict[str, Any]:
+        if not pnls:
+            return {"n": 0, "winRate": None, "avgPnlPct": None}
+        wins = sum(1 for p in pnls if p > 0)
+        avg = sum(pnls) / len(pnls)
+        return {"n": len(pnls), "winRate": round(wins / len(pnls), 4), "avgPnlPct": round(avg, 4)}
+
+    # EV vs PnL 상관 (rank 없이 선형 근사: cov/var)
+    all_ev, all_pnl = [], []
+    for r in rows:
+        ev = _safe_float(r.get("expected_value") or r.get("ev"))
+        pnl = _safe_float(r.get("net_pnl_pct"))
+        if ev is not None and pnl is not None:
+            all_ev.append(ev)
+            all_pnl.append(pnl)
+
+    corr = None
+    if len(all_ev) >= 5:
+        n = len(all_ev)
+        mean_ev = sum(all_ev) / n
+        mean_pnl = sum(all_pnl) / n
+        cov = sum((e - mean_ev) * (p - mean_pnl) for e, p in zip(all_ev, all_pnl)) / n
+        var_ev = sum((e - mean_ev) ** 2 for e in all_ev) / n
+        var_pnl = sum((p - mean_pnl) ** 2 for p in all_pnl) / n
+        if var_ev > 0 and var_pnl > 0:
+            corr = round(cov / (var_ev ** 0.5 * var_pnl ** 0.5), 3)
+
+    # EV 사분위별 실수익 버킷
+    ev_quartile_buckets: list[dict[str, Any]] = []
+    if len(all_ev) >= 8:
+        sorted_by_ev = sorted(zip(all_ev, all_pnl), key=lambda x: x[0])
+        q = len(sorted_by_ev) // 4
+        labels = ["Q1(저EV)", "Q2", "Q3", "Q4(고EV)"]
+        for i, lbl in enumerate(labels):
+            chunk = sorted_by_ev[i * q: (i + 1) * q] if i < 3 else sorted_by_ev[3 * q:]
+            pnls_c = [p for _, p in chunk]
+            ev_avg = sum(e for e, _ in chunk) / len(chunk) if chunk else None
+            pnl_avg = sum(pnls_c) / len(pnls_c) if pnls_c else None
+            wins_c = sum(1 for p in pnls_c if p > 0)
+            ev_quartile_buckets.append({
+                "label": lbl,
+                "n": len(chunk),
+                "avgEv": round(ev_avg, 3) if ev_avg is not None else None,
+                "avgPnlPct": round(pnl_avg, 4) if pnl_avg is not None else None,
+                "winRate": round(wins_c / len(pnls_c), 4) if pnls_c else None,
+            })
+
+    return {
+        "evPositive": _grp(ev_pos),
+        "evNegative": _grp(ev_neg),
+        "correlation": corr,
+        "correlationLabel": (
+            "EV-수익 양의 상관 (신호 유효)" if corr is not None and corr > 0.1
+            else "EV-수익 음의 상관 (신호 역작동)" if corr is not None and corr < -0.1
+            else "EV-수익 무상관 (신호 노이즈)" if corr is not None
+            else "데이터 부족"
+        ),
+        "evQuartileBuckets": ev_quartile_buckets,
+    }
+
+
+def attribution_analysis(
+    market: str = "all",
+    mode: str = "all",
+    horizon: str = "all",
+) -> dict[str, Any]:
+    """팩터별 PnL 귀속분석.
+
+    팩터: 마켓 레짐, 시장(KR/US), 섹터, 전략모드, 투자기간, 진입유형, 소스유형
+    지표: avgPnl, winRate, IR(정보비율), contribPct(전체 대비 기여 %)
+    EV 정확도: EV > 0 예측 신호의 실제 적중률 + EV-실수익 상관계수
+    """
+    _ensure()
+    rows = _filter_rows(
+        _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)),
+        market, mode, horizon, "all", "all",
+    )
+    evaluated = [
+        r for r in rows
+        if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _safe_float(r.get("net_pnl_pct")) is not None
+    ]
+
+    if not evaluated:
+        return {
+            "status": "OK",
+            "count": 0,
+            "byRegime": [],
+            "byMarket": [],
+            "bySector": [],
+            "byMode": [],
+            "byHorizon": [],
+            "byEntryType": [],
+            "bySourceType": [],
+            "evAccuracy": {"evPositive": {"n": 0}, "correlation": None, "correlationLabel": "데이터 부족", "evQuartileBuckets": []},
+        }
+
+    return {
+        "status": "OK",
+        "count": len(evaluated),
+        "byRegime": _factor_stats(evaluated, "market_regime_at_signal"),
+        "byMarket": _factor_stats(evaluated, "market"),
+        "bySector": _factor_stats(evaluated, "sector"),
+        "byMode": _factor_stats(evaluated, "mode"),
+        "byHorizon": _factor_stats(evaluated, "horizon"),
+        "byEntryType": _factor_stats(evaluated, "entry_type"),
+        "bySourceType": _factor_stats(evaluated, "source_type"),
+        "evAccuracy": _ev_accuracy(evaluated),
+    }

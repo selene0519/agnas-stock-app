@@ -140,6 +140,104 @@ function DrawdownBanner({ dd, market }: { dd: DrawdownInfo; market: string }) {
   );
 }
 
+function PositionCard({ p, market, onUpdated }: { p: Position; market: string; onUpdated: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [stopVal, setStopVal] = useState("");
+  const [targetVal, setTargetVal] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [stopInfo, setStopInfo] = useState<{ stopPrice?: number; targetPrice?: number } | null>(null);
+
+  useEffect(() => {
+    mone.paperStops({ market }).then((res: any) => {
+      const key = `${market}:${p.symbol}`;
+      const entry = res?.stops?.[key];
+      if (entry) {
+        setStopInfo(entry);
+        setStopVal(entry.stopPrice ? String(entry.stopPrice) : "");
+        setTargetVal(entry.targetPrice ? String(entry.targetPrice) : "");
+      }
+    }).catch(() => {});
+  }, [market, p.symbol]);
+
+  async function saveStops() {
+    setSaving(true);
+    const body: { stopPrice?: number; targetPrice?: number } = {};
+    const sp = parseFloat(stopVal);
+    const tp = parseFloat(targetVal);
+    if (isFinite(sp) && sp > 0) body.stopPrice = sp;
+    if (isFinite(tp) && tp > 0) body.targetPrice = tp;
+    try {
+      const res: any = await mone.paperStopUpdate(market, p.symbol, body);
+      if (res?.ok) {
+        setStopInfo(body);
+        setEditing(false);
+        onUpdated();
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const cur = p.currentPrice ?? p.avgPrice;
+  const stopDist = stopInfo?.stopPrice ? ((cur - stopInfo.stopPrice) / stopInfo.stopPrice * 100) : null;
+  const targetDist = stopInfo?.targetPrice ? ((stopInfo.targetPrice - cur) / cur * 100) : null;
+  const stopAlert = stopDist !== null && stopDist < 5;
+  const targetAlert = targetDist !== null && targetDist < 5;
+
+  return (
+    <div className={`rounded-2xl border bg-slate-900/50 px-4 py-3 ${stopAlert ? "border-red-500/50" : targetAlert ? "border-emerald-500/40" : "border-slate-700/60"}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-slate-100">{p.name}</span>
+            <span className="text-[11px] font-mono text-slate-500">{p.symbol}</span>
+            {stopAlert && <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">스탑 {stopDist!.toFixed(1)}%</span>}
+            {targetAlert && !stopAlert && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">목표 {targetDist!.toFixed(1)}%</span>}
+          </div>
+          <div className="mt-0.5 text-[11px] text-slate-400">
+            {p.quantity}주 · 평균 {fmt(p.avgPrice, market)}
+            {p.currentPrice && <span className="ml-2">현재 {fmt(p.currentPrice, market)}</span>}
+          </div>
+          {/* 스탑/타겟 표시 */}
+          {!editing && (stopInfo?.stopPrice || stopInfo?.targetPrice) && (
+            <div className="mt-1 flex gap-3 text-[10px]">
+              {stopInfo.stopPrice && (
+                <span className="text-red-400">손절 {fmt(stopInfo.stopPrice, market)}{stopDist !== null ? ` (${stopDist.toFixed(1)}%)` : ""}</span>
+              )}
+              {stopInfo.targetPrice && (
+                <span className="text-emerald-400">목표 {fmt(stopInfo.targetPrice, market)}{targetDist !== null ? ` (+${targetDist.toFixed(1)}%)` : ""}</span>
+              )}
+            </div>
+          )}
+          {/* 인라인 편집 */}
+          {editing && (
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="number" placeholder="손절가" value={stopVal}
+                onChange={(e) => setStopVal(e.target.value)}
+                className="w-28 rounded-lg border border-red-500/40 bg-slate-800 px-2 py-1 text-xs text-slate-100 placeholder-slate-600 focus:outline-none"
+              />
+              <input
+                type="number" placeholder="목표가" value={targetVal}
+                onChange={(e) => setTargetVal(e.target.value)}
+                className="w-28 rounded-lg border border-emerald-500/40 bg-slate-800 px-2 py-1 text-xs text-slate-100 placeholder-slate-600 focus:outline-none"
+              />
+              <button onClick={saveStops} disabled={saving} className="rounded-lg bg-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-600 disabled:opacity-50">저장</button>
+              <button onClick={() => setEditing(false)} className="text-[11px] text-slate-500 hover:text-slate-300">취소</button>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <PnlBadge pct={p.pnlPct} abs={p.pnl} />
+          <button onClick={() => setEditing(!editing)} className="rounded-lg border border-slate-700 px-2 py-1 text-[10px] text-slate-500 hover:bg-slate-800 hover:text-slate-200">
+            {editing ? "접기" : "스탑"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TradeForm({
   market,
   action,
@@ -383,24 +481,7 @@ export default function PaperTradingPage({
             </div>
           ) : (
             positions.map((p) => (
-              <div
-                key={p.symbol}
-                className="flex items-center justify-between rounded-2xl border border-slate-700/60 bg-slate-900/50 px-4 py-3"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-slate-100">{p.name}</span>
-                    <span className="text-[11px] font-mono text-slate-500">{p.symbol}</span>
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-slate-400">
-                    {p.quantity}주 · 평균 {Math.round(p.avgPrice).toLocaleString("ko-KR")}원
-                    {p.currentPrice && (
-                      <span className="ml-2">현재가 {Math.round(p.currentPrice).toLocaleString("ko-KR")}원</span>
-                    )}
-                  </div>
-                </div>
-                <PnlBadge pct={p.pnlPct} abs={p.pnl} />
-              </div>
+              <PositionCard key={p.symbol} p={p} market={market} onUpdated={loadAll} />
             ))
           )}
         </div>
