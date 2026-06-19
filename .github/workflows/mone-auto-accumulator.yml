@@ -689,6 +689,17 @@ jobs:
           echo "vtj-self-learning: exit $?"
           set -e
 
+      - name: 팩터 귀속분석 + Kelly 포지션 사이즈 계산
+        run: |
+          set +e
+          if [ -f scripts/factor_attribution.py ]; then
+            python scripts/factor_attribution.py
+            echo "factor_attribution: exit $?"
+          else
+            echo "scripts/factor_attribution.py not found; skip."
+          fi
+          set -e
+
       - name: VTJ 귀속분석 JSON 갱신 (attribution_feedback.json)
         working-directory: mone-web-app/backend
         env:
@@ -856,6 +867,7 @@ jobs:
             git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
             git add reports/backtest_summary.json 2>/dev/null || true
             git add reports/ensemble_calibration_*.json 2>/dev/null || true
+            git add reports/factor_attribution.json reports/kelly_position_sizes.json 2>/dev/null || true
 
             # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
             git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true

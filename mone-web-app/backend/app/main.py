@@ -8846,3 +8846,100 @@ def api_supabase_migrate() -> dict:
             results[f"watchlist_{market}_error"] = str(exc)
 
     return {"status": "OK", "migrated": results}
+
+
+# ── 진입 관리: 두 화면 데이터 공유 ─────────────────────────────────────────
+@app.get("/api/entry/symbol-info/{market}/{symbol}")
+def api_entry_symbol_info(market: str, symbol: str) -> dict:
+    """종목 통합 뷰 — 관심종목/보유중/최근 추천/Kelly 사이즈를 한 번에 반환.
+
+    관심종목 화면 ↔ 추천 화면의 데이터를 공유하는 엔드포인트.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    mk = _market(market)
+    symbol = symbol.upper().strip()
+    repo_root = data.REPO_ROOT
+
+    # 1. 관심종목 여부
+    watchlist = user_data.get_watchlist(mk)
+    watch_entry = next(
+        (w for w in watchlist if str(w.get("symbol") or w.get("ticker") or "").upper() == symbol),
+        None,
+    )
+
+    # 2. 보유중 여부
+    holdings = user_data.get_holdings(mk)
+    holding_entry = next(
+        (h for h in holdings if str(h.get("symbol") or h.get("ticker") or "").upper() == symbol),
+        None,
+    )
+
+    # 3. 최근 추천 정보 (latest recommendations CSV에서)
+    rec_entry: dict = {}
+    for fname in (
+        f"reports/mone_v36_candidates_{mk}.csv",
+        f"reports/latest_{mk}_recommendations.csv",
+        f"reports/swing_candidates_{mk}.csv",
+    ):
+        p = repo_root / fname
+        if p.exists():
+            recs = data.read_csv(p)
+            if not recs.empty:
+                cols = [c for c in recs.columns if c in ("symbol", "ticker", "code")]
+                if cols:
+                    match = recs[recs[cols[0]].str.upper() == symbol]
+                    if not match.empty:
+                        rec_entry = match.iloc[0].to_dict()
+                        break
+
+    # 4. Kelly 포지션 사이즈 (사전계산된 JSON)
+    kelly_sizes: dict = {}
+    kelly_path = repo_root / "reports" / "kelly_position_sizes.json"
+    if kelly_path.exists():
+        try:
+            kelly_sizes = _json.loads(kelly_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    # rec_entry에서 모드/호라이즌 추출
+    mode    = str(rec_entry.get("mode", "balanced")).lower()
+    horizon = str(rec_entry.get("horizon", "swing")).lower()
+    kelly_key = f"{mode}_{horizon}"
+    kelly_info = kelly_sizes.get(kelly_key) or {}
+
+    return {
+        "market":       mk,
+        "symbol":       symbol,
+        "inWatchlist":  watch_entry is not None,
+        "watchEntry":   watch_entry,
+        "inHoldings":   holding_entry is not None,
+        "holdingEntry": holding_entry,
+        "recommendation": {k: v for k, v in rec_entry.items() if v not in (None, "", "nan")}
+        if rec_entry else None,
+        "kelly": kelly_info or None,
+    }
+
+
+@app.get("/api/advanced/kelly-sizes")
+def api_kelly_sizes(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    """전략별 Kelly 포지션 사이즈 반환 (factor_attribution.py가 사전 계산)."""
+    import json as _json
+    kelly_path = data.REPO_ROOT / "reports" / "kelly_position_sizes.json"
+    factor_path = data.REPO_ROOT / "reports" / "factor_attribution.json"
+    result: dict = {}
+    if kelly_path.exists():
+        try:
+            result["kellySizes"] = _json.loads(kelly_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    if factor_path.exists():
+        try:
+            fa = _json.loads(factor_path.read_text(encoding="utf-8"))
+            result["factorAttribution"] = fa
+        except Exception:
+            pass
+    result.setdefault("kellySizes", {})
+    result.setdefault("factorAttribution", {})
+    return result

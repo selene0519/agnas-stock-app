@@ -1818,22 +1818,52 @@ def _light_correction_summary(market: str, mode: str, horizon: str) -> dict[str,
 
 
 def _attribution_score_multiplier(market: str, mode: str, horizon: str) -> float:
+    """VTJ attribution + Kelly payoff ratio 기반 복합 배율.
+
+    1. attribution_feedback.json: 모드×호라이즌 VTJ 승률 기반 배율 (0.5~1.5)
+    2. kelly_position_sizes.json: 팩터 귀속분석 payoff ratio 기반 미세 보정 (±0.1)
+    두 값을 곱해 최종 배율 반환 (0.5~1.5 클램프).
+    """
+    base = 1.0
     try:
         path = _repo_root() / "data" / "attribution_feedback.json"
-        if not path.exists():
-            return 1.0
-        with path.open(encoding="utf-8") as f:
-            data = json.load(f)
-        for entry in data.get("adjustments", []):
-            if (
-                str(entry.get("mode") or "").lower() == mode.lower()
-                and str(entry.get("horizon") or "").lower() == horizon.lower()
-            ):
-                mult = float(entry.get("multiplier") or 1.0)
-                return max(0.5, min(1.5, mult))
+        if path.exists():
+            with path.open(encoding="utf-8") as f:
+                atf = json.load(f)
+            for entry in atf.get("adjustments", []):
+                if (
+                    str(entry.get("mode") or "").lower() == mode.lower()
+                    and str(entry.get("horizon") or "").lower() == horizon.lower()
+                ):
+                    base = float(entry.get("multiplier") or 1.0)
+                    break
     except Exception:
         pass
-    return 1.0
+
+    # Kelly payoff 보정: 실측 payoff > 이론 payoff → 최대 +0.1
+    kelly_adj = 0.0
+    try:
+        kelly_path = _repo_root() / "reports" / "kelly_position_sizes.json"
+        if kelly_path.exists():
+            with kelly_path.open(encoding="utf-8") as f:
+                kelly_data = json.load(f)
+            key = f"{mode.lower()}_{horizon.lower()}"
+            entry = kelly_data.get(key, {})
+            if entry.get("dataSource") == "actual" and entry.get("payoffRatio", 0) > 0:
+                # 이론 payoff ratio
+                theoretical = {"short": 6.0 / 3.5, "swing": 13.0 / 6.5, "mid": 22.5 / 9.5}.get(
+                    horizon.lower(), 1.7
+                )
+                actual_b = float(entry["payoffRatio"])
+                # 실측이 이론보다 높으면 최대 +0.1, 낮으면 최대 -0.05
+                if actual_b > theoretical:
+                    kelly_adj = min(0.10, (actual_b - theoretical) / theoretical * 0.2)
+                elif actual_b < theoretical * 0.7:
+                    kelly_adj = max(-0.05, (actual_b - theoretical) / theoretical * 0.1)
+    except Exception:
+        pass
+
+    return max(0.5, min(1.5, base + kelly_adj))
 
 
 def _sync_final_rank_score(item: dict[str, Any]) -> dict[str, Any]:
