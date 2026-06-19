@@ -210,20 +210,29 @@ def pull_to_csv(repo_root: "Path") -> dict[str, Any]:  # type: ignore[name-defin
     import pandas as pd
     from pathlib import Path
 
+    root = Path(repo_root)
+
+    def _csv_path(name: str) -> Path:
+        # data/ 하위 파일이 있으면 사용, 없으면 루트 (user_data.py write 경로)
+        p = root / "data" / name
+        if p.exists():
+            return p
+        return root / name
+
     results: dict[str, Any] = {}
     for market in ("kr", "us"):
         try:
             h_rows = fetch_holdings(market)
             if h_rows:
                 df = pd.DataFrame(h_rows).drop(columns=["user_id"], errors="ignore")
-                path = Path(repo_root) / f"holdings_{market}.csv"
+                path = _csv_path(f"holdings_{market}.csv")
                 df.to_csv(path, index=False, encoding="utf-8-sig")
                 results[f"holdings_{market}"] = len(h_rows)
 
             w_rows = fetch_watchlist(market)
             if w_rows:
                 df = pd.DataFrame(w_rows).drop(columns=["user_id"], errors="ignore")
-                path = Path(repo_root) / f"watchlist_{market}.csv"
+                path = _csv_path(f"watchlist_{market}.csv")
                 df.to_csv(path, index=False, encoding="utf-8-sig")
                 results[f"watchlist_{market}"] = len(w_rows)
         except Exception as exc:

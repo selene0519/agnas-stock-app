@@ -8807,21 +8807,33 @@ def api_supabase_migrate() -> dict:
     if not sdb._enabled():
         return {"status": "DISABLED", "message": "SUPABASE_URL / SUPABASE_SERVICE_KEY 환경변수 미설정"}
 
+    def _read_first_existing(*paths: "Path") -> "pd.DataFrame":  # type: ignore[name-defined]
+        import pandas as pd
+        for p in paths:
+            df = _data.read_csv(p)
+            if not df.empty:
+                return df
+        return pd.DataFrame()
+
     results: dict = {}
     for market in ("kr", "us"):
         try:
-            # holdings
-            h_path = _data.REPO_ROOT / f"holdings_{market}.csv"
-            h_df = _data.read_csv(h_path)
+            # holdings — 루트 gitignore 파일 우선, 없으면 data/ 하위 파일
+            h_df = _read_first_existing(
+                _data.REPO_ROOT / f"holdings_{market}.csv",
+                _data.REPO_ROOT / "data" / f"holdings_{market}.csv",
+            )
             h_rows = _data.dataframe_records(h_df) if not h_df.empty else []
             sdb.replace_all_holdings(market, h_rows)
             results[f"holdings_{market}"] = len(h_rows)
         except Exception as exc:
             results[f"holdings_{market}_error"] = str(exc)
         try:
-            # watchlist
-            w_path = _data.REPO_ROOT / f"watchlist_{market}.csv"
-            w_df = _data.read_csv(w_path)
+            # watchlist — 같은 패턴
+            w_df = _read_first_existing(
+                _data.REPO_ROOT / f"watchlist_{market}.csv",
+                _data.REPO_ROOT / "data" / f"watchlist_{market}.csv",
+            )
             w_rows = _data.dataframe_records(w_df) if not w_df.empty else []
             for row in w_rows:
                 symbol = _data.normalize_symbol(
