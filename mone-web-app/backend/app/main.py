@@ -7615,6 +7615,25 @@ def api_journal_attribution(
     return vtj.attribution_analysis(market=market, mode=mode, horizon=horizon)
 
 
+@app.get("/api/journal/entry-efficiency")
+def api_journal_entry_efficiency(
+    market: str = Query("all"),
+    horizon: str = Query("all"),
+) -> dict:
+    """Entry fill efficiency for the virtual trade journal."""
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.entry_efficiency_stats(market=market, horizon=horizon)
+
+
+@app.get("/api/journal/attribution-feedback")
+def api_journal_attribution_feedback(market: str = Query("all")) -> dict:
+    """Manual model-improvement suggestions from attribution results."""
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.attribution_feedback(market=market)
+
+
 try:
     from app.services import virtual_trade_journal as _vtj_auto
 
