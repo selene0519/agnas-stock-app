@@ -53,6 +53,41 @@ SOURCE_CALIBRATION_WEIGHTS = {
     "HISTORICAL_REPLAY": 0.4,
     "BACKTEST_EXPERIMENT": 0.15,
 }
+AUTO_CALIBRATION_POLICY = {
+    "enabled": True,
+    "minEffectiveSamples": 40,
+    "maxApplicationsPerRun": 4,
+    "maxFailureShareForAutoApply": 0.45,
+    "reviewer": "auto_self_learning",
+    "sourceMinSamples": {
+        "FORWARD_PAPER_TRADE": 50,
+        "MANUAL_REVIEWED": 35,
+        "HISTORICAL_REPLAY": 150,
+        "BACKTEST_EXPERIMENT": 999999,
+    },
+    "sourceConfidenceCaps": {
+        "FORWARD_PAPER_TRADE": 0.78,
+        "MANUAL_REVIEWED": 0.86,
+        "HISTORICAL_REPLAY": 0.58,
+        "BACKTEST_EXPERIMENT": 0.35,
+    },
+}
+CORRECTION_LIMITS = {
+    "weightAdjustments": {
+        "riskScore": (-0.35, 0.25),
+        "qualityScore": (-0.35, 0.25),
+        "momentumScore": (-0.30, 0.25),
+    },
+    "priceAdjustments": {
+        "entryAggressiveness": (-0.15, 0.15),
+        "targetMultiplier": (-0.25, 0.15),
+        "stopAtrMultiplier": (-0.10, 0.40),
+    },
+    "filterAdjustments": {
+        "maxDistanceToEntryPct": (-0.80, 1.00),
+        "minRiskRewardRatio": (0.00, 0.40),
+    },
+}
 US_MARKET_HOLIDAYS_2026 = {
     "2026-01-01",
     "2026-01-19",
@@ -663,6 +698,91 @@ def historical_replay(
         "rejected": dict(rejected),
         "evaluation": evaluation,
         "items": _merge_evaluations(added),
+    }
+
+
+def historical_replay_backfill(
+    market: str = "kr",
+    mode: str = "balanced",
+    horizon: str = "swing",
+    start_date: str | None = None,
+    end_date: str | None = None,
+    step_days: int = 20,
+    limit: int = 5,
+    max_runs: int = 30,
+    evaluate_after: bool = True,
+) -> dict[str, Any]:
+    _ensure()
+    markets = sorted(MARKETS) if _text(market).lower() == "all" else [_text(market).lower()]
+    modes = sorted(MODES) if _text(mode).lower() == "all" else [_text(mode).lower()]
+    horizons = sorted(HORIZONS) if _text(horizon).lower() == "all" else [_text(horizon).lower()]
+    if any(mk not in MARKETS for mk in markets) or any(md not in MODES for md in modes) or any(hz not in HORIZONS for hz in horizons):
+        return {"status": "ERROR", "error": "INVALID_SCOPE", "items": []}
+
+    try:
+        start = pd.Timestamp(_text(start_date)[:10]).normalize()
+        end = pd.Timestamp(_text(end_date)[:10]).normalize() if _text(end_date) else pd.Timestamp(_today()).normalize() - pd.Timedelta(days=90)
+    except Exception:
+        return {"status": "ERROR", "error": "INVALID_DATE_RANGE", "items": []}
+    if end < start:
+        return {"status": "ERROR", "error": "END_BEFORE_START", "items": []}
+
+    safe_step = max(5, min(int(step_days or 20), 90))
+    safe_limit = max(1, min(int(limit or 5), 10))
+    safe_max_runs = max(1, min(int(max_runs or 30), 120))
+    run_count = 0
+    added_total = 0
+    duplicate_total = 0
+    items: list[dict[str, Any]] = []
+    cursor = start
+    while cursor <= end and run_count < safe_max_runs:
+        as_of = cursor.date().isoformat()
+        for mk in markets:
+            for md in modes:
+                for hz in horizons:
+                    if run_count >= safe_max_runs:
+                        break
+                    result = historical_replay(
+                        market=mk,
+                        mode=md,
+                        horizon=hz,
+                        as_of_date=as_of,
+                        limit=safe_limit,
+                        evaluate_after=evaluate_after,
+                    )
+                    run_count += 1
+                    added_total += int(result.get("added") or 0)
+                    duplicate_total += int(result.get("duplicates") or 0)
+                    items.append({
+                        "asOfDate": as_of,
+                        "market": mk,
+                        "mode": md,
+                        "horizon": hz,
+                        "status": result.get("status"),
+                        "selected": result.get("selected", 0),
+                        "added": result.get("added", 0),
+                        "duplicates": result.get("duplicates", 0),
+                        "rejected": result.get("rejected", {}),
+                    })
+        cursor += pd.Timedelta(days=safe_step)
+
+    return {
+        "status": "OK",
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "sourceType": "HISTORICAL_REPLAY",
+        "startDate": start.date().isoformat(),
+        "endDate": end.date().isoformat(),
+        "stepDays": safe_step,
+        "limit": safe_limit,
+        "maxRuns": safe_max_runs,
+        "runs": run_count,
+        "added": added_total,
+        "duplicates": duplicate_total,
+        "futureDataPolicy": "each_generation_uses_ohlcv_date_lte_as_of_date_only_then_evaluates_after_snapshot",
+        "replayMethod": HISTORICAL_REPLAY_METHOD,
+        "items": items,
     }
 
 
@@ -1856,6 +1976,29 @@ def _merge_nested_adjustments(base: dict[str, Any], delta: dict[str, Any]) -> di
     return out
 
 
+def _clamp_nested_adjustments(params: dict[str, Any]) -> dict[str, Any]:
+    out = dict(params or {})
+    for section, limits in CORRECTION_LIMITS.items():
+        values = out.get(section)
+        if not isinstance(values, dict):
+            continue
+        clamped = dict(values)
+        for key, bounds in limits.items():
+            if key not in clamped:
+                continue
+            lo, hi = bounds
+            value = _safe_float(clamped.get(key))
+            if value is None:
+                continue
+            clamped[key] = round(max(lo, min(hi, value)), 4)
+        out[section] = clamped
+    return out
+
+
+def _source_confidence_cap(source_type: str) -> float:
+    return float((AUTO_CALIBRATION_POLICY.get("sourceConfidenceCaps") or {}).get(_upper(source_type), 0.50))
+
+
 def _approved_delta(reason: str, share: float, source_weight: float) -> dict[str, dict[str, float]]:
     strength = max(0.25, min(1.0, share * 2.0)) * max(0.1, min(1.2, source_weight))
     reason = _upper(reason)
@@ -1876,7 +2019,11 @@ def _approved_delta(reason: str, share: float, source_weight: float) -> dict[str
     return {}
 
 
-def apply_approved_calibrations(applied_by: str = "local_admin") -> dict[str, Any]:
+def apply_approved_calibrations(
+    applied_by: str = "local_admin",
+    approval_ids: list[str] | None = None,
+    max_applications: int | None = None,
+) -> dict[str, Any]:
     _ensure()
     try:
         from app.engine import correction_store
@@ -1890,12 +2037,19 @@ def apply_approved_calibrations(applied_by: str = "local_admin") -> dict[str, An
     old_version = int(params.get("version") or 0)
     applied_rows: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
+    requested_ids = {_text(v) for v in (approval_ids or []) if _text(v)}
+    application_limit = max(0, int(max_applications)) if max_applications is not None else None
 
     for approval in approvals:
         approval_id = _text(approval.get("approval_id"))
         if _upper(approval.get("decision")) != "APPROVED":
             continue
         if not approval_id:
+            continue
+        if requested_ids and approval_id not in requested_ids:
+            continue
+        if application_limit is not None and len(applied_rows) >= application_limit:
+            skipped.append({"approvalId": approval_id, "reason": "MAX_APPLICATIONS_REACHED"})
             continue
         if approval_id in already_applied:
             skipped.append({"approvalId": approval_id, "reason": "ALREADY_APPLIED"})
@@ -1921,7 +2075,8 @@ def apply_approved_calibrations(applied_by: str = "local_admin") -> dict[str, An
             continue
         key = f"{market}_{mode}_{horizon}"
         before = dict(markets.get(key) or correction_store.load_correction(market, mode, horizon))
-        after = _merge_nested_adjustments(before, delta)
+        after = _clamp_nested_adjustments(_merge_nested_adjustments(before, delta))
+        confidence_cap = _source_confidence_cap(source_type)
         after.update({
             "market": market,
             "mode": mode,
@@ -1929,9 +2084,11 @@ def apply_approved_calibrations(applied_by: str = "local_admin") -> dict[str, An
             "sampleCount": max(int(before.get("sampleCount") or 0), effective_sample_count),
             "rawJournalSampleCount": raw_sample_count,
             "effectiveJournalSampleCount": effective_sample_count,
-            "confidence": max(float(before.get("confidence") or 0.0), _confidence_from_effective_samples(effective_sample_count)),
+            "confidence": min(confidence_cap, max(float(before.get("confidence") or 0.0), _confidence_from_effective_samples(effective_sample_count))),
             "journalCalibrationApplied": True,
             "journalCalibrationSource": approval_id,
+            "journalCalibrationSourceType": source_type,
+            "journalCalibrationAppliedBy": _text(applied_by or "local_admin"),
             "appliedAt": _now_iso(),
         })
         top = list(before.get("topFailureReasons") or [])
@@ -1981,6 +2138,151 @@ def apply_approved_calibrations(applied_by: str = "local_admin") -> dict[str, An
         "items": applied_rows,
         "correctionVersion": old_version + 1 if applied_rows else old_version,
         "source": _relative(CALIBRATION_APPLICATIONS_CSV),
+    }
+
+
+def _auto_calibration_verdict(item: dict[str, Any]) -> dict[str, Any]:
+    status = _upper(item.get("status"))
+    approval_status = _upper(item.get("approvalStatus"))
+    application_status = _upper(item.get("applicationStatus"))
+    source_type = _upper(item.get("sourceType"))
+    raw_samples = int(_safe_float(item.get("sampleCount")) or 0)
+    source_weight = _source_weight(source_type)
+    effective_samples = raw_samples * source_weight
+    share = float(_safe_float(item.get("share")) or 0.0)
+    source_mins = AUTO_CALIBRATION_POLICY.get("sourceMinSamples") or {}
+    min_raw = int(source_mins.get(source_type, 999999))
+    min_effective = float(AUTO_CALIBRATION_POLICY.get("minEffectiveSamples") or 40)
+    max_share = float(AUTO_CALIBRATION_POLICY.get("maxFailureShareForAutoApply") or 0.45)
+    if status != "SUGGESTED":
+        return {"eligible": False, "reason": "NOT_SUGGESTED", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+    if approval_status != "PENDING_REVIEW":
+        return {"eligible": False, "reason": f"APPROVAL_{approval_status or 'UNKNOWN'}", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+    if application_status == "APPLIED":
+        return {"eligible": False, "reason": "ALREADY_APPLIED", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+    if raw_samples < min_raw:
+        return {"eligible": False, "reason": "RAW_SAMPLE_GATE", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+    if effective_samples < min_effective:
+        return {"eligible": False, "reason": "EFFECTIVE_SAMPLE_GATE", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+    if share > max_share:
+        return {"eligible": False, "reason": "MANUAL_REVIEW_LARGE_EFFECT", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+    if not _approved_delta(_upper(item.get("reason")), share, source_weight):
+        return {"eligible": False, "reason": "NO_PARAMETER_MAPPING", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+    return {"eligible": True, "reason": "AUTO_ELIGIBLE", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+
+
+def auto_self_calibrate(
+    market: str = "all",
+    applied_by: str = "auto_self_learning",
+    apply: bool = True,
+    max_applications: int | None = None,
+) -> dict[str, Any]:
+    _ensure()
+    suggestions = calibration_suggestions(market, "all", "all", "all", "all").get("items", [])
+    evaluated: list[dict[str, Any]] = []
+    eligible: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+    for item in suggestions:
+        verdict = _auto_calibration_verdict(item)
+        work = {
+            "suggestionId": item.get("suggestionId"),
+            "market": item.get("market"),
+            "mode": item.get("mode"),
+            "horizon": item.get("horizon"),
+            "sourceType": item.get("sourceType"),
+            "reason": item.get("reason"),
+            "sampleCount": item.get("sampleCount"),
+            "share": item.get("share"),
+            **verdict,
+        }
+        evaluated.append(work)
+        if verdict.get("eligible"):
+            eligible.append(work)
+        elif _upper(item.get("status")) == "SUGGESTED":
+            blocked.append(work)
+
+    eligible.sort(key=lambda row: (float(row.get("effectiveSamples") or 0) * float(row.get("share") or 0)), reverse=True)
+    limit = max_applications
+    if limit is None:
+        limit = int(AUTO_CALIBRATION_POLICY.get("maxApplicationsPerRun") or 4)
+    selected = eligible[:max(0, int(limit))]
+    approvals: list[dict[str, Any]] = []
+    for row in selected:
+        reviewed = review_calibration_suggestion(
+            str(row.get("suggestionId") or ""),
+            decision="APPROVED",
+            reviewed_by=applied_by,
+            reviewer_note=(
+                "Auto-approved by VTJ self-learning policy. "
+                f"effectiveSamples={row.get('effectiveSamples')}, share={row.get('share')}, "
+                "bounded by correction clamps and source confidence caps."
+            ),
+        )
+        if reviewed.get("status") == "OK":
+            approvals.append(reviewed.get("approval") or {})
+        else:
+            blocked.append({**row, "eligible": False, "reason": reviewed.get("error") or "AUTO_APPROVAL_FAILED"})
+
+    apply_result: dict[str, Any] = {"status": "SKIPPED", "reason": "APPLY_FALSE"}
+    if apply and approvals:
+        approval_ids = [_text(row.get("approval_id")) for row in approvals if _text(row.get("approval_id"))]
+        apply_result = apply_approved_calibrations(
+            applied_by=applied_by,
+            approval_ids=approval_ids,
+            max_applications=len(approval_ids),
+        )
+
+    return {
+        "status": "OK",
+        "generatedAt": _now_iso(),
+        "market": market,
+        "policy": AUTO_CALIBRATION_POLICY,
+        "suggestionCount": len(suggestions),
+        "eligibleCount": len(eligible),
+        "selectedCount": len(selected),
+        "approvedCount": len(approvals),
+        "applied": int(apply_result.get("applied") or 0) if isinstance(apply_result, dict) else 0,
+        "applyResult": apply_result,
+        "selected": selected,
+        "blocked": blocked[:20],
+        "evaluated": evaluated[:50],
+    }
+
+
+def self_learning_status(market: str = "all") -> dict[str, Any]:
+    _ensure()
+    try:
+        from app.engine import correction_store
+        params = correction_store.load_params()
+    except Exception:
+        params = {"version": 0, "markets": {}}
+    suggestions = calibration_suggestions(market, "all", "all", "all", "all").get("items", [])
+    evaluated = [{**item, **_auto_calibration_verdict(item)} for item in suggestions]
+    eligible = [item for item in evaluated if item.get("eligible")]
+    low_sample = [item for item in suggestions if _upper(item.get("status")) == "LOW_SAMPLE"]
+    applications = _read_rows(CALIBRATION_APPLICATIONS_CSV, CALIBRATION_APPLICATION_COLS)
+    applications.sort(key=lambda row: _text(row.get("applied_at")), reverse=True)
+    approvals = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
+    auto_approvals = [
+        row for row in approvals
+        if _text(row.get("reviewed_by")) in {AUTO_CALIBRATION_POLICY["reviewer"], "github-actions-vtj-self-learning"}
+        or "Auto-approved by VTJ self-learning policy" in _text(row.get("reviewer_note"))
+    ]
+    return {
+        "status": "OK",
+        "generatedAt": _now_iso(),
+        "market": market,
+        "correctionVersion": int(params.get("version") or 0),
+        "policy": AUTO_CALIBRATION_POLICY,
+        "sourceWeights": SOURCE_CALIBRATION_WEIGHTS,
+        "suggestionCount": len(suggestions),
+        "eligibleAutoCount": len(eligible),
+        "lowSampleCount": len(low_sample),
+        "autoApprovalCount": len(auto_approvals),
+        "appliedCount": sum(1 for row in applications if _upper(row.get("status")) == "APPLIED"),
+        "lastApplications": applications[:8],
+        "eligible": eligible[:12],
+        "blocked": [item for item in evaluated if _upper(item.get("status")) == "SUGGESTED" and not item.get("eligible")][:12],
     }
 
 

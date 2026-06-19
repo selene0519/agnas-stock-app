@@ -7498,6 +7498,26 @@ def api_journal_calibration_apply_approved(payload: dict = Body(default_factory=
 
     return vtj.apply_approved_calibrations(
         applied_by=str(payload.get("appliedBy") or payload.get("applied_by") or "local_admin"),
+        max_applications=payload.get("maxApplications") or payload.get("max_applications"),
+    )
+
+
+@app.get("/api/journal/self-learning/status")
+def api_journal_self_learning_status(market: str = Query("all")) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.self_learning_status(market=market)
+
+
+@app.post("/api/journal/self-learning/auto-calibrate")
+def api_journal_self_learning_auto_calibrate(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.auto_self_calibrate(
+        market=str(payload.get("market") or "all"),
+        applied_by=str(payload.get("appliedBy") or payload.get("applied_by") or "auto_self_learning"),
+        apply=bool(payload.get("apply", True)),
+        max_applications=payload.get("maxApplications") or payload.get("max_applications"),
     )
 
 
@@ -7525,6 +7545,23 @@ def api_journal_historical_replay(payload: dict = Body(default_factory=dict)) ->
         horizon=str(payload.get("horizon") or "swing"),
         as_of_date=str(payload.get("asOfDate") or payload.get("as_of_date") or ""),
         limit=int(payload.get("limit") or 5),
+        evaluate_after=bool(payload.get("evaluateAfter", payload.get("evaluate_after", True))),
+    )
+
+
+@app.post("/api/journal/historical-replay/backfill")
+def api_journal_historical_replay_backfill(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.historical_replay_backfill(
+        market=str(payload.get("market") or "kr"),
+        mode=str(payload.get("mode") or "balanced"),
+        horizon=str(payload.get("horizon") or "swing"),
+        start_date=str(payload.get("startDate") or payload.get("start_date") or ""),
+        end_date=str(payload.get("endDate") or payload.get("end_date") or ""),
+        step_days=int(payload.get("stepDays") or payload.get("step_days") or 20),
+        limit=int(payload.get("limit") or 5),
+        max_runs=int(payload.get("maxRuns") or payload.get("max_runs") or 30),
         evaluate_after=bool(payload.get("evaluateAfter", payload.get("evaluate_after", True))),
     )
 

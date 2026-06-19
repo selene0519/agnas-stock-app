@@ -608,6 +608,27 @@ jobs:
           echo "vtj-evaluate: exit $?"
           set -e
 
+      - name: VTJ 자가보정 (표본/한도 통과분만 자동 적용)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services import virtual_trade_journal as vtj
+          status = vtj.self_learning_status(market="all")
+          print("[vtj-self-learning/status]")
+          print(json.dumps(status, ensure_ascii=False, indent=2))
+          result = vtj.auto_self_calibrate(market="all", applied_by="github-actions-vtj-self-learning", apply=True, max_applications=4)
+          print("[vtj-self-learning/apply]")
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          PY
+          echo "vtj-self-learning: exit $?"
+          set -e
+
       - name: 모의투자 스탑/목표가 도달 알림 (보유중 관리)
         working-directory: mone-web-app/backend
         env:
@@ -750,7 +771,7 @@ jobs:
             # Data files used by the app as source/cache.
             git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
             git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
-            git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv 2>/dev/null || true
+            git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/virtual_trade_calibration_*.csv data/attribution_feedback.json 2>/dev/null || true
             git add data/paper/paper_stops.json 2>/dev/null || true
             git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
             git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true

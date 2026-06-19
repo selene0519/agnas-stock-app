@@ -47,6 +47,7 @@ def isolated_vtj(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setattr(vtj, "JOURNAL_CSV", tmp_path / "journal.csv")
     monkeypatch.setattr(vtj, "EVALUATION_CSV", tmp_path / "evaluations.csv")
     monkeypatch.setattr(vtj, "CALIBRATION_APPROVALS_CSV", tmp_path / "approvals.csv")
+    monkeypatch.setattr(vtj, "CALIBRATION_APPLICATIONS_CSV", tmp_path / "applications.csv")
     monkeypatch.setattr(vtj, "AUTO_CAPTURE_STATUS_JSON", tmp_path / "status.json")
     monkeypatch.setattr(vtj, "_FEEDBACK_JSON", tmp_path / "attribution_feedback.json")
     vtj._ensure()
@@ -587,3 +588,112 @@ def test_attribution_analysis_includes_ols_regression_when_sample_is_ready(isola
     assert out["regression"]["status"] == "OK"
     assert out["regression"]["sampleCount"] == 18
     assert out["regression"]["coefficients"]
+
+
+def test_auto_self_calibrate_auto_approves_and_applies_only_policy_eligible_items(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(correction_store, "_reports_dir", lambda: isolated_vtj)
+    journal_rows = []
+    eval_rows = []
+    for idx in range(50):
+        jid = f"auto-jid-{idx}"
+        journal_rows.append(
+            {
+                "journal_id": jid,
+                "source_type": "FORWARD_PAPER_TRADE",
+                "journal_session": "AFTER_CLOSE_TRADE",
+                "as_of_date": "2026-01-01",
+                "generated_at": "2026-01-01T00:00:00",
+                "captured_at": "2026-01-01T00:00:00",
+                "market": "kr",
+                "mode": "balanced",
+                "horizon": "swing",
+                "symbol": f"AUTO{idx:03d}",
+                "name": f"AUTO{idx:03d}",
+                "decision_bucket": vtj.TODAY_ENTRY,
+                "entry_type": "NEXT_OPEN",
+                "entry_price": 100,
+                "stop_price": 95,
+                "target_price": 110,
+                "current_price_at_signal": 100,
+                "final_rank_score": 75,
+                "expected_value": 2,
+                "risk_reward_ratio": 2,
+                "probability": 65,
+                "risk_score": 70,
+                "event_risk_score": 30,
+                "data_status": "NORMAL",
+                "data_confidence": "HIGH",
+                "price_source": "test",
+                "market_regime_at_signal": "RISK_ON",
+                "sector": "",
+                "reject_reason": "",
+                "raw_recommendation_json": "{}",
+            }
+        )
+        eval_rows.append(
+            {
+                "journal_id": jid,
+                "status": "EVALUATED",
+                "outcome": "STOP_HIT",
+                "filled": True,
+                "net_pnl_pct": -2.5,
+                "failure_reason": "ENTRY_TIMING" if idx < 16 else "FALSE_SIGNAL",
+                "evaluated_at": f"2026-01-02T00:00:{idx % 60:02d}",
+            }
+        )
+    vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
+    vtj._write_rows(vtj.EVALUATION_CSV, eval_rows, vtj.EVALUATION_COLS)
+
+    result = vtj.auto_self_calibrate("kr", apply=True, max_applications=1)
+    correction = correction_store.load_correction("kr", "balanced", "swing")
+    status = vtj.self_learning_status("kr")
+
+    assert result["status"] == "OK"
+    assert result["eligibleCount"] >= 1
+    assert result["approvedCount"] == 1
+    assert result["applied"] == 1
+    assert correction["journalCalibrationApplied"] is True
+    assert correction["journalCalibrationAppliedBy"] == "auto_self_learning"
+    assert correction["filterAdjustments"]["maxDistanceToEntryPct"] > 0
+    assert status["autoApprovalCount"] >= 1
+
+
+def test_historical_replay_backfill_steps_cutoff_dates_without_future_peek(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_replay(**kwargs):
+        calls.append(kwargs)
+        return {
+            "status": "OK",
+            "selected": 2,
+            "added": 1,
+            "duplicates": 1,
+            "rejected": {},
+            "replayMethod": vtj.HISTORICAL_REPLAY_METHOD,
+        }
+
+    monkeypatch.setattr(vtj, "historical_replay", fake_replay)
+
+    out = vtj.historical_replay_backfill(
+        market="kr",
+        mode="balanced",
+        horizon="swing",
+        start_date="2025-01-01",
+        end_date="2025-02-15",
+        step_days=20,
+        limit=5,
+        max_runs=2,
+    )
+
+    assert out["status"] == "OK"
+    assert out["runs"] == 2
+    assert out["added"] == 2
+    assert [call["as_of_date"] for call in calls] == ["2025-01-01", "2025-01-21"]
+    assert all(call["evaluate_after"] is True for call in calls)
+    assert "ohlcv_date_lte_as_of_date" in out["futureDataPolicy"]
