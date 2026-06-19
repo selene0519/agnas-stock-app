@@ -2863,8 +2863,10 @@ export default function HomePage({
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {holdings.slice(0, 6).map((item) => {
-              const change = firstText(item.changePctText, "");
+              const rawChange = firstText(item.changePctText, "");
+              const change = rawChange && rawChange !== "-" ? rawChange : "";
               const down = String(change).startsWith("-");
+              const currentText = firstText(item.currentPriceText, item.priceText, item.currentText, "");
               const isRisk = ["위험", "주의", "HIGH", "WATCH"].includes(String(item.riskStatus || ""));
               const judgment = getHoldingJudgment(item);
               return (
@@ -2872,11 +2874,13 @@ export default function HomePage({
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-slate-200">{displayName(item)}</div>
-                      <div className="text-[11px] text-slate-500">{item.symbol} · {probabilityText(item, "-")}</div>
+                      <div className="text-[11px] text-slate-500">
+                        {item.symbol} · {item.market === "kr" ? "국장" : "미장"}{currentText ? ` · ${currentText}` : ""}
+                      </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className={`font-mono text-sm ${String(item.pnlText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"}`}>
-                        {firstText(item.pnlText, "0")}
+                        {firstText(item.pnlText, "손익 대기")}
                       </div>
                       {change && <div className={`font-mono text-[11px] ${down ? "text-red-400" : "text-emerald-400"}`}>{change}</div>}
                     </div>
