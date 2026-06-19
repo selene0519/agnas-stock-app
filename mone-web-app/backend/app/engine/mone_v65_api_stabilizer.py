@@ -1789,6 +1789,25 @@ def _light_correction_summary(market: str, mode: str, horizon: str) -> dict[str,
     }
 
 
+def _attribution_score_multiplier(market: str, mode: str, horizon: str) -> float:
+    try:
+        path = _repo_root() / "data" / "attribution_feedback.json"
+        if not path.exists():
+            return 1.0
+        with path.open(encoding="utf-8") as f:
+            data = json.load(f)
+        for entry in data.get("adjustments", []):
+            if (
+                str(entry.get("mode") or "").lower() == mode.lower()
+                and str(entry.get("horizon") or "").lower() == horizon.lower()
+            ):
+                mult = float(entry.get("multiplier") or 1.0)
+                return max(0.5, min(1.5, mult))
+    except Exception:
+        pass
+    return 1.0
+
+
 def _sync_final_rank_score(item: dict[str, Any]) -> dict[str, Any]:
     for key in ("finalScore", "quantScore", "finalRankScore"):
         score = _num(item.get(key))
@@ -2104,6 +2123,15 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             if correction_state.get("active"):
                 item = _apply_light_correction(item, correction_state)
                 item.setdefault("computedFields", []).append("self_correction_penalty")
+            attr_mult = _attribution_score_multiplier(market, mode, horizon)
+            if attr_mult != 1.0:
+                for _akey in ("finalRankScore", "probability"):
+                    _val = item.get(_akey)
+                    if _val is not None:
+                        _cap = 100.0 if _akey == "finalRankScore" else 1.0
+                        _dp = 1 if _akey == "finalRankScore" else 2
+                        item[_akey] = round(_clamp(float(_val) * attr_mult, 0.0, _cap), _dp)
+                item.setdefault("computedFields", []).append(f"attribution_mult_{attr_mult}")
             item = _apply_chart_signal_overlay(item, mode, horizon)
             seen.add(key)
             items.append(item)
