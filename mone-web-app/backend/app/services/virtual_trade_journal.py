@@ -62,6 +62,9 @@ AUTO_CALIBRATION_POLICY = {
     "minHoldoutSamples": 10,
     "holdoutFraction": 0.25,
     "holdoutShareFloor": 0.65,
+    "minPrePostSamples": 30,
+    "rollbackAvgPnlDropPct": 1.5,
+    "rollbackWinRateDrop": 0.10,
     "reviewer": "auto_self_learning",
     "sourceMinSamples": {
         "FORWARD_PAPER_TRADE": 50,
@@ -2460,6 +2463,7 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
     ]
     quality = _self_learning_quality(market)
     report = _read_self_learning_report()
+    performance_gate = calibration_performance_gate(market=market, auto_rollback=False)
     return {
         "status": "OK",
         "generatedAt": _now_iso(),
@@ -2475,8 +2479,170 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
         "appliedCount": sum(1 for row in applications if _upper(row.get("status")) == "APPLIED"),
         "lastApplications": applications[:8],
         "lastSelfLearningRun": report.get("latest"),
+        "performanceGate": performance_gate,
         "eligible": eligible[:12],
         "blocked": [item for item in evaluated if _upper(item.get("status")) == "SUGGESTED" and not item.get("eligible")][:12],
+    }
+
+
+def _performance_scope_rows(application: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = _filter_rows(
+        _merge_evaluations(_read_journal_rows()),
+        _text(application.get("market") or "all").lower(),
+        _text(application.get("mode") or "all").lower(),
+        _text(application.get("horizon") or "all").lower(),
+        "all",
+        "all",
+        "all",
+    )
+    out = [
+        row for row in rows
+        if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _safe_float(row.get("net_pnl_pct")) is not None
+    ]
+    out.sort(key=_row_event_date)
+    return out
+
+
+def _performance_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    vals = [_safe_float(row.get("net_pnl_pct")) for row in rows]
+    vals = [v for v in vals if v is not None]
+    wins = sum(1 for row in rows if (_safe_float(row.get("net_pnl_pct")) or 0.0) > 0 or _upper(row.get("outcome")) == "TARGET_HIT")
+    return {
+        "samples": len(rows),
+        "winRate": round(wins / len(rows), 4) if rows else None,
+        "avgNetPnlPct": round(sum(vals) / len(vals), 4) if vals else None,
+    }
+
+
+def calibration_performance_gate(market: str = "all", auto_rollback: bool = False) -> dict[str, Any]:
+    _ensure()
+    applications = [
+        row for row in _read_rows(CALIBRATION_APPLICATIONS_CSV, CALIBRATION_APPLICATION_COLS)
+        if _upper(row.get("status")) == "APPLIED"
+        and (_text(market).lower() == "all" or _text(row.get("market")).lower() == _text(market).lower())
+    ]
+    applications.sort(key=lambda row: _text(row.get("applied_at")), reverse=True)
+    if not applications:
+        return {"status": "NO_APPLICATIONS", "items": [], "autoRollback": False}
+
+    min_samples = int(AUTO_CALIBRATION_POLICY.get("minPrePostSamples") or 30)
+    pnl_drop = float(AUTO_CALIBRATION_POLICY.get("rollbackAvgPnlDropPct") or 1.5)
+    win_drop = float(AUTO_CALIBRATION_POLICY.get("rollbackWinRateDrop") or 0.10)
+    items: list[dict[str, Any]] = []
+    rollback_candidates: list[dict[str, Any]] = []
+    for app in applications[:12]:
+        applied_at = _text(app.get("applied_at"))
+        rows = _performance_scope_rows(app)
+        before = [row for row in rows if _row_event_date(row) < applied_at]
+        after = [row for row in rows if _row_event_date(row) >= applied_at]
+        before_m = _performance_metrics(before[-max(min_samples, 100):])
+        after_m = _performance_metrics(after)
+        status = "LOW_SAMPLE"
+        reason = f"Need {min_samples} before and after samples."
+        degraded = False
+        if before_m["samples"] >= min_samples and after_m["samples"] >= min_samples:
+            before_avg = float(before_m.get("avgNetPnlPct") or 0.0)
+            after_avg = float(after_m.get("avgNetPnlPct") or 0.0)
+            before_wr = float(before_m.get("winRate") or 0.0)
+            after_wr = float(after_m.get("winRate") or 0.0)
+            degraded = (after_avg <= before_avg - pnl_drop) and (after_wr <= before_wr - win_drop)
+            status = "DEGRADED" if degraded else "PASS"
+            reason = "Post-calibration performance deteriorated." if degraded else "Post-calibration performance is within guardrails."
+        item = {
+            "applicationId": app.get("application_id"),
+            "approvalId": app.get("approval_id"),
+            "market": app.get("market"),
+            "mode": app.get("mode"),
+            "horizon": app.get("horizon"),
+            "reason": app.get("reason"),
+            "appliedAt": applied_at,
+            "correctionVersion": app.get("correction_version"),
+            "status": status,
+            "degraded": degraded,
+            "rollbackReady": degraded,
+            "message": reason,
+            "before": before_m,
+            "after": after_m,
+        }
+        if degraded:
+            rollback_candidates.append(item)
+        items.append(item)
+
+    rollback_result: dict[str, Any] | None = None
+    if auto_rollback and rollback_candidates:
+        latest_version = int(_safe_float(rollback_candidates[0].get("correctionVersion")) or 0)
+        rollback_result = rollback_self_learning(version=max(0, latest_version - 1), requested_by="auto_performance_gate")
+
+    return {
+        "status": "ROLLBACK_READY" if rollback_candidates else ("LOW_SAMPLE" if all(item["status"] == "LOW_SAMPLE" for item in items) else "OK"),
+        "policy": {
+            "minPrePostSamples": min_samples,
+            "rollbackAvgPnlDropPct": pnl_drop,
+            "rollbackWinRateDrop": win_drop,
+        },
+        "autoRollback": bool(auto_rollback and rollback_candidates),
+        "rollbackResult": rollback_result,
+        "candidateCount": len(rollback_candidates),
+        "items": items,
+    }
+
+
+def ops_dashboard(market: str = "all") -> dict[str, Any]:
+    _ensure()
+
+    def _file_status(path: Path, required: bool = False) -> dict[str, Any]:
+        exists = path.exists()
+        size = path.stat().st_size if exists else 0
+        age_hours = None
+        if exists:
+            age_hours = round(max(0.0, (time.time() - path.stat().st_mtime) / 3600), 2)
+        state = "OK" if exists and size > 0 else ("MISSING_REQUIRED" if required else "MISSING")
+        return {"name": path.stem, "path": _relative(path), "exists": exists, "size": size, "ageHours": age_hours, "state": state}
+
+    journal_rows = _merge_evaluations(_read_journal_rows())
+    if _text(market).lower() != "all":
+        journal_rows = [row for row in journal_rows if _text(row.get("market")).lower() == _text(market).lower()]
+    evaluated = [row for row in journal_rows if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}]
+    source_counts = Counter(_upper(row.get("source_type") or "UNKNOWN") for row in journal_rows)
+    files = [
+        _file_status(JOURNAL_CSV, required=True),
+        _file_status(EVALUATION_CSV, required=True),
+        _file_status(CALIBRATION_APPROVALS_CSV),
+        _file_status(CALIBRATION_APPLICATIONS_CSV),
+        _file_status(SELF_LEARNING_STATUS_JSON),
+        _file_status(DATA_DIR / "attribution_feedback.json"),
+        _file_status(REPORTS_DIR / "factor_attribution.json"),
+        _file_status(REPORTS_DIR / "kelly_position_sizes.json"),
+        _file_status(REPORTS_DIR / "factor_based_filter_adjustments.json"),
+    ]
+    warnings = [f"{f['path']}:{f['state']}" for f in files if f["state"].startswith("MISSING_REQUIRED")]
+    perf_gate = calibration_performance_gate(market=market, auto_rollback=False)
+    self_status = self_learning_status(market=market) if market != "__internal_skip" else {}
+    return {
+        "status": "OK" if not warnings else "WARN",
+        "generatedAt": _now_iso(),
+        "market": market,
+        "files": files,
+        "warnings": warnings,
+        "journal": {
+            "total": len(journal_rows),
+            "totalRows": len(journal_rows),
+            "evaluated": len(evaluated),
+            "evaluatedRows": len(evaluated),
+            "open": len(journal_rows) - len(evaluated),
+            "openRows": len(journal_rows) - len(evaluated),
+            "sourceCounts": dict(source_counts),
+        },
+        "selfLearning": {
+            "quality": self_status.get("quality"),
+            "eligibleAutoCount": self_status.get("eligibleAutoCount"),
+            "lowSampleCount": self_status.get("lowSampleCount"),
+            "appliedCount": self_status.get("appliedCount"),
+            "correctionVersion": self_status.get("correctionVersion"),
+            "lastRunAt": (self_status.get("lastSelfLearningRun") or {}).get("generatedAt"),
+        },
+        "performanceGate": perf_gate,
     }
 
 

@@ -7515,6 +7515,39 @@ def api_journal_self_learning_status(market: str = Query("all")) -> dict:
     return vtj.self_learning_status(market=market)
 
 
+@app.get("/api/journal/ops-dashboard")
+def api_journal_ops_dashboard(market: str = Query("all")) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.ops_dashboard(market=market)
+
+
+@app.post("/api/journal/self-learning/performance-gate")
+def api_journal_self_learning_performance_gate(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.calibration_performance_gate(
+        market=str(payload.get("market") or "all"),
+        auto_rollback=bool(payload.get("autoRollback", payload.get("auto_rollback", False))),
+    )
+
+
+@app.get("/api/portfolio/risk-budget")
+def api_portfolio_risk_budget(
+    market: str = Query("all"),
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
+) -> dict:
+    from app.services.portfolio_risk_budget import risk_budget
+
+    try:
+        from app import db as _db
+
+        user_id = _db.sanitize_uid(x_mone_user)
+    except Exception:
+        user_id = ""
+    return risk_budget(market=market, user_id=user_id)
+
+
 @app.post("/api/journal/self-learning/auto-calibrate")
 def api_journal_self_learning_auto_calibrate(payload: dict = Body(default_factory=dict)) -> dict:
     from app.services import virtual_trade_journal as vtj

@@ -213,6 +213,7 @@ export default function VirtualJournalPage() {
   const [effData, setEffData] = useState<any>(null);
   const [feedbackData, setFeedbackData] = useState<any>(null);
   const [selfLearningData, setSelfLearningData] = useState<any>(null);
+  const [opsData, setOpsData] = useState<any>(null);
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -221,7 +222,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -232,6 +233,7 @@ export default function VirtualJournalPage() {
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
         mone.journalAttributionFeedback({ market: scope.market }),
         mone.journalSelfLearningStatus({ market: scope.market }),
+        mone.journalOpsDashboard({ market: scope.market }),
       ]);
       if (tradeRes.status === "ERROR") throw new Error(tradeRes.error || "journal load failed");
       setTrades(tradeRes.items || []);
@@ -244,6 +246,7 @@ export default function VirtualJournalPage() {
       setEffData(effRes?.status === "OK" ? effRes : null);
       setFeedbackData(feedbackRes?.status === "OK" || feedbackRes?.status === "LOW_SAMPLE" ? feedbackRes : null);
       setSelfLearningData(selfLearningRes?.status === "OK" ? selfLearningRes : null);
+      setOpsData(opsRes?.status === "OK" ? opsRes : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -1113,6 +1116,27 @@ export default function VirtualJournalPage() {
               <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-200">
                 Self-learning guarded. Eligible auto {selfLearningData?.eligibleAutoCount ?? 0} · low sample {selfLearningData?.lowSampleCount ?? 0} · applied {selfLearningData?.appliedCount ?? 0} · correction v{selfLearningData?.correctionVersion ?? 0}
               </div>
+              {(selfLearningData?.performanceGate || opsData?.performanceGate) && (
+                <div className={`rounded-lg border px-3 py-2 text-[11px] ${
+                  (selfLearningData?.performanceGate || opsData?.performanceGate)?.status === "ROLLBACK_READY"
+                    ? "border-red-500/30 bg-red-500/10 text-red-200"
+                    : (selfLearningData?.performanceGate || opsData?.performanceGate)?.status === "LOW_SAMPLE"
+                      ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                      : "border-cyan-500/20 bg-cyan-500/5 text-cyan-200"
+                }`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold">
+                      Performance gate: {(selfLearningData?.performanceGate || opsData?.performanceGate)?.status}
+                    </span>
+                    <span className="font-mono">
+                      rollback candidates {(selfLearningData?.performanceGate || opsData?.performanceGate)?.candidateCount ?? 0}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-slate-400">
+                    Applied calibrations are checked after enough before/after evaluated trades accumulate.
+                  </div>
+                </div>
+              )}
               <div className="rounded-lg bg-slate-950/60 p-3">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <div>
@@ -1154,6 +1178,34 @@ export default function VirtualJournalPage() {
                   ))}
                 </div>
               </div>
+              {opsData && (
+                <div className="rounded-lg bg-slate-950/60 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Ops dashboard</div>
+                    <div className="font-mono text-[10px] text-slate-500">{opsData.generatedAt || "-"}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
+                    <div>
+                      <div className="text-slate-500">Journal</div>
+                      <div className="font-mono text-slate-200">{opsData.journal?.totalRows ?? 0}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500">Evaluated</div>
+                      <div className="font-mono text-slate-200">{opsData.journal?.evaluatedRows ?? 0}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500">Open</div>
+                      <div className="font-mono text-slate-200">{opsData.journal?.openRows ?? 0}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500">Files OK</div>
+                      <div className="font-mono text-slate-200">
+                        {(opsData.files || []).filter((f: any) => f.exists).length}/{(opsData.files || []).length}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
                   <div className="text-slate-500">자동 최소 유효표본</div>

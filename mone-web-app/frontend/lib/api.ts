@@ -397,8 +397,12 @@ export const mone = {
     apiPost<ApiList>("/api/journal/calibration-suggestions/apply-approved", body || {}),
   journalSelfLearningStatus: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/journal/self-learning/status", p),
+  journalOpsDashboard: (p?: { market?: Market | string }) =>
+    apiGet<any>("/api/journal/ops-dashboard", p),
   journalSelfLearningAutoCalibrate: (body?: { market?: Market | string; appliedBy?: string; apply?: boolean; maxApplications?: number }) =>
     apiPost<any>("/api/journal/self-learning/auto-calibrate", body || {}),
+  journalPerformanceGate: (body?: { market?: Market | string; autoRollback?: boolean }) =>
+    apiPost<any>("/api/journal/self-learning/performance-gate", body || {}),
   journalSelfLearningRollback: (body?: { version?: number; requestedBy?: string }) =>
     apiPost<any>("/api/journal/self-learning/rollback", body || {}),
   journalHistoricalReplay: (body: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate: string; limit?: number; evaluateAfter?: boolean }) =>
@@ -423,6 +427,8 @@ export const mone = {
     apiGet<any>("/api/journal/entry-efficiency", p),
   journalAttributionFeedback: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/journal/attribution-feedback", p),
+  portfolioRiskBudget: (p?: { market?: Market | string }) =>
+    apiGet<any>("/api/portfolio/risk-budget", p),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>

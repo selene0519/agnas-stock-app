@@ -627,6 +627,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [holdingsLoadedAt, setHoldingsLoadedAt] = useState("");
   const [exitSignals, setExitSignals] = useState<Record<string, any>>({});
   const [kellySizes, setKellySizes] = useState<any>(null);
+  const [riskBudget, setRiskBudget] = useState<any>(null);
   const [brokerConnections, setBrokerConnections] = useState<BrokerStatus[]>([]);
   const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
 
@@ -704,6 +705,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           setExitSignals(map);
         }
       }).catch(() => {});
+      getJson(`/api/portfolio/risk-budget?market=${market}`).then((res) => {
+        if (res?.status) setRiskBudget(res);
+      }).catch(() => setRiskBudget(null));
       if (market === "all") {
         setSectorData(null);
         setBenchmarkData(null);
@@ -1245,6 +1249,57 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             )}
           </div>
           <p className="mt-2 text-[10px] text-slate-500">VTJ 실적 기반 Half-Kelly — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+        </div>
+      )}
+
+      {riskBudget && (
+        <div className={`rounded-2xl border p-4 ${
+          riskBudget.status === "OVER_BUDGET"
+            ? "border-red-500/30 bg-red-500/5"
+            : "border-emerald-500/20 bg-emerald-500/5"
+        }`}>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">Portfolio risk budget</h2>
+              <p className="mt-1 text-[11px] text-slate-500">Stop prices and Kelly limits are used to flag oversized holdings.</p>
+            </div>
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+              riskBudget.status === "OVER_BUDGET"
+                ? "border-red-500/40 bg-red-500/10 text-red-300"
+                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+            }`}>
+              {riskBudget.status}
+            </span>
+          </div>
+          <div className="grid gap-2 text-[11px] sm:grid-cols-3">
+            <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
+            <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
+            <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
+          </div>
+          {(riskBudget.warnings || []).length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {riskBudget.warnings.map((warning: string) => (
+                <span key={warning} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">{warning}</span>
+              ))}
+            </div>
+          )}
+          {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
+            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 6).map((item: any) => (
+                <div key={`${item.market}-${item.symbol}`} className="rounded-xl border border-red-500/20 bg-slate-950/60 px-3 py-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-100">{item.name}</span>
+                    <span className="font-mono text-red-300">{Number(item.lossBudgetPct || 0).toFixed(1)}%</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-500">
+                    <span>{item.symbol}</span>
+                    <span>weight {Number(item.weightPct || 0).toFixed(1)}%</span>
+                    <span>target {Number(item.recommendedWeightPct || 0).toFixed(1)}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

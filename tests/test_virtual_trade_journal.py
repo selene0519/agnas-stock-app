@@ -786,3 +786,104 @@ def test_historical_replay_backfill_steps_cutoff_dates_without_future_peek(
     assert [call["as_of_date"] for call in calls] == ["2025-01-01", "2025-01-21"]
     assert all(call["evaluate_after"] is True for call in calls)
     assert "ohlcv_date_lte_as_of_date" in out["futureDataPolicy"]
+
+
+def test_calibration_performance_gate_flags_degraded_applied_correction(isolated_vtj: Path) -> None:
+    app_row = {
+        "application_id": "app-1",
+        "approval_id": "approval-1",
+        "suggestion_id": "suggestion-1",
+        "applied_by": "pytest",
+        "applied_at": "2026-02-01T00:00:00",
+        "market": "kr",
+        "mode": "balanced",
+        "horizon": "swing",
+        "source_type": "FORWARD_PAPER_TRADE",
+        "journal_session": "AFTER_CLOSE_TRADE",
+        "source_weight": 1.0,
+        "raw_sample_count": 60,
+        "effective_sample_count": 60,
+        "reason": "ENTRY_TIMING",
+        "before_params_json": "{}",
+        "after_params_json": "{}",
+        "correction_version": 3,
+        "status": "APPLIED",
+    }
+    vtj._write_rows(vtj.CALIBRATION_APPLICATIONS_CSV, [app_row], vtj.CALIBRATION_APPLICATION_COLS)
+
+    journal_rows = []
+    eval_rows = []
+    for idx in range(60):
+        before = idx < 30
+        day = idx + 1 if before else idx - 29
+        date = f"2026-01-{day:02d}" if before else f"2026-02-{day:02d}"
+        jid = f"gate-{idx}"
+        journal_rows.append(
+            {
+                "journal_id": jid,
+                "source_type": "FORWARD_PAPER_TRADE",
+                "journal_session": "AFTER_CLOSE_TRADE",
+                "as_of_date": date,
+                "generated_at": f"{date}T09:00:00",
+                "captured_at": f"{date}T09:00:00",
+                "market": "kr",
+                "mode": "balanced",
+                "horizon": "swing",
+                "symbol": f"GATE{idx:03d}",
+                "name": f"GATE{idx:03d}",
+                "decision_bucket": vtj.TODAY_ENTRY,
+                "entry_type": "NEXT_OPEN",
+                "entry_price": 100,
+                "stop_price": 95,
+                "target_price": 110,
+                "current_price_at_signal": 100,
+                "final_rank_score": 75,
+                "expected_value": 2,
+                "risk_reward_ratio": 2,
+                "probability": 65,
+                "risk_score": 70,
+                "event_risk_score": 30,
+                "data_status": "NORMAL",
+                "data_confidence": "HIGH",
+                "price_source": "test",
+                "market_regime_at_signal": "RISK_ON",
+                "sector": "",
+                "reject_reason": "",
+                "raw_recommendation_json": "{}",
+            }
+        )
+        eval_rows.append(
+            {
+                "journal_id": jid,
+                "status": "EVALUATED",
+                "outcome": "TARGET_HIT" if before else "STOP_HIT",
+                "filled": True,
+                "net_pnl_pct": 2.0 if before else -1.5,
+                "evaluated_at": f"{date}T18:00:00",
+            }
+        )
+    vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
+    vtj._write_rows(vtj.EVALUATION_CSV, eval_rows, vtj.EVALUATION_COLS)
+
+    out = vtj.calibration_performance_gate("kr")
+
+    assert out["status"] == "ROLLBACK_READY"
+    assert out["candidateCount"] == 1
+    assert out["items"][0]["before"]["samples"] == 30
+    assert out["items"][0]["after"]["samples"] == 30
+    assert out["items"][0]["rollbackReady"] is True
+
+
+def test_ops_dashboard_reports_journal_and_file_health(isolated_vtj: Path) -> None:
+    row = {
+        **vtj._snapshot_from_item(_valid_recommendation("OPS"), "FORWARD_PAPER_TRADE", "2026-06-18", "AFTER_CLOSE_TRADE"),
+        "journal_id": "ops-1",
+    }
+    vtj._write_rows(vtj.JOURNAL_CSV, [row], vtj.JOURNAL_COLS)
+
+    out = vtj.ops_dashboard("kr")
+
+    assert out["status"] == "OK"
+    assert out["journal"]["totalRows"] == 1
+    assert out["journal"]["sourceCounts"]["FORWARD_PAPER_TRADE"] == 1
+    assert any(str(item["path"]).endswith("journal.csv") and item["exists"] for item in out["files"])
