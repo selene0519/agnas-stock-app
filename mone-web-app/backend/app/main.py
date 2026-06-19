@@ -7591,6 +7591,18 @@ def api_journal_analytics(
     return vtj.analytics(market=market, mode=mode, horizon=horizon, source_type=source_type, journal_session=journal_session)
 
 
+@app.get("/api/journal/performance")
+def api_journal_performance(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+) -> dict:
+    """전략별 성과 분석 — win rate, avg PnL, Sharpe, max drawdown, equity curve."""
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.performance_by_strategy(market=market, mode=mode, horizon=horizon)
+
+
 try:
     from app.services import virtual_trade_journal as _vtj_auto
 
@@ -8658,3 +8670,13 @@ def api_paper_reset(
         return reset(market, seed_kr=seed_kr, seed_us=seed_us)
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/paper/drawdown")
+def api_paper_drawdown(market: str = Query("all")) -> dict:
+    """현재 드로다운 요약 — alertLevel(GREEN/YELLOW/RED), drawdownPct, portfolioValue."""
+    try:
+        from app.services.paper_trading import drawdown_summary
+        return drawdown_summary(market=market)
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}

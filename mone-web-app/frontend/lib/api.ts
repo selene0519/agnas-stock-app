@@ -407,6 +407,8 @@ export const mone = {
     apiPost<ApiList>(`/api/journal/virtual-trades/${encodeURIComponent(journalId)}/review`, body || {}),
   journalAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/analytics", p),
+  journalPerformance: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>
+    apiGet<any>("/api/journal/performance", p),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
@@ -580,6 +582,7 @@ export const mone = {
   paperPositions: (p?: { market?: string }) => apiGet<any>("/api/paper/positions", p),
   paperHistory: (p?: { market?: string; limit?: number }) => apiGet<any>("/api/paper/history", p),
   paperSummary: (p?: { market?: string }) => apiGet<any>("/api/paper/summary", p),
+  paperDrawdown: (p?: { market?: string }) => apiGet<any>("/api/paper/drawdown", p),
   paperBuy: (body: { symbol: string; market: string; quantity: number; price?: number; name?: string; memo?: string }) =>
     apiPost<any>("/api/paper/buy", body),
   paperSell: (body: { symbol: string; market: string; quantity: number; price?: number; memo?: string }) =>

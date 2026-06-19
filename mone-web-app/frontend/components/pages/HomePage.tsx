@@ -1888,6 +1888,11 @@ export default function HomePage({
   const [calendarAlert, setCalendarAlert] = useState<any>(null);
   // 손절/목표가 근접 알림
   const [nearAlerts, setNearAlerts] = useState<any[]>([]);
+  // 포지션 사이징 자본 (localStorage 저장)
+  const [capital, setCapital] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    return Number(window.localStorage.getItem("mone:capital") || "0");
+  });
   const sessionClock = clock || new Date();
   const selectedMarket = marketChoice === "auto" ? (clientReady ? getDefaultMarketBySession(sessionClock) : "kr") : marketChoice;
   const sessionStatus = clientReady ? getMarketSessionStatus(selectedMarket, sessionClock) : "확인 중";
@@ -2696,6 +2701,9 @@ export default function HomePage({
           </div>
         )}
       </section>
+
+      {/* ━━ 포지션 사이징 ━━ */}
+      <PositionSizingSection items={allItems} capital={capital} setCapital={setCapital} />
 
       {/* ━━ 대기 관찰 후보 ━━ */}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">

@@ -2404,3 +2404,130 @@ def _write_auto_status(status: dict[str, Any]) -> None:
         AUTO_CAPTURE_STATUS_JSON.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception:
         pass
+
+
+def _sharpe(pnls: list[float]) -> float | None:
+    if len(pnls) < 3:
+        return None
+    mean = sum(pnls) / len(pnls)
+    variance = sum((x - mean) ** 2 for x in pnls) / len(pnls)
+    std = variance ** 0.5
+    return round(mean / std, 3) if std > 0 else None
+
+
+def _max_drawdown(pnls: list[float]) -> float | None:
+    if not pnls:
+        return None
+    peak = 0.0
+    max_dd = 0.0
+    running = 0.0
+    for p in pnls:
+        running += p
+        if running > peak:
+            peak = running
+        dd = peak - running
+        if dd > max_dd:
+            max_dd = dd
+    return round(max_dd, 4)
+
+
+def performance_by_strategy(
+    market: str = "all",
+    mode: str = "all",
+    horizon: str = "all",
+) -> dict[str, Any]:
+    """전략별 성과 분석 — win rate, avg PnL, Sharpe, max drawdown, equity curve."""
+    _ensure()
+    rows = _filter_rows(
+        _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)),
+        market, mode, horizon, "all", "all",
+    )
+    evaluated = sorted(
+        [r for r in rows if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}],
+        key=lambda r: str(r.get("as_of_date") or r.get("trade_date") or ""),
+    )
+
+    # ── 1. 전략 콤보별 집계 (mode × horizon) ─────────────────────────────
+    combo_data: dict[str, dict[str, Any]] = {}
+    for r in evaluated:
+        mk = _text(r.get("market") or "all")
+        md = _text(r.get("mode") or "all")
+        hz = _text(r.get("horizon") or "all")
+        for key in (f"{mk}_{md}_{hz}", f"all_{md}_{hz}", f"{mk}_all_{hz}", f"{mk}_{md}_all", "all_all_all"):
+            if key not in combo_data:
+                combo_data[key] = {"count": 0, "wins": 0, "pnls": [], "dates": []}
+        for key in (f"{mk}_{md}_{hz}", f"all_{md}_{hz}", f"{mk}_all_{hz}", f"{mk}_{md}_all", "all_all_all"):
+            combo_data[key]["count"] += 1
+            outcome = _text(r.get("outcome"))
+            if outcome in {"TARGET_HIT", "TIME_EXIT_PROFIT"}:
+                combo_data[key]["wins"] += 1
+            pnl = _safe_float(r.get("net_pnl_pct"))
+            if pnl is not None:
+                combo_data[key]["pnls"].append(pnl)
+                combo_data[key]["dates"].append(str(r.get("as_of_date") or ""))
+
+    strategy_rows = []
+    for key, d in sorted(combo_data.items()):
+        parts = key.split("_", 2)
+        mk_part = parts[0] if len(parts) > 0 else "all"
+        md_part = parts[1] if len(parts) > 1 else "all"
+        hz_part = parts[2] if len(parts) > 2 else "all"
+        pnls = d["pnls"]
+        count = d["count"]
+        wins = d["wins"]
+        strategy_rows.append({
+            "key": key,
+            "market": mk_part,
+            "mode": md_part,
+            "horizon": hz_part,
+            "count": count,
+            "wins": wins,
+            "winRate": round(wins / count, 4) if count else None,
+            "avgPnlPct": round(sum(pnls) / len(pnls), 4) if pnls else None,
+            "sharpe": _sharpe(pnls),
+            "maxDrawdownPct": _max_drawdown(pnls),
+            "totalPnlPct": round(sum(pnls), 4) if pnls else None,
+        })
+
+    # ── 2. 시간순 누적 equity curve (전체) ────────────────────────────────
+    curve_points: list[dict[str, Any]] = []
+    running_pnl = 0.0
+    peak_pnl = 0.0
+    max_dd = 0.0
+    for r in evaluated:
+        pnl = _safe_float(r.get("net_pnl_pct"))
+        if pnl is None:
+            continue
+        running_pnl += pnl
+        if running_pnl > peak_pnl:
+            peak_pnl = running_pnl
+        dd = peak_pnl - running_pnl
+        if dd > max_dd:
+            max_dd = dd
+        curve_points.append({
+            "date": str(r.get("as_of_date") or ""),
+            "cumPnlPct": round(running_pnl, 4),
+            "drawdownPct": round(dd, 4),
+        })
+
+    # ── 3. 전체 요약 ──────────────────────────────────────────────────────
+    all_pnls = [p for r in evaluated for p in ([_safe_float(r.get("net_pnl_pct"))] if _safe_float(r.get("net_pnl_pct")) is not None else [])]
+    all_wins = sum(1 for r in evaluated if _text(r.get("outcome")) in {"TARGET_HIT", "TIME_EXIT_PROFIT"})
+    total_count = len(evaluated)
+
+    summary = {
+        "count": total_count,
+        "wins": all_wins,
+        "winRate": round(all_wins / total_count, 4) if total_count else None,
+        "avgPnlPct": round(sum(all_pnls) / len(all_pnls), 4) if all_pnls else None,
+        "totalPnlPct": round(sum(all_pnls), 4) if all_pnls else None,
+        "sharpe": _sharpe(all_pnls),
+        "maxDrawdownPct": round(max_dd, 4) if evaluated else None,
+    }
+
+    return {
+        "status": "OK",
+        "summary": summary,
+        "strategyRows": strategy_rows,
+        "equityCurve": curve_points,
+    }
