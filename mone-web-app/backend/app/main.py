@@ -3183,6 +3183,12 @@ def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dic
     return final_engine.admin_backtest(_market(market))
 
 
+@app.get("/api/advanced/backtest-mone")
+def api_advanced_backtest_mone(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    from app.services.advanced import mone_price_band_backtest
+    return mone_price_band_backtest(_market(market))
+
+
 @app.get("/api/advanced/scanner")
 def api_advanced_scanner(
     market: str = Query("kr", pattern="^(kr|us)$"),

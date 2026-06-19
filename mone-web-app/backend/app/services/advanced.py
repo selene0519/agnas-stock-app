@@ -380,6 +380,146 @@ def advanced_backtest(market: str) -> dict[str, Any]:
     }
 
 
+_MONE_HORIZONS: dict[str, dict[str, float]] = {
+    "short": {"stop_pct": -3.5, "target_pct": 6.0, "max_days": 5},
+    "swing": {"stop_pct": -6.5, "target_pct": 13.0, "max_days": 10},
+    "mid":   {"stop_pct": -9.5, "target_pct": 22.5, "max_days": 20},
+}
+
+
+def _mone_band_simulate(frame: pd.DataFrame, symbol: str) -> list[dict[str, Any]]:
+    """Walk-forward simulation using MONE price bands on historical OHLCV.
+
+    Signal: MA10 above MA20 AND RSI between 40-70 (basic trend-following entry).
+    Outcome: TARGET_HIT / STOP_HIT / TIME_EXIT based on daily high/low path.
+    """
+    work = frame.copy().reset_index(drop=True)
+    work["ma10"] = work["close"].rolling(10).mean()
+    work["ma20"] = work["close"].rolling(20).mean()
+    work["rsi14"] = _rsi(work["close"], 14)
+
+    signal_mask = (
+        work["ma10"] > work["ma20"]
+    ) & (
+        work["rsi14"].between(38, 72)
+    ) & (
+        (work["close"] / work["ma20"] - 1).between(-0.08, 0.10)
+    )
+
+    trades: list[dict[str, Any]] = []
+    n = len(work)
+    for i in work.index[signal_mask.fillna(False)]:
+        entry_i = i + 1
+        if entry_i >= n:
+            continue
+        entry_price = float(work.at[entry_i, "open"] if "open" in work.columns and float(work.at[entry_i, "open"] or 0) > 0 else work.at[entry_i, "close"])
+        if entry_price <= 0:
+            continue
+        signal_date = work.at[i, "date"].strftime("%Y-%m-%d") if pd.notna(work.at[i, "date"]) else ""
+
+        for horizon, params in _MONE_HORIZONS.items():
+            stop = entry_price * (1 + params["stop_pct"] / 100)
+            target = entry_price * (1 + params["target_pct"] / 100)
+            max_days = int(params["max_days"])
+            outcome = "TIME_EXIT"
+            exit_price = float(work.at[min(entry_i + max_days, n - 1), "close"])
+            exit_day = 0
+
+            for d in range(1, max_days + 1):
+                j = entry_i + d
+                if j >= n:
+                    break
+                lo = float(work.at[j, "low"])
+                hi = float(work.at[j, "high"])
+                if lo <= stop:
+                    outcome = "STOP_HIT"
+                    exit_price = stop
+                    exit_day = d
+                    break
+                if hi >= target:
+                    outcome = "TARGET_HIT"
+                    exit_price = target
+                    exit_day = d
+                    break
+            else:
+                exit_day = max_days
+
+            ret = (exit_price - entry_price) / entry_price
+            trades.append({
+                "symbol": symbol,
+                "horizon": horizon,
+                "signalDate": signal_date,
+                "outcome": outcome,
+                "return": ret,
+                "entryPrice": entry_price,
+                "exitPrice": exit_price,
+                "exitDay": exit_day,
+            })
+
+    return trades
+
+
+def mone_price_band_backtest(market: str) -> dict[str, Any]:
+    """Historical walk-forward backtest using MONE 3×3 price bands on OHLCV."""
+    ohlcv_paths = _ohlcv_files(market)
+    eligible_frames: dict[str, pd.DataFrame] = {}
+
+    for path in ohlcv_paths:
+        symbol = _symbol_from_ohlcv_path(path, market)
+        frame, status = _normalize_ohlcv_frame(path, market)
+        if frame.empty or status != "OK" or len(frame) < 60:
+            continue
+        eligible_frames[symbol] = frame
+
+    all_trades: list[dict[str, Any]] = []
+    for symbol, frame in eligible_frames.items():
+        all_trades.extend(_mone_band_simulate(frame, symbol))
+
+    by_horizon: dict[str, dict[str, Any]] = {}
+    for horizon in _MONE_HORIZONS:
+        h_trades = [t for t in all_trades if t["horizon"] == horizon]
+        if not h_trades:
+            by_horizon[horizon] = {"status": "NO_DATA", "trades": 0}
+            continue
+        returns = [t["return"] for t in h_trades]
+        arr = np.array(returns, dtype=float)
+        wins = [t for t in h_trades if t["outcome"] == "TARGET_HIT"]
+        losses = [t for t in h_trades if t["outcome"] == "STOP_HIT"]
+        time_exits = [t for t in h_trades if t["outcome"] == "TIME_EXIT"]
+        win_rate = len(wins) / len(h_trades) * 100
+        avg_ret = float(arr.mean() * 100)
+        mdd = _max_drawdown_from_returns(arr) * 100
+        sharpe = float(arr.mean() / arr.std() * math.sqrt(52)) if float(arr.std()) > 0 and len(arr) > 5 else None
+        avg_exit_day = float(np.mean([t["exitDay"] for t in h_trades]))
+        params = _MONE_HORIZONS[horizon]
+        by_horizon[horizon] = {
+            "status": "OK",
+            "trades": len(h_trades),
+            "winRate": round(win_rate, 1),
+            "avgReturn": round(avg_ret, 2),
+            "mdd": round(mdd, 2),
+            "sharpe": round(sharpe, 2) if sharpe else None,
+            "targetHits": len(wins),
+            "stopHits": len(losses),
+            "timeExits": len(time_exits),
+            "avgExitDay": round(avg_exit_day, 1),
+            "stopPct": params["stop_pct"],
+            "targetPct": params["target_pct"],
+            "maxDays": params["max_days"],
+        }
+
+    total_trades = len(all_trades)
+    return {
+        "status": "OK" if total_trades > 0 else "NO_DATA",
+        "market": market,
+        "symbols": len(eligible_frames),
+        "totalTrades": total_trades,
+        "note": "MONE 3×3 price band walk-forward. 진입신호: MA10>MA20 + RSI 38-72. 손절/목표 도달 또는 기간 만료.",
+        "byHorizon": by_horizon,
+        "recentTrades": sorted(all_trades, key=lambda x: x["signalDate"], reverse=True)[:30],
+    }
+
+
 def _scanner_price_text(value: float | None, market: str) -> str:
     if value is None or not math.isfinite(float(value)) or value <= 0:
         return "-"

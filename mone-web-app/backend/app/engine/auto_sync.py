@@ -277,7 +277,7 @@ def start_background_sync(interval_minutes: float | None = None) -> None:
 
 
 def startup_sync() -> None:
-    """서버 시작 시 1회 pull (선택적)."""
+    """서버 시작 시 1회 pull + Supabase → CSV 동기화 (선택적)."""
     if os.environ.get("MONE_STARTUP_SYNC") != "1":
         return
     if os.environ.get("GITHUB_ACTIONS_RUN") == "true":
@@ -287,6 +287,12 @@ def startup_sync() -> None:
         print(f"[AutoSync] 시작 동기화: {result['status']} / 변경 파일 {result['filesChanged']}개")
     except Exception as exc:
         print(f"[AutoSync] 시작 동기화 실패: {exc}")
+    try:
+        from app.services.supabase_db import pull_to_csv
+        sdb_result = pull_to_csv(_REPO_ROOT)
+        print(f"[AutoSync] Supabase pull: {sdb_result}")
+    except Exception as exc:
+        print(f"[AutoSync] Supabase pull 실패: {exc}")
 
 
 def register_auto_sync_routes(app: Any) -> None:

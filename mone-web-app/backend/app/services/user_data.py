@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 
 from app.services import data_loader as data
+from app.services import supabase_db as sdb
 
 BACKUP_DIR = data.APP_DIR / "backend" / "backups"
 
@@ -142,6 +143,7 @@ def add_watchlist(payload: dict[str, Any]) -> dict[str, Any]:
     row["updated_at"] = _now() if "updated_at" in row else _now()
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     backup = _write_csv_safe(path, df)
+    sdb.upsert_watch(market, symbol, {"name": name, "memo": memo})
     return {"status": "OK", "message": "관심종목에 추가했습니다.", "market": market, "symbol": symbol, "backupFile": backup, "count": len(df)}
 
 
@@ -157,6 +159,7 @@ def delete_watchlist(symbol: str, market: str) -> dict[str, Any]:
         return {"status": "NOT_FOUND", "message": "관심종목에서 찾지 못했습니다.", "market": market, "symbol": target, "count": len(df)}
     next_df = df.loc[~mask].copy()
     backup = _write_csv_safe(path, next_df)
+    sdb.delete_watch(market, target)
     return {"status": "OK", "message": "관심종목에서 삭제했습니다.", "market": market, "symbol": target, "backupFile": backup, "count": len(next_df)}
 
 
@@ -344,6 +347,7 @@ def upsert_holding(payload: dict[str, Any], mode: str = "post", symbol_arg: str 
     else:
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     backup = _write_csv_safe(path, df)
+    sdb.upsert_holding(market, symbol, payload)
     return {"status": "OK", "action": action, "message": "보유종목을 저장했습니다.", "market": market, "symbol": symbol, "backupFile": backup, "count": len(df)}
 
 
@@ -359,4 +363,5 @@ def delete_holding(symbol: str, market: str) -> dict[str, Any]:
         return {"status": "NOT_FOUND", "message": "보유종목에서 찾지 못했습니다.", "market": market, "symbol": target, "count": len(df)}
     next_df = df.loc[~mask].copy()
     backup = _write_csv_safe(path, next_df)
+    sdb.delete_holding(market, target)
     return {"status": "OK", "message": "보유종목에서 삭제했습니다.", "market": market, "symbol": target, "backupFile": backup, "count": len(next_df)}
