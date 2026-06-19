@@ -608,6 +608,65 @@ jobs:
           echo "vtj-evaluate: exit $?"
           set -e
 
+      - name: 모의투자 스탑/목표가 도달 알림 (보유중 관리)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json, os
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services.paper_trading import check_stops
+
+          for market in ("kr", "us"):
+              result = check_stops(market=market)
+              hit_count = result.get("hitCount", 0)
+              near_count = result.get("nearCount", 0)
+              alerts = result.get("alerts", [])
+              print(f"[stop-check {market}] hit={hit_count}, near={near_count}, total={len(alerts)}")
+
+              if not alerts:
+                  continue
+
+              bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+              chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+              if not (bot_token and chat_id):
+                  print(f"  Telegram 미설정 — 알림 건너뜀")
+                  continue
+
+              import urllib.request
+
+              lines = [f"MONE 모의투자 스탑/목표 알림 [{market.upper()}]"]
+              for a in alerts:
+                  level = a.get("alertLevel", "")
+                  symbol = a.get("symbol", "")
+                  current = a.get("currentPrice", "-")
+                  if level == "STOP_HIT":
+                      lines.append(f"[손절 도달] {symbol}: 현재 {current} <= 스탑 {a.get('stopPrice', '-')}")
+                  elif level == "STOP_NEAR":
+                      lines.append(f"[스탑 근접] {symbol}: 현재 {current} / 스탑 {a.get('stopPrice', '-')}")
+                  elif level == "TARGET_HIT":
+                      lines.append(f"[목표 달성] {symbol}: 현재 {current} >= 목표 {a.get('targetPrice', '-')}")
+                  elif level == "TARGET_NEAR":
+                      lines.append(f"[목표 근접] {symbol}: 현재 {current} / 목표 {a.get('targetPrice', '-')}")
+
+              msg = "\n".join(lines)
+              url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+              data = json.dumps({"chat_id": chat_id, "text": msg}).encode()
+              req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+              try:
+                  resp = urllib.request.urlopen(req, timeout=15)
+                  print(f"  Telegram 전송 완료: {resp.status}")
+              except Exception as e:
+                  print(f"  Telegram 전송 실패: {e}")
+          PY
+          echo "stop-check: exit $?"
+          set -e
+
       - name: 앙상블 보정 (walk-forward, 월요일 주 1회)
         working-directory: mone-web-app/backend
         env:
@@ -692,6 +751,7 @@ jobs:
             git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
             git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
             git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv 2>/dev/null || true
+            git add data/paper/paper_stops.json 2>/dev/null || true
             git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
             git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
             git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
