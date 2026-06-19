@@ -463,6 +463,8 @@ const MODE_CAPS: Record<string, number> = {
   aggressive:   0.15,   // 최대 15%
 };
 
+const PORTFOLIO_SIZING_CAP = 0.8;
+
 interface SizingRow {
   symbol:   string;
   name:     string;
@@ -474,13 +476,16 @@ interface SizingRow {
   kelly:    number;      // full kelly fraction
   halfKelly: number;     // capped half kelly
   amount:   number;      // 원화 금액
+  rawAmount: number;
+  effectivePct: number;
+  scaled:   boolean;
   qty:      number;
   ev:       number;
 }
 
 function calcSizing(items: any[], capital: number): SizingRow[] {
   const seen = new Set<string>();
-  return items
+  const rawRows = items
     .filter((i) => i.decisionBucket === "오늘 진입")
     .flatMap((i) => {
       const key = `${i.symbol}-${i._mode}-${i._horizon}`;
@@ -496,8 +501,8 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
       const kelly    = Math.max(0, prob - (1 - prob) / rr);
       const cap      = MODE_CAPS[mode] ?? 0.10;
       const halfKelly = Math.min(kelly / 2, cap);
-      const amount   = Math.floor(capital * halfKelly);
-      const qty      = Math.floor(amount / entry);
+      const rawAmount = Math.floor(capital * halfKelly);
+      const qty      = Math.floor(rawAmount / entry);
 
       return [{
         symbol: String(i.symbol || ""),
@@ -510,10 +515,32 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
         kelly,
         halfKelly,
         amount: qty * entry,
+        rawAmount,
+        effectivePct: capital > 0 ? (qty * entry) / capital : 0,
+        scaled: false,
         qty,
         ev: Number(i.expectedValue || 0),
       }];
+    });
+
+  const totalRawAmount = rawRows.reduce((sum, row) => sum + row.rawAmount, 0);
+  const capAmount = Math.floor(capital * PORTFOLIO_SIZING_CAP);
+  const scale = totalRawAmount > capAmount && capAmount > 0 ? capAmount / totalRawAmount : 1;
+
+  return rawRows
+    .map((row) => {
+      const cappedAmount = Math.floor(row.rawAmount * scale);
+      const qty = Math.floor(cappedAmount / row.entry);
+      const amount = qty * row.entry;
+      return {
+        ...row,
+        amount,
+        effectivePct: capital > 0 ? amount / capital : 0,
+        qty,
+        scaled: scale < 0.999,
+      };
     })
+    .filter((row) => row.qty > 0)
     .sort((a, b) => b.halfKelly - a.halfKelly);
 }
 
@@ -544,6 +571,7 @@ function PositionSizingSection({
   const totalAllocated = rows.reduce((s, r) => s + r.amount, 0);
   const allocPct = capital > 0 ? (totalAllocated / capital) * 100 : 0;
   const remaining = capital - totalAllocated;
+  const portfolioScaled = rows.some((r) => r.scaled);
 
   if (rows.length === 0 && capital <= 0) return null;
 
@@ -591,6 +619,7 @@ function PositionSizingSection({
             <div className="mt-1.5 flex gap-3 text-[10px] text-slate-500">
               <span>{rows.length}개 종목</span>
               <span>포트폴리오 노출 {allocPct.toFixed(1)}%</span>
+              {portfolioScaled && <span className="text-sky-400">총 노출 {(PORTFOLIO_SIZING_CAP * 100).toFixed(0)}% 한도 적용</span>}
               {allocPct > 80 && <span className="text-amber-400">⚠ 집중도 높음 — 분산 권장</span>}
             </div>
           </div>
@@ -623,7 +652,10 @@ function PositionSizingSection({
                     </td>
                     <td className="py-2 pr-3 text-right font-mono text-slate-300">{(r.prob * 100).toFixed(0)}%</td>
                     <td className="py-2 pr-3 text-right font-mono text-slate-300">{r.rr.toFixed(1)}</td>
-                    <td className="py-2 pr-3 text-right font-mono text-violet-300">{(r.halfKelly * 100).toFixed(1)}%</td>
+                    <td className="py-2 pr-3 text-right font-mono text-violet-300">
+                      <div>{(r.halfKelly * 100).toFixed(1)}%</div>
+                      {r.scaled && <div className="text-[9px] text-sky-400">실배분 {(r.effectivePct * 100).toFixed(1)}%</div>}
+                    </td>
                     <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.amount.toLocaleString()}</td>
                     <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.qty > 0 ? `${r.qty}주` : "—"}</td>
                     <td className={`py-2 ${onTradePaper ? "pr-3" : ""} text-right font-mono ${r.ev >= 2 ? "text-emerald-300" : r.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
@@ -646,7 +678,7 @@ function PositionSizingSection({
           </div>
 
           <p className="mt-3 text-[10px] text-slate-600">
-            Half-Kelly = min(max(0, p − (1−p)/RR) ÷ 2, 전략한도)  ·  보수형 최대 5% / 균형형 10% / 공격형 15%  ·  참고용이며 자동주문은 지원하지 않습니다.
+            Half-Kelly = min(max(0, p − (1−p)/RR) ÷ 2, 전략한도)  ·  보수형 최대 5% / 균형형 10% / 공격형 15%  ·  총 노출 {(PORTFOLIO_SIZING_CAP * 100).toFixed(0)}% 초과 시 비례 축소  ·  참고용이며 자동주문은 지원하지 않습니다.
           </p>
         </>
       )}
