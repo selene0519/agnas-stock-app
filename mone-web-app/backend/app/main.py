@@ -7583,6 +7583,25 @@ def api_journal_attribution(
     return vtj.attribution_analysis(market=market, mode=mode, horizon=horizon)
 
 
+@app.get("/api/journal/entry-efficiency")
+def api_journal_entry_efficiency(
+    market: str = Query("all"),
+    horizon: str = Query("all"),
+) -> dict:
+    """진입 효율 지표 — fill rate, 평균 슬리피지, 평균 진입 소요일."""
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.entry_efficiency_stats(market=market, horizon=horizon)
+
+
+@app.get("/api/journal/attribution-feedback")
+def api_journal_attribution_feedback(market: str = Query("all")) -> dict:
+    """귀속분석 → 전략 스코어 조정 제안 (자기개선 피드백)."""
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.attribution_feedback(market=market)
+
+
 try:
     from app.services import virtual_trade_journal as _vtj_auto
 

@@ -407,6 +407,10 @@ export const mone = {
     apiGet<any>("/api/journal/performance", p),
   journalAttribution: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<any>("/api/journal/attribution", p),
+  journalEntryEfficiency: (p?: { market?: Market | string; horizon?: Horizon | string }) =>
+    apiGet<any>("/api/journal/entry-efficiency", p),
+  journalAttributionFeedback: (p?: { market?: Market | string }) =>
+    apiGet<any>("/api/journal/attribution-feedback", p),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>

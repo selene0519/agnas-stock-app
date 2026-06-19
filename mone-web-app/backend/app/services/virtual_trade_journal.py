@@ -2055,3 +2055,142 @@ def attribution_analysis(
         "bySourceType": _factor_stats(evaluated, "source_type"),
         "evAccuracy": _ev_accuracy(evaluated),
     }
+
+
+def entry_efficiency_stats(market: str = "all", horizon: str = "all") -> dict[str, Any]:
+    """진입 관리 효율 지표.
+
+    fill_rate, avg_entry_slippage_pct, avg_fill_days by horizon.
+    Slippage = (fill_price - entry_price) / entry_price × 100
+    """
+    _ensure()
+    rows = _filter_rows(
+        _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)),
+        market, "all", horizon, "all", "all",
+    )
+    total = [r for r in rows if _upper(r.get("status")) not in {"PENDING", "PENDING_FILL"}]
+    filled_rows = [r for r in total if str(r.get("filled", "")).lower() in {"true", "1", "yes"}]
+
+    def _parse_date(s: str | None) -> date | None:
+        if not s:
+            return None
+        try:
+            return datetime.fromisoformat(str(s)[:10]).date()
+        except Exception:
+            return None
+
+    slippages: list[float] = []
+    fill_days_list: list[int] = []
+    for r in filled_rows:
+        ep = _safe_float(r.get("entry_price"))
+        fp = _safe_float(r.get("fill_price"))
+        if ep and fp and ep > 0:
+            slippages.append((fp - ep) / ep * 100)
+        d_signal = _parse_date(r.get("as_of_date") or r.get("generated_at"))
+        d_fill = _parse_date(r.get("fill_date"))
+        if d_signal and d_fill and d_fill >= d_signal:
+            fill_days_list.append((d_fill - d_signal).days)
+
+    def _horizon_stats(hz: str) -> dict[str, Any]:
+        sub_total = [r for r in total if r.get("horizon") == hz]
+        sub_filled = [r for r in sub_total if str(r.get("filled", "")).lower() in {"true", "1", "yes"}]
+        sub_slip: list[float] = []
+        sub_days: list[int] = []
+        for r in sub_filled:
+            ep = _safe_float(r.get("entry_price"))
+            fp = _safe_float(r.get("fill_price"))
+            if ep and fp and ep > 0:
+                sub_slip.append((fp - ep) / ep * 100)
+            d_s = _parse_date(r.get("as_of_date") or r.get("generated_at"))
+            d_f = _parse_date(r.get("fill_date"))
+            if d_s and d_f and d_f >= d_s:
+                sub_days.append((d_f - d_s).days)
+        return {
+            "horizon": hz,
+            "total": len(sub_total),
+            "filled": len(sub_filled),
+            "fillRate": round(len(sub_filled) / len(sub_total), 4) if sub_total else None,
+            "avgSlippagePct": round(sum(sub_slip) / len(sub_slip), 3) if sub_slip else None,
+            "avgFillDays": round(sum(sub_days) / len(sub_days), 1) if sub_days else None,
+        }
+
+    return {
+        "status": "OK",
+        "total": len(total),
+        "filled": len(filled_rows),
+        "fillRate": round(len(filled_rows) / len(total), 4) if total else None,
+        "avgSlippagePct": round(sum(slippages) / len(slippages), 3) if slippages else None,
+        "avgFillDays": round(sum(fill_days_list) / len(fill_days_list), 1) if fill_days_list else None,
+        "byHorizon": [_horizon_stats(h) for h in ("short", "swing", "mid")],
+    }
+
+
+_FEEDBACK_JSON = DATA_DIR / "attribution_feedback.json"
+
+
+def attribution_feedback(market: str = "all") -> dict[str, Any]:
+    """귀속분석 결과 → 모드×기간 스코어 조정 제안 (자기개선 피드백).
+
+    각 mode×horizon 콤보의 winRate와 avgPnl을 전체 평균 대비 비교하여
+    상대적 multiplier를 계산함. 결과는 attribution_feedback.json에 저장.
+    """
+    _ensure()
+    rows = _filter_rows(
+        _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)),
+        market, "all", "all", "all", "all",
+    )
+    evaluated = [
+        r for r in rows
+        if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _safe_float(r.get("net_pnl_pct")) is not None
+    ]
+
+    if len(evaluated) < 10:
+        return {"status": "LOW_SAMPLE", "sampleCount": len(evaluated), "minRequired": 10, "adjustments": []}
+
+    # Overall baseline
+    all_pnls = [_safe_float(r.get("net_pnl_pct")) for r in evaluated if _safe_float(r.get("net_pnl_pct")) is not None]
+    all_wins = sum(1 for r in evaluated if (_safe_float(r.get("net_pnl_pct")) or 0) > 0 or _text(r.get("outcome")) == "TARGET_HIT")
+    base_wr = all_wins / len(evaluated) if evaluated else 0.5
+    base_avg_pnl = sum(all_pnls) / len(all_pnls) if all_pnls else 0
+
+    adjustments: list[dict[str, Any]] = []
+    for mode in ("conservative", "balanced", "aggressive"):
+        for hz in ("short", "swing", "mid"):
+            sub = [r for r in evaluated if r.get("mode") == mode and r.get("horizon") == hz]
+            if len(sub) < 3:
+                continue
+            pnls = [_safe_float(r.get("net_pnl_pct")) for r in sub if _safe_float(r.get("net_pnl_pct")) is not None]
+            wins = sum(1 for r in sub if (_safe_float(r.get("net_pnl_pct")) or 0) > 0 or _text(r.get("outcome")) == "TARGET_HIT")
+            wr = wins / len(sub)
+            avg_pnl = sum(pnls) / len(pnls) if pnls else 0
+            # multiplier: composite of winRate vs base and avgPnl vs base
+            wr_ratio = wr / base_wr if base_wr > 0 else 1.0
+            pnl_ratio = (avg_pnl / base_avg_pnl) if base_avg_pnl != 0 and avg_pnl != 0 else 1.0
+            # clamp multiplier to [0.5, 1.5]
+            multiplier = max(0.5, min(1.5, round((wr_ratio * 0.6 + pnl_ratio * 0.4), 3)))
+            direction = "BOOST" if multiplier > 1.05 else ("REDUCE" if multiplier < 0.95 else "NEUTRAL")
+            adjustments.append({
+                "mode": mode,
+                "horizon": hz,
+                "n": len(sub),
+                "winRate": round(wr, 4),
+                "avgPnlPct": round(avg_pnl, 3),
+                "multiplier": multiplier,
+                "direction": direction,
+            })
+
+    result: dict[str, Any] = {
+        "status": "OK",
+        "sampleCount": len(evaluated),
+        "baseWinRate": round(base_wr, 4),
+        "baseAvgPnlPct": round(base_avg_pnl, 3),
+        "generatedAt": _now_iso(),
+        "adjustments": adjustments,
+    }
+    try:
+        _FEEDBACK_JSON.parent.mkdir(parents=True, exist_ok=True)
+        _FEEDBACK_JSON.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    return result
