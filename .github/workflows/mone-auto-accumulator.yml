@@ -571,6 +571,68 @@ jobs:
           echo "auto-correction: exit $?"
           set -e
 
+      - name: VTJ 자동 캡처 (가상 체결 기록, git 저장용)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services import virtual_trade_journal as vtj
+          result = vtj.run_auto_capture(market="all", evaluate_after=False, source="github-actions")
+          runs = result.get("runs", [])
+          total_added = sum(r.get("added", 0) for r in runs)
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          print(f"[vtj-capture] 총 {total_added}건 추가됨")
+          PY
+          echo "vtj-capture: exit $?"
+          set -e
+
+      - name: VTJ 체결 평가 (PENDING → WIN/LOSS, OHLCV 기반)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services import virtual_trade_journal as vtj
+          result = vtj.evaluate(market="all", limit=500)
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          PY
+          echo "vtj-evaluate: exit $?"
+          set -e
+
+      - name: 앙상블 보정 (walk-forward, 월요일 주 1회)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          DAY=$(date +%u)
+          if [ "$DAY" != "1" ]; then
+            echo "Not Monday — skip ensemble calibration."
+          else
+            python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.engine.ensemble_calibrator import run_ensemble_calibration
+          for market in ("kr", "us"):
+              result = run_ensemble_calibration(market=market)
+              combos = len(result.get("combos", []))
+              print(json.dumps(result, ensure_ascii=False, indent=2))
+              print(f"앙상블 보정 [{market}]: {combos}개 콤보 저장됨")
+          PY
+            echo "ensemble calibration: exit $?"
+          fi
+          set -e
+
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
@@ -629,6 +691,7 @@ jobs:
             # Data files used by the app as source/cache.
             git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
             git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
+            git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv 2>/dev/null || true
             git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
             git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
             git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
@@ -687,19 +750,9 @@ jobs:
           set -e
           echo "Render sync 요청 완료"
 
-      - name: VTJ 자동 캡처 (AI 매매일지 가상 체결 기록)
-        env:
-          MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
-          MONE_ADMIN_SECRET: ${{ secrets.MONE_ADMIN_SECRET }}
+      - name: VTJ 커밋 확인 (데이터 git 저장 완료)
         run: |
-          BASE="${MONE_BACKEND_URL%/}"
-          echo "VTJ 자동 캡처 요청: ${BASE}/api/journal/auto-capture/run"
-          set +e
-          curl -sf -X POST "${BASE}/api/journal/auto-capture/run" \
-            -H "Content-Type: application/json" \
-            -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
-            -d '{"market":"all"}' \
-            --max-time 120 \
-            -o /tmp/vtj_result.json && cat /tmp/vtj_result.json || echo "VTJ auto-capture 호출 실패 (무시)"
-          set -e
-          echo "VTJ 캡처 요청 완료"
+          echo "VTJ 체결 기록은 Actions runner에서 직접 실행 후 git에 커밋됨."
+          echo "Render 백엔드는 위 sync-now 단계에서 git pull로 최신 데이터를 반영함."
+          test -f data/virtual_trade_journal.csv && echo "data/virtual_trade_journal.csv 존재" || echo "data/virtual_trade_journal.csv 없음 (첫 실행 또는 캡처 없음)"
+          test -f data/virtual_trade_evaluations.csv && echo "data/virtual_trade_evaluations.csv 존재" || echo "data/virtual_trade_evaluations.csv 없음"
