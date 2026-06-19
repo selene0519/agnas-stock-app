@@ -175,6 +175,14 @@ JOURNAL_COLS = [
     "market_regime_at_signal",
     "sector",
     "reject_reason",
+    # 팩터 귀속분석용 기술지표 — 신호 생성 시점 snapshot
+    "rsi_at_entry",
+    "volume_ratio_at_entry",
+    "distance_to_ma20_at_entry",
+    "atr14_pct_at_entry",
+    "ma_full_align_at_entry",
+    "mdd20_at_entry",
+    "momentum5_at_entry",
     "raw_recommendation_json",
 ]
 
@@ -562,6 +570,14 @@ def _snapshot_from_item(
         "market_regime_at_signal": _text(item.get("marketRegime") or item.get("regime")),
         "sector": _text(item.get("sector")),
         "reject_reason": "",
+        # 팩터 귀속분석용 기술지표 — 추천 생성 시 계산된 값 저장
+        "rsi_at_entry": _safe_float(item.get("rsi14")),
+        "volume_ratio_at_entry": _safe_float(item.get("volumeRatio20")),
+        "distance_to_ma20_at_entry": _safe_float(item.get("distanceToMa20")),
+        "atr14_pct_at_entry": _safe_float(item.get("atr14Pct")),
+        "ma_full_align_at_entry": str(item.get("maFullAlign", "")).lower() in ("true", "1"),
+        "mdd20_at_entry": _safe_float(item.get("mdd20")),
+        "momentum5_at_entry": _safe_float(item.get("recentMomentum5")),
         "raw_recommendation_json": _json(item),
     }
     row["journal_id"] = _journal_id(row)

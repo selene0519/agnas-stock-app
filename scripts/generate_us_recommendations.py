@@ -513,6 +513,14 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "correctionConfidence": _corr_confidence,
                     "correctionSummary": _corr_summary,
                     "appliedCorrectionVersion": _corr_version,
+                    # 팩터 귀속분석용 기술지표 (입력 시점 snapshot)
+                    "rsi14": round(_rsi, 1) if _rsi is not None else "",
+                    "volumeRatio20": round(_vr, 2) if _vr is not None else "",
+                    "distanceToMa20": round(ind.get("distanceToMa20", 0) or 0, 2),
+                    "atr14Pct": round(_atr14 / current * 100, 2) if (_atr14 and current) else "",
+                    "maFullAlign": _ma_full_align,
+                    "mdd20": round(ind.get("mdd20", 0) or 0, 2),
+                    "recentMomentum5": round(ind.get("recentMomentum5", 0) or 0, 2),
                 }
                 _sector_counts_us[_sec_us] = _sector_counts_us.get(_sec_us, 0) + 1
                 rows_out.append(row)
