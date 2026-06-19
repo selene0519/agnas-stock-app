@@ -8798,7 +8798,7 @@ def api_paper_stops_check(market: str = Query("all")) -> dict:
     return check_stops(market=market)
 
 
-@app.post("/api/admin/supabase-migrate")
+@app.post("/api/supabase/migrate")
 def api_supabase_migrate() -> dict:
     """CSV → Supabase 초기 일괄 업로드 (최초 1회 실행)."""
     from app.services import supabase_db as sdb
