@@ -52,10 +52,18 @@ function formatAmount(value: number, market: Market) {
 
 export default function AdvancedPage({
   initialOrder,
+  onOrderConsumed,
 }: {
   initialOrder?: { symbol: string; name: string; price: number; market: "kr" | "us" };
+  onOrderConsumed?: () => void;
 } = {}) {
-  const [tab, setTab] = useState<TabId>(initialOrder ? "paper" : "paper");
+  const [tab, setTab] = useState<TabId>("paper");
+
+  useEffect(() => {
+    if (initialOrder) onOrderConsumed?.();
+  // onOrderConsumed intentionally excluded — only run once when initialOrder arrives
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialOrder]);
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
