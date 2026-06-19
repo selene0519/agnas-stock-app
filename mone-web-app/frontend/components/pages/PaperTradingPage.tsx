@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mone, type Market } from "@/lib/api";
-import { TrendingUp, TrendingDown, RefreshCw, Plus, Minus, RotateCcw, History, BarChart3 } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, Plus, Minus, RotateCcw, History, BarChart3, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 type Position = {
   market: string;
@@ -81,6 +81,61 @@ function SummaryBar({ summary, market }: { summary: Summary; market: string }) {
           <div className={`mt-0.5 text-sm font-bold font-mono ${color || "text-slate-200"}`}>{value}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+type DrawdownInfo = {
+  drawdownPct: number;
+  peakValue: number;
+  portfolioValue: number;
+  alertLevel: "GREEN" | "YELLOW" | "RED";
+};
+
+function DrawdownBanner({ dd, market }: { dd: DrawdownInfo; market: string }) {
+  const { drawdownPct, peakValue, portfolioValue, alertLevel } = dd;
+  const cfg = {
+    GREEN: {
+      bar: "bg-emerald-500/15 border-emerald-500/30",
+      text: "text-emerald-400",
+      icon: <CheckCircle2 size={14} className="text-emerald-400" />,
+      label: "정상",
+    },
+    YELLOW: {
+      bar: "bg-amber-500/15 border-amber-500/30",
+      text: "text-amber-400",
+      icon: <AlertTriangle size={14} className="text-amber-400" />,
+      label: "주의",
+    },
+    RED: {
+      bar: "bg-red-500/15 border-red-500/30",
+      text: "text-red-400",
+      icon: <AlertTriangle size={14} className="text-red-400" />,
+      label: "경고",
+    },
+  }[alertLevel];
+
+  const fmtVal = (v: number) =>
+    market === "us"
+      ? `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+      : `${Math.round(v).toLocaleString("ko-KR")}원`;
+
+  return (
+    <div className={`flex items-center justify-between rounded-xl border px-3 py-2 ${cfg.bar}`}>
+      <div className="flex items-center gap-2">
+        {cfg.icon}
+        <span className="text-xs text-slate-400">드로다운</span>
+        <span className={`text-xs font-bold font-mono ${cfg.text}`}>
+          {drawdownPct > 0 ? `-${drawdownPct.toFixed(2)}%` : "0.00%"}
+        </span>
+        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${cfg.text} bg-current/10`}>
+          {cfg.label}
+        </span>
+      </div>
+      <div className="flex gap-3 text-[10px] text-slate-500">
+        <span>피크 {fmtVal(peakValue)}</span>
+        <span>현재 {fmtVal(portfolioValue)}</span>
+      </div>
     </div>
   );
 }
@@ -221,20 +276,24 @@ export default function PaperTradingPage({
   const [resetConfirm, setResetConfirm] = useState(false);
   const [seedInput, setSeedInput] = useState<string>("");
   const [showSeedInput, setShowSeedInput] = useState(false);
+  const [drawdown, setDrawdown] = useState<DrawdownInfo | null>(null);
 
   async function loadAll() {
     setLoading(true);
     try {
-      const [posRes, histRes, sumRes] = await Promise.all([
+      const [posRes, histRes, sumRes, ddRes] = await Promise.all([
         mone.paperPositions({ market }) as Promise<any>,
         mone.paperHistory({ market, limit: 50 }) as Promise<any>,
         mone.paperSummary({ market }) as Promise<any>,
+        mone.paperDrawdown({ market }) as Promise<any>,
       ]);
       setPositions((posRes?.items || []) as Position[]);
       setCash((posRes?.cash || {}) as Record<string, number>);
       setHistory((histRes?.items || []) as Trade[]);
       const mktSummary = sumRes?.markets?.[market] as Summary | undefined;
       setSummary(mktSummary || null);
+      const ddMkt = ddRes?.markets?.[market] as DrawdownInfo | undefined;
+      setDrawdown(ddMkt || null);
     } catch {
       /* ignore */
     } finally {
@@ -294,6 +353,9 @@ export default function PaperTradingPage({
 
       {/* 요약 */}
       {summary && <SummaryBar summary={summary} market={market} />}
+
+      {/* 드로다운 모니터 */}
+      {drawdown && <DrawdownBanner dd={drawdown} market={market} />}
 
       {/* 탭 */}
       <div className="flex w-fit gap-1 rounded-lg bg-slate-800/50 p-1">

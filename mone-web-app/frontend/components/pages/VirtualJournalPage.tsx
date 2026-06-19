@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
+import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, TrendingUp, XCircle } from "lucide-react";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 
 type ScopeMarket = Extract<Market, "kr" | "us" | "all">;
@@ -72,6 +72,106 @@ function metric(label: string, value: any, tone = "text-slate-100") {
   );
 }
 
+const MODES_ORDER = ["conservative", "balanced", "aggressive"];
+const HORIZONS_ORDER = ["short", "swing", "mid"];
+const MODE_KO: Record<string, string> = { conservative: "보수", balanced: "균형", aggressive: "공격" };
+const HORIZON_KO: Record<string, string> = { short: "단기", swing: "스윙", mid: "중기" };
+
+function EquityCurveSparkline({ points }: { points: Array<{ date: string; cumPnlPct: number; drawdownPct: number }> }) {
+  if (points.length < 2) return null;
+  const pnls = points.map((p) => p.cumPnlPct);
+  const minY = Math.min(...pnls, 0);
+  const maxY = Math.max(...pnls, 0);
+  const rangeY = maxY - minY || 1;
+  const W = 800;
+  const H = 80;
+  const pad = 4;
+  const toX = (i: number) => pad + (i / (points.length - 1)) * (W - 2 * pad);
+  const toY = (v: number) => pad + ((maxY - v) / rangeY) * (H - 2 * pad);
+  const zeroY = toY(0);
+  const polyline = points.map((p, i) => `${toX(i).toFixed(1)},${toY(p.cumPnlPct).toFixed(1)}`).join(" ");
+  const areaPath = `M ${toX(0)},${zeroY} L ${points.map((p, i) => `${toX(i).toFixed(1)},${toY(p.cumPnlPct).toFixed(1)}`).join(" L ")} L ${toX(points.length - 1)},${zeroY} Z`;
+  const finalPnl = pnls[pnls.length - 1];
+  const lineColor = finalPnl >= 0 ? "#34d399" : "#f87171";
+  const fillColor = finalPnl >= 0 ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.10)";
+  return (
+    <div className="w-full overflow-hidden">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-20 w-full">
+        {/* zero line */}
+        <line x1={pad} y1={zeroY} x2={W - pad} y2={zeroY} stroke="rgba(148,163,184,0.20)" strokeWidth="1" strokeDasharray="4,4" />
+        {/* area fill */}
+        <path d={areaPath} fill={fillColor} />
+        {/* curve */}
+        <polyline points={polyline} fill="none" stroke={lineColor} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {/* last point dot */}
+        <circle cx={toX(points.length - 1)} cy={toY(finalPnl)} r="3" fill={lineColor} />
+      </svg>
+      <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-500">
+        <span>{points[0]?.date || ""}</span>
+        <span className={finalPnl >= 0 ? "text-emerald-300" : "text-red-300"}>{finalPnl >= 0 ? "+" : ""}{finalPnl.toFixed(2)}%</span>
+        <span>{points[points.length - 1]?.date || ""}</span>
+      </div>
+    </div>
+  );
+}
+
+function StrategyMatrix({ strategyRows }: { strategyRows: any[] }) {
+  const lookup = new Map<string, any>();
+  for (const row of strategyRows) {
+    lookup.set(`${row.mode}_${row.horizon}`, row);
+  }
+  const winRateTone = (wr: number | null) => {
+    if (wr == null) return "bg-slate-800 text-slate-500";
+    if (wr >= 0.6) return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+    if (wr >= 0.45) return "bg-amber-500/15 text-amber-300 border border-amber-500/25";
+    return "bg-red-500/15 text-red-300 border border-red-500/25";
+  };
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[400px] text-center text-xs">
+        <thead>
+          <tr className="text-slate-500">
+            <th className="pb-2 pr-3 text-left font-medium">전략</th>
+            {HORIZONS_ORDER.map((hz) => (
+              <th key={hz} className="pb-2 font-medium">{HORIZON_KO[hz]}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/60">
+          {MODES_ORDER.map((md) => (
+            <tr key={md}>
+              <td className="py-2 pr-3 text-left font-medium text-slate-400">{MODE_KO[md]}</td>
+              {HORIZONS_ORDER.map((hz) => {
+                const row = lookup.get(`${md}_${hz}`);
+                const wr = row?.winRate ?? null;
+                return (
+                  <td key={hz} className="py-2">
+                    {row && row.count > 0 ? (
+                      <div className={`mx-auto inline-flex min-w-[72px] flex-col rounded-lg px-2 py-1.5 ${winRateTone(wr)}`}>
+                        <span className="font-mono text-sm font-bold tabular-nums">
+                          {wr != null ? `${(wr * 100).toFixed(0)}%` : "-"}
+                        </span>
+                        <span className="text-[10px] opacity-70">n={row.count}</span>
+                        {row.avgPnlPct != null && (
+                          <span className={`text-[10px] tabular-nums ${row.avgPnlPct >= 0 ? "text-emerald-400/80" : "text-red-400/80"}`}>
+                            {row.avgPnlPct >= 0 ? "+" : ""}{row.avgPnlPct.toFixed(2)}%
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="font-mono text-slate-600">—</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function VirtualJournalPage() {
   const defaultReplayDate = useMemo(() => {
     const d = new Date();
@@ -90,6 +190,7 @@ export default function VirtualJournalPage() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [autoStatus, setAutoStatus] = useState<any>({});
   const [analyticsData, setAnalyticsData] = useState<any>({});
+  const [perfData, setPerfData] = useState<any>(null);
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE" }), [market, mode, horizon]);
 
@@ -97,12 +198,13 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
         mone.journalAutoCaptureStatus(),
         mone.journalAnalytics(scope),
+        mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
       ]);
       if (tradeRes.status === "ERROR") throw new Error(tradeRes.error || "journal load failed");
       setTrades(tradeRes.items || []);
@@ -110,6 +212,7 @@ export default function VirtualJournalPage() {
       setSuggestions(suggestionRes.items || []);
       setAutoStatus(statusRes || {});
       setAnalyticsData(analyticsRes || {});
+      setPerfData(perfRes?.status === "OK" ? perfRes : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -434,6 +537,54 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── 성과 대시보드 ─────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <TrendingUp size={16} className="text-violet-400" />
+          <h2 className="text-sm font-semibold text-slate-200">성과 대시보드</h2>
+          {perfData && <span className="font-mono text-[11px] text-slate-500">{perfData.summary?.count ?? 0}건 평가 완료</span>}
+        </div>
+
+        {!perfData || (perfData.summary?.count ?? 0) === 0 ? (
+          <div className="rounded-lg bg-slate-900/50 p-6 text-center text-sm text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+            평가 완료된 거래 데이터가 쌓이면 전략별 성과가 표시됩니다.
+          </div>
+        ) : (
+          <>
+            {/* 요약 지표 */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {[
+                { label: "전체 평가", value: String(perfData.summary.count) },
+                { label: "승률", value: perfData.summary.winRate != null ? `${(perfData.summary.winRate * 100).toFixed(1)}%` : "-", tone: perfData.summary.winRate != null && perfData.summary.winRate >= 0.5 ? "text-emerald-300" : "text-amber-300" },
+                { label: "평균 PnL", value: perfData.summary.avgPnlPct != null ? `${perfData.summary.avgPnlPct >= 0 ? "+" : ""}${perfData.summary.avgPnlPct.toFixed(2)}%` : "-", tone: (perfData.summary.avgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300" },
+                { label: "누적 PnL", value: perfData.summary.totalPnlPct != null ? `${perfData.summary.totalPnlPct >= 0 ? "+" : ""}${perfData.summary.totalPnlPct.toFixed(2)}%` : "-", tone: (perfData.summary.totalPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300" },
+                { label: "샤프 (간이)", value: perfData.summary.sharpe != null ? String(perfData.summary.sharpe) : "-", tone: (perfData.summary.sharpe ?? 0) >= 1 ? "text-emerald-300" : (perfData.summary.sharpe ?? 0) >= 0 ? "text-amber-300" : "text-red-300" },
+                { label: "최대 낙폭", value: perfData.summary.maxDrawdownPct != null ? `${perfData.summary.maxDrawdownPct.toFixed(2)}%` : "-", tone: (perfData.summary.maxDrawdownPct ?? 0) <= 5 ? "text-emerald-300" : (perfData.summary.maxDrawdownPct ?? 0) <= 15 ? "text-amber-300" : "text-red-300" },
+              ].map(({ label, value, tone = "text-slate-100" }) => (
+                <div key={label} className="rounded-lg bg-slate-950/60 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+                  <div className="text-[11px] text-slate-500">{label}</div>
+                  <div className={`mt-1 font-mono text-lg font-semibold tabular-nums ${tone}`}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Equity Curve */}
+            {(perfData.equityCurve?.length ?? 0) > 1 && (
+              <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+                <div className="mb-2 text-xs font-semibold text-slate-400">누적 PnL 곡선</div>
+                <EquityCurveSparkline points={perfData.equityCurve} />
+              </div>
+            )}
+
+            {/* 전략 매트릭스 (mode × horizon) */}
+            <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+              <div className="mb-3 text-xs font-semibold text-slate-400">전략 매트릭스 (mode × horizon)</div>
+              <StrategyMatrix strategyRows={perfData.strategyRows ?? []} />
+            </div>
+          </>
+        )}
       </section>
 
       {/* ── 애널리틱스 ───────────────────────────────────────────── */}

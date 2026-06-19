@@ -408,3 +408,48 @@ def reset(market: str = "all", seed_kr: float | None = None, seed_us: float | No
             balance[mk] = sk if mk == "kr" else su
             _save_balance(balance)
             return {"ok": True, "message": f"{mk.upper()} 페이퍼 트레이딩 초기화 완료"}
+
+
+def drawdown_summary(market: str = "all") -> dict[str, Any]:
+    """현재 포트폴리오 드로다운 계산.
+
+    peak = 시드(초기금액)와 현재 포트폴리오 중 최고값 기준
+    drawdown = (peak - current) / peak * 100
+    alert level: GREEN <5% / YELLOW 5~15% / RED >15%
+    """
+    summary = get_summary(market)
+    markets_data = summary.get("markets", {})
+    result: dict[str, Any] = {"status": "OK", "market": market, "markets": {}}
+
+    for mk, data in markets_data.items():
+        seed = float(data.get("seed") or 0)
+        portfolio_value = float(data.get("portfolioValue") or 0)
+        if seed <= 0:
+            result["markets"][mk] = {"drawdownPct": None, "alertLevel": "UNKNOWN", "portfolioValue": portfolio_value, "seed": seed}
+            continue
+        # Peak = max of seed and current portfolio (no historical max tracking — approximate from trade history)
+        trades = _load_trades()
+        mk_trades = [t for t in trades if str(t.get("market", "")).lower() == mk]
+        # Compute peak portfolio value from trade history snapshots
+        # Approximate: each BUY reduces cash but adds positions; we track running portfolio value
+        # Simpler: peak = max(seed, current portfolio value) since we don't have time series
+        peak = max(seed, portfolio_value)
+        drawdown_pct = round((peak - portfolio_value) / peak * 100, 2) if peak > 0 else 0.0
+        total_return_pct = float(data.get("totalReturnPct") or 0)
+        alert_level = "GREEN"
+        if drawdown_pct >= 15:
+            alert_level = "RED"
+        elif drawdown_pct >= 5:
+            alert_level = "YELLOW"
+        result["markets"][mk] = {
+            "seed": round(seed, 2),
+            "portfolioValue": round(portfolio_value, 2),
+            "peakValue": round(peak, 2),
+            "drawdownPct": drawdown_pct,
+            "totalReturnPct": total_return_pct,
+            "alertLevel": alert_level,
+            "positionCount": data.get("positionCount", 0),
+            "cash": round(float(data.get("cash") or 0), 2),
+        }
+
+    return result
