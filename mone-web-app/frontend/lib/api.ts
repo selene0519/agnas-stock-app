@@ -395,8 +395,16 @@ export const mone = {
     apiPost<ApiList>(`/api/journal/calibration-suggestions/${encodeURIComponent(suggestionId)}/approve`, body || {}),
   journalCalibrationApplyApproved: (body?: { appliedBy?: string }) =>
     apiPost<ApiList>("/api/journal/calibration-suggestions/apply-approved", body || {}),
+  journalSelfLearningStatus: (p?: { market?: Market | string }) =>
+    apiGet<any>("/api/journal/self-learning/status", p),
+  journalSelfLearningAutoCalibrate: (body?: { market?: Market | string; appliedBy?: string; apply?: boolean; maxApplications?: number }) =>
+    apiPost<any>("/api/journal/self-learning/auto-calibrate", body || {}),
+  journalSelfLearningRollback: (body?: { version?: number; requestedBy?: string }) =>
+    apiPost<any>("/api/journal/self-learning/rollback", body || {}),
   journalHistoricalReplay: (body: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate: string; limit?: number; evaluateAfter?: boolean }) =>
     apiPost<ApiList>("/api/journal/historical-replay", body),
+  journalHistoricalReplayBackfill: (body: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string; startDate: string; endDate?: string; stepDays?: number; limit?: number; maxRuns?: number; evaluateAfter?: boolean }) =>
+    apiPost<ApiList>("/api/journal/historical-replay/backfill", body),
   journalMarketAnalogsRun: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate?: string; analogLimit?: number; replayLimit?: number; runReplay?: boolean }) =>
     apiPost<ApiList>("/api/journal/market-analogs/run", body || {}),
   journalAutoCaptureStatus: () =>

@@ -212,6 +212,7 @@ export default function VirtualJournalPage() {
   const [attrData, setAttrData] = useState<any>(null);
   const [effData, setEffData] = useState<any>(null);
   const [feedbackData, setFeedbackData] = useState<any>(null);
+  const [selfLearningData, setSelfLearningData] = useState<any>(null);
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -220,7 +221,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes, attrRes, effRes, feedbackRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -230,6 +231,7 @@ export default function VirtualJournalPage() {
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
         mone.journalAttributionFeedback({ market: scope.market }),
+        mone.journalSelfLearningStatus({ market: scope.market }),
       ]);
       if (tradeRes.status === "ERROR") throw new Error(tradeRes.error || "journal load failed");
       setTrades(tradeRes.items || []);
@@ -241,6 +243,7 @@ export default function VirtualJournalPage() {
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
       setEffData(effRes?.status === "OK" ? effRes : null);
       setFeedbackData(feedbackRes?.status === "OK" || feedbackRes?.status === "LOW_SAMPLE" ? feedbackRes : null);
+      setSelfLearningData(selfLearningRes?.status === "OK" ? selfLearningRes : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -252,7 +255,7 @@ export default function VirtualJournalPage() {
     load();
   }, [load]);
 
-  const runAction = async (kind: "capture" | "evaluate" | "auto" | "replay" | "analog") => {
+  const runAction = async (kind: "capture" | "evaluate" | "auto" | "replay" | "backfill" | "analog" | "self-calibrate") => {
     setBusy(kind);
     setError("");
     try {
@@ -268,6 +271,11 @@ export default function VirtualJournalPage() {
         const targetMode = mode === "all" ? "balanced" : mode;
         const targetHorizon = horizon === "all" ? "swing" : horizon;
         await mone.journalHistoricalReplay({ market: targetMarket, mode: targetMode, horizon: targetHorizon, asOfDate: replayDate, limit: 5, evaluateAfter: true });
+      } else if (kind === "backfill") {
+        const targetMarket = market === "all" ? "kr" : market;
+        const targetMode = mode === "all" ? "balanced" : mode;
+        const targetHorizon = horizon === "all" ? "swing" : horizon;
+        await mone.journalHistoricalReplayBackfill({ market: targetMarket, mode: targetMode, horizon: targetHorizon, startDate: replayDate, stepDays: 20, limit: 5, maxRuns: 24, evaluateAfter: true });
       } else if (kind === "analog") {
         const targetMarket = market === "all" ? "kr" : market;
         const targetMode = mode === "all" ? "balanced" : mode;
@@ -275,6 +283,8 @@ export default function VirtualJournalPage() {
         const res = await mone.journalMarketAnalogsRun({ market: targetMarket, mode: targetMode, horizon: targetHorizon, analogLimit: 5, replayLimit: 5, runReplay: true });
         if (res.status === "ERROR") throw new Error(res.error || "market analog replay failed");
         setAnalogData(res);
+      } else if (kind === "self-calibrate") {
+        await mone.journalSelfLearningAutoCalibrate({ market, appliedBy: "auto_self_learning", apply: true, maxApplications: 4 });
       } else {
         await mone.journalAutoCaptureRun({ market, journalSession: actionSession, limit: 5, evaluateAfter: actionSession === "AFTER_CLOSE_TRADE", force: true });
       }
@@ -318,6 +328,19 @@ export default function VirtualJournalPage() {
     setError("");
     try {
       await mone.journalCalibrationApplyApproved({ appliedBy: "local_admin" });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const rollbackSelfLearning = async () => {
+    setBusy("self-rollback");
+    setError("");
+    try {
+      await mone.journalSelfLearningRollback({ requestedBy: "local_admin" });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -599,8 +622,15 @@ export default function VirtualJournalPage() {
               >
                 <Play size={15} /> 리플레이
               </button>
+              <button
+                onClick={() => runAction("backfill")}
+                disabled={!!busy || !replayDate}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-cyan-500/12 px-3 text-sm font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50"
+              >
+                <Play size={15} /> 과거 백필
+              </button>
             </div>
-            <p className="mt-2 text-xs leading-5 text-slate-500">Synthetic cutoff replay v1입니다. 후보 생성은 입력 날짜까지의 OHLCV만 사용하고, 평가는 저장 후 별도로 수행합니다.</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">Synthetic cutoff replay v1입니다. 후보 생성은 입력 날짜까지의 OHLCV만 사용하고, 평가는 저장 후 별도로 수행합니다. 과거 백필은 선택 날짜부터 20일 간격으로 최대 24회 실행합니다.</p>
           </div>
 
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
@@ -1042,7 +1072,23 @@ export default function VirtualJournalPage() {
         <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-slate-200">모델 자기개선 피드백</h2>
-            {feedbackData && <span className="font-mono text-[11px] text-slate-500">{feedbackData.sampleCount ?? 0} samples</span>}
+            <div className="flex items-center gap-2">
+              {feedbackData && <span className="font-mono text-[11px] text-slate-500">{feedbackData.sampleCount ?? 0} samples</span>}
+              <button
+                onClick={() => runAction("self-calibrate")}
+                disabled={!!busy}
+                className="inline-flex min-h-8 items-center justify-center rounded-lg bg-emerald-500/10 px-2 text-[11px] font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] transition-transform active:scale-[0.96] disabled:opacity-50"
+              >
+                자가보정 실행
+              </button>
+              <button
+                onClick={rollbackSelfLearning}
+                disabled={!!busy || !selfLearningData?.correctionVersion}
+                className="inline-flex min-h-8 items-center justify-center rounded-lg bg-red-500/10 px-2 text-[11px] font-semibold text-red-200 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.22)] transition-transform active:scale-[0.96] disabled:opacity-50"
+              >
+                롤백
+              </button>
+            </div>
           </div>
           {!feedbackData || feedbackData.status === "LOW_SAMPLE" ? (
             <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-500">
@@ -1064,8 +1110,67 @@ export default function VirtualJournalPage() {
                   </div>
                 </div>
               </div>
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
-                Suggested only. Auto-applied: {feedbackData.autoApplied ? "yes" : "no"} · pending review {feedbackData.calibrationSummary?.pendingReviewCount ?? 0} · approved {feedbackData.calibrationSummary?.approvedCount ?? 0}
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-200">
+                Self-learning guarded. Eligible auto {selfLearningData?.eligibleAutoCount ?? 0} · low sample {selfLearningData?.lowSampleCount ?? 0} · applied {selfLearningData?.appliedCount ?? 0} · correction v{selfLearningData?.correctionVersion ?? 0}
+              </div>
+              <div className="rounded-lg bg-slate-950/60 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] text-slate-500">학습 품질 점수</div>
+                    <div className="mt-1 font-mono text-lg font-semibold text-slate-100">
+                      {selfLearningData?.quality?.score ?? 0}<span className="ml-1 text-xs text-slate-500">/100</span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-slate-900 px-2 py-1 font-mono text-sm font-semibold text-cyan-200">
+                    {selfLearningData?.quality?.grade ?? "D"}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
+                  <div>
+                    <div className="text-slate-500">유효표본</div>
+                    <div className="font-mono text-slate-200">{selfLearningData?.quality?.effectiveSamples ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">Forward</div>
+                    <div className="font-mono text-slate-200">{selfLearningData?.quality?.forwardSamples ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">Replay</div>
+                    <div className="font-mono text-slate-200">{selfLearningData?.quality?.historicalReplaySamples ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">최근 실행</div>
+                    <div className="truncate font-mono text-slate-200">{selfLearningData?.lastSelfLearningRun?.generatedAt ?? "-"}</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {(selfLearningData?.quality?.gates || []).map((gate: any) => (
+                    <span
+                      key={gate.name}
+                      className={`rounded-md px-2 py-1 font-mono text-[10px] ${gate.status === "PASS" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
+                    >
+                      {gate.name}:{gate.status}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
+                <div className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="text-slate-500">자동 최소 유효표본</div>
+                  <div className="mt-1 font-mono text-slate-200">{selfLearningData?.policy?.minEffectiveSamples ?? "-"}</div>
+                </div>
+                <div className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="text-slate-500">회당 적용 한도</div>
+                  <div className="mt-1 font-mono text-slate-200">{selfLearningData?.policy?.maxApplicationsPerRun ?? "-"}</div>
+                </div>
+                <div className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="text-slate-500">최대 실패비중</div>
+                  <div className="mt-1 font-mono text-slate-200">{selfLearningData?.policy?.maxFailureShareForAutoApply != null ? `${(selfLearningData.policy.maxFailureShareForAutoApply * 100).toFixed(0)}%` : "-"}</div>
+                </div>
+                <div className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <div className="text-slate-500">자동 승인자</div>
+                  <div className="mt-1 truncate font-mono text-slate-200">{selfLearningData?.policy?.reviewer ?? "-"}</div>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[520px] text-xs">
