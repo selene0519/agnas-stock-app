@@ -2084,6 +2084,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
     items: list[dict[str, Any]] = []
     source_files: list[str] = []
     correction_state: dict[str, Any] = _light_correction_summary(market, mode, horizon)
+    attr_mult: float = _attribution_score_multiplier(market, mode, horizon)
 
     scanned_count = 0
     scan_limit = min(max(limit * 3, limit), max_allowed * 3)
@@ -2123,7 +2124,6 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             if correction_state.get("active"):
                 item = _apply_light_correction(item, correction_state)
                 item.setdefault("computedFields", []).append("self_correction_penalty")
-            attr_mult = _attribution_score_multiplier(market, mode, horizon)
             if attr_mult != 1.0:
                 for _akey in ("finalRankScore", "probability"):
                     _val = item.get(_akey)

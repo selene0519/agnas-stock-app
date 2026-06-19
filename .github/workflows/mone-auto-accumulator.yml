@@ -670,6 +670,24 @@ jobs:
           echo "vtj-self-learning: exit $?"
           set -e
 
+      - name: VTJ 귀속분석 JSON 갱신 (attribution_feedback.json)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services import virtual_trade_journal as vtj
+          result = vtj.attribution_feedback(market="all")
+          print("[vtj-attribution-feedback]")
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          PY
+          echo "vtj-attribution-feedback: exit $?"
+          set -e
+
       - name: 모의투자 스탑/목표가 도달 알림 (보유중 관리)
         working-directory: mone-web-app/backend
         env:
