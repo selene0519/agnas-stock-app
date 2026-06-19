@@ -336,6 +336,19 @@ export default function VirtualJournalPage() {
     }
   };
 
+  const rollbackSelfLearning = async () => {
+    setBusy("self-rollback");
+    setError("");
+    try {
+      await mone.journalSelfLearningRollback({ requestedBy: "local_admin" });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy("");
+    }
+  };
+
   const stats = useMemo(() => {
     const evaluated = trades.filter((item) => ["EVALUATED", "CANCELLED"].includes(String(item.status || "").toUpperCase()));
     const open = trades.filter((item) => !["EVALUATED", "CANCELLED", "DATA_INVALID"].includes(String(item.status || "").toUpperCase()));
@@ -1068,6 +1081,13 @@ export default function VirtualJournalPage() {
               >
                 자가보정 실행
               </button>
+              <button
+                onClick={rollbackSelfLearning}
+                disabled={!!busy || !selfLearningData?.correctionVersion}
+                className="inline-flex min-h-8 items-center justify-center rounded-lg bg-red-500/10 px-2 text-[11px] font-semibold text-red-200 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.22)] transition-transform active:scale-[0.96] disabled:opacity-50"
+              >
+                롤백
+              </button>
             </div>
           </div>
           {!feedbackData || feedbackData.status === "LOW_SAMPLE" ? (
@@ -1092,6 +1112,47 @@ export default function VirtualJournalPage() {
               </div>
               <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-200">
                 Self-learning guarded. Eligible auto {selfLearningData?.eligibleAutoCount ?? 0} · low sample {selfLearningData?.lowSampleCount ?? 0} · applied {selfLearningData?.appliedCount ?? 0} · correction v{selfLearningData?.correctionVersion ?? 0}
+              </div>
+              <div className="rounded-lg bg-slate-950/60 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] text-slate-500">학습 품질 점수</div>
+                    <div className="mt-1 font-mono text-lg font-semibold text-slate-100">
+                      {selfLearningData?.quality?.score ?? 0}<span className="ml-1 text-xs text-slate-500">/100</span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-slate-900 px-2 py-1 font-mono text-sm font-semibold text-cyan-200">
+                    {selfLearningData?.quality?.grade ?? "D"}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
+                  <div>
+                    <div className="text-slate-500">유효표본</div>
+                    <div className="font-mono text-slate-200">{selfLearningData?.quality?.effectiveSamples ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">Forward</div>
+                    <div className="font-mono text-slate-200">{selfLearningData?.quality?.forwardSamples ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">Replay</div>
+                    <div className="font-mono text-slate-200">{selfLearningData?.quality?.historicalReplaySamples ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">최근 실행</div>
+                    <div className="truncate font-mono text-slate-200">{selfLearningData?.lastSelfLearningRun?.generatedAt ?? "-"}</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {(selfLearningData?.quality?.gates || []).map((gate: any) => (
+                    <span
+                      key={gate.name}
+                      className={`rounded-md px-2 py-1 font-mono text-[10px] ${gate.status === "PASS" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
+                    >
+                      {gate.name}:{gate.status}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">

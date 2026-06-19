@@ -7521,6 +7521,17 @@ def api_journal_self_learning_auto_calibrate(payload: dict = Body(default_factor
     )
 
 
+@app.post("/api/journal/self-learning/rollback")
+def api_journal_self_learning_rollback(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    version_raw = payload.get("version")
+    return vtj.rollback_self_learning(
+        version=int(version_raw) if version_raw not in (None, "") else None,
+        requested_by=str(payload.get("requestedBy") or payload.get("requested_by") or "local_admin"),
+    )
+
+
 @app.post("/api/journal/calibration-suggestions/{suggestion_id}/approve")
 def api_journal_calibration_suggestion_approve(suggestion_id: str, payload: dict = Body(default_factory=dict)) -> dict:
     from app.services import virtual_trade_journal as vtj

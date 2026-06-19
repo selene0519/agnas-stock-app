@@ -399,6 +399,8 @@ export const mone = {
     apiGet<any>("/api/journal/self-learning/status", p),
   journalSelfLearningAutoCalibrate: (body?: { market?: Market | string; appliedBy?: string; apply?: boolean; maxApplications?: number }) =>
     apiPost<any>("/api/journal/self-learning/auto-calibrate", body || {}),
+  journalSelfLearningRollback: (body?: { version?: number; requestedBy?: string }) =>
+    apiPost<any>("/api/journal/self-learning/rollback", body || {}),
   journalHistoricalReplay: (body: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate: string; limit?: number; evaluateAfter?: boolean }) =>
     apiPost<ApiList>("/api/journal/historical-replay", body),
   journalHistoricalReplayBackfill: (body: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string; startDate: string; endDate?: string; stepDays?: number; limit?: number; maxRuns?: number; evaluateAfter?: boolean }) =>

@@ -49,6 +49,7 @@ def isolated_vtj(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setattr(vtj, "CALIBRATION_APPROVALS_CSV", tmp_path / "approvals.csv")
     monkeypatch.setattr(vtj, "CALIBRATION_APPLICATIONS_CSV", tmp_path / "applications.csv")
     monkeypatch.setattr(vtj, "AUTO_CAPTURE_STATUS_JSON", tmp_path / "status.json")
+    monkeypatch.setattr(vtj, "SELF_LEARNING_STATUS_JSON", tmp_path / "self_learning_status.json")
     monkeypatch.setattr(vtj, "_FEEDBACK_JSON", tmp_path / "attribution_feedback.json")
     vtj._ensure()
     return tmp_path
@@ -640,7 +641,7 @@ def test_auto_self_calibrate_auto_approves_and_applies_only_policy_eligible_item
                 "outcome": "STOP_HIT",
                 "filled": True,
                 "net_pnl_pct": -2.5,
-                "failure_reason": "ENTRY_TIMING" if idx < 16 else "FALSE_SIGNAL",
+                "failure_reason": "ENTRY_TIMING" if idx < 16 or idx >= 45 else "FALSE_SIGNAL",
                 "evaluated_at": f"2026-01-02T00:00:{idx % 60:02d}",
             }
         )
@@ -659,6 +660,94 @@ def test_auto_self_calibrate_auto_approves_and_applies_only_policy_eligible_item
     assert correction["journalCalibrationAppliedBy"] == "auto_self_learning"
     assert correction["filterAdjustments"]["maxDistanceToEntryPct"] > 0
     assert status["autoApprovalCount"] >= 1
+    assert status["quality"]["score"] > 0
+    assert status["lastSelfLearningRun"]["applied"] == 1
+
+
+def test_auto_self_calibrate_blocks_when_holdout_drift_is_detected(isolated_vtj: Path) -> None:
+    journal_rows = []
+    eval_rows = []
+    for idx in range(80):
+        jid = f"drift-jid-{idx}"
+        journal_rows.append(
+            {
+                "journal_id": jid,
+                "source_type": "FORWARD_PAPER_TRADE",
+                "journal_session": "AFTER_CLOSE_TRADE",
+                "as_of_date": "2026-01-01",
+                "generated_at": "2026-01-01T00:00:00",
+                "captured_at": "2026-01-01T00:00:00",
+                "market": "kr",
+                "mode": "balanced",
+                "horizon": "swing",
+                "symbol": f"DRIFT{idx:03d}",
+                "name": f"DRIFT{idx:03d}",
+                "decision_bucket": vtj.TODAY_ENTRY,
+                "entry_type": "NEXT_OPEN",
+                "entry_price": 100,
+                "stop_price": 95,
+                "target_price": 110,
+                "current_price_at_signal": 100,
+                "final_rank_score": 75,
+                "expected_value": 2,
+                "risk_reward_ratio": 2,
+                "probability": 65,
+                "risk_score": 70,
+                "event_risk_score": 30,
+                "data_status": "NORMAL",
+                "data_confidence": "HIGH",
+                "price_source": "test",
+                "market_regime_at_signal": "RISK_ON",
+                "sector": "",
+                "reject_reason": "",
+                "raw_recommendation_json": "{}",
+            }
+        )
+        eval_rows.append(
+            {
+                "journal_id": jid,
+                "status": "EVALUATED",
+                "outcome": "STOP_HIT",
+                "filled": True,
+                "net_pnl_pct": -2.0,
+                "failure_reason": "ENTRY_TIMING" if idx < 30 else "FALSE_SIGNAL",
+                "evaluated_at": f"2026-01-{1 + idx // 3:02d}T00:00:00",
+            }
+        )
+    vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
+    vtj._write_rows(vtj.EVALUATION_CSV, eval_rows, vtj.EVALUATION_COLS)
+
+    result = vtj.auto_self_calibrate("kr", apply=True, max_applications=2)
+
+    assert result["status"] == "OK"
+    assert result["applied"] == 0
+    assert any(row["reason"] == "HOLDOUT_DRIFT" for row in result["blocked"])
+
+
+def test_self_learning_rollback_restores_previous_correction_version(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(correction_store, "_reports_dir", lambda: isolated_vtj)
+    correction_store.save_params({
+        "version": 0,
+        "generatedAt": "2026-01-01T00:00:00",
+        "markets": {"kr_balanced_swing": {"confidence": 0.1}},
+    })
+    correction_store.save_params({
+        "version": 1,
+        "generatedAt": "2026-01-02T00:00:00",
+        "markets": {"kr_balanced_swing": {"confidence": 0.9}},
+    })
+
+    out = vtj.rollback_self_learning(requested_by="pytest")
+    restored = correction_store.load_params()
+
+    assert out["status"] == "OK"
+    assert out["fromVersion"] == 1
+    assert out["toVersion"] == 0
+    assert restored["rollbackFromVersion"] == 1
+    assert restored["markets"]["kr_balanced_swing"]["confidence"] == 0.1
 
 
 def test_historical_replay_backfill_steps_cutoff_dates_without_future_peek(

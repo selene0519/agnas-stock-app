@@ -27,6 +27,7 @@ EVALUATION_CSV = DATA_DIR / "virtual_trade_evaluations.csv"
 AUTO_CAPTURE_STATUS_JSON = REPORTS_DIR / "virtual_trade_journal_status.json"
 CALIBRATION_APPROVALS_CSV = DATA_DIR / "virtual_trade_calibration_approvals.csv"
 CALIBRATION_APPLICATIONS_CSV = DATA_DIR / "virtual_trade_calibration_applications.csv"
+SELF_LEARNING_STATUS_JSON = REPORTS_DIR / "virtual_trade_self_learning_status.json"
 
 MARKETS = {"kr", "us"}
 MODES = {"conservative", "balanced", "aggressive"}
@@ -58,6 +59,9 @@ AUTO_CALIBRATION_POLICY = {
     "minEffectiveSamples": 40,
     "maxApplicationsPerRun": 4,
     "maxFailureShareForAutoApply": 0.45,
+    "minHoldoutSamples": 10,
+    "holdoutFraction": 0.25,
+    "holdoutShareFloor": 0.65,
     "reviewer": "auto_self_learning",
     "sourceMinSamples": {
         "FORWARD_PAPER_TRADE": 50,
@@ -2168,7 +2172,173 @@ def _auto_calibration_verdict(item: dict[str, Any]) -> dict[str, Any]:
         return {"eligible": False, "reason": "MANUAL_REVIEW_LARGE_EFFECT", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
     if not _approved_delta(_upper(item.get("reason")), share, source_weight):
         return {"eligible": False, "reason": "NO_PARAMETER_MAPPING", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
-    return {"eligible": True, "reason": "AUTO_ELIGIBLE", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
+    validation = _holdout_validation(item)
+    if validation.get("status") == "DRIFT":
+        return {
+            "eligible": False,
+            "reason": "HOLDOUT_DRIFT",
+            "effectiveSamples": round(effective_samples, 3),
+            "minRawSamples": min_raw,
+            "validation": validation,
+        }
+    return {
+        "eligible": True,
+        "reason": "AUTO_ELIGIBLE",
+        "effectiveSamples": round(effective_samples, 3),
+        "minRawSamples": min_raw,
+        "validation": validation,
+    }
+
+
+def _row_event_date(row: dict[str, Any]) -> str:
+    return _text(
+        row.get("evaluated_at")
+        or row.get("exit_date")
+        or row.get("fill_date")
+        or row.get("as_of_date")
+        or row.get("generated_at")
+    )[:19]
+
+
+def _rows_for_suggestion_scope(item: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = _filter_rows(
+        _merge_evaluations(_read_journal_rows()),
+        _text(item.get("market") or "all").lower(),
+        _text(item.get("mode") or "all").lower(),
+        _text(item.get("horizon") or "all").lower(),
+        _text(item.get("sourceType") or "all"),
+        _text(item.get("journalSession") or "all"),
+        "all",
+    )
+    out = [
+        row for row in rows
+        if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _text(row.get("failure_reason") or "NONE")
+    ]
+    out.sort(key=_row_event_date)
+    return out
+
+
+def _holdout_validation(item: dict[str, Any]) -> dict[str, Any]:
+    rows = _rows_for_suggestion_scope(item)
+    reason = _upper(item.get("reason"))
+    threshold = float(_safe_float(item.get("threshold")) or 0.0)
+    total = len(rows)
+    min_holdout = int(AUTO_CALIBRATION_POLICY.get("minHoldoutSamples") or 10)
+    fraction = float(AUTO_CALIBRATION_POLICY.get("holdoutFraction") or 0.25)
+    holdout_n = max(min_holdout, int(math.ceil(total * fraction))) if total else min_holdout
+    if total < min_holdout * 2:
+        return {
+            "status": "LOW_HOLDOUT",
+            "passed": True,
+            "total": total,
+            "holdoutSamples": 0,
+            "reason": "NOT_ENOUGH_FOR_STRICT_HOLDOUT",
+        }
+    holdout = rows[-holdout_n:]
+    train = rows[:-holdout_n]
+
+    def _share(sub: list[dict[str, Any]]) -> float:
+        if not sub:
+            return 0.0
+        return sum(1 for row in sub if _upper(row.get("failure_reason")) == reason) / len(sub)
+
+    def _avg_pnl(sub: list[dict[str, Any]]) -> float | None:
+        vals = [_safe_float(row.get("net_pnl_pct")) for row in sub]
+        vals = [v for v in vals if v is not None]
+        return round(sum(vals) / len(vals), 4) if vals else None
+
+    train_share = _share(train)
+    holdout_share = _share(holdout)
+    required_share = max(0.06, threshold * float(AUTO_CALIBRATION_POLICY.get("holdoutShareFloor") or 0.65))
+    passed = holdout_share >= required_share
+    return {
+        "status": "OK" if passed else "DRIFT",
+        "passed": passed,
+        "total": total,
+        "trainSamples": len(train),
+        "holdoutSamples": len(holdout),
+        "trainReasonShare": round(train_share, 4),
+        "holdoutReasonShare": round(holdout_share, 4),
+        "requiredHoldoutShare": round(required_share, 4),
+        "trainAvgPnlPct": _avg_pnl(train),
+        "holdoutAvgPnlPct": _avg_pnl(holdout),
+    }
+
+
+def _self_learning_quality(market: str = "all") -> dict[str, Any]:
+    rows = _filter_rows(
+        _merge_evaluations(_read_journal_rows()),
+        market,
+        "all",
+        "all",
+        "all",
+        "all",
+        "all",
+    )
+    evaluated = [
+        row for row in rows
+        if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _is_trade_evaluation_session(row)
+    ]
+    by_source = Counter(_upper(row.get("source_type") or "UNKNOWN") for row in evaluated)
+    effective_samples = sum(_source_weight(row.get("source_type")) for row in evaluated)
+    forward = by_source.get("FORWARD_PAPER_TRADE", 0) + by_source.get("MANUAL_REVIEWED", 0)
+    historical = by_source.get("HISTORICAL_REPLAY", 0)
+    source_count = sum(1 for source, count in by_source.items() if count > 0 and source != "UNKNOWN")
+    pnl_values = [_safe_float(row.get("net_pnl_pct")) for row in evaluated]
+    pnl_values = [v for v in pnl_values if v is not None]
+    avg_pnl = round(sum(pnl_values) / len(pnl_values), 4) if pnl_values else None
+    score = 0
+    score += min(35, int(effective_samples / 120 * 35))
+    score += min(25, int(forward / 50 * 25))
+    score += min(20, int(historical / 150 * 20))
+    score += 10 if source_count >= 2 else 0
+    score += 10 if avg_pnl is not None else 0
+    gates = [
+        {"name": "effective_samples", "status": "PASS" if effective_samples >= AUTO_CALIBRATION_POLICY["minEffectiveSamples"] else "LOW_SAMPLE", "value": round(effective_samples, 3), "target": AUTO_CALIBRATION_POLICY["minEffectiveSamples"]},
+        {"name": "forward_samples", "status": "PASS" if forward >= 30 else "WATCH", "value": forward, "target": 30},
+        {"name": "historical_replay", "status": "PASS" if historical >= 100 else "WATCH", "value": historical, "target": 100},
+        {"name": "source_mix", "status": "PASS" if source_count >= 2 else "SINGLE_SOURCE", "value": source_count, "target": 2},
+    ]
+    return {
+        "score": min(100, score),
+        "grade": "A" if score >= 85 else "B" if score >= 70 else "C" if score >= 50 else "D",
+        "evaluatedSamples": len(evaluated),
+        "effectiveSamples": round(effective_samples, 3),
+        "forwardSamples": forward,
+        "historicalReplaySamples": historical,
+        "sourceCounts": dict(by_source),
+        "avgNetPnlPct": avg_pnl,
+        "gates": gates,
+    }
+
+
+def _read_self_learning_report() -> dict[str, Any]:
+    if not SELF_LEARNING_STATUS_JSON.exists():
+        return {"runs": []}
+    try:
+        data = json.loads(SELF_LEARNING_STATUS_JSON.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {"runs": []}
+    except Exception:
+        return {"runs": []}
+
+
+def _write_self_learning_report(run: dict[str, Any]) -> None:
+    try:
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        data = _read_self_learning_report()
+        runs = data.get("runs") if isinstance(data.get("runs"), list) else []
+        runs.insert(0, run)
+        payload = {
+            "status": "OK",
+            "generatedAt": _now_iso(),
+            "latest": run,
+            "runs": runs[:50],
+        }
+        SELF_LEARNING_STATUS_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
 
 
 def auto_self_calibrate(
@@ -2178,6 +2348,7 @@ def auto_self_calibrate(
     max_applications: int | None = None,
 ) -> dict[str, Any]:
     _ensure()
+    quality_before = _self_learning_quality(market)
     suggestions = calibration_suggestions(market, "all", "all", "all", "all").get("items", [])
     evaluated: list[dict[str, Any]] = []
     eligible: list[dict[str, Any]] = []
@@ -2232,11 +2403,12 @@ def auto_self_calibrate(
             max_applications=len(approval_ids),
         )
 
-    return {
+    result = {
         "status": "OK",
         "generatedAt": _now_iso(),
         "market": market,
         "policy": AUTO_CALIBRATION_POLICY,
+        "quality": quality_before,
         "suggestionCount": len(suggestions),
         "eligibleCount": len(eligible),
         "selectedCount": len(selected),
@@ -2247,6 +2419,8 @@ def auto_self_calibrate(
         "blocked": blocked[:20],
         "evaluated": evaluated[:50],
     }
+    _write_self_learning_report(result)
+    return result
 
 
 def self_learning_status(market: str = "all") -> dict[str, Any]:
@@ -2268,12 +2442,15 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
         if _text(row.get("reviewed_by")) in {AUTO_CALIBRATION_POLICY["reviewer"], "github-actions-vtj-self-learning"}
         or "Auto-approved by VTJ self-learning policy" in _text(row.get("reviewer_note"))
     ]
+    quality = _self_learning_quality(market)
+    report = _read_self_learning_report()
     return {
         "status": "OK",
         "generatedAt": _now_iso(),
         "market": market,
         "correctionVersion": int(params.get("version") or 0),
         "policy": AUTO_CALIBRATION_POLICY,
+        "quality": quality,
         "sourceWeights": SOURCE_CALIBRATION_WEIGHTS,
         "suggestionCount": len(suggestions),
         "eligibleAutoCount": len(eligible),
@@ -2281,8 +2458,52 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
         "autoApprovalCount": len(auto_approvals),
         "appliedCount": sum(1 for row in applications if _upper(row.get("status")) == "APPLIED"),
         "lastApplications": applications[:8],
+        "lastSelfLearningRun": report.get("latest"),
         "eligible": eligible[:12],
         "blocked": [item for item in evaluated if _upper(item.get("status")) == "SUGGESTED" and not item.get("eligible")][:12],
+    }
+
+
+def rollback_self_learning(version: int | None = None, requested_by: str = "local_admin") -> dict[str, Any]:
+    try:
+        from app.engine import correction_store
+    except Exception as exc:
+        return {"status": "ERROR", "error": f"CORRECTION_STORE_UNAVAILABLE: {exc}"}
+    current = correction_store.load_params()
+    current_version = int(current.get("version") or 0)
+    reports_dir = correction_store._reports_dir()
+    if version is None:
+        target_version = current_version - 1
+    else:
+        target_version = int(version)
+    if target_version < 0:
+        return {"status": "ERROR", "error": "NO_PREVIOUS_VERSION", "currentVersion": current_version}
+    backup = reports_dir / f"self_correction_params_v{target_version}.json"
+    if not backup.exists():
+        return {"status": "ERROR", "error": "TARGET_VERSION_NOT_FOUND", "targetVersion": target_version, "currentVersion": current_version}
+    try:
+        restored = json.loads(backup.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"status": "ERROR", "error": f"RESTORE_READ_FAILED: {exc}"}
+    restored["rollbackFromVersion"] = current_version
+    restored["rollbackToVersion"] = target_version
+    restored["rollbackRequestedBy"] = _text(requested_by or "local_admin")
+    restored["rollbackAt"] = _now_iso()
+    correction_store.save_params(restored)
+    run = {
+        "status": "ROLLBACK",
+        "generatedAt": _now_iso(),
+        "requestedBy": _text(requested_by or "local_admin"),
+        "fromVersion": current_version,
+        "toVersion": target_version,
+    }
+    _write_self_learning_report(run)
+    return {
+        "status": "OK",
+        "fromVersion": current_version,
+        "toVersion": target_version,
+        "requestedBy": _text(requested_by or "local_admin"),
+        "path": "reports/self_correction_params.json",
     }
 
 
