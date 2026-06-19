@@ -7492,6 +7492,15 @@ def api_journal_calibration_suggestions(
     return vtj.calibration_suggestions(market=market, mode=mode, horizon=horizon, source_type=source_type, journal_session=journal_session)
 
 
+@app.post("/api/journal/calibration-suggestions/apply-approved")
+def api_journal_calibration_apply_approved(payload: dict = Body(default_factory=dict)) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.apply_approved_calibrations(
+        applied_by=str(payload.get("appliedBy") or payload.get("applied_by") or "local_admin"),
+    )
+
+
 @app.post("/api/journal/calibration-suggestions/{suggestion_id}/approve")
 def api_journal_calibration_suggestion_approve(suggestion_id: str, payload: dict = Body(default_factory=dict)) -> dict:
     from app.services import virtual_trade_journal as vtj

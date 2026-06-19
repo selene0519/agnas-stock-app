@@ -41,6 +41,19 @@ Every journal row must store `source_type` from day one.
 
 `source_type` must never be inferred from filename alone.
 
+## Journal Sessions
+
+Every journal row also stores `journal_session` so MONE can keep the AI's plan separate from the later paper-trade outcome.
+
+| journal_session | Meaning | Evaluation policy |
+|---|---|---|
+| `PREMARKET_PLAN` | The AI's before-market plan and watchpoints | Stored as a plan; excluded from trade evaluation and calibration by default |
+| `INTRADAY_CHECK` | Optional intraday check-in | Stored as a check; excluded from trade evaluation and calibration by default |
+| `AFTER_CLOSE_TRADE` | After-close paper trade snapshot | Eligible for evaluation and calibration |
+| `FOLLOWUP_EVALUATION` | Later review or corrected evaluation | Eligible for evaluation and calibration |
+
+`session_note` is generated at capture time from the frozen recommendation fields. It is human-readable journal text, but structured fields remain the source of truth.
+
 ## Journal Candidate Filter
 
 The journal should not record every ranked symbol. It should record the best actionable candidates per `market + mode + horizon`.
@@ -232,9 +245,9 @@ Default mapping:
 
 The human-readable `review_text` must be generated from these structured fields, not used as the only source of truth.
 
-### v1 inactive tags
+### v1 tag coverage
 
-`REGIME_MISMATCH` and `SECTOR_WEAKNESS` are reserved but intentionally inactive in v1. The evaluator does not yet compute exit-regime drift or sector-relative returns during the holding window, so these tags must not be interpreted as covered calibration evidence until those inputs are added.
+`REGIME_MISMATCH` is active when exit regime deteriorates to risk-off after a risk-on or neutral signal. `SECTOR_WEAKNESS` is active as a secondary tag from a conservative heuristic when a stopped trade shows weak favorable movement and sector metadata exists. Full sector-relative return attribution remains a future enhancement.
 
 ## Journal Evaluation Fields
 
@@ -358,6 +371,7 @@ GET  /api/journal/calibration-suggestions
 GET  /api/journal/auto-capture/status
 POST /api/journal/auto-capture/run
 POST /api/journal/calibration-suggestions/{id}/approve
+POST /api/journal/calibration-suggestions/apply-approved
 POST /api/journal/historical-replay
 ```
 
@@ -436,6 +450,8 @@ Phase 4: calibration suggestions
 - aggregate by `market + mode + horizon + source_type`
 - enforce source weights and minimum samples
 - generate suggestions but do not apply them automatically
+- approved suggestions can be manually applied to `reports/self_correction_params.json`
+- applied approvals are logged in `data/virtual_trade_calibration_applications.csv`
 
 Phase 5: historical replay
 

@@ -12,6 +12,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1] / "mone-web-app" / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+from app.engine import correction_store  # noqa: E402
 from app.services import virtual_trade_journal as vtj  # noqa: E402
 
 
@@ -146,6 +147,9 @@ def test_premarket_and_after_close_sessions_are_separate_journal_rows(
     assert close["added"] == 1
     assert listed["count"] == 2
     assert {item["journal_session"] for item in listed["items"]} == {"PREMARKET_PLAN", "AFTER_CLOSE_TRADE"}
+    pre_row = next(item for item in listed["items"] if item["journal_session"] == "PREMARKET_PLAN")
+    assert "장전 계획" in pre_row["session_note"]
+    assert "추격하지 않는다" in pre_row["session_note"]
 
 
 def test_premarket_plan_rows_are_never_trade_evaluated(
@@ -250,3 +254,77 @@ def test_calibration_review_records_decision_but_never_auto_applies(isolated_vtj
     assert reviewed["status"] == "OK"
     assert reviewed["applied"] is False
     assert reviewed["approval"]["decision"] == "APPROVED"
+
+
+def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(correction_store, "_reports_dir", lambda: isolated_vtj)
+    journal_rows = []
+    eval_rows = []
+    for idx in range(30):
+        jid = f"apply-jid-{idx}"
+        journal_rows.append(
+            {
+                "journal_id": jid,
+                "source_type": "FORWARD_PAPER_TRADE",
+                "journal_session": "AFTER_CLOSE_TRADE",
+                "as_of_date": "2026-01-01",
+                "generated_at": "2026-01-01T00:00:00",
+                "captured_at": "2026-01-01T00:00:00",
+                "market": "kr",
+                "mode": "balanced",
+                "horizon": "swing",
+                "symbol": f"A{idx:03d}",
+                "name": f"A{idx:03d}",
+                "decision_bucket": vtj.TODAY_ENTRY,
+                "entry_type": "NEXT_OPEN",
+                "entry_price": 100,
+                "stop_price": 95,
+                "target_price": 110,
+                "current_price_at_signal": 100,
+                "final_rank_score": 75,
+                "expected_value": 2,
+                "risk_reward_ratio": 2,
+                "probability": 65,
+                "risk_score": 70,
+                "event_risk_score": 30,
+                "data_status": "NORMAL",
+                "data_confidence": "HIGH",
+                "price_source": "test",
+                "market_regime_at_signal": "RISK_ON",
+                "sector": "",
+                "reject_reason": "",
+                "raw_recommendation_json": "{}",
+            }
+        )
+        eval_rows.append(
+            {
+                "journal_id": jid,
+                "status": "EVALUATED",
+                "outcome": "STOP_HIT",
+                "filled": True,
+                "net_pnl_pct": -3,
+                "mfe_pct": 2,
+                "mae_pct": -5,
+                "failure_reason": "STOP_TOO_TIGHT" if idx < 6 else "FALSE_SIGNAL",
+                "evaluated_at": f"2026-01-02T00:00:{idx:02d}",
+            }
+        )
+    vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
+    vtj._write_rows(vtj.EVALUATION_CSV, eval_rows, vtj.EVALUATION_COLS)
+
+    suggestions = vtj.calibration_suggestions("kr", "balanced", "swing", "FORWARD_PAPER_TRADE")["items"]
+    target = next(item for item in suggestions if item.get("reason") == "STOP_TOO_TIGHT")
+    vtj.review_calibration_suggestion(target["suggestionId"], decision="APPROVED", reviewed_by="pytest")
+    applied = vtj.apply_approved_calibrations(applied_by="pytest")
+    correction = correction_store.load_correction("kr", "balanced", "swing")
+    refreshed = vtj.calibration_suggestions("kr", "balanced", "swing", "FORWARD_PAPER_TRADE")["items"]
+    refreshed_target = next(item for item in refreshed if item.get("reason") == "STOP_TOO_TIGHT")
+
+    assert applied["status"] == "OK"
+    assert applied["applied"] == 1
+    assert correction["journalCalibrationApplied"] is True
+    assert correction["priceAdjustments"]["stopAtrMultiplier"] > 0
+    assert refreshed_target["applicationStatus"] == "APPLIED"

@@ -393,6 +393,8 @@ export const mone = {
     apiGet<ApiList>("/api/journal/calibration-suggestions", p),
   journalCalibrationApprove: (suggestionId: string, body?: { decision?: "APPROVED" | "REJECTED"; reviewedBy?: string; note?: string; beforeParams?: any; afterParams?: any }) =>
     apiPost<ApiList>(`/api/journal/calibration-suggestions/${encodeURIComponent(suggestionId)}/approve`, body || {}),
+  journalCalibrationApplyApproved: (body?: { appliedBy?: string }) =>
+    apiPost<ApiList>("/api/journal/calibration-suggestions/apply-approved", body || {}),
   journalHistoricalReplay: (body: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate: string; limit?: number; evaluateAfter?: boolean }) =>
     apiPost<ApiList>("/api/journal/historical-replay", body),
   journalAutoCaptureStatus: () =>

@@ -26,6 +26,7 @@ JOURNAL_CSV = DATA_DIR / "virtual_trade_journal.csv"
 EVALUATION_CSV = DATA_DIR / "virtual_trade_evaluations.csv"
 AUTO_CAPTURE_STATUS_JSON = REPORTS_DIR / "virtual_trade_journal_status.json"
 CALIBRATION_APPROVALS_CSV = DATA_DIR / "virtual_trade_calibration_approvals.csv"
+CALIBRATION_APPLICATIONS_CSV = DATA_DIR / "virtual_trade_calibration_applications.csv"
 
 MARKETS = {"kr", "us"}
 MODES = {"conservative", "balanced", "aggressive"}
@@ -46,6 +47,12 @@ PLAN_ONLY_SESSIONS = {"PREMARKET_PLAN", "INTRADAY_CHECK"}
 DEFAULT_JOURNAL_SESSION = "AFTER_CLOSE_TRADE"
 INACTIVE_V1_FAILURE_TAGS = {"REGIME_MISMATCH", "SECTOR_WEAKNESS"}
 HISTORICAL_REPLAY_METHOD = "synthetic_cutoff_ohlcv_v1"
+SOURCE_CALIBRATION_WEIGHTS = {
+    "FORWARD_PAPER_TRADE": 1.0,
+    "MANUAL_REVIEWED": 1.2,
+    "HISTORICAL_REPLAY": 0.4,
+    "BACKTEST_EXPERIMENT": 0.15,
+}
 US_MARKET_HOLIDAYS_2026 = {
     "2026-01-01",
     "2026-01-19",
@@ -168,6 +175,27 @@ CALIBRATION_APPROVAL_COLS = [
     "reviewer_note",
 ]
 
+CALIBRATION_APPLICATION_COLS = [
+    "application_id",
+    "approval_id",
+    "suggestion_id",
+    "applied_by",
+    "applied_at",
+    "market",
+    "mode",
+    "horizon",
+    "source_type",
+    "journal_session",
+    "source_weight",
+    "raw_sample_count",
+    "effective_sample_count",
+    "reason",
+    "before_params_json",
+    "after_params_json",
+    "correction_version",
+    "status",
+]
+
 
 def _now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
@@ -185,6 +213,8 @@ def _ensure() -> None:
         _write_rows(EVALUATION_CSV, [], EVALUATION_COLS)
     if not CALIBRATION_APPROVALS_CSV.exists():
         _write_rows(CALIBRATION_APPROVALS_CSV, [], CALIBRATION_APPROVAL_COLS)
+    if not CALIBRATION_APPLICATIONS_CSV.exists():
+        _write_rows(CALIBRATION_APPLICATIONS_CSV, [], CALIBRATION_APPLICATION_COLS)
 
 
 def _read_rows(path: Path, columns: list[str]) -> list[dict[str, Any]]:
@@ -333,6 +363,19 @@ def _confidence_from_data_status(status: str) -> str:
     return "LOW"
 
 
+def _fmt_plan_num(value: Any, suffix: str = "") -> str:
+    num = _safe_float(value)
+    if num is None:
+        return "-"
+    if abs(num) >= 1000:
+        return f"{num:,.0f}{suffix}"
+    return f"{num:.2f}".rstrip("0").rstrip(".") + suffix
+
+
+def _source_weight(source_type: Any) -> float:
+    return float(SOURCE_CALIBRATION_WEIGHTS.get(_upper(source_type), 0.0))
+
+
 def _candidate_numbers(item: dict[str, Any]) -> dict[str, float | None]:
     return {
         "score": _safe_float(item.get("finalRankScore") or item.get("finalScore") or item.get("recommendationScore")),
@@ -388,6 +431,40 @@ def _reject_reason(item: dict[str, Any]) -> str:
     return ""
 
 
+def _session_note_from_item(
+    item: dict[str, Any],
+    journal_session: str,
+    nums: dict[str, float | None],
+    decision: str,
+    data_status: str,
+) -> str:
+    existing = _text(item.get("sessionNote") or item.get("journalSessionNote"))
+    if existing:
+        return existing
+    symbol = _text(item.get("symbol")).upper()
+    name = _text(item.get("name") or symbol)
+    regime = _text(item.get("marketRegime") or item.get("regime") or "UNKNOWN")
+    confidence = _confidence_from_data_status(data_status)
+    common = (
+        f"{name}({symbol}) {decision or '후보'}: "
+        f"entry {_fmt_plan_num(nums.get('entry'))}, stop {_fmt_plan_num(nums.get('stop'))}, "
+        f"target {_fmt_plan_num(nums.get('target'))}, EV {_fmt_plan_num(nums.get('ev'))}, "
+        f"RR {_fmt_plan_num(nums.get('rr'))}, prob {_fmt_plan_num(nums.get('probability'), '%')}, "
+        f"regime {regime}, data {data_status}/{confidence}."
+    )
+    if journal_session == "PREMARKET_PLAN":
+        return (
+            "장전 계획: "
+            + common
+            + " 손절 우선으로 가정하고, 진입가를 주지 않으면 추격하지 않는다."
+        )
+    if journal_session == "INTRADAY_CHECK":
+        return "장중 점검: " + common + " 장중 변동이 손절/목표 중 어디에 가까운지 확인한다."
+    if journal_session == "FOLLOWUP_EVALUATION":
+        return "후속 복기: " + common + " 결과가 실패패턴 보정 근거로 충분한지 검토한다."
+    return "장후 가상매매: " + common + " 다음 거래일 체결 가정으로 평가 대기한다."
+
+
 def _snapshot_from_item(
     item: dict[str, Any],
     source_type: str,
@@ -403,7 +480,7 @@ def _snapshot_from_item(
     row = {
         "source_type": source_type,
         "journal_session": _journal_session(journal_session),
-        "session_note": _text(item.get("sessionNote") or item.get("journalSessionNote")),
+        "session_note": _session_note_from_item(item, _journal_session(journal_session), nums, decision, data_status),
         "as_of_date": as_of_date,
         "generated_at": generated_at,
         "captured_at": _now_iso(),
@@ -1298,6 +1375,8 @@ def failure_patterns(
         returns = [_safe_float(row.get("net_pnl_pct")) for row in sub]
         returns = [v for v in returns if v is not None]
         total = len(sub)
+        source_weight = _source_weight(source_v)
+        effective_total = round(total * source_weight, 3)
         items.append({
             "market": market_v,
             "mode": mode_v,
@@ -1305,6 +1384,8 @@ def failure_patterns(
             "sourceType": source_v,
             "journalSession": session_v,
             "sampleCount": total,
+            "sourceWeight": source_weight,
+            "effectiveSampleCount": effective_total,
             "avgNetPnlPct": round(sum(returns) / len(returns), 4) if returns else None,
             "failureCounts": dict(counts),
             "outcomeCounts": dict(outcome_counts),
@@ -1395,6 +1476,7 @@ def _approval_index() -> dict[str, dict[str, Any]]:
 
 def _attach_approval_state(suggestions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     approvals = _approval_index()
+    applications = _application_by_approval()
     out: list[dict[str, Any]] = []
     for item in suggestions:
         work = dict(item)
@@ -1404,6 +1486,9 @@ def _attach_approval_state(suggestions: list[dict[str, Any]]) -> list[dict[str, 
         work["approvalStatus"] = _text(approval.get("decision")) if approval else "PENDING_REVIEW"
         work["approvalId"] = _text(approval.get("approval_id")) if approval else ""
         work["reviewedAt"] = _text(approval.get("reviewed_at")) if approval else ""
+        application = applications.get(work["approvalId"])
+        work["applicationStatus"] = _text(application.get("status")) if application else "NOT_APPLIED"
+        work["appliedAt"] = _text(application.get("applied_at")) if application else ""
         out.append(work)
     return out
 
@@ -1461,6 +1546,172 @@ def review_calibration_suggestion(
         "approval": row,
         "message": "Calibration suggestion reviewed. No strategy parameters were changed automatically.",
         "applied": False,
+    }
+
+
+def _application_index() -> set[str]:
+    return {
+        _text(row.get("approval_id"))
+        for row in _read_rows(CALIBRATION_APPLICATIONS_CSV, CALIBRATION_APPLICATION_COLS)
+        if _text(row.get("approval_id")) and _upper(row.get("status")) == "APPLIED"
+    }
+
+
+def _application_by_approval() -> dict[str, dict[str, Any]]:
+    rows = _read_rows(CALIBRATION_APPLICATIONS_CSV, CALIBRATION_APPLICATION_COLS)
+    out: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        aid = _text(row.get("approval_id"))
+        if aid and _upper(row.get("status")) == "APPLIED":
+            out[aid] = row
+    return out
+
+
+def _confidence_from_effective_samples(effective_samples: int) -> float:
+    if effective_samples < 30:
+        return 0.0
+    if effective_samples >= 100:
+        return 0.9
+    return round(0.3 + (effective_samples - 30) / 70 * 0.6, 3)
+
+
+def _merge_nested_adjustments(base: dict[str, Any], delta: dict[str, Any]) -> dict[str, Any]:
+    out = dict(base or {})
+    for section, values in delta.items():
+        if not isinstance(values, dict):
+            continue
+        current = dict(out.get(section) or {})
+        for key, value in values.items():
+            current[key] = round(float(current.get(key) or 0.0) + float(value or 0.0), 4)
+        out[section] = current
+    return out
+
+
+def _approved_delta(reason: str, share: float, source_weight: float) -> dict[str, dict[str, float]]:
+    strength = max(0.25, min(1.0, share * 2.0)) * max(0.1, min(1.2, source_weight))
+    reason = _upper(reason)
+    if reason == "REGIME_MISMATCH":
+        return {"weightAdjustments": {"riskScore": -0.16 * strength}, "priceAdjustments": {"entryAggressiveness": -0.04 * strength}}
+    if reason == "ENTRY_TIMING":
+        return {"filterAdjustments": {"maxDistanceToEntryPct": 0.35 * strength}, "priceAdjustments": {"entryAggressiveness": 0.03 * strength}}
+    if reason == "TARGET_TOO_FAR":
+        return {"priceAdjustments": {"targetMultiplier": -0.04 * strength}}
+    if reason == "STOP_TOO_TIGHT":
+        return {"priceAdjustments": {"stopAtrMultiplier": 0.08 * strength}}
+    if reason == "DATA_QUALITY":
+        return {"weightAdjustments": {"qualityScore": -0.18 * strength}}
+    if reason in {"FALSE_SIGNAL", "SECTOR_WEAKNESS"}:
+        return {"weightAdjustments": {"momentumScore": -0.08 * strength, "qualityScore": -0.06 * strength}}
+    if reason == "POSITION_SIZE":
+        return {"weightAdjustments": {"riskScore": -0.10 * strength}, "filterAdjustments": {"minRiskRewardRatio": 0.03 * strength}}
+    return {}
+
+
+def apply_approved_calibrations(applied_by: str = "local_admin") -> dict[str, Any]:
+    _ensure()
+    try:
+        from app.engine import correction_store
+    except Exception as exc:
+        return {"status": "ERROR", "error": f"CORRECTION_STORE_UNAVAILABLE: {exc}"}
+
+    approvals = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
+    already_applied = _application_index()
+    params = correction_store.load_params()
+    markets = dict(params.get("markets") or {})
+    old_version = int(params.get("version") or 0)
+    applied_rows: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+
+    for approval in approvals:
+        approval_id = _text(approval.get("approval_id"))
+        if _upper(approval.get("decision")) != "APPROVED":
+            continue
+        if not approval_id:
+            continue
+        if approval_id in already_applied:
+            skipped.append({"approvalId": approval_id, "reason": "ALREADY_APPLIED"})
+            continue
+        if _upper(approval.get("suggestion_status")) != "SUGGESTED":
+            skipped.append({"approvalId": approval_id, "reason": "NOT_SUGGESTED"})
+            continue
+        market = _text(approval.get("market")).lower()
+        mode = _text(approval.get("mode")).lower()
+        horizon = _text(approval.get("horizon")).lower()
+        source_type = _upper(approval.get("source_type"))
+        reason = _upper(approval.get("reason"))
+        if market not in MARKETS or mode not in MODES or horizon not in HORIZONS:
+            skipped.append({"approvalId": approval_id, "reason": "INVALID_SCOPE"})
+            continue
+        raw_sample_count = int(_safe_float(approval.get("sample_count")) or 0)
+        source_weight = _source_weight(source_type)
+        effective_sample_count = max(30, int(round(raw_sample_count * source_weight)))
+        share = float(_safe_float(approval.get("share")) or 0.0)
+        delta = _approved_delta(reason, share, source_weight)
+        if not delta:
+            skipped.append({"approvalId": approval_id, "reason": "NO_PARAMETER_MAPPING"})
+            continue
+        key = f"{market}_{mode}_{horizon}"
+        before = dict(markets.get(key) or correction_store.load_correction(market, mode, horizon))
+        after = _merge_nested_adjustments(before, delta)
+        after.update({
+            "market": market,
+            "mode": mode,
+            "horizon": horizon,
+            "sampleCount": max(int(before.get("sampleCount") or 0), effective_sample_count),
+            "rawJournalSampleCount": raw_sample_count,
+            "effectiveJournalSampleCount": effective_sample_count,
+            "confidence": max(float(before.get("confidence") or 0.0), _confidence_from_effective_samples(effective_sample_count)),
+            "journalCalibrationApplied": True,
+            "journalCalibrationSource": approval_id,
+            "appliedAt": _now_iso(),
+        })
+        top = list(before.get("topFailureReasons") or [])
+        if reason and reason not in top:
+            top.insert(0, reason)
+        after["topFailureReasons"] = top[:8]
+        markets[key] = after
+        applied_at = _now_iso()
+        application_id = hashlib.sha256(f"{approval_id}|{applied_at}".encode("utf-8")).hexdigest()[:20]
+        applied_rows.append({
+            "application_id": application_id,
+            "approval_id": approval_id,
+            "suggestion_id": approval.get("suggestion_id"),
+            "applied_by": _text(applied_by or "local_admin"),
+            "applied_at": applied_at,
+            "market": market,
+            "mode": mode,
+            "horizon": horizon,
+            "source_type": source_type,
+            "journal_session": approval.get("journal_session"),
+            "source_weight": source_weight,
+            "raw_sample_count": raw_sample_count,
+            "effective_sample_count": effective_sample_count,
+            "reason": reason,
+            "before_params_json": _json(before),
+            "after_params_json": _json(after),
+            "correction_version": old_version + 1,
+            "status": "APPLIED",
+        })
+
+    if applied_rows:
+        new_params = {
+            **params,
+            "version": old_version + 1,
+            "generatedAt": _now_iso(),
+            "source": "virtual_trade_journal_approved_calibrations",
+            "markets": markets,
+        }
+        correction_store.save_params(new_params)
+        existing = _read_rows(CALIBRATION_APPLICATIONS_CSV, CALIBRATION_APPLICATION_COLS)
+        _write_rows(CALIBRATION_APPLICATIONS_CSV, existing + applied_rows, CALIBRATION_APPLICATION_COLS)
+
+    return {
+        "status": "OK",
+        "applied": len(applied_rows),
+        "skipped": skipped,
+        "items": applied_rows,
+        "correctionVersion": old_version + 1 if applied_rows else old_version,
+        "source": _relative(CALIBRATION_APPLICATIONS_CSV),
     }
 
 

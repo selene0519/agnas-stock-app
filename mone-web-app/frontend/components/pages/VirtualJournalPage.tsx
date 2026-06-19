@@ -192,6 +192,19 @@ export default function VirtualJournalPage() {
     }
   };
 
+  const applyApprovedSuggestions = async () => {
+    setBusy("apply-approved");
+    setError("");
+    try {
+      await mone.journalCalibrationApplyApproved({ appliedBy: "local_admin" });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy("");
+    }
+  };
+
   const stats = useMemo(() => {
     const evaluated = trades.filter((item) => ["EVALUATED", "CANCELLED"].includes(String(item.status || "").toUpperCase()));
     const open = trades.filter((item) => !["EVALUATED", "CANCELLED", "DATA_INVALID"].includes(String(item.status || "").toUpperCase()));
@@ -220,7 +233,7 @@ export default function VirtualJournalPage() {
   }, [patterns]);
 
   const approvedSuggestions = useMemo(
-    () => suggestions.filter((item) => item.approvalStatus === "APPROVED").slice(0, 4),
+    () => suggestions.filter((item) => item.approvalStatus === "APPROVED" && item.applicationStatus !== "APPLIED").slice(0, 4),
     [suggestions],
   );
 
@@ -343,6 +356,9 @@ export default function VirtualJournalPage() {
                 {item.review_text && (
                   <div className="mt-2 text-[12px] leading-5 text-slate-400">{item.review_text}</div>
                 )}
+                {!item.review_text && item.session_note && (
+                  <div className="mt-2 text-[12px] leading-5 text-slate-400">{item.session_note}</div>
+                )}
                 {String(item.source_type) === "FORWARD_PAPER_TRADE" && String(item.status) === "EVALUATED" && (
                   <button
                     onClick={() => reviewTrade(item.journal_id)}
@@ -405,7 +421,7 @@ export default function VirtualJournalPage() {
                       <div>{item.failure_reason || "-"}</div>
                       {item.secondary_tags && <div className="mt-0.5 text-slate-500">{item.secondary_tags}</div>}
                     </td>
-                    <td className="max-w-sm py-3 pr-3 text-[12px] leading-5 text-slate-400">{item.review_text || "-"}</td>
+                    <td className="max-w-sm py-3 pr-3 text-[12px] leading-5 text-slate-400">{item.review_text || item.session_note || "-"}</td>
                     <td className="py-3">
                       {String(item.source_type) === "FORWARD_PAPER_TRADE" && String(item.status) === "EVALUATED" && (
                         <button
@@ -515,6 +531,15 @@ export default function VirtualJournalPage() {
               <h2 className="text-sm font-semibold text-slate-200">적용 대기</h2>
               <span className="font-mono text-[11px] tabular-nums text-slate-500">{approvedSuggestions.length} approved</span>
             </div>
+            {approvedSuggestions.length > 0 && (
+              <button
+                onClick={applyApprovedSuggestions}
+                disabled={!!busy}
+                className="mb-3 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-md bg-cyan-500/12 px-3 text-xs font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.24)] disabled:opacity-50"
+              >
+                <ShieldCheck size={13} /> 승인 보정 적용
+              </button>
+            )}
             <div className="space-y-2">
               {approvedSuggestions.map((item) => (
                 <div key={item.suggestionId} className="rounded-lg bg-emerald-500/8 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.14)]">
