@@ -1,0 +1,65 @@
+name: MONE VTJ Capture
+
+on:
+  workflow_dispatch:
+    inputs:
+      market:
+        description: "Capture market"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - kr
+          - us
+  schedule:
+    # UTC 기준. VTJ 전용 가벼운 재시도이며, 중복은 runKey로 서버가 차단한다.
+    - cron: "50 7 * * 1-5"    # KST 16:50, KR close capture
+    - cron: "30 8 * * 1-5"    # KST 17:30, KR retry after reports settle
+    - cron: "20 22 * * 1-5"   # KST 07:20 Tue-Sat, US close capture
+    - cron: "0 23 * * 1-5"    # KST 08:00 Tue-Sat, US retry after reports settle
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mone-vtj-capture-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TZ: Asia/Seoul
+      MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
+      MONE_ADMIN_SECRET: ${{ secrets.MONE_ADMIN_SECRET }}
+      DISPATCH_MARKET: ${{ github.event.inputs.market || 'all' }}
+    steps:
+      - name: Capture VTJ paper trades
+        run: |
+          BASE="${MONE_BACKEND_URL%/}"
+          MARKET="${DISPATCH_MARKET:-all}"
+          if [ "${GITHUB_EVENT_NAME:-}" = "schedule" ]; then
+            UTC_HOUR="$(date -u '+%H')"
+            case "${UTC_HOUR}" in
+              07|08) MARKET="kr" ;;
+              22|23) MARKET="us" ;;
+            esac
+          fi
+
+          echo "VTJ capture request"
+          echo "base=${BASE}"
+          echo "market=${MARKET}"
+          echo "kst_now=$(date '+%Y-%m-%d %H:%M:%S %Z')"
+
+          curl --fail-with-body --show-error --silent --retry 2 --retry-delay 10 \
+            -X POST "${BASE}/api/journal/auto-capture/run" \
+            -H "Content-Type: application/json" \
+            -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
+            -d "{\"market\":\"${MARKET}\",\"limit\":5,\"evaluateAfter\":true,\"force\":false}" \
+            --max-time 120 \
+            -o /tmp/vtj_result.json
+
+          cat /tmp/vtj_result.json
