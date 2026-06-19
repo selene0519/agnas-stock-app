@@ -528,7 +528,62 @@ def test_attribution_feedback_suggests_boost_and_reduce_without_auto_apply(isola
 
     assert out["status"] == "OK"
     assert out["sampleCount"] == 12
+    assert out["autoApplied"] is False
+    assert out["manualApprovalRequired"] is True
+    assert out["calibrationSummary"]["applyEndpoint"] == "/api/journal/calibration/apply-approved"
     by_key = {(row["mode"], row["horizon"]): row for row in out["adjustments"]}
     assert by_key[("balanced", "swing")]["direction"] == "BOOST"
     assert by_key[("aggressive", "short")]["direction"] == "REDUCE"
     assert (isolated_vtj / "attribution_feedback.json").exists()
+
+
+def test_attribution_analysis_includes_ols_regression_when_sample_is_ready(isolated_vtj: Path) -> None:
+    journal_rows = []
+    eval_rows = []
+    for idx in range(18):
+        high_ev = idx % 2 == 0
+        jid = f"jid-regression-{idx}"
+        journal_rows.append(
+            {
+                "journal_id": jid,
+                "source_type": "FORWARD_PAPER_TRADE",
+                "journal_session": "AFTER_CLOSE_TRADE",
+                "as_of_date": "2026-01-01",
+                "generated_at": "2026-01-01T09:00:00",
+                "captured_at": "2026-01-01T09:00:00",
+                "market": "kr",
+                "mode": "balanced" if high_ev else "aggressive",
+                "horizon": "swing",
+                "symbol": f"R{idx:03d}",
+                "name": f"R{idx:03d}",
+                "decision_bucket": vtj.TODAY_ENTRY,
+                "entry_type": "NEXT_OPEN",
+                "entry_price": 100,
+                "expected_value": 4 if high_ev else -1,
+                "risk_reward_ratio": 2.4 if high_ev else 1.1,
+                "probability": 65 if high_ev else 45,
+                "risk_score": 70 if high_ev else 35,
+                "event_risk_score": 20,
+                "market_regime_at_signal": "RISK_ON" if high_ev else "RISK_OFF",
+                "sector": "TECH" if high_ev else "BANK",
+                "raw_recommendation_json": "{}",
+            }
+        )
+        eval_rows.append(
+            {
+                "journal_id": jid,
+                "status": "EVALUATED",
+                "outcome": "TARGET_HIT" if high_ev else "STOP_HIT",
+                "filled": True,
+                "net_pnl_pct": 3.0 if high_ev else -2.0,
+            }
+        )
+    vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
+    vtj._write_rows(vtj.EVALUATION_CSV, eval_rows, vtj.EVALUATION_COLS)
+
+    out = vtj.attribution_analysis("kr", "all", "all")
+
+    assert out["status"] == "OK"
+    assert out["regression"]["status"] == "OK"
+    assert out["regression"]["sampleCount"] == 18
+    assert out["regression"]["coefficients"]

@@ -34,7 +34,7 @@ export const dynamic = "force-dynamic";
 export default function App() {
   const [mounted, setMounted] = useState(false);
   const [page, setPage] = useState<PageId>("home");
-  const [tradeOrder, setTradeOrder] = useState<{ symbol: string; name: string; price: number; market: "kr" | "us" } | null>(null);
+  const [tradeOrder, setTradeOrder] = useState<{ symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number } | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
   const [adminToken, setAdminTokenState] = useState("");

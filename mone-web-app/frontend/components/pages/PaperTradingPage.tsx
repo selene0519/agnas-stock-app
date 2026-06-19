@@ -247,11 +247,11 @@ function TradeForm({
   market: Market;
   action: "buy" | "sell";
   onDone: () => void;
-  initialValues?: { symbol?: string; name?: string; price?: string };
+  initialValues?: { symbol?: string; name?: string; price?: string; quantity?: string };
 }) {
   const [symbol, setSymbol] = useState(initialValues?.symbol ?? "");
   const [name, setName] = useState(initialValues?.name ?? "");
-  const [quantity, setQuantity] = useState("");
+  const [quantity, setQuantity] = useState(initialValues?.quantity ?? "");
   const [price, setPrice] = useState(initialValues?.price ?? "");
   const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
@@ -361,7 +361,7 @@ function TradeForm({
 export default function PaperTradingPage({
   initialOrder,
 }: {
-  initialOrder?: { symbol: string; name: string; price: number; market: "kr" | "us" };
+  initialOrder?: { symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number };
 } = {}) {
   const [market, setMarket] = useState<Market>(initialOrder?.market ?? "kr");
   const [tab, setTab] = useState<TabId>(initialOrder ? "trade" : "positions");
@@ -564,6 +564,7 @@ export default function PaperTradingPage({
               symbol: initialOrder.symbol,
               name: initialOrder.name,
               price: initialOrder.price > 0 ? String(Math.round(initialOrder.price)) : "",
+              quantity: initialOrder.quantity && initialOrder.quantity > 0 ? String(initialOrder.quantity) : "",
             } : undefined}
           />
         </div>

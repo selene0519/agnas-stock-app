@@ -54,7 +54,7 @@ export default function AdvancedPage({
   initialOrder,
   onOrderConsumed,
 }: {
-  initialOrder?: { symbol: string; name: string; price: number; market: "kr" | "us" };
+  initialOrder?: { symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number };
   onOrderConsumed?: () => void;
 } = {}) {
   const [tab, setTab] = useState<TabId>("paper");

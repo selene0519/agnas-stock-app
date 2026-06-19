@@ -968,6 +968,35 @@ export default function VirtualJournalPage() {
         )}
       </section>
 
+      <section className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-200">OLS factor model</h2>
+          <span className="font-mono text-[11px] text-slate-500">
+            {attrData?.regression?.status || "LOW_SAMPLE"}
+            {attrData?.regression?.r2 != null ? ` · R2 ${attrData.regression.r2}` : ""}
+          </span>
+        </div>
+        {!attrData || attrData.regression?.status !== "OK" ? (
+          <div className="rounded-lg border border-dashed border-slate-700 py-6 text-center text-xs text-slate-500">
+            Regression attribution needs at least {attrData?.regression?.minRequired ?? 12} evaluated trades with enough factor variation.
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(attrData.regression?.coefficients || []).slice(0, 8).map((row: any) => (
+              <div key={row.factor} className="flex items-center justify-between gap-3 rounded-md bg-slate-950/50 px-3 py-2 text-xs">
+                <div className="min-w-0">
+                  <div className="truncate font-mono text-slate-300">{row.factor}</div>
+                  <div className="text-[10px] text-slate-600">{row.group}</div>
+                </div>
+                <div className={`font-mono font-semibold ${row.coef >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                  {row.coef >= 0 ? "+" : ""}{Number(row.coef).toFixed(3)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -1034,6 +1063,9 @@ export default function VirtualJournalPage() {
                     {feedbackData.baseAvgPnlPct != null ? `${feedbackData.baseAvgPnlPct >= 0 ? "+" : ""}${feedbackData.baseAvgPnlPct.toFixed(2)}%` : "-"}
                   </div>
                 </div>
+              </div>
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
+                Suggested only. Auto-applied: {feedbackData.autoApplied ? "yes" : "no"} · pending review {feedbackData.calibrationSummary?.pendingReviewCount ?? 0} · approved {feedbackData.calibrationSummary?.approvedCount ?? 0}
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[520px] text-xs">

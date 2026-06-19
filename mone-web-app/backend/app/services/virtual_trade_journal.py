@@ -2439,7 +2439,7 @@ def performance_by_strategy(
     """전략별 성과 분석 — win rate, avg PnL, Sharpe, max drawdown, equity curve."""
     _ensure()
     rows = _filter_rows(
-        _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)),
+        _merge_evaluations(_read_journal_rows()),
         market, mode, horizon, "all", "all",
     )
     evaluated = sorted(
@@ -2648,6 +2648,131 @@ def _ev_accuracy(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _solve_linear_system(matrix: list[list[float]], vector: list[float]) -> list[float] | None:
+    n = len(vector)
+    if n == 0 or any(len(row) != n for row in matrix):
+        return None
+    work = [row[:] + [vector[i]] for i, row in enumerate(matrix)]
+    for col in range(n):
+        pivot = max(range(col, n), key=lambda r: abs(work[r][col]))
+        if abs(work[pivot][col]) < 1e-9:
+            return None
+        if pivot != col:
+            work[col], work[pivot] = work[pivot], work[col]
+        div = work[col][col]
+        for j in range(col, n + 1):
+            work[col][j] /= div
+        for r in range(n):
+            if r == col:
+                continue
+            factor = work[r][col]
+            if abs(factor) < 1e-12:
+                continue
+            for j in range(col, n + 1):
+                work[r][j] -= factor * work[col][j]
+    return [work[i][n] for i in range(n)]
+
+
+def _ols_factor_attribution(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    usable = [r for r in rows if _safe_float(r.get("net_pnl_pct")) is not None]
+    if len(usable) < 12:
+        return {"status": "LOW_SAMPLE", "sampleCount": len(usable), "minRequired": 12, "r2": None, "coefficients": []}
+
+    numeric_fields = [
+        ("final_rank_score", "score"),
+        ("expected_value", "ev"),
+        ("risk_reward_ratio", "rr"),
+        ("probability", "probability"),
+        ("risk_score", "risk"),
+        ("event_risk_score", "eventRisk"),
+    ]
+    categorical_fields = [
+        ("market_regime_at_signal", "regime"),
+        ("market", "market"),
+        ("sector", "sector"),
+        ("mode", "mode"),
+        ("horizon", "horizon"),
+        ("entry_type", "entryType"),
+        ("source_type", "sourceType"),
+    ]
+
+    columns: list[dict[str, Any]] = [{"kind": "intercept", "name": "intercept", "label": "intercept"}]
+    numeric_stats: dict[str, tuple[float, float]] = {}
+    for field, label in numeric_fields:
+        vals = [_safe_float(r.get(field)) for r in usable]
+        vals = [v for v in vals if v is not None]
+        if len(vals) < 5:
+            continue
+        mean = sum(vals) / len(vals)
+        std = (sum((v - mean) ** 2 for v in vals) / len(vals)) ** 0.5
+        if std <= 1e-9:
+            continue
+        numeric_stats[field] = (mean, std)
+        columns.append({"kind": "numeric", "field": field, "name": label, "label": label})
+
+    for field, label in categorical_fields:
+        counts = Counter(_text(r.get(field)) or "UNKNOWN" for r in usable)
+        categories = [cat for cat, count in counts.most_common(5) if count >= 3]
+        for cat in categories[1:]:
+            columns.append({"kind": "category", "field": field, "category": cat, "name": f"{label}:{cat}", "label": label})
+
+    columns = columns[:18]
+    if len(columns) < 2 or len(usable) <= len(columns) + 2:
+        return {"status": "LOW_DEGREES_OF_FREEDOM", "sampleCount": len(usable), "featureCount": len(columns) - 1, "r2": None, "coefficients": []}
+
+    y = [_safe_float(r.get("net_pnl_pct")) or 0.0 for r in usable]
+    x_rows: list[list[float]] = []
+    for r in usable:
+        row: list[float] = []
+        for col in columns:
+            if col["kind"] == "intercept":
+                row.append(1.0)
+            elif col["kind"] == "numeric":
+                mean, std = numeric_stats[col["field"]]
+                value = _safe_float(r.get(col["field"]))
+                row.append(((value if value is not None else mean) - mean) / std)
+            else:
+                row.append(1.0 if (_text(r.get(col["field"])) or "UNKNOWN") == col["category"] else 0.0)
+        x_rows.append(row)
+
+    p = len(columns)
+    xtx = [[0.0 for _ in range(p)] for _ in range(p)]
+    xty = [0.0 for _ in range(p)]
+    for row, target in zip(x_rows, y):
+        for i in range(p):
+            xty[i] += row[i] * target
+            for j in range(p):
+                xtx[i][j] += row[i] * row[j]
+    for i in range(1, p):
+        xtx[i][i] += 0.15
+    beta = _solve_linear_system(xtx, xty)
+    if beta is None:
+        return {"status": "SINGULAR", "sampleCount": len(usable), "featureCount": p - 1, "r2": None, "coefficients": []}
+
+    preds = [sum(row[i] * beta[i] for i in range(p)) for row in x_rows]
+    mean_y = sum(y) / len(y)
+    sse = sum((target - pred) ** 2 for target, pred in zip(y, preds))
+    sst = sum((target - mean_y) ** 2 for target in y)
+    r2 = 1 - sse / sst if sst > 1e-9 else None
+    coefficients = []
+    for col, coef in zip(columns[1:], beta[1:]):
+        coefficients.append({
+            "factor": col["name"],
+            "group": col["label"],
+            "coef": round(coef, 4),
+            "direction": "POSITIVE" if coef > 0.02 else ("NEGATIVE" if coef < -0.02 else "NEUTRAL"),
+            "absImpact": round(abs(coef), 4),
+        })
+    coefficients.sort(key=lambda item: item["absImpact"], reverse=True)
+    return {
+        "status": "OK",
+        "sampleCount": len(usable),
+        "featureCount": p - 1,
+        "r2": round(r2, 4) if r2 is not None else None,
+        "coefficients": coefficients[:12],
+    }
+
+
 def attribution_analysis(
     market: str = "all",
     mode: str = "all",
@@ -2661,7 +2786,7 @@ def attribution_analysis(
     """
     _ensure()
     rows = _filter_rows(
-        _merge_evaluations(_read_rows(JOURNAL_CSV, JOURNAL_COLS)),
+        _merge_evaluations(_read_journal_rows()),
         market, mode, horizon, "all", "all",
     )
     evaluated = [
@@ -2695,6 +2820,7 @@ def attribution_analysis(
         "byEntryType": _factor_stats(evaluated, "entry_type"),
         "bySourceType": _factor_stats(evaluated, "source_type"),
         "evAccuracy": _ev_accuracy(evaluated),
+        "regression": _ols_factor_attribution(evaluated),
     }
 
 
@@ -2812,7 +2938,9 @@ def attribution_feedback(market: str = "all") -> dict[str, Any]:
             pnl_ratio = avg_pnl / base_avg_pnl if base_avg_pnl and avg_pnl else 1.0
             multiplier = max(0.5, min(1.5, round(win_ratio * 0.6 + pnl_ratio * 0.4, 3)))
             direction = "BOOST" if multiplier > 1.05 else ("REDUCE" if multiplier < 0.95 else "NEUTRAL")
+            feedback_id = hashlib.sha256(f"{market}|{mode}|{hz}|{len(sub)}|{round(win_rate, 4)}|{round(avg_pnl, 3)}".encode("utf-8")).hexdigest()[:20]
             adjustments.append({
+                "feedbackId": feedback_id,
                 "mode": mode,
                 "horizon": hz,
                 "n": len(sub),
@@ -2820,14 +2948,27 @@ def attribution_feedback(market: str = "all") -> dict[str, Any]:
                 "avgPnlPct": round(avg_pnl, 3),
                 "multiplier": multiplier,
                 "direction": direction,
+                "suggestedOnly": True,
+                "manualApprovalRequired": direction != "NEUTRAL",
             })
 
+    calibration_items = calibration_suggestions(market, "all", "all", "all", "all").get("items", [])
+    suggested = [item for item in calibration_items if _upper(item.get("status")) == "SUGGESTED"]
+    approved = [item for item in calibration_items if _upper(item.get("approvalStatus")) == "APPROVED"]
     result: dict[str, Any] = {
         "status": "OK",
         "sampleCount": len(evaluated),
         "baseWinRate": round(base_win_rate, 4),
         "baseAvgPnlPct": round(base_avg_pnl, 3),
         "generatedAt": _now_iso(),
+        "autoApplied": False,
+        "manualApprovalRequired": True,
+        "calibrationSummary": {
+            "suggestedCount": len(suggested),
+            "approvedCount": len(approved),
+            "pendingReviewCount": sum(1 for item in calibration_items if _upper(item.get("approvalStatus")) == "PENDING_REVIEW"),
+            "applyEndpoint": "/api/journal/calibration/apply-approved",
+        },
         "adjustments": adjustments,
     }
     try:
