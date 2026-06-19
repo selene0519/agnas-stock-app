@@ -128,7 +128,7 @@ function DrawdownBanner({ dd, market }: { dd: DrawdownInfo; market: string }) {
         <span className={`text-xs font-bold font-mono ${cfg.text}`}>
           {drawdownPct > 0 ? `-${drawdownPct.toFixed(2)}%` : "0.00%"}
         </span>
-        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${cfg.text} bg-current/10`}>
+        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${cfg.text} ${alertLevel === "RED" ? "bg-red-500/15" : alertLevel === "YELLOW" ? "bg-amber-500/15" : "bg-emerald-500/15"}`}>
           {cfg.label}
         </span>
       </div>
