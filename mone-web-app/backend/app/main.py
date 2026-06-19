@@ -8850,10 +8850,18 @@ def api_supabase_migrate() -> dict:
 
 # ── 진입 관리: 두 화면 데이터 공유 ─────────────────────────────────────────
 @app.get("/api/holdings/exit-signals")
-def api_holdings_exit_signals(market: str = Query("all")) -> dict:
+def api_holdings_exit_signals(
+    market: str = Query("all"),
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
+) -> dict:
     """보유 종목 청산 신호 — RSI/MA5/목표근접 기반 중간 익절 타이밍."""
     from app.services.exit_signal import get_exit_signals
-    return get_exit_signals(market=market)
+    try:
+        from app import db as _db
+        user_id = _db.sanitize_uid(x_mone_user)
+    except Exception:
+        user_id = ""
+    return get_exit_signals(market=market, user_id=user_id)
 
 
 @app.get("/api/entry/symbol-info/{market}/{symbol}")

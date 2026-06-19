@@ -245,16 +245,35 @@ def _exit_signal(
     }
 
 
-def get_exit_signals(market: str = "all") -> dict[str, Any]:
-    """보유 종목 전체에 청산 신호 계산."""
+def _holdings_items(market: str, user_id: str = "") -> list[dict[str, Any]]:
+    if user_id:
+        try:
+            from app import db
+            return db.get_holdings(user_id, market)
+        except Exception:
+            return []
+
     from app.services import user_data
 
+    payload = user_data.get_holdings(market)
+    if isinstance(payload, dict):
+        items = payload.get("items")
+        return items if isinstance(items, list) else []
+    if isinstance(payload, list):
+        return payload
+    return []
+
+
+def get_exit_signals(market: str = "all", user_id: str = "") -> dict[str, Any]:
+    """보유 종목 전체에 청산 신호 계산."""
     markets = ("kr", "us") if market == "all" else (market,)
     results: list[dict[str, Any]] = []
 
     for mk in markets:
-        holdings = user_data.get_holdings(mk)
+        holdings = _holdings_items(mk, user_id=user_id)
         for h in holdings:
+            if not isinstance(h, dict):
+                continue
             symbol = str(h.get("symbol") or h.get("ticker") or "").strip()
             if not symbol:
                 continue
