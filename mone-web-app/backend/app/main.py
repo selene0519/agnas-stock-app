@@ -8796,3 +8796,41 @@ def api_paper_stops_check(market: str = Query("all")) -> dict:
     """현재가 vs 스탑/타겟 비교 — 경보 목록."""
     from app.services.paper_trading import check_stops
     return check_stops(market=market)
+
+
+@app.post("/api/admin/supabase-migrate")
+def api_supabase_migrate() -> dict:
+    """CSV → Supabase 초기 일괄 업로드 (최초 1회 실행)."""
+    from app.services import supabase_db as sdb
+    from app.services import data_loader as _data
+
+    if not sdb._enabled():
+        return {"status": "DISABLED", "message": "SUPABASE_URL / SUPABASE_SERVICE_KEY 환경변수 미설정"}
+
+    results: dict = {}
+    for market in ("kr", "us"):
+        try:
+            # holdings
+            h_path = _data.REPO_ROOT / f"holdings_{market}.csv"
+            h_df = _data.read_csv(h_path)
+            h_rows = _data.dataframe_records(h_df) if not h_df.empty else []
+            sdb.replace_all_holdings(market, h_rows)
+            results[f"holdings_{market}"] = len(h_rows)
+        except Exception as exc:
+            results[f"holdings_{market}_error"] = str(exc)
+        try:
+            # watchlist
+            w_path = _data.REPO_ROOT / f"watchlist_{market}.csv"
+            w_df = _data.read_csv(w_path)
+            w_rows = _data.dataframe_records(w_df) if not w_df.empty else []
+            for row in w_rows:
+                symbol = _data.normalize_symbol(
+                    _data.first_value(row, ["symbol", "ticker", "code"]), market
+                )
+                if symbol:
+                    sdb.upsert_watch(market, symbol, row)
+            results[f"watchlist_{market}"] = len(w_rows)
+        except Exception as exc:
+            results[f"watchlist_{market}_error"] = str(exc)
+
+    return {"status": "OK", "migrated": results}
