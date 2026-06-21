@@ -3248,6 +3248,96 @@ export default function ChartPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <CollapsiblePanel title="절대가치 점검 (DCF·RIM·EVA)">
+              {(() => {
+                const va = company?.valuationAdvanced;
+                if (!va || va.status === "DATA_UNAVAILABLE" || va.status === "DATA_PENDING") {
+                  return <div className="text-sm text-slate-500">{va?.note || "DART 재무 데이터 수집 대기 중입니다."}</div>;
+                }
+                const renderModel = (label: string, m: any) => {
+                  if (!m || m.status === "DATA_PENDING") {
+                    return (
+                      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                        <div className="text-[10px] text-slate-500">{label}</div>
+                        <div className="mt-0.5 text-xs text-slate-600">데이터 부족 ({(m?.missing || []).join(", ") || "필수 항목 누락"})</div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                      <div className="text-[10px] text-slate-500">{label} 적정가</div>
+                      <div className="mt-0.5 font-mono text-sm font-bold text-slate-100">
+                        {m.fairValue != null ? Number(m.fairValue).toLocaleString() : "-"}
+                      </div>
+                      {m.gapPct != null && (
+                        <div className={`text-[10px] ${m.gapPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          현재가 대비 {m.gapPct >= 0 ? "+" : ""}{m.gapPct}%
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+                return (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderModel("DCF", va.dcf)}
+                      {renderModel("RIM", va.rim)}
+                    </div>
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                      <div className="text-[10px] text-slate-500">EVA(경제적 이익 가능성) 점수</div>
+                      {va.eva?.status === "OK" ? (
+                        <div className={`mt-0.5 font-mono text-sm font-bold ${va.eva.label === "높음" ? "text-emerald-400" : va.eva.label === "낮음" ? "text-red-400" : "text-slate-100"}`}>
+                          {va.eva.score} / 100 · {va.eva.label}
+                        </div>
+                      ) : (
+                        <div className="mt-0.5 text-xs text-slate-600">데이터 부족 ({(va.eva?.missing || []).join(", ")})</div>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-600">{va.note} 절대가치 평가는 보조 진단이며 추천 점수에 반영되지 않습니다.</div>
+                  </div>
+                );
+              })()}
+            </CollapsiblePanel>
+
+            <CollapsiblePanel title="부도위험·레버리지 (Altman Z / DOL·DFL·DCL)">
+              {(() => {
+                const va = company?.valuationAdvanced;
+                if (!va || va.status === "DATA_UNAVAILABLE" || va.status === "DATA_PENDING") {
+                  return <div className="text-sm text-slate-500">{va?.note || "DART 재무 데이터 수집 대기 중입니다."}</div>;
+                }
+                const z = va.altmanZ;
+                const lv = va.leverage;
+                return (
+                  <div className="space-y-2">
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                      <div className="text-[10px] text-slate-500">Altman Z-Score</div>
+                      {z?.status === "OK" ? (
+                        <>
+                          <div className={`mt-0.5 font-mono text-sm font-bold ${z.zone === "안전" ? "text-emerald-400" : z.zone === "위험" ? "text-red-400" : "text-amber-400"}`}>
+                            {z.score} · {z.zone}
+                          </div>
+                          <div className="text-[10px] text-slate-600">{z.note}</div>
+                        </>
+                      ) : (
+                        <div className="mt-0.5 text-xs text-slate-600">데이터 부족 ({(z?.missing || []).join(", ")})</div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[{ label: "DOL", value: lv?.dol }, { label: "DFL", value: lv?.dfl }, { label: "DCL", value: lv?.dcl }].map(({ label, value }) => (
+                        <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2 text-center">
+                          <div className="text-[10px] text-slate-500">{label}</div>
+                          <div className="mt-0.5 font-mono text-sm font-bold text-slate-100">{value != null ? value : "-"}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {lv?.status !== "OK" && <div className="text-[10px] text-slate-600">{lv?.note}</div>}
+                  </div>
+                );
+              })()}
+            </CollapsiblePanel>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {!loading && news.length === 0 && disclosures.length === 0 ? (
               <div className="lg:col-span-2">
                 <CollapsiblePanel title="뉴스·공시">

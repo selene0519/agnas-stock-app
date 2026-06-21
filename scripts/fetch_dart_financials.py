@@ -22,6 +22,7 @@ import requests
 ROOT = Path(__file__).resolve().parents[1]
 CORP_MAP = ROOT / "data" / "fundamental" / "dart_corp_map.csv"
 OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
+KIS_PRICE = ROOT / "data" / "stockapp" / "kis_current_price_kr.csv"
 OUT = ROOT / "reports" / "dart_financial_data_kr.csv"
 STATUS = ROOT / "reports" / "dart_financial_status.json"
 
@@ -35,7 +36,8 @@ YEARS = ["2024", "2023"]
 FIELDNAMES = [
     "symbol", "corp_code", "name", "year",
     "revenue", "operating_income", "net_income", "total_equity", "total_debt",
-    "eps", "eps_prev", "per", "pbr",
+    "total_assets", "current_assets", "current_liabilities", "retained_earnings",
+    "eps", "eps_prev", "per", "pbr", "shares_outstanding", "market_cap",
     "roe", "debt_ratio", "operating_margin", "net_margin",
     "revenue_growth", "eps_growth", "peg",
     "quality_score", "value_score", "growth_score",
@@ -43,13 +45,17 @@ FIELDNAMES = [
 ]
 
 ACCOUNT_MAP = {
-    "revenue":           ["매출액", "영업수익", "수익(매출액)"],
-    "operating_income":  ["영업이익", "영업이익(손실)"],
-    "net_income":        ["당기순이익", "당기순이익(손실)", "연결당기순이익"],
-    "total_equity":      ["자본총계", "지배기업소유주지분"],
-    "total_debt":        ["부채총계"],
-    "eps":               ["주당순이익", "기본주당순이익(손실)", "기본주당이익(손실)"],
-]
+    "revenue":              ["매출액", "영업수익", "수익(매출액)"],
+    "operating_income":     ["영업이익", "영업이익(손실)"],
+    "net_income":           ["당기순이익", "당기순이익(손실)", "연결당기순이익"],
+    "total_equity":         ["자본총계", "지배기업소유주지분"],
+    "total_debt":           ["부채총계"],
+    "total_assets":         ["자산총계"],
+    "current_assets":       ["유동자산"],
+    "current_liabilities":  ["유동부채"],
+    "retained_earnings":    ["이익잉여금", "미처분이익잉여금"],
+    "eps":                  ["주당순이익", "기본주당순이익(손실)", "기본주당이익(손실)"],
+}
 
 
 def _read_csv(path: Path) -> list[dict[str, Any]]:
@@ -99,6 +105,29 @@ def _get_ohlcv_symbols() -> list[str]:
         for f in sorted(OHLCV_DIR.glob("kr_*_daily.csv"))
         if re.match(r"kr_(\w+)_daily", f.name)
     ]
+
+
+def _load_current_price_map() -> dict[str, float]:
+    """symbol → 현재가. KIS 스냅샷 우선, 없으면 OHLCV 최신 종가로 폴백."""
+    prices: dict[str, float] = {}
+    for row in _read_csv(KIS_PRICE):
+        sym = str(row.get("symbol", "")).strip().zfill(6)
+        price = _num(row.get("currentPrice") or row.get("current_price") or row.get("last_price"))
+        if sym and price:
+            prices[sym] = price
+    for f in OHLCV_DIR.glob("kr_*_daily.csv"):
+        m = re.match(r"kr_(\w+)_daily", f.name)
+        if not m:
+            continue
+        sym = m.group(1).zfill(6)
+        if sym in prices:
+            continue
+        rows = _read_csv(f)
+        if rows:
+            close = _num(rows[-1].get("close"))
+            if close:
+                prices[sym] = close
+    return prices
 
 
 def fetch_financials(corp_code: str, year: str) -> dict[str, float | None]:
@@ -193,25 +222,33 @@ def _calc_scores(ratios: dict) -> dict[str, float]:
     return {"quality_score": quality, "value_score": value, "growth_score": growth}
 
 
-def fetch_per_pbr(corp_code: str, year: str) -> tuple[float | None, float | None]:
-    """주요 재무 비율 (PER, PBR) — fnlttSinglAcntAll로 조회"""
-    url = f"{BASE_URL}/fnlttSinglAcntAll.json"
-    params = {"crtfc_key": DART_KEY, "corp_code": corp_code,
-              "bsns_year": year, "reprt_code": REPORT_CODE, "fs_div": "CFS"}
-    try:
-        resp = requests.get(url, params=params, timeout=10)
-        data = resp.json()
-    except Exception:
-        return None, None
-    items = data.get("list", [])
-    per = pbr = None
-    for row in items:
-        nm = str(row.get("account_nm", ""))
-        if "주가수익비율" in nm or "PER" in nm.upper():
-            per = _num(row.get("thstrm_amount"))
-        if "주가순자산비율" in nm or "PBR" in nm.upper():
-            pbr = _num(row.get("thstrm_amount"))
-    return per, pbr
+def _calc_market_ratios(fin: dict, price: float | None) -> dict[str, float | None]:
+    """
+    PER/PBR/시가총액/유통주식수를 현재가 기준으로 산출.
+    DART 재무제표 API(fnlttSinglAcntAll)는 시장가 기반 비율(PER/PBR)을 제공하지 않으므로,
+    EPS·순이익으로 유통주식수를 역산해 현재가와 결합한다.
+    유통주식수 = 당기순이익 / EPS (자기주식 등으로 실제 상장주식수와는 약간 차이 가능)
+    """
+    eps = fin.get("eps")
+    net_income = fin.get("net_income")
+    equity = fin.get("total_equity")
+
+    shares = None
+    if eps and net_income and eps != 0:
+        shares = net_income / eps
+
+    per = pbr = market_cap = None
+    if price:
+        if eps and eps > 0:
+            per = round(price / eps, 2)
+        if shares:
+            market_cap = round(price * shares, 0)
+            if equity and equity != 0:
+                bvps = equity / shares
+                if bvps > 0:
+                    pbr = round(price / bvps, 2)
+
+    return {"shares_outstanding": shares, "market_cap": market_cap, "per": per, "pbr": pbr}
 
 
 def main() -> None:
@@ -222,16 +259,18 @@ def main() -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     corp_map = _build_corp_map()
     symbols  = _get_ohlcv_symbols()
+    price_map = _load_current_price_map()
 
     print(f"[{now}] DART 재무 수집 시작: {len(symbols)}개 종목")
 
-    # 기존 데이터 로드 (중복 방지)
+    # 기존 데이터 로드 (중복 방지 + 캐시된 행 보존용)
     existing: dict[str, dict] = {}
+    out_by_key: dict[str, dict] = {}
     for row in _read_csv(OUT):
         key = f"{row.get('symbol')}_{row.get('year')}"
         existing[key] = row
+        out_by_key[key] = row   # 캐시 적중 시에도 결과에서 누락되지 않도록 보존
 
-    results: list[dict] = []
     success = 0
 
     for i, sym in enumerate(symbols):
@@ -256,7 +295,8 @@ def main() -> None:
             if fin:
                 ratios = _calc_ratios(fin, prev_data if year == YEARS[0] else {})
                 scores = _calc_scores(ratios)
-                per, pbr = None, None  # PER/PBR은 주식시장 데이터 필요, 별도 수집
+                market = _calc_market_ratios(fin, price_map.get(sym6))
+                per, pbr = market.get("per"), market.get("pbr")
 
                 # EPS 성장률 기반 PEG (PER 있을 때만)
                 peg = None
@@ -270,15 +310,21 @@ def main() -> None:
                     "net_income": fin.get("net_income", ""),
                     "total_equity": fin.get("total_equity", ""),
                     "total_debt": fin.get("total_debt", ""),
+                    "total_assets": fin.get("total_assets", ""),
+                    "current_assets": fin.get("current_assets", ""),
+                    "current_liabilities": fin.get("current_liabilities", ""),
+                    "retained_earnings": fin.get("retained_earnings", ""),
                     "eps": fin.get("eps", ""),
                     "eps_prev": prev_data.get("eps", ""),
                     "per": per or "",
                     "pbr": pbr or "",
+                    "shares_outstanding": market.get("shares_outstanding") or "",
+                    "market_cap": market.get("market_cap") or "",
                     **{k: ratios.get(k, "") for k in ["roe","debt_ratio","operating_margin","net_margin","revenue_growth","eps_growth"]},
                     "peg": peg or "",
                     **scores,
                 })
-                results.append(dict(row_out))
+                out_by_key[cache_key] = dict(row_out)
                 existing[cache_key] = row_out
                 prev_data = fin
                 success += 1
@@ -287,8 +333,9 @@ def main() -> None:
 
         if (i + 1) % 10 == 0:
             print(f"  {i+1}/{len(symbols)} 처리 중... (성공: {success})")
-            _write_csv(OUT, results)   # 중간 저장
+            _write_csv(OUT, list(out_by_key.values()))   # 중간 저장
 
+    results = list(out_by_key.values())
     _write_csv(OUT, results)
 
     status = {

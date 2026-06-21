@@ -1,6 +1,10 @@
 """
-KR 종목 재무 데이터 수집 (yfinance .info)
+KR 종목 재무 데이터 보강 (yfinance .info)
 sector_map_kr.csv 102종목 → reports/dart_financial_data_kr.csv
+
+fetch_dart_financials.py(DART 공시 데이터, 더 신뢰도 높음)와 동일한 CSV를 공유한다.
+DART가 이미 채운 필드는 보존하고, 비어 있는 필드만 yfinance 값으로 보강한다
+(전체 덮어쓰기 금지 — 과거 DART 재무 원본을 yfinance가 지워버리던 버그 수정).
 
 실행: python scripts/fetch_kr_financial_data.py
 """
@@ -13,13 +17,27 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT_PATH  = ROOT / "reports" / "dart_financial_data_kr.csv"
 SECTOR_MAP = ROOT / "data" / "sector_map_kr.csv"
 
+# fetch_dart_financials.py의 FIELDNAMES와 합집합 (DART 전용 필드 보존 + div 추가)
 FIELDNAMES = [
-    "symbol", "name", "year", "updatedAt",
-    "per", "pbr", "eps", "roe", "div",
-    "debt_ratio", "operating_margin", "net_margin",
-    "revenue_growth", "eps_growth", "peg",
-    "value_score", "growth_score", "quality_score",
+    "symbol", "corp_code", "name", "year",
+    "revenue", "operating_income", "net_income", "total_equity", "total_debt",
+    "total_assets", "current_assets", "current_liabilities", "retained_earnings",
+    "eps", "eps_prev", "per", "pbr", "shares_outstanding", "market_cap",
+    "roe", "debt_ratio", "operating_margin", "net_margin",
+    "revenue_growth", "eps_growth", "peg", "div",
+    "quality_score", "value_score", "growth_score",
+    "updatedAt",
 ]
+
+# DART가 이미 값을 채웠으면 yfinance로 덮어쓰지 않는 필드 (DART가 더 신뢰도 높음)
+_FILL_ONLY_IF_MISSING = {
+    "per", "pbr", "eps", "roe", "debt_ratio", "operating_margin", "net_margin",
+    "revenue_growth", "eps_growth", "peg", "value_score", "growth_score", "quality_score",
+}
+
+
+def _is_empty(v) -> bool:
+    return v is None or str(v).strip() in ("", "None", "nan", "-")
 
 
 def _read_csv(path: Path) -> list[dict]:
@@ -116,14 +134,24 @@ def fetch_financial_data() -> None:
     print(f"[재무수집] {len(symbols)}종목 yfinance 조회 시작")
 
     today_str = date.today().isoformat()
-    results: list[dict] = []
+    today_year = today_str[:4]
+
+    # 기존 CSV(DART 수집분 포함) 로드 — symbol+year 키로 병합, 전체 덮어쓰기 금지
+    existing_by_key: dict[tuple[str, str], dict] = {}
+    for r in _read_csv(OUT_PATH):
+        key = (str(r.get("symbol", "")).strip().zfill(6), str(r.get("year", "")).strip())
+        existing_by_key[key] = r
+
     ok = fail = 0
 
     for sym, name, market in symbols:
-        row: dict = {
-            "symbol": sym, "name": name,
-            "year": today_str[:4], "updatedAt": today_str,
-        }
+        sym6 = sym.strip().zfill(6)
+        key = (sym6, today_year)
+        row: dict = dict(existing_by_key.get(key, {}))
+        row["symbol"] = sym6
+        row["name"] = name or row.get("name", "")
+        row["year"] = today_year
+        row["updatedAt"] = today_str
 
         # KS (KOSPI) 먼저, 실패 시 KQ (KOSDAQ) 시도
         info = {}
@@ -154,7 +182,7 @@ def fetch_financial_data() -> None:
             eps = _safe(info, "trailingEps")
             div = _safe(info, "dividendYield", mult=100.0)
 
-            row.update({
+            new_vals = {
                 "per": per,
                 "pbr": pbr,
                 "eps": eps,
@@ -172,17 +200,24 @@ def fetch_financial_data() -> None:
                     roe / 100 if roe else None,
                     debt, op_m
                 ),
-            })
+            }
+            for k, v in new_vals.items():
+                if v is None:
+                    continue
+                # DART가 이미 채운 값이면 보존, div처럼 DART에 없는 필드는 항상 갱신
+                if k not in _FILL_ONLY_IF_MISSING or _is_empty(row.get(k)):
+                    row[k] = v
             ok += 1
         else:
             fail += 1
 
-        results.append(row)
+        existing_by_key[key] = row
         if (ok + fail) % 20 == 0:
             print(f"  {ok+fail}/{len(symbols)}: ok={ok} fail={fail}")
         time.sleep(0.1)  # API 부하 방지
 
-    # CSV 저장
+    # CSV 저장 (DART 전용 필드를 가진 다른 연도/종목 행도 그대로 보존)
+    results = list(existing_by_key.values())
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with OUT_PATH.open("w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES, extrasaction="ignore")
@@ -193,7 +228,7 @@ def fetch_financial_data() -> None:
     pbr_ok  = sum(1 for r in results if r.get("pbr"))
     roe_ok  = sum(1 for r in results if r.get("roe"))
     val_ok  = sum(1 for r in results if r.get("value_score"))
-    print(f"\n[완료] {len(results)}종목 저장 / ok={ok} fail={fail}")
+    print(f"\n[완료] {len(results)}종목 병합 저장 / ok={ok} fail={fail}")
     print(f"  PER:{per_ok} PBR:{pbr_ok} ROE:{roe_ok} 가치점수:{val_ok}")
     print(f"  → {OUT_PATH}")
 

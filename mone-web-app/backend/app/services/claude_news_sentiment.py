@@ -19,8 +19,8 @@ from typing import Any
 
 # ── 경로 설정 ─────────────────────────────────────────────────────────────────
 import os
-_APP_DIR = Path(__file__).resolve().parents[3]
-REPO_ROOT = Path(os.environ.get("MONE_REPO_ROOT", _APP_DIR)).resolve()
+_APP_DIR = Path(__file__).resolve().parents[3]  # backend/app/services → backend/app → backend → mone-web-app
+REPO_ROOT = Path(os.environ.get("MONE_REPO_ROOT", _APP_DIR.parent)).resolve()
 REPORT_DIR = REPO_ROOT / "reports"
 CACHE_TTL_SEC = 24 * 3600  # 24시간
 

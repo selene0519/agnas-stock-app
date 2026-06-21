@@ -4597,6 +4597,11 @@ def _load_dart_financial_map(market: str) -> dict[str, dict[str, Any]]:
     return dart
 
 
+def _compute_valuation_advanced(symbol: str, market: str, current_price: Any) -> dict[str, Any]:
+    from app.services.valuation_advanced import compute_valuation
+    return compute_valuation(symbol, market, current_price)
+
+
 def company_analysis(market: str) -> dict[str, Any]:
     base_map = _combine_symbol_maps(market)
     company_map, company_sources = _latest_data_maps((r"company_integrated", r"company", r"기업"), market, ("news", "sector", "action", "pullback", "risk", "flow", "node_modules"))
@@ -4680,6 +4685,9 @@ def company_analysis(market: str) -> dict[str, Any]:
         has_dart = bool(dart_row)
         dart_year = dart_row.get("year") or ""
 
+        # ── 절대가치 점검 / 부도위험·레버리지 (DCF·RIM·EVA·Altman Z·DOL/DFL/DCL) ──
+        valuation_advanced = _compute_valuation_advanced(symbol, market, normalized.get("currentPrice"))
+
         # ── 누락 필드 계산 ────────────────────────────────────────────────
         _fin_vals = [("EPS", eps), ("PER", per_final), ("PBR", pbr_final), ("ROE", roe_final),
                      ("매출", revenue), ("영업이익", operating_income), ("순이익", net_income)]
@@ -4760,6 +4768,7 @@ def company_analysis(market: str) -> dict[str, Any]:
             # ── 연결 상태 ──────────────────────────────────────────────────
             "missingFields": missing_fields,
             "connectionStatus": conn_status,
+            "valuationAdvanced": valuation_advanced,
             "raw": merged,
         })
         if len(items) >= 120:
