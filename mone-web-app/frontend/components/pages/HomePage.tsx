@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info, Calculator, ArrowRight } from "lucide-react";
+import { Activity, Bell, Bot, History, RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info, Calculator, ArrowRight } from "lucide-react";
 import type { PageId } from "../Sidebar";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -38,6 +38,33 @@ const HORIZONS: Horizon[] = ["short", "swing", "mid"];
 
 type StrategyCell = { mode: Mode; horizon: Horizon; items: any[]; count: number; status: string };
 type MarketChoice = "auto" | "kr" | "us";
+type BriefingPayload = {
+  title: string;
+  detail: string;
+  tone: "emerald" | "amber" | "red" | "blue";
+  chips: string[];
+  topItem?: any;
+};
+type AlertTrackingRow = {
+  key: string;
+  name: string;
+  symbol: string;
+  recordedAt: string;
+  alertPriceText: string;
+  currentPriceText: string;
+  changeText: string;
+  changeTone: "up" | "down" | "neutral";
+  status: "추적중" | "목표도달" | "손절도달" | "목표근접" | "리스크확인" | "데이터부족";
+  detail: string;
+};
+type EngineHistoryRow = {
+  key: string;
+  date: string;
+  title: string;
+  detail: string;
+  status: "적용" | "검증중" | "LOW_SAMPLE" | "대기";
+  tone: "emerald" | "amber" | "slate";
+};
 
 function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, market: "kr" | "us"): any | null {
   if (!bootData) return null;
@@ -148,6 +175,228 @@ function operationBasisWarning(operationSummary: any) {
   const mixed = status.includes("MIXED") || new Set(knownDates).size > 1;
   if (!mixed) return null;
   return { recommendation, current, ohlcv };
+}
+
+function safeNumber(value: any): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const text = String(value ?? "").replace(/,/g, "").replace(/[^0-9.-]/g, "").trim();
+  if (!text || text === "-" || text === ".") return null;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function signedPct(value: number | null | undefined, digits = 1) {
+  if (value == null || !Number.isFinite(value)) return "대기";
+  return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
+}
+
+function shortDateTime(value: any) {
+  const text = String(value || "").trim();
+  if (!text) return "-";
+  return text.slice(5, 16).replace("T", " ");
+}
+
+function rowMarket(item: any, fallback: "kr" | "us") {
+  return normalizeMarket(item?.market || item?._market || fallback, item?.symbol || item?.code || item?.ticker);
+}
+
+function marketLabel(market: "kr" | "us") {
+  return market === "kr" ? "국장" : "미장";
+}
+
+function engineStatusLabel(status: EngineHistoryRow["status"]) {
+  return status === "LOW_SAMPLE" ? "LOW_SAMPLE" : status;
+}
+
+function pickTopObservation(todayEntries: any[], watchItems: any[], allItems: any[]) {
+  return todayEntries[0] || watchItems[0] || [...allItems]
+    .sort((a, b) => Number(b.finalScore || b.finalRankScore || 0) - Number(a.finalScore || a.finalRankScore || 0))[0] || null;
+}
+
+function buildDailyBriefing(args: {
+  topItem: any;
+  regime: any;
+  dataHealth: any;
+  todayCount: number;
+  watchCount: number;
+  riskCount: number;
+  selectedMarket: "kr" | "us";
+}): BriefingPayload {
+  const { topItem, regime, dataHealth, todayCount, watchCount, riskCount, selectedMarket } = args;
+  const freshness = dataFreshnessInfo({
+    latestDataDate: dataHealth?.ohlcvLatestDate,
+    recoGeneratedAt: dataHealth?.recoGeneratedAt,
+    dataStatus: dataHealth?.dataStatus || dataHealth?.status,
+  });
+  const dataChip = freshness.state === "fresh" ? "데이터 정상" : freshness.state === "old" ? "데이터 확인" : "데이터 제한";
+  const regimeChip = regime?.regime === "BULL" ? "강세장" : regime?.regime === "BEAR" ? "약세장" : "중립장";
+
+  if (!topItem) {
+    return {
+      title: "오늘의 관찰 1순위",
+      detail: `${marketLabel(selectedMarket)} 기준으로 신규 후보가 충분하지 않습니다. 보유 종목의 손절가와 데이터 기준을 먼저 확인하세요.`,
+      tone: riskCount > 0 ? "red" : "amber",
+      chips: [regimeChip, dataChip, "보유종목 확인"],
+    };
+  }
+
+  const name = displayName(topItem);
+  const decision = firstText(topItem.decisionBucket, topItem.newEntryDecision, topItem.moneDecision, "관찰");
+  const score = safeNumber(topItem.finalScore ?? topItem.finalRankScore ?? topItem.recommendationScore);
+  const ev = safeNumber(topItem.expectedValue ?? topItem.ev);
+  const risk = String(topItem.riskStatus || topItem.tradeBlockStatus || "").toUpperCase();
+  const isRisk = risk && !["NONE", "OK", "NORMAL", "LOW"].includes(risk);
+  const isBear = regime?.regime === "BEAR";
+  const scoreText = score != null ? `점수 ${score.toFixed(0)}` : "점수 확인";
+  const evText = ev != null ? `EV ${signedPct(ev, 1)}` : "EV 대기";
+  const basis = freshness.state === "fresh" ? "현재 기준" : "기준일 확인 필요";
+  let detail = `${name}이 ${decision} 후보 중 우선 확인 대상입니다. ${scoreText}, ${evText}이며 ${basis}입니다.`;
+  let tone: BriefingPayload["tone"] = "blue";
+
+  if (isBear || isRisk) {
+    tone = isRisk ? "red" : "amber";
+    detail = `${name}은 신호가 있지만 시장/리스크 조건 확인이 우선입니다. 진입보다 손절가와 기준가 이격을 먼저 보세요.`;
+  } else if (String(topItem.decisionBucket || "").includes("오늘")) {
+    tone = "emerald";
+    detail = `${name}이 오늘 우선 확인 후보입니다. 기준가 접근 여부와 손익비를 확인한 뒤 검토하세요.`;
+  } else if (String(topItem.decisionBucket || "").includes("대기")) {
+    tone = "amber";
+    detail = `${name}은 아직 대기 관찰 구간입니다. 타이밍 조건이 충족되는지 추적하세요.`;
+  }
+
+  return {
+    title: "오늘의 관찰 1순위",
+    detail,
+    tone,
+    chips: [regimeChip, dataChip, `${todayCount}개 검토`, `${watchCount}개 대기`],
+    topItem,
+  };
+}
+
+function buildAlertTrackingRows(args: {
+  signalLedger: any;
+  nearAlerts: any[];
+  allItems: any[];
+  todayEntries: any[];
+  watchItems: any[];
+  selectedMarket: "kr" | "us";
+}): AlertTrackingRow[] {
+  const { signalLedger, nearAlerts, allItems, todayEntries, watchItems, selectedMarket } = args;
+  const bySymbol = new Map<string, any>();
+  [...allItems, ...todayEntries, ...watchItems].forEach((item) => {
+    const symbol = String(item.symbol || "").toUpperCase();
+    if (symbol) bySymbol.set(`${rowMarket(item, selectedMarket)}-${symbol}`, item);
+  });
+  const nearMap = new Map<string, any>();
+  nearAlerts.forEach((alert) => {
+    const symbol = String(alert.symbol || "").toUpperCase();
+    if (symbol) nearMap.set(`${rowMarket(alert, selectedMarket)}-${symbol}`, alert);
+  });
+
+  const rows: AlertTrackingRow[] = [];
+  const ledgerItems = Array.isArray(signalLedger?.items) ? signalLedger.items : [];
+  ledgerItems.slice(0, 8).forEach((row: any) => {
+    const symbol = String(row.symbol || "").toUpperCase();
+    if (!symbol) return;
+    const market = rowMarket(row, selectedMarket);
+    const match = bySymbol.get(`${market}-${symbol}`) || {};
+    const near = nearMap.get(`${market}-${symbol}`);
+    const alertPrice = safeNumber(row.entry ?? row.entryPrice);
+    const currentPrice = safeNumber(match.currentPrice ?? match.price ?? near?.currentPrice);
+    const target = safeNumber(row.target ?? match.target ?? match.targetPrice ?? near?.targetPrice);
+    const stop = safeNumber(row.stop ?? match.stop ?? match.stopPrice ?? near?.stopPrice);
+    const change = alertPrice && currentPrice ? ((currentPrice - alertPrice) / alertPrice) * 100 : null;
+    const outcomes = Array.isArray(row.outcomes) ? row.outcomes : [];
+    const hitTarget = outcomes.some((outcome: any) => String(outcome.hit_target).toLowerCase() === "true") || (currentPrice != null && target != null && currentPrice >= target);
+    const hitStop = outcomes.some((outcome: any) => String(outcome.hit_stop).toLowerCase() === "true") || (currentPrice != null && stop != null && currentPrice <= stop);
+    const nearType = String(near?.type || "").toUpperCase();
+    const status: AlertTrackingRow["status"] = hitTarget ? "목표도달"
+      : hitStop ? "손절도달"
+      : nearType === "TARGET" ? "목표근접"
+      : nearType === "STOP" ? "리스크확인"
+      : currentPrice == null || alertPrice == null ? "데이터부족"
+      : "추적중";
+    rows.push({
+      key: `ledger-${row.id || symbol}-${row.recorded_at || rows.length}`,
+      name: displayName({ ...match, ...row, symbol, market }),
+      symbol,
+      recordedAt: shortDateTime(row.recorded_at || row.recordedAt || row.recorded_date),
+      alertPriceText: alertPrice != null ? priceText({ ...row, market, entry: alertPrice }, "entry") : "-",
+      currentPriceText: currentPrice != null ? priceText({ ...match, market, currentPrice }, "current") : "-",
+      changeText: signedPct(change, 1),
+      changeTone: change == null ? "neutral" : change >= 0 ? "up" : "down",
+      status,
+      detail: `${modeLabel(String(row.mode || match._mode || "balanced") as Mode)} · ${horizonLabel(String(row.horizon || match._horizon || "swing") as Horizon)}`,
+    });
+  });
+
+  if (rows.length < 3) {
+    [...todayEntries, ...watchItems].slice(0, 5).forEach((item) => {
+      const symbol = String(item.symbol || "").toUpperCase();
+      if (!symbol || rows.some((row) => row.symbol === symbol)) return;
+      const market = rowMarket(item, selectedMarket);
+      const entry = safeNumber(item.entry ?? item.entryPrice);
+      const current = safeNumber(item.currentPrice ?? item.price);
+      const change = entry && current ? ((current - entry) / entry) * 100 : null;
+      rows.push({
+        key: `fallback-${market}-${symbol}`,
+        name: displayName(item),
+        symbol,
+        recordedAt: "오늘",
+        alertPriceText: entry != null ? priceText(item, "entry") : "-",
+        currentPriceText: current != null ? priceText(item, "current") : "-",
+        changeText: signedPct(change, 1),
+        changeTone: change == null ? "neutral" : change >= 0 ? "up" : "down",
+        status: current == null || entry == null ? "데이터부족" : "추적중",
+        detail: `${modeLabel(String(item._mode || item.mode || "balanced") as Mode)} · ${horizonLabel(String(item._horizon || item.horizon || "swing") as Horizon)}`,
+      });
+    });
+  }
+
+  return rows.slice(0, 3);
+}
+
+function buildEngineHistoryRows(adaptiveWeights: any, selfLearningStatus: any): EngineHistoryRow[] {
+  const rows: EngineHistoryRow[] = [];
+  const applications = Array.isArray(selfLearningStatus?.lastApplications) ? selfLearningStatus.lastApplications : [];
+  applications.slice(0, 2).forEach((item: any, index: number) => {
+    const statusText = String(item.status || "").toUpperCase();
+    rows.push({
+      key: `self-${item.applied_at || item.version || index}`,
+      date: shortDateTime(item.applied_at || item.appliedAt || selfLearningStatus?.generatedAt),
+      title: `${modeLabel(String(item.mode || "balanced") as Mode)} ${horizonLabel(String(item.horizon || "swing") as Horizon)} 보정 적용`,
+      detail: `version ${item.version || selfLearningStatus?.correctionVersion || "-"} · ${item.market || "all"}`,
+      status: statusText === "APPLIED" ? "적용" : "검증중",
+      tone: statusText === "APPLIED" ? "emerald" : "amber",
+    });
+  });
+
+  const signalRows = Array.isArray(adaptiveWeights?.bySignalKey) ? adaptiveWeights.bySignalKey : [];
+  signalRows.slice(0, 4).forEach((item: any, index: number) => {
+    const sample = Number(item.sampleCount || 0);
+    const eligible = Boolean(item.learningEligible);
+    rows.push({
+      key: `weight-${item.signalKey || index}`,
+      date: shortDateTime(item.lastUpdated || adaptiveWeights?.generatedAt),
+      title: `${item.signalKey || "adaptive weight"} 가중치 ${eligible ? "검증" : "대기"}`,
+      detail: `sample ${sample} · weight ${Number(item.weight ?? item.currentWeight ?? 0).toFixed(2)}`,
+      status: sample > 0 && !eligible ? "LOW_SAMPLE" : eligible ? "검증중" : "대기",
+      tone: eligible ? "amber" : "slate",
+    });
+  });
+
+  if (!rows.length) {
+    const lowSample = Number(selfLearningStatus?.lowSampleCount || 0);
+    rows.push({
+      key: "engine-waiting",
+      date: shortDateTime(selfLearningStatus?.generatedAt || adaptiveWeights?.generatedAt),
+      title: "AI 엔진 변경 이력 대기",
+      detail: lowSample > 0 ? `LOW_SAMPLE ${lowSample}건 · 검증 표본 축적 중` : "검증 표본이 쌓이면 보정 이력이 표시됩니다.",
+      status: lowSample > 0 ? "LOW_SAMPLE" : "대기",
+      tone: lowSample > 0 ? "amber" : "slate",
+    });
+  }
+  return rows.slice(0, 3);
 }
 
 function getSessionContext(session: SessionPhase) {
@@ -309,7 +558,21 @@ function EventBanner({ alert }: { alert: any }) {
 }
 
 // ── 오늘 검토 후보 카드 (홈 압축형)
-function TodayEntryCard({ item, rank, onAnalyze, onTradePaper, earningsMap }: { item: any; rank: number; onAnalyze: (item: any) => void; onTradePaper?: (item: any) => void; earningsMap?: Record<string, number> }) {
+function TodayEntryCard({
+  item,
+  rank,
+  onSelect,
+  onAnalyze,
+  onTradePaper,
+  earningsMap,
+}: {
+  item: any;
+  rank: number;
+  onSelect: (item: any) => void;
+  onAnalyze: (item: any) => void;
+  onTradePaper?: (item: any) => void;
+  earningsMap?: Record<string, number>;
+}) {
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
   const horizon = String(item.horizon || item._horizon || "");
@@ -334,7 +597,18 @@ function TodayEntryCard({ item, rank, onAnalyze, onTradePaper, earningsMap }: { 
   const calibratedWinRate = item.calibratedWinRate != null ? Number(item.calibratedWinRate) : null;
 
   return (
-    <div className="relative rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(item)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(item);
+        }
+      }}
+      className="relative cursor-pointer rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4 transition-colors hover:border-emerald-600/60 hover:bg-emerald-950/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+    >
       <div className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -394,7 +668,10 @@ function TodayEntryCard({ item, rank, onAnalyze, onTradePaper, earningsMap }: { 
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          onClick={() => onAnalyze(item)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAnalyze(item);
+          }}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
         >
           분석 보기 <ArrowRight size={14} />
@@ -402,7 +679,10 @@ function TodayEntryCard({ item, rank, onAnalyze, onTradePaper, earningsMap }: { 
         {onTradePaper && (
           <button
             type="button"
-            onClick={() => onTradePaper(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onTradePaper(item);
+            }}
             className="flex items-center justify-center gap-1 rounded-xl border border-emerald-700/50 bg-emerald-900/30 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/60"
           >
             모의투자
@@ -1075,6 +1355,181 @@ function TodayConclusionCard({
             </div>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function DailyBriefingCard({
+  briefing,
+  onAnalyze,
+}: {
+  briefing: BriefingPayload;
+  onAnalyze?: (item: any) => void;
+}) {
+  const tone = {
+    emerald: {
+      shell: "border-emerald-500/25 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.04),0_14px_36px_rgba(15,23,42,0.18)]",
+      icon: "bg-emerald-500/15 text-emerald-300",
+      text: "text-emerald-100",
+      chip: "border-emerald-400/20 bg-slate-950/35 text-emerald-100",
+    },
+    amber: {
+      shell: "border-amber-500/25 bg-amber-500/10 shadow-[0_0_0_1px_rgba(245,158,11,0.04),0_14px_36px_rgba(15,23,42,0.18)]",
+      icon: "bg-amber-500/15 text-amber-300",
+      text: "text-amber-100",
+      chip: "border-amber-400/20 bg-slate-950/35 text-amber-100",
+    },
+    red: {
+      shell: "border-red-500/25 bg-red-500/10 shadow-[0_0_0_1px_rgba(239,68,68,0.04),0_14px_36px_rgba(15,23,42,0.18)]",
+      icon: "bg-red-500/15 text-red-300",
+      text: "text-red-100",
+      chip: "border-red-400/20 bg-slate-950/35 text-red-100",
+    },
+    blue: {
+      shell: "border-sky-500/25 bg-sky-500/10 shadow-[0_0_0_1px_rgba(14,165,233,0.04),0_14px_36px_rgba(15,23,42,0.18)]",
+      icon: "bg-sky-500/15 text-sky-300",
+      text: "text-sky-100",
+      chip: "border-sky-400/20 bg-slate-950/35 text-sky-100",
+    },
+  }[briefing.tone];
+
+  return (
+    <section className={`rounded-2xl border px-4 py-3.5 ${tone.shell}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 gap-3">
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone.icon}`}>
+            <Activity size={17} />
+          </span>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">AI 한 줄 브리핑</div>
+            <h2 className={`mt-0.5 text-base font-bold text-balance ${tone.text}`}>{briefing.title}</h2>
+            <p className="mt-1 max-w-4xl text-sm leading-6 text-pretty text-slate-300">{briefing.detail}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {briefing.chips.slice(0, 4).map((chip) => (
+                <span key={chip} className={`rounded-full border px-2.5 py-1 text-[11px] ${tone.chip}`}>
+                  {chip}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        {briefing.topItem && onAnalyze && (
+          <button
+            type="button"
+            onClick={() => onAnalyze(briefing.topItem)}
+            className="flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-700/80 bg-slate-950/50 px-3.5 py-2 text-xs font-semibold text-slate-200 transition-[background-color,transform] duration-150 ease-out hover:bg-slate-900 active:scale-[0.96]"
+          >
+            근거 보기 <ArrowRight size={13} />
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AlertTrackingPreview({ rows }: { rows: AlertTrackingRow[] }) {
+  const statusClass = (status: AlertTrackingRow["status"]) => {
+    if (status === "목표도달" || status === "목표근접") return "border-emerald-500/25 bg-emerald-500/10 text-emerald-200";
+    if (status === "손절도달" || status === "리스크확인") return "border-red-500/25 bg-red-500/10 text-red-200";
+    if (status === "데이터부족") return "border-slate-600/40 bg-slate-800/50 text-slate-300";
+    return "border-sky-500/25 bg-sky-500/10 text-sky-200";
+  };
+
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_12px_30px_rgba(2,6,23,0.2)]">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-100">
+            <Bell size={15} className="text-sky-300" />
+            알림 추적
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">발생가 대비 현재 움직임을 최근 신호 기준으로 확인합니다.</p>
+        </div>
+        <span className="rounded-full border border-slate-700 bg-slate-950/50 px-2.5 py-1 text-[11px] text-slate-400">
+          {rows.length}건
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-700 px-3 py-5 text-center text-xs text-slate-500">
+          기록된 알림이 쌓이면 추적 결과가 표시됩니다.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <div key={row.key} className="rounded-xl bg-slate-950/50 px-3 py-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.045)]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-slate-100">{row.name}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-500">{row.symbol}</span>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-slate-500">{row.recordedAt} · {row.detail}</div>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(row.status)}`}>
+                  {row.status}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-4 gap-2 text-[11px]">
+                <div>
+                  <div className="text-slate-600">발생가</div>
+                  <div className="mt-0.5 font-mono text-slate-300 tabular-nums">{row.alertPriceText}</div>
+                </div>
+                <div>
+                  <div className="text-slate-600">현재</div>
+                  <div className="mt-0.5 font-mono text-slate-300 tabular-nums">{row.currentPriceText}</div>
+                </div>
+                <div>
+                  <div className="text-slate-600">변화율</div>
+                  <div className={`mt-0.5 font-mono font-semibold tabular-nums ${row.changeTone === "up" ? "text-emerald-300" : row.changeTone === "down" ? "text-red-300" : "text-slate-400"}`}>
+                    {row.changeText}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-600">추적</div>
+                  <div className="mt-0.5 text-slate-300">{row.status}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function EngineHistoryPreview({ rows }: { rows: EngineHistoryRow[] }) {
+  const statusClass = (row: EngineHistoryRow) => {
+    if (row.status === "적용") return "border-emerald-500/25 bg-emerald-500/10 text-emerald-200";
+    if (row.status === "LOW_SAMPLE") return "border-amber-500/25 bg-amber-500/10 text-amber-200";
+    return "border-slate-600/40 bg-slate-800/50 text-slate-300";
+  };
+
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_12px_30px_rgba(2,6,23,0.2)]">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-100">
+            <Bot size={15} className="text-emerald-300" />
+            AI 엔진 변경 이력
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">자가보정과 adaptive weight를 실제 로그 기준으로 요약합니다.</p>
+        </div>
+        <History size={15} className="mt-0.5 shrink-0 text-slate-600" />
+      </div>
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-start gap-3 rounded-xl bg-slate-950/50 px-3 py-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.045)]">
+            <div className="w-11 shrink-0 pt-0.5 font-mono text-[10px] text-slate-500 tabular-nums">{row.date}</div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-slate-100">{row.title}</div>
+              <div className="mt-0.5 text-[11px] text-slate-500">{row.detail}</div>
+            </div>
+            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(row)}`}>
+              {engineStatusLabel(row.status)}
+            </span>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -1948,6 +2403,9 @@ export default function HomePage({
   const [calendarAlert, setCalendarAlert] = useState<any>(null);
   // 손절/목표가 근접 알림
   const [nearAlerts, setNearAlerts] = useState<any[]>([]);
+  const [signalLedger, setSignalLedger] = useState<any>(null);
+  const [adaptiveWeights, setAdaptiveWeights] = useState<any>(null);
+  const [selfLearningStatus, setSelfLearningStatus] = useState<any>(null);
   // 포지션 사이징 자본 (localStorage 저장)
   const [capital, setCapital] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
@@ -2201,6 +2659,32 @@ export default function HomePage({
     };
   }, [clientReady, selectedMarket]);
 
+  useEffect(() => {
+    if (!clientReady) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      Promise.allSettled([
+        mone.signalsLedger({ market: selectedMarket, limit: 12 }),
+        mone.adaptiveWeights({ limit: 12 }),
+        mone.journalSelfLearningStatus({ market: selectedMarket }),
+      ]).then(([ledger, weights, learning]) => {
+        if (!active) return;
+        setSignalLedger(ledger.status === "fulfilled" ? ledger.value : null);
+        setAdaptiveWeights(weights.status === "fulfilled" ? weights.value : null);
+        setSelfLearningStatus(learning.status === "fulfilled" ? learning.value : null);
+      }).catch(() => {
+        if (!active) return;
+        setSignalLedger(null);
+        setAdaptiveWeights(null);
+        setSelfLearningStatus(null);
+      });
+    }, 3200);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [clientReady, selectedMarket]);
+
   // 데이터 소스 신선도 로드 (마운트 1회)
   useEffect(() => {
     if (!clientReady) return;
@@ -2300,6 +2784,8 @@ export default function HomePage({
       .slice(0, 6);
   }, [allItems]);
 
+  const riskCount = holdings.filter((h) => ["위험", "주의", "HIGH", "WATCH"].includes(String(h.riskStatus || ""))).length;
+
   // ── 신호 자동 기록 (매수 검토 후보 로드 시)
   const dashboardAlerts = useMemo(() => {
     const alerts: { key: string; title: string; detail: string; tone: "amber" | "red" | "emerald" }[] = [];
@@ -2345,6 +2831,74 @@ export default function HomePage({
 
     return alerts.slice(0, 4);
   }, [todayEntries, watchItems, holdings, dataHealth]);
+
+  const topObservation = useMemo(
+    () => pickTopObservation(todayEntries, watchItems, allItems),
+    [todayEntries, watchItems, allItems],
+  );
+
+  const dailyBriefing = useMemo(
+    () => buildDailyBriefing({
+      topItem: topObservation,
+      regime: marketRegime,
+      dataHealth,
+      todayCount: todayEntries.length,
+      watchCount: watchItems.length,
+      riskCount,
+      selectedMarket,
+    }),
+    [topObservation, marketRegime, dataHealth, todayEntries.length, watchItems.length, riskCount, selectedMarket],
+  );
+
+  const alertTrackingRows = useMemo(
+    () => buildAlertTrackingRows({
+      signalLedger,
+      nearAlerts,
+      allItems,
+      todayEntries,
+      watchItems,
+      selectedMarket,
+    }),
+    [signalLedger, nearAlerts, allItems, todayEntries, watchItems, selectedMarket],
+  );
+
+  const engineHistoryRows = useMemo(
+    () => buildEngineHistoryRows(adaptiveWeights, selfLearningStatus),
+    [adaptiveWeights, selfLearningStatus],
+  );
+
+  const analysisItemsBySymbol = useMemo(() => {
+    const map = new Map<string, any>();
+    [...allItems, ...todayEntries, ...watchItems, ...holdings].forEach((item) => {
+      const symbol = String(item?.symbol || item?.code || item?.ticker || "").toUpperCase();
+      if (!symbol || map.has(symbol)) return;
+      map.set(symbol, item);
+    });
+    return map;
+  }, [allItems, todayEntries, watchItems, holdings]);
+
+  useEffect(() => {
+    if (!clientReady || typeof window === "undefined") return;
+    const handleNearAlert = (event: Event) => {
+      const alert = (event as CustomEvent).detail || {};
+      const symbol = String(alert.symbol || alert.code || alert.ticker || "").toUpperCase();
+      const matchedItem = analysisItemsBySymbol.get(symbol);
+      setSelectedItem({
+        ...(matchedItem || {}),
+        ...alert,
+        symbol: alert.symbol || matchedItem?.symbol,
+        name: alert.name || matchedItem?.name || matchedItem?.companyName || alert.symbol,
+        market: alert.market || matchedItem?.market || selectedMarket,
+        currentPrice: alert.currentPrice ?? matchedItem?.currentPrice ?? matchedItem?.price,
+        entry: matchedItem?.entry ?? matchedItem?.entryPrice ?? alert.entryPrice,
+        stop: matchedItem?.stop ?? matchedItem?.stopPrice ?? alert.stopPrice,
+        target: matchedItem?.target ?? matchedItem?.targetPrice ?? alert.targetPrice,
+        decisionBucket: matchedItem?.decisionBucket || (alert.type === "STOP" ? "리스크확인" : "기준가 근접"),
+      });
+    };
+    window.addEventListener("mone-open-near-alert", handleNearAlert);
+    return () => window.removeEventListener("mone-open-near-alert", handleNearAlert);
+  }, [analysisItemsBySymbol, clientReady, selectedMarket]);
 
   const basisWarning = useMemo(() => operationBasisWarning(operationSummary), [operationSummary]);
 
@@ -2397,8 +2951,6 @@ export default function HomePage({
     }, 5500);
     return () => window.clearTimeout(timer);
   }, [todayEntries, watchItems]);
-
-  const riskCount = holdings.filter((h) => ["위험", "주의", "HIGH", "WATCH"].includes(String(h.riskStatus || ""))).length;
 
   if (loading && !allItems.length) {
     return (
@@ -2457,6 +3009,10 @@ export default function HomePage({
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           {refreshWarning || "일부 초기 데이터를 불러오지 못해 사용 가능한 캐시와 기본 화면을 먼저 표시합니다."}
         </div>
+      )}
+
+      {!loading && (
+        <DailyBriefingCard briefing={dailyBriefing} onAnalyze={setSelectedItem} />
       )}
 
       {/* 마켓 레짐 배너 */}
@@ -2556,6 +3112,8 @@ export default function HomePage({
         <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-3 space-y-1.5">
           <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 px-0.5">가격 근접 알림</div>
           {nearAlerts.map((alert: any) => {
+            const symbolUpper = String(alert.symbol || "").toUpperCase();
+            const matchedItem = analysisItemsBySymbol.get(symbolUpper);
             const isStop = alert.type === "STOP";
             const gapSign = isStop ? "-" : "+";
             const currentFmt = Number(alert.currentPrice ?? 0).toLocaleString("ko-KR");
@@ -2565,21 +3123,44 @@ export default function HomePage({
             const priceLabel = isStop ? "손절" : "목표";
             const gapPct = Number(alert.gapPct ?? 0).toFixed(1);
             return (
-              <div
+              <button
+                type="button"
                 key={`${alert.symbol}-${alert.type}`}
+                onClick={() => {
+                  const itemForPanel = {
+                    ...(matchedItem || {}),
+                    ...alert,
+                    symbol: alert.symbol || matchedItem?.symbol,
+                    name: alert.name || matchedItem?.name || matchedItem?.companyName || alert.symbol,
+                    market: alert.market || matchedItem?.market || selectedMarket,
+                    currentPrice: alert.currentPrice ?? matchedItem?.currentPrice ?? matchedItem?.price,
+                    entry: matchedItem?.entry ?? matchedItem?.entryPrice ?? alert.entryPrice,
+                    stop: matchedItem?.stop ?? matchedItem?.stopPrice ?? alert.stopPrice,
+                    target: matchedItem?.target ?? matchedItem?.targetPrice ?? alert.targetPrice,
+                    decisionBucket: matchedItem?.decisionBucket || (alert.type === "STOP" ? "리스크확인" : "기준가 근접"),
+                  };
+                  setSelectedItem(itemForPanel);
+                }}
                 className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-[11px] ${
                   isStop
                     ? "border-red-700/40 bg-red-950/20 text-red-200"
                     : "border-emerald-700/40 bg-emerald-950/20 text-emerald-200"
-                }`}
+                } text-left transition-[background-color,transform] hover:bg-slate-900/70 active:scale-[0.99]`}
               >
                 <span className="font-semibold truncate min-w-0">{alert.name || alert.symbol}</span>
                 <span className="shrink-0 text-[10px] opacity-80 [font-variant-numeric:tabular-nums]">
                   {priceLabel}가 근접 (현재 {currentFmt} / {priceLabel} {priceFmt}, {gapSign}{gapPct}%)
                 </span>
-              </div>
+              </button>
             );
           })}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <AlertTrackingPreview rows={alertTrackingRows} />
+          <EngineHistoryPreview rows={engineHistoryRows} />
         </div>
       )}
 
@@ -2752,7 +3333,7 @@ export default function HomePage({
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {todayEntries.map((item, i) => (
-              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onAnalyze={openAnalysis} earningsMap={earningsMap} onTradePaper={onTradePaper ? (it) => {
+              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onSelect={setSelectedItem} onAnalyze={openAnalysis} earningsMap={earningsMap} onTradePaper={onTradePaper ? (it) => {
                   const mkt = normalizeMarket(it.market ?? it._market, it.symbol);
                   const rawPrice = Number(it.currentPrice ?? it.price ?? it.entryPrice ?? 0);
                   onTradePaper({ symbol: String(it.symbol), name: String(it.name || it.nameKr || it.symbol), price: rawPrice, market: mkt });
