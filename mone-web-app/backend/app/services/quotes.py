@@ -658,6 +658,122 @@ def fetch_quotes_bulk(market: str, symbols: list[str]) -> list[dict[str, Any]]:
     return results
 
 
+def fetch_orderbook_kr(symbol: str) -> dict[str, Any]:
+    """KIS 국내주식 호가 조회 (FHKST01010200) — 매도/매수 5단계 호가."""
+    normalized = data.normalize_symbol(symbol, "kr")
+    if not _kis_enabled():
+        return {"ok": False, "symbol": normalized, "market": "kr", "error": "KIS_APP_KEY/KIS_APP_SECRET 미설정"}
+    if not normalized.isdigit():
+        return {"ok": False, "symbol": normalized, "market": "kr", "error": "국장 종목코드 형식 아님"}
+
+    cfg = _kis_config()
+    url = f"{cfg['base_url']}/uapi/domestic-stock/v1/quotations/inquire-asking-price-exp-ccn"
+    params = {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": normalized.zfill(6)}
+    last_error = ""
+    for force in (False, True):
+        headers = _kis_headers("FHKST01010200", force_refresh=force)
+        if not headers:
+            return {"ok": False, "symbol": normalized, "market": "kr", "error": "KIS token 발급 실패"}
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=8)
+            payload = response.json() if response.text else {}
+            if response.status_code == 200 and payload.get("rt_cd") == "0":
+                output1 = payload.get("output1") or {}
+                asks: list[dict[str, Any]] = []
+                bids: list[dict[str, Any]] = []
+                for i in range(1, 6):
+                    ask_price = _safe_float(output1.get(f"askp{i}"))
+                    if ask_price and ask_price > 0:
+                        asks.append({"price": ask_price, "qty": int(_safe_float(output1.get(f"askp_rsqn{i}")) or 0)})
+                    bid_price = _safe_float(output1.get(f"bidp{i}"))
+                    if bid_price and bid_price > 0:
+                        bids.append({"price": bid_price, "qty": int(_safe_float(output1.get(f"bidp_rsqn{i}")) or 0)})
+                if not asks and not bids:
+                    last_error = "호가 응답 비어 있음"
+                else:
+                    total_ask = _safe_float(output1.get("total_askp_rsqn")) or float(sum(a["qty"] for a in asks))
+                    total_bid = _safe_float(output1.get("total_bidp_rsqn")) or float(sum(b["qty"] for b in bids))
+                    total = total_ask + total_bid
+                    return {
+                        "ok": True,
+                        "symbol": normalized,
+                        "market": "kr",
+                        "asks": asks,
+                        "bids": bids,
+                        "totalAskQty": int(total_ask),
+                        "totalBidQty": int(total_bid),
+                        "bidRatio": round(total_bid / total * 100, 1) if total > 0 else None,
+                        "priceTime": _now_label(),
+                    }
+            else:
+                last_error = f"{response.status_code}/{payload.get('msg_cd','')}/{payload.get('msg1','')}"
+        except Exception as exc:
+            last_error = str(exc)[:160]
+    return {"ok": False, "symbol": normalized, "market": "kr", "error": last_error or "호가 조회 실패"}
+
+
+def fetch_investor_flow_kr(symbol: str) -> dict[str, Any]:
+    """KIS 국내주식 투자자별 매매동향 조회 (FHKST01010900) — 기관/외국인/개인 순매수."""
+    normalized = data.normalize_symbol(symbol, "kr")
+    if not _kis_enabled():
+        return {"ok": False, "symbol": normalized, "market": "kr", "error": "KIS_APP_KEY/KIS_APP_SECRET 미설정"}
+    if not normalized.isdigit():
+        return {"ok": False, "symbol": normalized, "market": "kr", "error": "국장 종목코드 형식 아님"}
+
+    cfg = _kis_config()
+    url = f"{cfg['base_url']}/uapi/domestic-stock/v1/quotations/inquire-investor"
+    params = {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": normalized.zfill(6)}
+    last_error = ""
+    for force in (False, True):
+        headers = _kis_headers("FHKST01010900", force_refresh=force)
+        if not headers:
+            return {"ok": False, "symbol": normalized, "market": "kr", "error": "KIS token 발급 실패"}
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=8)
+            payload = response.json() if response.text else {}
+            if response.status_code == 200 and payload.get("rt_cd") == "0":
+                output = payload.get("output") or []
+                rows = output if isinstance(output, list) else ([output] if isinstance(output, dict) else [])
+                row = rows[0] if rows else {}
+                if not row:
+                    last_error = "투자자 응답 비어 있음"
+                else:
+                    inst_qty = _safe_float(row.get("orgn_ntby_qty"))
+                    foreign_qty = _safe_float(row.get("frgn_ntby_qty"))
+                    indiv_qty = _safe_float(row.get("prsn_ntby_qty"))
+                    inst_amt = _safe_float(row.get("orgn_ntby_tr_pbmn"))
+                    foreign_amt = _safe_float(row.get("frgn_ntby_tr_pbmn"))
+                    indiv_amt = _safe_float(row.get("prsn_ntby_tr_pbmn"))
+                    if foreign_qty is not None and inst_qty is not None and foreign_qty > 0 and inst_qty > 0:
+                        signal = "STRONG_BUY"
+                    elif (foreign_qty or 0) > 0 or (inst_qty or 0) > 0:
+                        signal = "BUY"
+                    elif (foreign_qty or 0) < 0 and (inst_qty or 0) < 0:
+                        signal = "SELL"
+                    else:
+                        signal = "NEUTRAL"
+                    return {
+                        "ok": True,
+                        "symbol": normalized,
+                        "market": "kr",
+                        "today": {
+                            "date": str(row.get("stck_bsop_date", "") or "").strip(),
+                            "instQty": inst_qty,
+                            "instAmt": inst_amt,
+                            "foreignQty": foreign_qty,
+                            "foreignAmt": foreign_amt,
+                            "indivQty": indiv_qty,
+                            "indivAmt": indiv_amt,
+                        },
+                        "signal": signal,
+                    }
+            else:
+                last_error = f"{response.status_code}/{payload.get('msg_cd','')}/{payload.get('msg1','')}"
+        except Exception as exc:
+            last_error = str(exc)[:160]
+    return {"ok": False, "symbol": normalized, "market": "kr", "error": last_error or "투자자 동향 조회 실패"}
+
+
 def fetch_kis_holdings_kr() -> dict[str, Any]:
     """KIS API TTTC8434R — 국내 주식잔고 조회 (실전/모의 자동 구분)"""
     if not _kis_enabled():

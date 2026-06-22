@@ -1183,6 +1183,17 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
   );
 }
 
+// chartSignalSummary는 객체(status/direction/chartSignalTag 등)이므로 JSX에 직접 렌더링하면
+// "Objects are not valid as a React child" 에러가 난다 — 짧은 한국어 요약 문자열로 변환한다.
+function chartSignalSummaryText(cs: any): string {
+  if (!cs || typeof cs !== "object") return "";
+  const dirLabel = cs.direction === "bullish" ? "상승 우위" : cs.direction === "bearish" ? "하락 우위" : null;
+  const tag = cs.chartSignalTag && cs.chartSignalTag !== "NO_SIGNAL" ? cs.chartSignalTag : null;
+  const score = cs.confluenceScore != null ? `컨플루언스 ${Number(cs.confluenceScore).toFixed(0)}` : null;
+  const parts = [dirLabel, tag, score].filter(Boolean);
+  return parts.length ? parts.join(" · ") : (cs.status === "unavailable" ? "차트 데이터 부족" : "신호 없음");
+}
+
 // ── 6차: 반영 여부 배지 + Score Breakdown 아코디언 패널
 function ScoreBreakdownPanel({ item }: { item: any }) {
   const [open, setOpen] = useState(false);
@@ -1259,14 +1270,18 @@ function ScoreBreakdownPanel({ item }: { item: any }) {
           )}
 
           {/* 요약 문자열 */}
-          {(item.chartSignalSummary || item.eventSummary || item.adaptiveScoreSummary) && (
-            <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">신호 요약</div>
-              {item.chartSignalSummary && <div className="text-[11px] text-slate-400"><span className="text-sky-400 font-medium">차트 </span>{item.chartSignalSummary}</div>}
-              {item.eventSummary && <div className="text-[11px] text-slate-400"><span className="text-amber-400 font-medium">이벤트 </span>{item.eventSummary}</div>}
-              {item.adaptiveScoreSummary && <div className="text-[11px] text-slate-400"><span className="text-emerald-400 font-medium">AI보정 </span>{item.adaptiveScoreSummary}</div>}
-            </div>
-          )}
+          {(() => {
+            const chartText = chartSignalSummaryText(item.chartSignalSummary);
+            if (!chartText && !item.eventSummary && !item.adaptiveScoreSummary) return null;
+            return (
+              <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">신호 요약</div>
+                {chartText && <div className="text-[11px] text-slate-400"><span className="text-sky-400 font-medium">차트 </span>{chartText}</div>}
+                {item.eventSummary && <div className="text-[11px] text-slate-400"><span className="text-amber-400 font-medium">이벤트 </span>{item.eventSummary}</div>}
+                {item.adaptiveScoreSummary && <div className="text-[11px] text-slate-400"><span className="text-emerald-400 font-medium">AI보정 </span>{item.adaptiveScoreSummary}</div>}
+              </div>
+            );
+          })()}
 
           {/* 진입·목표·손절 근거 */}
           {(item.entryBasis || item.targetBasis || item.stopBasis) && (

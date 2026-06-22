@@ -3776,6 +3776,20 @@ def api_quotes_refresh(
     return quotes.refresh_quotes(market=market, symbols=symbols, max_symbols=max_symbols)
 
 
+@app.get("/api/quotes/orderbook")
+def api_quotes_orderbook(symbol: str = Query(...), market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    if market != "kr":
+        return {"ok": False, "symbol": symbol, "market": market, "error": "호가창은 국장(KR)만 지원합니다."}
+    return quotes.fetch_orderbook_kr(symbol)
+
+
+@app.get("/api/quotes/investor")
+def api_quotes_investor(symbol: str = Query(...), market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    if market != "kr":
+        return {"ok": False, "symbol": symbol, "market": market, "error": "투자자 동향은 국장(KR)만 지원합니다."}
+    return quotes.fetch_investor_flow_kr(symbol)
+
+
 def _remove_routes(paths: set[str]) -> None:
     app.router.routes = [
         route
