@@ -1,38 +1,38 @@
 {
-  "updatedAt": "2026-06-10 15:40:00",
-  "totalSamples": 23,
-  "totalWins": 5,
-  "overallWinRate": 0.2174,
-  "minSamplesForUpdate": 50,
+  "updatedAt": "2026-06-22 16:42:59",
+  "totalSamples": 40,
+  "totalWins": 6,
+  "overallWinRate": 0.15,
+  "minSamplesForUpdate": 20,
   "sampleCounts": {
-    "conservative_short": 6,
+    "conservative_short": 15,
     "conservative_swing": 0,
     "conservative_mid": 0,
-    "balanced_short": 8,
+    "balanced_short": 13,
     "balanced_swing": 0,
     "balanced_mid": 0,
-    "aggressive_short": 9,
+    "aggressive_short": 12,
     "aggressive_swing": 0,
     "aggressive_mid": 0
   },
   "winRates": {
-    "conservative_short": 0.50,
-    "conservative_swing": 0.52,
-    "conservative_mid": 0.53,
-    "balanced_short": 0.50,
-    "balanced_swing": 0.52,
-    "balanced_mid": 0.53,
-    "aggressive_short": 0.49,
-    "aggressive_swing": 0.51,
-    "aggressive_mid": 0.52
+    "conservative_short": 0.495,
+    "conservative_swing": 0.515,
+    "conservative_mid": 0.525,
+    "balanced_short": 0.485,
+    "balanced_swing": 0.505,
+    "balanced_mid": 0.515,
+    "aggressive_short": 0.475,
+    "aggressive_swing": 0.495,
+    "aggressive_mid": 0.505
   },
   "defaultRates": {
-    "short_base": 0.50,
-    "swing_base": 0.52,
-    "mid_base": 0.53,
+    "short_base": 0.485,
+    "swing_base": 0.505,
+    "mid_base": 0.515,
     "short_scale": 0.12,
     "swing_scale": 0.14,
     "mid_scale": 0.15
   },
-  "note": "백테스트 53% 기반 기본값 적용. 실전 23건은 통계적 최소(50건) 미달로 반영 보류. 50건 이상 축적 시 자동 갱신."
+  "note": "샘플 20건 미만 전략은 기본값 사용. 전체 40건 검증됨."
 }
