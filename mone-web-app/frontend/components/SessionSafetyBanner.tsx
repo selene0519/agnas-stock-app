@@ -133,11 +133,16 @@ export default function SessionSafetyBanner({
 
           <div className="flex flex-wrap items-center gap-2">
             {alerts.slice(0, 3).map((alert, index) => (
-              <span key={`${normalizeSymbol(alert)}-${alert.type || index}`} className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
+              <button
+                type="button"
+                key={`${normalizeSymbol(alert)}-${alert.type || index}`}
+                onClick={() => window.dispatchEvent(new CustomEvent("mone-open-near-alert", { detail: alert }))}
+                className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-left text-xs text-amber-200 transition-[background-color,transform] hover:bg-amber-500/15 active:scale-[0.98]"
+              >
                 <BellRing size={11} />
                 {alertTitle(alert)}
                 {normalizeSymbol(alert) && <span className="font-mono text-amber-300/70">{normalizeSymbol(alert)}</span>}
-              </span>
+              </button>
             ))}
             <button onClick={refresh} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800">
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
