@@ -285,10 +285,27 @@ html[data-theme="light"] .mone-app-shell [class*="text-cyan-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-sky-300"] {
   color: #0369a1 !important;
 }
-html[data-theme="light"] .mone-app-shell [class*="bg-blue-"][class*="text-white"],
-html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"][class*="text-white"],
-html[data-theme="light"] .mone-app-shell [class*="bg-red-"][class*="text-white"] {
+html[data-theme="light"] .mone-app-shell [class*="bg-blue-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-red-"]:not([class*="/"])[class*="text-white"] {
   color: #ffffff !important;
+}
+/* Translucent washes (bg-emerald-500/10 etc.) are near-white in light mode —
+   force-white text on them was invisible. Use a solid, readable tone instead. */
+html[data-theme="light"] .mone-app-shell [class*="bg-blue-"][class*="/"][class*="text-white"] {
+  color: #1d4ed8 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"][class*="/"][class*="text-white"] {
+  color: #047857 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-red-"][class*="/"][class*="text-white"] {
+  color: #b91c1c !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-cyan-"][class*="/"][class*="text-white"] {
+  color: #0e7490 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-amber-"][class*="/"][class*="text-white"] {
+  color: #b45309 !important;
 }
 html[data-theme="light"] .mone-app-header {
   background-color: rgba(255, 255, 255, 0.9) !important;
