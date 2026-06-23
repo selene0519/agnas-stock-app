@@ -19,6 +19,7 @@ from fastapi.routing import APIRoute
 from app.engine import backtest, correction, data_quality, risk, session
 from app.services import advanced
 from app.services import chart_accuracy
+from app.services import company_deep_dive
 from app.services import data_loader as data
 from app.services import final_engine
 from app.services import insights
@@ -2775,6 +2776,19 @@ def api_stock_analysis(
         risk_flags = list(reco.get("riskFlags") or [])
         caution_reasons = list(reco.get("cautionReasons") or [])
 
+        company_item: dict = {}
+        try:
+            company_payload = data.company_analysis(mkt)
+            sym_norm = str(sym).strip().upper()
+            sym_ltrim = sym_norm.lstrip("0") or sym_norm
+            for item in company_payload.get("items", []):
+                item_sym = str(item.get("symbol", "")).strip().upper()
+                if item_sym == sym_norm or (item_sym.lstrip("0") or item_sym) == sym_ltrim:
+                    company_item = dict(item)
+                    break
+        except Exception:
+            company_item = {}
+
         # ── 보유/관심 여부 ───────────────────────────────────
         in_holdings = False
         holding_pnl: float | None = None
@@ -3034,6 +3048,7 @@ def api_stock_analysis(
                 "warningCount": len([c for c in bias_checks if c["level"] == "warning"]),
                 "cautionCount": len([c for c in bias_checks if c["level"] == "caution"]),
             },
+            "deepDive": company_deep_dive.build_company_deep_dive(company_item, reco, current_price, mkt),
         }
     except Exception as e:
         return {"status": "ERROR", "error": str(e)[:200], "symbol": symbol}

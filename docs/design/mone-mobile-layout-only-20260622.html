@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MONE layout-only reference concepts</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --ink: #101820;
+      --muted: #66727c;
+      --line: rgba(16,24,32,.08);
+      --green: #12b99a;
+      --blue: #2464e8;
+      --red: #e6423a;
+      --amber: #f5a623;
+      font-family: "Pretendard", "Noto Sans KR", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 36px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 8% 12%, rgba(18,185,154,.14), transparent 30%),
+        radial-gradient(circle at 92% 18%, rgba(36,100,232,.13), transparent 30%),
+        #dce5e8;
+      -webkit-font-smoothing: antialiased;
+    }
+    .board {
+      width: 1460px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+    }
+    .phone {
+      width: 340px;
+      height: 736px;
+      border-radius: 34px;
+      overflow: hidden;
+      position: relative;
+      background: #eef3f5;
+      box-shadow: 0 26px 80px rgba(18,34,42,.24);
+    }
+    .screen {
+      height: 100%;
+      overflow: hidden;
+      padding: 18px 16px 80px;
+      position: relative;
+    }
+    .status {
+      height: 22px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .battery {
+      display: inline-block;
+      width: 22px;
+      height: 10px;
+      margin-left: 5px;
+      border: 1.4px solid currentColor;
+      border-radius: 3px;
+      position: relative;
+      vertical-align: -1px;
+    }
+    .battery::before {
+      content: "";
+      position: absolute;
+      inset: 2px 5px 2px 2px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+    .battery::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 2px;
+      width: 2px;
+      height: 4px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+    .top {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 20px;
+      font-weight: 950;
+      letter-spacing: -.04em;
+    }
+    .mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 12px;
+      background: linear-gradient(135deg, #12b99a, #2265e8);
+      box-shadow: 0 9px 20px rgba(18,185,154,.24);
+    }
+    .icons { display: flex; gap: 7px; }
+    .icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.76);
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    h1, h2, h3, p { margin: 0; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 950;
+      color: #fff;
+      background: var(--green);
+      white-space: nowrap;
+    }
+    .bottom {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 70px;
+      padding: 8px 14px 12px;
+      border-radius: 24px 24px 0 0;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 -14px 34px rgba(18,34,42,.12);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      z-index: 2;
+    }
+    .nav {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 4px;
+      color: #aeb8bd;
+      font-size: 10px;
+      font-weight: 900;
+    }
+    .nav.on { color: var(--green); }
+    .homebar {
+      position: absolute;
+      width: 108px;
+      height: 4px;
+      left: 50%;
+      bottom: 7px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: #111;
+      z-index: 3;
+    }
+
+    /* Layout 1: reference #1 structure */
+    .l1 .hero {
+      margin-top: 20px;
+      height: 154px;
+      border-radius: 18px;
+      padding: 16px;
+      background: #fff;
+      box-shadow: 0 15px 36px rgba(24,42,52,.09);
+      display: grid;
+      grid-template-columns: 1fr 126px;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .l1 h1 {
+      margin-top: 10px;
+      font-size: 23px;
+      line-height: 1.05;
+      letter-spacing: -.05em;
+    }
+    .l1 .hero p {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.42;
+      font-weight: 760;
+    }
+    .map-art {
+      border-radius: 20px;
+      position: relative;
+      background:
+        linear-gradient(150deg, transparent 46%, rgba(21,27,32,.08) 47% 49%, transparent 50%),
+        linear-gradient(25deg, transparent 38%, rgba(21,27,32,.08) 39% 41%, transparent 42%),
+        #f1f6f8;
+    }
+    .map-art::before {
+      content: "M";
+      position: absolute;
+      top: 24px;
+      left: 42px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50% 50% 50% 12px;
+      transform: rotate(45deg);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 950;
+      background: var(--blue);
+      box-shadow: 0 14px 20px rgba(36,100,232,.26);
+    }
+    .map-art::after {
+      content: "";
+      position: absolute;
+      right: 16px;
+      bottom: 21px;
+      width: 52px;
+      height: 24px;
+      border-radius: 9px 12px 8px 8px;
+      background: #151b20;
+      box-shadow: -22px 8px 0 -8px #12b99a, -35px 12px 0 -9px #fff;
+    }
+    .tile-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .tile {
+      height: 110px;
+      border-radius: 14px;
+      padding: 14px;
+      background: #fff;
+      box-shadow: 0 12px 28px rgba(24,42,52,.08);
+      display: grid;
+      align-content: space-between;
+      overflow: hidden;
+    }
+    .tile strong {
+      font-size: 16px;
+      line-height: 1.2;
+    }
+    .tile small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 760;
+    }
+    .tile .num {
+      justify-self: end;
+      color: var(--green);
+      font-size: 36px;
+      line-height: 1;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+    .tile.blue {
+      color: #fff;
+      background: linear-gradient(145deg, #1263e6, #15a4d5);
+    }
+    .tile.blue small { color: rgba(255,255,255,.8); }
+    .section-title {
+      margin: 18px 0 10px;
+      font-size: 15px;
+      font-weight: 950;
+    }
+    .promo-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+    .promo {
+      height: 98px;
+      border-radius: 14px;
+      padding: 12px;
+      color: #fff;
+      background: #17232a;
+      display: grid;
+      align-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .promo:nth-child(2) { background: #146de7; }
+    .promo:nth-child(3) { background: #0f9785; }
+    .promo b { font-size: 13px; line-height: 1.25; }
+    .promo small { font-size: 10px; line-height: 1.35; opacity: .78; font-weight: 780; }
+
+    /* Layout 2: reference #2 structure */
+    .l2 { background: #f6f6f6; }
+    .center-brand {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 17px;
+      font-weight: 950;
+    }
+    .greeting {
+      margin-top: 20px;
+      font-size: 23px;
+      line-height: 1.16;
+      letter-spacing: -.05em;
+      font-weight: 950;
+    }
+    .notice-card {
+      margin-top: 13px;
+      border-radius: 12px;
+      background: #fff;
+      padding: 15px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+    .notice-card h2 {
+      color: var(--red);
+      font-size: 16px;
+      line-height: 1.25;
+    }
+    .notice-row {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+    .mini-spark {
+      height: 34px;
+      border-radius: 9px;
+      background:
+        linear-gradient(135deg, transparent 40%, #1c2428 41% 46%, transparent 47%),
+        #eef4f5;
+      box-shadow: inset 0 -11px 0 rgba(18,185,154,.14);
+    }
+    .notice-row b { font-size: 14px; }
+    .notice-row small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1.55fr 1fr;
+      gap: 8px;
+    }
+    .action-dark,
+    .action-light {
+      height: 104px;
+      border-radius: 8px;
+      padding: 15px;
+      display: grid;
+      align-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .action-dark {
+      color: #fff;
+      background: #453d3c;
+    }
+    .action-dark::after {
+      content: "";
+      position: absolute;
+      right: 18px;
+      bottom: 17px;
+      width: 52px;
+      height: 30px;
+      border-radius: 9px;
+      transform: rotate(-18deg);
+      background: #ff4152;
+      box-shadow: 0 0 0 5px rgba(255,255,255,.85);
+    }
+    .action-light {
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(0,0,0,.08);
+    }
+    .action-dark b,
+    .action-light b { font-size: 15px; }
+    .action-dark small,
+    .action-light small {
+      display: block;
+      margin-top: 7px;
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 760;
+      color: var(--muted);
+    }
+    .action-dark small { color: rgba(255,255,255,.76); }
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .mini-grid .action-light {
+      height: 92px;
+      padding: 12px;
+    }
+    .shortcut-row {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .shortcut {
+      flex: 0 0 72px;
+      height: 66px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 7px 18px rgba(0,0,0,.07);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 9px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .shortcut span {
+      width: 27px;
+      height: 27px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--red);
+      background: #fff0f0;
+      font-weight: 950;
+    }
+
+    /* Layout 3: reference #3 structure */
+    .l3 { background: #faf9f7; }
+    .location {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 950;
+    }
+    .black-banner {
+      margin-top: 21px;
+      height: 94px;
+      border-radius: 10px;
+      padding: 16px;
+      background: #020202;
+      color: #fff;
+      display: grid;
+      grid-template-columns: 1fr 80px;
+      align-items: center;
+      overflow: hidden;
+    }
+    .black-banner b {
+      display: block;
+      font-size: 17px;
+      line-height: 1.38;
+    }
+    .black-banner span {
+      display: block;
+      margin-top: 5px;
+      color: #ffdf43;
+      font-size: 15px;
+      font-weight: 950;
+    }
+    .clap { font-size: 50px; transform: rotate(-8deg); }
+    .routine-card {
+      margin-top: 14px;
+      border-radius: 13px;
+      background: #fff;
+      padding: 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.07);
+      overflow: hidden;
+    }
+    .routine-main {
+      display: grid;
+      grid-template-columns: 1fr 70px;
+      gap: 10px;
+      align-items: center;
+    }
+    .routine-card h2 {
+      margin-top: 8px;
+      font-size: 21px;
+      line-height: 1.25;
+      letter-spacing: -.04em;
+    }
+    .orb {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: #bcf5d9;
+      display: grid;
+      place-items: center;
+      color: #347c63;
+      font-size: 28px;
+      font-weight: 950;
+    }
+    .cta {
+      margin-top: 18px;
+      height: 52px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: #ff512f;
+      font-size: 14px;
+      font-weight: 950;
+    }
+    .split-row {
+      margin: 15px -18px -18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-top: 1px solid #edf0f0;
+    }
+    .split-row span {
+      height: 46px;
+      display: grid;
+      place-items: center;
+      color: #5d666b;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .benefit-title {
+      margin: 18px 0 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 16px;
+      font-weight: 950;
+    }
+    .benefit-title small {
+      color: #ff7d43;
+      background: #fff0e8;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 950;
+    }
+    .benefit-row {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .benefit {
+      flex: 0 0 124px;
+      height: 118px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(0,0,0,.06);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 13px;
+      font-size: 13px;
+      line-height: 1.32;
+      font-weight: 950;
+    }
+    .benefit strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+
+    /* Layout 4: reference #4 structure */
+    .l4 { background: #e9ecf1; }
+    .soft-brand {
+      font-size: 20px;
+      font-weight: 950;
+      color: #697079;
+      letter-spacing: -.05em;
+    }
+    .quiz-card {
+      margin-top: 22px;
+      border-radius: 14px;
+      background: #fff;
+      padding: 16px;
+      box-shadow: 0 10px 28px rgba(27,34,42,.08);
+    }
+    .point {
+      display: inline-flex;
+      padding: 5px 9px;
+      border-radius: 7px;
+      background: #eaf3ff;
+      color: #3677e8;
+      font-size: 10px;
+      font-weight: 950;
+    }
+    .quiz-card h2 {
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.55;
+      letter-spacing: -.01em;
+    }
+    .answers {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .answers span {
+      height: 34px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px #dce2e6;
+      font-size: 12px;
+      font-weight: 900;
+      color: #475057;
+    }
+    .clinic-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+    .clinic {
+      height: 104px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(27,34,42,.07);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 12px 6px;
+      font-size: 13px;
+      line-height: 1.3;
+      font-weight: 950;
+    }
+    .clinic strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .blue-banner {
+      margin-top: 13px;
+      height: 58px;
+      border-radius: 12px;
+      padding: 12px 15px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(27,34,42,.07);
+      display: grid;
+      grid-template-columns: 1fr 46px;
+      align-items: center;
+      color: #1d73d9;
+    }
+    .blue-banner b { font-size: 13px; }
+    .blue-banner small {
+      display: block;
+      margin-top: 3px;
+      color: #5091de;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .panel {
+      margin-top: 13px;
+      border-radius: 15px;
+      background: #fff;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(27,34,42,.07);
+    }
+    .toggle {
+      margin: 14px;
+      height: 42px;
+      border-radius: 9px;
+      padding: 4px;
+      background: #f3f4f5;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      font-size: 12px;
+      font-weight: 950;
+      color: #98a1a8;
+    }
+    .toggle span {
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+    }
+    .toggle .on {
+      background: #fff;
+      color: #1d73d9;
+      box-shadow: 0 4px 12px rgba(27,34,42,.08);
+    }
+    .panel-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      padding: 5px 14px 18px;
+    }
+    .panel-list div {
+      display: grid;
+      place-items: center;
+      gap: 6px;
+      text-align: center;
+      color: #4e5960;
+      font-size: 11px;
+      line-height: 1.25;
+      font-weight: 850;
+    }
+    .panel-list strong { font-size: 26px; line-height: 1; }
+  </style>
+</head>
+<body>
+  <main class="board" aria-label="MONE mobile layout-only reference concepts">
+    <section class="phone l1" aria-label="Layout 1">
+      <div class="screen">
+        <div class="status"><span>11:46</span><span>5G <span class="battery"></span></span></div>
+        <div class="top">
+          <div class="brand"><span class="mark">M</span>MONE</div>
+          <div class="icons"><span class="icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span></div>
+        </div>
+        <section class="hero">
+          <div>
+            <span class="chip" style="background:#ff8d24">오늘의 판단</span>
+            <h1>진입 후보<br>먼저 볼까요?</h1>
+            <p>조건을 통과한 종목과 보유 리스크를 한 화면에서 확인합니다.</p>
+          </div>
+          <div class="map-art"></div>
+        </section>
+        <div class="tile-grid">
+          <article class="tile"><div><strong>진입 후보</strong><small>근거·가격·손익비 통과</small></div><span class="num">6</span></article>
+          <article class="tile blue"><div><strong>보유 리스크</strong><small>손절선 근접 종목 확인</small></div><span class="num" style="color:#fff">0</span></article>
+          <article class="tile"><div><strong>관찰 후보</strong><small>가격 도달 대기</small></div><span class="num">8</span></article>
+          <article class="tile"><div><strong>차단 후보</strong><small>뉴스·과열·재무 위험</small></div><span class="num" style="color:var(--red)">2</span></article>
+        </div>
+        <div class="section-title">MONE에서만 먼저 확인</div>
+        <div class="promo-row">
+          <div class="promo"><b>추천 근거</b><small>왜 후보인지<br>바로 보기</small></div>
+          <div class="promo"><b>진입 알림</b><small>진입가 근접<br>후보 추적</small></div>
+          <div class="promo"><b>검증 일지</b><small>추천 후 결과<br>누적 확인</small></div>
+        </div>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>홈</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>탐색</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg>보유</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M4 18h16M6 14l4-4 3 3 5-6"/></svg>분석</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>더보기</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone l2" aria-label="Layout 2">
+      <div class="screen">
+        <div class="status"><span>6:22</span><span>5G <span class="battery"></span></span></div>
+        <div class="center-brand"><span style="color:#ef3e45">오늘장</span> MONE</div>
+        <div class="greeting">경동 님,<br>오늘도 차분하게<br>판단해요.</div>
+        <section class="notice-card">
+          <h2>장 시작 17분 전입니다.</h2>
+          <div class="notice-row">
+            <span class="mini-spark"></span>
+            <span><b>첫 확인: LG이노텍</b><small>08:43 기준 · 진입가 1.1% 거리</small></span>
+            <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </section>
+        <div class="section-title">오늘 할 판단</div>
+        <div class="action-grid">
+          <article class="action-dark"><div><b>진입 후보</b><small>오늘 검토할 종목을 먼저 확인</small></div></article>
+          <article class="action-light"><div><b>자동매매?</b><small>아니요<br>판단 보조만</small></div><svg viewBox="0 0 24 24" style="color:var(--red)"><path d="M12 3v18M7 8l5-5 5 5"/></svg></article>
+        </div>
+        <div class="mini-grid">
+          <article class="action-light"><b>국장</b><small>후보 6</small><svg viewBox="0 0 24 24" style="color:var(--red)"><path d="M6 14l4-4 3 3 5-6"/></svg></article>
+          <article class="action-light"><b>미장</b><small>장전 대기</small><svg viewBox="0 0 24 24" style="color:var(--red)"><path d="M4 18h16M8 15V9m4 6V5m4 10v-4"/></svg></article>
+          <article class="action-light"><b>검증</b><small>결과 누적</small><svg viewBox="0 0 24 24" style="color:var(--red)"><path d="M6 4h12v16H6zM9 8h6M9 12h6"/></svg></article>
+        </div>
+        <div class="section-title">원클릭 바로가기</div>
+        <div class="shortcut-row">
+          <div class="shortcut"><span>!</span>리스크</div>
+          <div class="shortcut"><span>↗</span>차트</div>
+          <div class="shortcut"><span>₩</span>손익비</div>
+          <div class="shortcut"><span>D</span>실적</div>
+        </div>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>홈</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>탐색</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg>보유</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M4 18h16M6 14l4-4 3 3 5-6"/></svg>분석</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>더보기</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone l3" aria-label="Layout 3">
+      <div class="screen">
+        <div class="status"><span>3:24</span><span>5G <span class="battery"></span></span></div>
+        <div class="location">
+          <span><svg viewBox="0 0 24 24" style="vertical-align:-4px"><path d="M12 21s6-5.3 6-11a6 6 0 0 0-12 0c0 5.7 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></svg> 오늘의 MONE</span>
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg></span>
+        </div>
+        <section class="black-banner">
+          <div><b>진입 전 한 번 더<br>근거를 확인하세요.</b><span>충동매수 방지 +3</span></div>
+          <div class="clap">👏</div>
+        </section>
+        <section class="routine-card">
+          <div class="routine-main">
+            <div><span class="chip" style="background:#fff0e5;color:#f47f28">🔥 검토 루틴</span><h2>후보 6개 중<br>3개만 진입 검토 가능</h2></div>
+            <div class="orb">6</div>
+          </div>
+          <div class="cta">오늘 후보 검토하기</div>
+          <div class="split-row"><span>📖 추천 근거</span><span>📍 진입 기준</span></div>
+        </section>
+        <div class="benefit-title"><span>판단 근거 모아보기</span><small>5개</small></div>
+        <div class="benefit-row">
+          <div class="benefit"><strong>👑</strong>점수보다<br>근거 먼저</div>
+          <div class="benefit"><strong>₩</strong>손익비<br>확인</div>
+          <div class="benefit"><strong>🧾</strong>검증 결과<br>누적</div>
+        </div>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>홈</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>탐색</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg>보유</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M4 18h16M6 14l4-4 3 3 5-6"/></svg>분석</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>더보기</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone l4" aria-label="Layout 4">
+      <div class="screen">
+        <div class="status"><span>6:04</span><span>5G <span class="battery"></span></span></div>
+        <div class="top">
+          <div class="soft-brand">나만의 MONE.</div>
+          <div class="icons"><span class="icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span class="icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg></span></div>
+        </div>
+        <section class="quiz-card">
+          <span class="point">오늘의 리스크 체크 4개</span>
+          <h2>Q. 손절선에 가까운 보유 종목은 신규 진입보다 먼저 확인한다.</h2>
+          <div class="answers"><span>● 그렇다</span><span>✕ 아니다</span></div>
+        </section>
+        <div class="clinic-grid">
+          <div class="clinic"><strong>📍</strong>진입 후보<br>확인</div>
+          <div class="clinic"><strong>🩺</strong>보유 리스크<br>점검</div>
+          <div class="clinic"><strong>📈</strong>차트 분석<br>보기</div>
+        </div>
+        <section class="blue-banner">
+          <div><b>주말/야간에도 기준은 확인 가능</b><small>추천 기준일과 OHLCV 최신일 분리 표시</small></div>
+          <svg viewBox="0 0 24 24" style="width:38px;height:38px;color:#3678ff"><path d="M12 21s6-5.3 6-11a6 6 0 0 0-12 0c0 5.7 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></svg>
+        </section>
+        <section class="panel">
+          <div class="toggle"><span class="on">보유 점검</span><span>진입 점검</span></div>
+          <div class="panel-list">
+            <div><strong>₩</strong>평가손익<br>확인</div>
+            <div><strong>⚠</strong>손절선<br>근접</div>
+            <div><strong>🧾</strong>추천 근거<br>비교</div>
+          </div>
+        </section>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>홈</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>탐색</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg>보유</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M4 18h16M6 14l4-4 3 3 5-6"/></svg>분석</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>더보기</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

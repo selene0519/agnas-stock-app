@@ -4321,12 +4321,36 @@ def similar_pattern_history(
     df, source = _load_ohlcv(target, market)
     max_horizon = max(horizons)
     min_rows = 40 + max_horizon
+    buffer_days = 5
+
+    def _period_payload(
+        frame: pd.DataFrame,
+        *,
+        valid_rows: int | None = None,
+        candidate_rows: int | None = None,
+    ) -> dict[str, Any]:
+        has_dates = not frame.empty and "date" in frame.columns
+        return {
+            "basis": "all_available_ohlcv",
+            "minRowsRequired": min_rows,
+            "availableRows": int(len(frame)),
+            "validFeatureRows": valid_rows,
+            "candidateRows": candidate_rows,
+            "excludedRecentBars": buffer_days,
+            "horizons": list(horizons),
+            "topN": top_n,
+            "startDate": str(frame.iloc[0]["date"]) if has_dates else None,
+            "endDate": str(frame.iloc[-1]["date"]) if has_dates else None,
+            "source": source,
+        }
+
     if df.empty or len(df) < min_rows:
         return {
             "status": "NO_DATA",
             "symbol": target,
             "market": market,
             "message": f"유사 패턴 분석에는 최소 {min_rows}일 이상의 OHLCV가 필요합니다.",
+            "period": _period_payload(df),
             "matches": [],
             "summary": {},
         }
@@ -4362,6 +4386,7 @@ def similar_pattern_history(
             "symbol": target,
             "market": market,
             "message": "지표를 계산할 데이터가 부족합니다.",
+            "period": _period_payload(work, valid_rows=0),
             "matches": [],
             "summary": {},
         }
@@ -4374,7 +4399,6 @@ def similar_pattern_history(
     current_row = valid.loc[current_idx]
     current_z = z.loc[current_idx]
 
-    buffer_days = 5  # 직전 구간은 현재와 흐름이 이어져 있어 사실상 같은 패턴이므로 제외
     eligible_idx = [
         idx for idx in valid.index
         if idx <= len(work) - 1 - max_horizon and idx <= current_idx - buffer_days
@@ -4385,6 +4409,7 @@ def similar_pattern_history(
             "symbol": target,
             "market": market,
             "message": "이후 수익률을 계산할 수 있는 과거 유사 시점이 부족합니다.",
+            "period": _period_payload(work, valid_rows=int(len(valid)), candidate_rows=0),
             "matches": [],
             "summary": {},
         }
@@ -4443,6 +4468,7 @@ def similar_pattern_history(
         "matchCount": len(matches),
         "matches": matches,
         "summary": summary,
+        "period": _period_payload(work, valid_rows=int(len(valid)), candidate_rows=int(len(eligible_idx))),
         "message": f"과거 {len(matches)}개 유사 시점 기준 통계이며 투자 조언이 아닙니다.",
     }
 

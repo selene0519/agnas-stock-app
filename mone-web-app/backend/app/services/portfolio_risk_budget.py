@@ -89,6 +89,19 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
     total_loss_budget = 0.0
     missing_stop_count = 0
 
+    if not rows:
+        return {
+            "status": "NO_HOLDINGS",
+            "market": market,
+            "policy": POLICY,
+            "totalValue": 0,
+            "totalLossBudgetPct": 0.0,
+            "missingStopCount": 0,
+            "warnings": ["보유종목이 없어 리스크 예산을 계산하지 않았습니다."],
+            "sectors": [],
+            "items": [],
+        }
+
     for row in rows:
         mk = "us" if str(row.get("market") or market).lower() == "us" else "kr"
         symbol = str(row.get("symbol") or row.get("ticker") or "").strip().upper()

@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MONE mobile redesign mockup</title>
+  <style>
+    :root {
+      --canvas: #e9edf0;
+      --ink: #102023;
+      --muted: #7c8a8f;
+      --line: rgba(16, 32, 35, 0.1);
+      --teal: #12b99d;
+      --teal-strong: #00a982;
+      --blue: #2563eb;
+      --red: #e53935;
+      --amber: #ffb83d;
+      --card: #ffffff;
+      --soft: #f5f7f7;
+      --cream: #fff6db;
+      --shadow: 0 18px 42px rgba(15, 34, 41, 0.12), 0 2px 8px rgba(15, 34, 41, 0.05);
+      font-family: "Pretendard", "Inter", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 14% 12%, rgba(18, 185, 157, 0.14), transparent 30%),
+        radial-gradient(circle at 88% 22%, rgba(37, 99, 235, 0.12), transparent 28%),
+        #dce2e6;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      display: grid;
+      place-items: center;
+      padding: 34px;
+    }
+
+    .board {
+      width: 1080px;
+      min-height: 860px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 38px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      border-radius: 36px;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+      background: var(--canvas);
+      color: var(--ink);
+      box-shadow: 0 30px 90px rgba(7, 15, 18, 0.28);
+    }
+
+    .screen {
+      height: 100%;
+      overflow: hidden;
+      padding: 18px 18px 82px;
+      position: relative;
+    }
+
+    .dark {
+      --canvas: #080d12;
+      --ink: #ecf6f3;
+      --muted: #8a9b9b;
+      --line: rgba(255, 255, 255, 0.1);
+      --card: #11191d;
+      --soft: #151f23;
+      --cream: rgba(255, 184, 61, 0.14);
+      --shadow: 0 18px 42px rgba(0, 0, 0, 0.38), 0 2px 8px rgba(0, 0, 0, 0.24);
+      background:
+        linear-gradient(180deg, #0e151a 0%, #070b0e 70%),
+        #080d12;
+    }
+
+    .status {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0;
+      padding: 0 12px;
+      color: var(--ink);
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ink);
+      opacity: 0.9;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .battery {
+      width: 22px;
+      height: 10px;
+      border: 1.5px solid currentColor;
+      border-radius: 3px;
+      position: relative;
+    }
+    .battery::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 2px;
+      width: 2px;
+      height: 4px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+    .battery::before {
+      content: "";
+      position: absolute;
+      inset: 2px 5px 2px 2px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+
+    .topbar {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 900;
+      font-size: 21px;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      background: conic-gradient(from 200deg, #12b99d, #1c6df2, #12b99d);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 950;
+      box-shadow: 0 10px 20px rgba(18, 185, 157, 0.24);
+    }
+
+    .icons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.55);
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .dark .icon-btn { background: rgba(255, 255, 255, 0.06); }
+    .icon-btn svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .mode-tabs {
+      margin-top: 22px;
+      height: 42px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    .mode-tabs span {
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+    }
+
+    .mode-tabs .active {
+      color: #fff;
+      background: var(--teal);
+      box-shadow: 0 12px 24px rgba(18, 185, 157, 0.22);
+    }
+    .dark .mode-tabs .active {
+      color: #04100e;
+      background: #42e0bf;
+    }
+
+    .date-mini {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      align-self: center;
+      font-weight: 700;
+    }
+
+    .hero {
+      margin-top: 18px;
+      background: var(--card);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      min-height: 240px;
+      position: relative;
+      overflow: hidden;
+    }
+    .dark .hero {
+      box-shadow: var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -36px;
+      top: -34px;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(18, 185, 157, 0.18), rgba(37, 99, 235, 0.05) 55%, transparent 70%);
+    }
+
+    .dot-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--teal-strong);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+    }
+    .dark .dot-label { color: #42e0bf; }
+    .dot-label::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 99px;
+      background: currentColor;
+    }
+
+    .hero-main {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1fr 92px;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .headline {
+      font-size: 27px;
+      line-height: 1.13;
+      font-weight: 950;
+      letter-spacing: -0.03em;
+      text-wrap: balance;
+    }
+
+    .subcopy {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .condition {
+      height: 102px;
+      border-radius: 25px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background: #fff1f2;
+      color: var(--red);
+      font-weight: 950;
+    }
+    .dark .condition {
+      background: rgba(229, 57, 53, 0.14);
+      box-shadow: inset 0 0 0 1px rgba(229, 57, 53, 0.18);
+    }
+    .condition .num {
+      font-size: 36px;
+      line-height: 0.95;
+      font-variant-numeric: tabular-nums;
+    }
+    .condition small {
+      display: block;
+      margin-top: 6px;
+      color: #b14245;
+      font-size: 11px;
+    }
+    .dark .condition small { color: #ff9aa0; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat {
+      border-radius: 17px;
+      background: var(--soft);
+      box-shadow: inset 0 0 0 1px var(--line);
+      min-height: 68px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 9px 4px;
+    }
+    .stat.good {
+      color: var(--teal-strong);
+      background: rgba(18, 185, 157, 0.1);
+      box-shadow: inset 0 0 0 1px rgba(18, 185, 157, 0.28);
+    }
+    .dark .stat.good {
+      color: #42e0bf;
+      background: rgba(18, 185, 157, 0.14);
+    }
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .section {
+      margin-top: 14px;
+      border-radius: 22px;
+      padding: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    .dark .section { box-shadow: var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .section-head .more {
+      color: #bd7a13;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .watch-list {
+      display: grid;
+      gap: 8px;
+    }
+    .stock-row {
+      min-height: 48px;
+      border-radius: 14px;
+      background: var(--cream);
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 10px 10px 14px;
+      font-size: 13px;
+      font-weight: 850;
+      color: #8b520b;
+    }
+    .dark .stock-row {
+      color: #ffd48a;
+      box-shadow: inset 0 0 0 1px rgba(255, 184, 61, 0.12);
+    }
+    .stock-row .code {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: rgba(139, 82, 11, 0.7);
+    }
+    .dark .stock-row .code { color: rgba(255, 212, 138, 0.64); }
+    .badge {
+      min-width: 56px;
+      border-radius: 10px;
+      background: rgba(255, 184, 61, 0.42);
+      color: #9b5f08;
+      padding: 6px 7px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 950;
+    }
+    .dark .badge {
+      color: #180f04;
+      background: #ffbf4b;
+    }
+
+    .markets {
+      margin-top: 14px;
+      border-radius: 22px;
+      background: var(--card);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .dark .markets { box-shadow: var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+    .warning {
+      height: 48px;
+      border-radius: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 0 14px;
+      background: #fff1f1;
+      color: var(--red);
+      box-shadow: inset 0 0 0 1px rgba(229, 57, 53, 0.25);
+      font-size: 13px;
+      font-weight: 950;
+    }
+    .dark .warning {
+      background: rgba(229, 57, 53, 0.11);
+    }
+
+    .ticker-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      margin-top: 10px;
+    }
+    .ticker {
+      height: 58px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background: var(--soft);
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .ticker strong {
+      display: block;
+      color: var(--ink);
+      font-size: 16px;
+      margin-top: 3px;
+      font-variant-numeric: tabular-nums;
+    }
+    .ticker .red { color: var(--red); }
+    .ticker .green { color: var(--teal-strong); }
+    .dark .ticker .green { color: #42e0bf; }
+
+    .tools {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .tool-card {
+      height: 92px;
+      border-radius: 18px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      padding: 13px;
+      display: grid;
+      align-content: space-between;
+    }
+    .dark .tool-card { box-shadow: var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+    .tool-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 10px;
+      background: rgba(18, 185, 157, 0.12);
+      display: grid;
+      place-items: center;
+      color: var(--teal-strong);
+    }
+    .dark .tool-icon { color: #42e0bf; background: rgba(66, 224, 191, 0.12); }
+    .tool-icon svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tool-card span {
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.25;
+      text-wrap: balance;
+    }
+
+    .bottom-nav {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 72px;
+      padding: 8px 18px 12px;
+      border-radius: 24px 24px 0 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 2px;
+      background: rgba(255, 255, 255, 0.93);
+      box-shadow: 0 -16px 40px rgba(8, 18, 20, 0.11);
+      backdrop-filter: blur(18px);
+    }
+    .dark .bottom-nav {
+      background: rgba(13, 20, 23, 0.92);
+      box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.32);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .nav-item {
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 4px;
+      color: #bcc4c6;
+      font-size: 10px;
+      font-weight: 850;
+    }
+    .nav-item.active { color: var(--teal-strong); }
+    .dark .nav-item.active { color: #42e0bf; }
+    .nav-item svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2.1;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .home-indicator {
+      position: absolute;
+      left: 50%;
+      bottom: 8px;
+      transform: translateX(-50%);
+      width: 116px;
+      height: 4px;
+      border-radius: 99px;
+      background: #0b0f10;
+      opacity: 0.95;
+      z-index: 3;
+    }
+    .dark .home-indicator { background: rgba(255, 255, 255, 0.82); }
+
+    .mock-label {
+      position: absolute;
+      top: 22px;
+      left: 26px;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.02em;
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 24px 0; }
+      .board {
+        width: 100%;
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="board" aria-label="MONE mobile redesign light and dark mockups">
+    <section class="phone" aria-label="MONE light mode">
+      <div class="screen">
+        <div class="status">
+          <span>5:38</span>
+          <span class="status-icons"><span>5G</span><span class="battery"></span></span>
+        </div>
+
+        <div class="topbar">
+          <div class="brand"><span class="brand-mark">M</span><span>MONE</span></div>
+          <div class="icons">
+            <span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></span>
+            <span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span>
+            <span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+          </div>
+        </div>
+
+        <nav class="mode-tabs" aria-label="market mode">
+          <span class="active">자동</span>
+          <span>국장</span>
+          <span>미장</span>
+          <span class="date-mini">휴장 · 06.22</span>
+        </nav>
+
+        <section class="hero">
+          <div class="dot-label">오늘의 MONE 결론</div>
+          <div class="hero-main">
+            <div>
+              <div class="headline">오늘은 선별 진입만 허용합니다</div>
+              <div class="subcopy">시장 약세로 보수적 기준 적용 중입니다.</div>
+            </div>
+            <div class="condition">
+              <div>
+                <div class="num">0</div>
+                <small>/100<br>진입 자제</small>
+              </div>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat good"><div><strong>6</strong><span>검토 후보</span></div></div>
+            <div class="stat"><div><strong>6</strong><span>대기 관찰 후보</span></div></div>
+            <div class="stat"><div><strong>0</strong><span>위험 보유</span></div></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <span>진입가 임박 · 5건 확인 필요</span>
+            <span class="more">전체 보기</span>
+          </div>
+          <div class="watch-list">
+            <div class="stock-row"><span>LG이노텍</span><span class="code">011070</span><span class="badge">1% 이내</span></div>
+            <div class="stock-row"><span>삼성전자</span><span class="code">005930</span><span class="badge">1% 이내</span></div>
+          </div>
+        </section>
+
+        <section class="markets">
+          <div class="section-head"><span>시장 상황</span></div>
+          <div class="warning"><span>약세장 · KOSPI 20MA -5.7%</span><span>진입 기준 강화</span></div>
+          <div class="ticker-grid">
+            <div class="ticker">KOSPI<strong class="red">2,742</strong></div>
+            <div class="ticker">NASDAQ<strong class="green">17,850</strong></div>
+            <div class="ticker">USD/KRW<strong>1,371</strong></div>
+          </div>
+        </section>
+
+        <div class="tools">
+          <div class="tool-card"><span class="tool-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-5m5 5V8m5 8v-3"/></svg></span><span>탐색</span></div>
+          <div class="tool-card"><span class="tool-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M7 7v13h10V7M9 7V5h6v2"/></svg></span><span>보유 점검</span></div>
+          <div class="tool-card"><span class="tool-icon"><svg viewBox="0 0 24 24"><path d="M4 18h16M6 14l4-4 3 3 5-6"/></svg></span><span>분석</span></div>
+        </div>
+
+        <nav class="bottom-nav">
+          <span class="nav-item active"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg><span>홈</span></span>
+          <span class="nav-item"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>탐색</span></span>
+          <span class="nav-item"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg><span>보유</span></span>
+          <span class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 19V5m4 14v-7m5 7V8m5 11v-4"/></svg><span>분석</span></span>
+          <span class="nav-item"><svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg><span>더보기</span></span>
+        </nav>
+        <div class="home-indicator"></div>
+      </div>
+    </section>
+
+    <section class="phone dark" aria-label="MONE dark mode">
+      <div class="screen">
+        <div class="status">
+          <span>5:38</span>
+          <span class="status-icons"><span>5G</span><span class="battery"></span></span>
+        </div>
+
+        <div class="topbar">
+          <div class="brand"><span class="brand-mark">M</span><span>MONE</span></div>
+          <div class="icons">
+            <span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></span>
+            <span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span>
+            <span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+          </div>
+        </div>
+
+        <nav class="mode-tabs" aria-label="market mode">
+          <span class="active">자동</span>
+          <span>국장</span>
+          <span>미장</span>
+          <span class="date-mini">휴장 · 06.22</span>
+        </nav>
+
+        <section class="hero">
+          <div class="dot-label">오늘의 MONE 결론</div>
+          <div class="hero-main">
+            <div>
+              <div class="headline">오늘은 선별 진입만 허용합니다</div>
+              <div class="subcopy">시장 약세로 보수적 기준 적용 중입니다.</div>
+            </div>
+            <div class="condition">
+              <div>
+                <div class="num">0</div>
+                <small>/100<br>진입 자제</small>
+              </div>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat good"><div><strong>6</strong><span>검토 후보</span></div></div>
+            <div class="stat"><div><strong>6</strong><span>대기 관찰 후보</span></div></div>
+            <div class="stat"><div><strong>0</strong><span>위험 보유</span></div></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <span>진입가 임박 · 5건 확인 필요</span>
+            <span class="more">전체 보기</span>
+          </div>
+          <div class="watch-list">
+            <div class="stock-row"><span>LG이노텍</span><span class="code">011070</span><span class="badge">1% 이내</span></div>
+            <div class="stock-row"><span>삼성전자</span><span class="code">005930</span><span class="badge">1% 이내</span></div>
+          </div>
+        </section>
+
+        <section class="markets">
+          <div class="section-head"><span>시장 상황</span></div>
+          <div class="warning"><span>약세장 · KOSPI 20MA -5.7%</span><span>진입 기준 강화</span></div>
+          <div class="ticker-grid">
+            <div class="ticker">KOSPI<strong class="red">2,742</strong></div>
+            <div class="ticker">NASDAQ<strong class="green">17,850</strong></div>
+            <div class="ticker">USD/KRW<strong>1,371</strong></div>
+          </div>
+        </section>
+
+        <div class="tools">
+          <div class="tool-card"><span class="tool-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-5m5 5V8m5 8v-3"/></svg></span><span>탐색</span></div>
+          <div class="tool-card"><span class="tool-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M7 7v13h10V7M9 7V5h6v2"/></svg></span><span>보유 점검</span></div>
+          <div class="tool-card"><span class="tool-icon"><svg viewBox="0 0 24 24"><path d="M4 18h16M6 14l4-4 3 3 5-6"/></svg></span><span>분석</span></div>
+        </div>
+
+        <nav class="bottom-nav">
+          <span class="nav-item active"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg><span>홈</span></span>
+          <span class="nav-item"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>탐색</span></span>
+          <span class="nav-item"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg><span>보유</span></span>
+          <span class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 19V5m4 14v-7m5 7V8m5 11v-4"/></svg><span>분석</span></span>
+          <span class="nav-item"><svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg><span>더보기</span></span>
+        </nav>
+        <div class="home-indicator"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

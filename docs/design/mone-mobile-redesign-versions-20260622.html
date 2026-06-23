@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MONE mobile redesign versions</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #dfe6e9;
+      --ink: #11191f;
+      --muted: #758087;
+      --line: rgba(18, 25, 31, .08);
+      --green: #14bf9f;
+      --blue: #2463e8;
+      --red: #e44037;
+      --amber: #ffb233;
+      font-family: "Pretendard", "Noto Sans KR", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    html, body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 14% 8%, rgba(20, 191, 159, .15), transparent 28%),
+        radial-gradient(circle at 88% 18%, rgba(36, 99, 232, .13), transparent 30%),
+        #dbe2e6;
+      -webkit-font-smoothing: antialiased;
+      color: var(--ink);
+    }
+    body { display: grid; place-items: center; padding: 38px; }
+    .board {
+      width: 1460px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+    .phone {
+      width: 340px;
+      height: 736px;
+      border-radius: 34px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 24px 70px rgba(18, 34, 42, .24);
+      background: #f2f5f6;
+      color: var(--ink);
+    }
+    .phone.dark {
+      --ink: #edf6f4;
+      --muted: #95a5a3;
+      --line: rgba(255,255,255,.09);
+      background: #081011;
+      color: var(--ink);
+    }
+    .screen {
+      height: 100%;
+      padding: 18px 16px 78px;
+      overflow: hidden;
+      position: relative;
+    }
+    .status {
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      font-weight: 850;
+      font-size: 12px;
+      color: var(--ink);
+    }
+    .battery {
+      display: inline-block;
+      width: 22px;
+      height: 10px;
+      margin-left: 5px;
+      border: 1.4px solid currentColor;
+      border-radius: 3px;
+      position: relative;
+      vertical-align: -1px;
+    }
+    .battery::before {
+      content: "";
+      position: absolute;
+      inset: 2px 5px 2px 2px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+    .battery::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 2px;
+      width: 2px;
+      height: 4px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+    .top {
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 19px;
+      font-weight: 950;
+      letter-spacing: -.03em;
+    }
+    .mark {
+      width: 21px;
+      height: 21px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 12px;
+      background: linear-gradient(135deg, #16c79d, #2364e8);
+      box-shadow: 0 8px 18px rgba(20, 191, 159, .28);
+    }
+    .icons { display: flex; gap: 6px; }
+    .ib {
+      width: 32px;
+      height: 32px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.72);
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .dark .ib { background: rgba(255,255,255,.07); }
+    svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .label {
+      margin: 20px 0 10px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .seg {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      height: 40px;
+      margin-top: 18px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+    .seg span {
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+    }
+    .seg .on {
+      color: #fff;
+      background: var(--green);
+      box-shadow: 0 13px 24px rgba(20, 191, 159, .24);
+    }
+    .card {
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(20, 34, 42, .09), 0 2px 7px rgba(20, 34, 42, .04);
+      box-shadow-color: rgba(20, 34, 42, .09);
+    }
+    .dark .card {
+      background: #111b1f;
+      box-shadow: 0 16px 34px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 950;
+      color: #fff;
+      background: #ff8f1f;
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+    }
+    .bottom {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 70px;
+      padding: 8px 14px 12px;
+      border-radius: 24px 24px 0 0;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 -12px 34px rgba(18, 34, 42, .12);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 2px;
+    }
+    .dark .bottom {
+      background: rgba(10, 17, 19, .96);
+      border-top: 1px solid rgba(255,255,255,.07);
+    }
+    .nav {
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 900;
+      color: #b9c2c5;
+    }
+    .nav.on { color: var(--green); }
+    .homebar {
+      position: absolute;
+      width: 108px;
+      height: 4px;
+      border-radius: 99px;
+      left: 50%;
+      bottom: 7px;
+      transform: translateX(-50%);
+      background: #111;
+      z-index: 3;
+    }
+    .dark .homebar { background: rgba(255,255,255,.82); }
+
+    /* V1: Socar-like tile home */
+    .v1 { background: #eef2f4; }
+    .v1 .hero {
+      margin-top: 16px;
+      border-radius: 18px;
+      min-height: 104px;
+      background: #fff;
+      padding: 15px;
+      display: grid;
+      grid-template-columns: 1fr 118px;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 12px 30px rgba(20, 34, 42, .08);
+    }
+    .v1 .hero h1 {
+      margin: 9px 0 4px;
+      font-size: 22px;
+      line-height: 1.05;
+      letter-spacing: -.04em;
+    }
+    .v1 .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.35;
+    }
+    .market-scene {
+      height: 86px;
+      border-radius: 18px;
+      background: linear-gradient(145deg, #f7fbff, #e8f0f2);
+      position: relative;
+      overflow: hidden;
+    }
+    .market-scene::before {
+      content: "";
+      position: absolute;
+      inset: 30px 10px 0;
+      background: linear-gradient(160deg, transparent 30%, rgba(12, 32, 45, .08) 31% 32%, transparent 33%),
+        linear-gradient(20deg, transparent 35%, rgba(12,32,45,.08) 36% 37%, transparent 38%);
+    }
+    .pin {
+      position: absolute;
+      top: 14px;
+      left: 44px;
+      width: 32px;
+      height: 39px;
+      border-radius: 18px 18px 18px 4px;
+      transform: rotate(45deg);
+      background: var(--blue);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      box-shadow: 0 12px 16px rgba(36, 99, 232, .25);
+    }
+    .pin span { transform: rotate(-45deg); font-weight: 950; }
+    .mini-candle {
+      position: absolute;
+      right: 18px;
+      bottom: 14px;
+      width: 46px;
+      height: 24px;
+      border-radius: 7px;
+      background: #111;
+      box-shadow: -32px 10px 0 -8px #fff, -20px 8px 0 -8px #16c79d;
+    }
+    .v1 .tiles {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 10px;
+    }
+    .tile {
+      min-height: 92px;
+      padding: 13px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(20, 34, 42, .07);
+      position: relative;
+      overflow: hidden;
+    }
+    .tile h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+    .tile p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 760;
+      line-height: 1.35;
+    }
+    .tile.big { min-height: 116px; }
+    .tile .num {
+      position: absolute;
+      right: 13px;
+      bottom: 9px;
+      color: var(--green);
+      font-size: 34px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+    .tile.red .num { color: var(--red); }
+    .tile.blue {
+      color: #fff;
+      background: linear-gradient(150deg, #1465de, #14a7d4);
+    }
+    .tile.blue p { color: rgba(255,255,255,.78); }
+    .wide-title {
+      margin: 19px 0 9px;
+      font-size: 15px;
+      font-weight: 950;
+    }
+    .promo-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+    .promo {
+      height: 100px;
+      border-radius: 14px;
+      padding: 12px;
+      color: #fff;
+      display: grid;
+      align-content: space-between;
+      background: #18252b;
+      overflow: hidden;
+      position: relative;
+    }
+    .promo:nth-child(2) { background: #1473e6; }
+    .promo:nth-child(3) { background: #0d9281; }
+    .promo b { font-size: 13px; line-height: 1.25; }
+    .promo small { font-size: 10px; opacity: .8; font-weight: 800; }
+    .promo::after {
+      content: "";
+      position: absolute;
+      right: -22px;
+      bottom: -24px;
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.16);
+    }
+
+    /* V2: Gcar-like schedule and grid */
+    .v2 { background: #f4f4f4; }
+    .center-logo {
+      text-align: center;
+      font-weight: 950;
+      font-size: 17px;
+      color: #2f3336;
+    }
+    .v2 .hello {
+      margin: 24px 0 14px;
+      font-size: 22px;
+      line-height: 1.24;
+      letter-spacing: -.03em;
+      font-weight: 950;
+    }
+    .alert-card {
+      padding: 15px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    }
+    .alert-card h2 {
+      margin: 0 0 10px;
+      color: #e1312e;
+      font-size: 16px;
+    }
+    .alert-line {
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
+      align-items: center;
+      gap: 9px;
+    }
+    .mini-chart-car {
+      height: 28px;
+      border-radius: 9px;
+      background:
+        linear-gradient(135deg, transparent 42%, #111 43% 50%, transparent 51%),
+        linear-gradient(90deg, #e8ecee, #fff);
+      box-shadow: inset 0 -8px 0 rgba(20,191,159,.13);
+    }
+    .alert-line b { font-size: 13px; }
+    .alert-line small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 720;
+    }
+    .grid-title {
+      margin: 16px 0 9px;
+      font-size: 14px;
+      font-weight: 950;
+    }
+    .action-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 8px;
+    }
+    .action-main {
+      height: 104px;
+      border-radius: 6px;
+      padding: 17px;
+      color: #fff;
+      background: #423b3a;
+      display: grid;
+      align-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    .action-main::after {
+      content: "";
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      width: 48px;
+      height: 28px;
+      transform: rotate(-18deg);
+      border-radius: 8px;
+      background: #ff3d4d;
+      box-shadow: 0 0 0 5px rgba(255,255,255,.8);
+    }
+    .action-main b,
+    .square b { font-size: 15px; }
+    .action-main small,
+    .square small {
+      display: block;
+      margin-top: 6px;
+      color: rgba(255,255,255,.78);
+      font-weight: 750;
+      line-height: 1.35;
+    }
+    .square {
+      height: 104px;
+      border-radius: 6px;
+      background: #fff;
+      padding: 15px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.08);
+      display: grid;
+      align-content: space-between;
+      color: var(--ink);
+    }
+    .square small { color: var(--muted); }
+    .three-grid {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .three-grid .square {
+      height: 102px;
+      padding: 13px;
+    }
+    .quick-row {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .quick {
+      flex: 0 0 72px;
+      height: 76px;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 4px 14px rgba(0,0,0,.07);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 850;
+      color: #394145;
+      padding: 9px;
+    }
+    .quick .circle {
+      width: 27px;
+      height: 27px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      margin-bottom: 4px;
+      background: #fff1f1;
+      color: #e1312e;
+    }
+
+    /* V3: benefit/routine style */
+    .v3 { background: #f8f8f7; }
+    .v3 .top { margin-top: 20px; }
+    .place {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 950;
+    }
+    .banner {
+      margin-top: 22px;
+      height: 92px;
+      border-radius: 10px;
+      padding: 18px;
+      color: #fff;
+      background: #030303;
+      display: grid;
+      grid-template-columns: 1fr 80px;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .banner b {
+      display: block;
+      font-size: 17px;
+      line-height: 1.35;
+    }
+    .banner span {
+      display: block;
+      margin-top: 4px;
+      color: #ffe34f;
+      font-size: 16px;
+      font-weight: 950;
+    }
+    .hands {
+      font-size: 50px;
+      transform: rotate(-9deg);
+      filter: saturate(1.1);
+    }
+    .routine {
+      margin-top: 14px;
+      border-radius: 12px;
+      padding: 18px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(0,0,0,.07);
+    }
+    .routine-head {
+      display: grid;
+      grid-template-columns: 1fr 72px;
+      align-items: center;
+      gap: 10px;
+    }
+    .routine h2 {
+      margin: 8px 0 0;
+      font-size: 20px;
+      line-height: 1.28;
+      letter-spacing: -.03em;
+    }
+    .soft-ball {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 38% 38%, #fff8 0 5px, transparent 6px),
+        radial-gradient(circle at 60% 39%, #fff8 0 5px, transparent 6px),
+        #baf5db;
+      position: relative;
+    }
+    .soft-ball::after {
+      content: "";
+      position: absolute;
+      left: 26px;
+      top: 42px;
+      width: 18px;
+      height: 8px;
+      border-bottom: 2px solid #43966f;
+      border-radius: 50%;
+    }
+    .cta {
+      margin-top: 18px;
+      height: 52px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 950;
+      background: #ff512f;
+    }
+    .guide-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      margin: 15px -18px -18px;
+      border-top: 1px solid #edf0f0;
+    }
+    .guide-row span {
+      height: 46px;
+      display: grid;
+      place-items: center;
+      color: #566166;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .benefit-head {
+      margin: 18px 0 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 950;
+    }
+    .benefit-head small {
+      color: #ff7d43;
+      background: #fff0e7;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .coupon-row {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .coupon {
+      flex: 0 0 124px;
+      height: 118px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(0,0,0,.06);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 13px;
+      font-weight: 950;
+      line-height: 1.28;
+    }
+    .coupon .emoji { font-size: 29px; margin-bottom: 7px; }
+
+    /* V4: health/care style */
+    .v4 { background: #e9ebf0; }
+    .v4 .screen { padding-top: 18px; }
+    .brand-soft {
+      font-size: 19px;
+      font-weight: 950;
+      color: #6a6f77;
+      letter-spacing: -.04em;
+    }
+    .quiz {
+      margin-top: 21px;
+      padding: 15px 16px;
+      border-radius: 13px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(30,35,44,.08);
+    }
+    .point {
+      display: inline-flex;
+      padding: 5px 9px;
+      border-radius: 7px;
+      background: #eaf4ff;
+      color: #3b82f6;
+      font-size: 10px;
+      font-weight: 950;
+    }
+    .quiz h2 {
+      margin: 12px 0 13px;
+      font-size: 14px;
+      line-height: 1.55;
+      letter-spacing: -.01em;
+    }
+    .answer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .answer span {
+      height: 34px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px #dce2e6;
+      font-size: 12px;
+      font-weight: 900;
+      color: #485159;
+    }
+    .care-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+    .care-card {
+      height: 104px;
+      border-radius: 11px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(30,35,44,.07);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 12px 6px;
+      font-size: 13px;
+      font-weight: 950;
+      line-height: 1.3;
+    }
+    .care-card .emoji {
+      font-size: 29px;
+      margin-bottom: 6px;
+    }
+    .blue-banner {
+      margin-top: 13px;
+      border-radius: 11px;
+      height: 58px;
+      padding: 12px 15px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(30,35,44,.07);
+      color: #1d73d9;
+      display: grid;
+      grid-template-columns: 1fr 52px;
+      align-items: center;
+      overflow: hidden;
+    }
+    .blue-banner b {
+      font-size: 13px;
+    }
+    .blue-banner small {
+      display: block;
+      margin-top: 3px;
+      color: #5091de;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .care-panel {
+      margin-top: 13px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(30,35,44,.07);
+      overflow: hidden;
+    }
+    .switch {
+      margin: 14px;
+      height: 42px;
+      border-radius: 9px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #f3f4f5;
+      padding: 4px;
+      font-size: 12px;
+      font-weight: 950;
+      color: #98a1a8;
+    }
+    .switch span {
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+    }
+    .switch .on {
+      color: #1d73d9;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(30,35,44,.08);
+    }
+    .symptoms {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 5px 14px 18px;
+      gap: 8px;
+    }
+    .symptom {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: #505b62;
+      font-size: 11px;
+      font-weight: 850;
+      gap: 6px;
+    }
+    .symptom .emoji { font-size: 25px; }
+
+    @media (max-width: 1300px) {
+      .board { width: 720px; grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <section class="phone v1" aria-label="Version 1">
+      <div class="screen">
+        <div class="status"><span>11:46</span><span>5G <span class="battery"></span></span></div>
+        <div class="top">
+          <div class="logo"><span class="mark">M</span>MONE</div>
+          <div class="icons"><span class="ib"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span></div>
+        </div>
+        <div class="hero">
+          <div>
+            <span class="pill">장전 검토 모드</span>
+            <h1>가까운 진입가<br>먼저 보기</h1>
+            <p>진입가 1% 이내 후보를<br>오늘의 우선순위로 정리합니다.</p>
+          </div>
+          <div class="market-scene"><span class="pin"><span>S</span></span><span class="mini-candle"></span></div>
+        </div>
+        <div class="tiles">
+          <div class="tile big"><h3>오늘 결론</h3><p>약세장이라 선별 진입만 허용</p><span class="num">6</span></div>
+          <div class="tile blue"><h3>보유 점검</h3><p>위험 보유 0건<br>손절선 이탈 없음</p></div>
+          <div class="tile"><h3>관찰 후보</h3><p>가격은 좋지만 근거 보강 대기</p><span class="num">6</span></div>
+          <div class="tile red"><h3>차단</h3><p>뉴스·재무·과열 리스크</p><span class="num">0</span></div>
+        </div>
+        <div class="wide-title">MONE에서만 먼저 확인</div>
+        <div class="promo-row">
+          <div class="promo"><b>검증 기록</b><small>추천 후 결과 추적</small></div>
+          <div class="promo"><b>진입 알림</b><small>1% 이내 후보</small></div>
+          <div class="promo"><b>시장 기준</b><small>KOSPI 20MA</small></div>
+        </div>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>홈</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>탐색</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg>보유</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M4 18h16M6 14l4-4 3 3 5-6"/></svg>분석</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>더보기</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone v2" aria-label="Version 2">
+      <div class="screen">
+        <div class="status"><span>6:22</span><span>5G <span class="battery"></span></span></div>
+        <div class="center-logo"><span style="color:#f04b4b">굿모닝</span> MONE</div>
+        <div class="v2 hello">경동 님,<br>오늘도 차분하게 검토해요!</div>
+        <section class="alert-card">
+          <h2>장 시작 17분 전입니다.</h2>
+          <div class="alert-line">
+            <span class="mini-chart-car"></span>
+            <span><b>오늘 1순위: LG이노텍</b><small>2026.06.22 08:43 기준</small></span>
+            <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </section>
+        <div class="grid-title">오늘 할 일</div>
+        <div class="action-grid">
+          <div class="action-main"><div><b>후보 예약</b><small>진입가 도달 시<br>검토 목록에 고정</small></div></div>
+          <div class="square"><div><b>오더?</b><small>아니요<br>검토만</small></div><svg viewBox="0 0 24 24" style="color:#e1312e"><path d="M12 3v18M7 8l5-5 5 5"/></svg></div>
+        </div>
+        <div class="three-grid">
+          <div class="square"><b>국장</b><small>진입 후보 6</small><svg viewBox="0 0 24 24" style="color:#e1312e"><path d="M5 19h14M6 14l4-4 3 3 5-6"/></svg></div>
+          <div class="square"><b>미장</b><small>장전 대기</small><svg viewBox="0 0 24 24" style="color:#e1312e"><path d="M4 18h16M8 15V9m4 6V5m4 10v-4"/></svg></div>
+          <div class="square"><b>일지</b><small>검증 누적</small><svg viewBox="0 0 24 24" style="color:#e1312e"><path d="M6 4h12v16H6zM9 8h6M9 12h6"/></svg></div>
+        </div>
+        <div class="grid-title">원클릭 바로가기</div>
+        <div class="quick-row">
+          <div class="quick"><span class="circle">!</span>리스크</div>
+          <div class="quick"><span class="circle">↗</span>차트</div>
+          <div class="quick"><span class="circle">₩</span>손익비</div>
+          <div class="quick"><span class="circle">D</span>실적</div>
+        </div>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>이동하기</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h12M4 18h8"/></svg>콘텐츠</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 22V7"/></svg>혜택</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>마이</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone v3" aria-label="Version 3">
+      <div class="screen">
+        <div class="status"><span>3:24</span><span>5G <span class="battery"></span></span></div>
+        <div class="top">
+          <div class="place"><svg viewBox="0 0 24 24"><path d="M12 21s6-5.3 6-11a6 6 0 0 0-12 0c0 5.7 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></svg>오늘장</div>
+          <span class="ib"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg></span>
+        </div>
+        <section class="banner">
+          <div><b>오늘 검토하면<br>실수 1개 줄일 수 있어요!</b><span>리스크 문진 +3점</span></div>
+          <div class="hands">👏</div>
+        </section>
+        <section class="routine">
+          <div class="routine-head">
+            <div><span class="pill" style="background:#fff0e5;color:#f47f28">🔥 루틴</span><h2>4회만 더 기록하면<br>내 판단 패턴이 보여요!</h2></div>
+            <div class="soft-ball"></div>
+          </div>
+          <div class="cta">오늘 후보 검토하기</div>
+          <div class="guide-row"><span>📖 이용가이드</span><span>📍 조건 기준</span></div>
+        </section>
+        <div class="benefit-head"><span>근거 모아보기</span><small>5개</small></div>
+        <div class="coupon-row">
+          <div class="coupon"><span class="emoji">👑</span>점수보다 근거<br>먼저 보기</div>
+          <div class="coupon"><span class="emoji">8kg</span>손실 줄일수록<br>보유 건강↑</div>
+          <div class="coupon"><span class="emoji">🧾</span>추천 후 결과<br>자동 검증</div>
+        </div>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>홈</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>오늘이야기</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6"/></svg>이용내역</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>내 정보</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone v4" aria-label="Version 4">
+      <div class="screen">
+        <div class="status"><span>6:04</span><span>5G <span class="battery"></span></span></div>
+        <div class="top">
+          <div class="brand-soft">나만의 MONE.</div>
+          <div class="icons"><span class="ib"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span class="ib"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 22V7"/></svg></span><span class="ib"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg></span></div>
+        </div>
+        <section class="quiz">
+          <span class="point">매일 포인트박스 4개</span>
+          <h2>Q. 현재가가 추천 진입가보다 3% 이상 멀어진 종목은 오늘 보류한다.</h2>
+          <div class="answer"><span>● 그렇다</span><span>✕ 아니다</span></div>
+        </section>
+        <div class="care-grid">
+          <div class="care-card"><span class="emoji">📍</span>진입가 찾기</div>
+          <div class="care-card"><span class="emoji">👨‍👧</span>내 보유<br>건강 기록</div>
+          <div class="care-card"><span class="emoji">📈</span>리워드 1등<br>만들기</div>
+        </div>
+        <section class="blue-banner">
+          <div><b>주말/야간에도 보유 리스크 점검</b><small>365일 기준선과 손절선 확인</small></div>
+          <svg viewBox="0 0 24 24" style="width:42px;height:42px;color:#3678ff"><path d="M12 21s6-5.3 6-11a6 6 0 0 0-12 0c0 5.7 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></svg>
+        </section>
+        <section class="care-panel">
+          <div class="switch"><span class="on">비대면 점검</span><span>리스크 병원 예약</span></div>
+          <div class="symptoms">
+            <div class="symptom"><span class="emoji">🧢</span>현재가<br>괴리</div>
+            <div class="symptom"><span class="emoji">👶</span>소액<br>분할</div>
+            <div class="symptom"><span class="emoji">🌡️</span>손절선<br>처방</div>
+          </div>
+        </section>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>홈</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>혜택</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>건강관리</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M10 2h4v6l5 9a3 3 0 0 1-2.6 4H7.6A3 3 0 0 1 5 17l5-9z"/></svg>연구소</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>내 정보</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

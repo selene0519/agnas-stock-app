@@ -1323,6 +1323,7 @@ def evaluate(
     force: bool = False,
 ) -> dict[str, Any]:
     _ensure()
+    _clear_evaluation_data_caches()
     journal_rows = _read_journal_rows()
     merged = _merge_evaluations(journal_rows)
     scope = _filter_rows(merged, market, mode, horizon, source_type, journal_session, "all")
@@ -1345,6 +1346,13 @@ def evaluate(
         "outcomes": dict(counts),
         "items": evaluated,
     }
+
+
+def _clear_evaluation_data_caches() -> None:
+    for name in ("_load_ohlcv", "_ohlcv_stats"):
+        cache_clear = getattr(getattr(data, name, None), "cache_clear", None)
+        if callable(cache_clear):
+            cache_clear()
 
 
 def _load_ohlcv(market: str, symbol: str) -> tuple[pd.DataFrame, str, str]:

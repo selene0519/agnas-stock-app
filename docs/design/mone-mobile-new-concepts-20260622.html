@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MONE new mobile concepts</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --ink: #151b20;
+      --muted: #6f7a82;
+      --green: #12b99a;
+      --blue: #2464e8;
+      --red: #e6423a;
+      --amber: #f8a92b;
+      --paper: #f3f6f7;
+      font-family: "Pretendard", "Noto Sans KR", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 36px;
+      background:
+        radial-gradient(circle at 9% 10%, rgba(18, 185, 154, .16), transparent 28%),
+        radial-gradient(circle at 92% 14%, rgba(36, 100, 232, .13), transparent 30%),
+        #dce5e8;
+      -webkit-font-smoothing: antialiased;
+    }
+    .board {
+      width: 1460px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+    }
+    .phone {
+      width: 340px;
+      height: 736px;
+      border-radius: 34px;
+      overflow: hidden;
+      position: relative;
+      background: var(--paper);
+      box-shadow: 0 26px 80px rgba(18, 34, 42, .24);
+    }
+    .screen {
+      position: relative;
+      height: 100%;
+      padding: 18px 16px 80px;
+      overflow: hidden;
+    }
+    .status {
+      height: 22px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .battery {
+      display: inline-block;
+      width: 22px;
+      height: 10px;
+      margin-left: 5px;
+      border: 1.4px solid currentColor;
+      border-radius: 3px;
+      position: relative;
+      vertical-align: -1px;
+    }
+    .battery::before {
+      content: "";
+      position: absolute;
+      inset: 2px 5px 2px 2px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+    .battery::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 2px;
+      width: 2px;
+      height: 4px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+    .top {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 20px;
+      font-weight: 950;
+      letter-spacing: -.04em;
+    }
+    .mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 12px;
+      background: linear-gradient(135deg, #12b99a, #2265e8);
+      box-shadow: 0 9px 20px rgba(18, 185, 154, .24);
+    }
+    .icon-row { display: flex; gap: 7px; }
+    .icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.76);
+      box-shadow: inset 0 0 0 1px rgba(16, 24, 32, .08);
+    }
+    svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    h1, h2, h3, p { margin: 0; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 950;
+      color: #fff;
+      background: var(--green);
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 99px;
+      background: currentColor;
+      display: inline-block;
+    }
+    .bottom {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 70px;
+      padding: 8px 14px 12px;
+      border-radius: 24px 24px 0 0;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 -14px 34px rgba(18, 34, 42, .12);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      z-index: 2;
+    }
+    .nav {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 4px;
+      color: #aeb8bd;
+      font-size: 10px;
+      font-weight: 900;
+    }
+    .nav.on { color: var(--green); }
+    .homebar {
+      position: absolute;
+      width: 108px;
+      height: 4px;
+      left: 50%;
+      bottom: 7px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: #111;
+      z-index: 3;
+    }
+
+    /* Concept 1: Route Finder, inspired by Socar but not old MONE home */
+    .c1 { background: #eef3f5; }
+    .route-hero {
+      margin-top: 20px;
+      height: 152px;
+      border-radius: 24px;
+      padding: 17px;
+      background: #fff;
+      box-shadow: 0 15px 36px rgba(24, 42, 52, .09);
+      display: grid;
+      grid-template-columns: 1fr 126px;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .route-hero h1 {
+      margin-top: 10px;
+      font-size: 25px;
+      line-height: 1.05;
+      letter-spacing: -.05em;
+    }
+    .route-hero p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.42;
+      font-weight: 750;
+    }
+    .route-map {
+      border-radius: 20px;
+      background:
+        linear-gradient(150deg, transparent 46%, rgba(21, 27, 32, .08) 47% 49%, transparent 50%),
+        linear-gradient(25deg, transparent 38%, rgba(21, 27, 32, .08) 39% 41%, transparent 42%),
+        #f1f6f8;
+      position: relative;
+    }
+    .route-pin {
+      position: absolute;
+      top: 22px;
+      left: 46px;
+      width: 38px;
+      height: 46px;
+      border-radius: 22px 22px 22px 6px;
+      transform: rotate(45deg);
+      background: var(--blue);
+      box-shadow: 0 14px 20px rgba(36, 100, 232, .26);
+    }
+    .route-pin::after {
+      content: "✓";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      transform: rotate(-45deg);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 950;
+    }
+    .route-car {
+      position: absolute;
+      right: 15px;
+      bottom: 20px;
+      width: 50px;
+      height: 24px;
+      border-radius: 9px 12px 8px 8px;
+      background: #151b20;
+      box-shadow: -22px 8px 0 -8px #12b99a, -35px 12px 0 -9px #fff;
+    }
+    .journey {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .journey-card {
+      height: 122px;
+      border-radius: 18px;
+      padding: 15px;
+      background: #fff;
+      box-shadow: 0 12px 28px rgba(24, 42, 52, .08);
+      display: grid;
+      align-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .journey-card strong {
+      display: block;
+      font-size: 17px;
+      line-height: 1.2;
+      letter-spacing: -.03em;
+    }
+    .journey-card small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 760;
+    }
+    .journey-card .big {
+      justify-self: end;
+      color: var(--green);
+      font-size: 38px;
+      line-height: 1;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+    .journey-card.blue {
+      color: #fff;
+      background: linear-gradient(145deg, #1263e6, #15a4d5);
+    }
+    .journey-card.blue small { color: rgba(255,255,255,.78); }
+    .long-card {
+      margin-top: 12px;
+      height: 92px;
+      border-radius: 18px;
+      padding: 15px;
+      background: #151b20;
+      color: #fff;
+      box-shadow: 0 12px 28px rgba(24, 42, 52, .14);
+      display: grid;
+      grid-template-columns: 1fr 86px;
+      gap: 10px;
+      align-items: center;
+    }
+    .long-card b { font-size: 16px; }
+    .long-card p {
+      margin-top: 7px;
+      color: rgba(255,255,255,.7);
+      font-size: 11px;
+      line-height: 1.4;
+      font-weight: 760;
+    }
+    .route-lines {
+      height: 54px;
+      border-radius: 15px;
+      background:
+        linear-gradient(115deg, transparent 44%, rgba(255,255,255,.75) 45% 49%, transparent 50%),
+        linear-gradient(25deg, transparent 34%, rgba(255,255,255,.35) 35% 37%, transparent 38%),
+        #2b3940;
+    }
+
+    /* Concept 2: Opening Bell booking flow, inspired by G car */
+    .c2 { background: #f7f7f7; }
+    .small-brand {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 17px;
+      font-weight: 950;
+    }
+    .hello {
+      margin-top: 22px;
+      font-size: 25px;
+      line-height: 1.16;
+      letter-spacing: -.05em;
+      font-weight: 950;
+    }
+    .booking {
+      margin-top: 15px;
+      border-radius: 12px;
+      background: #fff;
+      padding: 15px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+    .booking h2 {
+      color: var(--red);
+      font-size: 16px;
+      line-height: 1.25;
+    }
+    .booking-row {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+    .ticket-chart {
+      height: 34px;
+      border-radius: 9px;
+      background:
+        linear-gradient(135deg, transparent 40%, #1c2428 41% 46%, transparent 47%),
+        #eef4f5;
+      box-shadow: inset 0 -11px 0 rgba(18, 185, 154, .14);
+    }
+    .booking-row b { font-size: 14px; }
+    .booking-row small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .section-title {
+      margin: 18px 0 9px;
+      font-size: 14px;
+      font-weight: 950;
+    }
+    .booking-grid {
+      display: grid;
+      grid-template-columns: 1.55fr 1fr;
+      gap: 8px;
+    }
+    .dark-action,
+    .light-action {
+      height: 112px;
+      border-radius: 8px;
+      padding: 15px;
+      display: grid;
+      align-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .dark-action {
+      color: #fff;
+      background: #453d3c;
+    }
+    .dark-action::after {
+      content: "";
+      position: absolute;
+      right: 18px;
+      bottom: 17px;
+      width: 52px;
+      height: 30px;
+      border-radius: 9px;
+      transform: rotate(-18deg);
+      background: #ff4152;
+      box-shadow: 0 0 0 5px rgba(255,255,255,.85);
+    }
+    .light-action {
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(0,0,0,.08);
+    }
+    .dark-action b,
+    .light-action b { font-size: 15px; }
+    .dark-action small,
+    .light-action small {
+      display: block;
+      margin-top: 7px;
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 760;
+      color: var(--muted);
+    }
+    .dark-action small { color: rgba(255,255,255,.76); }
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .mini-grid .light-action {
+      height: 100px;
+      padding: 12px;
+    }
+    .shortcuts {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .shortcut {
+      flex: 0 0 72px;
+      height: 74px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 7px 18px rgba(0,0,0,.07);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 9px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .shortcut span {
+      width: 27px;
+      height: 27px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--red);
+      background: #fff0f0;
+      font-weight: 950;
+    }
+
+    /* Concept 3: Habit Coach, inspired by orange routine service */
+    .c3 { background: #faf9f7; }
+    .location {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 950;
+    }
+    .black-banner {
+      margin-top: 21px;
+      height: 94px;
+      border-radius: 10px;
+      padding: 16px;
+      background: #020202;
+      color: #fff;
+      display: grid;
+      grid-template-columns: 1fr 76px;
+      align-items: center;
+      overflow: hidden;
+    }
+    .black-banner b {
+      display: block;
+      font-size: 17px;
+      line-height: 1.38;
+    }
+    .black-banner span {
+      display: block;
+      margin-top: 5px;
+      color: #ffdf43;
+      font-size: 15px;
+      font-weight: 950;
+    }
+    .clap {
+      font-size: 50px;
+      transform: rotate(-8deg);
+    }
+    .habit-card {
+      margin-top: 14px;
+      border-radius: 13px;
+      background: #fff;
+      padding: 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.07);
+      overflow: hidden;
+    }
+    .habit-main {
+      display: grid;
+      grid-template-columns: 1fr 70px;
+      gap: 10px;
+      align-items: center;
+    }
+    .habit-card h2 {
+      margin-top: 8px;
+      font-size: 21px;
+      line-height: 1.25;
+      letter-spacing: -.04em;
+    }
+    .face {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: #bcf5d9;
+      position: relative;
+    }
+    .face::before {
+      content: "";
+      position: absolute;
+      top: 25px;
+      left: 20px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #3b7d65;
+      box-shadow: 23px 0 0 #3b7d65;
+    }
+    .face::after {
+      content: "";
+      position: absolute;
+      left: 26px;
+      top: 43px;
+      width: 18px;
+      height: 8px;
+      border-bottom: 2px solid #3b7d65;
+      border-radius: 50%;
+    }
+    .cta {
+      margin-top: 18px;
+      height: 52px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: #ff512f;
+      font-size: 14px;
+      font-weight: 950;
+    }
+    .split-row {
+      margin: 15px -18px -18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-top: 1px solid #edf0f0;
+    }
+    .split-row span {
+      height: 46px;
+      display: grid;
+      place-items: center;
+      color: #5d666b;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .reward-title {
+      margin: 18px 0 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 16px;
+      font-weight: 950;
+    }
+    .reward-title small {
+      color: #ff7d43;
+      background: #fff0e8;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 950;
+    }
+    .habit-row {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .habit-tile {
+      flex: 0 0 124px;
+      height: 118px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(0,0,0,.06);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 13px;
+      font-size: 13px;
+      line-height: 1.32;
+      font-weight: 950;
+    }
+    .habit-tile strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+
+    /* Concept 4: Portfolio Clinic, inspired by health app */
+    .c4 { background: #e9ecf1; }
+    .soft-brand {
+      font-size: 20px;
+      font-weight: 950;
+      color: #697079;
+      letter-spacing: -.05em;
+    }
+    .clinic-card {
+      margin-top: 22px;
+      border-radius: 14px;
+      background: #fff;
+      padding: 16px;
+      box-shadow: 0 10px 28px rgba(27, 34, 42, .08);
+    }
+    .clinic-card .point {
+      display: inline-flex;
+      padding: 5px 9px;
+      border-radius: 7px;
+      background: #eaf3ff;
+      color: #3677e8;
+      font-size: 10px;
+      font-weight: 950;
+    }
+    .clinic-card h2 {
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.55;
+      letter-spacing: -.01em;
+    }
+    .answers {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .answers span {
+      height: 34px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px #dce2e6;
+      font-size: 12px;
+      font-weight: 900;
+      color: #475057;
+    }
+    .clinic-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+    .clinic-tile {
+      height: 104px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(27, 34, 42, .07);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 12px 6px;
+      font-size: 13px;
+      line-height: 1.3;
+      font-weight: 950;
+    }
+    .clinic-tile strong {
+      display: block;
+      font-size: 30px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .clinic-alert {
+      margin-top: 13px;
+      height: 58px;
+      border-radius: 12px;
+      padding: 12px 15px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(27, 34, 42, .07);
+      display: grid;
+      grid-template-columns: 1fr 46px;
+      align-items: center;
+      color: #1d73d9;
+    }
+    .clinic-alert b { font-size: 13px; }
+    .clinic-alert small {
+      display: block;
+      margin-top: 3px;
+      color: #5091de;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .clinic-panel {
+      margin-top: 13px;
+      border-radius: 15px;
+      background: #fff;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(27, 34, 42, .07);
+    }
+    .toggle {
+      margin: 14px;
+      height: 42px;
+      border-radius: 9px;
+      padding: 4px;
+      background: #f3f4f5;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      font-size: 12px;
+      font-weight: 950;
+      color: #98a1a8;
+    }
+    .toggle span {
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+    }
+    .toggle .on {
+      background: #fff;
+      color: #1d73d9;
+      box-shadow: 0 4px 12px rgba(27, 34, 42, .08);
+    }
+    .clinic-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      padding: 5px 14px 18px;
+    }
+    .clinic-list div {
+      display: grid;
+      place-items: center;
+      gap: 6px;
+      text-align: center;
+      color: #4e5960;
+      font-size: 11px;
+      line-height: 1.25;
+      font-weight: 850;
+    }
+    .clinic-list strong { font-size: 26px; line-height: 1; }
+
+    @media (max-width: 1300px) {
+      .board { width: 720px; grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="board" aria-label="MONE new mobile concepts">
+    <section class="phone c1" aria-label="Concept 1 Route Finder">
+      <div class="screen">
+        <div class="status"><span>11:46</span><span>5G <span class="battery"></span></span></div>
+        <div class="top">
+          <div class="brand"><span class="mark">M</span>MONE</div>
+          <div class="icon-row"><span class="icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span></div>
+        </div>
+        <section class="route-hero">
+          <div>
+            <span class="chip" style="background:#ff8d24">오늘의 판단 경로</span>
+            <h1>어디부터<br>확인할까요?</h1>
+            <p>시장은 복잡해도, 오늘 할 판단은 세 갈래로 줄입니다.</p>
+          </div>
+          <div class="route-map"><span class="route-pin"></span><span class="route-car"></span></div>
+        </section>
+        <div class="journey">
+          <article class="journey-card">
+            <div><strong>살 수 있는 길</strong><small>조건을 모두 통과한 후보</small></div>
+            <span class="big">3</span>
+          </article>
+          <article class="journey-card blue">
+            <div><strong>기다리는 길</strong><small>가격은 멀고 근거는 남은 후보</small></div>
+            <span class="big" style="color:#fff">8</span>
+          </article>
+          <article class="journey-card">
+            <div><strong>피해야 할 길</strong><small>뉴스·과열·손익비 불리</small></div>
+            <span class="big" style="color:var(--red)">2</span>
+          </article>
+          <article class="journey-card">
+            <div><strong>보유자 길</strong><small>팔지 말아야 할 이유 점검</small></div>
+            <span class="big">5</span>
+          </article>
+        </div>
+        <section class="long-card">
+          <div><b>오늘의 최단 경로</b><p>진입 후보보다 보유 리스크를 먼저 확인하세요.</p></div>
+          <div class="route-lines"></div>
+        </section>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>경로</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>찾기</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg>보관함</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>더보기</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone c2" aria-label="Concept 2 Opening Bell">
+      <div class="screen">
+        <div class="status"><span>6:22</span><span>5G <span class="battery"></span></span></div>
+        <div class="small-brand"><span style="color:#ef3e45">오프닝벨</span> MONE</div>
+        <div class="hello">경동 님,<br>오늘 검토 예약을<br>잡아둘게요.</div>
+        <section class="booking">
+          <h2>장 시작 17분 전입니다.</h2>
+          <div class="booking-row">
+            <span class="ticket-chart"></span>
+            <span><b>첫 검토: LG이노텍</b><small>08:43 기준 · 진입가 1.1% 거리</small></span>
+            <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </section>
+        <div class="section-title">예약할 판단</div>
+        <div class="booking-grid">
+          <article class="dark-action"><div><b>진입 검토 예약</b><small>가격 도달 시 판단 카드 열기</small></div></article>
+          <article class="light-action"><div><b>매수?</b><small>아니요<br>검토 예약만</small></div><svg viewBox="0 0 24 24" style="color:var(--red)"><path d="M12 3v18M7 8l5-5 5 5"/></svg></article>
+        </div>
+        <div class="mini-grid">
+          <article class="light-action"><b>보류함</b><small>근거 부족</small><svg viewBox="0 0 24 24" style="color:var(--red)"><path d="M6 12h12"/></svg></article>
+          <article class="light-action"><b>리뷰함</b><small>마감 후 결과</small><svg viewBox="0 0 24 24" style="color:var(--red)"><path d="M4 18h16M8 15V9m4 6V5m4 10v-4"/></svg></article>
+          <article class="light-action"><b>근거함</b><small>뉴스·재무</small><svg viewBox="0 0 24 24" style="color:var(--red)"><path d="M6 4h12v16H6zM9 8h6M9 12h6"/></svg></article>
+        </div>
+        <div class="section-title">원클릭 준비</div>
+        <div class="shortcuts">
+          <div class="shortcut"><span>!</span>위험</div>
+          <div class="shortcut"><span>↗</span>차트</div>
+          <div class="shortcut"><span>₩</span>손익비</div>
+          <div class="shortcut"><span>D</span>실적</div>
+        </div>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>예약</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h12M4 18h8"/></svg>근거</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 7h12v14H6zM9 7V5h6v2"/></svg>보유</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>나</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone c3" aria-label="Concept 3 Habit Coach">
+      <div class="screen">
+        <div class="status"><span>3:24</span><span>5G <span class="battery"></span></span></div>
+        <div class="location">
+          <span><svg viewBox="0 0 24 24" style="vertical-align:-4px"><path d="M12 21s6-5.3 6-11a6 6 0 0 0-12 0c0 5.7 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></svg> 판단습관</span>
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg></span>
+        </div>
+        <section class="black-banner">
+          <div><b>오늘도 한 번 멈추면<br>실수 확률이 줄어요.</b><span>충동매수 방지 +3</span></div>
+          <div class="clap">👏</div>
+        </section>
+        <section class="habit-card">
+          <div class="habit-main">
+            <div><span class="chip" style="background:#fff0e5;color:#f47f28">🔥 오늘 루틴</span><h2>4번 더 기록하면<br>내 판단 패턴이 보여요!</h2></div>
+            <div class="face"></div>
+          </div>
+          <div class="cta">지금 판단 기록하기</div>
+          <div class="split-row"><span>📖 기준 배우기</span><span>📍 조건 확인</span></div>
+        </section>
+        <div class="reward-title"><span>판단 근거 모으기</span><small>5개</small></div>
+        <div class="habit-row">
+          <div class="habit-tile"><strong>👑</strong>점수보다<br>근거 먼저</div>
+          <div class="habit-tile"><strong>8kg</strong>손실 습관<br>덜어내기</div>
+          <div class="habit-tile"><strong>🧾</strong>검증 기록<br>쌓기</div>
+        </div>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>오늘</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>기록</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6"/></svg>내역</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>나</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+
+    <section class="phone c4" aria-label="Concept 4 Portfolio Clinic">
+      <div class="screen">
+        <div class="status"><span>6:04</span><span>5G <span class="battery"></span></span></div>
+        <div class="top">
+          <div class="soft-brand">나만의 투자주치의.</div>
+          <div class="icon-row"><span class="icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span class="icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg></span></div>
+        </div>
+        <section class="clinic-card">
+          <span class="point">매일 리스크 문진 4개</span>
+          <h2>Q. 현재가가 내 진입 이유를 깨뜨렸다면, 오늘은 추가 매수를 멈춘다.</h2>
+          <div class="answers"><span>● 그렇다</span><span>✕ 아니다</span></div>
+        </section>
+        <div class="clinic-grid">
+          <div class="clinic-tile"><strong>📍</strong>진입 이유<br>찾기</div>
+          <div class="clinic-tile"><strong>🩺</strong>보유 건강<br>기록</div>
+          <div class="clinic-tile"><strong>📈</strong>회복 가능성<br>보기</div>
+        </div>
+        <section class="clinic-alert">
+          <div><b>주말에도 보유 리스크 점검</b><small>손절선과 판단 무효 조건 확인</small></div>
+          <svg viewBox="0 0 24 24" style="width:38px;height:38px;color:#3678ff"><path d="M12 21s6-5.3 6-11a6 6 0 0 0-12 0c0 5.7 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></svg>
+        </section>
+        <section class="clinic-panel">
+          <div class="toggle"><span class="on">비대면 점검</span><span>정밀 분석 예약</span></div>
+          <div class="clinic-list">
+            <div><strong>🧢</strong>현재가<br>괴리</div>
+            <div><strong>🍼</strong>분할<br>진입</div>
+            <div><strong>🌡️</strong>손절선<br>처방</div>
+          </div>
+        </section>
+        <nav class="bottom">
+          <span class="nav on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H5v-7h14"/></svg>문진</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>보유</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><path d="M10 2h4v6l5 9a3 3 0 0 1-2.6 4H7.6A3 3 0 0 1 5 17l5-9z"/></svg>분석</span>
+          <span class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>내 정보</span>
+        </nav>
+        <div class="homebar"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

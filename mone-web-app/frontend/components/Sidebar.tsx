@@ -20,7 +20,7 @@ export type PageId =
   | "admin";
 
 const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "home", label: "시장 홈", icon: <LayoutDashboard size={16} /> },
+  { id: "home", label: "MONE 홈", icon: <LayoutDashboard size={16} /> },
   { id: "stocks", label: "종목 탐색", icon: <Search size={16} /> },
   { id: "holdings", label: "보유·리스크", icon: <Briefcase size={16} /> },
   { id: "chart", label: "분석", icon: <BarChart2 size={16} /> },
