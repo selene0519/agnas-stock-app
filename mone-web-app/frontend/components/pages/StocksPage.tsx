@@ -869,7 +869,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 setMarket(item.id);
                 setSelected(null);
               }}
-              className={`min-w-0 rounded-xl px-2 py-2 text-sm ${market === item.id ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}
+              className={`min-w-0 rounded-xl border px-2 py-2 text-sm ${market === item.id ? "border-emerald-500 bg-emerald-500/10 text-white" : "border-slate-800 bg-slate-950 text-slate-400"}`}
             >
               {item.label}
             </button>
@@ -882,7 +882,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           </button>
         </div>
         <div className="mt-2 text-xs text-slate-500">
-          {market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · 현재 적용 시장: {marketLabel(resolvedMarket)}
+          <div>{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"}</div>
+          <div>현재 적용 시장: {marketLabel(resolvedMarket)}</div>
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2">
           <button
@@ -928,7 +929,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         {/* 섹터 필터 */}
         {resolvedMarket === "us" && (
           <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-900/50 px-3 py-2 text-xs text-slate-500">
-            미국 시장 섹터 필터는 미지원입니다 — 데이터 수집 후 추가 예정
+            <div>미국 시장 섹터 필터는 미지원입니다</div>
+            <div>데이터 수집 후 추가 예정</div>
           </div>
         )}
         {sectorsList.length > 0 && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calculator, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { Horizon, Mode } from "@/lib/api";
 import { displayName, horizonLabel, modeLabel, shouldHideSizingForTrust } from "@/lib/moneDisplay";
 
@@ -113,31 +113,22 @@ export default function PositionManager({ items, loading = false }: { items: any
   const allocPct = capital > 0 ? (totalAllocated / capital) * 100 : 0;
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/60">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full flex-wrap items-center justify-between gap-3 text-left"
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
       >
-        <span className="flex min-w-0 items-center gap-3">
-          <Calculator size={18} className="shrink-0 text-violet-300" />
-          <span className="min-w-0">
-            <h2 className="text-sm font-semibold text-slate-100">포지션 매니저</h2>
-            <p className="text-xs text-slate-500">후보별 참고 금액과 모의 수량을 계산합니다.</p>
-          </span>
+        <span className="text-sm font-semibold text-slate-200">
+          포지션 매니저
+          {capital > 0 && <span className="ml-2 font-mono text-xs font-normal text-violet-300">{capital.toLocaleString("ko-KR")}원</span>}
         </span>
-        <span className="flex items-center gap-2 text-xs">
-          {capital > 0 ? (
-            <span className="font-mono text-slate-300">{capital.toLocaleString("ko-KR")}원</span>
-          ) : (
-            <span className="text-slate-500">예수금 미입력</span>
-          )}
-          <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-        </span>
+        <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="mt-4">
+        <div className="border-t border-slate-800 px-5 pb-5 pt-4">
+          <p className="mb-3 text-xs text-slate-500">후보별 참고 금액과 모의 수량을 계산합니다.</p>
           <label className="mb-4 flex items-center gap-2 text-xs text-slate-500">
             가용 예수금
             <input

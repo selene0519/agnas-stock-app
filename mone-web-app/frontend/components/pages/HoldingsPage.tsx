@@ -432,39 +432,39 @@ function NavCurve() {
   const backfillCount = navRows.length - actualCount;
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
       >
-        <h2 className="text-sm font-semibold text-slate-100">NAV 누적 수익률</h2>
-        <div className="flex items-center gap-3">
-          <span className={`font-mono text-base font-bold ${isPos ? "text-emerald-300" : "text-red-400"}`}>
+        <span className="text-sm font-semibold text-slate-200">
+          NAV 누적 수익률
+          <span className={`ml-2 font-mono text-xs font-normal ${isPos ? "text-emerald-300" : "text-red-400"}`}>
             {isPos ? "+" : ""}{cumReturn.toFixed(2)}%
           </span>
-          <div className="flex items-center gap-2 text-[10px] text-slate-500">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-1.5 w-4 rounded bg-emerald-500"></span>
-              실제 {actualCount}일
-            </span>
-            {backfillCount > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-px w-4 border-t-2 border-dashed border-sky-400/60"></span>
-                추정 백필 {backfillCount}일
-              </span>
-            )}
-            {kospiRows.length > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-px w-4 border-t border-dashed border-slate-500/60"></span>
-                KOSPI
-              </span>
-            )}
-          </div>
-          <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-        </div>
+        </span>
+        <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-      <div className={open ? "mt-3" : "hidden"}>
+      <div className={open ? "border-t border-slate-800 px-5 pb-5 pt-4" : "hidden"}>
+        <div className="mb-3 flex items-center gap-2 text-[10px] text-slate-500">
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-1.5 w-4 rounded bg-emerald-500"></span>
+            실제 {actualCount}일
+          </span>
+          {backfillCount > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-px w-4 border-t-2 border-dashed border-sky-400/60"></span>
+              추정 백필 {backfillCount}일
+            </span>
+          )}
+          {kospiRows.length > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-px w-4 border-t border-dashed border-slate-500/60"></span>
+              KOSPI
+            </span>
+          )}
+        </div>
         {backfillCount > 0 && (
           <div className="mb-2 rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-1.5 text-[10px] text-sky-400">
             ℹ 추정 백필: 현재 보유종목 기준 과거 OHLCV로 역산한 추정값입니다. 실제 과거 포트폴리오 수익률과 다를 수 있습니다.
@@ -1675,78 +1675,65 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
       {/* Kelly 포지션 사이즈 가이드 */}
       {kellySizes && Object.keys(kellySizes).length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50">
           <button
             type="button"
             onClick={() => setKellyOpen((v) => !v)}
-            className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+            className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
           >
-            <h2 className="text-sm font-semibold text-slate-100">Kelly 포지션 사이즈 가이드</h2>
-            <span className="flex items-center gap-2">
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">Half-Kelly 상한 20%</span>
-              <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${kellyOpen ? "rotate-180" : ""}`} />
-            </span>
+            <span className="text-sm font-semibold text-slate-200">Kelly 포지션 사이즈 가이드</span>
+            <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${kellyOpen ? "rotate-180" : ""}`} />
           </button>
           {kellyOpen && (
-          <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-9">
-            {(["conservative","balanced","aggressive"] as const).map((mode) =>
-              (["short","swing","mid"] as const).map((horizon) => {
-                const k = `${mode}_${horizon}`;
-                const entry = kellySizes[k];
-                if (!entry) return null;
-                const hk = entry.recommendedPct != null ? `${Number(entry.recommendedPct).toFixed(1)}%` : entry.kellyHalf != null ? `${(entry.kellyHalf * 100).toFixed(1)}%` : "—";
-                const modeLabel = { conservative: "보수", balanced: "균형", aggressive: "공격" }[mode];
-                const horizonLabel = { short: "단기", swing: "스윙", mid: "중기" }[horizon];
-                const color = mode === "conservative" ? "text-sky-300" : mode === "balanced" ? "text-emerald-300" : "text-orange-300";
-                return (
-                  <div key={k} className="rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-center">
-                    <div className={`font-semibold ${color}`}>{modeLabel}</div>
-                    <div className="text-slate-500">{horizonLabel}</div>
-                    <div className="mt-1 font-mono font-bold text-slate-100">{hk}</div>
-                    {entry.winRate != null && (
-                      <div className="mt-0.5 text-[10px] text-slate-500">승률 {(entry.winRate * 100).toFixed(0)}%</div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-          )}
-          {kellyOpen && (
-            <p className="mt-2 text-[10px] text-slate-500">VTJ 실적 기반 Half-Kelly — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+            <div className="border-t border-slate-800 px-5 pb-5 pt-4">
+              <div className="grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-9">
+                {(["conservative","balanced","aggressive"] as const).map((mode) =>
+                  (["short","swing","mid"] as const).map((horizon) => {
+                    const k = `${mode}_${horizon}`;
+                    const entry = kellySizes[k];
+                    if (!entry) return null;
+                    const hk = entry.recommendedPct != null ? `${Number(entry.recommendedPct).toFixed(1)}%` : entry.kellyHalf != null ? `${(entry.kellyHalf * 100).toFixed(1)}%` : "—";
+                    const modeLabel = { conservative: "보수", balanced: "균형", aggressive: "공격" }[mode];
+                    const horizonLabel = { short: "단기", swing: "스윙", mid: "중기" }[horizon];
+                    const color = mode === "conservative" ? "text-sky-300" : mode === "balanced" ? "text-emerald-300" : "text-orange-300";
+                    return (
+                      <div key={k} className="rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-center">
+                        <div className={`font-semibold ${color}`}>{modeLabel}</div>
+                        <div className="text-slate-500">{horizonLabel}</div>
+                        <div className="mt-1 font-mono font-bold text-slate-100">{hk}</div>
+                        {entry.winRate != null && (
+                          <div className="mt-0.5 text-[10px] text-slate-500">승률 {(entry.winRate * 100).toFixed(0)}%</div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <p className="mt-2 text-[10px] text-slate-500">Half-Kelly 상한 20% · VTJ 실적 기반 — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+            </div>
           )}
         </div>
       )}
 
       {riskBudget && (
-        <div className={`rounded-2xl border p-4 ${
-          riskBudget.status === "OVER_BUDGET"
-            ? "border-red-500/30 bg-red-500/5"
-            : "border-emerald-500/20 bg-emerald-500/5"
-        }`}>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50">
           <button
             type="button"
             onClick={() => setRiskBudgetOpen((v) => !v)}
-            className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+            className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
           >
-            <div>
-              <h2 className="text-sm font-semibold text-slate-100">포트폴리오 리스크 예산</h2>
-              <p className="mt-1 text-[11px] text-slate-500">손절가와 Kelly 한도 기준으로 과대 비중 종목을 표시합니다.</p>
-            </div>
-            <span className="flex items-center gap-2">
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                riskBudget.status === "OVER_BUDGET"
-                  ? "border-red-500/40 bg-red-500/10 text-red-300"
-                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              }`}>
+            <span className="text-sm font-semibold text-slate-200">
+              포트폴리오 리스크 예산
+              <span className={`ml-2 text-xs font-normal ${riskBudget.status === "OVER_BUDGET" ? "text-red-300" : "text-emerald-300"}`}>
                 {riskBudget.status === "OVER_BUDGET" ? "예산 초과" : "정상"}
               </span>
-              <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${riskBudgetOpen ? "rotate-180" : ""}`} />
             </span>
+            <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${riskBudgetOpen ? "rotate-180" : ""}`} />
           </button>
           {riskBudgetOpen && (
-            <>
-              <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-3">
+            <div className="border-t border-slate-800 px-5 pb-5 pt-4">
+              <p className="mb-3 text-[11px] text-slate-500">손절가와 Kelly 한도 기준으로 과대 비중 종목을 표시합니다.</p>
+              <div className="grid gap-2 text-[11px] sm:grid-cols-3">
                 <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
                 <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
                 <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
@@ -1775,7 +1762,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   ))}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calculator, ChevronDown, ChevronUp, WalletCards } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const CASH_KEY = "mone_cash_amount";
 
@@ -49,9 +49,6 @@ export default function CashInputBar() {
         className="flex w-full items-center gap-3 px-4 py-3 text-left md:cursor-default"
         onClick={() => setCollapsed((v) => !v)}
       >
-        <div className="rounded-xl bg-blue-500/10 p-2 text-blue-300">
-          <WalletCards size={16} />
-        </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-white">가용 예수금</div>
           {collapsed && cash > 0 && (
@@ -78,15 +75,12 @@ export default function CashInputBar() {
           입력값은 브라우저에만 저장되며, 추천 카드의 성향별 매수 수량 계산에 사용됩니다.
         </p>
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
-          <div className="relative">
-            <Calculator size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input
-              value={raw}
-              onChange={(event) => applyCash(event.target.value)}
-              placeholder="예: 10000000"
-              className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/60 pl-9 pr-3 text-sm font-mono text-white outline-none focus:border-blue-500 md:w-52"
-            />
-          </div>
+          <input
+            value={raw}
+            onChange={(event) => applyCash(event.target.value)}
+            placeholder="예: 10000000"
+            className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 text-sm font-mono text-white outline-none focus:border-blue-500 md:w-52"
+          />
           <div className="grid grid-cols-3 gap-1 text-center text-[11px]">
             <div className="rounded-lg bg-slate-950/50 px-2 py-1.5">
               <div className="text-slate-500">보수 2%</div>

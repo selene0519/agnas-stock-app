@@ -1417,18 +1417,16 @@ function MarketGateCard({
           </div>
 
           {detailMetrics.length > 0 ? (
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               {detailMetrics.map((metric: any, index: number) => {
                 const score = Math.max(0, Math.min(100, Number(metric?.score ?? 0)));
                 const barCls = score < 40 ? "bg-red-500" : score < 60 ? "bg-amber-500" : "bg-emerald-500";
                 const valueTone = score < 40 ? "text-red-300" : score < 60 ? "text-amber-300" : "text-emerald-300";
                 return (
-                  <div key={`${metric?.name || "metric"}-${index}`} className="mone-home-inset rounded-[13px] border px-3.5 py-3">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 truncate text-xs font-bold text-slate-300">
-                        {metric?.name || "지표"}
-                        <span className="ml-1.5 font-normal text-slate-500">{metric?.direction || "-"}</span>
-                      </span>
+                  <div key={`${metric?.name || "metric"}-${index}`} className="mone-home-inset rounded-[13px] border px-3 py-2.5">
+                    <div className="min-w-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</div>
+                    <div className="mt-0.5 flex items-baseline justify-between gap-2">
+                      <span className="truncate text-[10px] font-normal text-slate-500">{metric?.direction || "-"}</span>
                       <span className={`shrink-0 font-mono text-sm font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</span>
                     </div>
                     <span className="mt-2 block h-2 overflow-hidden rounded-full bg-slate-800">
