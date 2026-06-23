@@ -1,26 +1,26 @@
 {
   "status": "OK",
-  "sampleCount": 12,
+  "sampleCount": 18,
   "baseWinRate": 0.0,
-  "baseAvgPnlPct": -8.119,
-  "generatedAt": "2026-06-23T22:20:46",
+  "baseAvgPnlPct": -7.406,
+  "generatedAt": "2026-06-23T23:35:22",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
     "suggestedCount": 0,
     "approvedCount": 0,
-    "pendingReviewCount": 7,
+    "pendingReviewCount": 12,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
     {
-      "feedbackId": "a557c8d63ba6274e526c",
+      "feedbackId": "b71cf552a6543fc7b26e",
       "mode": "conservative",
       "horizon": "short",
-      "n": 3,
+      "n": 4,
       "winRate": 0.0,
-      "avgPnlPct": -5.727,
-      "multiplier": 0.882,
+      "avgPnlPct": -4.755,
+      "multiplier": 0.857,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -32,7 +32,31 @@
       "n": 3,
       "winRate": 0.0,
       "avgPnlPct": -7.504,
-      "multiplier": 0.97,
+      "multiplier": 1.005,
+      "direction": "NEUTRAL",
+      "suggestedOnly": true,
+      "manualApprovalRequired": false
+    },
+    {
+      "feedbackId": "086bb50ed454aa7dea5f",
+      "mode": "conservative",
+      "horizon": "mid",
+      "n": 3,
+      "winRate": 0.0,
+      "avgPnlPct": -7.915,
+      "multiplier": 1.028,
+      "direction": "NEUTRAL",
+      "suggestedOnly": true,
+      "manualApprovalRequired": false
+    },
+    {
+      "feedbackId": "78bb440a1c77464c757d",
+      "mode": "balanced",
+      "horizon": "mid",
+      "n": 3,
+      "winRate": 0.0,
+      "avgPnlPct": -7.083,
+      "multiplier": 0.983,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
