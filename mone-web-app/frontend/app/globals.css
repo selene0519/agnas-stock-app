@@ -3,13 +3,13 @@
 
 /* ── Design tokens ── */
 :root {
-  --bg-primary: #050A12;
-  --bg-secondary: #070B16;
-  --bg-card: #0B1220;
-  --bg-elevated: #101827;
-  --bg-border: #1E2A3A;
-  --accent-blue: #00C2A8;
-  --accent-cyan: #38BDF8;
+  --bg-primary: #020817;
+  --bg-secondary: #07101f;
+  --bg-card: #0a1424;
+  --bg-elevated: #0e1a2d;
+  --bg-border: #1b2a42;
+  --accent-blue: #1473e6;
+  --accent-cyan: #20b8d6;
   --accent-green: #10b981;
   --accent-red: #ef4444;
   --accent-orange: #f59e0b;
@@ -316,52 +316,46 @@ html[data-theme="light"] .mone-header-button {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
-/* Home follows the calmer scanner/detail dark mode: deep navy + teal accents. */
+/* Home uses the same cool navy surfaces as search, holdings, and analysis,
+   with the brand teal (logo color) as the one primary accent instead of blue. */
 .mone-home {
-  --home-surface: #0B1220;
-  --home-inset: #070B16;
-  --home-border: #1E2A3A;
-  --home-border-strong: #26364D;
-  --home-primary: #00C2A8;
-  --home-primary-hover: #0DD7BD;
-  --home-primary-dim: rgba(0, 194, 168, 0.12);
-  --home-success: #22C982;
-  --home-warning: #F5A623;
-  --home-danger: #F05C5C;
-  --home-info: #38BDF8;
-  --home-icon-bg: rgba(0, 194, 168, 0.12);
-  --home-icon-fg: var(--home-primary);
+  --home-surface: #0a1424;
+  --home-inset: #07101f;
+  --home-border: #1b2a42;
+  --home-primary: #2dd4c2;
+  --home-primary-hover: #45e0cf;
+  --home-primary-dim: rgba(45, 212, 194, 0.14);
 }
 .mone-home-surface {
-  background: linear-gradient(180deg, rgba(11, 18, 32, 0.98), rgba(8, 13, 24, 0.98)) !important;
+  background: var(--home-surface) !important;
   border-color: var(--home-border) !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.014), 0 14px 34px rgba(0, 0, 0, 0.22) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.018), 0 14px 34px rgba(0, 0, 0, 0.2) !important;
 }
 .mone-home-inset {
-  background: rgba(7, 11, 22, 0.92) !important;
+  background: var(--home-inset) !important;
   border-color: var(--home-border) !important;
 }
 .mone-section-icon {
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: var(--home-icon-fg);
-  background: var(--home-icon-bg);
-  box-shadow: 0 0 0 1px rgba(0, 194, 168, 0.14);
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--home-primary);
 }
 html:not([data-theme="light"]) .mone-app-header {
-  background-color: rgba(5, 10, 18, 0.94) !important;
-  border-color: rgba(0, 194, 168, 0.14) !important;
+  background-color: rgba(3, 9, 20, 0.94) !important;
+  border-color: rgba(45, 212, 194, 0.16) !important;
 }
-/* Limit MONE home primary UI to teal; reserve blue for charts/info only. */
+
+/* The brand logo/wordmark is teal — keep the home screen's primary action
+   color in the same family instead of clashing with a separate blue accent.
+   These overrides re-tint Tailwind's blue-* utility classes to teal, scoped
+   to the home screen only (other pages keep blue for charts/info). */
 .mone-home [class*="bg-blue-600"],
 .mone-home [class*="bg-blue-500"] {
   background-color: var(--home-primary) !important;
-  color: #041512 !important;
+  color: #052420 !important;
 }
 .mone-home [class*="hover:bg-blue-500"]:hover,
 .mone-home [class*="hover:bg-blue-700"]:hover {
@@ -374,23 +368,29 @@ html:not([data-theme="light"]) .mone-app-header {
   color: var(--home-primary) !important;
 }
 .mone-home [class*="border-blue-"] {
-  border-color: rgba(0, 194, 168, 0.42) !important;
+  border-color: rgba(45, 212, 194, 0.45) !important;
 }
 .mone-home [class*="focus:ring-blue-"] {
-  --tw-ring-color: rgba(0, 194, 168, 0.36) !important;
+  --tw-ring-color: rgba(45, 212, 194, 0.4) !important;
 }
 .mone-home [class*="focus:border-blue-"] {
   border-color: var(--home-primary) !important;
 }
+
 html[data-theme="light"] .mone-home {
   --home-surface: #ffffff;
   --home-inset: #f3f6fa;
   --home-border: #d8e0ea;
-  --home-icon-bg: #e8f2ff;
-  --home-icon-fg: #1267c4;
+  --home-primary: #0d9488;
+  --home-primary-hover: #0f766e;
+  --home-primary-dim: rgba(13, 148, 136, 0.1);
 }
 html[data-theme="light"] .mone-home-surface {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.025), 0 5px 16px rgba(15, 23, 42, 0.055) !important;
+}
+html[data-theme="light"] .mone-home [class*="bg-blue-600"]:not([class*="/"]),
+html[data-theme="light"] .mone-home [class*="bg-blue-500"]:not([class*="/"]) {
+  color: #ffffff !important;
 }
 
 /* 모바일에서 선택 방지 (버튼/탭바) */

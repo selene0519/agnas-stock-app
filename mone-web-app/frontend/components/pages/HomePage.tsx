@@ -4,20 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  BarChart3,
   Bell,
   Bot,
-  BriefcaseBusiness,
-  Calculator,
   ChevronRight,
   Clock,
-  Grid3X3,
   History,
   RefreshCw,
   Sparkles,
   X,
   Info,
 } from "lucide-react";
+import type { PageId } from "../Sidebar";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { CardSkeleton } from "@/components/ui/Skeleton";
@@ -47,20 +44,6 @@ import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
 import { getUserId } from "@/lib/userId";
-
-type PageId =
-  | "home"
-  | "report"
-  | "stocks"
-  | "holdings"
-  | "chart"
-  | "news"
-  | "prediction"
-  | "advanced"
-  | "paper"
-  | "journal"
-  | "broker"
-  | "admin";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
 const HORIZONS: Horizon[] = ["short", "swing", "mid"];
@@ -483,7 +466,7 @@ function TagChips({ item }: { item: any }) {
       {item.evNegative && <span className="rounded-full border border-red-500/50 bg-red-500/15 px-2 py-1 text-xs font-semibold text-red-300">EV음수</span>}
       {item.maConvergence && <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-xs text-violet-300">이격도수렴</span>}
       {item.isUndervaluedGrowth === "True" && <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">저평가성장주</span>}
-      {item.supplySignal === "STRONG_BUY" && <span className="rounded-full border border-teal-400/35 bg-teal-400/10 px-2 py-1 text-xs text-teal-300">기관+외국인</span>}
+      {item.supplySignal === "STRONG_BUY" && <span className="rounded-full border border-blue-400/40 bg-blue-400/10 px-2 py-1 text-xs text-blue-300">기관+외국인</span>}
       {item.supplySignal === "INST_BUY" && <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300">기관매수</span>}
       {tags.filter((t) => !["저평가성장주", "공시주의"].includes(t)).slice(0, 2).map((t) => (
         <span key={t} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-200">{strategyTagLabel(t)}</span>
@@ -602,6 +585,10 @@ function TodayEntryCard({
   const riskClass = riskText === "위험 낮음" ? "text-emerald-300" : riskText === "주의" ? "text-amber-300" : "text-red-300";
   const confidence = probabilityText(item, score > 0 ? `${score.toFixed(0)}점` : "-");
   const reasons = moneReasonLines(item).slice(0, 3);
+  const ev = Number(item.expectedValue ?? 0);
+  const rr = Number(item.rrActual ?? item.rr ?? 0);
+  const evPct = Math.max(0, Math.min(100, Math.abs(ev) * 5));
+  const rrPct = Math.max(0, Math.min(100, rr * 25));
 
   // 앙상블/실증 뱃지 — 샘플 수 5개 이상일 때만 표시
   const calibCount = Number(item.calibrationCount ?? 0);
@@ -610,7 +597,7 @@ function TodayEntryCard({
   const calibratedWinRate = item.calibratedWinRate != null ? Number(item.calibratedWinRate) : null;
   const toneStyle = {
     entry: {
-      card: "hover:border-teal-500/45 focus:ring-teal-500/40",
+      card: "hover:border-blue-500/45 focus:ring-blue-500/40",
       rank: "bg-emerald-600 text-white",
       decision: "text-emerald-300",
       accent: "bg-emerald-500",
@@ -644,7 +631,7 @@ function TodayEntryCard({
     >
       <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${toneStyle.accent}`} />
       <div className="flex items-start gap-2.5">
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-[12px] font-black shadow-[0_0_0_2px_rgba(17,21,33,0.95)] ${toneStyle.rank}`}>
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-[12px] font-black shadow-[0_0_0_2px_var(--home-surface)] ${toneStyle.rank}`}>
           {rank}
         </div>
         <div className="min-w-0 flex-1">
@@ -691,14 +678,31 @@ function TodayEntryCard({
         </div>
         <div className="text-right">
           <div className="text-[10px] font-semibold text-slate-500">신뢰도</div>
-          <div className="font-mono text-[11px] font-black text-teal-300">{confidence}</div>
+          <div className="font-mono text-[11px] font-black text-blue-300">{confidence}</div>
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2 border-y border-white/10 py-3 text-[11px]">
-        <div className="min-w-0"><div className="text-slate-500">현재가</div><div className="break-keep font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
         <div className="min-w-0"><div className="text-slate-500">기준가</div><div className="break-keep font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">손절가</div><div className="break-keep font-mono text-red-300">{priceText(item, "stop", "-")}</div></div>
         <div className="min-w-0"><div className="text-slate-500">목표가</div><div className="break-keep font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
+      </div>
+
+      <div className="mt-2.5 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <span className="w-9 shrink-0 text-[10px] font-semibold text-slate-500">EV</span>
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-800">
+            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${evPct}%` }} />
+          </div>
+          <span className="w-12 shrink-0 text-right font-mono text-[11px] font-bold text-emerald-300">{ev >= 0 ? "+" : ""}{ev.toFixed(1)}%</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-9 shrink-0 text-[10px] font-semibold text-slate-500">손익비</span>
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-800">
+            <div className="h-full rounded-full bg-blue-500" style={{ width: `${rrPct}%` }} />
+          </div>
+          <span className="w-12 shrink-0 text-right font-mono text-[11px] font-bold text-blue-300">{rr > 0 ? rr.toFixed(1) : "-"}</span>
+        </div>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
@@ -726,7 +730,7 @@ function TodayEntryCard({
             event.stopPropagation();
             onAnalyze(item);
           }}
-          className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] bg-teal-500 px-3 py-2 text-sm font-black text-slate-950 transition-[background-color,transform] hover:bg-teal-400 active:scale-[0.96]"
+          className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-blue-500 active:scale-[0.96]"
         >
           분석 보기 <ArrowRight size={14} />
         </button>
@@ -823,7 +827,7 @@ function CandidateCarouselSection({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="mone-section-icon"><Sparkles size={15} /></span>
+            <span className="mone-section-icon" />
             <h2 className="text-[18px] font-black text-slate-100">오늘의 후보</h2>
           </div>
           <p className="mt-1 text-xs text-slate-500">{sessionHint || "오늘 진입과 대기 관찰 후보를 같은 기준으로 확인합니다."}</p>
@@ -843,7 +847,7 @@ function CandidateCarouselSection({
               onClick={() => setCandidateTab(tab.key)}
               className={`min-h-10 min-w-0 rounded-xl px-2 text-[11px] font-black transition-[background-color,color,transform] active:scale-[0.96] ${
                 active
-                  ? "bg-teal-500 text-slate-950"
+                  ? "bg-blue-600 text-white"
                   : "border border-white/10 bg-[#181E2E] text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -891,7 +895,7 @@ function CandidateCarouselSection({
                 onClick={() => moveToCard(index)}
                 aria-label={`${index + 1}번 후보 카드로 이동`}
                 aria-current={activeCard === index ? "true" : undefined}
-                className={`h-1.5 rounded-full transition-[width,background-color,transform] active:scale-[0.96] ${activeCard === index ? "w-4 bg-teal-400" : "w-1.5 bg-slate-700"}`}
+                className={`h-1.5 rounded-full transition-[width,background-color,transform] active:scale-[0.96] ${activeCard === index ? "w-4 bg-blue-500" : "w-1.5 bg-slate-700"}`}
               />
             ))}
           </div>
@@ -1020,8 +1024,8 @@ function PositionSizingSection({
   return (
     <section className="mone-home-surface rounded-[18px] border p-4">
       <div className="mb-3 flex items-center gap-2 border-b border-slate-800/80 pb-3">
-        <span className="mone-section-icon"><Calculator size={15} /></span>
-        <h2 className="text-sm font-black text-slate-300">포지션 사이징 (Half-Kelly)</h2>
+        <span className="mone-section-icon" />
+        <h2 className="text-[18px] font-black text-slate-100">포지션 사이징 (Half-Kelly)</h2>
         <ChevronRight size={16} className="ml-auto text-slate-100" />
       </div>
       {capital <= 0 ? (
@@ -1136,25 +1140,25 @@ function JournalModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-3 gap-2">
               {(["BUY", "SELL", "NOTE"] as const).map((a) => (
                 <button key={a} onClick={() => setForm((f) => ({ ...f, action: a }))}
-                  className={`rounded-lg py-1.5 text-xs font-semibold ${form.action === a ? "bg-teal-500 text-slate-950" : "bg-slate-800 text-slate-400"}`}>
+                  className={`rounded-lg py-1.5 text-xs font-semibold ${form.action === a ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
                   {ACTION_LABELS[a]}
                 </button>
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <input placeholder="종목코드" value={form.symbol} onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400" />
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
               <input placeholder="종목명" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400" />
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
               <input placeholder="가격" type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400" />
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
               <input placeholder="수량" type="number" value={form.qty} onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400" />
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
             </div>
             <textarea placeholder="진입 근거 (최대 100자)" maxLength={100} value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400 resize-none" rows={2} />
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 resize-none" rows={2} />
             <button onClick={addEntry} disabled={saving || !form.memo.trim()}
-              className="w-full rounded-lg bg-teal-500 py-2 text-sm font-black text-slate-950 disabled:opacity-50 hover:bg-teal-400">
+              className="w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-blue-700">
               {saving ? "저장 중..." : "기록 추가"}
             </button>
           </div>
@@ -1190,7 +1194,7 @@ function JournalModal({ onClose }: { onClose: () => void }) {
                       <textarea placeholder="청산 후 복기 (뭘 놓쳤나?)" value={reviewText} onChange={(ev) => setReviewText(ev.target.value)}
                         className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none resize-none" rows={2} />
                       <div className="flex gap-2">
-                        <button onClick={() => saveReview(e.id)} className="rounded-lg bg-teal-500 px-3 py-1 text-xs font-black text-slate-950">저장</button>
+                        <button onClick={() => saveReview(e.id)} className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white">저장</button>
                         <button onClick={() => setEditId(null)} className="rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-400">취소</button>
                       </div>
                     </div>
@@ -1326,7 +1330,7 @@ function MarketGateCard({
     <section className="space-y-3">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2 text-[18px] font-black text-slate-100">
-          <span className="mone-section-icon"><BarChart3 size={15} /></span>
+          <span className="mone-section-icon" />
           시장 컨디션 게이트
         </div>
         <button
@@ -1405,12 +1409,12 @@ function MarketGateCard({
       {expanded && (
         <section id="market-gate-details" className="mone-home-surface rounded-[18px] border p-4">
           <div className="flex items-center gap-2">
-            <span className="mone-section-icon"><BarChart3 size={14} /></span>
+            <span className="mone-section-icon" />
             <div>
               <div className="text-sm font-black text-slate-100">시장 지표 상세</div>
               <div className="mt-0.5 text-[10px] text-slate-500">공포탐욕지수 구성 지표</div>
             </div>
-            <span className="ml-auto font-mono text-sm font-black text-teal-300 tabular-nums">{sentimentScore.toFixed(1)}</span>
+            <span className="ml-auto font-mono text-sm font-black text-blue-300 tabular-nums">{sentimentScore.toFixed(1)}</span>
           </div>
 
           {detailMetrics.length > 0 ? (
@@ -1488,10 +1492,10 @@ function TodayConclusionCard({
   const barCls = gate.isHigh ? "bg-emerald-500" : gate.isMid ? "bg-amber-500" : "bg-red-500";
 
   return (
-    <section className="rounded-2xl border border-teal-500/25 bg-teal-950/10 p-5">
+    <section className="rounded-2xl border border-blue-500/30 bg-blue-950/20 p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-widest text-teal-300/80">오늘의 MONE 결론</div>
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-300/80">오늘의 MONE 결론</div>
           <h2 className={`mt-1 text-2xl font-black tracking-normal ${textCls}`}>{title}</h2>
           <p className="mt-1 text-sm font-semibold text-slate-200">{subtitle}</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -1560,8 +1564,8 @@ function DailyBriefingCard({
 }) {
   return (
     <section className="mone-home-surface rounded-[20px] border p-5">
-      <div className="flex items-center gap-2 text-[12px] font-black text-teal-300">
-        <span className="mone-section-icon"><Sparkles size={14} /></span>
+      <div className="flex items-center gap-2 text-[12px] font-black text-blue-300">
+        <span className="mone-section-icon" />
         오늘의 관찰 1순위
       </div>
       <h2 className="mt-3 text-[23px] font-black leading-tight text-balance text-slate-100">
@@ -1575,7 +1579,7 @@ function DailyBriefingCard({
           <span
             key={chip}
             className={`rounded-full px-3 py-1.5 text-xs font-black ${
-              index === 0 ? "bg-teal-500/15 text-teal-300"
+              index === 0 ? "bg-blue-500/20 text-blue-300"
               : index === 1 ? "bg-emerald-500/18 text-emerald-300"
               : "bg-slate-800/80 text-slate-300"
             }`}
@@ -1587,17 +1591,17 @@ function DailyBriefingCard({
 
       <div className="mone-home-inset mt-4 rounded-[13px] border p-3.5">
         <div className="flex gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 text-teal-200">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/18 text-blue-200">
             <Sparkles size={16} />
           </span>
           <div className="min-w-0">
-            <div className="text-xs font-black text-teal-300">MONE 판단</div>
+            <div className="text-xs font-black text-blue-300">MONE 판단</div>
             <p className="mt-1 text-sm leading-6 text-slate-300 text-pretty">{briefing.detail}</p>
             {briefing.topItem && onAnalyze && (
               <button
                 type="button"
                 onClick={() => onAnalyze(briefing.topItem)}
-                className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-lg text-sm font-black text-teal-400 transition-[color,transform] hover:text-teal-300 active:scale-[0.96]"
+                className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-lg text-sm font-black text-blue-400 transition-[color,transform] hover:text-blue-300 active:scale-[0.96]"
               >
                 판단 근거 보기 <ArrowRight size={13} />
               </button>
@@ -1753,7 +1757,7 @@ function StrategyRecordsSection({
         aria-controls="strategy-records-body"
         className="flex min-h-[72px] w-full items-center gap-3 px-5 text-left transition-[background-color,transform] hover:bg-slate-900/35 active:scale-[0.99]"
       >
-        <span className="mone-section-icon shrink-0"><Grid3X3 size={15} /></span>
+        <span className="mone-section-icon shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="text-[18px] font-black text-slate-100">전략 · 기록</div>
           <div className="mt-1 truncate text-xs font-semibold text-slate-600">
@@ -1773,7 +1777,7 @@ function StrategyRecordsSection({
             <button
               type="button"
               onClick={onMatrixClick}
-              className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-black text-teal-400 transition-[color,transform] hover:text-teal-300 active:scale-[0.96]"
+              className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-black text-blue-400 transition-[color,transform] hover:text-blue-300 active:scale-[0.96]"
             >
               3×3 매트릭스 <ChevronRight size={14} />
             </button>
@@ -1817,7 +1821,7 @@ function StrategyRecordsSection({
               aria-expanded={engineOpen}
               className="flex min-h-12 w-full items-center gap-2 px-3 text-left transition-[background-color,transform] hover:bg-slate-900/45 active:scale-[0.99]"
             >
-              <Bot size={15} className="shrink-0 text-teal-300" />
+              <Bot size={15} className="shrink-0 text-blue-300" />
               <span className="flex-1 text-sm font-black text-slate-100">AI 엔진 변경 이력</span>
               <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-black text-slate-400">{engineRows.length}건</span>
               <ChevronRight size={14} className={`text-slate-500 transition-transform duration-200 ${engineOpen ? "-rotate-90" : "rotate-90"}`} />
@@ -1929,7 +1933,7 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
             onClick={() => onNavigate?.("holdings")}
-            className="rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-black text-slate-950 hover:bg-teal-400 transition-colors"
+            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
           >
             보유종목 등록하기
           </button>
@@ -1943,6 +1947,17 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
       </div>
     </section>
   );
+}
+
+// chartSignalSummary는 객체(status/direction/chartSignalTag 등)이므로 JSX에 직접 렌더링하면
+// "Objects are not valid as a React child" 에러가 난다 — 짧은 한국어 요약 문자열로 변환한다.
+function chartSignalSummaryText(cs: any): string {
+  if (!cs || typeof cs !== "object") return "";
+  const dirLabel = cs.direction === "bullish" ? "상승 우위" : cs.direction === "bearish" ? "하락 우위" : null;
+  const tag = cs.chartSignalTag && cs.chartSignalTag !== "NO_SIGNAL" ? cs.chartSignalTag : null;
+  const score = cs.confluenceScore != null ? `컨플루언스 ${Number(cs.confluenceScore).toFixed(0)}` : null;
+  const parts = [dirLabel, tag, score].filter(Boolean);
+  return parts.length ? parts.join(" · ") : (cs.status === "unavailable" ? "차트 데이터 부족" : "신호 없음");
 }
 
 function CompactHoldingsSection({
@@ -1960,7 +1975,7 @@ function CompactHoldingsSection({
     return (
       <section className="space-y-3">
         <div className="flex items-center gap-2 px-1">
-          <span className="mone-section-icon"><BriefcaseBusiness size={15} /></span>
+          <span className="mone-section-icon" />
           <h2 className="text-[18px] font-black text-slate-100">보유종목</h2>
           <span className="ml-auto text-xs text-slate-500">0개</span>
         </div>
@@ -1972,7 +1987,7 @@ function CompactHoldingsSection({
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-2 px-1">
-        <span className="mone-section-icon"><BriefcaseBusiness size={15} /></span>
+        <span className="mone-section-icon" />
         <h2 className="text-[18px] font-black text-slate-100">보유종목</h2>
         {summary?.totalPnl != null && (
           <span className={`ml-1 font-mono text-sm font-black tabular-nums ${Number(summary.totalPnl) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -2102,14 +2117,18 @@ function ScoreBreakdownPanel({ item }: { item: any }) {
           )}
 
           {/* 요약 문자열 */}
-          {(item.chartSignalSummary || item.eventSummary || item.adaptiveScoreSummary) && (
-            <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">신호 요약</div>
-              {item.chartSignalSummary && <div className="text-[11px] text-slate-400"><span className="text-sky-400 font-medium">차트 </span>{item.chartSignalSummary}</div>}
-              {item.eventSummary && <div className="text-[11px] text-slate-400"><span className="text-amber-400 font-medium">이벤트 </span>{item.eventSummary}</div>}
-              {item.adaptiveScoreSummary && <div className="text-[11px] text-slate-400"><span className="text-emerald-400 font-medium">AI보정 </span>{item.adaptiveScoreSummary}</div>}
-            </div>
-          )}
+          {(() => {
+            const chartText = chartSignalSummaryText(item.chartSignalSummary);
+            if (!chartText && !item.eventSummary && !item.adaptiveScoreSummary) return null;
+            return (
+              <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">신호 요약</div>
+                {chartText && <div className="text-[11px] text-slate-400"><span className="text-sky-400 font-medium">차트 </span>{chartText}</div>}
+                {item.eventSummary && <div className="text-[11px] text-slate-400"><span className="text-amber-400 font-medium">이벤트 </span>{item.eventSummary}</div>}
+                {item.adaptiveScoreSummary && <div className="text-[11px] text-slate-400"><span className="text-emerald-400 font-medium">AI보정 </span>{item.adaptiveScoreSummary}</div>}
+              </div>
+            );
+          })()}
 
           {/* 진입·목표·손절 근거 */}
           {(item.entryBasis || item.targetBasis || item.stopBasis) && (
@@ -2171,7 +2190,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   const bucketColor =
     decisionBucket === "오늘 진입"  ? "bg-emerald-600 text-white"
     : decisionBucket === "기다림"   ? "bg-sky-600 text-white"
-    : decisionBucket === "다음 진입" ? "bg-teal-500 text-slate-950"
+    : decisionBucket === "다음 진입" ? "bg-blue-600 text-white"
     : decisionBucket === "관찰"     ? "bg-slate-500 text-slate-100"
     : decisionBucket === "대기 관찰" ? "bg-amber-600 text-white"
     : decisionBucket === "매수금지"  ? "bg-red-700 text-white"
@@ -2559,7 +2578,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
           {/* 수급 신호 */}
           {supplySignal !== "NEUTRAL" && (
             <div className={`rounded-xl border p-3 text-[11px] ${
-              supplySignal === "STRONG_BUY" ? "border-teal-500/35 bg-teal-500/10 text-teal-300"
+              supplySignal === "STRONG_BUY" ? "border-blue-600/40 bg-blue-900/20 text-blue-300"
               : supplySignal === "INST_BUY"  ? "border-sky-600/40 bg-sky-900/20 text-sky-300"
               : "border-red-600/40 bg-red-900/20 text-red-300"
             }`}>
@@ -2641,7 +2660,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
             const ev = Number(item.expectedValue || 0);
             const rowCls = isToday  ? "bg-emerald-950/40 border border-emerald-800/30"
               : isWait   ? "bg-sky-950/40 border border-sky-800/30"
-              : isNext   ? "bg-teal-950/25 border border-teal-700/20"
+              : isNext   ? "bg-blue-950/40 border border-blue-800/20"
               : isWatch  ? "bg-slate-900/60"
               : isCaution ? "bg-red-950/30 border border-red-900/20 opacity-50"
               : "bg-slate-950/50 opacity-60";
@@ -2651,7 +2670,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
                   <span className="truncate text-[11px] font-medium text-slate-200">{displayName(item)}</span>
                   {isToday  && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">검토</span>}
                   {isWait   && <span className="ml-1 rounded bg-sky-700/50 px-1 text-[9px] text-sky-300">대기</span>}
-                  {isNext   && <span className="ml-1 rounded bg-teal-700/35 px-1 text-[9px] text-teal-300">다음</span>}
+                  {isNext   && <span className="ml-1 rounded bg-blue-700/50 px-1 text-[9px] text-blue-300">다음</span>}
                   {isCaution && <span className="ml-1 rounded bg-red-700/50 px-1 text-[9px] text-red-300">주의</span>}
                   {isWatch && item.timingLabel && <span className="ml-1 rounded bg-amber-900/40 px-1 text-[9px] text-amber-400">{item.timingLabel}</span>}
                 </div>
@@ -3319,7 +3338,7 @@ export default function HomePage({
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                 sessionPhase === "장중" ? "bg-emerald-500/15 text-emerald-300"
-                : sessionPhase === "장마감" ? "bg-teal-500/15 text-teal-300"
+                : sessionPhase === "장마감" ? "bg-blue-500/15 text-blue-300"
                 : sessionPhase === "휴장" ? "bg-slate-800 text-slate-400"
                 : "bg-slate-800 text-slate-400"
               }`}>{sessionStatus}</span>
@@ -3344,7 +3363,7 @@ export default function HomePage({
               onClick={() => updateMarketChoice(choice)}
               className={`min-h-9 min-w-0 rounded-xl border px-2 text-sm font-black transition-[background-color,border-color,transform] active:scale-[0.96] ${
                 marketChoice === choice
-                  ? "border-teal-400 bg-teal-500 text-slate-950"
+                  ? "border-blue-500 bg-blue-600 text-white"
                   : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"
               }`}
             >
