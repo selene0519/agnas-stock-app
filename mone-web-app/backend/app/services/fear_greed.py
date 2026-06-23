@@ -141,7 +141,7 @@ def _fetch_cnn_fg() -> dict[str, Any] | None:
             comp = data.get(comp_key) or {}
             val = comp.get("score")
             if val is not None:
-                direction = comp.get("rating", "")
+                direction = label_map.get(str(comp.get("rating", "")).lower(), comp.get("rating") or "-")
                 components.append({
                     "name": comp_name,
                     "score": round(float(val), 1),

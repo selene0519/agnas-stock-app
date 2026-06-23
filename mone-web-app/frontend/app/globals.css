@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@300;400;500;600&family=Orbitron:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Orbitron:wght@300;400;500&display=swap');
 @import "tailwindcss";
 
 /* ── Design tokens ── */
@@ -37,7 +37,7 @@ html[data-theme="light"] {
 html, body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-pretendard), -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   margin: 0; padding: 0;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -135,7 +135,7 @@ html, body {
   background: var(--bg-elevated); border: 1px solid var(--bg-border);
   border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
   font-size: 13px; outline: none; transition: border-color 0.2s;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-pretendard), sans-serif;
 }
 .input-base:focus { border-color: var(--accent-blue); }
 .input-base::placeholder { color: var(--text-muted); }

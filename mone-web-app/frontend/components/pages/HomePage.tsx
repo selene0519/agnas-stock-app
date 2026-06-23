@@ -1407,32 +1407,35 @@ function MarketGateCard({
       </div>
 
       {expanded && (
-        <section id="market-gate-details" className="mone-home-surface rounded-[18px] border p-4">
-          <div className="flex items-center gap-2">
+        <section id="market-gate-details" className="mone-home-surface rounded-[20px] border p-5">
+          <div className="flex items-center gap-2.5">
             <span className="mone-section-icon" />
-            <div>
+            <div className="min-w-0">
               <div className="text-sm font-black text-slate-100">시장 지표 상세</div>
-              <div className="mt-0.5 text-[10px] text-slate-500">공포탐욕지수 구성 지표</div>
+              <div className="mt-0.5 text-[11px] text-slate-500">공포탐욕지수 구성 지표</div>
             </div>
-            <span className="ml-auto font-mono text-sm font-black text-blue-300 tabular-nums">{sentimentScore.toFixed(1)}</span>
+            <span className="ml-auto shrink-0 font-mono text-base font-black text-blue-300 tabular-nums">{sentimentScore.toFixed(1)}</span>
           </div>
 
           {detailMetrics.length > 0 ? (
-            <div className="mt-4 divide-y divide-slate-800/80">
+            <div className="mt-4 space-y-2">
               {detailMetrics.map((metric: any, index: number) => {
                 const score = Math.max(0, Math.min(100, Number(metric?.score ?? 0)));
-                const tone = score < 40 ? "bg-red-400" : score < 60 ? "bg-amber-400" : "bg-cyan-400";
-                const valueTone = score < 40 ? "text-red-300" : score < 60 ? "text-amber-300" : "text-cyan-300";
+                const barCls = score < 40 ? "bg-red-500" : score < 60 ? "bg-amber-500" : "bg-emerald-500";
+                const valueTone = score < 40 ? "text-red-300" : score < 60 ? "text-amber-300" : "text-emerald-300";
+                const chipCls = score < 40 ? "bg-red-500/12 text-red-300" : score < 60 ? "bg-amber-500/12 text-amber-300" : "bg-emerald-500/12 text-emerald-300";
                 return (
-                  <div key={`${metric?.name || "metric"}-${index}`} className="grid min-h-12 grid-cols-[minmax(88px,1fr)_minmax(92px,1.4fr)_40px] items-center gap-3 py-2.5">
-                    <div className="min-w-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</div>
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-right font-mono text-[10px] text-slate-500">{metric?.direction || "-"}</span>
-                      <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-slate-800">
-                        <span className={`block h-full rounded-full ${tone}`} style={{ width: `${score}%` }} />
-                      </span>
+                  <div key={`${metric?.name || "metric"}-${index}`} className="mone-home-inset rounded-[13px] border px-3.5 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</span>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${chipCls}`}>{metric?.direction || "-"}</span>
                     </div>
-                    <div className={`text-right font-mono text-xs font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</div>
+                    <div className="mt-2.5 flex items-center gap-3">
+                      <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-800">
+                        <span className={`block h-full rounded-full transition-[width] duration-500 ${barCls}`} style={{ width: `${score}%` }} />
+                      </span>
+                      <span className={`shrink-0 font-mono text-sm font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</span>
+                    </div>
                   </div>
                 );
               })}
