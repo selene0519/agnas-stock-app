@@ -1,13 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Bell, Bot, History, RefreshCw, TrendingUp, Clock, Eye, AlertTriangle, X, Info, Calculator, ArrowRight } from "lucide-react";
-import type { PageId } from "../Sidebar";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Bell,
+  Bot,
+  BriefcaseBusiness,
+  Calculator,
+  ChevronRight,
+  Clock,
+  Grid3X3,
+  History,
+  RefreshCw,
+  Sparkles,
+  X,
+  Info,
+} from "lucide-react";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { SentimentBadge } from "@/components/SentimentBadge";
-import FearGreedWidget from "@/components/FearGreedWidget";
 import {
   getDefaultMarketBySession, getMarketSessionStatus, getSessionCountdown,
   kstNowParts, type SessionPhase,
@@ -32,6 +46,21 @@ import {
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
+import { getUserId } from "@/lib/userId";
+
+type PageId =
+  | "home"
+  | "report"
+  | "stocks"
+  | "holdings"
+  | "chart"
+  | "news"
+  | "prediction"
+  | "advanced"
+  | "paper"
+  | "journal"
+  | "broker"
+  | "admin";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
 const HORIZONS: Horizon[] = ["short", "swing", "mid"];
@@ -75,7 +104,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
 const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000; // refresh changing prices occasionally
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v4:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v5:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -92,7 +121,15 @@ function isUsableHomeCache(c: HomeCacheEntry | null | undefined): c is HomeCache
 }
 
 function homeCacheKey(market: "kr" | "us") {
-  return `${HOME_PAGE_STORAGE_PREFIX}${market}`;
+  let user = "anon";
+  if (typeof window !== "undefined") {
+    try {
+      user = getUserId() || "anon";
+    } catch {
+      user = "anon";
+    }
+  }
+  return `${HOME_PAGE_STORAGE_PREFIX}${user}:${market}`;
 }
 
 function readStoredHomeCache(market: "kr" | "us"): HomeCacheEntry | null {
@@ -265,7 +302,7 @@ function buildDailyBriefing(args: {
   }
 
   return {
-    title: "오늘의 관찰 1순위",
+    title: `${name}, ${modeLabel(String(topItem._mode || topItem.mode || "balanced") as Mode)}·${horizonLabel(String(topItem._horizon || topItem.horizon || "swing") as Horizon)} 우선 확인 후보`,
     detail,
     tone,
     chips: [regimeChip, dataChip, `${todayCount}개 검토`, `${watchCount}개 대기`],
@@ -446,7 +483,7 @@ function TagChips({ item }: { item: any }) {
       {item.evNegative && <span className="rounded-full border border-red-500/50 bg-red-500/15 px-2 py-1 text-xs font-semibold text-red-300">EV음수</span>}
       {item.maConvergence && <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-xs text-violet-300">이격도수렴</span>}
       {item.isUndervaluedGrowth === "True" && <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">저평가성장주</span>}
-      {item.supplySignal === "STRONG_BUY" && <span className="rounded-full border border-blue-400/40 bg-blue-400/10 px-2 py-1 text-xs text-blue-300">기관+외국인</span>}
+      {item.supplySignal === "STRONG_BUY" && <span className="rounded-full border border-teal-400/35 bg-teal-400/10 px-2 py-1 text-xs text-teal-300">기관+외국인</span>}
       {item.supplySignal === "INST_BUY" && <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300">기관매수</span>}
       {tags.filter((t) => !["저평가성장주", "공시주의"].includes(t)).slice(0, 2).map((t) => (
         <span key={t} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-200">{strategyTagLabel(t)}</span>
@@ -474,8 +511,22 @@ function EarningsBadge({ dday }: { dday: number }) {
 
 // ── 매크로/실적 이벤트 배너 ──────────────────────────────────────────────
 function EventBanner({ alert }: { alert: any }) {
-  const [dismissed, setDismissed] = useState(false);
-  if (!alert || dismissed) return null;
+  if (!alert) {
+    return (
+      <section className="mone-home-surface rounded-[18px] border px-4 py-3.5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/12 text-amber-300">
+            <AlertTriangle size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-black text-slate-100">오늘 주요 일정 · 확인 중</div>
+            <div className="mt-1 truncate text-xs font-medium text-slate-400">진입 전 경제지표와 실적 일정을 함께 확인하세요</div>
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-slate-600" />
+        </div>
+      </section>
+    );
+  }
 
   const highMacro: any[] = alert.todayHighMacro || [];
   const allMacro: any[] = alert.todayAllMacro || [];
@@ -489,71 +540,31 @@ function EventBanner({ alert }: { alert: any }) {
 
   if (!hasHigh && !hasMed && !hasTomorrow) return null;
 
-  const bgClass = hasHigh
-    ? "border-red-500/40 bg-red-500/10"
+  const primary = highMacro[0] || allMacro[0] || todayEarnings[0] || tmrwHigh[0] || tmrwEarnings[0] || {};
+  const title = hasTomorrow && !hasHigh && !hasMed
+    ? `내일 예정 · ${primary.event || primary.symbol || primary.name || "일정 확인"}`
+    : todayEarnings.length > 0 && !highMacro.length && !allMacro.length
+      ? `오늘 실적 · ${primary.symbol || primary.name || "실적 발표"}`
+      : `오늘 주요 지표 · ${primary.event || "일정 확인"}`;
+  const subtitle = hasHigh
+    ? "오늘 진입 시 리스크 관리 강화 권고 · 변동성 확대 구간"
     : hasMed
-    ? "border-amber-500/40 bg-amber-500/10"
-    : "border-slate-600/60 bg-slate-800/60";
-  const textClass = hasHigh ? "text-red-300" : hasMed ? "text-amber-300" : "text-slate-400";
-  const iconClass = hasHigh ? "text-red-400" : hasMed ? "text-amber-400" : "text-slate-500";
+      ? "오늘 진입 시 일정 확인 권고 · 변동성 확대 가능"
+      : "다음 거래일 전략 점검에 반영하세요";
 
   return (
-    <div className={`relative flex items-start gap-3 rounded-xl border px-3.5 py-2.5 text-sm ${bgClass}`}>
-      <AlertTriangle size={15} className={`mt-0.5 shrink-0 ${iconClass}`} />
-      <div className="min-w-0 flex-1">
-        {/* 오늘 HIGH 매크로 */}
-        {highMacro.length > 0 && (
-          <div className="font-semibold text-red-200">
-            🔴 오늘 주요 지표:
-            {highMacro.slice(0, 3).map((e: any, i: number) => (
-              <span key={i} className="ml-1 rounded-full border border-red-500/30 bg-red-500/15 px-1.5 py-0.5 text-[11px]">
-                {e.event}
-                {e.forecast ? ` (예상 ${e.forecast})` : ""}
-              </span>
-            ))}
-          </div>
-        )}
-        {/* 오늘 MEDIUM 매크로 (HIGH가 없을 때) */}
-        {!hasHigh && allMacro.length > 0 && (
-          <div className={`font-medium ${textClass}`}>
-            ⚠️ 오늘 경제지표:
-            {allMacro.slice(0, 3).map((e: any, i: number) => (
-              <span key={i} className="ml-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[11px] text-amber-200">
-                {e.event}
-              </span>
-            ))}
-          </div>
-        )}
-        {/* 오늘 실적발표 */}
-        {todayEarnings.length > 0 && (
-          <div className={`mt-0.5 text-xs ${textClass}`}>
-            📊 오늘 실적:
-            {todayEarnings.slice(0, 5).map((e: any, i: number) => (
-              <span key={i} className="ml-1 font-semibold">{e.symbol || e.name}</span>
-            ))}
-          </div>
-        )}
-        {/* 내일 예고 */}
-        {!hasHigh && !hasMed && (tmrwHigh.length > 0 || tmrwEarnings.length > 0) && (
-          <div className="text-xs text-slate-400">
-            📅 내일 예정:
-            {[...tmrwHigh.slice(0, 2), ...tmrwEarnings.slice(0, 2)].map((e: any, i: number) => (
-              <span key={i} className="ml-1">{e.event || e.symbol || e.name}</span>
-            ))}
-          </div>
-        )}
-        <div className="mt-1 text-[10px] text-slate-500">
-          오늘 진입 시 리스크 관리 강화 권고 · 변동성 확대 구간
+    <section className="mone-home-surface rounded-[18px] border px-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300">
+          <AlertTriangle size={18} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-black text-slate-100">{title}</div>
+          <div className="mt-1 truncate text-xs font-medium text-slate-400">{subtitle}</div>
         </div>
+        <ChevronRight size={16} className="shrink-0 text-slate-600" />
       </div>
-      <button
-        onClick={() => setDismissed(true)}
-        className="absolute top-1.5 right-1.5 rounded-lg p-2 text-slate-500 hover:bg-slate-700/50 hover:text-slate-300"
-        aria-label="닫기"
-      >
-        <X size={14} />
-      </button>
-    </div>
+    </section>
   );
 }
 
@@ -565,6 +576,7 @@ function TodayEntryCard({
   onAnalyze,
   onTradePaper,
   earningsMap,
+  tone = "entry",
 }: {
   item: any;
   rank: number;
@@ -572,6 +584,7 @@ function TodayEntryCard({
   onAnalyze: (item: any) => void;
   onTradePaper?: (item: any) => void;
   earningsMap?: Record<string, number>;
+  tone?: "entry" | "watch" | "risk";
 }) {
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
@@ -595,6 +608,26 @@ function TodayEntryCard({
   const showCalibBadges = calibCount >= 5;
   const ensembleScore = item.ensembleScore != null ? Number(item.ensembleScore) : null;
   const calibratedWinRate = item.calibratedWinRate != null ? Number(item.calibratedWinRate) : null;
+  const toneStyle = {
+    entry: {
+      card: "hover:border-teal-500/45 focus:ring-teal-500/40",
+      rank: "bg-emerald-600 text-white",
+      decision: "text-emerald-300",
+      accent: "bg-emerald-500",
+    },
+    watch: {
+      card: "hover:border-cyan-500/45 focus:ring-cyan-500/40",
+      rank: "bg-amber-500 text-slate-950",
+      decision: "text-amber-300",
+      accent: "bg-amber-500",
+    },
+    risk: {
+      card: "hover:border-red-500/45 focus:ring-red-500/40",
+      rank: "bg-red-600 text-white",
+      decision: "text-red-300",
+      accent: "bg-red-500",
+    },
+  }[tone];
 
   return (
     <div
@@ -607,13 +640,16 @@ function TodayEntryCard({
           onSelect(item);
         }
       }}
-      className="relative cursor-pointer rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-4 transition-colors hover:border-emerald-600/60 hover:bg-emerald-950/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+      className={`mone-home-surface relative min-h-[276px] cursor-pointer overflow-hidden rounded-[18px] border p-4 transition-[border-color,background-color,transform] active:scale-[0.96] focus:outline-none focus:ring-2 ${toneStyle.card}`}
     >
-      <div className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+      <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${toneStyle.accent}`} />
+      <div className="flex items-start gap-2.5">
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-[12px] font-black shadow-[0_0_0_2px_rgba(17,21,33,0.95)] ${toneStyle.rank}`}>
+          {rank}
+        </div>
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate font-semibold text-slate-100">{displayName(item)}</span>
+            <span className="truncate text-sm font-bold text-slate-100">{displayName(item)}</span>
             {earningsMap && earningsMap[item.symbol] != null && (
               <EarningsBadge dday={earningsMap[item.symbol]} />
             )}
@@ -639,20 +675,37 @@ function TodayEntryCard({
           <div className="mt-0.5 text-[11px] text-slate-500">{item.symbol} · {modeLabel(mode as Mode)} · {horizonLabel(horizon as Horizon)}</div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="text-[10px] text-slate-500">MONE 판단</div>
-          <div className="text-sm font-bold text-emerald-300">{decision}</div>
+          <div className="font-mono text-[15px] font-black text-slate-100">{priceText(item, "current", "-")}</div>
+          {firstText(item.changePctText, item.changeRateText, "") && (
+            <div className={`mt-0.5 text-[11px] font-bold ${String(firstText(item.changePctText, item.changeRateText, "")).startsWith("-") ? "text-red-300" : "text-emerald-300"}`}>
+              {firstText(item.changePctText, item.changeRateText, "")}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-1.5 text-[11px] sm:grid-cols-5 sm:gap-2">
+      <div className="mone-home-inset mt-3 flex items-center justify-between rounded-[10px] border px-3 py-2">
+        <div>
+          <div className="text-[10px] font-semibold text-slate-500">MONE 판단</div>
+          <div className={`text-[13px] font-black ${toneStyle.decision}`}>{decision}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] font-semibold text-slate-500">신뢰도</div>
+          <div className="font-mono text-[11px] font-black text-teal-300">{confidence}</div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 border-y border-white/10 py-3 text-[11px]">
         <div className="min-w-0"><div className="text-slate-500">현재가</div><div className="break-keep font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
         <div className="min-w-0"><div className="text-slate-500">기준가</div><div className="break-keep font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
         <div className="min-w-0"><div className="text-slate-500">목표가</div><div className="break-keep font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
-        <div className="min-w-0"><div className="text-slate-500">신뢰도</div><div className="break-keep font-mono text-blue-300">{confidence}</div></div>
-        <div className="min-w-0"><div className="text-slate-500">위험 상태</div><div className={`font-semibold ${riskClass}`}>{riskText}</div></div>
       </div>
 
-      <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-950/50 px-3 py-2">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+        <span className="text-slate-500">위험 <span className={`font-semibold ${riskClass}`}>{riskText}</span></span>
+      </div>
+
+      <div className="mone-home-inset mt-3 rounded-[10px] border px-3 py-2">
         <div className="text-[11px] font-semibold text-slate-300">MONE 판단 이유</div>
         <ol className="mt-1 space-y-0.5 text-[11px] leading-5 text-slate-400">
           {reasons.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)}
@@ -668,11 +721,12 @@ function TodayEntryCard({
       <div className="mt-3 flex gap-2">
         <button
           type="button"
+          data-testid={`candidate-analyze-${item.symbol}-${mode}-${horizon}`}
           onClick={(event) => {
             event.stopPropagation();
             onAnalyze(item);
           }}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+          className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] bg-teal-500 px-3 py-2 text-sm font-black text-slate-950 transition-[background-color,transform] hover:bg-teal-400 active:scale-[0.96]"
         >
           분석 보기 <ArrowRight size={14} />
         </button>
@@ -683,7 +737,7 @@ function TodayEntryCard({
               event.stopPropagation();
               onTradePaper(item);
             }}
-            className="flex items-center justify-center gap-1 rounded-xl border border-emerald-700/50 bg-emerald-900/30 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/60"
+            className="flex min-h-10 items-center justify-center gap-1 rounded-[11px] border border-emerald-700/50 bg-emerald-900/30 px-3 py-2 text-xs font-semibold text-emerald-300 transition-[background-color,transform] hover:bg-emerald-900/60 active:scale-[0.96]"
           >
             모의투자
           </button>
@@ -693,45 +747,157 @@ function TodayEntryCard({
   );
 }
 
-// ── 대기 관찰 카드 (간결)
-function WatchCard({ item, onSelect }: { item: any; onSelect: (item: any) => void }) {
-  const mode = String(item.mode || item._mode || "");
-  const horizon = String(item.horizon || item._horizon || "");
-  const timingLabel = String(item.timingLabel || "대기");
-  const timingReason = String(item.timingReason || "");
-  const expectedEntry = String(item.expectedEntryPrice || "");
+function CandidateCarouselSection({
+  loading,
+  candidateTab,
+  setCandidateTab,
+  todayEntries,
+  watchItems,
+  riskItems,
+  allItems,
+  marketRegime,
+  sessionHint,
+  earningsMap,
+  onSelect,
+  onAnalyze,
+  onTradePaper,
+}: {
+  loading: boolean;
+  candidateTab: "today" | "watch" | "risk";
+  setCandidateTab: (tab: "today" | "watch" | "risk") => void;
+  todayEntries: any[];
+  watchItems: any[];
+  riskItems: any[];
+  allItems: any[];
+  marketRegime: any;
+  sessionHint?: string;
+  earningsMap?: Record<string, number>;
+  onSelect: (item: any) => void;
+  onAnalyze: (item: any) => void;
+  onTradePaper?: (item: any) => void;
+}) {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [activeCard, setActiveCard] = useState(0);
+  const activeItems =
+    candidateTab === "today" ? todayEntries
+    : candidateTab === "watch" ? watchItems
+    : riskItems;
+  const emptyText =
+    candidateTab === "today"
+      ? (marketRegime?.regime === "BEAR" ? "약세장 — 진입 기준 상향 적용 중입니다." : "현재 즉시 진입 후보가 없습니다.")
+      : candidateTab === "watch"
+        ? "대기 관찰 종목이 없습니다."
+        : "위험 보류 종목이 없습니다.";
+  const tabs: { key: "today" | "watch" | "risk"; label: string; count: number }[] = [
+    { key: "today", label: "오늘 진입", count: todayEntries.length },
+    { key: "watch", label: "대기 관찰", count: watchItems.length },
+    { key: "risk", label: "위험 보류", count: riskItems.length },
+  ];
 
-  const timingColor =
-    timingLabel.includes("1~2일") ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-    : timingLabel.includes("3~5일") ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
-    : timingLabel.includes("다음 주") ? "border-slate-600 bg-slate-800/60 text-slate-400"
-    : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300";
+  useEffect(() => {
+    setActiveCard(0);
+    if (carouselRef.current) carouselRef.current.scrollLeft = 0;
+  }, [candidateTab, activeItems.length]);
+
+  function syncCarouselDot() {
+    const track = carouselRef.current;
+    const firstSlide = track?.querySelector<HTMLElement>("[data-candidate-slide]");
+    if (!track || !firstSlide) return;
+    const gap = 10;
+    const next = Math.round(track.scrollLeft / (firstSlide.offsetWidth + gap));
+    setActiveCard(Math.max(0, Math.min(activeItems.length - 1, next)));
+  }
+
+  function moveToCard(index: number) {
+    const track = carouselRef.current;
+    const slides = track?.querySelectorAll<HTMLElement>("[data-candidate-slide]");
+    const firstSlide = slides?.[0];
+    const slide = slides?.[index];
+    if (!track || !slide || !firstSlide) return;
+    track.scrollLeft = index * (firstSlide.offsetWidth + 10);
+    setActiveCard(index);
+  }
 
   return (
-    <div onClick={() => onSelect(item)} className="cursor-pointer rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 transition-colors hover:border-amber-700/50 hover:bg-slate-900/80">
-      <div className="flex items-center justify-between gap-2">
+    <section className="overflow-hidden">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <span className="font-semibold text-slate-200">{displayName(item)}</span>
-          <span className="ml-2 text-[10px] text-slate-500">{item.symbol} · {modeLabel(mode as Mode)} · {horizonLabel(horizon as Horizon)}</span>
+          <div className="flex items-center gap-2">
+            <span className="mone-section-icon"><Sparkles size={15} /></span>
+            <h2 className="text-[18px] font-black text-slate-100">오늘의 후보</h2>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">{sessionHint || "오늘 진입과 대기 관찰 후보를 같은 기준으로 확인합니다."}</p>
         </div>
-        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${timingColor}`}>{timingLabel}</span>
-      </div>
-      {timingReason && <div className="mt-1 text-[11px] text-slate-400">{timingReason}</div>}
-      <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px]">
-        <span className="text-slate-500">현재 <span className="font-mono text-slate-300">{priceText(item, "current", "-")}</span></span>
-        {expectedEntry && <span className="text-slate-500">예상 진입 <span className="font-mono text-sky-400">{expectedEntry}</span></span>}
-        <span className="text-slate-500">목표 <span className="font-mono text-emerald-400">{priceText(item, "target", "-")}</span></span>
-        <span className={`font-mono ${Number(item.expectedValue || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-          EV {Number(item.expectedValue || 0) >= 0 ? "+" : ""}{Number(item.expectedValue || 0).toFixed(1)}%
+        <span className="shrink-0 text-xs text-slate-500">
+          {loading ? "확인 중" : `${todayEntries.length + watchItems.length + riskItems.length}개`}
         </span>
-        <SentimentBadge
-          symbol={item.symbol}
-          market={(String(item.market || item._market || "kr")).toLowerCase() === "us" ? "us" : "kr"}
-          name={String(item.name || "")}
-        />
       </div>
-      <TagChips item={item} />
-    </div>
+
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        {tabs.map((tab) => {
+          const active = candidateTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setCandidateTab(tab.key)}
+              className={`min-h-10 min-w-0 rounded-xl px-2 text-[11px] font-black transition-[background-color,color,transform] active:scale-[0.96] ${
+                active
+                  ? "bg-teal-500 text-slate-950"
+                  : "border border-white/10 bg-[#181E2E] text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              {tab.label} <span className={`ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] ${active ? "bg-white/20 text-white" : "bg-white/10 text-slate-500"}`}>{loading ? "-" : tab.count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {loading ? (
+        <div className="mone-home-surface rounded-[18px] border py-8 text-center text-slate-500">
+          데이터 확인 중...
+        </div>
+      ) : activeItems.length === 0 ? (
+        <div className="mone-home-surface rounded-[18px] border border-dashed py-6 text-center text-sm text-slate-500">
+          <p>{emptyText}</p>
+          <p className="mt-2 text-[11px] text-slate-600">
+            {allItems.length === 0 ? "오늘 추천 데이터가 아직 없습니다. 오전 데이터 갱신 후 다시 확인해 주세요." : "다른 후보 탭에서 현재 조건을 확인하세요."}
+          </p>
+        </div>
+      ) : (
+        <>
+          <div ref={carouselRef} onScroll={syncCarouselDot} className="snap-x snap-mandatory overflow-x-auto pb-1 pr-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-2.5">
+              {activeItems.map((item, i) => (
+                <div data-candidate-slide key={`${candidateTab}-${item.symbol}-${item._mode}-${item._horizon}`} className="w-[calc(100vw-48px)] max-w-[420px] shrink-0 snap-start">
+                  <TodayEntryCard
+                    item={item}
+                    rank={i + 1}
+                    onSelect={onSelect}
+                    onAnalyze={onAnalyze}
+                    earningsMap={earningsMap}
+                    onTradePaper={onTradePaper}
+                    tone={candidateTab === "today" ? "entry" : candidateTab === "watch" ? "watch" : "risk"}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-2 flex justify-center gap-1.5">
+            {activeItems.slice(0, 6).map((item, index) => (
+              <button
+                type="button"
+                key={`${item.symbol}-${index}`}
+                onClick={() => moveToCard(index)}
+                aria-label={`${index + 1}번 후보 카드로 이동`}
+                aria-current={activeCard === index ? "true" : undefined}
+                className={`h-1.5 rounded-full transition-[width,background-color,transform] active:scale-[0.96] ${activeCard === index ? "w-4 bg-teal-400" : "w-1.5 bg-slate-700"}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -850,116 +1016,56 @@ function PositionSizingSection({
   const rows = useMemo(() => calcSizing(items, capital), [items, capital]);
   const totalAllocated = rows.reduce((s, r) => s + r.amount, 0);
   const allocPct = capital > 0 ? (totalAllocated / capital) * 100 : 0;
-  const remaining = capital - totalAllocated;
-  const portfolioScaled = rows.some((r) => r.scaled);
-
-  if (rows.length === 0 && capital <= 0) return null;
 
   return (
-    <section className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-5">
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Calculator size={18} className="text-violet-400 shrink-0" />
-        <div className="flex-1">
-          <h2 className="text-base font-semibold text-slate-100">포지션 사이징</h2>
-          <p className="text-xs text-slate-500">Half-Kelly 공식으로 종목별 적정 투자금을 계산합니다.</p>
-        </div>
-        {/* 자본 입력 */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">총 자본</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="예: 10000000"
-            value={inputVal ? Number(inputVal).toLocaleString() : ""}
-            onChange={(e) => handleCapitalChange(e.target.value.replace(/,/g, ""))}
-            className="w-36 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-right font-mono text-sm text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
-          />
-          <span className="text-xs text-slate-500">원</span>
-        </div>
+    <section className="mone-home-surface rounded-[18px] border p-4">
+      <div className="mb-3 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+        <span className="mone-section-icon"><Calculator size={15} /></span>
+        <h2 className="text-sm font-black text-slate-300">포지션 사이징 (Half-Kelly)</h2>
+        <ChevronRight size={16} className="ml-auto text-slate-100" />
       </div>
-
       {capital <= 0 ? (
-        <div className="py-6 text-center text-sm text-slate-500">총 자본을 입력하면 종목별 권장 수량과 금액을 계산합니다.</div>
+        <div className="space-y-3">
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-sm text-slate-400">
+            총 자본을 입력하면 종목별 권장 금액을 계산합니다.
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="예: 10000000"
+              value={inputVal ? Number(inputVal).toLocaleString() : ""}
+              onChange={(e) => handleCapitalChange(e.target.value.replace(/,/g, ""))}
+              className="min-h-10 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 text-right font-mono text-sm text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+            />
+            <span className="text-xs text-slate-500">원</span>
+          </div>
+        </div>
       ) : rows.length === 0 ? (
-        <div className="py-6 text-center text-sm text-slate-500">오늘 진입 후보가 없습니다.</div>
+        <div className="py-4 text-sm text-slate-500">오늘 진입 후보가 없습니다.</div>
       ) : (
         <>
-          {/* 포트폴리오 요약 바 */}
-          <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-            <div className="mb-2 flex justify-between text-[11px] text-slate-400">
-              <span>총 배분: <span className="font-mono text-slate-200">{totalAllocated.toLocaleString()}원</span> ({allocPct.toFixed(1)}%)</span>
-              <span>잔여 현금: <span className={`font-mono ${remaining >= 0 ? "text-emerald-300" : "text-red-300"}`}>{remaining.toLocaleString()}원</span></span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
-              <div
-                className={`h-2 rounded-full transition-all ${allocPct > 90 ? "bg-red-500" : allocPct > 60 ? "bg-amber-500" : "bg-violet-500"}`}
-                style={{ width: `${Math.min(100, allocPct)}%` }}
-              />
-            </div>
-            <div className="mt-1.5 flex gap-3 text-[10px] text-slate-500">
-              <span>{rows.length}개 종목</span>
-              <span>포트폴리오 노출 {allocPct.toFixed(1)}%</span>
-              {portfolioScaled && <span className="text-sky-400">총 노출 {(PORTFOLIO_SIZING_CAP * 100).toFixed(0)}% 한도 적용</span>}
-              {allocPct > 80 && <span className="text-amber-400">⚠ 집중도 높음 — 분산 권장</span>}
-            </div>
+          <div className="space-y-1">
+            {rows.slice(0, 2).map((r) => (
+              <button
+                type="button"
+                key={`${r.symbol}-${r.mode}-${r.horizon}`}
+                onClick={() => onTradePaper?.({ symbol: r.symbol, name: r.name, price: r.entry, market: r.symbol.match(/^[A-Z]{1,5}$/) ? "us" : "kr", quantity: r.qty })}
+                className="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-1.5 text-left transition-[background-color,transform] hover:bg-slate-900/60 active:scale-[0.96]"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-black text-slate-100">{r.name}</span>
+                  <span className="block text-[11px] text-slate-600">{modeLabel(r.mode as Mode)} · {horizonLabel(r.horizon as Horizon)}</span>
+                </span>
+                <span className="shrink-0 font-mono text-sm font-black text-violet-300 tabular-nums">{r.amount.toLocaleString()}원</span>
+              </button>
+            ))}
           </div>
 
-          {/* 종목별 테이블 */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-500">
-                  <th className="pb-2 text-left font-medium">종목</th>
-                  <th className="pb-2 text-left font-medium">전략</th>
-                  <th className="pb-2 text-right font-medium">승률</th>
-                  <th className="pb-2 text-right font-medium">RR</th>
-                  <th className="pb-2 text-right font-medium">½Kelly</th>
-                  <th className="pb-2 text-right font-medium">금액</th>
-                  <th className="pb-2 text-right font-medium">수량</th>
-                  <th className="pb-2 text-right font-medium">EV</th>
-                  {onTradePaper && <th className="pb-2 text-right font-medium"></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={`${r.symbol}-${r.mode}-${r.horizon}`} className="border-b border-slate-900 hover:bg-slate-900/40">
-                    <td className="py-2 pr-3">
-                      <div className="font-medium text-slate-200">{r.name}</div>
-                      <div className="text-slate-500">{r.symbol}</div>
-                    </td>
-                    <td className="py-2 pr-3 text-slate-400">
-                      {modeLabel(r.mode as Mode)}<span className="text-slate-600"> · </span>{horizonLabel(r.horizon as Horizon)}
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono text-slate-300">{(r.prob * 100).toFixed(0)}%</td>
-                    <td className="py-2 pr-3 text-right font-mono text-slate-300">{r.rr.toFixed(1)}</td>
-                    <td className="py-2 pr-3 text-right font-mono text-violet-300">
-                      <div>{(r.halfKelly * 100).toFixed(1)}%</div>
-                      {r.scaled && <div className="text-[9px] text-sky-400">실배분 {(r.effectivePct * 100).toFixed(1)}%</div>}
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.amount.toLocaleString()}</td>
-                    <td className="py-2 pr-3 text-right font-mono text-slate-100">{r.qty > 0 ? `${r.qty}주` : "—"}</td>
-                    <td className={`py-2 ${onTradePaper ? "pr-3" : ""} text-right font-mono ${r.ev >= 2 ? "text-emerald-300" : r.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
-                      {r.ev >= 0 ? "+" : ""}{r.ev.toFixed(1)}%
-                    </td>
-                    {onTradePaper && (
-                      <td className="py-2 text-right">
-                        <button
-                          onClick={() => onTradePaper({ symbol: r.symbol, name: r.name, price: r.entry, market: r.symbol.match(/^[A-Z]{1,5}$/) ? "us" : "kr", quantity: r.qty })}
-                          className="rounded-lg bg-violet-600/20 px-2 py-1 text-[10px] font-semibold text-violet-300 hover:bg-violet-600/40 transition-colors"
-                        >
-                          모의투자
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-3 flex items-center justify-between border-t border-slate-800/80 pt-3 text-xs">
+            <span className="text-slate-600">총 자본 {capital.toLocaleString()}원 기준 · 노출 {allocPct.toFixed(1)}%</span>
+            <span className="text-slate-500">전체 {rows.length}개 →</span>
           </div>
-
-          <p className="mt-3 text-[10px] text-slate-600">
-            Half-Kelly = min(max(0, p − (1−p)/RR) ÷ 2, 전략한도)  ·  보수형 최대 5% / 균형형 10% / 공격형 15%  ·  총 노출 {(PORTFOLIO_SIZING_CAP * 100).toFixed(0)}% 초과 시 비례 축소  ·  참고용이며 자동주문은 지원하지 않습니다.
-          </p>
         </>
       )}
     </section>
@@ -1030,25 +1136,25 @@ function JournalModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-3 gap-2">
               {(["BUY", "SELL", "NOTE"] as const).map((a) => (
                 <button key={a} onClick={() => setForm((f) => ({ ...f, action: a }))}
-                  className={`rounded-lg py-1.5 text-xs font-semibold ${form.action === a ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+                  className={`rounded-lg py-1.5 text-xs font-semibold ${form.action === a ? "bg-teal-500 text-slate-950" : "bg-slate-800 text-slate-400"}`}>
                   {ACTION_LABELS[a]}
                 </button>
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <input placeholder="종목코드" value={form.symbol} onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400" />
               <input placeholder="종목명" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400" />
               <input placeholder="가격" type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400" />
               <input placeholder="수량" type="number" value={form.qty} onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400" />
             </div>
             <textarea placeholder="진입 근거 (최대 100자)" maxLength={100} value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 resize-none" rows={2} />
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-teal-400 resize-none" rows={2} />
             <button onClick={addEntry} disabled={saving || !form.memo.trim()}
-              className="w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-blue-700">
+              className="w-full rounded-lg bg-teal-500 py-2 text-sm font-black text-slate-950 disabled:opacity-50 hover:bg-teal-400">
               {saving ? "저장 중..." : "기록 추가"}
             </button>
           </div>
@@ -1084,7 +1190,7 @@ function JournalModal({ onClose }: { onClose: () => void }) {
                       <textarea placeholder="청산 후 복기 (뭘 놓쳤나?)" value={reviewText} onChange={(ev) => setReviewText(ev.target.value)}
                         className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none resize-none" rows={2} />
                       <div className="flex gap-2">
-                        <button onClick={() => saveReview(e.id)} className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white">저장</button>
+                        <button onClick={() => saveReview(e.id)} className="rounded-lg bg-teal-500 px-3 py-1 text-xs font-black text-slate-950">저장</button>
                         <button onClick={() => setEditId(null)} className="rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-400">취소</button>
                       </div>
                     </div>
@@ -1179,81 +1285,166 @@ function getMarketGateInfo(regime: any, dataHealth: any) {
 }
 
 // ── 시장 컨디션 게이트
-function MarketGateCard({ regime, dataHealth }: { regime: any; dataHealth: any }) {
-  const { strength, levelText, isHigh, isMid, isLow, maDist, dataAdj, hasOhlcv } = getMarketGateInfo(regime, dataHealth);
+function MarketGateCard({
+  regime,
+  dataHealth,
+  fearGreedData,
+  expanded,
+  onToggle,
+  basisWarning,
+}: {
+  regime: any;
+  dataHealth: any;
+  fearGreedData: any;
+  expanded: boolean;
+  onToggle: () => void;
+  basisWarning: { recommendation: string; current: string; ohlcv: string } | null;
+}) {
+  const { strength, levelText, isHigh, isMid, maDist, dataAdj, hasOhlcv } = getMarketGateInfo(regime, dataHealth);
 
-  const borderCls = isHigh ? "border-emerald-800/40 bg-emerald-950/15" : isMid ? "border-amber-800/40 bg-amber-950/15" : "border-red-800/40 bg-red-950/15";
   const textCls   = isHigh ? "text-emerald-300" : isMid ? "text-amber-300" : "text-red-300";
   const barCls    = isHigh ? "bg-emerald-500" : isMid ? "bg-amber-500" : "bg-red-500";
+  const sentimentScore = Math.max(0, Math.min(100, Number(fearGreedData?.score ?? fearGreedData?.composite?.score ?? regime?.fearGreed ?? regime?.sentimentScore ?? (isHigh ? 68 : isMid ? 46 : 28))));
+  const benchmarkValue = Number(regime?.current ?? regime?.kospiLatest ?? regime?.indexCurrent ?? 0);
+  const benchmarkText = benchmarkValue > 0 ? benchmarkValue.toLocaleString("ko-KR", { maximumFractionDigits: 1 }) : "-";
+  const ohlcvDate = String(dataHealth?.ohlcvLatestDate || dataHealth?.latestDataDate || "").slice(5) || "-";
+  const sentimentText = sentimentScore >= 70 ? "탐욕" : sentimentScore >= 40 ? "중립" : "공포";
+  const trendText = maDist >= 0 ? "이격 양호" : "이격 주의";
+  const dataText = dataAdj === 0 ? "정상" : dataAdj <= -15 ? "확인 필요" : hasOhlcv ? "종가 기준" : "부분";
+  const detailMetrics = Array.isArray(fearGreedData?.components) ? fearGreedData.components : [];
+  const ring = (value: number, color: string) => {
+    const dash = `${Math.max(0, Math.min(100, value))} 100`;
+    return (
+      <svg viewBox="0 0 36 36" className="h-16 w-16 -rotate-90">
+        <path d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 0 1 0-31" fill="none" stroke="var(--bg-border)" strokeWidth="4" />
+        <path d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 0 1 0-31" fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeDasharray={dash} pathLength={100} />
+      </svg>
+    );
+  };
 
   return (
-    <div className={`rounded-2xl border p-4 ${borderCls}`}>
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">시장 컨디션 게이트</div>
-          <div className={`mt-1 text-lg font-bold ${textCls}`}>{levelText}</div>
-          <div className="mt-0.5 text-[11px] text-slate-500">
-            {isHigh ? "시장 상태 양호 — 조건을 충족한 종목은 정상 진입 가능합니다."
-             : isMid ? "선별 진입 구간 — EV·손익비 조건을 더 엄격하게 확인하세요."
-             : "진입 자제 구간 — 신규 매수보다 보유 종목 관리에 집중하세요."}
+    <section className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2 text-[18px] font-black text-slate-100">
+          <span className="mone-section-icon"><BarChart3 size={15} /></span>
+          시장 컨디션 게이트
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-controls="market-gate-details"
+          className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-bold text-slate-500 transition-[color,transform] hover:text-slate-300 active:scale-[0.96]"
+        >
+          {expanded ? "접기" : "자세히"}
+          <ChevronRight size={14} className={`transition-transform duration-200 ${expanded ? "-rotate-90" : "rotate-90"}`} />
+        </button>
+      </div>
+
+      <div className="mone-home-surface overflow-hidden rounded-[20px] border p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[11px] font-black text-slate-500">진입 강도</div>
+            <div className={`mt-2 text-2xl font-black leading-none ${textCls}`}>{levelText}</div>
+            <div className="mt-3 flex max-w-[270px] items-start gap-2 text-sm leading-6 text-slate-400 text-pretty">
+              <AlertTriangle size={14} className={`mt-1 shrink-0 ${textCls}`} />
+              <span>{isHigh ? "시장 상태가 양호합니다. 종목별 기준가와 위험 조건을 확인하세요."
+               : isMid ? "선별 진입 구간입니다. EV·손익비 조건을 더 엄격하게 확인하세요."
+               : "시장 약세와 공포 구간입니다. 신규 매수보다 보유 위험과 기준가 이탈을 먼저 확인하세요."}</span>
+            </div>
+          </div>
+          <div className={`shrink-0 text-right font-mono font-black ${textCls}`}>
+            <span className="text-[38px] leading-none tabular-nums">{strength}</span>
+            <div className="mt-1 text-sm text-slate-500">/100</div>
           </div>
         </div>
-        <div className={`shrink-0 text-right font-mono font-black ${textCls}`}>
-          <span className="text-4xl">{strength}</span>
-          <span className="text-base text-slate-500">/100</span>
+
+        <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className={`h-2 rounded-full transition-[width] duration-500 ${barCls}`} style={{ width: `${strength}%` }} />
+        </div>
+
+        <div className="mt-8 grid grid-cols-2 divide-x divide-slate-800/80 border-b border-slate-800/80 pb-6 text-center">
+          <div className="px-2">
+            <div className="text-xs font-black text-slate-600">{regime?.benchmark || "KOSPI"} 20일선</div>
+            <div className="relative mx-auto mt-3 flex h-16 w-16 items-center justify-center">
+              {ring(Math.min(100, Math.abs(maDist) * 12 + 18), maDist >= 0 ? "#34d399" : "#ef4444")}
+              <div className={`absolute font-mono text-sm font-black tabular-nums ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}%
+              </div>
+            </div>
+            <div className={`mt-2 text-sm font-black ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{trendText}</div>
+          </div>
+          <div className="px-2">
+            <div className="text-xs font-black text-slate-600">공포탐욕지수</div>
+            <div className="relative mx-auto mt-3 flex h-16 w-16 items-center justify-center">
+              {ring(sentimentScore, sentimentScore >= 70 ? "#34d399" : sentimentScore >= 40 ? "#f59e0b" : "#ef4444")}
+              <div className="absolute text-center font-mono text-sm font-black text-amber-300 tabular-nums">
+                {sentimentScore}<div className="text-[9px] text-slate-500">/100</div>
+              </div>
+            </div>
+            <div className={`mt-2 text-sm font-black ${sentimentScore >= 70 ? "text-emerald-300" : sentimentScore >= 40 ? "text-amber-300" : "text-red-300"}`}>{sentimentText}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 divide-x divide-slate-800/80 pt-4 text-center">
+          <div>
+            <div className="text-xs font-black text-slate-600">{regime?.benchmark || "KOSPI"}</div>
+            <div className={`mt-2 font-mono text-lg font-black tabular-nums ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{benchmarkText}</div>
+          </div>
+          <div>
+            <div className="text-xs font-black text-slate-600">데이터 상태</div>
+            <div className={`mt-2 text-lg font-black ${dataAdj === 0 ? "text-emerald-300" : dataAdj <= -15 ? "text-red-300" : "text-amber-300"}`}>{dataText}</div>
+          </div>
+          <div>
+            <div className="text-xs font-black text-slate-600">OHLCV 기준일</div>
+            <div className="mt-2 font-mono text-lg font-black text-slate-100 tabular-nums">{ohlcvDate}</div>
+          </div>
         </div>
       </div>
 
-      <div className="h-2 w-full rounded-full bg-slate-800 mb-3">
-        <div className={`h-2 rounded-full transition-all duration-500 ${barCls}`} style={{ width: `${strength}%` }} />
-      </div>
+      {expanded && (
+        <section id="market-gate-details" className="mone-home-surface rounded-[18px] border p-4">
+          <div className="flex items-center gap-2">
+            <span className="mone-section-icon"><BarChart3 size={14} /></span>
+            <div>
+              <div className="text-sm font-black text-slate-100">시장 지표 상세</div>
+              <div className="mt-0.5 text-[10px] text-slate-500">공포탐욕지수 구성 지표</div>
+            </div>
+            <span className="ml-auto font-mono text-sm font-black text-teal-300 tabular-nums">{sentimentScore.toFixed(1)}</span>
+          </div>
 
-      <div className="grid grid-cols-3 gap-2 text-[11px]">
-        <div className="rounded-lg bg-slate-900/60 px-2 py-2 text-center">
-          <div className="text-slate-500">시장 추세</div>
-          <div className={`mt-0.5 font-semibold ${regime?.regime === "BULL" ? "text-emerald-300" : regime?.regime === "BEAR" ? "text-red-300" : "text-slate-300"}`}>
-            {regime?.regime === "BULL" ? "강세" : regime?.regime === "BEAR" ? "약세" : "중립"}
-          </div>
-        </div>
-        <div className="rounded-lg bg-slate-900/60 px-2 py-2 text-center">
-          <div className="text-slate-500">MA20 이격</div>
-          <div className={`mt-0.5 font-mono font-semibold ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-            {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}%
-          </div>
-        </div>
-        <div className="rounded-lg bg-slate-900/60 px-2 py-2 text-center">
-          <div className="text-slate-500">데이터</div>
-          <div className={`mt-0.5 font-semibold ${dataAdj === 0 ? "text-emerald-300" : dataAdj <= -15 ? "text-red-300" : "text-amber-300"}`}>
-            {dataAdj === 0 ? "정상" : dataAdj <= -15 ? "오류" : hasOhlcv ? "종가 기준" : "부분"}
-          </div>
-        </div>
-      </div>
+          {detailMetrics.length > 0 ? (
+            <div className="mt-4 divide-y divide-slate-800/80">
+              {detailMetrics.map((metric: any, index: number) => {
+                const score = Math.max(0, Math.min(100, Number(metric?.score ?? 0)));
+                const tone = score < 40 ? "bg-red-400" : score < 60 ? "bg-amber-400" : "bg-cyan-400";
+                const valueTone = score < 40 ? "text-red-300" : score < 60 ? "text-amber-300" : "text-cyan-300";
+                return (
+                  <div key={`${metric?.name || "metric"}-${index}`} className="grid min-h-12 grid-cols-[minmax(88px,1fr)_minmax(92px,1.4fr)_40px] items-center gap-3 py-2.5">
+                    <div className="min-w-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</div>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-right font-mono text-[10px] text-slate-500">{metric?.direction || "-"}</span>
+                      <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-slate-800">
+                        <span className={`block h-full rounded-full ${tone}`} style={{ width: `${score}%` }} />
+                      </span>
+                    </div>
+                    <div className={`text-right font-mono text-xs font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-slate-700 px-3 py-5 text-center text-xs text-slate-500">세부 지표를 확인 중입니다.</div>
+          )}
 
-      {(() => {
-        const freshness = dataFreshnessInfo({
-          latestDataDate: dataHealth?.ohlcvLatestDate,
-          recoGeneratedAt: dataHealth?.recoGeneratedAt,
-          dataStatus: dataHealth?.dataStatus || dataHealth?.status,
-        });
-        return (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-800/70 pt-3 text-[11px] text-slate-500">
-            <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(freshness.state)}`}>
-              {freshness.label}
-            </span>
-            <span>{freshness.basisText}</span>
-            {dataHealth?.recoGeneratedAt && (
-              <span>데이터 기준: {String(dataHealth.recoGeneratedAt).slice(0, 16).replace("T", " ")}</span>
-            )}
-          </div>
-        );
-      })()}
-
-      {isLow && (
-        <div className="mt-3 rounded-lg border border-red-800/40 bg-red-950/30 px-3 py-2 text-[11px] text-red-300">
-          ⚠ 신규 진입 시 평소보다 엄격한 기준을 적용하세요. 보유 손절가를 재확인하세요.
-        </div>
+          {basisWarning && (
+            <div className="mt-3 truncate border-t border-slate-800/80 pt-3 text-[10px] text-slate-500">
+              기준일 · 추천 {basisWarning.recommendation || "-"} · 현재가 {basisWarning.current || "-"} · OHLCV {basisWarning.ohlcv || "-"}
+            </div>
+          )}
+        </section>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -1297,10 +1488,10 @@ function TodayConclusionCard({
   const barCls = gate.isHigh ? "bg-emerald-500" : gate.isMid ? "bg-amber-500" : "bg-red-500";
 
   return (
-    <section className="rounded-2xl border border-blue-500/30 bg-blue-950/20 p-5">
+    <section className="rounded-2xl border border-teal-500/25 bg-teal-950/10 p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-300/80">오늘의 MONE 결론</div>
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-teal-300/80">오늘의 MONE 결론</div>
           <h2 className={`mt-1 text-2xl font-black tracking-normal ${textCls}`}>{title}</h2>
           <p className="mt-1 text-sm font-semibold text-slate-200">{subtitle}</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -1367,62 +1558,52 @@ function DailyBriefingCard({
   briefing: BriefingPayload;
   onAnalyze?: (item: any) => void;
 }) {
-  const tone = {
-    emerald: {
-      shell: "border-emerald-500/25 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.04),0_14px_36px_rgba(15,23,42,0.18)]",
-      icon: "bg-emerald-500/15 text-emerald-300",
-      text: "text-emerald-100",
-      chip: "border-emerald-400/20 bg-slate-950/35 text-emerald-100",
-    },
-    amber: {
-      shell: "border-amber-500/25 bg-amber-500/10 shadow-[0_0_0_1px_rgba(245,158,11,0.04),0_14px_36px_rgba(15,23,42,0.18)]",
-      icon: "bg-amber-500/15 text-amber-300",
-      text: "text-amber-100",
-      chip: "border-amber-400/20 bg-slate-950/35 text-amber-100",
-    },
-    red: {
-      shell: "border-red-500/25 bg-red-500/10 shadow-[0_0_0_1px_rgba(239,68,68,0.04),0_14px_36px_rgba(15,23,42,0.18)]",
-      icon: "bg-red-500/15 text-red-300",
-      text: "text-red-100",
-      chip: "border-red-400/20 bg-slate-950/35 text-red-100",
-    },
-    blue: {
-      shell: "border-sky-500/25 bg-sky-500/10 shadow-[0_0_0_1px_rgba(14,165,233,0.04),0_14px_36px_rgba(15,23,42,0.18)]",
-      icon: "bg-sky-500/15 text-sky-300",
-      text: "text-sky-100",
-      chip: "border-sky-400/20 bg-slate-950/35 text-sky-100",
-    },
-  }[briefing.tone];
-
   return (
-    <section className={`rounded-2xl border px-4 py-3.5 ${tone.shell}`}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone.icon}`}>
-            <Activity size={17} />
+    <section className="mone-home-surface rounded-[20px] border p-5">
+      <div className="flex items-center gap-2 text-[12px] font-black text-teal-300">
+        <span className="mone-section-icon"><Sparkles size={14} /></span>
+        오늘의 관찰 1순위
+      </div>
+      <h2 className="mt-3 text-[23px] font-black leading-tight text-balance text-slate-100">
+        {briefing.title}
+      </h2>
+      <p className="mt-2 text-sm font-medium leading-6 text-slate-400 text-pretty">
+        {briefing.chips.join(" · ")}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {briefing.chips.slice(0, 4).map((chip, index) => (
+          <span
+            key={chip}
+            className={`rounded-full px-3 py-1.5 text-xs font-black ${
+              index === 0 ? "bg-teal-500/15 text-teal-300"
+              : index === 1 ? "bg-emerald-500/18 text-emerald-300"
+              : "bg-slate-800/80 text-slate-300"
+            }`}
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
+
+      <div className="mone-home-inset mt-4 rounded-[13px] border p-3.5">
+        <div className="flex gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 text-teal-200">
+            <Sparkles size={16} />
           </span>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">AI 한 줄 브리핑</div>
-            <h2 className={`mt-0.5 text-base font-bold text-balance ${tone.text}`}>{briefing.title}</h2>
-            <p className="mt-1 max-w-4xl text-sm leading-6 text-pretty text-slate-300">{briefing.detail}</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {briefing.chips.slice(0, 4).map((chip) => (
-                <span key={chip} className={`rounded-full border px-2.5 py-1 text-[11px] ${tone.chip}`}>
-                  {chip}
-                </span>
-              ))}
-            </div>
+            <div className="text-xs font-black text-teal-300">MONE 판단</div>
+            <p className="mt-1 text-sm leading-6 text-slate-300 text-pretty">{briefing.detail}</p>
+            {briefing.topItem && onAnalyze && (
+              <button
+                type="button"
+                onClick={() => onAnalyze(briefing.topItem)}
+                className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-lg text-sm font-black text-teal-400 transition-[color,transform] hover:text-teal-300 active:scale-[0.96]"
+              >
+                판단 근거 보기 <ArrowRight size={13} />
+              </button>
+            )}
           </div>
         </div>
-        {briefing.topItem && onAnalyze && (
-          <button
-            type="button"
-            onClick={() => onAnalyze(briefing.topItem)}
-            className="flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-700/80 bg-slate-950/50 px-3.5 py-2 text-xs font-semibold text-slate-200 transition-[background-color,transform] duration-150 ease-out hover:bg-slate-900 active:scale-[0.96]"
-          >
-            근거 보기 <ArrowRight size={13} />
-          </button>
-        )}
       </div>
     </section>
   );
@@ -1535,6 +1716,132 @@ function EngineHistoryPreview({ rows }: { rows: EngineHistoryRow[] }) {
   );
 }
 
+function StrategyRecordsSection({
+  alertRows,
+  engineRows,
+  currentItem,
+  onMatrixClick,
+}: {
+  alertRows: AlertTrackingRow[];
+  engineRows: EngineHistoryRow[];
+  currentItem?: any;
+  onMatrixClick: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [engineOpen, setEngineOpen] = useState(false);
+  const currentMode = String(currentItem?._mode || currentItem?.mode || "balanced") as Mode;
+  const currentHorizon = String(currentItem?._horizon || currentItem?.horizon || "swing") as Horizon;
+  const statusClass = (status: AlertTrackingRow["status"]) => {
+    if (status === "목표도달" || status === "목표근접") return "bg-emerald-500/15 text-emerald-300";
+    if (status === "손절도달" || status === "리스크확인") return "bg-red-500/15 text-red-300";
+    if (status === "데이터부족") return "bg-slate-800 text-slate-500";
+    return "bg-sky-500/12 text-sky-300";
+  };
+  const engineClass = (row: EngineHistoryRow) => {
+    if (row.status === "적용") return "bg-emerald-500/15 text-emerald-300";
+    if (row.status === "LOW_SAMPLE") return "bg-amber-500/15 text-amber-300";
+    return "bg-slate-800 text-slate-500";
+  };
+
+  return (
+    <section className="mone-home-surface overflow-hidden rounded-[20px] border">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        aria-controls="strategy-records-body"
+        className="flex min-h-[72px] w-full items-center gap-3 px-5 text-left transition-[background-color,transform] hover:bg-slate-900/35 active:scale-[0.99]"
+      >
+        <span className="mone-section-icon shrink-0"><Grid3X3 size={15} /></span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[18px] font-black text-slate-100">전략 · 기록</div>
+          <div className="mt-1 truncate text-xs font-semibold text-slate-600">
+            전략 선택 · 알림 추적 {alertRows.length}건 · 엔진 변경 {engineRows.length}건
+          </div>
+        </div>
+        <ChevronRight size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${expanded ? "-rotate-90" : "rotate-90"}`} />
+      </button>
+
+      {expanded && (
+        <div id="strategy-records-body" className="border-t border-slate-800/80 px-4 pb-4">
+          <div className="flex min-h-[62px] items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold text-slate-600">현재 전략</div>
+              <div className="mt-1 truncate text-sm font-black text-slate-100">{modeLabel(currentMode)} · {horizonLabel(currentHorizon)}</div>
+            </div>
+            <button
+              type="button"
+              onClick={onMatrixClick}
+              className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-black text-teal-400 transition-[color,transform] hover:text-teal-300 active:scale-[0.96]"
+            >
+              3×3 매트릭스 <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <section className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/35">
+            <button
+              type="button"
+              onClick={() => setAlertsOpen((value) => !value)}
+              aria-expanded={alertsOpen}
+              className="flex min-h-12 w-full items-center gap-2 px-3 text-left transition-[background-color,transform] hover:bg-slate-900/45 active:scale-[0.99]"
+            >
+              <Bell size={15} className="shrink-0 text-amber-300" />
+              <span className="flex-1 text-sm font-black text-slate-100">알림 추적</span>
+              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-black text-slate-400">{alertRows.length}건</span>
+              <ChevronRight size={14} className={`text-slate-500 transition-transform duration-200 ${alertsOpen ? "-rotate-90" : "rotate-90"}`} />
+            </button>
+            {alertsOpen && (
+              <div className="divide-y divide-slate-800/80 border-t border-slate-800">
+                {alertRows.slice(0, 6).map((row) => (
+                  <div key={row.key} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-black text-slate-100">{row.name} <span className="font-mono text-[9px] font-medium text-slate-600">{row.symbol}</span></div>
+                      <div className="truncate text-[10px] text-slate-600">{row.alertPriceText} → {row.currentPriceText}</div>
+                    </div>
+                    <div className={`font-mono text-xs font-black tabular-nums ${row.changeTone === "up" ? "text-emerald-300" : row.changeTone === "down" ? "text-red-300" : "text-slate-500"}`}>{row.changeText}</div>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${statusClass(row.status)}`}>{row.status}</span>
+                  </div>
+                ))}
+                {alertRows.length === 0 && (
+                  <div className="px-3 py-4 text-center text-xs text-slate-500">기록된 알림이 쌓이면 추적 결과가 표시됩니다.</div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <section className="mt-2 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/35">
+            <button
+              type="button"
+              onClick={() => setEngineOpen((value) => !value)}
+              aria-expanded={engineOpen}
+              className="flex min-h-12 w-full items-center gap-2 px-3 text-left transition-[background-color,transform] hover:bg-slate-900/45 active:scale-[0.99]"
+            >
+              <Bot size={15} className="shrink-0 text-teal-300" />
+              <span className="flex-1 text-sm font-black text-slate-100">AI 엔진 변경 이력</span>
+              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-black text-slate-400">{engineRows.length}건</span>
+              <ChevronRight size={14} className={`text-slate-500 transition-transform duration-200 ${engineOpen ? "-rotate-90" : "rotate-90"}`} />
+            </button>
+            {engineOpen && (
+              <div className="divide-y divide-slate-800/80 border-t border-slate-800">
+                {engineRows.slice(0, 6).map((row) => (
+                  <div key={row.key} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-black text-slate-100">{row.title}</div>
+                      <div className="truncate text-[10px] text-slate-600">{row.date} · {row.detail}</div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${engineClass(row)}`}>{engineStatusLabel(row.status)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function MarketRegimeSummaryCard({
   regime,
   selectedMarket,
@@ -1622,7 +1929,7 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
             onClick={() => onNavigate?.("holdings")}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+            className="rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-black text-slate-950 hover:bg-teal-400 transition-colors"
           >
             보유종목 등록하기
           </button>
@@ -1638,15 +1945,85 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
   );
 }
 
-// chartSignalSummary는 객체(status/direction/chartSignalTag 등)이므로 JSX에 직접 렌더링하면
-// "Objects are not valid as a React child" 에러가 난다 — 짧은 한국어 요약 문자열로 변환한다.
-function chartSignalSummaryText(cs: any): string {
-  if (!cs || typeof cs !== "object") return "";
-  const dirLabel = cs.direction === "bullish" ? "상승 우위" : cs.direction === "bearish" ? "하락 우위" : null;
-  const tag = cs.chartSignalTag && cs.chartSignalTag !== "NO_SIGNAL" ? cs.chartSignalTag : null;
-  const score = cs.confluenceScore != null ? `컨플루언스 ${Number(cs.confluenceScore).toFixed(0)}` : null;
-  const parts = [dirLabel, tag, score].filter(Boolean);
-  return parts.length ? parts.join(" · ") : (cs.status === "unavailable" ? "차트 데이터 부족" : "신호 없음");
+function CompactHoldingsSection({
+  holdings,
+  summary,
+  riskCount,
+  onNavigate,
+}: {
+  holdings: any[];
+  summary: any;
+  riskCount: number;
+  onNavigate?: (page: PageId) => void;
+}) {
+  if (holdings.length === 0) {
+    return (
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <span className="mone-section-icon"><BriefcaseBusiness size={15} /></span>
+          <h2 className="text-[18px] font-black text-slate-100">보유종목</h2>
+          <span className="ml-auto text-xs text-slate-500">0개</span>
+        </div>
+        <OnboardingPanel onNavigate={onNavigate} />
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2 px-1">
+        <span className="mone-section-icon"><BriefcaseBusiness size={15} /></span>
+        <h2 className="text-[18px] font-black text-slate-100">보유종목</h2>
+        {summary?.totalPnl != null && (
+          <span className={`ml-1 font-mono text-sm font-black tabular-nums ${Number(summary.totalPnl) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+            {summary.totalPnlText ?? (Number(summary.totalPnl) >= 0 ? "+" : "") + Number(summary.totalPnl).toLocaleString("ko-KR") + "원"}
+          </span>
+        )}
+        <span className="ml-auto text-xs text-slate-500">{holdings.length}개 · 위험/주의 {riskCount}개</span>
+        {onNavigate && (
+          <button onClick={() => onNavigate("holdings")} className="flex min-h-8 items-center gap-1 rounded-lg px-1.5 text-xs text-slate-500 transition-[color,transform] hover:text-slate-300 active:scale-[0.96]">
+            <ChevronRight size={14} />
+          </button>
+        )}
+      </div>
+      <div className="mone-home-surface overflow-hidden rounded-[20px] border p-1.5">
+        {holdings.slice(0, 3).map((item, index) => {
+          const rawChange = firstText(item.changePctText, "");
+          const change = rawChange && rawChange !== "-" ? rawChange : "";
+          const down = String(change).startsWith("-");
+          const currentText = firstText(item.currentPriceText, item.priceText, item.currentText, "");
+          const isRisk = ["위험", "주의", "HIGH", "WATCH"].includes(String(item.riskStatus || ""));
+          const judgment = getHoldingJudgment(item);
+          return (
+            <div
+              key={`${item.market}-${item.symbol}`}
+              className={`rounded-[14px] px-3.5 py-3.5 ${isRisk ? "bg-red-500/14" : ""} ${index > 0 ? "border-t border-slate-800/80" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-base font-black text-slate-100">{displayName(item)}</div>
+                  <div className="mt-1 truncate text-[11px] text-slate-500">
+                    {item.symbol} · {item.market === "kr" ? "국장" : "미장"}{currentText ? ` · 현재 ${currentText}` : ""}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className={`font-mono text-base font-black tabular-nums ${String(item.pnlText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"}`}>
+                    {firstText(item.pnlText, "손익 대기")}
+                  </div>
+                  {change && <div className={`mt-1 font-mono text-sm font-black tabular-nums ${down ? "text-red-400" : "text-emerald-400"}`}>{change}</div>}
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className={`rounded-md border px-2 py-1 text-[10px] font-black ${judgment.cls}`}>
+                  {judgment.text}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 // ── 6차: 반영 여부 배지 + Score Breakdown 아코디언 패널
@@ -1725,18 +2102,14 @@ function ScoreBreakdownPanel({ item }: { item: any }) {
           )}
 
           {/* 요약 문자열 */}
-          {(() => {
-            const chartText = chartSignalSummaryText(item.chartSignalSummary);
-            if (!chartText && !item.eventSummary && !item.adaptiveScoreSummary) return null;
-            return (
-              <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">신호 요약</div>
-                {chartText && <div className="text-[11px] text-slate-400"><span className="text-sky-400 font-medium">차트 </span>{chartText}</div>}
-                {item.eventSummary && <div className="text-[11px] text-slate-400"><span className="text-amber-400 font-medium">이벤트 </span>{item.eventSummary}</div>}
-                {item.adaptiveScoreSummary && <div className="text-[11px] text-slate-400"><span className="text-emerald-400 font-medium">AI보정 </span>{item.adaptiveScoreSummary}</div>}
-              </div>
-            );
-          })()}
+          {(item.chartSignalSummary || item.eventSummary || item.adaptiveScoreSummary) && (
+            <div className="rounded-lg bg-slate-950/50 p-3 space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">신호 요약</div>
+              {item.chartSignalSummary && <div className="text-[11px] text-slate-400"><span className="text-sky-400 font-medium">차트 </span>{item.chartSignalSummary}</div>}
+              {item.eventSummary && <div className="text-[11px] text-slate-400"><span className="text-amber-400 font-medium">이벤트 </span>{item.eventSummary}</div>}
+              {item.adaptiveScoreSummary && <div className="text-[11px] text-slate-400"><span className="text-emerald-400 font-medium">AI보정 </span>{item.adaptiveScoreSummary}</div>}
+            </div>
+          )}
 
           {/* 진입·목표·손절 근거 */}
           {(item.entryBasis || item.targetBasis || item.stopBasis) && (
@@ -1798,7 +2171,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   const bucketColor =
     decisionBucket === "오늘 진입"  ? "bg-emerald-600 text-white"
     : decisionBucket === "기다림"   ? "bg-sky-600 text-white"
-    : decisionBucket === "다음 진입" ? "bg-blue-600 text-white"
+    : decisionBucket === "다음 진입" ? "bg-teal-500 text-slate-950"
     : decisionBucket === "관찰"     ? "bg-slate-500 text-slate-100"
     : decisionBucket === "대기 관찰" ? "bg-amber-600 text-white"
     : decisionBucket === "매수금지"  ? "bg-red-700 text-white"
@@ -2186,7 +2559,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
           {/* 수급 신호 */}
           {supplySignal !== "NEUTRAL" && (
             <div className={`rounded-xl border p-3 text-[11px] ${
-              supplySignal === "STRONG_BUY" ? "border-blue-600/40 bg-blue-900/20 text-blue-300"
+              supplySignal === "STRONG_BUY" ? "border-teal-500/35 bg-teal-500/10 text-teal-300"
               : supplySignal === "INST_BUY"  ? "border-sky-600/40 bg-sky-900/20 text-sky-300"
               : "border-red-600/40 bg-red-900/20 text-red-300"
             }`}>
@@ -2268,7 +2641,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
             const ev = Number(item.expectedValue || 0);
             const rowCls = isToday  ? "bg-emerald-950/40 border border-emerald-800/30"
               : isWait   ? "bg-sky-950/40 border border-sky-800/30"
-              : isNext   ? "bg-blue-950/40 border border-blue-800/20"
+              : isNext   ? "bg-teal-950/25 border border-teal-700/20"
               : isWatch  ? "bg-slate-900/60"
               : isCaution ? "bg-red-950/30 border border-red-900/20 opacity-50"
               : "bg-slate-950/50 opacity-60";
@@ -2278,7 +2651,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
                   <span className="truncate text-[11px] font-medium text-slate-200">{displayName(item)}</span>
                   {isToday  && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">검토</span>}
                   {isWait   && <span className="ml-1 rounded bg-sky-700/50 px-1 text-[9px] text-sky-300">대기</span>}
-                  {isNext   && <span className="ml-1 rounded bg-blue-700/50 px-1 text-[9px] text-blue-300">다음</span>}
+                  {isNext   && <span className="ml-1 rounded bg-teal-700/35 px-1 text-[9px] text-teal-300">다음</span>}
                   {isCaution && <span className="ml-1 rounded bg-red-700/50 px-1 text-[9px] text-red-300">주의</span>}
                   {isWatch && item.timingLabel && <span className="ml-1 rounded bg-amber-900/40 px-1 text-[9px] text-amber-400">{item.timingLabel}</span>}
                 </div>
@@ -2384,21 +2757,17 @@ export default function HomePage({
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [showJournal, setShowJournal] = useState(false);
   const [showMatrix, setShowMatrix] = useState(false);
+  const [candidateTab, setCandidateTab] = useState<"today" | "watch" | "risk">("today");
   const [badgeMap, setBadgeMap] = useState<Record<string, any>>({});
-  const [reportDigest, setReportDigest] = useState<any>(null);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [showDigest, setShowDigest] = useState(false);
   const [storyMap, setStoryMap] = useState<Record<string, any>>({});
   const [editStory, setEditStory] = useState<string | null>(null);
   const [storyForm, setStoryForm] = useState({ why: "", invalidation: "", reviewDate: "" });
   const [clientReady, setClientReady] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
-  const [alertsExpanded, setAlertsExpanded] = useState(false);
   const [marketDetailExpanded, setMarketDetailExpanded] = useState(false);
+  const [fearGreedData, setFearGreedData] = useState<any>(null);
   // 실적발표 일정 맵: symbol → D-day
   const [earningsMap, setEarningsMap] = useState<Record<string, number>>({});
-  // 데이터 소스 신선도
-  const [dataSources, setDataSources] = useState<any>(null);
   // 매크로/실적 이벤트 배너
   const [calendarAlert, setCalendarAlert] = useState<any>(null);
   // 손절/목표가 근접 알림
@@ -2419,24 +2788,44 @@ export default function HomePage({
   const sessionCtx = getSessionContext(sessionPhase);
   const marketChoiceLabel = clientReady && marketChoice !== "auto" ? "수동" : "자동";
 
+  useEffect(() => {
+    let active = true;
+    setFearGreedData(null);
+    mone.fearGreed({ market: selectedMarket })
+      .then((result: any) => {
+        if (active) setFearGreedData(result || null);
+      })
+      .catch(() => {
+        if (active) setFearGreedData(null);
+      });
+    return () => { active = false; };
+  }, [selectedMarket]);
+
   function updateMarketChoice(next: MarketChoice) {
     setMarketChoice(next);
     if (typeof window !== "undefined") window.localStorage.setItem("mone:selectedMarketMode", next);
   }
 
-  const openAnalysis = useCallback((item: any) => {
-    const symbol = String(item.symbol || item.code || item.ticker || "").trim();
-    if (typeof window !== "undefined" && symbol) {
-      const market = normalizeMarket(item.market || selectedMarket, symbol);
-      window.localStorage.setItem("mone_chart_symbol", symbol);
-      window.localStorage.setItem("mone_chart_market", market);
-      window.localStorage.setItem("mone_chart_name", displayName(item));
-      window.localStorage.setItem("mone_chart_price", String(item.currentPrice || item.price || ""));
-      window.localStorage.setItem("mone_chart_price_text", priceText(item, "current", ""));
-      window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: { symbol, market } }));
-    }
+  function openTradePaper(item: any) {
+    if (!onTradePaper) return;
+    const market = normalizeMarket(item.market ?? item._market, item.symbol);
+    const price = Number(item.currentPrice ?? item.price ?? item.entryPrice ?? 0);
+    onTradePaper({ symbol: String(item.symbol), name: String(item.name || item.nameKr || item.symbol), price, market });
+  }
+
+  function openAnalysis(item: any) {
+    const symbol = String(item.symbol || item.code || item.ticker || "").toUpperCase();
+    if (!symbol || typeof window === "undefined") return;
+    const market = normalizeMarket(item.market ?? item._market, symbol);
+    const name = displayName(item) || symbol;
+    window.localStorage.setItem("mone_chart_symbol", symbol);
+    window.localStorage.setItem("mone_chart_market", market);
+    window.localStorage.setItem("mone_chart_name", name);
+    window.localStorage.setItem("mone_chart_price", String(item.currentPrice || item.price || ""));
+    window.localStorage.setItem("mone_chart_price_text", priceText(item, "current", ""));
+    window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
     onNavigate?.("chart");
-  }, [onNavigate, selectedMarket]);
+  }
 
   const applyCachedOrBootState = useCallback((market: "kr" | "us") => {
     // 1. Re-entry: use module-level cache (user navigated away and came back)
@@ -2560,33 +2949,6 @@ export default function HomePage({
     if (!clientReady) return;
     let active = true;
     const timer = window.setTimeout(() => {
-      if (!active) return;
-      setReportLoading(!reportDigest);
-      Promise.allSettled([
-        mone.report("premarket", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
-        mone.report("closing", { market: selectedMarket, mode: "balanced", horizon: "swing", limit: 20 }),
-      ]).then(([premarket, closing]) => {
-        if (!active) return;
-        setReportDigest({
-          premarket: premarket.status === "fulfilled" ? premarket.value : null,
-          closing: closing.status === "fulfilled" ? closing.value : null,
-          backtest: null,
-        });
-      }).catch(() => {
-        if (active && !reportDigest) setReportDigest(null);
-      })
-        .finally(() => { if (active) setReportLoading(false); });
-    }, 2500);
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [clientReady, selectedMarket]);
-
-  useEffect(() => {
-    if (!clientReady) return;
-    let active = true;
-    const timer = window.setTimeout(() => {
       mone.operationSummary({ market: selectedMarket, mode: "balanced", horizon: "swing" })
         .then((res) => {
           if (active) setOperationSummary(res || null);
@@ -2685,22 +3047,6 @@ export default function HomePage({
     };
   }, [clientReady, selectedMarket]);
 
-  // 데이터 소스 신선도 로드 (마운트 1회)
-  useEffect(() => {
-    if (!clientReady) return;
-    let active = true;
-    const timer = window.setTimeout(() => {
-      fetch("/api/health/data-sources")
-        .then((r) => r.ok ? r.json() : null)
-        .then((d) => { if (active && d) setDataSources(d); })
-        .catch(() => {});
-    }, 5000);
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [clientReady]);
-
   // ── 브라우저 알림: 장중 진입 임박 종목 감지 (1분 주기)
   useEffect(() => {
     if (!clientReady) return;
@@ -2784,53 +3130,44 @@ export default function HomePage({
       .slice(0, 6);
   }, [allItems]);
 
+  const riskItems = useMemo(() => {
+    const seen = new Set<string>();
+    return allItems
+      .filter((item) => {
+        const bucket = String(item.decisionBucket || "");
+        const risk = String(item.riskStatus || item.tradeBlockStatus || item.riskLevel || "").toUpperCase();
+        const blocked = bucket.includes("보류") || bucket.includes("주의") || bucket.includes("매수금지");
+        const risky = Boolean(risk && !["NONE", "OK", "NORMAL", "LOW"].includes(risk));
+        return bucket !== "오늘 진입" && bucket !== "대기 관찰" && (blocked || risky || Number(item.expectedValue || 0) < 0);
+      })
+      .sort((a, b) => {
+        const ar = Number(a.riskScore ?? 0);
+        const br = Number(b.riskScore ?? 0);
+        if (ar !== br) return br - ar;
+        return Number(b.finalScore || b.finalRankScore || 0) - Number(a.finalScore || a.finalRankScore || 0);
+      })
+      .filter((item) => {
+        const key = `${item.symbol}-${item._mode}-${item._horizon}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 6);
+  }, [allItems]);
+
+  useEffect(() => {
+    if (loading) return;
+    const activeCount =
+      candidateTab === "today" ? todayEntries.length
+      : candidateTab === "watch" ? watchItems.length
+      : riskItems.length;
+    if (activeCount > 0) return;
+    if (todayEntries.length > 0) setCandidateTab("today");
+    else if (watchItems.length > 0) setCandidateTab("watch");
+    else if (riskItems.length > 0) setCandidateTab("risk");
+  }, [candidateTab, loading, riskItems.length, todayEntries.length, watchItems.length]);
+
   const riskCount = holdings.filter((h) => ["위험", "주의", "HIGH", "WATCH"].includes(String(h.riskStatus || ""))).length;
-
-  // ── 신호 자동 기록 (매수 검토 후보 로드 시)
-  const dashboardAlerts = useMemo(() => {
-    const alerts: { key: string; title: string; detail: string; tone: "amber" | "red" | "emerald" }[] = [];
-    const add = (key: string, title: string, detail: string, tone: "amber" | "red" | "emerald" = "amber") => {
-      if (alerts.some((alert) => alert.key === key)) return;
-      alerts.push({ key, title, detail, tone });
-    };
-
-    [...todayEntries, ...watchItems].forEach((item) => {
-      const symbol = String(item.symbol || "");
-      const current = Number(item.currentPrice || item.price || 0);
-      const entry = Number(item.entry || item.entryPrice || 0);
-      const target = Number(item.target || item.targetPrice || 0);
-      if (symbol && current > 0 && entry > 0) {
-        const gap = Math.abs((current - entry) / entry) * 100;
-        if (gap <= 3) add(`entry-${symbol}`, `${displayName(item)}이 기준가에 근접했습니다.`, `현재가와 기준가 차이 ${gap.toFixed(1)}%`, "emerald");
-      }
-      if (symbol && current > 0 && target > 0) {
-        const gap = Math.abs((target - current) / target) * 100;
-        if (gap <= 3) add(`target-${symbol}`, `${displayName(item)}이 목표가에 근접했습니다.`, `목표가까지 ${gap.toFixed(1)}%`, "amber");
-      }
-      const action = firstText(item.patternStrategy?.action, item.patternStrategyAction, item.newEntryDecision, "");
-      if (symbol && action !== "-") add(`action-${symbol}`, `${displayName(item)}의 MONE 판단이 ${action}로 변경되었습니다.`, "분석 화면에서 진입·손절 계획을 확인하세요.", "amber");
-      const risk = String(item.riskStatus || item.tradeBlockStatus || "").toUpperCase();
-      if (symbol && risk && risk !== "NONE" && risk !== "OK" && risk !== "NORMAL") add(`risk-${symbol}`, `${displayName(item)}에 위험 패턴이 감지되었습니다.`, `상태: ${risk}`, "red");
-    });
-
-    const stopNear = holdings.filter((item: any) => {
-      const current = Number(item.currentPrice || 0);
-      const stop = Number(item.stopPrice || item.stop || 0);
-      return current > 0 && stop > 0 && Math.abs((current - stop) / stop) * 100 <= 3;
-    }).length;
-    if (stopNear > 0) add("holdings-stop", `보유 종목 중 ${stopNear}개가 손절 기준에 가까워졌습니다.`, "보유 탭에서 손절가와 비중을 재점검하세요.", "red");
-
-    const freshness = dataFreshnessInfo({
-      latestDataDate: dataHealth?.ohlcvLatestDate,
-      recoGeneratedAt: dataHealth?.recoGeneratedAt,
-      dataStatus: dataHealth?.dataStatus || dataHealth?.status,
-    });
-    if (freshness.state === "old" || freshness.state === "unknown") {
-      add("freshness", "관심종목/보유종목 데이터 신선도 확인이 필요합니다.", freshness.basisText, "amber");
-    }
-
-    return alerts.slice(0, 4);
-  }, [todayEntries, watchItems, holdings, dataHealth]);
 
   const topObservation = useMemo(
     () => pickTopObservation(todayEntries, watchItems, allItems),
@@ -2968,40 +3305,52 @@ export default function HomePage({
 
   return (
     <ErrorBoundary>
-    <div className="space-y-6">
+    <div className="mone-home space-y-6">
       {/* 추천 근거 패널 */}
       {selectedItem && <WhyPanel item={selectedItem} onClose={() => setSelectedItem(null)} marketRegime={marketRegime} />}
       {/* 운용 일지 모달 */}
       {showJournal && <JournalModal onClose={() => setShowJournal(false)} />}
 
       {/* 헤더 */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-100">시장 홈</h1>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
-            <span>{marketChoiceLabel}: <span className="text-slate-300">{selectedMarket === "kr" ? "국장" : "미장"}</span></span>
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-              sessionPhase === "장중" ? "bg-emerald-900/50 text-emerald-300"
-              : sessionPhase === "장마감" ? "bg-blue-900/50 text-blue-300"
-              : sessionPhase === "휴장" ? "bg-slate-800 text-slate-400"
-              : "bg-slate-800 text-slate-400"
-            }`}>{sessionStatus}</span>
-            {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}
+      <div className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-[24px] font-black leading-none text-slate-100">MONE 홈</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                sessionPhase === "장중" ? "bg-emerald-500/15 text-emerald-300"
+                : sessionPhase === "장마감" ? "bg-teal-500/15 text-teal-300"
+                : sessionPhase === "휴장" ? "bg-slate-800 text-slate-400"
+                : "bg-slate-800 text-slate-400"
+              }`}>{sessionStatus}</span>
+              <span className="text-slate-500">
+                {marketChoiceLabel} {selectedMarket === "kr" ? "국장" : "미장"} 거래일
+              </span>
+              {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}
+            </div>
           </div>
+          <button
+            onClick={() => load()}
+            title="새로고침"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-slate-300 transition-[background-color,transform] hover:bg-slate-800 active:scale-[0.96]"
+          >
+            <RefreshCw size={16} className={loading || refreshing ? "animate-spin" : ""} />
+          </button>
         </div>
-        <div className="grid w-full grid-cols-5 gap-1.5 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end">
+        <div className="grid grid-cols-3 gap-1.5 rounded-[14px] bg-slate-950/40">
           {(["auto", "kr", "us"] as MarketChoice[]).map((choice) => (
-            <button key={choice} onClick={() => updateMarketChoice(choice)}
-              className={`min-w-0 rounded-lg px-2 py-1.5 text-xs font-semibold sm:px-2.5 ${marketChoice === choice ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+            <button
+              key={choice}
+              onClick={() => updateMarketChoice(choice)}
+              className={`min-h-9 min-w-0 rounded-xl border px-2 text-sm font-black transition-[background-color,border-color,transform] active:scale-[0.96] ${
+                marketChoice === choice
+                  ? "border-teal-400 bg-teal-500 text-slate-950"
+                  : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+              }`}
+            >
               {choice === "auto" ? "자동" : choice === "kr" ? "국장" : "미장"}
             </button>
           ))}
-          <button onClick={() => setShowJournal(true)} className="min-w-0 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-300 hover:bg-slate-800 sm:px-2.5">
-            일지
-          </button>
-          <button onClick={() => load()} title="새로고침" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800">
-            <RefreshCw size={13} className={loading || refreshing ? "animate-spin" : ""} />
-          </button>
         </div>
       </div>
 
@@ -3011,372 +3360,59 @@ export default function HomePage({
         </div>
       )}
 
+      {/* 매크로/실적 이벤트 배너 */}
+      <EventBanner alert={calendarAlert} />
+
       {!loading && (
         <DailyBriefingCard briefing={dailyBriefing} onAnalyze={setSelectedItem} />
       )}
 
-      {/* 마켓 레짐 배너 */}
-      {marketRegime && (
-        <div className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 text-xs ${
-          marketRegime.regime === "BULL"
-            ? "border-emerald-500/25 bg-emerald-500/8"
-            : marketRegime.regime === "BEAR"
-              ? "border-red-500/25 bg-red-500/8"
-              : "border-amber-500/25 bg-amber-500/8"
-        }`}>
-          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-bold ${
-            marketRegime.regime === "BULL" ? "bg-emerald-500/20 text-emerald-300"
-            : marketRegime.regime === "BEAR" ? "bg-red-500/20 text-red-300"
-            : "bg-amber-500/20 text-amber-300"
-          }`}>
-            {marketRegime.regime === "BULL" ? "↑" : marketRegime.regime === "BEAR" ? "↓" : "→"}
-          </span>
-          <span className={`font-semibold ${
-            marketRegime.regime === "BULL" ? "text-emerald-300"
-            : marketRegime.regime === "BEAR" ? "text-red-300"
-            : "text-amber-300"
-          }`}>
-            {marketRegime.regime === "BULL" ? "강세장" : marketRegime.regime === "BEAR" ? "약세장" : "중립장"}
-          </span>
-          <span className="text-slate-500">{marketRegime.benchmark}</span>
-          {marketRegime.distanceMa20Pct != null && (
-            <span className={`font-mono ${Number(marketRegime.distanceMa20Pct) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              20MA {Number(marketRegime.distanceMa20Pct) >= 0 ? "+" : ""}{Number(marketRegime.distanceMa20Pct).toFixed(1)}%
-            </span>
-          )}
-          {marketRegime.regime === "BEAR" && (
-            <span className="ml-auto font-medium text-red-300">진입 기준 강화 적용 중</span>
-          )}
-        </div>
-      )}
-
-      {/* 공포·탐욕 지수 */}
-      <FearGreedWidget market={selectedMarket} />
-
       {!loading && (
-        <TodayConclusionCard
+        <MarketGateCard
           regime={marketRegime}
           dataHealth={dataHealth}
-          todayCount={todayEntries.length}
-          watchCount={watchItems.length}
-          riskCount={riskCount}
+          fearGreedData={fearGreedData}
+          expanded={marketDetailExpanded}
+          onToggle={() => setMarketDetailExpanded((value) => !value)}
+          basisWarning={basisWarning}
         />
-      )}
-
-      {!loading && dashboardAlerts.length > 0 && (() => {
-        const first = dashboardAlerts[0];
-        const summary = dashboardAlerts.length > 1
-          ? `${first.title.replace(/[.。]$/, "")} 외 ${dashboardAlerts.length - 1}개 알림`
-          : first.title;
-        const visibleAlerts = alertsExpanded ? dashboardAlerts : dashboardAlerts.slice(0, 1);
-        return (
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-amber-100">MONE 알림 {dashboardAlerts.length}개</div>
-                <div className="mt-0.5 text-xs text-amber-100/80">{summary}</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAlertsExpanded((value) => !value)}
-                className="shrink-0 rounded-lg border border-amber-400/30 bg-slate-950/40 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-slate-950/70"
-              >
-                {alertsExpanded ? "접기" : "알림 보기"}
-              </button>
-            </div>
-            {alertsExpanded && (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {visibleAlerts.map((alert) => (
-                  <div key={alert.key} className={`rounded-xl border px-3 py-2 text-xs ${
-                    alert.tone === "red"
-                      ? "border-red-500/30 bg-red-500/10 text-red-100"
-                      : alert.tone === "emerald"
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
-                        : "border-amber-500/30 bg-slate-950/30 text-amber-100"
-                  }`}>
-                    <div className="font-semibold">{alert.title}</div>
-                    <div className="mt-0.5 text-[11px] opacity-75">{alert.detail}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* 매크로/실적 이벤트 배너 */}
-      <EventBanner alert={calendarAlert} />
-
-      {/* 손절/목표가 근접 알림 패널 */}
-      {nearAlerts.length > 0 && (
-        <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-3 space-y-1.5">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 px-0.5">가격 근접 알림</div>
-          {nearAlerts.map((alert: any) => {
-            const symbolUpper = String(alert.symbol || "").toUpperCase();
-            const matchedItem = analysisItemsBySymbol.get(symbolUpper);
-            const isStop = alert.type === "STOP";
-            const gapSign = isStop ? "-" : "+";
-            const currentFmt = Number(alert.currentPrice ?? 0).toLocaleString("ko-KR");
-            const priceFmt = isStop
-              ? Number(alert.stopPrice ?? 0).toLocaleString("ko-KR")
-              : Number(alert.targetPrice ?? 0).toLocaleString("ko-KR");
-            const priceLabel = isStop ? "손절" : "목표";
-            const gapPct = Number(alert.gapPct ?? 0).toFixed(1);
-            return (
-              <button
-                type="button"
-                key={`${alert.symbol}-${alert.type}`}
-                onClick={() => {
-                  const itemForPanel = {
-                    ...(matchedItem || {}),
-                    ...alert,
-                    symbol: alert.symbol || matchedItem?.symbol,
-                    name: alert.name || matchedItem?.name || matchedItem?.companyName || alert.symbol,
-                    market: alert.market || matchedItem?.market || selectedMarket,
-                    currentPrice: alert.currentPrice ?? matchedItem?.currentPrice ?? matchedItem?.price,
-                    entry: matchedItem?.entry ?? matchedItem?.entryPrice ?? alert.entryPrice,
-                    stop: matchedItem?.stop ?? matchedItem?.stopPrice ?? alert.stopPrice,
-                    target: matchedItem?.target ?? matchedItem?.targetPrice ?? alert.targetPrice,
-                    decisionBucket: matchedItem?.decisionBucket || (alert.type === "STOP" ? "리스크확인" : "기준가 근접"),
-                  };
-                  setSelectedItem(itemForPanel);
-                }}
-                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-[11px] ${
-                  isStop
-                    ? "border-red-700/40 bg-red-950/20 text-red-200"
-                    : "border-emerald-700/40 bg-emerald-950/20 text-emerald-200"
-                } text-left transition-[background-color,transform] hover:bg-slate-900/70 active:scale-[0.99]`}
-              >
-                <span className="font-semibold truncate min-w-0">{alert.name || alert.symbol}</span>
-                <span className="shrink-0 text-[10px] opacity-80 [font-variant-numeric:tabular-nums]">
-                  {priceLabel}가 근접 (현재 {currentFmt} / {priceLabel} {priceFmt}, {gapSign}{gapPct}%)
-                </span>
-              </button>
-            );
-          })}
-        </div>
       )}
 
       {!loading && (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <AlertTrackingPreview rows={alertTrackingRows} />
-          <EngineHistoryPreview rows={engineHistoryRows} />
-        </div>
-      )}
-
-      {/* 데이터 신선도 배지 */}
-      {dataSources && (() => {
-        const freshness = dataSources.recommendationFreshness as Record<string, { ageHours: number; fresh: boolean }> | undefined;
-        if (!freshness) return null;
-        const ages = Object.values(freshness).map((v) => v.ageHours);
-        if (!ages.length) return null;
-        const maxAge = Math.max(...ages);
-        const allFresh = ages.every((a) => a < 6);
-        const anyStale = ages.some((a) => a >= 24);
-        const dot = allFresh ? "bg-emerald-400" : anyStale ? "bg-red-400" : "bg-yellow-400";
-        const label = allFresh ? "신선" : anyStale ? "오래됨" : "보통";
-        const textClass = allFresh ? "text-emerald-300" : anyStale ? "text-red-300" : "text-yellow-300";
-        const src = dataSources.sources?.local_collector ? "로컬 수집기" : dataSources.sources?.github_actions ? "GitHub Actions" : null;
-        return (
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
-            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${anyStale ? "border-red-800/50 bg-red-950/30" : allFresh ? "border-emerald-800/50 bg-emerald-950/20" : "border-yellow-800/50 bg-yellow-950/20"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-              <span className={textClass}>데이터 {label}</span>
-              <span className="text-slate-500">({maxAge.toFixed(0)}h 전)</span>
-            </span>
-            {src && <span className="text-slate-600">{src}</span>}
-          </div>
-        );
-      })()}
-
-      {marketRegime && (
-        <MarketRegimeSummaryCard
-          regime={marketRegime}
-          selectedMarket={selectedMarket}
-          expanded={marketDetailExpanded}
-          onToggle={() => setMarketDetailExpanded((value) => !value)}
+        <CandidateCarouselSection
+          loading={loading}
+          candidateTab={candidateTab}
+          setCandidateTab={setCandidateTab}
+          todayEntries={todayEntries}
+          watchItems={watchItems}
+          riskItems={riskItems}
+          allItems={allItems}
+          marketRegime={marketRegime}
+          sessionHint={sessionCtx.hint}
+          earningsMap={earningsMap}
+          onSelect={setSelectedItem}
+          onAnalyze={openAnalysis}
+          onTradePaper={onTradePaper ? openTradePaper : undefined}
         />
       )}
 
-      {/* 데이터 상태 카드 */}
-      {!loading && (() => {
-        if (!dataHealth) return null;
-        const recoAt = dataHealth.recoGeneratedAt ? new Date(dataHealth.recoGeneratedAt) : null;
-        const hoursOld = recoAt ? (Date.now() - recoAt.getTime()) / 3600000 : null;
-        const isStale = hoursOld != null && hoursOld > 24;
-        const isError = (dataHealth.kisLiveCount ?? 0) === 0 && (dataHealth.ohlcvCount ?? 0) === 0;
-        const liveRatio = dataHealth.kisTargetCount > 0 ? (dataHealth.kisLiveCount ?? 0) / dataHealth.kisTargetCount : 1;
-        const hasOhlcv = (dataHealth.ohlcvCount ?? 0) > 0;
-        const priceStatus = liveRatio >= 0.5 ? "NORMAL" : liveRatio >= 0.1 ? "PARTIAL" : "ERROR";
-
-        return (
-          <div className={`rounded-xl border px-4 py-3 text-[11px] ${
-            isError ? "border-red-800/60 bg-red-950/20"
-            : isStale ? "border-amber-800/40 bg-amber-950/15"
-            : "border-slate-800 bg-slate-900/40"
-          }`}>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-              {/* 가격 데이터 상태 */}
-              <span className="flex items-center gap-1.5">
-                <span className={`h-1.5 w-1.5 rounded-full ${priceStatus === "NORMAL" ? "bg-emerald-400" : priceStatus === "PARTIAL" ? "bg-amber-400" : "bg-red-400"}`} />
-                <span className="text-slate-500">실시간 가격</span>
-                <span className={`font-mono font-medium ${priceStatus === "NORMAL" ? "text-slate-200" : priceStatus === "PARTIAL" ? "text-amber-300" : "text-red-300"}`}>
-                  {dataHealth.kisLiveCount ?? 0}<span className="text-slate-600">/{dataHealth.kisTargetCount ?? 0}종목</span>
-                </span>
-                {priceStatus === "PARTIAL" && <span className="text-amber-500">부분 수집</span>}
-                {priceStatus === "ERROR" && <span className={hasOhlcv ? "text-amber-400" : "text-red-400"}>{hasOhlcv ? "실시간 미수집 · 종가 기준" : "장외/KIS 미수집"}</span>}
-              </span>
-
-              {/* OHLCV 상태 */}
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                <span className="text-slate-500">차트 데이터</span>
-                <span className="font-mono text-slate-200">{dataHealth.ohlcvCount ?? 0}종목</span>
-                {dataHealth.ohlcvLatestDate && <span className="text-slate-500">· {dataHealth.ohlcvLatestDate}</span>}
-              </span>
-
-              {/* 데이터 기준 시각 */}
-              {recoAt && (
-                <span className="flex items-center gap-1.5">
-                  <span className={`h-1.5 w-1.5 rounded-full ${isStale ? "bg-amber-400" : "bg-violet-400"}`} />
-                  <span className="text-slate-500">데이터 기준</span>
-                  <span className={`font-mono ${isStale ? "text-amber-300" : "text-slate-300"}`}>
-                    {String(dataHealth.recoGeneratedAt).slice(0, 16).replace("T", " ")}
-                  </span>
-                  {isStale && <span className="text-amber-400">({Math.floor(hoursOld!)}h 전)</span>}
-                </span>
-              )}
-
-              {/* 스캔 범위 + 경고 */}
-              <div className="ml-auto flex items-center gap-2">
-                {isError && <span className="rounded-full border border-red-700/60 bg-red-900/30 px-2 py-0.5 text-[10px] font-medium text-red-300">데이터 오류</span>}
-                {isStale && !isError && <span className="rounded-full border border-amber-700/40 bg-amber-900/20 px-2 py-0.5 text-[10px] font-medium text-amber-300">데이터 오래됨</span>}
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${dataHealth.scanScope === "FULL_MARKET_READY" ? "bg-emerald-900/40 text-emerald-400" : "bg-slate-800 text-slate-400"}`}>
-                  {dataHealth.scanScope === "FULL_MARKET_READY" ? "전종목" : "선별 유니버스"}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {basisWarning && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 font-semibold text-amber-200">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>기준일이 혼합되어 있습니다</span>
-              </div>
-              <p className="mt-1 text-amber-100/80">
-                추천·현재가·차트/OHLCV 기준일이 서로 달라 장중에는 일부 판단이 전일 종가 기준으로 보일 수 있습니다.
-              </p>
-            </div>
-            <div className="grid shrink-0 grid-cols-3 gap-1.5 font-mono text-[11px] tabular-nums sm:min-w-[310px]">
-              <span className="rounded-lg border border-amber-400/20 bg-slate-950/40 px-2 py-1 text-center">추천 {basisWarning.recommendation || "-"}</span>
-              <span className="rounded-lg border border-amber-400/20 bg-slate-950/40 px-2 py-1 text-center">현재가 {basisWarning.current || "-"}</span>
-              <span className="rounded-lg border border-amber-400/20 bg-slate-950/40 px-2 py-1 text-center">OHLCV {basisWarning.ohlcv || "-"}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 오늘 운용 요약 — 접힘 가능 */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between px-4 py-3 text-left"
-          onClick={() => setShowDigest((v) => !v)}
-        >
-          <span className="text-xs font-semibold text-slate-400">오늘 운용 요약</span>
-          <span className="text-[10px] text-slate-600">{showDigest ? "▲ 닫기" : "▼ 펼치기"}</span>
-        </button>
-        {showDigest && (
-          <div className="border-t border-slate-800 px-4 pb-4 pt-3">
-            <ReportDigestCard digest={reportDigest} loading={reportLoading && !reportDigest} />
-          </div>
-        )}
-      </div>
-
-      {/* ━━ 오늘 진입 후보 ━━ */}
-      <section className="rounded-2xl border border-emerald-900/50 bg-emerald-950/10 p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <TrendingUp size={18} className="text-emerald-400" />
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold text-slate-100">
-              {sessionPhase === "장중" ? "기준가 근접 종목" : "검토 후보"}
-            </h2>
-            <p className="text-xs text-slate-500">
-              {sessionCtx.hint || "진입 구간 + EV 양수 + 추세 조건을 동시에 충족한 종목입니다."}
-            </p>
-          </div>
-          <span className="shrink-0 rounded-full border border-emerald-800/50 bg-emerald-900/30 px-3 py-1 text-xs text-emerald-400">
-            {loading ? "..." : `${todayEntries.length}개`}
-          </span>
-          {onNavigate && (
-            <button onClick={() => onNavigate("stocks")} className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-              종목 탐색 <ArrowRight size={12} />
-            </button>
-          )}
-        </div>
-        {loading ? (
-          <div className="py-8 text-center text-slate-500">데이터 확인 중...</div>
-        ) : todayEntries.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-700 py-6 text-center text-sm">
-            <p className="text-slate-500">
-              {marketRegime?.regime === "BEAR" ? "약세장 — 진입 기준 상향 적용 중" : "현재 즉시 진입 후보가 없습니다."}
-            </p>
-            <p className="mt-2 text-[11px] text-slate-600">
-              {allItems.length === 0 ? "오늘 추천 데이터가 아직 없습니다. 오전 데이터 갱신 후 다시 확인해 주세요." : `현재 조건에 맞는 진입 후보가 없습니다. 전략 매트릭스에 ${allItems.length}개 종목이 있으나 EV 양수 + 진입 조건을 충족하지 않습니다.`}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {todayEntries.map((item, i) => (
-              <TodayEntryCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onSelect={setSelectedItem} onAnalyze={openAnalysis} earningsMap={earningsMap} onTradePaper={onTradePaper ? (it) => {
-                  const mkt = normalizeMarket(it.market ?? it._market, it.symbol);
-                  const rawPrice = Number(it.currentPrice ?? it.price ?? it.entryPrice ?? 0);
-                  onTradePaper({ symbol: String(it.symbol), name: String(it.name || it.nameKr || it.symbol), price: rawPrice, market: mkt });
-                } : undefined} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ━━ 포지션 사이징 ━━ */}
       <PositionSizingSection items={allItems} capital={capital} setCapital={setCapital} onTradePaper={onTradePaper} />
 
-      {/* ━━ 대기 관찰 후보 ━━ */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Eye size={18} className="text-amber-400" />
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold text-slate-100">대기 관찰 후보</h2>
-            <p className="text-xs text-slate-500">지금은 기다리고, 눌림 후 다시 볼 후보입니다.</p>
-          </div>
-          <span className="shrink-0 rounded-full border border-amber-800/50 bg-amber-900/20 px-3 py-1 text-xs text-amber-400">
-            {loading ? "..." : `${watchItems.length}개`}
-          </span>
-          {onNavigate && (
-            <button onClick={() => onNavigate("stocks")} className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-              종목 탐색 <ArrowRight size={12} />
-            </button>
-          )}
-        </div>
-        {loading ? (
-          <div className="py-6 text-center text-slate-500">데이터 확인 중...</div>
-        ) : watchItems.length === 0 ? (
-          <div className="py-6 text-center text-sm text-slate-500">대기 관찰 종목이 없습니다.</div>
-        ) : (
-          <div className="space-y-2">
-            {watchItems.map((item) => (
-              <WatchCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} onSelect={setSelectedItem} />
-            ))}
-          </div>
-        )}
-      </section>
+      {!loading && (
+        <CompactHoldingsSection holdings={holdings} summary={summary} riskCount={riskCount} onNavigate={onNavigate} />
+      )}
+
+      {!loading && (
+        <StrategyRecordsSection
+          alertRows={alertTrackingRows}
+          engineRows={engineHistoryRows}
+          currentItem={topObservation}
+          onMatrixClick={() => setShowMatrix((value) => !value)}
+        />
+      )}
 
       {/* ━━ 3×3 전략 매트릭스 (상세 비교) ━━ */}
+      {showMatrix && (
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <button
           className="flex w-full items-center justify-between text-left"
@@ -3393,7 +3429,6 @@ export default function HomePage({
 
         {showMatrix && (
           <div className="mt-4">
-            {/* 헤더 행 */}
             <div className="mb-2 hidden grid-cols-[100px_repeat(3,1fr)] gap-2 xl:grid">
               <div />
               {HORIZONS.map((h) => (
@@ -3433,119 +3468,6 @@ export default function HomePage({
           </div>
         )}
       </section>
-
-      {/* ━━ 온보딩 패널 (보유종목 없을 때) ━━ */}
-      {!loading && holdings.length === 0 && (
-        <OnboardingPanel onNavigate={onNavigate} />
-      )}
-
-      {/* ━━ 보유종목 요약 ━━ */}
-      {holdings.length > 0 && (
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <div className="mb-3 flex items-center gap-2">
-            {riskCount > 0 && <AlertTriangle size={16} className="text-red-400" />}
-            <h2 className="text-base font-semibold text-slate-100">보유종목</h2>
-            {summary?.totalPnl != null && (
-              <span className={`ml-1 font-mono text-sm font-bold ${Number(summary.totalPnl) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                {summary.totalPnlText ?? (Number(summary.totalPnl) >= 0 ? "+" : "") + Number(summary.totalPnl).toLocaleString("ko-KR") + "원"}
-              </span>
-            )}
-            <span className="ml-auto text-xs text-slate-500">{holdings.length}개{riskCount > 0 && ` · 위험/주의 ${riskCount}개`}</span>
-            {onNavigate && (
-              <button onClick={() => onNavigate("holdings")} className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                {holdings.length > 6 ? "전체 보기" : "상세"} <ArrowRight size={12} />
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {holdings.slice(0, 6).map((item) => {
-              const rawChange = firstText(item.changePctText, "");
-              const change = rawChange && rawChange !== "-" ? rawChange : "";
-              const down = String(change).startsWith("-");
-              const currentText = firstText(item.currentPriceText, item.priceText, item.currentText, "");
-              const isRisk = ["위험", "주의", "HIGH", "WATCH"].includes(String(item.riskStatus || ""));
-              const judgment = getHoldingJudgment(item);
-              return (
-                <div key={`${item.market}-${item.symbol}`} className={`rounded-xl border p-3 ${isRisk ? "border-red-800/40 bg-red-950/10" : "border-slate-800 bg-slate-950/50"}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-slate-200">{displayName(item)}</div>
-                      <div className="text-[11px] text-slate-500">
-                        {item.symbol} · {item.market === "kr" ? "국장" : "미장"}{currentText ? ` · ${currentText}` : ""}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className={`font-mono text-sm ${String(item.pnlText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"}`}>
-                        {firstText(item.pnlText, "손익 대기")}
-                      </div>
-                      {change && <div className={`font-mono text-[11px] ${down ? "text-red-400" : "text-emerald-400"}`}>{change}</div>}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${judgment.cls}`}>
-                      {judgment.text}
-                    </span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); const k = `${item.market}-${item.symbol}`; setEditStory(k); setStoryForm(storyMap[k] || { why: "", invalidation: "", reviewDate: "" }); }}
-                      className="rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] text-slate-400 hover:bg-slate-800"
-                    >
-                      {storyMap[`${item.market}-${item.symbol}`] ? "스토리 수정" : "+ 스토리"}
-                    </button>
-                  </div>
-                  {editStory === `${item.market}-${item.symbol}` && (
-                    <div className="mt-2 space-y-2 rounded-xl border border-slate-700 bg-slate-900/60 p-3 text-[11px]">
-                      <input
-                        placeholder="왜 샀는지 (진입 근거)"
-                        value={storyForm.why}
-                        onChange={(e) => setStoryForm((f) => ({ ...f, why: e.target.value }))}
-                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500"
-                      />
-                      <input
-                        placeholder="무효화 조건 (이 가격 깨지면 틀린 것)"
-                        value={storyForm.invalidation}
-                        onChange={(e) => setStoryForm((f) => ({ ...f, invalidation: e.target.value }))}
-                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500"
-                      />
-                      <input
-                        type="date"
-                        value={storyForm.reviewDate}
-                        onChange={(e) => setStoryForm((f) => ({ ...f, reviewDate: e.target.value }))}
-                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100 focus:outline-none focus:border-blue-500"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            const k = `${item.market}-${item.symbol}`;
-                            const updated = { ...storyMap, [k]: storyForm };
-                            setStoryMap(updated);
-                            window.localStorage.setItem("mone:stories", JSON.stringify(updated));
-                            setEditStory(null);
-                          }}
-                          className="rounded-lg bg-blue-600 px-3 py-1 text-[11px] font-semibold text-white hover:bg-blue-500"
-                        >저장</button>
-                        <button onClick={() => setEditStory(null)} className="rounded-lg bg-slate-800 px-3 py-1 text-[11px] text-slate-400">취소</button>
-                      </div>
-                      {storyMap[`${item.market}-${item.symbol}`] && (
-                        <div className="border-t border-slate-700 pt-2 text-slate-400">
-                          <div>근거: {storyMap[`${item.market}-${item.symbol}`].why || "—"}</div>
-                          <div>무효화: {storyMap[`${item.market}-${item.symbol}`].invalidation || "—"}</div>
-                          {storyMap[`${item.market}-${item.symbol}`].reviewDate && (
-                            <div>재점검: {storyMap[`${item.market}-${item.symbol}`].reviewDate}</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {holdings.length > 6 && onNavigate && (
-            <button onClick={() => onNavigate("holdings")} className="mt-3 w-full rounded-xl border border-slate-700 py-2 text-xs text-slate-400 hover:bg-slate-800">
-              나머지 {holdings.length - 6}개 보유종목 →
-            </button>
-          )}
-        </section>
       )}
     </div>
     </ErrorBoundary>
