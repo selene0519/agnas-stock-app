@@ -1,11 +1,16 @@
 """
 Entry proximity and holdings-risk Telegram notifier.
 
+Runs once per market, right before that market's open (KR ~08:30 KST,
+US ~09:00 ET) — see _is_kr_preopen()/_is_us_preopen(). Outside those
+windows (e.g. manual workflow_dispatch), both markets are checked.
+
 Environment variables:
   TELEGRAM_BOT_TOKEN
   TELEGRAM_CHAT_ID
   ENTRY_PROXIMITY_PCT  default 2.0
   NOTIFY_DRY_RUN       "1" prints messages without sending
+  NOTIFY_MARKET        "kr" | "us" — force a single market, skip time-window check
 """
 from __future__ import annotations
 
@@ -18,6 +23,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
@@ -43,13 +49,31 @@ def _similar_pattern_win_rate(symbol: str, market: str, horizon: str) -> float |
         return summary.get("winRate")
     except Exception:
         return None
-CURRENT_HOLDINGS_SOURCES = [
-    ROOT / "data" / "toss_holdings_kr.csv",
-    ROOT / "data" / "kis_2_holdings_kr.csv",
-    ROOT / "data" / "kis_holdings_kr.csv",
-    ROOT / "data" / "holdings_kr.csv",
-    ROOT / "holdings_kr.csv",
-]
+def _holdings_sources(market: str) -> list[Path]:
+    if market == "us":
+        return [ROOT / "data" / "holdings_us.csv"]
+    return [
+        ROOT / "data" / "toss_holdings_kr.csv",
+        ROOT / "data" / "kis_2_holdings_kr.csv",
+        ROOT / "data" / "kis_holdings_kr.csv",
+        ROOT / "data" / "holdings_kr.csv",
+        ROOT / "holdings_kr.csv",
+    ]
+
+
+def _is_kr_preopen() -> bool:
+    """KR 정규장(09:00 KST) 시작 전 1회만 보내기 위한 시간창 (08:00~08:59 KST)."""
+    now = datetime.now(ZoneInfo("Asia/Seoul"))
+    return now.weekday() < 5 and now.hour == 8
+
+
+def _is_us_preopen() -> bool:
+    """미장 정규장(09:30 ET) 시작 전 1회만 보내기 위한 시간창 (09:00~09:59 ET).
+    워크플로우는 EDT/EST 두 시각 모두 cron을 등록해두고, 실제 발송 여부는
+    이 시간창 체크로 걸러서 매일 한 번만 보내도록 한다."""
+    now = datetime.now(ZoneInfo("America/New_York"))
+    return now.weekday() < 5 and now.hour == 9
+
 
 MODES = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")
@@ -105,16 +129,16 @@ def _current_price(symbol: str, market: str = "kr") -> float | None:
     return None
 
 
-def _current_holdings_rows() -> tuple[str, list[dict[str, str]]]:
+def _current_holdings_rows(market: str = "kr") -> tuple[str, list[dict[str, str]]]:
     merged: list[dict[str, str]] = []
     seen: set[str] = set()
     sources: list[str] = []
-    for path in CURRENT_HOLDINGS_SOURCES:
-        if merged and path.name == "holdings_kr.csv":
+    for path in _holdings_sources(market):
+        if merged and path.name == f"holdings_{market}.csv" and path.parent.name != "data":
             continue
         rows = [
             row for row in _read_csv(path)
-            if _symbol(row) and str(row.get("market") or "kr").lower() == "kr" and _num(row.get("quantity") or row.get("qty")) > 0
+            if _symbol(row) and str(row.get("market") or market).lower() == market and _num(row.get("quantity") or row.get("qty")) > 0
         ]
         source_rows = []
         for row in rows:
@@ -129,8 +153,8 @@ def _current_holdings_rows() -> tuple[str, list[dict[str, str]]]:
     return "/".join(sources), merged
 
 
-def _current_holding_symbols() -> set[str]:
-    _, rows = _current_holdings_rows()
+def _current_holding_symbols(market: str = "kr") -> set[str]:
+    _, rows = _current_holdings_rows(market)
     return {_symbol(row) for row in rows if _symbol(row)}
 
 
@@ -157,14 +181,14 @@ def _send_telegram(text: str) -> bool:
         return False
 
 
-def check_entry_proximity() -> list[dict[str, Any]]:
+def check_entry_proximity(market: str = "kr") -> list[dict[str, Any]]:
     alerts: list[dict[str, Any]] = []
     seen: set[str] = set()
-    held_symbols = _current_holding_symbols()
+    held_symbols = _current_holding_symbols(market)
 
     for mode in MODES:
         for horizon in HORIZONS:
-            path = REPORTS / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
+            path = REPORTS / f"mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv"
             for row in _read_csv(path):
                 symbol = _symbol(row)
                 if not symbol or symbol in seen:
@@ -175,7 +199,7 @@ def check_entry_proximity() -> list[dict[str, Any]]:
                 target = _num(row.get("target") or row.get("targetPrice") or 0)
                 name = str(row.get("name") or row.get("stockName") or symbol)
 
-                current = _current_price(symbol, "kr")
+                current = _current_price(symbol, market)
                 if not current or entry <= 0:
                     continue
 
@@ -196,15 +220,15 @@ def check_entry_proximity() -> list[dict[str, Any]]:
                     "target": target,
                     "gap_pct": gap,
                     "already_held": symbol in held_symbols,
-                    "similar_win_rate": _similar_pattern_win_rate(symbol, "kr", horizon),
+                    "similar_win_rate": _similar_pattern_win_rate(symbol, market, horizon),
                 })
 
     return alerts
 
 
-def check_holdings_risk() -> list[dict[str, Any]]:
+def check_holdings_risk(market: str = "kr") -> list[dict[str, Any]]:
     alerts: list[dict[str, Any]] = []
-    source, rows = _current_holdings_rows()
+    source, rows = _current_holdings_rows(market)
     for row in rows:
         symbol = _symbol(row)
         name = str(row.get("name") or symbol)
@@ -214,7 +238,7 @@ def check_holdings_risk() -> list[dict[str, Any]]:
         if not symbol or avg_price <= 0 or qty <= 0:
             continue
 
-        current = _current_price(symbol, "kr") or _num(row.get("currentPrice") or row.get("current_price") or 0)
+        current = _current_price(symbol, market) or _num(row.get("currentPrice") or row.get("current_price") or 0)
         if not current:
             continue
 
@@ -292,13 +316,14 @@ def _save_state(state: dict[str, str]) -> None:
         pass
 
 
-def _alert_key(a: dict[str, Any]) -> str:
+def _alert_key(market: str, a: dict[str, Any]) -> str:
     if a["type"] == "ENTRY":
-        return f"entry_{a['symbol']}_{a['mode']}_{a['horizon']}"
-    return f"{a['type']}_{a['symbol']}"
+        return f"{market}_entry_{a['symbol']}_{a['mode']}_{a['horizon']}"
+    return f"{market}_{a['type']}_{a['symbol']}"
 
 
-def _should_send(key: str, state: dict[str, str], cooldown_hours: float = 2.0) -> bool:
+def _should_send(key: str, state: dict[str, str], cooldown_hours: float = 20.0) -> bool:
+    """기본 쿨다운 20시간 — 시장별 장전 1회 발송 기준이라 같은 날 중복 발송만 막으면 된다."""
     last = state.get(key)
     if not last:
         return True
@@ -310,28 +335,26 @@ def _should_send(key: str, state: dict[str, str], cooldown_hours: float = 2.0) -
         return True
 
 
-def main() -> None:
+def _run_market(market: str, state: dict[str, str]) -> int:
     now_kst = datetime.now().strftime("%Y-%m-%d %H:%M KST")
-    source_label, current_holdings = _current_holdings_rows()
+    source_label, current_holdings = _current_holdings_rows(market)
     source_label = source_label or "none"
-    print(f"[{now_kst}] alert check start (entry +/-{ENTRY_PROXIMITY_PCT}%, stop -6%, target +8%)")
+    print(f"[{now_kst}] [{market}] alert check start (entry +/-{ENTRY_PROXIMITY_PCT}%, stop -6%, target +8%)")
     print(f"  holdings source: {source_label} ({len(current_holdings)} rows)")
 
-    entry_alerts = check_entry_proximity()
-    holdings_alerts = check_holdings_risk()
+    entry_alerts = check_entry_proximity(market)
+    holdings_alerts = check_holdings_risk(market)
     all_alerts = entry_alerts + holdings_alerts
 
     print(f"  recommendation entry alerts: {len(entry_alerts)} | holdings risk/target: {len(holdings_alerts)}")
 
     if not all_alerts:
         print("  no alerts.")
-        return
+        return 0
 
-    state = _load_state()
     sent_count = 0
-
     for alert in all_alerts:
-        key = _alert_key(alert)
+        key = _alert_key(market, alert)
         if not _should_send(key, state):
             print(f"  [{key}] cooldown skip")
             continue
@@ -348,8 +371,24 @@ def main() -> None:
             state[key] = datetime.now().isoformat()
             sent_count += 1
 
+    return sent_count
+
+
+def main() -> None:
+    requested = os.environ.get("NOTIFY_MARKET", "").strip().lower()
+    if requested in ("kr", "us"):
+        markets = [requested]
+    else:
+        preopen = [m for m, hit in (("kr", _is_kr_preopen()), ("us", _is_us_preopen())) if hit]
+        markets = preopen or ["kr", "us"]  # 시간창 밖 수동 실행은 양쪽 다 점검 (테스트용)
+
+    print(f"markets to check: {markets}")
+    state = _load_state()
+    total_sent = 0
+    for market in markets:
+        total_sent += _run_market(market, state)
     _save_state(state)
-    print(f"  done: {sent_count} sent")
+    print(f"done: {total_sent} sent")
 
 
 if __name__ == "__main__":

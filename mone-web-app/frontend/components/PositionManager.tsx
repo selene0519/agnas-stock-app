@@ -114,51 +114,56 @@ export default function PositionManager({ items, loading = false }: { items: any
 
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full flex-wrap items-center justify-between gap-3 text-left"
+      >
+        <span className="flex min-w-0 items-center gap-3">
           <Calculator size={18} className="shrink-0 text-violet-300" />
-          <div className="min-w-0">
+          <span className="min-w-0">
             <h2 className="text-sm font-semibold text-slate-100">포지션 매니저</h2>
             <p className="text-xs text-slate-500">후보별 참고 금액과 모의 수량을 계산합니다.</p>
-          </div>
-        </div>
-        <label className="flex items-center gap-2 text-xs text-slate-500">
-          가용 예수금
-          <input
-            type="text"
-            inputMode="numeric"
-            value={inputVal ? Number(inputVal).toLocaleString("ko-KR") : ""}
-            onChange={(event) => handleCapitalChange(event.target.value.replace(/,/g, ""))}
-            placeholder="10,000,000"
-            className="w-36 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-right font-mono text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-violet-500"
-          />
-          원
-        </label>
-      </div>
+          </span>
+        </span>
+        <span className="flex items-center gap-2 text-xs">
+          {capital > 0 ? (
+            <span className="font-mono text-slate-300">{capital.toLocaleString("ko-KR")}원</span>
+          ) : (
+            <span className="text-slate-500">예수금 미입력</span>
+          )}
+          <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </span>
+      </button>
 
-      {loading ? (
-        <div className="py-6 text-center text-sm text-slate-500">후보를 불러오는 중입니다.</div>
-      ) : capital <= 0 ? (
-        <div className="py-6 text-center text-sm text-slate-500">가용 예수금을 입력하면 후보별 참고 금액과 모의 수량을 계산합니다.</div>
-      ) : rows.length === 0 ? (
-        <div className="py-6 text-center text-sm text-slate-500">현재 계산 가능한 관찰 후보가 없습니다. 지연/오류 데이터 후보는 모의 수량에서 제외됩니다.</div>
-      ) : (
-        <>
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 text-left"
-          >
-            <span className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-              계획 배분 <span className="font-mono text-slate-200">{Math.round(totalAllocated).toLocaleString("ko-KR")}원</span> ({allocPct.toFixed(1)}%)
-              <span className="text-slate-600">·</span>
-              잔여 <span className={`font-mono ${remaining >= 0 ? "text-emerald-300" : "text-red-300"}`}>{Math.round(remaining).toLocaleString("ko-KR")}원</span>
-            </span>
-            <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-          </button>
-          {open && (
+      {open && (
+        <div className="mt-4">
+          <label className="mb-4 flex items-center gap-2 text-xs text-slate-500">
+            가용 예수금
+            <input
+              type="text"
+              inputMode="numeric"
+              value={inputVal ? Number(inputVal).toLocaleString("ko-KR") : ""}
+              onChange={(event) => handleCapitalChange(event.target.value.replace(/,/g, ""))}
+              placeholder="10,000,000"
+              className="w-36 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-right font-mono text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-violet-500"
+            />
+            원
+          </label>
+
+          {loading ? (
+            <div className="py-6 text-center text-sm text-slate-500">후보를 불러오는 중입니다.</div>
+          ) : capital <= 0 ? (
+            <div className="py-6 text-center text-sm text-slate-500">가용 예수금을 입력하면 후보별 참고 금액과 모의 수량을 계산합니다.</div>
+          ) : rows.length === 0 ? (
+            <div className="py-6 text-center text-sm text-slate-500">현재 계산 가능한 관찰 후보가 없습니다. 지연/오류 데이터 후보는 모의 수량에서 제외됩니다.</div>
+          ) : (
             <>
-              <div className="mb-4 mt-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+              <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                <div className="mb-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-400">
+                  <span>계획 배분 <span className="font-mono text-slate-200">{Math.round(totalAllocated).toLocaleString("ko-KR")}원</span> ({allocPct.toFixed(1)}%)</span>
+                  <span>잔여 예수금 <span className={`font-mono ${remaining >= 0 ? "text-emerald-300" : "text-red-300"}`}>{Math.round(remaining).toLocaleString("ko-KR")}원</span></span>
+                </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-800">
                   <div
                     className={`h-full rounded-full ${allocPct > 90 ? "bg-red-500" : allocPct > 60 ? "bg-amber-500" : "bg-violet-500"}`}
@@ -207,7 +212,7 @@ export default function PositionManager({ items, loading = false }: { items: any
               </div>
             </>
           )}
-        </>
+        </div>
       )}
     </section>
   );

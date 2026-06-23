@@ -626,7 +626,7 @@ function TodayEntryCard({
           onSelect(item);
         }
       }}
-      className={`mone-home-surface relative min-h-[276px] cursor-pointer overflow-hidden rounded-[18px] border p-4 transition-[border-color,background-color,transform] active:scale-[0.96] focus:outline-none focus:ring-2 ${toneStyle.card}`}
+      className={`mone-home-surface relative flex min-h-[276px] cursor-pointer flex-col overflow-hidden rounded-[18px] border p-4 transition-[border-color,background-color,transform] active:scale-[0.96] focus:outline-none focus:ring-2 ${toneStyle.card}`}
     >
       <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${toneStyle.accent}`} />
       <div className="flex items-start gap-2.5">
@@ -721,7 +721,7 @@ function TodayEntryCard({
         </div>
       )}
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-auto flex gap-2 pt-3">
         <button
           type="button"
           data-testid={`candidate-analyze-${item.symbol}-${mode}-${horizon}`}

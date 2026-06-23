@@ -316,15 +316,13 @@ html[data-theme="light"] .mone-header-button {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
-/* Home uses the same cool navy surfaces as search, holdings, and analysis,
-   with the brand teal (logo color) as the one primary accent instead of blue. */
+/* Home uses the same cool navy surfaces and blue accent as search, holdings,
+   and analysis — no separate accent color for the home screen. */
 .mone-home {
   --home-surface: #0a1424;
   --home-inset: #07101f;
   --home-border: #1b2a42;
-  --home-primary: #2dd4c2;
-  --home-primary-hover: #45e0cf;
-  --home-primary-dim: rgba(45, 212, 194, 0.14);
+  --home-primary: #3b82f6;
 }
 .mone-home-surface {
   background: var(--home-surface) !important;
@@ -345,45 +343,14 @@ html[data-theme="light"] .mone-header-button {
 }
 html:not([data-theme="light"]) .mone-app-header {
   background-color: rgba(3, 9, 20, 0.94) !important;
-  border-color: rgba(45, 212, 194, 0.16) !important;
-}
-
-/* The brand logo/wordmark is teal — keep the home screen's primary action
-   color in the same family instead of clashing with a separate blue accent.
-   These overrides re-tint Tailwind's blue-* utility classes to teal, scoped
-   to the home screen only (other pages keep blue for charts/info). */
-.mone-home [class*="bg-blue-600"],
-.mone-home [class*="bg-blue-500"] {
-  background-color: var(--home-primary) !important;
-  color: #052420 !important;
-}
-.mone-home [class*="hover:bg-blue-500"]:hover,
-.mone-home [class*="hover:bg-blue-700"]:hover {
-  background-color: var(--home-primary-hover) !important;
-}
-.mone-home [class*="bg-blue-"][class*="/"] {
-  background-color: var(--home-primary-dim) !important;
-}
-.mone-home [class*="text-blue-"] {
-  color: var(--home-primary) !important;
-}
-.mone-home [class*="border-blue-"] {
-  border-color: rgba(45, 212, 194, 0.45) !important;
-}
-.mone-home [class*="focus:ring-blue-"] {
-  --tw-ring-color: rgba(45, 212, 194, 0.4) !important;
-}
-.mone-home [class*="focus:border-blue-"] {
-  border-color: var(--home-primary) !important;
+  border-color: rgba(59, 130, 246, 0.16) !important;
 }
 
 html[data-theme="light"] .mone-home {
   --home-surface: #ffffff;
   --home-inset: #f3f6fa;
   --home-border: #d8e0ea;
-  --home-primary: #0d9488;
-  --home-primary-hover: #0f766e;
-  --home-primary-dim: rgba(13, 148, 136, 0.1);
+  --home-primary: #1d4ed8;
 }
 html[data-theme="light"] .mone-home-surface {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.025), 0 5px 16px rgba(15, 23, 42, 0.055) !important;

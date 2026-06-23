@@ -3,12 +3,11 @@ name: MONE Entry Proximity Notifier
 on:
   workflow_dispatch:
   schedule:
-    # KST 핵심 장중 시간만 (1시간 간격, 5회/일) — 14회/일 → 5회/일로 축소
-    - cron: "0 0 * * 1-5"    # KST 09:00
-    - cron: "0 1 * * 1-5"    # KST 10:00
-    - cron: "0 3 * * 1-5"    # KST 12:00
-    - cron: "0 5 * * 1-5"    # KST 14:00
-    - cron: "0 6 * * 1-5"    # KST 15:00
+    # 국장/미장 개장 전 1회만 (장중 반복 알림 폐지). 시각 매칭은
+    # scripts/notify_entry_proximity.py의 _is_kr_preopen()/_is_us_preopen()이 최종 판단한다.
+    - cron: "30 23 * * 0-4"  # KST 08:30 (국장 개장 전)
+    - cron: "0 13 * * 1-5"   # 미장 개장 전 09:00 ET (EDT 기준)
+    - cron: "0 14 * * 1-5"   # 미장 개장 전 09:00 ET (EST 기준)
 
 permissions:
   contents: write
@@ -65,24 +64,20 @@ jobs:
             python -m pip install pandas numpy requests python-dotenv
           fi
 
-      - name: Check if market is open (KST 09:00~15:30)
+      - name: Check which market's preopen window this run matches
         id: market_check
         run: |
-          HOUR=$(TZ=Asia/Seoul date +%H)
-          MIN=$(TZ=Asia/Seoul date +%M)
-          TOTAL=$((HOUR * 60 + MIN))
-          OPEN=$((9 * 60))
-          CLOSE=$((15 * 60 + 30))
-          if [ "$TOTAL" -ge "$OPEN" ] && [ "$TOTAL" -le "$CLOSE" ]; then
-            echo "open=true" >> $GITHUB_OUTPUT
-            echo "장중입니다 (KST $(TZ=Asia/Seoul date +%H:%M))"
+          KR_HOUR=$(TZ=Asia/Seoul date +%H)
+          if [ "$KR_HOUR" = "08" ]; then
+            echo "kr_preopen=true" >> $GITHUB_OUTPUT
+            echo "국장 개장 전 실행입니다 (KST $(TZ=Asia/Seoul date +%H:%M))"
           else
-            echo "open=false" >> $GITHUB_OUTPUT
-            echo "장마감 시간입니다 (KST $(TZ=Asia/Seoul date +%H:%M)) — 알림 생략"
+            echo "kr_preopen=false" >> $GITHUB_OUTPUT
+            echo "국장 개장 전 시간이 아닙니다 (KST $(TZ=Asia/Seoul date +%H:%M)) — KIS 현재가 갱신 생략"
           fi
 
       - name: Refresh KIS live quotes
-        if: steps.market_check.outputs.open == 'true'
+        if: steps.market_check.outputs.kr_preopen == 'true'
         working-directory: mone-web-app/backend
         env:
           PYTHONPATH: .
@@ -151,12 +146,10 @@ jobs:
           echo "KIS quote refresh: exit $?"
 
       - name: Send entry proximity notifications
-        if: steps.market_check.outputs.open == 'true'
         run: |
           python scripts/notify_entry_proximity.py
 
       - name: Save alert state
-        if: steps.market_check.outputs.open == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

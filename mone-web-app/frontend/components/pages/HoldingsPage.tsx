@@ -1227,345 +1227,6 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       </div>
 
-      <PositionManager items={positionCandidates} loading={positionLoading} />
-
-      {/* Kelly 포지션 사이즈 가이드 */}
-      {kellySizes && Object.keys(kellySizes).length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-          <button
-            type="button"
-            onClick={() => setKellyOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 text-left"
-          >
-            <span className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-100">Kelly 포지션 사이즈 가이드</h2>
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">Half-Kelly 상한 20%</span>
-            </span>
-            <span className="flex items-center gap-2">
-              {!kellyOpen && kellySizes["balanced_swing"] && (
-                <span className="font-mono text-xs text-emerald-300">
-                  균형·스윙 {(kellySizes["balanced_swing"].recommendedPct ?? (kellySizes["balanced_swing"].kellyHalf ?? 0) * 100).toFixed(1)}%
-                </span>
-              )}
-              <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${kellyOpen ? "rotate-180" : ""}`} />
-            </span>
-          </button>
-          {kellyOpen && (
-          <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-9">
-            {(["conservative","balanced","aggressive"] as const).map((mode) =>
-              (["short","swing","mid"] as const).map((horizon) => {
-                const k = `${mode}_${horizon}`;
-                const entry = kellySizes[k];
-                if (!entry) return null;
-                const hk = entry.recommendedPct != null ? `${Number(entry.recommendedPct).toFixed(1)}%` : entry.kellyHalf != null ? `${(entry.kellyHalf * 100).toFixed(1)}%` : "—";
-                const modeLabel = { conservative: "보수", balanced: "균형", aggressive: "공격" }[mode];
-                const horizonLabel = { short: "단기", swing: "스윙", mid: "중기" }[horizon];
-                const color = mode === "conservative" ? "text-sky-300" : mode === "balanced" ? "text-emerald-300" : "text-orange-300";
-                return (
-                  <div key={k} className="rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-center">
-                    <div className={`font-semibold ${color}`}>{modeLabel}</div>
-                    <div className="text-slate-500">{horizonLabel}</div>
-                    <div className="mt-1 font-mono font-bold text-slate-100">{hk}</div>
-                    {entry.winRate != null && (
-                      <div className="mt-0.5 text-[10px] text-slate-500">승률 {(entry.winRate * 100).toFixed(0)}%</div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-          )}
-          {kellyOpen && (
-            <p className="mt-2 text-[10px] text-slate-500">VTJ 실적 기반 Half-Kelly — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
-          )}
-        </div>
-      )}
-
-      {riskBudget && (
-        <div className={`rounded-2xl border p-4 ${
-          riskBudget.status === "OVER_BUDGET"
-            ? "border-red-500/30 bg-red-500/5"
-            : "border-emerald-500/20 bg-emerald-500/5"
-        }`}>
-          <button
-            type="button"
-            onClick={() => setRiskBudgetOpen((v) => !v)}
-            className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
-          >
-            <div>
-              <h2 className="text-sm font-semibold text-slate-100">Portfolio risk budget</h2>
-              <p className="mt-1 text-[11px] text-slate-500">Stop prices and Kelly limits are used to flag oversized holdings.</p>
-            </div>
-            <span className="flex items-center gap-2">
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                riskBudget.status === "OVER_BUDGET"
-                  ? "border-red-500/40 bg-red-500/10 text-red-300"
-                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              }`}>
-                {riskBudget.status}
-              </span>
-              <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${riskBudgetOpen ? "rotate-180" : ""}`} />
-            </span>
-          </button>
-          {riskBudgetOpen && (
-            <>
-              <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-3">
-                <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
-                <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
-                <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
-              </div>
-              {(riskBudget.warnings || []).length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {riskBudget.warnings.map((warning: string) => (
-                    <span key={warning} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">{warning}</span>
-                  ))}
-                </div>
-              )}
-              {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
-                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 6).map((item: any) => (
-                    <div key={`${item.market}-${item.symbol}`} className="rounded-xl border border-red-500/20 bg-slate-950/60 px-3 py-2 text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-slate-100">{item.name}</span>
-                        <span className="font-mono text-red-300">{Number(item.lossBudgetPct || 0).toFixed(1)}%</span>
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-500">
-                        <span>{item.symbol}</span>
-                        <span>weight {Number(item.weightPct || 0).toFixed(1)}%</span>
-                        <span>target {Number(item.recommendedWeightPct || 0).toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {summary.mixedCurrency && (
-        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200 space-y-1">
-          <div>KR/US 혼합 보유 — 평가금액·손익은 통화별로 분리 표시합니다.</div>
-          {(() => {
-            const usBucket = summary.marketBreakdown?.find((b: any) => b.market === "us") || {};
-            const krBucket = summary.marketBreakdown?.find((b: any) => b.market === "kr") || {};
-            return (
-              <div className="grid gap-2 pt-2 sm:grid-cols-2 lg:grid-cols-4">
-                <Mini label="원화 평가금액" value={`${Math.round(Number(krBucket.totalValue || 0)).toLocaleString("ko-KR")}원`} />
-                <Mini label="달러 평가금액" value={`$${Number(usBucket.totalValue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
-                <Mini label="원화 평가손익" value={`${Number(krBucket.totalPnl || 0) >= 0 ? "+" : ""}${Math.round(Number(krBucket.totalPnl || 0)).toLocaleString("ko-KR")}원`} accent={Number(krBucket.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
-                <Mini label="달러 평가손익" value={`${Number(usBucket.totalPnl || 0) >= 0 ? "+$" : "-$"}${Math.abs(Number(usBucket.totalPnl || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`} accent={Number(usBucket.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
-              </div>
-            );
-          })()}
-          {usdToKrw ? (() => {
-            const usBucket = summary.marketBreakdown?.find((b: any) => b.market === "us");
-            const krBucket = summary.marketBreakdown?.find((b: any) => b.market === "kr");
-            const usValueKrw = usBucket ? Math.round((usBucket.totalValue || 0) * usdToKrw.rate) : 0;
-            const krValue = krBucket ? (krBucket.totalValue || 0) : 0;
-            const combined = krValue + usValueKrw;
-            const usPnlKrw = usBucket ? Math.round((usBucket.totalPnl || 0) * usdToKrw.rate) : 0;
-            const krPnl = krBucket ? (krBucket.totalPnl || 0) : 0;
-            const combinedPnl = krPnl + usPnlKrw;
-            return (
-              <div className="font-mono text-blue-100">
-                환율 기준 합산 ({usdToKrw.rate.toLocaleString("ko-KR")}원/USD · {usdToKrw.date}){" "}
-                평가금액 <span className="font-bold">{combined.toLocaleString("ko-KR")}원</span>
-                {" "}· 손익{" "}
-                <span className={combinedPnl >= 0 ? "text-emerald-300 font-bold" : "text-red-300 font-bold"}>
-                  {combinedPnl >= 0 ? "+" : ""}{combinedPnl.toLocaleString("ko-KR")}원
-                </span>
-              </div>
-            );
-          })() : (
-            <div className="text-blue-300/60">환율 API 연결 시 합산 KRW 값을 표시합니다. (.env에 KOREAEXIM_API_KEY 추가)</div>
-          )}
-        </div>
-      )}
-
-      {/* 청산 신호 요약 배너 */}
-      {(() => {
-        const urgentSigs = Object.values(exitSignals).filter(
-          (s) => s.signal === "SELL_STRONG" || s.signal === "SELL"
-        );
-        if (urgentSigs.length === 0) return null;
-        return (
-          <div className="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-sm font-bold text-orange-300">청산 신호 감지 — {urgentSigs.length}종목</span>
-              <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-300">AI 자동 계산</span>
-            </div>
-            <div className="space-y-1.5">
-              {urgentSigs.map((sig) => (
-                <div key={`${sig.market}-${sig.symbol}`} className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-950/50 px-3 py-2 text-xs">
-                  <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${
-                    sig.signal === "SELL_STRONG"
-                      ? "border-red-500/60 bg-red-500/20 text-red-200"
-                      : "border-orange-500/60 bg-orange-500/20 text-orange-200"
-                  }`}>
-                    {sig.signal === "SELL_STRONG" ? "매도강력" : "매도검토"}
-                  </span>
-                  <span className="font-semibold text-slate-200">{sig.name}</span>
-                  <span className="font-mono text-slate-500">{sig.symbol}</span>
-                  <span className="text-slate-400">{Array.isArray(sig.reasons) ? sig.reasons[0] : ""}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {actionItems.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-100">오늘 확인할 보유 리스크</h2>
-            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{actionItems.length}건</span>
-          </div>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-            {actionItems.map((item) => (
-              <div key={item.key} className={`rounded-xl border px-3 py-2 ${
-                item.tone === "red" ? "border-red-500/30 bg-red-500/10" :
-                item.tone === "blue" ? "border-blue-500/30 bg-blue-500/10" :
-                "border-amber-500/30 bg-amber-500/10"
-              }`}>
-                <div className={`text-xs font-bold ${
-                  item.tone === "red" ? "text-red-300" :
-                  item.tone === "blue" ? "text-blue-300" :
-                  "text-amber-300"
-                }`}>{item.title}</div>
-                <div className="mt-1 text-[11px] text-slate-400">{item.detail}</div>
-                {item.action && (
-                  <button
-                    type="button"
-                    onClick={() => openEditFromAction(item.key)}
-                    className="mt-2 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800"
-                  >
-                    {item.action === "stop" ? "손절가 설정" : "목표가 설정"}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {riskNote && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs text-slate-300">
-          {riskNote}
-        </div>
-      )}
-
-      {data.error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{data.error}</div>}
-
-      {/* NAV 곡선 */}
-      <NavCurve />
-
-      {/* 포트폴리오 구성 바 (개별주만, ETF 제외) */}
-      {individualStocks.length > 0 && <PortfolioCompositionBar items={individualStocks} />}
-
-      {/* 벤치마크 비교 */}
-      {benchmarkData?.status === "OK" && Array.isArray(benchmarkData.items) && benchmarkData.items.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-100">벤치마크 비교 ({benchmarkData.benchmark})</h2>
-              <p className="text-xs text-slate-500">{benchmarkData.benchmarkLatestDate} 기준</p>
-            </div>
-            <div className={`font-mono text-base font-bold ${benchmarkData.totalPortfolioReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-              포트 {benchmarkData.totalPortfolioReturn >= 0 ? "+" : ""}{benchmarkData.totalPortfolioReturn?.toFixed(1)}%
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
-              <thead><tr className="border-b border-slate-800 text-slate-500">
-                <th className="pb-2 text-left">종목</th>
-                <th className="pb-2 text-right">내 수익률</th>
-                <th className="pb-2 text-right">{benchmarkData.benchmark}</th>
-                <th className="pb-2 text-right">알파</th>
-              </tr></thead>
-              <tbody>
-                {benchmarkData.items.map((item: any) => (
-                  <tr key={item.symbol} className="border-b border-slate-900">
-                    <td className="py-1.5 pr-3"><div className="font-medium text-slate-200">{item.name}</div><div className="text-slate-500">{item.symbol}</div></td>
-                    <td className={`py-1.5 pr-3 text-right font-mono ${(item.portfolioReturn ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                      {item.portfolioReturn >= 0 ? "+" : ""}{item.portfolioReturn?.toFixed(1)}%
-                    </td>
-                    <td className="py-1.5 pr-3 text-right font-mono text-slate-400">
-                      {item.benchmarkReturn != null ? `${item.benchmarkReturn >= 0 ? "+" : ""}${item.benchmarkReturn.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className={`py-1.5 text-right font-mono font-semibold ${(item.alpha ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {item.alpha != null ? `${item.alpha >= 0 ? "+" : ""}${item.alpha.toFixed(1)}%` : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* 상관관계 */}
-      {corrData?.status === "OK" && Array.isArray(corrData.matrix) && corrData.matrix.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-100">종목 간 상관관계 (60일)</h2>
-            {corrData.warning && <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">⚠ 높은 상관 쌍</span>}
-          </div>
-          <div className="max-h-48 space-y-1.5 overflow-y-auto">
-            {corrData.matrix.slice(0, 15).map((pair: any) => (
-              <div key={`${pair.sym1}-${pair.sym2}`} className="flex items-center justify-between rounded-lg bg-slate-950/50 px-3 py-1.5 text-[11px]">
-                <span className="text-slate-300">{pair.name1} <span className="text-slate-500">vs</span> {pair.name2}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-20 overflow-hidden rounded-full bg-slate-800">
-                    <div className={`h-1.5 rounded-full ${Math.abs(pair.corr) >= 0.7 ? "bg-red-500" : Math.abs(pair.corr) >= 0.4 ? "bg-amber-500" : "bg-emerald-500"}`}
-                      style={{ width: `${Math.abs(pair.corr) * 100}%` }} />
-                  </div>
-                  <span className={`w-10 text-right font-mono ${Math.abs(pair.corr) >= 0.7 ? "text-red-300" : Math.abs(pair.corr) >= 0.4 ? "text-amber-300" : "text-emerald-300"}`}>
-                    {pair.corr > 0 ? "+" : ""}{pair.corr.toFixed(2)}
-                  </span>
-                  <span className="text-slate-500">{pair.level}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          {corrData.highCorrelationPairs?.length > 0 && (
-            <p className="mt-2 text-[10px] text-amber-400">상관계수 0.7↑ 쌍 {corrData.highCorrelationPairs.length}개 — 동일 방향 집중 리스크</p>
-          )}
-        </div>
-      )}
-
-      {/* 섹터 노출도 */}
-      {sectorData && Array.isArray(sectorData.sectors) && sectorData.sectors.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-100">섹터 노출도 히트맵</h2>
-            {sectorData.concentration?.warning && (
-              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">⚠ 집중도 높음 ({sectorData.concentration.top1Pct}%)</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {sectorData.sectors.map((s: any) => {
-              const intensity = s.pct >= 30 ? "bg-red-700/60" : s.pct >= 20 ? "bg-orange-700/50" : s.pct >= 10 ? "bg-amber-700/40" : "bg-slate-700/50";
-              return (
-                <div key={s.sector} className={`rounded-xl ${intensity} px-3 py-2 text-center`} style={{ minWidth: `${Math.max(70, s.pct * 3)}px` }}>
-                  <div className="max-w-[120px] truncate text-[11px] font-semibold text-slate-200">{s.sector}</div>
-                  <div className="mt-0.5 font-mono text-sm font-bold text-white">{s.pct.toFixed(1)}%</div>
-                  <div className="text-[10px] text-slate-300">{s.symbols.slice(0, 2).join(", ")}{s.symbols.length > 2 ? ` 외 ${s.symbols.length - 2}` : ""}</div>
-                </div>
-              );
-            })}
-          </div>
-          {sectorData.maxLossSimulation && (
-            <div className="mt-4 rounded-xl border border-red-800/30 bg-red-950/20 p-3 text-[11px]">
-              <span className="font-semibold text-red-300">전 종목 손절 시뮬레이션</span>
-              <span className="ml-3 font-mono font-bold text-red-300">
-                {sectorData.maxLossSimulation.totalLoss.toLocaleString()}원 ({sectorData.maxLossSimulation.totalLossPct.toFixed(1)}%)
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* 개별주/ETF 보기 전환 */}
       {(individualStocks.length > 0 || etfHoldings.length > 0) && (
         <div className="inline-flex rounded-xl border border-slate-800 bg-slate-900/50 p-1">
@@ -2008,6 +1669,338 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       )}
       {holdingsViewTab === "etf" && etfHoldings.length === 0 && individualStocks.length > 0 && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">보유 중인 ETF가 없습니다.</div>
+      )}
+
+      <PositionManager items={positionCandidates} loading={positionLoading} />
+
+      {/* Kelly 포지션 사이즈 가이드 */}
+      {kellySizes && Object.keys(kellySizes).length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <button
+            type="button"
+            onClick={() => setKellyOpen((v) => !v)}
+            className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+          >
+            <h2 className="text-sm font-semibold text-slate-100">Kelly 포지션 사이즈 가이드</h2>
+            <span className="flex items-center gap-2">
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">Half-Kelly 상한 20%</span>
+              <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${kellyOpen ? "rotate-180" : ""}`} />
+            </span>
+          </button>
+          {kellyOpen && (
+          <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-9">
+            {(["conservative","balanced","aggressive"] as const).map((mode) =>
+              (["short","swing","mid"] as const).map((horizon) => {
+                const k = `${mode}_${horizon}`;
+                const entry = kellySizes[k];
+                if (!entry) return null;
+                const hk = entry.recommendedPct != null ? `${Number(entry.recommendedPct).toFixed(1)}%` : entry.kellyHalf != null ? `${(entry.kellyHalf * 100).toFixed(1)}%` : "—";
+                const modeLabel = { conservative: "보수", balanced: "균형", aggressive: "공격" }[mode];
+                const horizonLabel = { short: "단기", swing: "스윙", mid: "중기" }[horizon];
+                const color = mode === "conservative" ? "text-sky-300" : mode === "balanced" ? "text-emerald-300" : "text-orange-300";
+                return (
+                  <div key={k} className="rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-center">
+                    <div className={`font-semibold ${color}`}>{modeLabel}</div>
+                    <div className="text-slate-500">{horizonLabel}</div>
+                    <div className="mt-1 font-mono font-bold text-slate-100">{hk}</div>
+                    {entry.winRate != null && (
+                      <div className="mt-0.5 text-[10px] text-slate-500">승률 {(entry.winRate * 100).toFixed(0)}%</div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+          )}
+          {kellyOpen && (
+            <p className="mt-2 text-[10px] text-slate-500">VTJ 실적 기반 Half-Kelly — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+          )}
+        </div>
+      )}
+
+      {riskBudget && (
+        <div className={`rounded-2xl border p-4 ${
+          riskBudget.status === "OVER_BUDGET"
+            ? "border-red-500/30 bg-red-500/5"
+            : "border-emerald-500/20 bg-emerald-500/5"
+        }`}>
+          <button
+            type="button"
+            onClick={() => setRiskBudgetOpen((v) => !v)}
+            className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+          >
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">포트폴리오 리스크 예산</h2>
+              <p className="mt-1 text-[11px] text-slate-500">손절가와 Kelly 한도 기준으로 과대 비중 종목을 표시합니다.</p>
+            </div>
+            <span className="flex items-center gap-2">
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                riskBudget.status === "OVER_BUDGET"
+                  ? "border-red-500/40 bg-red-500/10 text-red-300"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              }`}>
+                {riskBudget.status === "OVER_BUDGET" ? "예산 초과" : "정상"}
+              </span>
+              <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${riskBudgetOpen ? "rotate-180" : ""}`} />
+            </span>
+          </button>
+          {riskBudgetOpen && (
+            <>
+              <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-3">
+                <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
+                <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
+                <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
+              </div>
+              {(riskBudget.warnings || []).length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {riskBudget.warnings.map((warning: string) => (
+                    <span key={warning} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">{warning}</span>
+                  ))}
+                </div>
+              )}
+              {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
+                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 6).map((item: any) => (
+                    <div key={`${item.market}-${item.symbol}`} className="rounded-xl border border-red-500/20 bg-slate-950/60 px-3 py-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-100">{item.name}</span>
+                        <span className="font-mono text-red-300">{Number(item.lossBudgetPct || 0).toFixed(1)}%</span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-500">
+                        <span>{item.symbol}</span>
+                        <span>현재 비중 {Number(item.weightPct || 0).toFixed(1)}%</span>
+                        <span>목표 비중 {Number(item.recommendedWeightPct || 0).toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {summary.mixedCurrency && (
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200 space-y-1">
+          <div>KR/US 혼합 보유 — 평가금액·손익은 통화별로 분리 표시합니다.</div>
+          {(() => {
+            const usBucket = summary.marketBreakdown?.find((b: any) => b.market === "us") || {};
+            const krBucket = summary.marketBreakdown?.find((b: any) => b.market === "kr") || {};
+            return (
+              <div className="grid gap-2 pt-2 sm:grid-cols-2 lg:grid-cols-4">
+                <Mini label="원화 평가금액" value={`${Math.round(Number(krBucket.totalValue || 0)).toLocaleString("ko-KR")}원`} />
+                <Mini label="달러 평가금액" value={`$${Number(usBucket.totalValue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
+                <Mini label="원화 평가손익" value={`${Number(krBucket.totalPnl || 0) >= 0 ? "+" : ""}${Math.round(Number(krBucket.totalPnl || 0)).toLocaleString("ko-KR")}원`} accent={Number(krBucket.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
+                <Mini label="달러 평가손익" value={`${Number(usBucket.totalPnl || 0) >= 0 ? "+$" : "-$"}${Math.abs(Number(usBucket.totalPnl || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`} accent={Number(usBucket.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
+              </div>
+            );
+          })()}
+          {usdToKrw ? (() => {
+            const usBucket = summary.marketBreakdown?.find((b: any) => b.market === "us");
+            const krBucket = summary.marketBreakdown?.find((b: any) => b.market === "kr");
+            const usValueKrw = usBucket ? Math.round((usBucket.totalValue || 0) * usdToKrw.rate) : 0;
+            const krValue = krBucket ? (krBucket.totalValue || 0) : 0;
+            const combined = krValue + usValueKrw;
+            const usPnlKrw = usBucket ? Math.round((usBucket.totalPnl || 0) * usdToKrw.rate) : 0;
+            const krPnl = krBucket ? (krBucket.totalPnl || 0) : 0;
+            const combinedPnl = krPnl + usPnlKrw;
+            return (
+              <div className="font-mono text-blue-100">
+                환율 기준 합산 ({usdToKrw.rate.toLocaleString("ko-KR")}원/USD · {usdToKrw.date}){" "}
+                평가금액 <span className="font-bold">{combined.toLocaleString("ko-KR")}원</span>
+                {" "}· 손익{" "}
+                <span className={combinedPnl >= 0 ? "text-emerald-300 font-bold" : "text-red-300 font-bold"}>
+                  {combinedPnl >= 0 ? "+" : ""}{combinedPnl.toLocaleString("ko-KR")}원
+                </span>
+              </div>
+            );
+          })() : (
+            <div className="text-blue-300/60">환율 API 연결 시 합산 KRW 값을 표시합니다. (.env에 KOREAEXIM_API_KEY 추가)</div>
+          )}
+        </div>
+      )}
+
+      {/* 청산 신호 요약 배너 */}
+      {(() => {
+        const urgentSigs = Object.values(exitSignals).filter(
+          (s) => s.signal === "SELL_STRONG" || s.signal === "SELL"
+        );
+        if (urgentSigs.length === 0) return null;
+        return (
+          <div className="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-sm font-bold text-orange-300">청산 신호 감지 — {urgentSigs.length}종목</span>
+              <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-300">AI 자동 계산</span>
+            </div>
+            <div className="space-y-1.5">
+              {urgentSigs.map((sig) => (
+                <div key={`${sig.market}-${sig.symbol}`} className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-950/50 px-3 py-2 text-xs">
+                  <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+                    sig.signal === "SELL_STRONG"
+                      ? "border-red-500/60 bg-red-500/20 text-red-200"
+                      : "border-orange-500/60 bg-orange-500/20 text-orange-200"
+                  }`}>
+                    {sig.signal === "SELL_STRONG" ? "매도강력" : "매도검토"}
+                  </span>
+                  <span className="font-semibold text-slate-200">{sig.name}</span>
+                  <span className="font-mono text-slate-500">{sig.symbol}</span>
+                  <span className="text-slate-400">{Array.isArray(sig.reasons) ? sig.reasons[0] : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {actionItems.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-100">오늘 확인할 보유 리스크</h2>
+            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{actionItems.length}건</span>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            {actionItems.map((item) => (
+              <div key={item.key} className={`rounded-xl border px-3 py-2 ${
+                item.tone === "red" ? "border-red-500/30 bg-red-500/10" :
+                item.tone === "blue" ? "border-blue-500/30 bg-blue-500/10" :
+                "border-amber-500/30 bg-amber-500/10"
+              }`}>
+                <div className={`text-xs font-bold ${
+                  item.tone === "red" ? "text-red-300" :
+                  item.tone === "blue" ? "text-blue-300" :
+                  "text-amber-300"
+                }`}>{item.title}</div>
+                <div className="mt-1 text-[11px] text-slate-400">{item.detail}</div>
+                {item.action && (
+                  <button
+                    type="button"
+                    onClick={() => openEditFromAction(item.key)}
+                    className="mt-2 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800"
+                  >
+                    {item.action === "stop" ? "손절가 설정" : "목표가 설정"}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {riskNote && (
+        <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs text-slate-300">
+          {riskNote}
+        </div>
+      )}
+
+      {data.error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{data.error}</div>}
+
+      {/* NAV 곡선 */}
+      <NavCurve />
+
+      {/* 포트폴리오 구성 바 (개별주만, ETF 제외) */}
+      {individualStocks.length > 0 && <PortfolioCompositionBar items={individualStocks} />}
+
+      {/* 벤치마크 비교 */}
+      {benchmarkData?.status === "OK" && Array.isArray(benchmarkData.items) && benchmarkData.items.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">벤치마크 비교 ({benchmarkData.benchmark})</h2>
+              <p className="text-xs text-slate-500">{benchmarkData.benchmarkLatestDate} 기준</p>
+            </div>
+            <div className={`font-mono text-base font-bold ${benchmarkData.totalPortfolioReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              포트 {benchmarkData.totalPortfolioReturn >= 0 ? "+" : ""}{benchmarkData.totalPortfolioReturn?.toFixed(1)}%
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead><tr className="border-b border-slate-800 text-slate-500">
+                <th className="pb-2 text-left">종목</th>
+                <th className="pb-2 text-right">내 수익률</th>
+                <th className="pb-2 text-right">{benchmarkData.benchmark}</th>
+                <th className="pb-2 text-right">알파</th>
+              </tr></thead>
+              <tbody>
+                {benchmarkData.items.map((item: any) => (
+                  <tr key={item.symbol} className="border-b border-slate-900">
+                    <td className="py-1.5 pr-3"><div className="font-medium text-slate-200">{item.name}</div><div className="text-slate-500">{item.symbol}</div></td>
+                    <td className={`py-1.5 pr-3 text-right font-mono ${(item.portfolioReturn ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                      {item.portfolioReturn >= 0 ? "+" : ""}{item.portfolioReturn?.toFixed(1)}%
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-mono text-slate-400">
+                      {item.benchmarkReturn != null ? `${item.benchmarkReturn >= 0 ? "+" : ""}${item.benchmarkReturn.toFixed(1)}%` : "—"}
+                    </td>
+                    <td className={`py-1.5 text-right font-mono font-semibold ${(item.alpha ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {item.alpha != null ? `${item.alpha >= 0 ? "+" : ""}${item.alpha.toFixed(1)}%` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 상관관계 */}
+      {corrData?.status === "OK" && Array.isArray(corrData.matrix) && corrData.matrix.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-100">종목 간 상관관계 (60일)</h2>
+            {corrData.warning && <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">⚠ 높은 상관 쌍</span>}
+          </div>
+          <div className="max-h-48 space-y-1.5 overflow-y-auto">
+            {corrData.matrix.slice(0, 15).map((pair: any) => (
+              <div key={`${pair.sym1}-${pair.sym2}`} className="flex items-center justify-between rounded-lg bg-slate-950/50 px-3 py-1.5 text-[11px]">
+                <span className="text-slate-300">{pair.name1} <span className="text-slate-500">vs</span> {pair.name2}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-20 overflow-hidden rounded-full bg-slate-800">
+                    <div className={`h-1.5 rounded-full ${Math.abs(pair.corr) >= 0.7 ? "bg-red-500" : Math.abs(pair.corr) >= 0.4 ? "bg-amber-500" : "bg-emerald-500"}`}
+                      style={{ width: `${Math.abs(pair.corr) * 100}%` }} />
+                  </div>
+                  <span className={`w-10 text-right font-mono ${Math.abs(pair.corr) >= 0.7 ? "text-red-300" : Math.abs(pair.corr) >= 0.4 ? "text-amber-300" : "text-emerald-300"}`}>
+                    {pair.corr > 0 ? "+" : ""}{pair.corr.toFixed(2)}
+                  </span>
+                  <span className="text-slate-500">{pair.level}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {corrData.highCorrelationPairs?.length > 0 && (
+            <p className="mt-2 text-[10px] text-amber-400">상관계수 0.7↑ 쌍 {corrData.highCorrelationPairs.length}개 — 동일 방향 집중 리스크</p>
+          )}
+        </div>
+      )}
+
+      {/* 섹터 노출도 */}
+      {sectorData && Array.isArray(sectorData.sectors) && sectorData.sectors.length > 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-100">섹터 노출도 히트맵</h2>
+            {sectorData.concentration?.warning && (
+              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">⚠ 집중도 높음 ({sectorData.concentration.top1Pct}%)</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {sectorData.sectors.map((s: any) => {
+              const intensity = s.pct >= 30 ? "bg-red-700/60" : s.pct >= 20 ? "bg-orange-700/50" : s.pct >= 10 ? "bg-amber-700/40" : "bg-slate-700/50";
+              return (
+                <div key={s.sector} className={`rounded-xl ${intensity} px-3 py-2 text-center`} style={{ minWidth: `${Math.max(70, s.pct * 3)}px` }}>
+                  <div className="max-w-[120px] truncate text-[11px] font-semibold text-slate-200">{s.sector}</div>
+                  <div className="mt-0.5 font-mono text-sm font-bold text-white">{s.pct.toFixed(1)}%</div>
+                  <div className="text-[10px] text-slate-300">{s.symbols.slice(0, 2).join(", ")}{s.symbols.length > 2 ? ` 외 ${s.symbols.length - 2}` : ""}</div>
+                </div>
+              );
+            })}
+          </div>
+          {sectorData.maxLossSimulation && (
+            <div className="mt-4 rounded-xl border border-red-800/30 bg-red-950/20 p-3 text-[11px]">
+              <span className="font-semibold text-red-300">전 종목 손절 시뮬레이션</span>
+              <span className="ml-3 font-mono font-bold text-red-300">
+                {sectorData.maxLossSimulation.totalLoss.toLocaleString()}원 ({sectorData.maxLossSimulation.totalLossPct.toFixed(1)}%)
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
       {/* 포트폴리오 최적화 + 알림 — 접기 아코디언 */}
