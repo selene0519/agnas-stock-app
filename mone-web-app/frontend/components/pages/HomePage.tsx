@@ -10,7 +10,6 @@ import {
   Clock,
   History,
   RefreshCw,
-  Sparkles,
   X,
   Info,
 } from "lucide-react";
@@ -1423,19 +1422,18 @@ function MarketGateCard({
                 const score = Math.max(0, Math.min(100, Number(metric?.score ?? 0)));
                 const barCls = score < 40 ? "bg-red-500" : score < 60 ? "bg-amber-500" : "bg-emerald-500";
                 const valueTone = score < 40 ? "text-red-300" : score < 60 ? "text-amber-300" : "text-emerald-300";
-                const chipCls = score < 40 ? "bg-red-500/12 text-red-300" : score < 60 ? "bg-amber-500/12 text-amber-300" : "bg-emerald-500/12 text-emerald-300";
                 return (
                   <div key={`${metric?.name || "metric"}-${index}`} className="mone-home-inset rounded-[13px] border px-3.5 py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</span>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${chipCls}`}>{metric?.direction || "-"}</span>
-                    </div>
-                    <div className="mt-2.5 flex items-center gap-3">
-                      <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-800">
-                        <span className={`block h-full rounded-full transition-[width] duration-500 ${barCls}`} style={{ width: `${score}%` }} />
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate text-xs font-bold text-slate-300">
+                        {metric?.name || "지표"}
+                        <span className="ml-1.5 font-normal text-slate-500">{metric?.direction || "-"}</span>
                       </span>
                       <span className={`shrink-0 font-mono text-sm font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</span>
                     </div>
+                    <span className="mt-2 block h-2 overflow-hidden rounded-full bg-slate-800">
+                      <span className={`block h-full rounded-full transition-[width] duration-500 ${barCls}`} style={{ width: `${score}%` }} />
+                    </span>
                   </div>
                 );
               })}
@@ -1593,23 +1591,18 @@ function DailyBriefingCard({
       </div>
 
       <div className="mone-home-inset mt-4 rounded-[13px] border p-3.5">
-        <div className="flex gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/18 text-blue-200">
-            <Sparkles size={16} />
-          </span>
-          <div className="min-w-0">
-            <div className="text-xs font-black text-blue-300">MONE 판단</div>
-            <p className="mt-1 text-sm leading-6 text-slate-300 text-pretty">{briefing.detail}</p>
-            {briefing.topItem && onAnalyze && (
-              <button
-                type="button"
-                onClick={() => onAnalyze(briefing.topItem)}
-                className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-lg text-sm font-black text-blue-400 transition-[color,transform] hover:text-blue-300 active:scale-[0.96]"
-              >
-                판단 근거 보기 <ArrowRight size={13} />
-              </button>
-            )}
-          </div>
+        <div className="min-w-0">
+          <div className="text-xs font-black text-blue-300">MONE 판단</div>
+          <p className="mt-1 text-sm leading-6 text-slate-300 text-pretty">{briefing.detail}</p>
+          {briefing.topItem && onAnalyze && (
+            <button
+              type="button"
+              onClick={() => onAnalyze(briefing.topItem)}
+              className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-lg text-sm font-black text-blue-400 transition-[color,transform] hover:text-blue-300 active:scale-[0.96]"
+            >
+              판단 근거 보기 <ArrowRight size={13} />
+            </button>
+          )}
         </div>
       </div>
     </section>

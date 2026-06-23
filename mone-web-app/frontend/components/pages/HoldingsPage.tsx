@@ -309,6 +309,7 @@ function NavCurve() {
   const [navRows, setNavRows] = useState<any[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [kospiRows, setKospiRows] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     fetch("/mone-api/api/portfolio/nav", { cache: "no-store" })
@@ -432,7 +433,11 @@ function NavCurve() {
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+      >
         <h2 className="text-sm font-semibold text-slate-100">NAV 누적 수익률</h2>
         <div className="flex items-center gap-3">
           <span className={`font-mono text-base font-bold ${isPos ? "text-emerald-300" : "text-red-400"}`}>
@@ -456,19 +461,22 @@ function NavCurve() {
               </span>
             )}
           </div>
+          <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
         </div>
+      </button>
+      <div className={open ? "mt-3" : "hidden"}>
+        {backfillCount > 0 && (
+          <div className="mb-2 rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-1.5 text-[10px] text-sky-400">
+            ℹ 추정 백필: 현재 보유종목 기준 과거 OHLCV로 역산한 추정값입니다. 실제 과거 포트폴리오 수익률과 다를 수 있습니다.
+          </div>
+        )}
+        {Math.abs(cumReturn) < 0.005 && actualCount <= 2 && (
+          <div className="mb-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-1.5 text-[10px] text-slate-400">
+            실제 NAV 이력이 부족해 누적 수익률이 평평하게 보입니다. 보유 스냅샷이 쌓이면 곡선이 의미 있게 표시됩니다.
+          </div>
+        )}
+        <canvas ref={canvasRef} width={800} height={110} className="w-full rounded-lg" style={{ height: "110px" }} />
       </div>
-      {backfillCount > 0 && (
-        <div className="mb-2 rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-1.5 text-[10px] text-sky-400">
-          ℹ 추정 백필: 현재 보유종목 기준 과거 OHLCV로 역산한 추정값입니다. 실제 과거 포트폴리오 수익률과 다를 수 있습니다.
-        </div>
-      )}
-      {Math.abs(cumReturn) < 0.005 && actualCount <= 2 && (
-        <div className="mb-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-1.5 text-[10px] text-slate-400">
-          실제 NAV 이력이 부족해 누적 수익률이 평평하게 보입니다. 보유 스냅샷이 쌓이면 곡선이 의미 있게 표시됩니다.
-        </div>
-      )}
-      <canvas ref={canvasRef} width={800} height={110} className="w-full rounded-lg" style={{ height: "110px" }} />
     </div>
   );
 }
@@ -623,6 +631,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [importSaving, setImportSaving] = useState(false);
   const [brokerSyncing, setBrokerSyncing] = useState<string | null>(null);
   const [positionCandidates, setPositionCandidates] = useState<any[]>([]);
+  const [kellyOpen, setKellyOpen] = useState(false);
+  const [riskBudgetOpen, setRiskBudgetOpen] = useState(false);
+  const [navChartOpen, setNavChartOpen] = useState(false);
   const [positionLoading, setPositionLoading] = useState(false);
   const [holdingsLoadedAt, setHoldingsLoadedAt] = useState("");
   const [exitSignals, setExitSignals] = useState<Record<string, any>>({});
@@ -1221,11 +1232,26 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       {/* Kelly 포지션 사이즈 가이드 */}
       {kellySizes && Object.keys(kellySizes).length > 0 && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-slate-100">Kelly 포지션 사이즈 가이드</h2>
-            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">Half-Kelly 상한 20%</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-9">
+          <button
+            type="button"
+            onClick={() => setKellyOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 text-left"
+          >
+            <span className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-100">Kelly 포지션 사이즈 가이드</h2>
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">Half-Kelly 상한 20%</span>
+            </span>
+            <span className="flex items-center gap-2">
+              {!kellyOpen && kellySizes["balanced_swing"] && (
+                <span className="font-mono text-xs text-emerald-300">
+                  균형·스윙 {(kellySizes["balanced_swing"].recommendedPct ?? (kellySizes["balanced_swing"].kellyHalf ?? 0) * 100).toFixed(1)}%
+                </span>
+              )}
+              <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${kellyOpen ? "rotate-180" : ""}`} />
+            </span>
+          </button>
+          {kellyOpen && (
+          <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-9">
             {(["conservative","balanced","aggressive"] as const).map((mode) =>
               (["short","swing","mid"] as const).map((horizon) => {
                 const k = `${mode}_${horizon}`;
@@ -1248,7 +1274,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               })
             )}
           </div>
-          <p className="mt-2 text-[10px] text-slate-500">VTJ 실적 기반 Half-Kelly — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+          )}
+          {kellyOpen && (
+            <p className="mt-2 text-[10px] text-slate-500">VTJ 실적 기반 Half-Kelly — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+          )}
         </div>
       )}
 
@@ -1258,47 +1287,58 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             ? "border-red-500/30 bg-red-500/5"
             : "border-emerald-500/20 bg-emerald-500/5"
         }`}>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setRiskBudgetOpen((v) => !v)}
+            className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+          >
             <div>
               <h2 className="text-sm font-semibold text-slate-100">Portfolio risk budget</h2>
               <p className="mt-1 text-[11px] text-slate-500">Stop prices and Kelly limits are used to flag oversized holdings.</p>
             </div>
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-              riskBudget.status === "OVER_BUDGET"
-                ? "border-red-500/40 bg-red-500/10 text-red-300"
-                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-            }`}>
-              {riskBudget.status}
+            <span className="flex items-center gap-2">
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                riskBudget.status === "OVER_BUDGET"
+                  ? "border-red-500/40 bg-red-500/10 text-red-300"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              }`}>
+                {riskBudget.status}
+              </span>
+              <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${riskBudgetOpen ? "rotate-180" : ""}`} />
             </span>
-          </div>
-          <div className="grid gap-2 text-[11px] sm:grid-cols-3">
-            <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
-            <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
-            <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
-          </div>
-          {(riskBudget.warnings || []).length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {riskBudget.warnings.map((warning: string) => (
-                <span key={warning} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">{warning}</span>
-              ))}
-            </div>
-          )}
-          {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
-            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 6).map((item: any) => (
-                <div key={`${item.market}-${item.symbol}`} className="rounded-xl border border-red-500/20 bg-slate-950/60 px-3 py-2 text-xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-slate-100">{item.name}</span>
-                    <span className="font-mono text-red-300">{Number(item.lossBudgetPct || 0).toFixed(1)}%</span>
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-500">
-                    <span>{item.symbol}</span>
-                    <span>weight {Number(item.weightPct || 0).toFixed(1)}%</span>
-                    <span>target {Number(item.recommendedWeightPct || 0).toFixed(1)}%</span>
-                  </div>
+          </button>
+          {riskBudgetOpen && (
+            <>
+              <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-3">
+                <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
+                <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
+                <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
+              </div>
+              {(riskBudget.warnings || []).length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {riskBudget.warnings.map((warning: string) => (
+                    <span key={warning} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">{warning}</span>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+              {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
+                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 6).map((item: any) => (
+                    <div key={`${item.market}-${item.symbol}`} className="rounded-xl border border-red-500/20 bg-slate-950/60 px-3 py-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-100">{item.name}</span>
+                        <span className="font-mono text-red-300">{Number(item.lossBudgetPct || 0).toFixed(1)}%</span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-500">
+                        <span>{item.symbol}</span>
+                        <span>weight {Number(item.weightPct || 0).toFixed(1)}%</span>
+                        <span>target {Number(item.recommendedWeightPct || 0).toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

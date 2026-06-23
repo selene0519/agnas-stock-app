@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calculator } from "lucide-react";
+import { Calculator, ChevronDown } from "lucide-react";
 import type { Horizon, Mode } from "@/lib/api";
 import { displayName, horizonLabel, modeLabel, shouldHideSizingForTrust } from "@/lib/moneDisplay";
 
@@ -81,6 +81,7 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
 export default function PositionManager({ items, loading = false }: { items: any[]; loading?: boolean }) {
   const [capital, setCapital] = useState(0);
   const [inputVal, setInputVal] = useState("");
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -143,57 +144,69 @@ export default function PositionManager({ items, loading = false }: { items: any
         <div className="py-6 text-center text-sm text-slate-500">현재 계산 가능한 관찰 후보가 없습니다. 지연/오류 데이터 후보는 모의 수량에서 제외됩니다.</div>
       ) : (
         <>
-          <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-            <div className="mb-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-400">
-              <span>계획 배분 <span className="font-mono text-slate-200">{Math.round(totalAllocated).toLocaleString("ko-KR")}원</span> ({allocPct.toFixed(1)}%)</span>
-              <span>잔여 예수금 <span className={`font-mono ${remaining >= 0 ? "text-emerald-300" : "text-red-300"}`}>{Math.round(remaining).toLocaleString("ko-KR")}원</span></span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-              <div
-                className={`h-full rounded-full ${allocPct > 90 ? "bg-red-500" : allocPct > 60 ? "bg-amber-500" : "bg-violet-500"}`}
-                style={{ width: `${Math.min(100, Math.max(0, allocPct))}%` }}
-              />
-            </div>
-            <div className="mt-1.5 text-[10px] text-slate-500">자동 주문은 없고, 모의 수량 산출만 제공합니다.</div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 text-left"
+          >
+            <span className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+              계획 배분 <span className="font-mono text-slate-200">{Math.round(totalAllocated).toLocaleString("ko-KR")}원</span> ({allocPct.toFixed(1)}%)
+              <span className="text-slate-600">·</span>
+              잔여 <span className={`font-mono ${remaining >= 0 ? "text-emerald-300" : "text-red-300"}`}>{Math.round(remaining).toLocaleString("ko-KR")}원</span>
+            </span>
+            <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          </button>
+          {open && (
+            <>
+              <div className="mb-4 mt-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className={`h-full rounded-full ${allocPct > 90 ? "bg-red-500" : allocPct > 60 ? "bg-amber-500" : "bg-violet-500"}`}
+                    style={{ width: `${Math.min(100, Math.max(0, allocPct))}%` }}
+                  />
+                </div>
+                <div className="mt-1.5 text-[10px] text-slate-500">자동 주문은 없고, 모의 수량 산출만 제공합니다.</div>
+              </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-500">
-                  <th className="pb-2 text-left font-medium">종목</th>
-                  <th className="pb-2 text-left font-medium">전략</th>
-                  <th className="pb-2 text-right font-medium">기준가</th>
-                  <th className="pb-2 text-right font-medium">확률</th>
-                  <th className="pb-2 text-right font-medium">Half-Kelly</th>
-                  <th className="pb-2 text-right font-medium">금액</th>
-                  <th className="pb-2 text-right font-medium">모의 수량</th>
-                  <th className="pb-2 text-right font-medium">EV</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={`${row.symbol}-${row.mode}-${row.horizon}`} className="border-b border-slate-900">
-                    <td className="py-2 pr-3">
-                      <div className="font-medium text-slate-200">{row.name}</div>
-                      <div className="font-mono text-slate-500">{row.symbol}</div>
-                    </td>
-                    <td className="py-2 pr-3 text-slate-400">
-                      {modeLabel(row.mode as Mode)} <span className="text-slate-600">/</span> {horizonLabel(row.horizon as Horizon)}
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono text-slate-300">{row.entry.toLocaleString("ko-KR")}</td>
-                    <td className="py-2 pr-3 text-right font-mono text-slate-300">{(row.probability * 100).toFixed(0)}%</td>
-                    <td className="py-2 pr-3 text-right font-mono text-violet-300">{(row.halfKelly * 100).toFixed(1)}%</td>
-                    <td className="py-2 pr-3 text-right font-mono text-slate-100">{Math.round(row.amount).toLocaleString("ko-KR")}</td>
-                    <td className="py-2 pr-3 text-right font-mono text-slate-100">{row.qty.toLocaleString("ko-KR")}</td>
-                    <td className={`py-2 text-right font-mono ${row.ev >= 2 ? "text-emerald-300" : row.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
-                      {row.ev >= 0 ? "+" : ""}{row.ev.toFixed(1)}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-500">
+                      <th className="pb-2 text-left font-medium">종목</th>
+                      <th className="pb-2 text-left font-medium">전략</th>
+                      <th className="pb-2 text-right font-medium">기준가</th>
+                      <th className="pb-2 text-right font-medium">확률</th>
+                      <th className="pb-2 text-right font-medium">Half-Kelly</th>
+                      <th className="pb-2 text-right font-medium">금액</th>
+                      <th className="pb-2 text-right font-medium">모의 수량</th>
+                      <th className="pb-2 text-right font-medium">EV</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={`${row.symbol}-${row.mode}-${row.horizon}`} className="border-b border-slate-900">
+                        <td className="py-2 pr-3">
+                          <div className="font-medium text-slate-200">{row.name}</div>
+                          <div className="font-mono text-slate-500">{row.symbol}</div>
+                        </td>
+                        <td className="py-2 pr-3 text-slate-400">
+                          {modeLabel(row.mode as Mode)} <span className="text-slate-600">/</span> {horizonLabel(row.horizon as Horizon)}
+                        </td>
+                        <td className="py-2 pr-3 text-right font-mono text-slate-300">{row.entry.toLocaleString("ko-KR")}</td>
+                        <td className="py-2 pr-3 text-right font-mono text-slate-300">{(row.probability * 100).toFixed(0)}%</td>
+                        <td className="py-2 pr-3 text-right font-mono text-violet-300">{(row.halfKelly * 100).toFixed(1)}%</td>
+                        <td className="py-2 pr-3 text-right font-mono text-slate-100">{Math.round(row.amount).toLocaleString("ko-KR")}</td>
+                        <td className="py-2 pr-3 text-right font-mono text-slate-100">{row.qty.toLocaleString("ko-KR")}</td>
+                        <td className={`py-2 text-right font-mono ${row.ev >= 2 ? "text-emerald-300" : row.ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
+                          {row.ev >= 0 ? "+" : ""}{row.ev.toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </>
       )}
     </section>
