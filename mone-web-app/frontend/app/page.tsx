@@ -9,6 +9,7 @@ import TopHoldingTicker from "../components/TopHoldingTicker";
 import SessionSafetyBanner from "../components/SessionSafetyBanner";
 import AppLaunchLoading, { type AppLaunchLoadingStep } from "../components/AppLaunchLoading";
 import HomePage from "../components/pages/HomePage";
+import HomePageMobile from "../components/pages/HomePageMobile";
 import ReportPage from "../components/pages/ReportPage";
 import StocksPage from "../components/pages/StocksPage";
 import HoldingsPage from "../components/pages/HoldingsPage";
@@ -30,6 +31,21 @@ import { getCachedBootPreload, runBootPreload, type BootPreloadState } from "../
 const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
 
 export const dynamic = "force-dynamic";
+
+function useIsMobile(mounted: boolean) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const mql = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, [mounted]);
+
+  return isMobile;
+}
 
 export default function App() {
   const [mounted, setMounted] = useState(false);
@@ -219,10 +235,14 @@ export default function App() {
     window.location.href = `/mone-api/api/auth/oauth/${provider}/start`;
   }, []);
 
+  const isMobile = useIsMobile(mounted);
+
   const renderPage = () => {
     switch (page) {
       case "home":
-        return <HomePage onNavigate={setPage} onTradePaper={(order) => { setTradeOrder(order); setPage("advanced"); }} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
+        return isMobile
+          ? <HomePageMobile onNavigate={setPage} onTradePaper={(order) => { setTradeOrder(order); setPage("advanced"); }} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />
+          : <HomePage onNavigate={setPage} onTradePaper={(order) => { setTradeOrder(order); setPage("advanced"); }} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
       case "report":
         return <ReportPage />;
       case "stocks":
@@ -251,10 +271,17 @@ export default function App() {
         );
       case "admin":
         if (adminToken) return <AdminPage authToken={adminToken} onLogout={handleAdminLogout} />;
-        if (userProfile) { setTimeout(() => setPage("home"), 0); return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />; }
+        if (userProfile) {
+          setTimeout(() => setPage("home"), 0);
+          return isMobile
+            ? <HomePageMobile onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />
+            : <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
+        }
         return <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       default:
-        return <HomePage bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
+        return isMobile
+          ? <HomePageMobile bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />
+          : <HomePage bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
     }
   };
 
