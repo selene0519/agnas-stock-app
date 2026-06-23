@@ -259,6 +259,111 @@ function localHoldingsPayload(rows: any[], market: Market) {
     },
   };
 }
+
+const CLIENT_RISK_POLICY = {
+  maxPortfolioLossPct: 6.0,
+  maxPositionWeightPct: 20.0,
+  maxPositionLossPct: 2.0,
+  defaultStopLossPct: 8.0,
+};
+
+function numericValue(value: any, fallback = 0) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const raw = String(value ?? "").replace(/,/g, "").replace("$", "").replace("KRW", "").trim();
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function holdingValue(item: any) {
+  const direct = numericValue(item.valuation ?? item.marketValue ?? item.evalAmount ?? item.eval_amount);
+  if (direct > 0) return direct;
+  const quantity = numericValue(item.quantity ?? item.shares);
+  const price = numericValue(item.currentPrice ?? item.current_price ?? item.avgPrice ?? item.avg_price);
+  return quantity > 0 && price > 0 ? quantity * price : 0;
+}
+
+function holdingCurrentPrice(item: any) {
+  return numericValue(item.currentPrice ?? item.current_price ?? item.avgPrice ?? item.avg_price);
+}
+
+function holdingStopInfo(item: any, current: number) {
+  const explicit = numericValue(item.downsideLine ?? item.stopPrice ?? item.stop_price ?? item.stop);
+  if (explicit > 0) return { stop: explicit, explicit: true };
+  return {
+    stop: current > 0 ? current * (1 - CLIENT_RISK_POLICY.defaultStopLossPct / 100) : 0,
+    explicit: false,
+  };
+}
+
+function buildDisplayedRiskBudget(items: any[], market: Market, serverPolicy?: any) {
+  const filtered = dedupe(items).filter((item) => market === "all" || cleanHoldingMarket(item.market) === market);
+  const totalValue = filtered.reduce((sum, item) => sum + holdingValue(item), 0);
+  const policy = { ...CLIENT_RISK_POLICY, ...(serverPolicy || {}) };
+  if (filtered.length === 0) {
+    return {
+      status: "NO_HOLDINGS",
+      source: "displayed_holdings",
+      policy,
+      totalValue: 0,
+      totalLossBudgetPct: 0,
+      missingStopCount: 0,
+      warnings: ["표시 중인 보유종목이 없어 리스크 예산을 계산하지 않았습니다."],
+      items: [],
+    };
+  }
+
+  let totalLossBudgetPct = 0;
+  let missingStopCount = 0;
+  const budgetItems = filtered.map((item) => {
+    const value = holdingValue(item);
+    const current = holdingCurrentPrice(item);
+    const quantity = numericValue(item.quantity ?? item.shares);
+    const weightPct = totalValue > 0 ? (value / totalValue) * 100 : 0;
+    const stopInfo = holdingStopInfo(item, current);
+    if (!stopInfo.explicit) missingStopCount += 1;
+    const lossAmount = current > 0 && quantity > 0 && stopInfo.stop > 0
+      ? Math.max(0, (current - stopInfo.stop) * quantity)
+      : value * (policy.defaultStopLossPct / 100);
+    const lossBudgetPct = totalValue > 0 ? (lossAmount / totalValue) * 100 : 0;
+    totalLossBudgetPct += lossBudgetPct;
+    const reasons: string[] = [];
+    if (weightPct > policy.maxPositionWeightPct) reasons.push(`보유비중 ${weightPct.toFixed(1)}%`);
+    if (lossBudgetPct > policy.maxPositionLossPct) reasons.push(`손실예산 ${lossBudgetPct.toFixed(1)}%`);
+    if (!stopInfo.explicit) reasons.push("기본 손절 사용");
+    return {
+      market: cleanHoldingMarket(item.market),
+      symbol: item.symbol,
+      name: item.name || item.symbol,
+      value: Math.round(value),
+      weightPct: Number(weightPct.toFixed(3)),
+      currentPrice: current,
+      stopPrice: stopInfo.stop ? Number(stopInfo.stop.toFixed(4)) : null,
+      lossBudgetPct: Number(lossBudgetPct.toFixed(3)),
+      recommendedWeightPct: Math.min(weightPct, policy.maxPositionWeightPct),
+      action: weightPct > policy.maxPositionWeightPct || lossBudgetPct > policy.maxPositionLossPct ? "REDUCE" : "HOLD",
+      reasons: reasons.length ? reasons : ["within budget"],
+    };
+  });
+
+  const warnings: string[] = [];
+  if (totalLossBudgetPct > policy.maxPortfolioLossPct) {
+    warnings.push(`손실 예산 ${totalLossBudgetPct.toFixed(1)}% > 한도 ${policy.maxPortfolioLossPct.toFixed(0)}%`);
+  }
+  if (missingStopCount > 0) warnings.push(`${missingStopCount}개 보유종목에 기본 손절을 적용했습니다.`);
+  const mixedMarkets = new Set(filtered.map((item) => cleanHoldingMarket(item.market))).size > 1;
+  if (market === "all" && mixedMarkets) warnings.push("KR/US 혼합 통화라 화면 기준 보조 추정으로 표시합니다.");
+
+  return {
+    status: totalLossBudgetPct > policy.maxPortfolioLossPct ? "OVER_BUDGET" : "OK",
+    source: "displayed_holdings",
+    policy,
+    totalValue: Math.round(totalValue),
+    totalLossBudgetPct: Number(totalLossBudgetPct.toFixed(3)),
+    missingStopCount,
+    warnings,
+    items: budgetItems.sort((a, b) => (a.action !== "REDUCE" ? 1 : 0) - (b.action !== "REDUCE" ? 1 : 0) || b.lossBudgetPct - a.lossBudgetPct),
+  };
+}
 function validateHoldingDraft(item: EditableHolding) {
   const n = normalizeForSave(item);
   if (!n.symbol) return "종목코드/티커가 필요합니다.";
@@ -911,6 +1016,13 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const totalValueText = summary.totalValueText || (items.length > 0 ?
     items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
 
+  const displayRiskBudget = useMemo(() => {
+    const serverHasBudget = riskBudget && Number(riskBudget.totalValue || 0) > 0;
+    if (serverHasBudget || (riskBudget && items.length === 0)) return riskBudget;
+    if (items.length > 0) return buildDisplayedRiskBudget(items, market, riskBudget?.policy);
+    return riskBudget;
+  }, [riskBudget, items, market]);
+
   const { individualStocks, etfHoldings } = useMemo(() => {
     const stocks: any[] = [];
     const etfs: any[] = [];
@@ -1252,40 +1364,43 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       )}
 
-      {riskBudget && (
+      {displayRiskBudget && (
         <div className={`rounded-2xl border p-4 ${
-          riskBudget.status === "OVER_BUDGET"
+          displayRiskBudget.status === "OVER_BUDGET"
             ? "border-red-500/30 bg-red-500/5"
             : "border-emerald-500/20 bg-emerald-500/5"
         }`}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-semibold text-slate-100">Portfolio risk budget</h2>
-              <p className="mt-1 text-[11px] text-slate-500">Stop prices and Kelly limits are used to flag oversized holdings.</p>
+              <h2 className="text-sm font-semibold text-slate-100">포트폴리오 리스크 예산</h2>
+              <p className="mt-1 text-[11px] text-slate-500">손절가와 Kelly 한도로 과도한 보유 비중을 점검합니다.</p>
             </div>
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-              riskBudget.status === "OVER_BUDGET"
+              displayRiskBudget.status === "OVER_BUDGET"
                 ? "border-red-500/40 bg-red-500/10 text-red-300"
                 : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
             }`}>
-              {riskBudget.status}
+              {displayRiskBudget.status === "NO_HOLDINGS" ? "보유 없음" : displayRiskBudget.status}
             </span>
           </div>
           <div className="grid gap-2 text-[11px] sm:grid-cols-3">
-            <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
-            <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
-            <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
+            <Mini label="예상 손실 예산" value={`${Number(displayRiskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(displayRiskBudget.totalLossBudgetPct || 0) > Number(displayRiskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
+            <Mini label="허용 한도" value={`${Number(displayRiskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
+            <Mini label="기본 손절 사용" value={`${displayRiskBudget.missingStopCount || 0}개`} accent={Number(displayRiskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
           </div>
-          {(riskBudget.warnings || []).length > 0 && (
+          {displayRiskBudget.source === "displayed_holdings" && (
+            <p className="mt-2 text-[10px] text-slate-500">현재 화면에 표시된 보유종목 기준으로 보조 계산했습니다.</p>
+          )}
+          {(displayRiskBudget.warnings || []).length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {riskBudget.warnings.map((warning: string) => (
+              {displayRiskBudget.warnings.map((warning: string) => (
                 <span key={warning} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">{warning}</span>
               ))}
             </div>
           )}
-          {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
+          {(displayRiskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
             <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 6).map((item: any) => (
+              {(displayRiskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 6).map((item: any) => (
                 <div key={`${item.market}-${item.symbol}`} className="rounded-xl border border-red-500/20 bg-slate-950/60 px-3 py-2 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-slate-100">{item.name}</span>

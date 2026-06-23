@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 import Sidebar, { type PageId } from "../components/Sidebar";
 import BottomNav from "../components/BottomNav";
@@ -49,6 +49,7 @@ function useIsMobile(mounted: boolean) {
 
 export default function App() {
   const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [page, setPage] = useState<PageId>("home");
   const [tradeOrder, setTradeOrder] = useState<{ symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number } | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -84,7 +85,20 @@ export default function App() {
     setUserProfile(getUserProfile());
     setUserTokenState(getUserToken());
     getUserId(); // 최초 방문 시 UUID 생성 및 localStorage 저장
+    const storedTheme = window.localStorage.getItem("mone:theme");
+    const initialTheme = storedTheme === "light" ? "light" : "dark";
+    document.documentElement.dataset.theme = initialTheme;
+    setTheme(initialTheme);
     setMounted(true);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      window.localStorage.setItem("mone:theme", next);
+      return next;
+    });
   }, []);
 
 
@@ -295,7 +309,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+    <div className="mone-app-shell flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
       {booting && (
         <AppLaunchLoading
           progress={bootProgress}
@@ -310,7 +324,7 @@ export default function App() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* 헤더 */}
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900/60 px-3 backdrop-blur md:px-5">
+        <header className="mone-app-header flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900/60 px-3 backdrop-blur md:px-5">
           {/* 모바일: MONE 로고 */}
           <div className="flex shrink-0 items-center gap-2 md:hidden">
             <Image src="/brand/mone-symbol.png" alt="MONE" width={26} height={26} className="h-6 w-6 object-contain" priority />
@@ -326,10 +340,27 @@ export default function App() {
             <span className="hidden text-slate-700 md:block">·</span>
             <span className="hidden text-xs text-slate-500 md:block">{mounted ? "실시간 동기화" : "방금 전"}</span>
 
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+              aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+              className="mone-header-button relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 transition-[border-color,color,transform] hover:border-slate-600 hover:text-white active:scale-[0.96]"
+            >
+              <Sun
+                size={14}
+                className={`absolute text-amber-300 transition-[opacity,scale,filter] duration-200 ${theme === "dark" ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-25 blur-[4px]"}`}
+              />
+              <Moon
+                size={14}
+                className={`absolute text-blue-500 transition-[opacity,scale,filter] duration-200 ${theme === "light" ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-25 blur-[4px]"}`}
+              />
+            </button>
+
             {/* 알림 */}
             <div className="relative">
               <button
-                className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 transition-colors hover:border-slate-600 hover:text-white"
+                className="mone-header-button relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 transition-[border-color,color,transform] hover:border-slate-600 hover:text-white active:scale-[0.96]"
                 onClick={() => setNotifOpen(!notifOpen)}
                 title="알림"
               >

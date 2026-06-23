@@ -3438,6 +3438,24 @@ function SimilarPatternReturnLabel({ pct }: { pct: number | null | undefined }) 
   return <span className={`font-mono text-xs font-bold ${color}`}>{sign}{pct.toFixed(1)}%</span>;
 }
 
+function SimilarPatternPeriodNote({ period }: { period: any }) {
+  if (!period) return null;
+  const start = period.startDate || "-";
+  const end = period.endDate || "-";
+  const rows = typeof period.availableRows === "number" ? `${period.availableRows}봉` : "-";
+  const candidates = typeof period.candidateRows === "number" ? `${period.candidateRows}개 후보` : "후보 집계 중";
+  const excluded = typeof period.excludedRecentBars === "number" ? period.excludedRecentBars : 5;
+  const horizons = Array.isArray(period.horizons) && period.horizons.length > 0
+    ? period.horizons.join("/")
+    : "1/5/10";
+  return (
+    <div className="rounded-lg border border-slate-700/40 bg-slate-950/40 px-3 py-2 text-[10px] leading-relaxed text-slate-500">
+      <span className="font-semibold text-slate-400">분석 기간</span>{" "}
+      전체 OHLCV {start}~{end} · {rows} · {candidates} · 최근 {excluded}거래일 제외 · {horizons}거래일 후 수익률 기준
+    </div>
+  );
+}
+
 function SimilarPatternPanel({ data }: { data: any | null }) {
   if (!data) return <Empty text="유사 패턴 데이터를 불러오는 중입니다…" />;
   if (data.status !== "OK") {
@@ -3453,6 +3471,7 @@ function SimilarPatternPanel({ data }: { data: any | null }) {
         {"  "}· 볼린저 위치 <span className="font-mono text-slate-300">{typeof current.bbPercent === "number" ? `${(current.bbPercent * 100).toFixed(0)}%` : "-"}</span>
         {"  "}· MACD-시그널 <span className="font-mono text-slate-300">{typeof current.macdHistPct === "number" ? `${current.macdHistPct.toFixed(2)}%` : "-"}</span>
       </div>
+      <SimilarPatternPeriodNote period={data.period} />
       <div className="grid grid-cols-3 gap-2">
         {SIMILAR_PATTERN_HORIZONS.map(({ key, label }) => {
           const s = summary[key];
