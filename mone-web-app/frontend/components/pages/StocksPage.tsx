@@ -214,6 +214,17 @@ const PATTERN_TYPE_KO: Record<string, string> = {
   overheated_chase_risk: "과열 추격 위험", false_breakout_risk: "가짜 돌파 위험",
   downtrend_bounce_trap: "하락 반등 함정", resistance_chase_risk: "저항 추격 위험",
 };
+const GEO_PATTERN_KO: Record<string, string> = {
+  DOUBLE_BOTTOM: "더블바텀", DOUBLE_TOP: "더블탑",
+  HEAD_AND_SHOULDERS: "헤드앤숄더", INVERSE_HEAD_AND_SHOULDERS: "역헤드앤숄더",
+  ASCENDING_TRIANGLE: "상승삼각형", DESCENDING_TRIANGLE: "하락삼각형",
+  BULL_FLAG: "불플래그", BEAR_FLAG: "베어플래그",
+  FALLING_WEDGE_BREAKOUT: "하락쐐기 돌파", RISING_WEDGE_BREAKDOWN: "상승쐐기 이탈",
+};
+const GEO_STAGE_KO: Record<string, string> = {
+  WATCH: "관찰", BREAKOUT_CANDIDATE: "돌파 후보", BUY_ZONE: "매수권",
+  RISK_WATCH: "위험 관찰", AVOID: "회피", BLOCKED: "진입 차단",
+};
 const ENTRY_ACTION_CODES = new Set(["SCALE_IN", "WAIT_PULLBACK", "BUY", "STRONG_BUY", "ENTER"]);
 const OBSERVE_ACTION_CODES = new Set(["HOLD_CASH", "WATCH_ONLY", "WAIT", "HOLD", "AVOID_CHASE", "BLOCKED"]);
 
@@ -869,14 +880,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 setMarket(item.id);
                 setSelected(null);
               }}
-              className={`min-h-10 min-w-0 rounded-xl border px-2 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item.id ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+              className={`min-h-11 min-w-0 rounded-xl border px-2 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item.id ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-950 text-slate-400"}`}
             >
               {item.label}
             </button>
           ))}
           <button
             onClick={() => setWatchOnly(!watchOnly)}
-            className={`min-h-10 min-w-0 rounded-xl border px-2 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${watchOnly ? "mone-selection-warning font-semibold" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+            className={`min-h-11 min-w-0 rounded-xl border px-2 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${watchOnly ? "mone-selection-warning font-semibold" : "border-slate-800 bg-slate-950 text-slate-400"}`}
           >
             관심종목
           </button>
@@ -889,21 +900,21 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <button
             onClick={applySmartWatchlist}
             disabled={autoCurating || watchSaving}
-            className="min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-xs font-bold text-emerald-300 disabled:opacity-50 sm:text-sm"
+            className="min-h-11 min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-xs font-bold text-emerald-300 disabled:opacity-50 sm:text-sm"
           >
             {autoCurating ? "선별 중..." : "자동선별"}
           </button>
           <button
             onClick={refreshTargetQuotes}
             disabled={quoteRefreshing === "batch"}
-            className="min-w-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2 py-2 text-xs font-bold text-cyan-300 disabled:opacity-50 sm:text-sm"
+            className="min-h-11 min-w-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2 py-2 text-xs font-bold text-cyan-300 disabled:opacity-50 sm:text-sm"
           >
             현재가 갱신
           </button>
           <button
             onClick={loadScoredWatchlist}
             disabled={scoredLoading}
-            className="min-w-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs font-bold text-violet-300 disabled:opacity-50 sm:text-sm"
+            className="min-h-11 min-w-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs font-bold text-violet-300 disabled:opacity-50 sm:text-sm"
           >
             {scoredLoading ? "분석 중..." : "점수 분석"}
           </button>
@@ -940,9 +951,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             </label>
             <select
               id="stocks-sector-filter"
+              name="stocksSectorFilter"
               value={sectorFilter || ""}
               onChange={(e) => setSectorFilter(e.target.value || null)}
-              className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-violet-500"
+              className="min-h-11 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-violet-500"
             >
               <option value="">전체</option>
               {sectorsList.map((sec) => (
@@ -958,7 +970,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         <div className="mt-4">
           <button
             onClick={() => setScreenerOpen((v) => !v)}
-            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${screenerOpen ? "border-sky-600/60 bg-sky-900/20 text-sky-300" : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"}`}>
+            className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${screenerOpen ? "border-sky-600/60 bg-sky-900/20 text-sky-300" : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"}`}>
             스크리너
             {activeFilterCount > 0 && (
               <span className="rounded-full bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{activeFilterCount}</span>
@@ -1040,13 +1052,16 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
               {/* 이름/티커 검색 */}
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
+                <label htmlFor="stocks-name-query" className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
                 <input
+                  id="stocks-name-query"
+                  name="stocksNameQuery"
+                  autoComplete="off"
                   type="text"
                   value={nameQuery}
                   onChange={(e) => setNameQuery(e.target.value)}
-                  placeholder="이름 또는 티커 입력"
-                  className="mt-1 w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-sky-600"
+                  placeholder="이름 또는 티커 입력…"
+                  className="mt-1 min-h-11 w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-sky-600"
                 />
               </div>
 
@@ -1386,16 +1401,21 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           )}
         </div>
         {!selected && (
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-slate-500"
-          >
-            <option value="finalScore">종합점수순</option>
-            <option value="expectedValue">EV순</option>
-            <option value="upsideScore">상승여력순</option>
-            <option value="rrScore">손익비순</option>
-          </select>
+          <>
+            <label htmlFor="stocks-sort" className="sr-only">추천 목록 정렬</label>
+            <select
+              id="stocks-sort"
+              name="stocksSort"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 focus:border-slate-500 focus:outline-none"
+            >
+              <option value="finalScore">종합점수순</option>
+              <option value="expectedValue">EV순</option>
+              <option value="upsideScore">상승여력순</option>
+              <option value="rrScore">손익비순</option>
+            </select>
+          </>
         )}
       </div>
 
@@ -1530,6 +1550,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           const actionText = safeKoreanLabel(psActionRaw, PATTERN_ACTION_KO);
           const riskText = psRiskRaw ? safeKoreanLabel(psRiskRaw, PATTERN_RISK_KO, "확인 필요") : "정상";
           const patternText = safeKoreanLabel(psPatternRaw, PATTERN_TYPE_KO);
+          const geoPatternRaw = ps?.geometricPattern && typeof ps.geometricPattern === "string" ? ps.geometricPattern : null;
+          const geoStageRaw = ps?.geometricPatternStage && typeof ps.geometricPatternStage === "string" ? ps.geometricPatternStage : null;
+          const geoPatternText = geoPatternRaw ? (GEO_PATTERN_KO[geoPatternRaw] ?? geoPatternRaw) : null;
+          const geoStageText = geoStageRaw ? (GEO_STAGE_KO[geoStageRaw] ?? geoStageRaw) : null;
           const topBadgeLabel = recommendationBadgeLabel(item, actionCode, actionText);
           const cardMarket = String(item.market || resolvedMarket).toLowerCase();
           const cardPredictionDate = firstText(
@@ -1626,7 +1650,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               {/* 헤더 */}
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-base font-bold text-slate-100 leading-tight">{displayName(item)}</h3>
+                  <h2 className="text-base font-bold text-slate-100 leading-tight">{displayName(item)}</h2>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <span className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || resolvedMarket).toUpperCase()}</span>
                     {topBadgeLabel && <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{topBadgeLabel}</span>}
@@ -1665,6 +1689,20 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     psConf != null ? `신뢰도 ${psConf}` : null,
                   ].filter(Boolean).join(" · ")}
                 </div>
+                {geoPatternText && (
+                  <div className="mt-1.5 flex items-center gap-1.5 border-t border-slate-800 pt-1.5 text-[11px]">
+                    <span className="font-semibold text-slate-300">{geoPatternText}</span>
+                    <span className={
+                      geoStageRaw === "BUY_ZONE" ? "font-bold text-emerald-400"
+                      : geoStageRaw === "BREAKOUT_CANDIDATE" ? "font-bold text-sky-400"
+                      : geoStageRaw === "AVOID" || geoStageRaw === "BLOCKED" ? "font-bold text-red-400"
+                      : geoStageRaw === "RISK_WATCH" ? "font-bold text-amber-400"
+                      : "font-bold text-slate-400"
+                    }>
+                      {geoStageText}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* 가격 4개 */}

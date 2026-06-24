@@ -844,6 +844,10 @@ def api_pattern_summary(
                     "confidence":      ps.get("confidence"),
                     "message":         ps.get("message"),
                     "finalRankScore":  item.get("finalRankScore"),
+                    "geometricPattern":          ps.get("geometricPattern"),
+                    "geometricPatternDirection": ps.get("geometricPatternDirection"),
+                    "geometricPatternStage":     ps.get("geometricPatternStage"),
+                    "geometricPatternReason":    ps.get("geometricPatternReason"),
                 })
         return {"status": "OK", "market": market, "count": len(summary), "items": summary}
     except Exception as e:

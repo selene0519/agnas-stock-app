@@ -133,6 +133,27 @@ class PatternResult(TypedDict):
     rangeFloor: float | None
     rangeCeiling: float | None
     rangeShiftCount: int
+    geometricPattern: str | None
+    geometricPatternDirection: str | None
+    geometricPatternStage: str | None
+    geometricPatternTrigger: float | None
+    geometricPatternReason: str | None
+
+
+# Classic geometric chart patterns (Phase 1, see geometric_patterns.py).
+# Kept separate from PATTERN_NAMES above, which are the indicator-driven patterns.
+GEOMETRIC_PATTERN_NAMES = {
+    "DOUBLE_BOTTOM",
+    "DOUBLE_TOP",
+    "HEAD_AND_SHOULDERS",
+    "INVERSE_HEAD_AND_SHOULDERS",
+    "ASCENDING_TRIANGLE",
+    "DESCENDING_TRIANGLE",
+    "BULL_FLAG",
+    "BEAR_FLAG",
+    "FALLING_WEDGE_BREAKOUT",
+    "RISING_WEDGE_BREAKDOWN",
+}
 
 
 # ── Default self-correction parameters ───────────────────────────────────────

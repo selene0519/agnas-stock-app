@@ -8,6 +8,7 @@ import {
   Bot,
   ChevronRight,
   Clock,
+  ClipboardList,
   History,
   RefreshCw,
   X,
@@ -850,7 +851,7 @@ function CandidateCarouselSection({
               type="button"
               data-active={active ? "true" : "false"}
               onClick={() => setCandidateTab(tab.key)}
-              className={`mone-candidate-tab ${toneClass} min-h-10 min-w-0 rounded-xl px-2 text-[11px] font-black transition-[background-color,box-shadow,color,transform] active:scale-[0.96]`}
+              className={`mone-candidate-tab ${toneClass} min-h-11 min-w-0 rounded-xl px-2 text-[11px] font-black transition-[background-color,box-shadow,color,transform] active:scale-[0.96]`}
             >
               {tab.label} <span className="mone-candidate-count ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px]">{loading ? "-" : tab.count}</span>
             </button>
@@ -896,7 +897,7 @@ function CandidateCarouselSection({
                 onClick={() => moveToCard(index)}
                 aria-label={`${index + 1}번 후보 카드로 이동`}
                 aria-current={activeCard === index ? "true" : undefined}
-                className="group inline-flex h-6 w-6 items-center justify-center rounded-full active:scale-[0.96]"
+                className="group inline-flex h-10 w-10 items-center justify-center rounded-full active:scale-[0.96]"
               >
                 <span
                   data-active={activeCard === index ? "true" : "false"}
@@ -1040,13 +1041,17 @@ function PositionSizingSection({
             총 자본을 입력하면 종목별 권장 금액을 계산합니다.
           </div>
           <div className="flex items-center gap-2">
+            <label htmlFor="mone-portfolio-capital" className="sr-only">투자 자본금</label>
             <input
+              id="mone-portfolio-capital"
+              name="portfolioCapital"
               type="text"
               inputMode="numeric"
-              placeholder="예: 10000000"
+              autoComplete="off"
+              placeholder="예: 10,000,000…"
               value={inputVal ? Number(inputVal).toLocaleString() : ""}
               onChange={(e) => handleCapitalChange(e.target.value.replace(/,/g, ""))}
-              className="min-h-10 flex-1 rounded-xl border border-teal-500/35 bg-slate-950/80 px-3 text-right font-mono text-sm text-slate-100 placeholder-slate-600 shadow-[0_0_0_1px_rgba(20,184,166,0.06)] transition-[border-color,box-shadow] focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/15"
+              className="min-h-11 flex-1 rounded-xl border border-teal-500/35 bg-slate-950/80 px-3 text-right font-mono text-sm text-slate-100 placeholder-slate-600 shadow-[0_0_0_1px_rgba(20,184,166,0.06)] transition-[border-color,box-shadow] focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/15"
             />
             <span className="text-xs text-slate-500">원</span>
           </div>
@@ -1061,7 +1066,7 @@ function PositionSizingSection({
                 type="button"
                 key={`${r.symbol}-${r.mode}-${r.horizon}`}
                 onClick={() => onTradePaper?.({ symbol: r.symbol, name: r.name, price: r.entry, market: r.symbol.match(/^[A-Z]{1,5}$/) ? "us" : "kr", quantity: r.qty })}
-                className="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-1.5 text-left transition-[background-color,transform] hover:bg-slate-900/60 active:scale-[0.96]"
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-1.5 text-left transition-[background-color,transform] hover:bg-slate-900/60 active:scale-[0.96]"
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-black text-slate-100">{r.name}</span>
@@ -1132,11 +1137,11 @@ function JournalModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-slate-950 shadow-2xl ring-1 ring-slate-800">
+      <button type="button" className="fixed inset-0 z-40 cursor-default bg-black/60 backdrop-blur-sm" onClick={onClose} aria-label="운용 일지 닫기" />
+      <div role="dialog" aria-modal="true" aria-labelledby="journal-drawer-title" className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-slate-950 shadow-2xl ring-1 ring-slate-800">
         <div className="sticky top-0 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 px-5 py-4 backdrop-blur">
-          <h2 className="font-bold text-slate-100">운용 일지</h2>
-          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800"><X size={18} /></button>
+          <h2 id="journal-drawer-title" className="font-bold text-slate-100">운용 일지</h2>
+          <button type="button" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800" aria-label="운용 일지 닫기"><X size={18} aria-hidden="true" /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
@@ -1152,16 +1157,16 @@ function JournalModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="종목코드" value={form.symbol} onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+              <input name="journalSymbol" autoComplete="off" aria-label="종목코드" placeholder="종목코드…" value={form.symbol} onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
                 className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
-              <input placeholder="종목명" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              <input name="journalName" autoComplete="off" aria-label="종목명" placeholder="종목명…" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
-              <input placeholder="가격" type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+              <input name="journalPrice" autoComplete="off" aria-label="가격" placeholder="가격…" type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                 className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
-              <input placeholder="수량" type="number" value={form.qty} onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
+              <input name="journalQuantity" autoComplete="off" aria-label="수량" placeholder="수량…" type="number" value={form.qty} onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
                 className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500" />
             </div>
-            <textarea placeholder="진입 근거 (최대 100자)" maxLength={100} value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
+            <textarea name="journalMemo" aria-label="진입 근거" placeholder="진입 근거 (최대 100자)…" maxLength={100} value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
               className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 resize-none" rows={2} />
             <button onClick={addEntry} disabled={saving || !form.memo.trim()}
               className="w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-blue-700">
@@ -1573,13 +1578,10 @@ function DailyBriefingCard({
         <span className="mone-section-icon" />
         오늘의 관찰 1순위
       </div>
-      <h2 className="mt-3 text-[23px] font-black leading-tight text-balance text-slate-100">
+      <h2 className="mt-3 truncate text-[18px] font-black leading-tight text-slate-100 sm:text-[23px]">
         {briefing.title}
       </h2>
-      <p className="mt-2 text-sm font-medium leading-6 text-slate-400 text-pretty">
-        {briefing.chips.join(" · ")}
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         {briefing.chips.slice(0, 4).map((chip, index) => (
           <span
             key={chip}
@@ -1598,14 +1600,60 @@ function DailyBriefingCard({
         <div className="min-w-0">
           <div className="text-xs font-black text-blue-300">MONE 판단</div>
           <p className="mt-1 text-sm leading-6 text-slate-300 text-pretty">{briefing.detail}</p>
+          {briefing.topItem && (
+            <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-2.5">
+              <div className="grid grid-cols-4 gap-1.5 text-center text-[11px]">
+                {[
+                  { label: "현재가", key: "current", color: "text-slate-200" },
+                  { label: "기준가", key: "entry", color: "text-sky-300" },
+                  { label: "손절가", key: "stop", color: "text-red-300" },
+                  { label: "목표가", key: "target", color: "text-emerald-300" },
+                ].map(({ label, key, color }) => (
+                  <div key={key} className="rounded-lg bg-slate-900/50 py-1.5">
+                    <div className="text-[10px] text-slate-500">{label}</div>
+                    <div className={`mt-0.5 truncate font-mono font-semibold ${color}`}>{priceText(briefing.topItem, key as any, "—")}</div>
+                  </div>
+                ))}
+              </div>
+              {(() => {
+                const ev = Number(briefing.topItem.expectedValue ?? 0);
+                const rr = Number(briefing.topItem.rrActual ?? 0);
+                const score = Number(briefing.topItem.finalScore ?? 0);
+                return (
+                  <div className="mt-2 grid grid-cols-3 gap-1.5 border-t border-slate-800/70 pt-2 text-center text-[11px]">
+                    <div className="rounded-lg bg-slate-900/50 py-1.5">
+                      <div className="text-[10px] text-slate-500">기댓값 EV</div>
+                      <div className={`mt-0.5 font-mono font-semibold ${ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
+                        {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900/50 py-1.5">
+                      <div className="text-[10px] text-slate-500">손익비 RR</div>
+                      <div className={`mt-0.5 font-mono font-semibold ${rr >= 2 ? "text-emerald-300" : rr >= 1.5 ? "text-amber-300" : "text-red-300"}`}>
+                        {rr > 0 ? rr.toFixed(1) : "—"}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900/50 py-1.5">
+                      <div className="text-[10px] text-slate-500">종합 점수</div>
+                      <div className={`mt-0.5 font-mono font-semibold ${score >= 65 ? "text-emerald-300" : score >= 50 ? "text-amber-300" : "text-slate-400"}`}>
+                        {score > 0 ? `${score.toFixed(0)}점` : "—"}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
           {briefing.topItem && onAnalyze && (
-            <button
-              type="button"
-              onClick={() => onAnalyze(briefing.topItem)}
-              className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-lg text-sm font-black text-blue-400 transition-[color,transform] hover:text-blue-300 active:scale-[0.96]"
-            >
-              판단 근거 보기 <ArrowRight size={13} />
-            </button>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => onAnalyze(briefing.topItem)}
+                className="inline-flex min-h-7 items-center gap-1 rounded-lg text-xs font-bold text-blue-400 transition-[color,transform] hover:text-blue-300 active:scale-[0.96]"
+              >
+                판단 근거 보기 <ArrowRight size={11} />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1926,7 +1974,7 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
   return (
     <section className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-6 text-center">
       <div className="mx-auto max-w-sm">
-        <div className="mb-2 text-2xl">📋</div>
+        <ClipboardList size={28} aria-hidden="true" className="mx-auto mb-2 text-teal-300" />
         <h2 className="text-base font-semibold text-slate-100">보유종목을 등록해주세요</h2>
         <p className="mt-2 text-sm text-slate-400 leading-relaxed">
           내 종목을 기준으로 오늘의 위험과 기회를<br />
@@ -1935,14 +1983,16 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
         </p>
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
+            type="button"
             onClick={() => onNavigate?.("holdings")}
-            className="mone-session-action min-h-10 rounded-xl px-5 py-2.5 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
+            className="mone-session-action min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
           >
             보유종목 등록하기
           </button>
           <button
+            type="button"
             onClick={() => onNavigate?.("stocks")}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-5 py-2.5 text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+            className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-5 py-2.5 text-sm text-slate-300 transition-colors hover:bg-slate-800"
           >
             종목 탐색 먼저 보기
           </button>
@@ -2207,15 +2257,15 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   return (
     <>
       {/* 배경 오버레이 */}
-      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <button type="button" className="fixed inset-0 z-40 cursor-default bg-black/60 backdrop-blur-sm" onClick={onClose} aria-label="추천 근거 닫기" />
 
       {/* 패널 */}
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col overflow-y-auto bg-slate-950 shadow-2xl ring-1 ring-slate-800">
+      <div role="dialog" aria-modal="true" aria-labelledby="recommendation-drawer-title" className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col overflow-y-auto bg-slate-950 shadow-2xl ring-1 ring-slate-800">
         {/* 헤더 */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 px-5 py-4 backdrop-blur">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold text-slate-100">{displayName(item)}</span>
+              <h2 id="recommendation-drawer-title" className="text-lg font-bold text-slate-100">{displayName(item)}</h2>
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${bucketColor}`}>{decisionBucket}</span>
             </div>
             <div className="mt-0.5 text-xs text-slate-500">
@@ -2223,8 +2273,8 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
               {decisionReason && <span className="ml-2 text-slate-400">{decisionReason}</span>}
             </div>
           </div>
-          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white">
-            <X size={18} />
+          <button type="button" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="추천 근거 닫기">
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -2475,7 +2525,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                   <div key={key} className="flex items-center gap-2 text-[11px]">
                     <span className="w-20 shrink-0 text-slate-400">{label}</span>
                     <div className="flex-1 overflow-hidden rounded-full bg-slate-800">
-                      <div className={`h-1.5 rounded-full ${color} transition-all`} style={{ width: `${Math.max(0, Math.min(100, val))}%` }} />
+                      <div className={`h-1.5 rounded-full ${color} transition-[width]`} style={{ width: `${Math.max(0, Math.min(100, val))}%` }} />
                     </div>
                     <span className="w-8 text-right font-mono text-slate-300">{val.toFixed(0)}</span>
                   </div>
@@ -2668,7 +2718,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
               : isCaution ? "bg-red-950/30 border border-red-900/20 opacity-50"
               : "bg-slate-950/50 opacity-60";
             return (
-              <div key={item.symbol} onClick={() => onSelect(item)} className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:brightness-125 ${rowCls}`}>
+              <button type="button" key={item.symbol} onClick={() => onSelect(item)} className={`flex min-h-11 w-full items-center justify-between rounded-lg px-2 py-1.5 text-left transition-[filter,transform] hover:brightness-125 active:scale-[0.96] ${rowCls}`}>
                 <div className="min-w-0 flex-1">
                   <span className="truncate text-[11px] font-medium text-slate-200">{displayName(item)}</span>
                   {isToday  && <span className="ml-1 rounded bg-emerald-700/50 px-1 text-[9px] text-emerald-300">검토</span>}
@@ -2680,7 +2730,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
                 <span className={`font-mono text-[10px] ${ev >= 1 ? "text-emerald-400" : ev >= 0 ? "text-slate-400" : "text-red-400"}`}>
                   {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
