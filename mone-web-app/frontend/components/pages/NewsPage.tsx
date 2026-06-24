@@ -70,7 +70,11 @@ function freshnessLabel(value: any) {
 function titleOf(item: any, tab: Tab) {
   if (tab === "company") return displayName(item);
   if (tab === "disclosures") return item.title || item.reportName || item.formType || item.company || "공시 제목 확인";
-  return item.title || item.headline || item.summary || "뉴스 제목 확인";
+  return item.titleKo || item.title || item.headline || item.summary || "뉴스 제목 확인";
+}
+
+function summaryOf(item: any) {
+  return item.summaryKo || item.summary || item.description || "요약 데이터가 없습니다.";
 }
 
 function secFormExplain(form: string) {
@@ -513,9 +517,12 @@ function NewsDetail({ selected }: { selected: any }) {
     <div className="space-y-4">
       <div>
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-xl font-bold text-slate-100">{selected.title || selected.headline || "뉴스 제목 없음"}</h2>
+          <h2 className="text-xl font-bold text-slate-100">{selected.titleKo || selected.title || selected.headline || "뉴스 제목 없음"}</h2>
           {sentiment && <span className={`shrink-0 rounded-xl border px-3 py-1.5 text-xs font-bold ${sentiment.cls}`}>{sentiment.label}</span>}
         </div>
+        {selected.titleKo && selected.title && selected.titleKo !== selected.title && (
+          <p className="mt-1 text-xs text-slate-500">원문: {selected.title}</p>
+        )}
         <p className="mt-2 text-sm text-slate-500">{selected.source || selected.publisher || "출처 미확인"} · {dateText(selected.publishedAt || selected.date)}</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -523,7 +530,10 @@ function NewsDetail({ selected }: { selected: any }) {
         <Metric label="신선도" value={freshnessLabel(itemDateValue(selected))} />
       </div>
       {tags.length > 0 && <div className="flex flex-wrap gap-2">{tags.map((tag: string) => <span key={tag} className="rounded-lg bg-blue-500/10 px-2 py-1 text-xs text-blue-300">{tag}</span>)}</div>}
-      <p className="rounded-2xl bg-slate-950 p-4 text-sm leading-6 text-slate-300">{selected.summary || selected.description || "요약 데이터가 없습니다."}</p>
+      <p className="rounded-2xl bg-slate-950 p-4 text-sm leading-6 text-slate-300">{summaryOf(selected)}</p>
+      {selected.summaryKo && selected.summary && selected.summaryKo !== selected.summary && (
+        <p className="rounded-2xl border border-slate-800 bg-slate-950/50 p-3 text-xs leading-6 text-slate-500">원문 요약: {selected.summary}</p>
+      )}
       {selected.url && <a href={selected.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"><ExternalLink size={14} />원문 보기</a>}
     </div>
   );

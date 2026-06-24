@@ -3647,7 +3647,7 @@ function disclosureFormLabel(rawTitle: string): string {
 }
 
 function Related({ item, kind = "news" }: { item: any; kind?: "news" | "disclosure" }) {
-  const title = item.title || item.reportName || item.headline || item.summary || "제목 없음";
+  const title = (kind === "news" && item.titleKo) || item.title || item.reportName || item.headline || item.summary || "제목 없음";
   const rawDate = item.date || item.publishedAt || item.disclosedAt || "";
   const date = formatKoreanDate(rawDate);
   const link = item.url || item.link || item.articleUrl || "";

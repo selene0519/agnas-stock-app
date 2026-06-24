@@ -2530,6 +2530,12 @@ def api_news(
             try:
                 with path.open("r", encoding=enc, newline="") as f:
                     for row in _NC.DictReader(f):
+                        # 파일명이 mk 접미사를 갖더라도 row 자체의 market 컬럼이
+                        # 다르면 건너뛴다 (예: toss_holdings_kr.csv가 실제로는
+                        # 미국 보유종목을 담고 있는 경우 한국 심볼로 잘못 변환 방지).
+                        row_market = str(row.get("market") or row.get("시장") or "").strip().lower()
+                        if row_market and row_market not in (mk, ""):
+                            continue
                         sym = data.normalize_symbol(
                             row.get("symbol") or row.get("종목코드") or row.get("ticker") or "", mk
                         )
@@ -2539,7 +2545,11 @@ def api_news(
             except Exception:
                 continue
 
-    for fname in (f"holdings_{mk}.csv", f"data/holdings_{mk}.csv", f"watchlist_{mk}.csv", f"data/watchlist_{mk}.csv"):
+    for fname in (
+        f"data/toss_holdings_{mk}.csv", f"data/kis_2_holdings_{mk}.csv", f"data/kis_holdings_{mk}.csv",
+        f"holdings_{mk}.csv", f"data/holdings_{mk}.csv",
+        f"watchlist_{mk}_growth.csv", f"watchlist_{mk}.csv", f"data/watchlist_{mk}.csv",
+    ):
         _read_symbols(repo / fname)
 
     if not relevant:
@@ -4470,6 +4480,13 @@ def _install_mone_authoritative_holdings_clean_v3():
                 }
         return {}
 
+    def _ohlcv_price_age_days(date_text: str) -> int:
+        try:
+            parsed = _mone_datetime.strptime(str(date_text)[:10], "%Y-%m-%d")
+            return (_mone_datetime.now() - parsed).days
+        except Exception:
+            return 0
+
     def _holding_source_candidates(market: str) -> list[_MonePath]:
         if market == "kr":
             return [
@@ -4732,7 +4749,16 @@ def _install_mone_authoritative_holdings_clean_v3():
                 **line_fields,
                 "riskLevel": _text(v, ["riskLevel", "risk", "status", "판정"], "NORMAL") or "NORMAL",
                 "riskStatus": risk_status,
-                "dataStatus": "NORMAL" if price_source_type == "live_quote" else ("PARTIAL" if current > 0 else "NO_PRICE"),
+                # OHLCV 종가로 대체된 가격은 날짜와 무관하게 항상 "PARTIAL"로만
+                # 표시됐다 — 몇 주 전 종가로 평가금액/손익을 계산해도 사용자에게는
+                # 거의 정상처럼 보이는 문제가 있었다. 5일 넘게 오래된 종가는
+                # STALE로 명확히 구분한다.
+                "dataStatus": (
+                    "NORMAL" if price_source_type == "live_quote"
+                    else "NO_PRICE" if current <= 0
+                    else "STALE" if price_source_type == "ohlcv_close" and _ohlcv_price_age_days(ohlcv_ref.get("currentPriceDate", "")) > 5
+                    else "PARTIAL"
+                ),
                 "source": row["source"],
                 "broker": row.get("broker", ""),
                 "brokerSource": row.get("brokerSource", ""),
@@ -4794,20 +4820,27 @@ def _install_mone_authoritative_holdings_clean_v3():
                 bucket["totalPnlText"] = _money(bucket["totalPnl"], mk)
             mixed = len(active) > 1
             if mixed:
+                # KRW와 USD 보유종목이 섞여 있으면 원시 숫자를 그대로 더하는 것은
+                # 의미가 없다(환율 미반영 — 예: 700만원 + $50 = "7000050"처럼
+                # 보임). 텍스트는 시장별로 분리해 보여주고, 숫자 합계는 None으로
+                # 둬서 호출 측이 잘못된 부호/금액을 표시하지 않도록 한다.
                 total_value_text = " / ".join(v["totalValueText"] for v in active)
                 total_pnl_text = " / ".join(v["totalPnlText"] for v in active)
-                total_pnl = sum(v["totalPnl"] for v in active)
+                total_value = None
+                total_pnl = None
             elif active:
                 total_value_text = active[0]["totalValueText"]
                 total_pnl_text = active[0]["totalPnlText"]
+                total_value = active[0]["totalValue"]
                 total_pnl = active[0]["totalPnl"]
             else:
                 total_value_text = "-"
                 total_pnl_text = "-"
+                total_value = 0.0
                 total_pnl = 0.0
             return {
                 "count": len(rows),
-                "totalValue": sum(v["totalValue"] for v in active),
+                "totalValue": total_value,
                 "totalValueText": total_value_text,
                 "totalPnl": total_pnl,
                 "totalPnlText": total_pnl_text,

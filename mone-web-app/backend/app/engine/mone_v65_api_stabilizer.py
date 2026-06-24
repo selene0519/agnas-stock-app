@@ -29,7 +29,7 @@ def _ttl_get(key: str, ttl: float) -> tuple[bool, Any]:
 def _ttl_set(key: str, value: Any) -> None:
     _TTL_STORE[key] = (time.time(), value)
 
-from fastapi import Body, Query
+from fastapi import Body, Header, Query
 from fastapi.routing import APIRoute
 
 from app.services import runtime_limits
@@ -4231,7 +4231,15 @@ def register_mone_v65_api_stabilizer(app: Any) -> None:
         return _safe_payload(lambda: _index_chart_payload(index_symbol, market, limit), "/api/chart/index")
 
     @app.get("/api/portfolio/nav")
-    def portfolio_nav(limit: int = Query(120)) -> dict[str, Any]:
+    def portfolio_nav(limit: int = Query(120), authorization: str | None = Header(default=None)) -> dict[str, Any]:
+        # 포트폴리오 누적수익률은 실제 계좌 데이터다 — 로그인(OAuth) 없이
+        # 누구나 열람 가능했던 문제를 막기 위해 서명된 사용자 토큰을 요구한다.
+        # main.py에서 이미 로드된 모듈을 지연 import — 순환 import 방지.
+        from app.main import _verify_user_token, _extract_bearer_token
+        token = _extract_bearer_token(authorization)
+        if not _verify_user_token(token):
+            return {"status": "LOGIN_REQUIRED", "items": [], "count": 0,
+                    "message": "로그인 후 본인 포트폴리오 추이를 확인할 수 있습니다."}
         return _safe_payload(lambda: _portfolio_nav_payload(limit), "/api/portfolio/nav")
 
     @app.get("/api/risk/correlation")

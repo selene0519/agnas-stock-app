@@ -810,8 +810,8 @@ def _merge_window_stats(stats_list: list[dict]) -> dict[str, Any]:
     if not valid:
         return {"status": "DATA_INSUFFICIENT", "windowCount": 0}
 
-    def _wavg(key: str) -> float | None:
-        weights = [s.get("recommendationCount", 0) for s in valid]
+    def _wavg(key: str, weight_key: str = "recommendationCount") -> float | None:
+        weights = [s.get(weight_key, 0) for s in valid]
         vals    = [_num(s.get(key)) for s in valid]
         total_w = sum(w for w, v in zip(weights, vals) if v is not None)
         if total_w == 0:
@@ -828,16 +828,21 @@ def _merge_window_stats(stats_list: list[dict]) -> dict[str, Any]:
         "windowCount":         len(valid),
         "recommendationCount": sum(s.get("recommendationCount", 0) for s in valid),
         "executionCount":      sum(s.get("executionCount", 0) for s in valid),
-        "executionRate":       _wavg("executionRate"),
+        # executionRate/missEntryRate는 recommendationCount(전체 추천 수)가
+        # 분모이므로 그대로 추천수 가중. winRate/stopHitRate/avgNetPnlPct/
+        # profitLossRatio는 executionCount(실제 체결된 거래 수)가 분모인데
+        # 추천수로 가중 평균하면 진입이 거의 안 된 창(window)이 승률에 과도한
+        # 영향을 주는 통계 오류가 있었다 — executionCount로 가중하도록 수정.
+        "executionRate":       _wavg("executionRate", "recommendationCount"),
         "winCount":            sum(s.get("winCount", 0) for s in valid),
-        "winRate":             _wavg("winRate"),
+        "winRate":             _wavg("winRate", "executionCount"),
         "stopCount":           sum(s.get("stopCount", 0) for s in valid),
-        "stopHitRate":         _wavg("stopHitRate"),
-        "missEntryRate":       _wavg("missEntryRate"),
-        "avgNetPnlPct":        _wavg("avgNetPnlPct"),
+        "stopHitRate":         _wavg("stopHitRate", "executionCount"),
+        "missEntryRate":       _wavg("missEntryRate", "recommendationCount"),
+        "avgNetPnlPct":        _wavg("avgNetPnlPct", "executionCount"),
         "cumulativeNetPnlPct": round(sum((_num(s.get("cumulativeNetPnlPct")) or 0) for s in valid), 3),
         "mddPct":              min((_num(s.get("mddPct")) or 0) for s in valid),
-        "profitLossRatio":     _wavg("profitLossRatio"),
+        "profitLossRatio":     _wavg("profitLossRatio", "executionCount"),
         "reasonCounts":        merged_reasons,
     }
 

@@ -7,7 +7,7 @@ import PortfolioOptimizePanel from "../PortfolioOptimizePanel";
 import AlertsPanel from "../AlertsPanel";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo } from "@/lib/moneDisplay";
-import { getUserId } from "@/lib/userId";
+import { getUserId, getUserProfile, getUserToken } from "@/lib/userId";
 import type { BootPreloadData } from "@/lib/bootPreload";
 
 type Market = "all" | "kr" | "us";
@@ -309,11 +309,25 @@ function NavCurve() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [kospiRows, setKospiRows] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [loginRequired, setLoginRequired] = useState(false);
 
   useEffect(() => {
-    fetch("/mone-api/api/portfolio/nav", { cache: "no-store" })
+    // 실제 계좌 누적수익률은 본인(로그인 사용자)만 봐야 한다 — 로그인 없이도
+    // 누구나 포트폴리오 추이를 볼 수 있었던 문제를 막기 위해 토큰을 보낸다.
+    const token = getUserToken();
+    const profile = getUserProfile();
+    if (!token || !profile) {
+      setLoginRequired(true);
+      setNavRows([]);
+      return;
+    }
+    setLoginRequired(false);
+    fetch("/mone-api/api/portfolio/nav", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((d) => setNavRows(Array.isArray(d.items) ? d.items : []))
+      .then((d) => {
+        if (d.status === "LOGIN_REQUIRED") { setLoginRequired(true); setNavRows([]); return; }
+        setNavRows(Array.isArray(d.items) ? d.items : []);
+      })
       .catch(() => setNavRows([]));
     fetch("/mone-api/api/chart/index/KOSPI?market=kr&limit=365", { cache: "no-store" })
       .then((r) => r.json())
@@ -420,6 +434,15 @@ function NavCurve() {
     if (firstDate) ctx.fillText(firstDate, pad.l, H - 4);
     if (lastDate) { ctx.textAlign = "right"; ctx.fillText(lastDate, W - pad.r, H - 4); }
   }, [navRows, kospiRows]);
+
+  if (loginRequired) {
+    return (
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 px-5 py-4">
+        <div className="text-sm font-semibold text-slate-200">NAV 누적 수익률</div>
+        <p className="mt-1.5 text-xs text-slate-500">로그인 후 본인 포트폴리오 추이를 확인할 수 있습니다.</p>
+      </div>
+    );
+  }
 
   if (navRows.length < 2) return null;
 

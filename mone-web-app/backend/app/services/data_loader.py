@@ -3163,6 +3163,8 @@ def news_rows(market: str) -> dict[str, Any]:
             "market": market,
             "title": title,
             "summary": summary,
+            "titleKo": first_value(row, ["제목_한글", "titleKo"], ""),
+            "summaryKo": first_value(row, ["요약_한글", "summaryKo"], ""),
             "sourceName": first_value(row, ["출처", "source"], "출처 없음"),
             "url": first_value(row, ["URL", "url"], ""),
             "publishedAt": first_value(row, ["게시시간", "published_at", "time"], "게시시간 없음"),
@@ -3199,6 +3201,57 @@ def _existing_gnews_result(market: str, status: str, error: str) -> dict[str, An
     return result
 
 
+_TRANSLATION_CACHE_PATH = DATA_DIR / "translation_cache.json"
+
+
+@lru_cache(maxsize=1)
+def _translation_cache() -> dict[str, str]:
+    return dict(read_json(_TRANSLATION_CACHE_PATH) or {})
+
+
+def translate_to_korean(text: str, max_calls: list[int] | None = None) -> str:
+    """영문 뉴스 제목/요약을 한글로 번역한다.
+
+    ANTHROPIC_API_KEY 없이도 동작하도록 MyMemory 무료 번역 API(키 불필요)를 쓴다.
+    동일 문장은 디스크 캐시(translation_cache.json)에 저장해 재호출을 피하고,
+    무료 한도 보호를 위해 max_calls(호출 1회당 1 감소하는 리스트)가 0이면
+    네트워크 호출 없이 원문을 그대로 반환한다.
+    """
+    text = (text or "").strip()
+    if not text:
+        return ""
+    cache = _translation_cache()
+    key = text[:300]
+    if key in cache:
+        return cache[key]
+    if max_calls is not None:
+        if max_calls[0] <= 0:
+            return text
+        max_calls[0] -= 1
+    try:
+        resp = requests.get(
+            "https://api.mymemory.translated.net/get",
+            params={"q": text[:480], "langpair": "en|ko"},
+            timeout=6,
+        )
+        payload = resp.json()
+        translated = str((payload.get("responseData") or {}).get("translatedText") or "").strip()
+        # 한도 초과/실패 시 MyMemory가 원문을 그대로(때로는 따옴표만 덧붙여) 돌려주는
+        # 경우가 있다 — 한글(가-힣)이 하나도 없으면 실제 번역이 아니라고 판단한다.
+        has_hangul = bool(re.search(r"[가-힣]", translated))
+        stripped = translated.strip("\"'")
+        if translated and has_hangul and stripped.lower() != text.lower():
+            cache[key] = translated
+            try:
+                write_json(_TRANSLATION_CACHE_PATH, cache)
+            except Exception:
+                pass
+            return translated
+    except Exception:
+        pass
+    return text
+
+
 def collect_gnews(market: str = "all") -> dict[str, Any]:
     """GNews API로 주식 뉴스를 수집해 news_summary_{kr|us}.csv로 저장한다."""
     api_key = os.environ.get("GNEWS_API_KEY", "").strip()
@@ -3231,11 +3284,18 @@ def collect_gnews(market: str = "all") -> dict[str, Any]:
 
         articles = data.get("articles", [])
         rows = []
+        translate_budget = [30]  # MyMemory 무료 한도 보호용 — 실행당 최대 30회 신규 번역
         for art in articles:
+            title = art.get("title", "")
+            summary = art.get("description", title)
+            title_ko = translate_to_korean(title, translate_budget) if mk == "us" else title
+            summary_ko = translate_to_korean(summary, translate_budget) if mk == "us" else summary
             rows.append({
                 "시장": "한국주식" if mk == "kr" else "미국주식",
-                "제목": art.get("title", ""),
-                "3줄요약": art.get("description", art.get("title", "")),
+                "제목": title,
+                "3줄요약": summary,
+                "제목_한글": title_ko,
+                "요약_한글": summary_ko,
                 "출처": art.get("source", {}).get("name", "GNews"),
                 "URL": art.get("url", ""),
                 "게시시간": art.get("publishedAt", ""),
@@ -4156,6 +4216,7 @@ def _collect_us_company_news(days: int = 45, max_symbols: int = 60) -> dict[str,
     start = end - pd.Timedelta(days=max(1, days))
     rows: list[dict[str, Any]] = []
     errors: list[str] = []
+    translate_budget = [30]  # MyMemory 무료 한도 보호용 — 실행당 최대 30회 신규 번역
     for sym in tickers:
         try:
             res = requests.get(
@@ -4172,10 +4233,14 @@ def _collect_us_company_news(days: int = 45, max_symbols: int = 60) -> dict[str,
             # 날짜순 오름차순: 가장 오래된 기사부터 저장 (신호 발생 시점 근처 기사 보존)
             articles_sorted = sorted(articles, key=lambda x: x.get("datetime", 0))
             for art in articles_sorted[:20]:
+                headline = art.get("headline", "")
+                summary = art.get("summary", headline)[:200]
                 rows.append({
                     "시장": "미국주식",
-                    "제목": art.get("headline", ""),
-                    "3줄요약": art.get("summary", art.get("headline", ""))[:200],
+                    "제목": headline,
+                    "3줄요약": summary,
+                    "제목_한글": translate_to_korean(headline, translate_budget),
+                    "요약_한글": translate_to_korean(summary, translate_budget),
                     "출처": art.get("source", "Finnhub"),
                     "URL": art.get("url", ""),
                     "게시시간": art.get("datetime", ""),
