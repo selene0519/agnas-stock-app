@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-06-24 23:30:02",
-  "totalRows": 68,
+  "updatedAt": "2026-06-25 07:27:31",
+  "totalRows": 70,
   "olsSampleSize": 23,
   "byStrategy": {
     "conservative_short": {
@@ -48,15 +48,15 @@
       "probAccuracy": -0.624
     },
     "balanced_swing": {
-      "total": 9,
-      "wins": 6,
-      "losses": 3,
-      "winRate": 0.6667,
+      "total": 11,
+      "wins": 7,
+      "losses": 4,
+      "winRate": 0.6364,
       "avgWinPct": 13.0,
-      "avgLossPct": 7.955,
-      "payoffRatio": 1.634,
-      "avgProbability": 69.5,
-      "probAccuracy": -0.028
+      "avgLossPct": 7.591,
+      "payoffRatio": 1.712,
+      "avgProbability": 65.6,
+      "probAccuracy": -0.02
     },
     "balanced_mid": {
       "total": 3,
@@ -94,11 +94,11 @@
   },
   "byMarket": {
     "kr": {
-      "total": 46,
-      "winRate": 0.1304,
+      "total": 48,
+      "winRate": 0.1458,
       "avgWinPct": 13.0,
-      "avgLossPct": 5.58,
-      "payoffRatio": 2.33
+      "avgLossPct": 5.602,
+      "payoffRatio": 2.321
     },
     "us": {
       "total": 22,
@@ -110,8 +110,8 @@
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 9,
-      "actualWinRate": 0.0
+      "count": 11,
+      "actualWinRate": 0.0909
     },
     "mid_60-75": {
       "count": 40,
@@ -165,11 +165,11 @@
     }
   },
   "insight": [
-    "호라이즌: swing 전략 평균 승률 33.3%로 최고",
-    "모드: balanced 전략 평균 payoff 1.39x로 최고",
-    "마켓: KR 승률 13.0%로 우위",
+    "호라이즌: swing 전략 평균 승률 31.8%로 최고",
+    "모드: balanced 전략 평균 payoff 1.43x로 최고",
+    "마켓: KR 승률 14.6%로 우위",
     "회귀분석: probability 높을수록 수익률 향상 (β=+17.921)",
     "전체 팩터 설명력 R²=0.361 (0~1, 높을수록 예측력 강함)",
-    "Kelly 최대: conservative_mid → 포트폴리오 15.5% 권장"
+    "Kelly 최대: balanced_swing → 포트폴리오 20.0% 권장"
   ]
 }
