@@ -1,9 +1,9 @@
 {
   "status": "OK",
-  "sampleCount": 18,
+  "sampleCount": 21,
   "baseWinRate": 0.0,
-  "baseAvgPnlPct": -7.406,
-  "generatedAt": "2026-06-24T07:27:28",
+  "baseAvgPnlPct": -7.998,
+  "generatedAt": "2026-06-24T09:19:21",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -20,7 +20,7 @@
       "n": 4,
       "winRate": 0.0,
       "avgPnlPct": -4.755,
-      "multiplier": 0.857,
+      "multiplier": 0.838,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -32,22 +32,22 @@
       "n": 3,
       "winRate": 0.0,
       "avgPnlPct": -7.504,
-      "multiplier": 1.005,
+      "multiplier": 0.975,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
     },
     {
-      "feedbackId": "086bb50ed454aa7dea5f",
+      "feedbackId": "0778cb5e688950116810",
       "mode": "conservative",
       "horizon": "mid",
-      "n": 3,
+      "n": 4,
       "winRate": 0.0,
-      "avgPnlPct": -7.915,
-      "multiplier": 1.028,
-      "direction": "NEUTRAL",
+      "avgPnlPct": -9.217,
+      "multiplier": 1.061,
+      "direction": "BOOST",
       "suggestedOnly": true,
-      "manualApprovalRequired": false
+      "manualApprovalRequired": true
     },
     {
       "feedbackId": "78bb440a1c77464c757d",
@@ -56,10 +56,22 @@
       "n": 3,
       "winRate": 0.0,
       "avgPnlPct": -7.083,
-      "multiplier": 0.983,
+      "multiplier": 0.954,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
+    },
+    {
+      "feedbackId": "036012e2640e0cec1d38",
+      "mode": "aggressive",
+      "horizon": "swing",
+      "n": 3,
+      "winRate": 0.0,
+      "avgPnlPct": -10.922,
+      "multiplier": 1.146,
+      "direction": "BOOST",
+      "suggestedOnly": true,
+      "manualApprovalRequired": true
     }
   ]
 }
