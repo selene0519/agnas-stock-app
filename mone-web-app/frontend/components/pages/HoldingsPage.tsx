@@ -1044,7 +1044,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <Download size={14} /> 한국투자 연결
           </button>
           <button onClick={() => { setShowAdd(!showAdd); setShowImport(false); setMessage(""); }}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-semibold text-white hover:bg-emerald-500 sm:text-sm">
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-2 py-2 text-xs font-semibold text-white hover:bg-blue-500 sm:text-sm">
             <Plus size={14} /> 직접 추가
           </button>
         </div>

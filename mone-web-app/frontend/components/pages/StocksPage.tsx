@@ -825,7 +825,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }
 
   const marketTabs: { id: Market; label: string }[] = [
-    { id: "all", label: `자동(${marketLabel(autoMarket)})` },
+    { id: "all", label: "자동" },
     { id: "kr", label: "국장" },
     { id: "us", label: "미장" },
   ];

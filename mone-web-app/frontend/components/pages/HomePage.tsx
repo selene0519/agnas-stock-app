@@ -1381,7 +1381,7 @@ function MarketGateCard({
             <div className="text-xs font-black text-slate-600">공포탐욕지수</div>
             <div className="relative mx-auto mt-3 flex h-16 w-16 items-center justify-center">
               {ring(sentimentScore, sentimentScore >= 70 ? "#34d399" : sentimentScore >= 40 ? "#f59e0b" : "#ef4444")}
-              <div className="absolute text-center font-mono text-sm font-black text-amber-300 tabular-nums">
+              <div className={`absolute text-center font-mono text-sm font-black tabular-nums ${sentimentScore >= 70 ? "text-emerald-300" : sentimentScore >= 40 ? "text-amber-300" : "text-red-300"}`}>
                 {sentimentScore}<div className="text-[9px] text-slate-500">/100</div>
               </div>
             </div>
@@ -1921,7 +1921,8 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
         <div className="mb-2 text-2xl">📋</div>
         <h2 className="text-base font-semibold text-slate-100">보유종목을 등록해주세요</h2>
         <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-          내 종목을 기준으로 오늘의 위험과 기회를 1분 안에 점검해드립니다.<br />
+          내 종목을 기준으로 오늘의 위험과 기회를<br />
+          1분 안에 점검해드립니다.<br />
           <span className="text-slate-500 text-xs">MONE은 추천보다 먼저 하면 안 되는 거래를 알려줍니다.</span>
         </p>
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">

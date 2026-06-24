@@ -81,11 +81,11 @@ export default function SessionSafetyBanner({
   }, [market]);
 
   const tone = useMemo(() => {
-    if (quality?.killSwitch) return "border-red-500/40 bg-red-950/40 text-red-100";
-    if (quality?.networkError) return "border-amber-500/30 bg-amber-950/20 text-amber-100";
-    if (quality?.isHoliday) return "border-blue-500/30 bg-blue-950/20 text-blue-100";
-    if (quality?.dataStatus === "PARTIAL") return "border-amber-500/30 bg-amber-950/20 text-amber-100";
-    return "border-emerald-500/20 bg-emerald-950/10 text-slate-200";
+    if (quality?.killSwitch) return "border-red-500/40 bg-red-500/10 text-red-100";
+    if (quality?.networkError) return "border-amber-500/30 bg-amber-500/10 text-amber-100";
+    if (quality?.isHoliday) return "border-blue-500/30 bg-blue-500/10 text-blue-100";
+    if (quality?.dataStatus === "PARTIAL") return "border-amber-500/30 bg-amber-500/10 text-amber-100";
+    return "border-emerald-500/20 bg-emerald-500/5 text-slate-200";
   }, [quality]);
 
   if (hidden || !quality) return null;
