@@ -1,9 +1,9 @@
 {
   "status": "OK",
-  "sampleCount": 21,
+  "sampleCount": 23,
   "baseWinRate": 0.0,
-  "baseAvgPnlPct": -7.998,
-  "generatedAt": "2026-06-24T09:19:21",
+  "baseAvgPnlPct": -8.286,
+  "generatedAt": "2026-06-24T16:46:08",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -20,19 +20,19 @@
       "n": 4,
       "winRate": 0.0,
       "avgPnlPct": -4.755,
-      "multiplier": 0.838,
+      "multiplier": 0.83,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "4e1e46c4785dbee064ba",
+      "feedbackId": "53d39628f34f035769e0",
       "mode": "conservative",
       "horizon": "swing",
-      "n": 3,
+      "n": 4,
       "winRate": 0.0,
-      "avgPnlPct": -7.504,
-      "multiplier": 0.975,
+      "avgPnlPct": -8.406,
+      "multiplier": 1.006,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -44,10 +44,10 @@
       "n": 4,
       "winRate": 0.0,
       "avgPnlPct": -9.217,
-      "multiplier": 1.061,
-      "direction": "BOOST",
+      "multiplier": 1.045,
+      "direction": "NEUTRAL",
       "suggestedOnly": true,
-      "manualApprovalRequired": true
+      "manualApprovalRequired": false
     },
     {
       "feedbackId": "78bb440a1c77464c757d",
@@ -56,19 +56,19 @@
       "n": 3,
       "winRate": 0.0,
       "avgPnlPct": -7.083,
-      "multiplier": 0.954,
-      "direction": "NEUTRAL",
+      "multiplier": 0.942,
+      "direction": "REDUCE",
       "suggestedOnly": true,
-      "manualApprovalRequired": false
+      "manualApprovalRequired": true
     },
     {
-      "feedbackId": "036012e2640e0cec1d38",
+      "feedbackId": "ab636a507574517b8519",
       "mode": "aggressive",
       "horizon": "swing",
-      "n": 3,
+      "n": 4,
       "winRate": 0.0,
-      "avgPnlPct": -10.922,
-      "multiplier": 1.146,
+      "avgPnlPct": -11.067,
+      "multiplier": 1.134,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
