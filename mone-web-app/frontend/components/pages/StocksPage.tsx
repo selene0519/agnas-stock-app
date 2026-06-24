@@ -825,7 +825,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }
 
   const marketTabs: { id: Market; label: string }[] = [
-    { id: "all", label: `자동(${marketLabel(autoMarket)})` },
+    { id: "all", label: "자동" },
     { id: "kr", label: "국장" },
     { id: "us", label: "미장" },
   ];
@@ -851,7 +851,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">종목 탐색</h1>
+        <h1 className="text-[19px] font-black leading-none text-slate-100">종목 탐색</h1>
         <p className="mt-1 text-sm text-slate-400">
           관심종목과 전체 후보를 시장, 투자 성향, 투자 기간 기준으로 탐색합니다.
         </p>
@@ -869,14 +869,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 setMarket(item.id);
                 setSelected(null);
               }}
-              className={`min-w-0 rounded-xl border px-2 py-2 text-sm ${market === item.id ? "border-emerald-500 bg-emerald-500/10 text-white" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+              className={`min-h-10 min-w-0 rounded-xl border px-2 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item.id ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-950 text-slate-400"}`}
             >
               {item.label}
             </button>
           ))}
           <button
             onClick={() => setWatchOnly(!watchOnly)}
-            className={`min-w-0 rounded-xl px-2 py-2 text-sm ${watchOnly ? "bg-amber-500 text-slate-950" : "bg-slate-950 text-slate-400"}`}
+            className={`min-h-10 min-w-0 rounded-xl border px-2 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${watchOnly ? "mone-selection-warning font-semibold" : "border-slate-800 bg-slate-950 text-slate-400"}`}
           >
             관심종목
           </button>
@@ -1195,7 +1195,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <button
                   key={item.id}
                   onClick={() => setMode(item.id)}
-                  className={`rounded-xl border p-3 text-left ${mode === item.id ? "border-emerald-500 bg-emerald-500/10 text-white" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+                  className={`rounded-xl border p-3 text-left ${mode === item.id ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                 >
                   <div className="font-bold">{item.label}</div>
                   <div className="mt-1 text-[11px] text-slate-500">
@@ -1214,7 +1214,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <button
                   key={item.id}
                   onClick={() => setHorizon(item.id)}
-                  className={`rounded-xl border p-3 text-left ${horizon === item.id ? "border-cyan-500 bg-cyan-500/10 text-white" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+                  className={`rounded-xl border p-3 text-left ${horizon === item.id ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                 >
                   <div className="font-bold">{item.label}</div>
                   <div className="mt-1 text-[11px] text-slate-500">

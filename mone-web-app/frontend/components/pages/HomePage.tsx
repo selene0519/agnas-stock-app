@@ -597,19 +597,19 @@ function TodayEntryCard({
   const toneStyle = {
     entry: {
       card: "hover:border-blue-500/45 focus:ring-blue-500/40",
-      rank: "bg-emerald-600 text-white",
+      rank: "border border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
       decision: "text-emerald-300",
       accent: "bg-emerald-500",
     },
     watch: {
       card: "hover:border-cyan-500/45 focus:ring-cyan-500/40",
-      rank: "bg-amber-500 text-slate-950",
+      rank: "border border-amber-500/40 bg-amber-500/15 text-amber-300",
       decision: "text-amber-300",
       accent: "bg-amber-500",
     },
     risk: {
       card: "hover:border-red-500/45 focus:ring-red-500/40",
-      rank: "bg-red-600 text-white",
+      rank: "border border-red-500/40 bg-red-500/15 text-red-300",
       decision: "text-red-300",
       accent: "bg-red-500",
     },
@@ -729,7 +729,7 @@ function TodayEntryCard({
             event.stopPropagation();
             onAnalyze(item);
           }}
-          className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-blue-500 active:scale-[0.96]"
+          className="mone-analysis-action flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] px-3 py-2 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
         >
           분석 보기 <ArrowRight size={14} />
         </button>
@@ -740,7 +740,7 @@ function TodayEntryCard({
               event.stopPropagation();
               onTradePaper(item);
             }}
-            className="flex min-h-10 items-center justify-center gap-1 rounded-[11px] border border-emerald-700/50 bg-emerald-900/30 px-3 py-2 text-xs font-semibold text-emerald-300 transition-[background-color,transform] hover:bg-emerald-900/60 active:scale-[0.96]"
+            className="mone-interest-action flex min-h-10 items-center justify-center gap-1 rounded-[11px] px-3 py-2 text-xs font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
           >
             모의투자
           </button>
@@ -839,18 +839,20 @@ function CandidateCarouselSection({
       <div className="mb-3 grid grid-cols-3 gap-2">
         {tabs.map((tab) => {
           const active = candidateTab === tab.key;
+          const toneClass = tab.key === "today"
+            ? "mone-candidate-safe"
+            : tab.key === "watch"
+              ? "mone-candidate-warning"
+              : "mone-candidate-danger";
           return (
             <button
               key={tab.key}
               type="button"
+              data-active={active ? "true" : "false"}
               onClick={() => setCandidateTab(tab.key)}
-              className={`min-h-10 min-w-0 rounded-xl px-2 text-[11px] font-black transition-[background-color,color,transform] active:scale-[0.96] ${
-                active
-                  ? "bg-blue-600 text-white"
-                  : "border border-white/10 bg-[#181E2E] text-slate-400 hover:text-slate-200"
-              }`}
+              className={`mone-candidate-tab ${toneClass} min-h-10 min-w-0 rounded-xl px-2 text-[11px] font-black transition-[background-color,box-shadow,color,transform] active:scale-[0.96]`}
             >
-              {tab.label} <span className={`ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] ${active ? "bg-white/20 text-white" : "bg-white/10 text-slate-500"}`}>{loading ? "-" : tab.count}</span>
+              {tab.label} <span className="mone-candidate-count ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px]">{loading ? "-" : tab.count}</span>
             </button>
           );
         })}
@@ -894,8 +896,13 @@ function CandidateCarouselSection({
                 onClick={() => moveToCard(index)}
                 aria-label={`${index + 1}번 후보 카드로 이동`}
                 aria-current={activeCard === index ? "true" : undefined}
-                className={`h-1.5 rounded-full transition-[width,background-color,transform] active:scale-[0.96] ${activeCard === index ? "w-4 bg-blue-500" : "w-1.5 bg-slate-700"}`}
-              />
+                className="group inline-flex h-6 w-6 items-center justify-center rounded-full active:scale-[0.96]"
+              >
+                <span
+                  data-active={activeCard === index ? "true" : "false"}
+                  className={`mone-candidate-dot ${candidateTab === "today" ? "mone-candidate-safe" : candidateTab === "watch" ? "mone-candidate-warning" : "mone-candidate-danger"} h-1.5 rounded-full transition-[width,background-color] ${activeCard === index ? "w-4" : "w-1.5"}`}
+                />
+              </button>
             ))}
           </div>
         </>
@@ -1268,6 +1275,7 @@ function BacktestBadge({ item, badgeMap }: { item: any; badgeMap: Record<string,
 
 function getMarketGateInfo(regime: any, dataHealth: any) {
   const base = regime?.regime === "BULL" ? 70 : regime?.regime === "BEAR" ? 22 : 50;
+  const hasRegimeMa = regime?.distanceMa20Pct != null || regime?.distanceToMa20Pct != null;
   const maDist = Number(regime?.distanceMa20Pct ?? regime?.distanceToMa20Pct ?? 0);
   const maAdj = maDist >= 3 ? 10 : maDist >= 1 ? 5 : maDist >= -1 ? 0 : maDist >= -3 ? -8 : -15;
 
@@ -1284,7 +1292,7 @@ function getMarketGateInfo(regime: any, dataHealth: any) {
   const isMid = strength >= 35 && strength < 55;
   const isLow = strength < 35;
 
-  return { strength, levelText, isHigh, isMid, isLow, maDist, dataAdj, hasOhlcv };
+  return { strength, levelText, isHigh, isMid, isLow, maDist, dataAdj, hasOhlcv, hasRegimeMa };
 }
 
 // ── 시장 컨디션 게이트
@@ -1303,7 +1311,7 @@ function MarketGateCard({
   onToggle: () => void;
   basisWarning: { recommendation: string; current: string; ohlcv: string } | null;
 }) {
-  const { strength, levelText, isHigh, isMid, maDist, dataAdj, hasOhlcv } = getMarketGateInfo(regime, dataHealth);
+  const { strength, levelText, isHigh, isMid, maDist, dataAdj, hasOhlcv, hasRegimeMa } = getMarketGateInfo(regime, dataHealth);
 
   const textCls   = isHigh ? "text-emerald-300" : isMid ? "text-amber-300" : "text-red-300";
   const barCls    = isHigh ? "bg-emerald-500" : isMid ? "bg-amber-500" : "bg-red-500";
@@ -1312,7 +1320,7 @@ function MarketGateCard({
   const benchmarkText = benchmarkValue > 0 ? benchmarkValue.toLocaleString("ko-KR", { maximumFractionDigits: 1 }) : "-";
   const ohlcvDate = String(dataHealth?.ohlcvLatestDate || dataHealth?.latestDataDate || "").slice(5) || "-";
   const sentimentText = sentimentScore >= 70 ? "탐욕" : sentimentScore >= 40 ? "중립" : "공포";
-  const trendText = maDist >= 0 ? "이격 양호" : "이격 주의";
+  const trendText = !hasRegimeMa ? "데이터 확인 중" : maDist >= 0 ? "이격 양호" : "이격 주의";
   const dataText = dataAdj === 0 ? "정상" : dataAdj <= -15 ? "확인 필요" : hasOhlcv ? "종가 기준" : "부분";
   const detailMetrics = Array.isArray(fearGreedData?.components) ? fearGreedData.components : [];
   const ring = (value: number, color: string) => {
@@ -1370,18 +1378,18 @@ function MarketGateCard({
           <div className="px-2">
             <div className="text-xs font-black text-slate-600">{regime?.benchmark || "KOSPI"} 20일선</div>
             <div className="relative mx-auto mt-3 flex h-16 w-16 items-center justify-center">
-              {ring(Math.min(100, Math.abs(maDist) * 12 + 18), maDist >= 0 ? "#34d399" : "#ef4444")}
-              <div className={`absolute font-mono text-sm font-black tabular-nums ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}%
+              {ring(hasRegimeMa ? Math.min(100, Math.abs(maDist) * 12 + 18) : 0, !hasRegimeMa ? "#475569" : maDist >= 0 ? "#34d399" : "#ef4444")}
+              <div className={`absolute font-mono text-sm font-black tabular-nums ${!hasRegimeMa ? "text-slate-500" : maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                {hasRegimeMa ? `${maDist >= 0 ? "+" : ""}${maDist.toFixed(1)}%` : "-"}
               </div>
             </div>
-            <div className={`mt-2 text-sm font-black ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{trendText}</div>
+            <div className={`mt-2 text-sm font-black ${!hasRegimeMa ? "text-slate-500" : maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{trendText}</div>
           </div>
           <div className="px-2">
             <div className="text-xs font-black text-slate-600">공포탐욕지수</div>
             <div className="relative mx-auto mt-3 flex h-16 w-16 items-center justify-center">
               {ring(sentimentScore, sentimentScore >= 70 ? "#34d399" : sentimentScore >= 40 ? "#f59e0b" : "#ef4444")}
-              <div className="absolute text-center font-mono text-sm font-black text-amber-300 tabular-nums">
+              <div className={`absolute text-center font-mono text-sm font-black tabular-nums ${sentimentScore >= 70 ? "text-emerald-300" : sentimentScore >= 40 ? "text-amber-300" : "text-red-300"}`}>
                 {sentimentScore}<div className="text-[9px] text-slate-500">/100</div>
               </div>
             </div>
@@ -1392,7 +1400,7 @@ function MarketGateCard({
         <div className="grid grid-cols-3 divide-x divide-slate-800/80 pt-4 text-center">
           <div>
             <div className="text-xs font-black text-slate-600">{regime?.benchmark || "KOSPI"}</div>
-            <div className={`mt-2 font-mono text-lg font-black tabular-nums ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{benchmarkText}</div>
+            <div className={`mt-2 font-mono text-lg font-black tabular-nums ${benchmarkText === "-" ? "text-slate-500" : maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{benchmarkText}</div>
           </div>
           <div>
             <div className="text-xs font-black text-slate-600">데이터 상태</div>
@@ -1417,21 +1425,19 @@ function MarketGateCard({
           </div>
 
           {detailMetrics.length > 0 ? (
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 space-y-1.5">
               {detailMetrics.map((metric: any, index: number) => {
                 const score = Math.max(0, Math.min(100, Number(metric?.score ?? 0)));
                 const barCls = score < 40 ? "bg-red-500" : score < 60 ? "bg-amber-500" : "bg-emerald-500";
                 const valueTone = score < 40 ? "text-red-300" : score < 60 ? "text-amber-300" : "text-emerald-300";
                 return (
-                  <div key={`${metric?.name || "metric"}-${index}`} className="mone-home-inset rounded-[13px] border px-3 py-2.5">
-                    <div className="min-w-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</div>
-                    <div className="mt-0.5 flex items-baseline justify-between gap-2">
-                      <span className="truncate text-[10px] font-normal text-slate-500">{metric?.direction || "-"}</span>
-                      <span className={`shrink-0 font-mono text-sm font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</span>
-                    </div>
-                    <span className="mt-2 block h-2 overflow-hidden rounded-full bg-slate-800">
+                  <div key={`${metric?.name || "metric"}-${index}`} className="mone-home-inset flex items-center gap-2.5 rounded-[10px] border px-3 py-2">
+                    <span className="w-[60px] shrink-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</span>
+                    <span className="w-12 shrink-0 truncate text-[10px] text-slate-500">{metric?.direction || "-"}</span>
+                    <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-800">
                       <span className={`block h-full rounded-full transition-[width] duration-500 ${barCls}`} style={{ width: `${score}%` }} />
                     </span>
+                    <span className={`w-10 shrink-0 text-right font-mono text-xs font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</span>
                   </div>
                 );
               })}
@@ -1537,8 +1543,8 @@ function TodayConclusionCard({
             </div>
             <div>
               <div className="text-slate-500">MA20 이격</div>
-              <div className={`font-mono ${gate.maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                {gate.maDist >= 0 ? "+" : ""}{gate.maDist.toFixed(1)}%
+              <div className={`font-mono ${!gate.hasRegimeMa ? "text-slate-500" : gate.maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                {gate.hasRegimeMa ? `${gate.maDist >= 0 ? "+" : ""}${gate.maDist.toFixed(1)}%` : "-"}
               </div>
             </div>
             <div>
@@ -1851,6 +1857,7 @@ function MarketRegimeSummaryCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const hasRegimeMa = regime?.distanceMa20Pct != null || regime?.distanceToMa20Pct != null;
   const maDist = Number(regime?.distanceMa20Pct ?? regime?.distanceToMa20Pct ?? 0);
   const isBear = regime?.regime === "BEAR";
   const isBull = regime?.regime === "BULL";
@@ -1858,11 +1865,12 @@ function MarketRegimeSummaryCard({
   const regimeText = isBear ? "약세장" : isBull ? "강세장" : "중립";
   const recommendation = isBear ? "보수적 접근 권장" : isBull ? "조건 충족 후보 우선" : "선별 접근 권장";
   const borderCls = isBear
-    ? "border-amber-700/40 bg-amber-950/15"
+    ? "border-amber-500/30 bg-amber-500/5"
     : isBull
-      ? "border-emerald-800/40 bg-emerald-950/15"
+      ? "border-emerald-500/20 bg-emerald-500/5"
       : "border-slate-800 bg-slate-900/40";
   const textCls = isBear ? "text-amber-200" : isBull ? "text-emerald-200" : "text-slate-200";
+  const maDistText = hasRegimeMa ? `${maDist >= 0 ? "+" : ""}${maDist.toFixed(1)}%` : "-";
 
   return (
     <section className={`rounded-2xl border px-4 py-3 ${borderCls}`}>
@@ -1870,7 +1878,7 @@ function MarketRegimeSummaryCard({
         <div className="min-w-0">
           <div className={`text-sm font-bold ${textCls}`}>{title}</div>
           <div className="mt-0.5 text-xs text-slate-400">
-            {regimeText} · MA20 {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}% · {recommendation}
+            {regimeText} · MA20 {maDistText} · {recommendation}
           </div>
         </div>
         <button
@@ -1921,13 +1929,14 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
         <div className="mb-2 text-2xl">📋</div>
         <h2 className="text-base font-semibold text-slate-100">보유종목을 등록해주세요</h2>
         <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-          내 종목을 기준으로 오늘의 위험과 기회를 1분 안에 점검해드립니다.<br />
+          내 종목을 기준으로 오늘의 위험과 기회를<br />
+          1분 안에 점검해드립니다.<br />
           <span className="text-slate-500 text-xs">MONE은 추천보다 먼저 하면 안 되는 거래를 알려줍니다.</span>
         </p>
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
             onClick={() => onNavigate?.("holdings")}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+            className="mone-session-action min-h-10 rounded-xl px-5 py-2.5 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
           >
             보유종목 등록하기
           </button>
@@ -3328,7 +3337,7 @@ export default function HomePage({
       <div className="space-y-3">
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-[24px] font-black leading-none text-slate-100">MONE 홈</h1>
+            <h1 className="text-[19px] font-black leading-none text-slate-100">MONE 홈</h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                 sessionPhase === "장중" ? "bg-emerald-500/15 text-emerald-300"
@@ -3355,9 +3364,9 @@ export default function HomePage({
             <button
               key={choice}
               onClick={() => updateMarketChoice(choice)}
-              className={`min-h-9 min-w-0 rounded-xl border px-2 text-sm font-black transition-[background-color,border-color,transform] active:scale-[0.96] ${
+              className={`min-h-10 min-w-0 rounded-xl border px-2 text-sm font-black transition-[background-color,border-color,color,transform] active:scale-[0.96] ${
                 marketChoice === choice
-                  ? "border-blue-500 bg-blue-600 text-white"
+                  ? "mone-selection-brand"
                   : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"
               }`}
             >

@@ -209,6 +209,7 @@ function coverageTone(count: number, required = 1) {
 }
 
 const ACTION_LABELS: Record<string, string> = {
+  BUY_NOW: "즉시 진입",
   SCALE_IN: "분할 접근",
   WATCH_ONLY: "관찰",
   WAIT_PULLBACK: "눌림 대기",
@@ -223,6 +224,8 @@ const ACTION_LABELS: Record<string, string> = {
   ENTER: "진입",
   EXIT: "청산",
   WAIT: "대기",
+  AVOID_BUY: "매수 회피",
+  RISK_CHECK: "위험 점검",
 };
 
 const RISK_LABELS: Record<string, string> = {
@@ -241,6 +244,10 @@ const RISK_LABELS: Record<string, string> = {
   FALSE_BREAKOUT_RISK: "가짜 돌파 주의",
   STRUCTURE_BREAKDOWN: "구조 이탈",
   DATA_QUALITY_RISK: "데이터 확인 필요",
+  OVERHEATED_EXTENSION: "과열 확장",
+  MOMENTUM_COLLAPSE: "모멘텀 급락",
+  LOW_ACTIVITY_BREAKOUT: "거래량 부족 돌파",
+  FAKE_BREAKOUT: "가짜 돌파",
 };
 
 const PATTERN_LABELS: Record<string, string> = {
@@ -256,6 +263,32 @@ const PATTERN_LABELS: Record<string, string> = {
   false_breakout_risk: "가짜 돌파 위험",
   downtrend_bounce_trap: "하락 반등 함정",
   resistance_chase_risk: "저항 추격 위험",
+  overheated_pullback_risk: "과열 후 급락 위험",
+  base_breakout_held: "돌파 지지 유지",
+  ma20_near: "20일선 근접",
+  distribution_zone: "분산 매물 구간",
+  range_drift_watch: "박스권 이탈 관찰",
+  zombie_breakout: "거래량 없는 돌파",
+  structure_breakdown_risk: "추세 구조 이탈 위험",
+};
+
+const MARKET_STRUCTURE_LABELS: Record<string, string> = {
+  RANGE: "박스권",
+  BREAKOUT_CANDIDATE: "돌파 후보",
+  TREND_UP: "상승 추세",
+  TREND_DOWN: "하락 추세",
+  RANGE_DRIFT: "박스권 이탈",
+  DISTRIBUTION_WATCH: "분산 매물 관찰",
+};
+
+const TREND_PHASE_LABELS: Record<string, string> = {
+  NORMAL: "정상 흐름",
+  RETEST: "돌파 재확인",
+  EXTENDED: "과열 확장",
+  PULLBACK: "정상 눌림",
+  PULLBACK_RISK: "눌림 위험",
+  STALLED: "추세 정체",
+  STRUCTURE_BREAKDOWN: "추세 구조 이탈",
 };
 
 function firstPlainText(...values: any[]): string {
@@ -2355,6 +2388,11 @@ export default function ChartPage() {
     const entry = levels ? priceText(levels, "entry", "기준가 대기") : "추천선 대기";
     const stop = levels ? priceText(levels, "stop", "손절선 대기") : "손절선 대기";
     const isRisk = isRiskCode(riskRaw) || actionCode === "BLOCKED" || actionCode === "AVOID_CHASE";
+    const riskRawUpper = riskRaw.toUpperCase();
+    const riskTone: "danger" | "warn" | "ok" =
+      ["DANGER", "HIGH_RISK", "STRUCTURE_BREAKDOWN", "DATA_QUALITY_RISK"].includes(riskRawUpper) ? "danger"
+      : ["NONE", "OK", "NORMAL", "LOW", "LOW_RISK", "SAFE"].includes(riskRawUpper) ? "ok"
+      : "warn";
     const headline =
       isRisk ? "위험 관리 우선"
       : actionCode === "SCALE_IN" ? "분할 접근 검토"
@@ -2378,11 +2416,11 @@ export default function ChartPage() {
       conf: confidence,
       isRisk,
       rows: [
-        { label: "신규 진입", value: newEntry },
-        { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다." },
-        { label: "관심종목", value: levels ? `기준가 ${entry} 근접 시 알림` : "기준가 확정 후 알림 기준을 설정합니다." },
-        { label: "위험 상태", value: riskText },
-        ...(confidence != null ? [{ label: "신뢰도", value: String(confidence) }] : []),
+        { label: "신규 진입", value: newEntry, tone: isRisk ? "warn" as const : "ok" as const },
+        { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다.", tone: "neutral" as const },
+        { label: "관심종목", value: levels ? `기준가 ${entry} 근접 시 알림` : "기준가 확정 후 알림 기준을 설정합니다.", tone: "neutral" as const },
+        { label: "위험 상태", value: riskText, tone: riskTone },
+        ...(confidence != null ? [{ label: "신뢰도", value: String(confidence), tone: confidence < 40 ? "warn" as const : confidence < 65 ? "neutral" as const : "ok" as const }] : []),
       ],
     };
   })();
@@ -2466,15 +2504,15 @@ export default function ChartPage() {
     <ErrorBoundary>
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">분석</h1>
+        <h1 className="text-[19px] font-black leading-none text-slate-100">분석</h1>
         <p className="mt-1 text-xs text-slate-400 sm:text-sm">OHLCV, 추천 기준선, 기술지표, 관련 뉴스·공시·기업분석</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {(["all","kr","us"] as Market[]).map((item) => (
           <button key={item} onClick={() => { setMarket(item); setSelected(null); }}
-            className={`rounded-xl px-4 py-2 text-sm ${market === item ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
-            {item === "all" ? `자동(${marketLabel(autoMarket)})` : marketLabel(item)}
+            className={`min-h-10 rounded-xl border px-4 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-900 text-slate-400"}`}>
+            {item === "all" ? "자동" : marketLabel(item)}
           </button>
         ))}
         <span className="text-xs text-slate-500">{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · 현재 적용 시장: {marketLabel(resolvedMarket)}</span>
@@ -2534,7 +2572,7 @@ export default function ChartPage() {
             </div>
 
             {moneConclusion && (
-              <div className={`mb-4 rounded-xl border p-4 ${moneConclusion.isRisk ? "border-amber-700/40 bg-amber-950/20" : "border-emerald-800/40 bg-emerald-950/15"}`}>
+              <div className={`mb-4 rounded-xl border p-4 ${moneConclusion.isRisk ? "border-amber-500/30 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5"}`}>
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">MONE 결론</div>
@@ -2552,12 +2590,22 @@ export default function ChartPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
-                  {moneConclusion.rows.map((row) => (
-                    <div key={row.label} className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2">
-                      <div className="text-[10px] text-slate-500">{row.label}</div>
-                      <div className="mt-1 leading-5 text-slate-200">{row.value}</div>
-                    </div>
-                  ))}
+                  {moneConclusion.rows.map((row) => {
+                    const toneCls = row.tone === "danger" ? "border-red-500/30 bg-red-500/5"
+                      : row.tone === "warn" ? "border-amber-500/30 bg-amber-500/5"
+                      : row.tone === "ok" ? "border-emerald-500/20 bg-emerald-500/5"
+                      : "border-slate-800 bg-slate-950/50";
+                    const valueCls = row.tone === "danger" ? "text-red-200"
+                      : row.tone === "warn" ? "text-amber-200"
+                      : row.tone === "ok" ? "text-emerald-200"
+                      : "text-slate-200";
+                    return (
+                      <div key={row.label} className={`rounded-lg border px-3 py-2 ${toneCls}`}>
+                        <div className="text-[10px] text-slate-500">{row.label}</div>
+                        <div className={`mt-1 leading-5 ${valueCls}`}>{row.value}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -3091,11 +3139,11 @@ export default function ChartPage() {
                 <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-3">
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">시장 구조</div>
-                    <div className="text-slate-200">{safeLabel(ps.marketStructure, {}, "-")}</div>
+                    <div className="text-slate-200">{safeLabel(ps.marketStructure, MARKET_STRUCTURE_LABELS, "-")}</div>
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">추세 국면</div>
-                    <div className="text-slate-200">{safeLabel(ps.trendPhase, {}, "-")}</div>
+                    <div className="text-slate-200">{safeLabel(ps.trendPhase, TREND_PHASE_LABELS, "-")}</div>
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">보조 패턴</div>

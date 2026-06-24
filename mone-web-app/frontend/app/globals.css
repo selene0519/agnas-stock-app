@@ -8,12 +8,23 @@
   --bg-card: #0a1424;
   --bg-elevated: #0e1a2d;
   --bg-border: #1b2a42;
+  --brand-teal: #3dd8d0;
+  --brand-teal-glow: rgba(61, 216, 208, 0.28);
   --accent-blue: #1473e6;
   --accent-cyan: #20b8d6;
   --accent-green: #10b981;
   --accent-red: #ef4444;
   --accent-orange: #f59e0b;
   --accent-purple: #8b5cf6;
+  --accent-orange-bg: rgba(245, 166, 35, 0.12);
+  --accent-orange-bdr: rgba(245, 166, 35, 0.25);
+  --color-up: #f05c5c;
+  --color-down: #4c8ef8;
+  --color-warning: #f5a623;
+  --color-neutral: #94a3b8;
+  --color-primary-action: #4c8ef8;
+  --color-primary-action-hover: #6aa3fb;
+  --color-primary-action-ink: #07101f;
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
   --text-muted: #475569;
@@ -92,16 +103,146 @@ html, body {
 /* ── Nav item ── */
 .nav-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 12px; border-radius: 8px;
+  min-height: 40px; padding: 8px 12px; border-radius: 8px;
   color: var(--text-secondary); font-size: 13.5px; font-weight: 500;
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  cursor: pointer; transition: background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s, transform 0.15s; white-space: nowrap;
   border: 1px solid transparent; user-select: none;
 }
 .nav-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.nav-item:active { transform: scale(0.96); }
 .nav-item.active {
-  background: rgba(59,130,246,.12);
-  color: #60a5fa;
-  border-color: rgba(59,130,246,.22);
+  background: var(--brand-teal-glow);
+  color: var(--brand-teal);
+  border-color: rgba(61,216,208,.42);
+}
+
+/* Selected control surfaces follow the MONE semantic color reference. */
+.mone-selection-brand {
+  background: var(--brand-teal-glow);
+  color: var(--brand-teal);
+  border-color: rgba(61,216,208,.42);
+}
+.mone-selection-warning {
+  background: var(--accent-orange-bg);
+  color: var(--color-warning);
+  border-color: var(--accent-orange-bdr);
+}
+.mone-primary-action,
+.mone-interest-action,
+.mone-analysis-action {
+  background: rgba(20,184,166,.11);
+  color: #5eead4;
+  box-shadow: inset 0 0 0 1px rgba(45,212,191,.38);
+}
+.mone-primary-action:hover,
+.mone-interest-action:hover,
+.mone-analysis-action:hover {
+  background: rgba(20,184,166,.17);
+  color: #99f6e4;
+  box-shadow: inset 0 0 0 1px rgba(45,212,191,.52);
+}
+.mone-primary-action:focus-visible,
+.mone-interest-action:focus-visible,
+.mone-analysis-action:focus-visible {
+  outline: 2px solid rgba(45,212,191,.48);
+  outline-offset: 2px;
+}
+.mone-candidate-tab {
+  color: var(--text-secondary);
+  background: rgba(15,23,42,.62);
+  border: 1px solid rgba(148,163,184,.16);
+  box-shadow: inset 0 0 0 0 transparent;
+}
+.mone-candidate-tab[data-active="true"] {
+  color: var(--candidate-tone);
+  background: var(--candidate-active-bg);
+  border-color: var(--candidate-border);
+  box-shadow: inset 0 0 0 1px var(--candidate-ring);
+}
+.mone-candidate-safe {
+  --candidate-tone: #35dda0;
+  --candidate-border: rgba(34,201,130,.30);
+  --candidate-active-bg: rgba(34,201,130,.18);
+  --candidate-ring: rgba(34,201,130,.12);
+}
+.mone-candidate-warning {
+  --candidate-tone: #f5a623;
+  --candidate-border: rgba(245,166,35,.30);
+  --candidate-active-bg: rgba(245,166,35,.18);
+  --candidate-ring: rgba(245,166,35,.12);
+}
+.mone-candidate-danger {
+  --candidate-tone: #f27676;
+  --candidate-border: rgba(240,92,92,.30);
+  --candidate-active-bg: rgba(240,92,92,.18);
+  --candidate-ring: rgba(240,92,92,.12);
+}
+.mone-candidate-count {
+  color: currentColor;
+  background: rgba(148,163,184,.13);
+}
+.mone-candidate-dot {
+  background: rgba(100,116,139,.58);
+}
+.mone-candidate-dot[data-active="true"] {
+  background: var(--candidate-tone);
+}
+.mone-session-action {
+  color: #6ee7b7;
+  background: rgba(16,185,129,.05);
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,.20);
+}
+.mone-session-action:hover {
+  color: #a7f3d0;
+  background: rgba(16,185,129,.10);
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,.32);
+}
+.mone-session-action:focus-visible {
+  outline: 2px solid rgba(16,185,129,.42);
+  outline-offset: 2px;
+}
+
+html[data-theme="light"] .mone-selection-brand,
+html[data-theme="light"] .nav-item.active {
+  color: #096b67;
+  border-color: rgba(9,107,103,.42);
+}
+html[data-theme="light"] .mone-selection-warning {
+  color: #925800;
+  border-color: rgba(146,88,0,.35);
+}
+html[data-theme="light"] .mone-candidate-safe {
+  --candidate-tone: #047857;
+}
+html[data-theme="light"] .mone-candidate-warning {
+  --candidate-tone: #925800;
+}
+html[data-theme="light"] .mone-candidate-danger {
+  --candidate-tone: #b4233a;
+}
+html[data-theme="light"] .mone-candidate-tab {
+  color: #526176;
+  background: rgba(255,255,255,.72);
+  border-color: rgba(100,116,139,.20);
+}
+html[data-theme="light"] .mone-primary-action,
+html[data-theme="light"] .mone-interest-action,
+html[data-theme="light"] .mone-analysis-action {
+  color: #066e68;
+  background: rgba(20,184,166,.09);
+  box-shadow: inset 0 0 0 1px rgba(13,148,136,.30);
+}
+html[data-theme="light"] .mone-primary-action:hover,
+html[data-theme="light"] .mone-interest-action:hover,
+html[data-theme="light"] .mone-analysis-action:hover {
+  color: #055b56;
+  background: rgba(20,184,166,.14);
+  box-shadow: inset 0 0 0 1px rgba(13,148,136,.40);
+}
+html[data-theme="light"] .mone-session-action {
+  color: #087f5b;
+  background: rgba(16,185,129,.07);
+  box-shadow: inset 0 0 0 1px rgba(5,150,105,.24);
 }
 
 /* ── Data table ── */
@@ -282,6 +423,8 @@ html[data-theme="light"] .mone-app-shell [class*="text-red-400"] {
   color: #b4233a !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="text-cyan-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-sky-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-sky-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-sky-300"] {
   color: #0369a1 !important;
 }
@@ -321,9 +464,9 @@ html[data-theme="light"] .mone-header-button {
    Re-tint blue-* utility classes app-wide so every page's primary action
    color matches the actual MONE brand instead of a default blue. */
 .mone-app-shell {
-  --brand: #2dd4c2;
-  --brand-hover: #45e0cf;
-  --brand-dim: rgba(45, 212, 194, 0.14);
+  --brand: #14b8a6;
+  --brand-hover: #2dd4c2;
+  --brand-dim: rgba(20, 184, 166, 0.1);
 }
 .mone-app-shell [class*="bg-blue-600"],
 .mone-app-shell [class*="bg-blue-500"]:not([class*="/"]) {
@@ -342,10 +485,10 @@ html[data-theme="light"] .mone-header-button {
   color: var(--brand) !important;
 }
 .mone-app-shell [class*="border-blue-"] {
-  border-color: rgba(45, 212, 194, 0.45) !important;
+  border-color: rgba(20, 184, 166, 0.35) !important;
 }
 .mone-app-shell [class*="focus:ring-blue-"] {
-  --tw-ring-color: rgba(45, 212, 194, 0.4) !important;
+  --tw-ring-color: rgba(20, 184, 166, 0.3) !important;
 }
 .mone-app-shell [class*="focus:border-blue-"] {
   border-color: var(--brand) !important;
