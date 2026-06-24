@@ -1031,7 +1031,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       {/* 헤더 */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">보유·리스크</h1>
+          <h1 className="text-[19px] font-black leading-none text-slate-100">보유·리스크</h1>
           <p className="mt-1 text-sm text-slate-400">보유종목 현황, 리스크 지표, 포트폴리오 구성 분석</p>
         </div>
         <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
@@ -1044,7 +1044,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <Download size={14} /> 한국투자 연결
           </button>
           <button onClick={() => { setShowAdd(!showAdd); setShowImport(false); setMessage(""); }}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-2 py-2 text-xs font-semibold text-white hover:bg-blue-500 sm:text-sm">
+            className="mone-primary-action inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.96] sm:text-sm">
             <Plus size={14} /> 직접 추가
           </button>
         </div>
@@ -1054,7 +1054,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       <div className="flex gap-2">
         {(["all","kr","us"] as Market[]).map((item) => (
           <button key={item} onClick={() => setMarket(item)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium ${market === item ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+            className={`min-h-10 rounded-xl border px-4 py-2 text-sm font-medium transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
             {item === "all" ? "전체" : item === "kr" ? "국장" : "미장"}
           </button>
         ))}
@@ -1486,7 +1486,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               <div className="col-span-full rounded-2xl border border-dashed border-slate-800 p-12 text-center">
                 <p className="text-slate-500">보유 종목이 없습니다.</p>
                 <button onClick={() => setShowAdd(true)}
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-500">
+                  className="mone-primary-action mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.96]">
                   <Plus size={14} /> 첫 종목 직접 추가
                 </button>
               </div>

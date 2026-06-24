@@ -729,7 +729,7 @@ function TodayEntryCard({
             event.stopPropagation();
             onAnalyze(item);
           }}
-          className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-blue-500 active:scale-[0.96]"
+          className="mone-analysis-action flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] px-3 py-2 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
         >
           분석 보기 <ArrowRight size={14} />
         </button>
@@ -740,7 +740,7 @@ function TodayEntryCard({
               event.stopPropagation();
               onTradePaper(item);
             }}
-            className="flex min-h-10 items-center justify-center gap-1 rounded-[11px] border border-emerald-700/50 bg-emerald-900/30 px-3 py-2 text-xs font-semibold text-emerald-300 transition-[background-color,transform] hover:bg-emerald-900/60 active:scale-[0.96]"
+            className="mone-interest-action flex min-h-10 items-center justify-center gap-1 rounded-[11px] px-3 py-2 text-xs font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
           >
             모의투자
           </button>
@@ -839,18 +839,20 @@ function CandidateCarouselSection({
       <div className="mb-3 grid grid-cols-3 gap-2">
         {tabs.map((tab) => {
           const active = candidateTab === tab.key;
+          const toneClass = tab.key === "today"
+            ? "mone-candidate-safe"
+            : tab.key === "watch"
+              ? "mone-candidate-warning"
+              : "mone-candidate-danger";
           return (
             <button
               key={tab.key}
               type="button"
+              data-active={active ? "true" : "false"}
               onClick={() => setCandidateTab(tab.key)}
-              className={`min-h-10 min-w-0 rounded-xl px-2 text-[11px] font-black transition-[background-color,color,transform] active:scale-[0.96] ${
-                active
-                  ? "bg-blue-600 text-white"
-                  : "border border-white/10 bg-[#181E2E] text-slate-400 hover:text-slate-200"
-              }`}
+              className={`mone-candidate-tab ${toneClass} min-h-10 min-w-0 rounded-xl px-2 text-[11px] font-black transition-[background-color,box-shadow,color,transform] active:scale-[0.96]`}
             >
-              {tab.label} <span className={`ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] ${active ? "bg-white/20 text-white" : "bg-white/10 text-slate-500"}`}>{loading ? "-" : tab.count}</span>
+              {tab.label} <span className="mone-candidate-count ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px]">{loading ? "-" : tab.count}</span>
             </button>
           );
         })}
@@ -894,8 +896,13 @@ function CandidateCarouselSection({
                 onClick={() => moveToCard(index)}
                 aria-label={`${index + 1}번 후보 카드로 이동`}
                 aria-current={activeCard === index ? "true" : undefined}
-                className={`h-1.5 rounded-full transition-[width,background-color,transform] active:scale-[0.96] ${activeCard === index ? "w-4 bg-blue-500" : "w-1.5 bg-slate-700"}`}
-              />
+                className="group inline-flex h-6 w-6 items-center justify-center rounded-full active:scale-[0.96]"
+              >
+                <span
+                  data-active={activeCard === index ? "true" : "false"}
+                  className={`mone-candidate-dot ${candidateTab === "today" ? "mone-candidate-safe" : candidateTab === "watch" ? "mone-candidate-warning" : "mone-candidate-danger"} h-1.5 rounded-full transition-[width,background-color] ${activeCard === index ? "w-4" : "w-1.5"}`}
+                />
+              </button>
             ))}
           </div>
         </>
@@ -1929,7 +1936,7 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
             onClick={() => onNavigate?.("holdings")}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+            className="mone-session-action min-h-10 rounded-xl px-5 py-2.5 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
           >
             보유종목 등록하기
           </button>
@@ -3357,9 +3364,9 @@ export default function HomePage({
             <button
               key={choice}
               onClick={() => updateMarketChoice(choice)}
-              className={`min-h-9 min-w-0 rounded-xl border px-2 text-sm font-black transition-[background-color,border-color,transform] active:scale-[0.96] ${
+              className={`min-h-10 min-w-0 rounded-xl border px-2 text-sm font-black transition-[background-color,border-color,color,transform] active:scale-[0.96] ${
                 marketChoice === choice
-                  ? "border-blue-500 bg-blue-600 text-white"
+                  ? "mone-selection-brand"
                   : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"
               }`}
             >

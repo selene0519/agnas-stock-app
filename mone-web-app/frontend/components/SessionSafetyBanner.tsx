@@ -21,9 +21,7 @@ function labelSession(session?: string, fallback?: string, status?: string) {
 function alertTitle(alert: any) {
   const symbol = normalizeSymbol(alert);
   const market = normalizeMarket(alert.market, symbol);
-  const name = displayName(symbol, market, alert.name || alert.company);
-  const kind = String(alert.message || alert.type || "기준가 임박").replace(symbol, "").trim() || "기준가 임박";
-  return `${kind}: ${name}`;
+  return displayName(symbol, market, alert.nameKr || alert.koreanName || alert.name || alert.company);
 }
 
 export default function SessionSafetyBanner({
@@ -105,8 +103,8 @@ export default function SessionSafetyBanner({
       )}
 
       <div className={`rounded-xl border px-3.5 py-2.5 shadow-sm ${tone}`}>
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div>
+          <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
               세션 · 데이터 보호 · {marketLabel(market)}
             </div>
@@ -131,29 +129,38 @@ export default function SessionSafetyBanner({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            {alerts.slice(0, 2).map((alert, index) => (
-              <button
-                type="button"
-                key={`${normalizeSymbol(alert)}-${alert.type || index}`}
-                onClick={() => window.dispatchEvent(new CustomEvent("mone-open-near-alert", { detail: alert }))}
-                className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-1.5 py-1 text-left text-[11px] text-amber-200 transition-[background-color,transform] hover:bg-amber-500/15 active:scale-[0.98]"
-              >
-                <BellRing size={10} />
-                {alertTitle(alert)}
-                {normalizeSymbol(alert) && <span className="font-mono text-amber-300/70">{normalizeSymbol(alert)}</span>}
-              </button>
-            ))}
-            <button onClick={refresh} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-slate-200 hover:bg-slate-800">
-              <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
-              동기화
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button onClick={refresh} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-slate-200 transition-[background-color,border-color,transform] hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[0.96]">
+              <RefreshCw aria-hidden="true" size={11} className={loading ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">동기화</span>
             </button>
-            <button onClick={() => setHidden(true)} className="inline-flex items-center gap-1 rounded-lg border border-slate-800 px-2.5 py-1.5 text-[11px] text-slate-400 hover:text-slate-200">
-              <X size={11} />
-              숨김
+            <button onClick={() => setHidden(true)} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-800 px-2.5 py-1.5 text-[11px] text-slate-400 transition-[border-color,color,transform] hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[0.96]">
+              <X aria-hidden="true" size={11} />
+              <span className="hidden sm:inline">숨김</span>
             </button>
           </div>
         </div>
+        {alerts.length > 0 && !quality.killSwitch && !quality.isHoliday && (
+          <div className="mt-2 flex max-w-full gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={`근접 알림 ${alerts.length}건`}>
+            {alerts.map((alert, index) => {
+              const title = alertTitle(alert);
+              const symbol = normalizeSymbol(alert);
+              return (
+                <button
+                  type="button"
+                  key={`${symbol}-${alert.type || index}`}
+                  title={title}
+                  aria-label={`근접 알림: ${title}`}
+                  onClick={() => window.dispatchEvent(new CustomEvent("mone-open-near-alert", { detail: alert }))}
+                  className="inline-flex min-h-8 min-w-[132px] max-w-[190px] flex-1 items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2 py-1 text-left text-[10px] text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
+                >
+                  <BellRing aria-hidden="true" size={10} className="shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">{title}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </>
   );

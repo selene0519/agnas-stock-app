@@ -209,6 +209,7 @@ function coverageTone(count: number, required = 1) {
 }
 
 const ACTION_LABELS: Record<string, string> = {
+  BUY_NOW: "즉시 진입",
   SCALE_IN: "분할 접근",
   WATCH_ONLY: "관찰",
   WAIT_PULLBACK: "눌림 대기",
@@ -223,6 +224,8 @@ const ACTION_LABELS: Record<string, string> = {
   ENTER: "진입",
   EXIT: "청산",
   WAIT: "대기",
+  AVOID_BUY: "매수 회피",
+  RISK_CHECK: "위험 점검",
 };
 
 const RISK_LABELS: Record<string, string> = {
@@ -241,6 +244,10 @@ const RISK_LABELS: Record<string, string> = {
   FALSE_BREAKOUT_RISK: "가짜 돌파 주의",
   STRUCTURE_BREAKDOWN: "구조 이탈",
   DATA_QUALITY_RISK: "데이터 확인 필요",
+  OVERHEATED_EXTENSION: "과열 확장",
+  MOMENTUM_COLLAPSE: "모멘텀 급락",
+  LOW_ACTIVITY_BREAKOUT: "거래량 부족 돌파",
+  FAKE_BREAKOUT: "가짜 돌파",
 };
 
 const PATTERN_LABELS: Record<string, string> = {
@@ -256,6 +263,32 @@ const PATTERN_LABELS: Record<string, string> = {
   false_breakout_risk: "가짜 돌파 위험",
   downtrend_bounce_trap: "하락 반등 함정",
   resistance_chase_risk: "저항 추격 위험",
+  overheated_pullback_risk: "과열 후 급락 위험",
+  base_breakout_held: "돌파 지지 유지",
+  ma20_near: "20일선 근접",
+  distribution_zone: "분산 매물 구간",
+  range_drift_watch: "박스권 이탈 관찰",
+  zombie_breakout: "거래량 없는 돌파",
+  structure_breakdown_risk: "추세 구조 이탈 위험",
+};
+
+const MARKET_STRUCTURE_LABELS: Record<string, string> = {
+  RANGE: "박스권",
+  BREAKOUT_CANDIDATE: "돌파 후보",
+  TREND_UP: "상승 추세",
+  TREND_DOWN: "하락 추세",
+  RANGE_DRIFT: "박스권 이탈",
+  DISTRIBUTION_WATCH: "분산 매물 관찰",
+};
+
+const TREND_PHASE_LABELS: Record<string, string> = {
+  NORMAL: "정상 흐름",
+  RETEST: "돌파 재확인",
+  EXTENDED: "과열 확장",
+  PULLBACK: "정상 눌림",
+  PULLBACK_RISK: "눌림 위험",
+  STALLED: "추세 정체",
+  STRUCTURE_BREAKDOWN: "추세 구조 이탈",
 };
 
 function firstPlainText(...values: any[]): string {
@@ -2471,14 +2504,14 @@ export default function ChartPage() {
     <ErrorBoundary>
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">분석</h1>
+        <h1 className="text-[19px] font-black leading-none text-slate-100">분석</h1>
         <p className="mt-1 text-xs text-slate-400 sm:text-sm">OHLCV, 추천 기준선, 기술지표, 관련 뉴스·공시·기업분석</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {(["all","kr","us"] as Market[]).map((item) => (
           <button key={item} onClick={() => { setMarket(item); setSelected(null); }}
-            className={`rounded-xl border px-4 py-2 text-sm ${market === item ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-900 text-slate-400"}`}>
+            className={`min-h-10 rounded-xl border px-4 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-900 text-slate-400"}`}>
             {item === "all" ? "자동" : marketLabel(item)}
           </button>
         ))}
@@ -3106,11 +3139,11 @@ export default function ChartPage() {
                 <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-3">
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">시장 구조</div>
-                    <div className="text-slate-200">{safeLabel(ps.marketStructure, {}, "-")}</div>
+                    <div className="text-slate-200">{safeLabel(ps.marketStructure, MARKET_STRUCTURE_LABELS, "-")}</div>
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">추세 국면</div>
-                    <div className="text-slate-200">{safeLabel(ps.trendPhase, {}, "-")}</div>
+                    <div className="text-slate-200">{safeLabel(ps.trendPhase, TREND_PHASE_LABELS, "-")}</div>
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
                     <div className="text-slate-500 mb-1">보조 패턴</div>
