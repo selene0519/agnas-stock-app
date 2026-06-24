@@ -2577,6 +2577,13 @@ def api_disclosures(
                 try:
                     with path.open("r", encoding=enc, newline="") as f:
                         for row in _DC.DictReader(f):
+                            # 파일이 mk 접미사를 갖더라도(예: toss_holdings_kr.csv가
+                            # 실제로는 미국 보유종목을 담고 있는 경우) row 자체의
+                            # market 컬럼이 다르면 건너뛴다 — 그렇지 않으면 미국
+                            # 종목이 한국 종목 코드로 잘못 변환되어 공시 필터가 깨진다.
+                            row_market = str(row.get("market") or row.get("시장") or "").strip().lower()
+                            if row_market and row_market not in (mk, ""):
+                                continue
                             sym = data.normalize_symbol(
                                 row.get("symbol") or row.get("종목코드") or row.get("ticker") or "", mk
                             )
@@ -2587,10 +2594,13 @@ def api_disclosures(
                     continue
 
         # 보유종목 CSV
-        for fname in (f"holdings_{mk}.csv", f"data/holdings_{mk}.csv"):
+        for fname in (
+            f"data/toss_holdings_{mk}.csv", f"data/kis_2_holdings_{mk}.csv", f"data/kis_holdings_{mk}.csv",
+            f"holdings_{mk}.csv", f"data/holdings_{mk}.csv",
+        ):
             _read_symbols(repo / fname)
         # 관심종목 CSV
-        for fname in (f"watchlist_{mk}.csv", f"data/watchlist_{mk}.csv"):
+        for fname in (f"watchlist_{mk}_growth.csv", f"watchlist_{mk}.csv", f"data/watchlist_{mk}.csv"):
             _read_symbols(repo / fname)
         # 추천 종목 (balanced swing 기준)
         for fname in (f"reports/mone_v36_final_recommendations_{mk}_balanced_swing.csv",):
@@ -3987,13 +3997,16 @@ def api_ohlcv_core(
     futureProjectionBars: int = Query(12, ge=0, le=60),
 ) -> dict:
     normalized_market = _market(market)
-    payload = data.chart_data(symbol, normalized_market)
+    # chart_data()는 기본 160봉만 잘라 반환한다 — 52주 고점 등 limit>160 요청이
+    # 와도 항상 160봉으로 잘려 "52주"가 실제로는 약 7개월치 데이터로 계산되는
+    # 문제가 있었다. 요청된 limit만큼 tail_rows를 넘겨 그 이상을 받아온다.
+    payload = data.chart_data(symbol, normalized_market, tail_rows=limit)
     rows = payload.get("items") or payload.get("rows") or []
     if not rows:
         try:
             backfill = quotes.backfill_daily_ohlcv(symbol, normalized_market, days=max(limit, 120))
             if str(backfill.get("status", "")).upper() == "OK":
-                payload = data.chart_data(symbol, normalized_market)
+                payload = data.chart_data(symbol, normalized_market, tail_rows=limit)
                 rows = payload.get("items") or payload.get("rows") or []
                 payload["backfill"] = backfill
         except Exception as exc:
@@ -4184,46 +4197,34 @@ def _mone_dq_file_summary(path: _MONE_DQ_Path, role: str, market: str) -> dict:
     }
 
 def _mone_dq_market(market: str) -> dict:
+    # 화면에 보이는 "데이터 상태" 배지가 정식 품질 판정기(data_quality.py)와
+    # 다른 값을 보일 수 있었던 원인: 이 라이브 엔드포인트가 자체적으로
+    # "가격 CSV 파일 존재 + row>0"만 보고 NORMAL을 매겼고, 내부 데이터 날짜의
+    # 최신성(STALE)은 전혀 확인하지 않았다. 정식 판정기(data_quality.data_quality)를
+    # 그대로 위임해 두 경로의 판정이 항상 일치하도록 한다.
     repo = _mone_dq_repo_root()
     market = (market or "kr").lower()
 
-    price_files = [
-        (repo / "data" / "stockapp" / f"kis_current_price_{market}.csv", "price_current_stockapp"),
-        (repo / "reports" / f"kis_current_price_{market}.csv", "price_current_reports"),
-        (repo / "data" / "stockapp" / f"intraday_quote_snapshot_{market}.csv", "intraday_quote_stockapp"),
-        (repo / "reports" / f"intraday_quote_snapshot_{market}.csv", "intraday_quote_reports"),
-        (repo / "data" / "stockapp" / f"intraday_realtime_snapshot_{market}.csv", "intraday_realtime_stockapp"),
-        (repo / "reports" / f"intraday_realtime_snapshot_{market}.csv", "intraday_realtime_reports"),
-    ]
+    try:
+        quality = data_quality.data_quality(market, mode="quick")
+    except Exception as exc:
+        return {
+            "status": "ERROR",
+            "market": market,
+            "dataStatus": "ERROR",
+            "priceDataStatus": "ERROR",
+            "killSwitch": True,
+            "reviewMode": False,
+            "isHoliday": False,
+            "message": f"data_quality engine error: {exc!r:.200}",
+            "candidateCount": 0,
+            "files": [],
+            "warnings": [],
+            "errors": [str(exc)[:200]],
+            "updatedAt": _MONE_DQ_Datetime.now().astimezone().isoformat(),
+        }
 
-    files = [_mone_dq_file_summary(path, role, market) for path, role in price_files]
-    good_files = [x for x in files if int(x.get("rowCount") or 0) > 0]
-
-    all_symbols = set()
-    for path, _role in price_files:
-        for row in _mone_dq_read_rows(path):
-            sym = _mone_dq_symbol(row)
-            if sym:
-                all_symbols.add(sym)
-
-    warnings = []
-    failures_path = repo / "reports" / "data_collection_failures_latest.csv"
-    failures = _mone_dq_read_rows(failures_path, max_rows=1000)
-    if failures:
-        warnings.append(f"collection failures present: {len(failures)} rows")
-
-    if good_files:
-        data_status = "NORMAL"
-        kill_switch = False
-        message = "core price data found"
-    else:
-        data_status = "NO_DATA"
-        kill_switch = True
-        message = "core price csv not found"
-
-    if good_files and len(all_symbols) < 5:
-        data_status = "PARTIAL"
-        warnings.append("price coverage is small")
+    session_state = quality.get("session") or {}
 
     coverage = {}
     try:
@@ -4235,22 +4236,27 @@ def _mone_dq_market(market: str) -> dict:
         coverage = {}
 
     return {
-        "status": "OK",
-        "market": market,
-        "dataStatus": data_status,
-        "priceDataStatus": "OK" if good_files else "NO_DATA",
-        "killSwitch": kill_switch,
-        "reviewMode": False,
-        "message": message,
-        "candidateCount": len(all_symbols),
+        "status": quality.get("status", "OK"),
+        "market": quality.get("market", market),
+        "dataStatus": quality.get("dataStatus"),
+        "priceDataStatus": quality.get("priceDataStatus"),
+        "killSwitch": bool(quality.get("killSwitch")),
+        "reviewMode": bool(quality.get("reviewMode")),
+        "isHoliday": bool(session_state.get("isHoliday")),
+        "priceSession": quality.get("priceSession"),
+        "sessionDescription": session_state.get("priceBasis") or session_state.get("sessionLabel") or "",
+        "message": quality.get("summary") or "데이터 상태 점검 완료",
+        "candidateCount": quality.get("candidateCount", 0),
         "targetCount": coverage.get("targetCount"),
         "currentPriceCount": coverage.get("currentPriceCount"),
         "missingTargetCount": coverage.get("missingTargetCount"),
         "currentPriceCoveragePct": coverage.get("currentPriceCoveragePct"),
-        "files": files,
-        "warnings": warnings,
-        "errors": [] if good_files else ["core price data not found"],
-        "updatedAt": _MONE_DQ_Datetime.now().astimezone().isoformat(),
+        "files": quality.get("files", []),
+        "rootCauses": quality.get("rootCauses", []),
+        "nextActions": quality.get("nextActions", []),
+        "warnings": quality.get("warnings", []),
+        "errors": [] if quality.get("dataStatus") not in {"NO_DATA", "ERROR"} else [quality.get("summary") or "core price data not found"],
+        "updatedAt": quality.get("updatedAt") or _MONE_DQ_Datetime.now().astimezone().isoformat(),
     }
 
 @app.get("/api/final/data-quality-live")
@@ -4481,51 +4487,67 @@ def _install_mone_authoritative_holdings_clean_v3():
             _root() / f"holdings_{market}.csv",
         ]
 
+    def _row_market(row: dict, fallback_market: str) -> str:
+        raw = _text(row, ["market", "시장", "exchange", "marketType"], "").strip().lower()
+        if raw in ("kr", "us"):
+            return raw
+        return fallback_market
+
     def _read_authoritative_holdings(market: str) -> list[dict]:
-        markets = ["kr", "us"] if market == "all" else [market]
+        # 후보 파일은 nominal market(파일명 접미사)별로 모으되, 실제 분류는
+        # CSV 자체의 market 컬럼을 우선한다. 일부 파일(예: toss_holdings_kr.csv)이
+        # 파일명과 다른 시장의 종목을 담고 있는 경우가 있어, 파일명만으로 시장을
+        # 강제하면 미국 종목이 한국 종목 코드로 잘못 변환되는 문제가 있었다.
+        file_nominal_market: dict = {}
+        for nominal_mk in ("kr", "us"):
+            for path in _holding_source_candidates(nominal_mk):
+                file_nominal_market.setdefault(path, nominal_mk)
+
         rows = []
         seen_keys = set()
-        for mk in markets:
-            for path in _holding_source_candidates(mk):
-                if any(key_market == mk for key_market, _ in seen_keys) and path.name == f"holdings_{mk}.csv":
+        for path, nominal_mk in file_nominal_market.items():
+            if any(key_market == nominal_mk for key_market, _ in seen_keys) and path.name == f"holdings_{nominal_mk}.csv":
+                continue
+            source_rows = []
+            for row in _read_csv(path):
+                mk = _row_market(row, nominal_mk)
+                sym = _row_symbol(row, mk)
+                if not sym:
                     continue
-                source_rows = []
-                for row in _read_csv(path):
-                    sym = _row_symbol(row, mk)
-                    if not sym:
-                        continue
-                    key = (mk, sym)
-                    if key in seen_keys:
-                        continue
-                    qty = _num(_text(row, ["quantity", "qty", "수량"], ""), 0)
-                    avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평균단가", "매입가"], ""), 0)
-                    if qty <= 0:
-                        continue
-                    stop_csv = _num(_text(row, ["stopPrice", "stop_price", "stop", "손절가"], ""), 0)
-                    target_csv = _num(_text(row, ["targetPrice", "target_price", "target", "목표가"], ""), 0)
-                    source_current = _num(_text(row, ["currentPrice", "current_price", "price", "last", "lastPrice"], ""), 0)
-                    source_pnl = _num(_text(row, ["pnl", "profitLoss", "profit_loss"], ""), 0)
-                    source_pnl_pct = _num(_text(row, ["pnlPct", "profitLossRate", "profit_loss_rate"], ""), 0)
-                    rel_source = str(path.relative_to(_root())).replace("\\", "/")
-                    source_rows.append({
-                        "symbol": sym,
-                        "name": _name(row, sym),
-                        "market": mk,
-                        "quantity": qty,
-                        "avgPrice": avg,
-                        "stopPriceCsv": stop_csv,
-                        "targetPriceCsv": target_csv,
-                        "source": path.name,
-                        "holdingAuthority": "holdings_csv",
-                        "holdingAuthoritySource": rel_source,
-                        "_sourceCurrentPrice": source_current,
-                        "_sourceProfitLoss": source_pnl,
-                        "_sourceProfitLossRate": source_pnl_pct,
-                    })
-                if source_rows:
-                    for item in source_rows:
-                        seen_keys.add((mk, item["symbol"]))
-                    rows.extend(source_rows)
+                key = (mk, sym)
+                if key in seen_keys:
+                    continue
+                qty = _num(_text(row, ["quantity", "qty", "수량"], ""), 0)
+                avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평균단가", "매입가"], ""), 0)
+                if qty <= 0:
+                    continue
+                stop_csv = _num(_text(row, ["stopPrice", "stop_price", "stop", "손절가"], ""), 0)
+                target_csv = _num(_text(row, ["targetPrice", "target_price", "target", "목표가"], ""), 0)
+                source_current = _num(_text(row, ["currentPrice", "current_price", "price", "last", "lastPrice"], ""), 0)
+                source_pnl = _num(_text(row, ["pnl", "profitLoss", "profit_loss"], ""), 0)
+                source_pnl_pct = _num(_text(row, ["pnlPct", "profitLossRate", "profit_loss_rate"], ""), 0)
+                rel_source = str(path.relative_to(_root())).replace("\\", "/")
+                source_rows.append({
+                    "symbol": sym,
+                    "name": _name(row, sym),
+                    "market": mk,
+                    "quantity": qty,
+                    "avgPrice": avg,
+                    "stopPriceCsv": stop_csv,
+                    "targetPriceCsv": target_csv,
+                    "source": path.name,
+                    "holdingAuthority": "holdings_csv",
+                    "holdingAuthoritySource": rel_source,
+                    "_sourceCurrentPrice": source_current,
+                    "_sourceProfitLoss": source_pnl,
+                    "_sourceProfitLossRate": source_pnl_pct,
+                })
+            if source_rows:
+                for item in source_rows:
+                    seen_keys.add((item["market"], item["symbol"]))
+                rows.extend(source_rows)
+        if market != "all":
+            rows = [r for r in rows if r["market"] == market]
         return rows
 
     def _sanitize_user_id(raw: str) -> str:
@@ -7767,10 +7789,41 @@ def api_data_audit() -> dict:
         result: dict = {"status": "OK", "files": [], "summary": {}}
         report_files = list(_REPORTS.glob("*.csv")) if _REPORTS.exists() else []
         ohlcv_files = list(_OHLCV_DIR.glob("*.csv")) if _OHLCV_DIR.exists() else []
-        holdings_files = [_REPO / f"holdings_{m}.csv" for m in ["kr", "us"]]
-        watchlist_files = [_REPO / f"watchlist_{m}.csv" for m in ["kr", "us"]]
+        # 실제 보유종목/워치리스트/뉴스 파일 경로 — 예전에는 존재하지 않는
+        # holdings_{m}.csv / watchlist_{m}.csv (레포 루트) 만 확인해서 데이터가
+        # 있어도 0건/NO_DATA로 집계되는 문제가 있었다.
+        holdings_files = [
+            p for m in ["kr", "us"]
+            for p in [
+                _REPO / "data" / f"toss_holdings_{m}.csv",
+                _REPO / "data" / f"kis_2_holdings_{m}.csv",
+                _REPO / "data" / f"kis_holdings_{m}.csv",
+                _REPO / "data" / f"holdings_{m}.csv",
+                _REPO / f"holdings_{m}.csv",
+            ]
+        ]
+        watchlist_files = [
+            p for m in ["kr", "us"]
+            for p in [
+                _REPO / f"watchlist_{m}_growth.csv",
+                _REPO / "data" / f"watchlist_{m}.csv",
+                _REPO / f"watchlist_{m}.csv",
+            ]
+        ]
+        news_files = [
+            p for m in ["kr", "us"]
+            for p in [
+                _REPORTS / f"news_summary_{m}.csv",
+                _REPORTS / f"news_cards_{m}.csv",
+                _REPORTS / f"operational_news_narrative_{m}.csv",
+            ]
+        ] + [_REPO / "data" / "news" / "gnews_cache.csv"]
+
+        def _existing_rows(paths: list) -> int:
+            return sum(len(_read_csv_safe(p)) for p in paths if p.exists())
+
         audit_items = []
-        for path in report_files[:20] + ohlcv_files[:10] + holdings_files + watchlist_files:
+        for path in report_files[:20] + ohlcv_files[:10] + holdings_files + watchlist_files + news_files:
             if path.exists():
                 stat = path.stat()
                 audit_items.append({
@@ -7781,10 +7834,19 @@ def api_data_audit() -> dict:
                     "rows": len(_read_csv_safe(path)),
                 })
         result["files"] = audit_items
+        holdings_rows = _existing_rows(holdings_files)
+        watchlist_rows = _existing_rows(watchlist_files)
+        news_rows = _existing_rows(news_files)
         result["summary"] = {
             "reportFiles": len(report_files),
             "ohlcvFiles": len(ohlcv_files),
             "totalAuditFiles": len(audit_items),
+            "holdingsRowCount": holdings_rows,
+            "holdingsStatus": "OK" if holdings_rows > 0 else "NO_DATA",
+            "watchlistRowCount": watchlist_rows,
+            "watchlistStatus": "OK" if watchlist_rows > 0 else "NO_DATA",
+            "newsRowCount": news_rows,
+            "newsStatus": "OK" if news_rows > 0 else "NO_DATA",
         }
         return result
     except Exception as e:

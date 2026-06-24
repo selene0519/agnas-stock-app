@@ -2521,7 +2521,8 @@ def _audit_payload() -> dict[str, Any]:
                        or _glob_scoped(repo, "candidate_universe_kr.csv", 2),
         "candidateUS": _glob_scoped(reports, "mone_v36_final_recommendations_us_*.csv", 9)
                        or _glob_scoped(repo, "candidate_universe_us.csv", 2),
-        "watchlist":   [p for p in [repo / "watchlist_kr.csv", repo / "watchlist_us.csv",
+        "watchlist":   [p for p in [repo / "watchlist_kr_growth.csv", repo / "watchlist_us_growth.csv",
+                                    repo / "watchlist_kr.csv", repo / "watchlist_us.csv",
                                     data / "watchlist_kr.csv", data / "watchlist_us.csv"] if p.exists()],
         "ohlcv":       _glob_scoped(data / "market" / "ohlcv", "kr_*_daily.csv", 5),
         "companyKR":   _glob_scoped(reports, "*company*kr*.csv", 3) + _glob_scoped(data, "*company*kr*.csv", 3),

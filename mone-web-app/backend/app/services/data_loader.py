@@ -4043,14 +4043,23 @@ def _collect_us_filings(days: int = 60, max_symbols: int = 35) -> dict[str, Any]
     out_file = _disclosure_output_file("us")
     if not token:
         return {"status": "MISSING_KEY", "market": "us", "message": "FINNHUB_API_KEY가 없어 SEC filing을 수집하지 못했습니다.", "count": 0, "file": out_file.relative_to(REPO_ROOT).as_posix()}
-    universe = symbols("us").get("items", [])
+    # 현재 추천 종목을 최우선으로 수집한다 — 이전에는 symbol master 순서대로
+    # 앞쪽 35개만 골라 AAPL·GOOGL·NVDA·MSFT·AMZN 같은 고정 상위 종목만
+    # 반복 수집되고, 추천 종목인데도 빠지는 경우가 있었다.
     tickers: list[str] = []
-    for item in universe:
-        sym = normalize_symbol(item.get("symbol"), "us")
-        if sym and sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
+    for sym in _current_recommendation_symbols("us"):
+        if sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
             tickers.append(sym)
         if len(tickers) >= max_symbols:
             break
+    if len(tickers) < max_symbols:
+        universe = symbols("us").get("items", [])
+        for item in universe:
+            sym = normalize_symbol(item.get("symbol"), "us")
+            if sym and sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
+                tickers.append(sym)
+            if len(tickers) >= max_symbols:
+                break
     if not tickers:
         return {"status": "NO_SYMBOLS", "market": "us", "message": "SEC filing을 조회할 미장 티커가 없습니다.", "count": 0, "file": out_file.relative_to(REPO_ROOT).as_posix()}
     end = pd.Timestamp.today().normalize()
@@ -4089,6 +4098,22 @@ def _collect_us_filings(days: int = 60, max_symbols: int = 35) -> dict[str, Any]
     return {"status": status, "market": "us", "message": "SEC/Finnhub filing 수집 완료" if rows else "SEC/Finnhub filing 결과가 없습니다.", "count": len(rows), "file": out_file.relative_to(REPO_ROOT).as_posix(), "errors": errors[:10]}
 
 
+def _current_recommendation_symbols(market: str) -> list[str]:
+    """현재 추천 매트릭스(3x3 모드x기간)에 등장하는 종목 전체를 모은다."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for path in sorted(REPORT_DIR.glob(f"mone_v36_final_recommendations_{market}_*.csv")):
+        df = read_csv(path, usecols=["symbol"])
+        if df.empty or "symbol" not in df.columns:
+            continue
+        for raw_sym in df["symbol"].tolist():
+            sym = normalize_symbol(raw_sym, market)
+            if sym and sym not in seen:
+                seen.add(sym)
+                out.append(sym)
+    return out
+
+
 def _collect_us_company_news(days: int = 45, max_symbols: int = 60) -> dict[str, Any]:
     """Finnhub /company-news로 종목별 뉴스를 수집해 news_summary_us.csv에 추가한다."""
     token = os.environ.get("FINNHUB_API_KEY", "").strip()
@@ -4096,16 +4121,26 @@ def _collect_us_company_news(days: int = 45, max_symbols: int = 60) -> dict[str,
     if not token:
         return {"status": "MISSING_KEY", "market": "us", "message": "FINNHUB_API_KEY 없음", "count": 0}
 
-    # OHLCV 파일 목록에서 US 티커 수집 (symbol master보다 더 넓은 커버리지)
-    ohlcv_dir = DATA_DIR / "market" / "ohlcv"
+    # 현재 추천 종목을 최우선으로 수집한다 — 이전에는 OHLCV 파일명을 알파벳
+    # 순으로 정렬해 앞쪽 60개만 골랐기 때문에, 추천 종목이라도 알파벳 뒤쪽
+    # (예: TSM)이면 뉴스 수집 대상에서 항상 빠지는 문제가 있었다.
     tickers: list[str] = []
-    if ohlcv_dir.is_dir():
-        for path in sorted(ohlcv_dir.glob("us_*_daily.csv")):
-            sym = path.name.replace("us_", "").replace("_daily.csv", "")
-            if sym and sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
-                tickers.append(sym)
-            if len(tickers) >= max_symbols:
-                break
+    for sym in _current_recommendation_symbols("us"):
+        if sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
+            tickers.append(sym)
+        if len(tickers) >= max_symbols:
+            break
+
+    # 남는 슬롯은 OHLCV 파일 목록(symbol master보다 더 넓은 커버리지)으로 채운다
+    if len(tickers) < max_symbols:
+        ohlcv_dir = DATA_DIR / "market" / "ohlcv"
+        if ohlcv_dir.is_dir():
+            for path in sorted(ohlcv_dir.glob("us_*_daily.csv")):
+                sym = path.name.replace("us_", "").replace("_daily.csv", "")
+                if sym and sym not in tickers and re.fullmatch(r"[A-Z][A-Z0-9._-]{0,12}", sym):
+                    tickers.append(sym)
+                if len(tickers) >= max_symbols:
+                    break
     # 폴백: symbol master
     if not tickers:
         for item in symbols("us").get("items", []):
@@ -4283,7 +4318,7 @@ def github_actions_status() -> dict[str, Any]:
         return {"status": "ERROR", "repo": repo, "message": f"GitHub Actions 조회 실패: {exc}", "workflows": [], "runs": []}
 
 
-def chart_data(symbol: str, market: str) -> dict[str, Any]:
+def chart_data(symbol: str, market: str, tail_rows: int = 160) -> dict[str, Any]:
     target = normalize_symbol(symbol, market)
     df, source = _load_ohlcv(target, market)
     if df.empty:
@@ -4324,7 +4359,7 @@ def chart_data(symbol: str, market: str) -> dict[str, Any]:
     work["macdSignal"] = macd.ewm(span=9, adjust=False).mean()
     cols = ["date", "open", "high", "low", "close", "volume", "ma5", "ma10", "ma20", "ma60", "bbUpper", "bbLower", "rsi", "macd", "macdSignal"]
     items = []
-    for row in work.tail(160)[cols].replace({np.nan: None}).to_dict(orient="records"):
+    for row in work.tail(tail_rows)[cols].replace({np.nan: None}).to_dict(orient="records"):
         items.append({k: (round(v, 4) if isinstance(v, float) and np.isfinite(v) else v) for k, v in row.items()})
     latest = items[-1] if items else {}
     indicator_status = []

@@ -126,6 +126,45 @@ def get_kr_symbols() -> list[str]:
     return syms[:100]
 
 
+def collect_news_and_disclosures(market: str = "kr") -> dict:
+    """뉴스/공시 갱신 — 기존에는 로컬 수집기가 OHLCV/추천만 갱신하고
+    뉴스·공시는 손대지 않아 기업분석 다수 종목이 NO_DATA로 남는 문제가 있었다.
+    GNEWS_API_KEY/FINNHUB_API_KEY/DART_API_KEY가 없으면 각 단계가
+    MISSING_KEY 상태를 반환할 뿐 실패하지 않는다."""
+    try:
+        from app.services import data_loader as data
+    except Exception as e:
+        return {"status": "ERROR", "reason": f"data_loader import failed: {e}"}
+
+    result: dict = {}
+    try:
+        result["news"] = data.collect_gnews(market=market)
+    except Exception as e:
+        result["news"] = {"status": "ERROR", "error": str(e)}
+    if market in ("us", "all"):
+        try:
+            result["usCompanyNews"] = data._collect_us_company_news(days=7)
+        except Exception as e:
+            result["usCompanyNews"] = {"status": "ERROR", "error": str(e)}
+    try:
+        result["disclosures"] = data.refresh_disclosures(market=market, days=30)
+    except Exception as e:
+        result["disclosures"] = {"status": "ERROR", "error": str(e)}
+    return result
+
+
+def evaluate_virtual_ledger() -> dict:
+    """가상 매매 검증 원장(virtual_validation_results.csv) 재평가 — 기존에는
+    누군가 /api/virtual/validation 화면을 열어야만 평가가 실행돼, 페이지를
+    안 보면 검증일이 지난 PENDING 건이 그대로 멈춰 있었다(예: 6월 초 배치 이후
+    멈춤). 화면 접속과 무관하게 수집기에서 주기적으로 평가를 돌린다."""
+    try:
+        from app.engine.mone_v65_api_stabilizer import _validate_virtual_ledger
+        return _validate_virtual_ledger()
+    except Exception as e:
+        return {"status": "ERROR", "reason": str(e)}
+
+
 def generate_recommendations(market: str = "kr") -> dict:
     """국장(kr)/미장(us) 추천 생성 스크립트 실행"""
     script_map = {
@@ -182,6 +221,12 @@ def git_push(commit_msg: str) -> bool:
             ["git", "add", "reports/us_recommendation_gen_status.json"],
             ["git", "add", "reports/local_collector_status.json"],
             ["git", "add", "reports/kis_current_price_kr.csv"],
+            ["git", "add", "reports/news_summary_kr.csv"],
+            ["git", "add", "reports/news_summary_us.csv"],
+            ["git", "add", "data/disclosures/disclosures_kr.csv"],
+            ["git", "add", "data/disclosures/disclosures_us.csv"],
+            ["git", "add", "reports/virtual_prediction_ledger.csv"],
+            ["git", "add", "reports/virtual_validation_results.csv"],
             ["git", "add", "data/toss_holdings_kr.csv"],
             ["git", "add", "data/kis_holdings_kr.csv"],
             ["git", "add", "data/kis_2_holdings_kr.csv"],
@@ -317,6 +362,7 @@ def main() -> None:
     parser.add_argument("--push",     action="store_true", help="수집 후 GitHub push")
     parser.add_argument("--days",     type=int, default=5,  help="OHLCV 수집 일수")
     parser.add_argument("--no-ohlcv", action="store_true",  help="OHLCV 수집 건너뜀")
+    parser.add_argument("--no-news",  action="store_true",  help="뉴스/공시 수집 건너뜀")
     parser.add_argument("--market",   default="kr",         help="수집 대상 시장: kr / us / all")
     args = parser.parse_args()
 
@@ -348,6 +394,21 @@ def main() -> None:
         rec_result = generate_recommendations(market=mkt)
         log(f"  결과: {rec_result['status']}")
         status["steps"][f"recommendations_{mkt}"] = rec_result
+
+    # Step 3: 뉴스/공시 갱신 (기업분석 NO_DATA 비율을 줄이기 위해 추가)
+    if not args.no_news:
+        for mkt in markets:
+            log(f"Step 3: 뉴스/공시 수집 [{mkt.upper()}]...")
+            news_result = collect_news_and_disclosures(market=mkt)
+            log(f"  결과: {news_result}")
+            status["steps"][f"news_disclosures_{mkt}"] = news_result
+
+    # Step 4: 가상 매매 검증 원장 재평가 (화면을 열지 않아도 검증일이 지난
+    # PENDING 건을 주기적으로 해소)
+    log("Step 4: 가상 매매 검증 재평가...")
+    validation_result = evaluate_virtual_ledger()
+    log(f"  결과: {validation_result}")
+    status["steps"]["virtual_validation"] = validation_result
 
     # 상태 저장
     status["elapsedSec"] = round(time.time() - start_time, 1)
