@@ -262,7 +262,7 @@ html[data-theme="light"] .mone-app-shell [class*="text-blue-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-blue-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-blue-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-blue-400"] {
-  color: #155bb5 !important;
+  color: #0d9488 !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-200"],
@@ -293,7 +293,7 @@ html[data-theme="light"] .mone-app-shell [class*="bg-red-"]:not([class*="/"])[cl
 /* Translucent washes (bg-emerald-500/10 etc.) are near-white in light mode —
    force-white text on them was invisible. Use a solid, readable tone instead. */
 html[data-theme="light"] .mone-app-shell [class*="bg-blue-"][class*="/"][class*="text-white"] {
-  color: #1d4ed8 !important;
+  color: #0d9488 !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"][class*="/"][class*="text-white"] {
   color: #047857 !important;
@@ -316,6 +316,46 @@ html[data-theme="light"] .mone-header-button {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
+/* App brand color is the logo's mint/teal (see splash screen in layout.tsx),
+   not generic Tailwind blue — blue read as a different (Toss-like) brand.
+   Re-tint blue-* utility classes app-wide so every page's primary action
+   color matches the actual MONE brand instead of a default blue. */
+.mone-app-shell {
+  --brand: #2dd4c2;
+  --brand-hover: #45e0cf;
+  --brand-dim: rgba(45, 212, 194, 0.14);
+}
+.mone-app-shell [class*="bg-blue-600"],
+.mone-app-shell [class*="bg-blue-500"]:not([class*="/"]) {
+  background-color: var(--brand) !important;
+  color: #052420 !important;
+}
+.mone-app-shell [class*="hover:bg-blue-500"]:hover,
+.mone-app-shell [class*="hover:bg-blue-600"]:hover,
+.mone-app-shell [class*="hover:bg-blue-700"]:hover {
+  background-color: var(--brand-hover) !important;
+}
+.mone-app-shell [class*="bg-blue-"][class*="/"] {
+  background-color: var(--brand-dim) !important;
+}
+.mone-app-shell [class*="text-blue-"] {
+  color: var(--brand) !important;
+}
+.mone-app-shell [class*="border-blue-"] {
+  border-color: rgba(45, 212, 194, 0.45) !important;
+}
+.mone-app-shell [class*="focus:ring-blue-"] {
+  --tw-ring-color: rgba(45, 212, 194, 0.4) !important;
+}
+.mone-app-shell [class*="focus:border-blue-"] {
+  border-color: var(--brand) !important;
+}
+html[data-theme="light"] .mone-app-shell {
+  --brand: #0d9488;
+  --brand-hover: #0f766e;
+  --brand-dim: rgba(13, 148, 136, 0.1);
+}
+
 /* Home uses the exact same card surface as Stocks/Holdings/Advanced
    (translucent slate-900 over the page background, plain slate-800
    border, no extra glow) so the tabs feel like one consistent app. */
@@ -323,7 +363,6 @@ html[data-theme="light"] .mone-header-button {
   --home-surface: rgba(15, 23, 42, 0.5);
   --home-inset: rgba(2, 6, 23, 0.6);
   --home-border: #1e293b;
-  --home-primary: #3b82f6;
 }
 .mone-home-surface {
   background: var(--home-surface) !important;
@@ -339,22 +378,17 @@ html[data-theme="light"] .mone-header-button {
   height: 6px;
   flex: 0 0 6px;
   border-radius: 50%;
-  background: var(--home-primary);
+  background: var(--brand, #2dd4c2);
 }
 html:not([data-theme="light"]) .mone-app-header {
   background-color: rgba(3, 9, 20, 0.94) !important;
-  border-color: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(45, 212, 194, 0.16) !important;
 }
 
 html[data-theme="light"] .mone-home {
   --home-surface: #ffffff;
   --home-inset: #f3f6fa;
   --home-border: #d8e0ea;
-  --home-primary: #1d4ed8;
-}
-html[data-theme="light"] .mone-home [class*="bg-blue-600"]:not([class*="/"]),
-html[data-theme="light"] .mone-home [class*="bg-blue-500"]:not([class*="/"]) {
-  color: #ffffff !important;
 }
 
 /* 모바일에서 선택 방지 (버튼/탭바) */
