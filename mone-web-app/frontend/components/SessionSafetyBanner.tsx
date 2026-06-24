@@ -152,7 +152,7 @@ export default function SessionSafetyBanner({
                   title={title}
                   aria-label={`근접 알림: ${title}`}
                   onClick={() => window.dispatchEvent(new CustomEvent("mone-open-near-alert", { detail: alert }))}
-                  className="inline-flex min-h-8 min-w-[132px] max-w-[190px] flex-1 items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2 py-1 text-left text-[10px] text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
+                  className="inline-flex min-h-8 w-fit max-w-[154px] flex-none items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2 py-1 text-left text-[10px] text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
                 >
                   <BellRing aria-hidden="true" size={10} className="shrink-0" />
                   <span className="min-w-0 flex-1 truncate">{title}</span>

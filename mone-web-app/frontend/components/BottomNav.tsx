@@ -60,10 +60,10 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
               <span className="text-sm font-semibold text-slate-200">더보기</span>
               <button
                 onClick={() => setMoreOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-slate-400"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-400 transition-[background-color,transform] active:scale-[0.96]"
                 aria-label="닫기"
               >
-                <X size={14} />
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800/90"><X size={18} /></span>
               </button>
             </div>
             <div className="grid gap-2 pb-4">
@@ -71,7 +71,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                 <button
                   key={id}
                   onClick={() => handleMore(id)}
-                  className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-95 ${
+                  className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-[0.96] ${
                     current === id
                       ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30"
                       : "bg-slate-800 text-slate-300 active:bg-slate-700"
@@ -115,7 +115,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                       onAdminLogin?.();
                       setMoreOpen(false);
                     }}
-                    className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-95 ${
+                    className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-[0.96] ${
                       current === "admin" ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30" : "bg-slate-800 text-slate-300 active:bg-slate-700"
                     }`}
                   >
@@ -143,7 +143,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
             <button
               key={id}
               onClick={() => handlePrimary(id)}
-              className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-95 ${
+              className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] ${
                 current === id ? "text-blue-400" : "text-slate-500"
               }`}
             >
@@ -154,7 +154,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
 
           <button
             onClick={() => setMoreOpen((v) => !v)}
-            className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-95 ${
+            className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] ${
               isMoreActive || moreOpen ? "text-blue-400" : "text-slate-500"
             }`}
           >

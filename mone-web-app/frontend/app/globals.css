@@ -262,7 +262,7 @@ html[data-theme="light"] .mone-session-action {
 /* ── Tab button ── */
 .tab-btn {
   padding: 6px 13px; border-radius: 6px; font-size: 13px; font-weight: 500;
-  cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+  cursor: pointer; transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.15s; border: 1px solid transparent;
   color: var(--text-secondary); background: transparent; user-select: none;
 }
 .tab-btn:hover { color: var(--text-primary); }
@@ -275,10 +275,10 @@ html[data-theme="light"] .mone-session-action {
 .input-base {
   background: var(--bg-elevated); border: 1px solid var(--bg-border);
   border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
-  font-size: 13px; outline: none; transition: border-color 0.2s;
+  font-size: 13px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
   font-family: var(--font-suit), sans-serif;
 }
-.input-base:focus { border-color: var(--accent-blue); }
+.input-base:focus, .input-base:focus-visible { border-color: rgba(20,184,166,.85); box-shadow: 0 0 0 3px rgba(20,184,166,.18); }
 .input-base::placeholder { color: var(--text-muted); }
 select.input-base { cursor: pointer; }
 

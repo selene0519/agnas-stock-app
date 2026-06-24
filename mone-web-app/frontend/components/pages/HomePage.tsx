@@ -1046,7 +1046,7 @@ function PositionSizingSection({
               placeholder="예: 10000000"
               value={inputVal ? Number(inputVal).toLocaleString() : ""}
               onChange={(e) => handleCapitalChange(e.target.value.replace(/,/g, ""))}
-              className="min-h-10 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 text-right font-mono text-sm text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+              className="min-h-10 flex-1 rounded-xl border border-teal-500/35 bg-slate-950/80 px-3 text-right font-mono text-sm text-slate-100 placeholder-slate-600 shadow-[0_0_0_1px_rgba(20,184,166,0.06)] transition-[border-color,box-shadow] focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/15"
             />
             <span className="text-xs text-slate-500">원</span>
           </div>

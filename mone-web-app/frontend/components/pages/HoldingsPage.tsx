@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, FileText, Link2, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
-import PositionManager from "../PositionManager";
 import CashInputBar from "../CashInputBar";
 import PortfolioOptimizePanel from "../PortfolioOptimizePanel";
 import AlertsPanel from "../AlertsPanel";
@@ -1671,10 +1670,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">보유 중인 ETF가 없습니다.</div>
       )}
 
-      <PositionManager items={positionCandidates} loading={positionLoading} />
-
       {/* Kelly 포지션 사이즈 가이드 */}
-      {kellySizes && Object.keys(kellySizes).length > 0 && (
+      {false && kellySizes && Object.keys(kellySizes).length > 0 && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50">
           <button
             type="button"
