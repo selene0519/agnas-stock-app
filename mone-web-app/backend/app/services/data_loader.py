@@ -3115,19 +3115,59 @@ def positions(market: str) -> dict[str, Any]:
     return {"market": market, "count": len(normalized_rows), "source": source, "items": normalized_rows}
 
 
+@lru_cache(maxsize=4)
+def _news_company_aliases(market: str) -> tuple[tuple[str, str], ...]:
+    candidates = [
+        DATA_DIR / f"stock_master_{market}.csv",
+        DATA_DIR / f"candidate_universe_{market}.csv",
+    ]
+    aliases: dict[str, str] = {}
+    for path in candidates:
+        if not path.exists() or path.stat().st_size <= 0:
+            continue
+        try:
+            for row in dataframe_records(read_csv(path)):
+                symbol = normalize_symbol(first_value(row, ["code", "symbol", "ticker"], ""), market)
+                if not symbol:
+                    continue
+                for key in ("name_kr", "name", "company"):
+                    name = str(row.get(key) or "").strip()
+                    if len(name) >= 3 and name not in {"종목", "회사명", "이름 없음"}:
+                        aliases.setdefault(name, symbol)
+        except Exception:
+            continue
+    return tuple(sorted(((name, symbol) for name, symbol in aliases.items()), key=lambda pair: len(pair[0]), reverse=True))
+
+
 def news_rows(market: str) -> dict[str, Any]:
-    df, source = read_report("news_summary", market)
+    # 실시간 수집기는 버전 접두사가 없는 파일에 기록한다. 오래된 v93 스냅샷보다
+    # 이 파일을 먼저 읽어야 현재 수집 결과가 종목 화면에 연결된다.
+    live_path = REPORT_DIR / f"news_summary_{market}.csv"
+    if live_path.exists() and live_path.stat().st_size > 0 and rows_for(live_path) > 0:
+        df, source = read_csv(live_path), source_label(live_path)
+    else:
+        df, source = read_report("news_summary", market)
     rows = []
     for row in dataframe_records(df):
+        title = first_value(row, ["제목", "title", "headline"], "뉴스 없음")
+        summary = first_value(row, ["3줄요약", "summary", "핵심요약"], "요약 없음")
+        symbol = normalize_symbol(first_value(row, SYMBOL_ALIASES, ""), market)
+        name = first_value(row, NAME_ALIASES, "")
+        if not symbol:
+            haystack = f"{title} {summary}"
+            for alias, alias_symbol in _news_company_aliases(market):
+                if alias in haystack:
+                    symbol, name = alias_symbol, alias
+                    break
         rows.append({
             "market": market,
-            "title": first_value(row, ["제목", "title", "headline"], "뉴스 없음"),
-            "summary": first_value(row, ["3줄요약", "summary", "핵심요약"], "요약 없음"),
+            "title": title,
+            "summary": summary,
             "sourceName": first_value(row, ["출처", "source"], "출처 없음"),
             "url": first_value(row, ["URL", "url"], ""),
             "publishedAt": first_value(row, ["게시시간", "published_at", "time"], "게시시간 없음"),
-            "symbol": normalize_symbol(first_value(row, SYMBOL_ALIASES, ""), market),
-            "name": first_value(row, NAME_ALIASES, ""),
+            "symbol": symbol,
+            "name": name,
             "nextAction": first_value(row, ["다음행동"], "다음 행동 없음"),
             "raw": row,
         })
