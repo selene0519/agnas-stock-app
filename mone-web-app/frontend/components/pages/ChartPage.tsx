@@ -1893,7 +1893,7 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
                 <span className="text-emerald-400">매수 {bidRatio.toFixed(1)}%</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-red-900/40">
-                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${bidRatio}%` }} />
+                <div className="h-full rounded-full bg-emerald-500 transition-[width]" style={{ width: `${bidRatio}%` }} />
               </div>
             </div>
           )}
@@ -2450,14 +2450,14 @@ export default function ChartPage() {
         <div className="flex gap-2">
           {(["conservative","balanced","aggressive"] as const).map((m) => (
             <button key={m} onClick={() => setAtrMode(m)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium ${atrMode === m ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
+              className={`min-h-11 min-w-11 rounded-lg px-2.5 py-1 text-xs font-medium ${atrMode === m ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
               {m === "conservative" ? "보수" : m === "balanced" ? "균형" : "공격"}
             </button>
           ))}
           <span className="text-slate-700">|</span>
           {(["short","swing","mid"] as const).map((h) => (
             <button key={h} onClick={() => setAtrHorizon(h)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium ${atrHorizon === h ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
+              className={`min-h-11 min-w-11 rounded-lg px-2.5 py-1 text-xs font-medium ${atrHorizon === h ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
               {h === "short" ? "단기" : h === "swing" ? "스윙" : "중기"}
             </button>
           ))}
@@ -2689,7 +2689,7 @@ export default function ChartPage() {
               <div className="flex gap-1 rounded-lg border border-slate-800 bg-slate-950 p-0.5">
                 {PERIODS.map(({ label, bars }) => (
                   <button key={label} onClick={() => setPeriod(bars)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${period === bars ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-200"}`}>
+                    className={`min-h-11 min-w-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${period === bars ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-200"}`}>
                     {label}
                   </button>
                 ))}
@@ -3401,7 +3401,7 @@ export default function ChartPage() {
                       ? <Empty text={newsEmptyText} />
                       : <div className="space-y-2">{news.map((item, i) => <Related key={`news-${i}`} item={item} />)}</div>}
                 </CollapsiblePanel>
-                <CollapsiblePanel title="관련 공시 (DART)">
+                <CollapsiblePanel title={selected?.market === "us" ? "관련 공시 (SEC)" : "관련 공시 (DART)"}>
                   {loading
                     ? <Empty text="데이터 확인 중..." />
                     : disclosures.length === 0
@@ -3410,17 +3410,21 @@ export default function ChartPage() {
                           <Empty text={disclosureEmptyText} />
                           {selected && (
                             <a
-                              href={`https://dart.fss.or.kr/dsab007/main.do`}
+                              href={
+                                selected.market === "us"
+                                  ? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(selected.symbol)}&type=&dateb=&owner=include&count=40`
+                                  : `https://dart.fss.or.kr/dsab007/main.do`
+                              }
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-sky-400 hover:bg-slate-800 transition-colors"
                             >
-                              <span>DART 전자공시 바로가기 →</span>
+                              <span>{selected.market === "us" ? "SEC EDGAR 바로가기 →" : "DART 전자공시 바로가기 →"}</span>
                             </a>
                           )}
                         </div>
                       )
-                      : <div className="space-y-2">{disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} />)}</div>}
+                      : <div className="space-y-2">{disclosures.map((item, i) => <Related key={`disc-${i}`} item={item} kind="disclosure" />)}</div>}
                 </CollapsiblePanel>
               </>
             )}
@@ -3624,16 +3628,38 @@ function formatKoreanDate(raw: string): string {
   return d || raw;
 }
 
-function Related({ item }: { item: any }) {
+// SEC/DART 공시 양식 코드 → 한글 설명. 화면에 "SEC Form 10-K"처럼 코드만
+// 떠서 어떤 공시인지 알기 어렵다는 피드백을 반영해 짧은 설명을 덧붙인다.
+const DISCLOSURE_FORM_LABELS: Record<string, string> = {
+  "10-K": "연간 보고서", "10-Q": "분기 보고서", "8-K": "주요사항 보고",
+  "4": "내부자 거래 보고", "3": "내부자 최초 보유 보고", "5": "내부자 연간 보고",
+  "S-1": "신규 상장(IPO) 등록", "DEF 14A": "주주총회 안건",
+  "SC 13D": "5% 이상 지분 취득 보고", "SC 13G": "5% 이상 지분 보유 보고(소극적)",
+  "424B": "증권 발행 설명서", "6-K": "외국 기업 정기 보고",
+  "144": "임원·대주주 제한 주식 매도 신고", "FWP": "증권 발행 추가 자료",
+};
+
+function disclosureFormLabel(rawTitle: string): string {
+  const form = rawTitle.replace(/^SEC Form\s*/i, "").trim();
+  if (DISCLOSURE_FORM_LABELS[form]) return DISCLOSURE_FORM_LABELS[form];
+  const prefixMatch = Object.keys(DISCLOSURE_FORM_LABELS).find((code) => form.startsWith(code));
+  return prefixMatch ? DISCLOSURE_FORM_LABELS[prefixMatch] : "";
+}
+
+function Related({ item, kind = "news" }: { item: any; kind?: "news" | "disclosure" }) {
   const title = item.title || item.reportName || item.headline || item.summary || "제목 없음";
   const rawDate = item.date || item.publishedAt || item.disclosedAt || "";
   const date = formatKoreanDate(rawDate);
   const link = item.url || item.link || item.articleUrl || "";
   const source = item.source || item.sourceName || item.publisher || "";
+  const formLabel = kind === "disclosure" ? disclosureFormLabel(title) : "";
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-1.5">
-      <div className="line-clamp-2 text-sm font-medium text-slate-100 leading-snug">{title}</div>
+      <div className="flex items-baseline gap-1.5">
+        <span className="line-clamp-2 text-sm font-medium text-slate-100 leading-snug">{title}</span>
+        {formLabel && <span className="shrink-0 text-xs text-slate-500">· {formLabel}</span>}
+      </div>
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs text-slate-500">
           {source && <span className="text-slate-400">{source}</span>}
