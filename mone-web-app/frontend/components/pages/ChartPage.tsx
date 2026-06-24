@@ -2478,7 +2478,7 @@ export default function ChartPage() {
       <div className="flex flex-wrap items-center gap-2">
         {(["all","kr","us"] as Market[]).map((item) => (
           <button key={item} onClick={() => { setMarket(item); setSelected(null); }}
-            className={`rounded-xl px-4 py-2 text-sm ${market === item ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
+            className={`rounded-xl border px-4 py-2 text-sm ${market === item ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-900 text-slate-400"}`}>
             {item === "all" ? "자동" : marketLabel(item)}
           </button>
         ))}

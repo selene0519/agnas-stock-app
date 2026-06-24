@@ -869,7 +869,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 setMarket(item.id);
                 setSelected(null);
               }}
-              className={`min-w-0 rounded-xl border px-2 py-2 text-sm ${market === item.id ? "border-emerald-500 bg-emerald-500/10 text-white" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+              className={`min-w-0 rounded-xl border px-2 py-2 text-sm ${market === item.id ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950 text-slate-400"}`}
             >
               {item.label}
             </button>
@@ -1195,7 +1195,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <button
                   key={item.id}
                   onClick={() => setMode(item.id)}
-                  className={`rounded-xl border p-3 text-left ${mode === item.id ? "border-emerald-500 bg-emerald-500/10 text-white" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+                  className={`rounded-xl border p-3 text-left ${mode === item.id ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                 >
                   <div className="font-bold">{item.label}</div>
                   <div className="mt-1 text-[11px] text-slate-500">
@@ -1214,7 +1214,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <button
                   key={item.id}
                   onClick={() => setHorizon(item.id)}
-                  className={`rounded-xl border p-3 text-left ${horizon === item.id ? "border-cyan-500 bg-cyan-500/10 text-white" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+                  className={`rounded-xl border p-3 text-left ${horizon === item.id ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                 >
                   <div className="font-bold">{item.label}</div>
                   <div className="mt-1 text-[11px] text-slate-500">

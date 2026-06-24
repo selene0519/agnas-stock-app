@@ -597,19 +597,19 @@ function TodayEntryCard({
   const toneStyle = {
     entry: {
       card: "hover:border-blue-500/45 focus:ring-blue-500/40",
-      rank: "bg-emerald-600 text-white",
+      rank: "border border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
       decision: "text-emerald-300",
       accent: "bg-emerald-500",
     },
     watch: {
       card: "hover:border-cyan-500/45 focus:ring-cyan-500/40",
-      rank: "bg-amber-500 text-slate-950",
+      rank: "border border-amber-500/40 bg-amber-500/15 text-amber-300",
       decision: "text-amber-300",
       accent: "bg-amber-500",
     },
     risk: {
       card: "hover:border-red-500/45 focus:ring-red-500/40",
-      rank: "bg-red-600 text-white",
+      rank: "border border-red-500/40 bg-red-500/15 text-red-300",
       decision: "text-red-300",
       accent: "bg-red-500",
     },
