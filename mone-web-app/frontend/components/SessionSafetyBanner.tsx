@@ -102,7 +102,7 @@ export default function SessionSafetyBanner({
         </div>
       )}
 
-      <div className={`rounded-xl border px-3.5 py-2.5 shadow-sm ${tone}`}>
+      <div className={`rounded-xl border px-3.5 py-2.5 shadow-sm ${tone}`} role="status" aria-live="polite">
           <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
@@ -130,11 +130,11 @@ export default function SessionSafetyBanner({
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            <button onClick={refresh} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-slate-200 transition-[background-color,border-color,transform] hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[0.96]">
+            <button type="button" onClick={refresh} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-slate-200 transition-[background-color,border-color,transform] hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[0.96]">
               <RefreshCw aria-hidden="true" size={11} className={loading ? "animate-spin" : ""} />
               <span className="hidden sm:inline">동기화</span>
             </button>
-            <button onClick={() => setHidden(true)} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-800 px-2.5 py-1.5 text-[11px] text-slate-400 transition-[border-color,color,transform] hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[0.96]">
+            <button type="button" onClick={() => setHidden(true)} className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[11px] text-slate-400 transition-[background-color,border-color,color,transform] hover:bg-slate-800 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[0.96]">
               <X aria-hidden="true" size={11} />
               <span className="hidden sm:inline">숨김</span>
             </button>
@@ -152,7 +152,7 @@ export default function SessionSafetyBanner({
                   title={title}
                   aria-label={`근접 알림: ${title}`}
                   onClick={() => window.dispatchEvent(new CustomEvent("mone-open-near-alert", { detail: alert }))}
-                  className="inline-flex min-h-8 w-fit max-w-[154px] flex-none items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2 py-1 text-left text-[10px] text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
+                  className="inline-flex min-h-10 w-fit max-w-[154px] flex-none items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2 py-1 text-left text-[10px] text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
                 >
                   <BellRing aria-hidden="true" size={10} className="shrink-0" />
                   <span className="min-w-0 flex-1 truncate">{title}</span>

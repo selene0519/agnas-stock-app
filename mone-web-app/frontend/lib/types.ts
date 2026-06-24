@@ -35,6 +35,10 @@ export interface PatternStrategy {
   historicalSupportLevels?: number[];
   isBlocked?: boolean;
   message?: string;
+  geometricPattern?: string;
+  geometricPatternDirection?: string;
+  geometricPatternStage?: string;
+  geometricPatternReason?: string;
 }
 
 export interface StockCandidate {

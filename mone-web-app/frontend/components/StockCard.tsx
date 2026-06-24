@@ -38,29 +38,60 @@ function psRiskLabel(risk?: string) {
   return map[risk.toUpperCase()] ?? risk;
 }
 
+const GEO_PATTERN_LABEL: Record<string, string> = {
+  DOUBLE_BOTTOM: '더블바텀', DOUBLE_TOP: '더블탑',
+  HEAD_AND_SHOULDERS: '헤드앤숄더', INVERSE_HEAD_AND_SHOULDERS: '역헤드앤숄더',
+  ASCENDING_TRIANGLE: '상승삼각형', DESCENDING_TRIANGLE: '하락삼각형',
+  BULL_FLAG: '불플래그', BEAR_FLAG: '베어플래그',
+  FALLING_WEDGE_BREAKOUT: '하락쐐기 돌파', RISING_WEDGE_BREAKDOWN: '상승쐐기 이탈',
+};
+const GEO_STAGE_LABEL: Record<string, string> = {
+  WATCH: '관찰', BREAKOUT_CANDIDATE: '돌파 후보', BUY_ZONE: '매수권',
+  RISK_WATCH: '위험 관찰', AVOID: '회피', BLOCKED: '진입 차단',
+};
+function geoStageColor(stage?: string) {
+  if (stage === 'BUY_ZONE') return 'text-emerald-400';
+  if (stage === 'BREAKOUT_CANDIDATE') return 'text-sky-400';
+  if (stage === 'AVOID' || stage === 'BLOCKED') return 'text-red-400';
+  if (stage === 'RISK_WATCH') return 'text-amber-400';
+  return 'text-slate-400';
+}
+
 function PatternStrategyBadges({ ps }: { ps: PatternStrategy }) {
   const hasData = ps.primaryPattern || ps.action || ps.riskStatus;
   if (!hasData) return null;
   return (
-    <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/40 p-2.5">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[9px] uppercase tracking-wide text-slate-500">MONE 패턴</span>
-        <span className="text-[11px] font-semibold text-slate-200 truncate">{ps.primaryPattern ?? '-'}</span>
+    <div className="mt-3 rounded-xl border border-slate-700/60 bg-slate-800/40 p-2.5">
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-wide text-slate-500">MONE 패턴</span>
+          <span className="text-[11px] font-semibold text-slate-200 truncate">{ps.primaryPattern ?? '-'}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-wide text-slate-500">전략</span>
+          <span className={`text-[11px] font-bold ${psActionColor(ps.action)}`}>{psActionLabel(ps.action)}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-wide text-slate-500">위험</span>
+          <span className={`text-[11px] font-semibold ${psRiskColor(ps.riskStatus)}`}>{psRiskLabel(ps.riskStatus)}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-wide text-slate-500">신뢰도</span>
+          <span className="text-[11px] font-mono font-bold text-slate-200">
+            {ps.confidence != null ? `${Math.round(ps.confidence)}%` : '-'}
+          </span>
+        </div>
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[9px] uppercase tracking-wide text-slate-500">전략</span>
-        <span className={`text-[11px] font-bold ${psActionColor(ps.action)}`}>{psActionLabel(ps.action)}</span>
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[9px] uppercase tracking-wide text-slate-500">위험</span>
-        <span className={`text-[11px] font-semibold ${psRiskColor(ps.riskStatus)}`}>{psRiskLabel(ps.riskStatus)}</span>
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[9px] uppercase tracking-wide text-slate-500">신뢰도</span>
-        <span className="text-[11px] font-mono font-bold text-slate-200">
-          {ps.confidence != null ? `${Math.round(ps.confidence)}%` : '-'}
-        </span>
-      </div>
+      {ps.geometricPattern && (
+        <div className="mt-1.5 flex items-center justify-between gap-2 border-t border-slate-700/60 pt-1.5">
+          <span className="text-[11px] font-semibold text-slate-300 truncate">
+            {GEO_PATTERN_LABEL[ps.geometricPattern] ?? ps.geometricPattern}
+          </span>
+          <span className={`text-[11px] font-bold whitespace-nowrap ${geoStageColor(ps.geometricPatternStage)}`}>
+            {GEO_STAGE_LABEL[ps.geometricPatternStage ?? ''] ?? ps.geometricPatternStage}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
