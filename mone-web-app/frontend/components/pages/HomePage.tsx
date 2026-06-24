@@ -1268,6 +1268,7 @@ function BacktestBadge({ item, badgeMap }: { item: any; badgeMap: Record<string,
 
 function getMarketGateInfo(regime: any, dataHealth: any) {
   const base = regime?.regime === "BULL" ? 70 : regime?.regime === "BEAR" ? 22 : 50;
+  const hasRegimeMa = regime?.distanceMa20Pct != null || regime?.distanceToMa20Pct != null;
   const maDist = Number(regime?.distanceMa20Pct ?? regime?.distanceToMa20Pct ?? 0);
   const maAdj = maDist >= 3 ? 10 : maDist >= 1 ? 5 : maDist >= -1 ? 0 : maDist >= -3 ? -8 : -15;
 
@@ -1284,7 +1285,7 @@ function getMarketGateInfo(regime: any, dataHealth: any) {
   const isMid = strength >= 35 && strength < 55;
   const isLow = strength < 35;
 
-  return { strength, levelText, isHigh, isMid, isLow, maDist, dataAdj, hasOhlcv };
+  return { strength, levelText, isHigh, isMid, isLow, maDist, dataAdj, hasOhlcv, hasRegimeMa };
 }
 
 // ── 시장 컨디션 게이트
@@ -1303,7 +1304,7 @@ function MarketGateCard({
   onToggle: () => void;
   basisWarning: { recommendation: string; current: string; ohlcv: string } | null;
 }) {
-  const { strength, levelText, isHigh, isMid, maDist, dataAdj, hasOhlcv } = getMarketGateInfo(regime, dataHealth);
+  const { strength, levelText, isHigh, isMid, maDist, dataAdj, hasOhlcv, hasRegimeMa } = getMarketGateInfo(regime, dataHealth);
 
   const textCls   = isHigh ? "text-emerald-300" : isMid ? "text-amber-300" : "text-red-300";
   const barCls    = isHigh ? "bg-emerald-500" : isMid ? "bg-amber-500" : "bg-red-500";
@@ -1312,7 +1313,7 @@ function MarketGateCard({
   const benchmarkText = benchmarkValue > 0 ? benchmarkValue.toLocaleString("ko-KR", { maximumFractionDigits: 1 }) : "-";
   const ohlcvDate = String(dataHealth?.ohlcvLatestDate || dataHealth?.latestDataDate || "").slice(5) || "-";
   const sentimentText = sentimentScore >= 70 ? "탐욕" : sentimentScore >= 40 ? "중립" : "공포";
-  const trendText = maDist >= 0 ? "이격 양호" : "이격 주의";
+  const trendText = !hasRegimeMa ? "데이터 확인 중" : maDist >= 0 ? "이격 양호" : "이격 주의";
   const dataText = dataAdj === 0 ? "정상" : dataAdj <= -15 ? "확인 필요" : hasOhlcv ? "종가 기준" : "부분";
   const detailMetrics = Array.isArray(fearGreedData?.components) ? fearGreedData.components : [];
   const ring = (value: number, color: string) => {
@@ -1370,12 +1371,12 @@ function MarketGateCard({
           <div className="px-2">
             <div className="text-xs font-black text-slate-600">{regime?.benchmark || "KOSPI"} 20일선</div>
             <div className="relative mx-auto mt-3 flex h-16 w-16 items-center justify-center">
-              {ring(Math.min(100, Math.abs(maDist) * 12 + 18), maDist >= 0 ? "#34d399" : "#ef4444")}
-              <div className={`absolute font-mono text-sm font-black tabular-nums ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}%
+              {ring(hasRegimeMa ? Math.min(100, Math.abs(maDist) * 12 + 18) : 0, !hasRegimeMa ? "#475569" : maDist >= 0 ? "#34d399" : "#ef4444")}
+              <div className={`absolute font-mono text-sm font-black tabular-nums ${!hasRegimeMa ? "text-slate-500" : maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                {hasRegimeMa ? `${maDist >= 0 ? "+" : ""}${maDist.toFixed(1)}%` : "-"}
               </div>
             </div>
-            <div className={`mt-2 text-sm font-black ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{trendText}</div>
+            <div className={`mt-2 text-sm font-black ${!hasRegimeMa ? "text-slate-500" : maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{trendText}</div>
           </div>
           <div className="px-2">
             <div className="text-xs font-black text-slate-600">공포탐욕지수</div>
@@ -1392,7 +1393,7 @@ function MarketGateCard({
         <div className="grid grid-cols-3 divide-x divide-slate-800/80 pt-4 text-center">
           <div>
             <div className="text-xs font-black text-slate-600">{regime?.benchmark || "KOSPI"}</div>
-            <div className={`mt-2 font-mono text-lg font-black tabular-nums ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{benchmarkText}</div>
+            <div className={`mt-2 font-mono text-lg font-black tabular-nums ${benchmarkText === "-" ? "text-slate-500" : maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{benchmarkText}</div>
           </div>
           <div>
             <div className="text-xs font-black text-slate-600">데이터 상태</div>
@@ -1417,21 +1418,19 @@ function MarketGateCard({
           </div>
 
           {detailMetrics.length > 0 ? (
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 space-y-1.5">
               {detailMetrics.map((metric: any, index: number) => {
                 const score = Math.max(0, Math.min(100, Number(metric?.score ?? 0)));
                 const barCls = score < 40 ? "bg-red-500" : score < 60 ? "bg-amber-500" : "bg-emerald-500";
                 const valueTone = score < 40 ? "text-red-300" : score < 60 ? "text-amber-300" : "text-emerald-300";
                 return (
-                  <div key={`${metric?.name || "metric"}-${index}`} className="mone-home-inset rounded-[13px] border px-3 py-2.5">
-                    <div className="min-w-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</div>
-                    <div className="mt-0.5 flex items-baseline justify-between gap-2">
-                      <span className="truncate text-[10px] font-normal text-slate-500">{metric?.direction || "-"}</span>
-                      <span className={`shrink-0 font-mono text-sm font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</span>
-                    </div>
-                    <span className="mt-2 block h-2 overflow-hidden rounded-full bg-slate-800">
+                  <div key={`${metric?.name || "metric"}-${index}`} className="mone-home-inset flex items-center gap-2.5 rounded-[10px] border px-3 py-2">
+                    <span className="w-[60px] shrink-0 truncate text-xs font-bold text-slate-300">{metric?.name || "지표"}</span>
+                    <span className="w-12 shrink-0 truncate text-[10px] text-slate-500">{metric?.direction || "-"}</span>
+                    <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-800">
                       <span className={`block h-full rounded-full transition-[width] duration-500 ${barCls}`} style={{ width: `${score}%` }} />
                     </span>
+                    <span className={`w-10 shrink-0 text-right font-mono text-xs font-black tabular-nums ${valueTone}`}>{score.toFixed(1)}</span>
                   </div>
                 );
               })}
@@ -1537,8 +1536,8 @@ function TodayConclusionCard({
             </div>
             <div>
               <div className="text-slate-500">MA20 이격</div>
-              <div className={`font-mono ${gate.maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                {gate.maDist >= 0 ? "+" : ""}{gate.maDist.toFixed(1)}%
+              <div className={`font-mono ${!gate.hasRegimeMa ? "text-slate-500" : gate.maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                {gate.hasRegimeMa ? `${gate.maDist >= 0 ? "+" : ""}${gate.maDist.toFixed(1)}%` : "-"}
               </div>
             </div>
             <div>
@@ -1851,6 +1850,7 @@ function MarketRegimeSummaryCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const hasRegimeMa = regime?.distanceMa20Pct != null || regime?.distanceToMa20Pct != null;
   const maDist = Number(regime?.distanceMa20Pct ?? regime?.distanceToMa20Pct ?? 0);
   const isBear = regime?.regime === "BEAR";
   const isBull = regime?.regime === "BULL";
@@ -1858,11 +1858,12 @@ function MarketRegimeSummaryCard({
   const regimeText = isBear ? "약세장" : isBull ? "강세장" : "중립";
   const recommendation = isBear ? "보수적 접근 권장" : isBull ? "조건 충족 후보 우선" : "선별 접근 권장";
   const borderCls = isBear
-    ? "border-amber-700/40 bg-amber-950/15"
+    ? "border-amber-500/30 bg-amber-500/5"
     : isBull
-      ? "border-emerald-800/40 bg-emerald-950/15"
+      ? "border-emerald-500/20 bg-emerald-500/5"
       : "border-slate-800 bg-slate-900/40";
   const textCls = isBear ? "text-amber-200" : isBull ? "text-emerald-200" : "text-slate-200";
+  const maDistText = hasRegimeMa ? `${maDist >= 0 ? "+" : ""}${maDist.toFixed(1)}%` : "-";
 
   return (
     <section className={`rounded-2xl border px-4 py-3 ${borderCls}`}>
@@ -1870,7 +1871,7 @@ function MarketRegimeSummaryCard({
         <div className="min-w-0">
           <div className={`text-sm font-bold ${textCls}`}>{title}</div>
           <div className="mt-0.5 text-xs text-slate-400">
-            {regimeText} · MA20 {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}% · {recommendation}
+            {regimeText} · MA20 {maDistText} · {recommendation}
           </div>
         </div>
         <button
@@ -3329,7 +3330,7 @@ export default function HomePage({
       <div className="space-y-3">
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-[24px] font-black leading-none text-slate-100">MONE 홈</h1>
+            <h1 className="text-[19px] font-black leading-none text-slate-100">MONE 홈</h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                 sessionPhase === "장중" ? "bg-emerald-500/15 text-emerald-300"

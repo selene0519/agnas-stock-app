@@ -104,52 +104,52 @@ export default function SessionSafetyBanner({
         </div>
       )}
 
-      <div className={`rounded-2xl border px-4 py-3 shadow-sm ${tone}`}>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className={`rounded-xl border px-3.5 py-2.5 shadow-sm ${tone}`}>
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
               세션 · 데이터 보호 · {marketLabel(market)}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[13px] font-semibold">
               <span>{labelSession(quality.priceSession, quality.sessionDescription, quality.status || quality.dataStatus)}</span>
-              <span className="rounded-md bg-slate-950/50 px-2 py-0.5 font-mono text-xs">{statusLabel(quality.dataStatus || quality.status)}</span>
-              {quality.killSwitch && !quality.isHoliday && <span className="rounded-md bg-red-500/20 px-2 py-0.5 text-xs text-red-100">킬스위치</span>}
-              {quality.isHoliday && <span className="rounded-md bg-blue-500/20 px-2 py-0.5 text-xs text-blue-100">복기 모드</span>}
+              <span className="rounded-md bg-slate-950/50 px-1.5 py-0.5 font-mono text-[11px]">{statusLabel(quality.dataStatus || quality.status)}</span>
+              {quality.killSwitch && !quality.isHoliday && <span className="rounded-md bg-red-500/20 px-1.5 py-0.5 text-[11px] text-red-100">킬스위치</span>}
+              {quality.isHoliday && <span className="rounded-md bg-blue-500/20 px-1.5 py-0.5 text-[11px] text-blue-100">복기 모드</span>}
             </div>
             {quality.killSwitch && !quality.isHoliday ? (
-              <p className="mt-1 text-xs text-red-200">데이터 상태가 안전하지 않아 신규 진입 판단을 중단해야 합니다.</p>
+              <p className="mt-0.5 text-[11px] text-red-200">데이터 상태가 안전하지 않아 신규 진입 판단을 중단해야 합니다.</p>
             ) : quality.isHoliday ? (
-              <p className="mt-1 text-xs text-blue-200">시장 휴장일입니다. 신규 진입보다 지난 운용 리포트와 검증 결과를 확인하세요.</p>
+              <p className="mt-0.5 text-[11px] text-blue-200">시장 휴장일입니다. 신규 진입보다 지난 운용 리포트와 검증 결과를 확인하세요.</p>
             ) : alerts.length > 0 ? (
-              <p className="mt-1 text-xs text-amber-200">현재 기준가/손절가 1% 이내 근접 알림 {alerts.length}건이 있습니다.</p>
+              <p className="mt-0.5 text-[11px] text-amber-200">현재 기준가/손절가 1% 이내 근접 알림 {alerts.length}건이 있습니다.</p>
             ) : quality.networkError ? (
-              <p className="mt-1 text-xs text-amber-300">데이터 품질 확인 요청이 지연되었습니다. 기존 화면 데이터는 유지하며, 동기화 버튼으로 다시 확인할 수 있습니다.</p>
+              <p className="mt-0.5 text-[11px] text-amber-300">데이터 품질 확인 요청이 지연되었습니다. 기존 화면 데이터는 유지하며, 동기화 버튼으로 다시 확인할 수 있습니다.</p>
             ) : quality.status === "ERROR" || quality.dataStatus === "ERROR" ? (
-              <p className="mt-1 text-xs text-amber-300">수집 결과를 확인하지 못했습니다. GitHub Actions 또는 로컬 수집기 실행 후 동기화하세요.</p>
+              <p className="mt-0.5 text-[11px] text-amber-300">수집 결과를 확인하지 못했습니다. GitHub Actions 또는 로컬 수집기 실행 후 동기화하세요.</p>
             ) : (
-              <p className="mt-1 text-xs text-slate-400">화면 복귀 시 세션과 데이터 상태를 자동으로 다시 동기화합니다.</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">화면 복귀 시 세션과 데이터 상태를 자동으로 다시 동기화합니다.</p>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {alerts.slice(0, 3).map((alert, index) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {alerts.slice(0, 2).map((alert, index) => (
               <button
                 type="button"
                 key={`${normalizeSymbol(alert)}-${alert.type || index}`}
                 onClick={() => window.dispatchEvent(new CustomEvent("mone-open-near-alert", { detail: alert }))}
-                className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-left text-xs text-amber-200 transition-[background-color,transform] hover:bg-amber-500/15 active:scale-[0.98]"
+                className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-1.5 py-1 text-left text-[11px] text-amber-200 transition-[background-color,transform] hover:bg-amber-500/15 active:scale-[0.98]"
               >
-                <BellRing size={11} />
+                <BellRing size={10} />
                 {alertTitle(alert)}
                 {normalizeSymbol(alert) && <span className="font-mono text-amber-300/70">{normalizeSymbol(alert)}</span>}
               </button>
             ))}
-            <button onClick={refresh} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800">
-              <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+            <button onClick={refresh} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-slate-200 hover:bg-slate-800">
+              <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
               동기화
             </button>
-            <button onClick={() => setHidden(true)} className="inline-flex items-center gap-1 rounded-xl border border-slate-800 px-3 py-2 text-xs text-slate-400 hover:text-slate-200">
-              <X size={12} />
+            <button onClick={() => setHidden(true)} className="inline-flex items-center gap-1 rounded-lg border border-slate-800 px-2.5 py-1.5 text-[11px] text-slate-400 hover:text-slate-200">
+              <X size={11} />
               숨김
             </button>
           </div>

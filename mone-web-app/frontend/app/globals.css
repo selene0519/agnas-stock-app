@@ -323,9 +323,9 @@ html[data-theme="light"] .mone-header-button {
    Re-tint blue-* utility classes app-wide so every page's primary action
    color matches the actual MONE brand instead of a default blue. */
 .mone-app-shell {
-  --brand: #2dd4c2;
-  --brand-hover: #45e0cf;
-  --brand-dim: rgba(45, 212, 194, 0.14);
+  --brand: #14b8a6;
+  --brand-hover: #2dd4c2;
+  --brand-dim: rgba(20, 184, 166, 0.1);
 }
 .mone-app-shell [class*="bg-blue-600"],
 .mone-app-shell [class*="bg-blue-500"]:not([class*="/"]) {
@@ -344,10 +344,10 @@ html[data-theme="light"] .mone-header-button {
   color: var(--brand) !important;
 }
 .mone-app-shell [class*="border-blue-"] {
-  border-color: rgba(45, 212, 194, 0.45) !important;
+  border-color: rgba(20, 184, 166, 0.35) !important;
 }
 .mone-app-shell [class*="focus:ring-blue-"] {
-  --tw-ring-color: rgba(45, 212, 194, 0.4) !important;
+  --tw-ring-color: rgba(20, 184, 166, 0.3) !important;
 }
 .mone-app-shell [class*="focus:border-blue-"] {
   border-color: var(--brand) !important;

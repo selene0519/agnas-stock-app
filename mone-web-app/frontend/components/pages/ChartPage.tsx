@@ -2355,6 +2355,11 @@ export default function ChartPage() {
     const entry = levels ? priceText(levels, "entry", "기준가 대기") : "추천선 대기";
     const stop = levels ? priceText(levels, "stop", "손절선 대기") : "손절선 대기";
     const isRisk = isRiskCode(riskRaw) || actionCode === "BLOCKED" || actionCode === "AVOID_CHASE";
+    const riskRawUpper = riskRaw.toUpperCase();
+    const riskTone: "danger" | "warn" | "ok" =
+      ["DANGER", "HIGH_RISK", "STRUCTURE_BREAKDOWN", "DATA_QUALITY_RISK"].includes(riskRawUpper) ? "danger"
+      : ["NONE", "OK", "NORMAL", "LOW", "LOW_RISK", "SAFE"].includes(riskRawUpper) ? "ok"
+      : "warn";
     const headline =
       isRisk ? "위험 관리 우선"
       : actionCode === "SCALE_IN" ? "분할 접근 검토"
@@ -2378,11 +2383,11 @@ export default function ChartPage() {
       conf: confidence,
       isRisk,
       rows: [
-        { label: "신규 진입", value: newEntry },
-        { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다." },
-        { label: "관심종목", value: levels ? `기준가 ${entry} 근접 시 알림` : "기준가 확정 후 알림 기준을 설정합니다." },
-        { label: "위험 상태", value: riskText },
-        ...(confidence != null ? [{ label: "신뢰도", value: String(confidence) }] : []),
+        { label: "신규 진입", value: newEntry, tone: isRisk ? "warn" as const : "ok" as const },
+        { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다.", tone: "neutral" as const },
+        { label: "관심종목", value: levels ? `기준가 ${entry} 근접 시 알림` : "기준가 확정 후 알림 기준을 설정합니다.", tone: "neutral" as const },
+        { label: "위험 상태", value: riskText, tone: riskTone },
+        ...(confidence != null ? [{ label: "신뢰도", value: String(confidence), tone: confidence < 40 ? "warn" as const : confidence < 65 ? "neutral" as const : "ok" as const }] : []),
       ],
     };
   })();
@@ -2474,7 +2479,7 @@ export default function ChartPage() {
         {(["all","kr","us"] as Market[]).map((item) => (
           <button key={item} onClick={() => { setMarket(item); setSelected(null); }}
             className={`rounded-xl px-4 py-2 text-sm ${market === item ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
-            {item === "all" ? `자동(${marketLabel(autoMarket)})` : marketLabel(item)}
+            {item === "all" ? "자동" : marketLabel(item)}
           </button>
         ))}
         <span className="text-xs text-slate-500">{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · 현재 적용 시장: {marketLabel(resolvedMarket)}</span>
@@ -2534,7 +2539,7 @@ export default function ChartPage() {
             </div>
 
             {moneConclusion && (
-              <div className={`mb-4 rounded-xl border p-4 ${moneConclusion.isRisk ? "border-amber-700/40 bg-amber-950/20" : "border-emerald-800/40 bg-emerald-950/15"}`}>
+              <div className={`mb-4 rounded-xl border p-4 ${moneConclusion.isRisk ? "border-amber-500/30 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5"}`}>
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">MONE 결론</div>
@@ -2552,12 +2557,22 @@ export default function ChartPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
-                  {moneConclusion.rows.map((row) => (
-                    <div key={row.label} className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2">
-                      <div className="text-[10px] text-slate-500">{row.label}</div>
-                      <div className="mt-1 leading-5 text-slate-200">{row.value}</div>
-                    </div>
-                  ))}
+                  {moneConclusion.rows.map((row) => {
+                    const toneCls = row.tone === "danger" ? "border-red-500/30 bg-red-500/5"
+                      : row.tone === "warn" ? "border-amber-500/30 bg-amber-500/5"
+                      : row.tone === "ok" ? "border-emerald-500/20 bg-emerald-500/5"
+                      : "border-slate-800 bg-slate-950/50";
+                    const valueCls = row.tone === "danger" ? "text-red-200"
+                      : row.tone === "warn" ? "text-amber-200"
+                      : row.tone === "ok" ? "text-emerald-200"
+                      : "text-slate-200";
+                    return (
+                      <div key={row.label} className={`rounded-lg border px-3 py-2 ${toneCls}`}>
+                        <div className="text-[10px] text-slate-500">{row.label}</div>
+                        <div className={`mt-1 leading-5 ${valueCls}`}>{row.value}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
