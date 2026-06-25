@@ -1,6 +1,22 @@
 {
-  "status": "INSUFFICIENT_DATA",
-  "olsSamples": 26,
-  "message": "샘플 26건 — 최소 30건 필요. 조정 없음.",
-  "adjustments": {}
+  "updatedAt": "2026-06-25 23:36:35",
+  "basedOnR2": 0.1971,
+  "olsSamples": 49,
+  "rsiCoefficient": -0.4769,
+  "vrCoefficient": 0.9326,
+  "d20Coefficient": 0.8342,
+  "mom5Coefficient": -0.2605,
+  "adjustments": {
+    "rsi_upper_conservative": 70.0,
+    "rsi_upper_balanced": 73.0,
+    "rsi_upper_aggressive": 76.0,
+    "min_vr_conservative": 0.75,
+    "min_vr_balanced": 0.55,
+    "min_vr_aggressive": 0.35,
+    "d20_max_short": 11.0,
+    "d20_max_swing": 13.0,
+    "d20_max_mid": 16.0,
+    "momentum5_insight": "음의 모멘텀이 수익 기여"
+  },
+  "status": "APPLIED"
 }

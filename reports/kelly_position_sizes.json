@@ -1,12 +1,12 @@
 {
   "conservative_short": {
-    "winRate": 0.0667,
-    "payoffRatio": 0.821,
+    "winRate": 0.05,
+    "payoffRatio": 0.527,
     "kellyFull": 0.0,
     "kellyHalf": 0.0,
     "recommendedPct": 0.0,
     "dataSource": "actual",
-    "sampleCount": 15
+    "sampleCount": 20
   },
   "conservative_swing": {
     "winRate": 0.505,
@@ -15,7 +15,7 @@
     "kellyHalf": 0.1288,
     "recommendedPct": 12.9,
     "dataSource": "theoretical",
-    "sampleCount": 4
+    "sampleCount": 5
   },
   "conservative_mid": {
     "winRate": 0.515,
@@ -24,25 +24,25 @@
     "kellyHalf": 0.1551,
     "recommendedPct": 15.5,
     "dataSource": "theoretical",
-    "sampleCount": 6
+    "sampleCount": 8
   },
   "balanced_short": {
-    "winRate": 0.2727,
-    "payoffRatio": 0.745,
+    "winRate": 0.2308,
+    "payoffRatio": 0.646,
     "kellyFull": 0.0,
     "kellyHalf": 0.0,
     "recommendedPct": 0.0,
     "dataSource": "actual",
-    "sampleCount": 11
+    "sampleCount": 13
   },
   "balanced_swing": {
-    "winRate": 0.6364,
-    "payoffRatio": 1.712,
-    "kellyFull": 0.424,
-    "kellyHalf": 0.212,
-    "recommendedPct": 20.0,
+    "winRate": 0.5385,
+    "payoffRatio": 1.434,
+    "kellyFull": 0.2167,
+    "kellyHalf": 0.1083,
+    "recommendedPct": 10.8,
     "dataSource": "actual",
-    "sampleCount": 11
+    "sampleCount": 13
   },
   "balanced_mid": {
     "winRate": 0.515,
@@ -51,7 +51,7 @@
     "kellyHalf": 0.1551,
     "recommendedPct": 15.5,
     "dataSource": "theoretical",
-    "sampleCount": 3
+    "sampleCount": 5
   },
   "aggressive_short": {
     "winRate": 0.0,
@@ -60,7 +60,7 @@
     "kellyHalf": 0.0,
     "recommendedPct": 0.0,
     "dataSource": "actual",
-    "sampleCount": 11
+    "sampleCount": 15
   },
   "aggressive_swing": {
     "winRate": 0.505,
@@ -69,7 +69,7 @@
     "kellyHalf": 0.1288,
     "recommendedPct": 12.9,
     "dataSource": "theoretical",
-    "sampleCount": 4
+    "sampleCount": 7
   },
   "aggressive_mid": {
     "winRate": 0.515,
@@ -78,6 +78,6 @@
     "kellyHalf": 0.1551,
     "recommendedPct": 15.5,
     "dataSource": "theoretical",
-    "sampleCount": 1
+    "sampleCount": 3
   }
 }
