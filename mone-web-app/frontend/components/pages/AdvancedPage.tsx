@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
 import { mone, type Market, type Mode, type Horizon } from "@/lib/api";
 import { getDefaultMarketBySession } from "@/lib/marketSession";
 import { toNumber } from "@/lib/moneDisplay";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { MetricCard } from "@/components/ui/MetricCard";
 import BacktestComparePanel from "@/components/BacktestComparePanel";
 import PaperTradingPage from "@/components/pages/PaperTradingPage";
 import VirtualJournalPage from "@/components/pages/VirtualJournalPage";
@@ -21,12 +22,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="mt-2 text-lg font-bold text-slate-100">{value}</div>
-    </div>
-  );
+  return <MetricCard label={label} value={value} />;
 }
 
 function pickNumber(item: any, keys: string[]) {
@@ -83,8 +79,6 @@ export default function AdvancedPage({
   const [mcSims, setMcSims] = useState(500);
   const [mcResult, setMcResult] = useState<any>(null);
   const [mcLoading, setMcLoading] = useState(false);
-
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const rr = useMemo(() => {
     const risk = Math.max(entry - stop, 0);
@@ -181,34 +175,7 @@ export default function AdvancedPage({
         <p className="mt-1 text-xs text-slate-400">모의투자, AI 매매일지, 계산기, 몬테카를로, 전략 검증을 한 곳에서.</p>
       </div>
 
-      {/* 탭 드롭다운 */}
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setDropdownOpen((v) => !v)}
-          className="flex w-full items-center justify-between rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-        >
-          <span>{tabs.find((t) => t.id === tab)?.label}</span>
-          <ChevronDown size={15} className={`shrink-0 text-slate-400 transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`} />
-        </button>
-        {dropdownOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-            <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-slate-700 bg-slate-900 py-1 shadow-xl">
-              {tabs.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => { setTab(item.id); setDropdownOpen(false); }}
-                  className={`flex w-full items-center px-4 py-2.5 text-left text-sm transition-colors ${tab === item.id ? "bg-slate-700/60 font-semibold text-white" : "text-slate-300 hover:bg-slate-800"}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+      <SegmentedControl<TabId> options={tabs.map((t) => ({ value: t.id, label: t.label }))} value={tab} onChange={setTab} />
 
       {tab === "calculator" && (
         <Card title="EV 기반 리스크 계산기">

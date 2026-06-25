@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { mone } from "@/lib/api";
 import { adminAuthHeaders } from "@/lib/adminAuth";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { toneClassName } from "@/lib/tone";
 import NewsPage from "./NewsPage";
 import PredictionPage from "./PredictionPage";
 
@@ -121,7 +123,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
         <div className="flex flex-wrap gap-2">
           {["kr", "us"].map((m) => (
             <button key={m} onClick={() => onMarketChange(m)}
-              className={`rounded-xl border px-3 py-1.5 text-sm font-medium ${market === m ? "border-blue-500 bg-blue-600 text-white" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
+              className={`rounded-xl border px-3 py-1.5 text-sm font-medium ${market === m ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
               {m.toUpperCase()}
             </button>
           ))}
@@ -233,13 +235,13 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
               <div className="flex flex-wrap gap-2">
                 {MODES.map((m) => (
                   <button key={m} onClick={() => onModeChange(m)}
-                    className={`rounded-lg border px-2.5 py-1 text-xs ${mode === m ? "border-blue-500 bg-blue-600 text-white" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+                    className={`rounded-lg border px-2.5 py-1 text-xs ${mode === m ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
                     {m}
                   </button>
                 ))}
                 {HORIZONS.map((h) => (
                   <button key={h} onClick={() => onHorizonChange(h)}
-                    className={`rounded-lg border px-2.5 py-1 text-xs ${horizon === h ? "border-purple-500 bg-purple-600 text-white" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+                    className={`rounded-lg border px-2.5 py-1 text-xs ${horizon === h ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
                     {h}
                   </button>
                 ))}
@@ -476,18 +478,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
-        {ADMIN_TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setTab(item.id)}
-            className={`rounded-xl border px-3 py-2 text-sm font-medium ${tab === item.id ? "border-blue-500 bg-blue-600 text-white" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl<AdminTab> options={ADMIN_TABS.map((t) => ({ value: t.id, label: t.label }))} value={tab} onChange={setTab} />
 
       {tab === "prediction" && <PredictionPage />}
       {tab === "news" && <NewsPage />}
@@ -541,9 +532,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
               <div key={row.market || idx} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="font-mono text-sm font-bold text-slate-100">{String(row.market || "-").toUpperCase()}</div>
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                    row.localCollectorPushed ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                  }`}>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${toneClassName(row.localCollectorPushed ? "safe" : "warning")}`}>
                     local {row.localCollectorStatus || "UNKNOWN"}
                   </span>
                 </div>
