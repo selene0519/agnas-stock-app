@@ -216,19 +216,26 @@ def _consecutive_up(values: list[float]) -> int:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def _find_local_minima(values: list[float], window: int = 3) -> list[int]:
-    """window 내 최솟값 인덱스 반환"""
+    """
+    window 내 최솟값 인덱스 반환.
+
+    구간 내 동일값이 여럿이면(평탄/단조 구간) 모두를 극값으로 잘못 인식할 수
+    있어, 윈도우 내에서 정확히 1개일 때만 진짜 피벗으로 인정한다.
+    """
     result = []
     for i in range(window, len(values) - window):
-        if values[i] == min(values[i - window:i + window + 1]):
+        seg = values[i - window:i + window + 1]
+        if values[i] == min(seg) and seg.count(values[i]) == 1:
             result.append(i)
     return result
 
 
 def _find_local_maxima(values: list[float], window: int = 3) -> list[int]:
-    """window 내 최댓값 인덱스 반환"""
+    """window 내 최댓값 인덱스 반환. 동일값 다중 매치 시 제외(평탄/단조 구간 오탐 방지)."""
     result = []
     for i in range(window, len(values) - window):
-        if values[i] == max(values[i - window:i + window + 1]):
+        seg = values[i - window:i + window + 1]
+        if values[i] == max(seg) and seg.count(values[i]) == 1:
             result.append(i)
     return result
 

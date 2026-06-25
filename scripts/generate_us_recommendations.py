@@ -405,7 +405,7 @@ def generate_us_recommendations() -> dict[str, Any]:
                     continue
                 # ─────────────────────────────────────────────────────────
 
-                entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon, ind)
+                entry, stop, target, ev, decision, wr_prob, wr_samples = _price_band(adj_score, current, mode, horizon, ind)
 
                 if ev is not None and ev < 0:
                     if mode == "conservative":
@@ -416,6 +416,12 @@ def generate_us_recommendations() -> dict[str, Any]:
                 _, timing_label, timing_reason = _decide_timing(adj_score, ind, mode, horizon, ev)
                 ev_negative = ev is not None and ev < 0
                 ma_conv = _ma_convergence(ind)
+
+                # 자가보정 루프: 검증된 승률(wr_prob)을 표본수 가중치로 confidence에 자동 반영
+                wr_weight = min(wr_samples / 100.0, 1.0)
+                if wr_weight > 0:
+                    wr_score_equiv = (wr_prob - 0.5) * 200.0  # 0.35~0.65 → -30~+30
+                    adj_score = max(0.0, min(100.0, adj_score + wr_score_equiv * wr_weight * 0.3))
 
                 # Self-Correction v2 적용 (7-F US)
                 _corr_applied = False
@@ -531,6 +537,10 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "correctionConfidence": _corr_confidence,
                     "correctionSummary": _corr_summary,
                     "appliedCorrectionVersion": _corr_version,
+                    # 자가보정 루프: 검증된 승률(strategy_win_rates.json) → confidence 가중 반영
+                    "verifiedWinRate": round(wr_prob * 100, 1),
+                    "winRateSampleCount": wr_samples,
+                    "winRateConfidenceWeight": round(wr_weight, 2),
                     # 팩터 귀속분석용 기술지표 (입력 시점 snapshot)
                     "rsi14": round(_rsi, 1) if _rsi is not None else "",
                     "volumeRatio20": round(_vr, 2) if _vr is not None else "",

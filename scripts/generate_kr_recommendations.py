@@ -412,7 +412,7 @@ def _decide_timing(score: float, ind: dict, mode: str, horizon: str, ev: float |
     return "기다림", "관망", "점수·추세 조건 미충족"
 
 
-def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict | None = None) -> tuple[float, float, float, float | None, str]:
+def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict | None = None) -> tuple[float, float, float, float | None, str, float, int]:
     band = _HORIZON_BANDS[horizon]
     rf = _MODE_RISK[mode]; rwf = _MODE_REWARD[mode]
     entry = current
@@ -444,10 +444,12 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
         _rates_doc = {}
     _win_rates = _rates_doc.get("winRates", {})
     _defaults  = _rates_doc.get("defaultRates", {})
+    _sample_counts = _rates_doc.get("sampleCounts", {})
     _rate_key  = f"{mode}_{horizon}"
     base  = float(_win_rates.get(_rate_key) or _defaults.get(f"{horizon}_base") or 0.505)
     scale = float(_defaults.get(f"{horizon}_scale") or 0.14)
     prob  = max(0.35, min(0.65, base + (score - 50.0) / 50.0 * scale))
+    wr_samples = int(_sample_counts.get(_rate_key) or 0)
 
     ev = None
     rr = None
@@ -468,7 +470,7 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     else:
         decision = "오늘 진입" if score >= 60 else ("대기 관찰" if score >= 50 else "기다림")
         timing_label, timing_reason = "", ""
-    return entry, stop, target, ev, decision
+    return entry, stop, target, ev, decision, prob, wr_samples
 
 
 def _fmt_krw(v: float) -> str:
@@ -1149,7 +1151,7 @@ def generate_recommendations() -> dict[str, Any]:
                     continue
                 # ─────────────────────────────────────────────────────────
 
-                entry, stop, target, ev, decision = _price_band(adj_score, current, mode, horizon, ind)
+                entry, stop, target, ev, decision, wr_prob, wr_samples = _price_band(adj_score, current, mode, horizon, ind)
 
                 # EV 음수 필터링 (보수형은 엄격, 균형/공격은 경고만)
                 if ev is not None and ev < 0:
@@ -1169,6 +1171,13 @@ def generate_recommendations() -> dict[str, Any]:
 
                 # 최종 조정 점수 (뉴스 감점 + 수급 가산)
                 adj_score_final = max(0.0, min(100.0, adj_score - news_penalty + supply_adjust))
+
+                # 자가보정 루프: 검증된 승률(wr_prob)을 표본수 가중치로 confidence에 자동 반영
+                # 표본 100건 이상이면 가중치 최대(1.0), 그 미만은 선형 축소 → 초기엔 영향 미미, 누적될수록 신뢰
+                wr_weight = min(wr_samples / 100.0, 1.0)
+                if wr_weight > 0:
+                    wr_score_equiv = (wr_prob - 0.5) * 200.0  # 0.35~0.65 → -30~+30
+                    adj_score_final = max(0.0, min(100.0, adj_score_final + wr_score_equiv * wr_weight * 0.3))
 
                 # A-2: 저평가 성장주 — DART 데이터 우선, fallback → v93 company
                 dart_row = dart_data.get(sym) or dart_data.get(sym.lstrip("0"))
@@ -1327,6 +1336,10 @@ def generate_recommendations() -> dict[str, Any]:
                     "correctionConfidence": _corr_confidence,
                     "correctionSummary": _corr_summary,
                     "appliedCorrectionVersion": _corr_version,
+                    # 자가보정 루프: 검증된 승률(strategy_win_rates.json) → confidence 가중 반영
+                    "verifiedWinRate": round(wr_prob * 100, 1),
+                    "winRateSampleCount": wr_samples,
+                    "winRateConfidenceWeight": round(wr_weight, 2),
                     # 팩터 귀속분석용 기술지표 (입력 시점 snapshot)
                     "rsi14": round(_rsi, 1) if _rsi is not None else "",
                     "volumeRatio20": round(_vr, 2) if _vr is not None else "",

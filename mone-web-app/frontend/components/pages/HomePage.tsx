@@ -2425,6 +2425,55 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             </div>
           )}
 
+          {/* 자가보정 루프: 검증된 승률 → confidence 가중 반영 */}
+          {item.winRateSampleCount !== undefined && Number(item.winRateSampleCount) > 0 && (() => {
+            const wrWeight = Number(item.winRateConfidenceWeight ?? 0);
+            const wrRate = Number(item.verifiedWinRate ?? 0);
+            const wrSamples = Number(item.winRateSampleCount ?? 0);
+            const stage =
+              wrWeight >= 0.7 ? { label: "반영 활성", barCls: "bg-emerald-400", badgeCls: "bg-emerald-900/50 text-emerald-300", cardCls: "border-slate-800 bg-slate-900/40" }
+              : wrWeight >= 0.3 ? { label: "반영 중", barCls: "bg-amber-400", badgeCls: "bg-amber-900/40 text-amber-300", cardCls: "border-slate-800 bg-slate-900/40" }
+              : { label: "축적 중", barCls: "bg-slate-500", badgeCls: "bg-slate-700 text-slate-400", cardCls: "border-slate-800/60 bg-slate-900/20" };
+            return (
+              <div className={`rounded-xl border p-3 text-[11px] ${stage.cardCls}`}>
+                <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-300">
+                  <span>자가보정 루프 — 검증된 승률</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${stage.badgeCls}`}>
+                    {stage.label} · {Math.round(wrWeight * 100)}%
+                  </span>
+                </div>
+                {/* 가중치 진행 바 — 100건 누적 시 100% */}
+                <div
+                  role="progressbar"
+                  aria-label="자가보정 confidence 반영 가중치"
+                  aria-valuenow={Math.round(wrWeight * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  className="mb-2.5 h-1 overflow-hidden rounded-full bg-slate-800"
+                >
+                  <div className={`h-full rounded-full transition-[width] ${stage.barCls}`} style={{ width: `${Math.min(wrWeight * 100, 100)}%` }} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
+                  <div>
+                    <div className="text-slate-500">검증된 승률</div>
+                    <div className={`mt-0.5 font-semibold ${wrWeight < 0.3 ? "text-slate-500" : wrRate >= 55 ? "text-emerald-300" : wrRate < 40 ? "text-red-300" : "text-slate-300"}`}>
+                      {wrRate.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">검증 표본</div>
+                    <div className="mt-0.5 font-semibold text-slate-300">{wrSamples}건</div>
+                  </div>
+                </div>
+                <div className="mt-1.5 text-[10px] text-slate-600">
+                  {wrWeight < 0.3
+                    ? "표본이 적어 confidence에 거의 반영되지 않습니다 (100건 누적 시 100%)."
+                    : "실거래 검증이 누적될수록 confidence 반영 비중이 자동으로 커집니다 (100건 이상 = 100%)."}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* EV 계산 근거 */}
           {evBase !== null && (
             <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-[11px]">
