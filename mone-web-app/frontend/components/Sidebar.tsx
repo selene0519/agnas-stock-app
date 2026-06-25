@@ -75,11 +75,14 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-5">
         <BrandMark collapsed={collapsed} />
         <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto hidden text-slate-500 transition-colors hover:text-slate-300 md:block"
+          className="ml-auto hidden h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition-[background-color,color,transform] hover:bg-slate-800 hover:text-slate-300 active:scale-[0.96] md:flex"
           title={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          aria-label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          aria-expanded={!collapsed}
         >
-          <ChevronRight size={14} className={`transition-transform ${collapsed ? "" : "rotate-180"}`} />
+          <ChevronRight size={14} aria-hidden="true" className={`transition-transform ${collapsed ? "" : "rotate-180"}`} />
         </button>
       </div>
       <nav className="flex flex-1 flex-col gap-0 overflow-y-auto p-2">
@@ -91,8 +94,9 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
               className={`nav-item w-full ${current === item.id ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
               onClick={() => onChange(item.id)}
               title={collapsed ? item.label : undefined}
+              aria-current={current === item.id ? "page" : undefined}
             >
-              <span className="shrink-0">{item.icon}</span>
+              <span className="shrink-0" aria-hidden="true">{item.icon}</span>
               {!collapsed && <span>{item.label}</span>}
             </button>
           ))}
@@ -112,8 +116,9 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
               className={`nav-item w-full opacity-50 hover:opacity-80 ${current === item.id ? "active opacity-100" : ""} ${collapsed ? "justify-center px-2" : ""}`}
               onClick={() => onChange(item.id)}
               title={collapsed ? item.label : undefined}
+              aria-current={current === item.id ? "page" : undefined}
             >
-              <span className="shrink-0">{item.icon}</span>
+              <span className="shrink-0" aria-hidden="true">{item.icon}</span>
               {!collapsed && <span>{item.label}</span>}
             </button>
           ))}
@@ -125,8 +130,8 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
                 <span className="min-w-0 flex-1 truncate text-xs text-slate-300">
                   {userProfile.name || userProfile.email || userProfile.provider || "사용자"}
                 </span>
-                <button type="button" onClick={onUserLogout} title="로그아웃" className="shrink-0 text-slate-500 hover:text-slate-200">
-                  <LogOut size={13} />
+                <button type="button" onClick={onUserLogout} title="로그아웃" aria-label="로그아웃" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-200">
+                  <LogOut size={15} aria-hidden="true" />
                 </button>
               </div>
             ) : (
@@ -135,8 +140,9 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
                 type="button"
                 className={`nav-item w-full opacity-70 hover:opacity-100 ${current === "admin" && !isAdmin ? "active opacity-100" : ""}`}
                 onClick={isAdmin ? onAdminLogout : onAdminLogin}
+                aria-current={current === "admin" ? "page" : undefined}
               >
-                <span className="shrink-0">{isAdmin ? <LogOut size={16} /> : <LogIn size={16} />}</span>
+                <span className="shrink-0" aria-hidden="true">{isAdmin ? <LogOut size={16} /> : <LogIn size={16} />}</span>
                 <span>{isAdmin ? "관리자 로그아웃" : "로그인"}</span>
               </button>
             )
@@ -153,7 +159,7 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
   );
 
   return (
-    <aside className={`hidden h-screen shrink-0 border-r border-slate-800 bg-slate-950/95 transition-all duration-300 md:block ${collapsed ? "w-16" : "w-60"}`}>
+    <aside className={`hidden h-dvh shrink-0 border-r border-slate-800 bg-slate-950/95 transition-[width] duration-300 md:block ${collapsed ? "w-16" : "w-60"}`}>
       <SidebarContent />
     </aside>
   );

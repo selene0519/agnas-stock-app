@@ -1,10 +1,4 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
 import type { DataStatus, Market, PriceSession, RiskLevel } from "./types";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 export function fmt(n: number | null | undefined, decimals = 0, suffix = "") {
   if (n === null || n === undefined || !Number.isFinite(Number(n))) return "-";

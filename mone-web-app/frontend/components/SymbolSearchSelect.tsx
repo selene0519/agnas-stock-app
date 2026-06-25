@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { mone, type Market } from "@/lib/api";
 
@@ -44,9 +44,10 @@ export default function SymbolSearchSelect({
   value = "",
   onChange,
   onResults,
-  placeholder = "종목명 또는 종목코드 검색",
+  placeholder = "종목명 또는 종목코드 검색…",
   className = "",
 }: Props) {
+  const searchId = useId();
   const [query, setQuery] = useState(value || "");
   const [items, setItems] = useState<MoneSymbol[]>([]);
   const [open, setOpen] = useState(false);
@@ -162,8 +163,17 @@ export default function SymbolSearchSelect({
   return (
     <div ref={boxRef} className={`relative ${className}`}>
       <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 focus-within:border-blue-500">
-        <Search size={18} className="text-slate-500" />
+        <Search size={18} className="text-slate-500" aria-hidden="true" />
+        <label htmlFor={searchId} className="sr-only">종목 검색</label>
         <input
+          id={searchId}
+          name="symbolSearch"
+          autoComplete="off"
+          spellCheck={false}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open && Boolean(query.trim())}
+          aria-controls={`${searchId}-results`}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -181,16 +191,16 @@ export default function SymbolSearchSelect({
           <button
             type="button"
             onClick={clear}
-            className="rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition-[background-color,color,transform] hover:bg-slate-800 hover:text-slate-200 active:scale-[0.96]"
             aria-label="검색어 지우기"
           >
-            <X size={16} />
+            <X size={16} aria-hidden="true" />
           </button>
         )}
       </div>
 
       {open && query.trim() && (
-        <div className="absolute z-50 mt-2 max-h-96 w-full overflow-auto rounded-2xl border border-slate-800 bg-slate-950 p-2 shadow-2xl">
+        <div id={`${searchId}-results`} role="listbox" aria-label="종목 검색 결과" className="absolute z-50 mt-2 max-h-96 w-full overflow-auto rounded-2xl border border-slate-800 bg-slate-950 p-2 shadow-2xl">
           {loading && <div className="px-3 py-3 text-sm text-slate-500">검색 중...</div>}
 
           {!loading && items.length === 0 && (
@@ -205,7 +215,9 @@ export default function SymbolSearchSelect({
                 key={`${item.market}-${item.symbol}`}
                 type="button"
                 onClick={() => selectItem(item)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-900"
+                role="option"
+                aria-selected={exact?.symbol === item.symbol && exact?.market === item.market}
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-900"
               >
                 <div className="min-w-0">
                   <div className="truncate text-sm font-bold text-slate-100">{item.name}</div>
