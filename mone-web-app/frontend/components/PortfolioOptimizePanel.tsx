@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { mone, type Market } from "@/lib/api";
 import { PieChart, RefreshCw, AlertTriangle, CheckCircle2, TrendingDown } from "lucide-react";
+import { displayName } from "@/lib/moneDisplay";
+import { toneClassName } from "@/lib/tone";
 
 const PORTFOLIO_CACHE_KEY = "mone:portfolio-optimize-cache";
 const PORTFOLIO_CACHE_TTL = 30 * 60 * 1000;
@@ -60,22 +62,22 @@ type PortfolioData = {
 function ConcentrationBar({ pct, label, count }: { pct: number; label: string; count: number }) {
   const isHigh = pct > 40;
   const isMed = pct > 25;
-  const barColor = isHigh ? "bg-red-500" : isMed ? "bg-amber-400" : "bg-emerald-400";
+  const tone = isHigh ? "danger" : isMed ? "warning" : "safe";
   return (
-    <div className="space-y-1">
+    <div className={`space-y-1 mone-tone-${tone}`}>
       <div className="flex items-center justify-between text-[11px]">
         <span className="text-slate-300 font-medium">{label}</span>
         <div className="flex items-center gap-2">
           <span className="text-slate-500">{count}종목</span>
-          <span className={`font-bold ${isHigh ? "text-red-400" : isMed ? "text-amber-400" : "text-slate-200"}`}>
+          <span className={`font-bold ${isHigh || isMed ? "" : "text-slate-200"}`} style={isHigh || isMed ? { color: "var(--tone-fg)" } : undefined}>
             {pct.toFixed(1)}%
           </span>
         </div>
       </div>
       <div className="h-1.5 w-full rounded-full bg-slate-800">
         <div
-          className={`h-full rounded-full transition-all ${barColor}`}
-          style={{ width: `${Math.min(pct, 100)}%` }}
+          className="h-full rounded-full transition-all"
+          style={{ width: `${Math.min(pct, 100)}%`, background: "var(--tone-fg)" }}
         />
       </div>
     </div>
@@ -145,7 +147,7 @@ export default function PortfolioOptimizePanel() {
       const items = (holdingsRes?.items || []) as any[];
       const parsed: Holding[] = items.map((h: any) => ({
         symbol: h.symbol || "",
-        name: h.name || h.symbol || "",
+        name: displayName({ ...h, market: h.market || market }) || h.symbol || "",
         market: h.market || market,
         currentPrice: Number(h.currentPrice || 0),
         quantity: Number(h.quantity || 0),
@@ -183,9 +185,9 @@ export default function PortfolioOptimizePanel() {
     (heavyPositions.length > 0 ? 1 : 0) +
     (maxLoss.totalLossPct > 15 ? 2 : maxLoss.totalLossPct > 8 ? 1 : 0);
   const riskLabel =
-    riskScore >= 4 ? { text: "집중 위험", color: "text-red-400", bg: "border-red-500/20 bg-red-950/10" } :
-    riskScore >= 2 ? { text: "주의", color: "text-amber-400", bg: "border-amber-500/20 bg-amber-950/10" } :
-    { text: "양호", color: "text-emerald-400", bg: "border-emerald-500/20 bg-emerald-950/10" };
+    riskScore >= 4 ? { text: "집중 위험", cls: toneClassName("danger") } :
+    riskScore >= 2 ? { text: "주의", cls: toneClassName("warning") } :
+    { text: "양호", cls: toneClassName("safe") };
 
   return (
     <div className="space-y-4">
@@ -200,7 +202,7 @@ export default function PortfolioOptimizePanel() {
             <button
               key={mk}
               onClick={() => setMarket(mk)}
-              className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${market === mk ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}
+              className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${market === mk ? "mone-selection-brand" : "text-slate-400 hover:text-white"}`}
             >
               {mk === "kr" ? "국장" : "미장"}
             </button>
@@ -230,14 +232,14 @@ export default function PortfolioOptimizePanel() {
       {holdings.length > 0 && (
         <>
           {/* 리스크 종합 */}
-          <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${riskLabel.bg}`}>
+          <div className={`flex items-center gap-2 rounded-xl px-3 py-2.5 ${riskLabel.cls}`}>
             {riskScore >= 3 ? (
-              <AlertTriangle size={13} className={riskLabel.color} />
+              <AlertTriangle size={13} />
             ) : (
-              <CheckCircle2 size={13} className={riskLabel.color} />
+              <CheckCircle2 size={13} />
             )}
             <div>
-              <span className={`text-xs font-bold ${riskLabel.color}`}>{riskLabel.text}</span>
+              <span className="text-xs font-bold">{riskLabel.text}</span>
               <span className="ml-2 text-[11px] text-slate-400">
                 총 {holdings.length}종목 ·{" "}
                 {totalValue > 0

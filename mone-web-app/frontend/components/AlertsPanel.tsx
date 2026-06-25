@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { mone } from "@/lib/api";
 import { Bell, BellOff, RefreshCw, Send, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { toneClassName } from "@/lib/tone";
 
 type AlertStatus = {
   enabled: boolean;
@@ -131,18 +132,18 @@ export default function AlertsPanel() {
             </div>
 
             {status.enabled ? (
-              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-3 py-2">
-                <Bell size={13} className="text-emerald-400" />
-                <span className="text-xs text-emerald-300 font-semibold">알림 활성화됨</span>
+              <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${toneClassName("safe")}`}>
+                <Bell size={13} />
+                <span className="text-xs font-semibold">알림 활성화됨</span>
                 <span className="ml-auto text-[11px] text-slate-500">
                   {status.thresholdPct}% 이내 / {status.intervalMin}분 주기
                 </span>
               </div>
             ) : (
-              <div className="rounded-xl border border-amber-500/20 bg-amber-950/10 px-3 py-2 space-y-1">
+              <div className={`rounded-xl px-3 py-2 space-y-1 ${toneClassName("warning")}`}>
                 <div className="flex items-center gap-2">
-                  <BellOff size={13} className="text-amber-400" />
-                  <span className="text-xs text-amber-300 font-semibold">알림 비활성화</span>
+                  <BellOff size={13} />
+                  <span className="text-xs font-semibold">알림 비활성화</span>
                 </div>
                 <p className="text-[11px] text-slate-400">
                   Render 환경변수에 아래 항목을 추가하세요:
@@ -200,14 +201,14 @@ export default function AlertsPanel() {
 
       {/* 테스트 결과 */}
       {testResult && (
-        <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${testResult.ok ? "border-emerald-500/20 bg-emerald-950/10 text-emerald-300" : "border-red-500/20 bg-red-950/10 text-red-300"}`}>
+        <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs ${toneClassName(testResult.ok ? "safe" : "danger")}`}>
           {testResult.ok ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
           {testResult.msg}
         </div>
       )}
 
       {checkResult !== null && (
-        <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${checkResult.sent > 0 ? "border-violet-500/20 bg-violet-950/10 text-violet-300" : "border-slate-700/40 bg-slate-800/30 text-slate-400"}`}>
+        <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs ${toneClassName(checkResult.sent > 0 ? "info" : "neutral")}`}>
           <Bell size={13} />
           {checkResult.total === 0
             ? "근접 알림 없음"
@@ -229,13 +230,13 @@ export default function AlertsPanel() {
           {status.lastCheck.items.map((item, i) => (
             <div
               key={i}
-              className={`flex items-center justify-between rounded-xl border px-3 py-2 ${item.type === "STOP" ? "border-red-500/20 bg-red-950/10" : "border-emerald-500/20 bg-emerald-950/10"}`}
+              className={`flex items-center justify-between rounded-xl px-3 py-2 ${toneClassName(item.type === "STOP" ? "danger" : "safe")}`}
             >
               <div className="flex items-center gap-2">
                 {item.type === "STOP" ? (
-                  <AlertTriangle size={12} className="text-red-400" />
+                  <AlertTriangle size={12} />
                 ) : (
-                  <CheckCircle2 size={12} className="text-emerald-400" />
+                  <CheckCircle2 size={12} />
                 )}
                 <div>
                   <span className="text-xs font-semibold text-slate-200">{item.name}</span>
@@ -243,7 +244,7 @@ export default function AlertsPanel() {
                 </div>
               </div>
               <div className="text-right">
-                <div className={`text-xs font-bold ${item.type === "STOP" ? "text-red-300" : "text-emerald-300"}`}>
+                <div className="text-xs font-bold">
                   {item.gapPct}%
                 </div>
                 <div className="text-[10px] text-slate-500">
