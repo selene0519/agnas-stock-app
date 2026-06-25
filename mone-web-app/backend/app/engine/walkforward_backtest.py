@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import math
 import os
 import re
@@ -950,11 +951,21 @@ def _apply_wf_correction(
     new_stop   = stop   + stop_dist  * sm * 0.1
     new_target = target + target_dist * tm * 0.1
 
-    # 역전 방지
+    # 역전 방지: new_entry 기준으로 재앵커링 (원래 entry가 아님 — entryAggressiveness
+    # 보정으로 entry 자체가 이미 이동했으므로, stale entry를 기준으로 다시 거리를
+    # 재면 실제 반환되는 new_entry와의 거리가 의도한 stop_dist/target_dist와 어긋난다).
+    inverted = new_stop >= new_entry or new_target <= new_entry
     if new_stop >= new_entry:
-        new_stop = entry - stop_dist * 0.5
+        new_stop = new_entry - stop_dist * 0.5
     if new_target <= new_entry:
-        new_target = entry + target_dist * 0.5
+        new_target = new_entry + target_dist * 0.5
+    if inverted:
+        logging.getLogger(__name__).warning(
+            "walkforward correction produced an inverted stop/target and was "
+            "re-clamped: entry=%.2f stop=%.2f target=%.2f -> entry=%.2f stop=%.2f target=%.2f "
+            "(ea=%.3f sm=%.3f tm=%.3f)",
+            entry, stop, target, new_entry, new_stop, new_target, ea, sm, tm,
+        )
 
     return round(new_entry, 0), round(new_stop, 0), round(new_target, 0), True
 
