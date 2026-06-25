@@ -471,8 +471,15 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
 
     # ── 파일 상태를 realtime / data 로 분리 ──────────────────────────────────
     realtime_roles = {"price_priority_1", "price_priority_2"}
+    # price_priority_4(프리마켓 리포트)·price_priority_5(fallback dataset)는 있으면
+    # 참고하는 보조 소스일 뿐 필수 데이터가 아니므로, 파일이 없다는 이유로
+    # 전체 dataStatus를 끌어내리면 안 된다.
+    optional_fallback_roles = {"price_priority_4", "price_priority_5"}
     realtime_files = [f for f in files if f.get("role") in realtime_roles]
-    data_files     = [f for f in files if f.get("role") not in realtime_roles]
+    data_files     = [
+        f for f in files
+        if f.get("role") not in realtime_roles and f.get("role") not in optional_fallback_roles
+    ]
 
     def _effective_realtime_status(items: list[dict[str, Any]]) -> str:
         statuses = [str(f.get("status") or "NO_DATA").upper() for f in items]
