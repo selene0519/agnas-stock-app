@@ -2369,9 +2369,15 @@ export default function ChartPage() {
     .slice(0, 3);
   const newsDisclosureState = collectionStatusCard(loadState, loading);
   const companyState = companyStatusCard(company, loadState);
+  const loadingData = loading || ["IDLE", "LOADING"].includes(String(loadState.ohlcvStatus || "").toUpperCase());
   const dataCards = [
-    { label: "OHLCV", value: `${loadState.ohlcvCount}봉`, sub: `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`, cls: loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad") },
-    { label: "추천선", value: levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
+    {
+      label: "OHLCV",
+      value: loadingData && loadState.ohlcvCount === 0 ? "확인 중" : `${loadState.ohlcvCount}봉`,
+      sub: loadingData && loadState.ohlcvCount === 0 ? "데이터 연결 확인 중" : `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`,
+      cls: loadingData && loadState.ohlcvCount === 0 ? statusTone("warn") : loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad"),
+    },
+    { label: "추천선", value: loading && !levels ? "확인 중" : levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
     { label: "뉴스·공시", value: newsDisclosureState.value, sub: newsDisclosureState.sub, cls: newsDisclosureState.cls },
     { label: "기업분석", value: companyState.value, sub: companyState.sub, cls: companyState.cls },
   ];
@@ -2441,26 +2447,29 @@ export default function ChartPage() {
     : loadState.disclosureSourceCount > 0 ? "선택 종목 관련 공시가 없습니다."
     : "공시 수집 대기";
   const entryPlanSection = selected ? (
-    <div className="rounded-2xl border border-blue-900/50 bg-blue-950/10 p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h3 className="font-semibold text-slate-100">진입·손절 계획</h3>
           <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할매수 50/30/20</p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid w-full gap-2 sm:w-auto sm:min-w-[296px]">
+          <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900/70 p-1">
           {(["conservative","balanced","aggressive"] as const).map((m) => (
             <button key={m} onClick={() => setAtrMode(m)}
-              className={`min-h-11 min-w-11 rounded-lg px-2.5 py-1 text-xs font-medium ${atrMode === m ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
+              className={`min-h-10 min-w-0 rounded-lg px-2 py-1 text-xs font-medium transition-[background-color,border-color,color,transform] active:scale-[0.96] ${atrMode === m ? "mone-selection-brand" : "border border-slate-700 bg-slate-950/40 text-slate-400 hover:bg-slate-800"}`}>
               {m === "conservative" ? "보수" : m === "balanced" ? "균형" : "공격"}
             </button>
           ))}
-          <span className="text-slate-700">|</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900/70 p-1">
           {(["short","swing","mid"] as const).map((h) => (
             <button key={h} onClick={() => setAtrHorizon(h)}
-              className={`min-h-11 min-w-11 rounded-lg px-2.5 py-1 text-xs font-medium ${atrHorizon === h ? "bg-blue-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}>
+              className={`min-h-10 min-w-0 rounded-lg px-2 py-1 text-xs font-medium transition-[background-color,border-color,color,transform] active:scale-[0.96] ${atrHorizon === h ? "mone-selection-brand" : "border border-slate-700 bg-slate-950/40 text-slate-400 hover:bg-slate-800"}`}>
               {h === "short" ? "단기" : h === "swing" ? "스윙" : "중기"}
             </button>
           ))}
+          </div>
         </div>
       </div>
       {atrPlan ? (
@@ -2554,8 +2563,8 @@ export default function ChartPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-right sm:grid-cols-4">
-                <Info label="최근 종가" value={latest ? money(latest.close, selected.market) : "-"} />
-                <Info label="RSI14" value={latestRsi ? Number(latestRsi).toFixed(1) : "데이터 부족"} />
+                <Info label="최근 종가" value={latest ? money(latest.close, selected.market) : loading ? "확인 중" : "-"} />
+                <Info label="RSI14" value={latestRsi ? Number(latestRsi).toFixed(1) : loading ? "확인 중" : "데이터 부족"} />
                 <Info
                   label="ATR14"
                   value={loadState.ohlcvCount >= 14 && Number.isFinite(Number(indicators.atr14))

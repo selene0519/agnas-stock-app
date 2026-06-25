@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
 import { mone } from "@/lib/api";
 import { getUserId } from "@/lib/userId";
 import {
@@ -291,10 +290,12 @@ export default function TopHoldingTicker() {
     window.addEventListener("focus", onFocus);
     window.addEventListener("mone-holdings-updated", onForce);
     window.addEventListener("mone-watchlist-updated", onForce);
+    window.addEventListener("mone-global-refresh", onForce);
     return () => {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("mone-holdings-updated", onForce);
       window.removeEventListener("mone-watchlist-updated", onForce);
+      window.removeEventListener("mone-global-refresh", onForce);
     };
   }, []);
 
@@ -302,7 +303,7 @@ export default function TopHoldingTicker() {
   const tickerLabel = labelForSource(items[0]);
 
   return (
-    <div className="flex h-8 min-w-0 flex-1 items-center gap-3 overflow-hidden">
+    <div className="flex h-8 min-w-0 flex-1 items-center overflow-hidden">
       <span className="hidden shrink-0 rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-slate-500 lg:inline">
         {tickerLabel} {items.length ? `${items.length}개` : loading ? "로딩" : "0개"}
       </span>
@@ -321,16 +322,16 @@ export default function TopHoldingTicker() {
         ) : displayItems.length === 0 ? (
           <div className="text-xs text-slate-600">티커 없음</div>
         ) : (
-          <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-7 whitespace-nowrap">
+          <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-5 whitespace-nowrap sm:gap-7">
             {displayItems.map((item, index) => {
               const isDown = item.changePctText.startsWith("-");
               const needsPrice = item.changeStatus === "pending";
               const needsBase = item.changeStatus !== "normal" && item.changeStatus !== "pending";
               const showChange = item.changeStatus === "normal" && item.changePctText;
               return (
-                <span key={`${item.id}-${index}`} className="inline-flex items-center gap-2 text-xs">
+                <span key={`${item.id}-${index}`} className="inline-flex items-center gap-1.5 text-xs sm:gap-2">
                   <span className="font-semibold text-slate-200">{item.name}</span>
-                  <span className="font-mono text-slate-500">{item.symbol}</span>
+                  <span className="hidden font-mono text-slate-500 sm:inline">{item.symbol}</span>
                   <span className={`font-mono ${needsPrice ? "text-amber-300" : "text-slate-100"}`}>{item.currentPriceText}</span>
                   {showChange && (
                     <span className={isDown ? "font-mono text-red-400" : needsBase ? "font-mono text-amber-300" : "font-mono text-emerald-400"}>
@@ -343,14 +344,6 @@ export default function TopHoldingTicker() {
           </div>
         )}
       </div>
-
-      <button
-        onClick={() => load(true)}
-        className="shrink-0 rounded-lg border border-slate-800 bg-slate-900/70 p-1.5 text-slate-500 hover:text-slate-200"
-        title="상단 티커 새로고침"
-      >
-        <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-      </button>
     </div>
   );
 }
