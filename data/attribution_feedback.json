@@ -1,15 +1,15 @@
 {
   "status": "OK",
-  "sampleCount": 24,
-  "baseWinRate": 0.0417,
-  "baseAvgPnlPct": -7.227,
-  "generatedAt": "2026-06-25T15:13:05",
+  "sampleCount": 26,
+  "baseWinRate": 0.0385,
+  "baseAvgPnlPct": -7.821,
+  "generatedAt": "2026-06-25T16:48:44",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
     "suggestedCount": 0,
     "approvedCount": 0,
-    "pendingReviewCount": 12,
+    "pendingReviewCount": 13,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
@@ -38,12 +38,12 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "9f1d8b312f6a5fa56b98",
+      "feedbackId": "43021544f9f51d91ff76",
       "mode": "conservative",
       "horizon": "mid",
-      "n": 5,
-      "winRate": 0.2,
-      "avgPnlPct": -3.95,
+      "n": 6,
+      "winRate": 0.1667,
+      "avgPnlPct": -5.738,
       "multiplier": 1.5,
       "direction": "BOOST",
       "suggestedOnly": true,
@@ -68,7 +68,7 @@
       "n": 4,
       "winRate": 0.0,
       "avgPnlPct": -11.067,
-      "multiplier": 0.613,
+      "multiplier": 0.566,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
