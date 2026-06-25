@@ -1,4 +1,4 @@
-const CACHE = "mone-v7";
+const CACHE = "mone-v8";
 const STATIC = ["/manifest.json", "/brand/mone-logo-192.png", "/brand/mone-logo.png"];
 const OFFLINE_FALLBACK = "/__offline";
 
@@ -7,6 +7,12 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(STATIC).catch(() => {}))
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {

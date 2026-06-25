@@ -1026,7 +1026,7 @@ export default function HomePageMobile({
           ))}
         </div>
 
-        {(refreshWarning || bootStatus === "degraded") && (
+        {(refreshWarning || (bootStatus === "degraded" && loading && allItems.length === 0)) && (
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
             {refreshWarning || "일부 초기 데이터를 불러오지 못해 사용 가능한 캐시와 기본 화면을 먼저 표시합니다."}
           </div>

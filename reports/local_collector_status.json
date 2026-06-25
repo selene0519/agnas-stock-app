@@ -1,41 +1,54 @@
 {
-  "startedAt": "2026-06-25T16:40:01.539877",
-  "market": "kr",
+  "startedAt": "2026-06-25T22:39:29.410395",
+  "market": "us",
   "steps": {
-    "ohlcv_kr": {
-      "ok": 100,
-      "fail": 0
+    "ohlcv_us": {
+      "ok": 142,
+      "fail": 1
     },
-    "recommendations_kr": {
+    "recommendations_us": {
       "status": "OK",
-      "market": "kr",
+      "market": "us",
       "stderr": ""
     },
-    "news_disclosures_kr": {
+    "news_disclosures_us": {
       "news": {
         "status": "OK",
         "results": [
           {
             "status": "OK",
-            "market": "kr",
+            "market": "us",
             "count": 10,
-            "file": "reports/news_summary_kr.csv"
+            "file": "reports/news_summary_us.csv"
           }
         ],
-        "createdAt": "2026-06-25 16:40:23"
+        "createdAt": "2026-06-25 22:42:38"
+      },
+      "usCompanyNews": {
+        "status": "OK",
+        "market": "us",
+        "count": 863,
+        "errors": []
       },
       "disclosures": {
         "status": "OK",
         "results": [
           {
             "status": "OK",
-            "market": "kr",
-            "message": "DART 공시 수집 완료",
-            "count": 100,
-            "file": "data/disclosures/disclosures_kr.csv"
+            "market": "us",
+            "message": "SEC/Finnhub filing 수집 완료",
+            "count": 532,
+            "file": "data/disclosures/disclosures_us.csv",
+            "errors": []
+          },
+          {
+            "status": "OK",
+            "market": "us",
+            "count": 1167,
+            "errors": []
           }
         ],
-        "createdAt": "2026-06-25 16:40:23"
+        "createdAt": "2026-06-25 22:45:41"
       }
     },
     "virtual_validation": {
@@ -19874,8 +19887,8 @@
       ]
     }
   },
-  "elapsedSec": 25.2,
-  "completedAt": "2026-06-25T16:40:26.693680",
+  "elapsedSec": 399.4,
+  "completedAt": "2026-06-25T22:46:08.811805",
   "source": "local_task_scheduler",
   "pushed": false,
   "pushError": "push failed — see log above"

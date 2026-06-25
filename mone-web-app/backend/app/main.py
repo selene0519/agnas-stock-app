@@ -6899,6 +6899,98 @@ def api_home_summary(
         mk = _market(market) if market != "all" else "kr"
         MODES = ("conservative", "balanced", "aggressive")
         HORIZONS = ("short", "swing", "mid")
+        KR_ETF_SYMBOLS = {
+            "069500",
+            "102110",
+            "114800",
+            "122630",
+            "133690",
+            "143850",
+            "148020",
+            "157450",
+            "229200",
+            "233740",
+            "251340",
+            "252670",
+            "278530",
+            "305540",
+            "360750",
+            "364970",
+            "371460",
+            "379800",
+            "381180",
+        }
+
+        def _home_float(value: object) -> float | None:
+            try:
+                text = str(value or "").strip().replace(",", "").replace("%", "")
+                if not text or text.lower() in {"nan", "none", "null"}:
+                    return None
+                number = float(text)
+                return number if number > 0 else None
+            except Exception:
+                return None
+
+        def _is_kr_etf_row(row: dict) -> bool:
+            if mk != "kr":
+                return False
+            symbol = str(row.get("symbol") or row.get("code") or "").strip()
+            if symbol in KR_ETF_SYMBOLS:
+                return True
+            name = str(row.get("name") or row.get("displayName") or "").lower()
+            return any(token in name for token in ("etf", "kodex", "tiger", "kbstar", "ace ", "arirang", "hanaro", "sol "))
+
+        def _ohlcv_change_ref(symbol: str) -> dict:
+            sym = str(symbol or "").strip().upper()
+            if not sym:
+                return {}
+            rows = _read_csv_safe(_OHLCV_DIR / f"{mk}_{sym}_daily.csv")
+            closes: list[tuple[str, float]] = []
+            for row in rows:
+                close = _home_float(row.get("close") or row.get("Close") or row.get("stck_clpr"))
+                date = str(row.get("date") or row.get("Date") or row.get("tradeDate") or "").strip()[:10]
+                if close and date:
+                    closes.append((date, close))
+            closes.sort(key=lambda item: item[0])
+            if len(closes) < 2:
+                return {}
+            prev_date, prev_close = closes[-2]
+            latest_date, latest_close = closes[-1]
+            if prev_close <= 0:
+                return {}
+            change_pct = (latest_close - prev_close) / prev_close * 100
+            return {
+                "currentPrice": latest_close,
+                "prevClose": prev_close,
+                "prevCloseDate": prev_date,
+                "ohlcvLatestDate": latest_date,
+                "changePct": change_pct,
+                "changePctText": f"{change_pct:+.2f}%",
+                "changePctSource": "ohlcv_latest_vs_previous_close",
+            }
+
+        def _enrich_home_matrix_row(row: dict) -> dict:
+            out = dict(row or {})
+            symbol = str(out.get("symbol") or out.get("code") or out.get("ticker") or "").strip().upper()
+            ref = _ohlcv_change_ref(symbol)
+            if not ref:
+                return out
+            current = _home_float(out.get("currentPrice") or out.get("current_price") or out.get("lastPrice"))
+            prev_close = _home_float(out.get("prevClose") or out.get("previousClose") or out.get("basePrice"))
+            if not current:
+                out["currentPrice"] = ref["currentPrice"]
+                current = ref["currentPrice"]
+            if not prev_close:
+                out["prevClose"] = ref["prevClose"]
+                out["prevCloseDate"] = ref["prevCloseDate"]
+                prev_close = ref["prevClose"]
+            if current and prev_close and prev_close > 0:
+                change_pct = (current - prev_close) / prev_close * 100
+                out["changePct"] = change_pct
+                out["changePctText"] = f"{change_pct:+.2f}%"
+                out["changePctSource"] = "current_vs_ohlcv_previous_close"
+            out.setdefault("ohlcvLatestDate", ref["ohlcvLatestDate"])
+            return out
 
         # 마켓 레짐 (KOSPI/SPY 20일선 기반 — priority 9)
         regime = "UNKNOWN"
@@ -7034,6 +7126,7 @@ def api_home_summary(
                 except Exception:
                     pass
                 # EV 양수 우선 정렬
+                rows_ = [_enrich_home_matrix_row(_row) for _row in rows_ if not _is_kr_etf_row(_row)]
                 def _fv(v: object) -> float:
                     try:
                         return float(v or 0)  # type: ignore[arg-type]

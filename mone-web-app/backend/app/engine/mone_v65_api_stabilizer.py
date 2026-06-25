@@ -3964,6 +3964,70 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
             normalized["distanceMa20Pct"] = normalized.get("distanceToMa20Pct")
         return normalized
 
+    def _ohlcv_price_change_ref(symbol: str) -> dict[str, Any]:
+        sym = str(symbol or "").strip().upper()
+        if not sym:
+            return {}
+        rows = _ohlcv_rows_for(market, sym)
+        closes: list[tuple[str, float]] = []
+        for row in rows:
+            close = _num(_text(row, ["close", "Close", "stck_clpr", "종가"], ""))
+            date = _normalize_date_text(_text(row, ["date", "Date", "tradeDate", "날짜"], ""))
+            if close and close > 0:
+                closes.append((date, close))
+        closes.sort(key=lambda item: item[0])
+        if len(closes) < 2:
+            return {}
+        prev_date, prev_close = closes[-2]
+        latest_date, latest_close = closes[-1]
+        if prev_close <= 0:
+            return {}
+        change_pct = (latest_close - prev_close) / prev_close * 100
+        return {
+            "ohlcvCount": len(closes),
+            "ohlcvLatestDate": latest_date,
+            "currentPrice": latest_close,
+            "currentPriceText": _price_text(latest_close, market),
+            "currentPriceSource": "ohlcv_close",
+            "currentPriceDate": latest_date,
+            "prevClose": prev_close,
+            "prevCloseText": _price_text(prev_close, market),
+            "prevCloseSource": "ohlcv_prev_close",
+            "prevCloseDate": prev_date,
+            "changePct": change_pct,
+            "changePctText": f"{'+' if change_pct > 0 else ''}{change_pct:.2f}%",
+            "changePctSource": "ohlcv_latest_vs_previous_close",
+        }
+
+    def _enrich_home_item_with_ohlcv_change(item: dict[str, Any]) -> dict[str, Any]:
+        out = dict(item or {})
+        symbol = str(out.get("symbol") or out.get("code") or out.get("ticker") or "").strip().upper()
+        ref = _ohlcv_price_change_ref(symbol)
+        if not ref:
+            return out
+        current = _num(out.get("currentPrice"))
+        prev_close = _num(out.get("prevClose"))
+        if not current:
+            out["currentPrice"] = ref["currentPrice"]
+            out["currentPriceText"] = ref["currentPriceText"]
+            out["currentPriceSource"] = ref["currentPriceSource"]
+            out["currentPriceDate"] = ref["currentPriceDate"]
+        if not prev_close:
+            out["prevClose"] = ref["prevClose"]
+            out["prevCloseText"] = ref["prevCloseText"]
+            out["prevCloseSource"] = ref["prevCloseSource"]
+            out["prevCloseDate"] = ref["prevCloseDate"]
+        basis_current = _num(out.get("currentPrice")) or ref["currentPrice"]
+        basis_prev = _num(out.get("prevClose")) or ref["prevClose"]
+        if basis_current and basis_prev and basis_prev > 0:
+            change_pct = (basis_current - basis_prev) / basis_prev * 100
+            out["changePct"] = change_pct
+            out["changePctText"] = f"{'+' if change_pct > 0 else ''}{change_pct:.2f}%"
+            out["changePctSource"] = "current_vs_ohlcv_previous_close" if current else ref["changePctSource"]
+        out.setdefault("ohlcvCount", ref["ohlcvCount"])
+        out.setdefault("ohlcvLatestDate", ref["ohlcvLatestDate"])
+        return out
+
     for mode in MODES:
         for horizon in HORIZONS:
             key = f"{mode}_{horizon}"
@@ -3973,7 +4037,7 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
                 # 마켓 레짐은 balanced_swing 응답에서 우선 획득
                 if not market_regime and payload.get("marketRegime", {}).get("regime"):
                     market_regime = _regime_with_home_aliases(payload["marketRegime"])
-                items = payload.get("items", [])
+                items = [_enrich_home_item_with_ohlcv_change(item) for item in payload.get("items", [])]
                 matrix[key] = {
                     "mode": mode,
                     "horizon": horizon,

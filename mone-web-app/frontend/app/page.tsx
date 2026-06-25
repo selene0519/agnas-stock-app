@@ -376,7 +376,7 @@ export default function App() {
               onClick={toggleTheme}
               title={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
               aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
-              className="mone-header-button relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-slate-400 transition-[background-color,color,transform] hover:bg-slate-800/55 hover:text-white active:scale-[0.96]"
+              className="mone-header-button relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-slate-400 transition-[background-color,color,transform] hover:bg-slate-800/55 hover:text-white active:scale-[0.96]"
             >
               <Sun
                 size={14}
@@ -393,7 +393,7 @@ export default function App() {
               <button
                 ref={notificationButtonRef}
                 type="button"
-                className="mone-header-button relative flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-[background-color,color,transform] hover:bg-slate-800/55 hover:text-white active:scale-[0.96]"
+                className="mone-header-button relative flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-[background-color,color,transform] hover:bg-slate-800/55 hover:text-white active:scale-[0.96]"
                 onClick={() => setNotifOpen(!notifOpen)}
                 title="알림"
                 aria-label="알림"

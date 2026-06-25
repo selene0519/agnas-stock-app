@@ -87,7 +87,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
 const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000; // refresh changing prices occasionally
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v5:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v6:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -210,6 +210,25 @@ function signedPct(value: number | null | undefined, digits = 1) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
 }
 
+function matrixChangeText(item: any) {
+  const direct = firstText(item?.changePctText, item?.changeRateText, item?.priceChangePercentText, item?.changeText, item?.priceChangeText, "");
+  if (direct && direct.includes("%")) return direct;
+  const raw = safeNumber(item?.changePct ?? item?.changePercent ?? item?.priceChangePercent ?? item?.changeRate);
+  if (raw != null && Number.isFinite(raw)) return `${raw >= 0 ? "+" : ""}${raw.toFixed(2)}%`;
+  const current = safeNumber(item?.currentPrice ?? item?.price ?? item?.close);
+  const prev = safeNumber(item?.prevClose ?? item?.previousClose);
+  if (current != null && prev != null && prev > 0) {
+    const change = ((current - prev) / prev) * 100;
+    return `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`;
+  }
+  return "대기";
+}
+
+function pctToneClass(text: string) {
+  if (!text || text === "대기") return "text-slate-500";
+  return text.trim().startsWith("-") ? "text-red-300" : "text-emerald-300";
+}
+
 function shortDateTime(value: any) {
   const text = String(value || "").trim();
   if (!text) return "-";
@@ -218,6 +237,51 @@ function shortDateTime(value: any) {
 
 function rowMarket(item: any, fallback: "kr" | "us") {
   return normalizeMarket(item?.market || item?._market || fallback, item?.symbol || item?.code || item?.ticker);
+}
+
+const KNOWN_KR_ETF_SYMBOLS = new Set(["069500", "102110", "114800", "122630", "133690", "143850", "148020", "157450", "195930", "229200", "233740", "251340", "252670", "305720", "329200", "360750", "371460", "379800", "381180", "395750", "411060", "423160", "441680", "449170", "453850", "458730", "459580", "465580", "476310", "488770"]);
+const KR_ETF_TEXT_PATTERN = /\b(ETF|ETN|TIGER|KODEX|ACE|KBSTAR|ARIRANG|HANARO|KOSEF|SOL|TIMEFOLIO|RISE|PLUS|FOCUS)\b|히어로즈/i;
+
+function isKrEtfCandidate(item: any, market: "kr" | "us") {
+  if (market !== "kr") return false;
+  const symbol = String(item?.symbol || item?.code || item?.ticker || "")
+    .replace(/^KR:/i, "")
+    .replace(/\.(KS|KQ)$/i, "")
+    .toUpperCase();
+  if (KNOWN_KR_ETF_SYMBOLS.has(symbol)) return true;
+  const text = [
+    item?.name,
+    item?.nameKr,
+    item?.company,
+    item?.companyName,
+    item?.assetType,
+    item?.instrumentType,
+    item?.category,
+    item?.sector,
+    displayName({ ...item, symbol, market: "kr" }),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return KR_ETF_TEXT_PATTERN.test(text);
+}
+
+function strategyCellItems(rawItems: any[], market: "kr" | "us", mode: Mode, horizon: Horizon) {
+  return dedupeBySymbol(Array.isArray(rawItems) ? rawItems : [])
+    .filter((item: any) => !isKrEtfCandidate(item, market))
+    .slice(0, 5)
+    .map((item: any) => ({ ...item, _mode: mode, _horizon: horizon }));
+}
+
+function normalizeStrategyMatrix(rawMatrix: any, market: "kr" | "us") {
+  return MODES.flatMap((mode) =>
+    HORIZONS.map((horizon) => {
+      const cell = Array.isArray(rawMatrix)
+        ? rawMatrix.find((candidate: any) => candidate?.mode === mode && candidate?.horizon === horizon) || {}
+        : (rawMatrix as any)?.[`${mode}_${horizon}`] || {};
+      const items = strategyCellItems(cell.items, market, mode, horizon);
+      return { mode, horizon, items, count: items.length, status: String(cell.status || "OK") } satisfies StrategyCell;
+    })
+  );
 }
 
 function marketLabel(market: "kr" | "us") {
@@ -320,6 +384,7 @@ function buildAlertTrackingRows(args: {
     if (!symbol) return;
     const market = rowMarket(row, selectedMarket);
     const match = bySymbol.get(`${market}-${symbol}`) || {};
+    if (isKrEtfCandidate({ ...match, ...row, symbol, market }, market)) return;
     const near = nearMap.get(`${market}-${symbol}`);
     const alertPrice = safeNumber(row.entry ?? row.entryPrice);
     const currentPrice = safeNumber(match.currentPrice ?? match.price ?? near?.currentPrice);
@@ -355,6 +420,7 @@ function buildAlertTrackingRows(args: {
       const symbol = String(item.symbol || "").toUpperCase();
       if (!symbol || rows.some((row) => row.symbol === symbol)) return;
       const market = rowMarket(item, selectedMarket);
+      if (isKrEtfCandidate({ ...item, symbol, market }, market)) return;
       const entry = safeNumber(item.entry ?? item.entryPrice);
       const current = safeNumber(item.currentPrice ?? item.price);
       const change = entry && current ? ((current - entry) / entry) * 100 : null;
@@ -1679,7 +1745,7 @@ function AlertTrackingPreview({ rows }: { rows: AlertTrackingRow[] }) {
           </div>
           <p className="mt-0.5 text-xs text-slate-500">발생가 대비 현재 움직임을 최근 신호 기준으로 확인합니다.</p>
         </div>
-        <span className="rounded-full border border-slate-700 bg-slate-950/50 px-2.5 py-1 text-[11px] text-slate-400">
+        <span className="shrink-0 whitespace-nowrap rounded-full border border-slate-700 bg-slate-950/50 px-2.5 py-1 text-[11px] text-slate-400">
           {rows.length}건
         </span>
       </div>
@@ -1699,7 +1765,7 @@ function AlertTrackingPreview({ rows }: { rows: AlertTrackingRow[] }) {
                   </div>
                   <div className="mt-0.5 text-[11px] text-slate-500">{row.recordedAt} · {row.detail}</div>
                 </div>
-                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(row.status)}`}>
+                <span className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(row.status)}`}>
                   {row.status}
                 </span>
               </div>
@@ -1770,24 +1836,25 @@ function EngineHistoryPreview({ rows }: { rows: EngineHistoryRow[] }) {
 
 function StrategyRecordsSection({
   alertRows,
-  engineRows,
   currentItem,
   matrix,
   matrixLoading,
+  selectedMarket,
   showMatrix,
   onMatrixClick,
   onSelectItem,
 }: {
   alertRows: AlertTrackingRow[];
-  engineRows: EngineHistoryRow[];
   currentItem?: any;
   matrix: StrategyCell[];
   matrixLoading: boolean;
+  selectedMarket: "kr" | "us";
   showMatrix: boolean;
   onMatrixClick: () => void;
   onSelectItem: (item: any) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [alertsExpanded, setAlertsExpanded] = useState(false);
   const currentMode = String(currentItem?._mode || currentItem?.mode || "balanced") as Mode;
   const currentHorizon = String(currentItem?._horizon || currentItem?.horizon || "swing") as Horizon;
 
@@ -1795,7 +1862,10 @@ function StrategyRecordsSection({
     <section className="mone-home-surface overflow-hidden rounded-[20px] border">
       <button
         type="button"
-        onClick={() => setExpanded((value) => !value)}
+        onClick={() => {
+          if (expanded) setAlertsExpanded(false);
+          setExpanded((value) => !value);
+        }}
         aria-expanded={expanded}
         aria-controls="strategy-records-body"
         className="flex min-h-[72px] w-full items-center gap-3 px-5 text-left transition-[background-color,transform] hover:bg-slate-900/35 active:scale-[0.99]"
@@ -1803,8 +1873,8 @@ function StrategyRecordsSection({
         <span className="mone-section-icon shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="text-[18px] font-black text-slate-100">전략 · 기록</div>
-          <div className="mt-1 truncate text-xs font-semibold text-slate-600">
-            전략 선택 · 알림 추적 {alertRows.length}건 · 엔진 변경 {engineRows.length}건
+          <div className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-slate-600">
+            전략 선택 · 알림 추적 {alertRows.length}건
           </div>
         </div>
         <ChevronRight size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${expanded ? "-rotate-90" : "rotate-90"}`} />
@@ -1823,43 +1893,52 @@ function StrategyRecordsSection({
               aria-expanded={showMatrix}
               className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-black text-blue-400 transition-[color,transform] hover:text-blue-300 active:scale-[0.96]"
             >
-              3×3 매트릭스 <ChevronRight size={14} className={`transition-transform duration-200 ${showMatrix ? "rotate-90" : ""}`} />
+              전략별 핵심 후보 <ChevronRight size={14} className={`transition-transform duration-200 ${showMatrix ? "rotate-90" : ""}`} />
             </button>
           </div>
 
           {showMatrix && (
-            <div className="rounded-xl bg-slate-950/35 p-3">
-              <div className="mb-2 hidden grid-cols-[100px_repeat(3,1fr)] gap-2 xl:grid">
+            <div className="rounded-xl bg-slate-950/35 p-2.5">
+              <div className="grid grid-cols-[40px_repeat(3,minmax(0,1fr))] gap-1.5">
                 <div />
                 {HORIZONS.map((h) => (
-                  <div key={h} className="rounded-xl bg-slate-950/60 py-2 text-center text-xs font-semibold text-slate-400">{horizonLabel(h)}</div>
+                  <div key={h} className="rounded-lg bg-slate-950/55 py-1.5 text-center text-[10px] font-semibold text-slate-400">{horizonLabel(h)}</div>
                 ))}
               </div>
 
               {matrixLoading ? (
-                <div className="space-y-2">
+                <div className="mt-1.5 space-y-1.5">
                   {MODES.map((mode) => (
-                    <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
-                      <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-600">{modeLabel(mode)}</div>
+                    <div key={mode} className="grid grid-cols-[40px_repeat(3,minmax(0,1fr))] gap-1.5">
+                      <div className="flex items-center justify-center rounded-lg bg-slate-950/45 px-0.5 text-[10px] font-semibold text-slate-600">{modeLabel(mode)}</div>
                       {HORIZONS.map((horizon) => (
-                        <div key={horizon} className="animate-pulse rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                          <div className="h-3 w-16 rounded bg-slate-800" />
-                          <div className="mt-2 h-5 w-10 rounded bg-slate-800" />
+                        <div key={horizon} className="min-h-[60px] animate-pulse rounded-lg bg-slate-950/55 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.045)]">
+                          <div className="h-3 w-12 rounded bg-slate-800" />
+                          <div className="mt-2 h-2.5 w-8 rounded bg-slate-800" />
                         </div>
                       ))}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="mt-1.5 space-y-1.5">
                   {MODES.map((mode) => (
-                    <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
-                      <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-300">
+                    <div key={mode} className="grid grid-cols-[40px_repeat(3,minmax(0,1fr))] gap-1.5">
+                      <div className="flex items-center justify-center rounded-lg bg-slate-950/45 px-0.5 text-[10px] font-semibold text-slate-300">
                         {modeLabel(mode)}
                       </div>
                       {HORIZONS.map((horizon) => {
                         const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
-                        return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={onSelectItem} />;
+                        return (
+                          <MatrixCell
+                            key={`${mode}-${horizon}`}
+                            cell={cell as StrategyCell}
+                            onSelect={onSelectItem}
+                            compact
+                            market={selectedMarket}
+                            active={mode === currentMode && horizon === currentHorizon}
+                          />
+                        );
                       })}
                     </div>
                   ))}
@@ -1868,8 +1947,26 @@ function StrategyRecordsSection({
             </div>
           )}
 
-          <AlertTrackingPreview rows={alertRows} />
-          <EngineHistoryPreview rows={engineRows} />
+          <button
+            type="button"
+            onClick={() => setAlertsExpanded((value) => !value)}
+            aria-expanded={alertsExpanded}
+            aria-controls="strategy-alert-tracking"
+            className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl bg-slate-950/35 px-3 text-left transition-[background-color,transform] hover:bg-slate-950/55 active:scale-[0.99]"
+          >
+            <span className="flex min-w-0 items-center gap-2 text-sm font-black text-slate-100">
+              <Bell size={14} className="shrink-0 text-blue-400" />
+              <span className="truncate">알림 추적</span>
+            </span>
+            <span className="ml-auto shrink-0 whitespace-nowrap text-xs font-semibold text-slate-500">{alertRows.length}건</span>
+            <ChevronRight size={14} className={`shrink-0 text-slate-500 transition-transform duration-200 ${alertsExpanded ? "rotate-90" : ""}`} />
+          </button>
+
+          {alertsExpanded && (
+            <div id="strategy-alert-tracking">
+              <AlertTrackingPreview rows={alertRows} />
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -2719,13 +2816,77 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
 }
 
 // ── 3×3 매트릭스 셀 (간결 버전)
-function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: any) => void }) {
+function MatrixCell({
+  cell,
+  onSelect,
+  compact = false,
+  active = false,
+  market,
+}: {
+  cell: StrategyCell;
+  onSelect: (item: any) => void;
+  compact?: boolean;
+  active?: boolean;
+  market?: "kr" | "us";
+}) {
   const top = (cell.items || []).slice(0, 3);
   const todayIn = top.filter((i) => i.decisionBucket === "오늘 진입");
   const watching = top.filter((i) => i.decisionBucket === "대기 관찰");
 
+  if (compact) {
+    const lead = top[0];
+    const leadEv = Number(lead?.expectedValue || 0);
+    const leadSymbol = String(lead?.symbol || lead?.code || lead?.ticker || "")
+      .replace(/^US:/i, "")
+      .toUpperCase();
+    const leadName = lead ? displayName(lead) : "";
+    const isKrMatrix = market === "kr" || (lead ? rowMarket(lead, "kr") === "kr" : false);
+    const changeText = lead ? matrixChangeText(lead) : "-";
+    const valueText = isKrMatrix ? changeText : `${leadEv >= 0 ? "+" : ""}${leadEv.toFixed(1)}%`;
+    const toneClass = isKrMatrix ? pctToneClass(changeText) : leadEv >= 1 ? "text-emerald-300" : leadEv >= 0 ? "text-slate-400" : "text-red-300";
+    const leadTitle = lead
+      ? `${modeLabel(cell.mode)} · ${horizonLabel(cell.horizon)} · ${leadName}${isKrMatrix ? "" : ` ${leadSymbol}`} · ${isKrMatrix ? "등락률 " : ""}${valueText}`
+      : `${modeLabel(cell.mode)} · ${horizonLabel(cell.horizon)} · 후보 없음`;
+    const cellFrame = active
+      ? "bg-teal-400/10 shadow-[inset_0_0_0_1px_rgba(45,212,191,0.42)]"
+      : "bg-slate-950/55 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.055)]";
+
+    return (
+      <div
+        className={`min-h-[64px] rounded-lg p-1.5 ${cellFrame} ${
+          lead ? "transition-[filter,transform] hover:brightness-125 active:scale-[0.96]" : "opacity-55"
+        }`}
+        title={leadTitle}
+      >
+        {lead ? (
+          <button
+            type="button"
+            onClick={() => onSelect(lead)}
+            aria-label={leadTitle}
+            className="flex h-full min-h-[52px] w-full flex-col justify-between text-left"
+          >
+            <div className="min-h-[25px] min-w-0 overflow-hidden text-[11px] font-black leading-[1.15] text-slate-100 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+              {leadName}
+            </div>
+            <div className="mt-1 flex min-w-0 items-center justify-between gap-1.5">
+              {!isKrMatrix && <span className="min-w-0 truncate font-mono text-[10px] font-semibold text-slate-500">{leadSymbol || leadName}</span>}
+              <span className={`shrink-0 font-mono text-[9px] font-semibold tabular-nums ${toneClass}`}>
+                {valueText}
+              </span>
+            </div>
+          </button>
+        ) : (
+          <div className="flex h-full min-h-[52px] flex-col justify-between">
+            <span className="text-[11px] font-bold text-slate-600">후보 없음</span>
+            <span className="font-mono text-[10px] font-semibold text-slate-700">-</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-[140px] rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+    <div className="min-h-[112px] rounded-2xl border border-slate-800 bg-slate-950/50 p-2.5 xl:min-h-[140px] xl:p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-300">{modeLabel(cell.mode)} · {horizonLabel(cell.horizon)}</span>
         <span className="text-[10px] text-slate-500">{cell.count}개</span>
@@ -2876,8 +3037,6 @@ export default function HomePage({
   // 손절/목표가 근접 알림
   const [nearAlerts, setNearAlerts] = useState<any[]>([]);
   const [signalLedger, setSignalLedger] = useState<any>(null);
-  const [adaptiveWeights, setAdaptiveWeights] = useState<any>(null);
-  const [selfLearningStatus, setSelfLearningStatus] = useState<any>(null);
   // 포지션 사이징 자본 (localStorage 저장)
   const [capital, setCapital] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
@@ -2934,12 +3093,14 @@ export default function HomePage({
     // 1. Re-entry: use module-level cache (user navigated away and came back)
     const cached = readHomeCache(market);
     if (cached) {
-      setMatrix(cached.matrix);
+      const cachedMatrix = normalizeStrategyMatrix(cached.matrix, market);
+      const cachedAllItems = cachedMatrix.flatMap((cell) => cell.items);
+      setMatrix(cachedMatrix);
       setHoldings(cached.holdings);
       setSummary(cached.summary);
       setMarketRegime(cached.marketRegime);
       setDataHealth(cached.dataHealth);
-      setAllItems(cached.allItems);
+      setAllItems(cachedAllItems);
       setLoading(false);
       setRefreshWarning("");
       return true;
@@ -2947,15 +3108,7 @@ export default function HomePage({
     // 2. First load: use boot preload data from the loading screen
     const result = bootMarketHomeSummary(bootData, market);
     if (!result) return false;
-    const matrixResult: StrategyCell[] = MODES.flatMap((mode) =>
-      HORIZONS.map((horizon) => {
-        const cell = (result.matrix as any)?.[`${mode}_${horizon}`] || {};
-        const cellItems = dedupeBySymbol(Array.isArray(cell.items) ? cell.items : [])
-          .slice(0, 5)
-          .map((item: any) => ({ ...item, _mode: mode, _horizon: horizon }));
-        return { mode, horizon, items: cellItems, count: Number(cell.count || cellItems.length || 0), status: String(cell.status || "OK") } satisfies StrategyCell;
-      })
-    );
+    const matrixResult = normalizeStrategyMatrix(result.matrix, market);
     const h = result.holdings || {};
     const holdingItems = dedupeBySymbol(Array.isArray(h.items) ? h.items : []);
     const holdingSummary = h.summary || null;
@@ -2987,15 +3140,7 @@ export default function HomePage({
       const result = await mone.homeSummary({ market: selectedMarket, limit: 12 });
 
       // matrix: { conservative_short: {items, count, status}, ... } → StrategyCell[]
-      const matrixResult: StrategyCell[] = MODES.flatMap((mode) =>
-        HORIZONS.map((horizon) => {
-          const cell = (result.matrix as any)?.[`${mode}_${horizon}`] || {};
-          const items = dedupeBySymbol(Array.isArray(cell.items) ? cell.items : [])
-            .slice(0, 5)
-            .map((item: any) => ({ ...item, _mode: mode, _horizon: horizon }));
-          return { mode, horizon, items, count: Number(cell.count || items.length || 0), status: String(cell.status || "OK") } satisfies StrategyCell;
-        })
-      );
+      const matrixResult = normalizeStrategyMatrix(result.matrix, selectedMarket);
 
       const h = result.holdings || {};
       const holdingItems = dedupeBySymbol(Array.isArray(h.items) ? h.items : []);
@@ -3140,20 +3285,12 @@ export default function HomePage({
     if (!clientReady) return;
     let active = true;
     const timer = window.setTimeout(() => {
-      Promise.allSettled([
-        mone.signalsLedger({ market: selectedMarket, limit: 12 }),
-        mone.adaptiveWeights({ limit: 12 }),
-        mone.journalSelfLearningStatus({ market: selectedMarket }),
-      ]).then(([ledger, weights, learning]) => {
+      mone.signalsLedger({ market: selectedMarket, limit: 12 }).then((ledger) => {
         if (!active) return;
-        setSignalLedger(ledger.status === "fulfilled" ? ledger.value : null);
-        setAdaptiveWeights(weights.status === "fulfilled" ? weights.value : null);
-        setSelfLearningStatus(learning.status === "fulfilled" ? learning.value : null);
+        setSignalLedger(ledger || null);
       }).catch(() => {
         if (!active) return;
         setSignalLedger(null);
-        setAdaptiveWeights(null);
-        setSelfLearningStatus(null);
       });
     }, 3200);
     return () => {
@@ -3314,11 +3451,6 @@ export default function HomePage({
     [signalLedger, nearAlerts, allItems, todayEntries, watchItems, selectedMarket],
   );
 
-  const engineHistoryRows = useMemo(
-    () => buildEngineHistoryRows(adaptiveWeights, selfLearningStatus),
-    [adaptiveWeights, selfLearningStatus],
-  );
-
   const analysisItemsBySymbol = useMemo(() => {
     const map = new Map<string, any>();
     [...allItems, ...todayEntries, ...watchItems, ...holdings].forEach((item) => {
@@ -3471,7 +3603,7 @@ export default function HomePage({
         </div>
       </div>
 
-      {(refreshWarning || bootStatus === "degraded") && (
+      {(refreshWarning || (bootStatus === "degraded" && loading && allItems.length === 0)) && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           {refreshWarning || "일부 초기 데이터를 불러오지 못해 사용 가능한 캐시와 기본 화면을 먼저 표시합니다."}
         </div>
@@ -3522,10 +3654,10 @@ export default function HomePage({
       {!loading && (
         <StrategyRecordsSection
           alertRows={alertTrackingRows}
-          engineRows={engineHistoryRows}
           currentItem={topObservation}
           matrix={matrix}
           matrixLoading={loading}
+          selectedMarket={selectedMarket}
           showMatrix={showMatrix}
           onMatrixClick={() => setShowMatrix((value) => !value)}
           onSelectItem={setSelectedItem}

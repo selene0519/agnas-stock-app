@@ -282,6 +282,30 @@ const PATTERN_LABELS: Record<string, string> = {
   range_drift_watch: "박스권 이탈 관찰",
   zombie_breakout: "거래량 없는 돌파",
   structure_breakdown_risk: "추세 구조 이탈 위험",
+  DOUBLE_BOTTOM: "이중 바닥",
+  DOUBLE_TOP: "이중 천장",
+  HEAD_AND_SHOULDERS: "헤드앤숄더",
+  INVERSE_HEAD_AND_SHOULDERS: "역헤드앤숄더",
+  ASCENDING_TRIANGLE: "상승 삼각형",
+  DESCENDING_TRIANGLE: "하락 삼각형",
+  BULL_FLAG: "상승 깃발형",
+  BEAR_FLAG: "하락 깃발형",
+  FALLING_WEDGE_BREAKOUT: "하락 쐐기 상향 돌파",
+  RISING_WEDGE_BREAKDOWN: "상승 쐐기 하방 이탈",
+  BULL_PENNANT: "상승 페넌트",
+  BEAR_PENNANT: "하락 페넌트",
+  SYMMETRICAL_TRIANGLE: "대칭 삼각형",
+  RECTANGLE_RANGE: "박스권 횡보",
+  RISING_CHANNEL: "상승 채널",
+  FALLING_CHANNEL: "하락 채널",
+  CUP_AND_HANDLE: "컵앤핸들",
+  FAILED_BREAKOUT: "돌파 실패",
+  FAILED_BREAKDOWN: "이탈 실패",
+  DISTRIBUTION_WATCH: "분산 매도 관찰",
+  RANGE_DRIFT: "박스권 이탈 관찰",
+  OVEREXTENDED_BREAKOUT: "과열 돌파",
+  SUPPORT_FLIP_RESISTANCE: "지지선의 저항 전환",
+  RESISTANCE_FLIP_SUPPORT: "저항선의 지지 전환",
 };
 
 const MARKET_STRUCTURE_LABELS: Record<string, string> = {
@@ -2264,7 +2288,7 @@ export default function ChartPage() {
       const patternStrategy = pattern_d?.status === "OK" ? pattern_d : null;
       const existingPatternStrategy = matched?.patternStrategy && typeof matched.patternStrategy === "object" ? matched.patternStrategy : null;
       const mergedPatternStrategy = (patternStrategy || existingPatternStrategy)
-        ? { ...(patternStrategy || {}), ...(existingPatternStrategy || {}) }
+        ? { ...(existingPatternStrategy || {}), ...(patternStrategy || {}) }
         : null;
       const mergedLevels = matched
         ? { ...matched, patternStrategy: mergedPatternStrategy }

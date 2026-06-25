@@ -33,7 +33,7 @@ export async function fetchSentiment(
 ): Promise<SentimentResult | null> {
   try {
     const params = new URLSearchParams({ market, name });
-    const res = await fetch(`/api/sentiment/${symbol}?${params}`, { method: "GET" });
+    const res = await fetch(`/mone-api/api/sentiment/${symbol}?${params}`, { method: "GET" });
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.ok) return null;
