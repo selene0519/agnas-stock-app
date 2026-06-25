@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react";
 import { mone, type Market } from "@/lib/api";
 import { dedupeBySymbol, displayName, firstText, horizonLabel, modeLabel, pctText, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
 import { getDefaultMarketBySession } from "@/lib/marketSession";
+import { toneClassName } from "@/lib/tone";
 
 type Strategy = "conservative" | "balanced" | "aggressive";
 type Term = "short" | "swing" | "mid";
@@ -51,13 +52,13 @@ function resolveStatus(item: any): ValidationStatus {
 }
 
 const STATUS_STYLE: Record<ValidationStatus, string> = {
-  "검증대기": "border-slate-700 bg-slate-800/60 text-slate-400",
-  "미체결":   "border-amber-600/30 bg-amber-900/20 text-amber-300",
-  "체결":     "border-blue-500/30 bg-blue-900/20 text-blue-300",
-  "목표도달": "border-emerald-500/30 bg-emerald-900/20 text-emerald-300",
-  "손절":     "border-red-500/30 bg-red-900/20 text-red-300",
-  "보류":     "border-slate-600/30 bg-slate-800/40 text-slate-500",
-  "오류":     "border-red-700/30 bg-red-950/20 text-red-400",
+  "검증대기": toneClassName("neutral"),
+  "미체결":   toneClassName("warning"),
+  "체결":     toneClassName("info"),
+  "목표도달": toneClassName("safe"),
+  "손절":     toneClassName("danger"),
+  "보류":     toneClassName("neutral"),
+  "오류":     toneClassName("danger"),
 };
 
 function scoreOf(item: any) {
@@ -150,21 +151,21 @@ function touchEvidence(row: any) {
     return {
       label: "검증대기",
       detail: "검증 행 없음",
-      style: "border-slate-700 bg-slate-800/60 text-slate-400",
+      style: toneClassName("neutral"),
     };
   }
   const result = lowerToken(fieldText(row, ["result", "status", "outcome", "executionStatus", "execution_status"]));
   const reason = fieldText(row, ["reason", "dataStatus", "data_status", "validationRule", "validation_rule"]);
   if (result === "data_pending" || String(row.dataStatus || row.data_status || "").toUpperCase() === "DATA_PENDING") {
-    return { label: "DATA_PENDING", detail: reason || "OHLCV 수집 필요", style: "border-amber-500/30 bg-amber-500/10 text-amber-200" };
+    return { label: "DATA_PENDING", detail: reason || "OHLCV 수집 필요", style: toneClassName("warning") };
   }
   if (["not_executed", "no_touch", "missed_entry", "unexecuted"].includes(result)) {
-    return { label: "미터치", detail: reason || "실제 저가/고가가 진입가를 통과하지 않음", style: "border-slate-600/40 bg-slate-800/50 text-slate-300" };
+    return { label: "미터치", detail: reason || "실제 저가/고가가 진입가를 통과하지 않음", style: toneClassName("neutral") };
   }
   if (isTruthyExecution(row.isExecuted ?? row.is_executed ?? row.executed) || ["target", "tp1", "win", "stop", "loss", "executed"].some((key) => result.includes(key))) {
-    return { label: "터치 확인", detail: reason || "entry_touch_only", style: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
+    return { label: "터치 확인", detail: reason || "entry_touch_only", style: toneClassName("safe") };
   }
-  return { label: "검증대기", detail: reason || "결과 대기", style: "border-slate-700 bg-slate-800/60 text-slate-400" };
+  return { label: "검증대기", detail: reason || "결과 대기", style: toneClassName("neutral") };
 }
 
 function StrategyPlaybookPanel({ strategy, term, data, valDash }: { strategy: Strategy; term: Term; data: any; valDash: any }) {
@@ -392,7 +393,7 @@ export default function PredictionPage() {
 
       <div className="flex flex-wrap gap-2">
         {(["all", "kr", "us"] as Market[]).map((item) => (
-          <button key={item} onClick={() => setMarket(item)} className={`rounded-xl px-4 py-2 text-sm ${market === item ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>{item === "all" ? "전체" : item === "kr" ? "국장" : "미장"}</button>
+          <button key={item} onClick={() => setMarket(item)} className={`rounded-xl px-4 py-2 text-sm ${market === item ? "mone-selection-brand" : "bg-slate-900 text-slate-400"}`}>{item === "all" ? "전체" : item === "kr" ? "국장" : "미장"}</button>
         ))}
       </div>
 
@@ -402,7 +403,7 @@ export default function PredictionPage() {
             <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">투자 성향</div>
             <div className="flex flex-wrap gap-2">
               {strategyTabs.map((item) => (
-                <button key={item.id} onClick={() => setStrategy(item.id)} className={`rounded-xl px-4 py-2 text-sm ${strategy === item.id ? "bg-emerald-600 text-white" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
+                <button key={item.id} onClick={() => setStrategy(item.id)} className={`rounded-xl px-4 py-2 text-sm ${strategy === item.id ? "mone-selection-brand" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
               ))}
             </div>
           </div>
@@ -410,7 +411,7 @@ export default function PredictionPage() {
             <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">투자 기간</div>
             <div className="flex flex-wrap gap-2">
               {termTabs.map((item) => (
-                <button key={item.id} onClick={() => setTerm(item.id)} className={`rounded-xl px-4 py-2 text-sm ${term === item.id ? "bg-cyan-600 text-white" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
+                <button key={item.id} onClick={() => setTerm(item.id)} className={`rounded-xl px-4 py-2 text-sm ${term === item.id ? "mone-selection-brand" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
               ))}
             </div>
           </div>
