@@ -1828,43 +1828,47 @@ function StrategyRecordsSection({
           </div>
 
           {showMatrix && (
-            <div className="rounded-xl bg-slate-950/35 p-3">
-              <div className="mb-2 hidden grid-cols-[100px_repeat(3,1fr)] gap-2 xl:grid">
-                <div />
-                {HORIZONS.map((h) => (
-                  <div key={h} className="rounded-xl bg-slate-950/60 py-2 text-center text-xs font-semibold text-slate-400">{horizonLabel(h)}</div>
-                ))}
-              </div>
+            <div className="overflow-hidden rounded-xl bg-slate-950/35 p-3">
+              <div className="overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="min-w-[640px] space-y-2 sm:min-w-[720px] xl:min-w-0">
+                  <div className="grid grid-cols-[72px_repeat(3,minmax(0,1fr))] gap-2 sm:grid-cols-[90px_repeat(3,minmax(0,1fr))] xl:grid-cols-[100px_repeat(3,1fr)]">
+                    <div />
+                    {HORIZONS.map((h) => (
+                      <div key={h} className="rounded-xl bg-slate-950/60 py-2 text-center text-xs font-semibold text-slate-400">{horizonLabel(h)}</div>
+                    ))}
+                  </div>
 
-              {matrixLoading ? (
-                <div className="space-y-2">
-                  {MODES.map((mode) => (
-                    <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
-                      <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-600">{modeLabel(mode)}</div>
-                      {HORIZONS.map((horizon) => (
-                        <div key={horizon} className="animate-pulse rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                          <div className="h-3 w-16 rounded bg-slate-800" />
-                          <div className="mt-2 h-5 w-10 rounded bg-slate-800" />
+                  {matrixLoading ? (
+                    <div className="space-y-2">
+                      {MODES.map((mode) => (
+                        <div key={mode} className="grid grid-cols-[72px_repeat(3,minmax(0,1fr))] gap-2 sm:grid-cols-[90px_repeat(3,minmax(0,1fr))] xl:grid-cols-[100px_repeat(3,1fr)]">
+                          <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-xs font-semibold text-slate-600">{modeLabel(mode)}</div>
+                          {HORIZONS.map((horizon) => (
+                            <div key={horizon} className="min-h-[112px] animate-pulse rounded-2xl border border-slate-800 bg-slate-950/60 p-3 xl:min-h-[140px]">
+                              <div className="h-3 w-16 rounded bg-slate-800" />
+                              <div className="mt-2 h-5 w-10 rounded bg-slate-800" />
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {MODES.map((mode) => (
-                    <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
-                      <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-300">
-                        {modeLabel(mode)}
-                      </div>
-                      {HORIZONS.map((horizon) => {
-                        const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
-                        return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={onSelectItem} />;
-                      })}
+                  ) : (
+                    <div className="space-y-2">
+                      {MODES.map((mode) => (
+                        <div key={mode} className="grid grid-cols-[72px_repeat(3,minmax(0,1fr))] gap-2 sm:grid-cols-[90px_repeat(3,minmax(0,1fr))] xl:grid-cols-[100px_repeat(3,1fr)]">
+                          <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-xs font-semibold text-slate-300">
+                            {modeLabel(mode)}
+                          </div>
+                          {HORIZONS.map((horizon) => {
+                            const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
+                            return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={onSelectItem} />;
+                          })}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -2725,7 +2729,7 @@ function MatrixCell({ cell, onSelect }: { cell: StrategyCell; onSelect: (item: a
   const watching = top.filter((i) => i.decisionBucket === "대기 관찰");
 
   return (
-    <div className="min-h-[140px] rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+    <div className="min-h-[112px] rounded-2xl border border-slate-800 bg-slate-950/50 p-2.5 xl:min-h-[140px] xl:p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-300">{modeLabel(cell.mode)} · {horizonLabel(cell.horizon)}</span>
         <span className="text-[10px] text-slate-500">{cell.count}개</span>

@@ -48,7 +48,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                  var refreshed = false;
+                  navigator.serviceWorker.addEventListener('controllerchange', function() {
+                    if (refreshed) return;
+                    refreshed = true;
+                    window.location.reload();
+                  });
+                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(registration) {
+                    registration.update().catch(function() {});
+                    if (registration.waiting) {
+                      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    registration.addEventListener('updatefound', function() {
+                      var worker = registration.installing;
+                      if (!worker) return;
+                      worker.addEventListener('statechange', function() {
+                        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                          worker.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                      });
+                    });
+                  }).catch(function() {});
                 });
               }
             `,
