@@ -11,8 +11,6 @@ const config: Config = {
     extend: {
       fontFamily: {
         mono: ["'JetBrains Mono'", "'Fira Code'", "monospace"],
-        display: ["'DM Sans'", "sans-serif"],
-        body: ["'Inter'", "sans-serif"],
       },
       colors: {
         bg: {

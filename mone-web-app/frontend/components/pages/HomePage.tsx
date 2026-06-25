@@ -1772,12 +1772,20 @@ function StrategyRecordsSection({
   alertRows,
   engineRows,
   currentItem,
+  matrix,
+  matrixLoading,
+  showMatrix,
   onMatrixClick,
+  onSelectItem,
 }: {
   alertRows: AlertTrackingRow[];
   engineRows: EngineHistoryRow[];
   currentItem?: any;
+  matrix: StrategyCell[];
+  matrixLoading: boolean;
+  showMatrix: boolean;
   onMatrixClick: () => void;
+  onSelectItem: (item: any) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const currentMode = String(currentItem?._mode || currentItem?.mode || "balanced") as Mode;
@@ -1812,11 +1820,54 @@ function StrategyRecordsSection({
             <button
               type="button"
               onClick={onMatrixClick}
+              aria-expanded={showMatrix}
               className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-black text-blue-400 transition-[color,transform] hover:text-blue-300 active:scale-[0.96]"
             >
-              3×3 매트릭스 <ChevronRight size={14} />
+              3×3 매트릭스 <ChevronRight size={14} className={`transition-transform duration-200 ${showMatrix ? "rotate-90" : ""}`} />
             </button>
           </div>
+
+          {showMatrix && (
+            <div className="rounded-xl bg-slate-950/35 p-3">
+              <div className="mb-2 hidden grid-cols-[100px_repeat(3,1fr)] gap-2 xl:grid">
+                <div />
+                {HORIZONS.map((h) => (
+                  <div key={h} className="rounded-xl bg-slate-950/60 py-2 text-center text-xs font-semibold text-slate-400">{horizonLabel(h)}</div>
+                ))}
+              </div>
+
+              {matrixLoading ? (
+                <div className="space-y-2">
+                  {MODES.map((mode) => (
+                    <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
+                      <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-600">{modeLabel(mode)}</div>
+                      {HORIZONS.map((horizon) => (
+                        <div key={horizon} className="animate-pulse rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                          <div className="h-3 w-16 rounded bg-slate-800" />
+                          <div className="mt-2 h-5 w-10 rounded bg-slate-800" />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {MODES.map((mode) => (
+                    <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
+                      <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-300">
+                        {modeLabel(mode)}
+                      </div>
+                      {HORIZONS.map((horizon) => {
+                        const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
+                        return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={onSelectItem} />;
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <AlertTrackingPreview rows={alertRows} />
           <EngineHistoryPreview rows={engineRows} />
         </div>
@@ -3473,67 +3524,12 @@ export default function HomePage({
           alertRows={alertTrackingRows}
           engineRows={engineHistoryRows}
           currentItem={topObservation}
+          matrix={matrix}
+          matrixLoading={loading}
+          showMatrix={showMatrix}
           onMatrixClick={() => setShowMatrix((value) => !value)}
+          onSelectItem={setSelectedItem}
         />
-      )}
-
-      {/* ━━ 3×3 전략 매트릭스 (상세 비교) ━━ */}
-      {showMatrix && (
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <button
-          className="flex w-full items-center justify-between text-left"
-          onClick={() => setShowMatrix((v) => !v)}
-        >
-          <div>
-            <h2 className="text-base font-semibold text-slate-100">전략 × 기간 매트릭스</h2>
-            <p className="text-xs text-slate-500">보수·균형·공격 × 단기·스윙·중기 9개 조합 전체 비교</p>
-          </div>
-          <span className="ml-4 shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-400 hover:bg-slate-800">
-            {showMatrix ? "접기 ▲" : "펼치기 ▼"}
-          </span>
-        </button>
-
-        {showMatrix && (
-          <div className="mt-4">
-            <div className="mb-2 hidden grid-cols-[100px_repeat(3,1fr)] gap-2 xl:grid">
-              <div />
-              {HORIZONS.map((h) => (
-                <div key={h} className="rounded-xl bg-slate-950/60 py-2 text-center text-xs font-semibold text-slate-400">{horizonLabel(h)}</div>
-              ))}
-            </div>
-
-            {loading ? (
-              <div className="space-y-2">
-                {MODES.map((mode) => (
-                  <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
-                    <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-600">{modeLabel(mode)}</div>
-                    {HORIZONS.map((horizon) => (
-                      <div key={horizon} className="animate-pulse rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                        <div className="h-3 w-16 rounded bg-slate-800" />
-                        <div className="mt-2 h-5 w-10 rounded bg-slate-800" />
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {MODES.map((mode) => (
-                  <div key={mode} className="grid grid-cols-1 gap-2 xl:grid-cols-[100px_repeat(3,1fr)]">
-                    <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-300">
-                      {modeLabel(mode)}
-                    </div>
-                    {HORIZONS.map((horizon) => {
-                      const cell = matrix.find((c) => c.mode === mode && c.horizon === horizon) || { mode, horizon, items: [], count: 0, status: "NO_DATA" };
-                      return <MatrixCell key={`${mode}-${horizon}`} cell={cell as StrategyCell} onSelect={setSelectedItem} />;
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
       )}
     </div>
     </ErrorBoundary>
