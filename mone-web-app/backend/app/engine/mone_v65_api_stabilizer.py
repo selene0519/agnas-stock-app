@@ -70,6 +70,7 @@ KR_NAME_FALLBACK: dict[str, str] = {
     "133690": "TIGER 미국나스닥100",
     "360750": "TIGER 미국S&P500",
     "381180": "TIGER 미국필라델피아반도체나스닥",
+    "458730": "TIGER 미국배당다우존스",
 }
 
 US_NAME_FALLBACK: dict[str, str] = {
@@ -91,10 +92,10 @@ US_NAME_FALLBACK: dict[str, str] = {
     "AAOI": "Applied Optoelectronics",
     "SIMO": "Silicon Motion",
     "BMNR": "BitMine Immersion Technologies",
-    "ABBV": "AbbVie",
-    "ABNB": "Airbnb",
-    "UNH": "UnitedHealth Group",
-    "DIS": "Disney",
+    "ABBV": "AbbVie Inc.",
+    "ABNB": "Airbnb, Inc.",
+    "UNH": "UnitedHealth Group Incorporated",
+    "DIS": "The Walt Disney Company",
     "VRT": "Vertiv",
 }
 
