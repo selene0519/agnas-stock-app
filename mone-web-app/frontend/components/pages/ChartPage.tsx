@@ -6,6 +6,7 @@ import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
+import { toneClassName } from "@/lib/tone";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
 import StockResearchPanel from "@/components/StockResearchPanel";
@@ -210,9 +211,9 @@ function loadStatusText(status: any) {
 }
 
 function statusTone(kind: "ok" | "warn" | "bad" | "neutral") {
-  if (kind === "ok") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
-  if (kind === "warn") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-  if (kind === "bad") return "border-red-500/30 bg-red-500/10 text-red-300";
+  if (kind === "ok") return toneClassName("safe");
+  if (kind === "warn") return toneClassName("warning");
+  if (kind === "bad") return toneClassName("danger");
   return "border-slate-700 bg-slate-950 text-slate-300";
 }
 
@@ -1992,10 +1993,8 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
             </span>
           </div>
           {investor.signal && investor.signal !== "NEUTRAL" && (
-            <div className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${
-              investor.signal === "STRONG_BUY" ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300" :
-              investor.signal === "BUY" ? "border-blue-500/40 bg-blue-500/15 text-blue-300" :
-              "border-red-500/40 bg-red-500/15 text-red-300"
+            <div className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${
+              toneClassName(investor.signal === "STRONG_BUY" ? "safe" : investor.signal === "BUY" ? "info" : "danger")
             }`}>
               {investor.signal === "STRONG_BUY" ? "기관+외국인 동반 순매수" :
                investor.signal === "BUY" ? "기관 또는 외국인 순매수" : "기관+외국인 동반 순매도"}
