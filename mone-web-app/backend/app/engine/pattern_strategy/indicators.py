@@ -42,7 +42,16 @@ def compute_atr20(rows: list[dict]) -> float | None:
 
 
 def compute_rsi14(rows: list[dict]) -> float | None:
-    """RSI over 14 periods (Wilder smoothing)."""
+    """
+    RSI over 14 periods, true Wilder smoothing.
+
+    A flat average of just the last 14 gain/loss deltas (no recursive
+    smoothing) is a different, jumpier indicator than Wilder's RSI despite
+    looking similar — and it diverges from app/engine/quant_scanner.py's
+    _rsi(), which already does this correctly. Seed with a simple average
+    over the first 14 deltas, then carry that average forward through the
+    rest of the series so this matches quant_scanner.py bar-for-bar.
+    """
     closes: list[float] = [v for r in rows if (v := _f(r.get("close"))) is not None]
     if len(closes) < 15:
         return None
@@ -51,11 +60,15 @@ def compute_rsi14(rows: list[dict]) -> float | None:
         diff = closes[i] - closes[i - 1]
         gains.append(max(diff, 0))
         losses.append(max(-diff, 0))
-    ag = sum(gains[-14:]) / 14
-    al = sum(losses[-14:]) / 14
-    if al == 0:
+    period = 14
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+    for i in range(period, len(gains)):
+        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+    if avg_loss == 0:
         return 100.0
-    rs = ag / al
+    rs = avg_gain / avg_loss
     return round(100 - 100 / (1 + rs), 2)
 
 

@@ -174,7 +174,12 @@ def _atr(high: list[float], low: list[float], close: list[float], period: int = 
     for idx in range(start, len(close)):
         previous_close = close[idx - 1]
         ranges.append(max(high[idx] - low[idx], abs(high[idx] - previous_close), abs(low[idx] - previous_close)))
-    return sum(ranges) / period
+    atr = sum(ranges) / period
+    # A flat/halted stock (or a bad data feed repeating the same OHLC) can
+    # legitimately produce atr == 0.0 here. Treat that as "no usable
+    # volatility data" (None) rather than a real zero, so callers fall back
+    # to their default instead of dividing/multiplying by a degenerate ATR.
+    return atr if atr > 0 else None
 
 
 def _mdd(values: list[float], period: int = 20) -> float | None:
@@ -216,19 +221,26 @@ def _consecutive_up(values: list[float]) -> int:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def _find_local_minima(values: list[float], window: int = 3) -> list[int]:
-    """window 내 최솟값 인덱스 반환"""
+    """
+    window 내 최솟값 인덱스 반환.
+
+    구간 내 동일값이 여럿이면(평탄/단조 구간) 모두를 극값으로 잘못 인식할 수
+    있어, 윈도우 내에서 정확히 1개일 때만 진짜 피벗으로 인정한다.
+    """
     result = []
     for i in range(window, len(values) - window):
-        if values[i] == min(values[i - window:i + window + 1]):
+        seg = values[i - window:i + window + 1]
+        if values[i] == min(seg) and seg.count(values[i]) == 1:
             result.append(i)
     return result
 
 
 def _find_local_maxima(values: list[float], window: int = 3) -> list[int]:
-    """window 내 최댓값 인덱스 반환"""
+    """window 내 최댓값 인덱스 반환. 동일값 다중 매치 시 제외(평탄/단조 구간 오탐 방지)."""
     result = []
     for i in range(window, len(values) - window):
-        if values[i] == max(values[i - window:i + window + 1]):
+        seg = values[i - window:i + window + 1]
+        if values[i] == max(seg) and seg.count(values[i]) == 1:
             result.append(i)
     return result
 
@@ -400,16 +412,31 @@ def detect_chart_patterns(rows: list[dict[str, Any]]) -> list[dict]:
             l1_i, l2_i = mins_idx[-2], mins_idx[-1]
             descend_highs = closes[h2_i] < closes[h1_i]
             ascend_lows   = closes[l2_i] > closes[l1_i]
-            # 삼각형 시작 넓이와 현재 수렴률
-            base_high = closes[h1_i]
-            base_low  = closes[l1_i]
-            base_width = base_high - base_low
-            curr_width = max(current, closes[h2_i]) - min(current, closes[l2_i])
+
+            # 저항선(h1->h2)과 지지선(l1->l2)을 각각 직선으로 잇고, 같은 기준
+            # 시점에서 평가해 너비를 구한다. h1_i/l1_i는 서로 다른 봉이라
+            # closes[h1_i]-closes[l1_i]를 그대로 "시작 너비"로 쓰면 시점이
+            # 안 맞는 두 값을 빼는 것이 된다 (geometric_patterns.py 쐐기형의
+            # start_width 버그와 동일 유형).
+            def _line_at(i0: int, v0: float, i1: int, v1: float, i: int) -> float:
+                if i1 == i0:
+                    return v0
+                return v0 + (v1 - v0) * (i - i0) / (i1 - i0)
+
+            now_i = len(closes) - 1
+            start_i = min(h1_i, l1_i)
+            base_width = (
+                _line_at(h1_i, closes[h1_i], h2_i, closes[h2_i], start_i)
+                - _line_at(l1_i, closes[l1_i], l2_i, closes[l2_i], start_i)
+            )
+            resistance_now = _line_at(h1_i, closes[h1_i], h2_i, closes[h2_i], now_i)
+            support_now = _line_at(l1_i, closes[l1_i], l2_i, closes[l2_i], now_i)
+            curr_width = resistance_now - support_now
             converge_pct = curr_width / base_width if base_width > 0 else 1.0
             # 70~80% 수렴 구간 (빅터: 꼭짓점에 너무 근접 전 돌파)
             in_breakout_zone = 0.15 <= converge_pct <= 0.45
-            # 상향 돌파: 현재가가 직전 하강 고점 위로 종가 안착
-            upper_break = current > closes[h2_i] * 0.99
+            # 상향 돌파: 현재가가 저항 추세선(연장값) 위로 종가 안착
+            upper_break = current > resistance_now * 0.99
             if descend_highs and ascend_lows and in_breakout_zone and upper_break:
                 vol_ok = vols[-1] >= vol_ma20 * 1.5  # 빅터 원칙②: 1.5배
                 target = current + base_width  # 베이스 높이만큼 상방 투영
@@ -1117,7 +1144,6 @@ def _ma_convergence(ind: dict[str, float | None]) -> bool:
     d60 = ind.get("distanceToMa60")
     ma5 = ind.get("ma5")
     ma20 = ind.get("ma20")
-    latest = ind.get("distanceToMa20")  # 현재가 기준
 
     if d20 is None or d60 is None:
         return False

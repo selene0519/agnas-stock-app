@@ -305,12 +305,27 @@ def trendline_accuracy(
     return payload
 
 
-def _zone_outcome(zone: Any, future_rows: list[dict[str, Any]], tolerance_pct: float = 0.015, min_reaction_pct: float = 1.5) -> dict[str, Any]:
+def _zone_outcome(
+    zone: Any,
+    future_rows: list[dict[str, Any]],
+    tolerance_pct: float = 0.015,
+    min_reaction_pct: float = 1.5,
+    min_penetration_pct: float = 0.2,
+) -> dict[str, Any]:
+    """
+    A candle that just grazes the outer edge of a zone (even 0.1% overlap)
+    was previously counted as a full "touch", the same as a candle that
+    plunged deep into the zone before bouncing — that inflates respect-rate
+    stats with shallow near-misses. Require the wick to penetrate at least
+    `min_penetration_pct` of the zone's height before it counts as a real
+    test of the level.
+    """
     touched = False
     touched_at = ""
     broken = False
     broken_at = ""
     reaction_pct = 0.0
+    zone_height = float(zone.top) - float(zone.bottom)
 
     for row in future_rows:
         high = _high(row)
@@ -319,7 +334,15 @@ def _zone_outcome(zone: Any, future_rows: list[dict[str, Any]], tolerance_pct: f
         if high is None or low is None or close is None:
             continue
         intersects = low <= float(zone.top) and high >= float(zone.bottom)
-        if intersects and not touched:
+        if intersects and zone_height > 0:
+            penetration = (
+                (float(zone.top) - low) / zone_height if zone.zone_type == "demand"
+                else (high - float(zone.bottom)) / zone_height
+            )
+        else:
+            penetration = 0.0
+        meaningful_touch = intersects and penetration >= min_penetration_pct
+        if meaningful_touch and not touched:
             touched = True
             touched_at = _date(row)
         if not touched:

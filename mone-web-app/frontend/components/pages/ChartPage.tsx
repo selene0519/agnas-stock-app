@@ -102,15 +102,27 @@ function average(values: number[]) {
   const clean = values.filter((v) => Number.isFinite(v) && v > 0);
   return clean.length ? clean.reduce((s, v) => s + v, 0) / clean.length : null;
 }
+// Wilder smoothing — matches backend quant_scanner.py::_rsi() and
+// pattern_strategy/indicators.py::compute_rsi14(). A flat average of only
+// the last `period` deltas (no recursive smoothing) produces a different,
+// jumpier number than the backend's RSI for the same data.
 function rsi(values: number[], period = 14) {
   if (values.length <= period) return null;
-  let gain = 0, loss = 0;
-  for (let i = values.length - period; i < values.length; i++) {
+  const gains: number[] = [];
+  const losses: number[] = [];
+  for (let i = 1; i < values.length; i++) {
     const diff = values[i] - values[i - 1];
-    if (diff >= 0) gain += diff; else loss += Math.abs(diff);
+    gains.push(Math.max(diff, 0));
+    losses.push(Math.max(-diff, 0));
   }
-  if (loss === 0) return 100;
-  const rs = gain / period / (loss / period);
+  let avgGain = gains.slice(0, period).reduce((s, v) => s + v, 0) / period;
+  let avgLoss = losses.slice(0, period).reduce((s, v) => s + v, 0) / period;
+  for (let i = period; i < gains.length; i++) {
+    avgGain = (avgGain * (period - 1) + gains[i]) / period;
+    avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
+  }
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
   return 100 - 100 / (1 + rs);
 }
 

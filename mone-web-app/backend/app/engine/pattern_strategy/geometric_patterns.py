@@ -1,11 +1,19 @@
 """
-Pattern Strategy Engine v1 — geometric chart pattern detector (Phase 1, 10 core patterns).
+Pattern Strategy Engine v1 — geometric chart pattern detector.
 
-Classic price-action patterns (double top/bottom, head & shoulders, triangles,
-flags, wedges) detected from swing highs/lows. These are additive to the
-indicator-driven patterns in pattern_engine.py — they do not change
-marketStructure/action/Action, only annotate the result with a geometric
-pattern name + a staged status (never a direct BUY/SELL signal):
+24 patterns across three phases (see GEOMETRIC_PATTERN_NAMES in types.py):
+  - Phase 1, 10 core patterns      — double top/bottom, head & shoulders,
+    ascending/descending triangle, bull/bear flag, falling/rising wedge.
+  - Phase 2, 7 practical auxiliary patterns — pennants, symmetrical
+    triangle, rectangle range, rising/falling channel, cup and handle.
+  - Phase 3, 7 MONE-specific risk patterns — failed breakout/breakdown,
+    overextended breakout, distribution watch, range drift, and
+    support/resistance role-flip after a break.
+
+Classic price-action patterns detected from swing highs/lows. These are
+additive to the indicator-driven patterns in pattern_engine.py — they do not
+change marketStructure/action/Action, only annotate the result with a
+geometric pattern name + a staged status (never a direct BUY/SELL signal):
 
     bullish: WATCH -> BREAKOUT_CANDIDATE -> BUY_ZONE -> BLOCKED
     bearish: RISK_WATCH -> AVOID -> BLOCKED
@@ -61,15 +69,28 @@ def _pivot_lows(lows: list[float | None], window: int = _PIVOT_WINDOW) -> list[i
 
 
 def _line_fit(idxs: list[int], values: list[float | None]) -> dict | None:
-    """Straight line through the first and last pivot in idxs."""
-    if len(idxs) < 2:
+    """
+    Least-squares trendline through every valid pivot in idxs.
+
+    Using only the first/last pivot (the old approach) lets a single noisy
+    outlier pivot swing the whole line, and the fitted slope still gets
+    extrapolated dozens of bars forward to "now" — small fitting errors near
+    the pivots become large errors at the projection point. Regressing
+    through all available pivots keeps the line representative of the
+    points actually formed in between.
+    """
+    pts = [(i, values[i]) for i in idxs if values[i] is not None]
+    if len(pts) < 2:
         return None
-    i0, i1 = idxs[0], idxs[-1]
-    v0, v1 = values[i0], values[i1]
-    if v0 is None or v1 is None or i1 == i0:
+    n = len(pts)
+    mean_x = sum(p[0] for p in pts) / n
+    mean_y = sum(p[1] for p in pts) / n
+    denom = sum((p[0] - mean_x) ** 2 for p in pts)
+    if denom == 0:
         return None
-    slope = (v1 - v0) / (i1 - i0)
-    return {"slope": slope, "i0": i0, "v0": v0}
+    slope = sum((p[0] - mean_x) * (p[1] - mean_y) for p in pts) / denom
+    intercept = mean_y - slope * mean_x
+    return {"slope": slope, "i0": 0, "v0": intercept}
 
 
 def _line_value_at(line: dict, idx: int) -> float:
@@ -317,8 +338,13 @@ def detect_bull_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     consolidation = closes[pole_top_i:]
     if len(consolidation) < 3:
         return None
-    cons_high = max(h for h in highs[pole_top_i:] if h is not None)
-    cons_low  = min(l for l in lows[pole_top_i:] if l is not None)
+    # Consolidation range must exclude today's own bar: high/low always bound
+    # close (high >= close >= low), so including today in cons_high/cons_low
+    # makes "close > cons_high" mathematically impossible — the pattern could
+    # never reach BREAKOUT_CANDIDATE/BUY_ZONE. The breakout test is "did today
+    # clear the range built up *before* today."
+    cons_high = max(h for h in highs[pole_top_i:-1] if h is not None)
+    cons_low  = min(l for l in lows[pole_top_i:-1] if l is not None)
     if (cons_high - cons_low) / pole_top > 0.07:
         return None  # consolidation too wide to be a tight flag
     close = closes[-1]
@@ -343,8 +369,12 @@ def detect_bear_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
         return None
     pole_start_i, pole_bottom_i = pole
     pole_bottom = lows[pole_bottom_i]
-    cons_high = max(h for h in highs[pole_bottom_i:] if h is not None)
-    cons_low  = min(l for l in lows[pole_bottom_i:] if l is not None)
+    if len(closes[pole_bottom_i:]) < 3:
+        return None
+    # Same fix as detect_bull_flag: exclude today's own bar from the
+    # consolidation range, otherwise "close < cons_low" can never be true.
+    cons_high = max(h for h in highs[pole_bottom_i:-1] if h is not None)
+    cons_low  = min(l for l in lows[pole_bottom_i:-1] if l is not None)
     if pole_bottom <= 0 or (cons_high - cons_low) / pole_bottom > 0.07:
         return None
     close = closes[-1]
@@ -375,13 +405,24 @@ def detect_falling_wedge_breakout(highs, lows, closes, atr20, vol_ratio) -> dict
     if not close or close <= 0:
         return None
     res_pct, sup_pct = res["slope"] / close, sup["slope"] / close
-    if not (res_pct < 0 and sup_pct < 0 and res_pct > sup_pct):
-        return None  # both falling, but must be converging (resistance falls slower)
+    # Convergence check: width(t) = resistance(t) - support(t), and its slope
+    # is (res_slope - sup_slope). For the wedge to narrow as both lines fall,
+    # that difference must be negative, i.e. resistance must fall FASTER
+    # (more negative) than support — res_pct < sup_pct, not res_pct > sup_pct.
+    # (Verified numerically: res falling faster than support is what actually
+    # shrinks width(t) over time; the previous "resistance falls slower"
+    # condition selected for widening wedges, not narrowing ones.)
+    if not (res_pct < 0 and sup_pct < 0 and res_pct < sup_pct):
+        return None  # both falling, but must be converging (resistance falls faster)
     resistance_now = _line_value_at(res, n - 1)
     support_now = _line_value_at(sup, n - 1)
-    start_width = highs[hi_idx[0]] - lows[lo_idx[0]] if highs[hi_idx[0]] and lows[lo_idx[0]] else None
+    # Width at the wedge's start, evaluated on both trendlines at the SAME bar
+    # (not raw highs[hi_idx[0]]/lows[lo_idx[0]], which can be bars far apart
+    # in time since the two pivot series are detected independently).
+    start_idx = min(hi_idx[0], lo_idx[0])
+    start_width = _line_value_at(res, start_idx) - _line_value_at(sup, start_idx)
     end_width = resistance_now - support_now
-    if start_width is None or start_width <= 0 or end_width > start_width * 0.8:
+    if start_width <= 0 or end_width > start_width * 0.8:
         return None  # not narrowing enough
     invalidation = support_now - 0.3 * (atr20 or 0)
     stage = _bullish_stage(close, resistance_now, atr20, vol_ratio, invalidation)
@@ -408,9 +449,13 @@ def detect_rising_wedge_breakdown(highs, lows, closes, atr20, vol_ratio) -> dict
         return None  # both rising, but must be converging (support rises faster)
     resistance_now = _line_value_at(res, n - 1)
     support_now = _line_value_at(sup, n - 1)
-    start_width = highs[hi_idx[0]] - lows[lo_idx[0]] if highs[hi_idx[0]] and lows[lo_idx[0]] else None
+    # Same fix as the falling wedge: evaluate both trendlines at one common
+    # bar instead of mixing highs[hi_idx[0]] and lows[lo_idx[0]] from two
+    # independently-detected, generally non-aligned pivot indices.
+    start_idx = min(hi_idx[0], lo_idx[0])
+    start_width = _line_value_at(res, start_idx) - _line_value_at(sup, start_idx)
     end_width = resistance_now - support_now
-    if start_width is None or start_width <= 0 or end_width > start_width * 0.8:
+    if start_width <= 0 or end_width > start_width * 0.8:
         return None
     invalidation = resistance_now + 0.3 * (atr20 or 0)
     stage = _bearish_stage(close, support_now, atr20, invalidation)
@@ -893,9 +938,17 @@ _ACTIONABLE_STAGES = {"BUY_ZONE", "AVOID", "BLOCKED", "BREAKOUT_CANDIDATE"}
 
 def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | None) -> dict[str, Any] | None:
     """
-    Run all Phase-1 geometric pattern detectors and return the single most
-    relevant match (actionable stage > watch stage, then by recency of the
-    underlying pivots). Returns None if nothing matched.
+    Run all geometric pattern detectors (10 core + 7 practical auxiliary +
+    7 MONE-specific risk patterns) and return the single most relevant
+    match. Returns None if nothing matched.
+
+    Tie-break order when multiple patterns fire at once:
+      1. Actionable stage (BUY_ZONE/AVOID/BLOCKED/BREAKOUT_CANDIDATE) beats a
+         passive WATCH/RISK_WATCH stage.
+      2. Within the same bucket, the pattern whose trigger level sits closest
+         to the current close wins — that is the structure closest to
+         actually resolving right now, not just whichever detector happens
+         to run first in the list.
 
     Result keys: pattern, direction, stage, trigger, invalidation, reason, candidates
     """
@@ -905,6 +958,7 @@ def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | No
     if len(work) < 2 * _PIVOT_WINDOW + _MIN_SEPARATION + 2:
         return None
     highs, lows, closes = _series(work)
+    last_close = closes[-1]
 
     matches: list[dict] = []
     for detector in _DETECTORS:
@@ -918,7 +972,13 @@ def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | No
     if not matches:
         return None
 
-    matches.sort(key=lambda m: 0 if m["stage"] in _ACTIONABLE_STAGES else 1)
+    def _sort_key(m: dict) -> tuple[int, float]:
+        stage_rank = 0 if m["stage"] in _ACTIONABLE_STAGES else 1
+        trigger = m.get("trigger")
+        proximity = abs(last_close - trigger) if (last_close is not None and trigger is not None) else float("inf")
+        return (stage_rank, proximity)
+
+    matches.sort(key=_sort_key)
     best = matches[0]
     best["candidates"] = [m["pattern"] for m in matches]
     return best
