@@ -1601,17 +1601,17 @@ function DailyBriefingCard({
           <div className="text-xs font-black text-blue-300">MONE 판단</div>
           <p className="mt-1 text-sm leading-6 text-slate-300 text-pretty">{briefing.detail}</p>
           {briefing.topItem && (
-            <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-2.5">
-              <div className="grid grid-cols-4 gap-1.5 text-center text-[11px]">
+            <div className="mt-3 rounded-xl border border-slate-800/70 px-1 py-2.5">
+              <div className="grid grid-cols-4 divide-x divide-slate-800/70 text-center text-[11px]">
                 {[
                   { label: "현재가", key: "current", color: "text-slate-200" },
                   { label: "기준가", key: "entry", color: "text-sky-300" },
                   { label: "손절가", key: "stop", color: "text-red-300" },
                   { label: "목표가", key: "target", color: "text-emerald-300" },
                 ].map(({ label, key, color }) => (
-                  <div key={key} className="rounded-lg bg-slate-900/50 py-1.5">
+                  <div key={key} className="px-1">
                     <div className="text-[10px] text-slate-500">{label}</div>
-                    <div className={`mt-0.5 truncate font-mono font-semibold ${color}`}>{priceText(briefing.topItem, key as any, "—")}</div>
+                    <div className={`mt-1 truncate font-mono font-semibold ${color}`}>{priceText(briefing.topItem, key as any, "—")}</div>
                   </div>
                 ))}
               </div>
@@ -1620,22 +1620,22 @@ function DailyBriefingCard({
                 const rr = Number(briefing.topItem.rrActual ?? 0);
                 const score = Number(briefing.topItem.finalScore ?? 0);
                 return (
-                  <div className="mt-2 grid grid-cols-3 gap-1.5 border-t border-slate-800/70 pt-2 text-center text-[11px]">
-                    <div className="rounded-lg bg-slate-900/50 py-1.5">
+                  <div className="mt-2.5 grid grid-cols-3 divide-x divide-slate-800/70 border-t border-slate-800/70 pt-2.5 text-center text-[11px]">
+                    <div className="px-1">
                       <div className="text-[10px] text-slate-500">기댓값 EV</div>
-                      <div className={`mt-0.5 font-mono font-semibold ${ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
+                      <div className={`mt-1 font-mono font-semibold ${ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
                         {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
                       </div>
                     </div>
-                    <div className="rounded-lg bg-slate-900/50 py-1.5">
+                    <div className="px-1">
                       <div className="text-[10px] text-slate-500">손익비 RR</div>
-                      <div className={`mt-0.5 font-mono font-semibold ${rr >= 2 ? "text-emerald-300" : rr >= 1.5 ? "text-amber-300" : "text-red-300"}`}>
+                      <div className={`mt-1 font-mono font-semibold ${rr >= 2 ? "text-emerald-300" : rr >= 1.5 ? "text-amber-300" : "text-red-300"}`}>
                         {rr > 0 ? rr.toFixed(1) : "—"}
                       </div>
                     </div>
-                    <div className="rounded-lg bg-slate-900/50 py-1.5">
+                    <div className="px-1">
                       <div className="text-[10px] text-slate-500">종합 점수</div>
-                      <div className={`mt-0.5 font-mono font-semibold ${score >= 65 ? "text-emerald-300" : score >= 50 ? "text-amber-300" : "text-slate-400"}`}>
+                      <div className={`mt-1 font-mono font-semibold ${score >= 65 ? "text-emerald-300" : score >= 50 ? "text-amber-300" : "text-slate-400"}`}>
                         {score > 0 ? `${score.toFixed(0)}점` : "—"}
                       </div>
                     </div>
