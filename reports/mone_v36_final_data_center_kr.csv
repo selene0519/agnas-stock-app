@@ -1,9 +1,9 @@
 ﻿label,value,note
-운영 준비도,100점 · 운영 가능,핵심 파일/차트/공시/GitHub/StockApp 상태 종합
+운영 준비도,90점 · 운영 가능,핵심 파일/차트/공시/GitHub/StockApp 상태 종합
 오늘 데이터 출처,GitHub Actions,handoff 기준 source policy 반영
-자동 실행 상태,자동 실행 정상,mode=github_schedule · event=schedule
-마지막 업데이트,2026-06-25 07:10:05 KST,reports/data 기준
+자동 실행 상태,자동 실행 기록 없음,mode=unknown · event=없음
+마지막 업데이트,2026-06-25 09:09:59 KST,reports/data 기준
 차트 데이터,OK,OHLCV/기술지표/체결 검증
 공시 데이터,OK,DART/SEC CSV 감지
-리포트 데이터,OK,active=kr_after_close · pre=OK · intra=PARTIAL · close=OK
+리포트 데이터,OK,active=kr_intraday · pre=OK · intra=OK · close=OK
 기업분석 데이터,PARTIAL,핵심 재무값 일부만 연결됨: 74/120행
