@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Bell, Moon, Sun } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Bell, Moon, Sun, X } from "lucide-react";
+import dynamicImport from "next/dynamic";
 import Image from "next/image";
 import Sidebar, { type PageId } from "../components/Sidebar";
 import BottomNav from "../components/BottomNav";
@@ -9,25 +10,37 @@ import TopHoldingTicker from "../components/TopHoldingTicker";
 import SessionSafetyBanner from "../components/SessionSafetyBanner";
 import AppLaunchLoading, { type AppLaunchLoadingStep } from "../components/AppLaunchLoading";
 import HomePage from "../components/pages/HomePage";
-import ReportPage from "../components/pages/ReportPage";
-import StocksPage from "../components/pages/StocksPage";
-import HoldingsPage from "../components/pages/HoldingsPage";
-import ChartPage from "../components/pages/ChartPage";
-import NewsPage from "../components/pages/NewsPage";
-import PredictionPage from "../components/pages/PredictionPage";
-import AdvancedPage from "../components/pages/AdvancedPage";
-import PaperTradingPage from "../components/pages/PaperTradingPage";
-import VirtualJournalPage from "../components/pages/VirtualJournalPage";
-import AdminPage from "../components/pages/AdminPage";
-import AdminLoginPage from "../components/pages/AdminLoginPage";
-import BrokerPage from "../components/pages/BrokerPage";
 import { mone } from "../lib/api";
 import { clearAdminToken, getAdminToken, saveAdminToken } from "../lib/adminAuth";
 import { clearAuthenticatedUser, getUserId, getUserProfile, getUserToken, type MoneUserProfile } from "../lib/userId";
 import { getDefaultMarketBySession } from "../lib/marketSession";
 import { getCachedBootPreload, runBootPreload, type BootPreloadState } from "../lib/bootPreload";
+import { useFocusTrap } from "../lib/useFocusTrap";
 
 const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
+
+function PageLoading() {
+  return <div className="py-16 text-center text-sm text-slate-500" role="status">화면을 불러오는 중…</div>;
+}
+
+const ReportPage = dynamicImport(() => import("../components/pages/ReportPage"), { loading: () => <PageLoading /> });
+const StocksPage = dynamicImport(() => import("../components/pages/StocksPage"), { loading: () => <PageLoading /> });
+const HoldingsPage = dynamicImport(() => import("../components/pages/HoldingsPage"), { loading: () => <PageLoading /> });
+const ChartPage = dynamicImport(() => import("../components/pages/ChartPage"), { loading: () => <PageLoading /> });
+const NewsPage = dynamicImport(() => import("../components/pages/NewsPage"), { loading: () => <PageLoading /> });
+const PredictionPage = dynamicImport(() => import("../components/pages/PredictionPage"), { loading: () => <PageLoading /> });
+const AdvancedPage = dynamicImport(() => import("../components/pages/AdvancedPage"), { loading: () => <PageLoading /> });
+const PaperTradingPage = dynamicImport(() => import("../components/pages/PaperTradingPage"), { loading: () => <PageLoading /> });
+const VirtualJournalPage = dynamicImport(() => import("../components/pages/VirtualJournalPage"), { loading: () => <PageLoading /> });
+const AdminPage = dynamicImport(() => import("../components/pages/AdminPage"), { loading: () => <PageLoading /> });
+const AdminLoginPage = dynamicImport(() => import("../components/pages/AdminLoginPage"), { loading: () => <PageLoading /> });
+const BrokerPage = dynamicImport(() => import("../components/pages/BrokerPage"), { loading: () => <PageLoading /> });
+
+const pageIds: PageId[] = ["home", "report", "stocks", "holdings", "chart", "news", "prediction", "advanced", "paper", "journal", "broker", "admin"];
+
+function isPageId(value: string | null): value is PageId {
+  return Boolean(value && pageIds.includes(value as PageId));
+}
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +67,19 @@ export default function App() {
     { label: "서버 상태 확인", status: "active" },
     { label: "화면 준비", status: "pending" },
   ]);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
+  const notificationPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const navigateTo = useCallback((nextPage: PageId, options?: { replace?: boolean }) => {
+    setPage(nextPage);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (nextPage === "home") url.searchParams.delete("page");
+    else url.searchParams.set("page", nextPage);
+    const method = options?.replace ? "replaceState" : "pushState";
+    window.history[method]({ page: nextPage }, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
 
   useEffect(() => {
     // HTML 인라인 스플래시 제거 (layout.tsx의 #mone-html-splash)
@@ -73,8 +99,24 @@ export default function App() {
     const initialTheme = storedTheme === "light" ? "light" : "dark";
     document.documentElement.dataset.theme = initialTheme;
     setTheme(initialTheme);
+    const requestedPage = new URLSearchParams(window.location.search).get("page");
+    if (isPageId(requestedPage)) setPage(requestedPage);
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const requestedPage = new URLSearchParams(window.location.search).get("page");
+      setPage(isPageId(requestedPage) ? requestedPage : "home");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    mainRef.current?.focus({ preventScroll: true });
+  }, [mounted, page]);
 
   const toggleTheme = useCallback(() => {
     setTheme((current) => {
@@ -202,32 +244,45 @@ export default function App() {
   }, [notifOpen]);
 
   useEffect(() => {
-    const handler = () => setPage("chart");
+    const handler = () => navigateTo("chart");
     window.addEventListener("mone-open-chart", handler);
     return () => window.removeEventListener("mone-open-chart", handler);
+  }, [navigateTo]);
+
+  const closeNotifications = useCallback(() => {
+    setNotifOpen(false);
+    window.setTimeout(() => notificationButtonRef.current?.focus(), 0);
   }, []);
+
+  useFocusTrap(notifOpen, notificationPanelRef, closeNotifications);
+
+  useEffect(() => {
+    if (mounted && page === "admin" && userProfile && !adminToken) {
+      navigateTo("home", { replace: true });
+    }
+  }, [adminToken, mounted, navigateTo, page, userProfile]);
 
   const handleAdminLogin = useCallback((token: string) => {
     saveAdminToken(token);
     setAdminTokenState(token);
-    setPage("admin");
-  }, []);
+    navigateTo("admin", { replace: true });
+  }, [navigateTo]);
 
   const handleAdminLogout = useCallback(() => {
     clearAdminToken();
     setAdminTokenState("");
-    setPage("home");
-  }, []);
+    navigateTo("home", { replace: true });
+  }, [navigateTo]);
 
   const handleUserLogout = useCallback(() => {
     clearAuthenticatedUser();
     setUserProfile(null);
-    setPage("home");
-  }, []);
+    navigateTo("home", { replace: true });
+  }, [navigateTo]);
 
   const openAdminLogin = useCallback(() => {
-    setPage("admin");
-  }, []);
+    navigateTo("admin");
+  }, [navigateTo]);
 
   const openUserLogin = useCallback((provider: "google" | "kakao") => {
     window.location.href = `/mone-api/api/auth/oauth/${provider}/start`;
@@ -236,13 +291,13 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case "home":
-        return <HomePage onNavigate={setPage} onTradePaper={(order) => { setTradeOrder(order); setPage("advanced"); }} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
+        return <HomePage onNavigate={navigateTo} onTradePaper={(order) => { setTradeOrder(order); navigateTo("advanced"); }} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
       case "report":
         return <ReportPage />;
       case "stocks":
-        return <StocksPage onNavigate={(p) => setPage(p as PageId)} bootData={bootState.bootData} />;
+        return <StocksPage onNavigate={(p) => navigateTo(p as PageId)} bootData={bootState.bootData} />;
       case "holdings":
-        return <HoldingsPage userToken={userToken || null} onNavigate={(p) => setPage(p as PageId)} bootData={bootState.bootData} />;
+        return <HoldingsPage userToken={userToken || null} onNavigate={(p) => navigateTo(p as PageId)} bootData={bootState.bootData} />;
       case "chart":
         return <ChartPage />;
       case "news":
@@ -259,15 +314,14 @@ export default function App() {
         return (
           <BrokerPage
             userToken={userToken || null}
-            onLogin={() => setPage("admin")}
-            onNavigate={(p) => setPage(p as PageId)}
+            onLogin={() => navigateTo("admin")}
+            onNavigate={(p) => navigateTo(p as PageId)}
           />
         );
       case "admin":
         if (adminToken) return <AdminPage authToken={adminToken} onLogout={handleAdminLogout} />;
         if (userProfile) {
-          setTimeout(() => setPage("home"), 0);
-          return <HomePage onNavigate={setPage} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
+          return <HomePage onNavigate={navigateTo} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
         }
         return <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       default:
@@ -285,7 +339,8 @@ export default function App() {
   }
 
   return (
-    <div className="mone-app-shell flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+    <div className="mone-app-shell flex h-dvh overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+      <a href="#main-content" className="skip-link">본문으로 건너뛰기</a>
       {booting && (
         <AppLaunchLoading
           progress={bootProgress}
@@ -296,7 +351,7 @@ export default function App() {
       )}
 
       {/* 데스크톱 사이드바 */}
-      <Sidebar current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} onAdminLogout={handleAdminLogout} userProfile={userProfile} onUserLogout={handleUserLogout} />
+      <Sidebar current={page} onChange={navigateTo} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} onAdminLogout={handleAdminLogout} userProfile={userProfile} onUserLogout={handleUserLogout} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* 헤더 */}
@@ -336,20 +391,37 @@ export default function App() {
             {/* 알림 */}
             <div className="relative">
               <button
+                ref={notificationButtonRef}
+                type="button"
                 className="mone-header-button relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 transition-[border-color,color,transform] hover:border-slate-600 hover:text-white active:scale-[0.96]"
                 onClick={() => setNotifOpen(!notifOpen)}
                 title="알림"
+                aria-label="알림"
+                aria-haspopup="dialog"
+                aria-expanded={notifOpen}
+                aria-controls="notification-panel"
               >
-                <Bell size={14} />
+                <Bell size={14} aria-hidden="true" />
                 {notifications.length > 0 && (
                   <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-400" />
                 )}
               </button>
               {notifOpen && (
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
-                  <div className="animate-slide-up absolute right-0 top-10 z-40 w-72 rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
-                    <div className="border-b border-slate-800 p-3 text-sm font-medium text-white">알림</div>
+                  <button type="button" className="fixed inset-0 z-30 cursor-default" onClick={closeNotifications} aria-label="알림 닫기" />
+                  <div
+                    ref={notificationPanelRef}
+                    id="notification-panel"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="notification-title"
+                    tabIndex={-1}
+                    className="animate-slide-up absolute right-0 top-10 z-40 w-72 rounded-xl border border-slate-700 bg-slate-900 shadow-2xl outline-none"
+                  >
+                    <div className="flex min-h-11 items-center justify-between border-b border-slate-800 pl-3 text-sm font-medium text-white">
+                      <span id="notification-title">알림</span>
+                      <button type="button" onClick={closeNotifications} className="flex h-11 w-11 items-center justify-center text-slate-400 hover:text-white" aria-label="알림 닫기"><X size={16} aria-hidden="true" /></button>
+                    </div>
                     <div className="divide-y divide-slate-800/50">
                       {notifications.length === 0 ? (
                         <div className="px-3 py-6 text-center text-xs text-slate-500">새 알림이 없습니다</div>
@@ -379,7 +451,7 @@ export default function App() {
         </header>
 
         {/* 메인 콘텐츠 — 모바일은 하단 탭바 높이(56px) + safe area 만큼 여백 */}
-        <main className="flex-1 overflow-y-auto p-3 pb-[calc(56px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
+        <main ref={mainRef} id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-3 pb-[calc(56px+env(safe-area-inset-bottom))] outline-none md:p-6 md:pb-6">
           <div className="mx-auto max-w-7xl space-y-4">
             <SessionSafetyBanner market={getDefaultMarketBySession()} />
             {renderPage()}
@@ -388,7 +460,7 @@ export default function App() {
       </div>
 
       {/* 모바일 하단 탭바 */}
-      <BottomNav current={page} onChange={setPage} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} userProfile={userProfile} onUserLogout={handleUserLogout} />
+      <BottomNav current={page} onChange={navigateTo} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} userProfile={userProfile} onUserLogout={handleUserLogout} />
     </div>
   );
 }
