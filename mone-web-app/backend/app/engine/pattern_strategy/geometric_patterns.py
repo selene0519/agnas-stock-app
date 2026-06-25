@@ -668,6 +668,199 @@ def detect_cup_and_handle(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     }
 
 
+# ── Phase 3: MONE-specific risk patterns ────────────────────────────────────
+# These don't chase pretty geometry — they catch the failure modes that
+# actually hurt: a breakout that didn't hold, a breakdown that was a shakeout,
+# a rally running too hot to chase, quiet distribution at the top, aimless
+# chop, and old support/resistance levels flipping roles after being broken.
+
+def detect_failed_breakout(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    if n < 16:
+        return None
+    pre = [h for h in highs[:-10] if h is not None]
+    if not pre:
+        return None
+    resistance = max(pre)
+    recent = closes[-10:-1]
+    if not any(c is not None and c > resistance for c in recent):
+        return None  # no breakout attempt to have failed
+    close = closes[-1]
+    if close is None or close >= resistance:
+        return None  # still holding above -> not failed (yet)
+    invalidation = resistance + 0.3 * (atr20 or 0)
+    stage = _bearish_stage(close, resistance, atr20, invalidation)
+    if stage is None:
+        return None
+    return {
+        "pattern": "FAILED_BREAKOUT", "direction": "BEARISH", "stage": stage,
+        "trigger": round(resistance, 2), "invalidation": round(invalidation, 2),
+        "reason": f"저항 {resistance:.0f} 돌파를 시도했다가 다시 그 아래로 내려온 가짜 돌파 경계 구간입니다. 추격 매수를 피하세요.",
+    }
+
+
+def detect_failed_breakdown(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    if n < 16:
+        return None
+    pre = [l for l in lows[:-10] if l is not None]
+    if not pre:
+        return None
+    support = min(pre)
+    recent = closes[-10:-1]
+    if not any(c is not None and c < support for c in recent):
+        return None  # no breakdown attempt to have failed
+    close = closes[-1]
+    if close is None or close <= support:
+        return None  # still below -> not recovered (yet)
+    invalidation = support - 0.3 * (atr20 or 0)
+    stage = _bullish_stage(close, support, atr20, vol_ratio, invalidation)
+    return {
+        "pattern": "FAILED_BREAKDOWN", "direction": "BULLISH", "stage": stage,
+        "trigger": round(support, 2), "invalidation": round(invalidation, 2),
+        "reason": f"지지 {support:.0f} 이탈을 시도했다가 다시 그 위로 올라온 가짜 이탈(되돌림) 후보입니다. 지지 회복이 유지되면 매수 후보로 전환됩니다.",
+    }
+
+
+def detect_overextended_breakout(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    if n < 16 or not atr20:
+        return None
+    pre = [h for h in highs[:-10] if h is not None]
+    if not pre:
+        return None
+    range_high = max(pre)
+    recent = closes[-10:]
+    breakout_i = next((i for i, c in enumerate(recent) if c is not None and c > range_high), None)
+    if breakout_i is None:
+        return None
+    close = closes[-1]
+    if close is None:
+        return None
+    extension_atr = (close - range_high) / atr20
+    if extension_atr < 3.0:
+        return None  # not extended enough to flag as a chase risk
+    bars_since = len(recent) - 1 - breakout_i
+    if bars_since > 5:
+        return None  # extension happened too long ago to call it "fresh"
+    stage = "AVOID" if extension_atr >= 4.5 else "RISK_WATCH"
+    return {
+        "pattern": "OVEREXTENDED_BREAKOUT", "direction": "BULLISH", "stage": stage,
+        "trigger": round(range_high, 2), "invalidation": round(range_high, 2),
+        "reason": f"돌파 기준선 {range_high:.0f} 대비 {extension_atr:.1f}ATR 과열 구간입니다. 추격 매수보다 눌림 후 진입을 고려하세요.",
+    }
+
+
+def detect_distribution_watch(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    if n < 16 or not atr20:
+        return None
+    pre = [h for h in highs[:-1] if h is not None]
+    if not pre:
+        return None
+    range_high = max(pre)
+    close = closes[-1]
+    if close is None or range_high <= 0:
+        return None
+    if (range_high - close) > 1.5 * atr20:
+        return None  # not near the top — distribution only matters near highs
+    recent = [c for c in closes[-6:] if c is not None]
+    if len(recent) < 6:
+        return None
+    drift = recent[-1] - recent[0]
+    if drift > 0:
+        return None  # still pushing higher, not showing distribution yet
+    invalidation = range_high + 0.5 * atr20
+    if close >= invalidation:
+        return None  # made a fresh high — distribution read is stale
+    high_volume = bool(vol_ratio and vol_ratio >= 1.1)
+    stage = "AVOID" if (high_volume and drift < 0) else "RISK_WATCH"
+    return {
+        "pattern": "DISTRIBUTION_WATCH", "direction": "BEARISH", "stage": stage,
+        "trigger": round(range_high, 2), "invalidation": round(invalidation, 2),
+        "reason": f"고점 {range_high:.0f} 근처에서 거래량을 동반한 채 가격이 밀리는 분산 매물 경계 구간입니다. 신규 진입보다 관찰이 우선입니다.",
+    }
+
+
+def detect_range_drift(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    if n < 20:
+        return None
+    window_highs = [h for h in highs[-20:] if h is not None]
+    window_lows = [l for l in lows[-20:] if l is not None]
+    if not window_highs or not window_lows:
+        return None
+    range_high, range_low = max(window_highs), min(window_lows)
+    width = range_high - range_low
+    if width <= 0:
+        return None
+    start_close, end_close = closes[-20], closes[-1]
+    if start_close is None or end_close is None:
+        return None
+    drift_ratio = abs(end_close - start_close) / width
+    if drift_ratio > 0.3:
+        return None  # net move is too directional to call it aimless drift
+    if vol_ratio and vol_ratio > 1.3:
+        return None  # active volume — not a quiet, languishing range
+    return {
+        "pattern": "RANGE_DRIFT", "direction": "NEUTRAL", "stage": "WATCH",
+        "trigger": round(range_high, 2), "invalidation": round(range_low, 2),
+        "reason": f"뚜렷한 방향 없이 거래량도 줄며 {range_low:.0f}~{range_high:.0f} 구간을 횡보 중입니다. 방향성 신호가 나올 때까지 대기하세요.",
+    }
+
+
+def detect_support_flip_resistance(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    lo_idx = _pivot_lows(lows)
+    if not lo_idx:
+        return None
+    n = len(closes)
+    level_i = lo_idx[-1]
+    level = lows[level_i]
+    if not level or level_i > n - 6:
+        return None  # need room after the pivot for breakdown + bounce-back
+    after = closes[level_i + 1:-1]
+    if not after or not any(c is not None and c < level - 0.2 * (atr20 or 0) for c in after):
+        return None  # level was never actually broken
+    close = closes[-1]
+    if close is None or close >= level:
+        return None  # already reclaimed the level — no longer a flip-to-resistance risk
+    if (level - close) > 1.0 * (atr20 or 1):
+        return None  # too far below to be "testing" the flipped level right now
+    invalidation = level + 0.4 * (atr20 or 0)
+    stage = "RISK_WATCH" if close >= level - 0.5 * (atr20 or 0) else "AVOID"
+    return {
+        "pattern": "SUPPORT_FLIP_RESISTANCE", "direction": "BEARISH", "stage": stage,
+        "trigger": round(level, 2), "invalidation": round(invalidation, 2),
+        "reason": f"이전 지지선 {level:.0f}이 무너진 뒤 저항으로 바뀌어 반등을 제한하고 있습니다. 해당 레벨 회복에 실패하면 하락이 이어질 수 있습니다.",
+    }
+
+
+def detect_resistance_flip_support(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    hi_idx = _pivot_highs(highs)
+    if not hi_idx:
+        return None
+    n = len(closes)
+    level_i = hi_idx[-1]
+    level = highs[level_i]
+    if not level or level_i > n - 6:
+        return None
+    after = closes[level_i + 1:-1]
+    if not after or not any(c is not None and c > level + 0.2 * (atr20 or 0) for c in after):
+        return None  # level was never actually broken
+    close = closes[-1]
+    if close is None or close <= level:
+        return None  # already lost the level — no longer a flip-to-support read
+    if (close - level) > 1.0 * (atr20 or 1):
+        return None  # too far above to be "testing" the flipped level right now
+    invalidation = level - 0.4 * (atr20 or 0)
+    stage = "BUY_ZONE" if close <= level + 0.5 * (atr20 or 0) else "BREAKOUT_CANDIDATE"
+    return {
+        "pattern": "RESISTANCE_FLIP_SUPPORT", "direction": "BULLISH", "stage": stage,
+        "trigger": round(level, 2), "invalidation": round(invalidation, 2),
+        "reason": f"이전 저항선 {level:.0f}을 돌파한 뒤 지지선으로 전환되어 눌림목을 지지하고 있습니다. 지지가 유지되면 매수 후보입니다.",
+    }
+
+
 _DETECTORS = [
     detect_double_bottom,
     detect_double_top,
@@ -686,6 +879,13 @@ _DETECTORS = [
     detect_rising_channel,
     detect_falling_channel,
     detect_cup_and_handle,
+    detect_failed_breakout,
+    detect_failed_breakdown,
+    detect_overextended_breakout,
+    detect_distribution_watch,
+    detect_range_drift,
+    detect_support_flip_resistance,
+    detect_resistance_flip_support,
 ]
 
 _ACTIONABLE_STAGES = {"BUY_ZONE", "AVOID", "BLOCKED", "BREAKOUT_CANDIDATE"}
