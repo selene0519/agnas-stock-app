@@ -1780,21 +1780,8 @@ function StrategyRecordsSection({
   onMatrixClick: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [alertsOpen, setAlertsOpen] = useState(false);
-  const [engineOpen, setEngineOpen] = useState(false);
   const currentMode = String(currentItem?._mode || currentItem?.mode || "balanced") as Mode;
   const currentHorizon = String(currentItem?._horizon || currentItem?.horizon || "swing") as Horizon;
-  const statusClass = (status: AlertTrackingRow["status"]) => {
-    if (status === "목표도달" || status === "목표근접") return "bg-emerald-500/15 text-emerald-300";
-    if (status === "손절도달" || status === "리스크확인") return "bg-red-500/15 text-red-300";
-    if (status === "데이터부족") return "bg-slate-800 text-slate-500";
-    return "bg-sky-500/12 text-sky-300";
-  };
-  const engineClass = (row: EngineHistoryRow) => {
-    if (row.status === "적용") return "bg-emerald-500/15 text-emerald-300";
-    if (row.status === "LOW_SAMPLE") return "bg-amber-500/15 text-amber-300";
-    return "bg-slate-800 text-slate-500";
-  };
 
   return (
     <section className="mone-home-surface overflow-hidden rounded-[20px] border">
@@ -1816,8 +1803,8 @@ function StrategyRecordsSection({
       </button>
 
       {expanded && (
-        <div id="strategy-records-body" className="border-t border-slate-800/80 px-4 pb-4">
-          <div className="flex min-h-[62px] items-center justify-between gap-3">
+        <div id="strategy-records-body" className="space-y-3 border-t border-teal-400/70 p-3">
+          <div className="flex min-h-[50px] items-center justify-between gap-3 rounded-xl bg-slate-950/35 px-3">
             <div className="min-w-0">
               <div className="text-[11px] font-bold text-slate-600">현재 전략</div>
               <div className="mt-1 truncate text-sm font-black text-slate-100">{modeLabel(currentMode)} · {horizonLabel(currentHorizon)}</div>
@@ -1830,64 +1817,8 @@ function StrategyRecordsSection({
               3×3 매트릭스 <ChevronRight size={14} />
             </button>
           </div>
-
-          <section className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/35">
-            <button
-              type="button"
-              onClick={() => setAlertsOpen((value) => !value)}
-              aria-expanded={alertsOpen}
-              className="flex min-h-12 w-full items-center gap-2 px-3 text-left transition-[background-color,transform] hover:bg-slate-900/45 active:scale-[0.99]"
-            >
-              <Bell size={15} className="shrink-0 text-amber-300" />
-              <span className="flex-1 text-sm font-black text-slate-100">알림 추적</span>
-              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-black text-slate-400">{alertRows.length}건</span>
-              <ChevronRight size={14} className={`text-slate-500 transition-transform duration-200 ${alertsOpen ? "-rotate-90" : "rotate-90"}`} />
-            </button>
-            {alertsOpen && (
-              <div className="divide-y divide-slate-800/80 border-t border-slate-800">
-                {alertRows.slice(0, 6).map((row) => (
-                  <div key={row.key} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-black text-slate-100">{row.name} <span className="font-mono text-[9px] font-medium text-slate-600">{row.symbol}</span></div>
-                      <div className="truncate text-[10px] text-slate-600">{row.alertPriceText} → {row.currentPriceText}</div>
-                    </div>
-                    <div className={`font-mono text-xs font-black tabular-nums ${row.changeTone === "up" ? "text-emerald-300" : row.changeTone === "down" ? "text-red-300" : "text-slate-500"}`}>{row.changeText}</div>
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${statusClass(row.status)}`}>{row.status}</span>
-                  </div>
-                ))}
-                {alertRows.length === 0 && (
-                  <div className="px-3 py-4 text-center text-xs text-slate-500">기록된 알림이 쌓이면 추적 결과가 표시됩니다.</div>
-                )}
-              </div>
-            )}
-          </section>
-
-          <section className="mt-2 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/35">
-            <button
-              type="button"
-              onClick={() => setEngineOpen((value) => !value)}
-              aria-expanded={engineOpen}
-              className="flex min-h-12 w-full items-center gap-2 px-3 text-left transition-[background-color,transform] hover:bg-slate-900/45 active:scale-[0.99]"
-            >
-              <Bot size={15} className="shrink-0 text-blue-300" />
-              <span className="flex-1 text-sm font-black text-slate-100">AI 엔진 변경 이력</span>
-              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-black text-slate-400">{engineRows.length}건</span>
-              <ChevronRight size={14} className={`text-slate-500 transition-transform duration-200 ${engineOpen ? "-rotate-90" : "rotate-90"}`} />
-            </button>
-            {engineOpen && (
-              <div className="divide-y divide-slate-800/80 border-t border-slate-800">
-                {engineRows.slice(0, 6).map((row) => (
-                  <div key={row.key} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-black text-slate-100">{row.title}</div>
-                      <div className="truncate text-[10px] text-slate-600">{row.date} · {row.detail}</div>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${engineClass(row)}`}>{engineStatusLabel(row.status)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <AlertTrackingPreview rows={alertRows} />
+          <EngineHistoryPreview rows={engineRows} />
         </div>
       )}
     </section>
@@ -2823,7 +2754,7 @@ export default function HomePage({
   const [operationSummary, setOperationSummary] = useState<any>(null);
   // While the boot overlay is still showing, stay silent (no spinner) — boot data arrives before overlay lifts
   const [loading, setLoading] = useState(booting ? false : (!bootData || !Object.keys(bootData).length));
-  const [refreshing, setRefreshing] = useState(false);
+  const [homeRefreshing, setHomeRefreshing] = useState(false);
   const [refreshWarning, setRefreshWarning] = useState("");
   const [marketChoice, setMarketChoice] = useState<MarketChoice>("auto");
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -2946,7 +2877,6 @@ export default function HomePage({
   async function load(options: { background?: boolean } = {}) {
     const hasCurrentData = options.background || allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth);
     if (hasCurrentData) {
-      setRefreshing(true);
       setLoading(false);
     } else {
       setLoading(true);
@@ -2989,7 +2919,6 @@ export default function HomePage({
       }
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }
 
@@ -3016,6 +2945,20 @@ export default function HomePage({
       load({ background: hadCache });
     }
   }, [clientReady, selectedMarket, booting]);
+
+  useEffect(() => {
+    if (!clientReady) return;
+    const handleGlobalRefresh = () => load({ background: allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth) });
+    window.addEventListener("mone-global-refresh", handleGlobalRefresh);
+    return () => window.removeEventListener("mone-global-refresh", handleGlobalRefresh);
+  }, [clientReady, selectedMarket, allItems.length, matrix.length, Boolean(dataHealth)]);
+
+  function triggerHomeRefresh() {
+    if (homeRefreshing) return;
+    setHomeRefreshing(true);
+    window.dispatchEvent(new CustomEvent("mone-global-refresh"));
+    window.setTimeout(() => setHomeRefreshing(false), 2500);
+  }
 
   useEffect(() => {
     if (!clientReady) return;
@@ -3385,7 +3328,7 @@ export default function HomePage({
 
       {/* 헤더 */}
       <div className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[19px] font-black leading-none text-slate-100">MONE 홈</h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
@@ -3402,11 +3345,13 @@ export default function HomePage({
             </div>
           </div>
           <button
-            onClick={() => load()}
-            title="새로고침"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-slate-300 transition-[background-color,transform] hover:bg-slate-800 active:scale-[0.96]"
+            type="button"
+            onClick={triggerHomeRefresh}
+            title="홈 데이터 동기화"
+            aria-label="홈 데이터 동기화"
+            className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-[background-color,color,transform] after:absolute after:-inset-1 after:content-[''] hover:bg-slate-800/55 hover:text-slate-100 active:scale-[0.96]"
           >
-            <RefreshCw size={16} className={loading || refreshing ? "animate-spin" : ""} />
+            <RefreshCw size={14} className={homeRefreshing ? "animate-spin" : ""} aria-hidden="true" />
           </button>
         </div>
         <div className="grid grid-cols-3 gap-1.5 rounded-[14px] bg-slate-950/40">

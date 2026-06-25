@@ -663,6 +663,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [riskBudget, setRiskBudget] = useState<any>(null);
   const [brokerConnections, setBrokerConnections] = useState<BrokerStatus[]>([]);
   const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
+  const isPersonalHoldingsSource = String(data.authority || data.routeVersion || "").toLowerCase().includes("personal");
 
   function mergeEditableRows(rows: any[]) {
     const displayMap = new Map(items.map((item: any) => [editableKey(item), item]));
@@ -943,6 +944,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const riskCount = Number(summary.riskCount ?? items.filter((item) => ["HIGH","WATCH"].includes(String(item.riskStatus || ""))).length);
   const totalValueText = summary.totalValueText || (items.length > 0 ?
     items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
+  const showPersonalEmptyNotice = !loading && items.length === 0 && isPersonalHoldingsSource;
 
   const { individualStocks, etfHoldings } = useMemo(() => {
     const stocks: any[] = [];
@@ -1249,6 +1251,13 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       </div>
 
+      {showPersonalEmptyNotice && (
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3 text-xs leading-5 text-slate-400">
+          <div className="font-semibold text-slate-200">이 브라우저의 개인 보유종목이 아직 비어 있습니다.</div>
+          <p className="mt-1">공용 스냅샷이나 다른 사용자의 브릿지 데이터는 개인 보유와 자동으로 섞지 않습니다. 직접 추가, CSV 가져오기, 또는 브로커 연동 후 이 화면에 표시됩니다.</p>
+        </div>
+      )}
+
       {/* 개별주/ETF 보기 전환 */}
       {(individualStocks.length > 0 || etfHoldings.length > 0) && (
         <div className="inline-flex rounded-xl border border-slate-800 bg-slate-900/50 p-1">
@@ -1506,7 +1515,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             })}
             {individualStocks.length === 0 && !loading && etfHoldings.length === 0 && (
               <div className="col-span-full rounded-2xl border border-dashed border-slate-800 p-12 text-center">
-                <p className="text-slate-500">보유 종목이 없습니다.</p>
+                <p className="text-slate-500">{showPersonalEmptyNotice ? "개인 보유종목이 아직 없습니다." : "보유 종목이 없습니다."}</p>
+                {showPersonalEmptyNotice && (
+                  <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-500">공용 데이터가 있더라도 이 화면에는 이 브라우저의 개인 보유만 표시합니다.</p>
+                )}
                 <button onClick={() => setShowAdd(true)}
                   className="mone-primary-action mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.96]">
                   <Plus size={14} /> 첫 종목 직접 추가
