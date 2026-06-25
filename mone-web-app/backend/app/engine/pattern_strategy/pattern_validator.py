@@ -69,7 +69,10 @@ def _forward_return(rows: list[dict], from_date: str, days: int) -> float | None
     future = [r for r in rows if str(r.get("date", "")) > from_date]
     if len(future) < days:
         return None
-    entry_row = next((r for r in rows if str(r.get("date", "")) <= from_date), None)
+    # rows is oldest-first; walk backwards to find the most recent row at/before
+    # from_date (the original forward iteration picked the OLDEST row in the
+    # whole series instead, since its date is always <= from_date too).
+    entry_row = next((r for r in reversed(rows) if str(r.get("date", "")) <= from_date), None)
     if not entry_row:
         return None
     entry_close = _f(entry_row.get("close"))
@@ -143,6 +146,11 @@ def run_walkforward(
         "sampleCount": 0, "wins": 0, "losses": 0, "stops": 0, "targets": 0,
         "returns": [], "blocked_returns": [],
     })
+    # geometric (classic chart) pattern accumulators, keyed by "PATTERN:STAGE"
+    geo_pattern_stats: dict[str, dict] = defaultdict(lambda: {
+        "sampleCount": 0, "wins": 0, "losses": 0, "stops": 0, "targets": 0,
+        "returns": [],
+    })
     blocked_stats   = {"count": 0, "returns": [], "would_have_gained": 0}
     leakage_ok      = True
 
@@ -164,10 +172,6 @@ def run_walkforward(
             is_blocked = result.get("isBlocked", False)
             confidence = result.get("confidence", 0)
 
-            # Only validate if confidence passes threshold
-            if confidence < min_score:
-                continue
-
             fwd = _forward_return(all_rows, date_str, horizon_days)
             if fwd is None:
                 continue
@@ -176,6 +180,23 @@ def run_walkforward(
             stop_hit   = fwd < -0.02
             target_hit = fwd > 0.04
             win        = fwd > 0
+
+            # Geometric pattern tracking is independent of the indicator-engine
+            # confidence gate below — it has its own stage-based gating.
+            geo_pattern = result.get("geometricPattern")
+            geo_stage   = result.get("geometricPatternStage")
+            if geo_pattern and geo_stage:
+                gs = geo_pattern_stats[f"{geo_pattern}:{geo_stage}"]
+                gs["sampleCount"] += 1
+                gs["returns"].append(fwd)
+                if win:        gs["wins"]    += 1
+                else:          gs["losses"]  += 1
+                if stop_hit:   gs["stops"]   += 1
+                if target_hit: gs["targets"] += 1
+
+            # Only validate indicator-driven pattern if confidence passes threshold
+            if confidence < min_score:
+                continue
 
             ps = pattern_stats[primary]
             ps["sampleCount"] += 1
@@ -211,6 +232,21 @@ def run_walkforward(
             "targetHitRate":  round(tgt_r, 3),
         }
 
+    geo_summary: dict[str, Any] = {}
+    for key, gs in geo_pattern_stats.items():
+        n = gs["sampleCount"]
+        if n == 0:
+            continue
+        rets  = gs["returns"]
+        geo_summary[key] = {
+            "sampleCount":   n,
+            "winRate":       round(gs["wins"] / n, 3),
+            "avgReturn":     round(sum(rets) / len(rets), 4),
+            "medianReturn":  round(_median(rets), 4),
+            "stopRate":      round(gs["stops"] / n, 3),
+            "targetHitRate": round(gs["targets"] / n, 3),
+        }
+
     # ── Blocked outcome stats ──────────────────────────────────────────────
     bc = blocked_stats["count"]
     b_rets = blocked_stats["returns"]
@@ -227,6 +263,7 @@ def run_walkforward(
 
     # ── Calibration suggestions ────────────────────────────────────────────
     suggestions = _calibration_suggestions(summary, p)
+    suggestions += _geometric_calibration_suggestions(geo_summary)
 
     result_doc = {
         "status":       "OK",
@@ -236,6 +273,7 @@ def run_walkforward(
         "horizonDays":  horizon_days,
         "evalDates":    len(eval_dates),
         "summary":      summary,
+        "geometricPatternSummary":        geo_summary,
         "blockedOutcomeStats":            blocked_outcome,
         "leakageCheck":                   {"status": "PASS" if leakage_ok else "FAIL"},
         "patternCalibrationSuggestions":  suggestions,
@@ -305,5 +343,57 @@ def _calibration_suggestions(summary: dict, params: dict) -> list[dict]:
                 "action":     "STRENGTHEN",
                 "reason":     f"돌파 패턴 승률 {win_r:.0%} — 신뢰도 가중치 상향 권장",
             })
+
+    return suggestions
+
+
+def _geometric_calibration_suggestions(geo_summary: dict) -> list[dict]:
+    """
+    Human-readable calibration notes for classic chart patterns, keyed by
+    "PATTERN:STAGE". Geometric patterns don't carry a numeric confidence yet
+    (see geometric_patterns.py), so suggestions are observational — they flag
+    which pattern+stage combinations are worth promoting/demoting once enough
+    samples exist, ahead of wiring an actual per-pattern confidence weight.
+    """
+    suggestions: list[dict] = []
+    for key, stats in geo_summary.items():
+        n = stats["sampleCount"]
+        if n < 10:
+            suggestions.append({
+                "pattern": key, "action": "OBSERVE_ONLY",
+                "reason": f"표본 수 부족 ({n}개). 최소 10개 이상 쌓인 후 보정.",
+            })
+            continue
+
+        win_r, stop_r, avg_r = stats["winRate"], stats["stopRate"], stats["avgReturn"]
+        pattern, _, stage = key.partition(":")
+        is_bearish_stage = stage in ("AVOID", "BLOCKED", "RISK_WATCH")
+
+        if is_bearish_stage:
+            # winRate is defined as "price rose" (fwd > 0) everywhere in this
+            # module. For a bearish call, the call is CONFIRMED when price
+            # instead fell — i.e. decline_rate = 1 - win_r.
+            decline_rate = 1 - win_r
+            if decline_rate < 0.40:
+                suggestions.append({
+                    "pattern": key, "action": "WEAKEN",
+                    "reason": f"하락 경계 단계인데 실제 하락 확인율 {decline_rate:.0%}로 낮음 — 경계 기준 재검토 필요",
+                })
+            elif decline_rate > 0.65:
+                suggestions.append({
+                    "pattern": key, "action": "STRENGTHEN",
+                    "reason": f"하락 확인율 {decline_rate:.0%}, 평균수익률 {avg_r:+.1%} — 경계 신호 신뢰도 높음",
+                })
+        else:
+            if win_r > 0.60:
+                suggestions.append({
+                    "pattern": key, "action": "STRENGTHEN",
+                    "reason": f"승률 {win_r:.0%}, 평균수익률 {avg_r:+.1%} — 우선순위 상향 후보",
+                })
+            elif win_r < 0.40 or stop_r > 0.35:
+                suggestions.append({
+                    "pattern": key, "action": "WEAKEN",
+                    "reason": f"승률 {win_r:.0%}, 손절률 {stop_r:.0%} — 매수권 기준 강화 검토",
+                })
 
     return suggestions

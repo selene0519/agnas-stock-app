@@ -143,6 +143,7 @@ class PatternResult(TypedDict):
 # Classic geometric chart patterns (Phase 1, see geometric_patterns.py).
 # Kept separate from PATTERN_NAMES above, which are the indicator-driven patterns.
 GEOMETRIC_PATTERN_NAMES = {
+    # Phase 1 — core 10
     "DOUBLE_BOTTOM",
     "DOUBLE_TOP",
     "HEAD_AND_SHOULDERS",
@@ -153,6 +154,22 @@ GEOMETRIC_PATTERN_NAMES = {
     "BEAR_FLAG",
     "FALLING_WEDGE_BREAKOUT",
     "RISING_WEDGE_BREAKDOWN",
+    # Phase 2 — practical auxiliary patterns
+    "BULL_PENNANT",
+    "BEAR_PENNANT",
+    "SYMMETRICAL_TRIANGLE",
+    "RECTANGLE_RANGE",
+    "RISING_CHANNEL",
+    "FALLING_CHANNEL",
+    "CUP_AND_HANDLE",
+    # Phase 3 — MONE-specific risk patterns
+    "FAILED_BREAKOUT",
+    "FAILED_BREAKDOWN",
+    "DISTRIBUTION_WATCH",
+    "RANGE_DRIFT",
+    "OVEREXTENDED_BREAKOUT",
+    "SUPPORT_FLIP_RESISTANCE",
+    "RESISTANCE_FLIP_SUPPORT",
 }
 
 

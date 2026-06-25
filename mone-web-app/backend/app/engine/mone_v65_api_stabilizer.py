@@ -67,6 +67,10 @@ KR_NAME_FALLBACK: dict[str, str] = {
     "005490": "POSCO홀딩스",
     "012330": "현대모비스",
     "042700": "한미반도체",
+    "133690": "TIGER 미국나스닥100",
+    "360750": "TIGER 미국S&P500",
+    "381180": "TIGER 미국필라델피아반도체나스닥",
+    "458730": "TIGER 미국배당다우존스",
 }
 
 US_NAME_FALLBACK: dict[str, str] = {
@@ -88,6 +92,11 @@ US_NAME_FALLBACK: dict[str, str] = {
     "AAOI": "Applied Optoelectronics",
     "SIMO": "Silicon Motion",
     "BMNR": "BitMine Immersion Technologies",
+    "ABBV": "AbbVie Inc.",
+    "ABNB": "Airbnb, Inc.",
+    "UNH": "UnitedHealth Group Incorporated",
+    "DIS": "The Walt Disney Company",
+    "VRT": "Vertiv",
 }
 
 MODE_ALIASES = {
@@ -359,7 +368,12 @@ def _bad_name(value: Any, symbol: str) -> bool:
     text = str(value or "").strip()
     if not text:
         return True
-    if text.upper() == symbol.upper():
+    # Case-sensitive on purpose: a pipeline that copies the raw ticker into
+    # the name column always copies it verbatim (same case as `symbol`, which
+    # is itself always upper-cased). Comparing case-insensitively incorrectly
+    # rejected real, informative names like "Dell" (symbol DELL) or "Cava"
+    # (symbol CAVA) as if they were just the ticker repeated.
+    if text == symbol:
         return True
     if text in {"-", "N/A", "UNKNOWN", "종목명 없음"}:
         return True
@@ -636,6 +650,16 @@ def _build_recommendation_name_map(market: str, mode: str, horizon: str, _ver: i
             f"watchlist_{item_market}_growth.csv",
             f"data/watchlist_{item_market}.csv",
             f"reports/mone_v36_final_recommendations_{item_market}_balanced_swing.csv",
+            # Richer name sources — consulted unconditionally (not just when the
+            # exact mode/horizon recommendation file is missing), since a symbol
+            # can appear with a placeholder/symbol-as-name row in the exact-match
+            # recommendation CSV while a proper name already exists here.
+            f"candidate_universe_{item_market}.csv",
+            f"data/candidate_universe_{item_market}.csv",
+            f"symbol_master_{item_market}_full.csv",
+            f"symbol_master_{item_market}_extra.csv",
+            f"data/symbol_master_{item_market}_full.csv",
+            f"data/symbol_master_{item_market}_extra.csv",
         ):
             for row in _read_csv(path, 2000):
                 sym = _symbol(row, item_market)
