@@ -338,8 +338,13 @@ def detect_bull_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     consolidation = closes[pole_top_i:]
     if len(consolidation) < 3:
         return None
-    cons_high = max(h for h in highs[pole_top_i:] if h is not None)
-    cons_low  = min(l for l in lows[pole_top_i:] if l is not None)
+    # Consolidation range must exclude today's own bar: high/low always bound
+    # close (high >= close >= low), so including today in cons_high/cons_low
+    # makes "close > cons_high" mathematically impossible — the pattern could
+    # never reach BREAKOUT_CANDIDATE/BUY_ZONE. The breakout test is "did today
+    # clear the range built up *before* today."
+    cons_high = max(h for h in highs[pole_top_i:-1] if h is not None)
+    cons_low  = min(l for l in lows[pole_top_i:-1] if l is not None)
     if (cons_high - cons_low) / pole_top > 0.07:
         return None  # consolidation too wide to be a tight flag
     close = closes[-1]
@@ -364,8 +369,12 @@ def detect_bear_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
         return None
     pole_start_i, pole_bottom_i = pole
     pole_bottom = lows[pole_bottom_i]
-    cons_high = max(h for h in highs[pole_bottom_i:] if h is not None)
-    cons_low  = min(l for l in lows[pole_bottom_i:] if l is not None)
+    if len(closes[pole_bottom_i:]) < 3:
+        return None
+    # Same fix as detect_bull_flag: exclude today's own bar from the
+    # consolidation range, otherwise "close < cons_low" can never be true.
+    cons_high = max(h for h in highs[pole_bottom_i:-1] if h is not None)
+    cons_low  = min(l for l in lows[pole_bottom_i:-1] if l is not None)
     if pole_bottom <= 0 or (cons_high - cons_low) / pole_bottom > 0.07:
         return None
     close = closes[-1]
