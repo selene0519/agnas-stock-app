@@ -220,6 +220,10 @@ const GEO_PATTERN_KO: Record<string, string> = {
   ASCENDING_TRIANGLE: "상승삼각형", DESCENDING_TRIANGLE: "하락삼각형",
   BULL_FLAG: "불플래그", BEAR_FLAG: "베어플래그",
   FALLING_WEDGE_BREAKOUT: "하락쐐기 돌파", RISING_WEDGE_BREAKDOWN: "상승쐐기 이탈",
+  BULL_PENNANT: "불페넌트", BEAR_PENNANT: "베어페넌트",
+  SYMMETRICAL_TRIANGLE: "대칭삼각형", RECTANGLE_RANGE: "박스권",
+  RISING_CHANNEL: "상승채널", FALLING_CHANNEL: "하락채널",
+  CUP_AND_HANDLE: "컵앤핸들",
 };
 const GEO_STAGE_KO: Record<string, string> = {
   WATCH: "관찰", BREAKOUT_CANDIDATE: "돌파 후보", BUY_ZONE: "매수권",

@@ -272,21 +272,48 @@ def detect_descending_triangle(highs, lows, closes, atr20, vol_ratio) -> dict | 
 
 # ── Continuation patterns: flags ────────────────────────────────────────────
 
+def _find_pole(
+    start_idx: list[int], end_idx: list[int], start_vals: list[float | None], end_vals: list[float | None],
+    min_gain: float = 0.08, max_pole_bars: int = 15,
+) -> tuple[int, int] | None:
+    """
+    Find the most recent (start_i, end_i) pivot pair where price moved by at
+    least `min_gain` (relative) within `max_pole_bars`, scanning candidate
+    start pivots from most-recent to oldest.
+
+    Scanning matters: the single most recent pivot in `start_idx` is usually
+    a point INSIDE the post-pole consolidation (e.g. a pennant's own support
+    pivot), not the pole's true start — and consolidation pivots never have a
+    qualifying rally/decline right after them (if they did, that breakout
+    would already be in progress). So the first start_idx that *does* satisfy
+    min_gain, scanning backwards, is the real pole start.
+    """
+    for i in reversed(start_idx):
+        start_val = start_vals[i]
+        if not start_val:
+            continue
+        candidates = [j for j in end_idx if i < j <= i + max_pole_bars]
+        if not candidates:
+            continue
+        end_i = candidates[0]
+        end_val = end_vals[end_i]
+        if not end_val:
+            continue
+        if abs(end_val - start_val) / start_val >= min_gain:
+            return i, end_i
+    return None
+
+
 def detect_bull_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     lo_idx = _pivot_lows(lows)
     hi_idx = _pivot_highs(highs)
     if not lo_idx or not hi_idx:
         return None
-    pole_start_i = lo_idx[-1]
-    pole_top_candidates = [i for i in hi_idx if i > pole_start_i]
-    if not pole_top_candidates:
+    pole = _find_pole(lo_idx, hi_idx, lows, highs)
+    if not pole:
         return None
-    pole_top_i = pole_top_candidates[0]
-    pole_start, pole_top = lows[pole_start_i], highs[pole_top_i]
-    if not pole_start or not pole_top:
-        return None
-    if (pole_top - pole_start) / pole_start < 0.08 or pole_top_i - pole_start_i > 15:
-        return None
+    pole_start_i, pole_top_i = pole
+    pole_top = highs[pole_top_i]
     consolidation = closes[pole_top_i:]
     if len(consolidation) < 3:
         return None
@@ -311,16 +338,11 @@ def detect_bear_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     lo_idx = _pivot_lows(lows)
     if not hi_idx or not lo_idx:
         return None
-    pole_start_i = hi_idx[-1]
-    pole_bottom_candidates = [i for i in lo_idx if i > pole_start_i]
-    if not pole_bottom_candidates:
+    pole = _find_pole(hi_idx, lo_idx, highs, lows)
+    if not pole:
         return None
-    pole_bottom_i = pole_bottom_candidates[0]
-    pole_start, pole_bottom = highs[pole_start_i], lows[pole_bottom_i]
-    if not pole_start or not pole_bottom:
-        return None
-    if (pole_start - pole_bottom) / pole_start < 0.08 or pole_bottom_i - pole_start_i > 15:
-        return None
+    pole_start_i, pole_bottom_i = pole
+    pole_bottom = lows[pole_bottom_i]
     cons_high = max(h for h in highs[pole_bottom_i:] if h is not None)
     cons_low  = min(l for l in lows[pole_bottom_i:] if l is not None)
     if pole_bottom <= 0 or (cons_high - cons_low) / pole_bottom > 0.07:
@@ -401,6 +423,251 @@ def detect_rising_wedge_breakdown(highs, lows, closes, atr20, vol_ratio) -> dict
     }
 
 
+# ── Continuation patterns: pennants (pole + converging consolidation) ──────
+
+def detect_bull_pennant(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    lo_idx = _pivot_lows(lows)
+    hi_idx = _pivot_highs(highs)
+    if not lo_idx or not hi_idx:
+        return None
+    pole = _find_pole(lo_idx, hi_idx, lows, highs)
+    if not pole:
+        return None
+    pole_start_i, pole_top_i = pole
+    cons_hi_idx = [i for i in hi_idx if i > pole_top_i]
+    cons_lo_idx = [i for i in lo_idx if i > pole_top_i]
+    if len(cons_hi_idx) < 2 or len(cons_lo_idx) < 2:
+        return None
+    res = _line_fit(cons_hi_idx, highs)
+    sup = _line_fit(cons_lo_idx, lows)
+    close = closes[-1]
+    if not res or not sup or not close or close <= 0:
+        return None
+    res_pct, sup_pct = res["slope"] / close, sup["slope"] / close
+    if not (res_pct < -0.0005 and sup_pct > 0.0005):
+        return None  # must be converging: resistance falling, support rising
+    n = len(closes)
+    resistance_now = _line_value_at(res, n - 1)
+    support_now = _line_value_at(sup, n - 1)
+    invalidation = support_now - 0.3 * (atr20 or 0)
+    stage = _bullish_stage(close, resistance_now, atr20, vol_ratio, invalidation)
+    return {
+        "pattern": "BULL_PENNANT", "direction": "BULLISH", "stage": stage,
+        "trigger": round(resistance_now, 2), "invalidation": round(invalidation, 2),
+        "reason": f"강한 상승(깃대) 이후 좁아지는 페넌트 구간에서 다듬어지는 불 페넌트 후보입니다. 상단 {resistance_now:.0f} 돌파 시 매수 후보로 전환됩니다.",
+    }
+
+
+def detect_bear_pennant(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    hi_idx = _pivot_highs(highs)
+    lo_idx = _pivot_lows(lows)
+    if not hi_idx or not lo_idx:
+        return None
+    pole = _find_pole(hi_idx, lo_idx, highs, lows)
+    if not pole:
+        return None
+    pole_start_i, pole_bottom_i = pole
+    cons_hi_idx = [i for i in hi_idx if i > pole_bottom_i]
+    cons_lo_idx = [i for i in lo_idx if i > pole_bottom_i]
+    if len(cons_hi_idx) < 2 or len(cons_lo_idx) < 2:
+        return None
+    res = _line_fit(cons_hi_idx, highs)
+    sup = _line_fit(cons_lo_idx, lows)
+    close = closes[-1]
+    if not res or not sup or not close or close <= 0:
+        return None
+    res_pct, sup_pct = res["slope"] / close, sup["slope"] / close
+    if not (res_pct < -0.0005 and sup_pct > 0.0005):
+        return None  # converging lines, regardless of pole — shared with bull case
+    n = len(closes)
+    resistance_now = _line_value_at(res, n - 1)
+    support_now = _line_value_at(sup, n - 1)
+    invalidation = resistance_now + 0.3 * (atr20 or 0)
+    stage = _bearish_stage(close, support_now, atr20, invalidation)
+    if stage is None:
+        return None
+    return {
+        "pattern": "BEAR_PENNANT", "direction": "BEARISH", "stage": stage,
+        "trigger": round(support_now, 2), "invalidation": round(invalidation, 2),
+        "reason": f"급락(깃대) 이후 좁아지는 페넌트 구간에서 약하게 다듬어지는 베어 페넌트 경계 구간입니다. 하단 {support_now:.0f} 이탈 시 하락이 재개될 수 있습니다.",
+    }
+
+
+# ── Boundary patterns: symmetrical triangle / rectangle (direction at break) ─
+
+def detect_symmetrical_triangle(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    hi_idx = _pivot_highs(highs)[-4:]
+    lo_idx = _pivot_lows(lows)[-4:]
+    res = _line_fit(hi_idx, highs)
+    sup = _line_fit(lo_idx, lows)
+    close = closes[-1]
+    if not res or not sup or not close or close <= 0:
+        return None
+    res_pct, sup_pct = res["slope"] / close, sup["slope"] / close
+    if not (res_pct < -0.0005 and sup_pct > 0.0005):
+        return None  # converging without a prior pole = symmetrical triangle
+    resistance_now = _line_value_at(res, n - 1)
+    support_now = _line_value_at(sup, n - 1)
+    if close > resistance_now:
+        invalidation = support_now - 0.3 * (atr20 or 0)
+        stage = _bullish_stage(close, resistance_now, atr20, vol_ratio, invalidation)
+        direction = "BULLISH"
+    elif close < support_now:
+        invalidation = resistance_now + 0.3 * (atr20 or 0)
+        stage = _bearish_stage(close, support_now, atr20, invalidation)
+        direction = "BEARISH"
+        if stage is None:
+            return None
+    else:
+        direction, stage = "NEUTRAL", "WATCH"
+    return {
+        "pattern": "SYMMETRICAL_TRIANGLE", "direction": direction, "stage": stage,
+        "trigger": round(resistance_now, 2), "invalidation": round(support_now, 2),
+        "reason": f"고점은 낮아지고 저점은 높아지며 좁아지는 대칭삼각형 구간입니다. 상단 {resistance_now:.0f} 또는 하단 {support_now:.0f} 돌파 방향으로 대응하세요.",
+    }
+
+
+def detect_rectangle_range(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    hi_idx = _pivot_highs(highs)[-4:]
+    lo_idx = _pivot_lows(lows)[-4:]
+    res = _line_fit(hi_idx, highs)
+    sup = _line_fit(lo_idx, lows)
+    close = closes[-1]
+    if not res or not sup or not close or close <= 0:
+        return None
+    res_pct, sup_pct = res["slope"] / close, sup["slope"] / close
+    if abs(res_pct) > 0.0015 or abs(sup_pct) > 0.0015:
+        return None  # both lines must be flat to qualify as a box range
+    resistance_now = _line_value_at(res, n - 1)
+    support_now = _line_value_at(sup, n - 1)
+    if resistance_now <= support_now:
+        return None
+    if close > resistance_now:
+        invalidation = support_now - 0.3 * (atr20 or 0)
+        stage = _bullish_stage(close, resistance_now, atr20, vol_ratio, invalidation)
+        direction = "BULLISH"
+    elif close < support_now:
+        invalidation = resistance_now + 0.3 * (atr20 or 0)
+        stage = _bearish_stage(close, support_now, atr20, invalidation)
+        direction = "BEARISH"
+        if stage is None:
+            return None
+    else:
+        direction, stage = "NEUTRAL", "WATCH"
+    return {
+        "pattern": "RECTANGLE_RANGE", "direction": direction, "stage": stage,
+        "trigger": round(resistance_now, 2), "invalidation": round(support_now, 2),
+        "reason": f"저항 {resistance_now:.0f}과 지지 {support_now:.0f}이 평평하게 유지되는 박스권입니다. 상단 또는 하단 이탈 방향으로 대응하세요.",
+    }
+
+
+# ── Continuation patterns: parallel channels ────────────────────────────────
+
+def detect_rising_channel(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    hi_idx = _pivot_highs(highs)[-4:]
+    lo_idx = _pivot_lows(lows)[-4:]
+    res = _line_fit(hi_idx, highs)
+    sup = _line_fit(lo_idx, lows)
+    close = closes[-1]
+    if not res or not sup or not close or close <= 0:
+        return None
+    res_pct, sup_pct = res["slope"] / close, sup["slope"] / close
+    if not (res_pct > 0.001 and sup_pct > 0.001):
+        return None  # both rising
+    if sup_pct > 0 and abs(res_pct - sup_pct) / sup_pct > 0.6:
+        return None  # not roughly parallel -> that's a wedge, not a channel
+    support_now = _line_value_at(sup, n - 1)
+    resistance_now = _line_value_at(res, n - 1)
+    invalidation = support_now - 0.5 * (atr20 or 0)
+    if invalidation is not None and close <= invalidation:
+        stage = "BLOCKED"
+    elif atr20 and close <= support_now + 1.0 * atr20:
+        stage = "BUY_ZONE"  # classic rising-channel entry: pullback to the lower rail
+    else:
+        stage = "WATCH"
+    return {
+        "pattern": "RISING_CHANNEL", "direction": "BULLISH", "stage": stage,
+        "trigger": round(support_now, 2), "invalidation": round(invalidation, 2),
+        "reason": f"상승하는 두 평행 추세선 사이에서 움직이는 상승 채널입니다. 하단 {support_now:.0f} 근접 시 매수 후보, 이탈 시 채널이 붕괴됩니다.",
+    }
+
+
+def detect_falling_channel(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    n = len(closes)
+    hi_idx = _pivot_highs(highs)[-4:]
+    lo_idx = _pivot_lows(lows)[-4:]
+    res = _line_fit(hi_idx, highs)
+    sup = _line_fit(lo_idx, lows)
+    close = closes[-1]
+    if not res or not sup or not close or close <= 0:
+        return None
+    res_pct, sup_pct = res["slope"] / close, sup["slope"] / close
+    if not (res_pct < -0.001 and sup_pct < -0.001):
+        return None  # both falling
+    if sup_pct != 0 and abs(res_pct - sup_pct) / abs(sup_pct) > 0.6:
+        return None  # not roughly parallel -> that's a wedge, not a channel
+    support_now = _line_value_at(sup, n - 1)
+    resistance_now = _line_value_at(res, n - 1)
+    invalidation = resistance_now + 0.5 * (atr20 or 0)
+    if close >= invalidation:
+        return None  # broken upward, channel no longer valid as a bearish risk
+    if close >= resistance_now - 1.0 * (atr20 or 0):
+        stage = "RISK_WATCH"  # testing the upper rail — classic falling-channel rejection zone
+    elif close < support_now:
+        stage = "AVOID"
+    else:
+        stage = "RISK_WATCH"
+    return {
+        "pattern": "FALLING_CHANNEL", "direction": "BEARISH", "stage": stage,
+        "trigger": round(resistance_now, 2), "invalidation": round(support_now, 2),
+        "reason": f"하락하는 두 평행 추세선 사이에서 움직이는 하락 채널입니다. 상단 {resistance_now:.0f} 근접 시 반등이 꺾일 위험이 있고, 하단 {support_now:.0f} 이탈 시 하락이 가속될 수 있습니다.",
+    }
+
+
+# ── Reversal/continuation pattern: cup and handle ───────────────────────────
+
+def detect_cup_and_handle(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    hi_idx = _pivot_highs(highs)
+    lo_idx = _pivot_lows(lows)
+    if len(hi_idx) < 2 or not lo_idx:
+        return None
+    i1, i2 = hi_idx[-2], hi_idx[-1]
+    if i2 - i1 < 20:
+        return None
+    h1, h2 = highs[i1], highs[i2]
+    if not h1 or not h2 or abs(h2 - h1) / h1 > 0.06:
+        return None
+    mid_lows = [(idx, lows[idx]) for idx in lo_idx if i1 < idx < i2 and lows[idx] is not None]
+    if not mid_lows:
+        return None
+    _, bottom = min(mid_lows, key=lambda t: t[1])
+    rim = max(h1, h2)
+    if rim <= 0:
+        return None
+    depth = (rim - bottom) / rim
+    if depth < 0.12:
+        return None  # cup too shallow to be meaningful
+    handle_section = lows[i2:]
+    if len(handle_section) < 3:
+        return None
+    handle_low = min(l for l in handle_section if l is not None)
+    if handle_low < rim - 0.5 * depth * rim:
+        return None  # handle pulled back deeper than half the cup — not a valid handle
+    close = closes[-1]
+    if close is None:
+        return None
+    invalidation = handle_low - 0.3 * (atr20 or 0)
+    stage = _bullish_stage(close, rim, atr20, vol_ratio, invalidation)
+    return {
+        "pattern": "CUP_AND_HANDLE", "direction": "BULLISH", "stage": stage,
+        "trigger": round(rim, 2), "invalidation": round(invalidation, 2),
+        "reason": f"U자형 컵 형성 후 손잡이 구간에서 다듬어지는 컵앤핸들 후보입니다. 컵 상단 {rim:.0f} 돌파 시 매수 후보로 전환됩니다.",
+    }
+
+
 _DETECTORS = [
     detect_double_bottom,
     detect_double_top,
@@ -412,6 +679,13 @@ _DETECTORS = [
     detect_bear_flag,
     detect_falling_wedge_breakout,
     detect_rising_wedge_breakdown,
+    detect_bull_pennant,
+    detect_bear_pennant,
+    detect_symmetrical_triangle,
+    detect_rectangle_range,
+    detect_rising_channel,
+    detect_falling_channel,
+    detect_cup_and_handle,
 ]
 
 _ACTIONABLE_STAGES = {"BUY_ZONE", "AVOID", "BLOCKED", "BREAKOUT_CANDIDATE"}
