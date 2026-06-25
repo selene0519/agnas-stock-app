@@ -800,14 +800,19 @@ def ledger_list(market: str = "all", limit: int = 100) -> dict:
 
     ledger = ledger.sort_values("recorded_at", ascending=False).head(limit)
 
+    from app.services.data_loader import _stock_master_name_map
+
     items = []
     for _, row in ledger.iterrows():
         sid = str(row["id"])
         outs = outcomes[outcomes["signal_id"].astype(str) == sid]
-        items.append({
-            **{k: (None if (str(v) in ("nan", "")) else v) for k, v in row.to_dict().items()},
-            "outcomes": outs.to_dict("records") if not outs.empty else [],
-        })
+        item = {k: (None if (str(v) in ("nan", "")) else v) for k, v in row.to_dict().items()}
+        symbol = str(item.get("symbol") or "")
+        if symbol and str(item.get("name") or "") in ("", symbol):
+            resolved = _stock_master_name_map(str(item.get("market") or "kr")).get(symbol)
+            if resolved:
+                item["name"] = resolved
+        items.append({**item, "outcomes": outs.to_dict("records") if not outs.empty else []})
 
     return {"items": items, "count": len(items)}
 

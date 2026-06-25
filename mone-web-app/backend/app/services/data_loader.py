@@ -2143,10 +2143,37 @@ def _unified_price_for_row(
     return _select_price_candidate(candidates, source_date, phase)
 
 
+@lru_cache(maxsize=4)
+def _stock_master_name_map(market: str) -> dict[str, str]:
+    """stock_master_{market}.csv -> {symbol: 종목명} 전체종목마스터 기반 이름 조회.
+
+    candidate_universe/recommendation 파이프라인에 들어오지 않는 종목(ETF, 보유/관심
+    종목으로만 진입한 코드 등)은 name 컬럼이 비어 있어 심볼 그대로 노출되는 문제가 있어,
+    전체종목마스터로 한 번 더 보강한다.
+    """
+    path = DATA_DIR / f"stock_master_{market}.csv"
+    if not path.exists() or path.stat().st_size <= 0:
+        return {}
+    out: dict[str, str] = {}
+    try:
+        for row in dataframe_records(read_csv(path)):
+            symbol = normalize_symbol(first_value(row, ["code", "symbol", "ticker"], ""), market)
+            if not symbol:
+                continue
+            name = str(row.get("name_kr") or row.get("name") or "").strip()
+            if name and name != symbol:
+                out[symbol] = name
+    except Exception:
+        return {}
+    return out
+
+
 def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict[str, Any]:
     row_dict = dict(row)
     symbol = normalize_symbol(first_value(row_dict, SYMBOL_ALIASES), market)
-    name = first_value(row_dict, NAME_ALIASES, symbol or "이름 없음")
+    name = first_value(row_dict, NAME_ALIASES, "")
+    if not name or name == symbol:
+        name = _stock_master_name_map(market).get(symbol, "") or symbol or "이름 없음"
     ohlc_close = first_number(row_dict, KR_OHLC_CLOSE_ALIASES) if market == "kr" else None
     ohlc_stats = _ohlcv_stats(symbol, market) if market == "kr" and symbol else {}
     actual_close = _latest_actual_close(symbol, market) if market == "kr" and symbol else {}
