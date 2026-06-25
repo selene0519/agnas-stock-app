@@ -396,8 +396,15 @@ def detect_falling_wedge_breakout(highs, lows, closes, atr20, vol_ratio) -> dict
     if not close or close <= 0:
         return None
     res_pct, sup_pct = res["slope"] / close, sup["slope"] / close
-    if not (res_pct < 0 and sup_pct < 0 and res_pct > sup_pct):
-        return None  # both falling, but must be converging (resistance falls slower)
+    # Convergence check: width(t) = resistance(t) - support(t), and its slope
+    # is (res_slope - sup_slope). For the wedge to narrow as both lines fall,
+    # that difference must be negative, i.e. resistance must fall FASTER
+    # (more negative) than support — res_pct < sup_pct, not res_pct > sup_pct.
+    # (Verified numerically: res falling faster than support is what actually
+    # shrinks width(t) over time; the previous "resistance falls slower"
+    # condition selected for widening wedges, not narrowing ones.)
+    if not (res_pct < 0 and sup_pct < 0 and res_pct < sup_pct):
+        return None  # both falling, but must be converging (resistance falls faster)
     resistance_now = _line_value_at(res, n - 1)
     support_now = _line_value_at(sup, n - 1)
     # Width at the wedge's start, evaluated on both trendlines at the SAME bar
