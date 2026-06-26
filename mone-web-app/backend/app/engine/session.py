@@ -183,7 +183,8 @@ def evaluate_file_status(
             return {"status": "NO_DATA", "reason": "파일 없음", "path": str(file_path), "mtimeDate": None}
 
         mtime_day = file_mtime_date(file_path)
-        today = datetime.now(KST).date()
+        today_kst = datetime.now(KST)
+        today = today_kst.astimezone(NY).date() if _market(market) == "us" else today_kst.date()
         holiday = is_market_holiday(market)
 
         if required_today and mtime_day and mtime_day < today and not (holiday and allow_holiday_stale):

@@ -2462,14 +2462,372 @@ def _inject_pattern_strategy(items: list[dict[str, Any]], default_market: str) -
             item["patternStrategy"] = {**_PS_ITEM_FALLBACK, "symbol": sym}
 
 
+def _recommendation_data_quality(market: str) -> dict[str, Any]:
+    try:
+        from app.engine import data_quality as _dq
+        return _dq.data_quality(_market_norm(market), mode="quick")
+    except Exception as exc:
+        return {
+            "status": "ERROR",
+            "dataStatus": "ERROR",
+            "killSwitch": True,
+            "summary": f"data_quality unavailable: {exc!r}",
+        }
+
+
+def _recommendation_trade_safety(quality: dict[str, Any] | None) -> dict[str, Any]:
+    quality = quality if isinstance(quality, dict) else {}
+    status = str(quality.get("dataStatus") or quality.get("status") or "UNKNOWN").upper()
+    blocked = bool(quality.get("killSwitch")) or status in {"STALE", "NO_DATA", "ERROR", "TIMEOUT"}
+    reason = str(quality.get("summary") or quality.get("message") or f"dataStatus={status}")
+    if blocked:
+        return {"status": "BLOCKED", "reviewOnly": True, "isTradeBlocked": True, "reason": reason, "dataStatus": status}
+    if status not in {"NORMAL", "OK"}:
+        return {"status": "CAUTION", "reviewOnly": True, "isTradeBlocked": False, "reason": reason, "dataStatus": status}
+    return {"status": "OK", "reviewOnly": False, "isTradeBlocked": False, "reason": "", "dataStatus": status}
+
+
+def _apply_recommendation_trade_safety(payload: dict[str, Any], market: str) -> dict[str, Any]:
+    quality = _recommendation_data_quality(market)
+    safety = _recommendation_trade_safety(quality)
+    payload["dataQuality"] = quality
+    payload["tradeSafety"] = safety
+    payload["reviewOnly"] = bool(safety.get("reviewOnly"))
+    if not safety.get("isTradeBlocked"):
+        return payload
+    blocked_items: list[Any] = []
+    for item in payload.get("items") or []:
+        if not isinstance(item, dict):
+            blocked_items.append(item)
+            continue
+        row = dict(item)
+        row["isTradeBlocked"] = True
+        existing_block = str(row.get("tradeBlockStatus") or "").upper()
+        row["tradeBlockStatus"] = row.get("tradeBlockStatus") if existing_block not in {"", "OK", "NORMAL"} else "DATA_QUALITY_BLOCK"
+        row["tradeBlockReason"] = row.get("tradeBlockReason") or safety.get("reason")
+        row["reviewOnly"] = True
+        row["dataStatus"] = row.get("dataStatus") or safety.get("dataStatus")
+        row["dataQualityStatus"] = safety.get("dataStatus")
+        blocked_items.append(row)
+    payload["items"] = blocked_items
+    payload["blockedCount"] = len([row for row in blocked_items if isinstance(row, dict) and row.get("isTradeBlocked")])
+    return payload
+
+
+def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> dict[str, Any]:
+    try:
+        dashboard = _validation_dashboard_payload(_market_norm(market))
+        key = f"{_mode_norm(mode)}_{_horizon_norm(horizon)}"
+        stats = (dashboard.get("stats") or {}).get(key) or {}
+        completed = int(_num(stats.get("completed"), 0) or 0)
+        win_rate = _num(stats.get("winRate"), None)
+        avg_return = _num(stats.get("avgReturn"), None)
+        low_sample = completed < 30
+        if low_sample:
+            return {
+                "status": "CAUTION_LOW_SAMPLE",
+                "reviewOnly": True,
+                "isTradeBlocked": False,
+                "reason": f"{key} validation sample is low ({completed}/30)",
+                "mode": _mode_norm(mode),
+                "horizon": _horizon_norm(horizon),
+                "completed": completed,
+                "winRate": win_rate,
+                "avgReturn": avg_return,
+                "sampleStatus": stats.get("sampleStatus") or "LOW_SAMPLE",
+                "basis": dashboard.get("summary", {}).get("basis"),
+            }
+        blocked = (win_rate is not None and win_rate < 35.0) or (avg_return is not None and avg_return < 0)
+        if blocked:
+            return {
+                "status": "BLOCKED_LOW_WIN_RATE",
+                "reviewOnly": True,
+                "isTradeBlocked": True,
+                "reason": f"{key} validation under gate: winRate={win_rate}%, avgReturn={avg_return}%",
+                "mode": _mode_norm(mode),
+                "horizon": _horizon_norm(horizon),
+                "completed": completed,
+                "winRate": win_rate,
+                "avgReturn": avg_return,
+                "sampleStatus": stats.get("sampleStatus") or _validation_sample_status(completed),
+                "basis": dashboard.get("summary", {}).get("basis"),
+            }
+        return {
+            "status": "OK",
+            "reviewOnly": False,
+            "isTradeBlocked": False,
+            "reason": "",
+            "mode": _mode_norm(mode),
+            "horizon": _horizon_norm(horizon),
+            "completed": completed,
+            "winRate": win_rate,
+            "avgReturn": avg_return,
+            "sampleStatus": stats.get("sampleStatus") or _validation_sample_status(completed),
+            "basis": dashboard.get("summary", {}).get("basis"),
+        }
+    except Exception as exc:
+        return {
+            "status": "CAUTION_PERFORMANCE_UNKNOWN",
+            "reviewOnly": True,
+            "isTradeBlocked": False,
+            "reason": f"validation performance unavailable: {exc!r}",
+            "mode": _mode_norm(mode),
+            "horizon": _horizon_norm(horizon),
+            "completed": 0,
+            "winRate": None,
+            "avgReturn": None,
+            "sampleStatus": "UNKNOWN",
+        }
+
+
+def _apply_recommendation_performance_safety(payload: dict[str, Any], market: str, mode: str, horizon: str) -> dict[str, Any]:
+    safety = _recommendation_performance_safety(market, mode, horizon)
+    payload["performanceSafety"] = safety
+    payload["reviewOnly"] = bool(payload.get("reviewOnly") or safety.get("reviewOnly"))
+    if not safety.get("isTradeBlocked"):
+        for item in payload.get("items") or []:
+            if isinstance(item, dict):
+                item["performanceStatus"] = safety.get("status")
+                item["performanceWinRate"] = safety.get("winRate")
+                item["performanceSample"] = safety.get("completed")
+        return payload
+
+    blocked_items: list[Any] = []
+    for item in payload.get("items") or []:
+        if not isinstance(item, dict):
+            blocked_items.append(item)
+            continue
+        row = dict(item)
+        row["performanceStatus"] = safety.get("status")
+        row["performanceWinRate"] = safety.get("winRate")
+        row["performanceSample"] = safety.get("completed")
+        if not row.get("isTradeBlocked"):
+            row["isTradeBlocked"] = True
+            row["tradeBlockStatus"] = "PERFORMANCE_GATE_BLOCK"
+            row["tradeBlockReason"] = safety.get("reason")
+        row["reviewOnly"] = True
+        blocked_items.append(row)
+    payload["items"] = blocked_items
+    payload["blockedCount"] = len([row for row in blocked_items if isinstance(row, dict) and row.get("isTradeBlocked")])
+    return payload
+
+
+PUBLIC_QUANT_POLICY = {
+    "minStrategyCompleted": 30,
+    "minStrategyWinRatePct": 40.0,
+    "minStrategyAvgReturnPct": 0.0,
+    "minExpectedValuePct": 0.5,
+    "minRiskReward": 1.5,
+    "minCalibratedWinRatePct": 45.0,
+    "minCalibrationCount": 30,
+    "maxSingleTradeRiskPct": 0.5,
+    "maxPositionWeightPct": 10.0,
+}
+
+
+def _calc_risk_reward(item: dict[str, Any]) -> float | None:
+    existing = _num(item.get("rrActual"), None)
+    if existing is not None and existing > 0:
+        return round(existing, 2)
+    entry = _num(item.get("entry") or item.get("entryPrice"), None)
+    stop = _num(item.get("stop") or item.get("stopPrice"), None)
+    target = _num(item.get("target") or item.get("targetPrice"), None)
+    if entry is None or stop is None or target is None or entry <= 0:
+        return None
+    downside = abs(entry - stop)
+    upside = target - entry
+    if downside <= 0 or upside <= 0:
+        return None
+    return round(upside / downside, 2)
+
+
+def _position_plan(item: dict[str, Any], cash: float, actionable: bool) -> dict[str, Any]:
+    policy = PUBLIC_QUANT_POLICY
+    entry = _num(item.get("entry") or item.get("entryPrice") or item.get("currentPrice"), None)
+    stop = _num(item.get("stop") or item.get("stopPrice"), None)
+    current = _num(item.get("currentPrice") or entry, None)
+    if not actionable or cash <= 0 or entry is None or stop is None or entry <= 0 or current is None or current <= 0:
+        return {
+            "status": "NO_POSITION",
+            "suggestedCapital": 0,
+            "suggestedWeightPct": 0,
+            "suggestedShares": 0,
+            "maxLossPctOfPortfolio": 0,
+            "basis": "blocked or insufficient price/stop data",
+        }
+
+    risk_pct = abs(entry - stop) / entry * 100.0
+    if risk_pct <= 0:
+        return {
+            "status": "NO_POSITION",
+            "suggestedCapital": 0,
+            "suggestedWeightPct": 0,
+            "suggestedShares": 0,
+            "maxLossPctOfPortfolio": 0,
+            "basis": "invalid stop distance",
+        }
+
+    risk_budget = cash * (float(policy["maxSingleTradeRiskPct"]) / 100.0)
+    max_capital_by_risk = risk_budget / (risk_pct / 100.0)
+    max_capital_by_weight = cash * (float(policy["maxPositionWeightPct"]) / 100.0)
+    suggested_capital = max(0.0, min(max_capital_by_risk, max_capital_by_weight, cash))
+    suggested_shares = int(suggested_capital // current) if current > 0 else 0
+    return {
+        "status": "RISK_CAPPED",
+        "suggestedCapital": round(suggested_capital, 2),
+        "suggestedWeightPct": round(suggested_capital / cash * 100.0, 2) if cash > 0 else 0,
+        "suggestedShares": suggested_shares,
+        "entry": round(entry, 4),
+        "stop": round(stop, 4),
+        "riskPctFromEntry": round(risk_pct, 2),
+        "maxLossPctOfPortfolio": float(policy["maxSingleTradeRiskPct"]),
+        "basis": "position size capped by stop-distance risk and portfolio weight",
+    }
+
+
+def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], trade_safety: dict[str, Any], cash: float) -> dict[str, Any]:
+    policy = PUBLIC_QUANT_POLICY
+    reasons: list[str] = []
+    cautions: list[str] = []
+
+    if bool(trade_safety.get("isTradeBlocked")) or str(trade_safety.get("status") or "").upper() == "BLOCKED":
+        reasons.append(str(trade_safety.get("reason") or "data quality block"))
+    elif bool(trade_safety.get("reviewOnly")):
+        reasons.append(str(trade_safety.get("reason") or "data quality caution"))
+
+    perf_status = str(performance.get("status") or "").upper()
+    completed = int(_num(performance.get("completed"), 0) or 0)
+    strategy_wr = _num(performance.get("winRate"), None)
+    strategy_avg = _num(performance.get("avgReturn"), None)
+    if completed < int(policy["minStrategyCompleted"]):
+        reasons.append(f"strategy sample too low ({completed}/{policy['minStrategyCompleted']})")
+    if strategy_wr is None or strategy_wr < float(policy["minStrategyWinRatePct"]):
+        reasons.append(f"strategy win rate below gate ({strategy_wr}%)")
+    if strategy_avg is None or strategy_avg < float(policy["minStrategyAvgReturnPct"]):
+        reasons.append(f"strategy average return below gate ({strategy_avg}%)")
+    if perf_status.startswith("BLOCKED"):
+        reasons.append(str(performance.get("reason") or perf_status))
+
+    ev = _num(item.get("expectedValue") or item.get("ev"), None)
+    if ev is None or ev < float(policy["minExpectedValuePct"]):
+        reasons.append(f"expected value below gate ({ev}%)")
+
+    rr = _calc_risk_reward(item)
+    if rr is None or rr < float(policy["minRiskReward"]):
+        reasons.append(f"risk/reward below gate ({rr})")
+
+    item_status = str(item.get("dataStatus") or item.get("priceDataStatus") or "").upper()
+    if item_status and item_status not in {"NORMAL", "OK", "PREVIOUS_CLOSE_BASIS"}:
+        reasons.append(f"item data status is {item_status}")
+
+    calibration_count = int(_num(item.get("calibrationCount"), 0) or 0)
+    calibrated_wr = _num(item.get("calibratedWinRate"), None)
+    if calibration_count < int(policy["minCalibrationCount"]):
+        cautions.append(f"calibration sample low ({calibration_count}/{policy['minCalibrationCount']})")
+    elif calibrated_wr is None or calibrated_wr < float(policy["minCalibratedWinRatePct"]):
+        reasons.append(f"calibrated win rate below gate ({calibrated_wr}%)")
+
+    if item.get("isTradeBlocked"):
+        reasons.append(str(item.get("tradeBlockReason") or item.get("tradeBlockStatus") or "item trade block"))
+
+    unique_reasons = [r for i, r in enumerate(reasons) if r and r not in reasons[:i]]
+    unique_cautions = [r for i, r in enumerate(cautions) if r and r not in cautions[:i]]
+    actionable = not unique_reasons
+    position = _position_plan(item, cash, actionable)
+    if actionable:
+        status = "TRADE_CANDIDATE"
+        label = "매매 가능 후보"
+        review_only = False
+    elif unique_reasons:
+        status = "NO_TRADE"
+        label = "거래 금지"
+        review_only = True
+    else:
+        status = "REVIEW_ONLY"
+        label = "검토 전용"
+        review_only = True
+
+    return {
+        "status": status,
+        "label": label,
+        "reviewOnly": review_only,
+        "reasons": unique_reasons,
+        "cautions": unique_cautions,
+        "scoreInputs": {
+            "strategyCompleted": completed,
+            "strategyWinRate": strategy_wr,
+            "strategyAvgReturn": strategy_avg,
+            "expectedValue": ev,
+            "riskReward": rr,
+            "calibratedWinRate": calibrated_wr,
+            "calibrationCount": calibration_count,
+        },
+        "positionPlan": position,
+        "policy": policy,
+    }
+
+
+def _apply_public_quant_trader_policy(payload: dict[str, Any], cash: float) -> dict[str, Any]:
+    performance = payload.get("performanceSafety") if isinstance(payload.get("performanceSafety"), dict) else {}
+    trade_safety = payload.get("tradeSafety") if isinstance(payload.get("tradeSafety"), dict) else {}
+    items: list[Any] = []
+    actionable_count = 0
+    review_count = 0
+    blocked_count = 0
+    for item in payload.get("items") or []:
+        if not isinstance(item, dict):
+            items.append(item)
+            continue
+        row = dict(item)
+        verdict = _public_quant_verdict(row, performance, trade_safety, cash)
+        row["quantTraderVerdict"] = verdict
+        row["publicTradeStatus"] = verdict["status"]
+        row["publicTradeLabel"] = verdict["label"]
+        row["positionPlan"] = verdict["positionPlan"]
+        if verdict["status"] == "TRADE_CANDIDATE":
+            actionable_count += 1
+            row["reviewOnly"] = False
+        elif verdict["status"] == "NO_TRADE":
+            blocked_count += 1
+            row["isTradeBlocked"] = True
+            row["tradeBlockStatus"] = row.get("tradeBlockStatus") or "PUBLIC_QUANT_GATE_BLOCK"
+            row["tradeBlockReason"] = "; ".join(verdict["reasons"][:3])
+            row["reviewOnly"] = True
+        else:
+            review_count += 1
+            row["reviewOnly"] = True
+        items.append(row)
+
+    payload["items"] = items
+    payload["blockedCount"] = len([row for row in items if isinstance(row, dict) and row.get("isTradeBlocked")])
+    payload["quantTraderPolicy"] = {
+        "status": "OK" if actionable_count > 0 else "NO_ACTIONABLE_TRADES",
+        "label": "매매 가능 후보 있음" if actionable_count > 0 else "오늘 실전 매매 후보 없음",
+        "actionableCount": actionable_count,
+        "reviewOnlyCount": review_count,
+        "blockedCount": blocked_count,
+        "policy": PUBLIC_QUANT_POLICY,
+        "basis": "public-service gate: data quality, strategy validation, expected value, risk/reward, calibration, and position risk",
+    }
+    payload["reviewOnly"] = bool(payload.get("reviewOnly") or actionable_count == 0)
+    return payload
+
+
 def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
-    _ver = _reco_file_version(_market_norm(market), _mode_norm(mode), _horizon_norm(horizon))
-    payload = _recommendations_payload_cached(market, mode, horizon, limit, watch_only, _ver)
+    normalized_market = _market_norm(market)
+    normalized_mode = _mode_norm(mode)
+    normalized_horizon = _horizon_norm(horizon)
+    _ver = _reco_file_version(normalized_market, normalized_mode, normalized_horizon)
+    payload = json.loads(json.dumps(_recommendations_payload_cached(market, mode, horizon, limit, watch_only, _ver), ensure_ascii=False))
     try:
         _record_virtual_ledger(payload.get("items", []), "api/final/recommendations")
     except Exception:
         pass
-    _inject_pattern_strategy(payload.get("items", []), _market_norm(market))
+    _inject_pattern_strategy(payload.get("items", []), normalized_market)
+    if normalized_market in {"kr", "us"}:
+        payload = _apply_recommendation_trade_safety(payload, normalized_market)
+        payload = _apply_recommendation_performance_safety(payload, normalized_market, normalized_mode, normalized_horizon)
+        payload = _apply_public_quant_trader_policy(payload, cash)
     return json.loads(json.dumps(payload, ensure_ascii=False))
 
 
@@ -3573,30 +3931,97 @@ def _is_executed_row(r: dict[str, Any]) -> bool:
     # 날짜별 파일: is_executed / execution_status
     if str(r.get("is_executed") or "").lower() in {"true", "1", "yes"}:
         return True
-    if _num(_text(r, ["returnPct", "realized_return_pct", "return_pct", "pnlPct"])) is not None:
+    if _validation_return(r) is not None:
         return True
     # 메인 파일: executionStatus
     exec_s = str(r.get("executionStatus") or "").strip()
-    return exec_s in {"체결", "HIT", "완료", "executed"}
+    return exec_s in {"체결", "HIT", "완료", "executed", "EXECUTED", "filled", "FILLED"}
+
+
+def _validation_return(r: dict[str, Any]) -> float | None:
+    for key in ("returnPct", "realized_return_pct", "return_pct", "pnlPct", "net_pnl_pct", "gross_pnl_pct", "pnlText"):
+        raw = _text(r, [key])
+        if raw == "":
+            continue
+        value = _num(raw, None)  # type: ignore[arg-type]
+        if value is not None:
+            return value
+    return None
+
+
+def _is_completed_validation_row(r: dict[str, Any]) -> bool:
+    result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
+    if result in {"TARGET", "target_hit", "TARGET_HIT", "WIN", "STOP", "STOP_FIRST", "stop_hit", "STOP_HIT", "LOSS", "HOLDING_EVAL", "close_exit", "TIME_EXIT", "time_exit"}:
+        return True
+    if _validation_return(r) is not None:
+        return True
+    return bool(str(r.get("exitStatus") or r.get("exit_status") or "").strip()) and str(r.get("validationStatus") or "").upper() not in {"PENDING", "DATA_PENDING"}
+
+
+def _is_pending_validation_row(r: dict[str, Any]) -> bool:
+    state = str(r.get("result") or r.get("status") or r.get("validationStatus") or r.get("dataStatus") or "").strip().upper()
+    if state in {"", "PENDING", "DATA_PENDING", "VALIDATABLE"}:
+        return True
+    return str(r.get("executionStatus") or r.get("execution_status") or "").strip() in {"대기", "PENDING"}
+
+
+def _is_not_executed_validation_row(r: dict[str, Any]) -> bool:
+    state = str(r.get("result") or r.get("outcome_result") or r.get("executionStatus") or r.get("execution_status") or "").strip().upper()
+    return state in {"NOT_EXECUTED", "NO_TOUCH", "MISSED_ENTRY", "UNEXECUTED", "진입가 미도달"}
+
+
+def _validation_row_key(r: dict[str, Any]) -> str:
+    explicit = str(r.get("predictionId") or r.get("journal_id") or r.get("id") or "").strip()
+    if explicit:
+        return explicit
+    return "|".join([
+        str(r.get("market") or "").strip().lower(),
+        str(r.get("mode") or "").strip().lower(),
+        str(r.get("horizon") or "").strip().lower(),
+        str(r.get("symbol") or r.get("ticker") or "").strip().upper(),
+        str(r.get("createdAt") or r.get("as_of_date") or r.get("generatedAt") or r.get("validationDate") or "").strip(),
+        str(r.get("entry") or r.get("entryPrice") or "").strip(),
+        str(r.get("target") or r.get("targetPrice") or "").strip(),
+        str(r.get("stop") or r.get("stopPrice") or "").strip(),
+    ])
+
+
+def _validation_sample_status(completed: int) -> str:
+    if completed <= 0:
+        return "NO_EVALUATED_ROWS"
+    if completed < 10:
+        return "VERY_LOW_SAMPLE"
+    if completed < 30:
+        return "LOW_SAMPLE"
+    return "OK"
 
 
 def _is_win_row(r: dict[str, Any]) -> bool:
     result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
+    result_upper = result.upper()
+    target_hit = str(r.get("targetHit") or r.get("target_hit") or "").strip().lower() in {"true", "1", "yes", "y"}
+    stop_hit = str(r.get("stopHit") or r.get("stop_hit") or "").strip().lower() in {"true", "1", "yes", "y"}
+    if stop_hit or result_upper in {"STOP", "STOP_FIRST", "STOP_HIT", "LOSS"}:
+        return False
+    if target_hit:
+        return True
     if result in {"TARGET", "target_hit", "TARGET_HIT", "WIN", "목표달성", "성공", "TIME_EXIT_PROFIT"}:
         return True
     # 기간 만료(close_exit)는 실현 수익이 양수일 때만 승으로 인정
-    if result in {"close_exit", "TIME_EXIT", "time_exit"}:
-        pnl = _num(_text(r, ["returnPct", "realized_return_pct", "return_pct", "pnlPct"]))
+    if result in {"HOLDING_EVAL", "close_exit", "TIME_EXIT", "time_exit"}:
+        pnl = _validation_return(r)
         return pnl > 0
     return False
 
 
 def _is_loss_row(r: dict[str, Any]) -> bool:
     result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
+    if str(r.get("stopHit") or r.get("stop_hit") or "").strip().lower() in {"true", "1", "yes", "y"}:
+        return True
     if result in {"STOP", "STOP_FIRST", "stop_hit", "STOP_HIT", "LOSS", "손절", "실패"}:
         return True
     if result in {"HOLDING_EVAL", "close_exit", "TIME_EXIT", "time_exit"}:
-        pnl = _num(_text(r, ["returnPct", "realized_return_pct", "return_pct", "pnlPct"]))
+        pnl = _validation_return(r)
         return pnl is not None and pnl < 0
     return False
 
@@ -3611,10 +4036,8 @@ def _virtual_validation_rows(repo: Path, market: str, mode: str, horizon: str) -
             continue
         if str(row.get("horizon") or "").lower() != horizon:
             continue
-        result = str(row.get("result") or "").strip().upper()
-        return_pct = _num(row.get("returnPct"))
-        if result in {"", "PENDING", "DATA_PENDING", "NOT_EXECUTED"} and return_pct is None:
-            continue
+        row = dict(row)
+        row.setdefault("_source_file", "virtual_validation_results.csv")
         out.append(row)
     return out
 
@@ -3623,60 +4046,76 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
     """9가지 전략 조합의 검증 통계 + 생애주기 요약.
     메인 파일(undated) + 날짜별 파일(YYYYMMDD) 모두 집계.
     """
-    market = _market_norm(market)
+    requested_market = _market_norm(market)
+    markets = ("kr", "us") if requested_market == "all" else (requested_market,)
     repo   = _repo_root()
     MODES_    = ("conservative", "balanced", "aggressive")
     HORIZONS_ = ("short", "swing", "mid")
 
     # ── 검증 통계
     stats: dict[str, Any] = {}
+    source_files: set[str] = set()
     for m in MODES_:
         for h in HORIZONS_:
             key = f"{m}_{h}"
-            base_name = f"mone_v36_final_trade_validation_{market}_{m}_{h}"
             reports_dir = repo / "reports"
 
             # 메인 파일 + 날짜별 파일 모두 수집
             all_rows: list[dict[str, Any]] = []
-            seen_dated: set[str] = set()
+            seen: set[str] = set()
 
-            # 날짜별 파일 우선 (최신 데이터)
-            for dated_path in sorted(reports_dir.glob(f"{base_name}_????????.csv"), reverse=True):
-                dated_rows = _read_csv(dated_path, 100000)
-                for row in dated_rows:
-                    sym = str(row.get("symbol") or "")
-                    date_key = f"{dated_path.stem}_{sym}"
-                    if date_key not in seen_dated:
-                        seen_dated.add(date_key)
+            for mk in markets:
+                base_name = f"mone_v36_final_trade_validation_{mk}_{m}_{h}"
+                for path in sorted(reports_dir.glob(f"{base_name}*.csv"), key=lambda p: p.name):
+                    for row in _read_csv(path, 100000):
+                        row = dict(row)
+                        row.setdefault("market", mk)
+                        row.setdefault("mode", m)
+                        row.setdefault("horizon", h)
+                        row["_source_file"] = path.name
+                        row_key = _validation_row_key(row)
+                        if row_key in seen:
+                            continue
+                        seen.add(row_key)
                         all_rows.append(row)
+                        source_files.add(path.name)
+                for row in _virtual_validation_rows(repo, mk, m, h):
+                    row_key = _validation_row_key(row)
+                    if row_key in seen:
+                        continue
+                    seen.add(row_key)
+                    all_rows.append(row)
+                    source_files.add(str(row.get("_source_file") or "virtual_validation_results.csv"))
 
-            # 메인 파일 (날짜별에 없는 항목 보완)
-            main_path = reports_dir / f"{base_name}.csv"
-            main_rows = _read_csv(main_path, 100000)
-            all_rows.extend(_virtual_validation_rows(repo, market, m, h))
-
-            completed = [r for r in all_rows if _is_executed_row(r)]
+            completed = [r for r in all_rows if _is_completed_validation_row(r)]
+            executed = [r for r in all_rows if _is_executed_row(r)]
             win       = [r for r in completed if _is_win_row(r)]
             lose      = [r for r in completed if _is_loss_row(r)]
             rets: list[float] = []
             for r in completed:
-                v = _num(_text(r, ["returnPct", "realized_return_pct", "return_pct", "pnlPct"]))
-                if v != 0:
+                v = _validation_return(r)
+                if v is not None:
                     rets.append(v)
 
-            pending_count = len([r for r in main_rows
-                                 if str(r.get("validationStatus") or r.get("status") or "").strip() == "PENDING"])
+            pending_count = len([r for r in all_rows if _is_pending_validation_row(r) and not _is_completed_validation_row(r)])
+            not_executed_count = len([r for r in all_rows if _is_not_executed_validation_row(r)])
 
             stats[key] = {
                 "mode":      m,
                 "horizon":   h,
                 "total":     len(all_rows),
                 "completed": len(completed),
+                "evaluated":  len(completed),
+                "executed":   len(executed),
                 "wins":      len(win),
                 "losses":    len(lose),
                 "winRate":   round(len(win) / len(completed) * 100, 1) if completed else None,
                 "avgReturn": round(sum(rets) / len(rets), 2) if rets else None,
                 "pendingCount": pending_count,
+                "pending": pending_count,
+                "notExecutedCount": not_executed_count,
+                "sampleStatus": _validation_sample_status(len(completed)),
+                "lowSample": len(completed) < 30,
             }
 
     # ── 생애주기 (virtual_prediction_ledger.csv)
@@ -3685,12 +4124,14 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
         rows = _read_csv(p, 10000)
         if rows:
             for row in rows[:100]:
+                if requested_market != "all" and str(row.get("market") or "").lower() != requested_market:
+                    continue
                 status = str(row.get("status") or "PENDING").strip()
                 lifecycle.append({
                     "predictionId": row.get("predictionId", ""),
                     "symbol":   row.get("symbol", ""),
                     "name":     row.get("name", ""),
-                    "market":   row.get("market", market),
+                    "market":   row.get("market", requested_market),
                     "mode":     row.get("mode", ""),
                     "horizon":  row.get("horizon", ""),
                     "createdAt": row.get("createdAt", ""),
@@ -3712,13 +4153,19 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
 
     return {
         "status": "OK",
-        "market": market,
+        "market": requested_market,
         "generatedAt": datetime.now().isoformat(),
         "stats": stats,
         "summary": {
             "overallWinRate": overall_wr,
             "totalCompleted": total_done,
             "totalPending":   sum(s["pendingCount"] for s in all_stats),
+            "totalWins": total_win,
+            "totalNotExecuted": sum(s["notExecutedCount"] for s in all_stats),
+            "sampleStatus": _validation_sample_status(total_done),
+            "lowSample": total_done < 30,
+            "basis": "completed entry-touch validations only; pending and not-executed rows are excluded from win-rate denominator",
+            "sourceFiles": sorted(source_files)[:80],
         },
         "lifecycle": lifecycle,
     }
