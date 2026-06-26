@@ -131,6 +131,12 @@ MARKET_COSTS = {
     "kr": {"buy_slippage": 0.001, "sell_slippage": 0.001, "tax_commission": 0.0021},
     "us": {"buy_slippage": 0.001, "sell_slippage": 0.001, "tax_commission": 0.0010},
 }
+# 일평균 거래금액(최근 20거래일) 기준 슬리피지 배수 — 거래량이 적은 종목은 같은 호가 슬리피지
+# 가정으로는 실제 체결가 충격을 과소평가하게 됨. 시장별 절대 단위(원/달러)가 달라 임계값을 분리.
+LIQUIDITY_SLIPPAGE_TIERS = {
+    "kr": [(10_000_000_000, 1.0), (1_000_000_000, 1.5), (0, 2.5)],
+    "us": [(50_000_000, 1.0), (5_000_000, 1.5), (0, 2.5)],
+}
 BENCHMARK_SYMBOLS = {
     "kr": ["KOSPI", "KOSDAQ"],
     "us": ["SPY", "QQQ", "SP500"],
@@ -1377,6 +1383,23 @@ def _load_ohlcv(market: str, symbol: str) -> tuple[pd.DataFrame, str, str]:
     return work, str(source or ""), source_type
 
 
+def _liquidity_slippage_multiplier(ohlcv: pd.DataFrame, market: str, as_of_ts: "pd.Timestamp") -> float:
+    """as_of 시점까지(미래 데이터 누출 없이)의 최근 20거래일 평균 거래금액으로 슬리피지 배수를 정한다."""
+    try:
+        past = ohlcv[ohlcv["_date_ts"] <= as_of_ts].tail(20)
+        if past.empty or "volume" not in past or "close" not in past:
+            return 1.0
+        dollar_vol = float((pd.to_numeric(past["close"], errors="coerce") * pd.to_numeric(past["volume"], errors="coerce")).mean())
+        if not math.isfinite(dollar_vol) or dollar_vol <= 0:
+            return 1.0
+        for threshold, mult in LIQUIDITY_SLIPPAGE_TIERS.get(market, LIQUIDITY_SLIPPAGE_TIERS["kr"]):
+            if dollar_vol >= threshold:
+                return mult
+        return 2.5
+    except Exception:
+        return 1.0
+
+
 def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     market = _text(row.get("market")).lower()
     symbol = _text(row.get("symbol")).upper()
@@ -1416,13 +1439,14 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
         return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No holding bars after fill.")
 
     costs = MARKET_COSTS.get(market, MARKET_COSTS["kr"])
-    actual_buy = raw_fill * (1 + costs["buy_slippage"])
+    liquidity_mult = _liquidity_slippage_multiplier(ohlcv, market, as_of_ts)
+    actual_buy = raw_fill * (1 + costs["buy_slippage"] * liquidity_mult)
     exit_info = _find_exit(holding, entry, stop, target, eval_window)
     if not exit_info["completed"] and not exit_info["terminal"]:
         return _pending_eval(row, fill_date, actual_buy, entry_window, eval_window, holding, entry, stop, target)
 
     raw_exit = float(exit_info["exit_price"])
-    actual_sell = raw_exit * (1 - costs["sell_slippage"] - costs["tax_commission"])
+    actual_sell = raw_exit * (1 - costs["sell_slippage"] * liquidity_mult - costs["tax_commission"])
     gross = _round_pct((raw_exit - raw_fill) / raw_fill * 100) if raw_fill else None
     net = _round_pct((actual_sell - actual_buy) / actual_buy * 100) if actual_buy else None
     mfe, mae = _mfe_mae(holding.iloc[: int(exit_info["bars_held"])], entry)

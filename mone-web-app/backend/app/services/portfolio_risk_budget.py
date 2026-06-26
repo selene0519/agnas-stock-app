@@ -16,7 +16,109 @@ POLICY = {
     "maxPositionLossPct": 2.0,
     "maxSectorWeightPct": 35.0,
     "defaultStopLossPct": 8.0,
+    # 상관계수 |r| >= 이 값이면 "같은 방향으로 움직이는 묶음"으로 간주.
+    # 섹터 라벨이 달라도 실제로 같이 움직이는 종목들(예: 금리민감 성장주)을 잡아내기 위함.
+    "highCorrelationThreshold": 0.7,
+    "maxCorrelatedClusterWeightPct": 40.0,
+    "correlationLookbackDays": 60,
 }
+
+
+def _daily_returns(market: str, symbol: str, lookback_days: int) -> dict[str, float]:
+    """날짜→일간수익률. OHLCV는 이미 로컬에 수집되어 있어 추가 데이터 없이 계산 가능."""
+    from app.engine.quant_scanner import load_ohlcv
+
+    rows = load_ohlcv(REPO_ROOT, market, symbol)
+    if len(rows) < 2:
+        return {}
+    rows = rows[-(lookback_days + 1):]
+    out: dict[str, float] = {}
+    prev_close: float | None = None
+    for row in rows:
+        date_key = str(row.get("date") or row.get("Date") or "").strip()
+        close = _num(row.get("close") or row.get("Close"))
+        if not date_key or close <= 0:
+            continue
+        if prev_close and prev_close > 0:
+            out[date_key] = (close - prev_close) / prev_close
+        prev_close = close
+    return out
+
+
+def _pairwise_correlation(series_a: dict[str, float], series_b: dict[str, float]) -> float | None:
+    common_dates = sorted(set(series_a) & set(series_b))
+    if len(common_dates) < 20:
+        return None
+    a = [series_a[d] for d in common_dates]
+    b = [series_b[d] for d in common_dates]
+    mean_a = sum(a) / len(a)
+    mean_b = sum(b) / len(b)
+    cov = sum((x - mean_a) * (y - mean_b) for x, y in zip(a, b))
+    var_a = sum((x - mean_a) ** 2 for x in a)
+    var_b = sum((y - mean_b) ** 2 for y in b)
+    if var_a <= 0 or var_b <= 0:
+        return None
+    return cov / math.sqrt(var_a * var_b)
+
+
+def _correlation_risk(positions: list[dict[str, Any]]) -> dict[str, Any]:
+    """보유 종목 간 상관계수를 계산해, 섹터 라벨로는 안 보이는 동행성 집중 위험을 잡아낸다.
+    예: '반도체'와 'IT서비스'로 섹터는 다르지만 둘 다 금리민감 성장주라 같이 빠지는 경우."""
+    lookback = int(POLICY["correlationLookbackDays"])
+    returns_by_key: dict[str, dict[str, float]] = {}
+    for pos in positions:
+        key = f"{pos['market']}:{pos['symbol']}"
+        series = _daily_returns(pos["market"], pos["symbol"], lookback)
+        if series:
+            returns_by_key[key] = series
+
+    keys = [f"{p['market']}:{p['symbol']}" for p in positions if f"{p['market']}:{p['symbol']}" in returns_by_key]
+    weight_by_key = {f"{p['market']}:{p['symbol']}": p["weightPct"] for p in positions}
+
+    pairs: list[dict[str, Any]] = []
+    # union-find로 고상관 종목을 클러스터로 묶어 "묶음 비중"을 계산
+    parent = {k: k for k in keys}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            x = parent[x]
+        return x
+
+    def union(x: str, y: str) -> None:
+        rx, ry = find(x), find(y)
+        if rx != ry:
+            parent[rx] = ry
+
+    threshold = float(POLICY["highCorrelationThreshold"])
+    for i, key_a in enumerate(keys):
+        for key_b in keys[i + 1:]:
+            corr = _pairwise_correlation(returns_by_key[key_a], returns_by_key[key_b])
+            if corr is None:
+                continue
+            if abs(corr) >= threshold:
+                pairs.append({
+                    "symbolA": key_a.split(":", 1)[1],
+                    "symbolB": key_b.split(":", 1)[1],
+                    "correlation": round(corr, 3),
+                })
+                union(key_a, key_b)
+
+    clusters: dict[str, float] = {}
+    for key in keys:
+        root = find(key)
+        clusters[root] = clusters.get(root, 0.0) + weight_by_key.get(key, 0.0)
+    cluster_warnings = [
+        {"members": [k.split(":", 1)[1] for k in keys if find(k) == root], "combinedWeightPct": round(weight, 3)}
+        for root, weight in clusters.items()
+        if weight > POLICY["maxCorrelatedClusterWeightPct"] and sum(1 for k in keys if find(k) == root) > 1
+    ]
+
+    return {
+        "lookbackDays": lookback,
+        "highCorrelationPairs": sorted(pairs, key=lambda p: -abs(p["correlation"]))[:20],
+        "concentratedClusters": cluster_warnings,
+        "status": "OK" if keys else "NO_DATA",
+    }
 
 
 def _num(value: Any, default: float = 0.0) -> float:
@@ -155,6 +257,11 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
         }
         for sector, weight in sorted(sector_weights.items(), key=lambda kv: kv[1], reverse=True)
     ]
+    try:
+        correlation = _correlation_risk(items) if len(items) > 1 else {"status": "NOT_ENOUGH_POSITIONS"}
+    except Exception:
+        correlation = {"status": "ERROR"}
+
     status = "OK"
     warnings: list[str] = []
     if total_loss_budget > POLICY["maxPortfolioLossPct"]:
@@ -165,6 +272,13 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
         warnings.append("sector concentration over budget")
     if missing_stop_count:
         warnings.append(f"{missing_stop_count} holdings use default stop")
+    if correlation.get("concentratedClusters"):
+        status = "OVER_BUDGET"
+        cluster = correlation["concentratedClusters"][0]
+        warnings.append(
+            f"{'·'.join(cluster['members'])} 상관계수 높음 — 섹터는 달라도 같이 움직일 가능성 높음 "
+            f"(합산 비중 {cluster['combinedWeightPct']:.1f}% > {POLICY['maxCorrelatedClusterWeightPct']:.0f}%)"
+        )
 
     items.sort(key=lambda item: (item["action"] != "REDUCE", -item["lossBudgetPct"], -item["weightPct"]))
     return {
@@ -176,5 +290,6 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
         "missingStopCount": missing_stop_count,
         "warnings": warnings,
         "sectors": sector_items[:12],
+        "correlation": correlation,
         "items": items,
     }

@@ -1799,6 +1799,22 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   ))}
                 </div>
               )}
+              {(riskBudget.correlation?.highCorrelationPairs || []).length > 0 && (
+                <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-950/10 px-3 py-2 text-[11px]">
+                  <div className="mb-1.5 font-semibold text-amber-200">상관계수 높은 종목 묶음 (섹터 라벨과 무관하게 같이 움직일 가능성)</div>
+                  <div className="space-y-1">
+                    {riskBudget.correlation.highCorrelationPairs.slice(0, 5).map((pair: any) => (
+                      <div key={`${pair.symbolA}-${pair.symbolB}`} className="flex items-center justify-between text-slate-400">
+                        <span>{pair.symbolA} · {pair.symbolB}</span>
+                        <span className="font-mono text-amber-300">r={pair.correlation.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 text-[10px] text-slate-600">
+                    최근 {riskBudget.correlation.lookbackDays}거래일 일간수익률 기준 · |r|≥{riskBudget.policy?.highCorrelationThreshold ?? 0.7} 이상만 표시
+                  </div>
+                </div>
+              )}
               {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
                 <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                   {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 6).map((item: any) => (
