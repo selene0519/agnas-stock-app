@@ -484,7 +484,10 @@ jobs:
           echo "notify US: exit $?"
           set -e
 
-      - name: Refresh KR close OHLCV and validations
+      - name: Refresh KR/US close validations
+        # 파일명은 kr만 가리키지만 KR+US 둘 다 생성함 (US 누락이 settle_pending_validations.py가
+        # US 예측을 영영 EXPIRED로만 종결시키던 원인이었음 — _build_validation_index가 찾는
+        # 날짜 스냅샷 trade_validation_us_*.csv가 한 번도 생성된 적이 없었음).
         run: |
           set +e
           if [ -f scripts/generate_kr_close_validation.py ]; then
