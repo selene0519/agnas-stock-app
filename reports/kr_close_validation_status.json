@@ -1,61 +1,70 @@
 {
   "date": "2026-06-26",
-  "created": [],
-  "skipped": [
+  "created": [
     {
       "mode": "conservative",
       "horizon": "short",
-      "rows": 7,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_conservative_short_20260626.csv",
+      "rows": 8,
+      "normalRows": 6
     },
     {
       "mode": "conservative",
       "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_kr_conservative_swing_20260626.csv",
+      "rows": 8,
+      "normalRows": 6
+    },
+    {
+      "mode": "conservative",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_conservative_mid_20260626.csv",
+      "rows": 8,
+      "normalRows": 6
+    },
+    {
+      "mode": "balanced",
+      "horizon": "short",
+      "file": "mone_v36_final_trade_validation_kr_balanced_short_20260626.csv",
+      "rows": 8,
+      "normalRows": 5
+    },
+    {
+      "mode": "balanced",
+      "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_kr_balanced_swing_20260626.csv",
       "rows": 9,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "mode": "conservative",
-      "horizon": "mid",
-      "rows": 9,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 6
     },
     {
       "mode": "balanced",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_balanced_mid_20260626.csv",
+      "rows": 10,
+      "normalRows": 7
+    },
+    {
+      "mode": "aggressive",
       "horizon": "short",
+      "file": "mone_v36_final_trade_validation_kr_aggressive_short_20260626.csv",
       "rows": 7,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "mode": "balanced",
-      "horizon": "swing",
-      "rows": 11,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "mode": "balanced",
-      "horizon": "mid",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "mode": "aggressive",
-      "horizon": "short",
-      "rows": 6,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 5
     },
     {
       "mode": "aggressive",
       "horizon": "swing",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "file": "mone_v36_final_trade_validation_kr_aggressive_swing_20260626.csv",
+      "rows": 10,
+      "normalRows": 7
     },
     {
       "mode": "aggressive",
       "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_aggressive_mid_20260626.csv",
       "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 9
     }
   ],
-  "updatedAt": "2026-06-26T07:28:02"
+  "skipped": [],
+  "updatedAt": "2026-06-26T20:19:32"
 }

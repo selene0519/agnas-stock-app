@@ -1,29 +1,29 @@
 {
-  "updatedAt": "2026-06-26 07:28:08",
-  "totalRows": 90,
-  "olsSampleSize": 49,
+  "updatedAt": "2026-06-26 20:19:52",
+  "totalRows": 96,
+  "olsSampleSize": 55,
   "byStrategy": {
     "conservative_short": {
-      "total": 20,
+      "total": 23,
       "wins": 1,
-      "losses": 19,
-      "winRate": 0.05,
+      "losses": 22,
+      "winRate": 0.0435,
       "avgWinPct": 2.605,
-      "avgLossPct": 4.94,
-      "payoffRatio": 0.527,
-      "avgProbability": 71.5,
-      "probAccuracy": -0.665
+      "avgLossPct": 5.267,
+      "payoffRatio": 0.495,
+      "avgProbability": 71.6,
+      "probAccuracy": -0.672
     },
     "conservative_swing": {
-      "total": 5,
+      "total": 7,
       "wins": 0,
-      "losses": 5,
+      "losses": 7,
       "winRate": 0.0,
       "avgWinPct": 0.0,
-      "avgLossPct": 8.742,
+      "avgLossPct": 8.761,
       "payoffRatio": 0.0,
-      "avgProbability": 72.6,
-      "probAccuracy": -0.726
+      "avgProbability": 73.1,
+      "probAccuracy": -0.731
     },
     "conservative_mid": {
       "total": 8,
@@ -59,15 +59,15 @@
       "probAccuracy": -0.085
     },
     "balanced_mid": {
-      "total": 5,
+      "total": 6,
       "wins": 0,
-      "losses": 5,
+      "losses": 6,
       "winRate": 0.0,
       "avgWinPct": 0.0,
-      "avgLossPct": 8.521,
+      "avgLossPct": 8.976,
       "payoffRatio": 0.0,
-      "avgProbability": 70.8,
-      "probAccuracy": -0.708
+      "avgProbability": 70.6,
+      "probAccuracy": -0.706
     },
     "aggressive_short": {
       "total": 15,
@@ -105,11 +105,11 @@
   },
   "byMarket": {
     "kr": {
-      "total": 35,
-      "winRate": 0.2571,
+      "total": 41,
+      "winRate": 0.2195,
       "avgWinPct": 13.511,
-      "avgLossPct": 7.828,
-      "payoffRatio": 1.726
+      "avgLossPct": 7.95,
+      "payoffRatio": 1.7
     },
     "us": {
       "total": 55,
@@ -125,62 +125,62 @@
       "actualWinRate": 0.1667
     },
     "mid_60-75": {
-      "count": 54,
-      "actualWinRate": 0.1481
+      "count": 59,
+      "actualWinRate": 0.1356
     },
     "high_75+": {
-      "count": 24,
-      "actualWinRate": 0.125
+      "count": 25,
+      "actualWinRate": 0.12
     }
   },
   "regressionFactors": {
     "intercept": {
-      "coefficient": 22.3448,
-      "r2": 0.1971
+      "coefficient": 18.7396,
+      "r2": 0.1871
     },
     "rsi": {
-      "coefficient": -0.4769,
-      "r2": 0.1971,
+      "coefficient": -0.4438,
+      "r2": 0.1871,
       "description": "RSI14 — 높을수록 과매수 (보통 음의 계수)"
     },
     "volumeRatio": {
-      "coefficient": 0.9326,
-      "r2": 0.1971,
+      "coefficient": 1.1408,
+      "r2": 0.1871,
       "description": "거래량비율 — 높을수록 모멘텀 강함 (보통 양의 계수)"
     },
     "distToMa20": {
-      "coefficient": 0.8342,
-      "r2": 0.1971,
+      "coefficient": 0.8326,
+      "r2": 0.1871,
       "description": "MA20 이격도% — 너무 높으면 리스크 증가"
     },
     "probability": {
-      "coefficient": -11.7996,
-      "r2": 0.1971,
+      "coefficient": -9.2182,
+      "r2": 0.1871,
       "description": "확률 (0~1) — 모델 신뢰도"
     },
     "momentum5": {
-      "coefficient": -0.2605,
-      "r2": 0.1971,
+      "coefficient": -0.2943,
+      "r2": 0.1871,
       "description": "5일 모멘텀% — 단기 추세"
     },
     "_winRateRegression": {
       "r2": 0.0891,
-      "sampleSize": 49,
+      "sampleSize": 55,
       "factors": {
-        "rsi": -0.0044,
-        "volumeRatio": -0.0193,
+        "rsi": -0.0048,
+        "volumeRatio": -0.0215,
         "distToMa20": 0.0212,
-        "probability": 0.3374,
-        "momentum5": -0.0069
+        "probability": 0.3303,
+        "momentum5": -0.0064
       }
     }
   },
   "insight": [
     "호라이즌: swing 전략 평균 승률 19.0%로 최고",
-    "모드: conservative 전략 평균 payoff 1.12x로 최고",
-    "마켓: KR 승률 25.7%로 우위",
-    "회귀분석: intercept 높을수록 수익률 향상 (β=+22.345)",
-    "전체 팩터 설명력 R²=0.182 (0~1, 높을수록 예측력 강함)",
+    "모드: conservative 전략 평균 payoff 1.11x로 최고",
+    "마켓: KR 승률 21.9%로 우위",
+    "회귀분석: intercept 높을수록 수익률 향상 (β=+18.740)",
+    "전체 팩터 설명력 R²=0.173 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_mid → 포트폴리오 15.5% 권장"
   ]
 }
