@@ -1058,6 +1058,7 @@ interface SizingRow {
   scaled:   boolean;
   qty:      number;
   ev:       number;
+  lowSample: boolean;
 }
 
 function calcSizing(items: any[], capital: number): SizingRow[] {
@@ -1070,7 +1071,12 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
       seen.add(key);
 
       const entry = Number(i.entry || i.entryPrice || 0);
-      const prob  = Math.min(Math.max(Number(i.probability || 55) / 100, 0.3), 0.8);
+      const wrSamples = Number(i.winRateSampleCount ?? 0);
+      // 표본 30건 미만인 승률은 통계적으로 신뢰할 수 없어 베팅 사이즈를 키울 근거가 안 됨 —
+      // 켈리 계산의 입력값(prob)을 손익분기(50%)로 묶어 베팅 규모가 부풀려지지 않게 한다.
+      const lowSample = wrSamples > 0 && wrSamples < 30;
+      const rawProb = Number(i.probability || 55) / 100;
+      const prob  = Math.min(Math.max(lowSample ? Math.min(rawProb, 0.5) : rawProb, 0.3), 0.8);
       const rr    = Math.max(Number(i.rrActual || i.rr || 1.5), 0.5);
       const mode  = String(i._mode || i.mode || "balanced");
       if (entry <= 0 || capital <= 0) return [];
@@ -1093,6 +1099,7 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
         halfKelly,
         amount: qty * entry,
         rawAmount,
+        lowSample,
         effectivePct: capital > 0 ? (qty * entry) / capital : 0,
         scaled: false,
         qty,
@@ -1190,7 +1197,10 @@ function PositionSizingSection({
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-black text-slate-100">{r.name}</span>
-                  <span className="block text-[11px] text-slate-600">{modeLabel(r.mode as Mode)} · {horizonLabel(r.horizon as Horizon)}</span>
+                  <span className="block text-[11px] text-slate-600">
+                    {modeLabel(r.mode as Mode)} · {horizonLabel(r.horizon as Horizon)}
+                    {r.lowSample ? " · 표본부족(보수적용)" : ""}
+                  </span>
                 </span>
                 <span className="shrink-0 font-mono text-sm font-black text-violet-300 tabular-nums">{r.amount.toLocaleString()}원</span>
               </button>
