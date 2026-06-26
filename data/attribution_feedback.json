@@ -1,9 +1,9 @@
 {
   "status": "OK",
-  "sampleCount": 49,
-  "baseWinRate": 0.0204,
-  "baseAvgPnlPct": -9.283,
-  "generatedAt": "2026-06-25T23:36:35",
+  "sampleCount": 55,
+  "baseWinRate": 0.0182,
+  "baseAvgPnlPct": -8.996,
+  "generatedAt": "2026-06-26T17:31:50",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -14,24 +14,24 @@
   },
   "adjustments": [
     {
-      "feedbackId": "4c826f03f28a48256ef3",
+      "feedbackId": "a89dcac4b59e7898fb3c",
       "mode": "conservative",
       "horizon": "short",
-      "n": 9,
+      "n": 13,
       "winRate": 0.0,
-      "avgPnlPct": -7.756,
+      "avgPnlPct": -7.025,
       "multiplier": 0.5,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "38a311a3cec1ed0971fb",
+      "feedbackId": "57dc86032c28dd4c486f",
       "mode": "conservative",
       "horizon": "swing",
-      "n": 5,
+      "n": 7,
       "winRate": 0.0,
-      "avgPnlPct": -9.096,
+      "avgPnlPct": -9.12,
       "multiplier": 0.5,
       "direction": "REDUCE",
       "suggestedOnly": true,
@@ -68,7 +68,7 @@
       "n": 3,
       "winRate": 0.0,
       "avgPnlPct": -11.934,
-      "multiplier": 0.514,
+      "multiplier": 0.531,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -116,7 +116,7 @@
       "n": 3,
       "winRate": 0.0,
       "avgPnlPct": -14.498,
-      "multiplier": 0.625,
+      "multiplier": 0.645,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
