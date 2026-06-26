@@ -28,6 +28,10 @@ AUTO_CAPTURE_STATUS_JSON = REPORTS_DIR / "virtual_trade_journal_status.json"
 CALIBRATION_APPROVALS_CSV = DATA_DIR / "virtual_trade_calibration_approvals.csv"
 CALIBRATION_APPLICATIONS_CSV = DATA_DIR / "virtual_trade_calibration_applications.csv"
 SELF_LEARNING_STATUS_JSON = REPORTS_DIR / "virtual_trade_self_learning_status.json"
+HISTORY_OPERATION_CSV = DATA_DIR / "history" / "virtual_operation_history.csv"
+HISTORY_EVALUATION_CSV = DATA_DIR / "history" / "virtual_operation_evaluation.csv"
+VIRTUAL_VALIDATION_RESULTS_CSV = REPORTS_DIR / "virtual_validation_results.csv"
+HISTORICAL_CALIBRATION_REPORT_JSON = REPORTS_DIR / "historical_strategy_calibration.json"
 
 MARKETS = {"kr", "us"}
 MODES = {"conservative", "balanced", "aggressive"}
@@ -3527,6 +3531,314 @@ def attribution_analysis(
         "evAccuracy": _ev_accuracy(evaluated),
         "regression": _ols_factor_attribution(evaluated),
     }
+
+
+def _horizon_from_hold_days(value: Any) -> str:
+    days = _safe_float(value)
+    if days is None:
+        return "unknown"
+    if days <= 3:
+        return "short"
+    if days <= 10:
+        return "swing"
+    return "mid"
+
+
+def _historical_result_kind(value: Any) -> str:
+    raw = _text(value).strip().upper()
+    if raw in {"TARGET", "TARGET_HIT", "WIN", "목표달성", "성공"}:
+        return "WIN"
+    if raw in {"STOP", "STOP_HIT", "STOP_FIRST", "LOSS", "손절", "실패"}:
+        return "LOSS"
+    if raw in {"CLOSE_EXIT", "TIME_EXIT", "HOLDING_EVAL"}:
+        return "CLOSE"
+    if raw in {"NOT_EXECUTED", "NOT_FILLED", "미체결", "NOT_EXECUTED"} or "NOT_EXECUTED" in raw:
+        return "NOT_EXECUTED"
+    if raw in {"PENDING", "DATA_PENDING", "검증 대기", "대기", ""}:
+        return "PENDING"
+    return "OTHER"
+
+
+def _wilson_interval(wins: int, total: int, z: float = 1.96) -> tuple[float | None, float | None]:
+    if total <= 0:
+        return None, None
+    phat = wins / total
+    denom = 1 + z * z / total
+    center = (phat + z * z / (2 * total)) / denom
+    margin = z * math.sqrt((phat * (1 - phat) + z * z / (4 * total)) / total) / denom
+    return max(0.0, center - margin), min(1.0, center + margin)
+
+
+def _historical_operation_rows(market: str = "all") -> list[dict[str, Any]]:
+    if not HISTORY_EVALUATION_CSV.exists():
+        return []
+    try:
+        eval_df = pd.read_csv(HISTORY_EVALUATION_CSV, dtype=str)
+    except Exception:
+        return []
+    if HISTORY_OPERATION_CSV.exists():
+        try:
+            hist_df = pd.read_csv(
+                HISTORY_OPERATION_CSV,
+                dtype=str,
+                usecols=lambda c: c in {"created_at", "market", "symbol", "mode", "hold_days", "snapshot_kind", "data_status"},
+            )
+            join_keys = ["created_at", "market", "symbol", "mode"]
+            for df in (eval_df, hist_df):
+                df["_join_ord"] = df.groupby(join_keys, dropna=False).cumcount()
+            eval_df = eval_df.merge(hist_df, on=join_keys + ["_join_ord"], how="left", suffixes=("", "_source"))
+        except Exception:
+            pass
+    if market != "all":
+        eval_df = eval_df[eval_df.get("market", "").astype(str).str.lower() == market.lower()]
+    rows: list[dict[str, Any]] = []
+    for row in eval_df.to_dict("records"):
+        mode = _text(row.get("mode")).lower()
+        mk = _text(row.get("market")).lower()
+        if mk not in MARKETS or mode not in MODES:
+            continue
+        result_kind = _historical_result_kind(row.get("outcome_result"))
+        if result_kind in {"PENDING", "NOT_EXECUTED"}:
+            continue
+        horizon = _horizon_from_hold_days(row.get("hold_days"))
+        if horizon not in HORIZONS:
+            continue
+        ret = _safe_float(row.get("realized_return_pct"))
+        rows.append({
+            "source": "HISTORICAL_OPERATION",
+            "market": mk,
+            "mode": mode,
+            "horizon": horizon,
+            "symbol": _text(row.get("symbol")),
+            "createdAt": _text(row.get("created_at")),
+            "resultKind": result_kind,
+            "returnPct": ret,
+            "dataStatus": _text(row.get("data_status")),
+        })
+    return rows
+
+
+def _virtual_validation_result_rows(market: str = "all") -> list[dict[str, Any]]:
+    if not VIRTUAL_VALIDATION_RESULTS_CSV.exists():
+        return []
+    try:
+        df = pd.read_csv(VIRTUAL_VALIDATION_RESULTS_CSV, dtype=str)
+    except Exception:
+        return []
+    if market != "all":
+        df = df[df.get("market", "").astype(str).str.lower() == market.lower()]
+    rows: list[dict[str, Any]] = []
+    for row in df.to_dict("records"):
+        mk = _text(row.get("market")).lower()
+        mode = _text(row.get("mode")).lower()
+        horizon = _text(row.get("horizon")).lower()
+        if mk not in MARKETS or mode not in MODES or horizon not in HORIZONS:
+            continue
+        result_kind = _historical_result_kind(row.get("result") or row.get("status"))
+        ret = _safe_float(row.get("returnPct"))
+        if result_kind in {"PENDING", "NOT_EXECUTED"} and ret is None:
+            continue
+        rows.append({
+            "source": "VIRTUAL_VALIDATION_RESULTS",
+            "market": mk,
+            "mode": mode,
+            "horizon": horizon,
+            "symbol": _text(row.get("symbol")),
+            "createdAt": _text(row.get("createdAt")),
+            "resultKind": result_kind,
+            "returnPct": ret,
+            "dataStatus": _text(row.get("dataStatus")),
+        })
+    return rows
+
+
+def _historical_strategy_rows(rows: list[dict[str, Any]], min_samples: int) -> list[dict[str, Any]]:
+    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        groups[(row["market"], row["mode"], row["horizon"])].append(row)
+    out: list[dict[str, Any]] = []
+    for (market, mode, horizon), sub in sorted(groups.items()):
+        evaluated = [r for r in sub if r["resultKind"] in {"WIN", "LOSS", "CLOSE"} or r["returnPct"] is not None]
+        if not evaluated:
+            continue
+        wins = sum(1 for r in evaluated if r["resultKind"] == "WIN" or ((r["returnPct"] or 0) > 0 and r["resultKind"] == "CLOSE"))
+        losses = sum(1 for r in evaluated if r["resultKind"] == "LOSS" or ((r["returnPct"] or 0) < 0 and r["resultKind"] == "CLOSE"))
+        returns = [r["returnPct"] for r in evaluated if r["returnPct"] is not None]
+        low, high = _wilson_interval(wins, len(evaluated))
+        source_counts = Counter(r["source"] for r in evaluated)
+        stop_count = sum(1 for r in evaluated if r["resultKind"] == "LOSS")
+        target_count = sum(1 for r in evaluated if r["resultKind"] == "WIN")
+        out.append({
+            "market": market,
+            "mode": mode,
+            "horizon": horizon,
+            "sampleCount": len(evaluated),
+            "returnSampleCount": len(returns),
+            "wins": wins,
+            "losses": losses,
+            "targetCount": target_count,
+            "stopCount": stop_count,
+            "winRate": round(wins / len(evaluated), 4) if evaluated else None,
+            "winRateCi95": {
+                "low": round(low, 4) if low is not None else None,
+                "high": round(high, 4) if high is not None else None,
+                "width": round(high - low, 4) if low is not None and high is not None else None,
+            },
+            "avgReturnPct": round(sum(returns) / len(returns), 4) if returns else None,
+            "sourceCounts": dict(source_counts),
+            "sampleStatus": "OK" if len(evaluated) >= min_samples else "LOW_SAMPLE",
+        })
+    return out
+
+
+def _historical_calibration_suggestions(strategy_rows: list[dict[str, Any]], min_samples: int) -> list[dict[str, Any]]:
+    suggestions: list[dict[str, Any]] = []
+    for row in strategy_rows:
+        n = int(row.get("sampleCount") or 0)
+        if n < min_samples:
+            suggestions.append({
+                "status": "LOW_SAMPLE",
+                "market": row.get("market"),
+                "mode": row.get("mode"),
+                "horizon": row.get("horizon"),
+                "sampleCount": n,
+                "message": f"Need at least {min_samples} historical evaluated rows before changing this strategy.",
+            })
+            continue
+        wr = float(row.get("winRate") or 0.0)
+        avg = _safe_float(row.get("avgReturnPct"))
+        stop_share = (int(row.get("stopCount") or 0) / n) if n else 0.0
+        ci = row.get("winRateCi95") if isinstance(row.get("winRateCi95"), dict) else {}
+        if stop_share >= 0.35 and (avg is None or avg < -1.5):
+            action = "WIDEN_STOP_OR_TIGHTEN_ENTRY"
+            message = "Losses cluster around stop outcomes; reduce entry eagerness or widen ATR-based stop only after checking slippage."
+        elif avg is not None and avg < 0 and wr < 0.45:
+            action = "RAISE_SIGNAL_THRESHOLD"
+            message = "Historical win rate and average return are both weak; require stronger confluence or EV before capture."
+        elif wr >= 0.55 and avg is not None and avg > 0:
+            action = "PROMOTE_WITH_CAP"
+            message = "Historical evidence is favorable; promote cautiously with position-size and sample caps."
+        else:
+            action = "OBSERVE"
+            message = "Evidence is mixed; keep collecting and prefer UI warning over parameter change."
+        suggestions.append({
+            "status": "SUGGESTED" if action != "OBSERVE" else "WATCH",
+            "action": action,
+            "market": row.get("market"),
+            "mode": row.get("mode"),
+            "horizon": row.get("horizon"),
+            "sampleCount": n,
+            "winRate": row.get("winRate"),
+            "winRateCi95": ci,
+            "avgReturnPct": avg,
+            "stopShare": round(stop_share, 4),
+            "message": message,
+        })
+    return suggestions
+
+
+def historical_strategy_calibration(
+    market: str = "all",
+    min_samples: int = 30,
+    include_chart: bool = True,
+    include_pattern: bool = True,
+    symbol_limit: int = 12,
+    max_cutoffs: int = 6,
+) -> dict[str, Any]:
+    _ensure()
+    normalized_market = _text(market).lower() or "all"
+    if normalized_market not in {"all", *MARKETS}:
+        return {"status": "ERROR", "error": "INVALID_MARKET"}
+    safe_min = max(10, min(int(min_samples or 30), 200))
+    safe_symbol_limit = max(2, min(int(symbol_limit or 12), 30))
+    safe_max_cutoffs = max(2, min(int(max_cutoffs or 6), 20))
+
+    history_rows = _historical_operation_rows(normalized_market)
+    validation_rows = _virtual_validation_result_rows(normalized_market)
+    combined = history_rows + validation_rows
+    strategy_rows = _historical_strategy_rows(combined, safe_min)
+    suggestions = _historical_calibration_suggestions(strategy_rows, safe_min)
+
+    chart_summary: dict[str, Any] = {"status": "SKIPPED"}
+    trendline_summary: dict[str, Any] = {"status": "SKIPPED"}
+    supply_zone_summary: dict[str, Any] = {"status": "SKIPPED"}
+    pattern_summary: dict[str, Any] = {"status": "SKIPPED"}
+    if include_chart:
+        try:
+            from app.services import chart_accuracy
+            chart_summary = chart_accuracy.chart_analysis_accuracy(
+                market=normalized_market,
+                future_bars=20,
+                symbol_limit=min(safe_symbol_limit, 12),
+                max_cutoffs=safe_max_cutoffs,
+            )
+            chart_summary.pop("items", None)
+            chart_summary.pop("examples", None)
+            trendline_summary = chart_accuracy.trendline_accuracy(
+                market=normalized_market,
+                future_bars=20,
+                symbol_limit=safe_symbol_limit,
+                max_cutoffs=safe_max_cutoffs,
+                include_items=False,
+            )
+            supply_zone_summary = chart_accuracy.supply_zone_accuracy(
+                market=normalized_market,
+                future_bars=20,
+                symbol_limit=safe_symbol_limit,
+                max_cutoffs=safe_max_cutoffs,
+                include_items=False,
+            )
+        except Exception as exc:
+            chart_summary = {"status": "ERROR", "error": str(exc)}
+    if include_pattern and normalized_market != "all":
+        try:
+            from app.engine.pattern_strategy import run_walkforward
+            pattern_summary = run_walkforward(
+                market=normalized_market,
+                from_date=None,
+                to_date=None,
+                horizon_days=5,
+                min_score=50,
+            )
+        except Exception as exc:
+            pattern_summary = {"status": "ERROR", "error": str(exc)}
+
+    payload = {
+        "status": "OK",
+        "generatedAt": _now_iso(),
+        "market": normalized_market,
+        "policy": {
+            "futureLeakage": "historical operation rows are grouped from stored snapshots; chart and pattern checks use OHLCV only through each cutoff, then score future bars.",
+            "separation": "This report does not auto-apply corrections. It separates forward journal, historical operation, validation-result, and chart-pattern evidence.",
+            "minSamples": safe_min,
+        },
+        "counts": {
+            "historicalOperationRows": len(history_rows),
+            "virtualValidationRows": len(validation_rows),
+            "combinedRows": len(combined),
+            "strategyCells": len(strategy_rows),
+        },
+        "strategyRows": strategy_rows,
+        "suggestions": suggestions,
+        "patternEvidence": {
+            "chartAnalysis": chart_summary,
+            "trendlines": trendline_summary,
+            "supplyZones": supply_zone_summary,
+            "patternWalkforward": pattern_summary,
+        },
+        "errorReductionPlan": [
+            "Use 95% confidence intervals before changing weights; wide intervals stay WATCH only.",
+            "Treat STOP_FIRST and STOP clusters as entry/stop calibration evidence, not simple bad-symbol evidence.",
+            "Promote a chart pattern only when walk-forward hit rate, trendline respect rate, and supply/demand reaction agree.",
+            "Keep DATA_PENDING, NOT_EXECUTED, and low-confidence rows out of win-rate denominators; use them for data-quality and entry-touch diagnostics.",
+            "Cap historical replay influence below live forward journal until live samples are sufficient.",
+        ],
+    }
+    try:
+        HISTORICAL_CALIBRATION_REPORT_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    return payload
 
 
 def entry_efficiency_stats(market: str = "all", horizon: str = "all") -> dict[str, Any]:

@@ -276,7 +276,7 @@ export default function BacktestComparePanel() {
       <div className="grid grid-cols-3 gap-2">
         {[
           { label: "총 모의 체결", value: totalExecuted > 0 ? `${totalExecuted}건` : "—" },
-          { label: "전략 평균 승률", value: avgWinRate > 0 ? `${avgWinRate.toFixed(1)}%` : "—" },
+          { label: "전략 평균 승률", value: validResults.length > 0 ? `${avgWinRate.toFixed(1)}%` : "—" },
           { label: "활성 전략 수", value: `${validResults.length}/9` },
         ].map(({ label, value }) => (
           <div key={label} className="rounded-xl border border-slate-700/40 bg-slate-800/30 px-3 py-2 text-center">

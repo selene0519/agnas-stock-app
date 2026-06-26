@@ -859,7 +859,7 @@ def api_pattern_walkforward(
     market:       str = Query("kr", pattern="^(kr|us)$"),
     from_date:    str = Query(None),
     to_date:      str = Query(None),
-    horizon_days: int = Query(5, ge=1, le=20),
+    horizon_days: int = Query(5, ge=1, le=60),
 ) -> dict:
     """패턴 Walk-Forward 검증 (미래 데이터 누출 없이 과거 성과 측정)."""
     try:
@@ -6584,6 +6584,40 @@ def api_validation_dashboard(market: str = Query("kr")) -> dict:
         except Exception:
             return None
 
+    def _vd_virtual_rows(reports_dir: _VDPath, mk: str, mode: str, horizon: str) -> list[dict]:
+        rows = _read_vd_csv(reports_dir / "virtual_validation_results.csv")
+        out = []
+        for row in rows:
+            if str(row.get("market") or "").lower() != mk:
+                continue
+            if str(row.get("mode") or "").lower() != mode:
+                continue
+            if str(row.get("horizon") or "").lower() != horizon:
+                continue
+            result = str(row.get("result") or "").strip().upper()
+            return_pct = _vd_pct(row.get("returnPct"))
+            if result in {"", "PENDING", "DATA_PENDING", "NOT_EXECUTED"} and return_pct is None:
+                continue
+            out.append(row)
+        return out
+
+    def _vd_executed(row: dict) -> bool:
+        result = str(row.get("result") or row.get("outcome_result") or row.get("exitStatus") or "").strip().upper()
+        if result in {"TARGET", "TARGET_HIT", "WIN", "STOP", "STOP_FIRST", "STOP_HIT", "LOSS", "HOLDING_EVAL", "CLOSE_EXIT", "TIME_EXIT"}:
+            return True
+        if _vd_pct(row.get("returnPct") or row.get("realized_return_pct") or row.get("return_pct") or row.get("pnlPct")) is not None:
+            return True
+        return str(row.get("executed", "")).lower() in {"true", "1", "yes", "체결"}
+
+    def _vd_win(row: dict) -> bool:
+        result = str(row.get("result") or row.get("outcome_result") or row.get("exitStatus") or "").strip().upper()
+        if result in {"TARGET", "TARGET_HIT", "WIN"}:
+            return True
+        if result in {"HOLDING_EVAL", "CLOSE_EXIT", "TIME_EXIT"}:
+            pnl = _vd_pct(row.get("returnPct") or row.get("realized_return_pct") or row.get("return_pct") or row.get("pnlPct"))
+            return pnl is not None and pnl > 0
+        return False
+
     try:
         mk = _market(market)
         reports_dir = _VDPath(__file__).resolve().parents[3] / "reports"
@@ -6607,11 +6641,12 @@ def api_validation_dashboard(market: str = Query("kr")) -> dict:
                     fallback = reports_dir / f"mone_v36_final_trade_validation_{mk}_{mode}_{horizon}.csv"
                     files = [fallback] if fallback.exists() else []
                 rows = _read_vd_csv(files[0]) if files else []
-                executed = [r for r in rows if str(r.get("executed", "")).lower() in {"true", "1", "yes", "체결"}]
+                rows.extend(_vd_virtual_rows(reports_dir, mk, mode, horizon))
+                executed = [r for r in rows if _vd_executed(r)]
                 pending_count = max(0, len(rows) - len(executed))
                 returns = [_vd_pct(r.get("returnPct")) for r in executed]
                 returns = [r for r in returns if r is not None]
-                wins = sum(1 for r in returns if r > 0)
+                wins = sum(1 for r in executed if _vd_win(r))
                 win_rate = round(wins / len(returns) * 100, 1) if returns else None
                 avg_return = round(sum(returns) / len(returns), 2) if returns else None
                 stats[key] = {
@@ -8032,6 +8067,28 @@ def api_journal_attribution_feedback(market: str = Query("all")) -> dict:
     from app.services import virtual_trade_journal as vtj
 
     return vtj.attribution_feedback(market=market)
+
+
+@app.get("/api/journal/historical-strategy-calibration")
+def api_journal_historical_strategy_calibration(
+    market: str = Query("all"),
+    minSamples: int = Query(30, ge=10, le=200),
+    includeChart: bool = Query(True),
+    includePattern: bool = Query(True),
+    symbolLimit: int = Query(12, ge=2, le=30),
+    maxCutoffs: int = Query(6, ge=2, le=20),
+) -> dict:
+    """Historical operation and chart-pattern evidence for calibration review."""
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.historical_strategy_calibration(
+        market=market,
+        min_samples=minSamples,
+        include_chart=includeChart,
+        include_pattern=includePattern,
+        symbol_limit=symbolLimit,
+        max_cutoffs=maxCutoffs,
+    )
 
 
 try:

@@ -28,6 +28,21 @@ _OHLCV_DIR   = _REPO_ROOT / "data" / "market" / "ohlcv"
 _REPORTS_DIR = _REPO_ROOT / "reports"
 
 
+def _indicator_stats_bucket() -> dict[str, Any]:
+    return {
+        "sampleCount": 0, "wins": 0, "losses": 0, "stops": 0, "targets": 0,
+        "returns": [], "blocked_returns": [],
+    }
+
+
+def _geo_stats_bucket() -> dict[str, Any]:
+    return {
+        "sampleCount": 0, "wins": 0, "losses": 0, "long_wins": 0,
+        "stops": 0, "targets": 0, "returns": [], "directional_returns": [],
+        "directions": defaultdict(int),
+    }
+
+
 def _load_all_ohlcv(market: str) -> dict[str, list[dict]]:
     """Load all OHLCV CSV files for a market; returns {symbol: [row,...]}."""
     result: dict[str, list[dict]] = {}
@@ -90,6 +105,43 @@ def _f(v: Any) -> float | None:
         return None
 
 
+def _ma(values: list[float], window: int) -> float | None:
+    if len(values) < window:
+        return None
+    return sum(values[-window:]) / window
+
+
+def _regime_for_index(rows: list[dict], cutoff_date: str) -> str:
+    past = _slice_before(rows, cutoff_date)
+    closes = [_f(r.get("close")) for r in past]
+    closes = [c for c in closes if c is not None]
+    if len(closes) < 25:
+        return "SIDE"
+    latest = closes[-1]
+    ma20 = _ma(closes, 20)
+    ma20_5ago = _ma(closes[:-5], 20) if len(closes) >= 25 else None
+    if ma20 is None:
+        return "SIDE"
+    above_ma = latest > ma20
+    ma_rising = ma20 > ma20_5ago if ma20_5ago is not None else True
+    if above_ma and ma_rising:
+        return "BULL"
+    if not above_ma and not ma_rising:
+        return "BEAR"
+    return "SIDE"
+
+
+def _market_regime_at_date(market: str, all_ohlcv: dict[str, list[dict]], cutoff_date: str) -> str:
+    if market == "us":
+        votes = [_regime_for_index(all_ohlcv.get(sym, []), cutoff_date) for sym in ("SPY", "QQQ", "DIA")]
+        if votes.count("BULL") >= 2:
+            return "BULL"
+        if votes.count("BEAR") >= 2:
+            return "BEAR"
+        return "SIDE"
+    return _regime_for_index(all_ohlcv.get("KOSPI", []), cutoff_date)
+
+
 def _date_range(from_str: str, to_str: str, step_days: int = 5) -> list[str]:
     """Generate evaluation dates between from_str and to_str."""
     try:
@@ -142,19 +194,18 @@ def run_walkforward(
     eval_dates = _date_range(from_date, to_date, step_days=5)
 
     # per-pattern accumulators
-    pattern_stats: dict[str, dict] = defaultdict(lambda: {
-        "sampleCount": 0, "wins": 0, "losses": 0, "stops": 0, "targets": 0,
-        "returns": [], "blocked_returns": [],
-    })
+    pattern_stats: dict[str, dict] = defaultdict(_indicator_stats_bucket)
+    regime_pattern_stats: dict[str, dict] = defaultdict(_indicator_stats_bucket)
     # geometric (classic chart) pattern accumulators, keyed by "PATTERN:STAGE"
-    geo_pattern_stats: dict[str, dict] = defaultdict(lambda: {
-        "sampleCount": 0, "wins": 0, "losses": 0, "stops": 0, "targets": 0,
-        "returns": [],
-    })
+    geo_pattern_stats: dict[str, dict] = defaultdict(_geo_stats_bucket)
+    regime_geo_pattern_stats: dict[str, dict] = defaultdict(_geo_stats_bucket)
+    regime_counts: dict[str, int] = defaultdict(int)
     blocked_stats   = {"count": 0, "returns": [], "would_have_gained": 0}
     leakage_ok      = True
 
     for date_str in eval_dates:
+        regime = _market_regime_at_date(market, all_ohlcv, date_str)
+        regime_counts[regime] += 1
         for sym, all_rows in all_ohlcv.items():
             # Strict cutoff — no future data
             hist_rows = _slice_before(all_rows, date_str)
@@ -186,25 +237,48 @@ def run_walkforward(
             geo_pattern = result.get("geometricPattern")
             geo_stage   = result.get("geometricPatternStage")
             if geo_pattern and geo_stage:
+                geo_direction = str(result.get("geometricPatternDirection") or "NEUTRAL").upper()
+                if geo_direction == "BEARISH":
+                    geo_win = fwd < 0
+                    geo_stop_hit = fwd > 0.02
+                    geo_target_hit = fwd < -0.04
+                    directional_return = -fwd
+                elif geo_direction == "BULLISH":
+                    geo_win = fwd > 0
+                    geo_stop_hit = fwd < -0.02
+                    geo_target_hit = fwd > 0.04
+                    directional_return = fwd
+                else:
+                    geo_win = abs(fwd) <= 0.02
+                    geo_stop_hit = abs(fwd) > 0.04
+                    geo_target_hit = abs(fwd) <= 0.02
+                    directional_return = -abs(fwd)
                 gs = geo_pattern_stats[f"{geo_pattern}:{geo_stage}"]
-                gs["sampleCount"] += 1
-                gs["returns"].append(fwd)
-                if win:        gs["wins"]    += 1
-                else:          gs["losses"]  += 1
-                if stop_hit:   gs["stops"]   += 1
-                if target_hit: gs["targets"] += 1
+                rgs = regime_geo_pattern_stats[f"{regime}|{geo_pattern}:{geo_stage}"]
+                for bucket in (gs, rgs):
+                    bucket["sampleCount"] += 1
+                    bucket["returns"].append(fwd)
+                    bucket["directional_returns"].append(directional_return)
+                    bucket["directions"][geo_direction] += 1
+                    if geo_win:        bucket["wins"]      += 1
+                    else:              bucket["losses"]    += 1
+                    if win:            bucket["long_wins"] += 1
+                    if geo_stop_hit:   bucket["stops"]     += 1
+                    if geo_target_hit: bucket["targets"]   += 1
 
             # Only validate indicator-driven pattern if confidence passes threshold
             if confidence < min_score:
                 continue
 
             ps = pattern_stats[primary]
-            ps["sampleCount"] += 1
-            ps["returns"].append(fwd)
-            if win:   ps["wins"] += 1
-            else:     ps["losses"] += 1
-            if stop_hit:   ps["stops"]   += 1
-            if target_hit: ps["targets"] += 1
+            rps = regime_pattern_stats[f"{regime}|{primary}"]
+            for bucket in (ps, rps):
+                bucket["sampleCount"] += 1
+                bucket["returns"].append(fwd)
+                if win:   bucket["wins"] += 1
+                else:     bucket["losses"] += 1
+                if stop_hit:   bucket["stops"]   += 1
+                if target_hit: bucket["targets"] += 1
 
             if is_blocked:
                 blocked_stats["count"] += 1
@@ -238,13 +312,59 @@ def run_walkforward(
         if n == 0:
             continue
         rets  = gs["returns"]
+        directional_rets = gs["directional_returns"]
+        direction = max(gs["directions"], key=gs["directions"].get) if gs["directions"] else "UNKNOWN"
         geo_summary[key] = {
-            "sampleCount":   n,
-            "winRate":       round(gs["wins"] / n, 3),
-            "avgReturn":     round(sum(rets) / len(rets), 4),
-            "medianReturn":  round(_median(rets), 4),
-            "stopRate":      round(gs["stops"] / n, 3),
-            "targetHitRate": round(gs["targets"] / n, 3),
+            "sampleCount":      n,
+            "expectedDirection": direction,
+            "winRate":          round(gs["wins"] / n, 3),
+            "directionalWinRate": round(gs["wins"] / n, 3),
+            "longWinRate":      round(gs["long_wins"] / n, 3),
+            "avgReturn":        round(sum(directional_rets) / len(directional_rets), 4),
+            "avgForwardReturn": round(sum(rets) / len(rets), 4),
+            "medianReturn":     round(_median(directional_rets), 4),
+            "medianForwardReturn": round(_median(rets), 4),
+            "stopRate":         round(gs["stops"] / n, 3),
+            "targetHitRate":    round(gs["targets"] / n, 3),
+        }
+
+    regime_summary: dict[str, Any] = {}
+    for key, ps in regime_pattern_stats.items():
+        n = ps["sampleCount"]
+        if n == 0:
+            continue
+        regime, _, pat = key.partition("|")
+        rets = ps["returns"]
+        regime_summary.setdefault(regime, {})[pat] = {
+            "sampleCount":    n,
+            "winRate":        round(ps["wins"] / n, 3),
+            "avgReturn":      round(sum(rets) / len(rets), 4),
+            "medianReturn":   round(_median(rets), 4),
+            "stopRate":       round(ps["stops"] / n, 3),
+            "targetHitRate":  round(ps["targets"] / n, 3),
+        }
+
+    geo_regime_summary: dict[str, Any] = {}
+    for key, gs in regime_geo_pattern_stats.items():
+        n = gs["sampleCount"]
+        if n == 0:
+            continue
+        regime, _, pattern_key = key.partition("|")
+        rets = gs["returns"]
+        directional_rets = gs["directional_returns"]
+        direction = max(gs["directions"], key=gs["directions"].get) if gs["directions"] else "UNKNOWN"
+        geo_regime_summary.setdefault(regime, {})[pattern_key] = {
+            "sampleCount":      n,
+            "expectedDirection": direction,
+            "winRate":          round(gs["wins"] / n, 3),
+            "directionalWinRate": round(gs["wins"] / n, 3),
+            "longWinRate":      round(gs["long_wins"] / n, 3),
+            "avgReturn":        round(sum(directional_rets) / len(directional_rets), 4),
+            "avgForwardReturn": round(sum(rets) / len(rets), 4),
+            "medianReturn":     round(_median(directional_rets), 4),
+            "medianForwardReturn": round(_median(rets), 4),
+            "stopRate":         round(gs["stops"] / n, 3),
+            "targetHitRate":    round(gs["targets"] / n, 3),
         }
 
     # ── Blocked outcome stats ──────────────────────────────────────────────
@@ -274,6 +394,9 @@ def run_walkforward(
         "evalDates":    len(eval_dates),
         "summary":      summary,
         "geometricPatternSummary":        geo_summary,
+        "regimeCounts":                   dict(regime_counts),
+        "regimeSummary":                  regime_summary,
+        "geometricRegimeSummary":         geo_regime_summary,
         "blockedOutcomeStats":            blocked_outcome,
         "leakageCheck":                   {"status": "PASS" if leakage_ok else "FAIL"},
         "patternCalibrationSuggestions":  suggestions,
@@ -365,24 +488,22 @@ def _geometric_calibration_suggestions(geo_summary: dict) -> list[dict]:
             })
             continue
 
-        win_r, stop_r, avg_r = stats["winRate"], stats["stopRate"], stats["avgReturn"]
+        win_r = stats.get("directionalWinRate", stats.get("winRate", 0))
+        stop_r, avg_r = stats["stopRate"], stats["avgReturn"]
         pattern, _, stage = key.partition(":")
-        is_bearish_stage = stage in ("AVOID", "BLOCKED", "RISK_WATCH")
+        direction = str(stats.get("expectedDirection") or "").upper()
+        is_bearish_stage = direction == "BEARISH" or stage in ("AVOID", "BLOCKED", "RISK_WATCH")
 
         if is_bearish_stage:
-            # winRate is defined as "price rose" (fwd > 0) everywhere in this
-            # module. For a bearish call, the call is CONFIRMED when price
-            # instead fell — i.e. decline_rate = 1 - win_r.
-            decline_rate = 1 - win_r
-            if decline_rate < 0.40:
+            if win_r < 0.40:
                 suggestions.append({
                     "pattern": key, "action": "WEAKEN",
-                    "reason": f"하락 경계 단계인데 실제 하락 확인율 {decline_rate:.0%}로 낮음 — 경계 기준 재검토 필요",
+                    "reason": f"하락 경계 단계인데 방향 확인율 {win_r:.0%}로 낮음 — 경계 기준 재검토 필요",
                 })
-            elif decline_rate > 0.65:
+            elif win_r > 0.65:
                 suggestions.append({
                     "pattern": key, "action": "STRENGTHEN",
-                    "reason": f"하락 확인율 {decline_rate:.0%}, 평균수익률 {avg_r:+.1%} — 경계 신호 신뢰도 높음",
+                    "reason": f"하락 확인율 {win_r:.0%}, 방향 기준 평균수익률 {avg_r:+.1%} — 경계 신호 신뢰도 높음",
                 })
         else:
             if win_r > 0.60:

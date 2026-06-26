@@ -50,6 +50,10 @@ def isolated_vtj(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setattr(vtj, "CALIBRATION_APPLICATIONS_CSV", tmp_path / "applications.csv")
     monkeypatch.setattr(vtj, "AUTO_CAPTURE_STATUS_JSON", tmp_path / "status.json")
     monkeypatch.setattr(vtj, "SELF_LEARNING_STATUS_JSON", tmp_path / "self_learning_status.json")
+    monkeypatch.setattr(vtj, "HISTORY_OPERATION_CSV", tmp_path / "history.csv")
+    monkeypatch.setattr(vtj, "HISTORY_EVALUATION_CSV", tmp_path / "history_eval.csv")
+    monkeypatch.setattr(vtj, "VIRTUAL_VALIDATION_RESULTS_CSV", tmp_path / "virtual_validation_results.csv")
+    monkeypatch.setattr(vtj, "HISTORICAL_CALIBRATION_REPORT_JSON", tmp_path / "historical_strategy_calibration.json")
     monkeypatch.setattr(vtj, "_FEEDBACK_JSON", tmp_path / "attribution_feedback.json")
     vtj._ensure()
     return tmp_path
@@ -887,3 +891,50 @@ def test_ops_dashboard_reports_journal_and_file_health(isolated_vtj: Path) -> No
     assert out["journal"]["totalRows"] == 1
     assert out["journal"]["sourceCounts"]["FORWARD_PAPER_TRADE"] == 1
     assert any(str(item["path"]).endswith("journal.csv") and item["exists"] for item in out["files"])
+
+
+def test_historical_strategy_calibration_suggests_entry_or_stop_review(isolated_vtj: Path) -> None:
+    history_rows = []
+    eval_rows = []
+    for i in range(30):
+        created = f"2026-01-{(i % 20) + 1:02d} 09:00:00"
+        symbol = f"T{i:03d}"
+        history_rows.append({
+            "created_at": created,
+            "market": "us",
+            "symbol": symbol,
+            "mode": "balanced",
+            "hold_days": "5",
+            "data_status": "NORMAL",
+        })
+        eval_rows.append({
+            "evaluated_at": "2026-02-01 09:00:00",
+            "created_at": created,
+            "market": "us",
+            "symbol": symbol,
+            "name": symbol,
+            "mode": "balanced",
+            "outcome_result": "stop_hit",
+            "realized_return_pct": "-4.5",
+        })
+    pd.DataFrame(history_rows).to_csv(vtj.HISTORY_OPERATION_CSV, index=False)
+    pd.DataFrame(eval_rows).to_csv(vtj.HISTORY_EVALUATION_CSV, index=False)
+
+    out = vtj.historical_strategy_calibration(
+        market="us",
+        min_samples=30,
+        include_chart=False,
+        include_pattern=False,
+    )
+
+    assert out["status"] == "OK"
+    assert out["counts"]["historicalOperationRows"] == 30
+    row = out["strategyRows"][0]
+    assert row["market"] == "us"
+    assert row["mode"] == "balanced"
+    assert row["horizon"] == "swing"
+    assert row["sampleCount"] == 30
+    assert row["winRate"] == 0
+    suggestion = out["suggestions"][0]
+    assert suggestion["status"] == "SUGGESTED"
+    assert suggestion["action"] == "WIDEN_STOP_OR_TIGHTEN_ENTRY"
