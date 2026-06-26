@@ -1,19 +1,21 @@
 {
-  "generatedAt": "2026-06-26 20:19:30",
+  "generatedAt": "2026-06-26 23:35:34",
   "source": "us_ohlcv_quant_scanner",
   "symbols": 142,
   "liveSymbols": 111,
   "marketRegime": {
     "regime": "SIDE",
-    "label": "횡보장",
+    "label": "SIDE",
     "scoreAdjust": 0.0,
-    "description": "US 시장 MA20 +6.4%, 5일 -0.3%"
+    "description": "US SPY/QQQ/DIA MA20 -0.6%, 5d -1.6%",
+    "asOf": "2026-06-26",
+    "source": "us index OHLCV"
   },
   "evFiltered": 0,
   "results": {
-    "conservative_short": 12,
-    "conservative_swing": 12,
-    "conservative_mid": 12,
+    "conservative_short": 9,
+    "conservative_swing": 10,
+    "conservative_mid": 10,
     "balanced_short": 12,
     "balanced_swing": 12,
     "balanced_mid": 12,
