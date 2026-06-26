@@ -2253,7 +2253,7 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
 
     try:
         _wf_tags = [p.get("pattern") for p in chart_patterns if p.get("pattern")] + ([pattern_strategy_tag] if pattern_strategy_tag else []) + list(tags)
-        _wf = _walkforward_pattern_bonus(context.market, regime, context.horizon, _wf_tags)
+        _wf = _walkforward_pattern_bonus(context.market, _regime, context.horizon, _wf_tags)
         _wf_bonus = float(_wf.get("bonus") or 0.0)
         out["walkforwardPatternBonus"] = _wf_bonus
         out["walkforwardPatternCalibration"] = _wf
@@ -2263,7 +2263,7 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
             out.setdefault("computedFields", []).append("walkforward_pattern_regime_bonus")
             matched = _wf.get("matchedPattern") if isinstance(_wf.get("matchedPattern"), dict) else {}
             out.setdefault("infoReasons", []).append(
-                str(_wf.get("summaryKo") or f"장세별 패턴 보정 {_pattern_label_ko(matched.get('canonicalPattern') or matched.get('pattern'))} {_regime_label_ko(regime)}: {_wf_bonus:+.1f}점")
+                str(_wf.get("summaryKo") or f"장세별 패턴 보정 {_pattern_label_ko(matched.get('canonicalPattern') or matched.get('pattern'))} {_regime_label_ko(_regime)}: {_wf_bonus:+.1f}점")
             )
     except Exception:
         pass
