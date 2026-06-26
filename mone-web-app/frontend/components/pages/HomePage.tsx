@@ -44,6 +44,7 @@ import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
 import { getUserId } from "@/lib/userId";
+import { alertStatusTone, toneClassName } from "@/lib/tone";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
 const HORIZONS: Horizon[] = ["short", "swing", "mid"];
@@ -546,13 +547,9 @@ function TagChips({ item }: { item: any }) {
 
 // ── 실적발표 D-day 뱃지
 function EarningsBadge({ dday }: { dday: number }) {
-  const color = dday <= 2
-    ? "border-red-500/50 bg-red-500/15 text-red-300"
-    : dday <= 5
-      ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-      : "border-slate-600 bg-slate-800 text-slate-400";
+  const tone = dday <= 2 ? "danger" : dday <= 5 ? "warning" : "neutral";
   return (
-    <span className={`rounded-full border px-2 py-1 text-xs font-bold ${color}`}>
+    <span className={`rounded-full px-2 py-1 text-xs font-bold ${toneClassName(tone)}`}>
       실적 D-{dday}
     </span>
   );
@@ -664,19 +661,19 @@ function TodayEntryCard({
   const toneStyle = {
     entry: {
       card: "hover:border-blue-500/45 focus:ring-blue-500/40",
-      rank: "border border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+      rank: toneClassName("safe"),
       decision: "text-emerald-300",
       accent: "bg-emerald-500",
     },
     watch: {
       card: "hover:border-cyan-500/45 focus:ring-cyan-500/40",
-      rank: "border border-amber-500/40 bg-amber-500/15 text-amber-300",
+      rank: toneClassName("warning"),
       decision: "text-amber-300",
       accent: "bg-amber-500",
     },
     risk: {
       card: "hover:border-red-500/45 focus:ring-red-500/40",
-      rank: "border border-red-500/40 bg-red-500/15 text-red-300",
+      rank: toneClassName("danger"),
       decision: "text-red-300",
       accent: "bg-red-500",
     },
@@ -1581,7 +1578,7 @@ function TodayConclusionCard({
             <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
               대기 후보 {watchCount}개
             </span>
-            <span className={`rounded-full border px-3 py-1 ${riskCount > 0 ? "border-red-500/40 bg-red-500/10 text-red-300" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"}`}>
+            <span className={`rounded-full px-3 py-1 ${toneClassName(riskCount > 0 ? "danger" : "safe")}`}>
               위험 보유 {riskCount}개
             </span>
           </div>
@@ -1728,12 +1725,7 @@ function DailyBriefingCard({
 }
 
 function AlertTrackingPreview({ rows }: { rows: AlertTrackingRow[] }) {
-  const statusClass = (status: AlertTrackingRow["status"]) => {
-    if (status === "목표도달" || status === "목표근접") return "border-emerald-500/25 bg-emerald-500/10 text-emerald-200";
-    if (status === "손절도달" || status === "리스크확인") return "border-red-500/25 bg-red-500/10 text-red-200";
-    if (status === "데이터부족") return "border-slate-600/40 bg-slate-800/50 text-slate-300";
-    return "border-sky-500/25 bg-sky-500/10 text-sky-200";
-  };
+  const statusClass = (status: AlertTrackingRow["status"]) => toneClassName(alertStatusTone(status));
 
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_12px_30px_rgba(2,6,23,0.2)]">
@@ -1798,11 +1790,8 @@ function AlertTrackingPreview({ rows }: { rows: AlertTrackingRow[] }) {
 }
 
 function EngineHistoryPreview({ rows }: { rows: EngineHistoryRow[] }) {
-  const statusClass = (row: EngineHistoryRow) => {
-    if (row.status === "적용") return "border-emerald-500/25 bg-emerald-500/10 text-emerald-200";
-    if (row.status === "LOW_SAMPLE") return "border-amber-500/25 bg-amber-500/10 text-amber-200";
-    return "border-slate-600/40 bg-slate-800/50 text-slate-300";
-  };
+  const statusClass = (row: EngineHistoryRow) =>
+    toneClassName(row.status === "적용" ? "safe" : row.status === "LOW_SAMPLE" ? "warning" : "neutral");
 
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_12px_30px_rgba(2,6,23,0.2)]">
@@ -2951,9 +2940,7 @@ function ReportDigestCard({ digest, loading }: { digest: any; loading: boolean }
           <h2 className="text-base font-semibold text-slate-100">오늘 운용 요약</h2>
           <p className="mt-0.5 text-xs text-slate-500">오늘 검토 후보, 검증 완료, 전략 성과를 홈에서 바로 확인합니다.</p>
         </div>
-        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-          loading ? "border-slate-700 bg-slate-800 text-slate-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-        }`}>
+        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${toneClassName(loading ? "neutral" : "safe")}`}>
           {loading ? "갱신 중" : "요약"}
         </span>
       </div>

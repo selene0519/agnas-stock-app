@@ -6,7 +6,8 @@ import CashInputBar from "../CashInputBar";
 import PortfolioOptimizePanel from "../PortfolioOptimizePanel";
 import AlertsPanel from "../AlertsPanel";
 import { mone } from "@/lib/api";
-import { dataFreshnessBadgeClass, dataFreshnessInfo } from "@/lib/moneDisplay";
+import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName } from "@/lib/moneDisplay";
+import { toneClassName } from "@/lib/tone";
 import { getUserId, getUserProfile, getUserToken } from "@/lib/userId";
 import type { BootPreloadData } from "@/lib/bootPreload";
 
@@ -131,12 +132,6 @@ function extractPositionCandidates(summary: any) {
       market: item.market || summary?.market,
     }));
   });
-}
-
-function displayName(item: any) {
-  const name = String(item.name || item.company || "").trim();
-  const sym = String(item.symbol || "").toUpperCase();
-  return name && name !== sym ? name : sym;
 }
 
 function cleanHoldingMarket(value: any): "kr" | "us" {
@@ -267,9 +262,9 @@ function validateHoldingDraft(item: EditableHolding) {
   return "";
 }
 function riskBadgeClass(risk: string) {
-  if (risk === "HIGH") return "border-red-500/40 bg-red-500/15 text-red-300";
-  if (risk === "WATCH") return "border-amber-500/40 bg-amber-500/15 text-amber-300";
-  return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  if (risk === "HIGH") return toneClassName("danger");
+  if (risk === "WATCH") return toneClassName("warning");
+  return toneClassName("safe");
 }
 function riskLabel(risk: string) {
   if (risk === "HIGH") return "위험";
@@ -1136,11 +1131,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                       <button
                         type="button"
                         onClick={() => onNavigate?.("broker")}
-                        className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
-                          tone === "sky"
-                            ? "border-sky-500/30 bg-sky-500/10 text-sky-200"
-                            : "border-amber-500/30 bg-amber-500/10 text-amber-200"
-                        }`}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ${toneClassName(tone === "sky" ? "info" : "warning")}`}
                       >
                         연결하기
                       </button>
@@ -1198,7 +1189,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       {message && (
         <div className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm ${
           message.startsWith("⚠") || message.includes("실패")
-            ? "border-red-500/40 bg-red-500/10 text-red-200"
+            ? toneClassName("danger")
             : "border-slate-700 bg-slate-900 text-slate-300"
         }`}>
           <span>{message}</span>

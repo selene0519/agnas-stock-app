@@ -89,10 +89,10 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                   key={id}
                   type="button"
                   onClick={() => handleMore(id)}
-                  className={`flex items-center gap-3 rounded-xl p-3 text-left transition-colors active:scale-[0.96] ${
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors active:scale-[0.96] ${
                     current === id
-                      ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30"
-                      : "bg-slate-800 text-slate-300 active:bg-slate-700"
+                      ? "mone-selection-brand"
+                      : "border-transparent bg-slate-800 text-slate-300 active:bg-slate-700"
                   }`}
                   aria-current={current === id ? "page" : undefined}
                 >
@@ -165,9 +165,8 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
               key={id}
               type="button"
               onClick={() => handlePrimary(id)}
-              className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] ${
-                current === id ? "text-blue-400" : "text-slate-500"
-              }`}
+              className="flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] text-slate-500"
+              style={current === id ? { color: "var(--brand-teal)" } : undefined}
               aria-current={current === id ? "page" : undefined}
             >
               <Icon size={20} strokeWidth={current === id ? 2.5 : 1.8} aria-hidden="true" />
@@ -179,9 +178,8 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
             ref={moreTriggerRef}
             type="button"
             onClick={() => setMoreOpen((v) => !v)}
-            className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] ${
-              isMoreActive || moreOpen ? "text-blue-400" : "text-slate-500"
-            }`}
+            className="flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] text-slate-500"
+            style={isMoreActive || moreOpen ? { color: "var(--brand-teal)" } : undefined}
             aria-expanded={moreOpen}
             aria-controls="mone-more-sheet"
             aria-haspopup="dialog"
@@ -189,7 +187,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
             <MoreHorizontal size={20} strokeWidth={isMoreActive || moreOpen ? 2.5 : 1.8} aria-hidden="true" />
             <span className="text-[10px] font-medium">더보기</span>
             {isMoreActive && (
-              <span className="absolute mt-0 h-1 w-1 rounded-full bg-blue-400" style={{ marginTop: "-18px" }} />
+              <span className="absolute mt-0 h-1 w-1 rounded-full" style={{ marginTop: "-18px", background: "var(--brand-teal)" }} />
             )}
           </button>
         </div>

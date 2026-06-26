@@ -5,6 +5,7 @@ import { Star } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { SentimentBadge } from "@/components/SentimentBadge";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
+import { toneClassName } from "@/lib/tone";
 import type { BootPreloadData } from "@/lib/bootPreload";
 import {
   dedupeBySymbol,
@@ -137,6 +138,10 @@ function cleanSymbol(symbol: any, market: Market) {
 function watchKey(row: { market?: any; symbol?: any }) {
   const market = cleanMarket(row.market || "kr");
   return `${market}-${cleanSymbol(row.symbol, market)}`;
+}
+
+function watchToggleClass(isWatched: boolean) {
+  return toneClassName(isWatched ? "warning" : "safe");
 }
 
 function statusText(status?: string) {
@@ -704,7 +709,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   function selectSearchResult(row: MoneSymbol) {
     setSelected(row);
     setSearchResults([row]);
-    setSearchQuery(row.name || row.symbol || "");
+    setSearchQuery(displayName(row) || row.symbol || "");
   }
 
   function isWatched(item: any) {
@@ -860,11 +865,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   ];
 
   const SUGGEST_STYLE: Record<string, string> = {
-    "즉시 진입 검토": "border-emerald-600/40 bg-emerald-900/20 text-emerald-300",
-    "타이밍 대기":    "border-amber-600/40 bg-amber-900/20 text-amber-300",
-    "제거 고려":      "border-red-600/40 bg-red-900/20 text-red-300",
-    "모니터링":       "border-slate-700 bg-slate-800 text-slate-400",
-    "데이터 없음":    "border-slate-800 bg-slate-900 text-slate-600",
+    "즉시 진입 검토": toneClassName("safe"),
+    "타이밍 대기":    toneClassName("warning"),
+    "제거 고려":      toneClassName("danger"),
+    "모니터링":       toneClassName("neutral"),
+    "데이터 없음":    toneClassName("neutral"),
   };
 
   return (
@@ -978,7 +983,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         <div className="mt-4">
           <button
             onClick={() => setScreenerOpen((v) => !v)}
-            className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${screenerOpen ? "border-sky-600/60 bg-sky-900/20 text-sky-300" : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"}`}>
+            className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${screenerOpen ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200"}`}>
             스크리너
             {activeFilterCount > 0 && (
               <span className="rounded-full bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{activeFilterCount}</span>
@@ -1218,7 +1223,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <button
                   key={item.id}
                   onClick={() => setMode(item.id)}
-                  className={`rounded-xl border p-3 text-left ${mode === item.id ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+                  className={`rounded-xl border p-3 text-left ${mode === item.id ? "mone-selection-brand" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                 >
                   <div className="font-bold">{item.label}</div>
                   <div className="mt-1 text-[11px] text-slate-500">
@@ -1237,7 +1242,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <button
                   key={item.id}
                   onClick={() => setHorizon(item.id)}
-                  className={`rounded-xl border p-3 text-left ${horizon === item.id ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200" : "border-slate-800 bg-slate-950 text-slate-400"}`}
+                  className={`rounded-xl border p-3 text-left ${horizon === item.id ? "mone-selection-brand" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                 >
                   <div className="font-bold">{item.label}</div>
                   <div className="mt-1 text-[11px] text-slate-500">
@@ -1262,11 +1267,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <button
             onClick={() => toggleWatch(selectedWatchRow)}
             disabled={watchSaving}
-            className={`rounded-xl border px-4 py-3 text-sm font-bold disabled:opacity-50 ${
-              watchSet.has(watchKey(selectedWatchRow))
-                ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
-                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-            }`}
+            className={`rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50 ${watchToggleClass(watchSet.has(watchKey(selectedWatchRow)))}`}
           >
             {watchSet.has(watchKey(selectedWatchRow))
               ? "관심 해제"
@@ -1326,14 +1327,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-bold text-slate-100">
-                          {row.name || rowSymbol}
+                          {displayName(row) || rowSymbol}
                         </div>
                         <div className="font-mono text-xs text-slate-500">
                           {rowSymbol} · {rowMarket.toUpperCase()}
                         </div>
                       </div>
                       {watched && (
-                        <span className="shrink-0 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                        <span className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold ${toneClassName("warning")}`}>
                           관심
                         </span>
                       )}
@@ -1361,7 +1362,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       onClick={() => {
                         window.localStorage.setItem("mone_chart_symbol", rowSymbol);
                         window.localStorage.setItem("mone_chart_market", rowMarket);
-                        window.localStorage.setItem("mone_chart_name", row.name || rowSymbol);
+                        window.localStorage.setItem("mone_chart_name", displayName(row) || rowSymbol);
                         window.localStorage.setItem("mone_chart_price", String(row.currentPrice || ""));
                         window.localStorage.setItem("mone_chart_price_text", row.currentPriceText || "");
                         window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: row }));
@@ -1376,16 +1377,12 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                         toggleWatch({
                           market: rowMarket,
                           symbol: rowSymbol,
-                          name: row.name || rowSymbol,
+                          name: displayName(row) || rowSymbol,
                           targetReason: "search_watch_added",
                         })
                       }
                       disabled={watchSaving}
-                      className={`flex-1 rounded-xl border px-3 py-2 text-xs font-bold disabled:opacity-50 ${
-                        watched
-                          ? "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
-                          : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                      }`}
+                      className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-50 ${watchToggleClass(watched)}`}
                     >
                       {watched ? "관심 해제" : "관심 등록"}
                     </button>
@@ -1535,7 +1532,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   </button>
                   <button
                     type="button"
-                    className={`flex-1 inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-bold disabled:opacity-50 ${watched ? "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"}`}
+                    className={`flex-1 inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-50 ${watchToggleClass(watched)}`}
                     onClick={() => toggleWatch({ market: soMarket, symbol: soSymbol, name: displayName(item) || soSymbol })}
                     disabled={watchSaving}
                   >
@@ -1767,11 +1764,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 </button>
                 <button
                   type="button"
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold disabled:opacity-50 ${
-                    watched
-                      ? "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
-                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                  }`}
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-50 ${watchToggleClass(watched)}`}
                   onClick={() => toggleWatch(item)}
                   disabled={watchSaving}
                 >

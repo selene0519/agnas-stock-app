@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, TrendingUp, XCircle } from "lucide-react";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
+import { outcomeTone, toneClassName } from "@/lib/tone";
+import { displayName } from "@/lib/moneDisplay";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 type ScopeMarket = Extract<Market, "kr" | "us" | "all">;
 type ScopeMode = Extract<Mode, "conservative" | "balanced" | "aggressive" | "all">;
@@ -50,11 +53,7 @@ function fmtNum(value: any, suffix = "") {
 }
 
 function toneForOutcome(outcome: string) {
-  if (outcome === "TARGET_HIT") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
-  if (outcome === "STOP_HIT" || outcome === "TIME_EXIT_NEAR_STOP") return "border-red-500/30 bg-red-500/10 text-red-300";
-  if (outcome.startsWith("TIME_EXIT")) return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-  if (outcome === "PENDING" || outcome === "DATA_PENDING") return "border-sky-500/30 bg-sky-500/10 text-sky-300";
-  return "border-slate-700 bg-slate-800 text-slate-300";
+  return toneClassName(outcomeTone(outcome));
 }
 
 const OUTCOME_LABEL: Record<string, string> = {
@@ -422,33 +421,10 @@ export default function VirtualJournalPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {[markets, modes, horizons].map((group, groupIndex) => (
-            <div key={groupIndex} className="flex rounded-lg bg-slate-950/60 p-1 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
-              {group.map((item) => {
-                const active = groupIndex === 0 ? market === item.id : groupIndex === 1 ? mode === item.id : horizon === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => groupIndex === 0 ? setMarket(item.id as ScopeMarket) : groupIndex === 1 ? setMode(item.id as ScopeMode) : setHorizon(item.id as ScopeHorizon)}
-                    className={`min-h-9 rounded-md px-3 text-xs font-semibold transition-colors ${active ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-200"}`}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-          <div className="flex rounded-lg bg-slate-950/60 p-1 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
-            {sessions.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setJournalSession(item.id)}
-                className={`min-h-9 rounded-md px-3 text-xs font-semibold transition-colors ${journalSession === item.id ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-200"}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl<ScopeMarket> options={markets.map((m) => ({ value: m.id, label: m.label }))} value={market} onChange={setMarket} className="w-auto" />
+          <SegmentedControl<ScopeMode> options={modes.map((m) => ({ value: m.id, label: m.label }))} value={mode} onChange={setMode} className="w-auto" />
+          <SegmentedControl<ScopeHorizon> options={horizons.map((h) => ({ value: h.id, label: h.label }))} value={horizon} onChange={setHorizon} className="w-auto" />
+          <SegmentedControl<ScopeSession> options={sessions.map((s) => ({ value: s.id, label: s.label }))} value={journalSession} onChange={setJournalSession} className="w-auto" />
         </div>
 
         {error && <div className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-200 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.22)]">{error}</div>}
@@ -466,7 +442,7 @@ export default function VirtualJournalPage() {
               <div key={item.journal_id} className="rounded-xl bg-slate-950/50 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-semibold text-slate-100">{item.name || item.symbol}</div>
+                    <div className="font-semibold text-slate-100">{displayName(item) || item.symbol}</div>
                     <div className="font-mono text-[11px] text-slate-500">{item.symbol}</div>
                   </div>
                   <span className={`inline-flex shrink-0 whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-semibold ${toneForOutcome(String(item.outcome || "PENDING"))}`}>
@@ -546,7 +522,7 @@ export default function VirtualJournalPage() {
                 {trades.slice(0, 80).map((item) => (
                   <tr key={item.journal_id} className="align-top text-slate-300">
                     <td className="py-3 pr-3">
-                      <div className="font-semibold text-slate-100">{item.name || item.symbol}</div>
+                      <div className="font-semibold text-slate-100">{displayName(item) || item.symbol}</div>
                       <div className="font-mono text-[11px] text-slate-500">{item.symbol}</div>
                     </td>
                     <td className="py-3 pr-3">

@@ -5,6 +5,7 @@ import { AlertTriangle, Building2, ExternalLink, RefreshCw, Search } from "lucid
 import { mone, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { displayName, statusBadge } from "@/lib/moneDisplay";
+import { toneClassName } from "@/lib/tone";
 
 type Tab = "news" | "disclosures" | "company";
 
@@ -24,9 +25,9 @@ function newsSentiment(item: any): { label: string; cls: string } | null {
   const posHit = POS_KEYWORDS.filter((k) => text.includes(k)).length;
   const negHit = NEG_KEYWORDS.filter((k) => text.includes(k)).length;
   if (posHit === 0 && negHit === 0) return null;
-  if (negHit > posHit) return { label: "부정", cls: "border-red-500/40 bg-red-500/10 text-red-300" };
-  if (posHit > negHit) return { label: "긍정", cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" };
-  return { label: "혼재", cls: "border-amber-500/40 bg-amber-500/10 text-amber-300" };
+  if (negHit > posHit) return { label: "부정", cls: toneClassName("danger") };
+  if (posHit > negHit) return { label: "긍정", cls: toneClassName("safe") };
+  return { label: "혼재", cls: toneClassName("warning") };
 }
 
 function statusLabel(status?: string) {
@@ -109,9 +110,9 @@ function impactLabel(score: number) {
 }
 
 function impactTone(score: number) {
-  if (score >= 70) return "border-red-500/40 bg-red-500/10 text-red-300";
-  if (score >= 40) return "border-amber-500/40 bg-amber-500/10 text-amber-300";
-  return "border-slate-700 bg-slate-800 text-slate-300";
+  if (score >= 70) return toneClassName("danger");
+  if (score >= 40) return toneClassName("warning");
+  return toneClassName("neutral");
 }
 
 function companyReadiness(item: any) {
@@ -223,14 +224,14 @@ export default function NewsPage() {
     return values.at(-1) || "";
   }, [sourceItems]);
   const summaryCards = [
-    { label: "상태", value: statusLabel(data.status), sub: data.message || `${tabLabel(tab)} 데이터 연결`, tone: data.status === "ERROR" ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
-    { label: "표시", value: `${items.length}건`, sub: `원본 ${sourceItems.length}건`, tone: items.length > 0 ? "border-sky-500/30 bg-sky-500/10 text-sky-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300" },
+    { label: "상태", value: statusLabel(data.status), sub: data.message || `${tabLabel(tab)} 데이터 연결`, tone: toneClassName(data.status === "ERROR" ? "danger" : "safe") },
+    { label: "표시", value: `${items.length}건`, sub: `원본 ${sourceItems.length}건`, tone: toneClassName(items.length > 0 ? "info" : "warning") },
     tab === "company"
-      ? { label: "재무 커버리지", value: `정상 ${data.normalCount ?? 0}`, sub: `부분 ${data.partialCount ?? 0} · 없음 ${data.noDataCount ?? 0}`, tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" }
+      ? { label: "재무 커버리지", value: `정상 ${data.normalCount ?? 0}`, sub: `부분 ${data.partialCount ?? 0} · 없음 ${data.noDataCount ?? 0}`, tone: toneClassName("info") }
       : tab === "news"
-        ? { label: "감성·중요도", value: `긍정 ${sentimentCounts["긍정"] || 0}`, sub: `높은 영향 ${sourceItems.filter((item: any) => impactScore(item, tab) >= 70).length}건`, tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" }
-        : { label: "필터", value: watchOnly ? "보유·관심" : "전체", sub: data.relevantSymbols != null ? `연결 심볼 ${data.relevantSymbols}개` : "원본 기준", tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" },
-    { label: "원본", value: sourceFiles.length ? `${sourceFiles.length}개` : "로컬/API", sub: latestDate ? `${freshnessLabel(latestDate)} · ${dateText(latestDate)}` : "최근일 확인 필요", tone: "border-slate-700 bg-slate-950 text-slate-300" },
+        ? { label: "감성·중요도", value: `긍정 ${sentimentCounts["긍정"] || 0}`, sub: `높은 영향 ${sourceItems.filter((item: any) => impactScore(item, tab) >= 70).length}건`, tone: toneClassName("info") }
+        : { label: "필터", value: watchOnly ? "보유·관심" : "전체", sub: data.relevantSymbols != null ? `연결 심볼 ${data.relevantSymbols}개` : "원본 기준", tone: toneClassName("info") },
+    { label: "원본", value: sourceFiles.length ? `${sourceFiles.length}개` : "로컬/API", sub: latestDate ? `${freshnessLabel(latestDate)} · ${dateText(latestDate)}` : "최근일 확인 필요", tone: toneClassName("neutral") },
   ];
 
   return (
@@ -422,7 +423,7 @@ function CompanyDetail({ selected }: { selected: any }) {
             <div className="text-sm font-semibold text-slate-200">분석 준비도</div>
             <div className="mt-1 text-xs text-slate-500">{dataAction(selected)}</div>
           </div>
-          <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${readiness.pct >= 75 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : readiness.pct >= 35 ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-slate-700 bg-slate-800 text-slate-300"}`}>
+          <span className={`rounded-xl px-3 py-1.5 text-xs font-bold ${toneClassName(readiness.pct >= 75 ? "safe" : readiness.pct >= 35 ? "warning" : "neutral")}`}>
             {readiness.label} · {readiness.pct}%
           </span>
         </div>
@@ -453,13 +454,12 @@ function CompanyDetail({ selected }: { selected: any }) {
           {selected.surgeLabel && selected.surgeLabel !== "판단 대기" && (
             <div className="mt-3 flex flex-wrap gap-1">
               {String(selected.surgeLabel).split("|").map((t: string) => t.trim()).filter(Boolean).map((t: string) => (
-                <span key={t} className={`rounded-md border px-2 py-1 text-[11px] font-bold ${
-                  t.includes("주의") ? "border-red-500/30 bg-red-500/10 text-red-300"
-                  : t.includes("저평가") ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                  : t.includes("수렴") ? "border-violet-500/30 bg-violet-500/10 text-violet-300"
-                  : t.includes("기관") || t.includes("외국인") ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
-                  : "border-slate-700 bg-slate-800 text-slate-300"
-                }`}>{t}</span>
+                <span key={t} className={`rounded-md px-2 py-1 text-[11px] font-bold ${toneClassName(
+                  t.includes("주의") ? "danger"
+                  : t.includes("저평가") ? "safe"
+                  : t.includes("수렴") || t.includes("기관") || t.includes("외국인") ? "info"
+                  : "neutral"
+                )}`}>{t}</span>
               ))}
             </div>
           )}
@@ -546,14 +546,14 @@ function DisclosureDetail({ selected }: { selected: any }) {
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-bold text-slate-100">{selected.title || selected.reportName || "공시 제목 없음"}</h2>
-        <p className="mt-2 text-sm text-slate-500">{selected.company || selected.name || selected.symbol || "-"} · {selected.source || "DART/SEC"} · {dateText(selected.disclosedAt || selected.date)}</p>
+        <p className="mt-2 text-sm text-slate-500">{displayName(selected) || "-"} · {selected.source || "DART/SEC"} · {dateText(selected.disclosedAt || selected.date)}</p>
       </div>
       <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-100">
         <b>{secFormExplain(form)}</b><br />미장 공시는 SEC Form 유형을 먼저 해석해 보여줍니다. 투자 판단 전 원문 확인이 필요합니다.
       </div>
       {selected.isWarning && <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">주의 공시로 분류되었습니다. 신규 진입 전 내용 확인이 필요합니다.</div>}
       <div className="grid grid-cols-2 gap-3">
-        <Metric label="회사" value={selected.company || selected.name || "-"} />
+        <Metric label="회사" value={displayName(selected) || "-"} />
         <Metric label="종목코드" value={selected.symbol || "-"} />
         <Metric label="공시 유형" value={String(form || "-")} />
         <Metric label="공시일" value={dateText(selected.disclosedAt || selected.date)} />

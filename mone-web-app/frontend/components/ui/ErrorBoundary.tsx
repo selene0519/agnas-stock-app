@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
+import { AlertTriangle } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -33,15 +34,15 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
       return (
-        <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-2xl border border-red-900/40 bg-red-950/10 p-8 text-center">
-          <div className="text-2xl">⚠</div>
+        <div className="mone-tone-danger flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-2xl p-8 text-center" style={{ border: "1px solid var(--tone-border)", background: "var(--tone-bg)" }}>
+          <AlertTriangle size={24} style={{ color: "var(--tone-fg)" }} aria-hidden="true" />
           <div>
-            <p className="text-sm font-medium text-red-300">화면 렌더링 오류</p>
-            <p className="mt-1 max-w-sm text-xs text-slate-500">{this.state.error}</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--tone-fg)" }}>화면을 표시하지 못했습니다</p>
+            <p className="mt-1 max-w-sm text-xs text-[var(--text-muted)]">{this.state.error}</p>
           </div>
           <button
             onClick={this.reset}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-xs text-slate-300 hover:bg-slate-700"
+            className="rounded-lg border border-[var(--bg-border)] bg-[var(--bg-elevated)] px-4 py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           >
             다시 시도
           </button>
