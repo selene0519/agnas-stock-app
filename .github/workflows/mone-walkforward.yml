@@ -82,6 +82,22 @@ jobs:
               print(f"[ensemble] 오류: {e}")
           PY
           echo "ensemble-calibration: exit $?"
+
+          # 차트패턴 장세별(BULL/BEAR/SIDE) 보정 리포트 갱신 — 이게 멈추면 quant_scanner의
+          # 장세별 패턴 보정이 조용히 미반영 상태로 빠진다 (regime_summary가 비어 overall로 폴백).
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          try:
+              from app.engine.pattern_strategy.pattern_validator import run_walkforward
+              for market in ("kr", "us"):
+                  result = run_walkforward(market=market, from_date="2024-08-01", horizon_days=20)
+                  print(f"[pattern-walkforward] {market}: regimeCounts={result.get('regimeCounts')}")
+          except Exception as e:
+              print(f"[pattern-walkforward] 오류: {e}")
+          PY
+          echo "pattern-walkforward: exit $?"
           set -e
 
       - name: Commit backtest results
@@ -92,6 +108,7 @@ jobs:
           git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
           git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
           git add reports/ensemble_calibration_*.json 2>/dev/null || true
+          git add reports/pattern_walkforward_kr.json reports/pattern_walkforward_us.json 2>/dev/null || true
 
           if git diff --cached --quiet; then
             echo "No backtest changes to commit."

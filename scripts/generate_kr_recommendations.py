@@ -13,7 +13,7 @@ import math
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -881,6 +881,13 @@ def _is_undervalued_growth(sym: str, fin_map: dict[str, dict]) -> tuple[bool, st
 # A-3: 기관/외국인 순매수 신호
 # ══════════════════════════════════════════════
 
+# predictions.csv는 GitHub Actions 파이프라인이 아니라 별도 로컬 Streamlit 앱(app.py)이
+# 채워주는 파일이라, 자동화가 안 돌면 기관/외국인 순매수 신호가 조용히 옛 데이터로 멈춘다.
+# 신호가 며칠 전 포지셔닝인데 "오늘" 보정으로 쓰이면 거꾸로 신뢰를 깎으므로, 정해진 기간보다
+# 오래된 행은 아예 무시한다(가산점/감점 없음 — neutral 취급).
+_SUPPLY_DATA_MAX_AGE_DAYS = 5
+
+
 def _load_supply_data() -> dict[str, dict[str, Any]]:
     """
     predictions.csv의 KIS 수급 데이터에서 종목별 최신 기관/외국인 순매수 로드.
@@ -905,6 +912,16 @@ def _load_supply_data() -> dict[str, dict[str, Any]]:
         existing = latest_by_sym.get(sym)
         if existing is None or created > str(existing.get("created_at", "")):
             latest_by_sym[sym] = row
+
+    cutoff = (datetime.now() - timedelta(days=_SUPPLY_DATA_MAX_AGE_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
+    stale_count = 0
+    for sym, row in list(latest_by_sym.items()):
+        created = str(row.get("created_at", ""))
+        if created and created < cutoff:
+            stale_count += 1
+            del latest_by_sym[sym]
+    if stale_count:
+        print(f"  수급 데이터 {stale_count}건이 {_SUPPLY_DATA_MAX_AGE_DAYS}일 이상 오래되어 제외됨 (predictions.csv 갱신 필요)")
 
     for sym, row in latest_by_sym.items():
         inst5d = _num(row.get("kis_institution_5d"))
