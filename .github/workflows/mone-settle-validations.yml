@@ -1,0 +1,108 @@
+name: MONE Settle Pending Validations
+
+on:
+  workflow_dispatch:
+  schedule:
+    # KST 기준 (UTC+9). 가볍고 빠른 작업이라(수백 건도 1분 내) 자주 돌려도 무방.
+    # mone-auto-accumulator 안에 묶여 있을 때 동시성 취소(cancel-in-progress)에
+    # 자주 걸려 3주 넘게 정산이 멈춘 적이 있어 별도 워크플로로 분리.
+    - cron: "0 23 * * 0-4"   # KST 08:00 (국장 개장 전)
+    - cron: "0 8 * * 1-5"    # KST 17:00 (국장 마감 후)
+    - cron: "0 14 * * 1-5"   # KST 23:00 (미장 개장 전후)
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mone-settle-validations-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CI: "true"
+      TZ: Asia/Seoul
+      PYTHONUTF8: "1"
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy 2>/dev/null || true
+
+      - name: Settle pending validations
+        run: |
+          set +e
+          python scripts/settle_pending_validations.py
+          echo "settle_pending_validations: exit $?"
+          set -e
+
+      - name: Update strategy win rates
+        run: |
+          set +e
+          python scripts/update_win_rates.py
+          echo "update_win_rates: exit $?"
+          set -e
+
+      - name: Commit validation results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --mixed "origin/${GITHUB_REF_NAME}"
+
+            git add reports/virtual_prediction_ledger.csv reports/virtual_validation_results.csv 2>/dev/null || true
+            git add reports/pending_settlement_status.json reports/strategy_win_rates.json 2>/dev/null || true
+
+            if git diff --cached --quiet; then
+              echo "변경 없음 — 커밋 건너뜀"
+              exit 0
+            fi
+
+            git commit -m "chore: settle pending validations + update win rates [skip ci]"
+
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "Push 성공"
+              exit 0
+            fi
+            echo "Push 충돌 재시도 (${attempt}/3)"
+            sleep 5
+          done
+
+          echo "Push 실패"
+          exit 1
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 — 알림 스킵"
+            exit 0
+          fi
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE Settle Pending Validations 실패\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\n검증 정산이 멈춰 strategy_win_rates.json이 옛 데이터로 고정될 수 있습니다.\"}" \
+            || echo "텔레그램 알림 전송 실패 (무시)"

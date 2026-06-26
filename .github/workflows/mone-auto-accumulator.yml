@@ -294,15 +294,6 @@ jobs:
           fi
 
 
-      - name: Update win rates from validation results
-        run: |
-          set +e
-          if [ -f scripts/update_win_rates.py ]; then
-            python scripts/update_win_rates.py
-            echo "update_win_rates: exit $?"
-          fi
-          set -e
-
       - name: Refresh GNews news (매일 장전/장후)
         working-directory: mone-web-app/backend
         env:
@@ -516,13 +507,12 @@ jobs:
           fi
           set -e
 
-      - name: Settle pending validations and update win rates
+      - name: Run history analysis
+        # 검증 정산(settle_pending_validations.py)·승률 갱신(update_win_rates.py)은
+        # mone-settle-validations.yml로 분리됨 — cancel-in-progress 동시성 취소에 자주
+        # 걸려 정산이 3주 넘게 멈췄던 적이 있어, 무거운 이 워크플로에서 떼어냄.
         run: |
           set +e
-          if [ -f scripts/settle_pending_validations.py ]; then
-            python scripts/settle_pending_validations.py
-            echo "settle_pending_validations: exit $?"
-          fi
           if [ -f scripts/analyze_history.py ]; then
             python scripts/analyze_history.py
             echo "analyze_history: exit $?"
