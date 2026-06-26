@@ -427,6 +427,8 @@ export const mone = {
     apiGet<any>("/api/journal/entry-efficiency", p),
   journalAttributionFeedback: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/journal/attribution-feedback", p),
+  journalHistoricalStrategyCalibration: (p?: { market?: Market | string; minSamples?: number; includeChart?: boolean; includePattern?: boolean; symbolLimit?: number; maxCutoffs?: number }) =>
+    apiGet<any>("/api/journal/historical-strategy-calibration", p),
   portfolioRiskBudget: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/portfolio/risk-budget", p),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>

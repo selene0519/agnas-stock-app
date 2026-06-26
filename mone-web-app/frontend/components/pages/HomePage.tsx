@@ -2336,6 +2336,9 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   const cautionReasons = Array.isArray(item.cautionReasons) ? item.cautionReasons : [];
   const newsSentimentTag     = String(item.newsSentimentTag || "NEUTRAL");
   const newsSentimentReasons = Array.isArray(item.newsSentimentReasons) ? item.newsSentimentReasons : [];
+  const patternStrategy = item.patternStrategy && typeof item.patternStrategy === "object" ? item.patternStrategy : null;
+  const patternCalibration = item.walkforwardPatternCalibration && typeof item.walkforwardPatternCalibration === "object" ? item.walkforwardPatternCalibration : null;
+  const patternBonus = Number(item.walkforwardPatternBonus || 0);
 
   const bucketColor =
     decisionBucket === "오늘 진입"  ? "bg-emerald-600 text-white"
@@ -2782,6 +2785,27 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
               : "border-red-600/40 bg-red-900/20 text-red-300"
             }`}>
               수급 신호 — {SUPPLY_LABEL[supplySignal] ?? supplySignal}
+            </div>
+          )}
+
+          {(patternStrategy || patternCalibration?.status === "OK") && (
+            <div className="rounded-xl border border-violet-800/40 bg-violet-950/20 p-3 text-[11px]">
+              <div className="mb-1.5 text-xs font-semibold text-violet-300">차트패턴 보정</div>
+              {patternStrategy?.geometricPatternKo && (
+                <div className="text-violet-100">
+                  감지 패턴: {patternStrategy.geometricPatternKo}
+                  {patternStrategy.geometricPatternStageKo ? ` · ${patternStrategy.geometricPatternStageKo}` : ""}
+                  {patternStrategy.geometricPatternDirectionKo ? ` · ${patternStrategy.geometricPatternDirectionKo}` : ""}
+                </div>
+              )}
+              {patternCalibration?.summaryKo && (
+                <div className="mt-1 text-violet-200">{patternCalibration.summaryKo}</div>
+              )}
+              {patternCalibration?.matchedPattern?.sampleCount != null && (
+                <div className="mt-1 text-[10px] text-slate-500">
+                  표본 {Number(patternCalibration.matchedPattern.sampleCount).toLocaleString("ko-KR")}건 · 방향성 승률 {Number((patternCalibration.matchedPattern.directionalWinRate || 0) * 100).toFixed(1)}% · 점수 {patternBonus >= 0 ? "+" : ""}{patternBonus.toFixed(1)}
+                </div>
+              )}
             </div>
           )}
 
