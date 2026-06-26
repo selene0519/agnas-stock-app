@@ -49,6 +49,43 @@ def _first_existing(paths: list[Path]) -> Path | None:
     return paths[0] if paths else None
 
 
+def _market_today_str(market: str, now: datetime | None = None) -> str:
+    value = now or datetime.now(session.KST)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=session.KST)
+    value = value.astimezone(session.NY) if normalize_market(market) == "us" else value.astimezone(session.KST)
+    return value.strftime("%Y-%m-%d")
+
+
+def _best_required_today_existing(paths: list[Path], market: str) -> Path | None:
+    existing = [path for path in paths if path.exists()]
+    if not existing:
+        return paths[0] if paths else None
+
+    status_rank = {
+        "NORMAL": 0,
+        "OK": 0,
+        "PREVIOUS_CLOSE_BASIS": 1,
+        "INTRADAY_OBSERVE": 1,
+        "PARTIAL": 2,
+        "STALE": 3,
+        "NO_DATA": 4,
+        "ERROR": 5,
+    }
+
+    def sort_key(path: Path) -> tuple[int, float]:
+        try:
+            result = session.evaluate_file_status(path, market, required_today=True)
+            rank = status_rank.get(str(result.get("status") or "").upper(), 6)
+            mtime = path.stat().st_mtime
+        except Exception:
+            rank = 6
+            mtime = 0.0
+        return (rank, -mtime)
+
+    return sorted(existing, key=sort_key)[0]
+
+
 def _read_csv_safe(path: Path) -> list[dict[str, str]]:
     for enc in ("utf-8-sig", "utf-8", "cp949"):
         try:
@@ -118,7 +155,7 @@ def _deep_csv_inspect(path: Path, market: str) -> dict[str, Any]:
 
     # STALE 여부: 내부 날짜 기준
     stale_reason: str | None = None
-    today_str = datetime.now(session.KST).strftime("%Y-%m-%d")
+    today_str = _market_today_str(market)
     if latest_date and latest_date < today_str and not session.is_market_holiday(market):
         stale_reason = f"CSV 내부 최신 날짜 {latest_date}가 오늘({today_str})보다 과거"
 
@@ -189,26 +226,28 @@ def _candidate_files(market: str) -> list[dict[str, Any]]:
         {
             "name": "KIS 현재가 snapshot",
             "role": "price_priority_1",
-            "path": _first_existing(
+            "path": _best_required_today_existing(
                 [
                     _repo_path("data", "market", "snapshots", f"{normalized_market}_kis_current.json"),
                     _repo_path("data", "market", "quotes", f"{normalized_market}_latest_quotes.csv"),
                     _repo_path("reports", f"kis_current_snapshot_{normalized_market}.csv"),
                     _repo_path("reports", f"kis_current_price_{normalized_market}.csv"),
                     _repo_path("data", "stockapp", f"kis_current_price_{normalized_market}.csv"),
-                ]
+                ],
+                normalized_market,
             ),
         },
         {
             "name": "Intraday snapshot",
             "role": "price_priority_2",
-            "path": _first_existing(
+            "path": _best_required_today_existing(
                 [
                     _repo_path("data", "market", "intraday", f"{normalized_market}_intraday_snapshot.csv"),
                     _repo_path("reports", f"{normalized_market}_intraday_report.csv"),
                     _repo_path("reports", f"intraday_quote_snapshot_{normalized_market}.csv"),
                     _repo_path("reports", f"intraday_realtime_snapshot_{normalized_market}.csv"),
-                ]
+                ],
+                normalized_market,
             ),
         },
         {

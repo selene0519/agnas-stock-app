@@ -89,7 +89,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
 const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000; // refresh changing prices occasionally
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v6:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v7:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -657,6 +657,18 @@ function TodayEntryCard({
   const rr = Number(item.rrActual ?? item.rr ?? 0);
   const evPct = Math.max(0, Math.min(100, Math.abs(ev) * 5));
   const rrPct = Math.max(0, Math.min(100, rr * 25));
+  const quantVerdict = item.quantTraderVerdict || {};
+  const publicTradeStatus = String(item.publicTradeStatus || quantVerdict.status || "").toUpperCase();
+  const publicTradeLabel = String(item.publicTradeLabel || quantVerdict.label || "");
+  const publicReasons = Array.isArray(quantVerdict.reasons) ? quantVerdict.reasons.slice(0, 3) : [];
+  const positionPlan = item.positionPlan || quantVerdict.positionPlan || {};
+  const publicBlocked = Boolean(item.isTradeBlocked) || publicTradeStatus === "NO_TRADE";
+  const publicCandidate = publicTradeStatus === "TRADE_CANDIDATE";
+  const publicClass = publicCandidate
+    ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
+    : publicBlocked
+      ? "border-red-500/35 bg-red-500/10 text-red-200"
+      : "border-amber-500/35 bg-amber-500/10 text-amber-200";
 
   // 앙상블/실증 뱃지 — 항상 표시하되, 표본이 부족하면 경고 톤으로 전환 (숨기면 정상 추천처럼 오인됨)
   const calibCount = Number(item.calibrationCount ?? 0);
@@ -782,6 +794,22 @@ function TodayEntryCard({
         <span className="text-slate-500">위험 <span className={`font-semibold ${riskClass}`}>{riskText}</span></span>
       </div>
 
+      {(publicTradeLabel || publicTradeStatus) && (
+        <div className={`mt-2 rounded-[10px] border px-3 py-2 text-[11px] ${publicClass}`}>
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-bold">{publicTradeLabel || publicTradeStatus}</span>
+            <span className="font-mono text-[10px]">
+              {positionPlan?.suggestedWeightPct != null ? `${Number(positionPlan.suggestedWeightPct).toFixed(1)}%` : "0.0%"}
+            </span>
+          </div>
+          {publicReasons.length > 0 && (
+            <div className="mt-1 space-y-0.5 text-[10px] leading-4 opacity-90">
+              {publicReasons.map((reason: string) => <div key={reason}>· {reason}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mone-home-inset mt-3 rounded-[10px] border px-3 py-2">
         <div className="text-[11px] font-semibold text-slate-300">MONE 참고 의견</div>
         <ol className="mt-1 space-y-0.5 text-[11px] leading-5 text-slate-400">
@@ -813,8 +841,8 @@ function TodayEntryCard({
           const dataBlocked = trustState === "stale" || trustState === "error";
           const { strength } = getMarketGateInfo(marketRegime, dataHealth);
           const gateBlocked = strength < 35;
-          const entryBlocked = dataBlocked || gateBlocked;
-          const blockedLabel = dataBlocked ? "데이터 확인중" : "진입 자제 구간";
+          const entryBlocked = dataBlocked || gateBlocked || publicBlocked;
+          const blockedLabel = publicBlocked ? "거래 금지" : dataBlocked ? "데이터 확인중" : "진입 자제 구간";
           const blockedTitle = dataBlocked
             ? "데이터 확인 전까지 진입을 막았습니다."
             : "시장 진입강도가 낮아 진입을 자제하는 구간입니다.";
@@ -822,7 +850,7 @@ function TodayEntryCard({
             <button
               type="button"
               disabled={entryBlocked}
-              title={entryBlocked ? blockedTitle : undefined}
+              title={entryBlocked ? (publicBlocked ? String(item.tradeBlockReason || publicReasons[0] || "공개 퀀트 게이트를 통과하지 못했습니다.") : blockedTitle) : undefined}
               onClick={(event) => {
                 event.stopPropagation();
                 if (entryBlocked) return;
@@ -1030,6 +1058,7 @@ interface SizingRow {
   scaled:   boolean;
   qty:      number;
   ev:       number;
+  lowSample: boolean;
 }
 
 function calcSizing(items: any[], capital: number): SizingRow[] {
@@ -1042,7 +1071,12 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
       seen.add(key);
 
       const entry = Number(i.entry || i.entryPrice || 0);
-      const prob  = Math.min(Math.max(Number(i.probability || 55) / 100, 0.3), 0.8);
+      const wrSamples = Number(i.winRateSampleCount ?? 0);
+      // 표본 30건 미만인 승률은 통계적으로 신뢰할 수 없어 베팅 사이즈를 키울 근거가 안 됨 —
+      // 켈리 계산의 입력값(prob)을 손익분기(50%)로 묶어 베팅 규모가 부풀려지지 않게 한다.
+      const lowSample = wrSamples > 0 && wrSamples < 30;
+      const rawProb = Number(i.probability || 55) / 100;
+      const prob  = Math.min(Math.max(lowSample ? Math.min(rawProb, 0.5) : rawProb, 0.3), 0.8);
       const rr    = Math.max(Number(i.rrActual || i.rr || 1.5), 0.5);
       const mode  = String(i._mode || i.mode || "balanced");
       if (entry <= 0 || capital <= 0) return [];
@@ -1065,6 +1099,7 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
         halfKelly,
         amount: qty * entry,
         rawAmount,
+        lowSample,
         effectivePct: capital > 0 ? (qty * entry) / capital : 0,
         scaled: false,
         qty,
@@ -1162,7 +1197,10 @@ function PositionSizingSection({
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-black text-slate-100">{r.name}</span>
-                  <span className="block text-[11px] text-slate-600">{modeLabel(r.mode as Mode)} · {horizonLabel(r.horizon as Horizon)}</span>
+                  <span className="block text-[11px] text-slate-600">
+                    {modeLabel(r.mode as Mode)} · {horizonLabel(r.horizon as Horizon)}
+                    {r.lowSample ? " · 표본부족(보수적용)" : ""}
+                  </span>
                 </span>
                 <span className="shrink-0 font-mono text-sm font-black text-violet-300 tabular-nums">{r.amount.toLocaleString()}원</span>
               </button>
@@ -3390,7 +3428,10 @@ export default function HomePage({
   const todayEntries = useMemo(() => {
     const seen = new Set<string>();
     return allItems
-      .filter((i) => i.decisionBucket === "오늘 진입" && Number(i.expectedValue || 0) > 0)
+      .filter((i) => {
+        const publicBlocked = Boolean(i.isTradeBlocked) || String(i.publicTradeStatus || "").toUpperCase() === "NO_TRADE";
+        return !publicBlocked && i.decisionBucket === "오늘 진입" && Number(i.expectedValue || 0) > 0;
+      })
       .sort((a, b) => Number(b.expectedValue || 0) - Number(a.expectedValue || 0))
       .filter((i) => {
         const key = `${i.symbol}-${i._mode}-${i._horizon}`;
@@ -3428,9 +3469,10 @@ export default function HomePage({
       .filter((item) => {
         const bucket = String(item.decisionBucket || "");
         const risk = String(item.riskStatus || item.tradeBlockStatus || item.riskLevel || "").toUpperCase();
-        const blocked = bucket.includes("보류") || bucket.includes("주의") || bucket.includes("매수금지");
+        const publicBlocked = Boolean(item.isTradeBlocked) || String(item.publicTradeStatus || "").toUpperCase() === "NO_TRADE";
+        const blocked = publicBlocked || bucket.includes("보류") || bucket.includes("주의") || bucket.includes("매수금지");
         const risky = Boolean(risk && !["NONE", "OK", "NORMAL", "LOW"].includes(risk));
-        return bucket !== "오늘 진입" && bucket !== "대기 관찰" && (blocked || risky || Number(item.expectedValue || 0) < 0);
+        return (publicBlocked || (bucket !== "오늘 진입" && bucket !== "대기 관찰")) && (blocked || risky || Number(item.expectedValue || 0) < 0);
       })
       .sort((a, b) => {
         const ar = Number(a.riskScore ?? 0);
