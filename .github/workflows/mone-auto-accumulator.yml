@@ -965,3 +965,15 @@ jobs:
           echo "Render 백엔드는 위 sync-now 단계에서 git pull로 최신 데이터를 반영함."
           test -f data/virtual_trade_journal.csv && echo "data/virtual_trade_journal.csv 존재" || echo "data/virtual_trade_journal.csv 없음 (첫 실행 또는 캡처 없음)"
           test -f data/virtual_trade_evaluations.csv && echo "data/virtual_trade_evaluations.csv 존재" || echo "data/virtual_trade_evaluations.csv 없음"
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 — 알림 스킵"
+            exit 0
+          fi
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE Auto Accumulator 실패\n워크플로: ${GITHUB_WORKFLOW}\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\n데이터가 갱신되지 않았을 수 있습니다 — 추천/현재가가 낡았을 위험.\"}" \
+            || echo "텔레그램 알림 전송 실패 (무시)"

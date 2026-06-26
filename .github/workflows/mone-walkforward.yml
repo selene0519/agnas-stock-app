@@ -22,6 +22,8 @@ jobs:
       TZ: Asia/Seoul
       PYTHONUTF8: "1"
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -107,3 +109,15 @@ jobs:
 
           echo "Failed to push backtest results after retries."
           exit 1
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 — 알림 스킵"
+            exit 0
+          fi
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE Weekly Walk-Forward Backtest 실패\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\n주간 백테스트/승률 보정이 갱신되지 않았을 수 있습니다.\"}" \
+            || echo "텔레그램 알림 전송 실패 (무시)"

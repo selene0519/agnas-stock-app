@@ -807,12 +807,12 @@ def api_pattern_strategy(
         from app.services import data_loader as _dl
         df, _ = _dl._load_ohlcv(symbol, _market(market))
         if df.empty or len(df) < 5:
-            return {"status": "NO_DATA", "symbol": symbol, "market": market}
+            return {"ok": False, "status": "NO_DATA", "symbol": symbol, "market": market}
         rows = df.to_dict("records")
         result = _ps_analyze(symbol, _market(market), rows)
-        return {"status": "OK", **result}
+        return {"ok": True, "status": "OK", **result}
     except Exception as e:
-        return {"status": "ERROR", "message": str(e)}
+        return {"ok": False, "status": "ERROR", "message": str(e)}
 
 
 @app.get("/api/pattern/summary")
@@ -1837,7 +1837,7 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
                     f"ohlcv_close · {ohlcv_source}".strip(" ·")
                     if ohlcv_source else "ohlcv_close"
                 )
-                _snap_status_override = "PARTIAL"
+                _snap_status_override = "OHLCV_CLOSE"
     except Exception:
         pass
     asset_type = _mone_asset_type(target, _chart_first(item, ["name", "company", "stockName"], ""), market, item)
@@ -1882,8 +1882,8 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
         if _snap_status_override == "NORMAL" and data_status not in ("NO_DATA",):
             data_status = "NORMAL"
             _snap_missing_reason = ""
-        elif _snap_status_override == "PARTIAL" and data_status == "OK":
-            data_status = "PARTIAL"
+        elif _snap_status_override == "OHLCV_CLOSE" and data_status not in ("NO_DATA", "ERROR", "STALE"):
+            data_status = "INTRADAY_OBSERVE" if market == "kr" and current_price_date == ohlcv_latest_date else "PREVIOUS_CLOSE_BASIS"
 
     # If chart/debug is already using a realtime snapshot source, the price status must
     # be NORMAL and the missing reason must be cleared. This prevents contradictory
@@ -1904,6 +1904,16 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
     ):
         data_status = "NORMAL"
         _snap_missing_reason = ""
+
+    price_basis_note = ""
+    if data_status == "PREVIOUS_CLOSE_BASIS":
+        price_basis_note = "최신 마감 OHLCV 기준 가격입니다."
+        if current_price:
+            _snap_missing_reason = ""
+    elif data_status == "INTRADAY_OBSERVE":
+        price_basis_note = "장중 OHLCV 스냅샷 기준 가격입니다."
+        if current_price:
+            _snap_missing_reason = ""
 
     pivot_lows, pivot_highs = _chart_pivots(rows, ohlcv_source)
     stale = "precision_base_stale" in warnings
@@ -2054,6 +2064,7 @@ def _enrich_chart_precision(payload: dict, symbol: str, market: str, future_bars
         "futureProjectionBars": future_bars,
         "dataStatus": data_status,
         "priceDataStatus": data_status,
+        "priceBasisNote": price_basis_note,
         "missingPriceReason": _snap_missing_reason,
         "overlayWarnings": warnings,
         "symbolMismatch": symbol_mismatch,
@@ -2299,7 +2310,39 @@ def api_similar_pattern(
 ) -> dict:
     """현재 RSI·MACD·볼린저밴드 위치와 유사했던 과거 시점들의 이후 수익률/승률을 반환한다."""
     normalized_market = _market(market)
-    return data.similar_pattern_history(symbol, normalized_market)
+    payload = data.similar_pattern_history(symbol, normalized_market)
+    if isinstance(payload, dict) and not payload.get("period"):
+        try:
+            from app.engine.quant_scanner import load_ohlcv
+
+            rows = load_ohlcv(data.REPO_ROOT, normalized_market, symbol)
+            dates = [str(row.get("date") or row.get("Date") or "")[:10] for row in rows if row]
+            current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+            max_horizon = 10
+            excluded_recent_bars = 5
+            candidate_rows = max(0, len(rows) - max_horizon - excluded_recent_bars)
+            payload["period"] = {
+                "basis": "all_available_ohlcv",
+                "source": payload.get("source"),
+                "fromDate": dates[0] if dates else None,
+                "toDate": dates[-1] if dates else None,
+                "currentDate": current.get("date") or (dates[-1] if dates else None),
+                "totalRows": len(rows),
+                "candidateRows": candidate_rows,
+                "excludedRecentBars": excluded_recent_bars,
+                "maxHorizonBars": max_horizon,
+                "horizons": [1, 5, 10],
+                "topN": int(payload.get("matchCount") or len(payload.get("matches") or []) or 10),
+                "features": ["rsi", "bbPercent", "macdHistPct"],
+            }
+        except Exception:
+            payload["period"] = {
+                "basis": "all_available_ohlcv",
+                "source": payload.get("source"),
+                "horizons": [1, 5, 10],
+                "features": ["rsi", "bbPercent", "macdHistPct"],
+            }
+    return payload
 
 
 @app.get("/api/symbol/{symbol}/events")
@@ -2414,6 +2457,11 @@ def api_chart_analysis(
         )
         result = state_to_dict(chart_state)
         result["ok"] = True
+        latest_row = rows[-1] if rows else {}
+        result["dataAsOf"] = str(latest_row.get("date") or latest_row.get("Date") or "")[:10] or None
+        result["latestDate"] = result["dataAsOf"]
+        result["inputCandleCount"] = len(rows)
+        result["basis"] = "OHLCV_CLOSE"
         result["regime"] = regime.get("regime", "SIDE")
         result["regimeLabel"] = regime.get("label", "횡보장")
         return result
@@ -2489,14 +2537,6 @@ def api_holdings(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
         return {"ok": False, "status": "ERROR", "error": str(exc), "items": [], "count": 0}
 
 
-@app.post("/api/holdings")
-def api_holdings_add(payload: dict) -> dict:
-    try:
-        return user_data.upsert_holding(payload, mode="post")
-    except Exception as exc:
-        return {"ok": False, "error": str(exc)}
-
-
 @app.patch("/api/holdings/{symbol}")
 def api_holdings_patch(symbol: str, payload: dict) -> dict:
     try:
@@ -2508,6 +2548,12 @@ def api_holdings_patch(symbol: str, payload: dict) -> dict:
 @app.delete("/api/holdings/{symbol}")
 def api_holdings_delete(symbol: str, market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return user_data.delete_holding(symbol, _market(market))
+
+
+@app.get("/api/holdings/sold-history")
+def api_holdings_sold_history(market: str = Query("all", pattern="^(kr|us|all)$")) -> dict:
+    """매도/제외된 보유종목 영구 기록 — 포트폴리오 수익률의 생존편향 보정용."""
+    return user_data.get_sold_positions(market)
 
 @app.get("/api/news")
 def api_news(
@@ -4085,30 +4131,12 @@ try:
 except Exception as exc:
     print("[MONE v8.0.3] holdings clean guard route failed:", exc)
 
-# ── v8.0.4: POST/PATCH/DELETE /api/holdings 복원 ──────────────────────────────
-# mone_v802가 GET만 남기고 나머지를 삭제하므로 여기서 다시 등록
 from fastapi.routing import APIRoute as _APIR
-_HOLDINGS_RESTORE_PATHS = {"/api/holdings"}
-app.router.routes = [
-    r for r in app.router.routes
-    if not (isinstance(r, _APIR) and getattr(r, "path", "") in _HOLDINGS_RESTORE_PATHS
-            and bool(getattr(r, "methods", set()) - {"GET", "HEAD"}))
-]
 
+# ── POST /api/holdings 등록 (PATCH/DELETE는 main.py 상단에 이미 등록되어 있음)
 @app.post("/api/holdings")
-def _api_holdings_add_v804(payload: dict) -> dict:
-    """보유종목 추가 (v8.0.4 복원)"""
+def api_holdings_add(payload: dict) -> dict:
     return user_data.upsert_holding(payload, mode="post")
-
-@app.patch("/api/holdings/{symbol}")
-def _api_holdings_patch_v804(symbol: str, payload: dict) -> dict:
-    """보유종목 수정 (v8.0.4 복원)"""
-    return user_data.upsert_holding(payload, mode="patch", symbol_arg=symbol)
-
-@app.delete("/api/holdings/{symbol}")
-def _api_holdings_delete_v804(symbol: str, market: str = Query("kr")) -> dict:
-    """보유종목 삭제 (v8.0.4 복원)"""
-    return user_data.delete_holding(symbol, _market(market))
 
 # --- MONE live data-quality route patch v2 ascii ---
 from pathlib import Path as _MONE_DQ_Path
@@ -4491,6 +4519,30 @@ def _install_mone_authoritative_holdings_clean_v3():
         except Exception:
             return 0
 
+    def _holding_price_data_status(market: str, price_source_type: str, current: float, price_date: str) -> str:
+        if current <= 0:
+            return "NO_PRICE"
+        if price_source_type == "live_quote":
+            return "NORMAL"
+        if price_source_type == "ohlcv_close":
+            age_days = _ohlcv_price_age_days(price_date)
+            if age_days > 5:
+                return "STALE"
+            if market == "kr" and age_days == 0:
+                return "INTRADAY_OBSERVE"
+            return "PREVIOUS_CLOSE_BASIS"
+        return "PARTIAL"
+
+    def _holding_price_status_label(status: str) -> str:
+        return {
+            "NORMAL": "실시간/스냅샷 가격",
+            "INTRADAY_OBSERVE": "장중 OHLCV 스냅샷 기준",
+            "PREVIOUS_CLOSE_BASIS": "최신 마감 OHLCV 기준",
+            "STALE": "가격 갱신 필요",
+            "NO_PRICE": "현재가 없음",
+            "PARTIAL": "부분 데이터",
+        }.get(str(status or "").upper(), str(status or ""))
+
     def _holding_source_candidates(market: str) -> list[_MonePath]:
         if market == "kr":
             return [
@@ -4718,6 +4770,15 @@ def _install_mone_authoritative_holdings_clean_v3():
             else:
                 risk_status = "NORMAL"
 
+            price_basis_date = str(
+                ohlcv_ref.get("currentPriceDate")
+                or q.get("currentPriceDate")
+                or q.get("priceTime")
+                or q.get("quoteTimestamp")
+                or ""
+            )
+            price_data_status = _holding_price_data_status(mk, price_source_type, current, price_basis_date)
+            missing_line_text = "장기보유 기준 없음" if asset_type != "stock" else "산출 필요"
             item = dict(row)
             item.update({
                 "avgPriceText": f"${avg:,.2f}" if mk == "us" and avg > 0 else f"{round(avg):,}원" if avg > 0 else "-",
@@ -4757,12 +4818,11 @@ def _install_mone_authoritative_holdings_clean_v3():
                 # 표시됐다 — 몇 주 전 종가로 평가금액/손익을 계산해도 사용자에게는
                 # 거의 정상처럼 보이는 문제가 있었다. 5일 넘게 오래된 종가는
                 # STALE로 명확히 구분한다.
-                "dataStatus": (
-                    "NORMAL" if price_source_type == "live_quote"
-                    else "NO_PRICE" if current <= 0
-                    else "STALE" if price_source_type == "ohlcv_close" and _ohlcv_price_age_days(ohlcv_ref.get("currentPriceDate", "")) > 5
-                    else "PARTIAL"
-                ),
+                "dataStatus": price_data_status,
+                "priceDataStatus": price_data_status,
+                "priceStatusLabel": _holding_price_status_label(price_data_status),
+                "priceDate": price_basis_date[:10],
+                "latestDataDate": price_basis_date[:10],
                 "source": row["source"],
                 "broker": row.get("broker", ""),
                 "brokerSource": row.get("brokerSource", ""),
@@ -4774,6 +4834,10 @@ def _install_mone_authoritative_holdings_clean_v3():
                 "prevCloseSource": prev_close_source,
                 "quoteTimestamp": q.get("quoteTimestamp") or "",
             })
+            if str(item.get("stopText") or "").strip() == "-":
+                item["stopText"] = missing_line_text
+            if str(item.get("targetText") or "").strip() == "-":
+                item["targetText"] = missing_line_text
             # 내부 전달용 bridge 키 제거
             for _bk in ("_bridgeCurrentPrice", "_bridgeProfitLoss", "_bridgeProfitLossRate", "_bridgeEvalAmount", "_sourceCurrentPrice", "_sourceProfitLoss", "_sourceProfitLossRate"):
                 item.pop(_bk, None)
@@ -6071,7 +6135,14 @@ def api_holdings_edit_save(
 
     # uid가 있으면 SQLite에 저장
     if uid:
-        saved = _db.save_holdings(uid, items)
+        with _db.holdings_lock(uid):
+            existing_items = _db.get_holdings(uid, "all")
+            existing_keys = {(str(r.get("market", "kr")).lower(), str(r.get("symbol", "")).strip()) for r in existing_items}
+            new_keys = {("us" if str(it.get("market", "kr")).lower() == "us" else "kr", str(it.get("symbol", "")).strip()) for it in items}
+            removed_keys = existing_keys - new_keys
+            removed_items = [r for r in existing_items if (str(r.get("market", "kr")).lower(), str(r.get("symbol", "")).strip()) in removed_keys]
+            saved = _db.save_holdings(uid, items)
+        user_data.record_sold_positions(removed_items)
         return {"status": "OK", "saved": saved, "userId": uid, "storage": "sqlite"}
 
     # uid 없으면 CSV (관리자 모드)
@@ -6080,20 +6151,29 @@ def api_holdings_edit_save(
         mk = "us" if str(item.get("market", "kr")).lower() == "us" else "kr"
         by_market[mk].append(item)
     cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
+    removed_items: list[dict] = []
     for mk, rows in by_market.items():
         path = _REPO / f"holdings_{mk}.csv"
-        norm_rows = []
-        for r in rows:
-            sym = _normalize_sym(r.get("symbol", ""), mk)
-            if not sym:
-                continue
-            norm_rows.append({"symbol": sym, "name": str(r.get("name", sym)).strip(), "market": mk,
-                "quantity": str(r.get("quantity", "0")).strip(), "avgPrice": str(r.get("avgPrice", "0")).strip(),
-                "stopPrice": str(r.get("stopPrice", "")).strip(), "targetPrice": str(r.get("targetPrice", "")).strip()})
-        _write_csv_safe_v2(path, norm_rows, cols)
-        data_copy = _REPO / "data" / f"holdings_{mk}.csv"
-        if data_copy.exists():
-            _write_csv_safe_v2(data_copy, norm_rows, cols)
+        with user_data.file_lock(path):
+            existing_rows = _read_csv_safe(path)
+            new_syms = {_normalize_sym(r.get("symbol", ""), mk) for r in rows}
+            for r in existing_rows:
+                sym = str(r.get("symbol", "")).strip()
+                if sym and sym not in new_syms:
+                    removed_items.append({**r, "market": mk})
+            norm_rows = []
+            for r in rows:
+                sym = _normalize_sym(r.get("symbol", ""), mk)
+                if not sym:
+                    continue
+                norm_rows.append({"symbol": sym, "name": str(r.get("name", sym)).strip(), "market": mk,
+                    "quantity": str(r.get("quantity", "0")).strip(), "avgPrice": str(r.get("avgPrice", "0")).strip(),
+                    "stopPrice": str(r.get("stopPrice", "")).strip(), "targetPrice": str(r.get("targetPrice", "")).strip()})
+            _write_csv_safe_v2(path, norm_rows, cols)
+            data_copy = _REPO / "data" / f"holdings_{mk}.csv"
+            if data_copy.exists():
+                _write_csv_safe_v2(data_copy, norm_rows, cols)
+    user_data.record_sold_positions(removed_items)
     return {"status": "OK", "saved": len(items), "userId": "default", "storage": "csv"}
 
 
@@ -6138,52 +6218,54 @@ def api_kis_holdings_sync(
     added, updated = 0, 0
 
     if uid:
-        # SQLite: 기존 보유 로드 후 병합
-        existing_list = _db.get_holdings(uid, "kr") if mode == "merge" else []
-        existing: dict[str, dict] = {r["symbol"]: r for r in existing_list}
-        for item in kis_items:
-            sym = str(item["symbol"]).strip()
-            if not sym:
-                continue
-            if sym in existing:
-                existing[sym]["quantity"] = str(item["quantity"])
-                existing[sym]["avgPrice"] = str(item["avgPrice"])
-                updated += 1
-            else:
-                existing[sym] = {"symbol": sym, "name": item.get("name", sym), "market": "kr",
-                    "quantity": str(item["quantity"]), "avgPrice": str(item["avgPrice"]),
-                    "stopPrice": "", "targetPrice": ""}
-                added += 1
-        _db.save_holdings(uid, list(existing.values()))
+        # SQLite: 기존 보유 로드 후 병합 — 동일 uid/market에 대한 일반 CRUD와 경합하므로 락 필요
+        with _db.holdings_lock(uid):
+            existing_list = _db.get_holdings(uid, "kr") if mode == "merge" else []
+            existing: dict[str, dict] = {r["symbol"]: r for r in existing_list}
+            for item in kis_items:
+                sym = str(item["symbol"]).strip()
+                if not sym:
+                    continue
+                if sym in existing:
+                    existing[sym]["quantity"] = str(item["quantity"])
+                    existing[sym]["avgPrice"] = str(item["avgPrice"])
+                    updated += 1
+                else:
+                    existing[sym] = {"symbol": sym, "name": item.get("name", sym), "market": "kr",
+                        "quantity": str(item["quantity"]), "avgPrice": str(item["avgPrice"]),
+                        "stopPrice": "", "targetPrice": ""}
+                    added += 1
+            _db.save_holdings(uid, list(existing.values()))
         storage = "sqlite"
     else:
-        # CSV 관리자 모드
+        # CSV 관리자 모드 — user_data.upsert_holding/delete_holding과 같은 파일을 다루므로 동일 락 재사용
         cols = ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"]
         path = _REPO / "holdings_kr.csv"
-        existing_csv: dict[str, dict] = {}
-        if mode == "merge":
-            for row in _read_csv_safe(path):
-                sym = str(row.get("symbol", "")).strip()
-                if sym:
-                    existing_csv[sym] = row
-        for item in kis_items:
-            sym = str(item["symbol"]).strip()
-            if not sym:
-                continue
-            if sym in existing_csv:
-                existing_csv[sym]["quantity"] = str(item["quantity"])
-                existing_csv[sym]["avgPrice"] = str(item["avgPrice"])
-                updated += 1
-            else:
-                existing_csv[sym] = {"symbol": sym, "name": item.get("name", sym), "market": "kr",
-                    "quantity": str(item["quantity"]), "avgPrice": str(item["avgPrice"]),
-                    "stopPrice": "", "targetPrice": ""}
-                added += 1
-        norm_rows = list(existing_csv.values())
-        _write_csv_safe_v2(path, norm_rows, cols)
-        data_copy = _REPO / "data" / "holdings_kr.csv"
-        if data_copy.exists():
-            _write_csv_safe_v2(data_copy, norm_rows, cols)
+        with user_data.file_lock(path):
+            existing_csv: dict[str, dict] = {}
+            if mode == "merge":
+                for row in _read_csv_safe(path):
+                    sym = str(row.get("symbol", "")).strip()
+                    if sym:
+                        existing_csv[sym] = row
+            for item in kis_items:
+                sym = str(item["symbol"]).strip()
+                if not sym:
+                    continue
+                if sym in existing_csv:
+                    existing_csv[sym]["quantity"] = str(item["quantity"])
+                    existing_csv[sym]["avgPrice"] = str(item["avgPrice"])
+                    updated += 1
+                else:
+                    existing_csv[sym] = {"symbol": sym, "name": item.get("name", sym), "market": "kr",
+                        "quantity": str(item["quantity"]), "avgPrice": str(item["avgPrice"]),
+                        "stopPrice": "", "targetPrice": ""}
+                    added += 1
+            norm_rows = list(existing_csv.values())
+            _write_csv_safe_v2(path, norm_rows, cols)
+            data_copy = _REPO / "data" / "holdings_kr.csv"
+            if data_copy.exists():
+                _write_csv_safe_v2(data_copy, norm_rows, cols)
         storage = "csv"
 
     return {
@@ -6828,7 +6910,7 @@ def _empty_home_holdings(market: str) -> dict:
         "summary": {
             "count": 0,
             "totalValue": 0,
-            "totalValueText": "-",
+            "totalValueText": "보유 없음",
             "totalPnl": 0,
             "totalPnlText": "0",
             "riskCount": 0,
@@ -6873,7 +6955,7 @@ def _exclude_etf_from_home_holdings(payload: dict, market: str) -> dict:
             "totalCost": total_cost,
             "totalPnl": total_pnl,
             "totalPnlPct": (total_pnl / total_cost * 100) if total_cost > 0 else 0,
-            "totalValueText": fmt(total_value) if total_value > 0 else "-",
+            "totalValueText": fmt(total_value) if total_value > 0 else "보유 없음",
             "totalPnlText": fmt(total_pnl) if total_pnl else "0",
         })
         new_payload["summary"] = new_summary
@@ -6990,6 +7072,15 @@ def api_home_summary(
                 out["changePctText"] = f"{change_pct:+.2f}%"
                 out["changePctSource"] = "current_vs_ohlcv_previous_close"
             out.setdefault("ohlcvLatestDate", ref["ohlcvLatestDate"])
+            out.setdefault("dataAsOf", ref["ohlcvLatestDate"])
+            out.setdefault("latestDataDate", ref["ohlcvLatestDate"])
+            if current and not out.get("currentPriceText"):
+                out["currentPriceText"] = f"${current:,.2f}" if mk == "us" else f"{round(current):,}원"
+            if str(out.get("priceSource") or out.get("currentPriceSource") or "").lower() in {"ohlcv", "ohlcv_close"}:
+                out["dataStatus"] = "PREVIOUS_CLOSE_BASIS"
+                out["priceDataStatus"] = "PREVIOUS_CLOSE_BASIS"
+                out["priceStatusLabel"] = "최신 마감 OHLCV 기준"
+                out["currentPriceSource"] = out.get("currentPriceSource") or "ohlcv_close"
             return out
 
         # 마켓 레짐 (KOSPI/SPY 20일선 기반 — priority 9)
@@ -7004,6 +7095,8 @@ def api_home_summary(
                 ma20 = sum(closes[-20:]) / 20
                 ma60 = sum(closes[-60:]) / len(closes[-60:]) if len(closes) >= 60 else ma20
                 current = closes[-1]
+                latest_row = bench_rows[-1] if bench_rows else {}
+                latest_date = str(latest_row.get("date") or latest_row.get("Date") or "")
                 if current > ma20 * 1.02:
                     regime = "BULL"
                 elif current < ma20 * 0.98:
@@ -7017,6 +7110,8 @@ def api_home_summary(
                     "ma60": round(ma60, 2),
                     "distanceMa20Pct": round((current - ma20) / ma20 * 100, 2),
                     "benchmark": bench_sym,
+                    "asOf": latest_date[:10],
+                    "source": f"data/market/ohlcv/{mk}_{bench_sym}_daily.csv",
                     "label": {"BULL": "강세장 (MA20 상회)", "BEAR": "약세장 (MA20 하회)", "SIDEWAYS": "중립"}[regime],
                     "description": {
                         "BULL": f"{bench_sym} 현재가 {current:,.0f} > MA20 {ma20:,.0f} (+{abs((current-ma20)/ma20*100):.1f}%) — 공격적 진입 허용",
@@ -7028,6 +7123,58 @@ def api_home_summary(
             pass
 
         # 3×3 매트릭스 — 사전 생성 CSV 직접 읽기 (재계산 없이 <100ms)
+        try:
+            from app.engine.quant_scanner import load_market_regime as _load_market_regime
+            shared_regime = _load_market_regime(_REPO, mk)
+            if shared_regime and shared_regime.get("regime"):
+                shared_code = str(shared_regime.get("regime") or "").upper()
+                home_regime = "SIDEWAYS" if shared_code == "SIDE" else shared_code
+                regime = home_regime
+                regime_detail = {
+                    **regime_detail,
+                    **shared_regime,
+                    "regime": home_regime,
+                    "current": shared_regime.get("kospiLatest") or regime_detail.get("current"),
+                    "ma20": (shared_regime.get("kospiMa20") if mk == "kr" else None) or regime_detail.get("ma20"),
+                    "distanceMa20Pct": (
+                        shared_regime.get("distanceMa20Pct")
+                        if mk == "kr" and shared_regime.get("distanceMa20Pct") is not None
+                        else regime_detail.get("distanceMa20Pct")
+                    ),
+                }
+                if mk != "kr":
+                    regime_detail["kospiLatest"] = regime_detail.get("current")
+                    regime_detail["kospiMa20"] = regime_detail.get("ma20")
+                    regime_detail["distanceToMa20Pct"] = regime_detail.get("distanceMa20Pct")
+        except Exception:
+            pass
+
+        try:
+            _now_dt = __import__("datetime").datetime.now()
+            _today = _now_dt.strftime("%Y-%m-%d")
+            _as_of = str(regime_detail.get("asOf") or "")
+            if mk == "kr":
+                _is_intraday = _as_of == _today and (
+                    _now_dt.hour < 15 or (_now_dt.hour == 15 and _now_dt.minute < 40)
+                )
+                regime_detail["basis"] = "INTRADAY_SNAPSHOT" if _is_intraday else "OFFICIAL_OR_LAST_CLOSE"
+                regime_detail["basisLabel"] = "장중 스냅샷" if _is_intraday else "마감/최근 종가"
+                regime_detail["basisNote"] = (
+                    "오늘 장중 현재가 기반입니다. 예측값이 아니며 장 마감 전까지 변합니다."
+                    if _is_intraday else
+                    "마감 또는 공급자 기준 최근 종가입니다."
+                )
+                regime_detail["isFinalClose"] = not _is_intraday
+            else:
+                regime_detail["basis"] = "LATEST_US_CLOSE"
+                regime_detail["basisLabel"] = "미국 최신 마감"
+                regime_detail["basisNote"] = (
+                    "한국 시간 기준 전일로 보일 수 있지만, 미국 정규장 기준 최신 마감 데이터입니다."
+                )
+                regime_detail["isFinalClose"] = True
+        except Exception:
+            pass
+
         def _csv_matrix_cell(mode_: str, horizon_: str) -> tuple[str, dict]:
             import csv as _csv_mod
             key_ = f"{mode_}_{horizon_}"
@@ -8717,28 +8864,29 @@ def _save_bridge_holdings(user_id: str, broker: str, items: list[dict], mode: st
     normalized = [row for row in (_normalize_bridge_holding(item, broker) for item in items) if row]
     if not normalized:
         return {"ok": False, "code": "NO_HOLDINGS", "message": "No holdings were provided for upload.", "count": 0}
-    existing = _db.get_holdings(user_id, "all") if mode != "replace_all" else []
-    by_key: dict[tuple[str, str], dict] = {
-        (_bridge_market(row.get("market")), str(row.get("symbol") or "").strip()): dict(row)
-        for row in existing
-        if str(row.get("symbol") or "").strip()
-    }
-    if mode in ("replace", "replace_broker"):
-        by_key = {
-            key: row
-            for key, row in by_key.items()
-            if str(row.get("broker") or row.get("source") or "manual").lower() != broker
+    with _db.holdings_lock(user_id):
+        existing = _db.get_holdings(user_id, "all") if mode != "replace_all" else []
+        by_key: dict[tuple[str, str], dict] = {
+            (_bridge_market(row.get("market")), str(row.get("symbol") or "").strip()): dict(row)
+            for row in existing
+            if str(row.get("symbol") or "").strip()
         }
-    added = 0
-    updated = 0
-    for row in normalized:
-        key = (_bridge_market(row.get("market")), str(row.get("symbol") or "").strip())
-        if key in by_key:
-            updated += 1
-        else:
-            added += 1
-        by_key[key] = row
-    saved = _db.save_holdings(user_id, list(by_key.values()))
+        if mode in ("replace", "replace_broker"):
+            by_key = {
+                key: row
+                for key, row in by_key.items()
+                if str(row.get("broker") or row.get("source") or "manual").lower() != broker
+            }
+        added = 0
+        updated = 0
+        for row in normalized:
+            key = (_bridge_market(row.get("market")), str(row.get("symbol") or "").strip())
+            if key in by_key:
+                updated += 1
+            else:
+                added += 1
+            by_key[key] = row
+        saved = _db.save_holdings(user_id, list(by_key.values()))
     return {"ok": True, "status": "OK", "count": len(normalized), "added": added, "updated": updated, "saved": saved}
 
 

@@ -73,9 +73,10 @@ function buildBadges(item: any): BadgeItem[] {
     badges.push({ key: "adaptive", label: "AI보정", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" });
   }
 
-  // ── 9. 검증 부족 (LOW_SAMPLE)
-  if (item?.adaptiveLearningStatus === "LOW_SAMPLE") {
-    badges.push({ key: "lowSample", label: "검증부족", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" });
+  // ── 9. 검증 부족 (LOW_SAMPLE) — adaptive 보정 상태이거나, 백테스트 표본(<30건)이 부족한 경우 모두 경고
+  const wrSampleCount = Number(item?.winRateSampleCount ?? 0);
+  if (item?.adaptiveLearningStatus === "LOW_SAMPLE" || (wrSampleCount > 0 && wrSampleCount < 30)) {
+    badges.push({ key: "lowSample", label: `검증부족${wrSampleCount > 0 ? ` n=${wrSampleCount}` : ""}`, cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" });
   }
 
   return badges;

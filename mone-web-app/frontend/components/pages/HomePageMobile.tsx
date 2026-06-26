@@ -13,7 +13,7 @@ import {
   getDefaultMarketBySession, getMarketSessionStatus, getSessionCountdown, type SessionPhase,
 } from "@/lib/marketSession";
 import {
-  dataFreshnessBadgeClass, dataFreshnessInfo, dataTrustBadgeClass, dataTrustLabel, dataTrustNotice,
+  dataFreshnessBadgeClass, dataFreshnessInfo, dataTrustBadgeClass, dataTrustLabel, dataTrustNotice, dataTrustState,
   dedupeBySymbol, displayName, firstText, horizonLabel, modeLabel, moneReasonLines, normalizeMarket,
   priceText, probabilityText,
 } from "@/lib/moneDisplay";
@@ -605,7 +605,7 @@ function MarketGateCard({ regime, dataHealth, selectedMarket }: { regime: any; d
 }
 
 // ── 후보 카드 (오늘 진입)
-function EntryCandidateCard({ item, rank, onAnalyze, onTradePaper }: { item: any; rank: number; onAnalyze: (item: any) => void; onTradePaper?: (item: any) => void }) {
+function EntryCandidateCard({ item, rank, onAnalyze, onTradePaper, marketRegime, dataHealth }: { item: any; rank: number; onAnalyze: (item: any) => void; onTradePaper?: (item: any) => void; marketRegime?: any; dataHealth?: any }) {
   const score = Number(item.finalScore || 0);
   const confidence = probabilityText(item, score > 0 ? `${score.toFixed(0)}점` : "-");
   const reasons = moneReasonLines(item).slice(0, 2);
@@ -638,15 +638,29 @@ function EntryCandidateCard({ item, rank, onAnalyze, onTradePaper }: { item: any
           {reasons.map((r, i) => <div key={r}>{i + 1}. {r}</div>)}
         </div>
       )}
+      <div className="mt-1 text-[9px] text-slate-600">참고용 신호 — 최종 판단은 본인 책임입니다.</div>
       <div className="mt-2.5 flex gap-1.5">
         <button onClick={() => onAnalyze(item)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-blue-500">
           분석 보기 <ArrowRight size={12} />
         </button>
-        {onTradePaper && (
-          <button onClick={() => onTradePaper(item)} className="rounded-lg border border-emerald-700/50 bg-emerald-900/30 px-2 py-1.5 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-900/60">
-            모의투자
-          </button>
-        )}
+        {onTradePaper && (() => {
+          const trustState = dataTrustState(item);
+          const dataBlocked = trustState === "stale" || trustState === "error";
+          const { strength } = getMarketGateInfo(marketRegime, dataHealth);
+          const gateBlocked = strength < 35;
+          const entryBlocked = dataBlocked || gateBlocked;
+          const blockedLabel = dataBlocked ? "데이터 확인중" : "진입 자제";
+          return (
+            <button
+              disabled={entryBlocked}
+              title={entryBlocked ? (dataBlocked ? "데이터 확인 전까지 진입을 막았습니다." : "시장 진입강도가 낮아 진입을 자제하는 구간입니다.") : undefined}
+              onClick={() => { if (!entryBlocked) onTradePaper(item); }}
+              className="rounded-lg border border-emerald-700/50 bg-emerald-900/30 px-2 py-1.5 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-900/60 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {entryBlocked ? blockedLabel : "모의투자"}
+            </button>
+          );
+        })()}
       </div>
     </div>
   );
@@ -1069,7 +1083,7 @@ export default function HomePageMobile({
           ) : (
             <div className="-mx-3 flex gap-3 overflow-x-auto px-3 pb-1 snap-x snap-mandatory">
               {decisionTab === "entry" && todayEntries.map((item, i) => (
-                <EntryCandidateCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onAnalyze={openAnalysis} onTradePaper={onTradePaper ? () => onTradePaper({ symbol: item.symbol, name: displayName(item), price: Number(item.entry || item.currentPrice || 0), market: normalizeMarket(item.market || selectedMarket, item.symbol) }) : undefined} />
+                <EntryCandidateCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} rank={i + 1} onAnalyze={openAnalysis} onTradePaper={onTradePaper ? () => onTradePaper({ symbol: item.symbol, name: displayName(item), price: Number(item.entry || item.currentPrice || 0), market: normalizeMarket(item.market || selectedMarket, item.symbol) }) : undefined} marketRegime={marketRegime} dataHealth={dataHealth} />
               ))}
               {decisionTab === "watch" && watchItems.map((item) => (
                 <WatchCandidateCard key={`${item.symbol}-${item._mode}-${item._horizon}`} item={item} onAnalyze={openAnalysis} />

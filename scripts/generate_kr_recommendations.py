@@ -20,6 +20,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "mone-web-app" / "backend"))
 
+from scripts.walk_forward_backtest import TRADE_COST_PCT  # 매수수수료+매도세+슬리피지 ≈ 0.345%, 백테스트와 동일 산식 유지
+
 OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
 
 
@@ -459,7 +461,7 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
         risk_pct = abs((entry - stop) / entry * 100)
         if risk_pct > 0:
             rr = round(rew / risk_pct, 2)
-            ev = round(prob * rew - (1 - prob) * risk_pct, 2)
+            ev = round(prob * rew - (1 - prob) * risk_pct - TRADE_COST_PCT, 2)
             # 최소 RR 미달이면 EV 신뢰도 표시
             if rr < min_rr:
                 ev = round(ev * 0.7, 2)   # 패널티 적용
@@ -620,11 +622,16 @@ def _peg_tag(dart_row: dict | None) -> tuple[bool, str]:
 
 
 def _load_market_regime() -> dict[str, Any]:
-    """KOSPI benchmark_daily.csv에서 마켓 레짐 판단"""
-    path = ROOT / "data" / "market" / "benchmark_daily.csv"
-    rows = [r for r in _read_csv(path) if str(r.get("benchmark", "")).upper() == "KOSPI"]
-    rows.sort(key=lambda r: str(r.get("date", "")))
-    closes = [_num(r.get("close")) for r in rows]
+    """KOSPI OHLCV 우선으로 마켓 레짐 판단."""
+    path = ROOT / "data" / "market" / "ohlcv" / "kr_KOSPI_daily.csv"
+    rows = _read_csv(path)
+    source = "kr_KOSPI_daily.csv"
+    if not rows:
+        path = ROOT / "data" / "market" / "benchmark_daily.csv"
+        rows = [r for r in _read_csv(path) if str(r.get("benchmark", "")).upper() == "KOSPI"]
+        source = "benchmark_daily.csv"
+    rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
+    closes = [_num(r.get("close") or r.get("Close")) for r in rows]
     closes = [c for c in closes if c is not None]
     if len(closes) < 20:
         return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0, "description": "데이터 부족"}
@@ -635,14 +642,17 @@ def _load_market_regime() -> dict[str, Any]:
     if dist > 0 and mom5 > 0:
         return {"regime": "BULL", "label": "강세장", "scoreAdjust": +5.0,
                 "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-                "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2)}
+                "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2),
+                "asOf": str(rows[-1].get("date") or rows[-1].get("Date") or "")[:10], "source": source}
     elif dist < -2.0 or mom5 < -2.0:
         return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -8.0,
                 "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-                "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2)}
+                "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2),
+                "asOf": str(rows[-1].get("date") or rows[-1].get("Date") or "")[:10], "source": source}
     return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
             "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-            "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2)}
+            "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2),
+            "asOf": str(rows[-1].get("date") or rows[-1].get("Date") or "")[:10], "source": source}
 
 
 # ── KIS 현재가 로드
@@ -971,8 +981,23 @@ def _load_ohlcv_all() -> dict[str, list[dict]]:
 
 
 _INDEX_SYMBOLS = {"KOSPI", "KOSDAQ", "KRX", "KRX100", "KOSPI200", "KOSDAQ150"}
+# 우선주("삼성전자우", "현대차2우B")·SPAC("OO스팩")는 종목코드만으로 구분이 안 되고
+# 국내 표준 데이터소스(FDR/yfinance)에 관리종목·거래정지 플래그가 없어, 종목명 접미사로
+# 방어적으로 걸러낸다. 큐레이션된 100여 종목 유니버스 기준이며 완전한 필터는 아니다.
+_PREFERRED_SHARE_NAME_RE = re.compile(r"\d?우[A-Z]?$")
+
+
+def _is_preferred_or_spac_name(name: str) -> bool:
+    name = (name or "").strip()
+    if not name:
+        return False
+    if "스팩" in name:
+        return True
+    return bool(_PREFERRED_SHARE_NAME_RE.search(name))
+
 
 def _load_ohlcv_all_quiet() -> dict[str, list[dict]]:
+    name_map = _load_name_map()
     result: dict[str, list[dict]] = {}
     for path in sorted(OHLCV_DIR.glob("kr_*_daily.csv")):
         m = re.match(r"kr_(\w+)_daily\.csv", path.name)
@@ -981,6 +1006,8 @@ def _load_ohlcv_all_quiet() -> dict[str, list[dict]]:
         sym = m.group(1)
         # 지수/벤치마크 파일 제외 (KOSPI, KOSDAQ 등 숫자가 아닌 심볼)
         if not sym.isdigit() or len(sym) != 6 or sym in _INDEX_SYMBOLS:
+            continue
+        if _is_preferred_or_spac_name(name_map.get(sym, "")):
             continue
         rows = _read_csv(path)
         rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))

@@ -215,6 +215,50 @@ def _nonempty_recommendation_count() -> int:
 
 
 def _load_us_market_regime() -> dict[str, Any]:
+    votes: list[dict[str, Any]] = []
+    for symbol in ("SPY", "QQQ", "DIA"):
+        index_path = ROOT / "data" / "market" / "ohlcv" / f"us_{symbol}_daily.csv"
+        index_rows = _read_csv(index_path)
+        index_rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
+        index_closes = [_num(r.get("close") or r.get("Close")) for r in index_rows]
+        index_closes = [c for c in index_closes if c is not None]
+        if len(index_closes) < 20:
+            continue
+        latest = index_closes[-1]
+        ma20 = sum(index_closes[-20:]) / 20
+        dist = (latest - ma20) / ma20 * 100
+        mom5 = (index_closes[-1] - index_closes[-6]) / index_closes[-6] * 100 if len(index_closes) >= 6 and index_closes[-6] else 0.0
+        if dist > 0 and mom5 > 0:
+            regime = "BULL"
+        elif dist < -2.0 or mom5 < -2.0:
+            regime = "BEAR"
+        else:
+            regime = "SIDE"
+        votes.append({
+            "symbol": symbol,
+            "regime": regime,
+            "dist": dist,
+            "mom5": mom5,
+            "asOf": str(index_rows[-1].get("date") or index_rows[-1].get("Date") or "")[:10],
+        })
+    if votes:
+        bull_n = sum(1 for item in votes if item["regime"] == "BULL")
+        bear_n = sum(1 for item in votes if item["regime"] == "BEAR")
+        avg_dist = sum(float(item["dist"]) for item in votes) / len(votes)
+        avg_mom5 = sum(float(item["mom5"]) for item in votes) / len(votes)
+        as_of = max(str(item["asOf"]) for item in votes)
+        if bull_n >= 2:
+            return {"regime": "BULL", "label": "BULL", "scoreAdjust": +5.0,
+                    "description": f"US SPY/QQQ/DIA MA20 {avg_dist:+.1f}%, 5d {avg_mom5:+.1f}%",
+                    "asOf": as_of, "source": "us index OHLCV"}
+        if bear_n >= 2:
+            return {"regime": "BEAR", "label": "BEAR", "scoreAdjust": -8.0,
+                    "description": f"US SPY/QQQ/DIA MA20 {avg_dist:+.1f}%, 5d {avg_mom5:+.1f}%",
+                    "asOf": as_of, "source": "us index OHLCV"}
+        return {"regime": "SIDE", "label": "SIDE", "scoreAdjust": 0.0,
+                "description": f"US SPY/QQQ/DIA MA20 {avg_dist:+.1f}%, 5d {avg_mom5:+.1f}%",
+                "asOf": as_of, "source": "us index OHLCV"}
+
     path = ROOT / "data" / "market" / "benchmark_daily.csv"
     rows = [r for r in _read_csv(path) if str(r.get("benchmark", "")).upper() in ("NASDAQ", "SP500", "SPY")]
     if not rows:
