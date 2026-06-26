@@ -8,9 +8,27 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Any
+
+# ── 동시성 보호 ───────────────────────────────────────────────────────
+# save_holdings는 해당 user의 보유종목을 DELETE 후 INSERT로 통째로 교체한다.
+# 같은 uid에 대해 KIS 동기화와 일반 CRUD가 동시에 들어오면 한쪽이 사라질 수 있어
+# user_id 단위로 직렬화한다 (payload가 kr/us를 섞어 보낼 수 있어 market은 키에서 제외).
+_HOLDINGS_LOCKS: dict[str, threading.Lock] = {}
+_HOLDINGS_LOCKS_GUARD = threading.Lock()
+
+
+def holdings_lock(user_id: str) -> threading.Lock:
+    with _HOLDINGS_LOCKS_GUARD:
+        lock = _HOLDINGS_LOCKS.get(user_id)
+        if lock is None:
+            lock = threading.Lock()
+            _HOLDINGS_LOCKS[user_id] = lock
+        return lock
+
 
 # ── 백엔드 감지 ───────────────────────────────────────────────────────
 

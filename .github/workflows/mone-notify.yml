@@ -156,3 +156,15 @@ jobs:
           git add reports/notification_alert_state.json 2>/dev/null || true
           git diff --cached --quiet || git commit -m "chore: update notification alert state [skip ci]"
           git push || true
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 — 알림 스킵"
+            exit 0
+          fi
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE Entry Proximity Notifier 실패\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\n진입 근접 알림이 전송되지 않았을 수 있습니다.\"}" \
+            || echo "텔레그램 알림 전송 실패 (무시)"

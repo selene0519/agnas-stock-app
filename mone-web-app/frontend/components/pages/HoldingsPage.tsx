@@ -71,6 +71,19 @@ function getMoneUserHeader(): Record<string, string> {
 
 const LS_HOLDINGS_KEY = "mone:personal_holdings_v2";
 
+function holdingStatusLabel(status: any): string {
+  const s = String(status || "").toUpperCase();
+  if (s === "LOCAL_ONLY") return "로컬 임시";
+  if (s === "DATA_PENDING") return "데이터 수집 대기";
+  if (s === "STALE") return "가격 갱신 필요";
+  if (s === "NO_PRICE" || s === "PRICE_PENDING") return "현재가 없음";
+  if (s === "PREVIOUS_CLOSE_BASIS") return "최신 마감 기준";
+  if (s === "INTRADAY_OBSERVE") return "장중 관찰가";
+  if (s === "PARTIAL") return "부분 데이터";
+  if (s === "NORMAL" || s === "OK") return "정상";
+  return String(status || "미확인");
+}
+
 function saveHoldingsToLocalStorage(items: any[]) {
   try {
     localStorage.setItem(LS_HOLDINGS_KEY, JSON.stringify({ items, savedAt: new Date().toISOString() }));
@@ -656,6 +669,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [exitSignals, setExitSignals] = useState<Record<string, any>>({});
   const [kellySizes, setKellySizes] = useState<any>(null);
   const [riskBudget, setRiskBudget] = useState<any>(null);
+  const [soldHistory, setSoldHistory] = useState<any>(null);
   const [brokerConnections, setBrokerConnections] = useState<BrokerStatus[]>([]);
   const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
   const isPersonalHoldingsSource = String(data.authority || data.routeVersion || "").toLowerCase().includes("personal");
@@ -737,6 +751,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       getJson(`/api/portfolio/risk-budget?market=${market}`).then((res) => {
         if (res?.status) setRiskBudget(res);
       }).catch(() => setRiskBudget(null));
+      getJson(`/api/holdings/sold-history?market=${market === "all" ? "all" : market}`).then((res) => {
+        if (res?.status === "OK") setSoldHistory(res);
+      }).catch(() => setSoldHistory(null));
       if (market === "all") {
         setSectorData(null);
         setBenchmarkData(null);
@@ -1222,6 +1239,18 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       )}
 
+      {soldHistory && soldHistory.count > 0 && (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400">매도 종목 실현손익 합계 (이 기능 도입 이후 매도분만)</span>
+            <span className={`font-mono font-bold ${Number(soldHistory.totalRealizedPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              {Number(soldHistory.totalRealizedPnl || 0) >= 0 ? "+" : ""}{Number(soldHistory.totalRealizedPnl || 0).toLocaleString("ko-KR")}
+            </span>
+          </div>
+          <div className="mt-1 text-[11px] text-slate-600">위 평가손익은 현재 보유종목 기준입니다 — {soldHistory.note}</div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs text-slate-400">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-slate-200">보유종목 데이터</span>
@@ -1292,11 +1321,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           const stopGapPct = holding.downsideGapPct != null ? Number(holding.downsideGapPct) : holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
           const targetGapPct = holding.targetGapPct != null ? Number(holding.targetGapPct) : null;
           const holdingBroker = brokerLabel(holding.broker || holding.sourceBroker || holding.sourceType || holding.priceSource);
-          const weightText = holding.weightText || holding.weightPctText || holding.portfolioWeightText || (holding.weightPct != null ? `${Number(holding.weightPct).toFixed(1)}%` : "-");
-          const pnlText = `${holding.pnlText || "-"}${holding.pnlPctText && holding.pnlPctText !== "-" ? ` / ${holding.pnlPctText}` : ""}`;
+          const weightText = holding.weightText || holding.weightPctText || holding.portfolioWeightText || (holding.weightPct != null ? `${Number(holding.weightPct).toFixed(1)}%` : "계산 대기");
+          const pnlText = `${holding.pnlText || "계산 대기"}${holding.pnlPctText && holding.pnlPctText !== "-" ? ` / ${holding.pnlPctText}` : ""}`;
           const holdingMarket = cleanHoldingMarket(holding.market);
-          const downsideText = formatHoldingMoney(downsideValue, holdingMarket);
-          const upsideText = formatHoldingMoney(upsideValue, holdingMarket);
+          const downsideText = stopMissing ? `${downsideLabel} 없음` : formatHoldingMoney(downsideValue, holdingMarket);
+          const upsideText = targetMissing ? `${upsideLabel} 없음` : formatHoldingMoney(upsideValue, holdingMarket);
           return (
             <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
               <div className="flex items-start justify-between gap-3">
@@ -1311,6 +1340,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                   <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
                     {(holding.currentPriceSource || holding.priceSource || holding.quoteSource) && <span>source: {holding.currentPriceSource || holding.priceSource || holding.quoteSource}</span>}
+                    {(holding.priceStatusLabel || holding.priceDataStatus || holding.dataStatus) && <span>basis: {holding.priceStatusLabel || holdingStatusLabel(holding.priceDataStatus || holding.dataStatus)}</span>}
                     {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
                       const s = String(holding.priceDataStatus || holding.dataStatus || "");
                       if (s === "LOCAL_ONLY") return "로컬 임시";
@@ -1535,8 +1565,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               const holdingPurpose = String(holding.holdingPurpose || holding.strategyType || "");
               const holdingBroker = brokerLabel(holding.broker || holding.sourceBroker || holding.sourceType || holding.priceSource);
               const holdingMarket = cleanHoldingMarket(holding.market);
-              const weightText = holding.weightText || holding.weightPctText || holding.portfolioWeightText || (holding.weightPct != null ? `${Number(holding.weightPct).toFixed(1)}%` : "-");
-              const pnlText = `${holding.pnlText || "-"}${holding.pnlPctText && holding.pnlPctText !== "-" ? ` / ${holding.pnlPctText}` : ""}`;
+              const weightText = holding.weightText || holding.weightPctText || holding.portfolioWeightText || (holding.weightPct != null ? `${Number(holding.weightPct).toFixed(1)}%` : "계산 대기");
+              const pnlText = `${holding.pnlText || "계산 대기"}${holding.pnlPctText && holding.pnlPctText !== "-" ? ` / ${holding.pnlPctText}` : ""}`;
               const costBasis = Number(holding.avgPrice || 0) * Number(holding.quantity || 0);
               const currentValue = Number(holding.valuation || holding.marketValue || 0);
               const accumulationGapPct = costBasis > 0 ? ((currentValue - costBasis) / costBasis) * 100 : 0;
@@ -1555,6 +1585,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                       <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                       <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
                         {(holding.currentPriceSource || holding.priceSource || holding.quoteSource) && <span>source: {holding.currentPriceSource || holding.priceSource || holding.quoteSource}</span>}
+                        {(holding.priceStatusLabel || holding.priceDataStatus || holding.dataStatus) && <span>basis: {holding.priceStatusLabel || holdingStatusLabel(holding.priceDataStatus || holding.dataStatus)}</span>}
                         {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
                           const s = String(holding.priceDataStatus || holding.dataStatus || "");
                           if (s === "LOCAL_ONLY") return "로컬 임시";

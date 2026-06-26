@@ -47,6 +47,8 @@ jobs:
       MONE_ADMIN_SECRET: ${{ secrets.MONE_ADMIN_SECRET }}
       DISPATCH_MARKET: ${{ github.event.inputs.market || 'all' }}
       DISPATCH_SESSION: ${{ github.event.inputs.journalSession || 'AFTER_CLOSE_TRADE' }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
       - name: Capture AI journal session
         run: |
@@ -85,3 +87,15 @@ jobs:
             -o /tmp/ai_journal_result.json
 
           cat /tmp/ai_journal_result.json
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 — 알림 스킵"
+            exit 0
+          fi
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE AI Journal Capture 실패\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\nAI 매매일지 캡처가 기록되지 않았을 수 있습니다.\"}" \
+            || echo "텔레그램 알림 전송 실패 (무시)"
