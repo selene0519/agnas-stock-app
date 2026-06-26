@@ -21,16 +21,36 @@ TRENDLINE_VERIFIED_MIN_SAMPLES = 3
 
 
 def _load_benchmark_closes(market: str) -> list[tuple[str, float]]:
-    """Load (date, close) pairs from benchmark_daily.csv for the given market."""
+    """Load (date, close) pairs for the market benchmark.
+
+    Prefer the same OHLCV index files used by the live home gate so historical
+    checks do not drift behind when benchmark_daily.csv is stale.
+    """
     import csv
-    key = "KOSPI" if market == "kr" else "NASDAQ"
-    path = data.REPO_ROOT / "data" / "market" / "benchmark_daily.csv"
+    symbol = "KOSPI" if market == "kr" else "SPY"
+    ohlcv_path = data.REPO_ROOT / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv"
     rows: list[tuple[str, float]] = []
+    if ohlcv_path.is_file():
+        with open(ohlcv_path, newline="", encoding="utf-8-sig") as f:
+            for r in csv.DictReader(f):
+                try:
+                    date = str(r.get("date") or r.get("Date") or "").strip()[:10]
+                    close = float(str(r.get("close") or r.get("Close") or 0).replace(",", ""))
+                    if date and close > 0:
+                        rows.append((date, close))
+                except Exception:
+                    pass
+        rows.sort(key=lambda x: x[0])
+        if rows:
+            return rows
+
+    keys = {"KOSPI"} if market == "kr" else {"SPY", "NASDAQ", "SP500", "S&P500", "S&P 500"}
+    path = data.REPO_ROOT / "data" / "market" / "benchmark_daily.csv"
     if not path.is_file():
         return rows
     with open(path, newline="", encoding="utf-8-sig") as f:
         for r in csv.DictReader(f):
-            if str(r.get("benchmark", "")).upper() != key:
+            if str(r.get("benchmark", "")).upper() not in keys:
                 continue
             try:
                 rows.append((str(r["date"]).strip(), float(str(r.get("close") or 0).replace(",", ""))))

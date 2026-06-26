@@ -67,6 +67,14 @@ BENCHMARK_SOURCES = {
     "NASDAQ": ["^IXIC", "QQQ", "NASDAQ", "나스닥"],
 }
 
+INDEX_OHLCV_BENCHMARK_FILES = {
+    "KOSPI": MARKET_DIR / "ohlcv" / "kr_KOSPI_daily.csv",
+    "KOSDAQ": MARKET_DIR / "ohlcv" / "kr_KOSDAQ_daily.csv",
+    "SPY": MARKET_DIR / "ohlcv" / "us_SPY_daily.csv",
+    "QQQ": MARKET_DIR / "ohlcv" / "us_QQQ_daily.csv",
+    "SP500": MARKET_DIR / "ohlcv" / "us_SP500_daily.csv",
+}
+
 
 def _now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -361,13 +369,32 @@ def _extract_benchmark_rows_from_local_files(base_dir: str | Path = ".") -> pd.D
     It never fabricates benchmark prices.
     """
     base = Path(base_dir)
+    rows: list[dict[str, Any]] = []
+    for benchmark, rel_path in INDEX_OHLCV_BENCHMARK_FILES.items():
+        path = base / rel_path
+        df = _safe_read_csv(path)
+        if df.empty:
+            continue
+        for raw in df.to_dict(orient="records"):
+            date = _date_from_row(raw)
+            close = _safe_float(_pick(raw, ["close", "Close", "adj_close", "Adj Close"], 0), 0.0)
+            if not date or close <= 0:
+                continue
+            rows.append({
+                "date": date,
+                "benchmark": benchmark,
+                "close": close,
+                "daily_return": "",
+                "updated_at": _now(),
+                "source": _safe_str(_pick(raw, ["source"], "")) or str(rel_path),
+            })
+
     source_files = [
         base / DECISION_DIR / "actual_results.csv",
         base / "predictions.csv",
         base / REPORT_DIR / "market_regime_summary.csv",
         base / REPORT_DIR / "benchmark_daily.csv",
     ]
-    rows: list[dict[str, Any]] = []
     for path in source_files:
         df = _safe_read_csv(path)
         if df.empty:
@@ -468,7 +495,7 @@ def save_benchmark_daily_history(base_dir: str | Path = ".", lookback_days: int 
     existing = _maybe_backfill_benchmark_from_existing(target)
     local_rows = _extract_benchmark_rows_from_local_files(base)
     yf_rows = _fetch_benchmark_rows_yfinance(lookback_days=lookback_days)
-    frames = [df for df in [existing, local_rows, yf_rows] if df is not None and not df.empty]
+    frames = [df for df in [existing, yf_rows, local_rows] if df is not None and not df.empty]
     out = pd.concat(frames, ignore_index=True, sort=False).fillna("") if frames else pd.DataFrame(columns=_benchmark_schema())
     out = _ensure_benchmark_returns(out)
     target.parent.mkdir(parents=True, exist_ok=True)

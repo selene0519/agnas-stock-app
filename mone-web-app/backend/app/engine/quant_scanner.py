@@ -598,7 +598,7 @@ def _regime_from_closes(closes: list[float], label_prefix: str) -> tuple[str, st
 def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
     """
     마켓 레짐 판단.
-    KR: benchmark_daily.csv의 KOSPI 기준
+    KR: KOSPI OHLCV 기준 (benchmark_daily.csv fallback)
     US: SPY + QQQ + DIA OHLCV 파일 3지수 다수결 (2/3 이상 일치)
 
     Returns:
@@ -660,16 +660,18 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
             "description": desc,
         }
 
-    # ── 국장: benchmark_daily.csv KOSPI ──────────────────────────────────────
+    # ── 국장: KOSPI OHLCV 우선 ──────────────────────────────────────
     benchmark_key = "KOSPI"
-    path = repo_root / "data" / "market" / "benchmark_daily.csv"
-    rows: list[dict[str, Any]] = []
-    if path.is_file():
-        rows = _read_csv(path)
+    filtered = load_ohlcv(repo_root, "kr", benchmark_key)
+    source = "data/market/ohlcv/kr_KOSPI_daily.csv"
+    if not filtered:
+        path = repo_root / "data" / "market" / "benchmark_daily.csv"
+        rows = _read_csv(path) if path.is_file() else []
+        filtered = [r for r in rows if str(r.get("benchmark", "")).upper() == benchmark_key]
+        source = "data/market/benchmark_daily.csv"
 
-    filtered = [r for r in rows if str(r.get("benchmark", "")).upper() == benchmark_key]
-    filtered.sort(key=lambda r: str(r.get("date", "")))
-    closes = [_num(r.get("close")) for r in filtered]
+    filtered.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
+    closes = [_num(r.get("close") or r.get("Close")) for r in filtered]
     closes = [c for c in closes if c is not None]
 
     regime, label, adjust, dist, mom5, ma20 = _regime_from_closes(closes, benchmark_key)
@@ -677,6 +679,7 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
         return default
 
     latest = closes[-1]
+    latest_date = str(filtered[-1].get("date") or filtered[-1].get("Date") or "")
     desc = f"KOSPI MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%"
 
     return {
@@ -684,6 +687,7 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
         "kospiLatest": round(latest, 2), "kospiMa20": round(ma20, 2),
         "distanceMa20Pct": round(dist, 2), "distanceToMa20Pct": round(dist, 2),
         "momentum5d": round(mom5, 2), "scoreAdjust": adjust, "description": desc,
+        "benchmark": benchmark_key, "asOf": latest_date[:10], "source": source,
     }
 
 

@@ -517,6 +517,43 @@ def _pct_text(value: Any) -> str:
     return f"{n:.1f}%" if n > 0 else "-"
 
 
+def _signed_pct_text(value: Any) -> str:
+    n = _num(value)
+    if not n:
+        return "0.00%"
+    return f"{'+' if n > 0 else ''}{n:.2f}%"
+
+
+def _index_ohlcv_quote(repo: Path, market: str, symbol: str) -> dict[str, Any]:
+    symbol_key = str(symbol or "").upper().strip()
+    if market == "kr" and symbol_key not in {"KOSPI", "KOSDAQ"}:
+        return {}
+    if market == "us" and symbol_key not in {"SPY", "QQQ", "SP500"}:
+        return {}
+    path = repo / "data" / "market" / "ohlcv" / f"{market}_{symbol_key}_daily.csv"
+    rows = _read_csv(path, 2000)
+    rows = [row for row in rows if _num(_text(row, ["close", "Close"], "")) > 0]
+    if not rows:
+        return {}
+    rows.sort(key=lambda row: str(row.get("date") or row.get("Date") or ""))
+    latest = rows[-1]
+    prev = rows[-2] if len(rows) >= 2 else {}
+    current = _num(_text(latest, ["close", "Close"], ""))
+    prev_close = _num(_text(prev, ["close", "Close"], ""))
+    change_pct = ((current - prev_close) / prev_close * 100) if current > 0 and prev_close > 0 else None
+    return {
+        "currentPrice": current,
+        "currentPriceText": _price_text(current, market),
+        "prevClose": prev_close if prev_close > 0 else None,
+        "prevCloseText": _price_text(prev_close, market) if prev_close > 0 else "",
+        "changePct": change_pct,
+        "changePctText": _signed_pct_text(change_pct) if change_pct is not None else "",
+        "priceSource": "index OHLCV",
+        "priceTime": str(latest.get("date") or latest.get("Date") or ""),
+        "dataStatus": "NORMAL",
+    }
+
+
 def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return max(low, min(high, value))
 
@@ -1063,7 +1100,7 @@ def _symbols_payload_cached(market: str, q: str, watch_only: bool, limit: int) -
 
         data_status = "NORMAL" if current > 0 else "PRICE_PENDING"
 
-        all_items.append({
+        item = {
             "id": key,
             "symbol": sym,
             "name": name,
@@ -1080,7 +1117,11 @@ def _symbols_payload_cached(market: str, q: str, watch_only: bool, limit: int) -
             "priceSource": price_source,
             "priceTime": price_time,
             "dataStatus": data_status,
-        })
+        }
+        index_quote = _index_ohlcv_quote(_repo_root(), item_market, sym)
+        if index_quote:
+            item.update(index_quote)
+        all_items.append(item)
 
     all_items.sort(key=_score)
     items = all_items[:limit]

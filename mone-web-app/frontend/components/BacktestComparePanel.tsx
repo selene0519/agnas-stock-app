@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { mone, type Market, type Mode, type Horizon } from "@/lib/api";
 import { BarChart2, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 
-const BACKTEST_CACHE_KEY = "mone:backtest-compare-cache";
+const BACKTEST_CACHE_KEY = "mone:backtest-compare-cache:v2";
 const BACKTEST_CACHE_TTL = 30 * 60 * 1000;
 
 function readBacktestCache(market: Market): Record<string, any> | null {
@@ -74,6 +74,32 @@ function ReturnLabel({ pct }: { pct: number }) {
   const color = pct > 0 ? "text-emerald-400" : "text-red-400";
   const sign = pct > 0 ? "+" : "";
   return <span className={`font-mono text-xs font-bold ${color}`}>{sign}{pct.toFixed(1)}%</span>;
+}
+
+function resultFromJournalPerformance(
+  mode: Mode,
+  horizon: Horizon,
+  journalRows: any[]
+): StrategyResult | null {
+  const row = journalRows.find(
+    (item) => item?.market === "all" && item?.mode === mode && item?.horizon === horizon
+  );
+  const count = Number(row?.count || 0);
+  if (!row || count <= 0) return null;
+  const winRateRaw = Number(row.winRate || 0);
+  const winRate = winRateRaw <= 1 ? winRateRaw * 100 : winRateRaw;
+  return {
+    mode,
+    horizon,
+    status: "OK",
+    total_trades: count,
+    executed_trades: count,
+    win_count: Number(row.wins || 0),
+    loss_count: Math.max(0, count - Number(row.wins || 0)),
+    win_rate: Number(winRate.toFixed(1)),
+    profit_loss_ratio: 0,
+    total_return_pct: Number(row.avgPnlPct || 0),
+  };
 }
 
 function StrategyCell({ result, loading }: { result: StrategyResult | null; loading: boolean }) {
@@ -160,12 +186,20 @@ export default function BacktestComparePanel() {
     }
 
     try {
-      const dashboard: any = await mone.validationDashboard({ market });
+      const [dashboard, journalPerf]: any[] = await Promise.all([
+        mone.validationDashboard({ market }),
+        mone.journalPerformance({ market }),
+      ]);
       const stats = dashboard?.stats || {};
+      const dashboardCompleted = Number(dashboard?.summary?.totalCompleted || 0);
+      const journalRows = Array.isArray(journalPerf?.strategyRows) ? journalPerf.strategyRows : [];
       const entries = combos.map(({ mode, horizon }) => {
         const raw = stats[`${mode}_${horizon}`] || {};
         const completed = Number(raw.completed || 0);
         const pending = Number(raw.pending ?? raw.pendingCount ?? 0);
+        const journalResult =
+          dashboardCompleted <= 0 ? resultFromJournalPerformance(mode, horizon, journalRows) : null;
+        if (journalResult) return [`${mode}:${horizon}`, journalResult];
         const wins = Number(raw.wins || 0);
         const winRate = Number(raw.winRate || 0);
         const avgReturn = Number(raw.avgReturn || 0);
