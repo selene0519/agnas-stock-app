@@ -517,6 +517,43 @@ def _pct_text(value: Any) -> str:
     return f"{n:.1f}%" if n > 0 else "-"
 
 
+def _signed_pct_text(value: Any) -> str:
+    n = _num(value)
+    if not n:
+        return "0.00%"
+    return f"{'+' if n > 0 else ''}{n:.2f}%"
+
+
+def _index_ohlcv_quote(repo: Path, market: str, symbol: str) -> dict[str, Any]:
+    symbol_key = str(symbol or "").upper().strip()
+    if market == "kr" and symbol_key not in {"KOSPI", "KOSDAQ"}:
+        return {}
+    if market == "us" and symbol_key not in {"SPY", "QQQ", "SP500"}:
+        return {}
+    path = repo / "data" / "market" / "ohlcv" / f"{market}_{symbol_key}_daily.csv"
+    rows = _read_csv(path, 2000)
+    rows = [row for row in rows if _num(_text(row, ["close", "Close"], "")) > 0]
+    if not rows:
+        return {}
+    rows.sort(key=lambda row: str(row.get("date") or row.get("Date") or ""))
+    latest = rows[-1]
+    prev = rows[-2] if len(rows) >= 2 else {}
+    current = _num(_text(latest, ["close", "Close"], ""))
+    prev_close = _num(_text(prev, ["close", "Close"], ""))
+    change_pct = ((current - prev_close) / prev_close * 100) if current > 0 and prev_close > 0 else None
+    return {
+        "currentPrice": current,
+        "currentPriceText": _price_text(current, market),
+        "prevClose": prev_close if prev_close > 0 else None,
+        "prevCloseText": _price_text(prev_close, market) if prev_close > 0 else "",
+        "changePct": change_pct,
+        "changePctText": _signed_pct_text(change_pct) if change_pct is not None else "",
+        "priceSource": "index OHLCV",
+        "priceTime": str(latest.get("date") or latest.get("Date") or ""),
+        "dataStatus": "NORMAL",
+    }
+
+
 def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return max(low, min(high, value))
 
@@ -1063,7 +1100,7 @@ def _symbols_payload_cached(market: str, q: str, watch_only: bool, limit: int) -
 
         data_status = "NORMAL" if current > 0 else "PRICE_PENDING"
 
-        all_items.append({
+        item = {
             "id": key,
             "symbol": sym,
             "name": name,
@@ -1080,7 +1117,11 @@ def _symbols_payload_cached(market: str, q: str, watch_only: bool, limit: int) -
             "priceSource": price_source,
             "priceTime": price_time,
             "dataStatus": data_status,
-        })
+        }
+        index_quote = _index_ohlcv_quote(_repo_root(), item_market, sym)
+        if index_quote:
+            item.update(index_quote)
+        all_items.append(item)
 
     all_items.sort(key=_score)
     items = all_items[:limit]
@@ -3526,11 +3567,13 @@ def _sector_exposure_payload(market: str) -> dict[str, Any]:
 def _is_executed_row(r: dict[str, Any]) -> bool:
     """두 가지 스키마(undated 메인파일 / dated 날짜파일)에서 체결 여부 판정."""
     # 날짜별 파일: result in {target_hit, stop_hit, close_exit}
-    result = str(r.get("result") or r.get("outcome_result") or "").strip()
-    if result in {"target_hit", "stop_hit", "close_exit"}:
+    result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
+    if result in {"TARGET", "target_hit", "TARGET_HIT", "WIN", "STOP", "STOP_FIRST", "stop_hit", "STOP_HIT", "LOSS", "HOLDING_EVAL", "close_exit", "TIME_EXIT", "time_exit"}:
         return True
     # 날짜별 파일: is_executed / execution_status
     if str(r.get("is_executed") or "").lower() in {"true", "1", "yes"}:
+        return True
+    if _num(_text(r, ["returnPct", "realized_return_pct", "return_pct", "pnlPct"])) is not None:
         return True
     # 메인 파일: executionStatus
     exec_s = str(r.get("executionStatus") or "").strip()
@@ -3539,7 +3582,7 @@ def _is_executed_row(r: dict[str, Any]) -> bool:
 
 def _is_win_row(r: dict[str, Any]) -> bool:
     result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
-    if result in {"target_hit", "TARGET_HIT", "WIN", "목표달성", "성공", "TIME_EXIT_PROFIT"}:
+    if result in {"TARGET", "target_hit", "TARGET_HIT", "WIN", "목표달성", "성공", "TIME_EXIT_PROFIT"}:
         return True
     # 기간 만료(close_exit)는 실현 수익이 양수일 때만 승으로 인정
     if result in {"close_exit", "TIME_EXIT", "time_exit"}:
@@ -3550,7 +3593,30 @@ def _is_win_row(r: dict[str, Any]) -> bool:
 
 def _is_loss_row(r: dict[str, Any]) -> bool:
     result = str(r.get("result") or r.get("outcome_result") or r.get("exitStatus") or "").strip()
-    return result in {"stop_hit", "STOP_HIT", "LOSS", "손절", "실패"}
+    if result in {"STOP", "STOP_FIRST", "stop_hit", "STOP_HIT", "LOSS", "손절", "실패"}:
+        return True
+    if result in {"HOLDING_EVAL", "close_exit", "TIME_EXIT", "time_exit"}:
+        pnl = _num(_text(r, ["returnPct", "realized_return_pct", "return_pct", "pnlPct"]))
+        return pnl is not None and pnl < 0
+    return False
+
+
+def _virtual_validation_rows(repo: Path, market: str, mode: str, horizon: str) -> list[dict[str, Any]]:
+    rows = _read_csv(repo / "reports" / "virtual_validation_results.csv", 200000)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if str(row.get("market") or "").lower() != market:
+            continue
+        if str(row.get("mode") or "").lower() != mode:
+            continue
+        if str(row.get("horizon") or "").lower() != horizon:
+            continue
+        result = str(row.get("result") or "").strip().upper()
+        return_pct = _num(row.get("returnPct"))
+        if result in {"", "PENDING", "DATA_PENDING", "NOT_EXECUTED"} and return_pct is None:
+            continue
+        out.append(row)
+    return out
 
 
 def _validation_dashboard_payload(market: str) -> dict[str, Any]:
@@ -3587,6 +3653,7 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
             # 메인 파일 (날짜별에 없는 항목 보완)
             main_path = reports_dir / f"{base_name}.csv"
             main_rows = _read_csv(main_path, 100000)
+            all_rows.extend(_virtual_validation_rows(repo, market, m, h))
 
             completed = [r for r in all_rows if _is_executed_row(r)]
             win       = [r for r in completed if _is_win_row(r)]

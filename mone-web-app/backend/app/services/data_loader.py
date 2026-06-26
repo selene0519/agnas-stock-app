@@ -1259,9 +1259,28 @@ def _latest_actual_close(symbol: str, market: str) -> dict[str, Any]:
     return dict(_latest_actual_close_map(market).get(normalize_symbol(symbol, market), {}))
 
 
+_MAX_STALE_DAYS = 4  # 연휴 등 영업일 공백 허용치. 이보다 오래되면 파이프라인 자체가 멈춘 것으로 간주
+
+
+def _is_data_too_old(date_value: Any) -> bool:
+    """source/runner 날짜가 서로 일치해도, 실제 달력 기준으로 너무 오래됐으면 STALE.
+    GitHub Actions가 통째로 멈추면 source_date와 runner_date가 같은 옛 값으로
+    고정되어 문자열 비교만으로는 정상처럼 보이는 문제를 막기 위한 절대 기준 체크."""
+    key = _date_key(date_value)
+    if not key or len(key) < 8:
+        return False
+    try:
+        candidate = datetime.strptime(key[:8], "%Y%m%d")
+    except Exception:
+        return False
+    return (_kst_now() - candidate).days > _MAX_STALE_DAYS
+
+
 def _price_status(source_date: str, price_date: str, runner_date: str, is_fallback: bool) -> str:
     if is_fallback:
         return "FALLBACK"
+    if _is_data_too_old(source_date) or _is_data_too_old(runner_date):
+        return "STALE"
     if runner_date and source_date and _normalize_date_text(source_date) != _normalize_date_text(runner_date):
         return "STALE"
     if not price_date:
@@ -2247,6 +2266,8 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
         price_data_status = _price_status(source_date, price_source_date, runner_date, is_fallback)
     if current_price is None:
         price_data_status = "NO_PRICE"
+    elif price_data_status not in {"STALE", "FALLBACK"} and _is_data_too_old(price_source_date or source_date):
+        price_data_status = "STALE"
     if source_date and price_source_date and _date_is_older(price_source_date, source_date):
         # A row can be generated today while its valid price basis is the most
         # recent OHLCV close from the previous/closed session.  v3 treated that

@@ -30,6 +30,7 @@ import {
   dataTrustBadgeClass,
   dataTrustLabel,
   dataTrustNotice,
+  dataTrustState,
   displayName,
   firstText,
   horizonLabel,
@@ -623,6 +624,8 @@ function TodayEntryCard({
   onTradePaper,
   earningsMap,
   tone = "entry",
+  marketRegime,
+  dataHealth,
 }: {
   item: any;
   rank: number;
@@ -631,6 +634,8 @@ function TodayEntryCard({
   onTradePaper?: (item: any) => void;
   earningsMap?: Record<string, number>;
   tone?: "entry" | "watch" | "risk";
+  marketRegime?: any;
+  dataHealth?: any;
 }) {
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
@@ -653,9 +658,14 @@ function TodayEntryCard({
   const evPct = Math.max(0, Math.min(100, Math.abs(ev) * 5));
   const rrPct = Math.max(0, Math.min(100, rr * 25));
 
-  // 앙상블/실증 뱃지 — 샘플 수 5개 이상일 때만 표시
+  // 앙상블/실증 뱃지 — 항상 표시하되, 표본이 부족하면 경고 톤으로 전환 (숨기면 정상 추천처럼 오인됨)
   const calibCount = Number(item.calibrationCount ?? 0);
-  const showCalibBadges = calibCount >= 5;
+  const wrSampleCount = Number(item.winRateSampleCount ?? 0);
+  const lowSample = calibCount < 5 || (wrSampleCount > 0 && wrSampleCount < 30);
+  const showCalibBadges = true;
+  const calibBadgeClass = lowSample
+    ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+    : "border-slate-600 bg-slate-700/60 text-slate-300";
   const ensembleScore = item.ensembleScore != null ? Number(item.ensembleScore) : null;
   const calibratedWinRate = item.calibratedWinRate != null ? Number(item.calibratedWinRate) : null;
   const toneStyle = {
@@ -712,12 +722,12 @@ function TodayEntryCard({
               name={String(item.name || "")}
             />
             {showCalibBadges && calibratedWinRate != null && (
-              <span className="rounded-full border border-slate-600 bg-slate-700/60 px-2 py-0.5 text-[10px] font-medium text-slate-300 [font-variant-numeric:tabular-nums]">
-                실증 {calibratedWinRate.toFixed(0)}%
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium [font-variant-numeric:tabular-nums] ${calibBadgeClass}`}>
+                실증 {calibratedWinRate.toFixed(0)}%{lowSample ? ` · 표본부족(n=${calibCount || wrSampleCount})` : ""}
               </span>
             )}
             {showCalibBadges && ensembleScore != null && (
-              <span className="rounded-full border border-slate-600 bg-slate-700/60 px-2 py-0.5 text-[10px] font-medium text-slate-300 [font-variant-numeric:tabular-nums]">
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium [font-variant-numeric:tabular-nums] ${calibBadgeClass}`}>
                 앙상블 {ensembleScore.toFixed(0)}
               </span>
             )}
@@ -736,7 +746,7 @@ function TodayEntryCard({
 
       <div className="mone-home-inset mt-3 flex items-center justify-between rounded-[10px] border px-3 py-2">
         <div>
-          <div className="text-[10px] font-semibold text-slate-500">MONE 판단</div>
+          <div className="text-[10px] font-semibold text-slate-500">MONE 참고</div>
           <div className={`text-[13px] font-black ${toneStyle.decision}`}>{decision}</div>
         </div>
         <div className="text-right">
@@ -773,10 +783,11 @@ function TodayEntryCard({
       </div>
 
       <div className="mone-home-inset mt-3 rounded-[10px] border px-3 py-2">
-        <div className="text-[11px] font-semibold text-slate-300">MONE 판단 이유</div>
+        <div className="text-[11px] font-semibold text-slate-300">MONE 참고 의견</div>
         <ol className="mt-1 space-y-0.5 text-[11px] leading-5 text-slate-400">
           {reasons.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)}
         </ol>
+        <div className="mt-1.5 text-[10px] text-slate-600">참고용 신호입니다 — 최종 매수·매도 판단은 본인 책임입니다.</div>
       </div>
 
       {dataTrustNotice(item) && (
@@ -797,18 +808,32 @@ function TodayEntryCard({
         >
           분석 보기 <ArrowRight size={14} />
         </button>
-        {onTradePaper && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onTradePaper(item);
-            }}
-            className="mone-interest-action flex min-h-10 items-center justify-center gap-1 rounded-[11px] px-3 py-2 text-xs font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
-          >
-            모의투자
-          </button>
-        )}
+        {onTradePaper && (() => {
+          const trustState = dataTrustState(item);
+          const dataBlocked = trustState === "stale" || trustState === "error";
+          const { strength } = getMarketGateInfo(marketRegime, dataHealth);
+          const gateBlocked = strength < 35;
+          const entryBlocked = dataBlocked || gateBlocked;
+          const blockedLabel = dataBlocked ? "데이터 확인중" : "진입 자제 구간";
+          const blockedTitle = dataBlocked
+            ? "데이터 확인 전까지 진입을 막았습니다."
+            : "시장 진입강도가 낮아 진입을 자제하는 구간입니다.";
+          return (
+            <button
+              type="button"
+              disabled={entryBlocked}
+              title={entryBlocked ? blockedTitle : undefined}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (entryBlocked) return;
+                onTradePaper(item);
+              }}
+              className="mone-interest-action flex min-h-10 items-center justify-center gap-1 rounded-[11px] px-3 py-2 text-xs font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {entryBlocked ? blockedLabel : "모의투자"}
+            </button>
+          );
+        })()}
       </div>
     </div>
   );
@@ -823,6 +848,7 @@ function CandidateCarouselSection({
   riskItems,
   allItems,
   marketRegime,
+  dataHealth,
   sessionHint,
   earningsMap,
   onSelect,
@@ -837,6 +863,7 @@ function CandidateCarouselSection({
   riskItems: any[];
   allItems: any[];
   marketRegime: any;
+  dataHealth?: any;
   sessionHint?: string;
   earningsMap?: Record<string, number>;
   onSelect: (item: any) => void;
@@ -947,6 +974,8 @@ function CandidateCarouselSection({
                     earningsMap={earningsMap}
                     onTradePaper={onTradePaper}
                     tone={candidateTab === "today" ? "entry" : candidateTab === "watch" ? "watch" : "risk"}
+                    marketRegime={marketRegime}
+                    dataHealth={dataHealth}
                   />
                 </div>
               ))}
@@ -2307,6 +2336,9 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   const cautionReasons = Array.isArray(item.cautionReasons) ? item.cautionReasons : [];
   const newsSentimentTag     = String(item.newsSentimentTag || "NEUTRAL");
   const newsSentimentReasons = Array.isArray(item.newsSentimentReasons) ? item.newsSentimentReasons : [];
+  const patternStrategy = item.patternStrategy && typeof item.patternStrategy === "object" ? item.patternStrategy : null;
+  const patternCalibration = item.walkforwardPatternCalibration && typeof item.walkforwardPatternCalibration === "object" ? item.walkforwardPatternCalibration : null;
+  const patternBonus = Number(item.walkforwardPatternBonus || 0);
 
   const bucketColor =
     decisionBucket === "오늘 진입"  ? "bg-emerald-600 text-white"
@@ -2753,6 +2785,27 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
               : "border-red-600/40 bg-red-900/20 text-red-300"
             }`}>
               수급 신호 — {SUPPLY_LABEL[supplySignal] ?? supplySignal}
+            </div>
+          )}
+
+          {(patternStrategy || patternCalibration?.status === "OK") && (
+            <div className="rounded-xl border border-violet-800/40 bg-violet-950/20 p-3 text-[11px]">
+              <div className="mb-1.5 text-xs font-semibold text-violet-300">차트패턴 보정</div>
+              {patternStrategy?.geometricPatternKo && (
+                <div className="text-violet-100">
+                  감지 패턴: {patternStrategy.geometricPatternKo}
+                  {patternStrategy.geometricPatternStageKo ? ` · ${patternStrategy.geometricPatternStageKo}` : ""}
+                  {patternStrategy.geometricPatternDirectionKo ? ` · ${patternStrategy.geometricPatternDirectionKo}` : ""}
+                </div>
+              )}
+              {patternCalibration?.summaryKo && (
+                <div className="mt-1 text-violet-200">{patternCalibration.summaryKo}</div>
+              )}
+              {patternCalibration?.matchedPattern?.sampleCount != null && (
+                <div className="mt-1 text-[10px] text-slate-500">
+                  표본 {Number(patternCalibration.matchedPattern.sampleCount).toLocaleString("ko-KR")}건 · 방향성 승률 {Number((patternCalibration.matchedPattern.directionalWinRate || 0) * 100).toFixed(1)}% · 점수 {patternBonus >= 0 ? "+" : ""}{patternBonus.toFixed(1)}
+                </div>
+              )}
             </div>
           )}
 
@@ -3624,6 +3677,7 @@ export default function HomePage({
           riskItems={riskItems}
           allItems={allItems}
           marketRegime={marketRegime}
+          dataHealth={dataHealth}
           sessionHint={sessionCtx.hint}
           earningsMap={earningsMap}
           onSelect={setSelectedItem}

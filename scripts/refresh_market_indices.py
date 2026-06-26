@@ -120,12 +120,8 @@ def merge_rows(existing: list[dict], new_rows: list[dict]) -> list[dict]:
 def refresh_index(symbol: str, ticker: str, market: str) -> bool:
     path = OHLCV_DIR / f"{market}_{symbol}_daily.csv"
     existing = _read_csv(path)
-    today = datetime.now(KST).strftime("%Y-%m-%d")
-
-    # 오늘 데이터가 이미 있으면 skip
-    if existing and existing[-1].get("date") == today:
-        print(f"  [{symbol}] 이미 최신 ({today})")
-        return True
+    existing_for_merge = existing
+    # Always refetch today's row because intraday index values can change.
 
     # KR 지수: pykrx 우선, 실패 시 yfinance
     if market == "kr" and symbol in ("KOSPI", "KOSDAQ"):
@@ -139,7 +135,7 @@ def refresh_index(symbol: str, ticker: str, market: str) -> bool:
         print(f"  [{symbol}] 데이터 없음")
         return False
 
-    merged = merge_rows(existing, new_rows)
+    merged = merge_rows(existing_for_merge, new_rows)
     _write_csv(path, merged)
     print(f"  [{symbol}] {path.name} 저장 ({len(merged)}행, 최신 {merged[-1]['date']})")
     return True

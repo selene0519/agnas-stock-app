@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -27,6 +28,58 @@ HORIZONS = ("short", "swing", "mid")
 REGIME_BULL   = "BULL"    # KOSPI 20일선 위, 최근 5일 상승
 REGIME_BEAR   = "BEAR"    # KOSPI 20일선 아래, 최근 5일 하락
 REGIME_SIDE   = "SIDE"    # 횡보 (나머지)
+
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+_PATTERN_ALIAS = {
+    "INV_HEAD_SHOULDERS": "INVERSE_HEAD_AND_SHOULDERS",
+    "SYMM_TRIANGLE_UP": "SYMMETRICAL_TRIANGLE",
+}
+_PATTERN_MIN_SAMPLE = 30
+_REGIME_KO = {"BULL": "강세장", "BEAR": "하락장", "SIDE": "횡보장"}
+_DIRECTION_KO = {"BULLISH": "상승", "BEARISH": "하락/경고", "NEUTRAL": "중립"}
+_ACTION_KO = {
+    "BUY_NOW": "오늘 진입",
+    "SCALE_IN": "분할 진입",
+    "WAIT_PULLBACK": "눌림 대기",
+    "WATCH_ONLY": "관찰",
+    "AVOID_BUY": "매수 회피",
+    "HOLD_CASH": "현금 대기",
+    "RISK_CHECK": "위험 확인",
+}
+_PATTERN_STAGE_KO = {
+    "WATCH": "관찰",
+    "BREAKOUT_CANDIDATE": "돌파 후보",
+    "BUY_ZONE": "매수권",
+    "RISK_WATCH": "위험 관찰",
+    "AVOID": "회피",
+    "BLOCKED": "차단",
+}
+_PATTERN_KO = {
+    "DOUBLE_BOTTOM": "쌍바닥",
+    "DOUBLE_TOP": "쌍봉",
+    "HEAD_AND_SHOULDERS": "헤드앤숄더",
+    "INVERSE_HEAD_AND_SHOULDERS": "역헤드앤숄더",
+    "ASCENDING_TRIANGLE": "상승 삼각형",
+    "DESCENDING_TRIANGLE": "하락 삼각형",
+    "BULL_FLAG": "상승 깃발형",
+    "BEAR_FLAG": "하락 깃발형",
+    "FALLING_WEDGE_BREAKOUT": "하락쐐기 상향돌파",
+    "RISING_WEDGE_BREAKDOWN": "상승쐐기 하향이탈",
+    "BULL_PENNANT": "상승 페넌트",
+    "BEAR_PENNANT": "하락 페넌트",
+    "SYMMETRICAL_TRIANGLE": "대칭 삼각형",
+    "RECTANGLE_RANGE": "박스권",
+    "RISING_CHANNEL": "상승 채널",
+    "FALLING_CHANNEL": "하락 채널",
+    "CUP_AND_HANDLE": "컵앤핸들",
+    "FAILED_BREAKOUT": "돌파 실패",
+    "FAILED_BREAKDOWN": "이탈 실패",
+    "DISTRIBUTION_WATCH": "분산 매도 주의",
+    "RANGE_DRIFT": "박스권 이탈 지연",
+    "OVEREXTENDED_BREAKOUT": "과열 돌파",
+    "SUPPORT_FLIP_RESISTANCE": "지지선의 저항 전환",
+    "RESISTANCE_FLIP_SUPPORT": "저항선의 지지 전환",
+}
 
 
 @dataclass(frozen=True)
@@ -96,6 +149,142 @@ def _read_csv(path: Path) -> list[dict[str, Any]]:
         except Exception:
             continue
     return []
+
+
+@lru_cache(maxsize=8)
+def _load_pattern_walkforward_report(market: str) -> dict[str, Any]:
+    path = _REPO_ROOT / "reports" / f"pattern_walkforward_{str(market or 'kr').lower()}.json"
+    if not path.is_file() or path.stat().st_size <= 0:
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _canonical_pattern_tag(tag: Any) -> str:
+    raw = str(tag or "").strip().upper()
+    return _PATTERN_ALIAS.get(raw, raw)
+
+
+def _pattern_label_ko(pattern: Any) -> str:
+    key = _canonical_pattern_tag(pattern)
+    return _PATTERN_KO.get(key, key or "패턴 없음")
+
+
+def _regime_label_ko(regime: Any) -> str:
+    key = str(regime or REGIME_SIDE).upper()
+    return _REGIME_KO.get(key, key)
+
+
+def _sample_weight(n: int) -> float:
+    if n < _PATTERN_MIN_SAMPLE:
+        return 0.0
+    if n < 50:
+        return 0.6
+    if n < 100:
+        return 0.8
+    return 1.0
+
+
+def _horizon_weight(horizon: str, report_horizon: Any) -> float:
+    try:
+        report_days = int(report_horizon or 0)
+    except Exception:
+        report_days = 0
+    key = normalize_horizon(horizon)
+    if key == "short" and report_days > 10:
+        return 0.65
+    if key == "mid" and report_days < 20:
+        return 0.75
+    return 1.0
+
+
+def _pattern_bonus_from_stats(stats: dict[str, Any], horizon: str, report_horizon: Any) -> tuple[float, dict[str, Any]]:
+    n = int(stats.get("sampleCount") or 0)
+    sample_weight = _sample_weight(n)
+    if sample_weight <= 0:
+        return 0.0, {"sampleCount": n, "sampleStatus": "LOW_SAMPLE"}
+    win_rate = float(stats.get("directionalWinRate") or stats.get("winRate") or 0.5)
+    avg_return = float(stats.get("avgReturn") or 0.0)
+    stop_rate = float(stats.get("stopRate") or 0.0)
+    raw = ((win_rate - 0.5) * 20.0) + (avg_return * 50.0)
+    if stop_rate > 0.45:
+        raw -= (stop_rate - 0.45) * 10.0
+    raw = max(-8.0, min(8.0, raw))
+    horizon_weight = _horizon_weight(horizon, report_horizon)
+    bonus = round(raw * sample_weight * horizon_weight, 1)
+    return bonus, {
+        "sampleCount": n,
+        "sampleStatus": "OK",
+        "directionalWinRate": round(win_rate, 4),
+        "avgReturn": round(avg_return, 4),
+        "stopRate": round(stop_rate, 4),
+        "sampleWeight": sample_weight,
+        "horizonWeight": horizon_weight,
+        "rawBonus": round(raw, 2),
+    }
+
+
+def _walkforward_pattern_bonus(
+    market: str,
+    regime: str,
+    horizon: str,
+    tags: list[Any],
+) -> dict[str, Any]:
+    report = _load_pattern_walkforward_report(market)
+    if not report:
+        return {"bonus": 0.0, "status": "NO_REPORT"}
+    regime_key = str(regime or REGIME_SIDE).upper()
+    report_horizon = report.get("horizonDays")
+    regime_summary = (report.get("geometricRegimeSummary") or {}).get(regime_key) or {}
+    overall_summary = report.get("geometricPatternSummary") or {}
+    summary = regime_summary or overall_summary
+    if not summary:
+        return {"bonus": 0.0, "status": "NO_STATS", "regime": regime_key}
+
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for tag in tags:
+        canonical = _canonical_pattern_tag(tag)
+        if not canonical or canonical in seen:
+            continue
+        seen.add(canonical)
+        matches = [
+            (key, value)
+            for key, value in summary.items()
+            if str(key).upper() == canonical or str(key).upper().startswith(f"{canonical}:")
+        ]
+        for key, stats in matches:
+            bonus, details = _pattern_bonus_from_stats(stats, horizon, report_horizon)
+            if bonus == 0.0 and details.get("sampleStatus") == "LOW_SAMPLE":
+                continue
+            candidates.append({
+                "pattern": key,
+                "canonicalPattern": canonical,
+                "bonus": bonus,
+                **details,
+            })
+    if not candidates:
+        return {"bonus": 0.0, "status": "NO_MATCH", "regime": regime_key}
+
+    best = max(candidates, key=lambda item: abs(float(item.get("bonus") or 0.0)))
+    bonus = float(best.get("bonus") or 0.0)
+    pattern_ko = _pattern_label_ko(best.get("canonicalPattern") or best.get("pattern"))
+    regime_ko = _regime_label_ko(regime_key)
+    direction_text = "가점" if bonus > 0 else "감점" if bonus < 0 else "중립"
+    return {
+        "bonus": bonus,
+        "status": "OK",
+        "regime": regime_key,
+        "regimeKo": regime_ko,
+        "source": "pattern_walkforward",
+        "sourceKo": "장세별 차트패턴 과거검증",
+        "reportHorizonDays": report_horizon,
+        "matchedPattern": best,
+        "candidateCount": len(candidates),
+        "summaryKo": f"{regime_ko}에서 {pattern_ko} 패턴 과거 성과 기준 {direction_text} {bonus:+.1f}점",
+    }
 
 
 def load_ohlcv(repo_root: "Path | str", market: str, symbol: str) -> list[dict[str, Any]]:
@@ -598,7 +787,7 @@ def _regime_from_closes(closes: list[float], label_prefix: str) -> tuple[str, st
 def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
     """
     마켓 레짐 판단.
-    KR: benchmark_daily.csv의 KOSPI 기준
+    KR: KOSPI OHLCV 기준 (benchmark_daily.csv fallback)
     US: SPY + QQQ + DIA OHLCV 파일 3지수 다수결 (2/3 이상 일치)
 
     Returns:
@@ -660,16 +849,18 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
             "description": desc,
         }
 
-    # ── 국장: benchmark_daily.csv KOSPI ──────────────────────────────────────
+    # ── 국장: KOSPI OHLCV 우선 ──────────────────────────────────────
     benchmark_key = "KOSPI"
-    path = repo_root / "data" / "market" / "benchmark_daily.csv"
-    rows: list[dict[str, Any]] = []
-    if path.is_file():
-        rows = _read_csv(path)
+    filtered = load_ohlcv(repo_root, "kr", benchmark_key)
+    source = "data/market/ohlcv/kr_KOSPI_daily.csv"
+    if not filtered:
+        path = repo_root / "data" / "market" / "benchmark_daily.csv"
+        rows = _read_csv(path) if path.is_file() else []
+        filtered = [r for r in rows if str(r.get("benchmark", "")).upper() == benchmark_key]
+        source = "data/market/benchmark_daily.csv"
 
-    filtered = [r for r in rows if str(r.get("benchmark", "")).upper() == benchmark_key]
-    filtered.sort(key=lambda r: str(r.get("date", "")))
-    closes = [_num(r.get("close")) for r in filtered]
+    filtered.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
+    closes = [_num(r.get("close") or r.get("Close")) for r in filtered]
     closes = [c for c in closes if c is not None]
 
     regime, label, adjust, dist, mom5, ma20 = _regime_from_closes(closes, benchmark_key)
@@ -677,6 +868,7 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
         return default
 
     latest = closes[-1]
+    latest_date = str(filtered[-1].get("date") or filtered[-1].get("Date") or "")
     desc = f"KOSPI MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%"
 
     return {
@@ -684,6 +876,7 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
         "kospiLatest": round(latest, 2), "kospiMa20": round(ma20, 2),
         "distanceMa20Pct": round(dist, 2), "distanceToMa20Pct": round(dist, 2),
         "momentum5d": round(mom5, 2), "scoreAdjust": adjust, "description": desc,
+        "benchmark": benchmark_key, "asOf": latest_date[:10], "source": source,
     }
 
 
@@ -1990,6 +2183,35 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
 
     # ── 차트 패턴 인식 (PDF 가이드북 4개 매수 패턴)
     chart_patterns = detect_chart_patterns(_ohlcv)
+    pattern_strategy: dict[str, Any] = {}
+    pattern_strategy_tag: str | None = None
+    try:
+        from app.engine.pattern_strategy import analyze as _pattern_strategy_analyze
+        _ps = _pattern_strategy_analyze(str(symbol or ""), context.market, _ohlcv)
+        _geo_pattern = _ps.get("geometricPattern")
+        _geo_stage = _ps.get("geometricPatternStage")
+        _geo_direction = str(_ps.get("geometricPatternDirection") or "NEUTRAL").upper()
+        if _geo_pattern:
+            pattern_strategy_tag = _canonical_pattern_tag(_geo_pattern)
+            _action_code = str(_ps.get("action") or "")
+            pattern_strategy = {
+                "primaryPattern": _ps.get("primaryPattern"),
+                "primaryPatternKo": str(_ps.get("message") or ""),
+                "geometricPattern": pattern_strategy_tag,
+                "geometricPatternKo": _pattern_label_ko(pattern_strategy_tag),
+                "geometricPatternStage": _geo_stage,
+                "geometricPatternStageKo": _PATTERN_STAGE_KO.get(str(_geo_stage or "").upper(), str(_geo_stage or "")),
+                "geometricPatternDirection": _geo_direction,
+                "geometricPatternDirectionKo": _DIRECTION_KO.get(_geo_direction, _geo_direction),
+                "geometricPatternReason": _ps.get("geometricPatternReason"),
+                "confidence": _ps.get("confidence"),
+                "action": _ACTION_KO.get(_action_code, _action_code),
+                "actionCode": _action_code,
+                "isBlocked": _ps.get("isBlocked"),
+            }
+    except Exception:
+        pattern_strategy = {}
+
     if chart_patterns:
         best_pattern = chart_patterns[0]
         pattern_tag  = best_pattern["pattern"]
@@ -2025,6 +2247,26 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
                 out.setdefault("computedFields", []).append("entry_from_chart_pattern")
     out["chartPatterns"] = chart_patterns
     out["chartPatternCount"] = len(chart_patterns)
+    out["patternStrategy"] = pattern_strategy
+    if pattern_strategy_tag:
+        out.setdefault("computedFields", []).append("pattern_strategy_24_detected")
+
+    try:
+        _wf_tags = [p.get("pattern") for p in chart_patterns if p.get("pattern")] + ([pattern_strategy_tag] if pattern_strategy_tag else []) + list(tags)
+        _wf = _walkforward_pattern_bonus(context.market, _regime, context.horizon, _wf_tags)
+        _wf_bonus = float(_wf.get("bonus") or 0.0)
+        out["walkforwardPatternBonus"] = _wf_bonus
+        out["walkforwardPatternCalibration"] = _wf
+        if _wf.get("status") == "OK" and _wf_bonus != 0.0 and isinstance(out.get("finalScore"), (int, float)):
+            out["finalScore"] = min(100.0, max(0.0, round(float(out["finalScore"]) + _wf_bonus, 1)))
+            out["quantScore"] = out["finalScore"]
+            out.setdefault("computedFields", []).append("walkforward_pattern_regime_bonus")
+            matched = _wf.get("matchedPattern") if isinstance(_wf.get("matchedPattern"), dict) else {}
+            out.setdefault("infoReasons", []).append(
+                str(_wf.get("summaryKo") or f"장세별 패턴 보정 {_pattern_label_ko(matched.get('canonicalPattern') or matched.get('pattern'))} {_regime_label_ko(_regime)}: {_wf_bonus:+.1f}점")
+            )
+    except Exception:
+        pass
 
     # ── 유사 과거 패턴 승률로 finalScore 미세조정 (RSI·볼린저·MACD 상태가 비슷했던 과거 시점 분석)
     try:

@@ -1,0 +1,329 @@
+{
+  "status": "OK",
+  "generatedAt": "2026-06-26T17:49:57",
+  "market": "us",
+  "policy": {
+    "futureLeakage": "historical operation rows are grouped from stored snapshots; chart and pattern checks use OHLCV only through each cutoff, then score future bars.",
+    "separation": "This report does not auto-apply corrections. It separates forward journal, historical operation, validation-result, and chart-pattern evidence.",
+    "minSamples": 30
+  },
+  "counts": {
+    "historicalOperationRows": 432,
+    "virtualValidationRows": 91,
+    "combinedRows": 523,
+    "strategyCells": 7
+  },
+  "strategyRows": [
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "sampleCount": 144,
+      "returnSampleCount": 0,
+      "wins": 0,
+      "losses": 96,
+      "targetCount": 0,
+      "stopCount": 96,
+      "winRate": 0.0,
+      "winRateCi95": {
+        "low": 0.0,
+        "high": 0.026,
+        "width": 0.026
+      },
+      "avgReturnPct": null,
+      "sourceCounts": {
+        "HISTORICAL_OPERATION": 144
+      },
+      "sampleStatus": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "short",
+      "sampleCount": 13,
+      "returnSampleCount": 13,
+      "wins": 1,
+      "losses": 12,
+      "targetCount": 0,
+      "stopCount": 9,
+      "winRate": 0.0769,
+      "winRateCi95": {
+        "low": 0.0137,
+        "high": 0.3331,
+        "width": 0.3194
+      },
+      "avgReturnPct": -3.1022,
+      "sourceCounts": {
+        "VIRTUAL_VALIDATION_RESULTS": 13
+      },
+      "sampleStatus": "LOW_SAMPLE"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "swing",
+      "sampleCount": 17,
+      "returnSampleCount": 17,
+      "wins": 2,
+      "losses": 15,
+      "targetCount": 1,
+      "stopCount": 12,
+      "winRate": 0.1176,
+      "winRateCi95": {
+        "low": 0.0329,
+        "high": 0.3434,
+        "width": 0.3105
+      },
+      "avgReturnPct": -3.9621,
+      "sourceCounts": {
+        "VIRTUAL_VALIDATION_RESULTS": 17
+      },
+      "sampleStatus": "LOW_SAMPLE"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "short",
+      "sampleCount": 11,
+      "returnSampleCount": 11,
+      "wins": 3,
+      "losses": 8,
+      "targetCount": 3,
+      "stopCount": 7,
+      "winRate": 0.2727,
+      "winRateCi95": {
+        "low": 0.0975,
+        "high": 0.5657,
+        "width": 0.4682
+      },
+      "avgReturnPct": -2.7106,
+      "sourceCounts": {
+        "VIRTUAL_VALIDATION_RESULTS": 11
+      },
+      "sampleStatus": "LOW_SAMPLE"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "swing",
+      "sampleCount": 180,
+      "returnSampleCount": 36,
+      "wins": 6,
+      "losses": 126,
+      "targetCount": 0,
+      "stopCount": 116,
+      "winRate": 0.0333,
+      "winRateCi95": {
+        "low": 0.0154,
+        "high": 0.0708,
+        "width": 0.0554
+      },
+      "avgReturnPct": -4.9268,
+      "sourceCounts": {
+        "HISTORICAL_OPERATION": 144,
+        "VIRTUAL_VALIDATION_RESULTS": 36
+      },
+      "sampleStatus": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "short",
+      "sampleCount": 153,
+      "returnSampleCount": 9,
+      "wins": 2,
+      "losses": 103,
+      "targetCount": 1,
+      "stopCount": 102,
+      "winRate": 0.0131,
+      "winRateCi95": {
+        "low": 0.0036,
+        "high": 0.0464,
+        "width": 0.0428
+      },
+      "avgReturnPct": -1.9489,
+      "sourceCounts": {
+        "HISTORICAL_OPERATION": 144,
+        "VIRTUAL_VALIDATION_RESULTS": 9
+      },
+      "sampleStatus": "OK"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "swing",
+      "sampleCount": 5,
+      "returnSampleCount": 5,
+      "wins": 1,
+      "losses": 4,
+      "targetCount": 0,
+      "stopCount": 4,
+      "winRate": 0.2,
+      "winRateCi95": {
+        "low": 0.0362,
+        "high": 0.6245,
+        "width": 0.5882
+      },
+      "avgReturnPct": -3.8142,
+      "sourceCounts": {
+        "VIRTUAL_VALIDATION_RESULTS": 5
+      },
+      "sampleStatus": "LOW_SAMPLE"
+    }
+  ],
+  "suggestions": [
+    {
+      "status": "SUGGESTED",
+      "action": "WIDEN_STOP_OR_TIGHTEN_ENTRY",
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "sampleCount": 144,
+      "winRate": 0.0,
+      "winRateCi95": {
+        "low": 0.0,
+        "high": 0.026,
+        "width": 0.026
+      },
+      "avgReturnPct": null,
+      "stopShare": 0.6667,
+      "message": "Losses cluster around stop outcomes; reduce entry eagerness or widen ATR-based stop only after checking slippage."
+    },
+    {
+      "status": "LOW_SAMPLE",
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "short",
+      "sampleCount": 13,
+      "message": "Need at least 30 historical evaluated rows before changing this strategy."
+    },
+    {
+      "status": "LOW_SAMPLE",
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "swing",
+      "sampleCount": 17,
+      "message": "Need at least 30 historical evaluated rows before changing this strategy."
+    },
+    {
+      "status": "LOW_SAMPLE",
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "short",
+      "sampleCount": 11,
+      "message": "Need at least 30 historical evaluated rows before changing this strategy."
+    },
+    {
+      "status": "SUGGESTED",
+      "action": "WIDEN_STOP_OR_TIGHTEN_ENTRY",
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "swing",
+      "sampleCount": 180,
+      "winRate": 0.0333,
+      "winRateCi95": {
+        "low": 0.0154,
+        "high": 0.0708,
+        "width": 0.0554
+      },
+      "avgReturnPct": -4.9268,
+      "stopShare": 0.6444,
+      "message": "Losses cluster around stop outcomes; reduce entry eagerness or widen ATR-based stop only after checking slippage."
+    },
+    {
+      "status": "SUGGESTED",
+      "action": "WIDEN_STOP_OR_TIGHTEN_ENTRY",
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "short",
+      "sampleCount": 153,
+      "winRate": 0.0131,
+      "winRateCi95": {
+        "low": 0.0036,
+        "high": 0.0464,
+        "width": 0.0428
+      },
+      "avgReturnPct": -1.9489,
+      "stopShare": 0.6667,
+      "message": "Losses cluster around stop outcomes; reduce entry eagerness or widen ATR-based stop only after checking slippage."
+    },
+    {
+      "status": "LOW_SAMPLE",
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "swing",
+      "sampleCount": 5,
+      "message": "Need at least 30 historical evaluated rows before changing this strategy."
+    }
+  ],
+  "patternEvidence": {
+    "chartAnalysis": {
+      "status": "OK",
+      "market": "us",
+      "policy": "Snapshot backtest: each analysis uses OHLCV only through asOf, then checks the next futureBars closes.",
+      "futureBars": 20,
+      "symbolCount": 4,
+      "sampleCount": 8,
+      "actionableCount": 1,
+      "neutralOrLowScoreCount": 7,
+      "directionalHitRatePct": 100.0,
+      "bullishHitRatePct": 100.0,
+      "bearishHitRatePct": null,
+      "avgFutureReturnPct": 14.93
+    },
+    "trendlines": {
+      "status": "OK",
+      "market": "us",
+      "policy": "Trendline snapshot backtest: draw support/resistance using OHLCV only through asOf, then check whether the next futureBars candles violate the projected line by more than 1.5%.",
+      "verifiedPolicy": "VERIFIED_90 is shown only when the same symbol/direction has at least 3 historical samples, calibrated respect rate is >= 90%, structure is valid, and news/disclosure risk penalty is below 6.",
+      "targetRespectRatePct": 90.0,
+      "futureBars": 20,
+      "symbolCount": 4,
+      "sampleCount": 16,
+      "supportCount": 8,
+      "resistanceCount": 8,
+      "highConfidenceCount": 10,
+      "verified90Count": 0,
+      "newsBlockedCount": 0,
+      "respectRatePct": 43.8,
+      "supportRespectRatePct": 62.5,
+      "resistanceRespectRatePct": 25.0,
+      "highConfidenceRespectRatePct": 50.0,
+      "verified90RespectRatePct": null
+    },
+    "supplyZones": {
+      "status": "OK",
+      "market": "us",
+      "policy": "Supply-zone snapshot backtest: draw zones using OHLCV only through asOf, then check whether the next futureBars candles touch the zone, break it by more than 1.5%, and react by at least 1.5%.",
+      "futureBars": 20,
+      "symbolCount": 4,
+      "sampleCount": 10,
+      "touchCount": 7,
+      "touchRatePct": 70.0,
+      "respectRatePct": 14.3,
+      "demandRespectRatePct": 16.7,
+      "supplyRespectRatePct": 0.0,
+      "avgDistancePct": 7.71,
+      "calibration": {
+        "lookbackBars": 120,
+        "maxDistancePctRange": "12-28",
+        "rankFactors": [
+          "volumeDensity",
+          "recency",
+          "distanceFromCurrent",
+          "touchCount"
+        ]
+      }
+    },
+    "patternWalkforward": {
+      "status": "SKIPPED"
+    }
+  },
+  "errorReductionPlan": [
+    "Use 95% confidence intervals before changing weights; wide intervals stay WATCH only.",
+    "Treat STOP_FIRST and STOP clusters as entry/stop calibration evidence, not simple bad-symbol evidence.",
+    "Promote a chart pattern only when walk-forward hit rate, trendline respect rate, and supply/demand reaction agree.",
+    "Keep DATA_PENDING, NOT_EXECUTED, and low-confidence rows out of win-rate denominators; use them for data-quality and entry-touch diagnostics.",
+    "Cap historical replay influence below live forward journal until live samples are sufficient."
+  ]
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,23 @@ from app.services import data_loader as data
 from app.services import supabase_db as sdb
 
 BACKUP_DIR = data.APP_DIR / "backend" / "backups"
+
+_FILE_LOCKS: dict[str, threading.Lock] = {}
+_FILE_LOCKS_GUARD = threading.Lock()
+
+
+def file_lock(path: Path) -> threading.Lock:
+    """동일 CSV 경로에 대한 읽기~쓰기 구간을 직렬화하는 락.
+    여러 진입점(보유종목 수동수정, KIS 동기화 등)이 같은 파일을 read-modify-write
+    하면서 서로의 변경을 덮어쓰는 lost-update를 막기 위함 — 경로 기준으로 공유해야
+    호출 위치가 달라도 같은 락을 잡는다."""
+    key = str(path.resolve())
+    with _FILE_LOCKS_GUARD:
+        lock = _FILE_LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _FILE_LOCKS[key] = lock
+        return lock
 
 
 def _now() -> str:
@@ -46,6 +64,86 @@ def _watchlist_growth_path(market: str) -> Path:
 
 def _holdings_path(market: str) -> Path:
     return data.REPO_ROOT / f"holdings_{market}.csv"
+
+
+SOLD_POSITIONS_COLUMNS = [
+    "recordedAt", "market", "symbol", "name", "quantity", "avgPrice",
+    "exitPrice", "exitPriceSource", "realizedPnl", "realizedReturnPct",
+]
+
+
+def _sold_positions_path() -> Path:
+    return data.REPO_ROOT / "data" / "sold_positions_history.csv"
+
+
+def _latest_ohlcv_close(symbol: str, market: str) -> float | None:
+    mk = "us" if market == "us" else "kr"
+    path = data.REPO_ROOT / "data" / "market" / "ohlcv" / f"{mk}_{symbol}_daily.csv"
+    df = data.read_csv(path)
+    if df.empty or "close" not in df.columns or "date" not in df.columns:
+        return None
+    try:
+        return data._safe_float(df.sort_values("date").iloc[-1]["close"])
+    except Exception:
+        return None
+
+
+def record_sold_positions(removed: list[dict[str, Any]]) -> None:
+    """보유종목에서 사라진 종목을 영구 기록한다 (생존편향 방지).
+    상장폐지·매도로 holdings.csv에서 빠진 종목의 손익이 지금까지는 어디에도
+    남지 않아 포트폴리오 수익률이 살아남은 종목만으로 낙관적으로 계산됐다.
+    exitPrice는 최신 OHLCV 종가를 우선 쓰고, 없으면 avgPrice로 대체한다는
+    출처(exitPriceSource)를 같이 남겨 수치의 신뢰도를 숨기지 않는다."""
+    if not removed:
+        return
+    path = _sold_positions_path()
+    with file_lock(path):
+        existing = data.read_csv(path)
+        rows = existing.to_dict(orient="records") if not existing.empty else []
+        for item in removed:
+            symbol = data._safe_str(item.get("symbol"))
+            if not symbol:
+                continue
+            market = "us" if str(item.get("market", "kr")).lower() == "us" else "kr"
+            quantity = data._safe_float(item.get("quantity")) or 0.0
+            avg_price = data._safe_float(item.get("avgPrice") or item.get("avg_price")) or 0.0
+            exit_price = _latest_ohlcv_close(symbol, market)
+            exit_source = "ohlcv_latest_close"
+            if not exit_price or exit_price <= 0:
+                exit_price = avg_price
+                exit_source = "avg_price_fallback_no_exit_data"
+            realized_pnl = (exit_price - avg_price) * quantity if avg_price > 0 else 0.0
+            realized_return_pct = ((exit_price - avg_price) / avg_price * 100) if avg_price > 0 else 0.0
+            rows.append({
+                "recordedAt": _now(),
+                "market": market,
+                "symbol": symbol,
+                "name": data._safe_str(item.get("name"), symbol),
+                "quantity": quantity,
+                "avgPrice": avg_price,
+                "exitPrice": exit_price,
+                "exitPriceSource": exit_source,
+                "realizedPnl": round(realized_pnl, 2),
+                "realizedReturnPct": round(realized_return_pct, 2),
+            })
+        df = pd.DataFrame(rows, columns=SOLD_POSITIONS_COLUMNS)
+        _write_csv_safe(path, df)
+
+
+def get_sold_positions(market: str = "all") -> dict[str, Any]:
+    df = data.read_csv(_sold_positions_path())
+    if not df.empty and market in ("kr", "us"):
+        df = df[df["market"] == market]
+    items = df.to_dict(orient="records") if not df.empty else []
+    total_realized_pnl = sum(data._safe_float(r.get("realizedPnl")) or 0.0 for r in items)
+    return {
+        "status": "OK",
+        "market": market,
+        "count": len(items),
+        "items": items,
+        "totalRealizedPnl": round(total_realized_pnl, 2),
+        "note": "여기 기록은 이 기능을 추가한 시점 이후의 매도만 포함합니다. 그 이전에 매도/상장폐지된 종목의 손익은 소급 반영되지 않습니다.",
+    }
 
 
 def _row_symbol(row: dict[str, Any] | pd.Series, market: str) -> str:
@@ -334,19 +432,20 @@ def upsert_holding(payload: dict[str, Any], mode: str = "post", symbol_arg: str 
     if not symbol:
         return {"status": "ERROR", "message": "종목코드/티커가 필요합니다.", "market": market}
     path = _holdings_path(market)
-    df = data.read_csv(path)
-    df = _ensure_columns(df, ["symbol", "name", "market", "avg_price", "quantity", "memo", "updated_at"])
-    mask = df.apply(lambda row: _row_symbol(row, market) == symbol, axis=1) if not df.empty else pd.Series([], dtype=bool)
-    row = _prepare_holding_row(df, {**payload, "symbol": symbol}, market)
-    action = "updated" if bool(mask.any()) else "created"
-    if bool(mask.any()):
-        idx = mask[mask].index[0]
-        for col, value in row.items():
-            if data._safe_str(value, ""):
-                df.at[idx, col] = value
-    else:
-        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-    backup = _write_csv_safe(path, df)
+    with file_lock(path):
+        df = data.read_csv(path)
+        df = _ensure_columns(df, ["symbol", "name", "market", "quantity", "avgPrice", "stopPrice", "targetPrice"])
+        mask = df.apply(lambda row: _row_symbol(row, market) == symbol, axis=1) if not df.empty else pd.Series([], dtype=bool)
+        row = _prepare_holding_row(df, {**payload, "symbol": symbol}, market)
+        action = "updated" if bool(mask.any()) else "created"
+        if bool(mask.any()):
+            idx = mask[mask].index[0]
+            for col, value in row.items():
+                if data._safe_str(value, ""):
+                    df.at[idx, col] = value
+        else:
+            df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+        backup = _write_csv_safe(path, df)
     sdb.upsert_holding(market, symbol, payload)
     return {"status": "OK", "action": action, "message": "보유종목을 저장했습니다.", "market": market, "symbol": symbol, "backupFile": backup, "count": len(df)}
 
@@ -355,13 +454,14 @@ def delete_holding(symbol: str, market: str) -> dict[str, Any]:
     market = "us" if market == "us" else "kr"
     target = data.normalize_symbol(symbol, market)
     path = _holdings_path(market)
-    df = data.read_csv(path)
-    if df.empty:
-        return {"status": "MISSING", "message": "보유종목 파일이 없습니다.", "market": market, "symbol": target}
-    mask = df.apply(lambda row: _row_symbol(row, market) == target, axis=1)
-    if not bool(mask.any()):
-        return {"status": "NOT_FOUND", "message": "보유종목에서 찾지 못했습니다.", "market": market, "symbol": target, "count": len(df)}
-    next_df = df.loc[~mask].copy()
-    backup = _write_csv_safe(path, next_df)
+    with file_lock(path):
+        df = data.read_csv(path)
+        if df.empty:
+            return {"status": "MISSING", "message": "보유종목 파일이 없습니다.", "market": market, "symbol": target}
+        mask = df.apply(lambda row: _row_symbol(row, market) == target, axis=1)
+        if not bool(mask.any()):
+            return {"status": "NOT_FOUND", "message": "보유종목에서 찾지 못했습니다.", "market": market, "symbol": target, "count": len(df)}
+        next_df = df.loc[~mask].copy()
+        backup = _write_csv_safe(path, next_df)
     sdb.delete_holding(market, target)
     return {"status": "OK", "message": "보유종목에서 삭제했습니다.", "market": market, "symbol": target, "backupFile": backup, "count": len(next_df)}
