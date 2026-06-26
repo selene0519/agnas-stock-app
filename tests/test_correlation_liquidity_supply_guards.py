@@ -174,6 +174,28 @@ def test_supply_data_missing_file_returns_empty(tmp_path, monkeypatch):
     assert gen._load_supply_data() == {}
 
 
+def test_kr_supply_flow_prefers_fresh_clean_source(tmp_path, monkeypatch):
+    import scripts.generate_kr_recommendations as gen
+
+    monkeypatch.setattr(gen, "ROOT", tmp_path)
+    (tmp_path / "data").mkdir()
+    fresh_date = datetime.now().date().isoformat()
+    stale_date = (datetime.now() - timedelta(days=10)).date().isoformat()
+    with (tmp_path / "data" / "kr_supply_flow.csv").open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["symbol", "asOf", "signalScore", "foreign5d", "institution5d", "foreign20d", "institution20d"])
+        writer.writeheader()
+        writer.writerow({"symbol": "000001", "asOf": fresh_date, "signalScore": "4", "foreign5d": "100", "institution5d": "100", "foreign20d": "200", "institution20d": "200"})
+        writer.writerow({"symbol": "000002", "asOf": stale_date, "signalScore": "4", "foreign5d": "100", "institution5d": "100", "foreign20d": "200", "institution20d": "200"})
+
+    supply = gen._load_supply_data_from_kr_supply_flow()
+    assert "000001" in supply
+    assert supply["000001"]["signal"] == "STRONG_BUY"
+    assert "000002" not in supply
+
+    # _load_supply_data()는 신선한 kr_supply_flow.csv가 있으면 predictions.csv를 보지 않음
+    assert gen._load_supply_data() == supply
+
+
 # ── 종가 검증 스냅샷이 KR/US 둘 다 만들어지는지 ───────────────────────────
 # settle_pending_validations.py가 찾는 mone_v36_final_trade_validation_{market}_*_{date}.csv를
 # US는 한 번도 생성한 적이 없어서, US 예측은 정산 기한이 지나면 무조건 EXPIRED로 끝났다.
@@ -205,3 +227,54 @@ def test_close_validation_uses_per_market_cost():
     assert result_us["result"] == "target_hit"
     # (120-100)/100*100 - 0.06 = 19.94
     assert result_us["returnPct"] == pytest.approx(19.94, abs=0.001)
+
+
+# ── KIS 투자자별 순매수(수급) 신호 — 라이브 API 호출 자체는 로컬에서 검증 못함 ───────
+# (이 환경에 KIS 인증키가 없음). 파싱/점수 계산 로직만 모킹된 응답으로 검증.
+
+def test_investor_flow_history_maps_kis_field_names_and_sorts():
+    from app.services import quotes
+    # KIS는 보통 최신순으로 반환 — 일부러 역순으로 넣어 정렬 검증
+    raw = [
+        {"stck_bsop_date": "20260623", "frgn_ntby_qty": "2000", "orgn_ntby_qty": "1500", "prsn_ntby_qty": "-3500"},
+        {"stck_bsop_date": "20260620", "frgn_ntby_qty": "1000", "orgn_ntby_qty": "-500", "prsn_ntby_qty": "-500"},
+    ]
+    rows = quotes._investor_flow_history(raw)
+    assert len(rows) == 2
+    assert rows[0]["date"] == "2026-06-20"
+    assert rows[0]["foreign_net_qty"] == 1000.0
+    assert rows[1]["institution_net_qty"] == 1500.0
+    assert rows == sorted(rows, key=lambda r: r["date"])  # 날짜순 정렬됨
+
+
+def test_investor_flow_history_empty_input():
+    from app.services import quotes
+    assert quotes._investor_flow_history([]) == []
+
+
+def test_investor_flow_supply_score_both_buying_scores_positive():
+    from app.services import quotes
+    rows = [{"date": f"2026-06-{i:02d}", "foreign_net_qty": 100, "institution_net_qty": 100, "retail_net_qty": -200} for i in range(1, 21)]
+    score = quotes.investor_flow_supply_score(rows)
+    assert score["ok"] is True
+    assert score["score"] == 4  # 5일+2, 20일+2
+
+
+def test_investor_flow_supply_score_both_selling_scores_negative():
+    from app.services import quotes
+    rows = [{"date": f"2026-06-{i:02d}", "foreign_net_qty": -100, "institution_net_qty": -100, "retail_net_qty": 200} for i in range(1, 21)]
+    score = quotes.investor_flow_supply_score(rows)
+    assert score["score"] == -4
+
+
+def test_investor_flow_supply_score_empty_rows():
+    from app.services import quotes
+    assert quotes.investor_flow_supply_score([])["ok"] is False
+
+
+def test_fetch_investor_flow_kr_gracefully_disabled_without_credentials(monkeypatch):
+    from app.services import quotes
+    monkeypatch.setattr(quotes, "_kis_enabled", lambda: False)
+    result = quotes.fetch_investor_flow_kr("005930")
+    assert result["ok"] is False
+    assert "error" in result
