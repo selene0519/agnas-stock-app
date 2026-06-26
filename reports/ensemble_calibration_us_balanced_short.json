@@ -1,0 +1,63 @@
+{
+  "table": {
+    "55-60|BULL": {
+      "count": 140,
+      "winRate": 45.7,
+      "avgPnl": -0.351,
+      "avgWin": 2.263,
+      "lossPct": 54.3
+    },
+    "50-55|BULL": {
+      "count": 39,
+      "winRate": 41.0,
+      "avgPnl": -0.631,
+      "avgWin": 1.876,
+      "lossPct": 59.0
+    },
+    "60-65|BULL": {
+      "count": 74,
+      "winRate": 55.4,
+      "avgPnl": 0.673,
+      "avgWin": 3.502,
+      "lossPct": 44.6
+    },
+    "60-65|SIDE": {
+      "count": 21,
+      "winRate": 47.6,
+      "avgPnl": 0.674,
+      "avgWin": 4.146,
+      "lossPct": 52.4
+    },
+    "65-70|BEAR": {
+      "count": 4,
+      "winRate": 0.0,
+      "avgPnl": -1.643,
+      "avgWin": 0,
+      "lossPct": 100.0
+    },
+    "65-70|BULL": {
+      "count": 12,
+      "winRate": 50.0,
+      "avgPnl": -0.437,
+      "avgWin": 2.222,
+      "lossPct": 50.0
+    }
+  },
+  "global": {
+    "count": 290,
+    "winRate": 47.2,
+    "avgPnl": -0.074
+  },
+  "bins": [
+    "0-50",
+    "50-55",
+    "55-60",
+    "60-65",
+    "65-70",
+    "70-100"
+  ],
+  "market": "us",
+  "mode": "balanced",
+  "horizon": "short",
+  "recordCount": 499
+}

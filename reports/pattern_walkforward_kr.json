@@ -1,0 +1,801 @@
+{
+  "status": "OK",
+  "market": "kr",
+  "fromDate": "2025-12-27",
+  "toDate": "2026-06-25",
+  "horizonDays": 5,
+  "evalDates": 26,
+  "summary": {
+    "relative_strength": {
+      "sampleCount": 771,
+      "winRate": 0.559,
+      "avgReturn": 0.0264,
+      "medianReturn": 0.014,
+      "stopRate": 0.357,
+      "targetHitRate": 0.401
+    },
+    "trend_up_pullback": {
+      "sampleCount": 206,
+      "winRate": 0.515,
+      "avgReturn": 0.0321,
+      "medianReturn": 0.0022,
+      "stopRate": 0.359,
+      "targetHitRate": 0.34
+    },
+    "horizontal_support_rebound": {
+      "sampleCount": 235,
+      "winRate": 0.549,
+      "avgReturn": 0.02,
+      "medianReturn": 0.0059,
+      "stopRate": 0.34,
+      "targetHitRate": 0.298
+    },
+    "range_bottom_rebound": {
+      "sampleCount": 126,
+      "winRate": 0.437,
+      "avgReturn": 0.0154,
+      "medianReturn": -0.006,
+      "stopRate": 0.437,
+      "targetHitRate": 0.317
+    },
+    "resistance_breakout": {
+      "sampleCount": 43,
+      "winRate": 0.558,
+      "avgReturn": 0.0155,
+      "medianReturn": 0.0144,
+      "stopRate": 0.302,
+      "targetHitRate": 0.372
+    },
+    "zombie_breakout": {
+      "sampleCount": 15,
+      "winRate": 0.4,
+      "avgReturn": -0.0264,
+      "medianReturn": -0.0235,
+      "stopRate": 0.533,
+      "targetHitRate": 0.2
+    },
+    "downtrend_bounce_trap": {
+      "sampleCount": 29,
+      "winRate": 0.448,
+      "avgReturn": 0.0211,
+      "medianReturn": -0.0021,
+      "stopRate": 0.345,
+      "targetHitRate": 0.276
+    }
+  },
+  "geometricPatternSummary": {
+    "DESCENDING_TRIANGLE:AVOID": {
+      "sampleCount": 22,
+      "winRate": 0.636,
+      "avgReturn": 0.0347,
+      "medianReturn": 0.0294,
+      "stopRate": 0.273,
+      "targetHitRate": 0.455
+    },
+    "ASCENDING_TRIANGLE:WATCH": {
+      "sampleCount": 20,
+      "winRate": 0.65,
+      "avgReturn": 0.0652,
+      "medianReturn": 0.027,
+      "stopRate": 0.2,
+      "targetHitRate": 0.4
+    },
+    "DOUBLE_BOTTOM:BREAKOUT_CANDIDATE": {
+      "sampleCount": 218,
+      "winRate": 0.518,
+      "avgReturn": 0.0133,
+      "medianReturn": 0.0045,
+      "stopRate": 0.349,
+      "targetHitRate": 0.307
+    },
+    "RISING_CHANNEL:BUY_ZONE": {
+      "sampleCount": 126,
+      "winRate": 0.508,
+      "avgReturn": 0.0199,
+      "medianReturn": 0.0023,
+      "stopRate": 0.444,
+      "targetHitRate": 0.373
+    },
+    "BEAR_FLAG:RISK_WATCH": {
+      "sampleCount": 11,
+      "winRate": 0.273,
+      "avgReturn": -0.0062,
+      "medianReturn": -0.0374,
+      "stopRate": 0.727,
+      "targetHitRate": 0.273
+    },
+    "RISING_WEDGE_BREAKDOWN:AVOID": {
+      "sampleCount": 24,
+      "winRate": 0.5,
+      "avgReturn": 0.0127,
+      "medianReturn": 0.0031,
+      "stopRate": 0.417,
+      "targetHitRate": 0.333
+    },
+    "SYMMETRICAL_TRIANGLE:BREAKOUT_CANDIDATE": {
+      "sampleCount": 54,
+      "winRate": 0.667,
+      "avgReturn": 0.0493,
+      "medianReturn": 0.0318,
+      "stopRate": 0.315,
+      "targetHitRate": 0.463
+    },
+    "DOUBLE_BOTTOM:WATCH": {
+      "sampleCount": 126,
+      "winRate": 0.5,
+      "avgReturn": 0.0225,
+      "medianReturn": 0.0004,
+      "stopRate": 0.373,
+      "targetHitRate": 0.341
+    },
+    "SYMMETRICAL_TRIANGLE:AVOID": {
+      "sampleCount": 21,
+      "winRate": 0.524,
+      "avgReturn": 0.001,
+      "medianReturn": 0.0071,
+      "stopRate": 0.286,
+      "targetHitRate": 0.19
+    },
+    "DOUBLE_TOP:AVOID": {
+      "sampleCount": 118,
+      "winRate": 0.492,
+      "avgReturn": -0.0017,
+      "medianReturn": -0.0027,
+      "stopRate": 0.415,
+      "targetHitRate": 0.263
+    },
+    "HEAD_AND_SHOULDERS:RISK_WATCH": {
+      "sampleCount": 31,
+      "winRate": 0.548,
+      "avgReturn": 0.0022,
+      "medianReturn": 0.0063,
+      "stopRate": 0.29,
+      "targetHitRate": 0.226
+    },
+    "SYMMETRICAL_TRIANGLE:BLOCKED": {
+      "sampleCount": 26,
+      "winRate": 0.423,
+      "avgReturn": -0.0151,
+      "medianReturn": -0.0064,
+      "stopRate": 0.385,
+      "targetHitRate": 0.154
+    },
+    "RISING_CHANNEL:WATCH": {
+      "sampleCount": 135,
+      "winRate": 0.481,
+      "avgReturn": 0.0126,
+      "medianReturn": -0.0084,
+      "stopRate": 0.437,
+      "targetHitRate": 0.37
+    },
+    "FALLING_WEDGE_BREAKOUT:BREAKOUT_CANDIDATE": {
+      "sampleCount": 85,
+      "winRate": 0.553,
+      "avgReturn": 0.0086,
+      "medianReturn": 0.006,
+      "stopRate": 0.4,
+      "targetHitRate": 0.306
+    },
+    "DESCENDING_TRIANGLE:RISK_WATCH": {
+      "sampleCount": 15,
+      "winRate": 0.533,
+      "avgReturn": 0.0161,
+      "medianReturn": 0.0024,
+      "stopRate": 0.467,
+      "targetHitRate": 0.4
+    },
+    "RECTANGLE_RANGE:WATCH": {
+      "sampleCount": 26,
+      "winRate": 0.385,
+      "avgReturn": 0.0225,
+      "medianReturn": -0.0056,
+      "stopRate": 0.269,
+      "targetHitRate": 0.269
+    },
+    "FALLING_WEDGE_BREAKOUT:WATCH": {
+      "sampleCount": 50,
+      "winRate": 0.4,
+      "avgReturn": 0.0089,
+      "medianReturn": -0.0137,
+      "stopRate": 0.44,
+      "targetHitRate": 0.24
+    },
+    "RECTANGLE_RANGE:BREAKOUT_CANDIDATE": {
+      "sampleCount": 25,
+      "winRate": 0.48,
+      "avgReturn": -0.0037,
+      "medianReturn": -0.0033,
+      "stopRate": 0.4,
+      "targetHitRate": 0.2
+    },
+    "RESISTANCE_FLIP_SUPPORT:BREAKOUT_CANDIDATE": {
+      "sampleCount": 46,
+      "winRate": 0.609,
+      "avgReturn": 0.0144,
+      "medianReturn": 0.0302,
+      "stopRate": 0.326,
+      "targetHitRate": 0.37
+    },
+    "INVERSE_HEAD_AND_SHOULDERS:WATCH": {
+      "sampleCount": 19,
+      "winRate": 0.632,
+      "avgReturn": 0.0314,
+      "medianReturn": 0.0102,
+      "stopRate": 0.211,
+      "targetHitRate": 0.263
+    },
+    "DOUBLE_TOP:RISK_WATCH": {
+      "sampleCount": 82,
+      "winRate": 0.61,
+      "avgReturn": 0.0353,
+      "medianReturn": 0.0233,
+      "stopRate": 0.305,
+      "targetHitRate": 0.402
+    },
+    "DOUBLE_TOP:BLOCKED": {
+      "sampleCount": 48,
+      "winRate": 0.417,
+      "avgReturn": 0.0088,
+      "medianReturn": -0.008,
+      "stopRate": 0.354,
+      "targetHitRate": 0.292
+    },
+    "RISING_WEDGE_BREAKDOWN:BLOCKED": {
+      "sampleCount": 17,
+      "winRate": 0.529,
+      "avgReturn": 0.0391,
+      "medianReturn": 0.0083,
+      "stopRate": 0.353,
+      "targetHitRate": 0.471
+    },
+    "BULL_FLAG:BUY_ZONE": {
+      "sampleCount": 9,
+      "winRate": 0.667,
+      "avgReturn": 0.0982,
+      "medianReturn": 0.0043,
+      "stopRate": 0.222,
+      "targetHitRate": 0.444
+    },
+    "RISING_CHANNEL:BLOCKED": {
+      "sampleCount": 63,
+      "winRate": 0.587,
+      "avgReturn": 0.0378,
+      "medianReturn": 0.0152,
+      "stopRate": 0.365,
+      "targetHitRate": 0.397
+    },
+    "RANGE_DRIFT:WATCH": {
+      "sampleCount": 90,
+      "winRate": 0.544,
+      "avgReturn": 0.0068,
+      "medianReturn": 0.0048,
+      "stopRate": 0.333,
+      "targetHitRate": 0.311
+    },
+    "RISING_WEDGE_BREAKDOWN:RISK_WATCH": {
+      "sampleCount": 28,
+      "winRate": 0.607,
+      "avgReturn": 0.0463,
+      "medianReturn": 0.0309,
+      "stopRate": 0.321,
+      "targetHitRate": 0.429
+    },
+    "FAILED_BREAKDOWN:BREAKOUT_CANDIDATE": {
+      "sampleCount": 93,
+      "winRate": 0.452,
+      "avgReturn": 0.0018,
+      "medianReturn": -0.0046,
+      "stopRate": 0.419,
+      "targetHitRate": 0.269
+    },
+    "FALLING_WEDGE_BREAKOUT:BLOCKED": {
+      "sampleCount": 3,
+      "winRate": 0.667,
+      "avgReturn": -0.0105,
+      "medianReturn": 0.0138,
+      "stopRate": 0.333,
+      "targetHitRate": 0.0
+    },
+    "BEAR_FLAG:AVOID": {
+      "sampleCount": 4,
+      "winRate": 0.25,
+      "avgReturn": 0.0135,
+      "medianReturn": -0.0323,
+      "stopRate": 0.75,
+      "targetHitRate": 0.25
+    },
+    "DOUBLE_BOTTOM:BUY_ZONE": {
+      "sampleCount": 34,
+      "winRate": 0.588,
+      "avgReturn": 0.0402,
+      "medianReturn": 0.008,
+      "stopRate": 0.294,
+      "targetHitRate": 0.353
+    },
+    "SUPPORT_FLIP_RESISTANCE:RISK_WATCH": {
+      "sampleCount": 16,
+      "winRate": 0.438,
+      "avgReturn": -0.006,
+      "medianReturn": -0.013,
+      "stopRate": 0.438,
+      "targetHitRate": 0.188
+    },
+    "SUPPORT_FLIP_RESISTANCE:AVOID": {
+      "sampleCount": 56,
+      "winRate": 0.696,
+      "avgReturn": 0.0285,
+      "medianReturn": 0.0233,
+      "stopRate": 0.232,
+      "targetHitRate": 0.429
+    },
+    "RECTANGLE_RANGE:BUY_ZONE": {
+      "sampleCount": 9,
+      "winRate": 0.667,
+      "avgReturn": 0.1195,
+      "medianReturn": 0.0167,
+      "stopRate": 0.222,
+      "targetHitRate": 0.333
+    },
+    "HEAD_AND_SHOULDERS:AVOID": {
+      "sampleCount": 28,
+      "winRate": 0.607,
+      "avgReturn": 0.0205,
+      "medianReturn": 0.0071,
+      "stopRate": 0.357,
+      "targetHitRate": 0.321
+    },
+    "ASCENDING_TRIANGLE:BLOCKED": {
+      "sampleCount": 13,
+      "winRate": 0.462,
+      "avgReturn": 0.0097,
+      "medianReturn": -0.002,
+      "stopRate": 0.308,
+      "targetHitRate": 0.154
+    },
+    "OVEREXTENDED_BREAKOUT:AVOID": {
+      "sampleCount": 13,
+      "winRate": 0.385,
+      "avgReturn": -0.0067,
+      "medianReturn": -0.0094,
+      "stopRate": 0.385,
+      "targetHitRate": 0.385
+    },
+    "SYMMETRICAL_TRIANGLE:WATCH": {
+      "sampleCount": 23,
+      "winRate": 0.565,
+      "avgReturn": 0.032,
+      "medianReturn": 0.0101,
+      "stopRate": 0.261,
+      "targetHitRate": 0.348
+    },
+    "RECTANGLE_RANGE:AVOID": {
+      "sampleCount": 4,
+      "winRate": 0.5,
+      "avgReturn": 0.0728,
+      "medianReturn": 0.0574,
+      "stopRate": 0.0,
+      "targetHitRate": 0.5
+    },
+    "FALLING_WEDGE_BREAKOUT:BUY_ZONE": {
+      "sampleCount": 7,
+      "winRate": 0.714,
+      "avgReturn": 0.079,
+      "medianReturn": 0.094,
+      "stopRate": 0.286,
+      "targetHitRate": 0.571
+    },
+    "BULL_PENNANT:WATCH": {
+      "sampleCount": 2,
+      "winRate": 0.5,
+      "avgReturn": -0.0186,
+      "medianReturn": -0.0186,
+      "stopRate": 0.5,
+      "targetHitRate": 0.0
+    },
+    "INVERSE_HEAD_AND_SHOULDERS:BLOCKED": {
+      "sampleCount": 3,
+      "winRate": 0.667,
+      "avgReturn": 0.0856,
+      "medianReturn": 0.0492,
+      "stopRate": 0.333,
+      "targetHitRate": 0.667
+    },
+    "INVERSE_HEAD_AND_SHOULDERS:BUY_ZONE": {
+      "sampleCount": 5,
+      "winRate": 0.2,
+      "avgReturn": -0.0127,
+      "medianReturn": -0.0138,
+      "stopRate": 0.4,
+      "targetHitRate": 0.2
+    },
+    "INVERSE_HEAD_AND_SHOULDERS:BREAKOUT_CANDIDATE": {
+      "sampleCount": 61,
+      "winRate": 0.607,
+      "avgReturn": 0.0214,
+      "medianReturn": 0.0165,
+      "stopRate": 0.311,
+      "targetHitRate": 0.475
+    },
+    "OVEREXTENDED_BREAKOUT:RISK_WATCH": {
+      "sampleCount": 11,
+      "winRate": 0.273,
+      "avgReturn": -0.0478,
+      "medianReturn": -0.0543,
+      "stopRate": 0.636,
+      "targetHitRate": 0.182
+    },
+    "ASCENDING_TRIANGLE:BREAKOUT_CANDIDATE": {
+      "sampleCount": 48,
+      "winRate": 0.5,
+      "avgReturn": -0.0111,
+      "medianReturn": -0.0036,
+      "stopRate": 0.438,
+      "targetHitRate": 0.354
+    },
+    "BULL_FLAG:WATCH": {
+      "sampleCount": 32,
+      "winRate": 0.406,
+      "avgReturn": 0.0037,
+      "medianReturn": -0.0105,
+      "stopRate": 0.375,
+      "targetHitRate": 0.281
+    },
+    "RESISTANCE_FLIP_SUPPORT:BUY_ZONE": {
+      "sampleCount": 31,
+      "winRate": 0.581,
+      "avgReturn": 0.0196,
+      "medianReturn": 0.0197,
+      "stopRate": 0.29,
+      "targetHitRate": 0.387
+    },
+    "ASCENDING_TRIANGLE:BUY_ZONE": {
+      "sampleCount": 10,
+      "winRate": 0.8,
+      "avgReturn": 0.0655,
+      "medianReturn": 0.0542,
+      "stopRate": 0.2,
+      "targetHitRate": 0.5
+    },
+    "FAILED_BREAKOUT:AVOID": {
+      "sampleCount": 144,
+      "winRate": 0.528,
+      "avgReturn": 0.0187,
+      "medianReturn": 0.0071,
+      "stopRate": 0.375,
+      "targetHitRate": 0.354
+    },
+    "FAILED_BREAKOUT:BLOCKED": {
+      "sampleCount": 41,
+      "winRate": 0.39,
+      "avgReturn": 0.0057,
+      "medianReturn": -0.006,
+      "stopRate": 0.39,
+      "targetHitRate": 0.195
+    },
+    "SYMMETRICAL_TRIANGLE:BUY_ZONE": {
+      "sampleCount": 6,
+      "winRate": 0.5,
+      "avgReturn": 0.092,
+      "medianReturn": 0.0527,
+      "stopRate": 0.333,
+      "targetHitRate": 0.5
+    },
+    "BULL_FLAG:BLOCKED": {
+      "sampleCount": 4,
+      "winRate": 0.25,
+      "avgReturn": -0.0404,
+      "medianReturn": -0.0648,
+      "stopRate": 0.75,
+      "targetHitRate": 0.25
+    },
+    "FALLING_CHANNEL:RISK_WATCH": {
+      "sampleCount": 39,
+      "winRate": 0.436,
+      "avgReturn": 0.0025,
+      "medianReturn": -0.0124,
+      "stopRate": 0.487,
+      "targetHitRate": 0.231
+    },
+    "DISTRIBUTION_WATCH:RISK_WATCH": {
+      "sampleCount": 20,
+      "winRate": 0.45,
+      "avgReturn": 0.0448,
+      "medianReturn": -0.0144,
+      "stopRate": 0.5,
+      "targetHitRate": 0.4
+    },
+    "DISTRIBUTION_WATCH:AVOID": {
+      "sampleCount": 7,
+      "winRate": 0.286,
+      "avgReturn": -0.0205,
+      "medianReturn": -0.0229,
+      "stopRate": 0.714,
+      "targetHitRate": 0.286
+    },
+    "BULL_FLAG:BREAKOUT_CANDIDATE": {
+      "sampleCount": 7,
+      "winRate": 0.571,
+      "avgReturn": 0.034,
+      "medianReturn": 0.0363,
+      "stopRate": 0.286,
+      "targetHitRate": 0.429
+    },
+    "FAILED_BREAKDOWN:BUY_ZONE": {
+      "sampleCount": 8,
+      "winRate": 0.375,
+      "avgReturn": 0.0092,
+      "medianReturn": -0.0487,
+      "stopRate": 0.625,
+      "targetHitRate": 0.125
+    },
+    "DESCENDING_TRIANGLE:BLOCKED": {
+      "sampleCount": 3,
+      "winRate": 0.667,
+      "avgReturn": 0.032,
+      "medianReturn": 0.0116,
+      "stopRate": 0.0,
+      "targetHitRate": 0.333
+    },
+    "FALLING_CHANNEL:AVOID": {
+      "sampleCount": 4,
+      "winRate": 1.0,
+      "avgReturn": 0.1292,
+      "medianReturn": 0.1368,
+      "stopRate": 0.0,
+      "targetHitRate": 1.0
+    },
+    "DOUBLE_BOTTOM:BLOCKED": {
+      "sampleCount": 10,
+      "winRate": 1.0,
+      "avgReturn": 0.0807,
+      "medianReturn": 0.0825,
+      "stopRate": 0.0,
+      "targetHitRate": 0.7
+    },
+    "BULL_PENNANT:BLOCKED": {
+      "sampleCount": 1,
+      "winRate": 1.0,
+      "avgReturn": 0.1082,
+      "medianReturn": 0.1082,
+      "stopRate": 0.0,
+      "targetHitRate": 1.0
+    },
+    "HEAD_AND_SHOULDERS:BLOCKED": {
+      "sampleCount": 6,
+      "winRate": 0.333,
+      "avgReturn": 0.0029,
+      "medianReturn": -0.0064,
+      "stopRate": 0.333,
+      "targetHitRate": 0.333
+    }
+  },
+  "blockedOutcomeStats": {
+    "totalBlocked": 170,
+    "avgReturnIfAllowed": 0.0126,
+    "wouldHaveGainedCount": 59,
+    "interpretation": "차단이 다소 보수적일 수 있음 — 기준 완화 검토"
+  },
+  "leakageCheck": {
+    "status": "PASS"
+  },
+  "patternCalibrationSuggestions": [
+    {
+      "pattern": "trend_up_pullback",
+      "param": "normalMaxDownAtr",
+      "current": 1.2,
+      "suggestion": 1.1,
+      "action": "TIGHTEN",
+      "reason": "손절률 36% 초과 — 진입 허용 기준 강화 권장"
+    },
+    {
+      "pattern": "DESCENDING_TRIANGLE:AVOID",
+      "action": "WEAKEN",
+      "reason": "하락 경계 단계인데 실제 하락 확인율 36%로 낮음 — 경계 기준 재검토 필요"
+    },
+    {
+      "pattern": "ASCENDING_TRIANGLE:WATCH",
+      "action": "STRENGTHEN",
+      "reason": "승률 65%, 평균수익률 +6.5% — 우선순위 상향 후보"
+    },
+    {
+      "pattern": "RISING_CHANNEL:BUY_ZONE",
+      "action": "WEAKEN",
+      "reason": "승률 51%, 손절률 44% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "BEAR_FLAG:RISK_WATCH",
+      "action": "STRENGTHEN",
+      "reason": "하락 확인율 73%, 평균수익률 -0.6% — 경계 신호 신뢰도 높음"
+    },
+    {
+      "pattern": "SYMMETRICAL_TRIANGLE:BREAKOUT_CANDIDATE",
+      "action": "STRENGTHEN",
+      "reason": "승률 67%, 평균수익률 +4.9% — 우선순위 상향 후보"
+    },
+    {
+      "pattern": "DOUBLE_BOTTOM:WATCH",
+      "action": "WEAKEN",
+      "reason": "승률 50%, 손절률 37% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "RISING_CHANNEL:WATCH",
+      "action": "WEAKEN",
+      "reason": "승률 48%, 손절률 44% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "FALLING_WEDGE_BREAKOUT:BREAKOUT_CANDIDATE",
+      "action": "WEAKEN",
+      "reason": "승률 55%, 손절률 40% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "RECTANGLE_RANGE:WATCH",
+      "action": "WEAKEN",
+      "reason": "승률 38%, 손절률 27% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "FALLING_WEDGE_BREAKOUT:WATCH",
+      "action": "WEAKEN",
+      "reason": "승률 40%, 손절률 44% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "RECTANGLE_RANGE:BREAKOUT_CANDIDATE",
+      "action": "WEAKEN",
+      "reason": "승률 48%, 손절률 40% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "RESISTANCE_FLIP_SUPPORT:BREAKOUT_CANDIDATE",
+      "action": "STRENGTHEN",
+      "reason": "승률 61%, 평균수익률 +1.4% — 우선순위 상향 후보"
+    },
+    {
+      "pattern": "INVERSE_HEAD_AND_SHOULDERS:WATCH",
+      "action": "STRENGTHEN",
+      "reason": "승률 63%, 평균수익률 +3.1% — 우선순위 상향 후보"
+    },
+    {
+      "pattern": "DOUBLE_TOP:RISK_WATCH",
+      "action": "WEAKEN",
+      "reason": "하락 경계 단계인데 실제 하락 확인율 39%로 낮음 — 경계 기준 재검토 필요"
+    },
+    {
+      "pattern": "BULL_FLAG:BUY_ZONE",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (9개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "RISING_WEDGE_BREAKDOWN:RISK_WATCH",
+      "action": "WEAKEN",
+      "reason": "하락 경계 단계인데 실제 하락 확인율 39%로 낮음 — 경계 기준 재검토 필요"
+    },
+    {
+      "pattern": "FAILED_BREAKDOWN:BREAKOUT_CANDIDATE",
+      "action": "WEAKEN",
+      "reason": "승률 45%, 손절률 42% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "FALLING_WEDGE_BREAKOUT:BLOCKED",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (3개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "BEAR_FLAG:AVOID",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (4개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "SUPPORT_FLIP_RESISTANCE:AVOID",
+      "action": "WEAKEN",
+      "reason": "하락 경계 단계인데 실제 하락 확인율 30%로 낮음 — 경계 기준 재검토 필요"
+    },
+    {
+      "pattern": "RECTANGLE_RANGE:BUY_ZONE",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (9개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "HEAD_AND_SHOULDERS:AVOID",
+      "action": "WEAKEN",
+      "reason": "하락 경계 단계인데 실제 하락 확인율 39%로 낮음 — 경계 기준 재검토 필요"
+    },
+    {
+      "pattern": "RECTANGLE_RANGE:AVOID",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (4개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "FALLING_WEDGE_BREAKOUT:BUY_ZONE",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (7개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "BULL_PENNANT:WATCH",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (2개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "INVERSE_HEAD_AND_SHOULDERS:BLOCKED",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (3개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "INVERSE_HEAD_AND_SHOULDERS:BUY_ZONE",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (5개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "INVERSE_HEAD_AND_SHOULDERS:BREAKOUT_CANDIDATE",
+      "action": "STRENGTHEN",
+      "reason": "승률 61%, 평균수익률 +2.1% — 우선순위 상향 후보"
+    },
+    {
+      "pattern": "OVEREXTENDED_BREAKOUT:RISK_WATCH",
+      "action": "STRENGTHEN",
+      "reason": "하락 확인율 73%, 평균수익률 -4.8% — 경계 신호 신뢰도 높음"
+    },
+    {
+      "pattern": "ASCENDING_TRIANGLE:BREAKOUT_CANDIDATE",
+      "action": "WEAKEN",
+      "reason": "승률 50%, 손절률 44% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "BULL_FLAG:WATCH",
+      "action": "WEAKEN",
+      "reason": "승률 41%, 손절률 38% — 매수권 기준 강화 검토"
+    },
+    {
+      "pattern": "ASCENDING_TRIANGLE:BUY_ZONE",
+      "action": "STRENGTHEN",
+      "reason": "승률 80%, 평균수익률 +6.6% — 우선순위 상향 후보"
+    },
+    {
+      "pattern": "SYMMETRICAL_TRIANGLE:BUY_ZONE",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (6개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "BULL_FLAG:BLOCKED",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (4개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "DISTRIBUTION_WATCH:AVOID",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (7개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "BULL_FLAG:BREAKOUT_CANDIDATE",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (7개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "FAILED_BREAKDOWN:BUY_ZONE",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (8개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "DESCENDING_TRIANGLE:BLOCKED",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (3개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "FALLING_CHANNEL:AVOID",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (4개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "DOUBLE_BOTTOM:BLOCKED",
+      "action": "WEAKEN",
+      "reason": "하락 경계 단계인데 실제 하락 확인율 0%로 낮음 — 경계 기준 재검토 필요"
+    },
+    {
+      "pattern": "BULL_PENNANT:BLOCKED",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (1개). 최소 10개 이상 쌓인 후 보정."
+    },
+    {
+      "pattern": "HEAD_AND_SHOULDERS:BLOCKED",
+      "action": "OBSERVE_ONLY",
+      "reason": "표본 수 부족 (6개). 최소 10개 이상 쌓인 후 보정."
+    }
+  ]
+}

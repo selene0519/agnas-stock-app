@@ -1,0 +1,38 @@
+{
+  "updatedAt": "2026-06-26 07:25:57",
+  "totalSamples": 131,
+  "totalWins": 15,
+  "overallWinRate": 0.1145,
+  "minSamplesForUpdate": 20,
+  "sampleCounts": {
+    "conservative_short": 13,
+    "conservative_swing": 14,
+    "conservative_mid": 0,
+    "balanced_short": 11,
+    "balanced_swing": 63,
+    "balanced_mid": 0,
+    "aggressive_short": 13,
+    "aggressive_swing": 17,
+    "aggressive_mid": 0
+  },
+  "winRates": {
+    "conservative_short": 0.495,
+    "conservative_swing": 0.515,
+    "conservative_mid": 0.525,
+    "balanced_short": 0.485,
+    "balanced_swing": 0.425,
+    "balanced_mid": 0.515,
+    "aggressive_short": 0.475,
+    "aggressive_swing": 0.495,
+    "aggressive_mid": 0.505
+  },
+  "defaultRates": {
+    "short_base": 0.485,
+    "swing_base": 0.505,
+    "mid_base": 0.515,
+    "short_scale": 0.12,
+    "swing_scale": 0.14,
+    "mid_scale": 0.15
+  },
+  "note": "샘플 20건 미만 전략은 기본값 사용. 전체 131건 검증됨."
+}
