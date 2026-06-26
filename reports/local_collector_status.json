@@ -1,54 +1,41 @@
 {
-  "startedAt": "2026-06-26T06:20:01.973498",
-  "market": "us",
+  "startedAt": "2026-06-26T16:30:01.109683",
+  "market": "kr",
   "steps": {
-    "ohlcv_us": {
-      "ok": 129,
-      "fail": 14
+    "ohlcv_kr": {
+      "ok": 100,
+      "fail": 0
     },
-    "recommendations_us": {
+    "recommendations_kr": {
       "status": "OK",
-      "market": "us",
+      "market": "kr",
       "stderr": ""
     },
-    "news_disclosures_us": {
+    "news_disclosures_kr": {
       "news": {
         "status": "OK",
         "results": [
           {
             "status": "OK",
-            "market": "us",
+            "market": "kr",
             "count": 10,
-            "file": "reports/news_summary_us.csv"
+            "file": "reports/news_summary_kr.csv"
           }
         ],
-        "createdAt": "2026-06-26 11:41:32"
-      },
-      "usCompanyNews": {
-        "status": "OK",
-        "market": "us",
-        "count": 888,
-        "errors": []
+        "createdAt": "2026-06-26 16:30:25"
       },
       "disclosures": {
         "status": "OK",
         "results": [
           {
             "status": "OK",
-            "market": "us",
-            "message": "SEC/Finnhub filing 수집 완료",
-            "count": 547,
-            "file": "data/disclosures/disclosures_us.csv",
-            "errors": []
-          },
-          {
-            "status": "OK",
-            "market": "us",
-            "count": 1166,
-            "errors": []
+            "market": "kr",
+            "message": "DART 공시 수집 완료",
+            "count": 100,
+            "file": "data/disclosures/disclosures_kr.csv"
           }
         ],
-        "createdAt": "2026-06-26 11:44:26"
+        "createdAt": "2026-06-26 16:30:26"
       }
     },
     "virtual_validation": {
@@ -20201,7 +20188,7 @@
       ]
     }
   },
-  "elapsedSec": 19477.5,
-  "completedAt": "2026-06-26T11:44:39.492790",
+  "elapsedSec": 29.8,
+  "completedAt": "2026-06-26T16:30:30.904818",
   "source": "local_task_scheduler"
 }
