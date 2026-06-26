@@ -205,6 +205,64 @@ def _fetch_kis_kr(symbol: str) -> dict[str, Any]:
     return _quote_result(normalized, "kr", False, "KIS 현재가", last_error or "KIS 현재가 실패")
 
 
+def _investor_flow_history(raw_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """KIS inquire-investor 원본 행(최신순)을 date/foreign_net_qty/institution_net_qty로 정규화,
+    날짜 오름차순으로 정렬한다 — investor_flow_supply_score의 입력 형식."""
+    out: list[dict[str, Any]] = []
+    for row in raw_rows:
+        if not isinstance(row, dict):
+            continue
+        date_raw = str(row.get("stck_bsop_date", "") or "").strip()
+        if len(date_raw) == 8 and date_raw.isdigit():
+            date_text = f"{date_raw[:4]}-{date_raw[4:6]}-{date_raw[6:8]}"
+        else:
+            date_text = date_raw
+        if not date_text:
+            continue
+        out.append({
+            "date": date_text,
+            "foreign_net_qty": _safe_float(row.get("frgn_ntby_qty")) or 0.0,
+            "institution_net_qty": _safe_float(row.get("orgn_ntby_qty")) or 0.0,
+        })
+    out.sort(key=lambda r: r["date"])
+    return out
+
+
+def investor_flow_supply_score(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """일별 순매수 수량 → 5일/20일 합계 + -5~+5 점수. rows는 날짜순 정렬돼 있어야 함."""
+    if not rows:
+        return {"ok": False, "score": 0}
+
+    def tail_sum(key: str, n: int) -> float:
+        return sum(r.get(key, 0.0) for r in rows[-n:])
+
+    f5, i5 = tail_sum("foreign_net_qty", 5), tail_sum("institution_net_qty", 5)
+    f20, i20 = tail_sum("foreign_net_qty", 20), tail_sum("institution_net_qty", 20)
+
+    score = 0
+    if f5 > 0 and i5 > 0:
+        score += 2
+    elif f5 > 0 or i5 > 0:
+        score += 1
+    if f20 > 0 and i20 > 0:
+        score += 2
+    elif f20 > 0 or i20 > 0:
+        score += 1
+    if f5 < 0 and i5 < 0:
+        score -= 2
+    if f20 < 0 and i20 < 0:
+        score -= 2
+    score = max(-5, min(5, score))
+
+    return {
+        "ok": True,
+        "score": score,
+        "foreign_5d": f5, "institution_5d": i5,
+        "foreign_20d": f20, "institution_20d": i20,
+        "latestDate": rows[-1]["date"],
+    }
+
+
 def _us_symbol(symbol: str) -> str:
     return str(symbol or "").upper().strip().replace("$", "").replace(".US", "")
 
@@ -752,6 +810,9 @@ def fetch_investor_flow_kr(symbol: str) -> dict[str, Any]:
                         signal = "SELL"
                     else:
                         signal = "NEUTRAL"
+                    # output에는 여러 날짜분이 같이 오는데 기존엔 rows[0](오늘)만 쓰고 나머지를
+                    # 버렸음 — 5일/20일 수급 합산(investor_flow_supply_score)을 위해 전체를 보존.
+                    history = _investor_flow_history(rows)
                     return {
                         "ok": True,
                         "symbol": normalized,
@@ -766,6 +827,7 @@ def fetch_investor_flow_kr(symbol: str) -> dict[str, Any]:
                             "indivAmt": indiv_amt,
                         },
                         "signal": signal,
+                        "history": history,
                     }
             else:
                 last_error = f"{response.status_code}/{payload.get('msg_cd','')}/{payload.get('msg1','')}"

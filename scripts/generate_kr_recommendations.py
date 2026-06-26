@@ -888,11 +888,53 @@ def _is_undervalued_growth(sym: str, fin_map: dict[str, dict]) -> tuple[bool, st
 _SUPPLY_DATA_MAX_AGE_DAYS = 5
 
 
+def _load_supply_data_from_kr_supply_flow() -> dict[str, dict[str, Any]]:
+    """data/kr_supply_flow.csv (scripts/refresh_kr_supply_flow.py가 KIS API로 직접 채움) —
+    predictions.csv보다 우선하는 깨끗한 소스. 없거나 비었으면 빈 dict 반환."""
+    path = ROOT / "data" / "kr_supply_flow.csv"
+    if not path.exists():
+        return {}
+    cutoff = (datetime.now() - timedelta(days=_SUPPLY_DATA_MAX_AGE_DAYS)).date().isoformat()
+    supply: dict[str, dict[str, Any]] = {}
+    stale_count = 0
+    for row in _read_csv(path):
+        sym = str(row.get("symbol", "")).strip()
+        as_of = str(row.get("asOf", ""))[:10]
+        if not sym:
+            continue
+        if as_of and as_of < cutoff:
+            stale_count += 1
+            continue
+        score = _num(row.get("signalScore")) or 0.0
+        inst5d = _num(row.get("institution5d"))
+        foreign5d = _num(row.get("foreign5d"))
+        signal = (
+            "STRONG_BUY" if (inst5d or 0) > 0 and (foreign5d or 0) > 0 else
+            "SELL_PRESSURE" if (inst5d or 0) < 0 and (foreign5d or 0) < 0 else
+            "INST_BUY" if (inst5d or 0) > 0 else
+            "FOREIGN_BUY" if (foreign5d or 0) > 0 else "NEUTRAL"
+        )
+        supply[sym] = {
+            "inst5d": inst5d, "foreign5d": foreign5d,
+            "inst20d": _num(row.get("institution20d")), "foreign20d": _num(row.get("foreign20d")),
+            "signal": signal, "signal_score": round(score, 1),
+        }
+        supply[sym.lstrip("0")] = supply[sym]
+    if stale_count:
+        print(f"  kr_supply_flow.csv: {stale_count}건이 {_SUPPLY_DATA_MAX_AGE_DAYS}일 이상 오래되어 제외됨")
+    return supply
+
+
 def _load_supply_data() -> dict[str, dict[str, Any]]:
     """
-    predictions.csv의 KIS 수급 데이터에서 종목별 최신 기관/외국인 순매수 로드.
+    종목별 최신 기관/외국인 순매수 로드. data/kr_supply_flow.csv(KIS 직접 조회)를
+    우선하고, 없으면 predictions.csv(레거시 로컬 앱이 채우던 파일)로 폴백한다.
     반환: {symbol: {inst5d, foreign5d, inst20d, foreign20d, signal}}
     """
+    fresh = _load_supply_data_from_kr_supply_flow()
+    if fresh:
+        return fresh
+
     supply: dict[str, dict[str, Any]] = {}
 
     # predictions.csv — 종목별 가장 최신 행만 사용
