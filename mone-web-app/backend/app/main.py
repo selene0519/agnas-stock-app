@@ -591,6 +591,64 @@ def _ensure_status(payload: dict, default_status: str = "OK") -> dict:
     return payload
 
 
+def _recommendation_trade_safety(quality: dict | None) -> dict:
+    quality = quality if isinstance(quality, dict) else {}
+    status = str(quality.get("dataStatus") or quality.get("status") or "UNKNOWN").upper()
+    blocked = bool(quality.get("killSwitch")) or status in {"STALE", "NO_DATA", "ERROR", "TIMEOUT"}
+    if blocked:
+        reason = quality.get("summary") or quality.get("message") or f"dataStatus={status}"
+        return {
+            "status": "BLOCKED",
+            "reviewOnly": True,
+            "isTradeBlocked": True,
+            "reason": str(reason),
+            "dataStatus": status,
+        }
+    if status not in {"NORMAL", "OK"}:
+        reason = quality.get("summary") or quality.get("message") or f"dataStatus={status}"
+        return {
+            "status": "CAUTION",
+            "reviewOnly": True,
+            "isTradeBlocked": False,
+            "reason": str(reason),
+            "dataStatus": status,
+        }
+    return {
+        "status": "OK",
+        "reviewOnly": False,
+        "isTradeBlocked": False,
+        "reason": "",
+        "dataStatus": status,
+    }
+
+
+def _apply_recommendation_trade_safety(payload: dict, quality: dict | None) -> dict:
+    safety = _recommendation_trade_safety(quality)
+    payload["dataQuality"] = quality or {}
+    payload["tradeSafety"] = safety
+    payload["reviewOnly"] = bool(safety.get("reviewOnly"))
+    if not safety.get("isTradeBlocked"):
+        return payload
+
+    blocked_items = []
+    for item in payload.get("items") or []:
+        if not isinstance(item, dict):
+            blocked_items.append(item)
+            continue
+        row = dict(item)
+        row["isTradeBlocked"] = True
+        existing_block = str(row.get("tradeBlockStatus") or "").upper()
+        row["tradeBlockStatus"] = row.get("tradeBlockStatus") if existing_block not in {"", "OK", "NORMAL"} else "DATA_QUALITY_BLOCK"
+        row["tradeBlockReason"] = row.get("tradeBlockReason") or safety.get("reason")
+        row["reviewOnly"] = True
+        row["dataStatus"] = row.get("dataStatus") or safety.get("dataStatus")
+        row["dataQualityStatus"] = safety.get("dataStatus")
+        blocked_items.append(row)
+    payload["items"] = blocked_items
+    payload["blockedCount"] = len([x for x in blocked_items if isinstance(x, dict) and x.get("isTradeBlocked")])
+    return payload
+
+
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health() -> dict:
     from pathlib import Path
@@ -741,7 +799,20 @@ def api_final_recommendations(
     horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
     limit: int = Query(20, ge=1, le=50),
 ) -> dict:
-    return final_engine.final_recommendations(_market(market), mode, horizon, limit=limit)
+    mk = _market(market)
+    payload = final_engine.final_recommendations(mk, mode, horizon, limit=limit)
+    if not isinstance(payload, dict):
+        return {"status": "ERROR", "items": [], "count": 0, "error": "Invalid recommendation payload"}
+    try:
+        quality = data_quality.data_quality(mk, mode="quick")
+    except Exception as exc:
+        quality = {
+            "status": "ERROR",
+            "dataStatus": "ERROR",
+            "killSwitch": True,
+            "summary": f"data_quality unavailable: {exc!r}",
+        }
+    return _apply_recommendation_trade_safety(payload, quality)
 
 
 @app.get("/api/final/recommendation-detail")
@@ -6584,6 +6655,43 @@ def api_validation_dashboard(market: str = Query("kr")) -> dict:
         except Exception:
             return None
 
+    def _vd_text(row: dict, *keys: str) -> str:
+        for key in keys:
+            value = row.get(key)
+            if value is not None and str(value).strip() != "":
+                return str(value).strip()
+        return ""
+
+    def _vd_bool(v) -> bool:
+        return str(v or "").strip().lower() in {"true", "1", "yes", "y", "executed", "filled", "체결"}
+
+    def _vd_return(row: dict) -> float | None:
+        for key in ("returnPct", "realized_return_pct", "return_pct", "pnlPct", "net_pnl_pct", "gross_pnl_pct", "pnlText"):
+            value = _vd_pct(row.get(key))
+            if value is not None:
+                return value
+        return None
+
+    def _vd_row_key(row: dict) -> str:
+        explicit = _vd_text(row, "predictionId", "journal_id", "id")
+        if explicit:
+            return explicit
+        return "|".join([
+            _vd_text(row, "market").lower(),
+            _vd_text(row, "mode").lower(),
+            _vd_text(row, "horizon").lower(),
+            _vd_text(row, "symbol").upper(),
+            _vd_text(row, "createdAt", "as_of_date", "generatedAt", "validationDate"),
+            _vd_text(row, "entry", "entryPrice"),
+            _vd_text(row, "target", "targetPrice"),
+            _vd_text(row, "stop", "stopPrice"),
+        ])
+
+    def _vd_validation_files(reports_dir: _VDPath, mk: str, mode: str, horizon: str) -> list[_VDPath]:
+        files = list(reports_dir.glob(f"mone_v36_final_trade_validation_{mk}_{mode}_{horizon}*.csv"))
+        unique = {p.resolve(): p for p in files}
+        return sorted(unique.values(), key=lambda p: p.name)
+
     def _vd_virtual_rows(reports_dir: _VDPath, mk: str, mode: str, horizon: str) -> list[dict]:
         rows = _read_vd_csv(reports_dir / "virtual_validation_results.csv")
         out = []
@@ -6594,32 +6702,62 @@ def api_validation_dashboard(market: str = Query("kr")) -> dict:
                 continue
             if str(row.get("horizon") or "").lower() != horizon:
                 continue
-            result = str(row.get("result") or "").strip().upper()
-            return_pct = _vd_pct(row.get("returnPct"))
-            if result in {"", "PENDING", "DATA_PENDING", "NOT_EXECUTED"} and return_pct is None:
-                continue
+            row = dict(row)
+            row["sourceFile"] = row.get("sourceFile") or "virtual_validation_results.csv"
             out.append(row)
         return out
 
     def _vd_executed(row: dict) -> bool:
-        result = str(row.get("result") or row.get("outcome_result") or row.get("exitStatus") or "").strip().upper()
+        result = _vd_text(row, "result", "outcome_result", "exitStatus", "outcome").upper()
         if result in {"TARGET", "TARGET_HIT", "WIN", "STOP", "STOP_FIRST", "STOP_HIT", "LOSS", "HOLDING_EVAL", "CLOSE_EXIT", "TIME_EXIT"}:
             return True
-        if _vd_pct(row.get("returnPct") or row.get("realized_return_pct") or row.get("return_pct") or row.get("pnlPct")) is not None:
+        if _vd_return(row) is not None:
             return True
-        return str(row.get("executed", "")).lower() in {"true", "1", "yes", "체결"}
+        if _vd_bool(row.get("executed") or row.get("isExecuted") or row.get("is_executed")):
+            return True
+        return _vd_text(row, "executionStatus", "execution_status") in {"체결", "filled", "FILLED", "executed", "EXECUTED"}
+
+    def _vd_completed(row: dict) -> bool:
+        result = _vd_text(row, "result", "outcome_result", "exitStatus", "outcome").upper()
+        if result in {"TARGET", "TARGET_HIT", "WIN", "STOP", "STOP_FIRST", "STOP_HIT", "LOSS", "HOLDING_EVAL", "CLOSE_EXIT", "TIME_EXIT"}:
+            return True
+        if _vd_return(row) is not None:
+            return True
+        return bool(_vd_text(row, "exitStatus", "exit_status")) and _vd_text(row, "validationStatus").upper() not in {"PENDING", "DATA_PENDING"}
+
+    def _vd_pending(row: dict) -> bool:
+        result = _vd_text(row, "result", "status", "validationStatus", "dataStatus").upper()
+        if result in {"PENDING", "DATA_PENDING", "VALIDATABLE"}:
+            return True
+        return _vd_text(row, "executionStatus", "execution_status") in {"대기", "PENDING"}
+
+    def _vd_not_executed(row: dict) -> bool:
+        result = _vd_text(row, "result", "outcome_result", "executionStatus", "execution_status").upper()
+        return result in {"NOT_EXECUTED", "NO_TOUCH", "MISSED_ENTRY", "UNEXECUTED", "진입가 미도달"}
 
     def _vd_win(row: dict) -> bool:
-        result = str(row.get("result") or row.get("outcome_result") or row.get("exitStatus") or "").strip().upper()
+        result = _vd_text(row, "result", "outcome_result", "exitStatus", "outcome").upper()
+        if _vd_bool(row.get("targetHit") or row.get("target_hit")):
+            return True
         if result in {"TARGET", "TARGET_HIT", "WIN"}:
             return True
         if result in {"HOLDING_EVAL", "CLOSE_EXIT", "TIME_EXIT"}:
-            pnl = _vd_pct(row.get("returnPct") or row.get("realized_return_pct") or row.get("return_pct") or row.get("pnlPct"))
+            pnl = _vd_return(row)
             return pnl is not None and pnl > 0
         return False
 
+    def _vd_sample_status(completed: int) -> str:
+        if completed <= 0:
+            return "NO_EVALUATED_ROWS"
+        if completed < 10:
+            return "VERY_LOW_SAMPLE"
+        if completed < 30:
+            return "LOW_SAMPLE"
+        return "OK"
+
     try:
-        mk = _market(market)
+        requested_market = str(market or "kr").lower()
+        markets = ["kr", "us"] if requested_market == "all" else [_market(requested_market)]
         reports_dir = _VDPath(__file__).resolve().parents[3] / "reports"
 
         modes = ["conservative", "balanced", "aggressive"]
@@ -6628,46 +6766,72 @@ def api_validation_dashboard(market: str = Query("kr")) -> dict:
         stats: dict = {}
         total_completed = 0
         total_pending = 0
-        all_win_rates: list[float] = []
+        total_wins = 0
+        total_not_executed = 0
+        source_files: set[str] = set()
 
         for mode in modes:
             for horizon in horizons:
                 key = f"{mode}_{horizon}"
-                files = sorted(
-                    reports_dir.glob(f"mone_v36_final_trade_validation_{mk}_{mode}_{horizon}_*.csv"),
-                    key=lambda p: p.name, reverse=True,
-                )
-                if not files:
-                    fallback = reports_dir / f"mone_v36_final_trade_validation_{mk}_{mode}_{horizon}.csv"
-                    files = [fallback] if fallback.exists() else []
-                rows = _read_vd_csv(files[0]) if files else []
-                rows.extend(_vd_virtual_rows(reports_dir, mk, mode, horizon))
-                executed = [r for r in rows if _vd_executed(r)]
-                pending_count = max(0, len(rows) - len(executed))
-                returns = [_vd_pct(r.get("returnPct")) for r in executed]
+                rows: list[dict] = []
+                seen: set[str] = set()
+                for mk in markets:
+                    for file_path in _vd_validation_files(reports_dir, mk, mode, horizon):
+                        for row in _read_vd_csv(file_path):
+                            row = dict(row)
+                            row.setdefault("market", mk)
+                            row.setdefault("mode", mode)
+                            row.setdefault("horizon", horizon)
+                            row["sourceFile"] = file_path.name
+                            row_key = _vd_row_key(row)
+                            if row_key in seen:
+                                continue
+                            seen.add(row_key)
+                            rows.append(row)
+                            source_files.add(file_path.name)
+                    for row in _vd_virtual_rows(reports_dir, mk, mode, horizon):
+                        row_key = _vd_row_key(row)
+                        if row_key in seen:
+                            continue
+                        seen.add(row_key)
+                        rows.append(row)
+                        source_files.add(str(row.get("sourceFile") or "virtual_validation_results.csv"))
+
+                completed_rows = [r for r in rows if _vd_completed(r)]
+                executed_rows = [r for r in rows if _vd_executed(r)]
+                pending_count = sum(1 for r in rows if _vd_pending(r) and not _vd_completed(r))
+                not_executed_count = sum(1 for r in rows if _vd_not_executed(r))
+                returns = [_vd_return(r) for r in completed_rows]
                 returns = [r for r in returns if r is not None]
-                wins = sum(1 for r in executed if _vd_win(r))
-                win_rate = round(wins / len(returns) * 100, 1) if returns else None
+                wins = sum(1 for r in completed_rows if _vd_win(r))
+                win_rate = round(wins / len(completed_rows) * 100, 1) if completed_rows else None
                 avg_return = round(sum(returns) / len(returns), 2) if returns else None
                 stats[key] = {
-                    "completed": len(executed),
+                    "total": len(rows),
+                    "completed": len(completed_rows),
+                    "evaluated": len(completed_rows),
+                    "executed": len(executed_rows),
                     "pending": pending_count,
                     "pendingCount": pending_count,
+                    "notExecutedCount": not_executed_count,
                     "wins": wins,
+                    "losses": max(0, len(completed_rows) - wins),
                     "winRate": win_rate,
                     "avgReturn": avg_return,
+                    "sampleStatus": _vd_sample_status(len(completed_rows)),
+                    "lowSample": len(completed_rows) < 30,
                 }
-                total_completed += len(executed)
+                total_completed += len(completed_rows)
                 total_pending += pending_count
-                if win_rate is not None:
-                    all_win_rates.append(win_rate)
+                total_wins += wins
+                total_not_executed += not_executed_count
 
-        overall_win_rate = round(sum(all_win_rates) / len(all_win_rates), 1) if all_win_rates else None
+        overall_win_rate = round(total_wins / total_completed * 100, 1) if total_completed else None
 
         ledger_path = reports_dir / "virtual_prediction_ledger.csv"
         lifecycle: list[dict] = []
         for r in _read_vd_csv(ledger_path)[:100]:
-            if market != "all" and r.get("market", "").lower() != mk:
+            if requested_market != "all" and r.get("market", "").lower() != markets[0]:
                 continue
             lifecycle.append({
                 "predictionId": r.get("predictionId", ""),
@@ -6683,14 +6847,20 @@ def api_validation_dashboard(market: str = Query("kr")) -> dict:
 
         return {
             "status": "OK",
+            "market": requested_market if requested_market in {"kr", "us", "all"} else markets[0],
             "summary": {
                 "overallWinRate": overall_win_rate,
                 "totalCompleted": total_completed,
                 "totalPending": total_pending,
+                "totalWins": total_wins,
+                "totalNotExecuted": total_not_executed,
+                "sampleStatus": _vd_sample_status(total_completed),
+                "lowSample": total_completed < 30,
+                "basis": "completed entry-touch validations only; pending and not-executed rows are excluded from win-rate denominator",
+                "sourceFiles": sorted(source_files)[:80],
             },
             "stats": stats,
             "lifecycle": lifecycle,
-            "market": market,
         }
     except Exception as e:
         return {"status": "ERROR", "error": str(e), "summary": None, "stats": {}, "lifecycle": []}
