@@ -267,6 +267,40 @@ def _ohlcv_ref(symbol: str, market: str) -> Dict[str, Any]:
     prev = rows[-2] if len(rows) >= 2 else {"close": 0.0, "date": ""}
     return {"latest": latest["close"], "prev": prev["close"], "source": files[0].name, "date": latest["date"]}
 
+def _stop_loss_delay_info(symbol: str, market: str, stop: float, current: float) -> Dict[str, Any]:
+    """현재가가 손절가를 이미 깼는데 며칠째 들고 있는지(추격매수의 반대 패턴, 손절지연) 계산.
+
+    종가 기준으로 최근부터 거슬러 올라가며, 종가가 손절가 이상이었던 마지막 날 다음부터
+    오늘까지 며칠 연속 손절가 밑인지 센다. OHLCV가 없으면 '지금 손절가 밑'이라는 사실만으로
+    주의를 주되, 며칠째인지 모르니 위험까지는 올리지 않는다.
+    """
+    if stop <= 0 or current <= 0 or current >= stop:
+        return {"breached": False, "daysSinceBreach": 0, "delayRisk": "정상"}
+
+    sym = symbol.upper()
+    files = list(_ohlcv_files_cached(sym, market))
+    if not files:
+        return {"breached": True, "daysSinceBreach": 0, "delayRisk": "주의"}
+
+    rows = []
+    for row in _read_csv(files[0]):
+        close = _num(_text(row, ["close", "Close", "종가", "stck_clpr", "price"]))
+        date = _text(row, ["date", "Date", "날짜", "timestamp", "time", "일자"])
+        if close > 0:
+            rows.append({"close": close, "date": date})
+    rows.sort(key=lambda r: str(r.get("date") or ""))
+    if not rows:
+        return {"breached": True, "daysSinceBreach": 0, "delayRisk": "주의"}
+
+    days_since = 0
+    for row in reversed(rows):
+        if row["close"] >= stop:
+            break
+        days_since += 1
+
+    delay_risk = "손절지연" if days_since >= 3 else "주의"
+    return {"breached": True, "daysSinceBreach": days_since, "delayRisk": delay_risk}
+
 def _candidate_score(row: Dict[str, Any]) -> int:
     score = 0
     for keys in [
@@ -343,6 +377,10 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
 
         risk = "위험" if stop_gap is not None and stop_gap <= 0.5 else "주의" if stop_gap is not None and stop_gap <= 3 else "정상"
 
+        delay = _stop_loss_delay_info(sym, m, stop, current)
+        if delay["delayRisk"] == "손절지연":
+            risk = "손절지연"
+
         items.append({
             "id": key,
             "symbol": sym,
@@ -361,6 +399,9 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
             "pnlPct": pnl_pct,
             "stopGapPct": stop_gap,
             "riskStatus": risk,
+            "stopLossBreached": delay["breached"],
+            "stopLossDelayDays": delay["daysSinceBreach"],
+            "stopLossDelayRisk": delay["delayRisk"],
             "missingFields": missing,
             "dataStatus": "PARTIAL" if missing else "OK",
             "currentPriceText": _fmt_price(current, m),
@@ -384,7 +425,7 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
     total_value = sum(_num(x.get("valuation")) for x in items)
     total_cost = sum(_num(x.get("cost")) for x in items)
     total_pnl = total_value - total_cost if total_value and total_cost else 0.0
-    risk_count = sum(1 for x in items if x["riskStatus"] in {"위험", "주의"})
+    risk_count = sum(1 for x in items if x["riskStatus"] in {"위험", "주의", "손절지연"})
 
     return {
         "status": "OK",
@@ -562,7 +603,7 @@ def register_mone_v802_holdings_clean_routes(app):
         uid = _sanitize_user_id(x_mone_user)
         payload = (holdings_clean_payload_for_user(uid, market=market, limit=1000)
                    if uid else holdings_clean_payload(market=market, limit=1000))
-        items = [x for x in payload["items"] if x["riskStatus"] in {"위험", "주의"}]
+        items = [x for x in payload["items"] if x["riskStatus"] in {"위험", "주의", "손절지연"}]
         return {"status": "OK", "routeVersion": "v80.2-clean", "market": market, "count": len(items), "items": items, "updatedAt": payload["updatedAt"]}
 
 

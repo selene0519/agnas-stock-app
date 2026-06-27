@@ -201,6 +201,45 @@ def _fmt_price(v: float, market: str) -> str:
         return "-"
     return f"USD {v:,.2f}" if market == "us" else f"KRW {round(v):,}"
 
+def _ohlcv_rows(market: str, symbol: str) -> List[Dict[str, Any]]:
+    files = _find([f"market/ohlcv/{market}_{symbol}_daily.csv"], max_files=1)
+    if not files:
+        return []
+    rows = _read_csv(files[0])
+    rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
+    return rows
+
+def _stop_loss_delay_info(market: str, symbol: str, stop: float, current: float) -> Dict[str, Any]:
+    """현재가가 손절가를 이미 깼는데 며칠째 들고 있는지(추격매수의 반대 패턴, 손절지연) 계산.
+
+    종가 기준으로 최근부터 거슬러 올라가며, 종가가 손절가 이상이었던 마지막 날 다음부터
+    오늘까지 며칠 연속 손절가 밑인지 센다. OHLCV가 없으면 '오늘 손절가 밑'이라는 사실만으로
+    WATCH를 준다(완전히 모르는 척 하지 않되, 과장하지 않는다).
+    """
+    if stop <= 0 or current <= 0 or current >= stop:
+        return {"breached": False, "daysSinceBreach": 0, "delayRisk": "NONE"}
+
+    rows = _ohlcv_rows(market, symbol)
+    if not rows:
+        return {"breached": True, "daysSinceBreach": 0, "delayRisk": "WATCH"}
+
+    days_since = 0
+    for row in reversed(rows):
+        close = _num(row.get("close") or row.get("Close"))
+        if close <= 0:
+            continue
+        if close >= stop:
+            break
+        days_since += 1
+
+    if days_since >= 3:
+        delay_risk = "HIGH"
+    elif days_since >= 1:
+        delay_risk = "WATCH"
+    else:
+        delay_risk = "WATCH"  # 오늘 처음 깼어도 watch — HIGH는 "지연"이 누적된 경우로 한정
+    return {"breached": True, "daysSinceBreach": days_since, "delayRisk": delay_risk}
+
 def holdings_payload(market: str = "all", limit: int = 200) -> Dict[str, Any]:
     market = (market or "all").lower()
     quote_kr = _latest_quote_map("kr")
@@ -246,6 +285,10 @@ def holdings_payload(market: str = "all", limit: int = 200) -> Dict[str, Any]:
         else:
             risk = "NORMAL"
 
+        delay = _stop_loss_delay_info(m, sym, stop, current)
+        if delay["delayRisk"] == "HIGH":
+            risk = "STOP_LOSS_DELAY"
+
         items.append({
             "id": key,
             "symbol": sym,
@@ -264,6 +307,9 @@ def holdings_payload(market: str = "all", limit: int = 200) -> Dict[str, Any]:
             "stopGapPct": stop_gap_pct,
             "targetGapPct": target_gap_pct,
             "riskStatus": risk,
+            "stopLossBreached": delay["breached"],
+            "stopLossDelayDays": delay["daysSinceBreach"],
+            "stopLossDelayRisk": delay["delayRisk"],
             "currentPriceText": _fmt_price(current, m),
             "avgPriceText": _fmt_price(avg, m),
             "valuationText": _fmt_price(valuation, m),
@@ -285,7 +331,8 @@ def holdings_payload(market: str = "all", limit: int = 200) -> Dict[str, Any]:
     total_value = sum(_num(x["valuation"]) for x in items)
     total_cost = sum(_num(x["cost"]) for x in items)
     total_pnl = total_value - total_cost if total_cost > 0 and total_value > 0 else 0
-    risk_count = sum(1 for x in items if x["riskStatus"] in {"HIGH", "WATCH"})
+    risk_count = sum(1 for x in items if x["riskStatus"] in {"HIGH", "WATCH", "STOP_LOSS_DELAY"})
+    stop_loss_delay_count = sum(1 for x in items if x["riskStatus"] == "STOP_LOSS_DELAY")
     return {
         "status": "OK",
         "market": market,
@@ -298,6 +345,7 @@ def holdings_payload(market: str = "all", limit: int = 200) -> Dict[str, Any]:
             "totalPnlPct": (total_pnl / total_cost * 100) if total_cost > 0 else 0,
             "holdingCount": len(items),
             "riskCount": risk_count,
+            "stopLossDelayCount": stop_loss_delay_count,
             "totalValueText": _fmt_price(total_value, "kr") if market != "us" else _fmt_price(total_value, "us"),
             "totalPnlText": _fmt_price(total_pnl, "kr") if total_pnl != 0 else "0",
             "totalPnlPctText": f"{(total_pnl / total_cost * 100):+.2f}%" if total_cost > 0 else "-",
@@ -321,5 +369,5 @@ def register_mone_v77_holdings_routes(app):
     @app.get("/api/holdings/risk")
     def holdings_risk(market: str = Query("all")):
         payload = holdings_payload(market=market, limit=1000)
-        risky = [x for x in payload["items"] if x.get("riskStatus") in {"HIGH", "WATCH"}]
+        risky = [x for x in payload["items"] if x.get("riskStatus") in {"HIGH", "WATCH", "STOP_LOSS_DELAY"}]
         return {"status": "OK", "market": market, "count": len(risky), "items": risky, "updatedAt": payload["updatedAt"]}

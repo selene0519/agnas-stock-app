@@ -274,14 +274,28 @@ function validateHoldingDraft(item: EditableHolding) {
   if (!Number.isFinite(n.avgPrice) || n.avgPrice <= 0) return "평균단가는 0보다 커야 합니다.";
   return "";
 }
+// /api/holdings는 백엔드 모듈에 따라 riskStatus를 영문("HIGH"/"WATCH")으로 주기도 하고
+// 한글("위험"/"주의")로 직접 주기도 한다(mone_v802_holdings_clean.py가 현재 라이브 경로).
+// 한쪽만 인식하면 실제 "위험" 종목이 매칭 실패로 기본값("정상"/안전)으로 잘못 표시된다.
+// 모든 비교는 이 정규화를 거쳐 영문 코드로 통일한 뒤 한다.
+function normalizeRiskStatus(risk: unknown): "STOP_LOSS_DELAY" | "HIGH" | "WATCH" | "NORMAL" {
+  const r = String(risk || "");
+  if (r === "STOP_LOSS_DELAY" || r === "손절지연") return "STOP_LOSS_DELAY";
+  if (r === "HIGH" || r === "위험") return "HIGH";
+  if (r === "WATCH" || r === "주의") return "WATCH";
+  return "NORMAL";
+}
 function riskBadgeClass(risk: string) {
-  if (risk === "HIGH") return toneClassName("danger");
-  if (risk === "WATCH") return toneClassName("warning");
+  const r = normalizeRiskStatus(risk);
+  if (r === "STOP_LOSS_DELAY" || r === "HIGH") return toneClassName("danger");
+  if (r === "WATCH") return toneClassName("warning");
   return toneClassName("safe");
 }
 function riskLabel(risk: string) {
-  if (risk === "HIGH") return "위험";
-  if (risk === "WATCH") return "주의";
+  const r = normalizeRiskStatus(risk);
+  if (r === "STOP_LOSS_DELAY") return "손절지연";
+  if (r === "HIGH") return "위험";
+  if (r === "WATCH") return "주의";
   return "정상";
 }
 function brokerLabel(value: any) {
@@ -953,7 +967,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     recoGeneratedAt: summary.updatedAt || data.updatedAt || holdingsLoadedAt,
     dataStatus: data.status,
   });
-  const riskCount = Number(summary.riskCount ?? items.filter((item) => ["HIGH","WATCH"].includes(String(item.riskStatus || ""))).length);
+  const riskCount = Number(summary.riskCount ?? items.filter((item) => normalizeRiskStatus(item.riskStatus) !== "NORMAL").length);
   const totalValueText = summary.totalValueText || (items.length > 0 ?
     items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
   const showPersonalEmptyNotice = !loading && items.length === 0 && isPersonalHoldingsSource;
@@ -973,8 +987,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     }
 
     stocks.sort((a, b) => {
-      const riskA = String(a.riskStatus || "").toUpperCase();
-      const riskB = String(b.riskStatus || "").toUpperCase();
+      const riskA = normalizeRiskStatus(a.riskStatus);
+      const riskB = normalizeRiskStatus(b.riskStatus);
       const stopGapA = a.downsideGapPct != null ? Number(a.downsideGapPct) : a.stopGapPct != null ? Number(a.stopGapPct) : null;
       const stopGapB = b.downsideGapPct != null ? Number(b.downsideGapPct) : b.stopGapPct != null ? Number(b.stopGapPct) : null;
       const hasPriceA = a.currentPrice && Number(a.currentPrice) > 0;
@@ -991,7 +1005,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
       const getRiskScore = (risk: string, stopGap: number | null, hasPrice: boolean, hasStop: boolean, hasTarget: boolean, weight: number) => {
         let score = 0;
-        if (risk === "HIGH") score += 1000;
+        if (risk === "STOP_LOSS_DELAY") score += 1500;
+        else if (risk === "HIGH") score += 1000;
         else if (risk === "WATCH") score += 500;
 
         if (stopGap !== null && stopGap <= 2) score += 400;
@@ -1425,7 +1440,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                 />
                 <Mini label="평가손익" value={pnlText} accent={Number(holding.pnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"} />
                 <Mini label="보유 비중" value={weightText} />
-                <Mini label="MONE 리스크" value={riskLabel(holding.riskStatus)} accent={String(holding.riskStatus) === "HIGH" ? "text-red-300" : String(holding.riskStatus) === "WATCH" ? "text-amber-300" : "text-emerald-300"} />
+                <Mini label="MONE 리스크" value={riskLabel(holding.riskStatus)} accent={["HIGH","STOP_LOSS_DELAY"].includes(normalizeRiskStatus(holding.riskStatus)) ? "text-red-300" : normalizeRiskStatus(holding.riskStatus) === "WATCH" ? "text-amber-300" : "text-emerald-300"} />
                 <button
                   type="button"
                   onClick={() => {
