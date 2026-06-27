@@ -6,6 +6,7 @@ import json
 import math
 import os
 import re
+import tempfile
 import threading
 import time
 from collections import Counter, defaultdict
@@ -307,7 +308,29 @@ def _read_rows(path: Path, columns: list[str]) -> list[dict[str, Any]]:
     return []
 
 
+def _write_path(path: Path) -> Path:
+    if not (os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("MONE_FORCE_TEST_WRITE_REDIRECT")):
+        return path
+    try:
+        resolved = path.resolve()
+        protected = {
+            (data.REPO_ROOT / "data" / "virtual_trade_journal.csv").resolve(),
+            (data.REPO_ROOT / "data" / "virtual_trade_evaluations.csv").resolve(),
+            (data.REPO_ROOT / "data" / "virtual_trade_calibration_approvals.csv").resolve(),
+            (data.REPO_ROOT / "data" / "virtual_trade_calibration_applications.csv").resolve(),
+            (data.REPO_ROOT / "reports" / "virtual_trade_journal_status.json").resolve(),
+            (data.REPO_ROOT / "reports" / "virtual_trade_self_learning_status.json").resolve(),
+        }
+        if resolved in protected:
+            root = Path(os.environ.get("MONE_PYTEST_WRITE_ROOT") or tempfile.gettempdir()) / "mone-vtj-pytest"
+            return root / path.name
+    except Exception:
+        pass
+    return path
+
+
 def _write_rows(path: Path, rows: list[dict[str, Any]], columns: list[str]) -> None:
+    path = _write_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")

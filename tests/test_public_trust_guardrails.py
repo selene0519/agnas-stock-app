@@ -234,6 +234,23 @@ def test_active_stabilizer_stale_recommendations_are_trade_blocked(monkeypatch) 
     assert out["items"][0]["tradeBlockStatus"] == "DATA_QUALITY_BLOCK"
 
 
+def test_active_stabilizer_partial_data_quality_is_trade_blocked(monkeypatch) -> None:
+    monkeypatch.setattr(
+        stabilizer,
+        "_recommendation_data_quality",
+        lambda market: {"status": "OK", "dataStatus": "PARTIAL", "summary": "US realtime price missing"},
+    )
+    payload = {"status": "OK", "count": 1, "items": [{"symbol": "AAPL", "dataStatus": "NORMAL"}]}
+
+    out = stabilizer._apply_recommendation_trade_safety(payload, "us")
+
+    assert out["tradeSafety"]["status"] == "BLOCKED"
+    assert out["reviewOnly"] is True
+    assert out["blockedCount"] == 1
+    assert out["items"][0]["isTradeBlocked"] is True
+    assert out["items"][0]["tradeBlockStatus"] == "DATA_QUALITY_BLOCK"
+
+
 def test_data_quality_prefers_fresh_us_price_file_over_stale_existing_snapshot(
     monkeypatch,
     tmp_path: Path,

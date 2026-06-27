@@ -583,9 +583,18 @@ def _set_if_empty(df: pd.DataFrame, idx: Any, columns: tuple[str, ...] | list[st
     changed = False
     for col in columns:
         if col in df.columns and is_empty(df.at[idx, col]):
-            df.at[idx, col] = clean_value(value)
+            _set_clean_value(df, idx, col, value)
             changed = True
     return changed
+
+
+def _set_clean_value(df: pd.DataFrame, idx: Any, col: str, value: Any) -> None:
+    cleaned = clean_value(value)
+    if col not in df.columns:
+        return
+    if str(df[col].dtype) not in {"object", "string"}:
+        df[col] = df[col].astype("object")
+    df.at[idx, col] = cleaned
 
 
 def ensure_unified_candidate_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -694,7 +703,7 @@ def enrich_candidate_frame(
             if not is_empty(value):
                 for col in fill_map.get(key, ()):  # overwrite every alias
                     if col in out.columns:
-                        out.at[idx, col] = clean_value(value)
+                        _set_clean_value(out, idx, col, value)
         # 가격 관련 컬럼은 논리 검증 후 같은 값으로 동기화한다.
         # 기존 값이 있어도 tp2 < tp1 같은 오류가 있으면 보정값으로 덮어쓴다.
         # Validate using the already merged values, not the partially filled output row.
@@ -706,7 +715,7 @@ def enrich_candidate_frame(
             if not is_empty(value):
                 for col in fill_map[key]:
                     if col in out.columns:
-                        out.at[idx, col] = clean_value(value)
+                        _set_clean_value(out, idx, col, value)
         has_price = any(not is_empty(out.at[idx, c]) for c in fill_map["current_price"] + fill_map["entry"] + fill_map["stop"] + fill_map["tp1"] if c in out.columns)
         if has_price:
             _set_if_empty(out, idx, ("price_data_status", "데이터 상태"), "저장된 후보 기준")

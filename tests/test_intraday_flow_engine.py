@@ -68,6 +68,8 @@ def test_flow_snapshot_and_summary(tmp_path, monkeypatch):
     monkeypatch.setattr(engine, "update_candidate_files_with_flow", lambda flow_df, sector_flow_df=None: {"updated_files": []})
     snap_path = tmp_path / "flow.csv"
     sum_path = tmp_path / "flow_summary.json"
+    detail_path = tmp_path / "flow_failure_detail.csv"
+    monkeypatch.setattr(engine, "FLOW_FAILURE_DETAIL_PATH", detail_path)
     monkeypatch.setattr(engine, "fetch_intraday_investor_flow", lambda symbol, market: {
         "foreign_net_buy": 100,
         "institution_net_buy": 50,
@@ -108,7 +110,7 @@ def test_flow_snapshot_and_summary(tmp_path, monkeypatch):
     assert summary_json["kr_market_session_status"].strip()
 
     assert "kr_flow_failure_detail_path" in summary_json
-    assert summary_json["kr_flow_failure_detail_path"] == str(engine.FLOW_FAILURE_DETAIL_PATH)
+    assert summary_json["kr_flow_failure_detail_path"] == str(detail_path)
 
 
 def test_flow_snapshot_and_summary_failure_reason_counts(tmp_path, monkeypatch):
@@ -124,6 +126,7 @@ def test_flow_snapshot_and_summary_failure_reason_counts(tmp_path, monkeypatch):
     monkeypatch.setattr(engine, "update_candidate_files_with_flow", lambda flow_df, sector_flow_df=None: {"updated_files": []})
     snap_path = tmp_path / "flow.csv"
     sum_path = tmp_path / "flow_summary.json"
+    monkeypatch.setattr(engine, "FLOW_FAILURE_DETAIL_PATH", tmp_path / "flow_failure_detail.csv")
     failure_reason = "kr_flow_response_empty"
     monkeypatch.setattr(engine, "fetch_intraday_investor_flow", lambda symbol, market: {
         "foreign_net_buy": None,

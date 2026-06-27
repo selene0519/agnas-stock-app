@@ -2478,12 +2478,10 @@ def _recommendation_data_quality(market: str) -> dict[str, Any]:
 def _recommendation_trade_safety(quality: dict[str, Any] | None) -> dict[str, Any]:
     quality = quality if isinstance(quality, dict) else {}
     status = str(quality.get("dataStatus") or quality.get("status") or "UNKNOWN").upper()
-    blocked = bool(quality.get("killSwitch")) or status in {"STALE", "NO_DATA", "ERROR", "TIMEOUT"}
+    blocked = bool(quality.get("killSwitch")) or status not in {"NORMAL", "OK"}
     reason = str(quality.get("summary") or quality.get("message") or f"dataStatus={status}")
     if blocked:
         return {"status": "BLOCKED", "reviewOnly": True, "isTradeBlocked": True, "reason": reason, "dataStatus": status}
-    if status not in {"NORMAL", "OK"}:
-        return {"status": "CAUTION", "reviewOnly": True, "isTradeBlocked": False, "reason": reason, "dataStatus": status}
     return {"status": "OK", "reviewOnly": False, "isTradeBlocked": False, "reason": "", "dataStatus": status}
 
 

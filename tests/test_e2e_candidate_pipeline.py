@@ -73,11 +73,19 @@ def test_grade_engine_handles_hard_block_and_bucket():
     assert out.loc[0, "final_candidate_bucket"] == "FORBIDDEN"
 
 
-def test_candidate_pipeline_outputs_have_app_required_columns():
-    backfill_sell_management_candidate_files(CANDIDATE_FILES)
-    backfill_portfolio_risk_candidate_files(CANDIDATE_FILES)
+def test_candidate_pipeline_outputs_have_app_required_columns(tmp_path):
+    files = [tmp_path / path.name for path in CANDIDATE_FILES]
+    for path in files:
+        save_swing_candidate_csv(
+            pd.DataFrame([{"symbol": "ABC", "market": "us", "grade": "A", "score": 90}]),
+            path,
+            required_columns=APP_REQUIRED_COLUMNS,
+        )
 
-    for path in CANDIDATE_FILES:
+    backfill_sell_management_candidate_files(files)
+    backfill_portfolio_risk_candidate_files(files, tmp_path / "portfolio_risk_summary.json", base_dir=tmp_path)
+
+    for path in files:
         assert path.exists()
         df = read_swing_candidate_csv(path, required_columns=APP_REQUIRED_COLUMNS)
         for col in APP_REQUIRED_COLUMNS:

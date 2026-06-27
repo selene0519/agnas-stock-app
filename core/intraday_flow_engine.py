@@ -1295,8 +1295,8 @@ def _summary_from_snapshot(df: pd.DataFrame) -> dict[str, Any]:
     }
 
 
-def save_intraday_flow_failure_detail(df: pd.DataFrame, path: str | Path = FLOW_FAILURE_DETAIL_PATH) -> dict[str, Any]:
-    target = Path(path)
+def save_intraday_flow_failure_detail(df: pd.DataFrame, path: str | Path | None = None) -> dict[str, Any]:
+    target = Path(path or FLOW_FAILURE_DETAIL_PATH)
     columns = [
         "symbol", "market", "flow_fetch_status", "flow_failure_reason", "kr_flow_attempted",
         "kr_flow_success", "kr_flow_error", "kr_flow_failure_detail", "kr_flow_session_status",

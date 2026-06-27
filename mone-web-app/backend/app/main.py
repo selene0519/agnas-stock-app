@@ -594,22 +594,13 @@ def _ensure_status(payload: dict, default_status: str = "OK") -> dict:
 def _recommendation_trade_safety(quality: dict | None) -> dict:
     quality = quality if isinstance(quality, dict) else {}
     status = str(quality.get("dataStatus") or quality.get("status") or "UNKNOWN").upper()
-    blocked = bool(quality.get("killSwitch")) or status in {"STALE", "NO_DATA", "ERROR", "TIMEOUT"}
+    blocked = bool(quality.get("killSwitch")) or status not in {"NORMAL", "OK"}
     if blocked:
         reason = quality.get("summary") or quality.get("message") or f"dataStatus={status}"
         return {
             "status": "BLOCKED",
             "reviewOnly": True,
             "isTradeBlocked": True,
-            "reason": str(reason),
-            "dataStatus": status,
-        }
-    if status not in {"NORMAL", "OK"}:
-        reason = quality.get("summary") or quality.get("message") or f"dataStatus={status}"
-        return {
-            "status": "CAUTION",
-            "reviewOnly": True,
-            "isTradeBlocked": False,
             "reason": str(reason),
             "dataStatus": status,
         }
