@@ -101,6 +101,33 @@ def load_recommendations(market: str, mode: str, horizon: str) -> list[dict]:
     return []
 
 
+def load_pending_ledger_fallback(market: str, mode: str, horizon: str, known_symbols: set[str]) -> list[dict]:
+    """오늘 추천 리스트에 없는, 아직 PENDING인 예측도 계속 추적한다.
+
+    추천 후보가 다음날 스크리닝에서 빠지면(섹터캡, 점수 하락 등) load_recommendations()가
+    그 심볼을 더 이상 돌려주지 않아 검증 스냅샷이 끊긴다. 그 결과 마감일이 지나도 영원히
+    체결 데이터를 찾을 수 없어 EXPIRED(데이터 없음)로 잘못 분류된다. ledger 자체가 entry/stop/
+    target 가격을 들고 있으므로, 추천 리스트와 무관하게 이걸로 계속 검증할 수 있다.
+    """
+    rows = read_csv(REPORTS / "virtual_prediction_ledger.csv")
+    out: list[dict] = []
+    for row in rows:
+        if str(row.get("status") or "").strip().upper() != "PENDING":
+            continue
+        if str(row.get("market") or "").lower() != market:
+            continue
+        if str(row.get("mode") or "").lower() != mode:
+            continue
+        if str(row.get("horizon") or "").lower() != horizon:
+            continue
+        sym = norm_symbol(row.get("symbol"), market)
+        if not sym or sym in known_symbols:
+            continue
+        out.append({**row, "symbol": sym, "_source": "virtual_prediction_ledger.csv"})
+        known_symbols.add(sym)
+    return out
+
+
 def close_row(market: str, symbol: str) -> dict | None:
     for path in [OHLCV_DIR / f"{market}_{symbol}_daily.csv", REPORTS / f"{market}_{symbol}_daily.csv"]:
         rows = read_csv(path)
@@ -154,6 +181,8 @@ def main() -> None:
         for mode in MODES:
             for horizon in HORIZONS:
                 recs = load_recommendations(market, mode, horizon)
+                known_symbols = {row["symbol"] for row in recs}
+                recs = recs + load_pending_ledger_fallback(market, mode, horizon, known_symbols)
                 rows = [validate_one(market, row, mode, horizon) for row in recs]
                 if rows and any(row.get("dataStatus") == "NORMAL" for row in rows):
                     out = REPORTS / f"mone_v36_final_trade_validation_{market}_{mode}_{horizon}_{YYYYMMDD}.csv"

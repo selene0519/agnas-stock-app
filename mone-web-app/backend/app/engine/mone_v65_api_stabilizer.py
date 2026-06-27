@@ -3254,6 +3254,24 @@ def _ohlcv_rows_for(market: str, symbol: str) -> list[dict[str, Any]]:
     return []
 
 
+_V65_HORIZON_VALIDATION_DAYS = {"short": 5, "swing": 10, "mid": 21}
+
+
+def _v65_window_cutoff(horizon: str, due: str) -> str:
+    """scripts/settle_pending_validations.py와 같은 horizon별 여유 창을 쓴다.
+
+    예전엔 정확히 validationDueDate까지만 보고 그 이후 체결은 무시했는데, 정산
+    스크립트는 D+(horizon별 5~21일)+7일까지 기다려준다. 창 길이가 서로 다르면
+    같은 예측을 두 엔진이 다른 결과로 판정할 수 있어 맞춰준다.
+    """
+    extra_days = _V65_HORIZON_VALIDATION_DAYS.get(str(horizon or "swing").lower(), 10) + 7
+    try:
+        base = datetime.fromisoformat(str(due)[:10])
+    except Exception:
+        return due
+    return (base + timedelta(days=extra_days)).date().isoformat()
+
+
 def _validate_virtual_ledger() -> dict[str, Any]:
     ledger = _normalize_ledger_due_dates(_read_csv(_ledger_path(), 100000))
     today = datetime.now().date().isoformat()
@@ -3267,11 +3285,13 @@ def _validate_virtual_ledger() -> dict[str, Any]:
         status = "PENDING" if due > today else "VALIDATABLE"
         market = str(row.get("market") or "kr").lower()
         symbol = str(row.get("symbol") or "")
+        horizon = str(row.get("horizon") or "swing").lower()
         entry = _num(row.get("entryPrice"))
         stop = _num(row.get("stopPrice"))
         target = _num(row.get("targetPrice"))
         created = str(row.get("createdAt") or "")
-        window_rows = [r for r in _ohlcv_rows_for(market, symbol) if created < _text(r, ["date", "Date", "날짜"], "") <= due]
+        window_cutoff = _v65_window_cutoff(horizon, due)
+        window_rows = [r for r in _ohlcv_rows_for(market, symbol) if created < _text(r, ["date", "Date", "날짜"], "") <= window_cutoff]
         result = {
             **row,
             "isExecuted": "false",

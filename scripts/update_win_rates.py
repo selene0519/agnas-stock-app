@@ -75,7 +75,7 @@ def _is_win(row: dict) -> bool | None:
     result = str(
         row.get("result") or row.get("status") or row.get("win_loss_result") or ""
     ).upper()
-    if result in ("PENDING", "DATA_PENDING", "FLAT", ""):
+    if result in ("PENDING", "DATA_PENDING", "FLAT", "NOT_EXECUTED", ""):
         return None
     # 성공: 목표 도달
     if any(k in result for k in ("WIN", "SUCCESS", "TP", "TARGET", "목표")):
