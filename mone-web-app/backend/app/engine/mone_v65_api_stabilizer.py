@@ -3,8 +3,10 @@ from __future__ import annotations
 import csv
 import json
 import math
+import os
 import re
 import subprocess
+import threading
 import time
 from datetime import datetime, timedelta
 from functools import lru_cache
@@ -3068,13 +3070,21 @@ def _backup_file(path: Path) -> Path | None:
     return backup
 
 
+_CSV_WRITE_LOCK = threading.Lock()
+
+
 def _write_csv_rows(path: Path, fieldnames: list[str], rows: list[dict[str, Any]]) -> None:
+    # 동시 쓰기(여러 요청/스케줄러가 같은 CSV를 동시에 rewrite)가 파일 바이트를 뒤섞는
+    # torn-write 손상을 막기 위해, 임시 파일에 전체를 쓴 뒤 os.replace로 원자적 치환한다.
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({key: row.get(key, "") for key in fieldnames})
+    with _CSV_WRITE_LOCK:
+        tmp_path = path.with_name(f".{path.name}.tmp{os.getpid()}_{threading.get_ident()}")
+        with tmp_path.open("w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({key: row.get(key, "") for key in fieldnames})
+        os.replace(tmp_path, path)
 
 
 def _collection_target_path(market: str) -> Path:
