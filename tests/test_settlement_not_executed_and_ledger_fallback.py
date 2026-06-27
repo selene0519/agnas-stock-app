@@ -276,3 +276,35 @@ def test_pending_ledger_fallback_ignores_settled_and_out_of_scope_rows(tmp_path,
 
     out = gen.load_pending_ledger_fallback("kr", "balanced", "swing", known_symbols=set())
     assert out == []
+
+
+# ── 깨진 행(predictionId 손실/파편) 정리 ────────────────────────────────────
+
+def test_sanitize_reconstructs_predictionid_when_identity_fields_intact():
+    """market/symbol/mode/horizon/createdAt이 다 있으면 predictionId만 비어도 복구한다."""
+    row = _ledger_row(predictionId="", market="us", symbol="NVDA", mode="conservative", horizon="mid", createdAt="2026-06-02")
+    clean, dropped = settle._sanitize_ledger_rows([row])
+    assert dropped == 0
+    assert clean[0]["predictionId"] == "us|NVDA|conservative|mid|2026-06-02"
+
+
+def test_sanitize_drops_row_with_blank_market_and_symbol():
+    row = _ledger_row(predictionId="", market="", symbol="", status="EXPIRED")
+    clean, dropped = settle._sanitize_ledger_rows([row])
+    assert clean == []
+    assert dropped == 1
+
+
+def test_sanitize_drops_fragment_predictionid_with_no_real_identity():
+    """'us|RKLB|', 'inal/recommendations' 같은 파편 행: market/symbol이 비어 있으면 못 살린다."""
+    row = _ledger_row(predictionId="inal/recommendations", market="", symbol="", createdAt="")
+    clean, dropped = settle._sanitize_ledger_rows([row])
+    assert clean == []
+    assert dropped == 1
+
+
+def test_sanitize_keeps_well_formed_row_unchanged():
+    row = _ledger_row()
+    clean, dropped = settle._sanitize_ledger_rows([row])
+    assert dropped == 0
+    assert clean == [row]

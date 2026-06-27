@@ -220,11 +220,41 @@ def _settle_from_ohlcv(market: str, symbol: str, entry: float | None, stop: floa
     return None
 
 
+def _sanitize_ledger_rows(rows: list[dict]) -> tuple[list[dict], int]:
+    """predictionId가 비어 있거나 market/symbol이 비었으면 진짜 예측이 아니다.
+
+    market|symbol|mode|horizon|createdAt 4개 필드가 모두 살아있으면 predictionId만
+    재구성해서 살리고, 그게 안 되면(예: 깨진 CSV 행이 과거에 섞여 들어온 경우) 버린다.
+    그냥 통과시키면 매번 EXPIRED/DATA_PENDING으로 재포장되며 영원히 남는다.
+    """
+    clean: list[dict] = []
+    dropped = 0
+    for row in rows:
+        pred_id = str(row.get("predictionId") or "").strip()
+        market  = str(row.get("market") or "").strip().lower()
+        symbol  = str(row.get("symbol") or "").strip()
+        mode    = str(row.get("mode") or "").strip()
+        horizon = str(row.get("horizon") or "").strip()
+        created = str(row.get("createdAt") or "").strip()
+        valid_identity = market in ("kr", "us") and bool(symbol)
+        if not valid_identity:
+            dropped += 1
+            continue
+        if not pred_id and mode and horizon and created:
+            row = dict(row)
+            row["predictionId"] = f"{market}|{symbol}|{mode}|{horizon}|{created}"
+        elif not pred_id:
+            dropped += 1
+            continue
+        clean.append(row)
+    return clean, dropped
+
+
 def main() -> None:
     ledger_path = REPORTS / "virtual_prediction_ledger.csv"
     results_path = REPORTS / "virtual_validation_results.csv"
 
-    ledger_rows  = _read_csv(ledger_path)
+    ledger_rows, dropped_malformed  = _sanitize_ledger_rows(_read_csv(ledger_path))
     results_rows = _read_csv(results_path)
 
     if not ledger_rows:
@@ -389,6 +419,7 @@ def main() -> None:
         "settled": settled,
         "unsettled": unsettled,
         "skipped": skipped,
+        "droppedMalformed": dropped_malformed,
         "total": len(ledger_rows),
     }
     (REPORTS / "pending_settlement_status.json").write_text(
