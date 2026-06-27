@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-06-28T00:45:36",
+  "cutoffDates": 105,
+  "results": {
+    "conservative_short": {
+      "beforeCalibration": {
+        "trades": 1283,
+        "wins": 69,
+        "losses": 438,
+        "winRate": 0.0538,
+        "avgNetPnlPct": -0.189
+      },
+      "afterCalibration": {
+        "trades": 1688,
+        "wins": 96,
+        "losses": 558,
+        "winRate": 0.0569,
+        "avgNetPnlPct": -0.107
+      }
+    },
+    "conservative_swing": {
+      "beforeCalibration": {
+        "trades": 1430,
+        "wins": 80,
+        "losses": 620,
+        "winRate": 0.0559,
+        "avgNetPnlPct": -0.039
+      },
+      "afterCalibration": {
+        "trades": 1888,
+        "wins": 108,
+        "losses": 802,
+        "winRate": 0.0572,
+        "avgNetPnlPct": 0.13
+      }
+    },
+    "conservative_mid": {
+      "beforeCalibration": {
+        "trades": 1536,
+        "wins": 270,
+        "losses": 806,
+        "winRate": 0.1758,
+        "avgNetPnlPct": 0.645
+      },
+      "afterCalibration": {
+        "trades": 2034,
+        "wins": 374,
+        "losses": 1057,
+        "winRate": 0.1839,
+        "avgNetPnlPct": 1.014
+      }
+    },
+    "balanced_short": {
+      "beforeCalibration": {
+        "trades": 1569,
+        "wins": 89,
+        "losses": 507,
+        "winRate": 0.0567,
+        "avgNetPnlPct": -0.033
+      },
+      "afterCalibration": {
+        "trades": 1690,
+        "wins": 94,
+        "losses": 543,
+        "winRate": 0.0556,
+        "avgNetPnlPct": -0.05
+      }
+    },
+    "balanced_swing": {
+      "beforeCalibration": {
+        "trades": 1800,
+        "wins": 97,
+        "losses": 756,
+        "winRate": 0.0539,
+        "avgNetPnlPct": 0.162
+      },
+      "afterCalibration": {
+        "trades": 1948,
+        "wins": 109,
+        "losses": 808,
+        "winRate": 0.056,
+        "avgNetPnlPct": 0.236
+      }
+    },
+    "balanced_mid": {
+      "beforeCalibration": {
+        "trades": 1970,
+        "wins": 353,
+        "losses": 1019,
+        "winRate": 0.1792,
+        "avgNetPnlPct": 0.999
+      },
+      "afterCalibration": {
+        "trades": 2145,
+        "wins": 390,
+        "losses": 1105,
+        "winRate": 0.1818,
+        "avgNetPnlPct": 1.117
+      }
+    }
+  }
+}

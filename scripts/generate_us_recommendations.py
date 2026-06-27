@@ -12,7 +12,14 @@ from pathlib import Path
 
 # KR 스크립트의 모든 로직 재사용, 파라미터만 미장으로 변경
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+elif sys.path[0] != str(ROOT):
+    # 이미 sys.path에 있어도 맨 앞이 아니면 그대로 둔다 — 무조건 맨 앞으로 다시 꽂으면
+    # 호출자가 (예: mone-web-app/backend를) 일부러 앞에 둔 순서를 깨서, 이 줄 때문에
+    # 레포 루트의 app.py가 mone-web-app/backend/app 패키지보다 먼저 잡히는
+    # ModuleNotFoundError("'app' is not a package")가 났었다.
+    pass
 
 # 팩터 회귀 기반 필터 조정값 로드
 def _load_factor_adjustments_us() -> dict:
@@ -47,6 +54,88 @@ from typing import Any
 OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
 REPORTS = ROOT / "reports"
 DATA_STOCKAPP = ROOT / "data" / "stockapp"
+
+
+def passes_us_quality_filters(
+    ind: dict, sector: str, mode: str, horizon: str,
+    sector_counts: dict, max_per_sector: int,
+    factor_adj: dict | None = None,
+    rsi_band: tuple[float, float] | None = None,
+    min_vr: float | None = None,
+) -> tuple[bool, str]:
+    """8중 필터(A~H). 운영 스크립트와 백테스트가 같은 함수를 쓰도록 분리했다.
+
+    rsi_band/min_vr를 넘기면 mode 기본값 대신 그 값을 쓴다 — 밴드 캘리브레이션
+    백테스트(scripts/backtest_band_calibration.py)에서 현재값 vs 대안값을 비교할 때 씀.
+    반환: (통과 여부, 실패한 필터 이름 — 통과 시 "").
+    """
+    factor_adj = factor_adj or {}
+    _ma5 = ind.get("ma5"); _ma20 = ind.get("ma20"); _ma60 = ind.get("ma60")
+    _rsi = ind.get("rsi14")
+    _vr  = ind.get("volumeRatio20")
+    _d20 = ind.get("distanceToMa20")
+    _atr14 = ind.get("atr14")
+    _bull5 = ind.get("bullRatio5", 0.0)
+
+    # 필터 A: MA 추세 — 완전 정배열 OR 부분 정배열
+    _ma_full_align = _ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60
+    _ma_partial = (_ma5 and _ma20 and _ma5 > _ma20 and
+                   _ma60 and _ma20 > _ma60 * 0.90)
+    if not (_ma_full_align or _ma_partial):
+        return False, "A_ma_align"
+
+    # 필터 B: RSI — mode별 차등 (US 강세장 반영, 팩터 회귀 조정 적용)
+    # 2026-06-28 scripts/backtest_band_calibration.py로 현재값 vs 완화값을 비교한 결과,
+    # conservative/balanced 둘 다 완화값이 추천 수↑·승률↑·평균수익↑ (105개 cutoff,
+    # 1283~2145건 체결, reports/band_calibration_us.json) — conservative_short/swing/mid,
+    # balanced_swing/mid 5칸은 명확히 개선, balanced_short만 잡음 수준 동률이라 같이 적용.
+    if rsi_band is not None:
+        _rsi_lo, _rsi_hi = rsi_band
+    else:
+        _rsi_lo = {"conservative": 33, "balanced": 30, "aggressive": 30}.get(mode, 35)
+        _rsi_hi_default = {"conservative": 76, "balanced": 78, "aggressive": 78}.get(mode, 75)
+        _rsi_hi = float(factor_adj.get(f"rsi_upper_{mode}", _rsi_hi_default))
+    if _rsi is None or not (_rsi_lo <= _rsi <= _rsi_hi):
+        return False, "B_rsi"
+
+    # 필터 C: 거래량 — mode별 최소 비율 (팩터 회귀 조정 적용, 위와 같은 근거로 완화됨)
+    if min_vr is not None:
+        _min_vr = min_vr
+    else:
+        _min_vr_default = {"conservative": 0.5, "balanced": 0.35, "aggressive": 0.3}.get(mode, 0.5)
+        _min_vr = float(factor_adj.get(f"min_vr_{mode}", _min_vr_default))
+    if _vr is None or _vr < _min_vr:
+        return False, "C_volume"
+
+    # 필터 D: 이격도 — horizon별 허용 범위 (US는 더 넓게, 팩터 회귀 조정 적용)
+    _d20_max_default = {"short": 12, "swing": 15, "mid": 20}.get(horizon, 15)
+    _d20_max = float(factor_adj.get(f"d20_max_{horizon}", _d20_max_default))
+    _d20_min = {"short": -12, "swing": -18, "mid": -25}.get(horizon, -18)
+    if _d20 is None or _d20 > _d20_max or _d20 < _d20_min:
+        return False, "D_distance_ma20"
+
+    # 필터 E: 손익비 — horizon별 ATR 배수로 계산
+    _stop_mult_e = {"short": 1.2, "swing": 1.5, "mid": 2.0}.get(horizon, 1.5)
+    _tgt_mult_e  = {"short": 2.8, "swing": 4.5, "mid": 5.5}.get(horizon, 4.5)
+    if _atr14 and _atr14 > 0:
+        if _tgt_mult_e / _stop_mult_e < 2.0:
+            return False, "E_risk_reward"
+
+    # 필터 F: 양봉 품질
+    _min_bull = {"conservative": 0.4, "balanced": 0.4, "aggressive": 0.2}.get(mode, 0.4)
+    if _bull5 < _min_bull:
+        return False, "F_bull_quality"
+
+    # 필터 G: 과도한 갭업 제거
+    _gap = ind.get("gapUpPct")
+    if _gap and _gap >= 12.0:
+        return False, "G_gap_up"
+
+    # 필터 H: 섹터 다양성
+    if sector_counts.get(sector, 0) >= max_per_sector:
+        return False, "H_sector_diversity"
+
+    return True, ""
 
 
 def _fmt_usd(v: float) -> str:
@@ -391,63 +480,20 @@ def generate_us_recommendations() -> dict[str, Any]:
                 current = c["current"]
                 ind = c["ind"]
 
-                # ── 7중 필터 (v3: 정확도 최적화) ──────────────────────────
+                # ── 8중 필터 (v3: 정확도 최적화) — passes_us_quality_filters()로 분리됨
+                # (scripts/backtest_band_calibration.py가 같은 함수로 밴드를 검증한다)
                 _ma5 = ind.get("ma5"); _ma20 = ind.get("ma20"); _ma60 = ind.get("ma60")
                 _rsi = ind.get("rsi14")
                 _vr  = ind.get("volumeRatio20")
-                _d20 = ind.get("distanceToMa20")
                 _atr14 = ind.get("atr14")
-                _bull5 = ind.get("bullRatio5", 0.0)
-
-                # 필터 A: MA 추세 — 완전 정배열 OR 부분 정배열
-                _ma_full_align = _ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60
-                _ma_partial = (_ma5 and _ma20 and _ma5 > _ma20 and
-                               _ma60 and _ma20 > _ma60 * 0.90)
-                if not (_ma_full_align or _ma_partial):
-                    continue
-
-                # 필터 B: RSI — mode별 차등 (US 강세장 반영, 팩터 회귀 조정 적용)
-                _rsi_lo = {"conservative": 38, "balanced": 35, "aggressive": 30}.get(mode, 35)
-                _rsi_hi_default = {"conservative": 72, "balanced": 75, "aggressive": 78}.get(mode, 75)
-                _rsi_hi = float(_FACTOR_ADJ_US.get(f"rsi_upper_{mode}", _rsi_hi_default))
-                if _rsi is None or not (_rsi_lo <= _rsi <= _rsi_hi):
-                    continue
-
-                # 필터 C: 거래량 — mode별 최소 비율 (팩터 회귀 조정 적용)
-                _min_vr_default = {"conservative": 0.7, "balanced": 0.5, "aggressive": 0.3}.get(mode, 0.5)
-                _min_vr = float(_FACTOR_ADJ_US.get(f"min_vr_{mode}", _min_vr_default))
-                if _vr is None or _vr < _min_vr:
-                    continue
-
-                # 필터 D: 이격도 — horizon별 허용 범위 (US는 더 넓게, 팩터 회귀 조정 적용)
-                _d20_max_default = {"short": 12, "swing": 15, "mid": 20}.get(horizon, 15)
-                _d20_max = float(_FACTOR_ADJ_US.get(f"d20_max_{horizon}", _d20_max_default))
-                _d20_min = {"short": -12, "swing": -18, "mid": -25}.get(horizon, -18)
-                if _d20 is None or _d20 > _d20_max or _d20 < _d20_min:
-                    continue
-
-                # 필터 E: 손익비 — horizon별 ATR 배수로 계산
-                _stop_mult_e = {"short": 1.2, "swing": 1.5, "mid": 2.0}.get(horizon, 1.5)
-                _tgt_mult_e  = {"short": 2.8, "swing": 4.5, "mid": 5.5}.get(horizon, 4.5)
-                if _atr14 and _atr14 > 0 and current > 0:
-                    if _tgt_mult_e / _stop_mult_e < 2.0:
-                        continue
-
-                # 필터 F: 양봉 품질
-                _min_bull = {"conservative": 0.4, "balanced": 0.4, "aggressive": 0.2}.get(mode, 0.4)
-                if _bull5 < _min_bull:
-                    continue
-
-                # 필터 G: 과도한 갭업 제거
-                _gap = ind.get("gapUpPct")
-                if _gap and _gap >= 12.0:
-                    continue
-
-                # 필터 H: 섹터 다양성
+                _ma_full_align = bool(_ma5 and _ma20 and _ma60 and _ma5 > _ma20 > _ma60)
                 _sec_us = c.get("sector", "Unknown") or "Unknown"
-                if _sector_counts_us.get(_sec_us, 0) >= _MAX_PER_SECTOR_US:
+
+                _passed, _ = passes_us_quality_filters(
+                    ind, _sec_us, mode, horizon, _sector_counts_us, _MAX_PER_SECTOR_US, _FACTOR_ADJ_US,
+                )
+                if not _passed:
                     continue
-                # ─────────────────────────────────────────────────────────
 
                 entry, stop, target, ev, decision, wr_prob, wr_samples = _price_band(adj_score, current, mode, horizon, ind)
 
