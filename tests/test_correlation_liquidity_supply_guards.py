@@ -278,3 +278,29 @@ def test_fetch_investor_flow_kr_gracefully_disabled_without_credentials(monkeypa
     result = quotes.fetch_investor_flow_kr("005930")
     assert result["ok"] is False
     assert "error" in result
+
+
+# ── 관리종목/SPAC/투자주의환기종목 거래소 분류 필터 ───────────────────────
+# (이름 패턴으로 못 잡는, 우선주가 아닌 관리종목 지정 케이스 등에 대한 2차 방어선)
+
+def test_excluded_symbols_loaded_from_listing_status_csv(tmp_path, monkeypatch):
+    import scripts.generate_kr_recommendations as gen
+
+    monkeypatch.setattr(gen, "ROOT", tmp_path)
+    monkeypatch.setattr(gen, "_EXCLUDED_SYMBOLS_CSV", tmp_path / "data" / "kr_excluded_symbols.csv")
+    (tmp_path / "data").mkdir()
+    with (tmp_path / "data" / "kr_excluded_symbols.csv").open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["symbol", "name", "dept", "asOf"])
+        writer.writeheader()
+        writer.writerow({"symbol": "123456", "name": "테스트관리종목", "dept": "관리종목(소속부없음)", "asOf": "2026-06-27"})
+
+    excluded = gen._load_excluded_symbols()
+    assert excluded == {"123456"}
+
+
+def test_excluded_symbols_missing_file_returns_empty_set(tmp_path, monkeypatch):
+    import scripts.generate_kr_recommendations as gen
+
+    monkeypatch.setattr(gen, "ROOT", tmp_path)
+    monkeypatch.setattr(gen, "_EXCLUDED_SYMBOLS_CSV", tmp_path / "data" / "kr_excluded_symbols.csv")
+    assert gen._load_excluded_symbols() == set()

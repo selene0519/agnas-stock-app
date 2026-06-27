@@ -1040,10 +1040,13 @@ def _load_ohlcv_all() -> dict[str, list[dict]]:
 
 
 _INDEX_SYMBOLS = {"KOSPI", "KOSDAQ", "KRX", "KRX100", "KOSPI200", "KOSDAQ150"}
-# 우선주("삼성전자우", "현대차2우B")·SPAC("OO스팩")는 종목코드만으로 구분이 안 되고
-# 국내 표준 데이터소스(FDR/yfinance)에 관리종목·거래정지 플래그가 없어, 종목명 접미사로
-# 방어적으로 걸러낸다. 큐레이션된 100여 종목 유니버스 기준이며 완전한 필터는 아니다.
+# 우선주("삼성전자우", "현대차2우B")·SPAC("OO스팩")는 종목코드만으로 구분이 안 되어
+# 종목명 접미사로 방어적으로 걸러낸다 (1차 방어선).
 _PREFERRED_SHARE_NAME_RE = re.compile(r"\d?우[A-Z]?$")
+# 2차 방어선: scripts/refresh_kr_listing_status.py가 FinanceDataReader StockListing('KRX')의
+# Dept 컬럼(관리종목/SPAC/투자주의환기종목 분류, 시장 전체 단일 호출)으로 채우는 실제 거래소
+# 분류 — 이름 패턴으로 못 잡는 경우(우선주가 아닌데 관리종목 지정된 경우 등)를 잡아낸다.
+_EXCLUDED_SYMBOLS_CSV = ROOT / "data" / "kr_excluded_symbols.csv"
 
 
 def _is_preferred_or_spac_name(name: str) -> bool:
@@ -1055,8 +1058,15 @@ def _is_preferred_or_spac_name(name: str) -> bool:
     return bool(_PREFERRED_SHARE_NAME_RE.search(name))
 
 
+def _load_excluded_symbols() -> set[str]:
+    if not _EXCLUDED_SYMBOLS_CSV.exists():
+        return set()
+    return {str(row.get("symbol", "")).strip() for row in _read_csv(_EXCLUDED_SYMBOLS_CSV) if row.get("symbol")}
+
+
 def _load_ohlcv_all_quiet() -> dict[str, list[dict]]:
     name_map = _load_name_map()
+    excluded = _load_excluded_symbols()
     result: dict[str, list[dict]] = {}
     for path in sorted(OHLCV_DIR.glob("kr_*_daily.csv")):
         m = re.match(r"kr_(\w+)_daily\.csv", path.name)
@@ -1066,7 +1076,7 @@ def _load_ohlcv_all_quiet() -> dict[str, list[dict]]:
         # 지수/벤치마크 파일 제외 (KOSPI, KOSDAQ 등 숫자가 아닌 심볼)
         if not sym.isdigit() or len(sym) != 6 or sym in _INDEX_SYMBOLS:
             continue
-        if _is_preferred_or_spac_name(name_map.get(sym, "")):
+        if _is_preferred_or_spac_name(name_map.get(sym, "")) or sym in excluded:
             continue
         rows = _read_csv(path)
         rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
