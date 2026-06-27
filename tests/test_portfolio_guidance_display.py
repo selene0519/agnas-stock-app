@@ -1,16 +1,10 @@
 """포트폴리오 주의사항/대응 UI 표시 변환 테스트 (계산 로직 변경 없음)."""
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import app
 
 
 def _sample_summary() -> dict:
-    path = Path(__file__).resolve().parents[1] / "reports" / "portfolio_risk_summary.json"
-    if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
     return {
         "blocked_candidate_count": 206,
         "total_exposure_pct": 100.0,

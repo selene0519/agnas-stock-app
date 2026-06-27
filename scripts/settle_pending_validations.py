@@ -76,6 +76,15 @@ def _sym_norm(v: str, market: str) -> str:
     return str(v or "").strip().upper()
 
 
+def _is_valid_symbol(v: str, market: str) -> bool:
+    sym = _sym_norm(v, market)
+    if market == "kr":
+        return bool(re.fullmatch(r"\d{6}", sym))
+    if sym in {"", "NAN", "NA", "NONE", "NULL"}:
+        return False
+    return bool(re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", sym))
+
+
 def _build_validation_index(market: str) -> dict[str, dict[str, Any]]:
     """날짜별 validation 파일을 symbol+mode+horizon 키로 인덱싱.
 
@@ -165,7 +174,7 @@ def _settle_from_ohlcv(market: str, symbol: str, entry: float | None, stop: floa
     OHLCV 원본은 따로 보존돼 있으므로, generate_kr_close_validation.py의 validate_one()과
     동일한 규칙(동시 도달 시 손절 우선)으로 매일 단위 재구성하면 스냅샷 없이도 정산할 수 있다.
     """
-    if entry is None:
+    if entry is None or not _is_valid_symbol(symbol, market):
         return None
     path = OHLCV_DIR / f"{market}_{_sym_norm(symbol, market)}_daily.csv"
     rows = _read_csv(path)
@@ -241,11 +250,46 @@ def main() -> None:
         horizon  = str(row.get("horizon") or "swing").lower()
         symbol   = str(row.get("symbol") or "").strip()
 
-        # 이미 처리된 항목
-        if status != "PENDING":
+        if not _is_valid_symbol(symbol, market) and pred_id.count("|") >= 4:
+            row = dict(row)
+            row["status"] = "INVALID_SYMBOL"
+            row["result"] = "INVALID_SYMBOL"
+            row["exitStatus"] = "INVALID_SYMBOL"
+            row["validatedAt"] = TODAY
+            updated_ledger.append(row)
+
+            existing = results_map.get(pred_id, dict(row))
+            existing = dict(existing)
+            existing.update({
+                "status": "INVALID_SYMBOL",
+                "result": "INVALID_SYMBOL",
+                "exitStatus": "INVALID_SYMBOL",
+                "dataStatus": "INVALID_SYMBOL",
+                "reason": "invalid symbol",
+                "validatedAt": TODAY,
+            })
+            updated_results.append(existing)
+            settled += 1
+            continue
+
+        # 이미 처리된 항목. 단, 예전 DATA_PENDING은 OHLCV가 나중에 채워질 수 있으므로 재평가한다.
+        is_recheckable_data_gap = (
+            status == "EXPIRED"
+            and str(row.get("result") or "").strip().upper() == "DATA_PENDING"
+        )
+        if status != "PENDING" and not is_recheckable_data_gap:
             updated_ledger.append(row)
             if pred_id in results_map:
-                updated_results.append(results_map[pred_id])
+                existing = dict(results_map[pred_id])
+                result_key = str(row.get("result") or existing.get("result") or "").strip().upper()
+                stale_data_pending = str(existing.get("dataStatus") or "").strip().upper() == "DATA_PENDING"
+                if stale_data_pending and result_key in {"TARGET_HIT", "STOP_HIT", "CLOSE_EXIT", "WIN", "LOSS", "CLOSED"}:
+                    existing["dataStatus"] = "NORMAL"
+                    existing["reason"] = "settled from available OHLCV"
+                elif stale_data_pending and result_key == "NOT_EXECUTED":
+                    existing["dataStatus"] = "NORMAL"
+                    existing["reason"] = "entry not touched during validation window"
+                updated_results.append(existing)
             skipped += 1
             continue
 
@@ -314,6 +358,16 @@ def main() -> None:
         for k in ("status", "returnPct", "result", "exitStatus", "exitPrice", "validatedAt"):
             if row.get(k):
                 existing[k] = row[k]
+        result_key = str(row.get("result") or "").strip().upper()
+        if result_key in {"TARGET_HIT", "STOP_HIT", "CLOSE_EXIT", "WIN", "LOSS", "CLOSED"}:
+            existing["dataStatus"] = "NORMAL"
+            existing["reason"] = "settled from available OHLCV"
+        elif result_key == "NOT_EXECUTED":
+            existing["dataStatus"] = "NORMAL"
+            existing["reason"] = "entry not touched during validation window"
+        elif result_key == "DATA_PENDING":
+            existing["dataStatus"] = "DATA_PENDING"
+            existing["reason"] = "검증 기간 OHLCV 없음"
         updated_results.append(existing)
 
     # 저장

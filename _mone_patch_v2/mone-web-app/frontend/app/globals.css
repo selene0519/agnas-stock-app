@@ -1,0 +1,566 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Orbitron:wght@300;400;500&display=swap');
+@import "tailwindcss";
+
+/* ── Design tokens ── */
+:root {
+  --bg-primary: #020817;
+  --bg-secondary: #07101f;
+  --bg-card: #0a1424;
+  --bg-elevated: #0e1a2d;
+  --bg-border: #1b2a42;
+  --brand-teal: #3dd8d0;
+  --brand-teal-glow: rgba(61, 216, 208, 0.28);
+  --accent-blue: #1473e6;
+  --accent-cyan: #20b8d6;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-orange: #f59e0b;
+  --accent-purple: #8b5cf6;
+  --accent-orange-bg: rgba(245, 166, 35, 0.12);
+  --accent-orange-bdr: rgba(245, 166, 35, 0.25);
+  --color-up: #f05c5c;
+  --color-down: #4c8ef8;
+  --color-warning: #f5a623;
+  --color-neutral: #94a3b8;
+  --color-primary-action: #4c8ef8;
+  --color-primary-action-hover: #6aa3fb;
+  --color-primary-action-ink: #07101f;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  --bg-primary: #f6f8fc;
+  --bg-secondary: #eef2f7;
+  --bg-card: #ffffff;
+  --bg-elevated: #f0f3f8;
+  --bg-border: #d8e0ea;
+  --text-primary: #111827;
+  --text-secondary: #475569;
+  --text-muted: #718096;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-suit), -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  margin: 0; padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2e4060; }
+
+/* ── Keyframes ── */
+@keyframes fadeIn         { from { opacity: 0; }                              to { opacity: 1; } }
+@keyframes slideUp        { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInRight   { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes pulseDot       { 0%, 100% { opacity: 1; }                          50% { opacity: 0.3; } }
+@keyframes ticker         { 0% { transform: translateX(0); }                  100% { transform: translateX(-50%); } }
+@keyframes spinAnim       { from { transform: rotate(0deg); }                 to { transform: rotate(360deg); } }
+
+.animate-fade-in                  { animation: fadeIn       0.2s ease-out both; }
+.animate-slide-up                 { animation: slideUp      0.3s ease-out both; }
+.animate-pulse-dot                { animation: pulseDot     2s ease-in-out infinite; }
+.animate-ticker                   { animation: ticker       32s linear infinite; }
+.animate-spin                     { animation: spinAnim     0.9s linear infinite; }
+
+/* Panel/overlay animations (replaces tailwindcss-animate) */
+.animate-in.fade-in               { animation: fadeIn 0.2s ease-out both; }
+.animate-in.slide-in-from-right   { animation: slideInRight 0.3s ease-out both; }
+
+/* ── Card ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-border);
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card:hover { border-color: #253550; }
+
+/* ── Status badges ── */
+.status-normal  { color: #10b981; background: rgba(16,185,129,.08);  border: 1px solid rgba(16,185,129,.25); }
+.status-partial { color: #f59e0b; background: rgba(245,158,11,.08);  border: 1px solid rgba(245,158,11,.25); }
+.status-stale   { color: #ef4444; background: rgba(239,68,68,.08);   border: 1px solid rgba(239,68,68,.25); }
+.status-nodata  { color: #94a3b8; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.2); }
+.status-error   { color: #f97316; background: rgba(249,115,22,.08);  border: 1px solid rgba(249,115,22,.25); }
+
+/* ── Risk pills ── */
+.risk-low  { color: #10b981; background: rgba(16,185,129,.1);  padding: 2px 8px; border-radius: 4px; font-size: 12px; border: 1px solid rgba(16,185,129,.25); }
+.risk-mid  { color: #f59e0b; background: rgba(245,158,11,.1);  padding: 2px 8px; border-radius: 4px; font-size: 12px; border: 1px solid rgba(245,158,11,.25); }
+.risk-high { color: #ef4444; background: rgba(239,68,68,.1);   padding: 2px 8px; border-radius: 4px; font-size: 12px; border: 1px solid rgba(239,68,68,.25); }
+
+/* ── Nav item ── */
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 40px; padding: 8px 12px; border-radius: 8px;
+  color: var(--text-secondary); font-size: 13.5px; font-weight: 500;
+  cursor: pointer; transition: background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s, transform 0.15s; white-space: nowrap;
+  border: 1px solid transparent; user-select: none;
+}
+.nav-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.nav-item:active { transform: scale(0.96); }
+.nav-item.active {
+  background: var(--brand-teal-glow);
+  color: var(--brand-teal);
+  border-color: rgba(61,216,208,.42);
+}
+
+/* Selected control surfaces follow the MONE semantic color reference. */
+.mone-selection-brand {
+  background: var(--brand-teal-glow);
+  color: var(--brand-teal);
+  border-color: rgba(61,216,208,.42);
+}
+.mone-selection-warning {
+  background: var(--accent-orange-bg);
+  color: var(--color-warning);
+  border-color: var(--accent-orange-bdr);
+}
+.mone-primary-action,
+.mone-interest-action,
+.mone-analysis-action {
+  background: rgba(20,184,166,.11);
+  color: #5eead4;
+  box-shadow: inset 0 0 0 1px rgba(45,212,191,.38);
+}
+.mone-primary-action:hover,
+.mone-interest-action:hover,
+.mone-analysis-action:hover {
+  background: rgba(20,184,166,.17);
+  color: #99f6e4;
+  box-shadow: inset 0 0 0 1px rgba(45,212,191,.52);
+}
+.mone-primary-action:focus-visible,
+.mone-interest-action:focus-visible,
+.mone-analysis-action:focus-visible {
+  outline: 2px solid rgba(45,212,191,.48);
+  outline-offset: 2px;
+}
+.mone-candidate-tab {
+  color: var(--text-secondary);
+  background: rgba(15,23,42,.62);
+  border: 1px solid rgba(148,163,184,.16);
+  box-shadow: inset 0 0 0 0 transparent;
+}
+.mone-candidate-tab[data-active="true"] {
+  color: var(--candidate-tone);
+  background: var(--candidate-active-bg);
+  border-color: var(--candidate-border);
+  box-shadow: inset 0 0 0 1px var(--candidate-ring);
+}
+.mone-candidate-safe {
+  --candidate-tone: #35dda0;
+  --candidate-border: rgba(34,201,130,.30);
+  --candidate-active-bg: rgba(34,201,130,.18);
+  --candidate-ring: rgba(34,201,130,.12);
+}
+.mone-candidate-warning {
+  --candidate-tone: #f5a623;
+  --candidate-border: rgba(245,166,35,.30);
+  --candidate-active-bg: rgba(245,166,35,.18);
+  --candidate-ring: rgba(245,166,35,.12);
+}
+.mone-candidate-danger {
+  --candidate-tone: #f27676;
+  --candidate-border: rgba(240,92,92,.30);
+  --candidate-active-bg: rgba(240,92,92,.18);
+  --candidate-ring: rgba(240,92,92,.12);
+}
+.mone-candidate-count {
+  color: currentColor;
+  background: rgba(148,163,184,.13);
+}
+.mone-candidate-dot {
+  background: rgba(100,116,139,.58);
+}
+.mone-candidate-dot[data-active="true"] {
+  background: var(--candidate-tone);
+}
+.mone-session-action {
+  color: #6ee7b7;
+  background: rgba(16,185,129,.05);
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,.20);
+}
+.mone-session-action:hover {
+  color: #a7f3d0;
+  background: rgba(16,185,129,.10);
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,.32);
+}
+.mone-session-action:focus-visible {
+  outline: 2px solid rgba(16,185,129,.42);
+  outline-offset: 2px;
+}
+
+html[data-theme="light"] .mone-selection-brand,
+html[data-theme="light"] .nav-item.active {
+  color: #096b67;
+  border-color: rgba(9,107,103,.42);
+}
+html[data-theme="light"] .mone-selection-warning {
+  color: #925800;
+  border-color: rgba(146,88,0,.35);
+}
+html[data-theme="light"] .mone-candidate-safe {
+  --candidate-tone: #047857;
+}
+html[data-theme="light"] .mone-candidate-warning {
+  --candidate-tone: #925800;
+}
+html[data-theme="light"] .mone-candidate-danger {
+  --candidate-tone: #b4233a;
+}
+html[data-theme="light"] .mone-candidate-tab {
+  color: #526176;
+  background: rgba(255,255,255,.72);
+  border-color: rgba(100,116,139,.20);
+}
+html[data-theme="light"] .mone-primary-action,
+html[data-theme="light"] .mone-interest-action,
+html[data-theme="light"] .mone-analysis-action {
+  color: #066e68;
+  background: rgba(20,184,166,.09);
+  box-shadow: inset 0 0 0 1px rgba(13,148,136,.30);
+}
+html[data-theme="light"] .mone-primary-action:hover,
+html[data-theme="light"] .mone-interest-action:hover,
+html[data-theme="light"] .mone-analysis-action:hover {
+  color: #055b56;
+  background: rgba(20,184,166,.14);
+  box-shadow: inset 0 0 0 1px rgba(13,148,136,.40);
+}
+html[data-theme="light"] .mone-session-action {
+  color: #087f5b;
+  background: rgba(16,185,129,.07);
+  box-shadow: inset 0 0 0 1px rgba(5,150,105,.24);
+}
+
+/* ── Data table ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th {
+  color: var(--text-muted); font-weight: 500; text-align: left;
+  padding: 8px 12px; border-bottom: 1px solid var(--bg-border);
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+}
+.data-table td {
+  padding: 10px 12px; border-bottom: 1px solid rgba(30,45,69,.4);
+  color: var(--text-primary);
+}
+.data-table tr:hover td { background: rgba(255,255,255,.015); }
+.data-table tr:last-child td { border-bottom: none; }
+
+/* ── Tab button ── */
+.tab-btn {
+  padding: 6px 13px; border-radius: 6px; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.15s; border: 1px solid transparent;
+  color: var(--text-secondary); background: transparent; user-select: none;
+}
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active {
+  background: rgba(59,130,246,.14); color: #60a5fa;
+  border-color: rgba(59,130,246,.28);
+}
+
+/* ── Input ── */
+.input-base {
+  background: var(--bg-elevated); border: 1px solid var(--bg-border);
+  border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
+  font-size: 13px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: var(--font-suit), sans-serif;
+}
+.input-base:focus, .input-base:focus-visible { border-color: rgba(20,184,166,.85); box-shadow: 0 0 0 3px rgba(20,184,166,.18); }
+.input-base::placeholder { color: var(--text-muted); }
+select.input-base { cursor: pointer; }
+
+/* ── Buttons ── */
+.btn-primary {
+  background: var(--accent-blue); color: #fff; border: none;
+  border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s; user-select: none;
+}
+.btn-primary:hover { background: #2563eb; }
+.btn-secondary {
+  background: var(--bg-elevated); color: var(--text-secondary);
+  border: 1px solid var(--bg-border); border-radius: 8px;
+  padding: 8px 16px; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; user-select: none;
+}
+.btn-secondary:hover { border-color: #2e4060; color: var(--text-primary); }
+
+/* ── Section title ── */
+.section-title {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px;
+}
+
+/* ── Font mono ── */
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-variant-numeric: tabular-nums;  /* prevent layout shift on number updates */
+}
+
+/* ── Headings ── */
+h1, h2, h3 { text-wrap: balance; }
+
+/* ── Button press feedback ── */
+button:not(:disabled) { cursor: pointer; }
+
+/* ── Reduced motion: disable all animations for users who prefer it ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Shadow scale (consistent elevation system) ── */
+.shadow-card    { box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3); }
+.shadow-card-md { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3); }
+.shadow-card-lg { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 4px 8px rgba(0,0,0,0.4); }
+.shadow-panel   { box-shadow: -8px 0 32px rgba(0,0,0,0.7), -2px 0 8px rgba(0,0,0,0.5); }
+
+@keyframes moneTicker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ── Mobile PWA ── */
+html {
+  /* iOS 노치·홈바 safe area 변수 사용 가능하도록 */
+  padding-top: env(safe-area-inset-top);
+}
+
+/* iOS 모바일 웹 터치 최적화 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 스크롤 바운스 (iOS 기본값 유지, Android 오버스크롤 방지) */
+body {
+  overscroll-behavior: none;
+}
+
+/* Light theme compatibility for the existing dark Tailwind surface vocabulary. */
+html[data-theme="light"] .mone-app-shell [class*="bg-slate-950"],
+html[data-theme="light"] .mone-app-shell [class*="bg-[#080c18]"],
+html[data-theme="light"] .mone-app-shell [class*="bg-[#0d1425]"] {
+  background-color: #f8fafc !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-slate-900"],
+html[data-theme="light"] .mone-app-shell [class*="bg-[#111621]"],
+html[data-theme="light"] .mone-app-shell [class*="bg-[#111521]"],
+html[data-theme="light"] .mone-app-shell [class*="bg-[#111827]"] {
+  background-color: #ffffff !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-slate-800"] {
+  background-color: #eef3f9 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-[#181E2E]"] {
+  background-color: #eef3f9 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="border-slate-800"],
+html[data-theme="light"] .mone-app-shell [class*="border-slate-700"] {
+  border-color: rgba(15, 23, 42, 0.13) !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="border-white"] {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-white/[0.03]"] {
+  background-color: rgba(15, 23, 42, 0.035) !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="divide-slate-800"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(15, 23, 42, 0.13) !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-slate-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-slate-200"] {
+  color: #111827 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-slate-300"] {
+  color: #334155 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-slate-400"] {
+  color: #475569 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-slate-500"] {
+  color: #64748b !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-slate-600"],
+html[data-theme="light"] .mone-app-shell [class*="text-slate-700"] {
+  color: #8492a6 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-blue-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-blue-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-blue-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-blue-400"] {
+  color: #0d9488 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-emerald-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-emerald-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-emerald-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-emerald-400"] {
+  color: #047857 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-amber-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-amber-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-amber-300"] {
+  color: #92400e !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-red-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-red-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-red-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-red-400"] {
+  color: #b4233a !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-cyan-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-sky-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-sky-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-sky-300"] {
+  color: #0369a1 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-blue-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-red-"]:not([class*="/"])[class*="text-white"] {
+  color: #ffffff !important;
+}
+/* Translucent washes (bg-emerald-500/10 etc.) are near-white in light mode —
+   force-white text on them was invisible. Use a solid, readable tone instead. */
+html[data-theme="light"] .mone-app-shell [class*="bg-blue-"][class*="/"][class*="text-white"] {
+  color: #0d9488 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"][class*="/"][class*="text-white"] {
+  color: #047857 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-red-"][class*="/"][class*="text-white"] {
+  color: #b91c1c !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-cyan-"][class*="/"][class*="text-white"] {
+  color: #0e7490 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="bg-amber-"][class*="/"][class*="text-white"] {
+  color: #b45309 !important;
+}
+html[data-theme="light"] .mone-app-header {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+html[data-theme="light"] .mone-header-button {
+  background-color: #ffffff !important;
+  color: #475569 !important;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* App brand color is the logo's mint/teal (see splash screen in layout.tsx),
+   not generic Tailwind blue — blue read as a different (Toss-like) brand.
+   Re-tint blue-* utility classes app-wide so every page's primary action
+   color matches the actual MONE brand instead of a default blue. */
+.mone-app-shell {
+  --brand: #14b8a6;
+  --brand-hover: #2dd4c2;
+  --brand-dim: rgba(20, 184, 166, 0.1);
+}
+.mone-app-shell [class*="bg-blue-600"],
+.mone-app-shell [class*="bg-blue-500"]:not([class*="/"]) {
+  background-color: var(--brand) !important;
+  color: #052420 !important;
+}
+.mone-app-shell [class*="hover:bg-blue-500"]:hover,
+.mone-app-shell [class*="hover:bg-blue-600"]:hover,
+.mone-app-shell [class*="hover:bg-blue-700"]:hover {
+  background-color: var(--brand-hover) !important;
+}
+.mone-app-shell [class*="bg-blue-"][class*="/"] {
+  background-color: var(--brand-dim) !important;
+}
+.mone-app-shell [class*="text-blue-"] {
+  color: var(--brand) !important;
+}
+.mone-app-shell [class*="border-blue-"] {
+  border-color: rgba(20, 184, 166, 0.35) !important;
+}
+.mone-app-shell [class*="focus:ring-blue-"] {
+  --tw-ring-color: rgba(20, 184, 166, 0.3) !important;
+}
+.mone-app-shell [class*="focus:border-blue-"] {
+  border-color: var(--brand) !important;
+}
+html[data-theme="light"] .mone-app-shell {
+  --brand: #0d9488;
+  --brand-hover: #0f766e;
+  --brand-dim: rgba(13, 148, 136, 0.1);
+}
+
+/* Home uses the exact same card surface as Stocks/Holdings/Advanced
+   (translucent slate-900 over the page background, plain slate-800
+   border, no extra glow) so the tabs feel like one consistent app. */
+.mone-home {
+  --home-surface: rgba(15, 23, 42, 0.5);
+  --home-inset: rgba(2, 6, 23, 0.6);
+  --home-border: #1e293b;
+}
+.mone-home-surface {
+  background: var(--home-surface) !important;
+  border-color: var(--home-border) !important;
+}
+.mone-home-inset {
+  background: var(--home-inset) !important;
+  border-color: var(--home-border) !important;
+}
+.mone-section-icon {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--brand, #2dd4c2);
+}
+html:not([data-theme="light"]) .mone-app-header {
+  background-color: rgba(3, 9, 20, 0.94) !important;
+  border-color: rgba(45, 212, 194, 0.16) !important;
+}
+
+html[data-theme="light"] .mone-home {
+  --home-surface: #ffffff;
+  --home-inset: #f3f6fa;
+  --home-border: #d8e0ea;
+}
+
+/* 모바일에서 선택 방지 (버튼/탭바) */
+.select-none {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 탭 버튼 active 피드백 */
+@media (max-width: 767px) {
+  button:active {
+    opacity: 0.7;
+    transition: opacity 0.1s;
+  }
+}
+
+/* 스켈레톤 shimmer 애니메이션 */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 25%,
+    #1e2d4a 50%,
+    var(--bg-elevated) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}

@@ -10,6 +10,8 @@ import subprocess
 
 import sys
 
+from functools import lru_cache
+
 from pathlib import Path
 
 
@@ -19,12 +21,22 @@ ROOT = Path(__file__).resolve().parents[1]
 APP_PY = ROOT / "app.py"
 
 
+@lru_cache(maxsize=1)
+def _app_source() -> str:
+    return APP_PY.read_text(encoding="utf-8")
+
+
+@lru_cache(maxsize=1)
+def _app_tree() -> ast.Module:
+    return ast.parse(_app_source())
+
+
 
 
 
 def _nav_groups_from_source(name: str) -> dict[str, list[tuple[str, str]]]:
 
-    tree = ast.parse(APP_PY.read_text(encoding="utf-8"))
+    tree = _app_tree()
 
     for node in tree.body:
 
@@ -227,7 +239,7 @@ def test_page_admin_ui_inventory_only_in_inspection_system_group():
 
 def test_no_app_view_mode_general_admin_selectbox():
 
-    text = APP_PY.read_text(encoding="utf-8")
+    text = _app_source()
 
     assert 'key="app_view_mode"' not in text
 
@@ -241,7 +253,7 @@ def test_no_app_view_mode_general_admin_selectbox():
 
 def test_sidebar_nav_groups_for_mode_uses_screen_area():
 
-    text = APP_PY.read_text(encoding="utf-8")
+    text = _app_source()
 
     assert "def _sidebar_nav_groups_for_mode" in text
 
@@ -259,7 +271,7 @@ def test_sidebar_nav_groups_for_mode_uses_screen_area():
 
 def test_grafted_market_filter_kr_us_only():
 
-    text = APP_PY.read_text(encoding="utf-8")
+    text = _app_source()
 
     assert "GRAFT_SIDEBAR_MARKET_KEY" in text
 
@@ -275,7 +287,7 @@ def test_grafted_market_filter_kr_us_only():
 
 def test_holdings_return_helpers_preserved():
 
-    text = APP_PY.read_text(encoding="utf-8")
+    text = _app_source()
 
     assert "def _holding_return_display_from_row" in text
 
@@ -287,7 +299,7 @@ def test_holdings_return_helpers_preserved():
 
 def test_execution_plan_home_helpers_exist():
 
-    text = APP_PY.read_text(encoding="utf-8")
+    text = _app_source()
 
     assert "def render_general_execution_plan_home" in text
 
@@ -330,7 +342,7 @@ def test_no_page_portfolio_risk_in_operational_nav():
 
 def test_operational_hidden_columns_and_unified_pages_exist():
 
-    text = APP_PY.read_text(encoding="utf-8")
+    text = _app_source()
 
     assert "OPERATIONAL_HIDDEN_COLUMNS" in text
 

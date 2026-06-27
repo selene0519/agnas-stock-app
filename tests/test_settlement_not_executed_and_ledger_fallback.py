@@ -120,6 +120,25 @@ def test_true_data_gap_still_expired(tmp_path, monkeypatch):
     assert out["result"] == "DATA_PENDING"
 
 
+def test_invalid_us_symbol_is_not_reported_as_data_pending(tmp_path, monkeypatch):
+    ledger = [
+        _ledger_row(
+            predictionId="us|NAN|conservative|short|2026-06-02",
+            market="us",
+            symbol="NAN",
+            name="NAN",
+            mode="conservative",
+            horizon="short",
+            status="EXPIRED",
+        )
+    ]
+    reports = _setup(tmp_path, monkeypatch, ledger, snapshots={})
+    settle.main()
+    out = _read_ledger(reports)[0]
+    assert out["status"] == "INVALID_SYMBOL"
+    assert out["result"] == "INVALID_SYMBOL"
+
+
 # ── 스냅샷이 한 번도 안 잡힌 심볼도 OHLCV로 직접 재구성해 정산 ──────────────
 
 def _ohlcv_row(date: str, low: float, high: float, close: float) -> dict:
@@ -143,6 +162,21 @@ def test_ohlcv_fallback_settles_symbol_with_no_snapshot_coverage(tmp_path, monke
     assert out["status"] == "LOSS"
     assert out["result"] == "stop_hit"
     assert out["exitPrice"] == "9000.0"
+
+
+def test_expired_data_pending_row_is_rechecked_when_ohlcv_arrives(tmp_path, monkeypatch):
+    ledger = [_ledger_row(status="EXPIRED", result="DATA_PENDING")]
+    ohlcv = {
+        "kr_000001_daily.csv": [
+            _ohlcv_row("2026-06-01", low=9500, high=10500, close=9800),
+            _ohlcv_row("2026-06-02", low=8500, high=10200, close=8800),
+        ],
+    }
+    reports = _setup(tmp_path, monkeypatch, ledger, snapshots={}, ohlcv=ohlcv)
+    settle.main()
+    out = _read_ledger(reports)[0]
+    assert out["status"] == "LOSS"
+    assert out["result"] == "stop_hit"
 
 
 def test_ohlcv_fallback_ignores_touches_outside_window(tmp_path, monkeypatch):

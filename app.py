@@ -55466,8 +55466,11 @@ def render_grafted_feature_router(bootstrap_placeholder: Any = None) -> bool:  #
             _inject_operational_dashboard_css()
         except Exception:
             pass
-        _lazy_load_page_data(_v91_current_page(), market)
-        _dispatch_sidebar_nav_page(_v91_current_page())
+        page_id = _v91_current_page()
+        sub_label = _v91_page_label(page_id) if "_v91_page_label" in globals() else page_id
+        render_grafted_nav_header(page_id, sub_label, "운영")
+        _lazy_load_page_data(page_id, market)
+        _dispatch_sidebar_nav_page(page_id)
         _update_app_bootstrap_loading(bootstrap_placeholder, 4)
         _clear_app_bootstrap_loading(bootstrap_placeholder)
         return True

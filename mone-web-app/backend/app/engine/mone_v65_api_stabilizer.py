@@ -3197,6 +3197,15 @@ def _prediction_id(item: dict[str, Any], created_date: str) -> str:
     ])
 
 
+def _is_valid_market_symbol(market: str, symbol: Any) -> bool:
+    text = str(symbol or "").strip().upper()
+    if str(market or "").lower() == "kr":
+        return bool(re.fullmatch(r"\d{6}", re.sub(r"\D", "", text)))
+    if text in {"", "NAN", "NA", "NONE", "NULL"}:
+        return False
+    return bool(re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", text))
+
+
 def _record_virtual_ledger(items: list[dict[str, Any]], source: str = "recommendations") -> None:
     if not items:
         return
@@ -3205,6 +3214,10 @@ def _record_virtual_ledger(items: list[dict[str, Any]], source: str = "recommend
     keyed = {str(row.get("predictionId") or ""): row for row in existing if row.get("predictionId")}
     today = datetime.now().date().isoformat()
     for item in items:
+        market = str(item.get("market") or "").lower()
+        symbol = str(item.get("symbol") or "").strip().upper()
+        if not _is_valid_market_symbol(market, symbol):
+            continue
         entry = _num(item.get("entry"))
         stop = _num(item.get("stop"))
         target = _num(item.get("target"))
@@ -3212,12 +3225,13 @@ def _record_virtual_ledger(items: list[dict[str, Any]], source: str = "recommend
             continue
         horizon = str(item.get("horizon") or "swing")
         window = _horizon_window_days(horizon)
-        prediction_id = _prediction_id(item, today)
+        ledger_item = {**item, "market": market, "symbol": symbol}
+        prediction_id = _prediction_id(ledger_item, today)
         record = keyed.setdefault(prediction_id, {
             "predictionId": prediction_id,
             "createdAt": today,
-            "market": item.get("market", ""),
-            "symbol": item.get("symbol", ""),
+            "market": market,
+            "symbol": symbol,
             "name": item.get("name", ""),
             "mode": item.get("mode", ""),
             "horizon": horizon,
@@ -3241,6 +3255,8 @@ def _record_virtual_ledger(items: list[dict[str, Any]], source: str = "recommend
 
 
 def _ohlcv_rows_for(market: str, symbol: str) -> list[dict[str, Any]]:
+    if not _is_valid_market_symbol(market, symbol):
+        return []
     paths = [
         _repo_root() / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv",
         _repo_root() / "data" / "stockapp" / f"{market}_{symbol}_daily.csv",
@@ -3304,6 +3320,15 @@ def _validate_virtual_ledger() -> dict[str, Any]:
             "dataStatus": "NORMAL",
         }
         if status != "PENDING":
+            if not _is_valid_market_symbol(market, symbol) and str(row.get("predictionId") or "").count("|") >= 4:
+                result.update({
+                    "result": "INVALID_SYMBOL",
+                    "reason": "invalid symbol",
+                    "dataStatus": "INVALID_SYMBOL",
+                    "exitStatus": "INVALID_SYMBOL",
+                })
+                results.append(result)
+                continue
             if not window_rows:
                 data_pending_count += 1
                 result.update({"result": "DATA_PENDING", "reason": "검증 기간 OHLCV 없음", "dataStatus": "DATA_PENDING"})

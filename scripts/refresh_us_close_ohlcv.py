@@ -17,6 +17,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -85,16 +86,24 @@ def _num(value: object) -> float | None:
         return None
 
 
+def _valid_us_symbol(value: object) -> str:
+    sym = str(value or "").strip().upper()
+    if sym in {"", "NAN", "NA", "NONE", "NULL"}:
+        return ""
+    return sym if re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", sym) else ""
+
+
 def _target_symbols(limit: int = 200) -> list[str]:
     """기존 OHLCV 파일 목록 + watchlist/holdings/추천 파일에서 심볼 수집."""
     symbols: set[str] = set()
 
     # 기존 OHLCV 파일에서 심볼 추출
     for p in OHLCV_DIR.glob("us_*_daily.csv"):
-        import re
         m = re.match(r"us_(.+)_daily\.csv", p.name)
         if m:
-            symbols.add(m.group(1).upper())
+            sym = _valid_us_symbol(m.group(1))
+            if sym:
+                symbols.add(sym)
 
     # watchlist/holdings/추천 파일에서 추가
     extra_paths = [
@@ -103,12 +112,14 @@ def _target_symbols(limit: int = 200) -> list[str]:
         REPO / "holdings_us.csv",
         REPO / "candidate_universe_us.csv",
         DATA_STOCKAPP / "price_collection_universe_us.csv",
+        REPORTS / "virtual_prediction_ledger.csv",
+        REPORTS / "virtual_validation_results.csv",
     ]
     extra_paths.extend(sorted(REPORTS.glob("mone_v36_final_recommendations_us_*.csv")))
     for path in extra_paths:
         for row in _read_csv(path):
-            sym = str(row.get("symbol") or row.get("ticker") or "").strip().upper()
-            if sym and sym.isalpha() and 1 <= len(sym) <= 6:
+            sym = _valid_us_symbol(row.get("symbol") or row.get("ticker"))
+            if sym:
                 symbols.add(sym)
 
     return sorted(symbols)[:limit]
