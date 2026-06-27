@@ -76,8 +76,8 @@ def _read_csv(path: Path) -> list[dict[str, Any]]:
     return []
 
 
-def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
-    if not rows:
+def _write_csv(path: Path, rows: list[dict[str, Any]], force: bool = False) -> None:
+    if not rows and not force:
         # 빈 rows → 기존 파일이 있으면 보존 (operational_check.py가 생성한 파일 덮어씌우지 않음)
         if path.exists() and path.stat().st_size > 10:
             return
@@ -85,7 +85,12 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8-sig")
         return
+    # force=True: 의도적으로 비우는 것(예: 약세장 공격형 비활성화)이므로
+    # 기존 파일이 있어도 보존하지 않고 그대로 비운다.
     path.parent.mkdir(parents=True, exist_ok=True)
+    if not rows:
+        path.write_text("", encoding="utf-8-sig")
+        return
     with path.open("w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
@@ -1151,9 +1156,9 @@ def generate_recommendations() -> dict[str, Any]:
             # 빈 파일만 생성
             for horizon in HORIZONS:
                 out_path = REPORTS / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
-                _write_csv(out_path, [])
+                _write_csv(out_path, [], force=True)
                 tv_path = REPORTS / f"mone_v36_final_trade_validation_kr_{mode}_{horizon}.csv"
-                _write_csv(tv_path, [])
+                _write_csv(tv_path, [], force=True)
                 results[f"{mode}_{horizon}"] = 0
             print(f"  [{mode:12s}] 약세장으로 비활성화")
             continue

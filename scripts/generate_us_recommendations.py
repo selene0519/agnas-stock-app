@@ -362,8 +362,8 @@ def generate_us_recommendations() -> dict[str, Any]:
     for mode in MODES:
         if regime_type == "BEAR" and mode == "aggressive":
             for horizon in HORIZONS:
-                _write_csv(REPORTS / f"mone_v36_final_recommendations_us_{mode}_{horizon}.csv", [])
-                _write_csv(REPORTS / f"mone_v36_final_trade_validation_us_{mode}_{horizon}.csv", [])
+                _write_csv(REPORTS / f"mone_v36_final_recommendations_us_{mode}_{horizon}.csv", [], force=True)
+                _write_csv(REPORTS / f"mone_v36_final_trade_validation_us_{mode}_{horizon}.csv", [], force=True)
                 results[f"{mode}_{horizon}"] = 0
             print(f"  [US {mode:12s}] 약세장으로 비활성화")
             continue
