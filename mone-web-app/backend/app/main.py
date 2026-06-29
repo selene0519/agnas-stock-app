@@ -8227,6 +8227,54 @@ def api_journal_failure_analytics(
     return _trade_failure_analytics_response(market, mode, horizon, source_type, journal_session)
 
 
+def _trade_improvement_priorities_response(
+    market: str,
+    mode: str,
+    horizon: str,
+    source_type: str,
+    journal_session: str,
+    regime: str,
+    recommendation_bucket: str,
+) -> dict:
+    from app.services import trade_improvement_priorities
+
+    return trade_improvement_priorities.build_improvement_priorities(
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        source_type=source_type,
+        journal_session=journal_session,
+        regime=regime,
+        recommendation_bucket=recommendation_bucket,
+    )
+
+
+@app.get("/api/virtual/improvement-priorities")
+def api_virtual_improvement_priorities(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+    regime: str = Query("all"),
+    recommendation_bucket: str = Query("all", alias="recommendationBucket"),
+) -> dict:
+    return _trade_improvement_priorities_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
+
+
+@app.get("/api/journal/improvement-priorities")
+def api_journal_improvement_priorities(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+    regime: str = Query("all"),
+    recommendation_bucket: str = Query("all", alias="recommendationBucket"),
+) -> dict:
+    return _trade_improvement_priorities_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
+
+
 @app.get("/api/journal/performance")
 def api_journal_performance(
     market: str = Query("all"),

@@ -207,6 +207,7 @@ export default function VirtualJournalPage() {
   const [autoStatus, setAutoStatus] = useState<any>({});
   const [analyticsData, setAnalyticsData] = useState<any>({});
   const [failureAnalytics, setFailureAnalytics] = useState<any>({});
+  const [improvementData, setImprovementData] = useState<any>({});
   const [analogData, setAnalogData] = useState<any>({});
   const [perfData, setPerfData] = useState<any>(null);
   const [attrData, setAttrData] = useState<any>(null);
@@ -222,13 +223,14 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
         mone.journalAutoCaptureStatus(),
         mone.journalAnalytics(scope),
         mone.virtualFailureAnalytics(scope),
+        mone.virtualImprovementPriorities(scope),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
@@ -243,6 +245,7 @@ export default function VirtualJournalPage() {
       setAutoStatus(statusRes || {});
       setAnalyticsData(analyticsRes || {});
       setFailureAnalytics(failureAnalyticsRes || {});
+      setImprovementData(improvementRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
       setEffData(effRes?.status === "OK" ? effRes : null);
@@ -401,6 +404,14 @@ export default function VirtualJournalPage() {
     }[reason] || "원인 미분류";
   };
 
+  const priorityItems = (improvementData?.priorities || []).slice(0, 5);
+  const severityLabel = (severity: string) => ({ high: "높음", medium: "중간", low: "낮음" }[severity] || "낮음");
+  const severityTone = (severity: string) => {
+    if (severity === "high") return "bg-red-500/12 text-red-200 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.22)]";
+    if (severity === "medium") return "bg-amber-500/12 text-amber-200 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.22)]";
+    return "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]";
+  };
+
   const approvedSuggestions = useMemo(
     () => suggestions.filter((item) => item.approvalStatus === "APPROVED" && item.applicationStatus !== "APPLIED").slice(0, 4),
     [suggestions],
@@ -536,6 +547,66 @@ export default function VirtualJournalPage() {
               )}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <TrendingUp size={16} className="text-cyan-300" />
+              <span>개선 우선순위</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+              현재 추천 로직에는 직접 반영되지 않는 진단 결과입니다. 아래 항목은 바로 로직을 바꾸라는 뜻이 아니라, 먼저 검증해야 할 순서입니다.
+            </p>
+          </div>
+          <span className="font-mono text-[11px] uppercase tracking-wide text-slate-500">
+            top {priorityItems.length || 0} / diagnostic only
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          {priorityItems.slice(0, 3).map((item: any) => {
+            const evidence = item.evidence || {};
+            return (
+              <div key={item.issueType || item.rank} className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-mono text-[10px] text-cyan-300">#{item.rank ?? "-"}</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-100">{item.title || item.issueType}</div>
+                    <div className="mt-1 font-mono text-[10px] text-slate-500">{item.issueType || "-"}</div>
+                  </div>
+                  <span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${severityTone(String(item.severity || "low"))}`}>
+                    {severityLabel(String(item.severity || "low"))}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
+                    <div className="text-[10px] text-slate-500">근거</div>
+                    <div className="font-mono text-xs font-semibold text-slate-200">{evidence.count ?? 0}</div>
+                  </div>
+                  <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
+                    <div className="text-[10px] text-slate-500">비율</div>
+                    <div className="font-mono text-xs font-semibold text-slate-200">{fmtRate(evidence.ratio)}</div>
+                  </div>
+                  <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
+                    <div className="text-[10px] text-slate-500">MAE</div>
+                    <div className="font-mono text-xs font-semibold text-rose-300">{evidence.avgMAE == null ? "-" : `${Number(evidence.avgMAE).toFixed(2)}%`}</div>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs leading-5 text-slate-300">{item.recommendation || "-"}</div>
+                <div className="mt-2 rounded-md bg-cyan-500/8 px-2 py-2 text-[11px] leading-5 text-cyan-100 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.14)]">
+                  {item.safeNextStep || "표본을 추가로 검증하세요."}
+                </div>
+              </div>
+            );
+          })}
+          {!priorityItems.length && (
+            <div className="rounded-lg bg-slate-950/55 px-3 py-8 text-center text-xs text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] lg:col-span-3">
+              개선 우선순위를 만들 평가 데이터가 아직 없습니다.
+            </div>
+          )}
         </div>
       </section>
 

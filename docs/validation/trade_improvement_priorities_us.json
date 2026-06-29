@@ -1,0 +1,102 @@
+{
+  "status": "OK",
+  "source": "data/virtual_trade_evaluations.csv",
+  "scope": {
+    "market": "us",
+    "mode": "all",
+    "horizon": "all",
+    "sourceType": "all",
+    "journalSession": "all",
+    "regime": "all",
+    "recommendationBucket": "all"
+  },
+  "summary": {
+    "totalTrades": 936,
+    "evaluatedTrades": 680,
+    "priorityCount": 1,
+    "highSeverityCount": 1,
+    "topIssueType": "DATA_QUALITY_PROBLEM",
+    "diagnosticOnly": true,
+    "shouldModifyTradingLogicNow": false
+  },
+  "priorities": [
+    {
+      "rank": 1,
+      "severity": "high",
+      "issueType": "DATA_QUALITY_PROBLEM",
+      "title": "데이터 품질 문제",
+      "summary": "평가가 데이터 부족 또는 가격 오류로 제한된 사례가 있습니다.",
+      "affectedArea": "dataQuality",
+      "evidence": {
+        "count": 38,
+        "ratio": 0.0559,
+        "relevantRates": {
+          "entryTouchedRate": null,
+          "targetTouchedRate": null,
+          "targetBeforeStopRate": null,
+          "stopBeforeTargetRate": null,
+          "entryNotTouchedRate": null
+        },
+        "avgReturn": -4.5648,
+        "avgMFE": 2.7333,
+        "avgMAE": -5.9948
+      },
+      "recommendation": "가격/결과 데이터 수집 품질 점검 필요",
+      "safeNextStep": "누락된 OHLCV/가격 컬럼과 평가 지연 상태가 특정 market 또는 source에 집중되는지 확인하세요.",
+      "shouldModifyTradingLogicNow": false
+    }
+  ],
+  "failureSummary": {
+    "totalTrades": 936,
+    "evaluatedTrades": 680,
+    "entryTouchedTrades": 0,
+    "targetTouchedTrades": 0,
+    "targetBeforeStopTrades": 0,
+    "stopBeforeTargetTrades": 0,
+    "entryNotTouchedTrades": 0,
+    "dataIssueTrades": 38,
+    "topFailureReasons": [
+      {
+        "failureReason": "UNKNOWN",
+        "label": "원인 미분류",
+        "count": 200,
+        "ratio": 0.2805
+      },
+      {
+        "failureReason": "STOP_TOO_TIGHT",
+        "label": "원인 미분류",
+        "count": 147,
+        "ratio": 0.2062
+      },
+      {
+        "failureReason": "OVEREXTENDED_ENTRY",
+        "label": "원인 미분류",
+        "count": 98,
+        "ratio": 0.1374
+      },
+      {
+        "failureReason": "FALSE_SIGNAL",
+        "label": "원인 미분류",
+        "count": 43,
+        "ratio": 0.0603
+      },
+      {
+        "failureReason": "MARKET_GAP",
+        "label": "원인 미분류",
+        "count": 42,
+        "ratio": 0.0589
+      }
+    ],
+    "avgMFE": 5.1223,
+    "avgMAE": -4.77,
+    "entryTouchedRate": null,
+    "targetTouchedRate": null,
+    "targetBeforeStopRate": null,
+    "stopBeforeTargetRate": null,
+    "entryNotTouchedRate": null
+  },
+  "note": "Improvement priorities are diagnostic only. They identify what to validate next and do not change recommendation logic.",
+  "reportType": "trade_improvement_priorities_static_snapshot",
+  "diagnosticOnly": true,
+  "recommendationLogicChanged": false
+}

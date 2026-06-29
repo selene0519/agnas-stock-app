@@ -242,7 +242,15 @@ def _dimension_items(rows: list[dict[str, Any]], fields: tuple[str, ...], denomi
     return sorted(items, key=lambda item: (-int(item["count"]), str(item.get("failureReason") or ""), str(item)))
 
 
-def empty_response(market: str = "all", mode: str = "all", horizon: str = "all", source_type: str = "all", journal_session: str = "all") -> dict[str, Any]:
+def empty_response(
+    market: str = "all",
+    mode: str = "all",
+    horizon: str = "all",
+    source_type: str = "all",
+    journal_session: str = "all",
+    regime: str = "all",
+    recommendation_bucket: str = "all",
+) -> dict[str, Any]:
     return {
         "status": "OK",
         "source": "",
@@ -252,11 +260,14 @@ def empty_response(market: str = "all", mode: str = "all", horizon: str = "all",
             "horizon": horizon,
             "sourceType": source_type,
             "journalSession": journal_session,
+            "regime": regime,
+            "recommendationBucket": recommendation_bucket,
         },
         "summary": {
             "totalTrades": 0,
             "evaluatedTrades": 0,
             "entryTouchedTrades": 0,
+            "targetTouchedTrades": 0,
             "targetBeforeStopTrades": 0,
             "stopBeforeTargetTrades": 0,
             "entryNotTouchedTrades": 0,
@@ -265,6 +276,7 @@ def empty_response(market: str = "all", mode: str = "all", horizon: str = "all",
             "avgMFE": None,
             "avgMAE": None,
             "entryTouchedRate": None,
+            "targetTouchedRate": None,
             "targetBeforeStopRate": None,
             "stopBeforeTargetRate": None,
             "entryNotTouchedRate": None,
@@ -291,6 +303,8 @@ def build_failure_analytics(
     horizon: str = "all",
     source_type: str = "all",
     journal_session: str = "all",
+    regime: str = "all",
+    recommendation_bucket: str = "all",
 ) -> dict[str, Any]:
     try:
         vtj._ensure()
@@ -305,18 +319,25 @@ def build_failure_analytics(
         )
         if vtj._session_filter(journal_session) == "ALL":
             rows = [row for row in rows if vtj._is_trade_evaluation_session(row)]
+        regime_filter = _text(regime).lower()
+        if regime_filter and regime_filter != "all":
+            rows = [row for row in rows if _regime(row).lower() == regime_filter]
+        bucket_filter = _text(recommendation_bucket).lower()
+        if bucket_filter and bucket_filter != "all":
+            rows = [row for row in rows if _recommendation_bucket(row).lower() == bucket_filter]
     except Exception as exc:
-        out = empty_response(market, mode, horizon, source_type, journal_session)
+        out = empty_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
         out["warning"] = f"failure analytics source unavailable: {exc}"
         return out
 
     classified = [row for row in rows if _is_classified(row)]
     if not rows and not classified:
-        return empty_response(market, mode, horizon, source_type, journal_session)
+        return empty_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
 
     denominator = len(classified) or len(rows)
     failure_counts = Counter(_failure_reason(row) for row in classified)
     entry_touched = sum(1 for row in classified if _bool_value(row, "entryTouched") is True)
+    target_touched = sum(1 for row in classified if _bool_value(row, "targetTouched") is True)
     target_before_stop = sum(1 for row in classified if _bool_value(row, "targetBeforeStop") is True)
     stop_before_target = sum(1 for row in classified if _bool_value(row, "stopTouched") is True and _bool_value(row, "targetBeforeStop") is not True)
     entry_not_touched = sum(1 for row in classified if _failure_reason(row) == "ENTRY_NOT_TOUCHED" or _bool_value(row, "entryTouched") is False)
@@ -340,6 +361,7 @@ def build_failure_analytics(
         "totalTrades": len(rows),
         "evaluatedTrades": sum(1 for row in rows if _upper(row.get("status")) in EVALUATED_STATUSES),
         "entryTouchedTrades": entry_touched,
+        "targetTouchedTrades": target_touched,
         "targetBeforeStopTrades": target_before_stop,
         "stopBeforeTargetTrades": stop_before_target,
         "entryNotTouchedTrades": entry_not_touched,
@@ -348,12 +370,13 @@ def build_failure_analytics(
         "avgMFE": round(sum(mfes) / len(mfes), 4) if mfes else None,
         "avgMAE": round(sum(maes) / len(maes), 4) if maes else None,
         "entryTouchedRate": _rate(classified, "entryTouched"),
+        "targetTouchedRate": _rate(classified, "targetTouched"),
         "targetBeforeStopRate": _rate(classified, "targetBeforeStop"),
         "stopBeforeTargetRate": round(stop_before_target / denominator, 4) if denominator and has_stop_touch_basis else None,
         "entryNotTouchedRate": round(entry_not_touched / denominator, 4) if denominator and has_entry_touch_basis else None,
     }
 
-    out = empty_response(market, mode, horizon, source_type, journal_session)
+    out = empty_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
     out.update(
         {
             "source": vtj._relative(vtj.EVALUATION_CSV),
