@@ -430,6 +430,8 @@ export const mone = {
     apiPost<ApiList>(`/api/journal/virtual-trades/${encodeURIComponent(journalId)}/review`, body || {}),
   journalAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/analytics", p),
+  virtualFailureAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
+    apiGet<ApiList>("/api/virtual/failure-analytics", p),
   journalPerformance: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<any>("/api/journal/performance", p),
   journalAttribution: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>

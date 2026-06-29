@@ -8187,6 +8187,46 @@ def api_journal_analytics(
     return vtj.analytics(market=market, mode=mode, horizon=horizon, source_type=source_type, journal_session=journal_session)
 
 
+def _trade_failure_analytics_response(
+    market: str,
+    mode: str,
+    horizon: str,
+    source_type: str,
+    journal_session: str,
+) -> dict:
+    from app.services import trade_failure_analytics
+
+    return trade_failure_analytics.build_failure_analytics(
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        source_type=source_type,
+        journal_session=journal_session,
+    )
+
+
+@app.get("/api/virtual/failure-analytics")
+def api_virtual_failure_analytics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _trade_failure_analytics_response(market, mode, horizon, source_type, journal_session)
+
+
+@app.get("/api/journal/failure-analytics")
+def api_journal_failure_analytics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _trade_failure_analytics_response(market, mode, horizon, source_type, journal_session)
+
+
 @app.get("/api/journal/performance")
 def api_journal_performance(
     market: str = Query("all"),

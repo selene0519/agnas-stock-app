@@ -206,6 +206,7 @@ export default function VirtualJournalPage() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [autoStatus, setAutoStatus] = useState<any>({});
   const [analyticsData, setAnalyticsData] = useState<any>({});
+  const [failureAnalytics, setFailureAnalytics] = useState<any>({});
   const [analogData, setAnalogData] = useState<any>({});
   const [perfData, setPerfData] = useState<any>(null);
   const [attrData, setAttrData] = useState<any>(null);
@@ -221,12 +222,13 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
         mone.journalAutoCaptureStatus(),
         mone.journalAnalytics(scope),
+        mone.virtualFailureAnalytics(scope),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
@@ -240,6 +242,7 @@ export default function VirtualJournalPage() {
       setSuggestions(suggestionRes.items || []);
       setAutoStatus(statusRes || {});
       setAnalyticsData(analyticsRes || {});
+      setFailureAnalytics(failureAnalyticsRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
       setEffData(effRes?.status === "OK" ? effRes : null);
@@ -378,6 +381,26 @@ export default function VirtualJournalPage() {
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [patterns]);
 
+  const failureSummary = failureAnalytics?.summary || {};
+  const failureTop5 = (failureSummary.topFailureReasons || failureAnalytics?.failureReasons || []).slice(0, 5);
+  const fmtRate = (value: any) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : "-";
+  };
+  const failureLabel = (reason: string) => {
+    const labels = failureAnalytics?.labels || {};
+    return labels[reason] || {
+      ENTRY_NOT_TOUCHED: "진입가 미도달",
+      TARGET_BEFORE_STOP: "목표가 선도달",
+      STOP_BEFORE_TARGET: "손절 선도달",
+      TARGET_NOT_REACHED: "목표가 미도달",
+      DIRECTION_FAILED: "방향성 실패",
+      DATA_MISSING: "데이터 부족",
+      PRICE_INVALID: "가격 오류",
+      UNKNOWN: "원인 미분류",
+    }[reason] || "원인 미분류";
+  };
+
   const approvedSuggestions = useMemo(
     () => suggestions.filter((item) => item.approvalStatus === "APPROVED" && item.applicationStatus !== "APPLIED").slice(0, 4),
     [suggestions],
@@ -428,6 +451,92 @@ export default function VirtualJournalPage() {
         </div>
 
         {error && <div className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-200 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.22)]">{error}</div>}
+      </section>
+
+      <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <Activity size={16} className="text-amber-300" />
+              <span>실패 원인 분석</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+              실패 원인 분석은 추천 로직 개선을 위한 진단 지표이며, 현재 추천 순위에는 직접 반영되지 않습니다.
+            </p>
+          </div>
+          <span className="font-mono text-[11px] uppercase tracking-wide text-slate-500">
+            {String(scope.market).toUpperCase()} / {scope.mode} / {scope.horizon}
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          {metric("전체 거래 수", failureSummary.totalTrades ?? 0)}
+          {metric("진입가 터치율", fmtRate(failureSummary.entryTouchedRate))}
+          {metric("목표가 선도달률", fmtRate(failureSummary.targetBeforeStopRate), "text-emerald-300")}
+          {metric("손절 선도달률", fmtRate(failureSummary.stopBeforeTargetRate), "text-red-300")}
+          {metric("진입가 미도달 비율", fmtRate(failureSummary.entryNotTouchedRate), "text-amber-300")}
+          {metric("평균 MFE", failureSummary.avgMFE == null ? "-" : `${Number(failureSummary.avgMFE).toFixed(2)}%`, "text-cyan-300")}
+          {metric("평균 MAE", failureSummary.avgMAE == null ? "-" : `${Number(failureSummary.avgMAE).toFixed(2)}%`, "text-rose-300")}
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">failureReason TOP 5</div>
+            <div className="space-y-2">
+              {failureTop5.map((item: any) => {
+                const reason = String(item.failureReason || item.reason || "UNKNOWN");
+                return (
+                  <div key={reason} className="flex items-center justify-between gap-3 rounded-md bg-slate-900/70 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-200">{item.label || failureLabel(reason)}</div>
+                      <div className="font-mono text-[10px] text-slate-500">{reason}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono text-sm font-semibold tabular-nums text-slate-100">{item.count ?? 0}</div>
+                      <div className="font-mono text-[10px] text-slate-500">{fmtRate(item.ratio)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+              {!failureTop5.length && (
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">분석 가능한 평가 데이터가 아직 없습니다.</div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">KR/US · 모드 · 기간별 분해</div>
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {(failureAnalytics?.groups || []).slice(0, 12).map((row: any, index: number) => (
+                <div key={`${row.market}-${row.mode}-${row.horizon}-${row.failureReason}-${index}`} className="rounded-md bg-slate-900/70 px-3 py-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 text-xs font-semibold text-slate-200">
+                      {failureLabel(String(row.failureReason || "UNKNOWN"))}
+                    </div>
+                    <span className="font-mono text-xs tabular-nums text-slate-300">n={row.count ?? 0}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 font-mono text-[10px] text-slate-500">
+                    <span>{String(row.market || "-").toUpperCase()}</span>
+                    <span>{row.mode || "-"}</span>
+                    <span>{row.horizon || "-"}</span>
+                    <span>{row.holdingDaysBucket || "-"}</span>
+                    <span>{row.setupBucket || "-"}</span>
+                    <span>{row.regime || "-"}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] tabular-nums">
+                    <span className="text-slate-400">수익 {row.avgReturn == null ? "-" : `${Number(row.avgReturn).toFixed(2)}%`}</span>
+                    <span className="text-emerald-300">MFE {row.avgMFE == null ? "-" : `${Number(row.avgMFE).toFixed(2)}%`}</span>
+                    <span className="text-rose-300">MAE {row.avgMAE == null ? "-" : `${Number(row.avgMAE).toFixed(2)}%`}</span>
+                    <span className="text-slate-400">진입 {fmtRate(row.entryTouchedRate)}</span>
+                  </div>
+                </div>
+              ))}
+              {!(failureAnalytics?.groups || []).length && (
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">분해할 데이터가 아직 없습니다.</div>
+              )}
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
