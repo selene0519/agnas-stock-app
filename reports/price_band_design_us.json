@@ -1,0 +1,708 @@
+{
+  "generatedAt": "2026-06-29T15:14:11",
+  "cutoffDates": 105,
+  "results": {
+    "conservative_short": {
+      "current": {
+        "trades": 1688,
+        "winRateByReturn": 0.4455,
+        "avgNetPnlPct": -0.107,
+        "byExitReason": {
+          "목표도달": {
+            "count": 96,
+            "avgNetPnlPct": 9.946
+          },
+          "손절": {
+            "count": 555,
+            "avgNetPnlPct": -4.093
+          },
+          "손절(동시터치)": {
+            "count": 3,
+            "avgNetPnlPct": 0.413
+          },
+          "기간종료": {
+            "count": 1034,
+            "avgNetPnlPct": 1.097
+          }
+        }
+      },
+      "tighter_target": {
+        "trades": 1688,
+        "winRateByReturn": 0.4514,
+        "avgNetPnlPct": -0.15,
+        "byExitReason": {
+          "목표도달": {
+            "count": 287,
+            "avgNetPnlPct": 5.795
+          },
+          "손절": {
+            "count": 551,
+            "avgNetPnlPct": -4.091
+          },
+          "손절(동시터치)": {
+            "count": 3,
+            "avgNetPnlPct": 0.413
+          },
+          "기간종료": {
+            "count": 847,
+            "avgNetPnlPct": 0.398
+          }
+        }
+      },
+      "tighter_stop": {
+        "trades": 1688,
+        "winRateByReturn": 0.4064,
+        "avgNetPnlPct": -0.149,
+        "byExitReason": {
+          "목표도달": {
+            "count": 95,
+            "avgNetPnlPct": 9.655
+          },
+          "손절": {
+            "count": 683,
+            "avgNetPnlPct": -3.415
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": 2.216
+          },
+          "기간종료": {
+            "count": 908,
+            "avgNetPnlPct": 1.276
+          }
+        }
+      },
+      "wider_stop": {
+        "trades": 1688,
+        "winRateByReturn": 0.4704,
+        "avgNetPnlPct": -0.112,
+        "byExitReason": {
+          "목표도달": {
+            "count": 118,
+            "avgNetPnlPct": 8.421
+          },
+          "손절": {
+            "count": 327,
+            "avgNetPnlPct": -5.076
+          },
+          "손절(동시터치)": {
+            "count": 14,
+            "avgNetPnlPct": -2.232
+          },
+          "기간종료": {
+            "count": 1229,
+            "avgNetPnlPct": 0.414
+          }
+        }
+      },
+      "wider_stop_closer_target": {
+        "trades": 1688,
+        "winRateByReturn": 0.4727,
+        "avgNetPnlPct": -0.151,
+        "byExitReason": {
+          "목표도달": {
+            "count": 214,
+            "avgNetPnlPct": 6.162
+          },
+          "손절": {
+            "count": 326,
+            "avgNetPnlPct": -5.068
+          },
+          "손절(동시터치)": {
+            "count": 14,
+            "avgNetPnlPct": -2.232
+          },
+          "기간종료": {
+            "count": 1134,
+            "avgNetPnlPct": 0.097
+          }
+        }
+      }
+    },
+    "conservative_swing": {
+      "current": {
+        "trades": 1888,
+        "winRateByReturn": 0.4322,
+        "avgNetPnlPct": 0.13,
+        "byExitReason": {
+          "목표도달": {
+            "count": 108,
+            "avgNetPnlPct": 15.245
+          },
+          "손절": {
+            "count": 801,
+            "avgNetPnlPct": -5.109
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 978,
+            "avgNetPnlPct": 2.748
+          }
+        }
+      },
+      "tighter_target": {
+        "trades": 1888,
+        "winRateByReturn": 0.4444,
+        "avgNetPnlPct": -0.015,
+        "byExitReason": {
+          "목표도달": {
+            "count": 372,
+            "avgNetPnlPct": 8.4
+          },
+          "손절": {
+            "count": 786,
+            "avgNetPnlPct": -5.119
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": 1.254
+          },
+          "기간종료": {
+            "count": 728,
+            "avgNetPnlPct": 1.192
+          }
+        }
+      },
+      "tighter_stop": {
+        "trades": 1888,
+        "winRateByReturn": 0.3803,
+        "avgNetPnlPct": 0.124,
+        "byExitReason": {
+          "목표도달": {
+            "count": 82,
+            "avgNetPnlPct": 16.681
+          },
+          "손절": {
+            "count": 955,
+            "avgNetPnlPct": -3.97
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 850,
+            "avgNetPnlPct": 3.122
+          }
+        }
+      },
+      "wider_stop": {
+        "trades": 1888,
+        "winRateByReturn": 0.4688,
+        "avgNetPnlPct": 0.139,
+        "byExitReason": {
+          "목표도달": {
+            "count": 149,
+            "avgNetPnlPct": 12.597
+          },
+          "손절": {
+            "count": 542,
+            "avgNetPnlPct": -6.212
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": -0.876
+          },
+          "기간종료": {
+            "count": 1195,
+            "avgNetPnlPct": 1.468
+          }
+        }
+      },
+      "wider_stop_closer_target": {
+        "trades": 1888,
+        "winRateByReturn": 0.4735,
+        "avgNetPnlPct": 0.096,
+        "byExitReason": {
+          "목표도달": {
+            "count": 298,
+            "avgNetPnlPct": 9.324
+          },
+          "손절": {
+            "count": 538,
+            "avgNetPnlPct": -6.175
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": -0.876
+          },
+          "기간종료": {
+            "count": 1050,
+            "avgNetPnlPct": 0.692
+          }
+        }
+      }
+    },
+    "conservative_mid": {
+      "current": {
+        "trades": 2034,
+        "winRateByReturn": 0.4012,
+        "avgNetPnlPct": 1.014,
+        "byExitReason": {
+          "목표도달": {
+            "count": 374,
+            "avgNetPnlPct": 17.441
+          },
+          "손절": {
+            "count": 1056,
+            "avgNetPnlPct": -6.331
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 603,
+            "avgNetPnlPct": 3.683
+          }
+        }
+      },
+      "tighter_target": {
+        "trades": 2034,
+        "winRateByReturn": 0.4371,
+        "avgNetPnlPct": 0.428,
+        "byExitReason": {
+          "목표도달": {
+            "count": 675,
+            "avgNetPnlPct": 10.099
+          },
+          "손절": {
+            "count": 1007,
+            "avgNetPnlPct": -6.335
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 351,
+            "avgNetPnlPct": 1.222
+          }
+        }
+      },
+      "tighter_stop": {
+        "trades": 2034,
+        "winRateByReturn": 0.3392,
+        "avgNetPnlPct": 0.99,
+        "byExitReason": {
+          "목표도달": {
+            "count": 303,
+            "avgNetPnlPct": 19.485
+          },
+          "손절": {
+            "count": 1233,
+            "avgNetPnlPct": -5.045
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 497,
+            "avgNetPnlPct": 4.679
+          }
+        }
+      },
+      "wider_stop": {
+        "trades": 2034,
+        "winRateByReturn": 0.4489,
+        "avgNetPnlPct": 0.945,
+        "byExitReason": {
+          "목표도달": {
+            "count": 425,
+            "avgNetPnlPct": 15.69
+          },
+          "손절": {
+            "count": 834,
+            "avgNetPnlPct": -7.751
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 774,
+            "avgNetPnlPct": 2.213
+          }
+        }
+      },
+      "wider_stop_closer_target": {
+        "trades": 2034,
+        "winRateByReturn": 0.4621,
+        "avgNetPnlPct": 0.663,
+        "byExitReason": {
+          "목표도달": {
+            "count": 603,
+            "avgNetPnlPct": 11.75
+          },
+          "손절": {
+            "count": 818,
+            "avgNetPnlPct": -7.715
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 612,
+            "avgNetPnlPct": 0.932
+          }
+        }
+      }
+    },
+    "balanced_short": {
+      "current": {
+        "trades": 1690,
+        "winRateByReturn": 0.4509,
+        "avgNetPnlPct": -0.05,
+        "byExitReason": {
+          "목표도달": {
+            "count": 94,
+            "avgNetPnlPct": 10.055
+          },
+          "손절": {
+            "count": 541,
+            "avgNetPnlPct": -3.984
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": 2.216
+          },
+          "기간종료": {
+            "count": 1053,
+            "avgNetPnlPct": 1.065
+          }
+        }
+      },
+      "tighter_target": {
+        "trades": 1690,
+        "winRateByReturn": 0.4568,
+        "avgNetPnlPct": -0.116,
+        "byExitReason": {
+          "목표도달": {
+            "count": 287,
+            "avgNetPnlPct": 5.566
+          },
+          "손절": {
+            "count": 537,
+            "avgNetPnlPct": -3.982
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": 2.216
+          },
+          "기간종료": {
+            "count": 864,
+            "avgNetPnlPct": 0.394
+          }
+        }
+      },
+      "tighter_stop": {
+        "trades": 1690,
+        "winRateByReturn": 0.4124,
+        "avgNetPnlPct": -0.101,
+        "byExitReason": {
+          "목표도달": {
+            "count": 81,
+            "avgNetPnlPct": 10.593
+          },
+          "손절": {
+            "count": 642,
+            "avgNetPnlPct": -3.345
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": 2.216
+          },
+          "기간종료": {
+            "count": 965,
+            "avgNetPnlPct": 1.155
+          }
+        }
+      },
+      "wider_stop": {
+        "trades": 1690,
+        "winRateByReturn": 0.4728,
+        "avgNetPnlPct": -0.073,
+        "byExitReason": {
+          "목표도달": {
+            "count": 113,
+            "avgNetPnlPct": 8.729
+          },
+          "손절": {
+            "count": 322,
+            "avgNetPnlPct": -5.067
+          },
+          "손절(동시터치)": {
+            "count": 7,
+            "avgNetPnlPct": -2.075
+          },
+          "기간종료": {
+            "count": 1248,
+            "avgNetPnlPct": 0.429
+          }
+        }
+      },
+      "wider_stop_closer_target": {
+        "trades": 1690,
+        "winRateByReturn": 0.4751,
+        "avgNetPnlPct": -0.111,
+        "byExitReason": {
+          "목표도달": {
+            "count": 211,
+            "avgNetPnlPct": 6.267
+          },
+          "손절": {
+            "count": 321,
+            "avgNetPnlPct": -5.058
+          },
+          "손절(동시터치)": {
+            "count": 7,
+            "avgNetPnlPct": -2.075
+          },
+          "기간종료": {
+            "count": 1151,
+            "avgNetPnlPct": 0.111
+          }
+        }
+      }
+    },
+    "balanced_swing": {
+      "current": {
+        "trades": 1948,
+        "winRateByReturn": 0.4358,
+        "avgNetPnlPct": 0.236,
+        "byExitReason": {
+          "목표도달": {
+            "count": 109,
+            "avgNetPnlPct": 15.768
+          },
+          "손절": {
+            "count": 807,
+            "avgNetPnlPct": -5.052
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 1031,
+            "avgNetPnlPct": 2.729
+          }
+        }
+      },
+      "tighter_target": {
+        "trades": 1948,
+        "winRateByReturn": 0.4487,
+        "avgNetPnlPct": 0.086,
+        "byExitReason": {
+          "목표도달": {
+            "count": 388,
+            "avgNetPnlPct": 8.466
+          },
+          "손절": {
+            "count": 792,
+            "avgNetPnlPct": -5.06
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": 1.254
+          },
+          "기간종료": {
+            "count": 766,
+            "avgNetPnlPct": 1.159
+          }
+        }
+      },
+      "tighter_stop": {
+        "trades": 1948,
+        "winRateByReturn": 0.386,
+        "avgNetPnlPct": 0.235,
+        "byExitReason": {
+          "목표도달": {
+            "count": 89,
+            "avgNetPnlPct": 16.789
+          },
+          "손절": {
+            "count": 959,
+            "avgNetPnlPct": -3.906
+          },
+          "손절(동시터치)": {
+            "count": 1,
+            "avgNetPnlPct": 4.398
+          },
+          "기간종료": {
+            "count": 899,
+            "avgNetPnlPct": 3.008
+          }
+        }
+      },
+      "wider_stop": {
+        "trades": 1948,
+        "winRateByReturn": 0.4728,
+        "avgNetPnlPct": 0.242,
+        "byExitReason": {
+          "목표도달": {
+            "count": 145,
+            "avgNetPnlPct": 13.637
+          },
+          "손절": {
+            "count": 531,
+            "avgNetPnlPct": -6.371
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": -1.315
+          },
+          "기간종료": {
+            "count": 1270,
+            "avgNetPnlPct": 1.48
+          }
+        }
+      },
+      "wider_stop_closer_target": {
+        "trades": 1948,
+        "winRateByReturn": 0.4779,
+        "avgNetPnlPct": 0.199,
+        "byExitReason": {
+          "목표도달": {
+            "count": 306,
+            "avgNetPnlPct": 9.699
+          },
+          "손절": {
+            "count": 527,
+            "avgNetPnlPct": -6.334
+          },
+          "손절(동시터치)": {
+            "count": 2,
+            "avgNetPnlPct": -1.315
+          },
+          "기간종료": {
+            "count": 1113,
+            "avgNetPnlPct": 0.683
+          }
+        }
+      }
+    },
+    "balanced_mid": {
+      "current": {
+        "trades": 2145,
+        "winRateByReturn": 0.4047,
+        "avgNetPnlPct": 1.117,
+        "byExitReason": {
+          "목표도달": {
+            "count": 390,
+            "avgNetPnlPct": 18.043
+          },
+          "손절": {
+            "count": 1105,
+            "avgNetPnlPct": -6.388
+          },
+          "손절(동시터치)": {
+            "count": 0,
+            "avgNetPnlPct": null
+          },
+          "기간종료": {
+            "count": 650,
+            "avgNetPnlPct": 3.719
+          }
+        }
+      },
+      "tighter_target": {
+        "trades": 2145,
+        "winRateByReturn": 0.4406,
+        "avgNetPnlPct": 0.518,
+        "byExitReason": {
+          "목표도달": {
+            "count": 711,
+            "avgNetPnlPct": 10.38
+          },
+          "손절": {
+            "count": 1053,
+            "avgNetPnlPct": -6.404
+          },
+          "손절(동시터치)": {
+            "count": 0,
+            "avgNetPnlPct": null
+          },
+          "기간종료": {
+            "count": 381,
+            "avgNetPnlPct": 1.247
+          }
+        }
+      },
+      "tighter_stop": {
+        "trades": 2145,
+        "winRateByReturn": 0.3431,
+        "avgNetPnlPct": 1.09,
+        "byExitReason": {
+          "목표도달": {
+            "count": 322,
+            "avgNetPnlPct": 19.684
+          },
+          "손절": {
+            "count": 1291,
+            "avgNetPnlPct": -5.022
+          },
+          "손절(동시터치)": {
+            "count": 0,
+            "avgNetPnlPct": null
+          },
+          "기간종료": {
+            "count": 532,
+            "avgNetPnlPct": 4.669
+          }
+        }
+      },
+      "wider_stop": {
+        "trades": 2145,
+        "winRateByReturn": 0.4578,
+        "avgNetPnlPct": 1.19,
+        "byExitReason": {
+          "목표도달": {
+            "count": 446,
+            "avgNetPnlPct": 16.835
+          },
+          "손절": {
+            "count": 854,
+            "avgNetPnlPct": -8.07
+          },
+          "손절(동시터치)": {
+            "count": 0,
+            "avgNetPnlPct": null
+          },
+          "기간종료": {
+            "count": 845,
+            "avgNetPnlPct": 2.291
+          }
+        }
+      },
+      "wider_stop_closer_target": {
+        "trades": 2145,
+        "winRateByReturn": 0.4718,
+        "avgNetPnlPct": 0.896,
+        "byExitReason": {
+          "목표도달": {
+            "count": 635,
+            "avgNetPnlPct": 12.488
+          },
+          "손절": {
+            "count": 837,
+            "avgNetPnlPct": -8.047
+          },
+          "손절(동시터치)": {
+            "count": 0,
+            "avgNetPnlPct": null
+          },
+          "기간종료": {
+            "count": 673,
+            "avgNetPnlPct": 1.081
+          }
+        }
+      }
+    }
+  }
+}

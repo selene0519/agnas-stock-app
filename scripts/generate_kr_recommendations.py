@@ -419,14 +419,17 @@ def _decide_timing(score: float, ind: dict, mode: str, horizon: str, ev: float |
     return "기다림", "관망", "점수·추세 조건 미충족"
 
 
-def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict | None = None) -> tuple[float, float, float, float | None, str, float, int]:
+def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict | None = None,
+                 atr_mult_override: dict[str, tuple[float, float]] | None = None,
+                 ) -> tuple[float, float, float, float | None, str, float, int]:
     band = _HORIZON_BANDS[horizon]
     rf = _MODE_RISK[mode]; rwf = _MODE_REWARD[mode]
     entry = current
 
     # ATR 기반 손절가/목표가 — horizon별 차등 배수 (달성 가능성 최적화)
     # short: RR=2.3, swing: RR=3.0, mid: RR=2.75
-    _ATR_MULT = {"short": (1.2, 2.8), "swing": (1.5, 4.5), "mid": (2.0, 5.5)}
+    # atr_mult_override: scripts/backtest_price_band_design.py가 대안 배수를 검증할 때 씀
+    _ATR_MULT = atr_mult_override or {"short": (1.2, 2.8), "swing": (1.5, 4.5), "mid": (2.0, 5.5)}
     _stop_mult, _target_mult = _ATR_MULT.get(horizon, (1.5, 4.5))
     atr14 = ind.get("atr14") if ind else None
     if atr14 and atr14 > 0 and current > 0:
