@@ -1,4 +1,4 @@
-"""backtest_pre_rise_score.py의 KR 버전. US와 같은 방법, KR 유니버스로 검증."""
+"""backtest_pre_rise_score.py의 KR 버전. US와 같은 방법(버킷별 x 3/5/10/20일), KR 유니버스로 검증."""
 from __future__ import annotations
 
 import json
@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.generate_kr_recommendations import indicators, pre_rise_score, _load_ohlcv_all  # noqa: E402
-from scripts.backtest_pre_rise_score import _forward_return, _quantile_bucket, FORWARD_DAYS  # noqa: E402
+from scripts.generate_kr_recommendations import indicators, setup_score, recommendation_bucket, _load_ohlcv_all  # noqa: E402
+from scripts.backtest_pre_rise_score import _future_closes, _multi_horizon_stats, _spearman, HORIZONS, SPEARMAN_HORIZON  # noqa: E402
 
 OHLCV_ALL = _load_ohlcv_all()
 
@@ -44,57 +44,68 @@ def main() -> None:
             current = ind.get("latest")
             if not current or current <= 0:
                 continue
-            fwd = _forward_return(rows, cutoff, FORWARD_DAYS)
-            if fwd is None:
+            future_closes = _future_closes(rows, cutoff)
+            if len(future_closes) < min(HORIZONS):
                 continue
-            pr = pre_rise_score(ind)
-            samples.append({
-                "symbol": sym, "forwardReturnPct": round(fwd, 3),
-                "totalScore": pr["totalScore"],
-                "accumulationScore": pr["accumulationScore"],
-                "convergenceScore": pr["convergenceScore"],
-                "pullbackScore": pr["pullbackScore"],
-            })
+            base_close = past[-1].get("close")
+            base_close = float(base_close) if base_close else current
+            mh = _multi_horizon_stats(base_close, future_closes)
+            if mh[SPEARMAN_HORIZON]["return"] is None:
+                continue
 
-    def _bucket_stats(key: str) -> dict[str, Any]:
-        vals = sorted(s[key] for s in samples)
-        n = len(vals)
-        q1, q2 = vals[n // 3], vals[2 * n // 3]
-        buckets: dict[str, list[float]] = {"low": [], "mid": [], "high": []}
-        for s in samples:
-            buckets[_quantile_bucket(s[key], q1, q2)].append(s["forwardReturnPct"])
-        return {b: {"n": len(r), "avgForwardReturnPct": round(sum(r) / len(r), 3) if r else None} for b, r in buckets.items()}
+            sc = setup_score(ind)
+            bucket, _ = recommendation_bucket(ind, sc)
 
-    def _spearman(key: str) -> float | None:
-        xs = [s[key] for s in samples]
-        ys = [s["forwardReturnPct"] for s in samples]
-        n = len(xs)
-        if n < 10:
-            return None
+            sample: dict[str, Any] = {
+                "symbol": sym, "cutoff": cutoff, "bucket": bucket,
+                "totalScore": sc["totalScore"],
+                "accumulationScore": sc["accumulationScore"],
+                "convergenceScore": sc["convergenceScore"],
+                "pullbackScore": sc["pullbackScore"],
+                "sectorLeadScore": sc["sectorLeadScore"],
+                "overextensionRisk": sc["overextensionRisk"],
+            }
+            for h in HORIZONS:
+                sample[f"return_{h}d"] = mh[h]["return"]
+                sample[f"mae_{h}d"] = mh[h]["mae"]
+            samples.append(sample)
 
-        def _rank(vals):
-            order = sorted(range(len(vals)), key=lambda i: vals[i])
-            ranks = [0.0] * len(vals)
-            for r, i in enumerate(order):
-                ranks[i] = r
-            return ranks
+    if not samples:
+        print("샘플 없음")
+        return
 
-        rx, ry = _rank(xs), _rank(ys)
-        mx, my = sum(rx) / n, sum(ry) / n
-        cov = sum((rx[i] - mx) * (ry[i] - my) for i in range(n))
-        vx = sum((x - mx) ** 2 for x in rx)
-        vy = sum((y - my) ** 2 for y in ry)
-        return round(cov / (vx * vy) ** 0.5, 4) if vx > 0 and vy > 0 else None
+    factor_corr = {
+        key: _spearman(samples, key, "return_10d")
+        for key in ("totalScore", "accumulationScore", "convergenceScore", "pullbackScore",
+                    "sectorLeadScore", "overextensionRisk")
+    }
+
+    by_bucket: dict[str, Any] = {}
+    for bucket in sorted({s["bucket"] for s in samples}):
+        rows_b = [s for s in samples if s["bucket"] == bucket]
+        entry: dict[str, Any] = {"n": len(rows_b), "byHorizon": {}}
+        for h in HORIZONS:
+            rets = [s[f"return_{h}d"] for s in rows_b if s[f"return_{h}d"] is not None]
+            maes = [s[f"mae_{h}d"] for s in rows_b if s[f"mae_{h}d"] is not None]
+            wins = [r for r in rets if r > 0]
+            entry["byHorizon"][f"{h}d"] = {
+                "n": len(rets),
+                "avgReturnPct": round(sum(rets) / len(rets), 3) if rets else None,
+                "winRate": round(len(wins) / len(rets), 4) if rets else None,
+                "avgMaxAdverseExcursionPct": round(sum(maes) / len(maes), 3) if maes else None,
+            }
+        by_bucket[bucket] = entry
 
     out = {
         "generatedAt": datetime.now().isoformat(timespec="seconds"),
-        "cutoffDates": len(cutoffs), "forwardDays": FORWARD_DAYS, "sampleCount": len(samples),
-        "factors": {
-            key: {"spearmanRankCorrelation": _spearman(key), "byTercile": _bucket_stats(key)}
-            for key in ("totalScore", "accumulationScore", "convergenceScore", "pullbackScore")
-        },
+        "cutoffDates": len(cutoffs),
+        "horizonsTested": list(HORIZONS),
+        "sampleCount": len(samples),
+        "totalScoreSpearmanAt10d": factor_corr,
+        "byBucket": by_bucket,
     }
-    path = ROOT / "reports" / "pre_rise_score_validation_kr.json"
+    path = ROOT / "docs" / "validation" / "pre_rise_score_validation_kr.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(out, ensure_ascii=False, indent=2))
 

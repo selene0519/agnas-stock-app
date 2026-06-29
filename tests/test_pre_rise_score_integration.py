@@ -13,7 +13,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 _PROBE = r"""
 import sys, json
 sys.path.insert(0, {root!r})
-from scripts.generate_kr_recommendations import indicators, pre_rise_score, recommendation_bucket
+from scripts.generate_kr_recommendations import indicators, setup_score, recommendation_bucket
 
 # 실제 OHLCV 하나를 읽어서 진짜 파이프라인과 같은 함수 호출 경로로 검증
 import csv
@@ -30,7 +30,7 @@ for i in range(80):
     price = close
 
 ind = indicators(rows)
-pr = pre_rise_score(ind)
+pr = setup_score(ind)
 bucket, reason = recommendation_bucket(ind, pr)
 
 print(json.dumps({{
@@ -42,7 +42,7 @@ print(json.dumps({{
 """
 
 
-def test_pre_rise_pipeline_runs_end_to_end_on_real_function_chain():
+def test_setup_score_pipeline_runs_end_to_end_on_real_function_chain():
     result = subprocess.run(
         [sys.executable, "-c", _PROBE.format(root=str(ROOT_DIR))],
         capture_output=True, text=True, cwd=str(ROOT_DIR), timeout=60,
@@ -58,7 +58,7 @@ def test_pre_rise_pipeline_runs_end_to_end_on_real_function_chain():
     }
 
 
-def test_generated_kr_recommendation_csv_has_pre_rise_columns():
+def test_generated_kr_recommendation_csv_has_setup_score_columns():
     """실제로 돌린 generate_kr_recommendations.py 출력에 새 컬럼이 들어있는지 확인.
     (CI에서 매번 새로 생성하지 않고, 이미 reports/에 있는 파일을 검사한다.)"""
     candidates = sorted(ROOT_DIR.glob("reports/mone_v36_final_recommendations_kr_*.csv"))
@@ -67,6 +67,6 @@ def test_generated_kr_recommendation_csv_has_pre_rise_columns():
         return  # 추천 파일이 비어있는 레짐 상황 — 스킵
     with nonempty[0].open(encoding="utf-8-sig", newline="") as f:
         header = next(csv.reader(f))
-    for col in ("preRiseScore", "preRiseBucket", "accumulationScore", "convergenceScore",
-                "alreadyMovedPenalty"):
+    for col in ("setupScore", "setupBucket", "accumulationScore", "convergenceScore",
+                "overextensionRisk", "momentumContinuationScore", "trendStrengthScore"):
         assert col in header, f"{col} missing from {nonempty[0].name}"

@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-06-29T16:36:13",
+  "cutoffDates": 106,
+  "horizonsTested": [
+    3,
+    5,
+    10,
+    20
+  ],
+  "sampleCount": 6244,
+  "totalScoreSpearman": {
+    "3d": 0.0044,
+    "5d": 0.0419,
+    "10d": 0.0478,
+    "20d": 0.0522
+  },
+  "byTercile": {
+    "low": {
+      "n": 2084,
+      "byHorizon": {
+        "3d": {
+          "n": 2084,
+          "avgReturnPct": 0.91,
+          "winRate": 0.5518,
+          "avgMaxAdverseExcursionPct": -1.175
+        },
+        "5d": {
+          "n": 2084,
+          "avgReturnPct": 0.924,
+          "winRate": 0.5158,
+          "avgMaxAdverseExcursionPct": -2.337
+        },
+        "10d": {
+          "n": 2084,
+          "avgReturnPct": 1.885,
+          "winRate": 0.5441,
+          "avgMaxAdverseExcursionPct": -3.977
+        },
+        "20d": {
+          "n": 2084,
+          "avgReturnPct": 3.7,
+          "winRate": 0.5633,
+          "avgMaxAdverseExcursionPct": -6.19
+        }
+      }
+    },
+    "mid": {
+      "n": 2071,
+      "byHorizon": {
+        "3d": {
+          "n": 2071,
+          "avgReturnPct": 0.842,
+          "winRate": 0.55,
+          "avgMaxAdverseExcursionPct": -1.052
+        },
+        "5d": {
+          "n": 2071,
+          "avgReturnPct": 0.943,
+          "winRate": 0.5254,
+          "avgMaxAdverseExcursionPct": -2.132
+        },
+        "10d": {
+          "n": 2071,
+          "avgReturnPct": 1.829,
+          "winRate": 0.5384,
+          "avgMaxAdverseExcursionPct": -3.687
+        },
+        "20d": {
+          "n": 2071,
+          "avgReturnPct": 3.118,
+          "winRate": 0.5461,
+          "avgMaxAdverseExcursionPct": -6.094
+        }
+      }
+    },
+    "high": {
+      "n": 2089,
+      "byHorizon": {
+        "3d": {
+          "n": 2089,
+          "avgReturnPct": 0.831,
+          "winRate": 0.5539,
+          "avgMaxAdverseExcursionPct": -1.338
+        },
+        "5d": {
+          "n": 2089,
+          "avgReturnPct": 1.703,
+          "winRate": 0.561,
+          "avgMaxAdverseExcursionPct": -2.283
+        },
+        "10d": {
+          "n": 2089,
+          "avgReturnPct": 3.068,
+          "winRate": 0.5744,
+          "avgMaxAdverseExcursionPct": -3.949
+        },
+        "20d": {
+          "n": 2089,
+          "avgReturnPct": 6.146,
+          "winRate": 0.5835,
+          "avgMaxAdverseExcursionPct": -6.044
+        }
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@ US conservative/balanced 추천 가뭄(2~12건, aggressive는 20건 꽉 참)이 
   (운영 백테스트 엔진과 동일)으로 실제 체결/승패를 채점한다.
 - 같은 필터/평가 함수를 공유하므로 결과가 운영 로직과 어긋날 위험이 없다.
 
-출력: reports/band_calibration_us.json
+출력: docs/validation/band_calibration_us.json
 """
 from __future__ import annotations
 
@@ -172,7 +172,8 @@ def main() -> None:
             out["results"][key] = {"beforeCalibration": before, "afterCalibration": after}
             print(f"  이전  : {before}")
             print(f"  현재  : {after}")
-    path = ROOT / "reports" / "band_calibration_us.json"
+    path = ROOT / "docs" / "validation" / "band_calibration_us.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"저장: {path}")
 

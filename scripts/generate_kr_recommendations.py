@@ -320,7 +320,7 @@ def _sub_scores(ind: dict) -> dict[str, float]:
             "rrScore": round(rrScore,1), "qualityScore": round(qualityScore,1), "newsRiskPenalty": round(news,1)}
 
 
-# ── Pre-Rise Score: "오른 종목"이 아니라 "오를 종목"을 찾기 위한 선행 신호 점수 ──────
+# ── Setup Score: "오른 종목"이 아니라 "오를 종목"을 찾기 위한 선행 신호 점수 ──────
 #
 # _sub_scores()/_final_score()는 가격이 이미 움직인 뒤의 추세·리스크를 점수화한다.
 # 이 점수는 반대로 "가격이 크게 움직이기 전에 먼저 정렬되는 신호"(매집·변동성 수렴·
@@ -328,10 +328,22 @@ def _sub_scores(ind: dict) -> dict[str, float]:
 # 단계의 후보를 골라내는 데 쓴다. 가중치는 의도적으로 사람이 읽을 수 있는 정수로
 # 두고(15/12/10/8/7/5/-15/-8), 이 백테스트 구간에 맞춰 최적화하지 않았다 — 신호
 # 자체가 미래 수익과 상관이 있는지를 scripts/backtest_pre_rise_score.py로 검증한다.
+#
+# ⚠️ 2026-06-29 검증 결과(docs/validation/pre_rise_score_validation_{kr,us}.json):
+# 이 점수가 높을수록 실제로 더 올랐다는 증거가 없다(US Spearman -0.098, KR -0.008).
+# 그래서 "setup_score"(셋업/준비 신호 관찰값)라고만 부르고, "오를 확률"이나 "매수
+# 우선순위"처럼 들리는 이름·문구는 쓰지 않는다. 추천 필터/순위/EV에도 연결하지
+# 않았다 — 순수 표시·진단용이다.
 
-def already_moved_penalty(ind: dict) -> tuple[float, list[str]]:
-    """이미 크게 움직인 종목을 감산한다 — 추격매수 방지."""
-    penalty = 0.0
+def overextension_risk(ind: dict) -> tuple[float, list[str]]:
+    """이미 과도하게 움직인 종목의 위험도(0~40, 높을수록 위험). 추격매수 경고용.
+
+    "이미 움직였다"는 사실 자체가 아니라 "단기간에 너무 멀리 갔다"를 본다 — 강하게
+    계속 가는 추세 종목을 무조건 깎으면 안 된다는 피드백을 반영해, 임계값을 꽤 높게
+    잡았다(단기 +20%, 이격 +15%, 갭 +8%, RSI 75). 이 점수가 높다고 "팔아야 한다"는
+    뜻이 아니라 "신규 추격 진입은 위험하다"는 뜻이다.
+    """
+    risk = 0.0
     reasons: list[str] = []
     mom5 = ind.get("recentMomentum5")
     d20 = ind.get("distanceToMa20")
@@ -339,28 +351,32 @@ def already_moved_penalty(ind: dict) -> tuple[float, list[str]]:
     rsi = ind.get("rsi14")
 
     if mom5 is not None and mom5 >= 20.0:
-        penalty += 15.0
+        risk += 15.0
         reasons.append(f"최근5일 +{mom5:.1f}% 급등")
     if d20 is not None and d20 >= 15.0:
-        penalty += 10.0
+        risk += 10.0
         reasons.append(f"20일선 대비 +{d20:.1f}% 이격")
     if gap is not None and gap >= 8.0:
-        penalty += 10.0
+        risk += 10.0
         reasons.append(f"갭상승 +{gap:.1f}%")
     if rsi is not None and rsi >= 75.0:
-        penalty += 8.0
+        risk += 8.0
         reasons.append(f"RSI {rsi:.0f} 과열")
-    return round(min(40.0, penalty), 1), reasons
+    return round(min(40.0, risk), 1), reasons
 
 
-def pre_rise_score(
+def setup_score(
     ind: dict,
     supply_row: dict | None = None,
     sector_lead_gap: float | None = None,
     dart_row: dict | None = None,
     news_penalty: float = 0.0,
 ) -> dict[str, Any]:
-    """오를 종목(준비 단계) 후보 점수. 0~100 근방, 음수 가능(과열 감산이 크면).
+    """오를 종목(준비 단계) 셋업 점수. 0~100 근방, 음수 가능(과열 위험이 크면).
+
+    "오를 확률"이 아니다 — 백테스트로 미래 수익률과의 상관을 확인했지만 유의미한
+    신호를 못 찾았다(모듈 상단 주석 참고). 어떤 준비 신호가 관찰됐는지 보여주는
+    진단용 값으로만 쓴다.
 
     sector_lead_gap: 섹터 평균 모멘텀 - 이 종목 모멘텀. 양수가 크면 "섹터는 강한데
     이 종목은 아직 안 움직임"(섹터 후발 후보).
@@ -439,25 +455,25 @@ def pre_rise_score(
     catalyst = max(0.0, catalyst - min(3.0, news_penalty * 0.2))
     components["catalystScore"] = round(min(5.0, catalyst), 1)
 
-    moved_penalty, moved_reasons = already_moved_penalty(ind)
-    components["alreadyMovedPenalty"] = -moved_penalty
+    risk, risk_reasons = overextension_risk(ind)
+    components["overextensionRisk"] = risk
 
-    total = sum(components.values())
+    total = sum(v for k, v in components.items() if k != "overextensionRisk") - risk
     components["totalScore"] = round(total, 1)
-    components["alreadyMovedReasons"] = moved_reasons  # type: ignore[assignment]
+    components["overextensionReasons"] = risk_reasons  # type: ignore[assignment]
     return components
 
 
-def recommendation_bucket(ind: dict, pre_rise: dict[str, Any], pullback_label: str = "") -> tuple[str, str]:
+def recommendation_bucket(ind: dict, setup: dict[str, Any], pullback_label: str = "") -> tuple[str, str]:
     """추천 후보를 6분류 중 하나로 라벨링. 반환: (버킷, 설명)."""
-    moved = pre_rise.get("alreadyMovedPenalty", 0.0)
-    total = pre_rise.get("totalScore", 0.0)
+    risk = setup.get("overextensionRisk", 0.0)
+    total = setup.get("totalScore", 0.0)
     box_dist = ind.get("distanceToBoxTop")
-    acc = pre_rise.get("accumulationScore", 0.0)
-    conv = pre_rise.get("convergenceScore", 0.0)
-    sector_lead = pre_rise.get("sectorLeadScore", 0.0)
+    acc = setup.get("accumulationScore", 0.0)
+    conv = setup.get("convergenceScore", 0.0)
+    sector_lead = setup.get("sectorLeadScore", 0.0)
 
-    if moved <= -15.0:
+    if risk >= 15.0:
         return "추격금지", "최근 급등/과열 — 신규 진입 금지, 눌림 또는 재정렬 대기"
     if conv >= 7.0 and box_dist is not None and box_dist <= 3.0:
         return "돌파대기", f"박스권 상단 {box_dist:.1f}% 이내, 변동성 수렴 — 돌파+거래량 확인 시 진입 검토"
@@ -470,6 +486,89 @@ def recommendation_bucket(ind: dict, pre_rise: dict[str, Any], pullback_label: s
     if total >= 20.0:
         return "오늘진입가능", "준비 신호 다수 충족 — 조건부 진입 검토 가능"
     return "관찰후보", "아직 준비 신호 부족 — 관심종목으로만 유지"
+
+
+# ── Momentum Continuation Score: setup_score의 반대편 — "이미 움직이지만 계속 갈 후보" ──
+#
+# 2026-06-29 docs/validation/pre_rise_score_validation_{kr,us}.json 버킷 분석 결과,
+# "추격금지"로 분류한 종목들이 오히려 20일 기준 가장 좋은 평균수익을 냈다(US +15.4%,
+# 승률 72%). setup_score는 "아직 안 움직인 후보"만 보므로 이런 종목을 구조적으로 놓친다.
+# 그래서 정반대 철학의 점수를 따로 둔다 — "이미 움직인 게 나쁜 게 아니라, 건강하게
+# 계속 가고 있는지"를 본다. setup_score와 절대 합산하지 않는다(섞으면 안 된다는 피드백).
+#
+# 다만 추격금지 버킷의 평균 최대역행(MAE)도 가장 컸다(US 20일 -7.3%, KR -9.7%) — 즉
+# "평균은 좋지만 변동성도 크다"는 뜻이다. 그래서 이 점수도 "오를 확률"이 아니라
+# "건강한 추세 지속 신호 관찰값"으로만 부르고, 검증 전까지 추천 로직에 연결하지 않는다.
+
+def momentum_continuation_score(
+    ind: dict,
+    supply_row: dict | None = None,
+    sector_lead_gap: float | None = None,
+) -> dict[str, Any]:
+    """이미 움직인 종목 중 "건강하게 계속 갈 가능성"을 점수화. 0~100 근방.
+
+    sector_lead_gap: 섹터 평균 모멘텀 - 이 종목 모멘텀. 음수가 크면 "이 종목이 섹터를
+    이끌고 있다"(대장주).
+    """
+    ma5 = ind.get("ma5"); ma20 = ind.get("ma20"); ma60 = ind.get("ma60")
+    d20 = ind.get("distanceToMa20")
+    mom5 = ind.get("recentMomentum5")
+    mom20 = ind.get("recentMomentum20")
+    vr = ind.get("volumeRatio20")
+    d52 = ind.get("distanceTo52wHigh")
+
+    components: dict[str, float] = {}
+
+    # 1) 추세 강도 — 정배열 + 20일선 위
+    trend = 0.0
+    ma_full_align = bool(ma5 and ma20 and ma60 and ma5 > ma20 > ma60)
+    if ma_full_align:
+        trend += 6.0
+    if d20 is not None and d20 > 0:
+        trend += min(6.0, d20 * 0.3)
+    components["trendStrengthScore"] = round(min(12.0, trend), 1)
+
+    # 2) 상대강도 — 최근 모멘텀
+    rel = 0.0
+    if mom20 is not None and mom20 > 0:
+        rel += min(10.0, mom20 * 0.5)
+    if mom5 is not None and mom5 > 0:
+        rel += min(5.0, mom5 * 0.5)
+    components["relativeStrengthScore"] = round(min(15.0, rel), 1)
+
+    # 3) 신고가 근접 — 52주 고가 대비 거리
+    near_high = 0.0
+    if d52 is not None and -5.0 <= d52 <= 0.5:
+        near_high = 8.0
+    components["nearHighScore"] = round(near_high, 1)
+
+    # 4) 거래량 동반 — 상승 + 거래량 증가
+    vol_confirm = 0.0
+    if vr is not None and vr >= 1.5 and mom5 is not None and mom5 > 0:
+        vol_confirm = 7.0
+    elif vr is not None and vr >= 1.2 and mom5 is not None and mom5 > 0:
+        vol_confirm = 3.0
+    components["volumeConfirmationScore"] = round(vol_confirm, 1)
+
+    # 5) 섹터 대장주 — 이 종목이 섹터 평균보다 강함
+    sector_leader = 0.0
+    if sector_lead_gap is not None and sector_lead_gap < 0:
+        sector_leader = min(8.0, abs(sector_lead_gap) * 0.8)
+    components["sectorLeaderScore"] = round(sector_leader, 1)
+
+    # 6) 수급 지속 — 기관/외국인 순매수
+    supply_score = 0.0
+    if supply_row:
+        inst5d = supply_row.get("inst5d") or 0.0
+        foreign5d = supply_row.get("foreign5d") or 0.0
+        if inst5d > 0 and foreign5d > 0:
+            supply_score = 8.0
+        elif inst5d > 0 or foreign5d > 0:
+            supply_score = 4.0
+    components["supplyContinuationScore"] = round(supply_score, 1)
+
+    components["totalScore"] = round(sum(components.values()), 1)
+    return components
 
 
 def _final_score(ind: dict, mode: str, horizon: str) -> float:
@@ -1553,11 +1652,19 @@ def generate_recommendations() -> dict[str, Any]:
                 ma_conv = _ma_convergence(ind)
                 fin_info = fin_data.get(sym) or fin_data.get(sym.lstrip("0")) or {}
                 supply_info = supply_data.get(sym) or supply_data.get(sym.lstrip("0")) or {}
-                pre_rise = pre_rise_score(
+                setup = setup_score(
                     ind, supply_row=supply_info or None, sector_lead_gap=ind.get("sectorLeadGap"),
                     dart_row=dart_row, news_penalty=news_penalty,
                 )
-                pre_rise_bucket, pre_rise_reason = recommendation_bucket(ind, pre_rise)
+                setup_bucket, setup_reason = recommendation_bucket(ind, setup)
+                # 2026-06-29 검증: US에서는 약하지만 일관된 양의 신호(Spearman +0.05, 분위별
+                # 단조증가) 확인됐지만 KR은 신호 없음(거의 0, high 분위가 mid보다도 못함) —
+                # docs/validation/momentum_continuation_score_validation_{kr,us}.json 참고.
+                # KR도 일단 표시는 하되(추세정렬/거래량 등 객관적 사실이라 보여주는 것 자체는
+                # 무해함), "검증된 신호"라고 부르지 않는다.
+                momentum = momentum_continuation_score(
+                    ind, supply_row=supply_info or None, sector_lead_gap=ind.get("sectorLeadGap"),
+                )
                 row = {
                     "market": "kr",
                     "mode": mode,
@@ -1656,17 +1763,26 @@ def generate_recommendations() -> dict[str, Any]:
                     "mdd20": round(ind.get("mdd20", 0) or 0, 2),
                     "recentMomentum5": round(ind.get("recentMomentum5", 0) or 0, 2),
                     # Pre-Rise Score — "오른 종목" 대신 "오를 종목"(준비 단계) 후보 신호
-                    "preRiseScore": pre_rise["totalScore"],
-                    "preRiseBucket": pre_rise_bucket,
-                    "preRiseReason": pre_rise_reason,
-                    "accumulationScore": pre_rise["accumulationScore"],
-                    "convergenceScore": pre_rise["convergenceScore"],
-                    "pullbackPreScore": pre_rise["pullbackScore"],
-                    "sectorLeadScore": pre_rise["sectorLeadScore"],
-                    "supplyPreScore": pre_rise["supplyScore"],
-                    "catalystScore": pre_rise["catalystScore"],
-                    "alreadyMovedPenalty": pre_rise["alreadyMovedPenalty"],
-                    "alreadyMovedReasons": " | ".join(pre_rise["alreadyMovedReasons"]),
+                    "setupScore": setup["totalScore"],
+                    "setupBucket": setup_bucket,
+                    "setupReason": setup_reason,
+                    "accumulationScore": setup["accumulationScore"],
+                    "convergenceScore": setup["convergenceScore"],
+                    "pullbackPreScore": setup["pullbackScore"],
+                    "sectorLeadScore": setup["sectorLeadScore"],
+                    "supplyPreScore": setup["supplyScore"],
+                    "catalystScore": setup["catalystScore"],
+                    "overextensionRisk": setup["overextensionRisk"],
+                    "overextensionReasons": " | ".join(setup["overextensionReasons"]),
+                    # Momentum Continuation Score — setup_score와 반대 철학("이미 움직이지만
+                    # 건강하게 계속 갈 후보"). US만 검증됨(docs/validation/ 참고), KR은 참고용.
+                    "momentumContinuationScore": momentum["totalScore"],
+                    "trendStrengthScore": momentum["trendStrengthScore"],
+                    "relativeStrengthScore": momentum["relativeStrengthScore"],
+                    "nearHighScore": momentum["nearHighScore"],
+                    "volumeConfirmationScore": momentum["volumeConfirmationScore"],
+                    "sectorLeaderScore": momentum["sectorLeaderScore"],
+                    "supplyContinuationScore": momentum["supplyContinuationScore"],
                 }
                 _sector_counts[_sec] = _sector_counts.get(_sec, 0) + 1
                 rows_out.append(row)

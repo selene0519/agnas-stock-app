@@ -46,7 +46,7 @@ from scripts.generate_kr_recommendations import (
     MODE_LABELS, HORIZON_LABELS, MODES, HORIZONS,
     _load_news_sentiment, _load_financial_data,
     MIN_OHLCV_ROWS, TOP_N,
-    pre_rise_score, recommendation_bucket,
+    setup_score, recommendation_bucket, momentum_continuation_score,
 )
 import csv, json, math, os, re
 from datetime import datetime
@@ -557,9 +557,14 @@ def generate_us_recommendations() -> dict[str, Any]:
 
                 rr = round((target - entry) / max(entry - stop, 1), 2) if stop < entry else None
 
-                # Pre-Rise Score — US는 DART/수급 데이터가 없어 그 부분은 0으로 빠짐
-                pre_rise = pre_rise_score(ind, supply_row=None, sector_lead_gap=ind.get("sectorLeadGap"))
-                pre_rise_bucket, pre_rise_reason = recommendation_bucket(ind, pre_rise)
+                # Setup Score — US는 DART/수급 데이터가 없어 그 부분은 0으로 빠짐
+                setup = setup_score(ind, supply_row=None, sector_lead_gap=ind.get("sectorLeadGap"))
+                setup_bucket, setup_reason = recommendation_bucket(ind, setup)
+                # 2026-06-29 검증(docs/validation/momentum_continuation_score_validation_us.json):
+                # Spearman +0.05, 분위별 단조증가 — 약하지만 일관된 양의 신호. 그래도 추천
+                # 필터/순위/EV에는 연결하지 않는다(같은 백테스트 구간이라 진짜 out-of-sample은
+                # 아님 — 표시용으로만 쓴다).
+                momentum = momentum_continuation_score(ind, supply_row=None, sector_lead_gap=ind.get("sectorLeadGap"))
 
                 # 전략 태그 (US 버전)
                 tags_list = []
@@ -657,17 +662,24 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "mdd20": round(ind.get("mdd20", 0) or 0, 2),
                     "recentMomentum5": round(ind.get("recentMomentum5", 0) or 0, 2),
                     # Pre-Rise Score — "오른 종목" 대신 "오를 종목"(준비 단계) 후보 신호
-                    "preRiseScore": pre_rise["totalScore"],
-                    "preRiseBucket": pre_rise_bucket,
-                    "preRiseReason": pre_rise_reason,
-                    "accumulationScore": pre_rise["accumulationScore"],
-                    "convergenceScore": pre_rise["convergenceScore"],
-                    "pullbackPreScore": pre_rise["pullbackScore"],
-                    "sectorLeadScore": pre_rise["sectorLeadScore"],
-                    "supplyPreScore": pre_rise["supplyScore"],
-                    "catalystScore": pre_rise["catalystScore"],
-                    "alreadyMovedPenalty": pre_rise["alreadyMovedPenalty"],
-                    "alreadyMovedReasons": " | ".join(pre_rise["alreadyMovedReasons"]),
+                    "setupScore": setup["totalScore"],
+                    "setupBucket": setup_bucket,
+                    "setupReason": setup_reason,
+                    "accumulationScore": setup["accumulationScore"],
+                    "convergenceScore": setup["convergenceScore"],
+                    "pullbackPreScore": setup["pullbackScore"],
+                    "sectorLeadScore": setup["sectorLeadScore"],
+                    "supplyPreScore": setup["supplyScore"],
+                    "catalystScore": setup["catalystScore"],
+                    "overextensionRisk": setup["overextensionRisk"],
+                    "overextensionReasons": " | ".join(setup["overextensionReasons"]),
+                    "momentumContinuationScore": momentum["totalScore"],
+                    "trendStrengthScore": momentum["trendStrengthScore"],
+                    "relativeStrengthScore": momentum["relativeStrengthScore"],
+                    "nearHighScore": momentum["nearHighScore"],
+                    "volumeConfirmationScore": momentum["volumeConfirmationScore"],
+                    "sectorLeaderScore": momentum["sectorLeaderScore"],
+                    "supplyContinuationScore": momentum["supplyContinuationScore"],
                 }
                 _sector_counts_us[_sec_us] = _sector_counts_us.get(_sec_us, 0) + 1
                 rows_out.append(row)

@@ -10,7 +10,7 @@
 2) _price_band()의 새 atr_mult_override 파라미터로 대안 배수 몇 개를 같은 방식으로
    검증해 비교한다.
 
-출력: reports/price_band_design_us.json
+출력: docs/validation/price_band_design_us.json
 """
 from __future__ import annotations
 
@@ -125,7 +125,8 @@ def main() -> None:
                 res = _run_one(mode, horizon, atr_mult)
                 out["results"][key][name] = res
                 print(f"  {name:16s}: {res}")
-    path = ROOT / "reports" / "price_band_design_us.json"
+    path = ROOT / "docs" / "validation" / "price_band_design_us.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"저장: {path}")
 

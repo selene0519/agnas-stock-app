@@ -1,108 +1,164 @@
 {
-  "generatedAt": "2026-06-29T16:07:38",
+  "generatedAt": "2026-06-29T16:30:35",
   "cutoffDates": 106,
-  "forwardDays": 10,
+  "horizonsTested": [
+    3,
+    5,
+    10,
+    20
+  ],
   "sampleCount": 6657,
-  "factors": {
-    "totalScore": {
-      "spearmanRankCorrelation": -0.0975,
-      "byTercile": {
-        "low": {
-          "n": 2300,
-          "avgForwardReturnPct": 3.546
+  "totalScoreSpearmanAt10d": {
+    "totalScore": -0.0975,
+    "accumulationScore": -0.048,
+    "convergenceScore": -0.0395,
+    "pullbackScore": -0.0309,
+    "sectorLeadScore": 0.0309,
+    "overextensionRisk": 0.0411
+  },
+  "byBucket": {
+    "관찰후보": {
+      "n": 5262,
+      "byHorizon": {
+        "3d": {
+          "n": 5262,
+          "avgReturnPct": 0.818,
+          "winRate": 0.5475,
+          "avgMaxAdverseExcursionPct": -1.361
         },
-        "mid": {
-          "n": 2071,
-          "avgForwardReturnPct": 1.816
+        "5d": {
+          "n": 5262,
+          "avgReturnPct": 1.07,
+          "winRate": 0.5333,
+          "avgMaxAdverseExcursionPct": -2.508
         },
-        "high": {
-          "n": 2286,
-          "avgForwardReturnPct": 0.55
+        "10d": {
+          "n": 5262,
+          "avgReturnPct": 2.145,
+          "winRate": 0.5504,
+          "avgMaxAdverseExcursionPct": -4.159
+        },
+        "20d": {
+          "n": 4933,
+          "avgReturnPct": 4.363,
+          "winRate": 0.5662,
+          "avgMaxAdverseExcursionPct": -6.227
         }
       }
     },
-    "accumulationScore": {
-      "spearmanRankCorrelation": -0.048,
-      "byTercile": {
-        "low": {
-          "n": 4676,
-          "avgForwardReturnPct": 2.378
+    "돌파대기": {
+      "n": 402,
+      "byHorizon": {
+        "3d": {
+          "n": 402,
+          "avgReturnPct": 0.077,
+          "winRate": 0.5075,
+          "avgMaxAdverseExcursionPct": -0.813
         },
-        "mid": {
-          "n": 0,
-          "avgForwardReturnPct": null
+        "5d": {
+          "n": 402,
+          "avgReturnPct": 0.201,
+          "winRate": 0.5249,
+          "avgMaxAdverseExcursionPct": -1.436
         },
-        "high": {
-          "n": 1981,
-          "avgForwardReturnPct": 1.038
+        "10d": {
+          "n": 402,
+          "avgReturnPct": 0.403,
+          "winRate": 0.5075,
+          "avgMaxAdverseExcursionPct": -2.383
+        },
+        "20d": {
+          "n": 393,
+          "avgReturnPct": 0.725,
+          "winRate": 0.5038,
+          "avgMaxAdverseExcursionPct": -3.947
         }
       }
     },
-    "convergenceScore": {
-      "spearmanRankCorrelation": -0.0395,
-      "byTercile": {
-        "low": {
-          "n": 2882,
-          "avgForwardReturnPct": 2.884
+    "매집의심": {
+      "n": 434,
+      "byHorizon": {
+        "3d": {
+          "n": 434,
+          "avgReturnPct": 0.264,
+          "winRate": 0.5207,
+          "avgMaxAdverseExcursionPct": -1.183
         },
-        "mid": {
-          "n": 1013,
-          "avgForwardReturnPct": 2.458
+        "5d": {
+          "n": 434,
+          "avgReturnPct": -0.397,
+          "winRate": 0.4862,
+          "avgMaxAdverseExcursionPct": -2.442
         },
-        "high": {
-          "n": 2762,
-          "avgForwardReturnPct": 0.859
+        "10d": {
+          "n": 434,
+          "avgReturnPct": -0.37,
+          "winRate": 0.5046,
+          "avgMaxAdverseExcursionPct": -4.427
+        },
+        "20d": {
+          "n": 405,
+          "avgReturnPct": 1.535,
+          "winRate": 0.5383,
+          "avgMaxAdverseExcursionPct": -6.443
         }
       }
     },
-    "pullbackScore": {
-      "spearmanRankCorrelation": -0.0309,
-      "byTercile": {
-        "low": {
-          "n": 3209,
-          "avgForwardReturnPct": 2.493
+    "오늘진입가능": {
+      "n": 230,
+      "byHorizon": {
+        "3d": {
+          "n": 230,
+          "avgReturnPct": -0.321,
+          "winRate": 0.4609,
+          "avgMaxAdverseExcursionPct": -1.427
         },
-        "mid": {
-          "n": 0,
-          "avgForwardReturnPct": null
+        "5d": {
+          "n": 230,
+          "avgReturnPct": -0.497,
+          "winRate": 0.4304,
+          "avgMaxAdverseExcursionPct": -2.327
         },
-        "high": {
-          "n": 3448,
-          "avgForwardReturnPct": 1.501
+        "10d": {
+          "n": 230,
+          "avgReturnPct": 0.062,
+          "winRate": 0.4696,
+          "avgMaxAdverseExcursionPct": -3.473
+        },
+        "20d": {
+          "n": 223,
+          "avgReturnPct": 0.439,
+          "winRate": 0.4753,
+          "avgMaxAdverseExcursionPct": -5.101
         }
       }
     },
-    "sectorLeadScore": {
-      "spearmanRankCorrelation": 0.0309,
-      "byTercile": {
-        "low": {
-          "n": 6657,
-          "avgForwardReturnPct": 1.979
+    "추격금지": {
+      "n": 329,
+      "byHorizon": {
+        "3d": {
+          "n": 329,
+          "avgReturnPct": 1.384,
+          "winRate": 0.5653,
+          "avgMaxAdverseExcursionPct": -2.438
         },
-        "mid": {
-          "n": 0,
-          "avgForwardReturnPct": null
+        "5d": {
+          "n": 329,
+          "avgReturnPct": 2.258,
+          "winRate": 0.5441,
+          "avgMaxAdverseExcursionPct": -4.275
         },
-        "high": {
-          "n": 0,
-          "avgForwardReturnPct": null
-        }
-      }
-    },
-    "alreadyMovedPenalty": {
-      "spearmanRankCorrelation": -0.0042,
-      "byTercile": {
-        "low": {
-          "n": 6657,
-          "avgForwardReturnPct": 1.979
+        "10d": {
+          "n": 329,
+          "avgReturnPct": 5.693,
+          "winRate": 0.6109,
+          "avgMaxAdverseExcursionPct": -6.528
         },
-        "mid": {
-          "n": 0,
-          "avgForwardReturnPct": null
-        },
-        "high": {
-          "n": 0,
-          "avgForwardReturnPct": null
+        "20d": {
+          "n": 290,
+          "avgReturnPct": 15.447,
+          "winRate": 0.7207,
+          "avgMaxAdverseExcursionPct": -7.349
         }
       }
     }
