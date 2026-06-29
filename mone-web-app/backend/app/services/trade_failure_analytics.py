@@ -9,14 +9,23 @@ from typing import Any, Iterable
 from app.services import virtual_trade_journal as vtj
 
 FAILURE_REASON_LABELS = {
+    "UNKNOWN": "원인 미분류",
+    "DATA_MISSING": "데이터 부족",
+    "PRICE_INVALID": "가격 오류",
     "ENTRY_NOT_TOUCHED": "진입가 미도달",
     "TARGET_BEFORE_STOP": "목표가 선도달",
     "STOP_BEFORE_TARGET": "손절 선도달",
     "TARGET_NOT_REACHED": "목표가 미도달",
     "DIRECTION_FAILED": "방향성 실패",
-    "DATA_MISSING": "데이터 부족",
-    "PRICE_INVALID": "가격 오류",
-    "UNKNOWN": "원인 미분류",
+    "STOP_TOO_TIGHT": "손절폭 과소",
+    "OVEREXTENDED_ENTRY": "과열 구간 진입",
+    "MARKET_GAP": "갭 변동 영향",
+    "MISSED_PROFIT_CAPTURE": "수익 구간 포착 실패",
+    "DATA_QUALITY_PROBLEM": "데이터 품질 문제",
+    "ENTRY_PRICE_TOO_DEEP": "진입가 과도 보수",
+    "TARGET_TOO_FAR_OR_MOMENTUM_WEAK": "목표가 과대 또는 모멘텀 약함",
+    "WEAK_CANDIDATE_SIGNAL": "후보 선정 신호 약함",
+    "HIGH_DRAWDOWN_BEFORE_SUCCESS": "진입 후 역행폭 과대",
 }
 
 DATA_ISSUE_REASONS = {"DATA_MISSING", "PRICE_INVALID"}
@@ -34,6 +43,13 @@ def _text(value: Any) -> str:
 
 def _upper(value: Any) -> str:
     return _text(value).upper()
+
+
+def failure_reason_label(code: Any) -> str:
+    normalized = _upper(code) or "UNKNOWN"
+    if normalized in FAILURE_REASON_LABELS:
+        return FAILURE_REASON_LABELS[normalized]
+    return f"미정의 원인 ({normalized})"
 
 
 def _safe_float(value: Any) -> float | None:
@@ -237,7 +253,7 @@ def _dimension_items(rows: list[dict[str, Any]], fields: tuple[str, ...], denomi
         item = {field: value for field, value in zip(fields, key)}
         item.update(_metric(group, denominator))
         if "failureReason" in item:
-            item["label"] = FAILURE_REASON_LABELS.get(str(item["failureReason"]), "원인 미분류")
+            item["label"] = failure_reason_label(item["failureReason"])
         items.append(item)
     return sorted(items, key=lambda item: (-int(item["count"]), str(item.get("failureReason") or ""), str(item)))
 
@@ -350,7 +366,7 @@ def build_failure_analytics(
     top_failure_reasons = [
         {
             "failureReason": reason,
-            "label": FAILURE_REASON_LABELS.get(reason, "원인 미분류"),
+            "label": failure_reason_label(reason),
             "count": count,
             "ratio": round(count / denominator, 4) if denominator else 0.0,
         }

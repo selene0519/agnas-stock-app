@@ -63,9 +63,19 @@ def _evidence(
     summary: dict[str, Any],
     relevant_rates: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    count = int(row.get("count") or 0)
+    total = int(summary.get("totalTrades") or 0)
+    evaluated = int(summary.get("evaluatedTrades") or 0)
+    ratio = _num(row.get("ratio")) or 0.0
     return {
-        "count": int(row.get("count") or 0),
-        "ratio": _num(row.get("ratio")) or 0.0,
+        "count": count,
+        "ratio": ratio,
+        "conditionRate": ratio,
+        "overallRatio": round(count / total, 4) if total else 0.0,
+        "ratioBasis": "condition",
+        "overallRatioBasis": "totalTrades",
+        "totalTrades": total,
+        "evaluatedTrades": evaluated,
         "relevantRates": {
             "entryTouchedRate": summary.get("entryTouchedRate"),
             "targetTouchedRate": summary.get("targetTouchedRate"),

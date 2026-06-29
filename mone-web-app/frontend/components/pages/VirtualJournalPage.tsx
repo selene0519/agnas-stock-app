@@ -91,6 +91,26 @@ const HORIZONS_ORDER = ["short", "swing", "mid"];
 const MODE_KO: Record<string, string> = { conservative: "보수", balanced: "균형", aggressive: "공격" };
 const HORIZON_KO: Record<string, string> = { short: "단기", swing: "스윙", mid: "중기" };
 
+const FAILURE_REASON_LABELS: Record<string, string> = {
+  UNKNOWN: "원인 미분류",
+  DATA_MISSING: "데이터 부족",
+  PRICE_INVALID: "가격 오류",
+  ENTRY_NOT_TOUCHED: "진입가 미도달",
+  TARGET_BEFORE_STOP: "목표가 선도달",
+  STOP_BEFORE_TARGET: "손절 선도달",
+  TARGET_NOT_REACHED: "목표가 미도달",
+  DIRECTION_FAILED: "방향성 실패",
+  STOP_TOO_TIGHT: "손절폭 과소",
+  OVEREXTENDED_ENTRY: "과열 구간 진입",
+  MARKET_GAP: "갭 변동 영향",
+  MISSED_PROFIT_CAPTURE: "수익 구간 포착 실패",
+  DATA_QUALITY_PROBLEM: "데이터 품질 문제",
+  ENTRY_PRICE_TOO_DEEP: "진입가 과도 보수",
+  TARGET_TOO_FAR_OR_MOMENTUM_WEAK: "목표가 과대 또는 모멘텀 약함",
+  WEAK_CANDIDATE_SIGNAL: "후보 선정 신호 약함",
+  HIGH_DRAWDOWN_BEFORE_SUCCESS: "진입 후 역행폭 과대",
+};
+
 function EquityCurveSparkline({ points }: { points: Array<{ date: string; cumPnlPct: number; drawdownPct: number }> }) {
   if (points.length < 2) return null;
   const pnls = points.map((p) => p.cumPnlPct);
@@ -387,21 +407,28 @@ export default function VirtualJournalPage() {
   const failureSummary = failureAnalytics?.summary || {};
   const failureTop5 = (failureSummary.topFailureReasons || failureAnalytics?.failureReasons || []).slice(0, 5);
   const fmtRate = (value: any) => {
+    if (value === null || value === undefined || value === "") return "-";
     const n = Number(value);
-    return Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : "-";
+    return Number.isFinite(n) ? `${(Math.round((n * 100 + 1e-8) * 10) / 10).toFixed(1)}%` : "-";
   };
   const failureLabel = (reason: string) => {
+    const normalized = String(reason || "UNKNOWN").trim().toUpperCase() || "UNKNOWN";
     const labels = failureAnalytics?.labels || {};
-    return labels[reason] || {
-      ENTRY_NOT_TOUCHED: "진입가 미도달",
-      TARGET_BEFORE_STOP: "목표가 선도달",
-      STOP_BEFORE_TARGET: "손절 선도달",
-      TARGET_NOT_REACHED: "목표가 미도달",
-      DIRECTION_FAILED: "방향성 실패",
-      DATA_MISSING: "데이터 부족",
-      PRICE_INVALID: "가격 오류",
-      UNKNOWN: "원인 미분류",
-    }[reason] || "원인 미분류";
+    return labels[normalized] || FAILURE_REASON_LABELS[normalized] || `미정의 원인 (${normalized})`;
+  };
+  const topReasonRatio = (reason: string) => {
+    const row = failureTop5.find((item: any) => String(item.failureReason || item.reason || "").toUpperCase() === reason);
+    const ratio = Number(row?.ratio);
+    return Number.isFinite(ratio) ? ratio : 0;
+  };
+  const unknownRatio = topReasonRatio("UNKNOWN");
+  const dataMissingRatio = topReasonRatio("DATA_MISSING");
+  const overallPriorityRatio = (evidence: any) => {
+    const direct = Number(evidence?.overallRatio);
+    if (Number.isFinite(direct)) return direct;
+    const total = Number(improvementData?.summary?.totalTrades ?? failureSummary.totalTrades);
+    const count = Number(evidence?.count);
+    return Number.isFinite(total) && total > 0 && Number.isFinite(count) ? count / total : null;
   };
 
   const priorityItems = (improvementData?.priorities || []).slice(0, 5);
@@ -490,6 +517,21 @@ export default function VirtualJournalPage() {
           {metric("평균 MAE", failureSummary.avgMAE == null ? "-" : `${Number(failureSummary.avgMAE).toFixed(2)}%`, "text-rose-300")}
         </div>
 
+        {(unknownRatio >= 0.3 || dataMissingRatio > 0) && (
+          <div className="mt-4 grid gap-2 lg:grid-cols-2">
+            {unknownRatio >= 0.3 && (
+              <div className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]">
+                원인 미분류 비율이 높으면 일부 거래의 터치 순서 또는 결과 데이터가 충분히 분류되지 않았다는 뜻입니다. 추천 로직 변경이 아니라 분류 품질 점검 신호로 해석하세요.
+              </div>
+            )}
+            {dataMissingRatio > 0 && (
+              <div className="rounded-lg bg-cyan-500/10 px-3 py-2 text-xs leading-5 text-cyan-100 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.16)]">
+                데이터 부족 항목은 추천 점수 문제가 아니라 가격/결과 데이터 수집 품질 점검이 필요하다는 의미일 수 있습니다.
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mt-4 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
             <div className="mb-2 text-xs font-semibold text-slate-400">failureReason TOP 5</div>
@@ -499,7 +541,7 @@ export default function VirtualJournalPage() {
                 return (
                   <div key={reason} className="flex items-center justify-between gap-3 rounded-md bg-slate-900/70 px-3 py-2">
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold text-slate-200">{item.label || failureLabel(reason)}</div>
+                      <div className="text-xs font-semibold text-slate-200">{failureLabel(reason)}</div>
                       <div className="font-mono text-[10px] text-slate-500">{reason}</div>
                     </div>
                     <div className="text-right">
@@ -569,6 +611,7 @@ export default function VirtualJournalPage() {
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {priorityItems.slice(0, 3).map((item: any) => {
             const evidence = item.evidence || {};
+            const conditionRate = evidence.conditionRate ?? evidence.ratio;
             return (
               <div key={item.issueType || item.rank} className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
                 <div className="flex items-start justify-between gap-3">
@@ -581,14 +624,18 @@ export default function VirtualJournalPage() {
                     {severityLabel(String(item.severity || "low"))}
                   </span>
                 </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
                   <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
                     <div className="text-[10px] text-slate-500">근거</div>
-                    <div className="font-mono text-xs font-semibold text-slate-200">{evidence.count ?? 0}</div>
+                    <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{evidence.count ?? 0}건</div>
                   </div>
                   <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
-                    <div className="text-[10px] text-slate-500">비율</div>
-                    <div className="font-mono text-xs font-semibold text-slate-200">{fmtRate(evidence.ratio)}</div>
+                    <div className="text-[10px] text-slate-500">전체 대비</div>
+                    <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(overallPriorityRatio(evidence))}</div>
+                  </div>
+                  <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
+                    <div className="text-[10px] text-slate-500">조건 충족률</div>
+                    <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(conditionRate)}</div>
                   </div>
                   <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
                     <div className="text-[10px] text-slate-500">MAE</div>

@@ -145,6 +145,40 @@ def test_failure_analytics_filters_market_and_mode() -> None:
     assert out["failureReasons"][0]["failureReason"] == "STOP_BEFORE_TARGET"
 
 
+def test_failure_reason_labels_are_specific_and_safe() -> None:
+    assert tfa.failure_reason_label("UNKNOWN") == "원인 미분류"
+    assert tfa.failure_reason_label("STOP_TOO_TIGHT") == "손절폭 과소"
+    assert tfa.failure_reason_label("OVEREXTENDED_ENTRY") == "과열 구간 진입"
+    assert tfa.failure_reason_label("MARKET_GAP") == "갭 변동 영향"
+    assert tfa.failure_reason_label("BRAND_NEW_REASON") == "미정의 원인 (BRAND_NEW_REASON)"
+
+
+def test_failure_analytics_labels_new_diagnostic_reasons() -> None:
+    reasons = ["STOP_TOO_TIGHT", "OVEREXTENDED_ENTRY", "MARKET_GAP", "UNKNOWN"]
+    vtj._write_rows(
+        vtj.JOURNAL_CSV,
+        [_journal_row(f"l{i}", "kr", "balanced", "swing", 70) for i, _ in enumerate(reasons)],
+        vtj.JOURNAL_COLS,
+    )
+    vtj._write_rows(
+        vtj.EVALUATION_CSV,
+        [
+            _eval_row(f"l{i}", "EVALUATED", reason, reason, -2, 3, -4, 2, True, False, True, False)
+            for i, reason in enumerate(reasons)
+        ],
+        vtj.EVALUATION_COLS,
+    )
+
+    out = tfa.build_failure_analytics(market="kr")
+    labels = {row["failureReason"]: row["label"] for row in out["failureReasons"]}
+
+    assert labels["UNKNOWN"] == "원인 미분류"
+    assert labels["STOP_TOO_TIGHT"] == "손절폭 과소"
+    assert labels["OVEREXTENDED_ENTRY"] == "과열 구간 진입"
+    assert labels["MARKET_GAP"] == "갭 변동 영향"
+    assert labels["STOP_TOO_TIGHT"] != labels["UNKNOWN"]
+
+
 def test_failure_analytics_handles_missing_columns_without_500() -> None:
     vtj.JOURNAL_CSV.parent.mkdir(parents=True, exist_ok=True)
     vtj.EVALUATION_CSV.parent.mkdir(parents=True, exist_ok=True)

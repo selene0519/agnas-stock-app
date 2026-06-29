@@ -133,6 +133,53 @@ def test_improvement_priorities_handles_missing_columns() -> None:
     assert out["priorities"][0]["shouldModifyTradingLogicNow"] is False
 
 
+def test_improvement_priority_evidence_splits_overall_and_condition_ratios() -> None:
+    total = 484
+    evaluated = 99
+    vtj._write_rows(
+        vtj.JOURNAL_CSV,
+        [_journal_row(f"p{i}") for i in range(total)],
+        vtj.JOURNAL_COLS,
+    )
+    vtj._write_rows(
+        vtj.EVALUATION_CSV,
+        [
+            _eval_row(
+                f"p{i}",
+                "UNKNOWN",
+                net=-1,
+                mfe=5.5,
+                mae=-6.0,
+                entry_touched=True,
+                target_touched=False,
+                stop_touched=False,
+                target_before_stop=False,
+            )
+            for i in range(evaluated)
+        ],
+        vtj.EVALUATION_COLS,
+    )
+
+    out = tip.build_improvement_priorities(market="kr")
+    missed = next(item for item in out["priorities"] if item["issueType"] == "MISSED_PROFIT_CAPTURE")
+    evidence = missed["evidence"]
+
+    assert evidence["count"] == evaluated
+    assert evidence["ratio"] == 1.0
+    assert evidence["conditionRate"] == 1.0
+    assert evidence["overallRatio"] == 0.2045
+    assert evidence["totalTrades"] == total
+    assert evidence["evaluatedTrades"] == evaluated
+
+
+def test_improvement_priority_evidence_handles_zero_total() -> None:
+    evidence = tip._evidence({"count": 99, "ratio": 1.0}, {"totalTrades": 0, "evaluatedTrades": 0})
+
+    assert evidence["overallRatio"] == 0.0
+    assert evidence["conditionRate"] == 1.0
+    assert evidence["totalTrades"] == 0
+
+
 def test_improvement_priorities_empty_api_response_is_safe() -> None:
     import app.main as main
 
