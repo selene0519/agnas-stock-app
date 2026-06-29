@@ -1,9 +1,9 @@
 {
   "status": "OK",
-  "sampleCount": 1381,
-  "baseWinRate": 0.3939,
-  "baseAvgPnlPct": -0.87,
-  "generatedAt": "2026-06-29T09:05:09",
+  "sampleCount": 1383,
+  "baseWinRate": 0.3933,
+  "baseAvgPnlPct": -0.884,
+  "generatedAt": "2026-06-29T09:57:14",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -14,13 +14,13 @@
   },
   "adjustments": [
     {
-      "feedbackId": "95389f37127dc2391c74",
+      "feedbackId": "bbd24ea967a01c8f65bd",
       "mode": "conservative",
       "horizon": "short",
       "n": 161,
       "winRate": 0.3975,
-      "avgPnlPct": -1.354,
-      "multiplier": 1.228,
+      "avgPnlPct": -1.318,
+      "multiplier": 1.203,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -32,7 +32,7 @@
       "n": 149,
       "winRate": 0.3691,
       "avgPnlPct": -1.359,
-      "multiplier": 1.187,
+      "multiplier": 1.178,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -44,7 +44,7 @@
       "n": 150,
       "winRate": 0.3867,
       "avgPnlPct": -0.576,
-      "multiplier": 0.854,
+      "multiplier": 0.851,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -56,7 +56,7 @@
       "n": 150,
       "winRate": 0.4333,
       "avgPnlPct": -0.687,
-      "multiplier": 0.976,
+      "multiplier": 0.972,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -68,19 +68,19 @@
       "n": 154,
       "winRate": 0.3766,
       "avgPnlPct": -0.952,
-      "multiplier": 1.012,
+      "multiplier": 1.006,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
     },
     {
-      "feedbackId": "17a7c73a02e9d16e1d74",
+      "feedbackId": "a60356adf7ca1abc0f63",
       "mode": "balanced",
       "horizon": "mid",
-      "n": 154,
-      "winRate": 0.3701,
-      "avgPnlPct": -0.738,
-      "multiplier": 0.903,
+      "n": 155,
+      "winRate": 0.3677,
+      "avgPnlPct": -0.821,
+      "multiplier": 0.932,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -92,7 +92,7 @@
       "n": 155,
       "winRate": 0.4387,
       "avgPnlPct": -0.576,
-      "multiplier": 0.933,
+      "multiplier": 0.93,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -104,19 +104,19 @@
       "n": 156,
       "winRate": 0.4103,
       "avgPnlPct": -0.694,
-      "multiplier": 0.944,
+      "multiplier": 0.94,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "83d6667e46106f638dd0",
+      "feedbackId": "3ff3dc62951369de7cef",
       "mode": "aggressive",
       "horizon": "mid",
-      "n": 152,
-      "winRate": 0.3618,
-      "avgPnlPct": -0.877,
-      "multiplier": 0.954,
+      "n": 153,
+      "winRate": 0.3595,
+      "avgPnlPct": -0.96,
+      "multiplier": 0.983,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
