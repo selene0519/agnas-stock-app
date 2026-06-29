@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-06-29T16:07:38",
+  "cutoffDates": 106,
+  "forwardDays": 10,
+  "sampleCount": 6657,
+  "factors": {
+    "totalScore": {
+      "spearmanRankCorrelation": -0.0975,
+      "byTercile": {
+        "low": {
+          "n": 2300,
+          "avgForwardReturnPct": 3.546
+        },
+        "mid": {
+          "n": 2071,
+          "avgForwardReturnPct": 1.816
+        },
+        "high": {
+          "n": 2286,
+          "avgForwardReturnPct": 0.55
+        }
+      }
+    },
+    "accumulationScore": {
+      "spearmanRankCorrelation": -0.048,
+      "byTercile": {
+        "low": {
+          "n": 4676,
+          "avgForwardReturnPct": 2.378
+        },
+        "mid": {
+          "n": 0,
+          "avgForwardReturnPct": null
+        },
+        "high": {
+          "n": 1981,
+          "avgForwardReturnPct": 1.038
+        }
+      }
+    },
+    "convergenceScore": {
+      "spearmanRankCorrelation": -0.0395,
+      "byTercile": {
+        "low": {
+          "n": 2882,
+          "avgForwardReturnPct": 2.884
+        },
+        "mid": {
+          "n": 1013,
+          "avgForwardReturnPct": 2.458
+        },
+        "high": {
+          "n": 2762,
+          "avgForwardReturnPct": 0.859
+        }
+      }
+    },
+    "pullbackScore": {
+      "spearmanRankCorrelation": -0.0309,
+      "byTercile": {
+        "low": {
+          "n": 3209,
+          "avgForwardReturnPct": 2.493
+        },
+        "mid": {
+          "n": 0,
+          "avgForwardReturnPct": null
+        },
+        "high": {
+          "n": 3448,
+          "avgForwardReturnPct": 1.501
+        }
+      }
+    },
+    "sectorLeadScore": {
+      "spearmanRankCorrelation": 0.0309,
+      "byTercile": {
+        "low": {
+          "n": 6657,
+          "avgForwardReturnPct": 1.979
+        },
+        "mid": {
+          "n": 0,
+          "avgForwardReturnPct": null
+        },
+        "high": {
+          "n": 0,
+          "avgForwardReturnPct": null
+        }
+      }
+    },
+    "alreadyMovedPenalty": {
+      "spearmanRankCorrelation": -0.0042,
+      "byTercile": {
+        "low": {
+          "n": 6657,
+          "avgForwardReturnPct": 1.979
+        },
+        "mid": {
+          "n": 0,
+          "avgForwardReturnPct": null
+        },
+        "high": {
+          "n": 0,
+          "avgForwardReturnPct": null
+        }
+      }
+    }
+  }
+}

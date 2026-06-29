@@ -192,6 +192,33 @@ def indicators(rows: list[dict]) -> dict[str, float | None]:
     # 볼린저 스퀴즈 (밴드폭 최근 20일 최소값 근접)
     atr14 = _atr(h, l, c)
     bb_width = (bb_u - bb_l) / ma20 * 100 if bb_u and bb_l and ma20 else None
+
+    # ── Pre-Rise Score용 추가 피처 (오를 종목 vs 오른 종목 구분) ──────────────
+    # 저점 상승: 최근 10일을 절반으로 나눠 앞 절반 최저가보다 뒤 절반 최저가가 높은가
+    _lows10 = l[-10:] if len(l) >= 10 else []
+    rising_lows = (
+        len(_lows10) >= 6 and min(_lows10[:len(_lows10)//2]) < min(_lows10[len(_lows10)//2:])
+    )
+    # 상승일/하락일 거래량 비율(최근 20일) — 매집은 상승일에 거래량이 더 붙는다
+    _n20v = min(20, len(c) - 1)
+    _up_vol   = [v[i] for i in range(len(c) - _n20v, len(c)) if i > 0 and i < len(v) and c[i] > c[i - 1]]
+    _down_vol = [v[i] for i in range(len(c) - _n20v, len(c)) if i > 0 and i < len(v) and c[i] < c[i - 1]]
+    vol_updown_ratio = (
+        (sum(_up_vol) / len(_up_vol)) / (sum(_down_vol) / len(_down_vol))
+        if _up_vol and _down_vol and sum(_down_vol) > 0 else None
+    )
+    # 변동성 수렴: 현재 ATR이 10일 전 시점 ATR보다 충분히 줄었는가
+    atr14_prior = _atr(h[:-10], l[:-10], c[:-10]) if len(c) >= 24 else None
+    atr_contracting = bool(atr14 and atr14_prior and atr14 < atr14_prior * 0.85)
+    # 박스권 상단까지 거리 (최근 60일 고가 기준 — 52주보다 짧은 호라이즌의 돌파 기준선)
+    box_high = max(h[-60:]) if len(h) >= 60 else (max(h) if h else None)
+    distance_to_box_top = ((box_high - latest) / latest * 100) if box_high and latest else None
+    # 최근 5일 가격 변동폭 — 작을수록 "아직 가격에 반영 안 됨"
+    recent5_range_pct = (
+        (max(c[-5:]) - min(c[-5:])) / min(c[-5:]) * 100
+        if len(c) >= 5 and min(c[-5:]) > 0 else None
+    )
+
     return {
         "ma5":  _ma(c, 5), "ma20": ma20, "ma60": ma60, "ma120": _ma(c, 120),
         "rsi14": _rsi(c), "atr14": atr14, "mdd20": _mdd(c),
@@ -206,6 +233,11 @@ def indicators(rows: list[dict]) -> dict[str, float | None]:
         "bbWidth": round(bb_width, 2) if bb_width else None,
         "atr14Pct": round(atr14 / latest * 100, 2) if atr14 and latest else None,
         "latest": latest,
+        "risingLows": rising_lows,
+        "volumeUpDownRatio": round(vol_updown_ratio, 2) if vol_updown_ratio else None,
+        "atrContracting": atr_contracting,
+        "distanceToBoxTop": round(distance_to_box_top, 2) if distance_to_box_top is not None else None,
+        "recent5RangePct": round(recent5_range_pct, 2) if recent5_range_pct is not None else None,
     }
 
 
@@ -286,6 +318,158 @@ def _sub_scores(ind: dict) -> dict[str, float]:
     return {"upsideScore": round(upsideScore,1), "riskScore": round(riskScore,1),
             "momentumScore": round(momentumScore,1), "entryScore": round(entryScore,1),
             "rrScore": round(rrScore,1), "qualityScore": round(qualityScore,1), "newsRiskPenalty": round(news,1)}
+
+
+# ── Pre-Rise Score: "오른 종목"이 아니라 "오를 종목"을 찾기 위한 선행 신호 점수 ──────
+#
+# _sub_scores()/_final_score()는 가격이 이미 움직인 뒤의 추세·리스크를 점수화한다.
+# 이 점수는 반대로 "가격이 크게 움직이기 전에 먼저 정렬되는 신호"(매집·변동성 수렴·
+# 눌림목·섹터 선행·수급·재료)를 따로 점수화해서, 급등 후 추격 매수를 거르고 준비
+# 단계의 후보를 골라내는 데 쓴다. 가중치는 의도적으로 사람이 읽을 수 있는 정수로
+# 두고(15/12/10/8/7/5/-15/-8), 이 백테스트 구간에 맞춰 최적화하지 않았다 — 신호
+# 자체가 미래 수익과 상관이 있는지를 scripts/backtest_pre_rise_score.py로 검증한다.
+
+def already_moved_penalty(ind: dict) -> tuple[float, list[str]]:
+    """이미 크게 움직인 종목을 감산한다 — 추격매수 방지."""
+    penalty = 0.0
+    reasons: list[str] = []
+    mom5 = ind.get("recentMomentum5")
+    d20 = ind.get("distanceToMa20")
+    gap = ind.get("gapUpPct")
+    rsi = ind.get("rsi14")
+
+    if mom5 is not None and mom5 >= 20.0:
+        penalty += 15.0
+        reasons.append(f"최근5일 +{mom5:.1f}% 급등")
+    if d20 is not None and d20 >= 15.0:
+        penalty += 10.0
+        reasons.append(f"20일선 대비 +{d20:.1f}% 이격")
+    if gap is not None and gap >= 8.0:
+        penalty += 10.0
+        reasons.append(f"갭상승 +{gap:.1f}%")
+    if rsi is not None and rsi >= 75.0:
+        penalty += 8.0
+        reasons.append(f"RSI {rsi:.0f} 과열")
+    return round(min(40.0, penalty), 1), reasons
+
+
+def pre_rise_score(
+    ind: dict,
+    supply_row: dict | None = None,
+    sector_lead_gap: float | None = None,
+    dart_row: dict | None = None,
+    news_penalty: float = 0.0,
+) -> dict[str, Any]:
+    """오를 종목(준비 단계) 후보 점수. 0~100 근방, 음수 가능(과열 감산이 크면).
+
+    sector_lead_gap: 섹터 평균 모멘텀 - 이 종목 모멘텀. 양수가 크면 "섹터는 강한데
+    이 종목은 아직 안 움직임"(섹터 후발 후보).
+    """
+    rsi = ind.get("rsi14")
+    mom20 = ind.get("recentMomentum20")
+    d20 = ind.get("distanceToMa20")
+    d60 = ind.get("distanceToMa60")
+    vr = ind.get("volumeRatio20")
+    vol_ud = ind.get("volumeUpDownRatio")
+    rising_lows = bool(ind.get("risingLows"))
+    atr_contracting = bool(ind.get("atrContracting"))
+    box_dist = ind.get("distanceToBoxTop")
+    range5 = ind.get("recent5RangePct")
+
+    components: dict[str, float] = {}
+
+    # 1) 매집 점수 — 가격은 조용한데 거래량/수급이 먼저 들어옴
+    accumulation = 0.0
+    quiet_price = (range5 is not None and range5 <= 6.0) or (mom20 is not None and -3.0 <= mom20 <= 8.0)
+    if quiet_price and vr is not None and 1.2 <= vr <= 2.2:
+        accumulation += 7.0
+    if vol_ud is not None and vol_ud >= 1.1:
+        accumulation += 4.0
+    if rising_lows:
+        accumulation += 4.0
+    components["accumulationScore"] = round(min(15.0, accumulation), 1)
+
+    # 2) 수렴 점수 — 변동성이 줄면서 박스권 상단이 가까워짐 (돌파 직전)
+    convergence = 0.0
+    if atr_contracting:
+        convergence += 5.0
+    if _ma_convergence(ind):
+        convergence += 4.0
+    if box_dist is not None and 0.5 <= box_dist <= 5.0:
+        convergence += 3.0
+    components["convergenceScore"] = round(min(12.0, convergence), 1)
+
+    # 3) 눌림목 점수 — 상승 추세 유지하며 조정, RSI 과열 해소
+    pullback = 0.0
+    uptrend = (d60 is not None and d60 > 0) or (mom20 is not None and mom20 > 5.0)
+    cooled = rsi is not None and 38.0 <= rsi <= 62.0
+    mild_pullback = d20 is not None and -8.0 <= d20 <= 1.0
+    if uptrend and mild_pullback:
+        pullback += 6.0
+    if cooled:
+        pullback += 4.0
+    components["pullbackScore"] = round(min(10.0, pullback), 1)
+
+    # 4) 섹터 선행 점수 — 섹터는 강한데 이 종목은 아직 후발
+    sector_lead = 0.0
+    if sector_lead_gap is not None and sector_lead_gap > 0:
+        sector_lead = min(8.0, sector_lead_gap * 0.8)
+    components["sectorLeadScore"] = round(sector_lead, 1)
+
+    # 5) 수급 점수 — 기관/외국인 순매수
+    supply_score = 0.0
+    if supply_row:
+        inst5d = supply_row.get("inst5d") or 0.0
+        foreign5d = supply_row.get("foreign5d") or 0.0
+        if inst5d > 0 and foreign5d > 0:
+            supply_score = 7.0
+        elif inst5d > 0 or foreign5d > 0:
+            supply_score = 4.0
+    components["supplyScore"] = round(supply_score, 1)
+
+    # 6) 재료 점수 — 실적/재무 개선
+    catalyst = 0.0
+    if dart_row:
+        eps_g = dart_row.get("eps_growth")
+        rev_g = dart_row.get("revenue_growth")
+        roe = dart_row.get("roe")
+        if eps_g and eps_g >= 15: catalyst += 2.0
+        if rev_g and rev_g >= 10: catalyst += 1.5
+        if roe and roe >= 12: catalyst += 1.5
+    catalyst = max(0.0, catalyst - min(3.0, news_penalty * 0.2))
+    components["catalystScore"] = round(min(5.0, catalyst), 1)
+
+    moved_penalty, moved_reasons = already_moved_penalty(ind)
+    components["alreadyMovedPenalty"] = -moved_penalty
+
+    total = sum(components.values())
+    components["totalScore"] = round(total, 1)
+    components["alreadyMovedReasons"] = moved_reasons  # type: ignore[assignment]
+    return components
+
+
+def recommendation_bucket(ind: dict, pre_rise: dict[str, Any], pullback_label: str = "") -> tuple[str, str]:
+    """추천 후보를 6분류 중 하나로 라벨링. 반환: (버킷, 설명)."""
+    moved = pre_rise.get("alreadyMovedPenalty", 0.0)
+    total = pre_rise.get("totalScore", 0.0)
+    box_dist = ind.get("distanceToBoxTop")
+    acc = pre_rise.get("accumulationScore", 0.0)
+    conv = pre_rise.get("convergenceScore", 0.0)
+    sector_lead = pre_rise.get("sectorLeadScore", 0.0)
+
+    if moved <= -15.0:
+        return "추격금지", "최근 급등/과열 — 신규 진입 금지, 눌림 또는 재정렬 대기"
+    if conv >= 7.0 and box_dist is not None and box_dist <= 3.0:
+        return "돌파대기", f"박스권 상단 {box_dist:.1f}% 이내, 변동성 수렴 — 돌파+거래량 확인 시 진입 검토"
+    if pullback_label in ("눌림 확인 완료", "눌림 진행 중"):
+        return "눌림목대기", "상승 추세 유지하며 조정 중 — 반등 확인 전 매수 금지"
+    if sector_lead >= 5.0:
+        return "섹터후발", "섹터 전반 강세, 이 종목은 아직 후발 — 대장주 추세 확인 후 검토"
+    if acc >= 10.0:
+        return "매집의심", "가격은 조용한데 거래량/수급이 먼저 들어옴 — 변화 시작 전 관찰"
+    if total >= 20.0:
+        return "오늘진입가능", "준비 신호 다수 충족 — 조건부 진입 검토 가능"
+    return "관찰후보", "아직 준비 신호 부족 — 관심종목으로만 유지"
 
 
 def _final_score(ind: dict, mode: str, horizon: str) -> float:
@@ -1148,6 +1332,20 @@ def generate_recommendations() -> dict[str, Any]:
 
     all_scored.sort(key=lambda x: x["score_base"], reverse=True)
 
+    # 섹터 선행 점수용: 섹터 평균 모멘텀 - 종목 모멘텀 (양수가 크면 "섹터는 강한데 이 종목은 후발")
+    _sector_mom: dict[str, list[float]] = {}
+    for c in all_scored:
+        sec = sector_map.get(c["symbol"]) or sector_map.get(c["symbol"].lstrip("0")) or "Unknown"
+        mom20 = c["ind"].get("recentMomentum20")
+        if mom20 is not None:
+            _sector_mom.setdefault(sec, []).append(mom20)
+    _sector_avg_mom = {sec: sum(vals) / len(vals) for sec, vals in _sector_mom.items() if len(vals) >= 3}
+    for c in all_scored:
+        sec = sector_map.get(c["symbol"]) or sector_map.get(c["symbol"].lstrip("0")) or "Unknown"
+        own_mom = c["ind"].get("recentMomentum20")
+        sector_avg = _sector_avg_mom.get(sec)
+        c["ind"]["sectorLeadGap"] = round(sector_avg - own_mom, 2) if sector_avg is not None and own_mom is not None else None
+
     results: dict[str, int] = {}
     ev_filtered = 0
     regime_filtered = 0
@@ -1355,6 +1553,11 @@ def generate_recommendations() -> dict[str, Any]:
                 ma_conv = _ma_convergence(ind)
                 fin_info = fin_data.get(sym) or fin_data.get(sym.lstrip("0")) or {}
                 supply_info = supply_data.get(sym) or supply_data.get(sym.lstrip("0")) or {}
+                pre_rise = pre_rise_score(
+                    ind, supply_row=supply_info or None, sector_lead_gap=ind.get("sectorLeadGap"),
+                    dart_row=dart_row, news_penalty=news_penalty,
+                )
+                pre_rise_bucket, pre_rise_reason = recommendation_bucket(ind, pre_rise)
                 row = {
                     "market": "kr",
                     "mode": mode,
@@ -1452,6 +1655,18 @@ def generate_recommendations() -> dict[str, Any]:
                     "maFullAlign": _ma_full_align,
                     "mdd20": round(ind.get("mdd20", 0) or 0, 2),
                     "recentMomentum5": round(ind.get("recentMomentum5", 0) or 0, 2),
+                    # Pre-Rise Score — "오른 종목" 대신 "오를 종목"(준비 단계) 후보 신호
+                    "preRiseScore": pre_rise["totalScore"],
+                    "preRiseBucket": pre_rise_bucket,
+                    "preRiseReason": pre_rise_reason,
+                    "accumulationScore": pre_rise["accumulationScore"],
+                    "convergenceScore": pre_rise["convergenceScore"],
+                    "pullbackPreScore": pre_rise["pullbackScore"],
+                    "sectorLeadScore": pre_rise["sectorLeadScore"],
+                    "supplyPreScore": pre_rise["supplyScore"],
+                    "catalystScore": pre_rise["catalystScore"],
+                    "alreadyMovedPenalty": pre_rise["alreadyMovedPenalty"],
+                    "alreadyMovedReasons": " | ".join(pre_rise["alreadyMovedReasons"]),
                 }
                 _sector_counts[_sec] = _sector_counts.get(_sec, 0) + 1
                 rows_out.append(row)

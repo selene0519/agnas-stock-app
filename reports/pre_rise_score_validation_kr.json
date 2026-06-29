@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2026-06-29T16:09:47",
+  "cutoffDates": 82,
+  "forwardDays": 10,
+  "sampleCount": 8215,
+  "factors": {
+    "totalScore": {
+      "spearmanRankCorrelation": -0.0078,
+      "byTercile": {
+        "low": {
+          "n": 3927,
+          "avgForwardReturnPct": 2.822
+        },
+        "mid": {
+          "n": 1046,
+          "avgForwardReturnPct": 3.138
+        },
+        "high": {
+          "n": 3242,
+          "avgForwardReturnPct": 2.54
+        }
+      }
+    },
+    "accumulationScore": {
+      "spearmanRankCorrelation": -0.0021,
+      "byTercile": {
+        "low": {
+          "n": 4821,
+          "avgForwardReturnPct": 2.653
+        },
+        "mid": {
+          "n": 202,
+          "avgForwardReturnPct": 2.922
+        },
+        "high": {
+          "n": 3192,
+          "avgForwardReturnPct": 2.888
+        }
+      }
+    },
+    "convergenceScore": {
+      "spearmanRankCorrelation": 0.0129,
+      "byTercile": {
+        "low": {
+          "n": 4181,
+          "avgForwardReturnPct": 2.828
+        },
+        "mid": {
+          "n": 1074,
+          "avgForwardReturnPct": 3.162
+        },
+        "high": {
+          "n": 2960,
+          "avgForwardReturnPct": 2.493
+        }
+      }
+    },
+    "pullbackScore": {
+      "spearmanRankCorrelation": 0.0204,
+      "byTercile": {
+        "low": {
+          "n": 3774,
+          "avgForwardReturnPct": 2.917
+        },
+        "mid": {
+          "n": 0,
+          "avgForwardReturnPct": null
+        },
+        "high": {
+          "n": 4441,
+          "avgForwardReturnPct": 2.61
+        }
+      }
+    }
+  }
+}

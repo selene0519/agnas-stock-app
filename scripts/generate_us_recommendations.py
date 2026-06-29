@@ -46,6 +46,7 @@ from scripts.generate_kr_recommendations import (
     MODE_LABELS, HORIZON_LABELS, MODES, HORIZONS,
     _load_news_sentiment, _load_financial_data,
     MIN_OHLCV_ROWS, TOP_N,
+    pre_rise_score, recommendation_bucket,
 )
 import csv, json, math, os, re
 from datetime import datetime
@@ -444,6 +445,18 @@ def generate_us_recommendations() -> dict[str, Any]:
 
     all_scored.sort(key=lambda x: x["score_base"], reverse=True)
 
+    # 섹터 선행 점수용: 섹터 평균 모멘텀 - 종목 모멘텀 (generate_kr_recommendations.py와 동일 로직)
+    _sector_mom: dict[str, list[float]] = {}
+    for c in all_scored:
+        mom20 = c["ind"].get("recentMomentum20")
+        if mom20 is not None:
+            _sector_mom.setdefault(c["sector"], []).append(mom20)
+    _sector_avg_mom = {sec: sum(vals) / len(vals) for sec, vals in _sector_mom.items() if len(vals) >= 3}
+    for c in all_scored:
+        sector_avg = _sector_avg_mom.get(c["sector"])
+        own_mom = c["ind"].get("recentMomentum20")
+        c["ind"]["sectorLeadGap"] = round(sector_avg - own_mom, 2) if sector_avg is not None and own_mom is not None else None
+
     results: dict[str, int] = {}
     ev_filtered = 0
     REPORTS.mkdir(parents=True, exist_ok=True)
@@ -544,6 +557,10 @@ def generate_us_recommendations() -> dict[str, Any]:
 
                 rr = round((target - entry) / max(entry - stop, 1), 2) if stop < entry else None
 
+                # Pre-Rise Score — US는 DART/수급 데이터가 없어 그 부분은 0으로 빠짐
+                pre_rise = pre_rise_score(ind, supply_row=None, sector_lead_gap=ind.get("sectorLeadGap"))
+                pre_rise_bucket, pre_rise_reason = recommendation_bucket(ind, pre_rise)
+
                 # 전략 태그 (US 버전)
                 tags_list = []
                 d52 = ind.get("distanceTo52wHigh")
@@ -639,6 +656,18 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "maFullAlign": _ma_full_align,
                     "mdd20": round(ind.get("mdd20", 0) or 0, 2),
                     "recentMomentum5": round(ind.get("recentMomentum5", 0) or 0, 2),
+                    # Pre-Rise Score — "오른 종목" 대신 "오를 종목"(준비 단계) 후보 신호
+                    "preRiseScore": pre_rise["totalScore"],
+                    "preRiseBucket": pre_rise_bucket,
+                    "preRiseReason": pre_rise_reason,
+                    "accumulationScore": pre_rise["accumulationScore"],
+                    "convergenceScore": pre_rise["convergenceScore"],
+                    "pullbackPreScore": pre_rise["pullbackScore"],
+                    "sectorLeadScore": pre_rise["sectorLeadScore"],
+                    "supplyPreScore": pre_rise["supplyScore"],
+                    "catalystScore": pre_rise["catalystScore"],
+                    "alreadyMovedPenalty": pre_rise["alreadyMovedPenalty"],
+                    "alreadyMovedReasons": " | ".join(pre_rise["alreadyMovedReasons"]),
                 }
                 _sector_counts_us[_sec_us] = _sector_counts_us.get(_sec_us, 0) + 1
                 rows_out.append(row)
