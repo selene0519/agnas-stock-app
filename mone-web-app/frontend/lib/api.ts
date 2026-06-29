@@ -88,6 +88,17 @@ export interface RecommendationItem {
   baseScore?: number;
   chartScoreAdjustment?: number;
   finalScore?: number;
+  setupScore?: number;
+  overextensionRisk?: number;
+  momentumContinuationScore?: number;
+  diagnosticSignals?: Array<{
+    key: string;
+    label: string;
+    value: number;
+    role: "diagnostic_only";
+    finalScoreIncluded: false;
+  }>;
+  diagnosticSignalNote?: string;
   validationConfidence?: number;
   entryBasis?: string;
   targetBasis?: string;

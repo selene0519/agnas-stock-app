@@ -1498,6 +1498,30 @@ def _trade_plan_for_mode(market: str, mode: str, current: float | None, entry: f
 def _virtual_trade_plans(market: str, current: float | None, entry: float | None, stop: float | None, target: float | None, expected_open: float | None = None) -> dict[str, dict[str, Any]]:
     return {mode: _trade_plan_for_mode(market, mode, current, entry, stop, target, expected_open) for mode in ("conservative", "balanced", "aggressive")}
 
+
+def _diagnostic_signal_fields(row: dict[str, Any]) -> list[dict[str, Any]]:
+    # These display-only diagnostics are intentionally not inputs to final_score,
+    # finalRankScore, recommendation ranking, filters, or EV calculations.
+    specs = [
+        ("setupScore", ["setupScore", "setup_score"], "상승 전 셋업 신호"),
+        ("overextensionRisk", ["overextensionRisk", "overextension_risk"], "과열/추격 위험"),
+        ("momentumContinuationScore", ["momentumContinuationScore", "momentum_continuation_score"], "추세 지속 신호"),
+    ]
+    out: list[dict[str, Any]] = []
+    for key, aliases, label in specs:
+        value = first_number(row, aliases)
+        if value is None:
+            continue
+        out.append({
+            "key": key,
+            "label": label,
+            "value": round(value, 2),
+            "role": "diagnostic_only",
+            "finalScoreIncluded": False,
+        })
+    return out
+
+
 def _market_matches(row: dict[str, Any], market: str) -> bool:
     value = first_value(row, ["market", "시장"], "")
     lowered = value.lower()
@@ -2307,6 +2331,7 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
     swing_grade = _swing_grade(row_dict, current_price, entry, stop, target)
     recommendation_modes = _recommendation_modes(swing_grade, current_price, entry, stop, target)
     virtual_plans = _virtual_trade_plans(market, current_price, entry, stop, target, expected_open)
+    diagnostic_signals = _diagnostic_signal_fields(row_dict)
     scores = {
         "supply": first_value(row_dict, SUPPLY_SCORE_ALIASES, "수급 데이터 없음"),
         "earnings": first_value(row_dict, EARNINGS_SCORE_ALIASES, "재무 데이터 없음"),
@@ -2367,6 +2392,8 @@ def normalize_security_row(row: dict[str, Any] | pd.Series, market: str) -> dict
         "recommendationModes": recommendation_modes,
         "recommendationModeText": " / ".join(TRADE_MODE_SETTINGS[m]["label"] for m in recommendation_modes) if recommendation_modes else "추천 모드 산출 필요",
         "virtualPlans": virtual_plans,
+        "diagnosticSignals": diagnostic_signals,
+        "diagnosticSignalNote": "setupScore, overextensionRisk, and momentumContinuationScore are display diagnostics only and are not included in final_score/finalRankScore, ranking, filters, or EV.",
         "predictionModelNote": prediction_fields.get("predictionModelNote", "예측 산출 대기"),
         "scores": scores,
         "statuses": statuses,
@@ -3935,9 +3962,9 @@ def closing_report(market: str) -> dict[str, Any]:
         direction = _direction_label(first_value(row, ["direction_hit", "decision_success", "prediction_result"], ""))
         open_range = _direction_label(first_value(row, ["open_in_range"], ""))
         close_range = _direction_label(first_value(row, ["close_in_range"], ""))
-        entry_touched = _direction_label(first_value(row, ["entry_touched", "virtual_entry_filled"], ""))
-        stop_touched = _direction_label(first_value(row, ["stop_touched"], ""))
-        tp_touched = _direction_label(first_value(row, ["tp1_touched", "tp2_touched"], ""))
+        entry_touched = _direction_label(first_value(row, ["entryTouched", "entry_touched", "virtual_entry_filled"], ""))
+        stop_touched = _direction_label(first_value(row, ["stopTouched", "stop_touched"], ""))
+        tp_touched = _direction_label(first_value(row, ["targetTouched", "tp1_touched", "tp2_touched"], ""))
         failed = direction == "불일치" or open_range == "불일치" or close_range == "불일치"
         items.append({
             "symbol": symbol or "코드 없음",
@@ -3947,9 +3974,10 @@ def closing_report(market: str) -> dict[str, Any]:
             "directionHit": direction,
             "rangeHit": f"시초 {open_range} / 종가 {close_range}",
             "entryTouched": entry_touched,
+            "targetBeforeStop": first_value(row, ["targetBeforeStop"], ""),
             "stopTakeProfit": f"손절 {stop_touched} / 익절 {tp_touched}",
             "failedSymbol": name if failed else "해당 없음",
-            "failureReason": first_value(row, ["prediction_error_reason", "failure_reason", "prediction_cause_summary"], "실패 사유 또는 데이터 부족 사유 없음"),
+            "failureReason": first_value(row, ["failureReason", "prediction_error_reason", "failure_reason", "prediction_cause_summary"], "실패 사유 또는 데이터 부족 사유 없음"),
             "sourceType": first_value(row, ["sourceType"], _source_type_for_label(stockapp_order_source, market, first_value(row, ["sourceDate"], ""))),
             "sourceFile": first_value(row, ["sourceFile"], stockapp_order_source or "predictions.csv"),
             "sourceDate": first_value(row, ["sourceDate"], first_value(row, ["created_at", "target_date"], "")),

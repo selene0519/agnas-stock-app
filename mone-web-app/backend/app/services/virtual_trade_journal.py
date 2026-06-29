@@ -219,6 +219,17 @@ EVALUATION_COLS = [
     "target_progress",
     "stop_progress",
     "failure_reason",
+    "entryTouched",
+    "targetTouched",
+    "stopTouched",
+    "targetBeforeStop",
+    "entryTouchDate",
+    "targetTouchDate",
+    "stopTouchDate",
+    "maxFavorableExcursion",
+    "maxAdverseExcursion",
+    "holdingDays",
+    "failureReason",
     "secondary_tags",
     "regime_at_entry",
     "regime_at_exit",
@@ -1432,19 +1443,19 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     stop = _safe_float(row.get("stop_price"))
     target = _safe_float(row.get("target_price"))
     if market not in MARKETS or horizon not in HORIZONS or not symbol or not as_of_date:
-        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid journal scope.")
+        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid journal scope.", failure_reason="DATA_MISSING")
     if entry is None or stop is None or target is None or not (target > entry > stop):
-        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid price levels.")
+        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid price levels.", failure_reason="PRICE_INVALID")
     ohlcv, _source, source_type = _load_ohlcv(market, symbol)
     if ohlcv.empty:
-        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No OHLCV available.")
+        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No OHLCV available.", failure_reason="DATA_MISSING")
     try:
         as_of_ts = pd.Timestamp(as_of_date).normalize()
     except Exception:
-        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid as_of_date.")
+        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid as_of_date.", failure_reason="DATA_MISSING")
     future = ohlcv[ohlcv["_date_ts"] > as_of_ts].reset_index(drop=True)
     if future.empty:
-        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No future bars yet.")
+        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No future bars yet.", failure_reason="DATA_MISSING")
 
     entry_window = ENTRY_WINDOWS[horizon]
     eval_window = EVALUATION_WINDOWS[horizon]
@@ -1454,12 +1465,12 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
         if len(future) < entry_window:
             return _evaluation_stub(row, "PENDING", "PENDING", "Entry window still open.")
         out = _evaluation_stub(row, "CANCELLED", "CANCELLED_NOT_FILLED", "Entry price was not touched.")
-        out.update({"entry_window_days": entry_window, "evaluation_window_days": eval_window})
+        out.update({"entry_window_days": entry_window, "evaluation_window_days": eval_window, "failureReason": "ENTRY_NOT_TOUCHED"})
         return out
 
     holding = future.iloc[fill_idx: fill_idx + eval_window].reset_index(drop=True)
     if holding.empty:
-        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No holding bars after fill.")
+        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No holding bars after fill.", failure_reason="DATA_MISSING")
 
     costs = MARKET_COSTS.get(market, MARKET_COSTS["kr"])
     liquidity_mult = _liquidity_slippage_multiplier(ohlcv, market, as_of_ts)
@@ -1478,6 +1489,7 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     regime_at_exit = _compute_regime(ohlcv, exit_ts) if exit_ts is not None else ""
     outcome = _outcome(exit_info["exit_kind"], target_progress, stop_progress, net)
     failure = _failure_reason(row, outcome, mfe, mae, net, regime_at_exit, fill_price=raw_fill)
+    touch_failure = _touch_failure_reason(outcome, net)
     sec_tags = _secondary_tags(outcome, failure, _text(row.get("sector")), mfe, mae)
     review_text = _review_text(row, outcome, failure, net, mfe, mae, regime_at_exit)
     return {
@@ -1499,6 +1511,17 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
         "target_progress": target_progress,
         "stop_progress": stop_progress,
         "failure_reason": failure,
+        "entryTouched": True,
+        "targetTouched": bool(exit_info.get("targetTouched")),
+        "stopTouched": bool(exit_info.get("stopTouched")),
+        "targetBeforeStop": exit_info.get("targetBeforeStop", ""),
+        "entryTouchDate": fill_date,
+        "targetTouchDate": exit_info.get("targetTouchDate", ""),
+        "stopTouchDate": exit_info.get("stopTouchDate", ""),
+        "maxFavorableExcursion": mfe,
+        "maxAdverseExcursion": mae,
+        "holdingDays": exit_info["bars_held"],
+        "failureReason": touch_failure,
         "secondary_tags": sec_tags,
         "regime_at_entry": row.get("market_regime_at_signal", ""),
         "regime_at_exit": regime_at_exit,
@@ -1509,7 +1532,8 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _evaluation_stub(row: dict[str, Any], status: str, outcome: str, review_text: str) -> dict[str, Any]:
+def _evaluation_stub(row: dict[str, Any], status: str, outcome: str, review_text: str, failure_reason: str = "") -> dict[str, Any]:
+    canonical_reason = failure_reason or ("DATA_MISSING" if outcome.startswith("DATA") else "UNKNOWN")
     return {
         "journal_id": row.get("journal_id"),
         "status": status,
@@ -1529,6 +1553,17 @@ def _evaluation_stub(row: dict[str, Any], status: str, outcome: str, review_text
         "target_progress": "",
         "stop_progress": "",
         "failure_reason": "DATA_QUALITY" if outcome.startswith("DATA") else "",
+        "entryTouched": False,
+        "targetTouched": False,
+        "stopTouched": False,
+        "targetBeforeStop": "",
+        "entryTouchDate": "",
+        "targetTouchDate": "",
+        "stopTouchDate": "",
+        "maxFavorableExcursion": "",
+        "maxAdverseExcursion": "",
+        "holdingDays": 0,
+        "failureReason": canonical_reason,
         "secondary_tags": "",
         "regime_at_entry": row.get("market_regime_at_signal", ""),
         "regime_at_exit": "",
@@ -1561,6 +1596,8 @@ def _row_date(row: Any) -> str:
 
 
 def _find_exit(holding: pd.DataFrame, entry: float, stop: float, target: float, eval_window: int) -> dict[str, Any]:
+    first_target_date = ""
+    first_stop_date = ""
     for idx, bar in holding.iterrows():
         high = _safe_float(bar.get("high")) or _safe_float(bar.get("close"))
         low = _safe_float(bar.get("low")) or _safe_float(bar.get("close"))
@@ -1569,17 +1606,47 @@ def _find_exit(holding: pd.DataFrame, entry: float, stop: float, target: float, 
             continue
         target_hit = high >= target
         stop_hit = low <= stop
+        row_date = _row_date(bar)
         if target_hit and stop_hit:
-            return {"terminal": True, "completed": True, "exit_kind": "STOP", "exit_price": stop, "exit_date": _row_date(bar), "bars_held": int(idx) + 1}
+            first_target_date = first_target_date or row_date
+            first_stop_date = first_stop_date or row_date
+            return _exit_payload("STOP", stop, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop=False)
         if stop_hit:
-            return {"terminal": True, "completed": True, "exit_kind": "STOP", "exit_price": stop, "exit_date": _row_date(bar), "bars_held": int(idx) + 1}
+            first_stop_date = first_stop_date or row_date
+            return _exit_payload("STOP", stop, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop=False)
         if target_hit:
-            return {"terminal": True, "completed": True, "exit_kind": "TARGET", "exit_price": target, "exit_date": _row_date(bar), "bars_held": int(idx) + 1}
+            first_target_date = first_target_date or row_date
+            return _exit_payload("TARGET", target, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop=True)
         if int(idx) + 1 >= eval_window:
-            return {"terminal": False, "completed": True, "exit_kind": "TIME", "exit_price": close, "exit_date": _row_date(bar), "bars_held": int(idx) + 1}
+            return _exit_payload("TIME", close, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop="")
     last = holding.iloc[-1]
     close = _safe_float(last.get("close")) or entry
-    return {"terminal": False, "completed": False, "exit_kind": "PENDING", "exit_price": close, "exit_date": _row_date(last), "bars_held": len(holding)}
+    return _exit_payload("PENDING", close, _row_date(last), len(holding), first_target_date, first_stop_date, target_before_stop="", completed=False)
+
+
+def _exit_payload(
+    exit_kind: str,
+    exit_price: float,
+    exit_date: str,
+    bars_held: int,
+    target_date: str,
+    stop_date: str,
+    target_before_stop: bool | str,
+    completed: bool = True,
+) -> dict[str, Any]:
+    return {
+        "terminal": exit_kind in {"TARGET", "STOP"},
+        "completed": completed,
+        "exit_kind": exit_kind,
+        "exit_price": exit_price,
+        "exit_date": exit_date,
+        "bars_held": bars_held,
+        "targetTouched": bool(target_date),
+        "stopTouched": bool(stop_date),
+        "targetBeforeStop": target_before_stop,
+        "targetTouchDate": target_date,
+        "stopTouchDate": stop_date,
+    }
 
 
 def _pending_eval(
@@ -1607,6 +1674,15 @@ def _pending_eval(
         "mae_pct": mae,
         "target_progress": target_progress,
         "stop_progress": stop_progress,
+        "entryTouched": True,
+        "targetTouched": False,
+        "stopTouched": False,
+        "targetBeforeStop": "",
+        "entryTouchDate": fill_date,
+        "maxFavorableExcursion": mfe,
+        "maxAdverseExcursion": mae,
+        "holdingDays": len(holding),
+        "failureReason": "UNKNOWN",
     })
     return out
 
@@ -1645,6 +1721,22 @@ def _outcome(exit_kind: str, target_progress: float | None, stop_progress: float
     if abs(net or 0.0) <= 0.5 and tp < 0.40 and sp < 0.40:
         return "TIME_EXIT_FLAT"
     return "TIME_EXIT_MID"
+
+
+def _touch_failure_reason(outcome: str, net: float | None) -> str:
+    if outcome == "TARGET_HIT":
+        return "TARGET_BEFORE_STOP"
+    if outcome == "STOP_HIT":
+        return "STOP_BEFORE_TARGET"
+    if outcome in {"TIME_EXIT_NEAR_TARGET", "TIME_EXIT_MID", "TIME_EXIT_FLAT"}:
+        return "TARGET_NOT_REACHED" if (net or 0.0) >= 0 else "DIRECTION_FAILED"
+    if outcome == "TIME_EXIT_NEAR_STOP":
+        return "DIRECTION_FAILED"
+    if outcome == "CANCELLED_NOT_FILLED":
+        return "ENTRY_NOT_TOUCHED"
+    if outcome.startswith("DATA"):
+        return "DATA_MISSING"
+    return "UNKNOWN"
 
 
 def _failure_reason(

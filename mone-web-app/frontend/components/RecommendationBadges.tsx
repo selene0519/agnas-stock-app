@@ -79,6 +79,18 @@ function buildBadges(item: any): BadgeItem[] {
     badges.push({ key: "lowSample", label: `검증부족${wrSampleCount > 0 ? ` n=${wrSampleCount}` : ""}`, cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" });
   }
 
+  // Display-only diagnostics. They are not final_score/finalRankScore inputs and
+  // should not be presented as buy probability or recommendation strength.
+  if (Number.isFinite(Number(item?.setupScore))) {
+    badges.push({ key: "setupScore", label: "셋업 진단 점수", cls: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" });
+  }
+  if (Number.isFinite(Number(item?.overextensionRisk)) && Number(item.overextensionRisk) > 0) {
+    badges.push({ key: "overextensionRisk", label: "과열/추격 위험", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" });
+  }
+  if (Number.isFinite(Number(item?.momentumContinuationScore))) {
+    badges.push({ key: "momentumContinuationScore", label: "추세 지속 신호", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" });
+  }
+
   return badges;
 }
 

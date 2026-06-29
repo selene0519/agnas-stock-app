@@ -67,6 +67,78 @@ def test_stop_wins_when_target_and_stop_touch_same_daily_candle() -> None:
     assert out["exit_kind"] == "STOP"
     assert out["exit_price"] == 95
     assert out["exit_date"] == "2026-01-02"
+    assert out["targetTouched"] is True
+    assert out["stopTouched"] is True
+    assert out["targetBeforeStop"] is False
+
+
+def test_evaluate_one_records_touch_order_and_excursions(monkeypatch: pytest.MonkeyPatch) -> None:
+    ohlcv = pd.DataFrame(
+        [
+            {"date": "2026-01-01", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-02", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-03", "open": 103, "high": 112, "low": 101, "close": 111, "volume": 1000},
+            {"date": "2026-01-04", "open": 111, "high": 113, "low": 109, "close": 112, "volume": 1000},
+        ]
+    )
+    ohlcv["_date_ts"] = pd.to_datetime(ohlcv["date"], errors="coerce").dt.normalize()
+    monkeypatch.setattr(vtj, "_load_ohlcv", lambda market, symbol: (ohlcv.copy(), "pytest", "actual_ohlcv"))
+
+    out = vtj._evaluate_one(
+        {
+            "journal_id": "touch-target",
+            "market": "kr",
+            "symbol": "TEST",
+            "horizon": "swing",
+            "as_of_date": "2026-01-01",
+            "entry_type": "LIMIT_TOUCH",
+            "entry_price": 100,
+            "stop_price": 95,
+            "target_price": 110,
+            "data_status": "NORMAL",
+            "data_confidence": "HIGH",
+            "market_regime_at_signal": "RISK_ON",
+        }
+    )
+
+    assert out["entryTouched"] is True
+    assert out["targetTouched"] is True
+    assert out["stopTouched"] is False
+    assert out["targetBeforeStop"] is True
+    assert out["entryTouchDate"] == "2026-01-02"
+    assert out["targetTouchDate"] == "2026-01-03"
+    assert out["maxFavorableExcursion"] == out["mfe_pct"]
+    assert out["maxAdverseExcursion"] == out["mae_pct"]
+    assert out["holdingDays"] == out["bars_held"]
+    assert out["failureReason"] == "TARGET_BEFORE_STOP"
+
+
+def test_evaluate_one_does_not_fill_when_entry_is_not_touched(monkeypatch: pytest.MonkeyPatch) -> None:
+    ohlcv = pd.DataFrame(
+        [{"date": f"2026-01-{day:02d}", "open": 95, "high": 99, "low": 92, "close": 96, "volume": 1000} for day in range(1, 9)]
+    )
+    ohlcv["_date_ts"] = pd.to_datetime(ohlcv["date"], errors="coerce").dt.normalize()
+    monkeypatch.setattr(vtj, "_load_ohlcv", lambda market, symbol: (ohlcv.copy(), "pytest", "actual_ohlcv"))
+
+    out = vtj._evaluate_one(
+        {
+            "journal_id": "touch-miss",
+            "market": "kr",
+            "symbol": "TEST",
+            "horizon": "swing",
+            "as_of_date": "2026-01-01",
+            "entry_type": "LIMIT_TOUCH",
+            "entry_price": 100,
+            "stop_price": 95,
+            "target_price": 110,
+        }
+    )
+
+    assert out["status"] == "CANCELLED"
+    assert out["entryTouched"] is False
+    assert out["targetTouched"] is False
+    assert out["stopTouched"] is False
+    assert out["failureReason"] == "ENTRY_NOT_TOUCHED"
 
 
 def test_time_exit_taxonomy_keeps_near_target_near_stop_mid_and_flat() -> None:
