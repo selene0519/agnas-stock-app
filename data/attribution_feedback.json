@@ -1,9 +1,9 @@
 {
   "status": "OK",
-  "sampleCount": 1416,
-  "baseWinRate": 0.3948,
-  "baseAvgPnlPct": -0.907,
-  "generatedAt": "2026-06-30T09:05:55",
+  "sampleCount": 1424,
+  "baseWinRate": 0.3926,
+  "baseAvgPnlPct": -0.971,
+  "generatedAt": "2026-06-30T09:53:50",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -14,13 +14,13 @@
   },
   "adjustments": [
     {
-      "feedbackId": "998d0daeb3ce51a66f62",
+      "feedbackId": "a32667ad97d67885f8df",
       "mode": "conservative",
       "horizon": "short",
       "n": 170,
       "winRate": 0.4118,
-      "avgPnlPct": -0.917,
-      "multiplier": 1.03,
+      "avgPnlPct": -0.949,
+      "multiplier": 1.02,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -32,19 +32,19 @@
       "n": 149,
       "winRate": 0.3691,
       "avgPnlPct": -1.359,
-      "multiplier": 1.16,
+      "multiplier": 1.124,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "da8bbd69f2ca09ca57ba",
+      "feedbackId": "f4bb170aeba94f9790c5",
       "mode": "conservative",
       "horizon": "mid",
-      "n": 151,
-      "winRate": 0.3841,
-      "avgPnlPct": -0.654,
-      "multiplier": 0.872,
+      "n": 155,
+      "winRate": 0.3742,
+      "avgPnlPct": -0.903,
+      "multiplier": 0.944,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -56,7 +56,7 @@
       "n": 157,
       "winRate": 0.4395,
       "avgPnlPct": -0.711,
-      "multiplier": 0.981,
+      "multiplier": 0.965,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -68,7 +68,7 @@
       "n": 155,
       "winRate": 0.3742,
       "avgPnlPct": -1.021,
-      "multiplier": 1.019,
+      "multiplier": 0.992,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -80,7 +80,7 @@
       "n": 155,
       "winRate": 0.3677,
       "avgPnlPct": -0.821,
-      "multiplier": 0.921,
+      "multiplier": 0.9,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -92,34 +92,34 @@
       "n": 163,
       "winRate": 0.4479,
       "avgPnlPct": -0.573,
-      "multiplier": 0.933,
+      "multiplier": 0.921,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "2e4b5bf1a1615ea67bd9",
+      "feedbackId": "4f417a9a4b810019aa50",
       "mode": "aggressive",
       "horizon": "swing",
-      "n": 160,
-      "winRate": 0.4,
-      "avgPnlPct": -0.97,
-      "multiplier": 1.036,
-      "direction": "NEUTRAL",
+      "n": 162,
+      "winRate": 0.3951,
+      "avgPnlPct": -1.129,
+      "multiplier": 1.069,
+      "direction": "BOOST",
       "suggestedOnly": true,
-      "manualApprovalRequired": false
+      "manualApprovalRequired": true
     },
     {
-      "feedbackId": "a1924fe54d1f9f11d541",
+      "feedbackId": "1c1123ddc913f7e3212f",
       "mode": "aggressive",
       "horizon": "mid",
-      "n": 156,
-      "winRate": 0.3526,
-      "avgPnlPct": -1.166,
-      "multiplier": 1.05,
-      "direction": "NEUTRAL",
+      "n": 158,
+      "winRate": 0.3481,
+      "avgPnlPct": -1.3,
+      "multiplier": 1.068,
+      "direction": "BOOST",
       "suggestedOnly": true,
-      "manualApprovalRequired": false
+      "manualApprovalRequired": true
     }
   ]
 }
