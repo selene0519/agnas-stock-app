@@ -46,8 +46,28 @@ DATA_ISSUE_REASONS = {
     "INVALID_PRICE_PATH",
     "SYMBOL_OR_DATE_MISMATCH",
 }
+EVALUATED_OUTCOME_REASONS = {
+    "TARGET_BEFORE_STOP",
+    "STOP_BEFORE_TARGET",
+    "STOP_TOO_TIGHT",
+    "TARGET_NOT_REACHED",
+    "DIRECTION_FAILED",
+    "ENTRY_NOT_TOUCHED",
+    "ENTRY_TOUCHED_BUT_NO_EXIT",
+    "OVEREXTENDED_ENTRY",
+    "MARKET_GAP",
+    "MISSED_PROFIT_CAPTURE",
+    "HIGH_DRAWDOWN_BEFORE_SUCCESS",
+    "UNCLASSIFIED_PRICE_PATH",
+    "UNKNOWN",
+}
 DATA_ISSUE_STATUSES = {"DATA_PENDING", "DATA_INVALID"}
 EVALUATED_STATUSES = {"EVALUATED", "CANCELLED"}
+PENDING_STATUSES = {"PENDING"}
+
+REASON_GROUP_PENDING = "evaluationCoveragePending"
+REASON_GROUP_DATA_QUALITY = "dataQuality"
+REASON_GROUP_EVALUATED = "evaluatedOutcome"
 
 
 def _text(value: Any) -> str:
@@ -67,6 +87,15 @@ def failure_reason_label(code: Any) -> str:
     if normalized in FAILURE_REASON_LABELS:
         return FAILURE_REASON_LABELS[normalized]
     return f"미정의 원인 ({normalized})"
+
+
+def failure_reason_group(code: Any) -> str:
+    normalized = _upper(code) or "UNKNOWN"
+    if normalized in PENDING_REASONS:
+        return REASON_GROUP_PENDING
+    if normalized in DATA_ISSUE_REASONS:
+        return REASON_GROUP_DATA_QUALITY
+    return REASON_GROUP_EVALUATED
 
 
 def _safe_float(value: Any) -> float | None:
@@ -193,11 +222,15 @@ def _holding_days(row: dict[str, Any]) -> float | None:
 
 
 def _is_data_issue(row: dict[str, Any]) -> bool:
-    return _failure_reason(row) in DATA_ISSUE_REASONS or _upper(row.get("status")) in DATA_ISSUE_STATUSES
+    return failure_reason_group(_failure_reason(row)) == REASON_GROUP_DATA_QUALITY
+
+
+def _is_pending(row: dict[str, Any]) -> bool:
+    return failure_reason_group(_failure_reason(row)) == REASON_GROUP_PENDING
 
 
 def _is_classified(row: dict[str, Any]) -> bool:
-    return _upper(row.get("status")) in EVALUATED_STATUSES | DATA_ISSUE_STATUSES or bool(_text(_first(row, "failureReason", "failure_reason")))
+    return _upper(row.get("status")) in EVALUATED_STATUSES | DATA_ISSUE_STATUSES | PENDING_STATUSES or bool(_text(_first(row, "failureReason", "failure_reason")))
 
 
 def _metric(rows: list[dict[str, Any]], denominator: int) -> dict[str, Any]:
@@ -265,14 +298,40 @@ def _group_rows(rows: Iterable[dict[str, Any]], fields: tuple[str, ...]) -> dict
 
 
 def _dimension_items(rows: list[dict[str, Any]], fields: tuple[str, ...], denominator: int) -> list[dict[str, Any]]:
+    return _dimension_items_with_basis(rows, fields, denominator, denominator)
+
+
+def _dimension_items_with_basis(
+    rows: list[dict[str, Any]],
+    fields: tuple[str, ...],
+    all_denominator: int,
+    group_denominator: int | None = None,
+) -> list[dict[str, Any]]:
+    group_denominator = all_denominator if group_denominator is None else group_denominator
     items = []
     for key, group in _group_rows(rows, fields).items():
         item = {field: value for field, value in zip(fields, key)}
-        item.update(_metric(group, denominator))
+        item.update(_metric(group, group_denominator))
+        count = int(item.get("count") or 0)
+        item["ratioWithinAll"] = round(count / all_denominator, 4) if all_denominator else 0.0
+        item["ratioWithinGroup"] = round(count / group_denominator, 4) if group_denominator else 0.0
         if "failureReason" in item:
             item["label"] = failure_reason_label(item["failureReason"])
+            item["reasonGroup"] = failure_reason_group(item["failureReason"])
         items.append(item)
     return sorted(items, key=lambda item: (-int(item["count"]), str(item.get("failureReason") or ""), str(item)))
+
+
+def _group_summary(rows: list[dict[str, Any]], total_trades: int) -> dict[str, Any]:
+    summary = _metric(rows, len(rows))
+    summary.update(
+        {
+            "totalTrades": total_trades,
+            "groupTrades": len(rows),
+            "ratioWithinAll": round(len(rows) / total_trades, 4) if total_trades else 0.0,
+        }
+    )
+    return summary
 
 
 def empty_response(
@@ -299,12 +358,16 @@ def empty_response(
         "summary": {
             "totalTrades": 0,
             "evaluatedTrades": 0,
+            "pendingTrades": 0,
             "entryTouchedTrades": 0,
             "targetTouchedTrades": 0,
             "targetBeforeStopTrades": 0,
             "stopBeforeTargetTrades": 0,
             "entryNotTouchedTrades": 0,
             "dataIssueTrades": 0,
+            "evaluatedCoverageRate": 0.0,
+            "pendingRate": 0.0,
+            "dataIssueRate": 0.0,
             "topFailureReasons": [],
             "avgMFE": None,
             "avgMAE": None,
@@ -314,8 +377,16 @@ def empty_response(
             "stopBeforeTargetRate": None,
             "entryNotTouchedRate": None,
         },
+        "evaluatedOnlySummary": _group_summary([], 0),
+        "pendingSummary": _group_summary([], 0),
+        "dataQualitySummary": _group_summary([], 0),
         "failureReasons": [],
+        "reasonBreakdownAll": [],
+        "reasonBreakdownEvaluatedOnly": [],
+        "reasonBreakdownPending": [],
+        "reasonBreakdownDataQuality": [],
         "groups": [],
+        "groupsEvaluatedOnly": [],
         "breakdowns": {
             "byMarket": [],
             "byMode": [],
@@ -368,6 +439,13 @@ def build_failure_analytics(
         return empty_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
 
     denominator = len(classified) or len(rows)
+    pending_rows = [row for row in classified if _is_pending(row)]
+    data_quality_rows = [row for row in classified if _is_data_issue(row)]
+    evaluated_rows = [
+        row
+        for row in classified
+        if not _is_pending(row) and not _is_data_issue(row) and failure_reason_group(_failure_reason(row)) == REASON_GROUP_EVALUATED
+    ]
     failure_counts = Counter(_failure_reason(row) for row in classified)
     entry_touched = sum(1 for row in classified if _bool_value(row, "entryTouched") is True)
     target_touched = sum(1 for row in classified if _bool_value(row, "targetTouched") is True)
@@ -392,13 +470,17 @@ def build_failure_analytics(
 
     summary = {
         "totalTrades": len(rows),
-        "evaluatedTrades": sum(1 for row in rows if _upper(row.get("status")) in EVALUATED_STATUSES),
+        "evaluatedTrades": len(evaluated_rows),
+        "pendingTrades": len(pending_rows),
         "entryTouchedTrades": entry_touched,
         "targetTouchedTrades": target_touched,
         "targetBeforeStopTrades": target_before_stop,
         "stopBeforeTargetTrades": stop_before_target,
         "entryNotTouchedTrades": entry_not_touched,
         "dataIssueTrades": data_issues,
+        "evaluatedCoverageRate": round(len(evaluated_rows) / len(rows), 4) if rows else 0.0,
+        "pendingRate": round(len(pending_rows) / len(rows), 4) if rows else 0.0,
+        "dataIssueRate": round(len(data_quality_rows) / len(rows), 4) if rows else 0.0,
         "topFailureReasons": top_failure_reasons,
         "avgMFE": round(sum(mfes) / len(mfes), 4) if mfes else None,
         "avgMAE": round(sum(maes) / len(maes), 4) if maes else None,
@@ -415,10 +497,23 @@ def build_failure_analytics(
             "source": vtj._relative(vtj.EVALUATION_CSV),
             "summary": summary,
             "failureReasons": _dimension_items(classified, ("failureReason",), denominator),
+            "reasonBreakdownAll": _dimension_items_with_basis(classified, ("failureReason",), denominator, denominator),
+            "reasonBreakdownEvaluatedOnly": _dimension_items_with_basis(evaluated_rows, ("failureReason",), denominator, len(evaluated_rows)),
+            "reasonBreakdownPending": _dimension_items_with_basis(pending_rows, ("failureReason",), denominator, len(pending_rows)),
+            "reasonBreakdownDataQuality": _dimension_items_with_basis(data_quality_rows, ("failureReason",), denominator, len(data_quality_rows)),
+            "evaluatedOnlySummary": _group_summary(evaluated_rows, len(rows)),
+            "pendingSummary": _group_summary(pending_rows, len(rows)),
+            "dataQualitySummary": _group_summary(data_quality_rows, len(rows)),
             "groups": _dimension_items(
                 classified,
                 ("market", "mode", "horizon", "holdingDaysBucket", "failureReason", "recommendationBucket", "setupBucket", "regime"),
                 denominator,
+            ),
+            "groupsEvaluatedOnly": _dimension_items_with_basis(
+                evaluated_rows,
+                ("market", "mode", "horizon", "holdingDaysBucket", "failureReason", "recommendationBucket", "setupBucket", "regime"),
+                denominator,
+                len(evaluated_rows),
             ),
             "breakdowns": {
                 "byMarket": _dimension_items(classified, ("market", "failureReason"), denominator),

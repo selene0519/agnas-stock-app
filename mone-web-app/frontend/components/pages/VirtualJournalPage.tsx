@@ -11,6 +11,7 @@ type ScopeMarket = Extract<Market, "kr" | "us" | "all">;
 type ScopeMode = Extract<Mode, "conservative" | "balanced" | "aggressive" | "all">;
 type ScopeHorizon = Extract<Horizon, "short" | "swing" | "mid" | "all">;
 type ScopeSession = "all" | "PREMARKET_PLAN" | "INTRADAY_CHECK" | "AFTER_CLOSE_TRADE" | "FOLLOWUP_EVALUATION";
+type FailureAnalysisBasis = "all" | "evaluated" | "pending" | "dataQuality";
 
 const markets: { id: ScopeMarket; label: string }[] = [
   { id: "all", label: "전체" },
@@ -37,6 +38,13 @@ const sessions: { id: ScopeSession; label: string }[] = [
   { id: "PREMARKET_PLAN", label: "Premarket" },
   { id: "AFTER_CLOSE_TRADE", label: "After close" },
   { id: "FOLLOWUP_EVALUATION", label: "Follow-up" },
+];
+
+const failureBasisOptions: { id: FailureAnalysisBasis; label: string }[] = [
+  { id: "all", label: "전체 기준" },
+  { id: "evaluated", label: "평가 완료" },
+  { id: "pending", label: "평가 대기" },
+  { id: "dataQuality", label: "데이터 품질" },
 ];
 
 const SESSION_LABEL: Record<string, string> = {
@@ -247,6 +255,7 @@ export default function VirtualJournalPage() {
   const [feedbackData, setFeedbackData] = useState<any>(null);
   const [selfLearningData, setSelfLearningData] = useState<any>(null);
   const [opsData, setOpsData] = useState<any>(null);
+  const [failureBasis, setFailureBasis] = useState<FailureAnalysisBasis>("all");
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -417,7 +426,26 @@ export default function VirtualJournalPage() {
   }, [patterns]);
 
   const failureSummary = failureAnalytics?.summary || {};
-  const failureTop5 = (failureSummary.topFailureReasons || failureAnalytics?.failureReasons || []).slice(0, 5);
+  const failureAllTop5 = (failureSummary.topFailureReasons || failureAnalytics?.failureReasons || []).slice(0, 5);
+  const failureRowsByBasis: Record<FailureAnalysisBasis, any[]> = {
+    all: failureAnalytics?.reasonBreakdownAll || failureAnalytics?.failureReasons || failureAllTop5,
+    evaluated: failureAnalytics?.reasonBreakdownEvaluatedOnly || [],
+    pending: failureAnalytics?.reasonBreakdownPending || [],
+    dataQuality: failureAnalytics?.reasonBreakdownDataQuality || [],
+  };
+  const selectedFailureRows = (failureRowsByBasis[failureBasis] || []).slice(0, 5);
+  const selectedFailureTitle = {
+    all: "전체 기준 failureReason TOP 5",
+    evaluated: "평가 완료 기준 failureReason TOP 5",
+    pending: "평가 대기 기준 failureReason TOP 5",
+    dataQuality: "데이터 품질 기준 failureReason TOP 5",
+  }[failureBasis];
+  const selectedFailureNote = {
+    all: "전체 거래 기준에는 평가 대기와 데이터 품질 상태가 함께 포함됩니다.",
+    evaluated: "평가 대기와 데이터 품질 항목을 제외한, 충분히 판정 가능한 거래 기준입니다.",
+    pending: "평가 대기 항목은 실패로 계산하지 않습니다.",
+    dataQuality: "데이터 품질 항목은 추천 점수 문제가 아니라 수집/결과 데이터 점검 신호입니다.",
+  }[failureBasis];
   const fmtRate = (value: any) => {
     if (value === null || value === undefined || value === "") return "-";
     const n = Number(value);
@@ -429,19 +457,30 @@ export default function VirtualJournalPage() {
     return labels[normalized] || FAILURE_REASON_LABELS[normalized] || `미정의 원인 (${normalized})`;
   };
   const topReasonRatio = (reason: string) => {
-    const row = failureTop5.find((item: any) => String(item.failureReason || item.reason || "").toUpperCase() === reason);
+    const row = failureAllTop5.find((item: any) => String(item.failureReason || item.reason || "").toUpperCase() === reason);
     const ratio = Number(row?.ratio);
     return Number.isFinite(ratio) ? ratio : 0;
   };
   const unknownRatio = topReasonRatio("UNKNOWN");
-  const pendingTopRatio = failureTop5.reduce((sum: number, item: any) => {
+  const pendingTopRatio = failureAllTop5.reduce((sum: number, item: any) => {
     const reason = String(item.failureReason || item.reason || "").toUpperCase();
     return sum + (PENDING_FAILURE_REASONS.has(reason) ? Number(item.ratio || 0) : 0);
   }, 0);
-  const dataIssueTopRatio = failureTop5.reduce((sum: number, item: any) => {
+  const dataIssueTopRatio = failureAllTop5.reduce((sum: number, item: any) => {
     const reason = String(item.failureReason || item.reason || "").toUpperCase();
     return sum + (DATA_QUALITY_FAILURE_REASONS.has(reason) ? Number(item.ratio || 0) : 0);
   }, 0);
+  const failureItemRatio = (item: any) => {
+    const groupRatio = Number(item?.ratioWithinGroup);
+    const allRatio = Number(item?.ratioWithinAll);
+    const fallback = Number(item?.ratio);
+    if (failureBasis === "all") {
+      if (Number.isFinite(allRatio)) return allRatio;
+      return Number.isFinite(fallback) ? fallback : null;
+    }
+    if (Number.isFinite(groupRatio)) return groupRatio;
+    return Number.isFinite(fallback) ? fallback : null;
+  };
   const overallPriorityRatio = (evidence: any) => {
     const direct = Number(evidence?.overallRatio);
     if (Number.isFinite(direct)) return direct;
@@ -526,8 +565,15 @@ export default function VirtualJournalPage() {
           </span>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-          {metric("전체 거래 수", failureSummary.totalTrades ?? 0)}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {metric("전체 일지", failureSummary.totalTrades ?? 0)}
+          {metric("평가 완료", failureSummary.evaluatedTrades ?? 0, "text-emerald-300")}
+          {metric("평가 대기", failureSummary.pendingTrades ?? 0, "text-sky-300")}
+          {metric("데이터 문제", failureSummary.dataIssueTrades ?? 0, "text-cyan-300")}
+          {metric("평가 완료율", fmtRate(failureSummary.evaluatedCoverageRate), "text-slate-100")}
+        </div>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {metric("진입가 터치율", fmtRate(failureSummary.entryTouchedRate))}
           {metric("목표가 선도달률", fmtRate(failureSummary.targetBeforeStopRate), "text-emerald-300")}
           {metric("손절 선도달률", fmtRate(failureSummary.stopBeforeTargetRate), "text-red-300")}
@@ -558,10 +604,20 @@ export default function VirtualJournalPage() {
 
         <div className="mt-4 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
-            <div className="mb-2 text-xs font-semibold text-slate-400">failureReason TOP 5</div>
+            <div className="mb-3 flex flex-col gap-2">
+              <div className="text-xs font-semibold text-slate-400">{selectedFailureTitle}</div>
+              <SegmentedControl<FailureAnalysisBasis>
+                options={failureBasisOptions.map((item) => ({ value: item.id, label: item.label }))}
+                value={failureBasis}
+                onChange={setFailureBasis}
+                className="w-full"
+              />
+              <div className="text-[11px] leading-4 text-slate-500">{selectedFailureNote}</div>
+            </div>
             <div className="space-y-2">
-              {failureTop5.map((item: any) => {
+              {selectedFailureRows.map((item: any) => {
                 const reason = String(item.failureReason || item.reason || "UNKNOWN");
+                const ratio = failureItemRatio(item);
                 return (
                   <div key={reason} className="flex items-center justify-between gap-3 rounded-md bg-slate-900/70 px-3 py-2">
                     <div className="min-w-0">
@@ -570,12 +626,18 @@ export default function VirtualJournalPage() {
                     </div>
                     <div className="text-right">
                       <div className="font-mono text-sm font-semibold tabular-nums text-slate-100">{item.count ?? 0}</div>
-                      <div className="font-mono text-[10px] text-slate-500">{fmtRate(item.ratio)}</div>
+                      <div className="font-mono text-[10px] text-slate-500">
+                        {failureBasis === "all" ? "전체 대비 " : "그룹 내 "}
+                        {fmtRate(ratio)}
+                      </div>
+                      {failureBasis !== "all" && (
+                        <div className="font-mono text-[10px] text-slate-600">전체 대비 {fmtRate(item.ratioWithinAll)}</div>
+                      )}
                     </div>
                   </div>
                 );
               })}
-              {!failureTop5.length && (
+              {!selectedFailureRows.length && (
                 <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">분석 가능한 평가 데이터가 아직 없습니다.</div>
               )}
             </div>

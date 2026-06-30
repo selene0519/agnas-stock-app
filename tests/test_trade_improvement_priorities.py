@@ -159,6 +159,38 @@ def test_improvement_priorities_treat_pending_reasons_as_evaluation_coverage() -
     assert first["shouldModifyTradingLogicNow"] is False
 
 
+def test_improvement_priorities_use_evaluated_only_ratios_for_outcome_issues() -> None:
+    vtj._write_rows(
+        vtj.JOURNAL_CSV,
+        [_journal_row(f"s{i}") for i in range(10)],
+        vtj.JOURNAL_COLS,
+    )
+    vtj._write_rows(
+        vtj.EVALUATION_CSV,
+        [
+            *[_eval_row(f"s{i}", "INSUFFICIENT_HOLDING_PERIOD", "", "", "", False, False, False) for i in range(5)],
+            _eval_row("s5", "STOP_TOO_TIGHT", -3, 2, -6, True, False, True),
+            _eval_row("s6", "STOP_TOO_TIGHT", -2, 3, -5, True, False, True),
+            _eval_row("s7", "STOP_TOO_TIGHT", -4, 1, -7, True, False, True),
+            _eval_row("s8", "STOP_BEFORE_TARGET", -5, 2, -8, True, False, True),
+            _eval_row("s9", "TARGET_BEFORE_STOP", 8, 10, -1, True, True, False, True),
+        ],
+        vtj.EVALUATION_COLS,
+    )
+
+    out = tip.build_improvement_priorities(market="kr")
+    stop_issue = next(item for item in out["priorities"] if item["issueType"] == "STOP_BEFORE_TARGET_HIGH")
+
+    assert out["summary"]["totalTrades"] == 10
+    assert out["summary"]["evaluatedTrades"] == 5
+    assert out["summary"]["pendingTrades"] == 5
+    assert stop_issue["evidence"]["count"] == 4
+    assert stop_issue["evidence"]["conditionRate"] == 0.8
+    assert stop_issue["evidence"]["overallRatio"] == 0.4
+    assert stop_issue["safeNextStep"].startswith("추천 로직을 바꾸지 말고")
+    assert stop_issue["shouldModifyTradingLogicNow"] is False
+
+
 def test_improvement_priorities_groups_new_data_quality_reasons() -> None:
     vtj._write_rows(
         vtj.JOURNAL_CSV,

@@ -41,9 +41,10 @@ def _reason_map(analytics: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
-def _combined_reason(reason_rows: list[dict[str, Any]], summary: dict[str, Any]) -> dict[str, Any]:
+def _combined_reason(reason_rows: list[dict[str, Any]], summary: dict[str, Any], group_denominator: int | None = None) -> dict[str, Any]:
     count = sum(int(row.get("count") or 0) for row in reason_rows)
-    denominator = int(summary.get("totalTrades") or summary.get("evaluatedTrades") or 0)
+    total = int(summary.get("totalTrades") or summary.get("evaluatedTrades") or 0)
+    denominator = group_denominator if group_denominator is not None else total
     ratio = round(count / denominator, 4) if denominator else 0.0
     values = [row for row in reason_rows if row]
 
@@ -61,6 +62,8 @@ def _combined_reason(reason_rows: list[dict[str, Any]], summary: dict[str, Any])
     return {
         "count": count,
         "ratio": ratio,
+        "ratioWithinAll": round(count / total, 4) if total else 0.0,
+        "ratioWithinGroup": ratio,
         "avgReturn": avg_field("avgReturn"),
         "avgMFE": avg_field("avgMFE"),
         "avgMAE": avg_field("avgMAE"),
@@ -75,12 +78,15 @@ def _evidence(
     count = int(row.get("count") or 0)
     total = int(summary.get("totalTrades") or 0)
     evaluated = int(summary.get("evaluatedTrades") or 0)
-    ratio = _num(row.get("ratio")) or 0.0
+    ratio = _num(row.get("ratioWithinGroup"))
+    if ratio is None:
+        ratio = _num(row.get("ratio")) or 0.0
+    overall_ratio = _num(row.get("ratioWithinAll"))
     return {
         "count": count,
         "ratio": ratio,
         "conditionRate": ratio,
-        "overallRatio": round(count / total, 4) if total else 0.0,
+        "overallRatio": overall_ratio if overall_ratio is not None else (round(count / total, 4) if total else 0.0),
         "ratioBasis": "condition",
         "overallRatioBasis": "totalTrades",
         "totalTrades": total,
@@ -206,16 +212,21 @@ def build_improvement_priorities(
     if total <= 0 and evaluated <= 0:
         return empty_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
 
-    by_reason = _reason_map(analytics)
+    by_reason = _reason_map({"failureReasons": analytics.get("reasonBreakdownAll") or analytics.get("failureReasons") or []})
+    by_evaluated_reason = _reason_map({"failureReasons": analytics.get("reasonBreakdownEvaluatedOnly") or []}) or by_reason
     priorities: list[dict[str, Any]] = []
     pending = _combined_reason([row for key, row in by_reason.items() if key in PENDING_REASON_CODES], summary)
     data = _combined_reason([row for key, row in by_reason.items() if key in DATA_QUALITY_REASON_CODES], summary)
     pending_share = float(pending.get("ratio") or 0.0)
+    evaluated_basis = dict(summary)
+    evaluated_basis.update(analytics.get("evaluatedOnlySummary") or {})
+    evaluated_basis["totalTrades"] = total
+    evaluated_basis["evaluatedTrades"] = evaluated
 
     if pending["count"] > 0:
         priorities.append(_priority(
             issue_type="EVALUATION_COVERAGE_PENDING",
-            title="평가 대기 표본 많음",
+            title="평가 대기 비율 높음",
             summary_text="미래 봉 또는 보유기간이 아직 충분하지 않아 결과 판정 전인 표본이 있습니다.",
             affected_area="evaluationCoverage",
             evidence=_evidence(pending, summary),
@@ -236,56 +247,60 @@ def build_improvement_priorities(
             severity=_severity(data["ratio"], data["count"], high=0.15, medium=0.07),
         ))
 
-    entry = by_reason.get("ENTRY_NOT_TOUCHED")
+    entry = by_evaluated_reason.get("ENTRY_NOT_TOUCHED")
     if entry and int(entry.get("count") or 0) > 0:
         priorities.append(_priority(
             issue_type="ENTRY_PRICE_TOO_DEEP",
             title="진입가 미도달 비율 높음",
             summary_text="가상 매매 평가에서 진입가를 터치하지 못한 사례가 누적되고 있습니다.",
             affected_area="entryPrice",
-            evidence=_evidence(entry, summary),
+            evidence=_evidence(entry, evaluated_basis),
             recommendation="진입가가 지나치게 보수적인지 점검 필요",
             safe_next_step="최근 미체결 표본의 추천 시점 가격, entry gap, 호가/변동성 조건을 검증하세요.",
         ))
 
-    stop = by_reason.get("STOP_BEFORE_TARGET")
+    stop = _combined_reason(
+        [row for key, row in by_evaluated_reason.items() if key in {"STOP_BEFORE_TARGET", "STOP_TOO_TIGHT"}],
+        summary,
+        evaluated,
+    )
     if stop and int(stop.get("count") or 0) > 0:
         priorities.append(_priority(
             issue_type="STOP_BEFORE_TARGET_HIGH",
-            title="손절 선도달 비율 높음",
-            summary_text="목표가보다 손절가에 먼저 닿은 평가가 의미 있게 관측됩니다.",
+            title="손절 관련 문제 비율 높음",
+            summary_text="평가 완료 거래 기준으로 손절 선도달 또는 손절폭 과소 사례가 의미 있게 관측됩니다.",
             affected_area="candidateSelection/risk",
-            evidence=_evidence(stop, summary),
+            evidence=_evidence(stop, evaluated_basis),
             recommendation="후보 선정 신호, 과열 진입, 손절 위치를 점검 필요",
-            safe_next_step="손절 선도달 표본을 setup bucket과 overextension 진단별로 나눠 원인을 확인하세요.",
+            safe_next_step="추천 로직을 바꾸지 말고, 평가 완료 거래 기준으로 STOP_TOO_TIGHT/STOP_BEFORE_TARGET 표본을 setup bucket과 overextension 진단별로 나눠 확인하세요.",
         ))
 
-    target_not_reached = by_reason.get("TARGET_NOT_REACHED")
+    target_not_reached = by_evaluated_reason.get("TARGET_NOT_REACHED")
     if target_not_reached and int(target_not_reached.get("count") or 0) > 0:
         priorities.append(_priority(
             issue_type="TARGET_TOO_FAR_OR_MOMENTUM_WEAK",
             title="목표가 미도달 비율 높음",
             summary_text="진입 이후 목표가까지 이어지지 못하고 시간 종료 또는 약한 흐름으로 남는 사례가 있습니다.",
             affected_area="targetPrice/momentum",
-            evidence=_evidence(target_not_reached, summary),
+            evidence=_evidence(target_not_reached, evaluated_basis),
             recommendation="목표가가 과도하거나 모멘텀이 약한 후보가 포함되는지 점검 필요",
             safe_next_step="목표 미도달 표본의 MFE, 보유기간, momentum_continuation_score 분포를 비교하세요.",
         ))
 
-    direction = by_reason.get("DIRECTION_FAILED")
+    direction = by_evaluated_reason.get("DIRECTION_FAILED")
     if direction and int(direction.get("count") or 0) > 0:
         priorities.append(_priority(
             issue_type="WEAK_CANDIDATE_SIGNAL",
             title="방향성 실패 비율 높음",
             summary_text="추천 방향과 실제 평가 방향이 어긋난 표본이 관측됩니다.",
             affected_area="scoringSignal",
-            evidence=_evidence(direction, summary),
+            evidence=_evidence(direction, evaluated_basis),
             recommendation="_final_score 구성 피처와 후보 선정 신호 진단 필요",
             safe_next_step="_final_score를 바꾸지 말고, 실패 표본의 표시용 진단 피처와 시장 regime 분포를 먼저 점검하세요.",
         ))
 
-    target_before_stop_rate = _num(summary.get("targetBeforeStopRate"))
-    avg_mae = _num(summary.get("avgMAE"))
+    target_before_stop_rate = _num(evaluated_basis.get("targetBeforeStopRate"))
+    avg_mae = _num(evaluated_basis.get("avgMAE"))
     if pending_share <= 0.5 and target_before_stop_rate is not None and avg_mae is not None and target_before_stop_rate < 0.25 and avg_mae <= -5.0:
         priorities.append(_priority(
             issue_type="HIGH_DRAWDOWN_BEFORE_SUCCESS",
@@ -296,11 +311,13 @@ def build_improvement_priorities(
                 {
                     "count": evaluated or total,
                     "ratio": round(1.0 - target_before_stop_rate, 4),
+                    "ratioWithinAll": round((evaluated or total) / total, 4) if total else 0.0,
+                    "ratioWithinGroup": round(1.0 - target_before_stop_rate, 4),
                     "avgReturn": None,
-                    "avgMFE": summary.get("avgMFE"),
-                    "avgMAE": summary.get("avgMAE"),
+                    "avgMFE": evaluated_basis.get("avgMFE"),
+                    "avgMAE": evaluated_basis.get("avgMAE"),
                 },
-                summary,
+                evaluated_basis,
                 {"drawdownBasis": "targetBeforeStopRate_low_and_avgMAE_deep"},
             ),
             recommendation="진입 타이밍 또는 과열 위험 필터 점검 필요",
@@ -308,8 +325,8 @@ def build_improvement_priorities(
             severity=_severity(1.0 - target_before_stop_rate, evaluated or total, high=0.75, medium=0.55),
         ))
 
-    avg_mfe = _num(summary.get("avgMFE"))
-    target_touched_rate = _num(summary.get("targetTouchedRate"))
+    avg_mfe = _num(evaluated_basis.get("avgMFE"))
+    target_touched_rate = _num(evaluated_basis.get("targetTouchedRate"))
     if pending_share <= 0.5 and avg_mfe is not None and target_touched_rate is not None and avg_mfe >= 4.0 and target_touched_rate < 0.35:
         priorities.append(_priority(
             issue_type="MISSED_PROFIT_CAPTURE",
@@ -320,11 +337,13 @@ def build_improvement_priorities(
                 {
                     "count": evaluated or total,
                     "ratio": round(1.0 - target_touched_rate, 4),
+                    "ratioWithinAll": round((evaluated or total) / total, 4) if total else 0.0,
+                    "ratioWithinGroup": round(1.0 - target_touched_rate, 4),
                     "avgReturn": None,
-                    "avgMFE": summary.get("avgMFE"),
-                    "avgMAE": summary.get("avgMAE"),
+                    "avgMFE": evaluated_basis.get("avgMFE"),
+                    "avgMAE": evaluated_basis.get("avgMAE"),
                 },
-                summary,
+                evaluated_basis,
                 {"profitCaptureBasis": "avgMFE_high_and_targetTouchedRate_low"},
             ),
             recommendation="목표가/분할익절/보유기간 기준 점검 필요",
@@ -340,6 +359,10 @@ def build_improvement_priorities(
         "summary": {
             "totalTrades": total,
             "evaluatedTrades": evaluated,
+            "pendingTrades": int(summary.get("pendingTrades") or 0),
+            "evaluatedCoverageRate": summary.get("evaluatedCoverageRate"),
+            "pendingRate": summary.get("pendingRate"),
+            "dataIssueRate": summary.get("dataIssueRate"),
             "priorityCount": len(ranked),
             "highSeverityCount": sum(1 for item in ranked if item.get("severity") == "high"),
             "topIssueType": ranked[0]["issueType"] if ranked else None,

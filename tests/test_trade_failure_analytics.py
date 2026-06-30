@@ -157,6 +157,22 @@ def test_failure_reason_labels_are_specific_and_safe() -> None:
     assert tfa.failure_reason_label("BRAND_NEW_REASON") == "미정의 원인 (BRAND_NEW_REASON)"
 
 
+def test_failure_reason_groups_pending_data_quality_and_evaluated() -> None:
+    assert tfa.failure_reason_group("INSUFFICIENT_HOLDING_PERIOD") == "evaluationCoveragePending"
+    assert tfa.failure_reason_group("PENDING_EVALUATION") == "evaluationCoveragePending"
+    assert tfa.failure_reason_group("NO_FUTURE_BARS_YET") == "evaluationCoveragePending"
+    assert tfa.failure_reason_group("DATA_MISSING") == "dataQuality"
+    assert tfa.failure_reason_group("PRICE_INVALID") == "dataQuality"
+    assert tfa.failure_reason_group("SYMBOL_OR_DATE_MISMATCH") == "dataQuality"
+    assert tfa.failure_reason_group("MISSING_ENTRY_PRICE") == "dataQuality"
+    assert tfa.failure_reason_group("MISSING_TARGET_OR_STOP") == "dataQuality"
+    assert tfa.failure_reason_group("STOP_TOO_TIGHT") == "evaluatedOutcome"
+    assert tfa.failure_reason_group("STOP_BEFORE_TARGET") == "evaluatedOutcome"
+    assert tfa.failure_reason_group("TARGET_BEFORE_STOP") == "evaluatedOutcome"
+    assert tfa.failure_reason_group("TARGET_NOT_REACHED") == "evaluatedOutcome"
+    assert tfa.failure_reason_group("DIRECTION_FAILED") == "evaluatedOutcome"
+
+
 def test_failure_analytics_labels_new_diagnostic_reasons() -> None:
     reasons = ["STOP_TOO_TIGHT", "OVEREXTENDED_ENTRY", "MARKET_GAP", "UNCLASSIFIED_PRICE_PATH"]
     vtj._write_rows(
@@ -183,6 +199,52 @@ def test_failure_analytics_labels_new_diagnostic_reasons() -> None:
     assert labels["STOP_TOO_TIGHT"] != tfa.failure_reason_label("UNKNOWN")
 
 
+def test_failure_analytics_adds_evaluated_only_and_group_ratios() -> None:
+    reasons = [
+        "INSUFFICIENT_HOLDING_PERIOD",
+        "PENDING_EVALUATION",
+        "NO_FUTURE_BARS_YET",
+        "DATA_MISSING",
+        "MISSING_TARGET_OR_STOP",
+        "STOP_TOO_TIGHT",
+        "STOP_BEFORE_TARGET",
+    ]
+    vtj._write_rows(
+        vtj.JOURNAL_CSV,
+        [_journal_row(f"g{i}", "kr", "balanced", "swing", 70) for i, _ in enumerate(reasons)],
+        vtj.JOURNAL_COLS,
+    )
+    vtj._write_rows(
+        vtj.EVALUATION_CSV,
+        [
+            _eval_row(f"g{i}", "EVALUATED", reason, reason, -2, 3, -4, 2, True, False, True, False)
+            for i, reason in enumerate(reasons)
+        ],
+        vtj.EVALUATION_COLS,
+    )
+
+    out = tfa.build_failure_analytics(market="kr")
+
+    assert out["summary"]["totalTrades"] == 7
+    assert out["summary"]["evaluatedTrades"] == 2
+    assert out["summary"]["pendingTrades"] == 3
+    assert out["summary"]["dataIssueTrades"] == 2
+    assert out["summary"]["evaluatedCoverageRate"] == 0.2857
+    assert out["summary"]["pendingRate"] == 0.4286
+    assert out["summary"]["dataIssueRate"] == 0.2857
+
+    evaluated_reasons = {row["failureReason"]: row for row in out["reasonBreakdownEvaluatedOnly"]}
+    assert set(evaluated_reasons) == {"STOP_TOO_TIGHT", "STOP_BEFORE_TARGET"}
+    assert evaluated_reasons["STOP_TOO_TIGHT"]["ratioWithinAll"] == 0.1429
+    assert evaluated_reasons["STOP_TOO_TIGHT"]["ratioWithinGroup"] == 0.5
+    assert evaluated_reasons["STOP_TOO_TIGHT"]["ratio"] == 0.5
+
+    pending_reasons = {row["failureReason"] for row in out["reasonBreakdownPending"]}
+    data_reasons = {row["failureReason"] for row in out["reasonBreakdownDataQuality"]}
+    assert pending_reasons == {"INSUFFICIENT_HOLDING_PERIOD", "PENDING_EVALUATION", "NO_FUTURE_BARS_YET"}
+    assert data_reasons == {"DATA_MISSING", "MISSING_TARGET_OR_STOP"}
+
+
 def test_failure_analytics_handles_missing_columns_without_500() -> None:
     vtj.JOURNAL_CSV.parent.mkdir(parents=True, exist_ok=True)
     vtj.EVALUATION_CSV.parent.mkdir(parents=True, exist_ok=True)
@@ -194,6 +256,7 @@ def test_failure_analytics_handles_missing_columns_without_500() -> None:
     assert out["status"] == "OK"
     assert out["summary"]["totalTrades"] == 1
     assert out["summary"]["dataIssueTrades"] == 1
+    assert out["summary"]["evaluatedTrades"] == 0
     assert out["failureReasons"][0]["failureReason"] == "DATA_MISSING"
 
 

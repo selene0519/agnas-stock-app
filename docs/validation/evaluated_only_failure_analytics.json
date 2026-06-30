@@ -1,0 +1,125 @@
+{
+  "reportType": "evaluated_only_failure_analytics_static_snapshot",
+  "generatedAt": "2026-06-30",
+  "scope": {
+    "market": "all",
+    "mode": "all",
+    "horizon": "all",
+    "sourceType": "FORWARD_PAPER_TRADE",
+    "journalSession": "all"
+  },
+  "diagnosticOnly": true,
+  "shouldModifyTradingLogicNow": false,
+  "summary": {
+    "totalTrades": 493,
+    "evaluatedTrades": 146,
+    "pendingTrades": 347,
+    "dataIssueTrades": 0,
+    "evaluatedCoverageRate": 0.2961,
+    "pendingRate": 0.7039,
+    "dataIssueRate": 0.0
+  },
+  "reasonBreakdownAllTop5": [
+    {
+      "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+      "label": "평가 기간 부족",
+      "count": 275,
+      "ratioWithinAll": 0.5578,
+      "reasonGroup": "evaluationCoveragePending"
+    },
+    {
+      "failureReason": "STOP_TOO_TIGHT",
+      "label": "손절폭 과소",
+      "count": 48,
+      "ratioWithinAll": 0.0974,
+      "reasonGroup": "evaluatedOutcome"
+    },
+    {
+      "failureReason": "PENDING_EVALUATION",
+      "label": "평가 대기",
+      "count": 41,
+      "ratioWithinAll": 0.0832,
+      "reasonGroup": "evaluationCoveragePending"
+    },
+    {
+      "failureReason": "NO_FUTURE_BARS_YET",
+      "label": "평가 대기",
+      "count": 31,
+      "ratioWithinAll": 0.0629,
+      "reasonGroup": "evaluationCoveragePending"
+    },
+    {
+      "failureReason": "STOP_BEFORE_TARGET",
+      "label": "손절 선도달",
+      "count": 22,
+      "ratioWithinAll": 0.0446,
+      "reasonGroup": "evaluatedOutcome"
+    }
+  ],
+  "reasonBreakdownEvaluatedOnlyTop5": [
+    {
+      "failureReason": "STOP_TOO_TIGHT",
+      "label": "손절폭 과소",
+      "count": 48,
+      "ratioWithinAll": 0.0974,
+      "ratioWithinGroup": 0.3288
+    },
+    {
+      "failureReason": "STOP_BEFORE_TARGET",
+      "label": "손절 선도달",
+      "count": 22,
+      "ratioWithinAll": 0.0446,
+      "ratioWithinGroup": 0.1507
+    },
+    {
+      "failureReason": "ENTRY_NOT_TOUCHED",
+      "label": "진입가 미도달",
+      "count": 20,
+      "ratioWithinAll": 0.0406,
+      "ratioWithinGroup": 0.137
+    },
+    {
+      "failureReason": "MARKET_GAP",
+      "label": "갭 변동 영향",
+      "count": 13,
+      "ratioWithinAll": 0.0264,
+      "ratioWithinGroup": 0.089
+    },
+    {
+      "failureReason": "OVEREXTENDED_ENTRY",
+      "label": "과열 구간 진입",
+      "count": 13,
+      "ratioWithinAll": 0.0264,
+      "ratioWithinGroup": 0.089
+    }
+  ],
+  "reasonBreakdownPendingTop": [
+    {
+      "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+      "label": "평가 기간 부족",
+      "count": 275,
+      "ratioWithinAll": 0.5578,
+      "ratioWithinGroup": 0.7925
+    },
+    {
+      "failureReason": "PENDING_EVALUATION",
+      "label": "평가 대기",
+      "count": 41,
+      "ratioWithinAll": 0.0832,
+      "ratioWithinGroup": 0.1182
+    },
+    {
+      "failureReason": "NO_FUTURE_BARS_YET",
+      "label": "평가 대기",
+      "count": 31,
+      "ratioWithinAll": 0.0629,
+      "ratioWithinGroup": 0.0893
+    }
+  ],
+  "reasonBreakdownDataQualityTop": [],
+  "notes": [
+    "Pending reasons are evaluation coverage states, not failed trade outcomes.",
+    "Evaluated-only ratios exclude pending and data-quality reasons from the group denominator.",
+    "This snapshot does not change recommendation ranking, filtering, EV, _final_score, or entry/target/stop formulas."
+  ]
+}
