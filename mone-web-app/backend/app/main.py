@@ -8403,6 +8403,46 @@ def api_journal_entry_not_touched_diagnostics(
     return _entry_not_touched_diagnostics_response(market, mode, horizon, source_type, journal_session)
 
 
+def _market_gap_diagnostics_response(
+    market: str,
+    mode: str,
+    horizon: str,
+    source_type: str,
+    journal_session: str,
+) -> dict:
+    from app.services import market_gap_diagnostics
+
+    return market_gap_diagnostics.build_market_gap_diagnostics(
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        source_type=source_type,
+        journal_session=journal_session,
+    )
+
+
+@app.get("/api/virtual/market-gap-diagnostics")
+def api_virtual_market_gap_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _market_gap_diagnostics_response(market, mode, horizon, source_type, journal_session)
+
+
+@app.get("/api/journal/market-gap-diagnostics")
+def api_journal_market_gap_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _market_gap_diagnostics_response(market, mode, horizon, source_type, journal_session)
+
+
 @app.get("/api/journal/performance")
 def api_journal_performance(
     market: str = Query("all"),

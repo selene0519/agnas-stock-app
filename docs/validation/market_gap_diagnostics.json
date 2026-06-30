@@ -1,0 +1,50 @@
+{
+  "report": "market_gap_diagnostics_static_snapshot",
+  "task": "feat: add market gap entry guard (2순위 작업, MONE_AGNAS_remaining_work_plan.txt section 4)",
+  "generatedAt": "2026-06-30",
+  "diagnosticOnly": true,
+  "scope": { "market": "all", "mode": "all", "horizon": "all", "sourceType": "all", "journalSession": "all" },
+  "summary": {
+    "totalEvaluatedTrades": 1445,
+    "nextOpenTrades": 1361,
+    "marketGapTrades": 223,
+    "marketGapRate": 0.1639,
+    "avgGapPct": -1.3182,
+    "avgReturnGapGroup": -4.0548,
+    "avgReturnNonGapGroup": 0.1027
+  },
+  "definitionNote": "MARKET_GAP failureReason (set in virtual_trade_journal.py) only fires for entry_type=NEXT_OPEN trades that hit STOP_HIT where the actual fill price deviated >2% from the recommended entry price. It is a subset of stop failures attributable specifically to the overnight/next-open gap, not all gap exposure.",
+  "byMarket": { "kr": { "nextOpenCount": 703, "gapTrades": 181, "gapRate": 0.2575, "avgReturnGapGroup": -4.383 }, "us": { "nextOpenCount": 658, "gapTrades": 42, "gapRate": 0.0638, "avgReturnGapGroup": -2.6407 } },
+  "byMode": { "conservative": { "gapRate": 0.1677 }, "balanced": { "gapRate": 0.1564 }, "aggressive": { "gapRate": 0.1394 } },
+  "byHorizon": { "mid": { "gapRate": 0.1688 }, "swing": { "gapRate": 0.153 }, "short": { "gapRate": 0.142 } },
+  "causeCandidatesTop": [
+    {
+      "causeType": "KR_MARKET_GAP_CONCENTRATION",
+      "summary": "KR market-gap rate (25.75% of NEXT_OPEN trades) is about 4x the US rate (6.38%). Previous-close-based entry prices appear far more exposed to KR overnight/opening volatility than US.",
+      "evidence": { "krGapRate": 0.2575, "usGapRate": 0.0638 }
+    },
+    {
+      "causeType": "GAP_DOWN_DOMINANT",
+      "summary": "Average gap direction for the gap-failure group is -1.32% (KR -0.81%, US -3.52%), i.e. opens below the recommended entry price dominate, consistent with the work plan's '전일 종가 기준 추천 후 다음날 시초가 갭 발생' concern.",
+      "evidence": { "avgGapPctAll": -1.3182, "avgGapPctKr": -0.8073, "avgGapPctUs": -3.5195 }
+    }
+  ],
+  "notableButLimited": {
+    "sessionSplit": "All 1445 evaluated trades come from a single journal_session (AFTER_CLOSE_TRADE) -- the work plan's '장전 추천과 장중 추천 분리' cannot be tested with current data because only one capture session type is present.",
+    "modeHorizonFlat": "Mode (13.9%-16.8%) and horizon (14.2%-16.9%) gap rates are fairly flat -- market (KR vs US) is by far the dominant differentiator, not mode or horizon.",
+    "limitTouchSideFinding": "LIMIT_TOUCH entries (n=84, small) showed much worse aggregate stats (avgReturn -8.99%, stopFailRate 57.1%) than NEXT_OPEN (avgReturn -0.58%, 20.4%) in this dataset -- not directly part of this gap diagnostic, but worth a separate look given the small sample makes it noisy."
+  },
+  "decision": {
+    "appliedPatch": false,
+    "patchType": "diagnostic_only",
+    "shouldModifyTradingLogicNow": false,
+    "rationale": "Per the work plan, gap risk should start as a risk flag / action-downgrade candidate, not candidate exclusion, and only after before/after validation. This change adds diagnostics only."
+  },
+  "recommendedNextStep": "If pursued: scope any future guard to KR NEXT_OPEN entries specifically (where the effect is concentrated and return impact is severe, -4.38% avg vs -0.32% for non-gap KR NEXT_OPEN trades), e.g. flagging a gap-risk warning or downgrading action for KR NEXT_OPEN recommendations issued after a large prior-day move, then validating with before/after replay before any live change.",
+  "newCode": [
+    "mone-web-app/backend/app/services/market_gap_diagnostics.py (new module)",
+    "mone-web-app/backend/app/main.py: GET /api/virtual/market-gap-diagnostics, GET /api/journal/market-gap-diagnostics",
+    "mone-web-app/frontend/lib/api.ts: virtualMarketGapDiagnostics()",
+    "mone-web-app/frontend/components/pages/VirtualJournalPage.tsx: new '갭 변동 위험 진단' section"
+  ]
+}

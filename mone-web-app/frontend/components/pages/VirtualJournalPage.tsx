@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, Target, TimerReset, TrendingUp, XCircle } from "lucide-react";
+import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, Target, TimerReset, TrendingUp, XCircle, Zap } from "lucide-react";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { outcomeTone, toneClassName } from "@/lib/tone";
 import { displayName } from "@/lib/moneDisplay";
@@ -259,6 +259,7 @@ export default function VirtualJournalPage() {
   const [stopLossData, setStopLossData] = useState<any>({});
   const [entryTimingData, setEntryTimingData] = useState<any>({});
   const [entryNotTouchedData, setEntryNotTouchedData] = useState<any>({});
+  const [marketGapData, setMarketGapData] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -267,7 +268,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -278,6 +279,7 @@ export default function VirtualJournalPage() {
         mone.virtualStopLossDiagnostics(scope),
         mone.virtualEntryTimingDiagnostics(scope),
         mone.virtualEntryNotTouchedDiagnostics(scope),
+        mone.virtualMarketGapDiagnostics(scope),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
@@ -296,6 +298,7 @@ export default function VirtualJournalPage() {
       setStopLossData(stopLossRes || {});
       setEntryTimingData(entryTimingRes || {});
       setEntryNotTouchedData(entryNotTouchedRes || {});
+      setMarketGapData(marketGapRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
       setEffData(effRes?.status === "OK" ? effRes : null);
@@ -547,6 +550,16 @@ export default function VirtualJournalPage() {
     MARKET_SPECIFIC_ENTRY_MISS: "특정 시장 집중",
     HORIZON_ENTRY_DEPTH_MISMATCH: "특정 horizon 집중",
     ENTRY_NOT_TOUCHED_CAUSE_UNCLEAR: "원인 불분명",
+  }[causeType] || causeType);
+  const marketGapSummary = marketGapData?.summary || {};
+  const marketGapPatch = marketGapData?.patch || {};
+  const marketGapCauses = (marketGapData?.causeCandidates || []).slice(0, 3);
+  const marketGapCauseLabel = (causeType: string) => ({
+    KR_MARKET_GAP_CONCENTRATION: "KR 갭 위험 집중",
+    GAP_DOWN_DOMINANT: "하락 갭 비중 높음",
+    MODE_SPECIFIC_GAP_FAILURE: "특정 모드 집중",
+    HORIZON_SPECIFIC_GAP_FAILURE: "특정 horizon 집중",
+    GAP_PATTERN_UNCLEAR: "원인 불분명",
   }[causeType] || causeType);
 
   const approvedSuggestions = useMemo(
@@ -1016,6 +1029,77 @@ export default function VirtualJournalPage() {
               ))}
               {!entryNotTouchedCauses.length && (
                 <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">진입가 미도달 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="min-w-0 overflow-hidden rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <Zap size={16} className="shrink-0 text-orange-300" />
+              <span>갭 변동 위험 진단</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+              전일 종가 기준 진입가와 다음날 시가(NEXT_OPEN 체결가) 사이의 괴리로 손절에 걸린 거래를 진단합니다. 추천 제외나 진입가 산식 변경은 아직 적용하지 않았습니다.
+            </p>
+          </div>
+          <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
+            진단 전용
+          </span>
+        </div>
+
+        <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {metric("NEXT_OPEN 거래", marketGapSummary.nextOpenTrades ?? 0)}
+          {metric("갭 실패", marketGapSummary.marketGapTrades ?? 0, "text-orange-300")}
+          {metric("갭 실패율", fmtRate(marketGapSummary.marketGapRate), "text-orange-300")}
+          {metric(
+            "평균 갭",
+            marketGapSummary.avgGapPct == null ? "-" : `${Number(marketGapSummary.avgGapPct).toFixed(2)}%`,
+          )}
+        </div>
+
+        <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">갭 실패 vs 정상 체결 비교</div>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">평균 수익률 (갭 실패)</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-rose-300">
+                  {marketGapSummary.avgReturnGapGroup == null ? "-" : `${Number(marketGapSummary.avgReturnGapGroup).toFixed(2)}%`}
+                </div>
+              </div>
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">평균 수익률 (정상 체결)</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">
+                  {marketGapSummary.avgReturnNonGapGroup == null ? "-" : `${Number(marketGapSummary.avgReturnNonGapGroup).toFixed(2)}%`}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 break-words rounded-md bg-slate-900/70 px-3 py-2 text-[11px] leading-5 text-slate-400 [overflow-wrap:anywhere]">
+              현재 결과는 평가 완료 NEXT_OPEN 거래 기준입니다. 적용 판단: {marketGapPatch.patchReason || "분석 데이터가 아직 충분하지 않습니다."}
+            </div>
+          </div>
+
+          <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">주요 원인 후보</div>
+            <div className="space-y-2">
+              {marketGapCauses.map((item: any, index: number) => (
+                <div key={`${item.causeType || index}`} className="min-w-0 rounded-md bg-slate-900/70 px-3 py-2">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-200">{marketGapCauseLabel(String(item.causeType || ""))}</div>
+                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-500">{item.causeType || "-"}</div>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+                  </div>
+                  <div className="mt-1 break-keep text-[11px] leading-5 text-slate-400">{item.summary || item.title || "-"}</div>
+                </div>
+              ))}
+              {!marketGapCauses.length && (
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">갭 실패 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
               )}
             </div>
           </div>
