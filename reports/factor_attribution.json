@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-06-30 16:49:29",
-  "totalRows": 1496,
+  "updatedAt": "2026-06-30 20:26:15",
+  "totalRows": 1529,
   "olsSampleSize": 1338,
   "byStrategy": {
     "conservative_short": {
@@ -26,15 +26,15 @@
       "probAccuracy": -0.44
     },
     "conservative_mid": {
-      "total": 154,
-      "wins": 56,
-      "losses": 98,
-      "winRate": 0.3636,
-      "avgWinPct": 10.914,
-      "avgLossPct": 7.182,
-      "payoffRatio": 1.52,
-      "avgProbability": 73.8,
-      "probAccuracy": -0.374
+      "total": 163,
+      "wins": 57,
+      "losses": 106,
+      "winRate": 0.3497,
+      "avgWinPct": 11.04,
+      "avgLossPct": 6.969,
+      "payoffRatio": 1.584,
+      "avgProbability": 73.5,
+      "probAccuracy": -0.385
     },
     "balanced_short": {
       "total": 151,
@@ -48,26 +48,26 @@
       "probAccuracy": -0.44
     },
     "balanced_swing": {
-      "total": 231,
-      "wins": 56,
-      "losses": 175,
-      "winRate": 0.2424,
-      "avgWinPct": 8.237,
-      "avgLossPct": 6.334,
-      "payoffRatio": 1.3,
-      "avgProbability": 71.5,
-      "probAccuracy": -0.473
+      "total": 234,
+      "wins": 58,
+      "losses": 176,
+      "winRate": 0.2479,
+      "avgWinPct": 8.402,
+      "avgLossPct": 6.381,
+      "payoffRatio": 1.317,
+      "avgProbability": 71.6,
+      "probAccuracy": -0.468
     },
     "balanced_mid": {
-      "total": 152,
-      "wins": 53,
-      "losses": 99,
-      "winRate": 0.3487,
-      "avgWinPct": 12.175,
-      "avgLossPct": 7.458,
-      "payoffRatio": 1.632,
-      "avgProbability": 74.3,
-      "probAccuracy": -0.394
+      "total": 161,
+      "wins": 55,
+      "losses": 106,
+      "winRate": 0.3416,
+      "avgWinPct": 12.788,
+      "avgLossPct": 7.776,
+      "payoffRatio": 1.644,
+      "avgProbability": 74.7,
+      "probAccuracy": -0.406
     },
     "aggressive_short": {
       "total": 156,
@@ -92,15 +92,15 @@
       "probAccuracy": -0.422
     },
     "aggressive_mid": {
-      "total": 155,
-      "wins": 52,
-      "losses": 103,
-      "winRate": 0.3355,
-      "avgWinPct": 13.247,
-      "avgLossPct": 8.525,
-      "payoffRatio": 1.554,
-      "avgProbability": 75.3,
-      "probAccuracy": -0.417
+      "total": 167,
+      "wins": 55,
+      "losses": 112,
+      "winRate": 0.3293,
+      "avgWinPct": 13.48,
+      "avgLossPct": 8.69,
+      "payoffRatio": 1.551,
+      "avgProbability": 74.9,
+      "probAccuracy": -0.419
     }
   },
   "byMarket": {
@@ -112,25 +112,25 @@
       "payoffRatio": 1.408
     },
     "us": {
-      "total": 712,
-      "winRate": 0.3427,
-      "avgWinPct": 8.04,
-      "avgLossPct": 5.846,
-      "payoffRatio": 1.375
+      "total": 745,
+      "winRate": 0.3383,
+      "avgWinPct": 8.399,
+      "avgLossPct": 6.017,
+      "payoffRatio": 1.396
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 44,
-      "actualWinRate": 0.0682
+      "count": 52,
+      "actualWinRate": 0.0769
     },
     "mid_60-75": {
-      "count": 536,
-      "actualWinRate": 0.3078
+      "count": 540,
+      "actualWinRate": 0.3074
     },
     "high_75+": {
-      "count": 916,
-      "actualWinRate": 0.3253
+      "count": 937,
+      "actualWinRate": 0.3244
     }
   },
   "regressionFactors": {
@@ -176,9 +176,9 @@
     }
   },
   "insight": [
-    "호라이즌: mid 전략 평균 승률 34.9%로 최고",
+    "호라이즌: mid 전략 평균 승률 34.0%로 최고",
     "모드: aggressive 전략 평균 payoff 1.33x로 최고",
-    "마켓: US 승률 34.3%로 우위",
+    "마켓: US 승률 33.8%로 우위",
     "회귀분석: intercept 낮을수록 수익률 향상 (β=-13.288)",
     "전체 팩터 설명력 R²=0.043 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"
