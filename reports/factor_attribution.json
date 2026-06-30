@@ -1,18 +1,18 @@
 {
-  "updatedAt": "2026-06-30 23:43:10",
-  "totalRows": 1544,
+  "updatedAt": "2026-07-01 07:29:58",
+  "totalRows": 1549,
   "olsSampleSize": 1353,
   "byStrategy": {
     "conservative_short": {
-      "total": 176,
+      "total": 178,
       "wins": 51,
-      "losses": 125,
-      "winRate": 0.2898,
+      "losses": 127,
+      "winRate": 0.2865,
       "avgWinPct": 3.242,
-      "avgLossPct": 3.268,
-      "payoffRatio": 0.992,
-      "avgProbability": 73.6,
-      "probAccuracy": -0.446
+      "avgLossPct": 3.271,
+      "payoffRatio": 0.991,
+      "avgProbability": 72.8,
+      "probAccuracy": -0.441
     },
     "conservative_swing": {
       "total": 163,
@@ -37,15 +37,15 @@
       "probAccuracy": -0.387
     },
     "balanced_short": {
-      "total": 153,
+      "total": 156,
       "wins": 48,
-      "losses": 105,
-      "winRate": 0.3137,
+      "losses": 108,
+      "winRate": 0.3077,
       "avgWinPct": 4.264,
-      "avgLossPct": 3.514,
-      "payoffRatio": 1.213,
-      "avgProbability": 74.4,
-      "probAccuracy": -0.43
+      "avgLossPct": 3.574,
+      "payoffRatio": 1.193,
+      "avgProbability": 73.0,
+      "probAccuracy": -0.422
     },
     "balanced_swing": {
       "total": 235,
@@ -105,24 +105,24 @@
   },
   "byMarket": {
     "kr": {
-      "total": 784,
-      "winRate": 0.2832,
+      "total": 786,
+      "winRate": 0.2824,
       "avgWinPct": 7.702,
-      "avgLossPct": 5.469,
-      "payoffRatio": 1.408
+      "avgLossPct": 5.455,
+      "payoffRatio": 1.412
     },
     "us": {
-      "total": 760,
-      "winRate": 0.3382,
+      "total": 763,
+      "winRate": 0.3368,
       "avgWinPct": 8.736,
-      "avgLossPct": 5.983,
-      "payoffRatio": 1.46
+      "avgLossPct": 5.989,
+      "payoffRatio": 1.459
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 52,
-      "actualWinRate": 0.0769
+      "count": 57,
+      "actualWinRate": 0.0702
     },
     "mid_60-75": {
       "count": 550,
@@ -177,8 +177,8 @@
   },
   "insight": [
     "호라이즌: mid 전략 평균 승률 34.2%로 최고",
-    "모드: balanced 전략 평균 payoff 1.40x로 최고",
-    "마켓: US 승률 33.8%로 우위",
+    "모드: balanced 전략 평균 payoff 1.39x로 최고",
+    "마켓: US 승률 33.7%로 우위",
     "회귀분석: intercept 낮을수록 수익률 향상 (β=-13.040)",
     "전체 팩터 설명력 R²=0.036 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"
