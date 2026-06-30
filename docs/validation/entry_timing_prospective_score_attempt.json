@@ -1,0 +1,49 @@
+{
+  "report": "entry_timing_prospective_score_attempt",
+  "task": "feat: validate entry timing guard activation (follow-up: build a genuinely live-computable score)",
+  "generatedAt": "2026-06-30",
+  "background": "entry_timing_guard_activation_validation.json (same date) found the v1 entryTimingRiskScore cannot be activated live because 100% of its HIGH-risk classifications depend on post-outcome fields (MAE/MFE/failureReason). User asked to build a real, prospectively-computable guard instead of leaving it diagnostic-only.",
+  "method": {
+    "candidateFeatures": [
+      "rsi_at_entry", "distance_to_ma20_at_entry", "momentum5_at_entry", "volume_ratio_at_entry"
+    ],
+    "featureSource": "These are already recorded as explicit JOURNAL_COLS at journal-write time (virtual_trade_journal.py), computed from the indicator snapshot as of the recommendation/signal date with no future bars (confirmed lookahead-safe). 100% coverage across all 1445 evaluated trades, so no backfill pipeline was needed.",
+    "scoreDesign": "weakSetupScore (0-4): +1 for each feature at or below its TRAIN-split bottom quartile (rsi<=63.0, distanceToMa20<=3.9, momentum5<=0.51, volumeRatio<=0.8). Hypothesis: 'weak/un-extended setups underperform' (the inverse of the v1 OVEREXTENSION_RISK_HIGH assumption, chosen because univariate train-split analysis showed low-momentum/low-RSI/near-MA trades had the worse stop-failure rate and returns in that period).",
+    "validation": "Time-based train/test split (NOT random) so the score formula is frozen on past dates and evaluated on strictly later, unseen dates -- the correct way to test a prospective signal. Repeated with three different split points to check stability."
+  },
+  "results": {
+    "split_65pct": {
+      "trainDateRange": "2025-11-03 to 2026-03-12",
+      "testDateRange": "2026-03-13 to 2026-06-26",
+      "trainN": 1133,
+      "testN": 312,
+      "trainPattern": "monotonic as hypothesized: weakScore 0->4 stopFailureRate 0.155->0.397, avgReturn +0.43->-3.83",
+      "testPattern": "REVERSED: weakScore 0->4 stopFailureRate 0.452->0.120, avgReturn -4.48->-0.44 (weakest setups performed BEST out-of-sample)"
+    },
+    "split_50pct": {
+      "testDateRange": "2026-02-11 to 2026-06-26",
+      "testN": 582,
+      "testPattern": "non-monotonic, no stable ordering (stopFailureRate by weakScore: 0.306, 0.248, 0.421, 0.292, 0.217)"
+    },
+    "split_75pct": {
+      "testDateRange": "2026-06-19 to 2026-06-26",
+      "testN": 124,
+      "testPattern": "again reversed direction vs train: weakScore 0 (\"strong\" setup) had the WORST stopFailureRate (0.706), weakScore 3 (\"weak\" setup) had the best available (0.348)"
+    }
+  },
+  "additionalFinding": {
+    "observation": "Across all three splits, overall test-period performance degrades the closer the test window is to the present: overall avgReturn was -3.00% (test from 2026-02-11) and -6.47% (test from 2026-06-19), versus a roughly breakeven/positive train period.",
+    "interpretation": "This looks like a regime-level deterioration independent of entry-timing micro-signals, not something an entry-timing risk score can fix. Worth checking against the known BEAR-regime settlement issues noted in project history (see memory: fix/expired-mislabel-and-ohlcv-backfill, fix/ledger-row-corruption) and current market regime classification, separately from this guard-activation task."
+  },
+  "decision": {
+    "guardMode": "diagnostic_only",
+    "appliedGuard": false,
+    "outcome": "B - not activated",
+    "rationale": "A genuinely prospective, lookahead-safe score was built and validated out-of-sample (not just in-sample), per the user's explicit request to do real engineering work rather than flip a flag on the leaky v1 score. The relationship it was built on did not generalize -- it reversed sign across three independent time-based splits. Activating it would risk doing the opposite of its intent (downgrading exactly the setups that performed best in the most recent regime). This is a stronger 'do not activate' signal than mere ambiguity: the direction is unstable, not just weak.",
+    "shouldModifyTradingLogicNow": false
+  },
+  "recommendedNextStep": "Before retrying any entry-timing guard: investigate why overall trade performance has been degrading across the most recent ~3-4 months regardless of setup strength (regime-level issue, possibly related to known BEAR-regime settlement bugs) -- a per-trade entry-timing score cannot fix a regime-level problem. Separately, per the original work plan, proceed to the next priority item (ENTRY_NOT_TOUCHED diagnostics) which does not depend on this guard.",
+  "codeChanges": [
+    "None. This was an analysis-only attempt (ad-hoc validation scripts, not committed); no production code was added for the failed score, per the project principle of not committing unvalidated/half-finished logic. entry_timing_safety.py is unchanged from the prior commit."
+  ]
+}
