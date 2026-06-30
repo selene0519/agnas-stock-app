@@ -8443,6 +8443,46 @@ def api_journal_market_gap_diagnostics(
     return _market_gap_diagnostics_response(market, mode, horizon, source_type, journal_session)
 
 
+def _low_atr_next_open_guard_response(
+    market: str,
+    mode: str,
+    horizon: str,
+    source_type: str,
+    journal_session: str,
+) -> dict:
+    from app.services import low_atr_next_open_guard
+
+    return low_atr_next_open_guard.build_low_atr_guard_diagnostics(
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        source_type=source_type,
+        journal_session=journal_session,
+    )
+
+
+@app.get("/api/virtual/low-atr-next-open-guard")
+def api_virtual_low_atr_next_open_guard(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _low_atr_next_open_guard_response(market, mode, horizon, source_type, journal_session)
+
+
+@app.get("/api/journal/low-atr-next-open-guard")
+def api_journal_low_atr_next_open_guard(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _low_atr_next_open_guard_response(market, mode, horizon, source_type, journal_session)
+
+
 @app.get("/api/journal/performance")
 def api_journal_performance(
     market: str = Query("all"),

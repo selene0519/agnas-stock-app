@@ -23,6 +23,7 @@ from app.services import runtime_limits
 from app.services import trendline_learning
 from app.services import event_context as _ec
 from app.services import adaptive_weights as _aw
+from app.services import low_atr_next_open_guard as _latr_guard
 
 MARKETS = ("kr", "us")
 MODES = ("conservative", "balanced", "aggressive")
@@ -1553,6 +1554,37 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             "walkforwardMetrics": _wf_info,
             "walkforwardAdjustment": round(_wf_adj, 1),
         }
+        # ── KR NEXT_OPEN 저ATR 진입 가드 (v1) ───────────────────────────────
+        # market=KR, decisionBucket="오늘 진입"(=entry_type NEXT_OPEN), atr14Pct가 검증된
+        # 하위 1/3 임계값 미만일 때만 action을 1단계 다운그레이드. finalRankScore는 이미
+        # 위에서 원래 bucket 기준으로 확정되었으므로 건드리지 않음. _final_score, ranking,
+        # filters, EV, candidates, entry/target/stop 산식은 변경하지 않음.
+        # 검증: docs/validation/low_atr_next_open_guard_validation.json
+        # 라이브 KR 후보 소스(predictions.csv, v93_*_cards_kr.csv)에는 atr14Pct가 없어
+        # 이미 로드되는 전체 OHLCV 이력에서 직접 계산한다 (entry/stop/target 산식과 무관).
+        _guard_atr = _num(normalized.get("atr14Pct"))
+        if _guard_atr is None and market == "kr":
+            try:
+                _full_df, _ = _ohlcv_with_dates(sym, market)
+                if not _full_df.empty and len(_full_df) > 14:
+                    _guard_atr = _latr_guard.compute_atr14_pct(
+                        _full_df["high"].astype(float).tolist(),
+                        _full_df["low"].astype(float).tolist(),
+                        _full_df["close"].astype(float).tolist(),
+                    )
+            except Exception:
+                _guard_atr = None
+        _guard_result = _latr_guard.apply_live_guard(market, bucket, buy_timing, _guard_atr)
+        row["originalAction"] = _guard_result["originalAction"]
+        row["adjustedAction"] = _guard_result["adjustedAction"]
+        row["actionAdjustmentReason"] = _guard_result["actionAdjustmentReason"]
+        row["lowAtrNextOpenGuardApplied"] = _guard_result["appliedGuard"]
+        if _guard_result["appliedGuard"]:
+            row["decisionBucket"] = _guard_result["decisionBucket"]
+            row["buyTiming"] = _guard_result["buyTiming"]
+            row["newEntryDecision"] = "대기"
+            row["recommended"] = False
+        # ───────────────────────────────────────────────────────────────────
         # ── 레버리지/인버스 ETF 경고 ─────────────────────────────────────────
         _name_lower = _as_text(row.get("name")).lower()
         _lev_keywords = ("레버리지", "인버스", "2x", "3x", "곱버스", "bear", "bull x")

@@ -2813,6 +2813,61 @@ def _apply_public_quant_trader_policy(payload: dict[str, Any], cash: float) -> d
     return payload
 
 
+def _apply_low_atr_next_open_guard(items: list[dict[str, Any]], market: str) -> None:
+    """KR_NEXT_OPEN_LOW_ATR_GUARD v1 -- the only narrowly-scoped, validated guard from
+    docs/validation/low_atr_next_open_guard_validation.json. Runs LAST (after trade-safety,
+    performance-safety, and the public quant trader policy) so it only touches items that
+    still carry the "오늘 진입" (buy-today / NEXT_OPEN-fill) decisionBucket once every other
+    gate has already had a chance to block/relabel them.
+
+    Scope: market=KR only, decisionBucket=="오늘 진입" (equivalent to entry_type NEXT_OPEN --
+    see virtual_trade_journal.py's `_entry_type()`), atr14Pct (computed fresh from OHLCV here,
+    since the KR recommendation CSVs do not carry an atr14 column) below the validated
+    bottom-tercile cutoff. Never applies to US or to HIGH_ATR KR items, and is not a
+    MARKET_GAP-based rule (that was evaluated and explicitly rejected).
+
+    Does not exclude candidates, does not touch finalRankScore/quantScore, does not change
+    entry/target/stop prices, and does not change which symbols appear in the universe --
+    only decisionBucket/buyTiming and the new originalAction/adjustedAction/
+    actionAdjustmentReason/lowAtrNextOpenGuardApplied/lowAtrNextOpenGuardVersion fields."""
+    from app.services import data_loader as _dl
+    from app.services import low_atr_next_open_guard as _latr
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        bucket = str(item.get("decisionBucket") or "")
+        item_market = str(item.get("market") or market or "").lower()
+        eligible = (
+            item_market == "kr"
+            and bucket == _latr.TODAY_ENTRY_BUCKET
+            and not item.get("isTradeBlocked")
+        )
+        atr_pct: float | None = None
+        if eligible:
+            sym = str(item.get("symbol", ""))
+            try:
+                df, _ = _dl._load_ohlcv(sym, "kr")
+                if df is not None and not df.empty and len(df) > 14:
+                    atr_pct = _latr.compute_atr14_pct(
+                        df["high"].astype(float).tolist(),
+                        df["low"].astype(float).tolist(),
+                        df["close"].astype(float).tolist(),
+                    )
+            except Exception:
+                atr_pct = None
+        result = _latr.apply_live_guard(item_market, bucket, str(item.get("buyTiming") or ""), atr_pct if eligible else None)
+        item["originalAction"] = result["originalAction"]
+        item["adjustedAction"] = result["adjustedAction"]
+        item["actionAdjustmentReason"] = result["actionAdjustmentReason"]
+        item["lowAtrNextOpenGuardApplied"] = result["appliedGuard"]
+        item["lowAtrNextOpenGuardVersion"] = _latr.GUARD_VERSION
+        if result["appliedGuard"]:
+            item["decisionBucket"] = result["decisionBucket"]
+            item["buyTiming"] = result["buyTiming"]
+            item["action"] = result["decisionBucket"]
+
+
 def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
     normalized_market = _market_norm(market)
     normalized_mode = _mode_norm(mode)
@@ -2828,6 +2883,10 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
         payload = _apply_recommendation_trade_safety(payload, normalized_market)
         payload = _apply_recommendation_performance_safety(payload, normalized_market, normalized_mode, normalized_horizon)
         payload = _apply_public_quant_trader_policy(payload, cash)
+    try:
+        _apply_low_atr_next_open_guard(payload.get("items", []), normalized_market)
+    except Exception:
+        pass
     return json.loads(json.dumps(payload, ensure_ascii=False))
 
 

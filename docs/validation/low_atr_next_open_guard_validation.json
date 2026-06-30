@@ -1,0 +1,105 @@
+{
+  "report": "low_atr_next_open_guard_validation",
+  "task": "feat: wire KR next-open low ATR guard to serving path",
+  "generatedAt": "2026-06-30",
+  "supersedes": "MARKET_GAP guard (rejected, see marketGapGuardRejected below)",
+  "guardName": "KR_NEXT_OPEN_LOW_ATR_GUARD",
+  "guardVersion": "v1",
+  "guardMode": "active_if_validated",
+  "appliedGuard": true,
+
+  "marketGapGuardRejected": {
+    "originalHypothesis": "Downgrade KR NEXT_OPEN entries flagged MARKET_GAP (overnight gap caused a stop-out) or, more broadly, high-ATR/volatile KR NEXT_OPEN entries (gap risk correlates with ATR).",
+    "whyRejected": "Deeper analysis showed gap-prone (HIGH_ATR) KR NEXT_OPEN entries have a HIGHER gap-failure rate but a BETTER average return than LOW_ATR entries, consistently across all 3 modes and across time-ordered train/test data. Downgrading HIGH_ATR/gap-prone trades would have punished the better-performing segment.",
+    "evidence": {
+      "trainHighAtrAvgReturn": 0.877,
+      "trainLowAtrAvgReturn": -2.805,
+      "testHighAtrAvgReturn": -1.694,
+      "testLowAtrAvgReturn": -5.886,
+      "withinModeConsistency": "HIGH_ATR outperformed LOW_ATR within conservative, balanced, AND aggressive modes individually -- not a mode confound."
+    },
+    "conclusion": "No MARKET_GAP-based or HIGH_ATR-based downgrade was implemented. The real, validated signal is the opposite direction: LOW_ATR KR NEXT_OPEN entries underperform, not high-ATR/gap-prone ones."
+  },
+
+  "lowAtrGuardValidation": {
+    "method": "Time-ordered 3-fold check (not random split) on 729 KR evaluated journal trades, comparing bottom-tercile-ATR (atr14_pct_at_entry < 6.7, frozen from a 65%-train split) vs the rest, restricted to entry_type=NEXT_OPEN.",
+    "perFoldResults": [
+      {"fold": "2025-11-03 to 2026-01-02", "lowAtrAvgReturn": -2.886, "lowAtrStopFailRate": 0.321, "restAvgReturn": -0.869, "restStopFailRate": 0.106},
+      {"fold": "2026-01-02 to 2026-03-13", "lowAtrAvgReturn": -2.736, "lowAtrStopFailRate": 0.218, "restAvgReturn": 2.425, "restStopFailRate": 0.101},
+      {"fold": "2026-03-13 to 2026-06-26", "lowAtrAvgReturn": -5.886, "lowAtrStopFailRate": 0.519, "restAvgReturn": -1.694, "restStopFailRate": 0.213}
+    ],
+    "consistency": "LOW_ATR underperformed on BOTH avgReturn and stopFailureRate in every one of the 3 independent folds -- no exceptions.",
+    "combinationTried_and_rejected": "A combination of LOW_ATR with a weak-setup proxy (momentum5_at_entry/rsi_at_entry below their LOW_ATR-subset median, since setup_score/momentum_continuation_score are not recorded in the journal at all -- 0/703 coverage) was tried per an earlier instruction but did NOT validate: the train-split direction reversed (weak subset had a BETTER return than not-weak) and the test split shrank to 43 vs 9 trades, too small and unstable to trust. The plain LOW_ATR-only condition (no setup/momentum conditioning) is what actually validated robustly.",
+    "footprintCheck": "216/1445 (14.9%) of all evaluated trades, 216/729 (29.6%) of KR evaluated trades -- a downgrade, not an exclusion, and not a majority of any market."
+  },
+
+  "beforeAfterReplay": {
+    "scope": "All evaluated journal trades, market=KR entry_type=NEXT_OPEN atr14_pct_at_entry<6.7 downgraded out of the 'taken' pool",
+    "all_markets": {
+      "before": {"count": 1445, "stopFailureRate": 0.2249, "avgReturn": -0.9565, "medianReturn": -2.5213, "winRate": 0.3723, "targetBeforeStopRate": 0.2789},
+      "after":  {"count": 1229, "stopFailureRate": 0.2124, "avgReturn": -0.5135, "medianReturn": -2.1562, "winRate": 0.3963, "targetBeforeStopRate": 0.2954},
+      "affectedSegment": {"count": 216, "stopFailureRate": 0.2963, "avgReturn": -3.4359, "medianReturn": -4.7438, "winRate": 0.2361, "targetBeforeStopRate": 0.1852}
+    },
+    "kr_only": {
+      "before": {"count": 729, "stopFailureRate": 0.225, "avgReturn": -1.6062, "medianReturn": -3.0563, "winRate": 0.3278, "targetBeforeStopRate": 0.273},
+      "after":  {"count": 513, "stopFailureRate": 0.1949, "avgReturn": -0.8312, "medianReturn": -2.5802, "winRate": 0.3665, "targetBeforeStopRate": 0.3099}
+    },
+    "us_only": {"affectedTrades": 0, "note": "Guard never applies to US by construction; metrics unchanged."},
+    "byMode_kr": {
+      "conservative": {"before": {"count": 253, "avgReturn": -2.0989, "stopFailureRate": 0.2134}, "after": {"count": 174, "avgReturn": -0.961, "stopFailureRate": 0.1782}},
+      "balanced": {"before": {"count": 236, "avgReturn": -1.3847, "stopFailureRate": 0.2246}, "after": {"count": 171, "avgReturn": -0.729, "stopFailureRate": 0.1813}},
+      "aggressive": {"before": {"count": 240, "avgReturn": -1.304, "stopFailureRate": 0.2375}, "after": {"count": 168, "avgReturn": -0.8012, "stopFailureRate": 0.2262}}
+    },
+    "byHorizon_kr": {
+      "short": {"before": {"count": 239, "avgReturn": -1.1605, "stopFailureRate": 0.1967}, "after": {"count": 165, "avgReturn": -0.7629, "stopFailureRate": 0.1576}},
+      "swing": {"before": {"count": 247, "avgReturn": -2.055, "stopFailureRate": 0.2267}, "after": {"count": 175, "avgReturn": -1.5253, "stopFailureRate": 0.2057}},
+      "mid": {"before": {"count": 243, "avgReturn": -1.5902, "stopFailureRate": 0.251}, "after": {"count": 173, "avgReturn": -0.2019, "stopFailureRate": 0.2197}}
+    },
+    "interpretation": "Every cut (overall, KR-only, all 3 modes, all 3 horizons) improves on both avgReturn and stopFailureRate after downgrading the segment. No cut gets worse."
+  },
+
+  "activationConditionsChecked": {
+    "improvementOrLossAvoidanceClear": true,
+    "recommendationCountReductionNotExcessive": "14.9% overall / 29.6% of KR -- a downgrade applied to a minority subset, not a blanket cut",
+    "notAppliedToUS": true,
+    "notAppliedToHighAtr": true
+  },
+
+  "applicationMethod": {
+    "originalActionPreserved": "originalAction field",
+    "adjustedActionField": "adjustedAction field, also written into action/decisionBucket for the actual served response",
+    "reasonField": "actionAdjustmentReason",
+    "appliedFlag": "lowAtrNextOpenGuardApplied",
+    "versionFlag": "lowAtrNextOpenGuardVersion",
+    "mapping": "BUY-equivalent ('오늘 진입', the only KR 'buy now' bucket value, which is exactly the entry_type=NEXT_OPEN case per virtual_trade_journal.py's _entry_type()) -> downgraded to '기다림' (WAIT_PULLBACK-equivalent: '기준가 도달 대기')",
+    "noExclusion": "Candidate is NOT removed from the universe or response, only its decisionBucket/buyTiming/action fields change",
+    "noScoreChange": "finalRankScore/quantScore/_final_score untouched",
+    "noFormulaChange": "entry/target/stop price formulas untouched"
+  },
+
+  "servingPathCorrection": {
+    "initialMistake": "The guard was first wired into mone-web-app/backend/app/services/final_engine.py's final_recommendations()/_decision_bucket(), which is NOT the function that actually serves GET /api/final/recommendations. main.py:786 calls final_engine.final_recommendations(), but an earlier-registered route for the same path inside mone-web-app/backend/app/engine/mone_v65_api_stabilizer.py (registered before main.py's own route reaches that line during app startup) wins routing, so main.py:786 is effectively dead code for this endpoint. Confirmed empirically: calling final_engine.final_recommendations() directly showed the new originalAction/adjustedAction fields and the 'BUY-equivalent' Korean vocabulary ('오늘 진입'/'기다림'/'관찰'/'주의'), but curling the live HTTP endpoint showed a completely different field shape (uniqueCount/hiddenCount/evHardFiltered) and decisionBucket vocabulary ('매수금지'), proving a different function was actually serving the request.",
+    "realServingFunction": "mone-web-app/backend/app/engine/mone_v65_api_stabilizer.py: _recommendations_payload() / _recommendations_payload_cached(), which reads candidate rows directly from reports/mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv (written offline by scripts/generate_kr_recommendations.py / generate_us_recommendations.py), applies a live quant_scanner.py overlay that can re-tighten decisionBucket (including to '매수금지'), then layers _apply_recommendation_trade_safety -> _apply_recommendation_performance_safety -> _apply_public_quant_trader_policy before returning.",
+    "fix": "Added _apply_low_atr_next_open_guard(items, market) in mone_v65_api_stabilizer.py, called as the LAST step in _recommendations_payload() (after all 3 existing safety/policy layers), so it only acts on items that still carry the '오늘 진입' bucket and are not already isTradeBlocked once every other gate has run. final_engine.py's parallel implementation (low_atr_next_open_guard.apply_live_guard(), called from final_engine.py's final_recommendations()) was left in place as a shared, tested helper module (low_atr_next_open_guard.py is imported by BOTH final_engine.py and mone_v65_api_stabilizer.py) -- it is not wrong, just not the path that matters for the live endpoint. Treat any prior claim that this was 'already applied' via final_engine.py alone as incorrect.",
+    "atrAvailabilityNote": "Neither the live final_engine.py candidate sources (predictions.csv, v93_*_cards_kr.csv) NOR the mone_v36_final_recommendations_kr_*.csv report files used by the real serving path carry an atr14Pct column for KR (only the US report CSVs do). low_atr_next_open_guard.compute_atr14_pct() was added to compute it fresh from already-available OHLCV history (same formula as scripts/generate_kr_recommendations.py:_atr()), in both final_engine.py and mone_v65_api_stabilizer.py call sites."
+  },
+
+  "liveVerification": {
+    "method": "Synthetic unit-style test of _apply_low_atr_next_open_guard() with controlled inputs covering every branch (LOW_ATR KR eligible, HIGH_ATR KR not-eligible, LOW_ATR US not-eligible, LOW_ATR KR already-blocked not-touched, LOW_ATR KR non-buy-bucket not-touched). All 5 cases behaved correctly.",
+    "liveHttpEndpointCaveat": "As of 2026-06-30, all 9 KR mode/horizon combinations are currently under isTradeBlocked=True for 100% of items (a pre-existing, unrelated performance-gate/quant-overlay block, consistent with the 'recent performance degradation' finding from the same session -- see project memory). This means zero KR items currently reach the '오늘 진입' state the guard checks for, so the guard's effect cannot be observed in the live HTTP response RIGHT NOW. This is a precondition timing issue, not a guard bug -- confirmed via the synthetic test and via direct calls to the underlying function. The guard will visibly fire once any KR recommendation reaches '오늘 진입' and is not already blocked by the (separate, more severe) performance gate.",
+    "testsRun": {
+      "pytest": "487 passed, 1 deselected (a pre-existing, unrelated failure: a runtime CSV report file is missing setupScore-family columns -- this is a data-pipeline finding from earlier in the same session, not caused by this change), 0 failures attributable to this change",
+      "tscNoEmit": "0 errors (no frontend files were changed in this guard-wiring work)",
+      "npmRunBuild": "not run -- no frontend changes in this change set, tsc --noEmit already confirms type safety"
+    }
+  },
+
+  "shouldModifyTradingLogicNow": true,
+  "scopeSummary": "market=KR only, decisionBucket=='오늘 진입' (entry_type NEXT_OPEN equivalent) only, atr14Pct<6.7 (bottom tercile) only. Never US, never HIGH_ATR, never MARKET_GAP-based, never candidate exclusion, never _final_score/ranking/EV/entry-target-stop formula changes.",
+  "codeChanges": [
+    "mone-web-app/backend/app/services/low_atr_next_open_guard.py (new shared module: compute_atr14_pct, apply_live_guard, plus journal-diagnostics functions build_low_atr_guard_diagnostics/empty_response used by the API below)",
+    "mone-web-app/backend/app/services/final_engine.py: imports low_atr_next_open_guard, computes atr14Pct fresh from OHLCV when missing, calls apply_live_guard() after finalRankScore is already locked in from the original bucket (not a serving path for /api/final/recommendations, but kept as a working, tested implementation)",
+    "mone-web-app/backend/app/engine/mone_v65_api_stabilizer.py: new _apply_low_atr_next_open_guard(), called as the last step of _recommendations_payload() -- THIS is the function that actually affects the live API",
+    "mone-web-app/backend/app/main.py: GET /api/virtual/low-atr-next-open-guard, GET /api/journal/low-atr-next-open-guard (diagnostics/replay API, unaffected by the serving-path correction)"
+  ]
+}
