@@ -1,0 +1,87 @@
+{
+  "report": "entry_timing_guard_activation_validation",
+  "task": "feat: validate entry timing guard activation",
+  "generatedAt": "2026-06-30",
+  "guardVersion": "v1",
+  "question": "Does applying adjustedAction (HIGH risk BUY/STRONG_BUY -> WAIT_PULLBACK, WATCH/HOLD -> CAUTION) instead of the original action actually improve outcomes, and is it safe to activate in the live recommendation engine?",
+  "method": {
+    "step1_naiveReplay": "Compare metrics on all evaluated journal trades (baseline) vs. the same set with HIGH-risk-flagged trades removed (activeGuard), reusing the existing _before_after() replay in entry_timing_safety.py.",
+    "step2_lookaheadCheck": "Added in this task: for every HIGH-risk (affected) trade, check whether its entryTimingRiskScore reasons include ANY criterion that is only knowable AFTER the trade plays out (MAE_DEEPER_THAN_MFE, STOP_TOO_TIGHT, STOP_BEFORE_TARGET, OVEREXTENDED_ENTRY, MARKET_GAP), versus criteria knowable AT RECOMMENDATION TIME (OVEREXTENSION_RISK_HIGH, LOW_MOMENTUM_WITH_OVEREXTENSION, derived from overextensionRisk/momentumContinuationScore/setupScore).",
+    "step3_dataCoverageCheck": "Checked how many evaluated journal rows actually carry overextensionRisk/momentumContinuationScore/setupScore values at all (these are display-only diagnostic fields produced by data_loader.py at recommendation time, separate from raw_recommendation's stored fields)."
+  },
+  "step1_naiveReplayResults": {
+    "all": {
+      "evaluatedTrades": 1445,
+      "affectedTrades": 410,
+      "stopFailureRateBefore": 0.2249,
+      "stopFailureRateAfter": 0.0937,
+      "avgReturnBefore": -0.9565,
+      "avgReturnAfter": 1.459,
+      "winRateBefore": 0.3723,
+      "winRateAfter": 0.5198
+    },
+    "kr": {
+      "evaluatedTrades": 729,
+      "affectedTrades": 219,
+      "stopFailureRateBefore": 0.225,
+      "stopFailureRateAfter": 0.1078,
+      "avgReturnBefore": -1.6062,
+      "avgReturnAfter": 0.6048,
+      "winRateBefore": 0.3278,
+      "winRateAfter": 0.4686
+    },
+    "us": {
+      "evaluatedTrades": 716,
+      "affectedTrades": 191,
+      "stopFailureRateBefore": 0.2249,
+      "stopFailureRateAfter": 0.08,
+      "avgReturnBefore": -0.2816,
+      "avgReturnAfter": 2.3116,
+      "winRateBefore": 0.4176,
+      "winRateAfter": 0.5695
+    },
+    "interpretation": "On its face this looks like a clean win in every dimension and every market. This is exactly why it required the look-ahead check below before any activation decision."
+  },
+  "step2_lookaheadBiasCheck": {
+    "affectedTrades": 410,
+    "affectedTradesReachableUsingOnlyRecommendationTimeFeatures": 0,
+    "affectedTradesRequiringPostOutcomeData": 410,
+    "lookaheadBiasDetected": true,
+    "reasonReasonFrequencyAmongHighRiskTrades": {
+      "MAE_DEEPER_THAN_MFE": "410/410 (100%) - requires the realized adverse excursion during the actual holding period",
+      "STOP_TOO_TIGHT": "209/410 (51%) - requires the realized failureReason outcome",
+      "OVEREXTENDED_ENTRY": "182/410 (44%) - requires the realized failureReason outcome",
+      "STOP_BEFORE_TARGET": "19/410 (4.6%) - requires the realized failureReason outcome"
+    },
+    "maxScoreReachableWithRecommendationTimeOnlyFeatures": 3,
+    "highRiskThreshold": 4,
+    "conclusion": "By construction, OVEREXTENSION_RISK_HIGH (+2) and LOW_MOMENTUM_WITH_OVEREXTENSION (+1) are the only two scoring criteria that do not require knowing the trade's future price path. Their maximum combined contribution is 3 points, which is below the HIGH threshold of 4. Therefore no trade can ever reach HIGH risk using only data available at the moment a live recommendation is issued -- every HIGH classification necessarily includes at least one criterion derived from the realized outcome (MAE/MFE/failureReason)."
+  },
+  "step3_dataCoverageCheck": {
+    "evaluatedTrades": 1445,
+    "evaluatedTradesWithOverextensionRiskValue": 0,
+    "evaluatedTradesWithMomentumContinuationScoreValue": 0,
+    "evaluatedTradesWithSetupScoreValue": 0,
+    "conclusion": "Independent of the scoring-threshold issue above, the prospective fields are not even populated in the merged virtual_trade_journal evaluation rows in the current data pipeline (raw_recommendation snapshots captured at journal-write time do not carry overextensionRisk/momentumContinuationScore/setupScore keys). In current operation, entryTimingRiskScore is computed 100% from outcome-only data (MAE, MFE, failureReason), 0% from recommendation-time features."
+  },
+  "decision": {
+    "guardMode": "diagnostic_only",
+    "appliedGuard": false,
+    "activationDecision": "diagnostic_only",
+    "outcome": "B (per MONE_AGNAS_remaining_work_plan.txt section 3) - not activated",
+    "rationale": "This is a stronger finding than 'ambiguous results, keep cautious': the apparent improvement in step1 is not a forecast of what an active guard would do, because the guard cannot be computed before the outcome exists. Activating it as designed is not merely risky -- it is not implementable as a live, prospective gate. The step1 numbers reflect retrospectively excluding trades whose bad outcome is already known, not a predictive filter.",
+    "shouldModifyTradingLogicNow": false
+  },
+  "recommendedNextStep": "To build a genuinely activatable entry-timing guard: (1) persist overextensionRisk/momentumContinuationScore/setupScore into virtual_trade_journal evaluation rows at journal-write time (currently dropped before merge), (2) design a new risk score using ONLY recommendation-time features (the existing OVEREXTENSION_RISK_HIGH/LOW_MOMENTUM_WITH_OVEREXTENSION criteria plus possibly entry_distance/RSI from dsg_signal_engine.py's chase-risk classifier), (3) validate that prospective-only score against historical evaluated outcomes as a true held-out predictor (bucket by score, check stop-failure rate / return monotonicity) before ever gating a live action.",
+  "codeChanges": [
+    "mone-web-app/backend/app/services/entry_timing_safety.py: added _lookahead_bias_check() and wired it into _activation_decision() and build_entry_timing_diagnostics(); activationReason now states the look-ahead bias finding instead of a generic 'criteria passed but unimplemented' message; new lookaheadBiasCheck field exposed in /api/virtual/entry-timing-diagnostics and /api/journal/entry-timing-diagnostics responses (and empty_response())."
+  ],
+  "overfitControls": [
+    "evaluated-only rows",
+    "pending and data-quality reasons excluded",
+    "look-ahead bias explicitly checked per-trade, not assumed",
+    "no change to _final_score, ranking, filters, EV, candidates, or entry/target/stop formulas",
+    "no change to live recommendation action decision (final_engine.py untouched)",
+    "shouldModifyTradingLogicNow remains false"
+  ]
+}

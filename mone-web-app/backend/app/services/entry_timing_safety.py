@@ -341,12 +341,54 @@ def _before_after(evaluated: list[dict[str, Any]], affected: list[dict[str, Any]
     }
 
 
-def _activation_decision(evaluated: list[dict[str, Any]], affected: list[dict[str, Any]], replay: dict[str, Any]) -> dict[str, Any]:
+_PROSPECTIVE_ONLY_REASONS = {"OVEREXTENSION_RISK_HIGH", "LOW_MOMENTUM_WITH_OVEREXTENSION"}
+
+
+def _lookahead_bias_check(evaluated: list[dict[str, Any]], affected: list[dict[str, Any]]) -> dict[str, Any]:
+    """Check whether HIGH-risk classification can be reproduced using only data
+    available at the moment a live recommendation is issued (i.e. without
+    maxFavorableExcursion/maxAdverseExcursion/failureReason, which only exist
+    after the trade has already played out)."""
+    have_prospective_fields = sum(
+        1
+        for row in evaluated
+        if _overextension_risk(row) is not None or _momentum_score(row) is not None or _setup_score(row) is not None
+    )
+    reachable_without_outcome_data = 0
+    for row in affected:
+        risk = compute_entry_timing_risk(row)
+        outcome_reasons = set(risk["entryTimingRiskReasons"]) - _PROSPECTIVE_ONLY_REASONS
+        if not outcome_reasons:
+            reachable_without_outcome_data += 1
+    return {
+        "evaluatedTradesWithProspectiveFeatureData": have_prospective_fields,
+        "affectedTrades": len(affected),
+        "affectedTradesReachableWithoutOutcomeData": reachable_without_outcome_data,
+        "affectedTradesRequiringOutcomeData": len(affected) - reachable_without_outcome_data,
+        "lookaheadBiasDetected": bool(affected) and reachable_without_outcome_data == 0,
+    }
+
+
+def _activation_decision(
+    evaluated: list[dict[str, Any]],
+    affected: list[dict[str, Any]],
+    replay: dict[str, Any],
+    lookahead: dict[str, Any],
+) -> dict[str, Any]:
     before_stop = float(replay.get("stopFailureRateBefore") or 0)
     after_stop = float(replay.get("stopFailureRateAfter") or 0)
     before_return = replay.get("avgReturnBefore")
     after_return = replay.get("avgReturnAfter")
     reasons = []
+    if lookahead.get("lookaheadBiasDetected"):
+        reasons.append(
+            "HIGH risk로 분류된 거래 "
+            f"{lookahead.get('affectedTrades', 0)}건 전부가 maxAdverseExcursion/maxFavorableExcursion/"
+            "failureReason처럼 거래가 끝난 뒤에만 알 수 있는 사후 데이터에 의존하고 있습니다 "
+            "(추천 시점에 알 수 있는 overextensionRisk/momentumContinuationScore만으로는 HIGH 임계값에 "
+            "도달한 거래가 0건입니다). 따라서 이 리플레이의 손절실패율/수익률 개선은 실제 사전 예측력이 "
+            "아니라 이미 결과를 아는 거래를 사후에 제외한 효과이며, 라이브 추천 단계에서는 재현할 수 없습니다."
+        )
     if len(evaluated) < MIN_ACTIVATION_SAMPLE:
         reasons.append("평가 완료 표본이 작아 active guard를 적용하지 않았습니다.")
     if len(affected) < MIN_AFFECTED_SAMPLE:
@@ -357,13 +399,20 @@ def _activation_decision(evaluated: list[dict[str, Any]], affected: list[dict[st
         reasons.append("active-guard 리플레이에서 평균 수익률 악화 가능성이 있습니다.")
     if not reasons:
         reasons.append("리플레이 기준은 통과했지만 현재 구현은 추천 action을 자동 변경하지 않고 프리뷰로만 제공합니다.")
+    next_step = (
+        "overextensionRisk/momentumContinuationScore/setupScore를 매매일지 평가 행에 보존하고, "
+        "이 prospective 피처만으로 별도의 사전 위험 점수를 새로 설계·검증한 뒤에 활성화 여부를 다시 판단하세요."
+        if lookahead.get("lookaheadBiasDetected")
+        else "HIGH risk action downgrade 후보를 별도 검증군으로 추적한 뒤 운영 반영 여부를 다시 판단하세요."
+    )
     return {
         "guardMode": "diagnostic_only",
         "appliedGuard": False,
         "activationDecision": "diagnostic_only",
         "activationReason": " ".join(reasons),
-        "recommendedNextStep": "HIGH risk action downgrade 후보를 별도 검증군으로 추적한 뒤 운영 반영 여부를 다시 판단하세요.",
+        "recommendedNextStep": next_step,
         "shouldModifyTradingLogicNow": False,
+        "lookaheadBiasCheck": lookahead,
     }
 
 
@@ -420,6 +469,13 @@ def empty_response(
         "guardVersion": GUARD_VERSION,
         "activationDecision": "diagnostic_only",
         "activationReason": "분석 가능한 평가 완료 거래가 아직 없습니다.",
+        "lookaheadBiasCheck": {
+            "evaluatedTradesWithProspectiveFeatureData": 0,
+            "affectedTrades": 0,
+            "affectedTradesReachableWithoutOutcomeData": 0,
+            "affectedTradesRequiringOutcomeData": 0,
+            "lookaheadBiasDetected": False,
+        },
         "affectedTrades": [],
         "marketBreakdown": [],
         "modeBreakdown": [],
@@ -477,7 +533,8 @@ def build_entry_timing_diagnostics(
     stop_failure = [row for row in evaluated if _reason(row) in STOP_FAILURE_REASONS]
     metrics = _metrics(evaluated)
     replay = _before_after(evaluated, affected)
-    decision = _activation_decision(evaluated, affected, replay)
+    lookahead = _lookahead_bias_check(evaluated, affected)
+    decision = _activation_decision(evaluated, affected, replay, lookahead)
     summary = {
         "totalEvaluatedTrades": len(evaluated),
         "entryTimingRiskTrades": len(risk_rows),
