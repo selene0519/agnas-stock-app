@@ -1,0 +1,351 @@
+{
+  "generatedAt": "2026-06-30T00:00:00+09:00",
+  "report": "trade_unknown_failure_reason_diagnostics",
+  "baseline": {
+    "source": "HEAD:data/virtual_trade_evaluations.csv",
+    "totalEvaluationRows": 1791,
+    "unknownCount": 316,
+    "unknownRatio": 0.1764,
+    "topFailureReasons": [
+      {
+        "failureReason": "NONE",
+        "count": 399
+      },
+      {
+        "failureReason": "UNKNOWN",
+        "count": 316
+      },
+      {
+        "failureReason": "STOP_TOO_TIGHT",
+        "count": 303
+      },
+      {
+        "failureReason": "OVEREXTENDED_ENTRY",
+        "count": 233
+      },
+      {
+        "failureReason": "MARKET_GAP",
+        "count": 223
+      },
+      {
+        "failureReason": "FALSE_SIGNAL",
+        "count": 73
+      },
+      {
+        "failureReason": "THESIS_VALID_BUT_SLOW",
+        "count": 42
+      },
+      {
+        "failureReason": "DATA_MISSING",
+        "count": 31
+      },
+      {
+        "failureReason": "ENTRY_TIMING",
+        "count": 29
+      },
+      {
+        "failureReason": "POSITION_SIZE",
+        "count": 26
+      }
+    ]
+  },
+  "currentAnalytics": [
+    {
+      "market": "all",
+      "scope": {
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "journalSession": "all",
+        "mode": "all",
+        "horizon": "all"
+      },
+      "totalTrades": 493,
+      "after": {
+        "unknownCount": 0,
+        "unknownRatio": 0.0,
+        "topFailureReasons": [
+          {
+            "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+            "label": "평가 기간 부족",
+            "count": 275,
+            "ratio": 0.5578
+          },
+          {
+            "failureReason": "STOP_TOO_TIGHT",
+            "label": "손절폭 과소",
+            "count": 48,
+            "ratio": 0.0974
+          },
+          {
+            "failureReason": "PENDING_EVALUATION",
+            "label": "평가 대기",
+            "count": 41,
+            "ratio": 0.0832
+          },
+          {
+            "failureReason": "NO_FUTURE_BARS_YET",
+            "label": "평가 대기",
+            "count": 31,
+            "ratio": 0.0629
+          },
+          {
+            "failureReason": "STOP_BEFORE_TARGET",
+            "label": "손절 선도달",
+            "count": 22,
+            "ratio": 0.0446
+          }
+        ],
+        "pendingLikeReasons": [
+          {
+            "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+            "count": 275,
+            "ratio": 0.5578,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": 6.2472,
+            "avgMAE": -4.6387,
+            "avgHoldingDays": 3.6473,
+            "entryTouchedRate": 1.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 기간 부족"
+          },
+          {
+            "failureReason": "PENDING_EVALUATION",
+            "count": 41,
+            "ratio": 0.0832,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": null,
+            "avgMAE": null,
+            "avgHoldingDays": 0.0,
+            "entryTouchedRate": 0.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 대기"
+          },
+          {
+            "failureReason": "NO_FUTURE_BARS_YET",
+            "count": 31,
+            "ratio": 0.0629,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": null,
+            "avgMAE": null,
+            "avgHoldingDays": 0.0,
+            "entryTouchedRate": 0.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 대기"
+          }
+        ],
+        "dataQualityReasons": []
+      }
+    },
+    {
+      "market": "kr",
+      "scope": {
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "journalSession": "all",
+        "mode": "all",
+        "horizon": "all"
+      },
+      "totalTrades": 166,
+      "after": {
+        "unknownCount": 0,
+        "unknownRatio": 0.0,
+        "topFailureReasons": [
+          {
+            "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+            "label": "평가 기간 부족",
+            "count": 82,
+            "ratio": 0.494
+          },
+          {
+            "failureReason": "NO_FUTURE_BARS_YET",
+            "label": "평가 대기",
+            "count": 22,
+            "ratio": 0.1325
+          },
+          {
+            "failureReason": "STOP_TOO_TIGHT",
+            "label": "손절폭 과소",
+            "count": 18,
+            "ratio": 0.1084
+          },
+          {
+            "failureReason": "PENDING_EVALUATION",
+            "label": "평가 대기",
+            "count": 13,
+            "ratio": 0.0783
+          },
+          {
+            "failureReason": "OVEREXTENDED_ENTRY",
+            "label": "과열 구간 진입",
+            "count": 10,
+            "ratio": 0.0602
+          }
+        ],
+        "pendingLikeReasons": [
+          {
+            "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+            "count": 82,
+            "ratio": 0.494,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": 8.9674,
+            "avgMAE": -5.3188,
+            "avgHoldingDays": 4.378,
+            "entryTouchedRate": 1.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 기간 부족"
+          },
+          {
+            "failureReason": "NO_FUTURE_BARS_YET",
+            "count": 22,
+            "ratio": 0.1325,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": null,
+            "avgMAE": null,
+            "avgHoldingDays": 0.0,
+            "entryTouchedRate": 0.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 대기"
+          },
+          {
+            "failureReason": "PENDING_EVALUATION",
+            "count": 13,
+            "ratio": 0.0783,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": null,
+            "avgMAE": null,
+            "avgHoldingDays": 0.0,
+            "entryTouchedRate": 0.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 대기"
+          }
+        ],
+        "dataQualityReasons": []
+      }
+    },
+    {
+      "market": "us",
+      "scope": {
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "journalSession": "all",
+        "mode": "all",
+        "horizon": "all"
+      },
+      "totalTrades": 327,
+      "after": {
+        "unknownCount": 0,
+        "unknownRatio": 0.0,
+        "topFailureReasons": [
+          {
+            "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+            "label": "평가 기간 부족",
+            "count": 193,
+            "ratio": 0.5902
+          },
+          {
+            "failureReason": "STOP_TOO_TIGHT",
+            "label": "손절폭 과소",
+            "count": 30,
+            "ratio": 0.0917
+          },
+          {
+            "failureReason": "PENDING_EVALUATION",
+            "label": "평가 대기",
+            "count": 28,
+            "ratio": 0.0856
+          },
+          {
+            "failureReason": "ENTRY_NOT_TOUCHED",
+            "label": "진입가 미도달",
+            "count": 17,
+            "ratio": 0.052
+          },
+          {
+            "failureReason": "STOP_BEFORE_TARGET",
+            "label": "손절 선도달",
+            "count": 14,
+            "ratio": 0.0428
+          }
+        ],
+        "pendingLikeReasons": [
+          {
+            "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+            "count": 193,
+            "ratio": 0.5902,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": 5.0914,
+            "avgMAE": -4.3497,
+            "avgHoldingDays": 3.3368,
+            "entryTouchedRate": 1.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 기간 부족"
+          },
+          {
+            "failureReason": "PENDING_EVALUATION",
+            "count": 28,
+            "ratio": 0.0856,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": null,
+            "avgMAE": null,
+            "avgHoldingDays": 0.0,
+            "entryTouchedRate": 0.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 대기"
+          },
+          {
+            "failureReason": "NO_FUTURE_BARS_YET",
+            "count": 9,
+            "ratio": 0.0275,
+            "avgReturn": null,
+            "medianReturn": null,
+            "winRate": 0.0,
+            "avgMFE": null,
+            "avgMAE": null,
+            "avgHoldingDays": 0.0,
+            "entryTouchedRate": 0.0,
+            "targetTouchedRate": 0.0,
+            "stopTouchedRate": 0.0,
+            "targetBeforeStopRate": null,
+            "label": "평가 대기"
+          }
+        ],
+        "dataQualityReasons": []
+      }
+    }
+  ],
+  "summary": {
+    "allMarketUnknownBeforeCount": 316,
+    "allMarketUnknownAfterCount": 0,
+    "allMarketUnknownAfterRatio": 0.0
+  },
+  "note": "This snapshot reclassifies legacy UNKNOWN rows for diagnostics only. It does not change recommendation scoring, ranking, filtering, EV, or entry/target/stop formulas. Runtime data/ and reports/ files are not part of this validation snapshot."
+}

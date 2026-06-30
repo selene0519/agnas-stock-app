@@ -150,11 +150,15 @@ def test_failure_reason_labels_are_specific_and_safe() -> None:
     assert tfa.failure_reason_label("STOP_TOO_TIGHT") == "손절폭 과소"
     assert tfa.failure_reason_label("OVEREXTENDED_ENTRY") == "과열 구간 진입"
     assert tfa.failure_reason_label("MARKET_GAP") == "갭 변동 영향"
+    assert tfa.failure_reason_label("NO_FUTURE_BARS_YET") == "평가 대기"
+    assert tfa.failure_reason_label("INSUFFICIENT_HOLDING_PERIOD") == "평가 기간 부족"
+    assert tfa.failure_reason_label("ENTRY_TOUCHED_BUT_NO_EXIT") == "진입 후 미청산"
+    assert tfa.failure_reason_label("SYMBOL_OR_DATE_MISMATCH") == "종목/날짜 매칭 실패"
     assert tfa.failure_reason_label("BRAND_NEW_REASON") == "미정의 원인 (BRAND_NEW_REASON)"
 
 
 def test_failure_analytics_labels_new_diagnostic_reasons() -> None:
-    reasons = ["STOP_TOO_TIGHT", "OVEREXTENDED_ENTRY", "MARKET_GAP", "UNKNOWN"]
+    reasons = ["STOP_TOO_TIGHT", "OVEREXTENDED_ENTRY", "MARKET_GAP", "UNCLASSIFIED_PRICE_PATH"]
     vtj._write_rows(
         vtj.JOURNAL_CSV,
         [_journal_row(f"l{i}", "kr", "balanced", "swing", 70) for i, _ in enumerate(reasons)],
@@ -172,11 +176,11 @@ def test_failure_analytics_labels_new_diagnostic_reasons() -> None:
     out = tfa.build_failure_analytics(market="kr")
     labels = {row["failureReason"]: row["label"] for row in out["failureReasons"]}
 
-    assert labels["UNKNOWN"] == "원인 미분류"
     assert labels["STOP_TOO_TIGHT"] == "손절폭 과소"
     assert labels["OVEREXTENDED_ENTRY"] == "과열 구간 진입"
     assert labels["MARKET_GAP"] == "갭 변동 영향"
-    assert labels["STOP_TOO_TIGHT"] != labels["UNKNOWN"]
+    assert labels["UNCLASSIFIED_PRICE_PATH"] == "가격 경로 미분류"
+    assert labels["STOP_TOO_TIGHT"] != tfa.failure_reason_label("UNKNOWN")
 
 
 def test_failure_analytics_handles_missing_columns_without_500() -> None:
@@ -191,6 +195,50 @@ def test_failure_analytics_handles_missing_columns_without_500() -> None:
     assert out["summary"]["totalTrades"] == 1
     assert out["summary"]["dataIssueTrades"] == 1
     assert out["failureReasons"][0]["failureReason"] == "DATA_MISSING"
+
+
+def test_failure_analytics_reclassifies_legacy_unknown_pending_rows() -> None:
+    vtj._write_rows(
+        vtj.JOURNAL_CSV,
+        [
+            _journal_row("u1", "kr", "balanced", "swing", 70),
+            _journal_row("u2", "kr", "balanced", "swing", 70),
+        ],
+        vtj.JOURNAL_COLS,
+    )
+    vtj._write_rows(
+        vtj.EVALUATION_CSV,
+        [
+            {
+                "journal_id": "u1",
+                "status": "PENDING",
+                "outcome": "PENDING",
+                "failureReason": "UNKNOWN",
+                "entryTouched": True,
+                "targetTouched": False,
+                "stopTouched": False,
+                "review_text": "Evaluation window still open.",
+            },
+            {
+                "journal_id": "u2",
+                "status": "PENDING",
+                "outcome": "PENDING",
+                "failureReason": "UNKNOWN",
+                "entryTouched": False,
+                "targetTouched": False,
+                "stopTouched": False,
+                "review_text": "Entry window still open.",
+            },
+        ],
+        vtj.EVALUATION_COLS,
+    )
+
+    out = tfa.build_failure_analytics(market="kr")
+    reasons = {row["failureReason"]: row for row in out["failureReasons"]}
+
+    assert "UNKNOWN" not in reasons
+    assert reasons["INSUFFICIENT_HOLDING_PERIOD"]["count"] == 1
+    assert reasons["PENDING_EVALUATION"]["count"] == 1
 
 
 def test_failure_analytics_api_returns_safe_empty_response() -> None:

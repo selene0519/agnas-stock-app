@@ -133,6 +133,56 @@ def test_improvement_priorities_handles_missing_columns() -> None:
     assert out["priorities"][0]["shouldModifyTradingLogicNow"] is False
 
 
+def test_improvement_priorities_treat_pending_reasons_as_evaluation_coverage() -> None:
+    vtj._write_rows(
+        vtj.JOURNAL_CSV,
+        [_journal_row(f"wait{i}") for i in range(4)],
+        vtj.JOURNAL_COLS,
+    )
+    vtj._write_rows(
+        vtj.EVALUATION_CSV,
+        [
+            _eval_row("wait0", "NO_FUTURE_BARS_YET", "", "", "", False, False, False),
+            _eval_row("wait1", "PENDING_EVALUATION", "", "", "", False, False, False),
+            _eval_row("wait2", "INSUFFICIENT_HOLDING_PERIOD", "", 4, -1, True, False, False),
+            _eval_row("wait3", "TARGET_BEFORE_STOP", 6, 8, -1, True, True, False, True),
+        ],
+        vtj.EVALUATION_COLS,
+    )
+
+    out = tip.build_improvement_priorities(market="kr")
+    first = out["priorities"][0]
+
+    assert first["issueType"] == "EVALUATION_COVERAGE_PENDING"
+    assert first["affectedArea"] == "evaluationCoverage"
+    assert first["evidence"]["ratio"] == 0.75
+    assert first["shouldModifyTradingLogicNow"] is False
+
+
+def test_improvement_priorities_groups_new_data_quality_reasons() -> None:
+    vtj._write_rows(
+        vtj.JOURNAL_CSV,
+        [_journal_row(f"dq{i}") for i in range(3)],
+        vtj.JOURNAL_COLS,
+    )
+    vtj._write_rows(
+        vtj.EVALUATION_CSV,
+        [
+            _eval_row("dq0", "MISSING_ENTRY_PRICE", "", "", "", False),
+            _eval_row("dq1", "MISSING_TARGET_OR_STOP", "", "", "", False),
+            _eval_row("dq2", "SYMBOL_OR_DATE_MISMATCH", "", "", "", False),
+        ],
+        vtj.EVALUATION_COLS,
+    )
+
+    out = tip.build_improvement_priorities(market="kr")
+    data_issue = next(item for item in out["priorities"] if item["issueType"] == "DATA_QUALITY_PROBLEM")
+
+    assert data_issue["evidence"]["count"] == 3
+    assert data_issue["recommendation"] == "가격/결과 데이터 수집 품질 점검 필요"
+    assert data_issue["shouldModifyTradingLogicNow"] is False
+
+
 def test_improvement_priority_evidence_splits_overall_and_condition_ratios() -> None:
     total = 484
     evaluated = 99

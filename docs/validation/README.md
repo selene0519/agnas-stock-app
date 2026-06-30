@@ -11,3 +11,5 @@ The diagnostic fields `setupScore`, `overextensionRisk`, and `momentumContinuati
 `trade_improvement_priorities_kr.json` and `trade_improvement_priorities_us.json` convert the failure-reason diagnostics into a ranked list of what to validate first. Every item keeps `shouldModifyTradingLogicNow` false: the report suggests review priorities, not automatic recommendation-logic changes.
 
 Failure-reason labels are display-only translations for diagnostics and do not change recommendation logic. Improvement-priority evidence separates overall share (`overallRatio`, count divided by total trades) from condition rate (`ratio`/`conditionRate` inside the priority rule), so these percentages should not be interpreted as the same denominator.
+
+`trade_unknown_failure_reason_diagnostics.json` records the diagnostic-only UNKNOWN reclassification snapshot. Legacy rows such as "Entry window still open" and "Evaluation window still open" are mapped to evaluation-pending reason codes for analytics, without changing recommendation scoring, ranking, filtering, EV, or entry/target/stop formulas.

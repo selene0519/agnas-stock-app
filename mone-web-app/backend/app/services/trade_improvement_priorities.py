@@ -5,6 +5,15 @@ from typing import Any
 from app.services import trade_failure_analytics as failure_analytics
 
 SEVERITY_WEIGHT = {"high": 3, "medium": 2, "low": 1}
+PENDING_REASON_CODES = {"NO_FUTURE_BARS_YET", "PENDING_EVALUATION", "INSUFFICIENT_HOLDING_PERIOD"}
+DATA_QUALITY_REASON_CODES = {
+    "DATA_MISSING",
+    "PRICE_INVALID",
+    "MISSING_ENTRY_PRICE",
+    "MISSING_TARGET_OR_STOP",
+    "INVALID_PRICE_PATH",
+    "SYMBOL_OR_DATE_MISMATCH",
+}
 
 
 def _num(value: Any) -> float | None:
@@ -34,7 +43,7 @@ def _reason_map(analytics: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 def _combined_reason(reason_rows: list[dict[str, Any]], summary: dict[str, Any]) -> dict[str, Any]:
     count = sum(int(row.get("count") or 0) for row in reason_rows)
-    denominator = int(summary.get("evaluatedTrades") or summary.get("totalTrades") or 0)
+    denominator = int(summary.get("totalTrades") or summary.get("evaluatedTrades") or 0)
     ratio = round(count / denominator, 4) if denominator else 0.0
     values = [row for row in reason_rows if row]
 
@@ -199,6 +208,33 @@ def build_improvement_priorities(
 
     by_reason = _reason_map(analytics)
     priorities: list[dict[str, Any]] = []
+    pending = _combined_reason([row for key, row in by_reason.items() if key in PENDING_REASON_CODES], summary)
+    data = _combined_reason([row for key, row in by_reason.items() if key in DATA_QUALITY_REASON_CODES], summary)
+    pending_share = float(pending.get("ratio") or 0.0)
+
+    if pending["count"] > 0:
+        priorities.append(_priority(
+            issue_type="EVALUATION_COVERAGE_PENDING",
+            title="평가 대기 표본 많음",
+            summary_text="미래 봉 또는 보유기간이 아직 충분하지 않아 결과 판정 전인 표본이 있습니다.",
+            affected_area="evaluationCoverage",
+            evidence=_evidence(pending, summary),
+            recommendation="충분한 미래 봉과 평가 기간이 쌓인 뒤 성과 판단 필요",
+            safe_next_step="추천 로직을 바꾸지 말고, NO_FUTURE_BARS_YET/PENDING_EVALUATION/INSUFFICIENT_HOLDING_PERIOD 표본이 시간이 지나며 해소되는지 확인하세요.",
+            severity=_severity(pending["ratio"], pending["count"], high=0.25, medium=0.10),
+        ))
+
+    if data["count"] > 0:
+        priorities.append(_priority(
+            issue_type="DATA_QUALITY_PROBLEM",
+            title="데이터 품질 문제",
+            summary_text="평가가 데이터 부족, 가격 오류, 산출값 누락 또는 종목/날짜 매칭 실패로 제한된 사례가 있습니다.",
+            affected_area="dataQuality",
+            evidence=_evidence(data, summary),
+            recommendation="가격/결과 데이터 수집 품질 점검 필요",
+            safe_next_step="누락된 OHLCV/가격 컬럼과 평가 지연 상태가 특정 market 또는 source에 집중되는지 확인하세요. 추천 점수 문제로 단정하지 마세요.",
+            severity=_severity(data["ratio"], data["count"], high=0.15, medium=0.07),
+        ))
 
     entry = by_reason.get("ENTRY_NOT_TOUCHED")
     if entry and int(entry.get("count") or 0) > 0:
@@ -248,22 +284,9 @@ def build_improvement_priorities(
             safe_next_step="_final_score를 바꾸지 말고, 실패 표본의 표시용 진단 피처와 시장 regime 분포를 먼저 점검하세요.",
         ))
 
-    data = _combined_reason([row for key, row in by_reason.items() if key in {"DATA_MISSING", "PRICE_INVALID"}], summary)
-    if data["count"] > 0:
-        priorities.append(_priority(
-            issue_type="DATA_QUALITY_PROBLEM",
-            title="데이터 품질 문제",
-            summary_text="평가가 데이터 부족 또는 가격 오류로 제한된 사례가 있습니다.",
-            affected_area="dataQuality",
-            evidence=_evidence(data, summary),
-            recommendation="가격/결과 데이터 수집 품질 점검 필요",
-            safe_next_step="누락된 OHLCV/가격 컬럼과 평가 지연 상태가 특정 market 또는 source에 집중되는지 확인하세요.",
-            severity=_severity(data["ratio"], data["count"], high=0.15, medium=0.07),
-        ))
-
     target_before_stop_rate = _num(summary.get("targetBeforeStopRate"))
     avg_mae = _num(summary.get("avgMAE"))
-    if target_before_stop_rate is not None and avg_mae is not None and target_before_stop_rate < 0.25 and avg_mae <= -5.0:
+    if pending_share <= 0.5 and target_before_stop_rate is not None and avg_mae is not None and target_before_stop_rate < 0.25 and avg_mae <= -5.0:
         priorities.append(_priority(
             issue_type="HIGH_DRAWDOWN_BEFORE_SUCCESS",
             title="진입 후 역행폭 과대",
@@ -287,7 +310,7 @@ def build_improvement_priorities(
 
     avg_mfe = _num(summary.get("avgMFE"))
     target_touched_rate = _num(summary.get("targetTouchedRate"))
-    if avg_mfe is not None and target_touched_rate is not None and avg_mfe >= 4.0 and target_touched_rate < 0.35:
+    if pending_share <= 0.5 and avg_mfe is not None and target_touched_rate is not None and avg_mfe >= 4.0 and target_touched_rate < 0.35:
         priorities.append(_priority(
             issue_type="MISSED_PROFIT_CAPTURE",
             title="수익 구간 포착 실패",

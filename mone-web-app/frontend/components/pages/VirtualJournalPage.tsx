@@ -109,7 +109,19 @@ const FAILURE_REASON_LABELS: Record<string, string> = {
   TARGET_TOO_FAR_OR_MOMENTUM_WEAK: "목표가 과대 또는 모멘텀 약함",
   WEAK_CANDIDATE_SIGNAL: "후보 선정 신호 약함",
   HIGH_DRAWDOWN_BEFORE_SUCCESS: "진입 후 역행폭 과대",
+  NO_FUTURE_BARS_YET: "평가 대기",
+  INSUFFICIENT_HOLDING_PERIOD: "평가 기간 부족",
+  ENTRY_TOUCHED_BUT_NO_EXIT: "진입 후 미청산",
+  MISSING_ENTRY_PRICE: "진입가 누락",
+  MISSING_TARGET_OR_STOP: "목표/손절가 누락",
+  INVALID_PRICE_PATH: "가격 경로 오류",
+  SYMBOL_OR_DATE_MISMATCH: "종목/날짜 매칭 실패",
+  PENDING_EVALUATION: "평가 대기",
+  UNCLASSIFIED_PRICE_PATH: "가격 경로 미분류",
 };
+
+const PENDING_FAILURE_REASONS = new Set(["NO_FUTURE_BARS_YET", "PENDING_EVALUATION", "INSUFFICIENT_HOLDING_PERIOD"]);
+const DATA_QUALITY_FAILURE_REASONS = new Set(["DATA_MISSING", "PRICE_INVALID", "MISSING_ENTRY_PRICE", "MISSING_TARGET_OR_STOP", "INVALID_PRICE_PATH", "SYMBOL_OR_DATE_MISMATCH"]);
 
 function EquityCurveSparkline({ points }: { points: Array<{ date: string; cumPnlPct: number; drawdownPct: number }> }) {
   if (points.length < 2) return null;
@@ -422,7 +434,14 @@ export default function VirtualJournalPage() {
     return Number.isFinite(ratio) ? ratio : 0;
   };
   const unknownRatio = topReasonRatio("UNKNOWN");
-  const dataMissingRatio = topReasonRatio("DATA_MISSING");
+  const pendingTopRatio = failureTop5.reduce((sum: number, item: any) => {
+    const reason = String(item.failureReason || item.reason || "").toUpperCase();
+    return sum + (PENDING_FAILURE_REASONS.has(reason) ? Number(item.ratio || 0) : 0);
+  }, 0);
+  const dataIssueTopRatio = failureTop5.reduce((sum: number, item: any) => {
+    const reason = String(item.failureReason || item.reason || "").toUpperCase();
+    return sum + (DATA_QUALITY_FAILURE_REASONS.has(reason) ? Number(item.ratio || 0) : 0);
+  }, 0);
   const overallPriorityRatio = (evidence: any) => {
     const direct = Number(evidence?.overallRatio);
     if (Number.isFinite(direct)) return direct;
@@ -517,16 +536,21 @@ export default function VirtualJournalPage() {
           {metric("평균 MAE", failureSummary.avgMAE == null ? "-" : `${Number(failureSummary.avgMAE).toFixed(2)}%`, "text-rose-300")}
         </div>
 
-        {(unknownRatio >= 0.3 || dataMissingRatio > 0) && (
+        {(unknownRatio >= 0.3 || pendingTopRatio > 0 || dataIssueTopRatio > 0) && (
           <div className="mt-4 grid gap-2 lg:grid-cols-2">
             {unknownRatio >= 0.3 && (
               <div className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]">
                 원인 미분류 비율이 높으면 일부 거래의 터치 순서 또는 결과 데이터가 충분히 분류되지 않았다는 뜻입니다. 추천 로직 변경이 아니라 분류 품질 점검 신호로 해석하세요.
               </div>
             )}
-            {dataMissingRatio > 0 && (
+            {pendingTopRatio > 0 && (
+              <div className="rounded-lg bg-sky-500/10 px-3 py-2 text-xs leading-5 text-sky-100 shadow-[inset_0_0_0_1px_rgba(56,189,248,0.16)]">
+                평가 대기와 평가 기간 부족은 추천 실패가 아니라 미래 봉 또는 보유기간이 아직 충분하지 않은 관찰 상태입니다.
+              </div>
+            )}
+            {dataIssueTopRatio > 0 && (
               <div className="rounded-lg bg-cyan-500/10 px-3 py-2 text-xs leading-5 text-cyan-100 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.16)]">
-                데이터 부족 항목은 추천 점수 문제가 아니라 가격/결과 데이터 수집 품질 점검이 필요하다는 의미일 수 있습니다.
+                데이터 부족, 가격 경로 오류, 종목/날짜 매칭 실패는 추천 점수 문제가 아니라 가격/결과 데이터 수집 품질 점검이 필요하다는 의미일 수 있습니다.
               </div>
             )}
           </div>

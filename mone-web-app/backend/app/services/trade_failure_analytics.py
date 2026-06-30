@@ -26,9 +26,26 @@ FAILURE_REASON_LABELS = {
     "TARGET_TOO_FAR_OR_MOMENTUM_WEAK": "목표가 과대 또는 모멘텀 약함",
     "WEAK_CANDIDATE_SIGNAL": "후보 선정 신호 약함",
     "HIGH_DRAWDOWN_BEFORE_SUCCESS": "진입 후 역행폭 과대",
+    "NO_FUTURE_BARS_YET": "평가 대기",
+    "INSUFFICIENT_HOLDING_PERIOD": "평가 기간 부족",
+    "ENTRY_TOUCHED_BUT_NO_EXIT": "진입 후 미청산",
+    "MISSING_ENTRY_PRICE": "진입가 누락",
+    "MISSING_TARGET_OR_STOP": "목표/손절가 누락",
+    "INVALID_PRICE_PATH": "가격 경로 오류",
+    "SYMBOL_OR_DATE_MISMATCH": "종목/날짜 매칭 실패",
+    "PENDING_EVALUATION": "평가 대기",
+    "UNCLASSIFIED_PRICE_PATH": "가격 경로 미분류",
 }
 
-DATA_ISSUE_REASONS = {"DATA_MISSING", "PRICE_INVALID"}
+PENDING_REASONS = {"NO_FUTURE_BARS_YET", "PENDING_EVALUATION", "INSUFFICIENT_HOLDING_PERIOD"}
+DATA_ISSUE_REASONS = {
+    "DATA_MISSING",
+    "PRICE_INVALID",
+    "MISSING_ENTRY_PRICE",
+    "MISSING_TARGET_OR_STOP",
+    "INVALID_PRICE_PATH",
+    "SYMBOL_OR_DATE_MISMATCH",
+}
 DATA_ISSUE_STATUSES = {"DATA_PENDING", "DATA_INVALID"}
 EVALUATED_STATUSES = {"EVALUATED", "CANCELLED"}
 
@@ -109,7 +126,7 @@ def _first(row: dict[str, Any], *keys: str) -> Any:
 
 
 def _failure_reason(row: dict[str, Any]) -> str:
-    reason = _upper(_first(row, "failureReason", "failure_reason", "outcome"))
+    reason = vtj.classify_failure_reason(row)
     if not reason or reason in {"NONE", "NAN"}:
         return "UNKNOWN"
     if reason == "STOP_HIT":
@@ -118,7 +135,7 @@ def _failure_reason(row: dict[str, Any]) -> str:
         return "TARGET_BEFORE_STOP"
     if reason.startswith("TIME_EXIT"):
         return "TARGET_NOT_REACHED"
-    if reason.startswith("DATA"):
+    if reason in {"DATA", "DATA_PENDING", "DATA_INVALID"}:
         return "DATA_MISSING"
     return reason
 

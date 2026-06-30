@@ -141,6 +141,95 @@ def test_evaluate_one_does_not_fill_when_entry_is_not_touched(monkeypatch: pytes
     assert out["failureReason"] == "ENTRY_NOT_TOUCHED"
 
 
+def _journal_eval_row(**overrides) -> dict:
+    row = {
+        "journal_id": "diag",
+        "market": "kr",
+        "symbol": "TEST",
+        "horizon": "short",
+        "as_of_date": "2026-01-01",
+        "entry_type": "LIMIT_TOUCH",
+        "entry_price": 100,
+        "stop_price": 95,
+        "target_price": 110,
+        "data_status": "NORMAL",
+        "data_confidence": "HIGH",
+        "market_regime_at_signal": "RISK_ON",
+    }
+    row.update(overrides)
+    return row
+
+
+def _ohlcv(rows: list[dict]) -> pd.DataFrame:
+    df = pd.DataFrame(rows)
+    df["_date_ts"] = pd.to_datetime(df["date"], errors="coerce").dt.normalize()
+    return df
+
+
+def test_evaluate_one_marks_no_future_bars_as_pending_diagnostic(monkeypatch: pytest.MonkeyPatch) -> None:
+    ohlcv = _ohlcv([{"date": "2026-01-01", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000}])
+    monkeypatch.setattr(vtj, "_load_ohlcv", lambda market, symbol: (ohlcv.copy(), "pytest", "actual_ohlcv"))
+
+    out = vtj._evaluate_one(_journal_eval_row())
+
+    assert out["status"] == "DATA_PENDING"
+    assert out["failureReason"] == "NO_FUTURE_BARS_YET"
+    assert out["diagnosticReason"] == "NO_FUTURE_BARS_YET"
+
+
+def test_evaluate_one_marks_open_entry_window_as_pending_evaluation(monkeypatch: pytest.MonkeyPatch) -> None:
+    ohlcv = _ohlcv(
+        [
+            {"date": "2026-01-01", "open": 95, "high": 96, "low": 94, "close": 95, "volume": 1000},
+            {"date": "2026-01-02", "open": 95, "high": 99, "low": 94, "close": 96, "volume": 1000},
+            {"date": "2026-01-03", "open": 96, "high": 99, "low": 94, "close": 96, "volume": 1000},
+        ]
+    )
+    monkeypatch.setattr(vtj, "_load_ohlcv", lambda market, symbol: (ohlcv.copy(), "pytest", "actual_ohlcv"))
+
+    out = vtj._evaluate_one(_journal_eval_row())
+
+    assert out["status"] == "PENDING"
+    assert out["entryTouched"] is False
+    assert out["failureReason"] == "PENDING_EVALUATION"
+
+
+def test_evaluate_one_marks_open_holding_period_without_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    ohlcv = _ohlcv(
+        [
+            {"date": "2026-01-01", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-02", "open": 100, "high": 103, "low": 98, "close": 101, "volume": 1000},
+            {"date": "2026-01-03", "open": 101, "high": 104, "low": 99, "close": 102, "volume": 1000},
+            {"date": "2026-01-04", "open": 102, "high": 105, "low": 100, "close": 103, "volume": 1000},
+        ]
+    )
+    monkeypatch.setattr(vtj, "_load_ohlcv", lambda market, symbol: (ohlcv.copy(), "pytest", "actual_ohlcv"))
+
+    out = vtj._evaluate_one(_journal_eval_row())
+
+    assert out["status"] == "PENDING"
+    assert out["entryTouched"] is True
+    assert out["targetTouched"] is False
+    assert out["stopTouched"] is False
+    assert out["failureReason"] == "INSUFFICIENT_HOLDING_PERIOD"
+    assert out["diagnosticReason"] == "ENTRY_TOUCHED_BUT_NO_EXIT"
+
+
+def test_evaluate_one_marks_missing_price_levels_without_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
+    ohlcv = _ohlcv([{"date": "2026-01-02", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000}])
+    monkeypatch.setattr(vtj, "_load_ohlcv", lambda market, symbol: (ohlcv.copy(), "pytest", "actual_ohlcv"))
+
+    assert vtj._evaluate_one(_journal_eval_row(entry_price=""))["failureReason"] == "MISSING_ENTRY_PRICE"
+    assert vtj._evaluate_one(_journal_eval_row(target_price=""))["failureReason"] == "MISSING_TARGET_OR_STOP"
+    assert vtj._evaluate_one(_journal_eval_row(stop_price=105))["failureReason"] == "PRICE_INVALID"
+
+
+def test_classify_failure_reason_refines_legacy_unknown_rows() -> None:
+    assert vtj.classify_failure_reason({"status": "PENDING", "outcome": "PENDING", "failureReason": "UNKNOWN", "review_text": "Entry window still open.", "entryTouched": False}) == "PENDING_EVALUATION"
+    assert vtj.classify_failure_reason({"status": "PENDING", "outcome": "PENDING", "failureReason": "UNKNOWN", "review_text": "Evaluation window still open.", "entryTouched": True}) == "INSUFFICIENT_HOLDING_PERIOD"
+    assert vtj.classify_failure_reason({"status": "EVALUATED", "outcome": "UNKNOWN", "failureReason": "UNKNOWN", "entryTouched": True, "targetTouched": False, "stopTouched": False}) == "ENTRY_TOUCHED_BUT_NO_EXIT"
+
+
 def test_time_exit_taxonomy_keeps_near_target_near_stop_mid_and_flat() -> None:
     assert vtj._outcome("TIME", target_progress=0.85, stop_progress=0.2, net=2.0) == "TIME_EXIT_NEAR_TARGET"
     assert vtj._outcome("TIME", target_progress=0.2, stop_progress=0.85, net=-2.0) == "TIME_EXIT_NEAR_STOP"

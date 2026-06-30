@@ -230,6 +230,8 @@ EVALUATION_COLS = [
     "maxAdverseExcursion",
     "holdingDays",
     "failureReason",
+    "diagnosticReason",
+    "unknownDetail",
     "secondary_tags",
     "regime_at_entry",
     "regime_at_exit",
@@ -238,6 +240,16 @@ EVALUATION_COLS = [
     "review_text",
     "evaluated_at",
 ]
+
+PENDING_FAILURE_REASONS = {"NO_FUTURE_BARS_YET", "PENDING_EVALUATION", "INSUFFICIENT_HOLDING_PERIOD"}
+DATA_QUALITY_FAILURE_REASONS = {
+    "DATA_MISSING",
+    "PRICE_INVALID",
+    "MISSING_ENTRY_PRICE",
+    "MISSING_TARGET_OR_STOP",
+    "INVALID_PRICE_PATH",
+    "SYMBOL_OR_DATE_MISMATCH",
+}
 
 CALIBRATION_APPROVAL_COLS = [
     "approval_id",
@@ -1443,19 +1455,23 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     stop = _safe_float(row.get("stop_price"))
     target = _safe_float(row.get("target_price"))
     if market not in MARKETS or horizon not in HORIZONS or not symbol or not as_of_date:
-        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid journal scope.", failure_reason="DATA_MISSING")
-    if entry is None or stop is None or target is None or not (target > entry > stop):
+        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid journal scope.", failure_reason="SYMBOL_OR_DATE_MISMATCH")
+    if entry is None:
+        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Missing entry price.", failure_reason="MISSING_ENTRY_PRICE")
+    if stop is None or target is None:
+        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Missing target or stop price.", failure_reason="MISSING_TARGET_OR_STOP")
+    if entry <= 0 or stop <= 0 or target <= 0 or not (target > entry > stop):
         return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid price levels.", failure_reason="PRICE_INVALID")
     ohlcv, _source, source_type = _load_ohlcv(market, symbol)
     if ohlcv.empty:
-        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No OHLCV available.", failure_reason="DATA_MISSING")
+        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No OHLCV available.", failure_reason="SYMBOL_OR_DATE_MISMATCH")
     try:
         as_of_ts = pd.Timestamp(as_of_date).normalize()
     except Exception:
-        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid as_of_date.", failure_reason="DATA_MISSING")
+        return _evaluation_stub(row, "DATA_INVALID", "DATA_INVALID", "Invalid as_of_date.", failure_reason="SYMBOL_OR_DATE_MISMATCH")
     future = ohlcv[ohlcv["_date_ts"] > as_of_ts].reset_index(drop=True)
     if future.empty:
-        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No future bars yet.", failure_reason="DATA_MISSING")
+        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No future bars yet.", failure_reason="NO_FUTURE_BARS_YET")
 
     entry_window = ENTRY_WINDOWS[horizon]
     eval_window = EVALUATION_WINDOWS[horizon]
@@ -1463,14 +1479,14 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     fill_idx, fill_date, raw_fill = _find_fill(future, entry, entry_type, entry_window)
     if fill_idx is None:
         if len(future) < entry_window:
-            return _evaluation_stub(row, "PENDING", "PENDING", "Entry window still open.")
+            return _evaluation_stub(row, "PENDING", "PENDING", "Entry window still open.", failure_reason="PENDING_EVALUATION")
         out = _evaluation_stub(row, "CANCELLED", "CANCELLED_NOT_FILLED", "Entry price was not touched.")
         out.update({"entry_window_days": entry_window, "evaluation_window_days": eval_window, "failureReason": "ENTRY_NOT_TOUCHED"})
         return out
 
     holding = future.iloc[fill_idx: fill_idx + eval_window].reset_index(drop=True)
     if holding.empty:
-        return _evaluation_stub(row, "DATA_PENDING", "DATA_PENDING", "No holding bars after fill.", failure_reason="DATA_MISSING")
+        return _evaluation_stub(row, "PENDING", "PENDING", "No holding bars after fill.", failure_reason="INSUFFICIENT_HOLDING_PERIOD", diagnostic_reason="ENTRY_TOUCHED_BUT_NO_EXIT")
 
     costs = MARKET_COSTS.get(market, MARKET_COSTS["kr"])
     liquidity_mult = _liquidity_slippage_multiplier(ohlcv, market, as_of_ts)
@@ -1522,6 +1538,8 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
         "maxAdverseExcursion": mae,
         "holdingDays": exit_info["bars_held"],
         "failureReason": touch_failure,
+        "diagnosticReason": failure,
+        "unknownDetail": "",
         "secondary_tags": sec_tags,
         "regime_at_entry": row.get("market_regime_at_signal", ""),
         "regime_at_exit": regime_at_exit,
@@ -1532,8 +1550,17 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _evaluation_stub(row: dict[str, Any], status: str, outcome: str, review_text: str, failure_reason: str = "") -> dict[str, Any]:
-    canonical_reason = failure_reason or ("DATA_MISSING" if outcome.startswith("DATA") else "UNKNOWN")
+def _evaluation_stub(
+    row: dict[str, Any],
+    status: str,
+    outcome: str,
+    review_text: str,
+    failure_reason: str = "",
+    diagnostic_reason: str = "",
+    unknown_detail: str = "",
+) -> dict[str, Any]:
+    canonical_reason = failure_reason or classify_failure_reason({"status": status, "outcome": outcome, "review_text": review_text})
+    detail = unknown_detail or review_text if canonical_reason == "UNKNOWN" else ""
     return {
         "journal_id": row.get("journal_id"),
         "status": status,
@@ -1552,7 +1579,7 @@ def _evaluation_stub(row: dict[str, Any], status: str, outcome: str, review_text
         "evaluation_window_days": "",
         "target_progress": "",
         "stop_progress": "",
-        "failure_reason": "DATA_QUALITY" if outcome.startswith("DATA") else "",
+        "failure_reason": "DATA_QUALITY" if canonical_reason in DATA_QUALITY_FAILURE_REASONS else "",
         "entryTouched": False,
         "targetTouched": False,
         "stopTouched": False,
@@ -1564,6 +1591,8 @@ def _evaluation_stub(row: dict[str, Any], status: str, outcome: str, review_text
         "maxAdverseExcursion": "",
         "holdingDays": 0,
         "failureReason": canonical_reason,
+        "diagnosticReason": diagnostic_reason or canonical_reason,
+        "unknownDetail": detail,
         "secondary_tags": "",
         "regime_at_entry": row.get("market_regime_at_signal", ""),
         "regime_at_exit": "",
@@ -1662,7 +1691,14 @@ def _pending_eval(
 ) -> dict[str, Any]:
     mfe, mae = _mfe_mae(holding, entry)
     target_progress, stop_progress = _progress(entry, target, stop, mfe, mae)
-    out = _evaluation_stub(row, "PENDING", "PENDING", "Evaluation window still open.")
+    out = _evaluation_stub(
+        row,
+        "PENDING",
+        "PENDING",
+        "Evaluation window still open.",
+        failure_reason="INSUFFICIENT_HOLDING_PERIOD",
+        diagnostic_reason="ENTRY_TOUCHED_BUT_NO_EXIT",
+    )
     out.update({
         "filled": True,
         "fill_date": fill_date,
@@ -1682,7 +1718,9 @@ def _pending_eval(
         "maxFavorableExcursion": mfe,
         "maxAdverseExcursion": mae,
         "holdingDays": len(holding),
-        "failureReason": "UNKNOWN",
+        "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
+        "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
+        "unknownDetail": "",
     })
     return out
 
@@ -1736,6 +1774,76 @@ def _touch_failure_reason(outcome: str, net: float | None) -> str:
         return "ENTRY_NOT_TOUCHED"
     if outcome.startswith("DATA"):
         return "DATA_MISSING"
+    if outcome == "PENDING":
+        return "PENDING_EVALUATION"
+    return "UNKNOWN"
+
+
+def _boolish(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    text = _text(value).lower()
+    if text in {"1", "true", "t", "yes", "y"}:
+        return True
+    if text in {"0", "false", "f", "no", "n"}:
+        return False
+    return None
+
+
+def classify_failure_reason(row: dict[str, Any]) -> str:
+    """Normalize legacy and pending virtual-trade outcomes into diagnostic failureReason codes."""
+    explicit = _upper(row.get("failureReason"))
+    if explicit and explicit not in {"UNKNOWN", "NONE", "NAN"}:
+        return explicit
+
+    detail_reason = _upper(row.get("failure_reason"))
+    if detail_reason and detail_reason not in {"UNKNOWN", "NONE", "NAN", "DATA_QUALITY"}:
+        if detail_reason == "STOP_HIT":
+            return "STOP_BEFORE_TARGET"
+        if detail_reason == "TARGET_HIT":
+            return "TARGET_BEFORE_STOP"
+        if detail_reason.startswith("TIME_EXIT"):
+            return "TARGET_NOT_REACHED"
+        return detail_reason
+
+    status = _upper(row.get("status"))
+    outcome = _upper(row.get("outcome"))
+    review_text = _text(row.get("review_text")).lower()
+    entry_touched = _boolish(row.get("entryTouched"))
+    target_touched = _boolish(row.get("targetTouched"))
+    stop_touched = _boolish(row.get("stopTouched"))
+
+    if "no future bars yet" in review_text:
+        return "NO_FUTURE_BARS_YET"
+    if "entry window still open" in review_text:
+        return "PENDING_EVALUATION"
+    if "evaluation window still open" in review_text or "no holding bars after fill" in review_text:
+        return "INSUFFICIENT_HOLDING_PERIOD"
+    if "no ohlcv available" in review_text or "invalid as_of_date" in review_text or "invalid journal scope" in review_text:
+        return "SYMBOL_OR_DATE_MISMATCH"
+    if "missing entry price" in review_text:
+        return "MISSING_ENTRY_PRICE"
+    if "missing target or stop" in review_text:
+        return "MISSING_TARGET_OR_STOP"
+    if "invalid price levels" in review_text:
+        return "PRICE_INVALID"
+
+    if outcome == "STOP_HIT":
+        return "STOP_BEFORE_TARGET"
+    if outcome == "TARGET_HIT":
+        return "TARGET_BEFORE_STOP"
+    if outcome == "CANCELLED_NOT_FILLED" or entry_touched is False:
+        return "ENTRY_NOT_TOUCHED"
+    if outcome.startswith("DATA"):
+        return "DATA_MISSING"
+    if outcome.startswith("TIME_EXIT"):
+        return "TARGET_NOT_REACHED"
+    if status == "PENDING":
+        return "INSUFFICIENT_HOLDING_PERIOD" if entry_touched is True else "PENDING_EVALUATION"
+    if entry_touched is True and target_touched is False and stop_touched is False:
+        return "ENTRY_TOUCHED_BUT_NO_EXIT"
+    if entry_touched is True:
+        return "UNCLASSIFIED_PRICE_PATH"
     return "UNKNOWN"
 
 
