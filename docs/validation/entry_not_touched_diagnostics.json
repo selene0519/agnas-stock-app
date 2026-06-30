@@ -1,0 +1,53 @@
+{
+  "report": "entry_not_touched_diagnostics_static_snapshot",
+  "task": "feat: add entry-not-touched diagnostics (1순위 작업, MONE_AGNAS_remaining_work_plan.txt section 4)",
+  "generatedAt": "2026-06-30",
+  "diagnosticOnly": true,
+  "scope": { "market": "all", "mode": "all", "horizon": "all", "sourceType": "all", "journalSession": "all" },
+  "summary": {
+    "totalEvaluatedTrades": 1445,
+    "entryNotTouchedTrades": 20,
+    "entryNotTouchedRate": 0.0138,
+    "avgEntryDepthPct": 0.0751,
+    "avgEntryDepthPctTouchedBaseline": 0.0017,
+    "avgEntryWindowDays": 4.1,
+    "avgEntryWindowDaysTouchedBaseline": 5.953
+  },
+  "byMarket": { "kr": { "count": 729, "entryNotTouchedTrades": 3, "rate": 0.0041 }, "us": { "count": 716, "entryNotTouchedTrades": 17, "rate": 0.0237 } },
+  "byMode": { "conservative": { "rate": 0.0042 }, "balanced": { "rate": 0.0127 }, "aggressive": { "rate": 0.0242 } },
+  "byHorizon": { "mid": { "rate": 0.0 }, "short": { "rate": 0.018 }, "swing": { "rate": 0.023 } },
+  "causeCandidatesTop": [
+    {
+      "causeType": "ENTRY_WINDOW_TOO_SHORT",
+      "summary": "Entry-not-touched trades have a meaningfully shorter avg entry_window_days (4.1d) than entry-touched trades (5.95d) -- about 31% shorter.",
+      "evidence": { "avgEntryWindowDaysNotTouched": 4.1, "avgEntryWindowDaysTouched": 5.953 }
+    },
+    {
+      "causeType": "STRONG_TREND_RAN_WITHOUT_PULLBACK",
+      "summary": "Entry-not-touched trades show higher avg 5-day momentum at signal time (10.66 vs 5.38) and a high MA-full-alignment rate (90%), consistent with the hypothesis that some strong-trend candidates ran away before pulling back to the recommended entry.",
+      "evidence": { "avgMomentum5NotTouched": 10.66, "avgMomentum5Touched": 5.38, "maFullAlignRateNotTouched": 0.9, "maFullAlignRateTouched": 0.93 }
+    },
+    {
+      "causeType": "MARKET_SPECIFIC_ENTRY_MISS",
+      "summary": "US market entry-not-touched rate (2.37%) is about 6x the KR rate (0.41%).",
+      "evidence": { "usRate": 0.0237, "krRate": 0.0041 }
+    },
+    {
+      "causeType": "MODE_SPECIFIC_ENTRY_MISS",
+      "summary": "Aggressive mode entry-not-touched rate (2.42%) is about 6x the conservative rate (0.42%).",
+      "evidence": { "aggressiveRate": 0.0242, "conservativeRate": 0.0042 }
+    }
+  ],
+  "notSupportedHypothesis": {
+    "ENTRY_PRICE_TOO_CONSERVATIVE": "Avg entry depth for entry-not-touched trades (0.075% below signal price) is barely different from the entry-touched baseline (0.002%). The data does NOT support 'entry price set too deep/conservative' as the primary cause, contrary to the generic suggestion already surfaced in trade_improvement_priorities.py ('진입가가 지나치게 보수적인지 점검 필요'). Do not shorten/raise entry depth based on that generic suggestion alone -- this snapshot is more specific evidence against it."
+  },
+  "interpretation": "Sample size is small (20 evaluated entry-not-touched trades out of 1445), so directional signals here are suggestive, not conclusive. The two most plausible mechanisms are (1) entry_window_days being too short for some recommendations to ever fill, and (2) some candidates already showing strong momentum/MA-alignment at signal time continuing to run away rather than pulling back to the entry price -- i.e. the opposite of the 'entry too conservative' hypothesis. Both are consistent with the work plan's caution: classify causes before touching the entry price formula.",
+  "recommendedNextStep": "Do not change the entry price formula yet (sample too small, primary hypothesis not supported). If entryNotTouchedTrades grows past ~40, re-run this diagnostic and consider: (a) a shallower-pullback or time-decaying entry option for high-momentum/MA-aligned candidates specifically, (b) reviewing whether entry_window_days is set appropriately per horizon, especially for US/aggressive where the rate is highest.",
+  "shouldModifyTradingLogicNow": false,
+  "newCode": [
+    "mone-web-app/backend/app/services/entry_not_touched_diagnostics.py (new module)",
+    "mone-web-app/backend/app/main.py: GET /api/virtual/entry-not-touched-diagnostics, GET /api/journal/entry-not-touched-diagnostics",
+    "mone-web-app/frontend/lib/api.ts: virtualEntryNotTouchedDiagnostics()",
+    "mone-web-app/frontend/components/pages/VirtualJournalPage.tsx: new '진입가 미도달 진단' section"
+  ]
+}

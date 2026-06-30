@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, TimerReset, TrendingUp, XCircle } from "lucide-react";
+import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, Target, TimerReset, TrendingUp, XCircle } from "lucide-react";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { outcomeTone, toneClassName } from "@/lib/tone";
 import { displayName } from "@/lib/moneDisplay";
@@ -258,6 +258,7 @@ export default function VirtualJournalPage() {
   const [failureBasis, setFailureBasis] = useState<FailureAnalysisBasis>("all");
   const [stopLossData, setStopLossData] = useState<any>({});
   const [entryTimingData, setEntryTimingData] = useState<any>({});
+  const [entryNotTouchedData, setEntryNotTouchedData] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -266,7 +267,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -276,6 +277,7 @@ export default function VirtualJournalPage() {
         mone.virtualImprovementPriorities(scope),
         mone.virtualStopLossDiagnostics(scope),
         mone.virtualEntryTimingDiagnostics(scope),
+        mone.virtualEntryNotTouchedDiagnostics(scope),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
@@ -293,6 +295,7 @@ export default function VirtualJournalPage() {
       setImprovementData(improvementRes || {});
       setStopLossData(stopLossRes || {});
       setEntryTimingData(entryTimingRes || {});
+      setEntryNotTouchedData(entryNotTouchedRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
       setEffData(effRes?.status === "OK" ? effRes : null);
@@ -533,6 +536,18 @@ export default function VirtualJournalPage() {
     LOW_MOMENTUM_WITH_OVEREXTENSION: "과열 대비 모멘텀 약함",
     LOW_SETUP_IN_STOP_FAILURE_GROUP: "setup 진단 약함",
   }[reason] || reason);
+  const entryNotTouchedSummary = entryNotTouchedData?.summary || {};
+  const entryNotTouchedPatch = entryNotTouchedData?.patch || {};
+  const entryNotTouchedCauses = (entryNotTouchedData?.causeCandidates || []).slice(0, 3);
+  const entryNotTouchedCauseLabel = (causeType: string) => ({
+    ENTRY_WINDOW_TOO_SHORT: "진입 대기 기간 부족",
+    ENTRY_PRICE_TOO_CONSERVATIVE: "진입가 과도 보수",
+    STRONG_TREND_RAN_WITHOUT_PULLBACK: "강한 추세 눌림 없이 이탈",
+    MODE_SPECIFIC_ENTRY_MISS: "특정 모드 집중",
+    MARKET_SPECIFIC_ENTRY_MISS: "특정 시장 집중",
+    HORIZON_ENTRY_DEPTH_MISMATCH: "특정 horizon 집중",
+    ENTRY_NOT_TOUCHED_CAUSE_UNCLEAR: "원인 불분명",
+  }[causeType] || causeType);
 
   const approvedSuggestions = useMemo(
     () => suggestions.filter((item) => item.approvalStatus === "APPROVED" && item.applicationStatus !== "APPLIED").slice(0, 4),
@@ -919,6 +934,89 @@ export default function VirtualJournalPage() {
             </div>
             <div className="mt-3 break-words rounded-md bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.16)] [overflow-wrap:anywhere]">
               다음 조치: {entryTimingData?.recommendedNextStep || "표본을 추가로 쌓은 뒤 HIGH risk 후보를 별도 검증하세요."}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="min-w-0 overflow-hidden rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <Target size={16} className="shrink-0 text-cyan-300" />
+              <span>진입가 미도달 진단</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+              추천은 나왔지만 평가 기간 동안 진입가까지 가격이 오지 않은 거래를 진단합니다. 진입가 산식이나 entry_window_days는 아직 변경하지 않았습니다.
+            </p>
+          </div>
+          <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
+            진단 전용
+          </span>
+        </div>
+
+        <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {metric("평가 완료 거래", entryNotTouchedSummary.totalEvaluatedTrades ?? 0)}
+          {metric("진입가 미도달", entryNotTouchedSummary.entryNotTouchedTrades ?? 0, "text-cyan-300")}
+          {metric("미도달 비율", fmtRate(entryNotTouchedSummary.entryNotTouchedRate), "text-cyan-300")}
+          {metric(
+            "평균 진입 대기일",
+            entryNotTouchedSummary.avgEntryWindowDays == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryWindowDays).toFixed(1)}일`,
+          )}
+        </div>
+
+        <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">진입가 미도달 vs 진입 성공 비교</div>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">진입 대기일 (미도달)</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-cyan-300">
+                  {entryNotTouchedSummary.avgEntryWindowDays == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryWindowDays).toFixed(1)}일`}
+                </div>
+              </div>
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">진입 대기일 (성공 기준)</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">
+                  {entryNotTouchedSummary.avgEntryWindowDaysTouchedBaseline == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryWindowDaysTouchedBaseline).toFixed(1)}일`}
+                </div>
+              </div>
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">진입가 깊이 (미도달)</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-cyan-300">
+                  {entryNotTouchedSummary.avgEntryDepthPct == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryDepthPct).toFixed(2)}%`}
+                </div>
+              </div>
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">진입가 깊이 (성공 기준)</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">
+                  {entryNotTouchedSummary.avgEntryDepthPctTouchedBaseline == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryDepthPctTouchedBaseline).toFixed(2)}%`}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 break-words rounded-md bg-slate-900/70 px-3 py-2 text-[11px] leading-5 text-slate-400 [overflow-wrap:anywhere]">
+              현재 결과는 평가 완료 거래 기준입니다. 적용 판단: {entryNotTouchedPatch.patchReason || "분석 데이터가 아직 충분하지 않습니다."}
+            </div>
+          </div>
+
+          <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">주요 원인 후보</div>
+            <div className="space-y-2">
+              {entryNotTouchedCauses.map((item: any, index: number) => (
+                <div key={`${item.causeType || index}`} className="min-w-0 rounded-md bg-slate-900/70 px-3 py-2">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-200">{entryNotTouchedCauseLabel(String(item.causeType || ""))}</div>
+                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-500">{item.causeType || "-"}</div>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+                  </div>
+                  <div className="mt-1 break-keep text-[11px] leading-5 text-slate-400">{item.summary || item.title || "-"}</div>
+                </div>
+              ))}
+              {!entryNotTouchedCauses.length && (
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">진입가 미도달 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
+              )}
             </div>
           </div>
         </div>
