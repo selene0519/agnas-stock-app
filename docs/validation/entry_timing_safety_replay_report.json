@@ -1,0 +1,42 @@
+{
+  "report": "entry_timing_safety_replay_report",
+  "guardVersion": "v1",
+  "scenario": {
+    "baseline": "existing evaluated trades",
+    "diagnosticOnly": "entryTimingRiskScore and adjustedAction preview, no recommendation impact",
+    "activeGuard": "HIGH risk BUY/STRONG_BUY/WATCH/HOLD rows are separated as WAIT_PULLBACK/CAUTION candidates for replay only"
+  },
+  "results": {
+    "kr": {
+      "evaluatedTrades": 729,
+      "affectedTrades": 219,
+      "actionDowngradeCount": 219,
+      "recommendationCountChange": -219,
+      "stopFailureRateBefore": 0.225,
+      "stopFailureRateAfter": 0.1078,
+      "avgReturnBefore": -1.6062,
+      "avgReturnAfter": 0.6048,
+      "activationDecision": "diagnostic_only"
+    },
+    "us": {
+      "evaluatedTrades": 715,
+      "affectedTrades": 191,
+      "actionDowngradeCount": 191,
+      "recommendationCountChange": -191,
+      "stopFailureRateBefore": 0.2252,
+      "stopFailureRateAfter": 0.0802,
+      "avgReturnBefore": -0.3098,
+      "avgReturnAfter": 2.2779,
+      "activationDecision": "diagnostic_only"
+    }
+  },
+  "activationReason": "The replay is favorable, but v1 keeps the guard as a diagnostic preview until the HIGH risk group is tracked out of sample. No live recommendation action is changed in this patch.",
+  "overfitControls": [
+    "evaluated-only rows",
+    "pending and data-quality reasons excluded",
+    "action downgrade preview is separated from live recommendation action",
+    "shouldModifyTradingLogicNow remains false"
+  ],
+  "activeApplied": false,
+  "shouldModifyTradingLogicNow": false
+}

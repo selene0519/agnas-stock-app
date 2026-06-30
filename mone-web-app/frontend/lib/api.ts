@@ -436,6 +436,8 @@ export const mone = {
     apiGet<ApiList>("/api/virtual/improvement-priorities", p),
   virtualStopLossDiagnostics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/virtual/stop-loss-diagnostics", p),
+  virtualEntryTimingDiagnostics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; regime?: string; recommendationBucket?: string }) =>
+    apiGet<ApiList>("/api/virtual/entry-timing-diagnostics", p),
   journalPerformance: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<any>("/api/journal/performance", p),
   journalAttribution: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>

@@ -8315,6 +8315,54 @@ def api_journal_stop_loss_diagnostics(
     return _stop_loss_diagnostics_response(market, mode, horizon, source_type, journal_session)
 
 
+def _entry_timing_diagnostics_response(
+    market: str,
+    mode: str,
+    horizon: str,
+    source_type: str,
+    journal_session: str,
+    regime: str,
+    recommendation_bucket: str,
+) -> dict:
+    from app.services import entry_timing_safety
+
+    return entry_timing_safety.build_entry_timing_diagnostics(
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        source_type=source_type,
+        journal_session=journal_session,
+        regime=regime,
+        recommendation_bucket=recommendation_bucket,
+    )
+
+
+@app.get("/api/virtual/entry-timing-diagnostics")
+def api_virtual_entry_timing_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+    regime: str = Query("all"),
+    recommendation_bucket: str = Query("all", alias="recommendationBucket"),
+) -> dict:
+    return _entry_timing_diagnostics_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
+
+
+@app.get("/api/journal/entry-timing-diagnostics")
+def api_journal_entry_timing_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+    regime: str = Query("all"),
+    recommendation_bucket: str = Query("all", alias="recommendationBucket"),
+) -> dict:
+    return _entry_timing_diagnostics_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
+
+
 @app.get("/api/journal/performance")
 def api_journal_performance(
     market: str = Query("all"),

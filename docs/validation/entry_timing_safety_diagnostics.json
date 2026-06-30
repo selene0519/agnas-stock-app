@@ -1,0 +1,57 @@
+{
+  "report": "entry_timing_safety_diagnostics",
+  "guardVersion": "v1",
+  "generatedFor": "static validation snapshot",
+  "scope": "evaluated-only virtual trade journal rows",
+  "riskCriteria": [
+    "STOP_TOO_TIGHT / STOP_BEFORE_TARGET history",
+    "OVEREXTENDED_ENTRY or high overextension_risk",
+    "MARKET_GAP",
+    "MAE deeper than MFE pattern",
+    "low momentum with high overextension",
+    "low setup score inside stop-failure group"
+  ],
+  "markets": {
+    "kr": {
+      "totalEvaluatedTrades": 729,
+      "entryTimingRiskTrades": 489,
+      "entryTimingRiskRate": 0.6708,
+      "highRiskTrades": 219,
+      "highRiskRate": 0.3004,
+      "stopFailureTrades": 164,
+      "stopFailureRate": 0.225,
+      "avgReturn": -1.6062,
+      "medianReturn": -3.0563,
+      "avgMFE": 5.2192,
+      "avgMAE": -6.3512,
+      "actionDowngradeCandidateCount": 219,
+      "topRiskReasons": [
+        { "reason": "MAE_DEEPER_THAN_MFE", "count": 219, "ratio": 1.0 },
+        { "reason": "OVEREXTENDED_ENTRY", "count": 110, "ratio": 0.5023 },
+        { "reason": "STOP_TOO_TIGHT", "count": 103, "ratio": 0.4703 }
+      ]
+    },
+    "us": {
+      "totalEvaluatedTrades": 715,
+      "entryTimingRiskTrades": 340,
+      "entryTimingRiskRate": 0.4755,
+      "highRiskTrades": 191,
+      "highRiskRate": 0.2671,
+      "stopFailureTrades": 161,
+      "stopFailureRate": 0.2252,
+      "avgReturn": -0.3098,
+      "medianReturn": -1.9022,
+      "avgMFE": 5.1791,
+      "avgMAE": -4.8907,
+      "actionDowngradeCandidateCount": 191,
+      "topRiskReasons": [
+        { "reason": "MAE_DEEPER_THAN_MFE", "count": 191, "ratio": 1.0 },
+        { "reason": "STOP_TOO_TIGHT", "count": 106, "ratio": 0.555 },
+        { "reason": "OVEREXTENDED_ENTRY", "count": 72, "ratio": 0.377 }
+      ]
+    }
+  },
+  "activeApplied": false,
+  "shouldModifyTradingLogicNow": false,
+  "logicChangeScope": "diagnostic fields and adjustedAction preview only; no _final_score, ranking, filters, EV, candidates, or entry/target/stop formula changes"
+}

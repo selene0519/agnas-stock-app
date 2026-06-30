@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, TrendingUp, XCircle } from "lucide-react";
+import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw, ShieldCheck, TimerReset, TrendingUp, XCircle } from "lucide-react";
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { outcomeTone, toneClassName } from "@/lib/tone";
 import { displayName } from "@/lib/moneDisplay";
@@ -257,6 +257,7 @@ export default function VirtualJournalPage() {
   const [opsData, setOpsData] = useState<any>(null);
   const [failureBasis, setFailureBasis] = useState<FailureAnalysisBasis>("all");
   const [stopLossData, setStopLossData] = useState<any>({});
+  const [entryTimingData, setEntryTimingData] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -265,7 +266,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -274,6 +275,7 @@ export default function VirtualJournalPage() {
         mone.virtualFailureAnalytics(scope),
         mone.virtualImprovementPriorities(scope),
         mone.virtualStopLossDiagnostics(scope),
+        mone.virtualEntryTimingDiagnostics(scope),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
@@ -290,6 +292,7 @@ export default function VirtualJournalPage() {
       setFailureAnalytics(failureAnalyticsRes || {});
       setImprovementData(improvementRes || {});
       setStopLossData(stopLossRes || {});
+      setEntryTimingData(entryTimingRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
       setEffData(effRes?.status === "OK" ? effRes : null);
@@ -512,6 +515,24 @@ export default function VirtualJournalPage() {
     WEAK_CANDIDATE_QUALITY: "후보 품질 약화",
     STOP_BAND_DESIGN_WEAK: "손절 설계 추가 검증",
   }[causeType] || causeType);
+  const entryTimingSummary = entryTimingData?.summary || {};
+  const entryTimingReplay = entryTimingData?.beforeAfterReplay || {};
+  const entryTimingReasons = (entryTimingData?.riskReasonTop || []).slice(0, 3);
+  const entryTimingModeLabel = (modeValue: string) => ({
+    diagnostic_only: "진단 전용",
+    active_if_validated: "검증 후 활성",
+    active: "활성 적용",
+  }[modeValue] || "진단 전용");
+  const riskReasonLabel = (reason: string) => ({
+    OVEREXTENSION_RISK_HIGH: "과열 위험 높음",
+    OVEREXTENDED_ENTRY: "과열 구간 진입",
+    MARKET_GAP: "갭 변동 영향",
+    MAE_DEEPER_THAN_MFE: "역행폭 과대",
+    STOP_TOO_TIGHT: "손절폭 과소",
+    STOP_BEFORE_TARGET: "손절 선도달",
+    LOW_MOMENTUM_WITH_OVEREXTENSION: "과열 대비 모멘텀 약함",
+    LOW_SETUP_IN_STOP_FAILURE_GROUP: "setup 진단 약함",
+  }[reason] || reason);
 
   const approvedSuggestions = useMemo(
     () => suggestions.filter((item) => item.approvalStatus === "APPROVED" && item.applicationStatus !== "APPLIED").slice(0, 4),
@@ -519,7 +540,7 @@ export default function VirtualJournalPage() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
       <section className="rounded-lg bg-slate-900/60 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -819,6 +840,85 @@ export default function VirtualJournalPage() {
               {!stopLossCauses.length && (
                 <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">손절 실패 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
               )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="min-w-0 overflow-hidden rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <TimerReset size={16} className="shrink-0 text-amber-300" />
+              <span>진입 타이밍 안전장치</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+              이 기능은 손절가를 넓히지 않고, 손절 실패 가능성이 높은 이른 진입을 WAIT_PULLBACK/CAUTION으로 낮추는 안전장치입니다. 검증 기준을 만족하지 않으면 추천 로직에는 반영하지 않습니다.
+            </p>
+          </div>
+          <span className={`w-fit shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${entryTimingData?.appliedGuard ? "bg-emerald-500/12 text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)]" : "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]"}`}>
+            {entryTimingData?.appliedGuard ? "활성 적용" : entryTimingModeLabel(String(entryTimingData?.guardMode || "diagnostic_only"))}
+          </span>
+        </div>
+
+        <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          {metric("평가 완료 거래", entryTimingSummary.totalEvaluatedTrades ?? 0)}
+          {metric("위험 거래", entryTimingSummary.entryTimingRiskTrades ?? 0, "text-amber-300")}
+          {metric("HIGH risk 비율", fmtRate(entryTimingSummary.highRiskRate), "text-red-300")}
+          {metric("downgrade 후보", entryTimingSummary.actionDowngradeCandidateCount ?? 0, "text-cyan-300")}
+          {metric("현재 적용", entryTimingData?.appliedGuard ? "active" : "preview", entryTimingData?.appliedGuard ? "text-emerald-300" : "text-slate-300")}
+        </div>
+
+        <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">before / after replay</div>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">손절 실패율 전</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-rose-300">{fmtRate(entryTimingReplay.stopFailureRateBefore)}</div>
+              </div>
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">손절 실패율 후</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-rose-300">{fmtRate(entryTimingReplay.stopFailureRateAfter)}</div>
+              </div>
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">평균 수익률 전</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{entryTimingReplay.avgReturnBefore == null ? "-" : `${Number(entryTimingReplay.avgReturnBefore).toFixed(2)}%`}</div>
+              </div>
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
+                <div className="text-[10px] text-slate-500">평균 수익률 후</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{entryTimingReplay.avgReturnAfter == null ? "-" : `${Number(entryTimingReplay.avgReturnAfter).toFixed(2)}%`}</div>
+              </div>
+            </div>
+            <div className="mt-3 break-words rounded-md bg-slate-900/70 px-3 py-2 text-[11px] leading-5 text-slate-400 [overflow-wrap:anywhere]">
+              현재 결과는 평가 완료 거래 기준입니다. 활성 판단: {entryTimingData?.activationReason || "평가 완료 데이터가 아직 충분하지 않습니다."}
+            </div>
+          </div>
+
+          <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">주요 사유 TOP 3</div>
+            <div className="space-y-2">
+              {entryTimingReasons.map((item: any, index: number) => (
+                <div key={`${item.reason || index}`} className="min-w-0 rounded-md bg-slate-900/70 px-3 py-2">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-200">{riskReasonLabel(String(item.reason || ""))}</div>
+                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-500">{item.reason || "-"}</div>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] tabular-nums text-slate-500">
+                    <span>{item.count ?? 0}건</span>
+                    <span>{fmtRate(item.ratio)}</span>
+                  </div>
+                </div>
+              ))}
+              {!entryTimingReasons.length && (
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">진입 타이밍 위험 사유를 만들 평가 완료 데이터가 아직 없습니다.</div>
+              )}
+            </div>
+            <div className="mt-3 break-words rounded-md bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.16)] [overflow-wrap:anywhere]">
+              다음 조치: {entryTimingData?.recommendedNextStep || "표본을 추가로 쌓은 뒤 HIGH risk 후보를 별도 검증하세요."}
             </div>
           </div>
         </div>

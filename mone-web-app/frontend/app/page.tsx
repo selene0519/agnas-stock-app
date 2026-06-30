@@ -339,7 +339,7 @@ export default function App() {
   }
 
   return (
-    <div className="mone-app-shell flex h-dvh overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+    <div className="mone-app-shell flex h-dvh max-w-full overflow-hidden" style={{ background: "var(--bg-primary)" }}>
       <a href="#main-content" className="skip-link">본문으로 건너뛰기</a>
       {booting && (
         <AppLaunchLoading
@@ -353,7 +353,7 @@ export default function App() {
       {/* 데스크톱 사이드바 */}
       <Sidebar current={page} onChange={navigateTo} isAdmin={Boolean(adminToken)} onAdminLogin={openAdminLogin} onAdminLogout={handleAdminLogout} userProfile={userProfile} onUserLogout={handleUserLogout} />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* 헤더 */}
         <header className="mone-app-header flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900/60 px-3 backdrop-blur md:px-5">
           {/* 모바일: MONE 로고 */}
@@ -451,8 +451,8 @@ export default function App() {
         </header>
 
         {/* 메인 콘텐츠 — 모바일은 하단 탭바 높이(56px) + safe area 만큼 여백 */}
-        <main ref={mainRef} id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-3 pb-[calc(56px+env(safe-area-inset-bottom))] outline-none md:p-6 md:pb-6">
-          <div className="mx-auto max-w-7xl space-y-4">
+        <main ref={mainRef} id="main-content" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 pb-[calc(56px+env(safe-area-inset-bottom))] outline-none md:p-6 md:pb-6">
+          <div className="mx-auto min-w-0 max-w-7xl space-y-4">
             <SessionSafetyBanner market={getDefaultMarketBySession()} />
             {renderPage()}
           </div>
