@@ -1,54 +1,41 @@
 {
-  "startedAt": "2026-07-01T06:20:00.891514",
-  "market": "us",
+  "startedAt": "2026-07-01T07:30:00.497814",
+  "market": "kr",
   "steps": {
-    "ohlcv_us": {
-      "ok": 143,
-      "fail": 1
+    "ohlcv_kr": {
+      "ok": 100,
+      "fail": 0
     },
-    "recommendations_us": {
-      "status": "OK",
-      "market": "us",
-      "stderr": ""
+    "recommendations_kr": {
+      "status": "ERROR",
+      "market": "kr",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\dev\\agnas-stock-app\\scripts\\generate_kr_recommendations.py\", line 23, in <module>\n    from scripts.walk_forward_backtest import TRADE_COST_PCT  # 매수수수료+매도세+슬리피지 \\u2248 0.345%, 백테스트와 동일 산식 유지\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'scripts'\n"
     },
-    "news_disclosures_us": {
+    "news_disclosures_kr": {
       "news": {
         "status": "OK",
         "results": [
           {
             "status": "OK",
-            "market": "us",
+            "market": "kr",
             "count": 10,
-            "file": "reports/news_summary_us.csv"
+            "file": "reports/news_summary_kr.csv"
           }
         ],
-        "createdAt": "2026-07-01 06:21:12"
-      },
-      "usCompanyNews": {
-        "status": "OK",
-        "market": "us",
-        "count": 959,
-        "errors": []
+        "createdAt": "2026-07-01 07:30:27"
       },
       "disclosures": {
         "status": "OK",
         "results": [
           {
             "status": "OK",
-            "market": "us",
-            "message": "SEC/Finnhub filing 수집 완료",
-            "count": 545,
-            "file": "data/disclosures/disclosures_us.csv",
-            "errors": []
-          },
-          {
-            "status": "OK",
-            "market": "us",
-            "count": 1164,
-            "errors": []
+            "market": "kr",
+            "message": "DART 공시 수집 완료",
+            "count": 100,
+            "file": "data/disclosures/disclosures_kr.csv"
           }
         ],
-        "createdAt": "2026-07-01 06:25:01"
+        "createdAt": "2026-07-01 07:30:28"
       }
     },
     "virtual_validation": {
@@ -23236,7 +23223,7 @@
       ]
     }
   },
-  "elapsedSec": 305.5,
-  "completedAt": "2026-07-01T06:25:06.396147",
+  "elapsedSec": 32.3,
+  "completedAt": "2026-07-01T07:30:32.839065",
   "source": "local_task_scheduler"
 }
