@@ -256,6 +256,7 @@ export default function VirtualJournalPage() {
   const [selfLearningData, setSelfLearningData] = useState<any>(null);
   const [opsData, setOpsData] = useState<any>(null);
   const [failureBasis, setFailureBasis] = useState<FailureAnalysisBasis>("all");
+  const [stopLossData, setStopLossData] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -264,7 +265,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -272,6 +273,7 @@ export default function VirtualJournalPage() {
         mone.journalAnalytics(scope),
         mone.virtualFailureAnalytics(scope),
         mone.virtualImprovementPriorities(scope),
+        mone.virtualStopLossDiagnostics(scope),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
@@ -287,6 +289,7 @@ export default function VirtualJournalPage() {
       setAnalyticsData(analyticsRes || {});
       setFailureAnalytics(failureAnalyticsRes || {});
       setImprovementData(improvementRes || {});
+      setStopLossData(stopLossRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
       setEffData(effRes?.status === "OK" ? effRes : null);
@@ -496,6 +499,19 @@ export default function VirtualJournalPage() {
     if (severity === "medium") return "bg-amber-500/12 text-amber-200 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.22)]";
     return "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]";
   };
+  const stopLossSummary = stopLossData?.summary || {};
+  const stopLossPatch = stopLossData?.patch || {};
+  const stopLossCauses = (stopLossData?.causeCandidates || []).slice(0, 3);
+  const stopLossCauseLabel = (causeType: string) => ({
+    OVEREXTENSION_RISK_HIGH: "과열 진입 연관",
+    MARKET_GAP_RISK: "갭 변동 위험",
+    MODE_SPECIFIC_STOP_FAILURE: "특정 모드 집중",
+    MARKET_SPECIFIC_STOP_FAILURE: "특정 시장 집중",
+    ENTRY_TIMING_TOO_EARLY: "진입 타이밍 역행",
+    HIGH_DRAWDOWN_BEFORE_SUCCESS: "진입 후 역행폭",
+    WEAK_CANDIDATE_QUALITY: "후보 품질 약화",
+    STOP_BAND_DESIGN_WEAK: "손절 설계 추가 검증",
+  }[causeType] || causeType);
 
   const approvedSuggestions = useMemo(
     () => suggestions.filter((item) => item.approvalStatus === "APPROVED" && item.applicationStatus !== "APPLIED").slice(0, 4),
@@ -694,42 +710,42 @@ export default function VirtualJournalPage() {
           </span>
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 xl:grid-cols-3">
           {priorityItems.slice(0, 3).map((item: any) => {
             const evidence = item.evidence || {};
             const conditionRate = evidence.conditionRate ?? evidence.ratio;
             return (
-              <div key={item.issueType || item.rank} className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+              <div key={item.issueType || item.rank} className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-mono text-[10px] text-cyan-300">#{item.rank ?? "-"}</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-100">{item.title || item.issueType}</div>
-                    <div className="mt-1 font-mono text-[10px] text-slate-500">{item.issueType || "-"}</div>
+                    <div className="mt-1 break-keep text-sm font-semibold leading-5 text-slate-100">{item.title || item.issueType}</div>
+                    <div className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-500">{item.issueType || "-"}</div>
                   </div>
                   <span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${severityTone(String(item.severity || "low"))}`}>
                     {severityLabel(String(item.severity || "low"))}
                   </span>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-                  <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
+                <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+                  <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-1.5">
                     <div className="text-[10px] text-slate-500">근거</div>
                     <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{evidence.count ?? 0}건</div>
                   </div>
-                  <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
+                  <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-1.5">
                     <div className="text-[10px] text-slate-500">전체 대비</div>
                     <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(overallPriorityRatio(evidence))}</div>
                   </div>
-                  <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
+                  <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-1.5">
                     <div className="text-[10px] text-slate-500">조건 충족률</div>
                     <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(conditionRate)}</div>
                   </div>
-                  <div className="rounded-md bg-slate-900/70 px-2 py-1.5">
+                  <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-1.5">
                     <div className="text-[10px] text-slate-500">MAE</div>
                     <div className="font-mono text-xs font-semibold text-rose-300">{evidence.avgMAE == null ? "-" : `${Number(evidence.avgMAE).toFixed(2)}%`}</div>
                   </div>
                 </div>
-                <div className="mt-3 text-xs leading-5 text-slate-300">{item.recommendation || "-"}</div>
-                <div className="mt-2 rounded-md bg-cyan-500/8 px-2 py-2 text-[11px] leading-5 text-cyan-100 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.14)]">
+                <div className="mt-3 break-keep text-xs leading-5 text-slate-300">{item.recommendation || "-"}</div>
+                <div className="mt-2 break-words rounded-md bg-cyan-500/8 px-2 py-2 text-[11px] leading-5 text-cyan-100 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.14)] [overflow-wrap:anywhere]">
                   {item.safeNextStep || "표본을 추가로 검증하세요."}
                 </div>
               </div>
@@ -740,6 +756,71 @@ export default function VirtualJournalPage() {
               개선 우선순위를 만들 평가 데이터가 아직 없습니다.
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <ShieldCheck size={16} className="text-rose-300" />
+              <span>손절 실패 진단</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+              이 분석은 평가 완료 거래만 기준으로 합니다. 손절가 산식을 직접 변경하지 않고, 손절 실패 가능성이 높은 진입 조건을 먼저 점검합니다.
+            </p>
+          </div>
+          <span className={`w-fit rounded-md px-2 py-1 text-[11px] font-semibold ${stopLossPatch.appliedPatch ? "bg-emerald-500/12 text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)]" : "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]"}`}>
+            {stopLossPatch.appliedPatch ? "패치 적용" : "진단 전용"}
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          {metric("평가 완료 거래", stopLossSummary.totalEvaluatedTrades ?? 0)}
+          {metric("손절 실패 수", stopLossSummary.stopFailureTrades ?? 0, "text-rose-300")}
+          {metric("손절 실패율", fmtRate(stopLossSummary.stopFailureRate), "text-rose-300")}
+          {metric("손절폭 과소", fmtRate(stopLossSummary.stopTooTightRate), "text-amber-300")}
+          {metric("손절 선도달", fmtRate(stopLossSummary.stopBeforeTargetRate), "text-red-300")}
+        </div>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">연관성 요약</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+                <div className="text-[10px] text-slate-500">과열 진입</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(stopLossSummary.overextensionAssociationRate)}</div>
+              </div>
+              <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+                <div className="text-[10px] text-slate-500">갭 변동</div>
+                <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(stopLossSummary.marketGapAssociationRate)}</div>
+              </div>
+            </div>
+            <div className="mt-3 break-words rounded-md bg-slate-900/70 px-3 py-2 text-[11px] leading-5 text-slate-400 [overflow-wrap:anywhere]">
+              추천 로직 변경이 적용된 경우, 적용 범위와 검증 결과를 함께 표시합니다. 현재 상태: {stopLossPatch.patchReason || "분석 데이터가 아직 충분하지 않습니다."}
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">주요 원인 후보 TOP 3</div>
+            <div className="space-y-2">
+              {stopLossCauses.map((item: any, index: number) => (
+                <div key={`${item.causeType || index}`} className="rounded-md bg-slate-900/70 px-3 py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-200">{stopLossCauseLabel(String(item.causeType || ""))}</div>
+                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-500">{item.causeType || "-"}</div>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+                  </div>
+                  <div className="mt-1 break-keep text-[11px] leading-5 text-slate-400">{item.summary || item.title || "-"}</div>
+                </div>
+              ))}
+              {!stopLossCauses.length && (
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">손절 실패 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 

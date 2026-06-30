@@ -1,0 +1,28 @@
+{
+  "reportType": "stop_loss_failure_patch_report",
+  "generatedAt": "2026-06-30",
+  "appliedPatch": false,
+  "patchType": "diagnostic_only",
+  "patchReason": "원인 후보는 관측되었지만 before/after 검증 없이 추천 action downgrade를 적용하지 않았습니다.",
+  "shouldModifyTradingLogicNow": false,
+  "logicChanged": false,
+  "priceFormulaChanged": false,
+  "finalScoreChanged": false,
+  "rankingOrFilterChanged": false,
+  "beforeAfter": null,
+  "recommendationCountChange": 0,
+  "actionDowngradeCount": 0,
+  "affectedTradeCount": 0,
+  "validationBasis": {
+    "totalEvaluatedTrades": 146,
+    "stopFailureTrades": 70,
+    "stopFailureRate": 0.4795,
+    "mainObservedCause": "ENTRY_TIMING_TOO_EARLY"
+  },
+  "overfittingCaution": "This report does not remove candidates or change action labels because current evidence is diagnostic and not a validated before/after improvement.",
+  "notes": [
+    "No stop/target/entry price formula was changed.",
+    "No _final_score weight, sorting, filtering, EV, or recommendation candidate inclusion logic was changed.",
+    "Future patches should be gated by before/after replay or backtest evidence."
+  ]
+}

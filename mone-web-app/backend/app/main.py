@@ -8275,6 +8275,46 @@ def api_journal_improvement_priorities(
     return _trade_improvement_priorities_response(market, mode, horizon, source_type, journal_session, regime, recommendation_bucket)
 
 
+def _stop_loss_diagnostics_response(
+    market: str,
+    mode: str,
+    horizon: str,
+    source_type: str,
+    journal_session: str,
+) -> dict:
+    from app.services import stop_loss_failure_diagnostics
+
+    return stop_loss_failure_diagnostics.build_stop_loss_diagnostics(
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        source_type=source_type,
+        journal_session=journal_session,
+    )
+
+
+@app.get("/api/virtual/stop-loss-diagnostics")
+def api_virtual_stop_loss_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _stop_loss_diagnostics_response(market, mode, horizon, source_type, journal_session)
+
+
+@app.get("/api/journal/stop-loss-diagnostics")
+def api_journal_stop_loss_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _stop_loss_diagnostics_response(market, mode, horizon, source_type, journal_session)
+
+
 @app.get("/api/journal/performance")
 def api_journal_performance(
     market: str = Query("all"),
