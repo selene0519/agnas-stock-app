@@ -442,6 +442,8 @@ export const mone = {
     apiGet<ApiList>("/api/virtual/entry-not-touched-diagnostics", p),
   virtualMarketGapDiagnostics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/virtual/market-gap-diagnostics", p),
+  virtualPerformanceGateDiagnostics: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>
+    apiGet<any>("/api/virtual/performance-gate-diagnostics", p),
   journalPerformance: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<any>("/api/journal/performance", p),
   journalAttribution: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>

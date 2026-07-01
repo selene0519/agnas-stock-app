@@ -1,0 +1,58 @@
+{
+  "title": "성과 게이트 콜드스타트/커버리지 갭 수정 검증",
+  "validatedAt": "2026-07-01",
+  "commit": "fix: prevent cold-start performance gate from blocking KR recommendations",
+  "problem": {
+    "symptom": "KR 추천 전체가 _apply_recommendation_performance_safety()에 의해 100% 차단",
+    "rootCause": [
+      "2026-03-23~2026-06-18 (약 3개월) 검증 파이프라인 미실행 → 추천은 생성됐지만 VTJ 캡처 없음",
+      "캡처 갭 기간에 close_exit 플레이스홀더 행이 생성됨: result=close_exit, returnPct≈-0.09%, exitPrice=entryPrice",
+      "이 행들이 completed 카운트에 포함돼 completed≥30 조건을 충족시키면서 avgReturn을 -0.09%로 끌어내림",
+      "_recommendation_performance_safety()의 avgReturn < 0 조건 → BLOCKED_LOW_WIN_RATE → isTradeBlocked=True",
+      "별도로 _public_quant_verdict()도 ev=None (KR 추천 CSV에 expectedValue 컬럼 없음)을 하드 블록 사유로 처리"
+    ],
+    "dataEvidence": {
+      "balancedSwingTotalRows": 271,
+      "closeExitRows": 98,
+      "closeExitReturnPct": -0.09,
+      "realOutcomeRows": "stop_hit / not_executed 등 실제 결과는 소수"
+    }
+  },
+  "fix": {
+    "newHelpers": [
+      "_is_placeholder_completion(r): result=close_exit AND abs(returnPct)<=0.15 → True"
+    ],
+    "newMetrics": [
+      "meaningfulCompleted: placeholder 제외 완료 수",
+      "placeholderCount: close_exit 플레이스홀더 수",
+      "meaningfulWinRate: meaningful 기준 승률",
+      "meaningfulAvgReturn: meaningful 기준 평균수익률"
+    ],
+    "gateChanges": [
+      "Gate 1: completed < 30 → CAUTION_LOW_SAMPLE (기존 동일, 차단 없음)",
+      "Gate 2 (신규): completed >= 30이지만 meaningfulCompleted < 10 → COVERAGE_GAP (차단 없음)",
+      "Gate 3: meaningfulWinRate < 35% OR meaningfulAvgReturn < -1.0% → BLOCKED_LOW_WIN_RATE (실질 차단 유지)"
+    ],
+    "applyChanges": [
+      "COVERAGE_GAP: isTradeBlocked=False, decisionBucket='오늘 진입' → '관찰'로 다운그레이드",
+      "performanceGateStatus / performanceMeaningfulSample / performanceFallbackApplied 필드 추가"
+    ],
+    "quantVerdictChanges": [
+      "data_gap 상태 (COVERAGE_GAP / CAUTION_LOW_SAMPLE / CAUTION_PERFORMANCE_UNKNOWN): strategy 검사 skip → caution으로 전환",
+      "ev=None in data_gap: reason → caution (KR CSV에 expectedValue 컬럼 없음 대응)"
+    ]
+  },
+  "constraints": [
+    "성과 게이트 삭제 금지 — Gate 3 (BLOCKED_LOW_WIN_RATE) 유지",
+    "isTradeBlocked 전체 해제 금지 — 진짜 성과 부진 시 차단 유지",
+    "final_score 변경 금지",
+    "추천 정렬/필터/EV 변경 금지",
+    "entry/target/stop 산식 변경 금지",
+    "LOW_ATR guard 조건 변경 금지"
+  ],
+  "expectedOutcome": {
+    "before": "COVERAGE_GAP 기간 KR 추천 100% 차단 (avgReturn=-0.09% → BLOCKED_LOW_WIN_RATE)",
+    "after": "COVERAGE_GAP 상태로 통과, '오늘 진입' 항목은 '관찰'로 다운그레이드, 성과 데이터 충분히 쌓이면 자동으로 Gate 3 정상 작동"
+  },
+  "diagnosticsEndpoint": "GET /api/virtual/performance-gate-diagnostics?market=kr&mode=balanced&horizon=swing"
+}

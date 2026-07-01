@@ -2522,49 +2522,59 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
         completed = int(_num(stats.get("completed"), 0) or 0)
         win_rate = _num(stats.get("winRate"), None)
         avg_return = _num(stats.get("avgReturn"), None)
-        low_sample = completed < 30
-        if low_sample:
-            return {
-                "status": "CAUTION_LOW_SAMPLE",
-                "reviewOnly": True,
-                "isTradeBlocked": False,
-                "reason": f"{key} validation sample is low ({completed}/30)",
-                "mode": _mode_norm(mode),
-                "horizon": _horizon_norm(horizon),
-                "completed": completed,
-                "winRate": win_rate,
-                "avgReturn": avg_return,
-                "sampleStatus": stats.get("sampleStatus") or "LOW_SAMPLE",
-                "basis": dashboard.get("summary", {}).get("basis"),
-            }
-        blocked = (win_rate is not None and win_rate < 35.0) or (avg_return is not None and avg_return < 0)
-        if blocked:
-            return {
-                "status": "BLOCKED_LOW_WIN_RATE",
-                "reviewOnly": True,
-                "isTradeBlocked": True,
-                "reason": f"{key} validation under gate: winRate={win_rate}%, avgReturn={avg_return}%",
-                "mode": _mode_norm(mode),
-                "horizon": _horizon_norm(horizon),
-                "completed": completed,
-                "winRate": win_rate,
-                "avgReturn": avg_return,
-                "sampleStatus": stats.get("sampleStatus") or _validation_sample_status(completed),
-                "basis": dashboard.get("summary", {}).get("basis"),
-            }
-        return {
-            "status": "OK",
-            "reviewOnly": False,
-            "isTradeBlocked": False,
-            "reason": "",
+        meaningful_completed = int(_num(stats.get("meaningfulCompleted"), 0) or 0)
+        placeholder_count = int(_num(stats.get("placeholderCount"), 0) or 0)
+        meaningful_win_rate = _num(stats.get("meaningfulWinRate"), None)
+        meaningful_avg_return = _num(stats.get("meaningfulAvgReturn"), None)
+
+        base = {
             "mode": _mode_norm(mode),
             "horizon": _horizon_norm(horizon),
             "completed": completed,
             "winRate": win_rate,
             "avgReturn": avg_return,
+            "meaningfulCompleted": meaningful_completed,
+            "placeholderCount": placeholder_count,
+            "meaningfulWinRate": meaningful_win_rate,
+            "meaningfulAvgReturn": meaningful_avg_return,
             "sampleStatus": stats.get("sampleStatus") or _validation_sample_status(completed),
             "basis": dashboard.get("summary", {}).get("basis"),
         }
+
+        # Gate 1: not enough total samples — genuine cold start
+        if completed < 30:
+            return {**base, "status": "CAUTION_LOW_SAMPLE", "reviewOnly": True,
+                    "isTradeBlocked": False,
+                    "reason": f"{key} validation sample is low ({completed}/30)"}
+
+        # Gate 2: coverage gap — total looks ok but most rows are same-day placeholder
+        # close_exits (returnPct≈-0.09%) from the capture-gap period; only
+        # meaningful_completed (<10) carry real trade outcomes.
+        if meaningful_completed < 10:
+            return {**base, "status": "COVERAGE_GAP", "reviewOnly": True,
+                    "isTradeBlocked": False,
+                    "reason": (
+                        f"{key} coverage gap: {placeholder_count}/{completed} rows are "
+                        f"same-day close_exit placeholders; only {meaningful_completed} "
+                        f"meaningful outcomes available"
+                    )}
+
+        # Gate 3: genuine performance block — use meaningful metrics, not raw
+        # (raw avgReturn ≈ -0.09% is just transaction cost, not a performance signal;
+        # require avg < -1.0% to indicate real strategy underperformance)
+        gate_wr = meaningful_win_rate if meaningful_win_rate is not None else win_rate
+        gate_avg = meaningful_avg_return if meaningful_avg_return is not None else avg_return
+        blocked = (gate_wr is not None and gate_wr < 35.0) or (gate_avg is not None and gate_avg < -1.0)
+        if blocked:
+            return {**base, "status": "BLOCKED_LOW_WIN_RATE", "reviewOnly": True,
+                    "isTradeBlocked": True,
+                    "reason": (
+                        f"{key} validation under gate: "
+                        f"meaningfulWinRate={gate_wr}%, meaningfulAvgReturn={gate_avg}%"
+                    )}
+
+        return {**base, "status": "OK", "reviewOnly": False, "isTradeBlocked": False, "reason": ""}
+
     except Exception as exc:
         return {
             "status": "CAUTION_PERFORMANCE_UNKNOWN",
@@ -2574,8 +2584,12 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
             "mode": _mode_norm(mode),
             "horizon": _horizon_norm(horizon),
             "completed": 0,
+            "meaningfulCompleted": 0,
+            "placeholderCount": 0,
             "winRate": None,
             "avgReturn": None,
+            "meaningfulWinRate": None,
+            "meaningfulAvgReturn": None,
             "sampleStatus": "UNKNOWN",
         }
 
@@ -2584,12 +2598,25 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
     safety = _recommendation_performance_safety(market, mode, horizon)
     payload["performanceSafety"] = safety
     payload["reviewOnly"] = bool(payload.get("reviewOnly") or safety.get("reviewOnly"))
+
+    perf_status = str(safety.get("status") or "").upper()
+    is_coverage_gap = perf_status == "COVERAGE_GAP"
+
+    # COVERAGE_GAP and other non-blocking statuses: annotate items but don't hard-block.
+    # For COVERAGE_GAP specifically, downgrade "오늘 진입" → "관찰" so the user can still
+    # see the candidate without a false buy signal during the data-poverty window.
     if not safety.get("isTradeBlocked"):
         for item in payload.get("items") or []:
-            if isinstance(item, dict):
-                item["performanceStatus"] = safety.get("status")
-                item["performanceWinRate"] = safety.get("winRate")
-                item["performanceSample"] = safety.get("completed")
+            if not isinstance(item, dict):
+                continue
+            item["performanceGateStatus"] = safety.get("status")
+            item["performanceWinRate"] = safety.get("winRate")
+            item["performanceSample"] = safety.get("completed")
+            item["performanceMeaningfulSample"] = safety.get("meaningfulCompleted")
+            item["performanceFallbackApplied"] = is_coverage_gap
+            if is_coverage_gap and str(item.get("decisionBucket") or "") == "오늘 진입":
+                item["decisionBucketOriginal"] = "오늘 진입"
+                item["decisionBucket"] = "관찰"
         return payload
 
     blocked_items: list[Any] = []
@@ -2598,9 +2625,11 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
             blocked_items.append(item)
             continue
         row = dict(item)
-        row["performanceStatus"] = safety.get("status")
+        row["performanceGateStatus"] = safety.get("status")
         row["performanceWinRate"] = safety.get("winRate")
         row["performanceSample"] = safety.get("completed")
+        row["performanceMeaningfulSample"] = safety.get("meaningfulCompleted")
+        row["performanceFallbackApplied"] = False
         if not row.get("isTradeBlocked"):
             row["isTradeBlocked"] = True
             row["tradeBlockStatus"] = "PERFORMANCE_GATE_BLOCK"
@@ -2696,20 +2725,36 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
         reasons.append(str(trade_safety.get("reason") or "data quality caution"))
 
     perf_status = str(performance.get("status") or "").upper()
+    # For data-poverty statuses the strategy metrics are dominated by artifacts,
+    # not real trade outcomes — skip hard gates and surface as a single caution.
+    data_gap = perf_status in {"COVERAGE_GAP", "CAUTION_LOW_SAMPLE", "CAUTION_PERFORMANCE_UNKNOWN"}
     completed = int(_num(performance.get("completed"), 0) or 0)
     strategy_wr = _num(performance.get("winRate"), None)
     strategy_avg = _num(performance.get("avgReturn"), None)
-    if completed < int(policy["minStrategyCompleted"]):
-        reasons.append(f"strategy sample too low ({completed}/{policy['minStrategyCompleted']})")
-    if strategy_wr is None or strategy_wr < float(policy["minStrategyWinRatePct"]):
-        reasons.append(f"strategy win rate below gate ({strategy_wr}%)")
-    if strategy_avg is None or strategy_avg < float(policy["minStrategyAvgReturnPct"]):
-        reasons.append(f"strategy average return below gate ({strategy_avg}%)")
-    if perf_status.startswith("BLOCKED"):
-        reasons.append(str(performance.get("reason") or perf_status))
+    meaningful_completed = int(_num(performance.get("meaningfulCompleted"), 0) or 0)
+    if not data_gap:
+        if completed < int(policy["minStrategyCompleted"]):
+            reasons.append(f"strategy sample too low ({completed}/{policy['minStrategyCompleted']})")
+        if strategy_wr is None or strategy_wr < float(policy["minStrategyWinRatePct"]):
+            reasons.append(f"strategy win rate below gate ({strategy_wr}%)")
+        if strategy_avg is None or strategy_avg < float(policy["minStrategyAvgReturnPct"]):
+            reasons.append(f"strategy average return below gate ({strategy_avg}%)")
+        if perf_status.startswith("BLOCKED"):
+            reasons.append(str(performance.get("reason") or perf_status))
+    else:
+        cautions.append(
+            f"전략 검증 데이터 부족 ({perf_status} — meaningful {meaningful_completed}건)"
+        )
 
     ev = _num(item.get("expectedValue") or item.get("ev"), None)
-    if ev is None or ev < float(policy["minExpectedValuePct"]):
+    if ev is None:
+        # ev=None in data-gap periods means the column is missing from the CSV,
+        # not a genuine EV failure — demote to caution rather than hard block.
+        if data_gap:
+            cautions.append("expected value not available (데이터 부족 기간)")
+        else:
+            reasons.append(f"expected value below gate ({ev}%)")
+    elif ev < float(policy["minExpectedValuePct"]):
         reasons.append(f"expected value below gate ({ev}%)")
 
     rr = _calc_risk_reward(item)
@@ -4154,6 +4199,26 @@ def _virtual_validation_rows(repo: Path, market: str, mode: str, horizon: str) -
     return out
 
 
+def _is_placeholder_completion(r: dict[str, Any]) -> bool:
+    """close_exit rows with near-zero return are coverage-gap artifacts.
+
+    These appear when the validation pipeline runs on the same day the
+    recommendation was generated (no actual holding period), recording only
+    the round-trip transaction cost (~-0.09%).  They count as 'completed'
+    and as 'losses' by _is_completed_validation_row / _is_loss_row, but carry
+    no meaningful performance signal -- they inflate the completed count and
+    depress avgReturn without reflecting real strategy outcomes.
+
+    Threshold 0.15 % covers the KR round-trip cost of ~0.09 % and any
+    minor intraday bid-ask variation on a zero-movement position.
+    """
+    result = str(r.get("result") or "").strip().lower()
+    if result != "close_exit":
+        return False
+    ret = _validation_return(r)
+    return ret is not None and abs(ret) <= 0.15
+
+
 def _validation_dashboard_payload(market: str) -> dict[str, Any]:
     """9가지 전략 조합의 검증 통계 + 생애주기 요약.
     메인 파일(undated) + 날짜별 파일(YYYYMMDD) 모두 집계.
@@ -4212,6 +4277,16 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
             pending_count = len([r for r in all_rows if _is_pending_validation_row(r) and not _is_completed_validation_row(r)])
             not_executed_count = len([r for r in all_rows if _is_not_executed_validation_row(r)])
 
+            # Meaningful rows exclude same-day close_exit placeholders (coverage-gap artifacts)
+            meaningful = [r for r in completed if not _is_placeholder_completion(r)]
+            meaningful_wins = [r for r in meaningful if _is_win_row(r)]
+            meaningful_rets: list[float] = []
+            for r in meaningful:
+                v = _validation_return(r)
+                if v is not None:
+                    meaningful_rets.append(v)
+            placeholder_count = len(completed) - len(meaningful)
+
             stats[key] = {
                 "mode":      m,
                 "horizon":   h,
@@ -4223,6 +4298,10 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
                 "losses":    len(lose),
                 "winRate":   round(len(win) / len(completed) * 100, 1) if completed else None,
                 "avgReturn": round(sum(rets) / len(rets), 2) if rets else None,
+                "meaningfulCompleted": len(meaningful),
+                "placeholderCount": placeholder_count,
+                "meaningfulWinRate": round(len(meaningful_wins) / len(meaningful) * 100, 1) if meaningful else None,
+                "meaningfulAvgReturn": round(sum(meaningful_rets) / len(meaningful_rets), 2) if meaningful_rets else None,
                 "pendingCount": pending_count,
                 "pending": pending_count,
                 "notExecutedCount": not_executed_count,

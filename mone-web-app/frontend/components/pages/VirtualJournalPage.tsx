@@ -260,6 +260,7 @@ export default function VirtualJournalPage() {
   const [entryTimingData, setEntryTimingData] = useState<any>({});
   const [entryNotTouchedData, setEntryNotTouchedData] = useState<any>({});
   const [marketGapData, setMarketGapData] = useState<any>({});
+  const [perfGateData, setPerfGateData] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -268,7 +269,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -280,6 +281,7 @@ export default function VirtualJournalPage() {
         mone.virtualEntryTimingDiagnostics(scope),
         mone.virtualEntryNotTouchedDiagnostics(scope),
         mone.virtualMarketGapDiagnostics(scope),
+        mone.virtualPerformanceGateDiagnostics({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
@@ -299,6 +301,7 @@ export default function VirtualJournalPage() {
       setEntryTimingData(entryTimingRes || {});
       setEntryNotTouchedData(entryNotTouchedRes || {});
       setMarketGapData(marketGapRes || {});
+      setPerfGateData(perfGateRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
       setEffData(effRes?.status === "OK" ? effRes : null);
@@ -1101,6 +1104,69 @@ export default function VirtualJournalPage() {
               {!marketGapCauses.length && (
                 <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">갭 실패 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
               )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 성과 게이트 진단 */}
+      <section className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-200">성과 게이트 진단</h2>
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+            perfGateData?.gateStatus === "OK" ? "bg-emerald-900/60 text-emerald-300" :
+            perfGateData?.gateStatus === "COVERAGE_GAP" ? "bg-amber-900/60 text-amber-300" :
+            perfGateData?.gateStatus === "CAUTION_LOW_SAMPLE" ? "bg-sky-900/60 text-sky-300" :
+            perfGateData?.gateStatus === "BLOCKED_LOW_WIN_RATE" ? "bg-rose-900/60 text-rose-300" :
+            "bg-slate-800 text-slate-400"
+          }`}>
+            {perfGateData?.gateStatus || "로딩 중"}
+          </span>
+        </div>
+        {perfGateData?.reason && (
+          <div className="mb-3 rounded-md bg-slate-950/60 px-3 py-2 text-[11px] leading-5 text-slate-400">{perfGateData.reason}</div>
+        )}
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+            <div className="text-[10px] text-slate-500">전체 완료</div>
+            <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{perfGateData?.completed ?? "-"}</div>
+          </div>
+          <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+            <div className="text-[10px] text-slate-500">의미있는 완료</div>
+            <div className={`mt-1 font-mono text-xs font-semibold tabular-nums ${(perfGateData?.meaningfulCompleted ?? 0) < 10 ? "text-amber-300" : "text-emerald-300"}`}>
+              {perfGateData?.meaningfulCompleted ?? "-"}
+            </div>
+          </div>
+          <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+            <div className="text-[10px] text-slate-500">플레이스홀더</div>
+            <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-400">{perfGateData?.placeholderCount ?? "-"}</div>
+          </div>
+          <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+            <div className="text-[10px] text-slate-500">차단 여부</div>
+            <div className={`mt-1 font-mono text-xs font-semibold tabular-nums ${perfGateData?.isTradeBlocked ? "text-rose-300" : "text-emerald-300"}`}>
+              {perfGateData?.isTradeBlocked == null ? "-" : perfGateData.isTradeBlocked ? "차단" : "통과"}
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+            <div className="text-[10px] text-slate-500">전체 승률</div>
+            <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{perfGateData?.winRate != null ? `${perfGateData.winRate}%` : "-"}</div>
+          </div>
+          <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+            <div className="text-[10px] text-slate-500">의미있는 승률</div>
+            <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{perfGateData?.meaningfulWinRate != null ? `${perfGateData.meaningfulWinRate}%` : "-"}</div>
+          </div>
+          <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+            <div className="text-[10px] text-slate-500">전체 평균수익률</div>
+            <div className={`mt-1 font-mono text-xs font-semibold tabular-nums ${(perfGateData?.avgReturn ?? 0) < 0 ? "text-rose-300" : "text-emerald-300"}`}>
+              {perfGateData?.avgReturn != null ? `${perfGateData.avgReturn}%` : "-"}
+            </div>
+          </div>
+          <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
+            <div className="text-[10px] text-slate-500">의미있는 평균수익률</div>
+            <div className={`mt-1 font-mono text-xs font-semibold tabular-nums ${(perfGateData?.meaningfulAvgReturn ?? 0) < 0 ? "text-rose-300" : "text-emerald-300"}`}>
+              {perfGateData?.meaningfulAvgReturn != null ? `${perfGateData.meaningfulAvgReturn}%` : "-"}
             </div>
           </div>
         </div>

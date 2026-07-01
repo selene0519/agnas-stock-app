@@ -8483,6 +8483,60 @@ def api_journal_low_atr_next_open_guard(
     return _low_atr_next_open_guard_response(market, mode, horizon, source_type, journal_session)
 
 
+@app.get("/api/virtual/performance-gate-diagnostics")
+def api_virtual_performance_gate_diagnostics(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    mode: str = Query("balanced"),
+    horizon: str = Query("swing"),
+) -> dict:
+    """성과 게이트 진단: 커버리지 갭 / 콜드스타트 검출, meaningful 샘플 통계."""
+    from app.engine.mone_v65_api_stabilizer import (
+        _recommendation_performance_safety,
+        _validation_dashboard_payload,
+        _market_norm,
+        _mode_norm,
+        _horizon_norm,
+    )
+
+    try:
+        safety = _recommendation_performance_safety(market, mode, horizon)
+        dashboard = _validation_dashboard_payload(_market_norm(market))
+        key = f"{_mode_norm(mode)}_{_horizon_norm(horizon)}"
+        stats = (dashboard.get("stats") or {}).get(key) or {}
+        return {
+            "ok": True,
+            "market": market,
+            "mode": mode,
+            "horizon": horizon,
+            "gateStatus": safety.get("status"),
+            "isTradeBlocked": safety.get("isTradeBlocked"),
+            "reason": safety.get("reason"),
+            "completed": safety.get("completed"),
+            "meaningfulCompleted": safety.get("meaningfulCompleted"),
+            "placeholderCount": safety.get("placeholderCount"),
+            "winRate": safety.get("winRate"),
+            "avgReturn": safety.get("avgReturn"),
+            "meaningfulWinRate": safety.get("meaningfulWinRate"),
+            "meaningfulAvgReturn": safety.get("meaningfulAvgReturn"),
+            "sampleStatus": safety.get("sampleStatus"),
+            "allCombinations": {
+                k: {
+                    "completed": v.get("completed"),
+                    "meaningfulCompleted": v.get("meaningfulCompleted"),
+                    "placeholderCount": v.get("placeholderCount"),
+                    "winRate": v.get("winRate"),
+                    "meaningfulWinRate": v.get("meaningfulWinRate"),
+                    "avgReturn": v.get("avgReturn"),
+                    "meaningfulAvgReturn": v.get("meaningfulAvgReturn"),
+                    "sampleStatus": v.get("sampleStatus"),
+                }
+                for k, v in (dashboard.get("stats") or {}).items()
+            },
+        }
+    except Exception as exc:
+        return {"ok": False, "error": repr(exc), "market": market, "mode": mode, "horizon": horizon}
+
+
 @app.get("/api/journal/performance")
 def api_journal_performance(
     market: str = Query("all"),
