@@ -8489,49 +8489,63 @@ def api_virtual_performance_gate_diagnostics(
     mode: str = Query("balanced"),
     horizon: str = Query("swing"),
 ) -> dict:
-    """성과 게이트 진단: 커버리지 갭 / 콜드스타트 검출, meaningful 샘플 통계."""
+    """성과 게이트 진단: netWinRate(VTJ) vs csvMetricWinRate(목표가달성률) 비교, DATA_SOURCE_MISMATCH 검출."""
     from app.engine.mone_v65_api_stabilizer import (
         _recommendation_performance_safety,
         _validation_dashboard_payload,
-        _market_norm,
-        _mode_norm,
-        _horizon_norm,
+        _market_norm, _mode_norm, _horizon_norm,
     )
 
     try:
         safety = _recommendation_performance_safety(market, mode, horizon)
         dashboard = _validation_dashboard_payload(_market_norm(market))
-        key = f"{_mode_norm(mode)}_{_horizon_norm(horizon)}"
-        stats = (dashboard.get("stats") or {}).get(key) or {}
+
+        modes = ["conservative", "balanced", "aggressive"]
+        horizons = ["short", "swing", "mid"]
+        from app.engine.mone_v65_api_stabilizer import _recommendation_performance_safety as _rps
+        all_combos = {}
+        for m in modes:
+            for h in horizons:
+                s = _rps(market, m, h)
+                k = f"{_mode_norm(m)}_{_horizon_norm(h)}"
+                all_combos[k] = {
+                    "gateStatus": s.get("performanceGateStatus") or s.get("status"),
+                    "isPerformanceHardBlocked": s.get("isPerformanceHardBlocked"),
+                    "netWinRate": s.get("netWinRate"),
+                    "netWinRateSampleCount": s.get("netWinRateSampleCount"),
+                    "csvMetricWinRate": s.get("csvMetricWinRate"),
+                    "metricDefinitionMismatch": s.get("metricDefinitionMismatch"),
+                    "metricMismatchPp": s.get("metricMismatchPp"),
+                    "completed": s.get("completed"),
+                    "meaningfulCompleted": s.get("meaningfulCompleted"),
+                    "placeholderCount": s.get("placeholderCount"),
+                    "avgReturn": s.get("avgReturn"),
+                    "meaningfulAvgReturn": s.get("meaningfulAvgReturn"),
+                    "reason": s.get("reason"),
+                }
+
         return {
             "ok": True,
             "market": market,
             "mode": mode,
             "horizon": horizon,
-            "gateStatus": safety.get("status"),
+            "gateStatus": safety.get("performanceGateStatus") or safety.get("status"),
+            "isPerformanceHardBlocked": safety.get("isPerformanceHardBlocked"),
             "isTradeBlocked": safety.get("isTradeBlocked"),
             "reason": safety.get("reason"),
+            "netWinRate": safety.get("netWinRate"),
+            "netWinRateSource": safety.get("netWinRateSource"),
+            "netWinRateSampleCount": safety.get("netWinRateSampleCount"),
+            "csvMetricWinRate": safety.get("csvMetricWinRate"),
+            "metricDefinitionMismatch": safety.get("metricDefinitionMismatch"),
+            "metricMismatchPp": safety.get("metricMismatchPp"),
             "completed": safety.get("completed"),
             "meaningfulCompleted": safety.get("meaningfulCompleted"),
             "placeholderCount": safety.get("placeholderCount"),
-            "winRate": safety.get("winRate"),
             "avgReturn": safety.get("avgReturn"),
-            "meaningfulWinRate": safety.get("meaningfulWinRate"),
             "meaningfulAvgReturn": safety.get("meaningfulAvgReturn"),
             "sampleStatus": safety.get("sampleStatus"),
-            "allCombinations": {
-                k: {
-                    "completed": v.get("completed"),
-                    "meaningfulCompleted": v.get("meaningfulCompleted"),
-                    "placeholderCount": v.get("placeholderCount"),
-                    "winRate": v.get("winRate"),
-                    "meaningfulWinRate": v.get("meaningfulWinRate"),
-                    "avgReturn": v.get("avgReturn"),
-                    "meaningfulAvgReturn": v.get("meaningfulAvgReturn"),
-                    "sampleStatus": v.get("sampleStatus"),
-                }
-                for k, v in (dashboard.get("stats") or {}).items()
-            },
+            "allCombinations": all_combos,
         }
     except Exception as exc:
         return {"ok": False, "error": repr(exc), "market": market, "mode": mode, "horizon": horizon}

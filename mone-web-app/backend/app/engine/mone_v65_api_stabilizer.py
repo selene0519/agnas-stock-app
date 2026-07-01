@@ -2514,10 +2514,31 @@ def _apply_recommendation_trade_safety(payload: dict[str, Any], market: str) -> 
     return payload
 
 
+def _load_strategy_win_rates() -> dict[str, Any]:
+    """Load reports/strategy_win_rates.json. Returns {} on missing / parse error."""
+    import json as _json
+    try:
+        p = _repo_root() / "reports" / "strategy_win_rates.json"
+        return _json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except Exception:
+        return {}
+
+
 def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> dict[str, Any]:
     try:
+        norm_mode = _mode_norm(mode)
+        norm_horizon = _horizon_norm(horizon)
+        key = f"{norm_mode}_{norm_horizon}"
+
+        # ── Primary source: strategy_win_rates.json (VTJ net win rate) ──────────
+        swj = _load_strategy_win_rates()
+        swj_min_samples = int(swj.get("minSamplesForUpdate") or 20)
+        net_win_rate_raw = (swj.get("winRates") or {}).get(key)
+        net_win_rate = round(float(net_win_rate_raw) * 100, 1) if net_win_rate_raw is not None else None
+        net_win_rate_sample = int((swj.get("sampleCounts") or {}).get(key) or 0)
+
+        # ── Diagnostic source: validation CSV stats ───────────────────────────
         dashboard = _validation_dashboard_payload(_market_norm(market))
-        key = f"{_mode_norm(mode)}_{_horizon_norm(horizon)}"
         stats = (dashboard.get("stats") or {}).get(key) or {}
         completed = int(_num(stats.get("completed"), 0) or 0)
         win_rate = _num(stats.get("winRate"), None)
@@ -2527,69 +2548,125 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
         meaningful_win_rate = _num(stats.get("meaningfulWinRate"), None)
         meaningful_avg_return = _num(stats.get("meaningfulAvgReturn"), None)
 
-        base = {
-            "mode": _mode_norm(mode),
-            "horizon": _horizon_norm(horizon),
+        # ── Metric mismatch: VTJ net win rate vs CSV-based win rate ───────────
+        # The two sources use fundamentally different "win" definitions:
+        #   VTJ (swj)   → net_pnl > 0  (any positive close)
+        #   Validation CSV → target_hit OR (close_exit AND pnl > 0)  (target-achievement rate)
+        # A gap ≥ 10pp indicates metric definition mismatch, not performance signal.
+        metric_mismatch_pp: float | None = None
+        metric_definition_mismatch = False
+        if net_win_rate is not None and meaningful_win_rate is not None:
+            metric_mismatch_pp = round(net_win_rate - meaningful_win_rate, 1)
+            metric_definition_mismatch = metric_mismatch_pp >= 10.0
+
+        base: dict[str, Any] = {
+            "mode": norm_mode,
+            "horizon": norm_horizon,
+            # Primary: VTJ net win rate
+            "netWinRate": net_win_rate,
+            "netWinRateSource": "strategy_win_rates.json",
+            "netWinRateSampleCount": net_win_rate_sample,
+            # Diagnostic: CSV-based metrics (NOT used for hard-block decisions)
             "completed": completed,
             "winRate": win_rate,
             "avgReturn": avg_return,
             "meaningfulCompleted": meaningful_completed,
             "placeholderCount": placeholder_count,
-            "meaningfulWinRate": meaningful_win_rate,
+            "csvMetricWinRate": meaningful_win_rate,
+            "meaningfulWinRate": meaningful_win_rate,   # backward-compat alias
             "meaningfulAvgReturn": meaningful_avg_return,
+            "targetHitRate": None,                      # populated by diagnostics layer
+            # Mismatch diagnosis
+            "metricDefinitionMismatch": metric_definition_mismatch,
+            "metricMismatchPp": metric_mismatch_pp,
             "sampleStatus": stats.get("sampleStatus") or _validation_sample_status(completed),
             "basis": dashboard.get("summary", {}).get("basis"),
         }
 
-        # Gate 1: not enough total samples — genuine cold start
-        if completed < 30:
-            return {**base, "status": "CAUTION_LOW_SAMPLE", "reviewOnly": True,
-                    "isTradeBlocked": False,
-                    "reason": f"{key} validation sample is low ({completed}/30)"}
+        def _ok(**extra: Any) -> dict[str, Any]:
+            return {**base, "reviewOnly": False, "isTradeBlocked": False,
+                    "isPerformanceHardBlocked": False, **extra}
 
-        # Gate 2: coverage gap — total looks ok but most rows are same-day placeholder
-        # close_exits (returnPct≈-0.09%) from the capture-gap period; only
-        # meaningful_completed (<10) carry real trade outcomes.
-        if meaningful_completed < 10:
-            return {**base, "status": "COVERAGE_GAP", "reviewOnly": True,
-                    "isTradeBlocked": False,
-                    "reason": (
-                        f"{key} coverage gap: {placeholder_count}/{completed} rows are "
-                        f"same-day close_exit placeholders; only {meaningful_completed} "
-                        f"meaningful outcomes available"
-                    )}
+        def _soft(status: str, reason: str, **extra: Any) -> dict[str, Any]:
+            return {**base, "status": status, "performanceGateStatus": status,
+                    "reviewOnly": True, "isTradeBlocked": False,
+                    "isPerformanceHardBlocked": False, "reason": reason, **extra}
 
-        # Gate 3: genuine performance block — use meaningful metrics, not raw
-        # (raw avgReturn ≈ -0.09% is just transaction cost, not a performance signal;
-        # require avg < -1.0% to indicate real strategy underperformance)
-        gate_wr = meaningful_win_rate if meaningful_win_rate is not None else win_rate
-        gate_avg = meaningful_avg_return if meaningful_avg_return is not None else avg_return
-        blocked = (gate_wr is not None and gate_wr < 35.0) or (gate_avg is not None and gate_avg < -1.0)
-        if blocked:
-            return {**base, "status": "BLOCKED_LOW_WIN_RATE", "reviewOnly": True,
-                    "isTradeBlocked": True,
-                    "reason": (
-                        f"{key} validation under gate: "
-                        f"meaningfulWinRate={gate_wr}%, meaningfulAvgReturn={gate_avg}%"
-                    )}
+        def _block(status: str, reason: str) -> dict[str, Any]:
+            return {**base, "status": status, "performanceGateStatus": status,
+                    "reviewOnly": True, "isTradeBlocked": True,
+                    "isPerformanceHardBlocked": True, "reason": reason}
 
-        return {**base, "status": "OK", "reviewOnly": False, "isTradeBlocked": False, "reason": ""}
+        # ── Gate 0: placeholder contamination (COVERAGE_GAP) ─────────────────
+        # Applies regardless of swj data quality — stale close_exit rows at
+        # −0.09 % inflate completed but carry no real outcome signal.
+        if completed >= 30 and meaningful_completed < 10:
+            return _soft(
+                "COVERAGE_GAP",
+                f"{key} coverage gap: {placeholder_count}/{completed} rows are "
+                f"same-day close_exit placeholders; only {meaningful_completed} "
+                f"meaningful outcomes available",
+            )
+
+        # ── Gate 1: insufficient VTJ samples ─────────────────────────────────
+        # Combos below minSamplesForUpdate use default (not measured) win rates —
+        # blocking on default values would be a false signal.
+        if net_win_rate is None or net_win_rate_sample < swj_min_samples:
+            return _soft(
+                "INSUFFICIENT_SAMPLES",
+                f"{key} net win rate sample insufficient "
+                f"({net_win_rate_sample}/{swj_min_samples} measured trades in VTJ)",
+            )
+
+        # ── Gate 2: metric definition mismatch ───────────────────────────────
+        # When VTJ win rate and CSV target-hit rate diverge by ≥ 10 pp, the two
+        # sources measure different things.  Hard-blocking on the CSV metric
+        # would incorrectly penalise strategies with good net PnL but moderate
+        # target-achievement rates.
+        if metric_definition_mismatch:
+            return _soft(
+                "DATA_SOURCE_MISMATCH",
+                f"{key} metric definition mismatch: "
+                f"netWinRate={net_win_rate}% (VTJ) vs csvMetricWinRate={meaningful_win_rate}% "
+                f"(target-hit rate) — gap={metric_mismatch_pp}pp ≥ 10pp; "
+                f"성과 검증 대기 (CSV 기반 차단 보류)",
+            )
+
+        # ── Gate 3: genuine poor VTJ performance (all data-quality gates passed) ─
+        # Only reaches here when: sufficient measured samples, consistent metrics.
+        # avgReturn diagnostic kept but NOT used as independent block trigger.
+        if net_win_rate < 35.0:
+            return _block(
+                "PERFORMANCE_BLOCKED",
+                f"{key} genuine underperformance: "
+                f"netWinRate={net_win_rate}% < 35% (samples={net_win_rate_sample})",
+            )
+
+        return _ok(status="PERFORMANCE_OK", performanceGateStatus="PERFORMANCE_OK", reason="")
 
     except Exception as exc:
         return {
             "status": "CAUTION_PERFORMANCE_UNKNOWN",
+            "performanceGateStatus": "CAUTION_PERFORMANCE_UNKNOWN",
             "reviewOnly": True,
             "isTradeBlocked": False,
+            "isPerformanceHardBlocked": False,
             "reason": f"validation performance unavailable: {exc!r}",
             "mode": _mode_norm(mode),
             "horizon": _horizon_norm(horizon),
+            "netWinRate": None,
+            "netWinRateSource": "strategy_win_rates.json",
+            "netWinRateSampleCount": 0,
             "completed": 0,
             "meaningfulCompleted": 0,
             "placeholderCount": 0,
             "winRate": None,
             "avgReturn": None,
+            "csvMetricWinRate": None,
             "meaningfulWinRate": None,
             "meaningfulAvgReturn": None,
+            "metricDefinitionMismatch": False,
+            "metricMismatchPp": None,
             "sampleStatus": "UNKNOWN",
         }
 
@@ -2601,19 +2678,28 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
 
     perf_status = str(safety.get("status") or "").upper()
     is_coverage_gap = perf_status == "COVERAGE_GAP"
+    is_hard_blocked = bool(safety.get("isPerformanceHardBlocked") or safety.get("isTradeBlocked"))
 
-    # COVERAGE_GAP and other non-blocking statuses: annotate items but don't hard-block.
-    # For COVERAGE_GAP specifically, downgrade "오늘 진입" → "관찰" so the user can still
-    # see the candidate without a false buy signal during the data-poverty window.
-    if not safety.get("isTradeBlocked"):
+    def _annotate(item: dict[str, Any], fallback_applied: bool) -> None:
+        item["performanceGateStatus"] = safety.get("performanceGateStatus") or safety.get("status")
+        item["isPerformanceHardBlocked"] = is_hard_blocked
+        item["netWinRate"] = safety.get("netWinRate")
+        item["netWinRateSampleCount"] = safety.get("netWinRateSampleCount")
+        item["csvMetricWinRate"] = safety.get("csvMetricWinRate")
+        item["metricDefinitionMismatch"] = safety.get("metricDefinitionMismatch")
+        item["metricMismatchPp"] = safety.get("metricMismatchPp")
+        item["performanceWinRate"] = safety.get("winRate")
+        item["performanceSample"] = safety.get("completed")
+        item["performanceMeaningfulSample"] = safety.get("meaningfulCompleted")
+        item["performanceFallbackApplied"] = fallback_applied
+
+    if not is_hard_blocked:
         for item in payload.get("items") or []:
             if not isinstance(item, dict):
                 continue
-            item["performanceGateStatus"] = safety.get("status")
-            item["performanceWinRate"] = safety.get("winRate")
-            item["performanceSample"] = safety.get("completed")
-            item["performanceMeaningfulSample"] = safety.get("meaningfulCompleted")
-            item["performanceFallbackApplied"] = is_coverage_gap
+            _annotate(item, fallback_applied=is_coverage_gap)
+            # COVERAGE_GAP only: downgrade "오늘 진입" → "관찰"
+            # (DATA_SOURCE_MISMATCH keeps the label — netWinRate is actually good)
             if is_coverage_gap and str(item.get("decisionBucket") or "") == "오늘 진입":
                 item["decisionBucketOriginal"] = "오늘 진입"
                 item["decisionBucket"] = "관찰"
@@ -2625,11 +2711,7 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
             blocked_items.append(item)
             continue
         row = dict(item)
-        row["performanceGateStatus"] = safety.get("status")
-        row["performanceWinRate"] = safety.get("winRate")
-        row["performanceSample"] = safety.get("completed")
-        row["performanceMeaningfulSample"] = safety.get("meaningfulCompleted")
-        row["performanceFallbackApplied"] = False
+        _annotate(row, fallback_applied=False)
         if not row.get("isTradeBlocked"):
             row["isTradeBlocked"] = True
             row["tradeBlockStatus"] = "PERFORMANCE_GATE_BLOCK"
@@ -2637,7 +2719,7 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
         row["reviewOnly"] = True
         blocked_items.append(row)
     payload["items"] = blocked_items
-    payload["blockedCount"] = len([row for row in blocked_items if isinstance(row, dict) and row.get("isTradeBlocked")])
+    payload["blockedCount"] = len([r for r in blocked_items if isinstance(r, dict) and r.get("isTradeBlocked")])
     return payload
 
 
@@ -2724,34 +2806,31 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
     elif bool(trade_safety.get("reviewOnly")):
         reasons.append(str(trade_safety.get("reason") or "data quality caution"))
 
-    perf_status = str(performance.get("status") or "").upper()
-    # For data-poverty statuses the strategy metrics are dominated by artifacts,
-    # not real trade outcomes — skip hard gates and surface as a single caution.
-    data_gap = perf_status in {"COVERAGE_GAP", "CAUTION_LOW_SAMPLE", "CAUTION_PERFORMANCE_UNKNOWN"}
-    completed = int(_num(performance.get("completed"), 0) or 0)
-    strategy_wr = _num(performance.get("winRate"), None)
-    strategy_avg = _num(performance.get("avgReturn"), None)
-    meaningful_completed = int(_num(performance.get("meaningfulCompleted"), 0) or 0)
-    if not data_gap:
-        if completed < int(policy["minStrategyCompleted"]):
-            reasons.append(f"strategy sample too low ({completed}/{policy['minStrategyCompleted']})")
-        if strategy_wr is None or strategy_wr < float(policy["minStrategyWinRatePct"]):
-            reasons.append(f"strategy win rate below gate ({strategy_wr}%)")
-        if strategy_avg is None or strategy_avg < float(policy["minStrategyAvgReturnPct"]):
-            reasons.append(f"strategy average return below gate ({strategy_avg}%)")
-        if perf_status.startswith("BLOCKED"):
-            reasons.append(str(performance.get("reason") or perf_status))
-    else:
+    perf_status = str(performance.get("status") or performance.get("performanceGateStatus") or "").upper()
+    is_perf_hard_blocked = bool(performance.get("isPerformanceHardBlocked"))
+    # Strategy performance verdict is fully delegated to _recommendation_performance_safety:
+    #   PERFORMANCE_OK / PERFORMANCE_BLOCKED / DATA_SOURCE_MISMATCH / INSUFFICIENT_SAMPLES / COVERAGE_GAP
+    # Any non-OK, non-BLOCKED status means data quality uncertainty — soft caution only.
+    perf_ok = perf_status in {"PERFORMANCE_OK", "OK", ""}
+    data_uncertain = not is_perf_hard_blocked and not perf_ok
+
+    if is_perf_hard_blocked:
+        reasons.append(str(performance.get("reason") or perf_status))
+    elif data_uncertain:
         cautions.append(
-            f"전략 검증 데이터 부족 ({perf_status} — meaningful {meaningful_completed}건)"
+            f"전략 검증 데이터 부족 ({perf_status}"
+            f" — netWinRate: {performance.get('netWinRate')}%"
+            f", samples: {performance.get('netWinRateSampleCount', 0)}건)"
         )
+    # PERFORMANCE_OK → no additional action needed (gate already verified)
 
     ev = _num(item.get("expectedValue") or item.get("ev"), None)
     if ev is None:
-        # ev=None in data-gap periods means the column is missing from the CSV,
-        # not a genuine EV failure — demote to caution rather than hard block.
-        if data_gap:
-            cautions.append("expected value not available (데이터 부족 기간)")
+        # ev=None means the expectedValue column is absent from the KR recommendation
+        # CSV — this is a schema gap, not a genuine EV failure.  Treat as caution unless
+        # performance is fully verified (PERFORMANCE_OK with adequate sample).
+        if not perf_ok or data_uncertain:
+            cautions.append("expected value not available (스키마 미포함)")
         else:
             reasons.append(f"expected value below gate ({ev}%)")
     elif ev < float(policy["minExpectedValuePct"]):
@@ -2799,9 +2878,11 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
         "reasons": unique_reasons,
         "cautions": unique_cautions,
         "scoreInputs": {
-            "strategyCompleted": completed,
-            "strategyWinRate": strategy_wr,
-            "strategyAvgReturn": strategy_avg,
+            "performanceGateStatus": perf_status,
+            "netWinRate": performance.get("netWinRate"),
+            "netWinRateSampleCount": performance.get("netWinRateSampleCount"),
+            "csvMetricWinRate": performance.get("csvMetricWinRate"),
+            "metricDefinitionMismatch": performance.get("metricDefinitionMismatch"),
             "expectedValue": ev,
             "riskReward": rr,
             "calibratedWinRate": calibrated_wr,

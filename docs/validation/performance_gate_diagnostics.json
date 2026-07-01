@@ -1,58 +1,101 @@
 {
-  "title": "성과 게이트 콜드스타트/커버리지 갭 수정 검증",
+  "title": "성과 게이트 net win rate + 메트릭 불일치 정책 정렬 검증",
   "validatedAt": "2026-07-01",
-  "commit": "fix: prevent cold-start performance gate from blocking KR recommendations",
+  "commit": "fix: align performance gate with net win rate and metric mismatch policy",
   "problem": {
     "symptom": "KR 추천 전체가 _apply_recommendation_performance_safety()에 의해 100% 차단",
     "rootCause": [
-      "2026-03-23~2026-06-18 (약 3개월) 검증 파이프라인 미실행 → 추천은 생성됐지만 VTJ 캡처 없음",
-      "캡처 갭 기간에 close_exit 플레이스홀더 행이 생성됨: result=close_exit, returnPct≈-0.09%, exitPrice=entryPrice",
-      "이 행들이 completed 카운트에 포함돼 completed≥30 조건을 충족시키면서 avgReturn을 -0.09%로 끌어내림",
-      "_recommendation_performance_safety()의 avgReturn < 0 조건 → BLOCKED_LOW_WIN_RATE → isTradeBlocked=True",
-      "별도로 _public_quant_verdict()도 ev=None (KR 추천 CSV에 expectedValue 컬럼 없음)을 하드 블록 사유로 처리"
+      "이전 fix(cold-start)에서 COVERAGE_GAP 도입 이후에도 8/9 콤보가 BLOCKED_LOW_WIN_RATE로 차단됨",
+      "winRate 차단 기준(35%)이 충족되지 않은 원인: CSV 기반 winRate(17~36%)는 target-hit rate를 측정",
+      "VTJ netWinRate(40~52%)는 net_pnl > 0 기반으로 전혀 다른 개념 — 동일한 기준이 아님",
+      "CSV csvMetricWinRate vs VTJ netWinRate 간 7~30pp 갭 존재 (지표 정의 불일치)",
+      "이 갭을 기반으로 CSV 쪽 낮은 수치로 하드블록하는 것은 정책적으로 타당하지 않음"
     ],
     "dataEvidence": {
-      "balancedSwingTotalRows": 271,
-      "closeExitRows": 98,
-      "closeExitReturnPct": -0.09,
-      "realOutcomeRows": "stop_hit / not_executed 등 실제 결과는 소수"
+      "vtjNetWinRateRange": "40.5~52.5% (strategy_win_rates.json)",
+      "csvMetricWinRateRange": "17~36% (meaningful rows, target-hit 정의)",
+      "mismatchRange": "4.1~30.4pp across 9 KR combos",
+      "swjMinSamplesForUpdate": 20,
+      "combosAboveMinSamples": 3,
+      "combosBelowMinSamples": 6
     }
   },
   "fix": {
-    "newHelpers": [
-      "_is_placeholder_completion(r): result=close_exit AND abs(returnPct)<=0.15 → True"
+    "primaryMetric": "strategy_win_rates.json netWinRate (VTJ net_pnl > 0 기반)",
+    "gateHierarchy": [
+      "Gate 0 COVERAGE_GAP: completed >= 30 but meaningfulCompleted < 10 (placeholder 오염)",
+      "Gate 1 INSUFFICIENT_SAMPLES: netWinRate is None OR sampleCount < minSamplesForUpdate (20)",
+      "Gate 2 DATA_SOURCE_MISMATCH: netWinRate - csvMetricWinRate >= 10pp (지표 정의 불일치)",
+      "Gate 3 PERFORMANCE_BLOCKED: netWinRate < 35% + sufficient samples + no mismatch (진짜 부진)"
     ],
-    "newMetrics": [
-      "meaningfulCompleted: placeholder 제외 완료 수",
-      "placeholderCount: close_exit 플레이스홀더 수",
-      "meaningfulWinRate: meaningful 기준 승률",
-      "meaningfulAvgReturn: meaningful 기준 평균수익률"
+    "newFields": [
+      "netWinRate: VTJ 기반 순 승률 (%)",
+      "netWinRateSource: 항상 'strategy_win_rates.json'",
+      "netWinRateSampleCount: VTJ 측정 거래 수",
+      "csvMetricWinRate: CSV meaningful 행 기준 target-hit 승률 (진단용)",
+      "targetHitRate: null (향후 확장용)",
+      "metricDefinitionMismatch: gap >= 10pp 여부 boolean",
+      "metricMismatchPp: 실제 gap 수치",
+      "performanceGateStatus: 최종 게이트 상태 문자열",
+      "isPerformanceHardBlocked: 실질 차단 여부 (true = PERFORMANCE_BLOCKED만)"
     ],
-    "gateChanges": [
-      "Gate 1: completed < 30 → CAUTION_LOW_SAMPLE (기존 동일, 차단 없음)",
-      "Gate 2 (신규): completed >= 30이지만 meaningfulCompleted < 10 → COVERAGE_GAP (차단 없음)",
-      "Gate 3: meaningfulWinRate < 35% OR meaningfulAvgReturn < -1.0% → BLOCKED_LOW_WIN_RATE (실질 차단 유지)"
-    ],
+    "statusTaxonomy": {
+      "PERFORMANCE_OK": "모든 게이트 통과 — 추천 허용",
+      "PERFORMANCE_BLOCKED": "충분한 샘플 + 일관 지표 + netWinRate < 35% → 하드 차단",
+      "INSUFFICIENT_SAMPLES": "VTJ 측정 거래 부족 → 차단 불가 (소프트만)",
+      "DATA_SOURCE_MISMATCH": "지표 정의 불일치 >= 10pp → 성과 검증 대기, 차단 불가",
+      "COVERAGE_GAP": "close_exit placeholder 오염 → 차단 불가, '관찰'로 다운그레이드",
+      "CAUTION_PERFORMANCE_UNKNOWN": "예외 발생 → 차단 불가"
+    },
     "applyChanges": [
-      "COVERAGE_GAP: isTradeBlocked=False, decisionBucket='오늘 진입' → '관찰'로 다운그레이드",
-      "performanceGateStatus / performanceMeaningfulSample / performanceFallbackApplied 필드 추가"
+      "COVERAGE_GAP만: '오늘 진입' → '관찰' 다운그레이드 유지",
+      "DATA_SOURCE_MISMATCH: 다운그레이드 없음 (netWinRate는 40~52%로 양호)",
+      "isPerformanceHardBlocked를 isTradeBlocked의 권위적 소스로 사용",
+      "항목에 performanceGateStatus, netWinRate, netWinRateSampleCount 등 신규 필드 추가"
     ],
     "quantVerdictChanges": [
-      "data_gap 상태 (COVERAGE_GAP / CAUTION_LOW_SAMPLE / CAUTION_PERFORMANCE_UNKNOWN): strategy 검사 skip → caution으로 전환",
-      "ev=None in data_gap: reason → caution (KR CSV에 expectedValue 컬럼 없음 대응)"
+      "isPerformanceHardBlocked=True → reasons 추가",
+      "isPerformanceHardBlocked=False + non-OK status → cautions 추가 (netWinRate, samples 포함)",
+      "PERFORMANCE_OK → 추가 전략 게이트 없음",
+      "ev=None in data_uncertain → caution (reason 아님)",
+      "ev=None in PERFORMANCE_OK → reason (EV 스키마 미포함 실질 문제)"
     ]
   },
   "constraints": [
-    "성과 게이트 삭제 금지 — Gate 3 (BLOCKED_LOW_WIN_RATE) 유지",
+    "성과 게이트 삭제 금지 — PERFORMANCE_BLOCKED(Gate 3) 유지",
     "isTradeBlocked 전체 해제 금지 — 진짜 성과 부진 시 차단 유지",
     "final_score 변경 금지",
     "추천 정렬/필터/EV 변경 금지",
     "entry/target/stop 산식 변경 금지",
-    "LOW_ATR guard 조건 변경 금지"
+    "LOW_ATR guard 조건 변경 금지 — DATA_SOURCE_MISMATCH/INSUFFICIENT_SAMPLES 항목은 isTradeBlocked=False이므로 LOW_ATR guard까지 정상 도달",
+    "minStrategyWinRatePct 단순 하향(B안) 사용 금지",
+    "VVR 단독 제외(D안) 사용 금지"
   ],
+  "verifiedGateResults": {
+    "conservative_short":  {"status": "DATA_SOURCE_MISMATCH",  "isPerformanceHardBlocked": false, "netWinRate": 40.5, "samples": 30,  "mismatchPp": 12.4},
+    "conservative_swing":  {"status": "INSUFFICIENT_SAMPLES",  "isPerformanceHardBlocked": false, "netWinRate": 51.5, "samples": 18,  "mismatchPp": 30.2},
+    "conservative_mid":    {"status": "INSUFFICIENT_SAMPLES",  "isPerformanceHardBlocked": false, "netWinRate": 52.5, "samples": 12,  "mismatchPp": 26.7},
+    "balanced_short":      {"status": "PERFORMANCE_OK",         "isPerformanceHardBlocked": false, "netWinRate": 40.5, "samples": 26,  "mismatchPp": 4.1},
+    "balanced_swing":      {"status": "DATA_SOURCE_MISMATCH",  "isPerformanceHardBlocked": false, "netWinRate": 42.5, "samples": 106, "mismatchPp": 25.5},
+    "balanced_mid":        {"status": "INSUFFICIENT_SAMPLES",  "isPerformanceHardBlocked": false, "netWinRate": 51.5, "samples": 12,  "mismatchPp": 30.4},
+    "aggressive_short":    {"status": "PERFORMANCE_OK",         "isPerformanceHardBlocked": false, "netWinRate": 40.5, "samples": 25,  "mismatchPp": 9.5},
+    "aggressive_swing":    {"status": "INSUFFICIENT_SAMPLES",  "isPerformanceHardBlocked": false, "netWinRate": 49.5, "samples": 17,  "mismatchPp": 28.2},
+    "aggressive_mid":      {"status": "INSUFFICIENT_SAMPLES",  "isPerformanceHardBlocked": false, "netWinRate": 50.5, "samples": 17,  "mismatchPp": 25.5}
+  },
   "expectedOutcome": {
-    "before": "COVERAGE_GAP 기간 KR 추천 100% 차단 (avgReturn=-0.09% → BLOCKED_LOW_WIN_RATE)",
-    "after": "COVERAGE_GAP 상태로 통과, '오늘 진입' 항목은 '관찰'로 다운그레이드, 성과 데이터 충분히 쌓이면 자동으로 Gate 3 정상 작동"
+    "before": "8/9 콤보 BLOCKED_LOW_WIN_RATE (CSV csvMetricWinRate 17~36% < 35% 기준)",
+    "after": "9/9 콤보 isPerformanceHardBlocked=False — PERFORMANCE_OK(2) / DATA_SOURCE_MISMATCH(2) / INSUFFICIENT_SAMPLES(5)",
+    "hardBlockCondition": "VTJ netWinRate < 35% + 충분한 샘플(20건↑) + 지표 불일치 없음 → 아직 해당 콤보 없음"
+  },
+  "testCoverage": {
+    "file": "tests/test_performance_gate_cold_start.py",
+    "count": 28,
+    "covers": [
+      "placeholder 감지 (_is_placeholder_completion) — 5건",
+      "게이트 0~3 순서 및 조건 — 9건",
+      "_apply 적용 (COVERAGE_GAP 다운그레이드, DATA_SOURCE_MISMATCH 유지, BLOCKED 차단, OK 통과) — 4건",
+      "_public_quant_verdict 통합 (캐전/소프트/블록/EV/scoreInputs) — 10건"
+    ]
   },
   "diagnosticsEndpoint": "GET /api/virtual/performance-gate-diagnostics?market=kr&mode=balanced&horizon=swing"
 }
