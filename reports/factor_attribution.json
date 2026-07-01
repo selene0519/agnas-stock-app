@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-07-01 16:49:53",
-  "totalRows": 1570,
+  "updatedAt": "2026-07-01 20:39:27",
+  "totalRows": 1571,
   "olsSampleSize": 1361,
   "byStrategy": {
     "conservative_short": {
@@ -37,15 +37,15 @@
       "probAccuracy": -0.391
     },
     "balanced_short": {
-      "total": 159,
-      "wins": 49,
+      "total": 160,
+      "wins": 50,
       "losses": 110,
-      "winRate": 0.3082,
-      "avgWinPct": 4.366,
+      "winRate": 0.3125,
+      "avgWinPct": 4.548,
       "avgLossPct": 3.659,
-      "payoffRatio": 1.193,
-      "avgProbability": 71.6,
-      "probAccuracy": -0.408
+      "payoffRatio": 1.243,
+      "avgProbability": 71.2,
+      "probAccuracy": -0.4
     },
     "balanced_swing": {
       "total": 236,
@@ -105,11 +105,11 @@
   },
   "byMarket": {
     "kr": {
-      "total": 794,
-      "winRate": 0.2834,
-      "avgWinPct": 7.685,
+      "total": 795,
+      "winRate": 0.2843,
+      "avgWinPct": 7.711,
       "avgLossPct": 5.523,
-      "payoffRatio": 1.392
+      "payoffRatio": 1.396
     },
     "us": {
       "total": 776,
@@ -121,8 +121,8 @@
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 69,
-      "actualWinRate": 0.1304
+      "count": 70,
+      "actualWinRate": 0.1429
     },
     "mid_60-75": {
       "count": 559,
@@ -177,7 +177,7 @@
   },
   "insight": [
     "호라이즌: mid 전략 평균 승률 34.0%로 최고",
-    "모드: balanced 전략 평균 payoff 1.40x로 최고",
+    "모드: balanced 전략 평균 payoff 1.41x로 최고",
     "마켓: US 승률 33.6%로 우위",
     "회귀분석: intercept 낮을수록 수익률 향상 (β=-13.862)",
     "전체 팩터 설명력 R²=0.038 (0~1, 높을수록 예측력 강함)",
