@@ -520,15 +520,19 @@ jobs:
           fi
           set -e
 
-      - name: Fetch benchmark index data (weekly on Monday)
+      - name: Fetch benchmark index data (daily)
         run: |
           set +e
-          DAY=$(date +%u)
-          if [ "$DAY" = "1" ] && [ -f scripts/fetch_benchmark_data.py ]; then
+          # Was gated to Monday-only, which left kr_KOSPI_daily.csv/kr_KOSDAQ_daily.csv
+          # up to 6 days stale — market regime detection (BEAR/BULL/SIDE, MA20/momentum5d)
+          # reads this file directly, so a weekly cadence meant regime could be wrong
+          # for most of the week. This workflow already runs twice on weekdays, so run
+          # the fetch every time instead.
+          if [ -f scripts/fetch_benchmark_data.py ]; then
             python scripts/fetch_benchmark_data.py
             echo "fetch_benchmark_data: exit $?"
           else
-            echo "Not Monday — skip benchmark fetch."
+            echo "scripts/fetch_benchmark_data.py not found; skip."
           fi
           set -e
 
