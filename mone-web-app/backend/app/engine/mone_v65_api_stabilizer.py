@@ -1257,6 +1257,10 @@ def _company_finalize(item: dict[str, Any], has_sources: bool) -> dict[str, Any]
         item["missingReason"] = item.get("_missingReason") or "재무 원본 없음 (ETF·채권·소형주 등은 재무 데이터가 수집되지 않을 수 있습니다.)"
         item["dataStatus"] = "NO_DATA"
         item["connectionStatus"] = "재무 원본 없음"
+    elif item.get("hasDartData") and has_values:
+        item["missingReason"] = "DART 재무 원본은 연결됐지만 EPS/PER/PBR 등 일부 항목은 원천 값이 부족합니다."
+        item["dataStatus"] = "PARTIAL"
+        item["connectionStatus"] = "DART 연결 · 일부 항목 부족"
     elif item["missingFields"] or not has_values:
         item["missingReason"] = "재무 원본 행은 연결됐지만 일부 항목 값이 비어 있습니다."
         item["dataStatus"] = "PARTIAL"
@@ -1331,13 +1335,32 @@ def _load_dart_map(market: str) -> dict[str, dict[str, Any]]:
     path = _repo_root() / "reports" / "dart_financial_data_kr.csv"
     if not path.exists():
         return dart
+
+    value_keys = (
+        "revenue", "operating_income", "net_income", "total_equity", "total_debt",
+        "total_assets", "current_assets", "current_liabilities", "eps", "per",
+        "pbr", "roe", "debt_ratio", "operating_margin", "net_margin",
+        "revenue_growth", "eps_growth", "quality_score", "value_score", "growth_score",
+    )
+
+    def _rank(row: dict[str, Any]) -> tuple[int, int]:
+        filled = 0
+        for key in value_keys:
+            value = row.get(key)
+            if value is not None and str(value).strip() not in ("", "None", "nan", "-", "0"):
+                filled += 1
+        try:
+            year_num = int(float(str(row.get("year", "") or "0")[:4]))
+        except Exception:
+            year_num = 0
+        return filled, year_num
+
     for row in _read_csv(path, 10000):
         sym = str(row.get("symbol", "")).strip()
         if not sym:
             continue
-        year = str(row.get("year", ""))
         existing = dart.get(sym)
-        if existing is None or year > str(existing.get("year", "")):
+        if existing is None or _rank(dict(row)) > _rank(existing):
             dart[sym] = dict(row)
             dart[sym.lstrip("0")] = dict(row)
     return dart
@@ -1391,6 +1414,8 @@ def _company_payload(market: str, limit: int, q: str) -> dict[str, Any]:
         if dart_row:
             for dart_k, item_k in [
                 ("roe", "roe"), ("debt_ratio", "debtRatio"),
+                ("revenue", "revenue"), ("operating_income", "operatingProfit"),
+                ("net_income", "netIncome"),
                 ("operating_margin", "operatingMargin"), ("net_margin", "netMargin"),
                 ("revenue_growth", "revenueGrowth"), ("eps_growth", "epsGrowth"),
                 ("peg", "peg"), ("per", "per"), ("pbr", "pbr"),
@@ -1738,6 +1763,7 @@ def _recommendation_item(
         # ── 세부 점수 (quant_overlay 전 CSV 원본; overlay가 덮어씀)
         "finalScore": _num(_text(row, ["finalScore", "final_score", "finalRankScore"], "")) or None,
         "finalRankScore": _num(_text(row, ["finalRankScore", "finalScore", "final_score"], "")) or None,
+        "baseScore": _num(_text(row, ["baseScore", "base_score"], "")) or None,
         "upsideScore": _num(_text(row, ["upsideScore", "upside_score"], "")) or None,
         "riskScore": _num(_text(row, ["riskScore", "risk_score"], "")) or None,
         "momentumScore": _num(_text(row, ["momentumScore", "momentum_score"], "")) or None,
@@ -4750,6 +4776,36 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
             normalized["distanceMa20Pct"] = normalized.get("distanceToMa20Pct")
         return normalized
 
+    def _fill_home_decision_metrics(item: dict[str, Any]) -> dict[str, Any]:
+        out = dict(item or {})
+        entry = _num(out.get("entryPrice") or out.get("entry"))
+        stop = _num(out.get("stopLoss") or out.get("stop"))
+        target = _num(out.get("targetPrice") or out.get("target"))
+        prob_pct = _num(
+            out.get("probability")
+            or out.get("probabilityText")
+            or out.get("probShort")
+            or out.get("probSwing")
+            or out.get("probMid")
+        )
+        score = _num(out.get("finalScore") or out.get("finalRankScore") or out.get("quantScore"), None)
+        if score is not None:
+            out.setdefault("finalScore", round(score, 1))
+            out.setdefault("finalRankScore", round(score, 1))
+        if entry and stop and target and entry > 0:
+            gain_pct = (target - entry) / entry * 100.0
+            loss_pct = abs((entry - stop) / entry * 100.0)
+            if loss_pct > 0 and _num(out.get("rrActual") or out.get("riskRewardRatio") or out.get("rr"), None) is None:
+                rr = gain_pct / loss_pct
+                out["rrActual"] = round(rr, 2)
+                out["riskRewardRatio"] = round(rr, 2)
+            if prob_pct is not None and _num(out.get("expectedValue") or out.get("ev"), None) is None:
+                p = max(0.0, min(prob_pct / 100.0, 1.0))
+                ev = p * gain_pct - (1.0 - p) * loss_pct
+                out["expectedValue"] = round(ev, 2)
+                out["expectedValueText"] = f"{ev:+.1f}%"
+        return out
+
     def _ohlcv_price_change_ref(symbol: str) -> dict[str, Any]:
         sym = str(symbol or "").strip().upper()
         if not sym:
@@ -4789,30 +4845,53 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
         out = dict(item or {})
         symbol = str(out.get("symbol") or out.get("code") or out.get("ticker") or "").strip().upper()
         ref = _ohlcv_price_change_ref(symbol)
-        if not ref:
+        quote = _quote_index(market).get(symbol, {}) if symbol else {}
+        quote_price = _num(_text(quote, ["currentPrice", "current_price", "last_price", "price", "last"], ""))
+        if not ref and not quote_price:
             return out
         current = _num(out.get("currentPrice"))
         prev_close = _num(out.get("prevClose"))
-        if not current:
+
+        if quote_price and quote_price > 0:
+            price_date = _text(quote, ["priceSourceDate", "priceTime", "updated_at", "timestamp"], "")
+            out["currentPrice"] = quote_price
+            out["currentPriceText"] = _price_text(quote_price, market)
+            out["currentPriceSource"] = "api"
+            out["currentPriceDate"] = price_date
+            out["priceSource"] = _text(quote, ["priceSource", "source"], "") or "quote_snapshot"
+            out["priceSourceType"] = _text(quote, ["priceSourceType"], "") or "quote_snapshot"
+            out["dataStatus"] = out.get("dataStatus") or "NORMAL"
+            out["priceDataStatus"] = out.get("priceDataStatus") or "NORMAL"
+            current = quote_price
+        elif ref and not current:
             out["currentPrice"] = ref["currentPrice"]
             out["currentPriceText"] = ref["currentPriceText"]
             out["currentPriceSource"] = ref["currentPriceSource"]
             out["currentPriceDate"] = ref["currentPriceDate"]
-        if not prev_close:
+
+        quote_prev = _num(_text(quote, ["prevClose", "previousClose", "prev_close", "basePrice", "stck_prdy_clpr"], ""))
+        if quote_prev and quote_prev > 0:
+            out["prevClose"] = quote_prev
+            out["prevCloseText"] = _price_text(quote_prev, market)
+            out["prevCloseSource"] = out.get("priceSource") or "quote_snapshot"
+            out["prevCloseDate"] = _text(quote, ["priceSourceDate", "priceTime", "updated_at", "timestamp"], "")[:10]
+            prev_close = quote_prev
+        elif ref and not prev_close:
             out["prevClose"] = ref["prevClose"]
             out["prevCloseText"] = ref["prevCloseText"]
             out["prevCloseSource"] = ref["prevCloseSource"]
             out["prevCloseDate"] = ref["prevCloseDate"]
-        basis_current = _num(out.get("currentPrice")) or ref["currentPrice"]
-        basis_prev = _num(out.get("prevClose")) or ref["prevClose"]
+        basis_current = _num(out.get("currentPrice")) or (ref.get("currentPrice") if ref else None)
+        basis_prev = _num(out.get("prevClose")) or (ref.get("prevClose") if ref else None)
         if basis_current and basis_prev and basis_prev > 0:
             change_pct = (basis_current - basis_prev) / basis_prev * 100
             out["changePct"] = change_pct
             out["changePctText"] = f"{'+' if change_pct > 0 else ''}{change_pct:.2f}%"
-            out["changePctSource"] = "current_vs_ohlcv_previous_close" if current else ref["changePctSource"]
-        out.setdefault("ohlcvCount", ref["ohlcvCount"])
-        out.setdefault("ohlcvLatestDate", ref["ohlcvLatestDate"])
-        return out
+            out["changePctSource"] = "current_vs_previous_close"
+        if ref:
+            out.setdefault("ohlcvCount", ref["ohlcvCount"])
+            out.setdefault("ohlcvLatestDate", ref["ohlcvLatestDate"])
+        return _fill_home_decision_metrics(out)
 
     for mode in MODES:
         for horizon in HORIZONS:
@@ -4869,12 +4948,23 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
                         ohlcv_dates.append(d)
         ohlcv_latest = max(ohlcv_dates) if ohlcv_dates else None
 
-        # 추천 파일 생성 시각 (kr_recommendation_gen_status.json)
+        # 추천 파일 생성 시각. Status JSON can lag behind regenerated CSVs, so
+        # prefer the newest app-facing recommendation CSV mtime for UI freshness.
         reco_gen_time: str | None = None
+        reco_mtimes: list[float] = []
+        for p in (repo / "reports").glob(f"mone_v36_final_recommendations_{market}_*.csv"):
+            try:
+                reco_mtimes.append(p.stat().st_mtime)
+            except Exception:
+                pass
+        if reco_mtimes:
+            reco_gen_time = datetime.fromtimestamp(max(reco_mtimes)).isoformat()
         for status_path in [
             repo / "reports" / f"{market}_recommendation_gen_status.json",
             repo / f"{market}_recommendation_gen_status.json",
         ]:
+            if reco_gen_time:
+                break
             if status_path.exists():
                 try:
                     import json as _json
@@ -4890,6 +4980,8 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
             "kisTargetCount":  cov.get("quoteTargetCount", 0),
             "ohlcvCount":      cov.get("ohlcvSymbolCount", 0),
             "ohlcvLatestDate": ohlcv_latest,
+            "marketRegimeDate": market_regime.get("asOf") if isinstance(market_regime, dict) else None,
+            "marketRegimeSource": market_regime.get("source") if isinstance(market_regime, dict) else None,
             "recoGeneratedAt": reco_gen_time,
             "scanScope":       cov.get("universeScope", "CURATED_UNIVERSE"),
         }
