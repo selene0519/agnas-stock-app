@@ -49,12 +49,13 @@ from scripts.generate_kr_recommendations import (
     setup_score, recommendation_bucket, momentum_continuation_score,
 )
 import csv, json, math, os, re
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
 REPORTS = ROOT / "reports"
 DATA_STOCKAPP = ROOT / "data" / "stockapp"
+BENCHMARK_FALLBACK_MAX_AGE_DAYS = int(os.environ.get("MONE_BENCHMARK_FALLBACK_MAX_AGE_DAYS", "7"))
 
 
 def passes_us_quality_filters(
@@ -354,22 +355,43 @@ def _load_us_market_regime() -> dict[str, Any]:
     if not rows:
         rows = [r for r in _read_csv(path) if str(r.get("benchmark", "")).upper() not in ("KOSPI", "KOSDAQ")]
     rows.sort(key=lambda r: str(r.get("date", "")))
-    closes = [_num(r.get("close")) for r in rows]
-    closes = [c for c in closes if c is not None]
+    dated_closes: list[tuple[date, float]] = []
+    for row in rows:
+        close = _num(row.get("close"))
+        try:
+            row_date = datetime.strptime(str(row.get("date", ""))[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if close is not None:
+            dated_closes.append((row_date, close))
+    dated_closes.sort(key=lambda item: item[0])
+    closes = [close for _, close in dated_closes]
     if len(closes) < 20:
-        return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0, "description": "US 벤치마크 데이터 부족"}
+        return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
+                "description": "US 벤치마크 데이터 부족", "source": "benchmark_daily.csv"}
+    as_of_date = dated_closes[-1][0]
+    stale_days = (datetime.now().date() - as_of_date).days
+    if stale_days > BENCHMARK_FALLBACK_MAX_AGE_DAYS:
+        return {"regime": "SIDE", "label": "데이터 지연", "scoreAdjust": 0.0,
+                "description": f"US benchmark_daily.csv stale asOf {as_of_date.isoformat()} ({stale_days}d old)",
+                "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv",
+                "dataStatus": "STALE", "staleDays": stale_days,
+                "maxAgeDays": BENCHMARK_FALLBACK_MAX_AGE_DAYS}
     latest = closes[-1]
     ma20 = sum(closes[-20:]) / 20
     dist = (latest - ma20) / ma20 * 100
     mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
     if dist > 0 and mom5 > 0:
         return {"regime": "BULL", "label": "강세장", "scoreAdjust": +5.0,
-                "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%"}
+                "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%",
+                "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv"}
     elif dist < -2.0 or mom5 < -2.0:
         return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -8.0,
-                "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%"}
+                "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%",
+                "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv"}
     return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
-            "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%"}
+            "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%",
+            "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv"}
 
 
 def generate_us_recommendations() -> dict[str, Any]:

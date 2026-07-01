@@ -912,7 +912,7 @@ jobs:
             # Data files used by the app as source/cache.
             git add data/history data/calendar data/stockapp data/market data/news data/disclosures 2>/dev/null || true
             git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
-            git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/virtual_trade_calibration_*.csv data/attribution_feedback.json reports/virtual_trade_self_learning_status.json 2>/dev/null || true
+            git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/virtual_trade_calibration_*.csv data/attribution_feedback.json reports/virtual_trade_journal_status.json reports/virtual_trade_self_learning_status.json 2>/dev/null || true
             git add data/paper/paper_stops.json 2>/dev/null || true
             git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
             git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
@@ -932,11 +932,38 @@ jobs:
             git reset -- 'reports/daily_summary_*' 'reports/summary_*' 'reports/order_plan_*_202*.csv' 'reports/test_*.csv' 2>/dev/null || true
           }
 
+          verify_vtj_outputs_staged() {
+            local failed=0
+            local path
+            for path in \
+              data/virtual_trade_journal.csv \
+              data/virtual_trade_evaluations.csv \
+              data/virtual_trade_calibration_approvals.csv \
+              data/virtual_trade_calibration_applications.csv \
+              data/attribution_feedback.json \
+              reports/virtual_trade_journal_status.json \
+              reports/virtual_trade_self_learning_status.json
+            do
+              [ -e "${path}" ] || continue
+              [ -n "$(git status --porcelain -- "${path}")" ] || continue
+
+              if git diff --cached --quiet -- "${path}"; then
+                echo "::error::VTJ output exists but was not staged: ${path}"
+                failed=1
+              elif ! git diff --quiet -- "${path}"; then
+                echo "::error::VTJ output still has unstaged changes after staging: ${path}"
+                failed=1
+              fi
+            done
+            return "${failed}"
+          }
+
           for attempt in 1 2 3; do
             echo "Commit attempt ${attempt}: align HEAD with origin/${GITHUB_REF_NAME} before staging generated data."
             git fetch origin "${GITHUB_REF_NAME}"
             git reset --mixed "origin/${GITHUB_REF_NAME}"
             stage_app_data
+            verify_vtj_outputs_staged
 
             echo "=== staged files ==="
             git diff --cached --name-only
