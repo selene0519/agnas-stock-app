@@ -1826,6 +1826,38 @@ def _enrich_recommendation_detail_item(item: dict[str, Any], market: str, symbol
             "notes": [f"chart overlay failed: {exc}"],
         })
 
+    try:
+        evt_ctx = _ec.get_event_context(symbol, market)
+    except Exception:
+        evt_ctx = {
+            "newsEventTag": "unknown", "disclosureEventTag": "unknown",
+            "earningsEventTag": "unknown", "macroEventTag": "unknown",
+            "sectorEventTag": "unknown", "eventDataSourceType": "unavailable",
+            "eventLearningEligible": False,
+        }
+    enriched["newsEventTag"] = evt_ctx.get("newsEventTag", "unknown")
+    enriched["disclosureEventTag"] = evt_ctx.get("disclosureEventTag", "unknown")
+    enriched["earningsEventTag"] = evt_ctx.get("earningsEventTag", "unknown")
+    enriched["macroEventTag"] = evt_ctx.get("macroEventTag", "unknown")
+    enriched["sectorEventTag"] = evt_ctx.get("sectorEventTag", "unknown")
+    enriched["eventSummary"] = evt_ctx.get("eventSummary", enriched.get("eventSummary", ""))
+    enriched["eventDataSourceType"] = evt_ctx.get("eventDataSourceType", "unavailable")
+    # 표시 전용 보정치 — final/rank score나 decisionBucket에는 반영하지 않음
+    # (라이브 의사결정 로직 변경은 별도 검증 없이 하지 않는다는 프로젝트 원칙)
+    enriched["eventScoreAdjustment"] = round(_ec.compute_event_score_adjustment(evt_ctx), 2)
+
+    try:
+        adaptive_row = _aw.apply_adaptive_adjustment(enriched)
+        enriched["adaptiveScoreUsed"] = adaptive_row.get("adaptiveScoreUsed", False)
+        enriched["adaptiveScoreAdjustment"] = adaptive_row.get("adaptiveScoreAdjustment", 0.0)
+        enriched["adaptiveScoreSummary"] = adaptive_row.get("adaptiveScoreSummary", "")
+        enriched["adaptiveSignalBreakdown"] = adaptive_row.get("adaptiveSignalBreakdown", {})
+        enriched["adaptiveConfidence"] = adaptive_row.get("adaptiveConfidence", 0.0)
+        enriched["adaptiveLearningStatus"] = adaptive_row.get("adaptiveLearningStatus", "LOW_SAMPLE")
+    except Exception:
+        enriched.setdefault("adaptiveScoreAdjustment", 0.0)
+        enriched.setdefault("adaptiveLearningStatus", "DISABLED")
+
     if not isinstance(enriched.get("patternStrategy"), dict):
         try:
             from app.engine.pattern_strategy import analyze as _ps_analyze

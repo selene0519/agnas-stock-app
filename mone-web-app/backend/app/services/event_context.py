@@ -476,3 +476,49 @@ def get_event_context(
     except Exception as exc:
         _base["eventSummary"] = f"event_context error: {exc}"
         return _base
+
+
+def compute_event_score_adjustment(evt_ctx: dict[str, Any]) -> float:
+    """이벤트 태그 기반 점수 보정치를 계산합니다 (±8 상한).
+
+    eventLearningEligible=True 이고 데이터 소스가 actual_api/csv일 때만 0이 아닌 값을
+    반환합니다. final_engine.py의 final_recommendations()에 있던 동일 로직을 공유하기
+    위해 추출한 함수입니다 (이벤트 하나만으로 추천을 뒤집지 않도록 ±8로 clamp).
+    """
+    if not (evt_ctx.get("eventLearningEligible") and evt_ctx.get("eventDataSourceType") in {"actual_api", "csv"}):
+        return 0.0
+
+    adj = 0.0
+    news_tag = evt_ctx.get("newsEventTag", "")
+    disc_tag = evt_ctx.get("disclosureEventTag", "")
+    earn_tag = evt_ctx.get("earningsEventTag", "")
+    macro_tag = evt_ctx.get("macroEventTag", "")
+    sector_tag = evt_ctx.get("sectorEventTag", "")
+
+    if news_tag == "negative_news":
+        adj -= 2.5
+    if disc_tag == "negative_disclosure":
+        adj -= 4.0
+    if earn_tag == "earnings_miss":
+        adj -= 5.0
+    elif earn_tag == "guidance_down":
+        adj -= 4.0
+    if macro_tag in {"rate_risk", "fomc_risk"}:
+        adj -= 2.5
+    elif macro_tag in {"inflation_risk", "volatility_risk"}:
+        adj -= 3.0
+    if sector_tag == "sector_weak":
+        adj -= 2.0
+
+    if news_tag == "positive_news":
+        adj += 1.5
+    if disc_tag == "positive_disclosure":
+        adj += 1.5
+    if earn_tag == "earnings_beat":
+        adj += 2.0
+    elif earn_tag == "guidance_up":
+        adj += 1.5
+    if sector_tag == "sector_strong":
+        adj += 1.0
+
+    return max(-8.0, min(8.0, adj))

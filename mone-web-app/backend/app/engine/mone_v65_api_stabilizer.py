@@ -1699,6 +1699,33 @@ def _recommendation_item(
     if "current_price_from_entry" in computed_fields:
         fallback_reason = (fallback_reason + " " if fallback_reason else "") + "현재가는 진입가 기준으로 보강했습니다."
 
+    # ── 이벤트/적응형 보정치 (표시 전용 — decisionBucket/finalScore에는 반영 안 함) ──
+    try:
+        from app.services import event_context as _ec
+
+        evt_ctx = _ec.get_event_context(sym, market)
+        event_score_adjustment = round(_ec.compute_event_score_adjustment(evt_ctx), 2)
+        event_tags = {
+            "newsEventTag": evt_ctx.get("newsEventTag", "unknown"),
+            "disclosureEventTag": evt_ctx.get("disclosureEventTag", "unknown"),
+            "earningsEventTag": evt_ctx.get("earningsEventTag", "unknown"),
+            "macroEventTag": evt_ctx.get("macroEventTag", "unknown"),
+            "sectorEventTag": evt_ctx.get("sectorEventTag", "unknown"),
+        }
+    except Exception:
+        event_score_adjustment = None
+        event_tags = {}
+
+    try:
+        from app.services import adaptive_weights as _aw
+
+        adaptive_row = _aw.apply_adaptive_adjustment({**row, **event_tags, "market": market, "mode": mode, "horizon": horizon})
+        adaptive_score_adjustment = adaptive_row.get("adaptiveScoreAdjustment", 0.0)
+        adaptive_learning_status = adaptive_row.get("adaptiveLearningStatus", "LOW_SAMPLE")
+    except Exception:
+        adaptive_score_adjustment = None
+        adaptive_learning_status = "DISABLED"
+
     return {
         "id": f"{market.upper()}-{sym}",
         "symbol": sym,
@@ -1771,6 +1798,10 @@ def _recommendation_item(
         "rrScore": _num(_text(row, ["rrScore", "rr_score"], "")) or None,
         "qualityScore": _num(_text(row, ["qualityScore", "quality_score"], "")) or None,
         "expectedValue": _num(_text(row, ["expectedValue", "expected_value", "ev"], "")) or None,
+        "eventScoreAdjustment": event_score_adjustment,
+        "adaptiveScoreAdjustment": adaptive_score_adjustment,
+        "adaptiveLearningStatus": adaptive_learning_status,
+        **event_tags,
     }
 
 
