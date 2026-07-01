@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-01 09:06:54",
+  "updatedAt": "2026-07-01 09:55:54",
   "totalRows": 1550,
   "olsSampleSize": 1354,
   "byStrategy": {
@@ -135,31 +135,31 @@
   },
   "regressionFactors": {
     "intercept": {
-      "coefficient": -13.0365,
+      "coefficient": -13.0353,
       "r2": 0.0359
     },
     "rsi": {
-      "coefficient": 0.1841,
+      "coefficient": 0.184,
       "r2": 0.0359,
       "description": "RSI14 — 높을수록 과매수 (보통 음의 계수)"
     },
     "volumeRatio": {
-      "coefficient": -0.2884,
+      "coefficient": -0.2883,
       "r2": 0.0359,
       "description": "거래량비율 — 높을수록 모멘텀 강함 (보통 양의 계수)"
     },
     "distToMa20": {
-      "coefficient": -0.0696,
+      "coefficient": -0.0697,
       "r2": 0.0359,
       "description": "MA20 이격도% — 너무 높으면 리스크 증가"
     },
     "probability": {
-      "coefficient": 1.8713,
+      "coefficient": 1.8725,
       "r2": 0.0359,
       "description": "확률 (0~1) — 모델 신뢰도"
     },
     "momentum5": {
-      "coefficient": -0.0674,
+      "coefficient": -0.0673,
       "r2": 0.0359,
       "description": "5일 모멘텀% — 단기 추세"
     },
@@ -179,7 +179,7 @@
     "호라이즌: mid 전략 평균 승률 34.2%로 최고",
     "모드: balanced 전략 평균 payoff 1.39x로 최고",
     "마켓: US 승률 33.7%로 우위",
-    "회귀분석: intercept 낮을수록 수익률 향상 (β=-13.037)",
+    "회귀분석: intercept 낮을수록 수익률 향상 (β=-13.035)",
     "전체 팩터 설명력 R²=0.036 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"
   ]

@@ -2,8 +2,8 @@
   "status": "OK",
   "sampleCount": 1447,
   "baseWinRate": 0.3939,
-  "baseAvgPnlPct": -0.866,
-  "generatedAt": "2026-07-01T09:06:55",
+  "baseAvgPnlPct": -0.864,
+  "generatedAt": "2026-07-01T09:55:55",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -14,13 +14,13 @@
   },
   "adjustments": [
     {
-      "feedbackId": "1bcbaec8aa0ac6d35fa5",
+      "feedbackId": "f5f7a8a21df95757a136",
       "mode": "conservative",
       "horizon": "short",
       "n": 182,
       "winRate": 0.4121,
-      "avgPnlPct": -0.743,
-      "multiplier": 0.971,
+      "avgPnlPct": -0.728,
+      "multiplier": 0.965,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -32,7 +32,7 @@
       "n": 151,
       "winRate": 0.3642,
       "avgPnlPct": -1.394,
-      "multiplier": 1.199,
+      "multiplier": 1.2,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -44,7 +44,7 @@
       "n": 156,
       "winRate": 0.3718,
       "avgPnlPct": -0.948,
-      "multiplier": 1.004,
+      "multiplier": 1.005,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -68,7 +68,7 @@
       "n": 156,
       "winRate": 0.3718,
       "avgPnlPct": -1.06,
-      "multiplier": 1.056,
+      "multiplier": 1.057,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -80,7 +80,7 @@
       "n": 156,
       "winRate": 0.3718,
       "avgPnlPct": -0.673,
-      "multiplier": 0.877,
+      "multiplier": 0.878,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -104,7 +104,7 @@
       "n": 163,
       "winRate": 0.3926,
       "avgPnlPct": -1.172,
-      "multiplier": 1.139,
+      "multiplier": 1.14,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -116,10 +116,10 @@
       "n": 159,
       "winRate": 0.3522,
       "avgPnlPct": -1.111,
-      "multiplier": 1.049,
-      "direction": "NEUTRAL",
+      "multiplier": 1.051,
+      "direction": "BOOST",
       "suggestedOnly": true,
-      "manualApprovalRequired": false
+      "manualApprovalRequired": true
     }
   ]
 }
