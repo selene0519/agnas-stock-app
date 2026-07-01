@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-07-01T23:36:44+09:00",
+  "lastRunAt": "2026-07-02T07:32:06+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": false,
@@ -16,24 +16,184 @@
     "kr:2026-06-25:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "kr:2026-06-30:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "kr:2026-07-01:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+    "kr:2026-07-02:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-24:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-26:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-    "us:2026-06-30:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+    "us:2026-06-30:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+    "us:2026-07-01:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
   ],
   "runs": [
     {
       "market": "kr",
-      "tradeDate": "2026-07-01",
+      "tradeDate": "2026-07-02",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "SKIPPED_DUPLICATE",
-      "runKey": "kr:2026-07-01:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+      "status": "NO_CANDIDATES",
+      "runKey": "kr:2026-07-02:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+      "selected": 0,
+      "added": 0,
+      "rejected": {
+        "LOW_SCORE": 180
+      },
+      "items": [
+        {
+          "mode": "aggressive",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        }
+      ]
     },
     {
       "market": "us",
-      "tradeDate": "2026-06-30",
+      "tradeDate": "2026-07-01",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "SKIPPED_DUPLICATE",
-      "runKey": "us:2026-06-30:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+      "status": "OK",
+      "runKey": "us:2026-07-01:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+      "selected": 28,
+      "added": 28,
+      "rejected": {
+        "LOW_SCORE": 21
+      },
+      "items": [
+        {
+          "mode": "aggressive",
+          "horizon": "mid",
+          "selected": 5,
+          "added": 5,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "short",
+          "selected": 5,
+          "added": 5,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "swing",
+          "selected": 5,
+          "added": 5,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "mid",
+          "selected": 5,
+          "added": 5,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "short",
+          "selected": 2,
+          "added": 2,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "swing",
+          "selected": 2,
+          "added": 2,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "mid",
+          "selected": 2,
+          "added": 2,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "swing",
+          "selected": 2,
+          "added": 2,
+          "duplicates": 0,
+          "status": "OK"
+        }
+      ]
     }
   ],
   "windows": {
