@@ -1,54 +1,41 @@
 {
-  "startedAt": "2026-07-02T06:20:00.983309",
-  "market": "us",
+  "startedAt": "2026-07-02T07:30:00.660557",
+  "market": "kr",
   "steps": {
-    "ohlcv_us": {
-      "ok": 143,
-      "fail": 1
+    "ohlcv_kr": {
+      "ok": 100,
+      "fail": 0
     },
-    "recommendations_us": {
-      "status": "OK",
-      "market": "us",
-      "stderr": ""
+    "recommendations_kr": {
+      "status": "ERROR",
+      "market": "kr",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\dev\\agnas-stock-app\\scripts\\generate_kr_recommendations.py\", line 23, in <module>\n    from scripts.walk_forward_backtest import TRADE_COST_PCT  # 매수수수료+매도세+슬리피지 \\u2248 0.345%, 백테스트와 동일 산식 유지\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'scripts'\n"
     },
-    "news_disclosures_us": {
+    "news_disclosures_kr": {
       "news": {
         "status": "OK",
         "results": [
           {
             "status": "OK",
-            "market": "us",
+            "market": "kr",
             "count": 10,
-            "file": "reports/news_summary_us.csv"
+            "file": "reports/news_summary_kr.csv"
           }
         ],
-        "createdAt": "2026-07-02 06:21:13"
-      },
-      "usCompanyNews": {
-        "status": "OK",
-        "market": "us",
-        "count": 942,
-        "errors": []
+        "createdAt": "2026-07-02 07:30:22"
       },
       "disclosures": {
         "status": "OK",
         "results": [
           {
             "status": "OK",
-            "market": "us",
-            "message": "SEC/Finnhub filing 수집 완료",
-            "count": 446,
-            "file": "data/disclosures/disclosures_us.csv",
-            "errors": []
-          },
-          {
-            "status": "OK",
-            "market": "us",
-            "count": 1166,
-            "errors": []
+            "market": "kr",
+            "message": "DART 공시 수집 완료",
+            "count": 100,
+            "file": "data/disclosures/disclosures_kr.csv"
           }
         ],
-        "createdAt": "2026-07-02 06:26:22"
+        "createdAt": "2026-07-02 07:30:22"
       }
     },
     "virtual_validation": {
@@ -59,7 +46,7 @@
       "notExecutedCount": 113,
       "dataPendingCount": 2,
       "executionRate": 72.05,
-      "winRate": 12.71,
+      "winRate": 13.04,
       "validationPolicy": {
         "executionRule": "A recommendation is executed only when actual low <= entry <= high during the validation window.",
         "successRule": "Only executed trades that hit target are counted as wins.",
@@ -16093,17 +16080,17 @@
           "validationDueDate": "2026-07-02",
           "status": "PENDING",
           "source": "api/final/recommendations",
-          "returnPct": 1.3985,
-          "result": "HOLDING_EVAL",
+          "returnPct": 2.5464,
+          "result": "TARGET",
           "exitStatus": "",
-          "exitPrice": 28640.0,
+          "exitPrice": 28964.222400000002,
           "validatedAt": "",
           "_source_file": "virtual_prediction_ledger.csv",
           "_source_path": "reports\\virtual_prediction_ledger.csv",
           "isExecuted": "true",
-          "targetHit": "false",
+          "targetHit": "true",
           "stopHit": "false",
-          "reason": "목표/손절 미도달, 종가 평가",
+          "reason": "목표가 도달",
           "dataStatus": "NORMAL",
           "validationRule": "entry_touch_only"
         },
@@ -16125,16 +16112,16 @@
           "status": "PENDING",
           "source": "api/final/recommendations",
           "returnPct": -1.2,
-          "result": "STOP",
+          "result": "STOP_FIRST",
           "exitStatus": "",
           "exitPrice": 199269.72,
           "validatedAt": "",
           "_source_file": "virtual_prediction_ledger.csv",
           "_source_path": "reports\\virtual_prediction_ledger.csv",
           "isExecuted": "true",
-          "targetHit": "false",
+          "targetHit": "true",
           "stopHit": "true",
-          "reason": "손절가 도달",
+          "reason": "목표/손절 동시 터치, 보수적 손절 우선",
           "dataStatus": "NORMAL",
           "validationRule": "entry_touch_only"
         },
@@ -17124,16 +17111,16 @@
           "status": "PENDING",
           "source": "api/final/recommendations",
           "returnPct": -1.5128,
-          "result": "STOP",
+          "result": "STOP_FIRST",
           "exitStatus": "",
           "exitPrice": 198638.84,
           "validatedAt": "",
           "_source_file": "virtual_prediction_ledger.csv",
           "_source_path": "reports\\virtual_prediction_ledger.csv",
           "isExecuted": "true",
-          "targetHit": "false",
+          "targetHit": "true",
           "stopHit": "true",
-          "reason": "손절가 도달",
+          "reason": "목표/손절 동시 터치, 보수적 손절 우선",
           "dataStatus": "NORMAL",
           "validationRule": "entry_touch_only"
         },
@@ -17154,10 +17141,10 @@
           "validationDueDate": "2026-07-02",
           "status": "PENDING",
           "source": "api/final/recommendations",
-          "returnPct": 1.3985,
+          "returnPct": 2.1951,
           "result": "HOLDING_EVAL",
           "exitStatus": "",
-          "exitPrice": 28640.0,
+          "exitPrice": 28865.0,
           "validatedAt": "",
           "_source_file": "virtual_prediction_ledger.csv",
           "_source_path": "reports\\virtual_prediction_ledger.csv",
@@ -24911,7 +24898,7 @@
       ]
     }
   },
-  "elapsedSec": 393.1,
-  "completedAt": "2026-07-02T06:26:34.059263",
+  "elapsedSec": 28.3,
+  "completedAt": "2026-07-02T07:30:28.935116",
   "source": "local_task_scheduler"
 }
