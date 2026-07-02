@@ -86,20 +86,60 @@ async function settleJson(path: string, timeoutMs: number): Promise<{ ok: true; 
   }
 }
 
-export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
-  onProgress?.({ progress: 20, message: "서버 상태 확인 중...", step: "server" });
+const HOME_SUMMARY_TIMEOUT_MS = 7000;
 
-  // Keep launch light. Market prediction snapshots are cached and refreshed by
-  // each page, so app boot should not eagerly fetch KR+US home/recommendations.
-  const healthResult = await settleJson("/mone-api/health", HEALTH_CHECK_TIMEOUT_MS);
+function detectDefaultMarket(): "kr" | "us" {
+  const hour = new Date().getHours();
+  // 09:00~15:30 KST 범위면 국장, 그 외 미장
+  return hour >= 9 && hour < 16 ? "kr" : "us";
+}
+
+export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
+  onProgress?.({ progress: 15, message: "서버 상태 확인 중...", step: "server" });
+
+  const primaryMarket = detectDefaultMarket();
+  const secondaryMarket = primaryMarket === "kr" ? "us" : "kr";
+
+  // 헬스체크 + 주 시장 홈 데이터 병렬 로드
+  const [healthResult, primaryResult] = await Promise.all([
+    settleJson("/mone-api/health", HEALTH_CHECK_TIMEOUT_MS),
+    settleJson(`/mone-api/api/home/summary?market=${primaryMarket}&limit=12`, HOME_SUMMARY_TIMEOUT_MS),
+  ]);
+
+  onProgress?.({ progress: 70, message: "추천 데이터 로딩 중...", step: "home" });
+
+  // 보조 시장도 병렬로 가져오되, 실패해도 무시
+  const secondaryResult = await settleJson(`/mone-api/api/home/summary?market=${secondaryMarket}&limit=12`, HOME_SUMMARY_TIMEOUT_MS);
+
+  const bootData: BootPreloadData = {};
+  if (primaryResult.ok) {
+    if (primaryMarket === "kr") bootData.krHomeSummary = primaryResult.value;
+    else bootData.usHomeSummary = primaryResult.value;
+  }
+  if (secondaryResult.ok) {
+    if (secondaryMarket === "kr") bootData.krHomeSummary = secondaryResult.value;
+    else bootData.usHomeSummary = secondaryResult.value;
+  }
+
+  const hasBootData = Boolean(bootData.krHomeSummary || bootData.usHomeSummary);
+  const errors: string[] = [];
+  if (!healthResult.ok) errors.push(healthResult.error);
+  if (!primaryResult.ok) errors.push(primaryResult.error);
 
   const state: BootPreloadState = {
-    bootStatus: healthResult.ok ? "ready" : "degraded",
-    bootData: {},
+    bootStatus: healthResult.ok ? (hasBootData ? "ready" : "degraded") : "degraded",
+    bootData,
     bootCompletedAt: new Date().toISOString(),
-    hasBootData: false,
-    errors: healthResult.ok === true ? [] : [healthResult.error],
+    hasBootData,
+    errors,
   };
+
+  // 캐시에 저장 (24h TTL — getCachedBootPreload가 읽음)
+  try {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(BOOT_CACHE_KEY, JSON.stringify(state));
+    }
+  } catch { /* 스토리지 가득 차도 무시 */ }
 
   onProgress?.({ progress: 100, message: "화면을 여는 중...", step: "done" });
   return state;
