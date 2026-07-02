@@ -7478,6 +7478,12 @@ def api_home_summary(
                 rows_.sort(key=lambda r: (_fv(r.get("expectedValue", 0)) > 0, _fv(r.get("finalRankScore") or r.get("finalScore") or 0)), reverse=True)
                 pos_ev_ = [r for r in rows_ if _fv(r.get("expectedValue", 0)) > 0]
                 display_ = (pos_ev_ if pos_ev_ else rows_)[:5]
+                try:
+                    from app.services.validation_display_policy import enrich_item_and_build as _vd_enrich
+                    for _di in display_:
+                        _vd_enrich(_di)
+                except Exception:
+                    pass
                 return key_, {"status": "OK", "items": display_, "count": len(rows_), "positiveEvCount": len(pos_ev_), "source": "csv"}
             except Exception as exc_:
                 return key_, {"status": "ERROR", "error": str(exc_), "items": [], "count": 0, "positiveEvCount": 0}
