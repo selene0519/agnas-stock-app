@@ -123,8 +123,8 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
 
   const hasBootData = Boolean(bootData.krHomeSummary || bootData.usHomeSummary);
   const errors: string[] = [];
-  if (!healthResult.ok) errors.push(healthResult.error);
-  if (!primaryResult.ok) errors.push(primaryResult.error);
+  if ("error" in healthResult) errors.push(healthResult.error);
+  if ("error" in primaryResult) errors.push(primaryResult.error);
 
   const state: BootPreloadState = {
     bootStatus: healthResult.ok ? (hasBootData ? "ready" : "degraded") : "degraded",
