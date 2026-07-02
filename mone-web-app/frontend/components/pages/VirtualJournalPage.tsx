@@ -1524,18 +1524,23 @@ export default function VirtualJournalPage() {
               <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
             ) : (
               <div className="space-y-1">
-                {(analyticsData.regimeTransition as any[]).map((row, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2 rounded-md bg-slate-950/50 px-3 py-1.5">
-                    <span className="font-mono text-[11px] text-slate-400">
-                      {row.regime_entry ?? "-"} → {row.regime_exit ?? "-"}
-                    </span>
-                    <div className="flex gap-3">
-                      <span className="font-mono text-[11px] text-emerald-300">W:{row.win ?? 0}</span>
-                      <span className="font-mono text-[11px] text-red-300">L:{row.loss ?? 0}</span>
-                      <span className="font-mono text-[11px] text-slate-400">n:{row.count ?? 0}</span>
+                {(analyticsData.regimeTransition as any[]).map((row, i) => {
+                  const [regEntry, regExit] = String(row.transition ?? "").split("→").map((s: string) => s.trim());
+                  const winCount = Math.round((row.count ?? 0) * (row.winRate ?? 0));
+                  const lossCount = (row.count ?? 0) - winCount;
+                  return (
+                    <div key={i} className="flex items-center justify-between gap-2 rounded-md bg-slate-950/50 px-3 py-1.5">
+                      <span className="font-mono text-[11px] text-slate-400">
+                        {regEntry ?? "-"} → {regExit ?? "-"}
+                      </span>
+                      <div className="flex gap-3">
+                        <span className="font-mono text-[11px] text-emerald-300">W:{winCount}</span>
+                        <span className="font-mono text-[11px] text-red-300">L:{lossCount}</span>
+                        <span className="font-mono text-[11px] text-slate-400">n:{row.count ?? 0}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1547,17 +1552,20 @@ export default function VirtualJournalPage() {
               <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
             ) : (
               <div className="space-y-1">
-                {(analyticsData.confidenceBreakdown as any[]).map((row, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2 rounded-md bg-slate-950/50 px-3 py-1.5">
-                    <span className="font-mono text-[11px] text-slate-400">
-                      {row.confidence_band ?? "-"}
-                    </span>
-                    <div className="flex gap-3">
-                      <span className="font-mono text-[11px] text-amber-300">{row.top_failure ?? "-"}</span>
-                      <span className="font-mono text-[11px] text-slate-400">n:{row.count ?? 0}</span>
+                {(analyticsData.confidenceBreakdown as any[]).map((row, i) => {
+                  const topFailure = Object.keys(row.failureCounts || {})[0] ?? "-";
+                  return (
+                    <div key={i} className="flex items-center justify-between gap-2 rounded-md bg-slate-950/50 px-3 py-1.5">
+                      <span className="font-mono text-[11px] text-slate-400">
+                        {row.signalConfidence ?? "-"}
+                      </span>
+                      <div className="flex gap-3">
+                        <span className="font-mono text-[11px] text-amber-300">{topFailure}</span>
+                        <span className="font-mono text-[11px] text-slate-400">n:{row.total ?? 0}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1571,10 +1579,10 @@ export default function VirtualJournalPage() {
               <div className="space-y-1">
                 {(analyticsData.entryTypeComparison as any[]).map((row, i) => (
                   <div key={i} className="rounded-md bg-slate-950/50 px-3 py-2">
-                    <div className="font-mono text-[11px] text-slate-200">{row.entry_type ?? "-"}</div>
+                    <div className="font-mono text-[11px] text-slate-200">{row.entryType ?? "-"}</div>
                     <div className="mt-1 flex gap-3">
-                      <span className="font-mono text-[11px] text-emerald-300">승률 {row.win_rate != null ? `${(row.win_rate * 100).toFixed(0)}%` : "-"}</span>
-                      <span className="font-mono text-[11px] text-slate-400">평균PnL {row.avg_pnl != null ? `${Number(row.avg_pnl).toFixed(2)}%` : "-"}</span>
+                      <span className="font-mono text-[11px] text-emerald-300">승률 {row.winRate != null ? `${(row.winRate * 100).toFixed(0)}%` : "-"}</span>
+                      <span className="font-mono text-[11px] text-slate-400">평균PnL {row.avgPnlPct != null ? `${Number(row.avgPnlPct).toFixed(2)}%` : "-"}</span>
                       <span className="font-mono text-[11px] text-slate-500">n:{row.count ?? 0}</span>
                     </div>
                   </div>
@@ -1592,11 +1600,11 @@ export default function VirtualJournalPage() {
               <div className="space-y-1">
                 {(analyticsData.sourceComparison as any[]).map((row, i) => (
                   <div key={i} className="rounded-md bg-slate-950/50 px-3 py-2">
-                    <div className={`font-mono text-[11px] ${row.source_type === "MANUAL_REVIEWED" ? "text-emerald-300" : "text-slate-200"}`}>{row.source_type ?? "-"}</div>
+                    <div className={`font-mono text-[11px] ${row.sourceType === "MANUAL_REVIEWED" ? "text-emerald-300" : "text-slate-200"}`}>{row.sourceType ?? "-"}</div>
                     <div className="mt-1 flex gap-3">
-                      <span className="font-mono text-[11px] text-emerald-300">승률 {row.win_rate != null ? `${(row.win_rate * 100).toFixed(0)}%` : "-"}</span>
-                      <span className="font-mono text-[11px] text-slate-400">평균PnL {row.avg_pnl != null ? `${Number(row.avg_pnl).toFixed(2)}%` : "-"}</span>
-                      <span className="font-mono text-[11px] text-slate-500">가중치 {row.weight ?? "-"} · n:{row.count ?? 0}</span>
+                      <span className="font-mono text-[11px] text-emerald-300">승률 {row.winRate != null ? `${(row.winRate * 100).toFixed(0)}%` : "-"}</span>
+                      <span className="font-mono text-[11px] text-slate-400">평균PnL {row.avgPnlPct != null ? `${Number(row.avgPnlPct).toFixed(2)}%` : "-"}</span>
+                      <span className="font-mono text-[11px] text-slate-500">n:{row.count ?? 0}</span>
                     </div>
                   </div>
                 ))}
