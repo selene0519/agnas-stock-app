@@ -470,12 +470,7 @@ jobs:
           echo "generate_kr_recommendations: exit $?"
           set -e
 
-      - name: Send KR summary to Telegram
-        run: |
-          set +e
-          python scripts/notify_daily_summary.py --market kr
-          echo "notify KR: exit $?"
-          set -e
+      # KR 예측 알림은 mone-notify.yml (국장 장전 08:30 KST)에서 단독 1회 발송
 
       - name: Refresh US close OHLCV (장마감 후 / 금요일 마감)
         run: |
@@ -499,12 +494,7 @@ jobs:
           fi
           set -e
 
-      - name: Send US summary to Telegram
-        run: |
-          set +e
-          python scripts/notify_daily_summary.py --market us
-          echo "notify US: exit $?"
-          set -e
+      # US 예측 알림은 mone-notify.yml (미장 장전 09:00 ET)에서 단독 1회 발송
 
       - name: Refresh KR/US close validations
         # 파일명은 kr만 가리키지만 KR+US 둘 다 생성함 (US 누락이 settle_pending_validations.py가
@@ -773,64 +763,7 @@ jobs:
           echo "vtj-attribution-feedback: exit $?"
           set -e
 
-      - name: 모의투자 스탑/목표가 도달 알림 (보유중 관리)
-        working-directory: mone-web-app/backend
-        env:
-          PYTHONPATH: .
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          set +e
-          python - <<'PY'
-          import sys, json, os
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          from app.services.paper_trading import check_stops
-
-          for market in ("kr", "us"):
-              result = check_stops(market=market)
-              hit_count = result.get("hitCount", 0)
-              near_count = result.get("nearCount", 0)
-              alerts = result.get("alerts", [])
-              print(f"[stop-check {market}] hit={hit_count}, near={near_count}, total={len(alerts)}")
-
-              if not alerts:
-                  continue
-
-              bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-              chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
-              if not (bot_token and chat_id):
-                  print(f"  Telegram 미설정 — 알림 건너뜀")
-                  continue
-
-              import urllib.request
-
-              lines = [f"MONE 모의투자 스탑/목표 알림 [{market.upper()}]"]
-              for a in alerts:
-                  level = a.get("alertLevel", "")
-                  symbol = a.get("symbol", "")
-                  current = a.get("currentPrice", "-")
-                  if level == "STOP_HIT":
-                      lines.append(f"[손절 도달] {symbol}: 현재 {current} <= 스탑 {a.get('stopPrice', '-')}")
-                  elif level == "STOP_NEAR":
-                      lines.append(f"[스탑 근접] {symbol}: 현재 {current} / 스탑 {a.get('stopPrice', '-')}")
-                  elif level == "TARGET_HIT":
-                      lines.append(f"[목표 달성] {symbol}: 현재 {current} >= 목표 {a.get('targetPrice', '-')}")
-                  elif level == "TARGET_NEAR":
-                      lines.append(f"[목표 근접] {symbol}: 현재 {current} / 목표 {a.get('targetPrice', '-')}")
-
-              msg = "\n".join(lines)
-              url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-              data = json.dumps({"chat_id": chat_id, "text": msg}).encode()
-              req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-              try:
-                  resp = urllib.request.urlopen(req, timeout=15)
-                  print(f"  Telegram 전송 완료: {resp.status}")
-              except Exception as e:
-                  print(f"  Telegram 전송 실패: {e}")
-          PY
-          echo "stop-check: exit $?"
-          set -e
+      # 모의투자 손절/목표가 알림 제거 (손절가 알림 제외, 장전 예측 1회만 발송)
 
       - name: 앙상블 보정 (walk-forward, 월요일 주 1회)
         working-directory: mone-web-app/backend

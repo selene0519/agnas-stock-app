@@ -339,39 +339,52 @@ def _run_market(market: str, state: dict[str, str]) -> int:
     now_kst = datetime.now().strftime("%Y-%m-%d %H:%M KST")
     source_label, current_holdings = _current_holdings_rows(market)
     source_label = source_label or "none"
-    print(f"[{now_kst}] [{market}] alert check start (entry +/-{ENTRY_PROXIMITY_PCT}%, stop -6%, target +8%)")
+    print(f"[{now_kst}] [{market}] alert check start (entry +/-{ENTRY_PROXIMITY_PCT}%)")
     print(f"  holdings source: {source_label} ({len(current_holdings)} rows)")
 
     entry_alerts = check_entry_proximity(market)
-    holdings_alerts = check_holdings_risk(market)
+    # 손절가(STOP_RISK) 알림 제외 — TARGET_NEAR만 보유 위험에서 유지
+    holdings_alerts = [a for a in check_holdings_risk(market) if a["type"] != "STOP_RISK"]
     all_alerts = entry_alerts + holdings_alerts
 
-    print(f"  recommendation entry alerts: {len(entry_alerts)} | holdings risk/target: {len(holdings_alerts)}")
+    print(f"  recommendation entry alerts: {len(entry_alerts)} | target-near: {len(holdings_alerts)}")
 
     if not all_alerts:
         print("  no alerts.")
         return 0
 
-    sent_count = 0
+    # 쿨다운 통과 항목만 수집
+    pending = []
     for alert in all_alerts:
         key = _alert_key(market, alert)
-        if not _should_send(key, state):
-            print(f"  [{key}] cooldown skip")
-            continue
-
-        if alert["type"] == "ENTRY":
-            msg = _fmt_entry_alert(alert)
-        elif alert["type"] == "STOP_RISK":
-            msg = _fmt_stop_alert(alert)
+        if _should_send(key, state):
+            pending.append(alert)
         else:
-            msg = _fmt_target_alert(alert)
+            print(f"  [{key}] cooldown skip")
 
-        print(f"  send: {key}")
-        if _send_telegram(msg):
+    if not pending:
+        print("  all in cooldown.")
+        return 0
+
+    # 시장별 1개 메시지로 합쳐서 발송
+    market_label = "🇰🇷 국장" if market == "kr" else "🇺🇸 미장"
+    lines = [f"<b>MONE {market_label} 진입 임박 알림</b> — {now_kst}"]
+    for alert in pending:
+        lines.append("")
+        if alert["type"] == "ENTRY":
+            lines.append(_fmt_entry_alert(alert))
+        else:
+            lines.append(_fmt_target_alert(alert))
+
+    msg = "\n".join(lines)
+    print(f"  send combined message ({len(pending)} alerts)")
+    if _send_telegram(msg):
+        for alert in pending:
+            key = _alert_key(market, alert)
             state[key] = datetime.now().isoformat()
-            sent_count += 1
+        return 1
 
-    return sent_count
+    return 0
 
 
 def main() -> None:
