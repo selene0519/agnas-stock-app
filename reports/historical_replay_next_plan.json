@@ -1,0 +1,92 @@
+{
+  "status": "PLAN_READY",
+  "generatedAt": "2026-07-02T00:00:00",
+  "title": "Historical Replay 실행 계획",
+  "objective": "recovery_scanner 및 추천 엔진의 과거 날짜 기반 성과 검증을 위한 historical_replay 실행 계획",
+  "currentState": {
+    "ohlcvFiles": 251,
+    "ohlcvDateRange": "2024-06-10 ~ 2026-07-01",
+    "journalRows": 1905,
+    "journalDateRange": "2025-11-03 ~ 2026-06-30",
+    "replayableDates": 100,
+    "replayCallable": true,
+    "futureDataPolicy": "generation_uses_ohlcv_date_lte_as_of_date_only"
+  },
+  "blockers": [
+    {
+      "id": "B1",
+      "issue": "computedRegime: BULL=711, SIDE=135, BEAR=0 (KR, 1905건)",
+      "detail": "BEAR 장세 검증 표본 없음 — BEAR 조건 파라미터(_REGIME_TRADE_PARAMS)는 실전 미적용 유지",
+      "resolution": "2026년 하락장 발생 시까지 BEAR 파라미터 동결"
+    },
+    {
+      "id": "B2",
+      "issue": "recovery_scanner journal 직접 검증 불가",
+      "detail": "journal은 추천 종목만 기록 (KR RSI min=41.5), recovery_scanner 대상(RSI<40)은 구조적으로 journal 미포함",
+      "resolution": "historical_replay를 통한 과거 날짜 재실행으로만 직접 검증 가능"
+    },
+    {
+      "id": "B3",
+      "issue": "전략 태그 공백 1905건 (OHLCV 의존 태그 미계산)",
+      "detail": "dist_52wHigh / MA50 / mom60 기반 태그는 저장 지표로 소급 불가",
+      "resolution": "historical_replay 실행 시 원본 OHLCV로 전체 태그 계산 가능"
+    }
+  ],
+  "phases": [
+    {
+      "phase": 1,
+      "name": "단기 샘플 replay (5일)",
+      "target": "2026-06-01 ~ 2026-06-07 (5 영업일)",
+      "purpose": "historical_replay() 동작 검증 + futureDataPolicy 준수 확인",
+      "script": "scripts/check_historical_replay_readiness.py (이미 완료)",
+      "prerequisite": "ohlcv 데이터 2026-06-07 이전 존재 확인",
+      "expectedOutput": "replay_sample_2026-06-01_to_2026-06-07.json",
+      "risk": "LOW",
+      "status": "READY"
+    },
+    {
+      "phase": 2,
+      "name": "recovery_scanner 직접 검증 replay (30일)",
+      "target": "2025-11-03 ~ 2025-12-31 (최초 journal 시작점)",
+      "purpose": "RSI<40 종목에 대한 recovery_scanner 성과 직접 측정",
+      "script": "scripts/validate_recovery_scanner_retrospective.py (historical_replay 모드 추가 필요)",
+      "prerequisite": "phase 1 완료 후 진행",
+      "expectedOutput": "reports/recovery_scanner_direct_validation_30d.csv",
+      "risk": "MED",
+      "status": "PENDING",
+      "note": "결과와 무관하게 recommendationEligible=false 유지"
+    },
+    {
+      "phase": 3,
+      "name": "전체 기간 full replay (100일)",
+      "target": "2025-11-03 ~ 2026-06-30 (journal 전체 기간)",
+      "purpose": "entryTimingScore / strategyTags / mainAction OOS(Out-of-Sample) 검증",
+      "script": "scripts/retrospective_journal_backfill.py + historical_replay 확장",
+      "prerequisite": "phase 2 완료 후 진행",
+      "expectedOutput": "reports/full_replay_oos_validation.csv",
+      "risk": "MED",
+      "status": "PENDING"
+    },
+    {
+      "phase": 4,
+      "name": "가드 조건 OOS 검증 및 활성화",
+      "target": "phase 3 결과 기반",
+      "purpose": "entryTimingScore < 55 가드 / rr > 2.5 가드 OOS 확인 후 real-time 적용",
+      "script": "신규 스크립트 필요: scripts/oos_guard_validation.py",
+      "prerequisite": "phase 3 완료 + OOS WR/StopRate 통계 확인",
+      "expectedOutput": "reports/oos_guard_validation_result.json",
+      "risk": "HIGH",
+      "status": "PENDING",
+      "criticalConstraint": "OOS 검증 완료 전까지 가드는 display-only (validationDisplay) — 필터링/점수 반영 금지"
+    }
+  ],
+  "safetyConstraints": [
+    "검증 없이 추천 로직 변경 금지",
+    "final_score, entry, target, stop 산식은 검증 없이 바꾸지 않는다",
+    "_REGIME_TRADE_PARAMS 실전 엔진 적용 금지 (OOS 검증 전)",
+    "recovery_scanner를 final recommendation에 절대 넣지 않는다",
+    "가드는 반드시 OOS 검증 후 active 적용",
+    "기존 1905건 journal 데이터 원본 변경 금지"
+  ],
+  "immediateNextAction": "phase 1 실행: python -c \"from app.services.virtual_trade_journal import historical_replay; r=historical_replay('2026-06-01', '2026-06-05'); print(r)\""
+}
