@@ -1726,6 +1726,18 @@ def _recommendation_item(
         adaptive_score_adjustment = None
         adaptive_learning_status = "DISABLED"
 
+    # ── event + adaptive 보정치를 finalScore에 반영 ──
+    _total_score_adj = (event_score_adjustment or 0.0) + (adaptive_score_adjustment or 0.0)
+    _base_fs = _num(_text(row, ["finalScore", "final_score", "finalRankScore"], "")) or None
+    _adjusted_fs = (
+        round(_clamp(_base_fs + _total_score_adj, 0.0, 100.0), 1)
+        if _base_fs is not None and _total_score_adj != 0.0
+        else _base_fs
+    )
+    _decision_bucket = _text(row, ["decisionBucket", "decision_bucket"], "")
+    if _total_score_adj <= -5.0 and _decision_bucket == "오늘 진입":
+        _decision_bucket = "관찰"
+
     return {
         "id": f"{market.upper()}-{sym}",
         "symbol": sym,
@@ -1772,7 +1784,7 @@ def _recommendation_item(
         "revenueGrowth": _num(_text(row, ["revenueGrowth", "revenue_growth"], "")) or None,
         "epsGrowth": _num(_text(row, ["epsGrowth", "eps_growth"], "")) or None,
         "finQualityScore": _num(_text(row, ["finQualityScore", "fin_quality_score"], "")) or None,
-        "decisionBucket": _text(row, ["decisionBucket", "decision_bucket"], ""),
+        "decisionBucket": _decision_bucket,
         "timingLabel": _text(row, ["timingLabel", "timing_label"], ""),
         "timingReason": _text(row, ["timingReason", "timing_reason"], ""),
         "expectedEntryPrice": _text(row, ["expectedEntryPrice", "expected_entry_price"], ""),
@@ -1788,8 +1800,8 @@ def _recommendation_item(
         "newsRiskPenalty": _num(_text(row, ["newsRiskPenalty", "news_risk_penalty", "eventRiskScore"], "")) or 0,
         "marketRegime": _text(row, ["marketRegime", "market_regime"], ""),
         # ── 세부 점수 (quant_overlay 전 CSV 원본; overlay가 덮어씀)
-        "finalScore": _num(_text(row, ["finalScore", "final_score", "finalRankScore"], "")) or None,
-        "finalRankScore": _num(_text(row, ["finalRankScore", "finalScore", "final_score"], "")) or None,
+        "finalScore": _adjusted_fs,
+        "finalRankScore": _adjusted_fs,
         "baseScore": _num(_text(row, ["baseScore", "base_score"], "")) or None,
         "upsideScore": _num(_text(row, ["upsideScore", "upside_score"], "")) or None,
         "riskScore": _num(_text(row, ["riskScore", "risk_score"], "")) or None,
@@ -2315,6 +2327,12 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
                         item[_akey] = round(_clamp(float(_val) * attr_mult, 0.0, _cap), _dp)
                 item.setdefault("computedFields", []).append(f"attribution_mult_{attr_mult}")
             item = _apply_chart_signal_overlay(item, mode, horizon)
+            try:
+                from app.services.validation_display_policy import enrich_item_and_build
+                enrich_item_and_build(item)
+            except Exception:
+                item.setdefault("validationDisplay", {})
+                item.setdefault("journalEvidence", {})
             seen.add(key)
             items.append(item)
             if len(items) >= limit:
