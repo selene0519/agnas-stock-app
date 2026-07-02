@@ -138,9 +138,9 @@ def _fetch_near_alerts(threshold_pct: float) -> list[dict]:
 
 
 def check_and_send(threshold_pct: float | None = None, force: bool = False) -> dict[str, Any]:
-    """근접 알림 체크 후 Telegram 발송. 결과 dict 반환."""
+    """근접 알림 체크 후 Telegram 발송. 결과 dict 반환. (손절가 알림 제외)"""
     thr = threshold_pct if threshold_pct is not None else THRESHOLD_PCT
-    alerts = _fetch_near_alerts(thr)
+    alerts = [a for a in _fetch_near_alerts(thr) if a["type"] != "STOP"]
 
     result: dict[str, Any] = {
         "checkedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

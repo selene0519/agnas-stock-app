@@ -145,17 +145,29 @@ jobs:
           PY
           echo "KIS quote refresh: exit $?"
 
-      - name: Send entry proximity notifications
+      - name: Send pre-market prediction (국장 전 / 미장 전 각 1회)
+        env:
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+          ALPHA_VANTAGE_KEY: ${{ secrets.ALPHA_VANTAGE_KEY }}
         run: |
-          python scripts/notify_entry_proximity.py
-
-      - name: Save alert state
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/notification_alert_state.json 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "chore: update notification alert state [skip ci]"
-          git push || true
+          KR_HOUR=$(TZ=Asia/Seoul date +%H)
+          ET_HOUR=$(TZ=America/New_York date +%H)
+          WEEKDAY=$(date +%u)
+          if [ "$WEEKDAY" -ge 6 ]; then
+            echo "주말 — 알림 스킵"
+            exit 0
+          fi
+          if [ "$KR_HOUR" = "08" ]; then
+            echo "국장 장전 (KST ${KR_HOUR}시) — KR 예측 알림 발송"
+            python scripts/notify_daily_summary.py --market kr
+          elif [ "$ET_HOUR" = "09" ]; then
+            echo "미장 장전 (ET ${ET_HOUR}시) — US 예측 알림 발송"
+            python scripts/notify_daily_summary.py --market us
+          else
+            echo "장전 시간창 외 (KST=${KR_HOUR}, ET=${ET_HOUR}) — 알림 스킵"
+          fi
 
       - name: 실패 시 텔레그램 알림
         if: failure()

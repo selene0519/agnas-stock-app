@@ -43,12 +43,7 @@ try:
 except Exception as _auto_sync_err:
     print("[AutoSync] 초기화 실패:", _auto_sync_err)
 
-# Telegram 알림 스케줄러 초기화
-try:
-    from app.services.telegram_alert import start_scheduler as _tg_start
-    _tg_start()
-except Exception as _tg_err:
-    print("[TelegramAlert] 초기화 실패:", _tg_err)
+# Telegram 알림 스케줄러 비활성화 (장전 1회 예측 알림만 GitHub Actions에서 발송)
 
 _default_origins = [
     "http://localhost:3000",
