@@ -2,12 +2,12 @@ export type Market = "kr" | "us" | "all";
 export type Mode = "conservative" | "balanced" | "aggressive" | "all";
 export type Horizon = "short" | "swing" | "mid" | "long" | "all";
 
-import { getUserId } from "./userId";
+import { getAuthenticatedUserId } from "./userId";
 
 function getMoneUserHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    const id = getUserId();
+    const id = getAuthenticatedUserId();
     return id ? { "x-mone-user": id } : {};
   } catch {
     return {};

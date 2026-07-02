@@ -7346,7 +7346,14 @@ def api_home_summary(
                     out["upsideScore"] = round(max(0.0, min(100.0, opportunity)), 1)
                 risk_score = _home_number(out.get("riskScore"))
                 if risk_score is not None:
-                    out["riskStabilityScore"] = round(max(0.0, min(100.0, 100.0 - risk_score)), 1)
+                    risk_stability = round(max(0.0, min(100.0, 100.0 - risk_score)), 1)
+                    out["riskStabilityScore"] = risk_stability
+                    if risk_score >= 65:
+                        out["riskReason"] = f"위험 높음 (위험 {risk_score:.0f}점)"
+                    elif risk_score >= 45:
+                        out["riskReason"] = f"리스크 주의 (위험 {risk_score:.0f}점)"
+                    else:
+                        out["riskReason"] = f"위험 낮음 (안정성 {risk_stability:.0f}점)"
                 if _home_number(out.get("momentumScore")) is None:
                     out["momentumScore"] = 50.0
                 if _home_number(out.get("qualityScore")) is None:

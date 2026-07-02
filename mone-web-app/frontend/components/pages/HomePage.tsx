@@ -44,7 +44,7 @@ import {
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
-import { getUserId } from "@/lib/userId";
+import { getAuthenticatedUserId } from "@/lib/userId";
 import { alertStatusTone, toneClassName } from "@/lib/tone";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
@@ -89,7 +89,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
 const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000; // refresh changing prices occasionally
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v11:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v12:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -109,7 +109,7 @@ function homeCacheKey(market: "kr" | "us") {
   let user = "anon";
   if (typeof window !== "undefined") {
     try {
-      user = getUserId() || "anon";
+      user = getAuthenticatedUserId() || "anon";
     } catch {
       user = "anon";
     }

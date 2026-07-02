@@ -39,6 +39,21 @@ export function getUserId(): string {
   }
 }
 
+export function getExistingUserId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem(STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function getAuthenticatedUserId(): string {
+  const token = getUserToken();
+  const profile = getUserProfile();
+  return token && profile?.userId ? profile.userId : "";
+}
+
 export function setAuthenticatedUser(profile: MoneUserProfile, token: string): void {
   if (typeof window === "undefined") return;
   try {

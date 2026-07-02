@@ -56,7 +56,7 @@ type EngineHistoryRow = {
 // ── 캐시 (HomePage.tsx와 동일한 키를 써서 데스크톱/모바일 간 캐시를 공유한다)
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000;
 const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000;
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v8:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v9:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];

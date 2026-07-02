@@ -8,7 +8,7 @@ import AlertsPanel from "../AlertsPanel";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName } from "@/lib/moneDisplay";
 import { toneClassName } from "@/lib/tone";
-import { getUserId, getUserProfile, getUserToken } from "@/lib/userId";
+import { getAuthenticatedUserId, getUserProfile, getUserToken } from "@/lib/userId";
 import type { BootPreloadData } from "@/lib/bootPreload";
 
 type Market = "all" | "kr" | "us";
@@ -64,7 +64,7 @@ async function getJson(path: string) {
 function getMoneUserHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    const id = getUserId();
+    const id = getAuthenticatedUserId();
     return id ? { "x-mone-user": id } : {};
   } catch { return {}; }
 }
@@ -646,7 +646,9 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
 
 // ── 메인 페이지 ────────────────────────────────────────────────────────
 export default function HoldingsPage({ userToken, onNavigate, bootData }: HoldingsPageProps) {
+  const initialAuthenticatedUserId = getAuthenticatedUserId();
   const _bootHoldings = (() => {
+    if (!initialAuthenticatedUserId) return null;
     const bc = bootData?.holdingsCache;
     if (bc && Array.isArray(bc.items) && bc.items.length > 0) return bc;
     return readHoldingsCache("all")?.data ?? null;
@@ -726,7 +728,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }
 
   async function load(options: { background?: boolean } = {}) {
-    const cached = readHoldingsCache(market);
+    const authenticatedUserId = getAuthenticatedUserId();
+    const cached = authenticatedUserId ? readHoldingsCache(market) : null;
     if (cached && !options.background) {
       setData(cached.data);
       setHoldingsLoadedAt(cached.loadedAt);
@@ -737,7 +740,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     try {
       const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
       const serverItems = Array.isArray(result.items) ? result.items : [];
-      const localItems = loadHoldingsFromLocalStorage();
+      const localItems = authenticatedUserId ? loadHoldingsFromLocalStorage() : [];
       let finalData: any;
       if (serverItems.length === 0 && localItems.length > 0) {
         finalData = localHoldingsPayload(localItems, market);
@@ -785,7 +788,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         setSectorData(sector); setBenchmarkData(bench); setCorrData(corr);
       });
     } catch (error) {
-      const localItems = loadHoldingsFromLocalStorage();
+      const localItems = getAuthenticatedUserId() ? loadHoldingsFromLocalStorage() : [];
       setData(localItems.length > 0
         ? localHoldingsPayload(localItems, market)
         : { status: "ERROR", error: String(error), items: [], summary: {} });
