@@ -1,75 +1,85 @@
 {
   "date": "2026-07-02",
-  "created": [],
-  "skipped": [
+  "created": [
     {
       "market": "kr",
       "mode": "conservative",
       "horizon": "short",
+      "file": "mone_v36_final_trade_validation_kr_conservative_short_20260702.csv",
       "rows": 21,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 21
     },
     {
       "market": "kr",
       "mode": "conservative",
       "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_kr_conservative_swing_20260702.csv",
       "rows": 31,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 29
     },
     {
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_conservative_mid_20260702.csv",
       "rows": 32,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 30
     },
     {
       "market": "kr",
       "mode": "balanced",
       "horizon": "short",
+      "file": "mone_v36_final_trade_validation_kr_balanced_short_20260702.csv",
       "rows": 23,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 23
     },
     {
       "market": "kr",
       "mode": "balanced",
       "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_kr_balanced_swing_20260702.csv",
       "rows": 32,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 29
     },
     {
       "market": "kr",
       "mode": "balanced",
       "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_balanced_mid_20260702.csv",
       "rows": 33,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 30
     },
     {
       "market": "kr",
       "mode": "aggressive",
       "horizon": "short",
+      "file": "mone_v36_final_trade_validation_kr_aggressive_short_20260702.csv",
       "rows": 22,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 22
     },
     {
       "market": "kr",
       "mode": "aggressive",
       "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_kr_aggressive_swing_20260702.csv",
       "rows": 34,
-      "reason": "no_today_ohlcv_or_no_recommendations"
+      "normalRows": 32
     },
     {
       "market": "kr",
       "mode": "aggressive",
       "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_aggressive_mid_20260702.csv",
       "rows": 34,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
+      "normalRows": 31
+    }
+  ],
+  "skipped": [
     {
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "rows": 2,
+      "rows": 1,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -129,5 +139,5 @@
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-07-02T07:32:00"
+  "updatedAt": "2026-07-02T09:06:50"
 }
