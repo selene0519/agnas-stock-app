@@ -5015,23 +5015,37 @@ def _install_mone_authoritative_holdings_clean_v3():
     def mone_authoritative_holdings_clean_v3(
         market: str = _MoneQuery("all"),
         limit: int = _MoneQuery(100),
+        includeCsvFallback: bool = _MoneQuery(False),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
     ) -> dict:
         uid = _sanitize_user_id(x_mone_user)
         if uid:
             return _personal_payload(uid, market, limit)
-        return _payload(market, limit)
+        if includeCsvFallback:
+            return _payload(market, limit)
+        payload = _payload(market, limit, rows_override=[], authority="personal_user_holdings")
+        payload["routeVersion"] = "personal-user-holdings-empty"
+        payload["holdingFallbackSuppressed"] = True
+        payload["holdingFallbackReason"] = "x-mone-user header missing; shared CSV holdings are not shown by default"
+        return payload
 
     @app.get("/api/final/holdings-clean")
     def mone_authoritative_final_holdings_clean_v3(
         market: str = _MoneQuery("all"),
         limit: int = _MoneQuery(100),
+        includeCsvFallback: bool = _MoneQuery(False),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
     ) -> dict:
         uid = _sanitize_user_id(x_mone_user)
         if uid:
             return _personal_payload(uid, market, limit)
-        return _payload(market, limit)
+        if includeCsvFallback:
+            return _payload(market, limit)
+        payload = _payload(market, limit, rows_override=[], authority="personal_user_holdings")
+        payload["routeVersion"] = "personal-user-holdings-empty"
+        payload["holdingFallbackSuppressed"] = True
+        payload["holdingFallbackReason"] = "x-mone-user header missing; shared CSV holdings are not shown by default"
+        return payload
 
 try:
     _install_mone_authoritative_holdings_clean_v3()
@@ -7199,15 +7213,26 @@ def api_home_summary(
             "381180",
         }
 
-        def _home_float(value: object) -> float | None:
+        def _home_number(value: object) -> float | None:
             try:
-                text = str(value or "").strip().replace(",", "").replace("%", "")
+                if value is None:
+                    return None
+                if isinstance(value, (int, float)):
+                    number = float(value)
+                    return number if number == number else None
+                import re as _home_re
+                text = str(value or "").strip().replace(",", "")
+                text = _home_re.sub(r"[^0-9+\-.]", "", text)
                 if not text or text.lower() in {"nan", "none", "null"}:
                     return None
                 number = float(text)
-                return number if number > 0 else None
+                return number if number == number else None
             except Exception:
                 return None
+
+        def _home_float(value: object) -> float | None:
+            number = _home_number(value)
+            return number if number is not None and number > 0 else None
 
         def _is_kr_etf_row(row: dict) -> bool:
             if mk != "kr":
@@ -7250,6 +7275,96 @@ def api_home_summary(
         def _enrich_home_matrix_row(row: dict) -> dict:
             out = dict(row or {})
             symbol = str(out.get("symbol") or out.get("code") or out.get("ticker") or "").strip().upper()
+            def _fmt_price(value: float | None) -> str:
+                if value is None or value <= 0:
+                    return ""
+                return f"${value:,.2f}" if mk == "us" else f"{round(value):,}원"
+
+            def _sync_home_recommendation_fields() -> None:
+                for key in ("currentPrice", "entry", "stop", "target"):
+                    value = _home_float(out.get(key) or out.get(f"{key}Price") or out.get(f"{key}_price"))
+                    if value is not None:
+                        out[key] = round(value, 4)
+                        if key in {"entry", "stop", "target"}:
+                            out.setdefault(f"{key}Price", round(value, 4))
+
+                score = _home_number(out.get("finalScore"))
+                if score is None:
+                    score = _home_number(out.get("finalRankScore"))
+                if score is not None:
+                    out["finalScore"] = round(max(0.0, min(100.0, score)), 1)
+                    out.setdefault("finalRankScore", out["finalScore"])
+                    out.setdefault("baseScore", out["finalScore"])
+                    out.setdefault("chartScoreAdjustment", 0.0)
+                    out.setdefault("eventScoreAdjustment", 0.0)
+                    out.setdefault("adaptiveScoreAdjustment", 0.0)
+
+                entry = _home_float(out.get("entry"))
+                stop = _home_float(out.get("stop"))
+                target = _home_float(out.get("target"))
+                current = _home_float(out.get("currentPrice"))
+
+                rr = _home_number(out.get("rrActual")) or _home_number(out.get("riskRewardRatio")) or _home_number(out.get("rr"))
+                if rr is None and entry and stop and target and entry > stop and target > entry:
+                    rr = (target - entry) / (entry - stop)
+                if rr is not None and rr > 0:
+                    out["rrActual"] = round(rr, 2)
+                    out.setdefault("riskRewardRatio", round(rr, 2))
+                    out.setdefault("riskReward", f"1:{rr:.2f}")
+                    out.setdefault("rrScore", round(max(0.0, min(100.0, rr * 22.2)), 1))
+
+                ev = _home_number(out.get("expectedValue") or out.get("ev"))
+                if ev is None and entry and stop and target and entry > stop and target > entry:
+                    prob = _home_number(out.get("probability") or out.get("probabilityText") or out.get("winProbability"))
+                    if prob is not None:
+                        p = prob / 100.0 if prob > 1 else prob
+                        if 0 <= p <= 1:
+                            gain_pct = (target - entry) / entry * 100.0
+                            loss_pct = (entry - stop) / entry * 100.0
+                            ev = (p * gain_pct) - ((1.0 - p) * loss_pct)
+                if ev is not None:
+                    out["expectedValue"] = round(ev, 2)
+
+                try:
+                    classifier_scores = data._mone_classifier_scores(out, mk)  # type: ignore[attr-defined]
+                except Exception:
+                    classifier_scores = {}
+                if classifier_scores:
+                    for key in ("opportunityScore", "upsideScore", "entryScore", "momentumScore", "qualityScore", "newsRiskPenalty"):
+                        value = _home_number(out.get(key))
+                        if value is None:
+                            computed = _home_number(classifier_scores.get(key))
+                            if computed is not None:
+                                out[key] = round(max(0.0, min(100.0, computed)), 1)
+                    risk_value = _home_number(out.get("riskScore"))
+                    if risk_value is None:
+                        risk_value = _home_number(classifier_scores.get("riskScore"))
+                        if risk_value is not None:
+                            out["riskScore"] = round(max(0.0, min(100.0, risk_value)), 1)
+                opportunity = _home_number(out.get("opportunityScore"))
+                if opportunity is not None:
+                    out["upsideScore"] = round(max(0.0, min(100.0, opportunity)), 1)
+                risk_score = _home_number(out.get("riskScore"))
+                if risk_score is not None:
+                    out["riskStabilityScore"] = round(max(0.0, min(100.0, 100.0 - risk_score)), 1)
+                if _home_number(out.get("momentumScore")) is None:
+                    out["momentumScore"] = 50.0
+                if _home_number(out.get("qualityScore")) is None:
+                    out["qualityScore"] = 50.0
+                out.setdefault("scoreBreakdownSource", "home_summary_derived")
+
+                if current and not out.get("currentPriceText"):
+                    out["currentPriceText"] = _fmt_price(current)
+                if entry and not out.get("entryText"):
+                    out["entryText"] = _fmt_price(entry)
+                if stop and not out.get("stopText"):
+                    out["stopText"] = _fmt_price(stop)
+                if target and not out.get("targetText"):
+                    out["targetText"] = _fmt_price(target)
+                if not out.get("dataAsOf"):
+                    out["dataAsOf"] = str(out.get("ohlcvLatestDate") or out.get("latestDataDate") or out.get("dataDate") or "")
+
+            _sync_home_recommendation_fields()
             ref = _ohlcv_change_ref(symbol)
             if not ref:
                 return out
@@ -7270,6 +7385,7 @@ def api_home_summary(
             out.setdefault("ohlcvLatestDate", ref["ohlcvLatestDate"])
             out.setdefault("dataAsOf", ref["ohlcvLatestDate"])
             out.setdefault("latestDataDate", ref["ohlcvLatestDate"])
+            _sync_home_recommendation_fields()
             if current and not out.get("currentPriceText"):
                 out["currentPriceText"] = f"${current:,.2f}" if mk == "us" else f"{round(current):,}원"
             if str(out.get("priceSource") or out.get("currentPriceSource") or "").lower() in {"ohlcv", "ohlcv_close"}:
@@ -7592,6 +7708,25 @@ def api_home_summary(
                     except Exception:
                         pass
                     break
+
+        try:
+            import datetime as _home_dt
+            _latest_reco_mtime = max(
+                (
+                    _p.stat().st_mtime
+                    for _p in (data.REPORT_DIR).glob(f"mone_v36_final_recommendations_{mk}_*.csv")
+                    if _p.exists() and _p.stat().st_size > 20
+                ),
+                default=0.0,
+            )
+            if _latest_reco_mtime > 0:
+                _csv_reco_generated = _home_dt.datetime.fromtimestamp(_latest_reco_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                _current_reco_generated = str(data_health.get("recoGeneratedAt") or "")
+                if not _current_reco_generated or _csv_reco_generated[:10] > _current_reco_generated[:10]:
+                    data_health["recoGeneratedAt"] = _csv_reco_generated
+                    data_health["recoGeneratedAtSource"] = "recommendation_csv_mtime"
+        except Exception:
+            pass
 
         return {
             "status": "OK",

@@ -89,7 +89,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
 const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000; // refresh changing prices occasionally
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v7:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v11:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -1353,7 +1353,7 @@ function JournalModal({ onClose }: { onClose: () => void }) {
 // ── 추천 근거 패널 (슬라이드오버)
 const SCORE_ITEMS = [
   { key: "upsideScore",    label: "상승 여력",   color: "bg-emerald-500" },
-  { key: "riskScore",      label: "리스크 안정성", color: "bg-sky-500" },
+  { key: "riskStabilityScore", label: "리스크 안정성", color: "bg-sky-500" },
   { key: "momentumScore",  label: "모멘텀",       color: "bg-yellow-500" },
   { key: "entryScore",     label: "진입 접근성",  color: "bg-cyan-500" },
   { key: "rrScore",        label: "손익비",       color: "bg-violet-500" },

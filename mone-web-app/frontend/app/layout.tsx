@@ -46,6 +46,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              window.addEventListener('error', function(event) {
+                var message = String(event && event.message || '');
+                var filename = String(event && event.filename || '');
+                if (filename.indexOf('speed.js') !== -1 && message.indexOf('playbackRate') !== -1) {
+                  event.preventDefault();
+                  return false;
+                }
+              }, true);
+              window.addEventListener('unhandledrejection', function(event) {
+                var reason = event && event.reason;
+                var text = String(reason && (reason.stack || reason.message) || reason || '');
+                if (text.indexOf('speed.js') !== -1 && text.indexOf('playbackRate') !== -1) {
+                  event.preventDefault();
+                  return false;
+                }
+              });
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   var refreshed = false;
