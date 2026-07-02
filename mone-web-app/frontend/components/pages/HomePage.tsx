@@ -3247,7 +3247,7 @@ export default function HomePage({
     return true;
   }, [bootData]);
 
-  async function load(options: { background?: boolean } = {}) {
+  async function load(options: { background?: boolean; _coldStartRetry?: boolean } = {}) {
     const hasCurrentData = options.background || allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth);
     if (hasCurrentData) {
       setLoading(false);
@@ -3258,6 +3258,16 @@ export default function HomePage({
     try {
       // 단일 통합 API 호출 (기존 10회 → 1회)
       const result = await mone.homeSummary({ market: selectedMarket, limit: 12 });
+
+      // 콜드스타트 타임아웃: 한 번 자동 재시도
+      const retryAfter = (result as any)?.retryAfter as number | undefined;
+      if (retryAfter && !options._coldStartRetry) {
+        const delaySec = Math.min(retryAfter, 40);
+        setRefreshWarning(`백엔드 서버가 켜지는 중입니다. ${delaySec}초 후 자동으로 다시 불러옵니다...`);
+        await new Promise(r => setTimeout(r, delaySec * 1000));
+        await load({ ...options, _coldStartRetry: true });
+        return;
+      }
 
       // matrix: { conservative_short: {items, count, status}, ... } → StrategyCell[]
       const matrixResult = normalizeStrategyMatrix(result.matrix, selectedMarket);
