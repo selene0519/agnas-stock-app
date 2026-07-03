@@ -44,7 +44,7 @@ import {
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
-import { getAuthenticatedUserId } from "@/lib/userId";
+import { getUserId } from "@/lib/userId";
 import { alertStatusTone, toneClassName } from "@/lib/tone";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
@@ -108,7 +108,7 @@ function homeCacheKey(market: "kr" | "us") {
   let user = "anon";
   if (typeof window !== "undefined") {
     try {
-      user = getAuthenticatedUserId() || "anon";
+      user = getUserId() || "anon";
     } catch {
       user = "anon";
     }
