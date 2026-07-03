@@ -486,7 +486,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
     const recommendationParams = { market: resolvedMarket, mode, horizon, limit: Math.min(RECOMMENDATION_LIMIT, 50), watchOnly };
     const cachedRecommendations = readApiSnapshot<ApiList<RecommendationItem>>("/api/final/recommendations", recommendationParams);
-    if (cachedRecommendations?.status !== "ERROR") {
+    if (cachedRecommendations != null && cachedRecommendations.status !== "ERROR") {
       const deduped = dedupeBySymbol(Array.isArray(cachedRecommendations.items) ? cachedRecommendations.items : []);
       setItems(deduped);
       _stocksCache = { items: deduped, market: resolvedMarket, mode, horizon, ts: Date.now() };
