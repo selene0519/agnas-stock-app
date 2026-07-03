@@ -7620,8 +7620,9 @@ def api_sectors(market: str = Query("kr")) -> dict:
         mk = _market(market) if market != "all" else "kr"
         sector_map: dict[str, list] = {}
 
-        # sector_map_{mk}.csv를 우선 읽는다 (kr/us 모두 지원)
-        sector_csv = _REPO / "data" / f"sector_map_{mk}.csv"
+        # sector_map_{mk}.csv: 앱 코드 내부 경로 우선 (Render persistent disk 회피)
+        _app_sector = Path(__file__).parent / "sector_maps" / f"sector_map_{mk}.csv"
+        sector_csv = _app_sector if _app_sector.exists() else _REPO / "data" / f"sector_map_{mk}.csv"
         if sector_csv.exists():
             import csv as _csv
             for enc in ("utf-8-sig", "utf-8", "cp949"):
