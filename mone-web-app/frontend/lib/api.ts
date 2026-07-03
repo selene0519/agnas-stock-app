@@ -112,6 +112,99 @@ const configuredTimeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 90000
 const API_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
   ? configuredTimeout
   : 90000;
+const API_SNAPSHOT_PREFIX = "mone:api-snapshot:v1:";
+const API_SNAPSHOT_TTL_MS = 18 * 60 * 60 * 1000;
+
+const SNAPSHOT_CACHEABLE_PATHS = [
+  "/api/home/summary",
+  "/api/final/recommendations",
+  "/api/final/recommendation-detail",
+  "/api/final/operation-summary",
+  "/api/final/data-quality-live",
+  "/api/watchlist",
+  "/api/watchlist-edit",
+  "/api/watchlist/groups",
+  "/api/sectors",
+  "/api/holdings",
+  "/api/holdings-clean",
+  "/api/ohlcv",
+  "/api/company-analysis",
+  "/api/news",
+  "/api/disclosures",
+  "/api/chart/index",
+  "/api/chart/analysis",
+  "/api/chart/similar-pattern",
+  "/api/symbol",
+  "/api/earnings-calendar",
+  "/api/calendar/today",
+  "/api/risk/near-alerts",
+  "/api/signals/ledger",
+  "/api/market/fear-greed",
+  "/api/pattern/strategy",
+] as const;
+
+function normalizeParams(params?: Record<string, string | number | boolean | undefined | null>) {
+  return Object.fromEntries(
+    Object.entries(params || {})
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => [key, String(value)])
+  );
+}
+
+function isSnapshotCacheablePath(path: string) {
+  return SNAPSHOT_CACHEABLE_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
+function snapshotCacheKey(path: string, params?: Record<string, string | number | boolean | undefined | null>) {
+  return `${API_SNAPSHOT_PREFIX}${path}?${JSON.stringify(normalizeParams(params))}`;
+}
+
+export function readApiSnapshot<T = any>(
+  path: string,
+  params?: Record<string, string | number | boolean | undefined | null>,
+): T | null {
+  if (typeof window === "undefined" || !isSnapshotCacheablePath(path)) return null;
+  try {
+    const raw = window.localStorage.getItem(snapshotCacheKey(path, params));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const ts = Number(parsed.ts || 0);
+    if (!Number.isFinite(ts) || Date.now() - ts > API_SNAPSHOT_TTL_MS) return null;
+    return parsed.value as T;
+  } catch {
+    return null;
+  }
+}
+
+export function writeApiSnapshot(
+  path: string,
+  params: Record<string, string | number | boolean | undefined | null> | undefined,
+  value: any,
+) {
+  if (typeof window === "undefined" || !isSnapshotCacheablePath(path)) return;
+  if (!value || value.status === "ERROR") return;
+  try {
+    window.localStorage.setItem(snapshotCacheKey(path, params), JSON.stringify({ ts: Date.now(), value }));
+  } catch {
+    // Best-effort cache only.
+  }
+}
+
+export function clearApiSnapshots() {
+  if (typeof window === "undefined") return;
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(API_SNAPSHOT_PREFIX)) keys.push(key);
+    }
+    keys.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // Best-effort cache only.
+  }
+}
 
 function isAbsoluteUrl(value: string) {
   return value.startsWith("http://") || value.startsWith("https://");
@@ -245,10 +338,14 @@ export async function apiGet<T = any>(
   params?: Record<string, string | number | boolean | undefined | null>,
   signal?: AbortSignal
 ): Promise<T> {
+  const cached = readApiSnapshot<T>(path, params);
+  if (cached) return cached;
+
   const proxyUrl = buildUrl(API_BASE, path, params);
   const proxyResult: any = await fetchJson<T>(proxyUrl, signal);
 
   if (proxyResult?.status !== "ERROR") {
+    writeApiSnapshot(path, params, proxyResult);
     return proxyResult as T;
   }
 
@@ -272,6 +369,8 @@ export async function apiGet<T = any>(
 
   if (directResult?.status === "ERROR") {
     directResult.proxyError = proxyResult.error;
+  } else {
+    writeApiSnapshot(path, params, directResult);
   }
 
   return directResult as T;

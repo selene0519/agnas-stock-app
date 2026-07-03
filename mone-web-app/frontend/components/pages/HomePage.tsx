@@ -44,7 +44,7 @@ import {
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
-import { getUserId } from "@/lib/userId";
+import { getAuthenticatedUserId } from "@/lib/userId";
 import { alertStatusTone, toneClassName } from "@/lib/tone";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
@@ -88,8 +88,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // Home recommendations are prediction snapshots. Keep them across reloads and
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
-const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000; // refresh changing prices occasionally
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v7:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v12:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -109,7 +108,7 @@ function homeCacheKey(market: "kr" | "us") {
   let user = "anon";
   if (typeof window !== "undefined") {
     try {
-      user = getUserId() || "anon";
+      user = getAuthenticatedUserId() || "anon";
     } catch {
       user = "anon";
     }
@@ -147,10 +146,6 @@ function writeHomeCache(market: "kr" | "us", e: Omit<HomeCacheEntry, "ts">) {
       // best-effort cache only
     }
   }
-}
-
-function shouldReuseHomeCache(c: HomeCacheEntry | null) {
-  return Boolean(c && Date.now() - c.ts < HOME_PAGE_REVALIDATE_TTL);
 }
 
 function normalizeDateText(value: any) {
@@ -1353,7 +1348,7 @@ function JournalModal({ onClose }: { onClose: () => void }) {
 // ── 추천 근거 패널 (슬라이드오버)
 const SCORE_ITEMS = [
   { key: "upsideScore",    label: "상승 여력",   color: "bg-emerald-500" },
-  { key: "riskScore",      label: "리스크 안정성", color: "bg-sky-500" },
+  { key: "riskStabilityScore", label: "리스크 안정성", color: "bg-sky-500" },
   { key: "momentumScore",  label: "모멘텀",       color: "bg-yellow-500" },
   { key: "entryScore",     label: "진입 접근성",  color: "bg-cyan-500" },
   { key: "rrScore",        label: "손익비",       color: "bg-violet-500" },
@@ -2540,48 +2535,6 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             </div>
           )}
 
-          {/* 소급 검증 진단 (validationDisplay) */}
-          {item.validationDisplay && (() => {
-            const vd = item.validationDisplay as {
-              entryTimingNote?: string;
-              strategyNote?: string;
-              riskNote?: string;
-              actionNote?: string;
-              severityLevel?: string;
-              displayFlags?: string[];
-            };
-            const notes = [vd.entryTimingNote, vd.strategyNote, vd.riskNote, vd.actionNote].filter(Boolean);
-            if (notes.length === 0) return null;
-            const sevColor =
-              vd.severityLevel === "HIGH" ? "border-red-600/40 bg-red-950/20"
-              : vd.severityLevel === "MED" ? "border-amber-700/40 bg-amber-950/20"
-              : "border-slate-700/40 bg-slate-900/30";
-            const sevTextColor =
-              vd.severityLevel === "HIGH" ? "text-red-400"
-              : vd.severityLevel === "MED" ? "text-amber-400"
-              : "text-slate-400";
-            return (
-              <div className={`rounded-xl border p-3.5 ${sevColor}`}>
-                <div className={`mb-2 flex items-center gap-1.5 text-xs font-semibold ${sevTextColor}`}>
-                  <span>📊</span>
-                  <span>소급 검증 진단 (n=1,905건)</span>
-                  {vd.severityLevel === "HIGH" && <span className="ml-auto rounded-full bg-red-900/50 px-1.5 py-0.5 text-[10px]">HIGH</span>}
-                  {vd.severityLevel === "MED" && <span className="ml-auto rounded-full bg-amber-900/50 px-1.5 py-0.5 text-[10px]">MED</span>}
-                </div>
-                <div className="space-y-1.5">
-                  {notes.map((note, i) => (
-                    <div key={i} className={`text-[11px] ${vd.severityLevel === "HIGH" ? "text-red-300" : vd.severityLevel === "MED" ? "text-amber-300" : "text-slate-300"}`}>
-                      • {note}
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 text-[10px] text-slate-500">
-                  표시 전용 — 점수·랭킹에 영향 없음
-                </div>
-              </div>
-            );
-          })()}
-
           {/* 포트폴리오 충돌 검사 */}
           {conflict && Array.isArray(conflict.conflicts) && conflict.conflicts.length > 0 && (
             <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-4">
@@ -3195,9 +3148,10 @@ export default function HomePage({
     onTradePaper({ symbol: String(item.symbol), name: String(item.name || item.nameKr || item.symbol), price, market });
   }
 
-  function openAnalysis(item: any) {
+  function storeChartSelection(item: any) {
+    if (typeof window === "undefined" || !item) return;
     const symbol = String(item.symbol || item.code || item.ticker || "").toUpperCase();
-    if (!symbol || typeof window === "undefined") return;
+    if (!symbol) return;
     const market = normalizeMarket(item.market ?? item._market, symbol);
     const name = displayName(item) || symbol;
     window.localStorage.setItem("mone_chart_symbol", symbol);
@@ -3205,6 +3159,18 @@ export default function HomePage({
     window.localStorage.setItem("mone_chart_name", name);
     window.localStorage.setItem("mone_chart_price", String(item.currentPrice || item.price || ""));
     window.localStorage.setItem("mone_chart_price_text", priceText(item, "current", ""));
+    window.localStorage.setItem("mone_chart_saved_at", String(Date.now()));
+    try {
+      window.localStorage.setItem("mone_chart_item", JSON.stringify({ ...item, symbol, market, name }));
+    } catch {
+      // best-effort handoff only
+    }
+  }
+
+  function openAnalysis(item: any) {
+    const symbol = String(item.symbol || item.code || item.ticker || "").toUpperCase();
+    if (!symbol || typeof window === "undefined") return;
+    storeChartSelection(item);
     window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
     onNavigate?.("chart");
   }
@@ -3247,7 +3213,7 @@ export default function HomePage({
     return true;
   }, [bootData]);
 
-  async function load(options: { background?: boolean; _coldStartRetry?: boolean } = {}) {
+  async function load(options: { background?: boolean } = {}) {
     const hasCurrentData = options.background || allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth);
     if (hasCurrentData) {
       setLoading(false);
@@ -3258,16 +3224,6 @@ export default function HomePage({
     try {
       // 단일 통합 API 호출 (기존 10회 → 1회)
       const result = await mone.homeSummary({ market: selectedMarket, limit: 12 });
-
-      // 콜드스타트 타임아웃: 한 번 자동 재시도
-      const retryAfter = (result as any)?.retryAfter as number | undefined;
-      if (retryAfter && !options._coldStartRetry) {
-        const delaySec = Math.min(retryAfter, 40);
-        setRefreshWarning(`백엔드 서버가 켜지는 중입니다. ${delaySec}초 후 자동으로 다시 불러옵니다...`);
-        await new Promise(r => setTimeout(r, delaySec * 1000));
-        await load({ ...options, _coldStartRetry: true });
-        return;
-      }
 
       // matrix: { conservative_short: {items, count, status}, ... } → StrategyCell[]
       const matrixResult = normalizeStrategyMatrix(result.matrix, selectedMarket);
@@ -3314,9 +3270,8 @@ export default function HomePage({
   useEffect(() => {
     // Don't fetch while the boot overlay is still showing — boot data will seed us on dismiss
     if (clientReady && !booting) {
-      const cached = readHomeCache(selectedMarket);
       const hadCache = applyCachedOrBootState(selectedMarket);
-      if (hadCache && shouldReuseHomeCache(cached)) return;
+      if (hadCache) return;
       load({ background: hadCache });
     }
   }, [clientReady, selectedMarket, booting]);
@@ -3572,6 +3527,11 @@ export default function HomePage({
     }),
     [topObservation, marketRegime, dataHealth, todayEntries.length, watchItems.length, riskCount, selectedMarket],
   );
+
+  useEffect(() => {
+    if (!clientReady || !topObservation) return;
+    storeChartSelection(topObservation);
+  }, [clientReady, topObservation, selectedMarket]);
 
   const alertTrackingRows = useMemo(
     () => buildAlertTrackingRows({

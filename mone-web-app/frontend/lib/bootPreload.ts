@@ -1,5 +1,7 @@
 "use client";
 
+import { clearApiSnapshots, writeApiSnapshot } from "./api";
+
 export type BootStatus = "idle" | "loading" | "ready" | "degraded";
 
 export type BootPreloadData = {
@@ -29,9 +31,13 @@ type StoredCache = BootPreloadState & {
   usDataVersion?: string | null;
 };
 
-const BOOT_CACHE_KEY = "mone:boot-preload:v4";
+type JsonResult = { ok: true; value: any } | { ok: false; error: string };
+type HomeSnapshotResult = { ok: true; value: any; stocksCache: any } | { ok: false; error: string };
+
+const BOOT_CACHE_KEY = "mone:boot-preload:v5";
 const BOOT_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;
-const HEALTH_CHECK_TIMEOUT_MS = 4000;
+const HEALTH_CHECK_TIMEOUT_MS = 8000;
+const SNAPSHOT_FETCH_TIMEOUT_MS = 70000;
 
 const EMPTY_BOOT_STATE: BootPreloadState = {
   bootStatus: "idle",
@@ -53,6 +59,15 @@ function readStoredCache(): StoredCache | null {
     return parsed as StoredCache;
   } catch {
     return null;
+  }
+}
+
+function writeStoredCache(state: StoredCache) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(BOOT_CACHE_KEY, JSON.stringify(state));
+  } catch {
+    // Best-effort cache only.
   }
 }
 
@@ -78,7 +93,7 @@ async function fetchWithTimeout(path: string, timeoutMs: number): Promise<any> {
   }
 }
 
-async function settleJson(path: string, timeoutMs: number): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
+async function settleJson(path: string, timeoutMs: number): Promise<JsonResult> {
   try {
     return { ok: true, value: await fetchWithTimeout(path, timeoutMs) };
   } catch (error) {
@@ -86,61 +101,173 @@ async function settleJson(path: string, timeoutMs: number): Promise<{ ok: true; 
   }
 }
 
-const HOME_SUMMARY_TIMEOUT_MS = 7000;
+function resultError(result: JsonResult | HomeSnapshotResult) {
+  return result.ok === false ? result.error : "";
+}
 
-function detectDefaultMarket(): "kr" | "us" {
-  const hour = new Date().getHours();
-  // 09:00~15:30 KST 범위면 국장, 그 외 미장
-  return hour >= 9 && hour < 16 ? "kr" : "us";
+function marketDataVersion(health: any, market: "kr" | "us"): string | null {
+  if (!isObject(health)) return null;
+  const versions = health.dataVersions;
+  if (isObject(versions)) {
+    const marketVersion = versions[market] || versions[market.toUpperCase()];
+    return JSON.stringify(marketVersion || versions);
+  }
+  const quality = health.dataQuality || health.checks;
+  if (isObject(quality)) {
+    const marketQuality = quality[market] || quality[market.toUpperCase()];
+    if (marketQuality) return JSON.stringify(marketQuality);
+  }
+  const fallback = health.generatedAt || health.updatedAt || health.timestamp || "";
+  return fallback ? String(fallback) : null;
+}
+
+function extractBalancedSwingItems(homeSummary: any): any[] {
+  const matrix = homeSummary?.matrix;
+  if (!isObject(matrix)) return [];
+  const candidates = [
+    (matrix as any).balanced_swing,
+    (matrix as any)["balanced-swing"],
+    (matrix as any).balanced?.swing,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate?.items)) return candidate.items;
+  }
+  for (const value of Object.values(matrix)) {
+    if (isObject(value) && Array.isArray((value as any).items)) return (value as any).items;
+  }
+  return [];
+}
+
+async function fetchHomeSnapshot(market: "kr" | "us"): Promise<HomeSnapshotResult> {
+  const result = await settleJson(`/mone-api/api/home/summary?market=${market}&limit=12`, SNAPSHOT_FETCH_TIMEOUT_MS);
+  if (result.ok === false) return result;
+
+  writeApiSnapshot("/api/home/summary", { market, limit: 12 }, result.value);
+
+  const items = extractBalancedSwingItems(result.value);
+  const stocksCache = {
+    status: result.value?.status || "OK",
+    market,
+    mode: "balanced",
+    horizon: "swing",
+    count: items.length,
+    items,
+    source: "boot_home_summary_snapshot",
+  };
+  writeApiSnapshot("/api/final/recommendations", { market, mode: "balanced", horizon: "swing", limit: 50, watchOnly: false }, stocksCache);
+  writeApiSnapshot("/api/final/recommendations", { market, mode: "balanced", horizon: "swing", limit: 50 }, stocksCache);
+  return { ok: true as const, value: result.value, stocksCache };
+}
+
+async function fetchApiSnapshot(
+  path: string,
+  params?: Record<string, string | number | boolean | undefined | null>,
+  timeoutMs = 25000,
+) {
+  const search = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") search.set(key, String(value));
+  });
+  const query = search.toString();
+  const result = await settleJson(`/mone-api${path}${query ? `?${query}` : ""}`, timeoutMs);
+  if (result.ok) writeApiSnapshot(path, params, result.value);
+  return result;
+}
+
+async function fetchAuxiliarySnapshots(market: "kr" | "us") {
+  const jobs = [
+    fetchApiSnapshot("/api/market/fear-greed", { market }, 12000),
+    fetchApiSnapshot("/api/final/operation-summary", { market, mode: "balanced", horizon: "swing" }, 25000),
+    fetchApiSnapshot("/api/earnings-calendar", { market, days: 14 }, 12000),
+    fetchApiSnapshot("/api/calendar/today", { market }, 12000),
+    fetchApiSnapshot("/api/risk/near-alerts", { market, thresholdPct: 5 }, 12000),
+    fetchApiSnapshot("/api/signals/ledger", { market, limit: 12 }, 12000),
+    fetchApiSnapshot("/api/watchlist-edit", { market: "all" }, 12000),
+    fetchApiSnapshot("/api/watchlist/groups", { market }, 12000),
+    fetchApiSnapshot("/api/sectors", { market }, 12000),
+  ];
+  return Promise.allSettled(jobs);
+}
+
+async function fetchChartSnapshot(market: "kr" | "us", homeSummary: any) {
+  const symbol = String(extractBalancedSwingItems(homeSummary)[0]?.symbol || "").toUpperCase();
+  if (!symbol) return [];
+  const indexSymbol = market === "us" ? "SPY" : "KOSPI";
+  const jobs = [
+    fetchApiSnapshot("/api/ohlcv", { market, symbol, limit: 260, futureProjectionBars: 12 }, 30000),
+    fetchApiSnapshot("/api/final/recommendation-detail", { market, symbol }, 30000),
+    fetchApiSnapshot("/api/news", { market, limit: 200 }, 12000),
+    fetchApiSnapshot("/api/disclosures", { market, limit: 200, watchOnly: false }, 12000),
+    fetchApiSnapshot("/api/company-analysis", { market, q: symbol, limit: 20 }, 20000),
+    fetchApiSnapshot("/api/pattern/strategy", { market, symbol }, 20000),
+    fetchApiSnapshot(`/api/chart/index/${indexSymbol}`, { market, limit: 520 }, 20000),
+    fetchApiSnapshot(`/api/chart/analysis/${symbol}`, { market }, 20000),
+    fetchApiSnapshot(`/api/chart/similar-pattern/${symbol}`, { market }, 20000),
+    fetchApiSnapshot(`/api/symbol/${symbol}/events`, { market }, 12000),
+  ];
+  return Promise.allSettled(jobs);
 }
 
 export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
-  onProgress?.({ progress: 15, message: "서버 상태 확인 중...", step: "server" });
+  onProgress?.({ progress: 12, message: "서버와 데이터 버전을 확인하는 중...", step: "server" });
 
-  const primaryMarket = detectDefaultMarket();
-  const secondaryMarket = primaryMarket === "kr" ? "us" : "kr";
+  const stored = readStoredCache();
+  const healthResult = await settleJson("/mone-api/health", HEALTH_CHECK_TIMEOUT_MS);
+  const krDataVersion = healthResult.ok ? marketDataVersion(healthResult.value, "kr") : stored?.krDataVersion ?? null;
+  const usDataVersion = healthResult.ok ? marketDataVersion(healthResult.value, "us") : stored?.usDataVersion ?? null;
 
-  // 헬스체크 + 주 시장 홈 데이터 병렬 로드
-  const [healthResult, primaryResult] = await Promise.all([
-    settleJson("/mone-api/health", HEALTH_CHECK_TIMEOUT_MS),
-    settleJson(`/mone-api/api/home/summary?market=${primaryMarket}&limit=12`, HOME_SUMMARY_TIMEOUT_MS),
+  if (stored?.hasBootData && stored.krDataVersion === krDataVersion && stored.usDataVersion === usDataVersion) {
+    onProgress?.({ progress: 100, message: "저장된 예측 스냅샷을 여는 중...", step: "done" });
+    return { ...stored, bootStatus: healthResult.ok ? "ready" : "degraded" };
+  }
+
+  if (stored?.hasBootData && (!healthResult.ok || (!krDataVersion && !usDataVersion))) {
+    onProgress?.({ progress: 100, message: "기존 예측 스냅샷을 여는 중...", step: "done" });
+    return {
+      ...stored,
+      bootStatus: "degraded",
+      errors: healthResult.ok ? stored.errors : [resultError(healthResult)],
+    };
+  }
+
+  clearApiSnapshots();
+
+  onProgress?.({ progress: 32, message: "국장 예측 스냅샷을 받는 중...", step: "home" });
+  const krHome = await fetchHomeSnapshot("kr");
+
+  onProgress?.({ progress: 66, message: "미장 예측 스냅샷을 받는 중...", step: "stocks" });
+  const usHome = await fetchHomeSnapshot("us");
+
+  onProgress?.({ progress: 84, message: "보조 화면 데이터를 저장하는 중...", step: "stocks" });
+  await Promise.allSettled([fetchAuxiliarySnapshots("kr"), fetchAuxiliarySnapshots("us")]);
+
+  onProgress?.({ progress: 92, message: "대표 차트 분석을 저장하는 중...", step: "stocks" });
+  await Promise.allSettled([
+    krHome.ok ? fetchChartSnapshot("kr", krHome.value) : Promise.resolve([]),
+    usHome.ok ? fetchChartSnapshot("us", usHome.value) : Promise.resolve([]),
   ]);
 
-  onProgress?.({ progress: 70, message: "추천 데이터 로딩 중...", step: "home" });
-
-  // 보조 시장도 병렬로 가져오되, 실패해도 무시
-  const secondaryResult = await settleJson(`/mone-api/api/home/summary?market=${secondaryMarket}&limit=12`, HOME_SUMMARY_TIMEOUT_MS);
-
-  const bootData: BootPreloadData = {};
-  if (primaryResult.ok) {
-    if (primaryMarket === "kr") bootData.krHomeSummary = primaryResult.value;
-    else bootData.usHomeSummary = primaryResult.value;
-  }
-  if (secondaryResult.ok) {
-    if (secondaryMarket === "kr") bootData.krHomeSummary = secondaryResult.value;
-    else bootData.usHomeSummary = secondaryResult.value;
-  }
-
-  const hasBootData = Boolean(bootData.krHomeSummary || bootData.usHomeSummary);
-  const errors: string[] = [];
-  if ("error" in healthResult) errors.push(healthResult.error);
-  if ("error" in primaryResult) errors.push(primaryResult.error);
+  const errors = [
+    resultError(healthResult),
+    resultError(krHome),
+    resultError(usHome),
+  ].filter(Boolean);
 
   const state: BootPreloadState = {
-    bootStatus: healthResult.ok ? (hasBootData ? "ready" : "degraded") : "degraded",
-    bootData,
+    bootStatus: errors.length === 0 ? "ready" : "degraded",
+    bootData: {
+      krHomeSummary: krHome.ok ? krHome.value : stored?.bootData?.krHomeSummary,
+      usHomeSummary: usHome.ok ? usHome.value : stored?.bootData?.usHomeSummary,
+      krStocksCache: krHome.ok ? krHome.stocksCache : stored?.bootData?.krStocksCache,
+      usStocksCache: usHome.ok ? usHome.stocksCache : stored?.bootData?.usStocksCache,
+      holdingsCache: krHome.ok ? krHome.value?.holdings : stored?.bootData?.holdingsCache,
+    },
     bootCompletedAt: new Date().toISOString(),
-    hasBootData,
+    hasBootData: Boolean((krHome.ok && krHome.value) || (usHome.ok && usHome.value) || stored?.hasBootData),
     errors,
   };
 
-  // 캐시에 저장 (24h TTL — getCachedBootPreload가 읽음)
-  try {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(BOOT_CACHE_KEY, JSON.stringify(state));
-    }
-  } catch { /* 스토리지 가득 차도 무시 */ }
-
-  onProgress?.({ progress: 100, message: "화면을 여는 중...", step: "done" });
+  writeStoredCache({ ...state, krDataVersion, usDataVersion });
+  onProgress?.({ progress: 100, message: "오늘의 예측 화면을 여는 중...", step: "done" });
   return state;
 }

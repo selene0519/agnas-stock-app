@@ -193,15 +193,35 @@ def _fmt_pct(v: float) -> str:
 
 @lru_cache(maxsize=1)
 def _holding_files_cached() -> tuple:
-    # 루트 원장만 단일 소스로 사용. data/ 폴더의 holdings는 제외해
-    # 삭제 후 되살아남 버그 방지 (user_data.py도 루트 파일만 씀).
-    return tuple(_find([
+    # 우선순위: 루트 원장(사용자 편집본) → KIS 자동수집본(fallback).
+    # 루트 파일이 없거나 비어 있을 때 매일 아침 수집된 KIS 데이터로 채운다.
+    primary = _find([
         "holdings_kr.csv",
         "holdings_us.csv",
-    ], max_files=2))
+    ], max_files=2)
+    fallback = _find([
+        "data/kis_2_holdings_kr.csv",
+        "data/kis_holdings_kr.csv",
+        "data/toss_holdings_kr.csv",
+        "data/kis_2_holdings_us.csv",
+        "data/kis_holdings_us.csv",
+        "data/toss_holdings_us.csv",
+    ], max_files=6)
+    return tuple(primary) + tuple(f for f in fallback if f not in primary)
 
 def _holding_files() -> List[Path]:
     return list(_holding_files_cached())
+
+def _holding_files_primary_symbols() -> set:
+    """루트 원장에 있는 심볼 집합 — KIS fallback 파일에서 중복 행을 건너뛸 때 사용."""
+    primary = _find(["holdings_kr.csv", "holdings_us.csv"], max_files=2)
+    seen: set = set()
+    for f in primary:
+        for row in _read_csv(f):
+            sym = _symbol(row)
+            if sym:
+                seen.add(sym)
+    return seen
 
 @lru_cache(maxsize=16)
 def _price_files_cached(market: str) -> tuple:
@@ -316,10 +336,17 @@ def _candidate_score(row: Dict[str, Any]) -> int:
 
 def _raw_holdings() -> List[Dict[str, Any]]:
     rows = []
+    # 루트 원장에 있는 심볼은 KIS fallback 파일에서 재등장해도 건너뛴다 (부활 버그 방지).
+    primary_symbols = _holding_files_primary_symbols()
+    primary_files = set(_find(["holdings_kr.csv", "holdings_us.csv"], max_files=2))
     for f in _holding_files():
+        is_primary = f in primary_files
         for row in _read_csv(f):
             sym = _symbol(row)
             if not sym:
+                continue
+            # fallback 파일에서 루트 원장에 이미 있는 심볼은 건너뜀
+            if not is_primary and sym in primary_symbols:
                 continue
             qty = _num(_text(row, ["quantity", "qty", "shares", "수량", "보유수량"]))
             avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평단", "매입가", "평균단가"]))
