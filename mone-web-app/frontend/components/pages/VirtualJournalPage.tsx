@@ -260,6 +260,8 @@ export default function VirtualJournalPage() {
   const [entryTimingData, setEntryTimingData] = useState<any>({});
   const [entryNotTouchedData, setEntryNotTouchedData] = useState<any>({});
   const [marketGapData, setMarketGapData] = useState<any>({});
+  const [overextendedData, setOverextendedData] = useState<any>({});
+  const [profitCaptureData, setProfitCaptureData] = useState<any>({});
   const [perfGateData, setPerfGateData] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
@@ -269,7 +271,7 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
         mone.virtualTrades({ ...scope, limit: 200 }),
         mone.journalFailurePatterns(scope),
         mone.journalCalibrationSuggestions(scope),
@@ -281,6 +283,8 @@ export default function VirtualJournalPage() {
         mone.virtualEntryTimingDiagnostics(scope),
         mone.virtualEntryNotTouchedDiagnostics(scope),
         mone.virtualMarketGapDiagnostics(scope),
+        mone.virtualOverextendedEntryDiagnostics(scope),
+        mone.virtualProfitCaptureDiagnostics(scope),
         mone.virtualPerformanceGateDiagnostics({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
         mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
@@ -301,6 +305,8 @@ export default function VirtualJournalPage() {
       setEntryTimingData(entryTimingRes || {});
       setEntryNotTouchedData(entryNotTouchedRes || {});
       setMarketGapData(marketGapRes || {});
+      setOverextendedData(overextendedRes || {});
+      setProfitCaptureData(profitCaptureRes || {});
       setPerfGateData(perfGateRes || {});
       setPerfData(perfRes?.status === "OK" ? perfRes : null);
       setAttrData(attrRes?.status === "OK" ? attrRes : null);
@@ -1107,6 +1113,183 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* 과열구간 진입 진단 */}
+      <section className="min-w-0 overflow-hidden rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <TrendingUp size={16} className="shrink-0 text-rose-300" />
+              <span>과열구간 진입 진단</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+              진입 시점 RSI·MA20 이격도를 기준으로 구간별 손절 실패율·수익률을 분석합니다. 추천 액션이나 진입가 산식은 변경하지 않습니다.
+            </p>
+          </div>
+          <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
+            진단 전용
+          </span>
+        </div>
+
+        <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {metric("평가 완료", overextendedData?.summary?.totalEvaluatedTrades ?? 0)}
+          {metric("RSI 데이터 보유", overextendedData?.summary?.rsiDataAvailable ?? 0, "text-sky-300")}
+          {metric("평균 RSI(진입)", overextendedData?.summary?.avgRsiAtEntry == null ? "-" : Number(overextendedData.summary.avgRsiAtEntry).toFixed(1))}
+          {metric("평균 MA20 이격", overextendedData?.summary?.avgMa20DistAtEntry == null ? "-" : `${Number(overextendedData.summary.avgMa20DistAtEntry).toFixed(1)}%`)}
+        </div>
+
+        <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-2">
+          {/* RSI 구간별 */}
+          <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">RSI 구간별 손절 실패율</div>
+            <div className="space-y-1.5">
+              {(overextendedData?.rsiSegments || []).filter((s: any) => s.count > 0).map((seg: any, i: number) => (
+                <div key={i} className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-slate-900/70 px-2.5 py-1.5">
+                  <span className="min-w-0 truncate text-[11px] text-slate-300">{seg.segment}</span>
+                  <div className="flex shrink-0 gap-3 font-mono text-[10px]">
+                    <span className="text-slate-500">n={seg.count}</span>
+                    <span className={`${(seg.stopFailRate || 0) > 0.6 ? "text-rose-300" : "text-slate-300"}`}>
+                      손절{((seg.stopFailRate || 0) * 100).toFixed(0)}%
+                    </span>
+                    <span className={`${(seg.avgReturn || 0) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                      {(seg.avgReturn || 0) >= 0 ? "+" : ""}{(seg.avgReturn || 0).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {!(overextendedData?.rsiSegments || []).filter((s: any) => s.count > 0).length && (
+                <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-500">RSI 데이터 없음</div>
+              )}
+            </div>
+          </div>
+
+          {/* 원인 후보 */}
+          <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="mb-2 text-xs font-semibold text-slate-400">주요 원인 후보</div>
+            <div className="space-y-2">
+              {(overextendedData?.causeCandidates || []).slice(0, 3).map((item: any, i: number) => (
+                <div key={i} className="min-w-0 rounded-md bg-slate-900/70 px-3 py-2">
+                  <div className="text-xs font-semibold text-slate-200">{item.title || item.causeType}</div>
+                  <div className="mt-0.5 break-keep text-[11px] leading-5 text-slate-400">{item.summary || "-"}</div>
+                </div>
+              ))}
+              {!(overextendedData?.causeCandidates || []).length && (
+                <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-500">과열구간 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
+              )}
+            </div>
+            <div className="mt-2 break-words rounded-md bg-slate-900/70 px-3 py-2 text-[11px] leading-5 text-slate-400 [overflow-wrap:anywhere]">
+              적용 판단: {overextendedData?.patchReason || "분석 데이터를 불러오는 중입니다."}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 수익포착 실패 진단 */}
+      <section className="min-w-0 overflow-hidden rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <Target size={16} className="shrink-0 text-amber-300" />
+              <span>수익포착 실패 진단</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+              MFE(최대 유리 이탈)·목표 진행률 기반으로 수익 기회가 있었지만 포착에 실패한 거래를 분석합니다. 목표가·손절가 산식은 변경하지 않습니다.
+            </p>
+          </div>
+          <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
+            진단 전용
+          </span>
+        </div>
+
+        {(() => {
+          const s = profitCaptureData?.summary || {};
+          return (
+            <>
+              <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {metric("평가 완료", s.totalEvaluatedTrades ?? 0)}
+                {metric("목표가 미달(만료)", s.targetNotReached ?? 0, "text-amber-300")}
+                {metric("양의MFE 후 손절", s.stopWithMfe ?? 0, "text-rose-300")}
+                {metric("기회 손실 건수", s.opportunityTrades ?? 0, "text-orange-300")}
+              </div>
+
+              <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[1fr_1fr_1fr]">
+                {/* 목표가 미달 그룹 */}
+                <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                  <div className="mb-2 text-xs font-semibold text-slate-400">목표가 미도달(시간만료)</div>
+                  {s.targetNotReachedMetrics?.count > 0 ? (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">건수</span>
+                        <span className="font-mono text-slate-200">{s.targetNotReachedMetrics.count}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">평균 진행률</span>
+                        <span className="font-mono text-amber-300">{s.targetNotReachedMetrics.avgTargetProgress != null ? `${(s.targetNotReachedMetrics.avgTargetProgress * 100).toFixed(1)}%` : "-"}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">평균 MFE</span>
+                        <span className="font-mono text-sky-300">{s.targetNotReachedMetrics.avgMfe != null ? `+${Number(s.targetNotReachedMetrics.avgMfe).toFixed(2)}%` : "-"}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">평균 수익률</span>
+                        <span className={`font-mono ${(s.targetNotReachedMetrics.avgReturn || 0) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          {s.targetNotReachedMetrics.avgReturn != null ? `${Number(s.targetNotReachedMetrics.avgReturn) >= 0 ? "+" : ""}${Number(s.targetNotReachedMetrics.avgReturn).toFixed(2)}%` : "-"}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-xs text-slate-500 py-3">데이터 없음</div>
+                  )}
+                </div>
+
+                {/* 양의 MFE 후 손절 그룹 */}
+                <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                  <div className="mb-2 text-xs font-semibold text-slate-400">상승 후 되돌림 손절</div>
+                  {s.stopWithMfeMetrics?.count > 0 ? (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">건수</span>
+                        <span className="font-mono text-slate-200">{s.stopWithMfeMetrics.count}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">평균 MFE</span>
+                        <span className="font-mono text-sky-300">{s.stopWithMfeMetrics.avgMfe != null ? `+${Number(s.stopWithMfeMetrics.avgMfe).toFixed(2)}%` : "-"}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">평균 수익률</span>
+                        <span className={`font-mono ${(s.stopWithMfeMetrics.avgReturn || 0) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          {s.stopWithMfeMetrics.avgReturn != null ? `${Number(s.stopWithMfeMetrics.avgReturn) >= 0 ? "+" : ""}${Number(s.stopWithMfeMetrics.avgReturn).toFixed(2)}%` : "-"}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-xs text-slate-500 py-3">데이터 없음</div>
+                  )}
+                </div>
+
+                {/* 원인 후보 */}
+                <div className="min-w-0 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                  <div className="mb-2 text-xs font-semibold text-slate-400">주요 원인 후보</div>
+                  <div className="space-y-2">
+                    {(profitCaptureData?.causeCandidates || []).slice(0, 2).map((item: any, i: number) => (
+                      <div key={i} className="min-w-0 rounded-md bg-slate-900/70 px-3 py-2">
+                        <div className="text-xs font-semibold text-slate-200">{item.title || item.causeType}</div>
+                        <div className="mt-0.5 line-clamp-3 break-keep text-[11px] leading-5 text-slate-400">{item.summary || "-"}</div>
+                      </div>
+                    ))}
+                    {!(profitCaptureData?.causeCandidates || []).length && (
+                      <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-500">수익포착 원인 후보 없음</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 break-words rounded-md bg-slate-900/70 px-3 py-2 text-[11px] leading-5 text-slate-400 [overflow-wrap:anywhere]">
+                적용 판단: {profitCaptureData?.patchReason || "분석 데이터를 불러오는 중입니다."}
+              </div>
+            </>
+          );
+        })()}
       </section>
 
       {/* 성과 게이트 진단 */}

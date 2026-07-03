@@ -541,6 +541,10 @@ export const mone = {
     apiGet<ApiList>("/api/virtual/entry-not-touched-diagnostics", p),
   virtualMarketGapDiagnostics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/virtual/market-gap-diagnostics", p),
+  virtualOverextendedEntryDiagnostics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
+    apiGet<any>("/api/virtual/overextended-entry-diagnostics", p),
+  virtualProfitCaptureDiagnostics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
+    apiGet<any>("/api/virtual/profit-capture-diagnostics", p),
   virtualPerformanceGateDiagnostics: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<any>("/api/virtual/performance-gate-diagnostics", p),
   journalPerformance: (p?: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string }) =>

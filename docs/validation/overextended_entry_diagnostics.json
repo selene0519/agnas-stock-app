@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-07-04",
+  "status": "OK",
+  "totalEvaluated": 1604,
+  "rsiDataAvailable": 1604,
+  "avgRsiAtEntry": 66.0953,
+  "rsiSegments": [
+    {
+      "segment": "RSI 55-62(중간)",
+      "count": 340,
+      "stopFailCount": 114,
+      "stopFailRate": 0.3353,
+      "winCount": 102,
+      "winRate": 0.3,
+      "avgReturn": -2.2405,
+      "medianReturn": -4.0876
+    },
+    {
+      "segment": "RSI 62-70(고과열)",
+      "count": 467,
+      "stopFailCount": 124,
+      "stopFailRate": 0.2655,
+      "winCount": 174,
+      "winRate": 0.3726,
+      "avgReturn": -1.3209,
+      "medianReturn": -2.5081
+    },
+    {
+      "segment": "RSI≤55(저과열)",
+      "count": 212,
+      "stopFailCount": 101,
+      "stopFailRate": 0.4764,
+      "winCount": 51,
+      "winRate": 0.2406,
+      "avgReturn": -4.1927,
+      "medianReturn": -5.8347
+    },
+    {
+      "segment": "RSI≥70(극과열)",
+      "count": 585,
+      "stopFailCount": 102,
+      "stopFailRate": 0.1744,
+      "winCount": 240,
+      "winRate": 0.4103,
+      "avgReturn": -0.0564,
+      "medianReturn": -1.7438
+    }
+  ],
+  "causeCandidates": [
+    {
+      "causeType": "OVEREXTENSION_PATTERN_UNCLEAR",
+      "title": "과열구간 패턴 불명확",
+      "summary": "RSI·MA20 이격도와 손절 실패율 간의 명확한 단조 관계가 현재 데이터에서 관측되지 않습니다. 표본이 더 쌓이면 재분석이 필요합니다.",
+      "evidence": {
+        "rsiSegments": 4,
+        "ma20Segments": 4
+      }
+    }
+  ],
+  "patchDecision": {
+    "appliedPatch": false,
+    "patchType": "diagnostic_only",
+    "patchReason": "RSI/MA20 과열 지표와 성과 간의 명확한 인과 관계가 확인되지 않아 액션 변경을 보류합니다.",
+    "shouldModifyTradingLogicNow": false
+  }
+}

@@ -8476,6 +8476,70 @@ def api_journal_market_gap_diagnostics(
     return _market_gap_diagnostics_response(market, mode, horizon, source_type, journal_session)
 
 
+def _overextended_entry_diagnostics_response(
+    market: str, mode: str, horizon: str, source_type: str, journal_session: str,
+) -> dict:
+    from app.services import overextended_entry_diagnostics as oed
+    return oed.build_overextended_entry_diagnostics(
+        market=market, mode=mode, horizon=horizon,
+        source_type=source_type, journal_session=journal_session,
+    )
+
+
+@app.get("/api/virtual/overextended-entry-diagnostics")
+def api_virtual_overextended_entry_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _overextended_entry_diagnostics_response(market, mode, horizon, source_type, journal_session)
+
+
+@app.get("/api/journal/overextended-entry-diagnostics")
+def api_journal_overextended_entry_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _overextended_entry_diagnostics_response(market, mode, horizon, source_type, journal_session)
+
+
+def _profit_capture_diagnostics_response(
+    market: str, mode: str, horizon: str, source_type: str, journal_session: str,
+) -> dict:
+    from app.services import profit_capture_diagnostics as pcd
+    return pcd.build_profit_capture_diagnostics(
+        market=market, mode=mode, horizon=horizon,
+        source_type=source_type, journal_session=journal_session,
+    )
+
+
+@app.get("/api/virtual/profit-capture-diagnostics")
+def api_virtual_profit_capture_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _profit_capture_diagnostics_response(market, mode, horizon, source_type, journal_session)
+
+
+@app.get("/api/journal/profit-capture-diagnostics")
+def api_journal_profit_capture_diagnostics(
+    market: str = Query("all"),
+    mode: str = Query("all"),
+    horizon: str = Query("all"),
+    source_type: str = Query("all", alias="sourceType"),
+    journal_session: str = Query("all", alias="journalSession"),
+) -> dict:
+    return _profit_capture_diagnostics_response(market, mode, horizon, source_type, journal_session)
+
+
 def _low_atr_next_open_guard_response(
     market: str,
     mode: str,

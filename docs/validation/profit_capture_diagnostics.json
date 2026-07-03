@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-07-04",
+  "status": "OK",
+  "totalEvaluated": 1604,
+  "targetNotReached": 27,
+  "stopWithMfe": 338,
+  "halfwayFailures": 221,
+  "opportunityTrades": 478,
+  "targetNotReachedMetrics": {
+    "count": 27,
+    "winRate": 1.0,
+    "avgReturn": 7.1149,
+    "medianReturn": 6.074,
+    "avgMfe": 10.7602,
+    "medianMfe": 7.7912,
+    "avgTargetProgress": 0.656,
+    "medianTargetProgress": 0.6773
+  },
+  "stopWithMfeMetrics": {
+    "count": 338,
+    "winRate": 0.0,
+    "avgReturn": -8.0155,
+    "medianReturn": -7.7371,
+    "avgMfe": 5.3912,
+    "medianMfe": 3.8139,
+    "avgTargetProgress": 0.408,
+    "medianTargetProgress": 0.3336
+  },
+  "causeCandidates": [
+    {
+      "causeType": "HALFWAY_TARGET_FAILURE",
+      "title": "목표가 절반 이상 도달 후 미달",
+      "summary": "목표가 50% 이상 진행했으나 최종적으로 실패한 거래가 221건 있습니다. 평균 진행률 99.8%, 평균 MFE 8.36%. 분할 익절 또는 목표가 절반 도달 시 trailing stop 전략을 검토할 수 있습니다.",
+      "evidence": {
+        "count": 221,
+        "avgTargetProgress": 0.9978,
+        "avgMfe": 8.3637,
+        "avgReturn": -6.4493
+      }
+    },
+    {
+      "causeType": "STOP_AFTER_POSITIVE_MFE",
+      "title": "양의 MFE 후 손절 청산",
+      "summary": "상승 후 되돌림으로 손절에 걸린 거래가 338건 있습니다. 평균 MFE 5.39%(상승 기회)였으나 최종 수익률 평균 -8.02%로 마감됐습니다. trailing stop 또는 목표가 일부 도달 시 부분 익절을 검토할 수 있습니다.",
+      "evidence": {
+        "count": 338,
+        "avgMfe": 5.3912,
+        "avgReturn": -8.0155
+      }
+    },
+    {
+      "causeType": "TARGET_NOT_REACHED_WINDOW",
+      "title": "평가 기간 내 목표가 미도달",
+      "summary": "평가 기간 내 목표가에 도달하지 못한 거래가 27건 있습니다. 평균 목표 진행률 65.6%, 평균 MFE 10.76%. 목표가 기간을 늘리거나 목표가를 낮추는 방향을 검토할 수 있습니다. 단, 산식 변경 전 before/after 검증이 필요합니다.",
+      "evidence": {
+        "count": 27,
+        "avgTargetProgress": 0.656,
+        "avgMfe": 10.7602,
+        "avgReturn": 7.1149
+      }
+    }
+  ],
+  "patchDecision": {
+    "appliedPatch": false,
+    "patchType": "diagnostic_only",
+    "patchReason": "수익포착 개선 후보가 관측됐으나 trailing stop·부분익절 전략은 before/after 검증 없이 라이브 적용하지 않습니다.",
+    "shouldModifyTradingLogicNow": false
+  }
+}
