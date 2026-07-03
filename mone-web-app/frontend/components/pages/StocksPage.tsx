@@ -382,7 +382,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     setGroupFilter(null);
     setTagFilter(null);
     mone.sectorsList({ market: resolvedMarket }).then((r) => {
-      setSectorsList(Array.isArray(r.items) ? r.items.slice(0, 30).map((s: any) => s.sector) : []);
+      const HIDDEN = new Set(["unknown", "기타", "미분류"]);
+      setSectorsList(Array.isArray(r.items)
+        ? r.items.slice(0, 30).map((s: any) => s.sector).filter((sec: string) => !HIDDEN.has(sec?.toLowerCase() ?? "") && !HIDDEN.has(sec))
+        : []);
     }).catch(() => setSectorsList([]));
     mone.watchlistGroups({ market: resolvedMarket }).then((r) => {
       setGroupsList(Array.isArray(r.groups) ? r.groups.filter((g: string) => g !== "미분류") : []);
