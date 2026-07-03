@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
-import { mone, money, type Market } from "@/lib/api";
+import { mone, money, readApiSnapshot, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
 import { toneClassName } from "@/lib/tone";
@@ -49,6 +49,17 @@ function toSymbol(item: any, index = 0): MoneSymbol | null {
 function fallbackSymbol(market: Market): MoneSymbol {
   if (market === "us") return { id: "us-NVDA", symbol: "NVDA", name: "NVIDIA", market: "us", label: "NVIDIA (NVDA)", isWatch: true };
   return { id: "kr-005930", symbol: "005930", name: "삼성전자", market: "kr", label: "삼성전자 (005930)", isWatch: true };
+}
+
+function initialChartMarket(): Market {
+  if (typeof window === "undefined") return "all";
+  const saved = window.localStorage.getItem("mone:selectedMarketMode");
+  return saved === "kr" || saved === "us" ? saved : "all";
+}
+function hasFreshStoredChartSymbol() {
+  if (typeof window === "undefined") return false;
+  const savedAt = Number(window.localStorage.getItem("mone_chart_saved_at") || 0);
+  return Boolean(window.localStorage.getItem("mone_chart_symbol") && Number.isFinite(savedAt) && Date.now() - savedAt < 12 * 60 * 60 * 1000);
 }
 
 function num(value: any) {
@@ -2106,7 +2117,7 @@ function CollapsibleOrderbook({ symbol, market }: { symbol: string; market: stri
 
 // ── 메인 ─────────────────────────────────────────────────────────────
 export default function ChartPage() {
-  const [market, setMarket] = useState<Market>("all");
+  const [market, setMarket] = useState<Market>(() => initialChartMarket());
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [levels, setLevels] = useState<any | null>(null);
@@ -2132,7 +2143,7 @@ export default function ChartPage() {
   // Start as true if we already have a symbol in localStorage (avoids "OHLCV 없음" flash before fetch begins)
   const [loading, setLoading] = useState(() => {
     if (typeof window === "undefined") return false;
-    return !!window.localStorage.getItem("mone_chart_symbol");
+    return hasFreshStoredChartSymbol();
   });
   const [seedLoading, setSeedLoading] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -2164,21 +2175,30 @@ export default function ChartPage() {
 
   function readStoredChartSymbol(): MoneSymbol | null {
     if (typeof window === "undefined") return null;
+    if (!hasFreshStoredChartSymbol()) return null;
     const symbol = normalizeSymbol({ symbol: window.localStorage.getItem("mone_chart_symbol") || "" });
     if (!symbol) return null;
     const storedMarket = normalizeMarket(window.localStorage.getItem("mone_chart_market"), symbol) as Market;
     const name = window.localStorage.getItem("mone_chart_name") || symbol;
     const currentPrice = window.localStorage.getItem("mone_chart_price") || null;
     const currentPriceText = window.localStorage.getItem("mone_chart_price_text") || "";
+    let storedItem: any = {};
+    try {
+      const raw = window.localStorage.getItem("mone_chart_item");
+      storedItem = raw ? JSON.parse(raw) : {};
+    } catch {
+      storedItem = {};
+    }
     return {
+      ...storedItem,
       id: `${storedMarket}-${symbol}`,
       symbol,
-      name,
+      name: storedItem.name || name,
       market: storedMarket,
-      label: `${name} (${symbol})`,
+      label: `${storedItem.name || name} (${symbol})`,
       isWatch: true,
-      currentPrice,
-      currentPriceText,
+      currentPrice: storedItem.currentPrice ?? currentPrice,
+      currentPriceText: storedItem.currentPriceText ?? currentPriceText,
     };
   }
 
@@ -2261,7 +2281,11 @@ export default function ChartPage() {
     if (!selected) { setRows([]); setLevels(null); setChartMeta(null); setNews([]); setDisclosures([]); setCompany(null); return; }
     let active = true;
     const controller = new AbortController();
-    setLoading(true);
+    const hasCoreSnapshot = Boolean(
+      readApiSnapshot("/api/ohlcv", { market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }) &&
+      readApiSnapshot("/api/final/recommendation-detail", { market: selected.market, symbol: selected.symbol })
+    );
+    setLoading(!hasCoreSnapshot);
     setLoadState((prev) => ({ ...prev, errors: [], updatedAt: "" }));
     Promise.allSettled([
       withTimeout(mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }, controller.signal), 35000, { status: "TIMEOUT", items: [] }),
@@ -2282,7 +2306,8 @@ export default function ChartPage() {
         .filter(Boolean);
       setRows(chartRows);
       setChartMeta(cd || null);
-      const detailItem = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
+      const selectedFallback = selected && Object.keys(selected).length > 0 ? selected : null;
+      const detailItem = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || selectedFallback || null;
       const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
       const patternStrategy = pattern_d?.status === "OK" ? pattern_d : null;
       const existingPatternStrategy = matched?.patternStrategy && typeof matched.patternStrategy === "object" ? matched.patternStrategy : null;

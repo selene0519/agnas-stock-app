@@ -4117,6 +4117,7 @@ def api_ohlcv_core(
     market: str = Query("kr"),
     limit: int = Query(120, ge=1, le=500),
     futureProjectionBars: int = Query(12, ge=0, le=60),
+    includePrecision: bool = Query(False),
 ) -> dict:
     normalized_market = _market(market)
     # chart_data()는 기본 160봉만 잘라 반환한다 — 52주 고점 등 limit>160 요청이
@@ -4136,6 +4137,11 @@ def api_ohlcv_core(
     payload["items"] = rows[-limit:] if len(rows) > limit else rows
     payload["count"] = len(payload["items"])
     payload["latestDate"] = _latest_chart_date(payload["items"])
+    if not includePrecision:
+        payload.setdefault("dataStatus", payload.get("status") or "OK")
+        payload.setdefault("ohlcvLatestDate", payload.get("latestDate"))
+        payload.setdefault("ohlcvSource", payload.get("source") or "")
+        return payload
     return _enrich_chart_precision(payload, symbol, normalized_market, futureProjectionBars)
 
 
@@ -7753,14 +7759,37 @@ def api_home_summary(
 def api_sectors(market: str = Query("kr")) -> dict:
     try:
         mk = _market(market) if market != "all" else "kr"
-        ca = data.company_analysis(mk)
         sector_map: dict[str, list] = {}
-        for r in ca.get("items", []):
-            sector = str(r.get("sector", "기타")).strip() or "기타"
-            sym = str(r.get("symbol", "")).strip()
-            name = str(r.get("name", sym)).strip()
-            if sym:
-                sector_map.setdefault(sector, []).append({"symbol": sym, "name": name})
+
+        # sector_map_{mk}.csv를 우선 읽는다 (kr/us 모두 지원)
+        sector_csv = _REPO / "data" / f"sector_map_{mk}.csv"
+        if sector_csv.exists():
+            import csv as _csv
+            for enc in ("utf-8-sig", "utf-8", "cp949"):
+                try:
+                    with sector_csv.open("r", encoding=enc, newline="") as f:
+                        for r in _csv.DictReader(f):
+                            sector = str(r.get("sector", "기타")).strip() or "기타"
+                            if sector.lower() in ("unknown", "기타"):
+                                continue
+                            sym = str(r.get("symbol", "")).strip()
+                            name = str(r.get("name", sym)).strip()
+                            if sym:
+                                sector_map.setdefault(sector, []).append({"symbol": sym, "name": name})
+                    break
+                except Exception:
+                    continue
+
+        # sector_map_csv가 비어 있으면 company_analysis로 보완
+        if not sector_map:
+            ca = data.company_analysis(mk)
+            for r in ca.get("items", []):
+                sector = str(r.get("sector", "기타")).strip() or "기타"
+                sym = str(r.get("symbol", "")).strip()
+                name = str(r.get("name", sym)).strip()
+                if sym:
+                    sector_map.setdefault(sector, []).append({"symbol": sym, "name": name})
+
         items = [{"sector": s, "count": len(v), "symbols": v} for s, v in sorted(sector_map.items())]
         return {"status": "OK", "count": len(items), "items": items, "market": mk}
     except Exception as e:

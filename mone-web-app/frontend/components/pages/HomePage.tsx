@@ -88,7 +88,6 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // Home recommendations are prediction snapshots. Keep them across reloads and
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
-const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000; // refresh changing prices occasionally
 const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v12:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
@@ -147,10 +146,6 @@ function writeHomeCache(market: "kr" | "us", e: Omit<HomeCacheEntry, "ts">) {
       // best-effort cache only
     }
   }
-}
-
-function shouldReuseHomeCache(c: HomeCacheEntry | null) {
-  return Boolean(c && Date.now() - c.ts < HOME_PAGE_REVALIDATE_TTL);
 }
 
 function normalizeDateText(value: any) {
@@ -3153,9 +3148,10 @@ export default function HomePage({
     onTradePaper({ symbol: String(item.symbol), name: String(item.name || item.nameKr || item.symbol), price, market });
   }
 
-  function openAnalysis(item: any) {
+  function storeChartSelection(item: any) {
+    if (typeof window === "undefined" || !item) return;
     const symbol = String(item.symbol || item.code || item.ticker || "").toUpperCase();
-    if (!symbol || typeof window === "undefined") return;
+    if (!symbol) return;
     const market = normalizeMarket(item.market ?? item._market, symbol);
     const name = displayName(item) || symbol;
     window.localStorage.setItem("mone_chart_symbol", symbol);
@@ -3163,6 +3159,18 @@ export default function HomePage({
     window.localStorage.setItem("mone_chart_name", name);
     window.localStorage.setItem("mone_chart_price", String(item.currentPrice || item.price || ""));
     window.localStorage.setItem("mone_chart_price_text", priceText(item, "current", ""));
+    window.localStorage.setItem("mone_chart_saved_at", String(Date.now()));
+    try {
+      window.localStorage.setItem("mone_chart_item", JSON.stringify({ ...item, symbol, market, name }));
+    } catch {
+      // best-effort handoff only
+    }
+  }
+
+  function openAnalysis(item: any) {
+    const symbol = String(item.symbol || item.code || item.ticker || "").toUpperCase();
+    if (!symbol || typeof window === "undefined") return;
+    storeChartSelection(item);
     window.dispatchEvent(new CustomEvent("mone-open-chart", { detail: item }));
     onNavigate?.("chart");
   }
@@ -3262,9 +3270,8 @@ export default function HomePage({
   useEffect(() => {
     // Don't fetch while the boot overlay is still showing — boot data will seed us on dismiss
     if (clientReady && !booting) {
-      const cached = readHomeCache(selectedMarket);
       const hadCache = applyCachedOrBootState(selectedMarket);
-      if (hadCache && shouldReuseHomeCache(cached)) return;
+      if (hadCache) return;
       load({ background: hadCache });
     }
   }, [clientReady, selectedMarket, booting]);
@@ -3520,6 +3527,11 @@ export default function HomePage({
     }),
     [topObservation, marketRegime, dataHealth, todayEntries.length, watchItems.length, riskCount, selectedMarket],
   );
+
+  useEffect(() => {
+    if (!clientReady || !topObservation) return;
+    storeChartSelection(topObservation);
+  }, [clientReady, topObservation, selectedMarket]);
 
   const alertTrackingRows = useMemo(
     () => buildAlertTrackingRows({

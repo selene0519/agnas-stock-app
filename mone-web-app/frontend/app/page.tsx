@@ -145,11 +145,11 @@ export default function App() {
       if (!cancelled && showLaunchLoading) setBootDelayed(true);
     }, 5000); // 5초 후 "서버 응답이 늦어지고 있어요" 표시
 
-    // Hard maximum: 10초 후 로딩 화면을 강제로 닫고 앱 진입
-    // Render.com 콜드스타트(30s)에서 무한 대기하는 문제를 방지
+    // Keep launch visible while the daily KR/US prediction snapshot is prepared.
+    // The app should not open first and then keep loading page-level data.
     const maxBootTimer = window.setTimeout(() => {
       if (!cancelled && showLaunchLoading) setBooting(false);
-    }, 10000);
+    }, 90000);
 
     const updateBoot = (progress: number, message: string, step: "server" | "home" | "stocks" | "done") => {
       if (cancelled) return;

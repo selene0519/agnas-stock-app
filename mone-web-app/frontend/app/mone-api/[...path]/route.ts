@@ -10,9 +10,11 @@ const CONFIGURED_BACKEND_URL = (
   ""
 ).trim();
 
+const DEFAULT_BACKEND_URL = "https://agnas-stock-app.onrender.com";
+
 const BACKEND_URL =
   CONFIGURED_BACKEND_URL ||
-  (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8050");
+  (process.env.NODE_ENV === "production" ? DEFAULT_BACKEND_URL : "http://127.0.0.1:8050");
 
 type RouteContext = {
   params: Promise<{ path?: string[] }>;

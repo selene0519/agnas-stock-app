@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Star } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { SentimentBadge } from "@/components/SentimentBadge";
-import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
+import { mone, readApiSnapshot, type ApiList, type Horizon, type Market, type Mode, type RecommendationItem } from "@/lib/api";
 import { toneClassName } from "@/lib/tone";
 import type { BootPreloadData } from "@/lib/bootPreload";
 import {
@@ -241,6 +241,47 @@ const GEO_STAGE_KO: Record<string, string> = {
 const ENTRY_ACTION_CODES = new Set(["SCALE_IN", "WAIT_PULLBACK", "BUY", "STRONG_BUY", "ENTER"]);
 const OBSERVE_ACTION_CODES = new Set(["HOLD_CASH", "WATCH_ONLY", "WAIT", "HOLD", "AVOID_CHASE", "BLOCKED"]);
 
+const SECTOR_KO: Record<string, string> = {
+  // US 섹터 (영문 → 한글)
+  "Technology": "IT/테크",
+  "Healthcare": "헬스케어",
+  "Consumer Cyclical": "경기소비재",
+  "Consumer Defensive": "필수소비재",
+  "Financial Services": "금융",
+  "Communication Services": "통신/미디어",
+  "Industrials": "산업재",
+  "Energy": "에너지",
+  "Utilities": "유틸리티",
+  // KR 섹터 (영문 표기 → 한글)
+  "AI/Software": "AI/소프트웨어",
+  "Auto": "자동차",
+  "Bank/Finance": "은행/금융",
+  "Battery/EV": "배터리/전기차",
+  "Bio/Healthcare": "바이오/헬스",
+  "Construction": "건설",
+  "Defense/Aerospace": "방산/항공우주",
+  "Display": "디스플레이",
+  "Entertainment/Media": "엔터/미디어",
+  "Game": "게임",
+  "Holding": "지주",
+  "Insurance": "보험",
+  "Machinery/Equipment": "기계/장비",
+  "Materials/Parts": "소재/부품",
+  "Nuclear": "원전",
+  "Oil/Chemical": "정유/화학",
+  "Power/Utility": "전력/유틸",
+  "Robot": "로봇",
+  "Semiconductor": "반도체",
+  "Shipbuilding": "조선",
+  "Shipping/Logistics": "해운/물류",
+  "Steel/Metal": "철강/금속",
+  "Telecom": "통신",
+};
+
+function sectorKoreanLabel(sector: string): string {
+  return SECTOR_KO[sector] || sector;
+}
+
 function firstPlainText(...values: any[]): string {
   for (const value of values) {
     if (typeof value !== "string" && typeof value !== "number") continue;
@@ -340,13 +381,9 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     setSectorFilter(null);
     setGroupFilter(null);
     setTagFilter(null);
-    if (resolvedMarket === "kr") {
-      mone.sectorsList({ market: resolvedMarket }).then((r) => {
-        setSectorsList(Array.isArray(r.items) ? r.items.slice(0, 20).map((s: any) => s.sector) : []);
-      }).catch(() => setSectorsList([]));
-    } else {
-      setSectorsList([]);
-    }
+    mone.sectorsList({ market: resolvedMarket }).then((r) => {
+      setSectorsList(Array.isArray(r.items) ? r.items.slice(0, 30).map((s: any) => s.sector) : []);
+    }).catch(() => setSectorsList([]));
     mone.watchlistGroups({ market: resolvedMarket }).then((r) => {
       setGroupsList(Array.isArray(r.groups) ? r.groups.filter((g: string) => g !== "미분류") : []);
     }).catch(() => setGroupsList([]));
@@ -444,13 +481,25 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       if (cacheOk || bootOk) return;
     }
 
+    const recommendationParams = { market: resolvedMarket, mode, horizon, limit: Math.min(RECOMMENDATION_LIMIT, 50), watchOnly };
+    const cachedRecommendations = readApiSnapshot<ApiList<RecommendationItem>>("/api/final/recommendations", recommendationParams);
+    if (cachedRecommendations?.status !== "ERROR") {
+      const deduped = dedupeBySymbol(Array.isArray(cachedRecommendations.items) ? cachedRecommendations.items : []);
+      setItems(deduped);
+      _stocksCache = { items: deduped, market: resolvedMarket, mode, horizon, ts: Date.now() };
+      setLoading(false);
+      setLoadError("");
+      setLoadNotice("");
+      return;
+    }
+
     const controller = new AbortController();
     let active = true;
     setLoading(true);
     setLoadError("");
     setLoadNotice("");
     mone
-      .recommendations({ market: resolvedMarket, mode, horizon, limit: Math.min(RECOMMENDATION_LIMIT, 50), watchOnly }, controller.signal) // /api/final/recommendations le=50
+      .recommendations(recommendationParams, controller.signal) // /api/final/recommendations le=50
       .then(async (data) => {
         if (!active) return;
         if (data?.status === "ERROR") {
@@ -951,12 +1000,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         )}
 
         {/* 섹터 필터 */}
-        {resolvedMarket === "us" && (
-          <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-900/50 px-3 py-2 text-xs text-slate-500">
-            <div>미국 시장 섹터 필터는 미지원입니다</div>
-            <div>데이터 수집 후 추가 예정</div>
-          </div>
-        )}
         {sectorsList.length > 0 && (
           <div className="mt-4 flex flex-col gap-1.5 sm:max-w-xs">
             <label htmlFor="stocks-sector-filter" className="text-[10px] text-slate-500">
@@ -972,7 +1015,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               <option value="">전체</option>
               {sectorsList.map((sec) => (
                 <option key={sec} value={sec}>
-                  {sec}
+                  {sectorKoreanLabel(sec)}
                 </option>
               ))}
             </select>
