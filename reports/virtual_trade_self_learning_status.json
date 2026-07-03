@@ -1,9 +1,9 @@
 {
   "status": "OK",
-  "generatedAt": "2026-07-03T09:05:08",
+  "generatedAt": "2026-07-03T09:54:23",
   "latest": {
     "status": "OK",
-    "generatedAt": "2026-07-03T09:05:08",
+    "generatedAt": "2026-07-03T09:54:23",
     "market": "all",
     "policy": {
       "enabled": true,
@@ -33,26 +33,26 @@
     "quality": {
       "score": 100,
       "grade": "A",
-      "evaluatedSamples": 1563,
-      "effectiveSamples": 784.2,
-      "forwardSamples": 265,
+      "evaluatedSamples": 1568,
+      "effectiveSamples": 789.2,
+      "forwardSamples": 270,
       "historicalReplaySamples": 1298,
       "sourceCounts": {
-        "FORWARD_PAPER_TRADE": 265,
+        "FORWARD_PAPER_TRADE": 270,
         "HISTORICAL_REPLAY": 1298
       },
-      "avgNetPnlPct": -1.1976,
+      "avgNetPnlPct": -1.2345,
       "gates": [
         {
           "name": "effective_samples",
           "status": "PASS",
-          "value": 784.2,
+          "value": 789.2,
           "target": 40
         },
         {
           "name": "forward_samples",
           "status": "PASS",
-          "value": 265,
+          "value": 270,
           "target": 30
         },
         {
@@ -96,16 +96,16 @@
     ],
     "evaluated": [
       {
-        "suggestionId": "c48475e848b1b856e577",
+        "suggestionId": "e867901a9096334c0fd1",
         "market": "kr",
         "mode": "aggressive",
         "horizon": "mid",
         "sourceType": "FORWARD_PAPER_TRADE",
         "reason": "NOT_SUGGESTED",
-        "sampleCount": 15,
+        "sampleCount": 16,
         "share": null,
         "eligible": false,
-        "effectiveSamples": 15.0,
+        "effectiveSamples": 16.0,
         "minRawSamples": 50
       },
       {
@@ -148,16 +148,16 @@
         "minRawSamples": 150
       },
       {
-        "suggestionId": "a56a9173c1f5dc426ade",
+        "suggestionId": "393bbdd8826348238b32",
         "market": "kr",
         "mode": "aggressive",
         "horizon": "swing",
         "sourceType": "FORWARD_PAPER_TRADE",
         "reason": "NOT_SUGGESTED",
-        "sampleCount": 12,
+        "sampleCount": 13,
         "share": null,
         "eligible": false,
-        "effectiveSamples": 12.0,
+        "effectiveSamples": 13.0,
         "minRawSamples": 50
       },
       {
@@ -174,16 +174,16 @@
         "minRawSamples": 150
       },
       {
-        "suggestionId": "d8f4cfd460dd68a4d2fb",
+        "suggestionId": "9db2693e0050e657f512",
         "market": "kr",
         "mode": "balanced",
         "horizon": "mid",
         "sourceType": "FORWARD_PAPER_TRADE",
         "reason": "NOT_SUGGESTED",
-        "sampleCount": 10,
+        "sampleCount": 11,
         "share": null,
         "eligible": false,
-        "effectiveSamples": 10.0,
+        "effectiveSamples": 11.0,
         "minRawSamples": 50
       },
       {
@@ -213,16 +213,16 @@
         "minRawSamples": 150
       },
       {
-        "suggestionId": "e33563712fe826e9ffe0",
+        "suggestionId": "431e08583ea91325c3e5",
         "market": "kr",
         "mode": "balanced",
         "horizon": "swing",
         "sourceType": "FORWARD_PAPER_TRADE",
         "reason": "NOT_SUGGESTED",
-        "sampleCount": 2,
+        "sampleCount": 3,
         "share": null,
         "eligible": false,
-        "effectiveSamples": 2.0,
+        "effectiveSamples": 3.0,
         "minRawSamples": 50
       },
       {
@@ -239,16 +239,16 @@
         "minRawSamples": 150
       },
       {
-        "suggestionId": "6f669e1ceffd1677e30d",
+        "suggestionId": "e92809d1534dd7dbfed2",
         "market": "kr",
         "mode": "conservative",
         "horizon": "mid",
         "sourceType": "FORWARD_PAPER_TRADE",
         "reason": "NOT_SUGGESTED",
-        "sampleCount": 13,
+        "sampleCount": 14,
         "share": null,
         "eligible": false,
-        "effectiveSamples": 13.0,
+        "effectiveSamples": 14.0,
         "minRawSamples": 50
       },
       {
@@ -555,7 +555,7 @@
   "runs": [
     {
       "status": "OK",
-      "generatedAt": "2026-07-03T09:05:08",
+      "generatedAt": "2026-07-03T09:54:23",
       "market": "all",
       "policy": {
         "enabled": true,
@@ -585,26 +585,26 @@
       "quality": {
         "score": 100,
         "grade": "A",
-        "evaluatedSamples": 1563,
-        "effectiveSamples": 784.2,
-        "forwardSamples": 265,
+        "evaluatedSamples": 1568,
+        "effectiveSamples": 789.2,
+        "forwardSamples": 270,
         "historicalReplaySamples": 1298,
         "sourceCounts": {
-          "FORWARD_PAPER_TRADE": 265,
+          "FORWARD_PAPER_TRADE": 270,
           "HISTORICAL_REPLAY": 1298
         },
-        "avgNetPnlPct": -1.1976,
+        "avgNetPnlPct": -1.2345,
         "gates": [
           {
             "name": "effective_samples",
             "status": "PASS",
-            "value": 784.2,
+            "value": 789.2,
             "target": 40
           },
           {
             "name": "forward_samples",
             "status": "PASS",
-            "value": 265,
+            "value": 270,
             "target": 30
           },
           {
@@ -648,16 +648,16 @@
       ],
       "evaluated": [
         {
-          "suggestionId": "c48475e848b1b856e577",
+          "suggestionId": "e867901a9096334c0fd1",
           "market": "kr",
           "mode": "aggressive",
           "horizon": "mid",
           "sourceType": "FORWARD_PAPER_TRADE",
           "reason": "NOT_SUGGESTED",
-          "sampleCount": 15,
+          "sampleCount": 16,
           "share": null,
           "eligible": false,
-          "effectiveSamples": 15.0,
+          "effectiveSamples": 16.0,
           "minRawSamples": 50
         },
         {
@@ -700,16 +700,16 @@
           "minRawSamples": 150
         },
         {
-          "suggestionId": "a56a9173c1f5dc426ade",
+          "suggestionId": "393bbdd8826348238b32",
           "market": "kr",
           "mode": "aggressive",
           "horizon": "swing",
           "sourceType": "FORWARD_PAPER_TRADE",
           "reason": "NOT_SUGGESTED",
-          "sampleCount": 12,
+          "sampleCount": 13,
           "share": null,
           "eligible": false,
-          "effectiveSamples": 12.0,
+          "effectiveSamples": 13.0,
           "minRawSamples": 50
         },
         {
@@ -726,16 +726,16 @@
           "minRawSamples": 150
         },
         {
-          "suggestionId": "d8f4cfd460dd68a4d2fb",
+          "suggestionId": "9db2693e0050e657f512",
           "market": "kr",
           "mode": "balanced",
           "horizon": "mid",
           "sourceType": "FORWARD_PAPER_TRADE",
           "reason": "NOT_SUGGESTED",
-          "sampleCount": 10,
+          "sampleCount": 11,
           "share": null,
           "eligible": false,
-          "effectiveSamples": 10.0,
+          "effectiveSamples": 11.0,
           "minRawSamples": 50
         },
         {
@@ -765,16 +765,16 @@
           "minRawSamples": 150
         },
         {
-          "suggestionId": "e33563712fe826e9ffe0",
+          "suggestionId": "431e08583ea91325c3e5",
           "market": "kr",
           "mode": "balanced",
           "horizon": "swing",
           "sourceType": "FORWARD_PAPER_TRADE",
           "reason": "NOT_SUGGESTED",
-          "sampleCount": 2,
+          "sampleCount": 3,
           "share": null,
           "eligible": false,
-          "effectiveSamples": 2.0,
+          "effectiveSamples": 3.0,
           "minRawSamples": 50
         },
         {
@@ -791,16 +791,16 @@
           "minRawSamples": 150
         },
         {
-          "suggestionId": "6f669e1ceffd1677e30d",
+          "suggestionId": "e92809d1534dd7dbfed2",
           "market": "kr",
           "mode": "conservative",
           "horizon": "mid",
           "sourceType": "FORWARD_PAPER_TRADE",
           "reason": "NOT_SUGGESTED",
-          "sampleCount": 13,
+          "sampleCount": 14,
           "share": null,
           "eligible": false,
-          "effectiveSamples": 13.0,
+          "effectiveSamples": 14.0,
           "minRawSamples": 50
         },
         {
