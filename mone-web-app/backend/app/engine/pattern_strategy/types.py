@@ -138,6 +138,31 @@ class PatternResult(TypedDict):
     geometricPatternStage: str | None
     geometricPatternTrigger: float | None
     geometricPatternReason: str | None
+    candlestickPattern: str | None
+    candlestickPatternDirection: str | None
+    candlestickPatternFit: float | None
+    candlestickPatternReason: str | None
+    candlestickCandidates: list[str]
+
+
+# Japanese candlestick patterns (see candlestick_patterns.py).
+# Context-gated: only surfaced when they align with the current market flow.
+CANDLESTICK_PATTERN_NAMES = {
+    # Bullish
+    "MORNING_STAR",
+    "BULLISH_ENGULFING",
+    "BULLISH_ENGULFING_MARUBOZU",
+    "HAMMER_CONFIRM",
+    "SPIKE_REVERSAL",
+    "THREE_INSIDE_UP",
+    # Bearish
+    "EVENING_STAR",
+    "THREE_BLACK_CROWS",
+    "BEARISH_ENGULFING",
+    "BEARISH_ENGULFING_MARUBOZU",
+    "SHOOTING_STAR_CONFIRM",
+    "DARK_CLOUD_COVER",
+}
 
 
 # Classic geometric chart patterns (Phase 1, see geometric_patterns.py).

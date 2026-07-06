@@ -22,6 +22,7 @@ from . import support_resistance_memory as srm_mod
 from . import pullback_risk as pr_mod
 from . import action_mapper as am_mod
 from . import geometric_patterns as gp_mod
+from . import candlestick_patterns as cs_mod
 from .types import (
     Action, DEFAULT_PARAMS, MarketStructure, PatternResult, RiskStatus, TrendPhase,
 )
@@ -331,13 +332,29 @@ def analyze(
     primary   = _classify_primary(structure, phase, risk, ind, base_bo, extensions, support_levels)
     secondary = _classify_secondary(primary, structure, phase, risk, ind, base_bo, extensions, support_levels)
 
-    # 8b. Geometric chart pattern (Phase 1, additive — never overrides primary/action)
+    # 8b. Geometric chart pattern (additive — never overrides primary/action)
     geo = gp_mod.detect_all(rows, atr20, ind.get("volumeRatio20"))
     if geo and geo["pattern"] not in secondary:
         secondary = (secondary + [geo["pattern"]])[:4]
 
-    # 9. Confidence
+    # 8c. Context-aware candlestick pattern
+    #   Passes the full market context so the detector only returns signals
+    #   that are meaningful for the current market flow, not just any candle shape.
+    cs = cs_mod.detect_contextual(
+        rows,
+        atr20,
+        market_structure=structure.value,
+        trend_phase=phase.value,
+        primary_pattern=primary,
+        risk_status=risk.value,
+    )
+
+    # 9. Confidence — adjusted by candlestick alignment
     confidence, conf_before = _compute_confidence(primary, structure, phase, risk, ind)
+    if cs:
+        # Perfect alignment (fit=1.0) → +4; neutral context (fit=0.65) → +2
+        cs_boost = round((cs["fit"] - 0.5) * 8)
+        confidence = min(95, max(10, confidence + cs_boost))
 
     # 10. Message
     message = _build_message(primary, risk, phase, ind)
@@ -379,6 +396,11 @@ def analyze(
         "geometricPatternStage":     geo["stage"] if geo else None,
         "geometricPatternTrigger":   geo["trigger"] if geo else None,
         "geometricPatternReason":    geo["reason"] if geo else None,
+        "candlestickPattern":          cs["pattern"] if cs else None,
+        "candlestickPatternDirection": cs["direction"] if cs else None,
+        "candlestickPatternFit":       cs["fit"] if cs else None,
+        "candlestickPatternReason":    cs["reason"] if cs else None,
+        "candlestickCandidates":       cs.get("candidates", []) if cs else [],
     }
 
 
@@ -451,4 +473,9 @@ def _stub(symbol: str, market: str) -> dict[str, Any]:
         "geometricPatternStage":     None,
         "geometricPatternTrigger":   None,
         "geometricPatternReason":    None,
+        "candlestickPattern":          None,
+        "candlestickPatternDirection": None,
+        "candlestickPatternFit":       None,
+        "candlestickPatternReason":    None,
+        "candlestickCandidates":       [],
     }
