@@ -1,5 +1,5 @@
 """
-Context-Aware Candlestick Pattern Detector v2.
+Context-Aware Candlestick Pattern Detector v3.
 
 Two-signal combo design (이미지 기반):
   완성 신호 = SETUP 패턴 + CONFIRMATION 캔들
@@ -16,6 +16,8 @@ Bullish combos:
   SPIKE_PINBAR              — 스파이크로 + 핀버 [confirmed]
   SPIKE_REVERSAL            — 스파이크로 recovery fallback
   THREE_INSIDE_UP           — 삼강법(3봉 구조적 확인, 본질적으로 confirmed)
+  HARAMI_BULLISH            — 강세 하라미(2봉, setup-only)
+  LION_MOUTH                — 사자 입: 연속하락 후 고거래량 핀버 [confirmed]
 
 Bearish combos:
   EVENING_STAR_BEAR         — 저녁별(3봉) + 강한 음봉 확인봉 [confirmed]
@@ -24,6 +26,8 @@ Bearish combos:
   BEARISH_ENGULFING_DARK_CLOUD — 두브러리 + 그늘그개 [confirmed]
   BEARISH_ENGULFING         — 두브러리 setup-only fallback
   SHOOTING_STAR_CONFIRM     — 유성형 + 확인봉
+  THREE_INSIDE_DOWN         — 역삼강법(3봉, 본질적으로 confirmed)
+  HARAMI_BEARISH            — 약세 하라미(2봉, setup-only)
 
 Public exports:
   is_pinbar, is_strong_bull, is_strong_bear, is_shooting_star
@@ -98,6 +102,16 @@ def _unpack4(rows: list[dict]) -> tuple | None:
         return None
     a, b, c, d = _row(rows[-4]), _row(rows[-3]), _row(rows[-2]), _row(rows[-1])
     return (*a, *b, *c, *d) if a and b and c and d else None
+
+
+# ── Volume helper ─────────────────────────────────────────────────────────────
+
+def _vol(r: dict) -> float | None:
+    try:
+        v = float(r.get("volume") or 0)
+        return v if v > 0 else None
+    except (TypeError, ValueError):
+        return None
 
 
 # ── Candle type classifiers (exported for geometric_patterns.py) ──────────────
@@ -313,6 +327,81 @@ def _detect_three_inside_up(rows: list[dict], atr20: float) -> dict | None:
     }
 
 
+def _detect_harami_bullish(rows: list[dict], atr20: float) -> dict | None:
+    """
+    강세 하라미(2봉, setup-only) — THREE_INSIDE_UP의 앞 2봉 구조.
+
+    C1: 큰 음봉 (≥0.5×ATR)
+    C2: 작은 양봉, 몸통이 C1 몸통 안에 포함
+        (C2 open ≥ C1 close, C2 close ≤ C1 open, C2 body < 50% of C1 body)
+    """
+    d2 = _unpack2(rows)
+    if not d2:
+        return None
+    o1, h1, l1, c1, o2, h2, l2, c2 = d2
+    if not _is_bear(o1, c1) or _body(o1, c1) < 0.5 * atr20:
+        return None
+    if not _is_bull(o2, c2):
+        return None
+    if not (o2 >= c1 and c2 <= o1):  # C2 body inside C1 body
+        return None
+    if _body(o2, c2) > 0.5 * _body(o1, c1):  # C2 must be notably smaller
+        return None
+    return {
+        "pattern": "HARAMI_BULLISH",
+        "direction": "BULLISH",
+        "confirmed": False,
+        "reason": (
+            "큰 음봉 내부에 작은 양봉(강세 하라미). "
+            "매도세 약화 신호로, 다음 강한 양봉 출현 시 반전 신뢰도가 높아집니다."
+        ),
+    }
+
+
+def _detect_lion_mouth(rows: list[dict], atr20: float) -> dict | None:
+    """
+    사자 입 패턴 (Lion's Mouth) — 연속 하락 후 고거래량 핀버/회복봉.
+
+    조건:
+      - 직전 4봉 중 음봉 ≥ 2 (하락 컨텍스트 확인)
+      - 최종봉: 핀버 또는 강한 양봉
+      - 최종봉 거래량 ≥ 10일 평균 × 1.3 (패닉 매도 + 매집 반전 볼륨)
+    """
+    if len(rows) < 5:
+        return None
+    r = rows[-1]
+    try:
+        o, h, l, c = float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not (is_pinbar(o, h, l, c, atr20) or is_strong_bull(o, h, l, c, atr20)):
+        return None
+    # 직전 4봉에서 음봉 2개 이상
+    bear_count = 0
+    for r2 in rows[-5:-1]:
+        try:
+            if float(r2["close"]) < float(r2["open"]):
+                bear_count += 1
+        except (KeyError, TypeError, ValueError):
+            pass
+    if bear_count < 2:
+        return None
+    # 거래량: 오늘 ≥ 10일 평균 × 1.3
+    vols = [v for r2 in rows[-11:-1] if (v := _vol(r2)) is not None]
+    today_v = _vol(r)
+    if today_v is None or not vols or today_v < (sum(vols) / len(vols)) * 1.3:
+        return None
+    return {
+        "pattern": "LION_MOUTH",
+        "direction": "BULLISH",
+        "confirmed": True,
+        "reason": (
+            "연속 하락 후 고거래량 핀버/회복봉(사자 입 패턴). "
+            "패닉 매도 바닥에서 강한 매집 반전이 거래량으로 확인된 신호입니다."
+        ),
+    }
+
+
 # ── Bearish detectors ─────────────────────────────────────────────────────────
 
 def _detect_evening_star(rows: list[dict], atr20: float) -> dict | None:
@@ -484,6 +573,65 @@ def _detect_shooting_star(rows: list[dict], atr20: float) -> dict | None:
     }
 
 
+def _detect_three_inside_down(rows: list[dict], atr20: float) -> dict | None:
+    """
+    역삼강법 (Three Inside Down) — THREE_INSIDE_UP의 약세 대칭.
+
+    C1: 큰 양봉 (≥0.5×ATR)
+    C2: 작은 음봉, 몸통이 C1 몸통 안에 포함 (약세 하라미)
+    C3: 강한 음봉, C1 open 이하 마감
+    """
+    d3 = _unpack3(rows)
+    if not d3:
+        return None
+    o1, h1, l1, c1, o2, h2, l2, c2, o3, h3, l3, c3 = d3
+    if not _is_bull(o1, c1) or _body(o1, c1) < 0.5 * atr20:
+        return None
+    if not (_is_bear(o2, c2) and o2 <= c1 and c2 >= o1):  # harami inside bull C1
+        return None
+    if not (_is_bear(o3, c3) and c3 < o1):  # C3 closes below C1's open (body bottom)
+        return None
+    return {
+        "pattern": "THREE_INSIDE_DOWN",
+        "direction": "BEARISH",
+        "confirmed": True,
+        "reason": (
+            "큰양봉 → 내부 음봉(하라미) → 강한 음봉 확인의 역삼강법. "
+            "매수세 전환 실패가 3단 구조로 확인된 하락 전환 신호입니다."
+        ),
+    }
+
+
+def _detect_harami_bearish(rows: list[dict], atr20: float) -> dict | None:
+    """
+    약세 하라미(2봉, setup-only) — THREE_INSIDE_DOWN의 앞 2봉 구조.
+
+    C1: 큰 양봉 (≥0.5×ATR)
+    C2: 작은 음봉, 몸통이 C1 몸통 안에 포함
+    """
+    d2 = _unpack2(rows)
+    if not d2:
+        return None
+    o1, h1, l1, c1, o2, h2, l2, c2 = d2
+    if not _is_bull(o1, c1) or _body(o1, c1) < 0.5 * atr20:
+        return None
+    if not _is_bear(o2, c2):
+        return None
+    if not (o2 <= c1 and c2 >= o1):  # C2 body inside C1 body
+        return None
+    if _body(o2, c2) > 0.5 * _body(o1, c1):  # C2 must be notably smaller
+        return None
+    return {
+        "pattern": "HARAMI_BEARISH",
+        "direction": "BEARISH",
+        "confirmed": False,
+        "reason": (
+            "큰 양봉 내부에 작은 음봉(약세 하라미). "
+            "매수세 약화 신호로, 다음 강한 음봉 출현 시 하락 전환 신뢰도가 높아집니다."
+        ),
+    }
+
+
 # ── Detector registry ─────────────────────────────────────────────────────────
 
 _BULLISH_DETECTORS = [
@@ -491,6 +639,8 @@ _BULLISH_DETECTORS = [
     _detect_bullish_engulfing,
     _detect_spike_pinbar,
     _detect_three_inside_up,
+    _detect_lion_mouth,      # volume-confirmed bottom reversal
+    _detect_harami_bullish,  # 2-candle setup (less strict than three_inside_up)
 ]
 
 _BEARISH_DETECTORS = [
@@ -498,6 +648,8 @@ _BEARISH_DETECTORS = [
     _detect_three_black_crows,
     _detect_bearish_engulfing,
     _detect_shooting_star,
+    _detect_three_inside_down,  # 3-candle confirmed bearish reversal
+    _detect_harami_bearish,     # 2-candle setup
 ]
 
 

@@ -384,6 +384,7 @@ def analyze(
             "dailyDownAtr":  ind.get("dailyDownAtr"),
             "volumeRatio20": ind.get("volumeRatio20"),
             "rsi14":         ind.get("rsi14"),
+            "cci20":         ind.get("cci20"),
             "ma20Disparity": ind.get("ma20Disparity"),
             "ma20":          ind.get("ma20"),
             "ma10":          ind.get("ma10"),

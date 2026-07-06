@@ -155,19 +155,23 @@ CANDLESTICK_PATTERN_NAMES = {
     "BULLISH_ENGULFING_MARUBOZU",    # 음을양병 + 포병
     "SPIKE_PINBAR",                  # 스파이크로 + 핀버
     "THREE_INSIDE_UP",               # 삼강법 (본질적으로 confirmed)
+    "LION_MOUTH",                    # 사자 입: 연속하락+고거래량 핀버
     # Bullish — setup-only fallback
     "MORNING_STAR",
     "BULLISH_ENGULFING",
     "SPIKE_REVERSAL",
+    "HARAMI_BULLISH",                # 강세 하라미 (2봉)
     # Bearish — confirmed (setup + 확인봉)
     "EVENING_STAR_BEAR",             # 저녁별 + 강한음봉
     "THREE_BLACK_CROWS",             # 흑삼병 (본질적으로 confirmed)
     "BEARISH_ENGULFING_DARK_CLOUD",  # 두브러리 + 그늘그개
     "SHOOTING_STAR_CONFIRM",         # 유성형 + 확인봉
+    "THREE_INSIDE_DOWN",             # 역삼강법 (본질적으로 confirmed)
     # Bearish — setup-only fallback
     "EVENING_STAR",
     "BEARISH_ENGULFING",
     "SHOOTING_STAR",
+    "HARAMI_BEARISH",                # 약세 하라미 (2봉)
 }
 
 
