@@ -138,9 +138,11 @@ class PatternResult(TypedDict):
     geometricPatternStage: str | None
     geometricPatternTrigger: float | None
     geometricPatternReason: str | None
+    geometricPatternConfirmed: bool
     candlestickPattern: str | None
     candlestickPatternDirection: str | None
     candlestickPatternFit: float | None
+    candlestickPatternConfirmed: bool
     candlestickPatternReason: str | None
     candlestickCandidates: list[str]
 
@@ -148,20 +150,24 @@ class PatternResult(TypedDict):
 # Japanese candlestick patterns (see candlestick_patterns.py).
 # Context-gated: only surfaced when they align with the current market flow.
 CANDLESTICK_PATTERN_NAMES = {
-    # Bullish
+    # Bullish — confirmed (setup + 확인봉)
+    "MORNING_STAR_PINBAR",           # 샛별 + 핀버
+    "BULLISH_ENGULFING_MARUBOZU",    # 음을양병 + 포병
+    "SPIKE_PINBAR",                  # 스파이크로 + 핀버
+    "THREE_INSIDE_UP",               # 삼강법 (본질적으로 confirmed)
+    # Bullish — setup-only fallback
     "MORNING_STAR",
     "BULLISH_ENGULFING",
-    "BULLISH_ENGULFING_MARUBOZU",
-    "HAMMER_CONFIRM",
     "SPIKE_REVERSAL",
-    "THREE_INSIDE_UP",
-    # Bearish
+    # Bearish — confirmed (setup + 확인봉)
+    "EVENING_STAR_BEAR",             # 저녁별 + 강한음봉
+    "THREE_BLACK_CROWS",             # 흑삼병 (본질적으로 confirmed)
+    "BEARISH_ENGULFING_DARK_CLOUD",  # 두브러리 + 그늘그개
+    "SHOOTING_STAR_CONFIRM",         # 유성형 + 확인봉
+    # Bearish — setup-only fallback
     "EVENING_STAR",
-    "THREE_BLACK_CROWS",
     "BEARISH_ENGULFING",
-    "BEARISH_ENGULFING_MARUBOZU",
-    "SHOOTING_STAR_CONFIRM",
-    "DARK_CLOUD_COVER",
+    "SHOOTING_STAR",
 }
 
 

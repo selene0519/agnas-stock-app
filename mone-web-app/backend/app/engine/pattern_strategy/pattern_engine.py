@@ -349,11 +349,18 @@ def analyze(
         risk_status=risk.value,
     )
 
-    # 9. Confidence — adjusted by candlestick alignment
+    # 9. Confidence — adjusted by candlestick and geometric confirmation
     confidence, conf_before = _compute_confidence(primary, structure, phase, risk, ind)
+
+    # Geometric confirmation (더블바텀+대양선 등): +3 when confirmed
+    if geo and geo.get("confirmed"):
+        confidence = min(95, confidence + 3)
+
+    # Candlestick alignment: fit-based boost, extra +3 when confirmed (두 신호 결합)
     if cs:
-        # Perfect alignment (fit=1.0) → +4; neutral context (fit=0.65) → +2
         cs_boost = round((cs["fit"] - 0.5) * 8)
+        if cs.get("confirmed"):
+            cs_boost += 3
         confidence = min(95, max(10, confidence + cs_boost))
 
     # 10. Message
@@ -396,9 +403,11 @@ def analyze(
         "geometricPatternStage":     geo["stage"] if geo else None,
         "geometricPatternTrigger":   geo["trigger"] if geo else None,
         "geometricPatternReason":    geo["reason"] if geo else None,
+        "geometricPatternConfirmed": geo.get("confirmed", False) if geo else False,
         "candlestickPattern":          cs["pattern"] if cs else None,
         "candlestickPatternDirection": cs["direction"] if cs else None,
         "candlestickPatternFit":       cs["fit"] if cs else None,
+        "candlestickPatternConfirmed": cs.get("confirmed", False) if cs else False,
         "candlestickPatternReason":    cs["reason"] if cs else None,
         "candlestickCandidates":       cs.get("candidates", []) if cs else [],
     }
@@ -473,9 +482,11 @@ def _stub(symbol: str, market: str) -> dict[str, Any]:
         "geometricPatternStage":     None,
         "geometricPatternTrigger":   None,
         "geometricPatternReason":    None,
+        "geometricPatternConfirmed": False,
         "candlestickPattern":          None,
         "candlestickPatternDirection": None,
         "candlestickPatternFit":       None,
+        "candlestickPatternConfirmed": False,
         "candlestickPatternReason":    None,
         "candlestickCandidates":       [],
     }

@@ -1,42 +1,48 @@
 """
-Context-Aware Candlestick Pattern Detector v1.
+Context-Aware Candlestick Pattern Detector v2.
 
-Unlike geometric_patterns.py which reads multi-day swing structure, this
-module detects 1–3 candle Japanese candlestick signals and gates them
-through the market context already established by pattern_engine.py.
+Two-signal combo design (이미지 기반):
+  완성 신호 = SETUP 패턴 + CONFIRMATION 캔들
+  - confirmed=True : 두 신호 모두 확인 → 높은 신뢰도
+  - confirmed=False: 셋업만 확인, 확인봉 미출현 → 관찰 단계
 
-Design principle — context first:
-  1. Determine which DIRECTION is meaningful given the current market flow
-     (structure + phase + primary pattern + risk).
-  2. Run only the compatible detectors for that direction.
-  3. Score each hit by how well it fits the context and location.
-  4. Return the single strongest, contextually-relevant match.
+  is_* 헬퍼 함수들은 geometric_patterns.py에서도 임포트해서 사용한다.
 
-Public API:
-    detect_contextual(rows, atr20, *, market_structure, trend_phase,
-                      primary_pattern, risk_status) → dict | None
+Bullish combos:
+  MORNING_STAR_PINBAR       — 샛별(3봉) + 핀버 확인봉  [confirmed]
+  MORNING_STAR              — 샛별(3봉) setup-only fallback
+  BULLISH_ENGULFING_MARUBOZU— 음을양병 + 포병(꼬리없는강한양봉) [confirmed]
+  BULLISH_ENGULFING         — 음을양병 setup-only fallback
+  SPIKE_PINBAR              — 스파이크로 + 핀버 [confirmed]
+  SPIKE_REVERSAL            — 스파이크로 recovery fallback
+  THREE_INSIDE_UP           — 삼강법(3봉 구조적 확인, 본질적으로 confirmed)
 
-Return schema:
-    {
-        "pattern":    str,           # e.g. "MORNING_STAR"
-        "direction":  "BULLISH" | "BEARISH",
-        "fit":        float,         # 0.0–1.0 context-alignment score
-        "reason":     str,           # human-readable Korean explanation
-        "candidates": list[str],     # all patterns that fired this bar
-    }
+Bearish combos:
+  EVENING_STAR_BEAR         — 저녁별(3봉) + 강한 음봉 확인봉 [confirmed]
+  EVENING_STAR              — 저녁별(3봉) setup-only fallback
+  THREE_BLACK_CROWS         — 흑삼병(3봉, 본질적으로 confirmed)
+  BEARISH_ENGULFING_DARK_CLOUD — 두브러리 + 그늘그개 [confirmed]
+  BEARISH_ENGULFING         — 두브러리 setup-only fallback
+  SHOOTING_STAR_CONFIRM     — 유성형 + 확인봉
+
+Public exports:
+  is_pinbar, is_strong_bull, is_strong_bear, is_shooting_star
+    → geometric_patterns.py에서 임포트해서 캔들 확인봉 체크에 사용
+  detect_contextual(rows, atr20, *, market_structure, trend_phase,
+                    primary_pattern, risk_status) -> dict | None
 """
 from __future__ import annotations
 
 from typing import Any
 
 
-# ── Candle anatomy helpers ────────────────────────────────────────────────────
+# ── OHLC anatomy helpers ──────────────────────────────────────────────────────
 
 def _body(o: float, c: float) -> float:
     return abs(c - o)
 
 
-def _range(h: float, l: float) -> float:
+def _rng(h: float, l: float) -> float:
     return max(h - l, 1e-9)
 
 
@@ -49,7 +55,7 @@ def _upper_wick(o: float, h: float, l: float, c: float) -> float:
 
 
 def _body_ratio(o: float, h: float, l: float, c: float) -> float:
-    return _body(o, c) / _range(h, l)
+    return _body(o, c) / _rng(h, l)
 
 
 def _mid(o: float, c: float) -> float:
@@ -64,182 +70,234 @@ def _is_bear(o: float, c: float) -> bool:
     return c < o
 
 
-def _unpack3(rows: list[dict]) -> tuple | None:
-    """Unpack last 3 candles → (o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3) or None."""
-    if len(rows) < 3:
-        return None
+# ── Row unpackers ─────────────────────────────────────────────────────────────
+
+def _row(r: dict) -> tuple[float, float, float, float] | None:
     try:
-        r1, r2, r3 = rows[-3], rows[-2], rows[-1]
-        return (
-            float(r1["open"]), float(r1["high"]), float(r1["low"]), float(r1["close"]),
-            float(r2["open"]), float(r2["high"]), float(r2["low"]), float(r2["close"]),
-            float(r3["open"]), float(r3["high"]), float(r3["low"]), float(r3["close"]),
-        )
+        return float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"])
     except (KeyError, TypeError, ValueError):
         return None
 
 
 def _unpack2(rows: list[dict]) -> tuple | None:
-    """Unpack last 2 candles → (o1,h1,l1,c1, o2,h2,l2,c2) or None."""
     if len(rows) < 2:
         return None
-    try:
-        r1, r2 = rows[-2], rows[-1]
-        return (
-            float(r1["open"]), float(r1["high"]), float(r1["low"]), float(r1["close"]),
-            float(r2["open"]), float(r2["high"]), float(r2["low"]), float(r2["close"]),
-        )
-    except (KeyError, TypeError, ValueError):
+    a, b = _row(rows[-2]), _row(rows[-1])
+    return (*a, *b) if a and b else None
+
+
+def _unpack3(rows: list[dict]) -> tuple | None:
+    if len(rows) < 3:
         return None
+    a, b, c = _row(rows[-3]), _row(rows[-2]), _row(rows[-1])
+    return (*a, *b, *c) if a and b and c else None
 
 
-# ── Bullish pattern detectors ─────────────────────────────────────────────────
+def _unpack4(rows: list[dict]) -> tuple | None:
+    if len(rows) < 4:
+        return None
+    a, b, c, d = _row(rows[-4]), _row(rows[-3]), _row(rows[-2]), _row(rows[-1])
+    return (*a, *b, *c, *d) if a and b and c and d else None
+
+
+# ── Candle type classifiers (exported for geometric_patterns.py) ──────────────
+
+def is_pinbar(o: float, h: float, l: float, c: float, atr20: float) -> bool:
+    """핀버/망치: 하단꼬리 > 2×몸통, 상단꼬리 < 몸통, 몸통 ≥ 0.08×ATR."""
+    bd = _body(o, c)
+    return (
+        bd >= 0.08 * atr20
+        and _lower_wick(o, h, l, c) >= 2.0 * bd
+        and _upper_wick(o, h, l, c) < bd
+    )
+
+
+def is_marubozu_bull(o: float, h: float, l: float, c: float, atr20: float) -> bool:
+    """포병(양봉 마루보즈): 양봉, 몸통비율 > 0.80."""
+    return _is_bull(o, c) and _body_ratio(o, h, l, c) > 0.80
+
+
+def is_strong_bull(o: float, h: float, l: float, c: float, atr20: float) -> bool:
+    """대양선: 양봉, 몸통 ≥ 0.5×ATR."""
+    return _is_bull(o, c) and _body(o, c) >= 0.5 * atr20
+
+
+def is_strong_bear(o: float, h: float, l: float, c: float, atr20: float) -> bool:
+    """강한 음봉: 음봉, 몸통 ≥ 0.5×ATR."""
+    return _is_bear(o, c) and _body(o, c) >= 0.5 * atr20
+
+
+def is_shooting_star(o: float, h: float, l: float, c: float, atr20: float) -> bool:
+    """유성형/별똥별: 상단꼬리 > 2×몸통, 하단꼬리 < 몸통, 몸통 ≥ 0.08×ATR."""
+    bd = _body(o, c)
+    return (
+        bd >= 0.08 * atr20
+        and _upper_wick(o, h, l, c) >= 2.0 * bd
+        and _lower_wick(o, h, l, c) < bd
+    )
+
+
+# ── Bullish detectors ─────────────────────────────────────────────────────────
 
 def _detect_morning_star(rows: list[dict], atr20: float) -> dict | None:
     """
-    Morning Star (샛별): 3-candle bullish reversal.
-    C1: large bearish (body > 0.5 × atr20)
-    C2: small body / doji (body < 0.4 × C1 body) — indecision
-    C3: large bullish closing above midpoint of C1
+    샛별+핀버 (MORNING_STAR_PINBAR, confirmed) /
+    샛별     (MORNING_STAR, setup-only).
+
+    4-candle confirmed:
+      C1(rows[-4]): 큰 음봉 (≥0.5×ATR)
+      C2(rows[-3]): 소형봉  (body < 0.4×C1)
+      C3(rows[-2]): 회복 양봉, C1 중간 이상
+      C4(rows[-1]): 핀버(망치) 확인봉
+
+    3-candle setup-only fallback: C1=rows[-3], C2=rows[-2], C3=rows[-1].
     """
-    d = _unpack3(rows)
-    if not d:
-        return None
-    o1, h1, l1, c1, o2, h2, l2, c2, o3, h3, l3, c3 = d
+    # ── 4-candle: confirmed ──────────────────────────────────────────────
+    d4 = _unpack4(rows)
+    if d4:
+        o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3, o4,h4,l4,c4 = d4
+        b1 = _body(o1, c1)
+        if (
+            _is_bear(o1, c1) and b1 >= 0.5 * atr20
+            and _body(o2, c2) <= 0.4 * b1
+            and _is_bull(o3, c3) and c3 >= _mid(o1, c1)
+            and is_pinbar(o4, h4, l4, c4, atr20)
+        ):
+            return {
+                "pattern": "MORNING_STAR_PINBAR",
+                "direction": "BULLISH",
+                "confirmed": True,
+                "reason": (
+                    "샛별(큰음봉→소형봉→회복양봉) 이후 핀버 확인봉까지 출현. "
+                    "두 신호가 모두 확인된 강한 하락 반전 신호입니다."
+                ),
+            }
 
-    if not _is_bear(o1, c1):
-        return None
-    b1 = _body(o1, c1)
-    if b1 < 0.5 * atr20:
-        return None
-    if _body(o2, c2) > 0.4 * b1:
-        return None
-    if not _is_bull(o3, c3):
-        return None
-    if c3 < _mid(o1, c1):
-        return None
-
-    return {
-        "pattern": "MORNING_STAR",
-        "direction": "BULLISH",
-        "reason": (
-            "큰 음봉 → 불확실 소형봉 → 큰 양봉의 샛별 패턴. "
-            "하락 추세 바닥에서 매수세 전환을 알리는 강한 반전 신호입니다."
-        ),
-    }
+    # ── 3-candle: setup-only ─────────────────────────────────────────────
+    d3 = _unpack3(rows)
+    if d3:
+        o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3 = d3
+        b1 = _body(o1, c1)
+        if (
+            _is_bear(o1, c1) and b1 >= 0.5 * atr20
+            and _body(o2, c2) <= 0.4 * b1
+            and _is_bull(o3, c3) and c3 >= _mid(o1, c1)
+        ):
+            return {
+                "pattern": "MORNING_STAR",
+                "direction": "BULLISH",
+                "confirmed": False,
+                "reason": (
+                    "샛별(큰음봉→소형봉→회복양봉) 셋업 확인. "
+                    "핀버 확인봉 출현 시 신뢰도가 더욱 높아집니다."
+                ),
+            }
+    return None
 
 
 def _detect_bullish_engulfing(rows: list[dict], atr20: float) -> dict | None:
     """
-    Bullish Engulfing (음을양병): C1 bearish, C2 bullish fully engulfs C1.
-    Marubozu variant (포병): if C2 body ratio > 0.65 (near-zero wicks).
+    음을양병+포병 (BULLISH_ENGULFING_MARUBOZU, confirmed) /
+    음을양병     (BULLISH_ENGULFING, setup-only).
+
+    3-candle confirmed: C1 bear → C2 engulfing bull → C3 marubozu bull.
+    2-candle setup-only: C1 bear → C2 engulfing bull (but not marubozu).
     """
-    d = _unpack2(rows)
-    if not d:
-        return None
-    o1, h1, l1, c1, o2, h2, l2, c2 = d
+    # ── 3-candle: confirmed ──────────────────────────────────────────────
+    d3 = _unpack3(rows)
+    if d3:
+        o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3 = d3
+        if (
+            _is_bear(o1, c1)
+            and _is_bull(o2, c2) and c2 > o1 and o2 < c1   # engulf
+            and is_marubozu_bull(o3, h3, l3, c3, atr20)
+        ):
+            return {
+                "pattern": "BULLISH_ENGULFING_MARUBOZU",
+                "direction": "BULLISH",
+                "confirmed": True,
+                "reason": (
+                    "음을양병(장악형 양봉) 이후 포병(꼬리없는 강한 양봉) 확인. "
+                    "매수세가 2연속 압도적으로 확인된 강한 반전 신호입니다."
+                ),
+            }
 
-    if not (_is_bear(o1, c1) and _is_bull(o2, c2)):
-        return None
-    if not (c2 > o1 and o2 < c1):
-        return None
-
-    if _body_ratio(o2, h2, l2, c2) > 0.65:
-        return {
-            "pattern": "BULLISH_ENGULFING_MARUBOZU",
-            "direction": "BULLISH",
-            "reason": (
-                "음봉을 완전히 삼킨 강한 포병형 양봉(음을양병+포병). "
-                "매수세가 매도세를 압도한 강력한 전환 신호입니다."
-            ),
-        }
-    return {
-        "pattern": "BULLISH_ENGULFING",
-        "direction": "BULLISH",
-        "reason": (
-            "음봉을 감싸는 장악형 양봉(음을양병). "
-            "전일 매도세를 뒤집는 하락 전환 신호입니다."
-        ),
-    }
+    # ── 2-candle: setup-only ─────────────────────────────────────────────
+    d2 = _unpack2(rows)
+    if d2:
+        o1,h1,l1,c1, o2,h2,l2,c2 = d2
+        if (
+            _is_bear(o1, c1)
+            and _is_bull(o2, c2) and c2 > o1 and o2 < c1
+        ):
+            return {
+                "pattern": "BULLISH_ENGULFING",
+                "direction": "BULLISH",
+                "confirmed": False,
+                "reason": (
+                    "음을양병(장악형 양봉) 셋업 확인. "
+                    "포병 확인봉 출현 시 신뢰도가 더욱 높아집니다."
+                ),
+            }
+    return None
 
 
-def _detect_hammer_confirm(rows: list[dict], atr20: float) -> dict | None:
+def _detect_spike_pinbar(rows: list[dict], atr20: float) -> dict | None:
     """
-    Hammer + confirmation candle (핀버+확인봉).
-    C1: lower wick > 2× body, upper wick < body, body > 0.08 × atr20
-    C2: closes above C1 close (confirms rejection of lows)
+    스파이크로+핀버 (SPIKE_PINBAR, confirmed) /
+    스파이크로     (SPIKE_REVERSAL, recovery fallback).
+
+    C1(rows[-2]): 하방 스파이크 (하단꼬리 ≥ 1.5×ATR)
+    C2(rows[-1]):
+      confirmed  → 핀버(망치) 형태
+      setup-only → 그냥 시가 이상 회복
     """
-    d = _unpack2(rows)
-    if not d:
+    d2 = _unpack2(rows)
+    if not d2:
         return None
-    o1, h1, l1, c1, o2, h2, l2, c2 = d
-
-    bd1 = _body(o1, c1)
-    if bd1 < 0.08 * atr20:
-        return None
-    if _lower_wick(o1, h1, l1, c1) < 2.0 * bd1:
-        return None
-    if _upper_wick(o1, h1, l1, c1) > bd1:
-        return None
-    if c2 <= c1:
-        return None
-
-    return {
-        "pattern": "HAMMER_CONFIRM",
-        "direction": "BULLISH",
-        "reason": (
-            "하단 긴 꼬리의 핀버(망치) 이후 확인 양봉 출현. "
-            "하단 지지가 강하게 유지되고 매수세가 재진입했습니다."
-        ),
-    }
-
-
-def _detect_spike_reversal(rows: list[dict], atr20: float) -> dict | None:
-    """
-    Spike Low + recovery (스파이크로+핀버): sudden intraday dive that recovers.
-    C1: lower wick spike from body base > 1.5 × atr20
-    C2: closes at or above C1 open (full recovery)
-    """
-    d = _unpack2(rows)
-    if not d:
-        return None
-    o1, h1, l1, c1, o2, h2, l2, c2 = d
+    o1,h1,l1,c1, o2,h2,l2,c2 = d2
 
     spike = min(o1, c1) - l1
     if spike < 1.5 * atr20:
         return None
-    if c2 < o1:
-        return None
 
-    return {
-        "pattern": "SPIKE_REVERSAL",
-        "direction": "BULLISH",
-        "reason": (
-            f"하방 스파이크(급락 {spike:.0f}) 후 시가 수준으로 빠르게 회복. "
-            "하단 매수세가 강력하여 추가 하락보다 반등 가능성이 높습니다."
-        ),
-    }
+    if is_pinbar(o2, h2, l2, c2, atr20):
+        return {
+            "pattern": "SPIKE_PINBAR",
+            "direction": "BULLISH",
+            "confirmed": True,
+            "reason": (
+                f"하방 스파이크({spike:.0f}) 이후 핀버 확인봉 출현. "
+                "두 신호가 결합된 하단 반전 신호입니다."
+            ),
+        }
+
+    if c2 >= o1:   # recovery but not pinbar
+        return {
+            "pattern": "SPIKE_REVERSAL",
+            "direction": "BULLISH",
+            "confirmed": False,
+            "reason": (
+                f"하방 스파이크({spike:.0f}) 후 회복 중. "
+                "핀버 형태의 확인봉 출현 시 신뢰도가 높아집니다."
+            ),
+        }
+    return None
 
 
 def _detect_three_inside_up(rows: list[dict], atr20: float) -> dict | None:
     """
-    Three Inside Up (삼강법 유사): large bear → bullish harami → confirming bull.
-    C1: large bearish (body > 0.5 × atr20)
-    C2: bullish, body inside C1 body (harami)
-    C3: bullish, closes above C1 open
+    삼강법 — 큰음봉 → 내부 양봉(하라미) → 강한 확인 양봉.
+    3봉 구조 자체가 setup+confirmation이므로 항상 confirmed=True.
     """
-    d = _unpack3(rows)
-    if not d:
+    d3 = _unpack3(rows)
+    if not d3:
         return None
-    o1, h1, l1, c1, o2, h2, l2, c2, o3, h3, l3, c3 = d
+    o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3 = d3
 
-    if not _is_bear(o1, c1):
+    if not _is_bear(o1, c1) or _body(o1, c1) < 0.5 * atr20:
         return None
-    if _body(o1, c1) < 0.5 * atr20:
-        return None
-    if not _is_bull(o2, c2):
-        return None
-    if not (o2 > c1 and c2 < o1):  # inside C1 body
+    if not (_is_bull(o2, c2) and o2 > c1 and c2 < o1):   # harami inside C1
         return None
     if not (_is_bull(o3, c3) and c3 > o1):
         return None
@@ -247,60 +305,83 @@ def _detect_three_inside_up(rows: list[dict], atr20: float) -> dict | None:
     return {
         "pattern": "THREE_INSIDE_UP",
         "direction": "BULLISH",
+        "confirmed": True,
         "reason": (
-            "큰 음봉 → 내부 양봉(하라미) → 강한 확인 양봉의 삼강법 패턴. "
-            "매수세 전환이 단계적으로 확인된 신뢰도 높은 반전 신호입니다."
+            "큰음봉 → 내부 양봉(하라미) → 강한 확인 양봉의 삼강법 패턴. "
+            "매수세 전환이 3단 구조로 검증된 높은 신뢰도 반전 신호입니다."
         ),
     }
 
 
-# ── Bearish pattern detectors ─────────────────────────────────────────────────
+# ── Bearish detectors ─────────────────────────────────────────────────────────
 
 def _detect_evening_star(rows: list[dict], atr20: float) -> dict | None:
     """
-    Evening Star (저녁별): 3-candle bearish reversal.
-    C1: large bullish (body > 0.5 × atr20)
-    C2: small body (body < 0.4 × C1 body) — gap or near gap
-    C3: large bearish closing below midpoint of C1
+    저녁별+강한음봉 (EVENING_STAR_BEAR, confirmed) /
+    저녁별          (EVENING_STAR, setup-only).
+
+    4-candle confirmed:
+      C1(rows[-4]): 큰 양봉 (≥0.5×ATR)
+      C2(rows[-3]): 소형봉  (body < 0.4×C1)
+      C3(rows[-2]): 큰 음봉, C1 중간 이하
+      C4(rows[-1]): 강한 음봉 확인봉 (흑삼병 첫봉 또는 강한음봉)
+
+    3-candle setup-only fallback: C1=rows[-3], C2=rows[-2], C3=rows[-1].
     """
-    d = _unpack3(rows)
-    if not d:
-        return None
-    o1, h1, l1, c1, o2, h2, l2, c2, o3, h3, l3, c3 = d
+    # ── 4-candle: confirmed ──────────────────────────────────────────────
+    d4 = _unpack4(rows)
+    if d4:
+        o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3, o4,h4,l4,c4 = d4
+        b1 = _body(o1, c1)
+        if (
+            _is_bull(o1, c1) and b1 >= 0.5 * atr20
+            and _body(o2, c2) <= 0.4 * b1
+            and _is_bear(o3, c3) and c3 <= _mid(o1, c1)
+            and is_strong_bear(o4, h4, l4, c4, atr20)
+        ):
+            return {
+                "pattern": "EVENING_STAR_BEAR",
+                "direction": "BEARISH",
+                "confirmed": True,
+                "reason": (
+                    "저녁별(큰양봉→소형봉→큰음봉) 이후 강한 음봉 확인봉까지 출현. "
+                    "두 신호가 모두 확인된 강한 상승 반전 경고입니다."
+                ),
+            }
 
-    if not _is_bull(o1, c1):
-        return None
-    b1 = _body(o1, c1)
-    if b1 < 0.5 * atr20:
-        return None
-    if _body(o2, c2) > 0.4 * b1:
-        return None
-    if not _is_bear(o3, c3):
-        return None
-    if c3 > _mid(o1, c1):
-        return None
-
-    return {
-        "pattern": "EVENING_STAR",
-        "direction": "BEARISH",
-        "reason": (
-            "큰 양봉 → 불확실 소형봉 → 큰 음봉의 저녁별 패턴. "
-            "상승 추세 고점에서 매도세 전환을 알리는 강한 반전 경고입니다."
-        ),
-    }
+    # ── 3-candle: setup-only ─────────────────────────────────────────────
+    d3 = _unpack3(rows)
+    if d3:
+        o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3 = d3
+        b1 = _body(o1, c1)
+        if (
+            _is_bull(o1, c1) and b1 >= 0.5 * atr20
+            and _body(o2, c2) <= 0.4 * b1
+            and _is_bear(o3, c3) and c3 <= _mid(o1, c1)
+        ):
+            return {
+                "pattern": "EVENING_STAR",
+                "direction": "BEARISH",
+                "confirmed": False,
+                "reason": (
+                    "저녁별(큰양봉→소형봉→큰음봉) 셋업 확인. "
+                    "추가 강한 음봉 출현 시 신뢰도가 더욱 높아집니다."
+                ),
+            }
+    return None
 
 
 def _detect_three_black_crows(rows: list[dict], atr20: float) -> dict | None:
     """
-    Three Black Crows (흑삼병): 3 consecutive strong bearish candles,
-    each opening inside prior body and closing progressively lower.
+    흑삼병 — 3개 연속 강한 음봉, 각각 전봉 몸통 내부 시가.
+    3봉 구조 자체가 setup+confirmation이므로 항상 confirmed=True.
     """
-    d = _unpack3(rows)
-    if not d:
+    d3 = _unpack3(rows)
+    if not d3:
         return None
-    o1, h1, l1, c1, o2, h2, l2, c2, o3, h3, l3, c3 = d
+    o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3 = d3
 
-    for o, c in [(o1, c1), (o2, c2), (o3, c3)]:
+    for o, c in [(o1,c1), (o2,c2), (o3,c3)]:
         if not _is_bear(o, c) or _body(o, c) < 0.4 * atr20:
             return None
     if not (c2 < c1 and c3 < c2):
@@ -311,8 +392,9 @@ def _detect_three_black_crows(rows: list[dict], atr20: float) -> dict | None:
     return {
         "pattern": "THREE_BLACK_CROWS",
         "direction": "BEARISH",
+        "confirmed": True,
         "reason": (
-            "3개 연속 강한 음봉(흑삼병). 매도세가 지속적으로 강화되고 있어 "
+            "3개 연속 강한 음봉(흑삼병). 매도세가 3봉에 걸쳐 지속 확인된 "
             "하락 추세 가속 경고입니다."
         ),
     }
@@ -320,97 +402,84 @@ def _detect_three_black_crows(rows: list[dict], atr20: float) -> dict | None:
 
 def _detect_bearish_engulfing(rows: list[dict], atr20: float) -> dict | None:
     """
-    Bearish Engulfing (두브러리): C1 bullish, C2 bearish fully engulfs C1.
-    Marubozu variant (흑포병): body ratio > 0.65.
+    두브러리+그늘그개 (BEARISH_ENGULFING_DARK_CLOUD, confirmed) /
+    두브러리          (BEARISH_ENGULFING, setup-only).
+
+    3-candle confirmed:
+      C1: 양봉
+      C2: 장악형 음봉 (bearish engulfing)
+      C3: 먹구름형 — C1 고가 이상 시가 후 C1 중간 이하 마감
+    2-candle setup-only: C1 bull → C2 engulfing bear.
     """
-    d = _unpack2(rows)
-    if not d:
-        return None
-    o1, h1, l1, c1, o2, h2, l2, c2 = d
+    # ── 3-candle: confirmed (두브러리+그늘그개) ──────────────────────────
+    d3 = _unpack3(rows)
+    if d3:
+        o1,h1,l1,c1, o2,h2,l2,c2, o3,h3,l3,c3 = d3
+        engulf_ok = _is_bull(o1,c1) and _is_bear(o2,c2) and c2 < o1 and o2 > c1
+        dark_cloud = (
+            _is_bear(o3, c3)
+            and o3 >= h1                    # 갭 상승 출발 (vs C1 고가)
+            and c3 <= _mid(o1, c1)          # C1 중간 이하 마감
+        )
+        if engulf_ok and dark_cloud:
+            return {
+                "pattern": "BEARISH_ENGULFING_DARK_CLOUD",
+                "direction": "BEARISH",
+                "confirmed": True,
+                "reason": (
+                    "두브러리(장악형 음봉) 이후 그늘그개(먹구름형) 확인. "
+                    "두 신호가 결합된 강한 상승 반전 경고입니다."
+                ),
+            }
 
-    if not (_is_bull(o1, c1) and _is_bear(o2, c2)):
+    # ── 2-candle: setup-only ─────────────────────────────────────────────
+    d2 = _unpack2(rows)
+    if d2:
+        o1,h1,l1,c1, o2,h2,l2,c2 = d2
+        if _is_bull(o1,c1) and _is_bear(o2,c2) and c2 < o1 and o2 > c1:
+            return {
+                "pattern": "BEARISH_ENGULFING",
+                "direction": "BEARISH",
+                "confirmed": False,
+                "reason": (
+                    "두브러리(장악형 음봉) 셋업 확인. "
+                    "그늘그개(먹구름형) 확인봉 출현 시 신뢰도가 더욱 높아집니다."
+                ),
+            }
+    return None
+
+
+def _detect_shooting_star(rows: list[dict], atr20: float) -> dict | None:
+    """
+    유성형+확인봉 (SHOOTING_STAR_CONFIRM, confirmed) /
+    유성형        (SHOOTING_STAR, setup-only).
+    """
+    d2 = _unpack2(rows)
+    if not d2:
         return None
-    if not (c2 < o1 and o2 > c1):
+    o1,h1,l1,c1, o2,h2,l2,c2 = d2
+
+    if not is_shooting_star(o1, h1, l1, c1, atr20):
         return None
 
-    if _body_ratio(o2, h2, l2, c2) > 0.65:
+    if _is_bear(o2, c2) and c2 < c1:
         return {
-            "pattern": "BEARISH_ENGULFING_MARUBOZU",
+            "pattern": "SHOOTING_STAR_CONFIRM",
             "direction": "BEARISH",
+            "confirmed": True,
             "reason": (
-                "양봉을 완전히 삼킨 강한 흑포병형 음봉(두브러리+흑포병). "
-                "매도세가 매수세를 압도한 강력한 전환 경고입니다."
+                "유성형(상단 긴 꼬리) 이후 확인 음봉 출현. "
+                "상단 매도 압력이 2봉 연속 확인된 하락 전환 신호입니다."
             ),
         }
-    return {
-        "pattern": "BEARISH_ENGULFING",
-        "direction": "BEARISH",
-        "reason": (
-            "양봉을 감싸는 장악형 음봉(두브러리). "
-            "전일 매수세를 뒤집는 상승 전환 경고입니다."
-        ),
-    }
-
-
-def _detect_shooting_star_confirm(rows: list[dict], atr20: float) -> dict | None:
-    """
-    Shooting Star + confirmation (유성형+확인봉).
-    C1: upper wick > 2× body, lower wick < body, body > 0.08 × atr20
-    C2: closes below C1 close (confirms rejection of highs)
-    """
-    d = _unpack2(rows)
-    if not d:
-        return None
-    o1, h1, l1, c1, o2, h2, l2, c2 = d
-
-    bd1 = _body(o1, c1)
-    if bd1 < 0.08 * atr20:
-        return None
-    if _upper_wick(o1, h1, l1, c1) < 2.0 * bd1:
-        return None
-    if _lower_wick(o1, h1, l1, c1) > bd1:
-        return None
-    if c2 >= c1:
-        return None
 
     return {
-        "pattern": "SHOOTING_STAR_CONFIRM",
+        "pattern": "SHOOTING_STAR",
         "direction": "BEARISH",
+        "confirmed": False,
         "reason": (
-            "상단 긴 꼬리의 유성형 이후 확인 음봉 출현. "
-            "상단 저항 매도세가 강하게 재확인된 하락 전환 신호입니다."
-        ),
-    }
-
-
-def _detect_dark_cloud_cover(rows: list[dict], atr20: float) -> dict | None:
-    """
-    Dark Cloud Cover (그늘그개):
-    C1: large bullish (body > 0.5 × atr20)
-    C2: opens above C1 high, bearish, closes below midpoint of C1
-    """
-    d = _unpack2(rows)
-    if not d:
-        return None
-    o1, h1, l1, c1, o2, h2, l2, c2 = d
-
-    if not _is_bull(o1, c1):
-        return None
-    if _body(o1, c1) < 0.5 * atr20:
-        return None
-    if o2 <= h1:
-        return None
-    if not _is_bear(o2, c2):
-        return None
-    if c2 >= _mid(o1, c1):
-        return None
-
-    return {
-        "pattern": "DARK_CLOUD_COVER",
-        "direction": "BEARISH",
-        "reason": (
-            "갭 상승 출발 후 전일 양봉 중간 이하로 밀린 먹구름형(그늘그개). "
-            "상단 매도 압력이 강해 상승 추세가 꺾일 위험이 있습니다."
+            "유성형(상단 긴 꼬리) 셋업 확인. "
+            "확인 음봉 출현 시 신뢰도가 더욱 높아집니다."
         ),
     }
 
@@ -420,8 +489,7 @@ def _detect_dark_cloud_cover(rows: list[dict], atr20: float) -> dict | None:
 _BULLISH_DETECTORS = [
     _detect_morning_star,
     _detect_bullish_engulfing,
-    _detect_hammer_confirm,
-    _detect_spike_reversal,
+    _detect_spike_pinbar,
     _detect_three_inside_up,
 ]
 
@@ -429,22 +497,20 @@ _BEARISH_DETECTORS = [
     _detect_evening_star,
     _detect_three_black_crows,
     _detect_bearish_engulfing,
-    _detect_shooting_star_confirm,
-    _detect_dark_cloud_cover,
+    _detect_shooting_star,
 ]
 
 
 # ── Context-to-direction mapping ──────────────────────────────────────────────
 
-# (market_structure, trend_phase) → preferred direction
 _STRUCTURE_PHASE_DIR: dict[tuple[str, str], str] = {
-    ("TREND_UP",           "PULLBACK"):            "BULLISH",  # 눌림목 복귀 확인
-    ("TREND_UP",           "RETEST"):              "BULLISH",  # 돌파 후 재테스트 확인
+    ("TREND_UP",           "PULLBACK"):            "BULLISH",
+    ("TREND_UP",           "RETEST"):              "BULLISH",
     ("TREND_UP",           "NORMAL"):              "BOTH",
-    ("TREND_UP",           "EXTENDED"):            "BEARISH",  # 과열 → 반전 경고
-    ("TREND_DOWN",         "STRUCTURE_BREAKDOWN"): "BEARISH",  # 붕괴 지속 확인
-    ("TREND_DOWN",         "STALLED"):             "BOTH",     # 잠시 멈춤 → 방향 불명
-    ("BREAKOUT_CANDIDATE", "NORMAL"):              "BULLISH",  # 돌파 직전 확인
+    ("TREND_UP",           "EXTENDED"):            "BEARISH",
+    ("TREND_DOWN",         "STRUCTURE_BREAKDOWN"): "BEARISH",
+    ("TREND_DOWN",         "STALLED"):             "BOTH",
+    ("BREAKOUT_CANDIDATE", "NORMAL"):              "BULLISH",
     ("BREAKOUT_CANDIDATE", "RETEST"):              "BULLISH",
     ("RANGE",              "STALLED"):             "BOTH",
     ("RANGE_DRIFT",        "STALLED"):             "BOTH",
@@ -453,41 +519,33 @@ _STRUCTURE_PHASE_DIR: dict[tuple[str, str], str] = {
     ("DISTRIBUTION_WATCH", "NORMAL"):              "BEARISH",
 }
 
-# primary_pattern → direction override (takes precedence over structure/phase)
 _PRIMARY_PATTERN_DIR: dict[str, str] = {
-    "trend_up_pullback":         "BULLISH",
-    "horizontal_support_rebound":"BULLISH",
-    "range_bottom_rebound":      "BULLISH",
-    "resistance_breakout":       "BULLISH",
-    "breakout_retest":           "BULLISH",
-    "volume_turnaround":         "BULLISH",
-    "relative_strength":         "BULLISH",
-    "downtrend_bounce_trap":     "BEARISH",
-    "distribution_zone":         "BEARISH",
-    "overheated_chase_risk":     "BEARISH",
-    "false_breakout_risk":       "BEARISH",
-    "structure_breakdown_risk":  "BEARISH",
-    "resistance_chase_risk":     "BEARISH",
-    "overheated_pullback_risk":  "BEARISH",
-    "zombie_breakout":           "BEARISH",
+    "trend_up_pullback":          "BULLISH",
+    "horizontal_support_rebound": "BULLISH",
+    "range_bottom_rebound":       "BULLISH",
+    "resistance_breakout":        "BULLISH",
+    "breakout_retest":            "BULLISH",
+    "volume_turnaround":          "BULLISH",
+    "relative_strength":          "BULLISH",
+    "downtrend_bounce_trap":      "BEARISH",
+    "distribution_zone":          "BEARISH",
+    "overheated_chase_risk":      "BEARISH",
+    "false_breakout_risk":        "BEARISH",
+    "structure_breakdown_risk":   "BEARISH",
+    "resistance_chase_risk":      "BEARISH",
+    "overheated_pullback_risk":   "BEARISH",
+    "zombie_breakout":            "BEARISH",
 }
 
-# risk_status → direction override (strongest override — checked first)
 _RISK_DIR: dict[str, str] = {
-    "STRUCTURE_BREAKDOWN":   "BEARISH",
-    "MOMENTUM_COLLAPSE":     "BEARISH",
-    "FAKE_BREAKOUT":         "BEARISH",
-    "OVERHEATED_EXTENSION":  "BEARISH",
+    "STRUCTURE_BREAKDOWN":  "BEARISH",
+    "MOMENTUM_COLLAPSE":    "BEARISH",
+    "FAKE_BREAKOUT":        "BEARISH",
+    "OVERHEATED_EXTENSION": "BEARISH",
 }
 
 
-def _expected_direction(
-    structure: str, phase: str, primary: str, risk: str
-) -> str:
-    """
-    Determine which signal direction is contextually meaningful right now.
-    Priority: risk > primary_pattern > (structure, phase).
-    """
+def _expected_direction(structure: str, phase: str, primary: str, risk: str) -> str:
     if risk in _RISK_DIR:
         return _RISK_DIR[risk]
     if primary in _PRIMARY_PATTERN_DIR:
@@ -495,11 +553,22 @@ def _expected_direction(
     return _STRUCTURE_PHASE_DIR.get((structure, phase), "BOTH")
 
 
-def _fit_score(direction: str, expected: str) -> float:
-    """0.0–1.0: how well the pattern direction fits the market context."""
+def _fit_score(direction: str, expected: str, confirmed: bool) -> float:
+    """
+    Context-fit score (0.0–1.0).
+
+    Confirmed (setup+확인봉) → full score.
+    Setup-only              → 75% score (신호는 맞지만 확인 미완료).
+    Counter-context         → 0.15 (역방향 신호, 거의 억제).
+    """
     if expected == "BOTH":
-        return 0.65   # neutral context: moderate fit
-    return 1.0 if direction == expected else 0.15   # counter-context: very low
+        base = 0.65
+    elif direction == expected:
+        base = 1.0
+    else:
+        return 0.15   # counter-context: suppressed regardless of confirmed
+
+    return base if confirmed else base * 0.75
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -516,21 +585,18 @@ def detect_contextual(
     """
     Detect the single most contextually relevant candlestick pattern.
 
-    Algorithm:
-      1. Infer the expected signal direction from the full market context.
-      2. Run aligned detectors first, opposite-direction detectors after
-         (to catch rare counter-context reversal signals at extremes).
-      3. Score each hit by context fit.
-      4. Return the best hit whose fit ≥ 0.3 (suppress counter-context noise).
+    Priority order:
+      1. Direction alignment with market context (aligned > counter-context)
+      2. Confirmation state (confirmed=True > confirmed=False)
+      3. Proximity to current close (handled implicitly by detector order)
 
-    Returns None when no pattern fires or all candidates score below threshold.
+    Returns None if no pattern fires or all candidates score below 0.3.
     """
-    if not rows or len(rows) < 3 or not atr20 or atr20 <= 0:
+    if not rows or len(rows) < 2 or not atr20 or atr20 <= 0:
         return None
 
     expected = _expected_direction(market_structure, trend_phase, primary_pattern, risk_status)
 
-    # Aligned detectors run first for priority ordering
     if expected == "BULLISH":
         ordered = _BULLISH_DETECTORS + _BEARISH_DETECTORS
     elif expected == "BEARISH":
@@ -545,14 +611,14 @@ def detect_contextual(
         except Exception:
             result = None
         if result:
-            fit = _fit_score(result["direction"], expected)
+            fit = _fit_score(result["direction"], expected, result["confirmed"])
             hits.append({**result, "fit": round(fit, 2)})
 
     if not hits:
         return None
 
-    # Sort: best fit first; ties broken by alignment with expected direction
-    hits.sort(key=lambda h: (-h["fit"], 0 if h["direction"] == expected else 1))
+    # Sort: best fit first; ties broken by confirmed status
+    hits.sort(key=lambda h: (-h["fit"], 0 if h["confirmed"] else 1))
     best = hits[0]
 
     if best["fit"] < 0.3:

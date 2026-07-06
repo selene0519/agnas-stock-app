@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import candlestick_patterns as cs_mod
+
 _PIVOT_WINDOW   = 3     # bars on each side required to confirm a swing point
 _LOOKBACK       = 70    # bars of history considered for pattern geometry
 _MIN_SEPARATION = 5     # min bars between two pivots of the same kind
@@ -981,4 +983,30 @@ def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | No
     matches.sort(key=_sort_key)
     best = matches[0]
     best["candidates"] = [m["pattern"] for m in matches]
+
+    # Candlestick confirmation: does the latest candle confirm the pattern direction?
+    # BULLISH pattern + 대양선/핀버 → confirmed=True (더블바텀+대양선, etc.)
+    # BEARISH pattern + 강한음봉/유성형 → confirmed=True
+    best["confirmed"] = _candle_confirms(rows, best.get("direction", ""), atr20)
+
     return best
+
+
+def _candle_confirms(rows: list[dict], direction: str, atr20: float | None) -> bool:
+    """
+    최신 캔들이 기하학적 패턴의 방향을 확인하는지 체크.
+    이미지의 '더블바텀+대양선', '상주+확인봉' 등 조합에 해당.
+    """
+    if not rows or not atr20 or atr20 <= 0:
+        return False
+    r = rows[-1]
+    try:
+        o, h, l, c = float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    if direction == "BULLISH":
+        return cs_mod.is_strong_bull(o, h, l, c, atr20) or cs_mod.is_pinbar(o, h, l, c, atr20)
+    if direction == "BEARISH":
+        return cs_mod.is_strong_bear(o, h, l, c, atr20) or cs_mod.is_shooting_star(o, h, l, c, atr20)
+    return False
