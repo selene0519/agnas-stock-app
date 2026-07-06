@@ -611,6 +611,9 @@ def run_combined_walkforward(
             win5    = fwd5 > 0
             stop5   = fwd5 < -0.02
             target5 = fwd5 > 0.04
+            # Direction-adjusted wins (defined here, used in both cs and lift sections)
+            geo_win5  = (fwd5 < 0) if geo_dir == "BEARISH" else (fwd5 > 0)
+            cs_win5   = (fwd5 < 0) if cs_dir  == "BEARISH" else (fwd5 > 0)
 
             # ── Candlestick pattern accuracy (direction-adjusted) ─────
             if cs_pattern:
@@ -630,9 +633,6 @@ def run_combined_walkforward(
                     if cs_win5: csb["unconfirmed_wins"] += 1
 
             # ── Confirmed-lift tracking (direction-adjusted wins) ─────
-            # "win" = price moved in the pattern's predicted direction
-            geo_win5  = (fwd5 < 0) if geo_dir == "BEARISH" else (fwd5 > 0)
-            cs_win5   = (fwd5 < 0) if cs_dir == "BEARISH" else (fwd5 > 0)
             # For "both" and "neither" we use cs direction as the canonical signal
             combo_win = cs_win5 if (geo_conf and cs_conf) else win5
 
