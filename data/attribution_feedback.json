@@ -1,38 +1,38 @@
 {
   "status": "OK",
-  "sampleCount": 1576,
-  "baseWinRate": 0.3725,
-  "baseAvgPnlPct": -1.422,
-  "generatedAt": "2026-07-06T22:28:18",
+  "sampleCount": 1579,
+  "baseWinRate": 0.3724,
+  "baseAvgPnlPct": -1.426,
+  "generatedAt": "2026-07-06T23:39:50",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
-    "suggestedCount": 3,
+    "suggestedCount": 4,
     "approvedCount": 0,
-    "pendingReviewCount": 35,
+    "pendingReviewCount": 36,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
     {
-      "feedbackId": "a7dc49c2d7eec68e0cb3",
+      "feedbackId": "51db8d34fdf4588f4d61",
       "mode": "conservative",
       "horizon": "short",
-      "n": 201,
-      "winRate": 0.408,
+      "n": 203,
+      "winRate": 0.4089,
       "avgPnlPct": -0.824,
-      "multiplier": 0.889,
+      "multiplier": 0.89,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "6e88b0719f6532a82b61",
+      "feedbackId": "4fc8281b6c88167ac84a",
       "mode": "conservative",
       "horizon": "swing",
-      "n": 167,
-      "winRate": 0.3473,
-      "avgPnlPct": -1.896,
-      "multiplier": 1.093,
+      "n": 168,
+      "winRate": 0.3452,
+      "avgPnlPct": -1.94,
+      "multiplier": 1.1,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -44,7 +44,7 @@
       "n": 168,
       "winRate": 0.3512,
       "avgPnlPct": -1.412,
-      "multiplier": 0.963,
+      "multiplier": 0.962,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -68,7 +68,7 @@
       "n": 167,
       "winRate": 0.3473,
       "avgPnlPct": -1.762,
-      "multiplier": 1.055,
+      "multiplier": 1.054,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -80,7 +80,7 @@
       "n": 171,
       "winRate": 0.345,
       "avgPnlPct": -1.459,
-      "multiplier": 0.966,
+      "multiplier": 0.965,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -92,7 +92,7 @@
       "n": 173,
       "winRate": 0.4451,
       "avgPnlPct": -0.524,
-      "multiplier": 0.865,
+      "multiplier": 0.864,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -104,7 +104,7 @@
       "n": 182,
       "winRate": 0.3571,
       "avgPnlPct": -1.974,
-      "multiplier": 1.13,
+      "multiplier": 1.129,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -116,7 +116,7 @@
       "n": 183,
       "winRate": 0.3115,
       "avgPnlPct": -2.429,
-      "multiplier": 1.185,
+      "multiplier": 1.183,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
