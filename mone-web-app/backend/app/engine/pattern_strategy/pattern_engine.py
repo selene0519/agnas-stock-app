@@ -22,8 +22,10 @@ from . import support_resistance_memory as srm_mod
 from . import pullback_risk as pr_mod
 from . import action_mapper as am_mod
 from . import geometric_patterns as gp_mod
+from . import candlestick_patterns as cs_mod
 from .types import (
-    Action, DEFAULT_PARAMS, MarketStructure, PatternResult, RiskStatus, TrendPhase,
+    Action, DEFAULT_PARAMS, GEO_PATTERN_FAMILY, MarketStructure, PatternResult,
+    RiskStatus, TrendPhase,
 )
 
 
@@ -168,6 +170,8 @@ def _compute_confidence(
     phase: TrendPhase,
     risk: RiskStatus,
     ind: dict,
+    market: str = "kr",
+    index_mom60: float | None = None,
 ) -> tuple[int, int]:
     """Returns (confidence_after_risk, confidence_before_risk)."""
     base = 55  # neutral starting point
@@ -193,6 +197,73 @@ def _compute_confidence(
         base += 5
     elif vr < 0.7:
         base -= 8
+
+    # MA20 disparity: extension penalty, market-aware.
+    # KR is mean-reverting — extended entries stop out; walk-forward showed
+    # heavy stop rates above 1.08 disparity. US is a momentum market —
+    # extended names keep running, so only extreme extension is penalized
+    # (the KR thresholds applied to US cut winning momentum entries).
+    disp = ind.get("ma20Disparity")
+    if disp:
+        if market == "us":
+            # Only parabolic extension is penalized — extended momentum names
+            # are the top mid-horizon performers in the US; penalizing them at
+            # KR thresholds cut returns without reducing the stop rate.
+            if disp >= 1.25:
+                base -= 10
+        else:
+            if disp >= 1.12:
+                base -= 15   # deeply extended — chasing
+            elif disp >= 1.08:
+                base -= 8    # moderately extended
+        if market == "us":
+            # Momentum continuation zone: established uptrend, extended but
+            # not extreme — this is where US mid-horizon returns come from.
+            if structure == MarketStructure.TREND_UP and 1.04 <= disp < 1.12:
+                base += 4
+        elif 0.97 <= disp <= 1.04:
+            base += 4        # near the mean — best entry zone (KR only:
+                             # mean-reversion edge doesn't hold in US momentum)
+
+    # Falling knife: fast intraday decline relative to ATR.
+    # Halved for US — violent down days in US uptrends are routinely bought.
+    dda = ind.get("dailyDownAtr")
+    if dda and dda >= 1.5:
+        base -= 5 if market == "us" else 10
+
+    # CCI overbought: momentum already spent. KR only — same rationale as
+    # the disparity split above (US momentum tolerates high CCI).
+    cci = ind.get("cci20")
+    if cci is not None and market != "us" and cci > 150:
+        base -= 6
+
+    # Momentum / relative strength — the strongest confidence-orthogonal
+    # signal found in the walk-forward. RS = stock 60-bar momentum minus the
+    # index's (passed in via index_mom60); falls back to raw momentum when the
+    # index is unavailable.
+    #   US (momentum market): RS discriminates +12p at 5d, orthogonal to the
+    #     rest of confidence → strong reward for leaders, penalty for laggards.
+    #   KR (mean-reverting short-term): raw high momentum does NOT help short
+    #     term, but relative strength still helps at the 20d horizon → mild,
+    #     RS-only, and only the laggard penalty (chasing is already penalized
+    #     via disparity above).
+    mom60 = ind.get("mom60")
+    if mom60 is not None:
+        rs60 = mom60 - index_mom60 if index_mom60 is not None else mom60
+        if market == "us":
+            if rs60 >= 0.15:
+                base += 8
+            elif rs60 >= 0.05:
+                base += 4
+            elif rs60 <= -0.15:
+                base -= 8
+            elif rs60 <= -0.05:
+                base -= 4
+        else:
+            if rs60 <= -0.15:
+                base -= 5   # KR laggards underperform even on reversion
+            elif rs60 >= 0.10:
+                base += 3   # relative leaders hold up over 20d
 
     before_risk = min(95, max(20, base))
 
@@ -265,6 +336,44 @@ def _build_message(
     return "현재 패턴과 리스크를 종합적으로 검토한 후 진입 여부를 판단하세요."
 
 
+_SIZE_MULT = {
+    # KR: confidence is cleanly edge-ordered (20d win 52→59% across tiers),
+    # and return dispersion is wide → aggressive spread pays (+1.16p weighted
+    # vs equal in the walk-forward).
+    "kr": {"STRONG": 1.5, "NORMAL": 1.0, "LIGHT": 0.5, "MINIMAL": 0.25},
+    # US: 20d returns are compressed and low-confidence names drift up too
+    # (calibration is non-monotonic), so a steep spread mis-sizes. A gentle
+    # curve keeps STRONG > LIGHT ordering without starving the winners that
+    # land in low tiers.
+    "us": {"STRONG": 1.25, "NORMAL": 1.0, "LIGHT": 0.75, "MINIMAL": 0.5},
+}
+
+
+def _position_size(confidence: int, is_blocked: bool, direction_ok: bool,
+                   market: str = "kr") -> dict[str, Any]:
+    """
+    Confidence-tier position sizing, market-aware.
+
+    Tier boundary is confidence 55 — the KR walk-forward jump point (<55 ≈
+    50-52% 20d win, ≥55 ≈ 58-59%). Since confidence is already regime- and
+    momentum-aware, the tier map captures the edge without re-deriving it.
+    Blocked or direction-unconfirmed signals size to zero — sizing never
+    overrides a block.
+
+    Multipliers are relative weights (1.0 = one normal unit) for the caller to
+    scale its base position by; edge-ordered, deliberately not Kelly-optimal.
+    KR uses a wide spread (proven +1.16p), US a gentle one (its confidence is
+    less monotonic — a steep spread there mis-sizes).
+    """
+    if is_blocked or not direction_ok:
+        return {"tier": "NONE", "multiplier": 0.0}
+    tier = ("STRONG" if confidence >= 65 else
+            "NORMAL" if confidence >= 55 else
+            "LIGHT"  if confidence >= 45 else "MINIMAL")
+    mult = _SIZE_MULT.get(str(market).lower(), _SIZE_MULT["kr"])[tier]
+    return {"tier": tier, "multiplier": mult}
+
+
 # ── Public entry point ─────────────────────────────────────────────────────
 
 def analyze(
@@ -272,6 +381,8 @@ def analyze(
     market: str,
     rows: list[dict],
     params: dict | None = None,
+    market_regime: str = "",
+    index_mom60: float | None = None,
 ) -> dict[str, Any]:
     """
     Run the full Pattern Strategy Engine for one symbol.
@@ -279,7 +390,22 @@ def analyze(
     `rows` must be a list of OHLCV dicts sorted oldest-first, each with at
     minimum: date, open, high, low, close, volume.
 
-    Returns a PatternResult-compatible dict.
+    `market_regime` is the index-level regime ("BULL"/"BEAR"/"SIDE", empty =
+    unknown) computed from KOSPI (KR) or SPY/QQQ/DIA (US) — see
+    pattern_validator.current_market_regime(). Regime-aware adjustments:
+      • KR SIDE  — worst regime in walk-forward (43-49% win, 40-45% stops):
+        confidence dampened.
+      • US BEAR  — 5-day swing entries lost money (37-43% win): dampened.
+      • Two-signal combo (geo+cs both confirmed, same direction) gets a
+        bonus only in trending regimes; in SIDE the combo won just 35% (KR).
+
+    `index_mom60` is the index's 60-bar momentum (KOSPI/SPY) at the same
+    cutoff — enables relative-strength scoring (the strongest US confidence
+    signal). When None, raw stock momentum is used as a fallback. Live callers
+    get it from pattern_validator.current_index_momentum().
+
+    Returns a PatternResult-compatible dict, including positionSizeTier /
+    positionSizeMultiplier (confidence-tier sizing) and marketRegime.
     """
     p = params or load_params()
     min_rows = p.get("minOhlcvRows", 20)
@@ -331,16 +457,148 @@ def analyze(
     primary   = _classify_primary(structure, phase, risk, ind, base_bo, extensions, support_levels)
     secondary = _classify_secondary(primary, structure, phase, risk, ind, base_bo, extensions, support_levels)
 
-    # 8b. Geometric chart pattern (Phase 1, additive — never overrides primary/action)
-    geo = gp_mod.detect_all(rows, atr20, ind.get("volumeRatio20"))
+    # 8b. Geometric chart pattern (additive — never overrides primary/action)
+    geo = gp_mod.detect_all(rows, atr20, ind.get("volumeRatio20"), market=str(market).lower())
     if geo and geo["pattern"] not in secondary:
         secondary = (secondary + [geo["pattern"]])[:4]
 
-    # 9. Confidence
-    confidence, conf_before = _compute_confidence(primary, structure, phase, risk, ind)
+    # 8c. Context-aware candlestick pattern
+    #   Passes the full market context so the detector only returns signals
+    #   that are meaningful for the current market flow, not just any candle shape.
+    cs = cs_mod.detect_contextual(
+        rows,
+        atr20,
+        market_structure=structure.value,
+        trend_phase=phase.value,
+        primary_pattern=primary,
+        risk_status=risk.value,
+        market=str(market).lower(),
+    )
+
+    # 9. Confidence — adjusted by candlestick and geometric confirmation
+    confidence, conf_before = _compute_confidence(
+        primary, structure, phase, risk, ind,
+        market=str(market).lower(), index_mom60=index_mom60,
+    )
+
+    # Geometric confirmation — direction & family aware. Walk-forward pair
+    # analysis (KR/US both, only market-consistent effects used):
+    #   REV_BULL confirmed:  directional win +4.6p KR / +2.0p US → long boost.
+    #     FALLING_WEDGE_BREAKOUT is the strongest single combo
+    #     (+12.7p / +9.8p) → bigger boost.
+    #   CONT_BEAR confirmed: price continues DOWN 58-59% of the time
+    #     (+12.5p / +9.3p lift) → long confidence must go DOWN, not up.
+    #     (The old direction-blind +4 boosted longs into falling channels.)
+    #   CONT_BULL / NEUTRAL: no lift (-1.1p/-0.8p) → no adjustment.
+    #     ASCENDING_TRIANGLE confirmation is chase-noise (-8.8p/-11.2p).
+    #   REV_BEAR confirmed:  NEGATIVE lift (-2.5p/-3.9p) — a strong bear
+    #     candle at a top pattern is usually the move already spent → no
+    #     long penalty (the fall doesn't reliably follow).
+    if geo and geo.get("confirmed"):
+        g_fam = GEO_PATTERN_FAMILY.get(geo.get("pattern") or "", "NEUTRAL")
+        if g_fam == "REV_BULL":
+            boost = 6 if geo.get("pattern") == "FALLING_WEDGE_BREAKOUT" else 4
+            confidence = min(95, confidence + boost)
+        elif g_fam == "CONT_BEAR":
+            confidence = max(10, confidence - 6)
+        elif geo.get("pattern") == "RISING_CHANNEL" and str(market).lower() == "us":
+            # Train/test-split mining: US rising-channel confirmed rides
+            # momentum (train 61% → test 59%, n≈200) — CONT_BULL family
+            # default of 0 undervalues this one US-specific combo.
+            confidence = min(95, confidence + 4)
+
+    # Bearish geometry in an actionable stage argues against a long entry
+    # even when the indicator engine looks fine — KR walk-forward showed these
+    # entries carry the highest stop rates. KR only: in the US the same names
+    # are routinely dip-bought and rebound over the mid horizon.
+    # Exception (train/test mining): DOUBLE_TOP detected in a BEAR regime is
+    # noise — after a broad decline, the "top" is a rebound base, and its
+    # bearish call hit only 13.9% in the validation window. Skip the penalty.
+    _regime_pre = str(market_regime or "").upper()
+    if (
+        str(market).lower() != "us"
+        and geo and geo.get("direction") == "BEARISH"
+        and geo.get("stage") in ("AVOID", "BLOCKED")
+        and not (geo.get("pattern") == "DOUBLE_TOP" and _regime_pre == "BEAR")
+    ):
+        confidence = max(10, confidence - 6)
+
+    # Mining survivors with large samples and coherent narratives:
+    # KR RANGE_DRIFT — aimless low-volume drift bleeds slowly (5-day long win
+    # 39-46% in both train and test windows).
+    if geo and geo.get("pattern") == "RANGE_DRIFT" and str(market).lower() != "us":
+        confidence = max(10, confidence - 5)
+    # US DOUBLE_BOTTOM in a BEAR regime — falling-knife catches; the bullish
+    # call won only 37% in BOTH train and test windows (n=178).
+    if (
+        geo and geo.get("pattern") == "DOUBLE_BOTTOM"
+        and str(market).lower() == "us" and _regime_pre == "BEAR"
+    ):
+        confidence = max(10, confidence - 5)
+
+    # Candlestick alignment: full boost only for volume-backed confirmed
+    # signals; setup-only alignment gets half weight (unconfirmed candles
+    # showed no lift in the walk-forward). Counter-context penalty unchanged.
+    if cs:
+        fit = cs["fit"]
+        if fit < 0.5:
+            cs_boost = round((fit - 0.5) * 8)
+        else:
+            cs_boost = round((fit - 0.5) * (8 if cs.get("confirmed") else 4))
+            if cs.get("confirmed"):
+                cs_boost += 3
+        confidence = min(95, max(10, confidence + cs_boost))
+
+    # Two-signal combo (이미지의 ★★★★ 구조): geo + cs both confirmed AND
+    # pointing the same way. Walk-forward: 51-57% directional win in trending
+    # regimes, but only 35% (KR) in SIDE — a range's confirmation candles are
+    # fake-breakout noise. Bonus only when the regime is actually trending.
+    regime = str(market_regime or "").upper()
+    combo_agree = (
+        geo and cs
+        and geo.get("confirmed") and cs.get("confirmed")
+        and geo.get("direction") == cs.get("direction")
+        and geo.get("direction") in ("BULLISH", "BEARISH")
+    )
+    if combo_agree and regime in ("BULL", "BEAR"):
+        # Direction-aware: a confirmed BEARISH two-signal combo means price
+        # likely falls — that lowers long confidence, it doesn't raise it.
+        if geo.get("direction") == "BULLISH":
+            confidence = min(95, confidence + 4)
+        else:
+            confidence = max(10, confidence - 4)
+
+    # Regime dampening — the (market, regime) cells where the engine
+    # demonstrably bleeds. KR BEAR and US SIDE are its best cells: untouched.
+    if regime == "SIDE" and str(market).lower() != "us":
+        confidence = max(10, confidence - 8)   # KR 횡보: 최악 국면
+    elif regime == "BEAR" and str(market).lower() == "us":
+        confidence = max(10, confidence - 6)   # US 하락장: 스윙 손실 구간
+    elif regime == "OVERHEATED":
+        # Late-stage index melt-up: mid-horizon entries here won only 39-42%
+        # with 51-55% stop rates in the 2026-05/06 KR parabolic top.
+        confidence = max(10, confidence - (10 if str(market).lower() != "us" else 6))
+
+    # Support proximity (KR only): entries within 1 ATR above a holding
+    # support level have a structural floor in a mean-reverting market.
+    # In the US this bonus pulled in mediocre mean-reversion entries that
+    # underperformed the momentum names it displaced.
+    close_now = ind.get("close")
+    if str(market).lower() != "us" and close_now and atr20:
+        sup = srm_mod.nearest_support(support_levels, close_now, atr20)
+        if sup is not None and (close_now - sup) <= 1.0 * atr20:
+            confidence = min(95, confidence + 4)
 
     # 10. Message
     message = _build_message(primary, risk, phase, ind)
+
+    # 11. Position sizing — confidence tier × direction gate. A geometric
+    # signal that points down (bearish) is not a long entry, so it never
+    # carries a long size regardless of confidence.
+    is_blocked = am_mod.is_blocked(action)
+    long_ok = not (geo and geo.get("direction") == "BEARISH"
+                   and geo.get("stage") in ("AVOID", "BLOCKED"))
+    position = _position_size(confidence, is_blocked, long_ok, market=str(market).lower())
 
     return {
         "symbol":                 symbol,
@@ -350,16 +608,22 @@ def analyze(
         "primaryPattern":         primary,
         "secondaryPatterns":      secondary,
         "riskStatus":             risk.value,
-        "isBlocked":              am_mod.is_blocked(action),
+        "isBlocked":              is_blocked,
         "action":                 action.value,
         "originalAction":         original_action.value,
         "confidence":             confidence,
         "confidenceBeforeRisk":   conf_before,
+        "positionSizeTier":       position["tier"],
+        "positionSizeMultiplier": position["multiplier"],
+        "marketRegime":           regime or None,
         "indicators": {
             "atr20":         round(atr20, 2),
             "dailyDownAtr":  ind.get("dailyDownAtr"),
             "volumeRatio20": ind.get("volumeRatio20"),
             "rsi14":         ind.get("rsi14"),
+            "cci20":         ind.get("cci20"),
+            "mom20":         ind.get("mom20"),
+            "mom60":         ind.get("mom60"),
             "ma20Disparity": ind.get("ma20Disparity"),
             "ma20":          ind.get("ma20"),
             "ma10":          ind.get("ma10"),
@@ -379,6 +643,13 @@ def analyze(
         "geometricPatternStage":     geo["stage"] if geo else None,
         "geometricPatternTrigger":   geo["trigger"] if geo else None,
         "geometricPatternReason":    geo["reason"] if geo else None,
+        "geometricPatternConfirmed": geo.get("confirmed", False) if geo else False,
+        "candlestickPattern":          cs["pattern"] if cs else None,
+        "candlestickPatternDirection": cs["direction"] if cs else None,
+        "candlestickPatternFit":       cs["fit"] if cs else None,
+        "candlestickPatternConfirmed": cs.get("confirmed", False) if cs else False,
+        "candlestickPatternReason":    cs["reason"] if cs else None,
+        "candlestickCandidates":       cs.get("candidates", []) if cs else [],
     }
 
 
@@ -438,6 +709,9 @@ def _stub(symbol: str, market: str) -> dict[str, Any]:
         "originalAction":         Action.RISK_CHECK.value,
         "confidence":             0,
         "confidenceBeforeRisk":   0,
+        "positionSizeTier":       "NONE",
+        "positionSizeMultiplier": 0.0,
+        "marketRegime":           None,
         "indicators":             {},
         "baseBreakout":           {},
         "extensionBreakouts":     [],
@@ -451,4 +725,11 @@ def _stub(symbol: str, market: str) -> dict[str, Any]:
         "geometricPatternStage":     None,
         "geometricPatternTrigger":   None,
         "geometricPatternReason":    None,
+        "geometricPatternConfirmed": False,
+        "candlestickPattern":          None,
+        "candlestickPatternDirection": None,
+        "candlestickPatternFit":       None,
+        "candlestickPatternConfirmed": False,
+        "candlestickPatternReason":    None,
+        "candlestickCandidates":       [],
     }

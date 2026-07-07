@@ -119,6 +119,48 @@ def compute_ma20_disparity(close: float | None, ma20: float | None) -> float | N
     return round(close / ma20, 4)
 
 
+def compute_cci(rows: list[dict], period: int = 20) -> float | None:
+    """
+    Commodity Channel Index over `period` bars.
+    CCI = (TP - MA_TP) / (0.015 × MeanDev)  where TP = (High + Low + Close) / 3.
+    > +100 = overbought, < -100 = oversold.
+    """
+    work = rows[-period:] if len(rows) >= period else rows
+    if len(work) < period:
+        return None
+    tps: list[float] = []
+    for r in work:
+        h = _f(r.get("high"))
+        l = _f(r.get("low"))
+        c = _f(r.get("close"))
+        if None in (h, l, c):
+            return None
+        tps.append((h + l + c) / 3.0)  # type: ignore[operator]
+    ma_tp    = sum(tps) / len(tps)
+    mean_dev = sum(abs(tp - ma_tp) for tp in tps) / len(tps)
+    if mean_dev == 0:
+        return None
+    return round((tps[-1] - ma_tp) / (0.015 * mean_dev), 2)
+
+
+def compute_momentum(rows: list[dict], lookback: int) -> float | None:
+    """
+    Simple price momentum: close-to-close % return over `lookback` bars.
+
+    Walk-forward (2024-06~2026-07) showed 60-bar momentum is a strong,
+    confidence-orthogonal discriminator of forward win rate in the US
+    (Q1 47% → Q5 57% at 5 days), while KR is mean-reverting on the short
+    horizon — callers apply it market-aware.
+    """
+    closes: list[float] = [v for r in rows if (v := _f(r.get("close"))) is not None]
+    if len(closes) < lookback + 1:
+        return None
+    base = closes[-lookback - 1]
+    if base <= 0:
+        return None
+    return round((closes[-1] - base) / base, 4)
+
+
 def compute_range_bounds(rows: list[dict], lookback: int = 40) -> tuple[float | None, float | None]:
     """
     Rolling high and low over `lookback` periods *excluding the current bar*
@@ -155,9 +197,16 @@ def compute_all(rows: list[dict]) -> dict[str, Any]:
     disp       = compute_ma20_disparity(close, ma20)
     rh, rl     = compute_range_bounds(rows, 40)
 
+    cci20 = compute_cci(rows, period=20)
+    mom20 = compute_momentum(rows, 20)
+    mom60 = compute_momentum(rows, 60)
+
     return {
         "atr20":          atr20,
         "rsi14":          rsi14,
+        "cci20":          cci20,
+        "mom20":          mom20,
+        "mom60":          mom60,
         "ma20":           ma20,
         "ma10":           ma10,
         "ma5":            ma5,

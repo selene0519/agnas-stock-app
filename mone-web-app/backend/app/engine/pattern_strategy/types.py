@@ -125,6 +125,9 @@ class PatternResult(TypedDict):
     originalAction: str
     confidence: int
     confidenceBeforeRisk: int
+    positionSizeTier: str          # STRONG | NORMAL | LIGHT | MINIMAL | NONE
+    positionSizeMultiplier: float  # relative sizing weight (0.0–1.5)
+    marketRegime: str | None       # BULL | BEAR | SIDE | OVERHEATED
     indicators: dict[str, Any]
     baseBreakout: dict[str, Any]
     extensionBreakouts: list[dict[str, Any]]
@@ -138,6 +141,41 @@ class PatternResult(TypedDict):
     geometricPatternStage: str | None
     geometricPatternTrigger: float | None
     geometricPatternReason: str | None
+    geometricPatternConfirmed: bool
+    candlestickPattern: str | None
+    candlestickPatternDirection: str | None
+    candlestickPatternFit: float | None
+    candlestickPatternConfirmed: bool
+    candlestickPatternReason: str | None
+    candlestickCandidates: list[str]
+
+
+# Japanese candlestick patterns (see candlestick_patterns.py).
+# Context-gated: only surfaced when they align with the current market flow.
+CANDLESTICK_PATTERN_NAMES = {
+    # Bullish — confirmed (setup + 확인봉)
+    "MORNING_STAR_PINBAR",           # 샛별 + 핀버
+    "BULLISH_ENGULFING_MARUBOZU",    # 음을양병 + 포병
+    "SPIKE_PINBAR",                  # 스파이크로 + 핀버
+    "THREE_INSIDE_UP",               # 삼강법 (본질적으로 confirmed)
+    "LION_MOUTH",                    # 사자 입: 연속하락+고거래량 핀버
+    # Bullish — setup-only fallback
+    "MORNING_STAR",
+    "BULLISH_ENGULFING",
+    "SPIKE_REVERSAL",
+    "HARAMI_BULLISH",                # 강세 하라미 (2봉)
+    # Bearish — confirmed (setup + 확인봉)
+    "EVENING_STAR_BEAR",             # 저녁별 + 강한음봉
+    "THREE_BLACK_CROWS",             # 흑삼병 (본질적으로 confirmed)
+    "BEARISH_ENGULFING_DARK_CLOUD",  # 두브러리 + 그늘그개
+    "SHOOTING_STAR_CONFIRM",         # 유성형 + 확인봉
+    "THREE_INSIDE_DOWN",             # 역삼강법 (본질적으로 confirmed)
+    # Bearish — setup-only fallback
+    "EVENING_STAR",
+    "BEARISH_ENGULFING",
+    "SHOOTING_STAR",
+    "HARAMI_BEARISH",                # 약세 하라미 (2봉)
+}
 
 
 # Classic geometric chart patterns (Phase 1, see geometric_patterns.py).
@@ -170,6 +208,36 @@ GEOMETRIC_PATTERN_NAMES = {
     "OVEREXTENDED_BREAKOUT",
     "SUPPORT_FLIP_RESISTANCE",
     "RESISTANCE_FLIP_SUPPORT",
+}
+
+
+# Geometric pattern families — used for family-level confirmation calibration
+# (walk-forward showed confirmation lift differs by family, not just pattern).
+GEO_PATTERN_FAMILY: dict[str, str] = {
+    "DOUBLE_BOTTOM":              "REV_BULL",
+    "INVERSE_HEAD_AND_SHOULDERS": "REV_BULL",
+    "FALLING_WEDGE_BREAKOUT":     "REV_BULL",
+    "CUP_AND_HANDLE":             "REV_BULL",
+    "FAILED_BREAKDOWN":           "REV_BULL",
+    "RESISTANCE_FLIP_SUPPORT":    "REV_BULL",
+    "ASCENDING_TRIANGLE":         "CONT_BULL",
+    "BULL_FLAG":                  "CONT_BULL",
+    "BULL_PENNANT":               "CONT_BULL",
+    "RISING_CHANNEL":             "CONT_BULL",
+    "DOUBLE_TOP":                 "REV_BEAR",
+    "HEAD_AND_SHOULDERS":         "REV_BEAR",
+    "RISING_WEDGE_BREAKDOWN":     "REV_BEAR",
+    "FAILED_BREAKOUT":            "REV_BEAR",
+    "SUPPORT_FLIP_RESISTANCE":    "REV_BEAR",
+    "DISTRIBUTION_WATCH":         "REV_BEAR",
+    "OVEREXTENDED_BREAKOUT":      "REV_BEAR",
+    "DESCENDING_TRIANGLE":        "CONT_BEAR",
+    "BEAR_FLAG":                  "CONT_BEAR",
+    "BEAR_PENNANT":               "CONT_BEAR",
+    "FALLING_CHANNEL":            "CONT_BEAR",
+    "SYMMETRICAL_TRIANGLE":       "NEUTRAL",
+    "RECTANGLE_RANGE":            "NEUTRAL",
+    "RANGE_DRIFT":                "NEUTRAL",
 }
 
 

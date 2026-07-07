@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import candlestick_patterns as cs_mod
+
 _PIVOT_WINDOW   = 3     # bars on each side required to confirm a swing point
 _LOOKBACK       = 70    # bars of history considered for pattern geometry
 _MIN_SEPARATION = 5     # min bars between two pivots of the same kind
@@ -37,11 +39,20 @@ def _f(val: Any) -> float | None:
         return None
 
 
-def _series(rows: list[dict]) -> tuple[list[float | None], list[float | None], list[float | None]]:
-    highs  = [_f(r.get("high")) for r in rows]
-    lows   = [_f(r.get("low")) for r in rows]
-    closes = [_f(r.get("close")) for r in rows]
-    return highs, lows, closes
+def _series(rows: list[dict]) -> tuple[
+    list[float | None], list[float | None], list[float | None], list[float | None]
+]:
+    highs   = [_f(r.get("high"))   for r in rows]
+    lows    = [_f(r.get("low"))    for r in rows]
+    closes  = [_f(r.get("close"))  for r in rows]
+    volumes = [_f(r.get("volume")) for r in rows]
+    return highs, lows, closes, volumes
+
+
+def _avg_vol(volumes: list[float | None], start: int, end: int) -> float | None:
+    """Average volume for index range [start, end) — ignores None entries."""
+    vals = [v for v in volumes[start:end] if v is not None and v > 0]
+    return sum(vals) / len(vals) if vals else None
 
 
 def _pivot_highs(highs: list[float | None], window: int = _PIVOT_WINDOW) -> list[int]:
@@ -325,7 +336,7 @@ def _find_pole(
     return None
 
 
-def detect_bull_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+def detect_bull_flag(highs, lows, closes, atr20, vol_ratio, volumes=None) -> dict | None:
     lo_idx = _pivot_lows(lows)
     hi_idx = _pivot_highs(highs)
     if not lo_idx or not hi_idx:
@@ -347,6 +358,14 @@ def detect_bull_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     cons_low  = min(l for l in lows[pole_top_i:-1] if l is not None)
     if (cons_high - cons_low) / pole_top > 0.07:
         return None  # consolidation too wide to be a tight flag
+    # Volume condition: consolidation volume must be quieter than pole volume.
+    # A flag with no volume contraction is more likely normal chop than a clean
+    # continuation setup.
+    if volumes is not None:
+        pole_avg = _avg_vol(volumes, pole_start_i, pole_top_i + 1)
+        cons_avg = _avg_vol(volumes, pole_top_i, len(volumes) - 1)
+        if pole_avg and cons_avg and cons_avg >= pole_avg * 0.85:
+            return None  # volume not contracting — not a true flag
     close = closes[-1]
     if close is None:
         return None
@@ -355,11 +374,11 @@ def detect_bull_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     return {
         "pattern": "BULL_FLAG", "direction": "BULLISH", "stage": stage,
         "trigger": round(cons_high, 2), "invalidation": round(invalidation, 2),
-        "reason": f"강한 상승(깃대) 이후 좁은 구간에서 조정 중인 불 플래그 후보입니다. 깃대 상단 {cons_high:.0f} 돌파 시 매수 후보로 전환됩니다.",
+        "reason": f"강한 상승(깃대) 이후 거래량 감소를 동반한 좁은 조정 중인 불 플래그 후보입니다. 깃대 상단 {cons_high:.0f} 돌파 시 매수 후보로 전환됩니다.",
     }
 
 
-def detect_bear_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+def detect_bear_flag(highs, lows, closes, atr20, vol_ratio, volumes=None) -> dict | None:
     hi_idx = _pivot_highs(highs)
     lo_idx = _pivot_lows(lows)
     if not hi_idx or not lo_idx:
@@ -377,6 +396,12 @@ def detect_bear_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     cons_low  = min(l for l in lows[pole_bottom_i:-1] if l is not None)
     if pole_bottom <= 0 or (cons_high - cons_low) / pole_bottom > 0.07:
         return None
+    # Volume filter: consolidation should be quieter than the pole drop.
+    if volumes is not None:
+        pole_avg = _avg_vol(volumes, pole_start_i, pole_bottom_i + 1)
+        cons_avg = _avg_vol(volumes, pole_bottom_i, len(volumes) - 1)
+        if pole_avg and cons_avg and cons_avg >= pole_avg * 0.85:
+            return None  # volume not contracting — not a true bear flag
     close = closes[-1]
     if close is None:
         return None
@@ -387,7 +412,7 @@ def detect_bear_flag(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     return {
         "pattern": "BEAR_FLAG", "direction": "BEARISH", "stage": stage,
         "trigger": round(cons_low, 2), "invalidation": round(invalidation, 2),
-        "reason": f"급락(깃대) 이후 좁은 구간에서 약한 반등 중인 베어 플래그 경계 구간입니다. 깃대 하단 {cons_low:.0f} 이탈 시 하락이 재개될 수 있습니다.",
+        "reason": f"급락(깃대) 이후 거래량 감소를 동반한 약한 반등 중인 베어 플래그 경계 구간입니다. 깃대 하단 {cons_low:.0f} 이탈 시 하락이 재개될 수 있습니다.",
     }
 
 
@@ -699,8 +724,10 @@ def detect_cup_and_handle(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     if len(handle_section) < 3:
         return None
     handle_low = min(l for l in handle_section if l is not None)
-    if handle_low < rim - 0.5 * depth * rim:
-        return None  # handle pulled back deeper than half the cup — not a valid handle
+    # 1/3 rule: handle retrace must not exceed one-third of cup depth.
+    # Deeper handles indicate failed recovery rather than orderly consolidation.
+    if handle_low < rim - (depth / 3.0) * rim:
+        return None
     close = closes[-1]
     if close is None:
         return None
@@ -936,7 +963,7 @@ _DETECTORS = [
 _ACTIONABLE_STAGES = {"BUY_ZONE", "AVOID", "BLOCKED", "BREAKOUT_CANDIDATE"}
 
 
-def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | None) -> dict[str, Any] | None:
+def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | None, market: str = "kr") -> dict[str, Any] | None:
     """
     Run all geometric pattern detectors (10 core + 7 practical auxiliary +
     7 MONE-specific risk patterns) and return the single most relevant
@@ -957,13 +984,18 @@ def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | No
     work = rows[-_LOOKBACK:] if len(rows) > _LOOKBACK else rows
     if len(work) < 2 * _PIVOT_WINDOW + _MIN_SEPARATION + 2:
         return None
-    highs, lows, closes = _series(work)
+    highs, lows, closes, volumes = _series(work)
     last_close = closes[-1]
+
+    _VOL_DETECTORS = {detect_bull_flag, detect_bear_flag}
 
     matches: list[dict] = []
     for detector in _DETECTORS:
         try:
-            result = detector(highs, lows, closes, atr20, volume_ratio20)
+            if detector in _VOL_DETECTORS:
+                result = detector(highs, lows, closes, atr20, volume_ratio20, volumes)
+            else:
+                result = detector(highs, lows, closes, atr20, volume_ratio20)
         except Exception:
             result = None
         if result:
@@ -981,4 +1013,47 @@ def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | No
     matches.sort(key=_sort_key)
     best = matches[0]
     best["candidates"] = [m["pattern"] for m in matches]
+
+    # Candlestick confirmation: does the latest candle confirm the pattern direction?
+    # BULLISH pattern + 대양선/핀버 → confirmed=True (더블바텀+대양선, etc.)
+    # BEARISH pattern + 강한음봉/유성형 → confirmed=True
+    # Volume backing is required in KR only: US high-volume confirmation
+    # candles are often climax/news bars and showed negative lift.
+    best["confirmed"] = _candle_confirms(
+        rows, best.get("direction", ""), atr20,
+        require_volume=(str(market).lower() != "us"),
+    )
+
     return best
+
+
+def _candle_confirms(rows: list[dict], direction: str, atr20: float | None, require_volume: bool = True) -> bool:
+    """
+    최신 캔들이 기하학적 패턴의 방향을 확인하는지 체크.
+    이미지의 '더블바텀+대양선', '상주+확인봉' 등 조합에 해당.
+
+    확인봉은 거래량 뒷받침(10일 평균 대비 1.1배 이상)이 있어야 인정 —
+    거래량 없는 확인봉은 walk-forward에서 리프트가 없었음.
+    """
+    if not rows or not atr20 or atr20 <= 0:
+        return False
+    r = rows[-1]
+    try:
+        o, h, l, c = float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    if direction == "BULLISH":
+        shape_ok = cs_mod.is_strong_bull(o, h, l, c, atr20) or cs_mod.is_pinbar(o, h, l, c, atr20)
+    elif direction == "BEARISH":
+        shape_ok = cs_mod.is_strong_bear(o, h, l, c, atr20) or cs_mod.is_shooting_star(o, h, l, c, atr20)
+    else:
+        return False
+    if not shape_ok:
+        return False
+
+    if not require_volume:
+        return True
+    # Volume backing (skip check when volume data is unavailable)
+    vol_ok = cs_mod._volume_backed(rows)
+    return vol_ok is not False

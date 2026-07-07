@@ -19,7 +19,7 @@ from typing import Any
 
 from . import indicators as ind_mod
 from .pattern_engine import analyze, load_params
-from .types import DEFAULT_PARAMS
+from .types import DEFAULT_PARAMS, GEO_PATTERN_FAMILY
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────
@@ -28,10 +28,37 @@ _OHLCV_DIR   = _REPO_ROOT / "data" / "market" / "ohlcv"
 _REPORTS_DIR = _REPO_ROOT / "reports"
 
 
+# ── 9-Strategy configuration ───────────────────────────────────────────────
+# 3 modes × 3 horizons = 9 strategy combinations
+
+STRATEGIES = {
+    "conservative": {"min_confidence": 65, "stop": -0.015, "target": 0.03},
+    "balanced":     {"min_confidence": 55, "stop": -0.02,  "target": 0.04},
+    "aggressive":   {"min_confidence": 45, "stop": -0.03,  "target": 0.05},
+}
+HORIZONS = {"short": 1, "swing": 5, "mid": 20}
+
+
 def _indicator_stats_bucket() -> dict[str, Any]:
     return {
         "sampleCount": 0, "wins": 0, "losses": 0, "stops": 0, "targets": 0,
         "returns": [], "blocked_returns": [],
+    }
+
+
+def _strategy_bucket() -> dict[str, Any]:
+    return {
+        "sampleCount": 0, "wins": 0, "losses": 0, "stops": 0, "targets": 0,
+        "returns": [], "byPattern": defaultdict(_indicator_stats_bucket),
+    }
+
+
+def _cs_bucket() -> dict[str, Any]:
+    return {
+        "sampleCount": 0, "wins": 0, "losses": 0, "stops": 0, "targets": 0,
+        "returns": [],
+        "confirmed_count": 0, "confirmed_wins": 0, "confirmed_returns": [],
+        "unconfirmed_wins": 0, "unconfirmed_returns": [],
     }
 
 
@@ -125,6 +152,16 @@ def _regime_for_index(rows: list[dict], cutoff_date: str) -> str:
     above_ma = latest > ma20
     ma_rising = ma20 > ma20_5ago if ma20_5ago is not None else True
     if above_ma and ma_rising:
+        # Late-stage melt-up detection: MA20-based BULL persists right up to a
+        # parabolic top. Index stretched ≥6% above its own MA20 while the
+        # 60-day gain exceeds +30% = late-stage, crash-prone rally
+        # (2026-02/03 −10.6%/−19.1% and 2026-05/06 +3.1%/−6.4% fwd-20d were
+        # all flagged; early-stage rallies in 2026-04 were not).
+        if len(closes) >= 61:
+            disp   = latest / ma20
+            gain60 = latest / closes[-61] - 1
+            if disp >= 1.06 and gain60 >= 0.30:
+                return "OVERHEATED"
         return "BULL"
     if not above_ma and not ma_rising:
         return "BEAR"
@@ -134,12 +171,73 @@ def _regime_for_index(rows: list[dict], cutoff_date: str) -> str:
 def _market_regime_at_date(market: str, all_ohlcv: dict[str, list[dict]], cutoff_date: str) -> str:
     if market == "us":
         votes = [_regime_for_index(all_ohlcv.get(sym, []), cutoff_date) for sym in ("SPY", "QQQ", "DIA")]
-        if votes.count("BULL") >= 2:
+        if votes.count("OVERHEATED") >= 2:
+            return "OVERHEATED"
+        # An OVERHEATED index is still a rising index for the BULL/BEAR vote
+        if votes.count("BULL") + votes.count("OVERHEATED") >= 2:
             return "BULL"
         if votes.count("BEAR") >= 2:
             return "BEAR"
         return "SIDE"
     return _regime_for_index(all_ohlcv.get("KOSPI", []), cutoff_date)
+
+
+_REGIME_CACHE: dict[tuple[str, str], str] = {}
+
+
+def _index_mom60_at_date(market: str, all_ohlcv: dict[str, list[dict]], cutoff_date: str) -> float | None:
+    """60-bar index momentum as of cutoff_date (KOSPI for KR, SPY for US)."""
+    idx_sym = "SPY" if market == "us" else "KOSPI"
+    hist = _slice_before(all_ohlcv.get(idx_sym, []), cutoff_date)
+    closes = [c for r in hist if (c := _f(r.get("close"))) is not None]
+    if len(closes) < 61 or closes[-61] <= 0:
+        return None
+    return (closes[-1] - closes[-61]) / closes[-61]
+
+
+def current_index_momentum(market: str = "kr") -> float | None:
+    """
+    Latest 60-bar index momentum (KOSPI/SPY) for live relative-strength scoring.
+    Pair with current_market_regime() when calling analyze() outside backtests.
+    """
+    market = str(market).lower()
+    idx_sym = "SPY" if market == "us" else "KOSPI"
+    path = _OHLCV_DIR / f"{market}_{idx_sym}_daily.csv"
+    if not path.exists():
+        return None
+    rows = _read_ohlcv_csv(path)
+    closes = [c for r in rows if (c := _f(r.get("close"))) is not None]
+    if len(closes) < 61 or closes[-61] <= 0:
+        return None
+    return (closes[-1] - closes[-61]) / closes[-61]
+
+
+def current_market_regime(market: str = "kr") -> str:
+    """
+    Index-level regime ("BULL"/"BEAR"/"SIDE"/"OVERHEATED") as of the latest
+    available data. KR uses KOSPI; US uses a 2-of-3 vote across SPY/QQQ/DIA.
+    Cached per calendar day — safe to call inside per-symbol loops.
+
+    Live callers should pass this into analyze(..., market_regime=...) so the
+    engine's regime-aware confidence adjustments apply outside of backtests.
+    """
+    market = str(market).lower()
+    cache_key = (market, datetime.now().strftime("%Y-%m-%d"))
+    if cache_key in _REGIME_CACHE:
+        return _REGIME_CACHE[cache_key]
+
+    index_syms = ("SPY", "QQQ", "DIA") if market == "us" else ("KOSPI",)
+    ohlcv: dict[str, list[dict]] = {}
+    for sym in index_syms:
+        path = _OHLCV_DIR / f"{market}_{sym}_daily.csv"
+        if path.exists():
+            rows = _read_ohlcv_csv(path)
+            if rows:
+                ohlcv[sym] = rows
+    regime = _market_regime_at_date(market, ohlcv, "9999-12-31") if ohlcv else "SIDE"
+    _REGIME_CACHE.clear()   # keep only today's entries
+    _REGIME_CACHE[cache_key] = regime
+    return regime
 
 
 def _date_range(from_str: str, to_str: str, step_days: int = 5) -> list[str]:
@@ -205,6 +303,7 @@ def run_walkforward(
 
     for date_str in eval_dates:
         regime = _market_regime_at_date(market, all_ohlcv, date_str)
+        idx_mom60 = _index_mom60_at_date(market, all_ohlcv, date_str)
         regime_counts[regime] += 1
         for sym, all_rows in all_ohlcv.items():
             # Strict cutoff — no future data
@@ -212,7 +311,7 @@ def run_walkforward(
             if len(hist_rows) < p.get("minOhlcvRows", 20):
                 continue
 
-            result = analyze(sym, market, hist_rows, p)
+            result = analyze(sym, market, hist_rows, p, market_regime=regime, index_mom60=idx_mom60)
 
             # Leakage check: the last row used must be < date_str
             last_used_date = str(hist_rows[-1].get("date", "")) if hist_rows else ""
@@ -467,6 +566,448 @@ def _calibration_suggestions(summary: dict, params: dict) -> list[dict]:
                 "reason":     f"돌파 패턴 승률 {win_r:.0%} — 신뢰도 가중치 상향 권장",
             })
 
+    return suggestions
+
+
+def run_combined_walkforward(
+    market: str = "kr",
+    from_date: str | None = None,
+    to_date: str | None = None,
+    params: dict | None = None,
+) -> dict[str, Any]:
+    """
+    Extended walk-forward validation covering all pattern types across 9 strategies.
+
+    Tracks:
+    - 9 strategy combinations (conservative/balanced/aggressive × short/swing/mid)
+    - Candlestick pattern accuracy with confirmed vs unconfirmed split
+    - Geometric pattern confirmed vs unconfirmed accuracy lift
+    - Combo accuracy: both geo+cs confirmed together vs each alone
+    - Market regime breakdown for all of the above
+
+    Saves to reports/pattern_walkforward_combined_{market}.json
+    """
+    p = params or load_params()
+
+    if not to_date:
+        to_date = datetime.now().strftime("%Y-%m-%d")
+    if not from_date:
+        from_date = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
+
+    all_ohlcv = _load_all_ohlcv(market)
+    if not all_ohlcv:
+        return {"status": "NO_DATA", "market": market,
+                "message": f"No OHLCV data for market={market}"}
+
+    eval_dates = _date_range(from_date, to_date, step_days=5)
+
+    # Accumulators
+    strategy_stats: dict[str, dict] = defaultdict(_strategy_bucket)
+    cs_stats: dict[str, dict]       = defaultdict(_cs_bucket)
+    confirmed_lift: dict[str, dict] = {
+        "geo_confirmed":   _indicator_stats_bucket(),
+        "geo_unconfirmed": _indicator_stats_bucket(),
+        "cs_confirmed":    _indicator_stats_bucket(),
+        "cs_unconfirmed":  _indicator_stats_bucket(),
+        "both_confirmed":  _indicator_stats_bucket(),
+        "neither":         _indicator_stats_bucket(),
+    }
+    # regime-keyed strategy stats: "{regime}|{mode}|{horizon}"
+    regime_strategy_stats: dict[str, dict] = defaultdict(_strategy_bucket)
+    regime_counts: dict[str, int]           = defaultdict(int)
+    # geo family × confirmed → directional-win buckets ("{family}|confirmed")
+    geo_family_lift: dict[str, dict] = defaultdict(_indicator_stats_bucket)
+    leakage_ok = True
+
+    for date_str in eval_dates:
+        regime = _market_regime_at_date(market, all_ohlcv, date_str)
+        idx_mom60 = _index_mom60_at_date(market, all_ohlcv, date_str)
+        regime_counts[regime] += 1
+
+        for sym, all_rows in all_ohlcv.items():
+            hist_rows = _slice_before(all_rows, date_str)
+            if len(hist_rows) < p.get("minOhlcvRows", 20):
+                continue
+
+            result = analyze(sym, market, hist_rows, p, market_regime=regime, index_mom60=idx_mom60)
+
+            last_used = str(hist_rows[-1].get("date", "")) if hist_rows else ""
+            if last_used >= date_str:
+                leakage_ok = False
+
+            primary     = result.get("primaryPattern", "unknown")
+            confidence  = result.get("confidence", 0)
+            is_blocked  = result.get("isBlocked", False)
+            geo_pattern = result.get("geometricPattern")
+            geo_conf    = result.get("geometricPatternConfirmed", False)
+            cs_pattern  = result.get("candlestickPattern")
+            cs_conf     = result.get("candlestickPatternConfirmed", False)
+            geo_dir     = str(result.get("geometricPatternDirection") or "BULLISH").upper()
+            cs_dir      = str(result.get("candlestickPatternDirection") or "BULLISH").upper()
+
+            # Compute forward returns for all 3 horizons at once
+            fwd_by_h: dict[str, float | None] = {
+                h: _forward_return(all_rows, date_str, days)
+                for h, days in HORIZONS.items()
+            }
+            fwd5 = fwd_by_h.get("swing")  # canonical for pattern-level tracking
+
+            # ── 9-strategy tracking ───────────────────────────────────
+            for mode, mode_cfg in STRATEGIES.items():
+                # Blocked signals pass only for aggressive mode
+                if is_blocked and mode != "aggressive":
+                    continue
+                if confidence < mode_cfg["min_confidence"]:
+                    continue
+                stop = mode_cfg["stop"]
+                tgt  = mode_cfg["target"]
+                for h_name, fwd in fwd_by_h.items():
+                    if fwd is None:
+                        continue
+                    win = fwd > 0
+                    for sb in (strategy_stats[f"{mode}|{h_name}"],
+                                regime_strategy_stats[f"{regime}|{mode}|{h_name}"]):
+                        sb["sampleCount"] += 1
+                        sb["returns"].append(fwd)
+                        if win:       sb["wins"]    += 1
+                        else:         sb["losses"]  += 1
+                        if fwd < stop: sb["stops"]   += 1
+                        if fwd > tgt:  sb["targets"] += 1
+                    # Per-pattern within strategy (global only, saves memory)
+                    pb = strategy_stats[f"{mode}|{h_name}"]["byPattern"][primary]
+                    pb["sampleCount"] += 1
+                    pb["returns"].append(fwd)
+                    if win: pb["wins"]   += 1
+                    else:   pb["losses"] += 1
+
+            if fwd5 is None:
+                continue  # need fwd5 for candlestick + lift tracking
+
+            win5    = fwd5 > 0
+            stop5   = fwd5 < -0.02
+            target5 = fwd5 > 0.04
+            # Direction-adjusted wins (defined here, used in both cs and lift sections)
+            geo_win5  = (fwd5 < 0) if geo_dir == "BEARISH" else (fwd5 > 0)
+            cs_win5   = (fwd5 < 0) if cs_dir  == "BEARISH" else (fwd5 > 0)
+
+            # ── Candlestick pattern accuracy (direction-adjusted) ─────
+            if cs_pattern:
+                csb = cs_stats[cs_pattern]
+                csb["sampleCount"] += 1
+                csb["returns"].append(fwd5)
+                if cs_win5: csb["wins"]   += 1
+                else:       csb["losses"] += 1
+                if stop5:   csb["stops"]   += 1
+                if target5: csb["targets"] += 1
+                if cs_conf:
+                    csb["confirmed_count"]   += 1
+                    csb["confirmed_returns"].append(fwd5)
+                    if cs_win5: csb["confirmed_wins"] += 1
+                else:
+                    csb["unconfirmed_returns"].append(fwd5)
+                    if cs_win5: csb["unconfirmed_wins"] += 1
+
+            # ── Confirmed-lift tracking (direction-adjusted wins) ─────
+            # For "both" and "neither" we use cs direction as the canonical signal
+            combo_win = cs_win5 if (geo_conf and cs_conf) else win5
+
+            def _record_lift(key: str, directional_win: bool) -> None:
+                bk = confirmed_lift[key]
+                bk["sampleCount"] += 1
+                bk["returns"].append(fwd5)
+                if directional_win: bk["wins"]   += 1
+                else:               bk["losses"] += 1
+                if stop5:   bk["stops"]   += 1
+                if target5: bk["targets"] += 1
+
+            if geo_pattern:
+                _record_lift("geo_confirmed" if geo_conf else "geo_unconfirmed", geo_win5)
+                # Family-level confirmation lift — feeds the next calibration
+                # round of the direction/family-aware confirm adjustments.
+                fam = GEO_PATTERN_FAMILY.get(geo_pattern, "NEUTRAL")
+                fb = geo_family_lift[f"{fam}|{'confirmed' if geo_conf else 'unconfirmed'}"]
+                fb["sampleCount"] += 1
+                fb["returns"].append(fwd5)
+                if geo_win5: fb["wins"]   += 1
+                else:        fb["losses"] += 1
+            if cs_pattern:
+                _record_lift("cs_confirmed" if cs_conf else "cs_unconfirmed", cs_win5)
+            # True two-signal combo requires direction agreement — a bullish
+            # geometry with a bearish confirmation candle is two signals
+            # cancelling each other, not confirming.
+            if geo_conf and cs_conf and geo_dir == cs_dir:
+                _record_lift("both_confirmed", combo_win)
+            elif not geo_pattern and not cs_pattern:
+                _record_lift("neither", win5)
+
+    # ── Summarize ──────────────────────────────────────────────────────────
+    def _summarize_bucket(sb: dict, n: int, rets: list[float], stop_val: float | None = None) -> dict:
+        d = {
+            "sampleCount":   n,
+            "winRate":       round(sb["wins"] / n, 3),
+            "avgReturn":     round(sum(rets) / len(rets), 4),
+            "medianReturn":  round(_median(rets), 4),
+            "stopRate":      round(sb["stops"] / n, 3),
+            "targetHitRate": round(sb["targets"] / n, 3),
+        }
+        return d
+
+    strategy_summary: dict[str, Any] = {}
+    for key, sb in strategy_stats.items():
+        n = sb["sampleCount"]
+        if n == 0:
+            continue
+        rets = sb["returns"]
+        mode, _, h_name = key.partition("|")
+        stop = STRATEGIES[mode]["stop"]
+        tgt  = STRATEGIES[mode]["target"]
+        by_pat: dict[str, Any] = {}
+        for pat, pb in sb["byPattern"].items():
+            pn = pb["sampleCount"]
+            if pn == 0:
+                continue
+            pr = pb["returns"]
+            by_pat[pat] = {
+                "sampleCount": pn,
+                "winRate":     round(pb["wins"] / pn, 3),
+                "avgReturn":   round(sum(pr) / len(pr), 4),
+                "medianReturn": round(_median(pr), 4),
+            }
+        strategy_summary[key] = {
+            "sampleCount":   n,
+            "winRate":       round(sb["wins"] / n, 3),
+            "avgReturn":     round(sum(rets) / len(rets), 4),
+            "medianReturn":  round(_median(rets), 4),
+            "stopRate":      round(sb["stops"] / n, 3),
+            "targetHitRate": round(sb["targets"] / n, 3),
+            "stopThreshold": stop,
+            "targetThreshold": tgt,
+            "byPattern": by_pat,
+        }
+
+    # Regime-strategy summary (no byPattern for compactness)
+    regime_strategy_summary: dict[str, Any] = {}
+    for key, sb in regime_strategy_stats.items():
+        n = sb["sampleCount"]
+        if n == 0:
+            continue
+        rets = sb["returns"]
+        regime, _, rest = key.partition("|")
+        mode, _, h_name = rest.partition("|")
+        stop = STRATEGIES.get(mode, {}).get("stop", -0.02)
+        regime_strategy_summary.setdefault(regime, {})[rest] = {
+            "sampleCount":   n,
+            "winRate":       round(sb["wins"] / n, 3),
+            "avgReturn":     round(sum(rets) / len(rets), 4),
+            "medianReturn":  round(_median(rets), 4),
+            "stopRate":      round(sb["stops"] / n, 3),
+            "targetHitRate": round(sb["targets"] / n, 3),
+        }
+
+    cs_summary: dict[str, Any] = {}
+    for pat, csb in cs_stats.items():
+        n = csb["sampleCount"]
+        if n == 0:
+            continue
+        rets = csb["returns"]
+        nc   = csb["confirmed_count"]
+        nu   = n - nc
+        cr   = csb["confirmed_returns"]
+        ucr  = csb["unconfirmed_returns"]
+        cs_summary[pat] = {
+            "sampleCount":          n,
+            "winRate":              round(csb["wins"] / n, 3),
+            "avgReturn":            round(sum(rets) / len(rets), 4),
+            "medianReturn":         round(_median(rets), 4),
+            "stopRate":             round(csb["stops"] / n, 3),
+            "targetHitRate":        round(csb["targets"] / n, 3),
+            "confirmedCount":       nc,
+            "confirmedWinRate":     round(csb["confirmed_wins"] / nc, 3) if nc else None,
+            "confirmedAvgReturn":   round(sum(cr) / len(cr), 4) if cr else None,
+            "unconfirmedCount":     nu,
+            "unconfirmedWinRate":   round(csb["unconfirmed_wins"] / nu, 3) if nu > 0 else None,
+            "unconfirmedAvgReturn": round(sum(ucr) / len(ucr), 4) if ucr else None,
+        }
+
+    lift_summary: dict[str, Any] = {}
+    for key, bk in confirmed_lift.items():
+        n = bk["sampleCount"]
+        if n == 0:
+            continue
+        rets = bk["returns"]
+        lift_summary[key] = {
+            "sampleCount":   n,
+            "winRate":       round(bk["wins"] / n, 3),
+            "avgReturn":     round(sum(rets) / len(rets), 4),
+            "medianReturn":  round(_median(rets), 4),
+            "stopRate":      round(bk["stops"] / n, 3),
+            "targetHitRate": round(bk["targets"] / n, 3),
+        }
+
+    geo_family_summary: dict[str, Any] = {}
+    for key, fb in geo_family_lift.items():
+        n = fb["sampleCount"]
+        if n == 0:
+            continue
+        rets = fb["returns"]
+        geo_family_summary[key] = {
+            "sampleCount":  n,
+            "winRate":      round(fb["wins"] / n, 3),
+            "avgReturn":    round(sum(rets) / len(rets), 4),
+            "medianReturn": round(_median(rets), 4),
+        }
+
+    suggestions = _strategy_calibration_suggestions(strategy_summary)
+    suggestions += _candlestick_calibration_suggestions(cs_summary)
+    suggestions += _confirmation_lift_suggestions(lift_summary)
+    # Family-level confirmation drift alerts: flag when a family's confirmed
+    # win rate flips against the engine's current adjustment direction.
+    for fam in ("REV_BULL", "CONT_BEAR"):
+        c = geo_family_summary.get(f"{fam}|confirmed", {})
+        u = geo_family_summary.get(f"{fam}|unconfirmed", {})
+        if c.get("sampleCount", 0) >= 30 and u.get("sampleCount", 0) >= 30:
+            lift = c["winRate"] - u["winRate"]
+            if lift < 0:
+                suggestions.append({
+                    "pattern": fam,
+                    "action":  "RECALIBRATE_CONFIRM",
+                    "reason":  (
+                        f"{fam} 확인봉 리프트가 음전환 ({lift*100:+.1f}p) — "
+                        "엔진의 family-aware 확인 보정 재검토 필요"
+                    ),
+                })
+
+    result_doc = {
+        "status":    "OK",
+        "market":    market,
+        "fromDate":  from_date,
+        "toDate":    to_date,
+        "evalDates": len(eval_dates),
+        "regimeCounts":              dict(regime_counts),
+        "strategySummary":           strategy_summary,
+        "regimeStrategySummary":     regime_strategy_summary,
+        "candlestickSummary":        cs_summary,
+        "confirmedLiftSummary":      lift_summary,
+        "geoFamilyLiftSummary":      geo_family_summary,
+        "leakageCheck":              {"status": "PASS" if leakage_ok else "FAIL"},
+        "calibrationSuggestions":    suggestions,
+        "strategiesConfig":          STRATEGIES,
+        "horizonsConfig":            HORIZONS,
+    }
+
+    try:
+        _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        out_path = _REPORTS_DIR / f"pattern_walkforward_combined_{market}.json"
+        out_path.write_text(json.dumps(result_doc, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+    return result_doc
+
+
+def _strategy_calibration_suggestions(strategy_summary: dict) -> list[dict]:
+    suggestions: list[dict] = []
+    for key, stats in strategy_summary.items():
+        n = stats["sampleCount"]
+        mode, _, h_name = key.partition("|")
+        if n < 10:
+            suggestions.append({
+                "strategy": key, "action": "OBSERVE_ONLY",
+                "reason": f"표본 수 부족 ({n}개). 최소 10개 이상 쌓인 후 보정.",
+            })
+            continue
+        win_r  = stats["winRate"]
+        stop_r = stats["stopRate"]
+        avg_r  = stats["avgReturn"]
+        if win_r > 0.60:
+            suggestions.append({
+                "strategy": key, "action": "PROMOTE",
+                "reason": (f"{mode}/{h_name} 전략 승률 {win_r:.0%}, "
+                           f"평균수익률 {avg_r:+.1%} — 신호 우선도 높음"),
+            })
+        elif win_r < 0.40 or stop_r > 0.35:
+            suggestions.append({
+                "strategy": key, "action": "DEMOTE",
+                "reason": (f"{mode}/{h_name} 전략 승률 {win_r:.0%}, "
+                           f"손절률 {stop_r:.0%} — 필터 강화 검토"),
+            })
+    return suggestions
+
+
+def _candlestick_calibration_suggestions(cs_summary: dict) -> list[dict]:
+    suggestions: list[dict] = []
+    for pat, stats in cs_summary.items():
+        n = stats["sampleCount"]
+        if n < 5:
+            suggestions.append({
+                "pattern": pat, "action": "OBSERVE_ONLY",
+                "reason": f"캔들스틱 패턴 표본 부족 ({n}개).",
+            })
+            continue
+        win_r    = stats["winRate"]
+        conf_wr  = stats.get("confirmedWinRate")
+        uconf_wr = stats.get("unconfirmedWinRate")
+        if conf_wr is not None and uconf_wr is not None:
+            lift = conf_wr - uconf_wr
+            if lift > 0.10:
+                suggestions.append({
+                    "pattern": pat, "action": "CONFIRMATION_BONUS_JUSTIFIED",
+                    "reason": (f"확인봉 있을 때 승률 {conf_wr:.0%} vs 없을 때 {uconf_wr:.0%} "
+                               f"(+{lift:.0%}) — 두 신호 결합 가중치 유효"),
+                })
+            elif lift < -0.05:
+                suggestions.append({
+                    "pattern": pat, "action": "CONFIRMATION_BONUS_QUESTION",
+                    "reason": (f"확인봉 있을 때 승률 {conf_wr:.0%}, 없을 때 {uconf_wr:.0%} "
+                               f"— 확인봉 기준 재검토 권장"),
+                })
+        if win_r > 0.60:
+            suggestions.append({
+                "pattern": pat, "action": "STRENGTHEN",
+                "reason": f"캔들스틱 패턴 승률 {win_r:.0%} — 컨텍스트 신호 강화 권장",
+            })
+        elif win_r < 0.35:
+            suggestions.append({
+                "pattern": pat, "action": "WEAKEN",
+                "reason": f"캔들스틱 패턴 승률 {win_r:.0%} — 컨텍스트 필터 재검토 필요",
+            })
+    return suggestions
+
+
+def _confirmation_lift_suggestions(lift_summary: dict) -> list[dict]:
+    suggestions: list[dict] = []
+    geo_c  = lift_summary.get("geo_confirmed", {})
+    geo_u  = lift_summary.get("geo_unconfirmed", {})
+    cs_c   = lift_summary.get("cs_confirmed", {})
+    cs_u   = lift_summary.get("cs_unconfirmed", {})
+    both   = lift_summary.get("both_confirmed", {})
+    neither = lift_summary.get("neither", {})
+
+    if geo_c and geo_u and geo_c.get("sampleCount", 0) >= 5:
+        lift = (geo_c.get("winRate", 0) or 0) - (geo_u.get("winRate", 0) or 0)
+        suggestions.append({
+            "signal": "geometric_confirmation",
+            "action": "CONFIRMATION_LIFT_VALID" if lift > 0.05 else "CONFIRMATION_LIFT_WEAK",
+            "reason": (f"기하패턴 확인봉 있을 때 승률 {geo_c.get('winRate', 0):.0%} "
+                       f"vs 없을 때 {geo_u.get('winRate', 0):.0%} (lift {lift:+.0%})"),
+        })
+    if cs_c and cs_u and cs_c.get("sampleCount", 0) >= 5:
+        lift = (cs_c.get("winRate", 0) or 0) - (cs_u.get("winRate", 0) or 0)
+        suggestions.append({
+            "signal": "candlestick_confirmation",
+            "action": "CONFIRMATION_LIFT_VALID" if lift > 0.05 else "CONFIRMATION_LIFT_WEAK",
+            "reason": (f"캔들스틱 확인봉 있을 때 승률 {cs_c.get('winRate', 0):.0%} "
+                       f"vs 없을 때 {cs_u.get('winRate', 0):.0%} (lift {lift:+.0%})"),
+        })
+    if both and neither and both.get("sampleCount", 0) >= 5:
+        lift = (both.get("winRate", 0) or 0) - (neither.get("winRate", 0) or 0)
+        suggestions.append({
+            "signal": "both_confirmed_vs_neither",
+            "action": "COMBO_SIGNAL_STRONG" if lift > 0.08 else "COMBO_SIGNAL_MODERATE",
+            "reason": (f"기하+캔들 모두 확인됐을 때 승률 {both.get('winRate', 0):.0%} "
+                       f"vs 신호 없음 {neither.get('winRate', 0):.0%} (lift {lift:+.0%}) "
+                       f"— 두 신호 결합 전략 {'유효' if lift > 0.08 else '보통'}"),
+        })
     return suggestions
 
 

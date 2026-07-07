@@ -59,9 +59,16 @@ def _cluster_levels(raw: list[tuple[float, str]], atr20: float, tol_atr: float =
                 "lastTestedDate": date,
                 "atrDistance":    0.0,
             })
-    # importance scales with touch count (capped at 1.0)
+    # importance peaks at touchCount ≈ 5–6 then decays (exhausted level effect):
+    # a zone retested 8+ times has absorbed all resting orders and weakens.
     for cl in clusters:
-        cl["importance"] = round(min(1.0, 0.3 + (cl["touchCount"] - 1) * 0.15), 2)
+        tc = cl["touchCount"]
+        if tc <= 5:
+            cl["importance"] = round(min(1.0, 0.3 + (tc - 1) * 0.15), 2)
+        else:
+            decay = min(0.4, (tc - 5) * 0.08)
+            cl["importance"] = round(max(0.2, 0.9 - decay), 2)
+        cl["saturated"] = tc > 6
     return clusters
 
 
