@@ -1676,6 +1676,16 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
                 row["expectedValue"] = _ev
                 row["evNegative"] = _ev < 0
                 row["expectedValueText"] = f"{_ev:+.1f}%"
+        # 프론트 상세 모달은 finalScore·rrActual을 읽는데 여기서는 finalRankScore·rr만
+        # 채워 "종합 점수 0점 / RR —"으로 표시됐다. 값이 비어 있을 때만 별칭을 채운다.
+        if _num(row.get("finalScore")) is None:
+            _fs = _num(row.get("finalRankScore"))
+            if _fs is not None:
+                row["finalScore"] = _fs
+        if _num(row.get("rrActual")) is None:
+            _rr = _num(row.get("rr")) or _num(normalized.get("rr"))
+            if _rr is not None:
+                row["rrActual"] = _rr
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
     selected = rows[:requested_limit]
