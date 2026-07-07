@@ -152,6 +152,16 @@ def _regime_for_index(rows: list[dict], cutoff_date: str) -> str:
     above_ma = latest > ma20
     ma_rising = ma20 > ma20_5ago if ma20_5ago is not None else True
     if above_ma and ma_rising:
+        # Late-stage melt-up detection: MA20-based BULL persists right up to a
+        # parabolic top. Index stretched ≥6% above its own MA20 while the
+        # 60-day gain exceeds +30% = late-stage, crash-prone rally
+        # (2026-02/03 −10.6%/−19.1% and 2026-05/06 +3.1%/−6.4% fwd-20d were
+        # all flagged; early-stage rallies in 2026-04 were not).
+        if len(closes) >= 61:
+            disp   = latest / ma20
+            gain60 = latest / closes[-61] - 1
+            if disp >= 1.06 and gain60 >= 0.30:
+                return "OVERHEATED"
         return "BULL"
     if not above_ma and not ma_rising:
         return "BEAR"
@@ -161,12 +171,46 @@ def _regime_for_index(rows: list[dict], cutoff_date: str) -> str:
 def _market_regime_at_date(market: str, all_ohlcv: dict[str, list[dict]], cutoff_date: str) -> str:
     if market == "us":
         votes = [_regime_for_index(all_ohlcv.get(sym, []), cutoff_date) for sym in ("SPY", "QQQ", "DIA")]
-        if votes.count("BULL") >= 2:
+        if votes.count("OVERHEATED") >= 2:
+            return "OVERHEATED"
+        # An OVERHEATED index is still a rising index for the BULL/BEAR vote
+        if votes.count("BULL") + votes.count("OVERHEATED") >= 2:
             return "BULL"
         if votes.count("BEAR") >= 2:
             return "BEAR"
         return "SIDE"
     return _regime_for_index(all_ohlcv.get("KOSPI", []), cutoff_date)
+
+
+_REGIME_CACHE: dict[tuple[str, str], str] = {}
+
+
+def current_market_regime(market: str = "kr") -> str:
+    """
+    Index-level regime ("BULL"/"BEAR"/"SIDE"/"OVERHEATED") as of the latest
+    available data. KR uses KOSPI; US uses a 2-of-3 vote across SPY/QQQ/DIA.
+    Cached per calendar day — safe to call inside per-symbol loops.
+
+    Live callers should pass this into analyze(..., market_regime=...) so the
+    engine's regime-aware confidence adjustments apply outside of backtests.
+    """
+    market = str(market).lower()
+    cache_key = (market, datetime.now().strftime("%Y-%m-%d"))
+    if cache_key in _REGIME_CACHE:
+        return _REGIME_CACHE[cache_key]
+
+    index_syms = ("SPY", "QQQ", "DIA") if market == "us" else ("KOSPI",)
+    ohlcv: dict[str, list[dict]] = {}
+    for sym in index_syms:
+        path = _OHLCV_DIR / f"{market}_{sym}_daily.csv"
+        if path.exists():
+            rows = _read_ohlcv_csv(path)
+            if rows:
+                ohlcv[sym] = rows
+    regime = _market_regime_at_date(market, ohlcv, "9999-12-31") if ohlcv else "SIDE"
+    _REGIME_CACHE.clear()   # keep only today's entries
+    _REGIME_CACHE[cache_key] = regime
+    return regime
 
 
 def _date_range(from_str: str, to_str: str, step_days: int = 5) -> list[str]:
@@ -239,7 +283,7 @@ def run_walkforward(
             if len(hist_rows) < p.get("minOhlcvRows", 20):
                 continue
 
-            result = analyze(sym, market, hist_rows, p)
+            result = analyze(sym, market, hist_rows, p, market_regime=regime)
 
             # Leakage check: the last row used must be < date_str
             last_used_date = str(hist_rows[-1].get("date", "")) if hist_rows else ""
@@ -554,7 +598,7 @@ def run_combined_walkforward(
             if len(hist_rows) < p.get("minOhlcvRows", 20):
                 continue
 
-            result = analyze(sym, market, hist_rows, p)
+            result = analyze(sym, market, hist_rows, p, market_regime=regime)
 
             last_used = str(hist_rows[-1].get("date", "")) if hist_rows else ""
             if last_used >= date_str:
@@ -649,7 +693,10 @@ def run_combined_walkforward(
                 _record_lift("geo_confirmed" if geo_conf else "geo_unconfirmed", geo_win5)
             if cs_pattern:
                 _record_lift("cs_confirmed" if cs_conf else "cs_unconfirmed", cs_win5)
-            if geo_conf and cs_conf:
+            # True two-signal combo requires direction agreement — a bullish
+            # geometry with a bearish confirmation candle is two signals
+            # cancelling each other, not confirming.
+            if geo_conf and cs_conf and geo_dir == cs_dir:
                 _record_lift("both_confirmed", combo_win)
             elif not geo_pattern and not cs_pattern:
                 _record_lift("neither", win5)

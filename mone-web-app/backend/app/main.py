@@ -866,7 +866,8 @@ def api_pattern_strategy(
         if df.empty or len(df) < 5:
             return {"ok": False, "status": "NO_DATA", "symbol": symbol, "market": market}
         rows = df.to_dict("records")
-        result = _ps_analyze(symbol, _market(market), rows)
+        from app.engine.pattern_strategy import current_market_regime as _ps_regime
+        result = _ps_analyze(symbol, _market(market), rows, market_regime=_ps_regime(_market(market)))
         return {"ok": True, "status": "OK", **result}
     except Exception as e:
         return {"ok": False, "status": "ERROR", "message": str(e)}

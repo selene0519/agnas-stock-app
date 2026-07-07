@@ -313,12 +313,22 @@ def analyze(
     market: str,
     rows: list[dict],
     params: dict | None = None,
+    market_regime: str = "",
 ) -> dict[str, Any]:
     """
     Run the full Pattern Strategy Engine for one symbol.
 
     `rows` must be a list of OHLCV dicts sorted oldest-first, each with at
     minimum: date, open, high, low, close, volume.
+
+    `market_regime` is the index-level regime ("BULL"/"BEAR"/"SIDE", empty =
+    unknown) computed from KOSPI (KR) or SPY/QQQ/DIA (US) — see
+    pattern_validator.current_market_regime(). Regime-aware adjustments:
+      • KR SIDE  — worst regime in walk-forward (43-49% win, 40-45% stops):
+        confidence dampened.
+      • US BEAR  — 5-day swing entries lost money (37-43% win): dampened.
+      • Two-signal combo (geo+cs both confirmed, same direction) gets a
+        bonus only in trending regimes; in SIDE the combo won just 35% (KR).
 
     Returns a PatternResult-compatible dict.
     """
@@ -423,6 +433,31 @@ def analyze(
             if cs.get("confirmed"):
                 cs_boost += 3
         confidence = min(95, max(10, confidence + cs_boost))
+
+    # Two-signal combo (이미지의 ★★★★ 구조): geo + cs both confirmed AND
+    # pointing the same way. Walk-forward: 51-57% directional win in trending
+    # regimes, but only 35% (KR) in SIDE — a range's confirmation candles are
+    # fake-breakout noise. Bonus only when the regime is actually trending.
+    regime = str(market_regime or "").upper()
+    combo_agree = (
+        geo and cs
+        and geo.get("confirmed") and cs.get("confirmed")
+        and geo.get("direction") == cs.get("direction")
+        and geo.get("direction") in ("BULLISH", "BEARISH")
+    )
+    if combo_agree and regime in ("BULL", "BEAR"):
+        confidence = min(95, confidence + 4)
+
+    # Regime dampening — the (market, regime) cells where the engine
+    # demonstrably bleeds. KR BEAR and US SIDE are its best cells: untouched.
+    if regime == "SIDE" and str(market).lower() != "us":
+        confidence = max(10, confidence - 8)   # KR 횡보: 최악 국면
+    elif regime == "BEAR" and str(market).lower() == "us":
+        confidence = max(10, confidence - 6)   # US 하락장: 스윙 손실 구간
+    elif regime == "OVERHEATED":
+        # Late-stage index melt-up: mid-horizon entries here won only 39-42%
+        # with 51-55% stop rates in the 2026-05/06 KR parabolic top.
+        confidence = max(10, confidence - (10 if str(market).lower() != "us" else 6))
 
     # Support proximity (KR only): entries within 1 ATR above a holding
     # support level have a structural floor in a mean-reverting market.

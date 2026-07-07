@@ -1614,7 +1614,8 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             _ps_df, _ = _latest_ohlcv(sym, market)
             if not _ps_df.empty and len(_ps_df) >= 20:
                 _ps_rows = _ps_df.to_dict("records")
-                _ps_result = _ps_analyze(sym, market, _ps_rows)
+                from app.engine.pattern_strategy import current_market_regime as _ps_regime
+                _ps_result = _ps_analyze(sym, market, _ps_rows, market_regime=_ps_regime(market))
                 row["patternStrategy"] = _ps_result
                 # isBlocked → meaningful penalty (-15) + force decision bucket to 주의
                 if _ps_result.get("isBlocked"):
@@ -1864,7 +1865,8 @@ def _enrich_recommendation_detail_item(item: dict[str, Any], market: str, symbol
 
             df, _ = _latest_ohlcv(symbol, market)
             if not df.empty and len(df) >= 20:
-                enriched["patternStrategy"] = _ps_analyze(symbol, market, df.to_dict("records"))
+                from app.engine.pattern_strategy import current_market_regime as _ps_regime
+                enriched["patternStrategy"] = _ps_analyze(symbol, market, df.to_dict("records"), market_regime=_ps_regime(market))
             else:
                 enriched["patternStrategy"] = {
                     "status": "ERROR",

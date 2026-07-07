@@ -2532,7 +2532,8 @@ def _inject_pattern_strategy(items: list[dict[str, Any]], default_market: str) -
             df, _ = _dl._load_ohlcv(sym, mkt)
             if df is not None and not df.empty and len(df) >= 20:
                 rows = df.to_dict("records")
-                item["patternStrategy"] = _ps_analyze(sym, mkt, rows)
+                from app.engine.pattern_strategy import current_market_regime as _ps_regime
+                item["patternStrategy"] = _ps_analyze(sym, mkt, rows, market_regime=_ps_regime(mkt))
             else:
                 item["patternStrategy"] = {**_PS_ITEM_FALLBACK, "symbol": sym, "message": "Insufficient OHLCV data"}
         except Exception:
