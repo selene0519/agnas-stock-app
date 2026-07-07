@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-07-07 23:38:49",
-  "totalRows": 1736,
+  "updatedAt": "2026-07-08 07:33:03",
+  "totalRows": 1747,
   "olsSampleSize": 1511,
   "byStrategy": {
     "conservative_short": {
@@ -15,15 +15,15 @@
       "probAccuracy": -0.422
     },
     "conservative_swing": {
-      "total": 185,
+      "total": 188,
       "wins": 52,
-      "losses": 133,
-      "winRate": 0.2811,
+      "losses": 136,
+      "winRate": 0.2766,
       "avgWinPct": 6.577,
-      "avgLossPct": 5.752,
-      "payoffRatio": 1.143,
-      "avgProbability": 74.4,
-      "probAccuracy": -0.463
+      "avgLossPct": 5.696,
+      "payoffRatio": 1.155,
+      "avgProbability": 73.2,
+      "probAccuracy": -0.455
     },
     "conservative_mid": {
       "total": 180,
@@ -48,15 +48,15 @@
       "probAccuracy": -0.382
     },
     "balanced_swing": {
-      "total": 249,
+      "total": 253,
       "wins": 59,
-      "losses": 190,
-      "winRate": 0.2369,
+      "losses": 194,
+      "winRate": 0.2332,
       "avgWinPct": 8.482,
-      "avgLossPct": 6.679,
-      "payoffRatio": 1.27,
-      "avgProbability": 71.6,
-      "probAccuracy": -0.48
+      "avgLossPct": 6.653,
+      "payoffRatio": 1.275,
+      "avgProbability": 71.5,
+      "probAccuracy": -0.482
     },
     "balanced_mid": {
       "total": 183,
@@ -81,15 +81,15 @@
       "probAccuracy": -0.394
     },
     "aggressive_swing": {
-      "total": 191,
+      "total": 195,
       "wins": 54,
-      "losses": 137,
-      "winRate": 0.2827,
+      "losses": 141,
+      "winRate": 0.2769,
       "avgWinPct": 8.821,
-      "avgLossPct": 6.758,
-      "payoffRatio": 1.305,
-      "avgProbability": 74.2,
-      "probAccuracy": -0.459
+      "avgLossPct": 6.737,
+      "payoffRatio": 1.309,
+      "avgProbability": 72.7,
+      "probAccuracy": -0.45
     },
     "aggressive_mid": {
       "total": 199,
@@ -105,28 +105,28 @@
   },
   "byMarket": {
     "kr": {
-      "total": 854,
-      "winRate": 0.2693,
+      "total": 864,
+      "winRate": 0.2662,
       "avgWinPct": 7.57,
-      "avgLossPct": 5.802,
-      "payoffRatio": 1.305
+      "avgLossPct": 5.787,
+      "payoffRatio": 1.308
     },
     "us": {
-      "total": 882,
-      "winRate": 0.3061,
+      "total": 883,
+      "winRate": 0.3058,
       "avgWinPct": 8.882,
-      "avgLossPct": 6.542,
+      "avgLossPct": 6.543,
       "payoffRatio": 1.358
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 85,
-      "actualWinRate": 0.1294
+      "count": 93,
+      "actualWinRate": 0.1183
     },
     "mid_60-75": {
-      "count": 654,
-      "actualWinRate": 0.2722
+      "count": 657,
+      "actualWinRate": 0.2709
     },
     "high_75+": {
       "count": 997,
