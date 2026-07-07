@@ -171,6 +171,7 @@ def _compute_confidence(
     risk: RiskStatus,
     ind: dict,
     market: str = "kr",
+    index_mom60: float | None = None,
 ) -> tuple[int, int]:
     """Returns (confidence_after_risk, confidence_before_risk)."""
     base = 55  # neutral starting point
@@ -235,6 +236,34 @@ def _compute_confidence(
     cci = ind.get("cci20")
     if cci is not None and market != "us" and cci > 150:
         base -= 6
+
+    # Momentum / relative strength — the strongest confidence-orthogonal
+    # signal found in the walk-forward. RS = stock 60-bar momentum minus the
+    # index's (passed in via index_mom60); falls back to raw momentum when the
+    # index is unavailable.
+    #   US (momentum market): RS discriminates +12p at 5d, orthogonal to the
+    #     rest of confidence → strong reward for leaders, penalty for laggards.
+    #   KR (mean-reverting short-term): raw high momentum does NOT help short
+    #     term, but relative strength still helps at the 20d horizon → mild,
+    #     RS-only, and only the laggard penalty (chasing is already penalized
+    #     via disparity above).
+    mom60 = ind.get("mom60")
+    if mom60 is not None:
+        rs60 = mom60 - index_mom60 if index_mom60 is not None else mom60
+        if market == "us":
+            if rs60 >= 0.15:
+                base += 8
+            elif rs60 >= 0.05:
+                base += 4
+            elif rs60 <= -0.15:
+                base -= 8
+            elif rs60 <= -0.05:
+                base -= 4
+        else:
+            if rs60 <= -0.15:
+                base -= 5   # KR laggards underperform even on reversion
+            elif rs60 >= 0.10:
+                base += 3   # relative leaders hold up over 20d
 
     before_risk = min(95, max(20, base))
 
@@ -307,6 +336,44 @@ def _build_message(
     return "현재 패턴과 리스크를 종합적으로 검토한 후 진입 여부를 판단하세요."
 
 
+_SIZE_MULT = {
+    # KR: confidence is cleanly edge-ordered (20d win 52→59% across tiers),
+    # and return dispersion is wide → aggressive spread pays (+1.16p weighted
+    # vs equal in the walk-forward).
+    "kr": {"STRONG": 1.5, "NORMAL": 1.0, "LIGHT": 0.5, "MINIMAL": 0.25},
+    # US: 20d returns are compressed and low-confidence names drift up too
+    # (calibration is non-monotonic), so a steep spread mis-sizes. A gentle
+    # curve keeps STRONG > LIGHT ordering without starving the winners that
+    # land in low tiers.
+    "us": {"STRONG": 1.25, "NORMAL": 1.0, "LIGHT": 0.75, "MINIMAL": 0.5},
+}
+
+
+def _position_size(confidence: int, is_blocked: bool, direction_ok: bool,
+                   market: str = "kr") -> dict[str, Any]:
+    """
+    Confidence-tier position sizing, market-aware.
+
+    Tier boundary is confidence 55 — the KR walk-forward jump point (<55 ≈
+    50-52% 20d win, ≥55 ≈ 58-59%). Since confidence is already regime- and
+    momentum-aware, the tier map captures the edge without re-deriving it.
+    Blocked or direction-unconfirmed signals size to zero — sizing never
+    overrides a block.
+
+    Multipliers are relative weights (1.0 = one normal unit) for the caller to
+    scale its base position by; edge-ordered, deliberately not Kelly-optimal.
+    KR uses a wide spread (proven +1.16p), US a gentle one (its confidence is
+    less monotonic — a steep spread there mis-sizes).
+    """
+    if is_blocked or not direction_ok:
+        return {"tier": "NONE", "multiplier": 0.0}
+    tier = ("STRONG" if confidence >= 65 else
+            "NORMAL" if confidence >= 55 else
+            "LIGHT"  if confidence >= 45 else "MINIMAL")
+    mult = _SIZE_MULT.get(str(market).lower(), _SIZE_MULT["kr"])[tier]
+    return {"tier": tier, "multiplier": mult}
+
+
 # ── Public entry point ─────────────────────────────────────────────────────
 
 def analyze(
@@ -315,6 +382,7 @@ def analyze(
     rows: list[dict],
     params: dict | None = None,
     market_regime: str = "",
+    index_mom60: float | None = None,
 ) -> dict[str, Any]:
     """
     Run the full Pattern Strategy Engine for one symbol.
@@ -331,7 +399,13 @@ def analyze(
       • Two-signal combo (geo+cs both confirmed, same direction) gets a
         bonus only in trending regimes; in SIDE the combo won just 35% (KR).
 
-    Returns a PatternResult-compatible dict.
+    `index_mom60` is the index's 60-bar momentum (KOSPI/SPY) at the same
+    cutoff — enables relative-strength scoring (the strongest US confidence
+    signal). When None, raw stock momentum is used as a fallback. Live callers
+    get it from pattern_validator.current_index_momentum().
+
+    Returns a PatternResult-compatible dict, including positionSizeTier /
+    positionSizeMultiplier (confidence-tier sizing) and marketRegime.
     """
     p = params or load_params()
     min_rows = p.get("minOhlcvRows", 20)
@@ -403,7 +477,8 @@ def analyze(
 
     # 9. Confidence — adjusted by candlestick and geometric confirmation
     confidence, conf_before = _compute_confidence(
-        primary, structure, phase, risk, ind, market=str(market).lower()
+        primary, structure, phase, risk, ind,
+        market=str(market).lower(), index_mom60=index_mom60,
     )
 
     # Geometric confirmation — direction & family aware. Walk-forward pair
@@ -517,6 +592,14 @@ def analyze(
     # 10. Message
     message = _build_message(primary, risk, phase, ind)
 
+    # 11. Position sizing — confidence tier × direction gate. A geometric
+    # signal that points down (bearish) is not a long entry, so it never
+    # carries a long size regardless of confidence.
+    is_blocked = am_mod.is_blocked(action)
+    long_ok = not (geo and geo.get("direction") == "BEARISH"
+                   and geo.get("stage") in ("AVOID", "BLOCKED"))
+    position = _position_size(confidence, is_blocked, long_ok, market=str(market).lower())
+
     return {
         "symbol":                 symbol,
         "market":                 market,
@@ -525,17 +608,22 @@ def analyze(
         "primaryPattern":         primary,
         "secondaryPatterns":      secondary,
         "riskStatus":             risk.value,
-        "isBlocked":              am_mod.is_blocked(action),
+        "isBlocked":              is_blocked,
         "action":                 action.value,
         "originalAction":         original_action.value,
         "confidence":             confidence,
         "confidenceBeforeRisk":   conf_before,
+        "positionSizeTier":       position["tier"],
+        "positionSizeMultiplier": position["multiplier"],
+        "marketRegime":           regime or None,
         "indicators": {
             "atr20":         round(atr20, 2),
             "dailyDownAtr":  ind.get("dailyDownAtr"),
             "volumeRatio20": ind.get("volumeRatio20"),
             "rsi14":         ind.get("rsi14"),
             "cci20":         ind.get("cci20"),
+            "mom20":         ind.get("mom20"),
+            "mom60":         ind.get("mom60"),
             "ma20Disparity": ind.get("ma20Disparity"),
             "ma20":          ind.get("ma20"),
             "ma10":          ind.get("ma10"),
@@ -621,6 +709,9 @@ def _stub(symbol: str, market: str) -> dict[str, Any]:
         "originalAction":         Action.RISK_CHECK.value,
         "confidence":             0,
         "confidenceBeforeRisk":   0,
+        "positionSizeTier":       "NONE",
+        "positionSizeMultiplier": 0.0,
+        "marketRegime":           None,
         "indicators":             {},
         "baseBreakout":           {},
         "extensionBreakouts":     [],

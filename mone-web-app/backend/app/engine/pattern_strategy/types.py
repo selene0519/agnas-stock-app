@@ -125,6 +125,9 @@ class PatternResult(TypedDict):
     originalAction: str
     confidence: int
     confidenceBeforeRisk: int
+    positionSizeTier: str          # STRONG | NORMAL | LIGHT | MINIMAL | NONE
+    positionSizeMultiplier: float  # relative sizing weight (0.0–1.5)
+    marketRegime: str | None       # BULL | BEAR | SIDE | OVERHEATED
     indicators: dict[str, Any]
     baseBreakout: dict[str, Any]
     extensionBreakouts: list[dict[str, Any]]

@@ -185,6 +185,33 @@ def _market_regime_at_date(market: str, all_ohlcv: dict[str, list[dict]], cutoff
 _REGIME_CACHE: dict[tuple[str, str], str] = {}
 
 
+def _index_mom60_at_date(market: str, all_ohlcv: dict[str, list[dict]], cutoff_date: str) -> float | None:
+    """60-bar index momentum as of cutoff_date (KOSPI for KR, SPY for US)."""
+    idx_sym = "SPY" if market == "us" else "KOSPI"
+    hist = _slice_before(all_ohlcv.get(idx_sym, []), cutoff_date)
+    closes = [c for r in hist if (c := _f(r.get("close"))) is not None]
+    if len(closes) < 61 or closes[-61] <= 0:
+        return None
+    return (closes[-1] - closes[-61]) / closes[-61]
+
+
+def current_index_momentum(market: str = "kr") -> float | None:
+    """
+    Latest 60-bar index momentum (KOSPI/SPY) for live relative-strength scoring.
+    Pair with current_market_regime() when calling analyze() outside backtests.
+    """
+    market = str(market).lower()
+    idx_sym = "SPY" if market == "us" else "KOSPI"
+    path = _OHLCV_DIR / f"{market}_{idx_sym}_daily.csv"
+    if not path.exists():
+        return None
+    rows = _read_ohlcv_csv(path)
+    closes = [c for r in rows if (c := _f(r.get("close"))) is not None]
+    if len(closes) < 61 or closes[-61] <= 0:
+        return None
+    return (closes[-1] - closes[-61]) / closes[-61]
+
+
 def current_market_regime(market: str = "kr") -> str:
     """
     Index-level regime ("BULL"/"BEAR"/"SIDE"/"OVERHEATED") as of the latest
@@ -276,6 +303,7 @@ def run_walkforward(
 
     for date_str in eval_dates:
         regime = _market_regime_at_date(market, all_ohlcv, date_str)
+        idx_mom60 = _index_mom60_at_date(market, all_ohlcv, date_str)
         regime_counts[regime] += 1
         for sym, all_rows in all_ohlcv.items():
             # Strict cutoff — no future data
@@ -283,7 +311,7 @@ def run_walkforward(
             if len(hist_rows) < p.get("minOhlcvRows", 20):
                 continue
 
-            result = analyze(sym, market, hist_rows, p, market_regime=regime)
+            result = analyze(sym, market, hist_rows, p, market_regime=regime, index_mom60=idx_mom60)
 
             # Leakage check: the last row used must be < date_str
             last_used_date = str(hist_rows[-1].get("date", "")) if hist_rows else ""
@@ -593,6 +621,7 @@ def run_combined_walkforward(
 
     for date_str in eval_dates:
         regime = _market_regime_at_date(market, all_ohlcv, date_str)
+        idx_mom60 = _index_mom60_at_date(market, all_ohlcv, date_str)
         regime_counts[regime] += 1
 
         for sym, all_rows in all_ohlcv.items():
@@ -600,7 +629,7 @@ def run_combined_walkforward(
             if len(hist_rows) < p.get("minOhlcvRows", 20):
                 continue
 
-            result = analyze(sym, market, hist_rows, p, market_regime=regime)
+            result = analyze(sym, market, hist_rows, p, market_regime=regime, index_mom60=idx_mom60)
 
             last_used = str(hist_rows[-1].get("date", "")) if hist_rows else ""
             if last_used >= date_str:

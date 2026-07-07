@@ -2187,8 +2187,8 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     pattern_strategy_tag: str | None = None
     try:
         from app.engine.pattern_strategy import analyze as _pattern_strategy_analyze
-        from app.engine.pattern_strategy import current_market_regime as _ps_regime
-        _ps = _pattern_strategy_analyze(str(symbol or ""), context.market, _ohlcv, market_regime=_ps_regime(context.market))
+        from app.engine.pattern_strategy import current_market_regime as _ps_regime, current_index_momentum as _ps_idxmom
+        _ps = _pattern_strategy_analyze(str(symbol or ""), context.market, _ohlcv, market_regime=_ps_regime(context.market), index_mom60=_ps_idxmom(context.market))
         _geo_pattern = _ps.get("geometricPattern")
         _geo_stage = _ps.get("geometricPatternStage")
         _geo_direction = str(_ps.get("geometricPatternDirection") or "NEUTRAL").upper()
