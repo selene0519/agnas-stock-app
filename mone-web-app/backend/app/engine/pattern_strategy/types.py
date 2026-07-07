@@ -208,6 +208,36 @@ GEOMETRIC_PATTERN_NAMES = {
 }
 
 
+# Geometric pattern families — used for family-level confirmation calibration
+# (walk-forward showed confirmation lift differs by family, not just pattern).
+GEO_PATTERN_FAMILY: dict[str, str] = {
+    "DOUBLE_BOTTOM":              "REV_BULL",
+    "INVERSE_HEAD_AND_SHOULDERS": "REV_BULL",
+    "FALLING_WEDGE_BREAKOUT":     "REV_BULL",
+    "CUP_AND_HANDLE":             "REV_BULL",
+    "FAILED_BREAKDOWN":           "REV_BULL",
+    "RESISTANCE_FLIP_SUPPORT":    "REV_BULL",
+    "ASCENDING_TRIANGLE":         "CONT_BULL",
+    "BULL_FLAG":                  "CONT_BULL",
+    "BULL_PENNANT":               "CONT_BULL",
+    "RISING_CHANNEL":             "CONT_BULL",
+    "DOUBLE_TOP":                 "REV_BEAR",
+    "HEAD_AND_SHOULDERS":         "REV_BEAR",
+    "RISING_WEDGE_BREAKDOWN":     "REV_BEAR",
+    "FAILED_BREAKOUT":            "REV_BEAR",
+    "SUPPORT_FLIP_RESISTANCE":    "REV_BEAR",
+    "DISTRIBUTION_WATCH":         "REV_BEAR",
+    "OVEREXTENDED_BREAKOUT":      "REV_BEAR",
+    "DESCENDING_TRIANGLE":        "CONT_BEAR",
+    "BEAR_FLAG":                  "CONT_BEAR",
+    "BEAR_PENNANT":               "CONT_BEAR",
+    "FALLING_CHANNEL":            "CONT_BEAR",
+    "SYMMETRICAL_TRIANGLE":       "NEUTRAL",
+    "RECTANGLE_RANGE":            "NEUTRAL",
+    "RANGE_DRIFT":                "NEUTRAL",
+}
+
+
 # ── Default self-correction parameters ───────────────────────────────────────
 
 DEFAULT_PARAMS: dict[str, Any] = {

@@ -19,7 +19,7 @@ from typing import Any
 
 from . import indicators as ind_mod
 from .pattern_engine import analyze, load_params
-from .types import DEFAULT_PARAMS
+from .types import DEFAULT_PARAMS, GEO_PATTERN_FAMILY
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────
@@ -587,6 +587,8 @@ def run_combined_walkforward(
     # regime-keyed strategy stats: "{regime}|{mode}|{horizon}"
     regime_strategy_stats: dict[str, dict] = defaultdict(_strategy_bucket)
     regime_counts: dict[str, int]           = defaultdict(int)
+    # geo family × confirmed → directional-win buckets ("{family}|confirmed")
+    geo_family_lift: dict[str, dict] = defaultdict(_indicator_stats_bucket)
     leakage_ok = True
 
     for date_str in eval_dates:
@@ -691,6 +693,14 @@ def run_combined_walkforward(
 
             if geo_pattern:
                 _record_lift("geo_confirmed" if geo_conf else "geo_unconfirmed", geo_win5)
+                # Family-level confirmation lift — feeds the next calibration
+                # round of the direction/family-aware confirm adjustments.
+                fam = GEO_PATTERN_FAMILY.get(geo_pattern, "NEUTRAL")
+                fb = geo_family_lift[f"{fam}|{'confirmed' if geo_conf else 'unconfirmed'}"]
+                fb["sampleCount"] += 1
+                fb["returns"].append(fwd5)
+                if geo_win5: fb["wins"]   += 1
+                else:        fb["losses"] += 1
             if cs_pattern:
                 _record_lift("cs_confirmed" if cs_conf else "cs_unconfirmed", cs_win5)
             # True two-signal combo requires direction agreement — a bullish
@@ -805,9 +815,38 @@ def run_combined_walkforward(
             "targetHitRate": round(bk["targets"] / n, 3),
         }
 
+    geo_family_summary: dict[str, Any] = {}
+    for key, fb in geo_family_lift.items():
+        n = fb["sampleCount"]
+        if n == 0:
+            continue
+        rets = fb["returns"]
+        geo_family_summary[key] = {
+            "sampleCount":  n,
+            "winRate":      round(fb["wins"] / n, 3),
+            "avgReturn":    round(sum(rets) / len(rets), 4),
+            "medianReturn": round(_median(rets), 4),
+        }
+
     suggestions = _strategy_calibration_suggestions(strategy_summary)
     suggestions += _candlestick_calibration_suggestions(cs_summary)
     suggestions += _confirmation_lift_suggestions(lift_summary)
+    # Family-level confirmation drift alerts: flag when a family's confirmed
+    # win rate flips against the engine's current adjustment direction.
+    for fam in ("REV_BULL", "CONT_BEAR"):
+        c = geo_family_summary.get(f"{fam}|confirmed", {})
+        u = geo_family_summary.get(f"{fam}|unconfirmed", {})
+        if c.get("sampleCount", 0) >= 30 and u.get("sampleCount", 0) >= 30:
+            lift = c["winRate"] - u["winRate"]
+            if lift < 0:
+                suggestions.append({
+                    "pattern": fam,
+                    "action":  "RECALIBRATE_CONFIRM",
+                    "reason":  (
+                        f"{fam} 확인봉 리프트가 음전환 ({lift*100:+.1f}p) — "
+                        "엔진의 family-aware 확인 보정 재검토 필요"
+                    ),
+                })
 
     result_doc = {
         "status":    "OK",
@@ -820,6 +859,7 @@ def run_combined_walkforward(
         "regimeStrategySummary":     regime_strategy_summary,
         "candlestickSummary":        cs_summary,
         "confirmedLiftSummary":      lift_summary,
+        "geoFamilyLiftSummary":      geo_family_summary,
         "leakageCheck":              {"status": "PASS" if leakage_ok else "FAIL"},
         "calibrationSuggestions":    suggestions,
         "strategiesConfig":          STRATEGIES,

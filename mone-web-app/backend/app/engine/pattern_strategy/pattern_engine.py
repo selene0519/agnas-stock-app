@@ -24,7 +24,8 @@ from . import action_mapper as am_mod
 from . import geometric_patterns as gp_mod
 from . import candlestick_patterns as cs_mod
 from .types import (
-    Action, DEFAULT_PARAMS, MarketStructure, PatternResult, RiskStatus, TrendPhase,
+    Action, DEFAULT_PARAMS, GEO_PATTERN_FAMILY, MarketStructure, PatternResult,
+    RiskStatus, TrendPhase,
 )
 
 
@@ -405,10 +406,26 @@ def analyze(
         primary, structure, phase, risk, ind, market=str(market).lower()
     )
 
-    # Geometric confirmation (더블바텀+대양선 등): +4 when confirmed
-    # (confirmation now requires volume backing, so the signal is stronger)
+    # Geometric confirmation — direction & family aware. Walk-forward pair
+    # analysis (KR/US both, only market-consistent effects used):
+    #   REV_BULL confirmed:  directional win +4.6p KR / +2.0p US → long boost.
+    #     FALLING_WEDGE_BREAKOUT is the strongest single combo
+    #     (+12.7p / +9.8p) → bigger boost.
+    #   CONT_BEAR confirmed: price continues DOWN 58-59% of the time
+    #     (+12.5p / +9.3p lift) → long confidence must go DOWN, not up.
+    #     (The old direction-blind +4 boosted longs into falling channels.)
+    #   CONT_BULL / NEUTRAL: no lift (-1.1p/-0.8p) → no adjustment.
+    #     ASCENDING_TRIANGLE confirmation is chase-noise (-8.8p/-11.2p).
+    #   REV_BEAR confirmed:  NEGATIVE lift (-2.5p/-3.9p) — a strong bear
+    #     candle at a top pattern is usually the move already spent → no
+    #     long penalty (the fall doesn't reliably follow).
     if geo and geo.get("confirmed"):
-        confidence = min(95, confidence + 4)
+        g_fam = GEO_PATTERN_FAMILY.get(geo.get("pattern") or "", "NEUTRAL")
+        if g_fam == "REV_BULL":
+            boost = 6 if geo.get("pattern") == "FALLING_WEDGE_BREAKOUT" else 4
+            confidence = min(95, confidence + boost)
+        elif g_fam == "CONT_BEAR":
+            confidence = max(10, confidence - 6)
 
     # Bearish geometry in an actionable stage argues against a long entry
     # even when the indicator engine looks fine — KR walk-forward showed these
@@ -446,7 +463,12 @@ def analyze(
         and geo.get("direction") in ("BULLISH", "BEARISH")
     )
     if combo_agree and regime in ("BULL", "BEAR"):
-        confidence = min(95, confidence + 4)
+        # Direction-aware: a confirmed BEARISH two-signal combo means price
+        # likely falls — that lowers long confidence, it doesn't raise it.
+        if geo.get("direction") == "BULLISH":
+            confidence = min(95, confidence + 4)
+        else:
+            confidence = max(10, confidence - 4)
 
     # Regime dampening — the (market, regime) cells where the engine
     # demonstrably bleeds. KR BEAR and US SIDE are its best cells: untouched.
