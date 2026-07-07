@@ -663,7 +663,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   // 렌즈 조건에 맞는 종목이 없으면 전체가 0개가 되지 않도록 fallback 한다.
   const lensResult = useMemo(() => {
     if (!lens || lens === "balance") return { list: baseFiltered, fallback: false };
-    const matched = baseFiltered.filter((item) => itemMatchesLens(item.strategyTags, lens));
+    const matched = baseFiltered.filter((item) => itemMatchesLens(item, lens));
     if (matched.length > 0) return { list: matched, fallback: false };
     return { list: baseFiltered, fallback: true };
   }, [baseFiltered, lens]);
@@ -1414,6 +1414,19 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 </div>
               ))}
 
+              {/* 고급 태그 과다 선택 안내: 결과가 0인데 고급 태그가 걸려 있으면 힌트 */}
+              {sectorFiltered.length === 0 && advTags.size > 0 && (
+                <div className="rounded-lg border border-amber-600/40 bg-amber-600/10 px-3 py-2 text-[11px] text-amber-300">
+                  선택한 고급 태그 {advTags.size}개 조건을 모두 만족하는 종목이 없습니다. 태그를 줄여 보세요.
+                  <button
+                    onClick={() => setAdvTags(new Set())}
+                    className="ml-2 rounded border border-amber-500/50 px-2 py-0.5 text-[10px] hover:bg-amber-500/20"
+                  >
+                    고급 태그 초기화
+                  </button>
+                </div>
+              )}
+
               {/* 결과 요약 + 전체 초기화 */}
               <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
                 <span className="text-xs text-slate-500">
@@ -1922,7 +1935,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             addVisibleTag(`style_${item.styleTags[0]}`, item.styleTags[0], "border-violet-500/30 bg-violet-500/10 text-violet-300");
 
           // 탐색 렌즈 배지: strategyTags 기준 대표 렌즈 1개 (없으면 미표시)
-          const cardLens = primaryLensForItem(item.strategyTags);
+          const cardLens = primaryLensForItem(item);
 
           return (
             <div
