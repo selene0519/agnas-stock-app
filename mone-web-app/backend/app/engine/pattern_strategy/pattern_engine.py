@@ -426,17 +426,40 @@ def analyze(
             confidence = min(95, confidence + boost)
         elif g_fam == "CONT_BEAR":
             confidence = max(10, confidence - 6)
+        elif geo.get("pattern") == "RISING_CHANNEL" and str(market).lower() == "us":
+            # Train/test-split mining: US rising-channel confirmed rides
+            # momentum (train 61% → test 59%, n≈200) — CONT_BULL family
+            # default of 0 undervalues this one US-specific combo.
+            confidence = min(95, confidence + 4)
 
     # Bearish geometry in an actionable stage argues against a long entry
     # even when the indicator engine looks fine — KR walk-forward showed these
     # entries carry the highest stop rates. KR only: in the US the same names
     # are routinely dip-bought and rebound over the mid horizon.
+    # Exception (train/test mining): DOUBLE_TOP detected in a BEAR regime is
+    # noise — after a broad decline, the "top" is a rebound base, and its
+    # bearish call hit only 13.9% in the validation window. Skip the penalty.
+    _regime_pre = str(market_regime or "").upper()
     if (
         str(market).lower() != "us"
         and geo and geo.get("direction") == "BEARISH"
         and geo.get("stage") in ("AVOID", "BLOCKED")
+        and not (geo.get("pattern") == "DOUBLE_TOP" and _regime_pre == "BEAR")
     ):
         confidence = max(10, confidence - 6)
+
+    # Mining survivors with large samples and coherent narratives:
+    # KR RANGE_DRIFT — aimless low-volume drift bleeds slowly (5-day long win
+    # 39-46% in both train and test windows).
+    if geo and geo.get("pattern") == "RANGE_DRIFT" and str(market).lower() != "us":
+        confidence = max(10, confidence - 5)
+    # US DOUBLE_BOTTOM in a BEAR regime — falling-knife catches; the bullish
+    # call won only 37% in BOTH train and test windows (n=178).
+    if (
+        geo and geo.get("pattern") == "DOUBLE_BOTTOM"
+        and str(market).lower() == "us" and _regime_pre == "BEAR"
+    ):
+        confidence = max(10, confidence - 5)
 
     # Candlestick alignment: full boost only for volume-backed confirmed
     # signals; setup-only alignment gets half weight (unconfirmed candles
