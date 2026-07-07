@@ -33,6 +33,7 @@ import {
   primaryLensForItem,
   type ExplorationLensId,
 } from "@/lib/explorationTaxonomy";
+import { COMING_SOON_FILTER_GROUPS } from "@/lib/stockTagTaxonomy";
 
 type WatchRow = {
   market: Market;
@@ -374,6 +375,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [hideBlockedOnly, setHideBlockedOnly] = useState(false);
   const [filterEvPositive, setFilterEvPositive] = useState(false);
   const [filterWinRate40, setFilterWinRate40] = useState(false);
+  // 수급/섹터 흐름 (supplySignal 기반)
+  const [supplyFilter, setSupplyFilter] = useState<"inst" | "instForeign" | null>(null);
+  // 리스크 제외
+  const [excludeOverheated, setExcludeOverheated] = useState(false); // 과열 제외
+  const [excludeStopRisk, setExcludeStopRisk] = useState(false); // 손절 위험 제외
   const [nameQuery, setNameQuery] = useState("");
   const [sessionTick, setSessionTick] = useState(0);
   const autoMarket = getDefaultMarketBySession(new Date(Date.now() + sessionTick * 0));
@@ -608,6 +614,34 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         return Number(wr) >= 40;
       });
     }
+    if (supplyFilter) {
+      const wanted = supplyFilter === "instForeign"
+        ? ["STRONG_BUY"]
+        : ["STRONG_BUY", "INST_BUY"];
+      result = result.filter((item) =>
+        wanted.includes(String(item.supplySignal || "").toUpperCase()),
+      );
+    }
+    if (excludeOverheated) {
+      result = result.filter((item) => {
+        const oe = Number(item.overextensionRisk);
+        if (Number.isFinite(oe) && oe >= 60) return false;
+        if (/과열|급등/.test(String(item.surgeLabel || ""))) return false;
+        return true;
+      });
+    }
+    if (excludeStopRisk) {
+      result = result.filter((item) => {
+        const tags = (Array.isArray(item.strategyTags) ? item.strategyTags : []).map((t: string) =>
+          String(t).toUpperCase(),
+        );
+        if (["TRAILING_STOP_ALERT", "DEATH_CROSS", "MID_DEATH_CROSS"].some((t) => tags.includes(t))) {
+          return false;
+        }
+        if (String(item.tradeBlockStatus || "").toUpperCase() === "BLOCK") return false;
+        return true;
+      });
+    }
     if (nameQuery.trim()) {
       const needle = nameQuery.trim().toLowerCase();
       result = result.filter((item) =>
@@ -615,7 +649,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       );
     }
     return result;
-  }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, nameQuery]);
+  }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, nameQuery]);
 
   // 탐색 렌즈 필터: strategyTags 기준으로 렌즈에 해당하는 종목만 우선 노출한다.
   // 밸런스(matchAll)는 전체를 종합해서 보는 기본 렌즈이므로 필터하지 않는다.
@@ -640,6 +674,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const activeFilterCount = [
     minScore > 0, tagFilter != null, hideDataPending, hideBlockedOnly,
     filterEvPositive, filterWinRate40,
+    supplyFilter != null, excludeOverheated, excludeStopRisk,
     nameQuery.trim() !== "", sectorFilter != null, groupFilter != null,
   ].filter(Boolean).length;
 
@@ -1170,6 +1205,37 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 </div>
               </div>
 
+              {/* 빠른 태그 (신호 기반 원탭 필터) */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 태그</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setTagFilter(tagFilter === "VOLUME_BREAKOUT" ? null : "VOLUME_BREAKOUT")}
+                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${tagFilter === "VOLUME_BREAKOUT" ? "border-yellow-500/60 bg-yellow-500/20 text-yellow-200" : "border-yellow-600/40 bg-yellow-600/10 text-yellow-300 hover:bg-yellow-600/20"}`}
+                  >
+                    거래대금 증가
+                  </button>
+                  <button
+                    onClick={() => setSupplyFilter(supplyFilter === "inst" ? null : "inst")}
+                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${supplyFilter === "inst" ? "border-blue-500/60 bg-blue-500/20 text-blue-200" : "border-blue-600/40 bg-blue-600/10 text-blue-300 hover:bg-blue-600/20"}`}
+                  >
+                    초기 수급
+                  </button>
+                  <button
+                    onClick={() => setExcludeOverheated((v) => !v)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${excludeOverheated ? "border-amber-500/60 bg-amber-500/20 text-amber-200" : "border-amber-600/40 bg-amber-600/10 text-amber-300 hover:bg-amber-600/20"}`}
+                  >
+                    과열 제외
+                  </button>
+                  <button
+                    onClick={() => setExcludeStopRisk((v) => !v)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${excludeStopRisk ? "border-red-500/60 bg-red-500/20 text-red-200" : "border-red-600/40 bg-red-600/10 text-red-300 hover:bg-red-600/20"}`}
+                  >
+                    손절 위험 제외
+                  </button>
+                </div>
+              </div>
+
               {/* 이름/티커 검색 */}
               <div>
                 <label htmlFor="stocks-name-query" className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
@@ -1204,7 +1270,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               {/* 전략 태그 */}
               {allTags.length > 0 && (
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">전략 태그</label>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">전략 유형</label>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button onClick={() => setTagFilter(null)}
                       className={`rounded-full px-3 py-1 text-[11px] font-medium ${!tagFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
@@ -1254,6 +1320,76 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 </div>
               </div>
 
+              {/* 수급/섹터 흐름 (supplySignal 기반) */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">수급/섹터 흐름</label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[
+                    { id: null, label: "전체" },
+                    { id: "inst", label: "기관 순매수" },
+                    { id: "instForeign", label: "기관+외국인 동반" },
+                  ].map((opt) => {
+                    const active = supplyFilter === opt.id;
+                    return (
+                      <button
+                        key={opt.label}
+                        onClick={() => setSupplyFilter(opt.id as "inst" | "instForeign" | null)}
+                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${active ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                  {["외국인 유입", "수급 전환 초기", "섹터 후발주 확산", "개인 과열 제외"].map((chip) => (
+                    <span
+                      key={chip}
+                      title="데이터 준비 중"
+                      className="cursor-not-allowed rounded-full border border-dashed border-slate-700 px-3 py-1 text-[11px] font-medium text-slate-600"
+                    >
+                      {chip} · 준비 중
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* 리스크 제외 (overextensionRisk / tradeBlockStatus 기반) */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">리스크 제외</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={excludeOverheated} onChange={(e) => setExcludeOverheated(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                    과열 제외
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={excludeStopRisk} onChange={(e) => setExcludeStopRisk(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                    손절 위험 제외
+                  </label>
+                </div>
+              </div>
+
+              {/* 준비 중 고급 필터 그룹 (백엔드 태그 데이터 대기) */}
+              {COMING_SOON_FILTER_GROUPS.map((group) => (
+                <div key={group.id}>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    {group.label}
+                    <span className="ml-1 rounded bg-slate-800 px-1 py-0.5 text-[9px] font-normal normal-case tracking-normal text-slate-500">준비 중</span>
+                  </label>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {group.chips.map((chip) => (
+                      <span
+                        key={chip}
+                        title={group.note || "데이터 준비 중"}
+                        className="cursor-not-allowed rounded-full border border-dashed border-slate-700 px-3 py-1 text-[11px] font-medium text-slate-600"
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
               {/* 결과 요약 + 전체 초기화 */}
               <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
                 <span className="text-xs text-slate-500">
@@ -1263,6 +1399,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   <button onClick={() => {
                     setMinScore(0); setTagFilter(null); setHideDataPending(false);
                     setHideBlockedOnly(false); setFilterEvPositive(false); setFilterWinRate40(false);
+                    setSupplyFilter(null); setExcludeOverheated(false); setExcludeStopRisk(false);
                     setNameQuery(""); setSectorFilter(null); setGroupFilter(null);
                   }} className="rounded-lg border border-slate-700 px-3 py-1 text-[11px] text-slate-400 hover:bg-slate-800">
                     필터 전체 초기화
