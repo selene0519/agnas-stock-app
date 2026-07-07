@@ -103,6 +103,12 @@ export interface RecommendationItem {
   entryBasis?: string;
   targetBasis?: string;
   stopBasis?: string;
+  // 종목 탐색 고급 필터용 표시 전용 태그 (quant_scanner._display_taxonomy_tags)
+  styleTags?: string[];
+  liquidityTags?: string[];
+  pricePositionTags?: string[];
+  discoveryTags?: string[];
+  freshnessTags?: string[];
   [key: string]: any;
 }
 

@@ -26,6 +26,14 @@ import {
   toNumber,
 } from "@/lib/moneDisplay";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
+import {
+  EXPLORATION_LENSES,
+  getLensDef,
+  itemMatchesLens,
+  primaryLensForItem,
+  type ExplorationLensId,
+} from "@/lib/explorationTaxonomy";
+import { ADVANCED_FILTER_GROUPS, itemMatchesAdvancedTags } from "@/lib/stockTagTaxonomy";
 
 type WatchRow = {
   market: Market;
@@ -360,12 +368,20 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [groupAssigning, setGroupAssigning] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"finalScore" | "expectedValue" | "upsideScore" | "rrScore">("finalScore");
   const [screenerOpen, setScreenerOpen] = useState(false);
+  const [lens, setLens] = useState<ExplorationLensId | null>(null);
   const [minScore, setMinScore] = useState(0);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [hideDataPending, setHideDataPending] = useState(false);
   const [hideBlockedOnly, setHideBlockedOnly] = useState(false);
   const [filterEvPositive, setFilterEvPositive] = useState(false);
   const [filterWinRate40, setFilterWinRate40] = useState(false);
+  // 수급/섹터 흐름 (supplySignal 기반)
+  const [supplyFilter, setSupplyFilter] = useState<"inst" | "instForeign" | null>(null);
+  // 리스크 제외
+  const [excludeOverheated, setExcludeOverheated] = useState(false); // 과열 제외
+  const [excludeStopRisk, setExcludeStopRisk] = useState(false); // 손절 위험 제외
+  // 고급 태그 다중 선택 (종목 스타일/발굴형/가격 반영도/유동성/재료 신선도)
+  const [advTags, setAdvTags] = useState<Set<string>>(new Set());
   const [nameQuery, setNameQuery] = useState("");
   const [sessionTick, setSessionTick] = useState(0);
   const autoMarket = getDefaultMarketBySession(new Date(Date.now() + sessionTick * 0));
@@ -381,6 +397,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     setSectorFilter(null);
     setGroupFilter(null);
     setTagFilter(null);
+    setLens(null);
+    setAdvTags(new Set());
     mone.sectorsList({ market: resolvedMarket }).then((r) => {
       const HIDDEN = new Set(["unknown", "기타", "미분류"]);
       setSectorsList(Array.isArray(r.items)
@@ -563,7 +581,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     };
   }, [resolvedMarket, mode, horizon, watchOnly, watchlist.length, refreshVersion]);
 
-  const sectorFiltered = useMemo(() => {
+  const baseFiltered = useMemo(() => {
     let result = items;
     if (sectorFilter) {
       result = result.filter((item) => {
@@ -599,6 +617,38 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         return Number(wr) >= 40;
       });
     }
+    if (supplyFilter) {
+      const wanted = supplyFilter === "instForeign"
+        ? ["STRONG_BUY"]
+        : ["STRONG_BUY", "INST_BUY"];
+      result = result.filter((item) =>
+        wanted.includes(String(item.supplySignal || "").toUpperCase()),
+      );
+    }
+    if (excludeOverheated) {
+      result = result.filter((item) => {
+        const oe = Number(item.overextensionRisk);
+        if (Number.isFinite(oe) && oe >= 60) return false;
+        if (/과열|급등/.test(String(item.surgeLabel || ""))) return false;
+        return true;
+      });
+    }
+    if (excludeStopRisk) {
+      result = result.filter((item) => {
+        const tags = (Array.isArray(item.strategyTags) ? item.strategyTags : []).map((t: string) =>
+          String(t).toUpperCase(),
+        );
+        if (["TRAILING_STOP_ALERT", "DEATH_CROSS", "MID_DEATH_CROSS"].some((t) => tags.includes(t))) {
+          return false;
+        }
+        if (String(item.tradeBlockStatus || "").toUpperCase() === "BLOCK") return false;
+        return true;
+      });
+    }
+    if (advTags.size > 0) {
+      const advList = Array.from(advTags);
+      result = result.filter((item) => itemMatchesAdvancedTags(item, advList));
+    }
     if (nameQuery.trim()) {
       const needle = nameQuery.trim().toLowerCase();
       result = result.filter((item) =>
@@ -606,7 +656,19 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       );
     }
     return result;
-  }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, nameQuery]);
+  }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery]);
+
+  // 탐색 렌즈 필터: strategyTags 기준으로 렌즈에 해당하는 종목만 우선 노출한다.
+  // 밸런스(matchAll)는 전체를 종합해서 보는 기본 렌즈이므로 필터하지 않는다.
+  // 렌즈 조건에 맞는 종목이 없으면 전체가 0개가 되지 않도록 fallback 한다.
+  const lensResult = useMemo(() => {
+    if (!lens || lens === "balance") return { list: baseFiltered, fallback: false };
+    const matched = baseFiltered.filter((item) => itemMatchesLens(item.strategyTags, lens));
+    if (matched.length > 0) return { list: matched, fallback: false };
+    return { list: baseFiltered, fallback: true };
+  }, [baseFiltered, lens]);
+  const sectorFiltered = lensResult.list;
+  const lensFallbackActive = lensResult.fallback;
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -619,6 +681,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const activeFilterCount = [
     minScore > 0, tagFilter != null, hideDataPending, hideBlockedOnly,
     filterEvPositive, filterWinRate40,
+    supplyFilter != null, excludeOverheated, excludeStopRisk, advTags.size > 0,
     nameQuery.trim() !== "", sectorFilter != null, groupFilter != null,
   ].filter(Boolean).length;
 
@@ -647,7 +710,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }
 
   const visible = useMemo(() => {
-    const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() ? sectorFiltered : items;
+    const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() || (lens && lens !== "balance") ? sectorFiltered : items;
     let result = base;
     if (selected) {
       const selectedMarket = cleanMarket(selected.market || resolvedMarket || "kr");
@@ -676,7 +739,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       ];
     }
     return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
-  }, [items, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy]);
+  }, [items, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy, lens]);
 
   const filterStats = useMemo(() => {
     const normal = sectorFiltered.filter((item) => String(item.dataStatus || "").toUpperCase() === "NORMAL").length;
@@ -1025,6 +1088,46 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           </div>
         )}
 
+        {/* 탐색 렌즈 (기본 필터) */}
+        <div className="mt-4">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">탐색 렌즈</span>
+            {lens && (
+              <button
+                onClick={() => setLens(null)}
+                className="text-[10px] text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+              >
+                해제
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-1.5">
+            {EXPLORATION_LENSES.map((l) => {
+              const active = lens === l.id;
+              return (
+                <button
+                  key={l.id}
+                  onClick={() => setLens(active ? null : l.id)}
+                  aria-pressed={active}
+                  className={`min-h-11 min-w-0 rounded-xl border px-1 py-2 text-xs font-semibold transition-[background-color,border-color,color,transform] active:scale-[0.96] ${active ? `${l.accent} font-bold` : "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700 hover:text-slate-200"}`}
+                >
+                  {l.label}
+                </button>
+              );
+            })}
+          </div>
+          {lens && (
+            <div className="mt-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+              {getLensDef(lens).description}
+              {lensFallbackActive && (
+                <span className="mt-1 block text-amber-400">
+                  현재 이 렌즈 조건에 맞는 종목이 없어 전체 후보를 표시합니다.
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* 스크리너 패널 토글 */}
         <div className="mt-4">
           <button
@@ -1109,6 +1212,37 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 </div>
               </div>
 
+              {/* 빠른 태그 (신호 기반 원탭 필터) */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 태그</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setTagFilter(tagFilter === "VOLUME_BREAKOUT" ? null : "VOLUME_BREAKOUT")}
+                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${tagFilter === "VOLUME_BREAKOUT" ? "border-yellow-500/60 bg-yellow-500/20 text-yellow-200" : "border-yellow-600/40 bg-yellow-600/10 text-yellow-300 hover:bg-yellow-600/20"}`}
+                  >
+                    거래대금 증가
+                  </button>
+                  <button
+                    onClick={() => setSupplyFilter(supplyFilter === "inst" ? null : "inst")}
+                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${supplyFilter === "inst" ? "border-blue-500/60 bg-blue-500/20 text-blue-200" : "border-blue-600/40 bg-blue-600/10 text-blue-300 hover:bg-blue-600/20"}`}
+                  >
+                    초기 수급
+                  </button>
+                  <button
+                    onClick={() => setExcludeOverheated((v) => !v)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${excludeOverheated ? "border-amber-500/60 bg-amber-500/20 text-amber-200" : "border-amber-600/40 bg-amber-600/10 text-amber-300 hover:bg-amber-600/20"}`}
+                  >
+                    과열 제외
+                  </button>
+                  <button
+                    onClick={() => setExcludeStopRisk((v) => !v)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${excludeStopRisk ? "border-red-500/60 bg-red-500/20 text-red-200" : "border-red-600/40 bg-red-600/10 text-red-300 hover:bg-red-600/20"}`}
+                  >
+                    손절 위험 제외
+                  </button>
+                </div>
+              </div>
+
               {/* 이름/티커 검색 */}
               <div>
                 <label htmlFor="stocks-name-query" className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
@@ -1143,7 +1277,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               {/* 전략 태그 */}
               {allTags.length > 0 && (
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">전략 태그</label>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">전략 유형</label>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button onClick={() => setTagFilter(null)}
                       className={`rounded-full px-3 py-1 text-[11px] font-medium ${!tagFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
@@ -1193,6 +1327,93 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 </div>
               </div>
 
+              {/* 수급/섹터 흐름 (supplySignal 기반) */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">수급/섹터 흐름</label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[
+                    { id: null, label: "전체" },
+                    { id: "inst", label: "기관 순매수" },
+                    { id: "instForeign", label: "기관+외국인 동반" },
+                  ].map((opt) => {
+                    const active = supplyFilter === opt.id;
+                    return (
+                      <button
+                        key={opt.label}
+                        onClick={() => setSupplyFilter(opt.id as "inst" | "instForeign" | null)}
+                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${active ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                  {["외국인 유입", "수급 전환 초기", "섹터 후발주 확산", "개인 과열 제외"].map((chip) => (
+                    <span
+                      key={chip}
+                      title="데이터 준비 중"
+                      className="cursor-not-allowed rounded-full border border-dashed border-slate-700 px-3 py-1 text-[11px] font-medium text-slate-600"
+                    >
+                      {chip} · 준비 중
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* 리스크 제외 (overextensionRisk / tradeBlockStatus 기반) */}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">리스크 제외</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={excludeOverheated} onChange={(e) => setExcludeOverheated(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                    과열 제외
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={excludeStopRisk} onChange={(e) => setExcludeStopRisk(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                    손절 위험 제외
+                  </label>
+                </div>
+              </div>
+
+              {/* 고급 태그 필터 그룹 (종목 스타일/발굴형/가격 반영도/유동성/재료 신선도) */}
+              {ADVANCED_FILTER_GROUPS.map((group) => (
+                <div key={group.id}>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{group.label}</label>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {group.activeChips.map((chip) => {
+                      const active = advTags.has(chip);
+                      return (
+                        <button
+                          key={chip}
+                          aria-pressed={active}
+                          onClick={() =>
+                            setAdvTags((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(chip)) next.delete(chip);
+                              else next.add(chip);
+                              return next;
+                            })
+                          }
+                          className={`rounded-full px-3 py-1 text-[11px] font-medium ${active ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+                        >
+                          {chip}
+                        </button>
+                      );
+                    })}
+                    {group.comingSoonChips.map((chip) => (
+                      <span
+                        key={chip}
+                        title="데이터 준비 중"
+                        className="cursor-not-allowed rounded-full border border-dashed border-slate-700 px-3 py-1 text-[11px] font-medium text-slate-600"
+                      >
+                        {chip} · 준비 중
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
               {/* 결과 요약 + 전체 초기화 */}
               <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
                 <span className="text-xs text-slate-500">
@@ -1202,6 +1423,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   <button onClick={() => {
                     setMinScore(0); setTagFilter(null); setHideDataPending(false);
                     setHideBlockedOnly(false); setFilterEvPositive(false); setFilterWinRate40(false);
+                    setSupplyFilter(null); setExcludeOverheated(false); setExcludeStopRisk(false);
+                    setAdvTags(new Set());
                     setNameQuery(""); setSectorFilter(null); setGroupFilter(null);
                   }} className="rounded-lg border border-slate-700 px-3 py-1 text-[11px] text-slate-400 hover:bg-slate-800">
                     필터 전체 초기화
@@ -1692,6 +1915,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             addVisibleTag("supply_strong", "기관+외국인", "border-blue-400/40 bg-blue-400/10 text-blue-300");
           else if (item.supplySignal === "INST_BUY")
             addVisibleTag("supply_inst", "기관 순매수", "border-sky-500/30 bg-sky-500/10 text-sky-300");
+          // 발굴형·스타일 태그 (표시 전용) — 카드 공간이 남으면 각 1개씩
+          if (Array.isArray(item.discoveryTags) && item.discoveryTags[0])
+            addVisibleTag(`disc_${item.discoveryTags[0]}`, item.discoveryTags[0], "border-sky-500/30 bg-sky-500/10 text-sky-300");
+          if (Array.isArray(item.styleTags) && item.styleTags[0])
+            addVisibleTag(`style_${item.styleTags[0]}`, item.styleTags[0], "border-violet-500/30 bg-violet-500/10 text-violet-300");
+
+          // 탐색 렌즈 배지: strategyTags 기준 대표 렌즈 1개 (없으면 미표시)
+          const cardLens = primaryLensForItem(item.strategyTags);
 
           return (
             <div
@@ -1709,6 +1940,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
                     )}
                     {watched && <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">관심</span>}
+                    {cardLens && <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${cardLens.accent}`}>{cardLens.label}</span>}
                     <SentimentBadge
                       symbol={item.symbol}
                       market={String(item.market || resolvedMarket).toLowerCase() === "us" ? "us" : "kr"}
