@@ -1279,6 +1279,40 @@ def _load_walkforward_metrics(market: str) -> dict[str, dict[str, Any]]:
     return result
 
 
+# EV(기댓값 %) — quant_scanner.analyze()의 정식 공식과 동일하게 유지한다.
+# 과거에는 로컬 predictions.csv가 EV를 실어 왔으나 그 생성이 멈춘 뒤,
+# 클라우드 추천(entry/stop/target)만 있고 EV 필드가 비어 화면에 "EV +0.0%"로
+# 표시되는 문제가 있었다. entry/stop/target/score가 있으면 여기서 직접 계산한다.
+_EV_HORIZON_BASE_WIN = {"short": 0.485, "swing": 0.505, "mid": 0.515}
+_EV_HORIZON_SCALE = {"short": 0.12, "swing": 0.14, "mid": 0.15}
+
+
+def _expected_value_pct(entry: Any, stop: Any, target: Any, score: Any, horizon: str, market: str) -> float | None:
+    """quant_scanner와 동일한 승률 보정·거래비용 모델로 EV(%)를 산출한다.
+
+    target > entry 이고 위험폭이 양수일 때만 값을 반환한다(그 외에는 None).
+    거래비용은 평균 유동성 기준(quant_scanner의 _vr 0.8~1.5 구간)을 사용한다.
+    """
+    e = _num(entry)
+    s = _num(stop)
+    t = _num(target)
+    sc = _num(score)
+    if e is None or s is None or t is None or sc is None:
+        return None
+    if not (e > 0 and s > 0 and t > e):
+        return None
+    reward_pct = (t - e) / e * 100.0
+    risk_pct = abs((e - s) / e * 100.0)
+    if risk_pct <= 0:
+        return None
+    base = _EV_HORIZON_BASE_WIN.get(horizon, 0.505)
+    scale = _EV_HORIZON_SCALE.get(horizon, 0.14)
+    prob = max(0.35, min(0.65, base + ((sc - 50.0) / 50.0) * scale))
+    trade_cost = 0.31 if market == "kr" else 0.15  # 세금+수수료+평균 슬리피지
+    ev_gross = prob * reward_pct - (1.0 - prob) * risk_pct
+    return round(ev_gross - trade_cost, 2)
+
+
 def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: str = "swing", limit: int | None = None) -> dict[str, Any]:
     market = "us" if str(market).lower() == "us" else "kr"
     mode = mode if mode in MODES else "balanced"
@@ -1630,6 +1664,28 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         except Exception:
             row["patternStrategy"] = _PS_FALLBACK
         # ───────────────────────────────────────────────────────────────────
+        # ── EV(기댓값) 보강 ──────────────────────────────────────────────────
+        # 죽은 predictions.csv 대신 신선한 추천 entry/stop/target으로 EV를 직접
+        # 계산해 "EV +0.0%" 공백을 없앤다. 상위에서 이미 EV가 채워졌으면 유지한다.
+        if _num(row.get("expectedValue")) is None and _num(normalized.get("expectedValue")) is None:
+            _ev = _expected_value_pct(
+                normalized.get("entry"), normalized.get("stop"), normalized.get("target"),
+                rank_score, horizon, market,
+            )
+            if _ev is not None:
+                row["expectedValue"] = _ev
+                row["evNegative"] = _ev < 0
+                row["expectedValueText"] = f"{_ev:+.1f}%"
+        # 프론트 상세 모달은 finalScore·rrActual을 읽는데 여기서는 finalRankScore·rr만
+        # 채워 "종합 점수 0점 / RR —"으로 표시됐다. 값이 비어 있을 때만 별칭을 채운다.
+        if _num(row.get("finalScore")) is None:
+            _fs = _num(row.get("finalRankScore"))
+            if _fs is not None:
+                row["finalScore"] = _fs
+        if _num(row.get("rrActual")) is None:
+            _rr = _num(row.get("rr")) or _num(normalized.get("rr"))
+            if _rr is not None:
+                row["rrActual"] = _rr
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
     selected = rows[:requested_limit]
