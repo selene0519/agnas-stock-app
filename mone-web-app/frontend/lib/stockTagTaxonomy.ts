@@ -36,16 +36,12 @@ export const ADVANCED_FILTER_GROUPS: AdvancedFilterGroup[] = [
       "재무 안정",
       "현금흐름 우수",
       "퀄리티 우량",
-    ],
-    comingSoonChips: [
-      "대형 안정",
-      "중형 성장",
-      "소형 성장",
       "고배당",
       "배당 안정",
-      "섹터 대표주",
-      "테마 주도주",
     ],
+    // 대형/중형/소형: 백엔드 코드는 준비됨. market_cap 컬럼이 다음 재무
+    // 재수집(fetch_kr_financial_data.py) 후 채워지면 activeChips 로 옮긴다.
+    comingSoonChips: ["대형 안정", "중형 성장", "소형 성장", "섹터 대표주", "테마 주도주"],
   },
   {
     id: "discovery",
@@ -58,15 +54,23 @@ export const ADVANCED_FILTER_GROUPS: AdvancedFilterGroup[] = [
       "박스권 돌파 직전",
       "아직 덜 오름",
       "변화 감지",
+      "소외 성장",
+      "섹터 후발주",
     ],
-    comingSoonChips: ["소외 성장", "섹터 후발주"],
+    comingSoonChips: [],
   },
   {
     id: "pricePosition",
     label: "가격 반영도",
     field: "pricePositionTags",
-    activeChips: ["아직 덜 오름", "과열 전 구간", "박스권 상단 접근"],
-    comingSoonChips: ["대표주 대비 후행", "섹터 대비 후행", "최근 급등 제외"],
+    activeChips: [
+      "아직 덜 오름",
+      "과열 전 구간",
+      "박스권 상단 접근",
+      "대표주 대비 후행",
+      "섹터 대비 후행",
+    ],
+    comingSoonChips: ["최근 급등 제외"],
   },
   {
     id: "liquidity",

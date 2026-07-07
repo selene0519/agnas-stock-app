@@ -181,6 +181,8 @@ def fetch_financial_data() -> None:
             earn_g = _safe(info, "earningsGrowth")
             eps = _safe(info, "trailingEps")
             div = _safe(info, "dividendYield", mult=100.0)
+            mkt_cap = _safe(info, "marketCap")            # 시가총액 (원)
+            shares = _safe(info, "sharesOutstanding")     # 상장주식수
 
             new_vals = {
                 "per": per,
@@ -188,6 +190,8 @@ def fetch_financial_data() -> None:
                 "eps": eps,
                 "roe": roe,
                 "div": div,
+                "market_cap": mkt_cap,
+                "shares_outstanding": shares,
                 "debt_ratio": debt,
                 "operating_margin": round(op_m * 100, 2) if op_m else None,
                 "net_margin": round(net_m * 100, 2) if net_m else None,

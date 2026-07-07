@@ -1578,6 +1578,7 @@ def _display_taxonomy_tags(
     fin: dict[str, Any],
     supply_signal: str | None,
     market: str,
+    sector_info: dict[str, Any] | None = None,
 ) -> dict[str, list[str]]:
     """종목 탐색 화면 고급 필터용 표시 전용(display-only) 태그 묶음.
 
@@ -1621,8 +1622,20 @@ def _display_taxonomy_tags(
     op_profit = _f(fin.get("operatingProfit"))
     if op_margin is None and revenue and revenue != 0 and op_profit is not None:
         op_margin = op_profit / revenue * 100.0
+    div_yield = _f(fin.get("div"))
+    market_cap = _f(fin.get("marketCap"))
 
     supply = str(supply_signal or "").upper()
+
+    # 성장 신호 (스타일·발굴 태그 공통 사용)
+    is_growth = (rev_growth is not None and rev_growth >= 15) or (eps_growth is not None and eps_growth >= 15)
+
+    # 섹터 상대강도 정보 (candidate universe + OHLCV 기반, 없으면 None)
+    sec = sector_info or {}
+    stock_ret = _f(sec.get("stockReturn"))
+    sector_avg = _f(sec.get("sectorAvg"))
+    sector_leader = _f(sec.get("sectorLeader"))
+    sector_size = _f(sec.get("sectorSize"))
 
     # ── 종목 스타일 (재무 기반) ──────────────────────────────
     style: list[str] = []
@@ -1644,6 +1657,22 @@ def _display_taxonomy_tags(
         style.append("현금흐름 우수")
     if roe is not None and roe >= 12 and debt is not None and 0 <= debt <= 120:
         style.append("퀄리티 우량")
+    # 배당 (div = 배당수익률 %)
+    if div_yield is not None and div_yield >= 3.0:
+        style.append("고배당")
+    if div_yield is not None and 1.0 <= div_yield < 3.0 and (debt is None or debt <= 150):
+        style.append("배당 안정")
+    # 시가총액 구간 (KR: 원, US: 달러) — 대형/중형/소형
+    if market_cap is not None and market_cap > 0:
+        big, mid = (5.0e12, 5.0e11) if mkt == "kr" else (1.0e10, 2.0e9)
+        if market_cap >= big:
+            style.append("대형 안정")
+        elif market_cap >= mid:
+            if is_growth:
+                style.append("중형 성장")
+        else:
+            if is_growth:
+                style.append("소형 성장")
 
     # ── 유동성 / 탈출 가능성 ────────────────────────────────
     liquidity: list[str] = []
@@ -1667,6 +1696,19 @@ def _display_taxonomy_tags(
         price_pos.append("과열 전 구간")
     if d52 is not None and -5 <= d52 <= 0:
         price_pos.append("박스권 상단 접근")
+    # 섹터 상대강도 기반 (섹터 평균/대표주 대비 위치)
+    if (
+        sector_size is not None and sector_size >= 3
+        and stock_ret is not None and sector_avg is not None
+        and stock_ret <= sector_avg - 3
+    ):
+        price_pos.append("섹터 대비 후행")
+    if (
+        sector_size is not None and sector_size >= 3
+        and stock_ret is not None and sector_leader is not None
+        and stock_ret <= sector_leader - 10
+    ):
+        price_pos.append("대표주 대비 후행")
 
     # ── 발굴형 태그 ────────────────────────────────────────
     discovery: list[str] = []
@@ -1684,6 +1726,19 @@ def _display_taxonomy_tags(
         discovery.append("변화 감지")
     if d52 is not None and d52 <= -25 and "아직 덜 오름" not in discovery:
         discovery.append("아직 덜 오름")
+    # 섹터 후발주: 섹터는 강한데(평균 상승) 이 종목은 아직 덜 움직임
+    if (
+        sector_size is not None and sector_size >= 3
+        and sector_avg is not None and sector_avg >= 3
+        and stock_ret is not None and stock_ret <= sector_avg - 3
+    ):
+        discovery.append("섹터 후발주")
+    # 소외 성장: 섹터 대비 소외됐지만 성장성/수익성은 양호
+    if (
+        stock_ret is not None and sector_avg is not None and stock_ret <= sector_avg - 3
+        and (is_growth or (roe is not None and roe >= 12))
+    ):
+        discovery.append("소외 성장")
 
     def _dedup(seq: list[str]) -> list[str]:
         seen: list[str] = []
@@ -2077,6 +2132,58 @@ def _load_dart_financials(repo_root: Path, market: str) -> dict[str, dict]:
 @lru_cache(maxsize=4)
 def _dart_map_cached(repo_root_str: str, market: str) -> dict[str, dict]:
     return _load_dart_financials(Path(repo_root_str), market)
+
+
+@lru_cache(maxsize=4)
+def _sector_strength_map(repo_root_str: str, market: str) -> dict[str, dict]:
+    """candidate_universe_{market}.csv + OHLCV 로 섹터 상대강도 맵을 만든다.
+
+    표시 전용(섹터 후발주/소외 성장/대표주·섹터 대비 후행) 태그 산출용.
+    {symbol: {sector, stockReturn(20d %), sectorAvg, sectorLeader, sectorSize}}
+    finalScore/정렬/EV 에는 사용하지 않는다.
+    """
+    repo = Path(repo_root_str)
+    mkt = "us" if str(market or "").lower() == "us" else "kr"
+    uni = repo / f"candidate_universe_{mkt}.csv"
+    if not uni.exists():
+        return {}
+    from collections import defaultdict
+
+    recs: list[tuple[str, str, float]] = []
+    for row in _read_csv(uni):
+        sym = str(row.get("symbol", "")).strip()
+        sector = str(row.get("sector_proxy") or row.get("sector") or "").strip()
+        if not sym or not sector:
+            continue
+        try:
+            closes = _series(load_ohlcv(repo, mkt, sym.upper()), "close")
+        except Exception:
+            continue
+        ret20 = _momentum(closes, 20)
+        if ret20 is None:
+            continue
+        recs.append((sym, sector, ret20))
+
+    by_sector: dict[str, list[tuple[str, float]]] = defaultdict(list)
+    for sym, sector, ret in recs:
+        by_sector[sector].append((sym, ret))
+
+    result: dict[str, dict] = {}
+    for sector, lst in by_sector.items():
+        rets = [r for _, r in lst]
+        avg = sum(rets) / len(rets)
+        leader = max(rets)
+        for sym, ret in lst:
+            info = {
+                "sector": sector,
+                "stockReturn": ret,
+                "sectorAvg": avg,
+                "sectorLeader": leader,
+                "sectorSize": len(lst),
+            }
+            result[sym] = info
+            result[sym.lstrip("0")] = info
+    return result
 
 
 def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizon: str) -> dict[str, Any]:  # noqa: C901
@@ -2494,11 +2601,33 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
 
     # ── 종목 탐색 화면 고급 필터용 표시 전용 태그 (finalScore/정렬/EV 무관) ──
     try:
+        # 재무값 병합: financial_values(camelCase)에 없는 배당·시총·성장률을
+        # DART CSV row(snake_case)에서 보강한다. (표시 전용)
+        _fin_merged = dict(financial_values)
+        if isinstance(dart_row, dict):
+            for _dst, _src in (
+                ("marketCap", "market_cap"), ("div", "div"),
+                ("revenueGrowth", "revenue_growth"), ("epsGrowth", "eps_growth"),
+                ("operatingMargin", "operating_margin"), ("netMargin", "net_margin"),
+            ):
+                if _fin_merged.get(_dst) in (None, 0, 0.0):
+                    _v = dart_row.get(_src)
+                    if _v is not None and str(_v).strip() not in ("", "None", "nan"):
+                        try:
+                            _fin_merged[_dst] = float(str(_v).replace(",", ""))
+                        except (TypeError, ValueError):
+                            pass
+        try:
+            _sector_info = _sector_strength_map(str(repo_root), market).get(symbol) \
+                or _sector_strength_map(str(repo_root), market).get(symbol.lstrip("0"))
+        except Exception:
+            _sector_info = None
         _display_tags = _display_taxonomy_tags(
             out.get("indicators", {}) or {},
-            financial_values,
+            _fin_merged,
             out.get("supplySignal"),
             market,
+            _sector_info,
         )
         out["styleTags"] = _display_tags["styleTags"]
         out["liquidityTags"] = _display_tags["liquidityTags"]
