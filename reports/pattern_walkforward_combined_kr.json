@@ -11,25 +11,25 @@
   },
   "strategySummary": {
     "balanced|short": {
-      "sampleCount": 4656,
-      "winRate": 0.48,
-      "avgReturn": 0.0017,
+      "sampleCount": 3763,
+      "winRate": 0.486,
+      "avgReturn": 0.0018,
       "medianReturn": 0.0,
-      "stopRate": 0.205,
-      "targetHitRate": 0.108,
+      "stopRate": 0.187,
+      "targetHitRate": 0.094,
       "stopThreshold": -0.02,
       "targetThreshold": 0.04,
       "byPattern": {
         "relative_strength": {
-          "sampleCount": 2438,
-          "winRate": 0.471,
-          "avgReturn": 0.001,
-          "medianReturn": -0.0009
+          "sampleCount": 1577,
+          "winRate": 0.479,
+          "avgReturn": 0.0008,
+          "medianReturn": 0.0
         },
         "resistance_breakout": {
-          "sampleCount": 153,
-          "winRate": 0.477,
-          "avgReturn": 0.0021,
+          "sampleCount": 121,
+          "winRate": 0.488,
+          "avgReturn": 0.0029,
           "medianReturn": 0.0
         },
         "trend_up_pullback": {
@@ -47,26 +47,26 @@
       }
     },
     "balanced|swing": {
-      "sampleCount": 4629,
-      "winRate": 0.514,
-      "avgReturn": 0.0117,
+      "sampleCount": 3741,
+      "winRate": 0.515,
+      "avgReturn": 0.0116,
       "medianReturn": 0.0029,
-      "stopRate": 0.35,
-      "targetHitRate": 0.282,
+      "stopRate": 0.338,
+      "targetHitRate": 0.271,
       "stopThreshold": -0.02,
       "targetThreshold": 0.04,
       "byPattern": {
         "relative_strength": {
-          "sampleCount": 2429,
-          "winRate": 0.511,
-          "avgReturn": 0.0127,
+          "sampleCount": 1573,
+          "winRate": 0.514,
+          "avgReturn": 0.0133,
           "medianReturn": 0.003
         },
         "resistance_breakout": {
-          "sampleCount": 152,
-          "winRate": 0.526,
-          "avgReturn": 0.0105,
-          "medianReturn": 0.0053
+          "sampleCount": 120,
+          "winRate": 0.508,
+          "avgReturn": 0.0039,
+          "medianReturn": 0.0028
         },
         "trend_up_pullback": {
           "sampleCount": 774,
@@ -83,26 +83,26 @@
       }
     },
     "balanced|mid": {
-      "sampleCount": 4551,
-      "winRate": 0.555,
-      "avgReturn": 0.0491,
-      "medianReturn": 0.0196,
-      "stopRate": 0.374,
-      "targetHitRate": 0.438,
+      "sampleCount": 3684,
+      "winRate": 0.567,
+      "avgReturn": 0.0497,
+      "medianReturn": 0.0214,
+      "stopRate": 0.357,
+      "targetHitRate": 0.441,
       "stopThreshold": -0.02,
       "targetThreshold": 0.04,
       "byPattern": {
         "relative_strength": {
-          "sampleCount": 2389,
-          "winRate": 0.545,
-          "avgReturn": 0.0486,
-          "medianReturn": 0.0165
+          "sampleCount": 1552,
+          "winRate": 0.566,
+          "avgReturn": 0.0499,
+          "medianReturn": 0.0204
         },
         "resistance_breakout": {
-          "sampleCount": 150,
-          "winRate": 0.5,
-          "avgReturn": 0.0287,
-          "medianReturn": 0.0
+          "sampleCount": 120,
+          "winRate": 0.492,
+          "avgReturn": 0.0221,
+          "medianReturn": -0.0016
         },
         "trend_up_pullback": {
           "sampleCount": 758,
@@ -119,24 +119,24 @@
       }
     },
     "aggressive|short": {
-      "sampleCount": 6673,
-      "winRate": 0.475,
-      "avgReturn": 0.0014,
+      "sampleCount": 5682,
+      "winRate": 0.477,
+      "avgReturn": 0.0016,
       "medianReturn": 0.0,
-      "stopRate": 0.133,
-      "targetHitRate": 0.08,
+      "stopRate": 0.121,
+      "targetHitRate": 0.076,
       "stopThreshold": -0.03,
       "targetThreshold": 0.05,
       "byPattern": {
         "relative_strength": {
-          "sampleCount": 3429,
-          "winRate": 0.469,
-          "avgReturn": 0.0007,
-          "medianReturn": -0.0009
+          "sampleCount": 2647,
+          "winRate": 0.47,
+          "avgReturn": 0.0009,
+          "medianReturn": -0.0007
         },
         "resistance_breakout": {
-          "sampleCount": 153,
-          "winRate": 0.477,
+          "sampleCount": 152,
+          "winRate": 0.474,
           "avgReturn": 0.0021,
           "medianReturn": 0.0
         },
@@ -153,28 +153,22 @@
           "medianReturn": -0.0003
         },
         "range_bottom_rebound": {
-          "sampleCount": 717,
-          "winRate": 0.466,
-          "avgReturn": 0.0028,
+          "sampleCount": 707,
+          "winRate": 0.464,
+          "avgReturn": 0.002,
           "medianReturn": -0.001
         },
         "zombie_breakout": {
-          "sampleCount": 67,
-          "winRate": 0.478,
-          "avgReturn": -0.0009,
-          "medianReturn": 0.0
-        },
-        "overheated_chase_risk": {
-          "sampleCount": 126,
-          "winRate": 0.444,
-          "avgReturn": 0.0008,
-          "medianReturn": -0.0043
+          "sampleCount": 21,
+          "winRate": 0.571,
+          "avgReturn": 0.0035,
+          "medianReturn": 0.004
         },
         "overheated_pullback_risk": {
-          "sampleCount": 60,
-          "winRate": 0.483,
-          "avgReturn": -0.0062,
-          "medianReturn": -0.0013
+          "sampleCount": 31,
+          "winRate": 0.452,
+          "avgReturn": -0.0067,
+          "medianReturn": -0.0141
         },
         "downtrend_bounce_trap": {
           "sampleCount": 55,
@@ -183,34 +177,34 @@
           "medianReturn": -0.0024
         },
         "structure_breakdown_risk": {
-          "sampleCount": 1,
-          "winRate": 0.0,
-          "avgReturn": -0.038,
-          "medianReturn": -0.038
+          "sampleCount": 4,
+          "winRate": 0.5,
+          "avgReturn": -0.0037,
+          "medianReturn": -0.002
         }
       }
     },
     "aggressive|swing": {
-      "sampleCount": 6633,
-      "winRate": 0.506,
-      "avgReturn": 0.0099,
-      "medianReturn": 0.0016,
-      "stopRate": 0.31,
-      "targetHitRate": 0.239,
+      "sampleCount": 5645,
+      "winRate": 0.504,
+      "avgReturn": 0.0095,
+      "medianReturn": 0.0013,
+      "stopRate": 0.303,
+      "targetHitRate": 0.23,
       "stopThreshold": -0.03,
       "targetThreshold": 0.05,
       "byPattern": {
         "relative_strength": {
-          "sampleCount": 3420,
+          "sampleCount": 2641,
           "winRate": 0.506,
-          "avgReturn": 0.0115,
-          "medianReturn": 0.0017
+          "avgReturn": 0.012,
+          "medianReturn": 0.0014
         },
         "resistance_breakout": {
-          "sampleCount": 152,
-          "winRate": 0.526,
-          "avgReturn": 0.0105,
-          "medianReturn": 0.0053
+          "sampleCount": 151,
+          "winRate": 0.523,
+          "avgReturn": 0.0106,
+          "medianReturn": 0.0065
         },
         "trend_up_pullback": {
           "sampleCount": 774,
@@ -225,28 +219,22 @@
           "medianReturn": 0.003
         },
         "range_bottom_rebound": {
-          "sampleCount": 708,
-          "winRate": 0.453,
-          "avgReturn": -0.0024,
-          "medianReturn": -0.0077
+          "sampleCount": 698,
+          "winRate": 0.451,
+          "avgReturn": -0.004,
+          "medianReturn": -0.0079
         },
         "zombie_breakout": {
-          "sampleCount": 67,
-          "winRate": 0.567,
-          "avgReturn": 0.0203,
-          "medianReturn": 0.0125
-        },
-        "overheated_chase_risk": {
-          "sampleCount": 126,
-          "winRate": 0.532,
-          "avgReturn": 0.0165,
-          "medianReturn": 0.0073
+          "sampleCount": 21,
+          "winRate": 0.667,
+          "avgReturn": 0.0154,
+          "medianReturn": 0.0119
         },
         "overheated_pullback_risk": {
-          "sampleCount": 60,
-          "winRate": 0.533,
-          "avgReturn": 0.0099,
-          "medianReturn": 0.0116
+          "sampleCount": 31,
+          "winRate": 0.484,
+          "avgReturn": -0.0046,
+          "medianReturn": -0.0012
         },
         "downtrend_bounce_trap": {
           "sampleCount": 51,
@@ -255,34 +243,34 @@
           "medianReturn": 0.0031
         },
         "structure_breakdown_risk": {
-          "sampleCount": 1,
-          "winRate": 0.0,
-          "avgReturn": -0.0182,
-          "medianReturn": -0.0182
+          "sampleCount": 4,
+          "winRate": 0.5,
+          "avgReturn": 0.0025,
+          "medianReturn": 0.0065
         }
       }
     },
     "aggressive|mid": {
-      "sampleCount": 6487,
-      "winRate": 0.544,
-      "avgReturn": 0.0474,
-      "medianReturn": 0.016,
-      "stopRate": 0.355,
-      "targetHitRate": 0.407,
+      "sampleCount": 5521,
+      "winRate": 0.547,
+      "avgReturn": 0.0473,
+      "medianReturn": 0.0162,
+      "stopRate": 0.347,
+      "targetHitRate": 0.405,
       "stopThreshold": -0.03,
       "targetThreshold": 0.05,
       "byPattern": {
         "relative_strength": {
-          "sampleCount": 3369,
-          "winRate": 0.54,
-          "avgReturn": 0.0475,
-          "medianReturn": 0.0152
+          "sampleCount": 2608,
+          "winRate": 0.549,
+          "avgReturn": 0.0497,
+          "medianReturn": 0.0169
         },
         "resistance_breakout": {
-          "sampleCount": 150,
-          "winRate": 0.5,
-          "avgReturn": 0.0287,
-          "medianReturn": 0.0
+          "sampleCount": 149,
+          "winRate": 0.497,
+          "avgReturn": 0.0288,
+          "medianReturn": -0.0016
         },
         "trend_up_pullback": {
           "sampleCount": 758,
@@ -297,28 +285,22 @@
           "medianReturn": 0.0209
         },
         "range_bottom_rebound": {
-          "sampleCount": 661,
-          "winRate": 0.472,
-          "avgReturn": 0.0313,
-          "medianReturn": -0.011
+          "sampleCount": 652,
+          "winRate": 0.468,
+          "avgReturn": 0.0282,
+          "medianReturn": -0.0135
         },
         "zombie_breakout": {
-          "sampleCount": 66,
-          "winRate": 0.636,
-          "avgReturn": 0.0807,
-          "medianReturn": 0.0486
-        },
-        "overheated_chase_risk": {
-          "sampleCount": 125,
-          "winRate": 0.568,
-          "avgReturn": 0.0638,
-          "medianReturn": 0.0288
+          "sampleCount": 21,
+          "winRate": 0.619,
+          "avgReturn": 0.0138,
+          "medianReturn": 0.0108
         },
         "overheated_pullback_risk": {
-          "sampleCount": 59,
-          "winRate": 0.542,
-          "avgReturn": 0.0182,
-          "medianReturn": 0.0199
+          "sampleCount": 31,
+          "winRate": 0.452,
+          "avgReturn": 0.0107,
+          "medianReturn": -0.0088
         },
         "downtrend_bounce_trap": {
           "sampleCount": 44,
@@ -327,118 +309,118 @@
           "medianReturn": 0.0756
         },
         "structure_breakdown_risk": {
-          "sampleCount": 1,
-          "winRate": 0.0,
-          "avgReturn": -0.038,
-          "medianReturn": -0.038
+          "sampleCount": 4,
+          "winRate": 0.5,
+          "avgReturn": 0.019,
+          "medianReturn": 0.0176
         }
       }
     },
     "conservative|short": {
-      "sampleCount": 2560,
-      "winRate": 0.485,
-      "avgReturn": 0.0023,
+      "sampleCount": 2430,
+      "winRate": 0.483,
+      "avgReturn": 0.0021,
       "medianReturn": 0.0,
-      "stopRate": 0.242,
-      "targetHitRate": 0.146,
+      "stopRate": 0.233,
+      "targetHitRate": 0.136,
       "stopThreshold": -0.015,
       "targetThreshold": 0.03,
       "byPattern": {
         "resistance_breakout": {
-          "sampleCount": 147,
-          "winRate": 0.483,
-          "avgReturn": 0.0025,
-          "medianReturn": 0.0
-        },
-        "relative_strength": {
-          "sampleCount": 348,
-          "winRate": 0.451,
-          "avgReturn": 0.0007,
-          "medianReturn": -0.0018
+          "sampleCount": 54,
+          "winRate": 0.426,
+          "avgReturn": 0.001,
+          "medianReturn": -0.0016
         },
         "trend_up_pullback": {
-          "sampleCount": 779,
-          "winRate": 0.534,
+          "sampleCount": 777,
+          "winRate": 0.533,
           "avgReturn": 0.004,
-          "medianReturn": 0.002
+          "medianReturn": 0.0019
         },
         "horizontal_support_rebound": {
-          "sampleCount": 1286,
+          "sampleCount": 1285,
           "winRate": 0.465,
           "avgReturn": 0.0017,
-          "medianReturn": -0.0003
+          "medianReturn": -0.0005
+        },
+        "relative_strength": {
+          "sampleCount": 314,
+          "winRate": 0.446,
+          "avgReturn": -0.0004,
+          "medianReturn": -0.0018
         }
       }
     },
     "conservative|swing": {
-      "sampleCount": 2541,
-      "winRate": 0.508,
-      "avgReturn": 0.0099,
-      "medianReturn": 0.0017,
-      "stopRate": 0.379,
-      "targetHitRate": 0.309,
+      "sampleCount": 2413,
+      "winRate": 0.511,
+      "avgReturn": 0.0105,
+      "medianReturn": 0.0022,
+      "stopRate": 0.368,
+      "targetHitRate": 0.303,
       "stopThreshold": -0.015,
       "targetThreshold": 0.03,
       "byPattern": {
         "resistance_breakout": {
-          "sampleCount": 146,
-          "winRate": 0.507,
-          "avgReturn": 0.0096,
-          "medianReturn": 0.0028
-        },
-        "relative_strength": {
-          "sampleCount": 347,
-          "winRate": 0.455,
-          "avgReturn": 0.0054,
-          "medianReturn": -0.0037
+          "sampleCount": 54,
+          "winRate": 0.481,
+          "avgReturn": 0.0081,
+          "medianReturn": -0.0018
         },
         "trend_up_pullback": {
-          "sampleCount": 774,
-          "winRate": 0.51,
-          "avgReturn": 0.0143,
-          "medianReturn": 0.0026
+          "sampleCount": 772,
+          "winRate": 0.509,
+          "avgReturn": 0.0142,
+          "medianReturn": 0.0025
         },
         "horizontal_support_rebound": {
-          "sampleCount": 1274,
+          "sampleCount": 1273,
           "winRate": 0.52,
           "avgReturn": 0.0085,
-          "medianReturn": 0.003
+          "medianReturn": 0.0029
+        },
+        "relative_strength": {
+          "sampleCount": 314,
+          "winRate": 0.487,
+          "avgReturn": 0.01,
+          "medianReturn": 0.0
         }
       }
     },
     "conservative|mid": {
-      "sampleCount": 2498,
-      "winRate": 0.559,
-      "avgReturn": 0.0491,
-      "medianReturn": 0.0206,
-      "stopRate": 0.38,
-      "targetHitRate": 0.471,
+      "sampleCount": 2374,
+      "winRate": 0.57,
+      "avgReturn": 0.0501,
+      "medianReturn": 0.0225,
+      "stopRate": 0.369,
+      "targetHitRate": 0.476,
       "stopThreshold": -0.015,
       "targetThreshold": 0.03,
       "byPattern": {
         "resistance_breakout": {
-          "sampleCount": 145,
-          "winRate": 0.483,
-          "avgReturn": 0.0275,
-          "medianReturn": -0.0018
-        },
-        "relative_strength": {
-          "sampleCount": 341,
-          "winRate": 0.513,
-          "avgReturn": 0.046,
-          "medianReturn": 0.0126
+          "sampleCount": 54,
+          "winRate": 0.537,
+          "avgReturn": 0.0316,
+          "medianReturn": 0.0025
         },
         "trend_up_pullback": {
-          "sampleCount": 758,
+          "sampleCount": 756,
           "winRate": 0.582,
-          "avgReturn": 0.0724,
+          "avgReturn": 0.0725,
           "medianReturn": 0.0297
         },
         "horizontal_support_rebound": {
-          "sampleCount": 1254,
+          "sampleCount": 1253,
           "winRate": 0.566,
           "avgReturn": 0.0384,
-          "medianReturn": 0.0209
+          "medianReturn": 0.0206
+        },
+        "relative_strength": {
+          "sampleCount": 311,
+          "winRate": 0.566,
+          "avgReturn": 0.0464,
+          "medianReturn": 0.0201
         }
       }
     }
@@ -446,238 +428,238 @@
   "regimeStrategySummary": {
     "SIDE": {
       "balanced|short": {
-        "sampleCount": 1000,
-        "winRate": 0.46,
-        "avgReturn": 0.001,
-        "medianReturn": -0.0012,
-        "stopRate": 0.205,
-        "targetHitRate": 0.088
+        "sampleCount": 878,
+        "winRate": 0.465,
+        "avgReturn": 0.0011,
+        "medianReturn": -0.0003,
+        "stopRate": 0.189,
+        "targetHitRate": 0.08
       },
       "balanced|swing": {
-        "sampleCount": 1000,
-        "winRate": 0.436,
-        "avgReturn": -0.0022,
+        "sampleCount": 878,
+        "winRate": 0.44,
+        "avgReturn": -0.0021,
         "medianReturn": -0.0066,
-        "stopRate": 0.407,
-        "targetHitRate": 0.222
+        "stopRate": 0.402,
+        "targetHitRate": 0.218
       },
       "balanced|mid": {
-        "sampleCount": 977,
+        "sampleCount": 857,
         "winRate": 0.49,
-        "avgReturn": 0.0066,
-        "medianReturn": -0.0019,
-        "stopRate": 0.429,
-        "targetHitRate": 0.359
+        "avgReturn": 0.0078,
+        "medianReturn": -0.0023,
+        "stopRate": 0.422,
+        "targetHitRate": 0.358
       },
       "aggressive|short": {
-        "sampleCount": 1478,
+        "sampleCount": 1340,
         "winRate": 0.456,
         "avgReturn": 0.0016,
-        "medianReturn": -0.0015,
-        "stopRate": 0.115,
-        "targetHitRate": 0.068
+        "medianReturn": -0.0014,
+        "stopRate": 0.108,
+        "targetHitRate": 0.065
       },
       "aggressive|swing": {
-        "sampleCount": 1478,
-        "winRate": 0.443,
-        "avgReturn": -0.0018,
-        "medianReturn": -0.0063,
-        "stopRate": 0.354,
-        "targetHitRate": 0.184
+        "sampleCount": 1340,
+        "winRate": 0.434,
+        "avgReturn": -0.003,
+        "medianReturn": -0.0078,
+        "stopRate": 0.357,
+        "targetHitRate": 0.172
       },
       "aggressive|mid": {
-        "sampleCount": 1448,
-        "winRate": 0.488,
+        "sampleCount": 1311,
+        "winRate": 0.48,
         "avgReturn": 0.0083,
-        "medianReturn": -0.0026,
-        "stopRate": 0.395,
-        "targetHitRate": 0.335
+        "medianReturn": -0.0046,
+        "stopRate": 0.4,
+        "targetHitRate": 0.327
       },
       "conservative|short": {
-        "sampleCount": 636,
-        "winRate": 0.464,
-        "avgReturn": 0.001,
-        "medianReturn": -0.0011,
-        "stopRate": 0.253,
-        "targetHitRate": 0.129
+        "sampleCount": 623,
+        "winRate": 0.461,
+        "avgReturn": 0.0009,
+        "medianReturn": -0.0012,
+        "stopRate": 0.247,
+        "targetHitRate": 0.125
       },
       "conservative|swing": {
-        "sampleCount": 636,
-        "winRate": 0.429,
-        "avgReturn": -0.0042,
-        "medianReturn": -0.0088,
-        "stopRate": 0.451,
-        "targetHitRate": 0.244
+        "sampleCount": 623,
+        "winRate": 0.438,
+        "avgReturn": -0.0021,
+        "medianReturn": -0.0068,
+        "stopRate": 0.438,
+        "targetHitRate": 0.25
       },
       "conservative|mid": {
-        "sampleCount": 619,
-        "winRate": 0.48,
-        "avgReturn": 0.0038,
-        "medianReturn": -0.0031,
-        "stopRate": 0.457,
-        "targetHitRate": 0.381
+        "sampleCount": 606,
+        "winRate": 0.488,
+        "avgReturn": 0.0072,
+        "medianReturn": -0.0021,
+        "stopRate": 0.447,
+        "targetHitRate": 0.389
       }
     },
     "BEAR": {
       "aggressive|short": {
-        "sampleCount": 1008,
-        "winRate": 0.489,
-        "avgReturn": 0.0052,
+        "sampleCount": 924,
+        "winRate": 0.491,
+        "avgReturn": 0.0055,
         "medianReturn": 0.0,
-        "stopRate": 0.095,
-        "targetHitRate": 0.088
+        "stopRate": 0.093,
+        "targetHitRate": 0.09
       },
       "aggressive|swing": {
-        "sampleCount": 1008,
-        "winRate": 0.568,
-        "avgReturn": 0.0144,
-        "medianReturn": 0.0105,
-        "stopRate": 0.264,
-        "targetHitRate": 0.251
+        "sampleCount": 924,
+        "winRate": 0.575,
+        "avgReturn": 0.0154,
+        "medianReturn": 0.0117,
+        "stopRate": 0.254,
+        "targetHitRate": 0.254
       },
       "aggressive|mid": {
-        "sampleCount": 1008,
-        "winRate": 0.561,
-        "avgReturn": 0.0644,
-        "medianReturn": 0.0216,
-        "stopRate": 0.33,
-        "targetHitRate": 0.42
-      },
-      "balanced|short": {
-        "sampleCount": 662,
-        "winRate": 0.488,
-        "avgReturn": 0.0047,
-        "medianReturn": 0.0,
-        "stopRate": 0.171,
-        "targetHitRate": 0.116
-      },
-      "balanced|swing": {
-        "sampleCount": 662,
-        "winRate": 0.573,
-        "avgReturn": 0.0129,
-        "medianReturn": 0.0101,
-        "stopRate": 0.313,
-        "targetHitRate": 0.305
-      },
-      "balanced|mid": {
-        "sampleCount": 662,
-        "winRate": 0.566,
-        "avgReturn": 0.0616,
-        "medianReturn": 0.0208,
-        "stopRate": 0.361,
-        "targetHitRate": 0.435
+        "sampleCount": 924,
+        "winRate": 0.564,
+        "avgReturn": 0.0662,
+        "medianReturn": 0.0213,
+        "stopRate": 0.329,
+        "targetHitRate": 0.423
       },
       "conservative|short": {
-        "sampleCount": 433,
-        "winRate": 0.503,
-        "avgReturn": 0.0053,
-        "medianReturn": 0.0009,
-        "stopRate": 0.206,
-        "targetHitRate": 0.155
+        "sampleCount": 425,
+        "winRate": 0.489,
+        "avgReturn": 0.0043,
+        "medianReturn": 0.0,
+        "stopRate": 0.212,
+        "targetHitRate": 0.146
       },
       "conservative|swing": {
-        "sampleCount": 433,
-        "winRate": 0.614,
-        "avgReturn": 0.0176,
-        "medianReturn": 0.0176,
-        "stopRate": 0.291,
-        "targetHitRate": 0.37
+        "sampleCount": 425,
+        "winRate": 0.607,
+        "avgReturn": 0.0167,
+        "medianReturn": 0.0159,
+        "stopRate": 0.294,
+        "targetHitRate": 0.358
       },
       "conservative|mid": {
-        "sampleCount": 433,
-        "winRate": 0.603,
-        "avgReturn": 0.0743,
+        "sampleCount": 425,
+        "winRate": 0.605,
+        "avgReturn": 0.0681,
         "medianReturn": 0.0285,
-        "stopRate": 0.337,
-        "targetHitRate": 0.497
+        "stopRate": 0.336,
+        "targetHitRate": 0.494
+      },
+      "balanced|short": {
+        "sampleCount": 600,
+        "winRate": 0.49,
+        "avgReturn": 0.0044,
+        "medianReturn": 0.0,
+        "stopRate": 0.165,
+        "targetHitRate": 0.113
+      },
+      "balanced|swing": {
+        "sampleCount": 600,
+        "winRate": 0.587,
+        "avgReturn": 0.0146,
+        "medianReturn": 0.0117,
+        "stopRate": 0.295,
+        "targetHitRate": 0.313
+      },
+      "balanced|mid": {
+        "sampleCount": 600,
+        "winRate": 0.585,
+        "avgReturn": 0.0619,
+        "medianReturn": 0.0239,
+        "stopRate": 0.34,
+        "targetHitRate": 0.443
       }
     },
     "BULL": {
       "balanced|short": {
-        "sampleCount": 2994,
-        "winRate": 0.485,
-        "avgReturn": 0.0013,
+        "sampleCount": 2285,
+        "winRate": 0.493,
+        "avgReturn": 0.0015,
         "medianReturn": 0.0,
-        "stopRate": 0.212,
-        "targetHitRate": 0.113
+        "stopRate": 0.192,
+        "targetHitRate": 0.095
       },
       "balanced|swing": {
-        "sampleCount": 2967,
-        "winRate": 0.527,
+        "sampleCount": 2263,
+        "winRate": 0.525,
         "avgReturn": 0.0161,
-        "medianReturn": 0.0048,
-        "stopRate": 0.338,
-        "targetHitRate": 0.297
+        "medianReturn": 0.0042,
+        "stopRate": 0.325,
+        "targetHitRate": 0.281
       },
       "balanced|mid": {
-        "sampleCount": 2912,
-        "winRate": 0.575,
-        "avgReturn": 0.0605,
-        "medianReturn": 0.028,
-        "stopRate": 0.358,
-        "targetHitRate": 0.465
+        "sampleCount": 2227,
+        "winRate": 0.591,
+        "avgReturn": 0.0625,
+        "medianReturn": 0.0318,
+        "stopRate": 0.336,
+        "targetHitRate": 0.472
       },
       "aggressive|short": {
-        "sampleCount": 4187,
-        "winRate": 0.478,
-        "avgReturn": 0.0005,
+        "sampleCount": 3418,
+        "winRate": 0.481,
+        "avgReturn": 0.0006,
         "medianReturn": 0.0,
-        "stopRate": 0.148,
-        "targetHitRate": 0.083
+        "stopRate": 0.134,
+        "targetHitRate": 0.076
       },
       "aggressive|swing": {
-        "sampleCount": 4147,
+        "sampleCount": 3381,
         "winRate": 0.513,
-        "avgReturn": 0.0131,
-        "medianReturn": 0.003,
-        "stopRate": 0.306,
-        "targetHitRate": 0.255
+        "avgReturn": 0.0128,
+        "medianReturn": 0.0028,
+        "stopRate": 0.294,
+        "targetHitRate": 0.246
       },
       "aggressive|mid": {
-        "sampleCount": 4031,
-        "winRate": 0.56,
-        "avgReturn": 0.0572,
-        "medianReturn": 0.0222,
-        "stopRate": 0.347,
-        "targetHitRate": 0.43
+        "sampleCount": 3286,
+        "winRate": 0.569,
+        "avgReturn": 0.0575,
+        "medianReturn": 0.0246,
+        "stopRate": 0.332,
+        "targetHitRate": 0.431
       },
       "conservative|short": {
-        "sampleCount": 1491,
-        "winRate": 0.489,
+        "sampleCount": 1382,
+        "winRate": 0.491,
         "avgReturn": 0.002,
         "medianReturn": 0.0,
-        "stopRate": 0.248,
-        "targetHitRate": 0.151
+        "stopRate": 0.234,
+        "targetHitRate": 0.137
       },
       "conservative|swing": {
-        "sampleCount": 1472,
-        "winRate": 0.51,
-        "avgReturn": 0.0137,
-        "medianReturn": 0.0027,
-        "stopRate": 0.374,
-        "targetHitRate": 0.32
+        "sampleCount": 1365,
+        "winRate": 0.515,
+        "avgReturn": 0.0143,
+        "medianReturn": 0.0031,
+        "stopRate": 0.36,
+        "targetHitRate": 0.31
       },
       "conservative|mid": {
-        "sampleCount": 1446,
-        "winRate": 0.58,
-        "avgReturn": 0.0609,
-        "medianReturn": 0.031,
-        "stopRate": 0.359,
-        "targetHitRate": 0.502
+        "sampleCount": 1343,
+        "winRate": 0.596,
+        "avgReturn": 0.0638,
+        "medianReturn": 0.0337,
+        "stopRate": 0.343,
+        "targetHitRate": 0.51
       }
     }
   },
   "candlestickSummary": {
     "LION_MOUTH": {
-      "sampleCount": 413,
-      "winRate": 0.479,
-      "avgReturn": 0.009,
-      "medianReturn": -0.0013,
-      "stopRate": 0.395,
-      "targetHitRate": 0.286,
-      "confirmedCount": 413,
-      "confirmedWinRate": 0.479,
-      "confirmedAvgReturn": 0.009,
+      "sampleCount": 416,
+      "winRate": 0.478,
+      "avgReturn": 0.0088,
+      "medianReturn": -0.0016,
+      "stopRate": 0.394,
+      "targetHitRate": 0.284,
+      "confirmedCount": 416,
+      "confirmedWinRate": 0.478,
+      "confirmedAvgReturn": 0.0088,
       "unconfirmedCount": 0,
       "unconfirmedWinRate": null,
       "unconfirmedAvgReturn": null
@@ -689,12 +671,12 @@
       "medianReturn": 0.0143,
       "stopRate": 0.339,
       "targetHitRate": 0.305,
-      "confirmedCount": 59,
-      "confirmedWinRate": 0.559,
-      "confirmedAvgReturn": 0.0134,
-      "unconfirmedCount": 0,
-      "unconfirmedWinRate": null,
-      "unconfirmedAvgReturn": null
+      "confirmedCount": 24,
+      "confirmedWinRate": 0.5,
+      "confirmedAvgReturn": 0.0176,
+      "unconfirmedCount": 35,
+      "unconfirmedWinRate": 0.6,
+      "unconfirmedAvgReturn": 0.0106
     },
     "HARAMI_BULLISH": {
       "sampleCount": 213,
@@ -725,46 +707,46 @@
       "unconfirmedAvgReturn": 0.0256
     },
     "BULLISH_ENGULFING": {
-      "sampleCount": 138,
-      "winRate": 0.572,
-      "avgReturn": 0.0141,
-      "medianReturn": 0.0111,
-      "stopRate": 0.312,
-      "targetHitRate": 0.297,
+      "sampleCount": 145,
+      "winRate": 0.579,
+      "avgReturn": 0.0151,
+      "medianReturn": 0.0114,
+      "stopRate": 0.303,
+      "targetHitRate": 0.31,
       "confirmedCount": 0,
       "confirmedWinRate": null,
       "confirmedAvgReturn": null,
-      "unconfirmedCount": 138,
-      "unconfirmedWinRate": 0.572,
-      "unconfirmedAvgReturn": 0.0141
+      "unconfirmedCount": 145,
+      "unconfirmedWinRate": 0.579,
+      "unconfirmedAvgReturn": 0.0151
     },
     "SHOOTING_STAR_CONFIRM": {
-      "sampleCount": 90,
-      "winRate": 0.478,
-      "avgReturn": 0.0049,
-      "medianReturn": 0.002,
-      "stopRate": 0.322,
-      "targetHitRate": 0.256,
-      "confirmedCount": 90,
-      "confirmedWinRate": 0.478,
-      "confirmedAvgReturn": 0.0049,
-      "unconfirmedCount": 0,
-      "unconfirmedWinRate": null,
-      "unconfirmedAvgReturn": null
+      "sampleCount": 76,
+      "winRate": 0.434,
+      "avgReturn": 0.0131,
+      "medianReturn": 0.0055,
+      "stopRate": 0.289,
+      "targetHitRate": 0.303,
+      "confirmedCount": 33,
+      "confirmedWinRate": 0.545,
+      "confirmedAvgReturn": 0.0073,
+      "unconfirmedCount": 43,
+      "unconfirmedWinRate": 0.349,
+      "unconfirmedAvgReturn": 0.0175
     },
     "MORNING_STAR": {
-      "sampleCount": 116,
-      "winRate": 0.543,
-      "avgReturn": 0.0256,
-      "medianReturn": 0.0092,
-      "stopRate": 0.328,
-      "targetHitRate": 0.353,
+      "sampleCount": 109,
+      "winRate": 0.532,
+      "avgReturn": 0.0251,
+      "medianReturn": 0.0054,
+      "stopRate": 0.339,
+      "targetHitRate": 0.339,
       "confirmedCount": 0,
       "confirmedWinRate": null,
       "confirmedAvgReturn": null,
-      "unconfirmedCount": 116,
-      "unconfirmedWinRate": 0.543,
-      "unconfirmedAvgReturn": 0.0256
+      "unconfirmedCount": 109,
+      "unconfirmedWinRate": 0.532,
+      "unconfirmedAvgReturn": 0.0251
     },
     "SHOOTING_STAR": {
       "sampleCount": 80,
@@ -781,46 +763,46 @@
       "unconfirmedAvgReturn": 0.0222
     },
     "BEARISH_ENGULFING": {
-      "sampleCount": 162,
-      "winRate": 0.463,
-      "avgReturn": 0.0164,
-      "medianReturn": 0.002,
-      "stopRate": 0.29,
-      "targetHitRate": 0.253,
+      "sampleCount": 173,
+      "winRate": 0.48,
+      "avgReturn": 0.0136,
+      "medianReturn": 0.0,
+      "stopRate": 0.301,
+      "targetHitRate": 0.237,
       "confirmedCount": 0,
       "confirmedWinRate": null,
       "confirmedAvgReturn": null,
-      "unconfirmedCount": 162,
-      "unconfirmedWinRate": 0.463,
-      "unconfirmedAvgReturn": 0.0164
+      "unconfirmedCount": 173,
+      "unconfirmedWinRate": 0.48,
+      "unconfirmedAvgReturn": 0.0136
     },
     "EVENING_STAR": {
-      "sampleCount": 41,
-      "winRate": 0.463,
-      "avgReturn": 0.0302,
-      "medianReturn": 0.0168,
-      "stopRate": 0.268,
-      "targetHitRate": 0.39,
+      "sampleCount": 52,
+      "winRate": 0.519,
+      "avgReturn": 0.0127,
+      "medianReturn": -0.0036,
+      "stopRate": 0.365,
+      "targetHitRate": 0.308,
       "confirmedCount": 0,
       "confirmedWinRate": null,
       "confirmedAvgReturn": null,
-      "unconfirmedCount": 41,
-      "unconfirmedWinRate": 0.463,
-      "unconfirmedAvgReturn": 0.0302
+      "unconfirmedCount": 52,
+      "unconfirmedWinRate": 0.519,
+      "unconfirmedAvgReturn": 0.0127
     },
     "THREE_INSIDE_DOWN": {
-      "sampleCount": 24,
-      "winRate": 0.5,
-      "avgReturn": -0.0143,
-      "medianReturn": -0.0082,
-      "stopRate": 0.458,
-      "targetHitRate": 0.208,
-      "confirmedCount": 24,
-      "confirmedWinRate": 0.5,
-      "confirmedAvgReturn": -0.0143,
-      "unconfirmedCount": 0,
-      "unconfirmedWinRate": null,
-      "unconfirmedAvgReturn": null
+      "sampleCount": 16,
+      "winRate": 0.375,
+      "avgReturn": -0.0014,
+      "medianReturn": 0.0139,
+      "stopRate": 0.312,
+      "targetHitRate": 0.312,
+      "confirmedCount": 13,
+      "confirmedWinRate": 0.308,
+      "confirmedAvgReturn": 0.0074,
+      "unconfirmedCount": 3,
+      "unconfirmedWinRate": 0.667,
+      "unconfirmedAvgReturn": -0.0395
     },
     "THREE_BLACK_CROWS": {
       "sampleCount": 27,
@@ -829,12 +811,12 @@
       "medianReturn": 0.0011,
       "stopRate": 0.37,
       "targetHitRate": 0.222,
-      "confirmedCount": 27,
-      "confirmedWinRate": 0.481,
-      "confirmedAvgReturn": -0.0099,
-      "unconfirmedCount": 0,
-      "unconfirmedWinRate": null,
-      "unconfirmedAvgReturn": null
+      "confirmedCount": 15,
+      "confirmedWinRate": 0.6,
+      "confirmedAvgReturn": -0.0376,
+      "unconfirmedCount": 12,
+      "unconfirmedWinRate": 0.333,
+      "unconfirmedAvgReturn": 0.0246
     },
     "EVENING_STAR_BEAR": {
       "sampleCount": 19,
@@ -843,12 +825,12 @@
       "medianReturn": -0.0159,
       "stopRate": 0.474,
       "targetHitRate": 0.316,
-      "confirmedCount": 19,
-      "confirmedWinRate": 0.579,
-      "confirmedAvgReturn": -0.03,
-      "unconfirmedCount": 0,
-      "unconfirmedWinRate": null,
-      "unconfirmedAvgReturn": null
+      "confirmedCount": 11,
+      "confirmedWinRate": 0.545,
+      "confirmedAvgReturn": -0.0402,
+      "unconfirmedCount": 8,
+      "unconfirmedWinRate": 0.625,
+      "unconfirmedAvgReturn": -0.0159
     },
     "MORNING_STAR_PINBAR": {
       "sampleCount": 3,
@@ -857,68 +839,68 @@
       "medianReturn": 0.0176,
       "stopRate": 0.333,
       "targetHitRate": 0.0,
-      "confirmedCount": 3,
-      "confirmedWinRate": 0.667,
-      "confirmedAvgReturn": 0.0028,
-      "unconfirmedCount": 0,
-      "unconfirmedWinRate": null,
-      "unconfirmedAvgReturn": null
+      "confirmedCount": 1,
+      "confirmedWinRate": 0.0,
+      "confirmedAvgReturn": -0.0407,
+      "unconfirmedCount": 2,
+      "unconfirmedWinRate": 1.0,
+      "unconfirmedAvgReturn": 0.0245
     },
     "BULLISH_ENGULFING_MARUBOZU": {
-      "sampleCount": 12,
+      "sampleCount": 9,
       "winRate": 0.333,
-      "avgReturn": 0.0607,
-      "medianReturn": -0.0103,
-      "stopRate": 0.417,
-      "targetHitRate": 0.167,
-      "confirmedCount": 12,
-      "confirmedWinRate": 0.333,
-      "confirmedAvgReturn": 0.0607,
-      "unconfirmedCount": 0,
-      "unconfirmedWinRate": null,
-      "unconfirmedAvgReturn": null
+      "avgReturn": 0.0862,
+      "medianReturn": -0.0035,
+      "stopRate": 0.444,
+      "targetHitRate": 0.222,
+      "confirmedCount": 6,
+      "confirmedWinRate": 0.167,
+      "confirmedAvgReturn": 0.0042,
+      "unconfirmedCount": 3,
+      "unconfirmedWinRate": 0.667,
+      "unconfirmedAvgReturn": 0.2502
     }
   },
   "confirmedLiftSummary": {
     "geo_confirmed": {
-      "sampleCount": 2323,
-      "winRate": 0.513,
-      "avgReturn": 0.0146,
-      "medianReturn": 0.0076,
-      "stopRate": 0.33,
-      "targetHitRate": 0.307
+      "sampleCount": 1211,
+      "winRate": 0.518,
+      "avgReturn": 0.0135,
+      "medianReturn": 0.0065,
+      "stopRate": 0.343,
+      "targetHitRate": 0.315
     },
     "geo_unconfirmed": {
-      "sampleCount": 7379,
-      "winRate": 0.494,
-      "avgReturn": 0.0079,
-      "medianReturn": 0.0017,
-      "stopRate": 0.355,
-      "targetHitRate": 0.273
+      "sampleCount": 8491,
+      "winRate": 0.496,
+      "avgReturn": 0.0089,
+      "medianReturn": 0.0024,
+      "stopRate": 0.35,
+      "targetHitRate": 0.277
     },
     "cs_confirmed": {
-      "sampleCount": 647,
-      "winRate": 0.488,
-      "avgReturn": 0.007,
-      "medianReturn": 0.0,
-      "stopRate": 0.383,
-      "targetHitRate": 0.275
+      "sampleCount": 519,
+      "winRate": 0.48,
+      "avgReturn": 0.0066,
+      "medianReturn": -0.0023,
+      "stopRate": 0.393,
+      "targetHitRate": 0.279
     },
     "cs_unconfirmed": {
-      "sampleCount": 827,
-      "winRate": 0.49,
-      "avgReturn": 0.0162,
-      "medianReturn": 0.009,
-      "stopRate": 0.31,
-      "targetHitRate": 0.297
+      "sampleCount": 955,
+      "winRate": 0.494,
+      "avgReturn": 0.0152,
+      "medianReturn": 0.0077,
+      "stopRate": 0.314,
+      "targetHitRate": 0.292
     },
     "both_confirmed": {
-      "sampleCount": 367,
-      "winRate": 0.48,
-      "avgReturn": 0.0097,
+      "sampleCount": 337,
+      "winRate": 0.478,
+      "avgReturn": 0.0099,
       "medianReturn": 0.0,
-      "stopRate": 0.379,
-      "targetHitRate": 0.292
+      "stopRate": 0.38,
+      "targetHitRate": 0.294
     },
     "neither": {
       "sampleCount": 744,
@@ -936,27 +918,52 @@
     {
       "strategy": "balanced|mid",
       "action": "DEMOTE",
-      "reason": "balanced/mid 전략 승률 56%, 손절률 37% — 필터 강화 검토"
-    },
-    {
-      "strategy": "aggressive|mid",
-      "action": "DEMOTE",
-      "reason": "aggressive/mid 전략 승률 54%, 손절률 36% — 필터 강화 검토"
+      "reason": "balanced/mid 전략 승률 57%, 손절률 36% — 필터 강화 검토"
     },
     {
       "strategy": "conservative|swing",
       "action": "DEMOTE",
-      "reason": "conservative/swing 전략 승률 51%, 손절률 38% — 필터 강화 검토"
+      "reason": "conservative/swing 전략 승률 51%, 손절률 37% — 필터 강화 검토"
     },
     {
       "strategy": "conservative|mid",
       "action": "DEMOTE",
-      "reason": "conservative/mid 전략 승률 56%, 손절률 38% — 필터 강화 검토"
+      "reason": "conservative/mid 전략 승률 57%, 손절률 37% — 필터 강화 검토"
+    },
+    {
+      "pattern": "THREE_INSIDE_UP",
+      "action": "CONFIRMATION_BONUS_QUESTION",
+      "reason": "확인봉 있을 때 승률 50%, 없을 때 60% — 확인봉 기준 재검토 권장"
+    },
+    {
+      "pattern": "SHOOTING_STAR_CONFIRM",
+      "action": "CONFIRMATION_BONUS_JUSTIFIED",
+      "reason": "확인봉 있을 때 승률 55% vs 없을 때 35% (+20%) — 두 신호 결합 가중치 유효"
+    },
+    {
+      "pattern": "THREE_INSIDE_DOWN",
+      "action": "CONFIRMATION_BONUS_QUESTION",
+      "reason": "확인봉 있을 때 승률 31%, 없을 때 67% — 확인봉 기준 재검토 권장"
+    },
+    {
+      "pattern": "THREE_BLACK_CROWS",
+      "action": "CONFIRMATION_BONUS_JUSTIFIED",
+      "reason": "확인봉 있을 때 승률 60% vs 없을 때 33% (+27%) — 두 신호 결합 가중치 유효"
+    },
+    {
+      "pattern": "EVENING_STAR_BEAR",
+      "action": "CONFIRMATION_BONUS_QUESTION",
+      "reason": "확인봉 있을 때 승률 55%, 없을 때 62% — 확인봉 기준 재검토 권장"
     },
     {
       "pattern": "MORNING_STAR_PINBAR",
       "action": "OBSERVE_ONLY",
       "reason": "캔들스틱 패턴 표본 부족 (3개)."
+    },
+    {
+      "pattern": "BULLISH_ENGULFING_MARUBOZU",
+      "action": "CONFIRMATION_BONUS_QUESTION",
+      "reason": "확인봉 있을 때 승률 17%, 없을 때 67% — 확인봉 기준 재검토 권장"
     },
     {
       "pattern": "BULLISH_ENGULFING_MARUBOZU",
@@ -966,12 +973,12 @@
     {
       "signal": "geometric_confirmation",
       "action": "CONFIRMATION_LIFT_WEAK",
-      "reason": "기하패턴 확인봉 있을 때 승률 51% vs 없을 때 49% (lift +2%)"
+      "reason": "기하패턴 확인봉 있을 때 승률 52% vs 없을 때 50% (lift +2%)"
     },
     {
       "signal": "candlestick_confirmation",
       "action": "CONFIRMATION_LIFT_WEAK",
-      "reason": "캔들스틱 확인봉 있을 때 승률 49% vs 없을 때 49% (lift -0%)"
+      "reason": "캔들스틱 확인봉 있을 때 승률 48% vs 없을 때 49% (lift -1%)"
     },
     {
       "signal": "both_confirmed_vs_neither",

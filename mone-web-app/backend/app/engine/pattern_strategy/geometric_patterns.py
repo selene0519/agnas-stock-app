@@ -963,7 +963,7 @@ _DETECTORS = [
 _ACTIONABLE_STAGES = {"BUY_ZONE", "AVOID", "BLOCKED", "BREAKOUT_CANDIDATE"}
 
 
-def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | None) -> dict[str, Any] | None:
+def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | None, market: str = "kr") -> dict[str, Any] | None:
     """
     Run all geometric pattern detectors (10 core + 7 practical auxiliary +
     7 MONE-specific risk patterns) and return the single most relevant
@@ -1017,15 +1017,23 @@ def detect_all(rows: list[dict], atr20: float | None, volume_ratio20: float | No
     # Candlestick confirmation: does the latest candle confirm the pattern direction?
     # BULLISH pattern + 대양선/핀버 → confirmed=True (더블바텀+대양선, etc.)
     # BEARISH pattern + 강한음봉/유성형 → confirmed=True
-    best["confirmed"] = _candle_confirms(rows, best.get("direction", ""), atr20)
+    # Volume backing is required in KR only: US high-volume confirmation
+    # candles are often climax/news bars and showed negative lift.
+    best["confirmed"] = _candle_confirms(
+        rows, best.get("direction", ""), atr20,
+        require_volume=(str(market).lower() != "us"),
+    )
 
     return best
 
 
-def _candle_confirms(rows: list[dict], direction: str, atr20: float | None) -> bool:
+def _candle_confirms(rows: list[dict], direction: str, atr20: float | None, require_volume: bool = True) -> bool:
     """
     최신 캔들이 기하학적 패턴의 방향을 확인하는지 체크.
     이미지의 '더블바텀+대양선', '상주+확인봉' 등 조합에 해당.
+
+    확인봉은 거래량 뒷받침(10일 평균 대비 1.1배 이상)이 있어야 인정 —
+    거래량 없는 확인봉은 walk-forward에서 리프트가 없었음.
     """
     if not rows or not atr20 or atr20 <= 0:
         return False
@@ -1036,7 +1044,16 @@ def _candle_confirms(rows: list[dict], direction: str, atr20: float | None) -> b
         return False
 
     if direction == "BULLISH":
-        return cs_mod.is_strong_bull(o, h, l, c, atr20) or cs_mod.is_pinbar(o, h, l, c, atr20)
-    if direction == "BEARISH":
-        return cs_mod.is_strong_bear(o, h, l, c, atr20) or cs_mod.is_shooting_star(o, h, l, c, atr20)
-    return False
+        shape_ok = cs_mod.is_strong_bull(o, h, l, c, atr20) or cs_mod.is_pinbar(o, h, l, c, atr20)
+    elif direction == "BEARISH":
+        shape_ok = cs_mod.is_strong_bear(o, h, l, c, atr20) or cs_mod.is_shooting_star(o, h, l, c, atr20)
+    else:
+        return False
+    if not shape_ok:
+        return False
+
+    if not require_volume:
+        return True
+    # Volume backing (skip check when volume data is unavailable)
+    vol_ok = cs_mod._volume_backed(rows)
+    return vol_ok is not False

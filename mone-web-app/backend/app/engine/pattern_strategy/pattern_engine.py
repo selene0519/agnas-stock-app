@@ -169,6 +169,7 @@ def _compute_confidence(
     phase: TrendPhase,
     risk: RiskStatus,
     ind: dict,
+    market: str = "kr",
 ) -> tuple[int, int]:
     """Returns (confidence_after_risk, confidence_before_risk)."""
     base = 55  # neutral starting point
@@ -194,6 +195,45 @@ def _compute_confidence(
         base += 5
     elif vr < 0.7:
         base -= 8
+
+    # MA20 disparity: extension penalty, market-aware.
+    # KR is mean-reverting — extended entries stop out; walk-forward showed
+    # heavy stop rates above 1.08 disparity. US is a momentum market —
+    # extended names keep running, so only extreme extension is penalized
+    # (the KR thresholds applied to US cut winning momentum entries).
+    disp = ind.get("ma20Disparity")
+    if disp:
+        if market == "us":
+            # Only parabolic extension is penalized — extended momentum names
+            # are the top mid-horizon performers in the US; penalizing them at
+            # KR thresholds cut returns without reducing the stop rate.
+            if disp >= 1.25:
+                base -= 10
+        else:
+            if disp >= 1.12:
+                base -= 15   # deeply extended — chasing
+            elif disp >= 1.08:
+                base -= 8    # moderately extended
+        if market == "us":
+            # Momentum continuation zone: established uptrend, extended but
+            # not extreme — this is where US mid-horizon returns come from.
+            if structure == MarketStructure.TREND_UP and 1.04 <= disp < 1.12:
+                base += 4
+        elif 0.97 <= disp <= 1.04:
+            base += 4        # near the mean — best entry zone (KR only:
+                             # mean-reversion edge doesn't hold in US momentum)
+
+    # Falling knife: fast intraday decline relative to ATR.
+    # Halved for US — violent down days in US uptrends are routinely bought.
+    dda = ind.get("dailyDownAtr")
+    if dda and dda >= 1.5:
+        base -= 5 if market == "us" else 10
+
+    # CCI overbought: momentum already spent. KR only — same rationale as
+    # the disparity split above (US momentum tolerates high CCI).
+    cci = ind.get("cci20")
+    if cci is not None and market != "us" and cci > 150:
+        base -= 6
 
     before_risk = min(95, max(20, base))
 
@@ -333,7 +373,7 @@ def analyze(
     secondary = _classify_secondary(primary, structure, phase, risk, ind, base_bo, extensions, support_levels)
 
     # 8b. Geometric chart pattern (additive — never overrides primary/action)
-    geo = gp_mod.detect_all(rows, atr20, ind.get("volumeRatio20"))
+    geo = gp_mod.detect_all(rows, atr20, ind.get("volumeRatio20"), market=str(market).lower())
     if geo and geo["pattern"] not in secondary:
         secondary = (secondary + [geo["pattern"]])[:4]
 
@@ -347,21 +387,52 @@ def analyze(
         trend_phase=phase.value,
         primary_pattern=primary,
         risk_status=risk.value,
+        market=str(market).lower(),
     )
 
     # 9. Confidence — adjusted by candlestick and geometric confirmation
-    confidence, conf_before = _compute_confidence(primary, structure, phase, risk, ind)
+    confidence, conf_before = _compute_confidence(
+        primary, structure, phase, risk, ind, market=str(market).lower()
+    )
 
-    # Geometric confirmation (더블바텀+대양선 등): +3 when confirmed
+    # Geometric confirmation (더블바텀+대양선 등): +4 when confirmed
+    # (confirmation now requires volume backing, so the signal is stronger)
     if geo and geo.get("confirmed"):
-        confidence = min(95, confidence + 3)
+        confidence = min(95, confidence + 4)
 
-    # Candlestick alignment: fit-based boost, extra +3 when confirmed (두 신호 결합)
+    # Bearish geometry in an actionable stage argues against a long entry
+    # even when the indicator engine looks fine — KR walk-forward showed these
+    # entries carry the highest stop rates. KR only: in the US the same names
+    # are routinely dip-bought and rebound over the mid horizon.
+    if (
+        str(market).lower() != "us"
+        and geo and geo.get("direction") == "BEARISH"
+        and geo.get("stage") in ("AVOID", "BLOCKED")
+    ):
+        confidence = max(10, confidence - 6)
+
+    # Candlestick alignment: full boost only for volume-backed confirmed
+    # signals; setup-only alignment gets half weight (unconfirmed candles
+    # showed no lift in the walk-forward). Counter-context penalty unchanged.
     if cs:
-        cs_boost = round((cs["fit"] - 0.5) * 8)
-        if cs.get("confirmed"):
-            cs_boost += 3
+        fit = cs["fit"]
+        if fit < 0.5:
+            cs_boost = round((fit - 0.5) * 8)
+        else:
+            cs_boost = round((fit - 0.5) * (8 if cs.get("confirmed") else 4))
+            if cs.get("confirmed"):
+                cs_boost += 3
         confidence = min(95, max(10, confidence + cs_boost))
+
+    # Support proximity (KR only): entries within 1 ATR above a holding
+    # support level have a structural floor in a mean-reverting market.
+    # In the US this bonus pulled in mediocre mean-reversion entries that
+    # underperformed the momentum names it displaced.
+    close_now = ind.get("close")
+    if str(market).lower() != "us" and close_now and atr20:
+        sup = srm_mod.nearest_support(support_levels, close_now, atr20)
+        if sup is not None and (close_now - sup) <= 1.0 * atr20:
+            confidence = min(95, confidence + 4)
 
     # 10. Message
     message = _build_message(primary, risk, phase, ind)

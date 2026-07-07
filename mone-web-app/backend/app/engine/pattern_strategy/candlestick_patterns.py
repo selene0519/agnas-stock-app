@@ -723,6 +723,48 @@ def _fit_score(direction: str, expected: str, confirmed: bool) -> float:
     return base if confirmed else base * 0.75
 
 
+# Walk-forward reliability weights (2024-06~2026-07, KR+US combined).
+# Patterns that consistently beat 55% directional win rate get a mild boost;
+# patterns that consistently lose get suppressed. Kept mild (0.85–1.10) to
+# avoid overfitting a single backtest window.
+_PATTERN_RELIABILITY: dict[str, float] = {
+    "BULLISH_ENGULFING":          1.10,  # KR 57% / US 59%
+    "THREE_INSIDE_UP":            1.10,  # KR 56% / US 56%
+    "EVENING_STAR_BEAR":          1.05,  # KR 58%
+    "BULLISH_ENGULFING_MARUBOZU": 0.90,  # KR 33% — exhaustion misuse
+    "THREE_BLACK_CROWS":          0.95,  # KR 48% / US 46%
+    "SHOOTING_STAR":              0.90,  # KR 38%
+    "HARAMI_BEARISH":             0.85,  # KR 40% / US 38%
+}
+
+
+def _runup_5bar(rows: list[dict]) -> float | None:
+    """5-bar close-to-close return — measures how extended the move already is."""
+    if len(rows) < 6:
+        return None
+    try:
+        c_now  = float(rows[-1]["close"])
+        c_prev = float(rows[-6]["close"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return (c_now - c_prev) / c_prev if c_prev > 0 else None
+
+
+def _volume_backed(rows: list[dict]) -> bool | None:
+    """
+    True if today's volume ≥ 1.1× the 10-bar average — a confirmation candle
+    without volume behind it is noise. Returns None when volume data is
+    missing (caller should not penalize in that case).
+    """
+    if len(rows) < 6:
+        return None
+    today_v = _vol(rows[-1])
+    hist = [v for r in rows[-11:-1] if (v := _vol(r)) is not None]
+    if today_v is None or len(hist) < 5:
+        return None
+    return today_v >= 1.1 * (sum(hist) / len(hist))
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def detect_contextual(
@@ -733,6 +775,7 @@ def detect_contextual(
     trend_phase: str = "",
     primary_pattern: str = "",
     risk_status: str = "",
+    market: str = "kr",
 ) -> dict[str, Any] | None:
     """
     Detect the single most contextually relevant candlestick pattern.
@@ -756,6 +799,12 @@ def detect_contextual(
     else:
         ordered = _BULLISH_DETECTORS + _BEARISH_DETECTORS
 
+    runup = _runup_5bar(rows)
+    vol_ok = _volume_backed(rows)
+    # Chase threshold is market-aware: US momentum names routinely run +10%
+    # in 5 bars and keep going, so only more extreme moves count as chasing.
+    chase_th = 0.15 if str(market).lower() == "us" else 0.10
+
     hits: list[dict] = []
     for detector in ordered:
         try:
@@ -763,7 +812,23 @@ def detect_contextual(
         except Exception:
             result = None
         if result:
-            fit = _fit_score(result["direction"], expected, result["confirmed"])
+            confirmed = result["confirmed"]
+            # Volume-backed confirmation: a confirmation candle without volume
+            # support is downgraded to setup-only (walk-forward showed zero
+            # lift from volume-less confirmation candles).
+            if confirmed and vol_ok is False:
+                confirmed = False
+                result = {**result, "confirmed": False}
+            fit = _fit_score(result["direction"], expected, confirmed)
+            # Chase suppression: a bullish signal after a +10% 5-bar run-up is
+            # buying exhaustion; a bearish signal after a -10% drop is shorting
+            # capitulation. Both stop out at high rates in the walk-forward.
+            if runup is not None:
+                if result["direction"] == "BULLISH" and runup > chase_th:
+                    fit *= 0.5
+                elif result["direction"] == "BEARISH" and runup < -chase_th:
+                    fit *= 0.5
+            fit = min(1.0, fit * _PATTERN_RELIABILITY.get(result["pattern"], 1.0))
             hits.append({**result, "fit": round(fit, 2)})
 
     if not hits:
