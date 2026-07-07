@@ -517,6 +517,47 @@ export default function VirtualJournalPage() {
     if (severity === "medium") return "bg-amber-500/12 text-amber-200 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.22)]";
     return "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]";
   };
+  const selfLearningPolicy = selfLearningData?.policy || {};
+  const sourceMinSamples = selfLearningPolicy.sourceMinSamples || {};
+  const maxAutoFailureShare = Number(selfLearningPolicy.maxFailureShareForAutoApply ?? 0.45);
+  const calibrationAutoGate = (item: any) => {
+    const sourceType = String(item.sourceType || item.source_type || "FORWARD_PAPER_TRADE").toUpperCase();
+    const defaultMinSamples = sourceType === "MANUAL_REVIEWED" ? 35 : sourceType === "HISTORICAL_REPLAY" ? 150 : sourceType === "BACKTEST_EXPERIMENT" ? 999999 : 50;
+    const minSamples = Number(sourceMinSamples[sourceType] ?? defaultMinSamples);
+    const sampleCount = Number(item.sampleCount || 0);
+    const missingSamples = Math.max(0, minSamples - sampleCount);
+    const share = Number(item.share);
+    const status = String(item.status || "").toUpperCase();
+    const approvalStatus = String(item.approvalStatus || "PENDING_REVIEW").toUpperCase();
+    const applicationStatus = String(item.applicationStatus || "NOT_APPLIED").toUpperCase();
+    const blockers: string[] = [];
+    if (status !== "SUGGESTED") blockers.push(status === "LOW_SAMPLE" ? "제안 표본 부족" : "제안 조건 미충족");
+    if (missingSamples > 0) blockers.push(`자동 적용 표본 ${missingSamples.toLocaleString("ko-KR")}건 부족`);
+    if (Number.isFinite(share) && Number.isFinite(maxAutoFailureShare) && share > maxAutoFailureShare) {
+      blockers.push(`실패 비중 ${fmtRate(share)} > 자동 상한 ${fmtRate(maxAutoFailureShare)}`);
+    }
+    if (approvalStatus !== "APPROVED") blockers.push(approvalStatus === "REJECTED" ? "승인 반려" : "승인 대기");
+    if (applicationStatus === "APPLIED") blockers.length = 0;
+    const autoReady = applicationStatus === "APPLIED" || blockers.length === 0;
+    return {
+      sourceType,
+      minSamples,
+      sampleCount,
+      missingSamples,
+      share,
+      approvalStatus,
+      applicationStatus,
+      autoReady,
+      blockers,
+      progressPct: minSamples > 0 ? Math.max(0, Math.min(100, (sampleCount / minSamples) * 100)) : 0,
+      label: applicationStatus === "APPLIED" ? "적용 완료" : autoReady ? "자동 적용 가능" : "자동 적용 보류",
+      tone: applicationStatus === "APPLIED" || autoReady
+        ? "bg-emerald-500/12 text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.20)]"
+        : status === "SUGGESTED"
+          ? "bg-amber-500/12 text-amber-200 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.20)]"
+          : "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]",
+    };
+  };
   const stopLossSummary = stopLossData?.summary || {};
   const stopLossPatch = stopLossData?.patch || {};
   const stopLossCauses = (stopLossData?.causeCandidates || []).slice(0, 3);
@@ -1586,15 +1627,58 @@ export default function VirtualJournalPage() {
           </div>
 
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
-            <h2 className="mb-3 text-sm font-semibold text-slate-200">보정 후보</h2>
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-200">보정 후보</h2>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  개선사항은 자동 적용 게이트를 통과해야 매매 규칙에 반영됩니다.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-right text-[11px]">
+                <div className="rounded-md bg-slate-950/60 px-2 py-1.5 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                  <div className="text-slate-500">자동 가능</div>
+                  <div className="font-mono tabular-nums text-emerald-200">{selfLearningData?.eligibleAutoCount || 0}</div>
+                </div>
+                <div className="rounded-md bg-slate-950/60 px-2 py-1.5 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                  <div className="text-slate-500">표본 부족</div>
+                  <div className="font-mono tabular-nums text-amber-200">{selfLearningData?.lowSampleCount || 0}</div>
+                </div>
+              </div>
+            </div>
             <div className="space-y-2">
-              {suggestions.slice(0, 6).map((item, index) => (
+              {suggestions.slice(0, 6).map((item, index) => {
+                const gate = calibrationAutoGate(item);
+                return (
                 <div key={`${item.reason || item.status}-${index}`} className="rounded-lg bg-slate-950/60 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
                   <div className="flex items-center justify-between gap-3">
-                    <span className={`font-mono text-[11px] ${item.status === "SUGGESTED" ? "text-cyan-300" : "text-slate-500"}`}>{item.status}</span>
-                    <span className="font-mono text-[11px] text-slate-500">{item.approvalStatus || "PENDING_REVIEW"} · {item.sampleCount || 0} samples</span>
+                    <span className={`rounded px-1.5 py-0.5 font-mono text-[11px] ${gate.tone}`}>{gate.label}</span>
+                    <span className="font-mono text-[11px] tabular-nums text-slate-500">
+                      {gate.approvalStatus} · {gate.sampleCount.toLocaleString("ko-KR")} / {gate.minSamples.toLocaleString("ko-KR")}
+                    </span>
                   </div>
                   <div className="mt-1 text-xs leading-5 text-slate-300">{item.message || item.reason || "-"}</div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className={`h-full rounded-full ${gate.autoReady ? "bg-emerald-400" : "bg-amber-400"}`}
+                      style={{ width: `${gate.applicationStatus === "APPLIED" ? 100 : gate.progressPct}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="rounded bg-slate-900 px-2 py-1 font-mono text-[10px] tabular-nums text-slate-400">
+                      실패비중 {Number.isFinite(gate.share) ? fmtRate(gate.share) : "-"}
+                    </span>
+                    <span className="rounded bg-slate-900 px-2 py-1 font-mono text-[10px] text-slate-400">{gate.sourceType}</span>
+                    {gate.blockers.map((blocker) => (
+                      <span key={blocker} className="rounded bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">
+                        {blocker}
+                      </span>
+                    ))}
+                    {gate.autoReady && (
+                      <span className="rounded bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-200">
+                        적용 조건 충족
+                      </span>
+                    )}
+                  </div>
                   {item.status === "SUGGESTED" && item.approvalStatus === "PENDING_REVIEW" && (
                     <div className="mt-2 flex gap-2">
                       <button
@@ -1614,7 +1698,8 @@ export default function VirtualJournalPage() {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
               {!suggestions.length && <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-500">보정 후보가 아직 없습니다.</div>}
             </div>
           </div>
