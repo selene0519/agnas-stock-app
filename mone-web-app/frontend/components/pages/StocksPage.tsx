@@ -26,6 +26,13 @@ import {
   toNumber,
 } from "@/lib/moneDisplay";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
+import {
+  EXPLORATION_LENSES,
+  getLensDef,
+  itemMatchesLens,
+  primaryLensForItem,
+  type ExplorationLensId,
+} from "@/lib/explorationTaxonomy";
 
 type WatchRow = {
   market: Market;
@@ -360,6 +367,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [groupAssigning, setGroupAssigning] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"finalScore" | "expectedValue" | "upsideScore" | "rrScore">("finalScore");
   const [screenerOpen, setScreenerOpen] = useState(false);
+  const [lens, setLens] = useState<ExplorationLensId | null>(null);
   const [minScore, setMinScore] = useState(0);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [hideDataPending, setHideDataPending] = useState(false);
@@ -381,6 +389,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     setSectorFilter(null);
     setGroupFilter(null);
     setTagFilter(null);
+    setLens(null);
     mone.sectorsList({ market: resolvedMarket }).then((r) => {
       const HIDDEN = new Set(["unknown", "기타", "미분류"]);
       setSectorsList(Array.isArray(r.items)
@@ -563,7 +572,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     };
   }, [resolvedMarket, mode, horizon, watchOnly, watchlist.length, refreshVersion]);
 
-  const sectorFiltered = useMemo(() => {
+  const baseFiltered = useMemo(() => {
     let result = items;
     if (sectorFilter) {
       result = result.filter((item) => {
@@ -608,6 +617,18 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     return result;
   }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, nameQuery]);
 
+  // 탐색 렌즈 필터: strategyTags 기준으로 렌즈에 해당하는 종목만 우선 노출한다.
+  // 밸런스(matchAll)는 전체를 종합해서 보는 기본 렌즈이므로 필터하지 않는다.
+  // 렌즈 조건에 맞는 종목이 없으면 전체가 0개가 되지 않도록 fallback 한다.
+  const lensResult = useMemo(() => {
+    if (!lens || lens === "balance") return { list: baseFiltered, fallback: false };
+    const matched = baseFiltered.filter((item) => itemMatchesLens(item.strategyTags, lens));
+    if (matched.length > 0) return { list: matched, fallback: false };
+    return { list: baseFiltered, fallback: true };
+  }, [baseFiltered, lens]);
+  const sectorFiltered = lensResult.list;
+  const lensFallbackActive = lensResult.fallback;
+
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     items.forEach((item) => {
@@ -647,7 +668,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }
 
   const visible = useMemo(() => {
-    const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() ? sectorFiltered : items;
+    const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() || (lens && lens !== "balance") ? sectorFiltered : items;
     let result = base;
     if (selected) {
       const selectedMarket = cleanMarket(selected.market || resolvedMarket || "kr");
@@ -676,7 +697,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       ];
     }
     return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
-  }, [items, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy]);
+  }, [items, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy, lens]);
 
   const filterStats = useMemo(() => {
     const normal = sectorFiltered.filter((item) => String(item.dataStatus || "").toUpperCase() === "NORMAL").length;
@@ -1024,6 +1045,46 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             </select>
           </div>
         )}
+
+        {/* 탐색 렌즈 (기본 필터) */}
+        <div className="mt-4">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">탐색 렌즈</span>
+            {lens && (
+              <button
+                onClick={() => setLens(null)}
+                className="text-[10px] text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+              >
+                해제
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-1.5">
+            {EXPLORATION_LENSES.map((l) => {
+              const active = lens === l.id;
+              return (
+                <button
+                  key={l.id}
+                  onClick={() => setLens(active ? null : l.id)}
+                  aria-pressed={active}
+                  className={`min-h-11 min-w-0 rounded-xl border px-1 py-2 text-xs font-semibold transition-[background-color,border-color,color,transform] active:scale-[0.96] ${active ? `${l.accent} font-bold` : "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700 hover:text-slate-200"}`}
+                >
+                  {l.label}
+                </button>
+              );
+            })}
+          </div>
+          {lens && (
+            <div className="mt-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+              {getLensDef(lens).description}
+              {lensFallbackActive && (
+                <span className="mt-1 block text-amber-400">
+                  현재 이 렌즈 조건에 맞는 종목이 없어 전체 후보를 표시합니다.
+                </span>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* 스크리너 패널 토글 */}
         <div className="mt-4">
@@ -1693,6 +1754,9 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           else if (item.supplySignal === "INST_BUY")
             addVisibleTag("supply_inst", "기관 순매수", "border-sky-500/30 bg-sky-500/10 text-sky-300");
 
+          // 탐색 렌즈 배지: strategyTags 기준 대표 렌즈 1개 (없으면 미표시)
+          const cardLens = primaryLensForItem(item.strategyTags);
+
           return (
             <div
               key={`${item.market}-${item.symbol}-${index}`}
@@ -1709,6 +1773,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
                     )}
                     {watched && <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">관심</span>}
+                    {cardLens && <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${cardLens.accent}`}>{cardLens.label}</span>}
                     <SentimentBadge
                       symbol={item.symbol}
                       market={String(item.market || resolvedMarket).toLowerCase() === "us" ? "us" : "kr"}
