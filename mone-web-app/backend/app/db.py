@@ -146,6 +146,11 @@ def _pg_init_schema():
             ALTER TABLE user_holdings ENABLE ROW LEVEL SECURITY;
             ALTER TABLE user_watchlist ENABLE ROW LEVEL SECURITY;
             ALTER TABLE broker_connections ENABLE ROW LEVEL SECURITY;
+            -- supabase_db.py(REST 동기화)가 쓰는 수동 생성 테이블. 같은 public
+            -- 스키마라 여기서 함께 RLS를 건다(없으면 IF EXISTS로 무시). REST 접근은
+            -- SUPABASE_SERVICE_KEY(service_role, RLS 우회) 사용 시 영향 없음.
+            ALTER TABLE IF EXISTS holdings ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE IF EXISTS watchlist ENABLE ROW LEVEL SECURITY;
             """)
             conn.commit()
     finally:
