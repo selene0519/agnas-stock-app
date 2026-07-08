@@ -39,6 +39,8 @@ import {
   normalizeMarket,
   priceText,
   probabilityText,
+  resolveEvPct,
+  resolveRr,
   strategyTagLabel,
   toNumber,
 } from "@/lib/moneDisplay";
@@ -325,7 +327,7 @@ function buildDailyBriefing(args: {
   const name = displayName(topItem);
   const decision = firstText(topItem.decisionBucket, topItem.newEntryDecision, topItem.moneDecision, "관찰");
   const score = safeNumber(topItem.finalScore ?? topItem.finalRankScore ?? topItem.recommendationScore);
-  const ev = safeNumber(topItem.expectedValue ?? topItem.ev);
+  const ev = resolveEvPct(topItem);
   const risk = String(topItem.riskStatus || topItem.tradeBlockStatus || "").toUpperCase();
   const isRisk = risk && !["NONE", "OK", "NORMAL", "LOW"].includes(risk);
   const isBear = regime?.regime === "BEAR";
@@ -649,8 +651,8 @@ function TodayEntryCard({
   const riskClass = riskText === "위험 낮음" ? "text-emerald-300" : riskText === "주의" ? "text-amber-300" : "text-red-300";
   const confidence = probabilityText(item, score > 0 ? `${score.toFixed(0)}점` : "-");
   const reasons = moneReasonLines(item).slice(0, 3);
-  const ev = Number(item.expectedValue ?? 0);
-  const rr = Number(item.rrActual ?? item.rr ?? 0);
+  const ev = resolveEvPct(item) ?? 0;
+  const rr = resolveRr(item) ?? 0;
   const evPct = Math.max(0, Math.min(100, Math.abs(ev) * 5));
   const rrPct = Math.max(0, Math.min(100, rr * 25));
   const quantVerdict = item.quantTraderVerdict || {};
@@ -1767,15 +1769,18 @@ function DailyBriefingCard({
                 ))}
               </div>
               {(() => {
-                const ev = Number(briefing.topItem.expectedValue ?? 0);
-                const rr = Number(briefing.topItem.rrActual ?? 0);
-                const score = Number(briefing.topItem.finalScore ?? 0);
+                // 백엔드 필드가 비어도 entry/stop/target으로 재계산 (resolve*)
+                const evVal = resolveEvPct(briefing.topItem);
+                const rrVal = resolveRr(briefing.topItem);
+                const ev = evVal ?? 0;
+                const rr = rrVal ?? 0;
+                const score = Number(briefing.topItem.finalScore ?? briefing.topItem.finalRankScore ?? 0);
                 return (
                   <div className="mt-2.5 grid grid-cols-3 divide-x divide-slate-800/70 border-t border-slate-800/70 pt-2.5 text-center text-[11px]">
                     <div className="px-1">
                       <div className="text-[10px] text-slate-500">기댓값 EV</div>
-                      <div className={`mt-1 font-mono font-semibold ${ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
-                        {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
+                      <div className={`mt-1 font-mono font-semibold ${evVal == null ? "text-slate-500" : ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
+                        {evVal == null ? "—" : `${ev >= 0 ? "+" : ""}${ev.toFixed(1)}%`}
                       </div>
                     </div>
                     <div className="px-1">
@@ -2383,8 +2388,13 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   }, [item.symbol]);
   const mode    = String(item.mode || item._mode || "balanced") as Mode;
   const horizon = String(item.horizon || item._horizon || "swing") as Horizon;
-  const ev      = toNumber(item.expectedValue ?? item.expectedValueText ?? item.ev) || 0;
-  const rr      = toNumber(item.rrActual ?? item.rr ?? item.riskRewardRatio) || 0;
+  // 백엔드 백필이 비어도 entry/stop/target으로 재계산 (resolve*). evKnown이 false면
+  // 가짜 "+0.0% (음수)" 대신 "미산출"로 정직하게 표시한다.
+  const evVal   = resolveEvPct(item);
+  const rrVal   = resolveRr(item);
+  const evKnown = evVal != null;
+  const ev      = evVal ?? 0;
+  const rr      = rrVal ?? 0;
   const score   = toNumber(item.finalScore ?? item.finalRankScore ?? item.recommendationScore) || 0;
   const tags    = Array.isArray(item.strategyTags) ? item.strategyTags : [];
   const riskFlags = Array.isArray(item.riskFlags) ? item.riskFlags : [];
@@ -2457,8 +2467,8 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-center">
               <div className="text-[10px] text-slate-500">기댓값 EV</div>
-              <div className={`mt-1 text-lg font-bold font-mono ${ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
-                {ev >= 0 ? "+" : ""}{ev.toFixed(1)}%
+              <div className={`mt-1 text-lg font-bold font-mono ${!evKnown ? "text-slate-500" : ev >= 2 ? "text-emerald-300" : ev >= 0 ? "text-slate-200" : "text-red-300"}`}>
+                {!evKnown ? "—" : `${ev >= 0 ? "+" : ""}${ev.toFixed(1)}%`}
               </div>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-center">
@@ -2491,14 +2501,14 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             const modeMaxGap = mode === "conservative" ? 3.5 : mode === "aggressive" ? 13 : 7.5;
             const gapPct  = entry != null && entry > 0 && current != null && current > 0 ? Math.abs((current - entry) / entry * 100) : null;
             const inRange = gapPct != null && gapPct <= modeMaxGap;
-            const evOk    = ev > 0;
+            const evOk    = evKnown && ev > 0;
             const regimeOk = !marketRegime || marketRegime.regime !== "BEAR";
             const dataOk  = !["STALE", "ERROR", "DATA_PENDING"].includes(String(item.dataStatus || ""));
             const noCaution = !Array.isArray(item.cautionReasons) || item.cautionReasons.length === 0;
             const noPlWarning = !item.priceLevelWarning;
 
             const checks = [
-              { label: "EV 양수", ok: evOk, detail: evOk ? `+${ev.toFixed(1)}%` : `${ev.toFixed(1)}% (음수)` },
+              { label: "EV 양수", ok: evOk, detail: !evKnown ? "미산출 (기준가·손절가·목표가 확인 필요)" : evOk ? `+${ev.toFixed(1)}%` : `${ev.toFixed(1)}% (음수)` },
               {
                 label: "기준가 범위",
                 ok: inRange,
