@@ -58,12 +58,13 @@ jobs:
           from pathlib import Path
           sys.path.insert(0, str(Path.cwd()))
           from app.engine.walkforward_backtest import run_all
-          try:
-              result_kr = run_all("kr")
-              combo_count = len(result_kr.get("combos", {}))
-              print(f"[walk-forward] KR 완료: {combo_count}개 전략 조합")
-          except Exception as e:
-              print(f"[walk-forward] 오류: {e}")
+          for market in ("kr", "us"):
+              try:
+                  result = run_all(market)
+                  combo_count = len(result.get("combos", {}))
+                  print(f"[walk-forward] {market.upper()} 완료: {combo_count}개 전략 조합")
+              except Exception as e:
+                  print(f"[walk-forward] {market.upper()} 오류: {e}")
           PY
           echo "walk-forward: exit $?"
 
