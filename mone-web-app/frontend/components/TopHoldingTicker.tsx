@@ -229,7 +229,8 @@ async function fetchTickerRows(): Promise<TickerItem[]> {
   const focusedHoldings = prioritizeHoldingRows(holdingsRows);
   if (isPersonalHoldings && focusedHoldings.length > 0) return enrichRows(focusedHoldings, "holdings");
 
-  return enrichRows(await fetchRecommendationRows(), "recommendations");
+  // 상단 티커에서는 ETF/ETN을 제외하고 개별주만 노출한다
+  return enrichRows((await fetchRecommendationRows()).filter((row) => !isEtfRow(row)), "recommendations");
 }
 
 function labelForSource(item?: TickerItem) {
