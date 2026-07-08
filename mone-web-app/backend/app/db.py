@@ -485,6 +485,42 @@ def save_watchlist(user_id: str, items: list[dict]) -> int:
         print(f"[db] save_watchlist error: {e}")
         return 0
 
+def migrate_user_data(from_user_id: str, to_user_id: str) -> dict:
+    """익명 브라우저 ID로 저장된 보유/관심종목을 로그인 후 실제 사용자 ID로 이전한다.
+
+    로그인 시 프론트의 userId가 익명 UUID → OAuth ID로 바뀌면서, 로그인 전에
+    저장한 보유종목이 새 ID로는 조회되지 않아 사라지는 문제를 해결한다.
+    대상(to) 계정에 이미 데이터가 있으면 덮어쓰지 않는다(각 시장 단위로 판단).
+    """
+    src = sanitize_uid(from_user_id)
+    dst = sanitize_uid(to_user_id)
+    result = {"holdings": 0, "watchlist": 0, "from": src, "to": dst}
+    if not src or not dst or src == dst:
+        return result
+    try:
+        # 보유종목: 대상에 없는 시장만 이전 (기존 로그인 데이터 보호)
+        with holdings_lock(dst):
+            src_holdings = get_holdings(src, "all")
+            if src_holdings:
+                dst_markets = {str(h.get("market", "kr")).lower() for h in get_holdings(dst, "all")}
+                movable = [h for h in src_holdings if str(h.get("market", "kr")).lower() not in dst_markets]
+                if movable:
+                    # save_holdings는 시장 전체를 교체하므로, 대상의 기존 항목과 합쳐 저장
+                    merged = get_holdings(dst, "all") + movable
+                    result["holdings"] = save_holdings(dst, merged)
+        # 관심종목: 대상에 없는 시장만 이전
+        src_watch = get_watchlist(src, "all")
+        if src_watch:
+            dst_watch_markets = {str(w.get("market", "kr")).lower() for w in get_watchlist(dst, "all")}
+            movable_w = [w for w in src_watch if str(w.get("market", "kr")).lower() not in dst_watch_markets]
+            if movable_w:
+                merged_w = get_watchlist(dst, "all") + movable_w
+                result["watchlist"] = save_watchlist(dst, merged_w)
+    except Exception as e:
+        print(f"[db] migrate_user_data error: {e}")
+        result["error"] = str(e)[:120]
+    return result
+
 def save_broker_connection(user_id: str, broker: str, record: dict) -> None:
     uid = sanitize_uid(user_id)
     if not uid:

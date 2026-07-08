@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setAuthenticatedUser } from "@/lib/userId";
+import { mone } from "@/lib/api";
 
 function AuthCallbackInner() {
   const router = useRouter();
@@ -30,6 +31,10 @@ function AuthCallbackInner() {
       return;
     }
 
+    // 로그인 전 익명 브라우저 ID (setAuthenticatedUser가 덮어쓰기 전에 확보)
+    const previousUserId =
+      (typeof window !== "undefined" && window.localStorage.getItem("mone:userId")) || "";
+
     setAuthenticatedUser(
       {
         userId,
@@ -41,7 +46,17 @@ function AuthCallbackInner() {
       token,
     );
     setMessage("로그인 완료. 홈으로 이동합니다.");
-    window.setTimeout(() => router.replace("/"), 600);
+
+    const goHome = () => router.replace("/");
+    if (previousUserId && previousUserId !== userId) {
+      // 로그인 전 저장한 보유/관심종목을 새 계정으로 이전한 뒤 이동 (최대 4초 대기)
+      Promise.race([
+        mone.migrateUserData(previousUserId, userId).catch(() => null),
+        new Promise((resolve) => window.setTimeout(resolve, 4000)),
+      ]).finally(() => window.setTimeout(goHome, 300));
+    } else {
+      window.setTimeout(goHome, 600);
+    }
   }, [router, searchParams]);
 
   const isError = message.includes("실패") || message.includes("오류") || message.includes("검증") || message.includes("미설정");

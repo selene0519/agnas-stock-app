@@ -710,6 +710,12 @@ export const mone = {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     }).then((r) => r.json()),
+  migrateUserData: (fromUserId: string, toUserId: string) =>
+    fetch(buildUrl(API_BASE, "/api/user/migrate-data"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fromUserId, toUserId }),
+    }).then((r) => r.json()),
   brokerLocalBridgeUpload: (token: string, body: { broker: string; accountNoHint?: string; mode?: string; items: any[] }) =>
     fetch(buildUrl(API_BASE, "/api/broker/local-bridge/upload"), {
       method: "POST",
