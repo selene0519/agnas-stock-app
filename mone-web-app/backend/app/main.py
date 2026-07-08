@@ -4796,7 +4796,19 @@ def _install_mone_authoritative_holdings_clean_v3():
                     current = _sp
                     price_source_type = "holdings_snapshot"
                     price_source = str(row.get("holdingAuthoritySource") or row.get("source") or "holdings_csv")
-            current_text = q.get("currentPriceText") or (f"${current:,.2f}" if mk == "us" and current > 0 else f"{round(current):,}원" if current > 0 else "-")
+            # 브로커/스냅샷 현재가가 최신 OHLCV 종가보다 '오래된 날짜'면 OHLCV 종가로 대체한다.
+            # (로컬 브로커 동기화가 멈춰 보유 현재가가 옛 날짜에 고정되는 문제 해결.
+            #  OHLCV가 더 새 날짜일 때만 바꿔 절대 더 오래된 값으로 되돌리지 않는다.)
+            if not ohlcv_ref:
+                ohlcv_ref = _ohlcv_price_ref(mk, sym)
+            _oh_px = _num(ohlcv_ref.get("currentPrice"), 0)
+            _oh_key = _MONE_DQ_re.sub(r"\D", "", str(ohlcv_ref.get("currentPriceDate") or ""))[:8]
+            _q_key = _MONE_DQ_re.sub(r"\D", "", str(q.get("currentPriceDate") or q.get("priceTime") or q.get("quoteTimestamp") or ""))[:8]
+            if _oh_px > 0 and _oh_key.startswith("20") and (not _q_key.startswith("20") or _oh_key > _q_key):
+                current = _oh_px
+                price_source_type = "ohlcv_close"
+                price_source = ohlcv_ref.get("ohlcvSource", "") or "OHLCV 최신 종가"
+            current_text = (q.get("currentPriceText") if price_source_type != "ohlcv_close" else "") or (f"${current:,.2f}" if mk == "us" and current > 0 else f"{round(current):,}원" if current > 0 else "-")
             prev_close = _num(q.get("prevClose"), 0) or _num(_text(v, ["prevClose", "previousClose", "prev_close", "전일종가", "기준가"], ""), 0)
             prev_close_source = q.get("prevCloseSource") or ""
             if prev_close <= 0 and ohlcv_ref:
@@ -4853,13 +4865,18 @@ def _install_mone_authoritative_holdings_clean_v3():
             else:
                 risk_status = "NORMAL"
 
-            price_basis_date = str(
-                ohlcv_ref.get("currentPriceDate")
-                or q.get("currentPriceDate")
-                or q.get("priceTime")
-                or q.get("quoteTimestamp")
-                or ""
-            )
+            # 기준일은 '실제로 쓴 가격 출처'를 따른다. OHLCV로 대체했으면 OHLCV 날짜,
+            # 그 외에는 실시간/스냅샷 시각 우선 (ohlcv_ref는 이제 항상 채워져 있으므로 순서 주의).
+            if price_source_type == "ohlcv_close":
+                price_basis_date = str(ohlcv_ref.get("currentPriceDate") or "")
+            else:
+                price_basis_date = str(
+                    q.get("currentPriceDate")
+                    or q.get("priceTime")
+                    or q.get("quoteTimestamp")
+                    or ohlcv_ref.get("currentPriceDate")
+                    or ""
+                )
             price_data_status = _holding_price_data_status(mk, price_source_type, current, price_basis_date)
             missing_line_text = "장기보유 기준 없음" if asset_type != "stock" else "산출 필요"
             item = dict(row)
