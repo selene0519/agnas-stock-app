@@ -1535,6 +1535,42 @@ def _discovery_score(opportunity: Any, supply: Any, entry: Any, resist_dist: Any
     return round(max(0.0, min(100.0, base + ev_comp - late)), 1)
 
 
+# ── 미리 계산된 추천(GitHub Actions에서 생성) 로드 ──────────────────────────
+# 무료 인스턴스(512MB)에서 실시간 스코어링이 90초 타임아웃·OOM을 일으켜, 무거운
+# 계산은 Actions가 미리 돌려 reports/reco_cache/{market}_{mode}_{horizon}.json 으로
+# 커밋하고, 런타임은 이 파일을 읽기만 한다(파일 없으면 라이브 계산으로 폴백).
+_PRECOMP_CACHE: dict[tuple, dict[str, Any]] = {}
+_PRECOMP_CACHE_MTIME: dict[tuple, float] = {}
+
+
+def _precompute_path(market: str, mode: str, horizon: str):
+    return data.REPO_ROOT / "reports" / "reco_cache" / f"{market}_{mode}_{horizon}.json"
+
+
+def _load_precomputed(market: str, mode: str, horizon: str) -> dict[str, Any] | None:
+    """미리 계산된 추천 JSON 로드 — 파일 mtime 기준 메모리 캐시. 없으면 None."""
+    if os.getenv("MONE_DISABLE_PRECOMPUTE") == "1":
+        return None
+    path = _precompute_path(market, mode, horizon)
+    try:
+        if not path.exists():
+            return None
+        mtime = path.stat().st_mtime
+        key = (market, mode, horizon)
+        if _PRECOMP_CACHE.get(key) is not None and _PRECOMP_CACHE_MTIME.get(key) == mtime:
+            return _PRECOMP_CACHE[key]
+        import json as _json
+        with path.open("r", encoding="utf-8") as f:
+            payload = _json.load(f)
+        if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+            return None
+        _PRECOMP_CACHE[key] = payload
+        _PRECOMP_CACHE_MTIME[key] = mtime
+        return payload
+    except Exception:
+        return None
+
+
 def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: str = "swing", limit: int | None = None) -> dict[str, Any]:
     market = "us" if str(market).lower() == "us" else "kr"
     mode = mode if mode in MODES else "balanced"
@@ -1545,6 +1581,17 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         return _RECO_CACHE[_cache_key]
     max_allowed = min(300, runtime_limits.recommendation_max_symbols())
     requested_limit = runtime_limits.clamp_limit(limit, 20, max_allowed)
+    # 미리 계산된 결과가 있으면 그것을 잘라서 반환(무거운 라이브 계산 생략).
+    _pre = _load_precomputed(market, mode, horizon)
+    if _pre is not None:
+        _result = dict(_pre)
+        _items = _result.get("items") or []
+        _result["items"] = _items[:requested_limit]
+        _result["count"] = len(_result["items"])
+        _result["servedFrom"] = "precompute"
+        _RECO_CACHE[_cache_key] = _result
+        _RECO_CACHE_TS[_cache_key] = _now_ts
+        return _result
     news_map = _news_context(market)
     disc_map = _disclosure_context(market)
     # ── 5차: adaptive weight table 로드 (루프 외부에서 1회) ──────────────────

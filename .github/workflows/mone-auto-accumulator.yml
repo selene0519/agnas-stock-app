@@ -802,6 +802,15 @@ jobs:
           fi
           set -e
 
+      - name: Precompute recommendations (무거운 스코어링을 Actions에서 미리 계산)
+        run: |
+          set +e
+          # 무료 Render(512MB)에서 실시간 추천이 90초 타임아웃·OOM을 내므로, 전 조합을
+          # 여기서 미리 계산해 reports/reco_cache/*.json 으로 커밋한다(런타임은 읽기만).
+          python scripts/precompute_recommendations.py --market all --limit 120
+          echo "precompute recommendations: exit $?"
+          set -e
+
       - name: Remove local token/cache files before commit
         run: |
           find . -type f \( -iname '*token_cache*.json' -o -iname '.env' -o -iname '.env.*' \) -print -delete || true
@@ -836,6 +845,7 @@ jobs:
 
             # MONE v3.6 app-facing reports.
             git add reports/mone_v36_*.csv reports/mone_v36_*.json 2>/dev/null || true
+            git add reports/reco_cache/*.json 2>/dev/null || true
             git add reports/kr_recommendation_gen_status.json reports/us_recommendation_gen_status.json 2>/dev/null || true
             git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
             git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
