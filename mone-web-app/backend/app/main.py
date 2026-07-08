@@ -5038,6 +5038,14 @@ def _install_mone_authoritative_holdings_clean_v3():
 
     def _personal_payload(user_id: str, market: str = "all", limit: int = 100) -> dict:
         rows = _read_personal_holdings(user_id, market)
+        # 계정 DB에 보유가 없으면(브리지 미동기화/Supabase 미연결) 비로그인과 동일하게
+        # 공용 CSV 원장으로 폴백한다. rows_override=[]를 넘기면 _payload가 CSV를 읽지
+        # 않아 로그인 상태에서만 "보유 0개"가 되는 문제를 막는다(홈과 동일 소스 유지).
+        if not rows:
+            payload = _payload(market, limit)
+            payload["userId"] = user_id
+            payload["storage"] = _db.backend_info().get("backend", "user_db")
+            return payload
         payload = _payload(market, limit, rows_override=rows, authority="personal_user_holdings")
         payload["userId"] = user_id
         payload["storage"] = _db.backend_info().get("backend", "user_db")
@@ -7579,11 +7587,15 @@ def api_home_summary(
         try:
             uid = _clean_user_id(x_mone_user)
             if uid:
-                personal_rows = _db.get_holdings(uid, mk)
-                if personal_rows:
-                    from app.engine.mone_v802_holdings_clean import holdings_clean_payload_for_user
-                    holdings_payload = holdings_clean_payload_for_user(uid, market=mk, limit=50)
-                    holdings_payload = _exclude_etf_from_home_holdings(holdings_payload, mk)
+                # holdings_clean_payload_for_user는 계정 DB→유저 파일→공용 CSV 원장
+                # 순으로 자체 폴백한다. 과거엔 _db.get_holdings(uid)가 비면(브리지 보유가
+                # 계정 DB에 없거나 Supabase 미연결) 이 함수를 아예 호출하지 않아 홈이
+                # "보유 0개"로 떴다(비로그인은 CSV 원장이 보이는데 로그인만 0개). 게이트를
+                # 제거해 폴백이 동작하도록 하고, 결과에 항목이 있을 때만 반영한다.
+                from app.engine.mone_v802_holdings_clean import holdings_clean_payload_for_user
+                _hp = holdings_clean_payload_for_user(uid, market=mk, limit=50)
+                if _hp and _hp.get("items"):
+                    holdings_payload = _exclude_etf_from_home_holdings(_hp, mk)
         except Exception:
             holdings_payload = _empty_home_holdings(mk)
 
