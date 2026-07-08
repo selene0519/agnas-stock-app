@@ -362,6 +362,20 @@ export function resolveEvPct(item: any): number | null {
   return Math.round((prob * reward - (1 - prob) * risk - cost) * 100) / 100;
 }
 
+/**
+ * 현재가가 손절가 아래로 내려온 상태(롱 기준 이미 손절선 이탈).
+ * 추천 파일은 Actions 실행 때만 갱신되어, 그 사이 현재가가 손절가를 뚫으면
+ * "신규 진입 부적합"인데도 후보로 남는다. 이를 표시부에서 감지해 경고한다.
+ */
+export function isStopBreached(item: any): boolean {
+  const current = toNumber(
+    item?.currentPrice ?? item?.currentPriceText ?? item?.price ?? item?.priceText ?? item?.close,
+  );
+  const stop = toNumber(item?.stop ?? item?.stopText ?? item?.stopPrice ?? item?.stopLoss);
+  if (current == null || stop == null || current <= 0 || stop <= 0) return false;
+  return current < stop;
+}
+
 export function pctText(value: any, fallback = "-"): string {
   const text = String(value ?? "").trim();
   if (text && text !== "-" && text.includes("%")) return text;

@@ -36,6 +36,7 @@ import {
   horizonLabel,
   moneReasonLines,
   modeLabel,
+  isStopBreached,
   normalizeMarket,
   priceText,
   probabilityText,
@@ -293,8 +294,15 @@ function engineStatusLabel(status: EngineHistoryRow["status"]) {
 }
 
 function pickTopObservation(todayEntries: any[], watchItems: any[], allItems: any[]) {
-  return todayEntries[0] || watchItems[0] || [...allItems]
-    .sort((a, b) => Number(b.finalScore || b.finalRankScore || 0) - Number(a.finalScore || a.finalRankScore || 0))[0] || null;
+  // 손절선 이탈(현재가<손절가) 종목은 신규 진입 부적합이므로 대표 "1순위"로 앞세우지 않는다.
+  // 정상 후보를 우선하고, 전부 이탈일 때만 finalScore 최상위를 노출한다.
+  const byScoreStopAware = [...allItems].sort((a, b) => {
+    const ab = isStopBreached(a) ? 1 : 0;
+    const bb = isStopBreached(b) ? 1 : 0;
+    if (ab !== bb) return ab - bb;
+    return Number(b.finalScore || b.finalRankScore || 0) - Number(a.finalScore || a.finalRankScore || 0);
+  });
+  return todayEntries[0] || watchItems[0] || byScoreStopAware[0] || null;
 }
 
 function buildDailyBriefing(args: {
@@ -337,7 +345,11 @@ function buildDailyBriefing(args: {
   let detail = `${name}이 ${decision} 후보 중 우선 확인 대상입니다. ${scoreText}, ${evText}이며 ${basis}입니다.`;
   let tone: BriefingPayload["tone"] = "blue";
 
-  if (isBear || isRisk) {
+  if (isStopBreached(topItem)) {
+    // 현재가가 이미 손절가 아래 — 신규 진입 부적합. 가장 우선해서 경고한다.
+    tone = "red";
+    detail = `${name}은 현재가가 이미 손절가 아래로 내려와 신규 진입에는 부적합합니다. 추천 기준일 이후 하락한 상태이니 재진입은 손절가·기준가 재설정 후 판단하세요.`;
+  } else if (isBear || isRisk) {
     tone = isRisk ? "red" : "amber";
     detail = `${name}은 신호가 있지만 시장/리스크 조건 확인이 우선입니다. 진입보다 손절가와 기준가 이격을 먼저 보세요.`;
   } else if (String(topItem.decisionBucket || "").includes("오늘")) {
@@ -2506,9 +2518,18 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             const dataOk  = !["STALE", "ERROR", "DATA_PENDING"].includes(String(item.dataStatus || ""));
             const noCaution = !Array.isArray(item.cautionReasons) || item.cautionReasons.length === 0;
             const noPlWarning = !item.priceLevelWarning;
+            const stop     = toNumber(item.stop ?? item.stopText ?? item.stopPrice ?? item.stopLoss);
+            const stopBreached = isStopBreached(item);
 
             const checks = [
               { label: "EV 양수", ok: evOk, detail: !evKnown ? "미산출 (기준가·손절가·목표가 확인 필요)" : evOk ? `+${ev.toFixed(1)}%` : `${ev.toFixed(1)}% (음수)` },
+              {
+                label: "손절선 유효",
+                ok: !stopBreached,
+                detail: stopBreached
+                  ? `현재가 ${current!.toLocaleString("ko-KR")}가 손절가 ${stop!.toLocaleString("ko-KR")} 이하 — 이미 손절선 이탈, 신규 진입 부적합`
+                  : (current != null && stop != null ? `현재가 > 손절가 ${stop.toLocaleString("ko-KR")}` : "현재가/손절가 없음"),
+              },
               {
                 label: "기준가 범위",
                 ok: inRange,
