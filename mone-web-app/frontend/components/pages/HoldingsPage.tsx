@@ -1028,8 +1028,16 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const summary = data.summary || {};
   const tossStatus = brokerConnections.find((conn) => conn.broker === "toss");
   const kisStatus = brokerConnections.find((conn) => conn.broker === "kis");
+  // 보유 데이터 신선도는 개별 종목이 실제로 쓴 가격 기준일 중 '가장 최신'을 대표로
+  // 삼는다. items[0] 하나만 보면 첫 종목이 유독 오래된 경우(비유동 종목 등) 포트폴리오
+  // 전체가 "오래됨"으로 오표시됐다. ISO(YYYY-MM-DD)는 사전식 정렬 = 시간순 정렬.
+  const freshestHoldingDate = items
+    .map((i: any) => String(i?.latestDataDate || i?.priceDate || i?.ohlcvLatestDate || i?.date || ""))
+    .filter((d: string) => /^\d{4}-\d{2}-\d{2}/.test(d))
+    .sort()
+    .pop();
   const holdingFreshness = dataFreshnessInfo({
-    latestDataDate: summary.latestDataDate || summary.ohlcvLatestDate || items[0]?.latestDataDate || items[0]?.priceDate || items[0]?.date,
+    latestDataDate: summary.latestDataDate || summary.ohlcvLatestDate || freshestHoldingDate || items[0]?.date,
     recoGeneratedAt: summary.updatedAt || data.updatedAt || holdingsLoadedAt,
     dataStatus: data.status,
   });
