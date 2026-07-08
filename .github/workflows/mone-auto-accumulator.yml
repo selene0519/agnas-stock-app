@@ -424,6 +424,18 @@ jobs:
           fi
           set -e
 
+      - name: Expand candidate universe — 시총+거래대금 (weekly on Monday)
+        run: |
+          set +e
+          DAY=$(date +%u)
+          if [ "$DAY" = "1" ] && [ -f scripts/build_universe.py ]; then
+            python scripts/build_universe.py --market all
+            echo "build_universe: exit $?"
+          else
+            echo "Not Monday or script missing — skip universe expansion."
+          fi
+          set -e
+
       - name: Backfill OHLCV history for DATA_PENDING stocks
         run: |
           set +e
