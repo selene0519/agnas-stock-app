@@ -313,6 +313,69 @@ export function priceText(item: any, key: "current" | "entry" | "stop" | "target
   return fallback;
 }
 
+// ── EV·RR 표시부 최후 방어선 ──────────────────────────────────────────────────
+// 추천 CSV에는 expectedValue·rrActual 컬럼이 없어 백엔드가 런타임에 채운다.
+// 그 백필을 못 거친 응답/경로(배포 지연·캐시·미보강 엔드포인트)가 하나라도 생기면
+// 화면에 "EV +0.0% / RR —"이 반복해서 떴다. entry/stop/target은 항상 있으므로
+// 표시 직전에 직접 재계산해 필드 누락과 무관하게 값을 보장한다.
+// EV 공식은 backend final_engine._expected_value_pct()와 반드시 동일하게 유지할 것.
+const EV_BASE_WIN: Record<string, number> = { short: 0.485, swing: 0.505, mid: 0.515 };
+const EV_SCALE: Record<string, number> = { short: 0.12, swing: 0.14, mid: 0.15 };
+
+function evRrInputs(item: any) {
+  return {
+    entry: toNumber(item?.entry ?? item?.entryText ?? item?.entryPrice ?? item?.expectedEntryPrice),
+    stop: toNumber(item?.stop ?? item?.stopText ?? item?.stopPrice ?? item?.stopLoss),
+    target: toNumber(item?.target ?? item?.targetText ?? item?.targetPrice),
+    score: toNumber(item?.finalScore ?? item?.finalRankScore ?? item?.recommendationScore),
+    horizon: String(item?.horizon ?? item?._horizon ?? "swing").trim() || "swing",
+    market: normalizeMarket(item?.market ?? item?._market, normalizeSymbol(item)),
+  };
+}
+
+/** 손익비 RR = (목표−기준)/(기준−손절). 백엔드 값이 있으면 그대로, 없으면 재계산. */
+export function resolveRr(item: any): number | null {
+  const direct = toNumber(item?.rrActual ?? item?.rr ?? item?.riskRewardRatio);
+  if (direct != null && direct > 0) return direct;
+  const { entry, stop, target } = evRrInputs(item);
+  if (entry == null || stop == null || target == null) return null;
+  if (!(entry > 0 && stop > 0 && target > entry)) return null;
+  const risk = Math.abs(entry - stop);
+  if (risk <= 0) return null;
+  return Math.round(((target - entry) / risk) * 100) / 100;
+}
+
+/** 기댓값 EV(%). 백엔드 값이 있으면(0 포함) 그대로, 없을 때만 동일 공식으로 재계산. */
+export function resolveEvPct(item: any): number | null {
+  const direct = toNumber(item?.expectedValue ?? item?.expectedValueText ?? item?.ev);
+  if (direct != null) return direct;
+  const { entry, stop, target, score, horizon, market } = evRrInputs(item);
+  if (entry == null || stop == null || target == null || score == null) return null;
+  if (!(entry > 0 && stop > 0 && target > entry)) return null;
+  const reward = ((target - entry) / entry) * 100;
+  const risk = Math.abs((entry - stop) / entry) * 100;
+  if (risk <= 0) return null;
+  const base = EV_BASE_WIN[horizon] ?? 0.505;
+  const scale = EV_SCALE[horizon] ?? 0.14;
+  const prob = Math.max(0.35, Math.min(0.65, base + ((score - 50) / 50) * scale));
+  const cost = market === "us" ? 0.15 : 0.31;
+  return Math.round((prob * reward - (1 - prob) * risk - cost) * 100) / 100;
+}
+
+/**
+ * 현재가가 손절가 아래로 내려온 상태(롱 기준 이미 손절선 이탈).
+ * 추천 파일은 Actions 실행 때만 갱신되어, 그 사이 현재가가 손절가를 뚫으면
+ * "신규 진입 부적합"인데도 후보로 남는다. 이를 표시부에서 감지해 경고한다.
+ */
+export function isStopBreached(item: any): boolean {
+  const current = toNumber(
+    item?.currentPrice ?? item?.currentPriceText ?? item?.price ?? item?.priceText ?? item?.close,
+  );
+  const stop = toNumber(item?.stop ?? item?.stopText ?? item?.stopPrice ?? item?.stopLoss);
+  if (current == null || stop == null || current <= 0 || stop <= 0) return false;
+  return current < stop;
+}
+
 export function pctText(value: any, fallback = "-"): string {
   const text = String(value ?? "").trim();
   if (text && text !== "-" && text.includes("%")) return text;
