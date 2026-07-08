@@ -801,7 +801,7 @@ def api_final_recommendations(
     market: str = Query("kr", pattern="^(kr|us)$"),
     mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
     horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
-    limit: int = Query(20, ge=1, le=50),
+    limit: int = Query(20, ge=1, le=300),
 ) -> dict:
     mk = _market(market)
     payload = final_engine.final_recommendations(mk, mode, horizon, limit=limit)
