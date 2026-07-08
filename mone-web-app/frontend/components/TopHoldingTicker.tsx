@@ -83,8 +83,8 @@ function needsAction(row: any): boolean {
 }
 
 function prioritizeHoldingRows(rows: any[]) {
-  const deduped = dedupeBySymbol(rows);
-  const actionRows = deduped.filter((row) => !isEtfRow(row) && needsAction(row));
+  const deduped = dedupeBySymbol(rows).filter((row) => !isEtfRow(row));
+  const actionRows = deduped.filter((row) => needsAction(row));
   const sourceRows = actionRows.length > 0 ? actionRows : deduped;
   return sourceRows
     .sort((a, b) => {
