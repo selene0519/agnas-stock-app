@@ -674,6 +674,24 @@ def health() -> dict:
 
 
 
+@app.post("/api/user/migrate-data")
+def api_user_migrate_data(payload: dict = Body(...)) -> dict:
+    """로그인 시 익명 userId의 보유/관심종목을 OAuth userId로 이전한다.
+
+    로그인 후 userId가 바뀌면서 로그인 전 저장한 보유가 사라지던 문제를 해결한다.
+    대상 계정에 이미 데이터가 있으면 시장 단위로 보호(덮어쓰지 않음).
+    """
+    from_id = str(payload.get("fromUserId") or payload.get("from") or "")
+    to_id = str(payload.get("toUserId") or payload.get("to") or "")
+    if not from_id or not to_id:
+        return {"status": "ERROR", "message": "fromUserId/toUserId가 필요합니다."}
+    try:
+        res = _db.migrate_user_data(from_id, to_id)
+        return {"status": "OK", **res}
+    except Exception as exc:
+        return {"status": "ERROR", "message": str(exc)[:200]}
+
+
 @app.post("/api/auth/admin-login")
 def api_admin_login(payload: dict = Body(...)):
     if not _admin_auth_configured():
