@@ -108,6 +108,10 @@ def _clear_all_caches() -> int:
                 mod._RECO_CACHE.clear()
                 mod._RECO_CACHE_TS.clear()
                 cleared += 1
+            if hasattr(mod, "_OVERLAY_CACHE"):
+                mod._OVERLAY_CACHE.clear()
+                mod._OVERLAY_CACHE_TS.clear()
+                cleared += 1
         except Exception:
             pass
     gc.collect()
