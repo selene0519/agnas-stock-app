@@ -1273,7 +1273,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             {holdingFreshness.label}
           </span>
           <span>{holdingFreshness.basisText}</span>
-          {holdingsLoadedAt && <span>현재가 갱신: {holdingsLoadedAt}</span>}
+          {holdingsLoadedAt && <span>목록 확인: {holdingsLoadedAt}</span>}
           <span className="flex-1" />
           <button onClick={() => load()}
             className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800">

@@ -88,7 +88,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // Home recommendations are prediction snapshots. Keep them across reloads and
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v13:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v14:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -1354,6 +1354,31 @@ const SCORE_ITEMS = [
   { key: "rrScore",        label: "손익비",       color: "bg-violet-500" },
   { key: "qualityScore",   label: "기업 안정성",  color: "bg-teal-500" },
 ];
+
+function scoreNumber(item: any, ...keys: string[]) {
+  for (const key of keys) {
+    const raw = item?.[key];
+    if (raw === null || raw === undefined || raw === "") continue;
+    const value = Number(raw);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function scoreBreakdownValue(item: any, key: string) {
+  if (key === "upsideScore") return scoreNumber(item, "upsideScore", "opportunityScore");
+  if (key === "riskStabilityScore") {
+    const stability = scoreNumber(item, "riskStabilityScore");
+    if (stability !== null) return stability;
+    const risk = scoreNumber(item, "riskScore");
+    return risk === null ? null : 100 - risk;
+  }
+  if (key === "momentumScore") return scoreNumber(item, "momentumScore", "momentumContinuationScore", "trendStrengthScore");
+  if (key === "entryScore") return scoreNumber(item, "entryScore");
+  if (key === "rrScore") return scoreNumber(item, "rrScore");
+  if (key === "qualityScore") return scoreNumber(item, "qualityScore", "finQualityScore");
+  return scoreNumber(item, key);
+}
 
 const SUPPLY_LABEL: Record<string, string> = {
   STRONG_BUY:    "기관+외국인 동시 매수",
@@ -2701,8 +2726,8 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
             <div className="mb-3 text-xs font-semibold text-slate-300">점수 분해</div>
             <div className="space-y-2">
               {SCORE_ITEMS.map(({ key, label, color }) => {
-                const val = Number((item as any)[key] ?? null);
-                if (isNaN(val)) return null;
+                const val = scoreBreakdownValue(item, key);
+                if (val === null) return null;
                 return (
                   <div key={key} className="flex items-center gap-2 text-[11px]">
                     <span className="w-20 shrink-0 text-slate-400">{label}</span>

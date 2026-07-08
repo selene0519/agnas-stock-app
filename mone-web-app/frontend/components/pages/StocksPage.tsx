@@ -143,6 +143,37 @@ function cleanSymbol(symbol: any, market: Market) {
   return raw.toUpperCase().replace(/[^A-Z0-9.\-]/g, "");
 }
 
+type SectorLookup = Record<string, string>;
+
+function sectorLookupKey(market: Market, symbol: any) {
+  return `${market}-${cleanSymbol(symbol, market)}`;
+}
+
+function buildSectorLookup(market: Exclude<Market, "all">, sectors: any[]): SectorLookup {
+  const lookup: SectorLookup = {};
+  for (const sectorRow of sectors) {
+    const sector = String(sectorRow?.sector || "").trim();
+    if (!sector) continue;
+    const symbols = Array.isArray(sectorRow?.symbols) ? sectorRow.symbols : [];
+    for (const entry of symbols) {
+      const symbol = typeof entry === "string" ? entry : entry?.symbol;
+      const itemMarket = cleanMarket((typeof entry === "object" && entry?.market) || market);
+      if (itemMarket === "all") continue;
+      lookup[sectorLookupKey(itemMarket, symbol)] = sector;
+    }
+  }
+  return lookup;
+}
+
+function enrichItemSector(item: any, lookup: SectorLookup, fallbackMarket: Exclude<Market, "all">) {
+  const current = String(item?.sector || item?.sectorLabel || "").trim();
+  if (current) return item;
+  const itemMarket = cleanMarket(item?.market || fallbackMarket);
+  if (itemMarket === "all") return item;
+  const sector = lookup[sectorLookupKey(itemMarket, item?.symbol)];
+  return sector ? { ...item, sector } : item;
+}
+
 function watchKey(row: { market?: any; symbol?: any }) {
   const market = cleanMarket(row.market || "kr");
   return `${market}-${cleanSymbol(row.symbol, market)}`;
@@ -363,6 +394,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [scoredLoading, setScoredLoading] = useState(false);
   const [sectorFilter, setSectorFilter] = useState<string | null>(null);
   const [sectorsList, setSectorsList] = useState<string[]>([]);
+  const [sectorLookup, setSectorLookup] = useState<SectorLookup>({});
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [groupsList, setGroupsList] = useState<string[]>([]);
   const [groupAssigning, setGroupAssigning] = useState<string | null>(null);
@@ -405,6 +437,18 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         ? r.items.slice(0, 30).map((s: any) => s.sector).filter((sec: string) => !HIDDEN.has(sec?.toLowerCase() ?? "") && !HIDDEN.has(sec))
         : []);
     }).catch(() => setSectorsList([]));
+    mone.sectorsList({ market: resolvedMarket }).then((r) => {
+      const HIDDEN = new Set(["unknown", "other", "Other", "기타", "미분류"]);
+      const sectorItems = Array.isArray(r.items) ? r.items : [];
+      setSectorLookup(buildSectorLookup(resolvedMarket, sectorItems));
+      setSectorsList(sectorItems
+        .slice(0, 30)
+        .map((s: any) => String(s.sector || "").trim())
+        .filter((sec: string) => sec && !HIDDEN.has(sec) && !HIDDEN.has(sec.toLowerCase())));
+    }).catch(() => {
+      setSectorLookup({});
+      setSectorsList([]);
+    });
     mone.watchlistGroups({ market: resolvedMarket }).then((r) => {
       setGroupsList(Array.isArray(r.groups) ? r.groups.filter((g: string) => g !== "미분류") : []);
     }).catch(() => setGroupsList([]));
@@ -581,8 +625,22 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     };
   }, [resolvedMarket, mode, horizon, watchOnly, watchlist.length, refreshVersion]);
 
+  const enrichedItems = useMemo(
+    () => items.map((item) => enrichItemSector(item, sectorLookup, resolvedMarket)),
+    [items, sectorLookup, resolvedMarket],
+  );
+
+  const effectiveSectorsList = useMemo(() => {
+    const values = new Set(sectorsList);
+    for (const item of enrichedItems) {
+      const sector = String(item?.sector || item?.sectorLabel || "").trim();
+      if (sector) values.add(sector);
+    }
+    return Array.from(values).sort((a, b) => sectorKoreanLabel(a).localeCompare(sectorKoreanLabel(b), "ko"));
+  }, [sectorsList, enrichedItems]);
+
   const baseFiltered = useMemo(() => {
-    let result = items;
+    let result = enrichedItems;
     if (sectorFilter) {
       result = result.filter((item) => {
         const sec = String(item.sector || item.sectorLabel || "").trim();
@@ -656,7 +714,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       );
     }
     return result;
-  }, [items, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery]);
+  }, [enrichedItems, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery]);
 
   // 탐색 렌즈 필터: strategyTags 기준으로 렌즈에 해당하는 종목만 우선 노출한다.
   // 밸런스(matchAll)는 전체를 종합해서 보는 기본 렌즈이므로 필터하지 않는다.
@@ -672,11 +730,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
-    items.forEach((item) => {
+    enrichedItems.forEach((item) => {
       (Array.isArray(item.strategyTags) ? item.strategyTags : []).forEach((t: string) => tagSet.add(t));
     });
     return Array.from(tagSet).sort();
-  }, [items]);
+  }, [enrichedItems]);
 
   const activeFilterCount = [
     minScore > 0, tagFilter != null, hideDataPending, hideBlockedOnly,
@@ -710,7 +768,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }
 
   const visible = useMemo(() => {
-    const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() || (lens && lens !== "balance") ? sectorFiltered : items;
+    const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() || (lens && lens !== "balance") ? sectorFiltered : enrichedItems;
     let result = base;
     if (selected) {
       const selectedMarket = cleanMarket(selected.market || resolvedMarket || "kr");
@@ -739,7 +797,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       ];
     }
     return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
-  }, [items, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy, lens]);
+  }, [enrichedItems, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy, lens]);
 
   const filterStats = useMemo(() => {
     const normal = sectorFiltered.filter((item) => String(item.dataStatus || "").toUpperCase() === "NORMAL").length;
@@ -749,7 +807,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }, [sectorFiltered]);
 
   const recommendationFreshness = useMemo(() => {
-    const sample = visible.find((item) => !item.isSearchOnly) || items[0] || {};
+    const sample = visible.find((item) => !item.isSearchOnly) || enrichedItems[0] || {};
     const predictionBasisDate = firstText(
       sample.predictionDate,
       sample.recommendationDate,
@@ -768,7 +826,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       recoGeneratedAt: firstText(sample.recoGeneratedAt, sample.generatedAt, sample.updatedAt, ""),
       dataStatus: loadError ? "NO_DATA" : sample.dataStatus,
     });
-  }, [items, visible, loadError, resolvedMarket]);
+  }, [enrichedItems, visible, loadError, resolvedMarket]);
 
   const priceBasisInfo = useMemo(() => {
     const sample = visible.find((item) => !item.isSearchOnly) || items[0] || {};
@@ -1066,7 +1124,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         )}
 
         {/* 섹터 필터 */}
-        {sectorsList.length > 0 && (
+        {effectiveSectorsList.length > 0 && (
           <div className="mt-4 flex flex-col gap-1.5 sm:max-w-xs">
             <label htmlFor="stocks-sector-filter" className="text-[10px] text-slate-500">
               섹터
@@ -1079,7 +1137,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               className="min-h-11 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-violet-500"
             >
               <option value="">전체</option>
-              {sectorsList.map((sec) => (
+              {effectiveSectorsList.map((sec) => (
                 <option key={sec} value={sec}>
                   {sectorKoreanLabel(sec)}
                 </option>
@@ -1430,7 +1488,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               {/* 결과 요약 + 전체 초기화 */}
               <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
                 <span className="text-xs text-slate-500">
-                  필터 결과: <span className="font-mono text-slate-200">{sectorFiltered.length}</span> / {items.length}개
+                  필터 결과: <span className="font-mono text-slate-200">{sectorFiltered.length}</span> / {enrichedItems.length}개
                 </span>
                 {activeFilterCount > 0 && (
                   <button onClick={() => {

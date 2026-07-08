@@ -246,6 +246,46 @@ def _read_csv(path: Path | None, limit: int = 50000) -> list[dict[str, Any]]:
     return []
 
 
+def _sector_map_paths(market: str) -> list[Path]:
+    market = _market_norm(market)
+    return [
+        _app_root() / "backend" / "app" / "sector_maps" / f"sector_map_{market}.csv",
+        _repo_root() / "data" / f"sector_map_{market}.csv",
+        _repo_root() / f"sector_map_{market}.csv",
+    ]
+
+
+@lru_cache(maxsize=8)
+def _sector_rows(market: str) -> tuple[dict[str, str], ...]:
+    market = _market_norm(market)
+    if market == "all":
+        rows: list[dict[str, str]] = []
+        for mk in ("kr", "us"):
+            rows.extend(_sector_rows(mk))
+        return tuple(rows)
+
+    for path in _sector_map_paths(market):
+        rows: list[dict[str, str]] = []
+        for row in _read_csv(path, 200000):
+            row_market = _market_norm(row.get("market") or market)
+            if row_market != market:
+                continue
+            sym = _symbol(row, market)
+            sector = _text(row, ["sector", "sectorLabel"], "").strip()
+            name = _text(row, ["name", "companyName", "company"], sym).strip()
+            if not sym or not sector or sector.lower() in {"unknown", "other"}:
+                continue
+            rows.append({"symbol": sym, "name": name or sym, "market": market, "sector": sector})
+        if rows:
+            return tuple(rows)
+    return tuple()
+
+
+@lru_cache(maxsize=8)
+def _sector_lookup(market: str) -> dict[str, str]:
+    return {row["symbol"]: row["sector"] for row in _sector_rows(market)}
+
+
 def _read_csv_tables(path: Path | None, limit: int = 50000) -> list[dict[str, Any]]:
     if path is None or not path.exists() or not path.is_file() or path.stat().st_size <= 0:
         return []
@@ -1612,6 +1652,15 @@ def _recommendation_item(
     quote = quotes.get(sym, {})
     computed_fields: list[str] = []
     profile = _strategy_profile(mode)
+    sector = _text(row, ["sector", "sectorLabel"], "") or _sector_lookup(market).get(sym, "")
+    risk_score_raw = _text(row, ["riskScore", "risk_score"], "")
+    risk_score = _num(risk_score_raw) if risk_score_raw != "" else None
+    risk_stability_raw = _text(row, ["riskStabilityScore", "risk_stability_score"], "")
+    risk_stability_score = _num(risk_stability_raw) if risk_stability_raw != "" else (
+        round(_clamp(100.0 - risk_score, 0.0, 100.0), 1) if risk_score is not None else None
+    )
+    expected_value_raw = _text(row, ["expectedValue", "expected_value", "ev"], "")
+    expected_value = _num(expected_value_raw) if expected_value_raw != "" else None
 
     current = _num(_text(quote, PRICE_KEYS, "")) or _num(_text(row, PRICE_KEYS, ""))
     entry = _num(_text(row, ["entry", "entry_price", "entryPrice", "preferred_entry", "technical_entry", "support1"], ""))
@@ -1777,7 +1826,7 @@ def _recommendation_item(
         "computedFields": computed_fields,
         "isWatch": sym in watch,
         # ── CSV에서 직접 전달되는 새 필드 (generate_kr_recommendations 출력)
-        "sector": _text(row, ["sector"], ""),
+        "sector": sector,
         "peg": _num(_text(row, ["peg"], "")) or None,
         "debtRatio": _num(_text(row, ["debtRatio", "debt_ratio"], "")) or None,
         "operatingMargin": _num(_text(row, ["operatingMargin", "operating_margin"], "")) or None,
@@ -1804,12 +1853,14 @@ def _recommendation_item(
         "finalRankScore": _adjusted_fs,
         "baseScore": _num(_text(row, ["baseScore", "base_score"], "")) or None,
         "upsideScore": _num(_text(row, ["upsideScore", "upside_score"], "")) or None,
-        "riskScore": _num(_text(row, ["riskScore", "risk_score"], "")) or None,
+        "riskScore": risk_score,
+        "riskStabilityScore": risk_stability_score,
         "momentumScore": _num(_text(row, ["momentumScore", "momentum_score"], "")) or None,
         "entryScore": _num(_text(row, ["entryScore", "entry_score"], "")) or None,
         "rrScore": _num(_text(row, ["rrScore", "rr_score"], "")) or None,
         "qualityScore": _num(_text(row, ["qualityScore", "quality_score"], "")) or None,
-        "expectedValue": _num(_text(row, ["expectedValue", "expected_value", "ev"], "")) or None,
+        "expectedValue": expected_value,
+        "expectedValueText": f"{expected_value:+.1f}%" if expected_value is not None else "",
         "eventScoreAdjustment": event_score_adjustment,
         "adaptiveScoreAdjustment": adaptive_score_adjustment,
         "adaptiveLearningStatus": adaptive_learning_status,
@@ -4141,14 +4192,7 @@ def _sector_exposure_payload(market: str) -> dict[str, Any]:
     repo   = _repo_root()
 
     # sector_map 로드
-    sector_map: dict[str, str] = {}
-    for p in [repo / "data" / "sector_map_kr.csv", repo / "sector_map_kr.csv"]:
-        if p.exists():
-            for row in _read_csv(p, 100000):
-                sym = str(row.get("symbol") or "").strip().lstrip("0").zfill(6)
-                sec = str(row.get("sector") or "Other").strip() or "Other"
-                sector_map[sym] = sec
-            break
+    sector_map = _sector_lookup(market)
 
     # 보유종목 로드
     holdings: list[dict[str, Any]] = []
@@ -4665,18 +4709,17 @@ def _watchlist_set_group_payload(data: dict[str, Any]) -> dict[str, Any]:
 def _sectors_list_payload(market: str) -> dict[str, Any]:
     """sector_map에서 고유 섹터 목록 반환."""
     market = _market_norm(market)
-    repo   = _repo_root()
     sectors: dict[str, int] = {}
-    for p in [repo / "data" / "sector_map_kr.csv", repo / f"sector_map_{market}.csv"]:
-        if p.exists():
-            for row in _read_csv(p, 200000):
-                mkt = str(row.get("market") or "kr").lower()
-                if mkt != market:
-                    continue
-                sec = str(row.get("sector") or "Other").strip() or "Other"
-                sectors[sec] = sectors.get(sec, 0) + 1
-            break
-    items = sorted([{"sector": k, "count": v} for k, v in sectors.items()],
+    symbols: dict[str, list[dict[str, str]]] = {}
+    for row in _sector_rows(market):
+        sec = row["sector"]
+        sectors[sec] = sectors.get(sec, 0) + 1
+        symbols.setdefault(sec, []).append({
+            "symbol": row["symbol"],
+            "name": row.get("name") or row["symbol"],
+            "market": row.get("market") or market,
+        })
+    items = sorted([{"sector": k, "count": v, "symbols": symbols.get(k, [])} for k, v in sectors.items()],
                    key=lambda x: -x["count"])
     return {"status": "OK", "market": market, "count": len(items), "items": items}
 
