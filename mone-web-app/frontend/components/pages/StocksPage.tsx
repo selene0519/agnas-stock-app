@@ -399,7 +399,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [groupsList, setGroupsList] = useState<string[]>([]);
   const [groupAssigning, setGroupAssigning] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"finalScore" | "expectedValue" | "upsideScore" | "rrScore">("finalScore");
+  const [sortBy, setSortBy] = useState<"finalScore" | "expectedValue" | "upsideScore" | "rrScore" | "discoveryScore">("finalScore");
   const [screenerOpen, setScreenerOpen] = useState(false);
   const [lens, setLens] = useState<ExplorationLensId | null>(null);
   const [minScore, setMinScore] = useState(0);
@@ -806,7 +806,9 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         },
       ];
     }
-    return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
+    // 발굴 렌즈에서는 '조기성(발굴 점수)' 순으로 정렬해 아직 덜 오른 후보를 위로.
+    const _sortKey = lens === "discovery" ? "discoveryScore" : sortBy;
+    return [...result].sort((a, b) => Number(b[_sortKey] ?? 0) - Number(a[_sortKey] ?? 0));
   }, [enrichedItems, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery, sortBy, lens]);
 
   const filterStats = useMemo(() => {
@@ -1556,6 +1558,12 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     <span className="ml-1.5 text-[10px] opacity-60">{it.symbol}</span>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
+                    {lens === "discovery" && Number(it.discoveryScore) > 0 && (
+                      <span className="font-mono text-violet-300/90" title="발굴 점수(조기성): 아직 덜 오른·초기 신호 후보일수록 높음">발굴 {Number(it.discoveryScore).toFixed(0)}</span>
+                    )}
+                    {Number(it.validatedWinRate) > 0 && (
+                      <span className="font-mono text-sky-300/80" title={`이 전략의 워크포워드 실측 승률 (표본 ${it.validatedSampleCount || 0}건)`}>검증 {Number(it.validatedWinRate).toFixed(0)}%</span>
+                    )}
                     {it.finalScore > 0 && <span className="font-mono">{it.finalScore.toFixed(0)}점</span>}
                     {it.expectedValue !== 0 && <span className={`font-mono ${it.expectedValue >= 0 ? "opacity-80" : "text-red-400"}`}>EV {it.expectedValue >= 0 ? "+" : ""}{it.expectedValue?.toFixed(1)}%</span>}
                     <span className="rounded-full border px-1.5 py-0.5 text-[10px]">{it.suggestion}</span>
@@ -1769,6 +1777,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 focus:border-slate-500 focus:outline-none"
             >
               <option value="finalScore">종합점수순</option>
+              <option value="discoveryScore">발굴점수순 (조기성)</option>
               <option value="expectedValue">EV순</option>
               <option value="upsideScore">상승여력순</option>
               <option value="rrScore">손익비순</option>
