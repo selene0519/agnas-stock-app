@@ -1313,6 +1313,29 @@ def _expected_value_pct(entry: Any, stop: Any, target: Any, score: Any, horizon:
     return round(ev_gross - trade_cost, 2)
 
 
+def _discovery_score(opportunity: Any, supply: Any, entry: Any, resist_dist: Any, ev: Any) -> float:
+    """발굴(조기성) 점수 0~100.
+
+    '아직 덜 오른, 초기 신호가 붙기 시작한, 오를 여지가 있는' 종목일수록 높다.
+      · 상승 여력(opportunityScore) — 아직 오를 공간
+      · 초기 수급(supply_score) — 관심이 붙기 시작
+      · 진입 접근성(entryScore) — 기준가 근처
+      · 저항까지 여유(resistanceDistancePct) — 위로 뚫을 공간
+      · EV(+) 가산
+    저항에 바짝 붙은(≈이미 늦은/과열) 종목은 감점한다.
+    """
+    opp = _num(opportunity) or 0.0
+    sup = _num(supply) or 0.0
+    ent = _num(entry) or 0.0
+    rd = _num(resist_dist)
+    ev_v = _num(ev) or 0.0
+    room = (max(0.0, min(20.0, rd)) / 20.0 * 100.0) if rd is not None else 40.0
+    base = 0.42 * opp + 0.22 * sup + 0.14 * ent + 0.12 * room
+    ev_comp = max(-5.0, min(10.0, ev_v)) * 2.0          # EV +5%→+10, -5%→-10
+    late = 12.0 if (rd is not None and 0.0 < rd < 3.0) else 0.0  # 저항 3% 이내 = 늦음
+    return round(max(0.0, min(100.0, base + ev_comp - late)), 1)
+
+
 def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: str = "swing", limit: int | None = None) -> dict[str, Any]:
     market = "us" if str(market).lower() == "us" else "kr"
     mode = mode if mode in MODES else "balanced"
@@ -1686,6 +1709,18 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             _rr = _num(row.get("rr")) or _num(normalized.get("rr"))
             if _rr is not None:
                 row["rrActual"] = _rr
+        # ── 발굴 점수(조기성) + 검증 승률 ────────────────────────────────────
+        # 발굴 렌즈를 '가장 일찍 움직일 것 같은 순'으로 랭킹하고, 각 후보에
+        # 워크포워드 실측 승률을 붙여 "검증된 발굴"을 만든다.
+        row["discoveryScore"] = _discovery_score(
+            row.get("opportunityScore"),
+            normalized.get("supply_score"),
+            row.get("entryScore"),
+            normalized.get("resistanceDistancePct"),
+            row.get("expectedValue"),
+        )
+        row["validatedWinRate"] = round(float((_wf_info or {}).get("winRate") or 0), 1)
+        row["validatedSampleCount"] = int((_wf_info or {}).get("sampleCount") or 0)
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
     selected = rows[:requested_limit]
