@@ -1321,7 +1321,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
     _now_ts = _time.monotonic()
     if _cache_key in _RECO_CACHE and _now_ts - _RECO_CACHE_TS.get(_cache_key, 0.0) < _RECO_CACHE_TTL_SEC:
         return _RECO_CACHE[_cache_key]
-    max_allowed = min(50, runtime_limits.recommendation_max_symbols())
+    max_allowed = min(300, runtime_limits.recommendation_max_symbols())
     requested_limit = runtime_limits.clamp_limit(limit, 20, max_allowed)
     news_map = _news_context(market)
     disc_map = _disclosure_context(market)
