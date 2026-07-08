@@ -52,7 +52,11 @@ type HoldingEditRow = {
 };
 
 // 스크리너/탐색 렌즈는 관심종목이 아니라 전 종목(후보 유니버스)을 판단한다.
-const RECOMMENDATION_LIMIT = 200;
+// 추천 산출물은 전략(모드×기간)당 TOP_N(12~20)이 상한이고, 백엔드 검증은
+// /api/final/recommendations le=50 · /api/v1/candidates le=100 이다. 과거 200을
+// 보내 두 엔드포인트 모두 422(Input should be ≤50)로 떨어져 목록이 비었다.
+// 실데이터(≤20)보다 넉넉하면서 두 상한을 모두 만족하는 50으로 맞춘다.
+const RECOMMENDATION_LIMIT = 50;
 
 // Module-level re-entry cache — survives unmount/remount on navigation
 const STOCKS_CACHE_TTL = 5 * 60 * 1000; // 5 min
