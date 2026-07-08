@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import csv as _csv_std
 from datetime import datetime
 from functools import lru_cache
 import os
@@ -1299,11 +1300,13 @@ _LENS_VALIDATION_MIN_SAMPLE = 40  # 이 미만이면 '검증 중'(표본 부족)
 
 @lru_cache(maxsize=4)
 def _wf_fullhistory(market: str) -> dict[str, dict[str, Any]]:
-    """walk-forward 전체 이력(모든 윈도우)을 mode×horizon별로 체결가중 집계 — @lru_cache.
+    """walk-forward 전체 이력(모든 윈도우)을 mode×horizon별로 집계 — @lru_cache.
 
-    최근 3윈도우만 보는 _load_walkforward_metrics와 달리, 약세장 노이즈에
-    휘둘리지 않도록 전 구간을 합산해 승률과 '건당 기대값'을 낸다.
-    Returns: {"balanced_swing": {winRate, expectancy, sampleCount, windows}}
+    최근 3윈도우만 보는 _load_walkforward_metrics와 달리 전 구간을 합산한다.
+    기대값은 두 가지로 낸다:
+      · expectancy(보수·헤드라인) = 체결이 있던 윈도우들의 '윈도우 평균 순손익' 평균.
+        활황 윈도우에 거래가 몰려 체결가중이 부풀던 문제를 피한 레짐-중립 추정치.
+      · expectancyExecWtd(낙관) = 체결수 가중 건당 기대값(활황장 가정).
     Cleared by _clear_all_caches() via cache_clear().
     """
     out: dict[str, dict[str, Any]] = {}
@@ -1327,14 +1330,23 @@ def _wf_fullhistory(market: str) -> dict[str, dict[str, Any]]:
                 return pd.to_numeric(grp[col], errors="coerce").fillna(0.0)
 
             exec_c = _s("executionCount")
+            pnl = _s("avgNetPnlPct")
             total_exec = float(exec_c.sum())
             total_win = float(_s("winCount").sum())
             win_rate = (total_win / total_exec * 100.0) if total_exec > 0 else 0.0
-            # 체결수 가중 평균 기대값(건당 순손익 %)
-            expectancy = float((_s("avgNetPnlPct") * exec_c).sum() / total_exec) if total_exec > 0 else 0.0
+            active_mask = exec_c > 0
+            active_n = int(active_mask.sum())
+            # 보수(헤드라인): 체결이 있던 윈도우들의 단순 평균 — 레짐 중립
+            expectancy = float(pnl[active_mask].mean()) if active_n > 0 else 0.0
+            # 낙관: 체결수 가중 건당 기대값
+            expectancy_ew = float((pnl * exec_c).sum() / total_exec) if total_exec > 0 else 0.0
+            pos_win_rate = float((pnl[active_mask] > 0).mean() * 100.0) if active_n > 0 else 0.0
             out[key] = {
                 "winRate": round(win_rate, 1),
                 "expectancy": round(expectancy, 2),
+                "expectancyExecWtd": round(expectancy_ew, 2),
+                "positiveWindowRate": round(pos_win_rate, 0),
+                "activeWindows": active_n,
                 "sampleCount": int(total_exec),
                 "windows": int(len(grp)),
             }
@@ -1343,39 +1355,111 @@ def _wf_fullhistory(market: str) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _lens_validation(market: str) -> dict[str, dict[str, Any]]:
-    """4개 탐색 렌즈별 '검증 스탬프' — 전체 이력 기대값 중심.
+@lru_cache(maxsize=4)
+def _live_validation_table(market: str) -> dict[str, dict[str, Any]]:
+    """실전 모의매매 원장(virtual_prediction_ledger)의 out-of-sample 성과 — @lru_cache.
 
-    각 렌즈를 대표 전략 프로필에 매핑하고 그 전략의 walk-forward 실측
-    기대값/승률을 붙인다. verdict:
-      · verified  기대값>0 & 표본 충분 → 자랑 가능('검증됨')
-      · caution   기대값<=0            → '관망'(무리한 진입 주의)
-      · thin      표본 부족             → '검증 중'
+    백테스트는 낙관적일 수 있어, 실제 예측 후 정산된 결과(WIN/LOSS/CLOSED)의
+    수익률을 mode×horizon별로 집계해 독립 교차검증으로 쓴다.
+    Returns: {"balanced_swing": {liveSample, liveWinRate, liveExpectancy}}
+    Cleared by _clear_all_caches() via cache_clear().
     """
-    table = _wf_fullhistory(market)
+    out: dict[str, dict[str, Any]] = {}
+    csv_path = data.REPORT_DIR / "virtual_prediction_ledger.csv"
+    if not csv_path.exists():
+        return out
+    mk = "us" if str(market).lower() == "us" else "kr"
+    buckets: dict[str, list[float]] = {}
+    try:
+        with csv_path.open("r", encoding="utf-8-sig", newline="") as f:
+            for r in _csv_std.DictReader(f):
+                if str(r.get("market", "")).strip().lower() != mk:
+                    continue
+                if str(r.get("status", "")).strip().upper() not in ("WIN", "LOSS", "CLOSED"):
+                    continue
+                try:
+                    ret = float(r.get("returnPct"))
+                except (TypeError, ValueError):
+                    continue
+                key = f"{str(r.get('mode','')).strip()}_{str(r.get('horizon','')).strip()}"
+                buckets.setdefault(key, []).append(ret)
+    except Exception:
+        return out
+    for key, vals in buckets.items():
+        if not vals:
+            continue
+        wins = sum(1 for v in vals if v > 0)
+        out[key] = {
+            "liveSample": len(vals),
+            "liveWinRate": round(wins / len(vals) * 100.0, 1),
+            "liveExpectancy": round(sum(vals) / len(vals), 2),
+        }
+    return out
+
+
+# 두 소스 판정 임계값
+_LIVE_JUDGE_MIN = 12   # 이 이상이면 실전 표본으로 판정 가능
+_LIVE_VERIFY_MIN = 25  # 이 이상 + 실전 양(+)이어야 '검증됨'
+_LIVE_LOSS_CUT = -0.5  # 실전 평균수익 이 아래면 '관망'
+
+
+def _lens_validation(market: str) -> dict[str, dict[str, Any]]:
+    """4개 탐색 렌즈별 '검증 스탬프' — 백테스트 + 실전 두 소스로 보수 판정.
+
+    verdict:
+      · verified  백테스트 양(+) & 실전 표본 충분(≥25) & 실전 양(+)  → '검증됨'
+      · caution   실전 표본 판정가능(≥12) & 실전 손실(≤-0.5%)        → '관망'(진입 주의)
+      · building  백테스트 양(+)이나 실전 표본 부족                    → '검증 중'
+      · thin      양쪽 다 데이터 없음                                  → '데이터 부족'
+    낙관적 백테스트만 보고 과신하지 않도록, 실전이 손실이면 관망을 우선한다.
+    """
+    wf = _wf_fullhistory(market)
+    live = _live_validation_table(market)
     result: dict[str, dict[str, Any]] = {}
     for lens_id, (mode_k, horizon_k) in _LENS_PROFILE.items():
-        stat = table.get(f"{mode_k}_{horizon_k}") or {}
-        sample = int(stat.get("sampleCount") or 0)
-        expectancy = float(stat.get("expectancy") or 0.0)
-        win_rate = float(stat.get("winRate") or 0.0)
-        if not stat or sample < _LENS_VALIDATION_MIN_SAMPLE:
-            verdict, label = "thin", "검증 중"
-        elif expectancy <= 0:
+        key = f"{mode_k}_{horizon_k}"
+        bt = wf.get(key) or {}
+        lv = live.get(key) or {}
+        bt_exp = float(bt.get("expectancy") or 0.0)
+        bt_sample = int(bt.get("sampleCount") or 0)
+        live_sample = int(lv.get("liveSample") or 0)
+        live_exp = float(lv.get("liveExpectancy") or 0.0)
+        live_win = float(lv.get("liveWinRate") or 0.0)
+
+        if bt_sample < _LENS_VALIDATION_MIN_SAMPLE and live_sample < _LIVE_JUDGE_MIN:
+            verdict, label = "thin", "데이터 부족"
+        elif live_sample >= _LIVE_JUDGE_MIN and live_exp <= _LIVE_LOSS_CUT:
             verdict, label = "caution", "관망"
-        else:
+        elif bt_exp > 0 and live_sample >= _LIVE_VERIFY_MIN and live_exp > 0:
             verdict, label = "verified", "검증됨"
+        else:
+            verdict, label = "building", "검증 중"
+
+        # 신뢰도: 실전 표본이 충분하고 백테스트와 방향이 일치하면 높음
+        agree = (bt_exp > 0) == (live_exp > 0)
+        if live_sample >= _LIVE_VERIFY_MIN and agree:
+            confidence = "HIGH"
+        elif live_sample >= _LIVE_JUDGE_MIN:
+            confidence = "MED"
+        else:
+            confidence = "LOW"
+
         result[lens_id] = {
             "lens": lens_id,
             "lensLabel": _LENS_LABEL.get(lens_id, lens_id),
             "profile": f"{mode_k}/{horizon_k}",
             "mode": mode_k,
             "horizon": horizon_k,
-            "winRate": round(win_rate, 1),
-            "expectancy": round(expectancy, 2),
-            "sampleCount": sample,
+            "backtestExpectancy": round(bt_exp, 2),
+            "backtestExpectancyOptimistic": round(float(bt.get("expectancyExecWtd") or 0.0), 2),
+            "backtestWinRate": round(float(bt.get("winRate") or 0.0), 1),
+            "backtestSample": bt_sample,
+            "liveExpectancy": round(live_exp, 2),
+            "liveWinRate": round(live_win, 1),
+            "liveSample": live_sample,
             "verdict": verdict,
             "verdictLabel": label,
+            "confidence": confidence,
         }
     return result
 
