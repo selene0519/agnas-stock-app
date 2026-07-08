@@ -508,12 +508,24 @@ def _final_price_overlay_score(item: dict[str, Any]) -> tuple[int, str]:
     return (source_rank + status_rank, _as_text(item.get("priceSourceDate") or item.get("priceTime")))
 
 
+_OVERLAY_CACHE: dict[str, dict[str, dict[str, Any]]] = {}
+_OVERLAY_CACHE_TS: dict[str, float] = {}
+_OVERLAY_CACHE_TTL_SEC: int = 180  # 3분 — intraday_report가 무거워(≈11s) 9개 전략 조합이 공유
+
+
 def _final_price_overlay_map(market: str) -> dict[str, dict[str, Any]]:
-    """Build symbol -> clean price layer from the already-normalized report API."""
+    """Build symbol -> clean price layer from the already-normalized report API.
+
+    intraday_report가 무거워(수 초~십수 초) mode×horizon 9개 조합마다 재계산하면
+    전략 전환 때마다 지연·타임아웃이 났다. 시장 단위 TTL 캐시로 공유한다.
+    """
+    _now_ts = _time.monotonic()
+    if market in _OVERLAY_CACHE and _now_ts - _OVERLAY_CACHE_TS.get(market, 0.0) < _OVERLAY_CACHE_TTL_SEC:
+        return _OVERLAY_CACHE[market]
     try:
         payload = data.intraday_report(market)
     except Exception:
-        return {}
+        return _OVERLAY_CACHE.get(market, {})
     best: dict[str, dict[str, Any]] = {}
     best_score: dict[str, tuple[int, str]] = {}
     for item in payload.get("items", []) or []:
@@ -528,6 +540,8 @@ def _final_price_overlay_map(market: str) -> dict[str, dict[str, Any]]:
         if sym not in best_score or score > best_score[sym]:
             best_score[sym] = score
             best[sym] = {field: item.get(field) for field in FINAL_PRICE_OVERLAY_FIELDS if field in item}
+    _OVERLAY_CACHE[market] = best
+    _OVERLAY_CACHE_TS[market] = _now_ts
     return best
 
 
@@ -1553,7 +1567,10 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         universe, sources = _us_balanced_swing_universe()
     else:
         universe, sources = _candidate_universe(market)
-    _max_scoring = int(os.getenv("MONE_MAX_SCORING_UNIVERSE", "500"))
+    # 무료 인스턴스(512MB) 보호: 유니버스가 수백 개로 커지면 90초 타임아웃·OOM을
+    # 유발한다. 기본 120으로 상한(현재 유니버스 ~60은 전부 스코어링). 유료 인스턴스에선
+    # MONE_MAX_SCORING_UNIVERSE 환경변수로 상향 가능.
+    _max_scoring = int(os.getenv("MONE_MAX_SCORING_UNIVERSE", "120"))
     price_overlay_map = _final_price_overlay_map(market)
     rows: list[dict[str, Any]] = []
     _PS_FALLBACK = {

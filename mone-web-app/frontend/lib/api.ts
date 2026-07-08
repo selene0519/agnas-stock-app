@@ -114,10 +114,10 @@ export interface RecommendationItem {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/mone-api";
 const DIRECT_BACKEND = process.env.NEXT_PUBLIC_DIRECT_API_BASE_URL || "";
-const configuredTimeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 90000);
+const configuredTimeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 120000);
 const API_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
   ? configuredTimeout
-  : 90000;
+  : 120000;
 const API_SNAPSHOT_PREFIX = "mone:api-snapshot:v5:";
 const API_SNAPSHOT_TTL_MS = 18 * 60 * 60 * 1000;
 
