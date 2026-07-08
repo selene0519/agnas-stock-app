@@ -118,7 +118,7 @@ const configuredTimeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 90000
 const API_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
   ? configuredTimeout
   : 90000;
-const API_SNAPSHOT_PREFIX = "mone:api-snapshot:v1:";
+const API_SNAPSHOT_PREFIX = "mone:api-snapshot:v2:";
 const API_SNAPSHOT_TTL_MS = 18 * 60 * 60 * 1000;
 
 const SNAPSHOT_CACHEABLE_PATHS = [

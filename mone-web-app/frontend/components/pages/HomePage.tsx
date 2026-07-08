@@ -88,7 +88,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // Home recommendations are prediction snapshots. Keep them across reloads and
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v12:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v13:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
