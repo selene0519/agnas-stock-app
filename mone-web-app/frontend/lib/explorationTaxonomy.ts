@@ -164,6 +164,57 @@ function collectDisplayTags(item: Record<string, unknown>): string[] {
   return out;
 }
 
+function numericValue(item: Record<string, unknown>, keys: string[]): number {
+  for (const key of keys) {
+    const raw = item[key];
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+    if (typeof raw === "string") {
+      const parsed = Number(raw.replace(/[^0-9.+-]/g, ""));
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return 0;
+}
+
+function scoreHeuristicMatches(
+  item: Record<string, unknown>,
+  lensId: ExplorationLensId,
+  strategyTags: string[],
+): boolean {
+  const has = (...needles: string[]) =>
+    strategyTags.some((tag) => needles.some((needle) => tag.includes(needle)));
+  const finalScore = numericValue(item, ["finalScore", "finalRankScore", "recommendationScore", "score"]);
+  const ev = numericValue(item, ["expectedValue", "expectedReturnPct", "evPct"]);
+  const momentum = numericValue(item, ["momentumScore", "momentumContinuationScore", "relativeStrengthScore"]);
+  const upside = numericValue(item, ["upsideScore", "opportunityScore"]);
+  const rr = numericValue(item, ["rrScore", "riskRewardScore"]);
+  const entry = numericValue(item, ["entryScore", "entryAccessibilityScore"]);
+  const riskStable = numericValue(item, ["riskStabilityScore", "riskScore", "stabilityScore"]);
+
+  if (lensId === "leader") {
+    return has("MOMENTUM", "BREAKOUT", "GOLDEN_CROSS", "RELATIVE_STRENGTH")
+      || momentum >= 60
+      || (finalScore >= 65 && ev > 0);
+  }
+  if (lensId === "discovery") {
+    return has("UNDERVALUED", "BB_SQUEEZE", "MA_CONVERGENCE", "VOLATILITY")
+      || ev >= 5
+      || upside >= 55
+      || (rr >= 55 && finalScore >= 50);
+  }
+  if (lensId === "pullback") {
+    return has("PULLBACK", "RETEST", "SUPPORT", "MA_CONVERGENCE")
+      || entry >= 65
+      || (finalScore >= 50 && riskStable >= 60 && ev > 0);
+  }
+  if (lensId === "recovery") {
+    return has("RECOVERY", "REBOUND", "TURNAROUND", "GOLDEN_CROSS", "STABLE_LOW_RISK")
+      || (momentum >= 55 && riskStable >= 55)
+      || (finalScore >= 55 && ev > 0 && rr >= 45);
+  }
+  return false;
+}
+
 /**
  * 종목이 특정 렌즈에 해당하는지 판단한다.
  * strategyTags(영문) 또는 표시 태그(한글) 중 하나라도 맞으면 true.
@@ -186,6 +237,7 @@ export function itemMatchesLens(
       return true;
     }
   }
+  if (scoreHeuristicMatches(item || {}, lensId, strat)) return true;
   return false;
 }
 

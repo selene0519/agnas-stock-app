@@ -206,6 +206,72 @@ function holdingAssetLabel(assetType: any) {
   return "유형 확인";
 }
 
+const ETF_NAME_MARKERS = [
+  "ETF",
+  "ETN",
+  "KODEX",
+  "TIGER",
+  "ACE",
+  "KBSTAR",
+  "ARIRANG",
+  "HANARO",
+  "KOSEF",
+  "SOL ",
+  "SOL-",
+  "RISE",
+  "TIMEFOLIO",
+  "PLUS",
+  "FOCUS",
+  "ISHARES",
+  "VANGUARD",
+  "SPDR",
+  "INVESCO",
+  "PROSHARES",
+  "DIREXION",
+  "GLOBAL X",
+  "JPMORGAN",
+  "FUND",
+  "TRUST",
+];
+const ETF_SYMBOL_MARKERS = new Set([
+  "SPY", "QQQ", "VOO", "VTI", "VT", "SCHD", "JEPI", "JEPQ", "DIA", "IWM",
+  "TLT", "IEF", "SHY", "BND", "AGG", "GLD", "SLV", "XLK", "XLF", "XLE",
+  "XLV", "XLY", "XLP", "XLI", "XLU", "XLC", "XLRE", "ARKK", "SOXX", "SMH",
+]);
+
+function normalizedHoldingAssetType(item: any): string {
+  const explicit = String(
+    item?.assetType || item?.instrumentType || item?.securityType || item?.category || item?.productType || ""
+  ).trim().toLowerCase();
+  if (explicit.includes("etf") || explicit.includes("etn") || explicit.includes("fund")) {
+    return explicit.includes("leveraged") ? "leveraged_etf"
+      : explicit.includes("inverse") ? "inverse_etf"
+        : explicit.includes("bond") ? "bond_etf"
+          : explicit.includes("dividend") ? "dividend_etf"
+            : explicit || "broad_etf";
+  }
+  const market = cleanHoldingMarket(item?.market);
+  const symbol = cleanHoldingSymbol(item?.symbol || item?.code || item?.ticker, market).toUpperCase();
+  const haystack = [
+    symbol,
+    item?.name,
+    item?.companyName,
+    item?.displayName,
+    item?.productName,
+    item?.sector,
+    item?.assetClass,
+  ].join(" ").toUpperCase();
+  if (ETF_SYMBOL_MARKERS.has(symbol) || ETF_NAME_MARKERS.some((marker) => haystack.includes(marker))) {
+    if (/INVERSE|인버스|곱버스/.test(haystack)) return "inverse_etf";
+    if (/LEVERAGE|LEVERAGED|2X|3X|레버리지/.test(haystack)) return "leveraged_etf";
+    if (/DIVIDEND|SCHD|배당/.test(haystack)) return "dividend_etf";
+    if (/BOND|TREASURY|TLT|IEF|SHY|AGG|BND|채권|국채/.test(haystack)) return "bond_etf";
+    if (/KODEX 200|TIGER 200|SPY|QQQ|VOO|VTI|DIA|IWM/.test(haystack)) return "broad_etf";
+    return "sector_etf";
+  }
+  return explicit || "stock";
+}
+
 function holdingPurposeLabel(purpose: any) {
   const value = String(purpose || "");
   if (value === "short_trade") return "단기";
@@ -977,12 +1043,12 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     const etfs: any[] = [];
 
     for (const item of items) {
-      const assetType = String(item.assetType || item.instrumentType || "stock").toLowerCase();
+      const assetType = normalizedHoldingAssetType(item);
       const isEtf = assetType.includes("etf");
       if (isEtf) {
-        etfs.push(item);
+        etfs.push({ ...item, assetType });
       } else {
-        stocks.push(item);
+        stocks.push({ ...item, assetType });
       }
     }
 
@@ -1039,7 +1105,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     for (const holding of items) {
       const name = displayName(holding);
       const symbol = String(holding.symbol || "");
-      const assetType = String(holding.assetType || holding.instrumentType || "stock");
+      const assetType = normalizedHoldingAssetType(holding);
       const isEtf = assetType.includes("etf");
       const downsideLabel = String(holding.downsideLineLabel || (isEtf ? "리스크 기준선" : "손절선"));
       const upsideLabel = String(holding.upsideLineLabel || (isEtf ? "수익실현 기준선" : "목표가"));
@@ -1322,7 +1388,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             {individualStocks.map((holding: any) => {
           const key = editableKey(holding);
           const isEditing = editKey === key && !!editDraft;
-          const assetType = String(holding.assetType || holding.instrumentType || "stock");
+          const assetType = normalizedHoldingAssetType(holding);
           const isEtf = assetType.includes("etf");
           const holdingPurpose = String(holding.holdingPurpose || holding.strategyType || "");
           const downsideLabel = String(holding.downsideLineLabel || (isEtf ? "리스크 기준선" : "손절선"));
@@ -1576,7 +1642,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             {etfHoldings.map((holding: any) => {
               const key = editableKey(holding);
               const isEditing = editKey === key && !!editDraft;
-              const assetType = String(holding.assetType || holding.instrumentType || "etf");
+              const assetType = normalizedHoldingAssetType(holding);
               const holdingPurpose = String(holding.holdingPurpose || holding.strategyType || "");
               const holdingBroker = brokerLabel(holding.broker || holding.sourceBroker || holding.sourceType || holding.priceSource);
               const holdingMarket = cleanHoldingMarket(holding.market);

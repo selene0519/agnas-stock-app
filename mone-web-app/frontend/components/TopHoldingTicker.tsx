@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { mone } from "@/lib/api";
-import { getUserId } from "@/lib/userId";
+import { getUserId, getUserToken } from "@/lib/userId";
 import {
   dedupeBySymbol,
   displayName,
@@ -13,7 +13,7 @@ import {
   toNumber,
 } from "@/lib/moneDisplay";
 
-type TickerSource = "holdings" | "watchlist" | "recommendations";
+type TickerSource = "holdings" | "recommendations";
 
 type TickerItem = {
   id: string;
@@ -26,7 +26,7 @@ type TickerItem = {
   source: TickerSource;
 };
 
-const TICKER_CACHE_KEY = "mone:top-ticker:v2";
+const TICKER_CACHE_KEY = "mone:top-ticker:v3";
 const TICKER_CACHE_TTL_MS = 10 * 60 * 1000;
 const ETF_KEYWORDS = [
   "ETF",
@@ -83,8 +83,10 @@ function needsAction(row: any): boolean {
 }
 
 function prioritizeHoldingRows(rows: any[]) {
-  return dedupeBySymbol(rows)
-    .filter((row) => !isEtfRow(row) && needsAction(row))
+  const deduped = dedupeBySymbol(rows);
+  const actionRows = deduped.filter((row) => !isEtfRow(row) && needsAction(row));
+  const sourceRows = actionRows.length > 0 ? actionRows : deduped;
+  return sourceRows
     .sort((a, b) => {
       const riskDiff = holdingRiskRank(b) - holdingRiskRank(a);
       if (riskDiff !== 0) return riskDiff;
@@ -207,17 +209,6 @@ async function enrichRows(rows: any[], source: TickerSource): Promise<TickerItem
   });
 }
 
-async function fetchWatchlistRows(): Promise<any[]> {
-  const [kr, us] = await Promise.all([
-    mone.watchlist({ market: "kr", limit: 20 }).catch(() => null),
-    mone.watchlist({ market: "us", limit: 20 }).catch(() => null),
-  ]);
-  return [
-    ...(Array.isArray(kr?.items) ? kr.items : []),
-    ...(Array.isArray(us?.items) ? us.items : []),
-  ];
-}
-
 async function fetchRecommendationRows(): Promise<any[]> {
   const [kr, us] = await Promise.all([
     mone.recommendations({ market: "kr", mode: "balanced", horizon: "swing", limit: 20 }).catch(() => null),
@@ -231,14 +222,12 @@ async function fetchRecommendationRows(): Promise<any[]> {
 
 async function fetchTickerRows(): Promise<TickerItem[]> {
   const userId = getUserId();
-  const data: any = await mone.holdingsClean({ market: "all", limit: 50 });
+  const userToken = getUserToken();
+  const data: any = await mone.holdingsClean({ market: "all", limit: 500 });
   const holdingsRows = Array.isArray(data?.items) ? data.items : [];
-  const isPersonalHoldings = Boolean(userId) && data?.authority === "personal_user_holdings";
+  const isPersonalHoldings = Boolean(userToken || userId) && String(data?.authority || "").startsWith("personal");
   const focusedHoldings = prioritizeHoldingRows(holdingsRows);
   if (isPersonalHoldings && focusedHoldings.length > 0) return enrichRows(focusedHoldings, "holdings");
-
-  const watchlistRows = await fetchWatchlistRows();
-  if (watchlistRows.length > 0) return enrichRows(watchlistRows, "watchlist");
 
   return enrichRows(await fetchRecommendationRows(), "recommendations");
 }
@@ -246,7 +235,6 @@ async function fetchTickerRows(): Promise<TickerItem[]> {
 function labelForSource(item?: TickerItem) {
   if (!item) return "추천 대기";
   if (item.source === "holdings") return "보유 티커";
-  if (item.source === "watchlist") return "관심 티커";
   return "추천 티커";
 }
 

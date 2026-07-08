@@ -432,12 +432,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     setLens(null);
     setAdvTags(new Set());
     mone.sectorsList({ market: resolvedMarket }).then((r) => {
-      const HIDDEN = new Set(["unknown", "기타", "미분류"]);
-      setSectorsList(Array.isArray(r.items)
-        ? r.items.slice(0, 30).map((s: any) => s.sector).filter((sec: string) => !HIDDEN.has(sec?.toLowerCase() ?? "") && !HIDDEN.has(sec))
-        : []);
-    }).catch(() => setSectorsList([]));
-    mone.sectorsList({ market: resolvedMarket }).then((r) => {
       const HIDDEN = new Set(["unknown", "other", "Other", "기타", "미분류"]);
       const sectorItems = Array.isArray(r.items) ? r.items : [];
       setSectorLookup(buildSectorLookup(resolvedMarket, sectorItems));
@@ -728,6 +722,17 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const sectorFiltered = lensResult.list;
   const lensFallbackActive = lensResult.fallback;
 
+  const lensCounts = useMemo(() => {
+    return Object.fromEntries(
+      EXPLORATION_LENSES.map((lensDef) => [
+        lensDef.id,
+        lensDef.matchAll
+          ? baseFiltered.length
+          : baseFiltered.filter((item) => itemMatchesLens(item, lensDef.id)).length,
+      ]),
+    ) as Record<ExplorationLensId, number>;
+  }, [baseFiltered]);
+
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     enrichedItems.forEach((item) => {
@@ -741,6 +746,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     filterEvPositive, filterWinRate40,
     supplyFilter != null, excludeOverheated, excludeStopRisk, advTags.size > 0,
     nameQuery.trim() !== "", sectorFilter != null, groupFilter != null,
+    Boolean(lens && lens !== "balance"),
   ].filter(Boolean).length;
 
   function applyScreenerPreset(preset: "quality" | "entry" | "clean" | "watch") {
@@ -768,7 +774,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }
 
   const visible = useMemo(() => {
-    const base = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending || hideBlockedOnly || nameQuery.trim() || (lens && lens !== "balance") ? sectorFiltered : enrichedItems;
+    const hasFilters = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending ||
+      hideBlockedOnly || filterEvPositive || filterWinRate40 || supplyFilter || excludeOverheated ||
+      excludeStopRisk || advTags.size > 0 || nameQuery.trim() || (lens && lens !== "balance");
+    const base = hasFilters ? sectorFiltered : enrichedItems;
     let result = base;
     if (selected) {
       const selectedMarket = cleanMarket(selected.market || resolvedMarket || "kr");
@@ -797,7 +806,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       ];
     }
     return [...result].sort((a, b) => Number(b[sortBy] ?? 0) - Number(a[sortBy] ?? 0));
-  }, [enrichedItems, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, nameQuery, sortBy, lens]);
+  }, [enrichedItems, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery, sortBy, lens]);
 
   const filterStats = useMemo(() => {
     const normal = sectorFiltered.filter((item) => String(item.dataStatus || "").toUpperCase() === "NORMAL").length;
@@ -1169,7 +1178,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   aria-pressed={active}
                   className={`min-h-11 min-w-0 rounded-xl border px-1 py-2 text-xs font-semibold transition-[background-color,border-color,color,transform] active:scale-[0.96] ${active ? `${l.accent} font-bold` : "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700 hover:text-slate-200"}`}
                 >
-                  {l.label}
+                  <span>{l.label}</span>
+                  <span className="ml-1 font-mono text-[10px] opacity-60">{lensCounts[l.id] ?? 0}</span>
                 </button>
               );
             })}
@@ -1231,6 +1241,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       setFilterWinRate40(false);
                       setHideDataPending(false);
                       setHideBlockedOnly(false);
+                      setLens(null);
                     }}
                     className="rounded-lg border border-slate-700 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-800"
                   >
@@ -1496,6 +1507,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     setHideBlockedOnly(false); setFilterEvPositive(false); setFilterWinRate40(false);
                     setSupplyFilter(null); setExcludeOverheated(false); setExcludeStopRisk(false);
                     setAdvTags(new Set());
+                    setLens(null);
                     setNameQuery(""); setSectorFilter(null); setGroupFilter(null);
                   }} className="rounded-lg border border-slate-700 px-3 py-1 text-[11px] text-slate-400 hover:bg-slate-800">
                     필터 전체 초기화
