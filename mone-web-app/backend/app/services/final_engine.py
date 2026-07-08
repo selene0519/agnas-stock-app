@@ -1656,6 +1656,12 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             "opportunityScore": scores["opportunityScore"],
             "entryScore": scores["entryScore"],
             "riskScore": scores["riskScore"],
+            # 탐색 렌즈(explorationTaxonomy) 휴리스틱이 읽는 세부 점수 — 계산은 돼
+            # 있었으나 row에 복사되지 않아 주도주/회복주 렌즈가 항상 비어 있었다.
+            "momentumScore": scores.get("momentumScore"),
+            "upsideScore": scores.get("upsideScore"),
+            "rrScore": scores.get("rrScore"),
+            "qualityScore": scores.get("qualityScore"),
             "rr": round(float(scores.get("rr") or 0), 3),
             "riskReward": f"1:{float(scores.get('rr') or 0):.2f}" if scores.get("rr") else "손익비 없음",
         })

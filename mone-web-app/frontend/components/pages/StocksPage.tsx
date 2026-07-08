@@ -725,8 +725,9 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const lensResult = useMemo(() => {
     if (!lens || lens === "balance") return { list: baseFiltered, fallback: false };
     const matched = baseFiltered.filter((item) => itemMatchesLens(item, lens));
-    if (matched.length > 0) return { list: matched, fallback: false };
-    return { list: baseFiltered, fallback: true };
+    // 렌즈 조건에 맞는 종목이 없으면 전체를 쏟아내지 않고 '없음(관망)' 상태로 둔다.
+    // (예전엔 전체로 폴백해 렌즈를 바꿔도 같은 목록이 나와 필터가 안 먹는 것처럼 보였다.)
+    return { list: matched, fallback: matched.length === 0 };
   }, [baseFiltered, lens]);
   const sectorFiltered = lensResult.list;
   const lensFallbackActive = lensResult.fallback;
@@ -1248,8 +1249,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               {getLensDef(lens).description}
               {lensFallbackActive && (
                 <span className="mt-1 block text-amber-400">
-                  지금 이 렌즈 조건에 맞는 종목이 없습니다 — 대체 종목을 무리하게 좇기보다
-                  <b> 관망</b>을 권합니다. (아래는 참고용 전체 후보)
+                  지금 이 렌즈 조건에 맞는 종목이 없습니다 — 다른 종목을 무리하게 좇기보다
+                  <b> 관망</b>을 권합니다.
                 </span>
               )}
             </div>
