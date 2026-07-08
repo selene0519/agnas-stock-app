@@ -138,6 +138,14 @@ def _pg_init_schema():
                 updated_at     BIGINT NOT NULL,
                 PRIMARY KEY (user_id, broker)
             );
+            -- Supabase 보안 어드바이저: public 스키마 테이블은 RLS 필수(비활성 시 anon 키만
+            -- 있으면 전체 유저 데이터 노출). 백엔드는 DATABASE_URL 직결(owner 롤)로 RLS를
+            -- 우회하므로 앱 동작에는 영향 없고, 공개 PostgREST(anon/authenticated) 접근만
+            -- 차단된다(정책 미부여 = 기본 거부). 프론트는 Supabase에 직접 접근하지 않는다.
+            -- ENABLE ROW LEVEL SECURITY는 멱등이라 매 부팅 반복 실행해도 안전하다.
+            ALTER TABLE user_holdings ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE user_watchlist ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE broker_connections ENABLE ROW LEVEL SECURITY;
             """)
             conn.commit()
     finally:
