@@ -1,4 +1,4 @@
-const CACHE = "mone-v10";
+const CACHE = "mone-v11";
 const STATIC = ["/manifest.json", "/brand/mone-logo-192.png", "/brand/mone-logo.png"];
 const OFFLINE_FALLBACK = "/__offline";
 

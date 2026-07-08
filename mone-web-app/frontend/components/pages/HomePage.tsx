@@ -40,6 +40,7 @@ import {
   priceText,
   probabilityText,
   strategyTagLabel,
+  toNumber,
 } from "@/lib/moneDisplay";
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
@@ -88,7 +89,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // Home recommendations are prediction snapshots. Keep them across reloads and
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v14:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v15:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -2382,9 +2383,9 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   }, [item.symbol]);
   const mode    = String(item.mode || item._mode || "balanced") as Mode;
   const horizon = String(item.horizon || item._horizon || "swing") as Horizon;
-  const ev      = Number(item.expectedValue ?? 0);
-  const rr      = Number(item.rrActual ?? 0);
-  const score   = Number(item.finalScore ?? 0);
+  const ev      = toNumber(item.expectedValue ?? item.expectedValueText ?? item.ev) || 0;
+  const rr      = toNumber(item.rrActual ?? item.rr ?? item.riskRewardRatio) || 0;
+  const score   = toNumber(item.finalScore ?? item.finalRankScore ?? item.recommendationScore) || 0;
   const tags    = Array.isArray(item.strategyTags) ? item.strategyTags : [];
   const riskFlags = Array.isArray(item.riskFlags) ? item.riskFlags : [];
   const decisionBucket = String(item.decisionBucket || "관찰");
@@ -2484,11 +2485,11 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
 
           {/* 검토 체크리스트 */}
           {(() => {
-            const current = Number(item.currentPrice || 0);
-            const entry   = Number(item.entry || 0);
+            const current = toNumber(item.currentPrice ?? item.currentPriceText ?? item.price ?? item.priceText);
+            const entry   = toNumber(item.entry ?? item.entryText ?? item.expectedEntryPrice);
             // mode별 허용 최대 이격 (MODE_RULES와 동기화)
             const modeMaxGap = mode === "conservative" ? 3.5 : mode === "aggressive" ? 13 : 7.5;
-            const gapPct  = entry > 0 && current > 0 ? Math.abs((current - entry) / entry * 100) : null;
+            const gapPct  = entry != null && entry > 0 && current != null && current > 0 ? Math.abs((current - entry) / entry * 100) : null;
             const inRange = gapPct != null && gapPct <= modeMaxGap;
             const evOk    = ev > 0;
             const regimeOk = !marketRegime || marketRegime.regime !== "BEAR";
@@ -2498,8 +2499,20 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
 
             const checks = [
               { label: "EV 양수", ok: evOk, detail: evOk ? `+${ev.toFixed(1)}%` : `${ev.toFixed(1)}% (음수)` },
-              { label: "기준가 범위", ok: inRange, detail: gapPct != null ? `현재가 ±${gapPct.toFixed(1)}% (한도 ${modeMaxGap}%)` : "가격 데이터 확인 중" },
-              { label: "시장 레짐", ok: regimeOk, detail: marketRegime ? (marketRegime.regime === "BULL" ? "강세장 정상" : marketRegime.regime === "BEAR" ? "약세장 — 주의" : "중립") : "확인 불가" },
+              {
+                label: "기준가 범위",
+                ok: inRange,
+                detail: gapPct != null
+                  ? `현재 ${current!.toLocaleString("ko-KR")} / 기준 ${entry!.toLocaleString("ko-KR")} · ${gapPct.toFixed(1)}% (한도 ${modeMaxGap}%)`
+                  : "현재가/기준가 없음",
+              },
+              {
+                label: "시장 레짐",
+                ok: regimeOk,
+                detail: marketRegime
+                  ? `${marketRegime.regime === "BULL" ? "강세장" : marketRegime.regime === "BEAR" ? "약세장" : "중립"} · ${marketRegime.benchmark || marketRegime.market || "시장"} ${marketRegime.asOf || marketRegime.date || ""}${marketRegime.distanceMa20Pct != null ? ` · MA20 ${Number(marketRegime.distanceMa20Pct).toFixed(1)}%` : ""}`
+                  : "확인 불가",
+              },
               { label: "데이터 상태", ok: dataOk, detail: dataOk ? (item.dataAsOf ? `정상 · 기준일 ${item.dataAsOf}` : "정상") : String(item.dataStatus || "미확인") },
               { label: "주의사항", ok: noCaution && noPlWarning, detail: !noPlWarning ? item.priceLevelWarning : (noCaution ? "없음" : `${item.cautionReasons?.length}개`) },
             ];
@@ -3427,8 +3440,8 @@ export default function HomePage({
           const key = `${item.symbol}-${item._mode}-${item._horizon}`;
           if (notifiedKeys.has(key)) return;
 
-          const current = Number(item.currentPrice || 0);
-          const entry   = Number(item.entry || 0);
+          const current = toNumber(item.currentPrice ?? item.currentPriceText ?? item.price ?? item.priceText) || 0;
+          const entry   = toNumber(item.entry ?? item.entryText ?? item.expectedEntryPrice) || 0;
           if (current <= 0 || entry <= 0) return;
 
           const gapPct = Math.abs((entry - current) / current * 100);
