@@ -7253,6 +7253,27 @@ def api_home_summary(
         def _enrich_home_matrix_row(row: dict) -> dict:
             out = dict(row or {})
             symbol = str(out.get("symbol") or out.get("code") or out.get("ticker") or "").strip().upper()
+            # ── EV·종합점수·RR 보강 ──────────────────────────────────────────
+            # 홈 매트릭스는 추천 CSV를 직접 읽는데 CSV엔 expectedValue/finalScore/
+            # rrActual 컬럼이 없어 "EV +0.0% / 종합 0점 / RR —"으로 떴다.
+            # final_recommendations와 동일한 정식 공식으로 여기서도 채운다.
+            _ev_entry = data._safe_float(out.get("entry"))
+            _ev_stop = data._safe_float(out.get("stop"))
+            _ev_target = data._safe_float(out.get("target"))
+            _ev_score = data._safe_float(out.get("finalRankScore") or out.get("finalScore"))
+            _ev_hz = str(out.get("horizon") or "swing").strip() or "swing"
+            if data._safe_float(out.get("expectedValue")) is None:
+                _ev_val = final_engine._expected_value_pct(_ev_entry, _ev_stop, _ev_target, _ev_score, _ev_hz, mk)
+                if _ev_val is not None:
+                    out["expectedValue"] = _ev_val
+                    out["evNegative"] = _ev_val < 0
+                    out["expectedValueText"] = f"{_ev_val:+.1f}%"
+            if data._safe_float(out.get("finalScore")) is None and _ev_score is not None:
+                out["finalScore"] = _ev_score
+            if data._safe_float(out.get("rrActual")) is None and _ev_entry and _ev_stop and _ev_target and _ev_target > _ev_entry:
+                _ev_risk = abs(_ev_entry - _ev_stop)
+                if _ev_risk > 0:
+                    out["rrActual"] = round((_ev_target - _ev_entry) / _ev_risk, 2)
             ref = _ohlcv_change_ref(symbol)
             if not ref:
                 return out
