@@ -402,6 +402,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [sortBy, setSortBy] = useState<"finalScore" | "expectedValue" | "upsideScore" | "rrScore" | "discoveryScore">("finalScore");
   const [screenerOpen, setScreenerOpen] = useState(false);
   const [lens, setLens] = useState<ExplorationLensId | null>(null);
+  // 렌즈별 워크포워드 검증 스탬프(전체 이력 기대값 중심) — API 응답의 lensValidation
+  const [lensValidation, setLensValidation] = useState<Record<string, any> | null>(null);
   const [minScore, setMinScore] = useState(0);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [hideDataPending, setHideDataPending] = useState(false);
@@ -546,6 +548,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     if (cachedRecommendations != null && cachedRecommendations.status !== "ERROR") {
       const deduped = dedupeBySymbol(Array.isArray(cachedRecommendations.items) ? cachedRecommendations.items : []);
       setItems(deduped);
+      setLensValidation((cachedRecommendations as any).lensValidation ?? null);
       _stocksCache = { items: deduped, market: resolvedMarket, mode, horizon, ts: Date.now() };
       setLoading(false);
       setLoadError("");
@@ -596,6 +599,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         }
         const deduped = dedupeBySymbol(Array.isArray(data.items) ? data.items : []);
         setItems(deduped);
+        setLensValidation((data as any).lensValidation ?? null);
         // Save to module cache so re-entry is instant
         _stocksCache = { items: deduped, market: resolvedMarket, mode, horizon, ts: Date.now() };
         if (data?.status && data.status !== "OK" && data.status !== "NO_DATA") {
@@ -1189,6 +1193,43 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           </div>
           {lens && (
             <div className="mt-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+              {(() => {
+                const v = lensValidation?.[lens];
+                if (!v) return null;
+                const exp = Number(v.expectancy);
+                const win = Number(v.winRate);
+                const sample = Number(v.sampleCount) || 0;
+                if (v.verdict === "verified") {
+                  return (
+                    <div
+                      className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-emerald-300"
+                      title={`이 렌즈가 쓰는 전략(${v.profile})의 워크포워드 전체 이력 실측 성과 · 표본 ${sample}건`}
+                    >
+                      <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">✓ 검증됨</span>
+                      <span>건당 기대값 {exp >= 0 ? "+" : ""}{exp.toFixed(1)}%</span>
+                      <span className="text-emerald-300/70">· 승률 {win.toFixed(0)}%</span>
+                      <span className="text-emerald-300/50">· 표본 {sample}건</span>
+                    </div>
+                  );
+                }
+                if (v.verdict === "caution") {
+                  return (
+                    <div
+                      className="mb-1.5 flex flex-wrap items-center gap-x-2 font-mono text-amber-300"
+                      title={`이 렌즈 전략(${v.profile})의 검증 기대값이 마이너스입니다 · 표본 ${sample}건`}
+                    >
+                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">⚠ 관망</span>
+                      <span>검증 기대값 {exp >= 0 ? "+" : ""}{exp.toFixed(1)}% — 지금은 무리한 진입 주의</span>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="mb-1.5 font-mono text-slate-500" title="아직 검증 표본이 부족한 렌즈입니다">
+                    <span className="rounded bg-slate-500/15 px-1.5 py-0.5 text-[10px] font-bold">검증 중</span>
+                    <span className="ml-2">표본 누적 중</span>
+                  </div>
+                );
+              })()}
               {getLensDef(lens).description}
               {lensFallbackActive && (
                 <span className="mt-1 block text-amber-400">
@@ -1561,8 +1602,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     {lens === "discovery" && Number(it.discoveryScore) > 0 && (
                       <span className="font-mono text-violet-300/90" title="발굴 점수(조기성): 아직 덜 오른·초기 신호 후보일수록 높음">발굴 {Number(it.discoveryScore).toFixed(0)}</span>
                     )}
-                    {Number(it.validatedWinRate) > 0 && (
-                      <span className="font-mono text-sky-300/80" title={`이 전략의 워크포워드 실측 승률 (표본 ${it.validatedSampleCount || 0}건)`}>검증 {Number(it.validatedWinRate).toFixed(0)}%</span>
+                    {Number(it.validatedExpectancy) > 0 && (
+                      <span className="font-mono text-emerald-300/80" title={`워크포워드 전체 이력 실측 · 건당 기대값 ${Number(it.validatedExpectancy) >= 0 ? "+" : ""}${Number(it.validatedExpectancy).toFixed(1)}% · 승률 ${Number(it.validatedWinRate).toFixed(0)}% · 표본 ${it.validatedSampleCount || 0}건`}>검증 {Number(it.validatedExpectancy) >= 0 ? "+" : ""}{Number(it.validatedExpectancy).toFixed(1)}%</span>
                     )}
                     {it.finalScore > 0 && <span className="font-mono">{it.finalScore.toFixed(0)}점</span>}
                     {it.expectedValue !== 0 && <span className={`font-mono ${it.expectedValue >= 0 ? "opacity-80" : "text-red-400"}`}>EV {it.expectedValue >= 0 ? "+" : ""}{it.expectedValue?.toFixed(1)}%</span>}

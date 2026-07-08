@@ -1279,6 +1279,107 @@ def _load_walkforward_metrics(market: str) -> dict[str, dict[str, Any]]:
     return result
 
 
+# 렌즈 → 대표 전략 프로필 (mode, horizon).
+# 각 탐색 렌즈가 실제로 쓰는 매매 성격에 맞는 walk-forward 전략의 '전체 이력'
+# 검증 성과(기대값·승률)를 그 렌즈의 검증 스탬프로 쓴다.
+#  · 주도주(leader)   → 공격형·스윙 (강세 추격/돌파)
+#  · 발굴주(discovery) → 균형·스윙 (초기 발굴 후 스윙 보유)
+#  · 눌림주(pullback)  → 보수형·스윙 (건강한 추세의 눌림 매수)
+#  · 회복주(recovery)  → 보수형·중기 (바닥 반전은 시간이 걸림)
+# 단타(short)는 실측 기대값이 마이너스라 어떤 렌즈에도 매핑하지 않는다.
+_LENS_PROFILE = {
+    "leader":    ("aggressive", "swing"),
+    "discovery": ("balanced", "swing"),
+    "pullback":  ("conservative", "swing"),
+    "recovery":  ("conservative", "mid"),
+}
+_LENS_LABEL = {"leader": "주도주", "discovery": "발굴주", "pullback": "눌림주", "recovery": "회복주"}
+_LENS_VALIDATION_MIN_SAMPLE = 40  # 이 미만이면 '검증 중'(표본 부족)
+
+
+@lru_cache(maxsize=4)
+def _wf_fullhistory(market: str) -> dict[str, dict[str, Any]]:
+    """walk-forward 전체 이력(모든 윈도우)을 mode×horizon별로 체결가중 집계 — @lru_cache.
+
+    최근 3윈도우만 보는 _load_walkforward_metrics와 달리, 약세장 노이즈에
+    휘둘리지 않도록 전 구간을 합산해 승률과 '건당 기대값'을 낸다.
+    Returns: {"balanced_swing": {winRate, expectancy, sampleCount, windows}}
+    Cleared by _clear_all_caches() via cache_clear().
+    """
+    out: dict[str, dict[str, Any]] = {}
+    csv_path = data.REPORT_DIR / f"walkforward_results_{market}.csv"
+    if not csv_path.exists():
+        return out
+    try:
+        wf_df = data.read_csv(csv_path)
+        if wf_df.empty:
+            return out
+        if "strategy" in wf_df.columns:
+            corrected = wf_df[wf_df["strategy"] == "corrected"]
+            if not corrected.empty:
+                wf_df = corrected
+        for keys, grp in wf_df.groupby(["mode", "horizon"]):
+            key = f"{keys[0]}_{keys[1]}"
+
+            def _s(col: str) -> pd.Series:
+                if col not in grp.columns:
+                    return pd.Series(dtype=float)
+                return pd.to_numeric(grp[col], errors="coerce").fillna(0.0)
+
+            exec_c = _s("executionCount")
+            total_exec = float(exec_c.sum())
+            total_win = float(_s("winCount").sum())
+            win_rate = (total_win / total_exec * 100.0) if total_exec > 0 else 0.0
+            # 체결수 가중 평균 기대값(건당 순손익 %)
+            expectancy = float((_s("avgNetPnlPct") * exec_c).sum() / total_exec) if total_exec > 0 else 0.0
+            out[key] = {
+                "winRate": round(win_rate, 1),
+                "expectancy": round(expectancy, 2),
+                "sampleCount": int(total_exec),
+                "windows": int(len(grp)),
+            }
+    except Exception:
+        pass
+    return out
+
+
+def _lens_validation(market: str) -> dict[str, dict[str, Any]]:
+    """4개 탐색 렌즈별 '검증 스탬프' — 전체 이력 기대값 중심.
+
+    각 렌즈를 대표 전략 프로필에 매핑하고 그 전략의 walk-forward 실측
+    기대값/승률을 붙인다. verdict:
+      · verified  기대값>0 & 표본 충분 → 자랑 가능('검증됨')
+      · caution   기대값<=0            → '관망'(무리한 진입 주의)
+      · thin      표본 부족             → '검증 중'
+    """
+    table = _wf_fullhistory(market)
+    result: dict[str, dict[str, Any]] = {}
+    for lens_id, (mode_k, horizon_k) in _LENS_PROFILE.items():
+        stat = table.get(f"{mode_k}_{horizon_k}") or {}
+        sample = int(stat.get("sampleCount") or 0)
+        expectancy = float(stat.get("expectancy") or 0.0)
+        win_rate = float(stat.get("winRate") or 0.0)
+        if not stat or sample < _LENS_VALIDATION_MIN_SAMPLE:
+            verdict, label = "thin", "검증 중"
+        elif expectancy <= 0:
+            verdict, label = "caution", "관망"
+        else:
+            verdict, label = "verified", "검증됨"
+        result[lens_id] = {
+            "lens": lens_id,
+            "lensLabel": _LENS_LABEL.get(lens_id, lens_id),
+            "profile": f"{mode_k}/{horizon_k}",
+            "mode": mode_k,
+            "horizon": horizon_k,
+            "winRate": round(win_rate, 1),
+            "expectancy": round(expectancy, 2),
+            "sampleCount": sample,
+            "verdict": verdict,
+            "verdictLabel": label,
+        }
+    return result
+
+
 # EV(기댓값 %) — quant_scanner.analyze()의 정식 공식과 동일하게 유지한다.
 # 과거에는 로컬 predictions.csv가 EV를 실어 왔으나 그 생성이 멈춘 뒤,
 # 클라우드 추천(entry/stop/target)만 있고 EV 필드가 비어 화면에 "EV +0.0%"로
@@ -1360,6 +1461,10 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         _wf_table = {}
     _wf_key  = f"{mode}_{horizon}"
     _wf_info = _wf_table.get(_wf_key, {})
+    # 전체 이력(체결가중) 검증 — 배지/렌즈 검증 스탬프용. 최근 3윈도우(_wf_info)는
+    # 약세장에서 승률이 1%로 찍혀 오해를 부르므로 전 구간 집계를 쓴다.
+    _wf_full_cur = _wf_fullhistory(market).get(_wf_key, {})
+    _lens_validation_map = _lens_validation(market)
     if market == "us" and mode == "balanced" and horizon == "swing":
         universe, sources = _us_balanced_swing_universe()
     else:
@@ -1719,8 +1824,9 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
             normalized.get("resistanceDistancePct"),
             row.get("expectedValue"),
         )
-        row["validatedWinRate"] = round(float((_wf_info or {}).get("winRate") or 0), 1)
-        row["validatedSampleCount"] = int((_wf_info or {}).get("sampleCount") or 0)
+        row["validatedWinRate"] = round(float((_wf_full_cur or {}).get("winRate") or 0), 1)
+        row["validatedExpectancy"] = round(float((_wf_full_cur or {}).get("expectancy") or 0), 2)
+        row["validatedSampleCount"] = int((_wf_full_cur or {}).get("sampleCount") or 0)
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
     selected = rows[:requested_limit]
@@ -1768,6 +1874,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         "items": selected,
         "generatedAt": _now(),
         "walkforwardSummary": _wf_info,
+        "lensValidation": _lens_validation_map,
     }
     _RECO_CACHE[_cache_key] = _result
     _RECO_CACHE_TS[_cache_key] = _time.monotonic()
