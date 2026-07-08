@@ -51,7 +51,8 @@ type HoldingEditRow = {
   targetReason?: string;
 };
 
-const RECOMMENDATION_LIMIT = 50;
+// 스크리너/탐색 렌즈는 관심종목이 아니라 전 종목(후보 유니버스)을 판단한다.
+const RECOMMENDATION_LIMIT = 200;
 
 // Module-level re-entry cache — survives unmount/remount on navigation
 const STOCKS_CACHE_TTL = 5 * 60 * 1000; // 5 min
@@ -540,7 +541,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       if (cacheOk || bootOk) return;
     }
 
-    const recommendationParams = { market: resolvedMarket, mode, horizon, limit: Math.min(RECOMMENDATION_LIMIT, 50), watchOnly };
+    const recommendationParams = { market: resolvedMarket, mode, horizon, limit: RECOMMENDATION_LIMIT, watchOnly };
     const cachedRecommendations = readApiSnapshot<ApiList<RecommendationItem>>("/api/final/recommendations", recommendationParams);
     if (cachedRecommendations != null && cachedRecommendations.status !== "ERROR") {
       const deduped = dedupeBySymbol(Array.isArray(cachedRecommendations.items) ? cachedRecommendations.items : []);
@@ -568,7 +569,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             market: resolvedMarket,
             strategy: mode,
             term: horizon,
-            limit: Math.min(RECOMMENDATION_LIMIT, 60),
+            limit: RECOMMENDATION_LIMIT,
           });
           if (!active || controller.signal.aborted) return;
           if (fallback?.status !== "ERROR") {

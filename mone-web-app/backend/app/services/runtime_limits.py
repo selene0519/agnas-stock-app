@@ -31,7 +31,10 @@ def trendline_learning_enabled() -> bool:
 
 
 def recommendation_max_symbols() -> int:
-    return env_int("RECOMMENDATION_MAX_SYMBOLS", 20, minimum=1, maximum=50)
+    # 스크리너/탐색 렌즈가 관심종목이 아니라 전 종목(후보 유니버스)을 판단하도록
+    # 상한을 넉넉히 둔다. 스코어링은 이미 전 유니버스에 대해 수행되고 상위만
+    # 잘라 반환하던 구조라 반환 수를 늘려도 추가 연산 부하는 없다.
+    return env_int("RECOMMENDATION_MAX_SYMBOLS", 200, minimum=1, maximum=500)
 
 
 def validation_max_rows() -> int:
