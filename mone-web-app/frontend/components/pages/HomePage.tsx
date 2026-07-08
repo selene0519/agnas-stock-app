@@ -1952,6 +1952,26 @@ function StrategyRecordsSection({
   const currentMode = String(currentItem?._mode || currentItem?.mode || "balanced") as Mode;
   const currentHorizon = String(currentItem?._horizon || currentItem?.horizon || "swing") as Horizon;
 
+  // 같은 종목이 서로 다른 전략(모드)에서 1위로 겹치면 "공통 1위"로 표시한다(표시 전용).
+  // 밴드 튜닝은 백테스트상 승률만 깎고 차별화 효과가 없어(∩0.85→0.83) 반려됐고,
+  // 겹침을 숨기는 대신 컨센서스 강세 신호로 노출하는 편이 정직하고 유용하다.
+  const leadSymbolOf = (c?: StrategyCell) => {
+    const lead = (c?.items || [])[0];
+    return lead ? String(lead.symbol || lead.code || lead.ticker || "").replace(/^US:/i, "").toUpperCase() : "";
+  };
+  const consensusLeadSymbols = useMemo(() => {
+    const modesBySymbol = new Map<string, Set<string>>();
+    for (const c of matrix) {
+      const sym = leadSymbolOf(c);
+      if (!sym) continue;
+      if (!modesBySymbol.has(sym)) modesBySymbol.set(sym, new Set());
+      modesBySymbol.get(sym)!.add(c.mode);
+    }
+    return new Set(
+      Array.from(modesBySymbol.entries()).filter(([, modes]) => modes.size >= 2).map(([sym]) => sym),
+    );
+  }, [matrix]);
+
   return (
     <section className="mone-home-surface overflow-hidden rounded-[20px] border">
       <button
@@ -2031,6 +2051,7 @@ function StrategyRecordsSection({
                             compact
                             market={selectedMarket}
                             active={mode === currentMode && horizon === currentHorizon}
+                            consensusLead={consensusLeadSymbols.has(leadSymbolOf(cell as StrategyCell))}
                           />
                         );
                       })}
@@ -2966,12 +2987,14 @@ function MatrixCell({
   compact = false,
   active = false,
   market,
+  consensusLead = false,
 }: {
   cell: StrategyCell;
   onSelect: (item: any) => void;
   compact?: boolean;
   active?: boolean;
   market?: "kr" | "us";
+  consensusLead?: boolean;
 }) {
   const top = (cell.items || []).slice(0, 3);
   const todayIn = top.filter((i) => i.decisionBucket === "오늘 진입");
@@ -3012,10 +3035,20 @@ function MatrixCell({
             <div className="min-h-[25px] min-w-0 overflow-hidden text-[11px] font-black leading-[1.15] text-slate-100 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
               {leadName}
             </div>
-            <div className="mt-1 flex min-w-0 items-center justify-between gap-1.5">
+            <div className="mt-1 flex min-w-0 items-center justify-between gap-1">
               {!isKrMatrix && <span className="min-w-0 truncate font-mono text-[10px] font-semibold text-slate-500">{leadSymbol || leadName}</span>}
-              <span className={`shrink-0 font-mono text-[9px] font-semibold tabular-nums ${toneClass}`}>
-                {valueText}
+              <span className="ml-auto flex shrink-0 items-center gap-1">
+                {consensusLead && (
+                  <span
+                    className="rounded-sm bg-teal-400/15 px-1 text-[8px] font-bold leading-tight text-teal-300"
+                    title="여러 전략에서 공통 1위 — 컨센서스 강세 신호"
+                  >
+                    공통
+                  </span>
+                )}
+                <span className={`font-mono text-[9px] font-semibold tabular-nums ${toneClass}`}>
+                  {valueText}
+                </span>
               </span>
             </div>
           </button>
