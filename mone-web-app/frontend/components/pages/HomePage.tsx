@@ -1968,7 +1968,7 @@ function StrategyRecordsSection({
       modesBySymbol.get(sym)!.add(c.mode);
     }
     return new Set(
-      [...modesBySymbol.entries()].filter(([, modes]) => modes.size >= 2).map(([sym]) => sym),
+      Array.from(modesBySymbol.entries()).filter(([, modes]) => modes.size >= 2).map(([sym]) => sym),
     );
   }, [matrix]);
 
