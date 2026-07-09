@@ -538,6 +538,21 @@ jobs:
           fi
           set -e
 
+      - name: Update portfolio NAV snapshot (누적수익률)
+        # OHLCV·현재가·벤치마크 갱신 이후에 실행해야 오늘 NAV가 최신가로 잡힌다.
+        # 예전엔 어느 워크플로에서도 호출되지 않아 portfolio_daily_nav.csv가 멈춰
+        # 앱 누적수익률이 갱신되지 않았다. 보유수량 sync는 로컬 브릿지 담당이고,
+        # 이 단계는 그 보유에 최신 종가를 곱해 NAV 시계열만 이어붙인다.
+        run: |
+          set +e
+          if [ -f scripts/update_portfolio_nav.py ]; then
+            python scripts/update_portfolio_nav.py --backfill 90
+            echo "update_portfolio_nav: exit $?"
+          else
+            echo "scripts/update_portfolio_nav.py not found; skip."
+          fi
+          set -e
+
       - name: Run history analysis
         # 검증 정산(settle_pending_validations.py)·승률 갱신(update_win_rates.py)은
         # mone-settle-validations.yml로 분리됨 — cancel-in-progress 동시성 취소에 자주

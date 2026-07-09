@@ -79,6 +79,12 @@ def _target_universe(limit: int = 200) -> list[dict]:
         STOCKAPP / "kis_collection_targets_kr.csv",
         REPO / "holdings_kr.csv",
         REPO / "data" / "holdings_kr.csv",
+        # 브로커 자동수집 원장(KIS/토스)도 포함해야 보유 ETF처럼 추천 유니버스 밖
+        # 종목의 종가가 매일 갱신된다. 예전엔 빠져 있어 보유 ETF OHLCV가 특정
+        # 날짜(예: 6/30)에 얼어붙어 앱 보유·NAV가 옛 가격으로 고정됐다.
+        REPO / "data" / "kis_2_holdings_kr.csv",
+        REPO / "data" / "kis_holdings_kr.csv",
+        REPO / "data" / "toss_holdings_kr.csv",
         REPO / "watchlist_kr.csv",
         REPO / "data" / "watchlist_kr.csv",
     ]

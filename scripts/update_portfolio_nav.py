@@ -76,30 +76,72 @@ def _row_symbol(row: dict, market: str) -> str:
     return raw.upper()
 
 
+def _row_market(row: dict, path: Path) -> str:
+    """행의 market 컬럼을 우선한다. toss_holdings_kr.csv처럼 파일명은 kr인데
+    안에 us 종목이 섞인 브로커 원장이 있어 파일명만 믿으면 안 된다."""
+    m = str(row.get("market") or "").strip().lower()
+    if m in ("kr", "us"):
+        return m
+    stem = path.stem.lower()
+    return "us" if stem.endswith("_us") or "_us_" in stem else "kr"
+
+
 # ── 보유종목 로드 ─────────────────────────────────────────────────────
 
+# 앱(mone_v802_holdings_clean)과 동일한 원장 우선순위:
+#   1순위 루트 원장(사용자 편집본) → 2순위 브로커 자동수집본(fallback).
+#   fallback 행은 루트 원장에 이미 있는 심볼이면 건너뛴다(중복 방지).
+_PRIMARY_LEDGERS = (
+    "holdings_kr.csv",
+    "data/holdings_kr.csv",
+    "holdings_us.csv",
+    "data/holdings_us.csv",
+)
+_FALLBACK_LEDGERS = (
+    "data/kis_2_holdings_kr.csv",
+    "data/kis_holdings_kr.csv",
+    "data/toss_holdings_kr.csv",
+    "data/kis_2_holdings_us.csv",
+    "data/kis_holdings_us.csv",
+    "data/toss_holdings_us.csv",
+)
+
+
 def load_holdings() -> list[dict]:
-    holdings = []
-    seen = set()
-    for market in ("kr", "us"):
-        path = ROOT / f"holdings_{market}.csv"
+    """실제 보유 원장(루트 + 브로커 fallback)을 합산해 반환.
+
+    과거엔 거의 빈 holdings_kr.csv/holdings_us.csv만 읽어 NAV가 실제 계좌를
+    반영하지 못했다. 이제 앱 보유 화면과 같은 소스를 읽는다."""
+    holdings: list[dict] = []
+    seen: set[str] = set()  # 앱과 동일하게 심볼 기준(마켓 무관) dedup
+
+    def _consume(path: Path, skip_syms: set[str]) -> None:
         for row in _read_csv(path):
-            sym = _row_symbol(row, market)
+            mkt = _row_market(row, path)
+            sym = _row_symbol(row, mkt)
             qty = _num(row.get("quantity") or row.get("qty"), 0)
             avg = _num(row.get("avgPrice") or row.get("avg_price") or row.get("averagePrice"), 0)
             if not sym or qty <= 0:
                 continue
-            key = f"{market}-{sym}"
-            if key in seen:
+            if sym in skip_syms or sym in seen:
                 continue
-            seen.add(key)
+            seen.add(sym)
             holdings.append({
                 "symbol": sym,
-                "market": market,
+                "market": mkt,
                 "quantity": qty,
                 "avgPrice": avg,
+                # 브로커 원장이 마지막 sync 때의 현재가를 들고 있으면 최후 폴백으로 쓴다
+                # (현재가 파일·OHLCV에도 없는 종목이 NAV에서 0으로 빠지는 것 방지).
+                "ledgerPrice": _num(row.get("currentPrice") or row.get("current_price"), 0),
                 "name": str(row.get("name") or sym).strip(),
             })
+
+    for name in _PRIMARY_LEDGERS:
+        _consume(ROOT / name, skip_syms=set())
+    primary_syms = set(seen)
+    for name in _FALLBACK_LEDGERS:
+        _consume(ROOT / name, skip_syms=primary_syms)
     return holdings
 
 
@@ -183,6 +225,15 @@ def calc_nav_for_date(
         qty = h["quantity"]
         if use_current:
             price = price_index.get(sym, 0)
+            if price <= 0:
+                # 현재가 파일에 없으면 최신 OHLCV 종가로 폴백 (보유 ETF처럼
+                # 추천 유니버스 밖 종목은 현재가 수집 대상이 아닐 수 있다).
+                ohlcv = load_ohlcv_close(sym, mkt)
+                if ohlcv:
+                    price = ohlcv[max(ohlcv)]
+            if price <= 0:
+                # 그래도 없으면 원장의 마지막 sync 현재가 사용.
+                price = h.get("ledgerPrice", 0)
         else:
             ohlcv = load_ohlcv_close(sym, mkt)
             price = ohlcv.get(date, 0)

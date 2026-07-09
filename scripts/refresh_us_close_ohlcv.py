@@ -110,6 +110,13 @@ def _target_symbols(limit: int = 200) -> list[str]:
         REPO / "watchlist_us.csv",
         REPO / "watchlist_us_growth.csv",
         REPO / "holdings_us.csv",
+        # 브로커 원장의 미국 보유(토스 소수점 등)도 포함. toss_holdings_kr.csv는
+        # 파일명이 kr이지만 안에 us 종목이 들어 있어 _valid_us_symbol이 걸러낸다.
+        REPO / "data" / "holdings_us.csv",
+        REPO / "data" / "kis_2_holdings_us.csv",
+        REPO / "data" / "kis_holdings_us.csv",
+        REPO / "data" / "toss_holdings_us.csv",
+        REPO / "data" / "toss_holdings_kr.csv",
         REPO / "candidate_universe_us.csv",
         DATA_STOCKAPP / "price_collection_universe_us.csv",
         REPORTS / "virtual_prediction_ledger.csv",
