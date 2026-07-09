@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Star } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { SentimentBadge } from "@/components/SentimentBadge";
@@ -66,6 +66,50 @@ const LENS_EXTENSION_CHIPS: Record<ExplorationLensId, readonly string[]> = {
   recovery: ["중형 성장", "반복 재료", "수급 전환 초기"],
   balance: ["대형 안정", "중형 성장", "소형 성장"],
 };
+
+// 렌즈 선택 시 스크리너에서 자동으로 펼칠 세부 섹션(최대 2개).
+// 섹션 id는 스크리너 JSX의 ScreenerSection id 및 ADVANCED_FILTER_GROUPS.id와 일치해야 한다.
+// 렌즈는 결과를 필터링만 하고, 이 매핑은 "어떤 세부 조건을 먼저 보여줄지"만 결정한다.
+const LENS_AUTO_SECTIONS: Record<ExplorationLensId, readonly string[]> = {
+  leader: ["supply", "liquidity"],
+  discovery: ["discovery", "supply"],
+  pullback: ["pricePosition", "discovery"],
+  recovery: ["freshness", "style"],
+  balance: [],
+};
+
+// 스크리너 세부 섹션: 접힘/펼침 헤더. 코어 필터가 아닌 테마 조건에만 쓴다.
+// open = 사용자가 펼쳤거나(렌즈 자동 펼침 포함) active(적용 중)면 항상 노출한다.
+function ScreenerSection({
+  id, label, count, open, active, onToggle, children,
+}: {
+  id: string;
+  label: string;
+  count?: number;
+  open: boolean;
+  active?: boolean;
+  onToggle: (id: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-800/70 bg-slate-950/30">
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left"
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
+        {typeof count === "number" && count > 0 && (
+          <span className="font-mono text-[10px] text-slate-600">{count}</span>
+        )}
+        {active && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-label="적용 중" />}
+        <span className="ml-auto text-[10px] text-slate-600">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div className="border-t border-slate-800/70 px-3 py-3">{children}</div>}
+    </div>
+  );
+}
 
 // Module-level re-entry cache — survives unmount/remount on navigation
 const STOCKS_CACHE_TTL = 5 * 60 * 1000; // 5 min
@@ -430,6 +474,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [excludeStopRisk, setExcludeStopRisk] = useState(false); // 손절 위험 제외
   // 고급 태그 다중 선택 (종목 스타일/발굴형/가격 반영도/유동성/재료 신선도)
   const [advTags, setAdvTags] = useState<Set<string>>(new Set());
+  // 스크리너 테마 섹션 접힘/펼침 (코어 필터는 항상 열림, 테마만 접는다)
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
   const [nameQuery, setNameQuery] = useState("");
   const [sessionTick, setSessionTick] = useState(0);
   const autoMarket = getDefaultMarketBySession(new Date(Date.now() + sessionTick * 0));
@@ -784,6 +830,37 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     nameQuery.trim() !== "", sectorFilter != null, groupFilter != null,
     Boolean(lens && lens !== "balance"),
   ].filter(Boolean).length;
+
+  // 렌즈를 고르면 그 렌즈에 맞는 세부 섹션(최대 2개)만 자동으로 펼친다.
+  // 렌즈 해제 시 전부 접어 기본 화면을 가볍게 유지한다.
+  useEffect(() => {
+    setOpenSections(new Set(lens ? LENS_AUTO_SECTIONS[lens] : []));
+  }, [lens]);
+
+  // 현재 필터가 걸려 있는 테마 섹션 — 접혀 있어도 항상 노출해 상태를 숨기지 않는다.
+  const activeSections = useMemo(() => {
+    const s = new Set<string>();
+    if (tagFilter === "VOLUME_BREAKOUT") s.add("quickTag");
+    if (tagFilter && tagFilter !== "VOLUME_BREAKOUT") s.add("strategy");
+    if (supplyFilter != null) s.add("supply");
+    if (filterEvPositive || filterWinRate40) s.add("evwin");
+    advTags.forEach((chip) => {
+      const group = ADVANCED_FILTER_GROUPS.find((g) => g.activeChips.includes(chip));
+      if (group) s.add(group.id);
+    });
+    return s;
+  }, [tagFilter, supplyFilter, filterEvPositive, filterWinRate40, advTags]);
+
+  const toggleSection = useCallback((id: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const sectionOpen = (id: string) => openSections.has(id) || activeSections.has(id);
+  const sectionActive = (id: string) => activeSections.has(id);
 
   function applyScreenerPreset(preset: "quality" | "entry" | "clean" | "watch") {
     if (preset === "quality") {
@@ -1208,8 +1285,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               </button>
             )}
           </div>
-          <div className="grid grid-cols-5 gap-1.5">
-            {EXPLORATION_LENSES.map((l) => {
+          <div className="grid grid-cols-4 gap-1.5">
+            {EXPLORATION_LENSES.filter((l) => !l.matchAll).map((l) => {
               const active = lens === l.id;
               return (
                 <button
@@ -1328,189 +1405,199 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   ))}
                 </div>
               </div>
-              {/* 빠른 태그 (신호 기반 원탭 필터) */}
-              <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 태그</label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setTagFilter(tagFilter === "VOLUME_BREAKOUT" ? null : "VOLUME_BREAKOUT")}
-                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${tagFilter === "VOLUME_BREAKOUT" ? "border-yellow-500/60 bg-yellow-500/20 text-yellow-200" : "border-yellow-600/40 bg-yellow-600/10 text-yellow-300 hover:bg-yellow-600/20"}`}
-                  >
-                    거래대금 증가
-                  </button>
-                  <button
-                    onClick={() => setSupplyFilter(supplyFilter === "inst" ? null : "inst")}
-                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${supplyFilter === "inst" ? "border-blue-500/60 bg-blue-500/20 text-blue-200" : "border-blue-600/40 bg-blue-600/10 text-blue-300 hover:bg-blue-600/20"}`}
-                  >
-                    초기 수급
-                  </button>
-                  <button
-                    onClick={() => setExcludeOverheated((v) => !v)}
-                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${excludeOverheated ? "border-amber-500/60 bg-amber-500/20 text-amber-200" : "border-amber-600/40 bg-amber-600/10 text-amber-300 hover:bg-amber-600/20"}`}
-                  >
-                    과열 제외
-                  </button>
-                  <button
-                    onClick={() => setExcludeStopRisk((v) => !v)}
-                    className={`rounded-lg border px-3 py-1 text-xs font-medium ${excludeStopRisk ? "border-red-500/60 bg-red-500/20 text-red-200" : "border-red-600/40 bg-red-600/10 text-red-300 hover:bg-red-600/20"}`}
-                  >
-                    손절 위험 제외
-                  </button>
-                </div>
-              </div>
-
-              {/* 이름/티커 검색 */}
-              <div>
-                <label htmlFor="stocks-name-query" className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
-                <input
-                  id="stocks-name-query"
-                  name="stocksNameQuery"
-                  autoComplete="off"
-                  type="text"
-                  value={nameQuery}
-                  onChange={(e) => setNameQuery(e.target.value)}
-                  placeholder="이름 또는 티커 입력…"
-                  className="mt-1 min-h-11 w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-sky-600"
-                />
-              </div>
-
-              {/* 최소 점수 */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">최소 finalScore</label>
-                  <span className="font-mono text-xs text-slate-300">{minScore} 이상</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {[0, 30, 40, 50, 60].map((val) => (
-                    <button key={val} onClick={() => setMinScore(val)}
-                      className={`rounded-full px-3 py-1 text-[11px] font-medium ${minScore === val ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
-                      {val === 0 ? "전체" : `${val}+`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 전략 태그 */}
-              {allTags.length > 0 && (
+              {/* 코어 필터 — 렌즈 무관, 항상 표시 */}
+              <div className="space-y-4">
+                {/* 이름/티커 검색 */}
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">전략 유형</label>
+                  <label htmlFor="stocks-name-query" className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
+                  <input
+                    id="stocks-name-query"
+                    name="stocksNameQuery"
+                    autoComplete="off"
+                    type="text"
+                    value={nameQuery}
+                    onChange={(e) => setNameQuery(e.target.value)}
+                    placeholder="이름 또는 티커 입력…"
+                    className="mt-1 min-h-11 w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-sky-600"
+                  />
+                </div>
+
+                {/* 최소 점수 */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">최소 finalScore</label>
+                    <span className="font-mono text-xs text-slate-300">{minScore} 이상</span>
+                  </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <button onClick={() => setTagFilter(null)}
-                      className={`rounded-full px-3 py-1 text-[11px] font-medium ${!tagFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
-                      전체
-                    </button>
-                    {allTags.map((tag) => (
-                      <button key={tag} onClick={() => setTagFilter(tag === tagFilter ? null : tag)}
-                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${tagFilter === tag ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
-                        {tag}
+                    {[0, 30, 40, 50, 60].map((val) => (
+                      <button key={val} onClick={() => setMinScore(val)}
+                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${minScore === val ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                        {val === 0 ? "전체" : `${val}+`}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* 데이터 상태 필터 */}
-              <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">데이터·진입 상태</label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" checked={hideDataPending} onChange={(e) => setHideDataPending(e.target.checked)}
-                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                    데이터 수집 대기 / 시세 오래됨 숨기기
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" checked={hideBlockedOnly} onChange={(e) => setHideBlockedOnly(e.target.checked)}
-                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                    진입 차단 종목 숨기기
-                  </label>
+                {/* 데이터 상태 필터 */}
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">데이터·진입 상태</label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" checked={hideDataPending} onChange={(e) => setHideDataPending(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                      데이터 수집 대기 / 시세 오래됨 숨기기
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" checked={hideBlockedOnly} onChange={(e) => setHideBlockedOnly(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                      진입 차단 종목 숨기기
+                    </label>
+                  </div>
+                </div>
+
+                {/* 리스크 제외 (overextensionRisk / tradeBlockStatus 기반) */}
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">리스크 제외</label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" checked={excludeOverheated} onChange={(e) => setExcludeOverheated(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                      과열 제외
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" checked={excludeStopRisk} onChange={(e) => setExcludeStopRisk(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                      손절 위험 제외
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              {/* EV·실증 승률 필터 */}
-              <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">기댓값·실증 승률</label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" checked={filterEvPositive} onChange={(e) => setFilterEvPositive(e.target.checked)}
-                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                    EV 양수만
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" checked={filterWinRate40} onChange={(e) => setFilterWinRate40(e.target.checked)}
-                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                    실증 승률 40%+
-                  </label>
+              {/* 세부 조건 — 접힘, 렌즈가 관련 섹션을 펼친다 */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                  세부 조건 · 렌즈에 맞춰 펼쳐집니다
                 </div>
-              </div>
 
-              {/* 수급/섹터 흐름 (supplySignal 기반) */}
-              <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">수급/섹터 흐름</label>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {[
-                    { id: null, label: "전체" },
-                    { id: "inst", label: "기관 순매수" },
-                    { id: "instForeign", label: "기관+외국인 동반" },
-                  ].map((opt) => {
-                    const active = supplyFilter === opt.id;
-                    return (
-                      <button
-                        key={opt.label}
-                        onClick={() => setSupplyFilter(opt.id as "inst" | "instForeign" | null)}
-                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${active ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
-                      >
-                        {opt.label}
+                {/* 빠른 태그 (신호 기반 원탭 필터) */}
+                <ScreenerSection id="quickTag" label="빠른 태그" count={4}
+                  open={sectionOpen("quickTag")} active={sectionActive("quickTag")} onToggle={toggleSection}>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setTagFilter(tagFilter === "VOLUME_BREAKOUT" ? null : "VOLUME_BREAKOUT")}
+                      className={`rounded-lg border px-3 py-1 text-xs font-medium ${tagFilter === "VOLUME_BREAKOUT" ? "border-yellow-500/60 bg-yellow-500/20 text-yellow-200" : "border-yellow-600/40 bg-yellow-600/10 text-yellow-300 hover:bg-yellow-600/20"}`}
+                    >
+                      거래대금 증가
+                    </button>
+                    <button
+                      onClick={() => setSupplyFilter(supplyFilter === "inst" ? null : "inst")}
+                      className={`rounded-lg border px-3 py-1 text-xs font-medium ${supplyFilter === "inst" ? "border-blue-500/60 bg-blue-500/20 text-blue-200" : "border-blue-600/40 bg-blue-600/10 text-blue-300 hover:bg-blue-600/20"}`}
+                    >
+                      초기 수급
+                    </button>
+                    <button
+                      onClick={() => setExcludeOverheated((v) => !v)}
+                      className={`rounded-lg border px-3 py-1 text-xs font-medium ${excludeOverheated ? "border-amber-500/60 bg-amber-500/20 text-amber-200" : "border-amber-600/40 bg-amber-600/10 text-amber-300 hover:bg-amber-600/20"}`}
+                    >
+                      과열 제외
+                    </button>
+                    <button
+                      onClick={() => setExcludeStopRisk((v) => !v)}
+                      className={`rounded-lg border px-3 py-1 text-xs font-medium ${excludeStopRisk ? "border-red-500/60 bg-red-500/20 text-red-200" : "border-red-600/40 bg-red-600/10 text-red-300 hover:bg-red-600/20"}`}
+                    >
+                      손절 위험 제외
+                    </button>
+                  </div>
+                </ScreenerSection>
+
+                {/* 전략 유형 */}
+                {allTags.length > 0 && (
+                  <ScreenerSection id="strategy" label="전략 유형" count={allTags.length}
+                    open={sectionOpen("strategy")} active={sectionActive("strategy")} onToggle={toggleSection}>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button onClick={() => setTagFilter(null)}
+                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${!tagFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                        전체
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
+                      {allTags.map((tag) => (
+                        <button key={tag} onClick={() => setTagFilter(tag === tagFilter ? null : tag)}
+                          className={`rounded-full px-3 py-1 text-[11px] font-medium ${tagFilter === tag ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </ScreenerSection>
+                )}
 
-              {/* 리스크 제외 (overextensionRisk / tradeBlockStatus 기반) */}
-              <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">리스크 제외</label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" checked={excludeOverheated} onChange={(e) => setExcludeOverheated(e.target.checked)}
-                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                    과열 제외
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" checked={excludeStopRisk} onChange={(e) => setExcludeStopRisk(e.target.checked)}
-                      className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                    손절 위험 제외
-                  </label>
-                </div>
-              </div>
-
-              {/* 고급 태그 필터 그룹 (종목 스타일/발굴형/가격 반영도/유동성/재료 신선도) */}
-              {ADVANCED_FILTER_GROUPS.map((group) => (
-                <div key={group.id}>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{group.label}</label>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {group.activeChips.map((chip) => {
-                      const active = advTags.has(chip);
+                {/* 수급/섹터 흐름 (supplySignal 기반) */}
+                <ScreenerSection id="supply" label="수급/섹터 흐름" count={2}
+                  open={sectionOpen("supply")} active={sectionActive("supply")} onToggle={toggleSection}>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: null, label: "전체" },
+                      { id: "inst", label: "기관 순매수" },
+                      { id: "instForeign", label: "기관+외국인 동반" },
+                    ].map((opt) => {
+                      const active = supplyFilter === opt.id;
                       return (
                         <button
-                          key={chip}
-                          aria-pressed={active}
-                          onClick={() =>
-                            setAdvTags((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(chip)) next.delete(chip);
-                              else next.add(chip);
-                              return next;
-                            })
-                          }
-                          className={`rounded-full px-3 py-1 text-[11px] font-medium ${active ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+                          key={opt.label}
+                          onClick={() => setSupplyFilter(opt.id as "inst" | "instForeign" | null)}
+                          className={`rounded-full px-3 py-1 text-[11px] font-medium ${active ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
                         >
-                          {chip}
+                          {opt.label}
                         </button>
                       );
                     })}
                   </div>
-                </div>
-              ))}
+                </ScreenerSection>
+
+                {/* EV·실증 승률 필터 */}
+                <ScreenerSection id="evwin" label="기댓값·실증 승률" count={2}
+                  open={sectionOpen("evwin")} active={sectionActive("evwin")} onToggle={toggleSection}>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" checked={filterEvPositive} onChange={(e) => setFilterEvPositive(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                      EV 양수만
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" checked={filterWinRate40} onChange={(e) => setFilterWinRate40(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
+                      실증 승률 40%+
+                    </label>
+                  </div>
+                </ScreenerSection>
+
+                {/* 고급 태그 필터 그룹 (종목 스타일/발굴형/가격 반영도/유동성/재료 신선도) */}
+                {ADVANCED_FILTER_GROUPS.map((group) => (
+                  <ScreenerSection key={group.id} id={group.id} label={group.label} count={group.activeChips.length}
+                    open={sectionOpen(group.id)} active={sectionActive(group.id)} onToggle={toggleSection}>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.activeChips.map((chip) => {
+                        const active = advTags.has(chip);
+                        return (
+                          <button
+                            key={chip}
+                            aria-pressed={active}
+                            onClick={() =>
+                              setAdvTags((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(chip)) next.delete(chip);
+                                else next.add(chip);
+                                return next;
+                              })
+                            }
+                            className={`rounded-full px-3 py-1 text-[11px] font-medium ${active ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+                          >
+                            {chip}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScreenerSection>
+                ))}
+              </div>
 
               <div className="border-t border-slate-700/50 pt-3">
                 <div className="flex flex-wrap items-center gap-2">
