@@ -57,7 +57,7 @@ type HoldingEditRow = {
 // 보내 두 엔드포인트 모두 422(Input should be ≤50)로 떨어져 목록이 비었다.
 // 실데이터(≤20)보다 넉넉하면서 두 상한을 모두 만족하는 50으로 맞춘다.
 const RECOMMENDATION_LIMIT = 50;
-const AUTO_SELECT_LIMITS = [12, 20, 30] as const;
+const AUTO_SELECT_LIMIT_PER_MARKET = 20;
 
 // Module-level re-entry cache — survives unmount/remount on navigation
 const STOCKS_CACHE_TTL = 5 * 60 * 1000; // 5 min
@@ -388,7 +388,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [loading, setLoading] = useState(!_initBootItems);
   const [watchSaving, setWatchSaving] = useState(false);
   const [autoCurating, setAutoCurating] = useState(false);
-  const [autoSelectLimit, setAutoSelectLimit] = useState<(typeof AUTO_SELECT_LIMITS)[number]>(20);
   const [watchMessage, setWatchMessage] = useState("");
   const [holdingMessage, setHoldingMessage] = useState("");
   const [holdingSaving, setHoldingSaving] = useState(false);
@@ -944,7 +943,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     setWatchMessage("");
     try {
       const targetMarket = resolvedMarket;
-      const result = await mone.applyAutoWatchlist({ market: targetMarket, limitPerMarket: autoSelectLimit });
+      const result = await mone.applyAutoWatchlist({ market: targetMarket, limitPerMarket: AUTO_SELECT_LIMIT_PER_MARKET });
       if (result?.status === "ERROR") throw new Error(result.error || "자동 선별 실패");
       const saved = Array.isArray(result.items)
         ? result.items.map(normalizeWatch).filter((row) => row.symbol)
@@ -954,7 +953,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       setWatchOnly(true);
       setRefreshVersion((value) => value + 1);
       setWatchMessage(
-        `핵심 관심종목 자동선별 완료 · ${saved.length.toLocaleString("ko-KR")}개 (${result.policy || "추천 데이터 기준"} · 시장당 ${autoSelectLimit}개)`,
+        `핵심 관심종목 자동선별 완료 · ${saved.length.toLocaleString("ko-KR")}개 (${result.policy || "추천 데이터 기준"} · 기본 ${AUTO_SELECT_LIMIT_PER_MARKET}개)`,
       );
       window.dispatchEvent(new CustomEvent("mone-watchlist-updated"));
     } catch (error) {
@@ -1113,29 +1112,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div>{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"}</div>
           <div>현재 적용 시장: {marketLabel(resolvedMarket)}</div>
         </div>
-        <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-500/10">
-            <button
-              onClick={applySmartWatchlist}
-              disabled={autoCurating || watchSaving}
-              className="min-w-0 px-3 py-2 text-xs font-bold text-emerald-300 transition-[background-color,transform] active:scale-[0.98] disabled:opacity-50 sm:text-sm"
-            >
-              {autoCurating ? "선별 중..." : `자동선별 ${autoSelectLimit}개`}
-            </button>
-            <div className="flex border-l border-emerald-500/20">
-              {AUTO_SELECT_LIMITS.map((limit) => (
-                <button
-                  key={limit}
-                  type="button"
-                  aria-pressed={autoSelectLimit === limit}
-                  onClick={() => setAutoSelectLimit(limit)}
-                  className={`w-10 border-l border-emerald-500/10 text-[11px] font-bold first:border-l-0 ${autoSelectLimit === limit ? "bg-emerald-500/25 text-emerald-100" : "text-emerald-500 hover:bg-emerald-500/10"}`}
-                >
-                  {limit}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <button
+            onClick={applySmartWatchlist}
+            disabled={autoCurating || watchSaving}
+            className="min-h-11 min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-xs font-bold text-emerald-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
+          >
+            {autoCurating ? "선별 중..." : "자동선별"}
+          </button>
           <button
             onClick={refreshTargetQuotes}
             disabled={quoteRefreshing === "batch"}
