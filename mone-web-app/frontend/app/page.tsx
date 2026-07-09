@@ -12,7 +12,7 @@ import AppLaunchLoading, { type AppLaunchLoadingStep } from "../components/AppLa
 import HomePage from "../components/pages/HomePage";
 import { mone } from "../lib/api";
 import { clearAdminToken, getAdminToken, saveAdminToken } from "../lib/adminAuth";
-import { clearAuthenticatedUser, getUserId, getUserProfile, getUserToken, type MoneUserProfile } from "../lib/userId";
+import { clearAuthenticatedUser, getUserProfile, getUserToken, type MoneUserProfile } from "../lib/userId";
 import { getDefaultMarketBySession } from "../lib/marketSession";
 import { getCachedBootPreload, runBootPreload, type BootPreloadState } from "../lib/bootPreload";
 import { useFocusTrap } from "../lib/useFocusTrap";
@@ -94,7 +94,6 @@ export default function App() {
     setAdminTokenState(getAdminToken());
     setUserProfile(getUserProfile());
     setUserTokenState(getUserToken());
-    getUserId(); // 최초 방문 시 UUID 생성 및 localStorage 저장
     const storedTheme = window.localStorage.getItem("mone:theme");
     const initialTheme = storedTheme === "light" ? "light" : "dark";
     document.documentElement.dataset.theme = initialTheme;

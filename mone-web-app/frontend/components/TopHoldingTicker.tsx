@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { mone } from "@/lib/api";
-import { getUserId, getUserToken } from "@/lib/userId";
+import { getAuthenticatedUserId, getUserToken } from "@/lib/userId";
 import {
   dedupeBySymbol,
   displayName,
@@ -221,7 +221,7 @@ async function fetchRecommendationRows(): Promise<any[]> {
 }
 
 async function fetchTickerRows(): Promise<TickerItem[]> {
-  const userId = getUserId();
+  const userId = getAuthenticatedUserId();
   const userToken = getUserToken();
   const data: any = await mone.holdingsClean({ market: "all", limit: 500 });
   const holdingsRows = Array.isArray(data?.items) ? data.items : [];

@@ -48,7 +48,7 @@ import {
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
-import { getUserId } from "@/lib/userId";
+import { getAuthenticatedUserId } from "@/lib/userId";
 import { alertStatusTone, toneClassName } from "@/lib/tone";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
@@ -92,7 +92,7 @@ function bootMarketHomeSummary(bootData: BootPreloadData | null | undefined, mar
 // Home recommendations are prediction snapshots. Keep them across reloads and
 // refresh the changing price/alert surfaces separately.
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000; // 14 hours
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v15:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v16:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -112,12 +112,36 @@ function homeCacheKey(market: "kr" | "us") {
   let user = "anon";
   if (typeof window !== "undefined") {
     try {
-      user = getUserId() || "anon";
+      user = getAuthenticatedUserId() || "anon";
     } catch {
       user = "anon";
     }
   }
   return `${HOME_PAGE_STORAGE_PREFIX}${user}:${market}`;
+}
+
+function extractHoldingsFromHome(result: any) {
+  const h = result?.holdings || {};
+  return {
+    items: dedupeBySymbol(Array.isArray(h.items) ? h.items : []),
+    summary: h.summary || null,
+  };
+}
+
+async function fetchPersonalHomeHoldings(market: "kr" | "us") {
+  if (!getAuthenticatedUserId()) return null;
+  try {
+    const payload: any = await mone.holdingsClean({ market, limit: 500 });
+    const items = dedupeBySymbol(Array.isArray(payload?.items) ? payload.items : []);
+    const isPersonal = String(payload?.authority || "").startsWith("personal");
+    return isPersonal && items.length > 0 ? { items, summary: payload?.summary || null } : null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheNeedsPersonalRefresh(c: HomeCacheEntry | null) {
+  return Boolean(getAuthenticatedUserId() && (!c || !Array.isArray(c.holdings) || c.holdings.length === 0));
 }
 
 function readStoredHomeCache(market: "kr" | "us"): HomeCacheEntry | null {
@@ -3277,7 +3301,7 @@ export default function HomePage({
     onNavigate?.("chart");
   }
 
-  const applyCachedOrBootState = useCallback((market: "kr" | "us") => {
+  const applyCachedOrBootState = useCallback(async (market: "kr" | "us") => {
     // 1. Re-entry: use module-level cache (user navigated away and came back)
     const cached = readHomeCache(market);
     if (cached) {
@@ -3291,15 +3315,16 @@ export default function HomePage({
       setAllItems(cachedAllItems);
       setLoading(false);
       setRefreshWarning("");
-      return true;
+      return !cacheNeedsPersonalRefresh(cached);
     }
     // 2. First load: use boot preload data from the loading screen
     const result = bootMarketHomeSummary(bootData, market);
     if (!result) return false;
     const matrixResult = normalizeStrategyMatrix(result.matrix, market);
-    const h = result.holdings || {};
-    const holdingItems = dedupeBySymbol(Array.isArray(h.items) ? h.items : []);
-    const holdingSummary = h.summary || null;
+    const homeHoldings = extractHoldingsFromHome(result);
+    const personalHoldings = await fetchPersonalHomeHoldings(market);
+    const holdingItems = personalHoldings?.items?.length ? personalHoldings.items : homeHoldings.items;
+    const holdingSummary = personalHoldings?.summary || homeHoldings.summary;
     const regime = normalizeMarketRegime(result.marketRegime, market);
     const health = normalizeDataHealth(result.dataHealth);
     const allItemsFlat = matrixResult.flatMap((cell) => cell.items);
@@ -3330,9 +3355,10 @@ export default function HomePage({
       // matrix: { conservative_short: {items, count, status}, ... } → StrategyCell[]
       const matrixResult = normalizeStrategyMatrix(result.matrix, selectedMarket);
 
-      const h = result.holdings || {};
-      const holdingItems = dedupeBySymbol(Array.isArray(h.items) ? h.items : []);
-      const holdingSummary = h.summary || null;
+      const homeHoldings = extractHoldingsFromHome(result);
+      const personalHoldings = await fetchPersonalHomeHoldings(selectedMarket);
+      const holdingItems = personalHoldings?.items?.length ? personalHoldings.items : homeHoldings.items;
+      const holdingSummary = personalHoldings?.summary || homeHoldings.summary;
       const regime = normalizeMarketRegime(result.marketRegime, selectedMarket);
       const health = normalizeDataHealth(result.dataHealth);
       const allItemsFlat = matrixResult.flatMap((cell) => cell.items);
@@ -3372,9 +3398,13 @@ export default function HomePage({
   useEffect(() => {
     // Don't fetch while the boot overlay is still showing — boot data will seed us on dismiss
     if (clientReady && !booting) {
-      const hadCache = applyCachedOrBootState(selectedMarket);
-      if (hadCache) return;
-      load({ background: hadCache });
+      let active = true;
+      applyCachedOrBootState(selectedMarket).then((hadCache) => {
+        if (!active) return;
+        if (hadCache) return;
+        load({ background: hadCache });
+      });
+      return () => { active = false; };
     }
   }, [clientReady, selectedMarket, booting]);
 

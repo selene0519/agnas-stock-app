@@ -8,7 +8,7 @@ import AlertsPanel from "../AlertsPanel";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName } from "@/lib/moneDisplay";
 import { toneClassName } from "@/lib/tone";
-import { getUserId, getUserProfile, getUserToken } from "@/lib/userId";
+import { getAuthenticatedUserId, getExistingUserId, getUserProfile, getUserToken } from "@/lib/userId";
 import type { BootPreloadData } from "@/lib/bootPreload";
 
 type Market = "all" | "kr" | "us";
@@ -64,7 +64,7 @@ async function getJson(path: string) {
 function getMoneUserHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    const id = getUserId();
+    const id = getAuthenticatedUserId() || getExistingUserId();
     return id ? { "x-mone-user": id } : {};
   } catch { return {}; }
 }
@@ -989,6 +989,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       if (!res?.ok) throw new Error(res?.message || res?.error || `${brokerName} 브릿지 스냅샷 확인 실패`);
       setMessage(res.message || `${brokerName} 로컬 브릿지 스냅샷이 반영되어 있습니다.`);
       await load();
+      window.dispatchEvent(new CustomEvent("mone-holdings-updated"));
     } catch (error) {
       setMessage(`${brokerName} 브릿지 확인 실패: ${error instanceof Error ? error.message : String(error)}`);
     } finally { setBrokerSyncing(null); }

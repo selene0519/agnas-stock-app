@@ -57,6 +57,7 @@ type HoldingEditRow = {
 // 보내 두 엔드포인트 모두 422(Input should be ≤50)로 떨어져 목록이 비었다.
 // 실데이터(≤20)보다 넉넉하면서 두 상한을 모두 만족하는 50으로 맞춘다.
 const RECOMMENDATION_LIMIT = 50;
+const AUTO_SELECT_LIMITS = [12, 20, 30] as const;
 
 // Module-level re-entry cache — survives unmount/remount on navigation
 const STOCKS_CACHE_TTL = 5 * 60 * 1000; // 5 min
@@ -387,6 +388,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [loading, setLoading] = useState(!_initBootItems);
   const [watchSaving, setWatchSaving] = useState(false);
   const [autoCurating, setAutoCurating] = useState(false);
+  const [autoSelectLimit, setAutoSelectLimit] = useState<(typeof AUTO_SELECT_LIMITS)[number]>(20);
   const [watchMessage, setWatchMessage] = useState("");
   const [holdingMessage, setHoldingMessage] = useState("");
   const [holdingSaving, setHoldingSaving] = useState(false);
@@ -641,6 +643,12 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     }
     return Array.from(values).sort((a, b) => sectorKoreanLabel(a).localeCompare(sectorKoreanLabel(b), "ko"));
   }, [sectorsList, enrichedItems]);
+
+  useEffect(() => {
+    if (sectorFilter && effectiveSectorsList.length > 0 && !effectiveSectorsList.includes(sectorFilter)) {
+      setSectorFilter(null);
+    }
+  }, [sectorFilter, effectiveSectorsList]);
 
   const baseFiltered = useMemo(() => {
     let result = enrichedItems;
@@ -936,7 +944,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     setWatchMessage("");
     try {
       const targetMarket = resolvedMarket;
-      const result = await mone.applyAutoWatchlist({ market: targetMarket, limitPerMarket: 12 });
+      const result = await mone.applyAutoWatchlist({ market: targetMarket, limitPerMarket: autoSelectLimit });
       if (result?.status === "ERROR") throw new Error(result.error || "자동 선별 실패");
       const saved = Array.isArray(result.items)
         ? result.items.map(normalizeWatch).filter((row) => row.symbol)
@@ -946,7 +954,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       setWatchOnly(true);
       setRefreshVersion((value) => value + 1);
       setWatchMessage(
-        `핵심 관심종목 자동선별 완료 · ${saved.length.toLocaleString("ko-KR")}개 (${result.policy || "추천 데이터 기준"})`,
+        `핵심 관심종목 자동선별 완료 · ${saved.length.toLocaleString("ko-KR")}개 (${result.policy || "추천 데이터 기준"} · 시장당 ${autoSelectLimit}개)`,
       );
       window.dispatchEvent(new CustomEvent("mone-watchlist-updated"));
     } catch (error) {
@@ -1086,6 +1094,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               onClick={() => {
                 setMarket(item.id);
                 setSelected(null);
+                setSectorFilter(null);
+                setGroupFilter(null);
               }}
               className={`min-h-11 min-w-0 rounded-xl border px-2 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item.id ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-950 text-slate-400"}`}
             >
@@ -1103,25 +1113,40 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div>{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"}</div>
           <div>현재 적용 시장: {marketLabel(resolvedMarket)}</div>
         </div>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          <button
-            onClick={applySmartWatchlist}
-            disabled={autoCurating || watchSaving}
-            className="min-h-11 min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-xs font-bold text-emerald-300 disabled:opacity-50 sm:text-sm"
-          >
-            {autoCurating ? "선별 중..." : "자동선별"}
-          </button>
+        <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-500/10">
+            <button
+              onClick={applySmartWatchlist}
+              disabled={autoCurating || watchSaving}
+              className="min-w-0 px-3 py-2 text-xs font-bold text-emerald-300 transition-[background-color,transform] active:scale-[0.98] disabled:opacity-50 sm:text-sm"
+            >
+              {autoCurating ? "선별 중..." : `자동선별 ${autoSelectLimit}개`}
+            </button>
+            <div className="flex border-l border-emerald-500/20">
+              {AUTO_SELECT_LIMITS.map((limit) => (
+                <button
+                  key={limit}
+                  type="button"
+                  aria-pressed={autoSelectLimit === limit}
+                  onClick={() => setAutoSelectLimit(limit)}
+                  className={`w-10 border-l border-emerald-500/10 text-[11px] font-bold first:border-l-0 ${autoSelectLimit === limit ? "bg-emerald-500/25 text-emerald-100" : "text-emerald-500 hover:bg-emerald-500/10"}`}
+                >
+                  {limit}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             onClick={refreshTargetQuotes}
             disabled={quoteRefreshing === "batch"}
-            className="min-h-11 min-w-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2 py-2 text-xs font-bold text-cyan-300 disabled:opacity-50 sm:text-sm"
+            className="min-h-11 min-w-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2 py-2 text-xs font-bold text-cyan-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
           >
             현재가 갱신
           </button>
           <button
             onClick={loadScoredWatchlist}
             disabled={scoredLoading}
-            className="min-h-11 min-w-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs font-bold text-violet-300 disabled:opacity-50 sm:text-sm"
+            className="min-h-11 min-w-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs font-bold text-violet-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
           >
             {scoredLoading ? "분석 중..." : "점수 분석"}
           </button>
@@ -1291,57 +1316,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   ))}
                 </div>
               </div>
-              {/* 빠른 스크리닝 프리셋 */}
-              <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 스크리닝</label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => {
-                      setMinScore(0);
-                      setFilterEvPositive(false);
-                      setFilterWinRate40(false);
-                      setHideDataPending(false);
-                      setHideBlockedOnly(false);
-                      setLens(null);
-                    }}
-                    className="rounded-lg border border-slate-700 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-800"
-                  >
-                    초기화
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMinScore(50);
-                      setFilterEvPositive(true);
-                      setHideDataPending(true);
-                      setHideBlockedOnly(true);
-                    }}
-                    className="rounded-lg border border-emerald-600/50 bg-emerald-600/10 px-3 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-600/20"
-                  >
-                    우선매수
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMinScore(40);
-                      setFilterEvPositive(true);
-                      setHideDataPending(true);
-                    }}
-                    className="rounded-lg border border-sky-600/50 bg-sky-600/10 px-3 py-1 text-xs font-medium text-sky-300 hover:bg-sky-600/20"
-                  >
-                    고EV
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMinScore(30);
-                      setHideDataPending(true);
-                      setHideBlockedOnly(true);
-                    }}
-                    className="rounded-lg border border-amber-600/50 bg-amber-600/10 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-amber-600/20"
-                  >
-                    저리스크
-                  </button>
-                </div>
-              </div>
-
               {/* 빠른 태그 (신호 기반 원탭 필터) */}
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 태그</label>
@@ -1477,15 +1451,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       </button>
                     );
                   })}
-                  {["외국인 유입", "수급 전환 초기", "섹터 후발주 확산", "개인 과열 제외"].map((chip) => (
-                    <span
-                      key={chip}
-                      title="데이터 준비 중"
-                      className="cursor-not-allowed rounded-full border border-dashed border-slate-700 px-3 py-1 text-[11px] font-medium text-slate-600"
-                    >
-                      {chip} · 준비 중
-                    </span>
-                  ))}
                 </div>
               </div>
 
@@ -1531,15 +1496,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                         </button>
                       );
                     })}
-                    {group.comingSoonChips.map((chip) => (
-                      <span
-                        key={chip}
-                        title="데이터 준비 중"
-                        className="cursor-not-allowed rounded-full border border-dashed border-slate-700 px-3 py-1 text-[11px] font-medium text-slate-600"
-                      >
-                        {chip} · 준비 중
-                      </span>
-                    ))}
                   </div>
                 </div>
               ))}

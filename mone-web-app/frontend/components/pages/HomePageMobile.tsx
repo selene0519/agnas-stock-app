@@ -18,6 +18,7 @@ import {
   priceText, probabilityText,
 } from "@/lib/moneDisplay";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
+import { getAuthenticatedUserId } from "@/lib/userId";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
 const HORIZONS: Horizon[] = ["short", "swing", "mid"];
@@ -56,7 +57,7 @@ type EngineHistoryRow = {
 // ── 캐시 (HomePage.tsx와 동일한 키를 써서 데스크톱/모바일 간 캐시를 공유한다)
 const HOME_PAGE_CACHE_TTL = 14 * 60 * 60 * 1000;
 const HOME_PAGE_REVALIDATE_TTL = 20 * 60 * 1000;
-const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v15:";
+const HOME_PAGE_STORAGE_PREFIX = "mone:home-summary:v16:";
 type HomeCacheEntry = {
   matrix: StrategyCell[];
   holdings: any[];
@@ -72,7 +73,8 @@ function isUsableHomeCache(c: HomeCacheEntry | null | undefined): c is HomeCache
   return Boolean(c && Number.isFinite(c.ts) && Date.now() - c.ts < HOME_PAGE_CACHE_TTL);
 }
 function homeCacheKey(market: "kr" | "us") {
-  return `${HOME_PAGE_STORAGE_PREFIX}${market}`;
+  const user = getAuthenticatedUserId() || "anon";
+  return `${HOME_PAGE_STORAGE_PREFIX}${user}:${market}`;
 }
 function readStoredHomeCache(market: "kr" | "us"): HomeCacheEntry | null {
   if (typeof window === "undefined") return null;
@@ -105,6 +107,27 @@ function writeHomeCache(market: "kr" | "us", e: Omit<HomeCacheEntry, "ts">) {
 }
 function shouldReuseHomeCache(c: HomeCacheEntry | null) {
   return Boolean(c && Date.now() - c.ts < HOME_PAGE_REVALIDATE_TTL);
+}
+function extractHoldingsFromHome(result: any) {
+  const h = result?.holdings || {};
+  return {
+    items: dedupeBySymbol(Array.isArray(h.items) ? h.items : []),
+    summary: h.summary || null,
+  };
+}
+async function fetchPersonalHomeHoldings(market: "kr" | "us") {
+  if (!getAuthenticatedUserId()) return null;
+  try {
+    const payload: any = await mone.holdingsClean({ market, limit: 500 });
+    const items = dedupeBySymbol(Array.isArray(payload?.items) ? payload.items : []);
+    const isPersonal = String(payload?.authority || "").startsWith("personal");
+    return isPersonal && items.length > 0 ? { items, summary: payload?.summary || null } : null;
+  } catch {
+    return null;
+  }
+}
+function cacheNeedsPersonalRefresh(c: HomeCacheEntry | null) {
+  return Boolean(getAuthenticatedUserId() && (!c || !Array.isArray(c.holdings) || c.holdings.length === 0));
 }
 
 function normalizeDateText(value: any) {
@@ -816,9 +839,10 @@ export default function HomePageMobile({
           return { mode, horizon, items, count: Number(cell.count || items.length || 0), status: String(cell.status || "OK") } satisfies StrategyCell;
         })
       );
-      const h = result.holdings || {};
-      const holdingItems = dedupeBySymbol(Array.isArray(h.items) ? h.items : []);
-      const holdingSummary = h.summary || null;
+      const homeHoldings = extractHoldingsFromHome(result);
+      const personalHoldings = await fetchPersonalHomeHoldings(selectedMarket);
+      const holdingItems = personalHoldings?.items?.length ? personalHoldings.items : homeHoldings.items;
+      const holdingSummary = personalHoldings?.summary || homeHoldings.summary;
       const regime = normalizeMarketRegime(result.marketRegime, selectedMarket);
       const health = normalizeDataHealth(result.dataHealth);
       const allItemsFlat = matrixResult.flatMap((cell) => cell.items);
@@ -864,7 +888,7 @@ export default function HomePageMobile({
       setAllItems(cached.allItems);
       setLoading(false);
       setRefreshWarning("");
-      if (shouldReuseHomeCache(cached)) return;
+      if (shouldReuseHomeCache(cached) && !cacheNeedsPersonalRefresh(cached)) return;
       load({ background: true });
       return;
     }
