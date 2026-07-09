@@ -22,7 +22,18 @@ BENCHMARKS = [
     {"symbol": "KOSPI",  "ticker": "^KS11",  "market": "kr"},
     {"symbol": "KOSDAQ", "ticker": "^KQ11",  "market": "kr"},
     {"symbol": "SP500",  "ticker": "^GSPC",  "market": "us"},
+    # USD/KRW 환율 — NAV가 미국 보유(달러)를 원화로 환산할 때 사용.
+    # yfinance는 'KRW=X', FinanceDataReader는 'USD/KRW'. 거래량 없음.
+    {"symbol": "USDKRW", "ticker": "KRW=X", "fdr_ticker": "USD/KRW", "market": "fx"},
 ]
+
+
+def _safe_int(v: Any) -> int:
+    try:
+        f = float(v)
+        return int(f) if f == f else 0  # NaN(≠자기자신) → 0. FX는 거래량이 없다.
+    except Exception:
+        return 0
 
 
 def fetch_yfinance(ticker: str, period: str = "2y") -> list[dict[str, Any]]:
@@ -39,7 +50,7 @@ def fetch_yfinance(ticker: str, period: str = "2y") -> list[dict[str, Any]]:
                 "high":   round(float(row["High"]), 2),
                 "low":    round(float(row["Low"]), 2),
                 "close":  round(float(row["Close"]), 2),
-                "volume": int(row["Volume"]),
+                "volume": _safe_int(row.get("Volume", 0)),
             })
         return rows
     except Exception as e:
@@ -62,7 +73,7 @@ def fetch_fdr(ticker: str, period_days: int = 730) -> list[dict[str, Any]]:
                 "high":   round(float(row.get("High", 0)), 2),
                 "low":    round(float(row.get("Low",  0)), 2),
                 "close":  round(float(row.get("Close", 0)), 2),
-                "volume": int(row.get("Volume", 0)),
+                "volume": _safe_int(row.get("Volume", 0)),
             })
         return rows
     except Exception as e:
@@ -100,7 +111,7 @@ def main() -> None:
         out    = OHLCV_DIR / f"{market}_{sym}_daily.csv"
 
         print(f"Fetching {sym} ({ticker})...")
-        rows = fetch_yfinance(ticker) or fetch_fdr(ticker)
+        rows = fetch_yfinance(ticker) or fetch_fdr(bm.get("fdr_ticker", ticker))
 
         if rows:
             write_csv(out, rows, sym, market)

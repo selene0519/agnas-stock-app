@@ -8927,6 +8927,36 @@ def _try_open_er_api(base: str) -> float | None:
         pass
     return None
 
+def _try_local_fx_csv(base: str, target: str) -> tuple[float, str] | None:
+    """레포가 매일 수집하는 fx_USDKRW_daily.csv의 최신 종가로 폴백.
+    외부 환율 API가 모두 막혀도(키 미설정·Render 아웃바운드 차단) 항상 값을 준다.
+    NAV(update_portfolio_nav.py)와 같은 파일이라 화면·NAV 환율이 일치한다."""
+    if base != "USD" or target != "KRW":
+        return None
+    try:
+        import csv as _csv
+        path = _OHLCV_DIR / "fx_USDKRW_daily.csv"
+        if not path.exists():
+            return None
+        latest_date, latest_rate = "", 0.0
+        for enc in ("utf-8-sig", "utf-8", "cp949"):
+            try:
+                with path.open("r", encoding=enc, newline="") as fh:
+                    for row in _csv.DictReader(fh):
+                        d = str(row.get("date") or row.get("Date") or "").strip()[:10]
+                        r = float(str(row.get("close") or row.get("Close") or 0).replace(",", "") or 0)
+                        if d and r > 0 and d >= latest_date:
+                            latest_date, latest_rate = d, r
+                break
+            except Exception:
+                continue
+        if latest_rate > 0:
+            return latest_rate, latest_date
+    except Exception:
+        pass
+    return None
+
+
 def _try_exchangerate_api(base: str) -> float | None:
     try:
         import os as _os, requests as _req
@@ -8979,6 +9009,15 @@ def api_exchange_rate(base: str = Query("USD"), target: str = Query("KRW")) -> d
     if rate:
         result = {"status": "OK", "rate": rate, "base": base, "target": target,
                   "source": "exchangerate-api.com"}
+        _EXRATE_CACHE[cache_key] = {**result, "ts": now_ts}
+        return result
+
+    # 4순위: 레포 로컬 fx_USDKRW_daily.csv (외부 API 전부 실패 시 항상 동작)
+    local = _try_local_fx_csv(base, target)
+    if local:
+        rate, fx_date = local
+        result = {"status": "OK", "rate": rate, "base": base, "target": target,
+                  "source": "local_fx_csv", "date": fx_date}
         _EXRATE_CACHE[cache_key] = {**result, "ts": now_ts}
         return result
 

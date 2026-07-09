@@ -168,6 +168,39 @@ def load_price_index() -> dict[str, float]:
     return index
 
 
+# ── 환율(USD/KRW) 인덱스 ──────────────────────────────────────────────
+# 미국 보유 평가액은 달러라, 원화 KR 보유와 합산하려면 환산이 필요하다.
+# 매일 fetch_benchmark_data.py가 fx_USDKRW_daily.csv를 갱신한다. 파일이 없으면
+# DEFAULT_USDKRW(레포 매크로 뉴스 기준 최근 원/달러)로 폴백한다.
+DEFAULT_USDKRW = _num(os.environ.get("USDKRW_RATE"), 1477.6) or 1477.6
+FX_PATH = ROOT / "data" / "market" / "ohlcv" / "fx_USDKRW_daily.csv"
+
+
+def load_fx_index() -> dict[str, float]:
+    idx: dict[str, float] = {}
+    for row in _read_csv(FX_PATH):
+        date = str(row.get("date") or row.get("Date") or "").strip()[:10]
+        rate = _num(row.get("close") or row.get("Close"), 0)
+        if date and rate > 0:
+            idx[date] = rate
+    return idx
+
+
+def fx_rate_for(fx_index: dict[str, float], date: str, use_latest: bool = False) -> float:
+    """해당 날짜(또는 최신)의 원/달러 환율. 없으면 직전 유효일 → 전체 최신 →
+    최초일 → 상수 순으로 폴백."""
+    if not fx_index:
+        return DEFAULT_USDKRW
+    if use_latest:
+        return fx_index[max(fx_index)]
+    if date in fx_index:
+        return fx_index[date]
+    prior = [d for d in fx_index if d <= date]
+    if prior:
+        return fx_index[max(prior)]
+    return fx_index[min(fx_index)]
+
+
 # ── OHLCV close 인덱스 (날짜별 백필용) ───────────────────────────────
 
 def load_ohlcv_close(symbol: str, market: str) -> dict[str, float]:
@@ -216,9 +249,10 @@ def calc_nav_for_date(
     date: str,
     price_index: dict[str, float],
     use_current: bool = False,
+    fx_index: dict[str, float] | None = None,
 ) -> dict:
     kr_value = 0.0
-    us_value = 0.0
+    us_value_usd = 0.0  # 달러 원본 — 마지막에 환율로 원화 환산
     for h in holdings:
         sym = h["symbol"]
         mkt = h["market"]
@@ -245,13 +279,18 @@ def calc_nav_for_date(
         if mkt == "kr":
             kr_value += val
         else:
-            us_value += val
+            us_value_usd += val
 
+    # 미국 보유(달러)를 원화로 환산해 KR과 합산. today는 최신 환율, 백필은 그날 환율.
+    rate = fx_rate_for(fx_index or {}, date, use_latest=use_current)
+    us_value = us_value_usd * rate
     total = kr_value + us_value
     return {
         "total_value": round(total, 2),
         "kr_value": round(kr_value, 2),
-        "us_value": round(us_value, 2),
+        "us_value": round(us_value, 2),      # 원화 환산액
+        "us_value_usd": round(us_value_usd, 2),
+        "fx_rate": round(rate, 4),
     }
 
 
@@ -262,6 +301,7 @@ def main(backfill_days: int = 0, dry_run: bool = False) -> None:
     holdings = load_holdings()
     price_index = load_price_index()
     kospi_returns = load_kospi_returns()
+    fx_index = load_fx_index()
 
     # 기존 NAV 로드
     existing = {r["date"]: r for r in _read_csv(NAV_PATH)}
@@ -307,7 +347,7 @@ def main(backfill_days: int = 0, dry_run: bool = False) -> None:
     # (장전/장마감 후) 도니 두 번째 실행이 종가로 갱신돼야 하고, 보유 원장이
     # 바뀌면(예: 잘못 들어간 종목 제거) 오늘 값도 즉시 반영돼야 한다. 과거
     # 실제행은 아래 백필에서 건드리지 않으므로 오늘만 갱신된다.
-    nav = calc_nav_for_date(holdings, today, price_index, use_current=True)
+    nav = calc_nav_for_date(holdings, today, price_index, use_current=True, fx_index=fx_index)
     if nav["total_value"] > 0:
         existing[today] = make_row(today, nav, is_backfill=False)
         print(f"[NAV] {today}: 실제 {nav['total_value']:,.0f}원")
@@ -318,7 +358,7 @@ def main(backfill_days: int = 0, dry_run: bool = False) -> None:
             date = (datetime.now(KST) - timedelta(days=i)).strftime("%Y-%m-%d")
             if date in existing and str(existing[date].get("is_backfill", "")).lower() == "false":
                 continue  # 실제 데이터 있으면 덮어쓰지 않음
-            nav = calc_nav_for_date(holdings, date, price_index, use_current=False)
+            nav = calc_nav_for_date(holdings, date, price_index, use_current=False, fx_index=fx_index)
             if nav["total_value"] > 0:
                 existing[date] = make_row(date, nav, is_backfill=True)
                 print(f"[NAV-백필] {date}: 추정 {nav['total_value']:,.0f}원")
