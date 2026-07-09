@@ -303,12 +303,14 @@ def main(backfill_days: int = 0, dry_run: bool = False) -> None:
             "is_backfill": "true" if is_backfill else "false",
         }
 
-    # 오늘 데이터
-    if today not in existing or str(existing[today].get("is_backfill", "")).lower() not in ("false", ""):
-        nav = calc_nav_for_date(holdings, today, price_index, use_current=True)
-        if nav["total_value"] > 0:
-            existing[today] = make_row(today, nav, is_backfill=False)
-            print(f"[NAV] {today}: 실제 {nav['total_value']:,.0f}원")
+    # 오늘 데이터 — 항상 최신가로 재계산해 덮어쓴다. 워크플로가 하루 두 번
+    # (장전/장마감 후) 도니 두 번째 실행이 종가로 갱신돼야 하고, 보유 원장이
+    # 바뀌면(예: 잘못 들어간 종목 제거) 오늘 값도 즉시 반영돼야 한다. 과거
+    # 실제행은 아래 백필에서 건드리지 않으므로 오늘만 갱신된다.
+    nav = calc_nav_for_date(holdings, today, price_index, use_current=True)
+    if nav["total_value"] > 0:
+        existing[today] = make_row(today, nav, is_backfill=False)
+        print(f"[NAV] {today}: 실제 {nav['total_value']:,.0f}원")
 
     # 백필
     if backfill_days > 0:
@@ -321,8 +323,25 @@ def main(backfill_days: int = 0, dry_run: bool = False) -> None:
                 existing[date] = make_row(date, nav, is_backfill=True)
                 print(f"[NAV-백필] {date}: 추정 {nav['total_value']:,.0f}원")
 
-    # 날짜순 정렬 후 저장
+    # 날짜순 정렬
     rows = [existing[d] for d in sorted(existing.keys())]
+
+    # 파생지표(일간·누적수익률·MDD) 일괄 재계산 — 시리즈 전체를 한 기준으로 통일한다.
+    # make_row가 행별로 계산하던 방식은 base_value가 "첫 실제행"에 묶여 있어, 옛
+    # 보유(잘못 섞인 종목 등) 기준으로 찍힌 과거 실제행이 base가 되면 누적수익률이
+    # 통째로 왜곡됐다(예: -90% 절벽). 최종 시리즈의 가장 이른 유효 NAV를 base로
+    # 삼아 모든 행을 다시 계산하면 리빌드/보유변경에도 일관된 곡선이 나온다.
+    base = next((_num(r["total_value"], 0) for r in rows if _num(r["total_value"], 0) > 0), 0.0)
+    peak = 0.0
+    prev: float | None = None
+    for r in rows:
+        tv = _num(r["total_value"], 0)
+        r["cumulative_return"] = round((tv - base) / base * 100, 6) if base > 0 else 0.0
+        r["daily_return"] = round((tv - prev) / prev * 100, 6) if prev and prev > 0 else 0.0
+        peak = tv if peak <= 0 else max(peak, tv)
+        r["max_drawdown_pct"] = round((tv - peak) / peak * 100, 4) if peak > 0 and tv < peak else 0.0
+        prev = tv
+
     if not dry_run:
         _write_csv(NAV_PATH, rows)
         print(f"[NAV] {NAV_PATH} 저장 완료 ({len(rows)}행)")
