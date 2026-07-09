@@ -1507,7 +1507,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                             className="inline-flex items-center gap-1 rounded-lg border border-red-500/60 bg-red-500/20 px-2 py-1 text-xs font-bold text-red-300 hover:bg-red-500/30 disabled:opacity-50">
                             <Trash2 size={11} /> 확인
                           </button>
-                          <button onClick={() => setDeleteConfirmKey(null)}
+                          <button onClick={() => setDeleteConfirmKey(null)} aria-label="삭제 취소" title="취소"
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:bg-slate-800">
                             <X size={11} />
                           </button>
@@ -1732,7 +1732,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                                 className="inline-flex items-center gap-1 rounded-lg border border-red-500/60 bg-red-500/20 px-2 py-1 text-xs font-bold text-red-300 hover:bg-red-500/30 disabled:opacity-50">
                                 <Trash2 size={11} /> 확인
                               </button>
-                              <button onClick={() => setDeleteConfirmKey(null)}
+                              <button onClick={() => setDeleteConfirmKey(null)} aria-label="삭제 취소" title="취소"
                                 className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:bg-slate-800">
                                 <X size={11} />
                               </button>

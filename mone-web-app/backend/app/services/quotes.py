@@ -625,7 +625,19 @@ def _refresh_targets(market: str, symbols: str | None, max_symbols: int) -> list
         raw = [item.strip() for item in symbols.split(",") if item.strip()]
         return [data.normalize_symbol(item, market) for item in raw][:max_symbols]
     target_symbols: list[str] = []
-    target_files = [
+    # 보유 원장을 맨 앞에 둔다 — 실제 보유 종목은 절대 max_symbols 컷오프에 밀리면
+    # 안 된다. 과거엔 보유 ETF(예: 133690)가 추천 유니버스 밖이라 KIS 현재가 수집
+    # 대상에서 빠져, 앱에 "시세 갱신 필요 / 6-30"으로 옛 가격이 고정됐다. toss_holdings_kr.csv는
+    # 파일명이 kr이지만 안이 us라 US 수집에만 넣고, KR엔 넣지 않는다(normalize가 걸러도
+    # 불필요한 조회 방지).
+    if market == "kr":
+        holding_ledgers = ["holdings_kr.csv", "data/kis_2_holdings_kr.csv", "data/kis_holdings_kr.csv"]
+    else:
+        holding_ledgers = [
+            "holdings_us.csv", "data/holdings_us.csv", "data/toss_holdings_kr.csv",
+            "data/kis_2_holdings_us.csv", "data/kis_holdings_us.csv", "data/toss_holdings_us.csv",
+        ]
+    target_files = [data.REPO_ROOT / p for p in holding_ledgers] + [
         data.REPO_ROOT / "data" / "stockapp" / f"price_collection_universe_{market}.csv",
         data.REPO_ROOT / "data" / "stockapp" / f"kis_collection_targets_{market}.csv",
     ]
