@@ -454,6 +454,40 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
     total_pnl = total_value - total_cost if total_value and total_cost else 0.0
     risk_count = sum(1 for x in items if x["riskStatus"] in {"위험", "주의", "손절지연"})
 
+    # 통화별(KR 원화 / US 달러) 집계. market="all"이면 items에 원화·달러가 섞여
+    # total_value 단순합이 의미 없으므로, 프론트가 환율로 합산할 수 있게 통화별
+    # 원본 금액을 marketBreakdown으로 내려준다.
+    by_market: Dict[str, Dict[str, float]] = {}
+    for x in items:
+        mk_ = str(x.get("market") or "kr")
+        b = by_market.setdefault(mk_, {"count": 0, "totalValue": 0.0, "totalCost": 0.0, "totalPnl": 0.0})
+        b["count"] += 1
+        b["totalValue"] += _num(x.get("valuation"))
+        b["totalCost"] += _num(x.get("cost"))
+        b["totalPnl"] += _num(x.get("pnl"))
+    market_breakdown = []
+    for mk_ in sorted(by_market):
+        b = by_market[mk_]
+        tv_, tc_, tp_ = b["totalValue"], b["totalCost"], b["totalPnl"]
+        market_breakdown.append({
+            "market": mk_,
+            "count": int(b["count"]),
+            "totalValue": round(tv_, 2),
+            "totalCost": round(tc_, 2),
+            "totalPnl": round(tp_, 2),
+            "totalPnlPct": round(tp_ / tc_ * 100, 4) if tc_ > 0 else 0,
+            "totalValueText": _fmt_price(tv_, mk_),
+            "totalPnlText": _fmt_price(tp_, mk_) if tp_ else "0",
+        })
+    mixed_currency = len(by_market) > 1
+    # 혼합이면 상단 합계 카드는 통화별로 분리 표시(환율 합산은 별도 배너가 담당).
+    if mixed_currency:
+        total_value_text = "KR·US 혼합"
+        total_pnl_text = "통화별 ↓"
+    else:
+        total_value_text = _fmt_price(total_value, "kr" if market != "us" else "us")
+        total_pnl_text = _fmt_price(total_pnl, "kr" if market != "us" else "us") if total_pnl else "0"
+
     return {
         "status": "OK",
         "routeVersion": "v80.2-clean",
@@ -469,8 +503,10 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
             "totalCost": total_cost,
             "totalPnl": total_pnl,
             "totalPnlPct": total_pnl / total_cost * 100 if total_cost > 0 else 0,
-            "totalValueText": _fmt_price(total_value, "kr" if market != "us" else "us"),
-            "totalPnlText": _fmt_price(total_pnl, "kr" if market != "us" else "us") if total_pnl else "0",
+            "totalValueText": total_value_text,
+            "totalPnlText": total_pnl_text,
+            "mixedCurrency": mixed_currency,
+            "marketBreakdown": market_breakdown,
         },
         "updatedAt": datetime.now(KST).isoformat(),
     }

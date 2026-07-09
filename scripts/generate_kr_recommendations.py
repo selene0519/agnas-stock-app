@@ -18,6 +18,12 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+# `python scripts/generate_kr_recommendations.py`로 직접 실행하면 sys.path[0]가
+# scripts/ 라서 `import scripts.*`가 ModuleNotFoundError를 낸다. 레포 루트를 먼저
+# 꽂아야 아래 `from scripts.walk_forward_backtest ...`가 동작한다. (US 생성기는
+# 이미 ROOT를 꽂아서 정상, KR만 누락되어 있어 매일 추천 생성이 조용히 실패했다.)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "mone-web-app" / "backend"))
 
 from scripts.walk_forward_backtest import TRADE_COST_PCT  # 매수수수료+매도세+슬리피지 ≈ 0.345%, 백테스트와 동일 산식 유지
