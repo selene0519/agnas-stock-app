@@ -1043,8 +1043,29 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     dataStatus: data.status,
   });
   const riskCount = Number(summary.riskCount ?? items.filter((item) => normalizeRiskStatus(item.riskStatus) !== "NORMAL").length);
-  const totalValueText = summary.totalValueText || (items.length > 0 ?
-    items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
+  // 혼합통화(KR 원화 + US 달러)일 때 환율로 합산한 KRW 총액·손익.
+  // 환율을 아직 못 받았으면 null → 상단 카드는 통화별 분리 배너에 위임한다.
+  const combinedKrw = useMemo(() => {
+    if (!summary.mixedCurrency || !usdToKrw?.rate) return null;
+    const bd = Array.isArray(summary.marketBreakdown) ? summary.marketBreakdown : [];
+    const us = bd.find((b: any) => b.market === "us");
+    const kr = bd.find((b: any) => b.market === "kr");
+    const value = Number(kr?.totalValue || 0) + Number(us?.totalValue || 0) * usdToKrw.rate;
+    const pnl = Number(kr?.totalPnl || 0) + Number(us?.totalPnl || 0) * usdToKrw.rate;
+    return { value, pnl };
+  }, [summary.mixedCurrency, summary.marketBreakdown, usdToKrw]);
+  const totalValueText = combinedKrw
+    ? `${Math.round(combinedKrw.value).toLocaleString("ko-KR")}원`
+    : summary.totalValueText || (items.length > 0 ?
+      items.reduce((acc: number, item: any) => acc + Number(item.valuation || item.marketValue || 0), 0).toLocaleString("ko-KR") + "원" : "-");
+  const totalPnlText = combinedKrw
+    ? `${combinedKrw.pnl >= 0 ? "+" : ""}${Math.round(combinedKrw.pnl).toLocaleString("ko-KR")}원`
+    : (summary.totalPnlText || "-");
+  const totalPnlAccent = combinedKrw
+    ? (combinedKrw.pnl >= 0 ? "text-emerald-300" : "text-red-300")
+    : summary.mixedCurrency
+      ? "text-slate-300"
+      : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300";
   const showPersonalEmptyNotice = !loading && items.length === 0 && isPersonalHoldingsSource;
 
   const { individualStocks, etfHoldings } = useMemo(() => {
@@ -1300,7 +1321,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             : "border-slate-700 bg-slate-900 text-slate-300"
         }`}>
           <span>{message}</span>
-          <button onClick={() => setMessage("")} className="ml-3 shrink-0 text-slate-500 hover:text-slate-300"><X size={14} /></button>
+          <button onClick={() => setMessage("")} aria-label="알림 닫기" title="닫기" className="ml-3 shrink-0 text-slate-500 hover:text-slate-300"><X size={14} /></button>
         </div>
       )}
 
@@ -1316,13 +1337,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <SummaryCard label="평가금액 합계" value={totalValueText} />
-          <SummaryCard label="총 평가손익" value={summary.totalPnlText || "-"}
-            accent={
-              summary.mixedCurrency
-                ? "text-slate-300"
-                : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300"
-            } />
+          <SummaryCard label={combinedKrw ? "평가금액 합계 (환율 환산)" : "평가금액 합계"} value={totalValueText} />
+          <SummaryCard label="총 평가손익" value={totalPnlText} accent={totalPnlAccent} />
           <SummaryCard label="보유 종목" value={`${items.length}개`} />
           <SummaryCard label="주의/위험" value={`${riskCount}개`}
             accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
