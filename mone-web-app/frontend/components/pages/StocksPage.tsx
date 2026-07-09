@@ -58,6 +58,14 @@ type HoldingEditRow = {
 // 실데이터(≤20)보다 넉넉하면서 두 상한을 모두 만족하는 50으로 맞춘다.
 const RECOMMENDATION_LIMIT = 50;
 const AUTO_SELECT_LIMIT_PER_MARKET = 20;
+const SCREENER_EXTENSION_CHIPS = ["외국인 유입", "수급 전환 초기", "섹터 후발 확산", "개인 과열 제외"] as const;
+const LENS_EXTENSION_CHIPS: Record<ExplorationLensId, readonly string[]> = {
+  leader: ["섹터 대표주", "테마 주도주", "외국인 유입"],
+  discovery: ["소형 성장", "섹터 후발 확산", "수급 전환 초기"],
+  pullback: ["최근 급등 제외", "대표주 대비 후행", "호가 공백 주의"],
+  recovery: ["중형 성장", "반복 재료", "수급 전환 초기"],
+  balance: ["대형 안정", "중형 성장", "소형 성장"],
+};
 
 // Module-level re-entry cache — survives unmount/remount on navigation
 const STOCKS_CACHE_TTL = 5 * 60 * 1000; // 5 min
@@ -750,6 +758,17 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     ) as Record<ExplorationLensId, number>;
   }, [baseFiltered]);
 
+  const activeLensDef = lens ? getLensDef(lens) : null;
+  const screenerTitle = activeLensDef && lens !== "balance" ? `${activeLensDef.label} 세부 조율` : "스크리너 세부 조율";
+  const screenerSubtitle = activeLensDef
+    ? `${activeLensDef.label} 렌즈 안에서 기존 필터를 더 좁혀 봅니다.`
+    : "탐색 렌즈와 함께 쓰는 세부 필터입니다.";
+  const plannedExtensionChips = useMemo(() => {
+    const priority = lens ? Array.from(LENS_EXTENSION_CHIPS[lens] || []) : [];
+    const taxonomy = ADVANCED_FILTER_GROUPS.flatMap((group) => group.comingSoonChips);
+    return Array.from(new Set([...priority, ...SCREENER_EXTENSION_CHIPS, ...taxonomy]));
+  }, [lens]);
+
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     enrichedItems.forEach((item) => {
@@ -1280,6 +1299,15 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
           {screenerOpen && (
             <div className="mt-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-700/50 pb-3">
+                <div>
+                  <div className="text-sm font-bold text-slate-100">{screenerTitle}</div>
+                  <div className="mt-0.5 text-[11px] text-slate-500">{screenerSubtitle}</div>
+                </div>
+                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-300">
+                  렌즈 {activeLensDef?.label || "전체"}
+                </span>
+              </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 선별</label>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -1483,6 +1511,26 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   </div>
                 </div>
               ))}
+
+              <div className="border-t border-slate-700/50 pt-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">확장 예정</label>
+                  <span className="text-[10px] text-slate-600">
+                    현재 렌즈와 연결할 다음 신호입니다. 아직 필터 결과에는 반영하지 않습니다.
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {plannedExtensionChips.map((chip) => (
+                    <span
+                      key={chip}
+                      title="데이터 연결 예정"
+                      className="rounded-full border border-dashed border-slate-700/80 px-3 py-1 text-[11px] font-medium text-slate-500"
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              </div>
 
               {/* 고급 태그 과다 선택 안내: 결과가 0인데 고급 태그가 걸려 있으면 힌트 */}
               {sectorFiltered.length === 0 && advTags.size > 0 && (

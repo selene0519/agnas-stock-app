@@ -7,8 +7,8 @@
 //   전혀 관여하지 않는다.
 // - 백엔드(quant_scanner._display_taxonomy_tags)가 styleTags/liquidityTags/
 //   pricePositionTags/discoveryTags/freshnessTags 를 표시 전용으로 내려준다.
-//   activeChips 는 실제 필터로 동작한다. comingSoonChips 는 기획 메모로만
-//   남겨두고 화면에는 노출하지 않는다.
+//   activeChips 는 실제 필터로 동작한다. comingSoonChips 는 실제 필터와
+//   섞지 않고 스크리너의 "확장 예정" 레일에만 노출한다.
 
 export interface AdvancedFilterGroup {
   id: string;
@@ -17,7 +17,7 @@ export interface AdvancedFilterGroup {
   field: "styleTags" | "liquidityTags" | "pricePositionTags" | "discoveryTags" | "freshnessTags";
   /** 백엔드가 실제로 내려주는 칩 — 필터로 동작 */
   activeChips: string[];
-  /** 아직 데이터 원천이 없어 화면에는 노출하지 않는 후보 칩 */
+  /** 아직 데이터 원천이 없어 확장 예정 레일에만 노출하는 후보 칩 */
   comingSoonChips: string[];
 }
 
