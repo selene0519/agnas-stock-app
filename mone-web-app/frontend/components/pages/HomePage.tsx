@@ -828,6 +828,30 @@ function TodayEntryCard({
         <span className="text-slate-500">위험 <span className={`font-semibold ${riskClass}`}>{riskText}</span></span>
       </div>
 
+      {/* Decision Stack 요약 — 종목 신호·시장 환경·최종 행동을 한 줄로 정렬해
+          "관찰 1순위인데 왜 현금 대기?" 혼란을 없앤다 (UX 보고서 4.2 권장 표현). */}
+      {(() => {
+        const gate = getMarketGateInfo(marketRegime, dataHealth);
+        const signalText = score >= 75 ? "양호" : score >= 60 ? "보통" : score > 0 ? "약함" : "-";
+        const actionText = publicBlocked ? "관찰·대기" : publicCandidate ? "진입 검토" : (publicTradeLabel || decision || "관찰");
+        return (
+          <div className="mone-home-inset mt-2 grid grid-cols-3 gap-2 rounded-[10px] border px-3 py-2 text-[11px]">
+            <div>
+              <div className="text-[10px] text-slate-500">종목 신호</div>
+              <div className="font-semibold text-slate-200">{signalText}{score > 0 ? ` · ${score.toFixed(0)}점` : ""}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-slate-500">시장 환경</div>
+              <div className={`font-semibold ${gate.isLow ? "text-red-300" : gate.isMid ? "text-amber-300" : "text-emerald-300"}`}>{gate.levelText} {gate.strength}/100</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-slate-500">최종 행동</div>
+              <div className={`font-semibold ${publicBlocked ? "text-amber-300" : publicCandidate ? "text-emerald-300" : "text-slate-200"}`}>{actionText}</div>
+            </div>
+          </div>
+        );
+      })()}
+
       {(publicTradeLabel || publicTradeStatus) && (
         <div className={`mt-2 rounded-[10px] border px-3 py-2 text-[11px] ${publicClass}`}>
           <div className="flex items-center justify-between gap-2">
