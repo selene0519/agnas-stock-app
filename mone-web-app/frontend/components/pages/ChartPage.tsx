@@ -2042,12 +2042,16 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
 }
 
 // ── ATR 기반 관찰 계획 ────────────────────────────────────────────────
-function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative"|"balanced"|"aggressive", horizon: "short"|"swing"|"mid") {
+function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative"|"balanced"|"aggressive", horizon: "short"|"swing"|"mid", authStop?: number | null) {
   if (!currentPrice || !atr) return null;
   const stopMult  = { conservative: 1.5, balanced: 2.0, aggressive: 2.5 }[mode];
   const tgt1Mult  = { short: 2.0, swing: 3.0, mid: 4.5 }[horizon];
   const tgt2Mult  = { short: 3.0, swing: 5.0, mid: 7.0 }[horizon];
-  const entry = Math.round(currentPrice), stop = Math.round(entry - atr * stopMult);
+  const entry = Math.round(currentPrice);
+  // 손절가는 백엔드 추천의 권위값(levels.stop)을 우선 사용해 화면 간 손절 불일치를 없앤다.
+  // (예: 분석 요약은 572,429인데 이 섹션은 564,429로 다르게 보이던 문제). authStop이
+  // 없을 때만 ATR×배수로 산출. 분할진입/2단 목표는 이 계획 고유값이라 그대로 둔다.
+  const stop = (authStop && authStop > 0) ? Math.round(authStop) : Math.round(entry - atr * stopMult);
   const target1 = Math.round(entry + atr * tgt1Mult), target2 = Math.round(entry + atr * tgt2Mult);
   const rr1 = (target1 - entry) / (entry - stop), rr2 = (target2 - entry) / (entry - stop);
   return {
@@ -2408,7 +2412,7 @@ export default function ChartPage() {
     });
     return trs.reduce((s, v) => s + v, 0) / trs.length;
   })();
-  const atrPlan = atrValue > 0 && currentPrice > 0 ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon) : null;
+  const atrPlan = atrValue > 0 && currentPrice > 0 ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon, levelValue(levels, "stop")) : null;
   const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
   const freshness = freshnessInfo(rows);
   const analysisFreshness = dataFreshnessInfo({
