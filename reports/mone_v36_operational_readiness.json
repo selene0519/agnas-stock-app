@@ -11,7 +11,7 @@
       "status": "NORMAL",
       "version": "v3.6.1-operational-stable",
       "market": "kr",
-      "updatedAt": "2026-07-10 16:31:44 KST",
+      "updatedAt": "2026-07-10 22:05:26 KST",
       "readinessScore": 100,
       "readinessLabel": "운영 가능",
       "warnings": [
@@ -23,7 +23,7 @@
       "automationStatus": "OK",
       "automationLabel": "자동 실행 정상",
       "automationMode": "github_schedule",
-      "latestAutomationRunAt": "2026-07-10T07:27:15Z",
+      "latestAutomationRunAt": "2026-07-10T11:26:34Z",
       "latestAutomationEvent": "schedule",
       "latestAutomationConclusion": "success",
       "stockAppBridgeStatus": "NOT_FOUND",
@@ -51,42 +51,42 @@
           "exists": true,
           "status": "OK",
           "ageHours": 0.02,
-          "updatedAt": "2026-07-10 16:32:32"
+          "updatedAt": "2026-07-10 22:06:04"
         },
         {
           "path": "reports/mone_v36_final_trade_validation_kr_balanced_swing.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.02,
-          "updatedAt": "2026-07-10 16:32:32"
+          "updatedAt": "2026-07-10 22:06:04"
         },
         {
           "path": "reports/mone_v36_final_prediction_validation_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.02,
-          "updatedAt": "2026-07-10 16:32:32"
+          "updatedAt": "2026-07-10 22:06:04"
         },
         {
           "path": "reports/mone_v36_final_macro_events_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.02,
-          "updatedAt": "2026-07-10 16:32:27"
+          "updatedAt": "2026-07-10 22:06:00"
         },
         {
           "path": "reports/mone_v36_final_data_center_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.02,
-          "updatedAt": "2026-07-10 16:32:27"
+          "updatedAt": "2026-07-10 22:06:00"
         },
         {
           "path": "predictions.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.5,
-          "updatedAt": "2026-07-10 16:03:28"
+          "ageHours": 0.49,
+          "updatedAt": "2026-07-10 21:37:27"
         }
       ],
       "summary": [
@@ -107,7 +107,7 @@
         },
         {
           "label": "마지막 업데이트",
-          "value": "2026-07-10 16:31:44 KST",
+          "value": "2026-07-10 22:05:26 KST",
           "note": "reports/data 기준"
         },
         {
@@ -139,15 +139,15 @@
             "status": "OK",
             "files": 256,
             "csvFiles": 256,
-            "rows": 5071,
-            "latestUpdatedAt": "2026-07-10 16:03:28",
+            "rows": 5421,
+            "latestUpdatedAt": "2026-07-10 21:37:27",
             "target": "차트·기술분석 > 차트 보기",
             "examples": [
               "reports/kr_close_ohlcv_coverage_audit.csv",
               "data/portfolio/position_daily_snapshot.csv",
               "data/portfolio/portfolio_daily_nav.csv",
-              "data/market/ohlcv/us_ZS_daily.csv",
-              "data/market/ohlcv/us_XOM_daily.csv"
+              "data/market/ohlcv/us_WMT_daily.csv",
+              "data/market/ohlcv/us_XLE_daily.csv"
             ],
             "message": "표시 가능한 CSV 행이 감지됨"
           },
@@ -158,13 +158,13 @@
             "files": 48,
             "csvFiles": 48,
             "rows": 45,
-            "latestUpdatedAt": "2026-07-10 16:28:55",
+            "latestUpdatedAt": "2026-07-10 22:02:49",
             "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
             "examples": [
               "reports/v92_flow_cards_us.csv",
               "reports/v92_flow_cards_kr.csv",
-              "reports/v93_flow_cards_us.csv",
               "reports/v93_flow_cards_kr.csv",
+              "reports/v93_flow_cards_us.csv",
               "reports/v92_master_investors_us.csv"
             ],
             "message": "표시 가능한 CSV 행이 감지됨"
@@ -176,7 +176,7 @@
             "files": 4,
             "csvFiles": 4,
             "rows": 442,
-            "latestUpdatedAt": "2026-07-10 16:31:44",
+            "latestUpdatedAt": "2026-07-10 22:05:26",
             "target": "장중 체크 / 오늘 매수 검토",
             "examples": [
               "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -192,8 +192,8 @@
             "status": "OK",
             "files": 3,
             "csvFiles": 3,
-            "rows": 828,
-            "latestUpdatedAt": "2026-07-10 16:32:35",
+            "rows": 880,
+            "latestUpdatedAt": "2026-07-10 22:06:07",
             "target": "뉴스·기업분석 > 공시",
             "examples": [
               "data/disclosures/disclosures_us.csv",
@@ -279,6 +279,66 @@
           ],
           "runs": [
             {
+              "name": "MONE Auto Accumulator",
+              "event": "workflow_dispatch",
+              "status": "in_progress",
+              "conclusion": null,
+              "created_at": "2026-07-10T12:37:07Z",
+              "updated_at": "2026-07-10T12:37:12Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29093149470"
+            },
+            {
+              "name": "MONE AI Journal Capture",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "success",
+              "created_at": "2026-07-10T11:26:08Z",
+              "updated_at": "2026-07-10T11:26:34Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29089416631"
+            },
+            {
+              "name": "MONE Settle Pending Validations",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "success",
+              "created_at": "2026-07-10T10:56:51Z",
+              "updated_at": "2026-07-10T10:57:32Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29087899679"
+            },
+            {
+              "name": "MONE AI Journal Capture",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "success",
+              "created_at": "2026-07-10T10:39:17Z",
+              "updated_at": "2026-07-10T10:39:50Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29087006269"
+            },
+            {
+              "name": "MONE News & Disclosure Refresh",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "success",
+              "created_at": "2026-07-10T10:33:39Z",
+              "updated_at": "2026-07-10T10:35:17Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29086712821"
+            },
+            {
+              "name": "MONE Auto Accumulator",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "cancelled",
+              "created_at": "2026-07-10T10:31:27Z",
+              "updated_at": "2026-07-10T11:31:45Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29086595075"
+            },
+            {
               "name": "Render Warmup Ping",
               "event": "schedule",
               "status": "completed",
@@ -291,103 +351,43 @@
             {
               "name": "MONE Auto Accumulator",
               "event": "workflow_dispatch",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "created_at": "2026-07-10T07:03:07Z",
-              "updated_at": "2026-07-10T07:03:12Z",
+              "updated_at": "2026-07-10T07:41:57Z",
               "head_branch": "main",
               "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29075515169"
-            },
-            {
-              "name": "Render Warmup Ping",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-10T03:31:09Z",
-              "updated_at": "2026-07-10T03:31:16Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29067020483"
-            },
-            {
-              "name": "MONE Entry Proximity Notifier",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-10T01:08:29Z",
-              "updated_at": "2026-07-10T01:09:06Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29061690258"
-            },
-            {
-              "name": "MONE AI Journal Capture",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-10T01:01:26Z",
-              "updated_at": "2026-07-10T01:01:55Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29061405030"
-            },
-            {
-              "name": "MONE AI Journal Capture",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-10T00:12:27Z",
-              "updated_at": "2026-07-10T00:12:57Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29059404271"
-            },
-            {
-              "name": "MONE Settle Pending Validations",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-09T23:56:50Z",
-              "updated_at": "2026-07-09T23:57:26Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29058708711"
-            },
-            {
-              "name": "MONE Auto Accumulator",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-09T23:45:30Z",
-              "updated_at": "2026-07-10T00:34:45Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29058213731"
             }
           ],
           "latestScheduled": {
-            "name": "Render Warmup Ping",
+            "name": "MONE AI Journal Capture",
             "event": "schedule",
             "status": "completed",
             "conclusion": "success",
-            "created_at": "2026-07-10T07:27:06Z",
-            "updated_at": "2026-07-10T07:27:15Z",
+            "created_at": "2026-07-10T11:26:08Z",
+            "updated_at": "2026-07-10T11:26:34Z",
             "head_branch": "main",
-            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29076716354"
+            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29089416631"
           },
           "latestWorkflowDispatch": {
             "name": "MONE Auto Accumulator",
             "event": "workflow_dispatch",
             "status": "in_progress",
             "conclusion": null,
-            "created_at": "2026-07-10T07:03:07Z",
-            "updated_at": "2026-07-10T07:03:12Z",
+            "created_at": "2026-07-10T12:37:07Z",
+            "updated_at": "2026-07-10T12:37:12Z",
             "head_branch": "main",
-            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29075515169"
+            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29093149470"
           },
           "latestAutomationRun": {
-            "name": "Render Warmup Ping",
+            "name": "MONE AI Journal Capture",
             "event": "schedule",
             "status": "completed",
             "conclusion": "success",
-            "created_at": "2026-07-10T07:27:06Z",
-            "updated_at": "2026-07-10T07:27:15Z",
+            "created_at": "2026-07-10T11:26:08Z",
+            "updated_at": "2026-07-10T11:26:34Z",
             "head_branch": "main",
-            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29076716354"
+            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29089416631"
           },
           "automationMode": "github_schedule"
         },
@@ -404,7 +404,7 @@
       "status": "NORMAL",
       "version": "v3.6.1-operational-stable",
       "market": "us",
-      "updatedAt": "2026-07-10 16:31:44 KST",
+      "updatedAt": "2026-07-10 22:05:26 KST",
       "readinessScore": 100,
       "readinessLabel": "운영 가능",
       "warnings": [
@@ -416,7 +416,7 @@
       "automationStatus": "OK",
       "automationLabel": "자동 실행 정상",
       "automationMode": "github_schedule",
-      "latestAutomationRunAt": "2026-07-10T07:27:15Z",
+      "latestAutomationRunAt": "2026-07-10T11:26:34Z",
       "latestAutomationEvent": "schedule",
       "latestAutomationConclusion": "success",
       "stockAppBridgeStatus": "NOT_FOUND",
@@ -428,8 +428,8 @@
       "premarketData": "OK",
       "intradayData": "PARTIAL",
       "closingData": "OK",
-      "activeReportPhase": "us_after_close",
-      "activeReportLabel": "미장 마감 후 · 업데이트 기준",
+      "activeReportPhase": "us_premarket",
+      "activeReportLabel": "미장 전 · 오전 업데이트 기준",
       "activeReportMissingReason": "",
       "companyData": "PARTIAL",
       "companyQuality": {
@@ -444,42 +444,42 @@
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-07-10 16:33:40"
+          "updatedAt": "2026-07-10 22:07:08"
         },
         {
           "path": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-07-10 16:33:40"
+          "updatedAt": "2026-07-10 22:07:08"
         },
         {
           "path": "reports/mone_v36_final_prediction_validation_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-07-10 16:33:40"
+          "updatedAt": "2026-07-10 22:07:08"
         },
         {
           "path": "reports/mone_v36_final_macro_events_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-07-10 16:33:35"
+          "updatedAt": "2026-07-10 22:07:04"
         },
         {
           "path": "reports/mone_v36_final_data_center_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-07-10 16:33:34"
+          "updatedAt": "2026-07-10 22:07:04"
         },
         {
           "path": "predictions.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.51,
-          "updatedAt": "2026-07-10 16:03:28"
+          "ageHours": 0.5,
+          "updatedAt": "2026-07-10 21:37:27"
         }
       ],
       "summary": [
@@ -500,7 +500,7 @@
         },
         {
           "label": "마지막 업데이트",
-          "value": "2026-07-10 16:31:44 KST",
+          "value": "2026-07-10 22:05:26 KST",
           "note": "reports/data 기준"
         },
         {
@@ -516,7 +516,7 @@
         {
           "label": "리포트 데이터",
           "value": "OK",
-          "note": "active=us_after_close · pre=OK · intra=PARTIAL · close=OK"
+          "note": "active=us_premarket · pre=OK · intra=PARTIAL · close=OK"
         },
         {
           "label": "기업분석 데이터",
@@ -532,15 +532,15 @@
             "status": "OK",
             "files": 256,
             "csvFiles": 256,
-            "rows": 5071,
-            "latestUpdatedAt": "2026-07-10 16:03:28",
+            "rows": 5421,
+            "latestUpdatedAt": "2026-07-10 21:37:27",
             "target": "차트·기술분석 > 차트 보기",
             "examples": [
               "reports/kr_close_ohlcv_coverage_audit.csv",
               "data/portfolio/position_daily_snapshot.csv",
               "data/portfolio/portfolio_daily_nav.csv",
-              "data/market/ohlcv/us_ZS_daily.csv",
-              "data/market/ohlcv/us_XOM_daily.csv"
+              "data/market/ohlcv/us_WMT_daily.csv",
+              "data/market/ohlcv/us_XLE_daily.csv"
             ],
             "message": "표시 가능한 CSV 행이 감지됨"
           },
@@ -551,13 +551,13 @@
             "files": 48,
             "csvFiles": 48,
             "rows": 45,
-            "latestUpdatedAt": "2026-07-10 16:28:55",
+            "latestUpdatedAt": "2026-07-10 22:02:49",
             "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
             "examples": [
               "reports/v92_flow_cards_us.csv",
               "reports/v92_flow_cards_kr.csv",
-              "reports/v93_flow_cards_us.csv",
               "reports/v93_flow_cards_kr.csv",
+              "reports/v93_flow_cards_us.csv",
               "reports/v92_master_investors_us.csv"
             ],
             "message": "표시 가능한 CSV 행이 감지됨"
@@ -569,7 +569,7 @@
             "files": 4,
             "csvFiles": 4,
             "rows": 442,
-            "latestUpdatedAt": "2026-07-10 16:31:44",
+            "latestUpdatedAt": "2026-07-10 22:05:26",
             "target": "장중 체크 / 오늘 매수 검토",
             "examples": [
               "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -585,8 +585,8 @@
             "status": "OK",
             "files": 3,
             "csvFiles": 3,
-            "rows": 828,
-            "latestUpdatedAt": "2026-07-10 16:32:35",
+            "rows": 880,
+            "latestUpdatedAt": "2026-07-10 22:06:07",
             "target": "뉴스·기업분석 > 공시",
             "examples": [
               "data/disclosures/disclosures_us.csv",
@@ -672,6 +672,66 @@
           ],
           "runs": [
             {
+              "name": "MONE Auto Accumulator",
+              "event": "workflow_dispatch",
+              "status": "in_progress",
+              "conclusion": null,
+              "created_at": "2026-07-10T12:37:07Z",
+              "updated_at": "2026-07-10T12:37:12Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29093149470"
+            },
+            {
+              "name": "MONE AI Journal Capture",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "success",
+              "created_at": "2026-07-10T11:26:08Z",
+              "updated_at": "2026-07-10T11:26:34Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29089416631"
+            },
+            {
+              "name": "MONE Settle Pending Validations",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "success",
+              "created_at": "2026-07-10T10:56:51Z",
+              "updated_at": "2026-07-10T10:57:32Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29087899679"
+            },
+            {
+              "name": "MONE AI Journal Capture",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "success",
+              "created_at": "2026-07-10T10:39:17Z",
+              "updated_at": "2026-07-10T10:39:50Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29087006269"
+            },
+            {
+              "name": "MONE News & Disclosure Refresh",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "success",
+              "created_at": "2026-07-10T10:33:39Z",
+              "updated_at": "2026-07-10T10:35:17Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29086712821"
+            },
+            {
+              "name": "MONE Auto Accumulator",
+              "event": "schedule",
+              "status": "completed",
+              "conclusion": "cancelled",
+              "created_at": "2026-07-10T10:31:27Z",
+              "updated_at": "2026-07-10T11:31:45Z",
+              "head_branch": "main",
+              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29086595075"
+            },
+            {
               "name": "Render Warmup Ping",
               "event": "schedule",
               "status": "completed",
@@ -684,103 +744,43 @@
             {
               "name": "MONE Auto Accumulator",
               "event": "workflow_dispatch",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "created_at": "2026-07-10T07:03:07Z",
-              "updated_at": "2026-07-10T07:03:12Z",
+              "updated_at": "2026-07-10T07:41:57Z",
               "head_branch": "main",
               "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29075515169"
-            },
-            {
-              "name": "Render Warmup Ping",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-10T03:31:09Z",
-              "updated_at": "2026-07-10T03:31:16Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29067020483"
-            },
-            {
-              "name": "MONE Entry Proximity Notifier",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-10T01:08:29Z",
-              "updated_at": "2026-07-10T01:09:06Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29061690258"
-            },
-            {
-              "name": "MONE AI Journal Capture",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-10T01:01:26Z",
-              "updated_at": "2026-07-10T01:01:55Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29061405030"
-            },
-            {
-              "name": "MONE AI Journal Capture",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-10T00:12:27Z",
-              "updated_at": "2026-07-10T00:12:57Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29059404271"
-            },
-            {
-              "name": "MONE Settle Pending Validations",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-09T23:56:50Z",
-              "updated_at": "2026-07-09T23:57:26Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29058708711"
-            },
-            {
-              "name": "MONE Auto Accumulator",
-              "event": "schedule",
-              "status": "completed",
-              "conclusion": "success",
-              "created_at": "2026-07-09T23:45:30Z",
-              "updated_at": "2026-07-10T00:34:45Z",
-              "head_branch": "main",
-              "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29058213731"
             }
           ],
           "latestScheduled": {
-            "name": "Render Warmup Ping",
+            "name": "MONE AI Journal Capture",
             "event": "schedule",
             "status": "completed",
             "conclusion": "success",
-            "created_at": "2026-07-10T07:27:06Z",
-            "updated_at": "2026-07-10T07:27:15Z",
+            "created_at": "2026-07-10T11:26:08Z",
+            "updated_at": "2026-07-10T11:26:34Z",
             "head_branch": "main",
-            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29076716354"
+            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29089416631"
           },
           "latestWorkflowDispatch": {
             "name": "MONE Auto Accumulator",
             "event": "workflow_dispatch",
             "status": "in_progress",
             "conclusion": null,
-            "created_at": "2026-07-10T07:03:07Z",
-            "updated_at": "2026-07-10T07:03:12Z",
+            "created_at": "2026-07-10T12:37:07Z",
+            "updated_at": "2026-07-10T12:37:12Z",
             "head_branch": "main",
-            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29075515169"
+            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29093149470"
           },
           "latestAutomationRun": {
-            "name": "Render Warmup Ping",
+            "name": "MONE AI Journal Capture",
             "event": "schedule",
             "status": "completed",
             "conclusion": "success",
-            "created_at": "2026-07-10T07:27:06Z",
-            "updated_at": "2026-07-10T07:27:15Z",
+            "created_at": "2026-07-10T11:26:08Z",
+            "updated_at": "2026-07-10T11:26:34Z",
             "head_branch": "main",
-            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29076716354"
+            "html_url": "https://github.com/selene0519/agnas-stock-app/actions/runs/29089416631"
           },
           "automationMode": "github_schedule"
         },
@@ -968,9 +968,9 @@
       "market": "us",
       "mode": "balanced",
       "horizon": "swing",
-      "recommendations": 5,
-      "universeCount": 5,
-      "conditionalOrders": 5,
+      "recommendations": 12,
+      "universeCount": 12,
+      "conditionalOrders": 12,
       "filledCount": 0,
       "avgReturn": "",
       "recommendationReport": "reports/mone_v36_final_recommendations_us_balanced_swing.csv",
@@ -1035,8 +1035,8 @@
     "us": 80
   },
   "macroEventCount": {
-    "kr": 70,
-    "us": 1757
+    "kr": 71,
+    "us": 1752
   },
-  "generatedAt": "2026-07-10 16:35:01"
+  "generatedAt": "2026-07-10 22:08:10"
 }
