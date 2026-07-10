@@ -1,0 +1,7 @@
+{
+  "cleanWindowStart": "2026-07-10",
+  "reason": "generate_kr_recommendations sys.path fix(b0fda86) + NAV/환율/보유시세 수정이 origin/main에 반영되고, 로컬/CI 수집기의 recommendations_kr 스텝이 2026-07-10부터 정상(OK) 확인됨. 이 이전(특히 6/26~7/9)은 KR 추천 생성 조용한 실패 등 파손 구간 포함 가능.",
+  "note": "엣지/보정 검증은 이 날짜 이후 정산 표본을 우선 신뢰(CLAUDE.md #2). live_calibration은 recency 가중이라 자동으로 최근을 더 신뢰하지만, 배치성 백테스트/집계 분석은 이 마커를 컷오프로 사용할 것.",
+  "relatedFixes": ["b0fda86", "8d863cd", "a4abc76", "2668561", "5eb8ef6"],
+  "generatedBy": "2026-07-10 roadmap session (CLAUDE.md #2)"
+}
