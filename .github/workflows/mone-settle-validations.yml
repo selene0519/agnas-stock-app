@@ -65,6 +65,24 @@ jobs:
           echo "update_win_rates: exit $?"
           set -e
 
+      - name: 데이터 신선도 헬스게이트 + 알람 (조용한 실패 탐지)
+        run: |
+          set +e
+          python scripts/data_freshness_healthcheck.py --max-stale-days 3
+          code=$?
+          set -e
+          echo "data_freshness_healthcheck: exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::warning::데이터 신선도 critical 실패 — 텔레그램 경보 전송"
+            if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+              detail=$(python -c "import json; d=json.load(open('reports/data_freshness_status.json')); print(' / '.join(f\"{c['name']}:{c['status']}\" for c in d['checks'] if c['critical'] and c['status']!='OK'))" 2>/dev/null || echo "파싱 실패")
+              curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                -H "Content-Type: application/json" \
+                -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE 데이터 신선도 경보 (조용한 실패 탐지)\n${detail}\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \
+                || echo "텔레그램 전송 실패 (무시)"
+            fi
+          fi
+
       - name: Commit validation results
         run: |
           git config user.name "github-actions[bot]"
@@ -76,6 +94,7 @@ jobs:
 
             git add reports/virtual_prediction_ledger.csv reports/virtual_validation_results.csv 2>/dev/null || true
             git add reports/pending_settlement_status.json reports/strategy_win_rates.json 2>/dev/null || true
+            git add reports/data_freshness_status.json 2>/dev/null || true
 
             if git diff --cached --quiet; then
               echo "변경 없음 — 커밋 건너뜀"

@@ -791,6 +791,19 @@ def run_walkforward(
         "baselineStats":  total_baseline_stats,
         "correctedStats": total_corrected_stats,
         "diff":           total_diff,
+        # 정직한 한계 disclosure — 백테스트 승률/EV를 그대로 신뢰하면 안 되는 이유.
+        # universe가 '현재 상장 심볼'의 OHLCV 파일(market_*_daily.csv)뿐이라 상폐/제외
+        # 종목이 부재 → 생존편향으로 승률이 낙관 편향된다. point-in-time 상장상태
+        # (관리종목/투자주의) 필터도 백테스트엔 미적용(추천 생성에만 kr_excluded_symbols
+        # 적용). 가격 룩어헤드는 cutoff_date로 처리됨. 생존편향 없는 실측 신뢰도는
+        # 라이브 VTJ 롤링 보정(reports/live_calibration_kr.json)을 참조할 것.
+        "dataQuality": {
+            "lookAheadControlled": True,   # cutoff_date 기준 과거 OHLCV만 사용
+            "survivorshipBias": True,       # universe = 현재 상장 심볼만 (상폐 부재)
+            "pointInTimeListingFilter": False,
+            "universeSource": "OHLCV_glob(market_*_daily.csv)",
+            "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조.",
+        },
         "generatedAt":    datetime.utcnow().isoformat(),
         "tradeRecords":   past_outcomes,   # 앙상블 모델 학습용 개별 거래 기록
     }
