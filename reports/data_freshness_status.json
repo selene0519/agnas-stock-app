@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-07-10T14:17:10.684827+00:00",
+  "overall": "OK",
+  "criticalFailures": 0,
+  "maxStaleDays": 3.0,
+  "checks": [
+    {
+      "name": "kr_ohlcv",
+      "status": "OK",
+      "detail": "0.6d, asOf=2026-07-10",
+      "critical": true,
+      "ageDays": 0.6
+    },
+    {
+      "name": "kr_recommendations",
+      "status": "OK",
+      "detail": "-0.33d, asOf=2026-07-10 22:13:00",
+      "critical": true,
+      "ageDays": -0.33
+    },
+    {
+      "name": "collector_steps",
+      "status": "OK",
+      "detail": "no error steps",
+      "critical": true,
+      "ageDays": null
+    },
+    {
+      "name": "collector_run",
+      "status": "OK",
+      "detail": "-0.37d, asOf=2026-07-10T23:07:36.748832",
+      "critical": true,
+      "ageDays": -0.37
+    },
+    {
+      "name": "vtj_journal",
+      "status": "OK",
+      "detail": "0.04d, asOf=2026-07-10T22:13:12+09:00",
+      "critical": false,
+      "ageDays": 0.04
+    },
+    {
+      "name": "live_calibration",
+      "status": "OK",
+      "detail": "0.6d, asOf=2026-07-10",
+      "critical": false,
+      "ageDays": 0.6
+    },
+    {
+      "name": "strategy_win_rates",
+      "status": "OK",
+      "detail": "-0.24d, asOf=2026-07-10 19:57:27",
+      "critical": false,
+      "ageDays": -0.24
+    }
+  ]
+}
