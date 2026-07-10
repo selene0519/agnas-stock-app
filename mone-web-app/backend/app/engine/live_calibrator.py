@@ -175,3 +175,41 @@ def save_live_calibration(cal: dict[str, Any], market: str, mode: str, horizon: 
     with path.open("w", encoding="utf-8") as f:
         json.dump(cal, f, ensure_ascii=False, indent=2)
     return path
+
+
+_POOLED_CACHE: dict[str, Any] = {}
+
+
+def load_pooled_live_calibration(market: str, repo_root: Path) -> dict[str, Any]:
+    """통합 라이브 보정 테이블(reports/live_calibration_{market}.json) 로드 (메모리 캐시)."""
+    if market in _POOLED_CACHE:
+        return _POOLED_CACHE[market]
+    path = Path(repo_root) / "reports" / f"live_calibration_{market}.json"
+    data: dict[str, Any] = {}
+    if path.exists():
+        try:
+            with path.open(encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    _POOLED_CACHE[market] = data
+    return data
+
+
+def lookup_cell(
+    cal: dict[str, Any],
+    final_score: float | None,
+    regime: str,
+    bins: list[tuple[float, float]] = DEFAULT_BINS,
+) -> dict[str, Any] | None:
+    """(score,regime) 버킷 셀 전체 반환 (winRate/effN 등). 없으면 same-bin SIDE 폴백."""
+    if final_score is None or not cal:
+        return None
+    table = cal.get("table", {})
+    b = bin_label(final_score, bins)
+    reg = norm_regime(regime)
+    for key in (f"{b}|{reg}", f"{b}|SIDE"):
+        cell = table.get(key)
+        if cell:
+            return cell
+    return None

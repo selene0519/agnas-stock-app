@@ -2241,6 +2241,24 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     except Exception:
         pass
 
+    # 라이브 롤링 보정 — shadow 관측용. 게이트(minCalibratedWinRate)는 아직 미변경.
+    # calibratedWinRate와 나란히 노출해 라이브에서 divergence 검증 후 게이트 전환 예정.
+    _live_wr = None
+    _live_effn = None
+    try:
+        from app.engine.live_calibrator import load_pooled_live_calibration, lookup_cell as _live_cell
+        _live_cal = load_pooled_live_calibration(market, repo_root)
+        if _live_cal:
+            _cell = _live_cell(_live_cal, result.get("finalScore"), _regime)
+            if _cell:
+                _live_wr = _cell.get("winRate")
+                _live_effn = _cell.get("effN")
+            elif _live_cal.get("global", {}).get("winRate") is not None:
+                _live_wr = _live_cal["global"]["winRate"]
+                _live_effn = 0.0
+    except Exception:
+        pass
+
     out = {
         **item,
         # 전략별 finalScore 및 세부 점수
@@ -2256,6 +2274,9 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         # 5모델 앙상블 보정 점수
         "ensembleScore": _ensemble.get("ensembleScore"),
         "calibratedWinRate": _ensemble.get("calibratedWinRate") or result.get("calibratedWinRate"),
+        # shadow: 라이브 실측 롤링 보정 (게이트 미반영, 관측·비교용)
+        "liveCalibratedWinRate": _live_wr,
+        "liveCalibrationEffN": _live_effn,
         "calibratedAvgPnl": _ensemble.get("calibratedAvgPnl"),
         "calibrationCount": _ensemble.get("calibrationCount", 0),
         "modelScores": _ensemble.get("modelScores"),
