@@ -817,6 +817,18 @@ jobs:
           fi
           set -e
 
+      - name: 라이브 롤링 보정 갱신 (VTJ 실측 기반, 매 실행)
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          set +e
+          # 정산된 VTJ 실측(data/virtual_trade_evaluations.csv)으로 통합 롤링 보정 재생성.
+          # recency 감쇠 + 백테스트 prior shrinkage → reports/live_calibration_kr.json.
+          # 현재는 apply_quant_overlay에서 shadow 관측 필드로만 노출(게이트 미반영).
+          python scripts/build_live_calibration.py --market kr
+          echo "build_live_calibration: exit $?"
+          set -e
+
       - name: Precompute recommendations (무거운 스코어링을 Actions에서 미리 계산)
         run: |
           set +e
@@ -893,6 +905,7 @@ jobs:
             git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
             git add reports/backtest_summary.json 2>/dev/null || true
             git add reports/ensemble_calibration_*.json 2>/dev/null || true
+            git add reports/live_calibration_kr.json 2>/dev/null || true
             git add reports/factor_attribution.json reports/kelly_position_sizes.json 2>/dev/null || true
             git add reports/factor_based_filter_adjustments.json 2>/dev/null || true
             git add data/virtual_trade_journal.csv 2>/dev/null || true
