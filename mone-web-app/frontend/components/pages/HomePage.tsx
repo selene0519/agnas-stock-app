@@ -47,6 +47,7 @@ import {
 } from "@/lib/moneDisplay";
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
+import { normalizeAction, toneTextClass } from "@/lib/statusLabels";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
 import { getAuthenticatedUserId } from "@/lib/userId";
 import { alertStatusTone, toneClassName } from "@/lib/tone";
@@ -833,7 +834,8 @@ function TodayEntryCard({
       {(() => {
         const gate = getMarketGateInfo(marketRegime, dataHealth);
         const signalText = score >= 75 ? "양호" : score >= 60 ? "보통" : score > 0 ? "약함" : "-";
-        const actionText = publicBlocked ? "관찰·대기" : publicCandidate ? "진입 검토" : (publicTradeLabel || decision || "관찰");
+        // 최종 행동은 정규 어휘(관찰/대기/진입 검토/보유/축소/청산)로 통일 (UX 보고서 8.1).
+        const action = normalizeAction(publicBlocked ? "대기" : publicCandidate ? "진입" : (publicTradeLabel || decision || "관찰"));
         return (
           <div className="mone-home-inset mt-2 grid grid-cols-3 gap-2 rounded-[10px] border px-3 py-2 text-[11px]">
             <div>
@@ -846,7 +848,7 @@ function TodayEntryCard({
             </div>
             <div>
               <div className="text-[10px] text-slate-500">최종 행동</div>
-              <div className={`font-semibold ${publicBlocked ? "text-amber-300" : publicCandidate ? "text-emerald-300" : "text-slate-200"}`}>{actionText}</div>
+              <div className={`font-semibold ${toneTextClass(action.tone)}`}>{action.label}</div>
             </div>
           </div>
         );
