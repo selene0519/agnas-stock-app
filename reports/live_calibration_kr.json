@@ -1,0 +1,81 @@
+{
+  "table": {
+    "0-72|SIDE": {
+      "winRate": 11.2,
+      "rawWinRate": 9.1,
+      "avgPnl": -9.126,
+      "effN": 45.7,
+      "priorWinRate": 16.2
+    },
+    "72-76|SIDE": {
+      "winRate": 14.7,
+      "rawWinRate": 12.8,
+      "avgPnl": -8.205,
+      "effN": 16.3,
+      "priorWinRate": 16.2
+    },
+    "76-80|SIDE": {
+      "winRate": 19.4,
+      "rawWinRate": 35.8,
+      "avgPnl": -8.943,
+      "effN": 4.0,
+      "priorWinRate": 16.2
+    },
+    "80-84|BULL": {
+      "winRate": 20.6,
+      "rawWinRate": 36.9,
+      "avgPnl": -1.595,
+      "effN": 5.4,
+      "priorWinRate": 16.2
+    },
+    "76-80|BULL": {
+      "winRate": 19.8,
+      "rawWinRate": 31.4,
+      "avgPnl": -1.984,
+      "effN": 6.3,
+      "priorWinRate": 16.2
+    },
+    "72-76|BULL": {
+      "winRate": 18.3,
+      "rawWinRate": 30.1,
+      "avgPnl": -2.608,
+      "effN": 3.6,
+      "priorWinRate": 16.2
+    },
+    "84-88|BULL": {
+      "winRate": 17.8,
+      "rawWinRate": 38.4,
+      "avgPnl": -0.784,
+      "effN": 1.6,
+      "priorWinRate": 16.2
+    },
+    "88-200|BULL": {
+      "winRate": 16.4,
+      "rawWinRate": 50.8,
+      "avgPnl": 2.884,
+      "effN": 0.1,
+      "priorWinRate": 16.2
+    }
+  },
+  "global": {
+    "winRate": 16.2,
+    "avgPnl": -7.44,
+    "effN": 83.0
+  },
+  "bins": [
+    "0-72",
+    "72-76",
+    "76-80",
+    "80-84",
+    "84-88",
+    "88-200"
+  ],
+  "params": {
+    "halfLifeDays": 30.0,
+    "shrinkK": 20.0,
+    "asOf": "2026-07-10"
+  },
+  "market": "kr",
+  "source": "live_vtj_rolling_pooled",
+  "priorGlobal": 50.0
+}
