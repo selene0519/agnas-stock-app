@@ -67,6 +67,18 @@ const LENS_EXTENSION_CHIPS: Record<ExplorationLensId, readonly string[]> = {
   balance: ["대형 안정", "중형 성장", "소형 성장"],
 };
 
+// 렌즈별로 "보통 어느 투자성향에서 잘 잡히는지" 안내 문구(정보용).
+// 렌즈 판정 로직은 성향·기간과 무관하게 동일하지만, 종목 풀이 성향·기간에 따라
+// 달라져 특정 렌즈는 특정 성향에서 더 잘 나온다. 이 문구는 그 관계를 알려줄 뿐
+// 자동 이동은 하지 않는다(약세장 등 조합이 통째로 비는 상황으로 밀지 않기 위함).
+const LENS_TYPICAL_STRATEGY: Record<ExplorationLensId, string> = {
+  leader: "공격 성향·단기에서 잘 나옵니다",
+  discovery: "균형 성향·중기에서 잘 나옵니다",
+  pullback: "균형 성향·스윙에서 잘 나옵니다",
+  recovery: "보수 성향·중기에서 잘 나옵니다",
+  balance: "",
+};
+
 // 렌즈 선택 시 스크리너에서 자동으로 펼칠 세부 섹션(최대 2개).
 // 섹션 id는 스크리너 JSX의 ScreenerSection id 및 ADVANCED_FILTER_GROUPS.id와 일치해야 한다.
 // 렌즈는 결과를 필터링만 하고, 이 매핑은 "어떤 세부 조건을 먼저 보여줄지"만 결정한다.
@@ -804,6 +816,19 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     ) as Record<ExplorationLensId, number>;
   }, [baseFiltered]);
 
+  // 현재 조합(성향·기간)에서 결과가 가장 많은 '다른' 렌즈 — 빈 렌즈 안내에서
+  // 안전한 대안으로 제시한다. 이미 로드된 데이터 기준이라 빈 화면으로 안 밀린다.
+  const richestOtherLens = useMemo(() => {
+    if (!lens || lens === "balance") return null;
+    let best: { id: ExplorationLensId; label: string; count: number } | null = null;
+    for (const def of EXPLORATION_LENSES) {
+      if (def.id === lens || def.matchAll) continue;
+      const count = lensCounts[def.id] || 0;
+      if (count > 0 && (!best || count > best.count)) best = { id: def.id, label: def.label, count };
+    }
+    return best;
+  }, [lens, lensCounts]);
+
   const activeLensDef = lens ? getLensDef(lens) : null;
   const screenerTitle = activeLensDef && lens !== "balance" ? `${activeLensDef.label} 세부 조율` : "스크리너 세부 조율";
   const screenerSubtitle = activeLensDef
@@ -1353,9 +1378,28 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               })()}
               {getLensDef(lens).description}
               {lensFallbackActive && (
-                <span className="mt-1 block text-amber-400">
-                  지금 이 렌즈 조건에 맞는 종목이 없습니다 — 다른 종목을 무리하게 좇기보다
-                  <b> 관망</b>을 권합니다.
+                <span className="mt-1 block space-y-1 text-amber-400">
+                  <span className="block">
+                    지금 이 조합에는 <b>{activeLensDef?.label}</b> 종목이 없습니다.
+                    {LENS_TYPICAL_STRATEGY[lens] ? ` 이 렌즈는 보통 ${LENS_TYPICAL_STRATEGY[lens]}.` : ""}
+                  </span>
+                  {richestOtherLens ? (
+                    <span className="block text-slate-300">
+                      이 조합에선{" "}
+                      <button
+                        type="button"
+                        onClick={() => setLens(richestOtherLens.id)}
+                        className="mx-0.5 inline-flex min-h-8 items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-300 hover:bg-emerald-500/20"
+                      >
+                        {richestOtherLens.label} {richestOtherLens.count}개 보기 →
+                      </button>
+                      가 잘 보입니다.
+                    </span>
+                  ) : (
+                    <span className="block text-slate-400">
+                      다른 종목을 무리하게 좇기보다 <b>관망</b>을 권합니다.
+                    </span>
+                  )}
                 </span>
               )}
             </div>
