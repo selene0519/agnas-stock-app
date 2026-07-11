@@ -313,8 +313,8 @@ function normalizeHoldingEdit(item: any): HoldingEditRow | null {
 const PATTERN_ACTION_KO: Record<string, string> = {
   SCALE_IN: "진입 검토", WATCH_ONLY: "관찰", WAIT_PULLBACK: "대기",
   HOLD_CASH: "대기", AVOID_CHASE: "대기", BLOCKED: "대기",
-  BUY: "진입 검토", STRONG_BUY: "진입 검토", SELL: "청산 검토", STRONG_SELL: "청산 검토",
-  HOLD: "보유", ENTER: "진입 검토", EXIT: "청산 검토", WAIT: "대기",
+  BUY: "진입 검토", STRONG_BUY: "진입 검토", SELL: "청산", STRONG_SELL: "청산",
+  HOLD: "보유", ENTER: "진입 검토", EXIT: "청산", WAIT: "대기",
 };
 const PATTERN_RISK_KO: Record<string, string> = {
   NONE: "정상", PULLBACK_RISK: "위험", OVERHEATED_CHASE_RISK: "주의",
@@ -1190,7 +1190,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
   const SUGGEST_STYLE: Record<string, string> = {
     "진입 검토":      toneClassName("safe"),
-    "즉시 진입 검토": toneClassName("safe"),
     "대기":          toneClassName("warning"),
     "타이밍 대기":    toneClassName("warning"),
     "제거 고려":      toneClassName("danger"),
@@ -1203,7 +1202,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     if (!text) return "관찰";
     if (text.includes("즉시 진입") || text.includes("진입 검토")) return "진입 검토";
     if (text.includes("대기")) return "대기";
-    if (text.includes("제거")) return "축소 검토";
+    if (text.includes("제거")) return "축소";
     if (text.includes("데이터")) return "데이터 제한";
     if (text.includes("모니터")) return "관찰";
     return normalizeAction(text).label;
@@ -1383,7 +1382,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       <div className="text-[10px] text-amber-400">실전에서 손실 구간 — 지금은 무리한 진입보다 관망하세요.</div>
                     )}
                     {v.verdict === "building" && liveNeg && (
-                      <div className="text-[10px] text-amber-400/80">백테스트는 양호하나 최근 실전 표본은 손실 — 확증 전까지 소액·분할로 접근하세요.</div>
+                      <div className="text-[10px] text-amber-400/80">백테스트는 양호하나 최근 실전 표본은 손실 — 확증 전까지 소액·분할 계획으로 검토하세요.</div>
                     )}
                     {v.verdict === "building" && !liveNeg && (
                       <div className="text-[10px] text-sky-400/70">백테스트는 양호, 실전 표본이 쌓이면 '검증됨'으로 승격됩니다.</div>

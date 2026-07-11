@@ -1599,7 +1599,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <Mini label="수량" value={String(holding.quantity || "-")} />
                 <Mini label="평단" value={holding.avgPriceText || "-"} />
-                <Mini label="현재가" value={holding.currentPriceText || "수집 대기"} />
+                <Mini label="현재가" value={holding.currentPriceText || "현재가 대기"} />
                 <Mini label="등락률" value={holding.changePctText || "-"}
                   accent={String(holding.changePctText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"} />
                 <Mini label="평가금액" value={holding.valuationText || holding.marketValueText || "-"} />
@@ -1787,7 +1787,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                     <Mini label="수량" value={String(holding.quantity || "-")} />
                     <Mini label="평단" value={holding.avgPriceText || "-"} />
-                    <Mini label="현재가" value={holding.currentPriceText || "수집 대기"} />
+                    <Mini label="현재가" value={holding.currentPriceText || "현재가 대기"} />
                     <Mini label="등락률" value={holding.changePctText || "-"}
                       accent={String(holding.changePctText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"} />
                     <Mini label="평가금액" value={holding.valuationText || holding.marketValueText || "-"} />
@@ -1857,7 +1857,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   })
                 )}
               </div>
-              <p className="mt-2 text-[10px] text-slate-500">Half-Kelly 상한 20% · VTJ 실적 기반 — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+              <p className="mt-2 text-[10px] text-slate-500">Half-Kelly 상한 20% · VTJ 실적 기반 — 해당 전략으로 진입 검토 시 권장 비중입니다.</p>
             </div>
           )}
         </div>

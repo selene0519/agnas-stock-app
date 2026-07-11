@@ -366,7 +366,7 @@ export function resolveEvPct(item: any): number | null {
 /**
  * 현재가가 손절가 아래로 내려온 상태(롱 기준 이미 손절선 이탈).
  * 추천 파일은 Actions 실행 때만 갱신되어, 그 사이 현재가가 손절가를 뚫으면
- * "신규 진입 부적합"인데도 후보로 남는다. 이를 표시부에서 감지해 경고한다.
+ * "진입 검토 부적합"인데도 후보로 남는다. 이를 표시부에서 감지해 경고한다.
  */
 export function isStopBreached(item: any): boolean {
   const current = toNumber(
@@ -699,13 +699,13 @@ export function moneReasonLines(item: any): string[] {
   if ((upsideScore ?? finalScore ?? 0) >= 65 || String(item?.trend || item?.direction || "").toUpperCase().includes("UP")) {
     lines.push("상승 추세가 유지되고 있습니다.");
   } else {
-    lines.push("추세 조건을 확인하며 선별 접근이 필요합니다.");
+    lines.push("추세 조건을 확인하며 선별 관찰이 필요합니다.");
   }
 
   if ((entryScore ?? 0) >= 60 || (gapPct !== null && gapPct <= 5)) {
-    lines.push("기준가 근처에서 진입 접근성이 높습니다.");
+    lines.push("기준가 근처에서 진입 검토 여건이 좋습니다.");
   } else {
-    lines.push("기준가와 현재가 차이를 확인한 뒤 접근하세요.");
+    lines.push("기준가와 현재가 차이를 확인한 뒤 검토하세요.");
   }
 
   if (!risk || ["NONE", "OK", "NORMAL", "LOW"].includes(risk)) {

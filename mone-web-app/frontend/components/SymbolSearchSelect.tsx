@@ -231,7 +231,7 @@ export default function SymbolSearchSelect({
                     {item.currentPriceText || "실시간 현재가 없음"}
                   </div>
                   <div className="text-[10px] text-slate-600">
-                    {item.priceSource || item.source || (String(item.dataStatus || "").toUpperCase() === "PRICE_PENDING" ? "KIS 수집 대기" : item.dataStatus) || ""}
+                    {item.priceSource || item.source || (String(item.dataStatus || "").toUpperCase() === "PRICE_PENDING" ? "현재가 대기" : item.dataStatus) || ""}
                   </div>
                 </div>
               </button>

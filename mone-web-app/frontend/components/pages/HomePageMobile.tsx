@@ -224,7 +224,7 @@ function buildDailyBriefing(args: {
     detail = `${name}은 신호가 있지만 시장/리스크 조건 확인이 우선입니다. 진입보다 손절가와 기준가 이격을 먼저 보세요.`;
   } else if (String(topItem.decisionBucket || "").includes("오늘")) {
     tone = "emerald";
-    detail = `${name}이 오늘 우선 확인 후보입니다. 기준가 접근 여부와 손익비를 확인한 뒤 검토하세요.`;
+    detail = `${name}이 오늘 우선 확인 후보입니다. 기준가 근접 여부와 손익비를 확인한 뒤 검토하세요.`;
   } else if (String(topItem.decisionBucket || "").includes("대기")) {
     tone = "amber";
     detail = `${name}은 아직 대기 관찰 구간입니다. 타이밍 조건이 충족되는지 추적하세요.`;
@@ -618,7 +618,7 @@ function MarketGateCard({ regime, dataHealth, selectedMarket }: { regime: any; d
         </div>
         {isLow && (
           <div className="mt-3 rounded-lg border border-red-800/40 bg-red-950/30 px-3 py-2 text-[10px] text-red-300">
-            ⚠ 신규 진입 시 평소보다 엄격한 기준을 적용하세요.
+            ⚠ 진입 검토 시 평소보다 엄격한 기준을 적용하세요.
           </div>
         )}
       </div>

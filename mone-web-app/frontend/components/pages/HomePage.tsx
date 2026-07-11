@@ -319,7 +319,7 @@ function engineStatusLabel(status: EngineHistoryRow["status"]) {
 }
 
 function pickTopObservation(todayEntries: any[], watchItems: any[], allItems: any[]) {
-  // 손절선 이탈(현재가<손절가) 종목은 신규 진입 부적합이므로 대표 "1순위"로 앞세우지 않는다.
+  // 손절선 이탈(현재가<손절가) 종목은 진입 검토 부적합이므로 대표 "1순위"로 앞세우지 않는다.
   // 정상 후보를 우선하고, 전부 이탈일 때만 finalScore 최상위를 노출한다.
   const byScoreStopAware = [...allItems].sort((a, b) => {
     const ab = isStopBreached(a) ? 1 : 0;
@@ -371,15 +371,15 @@ function buildDailyBriefing(args: {
   let tone: BriefingPayload["tone"] = "blue";
 
   if (isStopBreached(topItem)) {
-    // 현재가가 이미 손절가 아래 — 신규 진입 부적합. 가장 우선해서 경고한다.
+    // 현재가가 이미 손절가 아래 — 진입 검토 부적합. 가장 우선해서 경고한다.
     tone = "red";
-    detail = `${name}은 현재가가 이미 손절가 아래로 내려와 신규 진입에는 부적합합니다. 추천 기준일 이후 하락한 상태이니 재진입은 손절가·기준가 재설정 후 판단하세요.`;
+    detail = `${name}은 현재가가 이미 손절가 아래로 내려와 진입 검토에는 부적합합니다. 추천 기준일 이후 하락한 상태이니 재진입은 손절가·기준가 재설정 후 판단하세요.`;
   } else if (isBear || isRisk) {
     tone = isRisk ? "red" : "amber";
     detail = `${name}은 신호가 있지만 시장/리스크 조건 확인이 우선입니다. 진입보다 손절가와 기준가 이격을 먼저 보세요.`;
   } else if (String(topItem.decisionBucket || "").includes("오늘")) {
     tone = "emerald";
-    detail = `${name}이 오늘 우선 확인 후보입니다. 기준가 접근 여부와 손익비를 확인한 뒤 검토하세요.`;
+    detail = `${name}이 오늘 우선 확인 후보입니다. 기준가 근접 여부와 손익비를 확인한 뒤 검토하세요.`;
   } else if (String(topItem.decisionBucket || "").includes("대기")) {
     tone = "amber";
     detail = `${name}은 아직 대기 관찰 구간입니다. 타이밍 조건이 충족되는지 추적하세요.`;
@@ -840,7 +840,7 @@ function TodayEntryCard({
       </div>
 
       {/* Decision Stack 요약 — 종목 신호·시장 환경·최종 행동을 한 줄로 정렬해
-          "관찰 1순위인데 왜 현금 대기?" 혼란을 없앤다 (UX 보고서 4.2 권장 표현). */}
+          "관찰 1순위인데 왜 대기?" 혼란을 없앤다 (UX 보고서 4.2 권장 표현). */}
       {(() => {
         const gate = getMarketGateInfo(marketRegime, dataHealth);
         const signalText = score >= 75 ? "양호" : score >= 60 ? "보통" : score > 0 ? "약함" : "-";
@@ -1424,7 +1424,7 @@ const SCORE_ITEMS = [
   { key: "upsideScore",    label: "상승 여력",   color: "bg-emerald-500" },
   { key: "riskStabilityScore", label: "리스크 안정성", color: "bg-sky-500" },
   { key: "momentumScore",  label: "모멘텀",       color: "bg-yellow-500" },
-  { key: "entryScore",     label: "진입 접근성",  color: "bg-cyan-500" },
+  { key: "entryScore",     label: "진입 검토 여건",  color: "bg-cyan-500" },
   { key: "rrScore",        label: "손익비",       color: "bg-violet-500" },
   { key: "qualityScore",   label: "기업 안정성",  color: "bg-teal-500" },
 ];
@@ -1590,7 +1590,7 @@ function MarketGateCard({
               <AlertTriangle size={14} className={`mt-1 shrink-0 ${textCls}`} />
               <span>{isHigh ? "시장 상태가 양호합니다. 종목별 기준가와 위험 조건을 확인하세요."
                : isMid ? "관찰 구간입니다. EV·손익비 조건을 더 엄격하게 확인하세요."
-               : "시장 약세와 공포 구간입니다. 신규 진입보다 보유 위험과 기준가 이탈을 먼저 확인하세요."}</span>
+               : "시장 약세와 공포 구간입니다. 진입 검토보다 보유 위험과 기준가 이탈을 먼저 확인하세요."}</span>
             </div>
           </div>
           <div className={`shrink-0 text-right font-mono font-black ${textCls}`}>
@@ -1721,7 +1721,7 @@ function TodayConclusionCard({
       ? "보유 종목 리스크도 함께 점검하세요."
       : gate.isMid
         ? "EV·손익비 조건을 더 엄격히 확인하세요."
-        : "검토 후보의 기준가 접근 여부를 확인하세요.";
+        : "검토 후보의 기준가 근접 여부를 확인하세요.";
   const textCls = gate.isHigh ? "text-emerald-200" : gate.isMid ? "text-amber-200" : "text-red-200";
   const barCls = gate.isHigh ? "bg-emerald-500" : gate.isMid ? "bg-amber-500" : "bg-red-500";
 
@@ -2164,7 +2164,7 @@ function MarketRegimeSummaryCard({
   const isBull = regime?.regime === "BULL";
   const title = isBear ? "시장 경고" : "시장 요약";
   const regimeText = isBear ? "약세장" : isBull ? "강세장" : "중립";
-  const recommendation = isBear ? "보수적 접근 권장" : isBull ? "조건 충족 후보 우선" : "선별 접근 권장";
+  const recommendation = isBear ? "보수적 관찰 권장" : isBull ? "조건 충족 후보 우선" : "선별 관찰 권장";
   const borderCls = isBear
     ? "border-amber-500/30 bg-amber-500/5"
     : isBull
@@ -2196,7 +2196,7 @@ function MarketRegimeSummaryCard({
           {regime?.description && <div className="mt-1">{regime.description}</div>}
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="rounded-full bg-slate-950/60 px-3 py-1">{getRegimeStance(regime?.regime, selectedMarket)}</span>
-            {isBear && <span className="rounded-full bg-amber-900/30 px-3 py-1 text-amber-200">공격형 진입 보류 권장</span>}
+            {isBear && <span className="rounded-full bg-amber-900/30 px-3 py-1 text-amber-200">공격형 진입 대기 권장</span>}
             {isBull && <span className="rounded-full bg-emerald-900/30 px-3 py-1 text-emerald-200">균형·공격형 전략 정상 작동 중</span>}
           </div>
         </div>
@@ -2607,7 +2607,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                 label: "손절선 유효",
                 ok: !stopBreached,
                 detail: stopBreached
-                  ? `현재가 ${current!.toLocaleString("ko-KR")}가 손절가 ${stop!.toLocaleString("ko-KR")} 이하 — 이미 손절선 이탈, 신규 진입 부적합`
+                  ? `현재가 ${current!.toLocaleString("ko-KR")}가 손절가 ${stop!.toLocaleString("ko-KR")} 이하 — 이미 손절선 이탈, 진입 검토 부적합`
                   : (current != null && stop != null ? `현재가 > 손절가 ${stop.toLocaleString("ko-KR")}` : "현재가/손절가 없음"),
               },
               {

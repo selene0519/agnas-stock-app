@@ -551,7 +551,7 @@ function DisclosureDetail({ selected }: { selected: any }) {
       <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-100">
         <b>{secFormExplain(form)}</b><br />미장 공시는 SEC Form 유형을 먼저 해석해 보여줍니다. 투자 판단 전 원문 확인이 필요합니다.
       </div>
-      {selected.isWarning && <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">주의 공시로 분류되었습니다. 신규 진입 전 내용 확인이 필요합니다.</div>}
+      {selected.isWarning && <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">주의 공시로 분류되었습니다. 진입 검토 전 내용 확인이 필요합니다.</div>}
       <div className="grid grid-cols-2 gap-3">
         <Metric label="회사" value={displayName(selected) || "-"} />
         <Metric label="종목코드" value={selected.symbol || "-"} />

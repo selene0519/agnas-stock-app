@@ -249,11 +249,11 @@ const ACTION_LABELS: Record<string, string> = {
   BLOCKED: "대기",
   BUY: "진입 검토",
   STRONG_BUY: "진입 검토",
-  SELL: "청산 검토",
-  STRONG_SELL: "청산 검토",
+  SELL: "청산",
+  STRONG_SELL: "청산",
   HOLD: "보유",
   ENTER: "진입 검토",
-  EXIT: "청산 검토",
+  EXIT: "청산",
   WAIT: "대기",
   AVOID_BUY: "대기",
   RISK_CHECK: "대기",
@@ -2490,7 +2490,7 @@ export default function ChartPage() {
       : actionCode === "SCALE_IN" ? "기준가 유지와 거래량 확인 시 진입을 검토하세요."
       : actionCode === "HOLD_CASH" ? "시장 조건 회복 전까지 대기하세요."
       : actionCode === "WATCH_ONLY" || actionCode === "WAIT" ? "지금은 기다리고 눌림 후 다시 확인하세요."
-      : actionCode === "WAIT_PULLBACK" ? "눌림 확인 후 기준가 접근을 검토하세요."
+      : actionCode === "WAIT_PULLBACK" ? "눌림 확인 후 기준가 근접까지 대기하세요."
       : actionCode === "ENTER" || actionCode === "BUY" || actionCode === "STRONG_BUY" ? "기준가 근접 시 진입 조건을 확인하세요."
       : levels ? stance.detail : "추천선과 OHLCV 연결 후 최종 판단을 확정합니다.";
     return {
@@ -2529,7 +2529,7 @@ export default function ChartPage() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 className="font-semibold text-slate-100">진입·손절 계획</h3>
-          <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할 진입 50/30/20</p>
+          <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할 계획 50/30/20</p>
         </div>
         <div className="grid w-full gap-2 sm:w-auto sm:min-w-[296px]">
           <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900/70 p-1">

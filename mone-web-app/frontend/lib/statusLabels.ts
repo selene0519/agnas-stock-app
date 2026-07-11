@@ -2,10 +2,10 @@
  * statusLabels.ts — 상태·행동·신뢰도·데이터상태의 "정규 어휘" 단일 소스.
  *
  * 배경(UX 보고서 8.1/8.3, P0 "언어를 먼저 고정"): 현재 화면마다 정상/양호/보통/주의 필요/
- * 위험 보류/대기/현금 대기/모니터링/CAUTION 등이 혼재해 같은 개념이 다른 단어로 보인다.
+ * 위험 보류/대기/모니터링/CAUTION 등이 혼재해 같은 개념이 다른 단어로 보인다.
  * 이 모듈은 다양한 원본 문자열을 4개 축의 정규 라벨로 수렴시킨다:
  *   - 상태(status): 정상 / 주의 / 위험 / 데이터 제한   (객관적 상태)
- *   - 행동(action): 관찰 / 대기 / 진입 검토 / 보유 / 축소 검토 / 청산 검토   (다음 행동)
+ *   - 행동(action): 관찰 / 대기 / 진입 검토 / 보유 / 축소 / 청산   (다음 행동)
  *   - 신뢰도(confidence): 낮음 / 보통 / 높음   (데이터 충분성·일관성)
  *   - 데이터상태(dataStatus): 최신 / 일부 제한 / 갱신 필요 / 분석 대기
  *
@@ -33,13 +33,13 @@ export function normalizeStatus(raw: unknown): Labeled {
   return { label: "확인", tone: "neutral" };
 }
 
-/** 행동: 사용자의 다음 행동 → 관찰 / 대기 / 진입 검토 / 보유 / 축소 검토 / 청산 검토 */
+/** 행동: 사용자의 다음 행동 → 관찰 / 대기 / 진입 검토 / 보유 / 축소 / 청산 */
 export function normalizeAction(raw: unknown): Labeled {
   const s = up(raw);
   if (!s) return { label: "관찰", tone: "neutral" };
-  if (/(청산|매도|SELL|EXIT|LIQUIDATE)/.test(s)) return { label: "청산 검토", tone: "danger" };
-  if (/(축소|REDUCE|TRIM|비중\s*축소)/.test(s)) return { label: "축소 검토", tone: "caution" };
-  // "진입 자제"·"현금 대기"는 진입이 아니라 대기 축
+  if (/(청산|매도|SELL|EXIT|LIQUIDATE)/.test(s)) return { label: "청산", tone: "danger" };
+  if (/(축소|REDUCE|TRIM|비중\s*축소)/.test(s)) return { label: "축소", tone: "caution" };
+  // "진입 자제"는 진입이 아니라 대기 축
   if (/(HOLD_CASH|진입\s*자제|현금\s*대기|관망|NO_TRADE|거래\s*금지)/.test(s)) return { label: "대기", tone: "caution" };
   if (/(보유|유지|HOLD|보유자)/.test(s)) return { label: "보유", tone: "positive" };
   if (/(진입|매수|BUY|TRADE_CANDIDATE|오늘\s*진입|조건부)/.test(s)) return { label: "진입 검토", tone: "positive" };
