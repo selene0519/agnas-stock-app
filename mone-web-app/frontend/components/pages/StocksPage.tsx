@@ -1946,47 +1946,68 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm text-slate-500">
-          {loading
-            ? "후보를 불러오는 중..."
-            : `${modeLabel(mode)} · ${horizonLabel(horizon)} / 표시 ${visible.length.toLocaleString("ko-KR")}개 / 우선 로딩 ${items.length.toLocaleString("ko-KR")}개`}
-          {!loading && items.length >= RECOMMENDATION_LIMIT && (
-            <span className="ml-2 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-[11px] text-slate-400">
-              상위 {RECOMMENDATION_LIMIT}개 우선
-            </span>
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-100">탐색 결과</h2>
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] ${dataFreshnessBadgeClass(recommendationFreshness.state)}`}>
+                {recommendationFreshness.label}
+              </span>
+              {!loading && items.length >= RECOMMENDATION_LIMIT && (
+                <span className="rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[11px] text-slate-400">
+                  상위 {RECOMMENDATION_LIMIT}개 우선
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {loading
+                ? "후보를 불러오는 중입니다."
+                : `${modeLabel(mode)} · ${horizonLabel(horizon)} 기준으로 ${visible.length.toLocaleString("ko-KR")}개를 표시합니다.`}
+            </p>
+          </div>
+          {!selected && (
+            <div className="sm:w-48">
+              <label htmlFor="stocks-sort" className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">정렬</label>
+              <select
+                id="stocks-sort"
+                name="stocksSort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-300 focus:border-slate-500 focus:outline-none"
+              >
+                <option value="finalScore">종합점수순</option>
+                <option value="discoveryScore">발굴점수순 (조기성)</option>
+                <option value="expectedValue">EV순</option>
+                <option value="upsideScore">상승여력순</option>
+                <option value="rrScore">손익비순</option>
+              </select>
+            </div>
           )}
         </div>
-        {!selected && (
-          <>
-            <label htmlFor="stocks-sort" className="sr-only">추천 목록 정렬</label>
-            <select
-              id="stocks-sort"
-              name="stocksSort"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 focus:border-slate-500 focus:outline-none"
-            >
-              <option value="finalScore">종합점수순</option>
-              <option value="discoveryScore">발굴점수순 (조기성)</option>
-              <option value="expectedValue">EV순</option>
-              <option value="upsideScore">상승여력순</option>
-              <option value="rrScore">손익비순</option>
-            </select>
-          </>
-        )}
-      </div>
-
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs text-slate-400">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-slate-200">추천 목록</span>
-          <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(recommendationFreshness.state)}`}>
-            {recommendationFreshness.label}
-          </span>
-          <span className="text-emerald-300 font-semibold">{priceBasisInfo.predictionText}</span>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+            <div className="text-[10px] text-slate-500">표시 후보</div>
+            <div className="mt-0.5 font-mono text-sm font-bold text-slate-100">{visible.length.toLocaleString("ko-KR")}개</div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+            <div className="text-[10px] text-slate-500">데이터 정상</div>
+            <div className="mt-0.5 font-mono text-sm font-bold text-emerald-300">{filterStats.normal.toLocaleString("ko-KR")}개</div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+            <div className="text-[10px] text-slate-500">주의/위험</div>
+            <div className="mt-0.5 font-mono text-sm font-bold text-amber-300">{(filterStats.caution + filterStats.blocked).toLocaleString("ko-KR")}개</div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+            <div className="text-[10px] text-slate-500">로딩 기준</div>
+            <div className="mt-0.5 font-mono text-sm font-bold text-slate-200">{items.length.toLocaleString("ko-KR")}개</div>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-5 text-slate-500">
+          <span className="font-semibold text-emerald-300">{priceBasisInfo.predictionText}</span>
           <span className="text-cyan-300">{priceBasisInfo.priceText}</span>
           <span>{priceBasisInfo.ohlcvText}</span>
-          <span className="text-slate-600">· 상세 판단은 카드의 MONE 판단 보기에서 분석 탭으로 이어집니다.</span>
+          <span className="text-slate-600">상세 판단은 각 카드의 분석 보기로 이어집니다.</span>
         </div>
       </div>
 

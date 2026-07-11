@@ -394,6 +394,45 @@ function brokerLabel(value: any) {
   if (broker.includes("local")) return "직접 추가";
   return broker ? `${broker} 연동` : "직접 추가";
 }
+function firstSourceText(...values: any[]) {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+function shortSourceDate(value: any) {
+  if (value == null || value === "") return "";
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const d = new Date(value > 10_000_000_000 ? value : value * 1000);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }
+  const text = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const d = new Date(text);
+  return Number.isNaN(d.getTime()) ? text.slice(0, 16) : d.toISOString().slice(0, 10);
+}
+function humanDataSourceLabel(value: any, fallback = "개인 보유") {
+  const raw = String(value || "").trim();
+  const source = raw.toLowerCase();
+  if (!source) return fallback;
+  if (source.includes("auth_required")) return "로그인 필요";
+  if (source.includes("personal") || source.includes("user_holdings")) return "개인 보유 DB";
+  if (source.includes("local_bridge") || source.includes("broker")) return "브로커 업로드";
+  if (source.includes("kis")) return "한국투자 업로드";
+  if (source.includes("toss")) return "토스증권 업로드";
+  if (source.includes("csv") || source.includes("file") || source.includes("snapshot")) return "업로드 파일";
+  if (source.includes("manual") || source.includes("local")) return "직접 추가";
+  return raw.length > 22 ? `${raw.slice(0, 22)}…` : raw;
+}
+function priceSourceLabel(value: any) {
+  const source = String(value || "").toLowerCase();
+  if (!source) return "";
+  if (source.includes("kis") || source.includes("snapshot") || source.includes("intraday")) return "실시간 스냅샷";
+  if (source.includes("finnhub") || source.includes("yfinance")) return "외부 시세";
+  if (source.includes("ohlcv")) return "OHLCV 기준";
+  return "가격 확인";
+}
 function brokerStatusLabel(status?: BrokerStatus) {
   if (!status || !status.connected) return "미연결";
   if (status.status === "SYNCING") return "동기화 중";
@@ -1084,6 +1123,28 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     recoGeneratedAt: summary.updatedAt || data.updatedAt || holdingsLoadedAt,
     dataStatus: data.status,
   });
+  const holdingsSourceInfo = useMemo(() => {
+    const authorityRaw = firstSourceText(data.holdingAuthority, summary.holdingAuthority, data.authority, data.routeVersion);
+    const sourceRaw = firstSourceText(data.sourceSummary, summary.sourceSummary, data.dataSource, summary.dataSource, data.source, summary.source);
+    const brokerRaw = firstSourceText(data.broker, summary.broker, data.sourceBroker, summary.sourceBroker, items[0]?.broker, items[0]?.sourceBroker);
+    const syncedRaw = firstSourceText(data.syncedAt, summary.syncedAt, data.updatedAt, summary.updatedAt, holdingsLoadedAt);
+    const primary = humanDataSourceLabel(brokerRaw || sourceRaw || authorityRaw, isPersonalHoldingsSource ? "개인 보유 DB" : "보유 데이터");
+    return {
+      primary,
+      authority: humanDataSourceLabel(authorityRaw, isPersonalHoldingsSource ? "개인 보유 DB" : "권한 확인"),
+      source: humanDataSourceLabel(sourceRaw || brokerRaw, primary),
+      synced: shortSourceDate(syncedRaw),
+    };
+  }, [data, summary, items, holdingsLoadedAt, isPersonalHoldingsSource]);
+  const riskSourceInfo = useMemo(() => {
+    const sourceRaw = firstSourceText(riskBudget?.sourceSummary, riskBudget?.dataSource, riskBudget?.source, riskBudget?.holdingAuthority);
+    const syncedRaw = firstSourceText(riskBudget?.syncedAt, riskBudget?.updatedAt, riskBudget?.asOf, holdingsLoadedAt);
+    return {
+      source: humanDataSourceLabel(sourceRaw || holdingsSourceInfo.source, holdingsSourceInfo.source),
+      scope: market === "all" ? (summary.mixedCurrency ? "KR/US 통화 분리" : "전체 보유") : market === "kr" ? "국장 보유" : "미장 보유",
+      synced: shortSourceDate(syncedRaw) || holdingsSourceInfo.synced,
+    };
+  }, [riskBudget, holdingsSourceInfo, holdingsLoadedAt, market, summary.mixedCurrency]);
   const riskCount = Number(summary.riskCount ?? items.filter((item) => normalizeRiskStatus(item.riskStatus) !== "NORMAL").length);
   // 혼합통화(KR 원화 + US 달러)일 때 환율로 합산한 KRW 총액·손익.
   // 환율을 아직 못 받았으면 null → 상단 카드는 통화별 분리 배너에 위임한다.
@@ -1399,23 +1460,36 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs text-slate-400">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-slate-200">보유종목 데이터</span>
-          <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(holdingFreshness.state)}`}>
-            {holdingFreshness.label}
-          </span>
-          <span>{holdingFreshness.basisText}</span>
-          {holdingsLoadedAt && <span>목록 확인: {holdingsLoadedAt}</span>}
-          <span className="flex-1" />
-          <button onClick={() => load()}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800">
-            <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> 새로고침
-          </button>
-          <button onClick={refreshVisibleQuotes} disabled={refreshingAllQuotes}
-            className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] text-blue-200 hover:bg-blue-500/20 disabled:opacity-50">
-            <Zap size={12} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 갱신
-          </button>
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-xs text-slate-400">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-200">보유 데이터 출처</span>
+              <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(holdingFreshness.state)}`}>
+                {holdingFreshness.label}
+              </span>
+            </div>
+            <p className="mt-1 leading-5 text-slate-500">
+              {holdingFreshness.basisText}
+              {holdingsLoadedAt ? ` · 목록 확인 ${holdingsLoadedAt}` : ""}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <button onClick={() => load()}
+              className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] text-slate-300 transition-[background-color,transform] hover:bg-slate-800 active:scale-[0.96]">
+              <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> 새로고침
+            </button>
+            <button onClick={refreshVisibleQuotes} disabled={refreshingAllQuotes}
+              className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-[11px] text-blue-200 transition-[background-color,transform] hover:bg-blue-500/20 active:scale-[0.96] disabled:opacity-50">
+              <Zap size={12} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 갱신
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <SourceMini label="보유 출처" value={holdingsSourceInfo.primary} />
+          <SourceMini label="권한 범위" value={holdingsSourceInfo.authority} />
+          <SourceMini label="가격 기준" value={holdingFreshness.label} accent={holdingFreshness.state === "fresh" ? "text-emerald-300" : "text-amber-300"} />
+          <SourceMini label="동기화" value={holdingsSourceInfo.synced || "확인 대기"} />
         </div>
       </div>
 
@@ -1423,6 +1497,123 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3 text-xs leading-5 text-slate-400">
           <div className="font-semibold text-slate-200">이 브라우저의 개인 보유종목이 아직 비어 있습니다.</div>
           <p className="mt-1">공용 스냅샷이나 다른 사용자의 브릿지 데이터는 개인 보유와 자동으로 섞지 않습니다. 직접 추가, CSV 가져오기, 또는 브로커 연동 후 이 화면에 표시됩니다.</p>
+        </div>
+      )}
+
+      {!loading && (
+        <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-100">오늘 먼저 볼 리스크</h2>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  종목 목록은 위험도·손절 근접 순으로 정렬됩니다. 먼저 확인할 항목만 위에 모았습니다.
+                </p>
+              </div>
+              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${riskCount > 0 || actionItems.length > 0 ? toneClassName("warning") : toneClassName("safe")}`}>
+                {riskCount > 0 || actionItems.length > 0 ? "주의 필요" : "정상"}
+              </span>
+            </div>
+            {actionItems.length > 0 ? (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {actionItems.slice(0, 4).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => item.action && openEditFromAction(item.key)}
+                    className={`min-h-16 rounded-xl border px-3 py-2 text-left transition-[background-color,transform] active:scale-[0.96] ${
+                      item.tone === "red" ? "border-red-500/30 bg-red-500/10 hover:bg-red-500/15" :
+                      item.tone === "blue" ? "border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/15" :
+                      "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15"
+                    }`}
+                  >
+                    <div className="text-xs font-bold text-slate-100">{item.title}</div>
+                    <div className="mt-1 text-[11px] leading-4 text-slate-400">{item.detail}</div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                현재 보유 기준으로 즉시 보정할 리스크 항목은 없습니다.
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-100">리스크 계산 기준</h2>
+                <p className="mt-1 text-xs leading-5 text-slate-500">보유 출처와 같은 범위로 리스크 예산을 계산합니다.</p>
+              </div>
+              {riskBudget && (
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${riskBudget.status === "OVER_BUDGET" ? toneClassName("danger") : toneClassName("safe")}`}>
+                  {riskBudget.status === "OVER_BUDGET" ? "예산 초과" : "정상"}
+                </span>
+              )}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <SourceMini label="리스크 출처" value={riskSourceInfo.source} />
+              <SourceMini label="계산 범위" value={riskSourceInfo.scope} />
+              <SourceMini label="손실 예산" value={riskBudget ? `${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%` : "대기"} accent={riskBudget && riskBudget.status === "OVER_BUDGET" ? "text-red-300" : "text-emerald-300"} />
+              <SourceMini label="기준일" value={riskSourceInfo.synced || "확인 대기"} />
+            </div>
+            {riskBudget && (
+              <button
+                type="button"
+                onClick={() => setRiskBudgetOpen((v) => !v)}
+                className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-300 transition-[background-color,transform] hover:bg-slate-800 active:scale-[0.96]"
+              >
+                상세 리스크 예산 {riskBudgetOpen ? "접기" : "보기"}
+                <ChevronDown size={14} className={`transition-transform ${riskBudgetOpen ? "rotate-180" : ""}`} />
+              </button>
+            )}
+            {riskBudget && riskBudgetOpen && (
+              <div className="mt-3 border-t border-slate-800 pt-3">
+                <div className="grid gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-1">
+                  <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
+                  <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
+                  <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
+                </div>
+                {(riskBudget.warnings || []).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {riskBudget.warnings.map((warning: string) => (
+                      <span key={warning} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">{warning}</span>
+                    ))}
+                  </div>
+                )}
+                {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {(riskBudget.items || []).filter((item: any) => item.action === "REDUCE").slice(0, 3).map((item: any) => (
+                      <div key={`${item.market}-${item.symbol}`} className="rounded-xl border border-red-500/20 bg-slate-950/60 px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-slate-100">{item.name}</span>
+                          <span className="font-mono text-red-300">{Number(item.lossBudgetPct || 0).toFixed(1)}%</span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-500">
+                          <span>{item.symbol}</span>
+                          <span>현재 {Number(item.weightPct || 0).toFixed(1)}%</span>
+                          <span>목표 {Number(item.recommendedWeightPct || 0).toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(riskBudget.correlation?.highCorrelationPairs || []).length > 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-950/10 px-3 py-2 text-[11px]">
+                    <div className="font-semibold text-amber-200">상관계수 높은 묶음</div>
+                    <div className="mt-1 space-y-1">
+                      {riskBudget.correlation.highCorrelationPairs.slice(0, 3).map((pair: any) => (
+                        <div key={`${pair.symbolA}-${pair.symbolB}`} className="flex items-center justify-between text-slate-400">
+                          <span>{pair.symbolA} · {pair.symbolB}</span>
+                          <span className="font-mono text-amber-300">r={Number(pair.correlation || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1474,6 +1665,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           const holdingMarket = cleanHoldingMarket(holding.market);
           const downsideText = stopMissing ? `${downsideLabel} 없음` : formatHoldingMoney(downsideValue, holdingMarket);
           const upsideText = targetMissing ? `${upsideLabel} 없음` : formatHoldingMoney(upsideValue, holdingMarket);
+          const holdingSourceText = humanDataSourceLabel(holding.broker || holding.sourceBroker || holding.sourceType || holding.source || data.authority, "개인 보유");
+          const holdingDateText = shortSourceDate(holding.latestDataDate || holding.priceDate || holding.updatedAt);
+          const holdingPriceSourceText = priceSourceLabel(holding.quoteSource || holding.priceSource || holding.currentPriceSource);
           return (
             <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
               <div className="flex items-start justify-between gap-3">
@@ -1487,10 +1681,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   </div>
                   <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                   <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
-                    {/* 내부 표현(source 파일명) 제거 — UX 보고서 6.3 */}
-                    {/* 내부 표현(basis/status) 제거 — UX 보고서 6.3 */}
-                    {/* 내부 표현(status) 제거 — UX 보고서 6.3 */}
-                    {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
+                    <span>{holdingSourceText}</span>
+                    {holdingDateText && <span>기준 {holdingDateText}</span>}
+                    {holdingPriceSourceText && <span>가격 {holdingPriceSourceText}</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(() => {
@@ -1501,7 +1694,6 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                       if (missing.length > 0) return <span className="rounded-md border border-slate-600/40 bg-slate-700/20 px-2 py-0.5 text-[10px] text-slate-400">OHLCV 기준가 ({missing.slice(0,2).join("·")} 없음)</span>;
                       return <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300">일부 제한</span>;
                     })()}
-                    {holding.quoteSource && <span className="text-[10px] text-slate-600">출처: {holding.quoteSource}</span>}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -1711,6 +1903,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               const costBasis = Number(holding.avgPrice || 0) * Number(holding.quantity || 0);
               const currentValue = Number(holding.valuation || holding.marketValue || 0);
               const accumulationGapPct = costBasis > 0 ? ((currentValue - costBasis) / costBasis) * 100 : 0;
+              const holdingSourceText = humanDataSourceLabel(holding.broker || holding.sourceBroker || holding.sourceType || holding.source || data.authority, "개인 보유");
+              const holdingDateText = shortSourceDate(holding.latestDataDate || holding.priceDate || holding.updatedAt);
+              const holdingPriceSourceText = priceSourceLabel(holding.quoteSource || holding.priceSource || holding.currentPriceSource);
 
               return (
                 <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
@@ -1725,10 +1920,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                       </div>
                       <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                       <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
-                        {/* 내부 표현(source 파일명) 제거 — UX 보고서 6.3 */}
-                        {/* 내부 표현(basis/status) 제거 — UX 보고서 6.3 */}
-                        {/* 내부 표현(status) 제거 — UX 보고서 6.3 */}
-                        {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
+                        <span>{holdingSourceText}</span>
+                        {holdingDateText && <span>기준 {holdingDateText}</span>}
+                        {holdingPriceSourceText && <span>가격 {holdingPriceSourceText}</span>}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {(() => {
@@ -1739,7 +1933,6 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                           if (missing.length > 0) return <span className="rounded-md border border-slate-600/40 bg-slate-700/20 px-2 py-0.5 text-[10px] text-slate-400">OHLCV 기준가 ({missing.slice(0,2).join("·")} 없음)</span>;
                           return <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300">일부 제한</span>;
                         })()}
-                        {holding.quoteSource && <span className="text-[10px] text-slate-600">출처: {holding.quoteSource}</span>}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -1903,7 +2096,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       )}
 
-      {riskBudget && (
+      {false && riskBudget && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50">
           <button
             type="button"
@@ -2228,6 +2421,15 @@ function SummaryCard({ label, value, accent = "text-slate-100" }: { label: strin
     <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
       <div className="text-sm text-slate-500">{label}</div>
       <div className={`mt-2 min-w-0 break-words font-mono text-[clamp(1rem,4.8vw,1.25rem)] font-bold leading-tight ${accent}`}>{value}</div>
+    </div>
+  );
+}
+
+function SourceMini({ label, value, accent = "text-slate-200" }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className={`mt-0.5 min-w-0 truncate text-xs font-semibold ${accent}`}>{value || "확인 대기"}</div>
     </div>
   );
 }
