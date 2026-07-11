@@ -1443,12 +1443,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   </div>
                   <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                   <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
-                    {(holding.currentPriceSource || holding.priceSource || holding.quoteSource) && <span>source: {holding.currentPriceSource || holding.priceSource || holding.quoteSource}</span>}
-                    {(holding.priceStatusLabel || holding.priceDataStatus || holding.dataStatus) && <span>basis: {holding.priceStatusLabel || holdingStatusLabel(holding.priceDataStatus || holding.dataStatus)}</span>}
-                    {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
-                      const s = String(holding.priceDataStatus || holding.dataStatus || "");
-                      return holdingStatusLabel(s);
-                    })()}</span>}
+                    {/* 내부 표현(source 파일명) 제거 — UX 보고서 6.3 */}
+                    {/* 내부 표현(basis/status) 제거 — UX 보고서 6.3 */}
+                    {/* 내부 표현(status) 제거 — UX 보고서 6.3 */}
                     {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
@@ -1684,12 +1681,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                       </div>
                       <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                       <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
-                        {(holding.currentPriceSource || holding.priceSource || holding.quoteSource) && <span>source: {holding.currentPriceSource || holding.priceSource || holding.quoteSource}</span>}
-                        {(holding.priceStatusLabel || holding.priceDataStatus || holding.dataStatus) && <span>basis: {holding.priceStatusLabel || holdingStatusLabel(holding.priceDataStatus || holding.dataStatus)}</span>}
-                        {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
-                          const s = String(holding.priceDataStatus || holding.dataStatus || "");
-                          return holdingStatusLabel(s);
-                        })()}</span>}
+                        {/* 내부 표현(source 파일명) 제거 — UX 보고서 6.3 */}
+                        {/* 내부 표현(basis/status) 제거 — UX 보고서 6.3 */}
+                        {/* 내부 표현(status) 제거 — UX 보고서 6.3 */}
                         {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">

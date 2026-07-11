@@ -2738,13 +2738,16 @@ export default function ChartPage() {
             )}
 
             <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-1.5">
-              <div className="grid grid-cols-5 gap-1">
+              <div className="grid grid-cols-5 gap-1" role="tablist" aria-label="분석 상세 탭">
                 {ANALYSIS_TABS.map((tab) => {
                   const active = analysisTab === tab.key;
                   return (
                     <button
                       key={tab.key}
                       type="button"
+                      role="tab"
+                      aria-selected={active}
+                      aria-label={`${tab.label} · ${tab.hint}`}
                       onClick={() => setAnalysisTab(tab.key)}
                       className={`min-h-12 min-w-0 rounded-xl px-1.5 py-2 text-center transition-[background-color,border-color,color,transform] active:scale-[0.96] ${
                         active
