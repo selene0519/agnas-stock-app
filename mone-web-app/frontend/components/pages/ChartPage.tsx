@@ -2721,8 +2721,9 @@ export default function ChartPage() {
                 </div>
               </div>
             )}
+          </div>
 
-            <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-3">
               <button
                 type="button"
                 aria-expanded={dataStatusOpen}
@@ -2758,12 +2759,12 @@ export default function ChartPage() {
             </div>
 
             {loadState.errors.length > 0 && (
-              <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
                 일부 데이터 API 오류: {loadState.errors.slice(0, 2).join(" / ")}
               </div>
             )}
 
-            <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-1.5">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-1.5">
               <div className="grid grid-cols-5 gap-1" role="tablist" aria-label="분석 상세 탭">
                 {ANALYSIS_TABS.map((tab) => {
                   const active = analysisTab === tab.key;
@@ -3588,7 +3589,6 @@ export default function ChartPage() {
           )}
             </div>
             </div>
-        </div>
       )}
     </div>
     </ErrorBoundary>
