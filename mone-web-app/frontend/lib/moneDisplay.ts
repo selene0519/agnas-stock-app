@@ -1,4 +1,5 @@
 import type { Horizon, Mode } from "@/lib/api";
+import { dataStatusLabel, normalizeStatus, toneBadgeClass } from "@/lib/statusLabels";
 
 export const KR_NAME_MAP: Record<string, string> = {
   "000100": "유한양행",
@@ -417,10 +418,7 @@ export function horizonLabel(horizon: Horizon | string): string {
 }
 
 export function statusBadge(status?: string): string {
-  const value = String(status || "").toUpperCase();
-  if (["OK", "NORMAL", "MATCH", "EXECUTED", "WIN"].includes(value)) return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
-  if (["ERROR", "NO_DATA", "LOSS", "HIGH"].includes(value)) return "border-red-500/30 bg-red-500/10 text-red-300";
-  return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+  return toneBadgeClass(normalizeStatus(status).tone);
 }
 
 export type DataTrustState = "normal" | "partial" | "stale" | "error";
@@ -444,17 +442,17 @@ export function dataTrustState(item: any): DataTrustState {
 export function dataTrustLabel(item: any): string {
   const state = dataTrustState(item);
   if (state === "normal") return "정상";
-  if (state === "partial") return "일부 데이터 기준";
-  if (state === "stale") return "지연 데이터 기준";
-  return "데이터 오류 - 신규 판단 주의";
+  if (state === "partial") return "데이터 제한";
+  if (state === "stale") return "갱신 필요";
+  return "위험";
 }
 
 export function dataTrustBadgeClass(item: any): string {
   const state = dataTrustState(item);
-  if (state === "normal") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
-  if (state === "partial") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-  if (state === "stale") return "border-orange-500/30 bg-orange-500/10 text-orange-300";
-  return "border-red-500/40 bg-red-500/10 text-red-300";
+  if (state === "normal") return toneBadgeClass(normalizeStatus("NORMAL").tone);
+  if (state === "partial") return toneBadgeClass(dataStatusLabel("PARTIAL").tone);
+  if (state === "stale") return toneBadgeClass(dataStatusLabel("STALE").tone);
+  return toneBadgeClass(normalizeStatus("DANGER").tone);
 }
 
 export function dataTrustNotice(item: any): string {
@@ -473,12 +471,12 @@ export function shouldHideSizingForTrust(item: any): boolean {
 export function sourceStatusLabel(status?: string): string {
   const value = String(status || "").trim();
   const upper = value.toUpperCase();
-  if (!value || upper === "MATCH" || upper === "OK" || upper === "NORMAL") return "조건일치";
-  if (upper.includes("PARTIAL")) return "일부 조건일치";
-  if (upper.includes("STALE")) return "지연 데이터";
-  if (upper.includes("ERROR") || upper.includes("NO_DATA")) return "데이터 한정";
-  if (/(strategy_horizon|quant_scanner|ohlcv_status|from_source|_v\d+)/i.test(value)) return "조건일치";
-  return "조건일치";
+  if (!value || upper === "MATCH" || upper === "OK" || upper === "NORMAL") return "정상";
+  if (upper.includes("PARTIAL") || upper.includes("STALE") || upper.includes("ERROR") || upper.includes("NO_DATA")) {
+    return dataStatusLabel(value).label;
+  }
+  if (/(strategy_horizon|quant_scanner|ohlcv_status|from_source|_v\d+)/i.test(value)) return "정상";
+  return normalizeStatus(value).label;
 }
 
 export function strategyTagLabel(tag?: string): string {
@@ -645,7 +643,7 @@ export function dataFreshnessInfo(item: any, now = new Date()): {
   const expected = marketExpectedCloseDate(market, now);
   const age = businessDaysBetween(date, expected);
   const state: DataFreshnessState = age <= 0 ? "fresh" : age === 1 ? "caution" : "old";
-  const label = state === "fresh" ? "최신" : state === "caution" ? "주의" : "오래됨";
+  const label = state === "fresh" ? "최신" : state === "caution" ? "주의" : "갱신 필요";
   const basisPrefix = market === "us" ? "미장 장마감 기준" : market === "kr" ? "국장 장마감 기준" : "데이터 기준";
   const suffix = market && !sameDate(date, expected) ? ` · 기준일 확인 ${effectiveDate}` : "";
   const basisText = latestDate

@@ -26,6 +26,7 @@ import {
   toNumber,
 } from "@/lib/moneDisplay";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
+import { dataStatusLabel, normalizeAction, normalizeStatus } from "@/lib/statusLabels";
 import {
   EXPLORATION_LENSES,
   getLensDef,
@@ -256,14 +257,14 @@ function watchToggleClass(isWatched: boolean) {
 function statusText(status?: string) {
   const value = String(status || "").toUpperCase();
   if (value === "NORMAL") return "정상";
-  if (value === "PRICE_PENDING" || value === "NO_PRICE") return "현재가 수집 대기";
-  if (value === "DATA_PENDING") return "데이터 수집 대기";
-  if (value === "STALE") return "시세 갱신 필요";
-  if (value === "ERROR") return "오류";
+  if (value === "PRICE_PENDING" || value === "NO_PRICE") return "갱신 필요";
+  if (value === "DATA_PENDING") return "분석 대기";
+  if (value === "STALE") return "갱신 필요";
+  if (value === "ERROR") return "위험";
   if (value === "SEARCH_ONLY") return "검색 전용";
   if (value === "LOCAL_ONLY") return "로컬 임시";
-  if (value === "BLOCK") return "진입 차단";
-  return value || "";
+  if (value === "BLOCK") return "위험";
+  return value ? dataStatusLabel(value).label : "";
 }
 
 async function copySymbolForKoreaInvestment(symbol: string) {
@@ -310,15 +311,15 @@ function normalizeHoldingEdit(item: any): HoldingEditRow | null {
 }
 
 const PATTERN_ACTION_KO: Record<string, string> = {
-  SCALE_IN: "분할 접근", WATCH_ONLY: "관찰", WAIT_PULLBACK: "눌림 대기",
-  HOLD_CASH: "현금 대기", AVOID_CHASE: "추격 금지", BLOCKED: "진입 차단",
-  BUY: "매수", STRONG_BUY: "강력매수", SELL: "매도", STRONG_SELL: "강력매도",
-  HOLD: "보유", ENTER: "진입", EXIT: "청산", WAIT: "대기",
+  SCALE_IN: "진입 검토", WATCH_ONLY: "관찰", WAIT_PULLBACK: "대기",
+  HOLD_CASH: "대기", AVOID_CHASE: "대기", BLOCKED: "대기",
+  BUY: "진입 검토", STRONG_BUY: "진입 검토", SELL: "청산 검토", STRONG_SELL: "청산 검토",
+  HOLD: "보유", ENTER: "진입 검토", EXIT: "청산 검토", WAIT: "대기",
 };
 const PATTERN_RISK_KO: Record<string, string> = {
-  NONE: "정상", PULLBACK_RISK: "눌림 위험", OVERHEATED_CHASE_RISK: "과열 추격 주의",
-  FALSE_BREAKOUT_RISK: "가짜 돌파 주의", STRUCTURE_BREAKDOWN: "구조 이탈",
-  DATA_QUALITY_RISK: "데이터 확인 필요",
+  NONE: "정상", PULLBACK_RISK: "위험", OVERHEATED_CHASE_RISK: "주의",
+  FALSE_BREAKOUT_RISK: "주의", STRUCTURE_BREAKDOWN: "위험",
+  DATA_QUALITY_RISK: "데이터 제한",
 };
 const PATTERN_TYPE_KO: Record<string, string> = {
   horizontal_support_rebound: "지지 반등", relative_strength: "상대강도 우위",
@@ -420,10 +421,11 @@ function safeKoreanLabel(
 function recommendationBadgeLabel(item: any, actionCode: string, actionText: string | null): string | null {
   const baseLabel = sourceStatusLabel(item.sourceStatus);
   if (!baseLabel) return null;
-  if (actionCode === "HOLD_CASH" || actionCode === "WATCH_ONLY" || actionText === "현금 대기") return "관찰 후보";
-  if (ENTRY_ACTION_CODES.has(actionCode)) return "진입 후보";
-  if (OBSERVE_ACTION_CODES.has(actionCode) && baseLabel === "조건일치") return "조건 포착";
-  return baseLabel === "조건일치" ? "조건 포착" : baseLabel;
+  const normalizedAction = normalizeAction(actionText || actionCode).label;
+  if (normalizedAction === "관찰" || normalizedAction === "대기") return normalizedAction;
+  if (normalizedAction === "진입 검토") return "진입 검토";
+  if (OBSERVE_ACTION_CODES.has(actionCode) && baseLabel === "정상") return "관찰";
+  return baseLabel === "정상" ? "관찰" : baseLabel;
 }
 
 export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (page: string) => void; bootData?: BootPreloadData | null } = {}) {
@@ -1187,11 +1189,24 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   ];
 
   const SUGGEST_STYLE: Record<string, string> = {
+    "진입 검토":      toneClassName("safe"),
     "즉시 진입 검토": toneClassName("safe"),
+    "대기":          toneClassName("warning"),
     "타이밍 대기":    toneClassName("warning"),
     "제거 고려":      toneClassName("danger"),
+    "관찰":          toneClassName("neutral"),
     "모니터링":       toneClassName("neutral"),
     "데이터 없음":    toneClassName("neutral"),
+  };
+  const watchSuggestionLabel = (raw: any) => {
+    const text = String(raw || "");
+    if (!text) return "관찰";
+    if (text.includes("즉시 진입") || text.includes("진입 검토")) return "진입 검토";
+    if (text.includes("대기")) return "대기";
+    if (text.includes("제거")) return "축소 검토";
+    if (text.includes("데이터")) return "데이터 제한";
+    if (text.includes("모니터")) return "관찰";
+    return normalizeAction(text).label;
   };
 
   return (
@@ -1434,7 +1449,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
                     { id: "quality", label: "상위·정상", hint: "60점+ 데이터 정상" },
-                    { id: "entry", label: "관찰 후보", hint: "50점+ 차단 제외" },
+                    { id: "entry", label: "진입 검토", hint: "50점+ 위험 제외" },
                     { id: "clean", label: "데이터 정상", hint: "대기/차단 제외" },
                     { id: "watch", label: "관심만", hint: "관심 후보 집중" },
                   ].map((preset) => (
@@ -1489,12 +1504,12 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                       <input type="checkbox" checked={hideDataPending} onChange={(e) => setHideDataPending(e.target.checked)}
                         className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                      데이터 수집 대기 / 시세 오래됨 숨기기
+                      분석 대기 / 갱신 필요 숨기기
                     </label>
                     <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                       <input type="checkbox" checked={hideBlockedOnly} onChange={(e) => setHideBlockedOnly(e.target.checked)}
                         className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                      진입 차단 종목 숨기기
+                      위험 종목 숨기기
                     </label>
                   </div>
                 </div>
@@ -1729,7 +1744,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             </div>
             <div className="space-y-1.5 max-h-64 overflow-y-auto">
               {scoredWatch.items.map((it: any) => (
-                <div key={it.symbol} className={`flex items-center justify-between rounded-xl border px-3 py-2 text-[11px] ${SUGGEST_STYLE[it.suggestion] || SUGGEST_STYLE["모니터링"]}`}>
+                <div key={it.symbol} className={`flex items-center justify-between rounded-xl border px-3 py-2 text-[11px] ${SUGGEST_STYLE[it.suggestion] || SUGGEST_STYLE["관찰"]}`}>
                   <div className="min-w-0 flex-1">
                     <span className="font-semibold">{it.name || it.symbol}</span>
                     <span className="ml-1.5 text-[10px] opacity-60">{it.symbol}</span>
@@ -1743,7 +1758,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     )}
                     {it.finalScore > 0 && <span className="font-mono">{it.finalScore.toFixed(0)}점</span>}
                     {it.expectedValue !== 0 && <span className={`font-mono ${it.expectedValue >= 0 ? "opacity-80" : "text-red-400"}`}>EV {it.expectedValue >= 0 ? "+" : ""}{it.expectedValue?.toFixed(1)}%</span>}
-                    <span className="rounded-full border px-1.5 py-0.5 text-[10px]">{it.suggestion}</span>
+                    <span className="rounded-full border px-1.5 py-0.5 text-[10px]">{watchSuggestionLabel(it.suggestion)}</span>
                   </div>
                 </div>
               ))}
@@ -2091,8 +2106,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           const psConf = ps?.confidence != null ? Math.round(Number(ps.confidence))
             : item.finalScore > 0 ? Math.round(item.finalScore) : null;
           const actionCode = String(psActionRaw || "").trim().toUpperCase();
-          const actionText = safeKoreanLabel(psActionRaw, PATTERN_ACTION_KO);
-          const riskText = psRiskRaw ? safeKoreanLabel(psRiskRaw, PATTERN_RISK_KO, "확인 필요") : "정상";
+          const actionText = normalizeAction(safeKoreanLabel(psActionRaw, PATTERN_ACTION_KO, "") || psActionRaw).label;
+          const riskText = psRiskRaw ? normalizeStatus(safeKoreanLabel(psRiskRaw, PATTERN_RISK_KO, "") || psRiskRaw).label : "정상";
           const patternText = safeKoreanLabel(psPatternRaw, PATTERN_TYPE_KO);
           const geoPatternRaw = ps?.geometricPattern && typeof ps.geometricPattern === "string" ? ps.geometricPattern : null;
           const geoStageRaw = ps?.geometricPatternStage && typeof ps.geometricPatternStage === "string" ? ps.geometricPatternStage : null;
@@ -2237,7 +2252,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <div className="text-xs text-slate-200 leading-relaxed">
                   {[
                     actionText,
-                    `위험 ${riskText}`,
+                    riskText === "정상" ? "상태 정상" : `위험 ${riskText}`,
                     patternText ? `패턴 ${patternText}` : null,
                     psConf != null ? `신뢰도 ${psConf}` : null,
                   ].filter(Boolean).join(" · ")}

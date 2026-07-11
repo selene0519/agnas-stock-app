@@ -47,7 +47,7 @@ import {
 } from "@/lib/moneDisplay";
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
-import { normalizeAction, toneTextClass } from "@/lib/statusLabels";
+import { confidenceLabel, normalizeAction, normalizeStatus, toneTextClass } from "@/lib/statusLabels";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
 import { getAuthenticatedUserId } from "@/lib/userId";
 import { alertStatusTone, toneClassName } from "@/lib/tone";
@@ -684,9 +684,18 @@ function TodayEntryCard({
     "분석 필요",
   );
   const riskRaw = String(item.riskStatus || item.tradeBlockStatus || item.riskLevel || "").toUpperCase();
-  const riskText = !riskRaw || ["NONE", "OK", "NORMAL", "LOW"].includes(riskRaw) ? "위험 낮음" : riskRaw.includes("WATCH") || riskRaw.includes("주의") ? "주의" : "위험 확인";
-  const riskClass = riskText === "위험 낮음" ? "text-emerald-300" : riskText === "주의" ? "text-amber-300" : "text-red-300";
-  const confidence = probabilityText(item, score > 0 ? `${score.toFixed(0)}점` : "-");
+  const risk = normalizeStatus(
+    !riskRaw || ["NONE", "OK", "NORMAL", "LOW", "LOW_RISK", "SAFE"].includes(riskRaw)
+      ? "NORMAL"
+      : riskRaw.includes("WATCH") || riskRaw.includes("주의") || riskRaw.includes("CAUTION")
+        ? "CAUTION"
+        : "DANGER",
+  );
+  const riskText = risk.label;
+  const riskClass = toneTextClass(risk.tone);
+  const confidenceRaw = probabilityText(item, score > 0 ? `${score.toFixed(0)}점` : "-");
+  const confidencePct = safeNumber(confidenceRaw);
+  const confidence = confidencePct != null ? `${confidenceLabel(confidencePct).label} · ${confidenceRaw}` : confidenceRaw;
   const reasons = moneReasonLines(item).slice(0, 3);
   const ev = resolveEvPct(item) ?? 0;
   const rr = resolveRr(item) ?? 0;
@@ -699,6 +708,7 @@ function TodayEntryCard({
   const positionPlan = item.positionPlan || quantVerdict.positionPlan || {};
   const publicBlocked = Boolean(item.isTradeBlocked) || publicTradeStatus === "NO_TRADE";
   const publicCandidate = publicTradeStatus === "TRADE_CANDIDATE";
+  const decisionAction = normalizeAction(publicBlocked ? "대기" : publicCandidate ? "진입" : (publicTradeLabel || decision || "관찰"));
   const publicClass = publicCandidate
     ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
     : publicBlocked
@@ -793,8 +803,8 @@ function TodayEntryCard({
 
       <div className="mone-home-inset mt-3 flex items-center justify-between rounded-[10px] border px-3 py-2">
         <div>
-          <div className="text-[10px] font-semibold text-slate-500">MONE 참고</div>
-          <div className={`text-[13px] font-black ${toneStyle.decision}`}>{decision}</div>
+          <div className="text-[10px] font-semibold text-slate-500">최종 행동</div>
+          <div className={`text-[13px] font-black ${toneTextClass(decisionAction.tone)}`}>{decisionAction.label}</div>
         </div>
         <div className="text-right">
           <div className="text-[10px] font-semibold text-slate-500">신뢰도</div>
@@ -826,7 +836,7 @@ function TodayEntryCard({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-        <span className="text-slate-500">위험 <span className={`font-semibold ${riskClass}`}>{riskText}</span></span>
+        <span className="text-slate-500">{riskText === "정상" ? "상태" : "위험"} <span className={`font-semibold ${riskClass}`}>{riskText}</span></span>
       </div>
 
       {/* Decision Stack 요약 — 종목 신호·시장 환경·최종 행동을 한 줄로 정렬해
@@ -835,7 +845,6 @@ function TodayEntryCard({
         const gate = getMarketGateInfo(marketRegime, dataHealth);
         const signalText = score >= 75 ? "양호" : score >= 60 ? "보통" : score > 0 ? "약함" : "-";
         // 최종 행동은 정규 어휘(관찰/대기/진입 검토/보유/축소/청산)로 통일 (UX 보고서 8.1).
-        const action = normalizeAction(publicBlocked ? "대기" : publicCandidate ? "진입" : (publicTradeLabel || decision || "관찰"));
         return (
           <div className="mone-home-inset mt-2 grid grid-cols-3 gap-2 rounded-[10px] border px-3 py-2 text-[11px]">
             <div>
@@ -848,7 +857,7 @@ function TodayEntryCard({
             </div>
             <div>
               <div className="text-[10px] text-slate-500">최종 행동</div>
-              <div className={`font-semibold ${toneTextClass(action.tone)}`}>{action.label}</div>
+              <div className={`font-semibold ${toneTextClass(decisionAction.tone)}`}>{decisionAction.label}</div>
             </div>
           </div>
         );
@@ -857,7 +866,7 @@ function TodayEntryCard({
       {(publicTradeLabel || publicTradeStatus) && (
         <div className={`mt-2 rounded-[10px] border px-3 py-2 text-[11px] ${publicClass}`}>
           <div className="flex items-center justify-between gap-2">
-            <span className="font-bold">{publicTradeLabel || publicTradeStatus}</span>
+            <span className="font-bold">{normalizeAction(publicTradeLabel || publicTradeStatus).label}</span>
             <span className="font-mono text-[10px]">
               {positionPlan?.suggestedWeightPct != null ? `${Number(positionPlan.suggestedWeightPct).toFixed(1)}%` : "0.0%"}
             </span>
@@ -966,14 +975,14 @@ function CandidateCarouselSection({
     : riskItems;
   const emptyText =
     candidateTab === "today"
-      ? (marketRegime?.regime === "BEAR" ? "약세장 — 진입 기준 상향 적용 중입니다." : "현재 즉시 진입 후보가 없습니다.")
+      ? (marketRegime?.regime === "BEAR" ? "약세장 — 진입 검토 기준 상향 적용 중입니다." : "현재 진입 검토 후보가 없습니다.")
       : candidateTab === "watch"
-        ? "대기 관찰 종목이 없습니다."
-        : "위험 보류 종목이 없습니다.";
+        ? "관찰 종목이 없습니다."
+        : "위험 종목이 없습니다.";
   const tabs: { key: "today" | "watch" | "risk"; label: string; count: number }[] = [
-    { key: "today", label: "오늘 진입", count: todayEntries.length },
-    { key: "watch", label: "대기 관찰", count: watchItems.length },
-    { key: "risk", label: "위험 보류", count: riskItems.length },
+    { key: "today", label: "진입 검토", count: todayEntries.length },
+    { key: "watch", label: "관찰", count: watchItems.length },
+    { key: "risk", label: "위험", count: riskItems.length },
   ];
 
   useEffect(() => {
@@ -1008,7 +1017,7 @@ function CandidateCarouselSection({
             <span className="mone-section-icon" />
             <h2 className="text-[18px] font-black text-slate-100">오늘의 후보</h2>
           </div>
-          <p className="mt-1 text-xs text-slate-500">{sessionHint || "오늘 진입과 대기 관찰 후보를 같은 기준으로 확인합니다."}</p>
+          <p className="mt-1 text-xs text-slate-500">{sessionHint || "진입 검토와 관찰 후보를 같은 기준으로 확인합니다."}</p>
         </div>
         <span className="shrink-0 text-xs text-slate-500">
           {loading ? "확인 중" : `${todayEntries.length + watchItems.length + riskItems.length}개`}
@@ -1244,7 +1253,7 @@ function PositionSizingSection({
           </div>
         </div>
       ) : rows.length === 0 ? (
-        <div className="py-4 text-sm text-slate-500">오늘 진입 후보가 없습니다.</div>
+        <div className="py-4 text-sm text-slate-500">진입 검토 후보가 없습니다.</div>
       ) : (
         <>
           <div className="space-y-1">
@@ -1507,7 +1516,7 @@ function getMarketGateInfo(regime: any, dataHealth: any) {
   const dataAdj = hoursOld != null && hoursOld > 24 ? -15 : liveRatio < 0.1 ? (hasOhlcv ? -8 : -20) : liveRatio < 0.5 ? -5 : 0;
 
   const strength = Math.max(0, Math.min(100, base + maAdj + dataAdj));
-  const levelText = strength >= 75 ? "적극 진입" : strength >= 55 ? "정상 진입" : strength >= 35 ? "선별 진입" : "진입 자제";
+  const levelText = strength >= 55 ? "진입 검토" : strength >= 35 ? "관찰" : "대기";
   const isHigh = strength >= 55;
   const isMid = strength >= 35 && strength < 55;
   const isLow = strength < 35;
@@ -1575,13 +1584,13 @@ function MarketGateCard({
       <div className="mone-home-surface overflow-hidden rounded-[20px] border p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="text-[11px] font-black text-slate-500">진입 강도</div>
+            <div className="text-[11px] font-black text-slate-500">시장 상태</div>
             <div className={`mt-2 text-2xl font-black leading-none ${textCls}`}>{levelText}</div>
             <div className="mt-3 flex max-w-[270px] items-start gap-2 text-sm leading-6 text-slate-400 text-pretty">
               <AlertTriangle size={14} className={`mt-1 shrink-0 ${textCls}`} />
               <span>{isHigh ? "시장 상태가 양호합니다. 종목별 기준가와 위험 조건을 확인하세요."
-               : isMid ? "선별 진입 구간입니다. EV·손익비 조건을 더 엄격하게 확인하세요."
-               : "시장 약세와 공포 구간입니다. 신규 매수보다 보유 위험과 기준가 이탈을 먼저 확인하세요."}</span>
+               : isMid ? "관찰 구간입니다. EV·손익비 조건을 더 엄격하게 확인하세요."
+               : "시장 약세와 공포 구간입니다. 신규 진입보다 보유 위험과 기준가 이탈을 먼저 확인하세요."}</span>
             </div>
           </div>
           <div className={`shrink-0 text-right font-mono font-black ${textCls}`}>
