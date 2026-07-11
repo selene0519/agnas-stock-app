@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import csv
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import Query
+from fastapi import Header, Query
 from fastapi.routing import APIRoute
 
 
@@ -310,6 +311,57 @@ def _summary(items: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _local_dev_bypass() -> bool:
+    override = str(os.environ.get("MONE_ANON_HOLDINGS", "")).strip().lower()
+    return override in {"1", "true", "yes", "on"}
+
+
+def _sanitize_user_id(raw: str) -> str:
+    clean = re.sub(r"[^a-zA-Z0-9_\-]", "", str(raw or ""))
+    return clean[:64]
+
+
+def _resolve_authed_uid(x_mone_user: str, authorization: str) -> str:
+    """Return a verified login user id. Anonymous device ids are not enough."""
+    if _local_dev_bypass():
+        return _sanitize_user_id(x_mone_user) or "local-dev"
+    try:
+        from app.main import _extract_bearer_token, _verify_user_token
+        payload = _verify_user_token(_extract_bearer_token(authorization))
+        if payload:
+            return _sanitize_user_id(str(payload.get("userId") or payload.get("sub") or ""))
+    except Exception:
+        pass
+    return ""
+
+
+def _empty_holdings_payload(market: str = "all") -> dict[str, Any]:
+    return {
+        "status": "OK",
+        "routeVersion": "v80.3-holdings-authority",
+        "market": market,
+        "count": 0,
+        "uniqueCount": 0,
+        "items": [],
+        "authRequired": True,
+        "authNotice": "로그인하면 내 보유 종목이 표시됩니다.",
+        "summary": {
+            "holdingCount": 0,
+            "riskCount": 0,
+            "missingCount": 0,
+            "totalValue": 0.0,
+            "totalPnl": 0.0,
+            "totalPnlPct": 0.0,
+            "totalValueText": _fmt_money(0.0, "kr"),
+            "totalPnlText": _fmt_money(0.0, "kr"),
+            "totalPnlPctText": _fmt_pct(0.0),
+        },
+        "compatFallback": False,
+        "holdingAuthority": "",
+        "compatReason": "로그인하지 않은 요청에는 보유 원장을 노출하지 않습니다.",
+    }
+
+
 @lru_cache(maxsize=12)
 def _fallback_payload_cached(market: str, limit: int) -> dict[str, Any]:
     market = market if market in {"kr", "us", "all"} else "all"
@@ -338,5 +390,13 @@ def register_mone_v803_holdings_clean_guard(app: Any) -> None:
     ]
 
     @app.get(path)
-    def holdings_clean(market: str = Query("all"), limit: int = Query(500)) -> dict[str, Any]:
-        return _fallback_payload_cached(str(market or "all").lower(), limit)
+    def holdings_clean(
+        market: str = Query("all"),
+        limit: int = Query(500),
+        x_mone_user: str = Header(default="", alias="x-mone-user"),
+        authorization: str = Header(default="", alias="Authorization"),
+    ) -> dict[str, Any]:
+        normalized_market = str(market or "all").lower()
+        if not _resolve_authed_uid(x_mone_user, authorization):
+            return _empty_holdings_payload(normalized_market)
+        return _fallback_payload_cached(normalized_market, limit)

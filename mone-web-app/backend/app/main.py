@@ -4709,6 +4709,21 @@ def _install_mone_authoritative_holdings_clean_v3():
     def _sanitize_user_id(raw: str) -> str:
         return _mone_re.sub(r"[^a-zA-Z0-9_\-]", "", str(raw or ""))[:64]
 
+    def _local_dev_bypass() -> bool:
+        override = str(os.environ.get("MONE_ANON_HOLDINGS", "")).strip().lower()
+        return override in {"1", "true", "yes", "on"}
+
+    def _resolve_authed_uid(x_mone_user: str, authorization: str) -> str:
+        if _local_dev_bypass():
+            return _sanitize_user_id(x_mone_user) or "local-dev"
+        try:
+            payload = _verify_user_token(_extract_bearer_token(authorization))
+            if payload:
+                return _sanitize_user_id(str(payload.get("userId") or payload.get("sub") or ""))
+        except Exception:
+            pass
+        return ""
+
     def _read_personal_holdings(user_id: str, market: str) -> list[dict]:
         rows = []
         for row in _db.get_holdings(user_id, market):
@@ -5051,6 +5066,37 @@ def _install_mone_authoritative_holdings_clean_v3():
         payload["storage"] = _db.backend_info().get("backend", "user_db")
         return payload
 
+    def _empty_holdings_payload(market: str = "all") -> dict:
+        market_key = str(market or "all").lower()
+        if market_key not in ("all", "kr", "us"):
+            market_key = "all"
+        return {
+            "status": "OK",
+            "routeVersion": "holdings-authoritative-csv-v3",
+            "market": market_key,
+            "count": 0,
+            "totalCount": 0,
+            "uniqueCount": 0,
+            "items": [],
+            "authRequired": True,
+            "authNotice": "로그인하면 내 보유 종목이 표시됩니다.",
+            "summary": {
+                "count": 0,
+                "totalValue": 0.0,
+                "totalValueText": "-",
+                "totalPnl": 0.0,
+                "totalPnlText": "-",
+                "mixedCurrency": False,
+                "marketBreakdown": [],
+                "missingPriceCount": 0,
+                "missingStopCount": 0,
+                "missingTargetCount": 0,
+                "riskCount": 0,
+            },
+            "updatedAt": _mone_datetime.now().isoformat(),
+            "authority": "",
+        }
+
     global app
     app.router.routes = [
         r for r in app.router.routes
@@ -5062,22 +5108,24 @@ def _install_mone_authoritative_holdings_clean_v3():
         market: str = _MoneQuery("all"),
         limit: int = _MoneQuery(100),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
+        authorization: str = Header(default="", alias="Authorization"),
     ) -> dict:
-        uid = _sanitize_user_id(x_mone_user)
+        uid = _resolve_authed_uid(x_mone_user, authorization)
         if uid:
             return _personal_payload(uid, market, limit)
-        return _payload(market, limit)
+        return _empty_holdings_payload(market)
 
     @app.get("/api/final/holdings-clean")
     def mone_authoritative_final_holdings_clean_v3(
         market: str = _MoneQuery("all"),
         limit: int = _MoneQuery(100),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
+        authorization: str = Header(default="", alias="Authorization"),
     ) -> dict:
-        uid = _sanitize_user_id(x_mone_user)
+        uid = _resolve_authed_uid(x_mone_user, authorization)
         if uid:
             return _personal_payload(uid, market, limit)
-        return _payload(market, limit)
+        return _empty_holdings_payload(market)
 
 try:
     _install_mone_authoritative_holdings_clean_v3()

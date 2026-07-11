@@ -2,13 +2,19 @@ export type Market = "kr" | "us" | "all";
 export type Mode = "conservative" | "balanced" | "aggressive" | "all";
 export type Horizon = "short" | "swing" | "mid" | "long" | "all";
 
-import { getAuthenticatedUserId, getExistingUserId } from "./userId";
+import { getAuthenticatedUserId, getExistingUserId, getUserToken } from "./userId";
 
 function getMoneUserHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
     const id = getAuthenticatedUserId() || getExistingUserId();
-    return id ? { "x-mone-user": id } : {};
+    // 로그인 토큰을 함께 보낸다 — 보유 등 개인 데이터는 백엔드가 이 토큰을 검증해
+    // '실제 로그인' 세션에만 노출한다(비로그인 device-id만으론 빈 보유).
+    const token = getUserToken();
+    return {
+      ...(id ? { "x-mone-user": id } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
   } catch {
     return {};
   }

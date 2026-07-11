@@ -65,7 +65,11 @@ function getMoneUserHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
     const id = getAuthenticatedUserId() || getExistingUserId();
-    return id ? { "x-mone-user": id } : {};
+    const token = getUserToken();
+    return {
+      ...(id ? { "x-mone-user": id } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
   } catch { return {}; }
 }
 

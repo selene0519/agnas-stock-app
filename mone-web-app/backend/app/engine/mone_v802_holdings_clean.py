@@ -513,19 +513,30 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
     }
 
 
-def _serve_anon_broker_csv() -> bool:
-    """익명(비로그인) 요청에 로컬 브로커 원장 CSV(실제 보유·수량)를 노출할지 여부.
-
-    기본: 공개 배포(Render)에선 노출하지 않는다 — 아무 방문자나 소유자의 실제 보유·수량을
-    로그인 없이 보면 안 되기 때문(프라이버시). 로컬/개인 PC에선 편의상 노출한다.
-    MONE_ANON_HOLDINGS 환경변수로 명시 오버라이드 가능(1=허용, 0=차단).
-    """
+def _local_dev_bypass() -> bool:
+    """로컬 개발 편의용 오버라이드. MONE_ANON_HOLDINGS=1 이면 로그인 없이도 보유 노출(개발 전용).
+    기본은 False — 비로그인은 어디서든(로컬 포함) 보유를 보지 못한다(로그인 필수 정책)."""
     override = str(os.environ.get("MONE_ANON_HOLDINGS", "")).strip().lower()
-    if override in ("1", "true", "yes", "on"):
-        return True
-    if override in ("0", "false", "no", "off"):
-        return False
-    return not os.environ.get("RENDER")  # Render(공개배포) → 차단, 로컬 → 허용
+    return override in ("1", "true", "yes", "on")
+
+
+def _resolve_authed_uid(x_mone_user: str, authorization: str) -> str:
+    """유효한 OAuth 로그인 토큰이 있으면 그 userId를 반환. 없으면(비로그인) "".
+
+    보유는 '실제 로그인' 세션에만 노출한다. 프론트는 비로그인이어도 x-mone-user에 익명
+    device-id를 보내므로, device-id만으로는 인정하지 않고 Authorization Bearer 토큰을 검증한다.
+    MONE_ANON_HOLDINGS=1(로컬 개발)일 때만 x-mone-user를 그대로 인정한다.
+    """
+    if _local_dev_bypass():
+        return _sanitize_user_id(x_mone_user) or "local-dev"
+    try:
+        from app.main import _extract_bearer_token, _verify_user_token
+        payload = _verify_user_token(_extract_bearer_token(authorization))
+        if payload:
+            return _sanitize_user_id(str(payload.get("userId") or payload.get("sub") or ""))
+    except Exception:
+        pass
+    return ""
 
 
 def _empty_holdings_payload(market: str = "all") -> Dict[str, Any]:
@@ -550,9 +561,7 @@ def _empty_holdings_payload(market: str = "all") -> Dict[str, Any]:
 
 
 def _anon_holdings_payload(market: str = "all", limit: int = 500) -> Dict[str, Any]:
-    """비로그인 요청: 로컬에선 브로커 CSV, 공개 배포에선 빈 보유(로그인 안내)."""
-    if _serve_anon_broker_csv():
-        return _anon_holdings_payload(market=market, limit=limit)
+    """비로그인/미인증 요청 → 빈 보유(로그인 필요). 브로커 CSV는 인증된 세션에만 서빙."""
     return _empty_holdings_payload(market)
 
 
@@ -665,52 +674,57 @@ def register_mone_v802_holdings_clean_routes(app):
         market: str = Query("all"),
         limit: int = Query(500),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
+        authorization: str = Header(default="", alias="Authorization"),
     ):
-        uid = _sanitize_user_id(x_mone_user)
-        if uid:
-            return holdings_clean_payload_for_user(uid, market=market, limit=limit)
-        return _anon_holdings_payload(market=market, limit=limit)
+        uid = _resolve_authed_uid(x_mone_user, authorization)
+        if not uid:
+            return _empty_holdings_payload(market)
+        return holdings_clean_payload_for_user(uid, market=market, limit=limit)
 
     @app.get("/api/final/holdings-clean")
     def final_holdings_clean(
         market: str = Query("all"),
         limit: int = Query(500),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
+        authorization: str = Header(default="", alias="Authorization"),
     ):
-        uid = _sanitize_user_id(x_mone_user)
-        if uid:
-            return holdings_clean_payload_for_user(uid, market=market, limit=limit)
-        return _anon_holdings_payload(market=market, limit=limit)
+        uid = _resolve_authed_uid(x_mone_user, authorization)
+        if not uid:
+            return _empty_holdings_payload(market)
+        return holdings_clean_payload_for_user(uid, market=market, limit=limit)
 
     @app.get("/api/holdings")
     def holdings(
         market: str = Query("all"),
         limit: int = Query(500),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
+        authorization: str = Header(default="", alias="Authorization"),
     ):
-        uid = _sanitize_user_id(x_mone_user)
-        if uid:
-            return holdings_clean_payload_for_user(uid, market=market, limit=limit)
-        return _anon_holdings_payload(market=market, limit=limit)
+        uid = _resolve_authed_uid(x_mone_user, authorization)
+        if not uid:
+            return _empty_holdings_payload(market)
+        return holdings_clean_payload_for_user(uid, market=market, limit=limit)
 
     @app.get("/api/holdings/summary")
     def holdings_summary(
         market: str = Query("all"),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
+        authorization: str = Header(default="", alias="Authorization"),
     ):
-        uid = _sanitize_user_id(x_mone_user)
+        uid = _resolve_authed_uid(x_mone_user, authorization)
         payload = (holdings_clean_payload_for_user(uid, market=market, limit=1000)
-                   if uid else _anon_holdings_payload(market=market, limit=1000))
+                   if uid else _empty_holdings_payload(market))
         return {"status": "OK", "routeVersion": "v80.2-clean", "market": market, **payload["summary"], "updatedAt": payload["updatedAt"]}
 
     @app.get("/api/holdings/risk")
     def holdings_risk(
         market: str = Query("all"),
         x_mone_user: str = Header(default="", alias="x-mone-user"),
+        authorization: str = Header(default="", alias="Authorization"),
     ):
-        uid = _sanitize_user_id(x_mone_user)
+        uid = _resolve_authed_uid(x_mone_user, authorization)
         payload = (holdings_clean_payload_for_user(uid, market=market, limit=1000)
-                   if uid else _anon_holdings_payload(market=market, limit=1000))
+                   if uid else _empty_holdings_payload(market))
         items = [x for x in payload["items"] if x["riskStatus"] in {"위험", "주의", "손절지연"}]
         return {"status": "OK", "routeVersion": "v80.2-clean", "market": market, "count": len(items), "items": items, "updatedAt": payload["updatedAt"]}
 
