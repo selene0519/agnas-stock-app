@@ -2131,6 +2131,7 @@ export default function ChartPage() {
   const [market, setMarket] = useState<Market>(() => initialChartMarket());
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
   const [analysisTab, setAnalysisTab] = useState<AnalysisTabKey>("summary");
+  const [dataStatusOpen, setDataStatusOpen] = useState(false);
   const [rows, setRows] = useState<any[]>([]);
   const [levels, setLevels] = useState<any | null>(null);
   const [chartMeta, setChartMeta] = useState<any | null>(null);
@@ -2721,14 +2722,39 @@ export default function ChartPage() {
               </div>
             )}
 
-            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-              {dataCards.map((card) => (
-                <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.cls}`}>
-                  <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{card.label}</div>
-                  <div className="mt-1 text-sm font-bold">{card.value}</div>
-                  <div className="text-[10px] opacity-75">{card.sub}</div>
+            <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-3">
+              <button
+                type="button"
+                aria-expanded={dataStatusOpen}
+                onClick={() => setDataStatusOpen((open) => !open)}
+                className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-1 text-left transition-[color,transform] active:scale-[0.96]"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-slate-200">데이터 연결 상태</div>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {dataCards.map((card) => (
+                      <span key={card.label} className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-0.5 text-[10px] text-slate-400">
+                        <span className="text-slate-500">{card.label}</span>
+                        <span className="ml-1 font-semibold text-slate-200">{card.value}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              ))}
+                <span className="shrink-0 rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-slate-400">
+                  {dataStatusOpen ? "접기 ▲" : "펼치기 ▼"}
+                </span>
+              </button>
+              {dataStatusOpen && (
+                <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {dataCards.map((card) => (
+                    <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.cls}`}>
+                      <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{card.label}</div>
+                      <div className="mt-1 text-sm font-bold">{card.value}</div>
+                      <div className="text-[10px] opacity-75">{card.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {loadState.errors.length > 0 && (
