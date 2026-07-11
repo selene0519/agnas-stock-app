@@ -373,7 +373,7 @@ function buildDailyBriefing(args: {
   if (isStopBreached(topItem)) {
     // 현재가가 이미 손절가 아래 — 신규 진입 부적합. 가장 우선해서 경고한다.
     tone = "red";
-    detail = `${name}은 현재가가 이미 손절가 아래로 내려와 신규 진입에는 부적합합니다. 추천 기준일 이후 하락한 상태이니 재진입은 손절가·기준가 재설정 후 판단하세요.`;
+    detail = `${name}은 현재가가 이미 손절가 아래로 내려와 진입 검토에는 부적합합니다. 추천 기준일 이후 하락한 상태이니 재진입은 손절가·기준가 재설정 후 판단하세요.`;
   } else if (isBear || isRisk) {
     tone = isRisk ? "red" : "amber";
     detail = `${name}은 신호가 있지만 시장/리스크 조건 확인이 우선입니다. 진입보다 손절가와 기준가 이격을 먼저 보세요.`;
@@ -2187,7 +2187,7 @@ function MarketRegimeSummaryCard({
           {regime?.description && <div className="mt-1">{regime.description}</div>}
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="rounded-full bg-slate-950/60 px-3 py-1">{getRegimeStance(regime?.regime, selectedMarket)}</span>
-            {isBear && <span className="rounded-full bg-amber-900/30 px-3 py-1 text-amber-200">공격형 진입 보류 권장</span>}
+            {isBear && <span className="rounded-full bg-amber-900/30 px-3 py-1 text-amber-200">공격형 진입 대기 권장</span>}
             {isBull && <span className="rounded-full bg-emerald-900/30 px-3 py-1 text-emerald-200">균형·공격형 전략 정상 작동 중</span>}
           </div>
         </div>
@@ -2598,7 +2598,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                 label: "손절선 유효",
                 ok: !stopBreached,
                 detail: stopBreached
-                  ? `현재가 ${current!.toLocaleString("ko-KR")}가 손절가 ${stop!.toLocaleString("ko-KR")} 이하 — 이미 손절선 이탈, 신규 진입 부적합`
+                  ? `현재가 ${current!.toLocaleString("ko-KR")}가 손절가 ${stop!.toLocaleString("ko-KR")} 이하 — 이미 손절선 이탈, 진입 검토 부적합`
                   : (current != null && stop != null ? `현재가 > 손절가 ${stop.toLocaleString("ko-KR")}` : "현재가/손절가 없음"),
               },
               {

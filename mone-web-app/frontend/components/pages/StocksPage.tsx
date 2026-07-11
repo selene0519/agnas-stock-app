@@ -256,13 +256,13 @@ function watchToggleClass(isWatched: boolean) {
 function statusText(status?: string) {
   const value = String(status || "").toUpperCase();
   if (value === "NORMAL") return "정상";
-  if (value === "PRICE_PENDING" || value === "NO_PRICE") return "현재가 수집 대기";
-  if (value === "DATA_PENDING") return "데이터 수집 대기";
+  if (value === "PRICE_PENDING" || value === "NO_PRICE") return "현재가 대기";
+  if (value === "DATA_PENDING") return "분석 대기";
   if (value === "STALE") return "시세 갱신 필요";
   if (value === "ERROR") return "오류";
   if (value === "SEARCH_ONLY") return "검색 전용";
   if (value === "LOCAL_ONLY") return "로컬 임시";
-  if (value === "BLOCK") return "진입 차단";
+  if (value === "BLOCK") return "위험";
   return value || "";
 }
 
@@ -310,10 +310,10 @@ function normalizeHoldingEdit(item: any): HoldingEditRow | null {
 }
 
 const PATTERN_ACTION_KO: Record<string, string> = {
-  SCALE_IN: "분할 접근", WATCH_ONLY: "관찰", WAIT_PULLBACK: "눌림 대기",
-  HOLD_CASH: "현금 대기", AVOID_CHASE: "추격 금지", BLOCKED: "진입 차단",
-  BUY: "매수", STRONG_BUY: "강력매수", SELL: "매도", STRONG_SELL: "강력매도",
-  HOLD: "보유", ENTER: "진입", EXIT: "청산", WAIT: "대기",
+  SCALE_IN: "진입 검토", WATCH_ONLY: "관찰", WAIT_PULLBACK: "대기",
+  HOLD_CASH: "대기", AVOID_CHASE: "대기", BLOCKED: "대기",
+  BUY: "진입 검토", STRONG_BUY: "진입 검토", SELL: "청산 검토", STRONG_SELL: "청산 검토",
+  HOLD: "보유", ENTER: "진입 검토", EXIT: "청산 검토", WAIT: "대기",
 };
 const PATTERN_RISK_KO: Record<string, string> = {
   NONE: "정상", PULLBACK_RISK: "눌림 위험", OVERHEATED_CHASE_RISK: "과열 추격 주의",
@@ -420,7 +420,7 @@ function safeKoreanLabel(
 function recommendationBadgeLabel(item: any, actionCode: string, actionText: string | null): string | null {
   const baseLabel = sourceStatusLabel(item.sourceStatus);
   if (!baseLabel) return null;
-  if (actionCode === "HOLD_CASH" || actionCode === "WATCH_ONLY" || actionText === "현금 대기") return "관찰 후보";
+  if (actionCode === "HOLD_CASH" || actionCode === "WATCH_ONLY" || actionText === "대기") return "관찰 후보";
   if (ENTRY_ACTION_CODES.has(actionCode)) return "진입 후보";
   if (OBSERVE_ACTION_CODES.has(actionCode) && baseLabel === "조건일치") return "조건 포착";
   return baseLabel === "조건일치" ? "조건 포착" : baseLabel;
@@ -1489,12 +1489,12 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                       <input type="checkbox" checked={hideDataPending} onChange={(e) => setHideDataPending(e.target.checked)}
                         className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                      데이터 수집 대기 / 시세 오래됨 숨기기
+                      분석 대기 / 시세 오래됨 숨기기
                     </label>
                     <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                       <input type="checkbox" checked={hideBlockedOnly} onChange={(e) => setHideBlockedOnly(e.target.checked)}
                         className="rounded border-slate-700 bg-slate-800 accent-sky-500" />
-                      진입 차단 종목 숨기기
+                      위험 종목 숨기기
                     </label>
                   </div>
                 </div>

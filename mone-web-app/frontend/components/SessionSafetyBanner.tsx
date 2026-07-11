@@ -111,9 +111,9 @@ export default function SessionSafetyBanner({
               {quality.isHoliday && <span className="rounded-md bg-blue-500/20 px-1.5 py-0.5 text-[11px] text-blue-100">복기 모드</span>}
             </div>
             {quality.killSwitch && !quality.isHoliday ? (
-              <p className="mt-0.5 text-[11px] text-red-200">데이터 상태가 안전하지 않아 신규 진입 판단을 중단해야 합니다.</p>
+              <p className="mt-0.5 text-[11px] text-red-200">데이터 상태가 안전하지 않아 진입 판단을 중단해야 합니다.</p>
             ) : quality.isHoliday ? (
-              <p className="mt-0.5 text-[11px] text-blue-200">시장 휴장일입니다. 신규 진입보다 지난 운용 리포트와 검증 결과를 확인하세요.</p>
+              <p className="mt-0.5 text-[11px] text-blue-200">시장 휴장일입니다. 진입 검토보다 지난 운용 리포트와 검증 결과를 확인하세요.</p>
             ) : alerts.length > 0 ? (
               <p className="mt-0.5 text-[11px] text-amber-200">현재 기준가/손절가 1% 이내 근접 알림 {alerts.length}건이 있습니다.</p>
             ) : quality.networkError ? (

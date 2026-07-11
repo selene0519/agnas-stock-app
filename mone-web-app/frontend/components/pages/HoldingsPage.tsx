@@ -78,7 +78,7 @@ const LS_HOLDINGS_KEY = "mone:personal_holdings_v2";
 function holdingStatusLabel(status: any): string {
   const s = String(status || "").toUpperCase();
   if (s === "LOCAL_ONLY") return "로컬 임시";
-  if (s === "DATA_PENDING") return "데이터 수집 대기";
+  if (s === "DATA_PENDING") return "분석 대기";
   if (s === "STALE") return "가격 갱신 필요";
   if (s === "NO_PRICE" || s === "PRICE_PENDING") return "현재가 없음";
   if (s === "PREVIOUS_CLOSE_BASIS") return "최신 마감 기준";
@@ -1454,7 +1454,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
                       const s = String(holding.priceDataStatus || holding.dataStatus || "");
                       if (s === "LOCAL_ONLY") return "로컬 임시";
-                      if (s === "DATA_PENDING") return "데이터 수집 대기";
+                      if (s === "DATA_PENDING") return "분석 대기";
                       if (s === "STALE") return "시세 갱신 필요";
                       if (s === "NORMAL" || s === "OK") return "정상";
                       return s;
@@ -1608,7 +1608,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <Mini label="수량" value={String(holding.quantity || "-")} />
                 <Mini label="평단" value={holding.avgPriceText || "-"} />
-                <Mini label="현재가" value={holding.currentPriceText || "수집 대기"} />
+                <Mini label="현재가" value={holding.currentPriceText || "현재가 대기"} />
                 <Mini label="등락률" value={holding.changePctText || "-"}
                   accent={String(holding.changePctText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"} />
                 <Mini label="평가금액" value={holding.valuationText || holding.marketValueText || "-"} />
@@ -1699,7 +1699,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                         {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
                           const s = String(holding.priceDataStatus || holding.dataStatus || "");
                           if (s === "LOCAL_ONLY") return "로컬 임시";
-                          if (s === "DATA_PENDING") return "데이터 수집 대기";
+                          if (s === "DATA_PENDING") return "분석 대기";
                           if (s === "STALE") return "시세 갱신 필요";
                           if (s === "NORMAL" || s === "OK") return "정상";
                           return s;
@@ -1803,7 +1803,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                     <Mini label="수량" value={String(holding.quantity || "-")} />
                     <Mini label="평단" value={holding.avgPriceText || "-"} />
-                    <Mini label="현재가" value={holding.currentPriceText || "수집 대기"} />
+                    <Mini label="현재가" value={holding.currentPriceText || "현재가 대기"} />
                     <Mini label="등락률" value={holding.changePctText || "-"}
                       accent={String(holding.changePctText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"} />
                     <Mini label="평가금액" value={holding.valuationText || holding.marketValueText || "-"} />
@@ -1873,7 +1873,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   })
                 )}
               </div>
-              <p className="mt-2 text-[10px] text-slate-500">Half-Kelly 상한 20% · VTJ 실적 기반 — 해당 전략으로 신규 진입 시 권장 비중입니다.</p>
+              <p className="mt-2 text-[10px] text-slate-500">Half-Kelly 상한 20% · VTJ 실적 기반 — 해당 전략으로 진입 검토 시 권장 비중입니다.</p>
             </div>
           )}
         </div>

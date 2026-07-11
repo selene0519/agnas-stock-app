@@ -618,7 +618,7 @@ function MarketGateCard({ regime, dataHealth, selectedMarket }: { regime: any; d
         </div>
         {isLow && (
           <div className="mt-3 rounded-lg border border-red-800/40 bg-red-950/30 px-3 py-2 text-[10px] text-red-300">
-            ⚠ 신규 진입 시 평소보다 엄격한 기준을 적용하세요.
+            ⚠ 진입 검토 시 평소보다 엄격한 기준을 적용하세요.
           </div>
         )}
       </div>
