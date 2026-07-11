@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Bell,
   Bot,
+  ChevronDown,
   ChevronRight,
   Clock,
   ClipboardList,
@@ -1209,6 +1210,7 @@ function PositionSizingSection({
   onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number }) => void;
 }) {
   const [inputVal, setInputVal] = useState(capital > 0 ? String(capital) : "");
+  const [open, setOpen] = useState(false);
 
   function handleCapitalChange(raw: string) {
     const clean = raw.replace(/[^0-9]/g, "");
@@ -1226,11 +1228,22 @@ function PositionSizingSection({
 
   return (
     <section className="mone-home-surface rounded-[18px] border p-4">
-      <div className="mb-3 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-h-12 w-full items-center gap-2 text-left transition-[color,transform] active:scale-[0.96]"
+      >
         <span className="mone-section-icon" />
-        <h2 className="text-[18px] font-black text-slate-100">포지션 사이징 (Half-Kelly)</h2>
-        <ChevronRight size={16} className="ml-auto text-slate-100" />
-      </div>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[18px] font-black text-slate-100">포지션 사이징 (Half-Kelly)</span>
+          <span className="mt-0.5 block text-xs text-slate-500">
+            {capital > 0 ? `총 자본 ${capital.toLocaleString()}원 · 후보 ${rows.length}개` : "총 자본 입력 후 권장 금액 계산"}
+          </span>
+        </span>
+        {open ? <ChevronDown size={16} className="shrink-0 text-slate-100" /> : <ChevronRight size={16} className="shrink-0 text-slate-100" />}
+      </button>
+      {open && <div className="mt-3 border-t border-slate-800/80 pt-3">
       {capital <= 0 ? (
         <div className="space-y-3">
           <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-sm text-slate-400">
@@ -1282,6 +1295,7 @@ function PositionSizingSection({
           </div>
         </>
       )}
+      </div>}
     </section>
   );
 }

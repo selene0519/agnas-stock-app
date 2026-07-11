@@ -788,6 +788,7 @@ export default function HomePageMobile({
   const [clock, setClock] = useState<Date | null>(null);
   const [decisionTab, setDecisionTab] = useState<DecisionTab>("entry");
   const [moreOpen, setMoreOpen] = useState(false);
+  const [sizingOpen, setSizingOpen] = useState(false);
   const [calendarAlert, setCalendarAlert] = useState<any>(null);
   const [nearAlerts, setNearAlerts] = useState<any[]>([]);
   const [signalLedger, setSignalLedger] = useState<any>(null);
@@ -1121,15 +1122,29 @@ export default function HomePageMobile({
 
         {/* 포지션 사이징 미리보기 */}
         <section className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-4">
-          <div className="mb-2.5 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-100">포지션 사이징 미리보기</h2>
+          <button
+            type="button"
+            aria-expanded={sizingOpen}
+            onClick={() => setSizingOpen((v) => !v)}
+            className="flex min-h-12 w-full items-center justify-between gap-3 text-left transition-[color,transform] active:scale-[0.96]"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-slate-100">포지션 사이징 미리보기</span>
+              <span className="mt-0.5 block text-[11px] text-slate-500">
+                {capital > 0 ? `총 자본 ${capital.toLocaleString()}원 · 후보 ${sizingRows.length}개` : "총 자본 입력 후 권장 금액 계산"}
+              </span>
+            </span>
+            <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${sizingOpen ? "rotate-180" : ""}`} />
+          </button>
+          {sizingOpen && <div className="mt-3 border-t border-slate-800 pt-3">
+            <div className="mb-2.5 flex items-center justify-end">
             <input
               type="text"
               inputMode="numeric"
               placeholder="총 자본"
               value={capitalInput ? Number(capitalInput).toLocaleString() : ""}
               onChange={(e) => handleCapitalChange(e.target.value.replace(/,/g, ""))}
-              className="w-28 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-right font-mono text-xs text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+              className="w-32 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-right font-mono text-xs text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
             />
           </div>
           {capital <= 0 ? (
@@ -1152,6 +1167,7 @@ export default function HomePageMobile({
               ))}
             </div>
           )}
+          </div>}
         </section>
 
         {/* 보유종목 */}
