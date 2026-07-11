@@ -10,6 +10,7 @@ import { toneClassName } from "@/lib/tone";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
 import StockResearchPanel from "@/components/StockResearchPanel";
+import { confidenceLabel, dataStatusLabel, normalizeAction, normalizeStatus, toneTextClass } from "@/lib/statusLabels";
 
 type ToggleKey = "ma10" | "ma20" | "ma60" | "bb" | "volume" | "rsi" | "macd" | "index"
               | "zigzag" | "trendline" | "retracement" | "supply" | "fakeBreak";
@@ -20,6 +21,16 @@ const PERIODS: { label: string; bars: number | null }[] = [
   { label: "6M", bars: 126 },
   { label: "1Y", bars: 252 },
   { label: "전체", bars: null },
+];
+
+type AnalysisTabKey = "summary" | "chart" | "flow" | "company" | "risk";
+
+const ANALYSIS_TABS: { key: AnalysisTabKey; label: string; hint: string }[] = [
+  { key: "summary", label: "요약", hint: "결론·행동·가격" },
+  { key: "chart", label: "차트", hint: "기술 신호" },
+  { key: "flow", label: "수급", hint: "호가·거래량" },
+  { key: "company", label: "기업", hint: "재무·뉴스" },
+  { key: "risk", label: "리스크", hint: "지표·레버리지" },
 ];
 
 type ChartLoadState = {
@@ -212,13 +223,9 @@ function companyOneLine(company: any): string {
 
 function loadStatusText(status: any) {
   const s = String(status || "").toUpperCase();
-  if (s === "OK" || s === "NORMAL") return "정상";
-  if (s === "PARTIAL") return "부분";
-  if (s === "STALE") return "오래됨";
-  if (s === "ERROR") return "오류";
-  if (s === "TIMEOUT") return "시간초과";
-  if (s === "NO_DATA") return "없음";
-  return status ? String(status) : "확인 필요";
+  if (s === "TIMEOUT") return "갱신 필요";
+  if (s === "ERROR" || s === "NO_DATA") return "위험";
+  return dataStatusLabel(status).label;
 }
 
 function statusTone(kind: "ok" | "warn" | "bad" | "neutral") {
@@ -233,45 +240,45 @@ function coverageTone(count: number, required = 1) {
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  BUY_NOW: "즉시 진입",
-  SCALE_IN: "분할 접근",
+  BUY_NOW: "진입 검토",
+  SCALE_IN: "진입 검토",
   WATCH_ONLY: "관찰",
-  WAIT_PULLBACK: "눌림 대기",
-  HOLD_CASH: "현금 대기",
-  AVOID_CHASE: "추격 금지",
-  BLOCKED: "진입 차단",
-  BUY: "매수",
-  STRONG_BUY: "강력매수",
-  SELL: "매도",
-  STRONG_SELL: "강력매도",
+  WAIT_PULLBACK: "대기",
+  HOLD_CASH: "대기",
+  AVOID_CHASE: "대기",
+  BLOCKED: "대기",
+  BUY: "진입 검토",
+  STRONG_BUY: "진입 검토",
+  SELL: "청산 검토",
+  STRONG_SELL: "청산 검토",
   HOLD: "보유",
-  ENTER: "진입",
-  EXIT: "청산",
+  ENTER: "진입 검토",
+  EXIT: "청산 검토",
   WAIT: "대기",
-  AVOID_BUY: "매수 회피",
-  RISK_CHECK: "위험 점검",
+  AVOID_BUY: "대기",
+  RISK_CHECK: "대기",
 };
 
 const RISK_LABELS: Record<string, string> = {
   NONE: "정상",
   OK: "정상",
   NORMAL: "정상",
-  LOW_RISK: "낮음",
-  MEDIUM_RISK: "보통",
-  HIGH_RISK: "높음",
-  SAFE: "안전",
+  LOW_RISK: "정상",
+  MEDIUM_RISK: "주의",
+  HIGH_RISK: "위험",
+  SAFE: "정상",
   CAUTION: "주의",
   DANGER: "위험",
   WATCH: "주의",
-  PULLBACK_RISK: "눌림 위험",
-  OVERHEATED_CHASE_RISK: "과열 추격 주의",
-  FALSE_BREAKOUT_RISK: "가짜 돌파 주의",
-  STRUCTURE_BREAKDOWN: "구조 이탈",
-  DATA_QUALITY_RISK: "데이터 확인 필요",
-  OVERHEATED_EXTENSION: "과열 확장",
-  MOMENTUM_COLLAPSE: "모멘텀 급락",
-  LOW_ACTIVITY_BREAKOUT: "거래량 부족 돌파",
-  FAKE_BREAKOUT: "가짜 돌파",
+  PULLBACK_RISK: "위험",
+  OVERHEATED_CHASE_RISK: "주의",
+  FALSE_BREAKOUT_RISK: "주의",
+  STRUCTURE_BREAKDOWN: "위험",
+  DATA_QUALITY_RISK: "데이터 제한",
+  OVERHEATED_EXTENSION: "주의",
+  MOMENTUM_COLLAPSE: "위험",
+  LOW_ACTIVITY_BREAKOUT: "주의",
+  FAKE_BREAKOUT: "주의",
 };
 
 const PATTERN_LABELS: Record<string, string> = {
@@ -380,7 +387,7 @@ function collectionStatusCard(loadState: ChartLoadState, loading: boolean) {
   const related = loadState.newsCount + loadState.disclosureCount;
   const sourceTotal = loadState.newsSourceCount + loadState.disclosureSourceCount;
   const failed = [newsStatus, disclosureStatus].some((s) => s === "ERROR" || s === "TIMEOUT");
-  if (loading) return { value: "수집 대기", sub: "데이터 확인 중", cls: statusTone("warn") };
+  if (loading) return { value: "분석 대기", sub: "데이터 확인 중", cls: statusTone("warn") };
   if (failed) return { value: "수집 실패", sub: "뉴스·공시 API 확인 필요", cls: statusTone("bad") };
   if (related > 0) {
     const partial = loadState.newsCount === 0 || loadState.disclosureCount === 0;
@@ -391,19 +398,19 @@ function collectionStatusCard(loadState: ChartLoadState, loading: boolean) {
     };
   }
   if (sourceTotal > 0) return { value: "데이터 없음", sub: "원본 수집됨 · 선택 종목 관련 없음", cls: statusTone("neutral") };
-  return { value: "수집 대기", sub: "장전/장마감 후 자동 수집됩니다.", cls: statusTone("warn") };
+  return { value: "분석 대기", sub: "장전/장마감 후 자동 수집됩니다.", cls: statusTone("warn") };
 }
 
 function companyStatusCard(company: any, loadState: ChartLoadState) {
   const status = String(loadState.companyStatus || "").toUpperCase();
   if (status === "TIMEOUT" || status === "ERROR") {
-    return { value: status === "TIMEOUT" ? "수집 대기" : "수집 실패", sub: "기업분석 API 응답 확인 필요", cls: statusTone("warn") };
+    return { value: status === "TIMEOUT" ? "분석 대기" : "수집 실패", sub: "기업분석 API 응답 확인 필요", cls: statusTone("warn") };
   }
   if (company?.dataStatus === "SOURCE_CONTEXT" || company?.dataStatus === "REPORT_FALLBACK") {
     return { value: "일부 수집", sub: "추천 원본 기준", cls: statusTone("warn") };
   }
   if (company) return { value: "연결됨", sub: company?.hasDartData ? "DART/재무 데이터 정상" : loadStatusText(status), cls: statusTone("ok") };
-  return { value: "수집 대기", sub: "DART/재무 데이터 자동 수집 대기", cls: statusTone("warn") };
+  return { value: "분석 대기", sub: "DART/재무 데이터 자동 수집 예정", cls: statusTone("warn") };
 }
 
 function dateOf(row: any) {
@@ -427,7 +434,7 @@ function freshnessInfo(rows: any[]) {
   const days = Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
   if (days <= 4) return { label: "신선", detail: `${last} 기준`, cls: statusTone("ok") };
   if (days <= 10) return { label: "확인 필요", detail: `${days}일 전 OHLCV`, cls: statusTone("warn") };
-  return { label: "오래됨", detail: `${days}일 전 OHLCV`, cls: statusTone("bad") };
+  return { label: "갱신 필요", detail: `${days}일 전 OHLCV`, cls: statusTone("bad") };
 }
 
 function firstTouch(rows: any[], price: number, fromIndex = 0) {
@@ -488,7 +495,7 @@ function recommendationTouchReview(rows: any[], levels: any, currentPrice: numbe
   const targetTouch = firstTouch(reviewRows, target, fromEntry);
   const stopTouch = firstTouch(reviewRows, stop, fromEntry);
   const gapPct = currentPrice > 0 ? ((currentPrice - entry) / entry) * 100 : null;
-  const gapText = gapPct == null ? "현재가 없음" : `${gapPct >= 0 ? "+" : ""}${gapPct.toFixed(1)}%`;
+  const gapText = gapPct == null ? "갱신 필요" : `${gapPct >= 0 ? "+" : ""}${gapPct.toFixed(1)}%`;
 
   if (!entryTouch) {
     return {
@@ -2065,7 +2072,7 @@ function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative"|"ba
 function technicalStance(rows: any[], indicators: any, latestRsi: number | null, atrPlan: ReturnType<typeof calcAtrPlan>) {
   if (rows.length < 20) {
     return {
-      label: "판단 대기",
+      label: "대기",
       detail: "OHLCV 20일 이상이 필요합니다.",
       cls: statusTone("neutral"),
     };
@@ -2123,6 +2130,7 @@ function CollapsibleOrderbook({ symbol, market }: { symbol: string; market: stri
 export default function ChartPage() {
   const [market, setMarket] = useState<Market>(() => initialChartMarket());
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
+  const [analysisTab, setAnalysisTab] = useState<AnalysisTabKey>("summary");
   const [rows, setRows] = useState<any[]>([]);
   const [levels, setLevels] = useState<any | null>(null);
   const [chartMeta, setChartMeta] = useState<any | null>(null);
@@ -2228,6 +2236,10 @@ export default function ChartPage() {
     const seen = window.localStorage.getItem("mone_precision_evidence_hint_seen");
     if (!seen) setShowPrecisionHint(true);
   }, []);
+
+  useEffect(() => {
+    setAnalysisTab("summary");
+  }, [selected?.symbol, selected?.market]);
 
   function applyPrecisionEvidence(next: boolean) {
     setPrecisionEvidence(next);
@@ -2451,8 +2463,10 @@ export default function ChartPage() {
     const actionRaw = firstPlainText(ps?.action, source.patternStrategyAction, source.patternAction, source.newEntryDecision, source.buyTiming);
     const riskRaw = firstPlainText(ps?.riskStatus, source.riskStatus, source.tradeBlockStatus, source.riskLevel);
     const actionCode = actionRaw.toUpperCase();
-    const actionText = safeLabel(actionRaw, ACTION_LABELS, "");
-    const riskText = safeLabel(riskRaw, RISK_LABELS, "정상");
+    const action = normalizeAction(safeLabel(actionRaw, ACTION_LABELS, "") || actionRaw);
+    const risk = normalizeStatus(safeLabel(riskRaw, RISK_LABELS, "") || riskRaw);
+    const actionText = action.label;
+    const riskText = risk.label;
     const conf = ps?.confidence != null ? Math.round(Number(ps.confidence)) : num(source.finalScore);
     const confidence = conf !== null && Number.isFinite(conf) ? Math.round(Number(conf)) : null;
     const entry = levels ? priceText(levels, "entry", "기준가 대기") : "추천선 대기";
@@ -2465,16 +2479,16 @@ export default function ChartPage() {
       : "warn";
     const headline =
       isRisk ? "위험 관리 우선"
-      : actionCode === "SCALE_IN" ? "분할 접근 검토"
-      : actionCode === "HOLD_CASH" ? "현금 대기"
-      : actionCode === "WATCH_ONLY" || actionCode === "WAIT" ? "중립 관찰"
-      : actionCode === "WAIT_PULLBACK" ? "눌림 대기"
+      : actionCode === "SCALE_IN" ? "진입 검토"
+      : actionCode === "HOLD_CASH" ? "대기"
+      : actionCode === "WATCH_ONLY" || actionCode === "WAIT" ? "관찰"
+      : actionCode === "WAIT_PULLBACK" ? "대기"
       : actionCode === "ENTER" || actionCode === "BUY" || actionCode === "STRONG_BUY" ? "진입 검토"
-      : actionText || (levels ? stance.label : "판단 대기");
+      : actionText || (levels ? stance.label : "대기");
     const newEntry =
-      isRisk ? "신규 진입보다 리스크 관리가 우선입니다."
-      : actionCode === "SCALE_IN" ? "기준가 유지와 거래량 확인 시 분할 접근을 검토하세요."
-      : actionCode === "HOLD_CASH" ? "시장 조건 회복 전까지 신규 진입을 보류하세요."
+      isRisk ? "진입 검토보다 리스크 관리가 우선입니다."
+      : actionCode === "SCALE_IN" ? "기준가 유지와 거래량 확인 시 진입을 검토하세요."
+      : actionCode === "HOLD_CASH" ? "시장 조건 회복 전까지 대기하세요."
       : actionCode === "WATCH_ONLY" || actionCode === "WAIT" ? "지금은 기다리고 눌림 후 다시 확인하세요."
       : actionCode === "WAIT_PULLBACK" ? "눌림 확인 후 기준가 접근을 검토하세요."
       : actionCode === "ENTER" || actionCode === "BUY" || actionCode === "STRONG_BUY" ? "기준가 근접 시 진입 조건을 확인하세요."
@@ -2486,11 +2500,11 @@ export default function ChartPage() {
       conf: confidence,
       isRisk,
       rows: [
-        { label: "신규 진입", value: newEntry, tone: isRisk ? "warn" as const : "ok" as const },
+        { label: "진입 검토", value: newEntry, tone: isRisk ? "warn" as const : "ok" as const },
         { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다.", tone: "neutral" as const },
         { label: "관심종목", value: levels ? `기준가 ${entry} 근접 시 알림` : "기준가 확정 후 알림 기준을 설정합니다.", tone: "neutral" as const },
         { label: "위험 상태", value: riskText, tone: riskTone },
-        ...(confidence != null ? [{ label: "신뢰도", value: String(confidence), tone: confidence < 40 ? "warn" as const : confidence < 65 ? "neutral" as const : "ok" as const }] : []),
+        ...(confidence != null ? [{ label: "신뢰도", value: `${confidenceLabel(confidence).label} (${confidence})`, tone: confidence < 40 ? "warn" as const : confidence < 65 ? "neutral" as const : "ok" as const }] : []),
       ],
     };
   })();
@@ -2499,23 +2513,23 @@ export default function ChartPage() {
       ? "뉴스·공시 수집 실패 — API 상태를 확인해 주세요."
       : newsDisclosureState.value === "데이터 없음"
         ? "뉴스·공시 데이터 없음 — 원본은 수집됐지만 선택 종목 관련 항목은 없습니다."
-        : "뉴스·공시 수집 대기 — 장전/장마감 후 자동 수집됩니다.";
+        : "뉴스·공시 분석 대기 — 장전/장마감 후 자동 수집됩니다.";
   const newsEmptyText =
     loading ? "데이터 확인 중..."
     : String(loadState.newsStatus || "").toUpperCase() === "ERROR" ? "뉴스 수집 실패"
     : loadState.newsSourceCount > 0 ? "선택 종목 관련 뉴스가 없습니다."
-    : "뉴스 수집 대기";
+    : "뉴스 분석 대기";
   const disclosureEmptyText =
     loading ? "데이터 확인 중..."
     : String(loadState.disclosureStatus || "").toUpperCase() === "ERROR" ? "공시 수집 실패"
     : loadState.disclosureSourceCount > 0 ? "선택 종목 관련 공시가 없습니다."
-    : "공시 수집 대기";
+    : "공시 분석 대기";
   const entryPlanSection = selected ? (
     <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 sm:p-5">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 className="font-semibold text-slate-100">진입·손절 계획</h3>
-          <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할매수 50/30/20</p>
+          <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할 진입 50/30/20</p>
         </div>
         <div className="grid w-full gap-2 sm:w-auto sm:min-w-[296px]">
           <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900/70 p-1">
@@ -2722,6 +2736,35 @@ export default function ChartPage() {
                 일부 데이터 API 오류: {loadState.errors.slice(0, 2).join(" / ")}
               </div>
             )}
+
+            <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-1.5">
+              <div className="grid grid-cols-5 gap-1" role="tablist" aria-label="분석 상세 탭">
+                {ANALYSIS_TABS.map((tab) => {
+                  const active = analysisTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      aria-label={`${tab.label} · ${tab.hint}`}
+                      onClick={() => setAnalysisTab(tab.key)}
+                      className={`min-h-12 min-w-0 rounded-xl px-1.5 py-2 text-center transition-[background-color,border-color,color,transform] active:scale-[0.96] ${
+                        active
+                          ? "border border-sky-500/40 bg-sky-500/15 text-sky-100"
+                          : "border border-transparent text-slate-500 hover:bg-slate-900 hover:text-slate-200"
+                      }`}
+                    >
+                      <span className="block text-xs font-bold sm:text-sm">{tab.label}</span>
+                      <span className="mt-0.5 hidden text-[10px] leading-none opacity-75 sm:block">{tab.hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {analysisTab === "summary" && (
+              <>
             <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -2756,7 +2799,11 @@ export default function ChartPage() {
                 market={selected.market === "us" ? "us" : "kr"}
               />
             </div>
+              </>
+            )}
 
+            {analysisTab === "chart" && (
+              <>
             {/* 기간 필터 + 인디케이터 토글 */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div className="flex gap-1 rounded-lg border border-slate-800 bg-slate-950 p-0.5">
@@ -3133,14 +3180,18 @@ export default function ChartPage() {
                 </div>
               </div>
             )}
+              </>
+            )}
           </div>
 
+          {analysisTab === "chart" && (
+            <>
           {/* 패턴 차단 배너 — isBlocked=true 시 상단에 강조 표시 */}
           {levels?.patternStrategy && (levels.patternStrategy as any)?.isBlocked && (
             <div className="mb-3 flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm">
               <span className="text-lg">⛔</span>
               <div>
-                <div className="font-bold text-red-300">패턴 차단 — 신규 진입 보류</div>
+                <div className="font-bold text-red-300">패턴 차단 — 대기</div>
                 <div className="text-[11px] text-red-400/80">
                   {(levels.patternStrategy as any)?.message || "패턴 분석이 현재 진입을 차단했습니다. 조건이 해소될 때까지 대기하세요."}
                 </div>
@@ -3156,27 +3207,15 @@ export default function ChartPage() {
               marketStructure?: string; trendPhase?: string;
               historicalSupportLevels?: any[]; message?: string; isBlocked?: boolean;
             };
-            const actionColor = (a?: string) => {
-              if (!a) return "text-slate-400";
-              const u = a.toUpperCase();
-              if (u.includes("BUY") || u === "ENTER") return "text-emerald-300";
-              if (u.includes("SELL") || u === "EXIT") return "text-red-400";
-              return "text-amber-300";
-            };
-            const riskColor = (r?: string) => {
-              if (!r) return "text-slate-400";
-              const u = r.toUpperCase();
-              if (u.includes("LOW") || u === "SAFE") return "text-emerald-300";
-              if (u.includes("HIGH") || u.includes("DANGER") || u.includes("BLOCK")) return "text-red-400";
-              return "text-amber-300";
-            };
+            const actionColor = (a?: string) => toneTextClass(normalizeAction(safeLabel(a, ACTION_LABELS, "") || a).tone);
+            const riskColor = (r?: string) => toneTextClass(normalizeStatus(safeLabel(r, RISK_LABELS, "") || r).tone);
             const actionKo = (a?: string) => {
               if (!a) return "-";
-              return safeLabel(a, ACTION_LABELS, "-");
+              return normalizeAction(safeLabel(a, ACTION_LABELS, "") || a).label;
             };
             const riskKo = (r?: string) => {
               if (!r) return "-";
-              return safeLabel(r, RISK_LABELS, "-");
+              return normalizeStatus(safeLabel(r, RISK_LABELS, "") || r).label;
             };
             const patternKo = (p?: string) => {
               if (!p) return "-";
@@ -3240,15 +3279,22 @@ export default function ChartPage() {
               </CollapsiblePanel>
             );
           })()}
+            </>
+          )}
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {analysisTab === "risk" && (
+          <div className="grid grid-cols-1 gap-4">
             <CollapsiblePanel title="상세 지표">
               <Info label="MA20 이격도" value={indicators.distanceToMa20 != null ? `${Number(indicators.distanceToMa20).toFixed(2)}%` : "데이터 부족"} />
               <Info label="볼린저 %B" value={indicators.bbPercentB != null ? Number(indicators.bbPercentB).toFixed(2) : "데이터 부족"} />
               <Info label="20일 거래량비" value={indicators.volumeRatio20 != null ? `${Number(indicators.volumeRatio20).toFixed(2)}x` : "데이터 부족"} />
               <Info label="52주 고점 이격" value={indicators.distanceTo52wHigh != null ? `${Number(indicators.distanceTo52wHigh).toFixed(2)}%` : "데이터 부족"} />
             </CollapsiblePanel>
+          </div>
+          )}
 
+          {analysisTab === "flow" && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <CollapsibleOrderbook symbol={selected.symbol} market={selected.market} />
 
             <CollapsiblePanel title="거래량·모멘텀 분석">
@@ -3289,7 +3335,11 @@ export default function ChartPage() {
                 );
               })() : <div className="text-sm text-slate-500">OHLCV 20일 이상 필요합니다.</div>}
             </CollapsiblePanel>
+          </div>
+          )}
 
+          {analysisTab === "company" && (
+          <div className="grid grid-cols-1 gap-4">
             <CollapsiblePanel title={`기업분석${company?.hasDartData ? ` · DART ${company.dartYear || ""}` : ""}`}>
               {company ? (
                 <>
@@ -3341,7 +3391,7 @@ export default function ChartPage() {
                       저평가 성장주 — PEG {Number(company.peg).toFixed(2)} · ROE {Number(company.roe).toFixed(1)}%
                     </div>
                   )}
-                  {!company.hasDartData && <div className="mt-2 text-[10px] text-slate-600">DART 재무 데이터 수집 대기 (매주 월요일 자동 갱신)</div>}
+                  {!company.hasDartData && <div className="mt-2 text-[10px] text-slate-600">DART 재무 데이터 분석 대기 (매주 월요일 자동 갱신)</div>}
                 </>
               ) : loading ? (
                 <div className="text-sm text-slate-500">불러오는 중...</div>
@@ -3367,13 +3417,15 @@ export default function ChartPage() {
               )}
             </CollapsiblePanel>
           </div>
+          )}
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {analysisTab === "company" && (
+          <div className="grid grid-cols-1 gap-4">
             <CollapsiblePanel title="절대가치 점검 (DCF·RIM·EVA)">
               {(() => {
                 const va = company?.valuationAdvanced;
                 if (!va || va.status === "DATA_UNAVAILABLE" || va.status === "DATA_PENDING") {
-                  return <div className="text-sm text-slate-500">{va?.note || "DART 재무 데이터 수집 대기 중입니다."}</div>;
+                  return <div className="text-sm text-slate-500">{va?.note || "DART 재무 데이터 분석 대기 중입니다."}</div>;
                 }
                 const renderModel = (label: string, m: any) => {
                   if (!m || m.status === "DATA_PENDING") {
@@ -3419,12 +3471,16 @@ export default function ChartPage() {
                 );
               })()}
             </CollapsiblePanel>
+          </div>
+          )}
 
+          {analysisTab === "risk" && (
+          <div className="grid grid-cols-1 gap-4">
             <CollapsiblePanel title="부도위험·레버리지 (Altman Z / DOL·DFL·DCL)">
               {(() => {
                 const va = company?.valuationAdvanced;
                 if (!va || va.status === "DATA_UNAVAILABLE" || va.status === "DATA_PENDING") {
-                  return <div className="text-sm text-slate-500">{va?.note || "DART 재무 데이터 수집 대기 중입니다."}</div>;
+                  return <div className="text-sm text-slate-500">{va?.note || "DART 재무 데이터 분석 대기 중입니다."}</div>;
                 }
                 const z = va.altmanZ;
                 const lv = va.leverage;
@@ -3457,7 +3513,9 @@ export default function ChartPage() {
               })()}
             </CollapsiblePanel>
           </div>
+          )}
 
+          {analysisTab === "company" && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {!loading && news.length === 0 && disclosures.length === 0 ? (
               <div className="lg:col-span-2">
@@ -3502,6 +3560,7 @@ export default function ChartPage() {
               </>
             )}
           </div>
+          )}
         </div>
       )}
     </div>

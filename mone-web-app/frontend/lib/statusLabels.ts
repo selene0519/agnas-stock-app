@@ -39,9 +39,9 @@ export function normalizeAction(raw: unknown): Labeled {
   if (!s) return { label: "관찰", tone: "neutral" };
   if (/(청산|매도|SELL|EXIT|LIQUIDATE)/.test(s)) return { label: "청산 검토", tone: "danger" };
   if (/(축소|REDUCE|TRIM|비중\s*축소)/.test(s)) return { label: "축소 검토", tone: "caution" };
-  if (/(보유|유지|HOLD|보유자)/.test(s)) return { label: "보유", tone: "positive" };
   // "진입 자제"·"현금 대기"는 진입이 아니라 대기 축
-  if (/(진입\s*자제|현금\s*대기|관망|NO_TRADE|거래\s*금지)/.test(s)) return { label: "대기", tone: "caution" };
+  if (/(HOLD_CASH|진입\s*자제|현금\s*대기|관망|NO_TRADE|거래\s*금지)/.test(s)) return { label: "대기", tone: "caution" };
+  if (/(보유|유지|HOLD|보유자)/.test(s)) return { label: "보유", tone: "positive" };
   if (/(진입|매수|BUY|TRADE_CANDIDATE|오늘\s*진입|조건부)/.test(s)) return { label: "진입 검토", tone: "positive" };
   if (/(대기|WAIT|PENDING)/.test(s)) return { label: "대기", tone: "neutral" };
   if (/(관찰|모니터링|MONITOR|중립|WATCH|관심)/.test(s)) return { label: "관찰", tone: "neutral" };
@@ -75,5 +75,16 @@ export function toneTextClass(tone: Tone): string {
     case "danger": return "text-red-300";
     case "muted": return "text-slate-500";
     default: return "text-slate-200";
+  }
+}
+
+/** tone → Tailwind badge class (화면 공통) */
+export function toneBadgeClass(tone: Tone): string {
+  switch (tone) {
+    case "positive": return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+    case "caution": return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+    case "danger": return "border-red-500/40 bg-red-500/10 text-red-300";
+    case "muted": return "border-slate-700 bg-slate-950 text-slate-500";
+    default: return "border-slate-700 bg-slate-950 text-slate-300";
   }
 }
