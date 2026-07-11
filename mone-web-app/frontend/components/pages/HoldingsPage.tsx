@@ -8,7 +8,7 @@ import AlertsPanel from "../AlertsPanel";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName } from "@/lib/moneDisplay";
 import { toneClassName } from "@/lib/tone";
-import { getAuthenticatedUserId, getExistingUserId, getUserProfile, getUserToken } from "@/lib/userId";
+import { getAuthenticatedUserId, getUserProfile, getUserToken } from "@/lib/userId";
 import type { BootPreloadData } from "@/lib/bootPreload";
 import { dataStatusLabel, normalizeAction, normalizeStatus, toneBadgeClass } from "@/lib/statusLabels";
 
@@ -65,7 +65,7 @@ async function getJson(path: string) {
 function getMoneUserHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    const id = getAuthenticatedUserId() || getExistingUserId();
+    const id = getAuthenticatedUserId();
     const token = getUserToken();
     return {
       ...(id ? { "x-mone-user": id } : {}),
@@ -136,6 +136,25 @@ function readHoldingsCache(market: Market): HoldingsCacheEntry | null {
 }
 function writeHoldingsCache(market: Market, data: any, loadedAt: string) {
   _holdingsCache = { data, market, loadedAt, ts: Date.now() };
+}
+
+function emptyHoldingsPayload(market: Market, needsLogin = false) {
+  return {
+    status: "OK",
+    authority: needsLogin ? "auth_required" : "personal",
+    routeVersion: needsLogin ? "auth_required" : "personal_empty",
+    market,
+    count: 0,
+    items: [],
+    summary: {
+      totalValue: 0,
+      totalPnl: 0,
+      riskCount: 0,
+      totalValueText: "0원",
+      totalPnlText: "+0원",
+    },
+    needsLogin,
+  };
 }
 
 function extractPositionCandidates(summary: any) {
@@ -714,7 +733,9 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
 
 // ── 메인 페이지 ────────────────────────────────────────────────────────
 export default function HoldingsPage({ userToken, onNavigate, bootData }: HoldingsPageProps) {
+  const hasHoldingsAuth = Boolean(userToken);
   const _bootHoldings = (() => {
+    if (!hasHoldingsAuth) return null;
     const bc = bootData?.holdingsCache;
     if (bc && Array.isArray(bc.items) && bc.items.length > 0) return bc;
     return readHoldingsCache("all")?.data ?? null;
@@ -753,7 +774,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [riskBudget, setRiskBudget] = useState<any>(null);
   const [soldHistory, setSoldHistory] = useState<any>(null);
   const [brokerConnections, setBrokerConnections] = useState<BrokerStatus[]>([]);
-  const items = useMemo(() => dedupe(Array.isArray(data.items) ? data.items : []), [data.items]);
+  const items = useMemo(() => (
+    hasHoldingsAuth ? dedupe(Array.isArray(data.items) ? data.items : []) : []
+  ), [data.items, hasHoldingsAuth]);
   const isPersonalHoldingsSource = String(data.authority || data.routeVersion || "").toLowerCase().includes("personal");
 
   function mergeEditableRows(rows: any[]) {
@@ -794,6 +817,18 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }
 
   async function load(options: { background?: boolean } = {}) {
+    if (!hasHoldingsAuth) {
+      setData(emptyHoldingsPayload(market, true));
+      setHoldingsLoadedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
+      setBrokerConnections([]);
+      setSectorData(null);
+      setBenchmarkData(null);
+      setCorrData(null);
+      setRiskBudget(null);
+      setSoldHistory(null);
+      setLoading(false);
+      return;
+    }
     const cached = readHoldingsCache(market);
     if (cached && !options.background) {
       setData(cached.data);
@@ -807,7 +842,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       const serverItems = Array.isArray(result.items) ? result.items : [];
       const localItems = loadHoldingsFromLocalStorage();
       let finalData: any;
-      if (serverItems.length === 0 && localItems.length > 0) {
+      if (hasHoldingsAuth && serverItems.length === 0 && localItems.length > 0) {
         finalData = localHoldingsPayload(localItems, market);
         setData(finalData);
       } else {
@@ -853,7 +888,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         setSectorData(sector); setBenchmarkData(bench); setCorrData(corr);
       });
     } catch (error) {
-      const localItems = loadHoldingsFromLocalStorage();
+      const localItems = hasHoldingsAuth ? loadHoldingsFromLocalStorage() : [];
       setData(localItems.length > 0
         ? localHoldingsPayload(localItems, market)
         : { status: "ERROR", error: String(error), items: [], summary: {} });
@@ -863,9 +898,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }
 
   useEffect(() => {
-    const hasCached = Boolean(_bootHoldings || readHoldingsCache(market));
+    const hasCached = Boolean(hasHoldingsAuth && (_bootHoldings || readHoldingsCache(market)));
     load({ background: hasCached });
-  }, [market]);
+  }, [market, hasHoldingsAuth]);
 
   useEffect(() => {
     if (!userToken) {
@@ -896,6 +931,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }, []);
 
   async function loadEditableHoldings() {
+    if (!hasHoldingsAuth) return [];
     try {
       const result = await getJson("/api/holdings-edit?market=all");
       return Array.isArray(result.items) ? mergeEditableRows(result.items.map(toEditableHolding)) : [];
@@ -905,6 +941,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }
 
   async function saveRows(nextRows: any[], successMsg: string) {
+    if (!hasHoldingsAuth) {
+      setMessage("로그인 후 보유종목을 저장할 수 있습니다.");
+      return;
+    }
     // localStorage에 먼저 백업
     saveHoldingsToLocalStorage(nextRows);
     try {
