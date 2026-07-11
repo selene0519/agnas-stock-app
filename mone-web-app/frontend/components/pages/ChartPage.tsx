@@ -3310,7 +3310,7 @@ export default function ChartPage() {
 
           {analysisTab === "risk" && (
           <div className="grid grid-cols-1 gap-4">
-            <CollapsiblePanel title="상세 지표">
+            <CollapsiblePanel title="상세 지표" defaultOpen>
               <Info label="MA20 이격도" value={indicators.distanceToMa20 != null ? `${Number(indicators.distanceToMa20).toFixed(2)}%` : "데이터 부족"} />
               <Info label="볼린저 %B" value={indicators.bbPercentB != null ? Number(indicators.bbPercentB).toFixed(2) : "데이터 부족"} />
               <Info label="20일 거래량비" value={indicators.volumeRatio20 != null ? `${Number(indicators.volumeRatio20).toFixed(2)}x` : "데이터 부족"} />
@@ -3321,9 +3321,7 @@ export default function ChartPage() {
 
           {analysisTab === "flow" && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CollapsibleOrderbook symbol={selected.symbol} market={selected.market} />
-
-            <CollapsiblePanel title="거래량·모멘텀 분석">
+            <CollapsiblePanel title="거래량·모멘텀 분석" defaultOpen>
               {rows.length >= 20 ? (() => {
                 const r20 = rows.slice(-20).map((r: any) => Number(r.volume || r.Volume || 0));
                 const r5  = rows.slice(-5).map((r: any)  => Number(r.volume || r.Volume || 0));
@@ -3361,12 +3359,14 @@ export default function ChartPage() {
                 );
               })() : <div className="text-sm text-slate-500">OHLCV 20일 이상 필요합니다.</div>}
             </CollapsiblePanel>
+
+            <CollapsibleOrderbook symbol={selected.symbol} market={selected.market} />
           </div>
           )}
 
           {analysisTab === "company" && (
           <div className="grid grid-cols-1 gap-4">
-            <CollapsiblePanel title={`기업분석${company?.hasDartData ? ` · DART ${company.dartYear || ""}` : ""}`}>
+            <CollapsiblePanel title={`기업분석${company?.hasDartData ? ` · DART ${company.dartYear || ""}` : ""}`} defaultOpen>
               {company ? (
                 <>
                   <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
