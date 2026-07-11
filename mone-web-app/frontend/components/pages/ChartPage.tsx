@@ -2761,8 +2761,7 @@ export default function ChartPage() {
                   );
                 })}
               </div>
-            </div>
-
+              <div className="mt-3 rounded-xl bg-slate-900/30 p-3 sm:p-4">
             {analysisTab === "summary" && (
               <>
             <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
@@ -3561,6 +3560,8 @@ export default function ChartPage() {
             )}
           </div>
           )}
+            </div>
+            </div>
         </div>
       )}
     </div>
