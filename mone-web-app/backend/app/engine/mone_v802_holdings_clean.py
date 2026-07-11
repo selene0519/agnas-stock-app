@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
@@ -511,6 +512,50 @@ def holdings_clean_payload(market: str = "all", limit: int = 500) -> Dict[str, A
         "updatedAt": datetime.now(KST).isoformat(),
     }
 
+
+def _serve_anon_broker_csv() -> bool:
+    """익명(비로그인) 요청에 로컬 브로커 원장 CSV(실제 보유·수량)를 노출할지 여부.
+
+    기본: 공개 배포(Render)에선 노출하지 않는다 — 아무 방문자나 소유자의 실제 보유·수량을
+    로그인 없이 보면 안 되기 때문(프라이버시). 로컬/개인 PC에선 편의상 노출한다.
+    MONE_ANON_HOLDINGS 환경변수로 명시 오버라이드 가능(1=허용, 0=차단).
+    """
+    override = str(os.environ.get("MONE_ANON_HOLDINGS", "")).strip().lower()
+    if override in ("1", "true", "yes", "on"):
+        return True
+    if override in ("0", "false", "no", "off"):
+        return False
+    return not os.environ.get("RENDER")  # Render(공개배포) → 차단, 로컬 → 허용
+
+
+def _empty_holdings_payload(market: str = "all") -> Dict[str, Any]:
+    """로그인 안내용 빈 보유 페이로드 (holdings_clean_payload와 동일 구조)."""
+    return {
+        "status": "OK",
+        "routeVersion": "v80.2-clean",
+        "market": market,
+        "count": 0,
+        "uniqueCount": 0,
+        "items": [],
+        "authRequired": True,
+        "authNotice": "로그인하면 내 보유 종목이 표시됩니다.",
+        "summary": {
+            "holdingCount": 0, "riskCount": 0, "missingCount": 0,
+            "totalValue": 0.0, "totalCost": 0.0, "totalPnl": 0.0, "totalPnlPct": 0.0,
+            "totalValueText": "0", "totalPnlText": "0",
+            "mixedCurrency": False, "marketBreakdown": {},
+        },
+        "updatedAt": datetime.now(KST).isoformat(),
+    }
+
+
+def _anon_holdings_payload(market: str = "all", limit: int = 500) -> Dict[str, Any]:
+    """비로그인 요청: 로컬에선 브로커 CSV, 공개 배포에선 빈 보유(로그인 안내)."""
+    if _serve_anon_broker_csv():
+        return _anon_holdings_payload(market=market, limit=limit)
+    return _empty_holdings_payload(market)
+
+
 import re as _re_uid
 
 def _sanitize_user_id(raw: str) -> str:
@@ -534,7 +579,7 @@ def _raw_holdings_for_user(user_id: str) -> List[Dict[str, Any]]:
 def holdings_clean_payload_for_user(user_id: str, market: str = "all", limit: int = 500) -> Dict[str, Any]:
     uid = _sanitize_user_id(user_id)
     if not uid:
-        return holdings_clean_payload(market=market, limit=limit)
+        return _anon_holdings_payload(market=market, limit=limit)
 
     # SQLite 우선 조회
     try:
@@ -624,7 +669,7 @@ def register_mone_v802_holdings_clean_routes(app):
         uid = _sanitize_user_id(x_mone_user)
         if uid:
             return holdings_clean_payload_for_user(uid, market=market, limit=limit)
-        return holdings_clean_payload(market=market, limit=limit)
+        return _anon_holdings_payload(market=market, limit=limit)
 
     @app.get("/api/final/holdings-clean")
     def final_holdings_clean(
@@ -635,7 +680,7 @@ def register_mone_v802_holdings_clean_routes(app):
         uid = _sanitize_user_id(x_mone_user)
         if uid:
             return holdings_clean_payload_for_user(uid, market=market, limit=limit)
-        return holdings_clean_payload(market=market, limit=limit)
+        return _anon_holdings_payload(market=market, limit=limit)
 
     @app.get("/api/holdings")
     def holdings(
@@ -646,7 +691,7 @@ def register_mone_v802_holdings_clean_routes(app):
         uid = _sanitize_user_id(x_mone_user)
         if uid:
             return holdings_clean_payload_for_user(uid, market=market, limit=limit)
-        return holdings_clean_payload(market=market, limit=limit)
+        return _anon_holdings_payload(market=market, limit=limit)
 
     @app.get("/api/holdings/summary")
     def holdings_summary(
@@ -655,7 +700,7 @@ def register_mone_v802_holdings_clean_routes(app):
     ):
         uid = _sanitize_user_id(x_mone_user)
         payload = (holdings_clean_payload_for_user(uid, market=market, limit=1000)
-                   if uid else holdings_clean_payload(market=market, limit=1000))
+                   if uid else _anon_holdings_payload(market=market, limit=1000))
         return {"status": "OK", "routeVersion": "v80.2-clean", "market": market, **payload["summary"], "updatedAt": payload["updatedAt"]}
 
     @app.get("/api/holdings/risk")
@@ -665,7 +710,7 @@ def register_mone_v802_holdings_clean_routes(app):
     ):
         uid = _sanitize_user_id(x_mone_user)
         payload = (holdings_clean_payload_for_user(uid, market=market, limit=1000)
-                   if uid else holdings_clean_payload(market=market, limit=1000))
+                   if uid else _anon_holdings_payload(market=market, limit=1000))
         items = [x for x in payload["items"] if x["riskStatus"] in {"위험", "주의", "손절지연"}]
         return {"status": "OK", "routeVersion": "v80.2-clean", "market": market, "count": len(items), "items": items, "updatedAt": payload["updatedAt"]}
 
