@@ -2074,7 +2074,7 @@ function StrategyRecordsSection({
         <div id="strategy-records-body" className="space-y-3 border-t border-teal-400/70 p-3">
           <div className="flex min-h-[50px] items-center justify-between gap-3 rounded-xl bg-slate-950/35 px-3">
             <div className="min-w-0">
-              <div className="text-[11px] font-bold text-slate-600">현재 전략</div>
+              <div className="text-[11px] font-bold text-slate-600">홈 기본 전략</div>
               <div className="mt-1 truncate text-sm font-black text-slate-100">{modeLabel(currentMode)} · {horizonLabel(currentHorizon)}</div>
             </div>
             <button

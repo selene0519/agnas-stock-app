@@ -1783,7 +1783,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           </div>
         )}
 
-        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="mt-5 flex items-baseline gap-2">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">탐색 조건</span>
+          <span className="text-[11px] text-slate-500">이 탐색에만 적용 · 홈·분석에는 반영 안 됨</span>
+        </div>
+        <div className="mt-2 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div>
             <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
               투자 성향

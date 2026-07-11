@@ -2539,6 +2539,7 @@ export default function ChartPage() {
           <p className="text-xs text-slate-500">ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할 계획 50/30/20</p>
         </div>
         <div className="grid w-full gap-2 sm:w-auto sm:min-w-[296px]">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">분석 기준 <span className="font-normal normal-case text-slate-600">· 이 종목 계획에만 적용</span></div>
           <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900/70 p-1">
           {(["conservative","balanced","aggressive"] as const).map((m) => (
             <button key={m} onClick={() => setAtrMode(m)}
