@@ -10,6 +10,7 @@ import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName } from "@/lib/m
 import { toneClassName } from "@/lib/tone";
 import { getAuthenticatedUserId, getExistingUserId, getUserProfile, getUserToken } from "@/lib/userId";
 import type { BootPreloadData } from "@/lib/bootPreload";
+import { dataStatusLabel, normalizeAction, normalizeStatus, toneBadgeClass } from "@/lib/statusLabels";
 
 type Market = "all" | "kr" | "us";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
@@ -74,14 +75,14 @@ const LS_HOLDINGS_KEY = "mone:personal_holdings_v2";
 function holdingStatusLabel(status: any): string {
   const s = String(status || "").toUpperCase();
   if (s === "LOCAL_ONLY") return "로컬 임시";
-  if (s === "DATA_PENDING") return "데이터 수집 대기";
-  if (s === "STALE") return "가격 갱신 필요";
-  if (s === "NO_PRICE" || s === "PRICE_PENDING") return "현재가 없음";
+  if (s === "DATA_PENDING") return "분석 대기";
+  if (s === "STALE") return "갱신 필요";
+  if (s === "NO_PRICE" || s === "PRICE_PENDING") return "갱신 필요";
   if (s === "PREVIOUS_CLOSE_BASIS") return "최신 마감 기준";
-  if (s === "INTRADAY_OBSERVE") return "장중 관찰가";
-  if (s === "PARTIAL") return "부분 데이터";
+  if (s === "INTRADAY_OBSERVE") return "관찰";
+  if (s === "PARTIAL") return "일부 제한";
   if (s === "NORMAL" || s === "OK") return "정상";
-  return String(status || "미확인");
+  return status ? dataStatusLabel(status).label : "확인 중";
 }
 
 function saveHoldingsToLocalStorage(items: any[]) {
@@ -352,14 +353,11 @@ function normalizeRiskStatus(risk: unknown): "STOP_LOSS_DELAY" | "HIGH" | "WATCH
   return "NORMAL";
 }
 function riskBadgeClass(risk: string) {
-  const r = normalizeRiskStatus(risk);
-  if (r === "STOP_LOSS_DELAY" || r === "HIGH") return toneClassName("danger");
-  if (r === "WATCH") return toneClassName("warning");
-  return toneClassName("safe");
+  return toneBadgeClass(normalizeStatus(riskLabel(risk)).tone);
 }
 function riskLabel(risk: string) {
   const r = normalizeRiskStatus(risk);
-  if (r === "STOP_LOSS_DELAY") return "손절지연";
+  if (r === "STOP_LOSS_DELAY") return "위험";
   if (r === "HIGH") return "위험";
   if (r === "WATCH") return "주의";
   return "정상";
@@ -1146,7 +1144,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       const stopGapPct = holding.downsideGapPct != null ? Number(holding.downsideGapPct) : holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
       const targetGapPct = holding.targetGapPct != null ? Number(holding.targetGapPct) : null;
       if (!holding.currentPrice || Number(holding.currentPrice) <= 0) {
-        rows.push({ key: `${symbol}-price`, tone: "amber", title: `${name} 현재가 없음`, detail: "수동 갱신 또는 다음 수집 필요" });
+        rows.push({ key: `${symbol}-price`, tone: "amber", title: `${name} 갱신 필요`, detail: "현재가 없음 · 수동 갱신 또는 다음 수집 필요" });
       }
       if (downsideMissing) rows.push({ key: `${symbol}-stop`, tone: "amber", title: `${name} ${downsideLabel} 필요`, detail: isEtf ? "ETF 비중 조절 기준 없음" : "보유 리스크 판단 기준 없음", action: "stop" });
       if (targetMissing) rows.push({ key: `${symbol}-target`, tone: "blue", title: `${name} ${upsideLabel} 필요`, detail: isEtf ? "ETF 상단 조절 기준 없음" : "익절 판단 기준 없음", action: "target" });
@@ -1449,11 +1447,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     {(holding.priceStatusLabel || holding.priceDataStatus || holding.dataStatus) && <span>basis: {holding.priceStatusLabel || holdingStatusLabel(holding.priceDataStatus || holding.dataStatus)}</span>}
                     {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
                       const s = String(holding.priceDataStatus || holding.dataStatus || "");
-                      if (s === "LOCAL_ONLY") return "로컬 임시";
-                      if (s === "DATA_PENDING") return "데이터 수집 대기";
-                      if (s === "STALE") return "시세 갱신 필요";
-                      if (s === "NORMAL" || s === "OK") return "정상";
-                      return s;
+                      return holdingStatusLabel(s);
                     })()}</span>}
                     {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
                   </div>
@@ -1461,10 +1455,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     {(() => {
                       const status = String(holding.dataStatus || "");
                       const missing = Array.isArray(holding.missingFields) ? holding.missingFields : [];
-                      if (status === "OK" || status === "NORMAL") return <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">현재가 정상</span>;
-                      if (!holding.currentPrice || holding.currentPrice <= 0) return <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">현재가 없음</span>;
+                      if (status === "OK" || status === "NORMAL") return <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">정상</span>;
+                      if (!holding.currentPrice || holding.currentPrice <= 0) return <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">갱신 필요</span>;
                       if (missing.length > 0) return <span className="rounded-md border border-slate-600/40 bg-slate-700/20 px-2 py-0.5 text-[10px] text-slate-400">OHLCV 기준가 ({missing.slice(0,2).join("·")} 없음)</span>;
-                      return <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300">부분 데이터</span>;
+                      return <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300">일부 제한</span>;
                     })()}
                     {holding.quoteSource && <span className="text-[10px] text-slate-600">출처: {holding.quoteSource}</span>}
                   </div>
@@ -1477,10 +1471,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     const sig = exitSignals[`${holding.market}-${holding.symbol}`];
                     if (!sig || sig.signal === "HOLD" || sig.signal === "NO_DATA" || sig.urgency <= 0) return null;
                     const cfg: Record<string, { cls: string; label: string }> = {
-                      SELL_STRONG: { cls: "border-red-500/60 bg-red-500/20 text-red-200", label: "매도강력" },
-                      SELL:        { cls: "border-orange-500/60 bg-orange-500/20 text-orange-200", label: "매도검토" },
-                      PARTIAL_EXIT:{ cls: "border-yellow-500/50 bg-yellow-500/15 text-yellow-200", label: "부분청산" },
-                      MONITOR:     { cls: "border-blue-500/40 bg-blue-500/10 text-blue-300", label: "모니터링" },
+                      SELL_STRONG: { cls: "border-red-500/60 bg-red-500/20 text-red-200", label: normalizeAction("SELL_STRONG").label },
+                      SELL:        { cls: "border-orange-500/60 bg-orange-500/20 text-orange-200", label: normalizeAction("SELL").label },
+                      PARTIAL_EXIT:{ cls: "border-yellow-500/50 bg-yellow-500/15 text-yellow-200", label: normalizeAction("REDUCE").label },
+                      MONITOR:     { cls: "border-blue-500/40 bg-blue-500/10 text-blue-300", label: normalizeAction("MONITOR").label },
                     };
                     const c = cfg[sig.signal] || { cls: "border-slate-600 bg-slate-800 text-slate-300", label: sig.signal };
                     return (
@@ -1694,11 +1688,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                         {(holding.priceStatusLabel || holding.priceDataStatus || holding.dataStatus) && <span>basis: {holding.priceStatusLabel || holdingStatusLabel(holding.priceDataStatus || holding.dataStatus)}</span>}
                         {(holding.priceDataStatus || holding.dataStatus) && <span>status: {(() => {
                           const s = String(holding.priceDataStatus || holding.dataStatus || "");
-                          if (s === "LOCAL_ONLY") return "로컬 임시";
-                          if (s === "DATA_PENDING") return "데이터 수집 대기";
-                          if (s === "STALE") return "시세 갱신 필요";
-                          if (s === "NORMAL" || s === "OK") return "정상";
-                          return s;
+                          return holdingStatusLabel(s);
                         })()}</span>}
                         {(holding.latestDataDate || holding.priceDate || holding.updatedAt) && <span>date: {holding.latestDataDate || holding.priceDate || String(holding.updatedAt).slice(0, 10)}</span>}
                       </div>
@@ -1706,10 +1696,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                         {(() => {
                           const status = String(holding.dataStatus || "");
                           const missing = Array.isArray(holding.missingFields) ? holding.missingFields : [];
-                          if (status === "OK" || status === "NORMAL") return <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">현재가 정상</span>;
-                          if (!holding.currentPrice || holding.currentPrice <= 0) return <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">현재가 없음</span>;
+                          if (status === "OK" || status === "NORMAL") return <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">정상</span>;
+                          if (!holding.currentPrice || holding.currentPrice <= 0) return <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">갱신 필요</span>;
                           if (missing.length > 0) return <span className="rounded-md border border-slate-600/40 bg-slate-700/20 px-2 py-0.5 text-[10px] text-slate-400">OHLCV 기준가 ({missing.slice(0,2).join("·")} 없음)</span>;
-                          return <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300">부분 데이터</span>;
+                          return <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300">일부 제한</span>;
                         })()}
                         {holding.quoteSource && <span className="text-[10px] text-slate-600">출처: {holding.quoteSource}</span>}
                       </div>
@@ -2003,7 +1993,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                       ? "border-red-500/60 bg-red-500/20 text-red-200"
                       : "border-orange-500/60 bg-orange-500/20 text-orange-200"
                   }`}>
-                    {sig.signal === "SELL_STRONG" ? "매도강력" : "매도검토"}
+                    {normalizeAction(sig.signal).label}
                   </span>
                   <span className="font-semibold text-slate-200">{sig.name}</span>
                   <span className="font-mono text-slate-500">{sig.symbol}</span>
