@@ -27,7 +27,8 @@ import {
   toNumber,
 } from "@/lib/moneDisplay";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
-import { dataStatusLabel, normalizeAction, normalizeStatus } from "@/lib/statusLabels";
+import { dataStatusLabel, normalizeAction, normalizeStatus, toneTextClass } from "@/lib/statusLabels";
+import { DecisionStack, getMarketGateInfo, normalizeDataHealth, normalizeMarketRegime, type MarketGate } from "@/lib/decisionStack";
 import {
   EXPLORATION_LENSES,
   getLensDef,
@@ -453,6 +454,9 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   );
   const [loadError, setLoadError] = useState("");
   const [loadNotice, setLoadNotice] = useState("");
+  // 시장 환경 게이트(전역)는 homeSummary에서 한 번만 받아 카드의 Decision Stack에 공통 적용.
+  const [marketRegime, setMarketRegime] = useState<any>(null);
+  const [dataHealth, setDataHealth] = useState<any>(null);
   const [watchlist, setWatchlist] = useState<WatchRow[]>([]);
   const [loading, setLoading] = useState(!_initBootItems);
   const [watchSaving, setWatchSaving] = useState(false);
@@ -502,6 +506,23 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     const timer = window.setInterval(() => setSessionTick((value) => value + 1), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  // 시장 환경 게이트용 전역 레짐/데이터헬스 (홈과 동일 소스). 실패해도 카드는 그냥 게이트만 "확인 중".
+  useEffect(() => {
+    let active = true;
+    mone.homeSummary({ market: resolvedMarket })
+      .then((res: any) => {
+        if (!active) return;
+        setMarketRegime(normalizeMarketRegime(res?.marketRegime, resolvedMarket));
+        setDataHealth(normalizeDataHealth(res?.dataHealth));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [resolvedMarket]);
+  const marketGate: MarketGate | null = useMemo(
+    () => (marketRegime || dataHealth ? getMarketGateInfo(marketRegime, dataHealth) : null),
+    [marketRegime, dataHealth],
+  );
 
   useEffect(() => {
     // Reset market-specific filters when switching market to prevent orphaned results
@@ -2161,7 +2182,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           const psConf = ps?.confidence != null ? Math.round(Number(ps.confidence))
             : item.finalScore > 0 ? Math.round(item.finalScore) : null;
           const actionCode = String(psActionRaw || "").trim().toUpperCase();
-          const actionText = normalizeAction(safeKoreanLabel(psActionRaw, PATTERN_ACTION_KO, "") || psActionRaw).label;
+          const actionNorm = normalizeAction(safeKoreanLabel(psActionRaw, PATTERN_ACTION_KO, "") || psActionRaw);
+          const actionText = actionNorm.label;
           const riskText = psRiskRaw ? normalizeStatus(safeKoreanLabel(psRiskRaw, PATTERN_RISK_KO, "") || psRiskRaw).label : "정상";
           const patternText = safeKoreanLabel(psPatternRaw, PATTERN_TYPE_KO);
           const geoPatternRaw = ps?.geometricPattern && typeof ps.geometricPattern === "string" ? ps.geometricPattern : null;
@@ -2300,6 +2322,17 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   </div>
                 </div>
               </div>
+
+              {/* Decision Stack — 종목 신호·시장 환경·최종 행동 (홈·분석과 공통, UX 보고서 3.1) */}
+              {hasRecommendation && (
+                <DecisionStack
+                  score={Number(item.finalScore || 0)}
+                  gate={marketGate}
+                  actionLabel={actionText}
+                  actionToneClass={toneTextClass(actionNorm.tone)}
+                  className="mb-3"
+                />
+              )}
 
               {/* MONE 판단 */}
               <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2">

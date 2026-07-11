@@ -6,6 +6,7 @@ import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, readApiSnapshot, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, entryPlanStale, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
+import { DecisionStack, getMarketGateInfo, normalizeDataHealth, normalizeMarketRegime, type MarketGate } from "@/lib/decisionStack";
 import { toneClassName } from "@/lib/tone";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
@@ -2153,6 +2154,25 @@ export default function ChartPage() {
   const [eventContext, setEventContext] = useState<any | null>(null);
   const [atrMode, setAtrMode] = useState<"conservative"|"balanced"|"aggressive">("balanced");
   const [atrHorizon, setAtrHorizon] = useState<"short"|"swing"|"mid">("swing");
+  // 시장 환경 게이트(전역)를 홈·탐색과 동일 소스에서 받아 Decision Stack에 공통 적용.
+  const [marketRegime, setMarketRegime] = useState<any>(null);
+  const [dataHealth, setDataHealth] = useState<any>(null);
+  useEffect(() => {
+    let active = true;
+    const gateMarket = market === "us" ? "us" : "kr";
+    mone.homeSummary({ market: gateMarket })
+      .then((res: any) => {
+        if (!active) return;
+        setMarketRegime(normalizeMarketRegime(res?.marketRegime, gateMarket));
+        setDataHealth(normalizeDataHealth(res?.dataHealth));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [market]);
+  const marketGate: MarketGate | null = useMemo(
+    () => (marketRegime || dataHealth ? getMarketGateInfo(marketRegime, dataHealth) : null),
+    [marketRegime, dataHealth],
+  );
   // Start as true if we already have a symbol in localStorage (avoids "OHLCV 없음" flash before fetch begins)
   const [loading, setLoading] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -2503,6 +2523,8 @@ export default function ChartPage() {
     return {
       headline,
       actionText: actionText || "대기",
+      actionTone: action.tone,
+      score: Number(source.finalScore || source.finalRankScore || 0),
       riskText,
       conf: confidence,
       isRisk,
@@ -2684,6 +2706,14 @@ export default function ChartPage() {
                     )}
                   </div>
                 </div>
+                {/* Decision Stack — 종목 신호·시장 환경·최종 행동 (홈·탐색과 공통, UX 보고서 3.1) */}
+                <DecisionStack
+                  score={moneConclusion.score}
+                  gate={marketGate}
+                  actionLabel={moneConclusion.actionText}
+                  actionToneClass={toneTextClass(moneConclusion.actionTone)}
+                  className="mb-3"
+                />
                 <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
                   {moneConclusion.rows.map((row) => {
                     const toneCls = row.tone === "danger" ? "border-red-500/30 bg-red-500/5"
