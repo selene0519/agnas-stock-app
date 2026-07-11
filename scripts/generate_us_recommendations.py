@@ -708,13 +708,16 @@ def generate_us_recommendations() -> dict[str, Any]:
                 count += 1
 
             key = f"{mode}_{horizon}"
+            # 데이터 정상 로드된 완결 실행에서 0건 = "오늘 이 조합 후보 없음"이므로 옛 stale 파일을
+            # 보존하지 말고 비운다(KR 생성기와 동일 처리). 데이터 로드 실패(all_scored 비었음)면 보존.
+            _write_force = bool(all_scored)
             out_path = REPORTS / f"mone_v36_final_recommendations_us_{mode}_{horizon}.csv"
-            _write_csv(out_path, rows_out)
+            _write_csv(out_path, rows_out, force=_write_force)
             results[key] = len(rows_out)
             print(f"  [US {mode:12s}/{horizon:5s}] {len(rows_out):2d}종목 → {out_path.name}")
 
             tv_path = REPORTS / f"mone_v36_final_trade_validation_us_{mode}_{horizon}.csv"
-            _write_csv(tv_path, [{**r, "validationStatus": "PENDING", "validationDate": ""} for r in rows_out])
+            _write_csv(tv_path, [{**r, "validationStatus": "PENDING", "validationDate": ""} for r in rows_out], force=_write_force)
 
     status = {
         "generatedAt": now,

@@ -1800,15 +1800,20 @@ def generate_recommendations() -> dict[str, Any]:
                 print(f"    [WARN] Sector concentration: {sector_check['topSector']} {sector_check['topPct']}%")
 
             key = f"{mode}_{horizon}"
+            # 데이터가 정상 로드된 완결 실행(all_scored 있음)에서 0건이면 = "오늘 이 조합엔 후보 없음"이므로
+            # 옛 파일을 보존하지 말고 비운다(force=True). 안 그러면 약세장 등으로 0건일 때 과거 시점의
+            # stale 기준가 추천이 그대로 서빙됨(BEAR aggressive는 이미 force=True로 처리). 단 데이터 로드
+            # 자체가 실패(all_scored 비었음)면 보존해 안전망 유지.
+            _write_force = bool(all_scored)
             out_path = REPORTS / f"mone_v36_final_recommendations_kr_{mode}_{horizon}.csv"
-            _write_csv(out_path, rows_out)
+            _write_csv(out_path, rows_out, force=_write_force)
             results[key] = len(rows_out)
             print(f"  [{mode:12s}/{horizon:5s}] {len(rows_out):2d}종목 → {out_path.name}")
 
             # trade_validation 파일도 생성
             tv_path = REPORTS / f"mone_v36_final_trade_validation_kr_{mode}_{horizon}.csv"
             tv_rows = [{**r, "validationStatus": "PENDING", "validationDate": ""} for r in rows_out]
-            _write_csv(tv_path, tv_rows)
+            _write_csv(tv_path, tv_rows, force=_write_force)
 
     # 상태 파일 업데이트
     status = {
