@@ -278,6 +278,23 @@ export function toNumber(value: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// 추천의 기준가(entry)는 "그 종목을 처음 포착한 시점의 현재가"로 동결된다(generate_kr_recommendations의 entry=current).
+// 가격 데이터(OHLCV·현재가)는 매일 신선하지만 파이프라인이 재생성되지 않으면 기준가는 과거에 멈춰,
+// 그 기준가에서 계산된 손절·목표가는 오늘의 실행 계획이 아니게 된다. 이를 4화면 공통으로 판정한다.
+// 가격을 재계산하지 않고(3중 계산 안티패턴 회피) "신선한가"만 본다.
+export const ENTRY_PLAN_STALE_PCT = 15;
+export function entryPlanStale(
+  currentPrice: any,
+  entryPrice: any,
+  thresholdPct: number = ENTRY_PLAN_STALE_PCT,
+): { stale: boolean; gapPct: number | null } {
+  const c = toNumber(currentPrice);
+  const e = toNumber(entryPrice);
+  if (c === null || e === null || c <= 0 || e <= 0) return { stale: false, gapPct: null };
+  const gapPct = ((c - e) / e) * 100;
+  return { stale: Math.abs(gapPct) > thresholdPct, gapPct };
+}
+
 export function formatMoney(value: any, market: string = "kr", fallback = "-"): string {
   const n = toNumber(value);
   if (n === null || n <= 0) return fallback;

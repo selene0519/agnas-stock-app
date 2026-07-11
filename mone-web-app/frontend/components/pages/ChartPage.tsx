@@ -5,7 +5,7 @@ import { RefreshCw } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, readApiSnapshot, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
-import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
+import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, entryPlanStale, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
 import { toneClassName } from "@/lib/tone";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
@@ -2425,7 +2425,13 @@ export default function ChartPage() {
     });
     return trs.reduce((s, v) => s + v, 0) / trs.length;
   })();
-  const atrPlan = atrValue > 0 && currentPrice > 0 ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon, levelValue(levels, "stop")) : null;
+  // 추천 기준가가 현재가와 크게 벌어졌으면(stale) 추천 손절가(authStop)도 옛 기준 산출값이다.
+  // 이걸 ATR 관찰계획에 넣으면 stop>entry(진입 위 손절)로 깨지므로, stale일 땐 authStop을 빼고
+  // 현재가 기준 ATR 손절로 산출한다. (탐색·홈의 '재산출 대기'와 같은 신선도 판정)
+  const analysisPlanStale = entryPlanStale(currentPrice, levelValue(levels, "entry")).stale;
+  const atrPlan = atrValue > 0 && currentPrice > 0
+    ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon, analysisPlanStale ? null : levelValue(levels, "stop"))
+    : null;
   const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
   const freshness = freshnessInfo(rows);
   const analysisFreshness = dataFreshnessInfo({
@@ -3192,12 +3198,19 @@ export default function ChartPage() {
                     <span className="font-semibold">가격 설정 오류: {levels.priceLevelWarning}</span>
                   </div>
                 )}
+                {/* 추천 기준가가 현재가와 크게 벌어짐 = 추천 시점 이후 시세 변동. 손절·목표가는 옛 기준 산출값이라 억제 */}
+                {analysisPlanStale && (
+                  <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-950/20 px-3 py-2 text-[11px] text-amber-300">
+                    <span>⚠</span>
+                    <span className="font-semibold">기준가가 현재가와 크게 벌어졌습니다 — 추천 손절·목표가는 옛 기준이라 재산출이 필요합니다. 아래 ATR 관찰 계획은 현재가 기준으로 산출됩니다.</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
                   {[
                     { label: "기준가", value: levels ? priceText(levels, "entry", "") : "" },
-                    { label: "손절가", value: levels ? priceText(levels, "stop", "") : "" },
-                    { label: "목표가", value: levels ? priceText(levels, "target", "") : "" },
-                    { label: "예상가", value: levels ? priceText(levels, "expected", "") : "" },
+                    { label: "손절가", value: analysisPlanStale ? "재산출 대기" : (levels ? priceText(levels, "stop", "") : "") },
+                    { label: "목표가", value: analysisPlanStale ? "재산출 대기" : (levels ? priceText(levels, "target", "") : "") },
+                    { label: "예상가", value: analysisPlanStale ? "" : (levels ? priceText(levels, "expected", "") : "") },
                   ]
                     .filter((card) => card.value && card.value !== "-")
                     .map((card) => (

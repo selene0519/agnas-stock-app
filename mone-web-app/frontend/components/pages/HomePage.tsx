@@ -33,6 +33,7 @@ import {
   dataTrustNotice,
   dataTrustState,
   displayName,
+  entryPlanStale,
   firstText,
   horizonLabel,
   moneReasonLines,
@@ -676,6 +677,8 @@ function TodayEntryCard({
   const score = Number(item.finalScore || 0);
   const mode = String(item.mode || item._mode || "");
   const horizon = String(item.horizon || item._horizon || "");
+  // 기준가↔현재가 괴리가 크면 손절·목표가는 옛 기준가 산출값 → "재산출 대기"로 억제(탐색·분석과 공통).
+  const planStale = entryPlanStale(priceText(item, "current", ""), priceText(item, "entry", "")).stale;
   const decision = firstText(
     item.patternStrategy?.action,
     item.moneDecision,
@@ -814,9 +817,9 @@ function TodayEntryCard({
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2 border-y border-white/10 py-3 text-[11px]">
-        <div className="min-w-0"><div className="text-slate-500">기준가</div><div className="break-keep font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
-        <div className="min-w-0"><div className="text-slate-500">손절가</div><div className="break-keep font-mono text-red-300">{priceText(item, "stop", "-")}</div></div>
-        <div className="min-w-0"><div className="text-slate-500">목표가</div><div className="break-keep font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">기준가</div><div className={`break-keep font-mono ${planStale ? "text-amber-300" : "text-sky-300"}`}>{priceText(item, "entry", "-")}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">손절가</div><div className={`break-keep font-mono ${planStale ? "text-slate-500" : "text-red-300"}`}>{planStale ? "재산출 대기" : priceText(item, "stop", "-")}</div></div>
+        <div className="min-w-0"><div className="text-slate-500">목표가</div><div className={`break-keep font-mono ${planStale ? "text-slate-500" : "text-emerald-300"}`}>{planStale ? "재산출 대기" : priceText(item, "target", "-")}</div></div>
       </div>
 
       <div className="mt-2.5 space-y-1.5">
@@ -2502,6 +2505,8 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
   const ev      = evVal ?? 0;
   const rr      = rrVal ?? 0;
   const score   = toNumber(item.finalScore ?? item.finalRankScore ?? item.recommendationScore) || 0;
+  // 기준가↔현재가 괴리 크면 손절·목표가는 옛 기준가 산출값 → 그리드에서 "재산출 대기"로 억제(아래 체크리스트가 상세 사유).
+  const planStale = entryPlanStale(priceText(item, "current", ""), priceText(item, "entry", "")).stale;
   const tags    = Array.isArray(item.strategyTags) ? item.strategyTags : [];
   const riskFlags = Array.isArray(item.riskFlags) ? item.riskFlags : [];
   const decisionBucket = String(item.decisionBucket || "관찰");
@@ -2557,14 +2562,14 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
           {/* 가격 그리드 */}
           <div className="grid grid-cols-4 gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center text-[11px]">
             {[
-              { label: "현재가", key: "current", color: "text-slate-200" },
-              { label: "기준가", key: "entry",   color: "text-sky-300" },
-              { label: "손절가", key: "stop",    color: "text-red-300" },
-              { label: "목표가", key: "target",  color: "text-emerald-300" },
-            ].map(({ label, key, color }) => (
+              { label: "현재가", key: "current", color: "text-slate-200", suppress: false },
+              { label: "기준가", key: "entry",   color: planStale ? "text-amber-300" : "text-sky-300", suppress: false },
+              { label: "손절가", key: "stop",    color: "text-red-300", suppress: planStale },
+              { label: "목표가", key: "target",  color: "text-emerald-300", suppress: planStale },
+            ].map(({ label, key, color, suppress }) => (
               <div key={key}>
                 <div className="text-slate-500">{label}</div>
-                <div className={`mt-1 font-mono font-semibold ${color}`}>{priceText(item, key as any, "—")}</div>
+                <div className={`mt-1 font-mono font-semibold ${suppress ? "text-slate-500" : color}`}>{suppress ? "재산출 대기" : priceText(item, key as any, "—")}</div>
               </div>
             ))}
           </div>

@@ -14,7 +14,7 @@ import {
 } from "@/lib/marketSession";
 import {
   dataFreshnessBadgeClass, dataFreshnessInfo, dataTrustBadgeClass, dataTrustLabel, dataTrustNotice, dataTrustState,
-  dedupeBySymbol, displayName, firstText, horizonLabel, modeLabel, moneReasonLines, normalizeMarket,
+  dedupeBySymbol, displayName, entryPlanStale, firstText, horizonLabel, modeLabel, moneReasonLines, normalizeMarket,
   priceText, probabilityText,
 } from "@/lib/moneDisplay";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
@@ -635,6 +635,8 @@ function EntryCandidateCard({ item, rank, onAnalyze, onTradePaper, marketRegime,
   const riskRaw = String(item.riskStatus || item.tradeBlockStatus || item.riskLevel || "").toUpperCase();
   const riskText = !riskRaw || ["NONE", "OK", "NORMAL", "LOW"].includes(riskRaw) ? "위험 낮음" : riskRaw.includes("WATCH") || riskRaw.includes("주의") ? "주의" : "위험 확인";
   const riskClass = riskText === "위험 낮음" ? "text-emerald-300" : riskText === "주의" ? "text-amber-300" : "text-red-300";
+  // 기준가↔현재가 괴리 크면 목표가는 옛 기준가 산출값 → "재산출 대기"로 억제(탐색·분석·데스크톱 홈과 공통).
+  const planStale = entryPlanStale(priceText(item, "current", ""), priceText(item, "entry", "")).stale;
 
   return (
     <div className="relative w-[78vw] max-w-[300px] shrink-0 snap-start rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-3.5">
@@ -649,8 +651,8 @@ function EntryCandidateCard({ item, rank, onAnalyze, onTradePaper, marketRegime,
       </div>
       <div className="mt-2.5 grid grid-cols-3 gap-1.5 text-[10px]">
         <div><div className="text-slate-500">현재가</div><div className="font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
-        <div><div className="text-slate-500">기준가</div><div className="font-mono text-sky-300">{priceText(item, "entry", "-")}</div></div>
-        <div><div className="text-slate-500">목표가</div><div className="font-mono text-emerald-300">{priceText(item, "target", "-")}</div></div>
+        <div><div className="text-slate-500">기준가</div><div className={`font-mono ${planStale ? "text-amber-300" : "text-sky-300"}`}>{priceText(item, "entry", "-")}</div></div>
+        <div><div className="text-slate-500">목표가</div><div className={`font-mono ${planStale ? "text-slate-500" : "text-emerald-300"}`}>{planStale ? "재산출 대기" : priceText(item, "target", "-")}</div></div>
       </div>
       <div className="mt-1.5 flex items-center gap-3 text-[10px]">
         <span className="text-slate-500">신뢰도 <span className="font-mono text-blue-300">{confidence}</span></span>

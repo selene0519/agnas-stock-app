@@ -15,6 +15,7 @@ import {
   dataTrustLabel,
   dataTrustNotice,
   displayName,
+  entryPlanStale,
   firstText,
   formatMoney,
   horizonLabel,
@@ -136,7 +137,7 @@ function Cell({
 }: {
   label: string;
   value?: string;
-  tone?: "normal" | "blue" | "red" | "green" | "amber";
+  tone?: "normal" | "blue" | "red" | "green" | "amber" | "muted";
 }) {
   const color =
     tone === "blue"
@@ -147,7 +148,9 @@ function Cell({
           ? "text-emerald-400"
           : tone === "amber"
             ? "text-amber-300"
-            : "text-slate-100";
+            : tone === "muted"
+              ? "text-slate-500"
+              : "text-slate-100";
   return (
     <div className="min-w-0 rounded-xl bg-slate-950 px-2 py-2">
       <div className="text-[10px] text-slate-500">{label}</div>
@@ -951,11 +954,26 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }, [enrichedItems, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery, sortBy, lens]);
 
   const filterStats = useMemo(() => {
-    const normal = sectorFiltered.filter((item) => String(item.dataStatus || "").toUpperCase() === "NORMAL").length;
-    const blocked = sectorFiltered.filter((item) => String(item.tradeBlockStatus || "").toUpperCase() === "BLOCK").length;
-    const caution = sectorFiltered.filter((item) => String(item.tradeBlockStatus || "").toUpperCase() === "CAUTION").length;
-    return { normal, blocked, caution };
-  }, [sectorFiltered]);
+    // 실제로 표시되는 후보(visible)를 단일 기준으로 분할해 합이 '표시 후보'와 맞아떨어지게 한다.
+    // 위험(주의/차단) 우선 → 나머지는 카드와 같은 축(라이브 snapshot vs OHLCV fallback)으로 정상/fallback 구분.
+    // 휴장·장마감엔 fallback으로 잡혀, '데이터 정상 0'이 아니라 'fallback N'으로 정직하게 읽힌다.
+    const isLive = (item: Record<string, unknown>) => {
+      const src = String(item.currentPriceSource || item.priceSource || item.priceSourceFile || "").toLowerCase();
+      return src.includes("kis_current_price") || src.includes("intraday") || src.includes("snapshot")
+        || src.includes("finnhub") || src.includes("yfinance");
+    };
+    let normal = 0;
+    let fallback = 0;
+    let risk = 0;
+    for (const item of visible) {
+      if (item.isSearchOnly) continue;
+      const block = String(item.tradeBlockStatus || "").toUpperCase();
+      if (block === "BLOCK" || block === "CAUTION") { risk += 1; continue; }
+      if (isLive(item)) normal += 1;
+      else fallback += 1;
+    }
+    return { normal, fallback, risk };
+  }, [visible]);
 
   const recommendationFreshness = useMemo(() => {
     const sample = visible.find((item) => !item.isSearchOnly) || enrichedItems[0] || {};
@@ -1985,18 +2003,22 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             </div>
           )}
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
             <div className="text-[10px] text-slate-500">표시 후보</div>
             <div className="mt-0.5 font-mono text-sm font-bold text-slate-100">{visible.length.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <div className="text-[10px] text-slate-500">데이터 정상</div>
+            <div className="text-[10px] text-slate-500">라이브 시세</div>
             <div className="mt-0.5 font-mono text-sm font-bold text-emerald-300">{filterStats.normal.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+            <div className="text-[10px] text-slate-500">fallback·장마감</div>
+            <div className="mt-0.5 font-mono text-sm font-bold text-cyan-300">{filterStats.fallback.toLocaleString("ko-KR")}개</div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
             <div className="text-[10px] text-slate-500">주의/위험</div>
-            <div className="mt-0.5 font-mono text-sm font-bold text-amber-300">{(filterStats.caution + filterStats.blocked).toLocaleString("ko-KR")}개</div>
+            <div className="mt-0.5 font-mono text-sm font-bold text-amber-300">{filterStats.risk.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
             <div className="text-[10px] text-slate-500">로딩 기준</div>
@@ -2057,6 +2079,15 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           const current = compactPriceText(currentRaw, marketValue);
           const entry = compactPriceText(entryRaw, marketValue);
           const target = compactPriceText(targetRaw, marketValue);
+          // 기준가(추천 진입가)와 현재가의 괴리가 크면, 손절·목표가는 옛 기준가로 산출된 값이라
+          // 현재 시세를 반영하지 못한다(현재가 < 손절가처럼 이미 이탈한 계획일 수 있음).
+          // 이 경우 손절·목표가를 그대로 믿게 두지 않고 "재산출 대기"로 억제한다. 4화면 공통 헬퍼.
+          const { stale: planStale, gapPct: entryGapPct } = hasRecommendation
+            ? entryPlanStale(
+                item.currentPrice ?? item.currentPriceText ?? item.price ?? item.close,
+                item.entryPrice ?? item.entry ?? item.entryText,
+              )
+            : { stale: false, gapPct: null };
           const watched = isWatched(item);
           const patternAction = firstPlainText(
             item.patternStrategy?.action,
@@ -2293,19 +2324,26 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 )}
               </div>
 
-              {/* 가격 4개 */}
+              {/* 가격 4개 — stale 계획이면 손절·목표가는 "재산출 대기"로 억제(옛 기준가 산출값을 실행가처럼 안 보이게) */}
               {(() => {
                 const stopRaw = hasRecommendation ? adjustedText(item, "stop", mode, marketValue) : null;
                 const stop = stopRaw ? compactPriceText(stopRaw, marketValue) : null;
                 return (
                   <div className={`mb-3 grid gap-1.5 text-sm sm:gap-2 ${stop ? "grid-cols-4" : "grid-cols-3"}`}>
                     <Cell label="현재가" value={current} tone={current.includes("확인") ? "amber" : "normal"} />
-                    <Cell label="기준가" value={entry} tone="blue" />
-                    <Cell label="목표가" value={target} tone="green" />
-                    {stop && <Cell label="손절가" value={stop} tone="red" />}
+                    <Cell label="기준가" value={entry} tone={planStale ? "amber" : "blue"} />
+                    <Cell label="목표가" value={planStale ? "재산출 대기" : target} tone={planStale ? "muted" : "green"} />
+                    {stop && <Cell label="손절가" value={planStale ? "재산출 대기" : stop} tone={planStale ? "muted" : "red"} />}
                   </div>
                 );
               })()}
+
+              {/* 기준가 괴리 경고: 손절·목표가가 현재 시세를 반영하지 못하는 stale 계획 */}
+              {planStale && (
+                <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  ⚠ 기준가 대비 현재가 {entryGapPct! > 0 ? "+" : ""}{entryGapPct!.toFixed(0)}% · 계획 재산출 필요 — 손절·목표가는 옛 기준가 기준이라 현재 시세와 다릅니다.
+                </div>
+              )}
 
               {/* 태그 */}
               {visibleTags.length > 0 && (

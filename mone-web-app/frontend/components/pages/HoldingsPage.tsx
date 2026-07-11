@@ -1118,16 +1118,20 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     .filter((d: string) => /^\d{4}-\d{2}-\d{2}/.test(d))
     .sort()
     .pop();
+  // holdingsLoadedAt은 "이 페이지를 언제 열었나"를 뜻하는 클라이언트 벽시계 값이다.
+  // 보유가 0개(비로그인/빈 상태)일 때 이 값이 동기화·데이터 기준으로 새어 들어가면
+  // "데이터가 없는데 방금 갱신됨"처럼 보인다. 실제 보유가 있을 때만 스탬프로 쓴다.
+  const holdingsStamp = items.length > 0 ? holdingsLoadedAt : "";
   const holdingFreshness = dataFreshnessInfo({
     latestDataDate: summary.latestDataDate || summary.ohlcvLatestDate || freshestHoldingDate || items[0]?.date,
-    recoGeneratedAt: summary.updatedAt || data.updatedAt || holdingsLoadedAt,
+    recoGeneratedAt: summary.updatedAt || data.updatedAt || holdingsStamp,
     dataStatus: data.status,
   });
   const holdingsSourceInfo = useMemo(() => {
     const authorityRaw = firstSourceText(data.holdingAuthority, summary.holdingAuthority, data.authority, data.routeVersion);
     const sourceRaw = firstSourceText(data.sourceSummary, summary.sourceSummary, data.dataSource, summary.dataSource, data.source, summary.source);
     const brokerRaw = firstSourceText(data.broker, summary.broker, data.sourceBroker, summary.sourceBroker, items[0]?.broker, items[0]?.sourceBroker);
-    const syncedRaw = firstSourceText(data.syncedAt, summary.syncedAt, data.updatedAt, summary.updatedAt, holdingsLoadedAt);
+    const syncedRaw = firstSourceText(data.syncedAt, summary.syncedAt, data.updatedAt, summary.updatedAt, holdingsStamp);
     const primary = humanDataSourceLabel(brokerRaw || sourceRaw || authorityRaw, isPersonalHoldingsSource ? "개인 보유 DB" : "보유 데이터");
     return {
       primary,
@@ -1138,7 +1142,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }, [data, summary, items, holdingsLoadedAt, isPersonalHoldingsSource]);
   const riskSourceInfo = useMemo(() => {
     const sourceRaw = firstSourceText(riskBudget?.sourceSummary, riskBudget?.dataSource, riskBudget?.source, riskBudget?.holdingAuthority);
-    const syncedRaw = firstSourceText(riskBudget?.syncedAt, riskBudget?.updatedAt, riskBudget?.asOf, holdingsLoadedAt);
+    const syncedRaw = firstSourceText(riskBudget?.syncedAt, riskBudget?.updatedAt, riskBudget?.asOf, holdingsStamp);
     return {
       source: humanDataSourceLabel(sourceRaw || holdingsSourceInfo.source, holdingsSourceInfo.source),
       scope: market === "all" ? (summary.mixedCurrency ? "KR/US 통화 분리" : "전체 보유") : market === "kr" ? "국장 보유" : "미장 보유",
@@ -1471,7 +1475,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             </div>
             <p className="mt-1 leading-5 text-slate-500">
               {holdingFreshness.basisText}
-              {holdingsLoadedAt ? ` · 목록 확인 ${holdingsLoadedAt}` : ""}
+              {holdingsStamp ? ` · 목록 확인 ${holdingsStamp}` : ""}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
