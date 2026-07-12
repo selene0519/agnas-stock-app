@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, FileText, Link2, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
 import CashInputBar from "../CashInputBar";
 import PortfolioOptimizePanel from "../PortfolioOptimizePanel";
-import AlertsPanel from "../AlertsPanel";
 import { mone } from "@/lib/api";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName } from "@/lib/moneDisplay";
 import { toneClassName } from "@/lib/tone";
@@ -2399,13 +2398,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       )}
 
-      {/* 포트폴리오 최적화 + 알림 — 접기 아코디언 */}
+      {/* 포트폴리오 최적화 — 접기 아코디언 (Telegram 알림은 보유 화면에서 제거) */}
       <CollapsibleSection title="포트폴리오 최적화">
         <PortfolioOptimizePanel />
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Telegram 알림 설정">
-        <AlertsPanel />
       </CollapsibleSection>
     </div>
   );
