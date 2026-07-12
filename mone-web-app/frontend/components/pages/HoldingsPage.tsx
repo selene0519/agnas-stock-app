@@ -2393,6 +2393,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               <span className="ml-3 font-mono font-bold text-red-300">
                 {sectorData.maxLossSimulation.totalLoss.toLocaleString()}원 ({sectorData.maxLossSimulation.totalLossPct.toFixed(1)}%)
               </span>
+              <div className="mt-1 text-[10px] text-slate-500">손절가 미설정 종목은 ATR 기반 추산값으로 계산됩니다 — 직접 설정 시 그 값이 우선합니다.</div>
             </div>
           )}
         </div>

@@ -4216,6 +4216,13 @@ def _sector_exposure_payload(market: str) -> dict[str, Any]:
         val       = qty * (cur_price if cur_price > 0 else avg_price)
         stop_price = _num(h.get("stopPrice") or 0)
         sym = str(h.get("symbol") or "").strip().lstrip("0").zfill(6)
+        # 보유에 손절가가 없으면(브로커 동기화는 손절가 미제공) ATR로 추산해 손절 시뮬레이션이 비지 않게 한다.
+        if stop_price <= 0 and cur_price > 0:
+            try:
+                from app.engine.mone_v77_holdings_risk import derive_fallback_stop
+                stop_price = derive_fallback_stop(market, sym, cur_price)
+            except Exception:
+                pass
         sector = sector_map.get(sym) or str(h.get("sector") or h.get("sectorLabel") or "Other")
         items_with_val.append({
             "symbol":  sym,

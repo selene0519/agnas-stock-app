@@ -209,6 +209,36 @@ def _ohlcv_rows(market: str, symbol: str) -> List[Dict[str, Any]]:
     rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
     return rows
 
+def derive_fallback_stop(market: str, symbol: str, current: float) -> float:
+    """보유에 손절가가 없을 때 OHLCV ATR(14)로 추산한다(브로커 동기화는 손절가를 안 준다).
+    stop = 현재가 - ATR14 x 2.0, 합리적 범위(-3% ~ -15%)로 클램프. OHLCV 없으면 현재가 -8%.
+    손절 시뮬레이션·리밸런싱이 공통으로 쓰는 단일 규칙 — 사용자가 직접 설정한 손절가가 있으면 그게 우선."""
+    if current <= 0:
+        return 0.0
+    rows = _ohlcv_rows(market, symbol)
+    atr = 0.0
+    if len(rows) >= 15:
+        trs: List[float] = []
+        prev_close = 0.0
+        for row in rows[-15:]:
+            hi = _num(row.get("high") or row.get("High"))
+            lo = _num(row.get("low") or row.get("Low"))
+            cl = _num(row.get("close") or row.get("Close"))
+            if hi > 0 and lo > 0:
+                tr = hi - lo
+                if prev_close > 0:
+                    tr = max(tr, abs(hi - prev_close), abs(lo - prev_close))
+                trs.append(tr)
+            if cl > 0:
+                prev_close = cl
+        if trs:
+            atr = sum(trs) / len(trs)
+    stop = current - atr * 2.0 if atr > 0 else current * 0.92
+    stop = min(stop, current * 0.97)   # 최소 -3%
+    stop = max(stop, current * 0.85)   # 최대 -15%
+    return round(stop)
+
+
 def _stop_loss_delay_info(market: str, symbol: str, stop: float, current: float) -> Dict[str, Any]:
     """현재가가 손절가를 이미 깼는데 며칠째 들고 있는지(추격매수의 반대 패턴, 손절지연) 계산.
 
@@ -267,6 +297,11 @@ def holdings_payload(market: str = "all", limit: int = 200) -> Dict[str, Any]:
         avg = _num(_text(row, ["avgPrice", "avg_price", "averagePrice", "평단", "매입가", "평균단가"]))
         current = _num(_text(row, ["currentPrice", "current_price", "price", "현재가"]), quote.get("price", 0))
         stop = _num(_text(row, ["stop", "stopPrice", "stop_loss", "손절가"]), rec.get("stop", 0))
+        # 원장·추천 어디에도 손절가가 없으면 ATR로 추산해 리스크 패널(손절 시뮬레이션)이 비지 않게 한다.
+        stop_auto = False
+        if stop <= 0 and current > 0:
+            stop = derive_fallback_stop(m, sym, current)
+            stop_auto = stop > 0
         target = _num(_text(row, ["target", "targetPrice", "목표가"]), rec.get("target", 0))
         entry = _num(_text(row, ["entry", "entryPrice", "진입가"]), rec.get("entry", avg))
         name = _clean_name(sym, _text(row, ["name", "stock_name", "company_name", "종목명"]))
@@ -299,6 +334,7 @@ def holdings_payload(market: str = "all", limit: int = 200) -> Dict[str, Any]:
             "currentPrice": current,
             "entryPrice": entry,
             "stopPrice": stop,
+            "stopAuto": stop_auto,
             "targetPrice": target,
             "valuation": valuation,
             "cost": cost,

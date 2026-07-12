@@ -147,6 +147,16 @@ def _stop_price(row: dict[str, Any], current: float) -> float:
     stop = _num(row.get("stopPrice") or row.get("stop_price") or row.get("stop"))
     if stop > 0:
         return stop
+    # 명시 손절가 없으면 ATR 기반 추산(손절 시뮬레이션과 동일 단일 규칙). 실패 시 기본 %.
+    try:
+        from app.engine.mone_v77_holdings_risk import derive_fallback_stop
+        sym = str(row.get("symbol") or row.get("code") or "").strip()
+        mk = str(row.get("market") or "kr").lower()
+        est = derive_fallback_stop(mk, sym, current)
+        if est > 0:
+            return est
+    except Exception:
+        pass
     return current * (1 - POLICY["defaultStopLossPct"] / 100) if current > 0 else 0.0
 
 
