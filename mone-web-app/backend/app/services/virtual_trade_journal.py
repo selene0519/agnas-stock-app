@@ -2839,6 +2839,160 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
     }
 
 
+def _latest_text(rows: list[dict[str, Any]], fields: list[str]) -> str | None:
+    values = [
+        _text(row.get(field))
+        for row in rows
+        for field in fields
+        if _text(row.get(field))
+    ]
+    return max(values) if values else None
+
+
+def _duplicate_id_stats(rows: list[dict[str, Any]], key: str = "journal_id") -> dict[str, int]:
+    counts = Counter(_text(row.get(key)) for row in rows if _text(row.get(key)))
+    duplicate_groups = sum(1 for count in counts.values() if count > 1)
+    duplicate_rows = sum(count - 1 for count in counts.values() if count > 1)
+    return {"groups": duplicate_groups, "extraRows": duplicate_rows}
+
+
+def _open_reason(row: dict[str, Any]) -> str:
+    return _upper(
+        row.get("failureReason")
+        or row.get("failure_reason")
+        or row.get("diagnosticReason")
+        or row.get("unknownDetail")
+        or row.get("outcome")
+        or row.get("status")
+        or "OPEN"
+    )
+
+
+def _journal_integrity(
+    raw_journal_rows: list[dict[str, Any]],
+    evaluation_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    journal_ids = {_text(row.get("journal_id")) for row in raw_journal_rows if _text(row.get("journal_id"))}
+    evaluation_ids = {_text(row.get("journal_id")) for row in evaluation_rows if _text(row.get("journal_id"))}
+    return {
+        "journalDuplicateIds": _duplicate_id_stats(raw_journal_rows),
+        "evaluationDuplicateIds": _duplicate_id_stats(evaluation_rows),
+        "missingEvaluationRows": len(journal_ids - evaluation_ids),
+        "orphanEvaluationRows": len(evaluation_ids - journal_ids),
+        "journalRows": len(raw_journal_rows),
+        "evaluationRows": len(evaluation_rows),
+    }
+
+
+def _journal_operational_verdict(
+    *,
+    raw_journal_rows: list[dict[str, Any]],
+    merged_rows: list[dict[str, Any]],
+    evaluation_rows: list[dict[str, Any]],
+    warnings: list[str],
+    self_status: dict[str, Any],
+    perf_gate: dict[str, Any],
+) -> dict[str, Any]:
+    integrity = _journal_integrity(raw_journal_rows, evaluation_rows)
+    status_counts = Counter(_upper(row.get("status") or "OPEN") for row in merged_rows)
+    outcome_counts = Counter(_upper(row.get("outcome") or "UNKNOWN") for row in merged_rows)
+    source_counts = Counter(_upper(row.get("source_type") or "UNKNOWN") for row in merged_rows)
+    session_counts = Counter(_journal_session(row.get("journal_session")) for row in merged_rows)
+    mode_horizon_counts = Counter(
+        f"{_text(row.get('mode')).lower()}:{_text(row.get('horizon')).lower()}"
+        for row in merged_rows
+    )
+    open_rows = [
+        row for row in merged_rows
+        if _upper(row.get("status") or "OPEN") not in {"EVALUATED", "CANCELLED"}
+    ]
+    open_reason_counts = Counter(_open_reason(row) for row in open_rows)
+    expected_pending = {
+        "OPEN",
+        "PENDING",
+        "DATA_PENDING",
+        "NO_FUTURE_BARS_YET",
+        "PENDING_EVALUATION",
+        "INSUFFICIENT_HOLDING_PERIOD",
+    }
+    unexpected_open = [
+        row for row in open_rows
+        if _open_reason(row) not in expected_pending
+        and _upper(row.get("status") or "OPEN") not in expected_pending
+    ]
+    file_ok = not warnings
+    duplicate_ok = (
+        integrity["journalDuplicateIds"]["extraRows"] == 0
+        and integrity["evaluationDuplicateIds"]["extraRows"] == 0
+        and integrity["orphanEvaluationRows"] == 0
+    )
+    recording_ok = file_ok and len(raw_journal_rows) > 0 and duplicate_ok
+    evaluation_ok = (
+        len(evaluation_rows) > 0
+        and integrity["missingEvaluationRows"] == 0
+        and not unexpected_open
+    )
+    perf_status = _upper(perf_gate.get("status") or "UNKNOWN")
+    self_status_code = _upper(self_status.get("status") or "UNKNOWN")
+    caveats: list[str] = []
+    next_actions: list[str] = []
+    if open_rows:
+        caveats.append(
+            f"{len(open_rows)} forward rows are still waiting for future bars or holding-period completion."
+        )
+    if perf_status == "LOW_SAMPLE":
+        caveats.append("Performance gate is LOW_SAMPLE until enough before/after calibration samples accumulate.")
+        next_actions.append("Keep collecting forward-paper results before trusting auto-calibration impact checks.")
+    if status_counts.get("DATA_PENDING", 0):
+        caveats.append("Some rows are DATA_PENDING because required future OHLCV is not available yet.")
+    if warnings:
+        next_actions.append("Restore required journal/evaluation files before using self-learning decisions.")
+    if unexpected_open:
+        next_actions.append("Review unexpected open rows before applying new calibration.")
+    if perf_status == "ROLLBACK_READY":
+        next_actions.append("Review rollback candidates before applying or keeping the latest calibration.")
+    if not next_actions:
+        next_actions.append("No immediate operator action required; continue scheduled capture and evaluation.")
+
+    status = "RUNNING"
+    if not recording_ok or perf_status == "ROLLBACK_READY":
+        status = "ATTENTION"
+    if warnings or not len(raw_journal_rows):
+        status = "ERROR"
+
+    return {
+        "status": status,
+        "recordingStatus": "OK" if recording_ok else "CHECK",
+        "evaluationStatus": "OK" if evaluation_ok else "CHECK",
+        "selfLearningStatus": self_status_code,
+        "performanceGateStatus": perf_status,
+        "summary": (
+            "Journal capture and evaluation are operating normally; open rows are expected pending evaluations."
+            if status == "RUNNING"
+            else "Journal operation needs review before relying on self-learning decisions."
+        ),
+        "latestCapturedAt": _latest_text(raw_journal_rows, ["captured_at", "generated_at"]),
+        "latestEvaluatedAt": _latest_text(evaluation_rows, ["evaluated_at"]),
+        "integrity": integrity,
+        "counts": {
+            "status": dict(status_counts),
+            "outcome": dict(outcome_counts),
+            "source": dict(source_counts),
+            "session": dict(session_counts),
+            "modeHorizon": dict(mode_horizon_counts),
+            "openReasons": dict(open_reason_counts),
+        },
+        "openRows": {
+            "total": len(open_rows),
+            "expectedPending": len(open_rows) - len(unexpected_open),
+            "unexpected": len(unexpected_open),
+            "reasonCounts": dict(open_reason_counts),
+        },
+        "caveats": caveats,
+        "nextActions": next_actions,
+    }
+
+
 def ops_dashboard(market: str = "all") -> dict[str, Any]:
     _ensure()
 
@@ -2851,8 +3005,13 @@ def ops_dashboard(market: str = "all") -> dict[str, Any]:
         state = "OK" if exists and size > 0 else ("MISSING_REQUIRED" if required else "MISSING")
         return {"name": path.stem, "path": _relative(path), "exists": exists, "size": size, "ageHours": age_hours, "state": state}
 
-    journal_rows = _merge_evaluations(_read_journal_rows())
+    raw_journal_rows = _read_journal_rows()
+    evaluation_rows = _read_rows(EVALUATION_CSV, EVALUATION_COLS)
+    journal_rows = _merge_evaluations(raw_journal_rows)
     if _text(market).lower() != "all":
+        raw_journal_rows = [row for row in raw_journal_rows if _text(row.get("market")).lower() == _text(market).lower()]
+        journal_ids = {_text(row.get("journal_id")) for row in raw_journal_rows if _text(row.get("journal_id"))}
+        evaluation_rows = [row for row in evaluation_rows if _text(row.get("journal_id")) in journal_ids]
         journal_rows = [row for row in journal_rows if _text(row.get("market")).lower() == _text(market).lower()]
     evaluated = [row for row in journal_rows if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}]
     source_counts = Counter(_upper(row.get("source_type") or "UNKNOWN") for row in journal_rows)
@@ -2870,12 +3029,21 @@ def ops_dashboard(market: str = "all") -> dict[str, Any]:
     warnings = [f"{f['path']}:{f['state']}" for f in files if f["state"].startswith("MISSING_REQUIRED")]
     perf_gate = calibration_performance_gate(market=market, auto_rollback=False)
     self_status = self_learning_status(market=market) if market != "__internal_skip" else {}
+    operational = _journal_operational_verdict(
+        raw_journal_rows=raw_journal_rows,
+        merged_rows=journal_rows,
+        evaluation_rows=evaluation_rows,
+        warnings=warnings,
+        self_status=self_status,
+        perf_gate=perf_gate,
+    )
     return {
         "status": "OK" if not warnings else "WARN",
         "generatedAt": _now_iso(),
         "market": market,
         "files": files,
         "warnings": warnings,
+        "operational": operational,
         "journal": {
             "total": len(journal_rows),
             "totalRows": len(journal_rows),
@@ -2884,6 +3052,11 @@ def ops_dashboard(market: str = "all") -> dict[str, Any]:
             "open": len(journal_rows) - len(evaluated),
             "openRows": len(journal_rows) - len(evaluated),
             "sourceCounts": dict(source_counts),
+            "statusCounts": operational.get("counts", {}).get("status", {}),
+            "openReasonCounts": operational.get("openRows", {}).get("reasonCounts", {}),
+            "integrity": operational.get("integrity", {}),
+            "latestCapturedAt": operational.get("latestCapturedAt"),
+            "latestEvaluatedAt": operational.get("latestEvaluatedAt"),
         },
         "selfLearning": {
             "quality": self_status.get("quality"),
