@@ -39,3 +39,9 @@ services:
         sync: false
       - key: MONE_STARTUP_SYNC
         value: "1"
+      - key: GIT_AUTO_SYNC_INTERVAL_MIN
+        value: "30"
+      - key: MONE_AUTO_CURATE_WATCHLIST
+        value: "1"
+      - key: ENABLE_HEAVY_JOBS
+        value: "1"
