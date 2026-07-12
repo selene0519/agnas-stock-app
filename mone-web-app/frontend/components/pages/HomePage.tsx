@@ -108,7 +108,10 @@ type HomeCacheEntry = {
 const _homeCache: Partial<Record<"kr" | "us", HomeCacheEntry>> = {};
 
 function isUsableHomeCache(c: HomeCacheEntry | null | undefined): c is HomeCacheEntry {
-  return Boolean(c && Number.isFinite(c.ts) && Date.now() - c.ts < HOME_PAGE_CACHE_TTL);
+  // marketRegime이 비어 있는 캐시는 재사용하지 않는다. 백엔드가 잠시 죽은 사이 Home이
+  // regime=null을 캐시하면 14h 동안 시장 게이트가 SIDE 기본값(중립장 50)으로 굳어,
+  // 탐색·분석 Decision Stack(실제 BEAR 7)과 모순돼 보인다. 비면 다시 fetch해 자동 복구.
+  return Boolean(c && Number.isFinite(c.ts) && Date.now() - c.ts < HOME_PAGE_CACHE_TTL && c.marketRegime);
 }
 
 function homeCacheKey(market: "kr" | "us") {

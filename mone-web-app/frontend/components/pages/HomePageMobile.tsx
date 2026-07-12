@@ -70,7 +70,9 @@ type HomeCacheEntry = {
 const _homeCache: Partial<Record<"kr" | "us", HomeCacheEntry>> = {};
 
 function isUsableHomeCache(c: HomeCacheEntry | null | undefined): c is HomeCacheEntry {
-  return Boolean(c && Number.isFinite(c.ts) && Date.now() - c.ts < HOME_PAGE_CACHE_TTL);
+  // regime이 빈 캐시는 재사용 안 함(백엔드 다운 중 캐시된 null이 시장 게이트를 SIDE 50으로
+  // 굳혀 다른 화면과 모순됨). 데스크톱 HomePage와 동일 처리 — 비면 재fetch로 자동 복구.
+  return Boolean(c && Number.isFinite(c.ts) && Date.now() - c.ts < HOME_PAGE_CACHE_TTL && c.marketRegime);
 }
 function homeCacheKey(market: "kr" | "us") {
   const user = getAuthenticatedUserId() || "anon";
