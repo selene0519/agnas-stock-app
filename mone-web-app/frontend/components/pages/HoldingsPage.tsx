@@ -659,11 +659,19 @@ function PortfolioCompositionBar({ items }: { items: any[] }) {
       .filter((item) => item._val > 0)
       .sort((a, b) => b._val - a._val);
     const total = withValue.reduce((acc, item) => acc + item._val, 0);
-    return { items: withValue, total };
+    // 상위 5개만 개별 표시하고 나머지는 "기타 N종목"으로 묶어 모바일 가독성 확보 (UX 보고서 6.3).
+    const TOP = 5;
+    if (withValue.length <= TOP + 1) return { items: withValue, total };
+    const top = withValue.slice(0, TOP);
+    const rest = withValue.slice(TOP);
+    const restVal = rest.reduce((acc, item) => acc + item._val, 0);
+    const merged = [...top, { market: "_", symbol: "_other", name: `기타 ${rest.length}종목`, _val: restVal, _isOther: true }];
+    return { items: merged, total };
   }, [items]);
 
   if (sorted.total <= 0) return null;
-  const colors = ["bg-blue-500","bg-emerald-500","bg-violet-500","bg-amber-500","bg-cyan-500","bg-rose-500","bg-teal-500","bg-orange-500"];
+  const colors = ["bg-blue-500","bg-emerald-500","bg-violet-500","bg-amber-500","bg-cyan-500","bg-slate-500"];
+  const labelOf = (item: any) => (item._isOther ? item.name : displayName(item));
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
@@ -675,7 +683,7 @@ function PortfolioCompositionBar({ items }: { items: any[] }) {
             <div key={`${item.market}-${item.symbol}`}
               className={`${colors[i % colors.length]} transition-[width] duration-300`}
               style={{ width: `${pct}%` }}
-              title={`${displayName(item)} ${pct.toFixed(1)}%`} />
+              title={`${labelOf(item)} ${pct.toFixed(1)}%`} />
           );
         })}
       </div>
@@ -685,7 +693,7 @@ function PortfolioCompositionBar({ items }: { items: any[] }) {
           return (
             <div key={`${item.market}-${item.symbol}`} className="flex items-center gap-1.5">
               <div className={`h-2 w-2 shrink-0 rounded-full ${colors[i % colors.length]}`} />
-              <span className="text-[11px] text-slate-300">{displayName(item)}</span>
+              <span className="text-[11px] text-slate-300">{labelOf(item)}</span>
               <span className="font-mono text-[11px] text-slate-500">{pct.toFixed(1)}%</span>
             </div>
           );

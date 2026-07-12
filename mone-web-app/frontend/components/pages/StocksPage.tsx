@@ -1286,28 +1286,35 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div>{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"}</div>
           <div>현재 적용 시장: {marketLabel(resolvedMarket)}</div>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <button
-            onClick={applySmartWatchlist}
-            disabled={autoCurating || watchSaving}
-            className="min-h-11 min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-xs font-bold text-emerald-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
-          >
-            {autoCurating ? "선별 중..." : "자동선별"}
-          </button>
-          <button
-            onClick={refreshTargetQuotes}
-            disabled={quoteRefreshing === "batch"}
-            className="min-h-11 min-w-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2 py-2 text-xs font-bold text-cyan-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
-          >
-            현재가 갱신
-          </button>
-          <button
-            onClick={loadScoredWatchlist}
-            disabled={scoredLoading}
-            className="min-h-11 min-w-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs font-bold text-violet-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
-          >
-            {scoredLoading ? "분석 중..." : "점수 분석"}
-          </button>
+        {/* 관심종목 관리 — 세 동작은 독립 버튼이 아니라 "풀 구성 → 가격 갱신 → 재평가" 한 흐름 (UX 보고서 5.3) */}
+        <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 p-2.5">
+          <div className="mb-2 flex items-baseline gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">관심종목 관리</span>
+            <span className="text-[11px] text-slate-500">풀 구성 → 가격 갱신 → 재평가</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={applySmartWatchlist}
+              disabled={autoCurating || watchSaving}
+              className="min-h-11 min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-xs font-bold text-emerald-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
+            >
+              {autoCurating ? "선별 중..." : (watchlist.length > 0 ? "다시 선별" : "자동선별")}
+            </button>
+            <button
+              onClick={refreshTargetQuotes}
+              disabled={quoteRefreshing === "batch"}
+              className="min-h-11 min-w-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2 py-2 text-xs font-bold text-cyan-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
+            >
+              현재가 갱신
+            </button>
+            <button
+              onClick={loadScoredWatchlist}
+              disabled={scoredLoading}
+              className="min-h-11 min-w-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs font-bold text-violet-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
+            >
+              {scoredLoading ? "분석 중..." : "관심종목 분석"}
+            </button>
+          </div>
         </div>
 
         {/* 그룹 필터 */}
@@ -1483,7 +1490,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 </span>
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 선별</label>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 필터</label>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
                     { id: "quality", label: "상위·정상", hint: "60점+ 데이터 정상" },
@@ -1502,7 +1509,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   ))}
                 </div>
               </div>
-              {/* 코어 필터 — 렌즈 무관, 항상 표시 */}
+              {/* 투자 조건 — 렌즈 무관, 항상 표시 (스크리너 2단: 빠른 필터 → 투자 조건 → 고급 필터) */}
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">투자 조건</div>
               <div className="space-y-4">
                 {/* 이름/티커 검색 */}
                 <div>
@@ -1573,7 +1581,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               {/* 세부 조건 — 접힘, 렌즈가 관련 섹션을 펼친다 */}
               <div className="space-y-2">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
-                  세부 조건 · 렌즈에 맞춰 펼쳐집니다
+                  고급 필터 · 렌즈에 맞춰 펼쳐집니다
                 </div>
 
                 {/* 빠른 태그 (신호 기반 원탭 필터) */}
@@ -2334,12 +2342,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 />
               )}
 
-              {/* MONE 판단 */}
+              {/* 상세 근거 — 최종 행동은 위 Decision Stack이 소유하므로 여기선 상태/패턴/신뢰도만(중복 제거) */}
               <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2">
-                <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">MONE 판단</div>
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">상세 근거</div>
                 <div className="text-xs text-slate-200 leading-relaxed">
                   {[
-                    actionText,
                     riskText === "정상" ? "상태 정상" : `위험 ${riskText}`,
                     patternText ? `패턴 ${patternText}` : null,
                     psConf != null ? `신뢰도 ${psConf}` : null,
