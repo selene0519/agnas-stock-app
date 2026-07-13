@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-07-13T23:28:58+09:00",
+  "lastRunAt": "2026-07-14T07:20:15+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": false,
@@ -25,6 +25,7 @@
     "kr:2026-07-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "kr:2026-07-11:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "kr:2026-07-13:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+    "kr:2026-07-14:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-24:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-26:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-30:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
@@ -35,22 +36,181 @@
     "us:2026-07-07:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-07-08:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-07-09:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-    "us:2026-07-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+    "us:2026-07-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+    "us:2026-07-13:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
   ],
   "runs": [
     {
       "market": "kr",
-      "tradeDate": "2026-07-13",
+      "tradeDate": "2026-07-14",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "SKIPPED_DUPLICATE",
-      "runKey": "kr:2026-07-13:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+      "status": "OK",
+      "runKey": "kr:2026-07-14:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+      "selected": 10,
+      "added": 10,
+      "rejected": {
+        "LOW_SCORE": 6
+      },
+      "items": [
+        {
+          "mode": "aggressive",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "mid",
+          "selected": 1,
+          "added": 1,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "mid",
+          "selected": 5,
+          "added": 5,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "short",
+          "selected": 1,
+          "added": 1,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "swing",
+          "selected": 3,
+          "added": 3,
+          "duplicates": 0,
+          "status": "OK"
+        }
+      ]
     },
     {
       "market": "us",
-      "tradeDate": "2026-07-10",
+      "tradeDate": "2026-07-13",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "SKIPPED_DUPLICATE",
-      "runKey": "us:2026-07-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+      "status": "OK",
+      "runKey": "us:2026-07-13:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+      "selected": 9,
+      "added": 9,
+      "rejected": {
+        "LOW_SCORE": 21
+      },
+      "items": [
+        {
+          "mode": "aggressive",
+          "horizon": "mid",
+          "selected": 5,
+          "added": 5,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "short",
+          "selected": 1,
+          "added": 1,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "swing",
+          "selected": 3,
+          "added": 3,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        }
+      ]
     }
   ],
   "windows": {
