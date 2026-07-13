@@ -31,7 +31,6 @@ import {
   dataTrustBadgeClass,
   dataTrustLabel,
   dataTrustNotice,
-  dataTrustState,
   displayName,
   entryPlanStale,
   firstText,
@@ -241,6 +240,32 @@ function signedPct(value: number | null | undefined, digits = 1) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
 }
 
+function hasFinalConsonant(value: string) {
+  const cleaned = String(value || "").trim().replace(/[)\]}>"'`.,!?%\s]+$/g, "");
+  if (!cleaned) return false;
+  const last = cleaned[cleaned.length - 1];
+  const code = last.charCodeAt(0);
+
+  if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 > 0;
+  if (/\d/.test(last)) return ["0", "1", "3", "6", "7", "8"].includes(last);
+  if (/[A-Za-z]/.test(last)) return ["L", "M", "N", "R"].includes(last.toUpperCase());
+  return false;
+}
+
+function josa(value: string, pair: "은/는" | "이/가" | "을/를" | "과/와" | "으로/로") {
+  const [withBatchim, withoutBatchim] = pair.split("/") as [string, string];
+  const cleaned = String(value || "").trim().replace(/[)\]}>"'`.,!?%\s]+$/g, "");
+  const last = cleaned[cleaned.length - 1] || "";
+  const code = last.charCodeAt(0);
+  const jong = code >= 0xac00 && code <= 0xd7a3 ? (code - 0xac00) % 28 : -1;
+  if (pair === "으로/로" && jong === 8) return withoutBatchim;
+  return hasFinalConsonant(value) ? withBatchim : withoutBatchim;
+}
+
+function withJosa(value: string, pair: "은/는" | "이/가" | "을/를" | "과/와" | "으로/로") {
+  return `${value}${josa(value, pair)}`;
+}
+
 function matrixChangeText(item: any) {
   const direct = firstText(item?.changePctText, item?.changeRateText, item?.priceChangePercentText, item?.changeText, item?.priceChangeText, "");
   if (direct && direct.includes("%")) return direct;
@@ -369,32 +394,37 @@ function buildDailyBriefing(args: {
   const risk = String(topItem.riskStatus || topItem.tradeBlockStatus || "").toUpperCase();
   const isRisk = risk && !["NONE", "OK", "NORMAL", "LOW"].includes(risk);
   const isBear = regime?.regime === "BEAR";
+  const gate = getMarketGateInfo(regime, dataHealth);
   const scoreText = score != null ? `점수 ${score.toFixed(0)}` : "점수 확인";
   const evText = ev != null ? `EV ${signedPct(ev, 1)}` : "EV 대기";
   const basis = freshness.state === "fresh" ? "현재 기준" : "기준일 확인 필요";
-  let detail = `${name}이 ${decision} 후보 중 우선 확인 대상입니다. ${scoreText}, ${evText}이며 ${basis}입니다.`;
+  let detail = `${withJosa(name, "이/가")} ${decision} 후보 중 우선 확인 대상입니다. ${scoreText}, ${evText}이며 ${basis}입니다.`;
   let tone: BriefingPayload["tone"] = "blue";
 
   if (isStopBreached(topItem)) {
     // 현재가가 이미 손절가 아래 — 진입 검토 부적합. 가장 우선해서 경고한다.
     tone = "red";
-    detail = `${name}은 현재가가 이미 손절가 아래로 내려와 진입 검토에는 부적합합니다. 추천 기준일 이후 하락한 상태이니 재진입은 손절가·기준가 재설정 후 판단하세요.`;
+    detail = `${withJosa(name, "은/는")} 현재가가 이미 손절가 아래로 내려와 진입 검토에는 부적합합니다. 추천 기준일 이후 하락한 상태이니 재진입은 손절가·기준가 재설정 후 판단하세요.`;
+  } else if (gate.isLow) {
+    tone = "amber";
+    const entry = priceText(topItem, "entry", "");
+    detail = `${name}의 종목 조건은 양호하지만 현재 시장 게이트는 대기입니다. ${entry ? `기준가 ${entry} 부근 유지와 ` : ""}시장 회복 여부를 먼저 확인하세요.`;
   } else if (isBear || isRisk) {
     tone = isRisk ? "red" : "amber";
-    detail = `${name}은 신호가 있지만 시장/리스크 조건 확인이 우선입니다. 진입보다 손절가와 기준가 이격을 먼저 보세요.`;
+    detail = `${withJosa(name, "은/는")} 신호가 있지만 시장/리스크 조건 확인이 우선입니다. 진입보다 손절가와 기준가 이격을 먼저 보세요.`;
   } else if (String(topItem.decisionBucket || "").includes("오늘")) {
     tone = "emerald";
-    detail = `${name}이 오늘 우선 확인 후보입니다. 기준가 근접 여부와 손익비를 확인한 뒤 검토하세요.`;
+    detail = `${withJosa(name, "이/가")} 오늘 우선 확인 후보입니다. 기준가 근접 여부와 손익비를 확인한 뒤 검토하세요.`;
   } else if (String(topItem.decisionBucket || "").includes("대기")) {
     tone = "amber";
-    detail = `${name}은 아직 대기 관찰 구간입니다. 타이밍 조건이 충족되는지 추적하세요.`;
+    detail = `${withJosa(name, "은/는")} 아직 대기 관찰 구간입니다. 타이밍 조건이 충족되는지 추적하세요.`;
   }
 
   return {
     title: `${name}, ${modeLabel(String(topItem._mode || topItem.mode || "balanced") as Mode)}·${horizonLabel(String(topItem._horizon || topItem.horizon || "swing") as Horizon)} 우선 확인 후보`,
     detail,
     tone,
-    chips: [regimeChip, dataChip, `${todayCount}개 검토`, `${watchCount}개 대기`],
+    chips: [regimeChip, dataChip, `우선 후보 ${todayCount}`, `관찰 ${watchCount}`],
     topItem,
   };
 }
@@ -529,13 +559,13 @@ function buildEngineHistoryRows(adaptiveWeights: any, selfLearningStatus: any): 
 
 function getSessionContext(session: SessionPhase) {
   switch (session) {
-    case "장전":    return { focus: "today",    hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하고 알림을 등록하세요." };
-    case "장중":    return { focus: "intraday", hint: "장중 — 기준가에 근접한 종목을 우선 확인하세요." };
-    case "장마감":  return { focus: "review",   hint: "오늘 결과를 반영해 내일 볼 후보를 정리했습니다." };
-    case "개장 전": return { focus: "today",    hint: "미장 개장 전 — 오늘 미장 진입 후보와 포지션을 점검하세요." };
-    case "마감 후": return { focus: "review",   hint: "미장 마감 후 — 결과 검토 및 다음 날 전략을 준비하세요." };
-    case "휴장":    return { focus: "rest",     hint: "오늘은 휴장입니다. 다음 거래일 전략을 미리 준비하세요." };
-    default:        return { focus: "today",    hint: "오늘 진입 후보와 대기 관찰 종목을 확인하세요." };
+    case "장전":    return { focus: "today",    targetLabel: "오늘", hint: "장 시작 전 — 오늘 진입 후보를 미리 확인하고 알림을 등록하세요." };
+    case "장중":    return { focus: "intraday", targetLabel: "오늘", hint: "장중 — 기준가에 근접한 종목을 우선 확인하세요." };
+    case "장마감":  return { focus: "review",   targetLabel: "다음 거래일", hint: "오늘 결과를 반영해 다음 거래일 후보를 정리했습니다." };
+    case "개장 전": return { focus: "today",    targetLabel: "오늘", hint: "미장 개장 전 — 오늘 미장 진입 후보와 포지션을 점검하세요." };
+    case "마감 후": return { focus: "review",   targetLabel: "다음 거래일", hint: "미장 마감 후 — 결과 검토 및 다음 거래일 전략을 준비하세요." };
+    case "휴장":    return { focus: "rest",     targetLabel: "다음 거래일", hint: "오늘은 휴장입니다. 다음 거래일 전략을 미리 준비하세요." };
+    default:        return { focus: "today",    targetLabel: "오늘", hint: "오늘 진입 후보와 대기 관찰 종목을 확인하세요." };
   }
 }
 
@@ -661,7 +691,6 @@ function TodayEntryCard({
   rank,
   onSelect,
   onAnalyze,
-  onTradePaper,
   earningsMap,
   tone = "entry",
   marketRegime,
@@ -671,7 +700,6 @@ function TodayEntryCard({
   rank: number;
   onSelect: (item: any) => void;
   onAnalyze: (item: any) => void;
-  onTradePaper?: (item: any) => void;
   earningsMap?: Record<string, number>;
   tone?: "entry" | "watch" | "risk";
   marketRegime?: any;
@@ -702,7 +730,7 @@ function TodayEntryCard({
   const riskClass = toneTextClass(risk.tone);
   const confidenceRaw = probabilityText(item, score > 0 ? `${score.toFixed(0)}점` : "-");
   const confidencePct = safeNumber(confidenceRaw);
-  const confidence = confidencePct != null ? `${confidenceLabel(confidencePct).label} · ${confidenceRaw}` : confidenceRaw;
+  const confidence = confidencePct != null ? `${Math.round(confidencePct)}% · ${confidenceLabel(confidencePct).label}` : confidenceRaw;
   const reasons = moneReasonLines(item).slice(0, 3);
   const ev = resolveEvPct(item) ?? 0;
   const rr = resolveRr(item) ?? 0;
@@ -715,7 +743,16 @@ function TodayEntryCard({
   const positionPlan = item.positionPlan || quantVerdict.positionPlan || {};
   const publicBlocked = Boolean(item.isTradeBlocked) || publicTradeStatus === "NO_TRADE";
   const publicCandidate = publicTradeStatus === "TRADE_CANDIDATE";
-  const decisionAction = normalizeAction(publicBlocked ? "대기" : publicCandidate ? "진입" : (publicTradeLabel || decision || "관찰"));
+  const marketGate = getMarketGateInfo(marketRegime, dataHealth);
+  const rawDecisionAction = normalizeAction(publicBlocked ? "대기" : publicCandidate ? "진입" : (publicTradeLabel || decision || "관찰"));
+  const decisionAction = marketGate.isLow && rawDecisionAction.label === "진입 검토"
+    ? { label: "관찰 유지", tone: "caution" as const }
+    : rawDecisionAction;
+  const displayReasons = reasons.map((reason) =>
+    marketGate.isLow && reason.includes("진입 검토 여건")
+      ? "기준가 부근이지만 시장 회복 전까지 관찰이 우선입니다."
+      : reason
+  );
   const publicClass = publicCandidate
     ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
     : publicBlocked
@@ -814,7 +851,7 @@ function TodayEntryCard({
           <div className={`text-[13px] font-black ${toneTextClass(decisionAction.tone)}`}>{decisionAction.label}</div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] font-semibold text-slate-500">신뢰도</div>
+          <div className="text-[10px] font-semibold text-slate-500">판단 신뢰도</div>
           <div className="font-mono text-[11px] font-black text-blue-300">{confidence}</div>
         </div>
       </div>
@@ -855,8 +892,8 @@ function TodayEntryCard({
         return (
           <div className="mone-home-inset mt-2 grid grid-cols-3 gap-2 rounded-[10px] border px-3 py-2 text-[11px]">
             <div>
-              <div className="text-[10px] text-slate-500">종목 신호</div>
-              <div className="font-semibold text-slate-200">{signalText}{score > 0 ? ` · ${score.toFixed(0)}점` : ""}</div>
+              <div className="text-[10px] text-slate-500">종합 점수</div>
+              <div className="font-semibold text-slate-200">{score > 0 ? `${score.toFixed(0)}/100 · ${signalText}` : "-"}</div>
             </div>
             <div>
               <div className="text-[10px] text-slate-500">시장 환경</div>
@@ -889,7 +926,7 @@ function TodayEntryCard({
       <div className="mone-home-inset mt-3 rounded-[10px] border px-3 py-2">
         <div className="text-[11px] font-semibold text-slate-300">MONE 참고 의견</div>
         <ol className="mt-1 space-y-0.5 text-[11px] leading-5 text-slate-400">
-          {reasons.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)}
+          {displayReasons.map((reason, index) => <li key={reason}>{index + 1}. {reason}</li>)}
         </ol>
         <div className="mt-1.5 text-[10px] text-slate-600">참고용 신호입니다 — 최종 매수·매도 판단은 본인 책임입니다.</div>
       </div>
@@ -900,7 +937,7 @@ function TodayEntryCard({
         </div>
       )}
 
-      <div className="mt-auto flex gap-2 pt-3">
+      <div className="mt-auto pt-3">
         <button
           type="button"
           data-testid={`candidate-analyze-${item.symbol}-${mode}-${horizon}`}
@@ -908,36 +945,10 @@ function TodayEntryCard({
             event.stopPropagation();
             onAnalyze(item);
           }}
-          className="mone-analysis-action flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] px-3 py-2 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
+          className="mone-analysis-action flex min-h-10 w-full items-center justify-center gap-1.5 rounded-[11px] px-3 py-2 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
         >
           분석 보기 <ArrowRight size={14} />
         </button>
-        {onTradePaper && (() => {
-          const trustState = dataTrustState(item);
-          const dataBlocked = trustState === "stale" || trustState === "error";
-          const { strength } = getMarketGateInfo(marketRegime, dataHealth);
-          const gateBlocked = strength < 35;
-          const entryBlocked = dataBlocked || gateBlocked || publicBlocked;
-          const blockedLabel = publicBlocked ? "거래 금지" : dataBlocked ? "데이터 확인중" : "진입 자제 구간";
-          const blockedTitle = dataBlocked
-            ? "데이터 확인 전까지 진입을 막았습니다."
-            : "시장 진입강도가 낮아 진입을 자제하는 구간입니다.";
-          return (
-            <button
-              type="button"
-              disabled={entryBlocked}
-              title={entryBlocked ? (publicBlocked ? String(item.tradeBlockReason || publicReasons[0] || "공개 퀀트 게이트를 통과하지 못했습니다.") : blockedTitle) : undefined}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (entryBlocked) return;
-                onTradePaper(item);
-              }}
-              className="mone-interest-action flex min-h-10 items-center justify-center gap-1 rounded-[11px] px-3 py-2 text-xs font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {entryBlocked ? blockedLabel : "모의투자"}
-            </button>
-          );
-        })()}
       </div>
     </div>
   );
@@ -954,10 +965,10 @@ function CandidateCarouselSection({
   marketRegime,
   dataHealth,
   sessionHint,
+  sectionTitle = "오늘의 후보",
   earningsMap,
   onSelect,
   onAnalyze,
-  onTradePaper,
 }: {
   loading: boolean;
   candidateTab: "today" | "watch" | "risk";
@@ -969,10 +980,10 @@ function CandidateCarouselSection({
   marketRegime: any;
   dataHealth?: any;
   sessionHint?: string;
+  sectionTitle?: string;
   earningsMap?: Record<string, number>;
   onSelect: (item: any) => void;
   onAnalyze: (item: any) => void;
-  onTradePaper?: (item: any) => void;
 }) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [activeCard, setActiveCard] = useState(0);
@@ -987,7 +998,7 @@ function CandidateCarouselSection({
         ? "관찰 종목이 없습니다."
         : "위험 종목이 없습니다.";
   const tabs: { key: "today" | "watch" | "risk"; label: string; count: number }[] = [
-    { key: "today", label: "진입 검토", count: todayEntries.length },
+    { key: "today", label: "우선 후보", count: todayEntries.length },
     { key: "watch", label: "관찰", count: watchItems.length },
     { key: "risk", label: "위험", count: riskItems.length },
   ];
@@ -1022,7 +1033,7 @@ function CandidateCarouselSection({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="mone-section-icon" />
-            <h2 className="text-[18px] font-black text-slate-100">오늘의 후보</h2>
+            <h2 className="text-[18px] font-black text-slate-100">{sectionTitle}</h2>
           </div>
           <p className="mt-1 text-xs text-slate-500">{sessionHint || "진입 검토와 관찰 후보를 같은 기준으로 확인합니다."}</p>
         </div>
@@ -1076,7 +1087,6 @@ function CandidateCarouselSection({
                     onSelect={onSelect}
                     onAnalyze={onAnalyze}
                     earningsMap={earningsMap}
-                    onTradePaper={onTradePaper}
                     tone={candidateTab === "today" ? "entry" : candidateTab === "watch" ? "watch" : "risk"}
                     marketRegime={marketRegime}
                     dataHealth={dataHealth}
@@ -1206,11 +1216,17 @@ function calcSizing(items: any[], capital: number): SizingRow[] {
 
 function PositionSizingSection({
   items,
+  priorityCount,
+  marketRegime,
+  dataHealth,
   capital,
   setCapital,
   onTradePaper,
 }: {
   items: any[];
+  priorityCount: number;
+  marketRegime?: any;
+  dataHealth?: any;
   capital: number;
   setCapital: (v: number) => void;
   onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number }) => void;
@@ -1231,6 +1247,15 @@ function PositionSizingSection({
   const rows = useMemo(() => calcSizing(items, capital), [items, capital]);
   const totalAllocated = rows.reduce((s, r) => s + r.amount, 0);
   const allocPct = capital > 0 ? (totalAllocated / capital) * 100 : 0;
+  const gate = getMarketGateInfo(marketRegime, dataHealth);
+  const sizingSummary = capital > 0
+    ? `우선 후보 ${priorityCount}개 · 배분 가능 ${rows.length}개`
+    : "총 자본 입력 후 권장 금액 계산";
+  const sizingNote = capital > 0 && gate.isLow
+    ? "시장 게이트 대기로 현재 권장 배분 후보가 없습니다."
+    : capital > 0 && rows.length === 0 && priorityCount > 0
+      ? "우선 후보는 있지만 현재 배분 조건을 통과한 후보가 없습니다."
+      : "";
 
   return (
     <section className="mone-home-surface rounded-[18px] border p-4">
@@ -1244,8 +1269,9 @@ function PositionSizingSection({
         <span className="min-w-0 flex-1">
           <span className="block text-[18px] font-black text-slate-100">포지션 사이징 (Half-Kelly)</span>
           <span className="mt-0.5 block text-xs text-slate-500">
-            {capital > 0 ? `총 자본 ${capital.toLocaleString()}원 · 후보 ${rows.length}개` : "총 자본 입력 후 권장 금액 계산"}
+            {capital > 0 ? `총 자본 ${capital.toLocaleString()}원 · ${sizingSummary}` : sizingSummary}
           </span>
+          {sizingNote && <span className="mt-0.5 block text-[11px] font-semibold text-amber-300">{sizingNote}</span>}
         </span>
         {open ? <ChevronDown size={16} className="shrink-0 text-slate-100" /> : <ChevronRight size={16} className="shrink-0 text-slate-100" />}
       </button>
@@ -1272,7 +1298,7 @@ function PositionSizingSection({
           </div>
         </div>
       ) : rows.length === 0 ? (
-        <div className="py-4 text-sm text-slate-500">진입 검토 후보가 없습니다.</div>
+        <div className="py-4 text-sm text-slate-500">{sizingNote || "배분 가능 후보가 없습니다."}</div>
       ) : (
         <>
           <div className="space-y-1">
@@ -1567,6 +1593,9 @@ function MarketGateCard({
   const sentimentScore = Math.max(0, Math.min(100, Number(fearGreedData?.score ?? fearGreedData?.composite?.score ?? regime?.fearGreed ?? regime?.sentimentScore ?? (isHigh ? 68 : isMid ? 46 : 28))));
   const benchmarkValue = Number(regime?.current ?? regime?.kospiLatest ?? regime?.indexCurrent ?? 0);
   const benchmarkText = benchmarkValue > 0 ? benchmarkValue.toLocaleString("ko-KR", { maximumFractionDigits: 1 }) : "-";
+  const benchmarkBasisText = firstText(regime?.basisLabel, "마감/최근 종가");
+  const benchmarkName = String(regime?.benchmark || "KOSPI");
+  const benchmarkMetricLabel = benchmarkBasisText.includes("장중") ? `${benchmarkName} 현재값` : `${benchmarkName} 종가`;
   const ohlcvDate = String(dataHealth?.ohlcvLatestDate || dataHealth?.latestDataDate || "").slice(5) || "-";
   const sentimentText = sentimentScore >= 70 ? "탐욕" : sentimentScore >= 40 ? "중립" : "공포";
   const trendText = !hasRegimeMa ? "데이터 확인 중" : maDist >= 0 ? "이격 양호" : "이격 주의";
@@ -1648,8 +1677,9 @@ function MarketGateCard({
 
         <div className="grid grid-cols-3 divide-x divide-slate-800/80 pt-4 text-center">
           <div>
-            <div className="text-xs font-black text-slate-600">{regime?.benchmark || "KOSPI"}</div>
+            <div className="text-xs font-black text-slate-600">{benchmarkMetricLabel}</div>
             <div className={`mt-2 font-mono text-lg font-black tabular-nums ${benchmarkText === "-" ? "text-slate-500" : maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>{benchmarkText}</div>
+            <div className="mt-1 text-[10px] font-semibold text-slate-600">{benchmarkBasisText}</div>
           </div>
           <div>
             <div className="text-xs font-black text-slate-600">데이터 상태</div>
@@ -1812,15 +1842,17 @@ function TodayConclusionCard({
 function DailyBriefingCard({
   briefing,
   onAnalyze,
+  headingLabel = "오늘의 관찰 1순위",
 }: {
   briefing: BriefingPayload;
   onAnalyze?: (item: any) => void;
+  headingLabel?: string;
 }) {
   return (
     <section className="mone-home-surface rounded-[20px] border p-5">
       <div className="flex items-center gap-2 text-[12px] font-black text-blue-300">
         <span className="mone-section-icon" />
-        오늘의 관찰 1순위
+        {headingLabel}
       </div>
       <h2 className="mt-3 truncate text-[18px] font-black leading-tight text-slate-100 sm:text-[23px]">
         {briefing.title}
@@ -2067,7 +2099,7 @@ function StrategyRecordsSection({
         <div className="min-w-0 flex-1">
           <div className="text-[18px] font-black text-slate-100">전략 · 기록</div>
           <div className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-slate-600">
-            전략 선택 · 알림 추적 {alertRows.length}건
+            {modeLabel(currentMode)} × {horizonLabel(currentHorizon)} · 알림 추적 {alertRows.length}건
           </div>
         </div>
         <ChevronRight size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${expanded ? "-rotate-90" : "rotate-90"}`} />
@@ -2250,9 +2282,8 @@ function OnboardingPanel({ onNavigate }: { onNavigate?: (page: PageId) => void }
         <ClipboardList size={28} aria-hidden="true" className="mx-auto mb-2 text-teal-300" />
         <h2 className="text-base font-semibold text-slate-100">보유종목을 등록해주세요</h2>
         <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-          내 종목을 기준으로 오늘의 위험과 기회를<br />
-          1분 안에 점검해드립니다.<br />
-          <span className="text-slate-500 text-xs">MONE은 추천보다 먼저 하면 안 되는 거래를 알려줍니다.</span>
+          내 종목의 위험과 기회를 빠르게 점검합니다.<br />
+          <span className="text-slate-500 text-xs">MONE이 우선 피해야 할 거래부터 알려드립니다.</span>
         </p>
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
@@ -2629,7 +2660,7 @@ function WhyPanel({ item, onClose, marketRegime }: { item: any; onClose: () => v
                 label: "손절선 유효",
                 ok: !stopBreached,
                 detail: stopBreached
-                  ? `현재가 ${current!.toLocaleString("ko-KR")}가 손절가 ${stop!.toLocaleString("ko-KR")} 이하 — 이미 손절선 이탈, 진입 검토 부적합`
+                  ? `현재가 ${current!.toLocaleString("ko-KR")}원이 손절가 ${stop!.toLocaleString("ko-KR")}원 이하 — 이미 손절선 이탈, 진입 검토 부적합`
                   : (current != null && stop != null ? `현재가 > 손절가 ${stop.toLocaleString("ko-KR")}` : "현재가/손절가 없음"),
               },
               {
@@ -3304,7 +3335,8 @@ export default function HomePage({
   const sessionPhase = sessionStatus as SessionPhase;
   const countdown = clientReady ? getSessionCountdown(selectedMarket, sessionClock) : "";
   const sessionCtx = getSessionContext(sessionPhase);
-  const marketChoiceLabel = clientReady && marketChoice !== "auto" ? "수동" : "자동";
+  const marketName = selectedMarket === "kr" ? "국장" : "미장";
+  const marketChoiceLabel = clientReady && marketChoice !== "auto" ? `${marketName} 수동 선택` : `${marketName} 자동 선택`;
 
   useEffect(() => {
     let active = true;
@@ -3322,13 +3354,6 @@ export default function HomePage({
   function updateMarketChoice(next: MarketChoice) {
     setMarketChoice(next);
     if (typeof window !== "undefined") window.localStorage.setItem("mone:selectedMarketMode", next);
-  }
-
-  function openTradePaper(item: any) {
-    if (!onTradePaper) return;
-    const market = normalizeMarket(item.market ?? item._market, item.symbol);
-    const price = Number(item.currentPrice ?? item.price ?? item.entryPrice ?? 0);
-    onTradePaper({ symbol: String(item.symbol), name: String(item.name || item.nameKr || item.symbol), price, market });
   }
 
   function storeChartSelection(item: any) {
@@ -3716,6 +3741,8 @@ export default function HomePage({
     }),
     [topObservation, marketRegime, dataHealth, todayEntries.length, watchItems.length, riskCount, selectedMarket],
   );
+  const primaryObservationTitle = sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 관찰 1순위" : "오늘의 관찰 1순위";
+  const candidateSectionTitle = sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 후보" : "오늘의 후보";
 
   useEffect(() => {
     if (!clientReady || !topObservation) return;
@@ -3854,7 +3881,7 @@ export default function HomePage({
                 : "bg-slate-800 text-slate-400"
               }`}>{sessionStatus}</span>
               <span className="text-slate-500">
-                {marketChoiceLabel} {selectedMarket === "kr" ? "국장" : "미장"} 거래일
+                {marketChoiceLabel}
               </span>
               {countdown && <span className="flex items-center gap-1 text-slate-400"><Clock size={11} />{countdown}</span>}
             </div>
@@ -3896,7 +3923,7 @@ export default function HomePage({
       <EventBanner alert={calendarAlert} />
 
       {!loading && (
-        <DailyBriefingCard briefing={dailyBriefing} onAnalyze={setSelectedItem} />
+        <DailyBriefingCard briefing={dailyBriefing} onAnalyze={setSelectedItem} headingLabel={primaryObservationTitle} />
       )}
 
       {!loading && (
@@ -3922,14 +3949,22 @@ export default function HomePage({
           marketRegime={marketRegime}
           dataHealth={dataHealth}
           sessionHint={sessionCtx.hint}
+          sectionTitle={candidateSectionTitle}
           earningsMap={earningsMap}
           onSelect={setSelectedItem}
           onAnalyze={openAnalysis}
-          onTradePaper={onTradePaper ? openTradePaper : undefined}
         />
       )}
 
-      <PositionSizingSection items={allItems} capital={capital} setCapital={setCapital} onTradePaper={onTradePaper} />
+      <PositionSizingSection
+        items={allItems}
+        priorityCount={todayEntries.length}
+        marketRegime={marketRegime}
+        dataHealth={dataHealth}
+        capital={capital}
+        setCapital={setCapital}
+        onTradePaper={onTradePaper}
+      />
 
       {!loading && (
         <CompactHoldingsSection holdings={holdings} summary={summary} riskCount={riskCount} onNavigate={onNavigate} />
