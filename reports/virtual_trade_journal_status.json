@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-07-11T07:19:24+09:00",
+  "lastRunAt": "2026-07-13T08:56:30+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": false,
@@ -24,6 +24,7 @@
     "kr:2026-07-09:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "kr:2026-07-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "kr:2026-07-11:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+    "kr:2026-07-13:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-24:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-26:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-30:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
@@ -39,26 +40,66 @@
   "runs": [
     {
       "market": "kr",
-      "tradeDate": "2026-07-11",
-      "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "SKIPPED_MARKET_CLOSED",
-      "runKey": "kr:2026-07-11:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
-    },
-    {
-      "market": "us",
-      "tradeDate": "2026-07-10",
+      "tradeDate": "2026-07-13",
       "journalSession": "AFTER_CLOSE_TRADE",
       "status": "OK",
-      "runKey": "us:2026-07-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-      "selected": 15,
-      "added": 15,
+      "runKey": "kr:2026-07-13:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+      "selected": 14,
+      "added": 14,
       "rejected": {
-        "LOW_SCORE": 91,
-        "LOW_EV": 4
+        "LOW_SCORE": 9
       },
       "items": [
         {
           "mode": "aggressive",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "mid",
+          "selected": 1,
+          "added": 1,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
           "horizon": "mid",
           "selected": 5,
           "added": 5,
@@ -66,7 +107,7 @@
           "status": "OK"
         },
         {
-          "mode": "aggressive",
+          "mode": "conservative",
           "horizon": "short",
           "selected": 3,
           "added": 3,
@@ -74,62 +115,21 @@
           "status": "OK"
         },
         {
-          "mode": "aggressive",
+          "mode": "conservative",
           "horizon": "swing",
           "selected": 5,
           "added": 5,
           "duplicates": 0,
           "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "mid",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "swing",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
         }
       ]
+    },
+    {
+      "market": "us",
+      "tradeDate": "2026-07-10",
+      "journalSession": "AFTER_CLOSE_TRADE",
+      "status": "SKIPPED_DUPLICATE",
+      "runKey": "us:2026-07-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
     }
   ],
   "windows": {
