@@ -1384,6 +1384,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             })}
           </div>
         )}
+        {userToken && items.length > 0 && !tossStatus?.connected && !kisStatus?.connected && (
+          <div className="mt-2 rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2 text-[11px] leading-5 text-slate-400">
+            ℹ 현재 보유 {items.length}종목은 브로커 업로드·브릿지로 표시 중입니다. 위 “연결하기”는 실시간 자동 동기화(OAuth)를 위한 것으로, <b className="text-slate-300">연결 안 해도 보유는 보입니다</b>. 연결하면 수량·현재가가 자동 갱신됩니다.
+          </div>
+        )}
       </div>
 
       {/* 종목 추가 폼 */}
