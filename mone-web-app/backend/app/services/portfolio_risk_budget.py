@@ -194,6 +194,7 @@ def _holding_rows(market: str, user_id: str = "") -> list[dict[str, Any]]:
 
 def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
     rows = _holding_rows(market, user_id=user_id)
+    source_label = "personal_user_holdings" if user_id else "holdings_csv"
     total_value = sum(_market_value(row) for row in rows)
     kelly = _load_kelly()
     items: list[dict[str, Any]] = []
@@ -294,6 +295,11 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
     return {
         "status": status,
         "market": market,
+        "userId": user_id or "",
+        "holdingAuthority": source_label,
+        "dataSource": source_label,
+        "sourceSummary": "개인 보유 DB" if user_id else "공용 보유 데이터",
+        "actualHoldingCount": len(rows),
         "policy": POLICY,
         "totalValue": round(total_value, 2),
         "totalLossBudgetPct": round(total_loss_budget, 3),

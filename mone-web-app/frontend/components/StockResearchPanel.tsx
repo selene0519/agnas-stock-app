@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { mone } from "@/lib/api";
 import { RefreshCw, ChevronDown, ChevronUp, ShieldAlert, TrendingDown, Brain } from "lucide-react";
 
@@ -64,6 +64,26 @@ function SignalRow({ signal }: { signal: Signal }) {
       <span className={`text-xs leading-relaxed ${cls}`}>{signal.text}</span>
     </div>
   );
+}
+
+function normalizeRsiSignals(data: AnalysisData | null, rsi14?: number | null): AnalysisData | null {
+  if (!data || rsi14 == null || !Number.isFinite(Number(rsi14))) return data;
+  const nextRsi = Math.round(Number(rsi14) * 10) / 10;
+  const rewrite = (signal: Signal): Signal => {
+    if (!/RSI/i.test(signal.text)) return signal;
+    const type = nextRsi >= 80 ? "warning" : nextRsi <= 30 ? "positive" : "neutral";
+    const state = nextRsi >= 80 ? "RSI 과열" : nextRsi <= 30 ? "RSI 과매도" : "RSI 정상";
+    return { ...signal, type, text: `${state} (${nextRsi.toFixed(1)})` };
+  };
+  return {
+    ...data,
+    indicators: { ...data.indicators, rsi14: nextRsi },
+    financialHealth: {
+      ...data.financialHealth,
+      signals: data.financialHealth.signals.map(rewrite),
+      warnings: data.financialHealth.warnings.map(rewrite),
+    },
+  };
 }
 
 function BiasCard({ check }: { check: BiasCheck }) {
@@ -137,18 +157,21 @@ function Panel({ title, icon, badge, badgeLabel, children, defaultOpen = false }
 export default function StockResearchPanel({
   symbol,
   market,
+  rsi14,
 }: {
   symbol: string;
   market: string;
+  rsi14?: number | null;
 }) {
   const [data, setData] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(false);
+  const displayData = useMemo(() => normalizeRsiSignals(data, rsi14), [data, rsi14]);
 
   async function load() {
     if (!symbol) return;
     setLoading(true);
     try {
-      const res: any = await mone.stockAnalysis({ symbol, market });
+      const res: any = await mone.stockAnalysis({ symbol, market, rsi14 });
       setData(res);
     } catch {
       setData(null);
@@ -159,7 +182,7 @@ export default function StockResearchPanel({
 
   useEffect(() => {
     load();
-  }, [symbol, market]);
+  }, [symbol, market, rsi14]);
 
   if (!symbol) return null;
 
@@ -186,26 +209,26 @@ export default function StockResearchPanel({
         </div>
       )}
 
-      {data?.status === "ERROR" && (
+      {displayData?.status === "ERROR" && (
         <div className="rounded-xl border border-red-500/20 bg-red-950/10 px-4 py-3 text-xs text-red-300">
           분석 데이터를 불러오지 못했습니다.
         </div>
       )}
 
-      {data && data.status === "OK" && (
+      {displayData && displayData.status === "OK" && (
         <>
           {/* #2 재무건전성 */}
           <Panel
             title="재무건전성 / 밸류에이션"
             icon={<ShieldAlert size={14} className="text-sky-400" />}
-            badge={data.financialHealth.grade}
+            badge={displayData.financialHealth.grade}
             defaultOpen
           >
             <div className="space-y-0.5">
-              {data.financialHealth.signals.map((s, i) => <SignalRow key={i} signal={s} />)}
-              {data.financialHealth.warnings.map((w, i) => <SignalRow key={`w${i}`} signal={w} />)}
+              {displayData.financialHealth.signals.map((s, i) => <SignalRow key={i} signal={s} />)}
+              {displayData.financialHealth.warnings.map((w, i) => <SignalRow key={`w${i}`} signal={w} />)}
             </div>
-            {!data.hasRecommendation && (
+            {!displayData.hasRecommendation && (
               <p className="mt-2 text-[11px] text-amber-400">추천 파일에 없는 종목 — 일부 지표만 표시됩니다.</p>
             )}
           </Panel>
@@ -214,20 +237,20 @@ export default function StockResearchPanel({
           <Panel
             title="다운사이드 리스크"
             icon={<TrendingDown size={14} className="text-orange-400" />}
-            badge={data.downsideRisk.grade}
-            badgeLabel={data.downsideRisk.gradeLabel}
+            badge={displayData.downsideRisk.grade}
+            badgeLabel={displayData.downsideRisk.gradeLabel}
             defaultOpen
           >
             <div className="space-y-0.5">
-              {data.downsideRisk.signals.map((s, i) => <SignalRow key={i} signal={s} />)}
+              {displayData.downsideRisk.signals.map((s, i) => <SignalRow key={i} signal={s} />)}
             </div>
-            {data.downsideRisk.scenarios.length > 0 && (
+            {displayData.downsideRisk.scenarios.length > 0 && (
               <div className="mt-3">
                 <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                   스트레스 시나리오
                 </p>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {data.downsideRisk.scenarios.map((sc, i) => (
+                  {displayData.downsideRisk.scenarios.map((sc, i) => (
                     <div key={i} className="rounded-lg border border-red-500/20 bg-red-950/10 px-2 py-1.5 text-center">
                       <div className="text-[10px] text-slate-500">{sc.label}</div>
                       <div className="mt-0.5 font-mono text-xs font-bold text-red-300">
@@ -245,25 +268,25 @@ export default function StockResearchPanel({
             title="매매 판단 / 인지 교정"
             icon={<Brain size={14} className="text-violet-400" />}
             badge={
-              data.cognitiveBias.warningCount > 0
+              displayData.cognitiveBias.warningCount > 0
                 ? "HIGH"
-                : data.cognitiveBias.cautionCount > 0
+                : displayData.cognitiveBias.cautionCount > 0
                 ? "MEDIUM"
                 : "LOW"
             }
             badgeLabel={
-              data.cognitiveBias.warningCount > 0
-                ? `경보 ${data.cognitiveBias.warningCount}`
-                : data.cognitiveBias.cautionCount > 0
-                ? `주의 ${data.cognitiveBias.cautionCount}`
+              displayData.cognitiveBias.warningCount > 0
+                ? `경보 ${displayData.cognitiveBias.warningCount}`
+                : displayData.cognitiveBias.cautionCount > 0
+                ? `주의 ${displayData.cognitiveBias.cautionCount}`
                 : "정상"
             }
-            defaultOpen={data.cognitiveBias.warningCount > 0}
+            defaultOpen={displayData.cognitiveBias.warningCount > 0}
           >
             <div className="space-y-2">
-              {data.cognitiveBias.checks.map((c, i) => <BiasCard key={i} check={c} />)}
+              {displayData.cognitiveBias.checks.map((c, i) => <BiasCard key={i} check={c} />)}
             </div>
-            {!data.inHoldings && !data.inWatchlist && (
+            {!displayData.inHoldings && !displayData.inWatchlist && (
               <p className="mt-2 text-[11px] text-slate-500">보유/관심 종목에 추가하면 더 정확한 인지 교정 분석이 가능합니다.</p>
             )}
           </Panel>
