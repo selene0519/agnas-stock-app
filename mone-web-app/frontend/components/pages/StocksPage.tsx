@@ -43,6 +43,7 @@ type WatchRow = {
   symbol: string;
   name: string;
   targetReason?: string;
+  [key: string]: any;
 };
 
 type HoldingEditRow = {
@@ -289,9 +290,11 @@ async function openKoreaInvestment(symbol: string, market: string) {
 
 function normalizeWatch(item: any): WatchRow {
   const market = cleanMarket(item.market);
+  const normalizedMarket = market === "all" ? "kr" : market;
   return {
-    market: market === "all" ? "kr" : market,
-    symbol: cleanSymbol(item.symbol || item.code || item.ticker, market),
+    ...item,
+    market: normalizedMarket,
+    symbol: cleanSymbol(item.symbol || item.code || item.ticker, normalizedMarket),
     name: String(item.name || item.companyName || "").trim(),
     targetReason: item.targetReason,
   };
@@ -726,14 +729,52 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     [items, sectorLookup, resolvedMarket],
   );
 
+  const explorationItems = useMemo(() => {
+    if (!watchOnly) return enrichedItems;
+
+    const byKey = new Map<string, any>();
+    for (const item of enrichedItems) {
+      byKey.set(watchKey({ market: item.market || resolvedMarket, symbol: item.symbol }), item);
+    }
+
+    for (const watch of watchlist) {
+      const watchMarket = cleanMarket(watch.market || resolvedMarket);
+      if (watchMarket !== resolvedMarket) continue;
+      const key = watchKey(watch);
+      if (byKey.has(key)) continue;
+      const originMode = String(watch.mode || "").trim();
+      const originHorizon = String(watch.horizon || "").trim();
+      byKey.set(key, {
+        ...watch,
+        market: watchMarket,
+        symbol: cleanSymbol(watch.symbol, watchMarket),
+        name: watch.name || watch.symbol,
+        companyName: watch.name || watch.symbol,
+        sourceStatus: "WATCHLIST_ONLY",
+        dataStatus: "LOCAL_ONLY",
+        isSearchOnly: true,
+        isWatchOnlyFallback: true,
+        currentPrice: watch.currentPrice,
+        currentPriceText: watch.currentPriceText,
+        finalScore: Number(watch.finalScore || watch.autoWatchScore || 0),
+        targetReason: watch.targetReason || watch.memo || "핵심 관심종목",
+        timingLabel: watch.timingLabel || (originMode || originHorizon ? `자동선별 기준 ${modeLabel(originMode)} · ${horizonLabel(originHorizon)}` : "자동선별 관심종목"),
+        candidateTypeLabel: watch.candidateTypeLabel || "핵심 관심",
+        decisionBucket: watch.decisionBucket || "관심",
+      });
+    }
+
+    return Array.from(byKey.values());
+  }, [enrichedItems, resolvedMarket, watchOnly, watchlist]);
+
   const effectiveSectorsList = useMemo(() => {
     const values = new Set(sectorsList);
-    for (const item of enrichedItems) {
+    for (const item of explorationItems) {
       const sector = String(item?.sector || item?.sectorLabel || "").trim();
       if (sector) values.add(sector);
     }
     return Array.from(values).sort((a, b) => sectorKoreanLabel(a).localeCompare(sectorKoreanLabel(b), "ko"));
-  }, [sectorsList, enrichedItems]);
+  }, [sectorsList, explorationItems]);
 
   useEffect(() => {
     if (sectorFilter && effectiveSectorsList.length > 0 && !effectiveSectorsList.includes(sectorFilter)) {
@@ -742,7 +783,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }, [sectorFilter, effectiveSectorsList]);
 
   const baseFiltered = useMemo(() => {
-    let result = enrichedItems;
+    let result = explorationItems;
     if (sectorFilter) {
       result = result.filter((item) => {
         const sec = String(item.sector || item.sectorLabel || "").trim();
@@ -816,7 +857,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       );
     }
     return result;
-  }, [enrichedItems, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery]);
+  }, [explorationItems, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery]);
 
   // 탐색 렌즈 필터: strategyTags 기준으로 렌즈에 해당하는 종목만 우선 노출한다.
   // 밸런스(matchAll)는 전체를 종합해서 보는 기본 렌즈이므로 필터하지 않는다.
@@ -868,11 +909,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
-    enrichedItems.forEach((item) => {
+    explorationItems.forEach((item) => {
       (Array.isArray(item.strategyTags) ? item.strategyTags : []).forEach((t: string) => tagSet.add(t));
     });
     return Array.from(tagSet).sort();
-  }, [enrichedItems]);
+  }, [explorationItems]);
 
   const activeFilterCount = [
     minScore > 0, tagFilter != null, hideDataPending, hideBlockedOnly,
@@ -941,7 +982,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     const hasFilters = sectorFilter || groupFilter || minScore > 0 || tagFilter || hideDataPending ||
       hideBlockedOnly || filterEvPositive || filterWinRate40 || supplyFilter || excludeOverheated ||
       excludeStopRisk || advTags.size > 0 || nameQuery.trim() || (lens && lens !== "balance");
-    const base = hasFilters ? sectorFiltered : enrichedItems;
+    const base = hasFilters ? sectorFiltered : explorationItems;
     let result = base;
     if (selected) {
       const selectedMarket = cleanMarket(selected.market || resolvedMarket || "kr");
@@ -972,7 +1013,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     // 발굴 렌즈에서는 '조기성(발굴 점수)' 순으로 정렬해 아직 덜 오른 후보를 위로.
     const _sortKey = lens === "discovery" ? "discoveryScore" : sortBy;
     return [...result].sort((a, b) => Number(b[_sortKey] ?? 0) - Number(a[_sortKey] ?? 0));
-  }, [enrichedItems, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery, sortBy, lens]);
+  }, [explorationItems, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery, sortBy, lens]);
 
   const filterStats = useMemo(() => {
     // 실제로 표시되는 후보(visible)를 단일 기준으로 분할해 합이 '표시 후보'와 맞아떨어지게 한다.
@@ -997,7 +1038,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   }, [visible]);
 
   const recommendationFreshness = useMemo(() => {
-    const sample = visible.find((item) => !item.isSearchOnly) || enrichedItems[0] || {};
+    const sample = visible.find((item) => !item.isSearchOnly) || explorationItems[0] || {};
     const predictionBasisDate = firstText(
       sample.predictionDate,
       sample.recommendationDate,
@@ -1016,7 +1057,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       recoGeneratedAt: firstText(sample.recoGeneratedAt, sample.generatedAt, sample.updatedAt, ""),
       dataStatus: loadError ? "NO_DATA" : sample.dataStatus,
     });
-  }, [enrichedItems, visible, loadError, resolvedMarket]);
+  }, [explorationItems, visible, loadError, resolvedMarket]);
 
   const priceBasisInfo = useMemo(() => {
     const sample = visible.find((item) => !item.isSearchOnly) || items[0] || {};

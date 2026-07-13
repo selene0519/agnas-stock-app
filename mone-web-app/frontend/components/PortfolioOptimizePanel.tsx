@@ -6,7 +6,7 @@ import { PieChart, RefreshCw, AlertTriangle, CheckCircle2, TrendingDown } from "
 import { displayName } from "@/lib/moneDisplay";
 import { toneClassName } from "@/lib/tone";
 
-const PORTFOLIO_CACHE_KEY = "mone:portfolio-optimize-cache";
+const PORTFOLIO_CACHE_KEY = "mone:portfolio-optimize-cache:v2";
 const PORTFOLIO_CACHE_TTL = 30 * 60 * 1000;
 
 function readPortfolioCache(market: Market): { sectorData: any; holdings: any[] } | null {
@@ -42,6 +42,7 @@ type Holding = {
   symbol: string;
   name: string;
   market: string;
+  sector?: string;
   currentPrice: number;
   quantity: number;
   avgPrice: number;
@@ -58,6 +59,66 @@ type PortfolioData = {
   holdings: Holding[];
   totalValue: number;
 };
+
+function cleanHoldingSymbol(symbol: string, market: Market) {
+  const raw = String(symbol || "").trim();
+  if (market === "kr") return raw.replace(/[^0-9]/g, "").padStart(6, "0").slice(-6);
+  return raw.toUpperCase().replace(/[^A-Z0-9.\-]/g, "");
+}
+
+function buildSectorLookup(market: Market, rows: any[]) {
+  const lookup: Record<string, string> = {};
+  for (const row of rows || []) {
+    const sector = String(row?.sector || "").trim();
+    if (!sector) continue;
+    const symbols = Array.isArray(row?.symbols) ? row.symbols : [];
+    for (const entry of symbols) {
+      const symbol = typeof entry === "string" ? entry : entry?.symbol;
+      const entryMarket = String((typeof entry === "object" && entry?.market) || market || "kr").toLowerCase() === "us" ? "us" : "kr";
+      lookup[`${entryMarket}:${cleanHoldingSymbol(symbol, entryMarket as Market)}`] = sector;
+    }
+  }
+  return lookup;
+}
+
+function buildPortfolioData(holdings: Holding[]): PortfolioData {
+  const totalValue = holdings.reduce((sum, h) => sum + h.valuation, 0);
+  const bySector: Record<string, SectorRow> = {};
+
+  for (const h of holdings) {
+    const sector = String(h.sector || "미분류").trim() || "미분류";
+    if (!bySector[sector]) {
+      bySector[sector] = { sector, value: 0, pct: 0, symbols: [], maxLoss: 0 };
+    }
+    bySector[sector].value += h.valuation;
+    bySector[sector].symbols.push(h.symbol);
+    if (h.currentPrice > 0 && h.quantity > 0 && h.stop && h.stop > 0) {
+      bySector[sector].maxLoss += Math.max(0, (h.currentPrice - h.stop) * h.quantity);
+    }
+  }
+
+  const sectors = Object.values(bySector)
+    .map((row) => ({
+      ...row,
+      value: Math.round(row.value),
+      maxLoss: Math.round(row.maxLoss),
+      pct: totalValue > 0 ? Number(((row.value / totalValue) * 100).toFixed(1)) : 0,
+    }))
+    .sort((a, b) => b.value - a.value);
+  const totalLoss = sectors.reduce((sum, row) => sum + row.maxLoss, 0);
+  const top1 = sectors[0]?.pct || 0;
+
+  return {
+    sectors,
+    concentration: { top1Pct: top1, warning: top1 > 40 },
+    maxLossSimulation: {
+      totalLoss,
+      totalLossPct: totalValue > 0 ? Number(((totalLoss / totalValue) * 100).toFixed(1)) : 0,
+    },
+    holdings,
+    totalValue,
+  };
+}
 
 function ConcentrationBar({ pct, label, count }: { pct: number; label: string; count: number }) {
   const isHigh = pct > 40;
@@ -136,19 +197,22 @@ export default function PortfolioOptimizePanel() {
     if (force) setIsRefreshing(true);
 
     try {
-      const [sectorResult, holdingsResult] = await Promise.allSettled([
-        mone.sectorExposure({ market }) as Promise<any>,
+      const [sectorListResult, holdingsResult] = await Promise.allSettled([
+        mone.sectorsList({ market }) as Promise<any>,
         mone.holdingsClean({ market, limit: 200 }) as Promise<any>,
       ]);
-      const sectorRes = sectorResult.status === "fulfilled" ? sectorResult.value : null;
+      const sectorList = sectorListResult.status === "fulfilled" && Array.isArray(sectorListResult.value?.items)
+        ? sectorListResult.value.items
+        : [];
       const holdingsRes = holdingsResult.status === "fulfilled" ? holdingsResult.value : null;
-      setSectorData(sectorRes);
       setHoldingSource(String(holdingsRes?.authority || holdingsRes?.routeVersion || ""));
+      const sectorLookup = buildSectorLookup(market, sectorList);
       const items = (holdingsRes?.items || []) as any[];
       const parsed: Holding[] = items.map((h: any) => ({
         symbol: h.symbol || "",
         name: displayName({ ...h, market: h.market || market }) || h.symbol || "",
         market: h.market || market,
+        sector: h.sector || h.sectorLabel || h.industry || sectorLookup[`${h.market || market}:${cleanHoldingSymbol(h.symbol || "", (h.market || market) as Market)}`] || "미분류",
         currentPrice: Number(h.currentPrice || 0),
         quantity: Number(h.quantity || 0),
         avgPrice: Number(h.avgPrice || h.averagePrice || 0),
@@ -158,8 +222,10 @@ export default function PortfolioOptimizePanel() {
         target: h.target || h.targetPrice ? Number(h.target || h.targetPrice) : undefined,
       }));
       const filteredHoldings = parsed.filter((h) => h.valuation > 0);
+      const portfolioData = buildPortfolioData(filteredHoldings);
+      setSectorData(portfolioData);
       setHoldings(filteredHoldings);
-      writePortfolioCache(market, { sectorData: sectorRes, holdings: filteredHoldings });
+      writePortfolioCache(market, { sectorData: portfolioData, holdings: filteredHoldings });
     } catch {
       setSectorData(null);
       setHoldingSource("");
