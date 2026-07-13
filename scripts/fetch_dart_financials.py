@@ -29,9 +29,11 @@ STATUS = ROOT / "reports" / "dart_financial_status.json"
 DART_KEY = os.environ.get("DART_API_KEY", "")
 BASE_URL = "https://opendart.fss.or.kr/api"
 
-# 최근 2년 사업보고서 코드
+# 최근 2개 사업보고서 기준. 대부분 12월 결산사는 다음 해 4월 이후 전년도
+# 사업보고서가 최신 연간 보고서가 된다.
 REPORT_CODE = "11011"   # 사업보고서 (연간)
-YEARS = ["2024", "2023"]
+_annual_base_year = datetime.now().year - 1 if datetime.now().month >= 4 else datetime.now().year - 2
+YEARS = [str(_annual_base_year), str(_annual_base_year - 1)]
 
 FIELDNAMES = [
     "symbol", "corp_code", "name", "year",

@@ -4797,11 +4797,25 @@ def _load_dart_financial_map(market: str) -> dict[str, dict[str, Any]]:
     # read_csv returns DataFrame — dataframe_records로 변환
     df = read_csv(path)
     rows = dataframe_records(df) if hasattr(df, "iterrows") else (df if isinstance(df, list) else [])
+    def _has_financial_values(row: dict[str, Any]) -> bool:
+        core_fields = (
+            "revenue", "operating_income", "net_income", "total_equity",
+            "roe", "per", "pbr", "debt_ratio", "operating_margin",
+            "revenue_growth", "eps_growth",
+        )
+        for key in core_fields:
+            value = str(row.get(key, "")).strip()
+            if value and value.lower() not in {"none", "nan", "null", "-"}:
+                return True
+        return False
+
     for row in rows:
         raw_sym = str(row.get("symbol", "")).strip()
         sym = normalize_symbol(raw_sym, market)
         year = str(row.get("year", ""))
         if not sym:
+            continue
+        if not _has_financial_values(row):
             continue
         existing = dart.get(sym)
         if existing is None or year > str(existing.get("year", "")):

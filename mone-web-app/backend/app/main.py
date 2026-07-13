@@ -2836,6 +2836,7 @@ def api_symbol_sentiment(
 def api_stock_analysis(
     symbol: str,
     market: str = Query("kr", pattern="^(kr|us)$"),
+    rsi14: float | None = Query(None),
     x_mone_user: str = Header(None, alias="x-mone-user"),
 ) -> dict:
     """
@@ -2871,9 +2872,12 @@ def api_stock_analysis(
 
         closes = [_num(r.get("close")) for r in rows if _num(r.get("close"))]
 
-        # RSI(14)
+        # RSI(14). The chart page may pass its resolved RSI14 so every visible
+        # panel shares one basis; keep local calculation as a fallback.
         rsi_val: float | None = None
-        if len(closes) >= 15:
+        if rsi14 is not None and rsi14 == rsi14:
+            rsi_val = round(float(rsi14), 1)
+        elif len(closes) >= 15:
             gains = [max(closes[i] - closes[i - 1], 0) for i in range(1, len(closes))]
             losses = [max(closes[i - 1] - closes[i], 0) for i in range(1, len(closes))]
             avg_g = sum(gains[-14:]) / 14

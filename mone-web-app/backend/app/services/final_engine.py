@@ -2066,10 +2066,11 @@ def _recommendation_detail_rows(market: str, symbol: str) -> list[dict[str, Any]
                         merged["base"] = current_price
                         merged["currentPrice"] = current_price
                         merged.setdefault("currentPriceText", data.format_price(current_price, market))
-                    for key in ("entry", "stop", "target"):
+                    for key, text_key in (("entry", "entryText"), ("stop", "stopText"), ("target", "targetText")):
                         value = _num(merged.get(key))
                         if value is not None and value > 0:
                             merged[key] = value
+                            merged[text_key] = data.format_price(value, market)
                     expected = _num(merged.get("expectedPrice") or merged.get("expected") or merged.get(HORIZON_PRICE_FIELD[horizon]))
                     if expected is not None and expected > 0:
                         merged["expectedPrice"] = expected
@@ -2106,10 +2107,16 @@ def _recommendation_detail_rows(market: str, symbol: str) -> list[dict[str, Any]
                 mode = "balanced"
             if horizon not in HORIZONS:
                 horizon = "swing"
-            for src_key, dst_key in (("entryPrice", "entry"), ("stopPrice", "stop"), ("targetPrice", "target"), ("expectedPrice", "expectedPrice")):
+            for src_key, dst_key, text_key in (
+                ("entryPrice", "entry", "entryText"),
+                ("stopPrice", "stop", "stopText"),
+                ("targetPrice", "target", "targetText"),
+                ("expectedPrice", "expectedPrice", "expectedPriceText"),
+            ):
                 value = _num(merged.get(src_key))
                 if value is not None and value > 0:
                     merged.setdefault(dst_key, value)
+                    merged[text_key] = data.format_price(value, market)
             expected = _num(merged.get("expectedPrice") or merged.get("expected"))
             if expected is not None and expected > 0:
                 merged.setdefault("expected", expected)
