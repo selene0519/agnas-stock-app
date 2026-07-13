@@ -145,3 +145,17 @@ watchlist_us.csv
 /CHECK_STOCK_APP_DATA_RANGE.py
 /add_saturday_us_collect.bat
 /data/market/ohlcv/_import_summary.json
+
+# ── 개인 보유/포트폴리오/포지션 — 절대 커밋 금지 (public 레포 노출 방지) ──
+data/*holdings*.csv
+data/*holdings*.json
+data/kis_2_holdings_kr.csv
+data/kis_combined_holdings_kr.csv
+holdings_us_backup*.csv
+data/portfolio/
+data/portfolio_response_history.csv
+reports/*position_cards*.csv
+reports/*quant_portfolio_risk*.csv
+reports/kelly_position_sizes.json
+reports/portfolio_risk_metrics.json
+reports/portfolio_risk_summary.json

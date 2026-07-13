@@ -885,7 +885,7 @@ jobs:
             git add reports/api_data_status_center*.csv reports/api_data_status_center*.json 2>/dev/null || true
             git add reports/gnews_*.csv reports/gnews_*.json reports/news_*.csv reports/news_*.json 2>/dev/null || true
             git add reports/fundamental_*.csv reports/fundamental_*.json 2>/dev/null || true
-            git add reports/portfolio_risk_summary.json 2>/dev/null || true
+            # portfolio_risk_summary.json 은 개인 포트폴리오 파생 데이터라 커밋하지 않는다(.gitignore).
 
             # Live quote snapshots. KIS-only rows are separated from fallback rows.
             git add reports/kis_live_refresh_status.json 2>/dev/null || true
@@ -909,7 +909,8 @@ jobs:
             git add reports/backtest_summary.json 2>/dev/null || true
             git add reports/ensemble_calibration_*.json 2>/dev/null || true
             git add reports/live_calibration_kr.json 2>/dev/null || true
-            git add reports/factor_attribution.json reports/kelly_position_sizes.json 2>/dev/null || true
+            git add reports/factor_attribution.json 2>/dev/null || true
+            # kelly_position_sizes.json 은 개인 보유 기반이라 커밋 제외(.gitignore).
             git add reports/factor_based_filter_adjustments.json 2>/dev/null || true
             git add data/virtual_trade_journal.csv 2>/dev/null || true
 
