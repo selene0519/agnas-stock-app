@@ -1086,9 +1086,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       predictionText: predictionDate
         ? `${marketLabel(resolvedMarket)} 예측 기준: ${predictionDate.slice(0, 10)}`
         : `${marketLabel(resolvedMarket)} 예측 기준: 확인 중`,
-      priceText: resolvedMarket === "us" && snapshot
-        ? `현재가 기준: 미장 snapshot${priceDate ? ` · ${priceDate.slice(0, 10)}` : ""}`
-        : `현재가 기준: ${snapshot ? "snapshot" : "OHLCV/추천 fallback"}${priceDate ? ` · ${priceDate.slice(0, 10)}` : ""}`,
+      priceText: `현재가 기준: ${snapshot ? "장중 시세" : "최근 종가"}${priceDate ? ` · ${priceDate.slice(0, 10)}` : ""}`,
       ohlcvText: ohlcvDate ? `차트·지표 기준: OHLCV ${ohlcvDate.slice(0, 10)}` : "차트·지표 기준: 확인 중",
     };
   }, [items, visible, resolvedMarket]);
@@ -2087,7 +2085,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             <div className="mt-0.5 font-mono text-sm font-bold text-emerald-300">{filterStats.normal.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <div className="text-[10px] text-slate-500">fallback·장마감</div>
+            <div className="text-[10px] text-slate-500">종가 기준</div>
             <div className="mt-0.5 font-mono text-sm font-bold text-cyan-300">{filterStats.fallback.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
@@ -2363,7 +2361,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       {cardMarket === "us" ? "미장" : "국장"} 예측 {cardPredictionDate ? cardPredictionDate.slice(0, 10) : "확인중"}
                     </span>
                     <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-cyan-300">
-                      현재가 {cardUsesSnapshot ? "snapshot" : "fallback"}
+                      현재가 {cardUsesSnapshot ? "장중 시세" : "최근 종가"}
                     </span>
                     <span className="rounded-md border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-slate-400">
                       차트·지표 {cardOhlcvDate ? cardOhlcvDate.slice(0, 10) : "확인중"}

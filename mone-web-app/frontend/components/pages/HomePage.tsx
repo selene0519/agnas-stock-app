@@ -48,6 +48,7 @@ import {
 } from "@/lib/moneDisplay";
 import { RecommendationBadges } from "@/components/RecommendationBadges";
 import { dataSourceLabel } from "@/lib/dataSourceLabel";
+import { getMarketGateInfo } from "@/lib/decisionStack";
 import { confidenceLabel, normalizeAction, normalizeStatus, toneTextClass } from "@/lib/statusLabels";
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
 import { getAuthenticatedUserId } from "@/lib/userId";
@@ -1548,27 +1549,7 @@ function BacktestBadge({ item, badgeMap }: { item: any; badgeMap: Record<string,
   );
 }
 
-function getMarketGateInfo(regime: any, dataHealth: any) {
-  const base = regime?.regime === "BULL" ? 70 : regime?.regime === "BEAR" ? 22 : 50;
-  const hasRegimeMa = regime?.distanceMa20Pct != null || regime?.distanceToMa20Pct != null;
-  const maDist = Number(regime?.distanceMa20Pct ?? regime?.distanceToMa20Pct ?? 0);
-  const maAdj = maDist >= 3 ? 10 : maDist >= 1 ? 5 : maDist >= -1 ? 0 : maDist >= -3 ? -8 : -15;
-
-  const recoAt = dataHealth?.recoGeneratedAt ? new Date(dataHealth.recoGeneratedAt) : null;
-  const hoursOld = recoAt ? (Date.now() - recoAt.getTime()) / 3600000 : null;
-  const liveRatio = (dataHealth?.kisTargetCount ?? 0) > 0
-    ? (dataHealth?.kisLiveCount ?? 0) / dataHealth.kisTargetCount : 1;
-  const hasOhlcv = Number(dataHealth?.ohlcvCount ?? 0) > 0;
-  const dataAdj = hoursOld != null && hoursOld > 24 ? -15 : liveRatio < 0.1 ? (hasOhlcv ? -8 : -20) : liveRatio < 0.5 ? -5 : 0;
-
-  const strength = Math.max(0, Math.min(100, base + maAdj + dataAdj));
-  const levelText = strength >= 55 ? "진입 검토" : strength >= 35 ? "관찰" : "대기";
-  const isHigh = strength >= 55;
-  const isMid = strength >= 35 && strength < 55;
-  const isLow = strength < 35;
-
-  return { strength, levelText, isHigh, isMid, isLow, maDist, dataAdj, hasOhlcv, hasRegimeMa };
-}
+// getMarketGateInfo는 lib/decisionStack의 공유본을 쓴다 — 홈·탐색·분석이 같은 수식/어휘를 공유.
 
 // ── 시장 컨디션 게이트
 function MarketGateCard({
@@ -1638,7 +1619,7 @@ function MarketGateCard({
             <div className="mt-3 flex max-w-[270px] items-start gap-2 text-sm leading-6 text-slate-400 text-pretty">
               <AlertTriangle size={14} className={`mt-1 shrink-0 ${textCls}`} />
               <span>{isHigh ? "시장 상태가 양호합니다. 종목별 기준가와 위험 조건을 확인하세요."
-               : isMid ? "관찰 구간입니다. EV·손익비 조건을 더 엄격하게 확인하세요."
+               : isMid ? "중립 구간입니다. EV·손익비 조건을 더 엄격하게 확인하세요."
                : "시장 약세와 공포 구간입니다. 진입 검토보다 보유 위험과 기준가 이탈을 먼저 확인하세요."}</span>
             </div>
           </div>
@@ -3483,7 +3464,8 @@ export default function HomePage({
       let active = true;
       applyCachedOrBootState(selectedMarket).then((hadCache) => {
         if (!active) return;
-        if (hadCache) return;
+        // 캐시로 먼저 그리되 항상 라이브로 재검증한다(stale-while-revalidate).
+        // 캐시만 믿고 끝내면 홈 게이트/레짐이 탐색·분석과 다른 시점 값으로 갈라진다.
         load({ background: hadCache });
       });
       return () => { active = false; };

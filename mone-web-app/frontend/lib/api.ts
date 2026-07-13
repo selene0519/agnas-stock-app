@@ -125,6 +125,11 @@ const API_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout >
   ? configuredTimeout
   : 120000;
 const API_SNAPSHOT_PREFIX = "mone:api-snapshot:v5:";
+// 스냅샷은 두 단계로 쓴다: FRESH 창 안에서는 네트워크 없이 그대로 서빙(즉시 페인트),
+// 그 이후에는 라이브 조회가 원본이고 스냅샷은 네트워크 실패 시 폴백으로만 쓴다.
+// 이전에는 18시간 내내 스냅샷을 그대로 반환해 홈·탐색·분석이 서로 다른 시점의
+// 게이트/시세를 동시에 보여주는 문제가 있었다.
+const API_SNAPSHOT_FRESH_TTL_MS = 5 * 60 * 1000;
 const API_SNAPSHOT_TTL_MS = 18 * 60 * 60 * 1000;
 
 const SNAPSHOT_CACHEABLE_PATHS = [
@@ -175,6 +180,7 @@ function snapshotCacheKey(path: string, params?: Record<string, string | number 
 export function readApiSnapshot<T = any>(
   path: string,
   params?: Record<string, string | number | boolean | undefined | null>,
+  maxAgeMs: number = API_SNAPSHOT_TTL_MS,
 ): T | null {
   if (typeof window === "undefined" || !isSnapshotCacheablePath(path)) return null;
   try {
@@ -183,7 +189,7 @@ export function readApiSnapshot<T = any>(
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
     const ts = Number(parsed.ts || 0);
-    if (!Number.isFinite(ts) || Date.now() - ts > API_SNAPSHOT_TTL_MS) return null;
+    if (!Number.isFinite(ts) || Date.now() - ts > maxAgeMs) return null;
     return parsed.value as T;
   } catch {
     return null;
@@ -350,8 +356,12 @@ export async function apiGet<T = any>(
   params?: Record<string, string | number | boolean | undefined | null>,
   signal?: AbortSignal
 ): Promise<T> {
-  const cached = readApiSnapshot<T>(path, params);
+  // 5분 이내 스냅샷만 네트워크 생략 대상. 그보다 오래된 스냅샷은 라이브 조회를
+  // 우선하고, 조회 실패 시에만 18시간 내 스냅샷을 폴백으로 쓴다.
+  const cached = readApiSnapshot<T>(path, params, API_SNAPSHOT_FRESH_TTL_MS);
   if (cached) return cached;
+
+  const staleFallback = () => readApiSnapshot<T>(path, params);
 
   const proxyUrl = buildUrl(API_BASE, path, params);
   const proxyResult: any = await fetchJson<T>(proxyUrl, signal);
@@ -363,10 +373,12 @@ export async function apiGet<T = any>(
 
   // 취소된 경우 direct fallback 시도하지 않음
   if (signal?.aborted) {
-    return proxyResult as T;
+    return (staleFallback() ?? proxyResult) as T;
   }
 
   if (!canUseDirectBackendFallback()) {
+    const stale = staleFallback();
+    if (stale) return stale;
     return {
       ...proxyResult,
       directFallbackSkipped: true,
@@ -380,6 +392,8 @@ export async function apiGet<T = any>(
   const directResult: any = await fetchJson<T>(directUrl, signal);
 
   if (directResult?.status === "ERROR") {
+    const stale = staleFallback();
+    if (stale) return stale;
     directResult.proxyError = proxyResult.error;
   } else {
     writeApiSnapshot(path, params, directResult);

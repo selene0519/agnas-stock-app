@@ -30,7 +30,8 @@ export function getMarketGateInfo(regime: any, dataHealth: any): MarketGate {
   const dataAdj = hoursOld != null && hoursOld > 24 ? -15 : liveRatio < 0.1 ? (hasOhlcv ? -8 : -20) : liveRatio < 0.5 ? -5 : 0;
 
   const strength = Math.max(0, Math.min(100, base + maAdj + dataAdj));
-  const levelText = strength >= 55 ? "진입 검토" : strength >= 35 ? "관찰" : "대기";
+  // 상태어만 쓴다("진입 검토" 같은 행동어 금지) — 행동은 최종 행동 칸에서만 말한다.
+  const levelText = strength >= 55 ? "양호" : strength >= 35 ? "중립" : "대기";
   return {
     strength,
     levelText,
