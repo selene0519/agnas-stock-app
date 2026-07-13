@@ -2115,7 +2115,10 @@ def _recommendation_detail_rows(market: str, symbol: str) -> list[dict[str, Any]
             ):
                 value = _num(merged.get(src_key))
                 if value is not None and value > 0:
-                    merged.setdefault(dst_key, value)
+                    # 원장의 전략별 가격이 권위값. setdefault를 쓰면 normalize가 현재가로
+                    # 파생한 공용 entry/stop/target이 살아남아 숫자(stop)와 텍스트(stopText)가
+                    # 서로 다른 전략 값을 가리키는 모순이 생긴다.
+                    merged[dst_key] = value
                     merged[text_key] = data.format_price(value, market)
             expected = _num(merged.get("expectedPrice") or merged.get("expected"))
             if expected is not None and expected > 0:

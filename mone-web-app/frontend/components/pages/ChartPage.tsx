@@ -2451,8 +2451,21 @@ export default function ChartPage() {
         setLevels((prev: any) => {
           const prevPattern = prev?.patternStrategy && typeof prev.patternStrategy === "object" ? prev.patternStrategy : null;
           const nextPattern = matched?.patternStrategy && typeof matched.patternStrategy === "object" ? matched.patternStrategy : null;
+          // 가격 텍스트/숫자 필드는 이전 전략 값이 살아남으면 화면이 두 전략을 섞어
+          // 보여준다(예: 상단 손절선은 이전 전략, 계획 카드는 새 전략). matched가
+          // 새 값을 주지 않는 가격 필드는 이월하지 않는다.
+          const base = { ...(prev || {}) };
+          const PRICE_KEYS = [
+            "entry", "entryPrice", "entryText", "entryPriceText",
+            "stop", "stopPrice", "stopLoss", "stopText", "stopPriceText",
+            "target", "targetPrice", "targetText", "targetPriceText",
+            "expected", "expectedPrice", "expectedText", "expectedPriceText",
+          ];
+          for (const key of PRICE_KEYS) {
+            if (matched[key] === undefined || matched[key] === null) delete base[key];
+          }
           return {
-            ...(prev || {}),
+            ...base,
             ...matched,
             symbol: selected.symbol,
             market: selected.market,
@@ -2696,10 +2709,12 @@ export default function ChartPage() {
     { label: "기업분석", value: companyState.value, sub: companyState.sub, cls: companyState.cls },
   ];
   const strategyBasisText = `${modeLabel(atrMode)} × ${horizonLabel(atrHorizon)}`;
-  const dataMode = String(levels?.mode || levels?._mode || atrMode).toLowerCase();
-  const dataHorizon = String(levels?.horizon || levels?._horizon || atrHorizon).toLowerCase();
-  const dataBasisText = `${modeLabel(dataMode as any)} × ${horizonLabel(dataHorizon as any)}`;
-  const hasDedicatedStrategyBasis = dataMode === atrMode && dataHorizon === atrHorizon;
+  // 데이터에 mode/horizon이 명시된 경우에만 "전용 추천"으로 인정한다.
+  // 이전에는 atrMode로 폴백해, 전용 추천이 없어도 "동기화됨"으로 잘못 표시됐다.
+  const dataMode = String(levels?.mode || levels?._mode || "").toLowerCase();
+  const dataHorizon = String(levels?.horizon || levels?._horizon || "").toLowerCase();
+  const dataBasisText = dataMode && dataHorizon ? `${modeLabel(dataMode as any)} × ${horizonLabel(dataHorizon as any)}` : "공통 기준";
+  const hasDedicatedStrategyBasis = Boolean(dataMode && dataHorizon) && dataMode === atrMode && dataHorizon === atrHorizon;
   const displayBasisText = hasDedicatedStrategyBasis ? `${dataBasisText} 추천` : "공통 기준선";
   const strategySyncText =
     strategyRefreshStatus === "loading" ? "전략 기준 확인 중"
@@ -2777,7 +2792,7 @@ export default function ChartPage() {
       blocksNewEntry,
       isGateBlocked: blocksNewEntry,
       rows: [
-        { label: blocksNewEntry ? "신규 진입" : "진입 검토", value: newEntry, tone: blocksNewEntry ? "warn" as const : "ok" as const },
+        { label: "신규 진입", value: newEntry, tone: blocksNewEntry ? "warn" as const : "ok" as const },
         { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다.", tone: "neutral" as const },
         { label: "진입가/알림가", value: levels ? `1차 진입가 ${entry} · 관심 알림가는 별도 근접 알림 기준` : "진입가 확정 후 알림 기준을 설정합니다.", tone: "neutral" as const },
         { label: "위험 상태", value: riskText, tone: riskTone },
@@ -2965,9 +2980,11 @@ export default function ChartPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "border-amber-600/40 text-amber-300" : "border-emerald-600/40 text-emerald-300"}`}>
-                      {moneConclusion.actionText}
-                    </span>
+                    {moneConclusion.actionText !== moneConclusion.headline && (
+                      <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "border-amber-600/40 text-amber-300" : "border-emerald-600/40 text-emerald-300"}`}>
+                        {moneConclusion.actionText}
+                      </span>
+                    )}
                     {moneConclusion.secondaryBadge && (
                       <span className="rounded-lg border border-slate-700 px-2.5 py-1 text-xs font-bold text-slate-300">
                         {moneConclusion.secondaryBadge}
