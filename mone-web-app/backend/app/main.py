@@ -1012,9 +1012,18 @@ def api_final_portfolio_risk(
     mode: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
     horizon: str = Query("swing", pattern="^(short|swing|mid)$"),
     x_mone_user: str = Header(default="", alias="x-mone-user"),
+    authorization: str = Header(default="", alias="Authorization"),
 ) -> dict:
     result = final_engine.portfolio_risk(_market(market), mode, horizon)
-    uid = _db.sanitize_uid(x_mone_user)
+    uid = ""
+    if str(os.environ.get("MONE_ANON_HOLDINGS", "")).strip().lower() in {"1", "true", "yes", "on"}:
+        uid = _db.sanitize_uid(x_mone_user)
+    if not uid:
+        try:
+            payload = _verify_user_token(_extract_bearer_token(authorization))
+            uid = _db.sanitize_uid(str((payload or {}).get("userId") or (payload or {}).get("sub") or ""))
+        except Exception:
+            uid = ""
     if uid:
         bridge_rows = _db.get_holdings(uid, _market(market))
         if bridge_rows:
@@ -5057,11 +5066,8 @@ def _install_mone_authoritative_holdings_clean_v3():
 
     def _personal_payload(user_id: str, market: str = "all", limit: int = 100) -> dict:
         rows = _read_personal_holdings(user_id, market)
-        # 계정 DB에 보유가 없으면(브리지 미동기화/Supabase 미연결) 비로그인과 동일하게
-        # 공용 CSV 원장으로 폴백한다. rows_override=[]를 넘기면 _payload가 CSV를 읽지
-        # 않아 로그인 상태에서만 "보유 0개"가 되는 문제를 막는다(홈과 동일 소스 유지).
         if not rows:
-            payload = _payload(market, limit)
+            payload = _payload(market, limit, rows_override=[], authority="personal_user_holdings")
             payload["userId"] = user_id
             payload["storage"] = _db.backend_info().get("backend", "user_db")
             return payload
@@ -8198,15 +8204,39 @@ def api_journal_self_learning_performance_gate(payload: dict = Body(default_fact
 def api_portfolio_risk_budget(
     market: str = Query("all"),
     x_mone_user: str = Header(default="", alias="x-mone-user"),
+    authorization: str = Header(default="", alias="Authorization"),
 ) -> dict:
     from app.services.portfolio_risk_budget import risk_budget
 
     try:
         from app import db as _db
 
-        user_id = _db.sanitize_uid(x_mone_user)
+        user_id = ""
+        if str(os.environ.get("MONE_ANON_HOLDINGS", "")).strip().lower() in {"1", "true", "yes", "on"}:
+            user_id = _db.sanitize_uid(x_mone_user)
+        if not user_id:
+            payload = _verify_user_token(_extract_bearer_token(authorization))
+            user_id = _db.sanitize_uid(str((payload or {}).get("userId") or (payload or {}).get("sub") or ""))
     except Exception:
         user_id = ""
+    if not user_id:
+        return {
+            "status": "OK",
+            "market": market,
+            "authRequired": True,
+            "holdingAuthority": "",
+            "dataSource": "",
+            "sourceSummary": "로그인 필요",
+            "actualHoldingCount": 0,
+            "policy": risk_budget.__globals__.get("POLICY", {}),
+            "totalValue": 0,
+            "totalLossBudgetPct": 0,
+            "missingStopCount": 0,
+            "warnings": [],
+            "sectors": [],
+            "correlation": {"status": "NO_DATA"},
+            "items": [],
+        }
     return risk_budget(market=market, user_id=user_id)
 
 

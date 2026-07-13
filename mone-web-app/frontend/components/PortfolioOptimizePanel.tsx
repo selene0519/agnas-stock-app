@@ -60,9 +60,16 @@ type PortfolioData = {
   totalValue: number;
 };
 
-function cleanHoldingSymbol(symbol: string, market: Market) {
+function normalizeHoldingMarket(value: any, symbol: string, fallback: Market): "kr" | "us" {
+  const rawMarket = String(value || "").toLowerCase();
+  if (rawMarket === "kr" || rawMarket === "us") return rawMarket;
+  if (fallback === "kr" || fallback === "us") return fallback;
+  return /^\d+$/.test(String(symbol || "").trim()) ? "kr" : "us";
+}
+
+function cleanHoldingSymbol(symbol: string, market: Market | "kr" | "us") {
   const raw = String(symbol || "").trim();
-  if (market === "kr") return raw.replace(/[^0-9]/g, "").padStart(6, "0").slice(-6);
+  if (market === "kr" || (market === "all" && /^\d+$/.test(raw))) return raw.replace(/[^0-9]/g, "").padStart(6, "0").slice(-6);
   return raw.toUpperCase().replace(/[^A-Z0-9.\-]/g, "");
 }
 
@@ -74,7 +81,7 @@ function buildSectorLookup(market: Market, rows: any[]) {
     const symbols = Array.isArray(row?.symbols) ? row.symbols : [];
     for (const entry of symbols) {
       const symbol = typeof entry === "string" ? entry : entry?.symbol;
-      const entryMarket = String((typeof entry === "object" && entry?.market) || market || "kr").toLowerCase() === "us" ? "us" : "kr";
+      const entryMarket = normalizeHoldingMarket(typeof entry === "object" ? entry?.market : "", symbol, market);
       lookup[`${entryMarket}:${cleanHoldingSymbol(symbol, entryMarket as Market)}`] = sector;
     }
   }
@@ -173,8 +180,8 @@ function HoldingRow({ h, totalValue }: { h: Holding; totalValue: number }) {
   );
 }
 
-export default function PortfolioOptimizePanel() {
-  const [market, setMarket] = useState<Market>("kr");
+export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initialMarket?: "kr" | "us" }) {
+  const [market, setMarket] = useState<"kr" | "us">(initialMarket);
   const [sectorData, setSectorData] = useState<any>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [holdingSource, setHoldingSource] = useState<string>("");
@@ -205,22 +212,28 @@ export default function PortfolioOptimizePanel() {
         ? sectorListResult.value.items
         : [];
       const holdingsRes = holdingsResult.status === "fulfilled" ? holdingsResult.value : null;
-      setHoldingSource(String(holdingsRes?.authority || holdingsRes?.routeVersion || ""));
+      setHoldingSource(
+        holdingsRes?.authRequired ? "로그인 필요"
+        : String(holdingsRes?.sourceSummary || holdingsRes?.authority || "").trim()
+      );
       const sectorLookup = buildSectorLookup(market, sectorList);
       const items = (holdingsRes?.items || []) as any[];
-      const parsed: Holding[] = items.map((h: any) => ({
-        symbol: h.symbol || "",
-        name: displayName({ ...h, market: h.market || market }) || h.symbol || "",
-        market: h.market || market,
-        sector: h.sector || h.sectorLabel || h.industry || sectorLookup[`${h.market || market}:${cleanHoldingSymbol(h.symbol || "", (h.market || market) as Market)}`] || "미분류",
-        currentPrice: Number(h.currentPrice || 0),
-        quantity: Number(h.quantity || 0),
-        avgPrice: Number(h.avgPrice || h.averagePrice || 0),
-        valuation: Number(h.valuation || h.marketValue || (Number(h.currentPrice || 0) * Number(h.quantity || 0))),
-        pnlPct: Number(h.pnlPct || h.returnPct || 0),
-        stop: h.stop || h.stopPrice ? Number(h.stop || h.stopPrice) : undefined,
-        target: h.target || h.targetPrice ? Number(h.target || h.targetPrice) : undefined,
-      }));
+      const parsed: Holding[] = items.map((h: any) => {
+        const holdingMarket = normalizeHoldingMarket(h.market, h.symbol || "", market);
+        return {
+          symbol: h.symbol || "",
+          name: displayName({ ...h, market: holdingMarket }) || h.symbol || "",
+          market: holdingMarket,
+          sector: h.sector || h.sectorLabel || h.industry || sectorLookup[`${holdingMarket}:${cleanHoldingSymbol(h.symbol || "", holdingMarket)}`] || "미분류",
+          currentPrice: Number(h.currentPrice || 0),
+          quantity: Number(h.quantity || 0),
+          avgPrice: Number(h.avgPrice || h.averagePrice || 0),
+          valuation: Number(h.valuation || h.marketValue || (Number(h.currentPrice || 0) * Number(h.quantity || 0))),
+          pnlPct: Number(h.pnlPct || h.returnPct || 0),
+          stop: h.stop || h.stopPrice ? Number(h.stop || h.stopPrice) : undefined,
+          target: h.target || h.targetPrice ? Number(h.target || h.targetPrice) : undefined,
+        };
+      });
       const filteredHoldings = parsed.filter((h) => h.valuation > 0);
       const portfolioData = buildPortfolioData(filteredHoldings);
       setSectorData(portfolioData);
@@ -239,6 +252,10 @@ export default function PortfolioOptimizePanel() {
   useEffect(() => {
     load(false);
   }, [market]);
+
+  useEffect(() => {
+    setMarket(initialMarket);
+  }, [initialMarket]);
 
   const totalValue = holdings.reduce((s, h) => s + h.valuation, 0);
   const heavyPositions = holdings.filter((h) => totalValue > 0 && (h.valuation / totalValue) * 100 > 20);
@@ -264,7 +281,7 @@ export default function PortfolioOptimizePanel() {
           <span className="text-sm font-bold text-slate-200">포트폴리오 분석</span>
         </div>
         <div className="flex items-center gap-2">
-          {(["kr", "us"] as Market[]).map((mk) => (
+          {(["kr", "us"] as const).map((mk) => (
             <button
               key={mk}
               onClick={() => setMarket(mk)}
