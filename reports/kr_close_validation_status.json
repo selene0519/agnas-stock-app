@@ -4,26 +4,18 @@
     {
       "market": "kr",
       "mode": "conservative",
-      "horizon": "short",
-      "file": "mone_v36_final_trade_validation_kr_conservative_short_20260714.csv",
-      "rows": 1,
-      "normalRows": 1
-    },
-    {
-      "market": "kr",
-      "mode": "conservative",
       "horizon": "swing",
       "file": "mone_v36_final_trade_validation_kr_conservative_swing_20260714.csv",
-      "rows": 5,
-      "normalRows": 4
+      "rows": 6,
+      "normalRows": 5
     },
     {
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
       "file": "mone_v36_final_trade_validation_kr_conservative_mid_20260714.csv",
-      "rows": 25,
-      "normalRows": 23
+      "rows": 26,
+      "normalRows": 24
     },
     {
       "market": "kr",
@@ -45,6 +37,13 @@
   "skipped": [
     {
       "market": "kr",
+      "mode": "conservative",
+      "horizon": "short",
+      "rows": 0,
+      "reason": "no_today_ohlcv_or_no_recommendations"
+    },
+    {
+      "market": "kr",
       "mode": "balanced",
       "horizon": "short",
       "rows": 0,
@@ -75,42 +74,42 @@
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "rows": 0,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "conservative",
       "horizon": "swing",
-      "rows": 0,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
-      "rows": 17,
+      "rows": 27,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
-      "rows": 0,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "swing",
-      "rows": 0,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
-      "rows": 16,
+      "rows": 25,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -131,9 +130,9 @@
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
-      "rows": 23,
+      "rows": 26,
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-07-14T09:31:52"
+  "updatedAt": "2026-07-14T18:58:00"
 }
