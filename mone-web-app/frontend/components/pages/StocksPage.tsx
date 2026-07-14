@@ -61,7 +61,6 @@ type HoldingEditRow = {
 // 보내 두 엔드포인트 모두 422(Input should be ≤50)로 떨어져 목록이 비었다.
 // 실데이터(≤20)보다 넉넉하면서 두 상한을 모두 만족하는 50으로 맞춘다.
 const RECOMMENDATION_LIMIT = 50;
-const AUTO_SELECT_LIMIT_PER_MARKET = 20;
 const SCREENER_EXTENSION_CHIPS = ["외국인 유입", "수급 전환 초기", "섹터 후발 확산", "개인 과열 제외"] as const;
 const LENS_EXTENSION_CHIPS: Record<ExplorationLensId, readonly string[]> = {
   leader: ["섹터 대표주", "테마 주도주", "외국인 유입"],
@@ -463,7 +462,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [watchlist, setWatchlist] = useState<WatchRow[]>([]);
   const [loading, setLoading] = useState(!_initBootItems);
   const [watchSaving, setWatchSaving] = useState(false);
-  const [autoCurating, setAutoCurating] = useState(false);
   const [watchMessage, setWatchMessage] = useState("");
   const [holdingMessage, setHoldingMessage] = useState("");
   const [holdingSaving, setHoldingSaving] = useState(false);
@@ -1139,31 +1137,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     }
   }
 
-  async function applySmartWatchlist() {
-    setAutoCurating(true);
-    setWatchMessage("");
-    try {
-      const targetMarket = resolvedMarket;
-      const result = await mone.applyAutoWatchlist({ market: targetMarket, limitPerMarket: AUTO_SELECT_LIMIT_PER_MARKET });
-      if (result?.status === "ERROR") throw new Error(result.error || "자동 선별 실패");
-      const saved = Array.isArray(result.items)
-        ? result.items.map(normalizeWatch).filter((row) => row.symbol)
-        : [];
-      setWatchlist(saved);
-      await loadWatchlist();
-      setWatchOnly(true);
-      setRefreshVersion((value) => value + 1);
-      setWatchMessage(
-        `핵심 관심종목 자동선별 완료 · ${saved.length.toLocaleString("ko-KR")}개 (${result.policy || "추천 데이터 기준"} · 기본 ${AUTO_SELECT_LIMIT_PER_MARKET}개)`,
-      );
-      window.dispatchEvent(new CustomEvent("mone-watchlist-updated"));
-    } catch (error) {
-      setWatchMessage(`자동선별 실패: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setAutoCurating(false);
-    }
-  }
-
   async function addHoldingFromItem(item: any) {
     const itemMarket = cleanMarket(item.market || resolvedMarket || "kr");
     const clean = itemMarket === "all" ? "kr" : itemMarket;
@@ -1325,20 +1298,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div>{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"}</div>
           <div>현재 적용 시장: {marketLabel(resolvedMarket)}</div>
         </div>
-        {/* 관심종목 관리 — 세 동작은 독립 버튼이 아니라 "풀 구성 → 가격 갱신 → 재평가" 한 흐름 (UX 보고서 5.3) */}
+        {/* 관심종목 관리 — 관심종목은 종목 카드에서 직접 담는다(수동). 여기서는 담은 종목의
+            가격을 갱신하고 재평가한다. */}
         <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 p-2.5">
           <div className="mb-2 flex items-baseline gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">관심종목 관리</span>
-            <span className="text-[11px] text-slate-500">풀 구성 → 가격 갱신 → 재평가</span>
+            <span className="text-[11px] text-slate-500">가격 갱신 → 재평가</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={applySmartWatchlist}
-              disabled={autoCurating || watchSaving}
-              className="min-h-11 min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-xs font-bold text-emerald-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
-            >
-              {autoCurating ? "선별 중..." : (watchlist.length > 0 ? "다시 선별" : "자동선별")}
-            </button>
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={refreshTargetQuotes}
               disabled={quoteRefreshing === "batch"}
@@ -1803,7 +1770,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div className="mt-4 rounded-xl border border-slate-700/40 bg-slate-900/40 px-4 py-3 text-xs text-slate-500">
             관심종목 점수 분석 결과가 없습니다.
             {scoredWatch.reason && <span className="ml-1 text-amber-400">{scoredWatch.reason}</span>}
-            {!scoredWatch.reason && <span className="ml-1">관심종목({watchlist.length}개)이 추천 파일에 매칭되지 않았거나 추천 데이터가 없습니다. 핵심 관심 자동선별 후 다시 시도하세요.</span>}
+            {!scoredWatch.reason && <span className="ml-1">관심종목({watchlist.length}개)이 추천 파일에 매칭되지 않았거나 추천 데이터가 없습니다. 종목 카드에서 관심종목을 추가한 뒤 다시 시도하세요.</span>}
           </div>
         )}
         {scoredWatch && Array.isArray(scoredWatch.items) && scoredWatch.items.length > 0 && (
@@ -2122,7 +2089,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center">
           <p className="text-slate-400">현재 조건에 맞는 후보가 없습니다.</p>
           <div className="mt-3 space-y-1 text-xs text-slate-600">
-            {watchOnly && items.length === 0 && <p>• 관심종목이 없거나 추천 파일에 매칭되지 않음 → "관심 자동선별" 또는 관심종목만 보기 해제</p>}
+            {watchOnly && items.length === 0 && <p>• 관심종목이 없거나 추천 파일에 매칭되지 않음 → 종목 카드에서 관심종목 추가 또는 관심종목만 보기 해제</p>}
             {watchOnly && items.length > 0 && visible.length === 0 && <p>• 관심종목 {watchlist.length}개 중 {modeLabel(mode)}/{horizonLabel(horizon)} 추천에 매칭된 종목 없음 → 성향·기간 변경 또는 관심종목만 보기 해제</p>}
             {!watchOnly && items.length === 0 && <p>• 추천 파일({modeLabel(mode)}/{horizonLabel(horizon)})이 비어있음 — GitHub Actions 실행 후 데이터가 채워집니다</p>}
             {!watchOnly && items.length > 0 && visible.length === 0 && sectorFilter && <p>• 섹터 필터 "{sectorFilter}" 에 해당하는 종목 없음 → 섹터 필터 해제</p>}

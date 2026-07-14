@@ -67,10 +67,11 @@ export const ADVANCED_FILTER_GROUPS: AdvancedFilterGroup[] = [
       "아직 덜 오름",
       "과열 전 구간",
       "박스권 상단 접근",
+      "최근 급등 제외",
       "대표주 대비 후행",
       "섹터 대비 후행",
     ],
-    comingSoonChips: ["최근 급등 제외"],
+    comingSoonChips: [],
   },
   {
     id: "liquidity",
