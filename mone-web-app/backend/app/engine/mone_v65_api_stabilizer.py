@@ -3899,6 +3899,36 @@ def _journal_delete_payload(entry_id: str) -> dict[str, Any]:
 
 def _benchmark_comparison_payload(market: str) -> dict[str, Any]:
     """보유종목 포트폴리오 수익률 vs 지수 수익률 비교."""
+    if _market_norm(market) == "all":
+        # 전체 뷰: 국장은 KOSPI, 미장은 S&P500 대비로 각각 계산해 합친다.
+        merged_items: list[dict[str, Any]] = []
+        parts: list[str] = []
+        total_cost = total_value = 0.0
+        for mk, label in (("kr", "KOSPI"), ("us", "S&P500")):
+            sub = _benchmark_comparison_payload(mk)
+            if sub.get("status") != "OK":
+                continue
+            parts.append(label)
+            for it in sub.get("items", []):
+                merged_items.append({**it, "benchmarkName": label})
+                total_cost += _num(it.get("cost"))
+                total_value += _num(it.get("value"))
+        if not merged_items:
+            return {"status": "NO_DATA", "market": "all",
+                    "reason": "보유종목 또는 벤치마크 데이터 없음"}
+        total_pnl_pct = (total_value - total_cost) / total_cost * 100.0 if total_cost else 0.0
+        beating = sum(1 for i in merged_items if (i.get("alpha") or 0) > 0)
+        return {
+            "status": "OK",
+            "market": "all",
+            "benchmark": " · ".join(parts) or "KOSPI · S&P500",
+            "mixedBenchmark": True,
+            "benchmarkLatestDate": "",
+            "totalPortfolioReturn": round(total_pnl_pct, 2),
+            "beatingBenchmark": beating,
+            "totalItems": len(merged_items),
+            "items": sorted(merged_items, key=lambda x: (x.get("alpha") or -999), reverse=True),
+        }
     market = _market_norm(market)
     repo   = _repo_root()
 
@@ -4112,6 +4142,11 @@ def _correlation_payload(market: str, days: int = 60) -> dict[str, Any]:
 
     symbols = [str(h.get("symbol") or "").strip() for h in holdings_data if h.get("symbol")]
     names   = {str(h.get("symbol") or "").strip(): str(h.get("name") or "") for h in holdings_data}
+    # 종목별 실제 시장(전체 뷰에서 KR/US 혼합 시 OHLCV 경로 접두사를 종목 시장으로 잡는다).
+    sym_market = {
+        str(h.get("symbol") or "").strip(): ("us" if str(h.get("market") or market).lower() == "us" else "kr")
+        for h in holdings_data if h.get("symbol")
+    }
 
     if len(symbols) < 2:
         return {"status": "NO_DATA", "market": market, "reason": "보유종목 2개 이상 필요"}
@@ -4121,7 +4156,8 @@ def _correlation_payload(market: str, days: int = 60) -> dict[str, Any]:
     date_series:  dict[str, list[str]]   = {}
 
     for sym in symbols:
-        path = repo / "data" / "market" / "ohlcv" / f"{market}_{sym}_daily.csv"
+        mk = sym_market.get(sym) or (market if market in ("kr", "us") else "kr")
+        path = repo / "data" / "market" / "ohlcv" / f"{mk}_{sym}_daily.csv"
         rows = _read_csv(path, 5000)
         closes = []
         dates  = []
