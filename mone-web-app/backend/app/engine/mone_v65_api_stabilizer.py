@@ -4251,12 +4251,17 @@ def _sector_exposure_payload(market: str) -> dict[str, Any]:
         avg_price = _num(h.get("avgPrice") or h.get("avg_price") or 0)
         val       = qty * (cur_price if cur_price > 0 else avg_price)
         stop_price = _num(h.get("stopPrice") or 0)
-        sym = str(h.get("symbol") or "").strip().lstrip("0").zfill(6)
+        # 종목 시장별로 심볼을 정규화한다. KR은 6자리 0패딩, US는 대문자 티커 그대로.
+        # (기존엔 US 티커에도 zfill(6)을 걸어 'NFLX'→'00NFLX'가 되어 sector_map_us와
+        #  매칭 실패 → US 섹터가 전부 'Other'로 나오던 버그.)
+        item_mkt = "us" if str(h.get("market") or market).lower() == "us" else "kr"
+        raw_sym = str(h.get("symbol") or "").strip()
+        sym = raw_sym.upper() if item_mkt == "us" else raw_sym.lstrip("0").zfill(6)
         # 보유에 손절가가 없으면(브로커 동기화는 손절가 미제공) ATR로 추산해 손절 시뮬레이션이 비지 않게 한다.
         if stop_price <= 0 and cur_price > 0:
             try:
                 from app.engine.mone_v77_holdings_risk import derive_fallback_stop
-                stop_price = derive_fallback_stop(market, sym, cur_price)
+                stop_price = derive_fallback_stop(item_mkt, sym, cur_price)
             except Exception:
                 pass
         sector = sector_map.get(sym) or str(h.get("sector") or h.get("sectorLabel") or "Other")
