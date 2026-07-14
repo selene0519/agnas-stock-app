@@ -2678,7 +2678,7 @@ export default function ChartPage() {
   // 현재가 기준 ATR 손절로 산출한다. (탐색·홈의 '재산출 대기'와 같은 신선도 판정)
   const analysisPlanStale = entryPlanStale(currentPrice, levelValue(levels, "entry")).stale;
   const atrPlan = atrValue > 0 && currentPrice > 0
-    ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon, analysisPlanStale ? null : levelValue(levels, "stop"), analysisPlanStale ? null : levelValue(levels, "target"), selected.market)
+    ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon, analysisPlanStale ? null : levelValue(levels, "stop"), analysisPlanStale ? null : levelValue(levels, "target"), selected?.market)
     : null;
   const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
   const freshness = freshnessInfo(rows);
