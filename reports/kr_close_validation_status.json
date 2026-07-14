@@ -1,30 +1,50 @@
 {
   "date": "2026-07-14",
-  "created": [],
+  "created": [
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "short",
+      "file": "mone_v36_final_trade_validation_kr_conservative_short_20260714.csv",
+      "rows": 1,
+      "normalRows": 1
+    },
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_kr_conservative_swing_20260714.csv",
+      "rows": 5,
+      "normalRows": 4
+    },
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_conservative_mid_20260714.csv",
+      "rows": 25,
+      "normalRows": 23
+    },
+    {
+      "market": "kr",
+      "mode": "balanced",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_balanced_mid_20260714.csv",
+      "rows": 25,
+      "normalRows": 22
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_aggressive_mid_20260714.csv",
+      "rows": 30,
+      "normalRows": 27
+    }
+  ],
   "skipped": [
     {
       "market": "kr",
-      "mode": "conservative",
-      "horizon": "short",
-      "rows": 4,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
-      "mode": "conservative",
-      "horizon": "swing",
-      "rows": 8,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
-      "mode": "conservative",
-      "horizon": "mid",
-      "rows": 27,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
       "mode": "balanced",
       "horizon": "short",
       "rows": 0,
@@ -39,13 +59,6 @@
     },
     {
       "market": "kr",
-      "mode": "balanced",
-      "horizon": "mid",
-      "rows": 25,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
       "mode": "aggressive",
       "horizon": "short",
       "rows": 0,
@@ -56,13 +69,6 @@
       "mode": "aggressive",
       "horizon": "swing",
       "rows": 0,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
-      "mode": "aggressive",
-      "horizon": "mid",
-      "rows": 30,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -129,5 +135,5 @@
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-07-14T08:54:05"
+  "updatedAt": "2026-07-14T09:31:52"
 }
