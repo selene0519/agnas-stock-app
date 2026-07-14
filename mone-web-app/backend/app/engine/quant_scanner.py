@@ -2689,7 +2689,7 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         for flag in out.get("riskFlags", []):
             f = str(flag)
             if f.startswith("RR_BELOW_MIN_"):
-                block_reasons.append(f"목표 손익비 최소 기준({f.replace('RR_BELOW_MIN_', '')}배) 미달")
+                block_reasons.append(f"목표 손익비가 최소 기준({f.replace('RR_BELOW_MIN_', '')}배)에 미달")
             else:
                 block_reasons.append(risk_flag_labels.get(f, f))
     # 가격 밴드 경고는 참고용 (매수 차단 아님, 전략별 조정으로 인한 정상 범위 이탈)

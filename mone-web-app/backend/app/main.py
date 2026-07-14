@@ -3064,6 +3064,9 @@ def api_stock_analysis(
         risk_signals: list[dict] = []
 
         def _rs(type_: str, text: str):
+            # 같은 문구가 여러 경로(risk_flags·caution_reasons)로 중복 유입되는 것을 막는다.
+            if not text or any(s["text"] == text for s in risk_signals):
+                return
             risk_signals.append({"type": type_, "text": text})
 
         if atr_pct is not None:
