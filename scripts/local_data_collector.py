@@ -196,8 +196,54 @@ def generate_recommendations(market: str = "kr") -> dict:
         return {"status": "ERROR", "reason": str(e)}
 
 
+def _run_git(args: list[str], timeout: int = 30):
+    return subprocess.run(["git", *args], cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=timeout)
+
+
+def _auto_sync_block_reason() -> str | None:
+    """자동 pull/rebase/push를 중단해야 하는 위험 상황이면 사유 문자열, 아니면 None.
+
+    수집기의 rebase가 사용자의 미커밋 작업을 지우는 사고(2026-07-14 실제 발생)를 막는다.
+    데이터 산출물(data/, reports/)의 변경은 수집기의 정상 동작이라 예외로 둔다.
+    """
+    git_dir = REPO_ROOT / ".git"
+    try:
+        # 1) 진행 중인 merge/rebase/cherry-pick/revert
+        for marker in ("rebase-merge", "rebase-apply", "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD"):
+            if (git_dir / marker).exists():
+                return f"진행 중인 작업({marker})이 있습니다"
+        # 2) 다른 Git 프로세스가 인덱스를 사용 중(index.lock)
+        if (git_dir / "index.lock").exists():
+            return "다른 Git 프로세스가 인덱스를 사용 중입니다(index.lock)"
+        # 3) 수집기 데이터 외의 미커밋/staged/untracked 변경(=사용자 작업)
+        status = _run_git(["status", "--porcelain=v1", "--untracked-files=all"]).stdout
+        for line in status.splitlines():
+            if not line.strip():
+                continue
+            path = line[3:].strip()
+            if path.startswith('"') and path.endswith('"'):
+                path = path[1:-1]
+            if " -> " in path:  # rename "old -> new"
+                path = path.split(" -> ", 1)[1]
+            p = path.replace("\\", "/")
+            if p.startswith("data/") or p.startswith("reports/"):
+                continue  # 수집기 산출물 → 허용
+            return f"수집기 대상이 아닌 변경/파일이 있습니다: {path}"
+    except Exception as e:
+        return f"git 상태 확인 실패: {e}"
+    return None
+
+
 def git_push(commit_msg: str) -> bool:
     """수집 데이터 GitHub push"""
+    block = _auto_sync_block_reason()
+    if block:
+        log(
+            "커밋되지 않은 변경이 있어 자동 동기화를 중단했습니다. "
+            "변경을 커밋하거나 별도 브랜치에 보존한 뒤 다시 실행하세요. "
+            f"(사유: {block})"
+        )
+        return False
     try:
         git_env = os.environ.copy()
         git_env.update(
