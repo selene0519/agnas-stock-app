@@ -822,9 +822,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [riskBudget, setRiskBudget] = useState<any>(null);
   const [soldHistory, setSoldHistory] = useState<any>(null);
   const [brokerConnections, setBrokerConnections] = useState<BrokerStatus[]>([]);
+  // 서버가 보유를 서빙하면(로컬 CSV 또는 로그인 DB) 그대로 표시한다.
+  // 로그인 게이팅은 서버(authRequired)가 담당하고, 여기서는 받은 items를 렌더한다.
   const items = useMemo(() => (
-    hasHoldingsAuth ? dedupe(Array.isArray(data.items) ? data.items : []) : []
-  ), [data.items, hasHoldingsAuth]);
+    dedupe(Array.isArray(data.items) ? data.items : [])
+  ), [data.items]);
   const isPersonalHoldingsSource = String(data.authority || data.routeVersion || "").toLowerCase().includes("personal");
 
   function mergeEditableRows(rows: any[]) {
@@ -865,18 +867,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }
 
   async function load(options: { background?: boolean } = {}) {
-    if (!hasHoldingsAuth) {
-      setData(emptyHoldingsPayload(market, true));
-      setHoldingsLoadedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
-      setBrokerConnections([]);
-      setSectorData(null);
-      setBenchmarkData(null);
-      setCorrData(null);
-      setRiskBudget(null);
-      setSoldHistory(null);
-      setLoading(false);
-      return;
-    }
+    // 토큰이 없어도 먼저 서버에 요청한다. 서버가 익명으로 보유를 서빙하면(로컬 CSV 원장)
+    // 그대로 표시하고, authRequired(배포 익명)면 로그인 안내로 폴백한다.
     const cached = readHoldingsCache(market);
     if (cached && !options.background) {
       setData(cached.data);
@@ -890,9 +882,23 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       const serverItems = Array.isArray(result.items) ? result.items : [];
       const localItems = loadHoldingsFromLocalStorage();
       let finalData: any;
-      if (hasHoldingsAuth && result?.authRequired && serverItems.length === 0 && localItems.length > 0) {
-        finalData = localHoldingsPayload(localItems, market);
-        setData(finalData);
+      if (result?.authRequired && serverItems.length === 0) {
+        // 서버가 보유를 노출하지 않음(로그인 필요). 로컬 백업이 있으면 표시, 없으면 로그인 안내.
+        if (localItems.length > 0) {
+          finalData = localHoldingsPayload(localItems, market);
+          setData(finalData);
+        } else {
+          setData(emptyHoldingsPayload(market, true));
+          setHoldingsLoadedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
+          setBrokerConnections([]);
+          setSectorData(null);
+          setBenchmarkData(null);
+          setCorrData(null);
+          setRiskBudget(null);
+          setSoldHistory(null);
+          setLoading(false);
+          return;
+        }
       } else {
         if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems);
         finalData = result;
@@ -939,7 +945,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }
 
   useEffect(() => {
-    const hasCached = Boolean(hasHoldingsAuth && (_bootHoldings || readHoldingsCache(market)));
+    const hasCached = Boolean(_bootHoldings || readHoldingsCache(market));
     load({ background: hasCached });
   }, [market, hasHoldingsAuth]);
 

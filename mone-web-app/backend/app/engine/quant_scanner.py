@@ -1696,6 +1696,15 @@ def _display_taxonomy_tags(
         price_pos.append("과열 전 구간")
     if d52 is not None and -5 <= d52 <= 0:
         price_pos.append("박스권 상단 접근")
+    # 최근 급등 제외: 최근 급등(추격 위험)이 아닌 종목에 부여한다.
+    # 이 칩을 선택하면 급등 추격 종목이 걸러지고 눌림/안정 구간만 남는다.
+    recently_surged = (
+        (mom20 is not None and mom20 >= 15)
+        or (consec_up is not None and consec_up >= 4)
+        or (rsi is not None and rsi >= 70)
+    )
+    if not recently_surged:
+        price_pos.append("최근 급등 제외")
     # 섹터 상대강도 기반 (섹터 평균/대표주 대비 위치)
     if (
         sector_size is not None and sector_size >= 3
