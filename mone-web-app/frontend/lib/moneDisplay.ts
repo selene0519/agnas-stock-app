@@ -299,7 +299,7 @@ export function formatMoney(value: any, market: string = "kr", fallback = "-"): 
   const n = toNumber(value);
   if (n === null || n <= 0) return fallback;
   return normalizeMarket(market) === "us"
-    ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    ? `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : `${Math.round(n).toLocaleString("ko-KR")}원`;
 }
 

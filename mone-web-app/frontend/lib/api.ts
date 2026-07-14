@@ -405,7 +405,8 @@ export async function apiGet<T = any>(
 export function money(value: number | string | null | undefined, market: Market = "kr") {
   const n = Number(String(value ?? "").replace(/,/g, ""));
   if (!Number.isFinite(n) || n <= 0) return "-";
-  if (market === "us") return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  // 표시 자리수 통일: 미국주식은 항상 소수점 둘째 자리($85.00), 한국주식은 정수(원).
+  if (market === "us") return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return `${Math.round(n).toLocaleString()}원`;
 }
 

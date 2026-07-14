@@ -67,21 +67,26 @@ function SignalRow({ signal }: { signal: Signal }) {
 }
 
 function normalizeRsiSignals(data: AnalysisData | null, rsi14?: number | null): AnalysisData | null {
-  if (!data || rsi14 == null || !Number.isFinite(Number(rsi14))) return data;
-  const nextRsi = Math.round(Number(rsi14) * 10) / 10;
+  if (!data) return data;
+  // 손익비·기댓값은 전략(성향×기간)에 따라 달라지는 결정 지표라 추천/계획 카드가 단독으로
+  // 소유한다. 리서치 카드는 선택 전략을 받지 않아(심볼 단위 기본전략) 계획 카드와 값이
+  // 어긋나 보이므로, 여기서는 이 두 신호를 제거해 화면 간 모순을 없앤다.
+  const isStrategyMetric = (s: Signal) => /손익비|기댓값|기대값/.test(s.text || "");
+  const hasRsi = rsi14 != null && Number.isFinite(Number(rsi14));
+  const nextRsi = hasRsi ? Math.round(Number(rsi14) * 10) / 10 : null;
   const rewrite = (signal: Signal): Signal => {
-    if (!/RSI/i.test(signal.text)) return signal;
+    if (nextRsi == null || !/RSI/i.test(signal.text)) return signal;
     const type = nextRsi >= 80 ? "warning" : nextRsi <= 30 ? "positive" : "neutral";
     const state = nextRsi >= 80 ? "RSI 과열" : nextRsi <= 30 ? "RSI 과매도" : "RSI 정상";
     return { ...signal, type, text: `${state} (${nextRsi.toFixed(1)})` };
   };
   return {
     ...data,
-    indicators: { ...data.indicators, rsi14: nextRsi },
+    indicators: nextRsi != null ? { ...data.indicators, rsi14: nextRsi } : data.indicators,
     financialHealth: {
       ...data.financialHealth,
-      signals: data.financialHealth.signals.map(rewrite),
-      warnings: data.financialHealth.warnings.map(rewrite),
+      signals: data.financialHealth.signals.filter((s) => !isStrategyMetric(s)).map(rewrite),
+      warnings: data.financialHealth.warnings.filter((s) => !isStrategyMetric(s)).map(rewrite),
     },
   };
 }

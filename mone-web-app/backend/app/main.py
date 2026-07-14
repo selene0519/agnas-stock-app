@@ -2841,6 +2841,26 @@ def api_symbol_sentiment(
 
 
 
+def _humanize_risk_flag(flag: str) -> str:
+    """리스크 플래그 코드를 사용자용 한글 문구로 변환한다.
+    (분석 화면 다운사이드 신호에 RR_BELOW_MIN_2.0 같은 원시 코드가 그대로
+    노출되던 문제 방지.)"""
+    text = str(flag or "").strip()
+    labels = {
+        "RSI_OVERHEATED": "RSI 과열(80+) — 차익 실현 구간",
+        "BOLLINGER_UPPER_BREAK": "볼린저 밴드 상단 돌파 — 과열 주의",
+        "FIVE_DAY_UP_STREAK": "5일 연속 상승 후 거래량 감소",
+        "GAP_UP_15PCT": "갭상승 15%+ — 추격 매수 금지",
+        "EV_NEGATIVE": "EV(기댓값) 음수",
+    }
+    if text in labels:
+        return labels[text]
+    if text.startswith("RR_BELOW_MIN_"):
+        rr = text.replace("RR_BELOW_MIN_", "").strip()
+        return f"목표 손익비가 최소 기준({rr}배)에 미달"
+    return text
+
+
 @app.get("/api/analysis/{symbol}")
 def api_stock_analysis(
     symbol: str,
@@ -3044,6 +3064,9 @@ def api_stock_analysis(
         risk_signals: list[dict] = []
 
         def _rs(type_: str, text: str):
+            # 같은 문구가 여러 경로(risk_flags·caution_reasons)로 중복 유입되는 것을 막는다.
+            if not text or any(s["text"] == text for s in risk_signals):
+                return
             risk_signals.append({"type": type_, "text": text})
 
         if atr_pct is not None:
@@ -3074,7 +3097,7 @@ def api_stock_analysis(
             _rs("warning", f"RSI 과열 ({rsi_val}) — 차익 실현 구간")
 
         for flag in risk_flags[:3]:
-            _rs("warning", str(flag))
+            _rs("warning", _humanize_risk_flag(flag))
         for reason in caution_reasons[:3]:
             _rs("warning", str(reason))
 

@@ -2191,27 +2191,30 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
 }
 
 // ── ATR 기반 관찰 계획 ────────────────────────────────────────────────
-function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative"|"balanced"|"aggressive", horizon: "short"|"swing"|"mid", authStop?: number | null, authTarget?: number | null) {
+function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative"|"balanced"|"aggressive", horizon: "short"|"swing"|"mid", authStop?: number | null, authTarget?: number | null, market: string = "kr") {
   if (!currentPrice || !atr) return null;
+  // 가격 표시 자리수 통일: 미국주식은 소수점 둘째 자리, 한국주식은 정수(원).
+  // (기존엔 US도 Math.round로 정수화해 계획 카드 $630 vs 검증 카드 $629.85로 어긋났음.)
+  const roundPx = (v: number) => normalizeMarket(market) === "us" ? Math.round(v * 100) / 100 : Math.round(v);
   const stopMult  = { conservative: 1.5, balanced: 2.0, aggressive: 2.5 }[mode];
   const tgt1Mult  = { short: 2.0, swing: 3.0, mid: 4.5 }[horizon];
   const tgt2Mult  = { short: 3.0, swing: 5.0, mid: 7.0 }[horizon];
-  const entry = Math.round(currentPrice);
+  const entry = roundPx(currentPrice);
   // 손절가는 백엔드 추천의 권위값(levels.stop)을 우선 사용해 화면 간 손절 불일치를 없앤다.
   // (예: 분석 요약은 572,429인데 이 섹션은 564,429로 다르게 보이던 문제). authStop이
   // 없을 때만 ATR×배수로 산출. 분할진입/2단 목표는 이 계획 고유값이라 그대로 둔다.
-  const stop = (authStop && authStop > 0) ? Math.round(authStop) : Math.round(entry - atr * stopMult);
-  const strategyTarget = authTarget && authTarget > entry ? Math.round(authTarget) : null;
-  const target2 = strategyTarget || Math.round(entry + atr * tgt2Mult);
-  const target1 = strategyTarget ? Math.round(entry + (target2 - entry) * 0.5) : Math.round(entry + atr * tgt1Mult);
+  const stop = (authStop && authStop > 0) ? roundPx(authStop) : roundPx(entry - atr * stopMult);
+  const strategyTarget = authTarget && authTarget > entry ? roundPx(authTarget) : null;
+  const target2 = strategyTarget || roundPx(entry + atr * tgt2Mult);
+  const target1 = strategyTarget ? roundPx(entry + (target2 - entry) * 0.5) : roundPx(entry + atr * tgt1Mult);
   const rr1 = (target1 - entry) / (entry - stop), rr2 = (target2 - entry) / (entry - stop);
   return {
     entry, stop, target1, target2, rr1: rr1.toFixed(2), rr2: rr2.toFixed(2),
     stopPct: ((entry - stop) / entry * 100).toFixed(1), tgt1Pct: ((target1 - entry) / entry * 100).toFixed(1),
     tgt2Pct: ((target2 - entry) / entry * 100).toFixed(1),
     targetSource: strategyTarget ? "recommendation" : "atr",
-    split2Price: Math.round(entry - atr * 0.5), split3Price: Math.round(entry - atr * 1.0),
-    atr: Math.round(atr),
+    split2Price: roundPx(entry - atr * 0.5), split3Price: roundPx(entry - atr * 1.0),
+    atr: roundPx(atr),
   };
 }
 
@@ -2655,7 +2658,10 @@ export default function ChartPage() {
   const filteredRows = period ? rows.slice(-period) : rows;
   const latest = rows.at(-1);
   const indicators = derivedIndicators(rows, latest, levels?.indicators || {});
-  const latestRsi = indicators.rsi14 ?? positiveNum(latest?.rsi) ?? rsi(rows.map(closeOf).filter(Boolean));
+  // 상단 RSI는 차트 RSI(rsiSeries)와 동일하게 '로드된 봉' 기준으로 계산해 두 값을 일치시킨다.
+  // (기존엔 백엔드 recInd.rsi14=추천 생성일 기준을 우선해 최신봉 기준 차트 RSI와 0.x 어긋났음.)
+  // rsi()와 rsiSeries()는 같은 Wilder 스무딩이라 같은 closes에서 동일값을 낸다. 봉이 부족하면 백엔드 값으로 폴백.
+  const latestRsi = rsi(rows.map(closeOf).filter((v) => v > 0)) ?? indicators.rsi14 ?? positiveNum(latest?.rsi);
   const currentPrice = positiveNum(latest?.close) || positiveNum(latest?.Close) || levelValue(levels, "entry") || 0;
   const atrValue = (() => {
     const recent = rows.slice(-14);
@@ -2672,7 +2678,7 @@ export default function ChartPage() {
   // 현재가 기준 ATR 손절로 산출한다. (탐색·홈의 '재산출 대기'와 같은 신선도 판정)
   const analysisPlanStale = entryPlanStale(currentPrice, levelValue(levels, "entry")).stale;
   const atrPlan = atrValue > 0 && currentPrice > 0
-    ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon, analysisPlanStale ? null : levelValue(levels, "stop"), analysisPlanStale ? null : levelValue(levels, "target"))
+    ? calcAtrPlan(currentPrice, atrValue, atrMode, atrHorizon, analysisPlanStale ? null : levelValue(levels, "stop"), analysisPlanStale ? null : levelValue(levels, "target"), selected?.market)
     : null;
   const stance = technicalStance(rows, indicators, latestRsi ?? null, atrPlan);
   const freshness = freshnessInfo(rows);
@@ -2826,7 +2832,7 @@ export default function ChartPage() {
             {entryPlanBlocked && <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">현재 실행 보류</span>}
           </div>
           <p className="text-xs text-slate-500">
-            ATR(14) = {atrValue > 0 ? money(Math.round(atrValue), selected.market) : "데이터 부족"} · 분할 계획 50/30/20
+            ATR(14) = {atrValue > 0 ? money(atrValue, selected.market) : "데이터 부족"} · 분할 계획 50/30/20
             {entryPlanBlocked ? " · 시장 게이트 회복과 조건 개선 후 적용" : ""}
           </p>
           <p className="mt-1 text-[11px] text-slate-600">
