@@ -739,17 +739,26 @@ def _project_root_exact() -> Path:
     return Path(__file__).resolve().parents[4]
 
 def _holding_files() -> List[Path]:
-    # 루트 원장만 단일 소스로 사용. data/ 폴더는 제외해 삭제 후 되살아남 방지.
+    # 루트 원장(사용자 편집본) → data/ 브로커 원장(KIS/토스 자동수집) 순.
+    # 정확 경로만 사용(재귀 glob 금지 — 백업 폴더까지 훑어 느려지는 문제 회피).
+    # data/holdings_*.csv(유령 009150 등이 남는 일반 원장)는 제외하고, 실제 브로커
+    # 원장만 포함한다. _raw_holdings가 primary_symbols로 중복/부활을 걸러낸다.
     root = _project_root_exact()
     candidates = [
         root / "holdings_kr.csv",
         root / "holdings_us.csv",
+        root / "data" / "kis_2_holdings_kr.csv",
+        root / "data" / "kis_holdings_kr.csv",
+        root / "data" / "toss_holdings_kr.csv",
+        root / "data" / "kis_2_holdings_us.csv",
+        root / "data" / "kis_holdings_us.csv",
+        root / "data" / "toss_holdings_us.csv",
     ]
 
     out = []
     for path in candidates:
         try:
-            if path.exists() and path.is_file() and path.stat().st_size > 0:
+            if path.exists() and path.is_file() and path.stat().st_size > 0 and path not in out:
                 out.append(path)
         except Exception:
             pass

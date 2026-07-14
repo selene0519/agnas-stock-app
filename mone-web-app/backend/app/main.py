@@ -5107,6 +5107,22 @@ def _install_mone_authoritative_holdings_clean_v3():
             "authority": "",
         }
 
+    def _anon_or_empty_payload(market: str = "all", limit: int = 100) -> dict:
+        # 로그인(uid) 없을 때: 로컬 CSV 원장(kis/kis_2/toss/holdings)이 있으면 그것을 서빙한다.
+        # 개인 로컬 인스턴스는 즉시 보유가 보이고, 배포본은 개인 CSV가 git에 없으므로
+        # (caeac31cc: 공개레포 보호로 미추적) count=0 → authRequired 안내로 폴백한다.
+        try:
+            csv_payload = _payload(market, limit)
+        except Exception:
+            csv_payload = None
+        if csv_payload and csv_payload.get("count"):
+            csv_payload["authRequired"] = False
+            csv_payload["authNotice"] = ""
+            if not csv_payload.get("authority"):
+                csv_payload["authority"] = "local_csv_ledger"
+            return csv_payload
+        return _empty_holdings_payload(market)
+
     global app
     app.router.routes = [
         r for r in app.router.routes
@@ -5122,8 +5138,16 @@ def _install_mone_authoritative_holdings_clean_v3():
     ) -> dict:
         uid = _resolve_authed_uid(x_mone_user, authorization)
         if uid:
-            return _personal_payload(uid, market, limit)
-        return _empty_holdings_payload(market)
+            payload = _personal_payload(uid, market, limit)
+            # 로그인은 됐으나 유저 DB에 보유가 없으면(로컬 브리지가 DB 대신 CSV에만 쓴 경우)
+            # 로컬 CSV 원장으로 폴백한다. 배포본은 CSV가 없어 그대로 빈 목록.
+            if not payload.get("count"):
+                fallback = _anon_or_empty_payload(market, limit)
+                if fallback.get("count"):
+                    fallback["userId"] = uid
+                    return fallback
+            return payload
+        return _anon_or_empty_payload(market, limit)
 
     @app.get("/api/final/holdings-clean")
     def mone_authoritative_final_holdings_clean_v3(
@@ -5134,8 +5158,14 @@ def _install_mone_authoritative_holdings_clean_v3():
     ) -> dict:
         uid = _resolve_authed_uid(x_mone_user, authorization)
         if uid:
-            return _personal_payload(uid, market, limit)
-        return _empty_holdings_payload(market)
+            payload = _personal_payload(uid, market, limit)
+            if not payload.get("count"):
+                fallback = _anon_or_empty_payload(market, limit)
+                if fallback.get("count"):
+                    fallback["userId"] = uid
+                    return fallback
+            return payload
+        return _anon_or_empty_payload(market, limit)
 
 try:
     _install_mone_authoritative_holdings_clean_v3()
