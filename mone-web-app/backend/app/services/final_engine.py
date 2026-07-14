@@ -2043,6 +2043,38 @@ def _recommendation_detail_score(row: dict[str, Any]) -> float:
     return 0.0
 
 
+def _served_final_score(row: dict[str, Any], market: str, mode: str, horizon: str) -> float | None:
+    """recommendations 서빙(mone_v65_api_stabilizer)과 동일한 event+adaptive 보정을
+    finalScore에 적용한 '라이브 종합점수'를 돌려준다.
+
+    분석(recommendation-detail) 화면이 이 보정을 안 거쳐 홈·탐색의 종합점수와
+    같은 종목·전략인데도 값이 달라 보이던 문제를 해소한다. 서비스 호출이 실패하면
+    보정 없는 원본 점수로 폴백한다(엔드포인트가 절대 죽지 않게).
+    """
+    base = _num(row.get("finalScore") or row.get("finalRankScore") or row.get("quantScore"))
+    if base is None:
+        return None
+    total_adj = 0.0
+    event_tags: dict[str, Any] = {}
+    try:
+        from app.services import event_context as _ec
+        evt = _ec.get_event_context(row.get("symbol"), market)
+        total_adj += float(_ec.compute_event_score_adjustment(evt) or 0.0)
+        event_tags = {
+            k: evt.get(k, "unknown")
+            for k in ("newsEventTag", "disclosureEventTag", "earningsEventTag", "macroEventTag", "sectorEventTag")
+        }
+    except Exception:
+        pass
+    try:
+        from app.services import adaptive_weights as _aw
+        arow = _aw.apply_adaptive_adjustment({**row, **event_tags, "market": market, "mode": mode, "horizon": horizon})
+        total_adj += float(arow.get("adaptiveScoreAdjustment", 0.0) or 0.0)
+    except Exception:
+        pass
+    return round(max(0.0, min(100.0, base + total_adj)), 1)
+
+
 def _recommendation_detail_rows(market: str, symbol: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     target = data.normalize_symbol(symbol, market)
@@ -2076,6 +2108,7 @@ def _recommendation_detail_rows(market: str, symbol: str) -> list[dict[str, Any]
                         merged["expectedPrice"] = expected
                         merged["expected"] = expected
                         merged.setdefault("expectedPriceText", data.format_price(expected, market))
+                    _served = _served_final_score(merged, market, mode, horizon)
                     merged.update({
                         "symbol": target,
                         "market": market,
@@ -2085,8 +2118,12 @@ def _recommendation_detail_rows(market: str, symbol: str) -> list[dict[str, Any]
                         "horizonLabel": HORIZON_LABELS[horizon],
                         "sourceFile": path.name,
                         "sourceKind": kind,
-                        "detailScore": _recommendation_detail_score(merged),
+                        "detailScore": _served if _served is not None else _recommendation_detail_score(merged),
                     })
+                    if _served is not None:
+                        # 분석 종합점수를 홈·탐색과 동일한 '서빙 finalScore'로 맞춘다.
+                        merged["finalScore"] = _served
+                        merged["finalRankScore"] = _served
                     rows.append(merged)
     for path_name in ("virtual_validation_results.csv", "virtual_prediction_ledger.csv"):
         path = data.REPORT_DIR / path_name
