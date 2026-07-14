@@ -3723,7 +3723,13 @@ export default function HomePage({
     }),
     [topObservation, marketRegime, dataHealth, todayEntries.length, watchItems.length, riskCount, selectedMarket],
   );
-  const primaryObservationTitle = sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 관찰 1순위" : "오늘의 관찰 1순위";
+  // 오늘 진입/대기 관찰 버킷에 실제 후보가 있을 때만 "관찰 1순위"로 부른다.
+  // 둘 다 비어(약세장 게이트 등) 히어로가 점수순 폴백으로 뽑힌 경우엔 "관망·참고"로
+  // 표기해 아래 "관찰 0" 카운트와의 자기모순을 없앤다.
+  const hasActionableTop = todayEntries.length > 0 || watchItems.length > 0;
+  const primaryObservationTitle = hasActionableTop
+    ? (sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 관찰 1순위" : "오늘의 관찰 1순위")
+    : (sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 관망 · 참고 1순위" : "오늘 관망 · 참고 1순위");
   const candidateSectionTitle = sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 후보" : "오늘의 후보";
 
   useEffect(() => {
