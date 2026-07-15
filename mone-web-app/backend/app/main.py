@@ -9744,6 +9744,12 @@ def _bridge_market(value) -> str:
 def _bridge_symbol(value, market: str) -> str:
     raw = str(value or "").strip()
     if market == "kr":
+        # KRX 종목코드는 6자리 영숫자 — ETF/ETN엔 영문자가 섞인다(예: 0209Z0 ACE 코리아AI전력TOP10).
+        # 숫자만 추리면 0209Z0 → 002090 처럼 "실재하는 다른 종목"으로 조용히 변질된다.
+        base = raw.split(".")[0]  # 005930.KS 같은 시장 접미사 제거
+        code = "".join(ch for ch in base if ch.isascii() and ch.isalnum()).upper()
+        if code and len(code) <= 6:
+            return code.zfill(6)
         digits = "".join(ch for ch in raw if ch.isdigit())
         return digits.zfill(6)[-6:] if digits else raw
     return raw.upper()
