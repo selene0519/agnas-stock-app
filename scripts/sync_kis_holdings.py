@@ -30,6 +30,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -38,6 +39,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+_KRX_CODE_RE = re.compile(r"[0-9A-Z]{6}")
 
 # ── .env 로드 ──────────────────────────────────────────────────────────
 def _load_dotenv() -> None:
@@ -240,8 +243,10 @@ def _fetch_holdings(app_key: str, app_secret: str, is_mock: bool, prefix: str = 
             qty = int(_safe_float(row.get("hldg_qty", "0")))
             if qty <= 0:
                 continue
-            symbol = str(row.get("pdno", "")).strip().zfill(6)
-            if not symbol or not symbol.isdigit():
+            # KRX 종목코드는 6자리 영숫자 — ETF/ETN은 영문자가 섞인다(예: 0209Z0 ACE 코리아AI전력TOP10).
+            # isdigit()으로 거르면 이런 종목이 조용히 누락된다.
+            symbol = str(row.get("pdno", "")).strip().upper().zfill(6)
+            if not _KRX_CODE_RE.fullmatch(symbol):
                 continue
             avg = _safe_float(row.get("pchs_avg_pric", "0"))
             current = _safe_float(row.get("prpr", "0"))
