@@ -44,6 +44,9 @@ function Invoke-MoneStep {
         -WindowStyle Hidden `
         -RedirectStandardOutput $stdout `
         -RedirectStandardError $stderr
+    # .Handle을 먼저 잡아둬야 프로세스 종료 후에도 ExitCode를 읽을 수 있다.
+    # 이게 없으면 ExitCode가 항상 $null이라 모든 실패가 성공으로 보고된다.
+    try { $null = $process.Handle } catch {}
     if (-not $process.WaitForExit($StepTimeoutSec * 1000)) {
         try { $process.Kill() } catch {}
         Write-Log "TIMEOUT $Name after ${StepTimeoutSec}s"
@@ -53,10 +56,12 @@ function Invoke-MoneStep {
         return $false
     }
     $process.WaitForExit()
-    $process.Refresh()
     $exitCode = $process.ExitCode
     if ($null -eq $exitCode) {
-        $exitCode = 0
+        # 종료코드를 못 읽으면 성공으로 단정하지 않는다.
+        # (2026-07-15: 업로드 3건이 401로 죽었는데 exit=0으로 보고돼 3일간 조용히 멈춰 있었음)
+        Write-Log "WARN $Name 종료코드를 읽지 못함 — 실패로 간주"
+        $exitCode = 1
     }
     Add-FileToLog $stdout
     Add-FileToLog $stderr

@@ -295,17 +295,73 @@ def _save_csv(items: list[dict[str, Any]], path: Path) -> None:
 
 
 # ── 업로드 ───────────────────────────────────────────────────────────
+def _read_csv_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        return [dict(row) for row in csv.DictReader(f)]
+
+
+def _merged_kis_items() -> list[dict[str, Any]]:
+    """모든 KIS 계좌 원장(kis_holdings_kr.csv, kis_2_holdings_kr.csv …)을 하나로 합친다.
+
+    업로드는 broker="kis" 단위로 replace_broker 하므로 계좌별로 따로 올리면
+    뒤에 올린 계좌가 앞 계좌를 통째로 지운다(계좌1 한온시스템이 사라졌던 원인).
+    한국투자증권은 증권사 1곳에 계좌가 여럿이므로 합쳐서 한 번에 올린다.
+    같은 종목을 두 계좌에서 보유하면 수량은 더하고 평단은 수량가중 평균한다.
+    """
+    merged: dict[str, dict[str, Any]] = {}
+    for path in sorted(_DATA_DIR.glob("kis*_holdings_kr.csv")):
+        for row in _read_csv_rows(path):
+            symbol = str(row.get("symbol") or "").strip()
+            qty = _safe_float(row.get("quantity"))
+            if not symbol or qty <= 0:
+                continue
+            item = {
+                "symbol": symbol,
+                "name": str(row.get("name") or "").strip() or symbol,
+                "market": str(row.get("market") or "kr").strip() or "kr",
+                "quantity": qty,
+                "avgPrice": _safe_float(row.get("avgPrice")),
+                "currentPrice": _safe_float(row.get("currentPrice")),
+                "valuation": _safe_float(row.get("valuation")),
+                "pnl": _safe_float(row.get("pnl")),
+                "pnlPct": _safe_float(row.get("pnlPct")),
+            }
+            prev = merged.get(symbol)
+            if prev is None:
+                merged[symbol] = item
+                continue
+            total_qty = prev["quantity"] + item["quantity"]
+            prev["avgPrice"] = round(
+                (prev["avgPrice"] * prev["quantity"] + item["avgPrice"] * item["quantity"]) / total_qty, 2
+            ) if total_qty else 0.0
+            prev["quantity"] = total_qty
+            prev["currentPrice"] = item["currentPrice"] or prev["currentPrice"]
+            prev["valuation"] = prev["valuation"] + item["valuation"]
+            prev["pnl"] = prev["pnl"] + item["pnl"]
+            cost = prev["avgPrice"] * total_qty
+            prev["pnlPct"] = round(prev["pnl"] / cost * 100, 4) if cost else 0.0
+    return list(merged.values())
+
+
 def _upload(file_path: Path, backend_url: str, user_token: str) -> None:
+    items = _merged_kis_items()
+    if not items:
+        print("[ERROR] 업로드할 KIS 보유종목이 없습니다.", file=sys.stderr)
+        sys.exit(1)
+    upload_path = _DATA_DIR / "kis_holdings_kr_merged.csv"
+    _save_csv(items, upload_path)
     cmd = [
         sys.executable,
         str(Path(__file__).parent / "local_broker_bridge_upload.py"),
         "--broker", "kis",
-        "--file", str(file_path),
+        "--file", str(upload_path),
         "--backend-url", backend_url,
         "--user-token", user_token,
         "--mode", "replace_broker",
     ]
-    print(f"\n[upload] 업로드 시작: {backend_url}")
+    print(f"\n[upload] 업로드 시작: {backend_url} (KIS 전 계좌 {len(items)}건 병합)")
     result = subprocess.run(cmd, check=False)
     if result.returncode != 0:
         print("[ERROR] 업로드 실패", file=sys.stderr)
