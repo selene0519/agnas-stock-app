@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-07-17T07:19:54+09:00",
+  "lastRunAt": "2026-07-17T08:54:36+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": false,
@@ -50,174 +50,15 @@
       "market": "kr",
       "tradeDate": "2026-07-17",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "OK",
-      "runKey": "kr:2026-07-17:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-      "selected": 9,
-      "added": 9,
-      "rejected": {
-        "LOW_SCORE": 3
-      },
-      "items": [
-        {
-          "mode": "aggressive",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "mid",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "mid",
-          "selected": 4,
-          "added": 4,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "short",
-          "selected": 2,
-          "added": 2,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "swing",
-          "selected": 2,
-          "added": 2,
-          "duplicates": 0,
-          "status": "OK"
-        }
-      ]
+      "status": "SKIPPED_DUPLICATE",
+      "runKey": "kr:2026-07-17:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
     },
     {
       "market": "us",
       "tradeDate": "2026-07-16",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "OK",
-      "runKey": "us:2026-07-16:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-      "selected": 17,
-      "added": 17,
-      "rejected": {
-        "LOW_EV": 1,
-        "LOW_SCORE": 19
-      },
-      "items": [
-        {
-          "mode": "aggressive",
-          "horizon": "mid",
-          "selected": 5,
-          "added": 5,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "short",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "swing",
-          "selected": 5,
-          "added": 5,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "mid",
-          "selected": 2,
-          "added": 2,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "swing",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "mid",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "short",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "swing",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK"
-        }
-      ]
+      "status": "SKIPPED_DUPLICATE",
+      "runKey": "us:2026-07-16:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
     }
   ],
   "windows": {
