@@ -14,8 +14,8 @@
       "mode": "conservative",
       "horizon": "swing",
       "file": "mone_v36_final_trade_validation_kr_conservative_swing_20260716.csv",
-      "rows": 8,
-      "normalRows": 7
+      "rows": 7,
+      "normalRows": 6
     },
     {
       "market": "kr",
@@ -24,14 +24,6 @@
       "file": "mone_v36_final_trade_validation_kr_conservative_mid_20260716.csv",
       "rows": 27,
       "normalRows": 25
-    },
-    {
-      "market": "kr",
-      "mode": "balanced",
-      "horizon": "swing",
-      "file": "mone_v36_final_trade_validation_kr_balanced_swing_20260716.csv",
-      "rows": 1,
-      "normalRows": 1
     },
     {
       "market": "kr",
@@ -60,6 +52,13 @@
     },
     {
       "market": "kr",
+      "mode": "balanced",
+      "horizon": "swing",
+      "rows": 0,
+      "reason": "no_today_ohlcv_or_no_recommendations"
+    },
+    {
+      "market": "kr",
       "mode": "aggressive",
       "horizon": "short",
       "rows": 0,
@@ -76,42 +75,42 @@
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "rows": 1,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "conservative",
       "horizon": "swing",
-      "rows": 2,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
-      "rows": 20,
+      "rows": 27,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
-      "rows": 2,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "swing",
-      "rows": 4,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
-      "rows": 21,
+      "rows": 25,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -136,5 +135,5 @@
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-07-16T09:33:53"
+  "updatedAt": "2026-07-16T16:39:49"
 }
