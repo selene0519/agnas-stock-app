@@ -1,14 +1,14 @@
 {
   "version": 257,
-  "generatedAt": "2026-07-15T23:55:28.688105+00:00",
+  "generatedAt": "2026-07-16T00:33:59.136330+00:00",
   "market": "kr",
-  "totalSamples": 4818,
+  "totalSamples": 4913,
   "markets": {
     "kr_balanced_swing": {
       "market": "kr",
       "mode": "balanced",
       "horizon": "swing",
-      "sampleCount": 593,
+      "sampleCount": 594,
       "learnableSampleCount": 86,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -33,15 +33,15 @@
         "GOOD": 4,
         "ENTRY_TOO_AGGRESSIVE": 63,
         "GOOD_SIGNAL_WEAK_EXIT": 6,
-        "DATA_STALE": 507
+        "DATA_STALE": 508
       },
-      "appliedAt": "2026-07-15T23:55:28.685912+00:00"
+      "appliedAt": "2026-07-16T00:33:59.134803+00:00"
     },
     "kr_conservative_swing": {
       "market": "kr",
       "mode": "conservative",
       "horizon": "swing",
-      "sampleCount": 537,
+      "sampleCount": 545,
       "learnableSampleCount": 36,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -66,15 +66,15 @@
         "ENTRY_TOO_AGGRESSIVE": 26,
         "GOOD_SIGNAL_WEAK_EXIT": 4,
         "GOOD": 2,
-        "DATA_STALE": 501
+        "DATA_STALE": 509
       },
-      "appliedAt": "2026-07-15T23:55:28.686210+00:00"
+      "appliedAt": "2026-07-16T00:33:59.135007+00:00"
     },
     "kr_conservative_short": {
       "market": "kr",
       "mode": "conservative",
       "horizon": "short",
-      "sampleCount": 410,
+      "sampleCount": 413,
       "learnableSampleCount": 28,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -99,9 +99,9 @@
         "ENTRY_TOO_AGGRESSIVE": 24,
         "GOOD_SIGNAL_WEAK_EXIT": 1,
         "GOOD": 2,
-        "DATA_STALE": 382
+        "DATA_STALE": 385
       },
-      "appliedAt": "2026-07-15T23:55:28.686448+00:00"
+      "appliedAt": "2026-07-16T00:33:59.135150+00:00"
     },
     "kr_balanced_short": {
       "market": "kr",
@@ -134,7 +134,7 @@
         "MISS_ENTRY_TOO_LOW": 2,
         "DATA_STALE": 403
       },
-      "appliedAt": "2026-07-15T23:55:28.686671+00:00"
+      "appliedAt": "2026-07-16T00:33:59.135303+00:00"
     },
     "kr_aggressive_short": {
       "market": "kr",
@@ -167,7 +167,7 @@
         "MISS_ENTRY_TOO_LOW": 1,
         "DATA_STALE": 419
       },
-      "appliedAt": "2026-07-15T23:55:28.686894+00:00"
+      "appliedAt": "2026-07-16T00:33:59.135468+00:00"
     },
     "kr_aggressive_swing": {
       "market": "kr",
@@ -200,13 +200,13 @@
         "GOOD": 1,
         "DATA_STALE": 549
       },
-      "appliedAt": "2026-07-15T23:55:28.687186+00:00"
+      "appliedAt": "2026-07-16T00:33:59.135710+00:00"
     },
     "kr_aggressive_mid": {
       "market": "kr",
       "mode": "aggressive",
       "horizon": "mid",
-      "sampleCount": 661,
+      "sampleCount": 691,
       "learnableSampleCount": 0,
       "confidence": 0.9,
       "weightAdjustments": {},
@@ -221,15 +221,15 @@
       },
       "topFailureReasons": [],
       "reasonCounts": {
-        "DATA_STALE": 661
+        "DATA_STALE": 691
       },
-      "appliedAt": "2026-07-15T23:55:28.687543+00:00"
+      "appliedAt": "2026-07-16T00:33:59.135961+00:00"
     },
     "kr_balanced_mid": {
       "market": "kr",
       "mode": "balanced",
       "horizon": "mid",
-      "sampleCount": 576,
+      "sampleCount": 602,
       "learnableSampleCount": 0,
       "confidence": 0.9,
       "weightAdjustments": {},
@@ -244,15 +244,15 @@
       },
       "topFailureReasons": [],
       "reasonCounts": {
-        "DATA_STALE": 576
+        "DATA_STALE": 602
       },
-      "appliedAt": "2026-07-15T23:55:28.687824+00:00"
+      "appliedAt": "2026-07-16T00:33:59.136151+00:00"
     },
     "kr_conservative_mid": {
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
-      "sampleCount": 587,
+      "sampleCount": 614,
       "learnableSampleCount": 0,
       "confidence": 0.9,
       "weightAdjustments": {},
@@ -267,10 +267,10 @@
       },
       "topFailureReasons": [],
       "reasonCounts": {
-        "DATA_STALE": 587
+        "DATA_STALE": 614
       },
-      "appliedAt": "2026-07-15T23:55:28.688102+00:00"
+      "appliedAt": "2026-07-16T00:33:59.136327+00:00"
     }
   },
-  "savedAt": "2026-07-15T23:55:28.688811+00:00"
+  "savedAt": "2026-07-16T00:33:59.136941+00:00"
 }
