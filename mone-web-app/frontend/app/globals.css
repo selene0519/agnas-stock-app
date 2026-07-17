@@ -429,7 +429,7 @@ html[data-theme="light"] .mone-app-shell [class*="text-slate-500"] {
 }
 html[data-theme="light"] .mone-app-shell [class*="text-slate-600"],
 html[data-theme="light"] .mone-app-shell [class*="text-slate-700"] {
-  color: #8492a6 !important;
+  color: #475569 !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="text-blue-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-blue-200"],
@@ -442,6 +442,12 @@ html[data-theme="light"] .mone-app-shell [class*="text-emerald-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-400"] {
   color: #047857 !important;
+}
+html[data-theme="light"] .mone-app-shell [class*="text-teal-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-teal-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-teal-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-teal-400"] {
+  color: #0d9488 !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="text-amber-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-amber-200"],
@@ -557,6 +563,9 @@ html[data-theme="light"] .mone-app-shell {
   font-weight: 600;
   line-height: 1.25;
   color: #f1f5f9;
+}
+html[data-theme="light"] .mone-home-section-title {
+  color: #0f172a;
 }
 .mone-section-icon {
   display: inline-block;

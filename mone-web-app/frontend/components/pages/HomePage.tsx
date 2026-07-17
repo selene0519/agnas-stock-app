@@ -855,15 +855,14 @@ function ReferenceBriefingCard({
         </div>
       )}
       {item && onAnalyze && (
-        <div className="mt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={() => onAnalyze(item)}
-            className="inline-flex min-h-7 items-center gap-1 text-[11px] font-semibold text-teal-300 transition-[color,transform] hover:text-teal-200 active:scale-[0.96]"
-          >
-            EV · RR · 근거 보기 <ChevronRight size={11} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onAnalyze(item)}
+          className="mt-2 flex min-h-11 w-full items-center justify-between rounded-[10px] border border-slate-800/80 bg-slate-900/40 px-3.5 text-[11px] font-semibold text-teal-300 transition-[background-color,color,transform] hover:bg-slate-900/70 active:scale-[0.99]"
+        >
+          <span>EV · RR · 근거 보기</span>
+          <ChevronRight size={13} />
+        </button>
       )}
     </section>
   );
@@ -968,7 +967,7 @@ function ReferenceCandidateListSection({
               key={tab.key}
               type="button"
               onClick={() => setCandidateTab(tab.key)}
-              className={`-mb-px min-h-9 border-b-2 text-[11px] font-semibold transition-[border-color,color,transform] active:scale-[0.96] ${candidateTab === tab.key ? "border-teal-300 text-teal-300" : "border-transparent text-slate-500 hover:text-slate-300"}`}
+              className={`-mb-px min-h-11 border-b-2 text-[11px] font-semibold transition-[border-color,color,transform] active:scale-[0.96] ${candidateTab === tab.key ? "border-teal-300 text-teal-300" : "border-transparent text-slate-500 hover:text-slate-300"}`}
             >
               {tab.label} <span className="font-mono text-[10px]">{loading ? "-" : tab.count}</span>
             </button>
@@ -4530,7 +4529,7 @@ export default function HomePage({
             <button
               key={choice}
               onClick={() => updateMarketChoice(choice)}
-              className={`min-h-9 min-w-0 rounded-[7px] px-2 text-[12px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
+              className={`min-h-11 min-w-0 rounded-[7px] px-2 text-[12px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
                 marketChoice === choice
                   ? "mone-selection-brand"
                   : "text-slate-400 hover:text-slate-200"
