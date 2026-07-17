@@ -7366,6 +7366,66 @@ def api_home_summary(
             except Exception:
                 return None
 
+        def _home_number(value: object) -> float | None:
+            try:
+                text = str(value or "").strip().replace(",", "").replace("%", "")
+                if not text or text.lower() in {"nan", "none", "null"}:
+                    return None
+                return float(text)
+            except Exception:
+                return None
+
+        def _home_quote_index() -> dict[str, dict]:
+            paths = [
+                _REPO / "data" / "stockapp" / f"kis_current_price_{mk}.csv",
+                _REPO / "reports" / f"kis_current_price_{mk}.csv",
+                _REPO / "data" / "stockapp" / f"intraday_quote_snapshot_{mk}.csv",
+                _REPO / "reports" / f"intraday_quote_snapshot_{mk}.csv",
+            ]
+            quotes: dict[str, dict] = {}
+            for path in paths:
+                for row in _read_csv_safe(path):
+                    symbol = str(row.get("symbol") or row.get("code") or row.get("ticker") or "").strip().upper()
+                    if mk == "kr":
+                        symbol = "".join(ch for ch in symbol if ch.isdigit()).zfill(6)[-6:]
+                    if not symbol:
+                        continue
+                    current = _home_float(row.get("currentPrice") or row.get("current_price") or row.get("last_price") or row.get("price"))
+                    if current is None:
+                        continue
+                    quotes[symbol] = {
+                        "currentPrice": current,
+                        "prevClose": _home_float(row.get("prevClose") or row.get("previousClose") or row.get("prev_close") or row.get("basePrice")),
+                        "changePct": _home_number(row.get("changePct") or row.get("changeRate") or row.get("prdy_ctrt")),
+                        "quoteTimestamp": str(row.get("priceTime") or row.get("priceSourceDate") or row.get("updated_at") or row.get("timestamp") or "").strip(),
+                        "priceSource": str(row.get("priceSource") or row.get("source") or path.name).strip(),
+                    }
+            return quotes
+
+        home_quotes = _home_quote_index()
+
+        def _home_quote_is_fresh(quote: dict) -> bool:
+            timestamp = str(quote.get("quoteTimestamp") or "")[:10]
+            if not timestamp:
+                return False
+            try:
+                from datetime import date as _date
+                age_days = (_date.today() - _date.fromisoformat(timestamp)).days
+                return 0 <= age_days <= 7
+            except Exception:
+                return False
+
+        def _home_ohlcv_is_fresh(date_text: object) -> bool:
+            timestamp = str(date_text or "")[:10]
+            if not timestamp:
+                return False
+            try:
+                from datetime import date as _date
+                age_days = (_date.today() - _date.fromisoformat(timestamp)).days
+                return 0 <= age_days <= 7
+            except Exception:
+                return False
+
         def _is_kr_etf_row(row: dict) -> bool:
             if mk != "kr":
                 return False
@@ -7428,33 +7488,65 @@ def api_home_summary(
                 _ev_risk = abs(_ev_entry - _ev_stop)
                 if _ev_risk > 0:
                     out["rrActual"] = round((_ev_target - _ev_entry) / _ev_risk, 2)
+
+            quote = home_quotes.get(symbol, {})
+            if _home_quote_is_fresh(quote):
+                current = quote["currentPrice"]
+                prev_close = quote.get("prevClose")
+                change_pct = quote.get("changePct")
+                if change_pct is None and prev_close and prev_close > 0:
+                    change_pct = (current - prev_close) / prev_close * 100
+                out.update({
+                    "currentPrice": current,
+                    "currentPriceText": f"${current:,.2f}" if mk == "us" else f"{round(current):,}원",
+                    "currentPriceSource": "kis_snapshot",
+                    "priceSource": quote.get("priceSource") or "KIS current price",
+                    "quoteTimestamp": quote.get("quoteTimestamp") or "",
+                    "dataStatus": "NORMAL",
+                    "priceDataStatus": "NORMAL",
+                })
+                if prev_close and prev_close > 0:
+                    out["prevClose"] = prev_close
+                    out["prevCloseSource"] = "kis_snapshot"
+                if change_pct is not None:
+                    out["changePct"] = change_pct
+                    out["changePctText"] = f"{change_pct:+.2f}%"
+                    out["changePctSource"] = "kis_current_vs_previous_close"
+                else:
+                    out["previousCloseStatus"] = "UNAVAILABLE"
+                return out
+
             ref = _ohlcv_change_ref(symbol)
             if not ref:
+                out["previousCloseStatus"] = "UNAVAILABLE"
                 return out
-            current = _home_float(out.get("currentPrice") or out.get("current_price") or out.get("lastPrice"))
-            prev_close = _home_float(out.get("prevClose") or out.get("previousClose") or out.get("basePrice"))
-            if not current:
-                out["currentPrice"] = ref["currentPrice"]
-                current = ref["currentPrice"]
-            if not prev_close:
-                out["prevClose"] = ref["prevClose"]
-                out["prevCloseDate"] = ref["prevCloseDate"]
-                prev_close = ref["prevClose"]
-            if current and prev_close and prev_close > 0:
-                change_pct = (current - prev_close) / prev_close * 100
-                out["changePct"] = change_pct
-                out["changePctText"] = f"{change_pct:+.2f}%"
-                out["changePctSource"] = "current_vs_ohlcv_previous_close"
-            out.setdefault("ohlcvLatestDate", ref["ohlcvLatestDate"])
-            out.setdefault("dataAsOf", ref["ohlcvLatestDate"])
-            out.setdefault("latestDataDate", ref["ohlcvLatestDate"])
-            if current and not out.get("currentPriceText"):
-                out["currentPriceText"] = f"${current:,.2f}" if mk == "us" else f"{round(current):,}원"
-            if str(out.get("priceSource") or out.get("currentPriceSource") or "").lower() in {"ohlcv", "ohlcv_close"}:
-                out["dataStatus"] = "PREVIOUS_CLOSE_BASIS"
-                out["priceDataStatus"] = "PREVIOUS_CLOSE_BASIS"
-                out["priceStatusLabel"] = "최신 마감 OHLCV 기준"
-                out["currentPriceSource"] = out.get("currentPriceSource") or "ohlcv_close"
+            if not _home_ohlcv_is_fresh(ref.get("ohlcvLatestDate")):
+                for key in ("prevClose", "previousClose", "changePct", "changePctText", "changePctSource"):
+                    out.pop(key, None)
+                out.update({
+                    "ohlcvLatestDate": ref["ohlcvLatestDate"],
+                    "dataStatus": "STALE",
+                    "priceDataStatus": "STALE",
+                    "priceStatusLabel": "OHLCV update required",
+                    "previousCloseStatus": "STALE_OHLCV",
+                })
+                return out
+            out.update({
+                "currentPrice": ref["currentPrice"],
+                "currentPriceText": f"${ref['currentPrice']:,.2f}" if mk == "us" else f"{round(ref['currentPrice']):,}원",
+                "prevClose": ref["prevClose"],
+                "prevCloseDate": ref["prevCloseDate"],
+                "changePct": ref["changePct"],
+                "changePctText": ref["changePctText"],
+                "changePctSource": ref["changePctSource"],
+                "ohlcvLatestDate": ref["ohlcvLatestDate"],
+                "dataAsOf": ref["ohlcvLatestDate"],
+                "latestDataDate": ref["ohlcvLatestDate"],
+                "currentPriceSource": "ohlcv_close",
+                "dataStatus": "PREVIOUS_CLOSE_BASIS",
+                "priceDataStatus": "PREVIOUS_CLOSE_BASIS",
+                "priceStatusLabel": "최신 마감 OHLCV 기준",
+            })
             return out
 
         # 마켓 레짐 (KOSPI/SPY 20일선 기반 — priority 9)

@@ -543,9 +543,20 @@ html[data-theme="light"] .mone-app-shell {
   background: var(--home-surface) !important;
   border-color: var(--home-border) !important;
 }
+.mone-home-card {
+  background: var(--home-surface) !important;
+  border: 1px solid var(--home-border) !important;
+  border-radius: 14px !important;
+}
 .mone-home-inset {
   background: var(--home-inset) !important;
   border-color: var(--home-border) !important;
+}
+.mone-home-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #f1f5f9;
 }
 .mone-section-icon {
   display: inline-block;
