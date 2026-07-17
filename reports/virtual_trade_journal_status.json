@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-07-17T23:26:28+09:00",
+  "lastRunAt": "2026-07-18T07:19:19+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": false,
@@ -29,6 +29,7 @@
     "kr:2026-07-15:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "kr:2026-07-16:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "kr:2026-07-17:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+    "kr:2026-07-18:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-24:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-26:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-06-30:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
@@ -43,22 +44,102 @@
     "us:2026-07-13:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-07-14:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
     "us:2026-07-15:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-    "us:2026-07-16:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+    "us:2026-07-16:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+    "us:2026-07-17:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
   ],
   "runs": [
     {
       "market": "kr",
-      "tradeDate": "2026-07-17",
+      "tradeDate": "2026-07-18",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "SKIPPED_DUPLICATE",
-      "runKey": "kr:2026-07-17:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+      "status": "SKIPPED_MARKET_CLOSED",
+      "runKey": "kr:2026-07-18:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
     },
     {
       "market": "us",
-      "tradeDate": "2026-07-16",
+      "tradeDate": "2026-07-17",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "SKIPPED_DUPLICATE",
-      "runKey": "us:2026-07-16:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
+      "status": "OK",
+      "runKey": "us:2026-07-17:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+      "selected": 12,
+      "added": 12,
+      "rejected": {
+        "LOW_SCORE": 33
+      },
+      "items": [
+        {
+          "mode": "aggressive",
+          "horizon": "mid",
+          "selected": 5,
+          "added": 5,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "short",
+          "selected": 1,
+          "added": 1,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "swing",
+          "selected": 3,
+          "added": 3,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "mid",
+          "selected": 3,
+          "added": 3,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        }
+      ]
     }
   ],
   "windows": {
