@@ -855,15 +855,14 @@ function ReferenceBriefingCard({
         </div>
       )}
       {item && onAnalyze && (
-        <div className="mt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={() => onAnalyze(item)}
-            className="inline-flex min-h-11 items-center gap-1 text-[11px] font-semibold text-teal-300 transition-[color,transform] hover:text-teal-200 active:scale-[0.96]"
-          >
-            EV · RR · 근거 보기 <ChevronRight size={11} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onAnalyze(item)}
+          className="mt-2 flex min-h-11 w-full items-center justify-between rounded-[10px] border border-slate-800/80 bg-slate-900/40 px-3.5 text-[11px] font-semibold text-teal-300 transition-[background-color,color,transform] hover:bg-slate-900/70 active:scale-[0.99]"
+        >
+          <span>EV · RR · 근거 보기</span>
+          <ChevronRight size={13} />
+        </button>
       )}
     </section>
   );
