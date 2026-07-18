@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-11T09:10:09.958181",
+  "generatedAt": "2026-07-18T09:11:18.828928",
   "market": "kr",
   "combos": {
     "kr_conservative_short": {
@@ -7,7 +7,7 @@
       "market": "kr",
       "mode": "conservative",
       "horizon": "short",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -1640,7 +1640,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:07:48.071605",
+      "generatedAt": "2026-07-18T09:09:31.421093",
       "tradeRecords": [
         {
           "symbol": "000270",
@@ -21399,7 +21399,7 @@
       "market": "kr",
       "mode": "conservative",
       "horizon": "swing",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -23082,7 +23082,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:08:10.299540",
+      "generatedAt": "2026-07-18T09:09:48.299654",
       "tradeRecords": [
         {
           "symbol": "000270",
@@ -44941,7 +44941,7 @@
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -46443,11 +46443,11 @@
             "expiredCount": 1,
             "missEntryCount": 1,
             "missEntryRate": 12.5,
-            "avgNetPnlPct": -1.616,
-            "cumulativeNetPnlPct": -11.311,
-            "mddPct": -14.05,
+            "avgNetPnlPct": -1.552,
+            "cumulativeNetPnlPct": -10.862,
+            "mddPct": -13.6,
             "avgHoldingDays": 30.0,
-            "profitLossRatio": 1.16,
+            "profitLossRatio": 1.18,
             "reasonCounts": {
               "ENTRY_TOO_AGGRESSIVE": 4,
               "MISS_ENTRY_TOO_LOW": 1,
@@ -46455,7 +46455,7 @@
               "GOOD_SIGNAL_WEAK_EXIT": 1
             },
             "regimeAvgPnl": {
-              "BULL": -1.616
+              "BULL": -1.552
             }
           },
           "corrected": {
@@ -46470,11 +46470,11 @@
             "expiredCount": 1,
             "missEntryCount": 1,
             "missEntryRate": 12.5,
-            "avgNetPnlPct": -1.5,
-            "cumulativeNetPnlPct": -10.503,
-            "mddPct": -13.71,
+            "avgNetPnlPct": -1.436,
+            "cumulativeNetPnlPct": -10.054,
+            "mddPct": -13.27,
             "avgHoldingDays": 30.0,
-            "profitLossRatio": 1.22,
+            "profitLossRatio": 1.25,
             "reasonCounts": {
               "ENTRY_TOO_AGGRESSIVE": 4,
               "MISS_ENTRY_TOO_LOW": 1,
@@ -46482,14 +46482,14 @@
               "GOOD_SIGNAL_WEAK_EXIT": 1
             },
             "regimeAvgPnl": {
-              "BULL": -1.5
+              "BULL": -1.436
             }
           },
           "diff": {
             "missEntryRateDiff": 0.0,
             "avgNetPnlPctDiff": 0.116,
             "cumulativeNetPnlPctDiff": 0.808,
-            "mddPctDiff": 0.34,
+            "mddPctDiff": 0.33,
             "executionRateDiff": 0.0
           }
         },
@@ -46559,9 +46559,9 @@
         "stopHitRate": 59.071,
         "missEntryRate": 19.682,
         "avgNetPnlPct": 1.874,
-        "cumulativeNetPnlPct": 1315.171,
+        "cumulativeNetPnlPct": 1315.62,
         "mddPct": -153.7,
-        "profitLossRatio": 1.863,
+        "profitLossRatio": 1.864,
         "reasonCounts": {
           "VOLATILITY_TOO_HIGH": 226,
           "ENTRY_TOO_AGGRESSIVE": 250,
@@ -46585,7 +46585,7 @@
         "stopHitRate": 60.498,
         "missEntryRate": 21.392,
         "avgNetPnlPct": 1.952,
-        "cumulativeNetPnlPct": 1340.82,
+        "cumulativeNetPnlPct": 1341.269,
         "mddPct": -153.7,
         "profitLossRatio": 1.931,
         "reasonCounts": {
@@ -46615,7 +46615,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:08:34.345638",
+      "generatedAt": "2026-07-18T09:10:06.326599",
       "tradeRecords": [
         {
           "symbol": "000270",
@@ -68232,7 +68232,7 @@
           "executionStatus": "체결",
           "exitStatus": "추적손절",
           "netPnlPct": 5.313,
-          "mfePct": 19.636,
+          "mfePct": 21.241,
           "maePct": -4.334,
           "holdingDays": 30,
           "entryDate": "2026-06-02",
@@ -68257,7 +68257,7 @@
           "executionStatus": "체결",
           "exitStatus": "추적손절",
           "netPnlPct": 4.738,
-          "mfePct": 26.298,
+          "mfePct": 29.357,
           "maePct": -3.564,
           "holdingDays": 30,
           "entryDate": "2026-06-02",
@@ -68381,13 +68381,13 @@
           "correctionApplied": true,
           "executionStatus": "체결",
           "exitStatus": "기간종료",
-          "netPnlPct": -1.102,
+          "netPnlPct": -0.653,
           "mfePct": 1.622,
           "maePct": -0.856,
           "holdingDays": 30,
           "entryDate": "2026-06-09",
-          "exitDate": "2026-07-10",
-          "exitPrice": 15377.1825,
+          "exitDate": "2026-07-13",
+          "exitPrice": 15446.9655,
           "outcomeReason": "GOOD_SIGNAL_WEAK_EXIT",
           "error": null,
           "_window": "2026-06-01"
@@ -68474,7 +68474,7 @@
       "market": "kr",
       "mode": "balanced",
       "horizon": "short",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -69800,7 +69800,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:08:48.910757",
+      "generatedAt": "2026-07-18T09:10:17.740900",
       "tradeRecords": [
         {
           "symbol": "003620",
@@ -82084,7 +82084,7 @@
       "market": "kr",
       "mode": "balanced",
       "horizon": "swing",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -83558,7 +83558,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:09:05.967160",
+      "generatedAt": "2026-07-18T09:10:30.816236",
       "tradeRecords": [
         {
           "symbol": "128940",
@@ -97867,7 +97867,7 @@
       "market": "kr",
       "mode": "balanced",
       "horizon": "mid",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -99359,11 +99359,11 @@
             "expiredCount": 1,
             "missEntryCount": 1,
             "missEntryRate": 12.5,
-            "avgNetPnlPct": -1.616,
-            "cumulativeNetPnlPct": -11.311,
-            "mddPct": -14.05,
+            "avgNetPnlPct": -1.552,
+            "cumulativeNetPnlPct": -10.862,
+            "mddPct": -13.6,
             "avgHoldingDays": 30.0,
-            "profitLossRatio": 1.16,
+            "profitLossRatio": 1.18,
             "reasonCounts": {
               "ENTRY_TOO_AGGRESSIVE": 4,
               "MISS_ENTRY_TOO_LOW": 1,
@@ -99371,7 +99371,7 @@
               "GOOD_SIGNAL_WEAK_EXIT": 1
             },
             "regimeAvgPnl": {
-              "BULL": -1.616
+              "BULL": -1.552
             }
           },
           "corrected": {
@@ -99386,11 +99386,11 @@
             "expiredCount": 1,
             "missEntryCount": 1,
             "missEntryRate": 12.5,
-            "avgNetPnlPct": -1.508,
-            "cumulativeNetPnlPct": -10.556,
-            "mddPct": -13.74,
+            "avgNetPnlPct": -1.444,
+            "cumulativeNetPnlPct": -10.108,
+            "mddPct": -13.29,
             "avgHoldingDays": 30.0,
-            "profitLossRatio": 1.22,
+            "profitLossRatio": 1.25,
             "reasonCounts": {
               "ENTRY_TOO_AGGRESSIVE": 4,
               "MISS_ENTRY_TOO_LOW": 1,
@@ -99398,13 +99398,13 @@
               "GOOD_SIGNAL_WEAK_EXIT": 1
             },
             "regimeAvgPnl": {
-              "BULL": -1.508
+              "BULL": -1.444
             }
           },
           "diff": {
             "missEntryRateDiff": 0.0,
             "avgNetPnlPctDiff": 0.108,
-            "cumulativeNetPnlPctDiff": 0.755,
+            "cumulativeNetPnlPctDiff": 0.754,
             "mddPctDiff": 0.31,
             "executionRateDiff": 0.0
           }
@@ -99474,8 +99474,8 @@
         "stopCount": 40,
         "stopHitRate": 52.622,
         "missEntryRate": 19.499,
-        "avgNetPnlPct": 2.496,
-        "cumulativeNetPnlPct": 1412.648,
+        "avgNetPnlPct": 2.497,
+        "cumulativeNetPnlPct": 1413.097,
         "mddPct": -147.26,
         "profitLossRatio": 1.943,
         "reasonCounts": {
@@ -99500,8 +99500,8 @@
         "stopCount": 40,
         "stopHitRate": 54.034,
         "missEntryRate": 21.182,
-        "avgNetPnlPct": 2.614,
-        "cumulativeNetPnlPct": 1448.116,
+        "avgNetPnlPct": 2.615,
+        "cumulativeNetPnlPct": 1448.564,
         "mddPct": -140.9,
         "profitLossRatio": 2.013,
         "reasonCounts": {
@@ -99520,7 +99520,7 @@
         "stopHitRateDiff": 1.412,
         "missEntryRateDiff": 1.683,
         "avgNetPnlPctDiff": 0.118,
-        "cumulativeNetPnlPctDiff": 35.468,
+        "cumulativeNetPnlPctDiff": 35.467,
         "mddPctDiff": 6.36,
         "executionRateDiff": -1.69
       },
@@ -99531,7 +99531,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:09:26.957736",
+      "generatedAt": "2026-07-18T09:10:46.446761",
       "tradeRecords": [
         {
           "symbol": "000270",
@@ -116873,7 +116873,7 @@
           "executionStatus": "체결",
           "exitStatus": "추적손절",
           "netPnlPct": 5.303,
-          "mfePct": 19.625,
+          "mfePct": 21.23,
           "maePct": -4.343,
           "holdingDays": 30,
           "entryDate": "2026-06-02",
@@ -116898,7 +116898,7 @@
           "executionStatus": "체결",
           "exitStatus": "추적손절",
           "netPnlPct": 4.728,
-          "mfePct": 26.287,
+          "mfePct": 29.346,
           "maePct": -3.572,
           "holdingDays": 30,
           "entryDate": "2026-06-02",
@@ -117022,13 +117022,13 @@
           "correctionApplied": true,
           "executionStatus": "체결",
           "exitStatus": "기간종료",
-          "netPnlPct": -1.108,
+          "netPnlPct": -0.66,
           "mfePct": 1.616,
           "maePct": -0.863,
           "holdingDays": 30,
           "entryDate": "2026-06-09",
-          "exitDate": "2026-07-10",
-          "exitPrice": 15377.1825,
+          "exitDate": "2026-07-13",
+          "exitPrice": 15446.9655,
           "outcomeReason": "GOOD_SIGNAL_WEAK_EXIT",
           "error": null,
           "_window": "2026-06-01"
@@ -117115,7 +117115,7 @@
       "market": "kr",
       "mode": "aggressive",
       "horizon": "short",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -118343,7 +118343,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:09:38.808519",
+      "generatedAt": "2026-07-18T09:10:55.598987",
       "tradeRecords": [
         {
           "symbol": "128940",
@@ -128502,7 +128502,7 @@
       "market": "kr",
       "mode": "aggressive",
       "horizon": "swing",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -129791,7 +129791,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:09:53.435754",
+      "generatedAt": "2026-07-18T09:11:06.658349",
       "tradeRecords": [
         {
           "symbol": "128940",
@@ -142575,7 +142575,7 @@
       "market": "kr",
       "mode": "aggressive",
       "horizon": "mid",
-      "dataRange": "2024-06-10 ~ 2026-07-10",
+      "dataRange": "2024-06-10 ~ 2026-07-16",
       "windowCount": 23,
       "windows": [
         {
@@ -143694,11 +143694,11 @@
             "expiredCount": 1,
             "missEntryCount": 1,
             "missEntryRate": 14.3,
-            "avgNetPnlPct": -0.65,
-            "cumulativeNetPnlPct": -3.902,
+            "avgNetPnlPct": -0.575,
+            "cumulativeNetPnlPct": -3.453,
             "mddPct": -6.98,
             "avgHoldingDays": 30.0,
-            "profitLossRatio": 1.43,
+            "profitLossRatio": 1.48,
             "reasonCounts": {
               "ENTRY_TOO_AGGRESSIVE": 4,
               "MISS_ENTRY_TOO_LOW": 1,
@@ -143706,7 +143706,7 @@
               "GOOD_SIGNAL_WEAK_EXIT": 1
             },
             "regimeAvgPnl": {
-              "BULL": -0.65
+              "BULL": -0.575
             }
           },
           "corrected": {
@@ -143721,11 +143721,11 @@
             "expiredCount": 1,
             "missEntryCount": 1,
             "missEntryRate": 14.3,
-            "avgNetPnlPct": -0.555,
-            "cumulativeNetPnlPct": -3.33,
+            "avgNetPnlPct": -0.48,
+            "cumulativeNetPnlPct": -2.882,
             "mddPct": -6.86,
             "avgHoldingDays": 30.0,
-            "profitLossRatio": 1.5,
+            "profitLossRatio": 1.55,
             "reasonCounts": {
               "ENTRY_TOO_AGGRESSIVE": 4,
               "MISS_ENTRY_TOO_LOW": 1,
@@ -143733,13 +143733,13 @@
               "GOOD_SIGNAL_WEAK_EXIT": 1
             },
             "regimeAvgPnl": {
-              "BULL": -0.555
+              "BULL": -0.48
             }
           },
           "diff": {
             "missEntryRateDiff": 0.0,
             "avgNetPnlPctDiff": 0.095,
-            "cumulativeNetPnlPctDiff": 0.572,
+            "cumulativeNetPnlPctDiff": 0.571,
             "mddPctDiff": 0.12,
             "executionRateDiff": 0.0
           }
@@ -143809,10 +143809,10 @@
         "stopCount": 26,
         "stopHitRate": 53.067,
         "missEntryRate": 19.789,
-        "avgNetPnlPct": 3.313,
-        "cumulativeNetPnlPct": 1450.928,
+        "avgNetPnlPct": 3.314,
+        "cumulativeNetPnlPct": 1451.377,
         "mddPct": -142.23,
-        "profitLossRatio": 2.122,
+        "profitLossRatio": 2.123,
         "reasonCounts": {
           "MISS_ENTRY_TOO_LOW": 108,
           "VOLATILITY_TOO_HIGH": 107,
@@ -143834,10 +143834,10 @@
         "stopCount": 25,
         "stopHitRate": 52.06,
         "missEntryRate": 21.629,
-        "avgNetPnlPct": 3.42,
-        "cumulativeNetPnlPct": 1463.613,
+        "avgNetPnlPct": 3.421,
+        "cumulativeNetPnlPct": 1464.061,
         "mddPct": -136.09,
-        "profitLossRatio": 2.183,
+        "profitLossRatio": 2.184,
         "reasonCounts": {
           "MISS_ENTRY_TOO_LOW": 118,
           "VOLATILITY_TOO_HIGH": 108,
@@ -143854,7 +143854,7 @@
         "stopHitRateDiff": -1.007,
         "missEntryRateDiff": 1.84,
         "avgNetPnlPctDiff": 0.107,
-        "cumulativeNetPnlPctDiff": 12.685,
+        "cumulativeNetPnlPctDiff": 12.684,
         "mddPctDiff": 6.14,
         "executionRateDiff": -1.851
       },
@@ -143865,7 +143865,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-07-11T09:10:09.939975",
+      "generatedAt": "2026-07-18T09:11:18.814062",
       "tradeRecords": [
         {
           "symbol": "006400",
@@ -157307,7 +157307,7 @@
           "executionStatus": "체결",
           "exitStatus": "추적손절",
           "netPnlPct": 5.291,
-          "mfePct": 19.611,
+          "mfePct": 21.215,
           "maePct": -4.354,
           "holdingDays": 30,
           "entryDate": "2026-06-02",
@@ -157332,7 +157332,7 @@
           "executionStatus": "체결",
           "exitStatus": "추적손절",
           "netPnlPct": 4.715,
-          "mfePct": 26.271,
+          "mfePct": 29.33,
           "maePct": -3.585,
           "holdingDays": 30,
           "entryDate": "2026-06-02",
@@ -157431,13 +157431,13 @@
           "correctionApplied": true,
           "executionStatus": "체결",
           "exitStatus": "기간종료",
-          "netPnlPct": -1.108,
+          "netPnlPct": -0.66,
           "mfePct": 1.616,
           "maePct": -0.863,
           "holdingDays": 30,
           "entryDate": "2026-06-09",
-          "exitDate": "2026-07-10",
-          "exitPrice": 15377.1825,
+          "exitDate": "2026-07-13",
+          "exitPrice": 15446.9655,
           "outcomeReason": "GOOD_SIGNAL_WEAK_EXIT",
           "error": null,
           "_window": "2026-06-01"
