@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mone, type Market } from "@/lib/api";
-import { PieChart, RefreshCw, AlertTriangle, CheckCircle2, TrendingDown } from "lucide-react";
+import { AlertTriangle, CheckCircle2, TrendingDown } from "lucide-react";
 import { displayName } from "@/lib/moneDisplay";
 import { toneClassName } from "@/lib/tone";
 
@@ -93,7 +93,7 @@ function buildPortfolioData(holdings: Holding[]): PortfolioData {
   const bySector: Record<string, SectorRow> = {};
 
   for (const h of holdings) {
-    const sector = String(h.sector || "미분류").trim() || "미분류";
+    const sector = String(h.sector || "기타").trim() || "기타";
     if (!bySector[sector]) {
       bySector[sector] = { sector, value: 0, pct: 0, symbols: [], maxLoss: 0 };
     }
@@ -125,6 +125,16 @@ function buildPortfolioData(holdings: Holding[]): PortfolioData {
     holdings,
     totalValue,
   };
+}
+
+function fallbackSector(holding: Pick<Holding, "name" | "symbol" | "sector">) {
+  const existing = String(holding.sector || "").trim();
+  const korean: Record<string, string> = { "Consumer Cyclical": "경기소비재", Technology: "기술", "Financial Services": "금융", "Communication Services": "커뮤니케이션", Industrials: "산업재", Healthcare: "헬스케어", Energy: "에너지", Utilities: "유틸리티", "Real Estate": "부동산", "Basic Materials": "소재" };
+  if (korean[existing]) return korean[existing];
+  if (existing && !/^(other|기타|미분류|unknown)$/i.test(existing)) return existing;
+  const label = `${holding.name} ${holding.symbol}`.toUpperCase();
+  if (/(TIGER|KODEX|ACE |ETF|ETN|SPY|QQQ|IWM|SCHD)/.test(label)) return "ETF";
+  return "개별주";
 }
 
 function ConcentrationBar({ pct, label, count }: { pct: number; label: string; count: number }) {
@@ -180,8 +190,7 @@ function HoldingRow({ h, totalValue }: { h: Holding; totalValue: number }) {
   );
 }
 
-export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initialMarket?: "kr" | "us" }) {
-  const [market, setMarket] = useState<"kr" | "us">(initialMarket);
+export default function PortfolioOptimizePanel({ market, riskBudget }: { market: "all" | "kr" | "us"; riskBudget?: any }) {
   const [sectorData, setSectorData] = useState<any>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [holdingSource, setHoldingSource] = useState<string>("");
@@ -224,7 +233,11 @@ export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initi
           symbol: h.symbol || "",
           name: displayName({ ...h, market: holdingMarket }) || h.symbol || "",
           market: holdingMarket,
-          sector: h.sector || h.sectorLabel || h.industry || sectorLookup[`${holdingMarket}:${cleanHoldingSymbol(h.symbol || "", holdingMarket)}`] || "미분류",
+          sector: fallbackSector({
+            name: displayName({ ...h, market: holdingMarket }) || h.symbol || "",
+            symbol: h.symbol || "",
+            sector: h.sector || h.sectorLabel || h.industry || sectorLookup[`${holdingMarket}:${cleanHoldingSymbol(h.symbol || "", holdingMarket)}`],
+          }),
           currentPrice: Number(h.currentPrice || 0),
           quantity: Number(h.quantity || 0),
           avgPrice: Number(h.avgPrice || h.averagePrice || 0),
@@ -253,15 +266,32 @@ export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initi
     load(false);
   }, [market]);
 
-  useEffect(() => {
-    setMarket(initialMarket);
-  }, [initialMarket]);
-
-  const totalValue = holdings.reduce((s, h) => s + h.valuation, 0);
-  const heavyPositions = holdings.filter((h) => totalValue > 0 && (h.valuation / totalValue) * 100 > 20);
-  const sectors: SectorRow[] = sectorData?.sectors || [];
-  const concentration = sectorData?.concentration || { top1Pct: 0, warning: false };
-  const maxLoss = sectorData?.maxLossSimulation || { totalLoss: 0, totalLossPct: 0 };
+  const budgetHoldings: Holding[] = Array.isArray(riskBudget?.items) ? riskBudget.items.map((item: any) => ({
+    symbol: String(item.symbol || ""), name: String(item.name || item.symbol || ""), market: String(item.market || market),
+    sector: fallbackSector({ name: String(item.name || item.symbol || ""), symbol: String(item.symbol || ""), sector: item.sector }),
+    currentPrice: Number(item.currentPrice || 0), quantity: 0, avgPrice: 0, valuation: Number(item.value || 0), pnlPct: 0,
+    stop: Number(item.stopPrice || 0) || undefined,
+  })) : [];
+  const analysisHoldings = holdings.length > 0 ? holdings : budgetHoldings.filter((holding) => holding.valuation > 0);
+  const fallbackPortfolio = buildPortfolioData(analysisHoldings);
+  const totalValue = analysisHoldings.reduce((s, h) => s + h.valuation, 0);
+  const maxPositionWeightPct = Number(riskBudget?.policy?.maxPositionWeightPct || 20);
+  const heavyPositions = analysisHoldings.filter((h) => totalValue > 0 && (h.valuation / totalValue) * 100 > maxPositionWeightPct);
+  const sectors: SectorRow[] = sectorData?.sectors?.length ? sectorData.sectors : fallbackPortfolio.sectors;
+  const concentration = sectorData?.sectors?.length ? sectorData.concentration : fallbackPortfolio.concentration;
+  const calculatedMaxLoss = sectorData?.sectors?.length ? sectorData.maxLossSimulation : fallbackPortfolio.maxLossSimulation;
+  const maxLoss = riskBudget?.status && !riskBudget?.authRequired
+    ? {
+        totalLoss: Number(riskBudget.totalLossAmount ?? (Number(riskBudget.totalValue || totalValue) * Number(riskBudget.totalLossBudgetPct || 0) / 100)),
+        totalLossPct: Number(riskBudget.totalLossBudgetPct || 0),
+      }
+    : calculatedMaxLoss;
+  const rebalancingItems = Array.isArray(riskBudget?.items)
+    ? riskBudget.items.filter((item: any) => item.action === "REDUCE" || Number(item.weightPct || 0) > maxPositionWeightPct)
+    : [];
+  const moneyText = (value: number) => market === "us"
+    ? `$${Math.round(value).toLocaleString("en-US")}`
+    : `${Math.round(value).toLocaleString("ko-KR")}원`;
 
   const riskScore =
     (concentration.warning ? 2 : concentration.top1Pct > 25 ? 1 : 0) +
@@ -275,44 +305,21 @@ export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initi
   return (
     <div className="space-y-4">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <PieChart size={14} className="text-violet-400" />
-          <span className="text-sm font-bold text-slate-200">포트폴리오 분석</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {(["kr", "us"] as const).map((mk) => (
-            <button
-              key={mk}
-              onClick={() => setMarket(mk)}
-              className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${market === mk ? "mone-selection-brand" : "text-slate-400 hover:text-white"}`}
-            >
-              {mk === "kr" ? "국장" : "미장"}
-            </button>
-          ))}
-          <button
-            onClick={() => load(true)}
-            disabled={loading || isRefreshing}
-            className="flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
-          >
-            <RefreshCw size={11} className={(loading || isRefreshing) ? "animate-spin" : ""} />
-          </button>
-        </div>
-      </div>
+      <div className="text-sm font-bold text-slate-200">포트폴리오 분석</div>
 
-      {loading && holdings.length === 0 && (
+      {loading && analysisHoldings.length === 0 && (
         <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-500">
           분석 중...
         </div>
       )}
 
-      {!loading && holdings.length === 0 && (
+      {!loading && analysisHoldings.length === 0 && (
         <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-500">
           보유 종목 없음 — holdings-clean 기준으로 확인했습니다{holdingSource ? ` (${holdingSource})` : ""}.
         </div>
       )}
 
-      {holdings.length > 0 && (
+      {analysisHoldings.length > 0 && (
         <>
           {/* 리스크 종합 */}
           <div className={`flex items-center gap-2 rounded-xl px-3 py-2.5 ${riskLabel.cls}`}>
@@ -324,7 +331,7 @@ export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initi
             <div>
               <span className="text-xs font-bold">{riskLabel.text}</span>
               <span className="ml-2 text-[11px] text-slate-400">
-                총 {holdings.length}종목 ·{" "}
+                총 {analysisHoldings.length}종목 ·{" "}
                 {totalValue > 0
                   ? totalValue >= 1_000_000
                     ? `${(totalValue / 1_000_000).toFixed(1)}백만원`
@@ -335,7 +342,7 @@ export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initi
             <div className="ml-auto text-right">
               <div className="text-[10px] text-slate-500">손절 시 최대 손실</div>
               <div className={`text-xs font-bold ${maxLoss.totalLossPct > 10 ? "text-red-400" : "text-slate-300"}`}>
-                -{maxLoss.totalLossPct.toFixed(1)}%
+                -{moneyText(maxLoss.totalLoss)} · {maxLoss.totalLossPct.toFixed(1)}%
               </div>
             </div>
           </div>
@@ -368,14 +375,14 @@ export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initi
           <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-4 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">종목별 비중</p>
-              {heavyPositions.length > 0 && (
+              {(rebalancingItems.length > 0 || heavyPositions.length > 0) && (
                 <span className="text-[10px] text-amber-400 font-semibold">
-                  {heavyPositions.length}종목 20% 초과
+                  {Math.max(rebalancingItems.length, heavyPositions.length)}종목 비중 조정
                 </span>
               )}
             </div>
             <div className="space-y-1.5">
-              {[...holdings]
+              {[...analysisHoldings]
                 .sort((a, b) => b.valuation - a.valuation)
                 .map((h) => (
                   <HoldingRow key={h.symbol} h={h} totalValue={totalValue} />
@@ -384,7 +391,7 @@ export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initi
           </div>
 
           {/* 리밸런싱 제안 */}
-          {(concentration.warning || heavyPositions.length > 0) && (
+          {(concentration.warning || heavyPositions.length > 0 || rebalancingItems.length > 0) && (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-950/10 p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <TrendingDown size={13} className="text-amber-400" />
@@ -394,13 +401,18 @@ export default function PortfolioOptimizePanel({ initialMarket = "kr" }: { initi
                 {concentration.warning && (
                   <li>• 최대 섹터 비중 {concentration.top1Pct.toFixed(0)}% → 40% 이하로 분산 권장</li>
                 )}
-                {heavyPositions.map((h) => (
+                {rebalancingItems.map((item: any) => (
+                  <li key={`${item.market}-${item.symbol}`}>
+                    • {item.name || item.symbol}: {Number(item.weightPct || 0).toFixed(1)}% → {Number(item.recommendedWeightPct || maxPositionWeightPct).toFixed(1)}% 조정 제안
+                  </li>
+                ))}
+                {rebalancingItems.length === 0 && heavyPositions.map((h) => (
                   <li key={h.symbol}>
-                    • {h.name || h.symbol}: {((h.valuation / totalValue) * 100).toFixed(0)}% → 20% 이하로 비중 조정 권장
+                    • {h.name || h.symbol}: {((h.valuation / totalValue) * 100).toFixed(0)}% → {maxPositionWeightPct.toFixed(0)}% 이하로 비중 조정 권장
                   </li>
                 ))}
                 {maxLoss.totalLossPct > 15 && (
-                  <li>• 손절가 기준 포트폴리오 최대 손실 {maxLoss.totalLossPct.toFixed(1)}% — 포지션 축소 또는 손절가 조정</li>
+                  <li>• 손절가 기준 포트폴리오 최대 손실 {moneyText(maxLoss.totalLoss)} ({maxLoss.totalLossPct.toFixed(1)}%) — 포지션 축소 또는 손절가 조정</li>
                 )}
               </ul>
             </div>

@@ -192,8 +192,33 @@ def _holding_rows(market: str, user_id: str = "") -> list[dict[str, Any]]:
         return []
 
 
+def _sector_lookup(market: str) -> dict[tuple[str, str], str]:
+    """Resolve holdings to the maintained company-analysis sector master.
+
+    Holdings entered by a user often do not carry a sector.  Keep the risk
+    budget aligned with the rest of MONE by filling from the master instead of
+    exposing a misleading "unclassified" bucket.
+    """
+    markets = ["kr", "us"] if str(market).lower() == "all" else [str(market).lower()]
+    lookup: dict[tuple[str, str], str] = {}
+    for mk in markets:
+        try:
+            payload = data.company_analysis(mk)
+            rows = payload.get("items", []) if isinstance(payload, dict) else []
+        except Exception:
+            rows = []
+        for row in rows:
+            symbol = str(row.get("symbol") or "").strip().upper()
+            sector = str(row.get("sector") or "").strip()
+            if not symbol or not sector or sector.lower() in {"unknown", "none", "nan", "미분류"}:
+                continue
+            lookup[(mk, symbol)] = sector
+    return lookup
+
+
 def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
     rows = _holding_rows(market, user_id=user_id)
+    sector_lookup = _sector_lookup(market)
     source_label = "personal_user_holdings" if user_id else "holdings_csv"
     total_value = sum(_market_value(row) for row in rows)
     kelly = _load_kelly()
@@ -221,7 +246,8 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
             loss_amount = value * POLICY["defaultStopLossPct"] / 100
         loss_pct = (loss_amount / total_value * 100) if total_value > 0 else 0.0
         total_loss_budget += loss_pct
-        sector = str(row.get("sector") or row.get("industry") or "UNKNOWN").strip() or "UNKNOWN"
+        raw_sector = str(row.get("sector") or row.get("industry") or "").strip()
+        sector = raw_sector if raw_sector and raw_sector.lower() not in {"unknown", "none", "nan", "미분류"} else sector_lookup.get((mk, symbol), "기타")
         sector_weights[sector] = sector_weights.get(sector, 0.0) + weight
         mode = str(row.get("mode") or "balanced").lower()
         horizon = str(row.get("horizon") or "swing").lower()
@@ -302,6 +328,7 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
         "actualHoldingCount": len(rows),
         "policy": POLICY,
         "totalValue": round(total_value, 2),
+        "totalLossAmount": round(total_value * total_loss_budget / 100, 2),
         "totalLossBudgetPct": round(total_loss_budget, 3),
         "missingStopCount": missing_stop_count,
         "warnings": warnings,

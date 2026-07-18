@@ -8375,6 +8375,7 @@ def api_portfolio_risk_budget(
             "actualHoldingCount": 0,
             "policy": risk_budget.__globals__.get("POLICY", {}),
             "totalValue": 0,
+            "totalLossAmount": 0,
             "totalLossBudgetPct": 0,
             "missingStopCount": 0,
             "warnings": [],

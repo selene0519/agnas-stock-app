@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Download, FileText, Link2, Pencil, Plus, RefreshCw, Save, Trash2, X, Zap } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, ChevronRight, Download, Eye, FileText, Link2, Pencil, Plus, RefreshCw, Save, Trash2, TriangleAlert, X, Zap } from "lucide-react";
 import CashInputBar from "../CashInputBar";
 import PortfolioOptimizePanel from "../PortfolioOptimizePanel";
 import { mone } from "@/lib/api";
@@ -12,8 +12,38 @@ import type { BootPreloadData } from "@/lib/bootPreload";
 import { dataStatusLabel, normalizeAction, normalizeStatus, toneBadgeClass } from "@/lib/statusLabels";
 
 type Market = "all" | "kr" | "us";
+type MarketMode = "all" | "kr" | "us";
 type PortfolioAnalysisTab = "benchmark" | "correlation" | "sector" | "optimize";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
+
+function koreanSectorLabel(value: any, symbols: any[] = []) {
+  const raw = String(value || "").trim();
+  const labels: Record<string, string> = {
+    "Consumer Cyclical": "경기소비재", Technology: "기술", "Financial Services": "금융",
+    "Communication Services": "커뮤니케이션", Industrials: "산업재", Healthcare: "헬스케어",
+    Energy: "에너지", Utilities: "유틸리티", "Real Estate": "부동산", "Basic Materials": "소재",
+  };
+  if (labels[raw]) return labels[raw];
+  if (/^(other|기타|미분류|unknown)$/i.test(raw)) {
+    const text = symbols.join(" ").toUpperCase();
+    return /(TIGER|KODEX|ACE |ETF|ETN|SPY|QQQ|SCHD)/.test(text) ? "ETF" : "개별주";
+  }
+  return raw || "개별주";
+}
+
+function automaticMarket(): "kr" | "us" {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Seoul",
+    weekday: "short",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const weekday = parts.find((part) => part.type === "weekday")?.value;
+  const hour = Number(parts.find((part) => part.type === "hour")?.value || 12);
+  if (weekday === "Sat" || weekday === "Sun") return "kr";
+  return hour >= 22 || hour < 6 ? "us" : "kr";
+}
 
 type BrokerStatus = {
   broker: string;
@@ -585,7 +615,7 @@ function NavCurve() {
 
   if (loginRequired) {
     return (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 px-5 py-4">
+      <div className="mone-home-card px-3.5 py-3">
         <div className="text-sm font-semibold text-slate-200">NAV 누적 수익률</div>
         <p className="mt-1.5 text-xs text-slate-500">로그인 후 본인 포트폴리오 추이를 확인할 수 있습니다.</p>
       </div>
@@ -602,7 +632,7 @@ function NavCurve() {
   const backfillCount = navRows.length - actualCount;
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50">
+    <div className="mone-home-card overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -670,12 +700,12 @@ function PortfolioCompositionBar({ items }: { items: any[] }) {
   }, [items]);
 
   if (sorted.total <= 0) return null;
-  const colors = ["bg-blue-500","bg-emerald-500","bg-violet-500","bg-amber-500","bg-cyan-500","bg-slate-500"];
+  const colors = ["bg-teal-400","bg-cyan-400","bg-sky-400","bg-emerald-400","bg-amber-400","bg-slate-500"];
   const labelOf = (item: any) => (item._isOther ? item.name : displayName(item));
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-      <h2 className="mb-3 text-sm font-semibold text-slate-100">포트폴리오 구성 (개별주)</h2>
+    <div className="mone-home-card p-3.5">
+      <h2 className="mone-home-section-title mb-3">포트폴리오 구성</h2>
       <div className="flex h-4 w-full overflow-hidden rounded-full">
         {sorted.items.map((item, i) => {
           const pct = (item._val / sorted.total) * 100;
@@ -788,8 +818,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     return readHoldingsCache("all")?.data ?? null;
   })();
 
+  const [marketMode, setMarketMode] = useState<MarketMode>("all");
   const [market, setMarket] = useState<Market>("all");
   const [holdingsViewTab, setHoldingsViewTab] = useState<"all" | "stock" | "etf">("all");
+  const [holdingsDetailOpen, setHoldingsDetailOpen] = useState(false);
   const [portfolioAnalysisTab, setPortfolioAnalysisTab] = useState<PortfolioAnalysisTab>("benchmark");
   const [data, setData] = useState<any>(_bootHoldings ?? { items: [], summary: {} });
   const [loading, setLoading] = useState(!_bootHoldings);
@@ -802,7 +834,6 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [addSaving, setAddSaving] = useState(false);
   const [sectorData, setSectorData] = useState<any>(null);
   const [benchmarkData, setBenchmarkData] = useState<any>(null);
-  const [corrData, setCorrData] = useState<any>(null);
   const [riskNote, setRiskNote] = useState("");
   const [refreshingAllQuotes, setRefreshingAllQuotes] = useState(false);
   const [usdToKrw, setUsdToKrw] = useState<{ rate: number; date: string } | null>(null);
@@ -893,7 +924,6 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           setBrokerConnections([]);
           setSectorData(null);
           setBenchmarkData(null);
-          setCorrData(null);
           setRiskBudget(null);
           setSoldHistory(null);
           setLoading(false);
@@ -925,14 +955,13 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       getJson(`/api/holdings/sold-history?market=${market === "all" ? "all" : market}`).then((res) => {
         if (res?.status === "OK") setSoldHistory(res);
       }).catch(() => setSoldHistory(null));
-      setRiskNote(market === "all" ? "자동 보기에서는 KR/US 범위를 함께 확인합니다. 벤치마크·상관관계는 가능한 데이터만 합산 표시하고, 통화 합산이 필요한 금액은 별도 안내합니다." : "");
+      setRiskNote(market === "all" ? "전체 보기에서는 KR/US 보유를 함께 확인합니다. 통화 합산이 필요한 금액은 별도 안내합니다." : "");
       // 리스크 데이터는 백그라운드 로딩
       Promise.all([
         getJson(`/api/risk/sector-exposure?market=${market}`).catch((error) => ({ status: "ERROR", error: String(error), sectors: [] })),
-        getJson(`/api/risk/benchmark?market=${market}`).catch((error) => ({ status: "ERROR", error: String(error), items: [] })),
-        getJson(`/api/risk/correlation?market=${market}&days=60`).catch((error) => ({ status: "ERROR", error: String(error), matrix: [] })),
-      ]).then(([sector, bench, corr]) => {
-        setSectorData(sector); setBenchmarkData(bench); setCorrData(corr);
+        getJson(`/api/risk/benchmark?market=${market === "all" ? "kr" : market}`).catch((error) => ({ status: "ERROR", error: String(error), items: [] })),
+      ]).then(([sector, bench]) => {
+        setSectorData(sector); setBenchmarkData(bench);
       });
     } catch (error) {
       const localItems = hasHoldingsAuth ? loadHoldingsFromLocalStorage() : [];
@@ -1181,6 +1210,13 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     : summary.mixedCurrency
       ? "text-slate-300"
       : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300";
+  const totalPnlPctText = summary.totalPnlPctText || summary.totalPnlPercentText || (() => {
+    const costBasis = items.reduce((sum: number, item: any) => sum + Number(item.avgPrice || 0) * Number(item.quantity || 0), 0);
+    const pnl = combinedKrw ? combinedKrw.pnl : Number(summary.totalPnl || 0);
+    if (!Number.isFinite(costBasis) || costBasis <= 0 || !Number.isFinite(pnl)) return "수익률 확인 중";
+    const pct = (pnl / costBasis) * 100;
+    return `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+  })();
   const showPersonalEmptyNotice = !loading && items.length === 0 && isPersonalHoldingsSource;
 
   const { individualStocks, etfHoldings } = useMemo(() => {
@@ -1277,6 +1313,111 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     return rows.slice(0, 8);
   }, [items]);
 
+  const riskOverview = useMemo(() => {
+    const budgetItems = Array.isArray(riskBudget?.items) ? riskBudget.items : [];
+    const totalValue = items.reduce((sum, holding) => sum + Number(holding.valuation ?? holding.marketValue ?? 0), 0);
+    const needsStopReview = budgetItems.length > 0
+      ? budgetItems.filter((item: any) => Number(item.lossBudgetPct || 0) > Number(riskBudget?.policy?.maxPositionLossPct || 2) || !item.stopPrice).length
+      : items.filter((holding) => !holding.stopPrice || Number(holding.stopPrice) <= 0).length;
+    const needsRebalance = budgetItems.length > 0
+      ? budgetItems.filter((item: any) => item.action === "REDUCE" || Number(item.weightPct || 0) > Number(riskBudget?.policy?.maxPositionWeightPct || 20)).length
+      : items.filter((holding) => totalValue > 0 && (Number(holding.valuation ?? holding.marketValue ?? 0) / totalValue) * 100 > 20).length;
+    const needsPriceReview = items.filter((holding) => !holding.currentPrice || Number(holding.currentPrice) <= 0).length;
+
+    return [
+      { key: "stop", label: "손절 · 손실 예산 점검", count: needsStopReview, tone: "red" as const },
+      { key: "rebalance", label: "비중 초과 · 리밸런싱", count: needsRebalance, tone: "amber" as const },
+      { key: "price", label: "가격 데이터 갱신", count: needsPriceReview, tone: "amber" as const },
+    ];
+  }, [items, riskBudget]);
+
+  const visibleRiskLossPct = useMemo(() => {
+    if (riskBudget && !riskBudget.authRequired) return Number(riskBudget.totalLossBudgetPct || 0);
+    const total = items.reduce((sum, holding) => sum + Number(holding.valuation ?? holding.marketValue ?? 0), 0);
+    if (total <= 0) return 0;
+    const loss = items.reduce((sum, holding) => {
+      const value = Number(holding.valuation ?? holding.marketValue ?? 0);
+      const current = Number(holding.currentPrice || 0);
+      const stop = Number(holding.stopPrice || holding.stop || 0);
+      const quantity = Number(holding.quantity || 0);
+      return sum + (current > 0 && stop > 0 && quantity > 0 ? Math.max(0, current - stop) * quantity : value * 0.08);
+    }, 0);
+    return (loss / total) * 100;
+  }, [items, riskBudget]);
+
+  const visibleRiskSummary = useMemo(() => {
+    const total = items.reduce((sum, holding) => sum + Number(holding.valuation ?? holding.marketValue ?? 0), 0);
+    const missingStops = items.filter((holding) => Number(holding.stopPrice || holding.stop || 0) <= 0).length;
+    return { total, lossAmount: total * visibleRiskLossPct / 100, missingStops };
+  }, [items, visibleRiskLossPct]);
+
+  const previewHoldings = useMemo(() => (
+    [...items]
+      .sort((a, b) => {
+        const rank = (holding: any) => {
+          const risk = normalizeRiskStatus(holding.riskStatus);
+          if (risk === "STOP_LOSS_DELAY" || risk === "HIGH") return 0;
+          if (risk === "WATCH") return 1;
+          return 2;
+        };
+        return rank(a) - rank(b) || Number(b.valuation || b.marketValue || 0) - Number(a.valuation || a.marketValue || 0);
+      })
+      .slice(0, 3)
+  ), [items]);
+
+  const personalBenchmarkItems = useMemo(() => {
+    const benchmarkReturn = Number(benchmarkData?.benchmarkReturn);
+    if (!Number.isFinite(benchmarkReturn)) return [];
+    return items.map((holding: any) => {
+      const current = Number(holding.currentPrice || 0);
+      const average = Number(holding.avgPrice || holding.averagePrice || 0);
+      const directReturn = Number(holding.pnlPct ?? holding.returnPct ?? holding.profitLossRate);
+      const portfolioReturn = Number.isFinite(directReturn)
+        ? directReturn
+        : current > 0 && average > 0 ? ((current - average) / average) * 100 : null;
+      return {
+        symbol: String(holding.symbol || ""),
+        name: displayName(holding),
+        portfolioReturn,
+        benchmarkReturn,
+        alpha: portfolioReturn == null ? null : portfolioReturn - benchmarkReturn,
+      };
+    }).filter((item) => item.portfolioReturn != null);
+  }, [items, benchmarkData]);
+
+  const portfolioSectors = useMemo(() => {
+    const budgetSectors = Array.isArray(riskBudget?.sectors) ? riskBudget.sectors : [];
+    if (budgetSectors.length > 0) return budgetSectors.map((sector: any) => ({
+      sector: koreanSectorLabel(sector.sector),
+      pct: Number(sector.weightPct || 0),
+      status: sector.status || "OK",
+      symbols: [] as string[],
+    }));
+    return Array.isArray(sectorData?.sectors) ? sectorData.sectors.map((sector: any) => ({ ...sector, sector: koreanSectorLabel(sector.sector, sector.symbols) })) : [];
+  }, [riskBudget, sectorData]);
+
+  const portfolioSnapshot = useMemo(() => {
+    const valued = [...items]
+      .map((holding) => Number(holding.valuation ?? holding.marketValue ?? 0))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .sort((a, b) => b - a);
+    const total = valued.reduce((sum, value) => sum + value, 0);
+    const share = (start: number, end: number) => total > 0
+      ? (valued.slice(start, end).reduce((sum, value) => sum + value, 0) / total) * 100
+      : 0;
+    const alphaItems = personalBenchmarkItems.filter((item: any) => Number.isFinite(Number(item?.alpha)));
+    const averageAlpha = alphaItems.length > 0
+      ? alphaItems.reduce((sum: number, item: any) => sum + Number(item.alpha), 0) / alphaItems.length
+      : null;
+    return {
+      total,
+      top5Pct: share(0, 5),
+      middlePct: share(5, 10),
+      lowerPct: share(10, valued.length),
+      averageAlpha,
+    };
+  }, [items, personalBenchmarkItems]);
+
   function openEditFromAction(actionKey: string) {
     const symbol = actionKey.replace(/-(stop|target|price|stop-near|stop-watch|target-near)$/g, "");
     const holding = items.find((item) => String(item.symbol || "") === symbol);
@@ -1288,109 +1429,81 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     setMessage("");
   }
 
+  function openHoldingsDetail() {
+    setHoldingsDetailOpen(true);
+    window.setTimeout(() => {
+      document.getElementById("holdings-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
+  function selectMarket(mode: MarketMode) {
+    setMarketMode(mode);
+    setMarket(mode);
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="mone-home flex flex-col gap-4">
       {/* 헤더 */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-[19px] font-black leading-none text-slate-100">보유·리스크</h1>
-          <p className="mt-1 text-sm text-slate-400">보유종목 현황, 리스크 지표, 포트폴리오 구성 분석</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[21px] font-bold leading-none text-slate-100">보유·리스크</h1>
+          <p className="mt-1 text-[11.5px] text-slate-500">보유 현황과 오늘의 리스크를 한눈에 확인하세요.</p>
         </div>
-        <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
-          <button onClick={() => onNavigate?.("broker")}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2 py-2 text-xs font-semibold text-sky-200 hover:bg-sky-500/20 sm:text-sm">
-            <Link2 size={14} /> 토스증권 연결
-          </button>
-          <button onClick={() => onNavigate?.("broker")}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/20 sm:text-sm">
-            <Download size={14} /> 한국투자 연결
-          </button>
-          <button onClick={() => { setShowAdd(!showAdd); setShowImport(false); setMessage(""); }}
-            className="mone-primary-action inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.96] sm:text-sm">
-            <Plus size={14} /> 직접 추가
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => load()}
+            title="보유 데이터 새로고침"
+            aria-label="보유 데이터 새로고침"
+            className="mone-home-inset inline-flex size-9 items-center justify-center rounded-[8px] border text-slate-400 transition-[color,transform] hover:text-slate-100 active:scale-[0.96]"
+          >
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
 
-      {/* 마켓 필터 */}
-      <div className="flex gap-2">
-        {(["all","kr","us"] as Market[]).map((item) => (
-          <button key={item} onClick={() => setMarket(item)}
-            className={`min-h-10 rounded-xl border px-4 py-2 text-sm font-medium transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
-            {item === "all" ? "전체" : item === "kr" ? "국장" : "미장"}
+      <div className="mone-home-inset grid grid-cols-3 gap-1 rounded-[10px] border p-1">
+        {([
+          { key: "all", label: "전체" },
+          { key: "kr", label: "국장" },
+          { key: "us", label: "미장" },
+        ] as const).map((item) => (
+          <button key={item.key} type="button" onClick={() => selectMarket(item.key)}
+            className={`min-h-9 rounded-[7px] px-3 text-[12px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${marketMode === item.key ? "mone-selection-brand" : "text-slate-500 hover:text-slate-300"}`}>
+            {item.label}
           </button>
         ))}
       </div>
 
-      {/* 가용 예수금 — 포지션 크기 계산 보조 */}
-      <CashInputBar />
-
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3 sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-100">계좌 연동</h2>
-            <p className="mt-0.5 text-xs text-slate-500">보유종목, 평가손익, 손절 기준, 위험 상태를 자동 점검합니다.</p>
-          </div>
+      <section className="order-last mone-home-card p-3.5">
+        <h2 className="mone-home-section-title">계좌 · 데이터 관리</h2>
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => onNavigate?.("broker")}
-            className="shrink-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800"
+            className="mone-home-inset flex min-h-[76px] items-center gap-3 rounded-[10px] border px-3 text-left transition-colors hover:bg-slate-900/45"
           >
-            관리
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-400/10 text-teal-300"><Link2 size={19} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-semibold text-slate-100">증권사 연동</span>
+              <span className="mt-1 block truncate text-[10px] text-slate-500">{tossStatus?.connected || kisStatus?.connected ? "연결 상태 확인" : "보유 데이터 자동 연동"}</span>
+            </span>
+            <ChevronRight size={14} className="shrink-0 text-slate-500" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="mone-home-inset flex min-h-[76px] items-center gap-3 rounded-[10px] border px-3 text-left transition-colors hover:bg-slate-900/45"
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-400/10 text-teal-300"><Plus size={20} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-semibold text-slate-100">직접 추가</span>
+              <span className="mt-1 block truncate text-[10px] text-slate-500">보유 종목을 직접 입력</span>
+            </span>
+            <ChevronRight size={14} className="shrink-0 text-slate-500" />
           </button>
         </div>
-        {!userToken ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3 text-xs text-slate-400">
-            로그인 후 계좌 연동을 사용할 수 있습니다.
-          </div>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {[
-              { broker: "toss", name: "토스증권", status: tossStatus, tone: "sky" },
-              { broker: "kis", name: "한국투자", status: kisStatus, tone: "amber" },
-            ].map(({ broker, name, status, tone }) => {
-              const connected = Boolean(status?.connected);
-              return (
-                <div key={broker} className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-100">{name}</div>
-                      <div className={`mt-0.5 text-xs ${connected ? "text-emerald-300" : "text-slate-500"}`}>
-                        {brokerStatusLabel(status)}
-                        {connected && status?.accountNoHint ? ` · ${status.accountNoHint}` : ""}
-                      </div>
-                      {connected && brokerSyncText(status) && <div className="mt-0.5 text-[10px] text-slate-600">{brokerSyncText(status)}</div>}
-                    </div>
-                    {connected ? (
-                      <button
-                        type="button"
-                        disabled={brokerSyncing === broker}
-                        onClick={() => syncBrokerHoldings(broker)}
-                        className="rounded-lg border border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
-                      >
-                        {brokerSyncing === broker ? "확인 중" : "스냅샷 확인"}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onNavigate?.("broker")}
-                        className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ${toneClassName(tone === "sky" ? "info" : "warning")}`}
-                      >
-                        연결하기
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {userToken && items.length > 0 && !tossStatus?.connected && !kisStatus?.connected && (
-          <div className="mt-2 rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2 text-[11px] leading-5 text-slate-400">
-            ℹ 현재 보유 {items.length}종목은 브로커 업로드·브릿지로 표시 중입니다. 위 “연결하기”는 실시간 자동 동기화(OAuth)를 위한 것으로, <b className="text-slate-300">연결 안 해도 보유는 보입니다</b>. 연결하면 수량·현재가가 자동 갱신됩니다.
-          </div>
-        )}
-      </div>
+      </section>
 
       {/* 종목 추가 폼 */}
       {showAdd && <AddHoldingForm onSave={addHolding} onCancel={() => setShowAdd(false)} saving={addSaving} />}
@@ -1447,7 +1560,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
       {/* 요약 카드 */}
       {loading ? (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse rounded-xl border border-slate-800 bg-slate-900 px-4 py-4">
               <div className="h-3 w-16 rounded bg-slate-700" />
@@ -1456,16 +1569,18 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <SummaryCard label={combinedKrw ? "평가금액 합계 (환율 환산)" : "평가금액 합계"} value={totalValueText} />
-          <SummaryCard label="총 평가손익" value={totalPnlText} accent={totalPnlAccent} />
-          <SummaryCard label="보유 종목" value={`${items.length}개`} />
-          <SummaryCard label="주의/위험" value={`${riskCount}개`}
+        <div className="grid grid-cols-2 gap-2">
+          <SummaryCard label="총 평가금액" value={totalValueText} visual="value" />
+          <SummaryCard label="총 평가손익" value={totalPnlText} accent={totalPnlAccent} subValue={totalPnlPctText} visual="pnl" />
+          <SummaryCard label="보유 종목 수" value={`${items.length}개`} visual="holdings" />
+          <SummaryCard label="주의/위험 종목 수" value={`${riskCount}개`} visual="risk"
             accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
         </div>
       )}
 
-      {soldHistory && soldHistory.count > 0 && (
+      <CashInputBar />
+
+      {holdingsDetailOpen && soldHistory && soldHistory.count > 0 && (
         <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-slate-400">매도 종목 실현손익 합계 (이 기능 도입 이후 매도분만)</span>
@@ -1477,7 +1592,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-xs text-slate-400">
+      <div className={`${holdingsDetailOpen ? "order-[80]" : "hidden"} mone-home-card p-3.5 text-xs text-slate-400`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1518,49 +1633,43 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       )}
 
       {!loading && (
-        <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-100">오늘 먼저 볼 리스크</h2>
-                <p className="mt-1 text-xs leading-5 text-slate-500">
-                  종목 목록은 위험도·손절 근접 순으로 정렬됩니다. 먼저 확인할 항목만 위에 모았습니다.
-                </p>
-              </div>
-              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${riskCount > 0 || actionItems.length > 0 ? toneClassName("warning") : toneClassName("safe")}`}>
-                {riskCount > 0 || actionItems.length > 0 ? "주의 필요" : "정상"}
-              </span>
-            </div>
-            {actionItems.length > 0 ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {actionItems.slice(0, 4).map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => item.action && openEditFromAction(item.key)}
-                    className={`min-h-16 rounded-xl border px-3 py-2 text-left transition-[background-color,transform] active:scale-[0.96] ${
-                      item.tone === "red" ? "border-red-500/30 bg-red-500/10 hover:bg-red-500/15" :
-                      item.tone === "blue" ? "border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/15" :
-                      "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15"
-                    }`}
-                  >
-                    <div className="text-xs font-bold text-slate-100">{item.title}</div>
-                    <div className="mt-1 text-[11px] leading-4 text-slate-400">{item.detail}</div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-                현재 보유 기준으로 즉시 보정할 리스크 항목은 없습니다.
-              </div>
-            )}
+        <section className="mone-home-card p-3.5">
+          <div className="flex items-center gap-2">
+            <TriangleAlert size={18} className="text-amber-300" />
+            <h2 className="mone-home-section-title">오늘 먼저 볼 리스크</h2>
+            <span className={`ml-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${riskCount > 0 || actionItems.length > 0 ? toneClassName("warning") : toneClassName("safe")}`}>
+              {riskCount > 0 || actionItems.length > 0 ? "주의 필요" : "정상"}
+            </span>
+            <button type="button" onClick={openHoldingsDetail} className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 hover:text-teal-300">
+              전체 리스크 보기 <ChevronRight size={13} />
+            </button>
           </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {riskOverview.map((item) => {
+              const isRed = item.tone === "red";
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={openHoldingsDetail}
+                  className="mone-home-inset min-h-[86px] rounded-[10px] border px-2.5 py-3 text-left transition-colors hover:bg-slate-900/45"
+                >
+                  <span className={`block size-2 rounded-full ${isRed ? "bg-red-400" : "bg-amber-400"}`} />
+                  <span className="mt-2 block break-keep text-[11px] font-semibold leading-4 text-slate-100">{item.label}</span>
+                  <span className={`mt-2 inline-flex rounded-full border px-1.5 py-0.5 font-mono text-[10px] font-semibold ${isRed ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300"}`}>{item.count}종목</span>
+                </button>
+              );
+            })}
+          </div>
+          {riskOverview.every((item) => item.count === 0) && (
+            <p className="mt-2 text-[10px] text-emerald-300">현재 보유 기준으로 즉시 보정할 리스크 항목은 없습니다.</p>
+          )}
+          {holdingsDetailOpen && (
+            <div className="mt-3 border-t border-slate-800/80 pt-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-100">리스크 계산 기준</h2>
-                <p className="mt-1 text-xs leading-5 text-slate-500">보유 출처와 같은 범위로 리스크 예산을 계산합니다.</p>
+                <h2 className="mone-home-section-title">리스크 계산 기준</h2>
+                <p className="mt-0.5 text-[10.5px] leading-5 text-slate-500">보유 출처와 같은 범위로 리스크 예산을 계산합니다.</p>
               </div>
               {riskBudget && (
                 <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${riskBudget.status === "OVER_BUDGET" ? toneClassName("danger") : toneClassName("safe")}`}>
@@ -1569,9 +1678,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               )}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <SourceMini label="리스크 출처" value={riskSourceInfo.source} />
+              <SourceMini label="리스크 출처" value={riskBudget?.authRequired && items.length > 0 ? "화면 보유 데이터" : riskSourceInfo.source} />
               <SourceMini label="계산 범위" value={riskSourceInfo.scope} />
-              <SourceMini label="손실 예산" value={riskBudget ? `${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%` : "대기"} accent={riskBudget && riskBudget.status === "OVER_BUDGET" ? "text-red-300" : "text-emerald-300"} />
+              <SourceMini label="손실 예산" value={`${visibleRiskLossPct.toFixed(1)}%`} accent={visibleRiskLossPct > Number(riskBudget?.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
               <SourceMini label="기준일" value={riskSourceInfo.synced || "확인 대기"} />
             </div>
             {riskBudget && (
@@ -1587,9 +1696,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             {riskBudget && riskBudgetOpen && (
               <div className="mt-3 border-t border-slate-800 pt-3">
                 <div className="grid gap-2 text-[11px] sm:grid-cols-3 lg:grid-cols-1">
-                  <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
+                  <Mini label="예상 손실 예산" value={`${visibleRiskLossPct.toFixed(1)}% · ${Math.round(visibleRiskSummary.lossAmount).toLocaleString()}원`} accent={visibleRiskLossPct > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
                   <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
-                  <Mini label="기본 손절 사용" value={`${riskBudget.missingStopCount || 0}개`} accent={Number(riskBudget.missingStopCount || 0) > 0 ? "text-amber-300" : "text-emerald-300"} />
+                  <Mini label="기본 손절 사용" value={`${riskBudget?.authRequired ? visibleRiskSummary.missingStops : riskBudget.missingStopCount || 0}개`} accent={(riskBudget?.authRequired ? visibleRiskSummary.missingStops : Number(riskBudget.missingStopCount || 0)) > 0 ? "text-amber-300" : "text-emerald-300"} />
                 </div>
                 {(riskBudget.warnings || []).length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1630,21 +1739,97 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                 )}
               </div>
             )}
-          </div>
-        </div>
+            </div>
+          )}
+        </section>
       )}
 
       {/* 개별주/ETF 보기 전환 */}
+      {!loading && previewHoldings.length > 0 && (
+        <section className="mone-home-card overflow-hidden">
+          <div className="flex items-baseline gap-2 px-3.5 pb-2 pt-3.5">
+            <h2 className="mone-home-section-title">보유종목 미리보기</h2>
+            <button
+              type="button"
+              onClick={() => holdingsDetailOpen ? setHoldingsDetailOpen(false) : openHoldingsDetail()}
+              className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 transition-colors hover:text-teal-300"
+            >
+              {holdingsDetailOpen ? "간단히 보기" : "전체 보기"} <ChevronRight size={12} className={holdingsDetailOpen ? "rotate-90" : ""} />
+            </button>
+          </div>
+          <div className="divide-y divide-slate-800/80">
+            {previewHoldings.map((holding) => {
+              const risk = normalizeRiskStatus(holding.riskStatus);
+              const isRisk = risk === "STOP_LOSS_DELAY" || risk === "HIGH" || risk === "WATCH";
+              const statusClass = risk === "STOP_LOSS_DELAY" || risk === "HIGH"
+                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                : risk === "WATCH"
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+              const pnl = Number(holding.pnl || 0);
+              const pnlTone = pnl < 0 ? "text-red-300" : "text-emerald-300";
+              const name = displayName(holding);
+              const weight = holding.weightText || holding.weightPctText || holding.portfolioWeightText || (holding.weightPct != null ? `${Number(holding.weightPct).toFixed(1)}%` : "-");
+              const symbol = `${holding.symbol} · ${holding.market === "kr" ? "KOSPI" : "NASDAQ"}`;
+              return (
+                <button
+                  key={`preview-${holding.market}-${holding.symbol}`}
+                  type="button"
+                  onClick={openHoldingsDetail}
+                  className="grid min-h-[72px] w-full grid-cols-[36px_minmax(0,1fr)_42px_64px] items-center gap-2 px-3.5 text-left transition-colors hover:bg-slate-900/35"
+                >
+                  <span className={`grid size-9 place-items-center rounded-full text-[11px] font-semibold ${isRisk ? "bg-amber-400/10 text-amber-300" : "bg-teal-400/10 text-teal-300"}`}>{name.slice(0, 1)}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[12px] font-semibold text-slate-100">{name}</span>
+                    <span className="mt-0.5 block truncate font-mono text-[9.5px] text-slate-500">{symbol}</span>
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-[9px] text-slate-500">비중</span>
+                    <span className="mt-0.5 block font-mono text-[10.5px] font-semibold tabular-nums text-slate-200">{weight}</span>
+                  </span>
+                  <span className="text-right">
+                    <span className="block text-[9px] text-slate-500">평가손익</span>
+                    <span className={`mt-0.5 block font-mono text-[10.5px] font-semibold tabular-nums ${pnlTone}`}>{holding.pnlText || "-"}</span>
+                    <span className={`mt-0.5 block font-mono text-[9px] tabular-nums ${pnlTone}`}>{holding.pnlPctText || "-"}</span>
+                    <span className={`mt-1 inline-flex rounded-full border px-1.5 py-0.5 text-[8.5px] font-semibold ${statusClass}`}>{riskLabel(holding.riskStatus)}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {!loading && previewHoldings.length === 0 && (
+        <section className="mone-home-card p-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="mone-home-section-title">보유종목</h2>
+            <span className="font-mono text-[10px] text-slate-500">0개</span>
+          </div>
+          <div className="mone-home-inset mt-3 flex min-h-[132px] flex-col items-center justify-center rounded-[10px] border border-dashed px-4 py-5 text-center">
+            <BriefcaseBusiness size={22} className="text-teal-300" />
+            <p className="mt-2 text-[13px] font-semibold text-slate-100">보유종목을 등록해주세요</p>
+            <p className="mt-1 text-[10.5px] leading-5 text-slate-500">직접 입력하거나 증권사 데이터를 연동해 시작할 수 있습니다.</p>
+            <div className="mt-3 grid w-full max-w-[300px] grid-cols-2 gap-2">
+              <button type="button" onClick={() => setShowAdd(true)} className="mone-selection-brand min-h-9 rounded-[8px] px-3 text-[11px] font-semibold">직접 등록</button>
+              <button type="button" onClick={() => onNavigate?.("broker")} className="rounded-[8px] border border-slate-700 bg-slate-950 px-3 text-[11px] font-semibold text-slate-300 hover:bg-slate-900">증권사 연동</button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {holdingsDetailOpen && (
+        <>
       {(individualStocks.length > 0 || etfHoldings.length > 0) && (
-        <div className="inline-flex rounded-xl border border-slate-800 bg-slate-900/50 p-1">
+        <div id="holdings-detail" className="mone-home-inset grid grid-cols-3 gap-1 rounded-[10px] border p-1">
           {([
             { key: "all", label: `전체 (${individualStocks.length + etfHoldings.length})` },
             { key: "stock", label: `개별주 (${individualStocks.length})` },
             { key: "etf", label: `ETF (${etfHoldings.length})` },
           ] as const).map((tab) => (
             <button key={tab.key} onClick={() => setHoldingsViewTab(tab.key)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                holdingsViewTab === tab.key ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-slate-200"
+              className={`min-h-9 rounded-[7px] px-2 text-[11px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
+                holdingsViewTab === tab.key ? "mone-selection-brand" : "text-slate-500 hover:text-slate-300"
               }`}>
               {tab.label}
             </button>
@@ -1655,11 +1840,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       {/* 개별주 카드 */}
       {individualStocks.length > 0 && holdingsViewTab !== "etf" && (
         <div>
-          <div className="mb-4 flex items-center gap-2">
-            <h2 className="text-lg font-bold text-slate-100">개별주 ({individualStocks.length})</h2>
-            <span className="text-xs text-slate-500">위험도·손절 근접 순 정렬</span>
+          <div className="mb-2 flex items-baseline gap-2">
+            <h2 className="mone-home-section-title">개별주 보유</h2>
+            <span className="font-mono text-[10px] text-slate-500 tabular-nums">{individualStocks.length}개 · 위험도 순</span>
           </div>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
             {individualStocks.map((holding: any) => {
           const key = editableKey(holding);
           const isEditing = editKey === key && !!editDraft;
@@ -1686,7 +1871,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           const holdingDateText = shortSourceDate(holding.latestDataDate || holding.priceDate || holding.updatedAt);
           const holdingPriceSourceText = priceSourceLabel(holding.quoteSource || holding.priceSource || holding.currentPriceSource);
           return (
-            <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+            <div key={`${holding.market}-${holding.symbol}`} className="mone-home-card p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -1903,11 +2088,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       {/* ETF 카드 */}
       {etfHoldings.length > 0 && holdingsViewTab !== "stock" && (
         <div>
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-2 flex items-baseline gap-2">
             <h2 className="text-lg font-bold text-slate-100">ETF 적립 ({etfHoldings.length})</h2>
             <span className="text-xs text-slate-500">평가금액 기준 정렬</span>
           </div>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
             {etfHoldings.map((holding: any) => {
               const key = editableKey(holding);
               const isEditing = editKey === key && !!editDraft;
@@ -1925,7 +2110,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               const holdingPriceSourceText = priceSourceLabel(holding.quoteSource || holding.priceSource || holding.currentPriceSource);
 
               return (
-                <div key={`${holding.market}-${holding.symbol}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+                <div key={`${holding.market}-${holding.symbol}`} className="mone-home-card p-3.5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -2253,40 +2438,6 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         );
       })()}
 
-      {actionItems.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-100">오늘 확인할 보유 리스크</h2>
-            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{actionItems.length}건</span>
-          </div>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-            {actionItems.map((item) => (
-              <div key={item.key} className={`rounded-xl border px-3 py-2 ${
-                item.tone === "red" ? "border-red-500/30 bg-red-500/10" :
-                item.tone === "blue" ? "border-blue-500/30 bg-blue-500/10" :
-                "border-amber-500/30 bg-amber-500/10"
-              }`}>
-                <div className={`text-xs font-bold ${
-                  item.tone === "red" ? "text-red-300" :
-                  item.tone === "blue" ? "text-blue-300" :
-                  "text-amber-300"
-                }`}>{item.title}</div>
-                <div className="mt-1 text-[11px] text-slate-400">{item.detail}</div>
-                {item.action && (
-                  <button
-                    type="button"
-                    onClick={() => openEditFromAction(item.key)}
-                    className="mt-2 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800"
-                  >
-                    {item.action === "stop" ? "손절가 설정" : "목표가 설정"}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {riskNote && (
         <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs text-slate-300">
           {riskNote}
@@ -2300,9 +2451,14 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
       {/* 포트폴리오 구성 바 (개별주만, ETF 제외) */}
       {individualStocks.length > 0 && <PortfolioCompositionBar items={individualStocks} />}
+        </>
+      )}
 
-      <div className="space-y-3">
-        <div className="grid grid-cols-4 gap-1 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
+      <div className="mone-home-card space-y-3 p-3.5">
+        <div className="flex items-center gap-2">
+          <h2 className="mone-home-section-title">포트폴리오 분석</h2>
+        </div>
+        <div className="mone-home-inset grid grid-cols-4 gap-1 rounded-[10px] border p-1">
           {([
             { key: "benchmark", label: "벤치마크" },
             { key: "correlation", label: "상관" },
@@ -2313,10 +2469,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               key={tab.key}
               type="button"
               onClick={() => setPortfolioAnalysisTab(tab.key)}
-              className={`min-h-10 rounded-xl px-2 py-2 text-xs font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
+              className={`min-h-9 rounded-[7px] px-1 text-[10.5px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
                 portfolioAnalysisTab === tab.key
-                  ? "border border-cyan-500/50 bg-cyan-500/15 text-cyan-100"
-                  : "text-slate-500 hover:bg-slate-900 hover:text-slate-300"
+                  ? "mone-selection-brand"
+                  : "text-slate-500 hover:text-slate-300"
               }`}
             >
               {tab.label}
@@ -2325,15 +2481,26 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
 
         {portfolioAnalysisTab === "benchmark" && (
-          benchmarkData?.status === "OK" && Array.isArray(benchmarkData.items) && benchmarkData.items.length > 0 ? (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <PortfolioSnapshot
+            holdingCount={items.length}
+            top5Pct={portfolioSnapshot.top5Pct}
+            middlePct={portfolioSnapshot.middlePct}
+            lowerPct={portfolioSnapshot.lowerPct}
+            benchmarkName={benchmarkData?.benchmark || "벤치마크"}
+            averageAlpha={portfolioSnapshot.averageAlpha}
+          />
+        )}
+
+        {portfolioAnalysisTab === "benchmark" && holdingsDetailOpen && (
+          personalBenchmarkItems.length > 0 ? (
+            <div className="mone-home-inset rounded-[10px] border p-3">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-100">벤치마크 비교 ({benchmarkData.benchmark})</h2>
                   <p className="text-xs text-slate-500">{benchmarkData.benchmarkLatestDate} 기준</p>
                 </div>
-                <div className={`font-mono text-base font-bold ${benchmarkData.totalPortfolioReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                  포트 {benchmarkData.totalPortfolioReturn >= 0 ? "+" : ""}{benchmarkData.totalPortfolioReturn?.toFixed(1)}%
+                <div className={`font-mono text-base font-bold ${(portfolioSnapshot.averageAlpha ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                  알파 {(portfolioSnapshot.averageAlpha ?? 0) >= 0 ? "+" : ""}{portfolioSnapshot.averageAlpha?.toFixed(1)}%p
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -2345,7 +2512,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     <th className="pb-2 text-right">알파</th>
                   </tr></thead>
                   <tbody>
-                    {benchmarkData.items.map((item: any) => (
+                    {personalBenchmarkItems.map((item: any) => (
                       <tr key={item.symbol} className="border-b border-slate-900">
                         <td className="py-1.5 pr-3"><div className="font-medium text-slate-200">{item.name}</div><div className="text-slate-500">{item.symbol}</div></td>
                         <td className={`py-1.5 pr-3 text-right font-mono ${(item.portfolioReturn ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
@@ -2366,73 +2533,72 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           ) : (
             <PortfolioAnalysisEmptyCard
               title="벤치마크 비교"
-              detail={benchmarkData?.status === "ERROR" ? "벤치마크 계산 중 오류가 발생했습니다." : "이 범위에서 비교 가능한 보유 종목 또는 벤치마크 데이터가 아직 없습니다."}
+              detail={benchmarkData?.status === "ERROR" ? "벤치마크 가격 데이터를 불러오지 못했습니다." : "선택한 시장의 보유 종목 또는 벤치마크 가격 데이터가 아직 없습니다."}
             />
           )
         )}
 
         {portfolioAnalysisTab === "correlation" && (
-          corrData?.status === "OK" && Array.isArray(corrData.matrix) && corrData.matrix.length > 0 ? (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          riskBudget?.correlation?.status === "OK" ? (
+            <div className="mone-home-inset rounded-[10px] border p-3">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-100">종목 간 상관관계 (60일)</h2>
-                {corrData.warning && <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">높은 상관 쌍</span>}
+                <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-400">보유종목 기준</span>
               </div>
-              <div className="max-h-48 space-y-1.5 overflow-y-auto">
-                {corrData.matrix.slice(0, 15).map((pair: any) => (
-                  <div key={`${pair.sym1}-${pair.sym2}`} className="flex items-center justify-between rounded-lg bg-slate-950/50 px-3 py-1.5 text-[11px]">
-                    <span className="text-slate-300">{pair.name1} <span className="text-slate-500">vs</span> {pair.name2}</span>
+              {(riskBudget.correlation.highCorrelationPairs || []).length > 0 ? (
+                <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                  {riskBudget.correlation.highCorrelationPairs.slice(0, 15).map((pair: any) => (
+                    <div key={`${pair.symbolA}-${pair.symbolB}`} className="flex items-center justify-between rounded-lg bg-slate-950/50 px-3 py-1.5 text-[11px]">
+                    <span className="text-slate-300">{pair.symbolA} <span className="text-slate-500">vs</span> {pair.symbolB}</span>
                     <div className="flex items-center gap-2">
                       <div className="w-20 overflow-hidden rounded-full bg-slate-800">
-                        <div className={`h-1.5 rounded-full ${Math.abs(pair.corr) >= 0.7 ? "bg-red-500" : Math.abs(pair.corr) >= 0.4 ? "bg-amber-500" : "bg-emerald-500"}`}
-                          style={{ width: `${Math.abs(pair.corr) * 100}%` }} />
+                        <div className="h-1.5 rounded-full bg-red-500" style={{ width: `${Math.abs(Number(pair.correlation || 0)) * 100}%` }} />
                       </div>
-                      <span className={`w-10 text-right font-mono ${Math.abs(pair.corr) >= 0.7 ? "text-red-300" : Math.abs(pair.corr) >= 0.4 ? "text-amber-300" : "text-emerald-300"}`}>
-                        {pair.corr > 0 ? "+" : ""}{pair.corr.toFixed(2)}
+                      <span className="w-10 text-right font-mono text-red-300">
+                        {Number(pair.correlation || 0) > 0 ? "+" : ""}{Number(pair.correlation || 0).toFixed(2)}
                       </span>
-                      <span className="text-slate-500">{pair.level}</span>
                     </div>
                   </div>
-                ))}
-              </div>
-              {corrData.highCorrelationPairs?.length > 0 && (
-                <p className="mt-2 text-[10px] text-amber-400">상관계수 0.7 이상 {corrData.highCorrelationPairs.length}쌍 - 동일 방향 집중 리스크</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-3 text-[11px] text-emerald-200">현재 기준으로 상관계수 0.70 이상의 고상관 보유 묶음은 없습니다.</p>
               )}
             </div>
           ) : (
             <PortfolioAnalysisEmptyCard
               title="종목 간 상관관계 (60일)"
-              detail={corrData?.status === "ERROR" ? "상관관계 계산 중 오류가 발생했습니다." : "상관관계 계산에 필요한 보유 종목 또는 60일 가격 데이터가 부족합니다."}
+              detail="상관관계 계산에 필요한 보유 종목 또는 60일 가격 데이터가 부족합니다."
             />
           )
         )}
 
         {portfolioAnalysisTab === "sector" && (
-          sectorData && Array.isArray(sectorData.sectors) && sectorData.sectors.length > 0 ? (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          portfolioSectors.length > 0 ? (
+            <div className="mone-home-inset rounded-[10px] border p-3">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-100">섹터 노출도 히트맵</h2>
-                {sectorData.concentration?.warning && (
-                  <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">집중도 높음 ({sectorData.concentration.top1Pct}%)</span>
+                {portfolioSectors.some((sector: any) => sector.status === "OVER" || Number(sector.pct || 0) > Number(riskBudget?.policy?.maxSectorWeightPct || 35)) && (
+                  <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">섹터 비중 점검</span>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                {sectorData.sectors.map((s: any) => {
+                {portfolioSectors.map((s: any) => {
                   const intensity = s.pct >= 30 ? "bg-red-700/60" : s.pct >= 20 ? "bg-orange-700/50" : s.pct >= 10 ? "bg-amber-700/40" : "bg-slate-700/50";
                   return (
                     <div key={s.sector} className={`rounded-xl ${intensity} px-3 py-2 text-center`} style={{ minWidth: `${Math.max(70, s.pct * 3)}px` }}>
                       <div className="max-w-[120px] truncate text-[11px] font-semibold text-slate-200">{s.sector}</div>
                       <div className="mt-0.5 font-mono text-sm font-bold text-white">{s.pct.toFixed(1)}%</div>
-                      <div className="text-[10px] text-slate-300">{s.symbols.slice(0, 2).join(", ")}{s.symbols.length > 2 ? ` 외 ${s.symbols.length - 2}` : ""}</div>
+                      <div className="text-[10px] text-slate-300">{Array.isArray(s.symbols) && s.symbols.length > 0 ? `${s.symbols.slice(0, 2).join(", ")}${s.symbols.length > 2 ? ` 외 ${s.symbols.length - 2}` : ""}` : "보유 비중 기준"}</div>
                     </div>
                   );
                 })}
               </div>
-              {sectorData.maxLossSimulation && (
+              {visibleRiskSummary.total > 0 && (
                 <div className="mt-4 rounded-xl border border-red-800/30 bg-red-950/20 p-3 text-[11px]">
                   <span className="font-semibold text-red-300">전 종목 손절 시뮬레이션</span>
                   <span className="ml-3 font-mono font-bold text-red-300">
-                    {sectorData.maxLossSimulation.totalLoss.toLocaleString()}원 ({sectorData.maxLossSimulation.totalLossPct.toFixed(1)}%)
+                    {Math.round(visibleRiskSummary.lossAmount).toLocaleString()}원 ({visibleRiskLossPct.toFixed(1)}%)
                   </span>
                   <div className="mt-1 text-[10px] text-slate-500">손절가 미설정 종목은 ATR 기반 추산값으로 계산됩니다. 직접 설정 시 그 값이 우선합니다.</div>
                 </div>
@@ -2441,14 +2607,14 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           ) : (
             <PortfolioAnalysisEmptyCard
               title="섹터 노출도 히트맵"
-              detail={sectorData?.status === "ERROR" ? "섹터 노출도 계산 중 오류가 발생했습니다." : "이 범위의 보유 종목에 연결된 섹터 데이터가 아직 없습니다."}
+              detail="선택한 시장의 보유 종목에 연결된 섹터 데이터가 아직 없습니다."
             />
           )
         )}
 
         {portfolioAnalysisTab === "optimize" && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-            <PortfolioOptimizePanel initialMarket={market === "us" ? "us" : "kr"} />
+          <div className="mone-home-inset rounded-[10px] border p-3">
+            <PortfolioOptimizePanel market={market} riskBudget={riskBudget} />
           </div>
         )}
       </div>
@@ -2458,7 +2624,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
 function PortfolioAnalysisEmptyCard({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+    <div className="mone-home-inset rounded-[10px] border p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
       </div>
@@ -2469,18 +2635,106 @@ function PortfolioAnalysisEmptyCard({ title, detail }: { title: string; detail: 
   );
 }
 
-function SummaryCard({ label, value, accent = "text-slate-100" }: { label: string; value: string; accent?: string }) {
+function PortfolioSnapshot({
+  holdingCount,
+  top5Pct,
+  middlePct,
+  lowerPct,
+  benchmarkName,
+  averageAlpha,
+}: {
+  holdingCount: number;
+  top5Pct: number;
+  middlePct: number;
+  lowerPct: number;
+  benchmarkName: string;
+  averageAlpha: number | null;
+}) {
+  const total = Math.max(top5Pct + middlePct + lowerPct, 0);
+  const upper = total > 0 ? (top5Pct / total) * 100 : 100;
+  const middle = total > 0 ? (middlePct / total) * 100 : 0;
+  const lower = Math.max(0, 100 - upper - middle);
+  const alphaText = averageAlpha == null ? "계산 대기" : `${averageAlpha >= 0 ? "+" : ""}${averageAlpha.toFixed(2)}%p`;
+  const ringStyle = {
+    background: `conic-gradient(#22d3c5 0 ${upper}%, #38bdf8 ${upper}% ${upper + middle}%, #2563eb ${upper + middle}% ${upper + middle + lower}%, #1e293b ${upper + middle + lower}% 100%)`,
+  };
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className={`mt-2 min-w-0 break-words font-mono text-[clamp(1rem,4.8vw,1.25rem)] font-bold leading-tight ${accent}`}>{value}</div>
+    <div className="mone-home-inset grid grid-cols-[1fr_auto] items-center gap-3 rounded-[10px] border p-3">
+      <div className="min-w-0 border-r border-slate-800/80 pr-3">
+        <div className="text-[10px] text-slate-500">집중도 (상위 5개)</div>
+        <div className="mt-1 font-mono text-[22px] font-semibold tabular-nums text-teal-300">{top5Pct.toFixed(1)}%</div>
+        <div className="mt-1 text-[10px] text-slate-500">보유 비중 기준</div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
+          <div className="h-full rounded-full bg-teal-400" style={{ width: `${Math.min(100, top5Pct)}%` }} />
+        </div>
+        <div className="mt-4 text-[10px] text-slate-500">{benchmarkName} 대비</div>
+        <div className={`mt-1 font-mono text-[17px] font-semibold tabular-nums ${averageAlpha == null ? "text-slate-300" : averageAlpha >= 0 ? "text-teal-300" : "text-red-300"}`}>{alphaText}</div>
+      </div>
+      <div className="flex min-w-[142px] items-center gap-2">
+        <div className="relative grid size-[78px] shrink-0 place-items-center rounded-full" style={ringStyle}>
+          <div className="grid size-[57px] place-items-center rounded-full bg-slate-950 text-center">
+            <span className="block font-mono text-[17px] font-semibold text-slate-100">{holdingCount}개</span>
+            <span className="block text-[8.5px] text-slate-500">보유 종목</span>
+          </div>
+        </div>
+        <div className="space-y-1.5 text-[9.5px] text-slate-400">
+          <div className="flex items-center justify-between gap-2"><span><i className="mr-1 inline-block size-2 rounded-full bg-teal-400" />상위 5개</span><b className="font-mono font-medium text-slate-300">{top5Pct.toFixed(1)}%</b></div>
+          <div className="flex items-center justify-between gap-2"><span><i className="mr-1 inline-block size-2 rounded-full bg-sky-400" />6~10개</span><b className="font-mono font-medium text-slate-300">{middlePct.toFixed(1)}%</b></div>
+          <div className="flex items-center justify-between gap-2"><span><i className="mr-1 inline-block size-2 rounded-full bg-blue-600" />그 외</span><b className="font-mono font-medium text-slate-300">{lowerPct.toFixed(1)}%</b></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  accent = "text-slate-100",
+  subValue,
+  visual,
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+  subValue?: string;
+  visual: "value" | "pnl" | "holdings" | "risk";
+}) {
+  const icon = visual === "value" ? <Eye size={16} className="text-slate-400" />
+    : visual === "holdings" ? <BriefcaseBusiness size={18} className="text-teal-300" />
+      : visual === "risk" ? <TriangleAlert size={18} className="text-amber-300" />
+        : null;
+  return (
+    <div className="mone-home-card min-w-0 p-3">
+      <div className="flex min-h-5 items-center gap-1.5">
+        <div className="truncate text-[10px] text-slate-500">{label}</div>
+        {visual === "value" && icon}
+      </div>
+      {visual === "pnl" ? (
+        <>
+          <div className={`mt-2 min-w-0 break-words font-mono text-[clamp(0.92rem,4.2vw,1.18rem)] font-semibold leading-tight tabular-nums ${accent}`}>{value}</div>
+          <div className={`mt-2 font-mono text-[10px] font-semibold tabular-nums ${accent}`}>{subValue || "수익률 확인 중"}</div>
+        </>
+      ) : visual === "value" ? (
+        <>
+          <div className={`mt-2 min-w-0 break-words font-mono text-[clamp(0.92rem,4.2vw,1.18rem)] font-semibold leading-tight tabular-nums ${accent}`}>{value}</div>
+          <svg viewBox="0 0 92 18" className="mt-2 h-[18px] w-full text-teal-300" aria-label="평가금액 추이">
+            <polyline points="0,15 8,12 16,14 24,8 32,11 40,5 48,9 56,4 64,7 72,3 82,6 92,1" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </>
+      ) : (
+        <>
+          <div className="mt-3">{icon}</div>
+          <div className={`mt-2 min-w-0 break-words font-mono text-[clamp(1.05rem,5vw,1.3rem)] font-semibold leading-tight tabular-nums ${accent}`}>{value}</div>
+        </>
+      )}
     </div>
   );
 }
 
 function SourceMini({ label, value, accent = "text-slate-200" }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+    <div className="mone-home-inset min-w-0 rounded-[8px] border px-2.5 py-2">
       <div className="text-[10px] text-slate-500">{label}</div>
       <div className={`mt-0.5 min-w-0 truncate text-xs font-semibold ${accent}`}>{value || "확인 대기"}</div>
     </div>
@@ -2489,7 +2743,7 @@ function SourceMini({ label, value, accent = "text-slate-200" }: { label: string
 
 function Mini({ label, value, accent = "text-slate-100" }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="min-w-0 rounded-xl bg-slate-950 px-2.5 py-2">
+    <div className="mone-home-inset min-w-0 rounded-[8px] border px-2.5 py-2">
       <div className="text-[10px] text-slate-500">{label}</div>
       <div className={`mt-1 min-w-0 break-keep font-mono text-[11px] font-bold leading-tight sm:text-sm ${accent}`}>{value}</div>
     </div>
