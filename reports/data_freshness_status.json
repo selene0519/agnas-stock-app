@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-07-17T15:20:16.537638+00:00",
-  "overall": "OK",
-  "criticalFailures": 0,
+  "generatedAt": "2026-07-19T23:46:09.364110+00:00",
+  "overall": "ERROR",
+  "criticalFailures": 1,
   "maxStaleDays": 3.0,
   "checks": [
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "1.64d, asOf=2026-07-16",
+      "detail": "3.99d, asOf=2026-07-16",
       "critical": true,
-      "ageDays": 1.64
+      "ageDays": 3.99
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "-0.34d, asOf=2026-07-17 23:26:18",
+      "detail": "1.66d, asOf=2026-07-18 07:57:09",
       "critical": true,
-      "ageDays": -0.34
+      "ageDays": 1.66
     },
     {
       "name": "collector_steps",
@@ -27,29 +27,29 @@
     },
     {
       "name": "collector_run",
-      "status": "OK",
-      "detail": "2.94d, asOf=2026-07-14T16:40:31.777821",
+      "status": "STALE",
+      "detail": "5.3d old (>3.0d), asOf=2026-07-14T16:40:31.777821",
       "critical": true,
-      "ageDays": 2.94
+      "ageDays": 5.3
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.04d, asOf=2026-07-17T23:26:28+09:00",
+      "detail": "2.03d, asOf=2026-07-18T07:57:17+09:00",
       "critical": false,
-      "ageDays": 0.04
+      "ageDays": 2.03
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.64d, asOf=2026-07-17",
+      "detail": "1.99d, asOf=2026-07-18",
       "critical": false,
-      "ageDays": 0.64
+      "ageDays": 1.99
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-18 00:20:16",
+      "detail": "-0.37d, asOf=2026-07-20 08:46:09",
       "critical": false,
       "ageDays": -0.37
     }
