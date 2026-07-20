@@ -8365,6 +8365,12 @@ def api_portfolio_risk_budget(
     except Exception:
         user_id = ""
     if not user_id:
+        # holdings-clean already exposes a local ledger when one exists.  Use
+        # that exact anonymous fallback for risk analysis as well, otherwise
+        # the holdings cards and portfolio tabs describe different portfolios.
+        local_risk = risk_budget(market=market)
+        if local_risk.get("actualHoldingCount", 0):
+            return local_risk
         return {
             "status": "OK",
             "market": market,

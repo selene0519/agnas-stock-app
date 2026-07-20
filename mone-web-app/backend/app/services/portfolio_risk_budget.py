@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import csv
 import json
 import math
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from app.services import data_loader as data
@@ -24,11 +27,14 @@ POLICY = {
 }
 
 
+@lru_cache(maxsize=512)
 def _daily_returns(market: str, symbol: str, lookback_days: int) -> dict[str, float]:
     """날짜→일간수익률. OHLCV는 이미 로컬에 수집되어 있어 추가 데이터 없이 계산 가능."""
-    from app.engine.quant_scanner import load_ohlcv
-
-    rows = load_ohlcv(REPO_ROOT, market, symbol)
+    path = REPO_ROOT / "data" / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv"
+    rows = _read_csv_rows(path)
+    if not rows:
+        from app.engine.quant_scanner import load_ohlcv
+        rows = load_ohlcv(REPO_ROOT, market, symbol)
     if len(rows) < 2:
         return {}
     rows = rows[-(lookback_days + 1):]
@@ -139,6 +145,15 @@ def _market_value(row: dict[str, Any]) -> float:
     return max(0.0, qty * price)
 
 
+def _usd_to_krw_rate() -> float:
+    rows = _read_csv_rows(REPO_ROOT / "data" / "market" / "ohlcv" / "fx_USDKRW_daily.csv")
+    if rows:
+        rate = _num(rows[-1].get("close") or rows[-1].get("Close"))
+        if rate > 0:
+            return rate
+    return 1350.0
+
+
 def _current_price(row: dict[str, Any]) -> float:
     return _num(row.get("currentPrice") or row.get("current_price") or row.get("avgPrice") or row.get("avg_price"))
 
@@ -170,14 +185,94 @@ def _load_kelly() -> dict[str, Any]:
         return {}
 
 
+def _csv_value(row: dict[str, Any], *keys: str) -> Any:
+    lowered = {str(key).lower(): value for key, value in row.items()}
+    for key in keys:
+        value = row.get(key)
+        if value not in (None, ""):
+            return value
+        value = lowered.get(key.lower())
+        if value not in (None, ""):
+            return value
+    return ""
+
+
+def _read_csv_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    for encoding in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+        try:
+            with path.open("r", encoding=encoding, newline="") as handle:
+                return [dict(row) for row in csv.DictReader(handle)]
+        except Exception:
+            continue
+    return []
+
+
+def _csv_holding_rows(market: str) -> list[dict[str, Any]]:
+    """Read the same local holdings ledgers served by holdings-clean.
+
+    The risk API must never silently analyse a different portfolio from the
+    holdings screen.  These ledgers are local-only and are also the anonymous
+    fallback used by the holdings endpoint.
+    """
+    requested = str(market or "all").lower()
+    rows: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for nominal_market in ("kr", "us"):
+        candidates = [
+            REPO_ROOT / "data" / f"toss_holdings_{nominal_market}.csv",
+            REPO_ROOT / "data" / f"kis_2_holdings_{nominal_market}.csv",
+            REPO_ROOT / "data" / f"kis_holdings_{nominal_market}.csv",
+            REPO_ROOT / "data" / f"holdings_{nominal_market}.csv",
+            REPO_ROOT / f"holdings_{nominal_market}.csv",
+        ]
+        for path in candidates:
+            # Keep the same source priority as holdings-clean: the generic
+            # holdings_<market>.csv ledger is only a fallback.
+            if path.name == f"holdings_{nominal_market}.csv" and any(
+                existing_market == nominal_market for existing_market, _ in seen
+            ):
+                continue
+            for row in _read_csv_rows(path):
+                raw_market = str(_csv_value(row, "market", "exchange", "marketType") or "").strip().lower()
+                position_market = raw_market if raw_market in {"kr", "us"} else nominal_market
+                symbol = str(_csv_value(row, "symbol", "ticker", "code", "stock_code") or "").strip().upper()
+                if not symbol or (requested != "all" and position_market != requested):
+                    continue
+                key = (position_market, symbol)
+                if key in seen:
+                    continue
+                quantity = _num(_csv_value(row, "quantity", "qty", "shares"))
+                if quantity <= 0:
+                    continue
+                seen.add(key)
+                rows.append({
+                    "market": position_market,
+                    "symbol": symbol,
+                    "name": str(_csv_value(row, "name", "companyName", "displayName") or symbol).strip(),
+                    "quantity": quantity,
+                    "avgPrice": _num(_csv_value(row, "avgPrice", "avg_price", "averagePrice", "purchasePrice")),
+                    "currentPrice": _num(_csv_value(row, "currentPrice", "current_price", "price", "last", "lastPrice")),
+                    "marketValue": _num(_csv_value(row, "valuation", "marketValue", "evalAmount", "eval_amount")),
+                    "stopPrice": _num(_csv_value(row, "stopPrice", "stop_price", "stop")),
+                    "targetPrice": _num(_csv_value(row, "targetPrice", "target_price", "target")),
+                    "source": path.name,
+                })
+    return rows
+
+
 def _holding_rows(market: str, user_id: str = "") -> list[dict[str, Any]]:
     if user_id:
         try:
             from app import db
 
-            return db.get_holdings(user_id, market)
+            personal_rows = db.get_holdings(user_id, market)
+            if personal_rows:
+                return personal_rows
         except Exception:
-            return []
+            pass
     try:
         from app.services.exit_signal import _holdings_items
 
@@ -187,11 +282,14 @@ def _holding_rows(market: str, user_id: str = "") -> list[dict[str, Any]]:
             for row in _holdings_items(mk):
                 if isinstance(row, dict):
                     rows.append({**row, "market": row.get("market") or mk})
-        return rows
+        if rows:
+            return rows
     except Exception:
-        return []
+        pass
+    return _csv_holding_rows(market)
 
 
+@lru_cache(maxsize=3)
 def _sector_lookup(market: str) -> dict[tuple[str, str], str]:
     """Resolve holdings to the maintained company-analysis sector master.
 
@@ -216,11 +314,59 @@ def _sector_lookup(market: str) -> dict[tuple[str, str], str]:
     return lookup
 
 
+def _fallback_sector(row: dict[str, Any], symbol: str) -> str:
+    """Give every holding a decision-useful label, never an 'other' bucket."""
+    text = " ".join(str(row.get(key) or "") for key in ("name", "sector", "industry", "assetType")).upper()
+    etf_symbols = {"133690", "360750", "458730", "381180", "0209Z0", "0210A0", "SOXX", "SMH", "SCHD", "QQQ", "SPY"}
+    if symbol in etf_symbols or any(marker in text for marker in ("ETF", "ETN", "TIGER", "KODEX", "ACE ", "ISHARES", "VANGUARD", "SPDR")):
+        return "ETF"
+    groups = {
+        "기술": {"AAPL", "AMD", "AVGO", "CRDO", "DRAM", "MXL", "NVDA", "PLTR"},
+        "커뮤니케이션": {"GOOGL", "META", "NFLX", "ASTS"},
+        "금융": {"BAC", "CRCL", "HUT"},
+        "산업재": {"LMT", "RKLB", "SPCX"},
+        "경기소비재": {"AMZN", "TSLA", "018880"},
+    }
+    for label, members in groups.items():
+        if symbol in members:
+            return label
+    return "개별주"
+
+
 def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
     rows = _holding_rows(market, user_id=user_id)
-    sector_lookup = _sector_lookup(market)
     source_label = "personal_user_holdings" if user_id else "holdings_csv"
-    total_value = sum(_market_value(row) for row in rows)
+    if not rows:
+        return {
+            "status": "OK",
+            "market": market,
+            "userId": user_id or "",
+            "holdingAuthority": source_label,
+            "dataSource": source_label,
+            "sourceSummary": "personal holdings" if user_id else "local holdings ledger",
+            "actualHoldingCount": 0,
+            "policy": POLICY,
+            "totalValue": 0,
+            "totalLossAmount": 0,
+            "totalLossBudgetPct": 0,
+            "missingStopCount": 0,
+            "warnings": [],
+            "sectors": [],
+            "correlation": {"status": "NO_DATA", "highCorrelationPairs": []},
+            "items": [],
+        }
+    sector_lookup = _sector_lookup(market)
+    mixed_market = str(market).lower() == "all"
+    usd_to_krw = _usd_to_krw_rate() if mixed_market else 1.0
+
+    def market_of(row: dict[str, Any]) -> str:
+        return "us" if str(row.get("market") or market).lower() == "us" else "kr"
+
+    def normalized_value(row: dict[str, Any]) -> float:
+        value = _market_value(row)
+        return value * usd_to_krw if mixed_market and market_of(row) == "us" else value
+
+    total_value = sum(normalized_value(row) for row in rows)
     kelly = _load_kelly()
     items: list[dict[str, Any]] = []
     sector_weights: dict[str, float] = {}
@@ -228,13 +374,13 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
     missing_stop_count = 0
 
     for row in rows:
-        mk = "us" if str(row.get("market") or market).lower() == "us" else "kr"
+        mk = market_of(row)
         symbol = str(row.get("symbol") or row.get("ticker") or "").strip().upper()
         if not symbol:
             continue
         qty = _num(row.get("quantity") or row.get("shares"))
         current = _current_price(row)
-        value = _market_value(row)
+        value = normalized_value(row)
         weight = (value / total_value * 100) if total_value > 0 else 0.0
         stop = _stop_price(row, current)
         explicit_stop = _num(row.get("stopPrice") or row.get("stop_price") or row.get("stop")) > 0
@@ -242,12 +388,16 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
             missing_stop_count += 1
         if current > 0 and qty > 0 and stop > 0:
             loss_amount = max(0.0, (current - stop) * qty)
+            if mixed_market and mk == "us":
+                loss_amount *= usd_to_krw
         else:
             loss_amount = value * POLICY["defaultStopLossPct"] / 100
         loss_pct = (loss_amount / total_value * 100) if total_value > 0 else 0.0
         total_loss_budget += loss_pct
         raw_sector = str(row.get("sector") or row.get("industry") or "").strip()
-        sector = raw_sector if raw_sector and raw_sector.lower() not in {"unknown", "none", "nan", "미분류"} else sector_lookup.get((mk, symbol), "기타")
+        sector = raw_sector if raw_sector and raw_sector.lower() not in {"unknown", "none", "nan", "미분류", "other", "기타"} else sector_lookup.get((mk, symbol), "")
+        if not sector or sector.lower() in {"unknown", "none", "nan", "미분류", "other", "기타"}:
+            sector = _fallback_sector(row, symbol)
         sector_weights[sector] = sector_weights.get(sector, 0.0) + weight
         mode = str(row.get("mode") or "balanced").lower()
         horizon = str(row.get("horizon") or "swing").lower()
@@ -325,6 +475,8 @@ def risk_budget(market: str = "all", user_id: str = "") -> dict[str, Any]:
         "holdingAuthority": source_label,
         "dataSource": source_label,
         "sourceSummary": "개인 보유 DB" if user_id else "공용 보유 데이터",
+        "currencyNormalized": mixed_market,
+        "usdToKrw": round(usd_to_krw, 4) if mixed_market else None,
         "actualHoldingCount": len(rows),
         "policy": POLICY,
         "totalValue": round(total_value, 2),

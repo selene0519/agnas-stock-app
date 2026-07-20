@@ -266,19 +266,59 @@ export default function PortfolioOptimizePanel({ market, riskBudget }: { market:
     load(false);
   }, [market]);
 
-  const budgetHoldings: Holding[] = Array.isArray(riskBudget?.items) ? riskBudget.items.map((item: any) => ({
-    symbol: String(item.symbol || ""), name: String(item.name || item.symbol || ""), market: String(item.market || market),
-    sector: fallbackSector({ name: String(item.name || item.symbol || ""), symbol: String(item.symbol || ""), sector: item.sector }),
-    currentPrice: Number(item.currentPrice || 0), quantity: 0, avgPrice: 0, valuation: Number(item.value || 0), pnlPct: 0,
-    stop: Number(item.stopPrice || 0) || undefined,
-  })) : [];
-  const analysisHoldings = holdings.length > 0 ? holdings : budgetHoldings.filter((holding) => holding.valuation > 0);
+  const displayHoldingByKey = new Map(holdings.map((holding) => [`${holding.market}:${holding.symbol}`, holding]));
+  const budgetHoldings: Holding[] = Array.isArray(riskBudget?.items) ? riskBudget.items.map((item: any) => {
+    const itemMarket = String(item.market || market);
+    const itemSymbol = String(item.symbol || "");
+    const displayHolding = displayHoldingByKey.get(`${itemMarket}:${itemSymbol}`);
+    const displayedPnl = Number(displayHolding?.pnlPct ?? 0);
+    return {
+      symbol: itemSymbol, name: String(item.name || itemSymbol), market: itemMarket,
+      sector: fallbackSector({ name: String(item.name || itemSymbol), symbol: itemSymbol, sector: item.sector }),
+      currentPrice: Number(item.currentPrice || displayHolding?.currentPrice || 0), quantity: 0, avgPrice: Number(displayHolding?.avgPrice || 0),
+      valuation: Number(item.value || 0), pnlPct: Number.isFinite(displayedPnl) ? displayedPnl : 0,
+      stop: Number(item.stopPrice || 0) || undefined,
+    };
+  }) : [];
+  const budgetByHolding = new Map<string, any>((Array.isArray(riskBudget?.items) ? riskBudget.items : []).map((item: any) => [
+    `${String(item.market || market)}:${String(item.symbol || "")}`,
+    item,
+  ]));
+  const baseHoldings = market === "all" && budgetHoldings.length > 0
+    ? budgetHoldings.filter((holding) => holding.valuation > 0)
+    : holdings.length > 0 ? holdings : budgetHoldings.filter((holding) => holding.valuation > 0);
+  const analysisHoldings = baseHoldings.map((holding) => {
+    const budgetItem = budgetByHolding.get(`${holding.market}:${holding.symbol}`);
+    return {
+      ...holding,
+      sector: fallbackSector({
+        name: holding.name,
+        symbol: holding.symbol,
+        sector: budgetItem?.sector || holding.sector,
+      }),
+    };
+  });
   const fallbackPortfolio = buildPortfolioData(analysisHoldings);
   const totalValue = analysisHoldings.reduce((s, h) => s + h.valuation, 0);
   const maxPositionWeightPct = Number(riskBudget?.policy?.maxPositionWeightPct || 20);
   const heavyPositions = analysisHoldings.filter((h) => totalValue > 0 && (h.valuation / totalValue) * 100 > maxPositionWeightPct);
-  const sectors: SectorRow[] = sectorData?.sectors?.length ? sectorData.sectors : fallbackPortfolio.sectors;
-  const concentration = sectorData?.sectors?.length ? sectorData.concentration : fallbackPortfolio.concentration;
+  const budgetSectors: SectorRow[] = (Array.isArray(riskBudget?.sectors) ? riskBudget.sectors : []).map((sector: any) => {
+    const label = fallbackSector({ name: "", symbol: "", sector: sector.sector });
+    const members = (Array.isArray(riskBudget?.items) ? riskBudget.items : [])
+      .filter((item: any) => fallbackSector({ name: "", symbol: "", sector: item.sector }) === label)
+      .map((item: any) => String(item.symbol || ""));
+    return {
+      sector: label,
+      value: Number(riskBudget?.totalValue || totalValue) * Number(sector.weightPct || 0) / 100,
+      pct: Number(sector.weightPct || 0),
+      symbols: members,
+      maxLoss: 0,
+    };
+  });
+  const sectors: SectorRow[] = budgetSectors.length ? budgetSectors : (sectorData?.sectors?.length ? sectorData.sectors : fallbackPortfolio.sectors);
+  const concentration = budgetSectors.length
+    ? { top1Pct: Math.max(...budgetSectors.map((sector) => sector.pct), 0), warning: budgetSectors.some((sector) => sector.pct > 40) }
+    : (sectorData?.sectors?.length ? sectorData.concentration : fallbackPortfolio.concentration);
   const calculatedMaxLoss = sectorData?.sectors?.length ? sectorData.maxLossSimulation : fallbackPortfolio.maxLossSimulation;
   const maxLoss = riskBudget?.status && !riskBudget?.authRequired
     ? {

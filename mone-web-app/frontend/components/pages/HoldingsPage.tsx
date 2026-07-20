@@ -950,18 +950,20 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         }
       }).catch(() => {});
       getJson(`/api/portfolio/risk-budget?market=${market}`).then((res) => {
-        if (res?.status) setRiskBudget(res);
+        if (res?.status) {
+          setRiskBudget(res);
+          if (Array.isArray(res.sectors) && res.sectors.length > 0) {
+            setSectorData({ status: res.status, sectors: res.sectors });
+          }
+        }
       }).catch(() => setRiskBudget(null));
       getJson(`/api/holdings/sold-history?market=${market === "all" ? "all" : market}`).then((res) => {
         if (res?.status === "OK") setSoldHistory(res);
       }).catch(() => setSoldHistory(null));
       setRiskNote(market === "all" ? "전체 보기에서는 KR/US 보유를 함께 확인합니다. 통화 합산이 필요한 금액은 별도 안내합니다." : "");
       // 리스크 데이터는 백그라운드 로딩
-      Promise.all([
-        getJson(`/api/risk/sector-exposure?market=${market}`).catch((error) => ({ status: "ERROR", error: String(error), sectors: [] })),
-        getJson(`/api/risk/benchmark?market=${market === "all" ? "kr" : market}`).catch((error) => ({ status: "ERROR", error: String(error), items: [] })),
-      ]).then(([sector, bench]) => {
-        setSectorData(sector); setBenchmarkData(bench);
+      getJson(`/api/risk/benchmark?market=${market}`).then(setBenchmarkData).catch((error) => {
+        setBenchmarkData({ status: "ERROR", error: String(error), items: [] });
       });
     } catch (error) {
       const localItems = hasHoldingsAuth ? loadHoldingsFromLocalStorage() : [];
@@ -1219,6 +1221,44 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   })();
   const showPersonalEmptyNotice = !loading && items.length === 0 && isPersonalHoldingsSource;
 
+  const riskBudgetByHolding = useMemo(() => {
+    const mapped = new Map<string, any>();
+    for (const item of Array.isArray(riskBudget?.items) ? riskBudget.items : []) {
+      const itemMarket = cleanHoldingMarket(item.market);
+      const itemSymbol = cleanHoldingSymbol(item.symbol, itemMarket);
+      mapped.set(`${itemMarket}:${itemSymbol}`, item);
+    }
+    return mapped;
+  }, [riskBudget]);
+
+  const holdingRiskScore = (holding: any) => {
+    const holdingMarket = cleanHoldingMarket(holding.market);
+    const holdingSymbol = cleanHoldingSymbol(holding.symbol, holdingMarket);
+    const budget = riskBudgetByHolding.get(`${holdingMarket}:${holdingSymbol}`);
+    const signal = exitSignals[`${holdingMarket}-${holding.symbol}`];
+    const risk = normalizeRiskStatus(holding.riskStatus);
+    const stopGap = holding.downsideGapPct != null ? Number(holding.downsideGapPct) : holding.stopGapPct != null ? Number(holding.stopGapPct) : null;
+    const value = Number(holding.valuation || holding.marketValue || 0);
+    const total = items.reduce((sum, item) => sum + Number(item.valuation || item.marketValue || 0), 0);
+    const weight = total > 0 ? (value / total) * 100 : 0;
+    let score = 0;
+
+    if (signal?.signal === "SELL_STRONG") score += 3000;
+    else if (signal?.signal === "SELL") score += 2200;
+    else if (signal?.signal === "PARTIAL_EXIT") score += 1500;
+    if (budget?.action === "REDUCE") score += 1800;
+    score += Math.min(900, Math.max(0, Number(budget?.lossBudgetPct || 0) * 180));
+    if (risk === "STOP_LOSS_DELAY") score += 1400;
+    else if (risk === "HIGH") score += 1000;
+    else if (risk === "WATCH") score += 500;
+    if (stopGap !== null && stopGap <= 2) score += 400;
+    else if (stopGap !== null && stopGap <= 5) score += 200;
+    if (!holding.currentPrice || Number(holding.currentPrice) <= 0) score += 300;
+    if (!(holding.downsideLine ?? holding.stopPrice ?? holding.stop ?? 0)) score += 150;
+    if (weight > Number(riskBudget?.policy?.maxPositionWeightPct || 20)) score += 120;
+    return score;
+  };
+
   const { individualStocks, etfHoldings } = useMemo(() => {
     const stocks: any[] = [];
     const etfs: any[] = [];
@@ -1233,54 +1273,13 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       }
     }
 
-    stocks.sort((a, b) => {
-      const riskA = normalizeRiskStatus(a.riskStatus);
-      const riskB = normalizeRiskStatus(b.riskStatus);
-      const stopGapA = a.downsideGapPct != null ? Number(a.downsideGapPct) : a.stopGapPct != null ? Number(a.stopGapPct) : null;
-      const stopGapB = b.downsideGapPct != null ? Number(b.downsideGapPct) : b.stopGapPct != null ? Number(b.stopGapPct) : null;
-      const hasPriceA = a.currentPrice && Number(a.currentPrice) > 0;
-      const hasPriceB = b.currentPrice && Number(b.currentPrice) > 0;
-      const hasStopA = (a.downsideLine ?? a.stopPrice ?? a.stop ?? 0) > 0;
-      const hasStopB = (b.downsideLine ?? b.stopPrice ?? b.stop ?? 0) > 0;
-      const hasTargetA = (a.upsideLine ?? a.targetPrice ?? a.target ?? 0) > 0;
-      const hasTargetB = (b.upsideLine ?? b.targetPrice ?? b.target ?? 0) > 0;
-      const totalValueA = Number(a.valuation || a.marketValue || 0);
-      const totalValueB = Number(b.valuation || b.marketValue || 0);
-      const portTotalValue = items.reduce((s, x) => s + Number(x.valuation || x.marketValue || 0), 0);
-      const weightA = portTotalValue > 0 ? totalValueA / portTotalValue : 0;
-      const weightB = portTotalValue > 0 ? totalValueB / portTotalValue : 0;
-
-      const getRiskScore = (risk: string, stopGap: number | null, hasPrice: boolean, hasStop: boolean, hasTarget: boolean, weight: number) => {
-        let score = 0;
-        if (risk === "STOP_LOSS_DELAY") score += 1500;
-        else if (risk === "HIGH") score += 1000;
-        else if (risk === "WATCH") score += 500;
-
-        if (stopGap !== null && stopGap <= 2) score += 400;
-        else if (stopGap !== null && stopGap <= 5) score += 200;
-
-        if (!hasPrice) score += 300;
-        if (!hasStop) score += 150;
-        if (!hasTarget) score += 100;
-        if (weight > 0.2) score += 50;
-
-        return score;
-      };
-
-      const scoreA = getRiskScore(riskA, stopGapA, hasPriceA, hasStopA, hasTargetA, weightA);
-      const scoreB = getRiskScore(riskB, stopGapB, hasPriceB, hasStopB, hasTargetB, weightB);
-
-      return scoreB - scoreA;
-    });
-
-    etfs.sort((a, b) => {
-      const totalValueA = Number(a.valuation || a.marketValue || 0);
-      const totalValueB = Number(b.valuation || b.marketValue || 0);
-      return totalValueB - totalValueA;
-    });
+    const byRisk = (a: any, b: any) => holdingRiskScore(b) - holdingRiskScore(a)
+      || Number(b.valuation || b.marketValue || 0) - Number(a.valuation || a.marketValue || 0);
+    stocks.sort(byRisk);
+    etfs.sort(byRisk);
 
     return { individualStocks: stocks, etfHoldings: etfs };
-  }, [items]);
+  }, [items, riskBudgetByHolding, exitSignals, riskBudget]);
   const actionItems = useMemo(() => {
     const rows: { key: string; tone: "red" | "amber" | "blue"; title: string; detail: string; action?: "stop" | "target" }[] = [];
     for (const holding of items) {
@@ -1317,7 +1316,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     const budgetItems = Array.isArray(riskBudget?.items) ? riskBudget.items : [];
     const totalValue = items.reduce((sum, holding) => sum + Number(holding.valuation ?? holding.marketValue ?? 0), 0);
     const needsStopReview = budgetItems.length > 0
-      ? budgetItems.filter((item: any) => Number(item.lossBudgetPct || 0) > Number(riskBudget?.policy?.maxPositionLossPct || 2) || !item.stopPrice).length
+      ? Number(riskBudget?.missingStopCount ?? budgetItems.filter((item: any) => Number(item.lossBudgetPct || 0) > Number(riskBudget?.policy?.maxPositionLossPct || 2) || !item.stopPrice).length)
       : items.filter((holding) => !holding.stopPrice || Number(holding.stopPrice) <= 0).length;
     const needsRebalance = budgetItems.length > 0
       ? budgetItems.filter((item: any) => item.action === "REDUCE" || Number(item.weightPct || 0) > Number(riskBudget?.policy?.maxPositionWeightPct || 20)).length
@@ -1346,26 +1345,37 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }, [items, riskBudget]);
 
   const visibleRiskSummary = useMemo(() => {
+    if (riskBudget && !riskBudget.authRequired) {
+      return {
+        total: Number(riskBudget.totalValue || 0),
+        lossAmount: Number(riskBudget.totalLossAmount || 0),
+        missingStops: Number(riskBudget.missingStopCount || 0),
+      };
+    }
     const total = items.reduce((sum, holding) => sum + Number(holding.valuation ?? holding.marketValue ?? 0), 0);
     const missingStops = items.filter((holding) => Number(holding.stopPrice || holding.stop || 0) <= 0).length;
     return { total, lossAmount: total * visibleRiskLossPct / 100, missingStops };
-  }, [items, visibleRiskLossPct]);
+  }, [items, visibleRiskLossPct, riskBudget]);
 
   const previewHoldings = useMemo(() => (
     [...items]
-      .sort((a, b) => {
-        const rank = (holding: any) => {
-          const risk = normalizeRiskStatus(holding.riskStatus);
-          if (risk === "STOP_LOSS_DELAY" || risk === "HIGH") return 0;
-          if (risk === "WATCH") return 1;
-          return 2;
-        };
-        return rank(a) - rank(b) || Number(b.valuation || b.marketValue || 0) - Number(a.valuation || a.marketValue || 0);
-      })
+      .sort((a, b) => holdingRiskScore(b) - holdingRiskScore(a)
+        || Number(b.valuation || b.marketValue || 0) - Number(a.valuation || a.marketValue || 0))
       .slice(0, 3)
-  ), [items]);
+  ), [items, riskBudgetByHolding, exitSignals, riskBudget]);
 
   const personalBenchmarkItems = useMemo(() => {
+    const apiItems = Array.isArray(benchmarkData?.items) ? benchmarkData.items : [];
+    if (apiItems.length > 0) {
+      return apiItems.map((item: any) => ({
+        symbol: String(item.symbol || ""),
+        name: String(item.name || item.symbol || ""),
+        portfolioReturn: Number(item.portfolioReturn),
+        benchmarkReturn: Number(item.benchmarkReturn),
+        alpha: Number(item.alpha),
+        benchmarkName: String(item.benchmarkName || benchmarkData?.benchmark || ""),
+      })).filter((item: any) => Number.isFinite(item.portfolioReturn) && Number.isFinite(item.benchmarkReturn) && Number.isFinite(item.alpha));
+    }
     const benchmarkReturn = Number(benchmarkData?.benchmarkReturn);
     if (!Number.isFinite(benchmarkReturn)) return [];
     return items.map((holding: any) => {
