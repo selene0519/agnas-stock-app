@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { RefreshCw } from "lucide-react";
+import { Activity, Crosshair, Globe2, RefreshCw, ScanLine } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, readApiSnapshot, type Market } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, entryPlanStale, horizonLabel, modeLabel, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
-import { DecisionStack, getMarketGateInfo, normalizeDataHealth, normalizeMarketRegime, type MarketGate } from "@/lib/decisionStack";
+import { getMarketGateInfo, normalizeDataHealth, normalizeMarketRegime, type MarketGate } from "@/lib/decisionStack";
 import { toneClassName } from "@/lib/tone";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
@@ -2285,7 +2285,7 @@ export default function ChartPage() {
   const [market, setMarket] = useState<Market>(() => initialChartMarket());
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
   const [analysisTab, setAnalysisTab] = useState<AnalysisTabKey>("summary");
-  const [dataStatusOpen, setDataStatusOpen] = useState(false);
+  const [dataStatusOpen, setDataStatusOpen] = useState(true);
   const [rows, setRows] = useState<any[]>([]);
   const [levels, setLevels] = useState<any | null>(null);
   const [chartMeta, setChartMeta] = useState<any | null>(null);
@@ -2896,25 +2896,71 @@ export default function ChartPage() {
     </div>
   ) : null;
 
+  const entryPrice = levelValue(levels, "entry");
+  const stopPrice = levelValue(levels, "stop");
+  const targetPrice = levelValue(levels, "target");
+  const expectedValue = num(levels?.expectedValue ?? levels?.ev);
+  const riskReward = num(levels?.rrActual ?? levels?.riskRewardRatio ?? levels?.rr) ?? (
+    entryPrice > stopPrice && targetPrice > entryPrice
+      ? (targetPrice - entryPrice) / (entryPrice - stopPrice)
+      : null
+  );
+  const priceDelta = (price: number) => entryPrice > 0 && price > 0
+    ? `${((price - entryPrice) / entryPrice * 100 >= 0 ? "+" : "")}${((price - entryPrice) / entryPrice * 100).toFixed(1)}%`
+    : "-";
+  const summaryMetrics = [
+    { label: "기준가", value: entryPrice > 0 ? money(entryPrice, selected?.market || market) : "-", sub: currentPrice > 0 ? `현재가 ${money(currentPrice, selected?.market || market)}` : "추천 기준", tone: "text-slate-100" },
+    { label: "손절가", value: stopPrice > 0 ? money(stopPrice, selected?.market || market) : "-", sub: priceDelta(stopPrice), tone: "text-rose-300" },
+    { label: "목표가", value: targetPrice > 0 ? money(targetPrice, selected?.market || market) : "-", sub: priceDelta(targetPrice), tone: "text-teal-300" },
+    { label: "기대값(EV)", value: expectedValue != null ? `${expectedValue >= 0 ? "+" : ""}${expectedValue.toFixed(1)}%` : "-", sub: "전략 산출값", tone: expectedValue != null && expectedValue < 0 ? "text-rose-300" : "text-teal-300" },
+    { label: "손익비(RR)", value: riskReward != null ? riskReward.toFixed(2) : "-", sub: riskReward != null ? (riskReward >= 1.8 ? "진입 기준 충족" : "기준 미달") : "산출 대기", tone: riskReward != null && riskReward < 1.8 ? "text-amber-300" : "text-teal-300" },
+    { label: "종합 점수", value: moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "-", sub: moneConclusion.conf != null ? `신뢰도 ${moneConclusion.conf}` : "추천 데이터 기준", tone: "text-teal-300" },
+  ];
+
   return (
     <ErrorBoundary>
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-[19px] font-black leading-none text-slate-100">분석</h1>
-        <p className="mt-1 text-xs text-slate-400 sm:text-sm">OHLCV, 추천 기준선, 기술지표, 관련 뉴스·공시·기업분석</p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {(["all","kr","us"] as Market[]).map((item) => (
-          <button key={item} onClick={() => { setMarket(item); setSelected(null); }}
-            className={`min-h-10 rounded-xl border px-4 py-2 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item ? "mone-selection-brand font-semibold" : "border-slate-800 bg-slate-900 text-slate-400"}`}>
-            {item === "all" ? "자동" : marketLabel(item)}
+    <div className="space-y-4 pb-3">
+      <header className="flex flex-col gap-3 border-b border-slate-800/80 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="shrink-0">
+          <h1 className="text-[28px] font-black leading-none text-slate-100">분석</h1>
+          <p className="mt-2 text-xs text-slate-500">종목의 진입 조건과 위험을 같은 기준으로 확인합니다.</p>
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-xl">
+          <SymbolSearchSelect
+            market={resolvedMarket}
+            value={selected?.symbol || ""}
+            onChange={setSelected}
+            placeholder="종목명 또는 코드 검색"
+            className="min-w-0 flex-1"
+          />
+          <button
+            type="button"
+            onClick={() => setReloadKey((value) => value + 1)}
+            disabled={loading}
+            aria-label="분석 데이터 새로고침"
+            title="분석 데이터 새로고침"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-teal-500/35 bg-teal-500/5 text-teal-300 transition-colors hover:bg-teal-500/15 disabled:opacity-50"
+          >
+            <ScanLine size={19} className={loading ? "animate-pulse" : ""} />
           </button>
-        ))}
-        <span className="text-xs text-slate-500">{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · 현재 적용 시장: {marketLabel(resolvedMarket)}</span>
-      </div>
+        </div>
+      </header>
 
-      <SymbolSearchSelect market={resolvedMarket} value={selected?.symbol || ""} onChange={setSelected} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="grid grid-cols-3 rounded-xl border border-slate-800 bg-slate-950/70 p-1">
+          {(["all", "kr", "us"] as Market[]).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => { setMarket(item); setSelected(null); }}
+              className={`min-h-9 rounded-lg px-4 text-xs font-semibold transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item ? "mone-selection-brand" : "text-slate-500 hover:text-slate-200"}`}
+            >
+              {item === "all" ? "전체" : marketLabel(item)}
+            </button>
+          ))}
+        </div>
+        <span className="text-[11px] text-slate-600">{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · {marketLabel(resolvedMarket)} 기준</span>
+      </div>
 
       {!selected && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">
@@ -2958,7 +3004,7 @@ export default function ChartPage() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-right sm:grid-cols-4">
+              <div className="hidden grid-cols-2 gap-2 text-right sm:grid sm:grid-cols-4">
                 <Info label="최근 종가" value={latest ? money(latest.close, selected.market) : loading ? "확인 중" : "-"} />
                 <Info label="RSI14" value={latestRsi ? Number(latestRsi).toFixed(1) : loading ? "확인 중" : "데이터 부족"} />
                 <Info
@@ -3002,33 +3048,25 @@ export default function ChartPage() {
                   </div>
                 </div>
                 {/* Decision Stack — 종목 신호·시장 환경·최종 행동 (홈·탐색과 공통, UX 보고서 3.1) */}
-                <DecisionStack
-                  score={moneConclusion.score}
-                  gate={marketGate}
-                  actionLabel={moneConclusion.actionText}
-                  actionToneClass={toneTextClass(moneConclusion.actionTone)}
-                  className="mb-3"
-                />
-                <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
-                  {moneConclusion.rows.map((row) => {
-                    const toneCls = row.tone === "danger" ? "border-red-500/30 bg-red-500/5"
-                      : row.tone === "warn" ? "border-amber-500/30 bg-amber-500/5"
-                      : row.tone === "ok" ? "border-emerald-500/20 bg-emerald-500/5"
-                      : "border-slate-800 bg-slate-950/50";
-                    const valueCls = row.tone === "danger" ? "text-red-200"
-                      : row.tone === "warn" ? "text-amber-200"
-                      : row.tone === "ok" ? "text-emerald-200"
-                      : "text-slate-200";
-                    return (
-                      <div key={row.label} className={`rounded-lg border px-3 py-2 ${toneCls}`}>
-                        <div className="text-[10px] text-slate-500">{row.label}</div>
-                        <div className={`mt-1 leading-5 ${valueCls}`}>{row.value}</div>
-                      </div>
-                    );
-                  })}
+                <div className="mb-3 grid divide-y divide-slate-700/70 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/45 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                  <div className="flex gap-2.5 px-3 py-3"><Globe2 size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">시장 환경</div><div className={marketGate?.isLow ? "mt-1 text-sm font-bold text-rose-300" : marketGate?.isMid ? "mt-1 text-sm font-bold text-amber-300" : "mt-1 text-sm font-bold text-teal-300"}>{marketGate ? marketGate.levelText : "확인 중"}</div><div className="mt-1 text-[10px] text-slate-600">{marketGate?.hasRegimeMa ? `20일선 대비 ${marketGate.maDist >= 0 ? "+" : ""}${marketGate.maDist.toFixed(1)}%` : "시장 데이터 확인 중"}</div></div></div>
+                  <div className="flex gap-2.5 px-3 py-3"><Activity size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">종목 신호</div><div className="mt-1 text-sm font-bold text-amber-300">{moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "산출 대기"}</div><div className="mt-1 text-[10px] text-slate-600">{moneConclusion.riskText || "추천 조건 확인 중"}</div></div></div>
+                  <div className="flex gap-2.5 px-3 py-3"><Crosshair size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">최종 행동</div><div className={`mt-1 text-sm font-bold ${toneTextClass(moneConclusion.actionTone)}`}>{moneConclusion.actionText}</div><div className="mt-1 text-[10px] text-slate-600">{moneConclusion.rows[2]?.value || "진입 기준 확인 중"}</div></div></div>
                 </div>
               </div>
             )}
+
+            <div className="mb-4 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/45">
+              <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 sm:grid-cols-3 sm:divide-y-0 xl:grid-cols-6">
+                {summaryMetrics.map((metric) => (
+                  <div key={metric.label} className="min-w-0 px-3 py-3 text-center">
+                    <div className="text-[10px] text-slate-500">{metric.label}</div>
+                    <div className={`mt-1 truncate font-mono text-sm font-bold ${metric.tone}`}>{metric.value}</div>
+                    <div className="mt-1 truncate text-[10px] text-slate-600">{metric.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
               <div className="text-sm font-semibold text-slate-200">MONE 판단 이유</div>
