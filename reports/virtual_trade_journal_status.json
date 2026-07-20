@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-07-20T08:57:13+09:00",
+  "lastRunAt": "2026-07-20T09:44:15+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": false,
@@ -55,10 +55,10 @@
       "journalSession": "AFTER_CLOSE_TRADE",
       "status": "OK",
       "runKey": "kr:2026-07-20:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-      "selected": 9,
-      "added": 9,
+      "selected": 13,
+      "added": 13,
       "rejected": {
-        "LOW_SCORE": 3
+        "LOW_SCORE": 7
       },
       "items": [
         {
@@ -88,8 +88,8 @@
         {
           "mode": "balanced",
           "horizon": "mid",
-          "selected": 1,
-          "added": 1,
+          "selected": 0,
+          "added": 0,
           "duplicates": 0,
           "status": "OK"
         },
@@ -112,24 +112,24 @@
         {
           "mode": "conservative",
           "horizon": "mid",
-          "selected": 4,
-          "added": 4,
+          "selected": 5,
+          "added": 5,
           "duplicates": 0,
           "status": "OK"
         },
         {
           "mode": "conservative",
           "horizon": "short",
-          "selected": 2,
-          "added": 2,
+          "selected": 3,
+          "added": 3,
           "duplicates": 0,
           "status": "OK"
         },
         {
           "mode": "conservative",
           "horizon": "swing",
-          "selected": 2,
-          "added": 2,
+          "selected": 5,
+          "added": 5,
           "duplicates": 0,
           "status": "OK"
         }
