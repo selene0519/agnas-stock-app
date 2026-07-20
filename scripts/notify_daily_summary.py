@@ -20,6 +20,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -30,6 +31,7 @@ from typing import Any
 
 ROOT     = Path(__file__).resolve().parents[1]
 REPORTS  = ROOT / "reports"
+DATA_DIR = ROOT / "data"
 MODES    = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")
 
@@ -94,6 +96,53 @@ def _read_csv(path: Path) -> list[dict]:
     return []
 
 
+_KR_SYMBOL_NAME_CACHE: dict[str, str] | None = None
+
+
+def _normalize_kr_symbol(symbol: Any) -> str:
+    text = str(symbol or "").strip().upper()
+    text = text.replace(".KS", "").replace(".KQ", "")
+    if text.isdigit():
+        return text.zfill(6)[-6:]
+    return text
+
+
+def _kr_symbol_name_map() -> dict[str, str]:
+    global _KR_SYMBOL_NAME_CACHE
+    if _KR_SYMBOL_NAME_CACHE is not None:
+        return _KR_SYMBOL_NAME_CACHE
+
+    mapping: dict[str, str] = {}
+    for path in (
+        DATA_DIR / "stock_master_kr.csv",
+        DATA_DIR / "symbol_master_kr_full.csv",
+        DATA_DIR / "symbol_master_kr_extra.csv",
+    ):
+        for row in _read_csv(path):
+            code = _normalize_kr_symbol(
+                row.get("code") or row.get("symbol") or row.get("ticker")
+            )
+            if not code:
+                continue
+            name = str(
+                row.get("name_kr") or row.get("name") or row.get("companyName") or ""
+            ).strip()
+            if name and name != code:
+                mapping.setdefault(code, name)
+
+    _KR_SYMBOL_NAME_CACHE = mapping
+    return mapping
+
+
+def _display_name(symbol: str, raw_name: Any, market: str) -> str:
+    name = str(raw_name or "").strip()
+    if market == "kr":
+        code = _normalize_kr_symbol(symbol)
+        if not name or _normalize_kr_symbol(name) == code:
+            return _kr_symbol_name_map().get(code, code)
+    return name or str(symbol or "").strip()
+
+
 def _cached_news_rows(market: str) -> list[dict]:
     return _read_csv(REPORTS / f"news_summary_{market}.csv")
 
@@ -110,7 +159,13 @@ def _row_to_article(row: dict) -> dict:
 
 def _num(v: Any) -> float:
     try:
-        return float(str(v or "").replace(",", "").strip())
+        text = str(v or "").strip()
+        if not text:
+            return 0.0
+        cleaned = re.sub(r"[^0-9.+-]", "", text.replace(",", ""))
+        if cleaned in ("", "+", "-", ".", "+.", "-."):
+            return 0.0
+        return float(cleaned)
     except Exception:
         return 0.0
 
@@ -137,7 +192,11 @@ def _collect_recommendations(market: str) -> list[dict]:
                 if key not in seen or ev > _num(seen[key].get("ev", 0)):
                     seen[key] = {
                         "symbol": sym,
-                        "name": str(row.get("name") or row.get("companyName") or sym),
+                        "name": _display_name(
+                            sym,
+                            row.get("name") or row.get("companyName"),
+                            market,
+                        ),
                         "market": market,
                         "mode": mode,
                         "horizon": horizon,
