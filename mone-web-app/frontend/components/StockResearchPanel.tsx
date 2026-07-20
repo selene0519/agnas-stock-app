@@ -74,7 +74,7 @@ function normalizeRsiSignals(data: AnalysisData | null, rsi14?: number | null): 
   const isStrategyMetric = (s: Signal) => /손익비|기댓값|기대값/.test(s.text || "");
   const hasRsi = rsi14 != null && Number.isFinite(Number(rsi14));
   const nextRsi = hasRsi ? Math.round(Number(rsi14) * 10) / 10 : null;
-  const financialHealth = data.financialHealth || { signals: [], warnings: [] };
+  const financialHealth = data.financialHealth || { grade: "", signals: [], warnings: [] };
   const rewrite = (signal: Signal): Signal => {
     if (nextRsi == null || !/RSI/i.test(signal.text)) return signal;
     const type = nextRsi >= 80 ? "warning" : nextRsi <= 30 ? "positive" : "neutral";
