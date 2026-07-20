@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import csv
+import re
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -174,7 +175,7 @@ def _fetch_kis_kr(symbol: str) -> dict[str, Any]:
     normalized = data.normalize_symbol(symbol, "kr")
     if not _kis_enabled():
         return _quote_result(normalized, "kr", False, "KIS 현재가", "KIS_APP_KEY/KIS_APP_SECRET 미설정")
-    if not normalized.isdigit():
+    if not re.fullmatch(r"[0-9A-Z]{6}", normalized):
         return _quote_result(normalized, "kr", False, "KIS 현재가", "국장 종목코드 형식 아님")
 
     cfg = _kis_config()
@@ -445,7 +446,7 @@ def _fetch_kis_kr_daily_ohlcv(symbol: str, days: int = 120) -> dict[str, Any]:
     normalized = data.normalize_symbol(symbol, "kr")
     if not _kis_enabled():
         return {"status": "ERROR", "market": "kr", "symbol": normalized, "error": "KIS_APP_KEY/KIS_APP_SECRET 미설정"}
-    if not normalized.isdigit():
+    if not re.fullmatch(r"[0-9A-Z]{6}", normalized):
         return {"status": "ERROR", "market": "kr", "symbol": normalized, "error": "국장 종목코드 형식 아님"}
 
     cfg = _kis_config()

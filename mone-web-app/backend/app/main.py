@@ -4180,6 +4180,10 @@ def api_ohlcv_core(
         try:
             backfill = quotes.backfill_daily_ohlcv(symbol, normalized_market, days=max(limit, 120))
             if str(backfill.get("status", "")).upper() == "OK":
+                # The first lookup is cached as NO_DATA. Clear the OHLCV-derived
+                # caches before reading the KIS backfill written moments ago.
+                data._load_ohlcv.cache_clear()
+                data._ohlcv_stats.cache_clear()
                 payload = data.chart_data(symbol, normalized_market, tail_rows=limit)
                 rows = payload.get("items") or payload.get("rows") or []
                 payload["backfill"] = backfill

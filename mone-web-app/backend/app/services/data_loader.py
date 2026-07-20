@@ -521,9 +521,13 @@ def normalize_symbol(symbol: Any, market: str = "") -> str:
     if re.fullmatch(r"\d+\.0", text):
         text = text[:-2]
     if market == "kr":
-        digits = re.sub(r"\D", "", text)
-        if digits and len(digits) <= 6:
-            return digits.zfill(6)
+        # KRX ETF/ETN product codes can contain a letter (for example 0209Z0).
+        # Preserve valid six-character exchange codes instead of coercing them
+        # into a different numeric equity code.
+        if re.fullmatch(r"\d{1,6}", text):
+            return text.zfill(6)
+        if re.fullmatch(r"[0-9A-Z]{6}", text):
+            return text
     return text
 
 

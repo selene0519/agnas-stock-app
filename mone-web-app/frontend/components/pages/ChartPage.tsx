@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Activity, Crosshair, Globe2, RefreshCw, ScanLine } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { mone, money, readApiSnapshot, type Market } from "@/lib/api";
-import { getDefaultMarketBySession, marketLabel, marketSessionNote } from "@/lib/marketSession";
+import { getDefaultMarketBySession } from "@/lib/marketSession";
 import { dataFreshnessBadgeClass, dataFreshnessInfo, displayName, entryPlanStale, horizonLabel, modeLabel, moneReasonLines, normalizeMarket, normalizeSymbol, priceText, sanitizeCodeLabel } from "@/lib/moneDisplay";
 import { getMarketGateInfo, normalizeDataHealth, normalizeMarketRegime, type MarketGate } from "@/lib/decisionStack";
 import { toneClassName } from "@/lib/tone";
@@ -2220,9 +2220,12 @@ function calcAtrPlan(currentPrice: number, atr: number, mode: "conservative"|"ba
 
 function technicalStance(rows: any[], indicators: any, latestRsi: number | null, atrPlan: ReturnType<typeof calcAtrPlan>) {
   if (rows.length < 20) {
+    const remainingBars = 20 - rows.length;
     return {
       label: "대기",
-      detail: "OHLCV 20일 이상이 필요합니다.",
+      detail: rows.length > 0
+        ? `OHLCV ${rows.length}봉 연결됨 · MA20까지 ${remainingBars}봉 필요`
+        : "OHLCV 20일 이상이 필요합니다.",
       cls: statusTone("neutral"),
     };
   }
@@ -2927,7 +2930,7 @@ export default function ChartPage() {
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-xl">
           <SymbolSearchSelect
-            market={resolvedMarket}
+            market="all"
             value={selected?.symbol || ""}
             onChange={setSelected}
             placeholder="종목명 또는 코드 검색"
@@ -2946,22 +2949,6 @@ export default function ChartPage() {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="grid grid-cols-3 rounded-xl border border-slate-800 bg-slate-950/70 p-1">
-          {(["all", "kr", "us"] as Market[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => { setMarket(item); setSelected(null); }}
-              className={`min-h-9 rounded-lg px-4 text-xs font-semibold transition-[background-color,border-color,color,transform] active:scale-[0.96] ${market === item ? "mone-selection-brand" : "text-slate-500 hover:text-slate-200"}`}
-            >
-              {item === "all" ? "전체" : marketLabel(item)}
-            </button>
-          ))}
-        </div>
-        <span className="text-[11px] text-slate-600">{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"} · {marketLabel(resolvedMarket)} 기준</span>
-      </div>
-
       {!selected && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">
           {seedLoading ? "기본 종목을 불러오는 중..." : "종목명 또는 코드로 검색하세요."}
@@ -2973,7 +2960,11 @@ export default function ChartPage() {
           <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
             <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h2 className="text-xl font-bold text-slate-100">{selected.name}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-bold text-slate-100">{selected.name}</h2>
+                  <span className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold ${stance.cls}`}>{stance.label}</span>
+                  <span className="rounded-lg border border-teal-500/35 bg-teal-500/5 px-2.5 py-1 text-[11px] font-bold text-teal-200">{strategyBasisText}</span>
+                </div>
                 <div className="hidden">
                   <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(analysisFreshness.state)}`}>
                     {analysisFreshness.label}
@@ -2991,8 +2982,6 @@ export default function ChartPage() {
                 </div>
                 <p className="font-mono text-sm text-slate-500">{selected.symbol} · {selected.market.toUpperCase()}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${stance.cls}`}>{stance.label}</span>
-                  <span className="rounded-xl border border-teal-500/35 bg-teal-500/5 px-3 py-1.5 text-xs font-bold text-teal-200">{strategyBasisText}</span>
                   <span className="text-xs text-slate-500">{stance.detail}</span>
                   {loadState.updatedAt && <span className="text-[11px] text-slate-600">갱신 {loadState.updatedAt}</span>}
                   <button
