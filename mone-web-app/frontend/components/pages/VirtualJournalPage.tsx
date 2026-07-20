@@ -255,6 +255,7 @@ export default function VirtualJournalPage() {
   const [journalSession, setJournalSession] = useState<ScopeSession>("all");
   const [view, setView] = useState<JournalView>("journal");
   const [listSource, setListSource] = useState<ListSource>("all");
+  const [lensData, setLensData] = useState<any>(null);
   const [replayDate, setReplayDate] = useState(defaultReplayDate);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
@@ -293,7 +294,7 @@ export default function VirtualJournalPage() {
       // (한 엔드포인트의 네트워크 예외로 나머지 패널까지 사라지던 문제 방지)
       const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> => p.then((v) => v ?? fallback).catch(() => fallback);
       const listSourceParam = listSource === "all" ? undefined : listSource;
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes, lensRes] = await Promise.all([
         safe(mone.virtualTrades({ ...scope, sourceType: listSourceParam, limit: 200 }), { status: "ERROR", error: "일지 로드 실패", items: [] } as any),
         safe(mone.journalFailurePatterns(scope), {} as any),
         safe(mone.journalCalibrationSuggestions(scope), {} as any),
@@ -314,6 +315,7 @@ export default function VirtualJournalPage() {
         safe(mone.journalAttributionFeedback({ market: scope.market }), {} as any),
         safe(mone.journalSelfLearningStatus({ market: scope.market }), {} as any),
         safe(mone.journalOpsDashboard({ market: scope.market }), {} as any),
+        safe(mone.lensCandidates({ market: "kr" }), {} as any),
       ]);
       if (tradeRes.status === "ERROR") setError(tradeRes.error || "일지 로드 실패");
       setTrades(tradeRes.items || []);
@@ -336,6 +338,7 @@ export default function VirtualJournalPage() {
       setFeedbackData(feedbackRes?.status === "OK" || feedbackRes?.status === "LOW_SAMPLE" ? feedbackRes : null);
       setSelfLearningData(selfLearningRes?.status === "OK" ? selfLearningRes : null);
       setOpsData(opsRes?.status === "OK" ? opsRes : null);
+      setLensData(lensRes && (lensRes.status === "OK" || lensRes.status === "EMPTY") ? lensRes : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -1461,6 +1464,69 @@ export default function VirtualJournalPage() {
 
       {view === "journal" && (
       <>
+      <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <Target size={16} className="text-cyan-300" />
+            <span>레짐 렌즈 · 자가보정</span>
+          </div>
+          {lensData ? (
+            <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+              <span className={`rounded px-2 py-0.5 ${lensData.marketRegime === "BEAR" ? "bg-red-500/12 text-red-200" : lensData.marketRegime === "BULL" ? "bg-emerald-500/12 text-emerald-200" : "bg-amber-500/12 text-amber-200"}`}>
+                {lensData.marketRegime === "BEAR" ? "약세장" : lensData.marketRegime === "BULL" ? "강세장" : "횡보장"}
+                {typeof lensData.breadthAboveMa60 === "number" ? ` · breadth ${lensData.breadthAboveMa60.toFixed(2)}` : ""}
+              </span>
+              <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-300">활성 렌즈: {lensData.activeLens === "BOTTOM_CATCH" ? "저점반등" : "돌파"}</span>
+              {lensData.selfCalibrated && <span className="rounded bg-cyan-500/12 px-2 py-0.5 text-cyan-200">자가보정 ON</span>}
+            </div>
+          ) : (
+            <span className="font-mono text-[11px] text-slate-500">렌즈 데이터 없음</span>
+          )}
+        </div>
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+          장세별 셋업(약세=저점반등, 강세·횡보=돌파)을 매매일지 실측으로 자가보정합니다. ACTIVE(실행가능)만 매수 후보이며, 최근 실측이 무너진 셋업은 자동 차단(SUPPRESSED)됩니다.
+        </p>
+        {lensData && Array.isArray(lensData.candidates) && lensData.candidates.length > 0 ? (
+          <div className="mt-3 space-y-2">
+            {lensData.candidates.slice(0, 8).map((c: any) => (
+              <div key={c.symbol} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 ${c.actionable ? "bg-emerald-500/8 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.18)]" : "bg-slate-950/50 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]"}`}>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-100">{c.name || c.symbol}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{c.symbol}</span>
+                    <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${c.setup === "BOTTOM_CATCH" ? "bg-indigo-500/15 text-indigo-200" : "bg-sky-500/15 text-sky-200"}`}>{c.setup === "BOTTOM_CATCH" ? "저점반등" : "돌파"}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-slate-500">
+                    <span>진입 {fmtNum(c.entryRef)}</span>
+                    <span className="text-red-300">손절 {fmtNum(c.stop)}</span>
+                    <span className="text-emerald-300">목표 {fmtNum(c.target)}</span>
+                    <span>RR {c.rrRatio ?? "-"}</span>
+                    <span>RSI {c.rsi14}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`font-mono text-[11px] font-semibold ${c.actionable ? "text-emerald-300" : "text-slate-500"}`}>
+                    {c.actionable ? "실행가능" : "차단"}
+                  </div>
+                  <div className="font-mono text-[10px] text-slate-500">
+                    {c.calibrationGate}{c.actionable && c.sizeMultiplier ? ` · size ${Number(c.sizeMultiplier).toFixed(2)}` : ""}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            {lensData?.status === "EMPTY" ? "렌즈 후보 리포트 미생성 — 파이프라인(build_lens_journal→calibration→screen) 실행 필요." : "현재 레짐에서 실행가능한 렌즈 후보가 없습니다."}
+          </div>
+        )}
+        {lensData?.disclaimer && (
+          <div className="mt-2 rounded-md bg-amber-500/8 px-3 py-1.5 text-[10px] leading-4 text-amber-200/80 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.14)]">
+            ⚠ {lensData.disclaimer}
+          </div>
+        )}
+      </section>
+
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">

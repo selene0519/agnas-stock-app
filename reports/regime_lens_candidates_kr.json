@@ -1,0 +1,90 @@
+{
+  "generatedAt": "2026-07-20T08:47:44.596041+00:00",
+  "asOfDate": "2026-07-20",
+  "market": "kr",
+  "marketRegime": "BEAR",
+  "breadthAboveMa60": 0.108,
+  "activeLens": "BREAKOUT",
+  "activeSetupByRegime": {
+    "BULL": [
+      "BREAKOUT"
+    ],
+    "SIDE": [
+      "BREAKOUT"
+    ],
+    "BEAR": [
+      "BREAKOUT"
+    ]
+  },
+  "selfCalibrated": true,
+  "universeSize": 106,
+  "candidateCount": 4,
+  "actionableCount": 1,
+  "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
+  "candidates": [
+    {
+      "symbol": "010950",
+      "name": "010950",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-07-20",
+      "close": 148600.0,
+      "entryRef": 148600.0,
+      "stop": 142656,
+      "target": 160488,
+      "rrRatio": 2.0,
+      "rsi14": 84.7,
+      "distMa20Pct": 24.2,
+      "calibrationGate": "ACTIVE",
+      "sizeMultiplier": 1.48,
+      "actionable": true
+    },
+    {
+      "symbol": "196170",
+      "name": "196170",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-07-20",
+      "close": 282500.0,
+      "entryRef": 282500.0,
+      "stop": 264965,
+      "target": 305100,
+      "rrRatio": 1.29,
+      "rsi14": 25.1,
+      "distMa20Pct": -14.5,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "009150",
+      "name": "009150",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-07-20",
+      "close": 1345000.0,
+      "entryRef": 1345000.0,
+      "stop": 1184955,
+      "target": 1452600,
+      "rrRatio": 0.67,
+      "rsi14": 30.8,
+      "distMa20Pct": -23.4,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "000660",
+      "name": "000660",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-07-20",
+      "close": 1881000.0,
+      "entryRef": 1881000.0,
+      "stop": 1708975,
+      "target": 2031480,
+      "rrRatio": 0.87,
+      "rsi14": 31.7,
+      "distMa20Pct": -19.3,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    }
+  ]
+}

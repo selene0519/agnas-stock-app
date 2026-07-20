@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-07-20T08:47:44.031579+00:00",
+  "asOfDate": "2026-07-16",
+  "source": "reports/lens_journal_kr.csv",
+  "policy": {
+    "halflifeDays": 180.0,
+    "minEffectiveSamples": 25.0,
+    "minEdgePct": 0.05,
+    "refEdgePct": 0.62
+  },
+  "note": "AI 매매일지(렌즈 저널) 실측값 기반 자가보정. recency 가중 → 최근 실측이 게이트/사이즈를 결정. 생존편향 미보정이라 라이브 VTJ 정산으로 갱신 시 더 정직해짐.",
+  "activeSetupByRegime": {
+    "BULL": [
+      "BREAKOUT"
+    ],
+    "SIDE": [
+      "BREAKOUT"
+    ],
+    "BEAR": [
+      "BREAKOUT"
+    ]
+  },
+  "calibration": {
+    "BREAKOUT|SIDE": {
+      "setup": "BREAKOUT",
+      "regime": "SIDE",
+      "rawSamples": 814,
+      "effectiveSamples": 187.7,
+      "recencyWeightedWinRate": 41.2,
+      "recencyWeightedNetAvgPct": 0.221,
+      "profitFactor": 1.09,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 0.36
+    },
+    "BREAKOUT|BEAR": {
+      "setup": "BREAKOUT",
+      "regime": "BEAR",
+      "rawSamples": 248,
+      "effectiveSamples": 44.2,
+      "recencyWeightedWinRate": 47.4,
+      "recencyWeightedNetAvgPct": 0.919,
+      "profitFactor": 1.44,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 1.48
+    },
+    "BOTTOM_CATCH|BEAR": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BEAR",
+      "rawSamples": 428,
+      "effectiveSamples": 142.3,
+      "recencyWeightedWinRate": 32.1,
+      "recencyWeightedNetAvgPct": -1.464,
+      "profitFactor": 0.6,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0
+    },
+    "BOTTOM_CATCH|SIDE": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "SIDE",
+      "rawSamples": 373,
+      "effectiveSamples": 83.6,
+      "recencyWeightedWinRate": 43.0,
+      "recencyWeightedNetAvgPct": -0.389,
+      "profitFactor": 0.87,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0
+    },
+    "BREAKOUT|BULL": {
+      "setup": "BREAKOUT",
+      "regime": "BULL",
+      "rawSamples": 2040,
+      "effectiveSamples": 804.4,
+      "recencyWeightedWinRate": 43.0,
+      "recencyWeightedNetAvgPct": 0.408,
+      "profitFactor": 1.17,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 0.66
+    },
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "rawSamples": 256,
+      "effectiveSamples": 106.1,
+      "recencyWeightedWinRate": 41.5,
+      "recencyWeightedNetAvgPct": -0.418,
+      "profitFactor": 0.85,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0
+    }
+  }
+}

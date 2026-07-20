@@ -3361,6 +3361,29 @@ def api_report_preview(path: str = Query(..., min_length=1)) -> dict:
     return data.report_preview(path)
 
 
+@app.get("/api/lens/candidates")
+def api_lens_candidates(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    """레짐 적응형 렌즈 후보(저점반등/돌파) + 매매일지 실측 자가보정 게이트.
+
+    scripts/screen_regime_lens_kr.py 산출물(reports/regime_lens_candidates_kr.json)을 읽는다.
+    파이프라인 실행순서: build_lens_journal_kr → build_lens_calibration_kr → screen_regime_lens_kr.
+    """
+    if market != "kr":
+        return {"status": "NOT_AVAILABLE", "market": market,
+                "message": "레짐 렌즈는 현재 KR만 지원합니다.", "candidates": []}
+    path = data.REPO_ROOT / "reports" / "regime_lens_candidates_kr.json"
+    if not path.exists():
+        return {"status": "EMPTY",
+                "message": "렌즈 후보 리포트 미생성 — build_lens_journal → build_lens_calibration → screen_regime_lens 실행 필요.",
+                "candidates": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload.setdefault("status", "OK")
+        return payload
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "ERROR", "error": str(exc), "candidates": []}
+
+
 @app.get("/api/advanced/backtest")
 def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return final_engine.admin_backtest(_market(market))
