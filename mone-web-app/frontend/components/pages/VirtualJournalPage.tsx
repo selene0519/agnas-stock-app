@@ -1478,6 +1478,11 @@ export default function VirtualJournalPage() {
               </span>
               <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-300">활성 렌즈: {lensData.activeLens === "BOTTOM_CATCH" ? "저점반등" : "돌파"}</span>
               {lensData.selfCalibrated && <span className="rounded bg-cyan-500/12 px-2 py-0.5 text-cyan-200">자가보정 ON</span>}
+              {typeof lensData.liveSamplesTotal === "number" && (
+                <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-400">
+                  {lensData.liveSamplesTotal > 0 ? `라이브 실측 ${lensData.liveSamplesTotal}건` : "백테스트 prior 기반"}
+                </span>
+              )}
             </div>
           ) : (
             <span className="font-mono text-[11px] text-slate-500">렌즈 데이터 없음</span>

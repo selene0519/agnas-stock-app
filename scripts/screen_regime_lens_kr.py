@@ -126,11 +126,13 @@ def main() -> int:
     calib_path = os.path.join(REPO, "reports", "lens_calibration_kr.json")
     calib = {}
     routing = {}
+    live_samples_total = 0
     if os.path.exists(calib_path):
         try:
             cj = json.load(open(calib_path, encoding="utf-8"))
             calib = cj.get("calibration", {})
             routing = cj.get("activeSetupByRegime", {})
+            live_samples_total = int(cj.get("liveSamplesTotal", 0) or 0)
         except Exception:
             pass
     active_for_regime = routing.get(market_regime)
@@ -211,6 +213,7 @@ def main() -> int:
         "activeLens": active_lens,
         "activeSetupByRegime": routing or None,
         "selfCalibrated": bool(calib),
+        "liveSamplesTotal": live_samples_total,
         "universeSize": len(series),
         "candidateCount": len(candidates),
         "actionableCount": sum(1 for x in candidates if x["actionable"]),
