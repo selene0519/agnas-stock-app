@@ -3021,15 +3021,17 @@ export default function ChartPage() {
                 />
               </div>
             </div>
+          </div>
 
-            {moneConclusion && (
-              <div className={`mb-4 rounded-xl border p-4 ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "border-amber-500/30 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5"}`}>
+          {moneConclusion && (
+              <div className={`rounded-2xl border p-5 ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "border-amber-500/40 bg-amber-500/[0.06]" : "border-teal-400/45 bg-teal-400/[0.05]"}`}>
                 <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">현재 MONE 결론</div>
-                    <div className={`whitespace-nowrap text-lg font-bold ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "text-amber-200" : "text-emerald-200"}`}>
+                    <div className={`mt-3 whitespace-nowrap text-4xl font-black leading-none ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "text-amber-200" : "text-emerald-200"}`}>
                       {moneConclusion.headline}
                     </div>
+                    <div className="mt-3 max-w-md text-sm leading-6 text-slate-400">{moneConclusion.rows[0]?.value}</div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     {moneConclusion.actionText !== moneConclusion.headline && (
@@ -3056,7 +3058,7 @@ export default function ChartPage() {
               </div>
             )}
 
-            <div className="mb-4 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/45">
+          <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/45">
               <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 sm:grid-cols-3 sm:divide-y-0 xl:grid-cols-6">
                 {summaryMetrics.map((metric) => (
                   <div key={metric.label} className="min-w-0 px-3 py-3 text-center">
@@ -3068,7 +3070,7 @@ export default function ChartPage() {
               </div>
             </div>
 
-            <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/45 px-4 py-4">
               <div className="text-sm font-semibold text-slate-200">MONE 판단 이유</div>
               <ol className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
                 {analysisReasonLines.length
@@ -3077,8 +3079,8 @@ export default function ChartPage() {
               </ol>
             </div>
 
-            {showPrecisionHint && (
-              <div className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+          {showPrecisionHint && (
+              <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <span>더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.</span>
                   <button
@@ -3090,10 +3092,9 @@ export default function ChartPage() {
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+          )}
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-3">
               <button
                 type="button"
                 aria-expanded={dataStatusOpen}
