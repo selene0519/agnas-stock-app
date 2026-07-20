@@ -251,7 +251,6 @@ function AiPaperSurvivalPanel({
   const marketsData = data?.markets || {};
   const marketEntries = (["kr", "us"] as const).map((mk) => [mk, marketsData[mk] || {}] as const);
   const previewActions = Object.values(preview?.markets || {}).flatMap((item: any) => item?.actions || []).slice(0, 6);
-  const retiredCount = Array.isArray(data?.retiredAgents) ? data.retiredAgents.length : 0;
   const stateTone = (state: string) => {
     if (state === "DEAD" || state === "CRITICAL") return "text-red-300";
     if (state === "DANGER") return "text-amber-300";
@@ -260,8 +259,12 @@ function AiPaperSurvivalPanel({
   const actionTone = (action: string) => {
     if (action === "BUY") return "bg-emerald-500/15 text-emerald-300";
     if (action === "SELL") return "bg-red-500/15 text-red-300";
-    if (action === "SWITCH") return "bg-amber-500/15 text-amber-300";
     return "bg-slate-700 text-slate-300";
+  };
+  const verdictTone = (verdict: string) => {
+    if (verdict === "PROVING_EDGE" || verdict === "COMPETITIVE") return "text-emerald-300";
+    if (verdict === "NOT_PROVEN") return "text-red-300";
+    return "text-amber-300";
   };
 
   return (
@@ -273,8 +276,7 @@ function AiPaperSurvivalPanel({
             <span>AI 생존계좌</span>
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
-            실제 주문 없이 AI 추천만으로 굴리는 가상 계좌입니다. 잔고, 생존율, 다음 행동 후보를 분리해서 봅니다.
-            {retiredCount > 0 && <span className="ml-2 text-amber-300">교체 이력 {retiredCount}회</span>}
+            실제 주문 없이 AI 추천만으로 굴리는 검증 계좌입니다. 0원이 되면 실패로 멈추고, OOS 증거판으로 성능을 비교합니다.
           </p>
         </div>
         <div className="flex gap-2">
@@ -293,7 +295,8 @@ function AiPaperSurvivalPanel({
           const survival = item?.survival || {};
           const positions = item?.positions || [];
           const activeAgent = item?.activeAgent || {};
-          const nextAgent = item?.nextAgent || {};
+          const proof = item?.proofBoard || {};
+          const proofRows = Array.isArray(proof.rows) ? proof.rows.slice(0, 3) : [];
           const state = survival.state || "UNKNOWN";
           return (
             <div key={mk} className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
@@ -310,12 +313,19 @@ function AiPaperSurvivalPanel({
                   <span className="truncate text-right font-semibold text-slate-200">{activeAgent.label || summary.agentLabel || "-"}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
-                  <span className="text-slate-500">다음 AI</span>
-                  <span className="truncate text-right text-slate-300">{nextAgent.label || "-"}</span>
+                  <span className="text-slate-500">OOS 판정</span>
+                  <span className={`truncate text-right font-semibold ${verdictTone(proof.verdict)}`}>{proof.verdict || "UNPROVEN"}</span>
                 </div>
-                {item?.needsSwitch && (
-                  <div className="mt-2 rounded bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-200">
-                    잔고 소진: 실행 시 다음 AI로 교체
+                <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-slate-500">검증 순위</span>
+                  <span className="text-right text-slate-300">
+                    {proof.currentRank ? `${proof.currentRank}/${proof.profileCount}` : "-"}
+                    {proof.beatsBestBaseline ? " · baseline beat" : ""}
+                  </span>
+                </div>
+                {item?.proofFailed && (
+                  <div className="mt-2 rounded bg-red-500/10 px-2 py-1 text-[11px] font-semibold text-red-200">
+                    잔고 소진: 검증 실패, 추가 매매 중지
                   </div>
                 )}
               </div>
@@ -330,6 +340,17 @@ function AiPaperSurvivalPanel({
                 <span>거래 {summary.tradeCount ?? 0}회</span>
                 <span>NAV {data?.navRows ?? 0}행</span>
               </div>
+              {proofRows.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {proofRows.map((row: any, idx: number) => (
+                    <div key={`${mk}-${row.agentId}-${idx}`} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-[10px] text-slate-500">
+                      <span className={row.agentId === activeAgent.id ? "truncate font-semibold text-slate-200" : "truncate"}>{idx + 1}. {row.agentLabel}</span>
+                      <span className="font-mono">{Number(row.avgNetPnlPct || 0).toFixed(2)}%</span>
+                      <span className="font-mono">WR {Number(row.winRate || 0).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
@@ -347,14 +368,14 @@ function AiPaperSurvivalPanel({
                       {action.action}
                     </span>
                     <span className="truncate text-xs font-semibold text-slate-200">
-                      {action.action === "SWITCH" ? `${action.fromAgent?.label || "-"} -> ${action.toAgent?.label || "-"}` : action.name || action.symbol || action.reason}
+                      {action.name || action.symbol || action.reason}
                     </span>
                     {action.symbol && <span className="font-mono text-[10px] text-slate-500">{action.symbol}</span>}
                   </div>
                   <div className="mt-1 text-[11px] text-slate-500">{action.decision || action.reason || "-"}</div>
                 </div>
                 <div className="text-right font-mono text-[11px] text-slate-300">
-                  <div>{action.price == null ? `Gen ${action.generation ?? "-"}` : fmtMoney(action.price, action.market)}</div>
+                  <div>{action.price == null ? "-" : fmtMoney(action.price, action.market)}</div>
                   {action.quantity != null && <div className="text-slate-500">x {Number(action.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>}
                 </div>
               </div>

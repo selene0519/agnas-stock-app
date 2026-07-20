@@ -42,7 +42,7 @@ NAV_FIELDS = [
     "date", "createdAt", "market", "agentId", "agentLabel", "generation",
     "state", "seed", "cash", "valuation", "portfolioValue", "totalPnl",
     "totalReturnPct", "survivalPct", "positionCount", "tradeCount",
-    "buyCount", "sellCount", "switchCount",
+    "buyCount", "sellCount", "proofStatus",
 ]
 
 
@@ -123,22 +123,12 @@ def _agent_by_id(agent_id: str) -> dict[str, str]:
     return dict(AGENT_POOL[0])
 
 
-def _next_agent(agent_id: str) -> dict[str, str]:
-    ids = [agent["id"] for agent in AGENT_POOL]
-    try:
-        idx = ids.index(agent_id)
-    except ValueError:
-        idx = -1
-    return dict(AGENT_POOL[(idx + 1) % len(AGENT_POOL)])
-
-
 def _default_state() -> dict[str, Any]:
     return {
         "activeAgents": {
             "kr": {"agentId": AGENT_POOL[0]["id"], "generation": 1, "startedAt": datetime.now().isoformat(timespec="seconds")},
             "us": {"agentId": AGENT_POOL[0]["id"], "generation": 1, "startedAt": datetime.now().isoformat(timespec="seconds")},
         },
-        "retiredAgents": [],
         "lastRun": {},
     }
 
@@ -149,7 +139,6 @@ def _load_state() -> dict[str, Any]:
         state = {}
     default = _default_state()
     state.setdefault("activeAgents", {})
-    state.setdefault("retiredAgents", [])
     state.setdefault("lastRun", {})
     for mk in ("kr", "us"):
         state["activeAgents"].setdefault(mk, default["activeAgents"][mk])
@@ -445,43 +434,6 @@ def _quantity_for(market: str, cash: float, equity: float, entry: float, stop: f
     return round(qty, 4)
 
 
-def _switch_agent(market: str, summary: dict[str, Any], dry_run: bool) -> dict[str, Any]:
-    ctx = _active_context(market)
-    current = ctx["agent"]
-    next_agent = _next_agent(current["id"])
-    next_generation = int(ctx["generation"]) + 1
-    event = {
-        "action": "SWITCH",
-        "market": market,
-        "reason": "ACCOUNT_DEAD",
-        "fromAgent": current,
-        "toAgent": next_agent,
-        "generation": next_generation,
-        "finalSummary": summary,
-        "dryRun": dry_run,
-    }
-    if dry_run:
-        return event
-    state = ctx["state"]
-    state.setdefault("retiredAgents", []).append({
-        "market": market,
-        "agentId": current["id"],
-        "agentLabel": current["label"],
-        "generation": ctx["generation"],
-        "endedAt": datetime.now().isoformat(timespec="seconds"),
-        "reason": "ACCOUNT_DEAD",
-        "finalSummary": summary,
-    })
-    state.setdefault("activeAgents", {})[market] = {
-        "agentId": next_agent["id"],
-        "generation": next_generation,
-        "startedAt": datetime.now().isoformat(timespec="seconds"),
-    }
-    _write_json(AI_STATE_JSON, state)
-    _cash_for(market, next_agent["id"])
-    return event
-
-
 def _sell_triggered_positions(market: str, dry_run: bool) -> list[dict[str, Any]]:
     ctx = _active_context(market)
     agent = ctx["agent"]
@@ -530,14 +482,16 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
     summary = _summary_for_market(market, agent["id"])
     survival = _survival_state(market, summary)
     if survival["state"] == "DEAD":
-        switch_event = _switch_agent(market, summary, dry_run=dry_run)
-        actions.append(switch_event)
-        if dry_run:
-            actions.append({"action": "SKIP", "market": market, "reason": "ACCOUNT_DEAD_SWITCH_REQUIRED", "survival": survival})
-            return actions
-        ctx = _active_context(market)
-        agent = ctx["agent"]
-        summary = _summary_for_market(market, agent["id"])
+        actions.append({
+            "action": "SKIP",
+            "market": market,
+            "agentId": agent["id"],
+            "agentLabel": agent["label"],
+            "reason": "ACCOUNT_DEAD_PROOF_FAILED",
+            "survival": survival,
+            "result": {"ok": False, "dryRun": dry_run},
+        })
+        return actions
 
     positions = _position_items(market, agent["id"])
     held = {str(p.get("symbol") or "").upper() for p in positions}
@@ -622,10 +576,98 @@ def _append_nav_snapshot(market: str, cycle_actions: list[dict[str, Any]]) -> di
         "tradeCount": summary.get("tradeCount", 0),
         "buyCount": sum(1 for a in cycle_actions if a.get("action") == "BUY" and a.get("result", {}).get("ok")),
         "sellCount": sum(1 for a in cycle_actions if a.get("action") == "SELL" and a.get("result", {}).get("ok")),
-        "switchCount": sum(1 for a in cycle_actions if a.get("action") == "SWITCH"),
+        "proofStatus": "FAILED" if survival["state"] == "DEAD" else "RUNNING",
     }
     _append_csv(AI_NAV_CSV, row, NAV_FIELDS)
     return row
+
+
+def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, Any]:
+    rows = _read_csv(REPORTS / f"walkforward_results_{market}.csv")
+    if not rows:
+        return {
+            "status": "NO_DATA",
+            "method": "walk_forward_oos",
+            "message": "walkforward results are not available",
+            "rows": [],
+        }
+
+    def _metrics(profile: dict[str, str], strategy: str) -> dict[str, Any] | None:
+        matched = [
+            row for row in rows
+            if str(row.get("mode")) == profile["mode"]
+            and str(row.get("horizon")) == profile["horizon"]
+            and str(row.get("strategy") or "corrected") == strategy
+        ]
+        if not matched:
+            return None
+        matched.sort(key=lambda row: _num(row.get("windowIndex")))
+        recent = matched[-6:]
+        exec_count = sum(_num(row.get("executionCount")) for row in recent)
+        win_count = sum(_num(row.get("winCount")) for row in recent)
+        avg_pnls = [_num(row.get("avgNetPnlPct")) for row in recent if _num(row.get("executionCount")) > 0]
+        weighted_pnl = (
+            sum(_num(row.get("avgNetPnlPct")) * _num(row.get("executionCount")) for row in recent) / exec_count
+            if exec_count > 0 else 0.0
+        )
+        win_rate = (win_count / exec_count * 100.0) if exec_count > 0 else 0.0
+        positive_rate = (sum(1 for v in avg_pnls if v > 0) / len(avg_pnls) * 100.0) if avg_pnls else 0.0
+        mdd = min((_num(row.get("mddPct")) for row in recent), default=0.0)
+        proof_score = weighted_pnl * 12.0 + win_rate * 0.35 + positive_rate * 0.25 + max(mdd, -100.0) * 0.12
+        return {
+            "agentId": profile["id"],
+            "agentLabel": profile["label"],
+            "mode": profile["mode"],
+            "horizon": profile["horizon"],
+            "strategy": strategy,
+            "sampleCount": int(exec_count),
+            "winRate": round(win_rate, 1),
+            "avgNetPnlPct": round(weighted_pnl, 2),
+            "positiveWindowRate": round(positive_rate, 1),
+            "mddPct": round(mdd, 2),
+            "proofScore": round(proof_score, 2),
+            "lastWindow": str(recent[-1].get("window") or "") if recent else "",
+        }
+
+    profile_rows = []
+    baseline_rows = []
+    for profile in AGENT_POOL:
+        corrected = _metrics(profile, "corrected")
+        baseline = _metrics(profile, "baseline")
+        if corrected:
+            profile_rows.append(corrected)
+        if baseline:
+            baseline_rows.append({**baseline, "agentId": f"baseline_{profile['id']}", "agentLabel": f"Raw baseline {profile['mode']}/{profile['horizon']}"})
+
+    profile_rows.sort(key=lambda row: row.get("proofScore", -9999), reverse=True)
+    baseline_rows.sort(key=lambda row: row.get("proofScore", -9999), reverse=True)
+    current = next((row for row in profile_rows if row.get("agentId") == current_agent_id), None)
+    current_rank = next((idx + 1 for idx, row in enumerate(profile_rows) if row.get("agentId") == current_agent_id), None)
+    best_profile = profile_rows[0] if profile_rows else None
+    best_baseline = baseline_rows[0] if baseline_rows else None
+    beats_best_baseline = bool(current and best_baseline and current.get("proofScore", -9999) > best_baseline.get("proofScore", 9999))
+    verdict = "UNPROVEN"
+    if current and current.get("sampleCount", 0) >= 30:
+        if current_rank == 1 and beats_best_baseline and current.get("avgNetPnlPct", 0) > 0:
+            verdict = "PROVING_EDGE"
+        elif current.get("avgNetPnlPct", 0) > 0 and beats_best_baseline:
+            verdict = "COMPETITIVE"
+        else:
+            verdict = "NOT_PROVEN"
+
+    return {
+        "status": "OK",
+        "method": "recent_6_window_walk_forward_oos",
+        "verdict": verdict,
+        "currentRank": current_rank,
+        "profileCount": len(profile_rows),
+        "current": current or {},
+        "leader": best_profile or {},
+        "bestBaseline": best_baseline or {},
+        "beatsBestBaseline": beats_best_baseline,
+        "rows": profile_rows[:5],
+        "baselines": baseline_rows[:3],
+    }
 
 
 def status(market: str = "all") -> dict[str, Any]:
@@ -639,12 +681,12 @@ def status(market: str = "all") -> dict[str, Any]:
         markets[mk] = {
             "activeAgent": agent,
             "generation": ctx["generation"],
-            "nextAgent": _next_agent(agent["id"]),
             "summary": summary,
             "survival": survival,
             "positions": _position_items(mk, agent["id"]),
             "candidateCount": len(_collect_recommendations(mk, agent)),
-            "needsSwitch": survival["state"] == "DEAD",
+            "proofFailed": survival["state"] == "DEAD",
+            "proofBoard": _walkforward_proof_board(mk, agent["id"]),
         }
     nav_rows = _read_csv(AI_NAV_CSV)
     return {
@@ -653,7 +695,6 @@ def status(market: str = "all") -> dict[str, Any]:
         "agentPool": list(AGENT_POOL),
         "markets": markets,
         "lastRun": state.get("lastRun", {}),
-        "retiredAgents": state.get("retiredAgents", []),
         "navRows": len(nav_rows),
         "latestNav": nav_rows[-1] if nav_rows else {},
     }
@@ -677,10 +718,10 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
         result["markets"][mk] = {
             "activeAgent": ctx["agent"],
             "generation": ctx["generation"],
-            "nextAgent": _next_agent(ctx["agentId"]),
             "actions": actions,
             "summary": summary,
             "survival": _survival_state(mk, summary),
+            "proofBoard": _walkforward_proof_board(mk, ctx["agentId"]),
             "nav": nav,
         }
     if not dry_run:
