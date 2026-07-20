@@ -162,7 +162,7 @@ export default function SymbolSearchSelect({
 
   return (
     <div ref={boxRef} className={`relative ${className}`}>
-      <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 focus-within:border-blue-500">
+      <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950 px-4 focus-within:border-blue-500">
         <Search size={18} className="text-slate-500" aria-hidden="true" />
         <label htmlFor={searchId} className="sr-only">종목 검색</label>
         <input

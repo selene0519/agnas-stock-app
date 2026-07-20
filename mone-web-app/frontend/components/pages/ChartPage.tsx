@@ -2911,6 +2911,14 @@ export default function ChartPage() {
   const priceDelta = (price: number) => entryPrice > 0 && price > 0
     ? `${((price - entryPrice) / entryPrice * 100 >= 0 ? "+" : "")}${((price - entryPrice) / entryPrice * 100).toFixed(1)}%`
     : "-";
+  const compactConclusionHeadline = moneConclusion.blocksNewEntry
+    ? "관찰"
+    : moneConclusion.actionText === "진입 검토"
+      ? "진입 검토"
+      : moneConclusion.actionText || "대기";
+  const compactConclusionDetail = moneConclusion.blocksNewEntry
+    ? "조건이 정리될 때까지 관찰합니다."
+    : moneConclusion.rows[0]?.value || "핵심 조건을 확인하고 다음 판단을 안내합니다.";
   const summaryMetrics = [
     { label: "기준가", value: entryPrice > 0 ? money(entryPrice, selected?.market || market) : "-", sub: currentPrice > 0 ? `현재가 ${money(currentPrice, selected?.market || market)}` : "추천 기준", tone: "text-slate-100" },
     { label: "손절가", value: stopPrice > 0 ? money(stopPrice, selected?.market || market) : "-", sub: priceDelta(stopPrice), tone: "text-rose-300" },
@@ -2922,7 +2930,7 @@ export default function ChartPage() {
 
   return (
     <ErrorBoundary>
-    <div className="space-y-4 pb-3">
+    <div className="mone-home space-y-4 pb-3">
       <header className="flex flex-col gap-3 border-b border-slate-800/80 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="shrink-0">
           <h1 className="text-[28px] font-black leading-none text-slate-100">분석</h1>
@@ -2957,14 +2965,15 @@ export default function ChartPage() {
 
       {selected && (
         <div className="space-y-5">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-            <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
+          <div className="mone-home-card p-3.5">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
                   <h2 className="text-xl font-bold text-slate-100">{selected.name}</h2>
+                  <span className="font-mono text-sm text-slate-500">{selected.symbol} · {selected.market.toUpperCase()}</span>
                   <span className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold ${stance.cls}`}>{stance.label}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2">
                   <span className="rounded-lg border border-teal-500/35 bg-teal-500/5 px-2.5 py-1 text-[11px] font-bold text-teal-200">{strategyBasisText}</span>
-                </div>
                 <div className="hidden">
                   <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(analysisFreshness.state)}`}>
                     {analysisFreshness.label}
@@ -2980,8 +2989,6 @@ export default function ChartPage() {
                     {strategySyncText}
                   </span>
                 </div>
-                <p className="font-mono text-sm text-slate-500">{selected.symbol} · {selected.market.toUpperCase()}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className="text-xs text-slate-500">{stance.detail}</span>
                   {loadState.updatedAt && <span className="text-[11px] text-slate-600">갱신 {loadState.updatedAt}</span>}
                   <button
@@ -2992,7 +2999,6 @@ export default function ChartPage() {
                     <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                     재조회
                   </button>
-                </div>
               </div>
               <div className="hidden">
                 <Info label="최근 종가" value={latest ? money(latest.close, selected.market) : loading ? "확인 중" : "-"} />
@@ -3009,60 +3015,41 @@ export default function ChartPage() {
                     ? `${Number(indicators.mdd20).toFixed(2)}%`
                     : "추가 데이터 필요 · 최소 20봉 필요"}
                 />
-              </div>
             </div>
+          </div>
           </div>
 
           {moneConclusion && (
-              <div className={`grid gap-5 rounded-2xl border p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "border-amber-500/40 bg-amber-500/[0.06]" : "border-teal-400/45 bg-teal-400/[0.05]"}`}>
-                <div className="flex min-w-0 flex-col justify-between border-b border-slate-700/70 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">현재 MONE 결론</div>
-                    <div className={`mt-3 whitespace-nowrap text-4xl font-black leading-none ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "text-amber-200" : "text-emerald-200"}`}>
-                      {moneConclusion.headline}
-                    </div>
-                    <div className="mt-3 max-w-md text-sm leading-6 text-slate-400">{moneConclusion.rows[0]?.value}</div>
+              <div className="mone-home-card grid grid-cols-2 overflow-hidden sm:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
+                <div className="flex min-w-0 flex-col justify-center border-r border-slate-700/70 px-4 py-4 sm:px-5 sm:py-5">
+                  <div className={`whitespace-nowrap text-2xl font-black leading-none min-[440px]:text-[28px] sm:text-4xl ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "text-amber-300" : "text-teal-300"}`}>
+                    {compactConclusionHeadline}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    {moneConclusion.actionText !== moneConclusion.headline && (
-                      <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "border-amber-600/40 text-amber-300" : "border-emerald-600/40 text-emerald-300"}`}>
-                        {moneConclusion.actionText}
-                      </span>
-                    )}
-                    {moneConclusion.secondaryBadge && (
-                      <span className="rounded-lg border border-slate-700 px-2.5 py-1 text-xs font-bold text-slate-300">
-                        {moneConclusion.secondaryBadge}
-                      </span>
-                    )}
-                    {moneConclusion.conf != null && (
-                      <span className="rounded-lg border border-slate-700 px-2.5 py-1 font-mono text-xs text-slate-400">신뢰도 {moneConclusion.conf}</span>
-                    )}
-                  </div>
+                  <div className="mt-3 text-[11px] leading-5 text-slate-400 sm:text-sm sm:leading-6">{compactConclusionDetail}</div>
                 </div>
-                {/* Decision Stack — 종목 신호·시장 환경·최종 행동 (홈·탐색과 공통, UX 보고서 3.1) */}
-                <div className="grid self-stretch divide-y divide-slate-700/70 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/45">
-                  <div className="flex gap-2.5 px-3 py-3"><Globe2 size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">시장 환경</div><div className={marketGate?.isLow ? "mt-1 text-sm font-bold text-rose-300" : marketGate?.isMid ? "mt-1 text-sm font-bold text-amber-300" : "mt-1 text-sm font-bold text-teal-300"}>{marketGate ? marketGate.levelText : "확인 중"}</div><div className="mt-1 text-[10px] text-slate-600">{marketGate?.hasRegimeMa ? `20일선 대비 ${marketGate.maDist >= 0 ? "+" : ""}${marketGate.maDist.toFixed(1)}%` : "시장 데이터 확인 중"}</div></div></div>
-                  <div className="flex gap-2.5 px-3 py-3"><Activity size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">종목 신호</div><div className="mt-1 text-sm font-bold text-amber-300">{moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "산출 대기"}</div><div className="mt-1 text-[10px] text-slate-600">{moneConclusion.riskText || "추천 조건 확인 중"}</div></div></div>
-                  <div className="flex gap-2.5 px-3 py-3"><Crosshair size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">최종 행동</div><div className={`mt-1 text-sm font-bold ${toneTextClass(moneConclusion.actionTone)}`}>{moneConclusion.actionText}</div><div className="mt-1 text-[10px] text-slate-600">{moneConclusion.rows[2]?.value || "진입 기준 확인 중"}</div></div></div>
+                <div className="grid self-stretch divide-y divide-slate-700/70">
+                  <div className="flex gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3"><Globe2 size={16} className="mt-0.5 shrink-0 text-slate-400" /><div className="min-w-0"><div className="text-[10px] text-slate-500">시장 환경</div><div className={marketGate?.isLow ? "mt-1 text-sm font-bold text-rose-300" : marketGate?.isMid ? "mt-1 text-sm font-bold text-amber-300" : "mt-1 text-sm font-bold text-teal-300"}>{marketGate ? marketGate.levelText : "확인 중"}</div><div className="mt-1 text-[10px] leading-4 text-slate-500">{marketGate?.hasRegimeMa ? `20일선 대비 ${marketGate.maDist >= 0 ? "+" : ""}${marketGate.maDist.toFixed(1)}%` : "시장 데이터 확인 중"}</div></div></div>
+                  <div className="flex gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3"><Activity size={16} className="mt-0.5 shrink-0 text-slate-400" /><div className="min-w-0"><div className="text-[10px] text-slate-500">종목 신호</div><div className="mt-1 text-sm font-bold text-amber-300">{moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "산출 대기"}</div><div className="mt-1 text-[10px] leading-4 text-slate-500">{moneConclusion.riskText || "추천 조건 확인 중"}</div></div></div>
+                  <div className="flex gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3"><Crosshair size={16} className="mt-0.5 shrink-0 text-slate-400" /><div className="min-w-0"><div className="text-[10px] text-slate-500">최종 행동</div><div className={`mt-1 text-sm font-bold ${toneTextClass(moneConclusion.actionTone)}`}>{moneConclusion.actionText}</div><div className="mt-1 text-[10px] leading-4 text-slate-500">{moneConclusion.rows[2]?.value || "진입 기준 확인 중"}</div></div></div>
                 </div>
               </div>
             )}
 
-          <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/45">
+          <div className="mone-home-card overflow-hidden">
               <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 sm:grid-cols-3 sm:divide-y-0 xl:grid-cols-6">
                 {summaryMetrics.map((metric) => (
-                  <div key={metric.label} className="min-w-0 px-3 py-3 text-center">
-                    <div className="text-[10px] text-slate-500">{metric.label}</div>
-                    <div className={`mt-1 truncate font-mono text-sm font-bold ${metric.tone}`}>{metric.value}</div>
-                    <div className="mt-1 truncate text-[10px] text-slate-600">{metric.sub}</div>
+                  <div key={metric.label} className="min-w-0 px-3 py-3.5 text-center">
+                    <div className="text-[11px] text-slate-500">{metric.label}</div>
+                    <div className={`mt-1 font-mono text-[15px] font-bold leading-5 tabular-nums ${metric.tone}`}>{metric.value}</div>
+                    <div className="mt-1 text-[11px] leading-4 text-slate-500">{metric.sub}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/45 px-4 py-4">
-              <div className="text-sm font-semibold text-slate-200">MONE 판단 이유</div>
-              <ol className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
+          <div className="mone-home-card px-3.5 py-3.5">
+              <div className="flex items-center gap-2"><span className="mone-section-icon" /><div className="mone-home-section-title">MONE 판단 이유</div></div>
+              <ol className="mt-2 space-y-1 text-[13px] leading-5 text-slate-400">
                 {analysisReasonLines.length
                   ? analysisReasonLines.map((reason, index) => <li key={reason} className="break-keep">{index + 1}. {reason}</li>)
                   : <li>1. 추천 데이터 연결 후 판단 이유가 표시됩니다.</li>}
@@ -3084,22 +3071,18 @@ export default function ChartPage() {
               </div>
           )}
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-3">
+          <div className="mone-home-card p-3">
               <button
                 type="button"
                 aria-expanded={dataStatusOpen}
                 onClick={() => setDataStatusOpen((open) => !open)}
                 className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-1 text-left transition-[color,transform] active:scale-[0.96]"
               >
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-slate-200">데이터 연결 상태</div>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {dataCards.map((card) => (
-                      <span key={card.label} className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-0.5 text-[10px] text-slate-400">
-                        <span className="text-slate-500">{card.label}</span>
-                        <span className="ml-1 font-semibold text-slate-200">{card.value}</span>
-                      </span>
-                    ))}
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="mone-section-icon" />
+                  <div className="min-w-0">
+                    <div className="mone-home-section-title">데이터 연결 상태</div>
+                    <div className="mt-0.5 text-[10px] text-slate-500">분석에 사용 중인 데이터와 최신 상태</div>
                   </div>
                 </div>
                 <span className="shrink-0 rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-slate-400">
@@ -3109,10 +3092,10 @@ export default function ChartPage() {
               {dataStatusOpen && (
                 <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
                   {dataCards.map((card) => (
-                    <div key={card.label} className={`rounded-xl border px-3 py-2 ${card.cls}`}>
+                    <div key={card.label} className={`rounded-[10px] border px-3 py-2.5 ${card.cls}`}>
                       <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{card.label}</div>
                       <div className="mt-1 text-sm font-bold">{card.value}</div>
-                      <div className="text-[10px] opacity-75">{card.sub}</div>
+                      <div className="mt-1 text-[10px] leading-4 opacity-75">{card.sub}</div>
                     </div>
                   ))}
                 </div>
