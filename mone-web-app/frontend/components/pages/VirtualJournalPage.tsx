@@ -251,10 +251,17 @@ function AiPaperSurvivalPanel({
   const marketsData = data?.markets || {};
   const marketEntries = (["kr", "us"] as const).map((mk) => [mk, marketsData[mk] || {}] as const);
   const previewActions = Object.values(preview?.markets || {}).flatMap((item: any) => item?.actions || []).slice(0, 6);
+  const retiredCount = Array.isArray(data?.retiredAgents) ? data.retiredAgents.length : 0;
   const stateTone = (state: string) => {
     if (state === "DEAD" || state === "CRITICAL") return "text-red-300";
     if (state === "DANGER") return "text-amber-300";
     return "text-emerald-300";
+  };
+  const actionTone = (action: string) => {
+    if (action === "BUY") return "bg-emerald-500/15 text-emerald-300";
+    if (action === "SELL") return "bg-red-500/15 text-red-300";
+    if (action === "SWITCH") return "bg-amber-500/15 text-amber-300";
+    return "bg-slate-700 text-slate-300";
   };
 
   return (
@@ -267,6 +274,7 @@ function AiPaperSurvivalPanel({
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
             실제 주문 없이 AI 추천만으로 굴리는 가상 계좌입니다. 잔고, 생존율, 다음 행동 후보를 분리해서 봅니다.
+            {retiredCount > 0 && <span className="ml-2 text-amber-300">교체 이력 {retiredCount}회</span>}
           </p>
         </div>
         <div className="flex gap-2">
@@ -284,6 +292,8 @@ function AiPaperSurvivalPanel({
           const summary = item?.summary || {};
           const survival = item?.survival || {};
           const positions = item?.positions || [];
+          const activeAgent = item?.activeAgent || {};
+          const nextAgent = item?.nextAgent || {};
           const state = survival.state || "UNKNOWN";
           return (
             <div key={mk} className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
@@ -293,6 +303,21 @@ function AiPaperSurvivalPanel({
                   <span className={`font-mono text-xs font-semibold ${stateTone(state)}`}>{state}</span>
                 </div>
                 <span className="text-[11px] text-slate-500">후보 {item?.candidateCount ?? 0}개</span>
+              </div>
+              <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-slate-500">현재 AI</span>
+                  <span className="truncate text-right font-semibold text-slate-200">{activeAgent.label || summary.agentLabel || "-"}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-slate-500">다음 AI</span>
+                  <span className="truncate text-right text-slate-300">{nextAgent.label || "-"}</span>
+                </div>
+                {item?.needsSwitch && (
+                  <div className="mt-2 rounded bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-200">
+                    잔고 소진: 실행 시 다음 AI로 교체
+                  </div>
+                )}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {metric("계좌가치", fmtMoney(summary.portfolioValue ?? survival.portfolioValue, mk))}
@@ -315,19 +340,21 @@ function AiPaperSurvivalPanel({
           <div className="mb-2 text-xs font-semibold text-slate-400">다음 행동 미리보기</div>
           <div className="grid gap-2 md:grid-cols-2">
             {previewActions.map((action: any, index: number) => (
-              <div key={`${action.market}-${action.symbol}-${index}`} className="flex items-center justify-between gap-3 rounded-md bg-slate-900/70 px-3 py-2">
+              <div key={`${action.market}-${action.symbol || action.reason || action.action}-${index}`} className="flex items-center justify-between gap-3 rounded-md bg-slate-900/70 px-3 py-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${action.action === "BUY" ? "bg-emerald-500/15 text-emerald-300" : action.action === "SELL" ? "bg-red-500/15 text-red-300" : "bg-slate-700 text-slate-300"}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${actionTone(action.action)}`}>
                       {action.action}
                     </span>
-                    <span className="truncate text-xs font-semibold text-slate-200">{action.name || action.symbol}</span>
-                    <span className="font-mono text-[10px] text-slate-500">{action.symbol}</span>
+                    <span className="truncate text-xs font-semibold text-slate-200">
+                      {action.action === "SWITCH" ? `${action.fromAgent?.label || "-"} -> ${action.toAgent?.label || "-"}` : action.name || action.symbol || action.reason}
+                    </span>
+                    {action.symbol && <span className="font-mono text-[10px] text-slate-500">{action.symbol}</span>}
                   </div>
                   <div className="mt-1 text-[11px] text-slate-500">{action.decision || action.reason || "-"}</div>
                 </div>
                 <div className="text-right font-mono text-[11px] text-slate-300">
-                  <div>{fmtMoney(action.price, action.market)}</div>
+                  <div>{action.price == null ? `Gen ${action.generation ?? "-"}` : fmtMoney(action.price, action.market)}</div>
                   {action.quantity != null && <div className="text-slate-500">x {Number(action.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>}
                 </div>
               </div>
