@@ -235,6 +235,18 @@ function fmtMoney(value: any, market: string) {
     : `${Math.round(n).toLocaleString("ko-KR")}원`;
 }
 
+function fmtPctValue(value: any, digits = 2) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "-";
+  return `${n.toFixed(digits)}%`;
+}
+
+function fmtSignedPct(value: any, digits = 2) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "-";
+  return `${n > 0 ? "+" : ""}${n.toFixed(digits)}%`;
+}
+
 function AiPaperSurvivalPanel({
   data,
   preview,
@@ -296,8 +308,10 @@ function AiPaperSurvivalPanel({
           const positions = item?.positions || [];
           const activeAgent = item?.activeAgent || {};
           const proof = item?.proofBoard || {};
+          const live = item?.liveMetrics || {};
           const proofRows = Array.isArray(proof.rows) ? proof.rows.slice(0, 3) : [];
           const state = survival.state || "UNKNOWN";
+          const liveEnough = Number(live.sampleCount || 0) >= 5;
           return (
             <div key={mk} className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
               <div className="flex items-center justify-between gap-3">
@@ -334,6 +348,40 @@ function AiPaperSurvivalPanel({
                 {metric("현금", fmtMoney(summary.cash, mk))}
                 {metric("수익률", summary.totalReturnPct == null ? "-" : `${Number(summary.totalReturnPct).toFixed(2)}%`, Number(summary.totalReturnPct || 0) >= 0 ? "text-emerald-300" : "text-red-300")}
                 {metric("생존율", survival.survivalPct == null ? "-" : `${Number(survival.survivalPct).toFixed(1)}%`, stateTone(state))}
+              </div>
+              <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                <div className="mb-2 flex items-center justify-between gap-3 text-[11px]">
+                  <span className="font-semibold text-slate-300">실전 NAV</span>
+                  <span className={liveEnough ? "text-slate-500" : "text-amber-300"}>
+                    {liveEnough ? `${live.sampleCount}개 구간` : `샘플 부족 ${live.sampleCount ?? 0}/5`}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">누적</span>
+                    <span className={`font-mono ${Number(live.totalReturnPct || 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtSignedPct(live.totalReturnPct)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">MDD</span>
+                    <span className="font-mono text-red-300">{fmtPctValue(live.mddPct)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">샤프</span>
+                    <span className="font-mono text-slate-200">{live.sharpe == null ? "-" : Number(live.sharpe).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">승률</span>
+                    <span className="font-mono text-slate-200">{fmtPctValue(live.winRate, 1)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">현금비중</span>
+                    <span className="font-mono text-slate-200">{fmtPctValue(live.cashPct, 1)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">고점</span>
+                    <span className="font-mono text-slate-200">{fmtMoney(live.peakValue, mk)}</span>
+                  </div>
+                </div>
               </div>
               <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
                 <span>보유 {summary.positionCount ?? positions.length ?? 0}개</span>

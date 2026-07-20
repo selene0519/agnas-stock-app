@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import os
 import re
 from datetime import datetime
@@ -582,6 +583,75 @@ def _append_nav_snapshot(market: str, cycle_actions: list[dict[str, Any]]) -> di
     return row
 
 
+def _nav_rows_for(market: str, agent_id: str) -> list[dict[str, Any]]:
+    rows = [
+        row for row in _read_csv(AI_NAV_CSV)
+        if str(row.get("market", "")).lower() == market and str(row.get("agentId") or "") == agent_id
+    ]
+    return sorted(rows, key=lambda row: str(row.get("createdAt") or row.get("date") or ""))
+
+
+def _live_nav_metrics(market: str, agent_id: str, summary: dict[str, Any]) -> dict[str, Any]:
+    rows = _nav_rows_for(market, agent_id)
+    values = []
+    for row in rows:
+        raw_value = row.get("portfolioValue")
+        if raw_value not in (None, ""):
+            values.append(max(_num(raw_value), 0.0))
+    current_value = _num(summary.get("portfolioValue"))
+    seed = _num(summary.get("seed")) or _seed_for(market)
+    cash = _num(summary.get("cash"))
+    if summary.get("portfolioValue") is not None and (not values or abs(values[-1] - current_value) > 0.01):
+        values.append(max(current_value, 0.0))
+
+    returns: list[float] = []
+    for prev, cur in zip(values, values[1:]):
+        if prev > 0:
+            returns.append((cur / prev - 1.0) * 100.0)
+
+    peak = values[0] if values else seed
+    max_drawdown = 0.0
+    for value in values:
+        peak = max(peak, value)
+        if peak > 0:
+            max_drawdown = min(max_drawdown, (value / peak - 1.0) * 100.0)
+
+    win_rate = (sum(1 for ret in returns if ret > 0) / len(returns) * 100.0) if returns else None
+    avg_return = (sum(returns) / len(returns)) if returns else None
+    if returns and len(returns) >= 2:
+        mean = sum(returns) / len(returns)
+        variance = sum((ret - mean) ** 2 for ret in returns) / (len(returns) - 1)
+        std = math.sqrt(variance)
+        sharpe = (mean / std * math.sqrt(252)) if std > 0 else None
+    else:
+        sharpe = None
+
+    total_return = (current_value / seed - 1.0) * 100.0 if seed > 0 and current_value > 0 else (_num(summary.get("totalReturnPct")) if summary.get("totalReturnPct") is not None else 0.0)
+    cash_pct = (cash / current_value * 100.0) if current_value > 0 else 0.0
+    proof_status = "FAILED" if current_value <= seed * 0.01 else ("WARMING_UP" if len(returns) < 5 else "RUNNING")
+
+    return {
+        "status": "OK",
+        "proofStatus": proof_status,
+        "sampleCount": len(returns),
+        "navPointCount": len(values),
+        "totalReturnPct": round(total_return, 2),
+        "mddPct": round(max_drawdown, 2),
+        "sharpe": round(sharpe, 2) if sharpe is not None else None,
+        "winRate": round(win_rate, 1) if win_rate is not None else None,
+        "avgPeriodReturnPct": round(avg_return, 2) if avg_return is not None else None,
+        "cashPct": round(cash_pct, 1),
+        "peakValue": round(peak, 2),
+        "currentValue": round(current_value, 2),
+        "lastNavDate": str(rows[-1].get("date") or rows[-1].get("createdAt") or "") if rows else "",
+        "recentReturnsPct": [round(ret, 2) for ret in returns[-8:]],
+        "equityCurve": [
+            {"index": idx, "value": round(value, 2), "returnPct": round((value / seed - 1.0) * 100.0, 2) if seed > 0 else 0.0}
+            for idx, value in enumerate(values[-16:])
+        ],
+    }
+
+
 def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, Any]:
     rows = _read_csv(REPORTS / f"walkforward_results_{market}.csv")
     if not rows:
@@ -682,6 +752,7 @@ def status(market: str = "all") -> dict[str, Any]:
             "activeAgent": agent,
             "generation": ctx["generation"],
             "summary": summary,
+            "liveMetrics": _live_nav_metrics(mk, agent["id"], summary),
             "survival": survival,
             "positions": _position_items(mk, agent["id"]),
             "candidateCount": len(_collect_recommendations(mk, agent)),
@@ -720,6 +791,7 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
             "generation": ctx["generation"],
             "actions": actions,
             "summary": summary,
+            "liveMetrics": _live_nav_metrics(mk, ctx["agentId"], summary),
             "survival": _survival_state(mk, summary),
             "proofBoard": _walkforward_proof_board(mk, ctx["agentId"]),
             "nav": nav,
