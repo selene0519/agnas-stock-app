@@ -519,6 +519,10 @@ jobs:
             python scripts/screen_regime_lens_kr.py
             python scripts/capture_lens_predictions_kr.py
             echo "regime lens loop: exit $?"
+          fi
+          if [ -f scripts/build_smart_rank_kr.py ]; then
+            python scripts/build_smart_rank_kr.py
+            echo "smart rank: exit $?"
           else
             echo "lens scripts not found; skip."
           fi
@@ -896,6 +900,7 @@ jobs:
             git add reports/lens_journal_kr.csv reports/lens_calibration_kr.json reports/regime_lens_candidates_kr.json 2>/dev/null || true
             git add reports/lens_prediction_ledger_kr.csv reports/lens_live_journal_kr.csv 2>/dev/null || true
             git add reports/kr_supply_flow_history.csv reports/disclosures_kr_history.csv 2>/dev/null || true
+            git add reports/smart_rank_kr.json 2>/dev/null || true
             git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
             git add data/kr_supply_flow.csv data/kr_excluded_symbols.csv 2>/dev/null || true
             git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true

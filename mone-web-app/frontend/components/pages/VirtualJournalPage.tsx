@@ -256,6 +256,7 @@ export default function VirtualJournalPage() {
   const [view, setView] = useState<JournalView>("journal");
   const [listSource, setListSource] = useState<ListSource>("all");
   const [lensData, setLensData] = useState<any>(null);
+  const [smartRank, setSmartRank] = useState<any>(null);
   const [replayDate, setReplayDate] = useState(defaultReplayDate);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
@@ -294,7 +295,7 @@ export default function VirtualJournalPage() {
       // (한 엔드포인트의 네트워크 예외로 나머지 패널까지 사라지던 문제 방지)
       const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> => p.then((v) => v ?? fallback).catch(() => fallback);
       const listSourceParam = listSource === "all" ? undefined : listSource;
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes, lensRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes, lensRes, smartRes] = await Promise.all([
         safe(mone.virtualTrades({ ...scope, sourceType: listSourceParam, limit: 200 }), { status: "ERROR", error: "일지 로드 실패", items: [] } as any),
         safe(mone.journalFailurePatterns(scope), {} as any),
         safe(mone.journalCalibrationSuggestions(scope), {} as any),
@@ -316,6 +317,7 @@ export default function VirtualJournalPage() {
         safe(mone.journalSelfLearningStatus({ market: scope.market }), {} as any),
         safe(mone.journalOpsDashboard({ market: scope.market }), {} as any),
         safe(mone.lensCandidates({ market: "kr" }), {} as any),
+        safe(mone.smartRank({ market: "kr" }), {} as any),
       ]);
       if (tradeRes.status === "ERROR") setError(tradeRes.error || "일지 로드 실패");
       setTrades(tradeRes.items || []);
@@ -339,6 +341,7 @@ export default function VirtualJournalPage() {
       setSelfLearningData(selfLearningRes?.status === "OK" ? selfLearningRes : null);
       setOpsData(opsRes?.status === "OK" ? opsRes : null);
       setLensData(lensRes && (lensRes.status === "OK" || lensRes.status === "EMPTY") ? lensRes : null);
+      setSmartRank(smartRes && (smartRes.status === "OK" || smartRes.status === "EMPTY") ? smartRes : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -1464,6 +1467,63 @@ export default function VirtualJournalPage() {
 
       {view === "journal" && (
       <>
+      <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <Zap size={16} className="text-violet-300" />
+            <span>AI 스마트 순위 · 선별 두뇌</span>
+          </div>
+          {smartRank ? (
+            <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+              <span className={`rounded px-2 py-0.5 ${smartRank.marketRegime === "BEAR" ? "bg-red-500/12 text-red-200" : smartRank.marketRegime === "BULL" ? "bg-emerald-500/12 text-emerald-200" : "bg-amber-500/12 text-amber-200"}`}>
+                {smartRank.marketRegime === "BEAR" ? "약세장" : smartRank.marketRegime === "BULL" ? "강세장" : "횡보장"}
+              </span>
+              <span className="rounded bg-violet-500/12 px-2 py-0.5 text-violet-200">{smartRank.featureCount ?? 14}개 신호 동시분석</span>
+            </div>
+          ) : (
+            <span className="font-mono text-[11px] text-slate-500">순위 데이터 없음</span>
+          )}
+        </div>
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+          14개 신호를 동시에 저울질해 전 종목 순위를 매기는 선별 모델(사람은 못 하는 다중신호 비교). 아래 실증 성적은 안 본 구간(OOS) 검증치입니다.
+        </p>
+        {smartRank?.provenEdge && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {metric("상위20% 실손익", `${(smartRank.provenEdge.topQuintileNetPct ?? 0) >= 0 ? "+" : ""}${smartRank.provenEdge.topQuintileNetPct}%`, (smartRank.provenEdge.topQuintileNetPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300")}
+            {metric("상-하위 스프레드", `${(smartRank.provenEdge.spreadPct ?? 0) >= 0 ? "+" : ""}${smartRank.provenEdge.spreadPct}%p`, "text-violet-300")}
+            {metric("횡보장 상위20%", smartRank.provenEdge.topQuintileByRegime?.SIDE != null ? `${smartRank.provenEdge.topQuintileByRegime.SIDE >= 0 ? "+" : ""}${smartRank.provenEdge.topQuintileByRegime.SIDE}%` : "-", (smartRank.provenEdge.topQuintileByRegime?.SIDE ?? 0) >= 0 ? "text-emerald-300" : "text-red-300")}
+            {metric("IC (예측 상관)", String(smartRank.provenEdge.ic ?? "-"))}
+          </div>
+        )}
+        {smartRank && Array.isArray(smartRank.candidates) && smartRank.candidates.length > 0 ? (
+          <div className="mt-3 space-y-1.5">
+            {smartRank.candidates.slice(0, 8).map((c: any, idx: number) => (
+              <div key={c.symbol} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 ${c.actionable ? "bg-emerald-500/8 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.18)]" : "bg-slate-950/50 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]"}`}>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="font-mono text-[11px] text-violet-300">#{idx + 1}</span>
+                  <span className="text-sm font-semibold text-slate-100">{c.name || c.symbol}</span>
+                  <span className="font-mono text-[10px] text-slate-500">{c.symbol}</span>
+                </div>
+                <div className="flex items-center gap-3 font-mono text-[10px] text-slate-500">
+                  <span>점수 {c.modelScore}</span>
+                  <span>RSI {c.rsi14}</span>
+                  <span className={c.actionable ? "text-emerald-300" : "text-slate-500"}>{c.actionable ? "실행가능" : "caution"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            {smartRank?.status === "EMPTY" ? "스마트 순위 미생성 — build_smart_rank_kr.py 실행 필요." : "순위 후보가 없습니다."}
+          </div>
+        )}
+        {smartRank?.marketRegime === "BEAR" && (
+          <div className="mt-2 rounded-md bg-amber-500/8 px-3 py-1.5 text-[10px] leading-4 text-amber-200/80 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.14)]">
+            ⚠ 약세장은 상위 픽도 OOS에서 (−)였습니다 — 순위는 참고만, 실행은 억제(caution).
+          </div>
+        )}
+      </section>
+
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">

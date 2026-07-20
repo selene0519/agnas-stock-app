@@ -3384,6 +3384,28 @@ def api_lens_candidates(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
         return {"status": "ERROR", "error": str(exc), "candidates": []}
 
 
+@app.get("/api/smart-rank/candidates")
+def api_smart_rank(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    """AI 스마트 순위(다중신호 ML 선별) — scripts/build_smart_rank_kr.py 산출물.
+
+    reports/smart_rank_kr.json (OOS 검증지표 + 순위 후보)을 읽는다.
+    """
+    if market != "kr":
+        return {"status": "NOT_AVAILABLE", "market": market,
+                "message": "스마트 순위는 현재 KR만 지원합니다.", "candidates": []}
+    path = data.REPO_ROOT / "reports" / "smart_rank_kr.json"
+    if not path.exists():
+        return {"status": "EMPTY",
+                "message": "스마트 순위 미생성 — scripts/build_smart_rank_kr.py 실행 필요.",
+                "candidates": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload.setdefault("status", "OK")
+        return payload
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "ERROR", "error": str(exc), "candidates": []}
+
+
 @app.get("/api/advanced/backtest")
 def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return final_engine.admin_backtest(_market(market))
