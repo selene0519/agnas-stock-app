@@ -511,6 +511,7 @@ jobs:
         #             → screen(오늘후보) → capture(오늘후보를 예측원장에 기록)
         run: |
           set +e
+          python scripts/archive_catalyst_history_kr.py
           if [ -f scripts/build_lens_journal_kr.py ]; then
             python scripts/settle_lens_predictions_kr.py
             python scripts/build_lens_journal_kr.py
@@ -894,6 +895,7 @@ jobs:
             git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
             git add reports/lens_journal_kr.csv reports/lens_calibration_kr.json reports/regime_lens_candidates_kr.json 2>/dev/null || true
             git add reports/lens_prediction_ledger_kr.csv reports/lens_live_journal_kr.csv 2>/dev/null || true
+            git add reports/kr_supply_flow_history.csv reports/disclosures_kr_history.csv 2>/dev/null || true
             git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
             git add data/kr_supply_flow.csv data/kr_excluded_symbols.csv 2>/dev/null || true
             git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
