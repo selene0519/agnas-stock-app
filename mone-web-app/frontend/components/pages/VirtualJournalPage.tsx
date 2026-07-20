@@ -12,6 +12,8 @@ type ScopeMode = Extract<Mode, "conservative" | "balanced" | "aggressive" | "all
 type ScopeHorizon = Extract<Horizon, "short" | "swing" | "mid" | "all">;
 type ScopeSession = "all" | "PREMARKET_PLAN" | "INTRADAY_CHECK" | "AFTER_CLOSE_TRADE" | "FOLLOWUP_EVALUATION";
 type FailureAnalysisBasis = "all" | "evaluated" | "pending" | "dataQuality";
+type JournalView = "journal" | "perf" | "diag";
+type ListSource = "all" | "FORWARD_PAPER_TRADE" | "MANUAL_REVIEWED" | "HISTORICAL_REPLAY";
 
 const markets: { id: ScopeMarket; label: string }[] = [
   { id: "all", label: "전체" },
@@ -36,8 +38,22 @@ const horizons: { id: ScopeHorizon; label: string }[] = [
 const sessions: { id: ScopeSession; label: string }[] = [
   { id: "all", label: "All" },
   { id: "PREMARKET_PLAN", label: "Premarket" },
+  { id: "INTRADAY_CHECK", label: "Intraday" },
   { id: "AFTER_CLOSE_TRADE", label: "After close" },
   { id: "FOLLOWUP_EVALUATION", label: "Follow-up" },
+];
+
+const listSources: { id: ListSource; label: string }[] = [
+  { id: "all", label: "전체 소스" },
+  { id: "FORWARD_PAPER_TRADE", label: "자동" },
+  { id: "MANUAL_REVIEWED", label: "검토완료" },
+  { id: "HISTORICAL_REPLAY", label: "리플레이" },
+];
+
+const views: { id: JournalView; label: string }[] = [
+  { id: "journal", label: "일지" },
+  { id: "perf", label: "성과" },
+  { id: "diag", label: "정밀 진단" },
 ];
 
 const failureBasisOptions: { id: FailureAnalysisBasis; label: string }[] = [
@@ -237,6 +253,8 @@ export default function VirtualJournalPage() {
   const [mode, setMode] = useState<ScopeMode>("all");
   const [horizon, setHorizon] = useState<ScopeHorizon>("all");
   const [journalSession, setJournalSession] = useState<ScopeSession>("all");
+  const [view, setView] = useState<JournalView>("journal");
+  const [listSource, setListSource] = useState<ListSource>("all");
   const [replayDate, setReplayDate] = useState(defaultReplayDate);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
@@ -271,29 +289,33 @@ export default function VirtualJournalPage() {
     setLoading(true);
     setError("");
     try {
+      // 개별 API 실패가 페이지 전체를 무너뜨리지 않도록 각 호출을 격리한다.
+      // (한 엔드포인트의 네트워크 예외로 나머지 패널까지 사라지던 문제 방지)
+      const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> => p.then((v) => v ?? fallback).catch(() => fallback);
+      const listSourceParam = listSource === "all" ? undefined : listSource;
       const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes] = await Promise.all([
-        mone.virtualTrades({ ...scope, limit: 200 }),
-        mone.journalFailurePatterns(scope),
-        mone.journalCalibrationSuggestions(scope),
-        mone.journalAutoCaptureStatus(),
-        mone.journalAnalytics(scope),
-        mone.virtualFailureAnalytics(scope),
-        mone.virtualImprovementPriorities(scope),
-        mone.virtualStopLossDiagnostics(scope),
-        mone.virtualEntryTimingDiagnostics(scope),
-        mone.virtualEntryNotTouchedDiagnostics(scope),
-        mone.virtualMarketGapDiagnostics(scope),
-        mone.virtualOverextendedEntryDiagnostics(scope),
-        mone.virtualProfitCaptureDiagnostics(scope),
-        mone.virtualPerformanceGateDiagnostics({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
-        mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
-        mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }),
-        mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }),
-        mone.journalAttributionFeedback({ market: scope.market }),
-        mone.journalSelfLearningStatus({ market: scope.market }),
-        mone.journalOpsDashboard({ market: scope.market }),
+        safe(mone.virtualTrades({ ...scope, sourceType: listSourceParam, limit: 200 }), { status: "ERROR", error: "일지 로드 실패", items: [] } as any),
+        safe(mone.journalFailurePatterns(scope), {} as any),
+        safe(mone.journalCalibrationSuggestions(scope), {} as any),
+        safe(mone.journalAutoCaptureStatus(), {} as any),
+        safe(mone.journalAnalytics(scope), {} as any),
+        safe(mone.virtualFailureAnalytics(scope), {} as any),
+        safe(mone.virtualImprovementPriorities(scope), {} as any),
+        safe(mone.virtualStopLossDiagnostics(scope), {} as any),
+        safe(mone.virtualEntryTimingDiagnostics(scope), {} as any),
+        safe(mone.virtualEntryNotTouchedDiagnostics(scope), {} as any),
+        safe(mone.virtualMarketGapDiagnostics(scope), {} as any),
+        safe(mone.virtualOverextendedEntryDiagnostics(scope), {} as any),
+        safe(mone.virtualProfitCaptureDiagnostics(scope), {} as any),
+        safe(mone.virtualPerformanceGateDiagnostics({ market: scope.market, mode: scope.mode, horizon: scope.horizon }), {} as any),
+        safe(mone.journalPerformance({ market: scope.market, mode: scope.mode, horizon: scope.horizon }), {} as any),
+        safe(mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }), {} as any),
+        safe(mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }), {} as any),
+        safe(mone.journalAttributionFeedback({ market: scope.market }), {} as any),
+        safe(mone.journalSelfLearningStatus({ market: scope.market }), {} as any),
+        safe(mone.journalOpsDashboard({ market: scope.market }), {} as any),
       ]);
-      if (tradeRes.status === "ERROR") throw new Error(tradeRes.error || "journal load failed");
+      if (tradeRes.status === "ERROR") setError(tradeRes.error || "일지 로드 실패");
       setTrades(tradeRes.items || []);
       setPatterns(patternRes.items || []);
       setSuggestions(suggestionRes.items || []);
@@ -319,7 +341,7 @@ export default function VirtualJournalPage() {
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [scope, listSource]);
 
   useEffect(() => {
     load();
@@ -432,6 +454,34 @@ export default function VirtualJournalPage() {
       evaluated: evaluated.length,
       avgPnl: avg.length ? avg.reduce((a, b) => a + b, 0) / avg.length : null,
       winRate: evaluated.length ? (wins / evaluated.length) * 100 : null,
+    };
+  }, [trades]);
+
+  // 손익 비대칭(북극성): 손실↓·수익↑ 개선 여부를 직접 보여주는 지표.
+  // 손익이 확정된(net_pnl_pct 유한) 거래만 대상으로 클라이언트에서 계산한다.
+  const asymmetry = useMemo(() => {
+    const pnls = trades.map((item) => Number(item.net_pnl_pct)).filter((v) => Number.isFinite(v));
+    if (!pnls.length) return null;
+    const wins = pnls.filter((v) => v > 0);
+    const losses = pnls.filter((v) => v < 0);
+    const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+    const grossProfit = sum(wins);
+    const grossLoss = Math.abs(sum(losses));
+    const avgWin = wins.length ? grossProfit / wins.length : null;
+    const avgLoss = losses.length ? -grossLoss / losses.length : null; // 음수 표기
+    const expectancy = sum(pnls) / pnls.length;
+    const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : null;
+    const payoff = avgWin != null && avgLoss != null && avgLoss !== 0 ? avgWin / Math.abs(avgLoss) : null;
+    return {
+      n: pnls.length,
+      winCount: wins.length,
+      lossCount: losses.length,
+      winRate: (wins.length / pnls.length) * 100,
+      avgWin,
+      avgLoss,
+      expectancy,
+      profitFactor,
+      payoff,
     };
   }, [trades]);
 
@@ -646,6 +696,15 @@ export default function VirtualJournalPage() {
           </div>
         </div>
 
+        <div className="mt-4">
+          <SegmentedControl<JournalView> options={views.map((v) => ({ value: v.id, label: v.label }))} value={view} onChange={setView} className="w-full" />
+          <p className="mt-1.5 text-[11px] leading-4 text-slate-500">
+            {view === "journal" && "체결·평가된 개별 거래와 자동 캡처·리플레이·보정 후보입니다."}
+            {view === "perf" && "누적 성과·전략 매트릭스·귀속분석·모델 자기개선 피드백입니다."}
+            {view === "diag" && "추천 로직 개선을 위한 진단 지표입니다. 현재 추천 순위에는 직접 반영되지 않습니다."}
+          </p>
+        </div>
+
         <div className="mt-4 grid gap-3 md:grid-cols-5">
           {metric("전체 일지", stats.total)}
           {metric("열린 평가", stats.open, stats.open ? "text-sky-300" : "text-slate-100")}
@@ -664,6 +723,8 @@ export default function VirtualJournalPage() {
         {error && <div className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-200 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.22)]">{error}</div>}
       </section>
 
+      {view === "diag" && (
+      <>
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -1395,12 +1456,48 @@ export default function VirtualJournalPage() {
           </div>
         </div>
       </section>
+      </>
+      )}
+
+      {view === "journal" && (
+      <>
+      <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <TrendingUp size={16} className="text-emerald-300" />
+            <span>손익 비대칭</span>
+          </div>
+          <span className="font-mono text-[11px] text-slate-500">
+            {asymmetry ? `평가 ${asymmetry.n}건 · 승 ${asymmetry.winCount} / 패 ${asymmetry.lossCount}` : "평가 데이터 없음"}
+          </span>
+        </div>
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+          손실↓·수익↑ 비대칭이 이 앱의 목표입니다. Payoff(손익비)·Profit Factor가 1을 넘고 기대손익이 (+)여야 엣지가 있습니다.
+        </p>
+        {asymmetry ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {metric("기대손익/거래", `${asymmetry.expectancy >= 0 ? "+" : ""}${asymmetry.expectancy.toFixed(2)}%`, asymmetry.expectancy >= 0 ? "text-emerald-300" : "text-red-300")}
+            {metric("Profit Factor", asymmetry.profitFactor == null ? "-" : asymmetry.profitFactor.toFixed(2), (asymmetry.profitFactor ?? 0) >= 1 ? "text-emerald-300" : "text-red-300")}
+            {metric("Payoff(손익비)", asymmetry.payoff == null ? "-" : asymmetry.payoff.toFixed(2), (asymmetry.payoff ?? 0) >= 1 ? "text-emerald-300" : "text-amber-300")}
+            {metric("평균 이익", asymmetry.avgWin == null ? "-" : `+${asymmetry.avgWin.toFixed(2)}%`, "text-emerald-300")}
+            {metric("평균 손실", asymmetry.avgLoss == null ? "-" : `${asymmetry.avgLoss.toFixed(2)}%`, "text-red-300")}
+            {metric("손익 승률", asymmetry.winRate == null ? "-" : `${asymmetry.winRate.toFixed(1)}%`)}
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            평가 완료(손익 확정) 거래가 쌓이면 손익 비대칭 지표가 표시됩니다.
+          </div>
+        )}
+      </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-200">최근 일지</h2>
             <span className="font-mono text-xs tabular-nums text-slate-500">{loading ? "loading" : `${trades.length} rows`}</span>
+          </div>
+          <div className="mb-3">
+            <SegmentedControl<ListSource> options={listSources.map((s) => ({ value: s.id, label: s.label }))} value={listSource} onChange={setListSource} className="w-full" />
           </div>
           {/* 모바일 카드 뷰 */}
           <div className="space-y-2.5 sm:hidden">
@@ -1732,6 +1829,11 @@ export default function VirtualJournalPage() {
         </div>
       </section>
 
+      </>
+      )}
+
+      {view === "perf" && (
+      <>
       {/* ── 성과 대시보드 ─────────────────────────────────────────── */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
@@ -2252,6 +2354,8 @@ export default function VirtualJournalPage() {
           )}
         </div>
       </section>
+      </>
+      )}
     </div>
   );
 }
