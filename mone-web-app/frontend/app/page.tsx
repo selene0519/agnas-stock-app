@@ -452,7 +452,7 @@ export default function App() {
         {/* 메인 콘텐츠 — 모바일은 하단 탭바 높이(56px) + safe area 만큼 여백 */}
         <main ref={mainRef} id="main-content" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 pb-[calc(80px+env(safe-area-inset-bottom))] outline-none md:p-6 md:pb-6">
           <div className="mx-auto min-w-0 max-w-7xl space-y-4">
-            <SessionSafetyBanner market={getDefaultMarketBySession()} />
+            {page === "home" && <SessionSafetyBanner market={getDefaultMarketBySession()} />}
             {renderPage()}
           </div>
         </main>

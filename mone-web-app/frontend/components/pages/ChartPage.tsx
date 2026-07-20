@@ -2974,7 +2974,7 @@ export default function ChartPage() {
             <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <h2 className="text-xl font-bold text-slate-100">{selected.name}</h2>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                <div className="hidden">
                   <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(analysisFreshness.state)}`}>
                     {analysisFreshness.label}
                   </span>
@@ -2992,6 +2992,7 @@ export default function ChartPage() {
                 <p className="font-mono text-sm text-slate-500">{selected.symbol} · {selected.market.toUpperCase()}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${stance.cls}`}>{stance.label}</span>
+                  <span className="rounded-xl border border-teal-500/35 bg-teal-500/5 px-3 py-1.5 text-xs font-bold text-teal-200">{strategyBasisText}</span>
                   <span className="text-xs text-slate-500">{stance.detail}</span>
                   {loadState.updatedAt && <span className="text-[11px] text-slate-600">갱신 {loadState.updatedAt}</span>}
                   <button
@@ -3004,7 +3005,7 @@ export default function ChartPage() {
                   </button>
                 </div>
               </div>
-              <div className="hidden grid-cols-2 gap-2 text-right sm:grid sm:grid-cols-4">
+              <div className="hidden">
                 <Info label="최근 종가" value={latest ? money(latest.close, selected.market) : loading ? "확인 중" : "-"} />
                 <Info label="RSI14" value={latestRsi ? Number(latestRsi).toFixed(1) : loading ? "확인 중" : "데이터 부족"} />
                 <Info
@@ -3024,8 +3025,8 @@ export default function ChartPage() {
           </div>
 
           {moneConclusion && (
-              <div className={`rounded-2xl border p-5 ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "border-amber-500/40 bg-amber-500/[0.06]" : "border-teal-400/45 bg-teal-400/[0.05]"}`}>
-                <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+              <div className={`grid gap-5 rounded-2xl border p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "border-amber-500/40 bg-amber-500/[0.06]" : "border-teal-400/45 bg-teal-400/[0.05]"}`}>
+                <div className="flex min-w-0 flex-col justify-between border-b border-slate-700/70 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5">
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">현재 MONE 결론</div>
                     <div className={`mt-3 whitespace-nowrap text-4xl font-black leading-none ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "text-amber-200" : "text-emerald-200"}`}>
@@ -3050,7 +3051,7 @@ export default function ChartPage() {
                   </div>
                 </div>
                 {/* Decision Stack — 종목 신호·시장 환경·최종 행동 (홈·탐색과 공통, UX 보고서 3.1) */}
-                <div className="mb-3 grid divide-y divide-slate-700/70 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/45 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                <div className="grid self-stretch divide-y divide-slate-700/70 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/45">
                   <div className="flex gap-2.5 px-3 py-3"><Globe2 size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">시장 환경</div><div className={marketGate?.isLow ? "mt-1 text-sm font-bold text-rose-300" : marketGate?.isMid ? "mt-1 text-sm font-bold text-amber-300" : "mt-1 text-sm font-bold text-teal-300"}>{marketGate ? marketGate.levelText : "확인 중"}</div><div className="mt-1 text-[10px] text-slate-600">{marketGate?.hasRegimeMa ? `20일선 대비 ${marketGate.maDist >= 0 ? "+" : ""}${marketGate.maDist.toFixed(1)}%` : "시장 데이터 확인 중"}</div></div></div>
                   <div className="flex gap-2.5 px-3 py-3"><Activity size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">종목 신호</div><div className="mt-1 text-sm font-bold text-amber-300">{moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "산출 대기"}</div><div className="mt-1 text-[10px] text-slate-600">{moneConclusion.riskText || "추천 조건 확인 중"}</div></div></div>
                   <div className="flex gap-2.5 px-3 py-3"><Crosshair size={17} className="mt-0.5 shrink-0 text-slate-400" /><div><div className="text-[10px] text-slate-500">최종 행동</div><div className={`mt-1 text-sm font-bold ${toneTextClass(moneConclusion.actionTone)}`}>{moneConclusion.actionText}</div><div className="mt-1 text-[10px] text-slate-600">{moneConclusion.rows[2]?.value || "진입 기준 확인 중"}</div></div></div>
