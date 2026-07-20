@@ -506,6 +506,20 @@ jobs:
           fi
           set -e
 
+      - name: Rebuild regime lens self-calibration (KR)
+        # 매매일지 실측 → 자가보정 → 렌즈 후보 재생성 (journal→calibration→screen)
+        run: |
+          set +e
+          if [ -f scripts/build_lens_journal_kr.py ]; then
+            python scripts/build_lens_journal_kr.py
+            python scripts/build_lens_calibration_kr.py
+            python scripts/screen_regime_lens_kr.py
+            echo "regime lens rebuild: exit $?"
+          else
+            echo "lens scripts not found; skip."
+          fi
+          set -e
+
       # US 예측 알림은 mone-notify.yml (미장 장전 09:00 ET)에서 단독 1회 발송
 
       - name: Refresh KR/US close validations
@@ -875,6 +889,7 @@ jobs:
             git add reports/reco_cache/*.json 2>/dev/null || true
             git add reports/kr_recommendation_gen_status.json reports/us_recommendation_gen_status.json 2>/dev/null || true
             git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
+            git add reports/lens_journal_kr.csv reports/lens_calibration_kr.json reports/regime_lens_candidates_kr.json 2>/dev/null || true
             git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
             git add data/kr_supply_flow.csv data/kr_excluded_symbols.csv 2>/dev/null || true
             git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
