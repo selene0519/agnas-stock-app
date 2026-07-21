@@ -8,7 +8,7 @@ per-trade 저널로 기록한다. 이게 자가보정(Step 3)의 연료 = "AI �
 - 룩어헤드 없음: 신호=당일 종가까지 지표, 진입=익일 시가, 이후 최대 H거래일 전방 시뮬.
 - 청산: 목표(+T%) 또는 손절(-S%) 터치(같은날 둘다면 보수적 손절), 아니면 H일째 종가.
 - 비용 왕복 COST% 차감(순손익 net).
-- 시장레짐 = breadth(MA60 위 비율): >=0.6 BULL / <=0.4 BEAR / else SIDE.
+- 시장레짐 = KOSPI 20일선·5일모멘텀(regime_kr, 메인 엔진과 동일 단일 진실원).
 
 읽기전용 입력: data/market/ohlcv/kr_*_daily.csv
 출력: reports/lens_journal_kr.csv  (signalDate 정렬)

@@ -10,7 +10,7 @@ Regime-adaptive lens screener (KR).
   - BREAKOUT (강세/횡보 돌파): c>MA20>MA60 + 20일 신고가 -2% 이내 + RSI14>60
       → 전 레짐 net +0.25~0.53%/거래, 손익비 1.8 (검증, 가장 견고)
 
-시장 레짐 = breadth(MA60 위 종목 비율): >=0.6 BULL / <=0.4 BEAR / else SIDE.
+시장 레짐 = KOSPI 20일선·5일모멘텀(regime_kr, 메인 엔진과 동일 단일 진실원). breadth는 표시용.
 레짐 라우팅: BEAR -> BOTTOM_CATCH, SIDE/BULL -> BREAKOUT. (activeLens)
 
 ⚠️ 생존편향: universe = 현재 상장 종목 glob뿐(상폐/추락 부재)이라 백테스트가 낙관.
