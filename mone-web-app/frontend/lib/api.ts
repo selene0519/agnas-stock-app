@@ -522,6 +522,8 @@ export const mone = {
     apiGet<any>("/api/lens/candidates", p),
   smartRank: (p?: { market?: Market }) =>
     apiGet<any>("/api/smart-rank/candidates", p),
+  highConviction: (p?: { market?: Market }) =>
+    apiGet<any>("/api/high-conviction/candidates", p),
   virtualTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; status?: string; limit?: number }) =>
     apiGet<ApiList>("/api/journal/virtual-trades", p),
   virtualTradeCapture: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; limit?: number; includeEngine?: boolean }) =>

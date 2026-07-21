@@ -1,0 +1,105 @@
+{
+  "generatedAt": "2026-07-21T06:59:12.759403+00:00",
+  "market": "kr",
+  "marketRegime": "BEAR",
+  "marketRegimeLabel": "약세장",
+  "regimeDetail": {
+    "asOf": "2026-07-20",
+    "distToMa20": -13.04,
+    "mom5": -9.08,
+    "kospi": 6797.21
+  },
+  "favorableRegime": false,
+  "finalScoreThreshold": 84.0,
+  "provenEdge": {
+    "realTrades": 283,
+    "winRate": 45.9,
+    "avgNetPct": 0.72,
+    "cumulativePct": 203,
+    "source": "virtual_trade_evaluations 정산 실측(백테스트 아님)",
+    "baselineAllTrades": -1.92
+  },
+  "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
+  "candidateCount": 6,
+  "actionableCount": 0,
+  "candidates": [
+    {
+      "symbol": "055550",
+      "name": "신한지주",
+      "finalScore": 79.6,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "이격도수렴 | 기관 순매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "360750",
+      "name": "360750",
+      "finalScore": 76.0,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "FOREIGN_BUY",
+      "eventBadges": "이격도수렴 | 외국인 순매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "138040",
+      "name": "메리츠금융지주",
+      "finalScore": 75.2,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "기관+외국인 동반매수 | 저평가성장주",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "011200",
+      "name": "HMM",
+      "finalScore": 70.6,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "기관+외국인 동반매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "078930",
+      "name": "GS",
+      "finalScore": 65.2,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "대기 관찰",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수 | 저평가성장주",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "214450",
+      "name": "파마리서치",
+      "finalScore": 64.8,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    }
+  ]
+}

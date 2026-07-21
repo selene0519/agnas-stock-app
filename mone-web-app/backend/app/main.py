@@ -3406,6 +3406,28 @@ def api_smart_rank(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
         return {"status": "ERROR", "error": str(exc), "candidates": []}
 
 
+@app.get("/api/high-conviction/candidates")
+def api_high_conviction(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    """실전 신호 게이트 — 실측상 (+)인 구성(강세장+finalScore≥84)만 실전 후보.
+
+    scripts/build_high_conviction_kr.py 산출물(reports/high_conviction_kr.json).
+    """
+    if market != "kr":
+        return {"status": "NOT_AVAILABLE", "market": market,
+                "message": "실전 신호 게이트는 현재 KR만 지원합니다.", "candidates": []}
+    path = data.REPO_ROOT / "reports" / "high_conviction_kr.json"
+    if not path.exists():
+        return {"status": "EMPTY",
+                "message": "실전 신호 미생성 — scripts/build_high_conviction_kr.py 실행 필요.",
+                "candidates": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload.setdefault("status", "OK")
+        return payload
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "ERROR", "error": str(exc), "candidates": []}
+
+
 @app.get("/api/advanced/backtest")
 def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return final_engine.admin_backtest(_market(market))

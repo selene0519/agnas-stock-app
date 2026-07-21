@@ -257,6 +257,7 @@ export default function VirtualJournalPage() {
   const [listSource, setListSource] = useState<ListSource>("all");
   const [lensData, setLensData] = useState<any>(null);
   const [smartRank, setSmartRank] = useState<any>(null);
+  const [highConv, setHighConv] = useState<any>(null);
   const [replayDate, setReplayDate] = useState(defaultReplayDate);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
@@ -295,7 +296,7 @@ export default function VirtualJournalPage() {
       // (한 엔드포인트의 네트워크 예외로 나머지 패널까지 사라지던 문제 방지)
       const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> => p.then((v) => v ?? fallback).catch(() => fallback);
       const listSourceParam = listSource === "all" ? undefined : listSource;
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes, lensRes, smartRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes, lensRes, smartRes, hcRes] = await Promise.all([
         safe(mone.virtualTrades({ ...scope, sourceType: listSourceParam, limit: 200 }), { status: "ERROR", error: "일지 로드 실패", items: [] } as any),
         safe(mone.journalFailurePatterns(scope), {} as any),
         safe(mone.journalCalibrationSuggestions(scope), {} as any),
@@ -318,6 +319,7 @@ export default function VirtualJournalPage() {
         safe(mone.journalOpsDashboard({ market: scope.market }), {} as any),
         safe(mone.lensCandidates({ market: "kr" }), {} as any),
         safe(mone.smartRank({ market: "kr" }), {} as any),
+        safe(mone.highConviction({ market: "kr" }), {} as any),
       ]);
       if (tradeRes.status === "ERROR") setError(tradeRes.error || "일지 로드 실패");
       setTrades(tradeRes.items || []);
@@ -342,6 +344,7 @@ export default function VirtualJournalPage() {
       setOpsData(opsRes?.status === "OK" ? opsRes : null);
       setLensData(lensRes && (lensRes.status === "OK" || lensRes.status === "EMPTY") ? lensRes : null);
       setSmartRank(smartRes && (smartRes.status === "OK" || smartRes.status === "EMPTY") ? smartRes : null);
+      setHighConv(hcRes && (hcRes.status === "OK" || hcRes.status === "EMPTY") ? hcRes : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -1467,6 +1470,56 @@ export default function VirtualJournalPage() {
 
       {view === "journal" && (
       <>
+      <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <ShieldCheck size={16} className="text-emerald-300" />
+            <span>실전 신호 게이트</span>
+          </div>
+          {highConv ? (
+            <span className={`rounded px-2 py-0.5 font-mono text-[11px] ${highConv.favorableRegime ? "bg-emerald-500/12 text-emerald-200" : "bg-red-500/12 text-red-200"}`}>
+              {highConv.marketRegimeLabel || highConv.marketRegime}{highConv.favorableRegime ? " · 실전 ON" : " · 실전 OFF"}
+            </span>
+          ) : (
+            <span className="font-mono text-[11px] text-slate-500">신호 없음</span>
+          )}
+        </div>
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+          앱이 지던 이유 = 전부 거래(실측 −1.92%/거래). 실측상 (+)인 유일 구성(강세장 + finalScore≥84)만 실전으로 냅니다. 그 외엔 현금 보존.
+        </p>
+        {highConv?.provenEdge && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {metric("실전 게이트 실측", `+${highConv.provenEdge.avgNetPct}%`, "text-emerald-300")}
+            {metric("게이트 승률", `${highConv.provenEdge.winRate}%`)}
+            {metric("전부 거래 시", `${highConv.provenEdge.baselineAllTrades}%`, "text-red-300")}
+            {metric("실측 표본", `${highConv.provenEdge.realTrades}건`)}
+          </div>
+        )}
+        {highConv && highConv.actionableCount > 0 ? (
+          <div className="mt-3 space-y-1.5">
+            {(highConv.candidates || []).filter((c: any) => c.highConviction).slice(0, 8).map((c: any) => (
+              <div key={c.symbol} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-emerald-500/8 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.2)]">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-100">{c.name || c.symbol}</span>
+                  <span className="font-mono text-[10px] text-slate-500">{c.symbol}</span>
+                  {c.supplySignal && <span className="rounded bg-sky-500/12 px-1.5 py-0.5 text-[9px] text-sky-200">{c.supplySignal}</span>}
+                </div>
+                <div className="flex items-center gap-3 font-mono text-[10px]">
+                  <span className="text-slate-400">fs {c.finalScore}</span>
+                  <span className="font-semibold text-emerald-300">실전 매수</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg bg-amber-500/8 px-3 py-4 text-center text-xs leading-5 text-amber-200 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.16)]">
+            {highConv?.favorableRegime === false
+              ? `${highConv.marketRegimeLabel || "현재 장세"} — 실전 매수 없음. 현금 보존이 정답(나쁜 장세 회피로 −1.9% 손실 차단).`
+              : "실전 게이트 통과 종목 없음 — 관찰만."}
+          </div>
+        )}
+      </section>
+
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
