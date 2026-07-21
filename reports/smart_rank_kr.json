@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T22:20:21.256905+00:00",
+  "generatedAt": "2026-07-21T23:52:54.254758+00:00",
   "asOfDate": "2026-07-21",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,15 +7,15 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 22000,
-    "topQuintileNetPct": -0.675,
+    "oosTrades": 21998,
+    "topQuintileNetPct": -0.677,
     "bottomQuintileNetPct": 0.257,
-    "spreadPct": -0.932,
+    "spreadPct": -0.934,
     "ic": -0.056,
     "topQuintileByRegime": {
-      "BULL": -0.804,
+      "BULL": -0.806,
       "SIDE": -0.532,
-      "BEAR": -0.632
+      "BEAR": -0.633
     }
   },
   "featureWeights": {
@@ -23,9 +23,9 @@
     "distma60": -0.103,
     "atrpct": -0.102,
     "mom20": 0.1,
-    "mdd20": -0.081,
+    "mdd20": -0.08,
+    "zscore": -0.059,
     "revbar": -0.059,
-    "zscore": -0.058,
     "distma20": -0.048,
     "volratio": -0.03,
     "mom5": -0.024,
@@ -36,12 +36,12 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 102,
+  "candidateCount": 100,
   "candidates": [
     {
       "symbol": "032640",
       "name": "LG유플러스",
-      "modelScore": 0.2,
+      "modelScore": 0.199,
       "close": 14400.0,
       "rsi14": 55.7,
       "entryRef": 14400.0,
@@ -67,7 +67,7 @@
     {
       "symbol": "030200",
       "name": "KT",
-      "modelScore": 0.128,
+      "modelScore": 0.127,
       "close": 52700.0,
       "rsi14": 49.4,
       "entryRef": 52700.0,
@@ -197,7 +197,7 @@
     {
       "symbol": "035720",
       "name": "카카오",
-      "modelScore": -0.055,
+      "modelScore": -0.054,
       "close": 35300.0,
       "rsi14": 54.0,
       "entryRef": 35300.0,
@@ -249,7 +249,7 @@
     {
       "symbol": "015760",
       "name": "한국전력",
-      "modelScore": -0.112,
+      "modelScore": -0.113,
       "close": 33700.0,
       "rsi14": 35.4,
       "entryRef": 33700.0,
@@ -262,7 +262,7 @@
     {
       "symbol": "078930",
       "name": "GS",
-      "modelScore": -0.118,
+      "modelScore": -0.117,
       "close": 82500.0,
       "rsi14": 72.0,
       "entryRef": 82500.0,
