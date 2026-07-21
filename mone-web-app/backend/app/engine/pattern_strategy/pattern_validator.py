@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from . import indicators as ind_mod
+from . import geometric_patterns as gp_mod
 from .pattern_engine import analyze, load_params
 from .types import DEFAULT_PARAMS, GEO_PATTERN_FAMILY
 
@@ -37,6 +38,23 @@ STRATEGIES = {
     "aggressive":   {"min_confidence": 45, "stop": -0.03,  "target": 0.05},
 }
 HORIZONS = {"short": 1, "swing": 5, "mid": 20}
+
+# A bear-market long is never an "oversold" entry.  These are the existing
+# geometric reversal structures whose confirmation stage has an explicit
+# trigger and invalidation price.  Keep the universe deliberately small so a
+# later result cannot quietly turn every bounce into a trade.
+BEAR_REVERSAL_PATTERNS = {
+    "DOUBLE_BOTTOM",
+    "INVERSE_HEAD_AND_SHOULDERS",
+    "FALLING_WEDGE_BREAKOUT",
+    "RESISTANCE_FLIP_SUPPORT",
+}
+BEAR_REVERSAL_ENTRY_STAGE = "BUY_ZONE"
+_BENCHMARK_SYMBOLS = {
+    "KOSPI", "KOSDAQ", "KOSPI200", "USD_KRW", "USDKRW",
+    "SPY", "QQQ", "DIA", "RSP", "IWM", "HYG", "LQD", "TLT",
+    "XLY", "XLP", "VIX",
+}
 
 
 def _indicator_stats_bucket() -> dict[str, Any]:
@@ -518,6 +536,289 @@ def _median(vals: list[float]) -> float:
     s = sorted(vals)
     n = len(s)
     return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+
+
+# ── Bear reversal execution test ────────────────────────────────────────────
+
+def _reversal_bucket() -> dict[str, Any]:
+    return {
+        "sampleCount": 0, "wins": 0, "stops": 0, "targets": 0,
+        "netReturns": [], "grossReturns": [], "holdDays": [],
+    }
+
+
+def _bar_value(row: dict, key: str) -> float | None:
+    return _f(row.get(key))
+
+
+def _simulate_long_reversal(
+    rows: list[dict],
+    entry_index: int,
+    stop: float,
+    reward_r: float,
+    max_holding_days: int,
+    round_trip_cost: float,
+) -> dict[str, Any] | None:
+    """Simulate an end-of-day-confirmed long from the next session's open.
+
+    OHLC data cannot establish whether a stop and target were hit first inside
+    the same daily candle.  The deliberately conservative convention is that
+    the stop was hit first.  A gap through the stop exits at the opening price,
+    rather than pretending a stop-limit received its requested fill.
+    """
+    if entry_index >= len(rows):
+        return None
+    entry = _bar_value(rows[entry_index], "open")
+    if entry is None or entry <= stop or stop <= 0:
+        return None
+    target = entry + reward_r * (entry - stop)
+    last_index = min(len(rows) - 1, entry_index + max_holding_days - 1)
+    exit_price: float | None = None
+    exit_reason = "TIME_STOP"
+    exit_index = last_index
+
+    for idx in range(entry_index, last_index + 1):
+        bar = rows[idx]
+        opening = _bar_value(bar, "open")
+        high = _bar_value(bar, "high")
+        low = _bar_value(bar, "low")
+        if opening is None or high is None or low is None:
+            continue
+        if opening <= stop:
+            exit_price, exit_reason, exit_index = opening, "STOP_GAP", idx
+            break
+        if opening >= target:
+            exit_price, exit_reason, exit_index = opening, "TARGET_GAP", idx
+            break
+        # Intraday ordering is unknowable in a daily bar: protect against
+        # optimistic backtests by booking the stop whenever both were touched.
+        if low <= stop:
+            exit_price, exit_reason, exit_index = stop, "STOP", idx
+            break
+        if high >= target:
+            exit_price, exit_reason, exit_index = target, "TARGET", idx
+            break
+
+    if exit_price is None:
+        exit_price = _bar_value(rows[last_index], "close")
+        if exit_price is None:
+            return None
+
+    gross = exit_price / entry - 1.0
+    return {
+        "entry": entry,
+        "stop": stop,
+        "target": target,
+        "grossReturn": gross,
+        "netReturn": gross - round_trip_cost,
+        "exitReason": exit_reason,
+        "holdDays": exit_index - entry_index + 1,
+        "exitIndex": exit_index,
+    }
+
+
+def _summarise_reversal_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
+    n = int(bucket["sampleCount"])
+    net_returns = bucket["netReturns"]
+    gross_returns = bucket["grossReturns"]
+    if not n or not net_returns:
+        return {
+            "sampleCount": 0, "winRate": 0.0, "avgNetReturn": 0.0,
+            "medianNetReturn": 0.0, "profitFactor": 0.0,
+            "stopRate": 0.0, "targetRate": 0.0, "avgHoldDays": 0.0,
+        }
+    gains = sum(value for value in net_returns if value > 0)
+    losses = -sum(value for value in net_returns if value < 0)
+    profit_factor = gains / losses if losses > 0 else (99.0 if gains > 0 else 0.0)
+    return {
+        "sampleCount": n,
+        "winRate": round(bucket["wins"] / n, 4),
+        "avgNetReturn": round(sum(net_returns) / n, 6),
+        "avgGrossReturn": round(sum(gross_returns) / n, 6),
+        "medianNetReturn": round(_median(net_returns), 6),
+        "profitFactor": round(profit_factor, 3),
+        "stopRate": round(bucket["stops"] / n, 4),
+        "targetRate": round(bucket["targets"] / n, 4),
+        "avgHoldDays": round(sum(bucket["holdDays"]) / n, 2),
+    }
+
+
+def _bear_reversal_qualification(train: dict[str, Any], oos: dict[str, Any]) -> tuple[bool, list[str]]:
+    """Pre-declared promotion rule; never promote a single lucky period."""
+    reasons: list[str] = []
+    for label, stats in (("TRAIN", train), ("OUT_OF_SAMPLE", oos)):
+        if int(stats.get("sampleCount") or 0) < 20:
+            reasons.append(f"{label}_LOW_SAMPLE")
+        if float(stats.get("avgNetReturn") or 0.0) <= 0:
+            reasons.append(f"{label}_NON_POSITIVE_EXPECTANCY")
+        if float(stats.get("profitFactor") or 0.0) <= 1.0:
+            reasons.append(f"{label}_PROFIT_FACTOR_NOT_ABOVE_1")
+    if float(oos.get("winRate") or 0.0) < 0.50:
+        reasons.append("OUT_OF_SAMPLE_WIN_RATE_BELOW_50")
+    return not reasons, reasons
+
+
+def run_bear_reversal_walkforward(
+    market: str = "kr",
+    from_date: str | None = None,
+    to_date: str | None = None,
+    split_date: str = "2022-01-01",
+    reward_r: float = 2.0,
+    max_holding_days: int = 20,
+    round_trip_cost_bps: float = 20.0,
+) -> dict[str, Any]:
+    """Test only confirmed bullish reversal structures while the index is BEAR.
+
+    The signal is known at the close of date D.  Entry is the next available
+    daily open, with the detector's own invalidation as stop and a fixed 2R
+    target.  It intentionally does not test generic RSI/oversold bounces.
+    """
+    market = str(market).lower()
+    all_ohlcv = _load_all_ohlcv(market)
+    if not all_ohlcv:
+        return {"status": "NO_DATA", "market": market}
+
+    start = from_date or "2011-01-01"
+    end = to_date or datetime.now().strftime("%Y-%m-%d")
+    cost = max(0.0, float(round_trip_cost_bps)) / 10_000.0
+    by_pattern: dict[str, dict[str, dict[str, Any]]] = {
+        pattern: {"all": _reversal_bucket(), "train": _reversal_bucket(), "outOfSample": _reversal_bucket()}
+        for pattern in sorted(BEAR_REVERSAL_PATTERNS)
+    }
+    regime_cache: dict[str, str] = {}
+    rejected = defaultdict(int)
+    trade_examples: list[dict[str, Any]] = []
+    leakage_ok = True
+
+    def regime_for(date_str: str) -> str:
+        if date_str not in regime_cache:
+            regime_cache[date_str] = _market_regime_at_date(market, all_ohlcv, date_str)
+        return regime_cache[date_str]
+
+    for symbol, rows in all_ohlcv.items():
+        if symbol.upper() in _BENCHMARK_SYMBOLS or len(rows) < 65:
+            continue
+        # A position must be closed before the same symbol can produce another
+        # signal.  That avoids counting one persistent breakout as many trades.
+        next_eligible_index = 0
+        previous_actionable: tuple[str, str] | None = None
+        for signal_index in range(60, len(rows) - 1):
+            signal_date = str(rows[signal_index].get("date", ""))
+            if signal_date < start or signal_date > end:
+                continue
+            if signal_index < next_eligible_index:
+                continue
+            if regime_for(signal_date) != "BEAR":
+                previous_actionable = None
+                continue
+
+            # Including D is valid: the signal is evaluated after D's close;
+            # the simulated fill uses D+1's open.  No D+1 information reaches
+            # the detector.
+            history = rows[:signal_index + 1]
+            indicators = ind_mod.compute_all(history)
+            atr20 = _f(indicators.get("atr20"))
+            if atr20 is None or atr20 <= 0:
+                continue
+            geo = gp_mod.detect_all(history, atr20, _f(indicators.get("volumeRatio20")), market=market)
+            if not geo:
+                previous_actionable = None
+                continue
+            pattern = str(geo.get("pattern") or "")
+            stage = str(geo.get("stage") or "")
+            action_key = (pattern, stage)
+            if (
+                pattern not in BEAR_REVERSAL_PATTERNS
+                or str(geo.get("direction") or "").upper() != "BULLISH"
+                or stage != BEAR_REVERSAL_ENTRY_STAGE
+            ):
+                previous_actionable = None
+                continue
+            if previous_actionable == action_key:
+                continue
+            previous_actionable = action_key
+
+            trigger = _f(geo.get("trigger"))
+            stop = _f(geo.get("invalidation"))
+            next_open = _bar_value(rows[signal_index + 1], "open")
+            if trigger is None or stop is None or next_open is None or next_open <= stop:
+                rejected["INVALID_OR_GAPPED_THROUGH_STOP"] += 1
+                continue
+            # The signal itself is limited to 1.2 ATR above its breakout.  Do
+            # not convert a valid closing signal into a chase after an opening
+            # gap: skip rather than silently worsening the entry.
+            if next_open > trigger + 1.2 * atr20:
+                rejected["CHASE_GAP"] += 1
+                continue
+            trade = _simulate_long_reversal(
+                rows, signal_index + 1, stop, reward_r, max_holding_days, cost,
+            )
+            if not trade:
+                rejected["UNSIMULATABLE"] += 1
+                continue
+            if str(rows[signal_index].get("date", "")) >= str(rows[signal_index + 1].get("date", "")):
+                leakage_ok = False
+
+            split_key = "train" if signal_date < split_date else "outOfSample"
+            for bucket in (by_pattern[pattern]["all"], by_pattern[pattern][split_key]):
+                bucket["sampleCount"] += 1
+                bucket["netReturns"].append(trade["netReturn"])
+                bucket["grossReturns"].append(trade["grossReturn"])
+                bucket["holdDays"].append(trade["holdDays"])
+                if trade["netReturn"] > 0:
+                    bucket["wins"] += 1
+                if str(trade["exitReason"]).startswith("STOP"):
+                    bucket["stops"] += 1
+                if str(trade["exitReason"]).startswith("TARGET"):
+                    bucket["targets"] += 1
+            next_eligible_index = signal_index + int(trade["holdDays"])
+            if len(trade_examples) < 50:
+                trade_examples.append({
+                    "symbol": symbol, "signalDate": signal_date,
+                    "entryDate": str(rows[signal_index + 1].get("date", "")),
+                    "pattern": pattern, "entry": round(trade["entry"], 4),
+                    "stop": round(trade["stop"], 4), "target": round(trade["target"], 4),
+                    "exitReason": trade["exitReason"], "netReturn": round(trade["netReturn"], 6),
+                })
+
+    summary: dict[str, Any] = {}
+    qualified: list[str] = []
+    for pattern, buckets in by_pattern.items():
+        all_stats = _summarise_reversal_bucket(buckets["all"])
+        train_stats = _summarise_reversal_bucket(buckets["train"])
+        oos_stats = _summarise_reversal_bucket(buckets["outOfSample"])
+        is_qualified, reasons = _bear_reversal_qualification(train_stats, oos_stats)
+        summary[pattern] = {
+            "all": all_stats, "train": train_stats, "outOfSample": oos_stats,
+            "qualified": is_qualified, "rejectionReasons": reasons,
+        }
+        if is_qualified:
+            qualified.append(pattern)
+
+    result_doc = {
+        "status": "OK", "market": market, "fromDate": start, "toDate": end,
+        "splitDate": split_date, "qualifiedPatterns": qualified,
+        "entryStage": BEAR_REVERSAL_ENTRY_STAGE,
+        "assumptions": {
+            "signal": "D close confirmation; D+1 open entry only",
+            "stop": "detector geometric invalidation",
+            "targetR": reward_r, "maxHoldingDays": max_holding_days,
+            "roundTripCostBps": round_trip_cost_bps,
+            "intradayCollision": "stop first (conservative)",
+            "entryGapRule": "skip if D+1 open is above trigger + 1.2 ATR",
+        },
+        "patternSummary": summary, "rejectedSignals": dict(rejected),
+        "leakageCheck": {"status": "PASS" if leakage_ok else "FAIL"},
+        "exampleTrades": trade_examples,
+    }
+    try:
+        _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        (_REPORTS_DIR / f"bear_reversal_walkforward_{market}.json").write_text(
+            json.dumps(result_doc, ensure_ascii=False, indent=2), encoding="utf-8",
+        )
+    except Exception:
+        pass
+    return result_doc
 
 
 def _calibration_suggestions(summary: dict, params: dict) -> list[dict]:

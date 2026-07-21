@@ -164,6 +164,69 @@ def _load_pattern_walkforward_report(market: str) -> dict[str, Any]:
         return {}
 
 
+@lru_cache(maxsize=8)
+def _load_bear_reversal_report(market: str) -> dict[str, Any]:
+    """Load the execution-aware, bear-reversal-only validation report."""
+    path = _REPO_ROOT / "reports" / f"bear_reversal_walkforward_{str(market or 'kr').lower()}.json"
+    if not path.is_file() or path.stat().st_size <= 0:
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _bear_reversal_entry_gate(
+    market: str,
+    regime: str,
+    pattern: Any,
+    stage: Any,
+    direction: Any,
+    trigger: Any,
+    invalidation: Any,
+    atr20: Any,
+) -> dict[str, Any]:
+    """Fail closed for long entries in BEAR unless a proved reversal starts.
+
+    A generic dip, a WATCH pattern, or an unvalidated pattern must not be
+    relabelled as a reversal.  The report only qualifies a pattern after
+    positive training *and* out-of-sample, execution-aware results.
+    """
+    if str(regime or "").upper() != "BEAR":
+        return {"status": "NOT_APPLICABLE", "allowed": True}
+    report = _load_bear_reversal_report(str(market).lower())
+    if not report or (report.get("leakageCheck") or {}).get("status") != "PASS":
+        return {"status": "NO_VALIDATED_REPORT", "allowed": False}
+    canonical = _canonical_pattern_tag(pattern)
+    expected_stage = str(report.get("entryStage") or "BUY_ZONE").upper()
+    qualified = {str(value).upper() for value in (report.get("qualifiedPatterns") or [])}
+    if (
+        canonical not in qualified
+        or str(stage or "").upper() != expected_stage
+        or str(direction or "").upper() != "BULLISH"
+    ):
+        return {
+            "status": "WAIT_FOR_QUALIFIED_REVERSAL", "allowed": False,
+            "qualifiedPatterns": sorted(qualified),
+            "requiredStage": expected_stage,
+        }
+    trigger_price = _num(trigger)
+    stop_price = _num(invalidation)
+    atr = _num(atr20)
+    if not trigger_price or not stop_price or not atr or trigger_price <= stop_price:
+        return {"status": "INVALID_PATTERN_LEVELS", "allowed": False}
+    max_entry = trigger_price + 1.2 * atr
+    target = max_entry + 2.0 * (max_entry - stop_price)
+    return {
+        "status": "QUALIFIED_REVERSAL", "allowed": True,
+        "entryRule": "CONFIRMED_CLOSE_THEN_NEXT_OPEN_NOT_ABOVE_MAX_ENTRY",
+        "trigger": round(trigger_price, 4), "maxEntry": round(max_entry, 4),
+        "stop": round(stop_price, 4), "target": round(target, 4),
+        "rewardRisk": 2.0,
+        "validationSource": "bear_reversal_walkforward",
+    }
+
+
 def _canonical_pattern_tag(tag: Any) -> str:
     raw = str(tag or "").strip().upper()
     return _PATTERN_ALIAS.get(raw, raw)
@@ -2547,6 +2610,8 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         _geo_pattern = _ps.get("geometricPattern")
         _geo_stage = _ps.get("geometricPatternStage")
         _geo_direction = str(_ps.get("geometricPatternDirection") or "NEUTRAL").upper()
+        _geo_trigger = _ps.get("geometricPatternTrigger")
+        _geo_invalidation = _ps.get("geometricPatternInvalidation")
         if _geo_pattern:
             pattern_strategy_tag = _canonical_pattern_tag(_geo_pattern)
             _action_code = str(_ps.get("action") or "")
@@ -2559,6 +2624,8 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
                 "geometricPatternStageKo": _PATTERN_STAGE_KO.get(str(_geo_stage or "").upper(), str(_geo_stage or "")),
                 "geometricPatternDirection": _geo_direction,
                 "geometricPatternDirectionKo": _DIRECTION_KO.get(_geo_direction, _geo_direction),
+                "geometricPatternTrigger": _geo_trigger,
+                "geometricPatternInvalidation": _geo_invalidation,
                 "geometricPatternReason": _ps.get("geometricPatternReason"),
                 "confidence": _ps.get("confidence"),
                 "action": _ACTION_KO.get(_action_code, _action_code),
@@ -2606,6 +2673,34 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     out["patternStrategy"] = pattern_strategy
     if pattern_strategy_tag:
         out.setdefault("computedFields", []).append("pattern_strategy_24_detected")
+
+    # In a bear regime, a long recommendation is valid only at the confirmed
+    # start of a historically qualified reversal.  This is intentionally a
+    # gate rather than a score bonus: it prevents a strong generic ranking or
+    # an RSI bounce from overriding the chart's invalidation discipline.
+    try:
+        _bear_gate = _bear_reversal_entry_gate(
+            context.market, _regime, pattern_strategy_tag, _geo_stage,
+            _geo_direction, _geo_trigger, _geo_invalidation,
+            (_ps.get("indicators") or {}).get("atr20") if "_ps" in locals() else None,
+        )
+        out["bearReversalGate"] = _bear_gate
+        if str(_regime).upper() == "BEAR" and not _bear_gate.get("allowed"):
+            out["recommended"] = False
+            out["canEnter"] = False
+            out["entryBlockedReason"] = str(_bear_gate.get("status") or "WAIT_FOR_QUALIFIED_REVERSAL")
+            out.setdefault("computedFields", []).append("bear_reversal_entry_gate")
+        elif _bear_gate.get("status") == "QUALIFIED_REVERSAL":
+            out["canEnter"] = True
+            out["bearReversalPlan"] = _bear_gate
+            out.setdefault("computedFields", []).append("bear_reversal_structure_entry")
+    except Exception:
+        # A missing report must never turn into an accidental permission to
+        # enter.  The field also makes the data dependency visible to callers.
+        if str(_regime).upper() == "BEAR":
+            out["bearReversalGate"] = {"status": "VALIDATION_UNAVAILABLE", "allowed": False}
+            out["recommended"] = False
+            out["canEnter"] = False
 
     try:
         _wf_tags = [p.get("pattern") for p in chart_patterns if p.get("pattern")] + ([pattern_strategy_tag] if pattern_strategy_tag else []) + list(tags)

@@ -951,6 +951,24 @@ def api_pattern_walkforward(
         return {"status": "ERROR", "message": str(e)}
 
 
+@app.get("/api/validation/bear-reversal-walkforward")
+def api_bear_reversal_walkforward(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+    from_date: str = Query(None),
+    to_date: str = Query(None),
+    split_date: str = Query("2022-01-01"),
+) -> dict:
+    """약세장 반전 패턴의 실제 진입/무효화 가격 기반 Walk-Forward 검증."""
+    try:
+        from app.engine.pattern_strategy import run_bear_reversal_walkforward
+        return run_bear_reversal_walkforward(
+            market=_market(market), from_date=from_date, to_date=to_date,
+            split_date=split_date,
+        )
+    except Exception as e:
+        return {"status": "ERROR", "message": str(e)}
+
+
 # ── 캘린더 통합 API (event_calendar 서비스) ──────────────────────────────
 
 from app.services import event_calendar as _ec_cal

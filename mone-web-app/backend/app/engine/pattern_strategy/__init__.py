@@ -6,11 +6,11 @@ Public API surface:
 """
 from .pattern_engine    import analyze, load_params
 from .pattern_validator import (
-    run_walkforward, run_combined_walkforward,
+    run_walkforward, run_combined_walkforward, run_bear_reversal_walkforward,
     current_market_regime, current_index_momentum,
 )
 
 __all__ = [
-    "analyze", "load_params", "run_walkforward", "run_combined_walkforward",
+    "analyze", "load_params", "run_walkforward", "run_combined_walkforward", "run_bear_reversal_walkforward",
     "current_market_regime", "current_index_momentum",
 ]
