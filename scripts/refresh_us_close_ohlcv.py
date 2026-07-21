@@ -35,6 +35,10 @@ def _et_today() -> str:
     return et.strftime("%Y-%m-%d")
 
 TARGET_DATE = os.environ.get("MONE_US_CLOSE_DATE") or _et_today()
+# When set, force a full daily-history backfill even when the local file is
+# current.  This keeps the normal close-refresh cheap while allowing research
+# jobs to build a common pre-2022 sample without a second collector.
+HISTORY_START = os.environ.get("MONE_US_HISTORY_START", "").strip()
 
 
 def _ensure_pkg(package: str, import_name: str | None = None) -> bool:
@@ -208,11 +212,11 @@ def _merge_and_save(symbol: str, new_rows: list[dict]) -> None:
 def _process_symbol(symbol: str) -> dict:
     latest = _existing_latest_date(symbol)
     # 이미 오늘 데이터가 있으면 스킵
-    if latest >= TARGET_DATE:
+    if not HISTORY_START and latest >= TARGET_DATE:
         return {"symbol": symbol, "status": "SKIP", "latestDate": latest}
 
     # 기존 데이터가 없거나 오래되면 최근 9개월 전체 수집, 그 외엔 3일치만
-    fetch_start = latest if latest else "2025-09-01"
+    fetch_start = HISTORY_START or (latest if latest else "2025-09-01")
     new_rows = _fetch_yfinance(symbol, fetch_start)
     if not new_rows:
         return {"symbol": symbol, "status": "NO_DATA", "latestDate": latest}
@@ -255,6 +259,7 @@ def main() -> None:
         "status": "OK" if ok > 0 else ("SKIP" if skip > 0 else "NO_DATA"),
         "market": "us",
         "targetDate": TARGET_DATE,
+        "historyStart": HISTORY_START or None,
         "targetCount": len(symbols),
         "updatedCount": ok,
         "skippedCount": skip,

@@ -34,6 +34,18 @@ INDICES = [
     {"symbol": "SPY",    "ticker": "SPY",    "market": "us"},
     {"symbol": "QQQ",    "ticker": "QQQ",    "market": "us"},
     {"symbol": "SP500",  "ticker": "^GSPC",  "market": "us"},
+    # Cross-asset proxies used for historical regime research.  They are kept
+    # separate from the candidate universe and are not stock recommendations.
+    {"symbol": "RSP",    "ticker": "RSP",    "market": "us"},
+    {"symbol": "IWM",    "ticker": "IWM",    "market": "us"},
+    {"symbol": "HYG",    "ticker": "HYG",    "market": "us"},
+    {"symbol": "LQD",    "ticker": "LQD",    "market": "us"},
+    {"symbol": "TLT",    "ticker": "TLT",    "market": "us"},
+    {"symbol": "XLY",    "ticker": "XLY",    "market": "us"},
+    {"symbol": "XLP",    "ticker": "XLP",    "market": "us"},
+    {"symbol": "VIX",    "ticker": "^VIX",   "market": "us"},
+    {"symbol": "KOSPI200", "ticker": "^KS200", "market": "kr"},
+    {"symbol": "USDKRW", "ticker": "KRW=X",  "market": "fx"},
 ]
 
 FIELDNAMES = ["date", "open", "high", "low", "close", "volume", "source"]

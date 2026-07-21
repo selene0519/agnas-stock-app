@@ -135,22 +135,25 @@ def macro_proxy(market: str) -> dict[str, Any]:
     """Use available local cross-asset proxies; missing components stay missing."""
     market = str(market or "").lower()
     if market == "us":
-        symbols = {key: _read_symbol("us", key) for key in ("SPY", "QQQ", "IWM", "TLT", "XLF", "XLE")}
+        symbols = {key: _read_symbol("us", key) for key in ("SPY", "QQQ", "RSP", "IWM", "HYG", "LQD", "TLT", "XLY", "XLP")}
         as_of = min((dates[-1] for dates, values in symbols.values() if dates and values), default="")
         spy = symbols["SPY"][1]
         components = {
             "concentrationQqqSpy63dPct": _ratio_momentum(symbols["QQQ"][1], spy),
+            "breadthRspSpy63dPct": _ratio_momentum(symbols["RSP"][1], spy),
             "sizeIwmSpy63dPct": _ratio_momentum(symbols["IWM"][1], spy),
+            "creditHygLqd63dPct": _ratio_momentum(symbols["HYG"][1], symbols["LQD"][1]),
             "equityBondSpyTlt63dPct": _ratio_momentum(spy, symbols["TLT"][1]),
-            "financialEnergy63dPct": _ratio_momentum(symbols["XLF"][1], symbols["XLE"][1]),
+            "cyclicalDefensiveXlyXlp63dPct": _ratio_momentum(symbols["XLY"][1], symbols["XLP"][1]),
         }
         available = [value for value in components.values() if value is not None]
-        if len(available) < 3:
+        if len(available) < 5:
             return {"status": "INSUFFICIENT_LOCAL_PROXIES", "asOf": as_of, "basis": "local_cross_asset_proxy_partial", "classification": "UNKNOWN", "components": components}
-        contraction = (components["sizeIwmSpy63dPct"] or 0) < -5 and (components["equityBondSpyTlt63dPct"] or 0) < -5
-        broadening = (components["sizeIwmSpy63dPct"] or 0) > 2 and (components["concentrationQqqSpy63dPct"] or 0) < 2
-        classification = "CONTRACTION" if contraction else "BROADENING" if broadening else "CONCENTRATION" if (components["concentrationQqqSpy63dPct"] or 0) > 4 else "TRANSITIONAL"
-        return {"status": "PARTIAL_PROXY", "asOf": as_of, "basis": "local_cross_asset_proxy_partial_no_credit_or_yield_curve", "classification": classification, "components": {key: None if value is None else round(value, 2) for key, value in components.items()}}
+        contraction = (components["sizeIwmSpy63dPct"] or 0) < -3 and (components["creditHygLqd63dPct"] or 0) < -1
+        broadening = (components["breadthRspSpy63dPct"] or 0) > 2 and (components["sizeIwmSpy63dPct"] or 0) > 2
+        concentration = (components["breadthRspSpy63dPct"] or 0) < -2 and (components["concentrationQqqSpy63dPct"] or 0) > 0
+        classification = "CONTRACTION" if contraction else "BROADENING" if broadening else "CONCENTRATION" if concentration else "TRANSITIONAL"
+        return {"status": "PARTIAL_PROXY", "asOf": as_of, "basis": "local_cross_asset_proxy_no_yield_curve", "classification": classification, "components": {key: None if value is None else round(value, 2) for key, value in components.items()}}
     if market == "kr":
         kospi_dates, kospi = _read_symbol("kr", "KOSPI")
         kosdaq_dates, kosdaq = _read_symbol("kr", "KOSDAQ")
