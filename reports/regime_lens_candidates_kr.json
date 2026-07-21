@@ -1,26 +1,25 @@
 {
-  "generatedAt": "2026-07-21T06:01:12.198061+00:00",
+  "generatedAt": "2026-07-21T06:21:24.884949+00:00",
   "asOfDate": "2026-07-20",
   "market": "kr",
   "marketRegime": "BEAR",
   "breadthAboveMa60": 0.108,
-  "activeLens": "BREAKOUT",
+  "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
       "BREAKOUT"
     ],
     "SIDE": [
+      "BOTTOM_CATCH",
       "BREAKOUT"
     ],
-    "BEAR": [
-      "BREAKOUT"
-    ]
+    "BEAR": []
   },
   "selfCalibrated": true,
   "liveSamplesTotal": 0,
   "universeSize": 106,
   "candidateCount": 4,
-  "actionableCount": 1,
+  "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
     {
@@ -35,9 +34,9 @@
       "rrRatio": 2.0,
       "rsi14": 84.7,
       "distMa20Pct": 24.2,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 1.48,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     },
     {
       "symbol": "196170",

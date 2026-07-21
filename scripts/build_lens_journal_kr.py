@@ -87,20 +87,9 @@ def main() -> int:
         if len(r) > MA_TREND + 15:
             data[os.path.basename(f).split("kr_")[1].split("_")[0]] = r
 
-    # breadth 레짐(날짜별)
-    above = defaultdict(lambda: [0, 0])
-    for r in data.values():
-        cl = [x[4] for x in r]
-        for i in range(len(r)):
-            m = sma(cl, MA_TREND, i)
-            if m is not None:
-                above[r[i][0]][1] += 1
-                if cl[i] > m:
-                    above[r[i][0]][0] += 1
-    regime = {}
-    for d, (a, t) in above.items():
-        br = a / t if t else 0.0
-        regime[d] = "BULL" if br >= 0.6 else ("BEAR" if br <= 0.4 else "SIDE")
+    # 통일 레짐 — 메인 엔진과 동일한 KOSPI 기준(regime_kr). 파편화 제거.
+    from regime_kr import kospi_regime_series
+    regime = kospi_regime_series(REPO)
 
     rows = []
     for sym, r in data.items():

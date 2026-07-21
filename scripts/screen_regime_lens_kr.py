@@ -107,8 +107,10 @@ def main() -> int:
         print("no OHLCV data found", file=sys.stderr)
         return 1
 
-    # 시장 레짐 = 최신 공통일의 breadth(MA60 위 비율)
     latest_date = max(r[-1][0] for r in series.values())
+    # 통일 레짐 — 메인 엔진과 동일한 KOSPI 기준(regime_kr). breadth는 참고 표시용.
+    from regime_kr import latest_regime
+    market_regime, _label, _rdetail = latest_regime(REPO)
     above = total = 0
     for r in series.values():
         cl = [x[4] for x in r]
@@ -122,7 +124,6 @@ def main() -> int:
         if cl[i] > m:
             above += 1
     breadth = (above / total) if total else 0.0
-    market_regime = "BULL" if breadth >= 0.6 else ("BEAR" if breadth <= 0.4 else "SIDE")
 
     # 자가보정 읽기 (Step 3 산출물). 없으면 정적 폴백.
     calib_path = os.path.join(REPO, "reports", "lens_calibration_kr.json")

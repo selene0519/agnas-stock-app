@@ -1499,10 +1499,11 @@ export default function VirtualJournalPage() {
           <div className="mt-3 space-y-1.5">
             {smartRank.candidates.slice(0, 8).map((c: any, idx: number) => (
               <div key={c.symbol} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 ${c.actionable ? "bg-emerald-500/8 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.18)]" : "bg-slate-950/50 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]"}`}>
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="font-mono text-[11px] text-violet-300">#{idx + 1}</span>
                   <span className="text-sm font-semibold text-slate-100">{c.name || c.symbol}</span>
                   <span className="font-mono text-[10px] text-slate-500">{c.symbol}</span>
+                  {c.supplySignal && <span className="rounded bg-sky-500/12 px-1.5 py-0.5 text-[9px] text-sky-200">{c.supplySignal}</span>}
                 </div>
                 <div className="flex items-center gap-3 font-mono text-[10px] text-slate-500">
                   <span>점수 {c.modelScore}</span>

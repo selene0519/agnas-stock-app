@@ -115,16 +115,9 @@ def main() -> int:
     if not data:
         print("OHLCV 없음")
         return 1
-    # breadth 레짐
-    above = defaultdict(list)
-    for r in data.values():
-        cl = [x[4] for x in r]
-        for i in range(len(r)):
-            m = sma(cl, 60, i)
-            if m is not None:
-                above[r[i][0]].append(1 if cl[i] > m else 0)
-    regime = {d: ("BULL" if sum(v) / len(v) >= .6 else ("BEAR" if sum(v) / len(v) <= .4 else "SIDE"))
-              for d, v in above.items()}
+    # 통일 레짐 — 메인 엔진과 동일한 KOSPI 기준(regime_kr). 파편화 제거.
+    from regime_kr import kospi_regime_series
+    regime = kospi_regime_series(REPO)
 
     rows = []  # (date, regime, feats, y)
     for f, r in data.items():
@@ -184,8 +177,32 @@ def main() -> int:
         except Exception:
             pass
 
+    # 수급(기관/외국인) 컨텍스트 연결 — 신규 기능이 수급을 무시하던 문제 보완.
+    supply = {}
+    sp = os.path.join(REPO, "data", "kr_supply_flow.csv")
+    if os.path.exists(sp):
+        for rr in csv.DictReader(open(sp, encoding="utf-8-sig")):
+            s = (rr.get("symbol") or "").zfill(6)
+            try:
+                supply[s] = (float(rr.get("foreign5d") or 0), float(rr.get("institution5d") or 0))
+            except ValueError:
+                continue
+
+    def supply_signal(sym: str) -> str:
+        fo, ins = supply.get(sym, (0, 0))
+        if fo > 0 and ins > 0:
+            return "기관+외국인 순매수"
+        if fo > 0:
+            return "외국인 순매수"
+        if ins > 0:
+            return "기관 순매수"
+        if fo < 0 and ins < 0:
+            return "기관+외국인 순매도"
+        return ""
+
+    from regime_kr import latest_regime as _lr
     latest_date = max(r[-1][0] for r in data.values())
-    market_regime = regime.get(latest_date, "SIDE")
+    market_regime = _lr(REPO)[0]
     picks = []
     for f, r in data.items():
         cl = [x[4] for x in r]; vol = [x[5] for x in r]; i = len(r) - 1
@@ -200,7 +217,7 @@ def main() -> int:
         picks.append({"symbol": sym, "name": names.get(sym, sym), "modelScore": round(score, 3),
                       "close": round(c, 2), "rsi14": round(fe[0], 1),
                       "entryRef": round(c, 2), "stop": round(c * (1 - STOP_PCT)),
-                      "target": round(c * (1 + TARGET_PCT))})
+                      "target": round(c * (1 + TARGET_PCT)), "supplySignal": supply_signal(sym)})
     picks.sort(key=lambda x: -x["modelScore"])
     # 상위 20% + 강세/횡보 레짐 = actionable (약세장은 상위픽도 OOS (−) → caution)
     cut = picks[max(1, len(picks) // 5) - 1]["modelScore"] if picks else 0
