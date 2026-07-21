@@ -169,8 +169,13 @@ def main() -> int:
     beta = ridge_fit((Xall - mu2) / sd2, yall, RIDGE_LAMBDA)
 
     names = {}
-    for f in (glob.glob(os.path.join(REPO, "reports/mone_v36_final_recommendations_kr_*.csv"))
+    # candidate_universe_kr.csv(545종목 마스터)를 우선 소스로 → 대부분 종목명 매핑
+    for f in ([os.path.join(REPO, "candidate_universe_kr.csv"),
+               os.path.join(REPO, "data", "candidate_universe_kr.csv")]
+              + glob.glob(os.path.join(REPO, "reports/mone_v36_final_recommendations_kr_*.csv"))
               + glob.glob(os.path.join(REPO, "data/*holdings_kr*.csv"))):
+        if not os.path.exists(f):
+            continue
         try:
             for rr in csv.DictReader(open(f, encoding="utf-8-sig")):
                 s = (rr.get("symbol") or "").split(".")[0].zfill(6)

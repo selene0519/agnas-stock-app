@@ -77,6 +77,8 @@ def rsi(cl: list[float], n: int, i: int) -> float | None:
 def load_name_map() -> dict[str, str]:
     names: dict[str, str] = {}
     patterns = [
+        os.path.join(REPO, "candidate_universe_kr.csv"),
+        os.path.join(REPO, "data", "candidate_universe_kr.csv"),
         os.path.join(REPO, "reports", "mone_v36_final_recommendations_kr_*.csv"),
         os.path.join(REPO, "data", "*holdings_kr*.csv"),
     ]
