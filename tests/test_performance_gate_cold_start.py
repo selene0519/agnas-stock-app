@@ -70,13 +70,15 @@ def _dashboard(
 
 
 def _swj(
-    net_wr: float = 0.425,
+    net_wr: float = 0.48,
     sample: int = 106,
     min_samples: int = 20,
+    avg_return: float = 0.5,
 ) -> dict[str, Any]:
     return {
         "minSamplesForUpdate": min_samples,
-        "winRates":      {"balanced_swing": net_wr},
+        "observedWinRates": {"balanced_swing": net_wr},
+        "averageReturnPct": {"balanced_swing": avg_return},
         "sampleCounts":  {"balanced_swing": sample},
     }
 
@@ -188,8 +190,8 @@ def test_gate2_metric_mismatch_no_block():
 def test_gate2_small_gap_does_not_trigger_mismatch():
     """Gap < 10pp → mismatch not triggered → proceeds to gate 3."""
     with patch(_DASH, return_value=_dashboard(
-            meaningful_win_rate=36.0)):  # csvWR=36%, swjWR=40.5% → gap=4.5pp
-        with patch(_SWJ, return_value=_swj(net_wr=0.405, sample=30)):
+            meaningful_win_rate=45.0)):  # csvWR=45%, swjWR=48% → gap=3pp
+        with patch(_SWJ, return_value=_swj(net_wr=0.48, sample=30)):
             r = _recommendation_performance_safety("kr", "balanced", "swing")
     assert r["status"] == "PERFORMANCE_OK"
     assert r["metricDefinitionMismatch"] is False
@@ -207,24 +209,23 @@ def test_gate3_genuine_poor_performance_blocks():
     assert r["isTradeBlocked"] is True
 
 
-def test_gate3_not_triggered_when_netwr_adequate():
-    """netWinRate ≥ 35% with consistent metrics → PERFORMANCE_OK."""
+def test_gate3_not_triggered_when_profit_evidence_is_adequate():
+    """Positive expectancy with a 45%+ observed win rate can pass."""
     with patch(_DASH, return_value=_dashboard(
-            meaningful_win_rate=36.0)):  # gap=4.5pp
-        with patch(_SWJ, return_value=_swj(net_wr=0.405, sample=30)):
+            meaningful_win_rate=45.0)):  # gap=3pp
+        with patch(_SWJ, return_value=_swj(net_wr=0.48, sample=30)):
             r = _recommendation_performance_safety("kr", "balanced", "swing")
     assert r["status"] == "PERFORMANCE_OK"
     assert r["isPerformanceHardBlocked"] is False
 
 
-def test_negative_avg_return_alone_does_not_block():
-    """avgReturn ≈ -0.09% (placeholder noise) must NOT trigger PERFORMANCE_BLOCKED.
-    The gate now uses netWinRate as primary — avgReturn is diagnostic only."""
+def test_negative_observed_avg_return_blocks():
+    """A positive hit rate cannot override negative realized expectancy."""
     with patch(_DASH, return_value=_dashboard(
-            avg_return=-0.09, meaningful_win_rate=36.0)):
-        with patch(_SWJ, return_value=_swj(net_wr=0.405, sample=30)):
+            avg_return=-0.09, meaningful_win_rate=45.0)):
+        with patch(_SWJ, return_value=_swj(net_wr=0.48, sample=30, avg_return=-0.09)):
             r = _recommendation_performance_safety("kr", "balanced", "swing")
-    assert r["isPerformanceHardBlocked"] is False
+    assert r["isPerformanceHardBlocked"] is True
 
 
 def test_exception_returns_unknown_no_block():
@@ -283,8 +284,8 @@ def test_apply_performance_blocked_sets_trade_blocked():
 def test_apply_performance_ok_no_block():
     """PERFORMANCE_OK → items pass through, performanceFallbackApplied=False."""
     payload = {"items": [_item()]}
-    with patch(_DASH, return_value=_dashboard(meaningful_win_rate=36.0)):
-        with patch(_SWJ, return_value=_swj(net_wr=0.405, sample=30)):
+    with patch(_DASH, return_value=_dashboard(meaningful_win_rate=45.0)):
+        with patch(_SWJ, return_value=_swj(net_wr=0.48, sample=30)):
             result = _apply_recommendation_performance_safety(payload, "kr", "balanced", "swing")
 
     item = result["items"][0]
@@ -295,36 +296,31 @@ def test_apply_performance_ok_no_block():
 
 # ── _public_quant_verdict ─────────────────────────────────────────────────────
 
-def test_quant_verdict_coverage_gap_skips_to_caution():
-    """COVERAGE_GAP → no hard strategy reasons, single caution."""
+def test_quant_verdict_coverage_gap_stays_non_executable():
+    """COVERAGE_GAP means cash is safer than an unverified entry."""
     performance = _perf("COVERAGE_GAP", False, netWinRate=None, netWinRateSampleCount=2)
     verdict = _public_quant_verdict(_item(expectedValue=None, calibrationCount=0),
                                     performance, _trade_safety_ok(), cash=10_000_000)
-    hard_strategy = [r for r in verdict["reasons"]
-                     if "strategy" in r or "netWinRate" in r]
-    assert not hard_strategy
-    caution_gap = [c for c in verdict["cautions"] if "COVERAGE_GAP" in c]
-    assert caution_gap
+    assert verdict["status"] == "NO_TRADE"
+    assert verdict["reasons"]
 
 
-def test_quant_verdict_insufficient_samples_soft_caution():
-    """INSUFFICIENT_SAMPLES → caution not reason."""
+def test_quant_verdict_insufficient_samples_stays_non_executable():
+    """INSUFFICIENT_SAMPLES must not create a live trade candidate."""
     performance = _perf("INSUFFICIENT_SAMPLES", False, netWinRate=None, netWinRateSampleCount=5)
     verdict = _public_quant_verdict(_item(expectedValue=None, calibrationCount=0),
                                     performance, _trade_safety_ok(), cash=10_000_000)
-    hard = [r for r in verdict["reasons"] if "strategy" in r]
-    assert not hard
-    assert any("INSUFFICIENT_SAMPLES" in c for c in verdict["cautions"])
+    assert verdict["status"] == "NO_TRADE"
+    assert verdict["reasons"]
 
 
-def test_quant_verdict_data_source_mismatch_soft_caution():
-    """DATA_SOURCE_MISMATCH → caution not reason."""
+def test_quant_verdict_data_source_mismatch_stays_non_executable():
+    """Mismatched metrics remain visible but cannot create a live trade."""
     performance = _perf("DATA_SOURCE_MISMATCH", False, netWinRate=42.5, netWinRateSampleCount=106)
     verdict = _public_quant_verdict(_item(expectedValue=None, calibrationCount=0),
                                     performance, _trade_safety_ok(), cash=10_000_000)
-    hard = [r for r in verdict["reasons"] if "strategy" in r or "winRate" in r]
-    assert not hard
-    assert any("DATA_SOURCE_MISMATCH" in c for c in verdict["cautions"])
+    assert verdict["status"] == "NO_TRADE"
+    assert verdict["reasons"]
 
 
 def test_quant_verdict_performance_ok_no_strategy_gate():

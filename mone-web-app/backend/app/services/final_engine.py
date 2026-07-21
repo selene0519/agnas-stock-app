@@ -1506,7 +1506,8 @@ def _expected_value_pct(entry: Any, stop: Any, target: Any, score: Any, horizon:
         return None
     base = _EV_HORIZON_BASE_WIN.get(horizon, 0.505)
     scale = _EV_HORIZON_SCALE.get(horizon, 0.14)
-    prob = max(0.35, min(0.65, base + ((sc - 50.0) / 50.0) * scale))
+    # Score-derived estimate only; never manufacture a 35% minimum.
+    prob = max(0.01, min(0.99, base + ((sc - 50.0) / 50.0) * scale))
     trade_cost = 0.31 if market == "kr" else 0.15  # 세금+수수료+평균 슬리피지
     ev_gross = prob * reward_pct - (1.0 - prob) * risk_pct
     return round(ev_gross - trade_cost, 2)

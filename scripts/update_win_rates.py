@@ -7,7 +7,7 @@
 - 결과를 reports/strategy_win_rates.json에 저장
 - generate_kr/us_recommendations.py에서 이 파일을 읽어 EV 계산
 
-승률 보정 범위: 35% ~ 65% (하드 클램프)
+실측 승률은 수정하지 않으며, 유효 확률 범위(1%~99%)만 적용
 업데이트 주기: GitHub Actions에서 주 1회 실행
 
 파일 구조:
@@ -40,9 +40,8 @@ SIGNAL_LEDGER_CSV   = ROOT / "data" / "recommendation_validation_results.csv"
 WIN_RATES_JSON = ROOT / "reports" / "strategy_win_rates.json"
 
 MIN_SAMPLES   = 20     # 이 이상일 때만 실제 승률 반영
-MAX_ADJUST    = 0.08   # 기본값에서 최대 ±8% 보정 (너무 큰 편향 방지)
-WIN_RATE_MIN  = 0.35
-WIN_RATE_MAX  = 0.65
+PROBABILITY_MIN = 0.01
+PROBABILITY_MAX = 0.99
 
 # 기본값 (데이터 부족 시 사용)
 DEFAULTS = {
@@ -93,30 +92,60 @@ def _is_win(row: dict) -> bool | None:
     return None
 
 
+def _return_pct(row: dict) -> float | None:
+    """Read a realized return without treating a missing value as zero."""
+    for key in ("net_pnl_pct", "returnPct", "return_pct", "virtualReturnPct", "primaryReturn"):
+        value = row.get(key)
+        if value is None or str(value).strip() == "":
+            continue
+        try:
+            return float(str(value).replace("%", "").replace(",", "").strip())
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _is_realized_forward_result(row: dict) -> tuple[bool, str]:
+    """Return whether this row is admissible for a public performance gate."""
+    result = str(row.get("result") or row.get("status") or row.get("win_loss_result") or "").upper().strip()
+    if result in {"", "PENDING", "DATA_PENDING", "NOT_EXECUTED", "CANCELLED", "INVALID_SYMBOL", "DATA_INVALID"}:
+        return False, "NON_EXECUTED_OR_PENDING"
+    if _return_pct(row) is None:
+        return False, "MISSING_REALIZED_RETURN"
+    return True, ""
+
+
 def calculate_win_rates() -> dict[str, Any]:
     # VTJ 검증 결과 + signal_ledger 검증 결과 병합 (중복 없이)
     rows = _read_csv(VALIDATION_CSV)
     sig_rows = _read_csv(SIGNAL_LEDGER_CSV)
+    signal_ledger_row_count = len(sig_rows)
+    # The ledger can contain reconstructed or unfilled rows.  It is
+    # diagnostic-only and cannot influence the public performance gate.
+    sig_rows = []
     # signal_ledger 결과는 weight 0.7로 조정 (forward paper trade 대비 신뢰도 낮음)
-    for r in sig_rows:
-        r.setdefault("_source", "signal_ledger")
-    rows = rows + sig_rows
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    excluded: dict[str, int] = {"NON_EXECUTED_OR_PENDING": 0, "MISSING_REALIZED_RETURN": 0}
 
     # 전략별 집계
-    counts: dict[str, dict[str, int]] = {}
+    counts: dict[str, dict[str, Any]] = {}
     for mode in MODES:
         for horizon in HORIZONS:
             key = f"{mode}_{horizon}"
-            counts[key] = {"win": 0, "loss": 0, "total": 0}
+            counts[key] = {"win": 0, "loss": 0, "total": 0, "returns": []}
 
     for row in rows:
         mode    = str(row.get("mode", "")).lower().strip()
         horizon = str(row.get("horizon", "")).lower().strip()
         if mode not in MODES or horizon not in HORIZONS:
             continue
+        eligible, exclusion_reason = _is_realized_forward_result(row)
+        if not eligible:
+            excluded[exclusion_reason] = excluded.get(exclusion_reason, 0) + 1
+            continue
         result = _is_win(row)
         if result is None:
+            excluded["UNCLASSIFIED_RESULT"] = excluded.get("UNCLASSIFIED_RESULT", 0) + 1
             continue
         key = f"{mode}_{horizon}"
         counts[key]["total"] += 1
@@ -124,9 +153,14 @@ def calculate_win_rates() -> dict[str, Any]:
             counts[key]["win"] += 1
         else:
             counts[key]["loss"] += 1
+        realized_return = _return_pct(row)
+        if realized_return is not None:
+            counts[key]["returns"].append(realized_return)
 
     # 기본값에서 출발
     win_rates: dict[str, float] = {}
+    observed_win_rates: dict[str, float | None] = {}
+    average_return_pct: dict[str, float | None] = {}
     sample_counts: dict[str, int] = {}
 
     for mode in MODES:
@@ -136,17 +170,15 @@ def calculate_win_rates() -> dict[str, Any]:
             sample_counts[key] = c["total"]
 
             default_base = DEFAULTS[f"{horizon}_base"]
+            observed = round(c["win"] / c["total"], 4) if c["total"] else None
+            observed_win_rates[key] = observed
+            returns = c["returns"]
+            average_return_pct[key] = round(sum(returns) / len(returns), 4) if returns else None
 
             if c["total"] >= MIN_SAMPLES:
-                # 실제 승률 계산
-                actual_rate = c["win"] / c["total"]
-                # 너무 큰 편차 방지: 기본값 ± MAX_ADJUST 범위 내로 클램프
-                clamped = max(
-                    default_base - MAX_ADJUST,
-                    min(default_base + MAX_ADJUST, actual_rate)
-                )
-                # 절대 클램프
-                win_rates[key] = round(max(WIN_RATE_MIN, min(WIN_RATE_MAX, clamped)), 4)
+                # Observed performance must remain unmodified: a losing strategy
+                # must never be made to look viable through a probability floor.
+                win_rates[key] = round(max(PROBABILITY_MIN, min(PROBABILITY_MAX, observed or 0.0)), 4)
             else:
                 # 데이터 부족: 기본값 사용
                 win_rates[key] = default_base
@@ -159,9 +191,9 @@ def calculate_win_rates() -> dict[str, Any]:
         cons_key  = f"conservative_{horizon}"
         aggr_key  = f"aggressive_{horizon}"
         if sample_counts.get(cons_key, 0) < MIN_SAMPLES:
-            win_rates[cons_key] = round(min(WIN_RATE_MAX, base + 0.01), 4)
+            win_rates[cons_key] = round(min(PROBABILITY_MAX, base + 0.01), 4)
         if sample_counts.get(aggr_key, 0) < MIN_SAMPLES:
-            win_rates[aggr_key] = round(max(WIN_RATE_MIN, base - 0.01), 4)
+            win_rates[aggr_key] = round(max(PROBABILITY_MIN, base - 0.01), 4)
 
     total_validated = sum(c["total"] for c in counts.values())
     total_wins = sum(c["win"] for c in counts.values())
@@ -175,6 +207,14 @@ def calculate_win_rates() -> dict[str, Any]:
         "minSamplesForUpdate": MIN_SAMPLES,
         "sampleCounts": sample_counts,
         "winRates": win_rates,
+        "observedWinRates": observed_win_rates,
+        "averageReturnPct": average_return_pct,
+        "performanceDataPolicy": {
+            "source": "reports/virtual_validation_results.csv",
+            "requiresRealizedReturn": True,
+            "excludedRows": excluded,
+            "signalLedgerRowsExcluded": signal_ledger_row_count,
+        },
         "defaultRates": DEFAULTS,
         "note": (
             f"샘플 {MIN_SAMPLES}건 미만 전략은 기본값 사용. "

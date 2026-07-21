@@ -290,17 +290,30 @@ def test_active_stabilizer_low_win_rate_strategy_blocks_trade_candidates(monkeyp
                     "completed": 40,
                     "winRate": 22.5,
                     "avgReturn": -1.2,
+                    "meaningfulCompleted": 40,
+                    "placeholderCount": 0,
+                    "meaningfulWinRate": 22.5,
                     "sampleStatus": "ENOUGH_SAMPLE",
                 }
             },
             "summary": {"basis": "completed validations only"},
         },
     )
+    monkeypatch.setattr(
+        stabilizer,
+        "_load_strategy_win_rates",
+        lambda: {
+            "minSamplesForUpdate": 20,
+            "sampleCounts": {"balanced_swing": 40},
+            "observedWinRates": {"balanced_swing": 0.225},
+            "averageReturnPct": {"balanced_swing": -1.2},
+        },
+    )
     payload = {"status": "OK", "count": 1, "items": [{"symbol": "AAPL"}]}
 
     out = stabilizer._apply_recommendation_performance_safety(payload, "us", "balanced", "swing")
 
-    assert out["performanceSafety"]["status"] == "BLOCKED_LOW_WIN_RATE"
+    assert out["performanceSafety"]["status"] == "PERFORMANCE_BLOCKED"
     assert out["reviewOnly"] is True
     assert out["blockedCount"] == 1
     assert out["items"][0]["isTradeBlocked"] is True

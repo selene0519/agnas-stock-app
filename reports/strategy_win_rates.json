@@ -1,30 +1,61 @@
 {
-  "updatedAt": "2026-07-21 00:56:48",
-  "totalSamples": 504,
-  "totalWins": 96,
-  "overallWinRate": 0.1905,
+  "updatedAt": "2026-07-21 22:41:50",
+  "totalSamples": 507,
+  "totalWins": 74,
+  "overallWinRate": 0.146,
   "minSamplesForUpdate": 20,
   "sampleCounts": {
     "conservative_short": 56,
     "conservative_swing": 60,
     "conservative_mid": 12,
     "balanced_short": 55,
-    "balanced_swing": 172,
+    "balanced_swing": 174,
     "balanced_mid": 12,
     "aggressive_short": 52,
     "aggressive_swing": 68,
-    "aggressive_mid": 17
+    "aggressive_mid": 18
   },
   "winRates": {
-    "conservative_short": 0.405,
-    "conservative_swing": 0.425,
+    "conservative_short": 0.1429,
+    "conservative_swing": 0.1,
     "conservative_mid": 0.525,
-    "balanced_short": 0.405,
-    "balanced_swing": 0.425,
+    "balanced_short": 0.1273,
+    "balanced_swing": 0.1724,
     "balanced_mid": 0.515,
-    "aggressive_short": 0.405,
-    "aggressive_swing": 0.425,
+    "aggressive_short": 0.1538,
+    "aggressive_swing": 0.1912,
     "aggressive_mid": 0.505
+  },
+  "observedWinRates": {
+    "conservative_short": 0.1429,
+    "conservative_swing": 0.1,
+    "conservative_mid": 0.0833,
+    "balanced_short": 0.1273,
+    "balanced_swing": 0.1724,
+    "balanced_mid": 0.0,
+    "aggressive_short": 0.1538,
+    "aggressive_swing": 0.1912,
+    "aggressive_mid": 0.0556
+  },
+  "averageReturnPct": {
+    "conservative_short": -2.186,
+    "conservative_swing": -4.4136,
+    "conservative_mid": -3.7224,
+    "balanced_short": -3.7516,
+    "balanced_swing": -4.9099,
+    "balanced_mid": -12.871,
+    "aggressive_short": -3.769,
+    "aggressive_swing": -6.2125,
+    "aggressive_mid": -9.0502
+  },
+  "performanceDataPolicy": {
+    "source": "reports/virtual_validation_results.csv",
+    "requiresRealizedReturn": true,
+    "excludedRows": {
+      "NON_EXECUTED_OR_PENDING": 317,
+      "MISSING_REALIZED_RETURN": 0
+    },
+    "signalLedgerRowsExcluded": 0
   },
   "defaultRates": {
     "short_base": 0.485,
@@ -34,5 +65,5 @@
     "swing_scale": 0.14,
     "mid_scale": 0.15
   },
-  "note": "샘플 20건 미만 전략은 기본값 사용. 전체 504건 검증됨."
+  "note": "샘플 20건 미만 전략은 기본값 사용. 전체 507건 검증됨."
 }

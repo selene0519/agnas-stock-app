@@ -75,6 +75,7 @@ def main() -> int:
     args = ap.parse_args()
 
     from app.services import final_engine as fe
+    from app.services import signal_ledger as sl
 
     out_dir = ROOT / "reports" / "reco_cache"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -88,6 +89,20 @@ def main() -> int:
                 try:
                     res = fe.final_recommendations(market, mode, horizon, limit=args.limit)
                     res = dict(res)
+                    # Freeze a small, stable set of forecasts before slimming the
+                    # cache payload.  Validation later reads this immutable ledger,
+                    # never a forecast recomputed after the outcome is known.
+                    snapshot_items = list(res.get("items") or [])[: min(20, args.limit)]
+                    snapshot = sl.record_recommendation_snapshots(
+                        snapshot_items,
+                        source=f"precompute:{market}_{mode}_{horizon}",
+                    )
+                    res["forecastSnapshot"] = {
+                        "date": snapshot.get("snapshotDate"),
+                        "added": snapshot.get("added", 0),
+                        "duplicates": snapshot.get("duplicates", 0),
+                        "method": "HISTORICAL_ANALOG_EMPIRICAL",
+                    }
                     res["items"] = [_slim_item(it) for it in (res.get("items") or [])]
                     res["servedFrom"] = "precompute"
                     res["precomputedAt"] = fe._now()

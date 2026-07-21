@@ -56,7 +56,9 @@ HISTORICAL_REPLAY_METHOD = "synthetic_cutoff_ohlcv_v1"
 SOURCE_CALIBRATION_WEIGHTS = {
     "FORWARD_PAPER_TRADE": 1.0,
     "MANUAL_REVIEWED": 1.2,
-    "HISTORICAL_REPLAY": 0.4,
+    # Historical replay is hypothesis-generation evidence only.  It cannot
+    # auto-adjust live recommendation parameters.
+    "HISTORICAL_REPLAY": 0.0,
     "BACKTEST_EXPERIMENT": 0.15,
 }
 AUTO_CALIBRATION_POLICY = {
@@ -74,13 +76,13 @@ AUTO_CALIBRATION_POLICY = {
     "sourceMinSamples": {
         "FORWARD_PAPER_TRADE": 50,
         "MANUAL_REVIEWED": 35,
-        "HISTORICAL_REPLAY": 150,
+        "HISTORICAL_REPLAY": 999999,
         "BACKTEST_EXPERIMENT": 999999,
     },
     "sourceConfidenceCaps": {
         "FORWARD_PAPER_TRADE": 0.78,
         "MANUAL_REVIEWED": 0.86,
-        "HISTORICAL_REPLAY": 0.58,
+        "HISTORICAL_REPLAY": 0.0,
         "BACKTEST_EXPERIMENT": 0.35,
     },
 }
@@ -154,6 +156,8 @@ ANALOG_FEATURES = {
     "range_20d_pct": 10.0,
     "volume_20d_ratio": 1.0,
 }
+MIN_ANALOG_SEPARATION_BARS = 20
+MAX_ANALOG_LIMIT = 40
 
 _SCHEDULER_LOCK = threading.Lock()
 _SCHEDULER_STARTED = False
@@ -183,6 +187,16 @@ JOURNAL_COLS = [
     "probability",
     "risk_score",
     "event_risk_score",
+    # Immutable event context at recommendation time.  The later postmortem
+    # may use it as a hypothesis, never as proof that an event caused a loss.
+    "news_event_tag",
+    "disclosure_event_tag",
+    "earnings_event_tag",
+    "macro_event_tag",
+    "sector_event_tag",
+    "event_summary",
+    "event_data_source_type",
+    "event_reliability_score",
     "data_status",
     "data_confidence",
     "price_source",
@@ -623,6 +637,14 @@ def _snapshot_from_item(
         "probability": nums["probability"],
         "risk_score": nums["risk_score"],
         "event_risk_score": nums["event_risk"],
+        "news_event_tag": _text(item.get("newsEventTag")),
+        "disclosure_event_tag": _text(item.get("disclosureEventTag")),
+        "earnings_event_tag": _text(item.get("earningsEventTag")),
+        "macro_event_tag": _text(item.get("macroEventTag")),
+        "sector_event_tag": _text(item.get("sectorEventTag")),
+        "event_summary": _text(item.get("eventSummary"))[:300],
+        "event_data_source_type": _text(item.get("eventDataSourceType")),
+        "event_reliability_score": _safe_float(item.get("eventReliabilityScore")),
         "data_status": data_status,
         "data_confidence": _confidence_from_data_status(data_status),
         "price_source": _text(item.get("priceSource") or item.get("currentPriceSource")),
@@ -920,6 +942,9 @@ def market_analog_replay(
         "asOfDate": analogs_payload.get("asOfDate"),
         "benchmarkSymbol": analogs_payload.get("benchmarkSymbol"),
         "currentVector": analogs_payload.get("currentVector"),
+        "history": analogs_payload.get("history"),
+        "regimeFilter": analogs_payload.get("regimeFilter"),
+        "marketOutcomeSummary": analogs_payload.get("marketOutcomeSummary"),
         "replayMethod": HISTORICAL_REPLAY_METHOD,
         "futureDataPolicy": "analogs_use_benchmark_data_lte_as_of_date_then_evaluate_future_after_snapshot",
         "count": len(items),
@@ -949,6 +974,7 @@ def _find_market_analogs(
     if not current_vector:
         return {"status": "ERROR", "error": "CURRENT_VECTOR_UNAVAILABLE", "items": []}
     eval_window = EVALUATION_WINDOWS.get(horizon, 20)
+    close = pd.to_numeric(work["close"], errors="coerce")
     candidates: list[dict[str, Any]] = []
     latest_ts = work.iloc[current_idx]["_date_ts"]
     max_idx = current_idx - max(eval_window, 20)
@@ -959,28 +985,103 @@ def _find_market_analogs(
         distance = _analog_distance(current_vector, vector)
         if distance is None:
             continue
+        base_close = _safe_float(close.iloc[idx])
+        future_close = close.iloc[idx + 1: idx + eval_window + 1].dropna()
+        market_outcome: dict[str, Any] = {}
+        if base_close and not future_close.empty:
+            market_outcome = {
+                "windowDays": len(future_close),
+                "returnPct": round((float(future_close.iloc[-1]) / base_close - 1.0) * 100.0, 4),
+                "maxDrawdownPct": round((float(future_close.min()) / base_close - 1.0) * 100.0, 4),
+                "maxRunupPct": round((float(future_close.max()) / base_close - 1.0) * 100.0, 4),
+            }
         candidates.append({
+            "_index": idx,
             "date": str(work.iloc[idx]["_date_ts"].date()),
             "similarity": round(max(0.0, 1.0 - distance / 4.0), 4),
             "distance": round(distance, 4),
             "marketVector": vector,
+            "marketOutcome": market_outcome,
             "futureWindowAvailableDays": int((work["_date_ts"] > work.iloc[idx]["_date_ts"]).sum()),
         })
     candidates.sort(key=lambda item: (item["distance"], item["date"]))
-    safe_limit = max(1, min(int(limit or 5), 20))
+    safe_limit = max(1, min(int(limit or 5), MAX_ANALOG_LIMIT))
+    current_regime = _text(current_vector.get("regime")).upper()
+    same_regime = [
+        item for item in candidates
+        if _text((item.get("marketVector") or {}).get("regime")).upper() == current_regime
+    ]
+    # Regime is a first-class constraint when enough independent analogs exist.
+    # The fallback remains explicit so sparse bear data is never overstated.
+    pool = same_regime if len(same_regime) >= safe_limit else candidates
+    regime_filter = "SAME_REGIME" if pool is same_regime else "MIXED_REGIME_FALLBACK"
+    separation = max(MIN_ANALOG_SEPARATION_BARS, eval_window)
+    selected: list[dict[str, Any]] = []
+    for item in pool:
+        idx = int(item["_index"])
+        if any(abs(idx - int(existing["_index"])) < separation for existing in selected):
+            continue
+        selected.append(item)
+        if len(selected) >= safe_limit:
+            break
+    for item in selected:
+        item.pop("_index", None)
+    outcome_returns = [
+        _safe_float((item.get("marketOutcome") or {}).get("returnPct"))
+        for item in selected
+    ]
+    outcome_returns = [value for value in outcome_returns if value is not None]
+    outcome_drawdowns = [
+        _safe_float((item.get("marketOutcome") or {}).get("maxDrawdownPct"))
+        for item in selected
+    ]
+    outcome_drawdowns = [value for value in outcome_drawdowns if value is not None]
+    market_outcome_summary = {
+        "horizon": horizon,
+        "sampleCount": len(outcome_returns),
+        "winRate": round(sum(value > 0 for value in outcome_returns) / len(outcome_returns), 4) if outcome_returns else None,
+        "averageReturnPct": round(sum(outcome_returns) / len(outcome_returns), 4) if outcome_returns else None,
+        "medianReturnPct": round(float(pd.Series(outcome_returns).median()), 4) if outcome_returns else None,
+        "averageMaxDrawdownPct": round(sum(outcome_drawdowns) / len(outcome_drawdowns), 4) if outcome_drawdowns else None,
+        "researchOnly": True,
+    }
     return {
         "status": "OK",
         "market": market,
         "asOfDate": str(latest_ts.date()),
         "benchmarkSymbol": benchmark_symbol,
         "currentVector": current_vector,
-        "count": len(candidates[:safe_limit]),
-        "items": candidates[:safe_limit],
+        "history": {
+            "startDate": str(work.iloc[0]["_date_ts"].date()),
+            "endDate": str(latest_ts.date()),
+            "tradingDays": len(work),
+            "independentSpacingBars": separation,
+        },
+        "regimeFilter": regime_filter,
+        "marketOutcomeSummary": market_outcome_summary,
+        "count": len(selected),
+        "items": selected,
     }
 
 
 def _load_benchmark_ohlcv(market: str) -> tuple[pd.DataFrame, str]:
     for symbol in BENCHMARK_SYMBOLS.get(market, []):
+        # The shared loader intentionally truncates chart payloads to recent bars.
+        # Market analogs need the complete on-disk benchmark history instead.
+        path = DATA_DIR / "market" / "ohlcv" / f"{market}_{symbol}_daily.csv"
+        if path.exists():
+            try:
+                raw = pd.read_csv(path, encoding="utf-8-sig")
+                if not raw.empty and "date" in raw:
+                    raw["_date_ts"] = pd.to_datetime(raw["date"], errors="coerce").dt.normalize()
+                    for col in ("open", "high", "low", "close", "volume"):
+                        if col in raw:
+                            raw[col] = pd.to_numeric(raw[col], errors="coerce")
+                    raw = raw.dropna(subset=["_date_ts", "close"]).sort_values("_date_ts").drop_duplicates("_date_ts").reset_index(drop=True)
+                    if len(raw) >= 90:
+                        return raw, symbol
+            except Exception:
+                pass
         df, _source, source_type = _load_ohlcv(market, symbol)
         if df is not None and not df.empty and source_type == "actual_ohlcv":
             return df, symbol
@@ -1393,6 +1494,34 @@ def evaluate(
     evaluated = [_evaluate_one(row) for row in scope]
     if evaluated:
         _write_rows(EVALUATION_CSV, kept_eval + evaluated, EVALUATION_COLS)
+        # A loss gets one immutable entry-time event snapshot for postmortem.
+        # The postmortem service de-duplicates journal/date/failure keys, so
+        # force-evaluation cannot create duplicate explanations.
+        try:
+            from app.services import postmortem
+
+            for source_row, evaluation in zip(scope, evaluated):
+                raw = source_row.get("raw_recommendation") if isinstance(source_row.get("raw_recommendation"), dict) else {}
+                postmortem_row = {
+                    **source_row,
+                    **evaluation,
+                    "exitStatus": evaluation.get("outcome"),
+                    "executionStatus": "EXECUTED" if evaluation.get("filled") else "NOT_EXECUTED",
+                    "pnlPct": evaluation.get("net_pnl_pct"),
+                    "execution": {"exitStatus": evaluation.get("outcome"), "pnlPct": evaluation.get("net_pnl_pct")},
+                    "newsEventTag": source_row.get("news_event_tag") or raw.get("newsEventTag"),
+                    "disclosureEventTag": source_row.get("disclosure_event_tag") or raw.get("disclosureEventTag"),
+                    "earningsEventTag": source_row.get("earnings_event_tag") or raw.get("earningsEventTag"),
+                    "macroEventTag": source_row.get("macro_event_tag") or raw.get("macroEventTag"),
+                    "sectorEventTag": source_row.get("sector_event_tag") or raw.get("sectorEventTag"),
+                    "eventRiskScore": source_row.get("event_risk_score"),
+                    "eventSummary": source_row.get("event_summary") or raw.get("eventSummary"),
+                    "eventDataSourceType": source_row.get("event_data_source_type") or raw.get("eventDataSourceType"),
+                    "dataSourceType": source_row.get("data_confidence"),
+                }
+                postmortem.save_postmortem(postmortem_row, validation_date=str(evaluation.get("evaluated_at") or "")[:10] or None)
+        except Exception:
+            pass
     counts = Counter(row.get("outcome") for row in evaluated)
     return {
         "status": "OK",
@@ -3571,10 +3700,21 @@ def performance_by_strategy(
         _merge_evaluations(_read_journal_rows()),
         market, mode, horizon, "all", "all",
     )
-    evaluated = sorted(
+    all_evaluated = sorted(
         [r for r in rows if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}],
         key=lambda r: str(r.get("as_of_date") or r.get("trade_date") or ""),
     )
+    eligible_sources = {"FORWARD_PAPER_TRADE", "MANUAL_REVIEWED"}
+    evaluated = [
+        row for row in all_evaluated
+        if _upper(row.get("source_type")) in eligible_sources
+        and _safe_float(row.get("net_pnl_pct")) is not None
+    ]
+    research_rows = [
+        row for row in all_evaluated
+        if _upper(row.get("source_type")) not in eligible_sources
+        or _safe_float(row.get("net_pnl_pct")) is None
+    ]
 
     # ── 1. 전략 콤보별 집계 (mode × horizon) ─────────────────────────────
     combo_data: dict[str, dict[str, Any]] = {}
@@ -3655,9 +3795,18 @@ def performance_by_strategy(
 
     return {
         "status": "OK",
+        "performanceDataPolicy": {
+            "eligibleSources": sorted(eligible_sources),
+            "requiresRealizedReturn": True,
+            "researchRowsExcluded": len(research_rows),
+        },
         "summary": summary,
         "strategyRows": strategy_rows,
         "equityCurve": curve_points,
+        "researchOnly": {
+            "count": len(research_rows),
+            "sourceCounts": dict(Counter(_upper(row.get("source_type") or "UNKNOWN") for row in research_rows)),
+        },
     }
 
 
@@ -4078,11 +4227,16 @@ def _historical_strategy_rows(rows: list[dict[str, Any]], min_samples: int) -> l
         groups[(row["market"], row["mode"], row["horizon"])].append(row)
     out: list[dict[str, Any]] = []
     for (market, mode, horizon), sub in sorted(groups.items()):
-        evaluated = [r for r in sub if r["resultKind"] in {"WIN", "LOSS", "CLOSE"} or r["returnPct"] is not None]
+        # Labels without a realised return are research diagnostics only.  They
+        # cannot enter a win-rate denominator or generate a calibration action.
+        evaluated = [
+            r for r in sub
+            if r["returnPct"] is not None and r["resultKind"] not in {"PENDING", "NOT_EXECUTED"}
+        ]
         if not evaluated:
             continue
-        wins = sum(1 for r in evaluated if r["resultKind"] == "WIN" or ((r["returnPct"] or 0) > 0 and r["resultKind"] == "CLOSE"))
-        losses = sum(1 for r in evaluated if r["resultKind"] == "LOSS" or ((r["returnPct"] or 0) < 0 and r["resultKind"] == "CLOSE"))
+        wins = sum(1 for r in evaluated if (r["returnPct"] or 0) > 0)
+        losses = sum(1 for r in evaluated if (r["returnPct"] or 0) < 0)
         returns = [r["returnPct"] for r in evaluated if r["returnPct"] is not None]
         low, high = _wilson_interval(wins, len(evaluated))
         source_counts = Counter(r["source"] for r in evaluated)
@@ -4175,8 +4329,10 @@ def historical_strategy_calibration(
 
     history_rows = _historical_operation_rows(normalized_market)
     validation_rows = _virtual_validation_result_rows(normalized_market)
-    combined = history_rows + validation_rows
-    strategy_rows = _historical_strategy_rows(combined, safe_min)
+    # Historical replay is useful for hypothesis generation, but never merges
+    # with forward-paper results for a public performance or calibration gate.
+    historical_research_rows = _historical_strategy_rows(history_rows, safe_min)
+    strategy_rows = _historical_strategy_rows(validation_rows, safe_min)
     suggestions = _historical_calibration_suggestions(strategy_rows, safe_min)
 
     chart_summary: dict[str, Any] = {"status": "SKIPPED"}
@@ -4229,16 +4385,19 @@ def historical_strategy_calibration(
         "market": normalized_market,
         "policy": {
             "futureLeakage": "historical operation rows are grouped from stored snapshots; chart and pattern checks use OHLCV only through each cutoff, then score future bars.",
-            "separation": "This report does not auto-apply corrections. It separates forward journal, historical operation, validation-result, and chart-pattern evidence.",
+            "separation": "Forward realised validation alone drives strategyRows and suggestions. Historical operation and chart evidence are research-only and never merge into the forward denominator.",
             "minSamples": safe_min,
         },
         "counts": {
             "historicalOperationRows": len(history_rows),
             "virtualValidationRows": len(validation_rows),
-            "combinedRows": len(combined),
-            "strategyCells": len(strategy_rows),
+            "combinedRows": len(history_rows) + len(validation_rows),
+            "forwardEligibleRows": sum(1 for row in validation_rows if row.get("returnPct") is not None),
+            "forwardStrategyCells": len(strategy_rows),
+            "historicalResearchCells": len(historical_research_rows),
         },
         "strategyRows": strategy_rows,
+        "historicalResearchRows": historical_research_rows,
         "suggestions": suggestions,
         "patternEvidence": {
             "chartAnalysis": chart_summary,

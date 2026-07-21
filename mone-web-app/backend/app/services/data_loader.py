@@ -874,7 +874,12 @@ def _find_ohlcv_candidates(symbol: str, market: str) -> list[Path]:
     return out
 
 
-def _normalize_ohlcv_dataframe(df: pd.DataFrame, symbol: str, market: str) -> pd.DataFrame:
+def _normalize_ohlcv_dataframe(
+    df: pd.DataFrame,
+    symbol: str,
+    market: str,
+    tail_rows: int | None = 240,
+) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
     work = df.copy()
@@ -908,7 +913,10 @@ def _normalize_ohlcv_dataframe(df: pd.DataFrame, symbol: str, market: str) -> pd
     out["date_sort"] = pd.to_datetime(out["date"], errors="coerce")
     if out["date_sort"].notna().any():
         out = out.sort_values("date_sort")
-    return out.drop(columns=["date_sort"], errors="ignore").tail(240).reset_index(drop=True)
+    out = out.drop(columns=["date_sort"], errors="ignore")
+    if tail_rows is not None:
+        out = out.tail(tail_rows)
+    return out.reset_index(drop=True)
 
 
 def _actual_close_history_files(market: str) -> list[Path]:
@@ -986,6 +994,15 @@ def _load_ohlcv(symbol: str, market: str) -> tuple[pd.DataFrame, str]:
     fallback_df, fallback_source = _load_actual_close_history(symbol, market)
     if not fallback_df.empty and len(fallback_df) >= 2:
         return fallback_df, fallback_source
+    return pd.DataFrame(), ""
+
+
+def _load_full_ohlcv(symbol: str, market: str) -> tuple[pd.DataFrame, str]:
+    """Load complete local history for historical research, not chart rendering."""
+    for path in _find_ohlcv_candidates(symbol, market):
+        df = _normalize_ohlcv_dataframe(read_csv(path), symbol, market, tail_rows=None)
+        if not df.empty and len(df) >= 5:
+            return df, source_label(path)
     return pd.DataFrame(), ""
 
 
@@ -4531,14 +4548,16 @@ def similar_pattern_history(
     symbol: str,
     market: str,
     horizons: tuple[int, ...] = (1, 5, 10),
-    top_n: int = 10,
+    top_n: int = 20,
 ) -> dict[str, Any]:
     """현재 RSI·MACD·볼린저밴드 위치와 가장 비슷했던 과거 시점을 찾아 이후 수익률을 집계한다.
 
     "Was It?" 스타일 — 지표 상태가 유사했던 과거 구간들의 1/5/10일 후 수익률과 승률을 보여준다.
     """
     target = normalize_symbol(symbol, market)
-    df, source = _load_ohlcv(target, market)
+    # Charts use a recent payload, but analog research must use every locally
+    # available bar so older bear and sideways regimes are not discarded.
+    df, source = _load_full_ohlcv(target, market)
     max_horizon = max(horizons)
     min_rows = 40 + max_horizon
     if df.empty or len(df) < min_rows:
@@ -4610,11 +4629,18 @@ def similar_pattern_history(
         }
 
     distances = ((z.loc[eligible_idx] - current_z) ** 2).sum(axis=1).pow(0.5)
-    ranked = distances.sort_values().head(top_n)
+    ranked: list[tuple[int, float]] = []
+    for idx, dist in distances.sort_values().items():
+        # Adjacent dates describe the same episode and are not independent evidence.
+        if any(abs(int(idx) - prior_idx) < 20 for prior_idx, _prior_dist in ranked):
+            continue
+        ranked.append((int(idx), float(dist)))
+        if len(ranked) >= top_n:
+            break
 
     matches: list[dict[str, Any]] = []
     horizon_returns: dict[int, list[float]] = {h: [] for h in horizons}
-    for idx, dist in ranked.items():
+    for idx, dist in ranked:
         row = work.loc[idx]
         base_close = float(row["close"])
         if not base_close:
@@ -4661,6 +4687,17 @@ def similar_pattern_history(
             "macdHistPct": round(float(current_row["macdHistPct"]), 3),
         },
         "matchCount": len(matches),
+        "period": {
+            "basis": "all_available_ohlcv",
+            "source": source,
+            "fromDate": str(work.iloc[0]["date"]),
+            "toDate": str(work.iloc[-1]["date"]),
+            "totalRows": len(work),
+            "independentSpacingBars": 20,
+            "horizons": list(horizons),
+            "topN": top_n,
+            "features": ["rsi", "bbPercent", "macdHistPct"],
+        },
         "matches": matches,
         "summary": summary,
         "message": f"과거 {len(matches)}개 유사 시점 기준 통계이며 투자 조언이 아닙니다.",

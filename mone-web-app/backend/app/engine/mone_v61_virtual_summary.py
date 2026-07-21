@@ -425,7 +425,7 @@ def register_mone_v61_virtual_summary(app):
                 "실제 성과는 이보다 낮을 수 있습니다.")
             real_data.setdefault("calibrationNote",
                 "probability 필드는 기술점수이며 실제 승률이 아닙니다. "
-                "calibratedWinRate(35~65%) 참조.")
+                "calibratedWinRate는 검증된 실측값일 때만 참조합니다.")
             return real_data
         return _virtual_summary(market, mode, horizon, 200)
 

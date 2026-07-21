@@ -375,7 +375,8 @@ export function resolveEvPct(item: any): number | null {
   if (risk <= 0) return null;
   const base = EV_BASE_WIN[horizon] ?? 0.505;
   const scale = EV_SCALE[horizon] ?? 0.14;
-  const prob = Math.max(0.35, Math.min(0.65, base + ((score - 50) / 50) * scale));
+  // Score-derived estimate only; never manufacture a 35% minimum.
+  const prob = Math.max(0.01, Math.min(0.99, base + ((score - 50) / 50) * scale));
   const cost = market === "us" ? 0.15 : 0.31;
   return Math.round((prob * reward - (1 - prob) * risk - cost) * 100) / 100;
 }
@@ -404,7 +405,7 @@ export function pctText(value: any, fallback = "-"): string {
 }
 
 export function probabilityText(item: any, fallback = "-"): string {
-  // calibratedWinRate(35~65% 실증 보정) 우선; 없으면 기술점수(probability) 표시
+  // Measured calibrated rate first; otherwise show the separately labelled score probability.
   if (item?.calibratedWinRate != null) {
     const wr = Number(item.calibratedWinRate);
     if (!isNaN(wr)) return `승률 ${wr.toFixed(1)}%`;

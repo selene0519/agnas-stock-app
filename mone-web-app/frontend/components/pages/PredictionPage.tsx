@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { mone, type Market } from "@/lib/api";
-import { dedupeBySymbol, displayName, firstText, horizonLabel, modeLabel, pctText, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
+import { dedupeBySymbol, displayName, horizonLabel, modeLabel, priceText, probabilityText, toNumber } from "@/lib/moneDisplay";
 import { getDefaultMarketBySession } from "@/lib/marketSession";
 import { toneClassName } from "@/lib/tone";
 
@@ -220,6 +220,86 @@ function ValidationPolicyPanel({ market, data, validationRows }: { market: Marke
   );
 }
 
+function forecastReturnText(value: any) {
+  const number = toNumber(value);
+  if (number === null) return "검증 대기";
+  return `${number >= 0 ? "+" : ""}${number.toFixed(2)}%`;
+}
+
+function ForecastAuditPanel({ audit }: { audit: any }) {
+  const rows = Array.isArray(audit?.items) ? audit.items : [];
+  const horizons = audit?.forecastSummary?.forecastHorizons ?? {};
+  const latest = rows.slice(0, 6);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/30 via-slate-900/70 to-slate-950/80">
+      <div className="flex flex-col gap-3 border-b border-cyan-500/15 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+        <div>
+          <div className="text-sm font-semibold text-cyan-200">예측 복기 · 스냅샷 기준</div>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-400">
+            추천 당시의 유사 구간 통계(장기 OHLCV)를 고정하고, 이후 실제 D+1·5·10일 수익률과 비교합니다. 현재 모델을 과거 예측에 다시 적용하지 않습니다.
+          </p>
+        </div>
+        <span className="w-fit rounded-full border border-cyan-400/25 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-cyan-200">
+          임의 확률 하한 없음
+        </span>
+      </div>
+
+      <div className="grid gap-px bg-cyan-500/10 sm:grid-cols-3">
+        {["D+1", "D+5", "D+10"].map((label) => {
+          const summary = horizons[label] ?? {};
+          const hitRate = toNumber(summary.directionHitRate);
+          const error = toNumber(summary.meanAbsoluteErrorPct);
+          return (
+            <div key={label} className="bg-slate-950/55 px-4 py-3">
+              <div className="text-[11px] font-medium text-slate-500">{label} 방향 정확도</div>
+              <div className={`mt-1 font-mono text-xl font-bold ${hitRate === null ? "text-slate-500" : hitRate >= 55 ? "text-emerald-300" : "text-amber-300"}`}>
+                {hitRate === null ? "측정 대기" : `${hitRate.toFixed(1)}%`}
+              </div>
+              <div className="mt-1 text-[10px] text-slate-500">
+                {summary.count ? `${summary.count}건 검증` : `대기 ${summary.pendingCount ?? 0}건`}
+                {error !== null ? ` · 평균 오차 ${error.toFixed(2)}%p` : ""}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {latest.length > 0 ? (
+        <div className="divide-y divide-slate-800/80">
+          {latest.map((row: any) => (
+            <div key={row.snapshot_id} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(130px,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center sm:px-5">
+              <div>
+                <div className="text-sm font-semibold text-slate-200">{row.name || row.symbol}</div>
+                <div className="mt-0.5 font-mono text-[10px] text-slate-500">{row.symbol} · {row.date} · 표본 {row.forecastSampleCount ?? "-"}</div>
+              </div>
+              {[1, 5, 10].map((days) => {
+                const expected = forecastReturnText(row[`forecastExpectedReturn${days}d`]);
+                const actual = forecastReturnText(row[`return_${days}d`]);
+                const hit = row[`forecastDirectionHit${days}d`];
+                const isHit = hit === "HIT";
+                const isMiss = hit === "MISS";
+                return (
+                  <div key={days} className="rounded-lg border border-slate-800/80 bg-slate-950/45 px-2.5 py-2">
+                    <div className="flex items-center justify-between text-[10px] text-slate-500"><span>D+{days}</span><span className={isHit ? "text-emerald-300" : isMiss ? "text-red-300" : "text-slate-500"}>{isHit ? "적중" : isMiss ? "빗나감" : "대기"}</span></div>
+                    <div className="mt-1 text-[11px] text-slate-300">예상 {expected}</div>
+                    <div className="text-[11px] text-slate-500">실제 {actual}</div>
+                  </div>
+                );
+              })}
+              {row.forecastFailureReason && !["PENDING", "ON_TARGET_OR_PENDING"].includes(row.forecastFailureReason) && (
+                <div className="sm:col-span-4 text-[10px] text-amber-300/80">검토 가설: {row.forecastFailureReason} · {row.forecastSuggestedAdjustment}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="px-5 py-5 text-xs leading-5 text-slate-500">첫 스냅샷이 쌓이면 여기에서 종목별 예상·실제·오차와 검토 가설을 확인할 수 있습니다.</div>
+      )}
+    </section>
+  );
+}
+
 export default function PredictionPage() {
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [strategy, setStrategy] = useState<Strategy>("balanced");
@@ -230,6 +310,7 @@ export default function PredictionPage() {
   const [btSummary, setBtSummary] = useState<any>(null);
   const [btItems, setBtItems] = useState<any[]>([]);
   const [validationRows, setValidationRows] = useState<any[]>([]);
+  const [forecastAudit, setForecastAudit] = useState<any>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ValidationStatus | "all">("all");
   const [loading, setLoading] = useState(false);
@@ -266,6 +347,7 @@ export default function PredictionPage() {
       const btPromise = Promise.all(validationMarkets.map((mk) => mone.backtestTrades({ market: mk, mode: strategy, horizon: term, limit: 200 })))
         .then((rows) => rows.flatMap((row) => Array.isArray(row.items) ? row.items : []));
       const validationPromise = mone.virtualValidation({ market, mode: strategy, horizon: term, limit: 300 });
+      const forecastAuditPromise = mone.predictionForecastAudit({ market, mode: strategy, horizon: term, limit: 200 });
 
       const [predResult, recResult] = await Promise.allSettled([predPromise, recPromise]);
       const pred = fulfilled(predResult, { status: "ERROR", items: [] });
@@ -282,17 +364,19 @@ export default function PredictionPage() {
         scanCoverage: rec.scanCoverage || pred.scanCoverage,
       });
 
-      const [accResult, vdResult, bsResult, btResult, validationResult] = await Promise.allSettled([accPromise, vdPromise, bsPromise, btPromise, validationPromise]);
+      const [accResult, vdResult, bsResult, btResult, validationResult, forecastAuditResult] = await Promise.allSettled([accPromise, vdPromise, bsPromise, btPromise, validationPromise, forecastAuditPromise]);
       const acc = fulfilled(accResult, null);
       const vd = fulfilled(vdResult, null);
       const bs = fulfilled(bsResult, null);
       const bt = fulfilled(btResult, []);
       const vv = fulfilled(validationResult, { status: "ERROR", items: [] });
+      const audit = fulfilled(forecastAuditResult, { status: "ERROR", items: [] });
       setAccuracy(acc?.status === "OK" ? acc : null);
       setValDash(vd?.summary ? vd : null);
       setBtSummary(bs);
       setBtItems(Array.isArray(bt) ? bt : []);
       setValidationRows(Array.isArray(vv.items) ? vv.items : []);
+      setForecastAudit(audit?.status === "OK" ? audit : null);
     } catch (error) {
       setData({ status: "ERROR", error: String(error), items: [] });
       setAccuracy(null);
@@ -300,6 +384,7 @@ export default function PredictionPage() {
       setBtSummary(null);
       setBtItems([]);
       setValidationRows([]);
+      setForecastAudit(null);
     } finally {
       setLoading(false);
     }
@@ -307,7 +392,6 @@ export default function PredictionPage() {
 
   useEffect(() => {
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [market, strategy, term]);
 
   const items = Array.isArray(data.items) ? data.items : [];
@@ -417,6 +501,8 @@ export default function PredictionPage() {
           </div>
         </div>
       </div>
+
+      <ForecastAuditPanel audit={forecastAudit} />
 
       <StrategyPlaybookPanel strategy={strategy} term={term} data={data} valDash={valDash} />
 

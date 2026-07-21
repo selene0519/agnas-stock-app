@@ -9,6 +9,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from app.services.regime_trade_plan import build_trade_plan
+
 try:
     from app.engine.dsg_signal_engine import (
         infer_kr_sector,
@@ -2006,8 +2008,10 @@ def score_candidate(
     horizon_base = _HORIZON_BASE_WIN.get(context.horizon, 0.505)
     horizon_scale = _HORIZON_SCALE.get(context.horizon, 0.14)
     # prob = base + (score-50)/50 * scale → [base-scale, base+scale]
+    # This score-derived estimate is not measured win-rate evidence.
+    # Keep it within a valid probability range; never floor it at 35%.
     calibrated_prob = horizon_base + ((score - 50.0) / 50.0) * horizon_scale
-    calibrated_prob = max(0.35, min(0.65, calibrated_prob))   # 35~65% 하드 클램프
+    calibrated_prob = max(0.01, min(0.99, calibrated_prob))
 
     ev = None
     rr_actual = None
@@ -2089,7 +2093,7 @@ def score_candidate(
         "currentPriceUsed": current,
         "currentPriceSource": current_source,
         "entryRecomputed": entry_recomputed,
-        "calibratedWinRate": round(calibrated_prob * 100.0, 1),
+        "modelWinRateEstimate": round(calibrated_prob * 100.0, 1),
         "entryUsed": (round_to_kr_tick(entry_raw) if context.market == "kr" else round(entry_raw, 2)) if entry_raw else None,
         "stopUsed": (round_to_kr_tick(stop_raw) if context.market == "kr" else round(stop_raw, 2)) if stop_raw else None,
         "targetUsed": (round_to_kr_tick(target_raw) if context.market == "kr" else round(target_raw, 2)) if target_raw else None,
@@ -2282,7 +2286,10 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         "newsRiskPenalty": result.get("newsRiskPenalty"),
         # 5모델 앙상블 보정 점수
         "ensembleScore": _ensemble.get("ensembleScore"),
-        "calibratedWinRate": _ensemble.get("calibratedWinRate") or result.get("calibratedWinRate"),
+        # Emit a calibrated rate only when it comes from the measured ensemble
+        # table. The score estimate remains explicitly labelled.
+        "calibratedWinRate": _ensemble.get("calibratedWinRate"),
+        "modelWinRateEstimate": result.get("modelWinRateEstimate"),
         # shadow: 라이브 실측 롤링 보정 (게이트 미반영, 관측·비교용)
         "liveCalibratedWinRate": _live_wr,
         "liveCalibrationEffN": _live_effn,
@@ -2332,6 +2339,33 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
             out.setdefault("riskFlags", []).append("NEWS_DISCLOSURE_RISK")
             out.setdefault("computedFields", []).append("news_keyword_risk_penalty")
 
+    # Reuse the event-context service for macro, earnings, disclosure and
+    # sector risk.  It is evidence only: unavailable data is never treated as
+    # a positive signal, while a high actual event-risk score reaches the
+    # fail-closed regime plan below.
+    try:
+        from app.services.event_context import get_event_context
+
+        event_context = get_event_context(symbol, market)
+        for key in (
+            "newsEventTag",
+            "disclosureEventTag",
+            "earningsEventTag",
+            "macroEventTag",
+            "sectorEventTag",
+            "eventRiskScore",
+            "eventReliabilityScore",
+            "eventSummary",
+            "eventDataSourceType",
+            "eventLearningEligible",
+        ):
+            out[key] = event_context.get(key)
+        event_risk = _num(event_context.get("eventRiskScore")) or 0.0
+        if event_risk >= 10.0:
+            out.setdefault("riskFlags", []).append("EVENT_RISK_HIGH")
+    except Exception:
+        out.setdefault("eventDataSourceType", "unavailable")
+
     # 현재가 fallback 반영 (OHLCV close 사용 시)
     current_source = result.get("currentPriceSource", "live")
     if current_source == "ohlcv_close":
@@ -2360,13 +2394,19 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         computed.append("entry_recomputed_from_current")
 
     if result.get("score") is not None:
-        base_prob = _num(out.get("probability")) or 0
-        # 세부 점수 기반 확률 보정 (기존보다 정교화)
-        score_val = float(result["score"])
-        adjustment = (score_val - 50.0) * 0.15  # 기존 0.12 → 0.15로 민감도 높임
-        probability = max(35.0, min(80.0, round(base_prob + adjustment, 1)))
-        out["probability"] = probability
-        out["probabilityText"] = f"{probability:.1f}%"
+        # A score-derived value is useful for research ranking but is not a win
+        # rate.  Never manufacture a 35%+ probability when no measured rate
+        # exists, and never lift an observed losing rate with a score overlay.
+        measured_probability = _num(out.get("calibratedWinRate"))
+        if measured_probability is not None:
+            probability = max(0.0, min(100.0, round(measured_probability, 1)))
+            out["probability"] = probability
+            out["probabilityText"] = f"{probability:.1f}%"
+            out["probabilitySource"] = "MEASURED_CALIBRATION"
+        else:
+            out["probability"] = None
+            out["probabilityText"] = "실측 확률 미산출"
+            out["probabilitySource"] = "MODEL_ESTIMATE_NOT_MEASURED"
         # 가격 데이터 상태: 두 소스 중 더 좋은 것을 반영
         # PRICE_PENDING > PARTIAL > NORMAL 순으로 품질
         prior_status = out.get("dataStatus", "PARTIAL")
@@ -2411,6 +2451,24 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
                 band_warnings.append(f"목표수익 {target_pct:.1f}% (권장 {target_min}~{target_max}%)")
 
     out["priceBandWarnings"] = band_warnings
+
+    # Strategy router based on the attached regime/contrarian playbooks.  This
+    # annotation deliberately does not override the independent performance
+    # gate: READY only means the current setup passed structural checks.
+    regime_plan = build_trade_plan(
+        out,
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        regime=str(out.get("regime") or _regime),
+    )
+    out["regimeTradePlan"] = regime_plan
+    out["regimeTradePlanStatus"] = regime_plan["status"]
+    out["regimeStrategy"] = regime_plan["strategy"]
+    out["entryZoneLow"] = regime_plan["entryZone"]["low"]
+    out["entryZoneHigh"] = regime_plan["entryZone"]["high"]
+    out["regimeRiskFractionMultiplier"] = regime_plan["riskFractionMultiplier"]
+    out["isRegimeTradeBlocked"] = regime_plan["status"] != "READY"
 
     tags, primary, label = _strategy_tags(out.get("indicators", {}), str(out.get("quantDataStatus") or out.get("dataStatus") or ""))
     financial_keys = (
@@ -2573,14 +2631,29 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         _sp = _data_loader.similar_pattern_history(symbol, market)
         if _sp.get("status") == "OK":
             _sp_summary = _sp.get("summary", {}).get(_horizon_key)
-            if _sp_summary and _sp_summary.get("count", 0) >= 5 and isinstance(out.get("finalScore"), (int, float)):
+            if _sp_summary:
+                _sample_count = int(_sp_summary.get("count") or 0)
                 _win_rate = float(_sp_summary.get("winRate", 50.0))
-                # 승률 50%를 중립으로 ±5점 범위에서만 보조 신호로 반영
-                _sp_bonus = round((_win_rate - 50.0) / 50.0 * 5.0, 1)
-                out["finalScore"] = min(100.0, max(0.0, round(float(out["finalScore"]) + _sp_bonus, 1)))
-                out["quantScore"] = out["finalScore"]
+                _avg_return = _num(_sp_summary.get("avgReturn"))
                 out["similarPatternWinRate"] = _win_rate
-                out["similarPatternBonus"] = _sp_bonus
+                out["similarPatternEvidence"] = {
+                    "sampleCount": _sample_count,
+                    "averageReturnPct": _avg_return,
+                    "independentSpacingBars": (_sp.get("period") or {}).get("independentSpacingBars"),
+                }
+                # Historical similarity is research evidence, not an optimism
+                # fallback.  It may adjust ranking only with sufficient,
+                # independent, positive-expectancy observations.
+                if (
+                    _sample_count >= 20
+                    and _avg_return is not None and _avg_return > 0
+                    and _win_rate >= 55.0
+                    and isinstance(out.get("finalScore"), (int, float))
+                ):
+                    _sp_bonus = round(min(3.0, (_win_rate - 50.0) / 50.0 * 3.0), 1)
+                    out["finalScore"] = min(100.0, max(0.0, round(float(out["finalScore"]) + _sp_bonus, 1)))
+                    out["quantScore"] = out["finalScore"]
+                    out["similarPatternBonus"] = _sp_bonus
     except Exception:
         pass
 
