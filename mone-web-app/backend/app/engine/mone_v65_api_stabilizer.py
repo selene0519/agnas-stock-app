@@ -2823,6 +2823,23 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
         _regime_perf = None
         regime_index = None
 
+    # The trader-skills playbook calls for breadth, macro posture and a
+    # pre-trade checklist.  These are calculated only from local data and are
+    # explicitly labelled as such; unavailable coverage cannot create a buy.
+    try:
+        from app.services import market_context_gate as _market_context
+        market_context = _market_context.build_market_context(market)
+    except Exception as exc:
+        _market_context = None
+        market_context = {
+            "version": "market-context-v1",
+            "market": market,
+            "status": "CASH_UNTIL_BREADTH_AVAILABLE",
+            "recommendedExposureMultiplier": 0.0,
+            "error": repr(exc),
+        }
+    payload["marketContext"] = market_context
+
     perf_status = str(safety.get("status") or "").upper()
     is_coverage_gap = perf_status == "COVERAGE_GAP"
     is_hard_blocked = bool(safety.get("isPerformanceHardBlocked") or safety.get("isTradeBlocked"))
@@ -2856,6 +2873,24 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
         item["regimePerformanceGate"] = regime_gate
         item["regimePerformanceGateStatus"] = regime_gate.get("status")
         item["isRegimePerformanceBlocked"] = bool(regime_gate.get("isTradeBlocked"))
+        if not isinstance(item.get("tradePlan"), dict):
+            try:
+                from app.services.regime_trade_plan import build_trade_plan
+                item["tradePlan"] = build_trade_plan(item, market=market, mode=mode, horizon=horizon)
+            except Exception:
+                item["tradePlan"] = {"status": "WATCH", "reasonCodes": ["TRADE_PLAN_UNAVAILABLE"]}
+        item["marketContext"] = market_context
+        if _market_context is not None:
+            item["preTradeGate"] = _market_context.pre_trade_gate(item, market_context)
+        else:
+            item["preTradeGate"] = {
+                "version": "pre-trade-gate-v1",
+                "status": "NO_TRADE",
+                "isTradeBlocked": True,
+                "reasonCodes": ["MARKET_CONTEXT_UNAVAILABLE"],
+                "maxExposureMultiplier": 0.0,
+                "manualReviewRequired": True,
+            }
 
     if not is_hard_blocked:
         for item in payload.get("items") or []:
@@ -2946,6 +2981,10 @@ def _position_plan(item: dict[str, Any], cash: float, actionable: bool) -> dict[
     max_capital_by_risk = risk_budget / (risk_pct / 100.0)
     max_capital_by_weight = cash * (float(policy["maxPositionWeightPct"]) / 100.0)
     suggested_capital = max(0.0, min(max_capital_by_risk, max_capital_by_weight, cash))
+    pre_trade = item.get("preTradeGate") if isinstance(item.get("preTradeGate"), dict) else {}
+    exposure_multiplier = _num(pre_trade.get("maxExposureMultiplier"), 1.0)
+    exposure_multiplier = min(1.0, max(0.0, exposure_multiplier if exposure_multiplier is not None else 1.0))
+    suggested_capital *= exposure_multiplier
     suggested_shares = int(suggested_capital // current) if current > 0 else 0
     return {
         "status": "RISK_CAPPED",
@@ -2956,7 +2995,8 @@ def _position_plan(item: dict[str, Any], cash: float, actionable: bool) -> dict[
         "stop": round(stop, 4),
         "riskPctFromEntry": round(risk_pct, 2),
         "maxLossPctOfPortfolio": float(policy["maxSingleTradeRiskPct"]),
-        "basis": "position size capped by stop-distance risk and portfolio weight",
+        "marketExposureMultiplier": exposure_multiplier,
+        "basis": "position size capped by stop-distance risk, portfolio weight, and local breadth/macro exposure guard",
     }
 
 
@@ -3022,6 +3062,11 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
     if bool(regime_performance.get("isTradeBlocked")):
         reasons.append(str(regime_performance.get("reason") or regime_performance.get("status") or "regime performance gate"))
 
+    pre_trade = item.get("preTradeGate") if isinstance(item.get("preTradeGate"), dict) else {}
+    if bool(pre_trade.get("isTradeBlocked")):
+        reason_codes = pre_trade.get("reasonCodes") if isinstance(pre_trade.get("reasonCodes"), list) else []
+        reasons.append("pre-trade gate: " + (", ".join(str(code) for code in reason_codes) or "BLOCKED"))
+
     unique_reasons = [r for i, r in enumerate(reasons) if r and r not in reasons[:i]]
     unique_cautions = [r for i, r in enumerate(cautions) if r and r not in cautions[:i]]
     actionable = not unique_reasons
@@ -3058,6 +3103,8 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
             "regimePerformanceGateStatus": regime_performance.get("status"),
             "regimePerformanceSampleCount": regime_performance.get("sampleCount"),
             "regimePerformanceAverageNetReturnPct": regime_performance.get("averageNetReturnPct"),
+            "marketExposureMultiplier": pre_trade.get("maxExposureMultiplier"),
+            "preTradeGateStatus": pre_trade.get("status"),
         },
         "positionPlan": position,
         "policy": policy,

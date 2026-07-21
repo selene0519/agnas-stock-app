@@ -300,6 +300,51 @@ function ForecastAuditPanel({ audit }: { audit: any }) {
   );
 }
 
+function MarketContextPanel({ context }: { context: any }) {
+  if (!context) return null;
+  const breadth = context.breadth || {};
+  const macro = context.macro || {};
+  const exposure = Number(context.recommendedExposureMultiplier);
+  const score = Number(breadth.score);
+  const exposureText = Number.isFinite(exposure) ? `${Math.round(exposure * 100)}%` : "산출 대기";
+  const scoreText = Number.isFinite(score) ? `${score.toFixed(1)} / 100` : "표본 부족";
+  const riskTone = breadth.zone === "CRITICAL" ? "border-rose-500/35 bg-rose-500/10" : breadth.zone === "WEAKENING" ? "border-amber-500/35 bg-amber-500/10" : "border-slate-700 bg-slate-900/50";
+  const macroLabel: Record<string, string> = {
+    BROADENING: "참여 확산", CONCENTRATION: "대형주 집중", CONTRACTION: "위축", TRANSITIONAL: "전환 구간", UNKNOWN: "판단 보류",
+  };
+  return (
+    <section className={`rounded-2xl border p-4 ${riskTone}`} aria-label="시장 위험 제한">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-slate-100">시장 위험 제한</div>
+          <p className="mt-1 text-xs leading-5 text-slate-400">수익 예측이 아닙니다. 로컬 수집 데이터의 시장 폭·교차자산 상태로 한 종목의 최대 노출만 제한합니다.</p>
+        </div>
+        <div className="rounded-lg border border-slate-600/70 bg-slate-950/40 px-3 py-2 text-right">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">최대 노출</div>
+          <div className="mt-0.5 font-mono text-lg font-bold text-slate-100">{exposureText}</div>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-700/80 bg-slate-950/25 px-3 py-2.5">
+          <div className="text-[11px] text-slate-500">시장 폭</div>
+          <div className="mt-1 text-sm font-semibold text-slate-200">{scoreText} · {breadth.zone || "UNKNOWN"}</div>
+          <div className="mt-1 text-[11px] text-slate-500">표본 {breadth.sampleCount ?? 0}종목 · {breadth.asOf || "기준일 없음"}</div>
+        </div>
+        <div className="rounded-xl border border-slate-700/80 bg-slate-950/25 px-3 py-2.5">
+          <div className="text-[11px] text-slate-500">매크로 프록시</div>
+          <div className="mt-1 text-sm font-semibold text-slate-200">{macroLabel[macro.classification] || macro.classification || "판단 보류"}</div>
+          <div className="mt-1 text-[11px] text-slate-500">{macro.status === "PARTIAL_PROXY" ? "부분 프록시: 신용·금리곡선 미포함" : macro.status || "데이터 대기"}</div>
+        </div>
+        <div className="rounded-xl border border-slate-700/80 bg-slate-950/25 px-3 py-2.5">
+          <div className="text-[11px] text-slate-500">진입 원칙</div>
+          <div className="mt-1 text-sm font-semibold text-slate-200">성과·장세 게이트 통과 후 검토</div>
+          <div className="mt-1 text-[11px] text-slate-500">지금 상태 {context.status || "UNKNOWN"}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function PredictionPage() {
   const [market, setMarket] = useState<Market>(getDefaultMarketBySession());
   const [strategy, setStrategy] = useState<Strategy>("balanced");
@@ -362,6 +407,7 @@ export default function PredictionPage() {
         validationPolicy: pred.validationPolicy || rec.validationPolicy,
         selfCorrection: pred.selfCorrection || rec.selfCorrection,
         scanCoverage: rec.scanCoverage || pred.scanCoverage,
+        marketContext: rec.marketContext || pred.marketContext,
       });
 
       const [accResult, vdResult, bsResult, btResult, validationResult, forecastAuditResult] = await Promise.allSettled([accPromise, vdPromise, bsPromise, btPromise, validationPromise, forecastAuditPromise]);
@@ -503,6 +549,8 @@ export default function PredictionPage() {
       </div>
 
       <ForecastAuditPanel audit={forecastAudit} />
+
+      <MarketContextPanel context={data.marketContext} />
 
       <StrategyPlaybookPanel strategy={strategy} term={term} data={data} valDash={valDash} />
 
