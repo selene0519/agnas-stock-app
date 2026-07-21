@@ -1,6 +1,6 @@
 {
-  "version": 307,
-  "generatedAt": "2026-07-21T23:27:23",
+  "version": 309,
+  "generatedAt": "2026-07-21T22:20:36.231695+00:00",
   "market": "us",
   "totalSamples": 2976,
   "markets": {
@@ -10,23 +10,20 @@
       "horizon": "short",
       "sampleCount": 237,
       "learnableSampleCount": 26,
-      "confidence": 0.78,
+      "confidence": 0.9,
       "weightAdjustments": {
-        "riskPenalty": 0.865,
-        "qualityScore": -0.045
+        "riskPenalty": 0.865
       },
       "priceAdjustments": {
-        "entryAggressiveness": -0.15,
+        "entryAggressiveness": -0.415,
         "targetMultiplier": 0.0,
-        "stopAtrMultiplier": 0.0371
+        "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": -0.8,
+        "maxDistanceToEntryPct": -1.038,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
-        "DATA_QUALITY",
-        "STOP_TOO_TIGHT",
         "ENTRY_TOO_AGGRESSIVE",
         "MISS_ENTRY_TOO_LOW",
         "GOOD_SIGNAL_WEAK_EXIT"
@@ -38,13 +35,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 2,
         "DATA_STALE": 211
       },
-      "appliedAt": "2026-07-21T23:27:23",
-      "rawJournalSampleCount": 56,
-      "effectiveJournalSampleCount": 56,
-      "journalCalibrationApplied": true,
-      "journalCalibrationSource": "5e63b5dda7e604bdb311",
-      "journalCalibrationSourceType": "FORWARD_PAPER_TRADE",
-      "journalCalibrationAppliedBy": "github-actions-vtj-self-learning"
+      "appliedAt": "2026-07-21T22:20:36.230754+00:00"
     },
     "us_balanced_swing": {
       "market": "us",
@@ -77,7 +68,7 @@
         "GOOD": 7,
         "DATA_STALE": 301
       },
-      "appliedAt": "2026-07-21T14:27:14.864924+00:00"
+      "appliedAt": "2026-07-21T22:20:36.230901+00:00"
     },
     "us_conservative_mid": {
       "market": "us",
@@ -105,7 +96,7 @@
         "ENTRY_TOO_AGGRESSIVE": 3,
         "DATA_STALE": 421
       },
-      "appliedAt": "2026-07-21T14:27:14.865115+00:00"
+      "appliedAt": "2026-07-21T22:20:36.231030+00:00"
     },
     "us_aggressive_mid": {
       "market": "us",
@@ -137,7 +128,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 1,
         "DATA_STALE": 402
       },
-      "appliedAt": "2026-07-21T14:27:14.865295+00:00"
+      "appliedAt": "2026-07-21T22:20:36.231160+00:00"
     },
     "us_aggressive_swing": {
       "market": "us",
@@ -170,7 +161,7 @@
         "MISS_ENTRY_TOO_LOW": 2,
         "DATA_STALE": 275
       },
-      "appliedAt": "2026-07-21T14:27:14.865477+00:00"
+      "appliedAt": "2026-07-21T22:20:36.231268+00:00"
     },
     "us_conservative_short": {
       "market": "us",
@@ -203,7 +194,7 @@
         "MISS_ENTRY_TOO_LOW": 3,
         "DATA_STALE": 205
       },
-      "appliedAt": "2026-07-21T14:27:14.865585+00:00"
+      "appliedAt": "2026-07-21T22:20:36.231352+00:00"
     },
     "us_conservative_swing": {
       "market": "us",
@@ -236,7 +227,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 4,
         "DATA_STALE": 271
       },
-      "appliedAt": "2026-07-21T14:27:14.865708+00:00"
+      "appliedAt": "2026-07-21T22:20:36.231451+00:00"
     },
     "us_mid_1566.2100": {
       "market": "us",
@@ -261,7 +252,7 @@
       "reasonCounts": {
         "MISS_ENTRY_TOO_LOW": 1
       },
-      "appliedAt": "2026-07-21T14:27:14.865723+00:00"
+      "appliedAt": "2026-07-21T22:20:36.231466+00:00"
     },
     "us_balanced_mid": {
       "market": "us",
@@ -289,7 +280,7 @@
         "ENTRY_TOO_AGGRESSIVE": 4,
         "DATA_STALE": 408
       },
-      "appliedAt": "2026-07-21T14:27:14.865902+00:00"
+      "appliedAt": "2026-07-21T22:20:36.231604+00:00"
     },
     "us_balanced_short": {
       "market": "us",
@@ -320,9 +311,8 @@
         "GOOD": 2,
         "DATA_STALE": 232
       },
-      "appliedAt": "2026-07-21T14:27:14.866023+00:00"
+      "appliedAt": "2026-07-21T22:20:36.231692+00:00"
     }
   },
-  "savedAt": "2026-07-21T14:27:23.454567+00:00",
-  "source": "virtual_trade_journal_approved_calibrations"
+  "savedAt": "2026-07-21T22:20:36.232204+00:00"
 }
