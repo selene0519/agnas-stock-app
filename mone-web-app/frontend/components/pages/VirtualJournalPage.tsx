@@ -243,6 +243,214 @@ function StrategyMatrix({ strategyRows }: { strategyRows: any[] }) {
   );
 }
 
+function fmtMoney(value: any, market: string) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "-";
+  return market === "us"
+    ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    : `${Math.round(n).toLocaleString("ko-KR")}원`;
+}
+
+function fmtPctValue(value: any, digits = 2) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "-";
+  return `${n.toFixed(digits)}%`;
+}
+
+function fmtSignedPct(value: any, digits = 2) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "-";
+  return `${n > 0 ? "+" : ""}${n.toFixed(digits)}%`;
+}
+
+function AiPaperSurvivalPanel({
+  data,
+  preview,
+  onRefresh,
+  onPreview,
+  busy,
+}: {
+  data: any;
+  preview: any;
+  onRefresh: () => void;
+  onPreview: () => void;
+  busy: boolean;
+}) {
+  const marketsData = data?.markets || {};
+  const marketEntries = (["kr", "us"] as const).map((mk) => [mk, marketsData[mk] || {}] as const);
+  const previewActions = Object.values(preview?.markets || {}).flatMap((item: any) => item?.actions || []).slice(0, 6);
+  const stateTone = (state: string) => {
+    if (state === "DEAD" || state === "CRITICAL") return "text-red-300";
+    if (state === "DANGER") return "text-amber-300";
+    return "text-emerald-300";
+  };
+  const actionTone = (action: string) => {
+    if (action === "BUY") return "bg-emerald-500/15 text-emerald-300";
+    if (action === "SELL") return "bg-red-500/15 text-red-300";
+    return "bg-slate-700 text-slate-300";
+  };
+  const verdictTone = (verdict: string) => {
+    if (verdict === "PROVING_EDGE" || verdict === "COMPETITIVE") return "text-emerald-300";
+    if (verdict === "NOT_PROVEN") return "text-red-300";
+    return "text-amber-300";
+  };
+
+  return (
+    <section className="rounded-lg bg-slate-900/60 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <ShieldCheck size={16} className="text-emerald-300" />
+            <span>AI 생존계좌</span>
+          </div>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+            실제 주문 없이 AI 추천만으로 굴리는 검증 계좌입니다. 0원이 되면 실패로 멈추고, OOS 증거판으로 성능을 비교합니다.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onPreview} disabled={busy} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-emerald-500/12 px-3 text-xs font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] disabled:opacity-50">
+            <Play size={13} /> 다음 행동 점검
+          </button>
+          <button onClick={onRefresh} disabled={busy} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] disabled:opacity-50">
+            <RefreshCw size={13} className={busy ? "animate-spin" : ""} /> 새로고침
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {marketEntries.map(([mk, item]) => {
+          const summary = item?.summary || {};
+          const survival = item?.survival || {};
+          const positions = item?.positions || [];
+          const activeAgent = item?.activeAgent || {};
+          const proof = item?.proofBoard || {};
+          const live = item?.liveMetrics || {};
+          const proofRows = Array.isArray(proof.rows) ? proof.rows.slice(0, 3) : [];
+          const state = survival.state || "UNKNOWN";
+          const liveEnough = Number(live.sampleCount || 0) >= 5;
+          return (
+            <div key={mk} className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300">{mk.toUpperCase()}</span>
+                  <span className={`font-mono text-xs font-semibold ${stateTone(state)}`}>{state}</span>
+                </div>
+                <span className="text-[11px] text-slate-500">후보 {item?.candidateCount ?? 0}개</span>
+              </div>
+              <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-slate-500">현재 AI</span>
+                  <span className="truncate text-right font-semibold text-slate-200">{activeAgent.label || summary.agentLabel || "-"}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-slate-500">OOS 판정</span>
+                  <span className={`truncate text-right font-semibold ${verdictTone(proof.verdict)}`}>{proof.verdict || "UNPROVEN"}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-slate-500">검증 순위</span>
+                  <span className="text-right text-slate-300">
+                    {proof.currentRank ? `${proof.currentRank}/${proof.profileCount}` : "-"}
+                    {proof.beatsBestBaseline ? " · baseline beat" : ""}
+                  </span>
+                </div>
+                {item?.proofFailed && (
+                  <div className="mt-2 rounded bg-red-500/10 px-2 py-1 text-[11px] font-semibold text-red-200">
+                    잔고 소진: 검증 실패, 추가 매매 중지
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {metric("계좌가치", fmtMoney(summary.portfolioValue ?? survival.portfolioValue, mk))}
+                {metric("현금", fmtMoney(summary.cash, mk))}
+                {metric("수익률", summary.totalReturnPct == null ? "-" : `${Number(summary.totalReturnPct).toFixed(2)}%`, Number(summary.totalReturnPct || 0) >= 0 ? "text-emerald-300" : "text-red-300")}
+                {metric("생존율", survival.survivalPct == null ? "-" : `${Number(survival.survivalPct).toFixed(1)}%`, stateTone(state))}
+              </div>
+              <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                <div className="mb-2 flex items-center justify-between gap-3 text-[11px]">
+                  <span className="font-semibold text-slate-300">실전 NAV</span>
+                  <span className={liveEnough ? "text-slate-500" : "text-amber-300"}>
+                    {liveEnough ? `${live.sampleCount}개 구간` : `샘플 부족 ${live.sampleCount ?? 0}/5`}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">누적</span>
+                    <span className={`font-mono ${Number(live.totalReturnPct || 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtSignedPct(live.totalReturnPct)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">MDD</span>
+                    <span className="font-mono text-red-300">{fmtPctValue(live.mddPct)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">샤프</span>
+                    <span className="font-mono text-slate-200">{live.sharpe == null ? "-" : Number(live.sharpe).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">승률</span>
+                    <span className="font-mono text-slate-200">{fmtPctValue(live.winRate, 1)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">현금비중</span>
+                    <span className="font-mono text-slate-200">{fmtPctValue(live.cashPct, 1)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">고점</span>
+                    <span className="font-mono text-slate-200">{fmtMoney(live.peakValue, mk)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
+                <span>보유 {summary.positionCount ?? positions.length ?? 0}개</span>
+                <span>거래 {summary.tradeCount ?? 0}회</span>
+                <span>NAV {data?.navRows ?? 0}행</span>
+              </div>
+              {proofRows.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {proofRows.map((row: any, idx: number) => (
+                    <div key={`${mk}-${row.agentId}-${idx}`} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-[10px] text-slate-500">
+                      <span className={row.agentId === activeAgent.id ? "truncate font-semibold text-slate-200" : "truncate"}>{idx + 1}. {row.agentLabel}</span>
+                      <span className="font-mono">{Number(row.avgNetPnlPct || 0).toFixed(2)}%</span>
+                      <span className="font-mono">WR {Number(row.winRate || 0).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {previewActions.length > 0 && (
+        <div className="mt-3 rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+          <div className="mb-2 text-xs font-semibold text-slate-400">다음 행동 미리보기</div>
+          <div className="grid gap-2 md:grid-cols-2">
+            {previewActions.map((action: any, index: number) => (
+              <div key={`${action.market}-${action.symbol || action.reason || action.action}-${index}`} className="flex items-center justify-between gap-3 rounded-md bg-slate-900/70 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${actionTone(action.action)}`}>
+                      {action.action}
+                    </span>
+                    <span className="truncate text-xs font-semibold text-slate-200">
+                      {action.name || action.symbol || action.reason}
+                    </span>
+                    {action.symbol && <span className="font-mono text-[10px] text-slate-500">{action.symbol}</span>}
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-500">{action.decision || action.reason || "-"}</div>
+                </div>
+                <div className="text-right font-mono text-[11px] text-slate-300">
+                  <div>{action.price == null ? "-" : fmtMoney(action.price, action.market)}</div>
+                  {action.quantity != null && <div className="text-slate-500">x {Number(action.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function VirtualJournalPage() {
   const defaultReplayDate = useMemo(() => {
     const d = new Date();
@@ -284,6 +492,8 @@ export default function VirtualJournalPage() {
   const [overextendedData, setOverextendedData] = useState<any>({});
   const [profitCaptureData, setProfitCaptureData] = useState<any>({});
   const [perfGateData, setPerfGateData] = useState<any>({});
+  const [aiPaperData, setAiPaperData] = useState<any>({});
+  const [aiPaperPreview, setAiPaperPreview] = useState<any>({});
 
   const scope = useMemo(() => ({ market, mode, horizon, sourceType: "FORWARD_PAPER_TRADE", journalSession }), [market, mode, horizon, journalSession]);
   const actionSession = journalSession === "all" ? "AFTER_CLOSE_TRADE" : journalSession;
@@ -345,6 +555,12 @@ export default function VirtualJournalPage() {
       setLensData(lensRes && (lensRes.status === "OK" || lensRes.status === "EMPTY") ? lensRes : null);
       setSmartRank(smartRes && (smartRes.status === "OK" || smartRes.status === "EMPTY") ? smartRes : null);
       setHighConv(hcRes && (hcRes.status === "OK" || hcRes.status === "EMPTY") ? hcRes : null);
+      try {
+        const aiPaperRes = await mone.aiPaperStatus({ market: scope.market });
+        setAiPaperData(aiPaperRes?.status === "OK" ? aiPaperRes : {});
+      } catch {
+        setAiPaperData({});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -390,6 +606,26 @@ export default function VirtualJournalPage() {
         await mone.journalAutoCaptureRun({ market, journalSession: actionSession, limit: 5, evaluateAfter: actionSession === "AFTER_CLOSE_TRADE", force: true });
       }
       await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const runAiPaperPreview = async () => {
+    setBusy("ai-paper-preview");
+    setError("");
+    try {
+      const res = await mone.aiPaperRun({ market, dryRun: true });
+      if (res.status === "ERROR") throw new Error(res.error || "AI paper preview failed");
+      setAiPaperPreview(res);
+      try {
+        const statusRes = await mone.aiPaperStatus({ market });
+        setAiPaperData(statusRes?.status === "OK" ? statusRes : {});
+      } catch {
+        setAiPaperData({});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -731,6 +967,14 @@ export default function VirtualJournalPage() {
 
         {error && <div className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-200 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.22)]">{error}</div>}
       </section>
+
+      <AiPaperSurvivalPanel
+        data={aiPaperData}
+        preview={aiPaperPreview}
+        onRefresh={load}
+        onPreview={runAiPaperPreview}
+        busy={loading || !!busy}
+      />
 
       {view === "diag" && (
       <>

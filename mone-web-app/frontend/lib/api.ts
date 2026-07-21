@@ -774,6 +774,9 @@ export const mone = {
   paperDrawdown: (p?: { market?: string }) => apiGet<any>("/api/paper/drawdown", p),
   paperStops: (p?: { market?: string }) => apiGet<any>("/api/paper/stops", p),
   paperStopsCheck: (p?: { market?: string }) => apiGet<any>("/api/paper/stops/check", p),
+  aiPaperStatus: (p?: { market?: string }) => apiGet<any>("/api/paper/ai/status", p),
+  aiPaperRun: (body?: { market?: string; dryRun?: boolean }) =>
+    apiPost<any>("/api/paper/ai/run", body ?? { dryRun: true }),
   paperStopUpdate: (market: string, symbol: string, body: { stopPrice?: number; targetPrice?: number; note?: string }) =>
     fetch(buildUrl(API_BASE, `/api/paper/stops/${market}/${symbol}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json()),
   paperBuy: (body: { symbol: string; market: string; quantity: number; price?: number; name?: string; memo?: string }) =>

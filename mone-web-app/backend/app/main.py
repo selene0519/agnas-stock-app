@@ -10282,6 +10282,22 @@ def api_paper_stops_check(market: str = Query("all")) -> dict:
     return check_stops(market=market)
 
 
+@app.get("/api/paper/ai/status")
+def api_ai_paper_status(market: str = Query("all")) -> dict:
+    """AI-only virtual account status and survival score."""
+    from app.services.ai_paper_trader import status
+    return status(market=market)
+
+
+@app.post("/api/paper/ai/run")
+def api_ai_paper_run(body: dict = Body({})) -> dict:
+    """Run one AI virtual trading cycle. Defaults to dry-run."""
+    from app.services.ai_paper_trader import run_cycle
+    market = str(body.get("market", "all")).lower()
+    dry_run = bool(body.get("dryRun", True))
+    return run_cycle(market=market, dry_run=dry_run)
+
+
 @app.post("/api/supabase/migrate")
 def api_supabase_migrate() -> dict:
     """CSV → Supabase 초기 일괄 업로드 (최초 1회 실행)."""

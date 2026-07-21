@@ -1,0 +1,88 @@
+name: MONE AI Paper Trader
+
+on:
+  workflow_dispatch:
+    inputs:
+      market:
+        description: "Market to run"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - kr
+          - us
+          - all
+  schedule:
+    - cron: "30 23 * * 0-4"  # KST 08:30, KR pre-market
+    - cron: "0 13 * * 1-5"   # 09:00 ET during EDT
+    - cron: "0 14 * * 1-5"   # 09:00 ET during EST
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mone-ai-paper-trader-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Asia/Seoul
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run one market only
+        id: run
+        env:
+          MARKET_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.market || '' }}
+        run: |
+          MARKET="${MARKET_INPUT}"
+          if [ -z "$MARKET" ]; then
+            KR_HOUR=$(TZ=Asia/Seoul date +%H)
+            ET_HOUR=$(TZ=America/New_York date +%H)
+            WEEKDAY=$(date +%u)
+            if [ "$WEEKDAY" -ge 6 ]; then
+              echo "Weekend - skip"
+              exit 0
+            fi
+            if [ "$KR_HOUR" = "08" ]; then
+              MARKET="kr"
+            elif [ "$ET_HOUR" = "09" ]; then
+              MARKET="us"
+            else
+              echo "Outside market windows (KST=${KR_HOUR}, ET=${ET_HOUR}) - skip"
+              exit 0
+            fi
+          fi
+          echo "market=${MARKET}" >> "$GITHUB_OUTPUT"
+          python scripts/run_ai_paper_trader.py --market "$MARKET" --execute
+
+      - name: Commit paper ledger
+        run: |
+          if git diff --quiet -- data/paper; then
+            echo "No paper ledger changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/paper
+          git commit -m "chore(paper): update ai paper survival account [skip ci]"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
