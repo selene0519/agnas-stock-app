@@ -525,8 +525,10 @@ jobs:
             echo "smart rank: exit $?"
           fi
           if [ -f scripts/build_high_conviction_kr.py ]; then
+            python scripts/settle_high_conviction_kr.py
             python scripts/build_high_conviction_kr.py
-            echo "high conviction: exit $?"
+            python scripts/capture_high_conviction_kr.py
+            echo "high conviction forward loop: exit $?"
           else
             echo "lens scripts not found; skip."
           fi
@@ -905,6 +907,7 @@ jobs:
             git add reports/lens_prediction_ledger_kr.csv reports/lens_live_journal_kr.csv 2>/dev/null || true
             git add reports/kr_supply_flow_history.csv reports/disclosures_kr_history.csv 2>/dev/null || true
             git add reports/smart_rank_kr.json reports/high_conviction_kr.json 2>/dev/null || true
+            git add reports/high_conviction_ledger_kr.csv reports/high_conviction_pnl_kr.json 2>/dev/null || true
             git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
             git add data/kr_supply_flow.csv data/kr_excluded_symbols.csv 2>/dev/null || true
             git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true

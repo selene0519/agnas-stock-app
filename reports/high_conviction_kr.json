@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T06:59:12.759403+00:00",
+  "generatedAt": "2026-07-21T10:58:11.213469+00:00",
   "market": "kr",
   "marketRegime": "BEAR",
   "marketRegimeLabel": "약세장",
@@ -18,6 +18,12 @@
     "cumulativePct": 203,
     "source": "virtual_trade_evaluations 정산 실측(백테스트 아님)",
     "baselineAllTrades": -1.92
+  },
+  "forwardProof": {
+    "settled": 0,
+    "pending": 0,
+    "avgNetPct": null,
+    "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
   "candidateCount": 6,

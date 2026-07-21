@@ -1495,6 +1495,15 @@ export default function VirtualJournalPage() {
             {metric("실측 표본", `${highConv.provenEdge.realTrades}건`)}
           </div>
         )}
+        {highConv?.forwardProof && (
+          <div className="mt-2 rounded-md bg-slate-950/50 px-3 py-1.5 font-mono text-[10px] text-slate-400 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            forward 실적(게이트만 실제 정산): {highConv.forwardProof.settled ?? 0}건
+            {(highConv.forwardProof.settled ?? 0) > 0
+              ? ` · 평균 ${highConv.forwardProof.avgNetPct}% · 승률 ${highConv.forwardProof.winRate}%`
+              : " — 아직 없음(실전 신호 뜨면 자동 축적, 이게 +0.72% 진짜 검증)"}
+            {` · 대기 ${highConv.forwardProof.pending ?? 0}건`}
+          </div>
+        )}
         {highConv && highConv.actionableCount > 0 ? (
           <div className="mt-3 space-y-1.5">
             {(highConv.candidates || []).filter((c: any) => c.highConviction).slice(0, 8).map((c: any) => (

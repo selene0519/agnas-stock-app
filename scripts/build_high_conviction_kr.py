@@ -74,12 +74,24 @@ def main() -> int:
         )
     actionable = [p for p in picks if p["highConviction"]]
 
+    # forward 실적(있으면) — 이 게이트만 캡처→정산한 실제 성적
+    forward = None
+    pnl_path = os.path.join(REPO, "reports", "high_conviction_pnl_kr.json")
+    if os.path.exists(pnl_path):
+        try:
+            fp = json.loads(open(pnl_path, encoding="utf-8").read())
+            forward = {"settled": fp.get("forwardSettled", 0), "pending": fp.get("pending", 0),
+                       "avgNetPct": fp.get("avgNetPct"), "winRate": fp.get("winRate")}
+        except Exception:
+            pass
+
     report = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "market": "kr", "marketRegime": regime, "marketRegimeLabel": label,
         "regimeDetail": rdetail, "favorableRegime": regime_ok,
         "finalScoreThreshold": FS_THRESHOLD,
         "provenEdge": PROVEN,
+        "forwardProof": forward,
         "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. "
                 "약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
         "candidateCount": len(picks),
