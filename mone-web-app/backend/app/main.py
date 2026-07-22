@@ -987,6 +987,18 @@ def api_regime_pattern_execution(
         return {"status": "ERROR", "message": str(e)}
 
 
+@app.get("/api/strategy/defensive-candidates")
+def api_defensive_candidates(
+    market: str = Query("kr", pattern="^(kr|us)$"),
+) -> dict:
+    """약세장 확인 후 인버스 ETF의 자체 차트 진입만 제시하는 단기 방어 전략."""
+    try:
+        from app.services.defensive_strategy import defensive_candidates
+        return defensive_candidates(_market(market))
+    except Exception as e:
+        return {"status": "ERROR", "message": str(e), "items": []}
+
+
 # ── 캘린더 통합 API (event_calendar 서비스) ──────────────────────────────
 
 from app.services import event_calendar as _ec_cal
