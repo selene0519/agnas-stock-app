@@ -4499,8 +4499,8 @@ export default function HomePage({
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-[21px] font-bold leading-none text-slate-100">MONE 홈</h1>
-            <p className="mt-1 text-[11.5px] text-slate-500">오늘의 운용 브리핑</p>
+            <h1 className="mone-page-title">MONE 홈</h1>
+            <p className="mone-page-subtitle">오늘의 운용 브리핑</p>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                 sessionPhase === "장중" ? "bg-emerald-500/15 text-emerald-300"
@@ -4524,12 +4524,12 @@ export default function HomePage({
             <RefreshCw size={14} className={homeRefreshing ? "animate-spin" : ""} aria-hidden="true" />
           </button>
         </div>
-        <div className="mone-home-inset grid grid-cols-3 gap-1 rounded-[10px] border p-1">
+        <div className="mone-market-tabs">
           {(["auto", "kr", "us"] as MarketChoice[]).map((choice) => (
             <button
               key={choice}
               onClick={() => updateMarketChoice(choice)}
-              className={`min-h-11 min-w-0 rounded-[7px] px-2 text-[12px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
+              className={`active:scale-[0.96] ${
                 marketChoice === choice
                   ? "mone-selection-brand"
                   : "text-slate-400 hover:text-slate-200"

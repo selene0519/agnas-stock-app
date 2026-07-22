@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, Star } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { SentimentBadge } from "@/components/SentimentBadge";
 import { mone, readApiSnapshot, type ApiList, type Horizon, type Market, type Mode, type RecommendationItem } from "@/lib/api";
@@ -61,14 +61,6 @@ type HoldingEditRow = {
 // 보내 두 엔드포인트 모두 422(Input should be ≤50)로 떨어져 목록이 비었다.
 // 실데이터(≤20)보다 넉넉하면서 두 상한을 모두 만족하는 50으로 맞춘다.
 const RECOMMENDATION_LIMIT = 50;
-const SCREENER_EXTENSION_CHIPS = ["외국인 유입", "수급 전환 초기", "섹터 후발 확산", "개인 과열 제외"] as const;
-const LENS_EXTENSION_CHIPS: Record<ExplorationLensId, readonly string[]> = {
-  leader: ["섹터 대표주", "테마 주도주", "외국인 유입"],
-  discovery: ["소형 성장", "섹터 후발 확산", "수급 전환 초기"],
-  pullback: ["최근 급등 제외", "대표주 대비 후행", "호가 공백 주의"],
-  recovery: ["중형 성장", "반복 재료", "수급 전환 초기"],
-  balance: ["대형 안정", "중형 성장", "소형 성장"],
-};
 
 // 렌즈별로 "보통 어느 투자성향에서 잘 잡히는지" 안내 문구(정보용).
 // 렌즈 판정 로직은 성향·기간과 무관하게 동일하지만, 종목 풀이 성향·기간에 따라
@@ -447,6 +439,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const bootSeedRef = useRef(Boolean(_initBootItems));
 
   const [market, setMarket] = useState<Market>("all");
+  const [exploreView, setExploreView] = useState<"hub" | "recommend" | "direct">("hub");
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
@@ -470,8 +463,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [searchResults, setSearchResults] = useState<MoneSymbol[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [, setCashVersion] = useState(0);
-  const [scoredWatch, setScoredWatch] = useState<any>(null);
-  const [scoredLoading, setScoredLoading] = useState(false);
   const [sectorFilter, setSectorFilter] = useState<string | null>(null);
   const [sectorsList, setSectorsList] = useState<string[]>([]);
   const [sectorLookup, setSectorLookup] = useState<SectorLookup>({});
@@ -562,18 +553,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       setGroupsList((prev) => (finalGroup && !prev.includes(finalGroup) ? [...prev, finalGroup] : prev));
     } finally {
       setGroupAssigning(null);
-    }
-  }
-
-  async function loadScoredWatchlist() {
-    setScoredLoading(true);
-    try {
-      const data = await mone.watchlistScored({ market: resolvedMarket, mode, horizon });
-      setScoredWatch(data);
-    } catch {
-      setScoredWatch(null);
-    } finally {
-      setScoredLoading(false);
     }
   }
 
@@ -880,6 +859,16 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       ]),
     ) as Record<ExplorationLensId, number>;
   }, [baseFiltered]);
+  const lensRepresentativeNames = useMemo(() => {
+    return Object.fromEntries(
+      EXPLORATION_LENSES.map((lensDef) => [
+        lensDef.id,
+        lensDef.matchAll
+          ? baseFiltered.slice(0, 2).map((item) => displayName(item)).filter(Boolean).join(" · ")
+          : baseFiltered.filter((item) => itemMatchesLens(item, lensDef.id)).slice(0, 2).map((item) => displayName(item)).filter(Boolean).join(" · "),
+      ]),
+    ) as Record<ExplorationLensId, string>;
+  }, [baseFiltered]);
 
   // 현재 조합(성향·기간)에서 결과가 가장 많은 '다른' 렌즈 — 빈 렌즈 안내에서
   // 안전한 대안으로 제시한다. 이미 로드된 데이터 기준이라 빈 화면으로 안 밀린다.
@@ -899,12 +888,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const screenerSubtitle = activeLensDef
     ? `${activeLensDef.label} 렌즈 안에서 기존 필터를 더 좁혀 봅니다.`
     : "탐색 렌즈와 함께 쓰는 세부 필터입니다.";
-  const plannedExtensionChips = useMemo(() => {
-    const priority = lens ? Array.from(LENS_EXTENSION_CHIPS[lens] || []) : [];
-    const taxonomy = ADVANCED_FILTER_GROUPS.flatMap((group) => group.comingSoonChips);
-    return Array.from(new Set([...priority, ...SCREENER_EXTENSION_CHIPS, ...taxonomy]));
-  }, [lens]);
-
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     explorationItems.forEach((item) => {
@@ -1207,22 +1190,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     }
   }
 
-  async function refreshTargetQuotes() {
-    setQuoteRefreshing("batch");
-    setHoldingMessage("");
-    try {
-      const result = await mone.refreshTargetQuotes({ market: resolvedMarket, limit: 20 });
-      setHoldingMessage(
-        `현재가 새로고침: 성공 ${result?.successCount ?? 0}건 / 실패 ${result?.failureCount ?? 0}건 / 대기 ${result?.pendingCount ?? 0}건`,
-      );
-      setRefreshVersion((value) => value + 1);
-    } catch (error) {
-      setHoldingMessage(`전체 현재가 새로고침 실패: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setQuoteRefreshing(null);
-    }
-  }
-
   const marketTabs: { id: Market; label: string }[] = [
     { id: "all", label: "자동" },
     { id: "kr", label: "국장" },
@@ -1239,33 +1206,161 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     { id: "mid", label: "중기", desc: "2주 이상" },
   ];
 
-  const SUGGEST_STYLE: Record<string, string> = {
-    "진입 검토":      toneClassName("safe"),
-    "대기":          toneClassName("warning"),
-    "타이밍 대기":    toneClassName("warning"),
-    "제거 고려":      toneClassName("danger"),
-    "관찰":          toneClassName("neutral"),
-    "모니터링":       toneClassName("neutral"),
-    "데이터 없음":    toneClassName("neutral"),
-  };
-  const watchSuggestionLabel = (raw: any) => {
-    const text = String(raw || "");
-    if (!text) return "관찰";
-    if (text.includes("즉시 진입") || text.includes("진입 검토")) return "진입 검토";
-    if (text.includes("대기")) return "대기";
-    if (text.includes("제거")) return "축소";
-    if (text.includes("데이터")) return "데이터 제한";
-    if (text.includes("모니터")) return "관찰";
-    return normalizeAction(text).label;
-  };
+  const previewCandidates = items.filter((item) => !item?.isSearchOnly).slice(0, 3);
+  const canOfferKrConservativeFallback = resolvedMarket === "kr" && mode !== "conservative";
+
+  if (exploreView === "hub") {
+    return (
+      <div className="mone-home w-full space-y-4 pb-4">
+        <div>
+          <h1 className="mone-page-title">종목 탐색</h1>
+          <p className="mone-page-subtitle">현재 후보를 확인하고, 원하는 조건으로 바로 좁힙니다.</p>
+        </div>
+
+        <div className="mone-market-tabs">
+          {marketTabs.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setMarket(item.id)}
+              className={`active:scale-[0.96] ${market === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <section className="mone-home-card overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-3.5 py-3">
+            <div>
+              <div className="flex items-center gap-2"><span className="mone-section-icon" /><h2 className="mone-home-section-title">오늘의 추천 후보</h2></div>
+              <div className="mt-1 text-[13px] text-slate-400">{marketLabel(resolvedMarket)} 기준으로 전략을 고르세요.</div>
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-teal-300">{loading ? "산출 중" : `${items.length}개`}</span>
+          </div>
+          <div className="space-y-3 border-t border-slate-800 px-3.5 py-3">
+            <div>
+              <div className="mb-2 text-[13px] font-semibold text-slate-300">투자성향</div>
+              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-1">{modeTabs.map((item) => <button key={item.id} type="button" onClick={() => setMode(item.id)} className={`min-h-10 rounded-md px-2 text-sm font-semibold transition-colors ${mode === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}>{item.label}</button>)}</div>
+            </div>
+            <div>
+              <div className="mb-2 text-[13px] font-semibold text-slate-300">투자기간</div>
+              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-1">{horizonTabs.map((item) => <button key={item.id} type="button" onClick={() => setHorizon(item.id)} className={`min-h-10 rounded-md px-2 text-sm font-semibold transition-colors ${horizon === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}>{item.label}</button>)}</div>
+            </div>
+          </div>
+          {loading && <div className="border-t border-slate-800 px-3.5 py-4 text-sm text-slate-500">추천 데이터를 불러오고 있습니다.</div>}
+          {!loading && previewCandidates.length === 0 && (
+            <div className="border-t border-slate-800 px-3.5 py-4 text-sm leading-6 text-slate-500">
+              {canOfferKrConservativeFallback ? "현재 국장 약세장에서는 균형형 후보를 보류합니다." : "현재 기준을 통과한 후보가 없습니다."}
+              {canOfferKrConservativeFallback && <button type="button" onClick={() => setMode("conservative")} className="ml-2 font-semibold text-teal-300 hover:text-teal-200">보수형 후보 보기</button>}
+            </div>
+          )}
+          {!loading && previewCandidates.map((item) => (
+            <div key={`${item.market}-${item.symbol}`} className="px-3.5 pt-3">
+              <button type="button" onClick={() => { setSelected({ market: item.market || resolvedMarket, symbol: item.symbol, name: displayName(item) } as MoneSymbol); setExploreView("direct"); }} className="mone-home-inset w-full rounded-[10px] border px-3 py-3.5 text-left transition-[border-color,background-color] hover:border-teal-400/45 hover:bg-slate-900/80">
+                <span className="flex items-center gap-3"><span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-[12px] text-slate-400">EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span><ChevronRight size={18} className="shrink-0 text-slate-500" aria-hidden="true" /></span>
+                <span className="mt-3 grid grid-cols-4 border-t border-slate-800 pt-3">
+                  <span className="min-w-0 border-r border-slate-800 pr-2"><span className="block text-[10px] text-slate-500">기준가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-slate-200">{formatMoney(item.currentPrice ?? item.expectedPrice ?? item.entry, item.market || resolvedMarket)}</span></span>
+                  <span className="min-w-0 border-r border-slate-800 px-2"><span className="block text-[10px] text-slate-500">진입가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-teal-300">{formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)}</span></span>
+                  <span className="min-w-0 border-r border-slate-800 px-2"><span className="block text-[10px] text-slate-500">목표가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-teal-300">{formatMoney(item.target ?? item.targetPrice, item.market || resolvedMarket)}</span></span>
+                  <span className="min-w-0 pl-2"><span className="block text-[10px] text-slate-500">손절가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-rose-300">{formatMoney(item.stop ?? item.stopPrice, item.market || resolvedMarket)}</span></span>
+                </span>
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={() => setExploreView("recommend")} className="flex min-h-11 w-full items-center justify-end gap-1 px-3.5 text-sm font-semibold text-teal-300 transition-colors hover:text-teal-200">
+            추천 후보 전체 보기 <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </section>
+
+        <section className="mone-home-card overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-3.5 py-3"><div className="flex items-center gap-2"><span className="mone-section-icon" /><h2 className="mone-home-section-title">탐색 렌즈</h2></div><span className="text-[12px] text-slate-400">조건으로 바로 좁히기</span></div>
+          <div className="border-t border-slate-800">
+            {EXPLORATION_LENSES.filter((lensDef) => !lensDef.matchAll).map((lensDef) => (
+              <button key={lensDef.id} type="button" onClick={() => { setLens(lensDef.id); setScreenerOpen(true); setExploreView("direct"); }} className="flex min-h-[66px] w-full items-center gap-3 border-b border-slate-800 px-3.5 text-left transition-colors last:border-b-0 hover:bg-slate-800/65">
+                <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold text-slate-100">{lensDef.label}</span><span className={`mt-1 block truncate text-[12px] ${lensRepresentativeNames[lensDef.id] ? "text-slate-400" : "text-slate-500"}`}>{lensRepresentativeNames[lensDef.id] || "현재 해당 후보 없음"}</span></span>
+                <span className="shrink-0 text-right"><span className="block font-mono text-[13px] text-teal-300">{lensCounts[lensDef.id]}개</span><ChevronRight size={15} className="mt-1 ml-auto text-slate-500" aria-hidden="true" /></span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <button type="button" onClick={() => { setScreenerOpen(true); setExploreView("direct"); }} className="mone-home-card flex min-h-14 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:border-teal-400/45 hover:bg-slate-900/80">
+          <span><span className="block text-sm font-semibold text-slate-100">스크리너</span><span className="mt-1 block text-xs text-slate-500">수급, 리스크, EV, 고급 태그 조건을 조정합니다.</span></span>
+          <ChevronRight size={18} className="shrink-0 text-slate-500" aria-hidden="true" />
+        </button>
+
+      </div>
+    );
+  }
+
+  if (exploreView === "recommend") {
+    return (
+      <div className="mone-home w-full space-y-4 pb-4">
+        <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
+          <ChevronLeft size={18} aria-hidden="true" /> 탐색
+        </button>
+        <div>
+          <span className="mone-home-section-title">추천 탐색</span>
+          <h1 className="mone-page-title mt-3">운용 기준을 고르세요</h1>
+          <p className="mone-page-subtitle">선택한 기준의 추천 데이터에서 후보를 정렬합니다.</p>
+        </div>
+        <div className="mone-market-tabs">
+          {marketTabs.map((item) => (
+            <button key={item.id} type="button" onClick={() => setMarket(item.id)} className={`active:scale-[0.96] ${market === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}>{item.label}</button>
+          ))}
+        </div>
+        <section className="mone-home-card space-y-5 p-4">
+          <div>
+            <div className="mb-2 text-sm font-semibold text-slate-200">투자성향</div>
+            <div className="grid grid-cols-3 gap-2">{modeTabs.map((item) => <button key={item.id} type="button" onClick={() => setMode(item.id)} className={`min-h-11 rounded-lg border px-2 text-sm font-semibold transition-colors ${mode === item.id ? "mone-selection-brand" : "border-slate-800 bg-slate-950/50 text-slate-400 hover:text-slate-100"}`}>{item.label}</button>)}</div>
+          </div>
+          <div>
+            <div className="mb-2 text-sm font-semibold text-slate-200">투자기간</div>
+            <div className="grid grid-cols-3 gap-2">{horizonTabs.map((item) => <button key={item.id} type="button" onClick={() => setHorizon(item.id)} className={`min-h-11 rounded-lg border px-2 text-sm font-semibold transition-colors ${horizon === item.id ? "mone-selection-brand" : "border-slate-800 bg-slate-950/50 text-slate-400 hover:text-slate-100"}`}>{item.label}</button>)}</div>
+          </div>
+        </section>
+        <section className="mone-home-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3"><div><div className="text-[12px] font-semibold text-teal-300">{modeLabel(mode)} · {horizonLabel(horizon)} · {marketLabel(resolvedMarket)}</div><div className="mt-1 text-sm font-semibold text-slate-100">우선 확인 후보</div></div><span className="text-xs text-slate-500">{loading ? "불러오는 중" : `${items.length}개`}</span></div>
+          {loading && <div className="px-4 py-5 text-sm text-slate-500">추천 데이터를 불러오고 있습니다.</div>}
+          {!loading && previewCandidates.length === 0 && (
+            <div className="space-y-3 px-4 py-5 text-sm leading-6 text-slate-500">
+              <p>
+                {canOfferKrConservativeFallback
+                  ? "현재 국장 약세장 기준에서는 균형형 후보를 보류합니다. 보수형 기준에서만 통과한 후보가 있습니다."
+                  : "선택한 시장·성향·기간의 추천 데이터가 없습니다. 다른 기준을 선택하거나 데이터 갱신 후 다시 확인하세요."}
+              </p>
+              {canOfferKrConservativeFallback && (
+                <button
+                  type="button"
+                  onClick={() => setMode("conservative")}
+                  className="min-h-11 rounded-lg border border-teal-400/40 px-3 text-sm font-semibold text-teal-300 transition-colors hover:bg-teal-500/10"
+                >
+                  보수형 후보 보기
+                </button>
+              )}
+            </div>
+          )}
+          {!loading && previewCandidates.map((item) => (
+            <button key={`${item.market}-${item.symbol}`} type="button" onClick={() => { setSelected({ market: item.market || resolvedMarket, symbol: item.symbol, name: displayName(item) } as MoneSymbol); setExploreView("direct"); }} className="flex w-full items-center gap-3 border-b border-slate-800 px-4 py-4 text-left last:border-b-0 hover:bg-slate-900/40">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/12 text-teal-300"><Sparkles size={19} aria-hidden="true" /></span>
+              <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-xs text-slate-500">진입가 {formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)} · EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span>
+              <ChevronRight size={18} className="text-slate-500" aria-hidden="true" />
+            </button>
+          ))}
+        </section>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="mone-home w-full space-y-4">
       <div>
-        <h1 className="text-[19px] font-black leading-none text-slate-100">종목 탐색</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          관심종목과 전체 후보를 시장, 투자 성향, 투자 기간 기준으로 탐색합니다.
-        </p>
+        <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
+          <ChevronLeft size={18} aria-hidden="true" /> 탐색
+        </button>
+        <h1 className="mone-page-title mt-2">조건으로 후보를 좁히세요</h1>
+        <p className="mone-page-subtitle">기존 렌즈와 전문 스크리너의 모든 조건을 그대로 사용합니다.</p>
       </div>
 
       <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
@@ -1298,31 +1393,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div>{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"}</div>
           <div>현재 적용 시장: {marketLabel(resolvedMarket)}</div>
         </div>
-        {/* 관심종목 관리 — 관심종목은 종목 카드에서 직접 담는다(수동). 여기서는 담은 종목의
-            가격을 갱신하고 재평가한다. */}
-        <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 p-2.5">
-          <div className="mb-2 flex items-baseline gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">관심종목 관리</span>
-            <span className="text-[11px] text-slate-500">가격 갱신 → 재평가</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={refreshTargetQuotes}
-              disabled={quoteRefreshing === "batch"}
-              className="min-h-11 min-w-0 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2 py-2 text-xs font-bold text-cyan-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
-            >
-              현재가 갱신
-            </button>
-            <button
-              onClick={loadScoredWatchlist}
-              disabled={scoredLoading}
-              className="min-h-11 min-w-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs font-bold text-violet-300 transition-[background-color,transform] active:scale-[0.96] disabled:opacity-50 sm:text-sm"
-            >
-              {scoredLoading ? "분석 중..." : "관심종목 분석"}
-            </button>
-          </div>
-        </div>
-
         {/* 그룹 필터 */}
         {groupsList.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1710,25 +1780,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 ))}
               </div>
 
-              <div className="border-t border-slate-700/50 pt-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">확장 예정</label>
-                  <span className="text-[10px] text-slate-600">
-                    현재 렌즈와 연결할 다음 신호입니다. 아직 필터 결과에는 반영하지 않습니다.
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {plannedExtensionChips.map((chip) => (
-                    <span
-                      key={chip}
-                      title="데이터 연결 예정"
-                      className="rounded-full border border-dashed border-slate-700/80 px-3 py-1 text-[11px] font-medium text-slate-500"
-                    >
-                      {chip}
-                    </span>
-                  ))}
-                </div>
-              </div>
 
               {/* 고급 태그 과다 선택 안내: 결과가 0인데 고급 태그가 걸려 있으면 힌트 */}
               {sectorFiltered.length === 0 && advTags.size > 0 && (
@@ -1764,59 +1815,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             </div>
           )}
         </div>
-
-        {/* 관심종목 자동선별 결과 */}
-        {scoredWatch && Array.isArray(scoredWatch.items) && scoredWatch.items.length === 0 && (
-          <div className="mt-4 rounded-xl border border-slate-700/40 bg-slate-900/40 px-4 py-3 text-xs text-slate-500">
-            관심종목 점수 분석 결과가 없습니다.
-            {scoredWatch.reason && <span className="ml-1 text-amber-400">{scoredWatch.reason}</span>}
-            {!scoredWatch.reason && <span className="ml-1">관심종목({watchlist.length}개)이 추천 파일에 매칭되지 않았거나 추천 데이터가 없습니다. 종목 카드에서 관심종목을 추가한 뒤 다시 시도하세요.</span>}
-          </div>
-        )}
-        {scoredWatch && Array.isArray(scoredWatch.items) && scoredWatch.items.length > 0 && (
-          <div className="mt-5 rounded-2xl border border-violet-800/30 bg-violet-950/10 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <span className="text-sm font-semibold text-slate-100">관심종목 점수 분석</span>
-                <span className="ml-2 text-xs text-slate-500">{modeLabel(mode)} × {horizonLabel(horizon)}</span>
-              </div>
-              <div className="flex gap-2 text-[11px]">
-                {[
-                  { key: "immediate", label: "즉시", color: "text-emerald-300" },
-                  { key: "waiting",   label: "대기", color: "text-amber-300" },
-                  { key: "monitor",   label: "관찰", color: "text-slate-400" },
-                  { key: "remove",    label: "제거", color: "text-red-300" },
-                ].map(({ key, label, color }) => (
-                  scoredWatch.summary?.[key] > 0 && (
-                    <span key={key} className={color}>{label} {scoredWatch.summary[key]}</span>
-                  )
-                ))}
-              </div>
-              <button onClick={() => setScoredWatch(null)} className="text-slate-600 hover:text-slate-400">✕</button>
-            </div>
-            <div className="space-y-1.5 max-h-64 overflow-y-auto">
-              {scoredWatch.items.map((it: any) => (
-                <div key={it.symbol} className={`flex items-center justify-between rounded-xl border px-3 py-2 text-[11px] ${SUGGEST_STYLE[it.suggestion] || SUGGEST_STYLE["관찰"]}`}>
-                  <div className="min-w-0 flex-1">
-                    <span className="font-semibold">{it.name || it.symbol}</span>
-                    <span className="ml-1.5 text-[10px] opacity-60">{it.symbol}</span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    {lens === "discovery" && Number(it.discoveryScore) > 0 && (
-                      <span className="font-mono text-violet-300/90" title="발굴 점수(조기성): 아직 덜 오른·초기 신호 후보일수록 높음">발굴 {Number(it.discoveryScore).toFixed(0)}</span>
-                    )}
-                    {Number(it.validatedExpectancy) > 0 && (
-                      <span className="font-mono text-emerald-300/70" title={`워크포워드 백테스트(전체 이력) 기대값 ${Number(it.validatedExpectancy) >= 0 ? "+" : ""}${Number(it.validatedExpectancy).toFixed(1)}% · 승률 ${Number(it.validatedWinRate).toFixed(0)}% · 표본 ${it.validatedSampleCount || 0}건 (실전 검증은 렌즈 배너 참고)`}>백테 {Number(it.validatedExpectancy) >= 0 ? "+" : ""}{Number(it.validatedExpectancy).toFixed(1)}%</span>
-                    )}
-                    {it.finalScore > 0 && <span className="font-mono">{it.finalScore.toFixed(0)}점</span>}
-                    {it.expectedValue !== 0 && <span className={`font-mono ${it.expectedValue >= 0 ? "opacity-80" : "text-red-400"}`}>EV {it.expectedValue >= 0 ? "+" : ""}{it.expectedValue?.toFixed(1)}%</span>}
-                    <span className="rounded-full border px-1.5 py-0.5 text-[10px]">{watchSuggestionLabel(it.suggestion)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="mt-5 flex items-baseline gap-2">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">탐색 조건</span>

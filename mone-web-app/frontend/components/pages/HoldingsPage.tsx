@@ -1456,8 +1456,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       {/* 헤더 */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[21px] font-bold leading-none text-slate-100">보유·리스크</h1>
-          <p className="mt-1 text-[11.5px] text-slate-500">보유 현황과 오늘의 리스크를 한눈에 확인하세요.</p>
+          <h1 className="mone-page-title">보유·리스크</h1>
+          <p className="mone-page-subtitle">보유 현황과 오늘의 리스크를 한눈에 확인하세요.</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -1472,14 +1472,14 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </div>
       </div>
 
-      <div className="mone-home-inset grid grid-cols-3 gap-1 rounded-[10px] border p-1">
+      <div className="mone-market-tabs">
         {([
           { key: "all", label: "전체" },
           { key: "kr", label: "국장" },
           { key: "us", label: "미장" },
         ] as const).map((item) => (
           <button key={item.key} type="button" onClick={() => selectMarket(item.key)}
-            className={`min-h-9 rounded-[7px] px-3 text-[12px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${marketMode === item.key ? "mone-selection-brand" : "text-slate-500 hover:text-slate-300"}`}>
+            className={`active:scale-[0.96] ${marketMode === item.key ? "mone-selection-brand" : "text-slate-500 hover:text-slate-300"}`}>
             {item.label}
           </button>
         ))}

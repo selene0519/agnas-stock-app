@@ -2933,8 +2933,8 @@ export default function ChartPage() {
     <div className="mone-home space-y-4 pb-3">
       <header className="flex flex-col gap-3 border-b border-slate-800/80 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="shrink-0">
-          <h1 className="text-[28px] font-black leading-none text-slate-100">분석</h1>
-          <p className="mt-2 text-xs text-slate-500">종목의 진입 조건과 위험을 같은 기준으로 확인합니다.</p>
+          <h1 className="mone-page-title">분석</h1>
+          <p className="mone-page-subtitle">종목의 진입 조건과 위험을 같은 기준으로 확인합니다.</p>
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-xl">
           <SymbolSearchSelect
