@@ -78,20 +78,34 @@ def _scan(market: str) -> dict:
             continue
         cl = [x[1] for x in c]
         rs = cl[-1] / cl[-61] - 1
+        rets = [cl[j] / cl[j - 1] - 1 for j in range(len(cl) - 60, len(cl)) if cl[j - 1]]
+        mean = sum(rets) / len(rets) if rets else 0.0
+        vol = (sum((x - mean) ** 2 for x in rets) / len(rets)) ** 0.5 if rets else 0.0
         ranked.append({"symbol": sym, "rs60Pct": round(rs * 100, 2),
-                       "relToIndexPp": round((rs - idx_rs) * 100, 2)})
+                       "relToIndexPp": round((rs - idx_rs) * 100, 2),
+                       "vol60Pct": round(vol * 100, 2)})
     ranked.sort(key=lambda x: -x["rs60Pct"])
-    # This lens only carries an edge in BULL/SIDE; label BEAR as defensive.
-    usable = regime in ("BULL", "SIDE")
+    # BULL/SIDE: cross-sectional RS has a real long edge (KR SIDE +3.45p).
+    # BEAR: RS dispersion vanishes (correlations -> 1), so instead surface the
+    # low-volatility DEFENSIVE names that halved drawdown in the bear test
+    # (KR -3.8% vs -8.4% avg max drawdown) - active defense, not just cash.
+    if regime in ("BULL", "SIDE"):
+        return {
+            "version": "relative-strength-v1", "market": market, "asOf": as_of,
+            "regime": regime, "status": "OK",
+            "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
+            "universeCount": len(ranked),
+            "leaders": ranked[:TOP_N], "laggardsToAvoid": ranked[-TOP_N:],
+            "defensiveHolds": [], "note": "Research/paper only.",
+        }
+    defensive = sorted(ranked, key=lambda x: x["vol60Pct"])[:TOP_N]
     return {
         "version": "relative-strength-v1", "market": market, "asOf": as_of,
-        "regime": regime,
-        "status": "OK" if usable else "DEFENSIVE_BEAR_NO_DISPERSION",
-        "lensNote": "Long the RS leaders, avoid the laggards. Edge in BULL/SIDE only; BEAR has ~no cross-sectional dispersion.",
+        "regime": regime, "status": "BEAR_DEFENSIVE",
+        "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
         "universeCount": len(ranked),
-        "leaders": ranked[:TOP_N] if usable else [],
-        "laggardsToAvoid": ranked[-TOP_N:] if usable else [],
-        "note": "Research/paper only.",
+        "leaders": [], "laggardsToAvoid": [],
+        "defensiveHolds": defensive, "note": "Research/paper only. Capital preservation, not return.",
     }
 
 
