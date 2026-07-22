@@ -519,6 +519,7 @@ jobs:
             python scripts/build_lens_calibration_kr.py
             python scripts/screen_regime_lens_kr.py
             python scripts/scan_leader_breakout_kr.py
+            python scripts/scan_relative_strength_kr.py
             python scripts/refresh_kr_lens_intraday_context.py
             python scripts/capture_lens_predictions_kr.py
             echo "regime lens loop: exit $?"
@@ -910,6 +911,7 @@ jobs:
             git add reports/lens_prediction_ledger_kr.csv reports/lens_live_journal_kr.csv 2>/dev/null || true
             git add reports/lens_promotion_status_kr.json 2>/dev/null || true
             git add reports/leader_breakout_candidates_kr.json reports/leader_breakout_candidates_us.json 2>/dev/null || true
+            git add reports/relative_strength_leaders_kr.json reports/relative_strength_leaders_us.json 2>/dev/null || true
             git add reports/kr_supply_flow_history.csv reports/disclosures_kr_history.csv 2>/dev/null || true
             git add reports/smart_rank_kr.json reports/high_conviction_kr.json 2>/dev/null || true
             git add reports/high_conviction_ledger_kr.csv reports/high_conviction_pnl_kr.json 2>/dev/null || true
