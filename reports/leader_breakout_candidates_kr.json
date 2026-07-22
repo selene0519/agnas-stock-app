@@ -1,0 +1,21 @@
+{
+  "version": "leader-breakout-v1",
+  "market": "kr",
+  "asOf": "2026-07-22",
+  "status": "OK",
+  "usBackdrop": {
+    "favorable": true,
+    "spyClose": 747.29,
+    "spyMa50": 744.04,
+    "rule": "SPY > 50d MA"
+  },
+  "validatedEdge": {
+    "fwd20dPctWhenUsUp": 4.47,
+    "fwd20dPctWhenUsDown": 0.2,
+    "basis": "deep 2014-2026 train+OOS, forward-return (not cost/trade-sim)"
+  },
+  "scanned": 101,
+  "candidates": [],
+  "heldForUnfavorableBackdrop": [],
+  "note": "Research/paper only. Leader breakouts are only traded on a risk-on US backdrop; feed to the paper loop for live proof before promotion."
+}
