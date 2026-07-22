@@ -70,8 +70,15 @@ def _write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
 
 
 def _norm_kr_symbol(value: object) -> str:
-    raw = re.sub(r"\D", "", str(value or ""))
-    return raw.zfill(6)[-6:] if raw else ""
+    raw = str(value or "").strip().upper()
+    # KRX codes are 6 chars and may contain letters (ETF/ETN, e.g. 0210A0,
+    # 0209Z0). Stripping non-digits would corrupt those into a different numeric
+    # ticker (0210A0 -> 002100), so preserve any valid 6-char alphanumeric code
+    # that contains a letter; only digit-normalize genuinely numeric/messy input.
+    if re.fullmatch(r"[0-9][0-9A-Z]{5}", raw) and re.search(r"[A-Z]", raw):
+        return raw
+    digits = re.sub(r"\D", "", raw)
+    return digits.zfill(6)[-6:] if digits else ""
 
 
 def _target_universe() -> list[dict]:
