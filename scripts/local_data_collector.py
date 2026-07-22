@@ -196,6 +196,46 @@ def generate_recommendations(market: str = "kr") -> dict:
         return {"status": "ERROR", "reason": str(e)}
 
 
+def refresh_kr_regime_lens_loop() -> dict:
+    """Refresh KR regime-lens candidates, KIS context, and forward capture."""
+    script_names = [
+        "settle_lens_predictions_kr.py",
+        "build_lens_journal_kr.py",
+        "build_lens_calibration_kr.py",
+        "screen_regime_lens_kr.py",
+        "refresh_kr_lens_intraday_context.py",
+        "capture_lens_predictions_kr.py",
+    ]
+    steps = []
+    ok = 0
+    for script_name in script_names:
+        script = REPO_ROOT / "scripts" / script_name
+        if not script.exists():
+            steps.append({"script": script_name, "status": "SKIP", "reason": "missing"})
+            continue
+        try:
+            result = subprocess.run(
+                [sys.executable, str(script)],
+                cwd=str(REPO_ROOT),
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            step_status = "OK" if result.returncode == 0 else "ERROR"
+            if step_status == "OK":
+                ok += 1
+            steps.append({
+                "script": script_name,
+                "status": step_status,
+                "stdout": result.stdout[-500:],
+                "stderr": result.stderr[-500:],
+            })
+        except Exception as e:
+            steps.append({"script": script_name, "status": "ERROR", "reason": str(e)})
+    status = "OK" if all(step["status"] in {"OK", "SKIP"} for step in steps) else "PARTIAL"
+    return {"status": status, "ok": ok, "steps": steps}
+
+
 def _run_git(args: list[str], timeout: int = 30):
     return subprocess.run(["git", *args], cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=timeout)
 
@@ -273,6 +313,12 @@ def git_push(commit_msg: str) -> bool:
             ["git", "add", "data/disclosures/disclosures_us.csv"],
             ["git", "add", "reports/virtual_prediction_ledger.csv"],
             ["git", "add", "reports/virtual_validation_results.csv"],
+            ["git", "add", "reports/regime_lens_candidates_kr.json"],
+            ["git", "add", "reports/lens_calibration_kr.json"],
+            ["git", "add", "reports/lens_prediction_ledger_kr.csv"],
+            ["git", "add", "reports/lens_live_journal_kr.csv"],
+            ["git", "add", "reports/lens_intraday_context_kr.csv"],
+            ["git", "add", "reports/intraday_orderbook_snapshot.csv"],
             ["git", "add", "data/toss_holdings_kr.csv"],
             ["git", "add", "data/kis_holdings_kr.csv"],
             ["git", "add", "data/kis_2_holdings_kr.csv"],
@@ -440,6 +486,11 @@ def main() -> None:
         rec_result = generate_recommendations(market=mkt)
         log(f"  결과: {rec_result['status']}")
         status["steps"][f"recommendations_{mkt}"] = rec_result
+        if mkt == "kr":
+            log("Step 2b: KR regime lens/KIS context/paper capture...")
+            lens_result = refresh_kr_regime_lens_loop()
+            log(f"  寃곌낵: {lens_result['status']}")
+            status["steps"]["regime_lens_kr"] = lens_result
 
     # Step 3: 뉴스/공시 갱신 (기업분석 NO_DATA 비율을 줄이기 위해 추가)
     if not args.no_news:

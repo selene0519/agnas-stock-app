@@ -517,6 +517,7 @@ jobs:
             python scripts/build_lens_journal_kr.py
             python scripts/build_lens_calibration_kr.py
             python scripts/screen_regime_lens_kr.py
+            python scripts/refresh_kr_lens_intraday_context.py
             python scripts/capture_lens_predictions_kr.py
             echo "regime lens loop: exit $?"
           fi

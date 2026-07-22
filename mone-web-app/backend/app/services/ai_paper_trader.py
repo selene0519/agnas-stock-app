@@ -33,6 +33,7 @@ MAX_POSITION_PCT = float(os.getenv("AI_PAPER_MAX_POSITION_PCT", "0.20"))
 RISK_PER_TRADE_PCT = float(os.getenv("AI_PAPER_RISK_PER_TRADE_PCT", "0.01"))
 MIN_TRADE_KR = float(os.getenv("AI_PAPER_MIN_TRADE_KR", "10000"))
 MIN_TRADE_US = float(os.getenv("AI_PAPER_MIN_TRADE_US", "10"))
+LENS_EXPERIMENT_SIZE_MULT = float(os.getenv("AI_PAPER_LENS_EXPERIMENT_SIZE_MULT", "0.25"))
 
 TRADE_FIELDS = [
     "id", "createdAt", "market", "agentId", "agentLabel", "generation",
@@ -260,10 +261,150 @@ def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -
                 -old["score"],
             ):
                 seen[symbol] = item
+    if market == "kr":
+        for item in _collect_regime_lens_candidates_kr(agent):
+            symbol = str(item.get("symbol") or "").upper()
+            old = seen.get(symbol)
+            if old is None or (
+                _decision_priority(item["decision"]),
+                -_num(item.get("expectedValue")),
+                -_num(item.get("score")),
+            ) < (
+                _decision_priority(old.get("decision")),
+                -_num(old.get("expectedValue")),
+                -_num(old.get("score")),
+            ):
+                seen[symbol] = item
     return sorted(
         seen.values(),
         key=lambda x: (_decision_priority(x["decision"]), -x["expectedValue"], -x["score"]),
     )
+
+
+def _lens_intraday_context_kr() -> dict[str, dict[str, Any]]:
+    path = REPORTS / "lens_intraday_context_kr.csv"
+    rows = _read_csv(path)
+    latest: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        symbol = str(row.get("symbol") or "").strip().upper()
+        if not symbol:
+            continue
+        old = latest.get(symbol)
+        if old is None or str(row.get("updatedAt") or row.get("priceTime") or "") >= str(old.get("updatedAt") or old.get("priceTime") or ""):
+            latest[symbol] = row
+    return latest
+
+
+def _collect_regime_lens_candidates_kr(agent: dict[str, str] | None = None) -> list[dict[str, Any]]:
+    """Feed bear-market rebound/range lens candidates into paper trading only.
+
+    These candidates are intentionally separated from live recommendations.  A
+    suppressed lens can still enter the AI paper account with a small size so
+    the app collects real forward evidence instead of staying permanently in
+    "no trade" mode during difficult regimes.
+    """
+    path = REPORTS / "regime_lens_candidates_kr.json"
+    if not path.exists():
+        return []
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    if str(report.get("market") or "kr").lower() != "kr":
+        return []
+
+    regime = str(report.get("marketRegime") or "SIDE").upper()
+    as_of = str(report.get("asOfDate") or "")
+    active_agent = agent or AGENT_POOL[0]
+    intraday_context = _lens_intraday_context_kr()
+    items: list[dict[str, Any]] = []
+    for row in report.get("candidates") or []:
+        if not isinstance(row, dict):
+            continue
+        symbol = str(row.get("symbol") or "").strip().upper()
+        setup = str(row.get("setup") or "").strip().upper()
+        if not symbol or setup not in {"BOTTOM_CATCH", "V_REVERSAL", "DOUBLE_BOTTOM"}:
+            continue
+
+        entry = _num(row.get("entryRef") or row.get("entry") or row.get("close"))
+        stop = _num(row.get("stop"))
+        target = _num(row.get("target"))
+        rr = _num(row.get("rrRatio"))
+        if not (target > entry > stop > 0) or rr < 1.8:
+            continue
+
+        gate = str(row.get("calibrationGate") or "UNCALIBRATED").upper()
+        actionable = bool(row.get("actionable")) or gate == "ACTIVE"
+        context = intraday_context.get(symbol, {})
+        flow_score = _num(context.get("flowScore"))
+        bid_ratio = _num(context.get("bidRatio"))
+        quote_ok = str(context.get("quoteStatus") or "").upper() in {"OK", "TRUE", "1"}
+        orderbook_ok = str(context.get("orderbookStatus") or "").upper() in {"OK", "TRUE", "1"}
+        if quote_ok:
+            current = _num(context.get("currentPrice"))
+            if current > 0:
+                entry = current
+        if orderbook_ok and bid_ratio > 0 and flow_score <= -2 and bid_ratio < 42:
+            # If both the free KIS order book and investor flow disagree, keep
+            # the candidate in the ledger/capture path but do not spend even
+            # paper capital on this exact intraday setup.
+            continue
+
+        # Suppressed candidates are not trusted enough for full sizing, but they
+        # are exactly the cases we need to observe forward.  Give them a modest
+        # paper-only EV so the paper engine can test them without promoting them
+        # to normal recommendations.
+        size_mult = _num(row.get("sizeMultiplier")) if actionable else LENS_EXPERIMENT_SIZE_MULT
+        size_mult = max(0.05, min(size_mult or LENS_EXPERIMENT_SIZE_MULT, 1.0))
+        edge = max(1.01, min(1.80, rr * 0.42 + (0.10 if actionable else 0.0)))
+        score = 72.0 if actionable else 68.5
+        if flow_score >= 2:
+            edge += 0.08
+            score += 1.5
+            size_mult = min(1.0, size_mult + 0.10)
+        elif flow_score <= -2:
+            edge -= 0.08
+            score -= 1.0
+            size_mult = max(0.05, size_mult - 0.10)
+        if orderbook_ok and bid_ratio >= 55:
+            edge += 0.04
+            score += 0.5
+        elif orderbook_ok and 0 < bid_ratio < 45:
+            edge -= 0.04
+            score -= 0.5
+        edge = max(1.01, min(1.80, edge))
+        if score < 68.0:
+            continue
+
+        decision = "today paper-only bear rebound" if regime == "BEAR" else "conditional paper-only range rebound"
+        items.append({
+            "market": "kr",
+            "agentId": active_agent["id"],
+            "agentLabel": active_agent["label"],
+            "symbol": symbol,
+            "name": str(row.get("name") or symbol).strip(),
+            "mode": active_agent.get("mode", "balanced"),
+            "horizon": "short",
+            "decision": decision,
+            "entry": entry,
+            "stop": stop,
+            "target": target,
+            "current": entry,
+            "score": score,
+            "expectedValue": edge,
+            "riskScore": 55.0 if actionable else 50.0,
+            "source": str(path.relative_to(REPO_ROOT)).replace("\\", "/"),
+            "generatedAt": as_of,
+            "paperOnly": True,
+            "paperSetup": setup,
+            "paperRegime": regime,
+            "paperSizeMultiplier": size_mult,
+            "calibrationGate": gate,
+            "flowScore": flow_score if context else "",
+            "bidRatio": bid_ratio if context else "",
+            "memo": f"KR {regime} {setup} lens paper test gate={gate} rr={rr:.2f}",
+        })
+    return sorted(items, key=lambda x: (-_num(x.get("expectedValue")), -_num(x.get("score"))))
 
 
 def _current_price(symbol: str, market: str) -> float | None:
@@ -435,6 +576,15 @@ def _quantity_for(market: str, cash: float, equity: float, entry: float, stop: f
     return round(qty, 4)
 
 
+def _apply_position_multiplier(market: str, quantity: float, multiplier: float) -> float:
+    if quantity <= 0:
+        return 0.0
+    adjusted = quantity * max(0.0, min(multiplier, 1.0))
+    if market == "kr":
+        return float(max(1, int(adjusted))) if quantity >= 1 and multiplier > 0 else 0.0
+    return round(adjusted, 4)
+
+
 def _sell_triggered_positions(market: str, dry_run: bool) -> list[dict[str, Any]]:
     ctx = _active_context(market)
     agent = ctx["agent"]
@@ -511,6 +661,8 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
         if symbol in held:
             continue
         qty = _quantity_for(market, cash, equity, rec["entry"], rec["stop"], slots)
+        if rec.get("paperOnly"):
+            qty = _apply_position_multiplier(market, qty, _num(rec.get("paperSizeMultiplier")) or LENS_EXPERIMENT_SIZE_MULT)
         total = qty * rec["entry"]
         if qty <= 0 or total < min_trade:
             continue
@@ -525,7 +677,7 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
                 "BUY",
                 rec["entry"],
                 qty,
-                f"AI paper buy {agent['label']} EV={rec['expectedValue']:.2f}",
+                str(rec.get("memo") or f"AI paper buy {agent['label']} EV={rec['expectedValue']:.2f}"),
             )
             _set_cash(market, agent["id"], cash - total)
             _set_stop(market, agent["id"], symbol, rec["stop"], rec["target"], f"AI paper {agent['label']} {rec['source']}")
@@ -544,6 +696,11 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
             "expectedValue": rec["expectedValue"],
             "score": rec["score"],
             "decision": rec["decision"],
+            "paperOnly": bool(rec.get("paperOnly")),
+            "paperSetup": rec.get("paperSetup", ""),
+            "paperRegime": rec.get("paperRegime", ""),
+            "paperSizeMultiplier": rec.get("paperSizeMultiplier", ""),
+            "calibrationGate": rec.get("calibrationGate", ""),
             "result": result,
         })
         if result.get("ok"):
