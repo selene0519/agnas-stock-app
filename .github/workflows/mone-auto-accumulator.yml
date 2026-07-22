@@ -514,6 +514,7 @@ jobs:
           python scripts/archive_catalyst_history_kr.py
           if [ -f scripts/build_lens_journal_kr.py ]; then
             python scripts/settle_lens_predictions_kr.py
+            python scripts/promote_lens_setups_kr.py
             python scripts/build_lens_journal_kr.py
             python scripts/build_lens_calibration_kr.py
             python scripts/screen_regime_lens_kr.py
@@ -906,6 +907,7 @@ jobs:
             git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
             git add reports/lens_journal_kr.csv reports/lens_calibration_kr.json reports/regime_lens_candidates_kr.json 2>/dev/null || true
             git add reports/lens_prediction_ledger_kr.csv reports/lens_live_journal_kr.csv 2>/dev/null || true
+            git add reports/lens_promotion_status_kr.json 2>/dev/null || true
             git add reports/kr_supply_flow_history.csv reports/disclosures_kr_history.csv 2>/dev/null || true
             git add reports/smart_rank_kr.json reports/high_conviction_kr.json 2>/dev/null || true
             git add reports/high_conviction_ledger_kr.csv reports/high_conviction_pnl_kr.json 2>/dev/null || true
