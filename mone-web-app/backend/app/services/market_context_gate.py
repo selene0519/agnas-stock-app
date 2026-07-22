@@ -175,13 +175,18 @@ def build_market_context(market: str) -> dict[str, Any]:
         status = "CASH_UNTIL_BREADTH_AVAILABLE"
     else:
         status = "OK"
-    if macro.get("classification") == "CONTRACTION":
-        exposure = min(float(exposure), 0.35)
+    # The CONTRACTION exposure throttle (cap at 0.35) was removed: a 2011-2026
+    # walk-forward on KOSPI showed the KR CONTRACTION signal (fx63>5 &
+    # kosdaqKospi63<-3) actually *preceded* better outcomes on both return and
+    # risk (fwd-20d +6.99% vs +0.57%; avg max drawdown -1.33% vs -2.93%). It
+    # throttled exposure right before rebounds, i.e. an unjustified cash bias.
+    # The classification is still surfaced below for transparency, but no longer
+    # forces a smaller position size.
     return {
-        "version": "market-context-v1", "market": str(market or "").lower(), "status": status,
+        "version": "market-context-v2", "market": str(market or "").lower(), "status": status,
         "breadth": breadth, "macro": macro, "recommendedExposureMultiplier": round(float(exposure), 2),
         "manualReviewRequired": True,
-        "note": "Breadth uses only the local tracked universe; macro uses partial local proxies and is not a return forecast.",
+        "note": "Breadth uses only the local tracked universe; macro is surfaced for context and does not throttle exposure (CONTRACTION throttle removed on walk-forward evidence); not a return forecast.",
     }
 
 
