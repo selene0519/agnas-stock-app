@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-22T22:20:59.118277+00:00",
+  "generatedAt": "2026-07-22T23:55:08.064257+00:00",
   "asOfDate": "2026-07-22",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,15 +7,15 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 22272,
-    "topQuintileNetPct": -0.736,
-    "bottomQuintileNetPct": 0.05,
-    "spreadPct": -0.786,
+    "oosTrades": 22270,
+    "topQuintileNetPct": -0.738,
+    "bottomQuintileNetPct": 0.051,
+    "spreadPct": -0.789,
     "ic": -0.036,
     "topQuintileByRegime": {
-      "BULL": -0.811,
+      "BULL": -0.812,
       "SIDE": -1.091,
-      "BEAR": -0.592
+      "BEAR": -0.594
     }
   },
   "featureWeights": {
@@ -23,7 +23,7 @@
     "distma20": 0.17,
     "bull": 0.13,
     "mom5": -0.129,
-    "mdd20": -0.082,
+    "mdd20": -0.081,
     "zscore": 0.08,
     "revbar": -0.056,
     "atrpct": 0.05,
@@ -36,7 +36,7 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 103,
+  "candidateCount": 101,
   "candidates": [
     {
       "symbol": "066970",

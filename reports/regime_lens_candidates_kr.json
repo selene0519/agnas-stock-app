@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-07-22T22:20:32.713066+00:00",
+  "generatedAt": "2026-07-22T23:54:40.803962+00:00",
   "asOfDate": "2026-07-22",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.107,
+  "breadthAboveMa60": 0.109,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
@@ -15,7 +15,7 @@
   "selfCalibrated": true,
   "liveSamplesTotal": 0,
   "universeSize": 106,
-  "candidateCount": 4,
+  "candidateCount": 6,
   "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
@@ -63,6 +63,38 @@
       "rrRatio": 2.61,
       "rsi14": 27.3,
       "distMa20Pct": -12.1,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "KOSDAQ",
+      "name": "KOSDAQ",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-07-21",
+      "close": 753.34,
+      "entryRef": 753.34,
+      "stop": 720,
+      "target": 814,
+      "rrRatio": 1.82,
+      "rsi14": 29.4,
+      "distMa20Pct": -10.5,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "KOSPI",
+      "name": "KOSPI",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-07-21",
+      "close": 6747.95,
+      "entryRef": 6747.95,
+      "stop": 6333,
+      "target": 7288,
+      "rrRatio": 1.3,
+      "rsi14": 30.7,
+      "distMa20Pct": -12.2,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
