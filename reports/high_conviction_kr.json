@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-07-22T00:31:53.962122+00:00",
+  "generatedAt": "2026-07-22T07:38:04.104376+00:00",
   "market": "kr",
   "marketRegime": "BEAR",
   "marketRegimeLabel": "약세장",
   "regimeDetail": {
-    "asOf": "2026-07-20",
-    "distToMa20": -16.48,
-    "mom5": -12.84,
-    "kospi": 6516.27
+    "asOf": "2026-07-22",
+    "distToMa20": -7.25,
+    "mom5": 4.97,
+    "kospi": 7145.54
   },
   "favorableRegime": false,
   "finalScoreThreshold": 84.0,
@@ -26,7 +26,7 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 5,
+  "candidateCount": 4,
   "actionableCount": 0,
   "candidates": [
     {
@@ -43,15 +43,15 @@
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
     {
-      "symbol": "259960",
-      "name": "크래프톤",
-      "finalScore": 72.8,
+      "symbol": "017670",
+      "name": "SK텔레콤",
+      "finalScore": 72.6,
       "entry": null,
       "stop": null,
       "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "외국인 순매수 | 저평가성장주",
+      "decisionBucket": "보류",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
@@ -69,28 +69,15 @@
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
     {
-      "symbol": "055550",
-      "name": "신한지주",
-      "finalScore": 66.9,
+      "symbol": "032640",
+      "name": "LG유플러스",
+      "finalScore": 66.3,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "오늘 진입",
       "supplySignal": "STRONG_BUY",
-      "eventBadges": "이격도수렴 | 기관+외국인 동반매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "214450",
-      "name": "파마리서치",
-      "finalScore": 65.4,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "기관 순매수",
+      "eventBadges": "기관+외국인 동반매수",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     }
