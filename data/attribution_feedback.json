@@ -1,15 +1,15 @@
 {
   "status": "OK",
-  "sampleCount": 1810,
-  "baseWinRate": 0.3519,
-  "baseAvgPnlPct": -1.9,
-  "generatedAt": "2026-07-22T08:53:17",
+  "sampleCount": 1811,
+  "baseWinRate": 0.3523,
+  "baseAvgPnlPct": -1.895,
+  "generatedAt": "2026-07-22T09:32:38",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
-    "suggestedCount": 10,
+    "suggestedCount": 12,
     "approvedCount": 3,
-    "pendingReviewCount": 34,
+    "pendingReviewCount": 35,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
@@ -26,13 +26,13 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "245e66f6e5307b557907",
+      "feedbackId": "51968ec183a89b86ef56",
       "mode": "conservative",
       "horizon": "swing",
-      "n": 205,
-      "winRate": 0.3366,
-      "avgPnlPct": -2.196,
-      "multiplier": 1.036,
+      "n": 206,
+      "winRate": 0.3398,
+      "avgPnlPct": -2.145,
+      "multiplier": 1.032,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -44,7 +44,7 @@
       "n": 190,
       "winRate": 0.3211,
       "avgPnlPct": -1.945,
-      "multiplier": 0.957,
+      "multiplier": 0.958,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -56,7 +56,7 @@
       "n": 171,
       "winRate": 0.4561,
       "avgPnlPct": -0.39,
-      "multiplier": 0.86,
+      "multiplier": 0.859,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -80,7 +80,7 @@
       "n": 205,
       "winRate": 0.3073,
       "avgPnlPct": -2.168,
-      "multiplier": 0.98,
+      "multiplier": 0.981,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -92,7 +92,7 @@
       "n": 198,
       "winRate": 0.4394,
       "avgPnlPct": -0.711,
-      "multiplier": 0.899,
+      "multiplier": 0.898,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -104,7 +104,7 @@
       "n": 222,
       "winRate": 0.3063,
       "avgPnlPct": -3.049,
-      "multiplier": 1.164,
+      "multiplier": 1.165,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -116,7 +116,7 @@
       "n": 212,
       "winRate": 0.2736,
       "avgPnlPct": -3.407,
-      "multiplier": 1.183,
+      "multiplier": 1.185,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true

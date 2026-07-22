@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T23:52:54.328456+00:00",
+  "generatedAt": "2026-07-22T00:31:53.962122+00:00",
   "market": "kr",
   "marketRegime": "BEAR",
   "marketRegimeLabel": "약세장",
@@ -26,7 +26,7 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 1,
+  "candidateCount": 5,
   "actionableCount": 0,
   "candidates": [
     {
@@ -39,6 +39,58 @@
       "decisionBucket": "기다림",
       "supplySignal": "FOREIGN_BUY",
       "eventBadges": "이격도수렴 | 외국인 순매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "259960",
+      "name": "크래프톤",
+      "finalScore": 72.8,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "FOREIGN_BUY",
+      "eventBadges": "외국인 순매수 | 저평가성장주",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "138040",
+      "name": "메리츠금융지주",
+      "finalScore": 67.0,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "기관+외국인 동반매수 | 저평가성장주",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "055550",
+      "name": "신한지주",
+      "finalScore": 66.9,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "이격도수렴 | 기관+외국인 동반매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "214450",
+      "name": "파마리서치",
+      "finalScore": 65.4,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     }
