@@ -1,6 +1,6 @@
 """
-벤치마크 지수 OHLCV 수집 스크립트.
-KOSPI (^KS11), KOSDAQ (^KQ11), S&P500 (^GSPC) 일별 데이터를 저장합니다.
+장기 벤치마크 OHLCV 수집 스크립트.
+KOSPI (^KS11), KOSDAQ (^KQ11), SPY, QQQ, S&P500 (^GSPC)의 15년 일별 데이터를 저장합니다.
 
 출력: data/market/ohlcv/kr_KOSPI_daily.csv
       data/market/ohlcv/kr_KOSDAQ_daily.csv
@@ -21,11 +21,16 @@ OHLCV_DIR.mkdir(parents=True, exist_ok=True)
 BENCHMARKS = [
     {"symbol": "KOSPI",  "ticker": "^KS11",  "market": "kr"},
     {"symbol": "KOSDAQ", "ticker": "^KQ11",  "market": "kr"},
+    {"symbol": "SPY",    "ticker": "SPY",    "market": "us"},
+    {"symbol": "QQQ",    "ticker": "QQQ",    "market": "us"},
     {"symbol": "SP500",  "ticker": "^GSPC",  "market": "us"},
     # USD/KRW 환율 — NAV가 미국 보유(달러)를 원화로 환산할 때 사용.
     # yfinance는 'KRW=X', FinanceDataReader는 'USD/KRW'. 거래량 없음.
     {"symbol": "USDKRW", "ticker": "KRW=X", "fdr_ticker": "USD/KRW", "market": "fx"},
 ]
+
+HISTORY_PERIOD = "15y"
+HISTORY_DAYS = 365 * 15 + 7
 
 
 def _safe_int(v: Any) -> int:
@@ -36,7 +41,7 @@ def _safe_int(v: Any) -> int:
         return 0
 
 
-def fetch_yfinance(ticker: str, period: str = "2y") -> list[dict[str, Any]]:
+def fetch_yfinance(ticker: str, period: str = HISTORY_PERIOD) -> list[dict[str, Any]]:
     try:
         import yfinance as yf
         df = yf.download(ticker, period=period, auto_adjust=True, progress=False)
@@ -58,7 +63,7 @@ def fetch_yfinance(ticker: str, period: str = "2y") -> list[dict[str, Any]]:
         return []
 
 
-def fetch_fdr(ticker: str, period_days: int = 730) -> list[dict[str, Any]]:
+def fetch_fdr(ticker: str, period_days: int = HISTORY_DAYS) -> list[dict[str, Any]]:
     try:
         import FinanceDataReader as fdr
         start = (datetime.now() - timedelta(days=period_days)).strftime("%Y-%m-%d")

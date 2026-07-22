@@ -494,6 +494,8 @@ export const mone = {
     apiPost<ApiList>("/api/validation/recommendations/snapshot", {}, p),
   recommendationValidation: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
     apiGet<ApiList>("/api/validation/recommendations", p),
+  predictionForecastAudit: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
+    apiGet<ApiList>("/api/validation/recommendations", p),
   recommendationValidationSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/validation/recommendations/summary", p),
   recommendationValidationBySignal: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>

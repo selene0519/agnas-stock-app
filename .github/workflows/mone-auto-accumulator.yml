@@ -514,9 +514,11 @@ jobs:
           python scripts/archive_catalyst_history_kr.py
           if [ -f scripts/build_lens_journal_kr.py ]; then
             python scripts/settle_lens_predictions_kr.py
+            python scripts/promote_lens_setups_kr.py
             python scripts/build_lens_journal_kr.py
             python scripts/build_lens_calibration_kr.py
             python scripts/screen_regime_lens_kr.py
+            python scripts/refresh_kr_lens_intraday_context.py
             python scripts/capture_lens_predictions_kr.py
             echo "regime lens loop: exit $?"
           fi
@@ -665,7 +667,7 @@ jobs:
           from pathlib import Path
           sys.path.insert(0, str(Path.cwd()))
           from app.services import virtual_trade_journal as vtj
-          result = vtj.run_auto_capture(market="all", evaluate_after=False, source="github-actions")
+          result = vtj.run_auto_capture(market="all", evaluate_after=True, source="github-actions")
           runs = result.get("runs", [])
           total_added = sum(r.get("added", 0) for r in runs)
           print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -905,6 +907,7 @@ jobs:
             git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
             git add reports/lens_journal_kr.csv reports/lens_calibration_kr.json reports/regime_lens_candidates_kr.json 2>/dev/null || true
             git add reports/lens_prediction_ledger_kr.csv reports/lens_live_journal_kr.csv 2>/dev/null || true
+            git add reports/lens_promotion_status_kr.json 2>/dev/null || true
             git add reports/kr_supply_flow_history.csv reports/disclosures_kr_history.csv 2>/dev/null || true
             git add reports/smart_rank_kr.json reports/high_conviction_kr.json 2>/dev/null || true
             git add reports/high_conviction_ledger_kr.csv reports/high_conviction_pnl_kr.json 2>/dev/null || true
@@ -912,6 +915,7 @@ jobs:
             git add data/kr_supply_flow.csv data/kr_excluded_symbols.csv 2>/dev/null || true
             git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
             git add reports/us_close_ohlcv_refresh_status.json 2>/dev/null || true
+            python scripts/guard_ohlcv_no_shrink.py || true
             git add data/market/ohlcv/kr_*_daily.csv 2>/dev/null || true
             git add data/market/ohlcv/us_*_daily.csv 2>/dev/null || true
             git add reports/operational_readiness*.json reports/operation_health*.json 2>/dev/null || true
@@ -933,8 +937,8 @@ jobs:
             # 시총/거래대금 유니버스 확장 결과(월요일 build_universe). build_universe는 레포 루트
             # candidate_universe_{market}.csv 에 쓰는데 그동안 git add 목록에 없어 커밋 누락 → 5월 이후 동결됨.
             git add candidate_universe_kr.csv candidate_universe_us.csv 2>/dev/null || true
-            git add data/signal_ledger.csv data/signal_outcomes.csv 2>/dev/null || true
-            git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/virtual_trade_calibration_*.csv data/attribution_feedback.json reports/virtual_trade_journal_status.json reports/virtual_trade_self_learning_status.json 2>/dev/null || true
+            git add data/signal_ledger.csv data/signal_outcomes.csv data/recommendation_snapshots.csv data/recommendation_validation_results.csv 2>/dev/null || true
+            git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/virtual_trade_calibration_*.csv data/postmortem_ledger.csv data/attribution_feedback.json reports/virtual_trade_journal_status.json reports/virtual_trade_self_learning_status.json 2>/dev/null || true
             git add data/paper/paper_stops.json 2>/dev/null || true
             git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
             git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true

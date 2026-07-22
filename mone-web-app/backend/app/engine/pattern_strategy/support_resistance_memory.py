@@ -37,7 +37,21 @@ def _find_pivot_lows(rows: list[dict], window: int = 5) -> list[tuple[float, str
     return pivots
 
 
-def _cluster_levels(raw: list[tuple[float, str]], atr20: float, tol_atr: float = 0.5) -> list[dict]:
+def _find_pivot_highs(rows: list[dict], window: int = 5) -> list[tuple[float, str]]:
+    """Find local pivot highs (potential resistance) with their dates."""
+    pivots: list[tuple[float, str]] = []
+    for i in range(window, len(rows) - window):
+        high = _f(rows[i].get("high"))
+        date = str(rows[i].get("date", ""))
+        if high is None:
+            continue
+        neighbours = [_f(rows[j].get("high")) for j in range(i - window, i + window + 1) if j != i]
+        if all(value is not None and high >= value for value in neighbours):
+            pivots.append((high, date))
+    return pivots
+
+
+def _cluster_levels(raw: list[tuple[float, str]], atr20: float, role: str, tol_atr: float = 0.5) -> list[dict]:
     """Merge nearby pivots into single levels; assign importance by touch count."""
     clusters: list[dict] = []
     for level, date in sorted(raw, key=lambda x: x[0]):
@@ -53,7 +67,7 @@ def _cluster_levels(raw: list[tuple[float, str]], atr20: float, tol_atr: float =
         if not merged:
             clusters.append({
                 "level":          round(level, 2),
-                "role":           "support",
+                "role":           role,
                 "importance":     0.3,
                 "touchCount":     1,
                 "lastTestedDate": date,
@@ -69,6 +83,10 @@ def _cluster_levels(raw: list[tuple[float, str]], atr20: float, tol_atr: float =
             decay = min(0.4, (tc - 5) * 0.08)
             cl["importance"] = round(max(0.2, 0.9 - decay), 2)
         cl["saturated"] = tc > 6
+        width = max(atr20 * 0.35, cl["level"] * 0.002)
+        cl["zoneLow"] = round(cl["level"] - width, 2)
+        cl["zoneHigh"] = round(cl["level"] + width, 2)
+        cl["zoneWidth"] = round(width, 2)
     return clusters
 
 
@@ -90,15 +108,23 @@ def _update_roles(levels: list[dict], close: float, atr20: float, params: dict) 
             lv = {**lv, "role": "resistance_candidate"}
             role = "resistance_candidate"
 
+        elif role == "resistance" and close > lvl + buf:
+            # A repeated ceiling becomes support only after a confirmed close
+            # above an ATR buffer; this is a flip/retest, not a line touch.
+            lv = {**lv, "role": "support"}
+            role = "support"
+
         # ── resistance_candidate → support (buffer must be cleared) ───────
         elif role == "resistance_candidate":
             if close > lvl + buf:
                 lv = {**lv, "role": "support"}
+                role = "support"
             # within neutral buffer → keep as resistance_candidate (no flip)
 
         # ── support → broken_support ──────────────────────────────────────
         if role == "support" and close < lvl - remove_b:
             lv = {**lv, "role": "broken_support"}
+            role = "broken_support"
 
         # Drop broken_support that is very far below current price
         if role == "broken_support" and close > lvl + remove_b * 2:
@@ -138,11 +164,15 @@ def build(rows: list[dict], atr20: float, params: dict) -> list[dict]:
     if not rows or atr20 <= 0 or close is None:
         return []
 
-    raw_pivots = _find_pivot_lows(rows, window=3)
-    if not raw_pivots:
+    # Use a broad, recent view: roughly 3–6 months of daily candles.
+    work = rows[-120:] if len(rows) > 120 else rows
+    raw_lows = _find_pivot_lows(work, window=3)
+    raw_highs = _find_pivot_highs(work, window=3)
+    if not raw_lows and not raw_highs:
         return []
 
-    levels = _cluster_levels(raw_pivots, atr20, tol_atr=0.4)
+    levels = _cluster_levels(raw_lows, atr20, "support", tol_atr=0.4)
+    levels += _cluster_levels(raw_highs, atr20, "resistance", tol_atr=0.4)
     levels = _update_roles(levels, close, atr20, params)
     levels = _prune(levels, max_levels)
 
@@ -158,6 +188,31 @@ def nearest_support(levels: list[dict], close: float, atr20: float) -> float | N
         if lv["role"] == "support" and lv["level"] < close
     ]
     return max(candidates) if candidates else None
+
+
+def nearest_resistance(levels: list[dict], close: float, atr20: float) -> float | None:
+    """Return the closest active resistance above the current price."""
+    candidates = [
+        lv["level"] for lv in levels
+        if lv["role"] in {"resistance", "resistance_candidate"} and lv["level"] > close
+    ]
+    return min(candidates) if candidates else None
+
+
+def zones(levels: list[dict]) -> list[dict]:
+    """Compact support/resistance zones for the API and chart overlays."""
+    return [
+        {
+            "role": level.get("role"),
+            "level": level.get("level"),
+            "zoneLow": level.get("zoneLow", level.get("level")),
+            "zoneHigh": level.get("zoneHigh", level.get("level")),
+            "touchCount": level.get("touchCount", 0),
+            "importance": level.get("importance", 0.0),
+            "saturated": bool(level.get("saturated")),
+        }
+        for level in levels
+    ]
 
 
 def is_support_intact(levels: list[dict], close: float, atr20: float, params: dict) -> bool:

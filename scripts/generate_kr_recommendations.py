@@ -741,13 +741,16 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
         _rates_doc = json.loads(_rates_path.read_text(encoding="utf-8")) if _rates_path.exists() else {}
     except Exception:
         _rates_doc = {}
+    # `winRates` contains the observed rate for sufficiently sampled strategies
+    # and only uses a default during cold start. The API blocks those unverified
+    # cold-start rows from becoming executable trades.
     _win_rates = _rates_doc.get("winRates", {})
     _defaults  = _rates_doc.get("defaultRates", {})
     _sample_counts = _rates_doc.get("sampleCounts", {})
     _rate_key  = f"{mode}_{horizon}"
     base  = float(_win_rates.get(_rate_key) or _defaults.get(f"{horizon}_base") or 0.505)
     scale = float(_defaults.get(f"{horizon}_scale") or 0.14)
-    prob  = max(0.35, min(0.65, base + (score - 50.0) / 50.0 * scale))
+    prob  = max(0.01, min(0.99, base + (score - 50.0) / 50.0 * scale))
     wr_samples = int(_sample_counts.get(_rate_key) or 0)
 
     ev = None

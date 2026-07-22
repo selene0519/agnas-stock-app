@@ -1,7 +1,7 @@
 """
 시장 지수 OHLCV 일별 수집 스크립트.
 기존 fetch_benchmark_data.py 는 월 1회 실행이라 비교차트에 쓰기 어려움.
-이 스크립트는 매일 실행 → 지수 CSV를 최신 상태로 유지.
+이 스크립트는 매일 실행 → 지수 CSV를 최신 상태로 유지하고 15년 이력을 보존.
 
 저장 위치:
     data/market/ohlcv/kr_KOSPI_daily.csv
@@ -23,6 +23,8 @@ OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
 OHLCV_DIR.mkdir(parents=True, exist_ok=True)
 
 KST = timezone(timedelta(hours=9))
+HISTORY_PERIOD = "15y"
+HISTORY_DAYS = 365 * 15 + 7
 
 INDICES = [
     # KR
@@ -32,6 +34,18 @@ INDICES = [
     {"symbol": "SPY",    "ticker": "SPY",    "market": "us"},
     {"symbol": "QQQ",    "ticker": "QQQ",    "market": "us"},
     {"symbol": "SP500",  "ticker": "^GSPC",  "market": "us"},
+    # Cross-asset proxies used for historical regime research.  They are kept
+    # separate from the candidate universe and are not stock recommendations.
+    {"symbol": "RSP",    "ticker": "RSP",    "market": "us"},
+    {"symbol": "IWM",    "ticker": "IWM",    "market": "us"},
+    {"symbol": "HYG",    "ticker": "HYG",    "market": "us"},
+    {"symbol": "LQD",    "ticker": "LQD",    "market": "us"},
+    {"symbol": "TLT",    "ticker": "TLT",    "market": "us"},
+    {"symbol": "XLY",    "ticker": "XLY",    "market": "us"},
+    {"symbol": "XLP",    "ticker": "XLP",    "market": "us"},
+    {"symbol": "VIX",    "ticker": "^VIX",   "market": "us"},
+    {"symbol": "KOSPI200", "ticker": "^KS200", "market": "kr"},
+    {"symbol": "USDKRW", "ticker": "KRW=X",  "market": "fx"},
 ]
 
 FIELDNAMES = ["date", "open", "high", "low", "close", "volume", "source"]
@@ -56,7 +70,7 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
-def fetch_yfinance(ticker: str, period: str = "2y") -> list[dict[str, Any]]:
+def fetch_yfinance(ticker: str, period: str = HISTORY_PERIOD) -> list[dict[str, Any]]:
     try:
         import yfinance as yf
         df = yf.download(ticker, period=period, auto_adjust=True, progress=False)
@@ -89,9 +103,9 @@ def fetch_pykrx(symbol: str) -> list[dict[str, Any]]:
     """pykrx로 KOSPI/KOSDAQ 지수 데이터 수집 (KRX 공식)."""
     try:
         from pykrx import stock
-        # 최근 2년치
+        # Long enough to include multiple bull, sideways, and bear regimes.
         end = datetime.now(KST).strftime("%Y%m%d")
-        start = (datetime.now(KST) - timedelta(days=730)).strftime("%Y%m%d")
+        start = (datetime.now(KST) - timedelta(days=HISTORY_DAYS)).strftime("%Y%m%d")
         ticker_map = {"KOSPI": "1001", "KOSDAQ": "2001", "KOSPI200": "1028"}
         ticker = ticker_map.get(symbol)
         if not ticker:

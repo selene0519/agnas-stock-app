@@ -1,0 +1,19 @@
+{
+  "version": "kr-backfill-v1",
+  "backfilledAt": "2026-07-22",
+  "market": "kr",
+  "source": "FinanceDataReader (naver)",
+  "command": "python scripts/backfill_ohlcv_history.py --all --days 5500",
+  "depthReached": {
+    "note": "FDR naver source caps at ~3000 daily bars; earliest reachable is ~2014-04-28 (NOT 2011). Recently listed names start at their IPO date.",
+    "stocksStartingBy2015": 79,
+    "stocksStarting2016to2021": 18,
+    "stocksStill2022plus": 11
+  },
+  "biasDisclosure": {
+    "survivorshipBias": "REAL AND UNCORRECTED. Backfill covers only the CURRENT listed universe (108 symbols). Symbols delisted, merged, or dropped from the universe between 2014 and 2026 are absent. Backtests over this data will overstate win rates because losers that left the market are invisible.",
+    "pointInTimeUniverse": "NOT APPLIED. Universe membership is today's snapshot, not the tradeable set at each historical date.",
+    "implication": "Harness verdicts (regime_pattern_execution) on this data are directional evidence, not survivorship-free proof. The survivorship-free reference remains the live paper/settle loop (lens_live_journal_kr.csv) and index-level analysis."
+  },
+  "integrityCheck": "No existing rows were removed; merge is dedup-by-date union of prior + fetched. Verified 0 files shrank."
+}

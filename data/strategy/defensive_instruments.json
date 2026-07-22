@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "purpose": "bear_market_defensive_short_term_only",
+  "instruments": [
+    {
+      "market": "kr",
+      "symbol": "114800",
+      "name": "KODEX 인버스",
+      "exposure": "KOSPI200_FUTURES_INVERSE_1X",
+      "maxHoldingDays": 10,
+      "maxPortfolioWeight": 0.1
+    },
+    {
+      "market": "kr",
+      "symbol": "252670",
+      "name": "KODEX 200선물인버스2X",
+      "exposure": "KOSPI200_FUTURES_INVERSE_2X",
+      "maxHoldingDays": 5,
+      "maxPortfolioWeight": 0.05
+    },
+    {
+      "market": "us",
+      "symbol": "SQQQ",
+      "name": "ProShares UltraPro Short QQQ",
+      "exposure": "NASDAQ100_INVERSE_3X",
+      "maxHoldingDays": 5,
+      "maxPortfolioWeight": 0.05
+    },
+    {
+      "market": "us",
+      "symbol": "SOXS",
+      "name": "Direxion Daily Semiconductor Bear 3X",
+      "exposure": "SEMICONDUCTOR_INVERSE_3X",
+      "maxHoldingDays": 5,
+      "maxPortfolioWeight": 0.05
+    }
+  ],
+  "entryPolicy": "bear_regime_only_and_confirmed_bearish_structure",
+  "warning": "Inverse and leveraged ETFs target daily moves; they are short-term defensive instruments, not long-term holdings."
+}

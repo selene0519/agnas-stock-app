@@ -391,6 +391,47 @@ def test_market_analog_search_uses_only_cutoff_benchmark_history(
     assert len(out["items"]) == 3
     assert all(item["date"] < cutoff for item in out["items"])
     assert all("ret_20d_pct" in item["marketVector"] for item in out["items"])
+    assert all("returnPct" in item["marketOutcome"] for item in out["items"])
+    assert out["history"]["startDate"] == bench.iloc[0]["date"]
+    assert out["history"]["independentSpacingBars"] == 20
+    assert out["marketOutcomeSummary"]["researchOnly"] is True
+
+
+def test_market_analog_search_prefers_independent_same_regime_samples(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = []
+    for idx in range(241):
+        close = 100 + idx * 0.1
+        rows.append(
+            {
+                "date": (pd.Timestamp("2024-01-01") + pd.Timedelta(days=idx)).date().isoformat(),
+                "open": close,
+                "high": close + 1,
+                "low": close - 1,
+                "close": close,
+                "volume": 1000,
+            }
+        )
+    bench = pd.DataFrame(rows)
+    bench["_date_ts"] = pd.to_datetime(bench["date"], errors="coerce").dt.normalize()
+    monkeypatch.setattr(vtj, "_load_benchmark_ohlcv", lambda market: (bench.copy(), "TESTIDX"))
+
+    def vector(_df: pd.DataFrame, idx: int) -> dict[str, float | str]:
+        regime = "SIDE" if idx % 2 == 0 else "BEAR"
+        return {**{feature: 1.0 for feature in vtj.ANALOG_FEATURES}, "regime": regime}
+
+    monkeypatch.setattr(vtj, "_market_vector_at", vector)
+
+    out = vtj._find_market_analogs("kr", limit=4, horizon="swing")
+
+    assert out["status"] == "OK"
+    assert out["regimeFilter"] == "SAME_REGIME"
+    assert len(out["items"]) == 4
+    assert all(item["marketVector"]["regime"] == "SIDE" for item in out["items"])
+    dates = [pd.Timestamp(item["date"]) for item in out["items"]]
+    assert all(abs((later - earlier).days) >= 20 for pos, earlier in enumerate(dates) for later in dates[pos + 1:])
 
 
 def test_market_analog_replay_summarizes_future_outcomes_after_snapshot(
@@ -1054,7 +1095,7 @@ def test_ops_dashboard_reports_journal_and_file_health(isolated_vtj: Path) -> No
     assert any(str(item["path"]).endswith("journal.csv") and item["exists"] for item in out["files"])
 
 
-def test_historical_strategy_calibration_suggests_entry_or_stop_review(isolated_vtj: Path) -> None:
+def test_historical_strategy_calibration_keeps_historical_research_out_of_forward_gate(isolated_vtj: Path) -> None:
     history_rows = []
     eval_rows = []
     for i in range(30):
@@ -1080,6 +1121,18 @@ def test_historical_strategy_calibration_suggests_entry_or_stop_review(isolated_
         })
     pd.DataFrame(history_rows).to_csv(vtj.HISTORY_OPERATION_CSV, index=False)
     pd.DataFrame(eval_rows).to_csv(vtj.HISTORY_EVALUATION_CSV, index=False)
+    pd.DataFrame([
+        {
+            "market": "us",
+            "symbol": f"F{i:03d}",
+            "mode": "balanced",
+            "horizon": "swing",
+            "result": "STOP",
+            "returnPct": "-2.0",
+            "dataStatus": "NORMAL",
+        }
+        for i in range(30)
+    ]).to_csv(vtj.VIRTUAL_VALIDATION_RESULTS_CSV, index=False)
 
     out = vtj.historical_strategy_calibration(
         market="us",
@@ -1090,12 +1143,56 @@ def test_historical_strategy_calibration_suggests_entry_or_stop_review(isolated_
 
     assert out["status"] == "OK"
     assert out["counts"]["historicalOperationRows"] == 30
+    assert out["counts"]["virtualValidationRows"] == 30
+    assert out["counts"]["forwardEligibleRows"] == 30
     row = out["strategyRows"][0]
     assert row["market"] == "us"
     assert row["mode"] == "balanced"
     assert row["horizon"] == "swing"
     assert row["sampleCount"] == 30
     assert row["winRate"] == 0
+    assert out["historicalResearchRows"][0]["sampleCount"] == 30
     suggestion = out["suggestions"][0]
     assert suggestion["status"] == "SUGGESTED"
     assert suggestion["action"] == "WIDEN_STOP_OR_TIGHTEN_ENTRY"
+
+
+def test_performance_dashboard_excludes_replay_and_missing_return_rows_from_live_metrics(monkeypatch, isolated_vtj: Path) -> None:
+    rows = [
+        {
+            "market": "us", "mode": "balanced", "horizon": "swing", "source_type": "FORWARD_PAPER_TRADE",
+            "status": "EVALUATED", "outcome": "STOP", "net_pnl_pct": "-2.0", "as_of_date": "2026-01-02",
+        },
+        {
+            "market": "us", "mode": "balanced", "horizon": "swing", "source_type": "HISTORICAL_REPLAY",
+            "status": "EVALUATED", "outcome": "TARGET_HIT", "net_pnl_pct": "10.0", "as_of_date": "2025-01-02",
+        },
+        {
+            "market": "us", "mode": "balanced", "horizon": "swing", "source_type": "FORWARD_PAPER_TRADE",
+            "status": "EVALUATED", "outcome": "STOP", "net_pnl_pct": "", "as_of_date": "2026-01-03",
+        },
+    ]
+    monkeypatch.setattr(vtj, "_read_journal_rows", lambda: rows)
+    monkeypatch.setattr(vtj, "_merge_evaluations", lambda source: source)
+
+    out = vtj.performance_by_strategy(market="us")
+
+    assert out["summary"]["count"] == 1
+    assert out["summary"]["avgPnlPct"] == -2.0
+    assert out["researchOnly"]["count"] == 2
+    assert out["performanceDataPolicy"]["requiresRealizedReturn"] is True
+
+
+def test_historical_replay_cannot_auto_apply_live_calibration() -> None:
+    verdict = vtj._auto_calibration_verdict({
+        "status": "SUGGESTED",
+        "approvalStatus": "PENDING_REVIEW",
+        "applicationStatus": "",
+        "sourceType": "HISTORICAL_REPLAY",
+        "sampleCount": 5000,
+        "share": 0.1,
+        "reason": "STOP_TOO_TIGHT",
+    })
+
+    assert verdict["eligible"] is False
+    assert verdict["reason"] == "RAW_SAMPLE_GATE"

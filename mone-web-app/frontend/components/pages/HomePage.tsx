@@ -4242,7 +4242,10 @@ export default function HomePage({
       if (Notification.permission !== "granted") return;
 
       allItems
-        .filter((i) => i.decisionBucket === "오늘 진입")
+        .filter((i) => {
+          const blocked = Boolean(i.isTradeBlocked) || String(i.publicTradeStatus || "").toUpperCase() === "NO_TRADE";
+          return !blocked && i.decisionBucket === "오늘 진입";
+        })
         .forEach((item) => {
           const key = `${item.symbol}-${item._mode}-${item._horizon}`;
           if (notifiedKeys.has(key)) return;

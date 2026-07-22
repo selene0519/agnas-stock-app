@@ -37,6 +37,11 @@ HORIZON_WINDOWS: dict[str, list[int]] = {
 }
 HORIZON_BADGE_WINDOW = {"short": 5, "swing": 10, "mid": 20}
 
+# A single precompute run evaluates several mode/horizon views of many of the
+# same symbols.  Reuse only same-run historical evidence; persisted snapshots
+# remain immutable and are never refreshed from this cache later.
+_EMPIRICAL_FORECAST_CACHE: dict[tuple[str, str, float | None], dict[str, Any]] = {}
+
 LEDGER_COLS = [
     "id", "market", "symbol", "name", "mode", "horizon",
     "entry", "stop", "target", "ev", "probability", "score",
@@ -51,6 +56,16 @@ RECOMMENDATION_SNAPSHOT_COLS = [
     "snapshot_id", "date", "market", "symbol", "name", "mode", "horizon",
     "recommendationScore", "opportunityScore", "entryScore", "riskScore", "eventRiskScore",
     "currentPrice", "entryPrice", "targetPrice", "stopPrice",
+    # These are an immutable, empirical forecast recorded with the recommendation.
+    # They are deliberately kept separate from calibrated/live win-rate fields: an
+    # analog win rate is evidence, not a promise and never receives a floor.
+    "forecastStatus", "forecastMethod", "forecastSource", "forecastSampleCount",
+    "forecastProbability1d", "forecastProbability5d", "forecastProbability10d",
+    "forecastExpectedReturn1d", "forecastExpectedReturn5d", "forecastExpectedReturn10d",
+    "forecastExpectedPrice1d", "forecastExpectedPrice5d", "forecastExpectedPrice10d",
+    "forecastDirection1d", "forecastDirection5d", "forecastDirection10d",
+    "newsEventTag", "disclosureEventTag", "earningsEventTag", "macroEventTag", "sectorEventTag",
+    "marketRegime", "eventSummary",
     "chartSignalUsed", "trendlineUsed", "supportUsed", "resistanceUsed", "fakeBreakoutRiskUsed",
     "dataSourceType", "chartSignalSummary", "recorded_at", "source",
 ]
@@ -62,6 +77,9 @@ RECOMMENDATION_VALIDATION_COLS = [
     "max_favorable_return", "max_adverse_return",
     "target_touched", "stop_touched", "target_first", "stop_first",
     "days_to_target", "days_to_stop", "mdd", "win_loss_result",
+    "forecastDirectionHit1d", "forecastDirectionHit5d", "forecastDirectionHit10d",
+    "forecastError1d", "forecastError5d", "forecastError10d",
+    "forecastFailureReason", "forecastSuggestedAdjustment",
     "primaryWindowDays", "primaryReturn", "qualityFlag", "verified_at",
 ]
 
@@ -235,6 +253,29 @@ def _snapshot_from_item(item: dict[str, Any], snapshot_date: str, source: str) -
         "entryPrice": _pick_number(item, ["entryPrice", "entry"]),
         "targetPrice": _pick_number(item, ["targetPrice", "target"]),
         "stopPrice": _pick_number(item, ["stopPrice", "stop", "stopLoss"]),
+        "forecastStatus": str(item.get("forecastStatus") or "PENDING_EMPIRICAL_SNAPSHOT"),
+        "forecastMethod": str(item.get("forecastMethod") or "HISTORICAL_ANALOG_EMPIRICAL"),
+        "forecastSource": str(item.get("forecastSource") or "full OHLCV similar-pattern history"),
+        "forecastSampleCount": _pick_number(item, ["forecastSampleCount"]),
+        "forecastProbability1d": _pick_number(item, ["forecastProbability1d"]),
+        "forecastProbability5d": _pick_number(item, ["forecastProbability5d"]),
+        "forecastProbability10d": _pick_number(item, ["forecastProbability10d"]),
+        "forecastExpectedReturn1d": _pick_number(item, ["forecastExpectedReturn1d"]),
+        "forecastExpectedReturn5d": _pick_number(item, ["forecastExpectedReturn5d"]),
+        "forecastExpectedReturn10d": _pick_number(item, ["forecastExpectedReturn10d"]),
+        "forecastExpectedPrice1d": _pick_number(item, ["forecastExpectedPrice1d"]),
+        "forecastExpectedPrice5d": _pick_number(item, ["forecastExpectedPrice5d"]),
+        "forecastExpectedPrice10d": _pick_number(item, ["forecastExpectedPrice10d"]),
+        "forecastDirection1d": str(item.get("forecastDirection1d") or "").upper(),
+        "forecastDirection5d": str(item.get("forecastDirection5d") or "").upper(),
+        "forecastDirection10d": str(item.get("forecastDirection10d") or "").upper(),
+        "newsEventTag": str(item.get("newsEventTag") or "unknown"),
+        "disclosureEventTag": str(item.get("disclosureEventTag") or "unknown"),
+        "earningsEventTag": str(item.get("earningsEventTag") or "unknown"),
+        "macroEventTag": str(item.get("macroEventTag") or "unknown"),
+        "sectorEventTag": str(item.get("sectorEventTag") or "unknown"),
+        "marketRegime": str(item.get("marketRegime") or item.get("market_regime") or "unknown"),
+        "eventSummary": str(item.get("eventSummary") or ""),
         "chartSignalUsed": bool(item.get("chartSignalUsed")),
         "trendlineUsed": bool(item.get("trendlineUsed")),
         "supportUsed": bool(item.get("supportUsed")),
@@ -245,6 +286,77 @@ def _snapshot_from_item(item: dict[str, Any], snapshot_date: str, source: str) -
         "recorded_at": datetime.now().isoformat(timespec="seconds"),
         "source": source,
     }
+
+
+def _forecast_direction(expected_return: float | None) -> str:
+    if expected_return is None:
+        return ""
+    if expected_return > 0:
+        return "UP"
+    if expected_return < 0:
+        return "DOWN"
+    return "FLAT"
+
+
+def _attach_empirical_forecast(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Freeze 1/5/10-day evidence from independent historical analogs.
+
+    This is intentionally run when the snapshot is created, not during later
+    validation. Re-running the model after actual prices are known would turn
+    today's indicators into a misleading representation of the old forecast.
+    """
+    if any(_safe_float(snapshot.get(f"forecastProbability{days}d")) is not None for days in (1, 5, 10)):
+        snapshot["forecastStatus"] = snapshot.get("forecastStatus") or "MEASURED"
+        return snapshot
+    base = _safe_float(snapshot.get("currentPrice")) or _safe_float(snapshot.get("entryPrice"))
+    cache_key = (str(snapshot.get("market") or "kr"), str(snapshot.get("symbol") or ""), base)
+    cached = _EMPIRICAL_FORECAST_CACHE.get(cache_key)
+    if cached is not None:
+        snapshot.update(cached)
+        return snapshot
+    try:
+        from app.services import data_loader as data
+
+        evidence = data.similar_pattern_history(
+            str(snapshot.get("symbol") or ""),
+            str(snapshot.get("market") or "kr"),
+            horizons=(1, 5, 10),
+            top_n=20,
+        )
+    except Exception:
+        snapshot["forecastStatus"] = "UNAVAILABLE"
+        snapshot["forecastSource"] = "historical analog lookup failed"
+        return snapshot
+
+    summary = evidence.get("summary") if isinstance(evidence, dict) else {}
+    counts: list[int] = []
+    for days in (1, 5, 10):
+        stats = summary.get(f"d{days}") if isinstance(summary, dict) else None
+        count = _safe_float((stats or {}).get("count"))
+        # Twenty spaced observations is the minimum evidence threshold.  Do not
+        # manufacture a probability from a smaller sample.
+        if count is None or count < 20:
+            continue
+        probability = _safe_float(stats.get("winRate"))
+        expected_return = _safe_float(stats.get("avgReturn"))
+        if probability is None or expected_return is None:
+            continue
+        counts.append(int(count))
+        snapshot[f"forecastProbability{days}d"] = round(probability, 2)
+        snapshot[f"forecastExpectedReturn{days}d"] = round(expected_return, 3)
+        snapshot[f"forecastDirection{days}d"] = _forecast_direction(expected_return)
+        if base is not None and base > 0:
+            snapshot[f"forecastExpectedPrice{days}d"] = round(base * (1 + expected_return / 100), 4)
+
+    snapshot["forecastMethod"] = "HISTORICAL_ANALOG_EMPIRICAL"
+    snapshot["forecastSource"] = str(evidence.get("source") or "full OHLCV similar-pattern history") if isinstance(evidence, dict) else "full OHLCV similar-pattern history"
+    snapshot["forecastSampleCount"] = min(counts) if counts else None
+    snapshot["forecastStatus"] = "MEASURED" if counts else "INSUFFICIENT_SAMPLE"
+    _EMPIRICAL_FORECAST_CACHE[cache_key] = {
+        key: value for key, value in snapshot.items()
+        if key.startswith("forecast")
+    }
+    return snapshot
 
 
 def record_recommendation_snapshots(items: list[dict[str, Any]], snapshot_date: str | None = None, source: str = "api/final/recommendations") -> dict:
@@ -264,7 +376,7 @@ def record_recommendation_snapshots(items: list[dict[str, Any]], snapshot_date: 
             duplicates += 1
             continue
         seen.add(str(snap["snapshot_id"]))
-        added.append(snap)
+        added.append(_attach_empirical_forecast(snap))
     if added:
         _write_frame(RECOMMENDATION_SNAPSHOTS_CSV, existing_rows + added, RECOMMENDATION_SNAPSHOT_COLS)
     return {
@@ -343,6 +455,46 @@ def _quality_flag(entry: float | None, target: float | None, stop: float | None,
     return ",".join(flags) if flags else "OK"
 
 
+def _forecast_failure_context(row: dict[str, Any], result: dict[str, Any]) -> tuple[str, str]:
+    """Return a transparent postmortem hypothesis, never a claimed cause."""
+    misses = [
+        str(result.get(f"forecastDirectionHit{days}d") or "") == "MISS"
+        for days in (1, 5, 10)
+    ]
+    if not any(misses):
+        return "ON_TARGET_OR_PENDING", "No adjustment: retain observation until more forward samples accrue."
+    if _safe_bool(result.get("stop_first")):
+        return "STOP_BEFORE_TARGET", "Tighten entry conditions or reduce risk size; review stop distance separately."
+    tags = " ".join(str(row.get(key) or "") for key in (
+        "newsEventTag", "disclosureEventTag", "earningsEventTag", "macroEventTag", "sectorEventTag",
+    )).lower()
+    if any(token in tags for token in ("negative", "risk", "miss", "down", "volatility")):
+        return "DIRECTION_MISS_WITH_EVENT_RISK_CONTEXT", "Do not infer causality: review the saved event context before changing the signal."
+    if str(row.get("marketRegime") or "").upper() in {"BEAR", "SIDEWAYS", "RANGE"}:
+        return "DIRECTION_MISS_IN_DEFENSIVE_REGIME", "Review regime routing and only promote the setup after enough forward samples."
+    return "DIRECTION_MISS_UNEXPLAINED", "Keep as a reviewed miss; do not auto-tune parameters from one observation."
+
+
+def _attach_forecast_validation(row: dict[str, Any], result: dict[str, Any]) -> None:
+    for days in (1, 5, 10):
+        expected_return = _safe_float(row.get(f"forecastExpectedReturn{days}d"))
+        direction = str(row.get(f"forecastDirection{days}d") or "").upper()
+        actual_return = _safe_float(result.get(f"return_{days}d"))
+        hit_key = f"forecastDirectionHit{days}d"
+        error_key = f"forecastError{days}d"
+        result[hit_key] = "PENDING"
+        result[error_key] = None
+        if expected_return is not None and actual_return is not None:
+            result[error_key] = round(actual_return - expected_return, 3)
+        if actual_return is None or direction not in {"UP", "DOWN", "FLAT"}:
+            continue
+        actual_direction = "UP" if actual_return > 0 else "DOWN" if actual_return < 0 else "FLAT"
+        result[hit_key] = "HIT" if actual_direction == direction else "MISS"
+    reason, adjustment = _forecast_failure_context(row, result)
+    result["forecastFailureReason"] = reason
+    result["forecastSuggestedAdjustment"] = adjustment
+
+
 def _validate_snapshot(row: dict[str, Any]) -> dict[str, Any]:
     snapshot_id = str(row.get("snapshot_id") or "")
     market = str(row.get("market") or "kr")
@@ -382,18 +534,29 @@ def _validate_snapshot(row: dict[str, Any]) -> dict[str, Any]:
         "days_to_stop": None,
         "mdd": None,
         "win_loss_result": "DATA_PENDING",
+        "forecastDirectionHit1d": "PENDING",
+        "forecastDirectionHit5d": "PENDING",
+        "forecastDirectionHit10d": "PENDING",
+        "forecastError1d": None,
+        "forecastError5d": None,
+        "forecastError10d": None,
+        "forecastFailureReason": "PENDING",
+        "forecastSuggestedAdjustment": "Await forward OHLCV validation.",
         "primaryWindowDays": _primary_window(horizon),
         "primaryReturn": None,
         "qualityFlag": "DATA_PENDING",
         "verified_at": datetime.now().isoformat(timespec="seconds"),
     }
     if not snapshot_id or not snapshot_date or df.empty or base is None or base <= 0:
+        _attach_forecast_validation(row, result)
         return result
     rec_dt = pd.to_datetime(snapshot_date, errors="coerce")
     if pd.isna(rec_dt):
+        _attach_forecast_validation(row, result)
         return result
     future = df[df["date"] > rec_dt].reset_index(drop=True)
     if future.empty:
+        _attach_forecast_validation(row, result)
         return result
     result["validation_status"] = "PARTIAL" if len(future) < 20 else "COMPLETED"
     for days in (1, 3, 5, 10, 20):
@@ -454,6 +617,7 @@ def _validate_snapshot(row: dict[str, Any]) -> dict[str, Any]:
     else:
         result["win_loss_result"] = "FLAT"
     result["qualityFlag"] = _quality_flag(entry, target, stop, result["max_adverse_return"])
+    _attach_forecast_validation(row, result)
     return result
 
 
@@ -482,6 +646,9 @@ def validate_recommendation_snapshots(
         if horizon not in {"", "all"} and str(row.get("horizon")) != horizon:
             continue
         filtered.append(row)
+    # The CSV is append-only. Validate the newest immutable forecasts first so a
+    # growing ledger cannot hide today's D+1/D+5/D+10 rows behind old records.
+    filtered.sort(key=lambda row: str(row.get("date") or ""), reverse=True)
     to_validate = filtered[:safe_limit]
     results = [_validate_snapshot(row) for row in to_validate]
     existing = _read_recommendation_validations(safe_max_rows)
@@ -504,6 +671,7 @@ def validate_recommendation_snapshots(
         "maxRows": safe_max_rows,
         "dataSourceType": "mixed",
         "source": str(RECOMMENDATION_VALIDATION_CSV),
+        "forecastSummary": _validation_summary_from_rows(items),
         "items": items,
     }
 
@@ -524,6 +692,17 @@ def _validation_summary_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     avg_loss = sum(loss_returns) / len(loss_returns) if loss_returns else 0.0
     mdds = [_safe_float(row.get("mdd")) for row in completed]
     mdds = [m for m in mdds if m is not None]
+    forecast_horizons: dict[str, dict[str, Any]] = {}
+    for days in (1, 5, 10):
+        checked = [row for row in rows if str(row.get(f"forecastDirectionHit{days}d") or "") in {"HIT", "MISS"}]
+        errors = [_safe_float(row.get(f"forecastError{days}d")) for row in checked]
+        errors = [value for value in errors if value is not None]
+        forecast_horizons[f"D+{days}"] = {
+            "count": len(checked),
+            "directionHitRate": round(sum(1 for row in checked if row.get(f"forecastDirectionHit{days}d") == "HIT") / len(checked) * 100, 2) if checked else None,
+            "meanAbsoluteErrorPct": round(sum(abs(value) for value in errors) / len(errors), 3) if errors else None,
+            "pendingCount": sum(1 for row in rows if str(row.get(f"forecastDirectionHit{days}d") or "") == "PENDING"),
+        }
     return {
         "totalRecommendations": len(rows),
         "validatedCount": len(completed),
@@ -538,6 +717,7 @@ def _validation_summary_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "stopFirstRate": round(sum(1 for row in completed if _safe_bool(row.get("stop_first"))) / len(completed) * 100, 2) if completed else 0.0,
         "lowConfidenceCount": sum(1 for row in rows if str(row.get("validationConfidence")) == "LOW"),
         "dataPendingCount": sum(1 for row in rows if str(row.get("win_loss_result")) == "DATA_PENDING"),
+        "forecastHorizons": forecast_horizons,
     }
 
 

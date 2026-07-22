@@ -188,6 +188,42 @@ def detect_double_top(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     }
 
 
+def detect_v_reversal(highs, lows, closes, atr20, vol_ratio) -> dict | None:
+    """Detect a confirmed V-shaped reversal, never the low itself.
+
+    The trough must be followed by a close through the recovery trigger.  This
+    matches a disciplined use of the chart's highlighted V points: enter after
+    the rebound has proved itself, with the trough as structural invalidation.
+    """
+    n = len(closes)
+    if n < 10 or not atr20 or atr20 <= 0:
+        return None
+    start = max(0, n - 9)
+    body_lows = [(idx, low) for idx, low in enumerate(lows[start:n - 1], start) if low is not None]
+    if not body_lows:
+        return None
+    trough_i, trough = min(body_lows, key=lambda item: item[1])
+    # Need a decline into, then at least two bars of recovery out of, the low.
+    if trough_i < start + 2 or trough_i > n - 3:
+        return None
+    pre_highs = [high for high in highs[max(start, trough_i - 5):trough_i] if high is not None]
+    recovery_highs = [high for high in highs[trough_i + 1:n] if high is not None]
+    close = closes[-1]
+    if not pre_highs or not recovery_highs or close is None:
+        return None
+    pre_high = max(pre_highs)
+    trigger = max(recovery_highs)
+    if pre_high - trough < 1.5 * atr20 or close <= trigger:
+        return None
+    invalidation = trough - 0.3 * atr20
+    stage = _bullish_stage(close, trigger, atr20, vol_ratio, invalidation)
+    return {
+        "pattern": "V_REVERSAL", "direction": "BULLISH", "stage": stage,
+        "trigger": round(trigger, 2), "invalidation": round(invalidation, 2),
+        "reason": f"급락 후 저점 {trough:.0f}에서 V자 반등이 확인되었습니다. 회복 고점 {trigger:.0f} 상향 안착 후만 진입합니다.",
+    }
+
+
 def detect_head_and_shoulders(highs, lows, closes, atr20, vol_ratio) -> dict | None:
     hi_idx = _pivot_highs(highs)
     if len(hi_idx) < 3:
@@ -936,6 +972,7 @@ def detect_resistance_flip_support(highs, lows, closes, atr20, vol_ratio) -> dic
 _DETECTORS = [
     detect_double_bottom,
     detect_double_top,
+    detect_v_reversal,
     detect_head_and_shoulders,
     detect_inverse_head_and_shoulders,
     detect_ascending_triangle,

@@ -77,7 +77,7 @@ def pred_formula(row) -> float:
     base = _HB.get(row["horizon"], 0.505)
     scale = _HS.get(row["horizon"], 0.14)
     p = base + ((row["finalScore"] - 50.0) / 50.0) * scale
-    return max(0.35, min(0.65, p))
+    return max(0.01, min(0.99, p))
 
 
 # ── B) served: 백테스트 테이블 or formula ──────────────────

@@ -9,6 +9,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from app.services.regime_trade_plan import build_trade_plan
+
 try:
     from app.engine.dsg_signal_engine import (
         infer_kr_sector,
@@ -160,6 +162,144 @@ def _load_pattern_walkforward_report(market: str) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+
+@lru_cache(maxsize=8)
+def _load_bear_reversal_report(market: str) -> dict[str, Any]:
+    """Load the execution-aware, bear-reversal-only validation report."""
+    path = _REPO_ROOT / "reports" / f"bear_reversal_walkforward_{str(market or 'kr').lower()}.json"
+    if not path.is_file() or path.stat().st_size <= 0:
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+@lru_cache(maxsize=8)
+def _load_regime_execution_report(market: str) -> dict[str, Any]:
+    """Load the long-history, execution-aware regime/pattern validation report."""
+    path = _REPO_ROOT / "reports" / f"regime_pattern_execution_{str(market or 'kr').lower()}.json"
+    if not path.is_file() or path.stat().st_size <= 0:
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _qualified_regime_pattern_keys(report: dict[str, Any], regime: str, pattern: str, stage: str) -> list[str]:
+    qualified_by_regime = report.get("qualifiedByRegime") or {}
+    qualified = {str(value).upper() for value in (qualified_by_regime.get(str(regime or "").upper()) or [])}
+    if not qualified:
+        return []
+    base = f"{_canonical_pattern_tag(pattern)}:{str(stage or '').upper()}"
+    return sorted(key for key in qualified if key == base or key.startswith(f"{base}:"))
+
+
+def _bear_reversal_entry_gate(
+    market: str,
+    regime: str,
+    pattern: Any,
+    stage: Any,
+    direction: Any,
+    trigger: Any,
+    invalidation: Any,
+    atr20: Any,
+) -> dict[str, Any]:
+    """Fail closed for long entries in BEAR unless a proved reversal starts.
+
+    A generic dip, a WATCH pattern, or an unvalidated pattern must not be
+    relabelled as a reversal.  The report only qualifies a pattern after
+    positive training *and* out-of-sample, execution-aware results.
+    """
+    if str(regime or "").upper() != "BEAR":
+        return {"status": "NOT_APPLICABLE", "allowed": True}
+    canonical = _canonical_pattern_tag(pattern)
+    expected_stage = "BUY_ZONE"
+    regime_report = _load_regime_execution_report(str(market).lower())
+    qualified_keys: list[str] = []
+    validation_source = "regime_pattern_execution"
+    if regime_report and (regime_report.get("leakageCheck") or {}).get("status") == "PASS":
+        expected_stage = str(regime_report.get("entryStage") or "BUY_ZONE").upper()
+        qualified_keys = _qualified_regime_pattern_keys(regime_report, "BEAR", canonical, expected_stage)
+
+    if not qualified_keys:
+        legacy_report = _load_bear_reversal_report(str(market).lower())
+        if legacy_report and (legacy_report.get("leakageCheck") or {}).get("status") == "PASS":
+            expected_stage = str(legacy_report.get("entryStage") or "BUY_ZONE").upper()
+            legacy_qualified = {str(value).upper() for value in (legacy_report.get("qualifiedPatterns") or [])}
+            qualified_keys = sorted(f"{key}:{expected_stage}" for key in legacy_qualified)
+            validation_source = "bear_reversal_walkforward"
+
+    if not qualified_keys:
+        return {
+            "status": "WAIT_FOR_QUALIFIED_REVERSAL", "allowed": False,
+            "qualifiedPatterns": [],
+            "requiredStage": expected_stage,
+            "validationSource": validation_source,
+        }
+    if (
+        f"{canonical}:{str(stage or '').upper()}" not in {key.rsplit(":", 1)[0] if key.endswith(":CONFIRMED_CANDLE") else key for key in qualified_keys}
+        or str(stage or "").upper() != expected_stage
+        or str(direction or "").upper() != "BULLISH"
+    ):
+        return {
+            "status": "WAIT_FOR_QUALIFIED_REVERSAL", "allowed": False,
+            "qualifiedPatterns": qualified_keys,
+            "requiredStage": expected_stage,
+            "validationSource": validation_source,
+        }
+    trigger_price = _num(trigger)
+    stop_price = _num(invalidation)
+    atr = _num(atr20)
+    if not trigger_price or not stop_price or not atr or trigger_price <= stop_price:
+        return {"status": "INVALID_PATTERN_LEVELS", "allowed": False}
+    max_entry = trigger_price + 1.2 * atr
+    target = max_entry + 2.0 * (max_entry - stop_price)
+    return {
+        "status": "QUALIFIED_REVERSAL", "allowed": True,
+        "entryRule": "CONFIRMED_CLOSE_THEN_NEXT_OPEN_NOT_ABOVE_MAX_ENTRY",
+        "trigger": round(trigger_price, 4), "maxEntry": round(max_entry, 4),
+        "stop": round(stop_price, 4), "target": round(target, 4),
+        "rewardRisk": 2.0,
+        "qualifiedPatterns": qualified_keys,
+        "validationSource": validation_source,
+    }
+
+
+def _sideways_entry_gate(
+    market: str,
+    regime: str,
+    pattern: Any,
+    stage: Any,
+    direction: Any,
+) -> dict[str, Any]:
+    """Fail closed in sideways regimes until a pattern passes walk-forward proof."""
+    if str(regime or "").upper() != "SIDE":
+        return {"status": "NOT_APPLICABLE", "allowed": True}
+    report = _load_regime_execution_report(str(market).lower())
+    if not report or (report.get("leakageCheck") or {}).get("status") != "PASS":
+        return {"status": "NO_VALIDATED_REPORT", "allowed": False, "validationSource": "regime_pattern_execution"}
+    expected_stage = str(report.get("entryStage") or "BUY_ZONE").upper()
+    canonical = _canonical_pattern_tag(pattern)
+    qualified_keys = _qualified_regime_pattern_keys(report, "SIDE", canonical, expected_stage)
+    allowed_keys = {key.rsplit(":", 1)[0] if key.endswith(":CONFIRMED_CANDLE") else key for key in qualified_keys}
+    current_key = f"{canonical}:{str(stage or '').upper()}"
+    if current_key not in allowed_keys or str(direction or "").upper() != "BULLISH":
+        return {
+            "status": "WAIT_FOR_QUALIFIED_SIDEWAYS_PATTERN",
+            "allowed": False,
+            "qualifiedPatterns": qualified_keys,
+            "requiredStage": expected_stage,
+            "validationSource": "regime_pattern_execution",
+        }
+    return {
+        "status": "QUALIFIED_SIDEWAYS_PATTERN",
+        "allowed": True,
+        "qualifiedPatterns": qualified_keys,
+        "validationSource": "regime_pattern_execution",
+    }
 
 
 def _canonical_pattern_tag(tag: Any) -> str:
@@ -2006,8 +2146,10 @@ def score_candidate(
     horizon_base = _HORIZON_BASE_WIN.get(context.horizon, 0.505)
     horizon_scale = _HORIZON_SCALE.get(context.horizon, 0.14)
     # prob = base + (score-50)/50 * scale → [base-scale, base+scale]
+    # This score-derived estimate is not measured win-rate evidence.
+    # Keep it within a valid probability range; never floor it at 35%.
     calibrated_prob = horizon_base + ((score - 50.0) / 50.0) * horizon_scale
-    calibrated_prob = max(0.35, min(0.65, calibrated_prob))   # 35~65% 하드 클램프
+    calibrated_prob = max(0.01, min(0.99, calibrated_prob))
 
     ev = None
     rr_actual = None
@@ -2089,7 +2231,7 @@ def score_candidate(
         "currentPriceUsed": current,
         "currentPriceSource": current_source,
         "entryRecomputed": entry_recomputed,
-        "calibratedWinRate": round(calibrated_prob * 100.0, 1),
+        "modelWinRateEstimate": round(calibrated_prob * 100.0, 1),
         "entryUsed": (round_to_kr_tick(entry_raw) if context.market == "kr" else round(entry_raw, 2)) if entry_raw else None,
         "stopUsed": (round_to_kr_tick(stop_raw) if context.market == "kr" else round(stop_raw, 2)) if stop_raw else None,
         "targetUsed": (round_to_kr_tick(target_raw) if context.market == "kr" else round(target_raw, 2)) if target_raw else None,
@@ -2282,7 +2424,10 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         "newsRiskPenalty": result.get("newsRiskPenalty"),
         # 5모델 앙상블 보정 점수
         "ensembleScore": _ensemble.get("ensembleScore"),
-        "calibratedWinRate": _ensemble.get("calibratedWinRate") or result.get("calibratedWinRate"),
+        # Emit a calibrated rate only when it comes from the measured ensemble
+        # table. The score estimate remains explicitly labelled.
+        "calibratedWinRate": _ensemble.get("calibratedWinRate"),
+        "modelWinRateEstimate": result.get("modelWinRateEstimate"),
         # shadow: 라이브 실측 롤링 보정 (게이트 미반영, 관측·비교용)
         "liveCalibratedWinRate": _live_wr,
         "liveCalibrationEffN": _live_effn,
@@ -2332,6 +2477,33 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
             out.setdefault("riskFlags", []).append("NEWS_DISCLOSURE_RISK")
             out.setdefault("computedFields", []).append("news_keyword_risk_penalty")
 
+    # Reuse the event-context service for macro, earnings, disclosure and
+    # sector risk.  It is evidence only: unavailable data is never treated as
+    # a positive signal, while a high actual event-risk score reaches the
+    # fail-closed regime plan below.
+    try:
+        from app.services.event_context import get_event_context
+
+        event_context = get_event_context(symbol, market)
+        for key in (
+            "newsEventTag",
+            "disclosureEventTag",
+            "earningsEventTag",
+            "macroEventTag",
+            "sectorEventTag",
+            "eventRiskScore",
+            "eventReliabilityScore",
+            "eventSummary",
+            "eventDataSourceType",
+            "eventLearningEligible",
+        ):
+            out[key] = event_context.get(key)
+        event_risk = _num(event_context.get("eventRiskScore")) or 0.0
+        if event_risk >= 10.0:
+            out.setdefault("riskFlags", []).append("EVENT_RISK_HIGH")
+    except Exception:
+        out.setdefault("eventDataSourceType", "unavailable")
+
     # 현재가 fallback 반영 (OHLCV close 사용 시)
     current_source = result.get("currentPriceSource", "live")
     if current_source == "ohlcv_close":
@@ -2360,13 +2532,19 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         computed.append("entry_recomputed_from_current")
 
     if result.get("score") is not None:
-        base_prob = _num(out.get("probability")) or 0
-        # 세부 점수 기반 확률 보정 (기존보다 정교화)
-        score_val = float(result["score"])
-        adjustment = (score_val - 50.0) * 0.15  # 기존 0.12 → 0.15로 민감도 높임
-        probability = max(35.0, min(80.0, round(base_prob + adjustment, 1)))
-        out["probability"] = probability
-        out["probabilityText"] = f"{probability:.1f}%"
+        # A score-derived value is useful for research ranking but is not a win
+        # rate.  Never manufacture a 35%+ probability when no measured rate
+        # exists, and never lift an observed losing rate with a score overlay.
+        measured_probability = _num(out.get("calibratedWinRate"))
+        if measured_probability is not None:
+            probability = max(0.0, min(100.0, round(measured_probability, 1)))
+            out["probability"] = probability
+            out["probabilityText"] = f"{probability:.1f}%"
+            out["probabilitySource"] = "MEASURED_CALIBRATION"
+        else:
+            out["probability"] = None
+            out["probabilityText"] = "실측 확률 미산출"
+            out["probabilitySource"] = "MODEL_ESTIMATE_NOT_MEASURED"
         # 가격 데이터 상태: 두 소스 중 더 좋은 것을 반영
         # PRICE_PENDING > PARTIAL > NORMAL 순으로 품질
         prior_status = out.get("dataStatus", "PARTIAL")
@@ -2411,6 +2589,24 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
                 band_warnings.append(f"목표수익 {target_pct:.1f}% (권장 {target_min}~{target_max}%)")
 
     out["priceBandWarnings"] = band_warnings
+
+    # Strategy router based on the attached regime/contrarian playbooks.  This
+    # annotation deliberately does not override the independent performance
+    # gate: READY only means the current setup passed structural checks.
+    regime_plan = build_trade_plan(
+        out,
+        market=market,
+        mode=mode,
+        horizon=horizon,
+        regime=str(out.get("regime") or _regime),
+    )
+    out["regimeTradePlan"] = regime_plan
+    out["regimeTradePlanStatus"] = regime_plan["status"]
+    out["regimeStrategy"] = regime_plan["strategy"]
+    out["entryZoneLow"] = regime_plan["entryZone"]["low"]
+    out["entryZoneHigh"] = regime_plan["entryZone"]["high"]
+    out["regimeRiskFractionMultiplier"] = regime_plan["riskFractionMultiplier"]
+    out["isRegimeTradeBlocked"] = regime_plan["status"] != "READY"
 
     tags, primary, label = _strategy_tags(out.get("indicators", {}), str(out.get("quantDataStatus") or out.get("dataStatus") or ""))
     financial_keys = (
@@ -2489,6 +2685,8 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         _geo_pattern = _ps.get("geometricPattern")
         _geo_stage = _ps.get("geometricPatternStage")
         _geo_direction = str(_ps.get("geometricPatternDirection") or "NEUTRAL").upper()
+        _geo_trigger = _ps.get("geometricPatternTrigger")
+        _geo_invalidation = _ps.get("geometricPatternInvalidation")
         if _geo_pattern:
             pattern_strategy_tag = _canonical_pattern_tag(_geo_pattern)
             _action_code = str(_ps.get("action") or "")
@@ -2501,6 +2699,8 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
                 "geometricPatternStageKo": _PATTERN_STAGE_KO.get(str(_geo_stage or "").upper(), str(_geo_stage or "")),
                 "geometricPatternDirection": _geo_direction,
                 "geometricPatternDirectionKo": _DIRECTION_KO.get(_geo_direction, _geo_direction),
+                "geometricPatternTrigger": _geo_trigger,
+                "geometricPatternInvalidation": _geo_invalidation,
                 "geometricPatternReason": _ps.get("geometricPatternReason"),
                 "confidence": _ps.get("confidence"),
                 "action": _ACTION_KO.get(_action_code, _action_code),
@@ -2549,6 +2749,55 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     if pattern_strategy_tag:
         out.setdefault("computedFields", []).append("pattern_strategy_24_detected")
 
+    # In a bear regime, a long recommendation is valid only at the confirmed
+    # start of a historically qualified reversal.  This is intentionally a
+    # gate rather than a score bonus: it prevents a strong generic ranking or
+    # an RSI bounce from overriding the chart's invalidation discipline.
+    try:
+        _bear_gate = _bear_reversal_entry_gate(
+            context.market, _regime, pattern_strategy_tag, _geo_stage,
+            _geo_direction, _geo_trigger, _geo_invalidation,
+            (_ps.get("indicators") or {}).get("atr20") if "_ps" in locals() else None,
+        )
+        out["bearReversalGate"] = _bear_gate
+        if str(_regime).upper() == "BEAR" and not _bear_gate.get("allowed"):
+            out["recommended"] = False
+            out["canEnter"] = False
+            out["entryBlockedReason"] = str(_bear_gate.get("status") or "WAIT_FOR_QUALIFIED_REVERSAL")
+            out.setdefault("computedFields", []).append("bear_reversal_entry_gate")
+        elif _bear_gate.get("status") == "QUALIFIED_REVERSAL":
+            out["canEnter"] = True
+            out["bearReversalPlan"] = _bear_gate
+            out.setdefault("computedFields", []).append("bear_reversal_structure_entry")
+    except Exception:
+        # A missing report must never turn into an accidental permission to
+        # enter.  The field also makes the data dependency visible to callers.
+        if str(_regime).upper() == "BEAR":
+            out["bearReversalGate"] = {"status": "VALIDATION_UNAVAILABLE", "allowed": False}
+            out["recommended"] = False
+            out["canEnter"] = False
+
+    # Sideways regimes are where "small profits" are most tempting and most
+    # prone to churn.  Until a chart setup passes train/OOS execution proof,
+    # keep new long entries on hold rather than ranking a noisy range trade.
+    try:
+        _side_gate = _sideways_entry_gate(
+            context.market, _regime, pattern_strategy_tag, _geo_stage, _geo_direction,
+        )
+        out["sidewaysEntryGate"] = _side_gate
+        if str(_regime).upper() == "SIDE" and not _side_gate.get("allowed"):
+            out["recommended"] = False
+            out["canEnter"] = False
+            out["entryBlockedReason"] = str(_side_gate.get("status") or "WAIT_FOR_QUALIFIED_SIDEWAYS_PATTERN")
+            out.setdefault("computedFields", []).append("sideways_regime_entry_gate")
+        elif _side_gate.get("status") == "QUALIFIED_SIDEWAYS_PATTERN":
+            out.setdefault("computedFields", []).append("sideways_regime_structure_entry")
+    except Exception:
+        if str(_regime).upper() == "SIDE":
+            out["sidewaysEntryGate"] = {"status": "VALIDATION_UNAVAILABLE", "allowed": False}
+            out["recommended"] = False
+            out["canEnter"] = False
+
     try:
         _wf_tags = [p.get("pattern") for p in chart_patterns if p.get("pattern")] + ([pattern_strategy_tag] if pattern_strategy_tag else []) + list(tags)
         _wf = _walkforward_pattern_bonus(context.market, _regime, context.horizon, _wf_tags)
@@ -2573,14 +2822,29 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         _sp = _data_loader.similar_pattern_history(symbol, market)
         if _sp.get("status") == "OK":
             _sp_summary = _sp.get("summary", {}).get(_horizon_key)
-            if _sp_summary and _sp_summary.get("count", 0) >= 5 and isinstance(out.get("finalScore"), (int, float)):
+            if _sp_summary:
+                _sample_count = int(_sp_summary.get("count") or 0)
                 _win_rate = float(_sp_summary.get("winRate", 50.0))
-                # 승률 50%를 중립으로 ±5점 범위에서만 보조 신호로 반영
-                _sp_bonus = round((_win_rate - 50.0) / 50.0 * 5.0, 1)
-                out["finalScore"] = min(100.0, max(0.0, round(float(out["finalScore"]) + _sp_bonus, 1)))
-                out["quantScore"] = out["finalScore"]
+                _avg_return = _num(_sp_summary.get("avgReturn"))
                 out["similarPatternWinRate"] = _win_rate
-                out["similarPatternBonus"] = _sp_bonus
+                out["similarPatternEvidence"] = {
+                    "sampleCount": _sample_count,
+                    "averageReturnPct": _avg_return,
+                    "independentSpacingBars": (_sp.get("period") or {}).get("independentSpacingBars"),
+                }
+                # Historical similarity is research evidence, not an optimism
+                # fallback.  It may adjust ranking only with sufficient,
+                # independent, positive-expectancy observations.
+                if (
+                    _sample_count >= 20
+                    and _avg_return is not None and _avg_return > 0
+                    and _win_rate >= 55.0
+                    and isinstance(out.get("finalScore"), (int, float))
+                ):
+                    _sp_bonus = round(min(3.0, (_win_rate - 50.0) / 50.0 * 3.0), 1)
+                    out["finalScore"] = min(100.0, max(0.0, round(float(out["finalScore"]) + _sp_bonus, 1)))
+                    out["quantScore"] = out["finalScore"]
+                    out["similarPatternBonus"] = _sp_bonus
     except Exception:
         pass
 

@@ -634,6 +634,7 @@ def analyze(
         "baseBreakout":            base_bo,
         "extensionBreakouts":      extensions,
         "historicalSupportLevels": support_levels,
+        "supportResistanceZones":  srm_mod.zones(support_levels),
         "message":                 message,
         "rangeFloor":              range_floor,
         "rangeCeiling":            range_ceiling,
@@ -642,6 +643,10 @@ def analyze(
         "geometricPatternDirection": geo["direction"] if geo else None,
         "geometricPatternStage":     geo["stage"] if geo else None,
         "geometricPatternTrigger":   geo["trigger"] if geo else None,
+        # This is a price-level risk boundary from the geometric detector, not
+        # a generic percentage stop.  Consumers can therefore keep a reversal
+        # trade tied to the structure that justified it.
+        "geometricPatternInvalidation": geo.get("invalidation") if geo else None,
         "geometricPatternReason":    geo["reason"] if geo else None,
         "geometricPatternConfirmed": geo.get("confirmed", False) if geo else False,
         "candlestickPattern":          cs["pattern"] if cs else None,
@@ -716,6 +721,7 @@ def _stub(symbol: str, market: str) -> dict[str, Any]:
         "baseBreakout":           {},
         "extensionBreakouts":     [],
         "historicalSupportLevels": [],
+        "supportResistanceZones":  [],
         "message":                "데이터 부족",
         "rangeFloor":             None,
         "rangeCeiling":           None,
@@ -724,6 +730,7 @@ def _stub(symbol: str, market: str) -> dict[str, Any]:
         "geometricPatternDirection": None,
         "geometricPatternStage":     None,
         "geometricPatternTrigger":   None,
+        "geometricPatternInvalidation": None,
         "geometricPatternReason":    None,
         "geometricPatternConfirmed": False,
         "candlestickPattern":          None,

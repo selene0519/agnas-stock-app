@@ -615,7 +615,7 @@ def _strategy_profile(mode: str) -> dict[str, float]:
     return {"stop": 0.945, "target": 1.130, "prob": 0.0}
 
 
-def _prob_number(value: Any, default: float = 58.0) -> float:
+def _prob_number(value: Any, default: float = 0.0) -> float:
     n = _num(value, default)
     if 0 < n <= 1:
         n *= 100
@@ -1725,19 +1725,19 @@ def _recommendation_item(
             _computed_append(computed_fields, "expected_price_from_target")
 
     probability_raw = _text(row, ["probability", "win_probability", "probSwing", "prob_3d", "prob_5d"], "")
-    raw_probability = _prob_number(probability_raw, 58.0)
-    use_auto_probability = (not probability_raw) or raw_probability < 45.0
-    if use_auto_probability:
-        probability = _auto_probability(row, sym, mode, horizon, current, entry, stop, target, raw_probability)
-        _computed_append(computed_fields, "probability_auto")
-        if probability_raw:
-            _computed_append(computed_fields, "probability_source_low_confidence")
-    else:
-        probability = round(_clamp(raw_probability + profile["prob"]), 1)
-    prob1d = round(_clamp(probability - 1.0), 1)
-    prob3d = round(_clamp(probability + (0.5 if horizon == "short" else 1.0)), 1)
-    prob5d = round(_clamp(probability + (1.5 if horizon == "swing" else 0.5)), 1)
-    prob10d = round(_clamp(probability + (2.0 if horizon == "mid" else 1.0)), 1)
+    raw_probability = _prob_number(probability_raw, 0.0)
+    # Do not turn an absent or weak observed rate into a favourable 45–70%
+    # pseudo-probability.  The former fallback made loss-making candidates look
+    # investable.  Preserve an input probability verbatim and label its source;
+    # absent evidence is explicitly unavailable.
+    probability: float | None = round(_clamp(raw_probability), 1) if probability_raw else None
+    probability_source = "SOURCE_UNVERIFIED" if probability is not None else "UNAVAILABLE_NOT_MEASURED"
+    if probability is None:
+        _computed_append(computed_fields, "probability_not_measured")
+    prob1d = round(_clamp(probability - 1.0), 1) if probability is not None else None
+    prob3d = round(_clamp(probability + (0.5 if horizon == "short" else 1.0)), 1) if probability is not None else None
+    prob5d = round(_clamp(probability + (1.5 if horizon == "swing" else 0.5)), 1) if probability is not None else None
+    prob10d = round(_clamp(probability + (2.0 if horizon == "mid" else 1.0)), 1) if probability is not None else None
 
     # 실제 데이터 품질 기준: KIS 실시간 현재가 있으면 NORMAL, 없으면 PARTIAL
     has_live_quote = bool(_text(quote, PRICE_KEYS, ""))
@@ -1811,7 +1811,8 @@ def _recommendation_item(
         "expectedPrice": expected if expected > 0 else None,
         "expectedPriceText": _optional_price_text(expected, market),
         "probability": probability,
-        "probabilityText": _pct_text(probability),
+        "probabilityText": _pct_text(probability) if probability is not None else "실측 확률 미산출",
+        "probabilitySource": probability_source,
         "prob1d": _pct_text(_text(row, ["prob1d", "prob_1d"], prob1d)),
         "prob3d": _pct_text(_text(row, ["prob3d", "prob_3d"], prob3d)),
         "prob5d": _pct_text(_text(row, ["prob5d", "prob_5d"], prob5d)),
@@ -2660,9 +2661,13 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
         # ── Primary source: strategy_win_rates.json (VTJ net win rate) ──────────
         swj = _load_strategy_win_rates()
         swj_min_samples = int(swj.get("minSamplesForUpdate") or 20)
-        net_win_rate_raw = (swj.get("winRates") or {}).get(key)
+        observed_rates = swj.get("observedWinRates") or {}
+        observed_returns = swj.get("averageReturnPct") or {}
+        has_observed_performance = key in observed_rates and observed_rates.get(key) is not None
+        net_win_rate_raw = observed_rates.get(key) if has_observed_performance else None
         net_win_rate = round(float(net_win_rate_raw) * 100, 1) if net_win_rate_raw is not None else None
         net_win_rate_sample = int((swj.get("sampleCounts") or {}).get(key) or 0)
+        expected_return_pct = _num(observed_returns.get(key), None) if has_observed_performance else None
 
         # ── Diagnostic source: validation CSV stats ───────────────────────────
         dashboard = _validation_dashboard_payload(_market_norm(market))
@@ -2691,8 +2696,10 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
             "horizon": norm_horizon,
             # Primary: VTJ net win rate
             "netWinRate": net_win_rate,
-            "netWinRateSource": "strategy_win_rates.json",
+            "netWinRateSource": "strategy_win_rates.json:observedWinRates" if has_observed_performance else "unverified_legacy_rate",
             "netWinRateSampleCount": net_win_rate_sample,
+            "expectedReturnPct": expected_return_pct,
+            "hasObservedPerformance": has_observed_performance,
             # Diagnostic: CSV-based metrics (NOT used for hard-block decisions)
             "completed": completed,
             "winRate": win_rate,
@@ -2738,10 +2745,10 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
         # ── Gate 1: insufficient VTJ samples ─────────────────────────────────
         # Combos below minSamplesForUpdate use default (not measured) win rates —
         # blocking on default values would be a false signal.
-        if net_win_rate is None or net_win_rate_sample < swj_min_samples:
+        if not has_observed_performance or net_win_rate is None or net_win_rate_sample < swj_min_samples:
             return _soft(
                 "INSUFFICIENT_SAMPLES",
-                f"{key} net win rate sample insufficient "
+                f"{key} measured performance unavailable or sample insufficient "
                 f"({net_win_rate_sample}/{swj_min_samples} measured trades in VTJ)",
             )
 
@@ -2761,12 +2768,13 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
 
         # ── Gate 3: genuine poor VTJ performance (all data-quality gates passed) ─
         # Only reaches here when: sufficient measured samples, consistent metrics.
-        # avgReturn diagnostic kept but NOT used as independent block trigger.
-        if net_win_rate < 35.0:
+        # A trade needs both an adequate observed hit rate and positive expectancy.
+        if net_win_rate < 45.0 or expected_return_pct is None or expected_return_pct <= 0:
             return _block(
                 "PERFORMANCE_BLOCKED",
-                f"{key} genuine underperformance: "
-                f"netWinRate={net_win_rate}% < 35% (samples={net_win_rate_sample})",
+                f"{key} does not pass the profit gate: netWinRate={net_win_rate}% "
+                f"(minimum 45%), avgReturn={expected_return_pct}% (must be positive), "
+                f"samples={net_win_rate_sample}",
             )
 
         return _ok(status="PERFORMANCE_OK", performanceGateStatus="PERFORMANCE_OK", reason="")
@@ -2782,8 +2790,10 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
             "mode": _mode_norm(mode),
             "horizon": _horizon_norm(horizon),
             "netWinRate": None,
-            "netWinRateSource": "strategy_win_rates.json",
+            "netWinRateSource": "strategy_win_rates.json:observedWinRates",
             "netWinRateSampleCount": 0,
+            "expectedReturnPct": None,
+            "hasObservedPerformance": False,
             "completed": 0,
             "meaningfulCompleted": 0,
             "placeholderCount": 0,
@@ -2803,6 +2813,33 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
     payload["performanceSafety"] = safety
     payload["reviewOnly"] = bool(payload.get("reviewOnly") or safety.get("reviewOnly"))
 
+    # Global performance can conceal a losing bear/range implementation.  Load
+    # the forward-only net-return evidence once for this payload and apply its
+    # verdict per item after the item's current regime is known.
+    try:
+        from app.services import regime_performance_gate as _regime_perf
+        regime_index = _regime_perf.build_index()
+    except Exception:
+        _regime_perf = None
+        regime_index = None
+
+    # The trader-skills playbook calls for breadth, macro posture and a
+    # pre-trade checklist.  These are calculated only from local data and are
+    # explicitly labelled as such; unavailable coverage cannot create a buy.
+    try:
+        from app.services import market_context_gate as _market_context
+        market_context = _market_context.build_market_context(market)
+    except Exception as exc:
+        _market_context = None
+        market_context = {
+            "version": "market-context-v1",
+            "market": market,
+            "status": "CASH_UNTIL_BREADTH_AVAILABLE",
+            "recommendedExposureMultiplier": 0.0,
+            "error": repr(exc),
+        }
+    payload["marketContext"] = market_context
+
     perf_status = str(safety.get("status") or "").upper()
     is_coverage_gap = perf_status == "COVERAGE_GAP"
     is_hard_blocked = bool(safety.get("isPerformanceHardBlocked") or safety.get("isTradeBlocked"))
@@ -2819,6 +2856,53 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
         item["performanceSample"] = safety.get("completed")
         item["performanceMeaningfulSample"] = safety.get("meaningfulCompleted")
         item["performanceFallbackApplied"] = fallback_applied
+        if _regime_perf is not None:
+            regime_gate = _regime_perf.evaluate(
+                market,
+                mode,
+                horizon,
+                item.get("regime") or item.get("marketRegime"),
+                index=regime_index,
+            )
+        else:
+            regime_gate = {
+                "status": "REGIME_PERFORMANCE_UNAVAILABLE",
+                "isTradeBlocked": True,
+                "reason": "Regime performance evidence is unavailable; do not publish an executable trade.",
+            }
+        item["regimePerformanceGate"] = regime_gate
+        item["regimePerformanceGateStatus"] = regime_gate.get("status")
+        item["isRegimePerformanceBlocked"] = bool(regime_gate.get("isTradeBlocked"))
+        if not isinstance(item.get("tradePlan"), dict):
+            try:
+                from app.services.regime_trade_plan import build_trade_plan
+                item["tradePlan"] = build_trade_plan(item, market=market, mode=mode, horizon=horizon)
+            except Exception:
+                item["tradePlan"] = {"status": "WATCH", "reasonCodes": ["TRADE_PLAN_UNAVAILABLE"]}
+        item["marketContext"] = market_context
+        if _market_context is not None:
+            item["preTradeGate"] = _market_context.pre_trade_gate(item, market_context)
+        else:
+            item["preTradeGate"] = {
+                "version": "pre-trade-gate-v1",
+                "status": "NO_TRADE",
+                "isTradeBlocked": True,
+                "reasonCodes": ["MARKET_CONTEXT_UNAVAILABLE"],
+                "maxExposureMultiplier": 0.0,
+                "manualReviewRequired": True,
+            }
+        # Rigorous per-pattern edge tier from the walk-forward edge map, so a
+        # proven-edge setup (e.g. ASCENDING_TRIANGLE in a bull regime) is
+        # surfaced while survivorship-inflated patterns are labelled NONE rather
+        # than trusted. Annotation only — it does not silently re-rank.
+        try:
+            from app.services import pattern_edge_map as _pem
+            _ps = item.get("patternStrategy") if isinstance(item.get("patternStrategy"), dict) else {}
+            _pat = _ps.get("geometricPattern") or _ps.get("primaryPattern")
+            _reg = item.get("regime") or item.get("marketRegime") or _ps.get("marketRegime")
+            item["patternEdge"] = _pem.edge_for(_pat, _reg, item.get("market") or market)
+        except Exception:
+            item["patternEdge"] = {"tier": "UNKNOWN", "multiplier": 1.0}
 
     if not is_hard_blocked:
         for item in payload.get("items") or []:
@@ -2909,6 +2993,10 @@ def _position_plan(item: dict[str, Any], cash: float, actionable: bool) -> dict[
     max_capital_by_risk = risk_budget / (risk_pct / 100.0)
     max_capital_by_weight = cash * (float(policy["maxPositionWeightPct"]) / 100.0)
     suggested_capital = max(0.0, min(max_capital_by_risk, max_capital_by_weight, cash))
+    pre_trade = item.get("preTradeGate") if isinstance(item.get("preTradeGate"), dict) else {}
+    exposure_multiplier = _num(pre_trade.get("maxExposureMultiplier"), 1.0)
+    exposure_multiplier = min(1.0, max(0.0, exposure_multiplier if exposure_multiplier is not None else 1.0))
+    suggested_capital *= exposure_multiplier
     suggested_shares = int(suggested_capital // current) if current > 0 else 0
     return {
         "status": "RISK_CAPPED",
@@ -2919,7 +3007,8 @@ def _position_plan(item: dict[str, Any], cash: float, actionable: bool) -> dict[
         "stop": round(stop, 4),
         "riskPctFromEntry": round(risk_pct, 2),
         "maxLossPctOfPortfolio": float(policy["maxSingleTradeRiskPct"]),
-        "basis": "position size capped by stop-distance risk and portfolio weight",
+        "marketExposureMultiplier": exposure_multiplier,
+        "basis": "position size capped by stop-distance risk, portfolio weight, and local breadth/macro exposure guard",
     }
 
 
@@ -2937,14 +3026,14 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
     is_perf_hard_blocked = bool(performance.get("isPerformanceHardBlocked"))
     # Strategy performance verdict is fully delegated to _recommendation_performance_safety:
     #   PERFORMANCE_OK / PERFORMANCE_BLOCKED / DATA_SOURCE_MISMATCH / INSUFFICIENT_SAMPLES / COVERAGE_GAP
-    # Any non-OK, non-BLOCKED status means data quality uncertainty — soft caution only.
+    # Any non-OK status is review-only data, never an executable trade candidate.
     perf_ok = perf_status in {"PERFORMANCE_OK", "OK", ""}
     data_uncertain = not is_perf_hard_blocked and not perf_ok
 
     if is_perf_hard_blocked:
         reasons.append(str(performance.get("reason") or perf_status))
     elif data_uncertain:
-        cautions.append(
+        reasons.append(
             f"전략 검증 데이터 부족 ({perf_status}"
             f" — netWinRate: {performance.get('netWinRate')}%"
             f", samples: {performance.get('netWinRateSampleCount', 0)}건)"
@@ -2981,6 +3070,15 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
     if item.get("isTradeBlocked"):
         reasons.append(str(item.get("tradeBlockReason") or item.get("tradeBlockStatus") or "item trade block"))
 
+    regime_performance = item.get("regimePerformanceGate") if isinstance(item.get("regimePerformanceGate"), dict) else {}
+    if bool(regime_performance.get("isTradeBlocked")):
+        reasons.append(str(regime_performance.get("reason") or regime_performance.get("status") or "regime performance gate"))
+
+    pre_trade = item.get("preTradeGate") if isinstance(item.get("preTradeGate"), dict) else {}
+    if bool(pre_trade.get("isTradeBlocked")):
+        reason_codes = pre_trade.get("reasonCodes") if isinstance(pre_trade.get("reasonCodes"), list) else []
+        reasons.append("pre-trade gate: " + (", ".join(str(code) for code in reason_codes) or "BLOCKED"))
+
     unique_reasons = [r for i, r in enumerate(reasons) if r and r not in reasons[:i]]
     unique_cautions = [r for i, r in enumerate(cautions) if r and r not in cautions[:i]]
     actionable = not unique_reasons
@@ -3014,6 +3112,11 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
             "riskReward": rr,
             "calibratedWinRate": calibrated_wr,
             "calibrationCount": calibration_count,
+            "regimePerformanceGateStatus": regime_performance.get("status"),
+            "regimePerformanceSampleCount": regime_performance.get("sampleCount"),
+            "regimePerformanceAverageNetReturnPct": regime_performance.get("averageNetReturnPct"),
+            "marketExposureMultiplier": pre_trade.get("maxExposureMultiplier"),
+            "preTradeGateStatus": pre_trade.get("status"),
         },
         "positionPlan": position,
         "policy": policy,
