@@ -1206,7 +1206,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     { id: "mid", label: "중기", desc: "2주 이상" },
   ];
 
-  const previewCandidates = items.filter((item) => !item?.isSearchOnly).slice(0, 3);
+  const recommendationCandidates = items.filter((item) => !item?.isSearchOnly);
+  const previewCandidates = recommendationCandidates.slice(0, 3);
   const canOfferKrConservativeFallback = resolvedMarket === "kr" && mode !== "conservative";
 
   if (exploreView === "hub") {
@@ -1321,9 +1322,9 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           </div>
         </section>
         <section className="mone-home-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3"><div><div className="text-[12px] font-semibold text-teal-300">{modeLabel(mode)} · {horizonLabel(horizon)} · {marketLabel(resolvedMarket)}</div><div className="mt-1 text-sm font-semibold text-slate-100">우선 확인 후보</div></div><span className="text-xs text-slate-500">{loading ? "불러오는 중" : `${items.length}개`}</span></div>
+          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3"><div><div className="text-[12px] font-semibold text-teal-300">{modeLabel(mode)} · {horizonLabel(horizon)} · {marketLabel(resolvedMarket)}</div><div className="mt-1 text-sm font-semibold text-slate-100">추천 후보 전체</div></div><span className="text-xs text-slate-500">{loading ? "불러오는 중" : `${recommendationCandidates.length}개`}</span></div>
           {loading && <div className="px-4 py-5 text-sm text-slate-500">추천 데이터를 불러오고 있습니다.</div>}
-          {!loading && previewCandidates.length === 0 && (
+          {!loading && recommendationCandidates.length === 0 && (
             <div className="space-y-3 px-4 py-5 text-sm leading-6 text-slate-500">
               <p>
                 {canOfferKrConservativeFallback
@@ -1341,7 +1342,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               )}
             </div>
           )}
-          {!loading && previewCandidates.map((item) => (
+          {!loading && recommendationCandidates.map((item) => (
             <button key={`${item.market}-${item.symbol}`} type="button" onClick={() => { setSelected({ market: item.market || resolvedMarket, symbol: item.symbol, name: displayName(item) } as MoneSymbol); setExploreView("direct"); }} className="flex w-full items-center gap-3 border-b border-slate-800 px-4 py-4 text-left last:border-b-0 hover:bg-slate-900/40">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/12 text-teal-300"><Sparkles size={19} aria-hidden="true" /></span>
               <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-xs text-slate-500">진입가 {formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)} · EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span>
