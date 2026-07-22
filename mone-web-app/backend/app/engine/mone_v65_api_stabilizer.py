@@ -2891,6 +2891,18 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
                 "maxExposureMultiplier": 0.0,
                 "manualReviewRequired": True,
             }
+        # Rigorous per-pattern edge tier from the walk-forward edge map, so a
+        # proven-edge setup (e.g. ASCENDING_TRIANGLE in a bull regime) is
+        # surfaced while survivorship-inflated patterns are labelled NONE rather
+        # than trusted. Annotation only — it does not silently re-rank.
+        try:
+            from app.services import pattern_edge_map as _pem
+            _ps = item.get("patternStrategy") if isinstance(item.get("patternStrategy"), dict) else {}
+            _pat = _ps.get("geometricPattern") or _ps.get("primaryPattern")
+            _reg = item.get("regime") or item.get("marketRegime") or _ps.get("marketRegime")
+            item["patternEdge"] = _pem.edge_for(_pat, _reg, item.get("market") or market)
+        except Exception:
+            item["patternEdge"] = {"tier": "UNKNOWN", "multiplier": 1.0}
 
     if not is_hard_blocked:
         for item in payload.get("items") or []:
