@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-22T14:29:14.736741+00:00",
+  "generatedAt": "2026-07-22T22:20:59.312157+00:00",
   "market": "kr",
   "marketRegime": "BEAR",
   "marketRegimeLabel": "약세장",
@@ -26,45 +26,19 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 3,
+  "candidateCount": 1,
   "actionableCount": 0,
   "candidates": [
     {
       "symbol": "017670",
       "name": "SK텔레콤",
-      "finalScore": 72.6,
+      "finalScore": 69.9,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "보류",
       "supplySignal": "INST_BUY",
       "eventBadges": "기관 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "138040",
-      "name": "메리츠금융지주",
-      "finalScore": 67.0,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "기관+외국인 동반매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "032640",
-      "name": "LG유플러스",
-      "finalScore": 66.3,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "기관+외국인 동반매수",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     }
