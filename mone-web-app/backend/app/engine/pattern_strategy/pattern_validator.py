@@ -56,6 +56,22 @@ _BENCHMARK_SYMBOLS = {
     "XLY", "XLP", "VIX",
 }
 
+# These candidates are declared before inspecting the independent test period.
+# They are intentionally chart-structure entries, not a disguised RSI dip-buy.
+# Every candidate enters only after a BUY_ZONE confirmation and is tested with
+# the same next-open, geometric-stop, 2R execution model.
+REGIME_PATTERN_CANDIDATES = {
+    "BULL": {
+        "BULL_FLAG", "BULL_PENNANT", "ASCENDING_TRIANGLE", "CUP_AND_HANDLE",
+        "FALLING_WEDGE_BREAKOUT", "RESISTANCE_FLIP_SUPPORT", "RISING_CHANNEL",
+    },
+    "BEAR": BEAR_REVERSAL_PATTERNS,
+    "SIDE": {
+        "DOUBLE_BOTTOM", "FALLING_WEDGE_BREAKOUT", "FAILED_BREAKDOWN",
+        "RESISTANCE_FLIP_SUPPORT",
+    },
+}
+
 
 def _indicator_stats_bucket() -> dict[str, Any]:
     return {
@@ -715,7 +731,11 @@ def run_bear_reversal_walkforward(
             # Including D is valid: the signal is evaluated after D's close;
             # the simulated fill uses D+1's open.  No D+1 information reaches
             # the detector.
-            history = rows[:signal_index + 1]
+            # Both the geometric detector (120 bars) and indicators (60 bars)
+            # are local-window calculations.  Keeping a 160-bar slice avoids
+            # repeatedly copying an entire 10+ year series without changing
+            # any information available at the decision point.
+            history = rows[max(0, signal_index - 159):signal_index + 1]
             indicators = ind_mod.compute_all(history)
             atr20 = _f(indicators.get("atr20"))
             if atr20 is None or atr20 <= 0:
@@ -814,6 +834,206 @@ def run_bear_reversal_walkforward(
     try:
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         (_REPORTS_DIR / f"bear_reversal_walkforward_{market}.json").write_text(
+            json.dumps(result_doc, ensure_ascii=False, indent=2), encoding="utf-8",
+        )
+    except Exception:
+        pass
+    return result_doc
+
+
+def _regime_execution_qualification(
+    train: dict[str, Any],
+    train_early: dict[str, Any],
+    train_late: dict[str, Any],
+    out_of_sample: dict[str, Any],
+) -> tuple[bool, list[str]]:
+    """Promotion rule fixed before the independent-period results are read."""
+    approved, reasons = _bear_reversal_qualification(train, out_of_sample)
+    # A fold is only used as a veto when it is large enough to be informative.
+    # This catches a strategy that was profitable in aggregate but relied on
+    # one isolated market episode inside the training interval.
+    for label, stats in (("TRAIN_EARLY", train_early), ("TRAIN_LATE", train_late)):
+        if int(stats.get("sampleCount") or 0) >= 12:
+            if float(stats.get("avgNetReturn") or 0.0) <= 0:
+                reasons.append(f"{label}_NON_POSITIVE_EXPECTANCY")
+            if float(stats.get("profitFactor") or 0.0) <= 1.0:
+                reasons.append(f"{label}_PROFIT_FACTOR_NOT_ABOVE_1")
+    return approved and not reasons, reasons
+
+
+def run_regime_pattern_execution_walkforward(
+    market: str = "kr",
+    from_date: str | None = None,
+    to_date: str | None = None,
+    split_date: str = "2022-01-01",
+    train_fold_date: str = "2017-01-01",
+    reward_r: float = 2.0,
+    max_holding_days: int = 20,
+    round_trip_cost_bps: float = 20.0,
+) -> dict[str, Any]:
+    """Execution-aware chart-pattern research for BULL, BEAR, and SIDE.
+
+    This is the common proof engine for all three regimes.  It evaluates a
+    signal only after that day's close, enters at the next session's open, and
+    never lets the independent period choose a condition.  Two predeclared
+    variants are tested for every candidate: BUY_ZONE and BUY_ZONE with a
+    confirming candle.  A result is promotable only if it passes the fixed
+    training and independent-period rules below.
+    """
+    market = str(market).lower()
+    all_ohlcv = _load_all_ohlcv(market)
+    if not all_ohlcv:
+        return {"status": "NO_DATA", "market": market}
+    start = from_date or "2011-01-01"
+    end = to_date or datetime.now().strftime("%Y-%m-%d")
+    cost = max(0.0, float(round_trip_cost_bps)) / 10_000.0
+
+    buckets: dict[str, dict[str, dict[str, dict[str, Any]]]] = {
+        regime: {
+            f"{pattern}:BUY_ZONE": {
+                "all": _reversal_bucket(), "train": _reversal_bucket(),
+                "trainEarly": _reversal_bucket(), "trainLate": _reversal_bucket(),
+                "outOfSample": _reversal_bucket(),
+            }
+            for pattern in sorted(patterns)
+            for _variant in (0,)
+        }
+        for regime, patterns in REGIME_PATTERN_CANDIDATES.items()
+    }
+    # Confirmed candle is a separate, predeclared condition rather than a
+    # post-hoc boost.  It gets its own independent evidence.
+    for regime, patterns in REGIME_PATTERN_CANDIDATES.items():
+        for pattern in patterns:
+            buckets[regime][f"{pattern}:BUY_ZONE:CONFIRMED_CANDLE"] = {
+                "all": _reversal_bucket(), "train": _reversal_bucket(),
+                "trainEarly": _reversal_bucket(), "trainLate": _reversal_bucket(),
+                "outOfSample": _reversal_bucket(),
+            }
+
+    regime_cache: dict[str, str] = {}
+    skipped = defaultdict(int)
+    leakage_ok = True
+
+    def regime_for(date_str: str) -> str:
+        if date_str not in regime_cache:
+            regime_cache[date_str] = _market_regime_at_date(market, all_ohlcv, date_str)
+        return regime_cache[date_str]
+
+    def record(bucket: dict[str, Any], trade: dict[str, Any]) -> None:
+        bucket["sampleCount"] += 1
+        bucket["netReturns"].append(trade["netReturn"])
+        bucket["grossReturns"].append(trade["grossReturn"])
+        bucket["holdDays"].append(trade["holdDays"])
+        if trade["netReturn"] > 0:
+            bucket["wins"] += 1
+        if str(trade["exitReason"]).startswith("STOP"):
+            bucket["stops"] += 1
+        if str(trade["exitReason"]).startswith("TARGET"):
+            bucket["targets"] += 1
+
+    for symbol, rows in all_ohlcv.items():
+        if symbol.upper() in _BENCHMARK_SYMBOLS or len(rows) < 65:
+            continue
+        next_eligible: dict[str, int] = defaultdict(int)
+        active_pattern: dict[str, str | None] = defaultdict(lambda: None)
+        for signal_index in range(60, len(rows) - 1):
+            signal_date = str(rows[signal_index].get("date", ""))
+            if signal_date < start or signal_date > end:
+                continue
+            regime = regime_for(signal_date)
+            candidates = REGIME_PATTERN_CANDIDATES.get(regime)
+            if not candidates:
+                continue
+            # The detector/indicators only consume recent history; see the
+            # equivalent execution simulator above for why this is safe.
+            history = rows[max(0, signal_index - 159):signal_index + 1]
+            indicators = ind_mod.compute_all(history)
+            atr20 = _f(indicators.get("atr20"))
+            if atr20 is None or atr20 <= 0:
+                continue
+            geo = gp_mod.detect_all(history, atr20, _f(indicators.get("volumeRatio20")), market=market)
+            if not geo:
+                for key in active_pattern:
+                    active_pattern[key] = None
+                continue
+            pattern = str(geo.get("pattern") or "")
+            stage = str(geo.get("stage") or "")
+            bullish = str(geo.get("direction") or "").upper() == "BULLISH"
+            if pattern not in candidates or stage != BEAR_REVERSAL_ENTRY_STAGE or not bullish:
+                for key in active_pattern:
+                    active_pattern[key] = None
+                continue
+
+            variant_keys = [f"{pattern}:BUY_ZONE"]
+            if geo.get("confirmed"):
+                variant_keys.append(f"{pattern}:BUY_ZONE:CONFIRMED_CANDLE")
+            trigger = _f(geo.get("trigger"))
+            stop = _f(geo.get("invalidation"))
+            next_open = _bar_value(rows[signal_index + 1], "open")
+            if trigger is None or stop is None or next_open is None or next_open <= stop:
+                skipped["INVALID_OR_GAPPED_THROUGH_STOP"] += 1
+                continue
+            if next_open > trigger + 1.2 * atr20:
+                skipped["CHASE_GAP"] += 1
+                continue
+            if str(rows[signal_index].get("date", "")) >= str(rows[signal_index + 1].get("date", "")):
+                leakage_ok = False
+
+            for key in variant_keys:
+                # One sustained pattern is one opportunity.  A transition from
+                # unconfirmed to confirmed is deliberately a new opportunity
+                # only for the confirmed-candle variant.
+                if active_pattern[key] == pattern or signal_index < next_eligible[key]:
+                    continue
+                trade = _simulate_long_reversal(
+                    rows, signal_index + 1, stop, reward_r, max_holding_days, cost,
+                )
+                if not trade:
+                    skipped["UNSIMULATABLE"] += 1
+                    continue
+                active_pattern[key] = pattern
+                next_eligible[key] = signal_index + int(trade["holdDays"])
+                period_keys = ["all"]
+                if signal_date < split_date:
+                    period_keys.append("train")
+                    period_keys.append("trainEarly" if signal_date < train_fold_date else "trainLate")
+                else:
+                    period_keys.append("outOfSample")
+                for period_key in period_keys:
+                    record(buckets[regime][key][period_key], trade)
+
+    summaries: dict[str, Any] = {}
+    qualified_by_regime: dict[str, list[str]] = {regime: [] for regime in REGIME_PATTERN_CANDIDATES}
+    for regime, candidates in buckets.items():
+        summaries[regime] = {}
+        for key, raw in candidates.items():
+            stats = {label: _summarise_reversal_bucket(bucket) for label, bucket in raw.items()}
+            qualified, reasons = _regime_execution_qualification(
+                stats["train"], stats["trainEarly"], stats["trainLate"], stats["outOfSample"],
+            )
+            summaries[regime][key] = {**stats, "qualified": qualified, "rejectionReasons": reasons}
+            if qualified:
+                qualified_by_regime[regime].append(key)
+
+    result_doc = {
+        "status": "OK", "market": market, "fromDate": start, "toDate": end,
+        "splitDate": split_date, "trainFoldDate": train_fold_date,
+        "entryStage": BEAR_REVERSAL_ENTRY_STAGE,
+        "qualifiedByRegime": qualified_by_regime,
+        "assumptions": {
+            "signal": "D close confirmation; D+1 open entry only",
+            "stop": "detector geometric invalidation", "targetR": reward_r,
+            "maxHoldingDays": max_holding_days, "roundTripCostBps": round_trip_cost_bps,
+            "intradayCollision": "stop first (conservative)",
+            "entryGapRule": "skip if D+1 open is above trigger + 1.2 ATR",
+            "promotion": "positive train/OOS expectancy and PF>1; OOS win >=50%; stable training folds when n>=12",
+        },
+        "regimePatternSummary": summaries, "skippedSignals": dict(skipped),
+        "leakageCheck": {"status": "PASS" if leakage_ok else "FAIL"},
+    }
+    try:
+        _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        (_REPORTS_DIR / f"regime_pattern_execution_{market}.json").write_text(
             json.dumps(result_doc, ensure_ascii=False, indent=2), encoding="utf-8",
         )
     except Exception:
