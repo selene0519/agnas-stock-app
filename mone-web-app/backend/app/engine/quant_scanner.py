@@ -176,6 +176,27 @@ def _load_bear_reversal_report(market: str) -> dict[str, Any]:
         return {}
 
 
+@lru_cache(maxsize=8)
+def _load_regime_execution_report(market: str) -> dict[str, Any]:
+    """Load the long-history, execution-aware regime/pattern validation report."""
+    path = _REPO_ROOT / "reports" / f"regime_pattern_execution_{str(market or 'kr').lower()}.json"
+    if not path.is_file() or path.stat().st_size <= 0:
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _qualified_regime_pattern_keys(report: dict[str, Any], regime: str, pattern: str, stage: str) -> list[str]:
+    qualified_by_regime = report.get("qualifiedByRegime") or {}
+    qualified = {str(value).upper() for value in (qualified_by_regime.get(str(regime or "").upper()) or [])}
+    if not qualified:
+        return []
+    base = f"{_canonical_pattern_tag(pattern)}:{str(stage or '').upper()}"
+    return sorted(key for key in qualified if key == base or key.startswith(f"{base}:"))
+
+
 def _bear_reversal_entry_gate(
     market: str,
     regime: str,
@@ -194,21 +215,40 @@ def _bear_reversal_entry_gate(
     """
     if str(regime or "").upper() != "BEAR":
         return {"status": "NOT_APPLICABLE", "allowed": True}
-    report = _load_bear_reversal_report(str(market).lower())
-    if not report or (report.get("leakageCheck") or {}).get("status") != "PASS":
-        return {"status": "NO_VALIDATED_REPORT", "allowed": False}
     canonical = _canonical_pattern_tag(pattern)
-    expected_stage = str(report.get("entryStage") or "BUY_ZONE").upper()
-    qualified = {str(value).upper() for value in (report.get("qualifiedPatterns") or [])}
+    expected_stage = "BUY_ZONE"
+    regime_report = _load_regime_execution_report(str(market).lower())
+    qualified_keys: list[str] = []
+    validation_source = "regime_pattern_execution"
+    if regime_report and (regime_report.get("leakageCheck") or {}).get("status") == "PASS":
+        expected_stage = str(regime_report.get("entryStage") or "BUY_ZONE").upper()
+        qualified_keys = _qualified_regime_pattern_keys(regime_report, "BEAR", canonical, expected_stage)
+
+    if not qualified_keys:
+        legacy_report = _load_bear_reversal_report(str(market).lower())
+        if legacy_report and (legacy_report.get("leakageCheck") or {}).get("status") == "PASS":
+            expected_stage = str(legacy_report.get("entryStage") or "BUY_ZONE").upper()
+            legacy_qualified = {str(value).upper() for value in (legacy_report.get("qualifiedPatterns") or [])}
+            qualified_keys = sorted(f"{key}:{expected_stage}" for key in legacy_qualified)
+            validation_source = "bear_reversal_walkforward"
+
+    if not qualified_keys:
+        return {
+            "status": "WAIT_FOR_QUALIFIED_REVERSAL", "allowed": False,
+            "qualifiedPatterns": [],
+            "requiredStage": expected_stage,
+            "validationSource": validation_source,
+        }
     if (
-        canonical not in qualified
+        f"{canonical}:{str(stage or '').upper()}" not in {key.rsplit(":", 1)[0] if key.endswith(":CONFIRMED_CANDLE") else key for key in qualified_keys}
         or str(stage or "").upper() != expected_stage
         or str(direction or "").upper() != "BULLISH"
     ):
         return {
             "status": "WAIT_FOR_QUALIFIED_REVERSAL", "allowed": False,
-            "qualifiedPatterns": sorted(qualified),
+            "qualifiedPatterns": qualified_keys,
             "requiredStage": expected_stage,
+            "validationSource": validation_source,
         }
     trigger_price = _num(trigger)
     stop_price = _num(invalidation)
@@ -223,7 +263,42 @@ def _bear_reversal_entry_gate(
         "trigger": round(trigger_price, 4), "maxEntry": round(max_entry, 4),
         "stop": round(stop_price, 4), "target": round(target, 4),
         "rewardRisk": 2.0,
-        "validationSource": "bear_reversal_walkforward",
+        "qualifiedPatterns": qualified_keys,
+        "validationSource": validation_source,
+    }
+
+
+def _sideways_entry_gate(
+    market: str,
+    regime: str,
+    pattern: Any,
+    stage: Any,
+    direction: Any,
+) -> dict[str, Any]:
+    """Fail closed in sideways regimes until a pattern passes walk-forward proof."""
+    if str(regime or "").upper() != "SIDE":
+        return {"status": "NOT_APPLICABLE", "allowed": True}
+    report = _load_regime_execution_report(str(market).lower())
+    if not report or (report.get("leakageCheck") or {}).get("status") != "PASS":
+        return {"status": "NO_VALIDATED_REPORT", "allowed": False, "validationSource": "regime_pattern_execution"}
+    expected_stage = str(report.get("entryStage") or "BUY_ZONE").upper()
+    canonical = _canonical_pattern_tag(pattern)
+    qualified_keys = _qualified_regime_pattern_keys(report, "SIDE", canonical, expected_stage)
+    allowed_keys = {key.rsplit(":", 1)[0] if key.endswith(":CONFIRMED_CANDLE") else key for key in qualified_keys}
+    current_key = f"{canonical}:{str(stage or '').upper()}"
+    if current_key not in allowed_keys or str(direction or "").upper() != "BULLISH":
+        return {
+            "status": "WAIT_FOR_QUALIFIED_SIDEWAYS_PATTERN",
+            "allowed": False,
+            "qualifiedPatterns": qualified_keys,
+            "requiredStage": expected_stage,
+            "validationSource": "regime_pattern_execution",
+        }
+    return {
+        "status": "QUALIFIED_SIDEWAYS_PATTERN",
+        "allowed": True,
+        "qualifiedPatterns": qualified_keys,
+        "validationSource": "regime_pattern_execution",
     }
 
 
@@ -2699,6 +2774,27 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         # enter.  The field also makes the data dependency visible to callers.
         if str(_regime).upper() == "BEAR":
             out["bearReversalGate"] = {"status": "VALIDATION_UNAVAILABLE", "allowed": False}
+            out["recommended"] = False
+            out["canEnter"] = False
+
+    # Sideways regimes are where "small profits" are most tempting and most
+    # prone to churn.  Until a chart setup passes train/OOS execution proof,
+    # keep new long entries on hold rather than ranking a noisy range trade.
+    try:
+        _side_gate = _sideways_entry_gate(
+            context.market, _regime, pattern_strategy_tag, _geo_stage, _geo_direction,
+        )
+        out["sidewaysEntryGate"] = _side_gate
+        if str(_regime).upper() == "SIDE" and not _side_gate.get("allowed"):
+            out["recommended"] = False
+            out["canEnter"] = False
+            out["entryBlockedReason"] = str(_side_gate.get("status") or "WAIT_FOR_QUALIFIED_SIDEWAYS_PATTERN")
+            out.setdefault("computedFields", []).append("sideways_regime_entry_gate")
+        elif _side_gate.get("status") == "QUALIFIED_SIDEWAYS_PATTERN":
+            out.setdefault("computedFields", []).append("sideways_regime_structure_entry")
+    except Exception:
+        if str(_regime).upper() == "SIDE":
+            out["sidewaysEntryGate"] = {"status": "VALIDATION_UNAVAILABLE", "allowed": False}
             out["recommended"] = False
             out["canEnter"] = False
 
