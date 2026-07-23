@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-07-23 23:29:16",
-  "totalRows": 2180,
+  "updatedAt": "2026-07-24 07:21:43",
+  "totalRows": 2183,
   "olsSampleSize": 1707,
   "byStrategy": {
     "conservative_short": {
@@ -26,15 +26,15 @@
       "probAccuracy": -0.406
     },
     "conservative_mid": {
-      "total": 210,
+      "total": 213,
       "wins": 59,
-      "losses": 151,
-      "winRate": 0.281,
+      "losses": 154,
+      "winRate": 0.277,
       "avgWinPct": 11.514,
-      "avgLossPct": 7.42,
-      "payoffRatio": 1.552,
-      "avgProbability": 71.3,
-      "probAccuracy": -0.433
+      "avgLossPct": 7.427,
+      "payoffRatio": 1.55,
+      "avgProbability": 70.4,
+      "probAccuracy": -0.427
     },
     "balanced_short": {
       "total": 197,
@@ -105,11 +105,11 @@
   },
   "byMarket": {
     "kr": {
-      "total": 1047,
-      "winRate": 0.2254,
+      "total": 1050,
+      "winRate": 0.2248,
       "avgWinPct": 7.542,
-      "avgLossPct": 6.276,
-      "payoffRatio": 1.202
+      "avgLossPct": 6.281,
+      "payoffRatio": 1.201
     },
     "us": {
       "total": 1133,
@@ -121,8 +121,8 @@
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 282,
-      "actualWinRate": 0.0674
+      "count": 285,
+      "actualWinRate": 0.0667
     },
     "mid_60-75": {
       "count": 816,

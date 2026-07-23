@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T14:28:13.097707+00:00",
+  "generatedAt": "2026-07-23T22:20:29.823123+00:00",
   "asOfDate": "2026-07-22",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -22,36 +22,6 @@
     "BEAR": []
   },
   "calibration": {
-    "BREAKOUT|BULL": {
-      "setup": "BREAKOUT",
-      "regime": "BULL",
-      "blendedNetAvgPct": 0.403,
-      "blendedWinRate": 43.4,
-      "gate": "ACTIVE",
-      "sizeMultiplier": 0.65,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.403,
-      "priorRawSamples": 12141,
-      "liveFraction": 0.0,
-      "profitFactor": 1.17
-    },
-    "BREAKOUT|SIDE": {
-      "setup": "BREAKOUT",
-      "regime": "SIDE",
-      "blendedNetAvgPct": -0.118,
-      "blendedWinRate": 40.8,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -0.118,
-      "priorRawSamples": 5312,
-      "liveFraction": 0.0,
-      "profitFactor": 0.95
-    },
     "BOTTOM_CATCH|BEAR": {
       "setup": "BOTTOM_CATCH",
       "regime": "BEAR",
@@ -64,36 +34,6 @@
       "liveNetAvgPct": null,
       "priorNetAvgPct": -0.641,
       "priorRawSamples": 3686,
-      "liveFraction": 0.0,
-      "profitFactor": 0.8
-    },
-    "BREAKOUT|BEAR": {
-      "setup": "BREAKOUT",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -0.197,
-      "blendedWinRate": 41.4,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -0.197,
-      "priorRawSamples": 1286,
-      "liveFraction": 0.0,
-      "profitFactor": 0.92
-    },
-    "BOTTOM_CATCH|BULL": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BULL",
-      "blendedNetAvgPct": -0.571,
-      "blendedWinRate": 39.9,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -0.571,
-      "priorRawSamples": 2068,
       "liveFraction": 0.0,
       "profitFactor": 0.8
     },
@@ -111,6 +51,66 @@
       "priorRawSamples": 2957,
       "liveFraction": 0.0,
       "profitFactor": 0.94
+    },
+    "BREAKOUT|BEAR": {
+      "setup": "BREAKOUT",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -0.197,
+      "blendedWinRate": 41.4,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -0.197,
+      "priorRawSamples": 1286,
+      "liveFraction": 0.0,
+      "profitFactor": 0.92
+    },
+    "BREAKOUT|SIDE": {
+      "setup": "BREAKOUT",
+      "regime": "SIDE",
+      "blendedNetAvgPct": -0.118,
+      "blendedWinRate": 40.8,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -0.118,
+      "priorRawSamples": 5312,
+      "liveFraction": 0.0,
+      "profitFactor": 0.95
+    },
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "blendedNetAvgPct": -0.571,
+      "blendedWinRate": 39.9,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -0.571,
+      "priorRawSamples": 2068,
+      "liveFraction": 0.0,
+      "profitFactor": 0.8
+    },
+    "BREAKOUT|BULL": {
+      "setup": "BREAKOUT",
+      "regime": "BULL",
+      "blendedNetAvgPct": 0.403,
+      "blendedWinRate": 43.4,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 0.65,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": 0.403,
+      "priorRawSamples": 12141,
+      "liveFraction": 0.0,
+      "profitFactor": 1.17
     }
   }
 }
