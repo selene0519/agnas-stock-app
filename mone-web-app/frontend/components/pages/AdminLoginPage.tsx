@@ -58,7 +58,7 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
           </span>
           <div>
             <h1 className="text-xl font-bold text-slate-100">로그인</h1>
-            <p className="text-xs text-slate-500">카카오, 구글, 관리자 로그인을 한 화면에서 선택하세요.</p>
+            <p className="text-xs text-slate-400">카카오, 구글, 관리자 로그인을 한 화면에서 선택하세요.</p>
           </div>
         </div>
 
@@ -95,7 +95,7 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
             관리자 ID
           </label>
           <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 focus-within:border-blue-500/70">
-            <UserRound size={16} className="shrink-0 text-slate-500" />
+            <UserRound size={16} className="shrink-0 text-slate-400" />
             <input
               id="admin-id"
               type="text"
@@ -111,7 +111,7 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
             비밀번호
           </label>
           <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 focus-within:border-blue-500/70">
-            <Lock size={16} className="shrink-0 text-slate-500" />
+            <Lock size={16} className="shrink-0 text-slate-400" />
             <input
               id="admin-password"
               type="password"

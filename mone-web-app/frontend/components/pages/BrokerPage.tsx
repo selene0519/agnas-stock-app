@@ -48,7 +48,7 @@ function statusTone(status?: string, connected?: boolean) {
   if (connected) return "text-emerald-300";
   if (status === "LOCAL_BRIDGE_REQUIRED") return "text-amber-300";
   if (status === "LOAD_ERROR") return "text-red-300";
-  return "text-slate-500";
+  return "text-slate-400";
 }
 
 function BridgeCard({
@@ -108,7 +108,7 @@ function BridgeCard({
             {statusLabel(status.status, connected)}
             {status.accountNoHint ? ` · ${status.accountNoHint}` : ""}
           </div>
-          <div className="mt-1 text-[11px] text-slate-500">
+          <div className="mt-1 text-[11px] text-slate-400">
             마지막 업로드 {fmtTime(status.lastSync)}
             {connected && status.itemCount != null ? ` · ${status.itemCount}종목` : ""}
           </div>
@@ -116,7 +116,7 @@ function BridgeCard({
         {connected ? (
           <CheckCircle2 className="mt-0.5 text-emerald-400" size={18} />
         ) : (
-          <Clock3 className="mt-0.5 text-slate-500" size={18} />
+          <Clock3 className="mt-0.5 text-slate-400" size={18} />
         )}
       </div>
 
@@ -127,7 +127,7 @@ function BridgeCard({
       )}
 
       <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Local Bridge</div>
+        <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Local Bridge</div>
         <ol className="mt-2 space-y-1.5 text-xs leading-5 text-slate-400">
           <li>1. 내 PC 작업스케줄러가 {broker.name} API를 호출합니다.</li>
           <li>2. App Key/App Secret은 PC 환경변수나 로컬 설정에만 둡니다.</li>
@@ -195,7 +195,7 @@ export default function BrokerPage({ userToken, onLogin, onNavigate }: BrokerPag
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-4 text-center">
         <div className="space-y-2">
           <div className="text-base font-semibold text-slate-200">계좌 연동</div>
-          <div className="text-sm leading-relaxed text-slate-500">
+          <div className="text-sm leading-relaxed text-slate-400">
             로그인 후 계좌 연동을 사용할 수 있습니다.
             <br />
             계좌를 연동하면 MONE이 보유종목, 평가손익, 손절 기준, 위험 상태를 자동으로 점검합니다.
@@ -227,7 +227,7 @@ export default function BrokerPage({ userToken, onLogin, onNavigate }: BrokerPag
     <div className="space-y-5 pb-24">
       <div>
         <div className="text-base font-bold text-slate-100">계좌 연동</div>
-        <div className="mt-1 text-xs leading-relaxed text-slate-500">
+        <div className="mt-1 text-xs leading-relaxed text-slate-400">
           증권사 API는 내 PC의 로컬 브릿지에서만 호출합니다. Render 서버에는 App Key/App Secret을 저장하지 않고,
           보유종목 스냅샷만 HTTPS로 업로드합니다.
         </div>
@@ -262,10 +262,10 @@ export default function BrokerPage({ userToken, onLogin, onNavigate }: BrokerPag
 
       <div className="rounded-2xl border border-slate-800/60 bg-slate-900/30 p-4">
         <div className="flex items-start gap-3">
-          <Link2 className="mt-0.5 shrink-0 text-slate-500" size={16} />
+          <Link2 className="mt-0.5 shrink-0 text-slate-400" size={16} />
           <div>
             <div className="text-xs font-semibold text-slate-300">작업스케줄러 연결 방식</div>
-            <div className="mt-1 text-[11px] leading-5 text-slate-500">
+            <div className="mt-1 text-[11px] leading-5 text-slate-400">
               로컬 브릿지 스크립트가 실행되면 `/api/broker/local-bridge/upload`로 보유종목을 업로드합니다.
               업로드 후 보유·리스크 화면에서 토스증권/한국투자 출처와 마지막 동기화 시간이 표시됩니다.
             </div>

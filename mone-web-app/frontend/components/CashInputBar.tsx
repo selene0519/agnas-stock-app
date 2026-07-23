@@ -55,13 +55,13 @@ export default function CashInputBar() {
           <div className="text-[12px] text-slate-400">가용 예수금</div>
           <div className="mt-1 font-mono text-[20px] font-semibold tabular-nums text-slate-100">{cash > 0 ? fmtWon(cash) : "입력 필요"}</div>
         </div>
-        <span className="shrink-0 text-slate-500">
+        <span className="shrink-0 text-slate-400">
           {collapsed ? <ChevronRight size={18} /> : <ChevronUp size={18} />}
         </span>
       </button>
 
       <div className={`${collapsed ? "hidden" : "block"} border-t border-slate-800/80 px-3.5 pb-3.5 pt-3`}>
-        <p className="mb-2 text-[10.5px] text-slate-500">
+        <p className="mb-2 text-[10.5px] text-slate-400">
           입력값은 브라우저에만 저장되며, 추천 카드의 성향별 매수 수량 계산에 사용됩니다.
         </p>
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -73,15 +73,15 @@ export default function CashInputBar() {
           />
           <div className="grid grid-cols-3 gap-1 text-center text-[11px]">
             <div className="mone-home-inset rounded-[8px] border px-2 py-1.5">
-              <div className="text-slate-500">보수 2%</div>
+              <div className="text-slate-400">보수 2%</div>
               <div className="font-mono text-sky-300">{fmtWon(allocation.conservative)}</div>
             </div>
             <div className="mone-home-inset rounded-[8px] border px-2 py-1.5">
-              <div className="text-slate-500">균형 5%</div>
+              <div className="text-slate-400">균형 5%</div>
               <div className="font-mono text-violet-300">{fmtWon(allocation.balanced)}</div>
             </div>
             <div className="mone-home-inset rounded-[8px] border px-2 py-1.5">
-              <div className="text-slate-500">공격 12%</div>
+              <div className="text-slate-400">공격 12%</div>
               <div className="font-mono text-orange-300">{fmtWon(allocation.aggressive)}</div>
             </div>
           </div>

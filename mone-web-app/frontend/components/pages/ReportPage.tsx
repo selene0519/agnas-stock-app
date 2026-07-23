@@ -12,7 +12,7 @@ type Tab = "premarket" | "closing" | "performance";
 function Metric({ label, value, accent = false }: { label: string; value: any; accent?: boolean }) {
   return (
     <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-xs text-slate-400">{label}</div>
       <div className={`mt-2 min-w-0 break-words font-mono text-[clamp(1rem,4.5vw,1.25rem)] font-bold leading-tight ${accent ? "text-emerald-400" : "text-slate-100"}`}>{value}</div>
     </div>
   );
@@ -79,7 +79,7 @@ function PnlCurve({ items }: { items: any[] }) {
 
   if (points.length < 2) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-950/60 py-6 text-xs text-slate-500">
+      <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-950/60 py-6 text-xs text-slate-400">
         누적 PnL 곡선 — 검증 완료 데이터 부족 ({points.length}건, 최소 2건 필요)
       </div>
     );
@@ -119,7 +119,7 @@ function PnlCurve({ items }: { items: any[] }) {
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-400">누적 PnL 곡선</span>
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500">{n}건</span>
+          <span className="text-slate-400">{n}건</span>
           <span className={`font-mono font-semibold ${isPos ? "text-emerald-300" : "text-red-300"}`}>
             {isPos ? "+" : ""}{totalReturn.toFixed(2)}%
           </span>
@@ -176,9 +176,9 @@ function StrategyBreakdown({ items }: { items: any[] }) {
         <table className="w-full min-w-[260px] text-[11px]">
           <thead>
             <tr className="border-b border-slate-800">
-              <th className="pb-2 text-left text-slate-500">전략</th>
+              <th className="pb-2 text-left text-slate-400">전략</th>
               {horizons.map((h) => (
-                <th key={h} className="pb-2 text-center text-slate-500">{horizonLabel(h)}</th>
+                <th key={h} className="pb-2 text-center text-slate-400">{horizonLabel(h)}</th>
               ))}
             </tr>
           </thead>
@@ -225,7 +225,7 @@ const EMPTY_MSGS: Record<Tab, string> = {
 
 function EmptyState({ tab, error }: { tab: Tab; error?: string }) {
   return (
-    <div className="px-5 py-14 text-center text-sm text-slate-500">
+    <div className="px-5 py-14 text-center text-sm text-slate-400">
       {error ? `오류: ${error}` : EMPTY_MSGS[tab]}
     </div>
   );
@@ -440,7 +440,7 @@ export default function ReportPage() {
           <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:p-5">
             <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-sm font-semibold text-slate-200">추천/가상운용 검증 수익률</span>
-              <span className="text-xs text-slate-500">{virtual.returnBasis || "체결 종목 기준, 미체결 제외"}</span>
+              <span className="text-xs text-slate-400">{virtual.returnBasis || "체결 종목 기준, 미체결 제외"}</span>
             </div>
             {virtual.todayStatus === "NO_DATA" && (
               <div className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-200 sm:text-sm">
@@ -543,7 +543,7 @@ export default function ReportPage() {
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <span className="font-semibold text-slate-100 text-sm">{displayName(item)}</span>
-                        <span className="ml-1.5 font-mono text-[10px] text-slate-500">{item.symbol} · {(item.market || market).toUpperCase()}</span>
+                        <span className="ml-1.5 font-mono text-[10px] text-slate-400">{item.symbol} · {(item.market || market).toUpperCase()}</span>
                       </div>
                       {(closing || virtualTab) && retPct !== 0 && (
                         <span className={`font-mono text-sm font-bold ${retPct > 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -553,18 +553,18 @@ export default function ReportPage() {
                     </div>
                     {(closing || virtualTab) ? (
                       <div className="flex flex-wrap gap-2 text-[11px]">
-                        <span className="text-slate-500">{item.date || item.tradeDate || "-"}</span>
-                        <span className={isExec ? "text-emerald-400" : "text-slate-500"}>{execLabel}</span>
+                        <span className="text-slate-400">{item.date || item.tradeDate || "-"}</span>
+                        <span className={isExec ? "text-emerald-400" : "text-slate-400"}>{execLabel}</span>
                         <span className="text-slate-300">{item.outcomeResult || item.result || "검증 대기"}</span>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-1 text-[11px]">
-                        <span className="text-slate-500">현재 <span className="font-mono text-slate-200">{priceText(item, "current", "-")}</span></span>
-                        <span className="text-slate-500">진입 <span className="font-mono text-blue-300">{priceText(item, "entry", "-")}</span></span>
-                        <span className="text-slate-500">손절 <span className="font-mono text-red-300">{priceText(item, "stop", "-")}</span></span>
-                        <span className="text-slate-500">목표 <span className="font-mono text-emerald-300">{priceText(item, "target", "-")}</span></span>
-                        <span className="text-slate-500">확률 <span className="font-mono text-amber-300">{probabilityText(item, "-")}</span></span>
-                        <span className="text-slate-500">예상 <span className="font-mono text-violet-300">{priceText(item, "expected", "-")}</span></span>
+                        <span className="text-slate-400">현재 <span className="font-mono text-slate-200">{priceText(item, "current", "-")}</span></span>
+                        <span className="text-slate-400">진입 <span className="font-mono text-blue-300">{priceText(item, "entry", "-")}</span></span>
+                        <span className="text-slate-400">손절 <span className="font-mono text-red-300">{priceText(item, "stop", "-")}</span></span>
+                        <span className="text-slate-400">목표 <span className="font-mono text-emerald-300">{priceText(item, "target", "-")}</span></span>
+                        <span className="text-slate-400">확률 <span className="font-mono text-amber-300">{probabilityText(item, "-")}</span></span>
+                        <span className="text-slate-400">예상 <span className="font-mono text-violet-300">{priceText(item, "expected", "-")}</span></span>
                       </div>
                     )}
                   </div>
@@ -575,7 +575,7 @@ export default function ReportPage() {
             {/* 데스크톱 테이블 뷰 */}
             <div className="hidden overflow-x-auto sm:block">
               <table className="w-full min-w-[640px] text-left text-sm">
-                <thead className="bg-slate-950/50 text-xs text-slate-500">
+                <thead className="bg-slate-950/50 text-xs text-slate-400">
                   <tr>
                     <th className="px-4 py-3">종목</th>
                     {closing || virtualTab ? (
@@ -602,7 +602,7 @@ export default function ReportPage() {
                     <tr key={`${item.id || item.symbol || "r"}-${index}`} className="border-t border-slate-800/70 hover:bg-slate-900/30">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-slate-100">{displayName(item)}</div>
-                        <div className="mt-0.5 font-mono text-xs text-slate-500">{item.symbol || "-"} · {(item.market || market).toUpperCase()}</div>
+                        <div className="mt-0.5 font-mono text-xs text-slate-400">{item.symbol || "-"} · {(item.market || market).toUpperCase()}</div>
                       </td>
                       {closing || virtualTab ? (
                         (() => {
@@ -614,10 +614,10 @@ export default function ReportPage() {
                           return (
                             <>
                               <td className="px-4 py-3 font-mono text-xs text-slate-300">{item.date || item.tradeDate || "-"}</td>
-                              <td className={`px-4 py-3 text-sm font-medium ${isExec ? "text-emerald-400" : "text-slate-500"}`}>{execLabel}</td>
+                              <td className={`px-4 py-3 text-sm font-medium ${isExec ? "text-emerald-400" : "text-slate-400"}`}>{execLabel}</td>
                               <td className="px-4 py-3 text-sm text-slate-200">{item.outcomeResult || item.result || "검증 대기"}</td>
                               <td className={`px-4 py-3 font-mono text-sm ${retColor}`}>{retPct !== 0 ? `${retPct >= 0 ? "+" : ""}${retPct.toFixed(2)}%` : "-"}</td>
-                              <td className="px-4 py-3 text-xs text-slate-500">{item.sourceFile || item.source || "-"}</td>
+                              <td className="px-4 py-3 text-xs text-slate-400">{item.sourceFile || item.source || "-"}</td>
                             </>
                           );
                         })()
@@ -664,7 +664,7 @@ export default function ReportPage() {
                   { label: "검증 대기", value: `${valDashboard.summary?.totalPending ?? 0}건` },
                 ].map(({ label, value }) => (
                   <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 text-center sm:p-4">
-                    <div className="text-xs text-slate-500">{label}</div>
+                    <div className="text-xs text-slate-400">{label}</div>
                     <div className="mt-1.5 text-lg font-bold text-slate-100 sm:text-xl">{value}</div>
                   </div>
                 ))}
@@ -677,9 +677,9 @@ export default function ReportPage() {
                   <table className="w-full min-w-[300px] text-[11px]">
                     <thead>
                       <tr className="border-b border-slate-800 bg-slate-900/80">
-                        <th className="px-3 py-2.5 text-left text-slate-500">전략</th>
+                        <th className="px-3 py-2.5 text-left text-slate-400">전략</th>
                         {(["단기", "스윙", "중기"] as const).map((h) => (
-                          <th key={h} className="px-3 py-2.5 text-center text-slate-500">{h}</th>
+                          <th key={h} className="px-3 py-2.5 text-center text-slate-400">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -701,7 +701,7 @@ export default function ReportPage() {
                                     <div className={`h-1.5 rounded-full ${barColor}`} style={{ width: `${Math.min(wr, 100)}%` }} />
                                   </div>
                                 )}
-                                <div className="mt-0.5 text-slate-500">
+                                <div className="mt-0.5 text-slate-400">
                                   {s?.completed ? `${s.wins}/${s.completed}` : `대기 ${s?.pendingCount ?? 0}`}
                                 </div>
                                 {s?.avgReturn != null && (
@@ -735,12 +735,12 @@ export default function ReportPage() {
                         <div key={lc.predictionId} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-[11px]">
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <span className="font-semibold text-slate-200">{lc.name || lc.symbol}</span>
-                            <span className="ml-1.5 hidden text-slate-500 sm:inline">
+                            <span className="ml-1.5 hidden text-slate-400 sm:inline">
                               {lc.symbol} · {modeLabel(lc.mode as Mode)} · {horizonLabel(lc.horizon as Horizon)}
                             </span>
                           </div>
                           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                            <span className="hidden text-slate-500 sm:inline">{String(lc.createdAt || "").slice(0, 10)}</span>
+                            <span className="hidden text-slate-400 sm:inline">{String(lc.createdAt || "").slice(0, 10)}</span>
                             {lc.returnPct != null && (
                               <span className={`font-mono ${lc.returnPct >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                                 {lc.returnPct >= 0 ? "+" : ""}{lc.returnPct.toFixed(1)}%

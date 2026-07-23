@@ -153,7 +153,7 @@ function Panel({ title, icon, badge, badgeLabel, children, defaultOpen = false }
           {title}
           {badge && <GradeBadge grade={badge} label={badgeLabel} />}
         </div>
-        {open ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
+        {open ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
       </button>
       {open && <div className="border-t border-slate-700/40 px-4 pb-4 pt-3">{children}</div>}
     </div>
@@ -196,7 +196,7 @@ export default function StockResearchPanel({
     <div className="space-y-3">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
           리서치 분석
         </p>
         <button
@@ -210,7 +210,7 @@ export default function StockResearchPanel({
       </div>
 
       {loading && !data && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-500">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-400">
           분석 중...
         </div>
       )}
@@ -252,13 +252,13 @@ export default function StockResearchPanel({
             </div>
             {displayData.downsideRisk.scenarios.length > 0 && (
               <div className="mt-3">
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                   스트레스 시나리오
                 </p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {displayData.downsideRisk.scenarios.map((sc, i) => (
                     <div key={i} className="rounded-lg border border-red-500/20 bg-red-950/10 px-2 py-1.5 text-center">
-                      <div className="text-[10px] text-slate-500">{sc.label}</div>
+                      <div className="text-[10px] text-slate-400">{sc.label}</div>
                       <div className="mt-0.5 font-mono text-xs font-bold text-red-300">
                         {sc.price.toLocaleString()}
                       </div>
@@ -293,7 +293,7 @@ export default function StockResearchPanel({
               {displayData.cognitiveBias.checks.map((c, i) => <BiasCard key={i} check={c} />)}
             </div>
             {!displayData.inHoldings && !displayData.inWatchlist && (
-              <p className="mt-2 text-[11px] text-slate-500">보유/관심 종목에 추가하면 더 정확한 인지 교정 분석이 가능합니다.</p>
+              <p className="mt-2 text-[11px] text-slate-400">보유/관심 종목에 추가하면 더 정확한 인지 교정 분석이 가능합니다.</p>
             )}
           </Panel>
         </>

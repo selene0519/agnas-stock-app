@@ -208,7 +208,7 @@ export default function AdvancedPage({
               1회 거래 리스크 %
               <input type="number" value={riskPct} onChange={(event) => setRiskPct(Number(event.target.value))} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 md:w-64" />
             </label>
-            <div className="max-w-xl self-end text-xs leading-5 text-slate-500">
+            <div className="max-w-xl self-end text-xs leading-5 text-slate-400">
               계산은 백엔드 Kelly/RiskReward API 결과를 우선 표시하고, 수량은 입력한 자본과 손절폭 기준으로 산출합니다. 자동 주문은 하지 않습니다.
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function AdvancedPage({
             className="mt-4 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50">
             {mcLoading ? "시뮬레이션 중..." : "시뮬레이션 실행"}
           </button>
-          <div className="mt-3 text-xs text-slate-500">
+          <div className="mt-3 text-xs text-slate-400">
             스캐너 표의 MC 버튼을 누르면 선택 종목의 현재가·목표가를 기준으로 기대수익률을 자동 채웁니다. 변동성은 전략 성향 기본값을 넣고 필요하면 직접 조정합니다.
           </div>
           {mcResult && (

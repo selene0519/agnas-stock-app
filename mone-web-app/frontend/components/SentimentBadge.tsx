@@ -29,7 +29,7 @@ export function SentimentBadge({
 
   if (loading) {
     return (
-      <span className="inline-flex items-center rounded-full border border-slate-700/40 bg-slate-800/40 px-2 py-0.5 text-[10px] text-slate-500">
+      <span className="inline-flex items-center rounded-full border border-slate-700/40 bg-slate-800/40 px-2 py-0.5 text-[10px] text-slate-400">
         분석중...
       </span>
     );

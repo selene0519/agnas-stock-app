@@ -104,7 +104,7 @@ const HORIZON_SHORT: Record<string, string> = { short: "단기", swing: "스윙"
 function metric(label: string, value: any, tone = "text-slate-100") {
   return (
     <div className="rounded-lg bg-slate-950/60 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
-      <div className="text-[11px] text-slate-500">{label}</div>
+      <div className="text-[11px] text-slate-400">{label}</div>
       <div className={`mt-1 font-mono text-lg font-semibold tabular-nums ${tone}`}>{value}</div>
     </div>
   );
@@ -176,7 +176,7 @@ function EquityCurveSparkline({ points }: { points: Array<{ date: string; cumPnl
         {/* last point dot */}
         <circle cx={toX(points.length - 1)} cy={toY(finalPnl)} r="3" fill={lineColor} />
       </svg>
-      <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-500">
+      <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-400">
         <span>{points[0]?.date || ""}</span>
         <span className={finalPnl >= 0 ? "text-emerald-300" : "text-red-300"}>{finalPnl >= 0 ? "+" : ""}{finalPnl.toFixed(2)}%</span>
         <span>{points[points.length - 1]?.date || ""}</span>
@@ -192,7 +192,7 @@ function StrategyMatrix({ strategyRows }: { strategyRows: any[] }) {
     if (row.market === "all") lookup.set(`${row.mode}_${row.horizon}`, row);
   }
   const winRateTone = (wr: number | null) => {
-    if (wr == null) return "bg-slate-800 text-slate-500";
+    if (wr == null) return "bg-slate-800 text-slate-400";
     if (wr >= 0.6) return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
     if (wr >= 0.45) return "bg-amber-500/15 text-amber-300 border border-amber-500/25";
     return "bg-red-500/15 text-red-300 border border-red-500/25";
@@ -201,7 +201,7 @@ function StrategyMatrix({ strategyRows }: { strategyRows: any[] }) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[400px] text-center text-xs">
         <thead>
-          <tr className="text-slate-500">
+          <tr className="text-slate-400">
             <th className="pb-2 pr-3 text-left font-medium">전략</th>
             {HORIZONS_ORDER.map((hz) => (
               <th key={hz} className="pb-2 font-medium">{HORIZON_KO[hz]}</th>
@@ -335,19 +335,19 @@ function AiPaperSurvivalPanel({
                   <span className="rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300">{mk.toUpperCase()}</span>
                   <span className={`font-mono text-xs font-semibold ${stateTone(state)}`}>{state}</span>
                 </div>
-                <span className="text-[11px] text-slate-500">후보 {item?.candidateCount ?? 0}개</span>
+                <span className="text-[11px] text-slate-400">후보 {item?.candidateCount ?? 0}개</span>
               </div>
               <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
                 <div className="flex items-center justify-between gap-3 text-[11px]">
-                  <span className="text-slate-500">현재 AI</span>
+                  <span className="text-slate-400">현재 AI</span>
                   <span className="truncate text-right font-semibold text-slate-200">{activeAgent.label || summary.agentLabel || "-"}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
-                  <span className="text-slate-500">OOS 판정</span>
+                  <span className="text-slate-400">OOS 판정</span>
                   <span className={`truncate text-right font-semibold ${verdictTone(proof.verdict)}`}>{proof.verdict || "UNPROVEN"}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
-                  <span className="text-slate-500">검증 순위</span>
+                  <span className="text-slate-400">검증 순위</span>
                   <span className="text-right text-slate-300">
                     {proof.currentRank ? `${proof.currentRank}/${proof.profileCount}` : "-"}
                     {proof.beatsBestBaseline ? " · baseline beat" : ""}
@@ -368,38 +368,38 @@ function AiPaperSurvivalPanel({
               <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
                 <div className="mb-2 flex items-center justify-between gap-3 text-[11px]">
                   <span className="font-semibold text-slate-300">실전 NAV</span>
-                  <span className={liveEnough ? "text-slate-500" : "text-amber-300"}>
+                  <span className={liveEnough ? "text-slate-400" : "text-amber-300"}>
                     {liveEnough ? `${live.sampleCount}개 구간` : `샘플 부족 ${live.sampleCount ?? 0}/5`}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
                   <div className="flex justify-between gap-2">
-                    <span className="text-slate-500">누적</span>
+                    <span className="text-slate-400">누적</span>
                     <span className={`font-mono ${Number(live.totalReturnPct || 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtSignedPct(live.totalReturnPct)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-slate-500">MDD</span>
+                    <span className="text-slate-400">MDD</span>
                     <span className="font-mono text-red-300">{fmtPctValue(live.mddPct)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-slate-500">샤프</span>
+                    <span className="text-slate-400">샤프</span>
                     <span className="font-mono text-slate-200">{live.sharpe == null ? "-" : Number(live.sharpe).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-slate-500">승률</span>
+                    <span className="text-slate-400">승률</span>
                     <span className="font-mono text-slate-200">{fmtPctValue(live.winRate, 1)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-slate-500">현금비중</span>
+                    <span className="text-slate-400">현금비중</span>
                     <span className="font-mono text-slate-200">{fmtPctValue(live.cashPct, 1)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-slate-500">고점</span>
+                    <span className="text-slate-400">고점</span>
                     <span className="font-mono text-slate-200">{fmtMoney(live.peakValue, mk)}</span>
                   </div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
+              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
                 <span>보유 {summary.positionCount ?? positions.length ?? 0}개</span>
                 <span>거래 {summary.tradeCount ?? 0}회</span>
                 <span>NAV {data?.navRows ?? 0}행</span>
@@ -407,7 +407,7 @@ function AiPaperSurvivalPanel({
               {proofRows.length > 0 && (
                 <div className="mt-3 space-y-1">
                   {proofRows.map((row: any, idx: number) => (
-                    <div key={`${mk}-${row.agentId}-${idx}`} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-[10px] text-slate-500">
+                    <div key={`${mk}-${row.agentId}-${idx}`} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-[10px] text-slate-400">
                       <span className={row.agentId === activeAgent.id ? "truncate font-semibold text-slate-200" : "truncate"}>{idx + 1}. {row.agentLabel}</span>
                       <span className="font-mono">{Number(row.avgNetPnlPct || 0).toFixed(2)}%</span>
                       <span className="font-mono">WR {Number(row.winRate || 0).toFixed(1)}%</span>
@@ -434,13 +434,13 @@ function AiPaperSurvivalPanel({
                     <span className="truncate text-xs font-semibold text-slate-200">
                       {action.name || action.symbol || action.reason}
                     </span>
-                    {action.symbol && <span className="font-mono text-[10px] text-slate-500">{action.symbol}</span>}
+                    {action.symbol && <span className="font-mono text-[10px] text-slate-400">{action.symbol}</span>}
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-500">{action.decision || action.reason || "-"}</div>
+                  <div className="mt-1 text-[11px] text-slate-400">{action.decision || action.reason || "-"}</div>
                 </div>
                 <div className="text-right font-mono text-[11px] text-slate-300">
                   <div>{action.price == null ? "-" : fmtMoney(action.price, action.market)}</div>
-                  {action.quantity != null && <div className="text-slate-500">x {Number(action.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>}
+                  {action.quantity != null && <div className="text-slate-400">x {Number(action.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>}
                 </div>
               </div>
             ))}
@@ -949,7 +949,7 @@ export default function VirtualJournalPage() {
 
         <div className="mt-4">
           <SegmentedControl<JournalView> options={views.map((v) => ({ value: v.id, label: v.label }))} value={view} onChange={setView} className="w-full" />
-          <p className="mt-1.5 text-[11px] leading-4 text-slate-500">
+          <p className="mt-1.5 text-[11px] leading-4 text-slate-400">
             {view === "journal" && "체결·평가된 개별 거래와 자동 캡처·리플레이·보정 후보입니다."}
             {view === "perf" && "누적 성과·전략 매트릭스·귀속분석·모델 자기개선 피드백입니다."}
             {view === "diag" && "추천 로직 개선을 위한 진단 지표입니다. 현재 추천 순위에는 직접 반영되지 않습니다."}
@@ -995,7 +995,7 @@ export default function VirtualJournalPage() {
               실패 원인 분석은 추천 로직 개선을 위한 진단 지표이며, 현재 추천 순위에는 직접 반영되지 않습니다.
             </p>
           </div>
-          <span className="font-mono text-[11px] uppercase tracking-wide text-slate-500">
+          <span className="font-mono text-[11px] uppercase tracking-wide text-slate-400">
             {String(scope.market).toUpperCase()} / {scope.mode} / {scope.horizon}
           </span>
         </div>
@@ -1047,7 +1047,7 @@ export default function VirtualJournalPage() {
                 onChange={setFailureBasis}
                 className="w-full"
               />
-              <div className="text-[11px] leading-4 text-slate-500">{selectedFailureNote}</div>
+              <div className="text-[11px] leading-4 text-slate-400">{selectedFailureNote}</div>
             </div>
             <div className="space-y-2">
               {selectedFailureRows.map((item: any) => {
@@ -1057,11 +1057,11 @@ export default function VirtualJournalPage() {
                   <div key={reason} className="flex items-center justify-between gap-3 rounded-md bg-slate-900/70 px-3 py-2">
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-slate-200">{failureLabel(reason)}</div>
-                      <div className="font-mono text-[10px] text-slate-500">{reason}</div>
+                      <div className="font-mono text-[10px] text-slate-400">{reason}</div>
                     </div>
                     <div className="text-right">
                       <div className="font-mono text-sm font-semibold tabular-nums text-slate-100">{item.count ?? 0}</div>
-                      <div className="font-mono text-[10px] text-slate-500">
+                      <div className="font-mono text-[10px] text-slate-400">
                         {failureBasis === "all" ? "전체 대비 " : "그룹 내 "}
                         {fmtRate(ratio)}
                       </div>
@@ -1073,7 +1073,7 @@ export default function VirtualJournalPage() {
                 );
               })}
               {!selectedFailureRows.length && (
-                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">분석 가능한 평가 데이터가 아직 없습니다.</div>
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-400">분석 가능한 평가 데이터가 아직 없습니다.</div>
               )}
             </div>
           </div>
@@ -1089,7 +1089,7 @@ export default function VirtualJournalPage() {
                     </div>
                     <span className="font-mono text-xs tabular-nums text-slate-300">n={row.count ?? 0}</span>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 font-mono text-[10px] text-slate-500">
+                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 font-mono text-[10px] text-slate-400">
                     <span>{String(row.market || "-").toUpperCase()}</span>
                     <span>{row.mode || "-"}</span>
                     <span>{row.horizon || "-"}</span>
@@ -1106,7 +1106,7 @@ export default function VirtualJournalPage() {
                 </div>
               ))}
               {!(failureAnalytics?.groups || []).length && (
-                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">분해할 데이터가 아직 없습니다.</div>
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-400">분해할 데이터가 아직 없습니다.</div>
               )}
             </div>
           </div>
@@ -1124,7 +1124,7 @@ export default function VirtualJournalPage() {
               현재 추천 로직에는 직접 반영되지 않는 진단 결과입니다. 아래 항목은 바로 로직을 바꾸라는 뜻이 아니라, 먼저 검증해야 할 순서입니다.
             </p>
           </div>
-          <span className="font-mono text-[11px] uppercase tracking-wide text-slate-500">
+          <span className="font-mono text-[11px] uppercase tracking-wide text-slate-400">
             top {priorityItems.length || 0} / diagnostic only
           </span>
         </div>
@@ -1139,7 +1139,7 @@ export default function VirtualJournalPage() {
                   <div className="min-w-0">
                     <div className="font-mono text-[10px] text-cyan-300">#{item.rank ?? "-"}</div>
                     <div className="mt-1 break-keep text-sm font-semibold leading-5 text-slate-100">{item.title || item.issueType}</div>
-                    <div className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-500">{item.issueType || "-"}</div>
+                    <div className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-400">{item.issueType || "-"}</div>
                   </div>
                   <span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${severityTone(String(item.severity || "low"))}`}>
                     {severityLabel(String(item.severity || "low"))}
@@ -1147,19 +1147,19 @@ export default function VirtualJournalPage() {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-center">
                   <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-1.5">
-                    <div className="text-[10px] text-slate-500">근거</div>
+                    <div className="text-[10px] text-slate-400">근거</div>
                     <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{evidence.count ?? 0}건</div>
                   </div>
                   <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-1.5">
-                    <div className="text-[10px] text-slate-500">전체 대비</div>
+                    <div className="text-[10px] text-slate-400">전체 대비</div>
                     <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(overallPriorityRatio(evidence))}</div>
                   </div>
                   <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-1.5">
-                    <div className="text-[10px] text-slate-500">조건 충족률</div>
+                    <div className="text-[10px] text-slate-400">조건 충족률</div>
                     <div className="font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(conditionRate)}</div>
                   </div>
                   <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-1.5">
-                    <div className="text-[10px] text-slate-500">MAE</div>
+                    <div className="text-[10px] text-slate-400">MAE</div>
                     <div className="font-mono text-xs font-semibold text-rose-300">{evidence.avgMAE == null ? "-" : `${Number(evidence.avgMAE).toFixed(2)}%`}</div>
                   </div>
                 </div>
@@ -1171,7 +1171,7 @@ export default function VirtualJournalPage() {
             );
           })}
           {!priorityItems.length && (
-            <div className="rounded-lg bg-slate-950/55 px-3 py-8 text-center text-xs text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] lg:col-span-3">
+            <div className="rounded-lg bg-slate-950/55 px-3 py-8 text-center text-xs text-slate-400 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] lg:col-span-3">
               개선 우선순위를 만들 평가 데이터가 아직 없습니다.
             </div>
           )}
@@ -1207,11 +1207,11 @@ export default function VirtualJournalPage() {
             <div className="mb-2 text-xs font-semibold text-slate-400">연관성 요약</div>
             <div className="grid grid-cols-2 gap-2">
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-                <div className="text-[10px] text-slate-500">과열 진입</div>
+                <div className="text-[10px] text-slate-400">과열 진입</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(stopLossSummary.overextensionAssociationRate)}</div>
               </div>
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-                <div className="text-[10px] text-slate-500">갭 변동</div>
+                <div className="text-[10px] text-slate-400">갭 변동</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{fmtRate(stopLossSummary.marketGapAssociationRate)}</div>
               </div>
             </div>
@@ -1228,15 +1228,15 @@ export default function VirtualJournalPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-slate-200">{stopLossCauseLabel(String(item.causeType || ""))}</div>
-                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-500">{item.causeType || "-"}</div>
+                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-400">{item.causeType || "-"}</div>
                     </div>
-                    <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-400">#{index + 1}</span>
                   </div>
                   <div className="mt-1 break-keep text-[11px] leading-5 text-slate-400">{item.summary || item.title || "-"}</div>
                 </div>
               ))}
               {!stopLossCauses.length && (
-                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">손절 실패 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-400">손절 실패 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
               )}
             </div>
           </div>
@@ -1272,19 +1272,19 @@ export default function VirtualJournalPage() {
             <div className="mb-2 text-xs font-semibold text-slate-400">before / after replay</div>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">손절 실패율 전</div>
+                <div className="text-[10px] text-slate-400">손절 실패율 전</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-rose-300">{fmtRate(entryTimingReplay.stopFailureRateBefore)}</div>
               </div>
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">손절 실패율 후</div>
+                <div className="text-[10px] text-slate-400">손절 실패율 후</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-rose-300">{fmtRate(entryTimingReplay.stopFailureRateAfter)}</div>
               </div>
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">평균 수익률 전</div>
+                <div className="text-[10px] text-slate-400">평균 수익률 전</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{entryTimingReplay.avgReturnBefore == null ? "-" : `${Number(entryTimingReplay.avgReturnBefore).toFixed(2)}%`}</div>
               </div>
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">평균 수익률 후</div>
+                <div className="text-[10px] text-slate-400">평균 수익률 후</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{entryTimingReplay.avgReturnAfter == null ? "-" : `${Number(entryTimingReplay.avgReturnAfter).toFixed(2)}%`}</div>
               </div>
             </div>
@@ -1301,18 +1301,18 @@ export default function VirtualJournalPage() {
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-slate-200">{riskReasonLabel(String(item.reason || ""))}</div>
-                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-500">{item.reason || "-"}</div>
+                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-400">{item.reason || "-"}</div>
                     </div>
-                    <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-400">#{index + 1}</span>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] tabular-nums text-slate-500">
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] tabular-nums text-slate-400">
                     <span>{item.count ?? 0}건</span>
                     <span>{fmtRate(item.ratio)}</span>
                   </div>
                 </div>
               ))}
               {!entryTimingReasons.length && (
-                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">진입 타이밍 위험 사유를 만들 평가 완료 데이터가 아직 없습니다.</div>
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-400">진입 타이밍 위험 사유를 만들 평가 완료 데이터가 아직 없습니다.</div>
               )}
             </div>
             <div className="mt-3 break-words rounded-md bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.16)] [overflow-wrap:anywhere]">
@@ -1353,25 +1353,25 @@ export default function VirtualJournalPage() {
             <div className="mb-2 text-xs font-semibold text-slate-400">진입가 미도달 vs 진입 성공 비교</div>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">진입 대기일 (미도달)</div>
+                <div className="text-[10px] text-slate-400">진입 대기일 (미도달)</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-cyan-300">
                   {entryNotTouchedSummary.avgEntryWindowDays == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryWindowDays).toFixed(1)}일`}
                 </div>
               </div>
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">진입 대기일 (성공 기준)</div>
+                <div className="text-[10px] text-slate-400">진입 대기일 (성공 기준)</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">
                   {entryNotTouchedSummary.avgEntryWindowDaysTouchedBaseline == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryWindowDaysTouchedBaseline).toFixed(1)}일`}
                 </div>
               </div>
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">진입가 깊이 (미도달)</div>
+                <div className="text-[10px] text-slate-400">진입가 깊이 (미도달)</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-cyan-300">
                   {entryNotTouchedSummary.avgEntryDepthPct == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryDepthPct).toFixed(2)}%`}
                 </div>
               </div>
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">진입가 깊이 (성공 기준)</div>
+                <div className="text-[10px] text-slate-400">진입가 깊이 (성공 기준)</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">
                   {entryNotTouchedSummary.avgEntryDepthPctTouchedBaseline == null ? "-" : `${Number(entryNotTouchedSummary.avgEntryDepthPctTouchedBaseline).toFixed(2)}%`}
                 </div>
@@ -1390,15 +1390,15 @@ export default function VirtualJournalPage() {
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-slate-200">{entryNotTouchedCauseLabel(String(item.causeType || ""))}</div>
-                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-500">{item.causeType || "-"}</div>
+                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-400">{item.causeType || "-"}</div>
                     </div>
-                    <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-400">#{index + 1}</span>
                   </div>
                   <div className="mt-1 break-keep text-[11px] leading-5 text-slate-400">{item.summary || item.title || "-"}</div>
                 </div>
               ))}
               {!entryNotTouchedCauses.length && (
-                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">진입가 미도달 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-400">진입가 미도달 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
               )}
             </div>
           </div>
@@ -1436,13 +1436,13 @@ export default function VirtualJournalPage() {
             <div className="mb-2 text-xs font-semibold text-slate-400">갭 실패 vs 정상 체결 비교</div>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">평균 수익률 (갭 실패)</div>
+                <div className="text-[10px] text-slate-400">평균 수익률 (갭 실패)</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-rose-300">
                   {marketGapSummary.avgReturnGapGroup == null ? "-" : `${Number(marketGapSummary.avgReturnGapGroup).toFixed(2)}%`}
                 </div>
               </div>
               <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2">
-                <div className="text-[10px] text-slate-500">평균 수익률 (정상 체결)</div>
+                <div className="text-[10px] text-slate-400">평균 수익률 (정상 체결)</div>
                 <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">
                   {marketGapSummary.avgReturnNonGapGroup == null ? "-" : `${Number(marketGapSummary.avgReturnNonGapGroup).toFixed(2)}%`}
                 </div>
@@ -1461,15 +1461,15 @@ export default function VirtualJournalPage() {
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-slate-200">{marketGapCauseLabel(String(item.causeType || ""))}</div>
-                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-500">{item.causeType || "-"}</div>
+                      <div className="mt-0.5 break-all font-mono text-[10px] leading-4 text-slate-400">{item.causeType || "-"}</div>
                     </div>
-                    <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-400">#{index + 1}</span>
                   </div>
                   <div className="mt-1 break-keep text-[11px] leading-5 text-slate-400">{item.summary || item.title || "-"}</div>
                 </div>
               ))}
               {!marketGapCauses.length && (
-                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-500">갭 실패 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
+                <div className="rounded-md bg-slate-900/70 px-3 py-6 text-center text-xs text-slate-400">갭 실패 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
               )}
             </div>
           </div>
@@ -1509,7 +1509,7 @@ export default function VirtualJournalPage() {
                 <div key={i} className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-slate-900/70 px-2.5 py-1.5">
                   <span className="min-w-0 truncate text-[11px] text-slate-300">{seg.segment}</span>
                   <div className="flex shrink-0 gap-3 font-mono text-[10px]">
-                    <span className="text-slate-500">n={seg.count}</span>
+                    <span className="text-slate-400">n={seg.count}</span>
                     <span className={`${(seg.stopFailRate || 0) > 0.6 ? "text-rose-300" : "text-slate-300"}`}>
                       손절{((seg.stopFailRate || 0) * 100).toFixed(0)}%
                     </span>
@@ -1520,7 +1520,7 @@ export default function VirtualJournalPage() {
                 </div>
               ))}
               {!(overextendedData?.rsiSegments || []).filter((s: any) => s.count > 0).length && (
-                <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-500">RSI 데이터 없음</div>
+                <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-400">RSI 데이터 없음</div>
               )}
             </div>
           </div>
@@ -1536,7 +1536,7 @@ export default function VirtualJournalPage() {
                 </div>
               ))}
               {!(overextendedData?.causeCandidates || []).length && (
-                <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-500">과열구간 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
+                <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-400">과열구간 원인 후보를 만들 평가 완료 데이터가 아직 없습니다.</div>
               )}
             </div>
             <div className="mt-2 break-words rounded-md bg-slate-900/70 px-3 py-2 text-[11px] leading-5 text-slate-400 [overflow-wrap:anywhere]">
@@ -1581,26 +1581,26 @@ export default function VirtualJournalPage() {
                   {s.targetNotReachedMetrics?.count > 0 ? (
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-500">건수</span>
+                        <span className="text-slate-400">건수</span>
                         <span className="font-mono text-slate-200">{s.targetNotReachedMetrics.count}</span>
                       </div>
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-500">평균 진행률</span>
+                        <span className="text-slate-400">평균 진행률</span>
                         <span className="font-mono text-amber-300">{s.targetNotReachedMetrics.avgTargetProgress != null ? `${(s.targetNotReachedMetrics.avgTargetProgress * 100).toFixed(1)}%` : "-"}</span>
                       </div>
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-500">평균 MFE</span>
+                        <span className="text-slate-400">평균 MFE</span>
                         <span className="font-mono text-sky-300">{s.targetNotReachedMetrics.avgMfe != null ? `+${Number(s.targetNotReachedMetrics.avgMfe).toFixed(2)}%` : "-"}</span>
                       </div>
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-500">평균 수익률</span>
+                        <span className="text-slate-400">평균 수익률</span>
                         <span className={`font-mono ${(s.targetNotReachedMetrics.avgReturn || 0) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
                           {s.targetNotReachedMetrics.avgReturn != null ? `${Number(s.targetNotReachedMetrics.avgReturn) >= 0 ? "+" : ""}${Number(s.targetNotReachedMetrics.avgReturn).toFixed(2)}%` : "-"}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-xs text-slate-500 py-3">데이터 없음</div>
+                    <div className="text-center text-xs text-slate-400 py-3">데이터 없음</div>
                   )}
                 </div>
 
@@ -1610,22 +1610,22 @@ export default function VirtualJournalPage() {
                   {s.stopWithMfeMetrics?.count > 0 ? (
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-500">건수</span>
+                        <span className="text-slate-400">건수</span>
                         <span className="font-mono text-slate-200">{s.stopWithMfeMetrics.count}</span>
                       </div>
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-500">평균 MFE</span>
+                        <span className="text-slate-400">평균 MFE</span>
                         <span className="font-mono text-sky-300">{s.stopWithMfeMetrics.avgMfe != null ? `+${Number(s.stopWithMfeMetrics.avgMfe).toFixed(2)}%` : "-"}</span>
                       </div>
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-slate-500">평균 수익률</span>
+                        <span className="text-slate-400">평균 수익률</span>
                         <span className={`font-mono ${(s.stopWithMfeMetrics.avgReturn || 0) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
                           {s.stopWithMfeMetrics.avgReturn != null ? `${Number(s.stopWithMfeMetrics.avgReturn) >= 0 ? "+" : ""}${Number(s.stopWithMfeMetrics.avgReturn).toFixed(2)}%` : "-"}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-xs text-slate-500 py-3">데이터 없음</div>
+                    <div className="text-center text-xs text-slate-400 py-3">데이터 없음</div>
                   )}
                 </div>
 
@@ -1640,7 +1640,7 @@ export default function VirtualJournalPage() {
                       </div>
                     ))}
                     {!(profitCaptureData?.causeCandidates || []).length && (
-                      <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-500">수익포착 원인 후보 없음</div>
+                      <div className="rounded-md bg-slate-900/70 px-3 py-4 text-center text-xs text-slate-400">수익포착 원인 후보 없음</div>
                     )}
                   </div>
                 </div>
@@ -1672,21 +1672,21 @@ export default function VirtualJournalPage() {
         )}
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-            <div className="text-[10px] text-slate-500">전체 완료</div>
+            <div className="text-[10px] text-slate-400">전체 완료</div>
             <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{perfGateData?.completed ?? "-"}</div>
           </div>
           <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-            <div className="text-[10px] text-slate-500">의미있는 완료</div>
+            <div className="text-[10px] text-slate-400">의미있는 완료</div>
             <div className={`mt-1 font-mono text-xs font-semibold tabular-nums ${(perfGateData?.meaningfulCompleted ?? 0) < 10 ? "text-amber-300" : "text-emerald-300"}`}>
               {perfGateData?.meaningfulCompleted ?? "-"}
             </div>
           </div>
           <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-            <div className="text-[10px] text-slate-500">플레이스홀더</div>
+            <div className="text-[10px] text-slate-400">플레이스홀더</div>
             <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-400">{perfGateData?.placeholderCount ?? "-"}</div>
           </div>
           <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-            <div className="text-[10px] text-slate-500">차단 여부</div>
+            <div className="text-[10px] text-slate-400">차단 여부</div>
             <div className={`mt-1 font-mono text-xs font-semibold tabular-nums ${perfGateData?.isTradeBlocked ? "text-rose-300" : "text-emerald-300"}`}>
               {perfGateData?.isTradeBlocked == null ? "-" : perfGateData.isTradeBlocked ? "차단" : "통과"}
             </div>
@@ -1694,21 +1694,21 @@ export default function VirtualJournalPage() {
         </div>
         <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-            <div className="text-[10px] text-slate-500">전체 승률</div>
+            <div className="text-[10px] text-slate-400">전체 승률</div>
             <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{perfGateData?.winRate != null ? `${perfGateData.winRate}%` : "-"}</div>
           </div>
           <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-            <div className="text-[10px] text-slate-500">의미있는 승률</div>
+            <div className="text-[10px] text-slate-400">의미있는 승률</div>
             <div className="mt-1 font-mono text-xs font-semibold tabular-nums text-slate-200">{perfGateData?.meaningfulWinRate != null ? `${perfGateData.meaningfulWinRate}%` : "-"}</div>
           </div>
           <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-            <div className="text-[10px] text-slate-500">전체 평균수익률</div>
+            <div className="text-[10px] text-slate-400">전체 평균수익률</div>
             <div className={`mt-1 font-mono text-xs font-semibold tabular-nums ${(perfGateData?.avgReturn ?? 0) < 0 ? "text-rose-300" : "text-emerald-300"}`}>
               {perfGateData?.avgReturn != null ? `${perfGateData.avgReturn}%` : "-"}
             </div>
           </div>
           <div className="min-w-0 rounded-md bg-slate-900/70 px-2 py-2 text-center">
-            <div className="text-[10px] text-slate-500">의미있는 평균수익률</div>
+            <div className="text-[10px] text-slate-400">의미있는 평균수익률</div>
             <div className={`mt-1 font-mono text-xs font-semibold tabular-nums ${(perfGateData?.meaningfulAvgReturn ?? 0) < 0 ? "text-rose-300" : "text-emerald-300"}`}>
               {perfGateData?.meaningfulAvgReturn != null ? `${perfGateData.meaningfulAvgReturn}%` : "-"}
             </div>
@@ -1731,10 +1731,10 @@ export default function VirtualJournalPage() {
               {highConv.marketRegimeLabel || highConv.marketRegime}{highConv.favorableRegime ? " · 실전 ON" : " · 실전 OFF"}
             </span>
           ) : (
-            <span className="font-mono text-[11px] text-slate-500">신호 없음</span>
+            <span className="font-mono text-[11px] text-slate-400">신호 없음</span>
           )}
         </div>
-        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-400">
           앱이 지던 이유 = 전부 거래(실측 −1.92%/거래). 실측상 (+)인 유일 구성(강세장 + finalScore≥84)만 실전으로 냅니다. 그 외엔 현금 보존.
         </p>
         {highConv?.provenEdge && (
@@ -1760,7 +1760,7 @@ export default function VirtualJournalPage() {
               <div key={c.symbol} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-emerald-500/8 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.2)]">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-slate-100">{c.name || c.symbol}</span>
-                  <span className="font-mono text-[10px] text-slate-500">{c.symbol}</span>
+                  <span className="font-mono text-[10px] text-slate-400">{c.symbol}</span>
                   {c.supplySignal && <span className="rounded bg-sky-500/12 px-1.5 py-0.5 text-[9px] text-sky-200">{c.supplySignal}</span>}
                 </div>
                 <div className="flex items-center gap-3 font-mono text-[10px]">
@@ -1787,7 +1787,7 @@ export default function VirtualJournalPage() {
           </div>
           <span className="rounded bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] text-sky-300">PAPER ONLY</span>
         </div>
-        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-400">
           위 실전 게이트와 별개입니다. 딥데이터(2014-2026) train/OOS 백테스트로 발굴된 후보지만, 아직 라이브 forward 증거가 쌓이지 않아 실전으로 안 냅니다.
           paper 계좌에서 성과가 쌓여 승격 기준(n≥12·PF&gt;1·승률≥50%)을 넘으면 위 실전 게이트로 이동합니다.
         </p>
@@ -1809,7 +1809,7 @@ export default function VirtualJournalPage() {
                 ))}
               </div>
             ) : (
-              <p className="mt-2 text-[10px] text-slate-500">
+              <p className="mt-2 text-[10px] text-slate-400">
                 {researchLeader && !researchLeader.usBackdropFavorable
                   ? "미장이 하락추세라 오늘은 후보 없음(검증된 대로 정상 동작)."
                   : "오늘 조건에 맞는 주도주 없음."}
@@ -1843,7 +1843,7 @@ export default function VirtualJournalPage() {
                 ))}
               </div>
             ) : (
-              <p className="mt-2 text-[10px] text-slate-500">데이터 없음.</p>
+              <p className="mt-2 text-[10px] text-slate-400">데이터 없음.</p>
             )}
           </div>
         </div>
@@ -1863,10 +1863,10 @@ export default function VirtualJournalPage() {
               <span className="rounded bg-violet-500/12 px-2 py-0.5 text-violet-200">{smartRank.featureCount ?? 14}개 신호 동시분석</span>
             </div>
           ) : (
-            <span className="font-mono text-[11px] text-slate-500">순위 데이터 없음</span>
+            <span className="font-mono text-[11px] text-slate-400">순위 데이터 없음</span>
           )}
         </div>
-        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-400">
           14개 신호를 동시에 저울질해 전 종목 순위를 매기는 선별 모델(사람은 못 하는 다중신호 비교). 아래 실증 성적은 안 본 구간(OOS) 검증치입니다.
         </p>
         {smartRank?.provenEdge && (
@@ -1884,19 +1884,19 @@ export default function VirtualJournalPage() {
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="font-mono text-[11px] text-violet-300">#{idx + 1}</span>
                   <span className="text-sm font-semibold text-slate-100">{c.name || c.symbol}</span>
-                  <span className="font-mono text-[10px] text-slate-500">{c.symbol}</span>
+                  <span className="font-mono text-[10px] text-slate-400">{c.symbol}</span>
                   {c.supplySignal && <span className="rounded bg-sky-500/12 px-1.5 py-0.5 text-[9px] text-sky-200">{c.supplySignal}</span>}
                 </div>
-                <div className="flex items-center gap-3 font-mono text-[10px] text-slate-500">
+                <div className="flex items-center gap-3 font-mono text-[10px] text-slate-400">
                   <span>점수 {c.modelScore}</span>
                   <span>RSI {c.rsi14}</span>
-                  <span className={c.actionable ? "text-emerald-300" : "text-slate-500"}>{c.actionable ? "실행가능" : "caution"}</span>
+                  <span className={c.actionable ? "text-emerald-300" : "text-slate-400"}>{c.actionable ? "실행가능" : "caution"}</span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-400 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
             {smartRank?.status === "EMPTY" ? "스마트 순위 미생성 — build_smart_rank_kr.py 실행 필요." : "순위 후보가 없습니다."}
           </div>
         )}
@@ -1928,10 +1928,10 @@ export default function VirtualJournalPage() {
               )}
             </div>
           ) : (
-            <span className="font-mono text-[11px] text-slate-500">렌즈 데이터 없음</span>
+            <span className="font-mono text-[11px] text-slate-400">렌즈 데이터 없음</span>
           )}
         </div>
-        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-400">
           장세별 셋업(약세=저점반등, 강세·횡보=돌파)을 매매일지 실측으로 자가보정합니다. ACTIVE(실행가능)만 매수 후보이며, 최근 실측이 무너진 셋업은 자동 차단(SUPPRESSED)됩니다.
         </p>
         {lensData && Array.isArray(lensData.candidates) && lensData.candidates.length > 0 ? (
@@ -1941,10 +1941,10 @@ export default function VirtualJournalPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold text-slate-100">{c.name || c.symbol}</span>
-                    <span className="font-mono text-[10px] text-slate-500">{c.symbol}</span>
+                    <span className="font-mono text-[10px] text-slate-400">{c.symbol}</span>
                     <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${c.setup === "BOTTOM_CATCH" ? "bg-indigo-500/15 text-indigo-200" : "bg-sky-500/15 text-sky-200"}`}>{c.setup === "BOTTOM_CATCH" ? "저점반등" : "돌파"}</span>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-slate-500">
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-slate-400">
                     <span>진입 {fmtNum(c.entryRef)}</span>
                     <span className="text-red-300">손절 {fmtNum(c.stop)}</span>
                     <span className="text-emerald-300">목표 {fmtNum(c.target)}</span>
@@ -1953,10 +1953,10 @@ export default function VirtualJournalPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className={`font-mono text-[11px] font-semibold ${c.actionable ? "text-emerald-300" : "text-slate-500"}`}>
+                  <div className={`font-mono text-[11px] font-semibold ${c.actionable ? "text-emerald-300" : "text-slate-400"}`}>
                     {c.actionable ? "실행가능" : "차단"}
                   </div>
-                  <div className="font-mono text-[10px] text-slate-500">
+                  <div className="font-mono text-[10px] text-slate-400">
                     {c.calibrationGate}{c.actionable && c.sizeMultiplier ? ` · size ${Number(c.sizeMultiplier).toFixed(2)}` : ""}
                   </div>
                 </div>
@@ -1964,7 +1964,7 @@ export default function VirtualJournalPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-400 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
             {lensData?.status === "EMPTY" ? "렌즈 후보 리포트 미생성 — 파이프라인(build_lens_journal→calibration→screen) 실행 필요." : "현재 레짐에서 실행가능한 렌즈 후보가 없습니다."}
           </div>
         )}
@@ -1981,11 +1981,11 @@ export default function VirtualJournalPage() {
             <TrendingUp size={16} className="text-emerald-300" />
             <span>손익 비대칭</span>
           </div>
-          <span className="font-mono text-[11px] text-slate-500">
+          <span className="font-mono text-[11px] text-slate-400">
             {asymmetry ? `평가 ${asymmetry.n}건 · 승 ${asymmetry.winCount} / 패 ${asymmetry.lossCount}` : "평가 데이터 없음"}
           </span>
         </div>
-        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-400">
           손실↓·수익↑ 비대칭이 이 앱의 목표입니다. Payoff(손익비)·Profit Factor가 1을 넘고 기대손익이 (+)여야 엣지가 있습니다.
         </p>
         {asymmetry ? (
@@ -1998,7 +1998,7 @@ export default function VirtualJournalPage() {
             {metric("손익 승률", asymmetry.winRate == null ? "-" : `${asymmetry.winRate.toFixed(1)}%`)}
           </div>
         ) : (
-          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+          <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-400 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
             평가 완료(손익 확정) 거래가 쌓이면 손익 비대칭 지표가 표시됩니다.
           </div>
         )}
@@ -2008,7 +2008,7 @@ export default function VirtualJournalPage() {
         <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-200">최근 일지</h2>
-            <span className="font-mono text-xs tabular-nums text-slate-500">{loading ? "loading" : `${trades.length} rows`}</span>
+            <span className="font-mono text-xs tabular-nums text-slate-400">{loading ? "loading" : `${trades.length} rows`}</span>
           </div>
           <div className="mb-3">
             <SegmentedControl<ListSource> options={listSources.map((s) => ({ value: s.id, label: s.label }))} value={listSource} onChange={setListSource} className="w-full" />
@@ -2020,13 +2020,13 @@ export default function VirtualJournalPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-semibold text-slate-100">{displayName(item) || item.symbol}</div>
-                    <div className="font-mono text-[11px] text-slate-500">{item.symbol}</div>
+                    <div className="font-mono text-[11px] text-slate-400">{item.symbol}</div>
                   </div>
                   <span className={`inline-flex shrink-0 whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-semibold ${toneForOutcome(String(item.outcome || "PENDING"))}`}>
                     {outcomeLabel(String(item.outcome || "PENDING"))}
                   </span>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-400">
                   <span className="font-mono uppercase text-slate-400">
                     {String(item.market || "").toUpperCase()} / {MODE_SHORT[item.mode] ?? item.mode} / {HORIZON_SHORT[item.horizon] ?? item.horizon}
                   </span>
@@ -2038,22 +2038,22 @@ export default function VirtualJournalPage() {
                 </div>
                 <div className="mt-2.5 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
-                    <div className="text-[10px] text-slate-500">PnL</div>
+                    <div className="text-[10px] text-slate-400">PnL</div>
                     <div className={`font-mono text-xs font-semibold tabular-nums ${Number(item.net_pnl_pct) >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtNum(item.net_pnl_pct, "%")}</div>
                   </div>
                   <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
-                    <div className="text-[10px] text-slate-500">MFE</div>
+                    <div className="text-[10px] text-slate-400">MFE</div>
                     <div className="font-mono text-xs font-semibold tabular-nums text-slate-300">{fmtNum(item.mfe_pct, "%")}</div>
                   </div>
                   <div className="rounded-lg bg-slate-900/60 px-2 py-1.5">
-                    <div className="text-[10px] text-slate-500">MAE</div>
+                    <div className="text-[10px] text-slate-400">MAE</div>
                     <div className="font-mono text-xs font-semibold tabular-nums text-slate-300">{fmtNum(item.mae_pct, "%")}</div>
                   </div>
                 </div>
                 {item.failure_reason && (
                   <div className="mt-2 font-mono text-[11px] text-amber-300">
                     {item.failure_reason}
-                    {item.secondary_tags && <span className="ml-1 text-slate-500">{item.secondary_tags}</span>}
+                    {item.secondary_tags && <span className="ml-1 text-slate-400">{item.secondary_tags}</span>}
                   </div>
                 )}
                 {item.review_text && (
@@ -2075,14 +2075,14 @@ export default function VirtualJournalPage() {
               </div>
             ))}
             {!trades.length && (
-              <div className="py-10 text-center text-sm text-slate-500">아직 가상 매매일지가 없습니다.</div>
+              <div className="py-10 text-center text-sm text-slate-400">아직 가상 매매일지가 없습니다.</div>
             )}
           </div>
 
           {/* 데스크톱 테이블 뷰 */}
           <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[900px] text-left text-xs">
-              <thead className="text-slate-500">
+              <thead className="text-slate-400">
                 <tr className="border-b border-slate-800">
                   <th className="py-2 pr-3">종목</th>
                   <th className="py-2 pr-3">범위</th>
@@ -2100,13 +2100,13 @@ export default function VirtualJournalPage() {
                   <tr key={item.journal_id} className="align-top text-slate-300">
                     <td className="py-3 pr-3">
                       <div className="font-semibold text-slate-100">{displayName(item) || item.symbol}</div>
-                      <div className="font-mono text-[11px] text-slate-500">{item.symbol}</div>
+                      <div className="font-mono text-[11px] text-slate-400">{item.symbol}</div>
                     </td>
                     <td className="py-3 pr-3">
                       <div className="font-mono text-[11px] uppercase text-slate-400">
                         {String(item.market || "").toUpperCase()} / {MODE_SHORT[item.mode] ?? item.mode} / {HORIZON_SHORT[item.horizon] ?? item.horizon}
                       </div>
-                      <div className="mt-1 text-[11px] text-slate-500">{item.as_of_date}</div>
+                      <div className="mt-1 text-[11px] text-slate-400">{item.as_of_date}</div>
                       <div className="mt-1 font-mono text-[10px] text-cyan-400">{SESSION_LABEL[String(item.journal_session || item.journalSession)] ?? String(item.journal_session || item.journalSession || "AFTER_CLOSE_TRADE")}</div>
                       <div className={`mt-1 font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>
                         {item.source_type === "MANUAL_REVIEWED" ? "검토완료" : item.source_type === "FORWARD_PAPER_TRADE" ? "자동" : item.source_type}
@@ -2122,7 +2122,7 @@ export default function VirtualJournalPage() {
                     <td className="py-3 pr-3 text-right font-mono tabular-nums text-slate-300">{fmtNum(item.mae_pct, "%")}</td>
                     <td className="py-3 pr-3 font-mono text-[11px] text-amber-300">
                       <div>{item.failure_reason || "-"}</div>
-                      {item.secondary_tags && <div className="mt-0.5 text-slate-500">{item.secondary_tags}</div>}
+                      {item.secondary_tags && <div className="mt-0.5 text-slate-400">{item.secondary_tags}</div>}
                     </td>
                     <td className="max-w-sm py-3 pr-3 text-[12px] leading-5 text-slate-400">{item.review_text || item.session_note || "-"}</td>
                     <td className="py-3">
@@ -2141,7 +2141,7 @@ export default function VirtualJournalPage() {
                 ))}
                 {!trades.length && (
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-sm text-slate-500">아직 가상 매매일지가 없습니다.</td>
+                    <td colSpan={9} className="py-10 text-center text-sm text-slate-400">아직 가상 매매일지가 없습니다.</td>
                   </tr>
                 )}
               </tbody>
@@ -2186,22 +2186,22 @@ export default function VirtualJournalPage() {
                 <Play size={15} /> 과거 백필
               </button>
             </div>
-            <p className="mt-2 text-xs leading-5 text-slate-500">Synthetic cutoff replay v1입니다. 후보 생성은 입력 날짜까지의 OHLCV만 사용하고, 평가는 저장 후 별도로 수행합니다. 과거 백필은 선택 날짜부터 20일 간격으로 최대 24회 실행합니다.</p>
+            <p className="mt-2 text-xs leading-5 text-slate-400">Synthetic cutoff replay v1입니다. 후보 생성은 입력 날짜까지의 OHLCV만 사용하고, 평가는 저장 후 별도로 수행합니다. 과거 백필은 선택 날짜부터 20일 간격으로 최대 24회 실행합니다.</p>
           </div>
 
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-slate-200">유사 장세 복기</h2>
-              <span className="font-mono text-[11px] text-slate-500">{analogData.benchmarkSymbol || "-"}</span>
+              <span className="font-mono text-[11px] text-slate-400">{analogData.benchmarkSymbol || "-"}</span>
             </div>
             {analogData.summary && (
               <div className="mb-3 grid grid-cols-2 gap-2">
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
-                  <div className="text-[10px] text-slate-500">평가 수</div>
+                  <div className="text-[10px] text-slate-400">평가 수</div>
                   <div className="font-mono text-sm font-semibold text-slate-200">{analogData.summary.evaluated ?? 0}</div>
                 </div>
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
-                  <div className="text-[10px] text-slate-500">평균 PnL</div>
+                  <div className="text-[10px] text-slate-400">평균 PnL</div>
                   <div className={`font-mono text-sm font-semibold ${(Number(analogData.summary.avgNetPnlPct) || 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                     {analogData.summary.avgNetPnlPct == null ? "-" : `${Number(analogData.summary.avgNetPnlPct).toFixed(2)}%`}
                   </div>
@@ -2213,13 +2213,13 @@ export default function VirtualJournalPage() {
                 <div key={item.date} className="rounded-lg bg-slate-950/60 px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-[11px] text-indigo-300">{item.date}</span>
-                    <span className="font-mono text-[11px] text-slate-500">sim {Math.round(Number(item.similarity || 0) * 100)}%</span>
+                    <span className="font-mono text-[11px] text-slate-400">sim {Math.round(Number(item.similarity || 0) * 100)}%</span>
                   </div>
                   <div className="mt-1 text-xs leading-5 text-slate-300">{item.lesson || "-"}</div>
                 </div>
               ))}
               {!(analogData.items || []).length && (
-                <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-500">유사 장세 replay 결과가 아직 없습니다.</div>
+                <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-400">유사 장세 replay 결과가 아직 없습니다.</div>
               )}
             </div>
           </div>
@@ -2233,7 +2233,7 @@ export default function VirtualJournalPage() {
                   <span className="font-mono text-xs tabular-nums text-slate-300">{count}</span>
                 </div>
               ))}
-              {!topFailures.length && <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-500">평가 완료된 실패패턴이 아직 없습니다.</div>}
+              {!topFailures.length && <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-400">평가 완료된 실패패턴이 아직 없습니다.</div>}
             </div>
           </div>
 
@@ -2241,17 +2241,17 @@ export default function VirtualJournalPage() {
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-slate-200">보정 후보</h2>
-                <p className="mt-1 text-xs leading-5 text-slate-500">
+                <p className="mt-1 text-xs leading-5 text-slate-400">
                   개선사항은 자동 적용 게이트를 통과해야 매매 규칙에 반영됩니다.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 text-right text-[11px]">
                 <div className="rounded-md bg-slate-950/60 px-2 py-1.5 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
-                  <div className="text-slate-500">자동 가능</div>
+                  <div className="text-slate-400">자동 가능</div>
                   <div className="font-mono tabular-nums text-emerald-200">{selfLearningData?.eligibleAutoCount || 0}</div>
                 </div>
                 <div className="rounded-md bg-slate-950/60 px-2 py-1.5 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
-                  <div className="text-slate-500">표본 부족</div>
+                  <div className="text-slate-400">표본 부족</div>
                   <div className="font-mono tabular-nums text-amber-200">{selfLearningData?.lowSampleCount || 0}</div>
                 </div>
               </div>
@@ -2263,7 +2263,7 @@ export default function VirtualJournalPage() {
                 <div key={`${item.reason || item.status}-${index}`} className="rounded-lg bg-slate-950/60 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
                   <div className="flex items-center justify-between gap-3">
                     <span className={`rounded px-1.5 py-0.5 font-mono text-[11px] ${gate.tone}`}>{gate.label}</span>
-                    <span className="font-mono text-[11px] tabular-nums text-slate-500">
+                    <span className="font-mono text-[11px] tabular-nums text-slate-400">
                       {gate.approvalStatus} · {gate.sampleCount.toLocaleString("ko-KR")} / {gate.minSamples.toLocaleString("ko-KR")}
                     </span>
                   </div>
@@ -2311,14 +2311,14 @@ export default function VirtualJournalPage() {
                 </div>
                 );
               })}
-              {!suggestions.length && <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-500">보정 후보가 아직 없습니다.</div>}
+              {!suggestions.length && <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-400">보정 후보가 아직 없습니다.</div>}
             </div>
           </div>
 
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-slate-200">적용 대기</h2>
-              <span className="font-mono text-[11px] tabular-nums text-slate-500">{approvedSuggestions.length} approved</span>
+              <span className="font-mono text-[11px] tabular-nums text-slate-400">{approvedSuggestions.length} approved</span>
             </div>
             {approvedSuggestions.length > 0 && (
               <button
@@ -2334,10 +2334,10 @@ export default function VirtualJournalPage() {
                 <div key={item.suggestionId} className="rounded-lg bg-emerald-500/8 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.14)]">
                   <div className="font-mono text-[11px] text-emerald-300">{item.reason || item.status}</div>
                   <div className="mt-1 text-xs leading-5 text-slate-300">{item.message || "-"}</div>
-                  <div className="mt-1 font-mono text-[11px] text-slate-500">{item.market} / {item.mode} / {item.horizon} / {item.sourceType}</div>
+                  <div className="mt-1 font-mono text-[11px] text-slate-400">{item.market} / {item.mode} / {item.horizon} / {item.sourceType}</div>
                 </div>
               ))}
-              {!approvedSuggestions.length && <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-500">승인됐지만 아직 적용되지 않은 보정 후보가 없습니다.</div>}
+              {!approvedSuggestions.length && <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-400">승인됐지만 아직 적용되지 않은 보정 후보가 없습니다.</div>}
             </div>
           </div>
         </div>
@@ -2353,11 +2353,11 @@ export default function VirtualJournalPage() {
         <div className="flex items-center gap-2">
           <TrendingUp size={16} className="text-violet-400" />
           <h2 className="text-sm font-semibold text-slate-200">성과 대시보드</h2>
-          {perfData && <span className="font-mono text-[11px] text-slate-500">{perfData.summary?.count ?? 0}건 평가 완료</span>}
+          {perfData && <span className="font-mono text-[11px] text-slate-400">{perfData.summary?.count ?? 0}건 평가 완료</span>}
         </div>
 
         {!perfData || (perfData.summary?.count ?? 0) === 0 ? (
-          <div className="rounded-lg bg-slate-900/50 p-6 text-center text-sm text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
+          <div className="rounded-lg bg-slate-900/50 p-6 text-center text-sm text-slate-400 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
             평가 완료된 거래 데이터가 쌓이면 전략별 성과가 표시됩니다.
           </div>
         ) : (
@@ -2373,7 +2373,7 @@ export default function VirtualJournalPage() {
                 { label: "최대 낙폭", value: perfData.summary.maxDrawdownPct != null ? `${perfData.summary.maxDrawdownPct.toFixed(2)}%` : "-", tone: (perfData.summary.maxDrawdownPct ?? 0) <= 5 ? "text-emerald-300" : (perfData.summary.maxDrawdownPct ?? 0) <= 15 ? "text-amber-300" : "text-red-300" },
               ].map(({ label, value, tone = "text-slate-100" }) => (
                 <div key={label} className="rounded-lg bg-slate-950/60 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
-                  <div className="text-[11px] text-slate-500">{label}</div>
+                  <div className="text-[11px] text-slate-400">{label}</div>
                   <div className={`mt-1 font-mono text-lg font-semibold tabular-nums ${tone}`}>{value}</div>
                 </div>
               ))}
@@ -2405,7 +2405,7 @@ export default function VirtualJournalPage() {
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">레짐 전환 × 결과</h3>
             {(analyticsData.regimeTransition || []).length === 0 ? (
-              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
+              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-400">데이터 없음</div>
             ) : (
               <div className="space-y-1">
                 {(analyticsData.regimeTransition as any[]).map((row, i) => {
@@ -2433,7 +2433,7 @@ export default function VirtualJournalPage() {
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">신호 신뢰도 × 실패 태그</h3>
             {(analyticsData.confidenceBreakdown || []).length === 0 ? (
-              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
+              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-400">데이터 없음</div>
             ) : (
               <div className="space-y-1">
                 {(analyticsData.confidenceBreakdown as any[]).map((row, i) => {
@@ -2458,7 +2458,7 @@ export default function VirtualJournalPage() {
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">진입 방식 비교</h3>
             {(analyticsData.entryTypeComparison || []).length === 0 ? (
-              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
+              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-400">데이터 없음</div>
             ) : (
               <div className="space-y-1">
                 {(analyticsData.entryTypeComparison as any[]).map((row, i) => (
@@ -2467,7 +2467,7 @@ export default function VirtualJournalPage() {
                     <div className="mt-1 flex gap-3">
                       <span className="font-mono text-[11px] text-emerald-300">승률 {row.winRate != null ? `${(row.winRate * 100).toFixed(0)}%` : "-"}</span>
                       <span className="font-mono text-[11px] text-slate-400">평균PnL {row.avgPnlPct != null ? `${Number(row.avgPnlPct).toFixed(2)}%` : "-"}</span>
-                      <span className="font-mono text-[11px] text-slate-500">n:{row.count ?? 0}</span>
+                      <span className="font-mono text-[11px] text-slate-400">n:{row.count ?? 0}</span>
                     </div>
                   </div>
                 ))}
@@ -2479,7 +2479,7 @@ export default function VirtualJournalPage() {
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">소스 유형 비교</h3>
             {(analyticsData.sourceComparison || []).length === 0 ? (
-              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-500">데이터 없음</div>
+              <div className="rounded-lg bg-slate-950/60 py-6 text-center text-xs text-slate-400">데이터 없음</div>
             ) : (
               <div className="space-y-1">
                 {(analyticsData.sourceComparison as any[]).map((row, i) => (
@@ -2488,7 +2488,7 @@ export default function VirtualJournalPage() {
                     <div className="mt-1 flex gap-3">
                       <span className="font-mono text-[11px] text-emerald-300">승률 {row.winRate != null ? `${(row.winRate * 100).toFixed(0)}%` : "-"}</span>
                       <span className="font-mono text-[11px] text-slate-400">평균PnL {row.avgPnlPct != null ? `${Number(row.avgPnlPct).toFixed(2)}%` : "-"}</span>
-                      <span className="font-mono text-[11px] text-slate-500">n:{row.count ?? 0}</span>
+                      <span className="font-mono text-[11px] text-slate-400">n:{row.count ?? 0}</span>
                     </div>
                   </div>
                 ))}
@@ -2502,11 +2502,11 @@ export default function VirtualJournalPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-slate-200">귀속분석</h2>
-          {attrData && <span className="font-mono text-[11px] text-slate-500">{attrData.count ?? 0}건 분석</span>}
+          {attrData && <span className="font-mono text-[11px] text-slate-400">{attrData.count ?? 0}건 분석</span>}
         </div>
 
         {!attrData || (attrData.count ?? 0) === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-500">
+          <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-400">
             평가 완료 데이터가 충분하지 않습니다 — 체결 평가 후 귀속분석이 활성화됩니다
           </div>
         ) : (
@@ -2533,18 +2533,18 @@ export default function VirtualJournalPage() {
                   { label: "EV 상관계수", value: attrData.evAccuracy?.correlation != null ? String(attrData.evAccuracy.correlation) : "-", tone: (attrData.evAccuracy?.correlation ?? 0) > 0.1 ? "text-emerald-300" : (attrData.evAccuracy?.correlation ?? 0) < -0.1 ? "text-red-300" : "text-slate-400" },
                 ].map(({ label, value, unit, tone }: any) => (
                   <div key={label} className="rounded-lg bg-slate-950/50 px-3 py-2">
-                    <div className="text-[10px] text-slate-500">{label}</div>
+                    <div className="text-[10px] text-slate-400">{label}</div>
                     <div className={`mt-1 font-mono text-sm font-bold ${tone || "text-slate-200"}`}>{value}{unit ? ` ${unit}` : ""}</div>
                   </div>
                 ))}
               </div>
               {(attrData.evAccuracy?.evQuartileBuckets?.length ?? 0) > 0 && (
                 <div className="mt-3">
-                  <div className="mb-1.5 text-[10px] text-slate-500">EV 사분위별 실수익</div>
+                  <div className="mb-1.5 text-[10px] text-slate-400">EV 사분위별 실수익</div>
                   <div className="flex gap-2">
                     {attrData.evAccuracy.evQuartileBuckets.map((b: any) => (
                       <div key={b.label} className="flex-1 rounded-lg bg-slate-800/60 px-2 py-1.5 text-center">
-                        <div className="text-[9px] text-slate-500">{b.label}</div>
+                        <div className="text-[9px] text-slate-400">{b.label}</div>
                         <div className={`font-mono text-xs font-bold ${(b.avgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                           {b.avgPnlPct != null ? `${b.avgPnlPct >= 0 ? "+" : ""}${b.avgPnlPct.toFixed(2)}%` : "-"}
                         </div>
@@ -2573,7 +2573,7 @@ export default function VirtualJournalPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="text-[10px] text-slate-500">
+                        <tr className="text-[10px] text-slate-400">
                           <th className="pb-1.5 text-left font-medium">팩터</th>
                           <th className="pb-1.5 text-right font-medium">n</th>
                           <th className="pb-1.5 text-right font-medium">승률</th>
@@ -2614,13 +2614,13 @@ export default function VirtualJournalPage() {
       <section className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-slate-200">OLS factor model</h2>
-          <span className="font-mono text-[11px] text-slate-500">
+          <span className="font-mono text-[11px] text-slate-400">
             {attrData?.regression?.status || "LOW_SAMPLE"}
             {attrData?.regression?.r2 != null ? ` · R2 ${attrData.regression.r2}` : ""}
           </span>
         </div>
         {!attrData || attrData.regression?.status !== "OK" ? (
-          <div className="rounded-lg border border-dashed border-slate-700 py-6 text-center text-xs text-slate-500">
+          <div className="rounded-lg border border-dashed border-slate-700 py-6 text-center text-xs text-slate-400">
             Regression attribution needs at least {attrData?.regression?.minRequired ?? 12} evaluated trades with enough factor variation.
           </div>
         ) : (
@@ -2644,10 +2644,10 @@ export default function VirtualJournalPage() {
         <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-slate-200">진입 효율</h2>
-            {effData && <span className="font-mono text-[11px] text-slate-500">{effData.filled ?? 0}/{effData.total ?? 0} filled</span>}
+            {effData && <span className="font-mono text-[11px] text-slate-400">{effData.filled ?? 0}/{effData.total ?? 0} filled</span>}
           </div>
           {!effData || (effData.total ?? 0) === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-500">
+            <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-400">
               진입 효율을 계산할 평가 완료 거래가 아직 없습니다.
             </div>
           ) : (
@@ -2659,7 +2659,7 @@ export default function VirtualJournalPage() {
                   { label: "평균 진입일", value: effData.avgFillDays != null ? `${effData.avgFillDays.toFixed(1)}일` : "-" },
                 ].map((item) => (
                   <div key={item.label} className="rounded-lg bg-slate-950/60 px-3 py-2">
-                    <div className="text-[10px] text-slate-500">{item.label}</div>
+                    <div className="text-[10px] text-slate-400">{item.label}</div>
                     <div className="mt-1 font-mono text-sm font-semibold text-slate-100">{item.value}</div>
                   </div>
                 ))}
@@ -2686,7 +2686,7 @@ export default function VirtualJournalPage() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-slate-200">모델 자기개선 피드백</h2>
             <div className="flex items-center gap-2">
-              {feedbackData && <span className="font-mono text-[11px] text-slate-500">{feedbackData.sampleCount ?? 0} samples</span>}
+              {feedbackData && <span className="font-mono text-[11px] text-slate-400">{feedbackData.sampleCount ?? 0} samples</span>}
               <button
                 onClick={() => runAction("self-calibrate")}
                 disabled={!!busy}
@@ -2704,20 +2704,20 @@ export default function VirtualJournalPage() {
             </div>
           </div>
           {!feedbackData || feedbackData.status === "LOW_SAMPLE" ? (
-            <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-500">
+            <div className="rounded-lg border border-dashed border-slate-700 py-8 text-center text-xs text-slate-400">
               표본이 부족합니다. 최소 {feedbackData?.minRequired ?? 10}건 이상 평가 후 피드백이 생성됩니다.
             </div>
           ) : (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
-                  <div className="text-[10px] text-slate-500">기준 승률</div>
+                  <div className="text-[10px] text-slate-400">기준 승률</div>
                   <div className="mt-1 font-mono text-sm font-semibold text-slate-100">
                     {feedbackData.baseWinRate != null ? `${(feedbackData.baseWinRate * 100).toFixed(1)}%` : "-"}
                   </div>
                 </div>
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
-                  <div className="text-[10px] text-slate-500">기준 평균 PnL</div>
+                  <div className="text-[10px] text-slate-400">기준 평균 PnL</div>
                   <div className={`mt-1 font-mono text-sm font-semibold ${(feedbackData.baseAvgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                     {feedbackData.baseAvgPnlPct != null ? `${feedbackData.baseAvgPnlPct >= 0 ? "+" : ""}${feedbackData.baseAvgPnlPct.toFixed(2)}%` : "-"}
                   </div>
@@ -2750,9 +2750,9 @@ export default function VirtualJournalPage() {
               <div className="rounded-lg bg-slate-950/60 p-3">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[10px] text-slate-500">학습 품질 점수</div>
+                    <div className="text-[10px] text-slate-400">학습 품질 점수</div>
                     <div className="mt-1 font-mono text-lg font-semibold text-slate-100">
-                      {selfLearningData?.quality?.score ?? 0}<span className="ml-1 text-xs text-slate-500">/100</span>
+                      {selfLearningData?.quality?.score ?? 0}<span className="ml-1 text-xs text-slate-400">/100</span>
                     </div>
                   </div>
                   <div className="rounded-lg bg-slate-900 px-2 py-1 font-mono text-sm font-semibold text-cyan-200">
@@ -2761,19 +2761,19 @@ export default function VirtualJournalPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
                   <div>
-                    <div className="text-slate-500">유효표본</div>
+                    <div className="text-slate-400">유효표본</div>
                     <div className="font-mono text-slate-200">{selfLearningData?.quality?.effectiveSamples ?? 0}</div>
                   </div>
                   <div>
-                    <div className="text-slate-500">Forward</div>
+                    <div className="text-slate-400">Forward</div>
                     <div className="font-mono text-slate-200">{selfLearningData?.quality?.forwardSamples ?? 0}</div>
                   </div>
                   <div>
-                    <div className="text-slate-500">Replay</div>
+                    <div className="text-slate-400">Replay</div>
                     <div className="font-mono text-slate-200">{selfLearningData?.quality?.historicalReplaySamples ?? 0}</div>
                   </div>
                   <div>
-                    <div className="text-slate-500">최근 실행</div>
+                    <div className="text-slate-400">최근 실행</div>
                     <div className="truncate font-mono text-slate-200">{selfLearningData?.lastSelfLearningRun?.generatedAt ?? "-"}</div>
                   </div>
                 </div>
@@ -2791,24 +2791,24 @@ export default function VirtualJournalPage() {
               {opsData && (
                 <div className="rounded-lg bg-slate-950/60 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Ops dashboard</div>
-                    <div className="font-mono text-[10px] text-slate-500">{opsData.generatedAt || "-"}</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Ops dashboard</div>
+                    <div className="font-mono text-[10px] text-slate-400">{opsData.generatedAt || "-"}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
                     <div>
-                      <div className="text-slate-500">Journal</div>
+                      <div className="text-slate-400">Journal</div>
                       <div className="font-mono text-slate-200">{opsData.journal?.totalRows ?? 0}</div>
                     </div>
                     <div>
-                      <div className="text-slate-500">Evaluated</div>
+                      <div className="text-slate-400">Evaluated</div>
                       <div className="font-mono text-slate-200">{opsData.journal?.evaluatedRows ?? 0}</div>
                     </div>
                     <div>
-                      <div className="text-slate-500">Open</div>
+                      <div className="text-slate-400">Open</div>
                       <div className="font-mono text-slate-200">{opsData.journal?.openRows ?? 0}</div>
                     </div>
                     <div>
-                      <div className="text-slate-500">Files OK</div>
+                      <div className="text-slate-400">Files OK</div>
                       <div className="font-mono text-slate-200">
                         {(opsData.files || []).filter((f: any) => f.exists).length}/{(opsData.files || []).length}
                       </div>
@@ -2818,25 +2818,25 @@ export default function VirtualJournalPage() {
               )}
               <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
-                  <div className="text-slate-500">자동 최소 유효표본</div>
+                  <div className="text-slate-400">자동 최소 유효표본</div>
                   <div className="mt-1 font-mono text-slate-200">{selfLearningData?.policy?.minEffectiveSamples ?? "-"}</div>
                 </div>
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
-                  <div className="text-slate-500">회당 적용 한도</div>
+                  <div className="text-slate-400">회당 적용 한도</div>
                   <div className="mt-1 font-mono text-slate-200">{selfLearningData?.policy?.maxApplicationsPerRun ?? "-"}</div>
                 </div>
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
-                  <div className="text-slate-500">최대 실패비중</div>
+                  <div className="text-slate-400">최대 실패비중</div>
                   <div className="mt-1 font-mono text-slate-200">{selfLearningData?.policy?.maxFailureShareForAutoApply != null ? `${(selfLearningData.policy.maxFailureShareForAutoApply * 100).toFixed(0)}%` : "-"}</div>
                 </div>
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
-                  <div className="text-slate-500">자동 승인자</div>
+                  <div className="text-slate-400">자동 승인자</div>
                   <div className="mt-1 truncate font-mono text-slate-200">{selfLearningData?.policy?.reviewer ?? "-"}</div>
                 </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[520px] text-xs">
-                  <thead className="text-[10px] text-slate-500">
+                  <thead className="text-[10px] text-slate-400">
                     <tr>
                       <th className="pb-2 text-left font-medium">전략</th>
                       <th className="pb-2 text-right font-medium">n</th>

@@ -83,15 +83,15 @@ export function DecisionStack({
   return (
     <div className={`grid grid-cols-3 gap-2 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-[11px] ${className}`}>
       <div>
-        <div className="text-[10px] text-slate-500">종목 신호</div>
+        <div className="text-[10px] text-slate-400">종목 신호</div>
         <div className="font-semibold text-slate-200">{signal}{score > 0 ? ` · ${Math.round(score)}점` : ""}</div>
       </div>
       <div>
-        <div className="text-[10px] text-slate-500">시장 환경</div>
+        <div className="text-[10px] text-slate-400">시장 환경</div>
         <div className={`font-semibold ${gateClass}`}>{gate ? `${gate.levelText} ${gate.strength}/100` : "확인 중"}</div>
       </div>
       <div>
-        <div className="text-[10px] text-slate-500">최종 행동</div>
+        <div className="text-[10px] text-slate-400">최종 행동</div>
         <div className={`font-semibold ${actionToneClass}`}>{actionLabel || "-"}</div>
       </div>
     </div>

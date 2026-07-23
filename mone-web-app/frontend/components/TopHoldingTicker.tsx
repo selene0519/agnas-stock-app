@@ -293,7 +293,7 @@ export default function TopHoldingTicker() {
 
   return (
     <div className="flex h-8 min-w-0 flex-1 items-center overflow-hidden">
-      <span className="hidden shrink-0 rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-slate-500 lg:inline">
+      <span className="hidden shrink-0 rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-slate-400 lg:inline">
         {tickerLabel} {items.length ? `${items.length}개` : loading ? "로딩" : "0개"}
       </span>
 
@@ -307,7 +307,7 @@ export default function TopHoldingTicker() {
         {error ? (
           <div className="text-xs text-red-300">티커 데이터 연결 확인 필요</div>
         ) : loading && displayItems.length === 0 ? (
-          <div className="text-xs text-slate-500">티커 불러오는 중...</div>
+          <div className="text-xs text-slate-400">티커 불러오는 중...</div>
         ) : displayItems.length === 0 ? (
           <div className="text-xs text-slate-600">티커 없음</div>
         ) : (
@@ -320,7 +320,7 @@ export default function TopHoldingTicker() {
               return (
                 <span key={`${item.id}-${index}`} className="inline-flex items-center gap-1.5 text-xs sm:gap-2">
                   <span className="font-semibold text-slate-200">{item.name}</span>
-                  <span className="hidden font-mono text-slate-500 sm:inline">{item.symbol}</span>
+                  <span className="hidden font-mono text-slate-400 sm:inline">{item.symbol}</span>
                   <span className={`font-mono ${needsPrice ? "text-amber-300" : "text-slate-100"}`}>{item.currentPriceText}</span>
                   {showChange && (
                     <span className={isDown ? "font-mono text-red-400" : needsBase ? "font-mono text-amber-300" : "font-mono text-emerald-400"}>

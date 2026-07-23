@@ -101,7 +101,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[13px] font-bold">{label}</span>
-                    <span className="mt-0.5 block text-[11px] text-slate-500">{desc}</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-400">{desc}</span>
                   </span>
                 </button>
               ))}
@@ -116,12 +116,12 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                       <span className="block text-[13px] font-bold text-amber-200">
                         {userProfile.name || userProfile.email || userProfile.provider || "사용자"}
                       </span>
-                      <span className="mt-0.5 block text-[11px] text-slate-500">로그인됨 · {userProfile.provider || "oauth"}</span>
+                      <span className="mt-0.5 block text-[11px] text-slate-400">로그인됨 · {userProfile.provider || "oauth"}</span>
                     </span>
                     <button
                       type="button"
                       onClick={() => { onUserLogout?.(); setMoreOpen(false); }}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-200"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
                       title="로그아웃"
                       aria-label="로그아웃"
                     >
@@ -145,7 +145,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
                     </span>
                     <span className="min-w-0">
                       <span className="block text-[13px] font-bold">로그인</span>
-                      <span className="mt-0.5 block text-[11px] text-slate-500">관리자, 카카오, 구글 로그인</span>
+                      <span className="mt-0.5 block text-[11px] text-slate-400">관리자, 카카오, 구글 로그인</span>
                     </span>
                   </button>
                 )
@@ -165,7 +165,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
               key={id}
               type="button"
               onClick={() => handlePrimary(id)}
-              className="flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] text-slate-500"
+              className="flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] text-slate-400"
               style={current === id ? { color: "var(--brand-teal)" } : undefined}
               aria-current={current === id ? "page" : undefined}
             >
@@ -178,7 +178,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
             ref={moreTriggerRef}
             type="button"
             onClick={() => setMoreOpen((v) => !v)}
-            className="flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] text-slate-500"
+            className="flex flex-1 flex-col items-center justify-center gap-1 transition-colors active:scale-[0.96] text-slate-400"
             style={isMoreActive || moreOpen ? { color: "var(--brand-teal)" } : undefined}
             aria-expanded={moreOpen}
             aria-controls="mone-more-sheet"

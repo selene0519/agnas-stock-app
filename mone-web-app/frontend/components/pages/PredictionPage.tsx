@@ -183,7 +183,7 @@ function StrategyPlaybookPanel({ strategy, term, data, valDash }: { strategy: St
         ["실패 보정", penalty != null ? `최근 검증 기준 보정값 ${Number(penalty).toFixed(2)}% 반영` : book.failure],
       ].map(([label, value]) => (
         <div key={label} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="text-xs font-semibold text-slate-500">{label}</div>
+          <div className="text-xs font-semibold text-slate-400">{label}</div>
           <div className="mt-2 text-sm leading-5 text-slate-200">{value}</div>
         </div>
       ))}
@@ -204,7 +204,7 @@ function ValidationPolicyPanel({ market, data, validationRows }: { market: Marke
     <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-semibold text-slate-200">검증 정책</div>
-        <div className="text-xs text-slate-500">행 단위 검증 {validationRows.length.toLocaleString("ko-KR")}건 · DATA_PENDING/대기 {pending}건 · 진입 미터치 {noTouch}건</div>
+        <div className="text-xs text-slate-400">행 단위 검증 {validationRows.length.toLocaleString("ko-KR")}건 · DATA_PENDING/대기 {pending}건 · 진입 미터치 {noTouch}건</div>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">실제 저가 ≤ 진입가 ≤ 실제 고가일 때만 체결</div>
@@ -212,7 +212,7 @@ function ValidationPolicyPanel({ market, data, validationRows }: { market: Marke
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">목표·손절 동시 터치 시 손절 우선</div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">OHLCV 누락은 DATA_PENDING으로 보류</div>
       </div>
-      <div className="mt-3 text-[11px] text-slate-500">
+      <div className="mt-3 text-[11px] text-slate-400">
         {market === "all" ? "전체 탭은 KR/US 검증을 분리 호출한 뒤 합산합니다." : `${market.toUpperCase()} 검증 기준입니다.`}
         {policy.executionRule && <span className="ml-2">{policy.executionRule}</span>}
       </div>
@@ -252,11 +252,11 @@ function ForecastAuditPanel({ audit }: { audit: any }) {
           const error = toNumber(summary.meanAbsoluteErrorPct);
           return (
             <div key={label} className="bg-slate-950/55 px-4 py-3">
-              <div className="text-[11px] font-medium text-slate-500">{label} 방향 정확도</div>
-              <div className={`mt-1 font-mono text-xl font-bold ${hitRate === null ? "text-slate-500" : hitRate >= 55 ? "text-emerald-300" : "text-amber-300"}`}>
+              <div className="text-[11px] font-medium text-slate-400">{label} 방향 정확도</div>
+              <div className={`mt-1 font-mono text-xl font-bold ${hitRate === null ? "text-slate-400" : hitRate >= 55 ? "text-emerald-300" : "text-amber-300"}`}>
                 {hitRate === null ? "측정 대기" : `${hitRate.toFixed(1)}%`}
               </div>
-              <div className="mt-1 text-[10px] text-slate-500">
+              <div className="mt-1 text-[10px] text-slate-400">
                 {summary.count ? `${summary.count}건 검증` : `대기 ${summary.pendingCount ?? 0}건`}
                 {error !== null ? ` · 평균 오차 ${error.toFixed(2)}%p` : ""}
               </div>
@@ -271,7 +271,7 @@ function ForecastAuditPanel({ audit }: { audit: any }) {
             <div key={row.snapshot_id} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(130px,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center sm:px-5">
               <div>
                 <div className="text-sm font-semibold text-slate-200">{row.name || row.symbol}</div>
-                <div className="mt-0.5 font-mono text-[10px] text-slate-500">{row.symbol} · {row.date} · 표본 {row.forecastSampleCount ?? "-"}</div>
+                <div className="mt-0.5 font-mono text-[10px] text-slate-400">{row.symbol} · {row.date} · 표본 {row.forecastSampleCount ?? "-"}</div>
               </div>
               {[1, 5, 10].map((days) => {
                 const expected = forecastReturnText(row[`forecastExpectedReturn${days}d`]);
@@ -281,9 +281,9 @@ function ForecastAuditPanel({ audit }: { audit: any }) {
                 const isMiss = hit === "MISS";
                 return (
                   <div key={days} className="rounded-lg border border-slate-800/80 bg-slate-950/45 px-2.5 py-2">
-                    <div className="flex items-center justify-between text-[10px] text-slate-500"><span>D+{days}</span><span className={isHit ? "text-emerald-300" : isMiss ? "text-red-300" : "text-slate-500"}>{isHit ? "적중" : isMiss ? "빗나감" : "대기"}</span></div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-400"><span>D+{days}</span><span className={isHit ? "text-emerald-300" : isMiss ? "text-red-300" : "text-slate-400"}>{isHit ? "적중" : isMiss ? "빗나감" : "대기"}</span></div>
                     <div className="mt-1 text-[11px] text-slate-300">예상 {expected}</div>
-                    <div className="text-[11px] text-slate-500">실제 {actual}</div>
+                    <div className="text-[11px] text-slate-400">실제 {actual}</div>
                   </div>
                 );
               })}
@@ -294,7 +294,7 @@ function ForecastAuditPanel({ audit }: { audit: any }) {
           ))}
         </div>
       ) : (
-        <div className="px-5 py-5 text-xs leading-5 text-slate-500">첫 스냅샷이 쌓이면 여기에서 종목별 예상·실제·오차와 검토 가설을 확인할 수 있습니다.</div>
+        <div className="px-5 py-5 text-xs leading-5 text-slate-400">첫 스냅샷이 쌓이면 여기에서 종목별 예상·실제·오차와 검토 가설을 확인할 수 있습니다.</div>
       )}
     </section>
   );
@@ -320,25 +320,25 @@ function MarketContextPanel({ context }: { context: any }) {
           <p className="mt-1 text-xs leading-5 text-slate-400">수익 예측이 아닙니다. 로컬 수집 데이터의 시장 폭·교차자산 상태로 한 종목의 최대 노출만 제한합니다.</p>
         </div>
         <div className="rounded-lg border border-slate-600/70 bg-slate-950/40 px-3 py-2 text-right">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">최대 노출</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">최대 노출</div>
           <div className="mt-0.5 font-mono text-lg font-bold text-slate-100">{exposureText}</div>
         </div>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-700/80 bg-slate-950/25 px-3 py-2.5">
-          <div className="text-[11px] text-slate-500">시장 폭</div>
+          <div className="text-[11px] text-slate-400">시장 폭</div>
           <div className="mt-1 text-sm font-semibold text-slate-200">{scoreText} · {breadth.zone || "UNKNOWN"}</div>
-          <div className="mt-1 text-[11px] text-slate-500">표본 {breadth.sampleCount ?? 0}종목 · {breadth.asOf || "기준일 없음"}</div>
+          <div className="mt-1 text-[11px] text-slate-400">표본 {breadth.sampleCount ?? 0}종목 · {breadth.asOf || "기준일 없음"}</div>
         </div>
         <div className="rounded-xl border border-slate-700/80 bg-slate-950/25 px-3 py-2.5">
-          <div className="text-[11px] text-slate-500">매크로 프록시</div>
+          <div className="text-[11px] text-slate-400">매크로 프록시</div>
           <div className="mt-1 text-sm font-semibold text-slate-200">{macroLabel[macro.classification] || macro.classification || "판단 보류"}</div>
-          <div className="mt-1 text-[11px] text-slate-500">{macro.status === "PARTIAL_PROXY" ? "부분 프록시: 신용·금리곡선 미포함" : macro.status || "데이터 대기"}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{macro.status === "PARTIAL_PROXY" ? "부분 프록시: 신용·금리곡선 미포함" : macro.status || "데이터 대기"}</div>
         </div>
         <div className="rounded-xl border border-slate-700/80 bg-slate-950/25 px-3 py-2.5">
-          <div className="text-[11px] text-slate-500">진입 원칙</div>
+          <div className="text-[11px] text-slate-400">진입 원칙</div>
           <div className="mt-1 text-sm font-semibold text-slate-200">성과·장세 게이트 통과 후 검토</div>
-          <div className="mt-1 text-[11px] text-slate-500">지금 상태 {context.status || "UNKNOWN"}</div>
+          <div className="mt-1 text-[11px] text-slate-400">지금 상태 {context.status || "UNKNOWN"}</div>
         </div>
       </div>
     </section>
@@ -530,7 +530,7 @@ export default function PredictionPage() {
       <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div>
-            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">투자 성향</div>
+            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">투자 성향</div>
             <div className="flex flex-wrap gap-2">
               {strategyTabs.map((item) => (
                 <button key={item.id} onClick={() => setStrategy(item.id)} className={`rounded-xl px-4 py-2 text-sm ${strategy === item.id ? "mone-selection-brand" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
@@ -538,7 +538,7 @@ export default function PredictionPage() {
             </div>
           </div>
           <div>
-            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">투자 기간</div>
+            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">투자 기간</div>
             <div className="flex flex-wrap gap-2">
               {termTabs.map((item) => (
                 <button key={item.id} onClick={() => setTerm(item.id)} className={`rounded-xl px-4 py-2 text-sm ${term === item.id ? "mone-selection-brand" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
@@ -560,7 +560,7 @@ export default function PredictionPage() {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm font-semibold text-slate-200">Backtest touch summary</div>
-            <div className="text-[11px] text-slate-500">
+            <div className="text-[11px] text-slate-400">
               source {btSummary.sourceFile || btSummary.latestSource || "-"} / OHLCV {btSummary.latestOhlcvDate || "-"}
             </div>
           </div>
@@ -599,7 +599,7 @@ export default function PredictionPage() {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="text-sm font-semibold text-slate-200">9전략 백테스트 매트릭스</div>
-            <div className="text-xs text-slate-500">완료 {valDash.summary?.totalCompleted ?? 0}건 · 대기 {valDash.summary?.totalPending ?? 0}건 · 전략평균 승률 {valDash.summary?.overallWinRate != null ? `${valDash.summary.overallWinRate}%` : "—"}</div>
+            <div className="text-xs text-slate-400">완료 {valDash.summary?.totalCompleted ?? 0}건 · 대기 {valDash.summary?.totalPending ?? 0}건 · 전략평균 승률 {valDash.summary?.overallWinRate != null ? `${valDash.summary.overallWinRate}%` : "—"}</div>
           </div>
           {(valDash.summary?.totalCompleted ?? 0) < 10 && (
             <div className="mb-3 rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2 text-xs text-sky-400">
@@ -610,8 +610,8 @@ export default function PredictionPage() {
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="border-b border-slate-800">
-                  <th className="py-2 pr-4 text-left text-slate-500">전략</th>
-                  {["단기", "스윙", "중기"].map((h) => <th key={h} className="px-3 py-2 text-center text-slate-500">{h}</th>)}
+                  <th className="py-2 pr-4 text-left text-slate-400">전략</th>
+                  {["단기", "스윙", "중기"].map((h) => <th key={h} className="px-3 py-2 text-center text-slate-400">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -627,7 +627,7 @@ export default function PredictionPage() {
                           <div className={`text-base font-bold ${wr == null ? "text-slate-600" : wr >= 55 ? "text-emerald-300" : wr >= 45 ? "text-amber-300" : "text-red-300"}`}>
                             {wr != null ? `${wr}%` : "—"}
                           </div>
-                          <div className="mt-0.5 text-slate-500">{s?.completed ? `${s.wins}/${s.completed}` : `대기 ${s?.pendingCount ?? 0}`}</div>
+                          <div className="mt-0.5 text-slate-400">{s?.completed ? `${s.wins}/${s.completed}` : `대기 ${s?.pendingCount ?? 0}`}</div>
                           {s?.avgReturn != null && <div className={`text-[10px] font-mono ${s.avgReturn >= 0 ? "text-emerald-400" : "text-red-400"}`}>{s.avgReturn >= 0 ? "+" : ""}{s.avgReturn.toFixed(1)}%</div>}
                         </td>
                       );
@@ -659,7 +659,7 @@ export default function PredictionPage() {
                 <div key={b.label} className="flex flex-1 flex-col items-center gap-1">
                   <span className="text-[10px] font-mono text-slate-400">{b.count > 0 ? b.count : ""}</span>
                   <div className="w-full rounded-t" style={{ height: `${Math.max(heightPct, b.count > 0 ? 8 : 0)}%`, background: isPos ? "#10b981" : "#ef4444", opacity: 0.7 + heightPct * 0.003 }} />
-                  <span className="text-[9px] text-slate-500 whitespace-nowrap">{b.label}</span>
+                  <span className="text-[9px] text-slate-400 whitespace-nowrap">{b.label}</span>
                 </div>
               );
             })}
@@ -680,15 +680,15 @@ export default function PredictionPage() {
           {stats.executedCount > 0 && (
             <div className="mt-3 grid grid-cols-3 gap-3 text-center text-xs">
               <div className="rounded-xl bg-slate-950/60 py-2">
-                <div className="text-slate-500">체결 승률</div>
+                <div className="text-slate-400">체결 승률</div>
                 <div className={`mt-1 font-mono font-bold ${stats.winRate >= 50 ? "text-emerald-300" : "text-amber-300"}`}>{stats.winRate.toFixed(1)}%</div>
               </div>
               <div className="rounded-xl bg-slate-950/60 py-2">
-                <div className="text-slate-500">목표 / 손절</div>
+                <div className="text-slate-400">목표 / 손절</div>
                 <div className="mt-1 font-mono font-bold"><span className="text-emerald-300">{stats.targetCount}</span> / <span className="text-red-300">{stats.stopCount}</span></div>
               </div>
               <div className="rounded-xl bg-slate-950/60 py-2">
-                <div className="text-slate-500">평균 EV</div>
+                <div className="text-slate-400">평균 EV</div>
                 <div className={`mt-1 font-mono font-bold ${stats.avgEv >= 0 ? "text-emerald-300" : "text-red-300"}`}>{stats.avgEv >= 0 ? "+" : ""}{stats.avgEv.toFixed(1)}%</div>
               </div>
             </div>
@@ -741,41 +741,41 @@ export default function PredictionPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="font-semibold text-slate-100 text-sm">{displayName(item)}</div>
-                    <div className="font-mono text-[10px] text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div>
+                    <div className="font-mono text-[10px] text-slate-400">{item.symbol} · {String(item.market || "").toUpperCase()}</div>
                   </div>
                   <span className={`shrink-0 rounded-lg border px-2 py-0.5 text-[10px] font-bold ${STATUS_STYLE[status]}`}>{status}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   <div className="rounded-lg bg-slate-950/60 px-2 py-1.5">
-                    <div className="text-slate-500">확률 / 점수</div>
+                    <div className="text-slate-400">확률 / 점수</div>
                     <div className="font-mono text-emerald-300">{probabilityText(item, "-")} / {score !== null ? `${score.toFixed(0)}` : "-"}</div>
                   </div>
                   <div className="rounded-lg bg-slate-950/60 px-2 py-1.5">
-                    <div className="text-slate-500">현재가 / 진입가</div>
+                    <div className="text-slate-400">현재가 / 진입가</div>
                     <div className="font-mono text-slate-200">{current} / <span className="text-sky-300">{entry}</span></div>
                   </div>
                   <div className="rounded-lg bg-slate-950/60 px-2 py-1.5">
-                    <div className="text-slate-500">손절 / 목표</div>
+                    <div className="text-slate-400">손절 / 목표</div>
                     <div className="font-mono"><span className="text-red-300">{stop}</span> / <span className="text-emerald-300">{target}</span></div>
                   </div>
                   <div className="rounded-lg bg-slate-950/60 px-2 py-1.5">
-                    <div className="text-slate-500">터치 검증</div>
+                    <div className="text-slate-400">터치 검증</div>
                     <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${evidence.style}`}>{evidence.label}</span>
                   </div>
                 </div>
                 {evidence.detail && evidence.detail !== "결과 대기" && (
-                  <div className="text-[10px] text-slate-500">{evidence.detail}</div>
+                  <div className="text-[10px] text-slate-400">{evidence.detail}</div>
                 )}
               </div>
             );
           })}
-          {top.length === 0 && <div className="px-4 py-10 text-center text-sm text-slate-500">예측 데이터가 없습니다.</div>}
+          {top.length === 0 && <div className="px-4 py-10 text-center text-sm text-slate-400">예측 데이터가 없습니다.</div>}
         </div>
 
         {/* 데스크톱 테이블 뷰 */}
         <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="border-b border-slate-800 text-xs text-slate-500">
+            <thead className="border-b border-slate-800 text-xs text-slate-400">
               <tr>
                 <th className="px-4 py-3">종목</th>
                 <th className="px-4 py-3">확률/점수</th>
@@ -798,7 +798,7 @@ export default function PredictionPage() {
                 const status = resolveStatus(item.validation || item);
                 return (
                   <tr key={`${item.market}-${item.symbol}-${index}`} className="border-b border-slate-800/60">
-                    <td className="px-4 py-3"><div className="font-semibold text-slate-100">{displayName(item)}</div><div className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || "").toUpperCase()}</div></td>
+                    <td className="px-4 py-3"><div className="font-semibold text-slate-100">{displayName(item)}</div><div className="font-mono text-xs text-slate-400">{item.symbol} · {String(item.market || "").toUpperCase()}</div></td>
                     <td className="px-4 py-3 font-mono"><span className="text-emerald-300">{probabilityText(item, "-")}</span><span className="text-slate-600"> / </span><span className="text-cyan-300">{score !== null ? score.toFixed(1) : "-"}</span></td>
                     <td className="px-4 py-3 font-mono">{current}</td>
                     <td className="px-4 py-3 font-mono text-sky-300">{entry}</td>
@@ -806,21 +806,21 @@ export default function PredictionPage() {
                     <td className="px-4 py-3 font-mono text-emerald-300">{target}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${evidence.style}`}>{evidence.label}</span>
-                      <div className="mt-0.5 max-w-[180px] text-[10px] text-slate-500 truncate">{evidence.detail}</div>
+                      <div className="mt-0.5 max-w-[180px] text-[10px] text-slate-400 truncate">{evidence.detail}</div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLE[status]}`}>{status}</span>
-                      <div className="mt-1 font-mono text-[10px] text-slate-500">
+                      <div className="mt-1 font-mono text-[10px] text-slate-400">
                         L/H/C {item.validation?.actualLow ?? item.actualLow ?? "-"} / {item.validation?.actualHigh ?? item.actualHigh ?? "-"} / {item.validation?.actualClose ?? item.actualClose ?? "-"}
                       </div>
-                      <div className="font-mono text-[10px] text-slate-500">
+                      <div className="font-mono text-[10px] text-slate-400">
                         {item.validation?.resultStatus ?? item.resultStatus ?? "-"} / {item.validation?.dataStatus ?? item.dataStatus ?? "-"}
                       </div>
                     </td>
                   </tr>
                 );
               })}
-              {top.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">예측 데이터가 없습니다.</td></tr>}
+              {top.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-400">예측 데이터가 없습니다.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -830,7 +830,7 @@ export default function PredictionPage() {
 }
 
 function Card({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><div className="text-sm text-slate-500">{label}</div><div className="mt-2 font-mono text-2xl font-bold text-slate-100">{value}</div></div>;
+  return <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><div className="text-sm text-slate-400">{label}</div><div className="mt-2 font-mono text-2xl font-bold text-slate-100">{value}</div></div>;
 }
 
 function StatBar({ label, value, color = "bg-blue-500" }: { label: string; value: number | null; color?: string }) {
@@ -860,7 +860,7 @@ function AccuracyPanel({ accuracy }: { accuracy: any }) {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="text-sm font-semibold text-indigo-300">과거 예측 성과</div>
-          <div className="mt-0.5 text-xs text-slate-500">
+          <div className="mt-0.5 text-xs text-slate-400">
             {from} ~ {to} · 검증 {accuracy.validatedRows?.toLocaleString()}건 / 전체 {accuracy.totalRows?.toLocaleString()}건
           </div>
           <div className="mt-0.5 text-[10px] text-emerald-300/75">
@@ -887,19 +887,19 @@ function AccuracyPanel({ accuracy }: { accuracy: any }) {
         <div className="space-y-4">
           {accuracy.avgVirtualReturn !== null && accuracy.avgVirtualReturn !== undefined && (
             <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 p-3">
-              <div className="text-xs text-slate-500">평균 가상수익률</div>
+              <div className="text-xs text-slate-400">평균 가상수익률</div>
               <div className={`mt-1 font-mono text-xl font-bold ${accuracy.avgVirtualReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                 {accuracy.avgVirtualReturn >= 0 ? "+" : ""}{accuracy.avgVirtualReturn.toFixed(2)}%
               </div>
               {accuracy.positiveReturnRate !== null && (
-                <div className="mt-1 text-xs text-slate-500">수익 거래 {accuracy.positiveReturnRate}%</div>
+                <div className="mt-1 text-xs text-slate-400">수익 거래 {accuracy.positiveReturnRate}%</div>
               )}
             </div>
           )}
 
           {buckets.length > 0 && (
             <div>
-              <div className="mb-2 text-xs text-slate-500">신뢰도 구간별 방향 적중</div>
+              <div className="mb-2 text-xs text-slate-400">신뢰도 구간별 방향 적중</div>
               <div className="space-y-1.5">
                 {buckets.map((b: any) => (
                   <div key={b.bucket} className="flex items-center gap-2 text-xs">
@@ -917,7 +917,7 @@ function AccuracyPanel({ accuracy }: { accuracy: any }) {
 
           {totalResult > 0 && (
             <div>
-              <div className="mb-2 text-xs text-slate-500">가상 결과 분포</div>
+              <div className="mb-2 text-xs text-slate-400">가상 결과 분포</div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(dist).map(([label, cnt]) => (
                   <span key={label} className="rounded border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[10px] text-slate-300">

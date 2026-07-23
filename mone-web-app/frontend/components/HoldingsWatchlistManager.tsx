@@ -239,7 +239,7 @@ export default function HoldingsWatchlistManager() {
 
       {tab === "holdings" ? (
         <div className="mt-4 space-y-3">
-          <div className="grid grid-cols-12 gap-2 px-1 text-xs text-slate-500">
+          <div className="grid grid-cols-12 gap-2 px-1 text-xs text-slate-400">
             <div className="col-span-2">시장</div>
             <div className="col-span-2">종목코드/티커</div>
             <div className="col-span-3">종목명</div>
@@ -291,7 +291,7 @@ export default function HoldingsWatchlistManager() {
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          <div className="grid grid-cols-10 gap-2 px-1 text-xs text-slate-500">
+          <div className="grid grid-cols-10 gap-2 px-1 text-xs text-slate-400">
             <div className="col-span-2">시장</div>
             <div className="col-span-3">종목코드/티커</div>
             <div className="col-span-4">종목명</div>

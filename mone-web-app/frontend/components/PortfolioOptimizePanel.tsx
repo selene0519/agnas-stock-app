@@ -146,7 +146,7 @@ function ConcentrationBar({ pct, label, count }: { pct: number; label: string; c
       <div className="flex items-center justify-between text-[11px]">
         <span className="text-slate-300 font-medium">{label}</span>
         <div className="flex items-center gap-2">
-          <span className="text-slate-500">{count}종목</span>
+          <span className="text-slate-400">{count}종목</span>
           <span className={`font-bold ${isHigh || isMed ? "" : "text-slate-200"}`} style={isHigh || isMed ? { color: "var(--tone-fg)" } : undefined}>
             {pct.toFixed(1)}%
           </span>
@@ -178,13 +178,13 @@ function HoldingRow({ h, totalValue }: { h: Holding; totalValue: number }) {
             </span>
           )}
         </div>
-        <span className="text-[10px] text-slate-500">{h.symbol}</span>
+        <span className="text-[10px] text-slate-400">{h.symbol}</span>
       </div>
       <div className="text-right shrink-0">
         <div className={`text-xs font-bold ${pnlColor}`}>
           {h.pnlPct > 0 ? "+" : ""}{h.pnlPct.toFixed(1)}%
         </div>
-        <div className="text-[10px] text-slate-500">{weight.toFixed(1)}% 비중</div>
+        <div className="text-[10px] text-slate-400">{weight.toFixed(1)}% 비중</div>
       </div>
     </div>
   );
@@ -348,13 +348,13 @@ export default function PortfolioOptimizePanel({ market, riskBudget }: { market:
       <div className="text-sm font-bold text-slate-200">포트폴리오 분석</div>
 
       {loading && analysisHoldings.length === 0 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-500">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-400">
           분석 중...
         </div>
       )}
 
       {!loading && analysisHoldings.length === 0 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-500">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-6 text-center text-xs text-slate-400">
           보유 종목 없음 — holdings-clean 기준으로 확인했습니다{holdingSource ? ` (${holdingSource})` : ""}.
         </div>
       )}
@@ -380,7 +380,7 @@ export default function PortfolioOptimizePanel({ market, riskBudget }: { market:
               </span>
             </div>
             <div className="ml-auto text-right">
-              <div className="text-[10px] text-slate-500">손절 시 최대 손실</div>
+              <div className="text-[10px] text-slate-400">손절 시 최대 손실</div>
               <div className={`text-xs font-bold ${maxLoss.totalLossPct > 10 ? "text-red-400" : "text-slate-300"}`}>
                 -{moneyText(maxLoss.totalLoss)} · {maxLoss.totalLossPct.toFixed(1)}%
               </div>
@@ -391,7 +391,7 @@ export default function PortfolioOptimizePanel({ market, riskBudget }: { market:
           {sectors.length > 0 && (
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">섹터 집중도</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">섹터 집중도</p>
                 {concentration.warning && (
                   <span className="text-[10px] text-red-400 font-semibold">
                     ⚠ 1개 섹터 {concentration.top1Pct}% 집중
@@ -414,7 +414,7 @@ export default function PortfolioOptimizePanel({ market, riskBudget }: { market:
           {/* 개별 종목 비중 */}
           <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">종목별 비중</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">종목별 비중</p>
               {(rebalancingItems.length > 0 || heavyPositions.length > 0) && (
                 <span className="text-[10px] text-amber-400 font-semibold">
                   {Math.max(rebalancingItems.length, heavyPositions.length)}종목 비중 조정

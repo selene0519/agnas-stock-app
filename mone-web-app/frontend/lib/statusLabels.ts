@@ -73,7 +73,7 @@ export function toneTextClass(tone: Tone): string {
     case "positive": return "text-emerald-300";
     case "caution": return "text-amber-300";
     case "danger": return "text-red-300";
-    case "muted": return "text-slate-500";
+    case "muted": return "text-slate-400";
     default: return "text-slate-200";
   }
 }
@@ -84,7 +84,7 @@ export function toneBadgeClass(tone: Tone): string {
     case "positive": return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
     case "caution": return "border-amber-500/30 bg-amber-500/10 text-amber-300";
     case "danger": return "border-red-500/40 bg-red-500/10 text-red-300";
-    case "muted": return "border-slate-700 bg-slate-950 text-slate-500";
+    case "muted": return "border-slate-700 bg-slate-950 text-slate-400";
     default: return "border-slate-700 bg-slate-950 text-slate-300";
   }
 }

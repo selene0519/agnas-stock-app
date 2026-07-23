@@ -61,7 +61,7 @@ function WinRateBadge({ rate }: { rate: number }) {
       ? "bg-sky-500/20 text-sky-300 border-sky-500/30"
       : rate > 0
       ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-      : "bg-slate-700/40 text-slate-500 border-slate-700";
+      : "bg-slate-700/40 text-slate-400 border-slate-700";
   return (
     <span className={`rounded-md border px-1.5 py-0.5 text-xs font-bold ${cls}`}>
       {rate > 0 ? `${rate}%` : "—"}
@@ -70,7 +70,7 @@ function WinRateBadge({ rate }: { rate: number }) {
 }
 
 function ReturnLabel({ pct }: { pct: number }) {
-  if (!pct) return <span className="text-slate-500 text-xs">—</span>;
+  if (!pct) return <span className="text-slate-400 text-xs">—</span>;
   const color = pct > 0 ? "text-emerald-400" : "text-red-400";
   const sign = pct > 0 ? "+" : "";
   return <span className={`font-mono text-xs font-bold ${color}`}>{sign}{pct.toFixed(1)}%</span>;
@@ -123,7 +123,7 @@ function StrategyCell({ result, loading }: { result: StrategyResult | null; load
         <WinRateBadge rate={result.win_rate} />
         <ReturnLabel pct={result.total_return_pct} />
       </div>
-      <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500">
+      <div className="flex items-center justify-between gap-1 text-[10px] text-slate-400">
         <span className="font-mono text-slate-400">{result.executed_trades}<span className="text-slate-600">/{result.total_trades}</span></span>
         <span className="font-mono">{result.profit_loss_ratio > 0 ? `RR ${result.profit_loss_ratio.toFixed(1)}` : "—"}</span>
       </div>
@@ -250,7 +250,7 @@ export default function BacktestComparePanel() {
         <div className="flex items-center gap-2">
           <BarChart2 size={14} className="text-cyan-400" />
           <span className="text-sm font-bold text-slate-200">전략 검증 (9전략)</span>
-          <span className="text-[10px] text-slate-500">(검증 대시보드 기준)</span>
+          <span className="text-[10px] text-slate-400">(검증 대시보드 기준)</span>
         </div>
         <div className="flex items-center gap-2">
           {(["kr", "us"] as Market[]).map((mk) => (
@@ -280,7 +280,7 @@ export default function BacktestComparePanel() {
           { label: "활성 전략 수", value: `${validResults.length}/9` },
         ].map(({ label, value }) => (
           <div key={label} className="rounded-xl border border-slate-700/40 bg-slate-800/30 px-3 py-2 text-center">
-            <div className="text-[10px] text-slate-500">{label}</div>
+            <div className="text-[10px] text-slate-400">{label}</div>
             <div className="mt-0.5 text-sm font-bold text-slate-200">{value}</div>
           </div>
         ))}
@@ -310,7 +310,7 @@ export default function BacktestComparePanel() {
                       <span className="text-[10px] text-slate-600">데이터 없음</span>
                     ) : (
                       <div className="flex flex-1 items-center justify-end gap-3">
-                        <span className="font-mono text-[10px] text-slate-500">{result.executed_trades}<span className="text-slate-600">/{result.total_trades}</span></span>
+                        <span className="font-mono text-[10px] text-slate-400">{result.executed_trades}<span className="text-slate-600">/{result.total_trades}</span></span>
                         <ReturnLabel pct={result.total_return_pct} />
                         <WinRateBadge rate={result.win_rate} />
                       </div>

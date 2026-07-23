@@ -119,7 +119,7 @@ function FgCard({
   if (!data) return null;
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
       <GaugeArc score={data.score} color={data.color} />
       <span
         className="text-xs font-bold"
@@ -156,7 +156,7 @@ export default function FearGreedWidget({ market = "all" }: { market?: string })
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 px-4 py-3 text-center text-[11px] text-slate-500 animate-pulse">
+      <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 px-4 py-3 text-center text-[11px] text-slate-400 animate-pulse">
         공포탐욕지수 로딩 중...
       </div>
     );
@@ -168,7 +168,7 @@ export default function FearGreedWidget({ market = "all" }: { market?: string })
   return (
     <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 px-4 py-3">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">공포·탐욕 지수</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">공포·탐욕 지수</p>
         {data.composite && (
           <span
             className="text-[11px] font-bold"
@@ -200,7 +200,7 @@ export default function FearGreedWidget({ market = "all" }: { market?: string })
             <div key={i} className="flex items-center justify-between text-[11px]">
               <span className="text-slate-400">{c.name}</span>
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 font-mono">{c.direction}</span>
+                <span className="text-slate-400 font-mono">{c.direction}</span>
                 <div className="w-16 h-1.5 rounded-full bg-slate-800">
                   <div
                     className="h-full rounded-full"
@@ -217,7 +217,7 @@ export default function FearGreedWidget({ market = "all" }: { market?: string })
           ))}
         </div>
       )}
-      <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-950/50 px-2.5 py-2 text-[10px] leading-relaxed text-slate-500">
+      <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-950/50 px-2.5 py-2 text-[10px] leading-relaxed text-slate-400">
         참고 지표입니다. 현재 차트선·종목추천 점수에는 직접 반영하지 않습니다.
       </div>
     </div>

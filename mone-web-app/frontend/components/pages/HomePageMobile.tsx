@@ -489,7 +489,7 @@ function AlertBanner({ alert }: { alert: any }) {
   const hasTomorrow = tmrwHigh.length > 0 || tmrwEarnings.length > 0;
   if (!hasHigh && !hasMed && !hasTomorrow) return null;
   const bgClass = hasHigh ? "border-red-500/40 bg-red-500/10" : hasMed ? "border-amber-500/40 bg-amber-500/10" : "border-slate-600/60 bg-slate-800/60";
-  const iconClass = hasHigh ? "text-red-400" : hasMed ? "text-amber-400" : "text-slate-500";
+  const iconClass = hasHigh ? "text-red-400" : hasMed ? "text-amber-400" : "text-slate-400";
 
   return (
     <div className={`relative flex items-start gap-3 rounded-xl border px-3.5 py-2.5 text-xs ${bgClass}`}>
@@ -522,7 +522,7 @@ function AlertBanner({ alert }: { alert: any }) {
           </div>
         )}
       </div>
-      <button onClick={() => setDismissed(true)} className="absolute right-1.5 top-1.5 rounded-lg p-1.5 text-slate-500 hover:bg-slate-700/50 hover:text-slate-300" aria-label="닫기">×</button>
+      <button onClick={() => setDismissed(true)} className="absolute right-1.5 top-1.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300" aria-label="닫기">×</button>
     </div>
   );
 }
@@ -543,7 +543,7 @@ function GuideCard({ briefing, onAnalyze }: { briefing: BriefingPayload; onAnaly
           <Activity size={15} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">AI 한 줄 브리핑</div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">AI 한 줄 브리핑</div>
           <h2 className={`mt-0.5 text-sm font-bold ${tone.text}`}>{briefing.title}</h2>
           <p className="mt-1 text-[13px] leading-5 text-slate-300">{briefing.detail}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -583,12 +583,12 @@ function MarketGateCard({ regime, dataHealth, selectedMarket }: { regime: any; d
       <div className={`rounded-2xl border p-4 ${borderCls}`}>
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">시장 컨디션 게이트</div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">시장 컨디션 게이트</div>
             <div className={`mt-1 text-base font-bold ${textCls}`}>{levelText}</div>
           </div>
           <div className={`shrink-0 text-right font-mono font-black ${textCls}`}>
             <span className="text-3xl">{strength}</span>
-            <span className="text-sm text-slate-500">/100</span>
+            <span className="text-sm text-slate-400">/100</span>
           </div>
         </div>
         <div className="mb-3 h-2 w-full rounded-full bg-slate-800">
@@ -596,25 +596,25 @@ function MarketGateCard({ regime, dataHealth, selectedMarket }: { regime: any; d
         </div>
         <div className="grid grid-cols-3 gap-2 text-[10px]">
           <div className="rounded-lg bg-slate-900/60 px-2 py-1.5 text-center">
-            <div className="text-slate-500">시장 추세</div>
+            <div className="text-slate-400">시장 추세</div>
             <div className={`mt-0.5 font-semibold ${regime?.regime === "BULL" ? "text-emerald-300" : regime?.regime === "BEAR" ? "text-red-300" : "text-slate-300"}`}>
               {regime?.regime === "BULL" ? "강세" : regime?.regime === "BEAR" ? "약세" : "중립"}
             </div>
           </div>
           <div className="rounded-lg bg-slate-900/60 px-2 py-1.5 text-center">
-            <div className="text-slate-500">MA20 이격</div>
+            <div className="text-slate-400">MA20 이격</div>
             <div className={`mt-0.5 font-mono font-semibold ${maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
               {maDist >= 0 ? "+" : ""}{maDist.toFixed(1)}%
             </div>
           </div>
           <div className="rounded-lg bg-slate-900/60 px-2 py-1.5 text-center">
-            <div className="text-slate-500">데이터</div>
+            <div className="text-slate-400">데이터</div>
             <div className={`mt-0.5 font-semibold ${dataAdj === 0 ? "text-emerald-300" : dataAdj <= -15 ? "text-red-300" : "text-amber-300"}`}>
               {dataAdj === 0 ? "정상" : dataAdj <= -15 ? "오류" : hasOhlcv ? "종가 기준" : "부분"}
             </div>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-800/70 pt-3 text-[10px] text-slate-500">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-800/70 pt-3 text-[10px] text-slate-400">
           <span className={`rounded-full border px-2 py-0.5 ${dataFreshnessBadgeClass(freshness.state)}`}>{freshness.label}</span>
           <span>{freshness.basisText}</span>
         </div>
@@ -647,18 +647,18 @@ function EntryCandidateCard({ item, rank, onAnalyze, onTradePaper, marketRegime,
         <span className="truncate text-sm font-semibold text-slate-100">{displayName(item)}</span>
         <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
       </div>
-      <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-500">
+      <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
         <span>{item.symbol} · {modeLabel(String(item._mode || item.mode) as Mode)} · {horizonLabel(String(item._horizon || item.horizon) as Horizon)}</span>
         <SentimentBadge symbol={item.symbol} market={normalizeMarket(item.market || item._market, item.symbol)} name={String(item.name || "")} />
       </div>
       <div className="mt-2.5 grid grid-cols-3 gap-1.5 text-[10px]">
-        <div><div className="text-slate-500">현재가</div><div className="font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
-        <div><div className="text-slate-500">기준가</div><div className={`font-mono ${planStale ? "text-amber-300" : "text-sky-300"}`}>{priceText(item, "entry", "-")}</div></div>
-        <div><div className="text-slate-500">목표가</div><div className={`font-mono ${planStale ? "text-slate-500" : "text-emerald-300"}`}>{planStale ? "재산출 대기" : priceText(item, "target", "-")}</div></div>
+        <div><div className="text-slate-400">현재가</div><div className="font-mono text-slate-200">{priceText(item, "current", "-")}</div></div>
+        <div><div className="text-slate-400">기준가</div><div className={`font-mono ${planStale ? "text-amber-300" : "text-sky-300"}`}>{priceText(item, "entry", "-")}</div></div>
+        <div><div className="text-slate-400">목표가</div><div className={`font-mono ${planStale ? "text-slate-400" : "text-emerald-300"}`}>{planStale ? "재산출 대기" : priceText(item, "target", "-")}</div></div>
       </div>
       <div className="mt-1.5 flex items-center gap-3 text-[10px]">
-        <span className="text-slate-500">신뢰도 <span className="font-mono text-blue-300">{confidence}</span></span>
-        <span className="text-slate-500">위험 <span className={`font-semibold ${riskClass}`}>{riskText}</span></span>
+        <span className="text-slate-400">신뢰도 <span className="font-mono text-blue-300">{confidence}</span></span>
+        <span className="text-slate-400">위험 <span className={`font-semibold ${riskClass}`}>{riskText}</span></span>
       </div>
       {reasons.length > 0 && (
         <div className="mt-2 rounded-lg border border-slate-800/70 bg-slate-950/50 px-2.5 py-1.5 text-[10px] leading-4 text-slate-400">
@@ -708,11 +708,11 @@ function WatchCandidateCard({ item, onAnalyze }: { item: any; onAnalyze: (item: 
         <span className="truncate text-sm font-semibold text-slate-200">{displayName(item)}</span>
         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${timingColor}`}>{timingLabel}</span>
       </div>
-      <div className="mt-0.5 text-[10px] text-slate-500">{item.symbol} · {modeLabel(String(item._mode || item.mode) as Mode)} · {horizonLabel(String(item._horizon || item.horizon) as Horizon)}</div>
+      <div className="mt-0.5 text-[10px] text-slate-400">{item.symbol} · {modeLabel(String(item._mode || item.mode) as Mode)} · {horizonLabel(String(item._horizon || item.horizon) as Horizon)}</div>
       {item.timingReason && <div className="mt-1.5 text-[11px] text-slate-400">{item.timingReason}</div>}
       <div className="mt-2 flex flex-wrap items-center gap-2.5 text-[10px]">
-        <span className="text-slate-500">현재 <span className="font-mono text-slate-300">{priceText(item, "current", "-")}</span></span>
-        <span className="text-slate-500">목표 <span className="font-mono text-emerald-400">{priceText(item, "target", "-")}</span></span>
+        <span className="text-slate-400">현재 <span className="font-mono text-slate-300">{priceText(item, "current", "-")}</span></span>
+        <span className="text-slate-400">목표 <span className="font-mono text-emerald-400">{priceText(item, "target", "-")}</span></span>
         <span className={`font-mono ${Number(item.expectedValue || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
           EV {Number(item.expectedValue || 0) >= 0 ? "+" : ""}{Number(item.expectedValue || 0).toFixed(1)}%
         </span>
@@ -729,14 +729,14 @@ function RiskCandidateCard({ item, onAnalyze }: { item: any; onAnalyze: (item: a
         <span className="truncate text-sm font-semibold text-slate-200">{displayName(item)}</span>
         <span className="shrink-0 rounded-full border border-red-700/40 bg-red-900/30 px-2 py-0.5 text-[10px] font-semibold text-red-300">{item.decisionBucket || "주의"}</span>
       </div>
-      <div className="mt-0.5 text-[10px] text-slate-500">{item.symbol} · {modeLabel(String(item._mode || item.mode) as Mode)} · {horizonLabel(String(item._horizon || item.horizon) as Horizon)}</div>
+      <div className="mt-0.5 text-[10px] text-slate-400">{item.symbol} · {modeLabel(String(item._mode || item.mode) as Mode)} · {horizonLabel(String(item._horizon || item.horizon) as Horizon)}</div>
       {dataTrustNotice(item) ? (
         <div className="mt-1.5 text-[11px] text-amber-300">{dataTrustNotice(item)}</div>
       ) : (
         <div className="mt-1.5 text-[11px] text-slate-400">EV·리스크 조건 미달로 보류된 후보입니다.</div>
       )}
       <div className="mt-2 flex items-center gap-2.5 text-[10px]">
-        <span className="text-slate-500">현재 <span className="font-mono text-slate-300">{priceText(item, "current", "-")}</span></span>
+        <span className="text-slate-400">현재 <span className="font-mono text-slate-300">{priceText(item, "current", "-")}</span></span>
         <span className={`font-mono ${Number(item.expectedValue || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
           EV {Number(item.expectedValue || 0) >= 0 ? "+" : ""}{Number(item.expectedValue || 0).toFixed(1)}%
         </span>
@@ -752,7 +752,7 @@ function StrategyTile({ cell }: { cell: StrategyCell }) {
     <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-2.5">
       <div className="flex items-center justify-between text-[10px]">
         <span className="font-semibold text-slate-300">{modeLabel(cell.mode)} · {horizonLabel(cell.horizon)}</span>
-        <span className="text-slate-500">{cell.count}개</span>
+        <span className="text-slate-400">{cell.count}개</span>
       </div>
       {top.length === 0 ? (
         <div className="mt-1.5 text-[10px] text-slate-600">조건 없음</div>
@@ -1027,8 +1027,8 @@ export default function HomePageMobile({
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="flex items-center gap-2">
-          <RefreshCw size={16} className="animate-spin text-slate-500" />
-          <span className="text-sm text-slate-500">데이터 불러오는 중...</span>
+          <RefreshCw size={16} className="animate-spin text-slate-400" />
+          <span className="text-sm text-slate-400">데이터 불러오는 중...</span>
         </div>
       </div>
     );
@@ -1041,7 +1041,7 @@ export default function HomePageMobile({
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-slate-100">홈</h1>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-400">
               <span className={`rounded-full px-1.5 py-0.5 font-medium ${
                 sessionPhase === "장중" ? "bg-emerald-900/50 text-emerald-300"
                 : sessionPhase === "장마감" ? "bg-blue-900/50 text-blue-300"
@@ -1088,7 +1088,7 @@ export default function HomePageMobile({
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-100">오늘의 후보</h2>
-            <span className="text-[11px] text-slate-500">{activeCandidates.length}개</span>
+            <span className="text-[11px] text-slate-400">{activeCandidates.length}개</span>
           </div>
           <div className="mb-2.5 grid grid-cols-3 gap-1.5">
             {([
@@ -1106,7 +1106,7 @@ export default function HomePageMobile({
             ))}
           </div>
           {activeCandidates.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-700 px-3 py-6 text-center text-xs text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-700 px-3 py-6 text-center text-xs text-slate-400">
               현재 조건에 해당하는 후보가 없습니다.
             </div>
           ) : (
@@ -1134,7 +1134,7 @@ export default function HomePageMobile({
           >
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-slate-100">포지션 사이징 미리보기</span>
-              <span className="mt-0.5 block text-[11px] text-slate-500">
+              <span className="mt-0.5 block text-[11px] text-slate-400">
                 {capital > 0 ? `총 자본 ${capital.toLocaleString()}원 · 후보 ${sizingRows.length}개` : "총 자본 입력 후 권장 금액 계산"}
               </span>
             </span>
@@ -1152,20 +1152,20 @@ export default function HomePageMobile({
             />
           </div>
           {capital <= 0 ? (
-            <div className="py-4 text-center text-xs text-slate-500">총 자본을 입력하면 종목별 권장 금액을 계산합니다.</div>
+            <div className="py-4 text-center text-xs text-slate-400">총 자본을 입력하면 종목별 권장 금액을 계산합니다.</div>
           ) : sizingRows.length === 0 ? (
-            <div className="py-4 text-center text-xs text-slate-500">오늘 진입 후보가 없습니다.</div>
+            <div className="py-4 text-center text-xs text-slate-400">오늘 진입 후보가 없습니다.</div>
           ) : (
             <div className="space-y-1.5">
               {sizingRows.slice(0, 3).map((r) => (
                 <div key={`${r.symbol}-${r.mode}-${r.horizon}`} className="flex items-center justify-between rounded-lg bg-slate-950/50 px-2.5 py-2 text-[11px]">
                   <div className="min-w-0">
                     <div className="truncate font-medium text-slate-200">{r.name}</div>
-                    <div className="text-slate-500">{modeLabel(r.mode as Mode)} · ½Kelly {(r.halfKelly * 100).toFixed(1)}%</div>
+                    <div className="text-slate-400">{modeLabel(r.mode as Mode)} · ½Kelly {(r.halfKelly * 100).toFixed(1)}%</div>
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="font-mono text-slate-100">{r.amount.toLocaleString()}원</div>
-                    <div className="text-slate-500">{r.qty > 0 ? `${r.qty}주` : "—"}</div>
+                    <div className="text-slate-400">{r.qty > 0 ? `${r.qty}주` : "—"}</div>
                   </div>
                 </div>
               ))}
@@ -1185,7 +1185,7 @@ export default function HomePageMobile({
                   {summary.totalPnlText ?? (Number(summary.totalPnl) >= 0 ? "+" : "") + Number(summary.totalPnl).toLocaleString("ko-KR") + "원"}
                 </span>
               )}
-              <span className="ml-auto text-[11px] text-slate-500">{holdings.length}개{riskCount > 0 && ` · 위험/주의 ${riskCount}개`}</span>
+              <span className="ml-auto text-[11px] text-slate-400">{holdings.length}개{riskCount > 0 && ` · 위험/주의 ${riskCount}개`}</span>
             </div>
             <div className="space-y-2">
               {holdings.slice(0, 6).map((item) => {
@@ -1200,7 +1200,7 @@ export default function HomePageMobile({
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
                         <div className="text-[13px] font-medium text-slate-200">{displayName(item)}</div>
-                        <div className="text-[10px] text-slate-500">{item.symbol} · {item.market === "kr" ? "국장" : "미장"}{currentText ? ` · ${currentText}` : ""}</div>
+                        <div className="text-[10px] text-slate-400">{item.symbol} · {item.market === "kr" ? "국장" : "미장"}{currentText ? ` · ${currentText}` : ""}</div>
                       </div>
                       <div className="shrink-0 text-right">
                         <div className={`font-mono text-xs ${String(item.pnlText || "").startsWith("-") ? "text-red-300" : "text-emerald-300"}`}>{firstText(item.pnlText, "손익 대기")}</div>
@@ -1224,7 +1224,7 @@ export default function HomePageMobile({
         <section className="rounded-2xl border border-slate-800 bg-slate-900/40">
           <button onClick={() => setMoreOpen((v) => !v)} className="flex w-full items-center justify-between px-4 py-3">
             <span className="text-sm font-semibold text-slate-200">⚙️ 전략·기록</span>
-            <ChevronDown size={16} className={`text-slate-500 transition-transform ${moreOpen ? "rotate-180" : ""}`} />
+            <ChevronDown size={16} className={`text-slate-400 transition-transform ${moreOpen ? "rotate-180" : ""}`} />
           </button>
           {moreOpen && (
             <div className="space-y-4 px-4 pb-4">
@@ -1242,7 +1242,7 @@ export default function HomePageMobile({
                   <Bell size={12} className="text-sky-300" /> 알림 추적
                 </div>
                 {alertTrackingRows.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-slate-700 px-3 py-4 text-center text-[11px] text-slate-500">
+                  <div className="rounded-lg border border-dashed border-slate-700 px-3 py-4 text-center text-[11px] text-slate-400">
                     기록된 알림이 쌓이면 추적 결과가 표시됩니다.
                   </div>
                 ) : (
@@ -1250,10 +1250,10 @@ export default function HomePageMobile({
                     {alertTrackingRows.map((row) => (
                       <div key={row.key} className="rounded-lg bg-slate-950/50 px-2.5 py-2">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-[11px] font-semibold text-slate-200">{row.name} <span className="font-mono text-[9px] text-slate-500">{row.symbol}</span></span>
+                          <span className="truncate text-[11px] font-semibold text-slate-200">{row.name} <span className="font-mono text-[9px] text-slate-400">{row.symbol}</span></span>
                           <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold ${row.changeTone === "up" ? "text-emerald-300" : row.changeTone === "down" ? "text-red-300" : "text-slate-400"}`}>{row.status}</span>
                         </div>
-                        <div className="mt-0.5 text-[10px] text-slate-500">{row.recordedAt} · {row.alertPriceText} → {row.currentPriceText} ({row.changeText})</div>
+                        <div className="mt-0.5 text-[10px] text-slate-400">{row.recordedAt} · {row.alertPriceText} → {row.currentPriceText} ({row.changeText})</div>
                       </div>
                     ))}
                   </div>
@@ -1267,10 +1267,10 @@ export default function HomePageMobile({
                 <div className="space-y-1.5">
                   {engineHistoryRows.map((row) => (
                     <div key={row.key} className="flex items-start gap-2 rounded-lg bg-slate-950/50 px-2.5 py-2">
-                      <div className="w-10 shrink-0 pt-0.5 font-mono text-[9px] text-slate-500">{row.date}</div>
+                      <div className="w-10 shrink-0 pt-0.5 font-mono text-[9px] text-slate-400">{row.date}</div>
                       <div className="min-w-0 flex-1">
                         <div className="text-[11px] font-semibold text-slate-200">{row.title}</div>
-                        <div className="text-[10px] text-slate-500">{row.detail}</div>
+                        <div className="text-[10px] text-slate-400">{row.detail}</div>
                       </div>
                       <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold ${row.tone === "emerald" ? "text-emerald-300 border-emerald-500/25" : row.tone === "amber" ? "text-amber-300 border-amber-500/25" : "text-slate-400 border-slate-600/40"}`}>{row.status}</span>
                     </div>
@@ -1288,7 +1288,7 @@ export default function HomePageMobile({
         </section>
 
         {/* 데이터 기준 안내 */}
-        <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2 text-[10px] text-slate-500">
+        <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2 text-[10px] text-slate-400">
           <History size={12} className="shrink-0" />
           <span className={`rounded-full border px-1.5 py-0.5 ${dataFreshnessBadgeClass(freshness.state)}`}>{freshness.label}</span>
           <span className="truncate">{freshness.basisText}</span>

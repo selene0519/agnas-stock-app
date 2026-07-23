@@ -120,7 +120,7 @@ export function RecommendationBadges({ item, maxVisible = 5, className = "" }: R
         </span>
       ))}
       {overflow > 0 && (
-        <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-500">
+        <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-400">
           +{overflow}
         </span>
       )}

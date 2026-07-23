@@ -311,13 +311,13 @@ export default function NewsPage() {
       </div>
 
       <div className="relative max-w-xl">
-        <Search size={15} className="absolute left-3 top-3.5 text-slate-500" />
+        <Search size={15} className="absolute left-3 top-3.5 text-slate-400" />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && setReloadKey((v) => v + 1)}
           placeholder="종목명, 코드, 키워드 검색"
-          className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 pl-9 pr-3 text-sm text-slate-100 outline-none placeholder:text-slate-500"
+          className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 pl-9 pr-3 text-sm text-slate-100 outline-none placeholder:text-slate-400"
         />
       </div>
 
@@ -335,7 +335,7 @@ export default function NewsPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[420px_1fr]">
         <div className="space-y-2">
           {items.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center text-slate-500">
+            <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center text-slate-400">
               {loading ? "불러오는 중..." : emptyMessage(tab, data, query, watchOnly)}
             </div>
           )}
@@ -353,7 +353,7 @@ export default function NewsPage() {
                   {tab === "news" && (() => { const s = newsSentiment(item); return s ? <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${s.cls}`}>{s.label}</span> : null; })()}
                 </div>
               </div>
-              <div className="mt-1 font-mono text-xs text-slate-500">{item.symbol || item.company || ""} · {(item.market || market).toString().toUpperCase()}</div>
+              <div className="mt-1 font-mono text-xs text-slate-400">{item.symbol || item.company || ""} · {(item.market || market).toString().toUpperCase()}</div>
               {tab === "disclosures" && <div className="mt-2 text-xs text-amber-300">{secFormExplain(item.formType || item.title || item.reportName)}</div>}
               {tab === "company" && (
                 <div className="mt-2 flex flex-wrap gap-1">
@@ -364,14 +364,14 @@ export default function NewsPage() {
                   ))}
                 </div>
               )}
-              {tab !== "company" && <div className="mt-2 text-xs text-slate-500">{item.source || item.publisher || "출처 미확인"} · {freshnessLabel(itemDateValue(item))} · {dateText(itemDateValue(item))}</div>}
+              {tab !== "company" && <div className="mt-2 text-xs text-slate-400">{item.source || item.publisher || "출처 미확인"} · {freshnessLabel(itemDateValue(item))} · {dateText(itemDateValue(item))}</div>}
             </button>
           ))}
         </div>
 
         <div className={`rounded-2xl border border-slate-800 bg-slate-900/60 p-4 md:p-6 ${!selected ? "hidden lg:block" : ""}`}>
           {!selected ? (
-            <div className="py-20 text-center text-slate-500">목록에서 항목을 선택하거나 검색하세요.</div>
+            <div className="py-20 text-center text-slate-400">목록에서 항목을 선택하거나 검색하세요.</div>
           ) : tab === "company" ? (
             <CompanyDetail selected={selected} />
           ) : tab === "news" ? (
@@ -392,7 +392,7 @@ function QuantBar({ label, score }: { label: string; score: number | null | unde
   const barColor = pct >= 60 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-400" : "bg-red-400";
   return (
     <div className="flex items-center gap-2">
-      <span className="w-16 shrink-0 text-[11px] text-slate-500">{label}</span>
+      <span className="w-16 shrink-0 text-[11px] text-slate-400">{label}</span>
       <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
         <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
       </div>
@@ -412,7 +412,7 @@ function CompanyDetail({ selected }: { selected: any }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 text-xl font-bold text-slate-100"><Building2 size={20} />{displayName(selected)}</h2>
-          <div className="mt-1 font-mono text-sm text-slate-500">{selected.symbol} · {String(selected.market || "").toUpperCase()}</div>
+          <div className="mt-1 font-mono text-sm text-slate-400">{selected.symbol} · {String(selected.market || "").toUpperCase()}</div>
         </div>
         <div className={`rounded-xl border px-3 py-2 text-xs font-bold ${statusBadge(selected.dataStatus)}`}>{connStatus}</div>
       </div>
@@ -421,7 +421,7 @@ function CompanyDetail({ selected }: { selected: any }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold text-slate-200">분석 준비도</div>
-            <div className="mt-1 text-xs text-slate-500">{dataAction(selected)}</div>
+            <div className="mt-1 text-xs text-slate-400">{dataAction(selected)}</div>
           </div>
           <span className={`rounded-xl px-3 py-1.5 text-xs font-bold ${toneClassName(readiness.pct >= 75 ? "safe" : readiness.pct >= 35 ? "warning" : "neutral")}`}>
             {readiness.label} · {readiness.pct}%
@@ -440,7 +440,7 @@ function CompanyDetail({ selected }: { selected: any }) {
       {hasQuant && (
         <div className="rounded-2xl border border-slate-700 bg-slate-950/60 p-4">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">퀀트 기술분석</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-400">퀀트 기술분석</span>
             {selected.quantProbability > 0 && (
               <span className="font-mono text-sm font-bold text-emerald-300">{Number(selected.quantProbability).toFixed(1)}% 확률</span>
             )}
@@ -468,7 +468,7 @@ function CompanyDetail({ selected }: { selected: any }) {
 
       {/* ── 재무 지표 ──────────────────────────────────────────────── */}
       <div>
-        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500">재무 지표</div>
+        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">재무 지표</div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <Metric label="EPS" value={fmtNum(selected.eps)} />
           <Metric label="PER" value={fmtNum(selected.per)} />
@@ -497,7 +497,7 @@ function CompanyDetail({ selected }: { selected: any }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
         <span>출처:</span>
         {(selected.dataSources || [selected.source]).filter(Boolean).map((src: string, i: number) => (
           <span key={i} className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 font-mono">{src}</span>
@@ -521,9 +521,9 @@ function NewsDetail({ selected }: { selected: any }) {
           {sentiment && <span className={`shrink-0 rounded-xl border px-3 py-1.5 text-xs font-bold ${sentiment.cls}`}>{sentiment.label}</span>}
         </div>
         {selected.titleKo && selected.title && selected.titleKo !== selected.title && (
-          <p className="mt-1 text-xs text-slate-500">원문: {selected.title}</p>
+          <p className="mt-1 text-xs text-slate-400">원문: {selected.title}</p>
         )}
-        <p className="mt-2 text-sm text-slate-500">{selected.source || selected.publisher || "출처 미확인"} · {dateText(selected.publishedAt || selected.date)}</p>
+        <p className="mt-2 text-sm text-slate-400">{selected.source || selected.publisher || "출처 미확인"} · {dateText(selected.publishedAt || selected.date)}</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Metric label="영향도" value={`${impactLabel(score)} (${score}점)`} />
@@ -532,7 +532,7 @@ function NewsDetail({ selected }: { selected: any }) {
       {tags.length > 0 && <div className="flex flex-wrap gap-2">{tags.map((tag: string) => <span key={tag} className="rounded-lg bg-blue-500/10 px-2 py-1 text-xs text-blue-300">{tag}</span>)}</div>}
       <p className="rounded-2xl bg-slate-950 p-4 text-sm leading-6 text-slate-300">{summaryOf(selected)}</p>
       {selected.summaryKo && selected.summary && selected.summaryKo !== selected.summary && (
-        <p className="rounded-2xl border border-slate-800 bg-slate-950/50 p-3 text-xs leading-6 text-slate-500">원문 요약: {selected.summary}</p>
+        <p className="rounded-2xl border border-slate-800 bg-slate-950/50 p-3 text-xs leading-6 text-slate-400">원문 요약: {selected.summary}</p>
       )}
       {selected.url && <a href={selected.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"><ExternalLink size={14} />원문 보기</a>}
     </div>
@@ -546,7 +546,7 @@ function DisclosureDetail({ selected }: { selected: any }) {
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-bold text-slate-100">{selected.title || selected.reportName || "공시 제목 없음"}</h2>
-        <p className="mt-2 text-sm text-slate-500">{displayName(selected) || "-"} · {selected.source || "DART/SEC"} · {dateText(selected.disclosedAt || selected.date)}</p>
+        <p className="mt-2 text-sm text-slate-400">{displayName(selected) || "-"} · {selected.source || "DART/SEC"} · {dateText(selected.disclosedAt || selected.date)}</p>
       </div>
       <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-100">
         <b>{secFormExplain(form)}</b><br />미장 공시는 SEC Form 유형을 먼저 해석해 보여줍니다. 투자 판단 전 원문 확인이 필요합니다.
@@ -568,7 +568,7 @@ function DisclosureDetail({ selected }: { selected: any }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-slate-950 p-4">
-      <div className="text-sm text-slate-500">{label}</div>
+      <div className="text-sm text-slate-400">{label}</div>
       <div className="mt-2 break-words font-mono text-lg font-semibold text-slate-100">{value}</div>
     </div>
   );

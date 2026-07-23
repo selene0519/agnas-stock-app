@@ -125,7 +125,7 @@ export default function SessionSafetyBanner({
             )}
           </div>
           <div className="absolute right-0 top-0">
-            <button type="button" aria-label="세션 배너 숨김" onClick={() => setHidden(true)} className="relative inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-500 transition-[color,transform] after:absolute after:-inset-2 after:content-[''] hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[0.96]">
+            <button type="button" aria-label="세션 배너 숨김" onClick={() => setHidden(true)} className="relative inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-[color,transform] after:absolute after:-inset-2 after:content-[''] hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[0.96]">
               <X aria-hidden="true" size={15} />
             </button>
           </div>

@@ -60,7 +60,7 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
       <Image src="/brand/mone-symbol.png" alt="MONE" width={34} height={34} className="h-8 w-8 shrink-0 object-contain" priority />
       <div className="min-w-0">
         <div className="font-mono text-[20px] font-semibold leading-none tracking-[0.32em] text-slate-100">MONE</div>
-        <div className="mt-1 text-[9px] font-medium tracking-[0.22em] text-slate-500">AGNAS STOCK APP</div>
+        <div className="mt-1 text-[9px] font-medium tracking-[0.22em] text-slate-400">AGNAS STOCK APP</div>
       </div>
     </div>
   );
@@ -77,7 +77,7 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto hidden h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition-[background-color,color,transform] hover:bg-slate-800 hover:text-slate-300 active:scale-[0.96] md:flex"
+          className="ml-auto hidden h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-[background-color,color,transform] hover:bg-slate-800 hover:text-slate-300 active:scale-[0.96] md:flex"
           title={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
           aria-label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
           aria-expanded={!collapsed}
@@ -130,7 +130,7 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
                 <span className="min-w-0 flex-1 truncate text-xs text-slate-300">
                   {userProfile.name || userProfile.email || userProfile.provider || "사용자"}
                 </span>
-                <button type="button" onClick={onUserLogout} title="로그아웃" aria-label="로그아웃" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-200">
+                <button type="button" onClick={onUserLogout} title="로그아웃" aria-label="로그아웃" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200">
                   <LogOut size={15} aria-hidden="true" />
                 </button>
               </div>

@@ -617,7 +617,7 @@ function NavCurve() {
     return (
       <div className="mone-home-card px-3.5 py-3">
         <div className="text-sm font-semibold text-slate-200">NAV 누적 수익률</div>
-        <p className="mt-1.5 text-xs text-slate-500">로그인 후 본인 포트폴리오 추이를 확인할 수 있습니다.</p>
+        <p className="mt-1.5 text-xs text-slate-400">로그인 후 본인 포트폴리오 추이를 확인할 수 있습니다.</p>
       </div>
     );
   }
@@ -644,10 +644,10 @@ function NavCurve() {
             {isPos ? "+" : ""}{cumReturn.toFixed(2)}%
           </span>
         </span>
-        <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       <div className={open ? "border-t border-slate-800 px-5 pb-5 pt-4" : "hidden"}>
-        <div className="mb-3 flex items-center gap-2 text-[10px] text-slate-500">
+        <div className="mb-3 flex items-center gap-2 text-[10px] text-slate-400">
           <span className="flex items-center gap-1">
             <span className="inline-block h-1.5 w-4 rounded bg-emerald-500"></span>
             실제 {actualCount}일
@@ -724,7 +724,7 @@ function PortfolioCompositionBar({ items }: { items: any[] }) {
             <div key={`${item.market}-${item.symbol}`} className="flex items-center gap-1.5">
               <div className={`h-2 w-2 shrink-0 rounded-full ${colors[i % colors.length]}`} />
               <span className="text-[11px] text-slate-300">{labelOf(item)}</span>
-              <span className="font-mono text-[11px] text-slate-500">{pct.toFixed(1)}%</span>
+              <span className="font-mono text-[11px] text-slate-400">{pct.toFixed(1)}%</span>
             </div>
           );
         })}
@@ -792,7 +792,7 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
           />
         </label>
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">손절가·목표가는 선택 입력입니다. 비워 두면 현재가만 저장됩니다.</p>
+      <p className="mt-2 text-[11px] text-slate-400">손절가·목표가는 선택 입력입니다. 비워 두면 현재가만 저장됩니다.</p>
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       <div className="mt-4 flex gap-2">
         <button onClick={handleSave} disabled={saving}
@@ -1486,7 +1486,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           { key: "us", label: "미장" },
         ] as const).map((item) => (
           <button key={item.key} type="button" onClick={() => selectMarket(item.key)}
-            className={`active:scale-[0.96] ${marketMode === item.key ? "mone-selection-brand" : "text-slate-500 hover:text-slate-300"}`}>
+            className={`active:scale-[0.96] ${marketMode === item.key ? "mone-selection-brand" : "text-slate-400 hover:text-slate-300"}`}>
             {item.label}
           </button>
         ))}
@@ -1503,9 +1503,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-400/10 text-teal-300"><Link2 size={19} /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-[12px] font-semibold text-slate-100">증권사 연동</span>
-              <span className="mt-1 block truncate text-[10px] text-slate-500">{tossStatus?.connected || kisStatus?.connected ? "연결 상태 확인" : "보유 데이터 자동 연동"}</span>
+              <span className="mt-1 block truncate text-[10px] text-slate-400">{tossStatus?.connected || kisStatus?.connected ? "연결 상태 확인" : "보유 데이터 자동 연동"}</span>
             </span>
-            <ChevronRight size={14} className="shrink-0 text-slate-500" />
+            <ChevronRight size={14} className="shrink-0 text-slate-400" />
           </button>
           <button
             type="button"
@@ -1515,9 +1515,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-400/10 text-teal-300"><Plus size={20} /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-[12px] font-semibold text-slate-100">직접 추가</span>
-              <span className="mt-1 block truncate text-[10px] text-slate-500">보유 종목을 직접 입력</span>
+              <span className="mt-1 block truncate text-[10px] text-slate-400">보유 종목을 직접 입력</span>
             </span>
-            <ChevronRight size={14} className="shrink-0 text-slate-500" />
+            <ChevronRight size={14} className="shrink-0 text-slate-400" />
           </button>
         </div>
       </section>
@@ -1571,7 +1571,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             : "border-slate-700 bg-slate-900 text-slate-300"
         }`}>
           <span>{message}</span>
-          <button onClick={() => setMessage("")} aria-label="알림 닫기" title="닫기" className="ml-3 shrink-0 text-slate-500 hover:text-slate-300"><X size={14} /></button>
+          <button onClick={() => setMessage("")} aria-label="알림 닫기" title="닫기" className="ml-3 shrink-0 text-slate-400 hover:text-slate-300"><X size={14} /></button>
         </div>
       )}
 
@@ -1618,7 +1618,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                 {holdingFreshness.label}
               </span>
             </div>
-            <p className="mt-1 leading-5 text-slate-500">
+            <p className="mt-1 leading-5 text-slate-400">
               {holdingFreshness.basisText}
               {holdingsStamp ? ` · 목록 확인 ${holdingsStamp}` : ""}
             </p>
@@ -1686,7 +1686,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="mone-home-section-title">리스크 계산 기준</h2>
-                <p className="mt-0.5 text-[10.5px] leading-5 text-slate-500">보유 출처와 같은 범위로 리스크 예산을 계산합니다.</p>
+                <p className="mt-0.5 text-[10.5px] leading-5 text-slate-400">보유 출처와 같은 범위로 리스크 예산을 계산합니다.</p>
               </div>
               {riskBudget && (
                 <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${riskBudget.status === "OVER_BUDGET" ? toneClassName("danger") : toneClassName("safe")}`}>
@@ -1732,7 +1732,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                           <span className="font-semibold text-slate-100">{item.name}</span>
                           <span className="font-mono text-red-300">{Number(item.lossBudgetPct || 0).toFixed(1)}%</span>
                         </div>
-                        <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-500">
+                        <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-400">
                           <span>{item.symbol}</span>
                           <span>현재 {Number(item.weightPct || 0).toFixed(1)}%</span>
                           <span>목표 {Number(item.recommendedWeightPct || 0).toFixed(1)}%</span>
@@ -1798,14 +1798,14 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   <span className={`grid size-9 place-items-center rounded-full text-[11px] font-semibold ${isRisk ? "bg-amber-400/10 text-amber-300" : "bg-teal-400/10 text-teal-300"}`}>{name.slice(0, 1)}</span>
                   <span className="min-w-0">
                     <span className="block truncate text-[12px] font-semibold text-slate-100">{name}</span>
-                    <span className="mt-0.5 block truncate font-mono text-[9.5px] text-slate-500">{symbol}</span>
+                    <span className="mt-0.5 block truncate font-mono text-[9.5px] text-slate-400">{symbol}</span>
                   </span>
                   <span className="text-left">
-                    <span className="block text-[9px] text-slate-500">비중</span>
+                    <span className="block text-[9px] text-slate-400">비중</span>
                     <span className="mt-0.5 block font-mono text-[10.5px] font-semibold tabular-nums text-slate-200">{weight}</span>
                   </span>
                   <span className="text-right">
-                    <span className="block text-[9px] text-slate-500">평가손익</span>
+                    <span className="block text-[9px] text-slate-400">평가손익</span>
                     <span className={`mt-0.5 block font-mono text-[10.5px] font-semibold tabular-nums ${pnlTone}`}>{holding.pnlText || "-"}</span>
                     <span className={`mt-0.5 block font-mono text-[9px] tabular-nums ${pnlTone}`}>{holding.pnlPctText || "-"}</span>
                     <span className={`mt-1 inline-flex rounded-full border px-1.5 py-0.5 text-[8.5px] font-semibold ${statusClass}`}>{riskLabel(holding.riskStatus)}</span>
@@ -1821,12 +1821,12 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         <section className="mone-home-card p-3.5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="mone-home-section-title">보유종목</h2>
-            <span className="font-mono text-[10px] text-slate-500">0개</span>
+            <span className="font-mono text-[10px] text-slate-400">0개</span>
           </div>
           <div className="mone-home-inset mt-3 flex min-h-[132px] flex-col items-center justify-center rounded-[10px] border border-dashed px-4 py-5 text-center">
             <BriefcaseBusiness size={22} className="text-teal-300" />
             <p className="mt-2 text-[13px] font-semibold text-slate-100">보유종목을 등록해주세요</p>
-            <p className="mt-1 text-[10.5px] leading-5 text-slate-500">직접 입력하거나 증권사 데이터를 연동해 시작할 수 있습니다.</p>
+            <p className="mt-1 text-[10.5px] leading-5 text-slate-400">직접 입력하거나 증권사 데이터를 연동해 시작할 수 있습니다.</p>
             <div className="mt-3 grid w-full max-w-[300px] grid-cols-2 gap-2">
               <button type="button" onClick={() => setShowAdd(true)} className="mone-selection-brand min-h-9 rounded-[8px] px-3 text-[11px] font-semibold">직접 등록</button>
               <button type="button" onClick={() => onNavigate?.("broker")} className="rounded-[8px] border border-slate-700 bg-slate-950 px-3 text-[11px] font-semibold text-slate-300 hover:bg-slate-900">증권사 연동</button>
@@ -1846,7 +1846,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           ] as const).map((tab) => (
             <button key={tab.key} onClick={() => setHoldingsViewTab(tab.key)}
               className={`min-h-9 rounded-[7px] px-2 text-[11px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
-                holdingsViewTab === tab.key ? "mone-selection-brand" : "text-slate-500 hover:text-slate-300"
+                holdingsViewTab === tab.key ? "mone-selection-brand" : "text-slate-400 hover:text-slate-300"
               }`}>
               {tab.label}
             </button>
@@ -1859,7 +1859,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         <div>
           <div className="mb-2 flex items-baseline gap-2">
             <h2 className="mone-home-section-title">개별주 보유</h2>
-            <span className="font-mono text-[10px] text-slate-500 tabular-nums">{individualStocks.length}개 · 위험도 순</span>
+            <span className="font-mono text-[10px] text-slate-400 tabular-nums">{individualStocks.length}개 · 위험도 순</span>
           </div>
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
             {individualStocks.map((holding: any) => {
@@ -1893,12 +1893,12 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                 <div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <h2 className="max-w-[8rem] break-keep text-base font-bold leading-snug text-slate-100 sm:max-w-none">{displayName(holding)}</h2>
-                    <span className="font-mono text-xs text-slate-500">{holding.symbol}</span>
+                    <span className="font-mono text-xs text-slate-400">{holding.symbol}</span>
                     <span className="whitespace-nowrap rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{holding.market === "kr" ? "국장" : "미장"}</span>
                     <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-300">{holdingAssetLabel(assetType)}</span>
                     <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-400">{holdingPurposeLabel(holdingPurpose)}</span>
                   </div>
-                  <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
+                  <div className="mt-0.5 text-xs text-slate-400">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                   <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
                     <span>{holdingSourceText}</span>
                     {holdingDateText && <span>기준 {holdingDateText}</span>}
@@ -2088,9 +2088,9 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             })}
             {individualStocks.length === 0 && !loading && etfHoldings.length === 0 && (
               <div className="col-span-full rounded-2xl border border-dashed border-slate-800 p-12 text-center">
-                <p className="text-slate-500">{showPersonalEmptyNotice ? "개인 보유종목이 아직 없습니다." : "보유 종목이 없습니다."}</p>
+                <p className="text-slate-400">{showPersonalEmptyNotice ? "개인 보유종목이 아직 없습니다." : "보유 종목이 없습니다."}</p>
                 {showPersonalEmptyNotice && (
-                  <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-500">공용 데이터가 있더라도 이 화면에는 이 브라우저의 개인 보유만 표시합니다.</p>
+                  <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-400">공용 데이터가 있더라도 이 화면에는 이 브라우저의 개인 보유만 표시합니다.</p>
                 )}
                 <button onClick={() => setShowAdd(true)}
                   className="mone-primary-action mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.96]">
@@ -2107,7 +2107,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         <div>
           <div className="mb-2 flex items-baseline gap-2">
             <h2 className="text-lg font-bold text-slate-100">ETF 적립 ({etfHoldings.length})</h2>
-            <span className="text-xs text-slate-500">평가금액 기준 정렬</span>
+            <span className="text-xs text-slate-400">평가금액 기준 정렬</span>
           </div>
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
             {etfHoldings.map((holding: any) => {
@@ -2132,12 +2132,12 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     <div>
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <h2 className="max-w-[8rem] break-keep text-base font-bold leading-snug text-slate-100 sm:max-w-none">{displayName(holding)}</h2>
-                        <span className="font-mono text-xs text-slate-500">{holding.symbol}</span>
+                        <span className="font-mono text-xs text-slate-400">{holding.symbol}</span>
                         <span className="whitespace-nowrap rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">{holding.market === "kr" ? "국장" : "미장"}</span>
                         <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-300">{holdingAssetLabel(assetType)}</span>
                         <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-400">{holdingPurposeLabel(holdingPurpose)}</span>
                       </div>
-                      <div className="mt-0.5 text-xs text-slate-500">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
+                      <div className="mt-0.5 text-xs text-slate-400">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
                       <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
                         <span>{holdingSourceText}</span>
                         {holdingDateText && <span>기준 {holdingDateText}</span>}
@@ -2267,10 +2267,10 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       )}
 
       {holdingsViewTab === "stock" && individualStocks.length === 0 && etfHoldings.length > 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">보유 중인 개별주가 없습니다.</div>
+        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-400">보유 중인 개별주가 없습니다.</div>
       )}
       {holdingsViewTab === "etf" && etfHoldings.length === 0 && individualStocks.length > 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">보유 중인 ETF가 없습니다.</div>
+        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-400">보유 중인 ETF가 없습니다.</div>
       )}
 
       {/* Kelly 포지션 사이즈 가이드 */}
@@ -2282,7 +2282,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
           >
             <span className="text-sm font-semibold text-slate-200">Kelly 포지션 사이즈 가이드</span>
-            <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${kellyOpen ? "rotate-180" : ""}`} />
+            <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform duration-200 ${kellyOpen ? "rotate-180" : ""}`} />
           </button>
           {kellyOpen && (
             <div className="border-t border-slate-800 px-5 pb-5 pt-4">
@@ -2299,17 +2299,17 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     return (
                       <div key={k} className="rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-center">
                         <div className={`font-semibold ${color}`}>{modeLabel}</div>
-                        <div className="text-slate-500">{horizonLabel}</div>
+                        <div className="text-slate-400">{horizonLabel}</div>
                         <div className="mt-1 font-mono font-bold text-slate-100">{hk}</div>
                         {entry.winRate != null && (
-                          <div className="mt-0.5 text-[10px] text-slate-500">승률 {(entry.winRate * 100).toFixed(0)}%</div>
+                          <div className="mt-0.5 text-[10px] text-slate-400">승률 {(entry.winRate * 100).toFixed(0)}%</div>
                         )}
                       </div>
                     );
                   })
                 )}
               </div>
-              <p className="mt-2 text-[10px] text-slate-500">Half-Kelly 상한 20% · VTJ 실적 기반 — 해당 전략으로 진입 검토 시 권장 비중입니다.</p>
+              <p className="mt-2 text-[10px] text-slate-400">Half-Kelly 상한 20% · VTJ 실적 기반 — 해당 전략으로 진입 검토 시 권장 비중입니다.</p>
             </div>
           )}
         </div>
@@ -2328,11 +2328,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                 {riskBudget.status === "OVER_BUDGET" ? "예산 초과" : "정상"}
               </span>
             </span>
-            <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform duration-200 ${riskBudgetOpen ? "rotate-180" : ""}`} />
+            <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform duration-200 ${riskBudgetOpen ? "rotate-180" : ""}`} />
           </button>
           {riskBudgetOpen && (
             <div className="border-t border-slate-800 px-5 pb-5 pt-4">
-              <p className="mb-3 text-[11px] text-slate-500">손절가와 Kelly 한도 기준으로 과대 비중 종목을 표시합니다.</p>
+              <p className="mb-3 text-[11px] text-slate-400">손절가와 Kelly 한도 기준으로 과대 비중 종목을 표시합니다.</p>
               <div className="grid gap-2 text-[11px] sm:grid-cols-3">
                 <Mini label="예상 손실 예산" value={`${Number(riskBudget.totalLossBudgetPct || 0).toFixed(1)}%`} accent={Number(riskBudget.totalLossBudgetPct || 0) > Number(riskBudget.policy?.maxPortfolioLossPct || 6) ? "text-red-300" : "text-emerald-300"} />
                 <Mini label="허용 한도" value={`${Number(riskBudget.policy?.maxPortfolioLossPct || 0).toFixed(0)}%`} />
@@ -2369,7 +2369,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                         <span className="font-semibold text-slate-100">{item.name}</span>
                         <span className="font-mono text-red-300">{Number(item.lossBudgetPct || 0).toFixed(1)}%</span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-500">
+                      <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-slate-400">
                         <span>{item.symbol}</span>
                         <span>현재 비중 {Number(item.weightPct || 0).toFixed(1)}%</span>
                         <span>목표 비중 {Number(item.recommendedWeightPct || 0).toFixed(1)}%</span>
@@ -2446,7 +2446,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     {normalizeAction(sig.signal).label}
                   </span>
                   <span className="font-semibold text-slate-200">{sig.name}</span>
-                  <span className="font-mono text-slate-500">{sig.symbol}</span>
+                  <span className="font-mono text-slate-400">{sig.symbol}</span>
                   <span className="text-slate-400">{Array.isArray(sig.reasons) ? sig.reasons[0] : ""}</span>
                 </div>
               ))}
@@ -2489,7 +2489,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               className={`min-h-9 rounded-[7px] px-1 text-[10.5px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
                 portfolioAnalysisTab === tab.key
                   ? "mone-selection-brand"
-                  : "text-slate-500 hover:text-slate-300"
+                  : "text-slate-400 hover:text-slate-300"
               }`}
             >
               {tab.label}
@@ -2514,7 +2514,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-100">벤치마크 비교 ({benchmarkData.benchmark})</h2>
-                  <p className="text-xs text-slate-500">{benchmarkData.benchmarkLatestDate} 기준</p>
+                  <p className="text-xs text-slate-400">{benchmarkData.benchmarkLatestDate} 기준</p>
                 </div>
                 <div className={`font-mono text-base font-bold ${(portfolioSnapshot.averageAlpha ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                   알파 {(portfolioSnapshot.averageAlpha ?? 0) >= 0 ? "+" : ""}{portfolioSnapshot.averageAlpha?.toFixed(1)}%p
@@ -2522,7 +2522,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px]">
-                  <thead><tr className="border-b border-slate-800 text-slate-500">
+                  <thead><tr className="border-b border-slate-800 text-slate-400">
                     <th className="pb-2 text-left">종목</th>
                     <th className="pb-2 text-right">내 수익률</th>
                     <th className="pb-2 text-right">{benchmarkData.benchmark}</th>
@@ -2531,7 +2531,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   <tbody>
                     {personalBenchmarkItems.map((item: any) => (
                       <tr key={item.symbol} className="border-b border-slate-900">
-                        <td className="py-1.5 pr-3"><div className="font-medium text-slate-200">{item.name}</div><div className="text-slate-500">{item.symbol}</div></td>
+                        <td className="py-1.5 pr-3"><div className="font-medium text-slate-200">{item.name}</div><div className="text-slate-400">{item.symbol}</div></td>
                         <td className={`py-1.5 pr-3 text-right font-mono ${(item.portfolioReturn ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                           {item.portfolioReturn >= 0 ? "+" : ""}{item.portfolioReturn?.toFixed(1)}%
                         </td>
@@ -2566,7 +2566,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                 <div className="max-h-48 space-y-1.5 overflow-y-auto">
                   {riskBudget.correlation.highCorrelationPairs.slice(0, 15).map((pair: any) => (
                     <div key={`${pair.symbolA}-${pair.symbolB}`} className="flex items-center justify-between rounded-lg bg-slate-950/50 px-3 py-1.5 text-[11px]">
-                    <span className="text-slate-300">{pair.symbolA} <span className="text-slate-500">vs</span> {pair.symbolB}</span>
+                    <span className="text-slate-300">{pair.symbolA} <span className="text-slate-400">vs</span> {pair.symbolB}</span>
                     <div className="flex items-center gap-2">
                       <div className="w-20 overflow-hidden rounded-full bg-slate-800">
                         <div className="h-1.5 rounded-full bg-red-500" style={{ width: `${Math.abs(Number(pair.correlation || 0)) * 100}%` }} />
@@ -2617,7 +2617,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   <span className="ml-3 font-mono font-bold text-red-300">
                     {Math.round(visibleRiskSummary.lossAmount).toLocaleString()}원 ({visibleRiskLossPct.toFixed(1)}%)
                   </span>
-                  <div className="mt-1 text-[10px] text-slate-500">손절가 미설정 종목은 ATR 기반 추산값으로 계산됩니다. 직접 설정 시 그 값이 우선합니다.</div>
+                  <div className="mt-1 text-[10px] text-slate-400">손절가 미설정 종목은 ATR 기반 추산값으로 계산됩니다. 직접 설정 시 그 값이 우선합니다.</div>
                 </div>
               )}
             </div>
@@ -2645,7 +2645,7 @@ function PortfolioAnalysisEmptyCard({ title, detail }: { title: string; detail: 
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
       </div>
-      <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 px-4 py-5 text-xs leading-relaxed text-slate-500">
+      <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 px-4 py-5 text-xs leading-relaxed text-slate-400">
         {detail}
       </div>
     </div>
@@ -2678,20 +2678,20 @@ function PortfolioSnapshot({
   return (
     <div className="mone-home-inset grid grid-cols-[1fr_auto] items-center gap-3 rounded-[10px] border p-3">
       <div className="min-w-0 border-r border-slate-800/80 pr-3">
-        <div className="text-[10px] text-slate-500">집중도 (상위 5개)</div>
+        <div className="text-[10px] text-slate-400">집중도 (상위 5개)</div>
         <div className="mt-1 font-mono text-[22px] font-semibold tabular-nums text-teal-300">{top5Pct.toFixed(1)}%</div>
-        <div className="mt-1 text-[10px] text-slate-500">보유 비중 기준</div>
+        <div className="mt-1 text-[10px] text-slate-400">보유 비중 기준</div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
           <div className="h-full rounded-full bg-teal-400" style={{ width: `${Math.min(100, top5Pct)}%` }} />
         </div>
-        <div className="mt-4 text-[10px] text-slate-500">{benchmarkName} 대비</div>
+        <div className="mt-4 text-[10px] text-slate-400">{benchmarkName} 대비</div>
         <div className={`mt-1 font-mono text-[17px] font-semibold tabular-nums ${averageAlpha == null ? "text-slate-300" : averageAlpha >= 0 ? "text-teal-300" : "text-red-300"}`}>{alphaText}</div>
       </div>
       <div className="flex min-w-[142px] items-center gap-2">
         <div className="relative grid size-[78px] shrink-0 place-items-center rounded-full" style={ringStyle}>
           <div className="grid size-[57px] place-items-center rounded-full bg-slate-950 text-center">
             <span className="block font-mono text-[17px] font-semibold text-slate-100">{holdingCount}개</span>
-            <span className="block text-[8.5px] text-slate-500">보유 종목</span>
+            <span className="block text-[8.5px] text-slate-400">보유 종목</span>
           </div>
         </div>
         <div className="space-y-1.5 text-[9.5px] text-slate-400">
@@ -2724,7 +2724,7 @@ function SummaryCard({
   return (
     <div className="mone-home-card min-w-0 p-3">
       <div className="flex min-h-5 items-center gap-1.5">
-        <div className="truncate text-[10px] text-slate-500">{label}</div>
+        <div className="truncate text-[10px] text-slate-400">{label}</div>
         {visual === "value" && icon}
       </div>
       {visual === "pnl" ? (
@@ -2752,7 +2752,7 @@ function SummaryCard({
 function SourceMini({ label, value, accent = "text-slate-200" }: { label: string; value: string; accent?: string }) {
   return (
     <div className="mone-home-inset min-w-0 rounded-[8px] border px-2.5 py-2">
-      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="text-[10px] text-slate-400">{label}</div>
       <div className={`mt-0.5 min-w-0 truncate text-xs font-semibold ${accent}`}>{value || "확인 대기"}</div>
     </div>
   );
@@ -2761,7 +2761,7 @@ function SourceMini({ label, value, accent = "text-slate-200" }: { label: string
 function Mini({ label, value, accent = "text-slate-100" }: { label: string; value: string; accent?: string }) {
   return (
     <div className="mone-home-inset min-w-0 rounded-[8px] border px-2.5 py-2">
-      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="text-[10px] text-slate-400">{label}</div>
       <div className={`mt-1 min-w-0 break-keep font-mono text-[11px] font-bold leading-tight sm:text-sm ${accent}`}>{value}</div>
     </div>
   );

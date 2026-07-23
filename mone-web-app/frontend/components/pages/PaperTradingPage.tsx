@@ -77,7 +77,7 @@ function SummaryBar({ summary, market }: { summary: Summary; market: string }) {
         },
       ].map(({ label, value, color }) => (
         <div key={label} className="rounded-xl border border-slate-700/40 bg-slate-800/30 px-3 py-2.5 text-center">
-          <div className="text-[10px] text-slate-500">{label}</div>
+          <div className="text-[10px] text-slate-400">{label}</div>
           <div className={`mt-0.5 text-sm font-bold font-mono ${color || "text-slate-200"}`}>{value}</div>
         </div>
       ))}
@@ -132,7 +132,7 @@ function DrawdownBanner({ dd, market }: { dd: DrawdownInfo; market: string }) {
           {cfg.label}
         </span>
       </div>
-      <div className="flex gap-3 text-[10px] text-slate-500">
+      <div className="flex gap-3 text-[10px] text-slate-400">
         <span>피크 {fmtVal(peakValue)}</span>
         <span>현재 {fmtVal(portfolioValue)}</span>
       </div>
@@ -190,7 +190,7 @@ function PositionCard({ p, market, onUpdated }: { p: Position; market: string; o
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-slate-100">{p.name}</span>
-            <span className="text-[11px] font-mono text-slate-500">{p.symbol}</span>
+            <span className="text-[11px] font-mono text-slate-400">{p.symbol}</span>
             {stopAlert && <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">스탑 {stopDist!.toFixed(1)}%</span>}
             {targetAlert && !stopAlert && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">목표 {targetDist!.toFixed(1)}%</span>}
           </div>
@@ -223,13 +223,13 @@ function PositionCard({ p, market, onUpdated }: { p: Position; market: string; o
                 className="w-28 rounded-lg border border-emerald-500/40 bg-slate-800 px-2 py-1 text-xs text-slate-100 placeholder-slate-600 focus:outline-none"
               />
               <button onClick={saveStops} disabled={saving} className="rounded-lg bg-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-600 disabled:opacity-50">저장</button>
-              <button onClick={() => setEditing(false)} className="text-[11px] text-slate-500 hover:text-slate-300">취소</button>
+              <button onClick={() => setEditing(false)} className="text-[11px] text-slate-400 hover:text-slate-300">취소</button>
             </div>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <PnlBadge pct={p.pnlPct} abs={p.pnl} />
-          <button onClick={() => setEditing(!editing)} className="rounded-lg border border-slate-700 px-2 py-1 text-[10px] text-slate-500 hover:bg-slate-800 hover:text-slate-200">
+          <button onClick={() => setEditing(!editing)} className="rounded-lg border border-slate-700 px-2 py-1 text-[10px] text-slate-400 hover:bg-slate-800 hover:text-slate-200">
             {editing ? "접기" : "스탑"}
           </button>
         </div>
@@ -287,7 +287,7 @@ function TradeForm({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-500">종목 코드 *</span>
+          <span className="text-[10px] text-slate-400">종목 코드 *</span>
           <input
             value={symbol}
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
@@ -296,7 +296,7 @@ function TradeForm({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-500">종목명 (선택)</span>
+          <span className="text-[10px] text-slate-400">종목명 (선택)</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -307,7 +307,7 @@ function TradeForm({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-500">수량 *</span>
+          <span className="text-[10px] text-slate-400">수량 *</span>
           <input
             type="number"
             min="0.0001"
@@ -319,7 +319,7 @@ function TradeForm({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-500">체결가 (비워두면 현재가)</span>
+          <span className="text-[10px] text-slate-400">체결가 (비워두면 현재가)</span>
           <input
             type="number"
             min="0"
@@ -332,7 +332,7 @@ function TradeForm({
         </label>
       </div>
       <label className="block space-y-1">
-        <span className="text-[10px] text-slate-500">메모 (선택)</span>
+        <span className="text-[10px] text-slate-400">메모 (선택)</span>
         <input
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
@@ -476,7 +476,7 @@ export default function PaperTradingPage({
       {tab === "positions" && (
         <div className="space-y-2">
           {positions.length === 0 ? (
-            <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center text-sm text-slate-400">
               보유 포지션 없음 — 주문 탭에서 가상 매수를 시작하세요
             </div>
           ) : (
@@ -491,7 +491,7 @@ export default function PaperTradingPage({
       {tab === "history" && (
         <div className="space-y-2">
           {history.length === 0 ? (
-            <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center text-sm text-slate-400">
               체결 내역 없음
             </div>
           ) : (
@@ -508,14 +508,14 @@ export default function PaperTradingPage({
                   </span>
                   <div>
                     <span className="text-xs font-semibold text-slate-200">{t.name}</span>
-                    <span className="ml-1.5 text-[10px] text-slate-500">{t.symbol}</span>
+                    <span className="ml-1.5 text-[10px] text-slate-400">{t.symbol}</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-mono text-slate-200">
                     {t.quantity}주 × {Math.round(Number(t.price)).toLocaleString("ko-KR")}
                   </div>
-                  <div className="text-[10px] text-slate-500">
+                  <div className="text-[10px] text-slate-400">
                     {String(t.createdAt).slice(0, 16)} {t.memo && `· ${t.memo}`}
                   </div>
                 </div>
@@ -574,7 +574,7 @@ export default function PaperTradingPage({
       <div className="flex flex-col items-end gap-2 pt-2">
         {showSeedInput && (
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-slate-500">새 시드 금액</span>
+            <span className="text-[11px] text-slate-400">새 시드 금액</span>
             <input
               type="number"
               min="1"
@@ -593,7 +593,7 @@ export default function PaperTradingPage({
         )}
         <button
           onClick={handleReset}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] text-slate-500 hover:border-red-500/40 hover:text-red-400"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] text-slate-400 hover:border-red-500/40 hover:text-red-400"
         >
           <RotateCcw size={11} />
           {resetConfirm ? "정말 초기화하시겠습니까? (한 번 더 클릭)" : `${market.toUpperCase()} 페이퍼 초기화`}

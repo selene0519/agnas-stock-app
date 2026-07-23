@@ -142,11 +142,11 @@ function Cell({
           : tone === "amber"
             ? "text-amber-300"
             : tone === "muted"
-              ? "text-slate-500"
+              ? "text-slate-400"
               : "text-slate-100";
   return (
     <div className="min-w-0 rounded-xl bg-slate-950 px-2 py-2">
-      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="text-[10px] text-slate-400">{label}</div>
       <div className={`mt-0.5 min-w-0 break-keep font-mono text-[11px] font-semibold leading-tight sm:text-xs ${color}`}>
         {value || "-"}
       </div>
@@ -1249,9 +1249,9 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-1">{horizonTabs.map((item) => <button key={item.id} type="button" onClick={() => setHorizon(item.id)} className={`min-h-10 rounded-md px-2 text-sm font-semibold transition-colors ${horizon === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}>{item.label}</button>)}</div>
             </div>
           </div>
-          {loading && <div className="border-t border-slate-800 px-3.5 py-4 text-sm text-slate-500">추천 데이터를 불러오고 있습니다.</div>}
+          {loading && <div className="border-t border-slate-800 px-3.5 py-4 text-sm text-slate-400">추천 데이터를 불러오고 있습니다.</div>}
           {!loading && previewCandidates.length === 0 && (
-            <div className="border-t border-slate-800 px-3.5 py-4 text-sm leading-6 text-slate-500">
+            <div className="border-t border-slate-800 px-3.5 py-4 text-sm leading-6 text-slate-400">
               {canOfferKrConservativeFallback ? "현재 국장 약세장에서는 균형형 후보를 보류합니다." : "현재 기준을 통과한 후보가 없습니다."}
               {canOfferKrConservativeFallback && <button type="button" onClick={() => setMode("conservative")} className="ml-2 font-semibold text-teal-300 hover:text-teal-200">보수형 후보 보기</button>}
             </div>
@@ -1259,12 +1259,12 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           {!loading && previewCandidates.map((item) => (
             <div key={`${item.market}-${item.symbol}`} className="px-3.5 pt-3">
               <button type="button" onClick={() => { setSelected({ market: item.market || resolvedMarket, symbol: item.symbol, name: displayName(item) } as MoneSymbol); setExploreView("direct"); }} className="mone-home-inset w-full rounded-[10px] border px-3 py-3.5 text-left transition-[border-color,background-color] hover:border-teal-400/45 hover:bg-slate-900/80">
-                <span className="flex items-center gap-3"><span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-[12px] text-slate-400">EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span><ChevronRight size={18} className="shrink-0 text-slate-500" aria-hidden="true" /></span>
+                <span className="flex items-center gap-3"><span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-[12px] text-slate-400">EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span><ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden="true" /></span>
                 <span className="mt-3 grid grid-cols-4 border-t border-slate-800 pt-3">
-                  <span className="min-w-0 border-r border-slate-800 pr-2"><span className="block text-[10px] text-slate-500">기준가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-slate-200">{formatMoney(item.currentPrice ?? item.expectedPrice ?? item.entry, item.market || resolvedMarket)}</span></span>
-                  <span className="min-w-0 border-r border-slate-800 px-2"><span className="block text-[10px] text-slate-500">진입가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-teal-300">{formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)}</span></span>
-                  <span className="min-w-0 border-r border-slate-800 px-2"><span className="block text-[10px] text-slate-500">목표가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-teal-300">{formatMoney(item.target ?? item.targetPrice, item.market || resolvedMarket)}</span></span>
-                  <span className="min-w-0 pl-2"><span className="block text-[10px] text-slate-500">손절가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-rose-300">{formatMoney(item.stop ?? item.stopPrice, item.market || resolvedMarket)}</span></span>
+                  <span className="min-w-0 border-r border-slate-800 pr-2"><span className="block text-[10px] text-slate-400">기준가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-slate-200">{formatMoney(item.currentPrice ?? item.expectedPrice ?? item.entry, item.market || resolvedMarket)}</span></span>
+                  <span className="min-w-0 border-r border-slate-800 px-2"><span className="block text-[10px] text-slate-400">진입가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-teal-300">{formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)}</span></span>
+                  <span className="min-w-0 border-r border-slate-800 px-2"><span className="block text-[10px] text-slate-400">목표가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-teal-300">{formatMoney(item.target ?? item.targetPrice, item.market || resolvedMarket)}</span></span>
+                  <span className="min-w-0 pl-2"><span className="block text-[10px] text-slate-400">손절가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-rose-300">{formatMoney(item.stop ?? item.stopPrice, item.market || resolvedMarket)}</span></span>
                 </span>
               </button>
             </div>
@@ -1279,16 +1279,16 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div className="border-t border-slate-800">
             {EXPLORATION_LENSES.filter((lensDef) => !lensDef.matchAll).map((lensDef) => (
               <button key={lensDef.id} type="button" onClick={() => { setLens(lensDef.id); setScreenerOpen(true); setExploreView("direct"); }} className="flex min-h-[66px] w-full items-center gap-3 border-b border-slate-800 px-3.5 text-left transition-colors last:border-b-0 hover:bg-slate-800/65">
-                <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold text-slate-100">{lensDef.label}</span><span className={`mt-1 block truncate text-[12px] ${lensRepresentativeNames[lensDef.id] ? "text-slate-400" : "text-slate-500"}`}>{lensRepresentativeNames[lensDef.id] || "현재 해당 후보 없음"}</span></span>
-                <span className="shrink-0 text-right"><span className="block font-mono text-[13px] text-teal-300">{lensCounts[lensDef.id]}개</span><ChevronRight size={15} className="mt-1 ml-auto text-slate-500" aria-hidden="true" /></span>
+                <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold text-slate-100">{lensDef.label}</span><span className={`mt-1 block truncate text-[12px] ${lensRepresentativeNames[lensDef.id] ? "text-slate-400" : "text-slate-400"}`}>{lensRepresentativeNames[lensDef.id] || "현재 해당 후보 없음"}</span></span>
+                <span className="shrink-0 text-right"><span className="block font-mono text-[13px] text-teal-300">{lensCounts[lensDef.id]}개</span><ChevronRight size={15} className="mt-1 ml-auto text-slate-400" aria-hidden="true" /></span>
               </button>
             ))}
           </div>
         </section>
 
         <button type="button" onClick={() => { setScreenerOpen(true); setExploreView("direct"); }} className="mone-home-card flex min-h-14 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:border-teal-400/45 hover:bg-slate-900/80">
-          <span><span className="block text-sm font-semibold text-slate-100">스크리너</span><span className="mt-1 block text-xs text-slate-500">수급, 리스크, EV, 고급 태그 조건을 조정합니다.</span></span>
-          <ChevronRight size={18} className="shrink-0 text-slate-500" aria-hidden="true" />
+          <span><span className="block text-sm font-semibold text-slate-100">스크리너</span><span className="mt-1 block text-xs text-slate-400">수급, 리스크, EV, 고급 태그 조건을 조정합니다.</span></span>
+          <ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden="true" />
         </button>
 
       </div>
@@ -1322,10 +1322,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           </div>
         </section>
         <section className="mone-home-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3"><div><div className="text-[12px] font-semibold text-teal-300">{modeLabel(mode)} · {horizonLabel(horizon)} · {marketLabel(resolvedMarket)}</div><div className="mt-1 text-sm font-semibold text-slate-100">추천 후보 전체</div></div><span className="text-xs text-slate-500">{loading ? "불러오는 중" : `${recommendationCandidates.length}개`}</span></div>
-          {loading && <div className="px-4 py-5 text-sm text-slate-500">추천 데이터를 불러오고 있습니다.</div>}
+          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3"><div><div className="text-[12px] font-semibold text-teal-300">{modeLabel(mode)} · {horizonLabel(horizon)} · {marketLabel(resolvedMarket)}</div><div className="mt-1 text-sm font-semibold text-slate-100">추천 후보 전체</div></div><span className="text-xs text-slate-400">{loading ? "불러오는 중" : `${recommendationCandidates.length}개`}</span></div>
+          {loading && <div className="px-4 py-5 text-sm text-slate-400">추천 데이터를 불러오고 있습니다.</div>}
           {!loading && recommendationCandidates.length === 0 && (
-            <div className="space-y-3 px-4 py-5 text-sm leading-6 text-slate-500">
+            <div className="space-y-3 px-4 py-5 text-sm leading-6 text-slate-400">
               <p>
                 {canOfferKrConservativeFallback
                   ? "현재 국장 약세장 기준에서는 균형형 후보를 보류합니다. 보수형 기준에서만 통과한 후보가 있습니다."
@@ -1345,8 +1345,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           {!loading && recommendationCandidates.map((item) => (
             <button key={`${item.market}-${item.symbol}`} type="button" onClick={() => { setSelected({ market: item.market || resolvedMarket, symbol: item.symbol, name: displayName(item) } as MoneSymbol); setExploreView("direct"); }} className="flex w-full items-center gap-3 border-b border-slate-800 px-4 py-4 text-left last:border-b-0 hover:bg-slate-900/40">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/12 text-teal-300"><Sparkles size={19} aria-hidden="true" /></span>
-              <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-xs text-slate-500">진입가 {formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)} · EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span>
-              <ChevronRight size={18} className="text-slate-500" aria-hidden="true" />
+              <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-xs text-slate-400">진입가 {formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)} · EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span>
+              <ChevronRight size={18} className="text-slate-400" aria-hidden="true" />
             </button>
           ))}
         </section>
@@ -1365,7 +1365,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       </div>
 
       <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-        <div className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+        <div className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
           시장
         </div>
         <div className="grid grid-cols-4 gap-2">
@@ -1390,14 +1390,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             관심종목
           </button>
         </div>
-        <div className="mt-2 text-xs text-slate-500">
+        <div className="mt-2 text-xs text-slate-400">
           <div>{market === "all" ? marketSessionNote("auto") : "수동 선택 우선"}</div>
           <div>현재 적용 시장: {marketLabel(resolvedMarket)}</div>
         </div>
         {/* 그룹 필터 */}
         {groupsList.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="text-[10px] text-slate-500 self-center">그룹:</span>
+            <span className="text-[10px] text-slate-400 self-center">그룹:</span>
             <button onClick={() => setGroupFilter(null)}
               className={`rounded-full px-3 py-1 text-[11px] font-medium ${!groupFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
               전체
@@ -1414,7 +1414,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         {/* 섹터 필터 */}
         {effectiveSectorsList.length > 0 && (
           <div className="mt-4 flex flex-col gap-1.5 sm:max-w-xs">
-            <label htmlFor="stocks-sector-filter" className="text-[10px] text-slate-500">
+            <label htmlFor="stocks-sector-filter" className="text-[10px] text-slate-400">
               섹터
             </label>
             <select
@@ -1437,11 +1437,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         {/* 탐색 렌즈 (기본 필터) */}
         <div className="mt-4">
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">탐색 렌즈</span>
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">탐색 렌즈</span>
             {lens && (
               <button
                 onClick={() => setLens(null)}
-                className="text-[10px] text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+                className="text-[10px] text-slate-400 underline-offset-2 hover:text-slate-300 hover:underline"
               >
                 해제
               </button>
@@ -1487,7 +1487,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   <div className="mb-1.5 space-y-0.5">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono">
                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${badge[v.verdict] || badge.thin}`}>{icon[v.verdict] || icon.thin}</span>
-                      <span className="text-[10px] text-slate-500">신뢰도 {v.confidence === "HIGH" ? "높음" : v.confidence === "MED" ? "보통" : "낮음"}</span>
+                      <span className="text-[10px] text-slate-400">신뢰도 {v.confidence === "HIGH" ? "높음" : v.confidence === "MED" ? "보통" : "낮음"}</span>
                       <span className="text-[10px] text-slate-600">· 전략 {v.profile}</span>
                     </div>
                     {btN > 0 && (
@@ -1560,14 +1560,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-700/50 pb-3">
                 <div>
                   <div className="text-sm font-bold text-slate-100">{screenerTitle}</div>
-                  <div className="mt-0.5 text-[11px] text-slate-500">{screenerSubtitle}</div>
+                  <div className="mt-0.5 text-[11px] text-slate-400">{screenerSubtitle}</div>
                 </div>
                 <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-300">
                   렌즈 {activeLensDef?.label || "전체"}
                 </span>
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">빠른 필터</label>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">빠른 필터</label>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
                     { id: "quality", label: "상위·정상", hint: "60점+ 데이터 정상" },
@@ -1581,17 +1581,17 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-left hover:border-sky-600/60 hover:bg-sky-950/20"
                     >
                       <div className="text-xs font-bold text-slate-100">{preset.label}</div>
-                      <div className="mt-0.5 text-[10px] text-slate-500">{preset.hint}</div>
+                      <div className="mt-0.5 text-[10px] text-slate-400">{preset.hint}</div>
                     </button>
                   ))}
                 </div>
               </div>
               {/* 투자 조건 — 렌즈 무관, 항상 표시 (스크리너 2단: 빠른 필터 → 투자 조건 → 고급 필터) */}
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">투자 조건</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">투자 조건</div>
               <div className="space-y-4">
                 {/* 이름/티커 검색 */}
                 <div>
-                  <label htmlFor="stocks-name-query" className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">종목 검색</label>
+                  <label htmlFor="stocks-name-query" className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">종목 검색</label>
                   <input
                     id="stocks-name-query"
                     name="stocksNameQuery"
@@ -1607,7 +1607,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 {/* 최소 점수 */}
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">최소 finalScore</label>
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">최소 finalScore</label>
                     <span className="font-mono text-xs text-slate-300">{minScore} 이상</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1622,7 +1622,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
                 {/* 데이터 상태 필터 */}
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">데이터·진입 상태</label>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">데이터·진입 상태</label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                       <input type="checkbox" checked={hideDataPending} onChange={(e) => setHideDataPending(e.target.checked)}
@@ -1639,7 +1639,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
                 {/* 리스크 제외 (overextensionRisk / tradeBlockStatus 기반) */}
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">리스크 제외</label>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">리스크 제외</label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                       <input type="checkbox" checked={excludeOverheated} onChange={(e) => setExcludeOverheated(e.target.checked)}
@@ -1797,7 +1797,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
               {/* 결과 요약 + 전체 초기화 */}
               <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-400">
                   필터 결과: <span className="font-mono text-slate-200">{sectorFiltered.length}</span> / {enrichedItems.length}개
                 </span>
                 {activeFilterCount > 0 && (
@@ -1819,11 +1819,11 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
         <div className="mt-5 flex items-baseline gap-2">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">탐색 조건</span>
-          <span className="text-[11px] text-slate-500">이 탐색에만 적용 · 홈·분석에는 반영 안 됨</span>
+          <span className="text-[11px] text-slate-400">이 탐색에만 적용 · 홈·분석에는 반영 안 됨</span>
         </div>
         <div className="mt-2 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div>
-            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
               투자 성향
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -1834,7 +1834,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   className={`rounded-xl border p-3 text-left ${mode === item.id ? "mone-selection-brand" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                 >
                   <div className="font-bold">{item.label}</div>
-                  <div className="mt-1 text-[11px] text-slate-500">
+                  <div className="mt-1 text-[11px] text-slate-400">
                     {item.desc}
                   </div>
                 </button>
@@ -1842,7 +1842,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             </div>
           </div>
           <div>
-            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
               투자 기간
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -1853,7 +1853,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   className={`rounded-xl border p-3 text-left ${horizon === item.id ? "mone-selection-brand" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                 >
                   <div className="font-bold">{item.label}</div>
-                  <div className="mt-1 text-[11px] text-slate-500">
+                  <div className="mt-1 text-[11px] text-slate-400">
                     {item.desc}
                   </div>
                 </button>
@@ -1902,7 +1902,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-bold text-slate-100">검색 결과</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-400">
                 {searchQuery ? `"${searchQuery}" 검색 결과 ${searchResults.length.toLocaleString("ko-KR")}개` : "전체 종목 검색 결과"}
               </div>
             </div>
@@ -1937,7 +1937,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                         <div className="truncate text-sm font-bold text-slate-100">
                           {displayName(row) || rowSymbol}
                         </div>
-                        <div className="font-mono text-xs text-slate-500">
+                        <div className="font-mono text-xs text-slate-400">
                           {rowSymbol} · {rowMarket.toUpperCase()}
                         </div>
                       </div>
@@ -1948,7 +1948,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       )}
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="text-slate-500">현재가</span>
+                      <span className="text-slate-400">현재가</span>
                       <span className={`font-mono ${row.currentPriceText ? "text-cyan-300" : "text-amber-300"}`}>
                         {row.currentPriceText || "실시간 현재가 없음"}
                       </span>
@@ -2016,7 +2016,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
+            <p className="mt-1 text-xs leading-5 text-slate-400">
               {loading
                 ? "후보를 불러오는 중입니다."
                 : `${modeLabel(mode)} · ${horizonLabel(horizon)} 기준으로 ${visible.length.toLocaleString("ko-KR")}개를 표시합니다.`}
@@ -2024,7 +2024,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           </div>
           {!selected && (
             <div className="sm:w-48">
-              <label htmlFor="stocks-sort" className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">정렬</label>
+              <label htmlFor="stocks-sort" className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">정렬</label>
               <select
                 id="stocks-sort"
                 name="stocksSort"
@@ -2043,27 +2043,27 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <div className="text-[10px] text-slate-500">표시 후보</div>
+            <div className="text-[10px] text-slate-400">표시 후보</div>
             <div className="mt-0.5 font-mono text-sm font-bold text-slate-100">{visible.length.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <div className="text-[10px] text-slate-500">라이브 시세</div>
+            <div className="text-[10px] text-slate-400">라이브 시세</div>
             <div className="mt-0.5 font-mono text-sm font-bold text-emerald-300">{filterStats.normal.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <div className="text-[10px] text-slate-500">종가 기준</div>
+            <div className="text-[10px] text-slate-400">종가 기준</div>
             <div className="mt-0.5 font-mono text-sm font-bold text-cyan-300">{filterStats.fallback.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <div className="text-[10px] text-slate-500">주의/위험</div>
+            <div className="text-[10px] text-slate-400">주의/위험</div>
             <div className="mt-0.5 font-mono text-sm font-bold text-amber-300">{filterStats.risk.toLocaleString("ko-KR")}개</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <div className="text-[10px] text-slate-500">로딩 기준</div>
+            <div className="text-[10px] text-slate-400">로딩 기준</div>
             <div className="mt-0.5 font-mono text-sm font-bold text-slate-200">{items.length.toLocaleString("ko-KR")}개</div>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-5 text-slate-500">
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-5 text-slate-400">
           <span className="font-semibold text-emerald-300">{priceBasisInfo.predictionText}</span>
           <span className="text-cyan-300">{priceBasisInfo.priceText}</span>
           <span>{priceBasisInfo.ohlcvText}</span>
@@ -2144,16 +2144,16 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-bold text-slate-100">{displayName(item)}</div>
-                    <div className="mt-0.5 font-mono text-xs text-slate-500">{soSymbol} · {soMarket.toUpperCase()}</div>
+                    <div className="mt-0.5 font-mono text-xs text-slate-400">{soSymbol} · {soMarket.toUpperCase()}</div>
                   </div>
                   {watched && (
                     <span className="shrink-0 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">관심</span>
                   )}
                 </div>
-                <div className="mt-2 text-xs text-slate-500">현재 추천 후보는 아니지만 분석할 수 있습니다.</div>
+                <div className="mt-2 text-xs text-slate-400">현재 추천 후보는 아니지만 분석할 수 있습니다.</div>
                 {current && !current.includes("없음") && (
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-slate-500">현재가</span>
+                    <span className="text-xs text-slate-400">현재가</span>
                     <span className="break-keep font-mono text-sm font-bold text-cyan-300">{current}</span>
                   </div>
                 )}
@@ -2313,7 +2313,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                 <div className="min-w-0">
                   <h2 className="text-base font-bold text-slate-100 leading-tight">{displayName(item)}</h2>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <span className="font-mono text-xs text-slate-500">{item.symbol} · {String(item.market || resolvedMarket).toUpperCase()}</span>
+                    <span className="font-mono text-xs text-slate-400">{item.symbol} · {String(item.market || resolvedMarket).toUpperCase()}</span>
                     {topBadgeLabel && <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{topBadgeLabel}</span>}
                     {dataTrustLabel(item) !== "정상" && (
                       <span className={`rounded border px-1.5 py-0.5 text-[10px] ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
@@ -2353,7 +2353,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
               {/* 상세 근거 — 최종 행동은 위 Decision Stack이 소유하므로 여기선 상태/패턴/신뢰도만(중복 제거) */}
               <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2">
-                <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">상세 근거</div>
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">상세 근거</div>
                 <div className="text-xs text-slate-200 leading-relaxed">
                   {[
                     riskText === "정상" ? "상태 정상" : `위험 ${riskText}`,

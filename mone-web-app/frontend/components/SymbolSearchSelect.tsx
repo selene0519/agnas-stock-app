@@ -163,7 +163,7 @@ export default function SymbolSearchSelect({
   return (
     <div ref={boxRef} className={`relative ${className}`}>
       <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950 px-4 focus-within:border-blue-500">
-        <Search size={18} className="text-slate-500" aria-hidden="true" />
+        <Search size={18} className="text-slate-400" aria-hidden="true" />
         <label htmlFor={searchId} className="sr-only">종목 검색</label>
         <input
           id={searchId}
@@ -191,7 +191,7 @@ export default function SymbolSearchSelect({
           <button
             type="button"
             onClick={clear}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition-[background-color,color,transform] hover:bg-slate-800 hover:text-slate-200 active:scale-[0.96]"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-[background-color,color,transform] hover:bg-slate-800 hover:text-slate-200 active:scale-[0.96]"
             aria-label="검색어 지우기"
           >
             <X size={16} aria-hidden="true" />
@@ -201,7 +201,7 @@ export default function SymbolSearchSelect({
 
       {open && query.trim() && (
         <div id={`${searchId}-results`} role="listbox" aria-label="종목 검색 결과" className="absolute z-50 mt-2 max-h-96 w-full overflow-auto rounded-2xl border border-slate-800 bg-slate-950 p-2 shadow-2xl">
-          {loading && <div className="px-3 py-3 text-sm text-slate-500">검색 중...</div>}
+          {loading && <div className="px-3 py-3 text-sm text-slate-400">검색 중...</div>}
 
           {!loading && items.length === 0 && (
             <div className="px-3 py-3 text-sm text-amber-300">
@@ -221,7 +221,7 @@ export default function SymbolSearchSelect({
               >
                 <div className="min-w-0">
                   <div className="truncate text-sm font-bold text-slate-100">{item.name}</div>
-                  <div className="font-mono text-xs text-slate-500">
+                  <div className="font-mono text-xs text-slate-400">
                     {item.symbol} / {String(item.market).toUpperCase()}
                     {item.isWatch ? " / 관심" : ""}
                   </div>

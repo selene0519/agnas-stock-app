@@ -17,7 +17,7 @@ const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   NOT_GIT_REPO:   { text: "Git 저장소 아님",      cls: "text-red-400" },
   NO_GIT_REMOTE:  { text: "원격 없음",            cls: "text-amber-300" },
   DEPLOYMENT_NO_GIT: { text: "배포 pull 생략",     cls: "text-sky-300" },
-  NOT_RUN:        { text: "미실행",              cls: "text-slate-500" },
+  NOT_RUN:        { text: "미실행",              cls: "text-slate-400" },
   SYNC_STARTED:   { text: "동기화 시작됨",        cls: "text-blue-300" },
   ERROR:          { text: "오류",               cls: "text-red-400" },
 };
@@ -29,7 +29,7 @@ function syncStatusDisplay(status: string) {
 function Metric({ label, value, accent = false }: { label: string; value: any; accent?: boolean }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-xs text-slate-400">{label}</div>
       <div className={`mt-2 text-xl font-bold ${accent ? "text-emerald-400" : "text-slate-100"}`}>{value}</div>
     </div>
   );
@@ -38,7 +38,7 @@ function Metric({ label, value, accent = false }: { label: string; value: any; a
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2">
-      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="text-[10px] text-slate-400">{label}</div>
       <div className="mt-1 truncate font-mono text-xs text-slate-200" title={value}>{value}</div>
     </div>
   );
@@ -160,7 +160,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
           <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400 space-y-1">
             <div><span className="text-amber-300 font-semibold">킬스위치 제어:</span> Render 환경변수 <code className="font-mono bg-slate-800 px-1 rounded">SELF_CORRECTION_ENABLED=false</code> → 즉시 비활성</div>
             <div><span className="text-amber-300 font-semibold">보정 강도:</span> <code className="font-mono bg-slate-800 px-1 rounded">CORRECTION_STRENGTH=0.25</code> (0.0~1.0, 기본 1.0)</div>
-            <div className="text-slate-500">파라미터 생성: {dash.paramsGeneratedAt ? new Date(dash.paramsGeneratedAt).toLocaleString("ko-KR") : "-"}</div>
+            <div className="text-slate-400">파라미터 생성: {dash.paramsGeneratedAt ? new Date(dash.paramsGeneratedAt).toLocaleString("ko-KR") : "-"}</div>
           </div>
 
           {/* 성과 지표 */}
@@ -186,7 +186,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
             <h3 className="mb-4 text-sm font-semibold text-slate-300">{market.toUpperCase()} 전략별 보정 상태</h3>
             <div className="space-y-3">
               {Object.entries(corr).length === 0 && (
-                <div className="text-sm text-slate-500">데이터 없음 — 보정 파라미터를 재계산해 주세요.</div>
+                <div className="text-sm text-slate-400">데이터 없음 — 보정 파라미터를 재계산해 주세요.</div>
               )}
               {Object.entries(corr).map(([key, c]: [string, any]) => {
                 const parts = key.split("_");
@@ -252,7 +252,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
               </div>
             </div>
 
-            {!preview && <div className="text-sm text-slate-500">전략을 선택하고 &quot;미리보기 로드&quot;를 누르세요.</div>}
+            {!preview && <div className="text-sm text-slate-400">전략을 선택하고 &quot;미리보기 로드&quot;를 누르세요.</div>}
             {preview?.status === "ERROR" && <div className="text-sm text-red-400">{preview.error}</div>}
             {preview?.items?.length > 0 && (
               <>
@@ -271,7 +271,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
                 )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="border-b border-slate-800 text-slate-500">
+                    <thead className="border-b border-slate-800 text-slate-400">
                       <tr>
                         <th className="py-2 pr-3">종목</th>
                         <th className="py-2 pr-3 text-right">진입 전</th>
@@ -285,13 +285,13 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
                     <tbody>
                       {preview.items.map((item: any, idx: number) => (
                         <tr key={idx} className="border-b border-slate-900 hover:bg-slate-900/40">
-                          <td className="py-2 pr-3 font-mono text-slate-300">{item.symbol}<br /><span className="text-slate-500">{item.name}</span></td>
+                          <td className="py-2 pr-3 font-mono text-slate-300">{item.symbol}<br /><span className="text-slate-400">{item.name}</span></td>
                           <td className="py-2 pr-3 text-right text-slate-400">{Number(item.before?.entry || 0).toLocaleString()}</td>
                           <td className={`py-2 pr-3 text-right font-semibold ${item.correctionApplied ? "text-emerald-300" : "text-slate-400"}`}>{Number(item.after?.entry || 0).toLocaleString()}</td>
                           <td className={`py-2 pr-3 text-right ${(item.entryDeltaPct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{(item.entryDeltaPct ?? 0) >= 0 ? "+" : ""}{Number(item.entryDeltaPct ?? 0).toFixed(2)}%</td>
                           <td className={`py-2 pr-3 text-right ${(item.targetDeltaPct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{(item.targetDeltaPct ?? 0) >= 0 ? "+" : ""}{Number(item.targetDeltaPct ?? 0).toFixed(2)}%</td>
                           <td className={`py-2 pr-3 text-right ${(item.stopDeltaPct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{(item.stopDeltaPct ?? 0) >= 0 ? "+" : ""}{Number(item.stopDeltaPct ?? 0).toFixed(2)}%</td>
-                          <td className="py-2 pr-3 text-slate-500 text-[10px] max-w-[120px] truncate">{item.correctionSummary || (item.correctionApplied ? "보정됨" : "미보정")}</td>
+                          <td className="py-2 pr-3 text-slate-400 text-[10px] max-w-[120px] truncate">{item.correctionSummary || (item.correctionApplied ? "보정됨" : "미보정")}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -299,7 +299,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
                 </div>
               </>
             )}
-            {preview?.items?.length === 0 && <div className="text-sm text-slate-500">해당 전략 추천 데이터가 없습니다.</div>}
+            {preview?.items?.length === 0 && <div className="text-sm text-slate-400">해당 전략 추천 데이터가 없습니다.</div>}
           </div>
 
           {/* 롤백 안내 */}
@@ -525,7 +525,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
           <div className="mb-3">
             <div className="text-sm font-semibold text-slate-200">Collection pipeline status</div>
-            <div className="mt-0.5 text-xs text-slate-500">GitHub Actions, local collector, Render readable files</div>
+            <div className="mt-0.5 text-xs text-slate-400">GitHub Actions, local collector, Render readable files</div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             {pipelineStatus.map((row: any, idx: number) => (
@@ -553,7 +553,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
                     <div className="mt-2 space-y-1">
                       {(row.activeGaps || []).slice(0, 5).map((item: string) => <div key={`gap-${item}`}>gap: {item}</div>)}
                       {(row.nextActions || []).slice(0, 5).map((item: string) => <div key={`next-${item}`}>next: {item}</div>)}
-                      {(row.checkedFiles || []).slice(0, 8).map((item: string) => <div key={`file-${item}`} className="font-mono text-slate-500">{item}</div>)}
+                      {(row.checkedFiles || []).slice(0, 8).map((item: string) => <div key={`file-${item}`} className="font-mono text-slate-400">{item}</div>)}
                     </div>
                   </details>
                 )}
@@ -571,11 +571,11 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         {syncStatus && (
           <div className="mt-3 space-y-1 text-xs">
             {syncStatus.statusLabel && <div className="text-slate-400">{syncStatus.statusLabel}</div>}
-            {syncStatus.lastSyncAt && <div className="text-slate-500">마지막 동기화: {syncStatus.lastSyncAt}</div>}
+            {syncStatus.lastSyncAt && <div className="text-slate-400">마지막 동기화: {syncStatus.lastSyncAt}</div>}
             {syncStatus.filesChanged !== undefined && (
               <div className="text-slate-400">변경 파일: {syncStatus.filesChanged}개 · 캐시 초기화: {syncStatus.cachesCleared ?? 0}개</div>
             )}
-            {syncStatus.afterCommit && <div className="font-mono text-slate-500">현재 커밋: {syncStatus.afterCommit}</div>}
+            {syncStatus.afterCommit && <div className="font-mono text-slate-400">현재 커밋: {syncStatus.afterCommit}</div>}
             {syncStatus.error && <div className="break-all text-red-300">{syncStatus.error}</div>}
             {syncStatus.status === "LOCAL_CHANGES" && (
               <div className="mt-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-amber-200">
@@ -589,11 +589,11 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
 
       {/* GitHub 저장소 상태 */}
       <div className={`rounded-2xl border p-5 ${githubOk ? "border-emerald-900/60 bg-emerald-950/10" : "border-red-900/60 bg-red-950/10"}`}>
-        <div className="text-sm text-slate-500">GitHub 저장소 상태</div>
+        <div className="text-sm text-slate-400">GitHub 저장소 상태</div>
         <div className={`mt-3 font-mono text-lg ${githubOk ? "text-emerald-400" : "text-red-400"}`}>
           {github.status === "LOADING" ? "확인 중..." : githubOk ? "Git 저장소 감지됨" : "Git 저장소 미감지"}
         </div>
-        <div className="mt-2 break-all text-xs text-slate-500">
+        <div className="mt-2 break-all text-xs text-slate-400">
           브랜치: {github.branch || "-"} · 원격 저장소: {github.remote || "-"}
         </div>
         {github.error && <div className="mt-2 break-all text-xs text-red-300">{github.error}</div>}
@@ -611,7 +611,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">빗각 과거 검증</h2>
-            <p className="text-sm text-slate-500">과거 시점에서 그은 지지·저항 빗각을 다음 5봉 실제 고저가와 뉴스 리스크로 검증합니다.</p>
+            <p className="text-sm text-slate-400">과거 시점에서 그은 지지·저항 빗각을 다음 5봉 실제 고저가와 뉴스 리스크로 검증합니다.</p>
           </div>
           <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{trendlineAccuracy.status || "UNKNOWN"}</span>
         </div>
@@ -623,7 +623,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
           <Metric label="뉴스 차단" value={trendlineAccuracy.newsBlockedCount ?? "-"} />
         </div>
         {trendlineAccuracy.verifiedPolicy && <div className="mt-3 text-xs text-amber-200/80">{trendlineAccuracy.verifiedPolicy}</div>}
-        {trendlineAccuracy.policy && <div className="mt-2 text-xs text-slate-500">{trendlineAccuracy.policy}</div>}
+        {trendlineAccuracy.policy && <div className="mt-2 text-xs text-slate-400">{trendlineAccuracy.policy}</div>}
         {trendlineAccuracy.error && <div className="mt-3 break-all text-xs text-red-300">{trendlineAccuracy.error}</div>}
       </div>
 
@@ -632,12 +632,12 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">데이터 점검</h2>
-            <p className="text-sm text-slate-500">백엔드 루트, 데이터 상태, 파일 구분을 표시합니다.</p>
+            <p className="text-sm text-slate-400">백엔드 루트, 데이터 상태, 파일 구분을 표시합니다.</p>
           </div>
           <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{audit.status || "UNKNOWN"}</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 text-xs text-slate-500 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 text-xs text-slate-400 md:grid-cols-2">
           <div>백엔드 루트: <span className="font-mono text-slate-300">{audit.root || "-"}</span></div>
           <div>상태: <span className="font-mono text-slate-300">{audit.status || "-"}</span></div>
         </div>
@@ -651,14 +651,14 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-800 text-slate-500"><tr><th className="py-2 pr-3">항목</th><th className="py-2 pr-3">상태</th><th className="py-2 pr-3">건수</th><th className="py-2 pr-3">경로</th></tr></thead>
+                <thead className="border-b border-slate-800 text-slate-400"><tr><th className="py-2 pr-3">항목</th><th className="py-2 pr-3">상태</th><th className="py-2 pr-3">건수</th><th className="py-2 pr-3">경로</th></tr></thead>
                 <tbody>
                   {userItems.map((item: any, idx: number) => (
                     <tr key={idx} className="border-b border-slate-900">
                       <td className="py-2 pr-3 text-emerald-300">{item.name || item.label || "-"}</td>
                       <td className="py-2 pr-3 text-slate-400">{item.status || "-"}</td>
                       <td className="py-2 pr-3 text-slate-400">{item.count ?? "-"}</td>
-                      <td className="break-all py-2 pr-3 font-mono text-slate-500">{item.path || item.file || "-"}</td>
+                      <td className="break-all py-2 pr-3 font-mono text-slate-400">{item.path || item.file || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -672,20 +672,20 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
           <div className="mb-2 text-xs font-semibold text-slate-400">자동 생성 파일 (GitHub Actions)</div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 text-slate-500"><tr><th className="py-2 pr-3">항목</th><th className="py-2 pr-3">상태</th><th className="py-2 pr-3">건수</th><th className="py-2 pr-3">경로</th></tr></thead>
+              <thead className="border-b border-slate-800 text-slate-400"><tr><th className="py-2 pr-3">항목</th><th className="py-2 pr-3">상태</th><th className="py-2 pr-3">건수</th><th className="py-2 pr-3">경로</th></tr></thead>
               <tbody>
                 {autoItems.length === 0 && items.length > 0 && (
-                  <tr><td colSpan={4} className="py-4 text-slate-500">자동 생성 파일이 없습니다.</td></tr>
+                  <tr><td colSpan={4} className="py-4 text-slate-400">자동 생성 파일이 없습니다.</td></tr>
                 )}
                 {autoItems.length === 0 && items.length === 0 && (
-                  <tr><td colSpan={4} className="py-4 text-slate-500">{audit.status === "LOADING" ? "불러오는 중..." : "점검 항목이 없습니다."}</td></tr>
+                  <tr><td colSpan={4} className="py-4 text-slate-400">{audit.status === "LOADING" ? "불러오는 중..." : "점검 항목이 없습니다."}</td></tr>
                 )}
                 {autoItems.map((item: any, idx: number) => (
                   <tr key={idx} className="border-b border-slate-900">
                     <td className="py-2 pr-3 text-slate-300">{item.name || item.label || "-"}</td>
                     <td className="py-2 pr-3 text-slate-400">{item.status || "-"}</td>
                     <td className="py-2 pr-3 text-slate-400">{item.count ?? "-"}</td>
-                    <td className="break-all py-2 pr-3 font-mono text-slate-500">{item.path || item.file || "-"}</td>
+                    <td className="break-all py-2 pr-3 font-mono text-slate-400">{item.path || item.file || "-"}</td>
                   </tr>
                 ))}
               </tbody>

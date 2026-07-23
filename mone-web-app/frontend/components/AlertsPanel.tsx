@@ -110,7 +110,7 @@ export default function AlertsPanel() {
 
       {/* 설정 상태 카드 */}
       <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-4 space-y-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">연결 상태</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">연결 상태</p>
 
         {status ? (
           <>
@@ -135,7 +135,7 @@ export default function AlertsPanel() {
               <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${toneClassName("safe")}`}>
                 <Bell size={13} />
                 <span className="text-xs font-semibold">알림 활성화됨</span>
-                <span className="ml-auto text-[11px] text-slate-500">
+                <span className="ml-auto text-[11px] text-slate-400">
                   {status.thresholdPct}% 이내 / {status.intervalMin}분 주기
                 </span>
               </div>
@@ -152,7 +152,7 @@ export default function AlertsPanel() {
                   <div>TELEGRAM_BOT_TOKEN=<span className="text-amber-400">your-bot-token</span></div>
                   <div>TELEGRAM_CHAT_ID=<span className="text-amber-400">your-chat-id</span></div>
                 </div>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-[10px] text-slate-400">
                   봇 토큰: @BotFather에서 발급 · Chat ID: @userinfobot에서 확인
                 </p>
               </div>
@@ -166,14 +166,14 @@ export default function AlertsPanel() {
                 { label: "쿨다운", value: `${status.cooldownHours}시간` },
               ].map(({ label, value }) => (
                 <div key={label} className="rounded-xl border border-slate-700/40 bg-slate-800/30 px-2 py-1.5 text-center">
-                  <div className="text-[10px] text-slate-500">{label}</div>
+                  <div className="text-[10px] text-slate-400">{label}</div>
                   <div className="mt-0.5 text-xs font-bold text-slate-200">{value}</div>
                 </div>
               ))}
             </div>
           </>
         ) : (
-          <div className="text-center text-xs text-slate-500 py-4">
+          <div className="text-center text-xs text-slate-400 py-4">
             {loading ? "불러오는 중..." : "상태 조회 실패"}
           </div>
         )}
@@ -219,7 +219,7 @@ export default function AlertsPanel() {
       {/* 마지막 체크 내역 */}
       {status?.lastCheck?.items && status.lastCheck.items.length > 0 && (
         <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-4 space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
             마지막 체크 근접 알림
             {status.lastCheck.checkedAt && (
               <span className="ml-2 normal-case font-normal text-slate-600">
@@ -240,14 +240,14 @@ export default function AlertsPanel() {
                 )}
                 <div>
                   <span className="text-xs font-semibold text-slate-200">{item.name}</span>
-                  <span className="ml-1.5 text-[10px] text-slate-500">{item.symbol}</span>
+                  <span className="ml-1.5 text-[10px] text-slate-400">{item.symbol}</span>
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-xs font-bold">
                   {item.gapPct}%
                 </div>
-                <div className="text-[10px] text-slate-500">
+                <div className="text-[10px] text-slate-400">
                   {item.type === "STOP" ? "손절까지" : "목표까지"}
                 </div>
               </div>
