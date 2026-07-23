@@ -466,6 +466,8 @@ export default function VirtualJournalPage() {
   const [lensData, setLensData] = useState<any>(null);
   const [smartRank, setSmartRank] = useState<any>(null);
   const [highConv, setHighConv] = useState<any>(null);
+  const [researchLeader, setResearchLeader] = useState<any>(null);
+  const [researchRs, setResearchRs] = useState<any>(null);
   const [replayDate, setReplayDate] = useState(defaultReplayDate);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
@@ -506,7 +508,7 @@ export default function VirtualJournalPage() {
       // (한 엔드포인트의 네트워크 예외로 나머지 패널까지 사라지던 문제 방지)
       const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> => p.then((v) => v ?? fallback).catch(() => fallback);
       const listSourceParam = listSource === "all" ? undefined : listSource;
-      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes, lensRes, smartRes, hcRes] = await Promise.all([
+      const [tradeRes, patternRes, suggestionRes, statusRes, analyticsRes, failureAnalyticsRes, improvementRes, stopLossRes, entryTimingRes, entryNotTouchedRes, marketGapRes, overextendedRes, profitCaptureRes, perfGateRes, perfRes, attrRes, effRes, feedbackRes, selfLearningRes, opsRes, lensRes, smartRes, hcRes, researchLeaderRes, researchRsRes] = await Promise.all([
         safe(mone.virtualTrades({ ...scope, sourceType: listSourceParam, limit: 200 }), { status: "ERROR", error: "일지 로드 실패", items: [] } as any),
         safe(mone.journalFailurePatterns(scope), {} as any),
         safe(mone.journalCalibrationSuggestions(scope), {} as any),
@@ -530,6 +532,8 @@ export default function VirtualJournalPage() {
         safe(mone.lensCandidates({ market: "kr" }), {} as any),
         safe(mone.smartRank({ market: "kr" }), {} as any),
         safe(mone.highConviction({ market: "kr" }), {} as any),
+        safe(mone.researchLeaderBreakout({ market: "kr" }), {} as any),
+        safe(mone.researchRelativeStrength({ market: "kr" }), {} as any),
       ]);
       if (tradeRes.status === "ERROR") setError(tradeRes.error || "일지 로드 실패");
       setTrades(tradeRes.items || []);
@@ -555,6 +559,8 @@ export default function VirtualJournalPage() {
       setLensData(lensRes && (lensRes.status === "OK" || lensRes.status === "EMPTY") ? lensRes : null);
       setSmartRank(smartRes && (smartRes.status === "OK" || smartRes.status === "EMPTY") ? smartRes : null);
       setHighConv(hcRes && (hcRes.status === "OK" || hcRes.status === "EMPTY") ? hcRes : null);
+      setResearchLeader(researchLeaderRes && (researchLeaderRes.status === "OK" || researchLeaderRes.status === "US_BACKDROP_UNFAVORABLE" || researchLeaderRes.status === "EMPTY") ? researchLeaderRes : null);
+      setResearchRs(researchRsRes && (researchRsRes.status === "OK" || researchRsRes.status === "BEAR_DEFENSIVE" || researchRsRes.status === "EMPTY") ? researchRsRes : null);
       try {
         const aiPaperRes = await mone.aiPaperStatus({ market: scope.market });
         setAiPaperData(aiPaperRes?.status === "OK" ? aiPaperRes : {});
@@ -1771,6 +1777,76 @@ export default function VirtualJournalPage() {
               : "실전 게이트 통과 종목 없음 — 관찰만."}
           </div>
         )}
+      </section>
+
+      <section className="rounded-lg bg-slate-900/40 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+            <Activity size={16} className="text-sky-300" />
+            <span>연구 중 — 아직 실전 아님</span>
+          </div>
+          <span className="rounded bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] text-sky-300">PAPER ONLY</span>
+        </div>
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">
+          위 실전 게이트와 별개입니다. 딥데이터(2014-2026) train/OOS 백테스트로 발굴된 후보지만, 아직 라이브 forward 증거가 쌓이지 않아 실전으로 안 냅니다.
+          paper 계좌에서 성과가 쌓여 승격 기준(n≥12·PF&gt;1·승률≥50%)을 넘으면 위 실전 게이트로 이동합니다.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg bg-slate-950/40 px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-semibold text-slate-300">주도주 돌파 (미장 배경 게이트)</span>
+              <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${researchLeader?.usBackdropFavorable ? "bg-emerald-500/12 text-emerald-300" : "bg-slate-700/40 text-slate-400"}`}>
+                {researchLeader ? (researchLeader.usBackdropFavorable ? "미장 상승 · 게이트 열림" : "미장 하락 · 게이트 닫힘") : "데이터 없음"}
+              </span>
+            </div>
+            {researchLeader?.candidates?.length ? (
+              <div className="mt-2 space-y-1">
+                {researchLeader.candidates.slice(0, 5).map((c: any) => (
+                  <div key={c.symbol} className="flex items-center justify-between font-mono text-[10px] text-slate-400">
+                    <span>{c.symbol}</span>
+                    <span>진입 {c.entry} · RR {c.rrRatio}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-[10px] text-slate-500">
+                {researchLeader && !researchLeader.usBackdropFavorable
+                  ? "미장이 하락추세라 오늘은 후보 없음(검증된 대로 정상 동작)."
+                  : "오늘 조건에 맞는 주도주 없음."}
+              </p>
+            )}
+          </div>
+          <div className="rounded-lg bg-slate-950/40 px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-semibold text-slate-300">상대강도 렌즈</span>
+              <span className="rounded bg-slate-700/40 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+                {researchRs?.regime || "-"}{researchRs?.status === "BEAR_DEFENSIVE" ? " · 방어모드" : ""}
+              </span>
+            </div>
+            {researchRs?.status === "BEAR_DEFENSIVE" ? (
+              <div className="mt-2 space-y-1">
+                <p className="text-[10px] text-amber-200">약세장 — 저변동 방어주로 로테이션(낙폭 절반 실측)</p>
+                {(researchRs.defensiveHolds || []).slice(0, 5).map((c: any) => (
+                  <div key={c.symbol} className="flex items-center justify-between font-mono text-[10px] text-slate-400">
+                    <span>{c.symbol}</span>
+                    <span>변동성 {c.vol60Pct}%</span>
+                  </div>
+                ))}
+              </div>
+            ) : researchRs?.leaders?.length ? (
+              <div className="mt-2 space-y-1">
+                {researchRs.leaders.slice(0, 5).map((c: any) => (
+                  <div key={c.symbol} className="flex items-center justify-between font-mono text-[10px] text-slate-400">
+                    <span>{c.symbol}</span>
+                    <span>RS60 {c.rs60Pct}%</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-[10px] text-slate-500">데이터 없음.</p>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">

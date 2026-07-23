@@ -200,11 +200,18 @@ def refresh_kr_regime_lens_loop() -> dict:
     """Refresh KR regime-lens candidates, KIS context, and forward capture."""
     script_names = [
         "settle_lens_predictions_kr.py",
+        "promote_lens_setups_kr.py",
         "build_lens_journal_kr.py",
         "build_lens_calibration_kr.py",
         "screen_regime_lens_kr.py",
+        "scan_leader_breakout_kr.py",
+        "scan_relative_strength_kr.py",
+        "capture_leader_breakout_predictions.py",
         "refresh_kr_lens_intraday_context.py",
         "capture_lens_predictions_kr.py",
+        "settle_high_conviction_kr.py",
+        "build_high_conviction_kr.py",
+        "capture_high_conviction_kr.py",
     ]
     steps = []
     ok = 0

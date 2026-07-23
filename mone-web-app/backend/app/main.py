@@ -3476,6 +3476,37 @@ def api_high_conviction(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
         return {"status": "ERROR", "error": str(exc), "candidates": []}
 
 
+def _read_research_report(filename: str) -> dict:
+    """Shared reader for paper-only research reports (leader breakout, RS
+    lens). These are NOT the live/promoted signal gate - they surface
+    train/OOS-validated setups that are still accumulating live paper
+    evidence, kept deliberately separate from /api/high-conviction."""
+    path = data.REPO_ROOT / "reports" / filename
+    if not path.exists():
+        return {"status": "EMPTY", "message": f"{filename} 미생성", "candidates": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload.setdefault("status", "OK")
+        return payload
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "ERROR", "error": str(exc), "candidates": []}
+
+
+@app.get("/api/research/leader-breakout")
+def api_research_leader_breakout(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    """연구 중 — 주도주 다지기+거래량 돌파(미장 배경 게이트). 딥데이터(2014-2026)
+    train/OOS 거래시뮬 검증(PF 1.6-2.2)이나 아직 실전 승격 전, paper 루프로 라이브 증명 축적 중.
+    """
+    return _read_research_report(f"leader_breakout_candidates_{market}.json")
+
+
+@app.get("/api/research/relative-strength")
+def api_research_relative_strength(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
+    """연구 중 — 횡단면 상대강도 렌즈(강세/횡보) + 약세장 저변동 방어주 로테이션.
+    딥데이터 OOS 방향성 확인, 정식 거래시뮬 전 단계."""
+    return _read_research_report(f"relative_strength_leaders_{market}.json")
+
+
 @app.get("/api/advanced/backtest")
 def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:
     return final_engine.admin_backtest(_market(market))
