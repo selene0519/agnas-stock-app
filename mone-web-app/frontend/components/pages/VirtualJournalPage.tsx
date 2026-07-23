@@ -468,6 +468,19 @@ export default function VirtualJournalPage() {
   const [highConv, setHighConv] = useState<any>(null);
   const [researchLeader, setResearchLeader] = useState<any>(null);
   const [researchRs, setResearchRs] = useState<any>(null);
+  // 정밀 진단 탭의 진단 섹션들은 부가 정보라 기본 접힘(밀도 완화). 필요할 때만 펼친다.
+  const [diagOpen, setDiagOpen] = useState<Record<string, boolean>>({});
+  const toggleDiag = (key: string) => setDiagOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  const DiagToggle = ({ id }: { id: string }) => (
+    <button
+      type="button"
+      aria-expanded={!!diagOpen[id]}
+      onClick={() => toggleDiag(id)}
+      className="shrink-0 rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 font-mono text-[11px] font-semibold text-slate-400 transition-transform active:scale-[0.96]"
+    >
+      {diagOpen[id] ? "접기 ▲" : "펼치기 ▼"}
+    </button>
+  );
   const [replayDate, setReplayDate] = useState(defaultReplayDate);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
@@ -995,11 +1008,16 @@ export default function VirtualJournalPage() {
               실패 원인 분석은 추천 로직 개선을 위한 진단 지표이며, 현재 추천 순위에는 직접 반영되지 않습니다.
             </p>
           </div>
-          <span className="font-mono text-[11px] uppercase tracking-wide text-slate-400">
-            {String(scope.market).toUpperCase()} / {scope.mode} / {scope.horizon}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-wide text-slate-400">
+              {String(scope.market).toUpperCase()} / {scope.mode} / {scope.horizon}
+            </span>
+            <DiagToggle id="failureAnalysis" />
+          </div>
         </div>
 
+        {diagOpen.failureAnalysis && (
+        <>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {metric("전체 일지", failureSummary.totalTrades ?? 0)}
           {metric("평가 완료", failureSummary.evaluatedTrades ?? 0, "text-emerald-300")}
@@ -1111,6 +1129,8 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </section>
 
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
@@ -1124,11 +1144,15 @@ export default function VirtualJournalPage() {
               현재 추천 로직에는 직접 반영되지 않는 진단 결과입니다. 아래 항목은 바로 로직을 바꾸라는 뜻이 아니라, 먼저 검증해야 할 순서입니다.
             </p>
           </div>
-          <span className="font-mono text-[11px] uppercase tracking-wide text-slate-400">
-            top {priorityItems.length || 0} / diagnostic only
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-wide text-slate-400">
+              top {priorityItems.length || 0} / diagnostic only
+            </span>
+            <DiagToggle id="priority" />
+          </div>
         </div>
 
+        {diagOpen.priority && (
         <div className="mt-4 grid gap-3 xl:grid-cols-3">
           {priorityItems.slice(0, 3).map((item: any) => {
             const evidence = item.evidence || {};
@@ -1176,6 +1200,7 @@ export default function VirtualJournalPage() {
             </div>
           )}
         </div>
+        )}
       </section>
 
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
@@ -1189,11 +1214,16 @@ export default function VirtualJournalPage() {
               이 분석은 평가 완료 거래만 기준으로 합니다. 손절가 산식을 직접 변경하지 않고, 손절 실패 가능성이 높은 진입 조건을 먼저 점검합니다.
             </p>
           </div>
-          <span className={`w-fit rounded-md px-2 py-1 text-[11px] font-semibold ${stopLossPatch.appliedPatch ? "bg-emerald-500/12 text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)]" : "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]"}`}>
-            {stopLossPatch.appliedPatch ? "패치 적용" : "진단 전용"}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className={`w-fit rounded-md px-2 py-1 text-[11px] font-semibold ${stopLossPatch.appliedPatch ? "bg-emerald-500/12 text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)]" : "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]"}`}>
+              {stopLossPatch.appliedPatch ? "패치 적용" : "진단 전용"}
+            </span>
+            <DiagToggle id="stopLoss" />
+          </div>
         </div>
 
+        {diagOpen.stopLoss && (
+        <>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           {metric("평가 완료 거래", stopLossSummary.totalEvaluatedTrades ?? 0)}
           {metric("손절 실패 수", stopLossSummary.stopFailureTrades ?? 0, "text-rose-300")}
@@ -1241,6 +1271,8 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
@@ -1254,11 +1286,16 @@ export default function VirtualJournalPage() {
               이 기능은 손절가를 넓히지 않고, 손절 실패 가능성이 높은 이른 진입을 WAIT_PULLBACK/CAUTION으로 낮추는 안전장치입니다. 검증 기준을 만족하지 않으면 추천 로직에는 반영하지 않습니다.
             </p>
           </div>
-          <span className={`w-fit shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${entryTimingData?.appliedGuard ? "bg-emerald-500/12 text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)]" : "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]"}`}>
-            {entryTimingData?.appliedGuard ? "활성 적용" : entryTimingModeLabel(String(entryTimingData?.guardMode || "diagnostic_only"))}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className={`w-fit shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${entryTimingData?.appliedGuard ? "bg-emerald-500/12 text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)]" : "bg-slate-800 text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]"}`}>
+              {entryTimingData?.appliedGuard ? "활성 적용" : entryTimingModeLabel(String(entryTimingData?.guardMode || "diagnostic_only"))}
+            </span>
+            <DiagToggle id="entryTiming" />
+          </div>
         </div>
 
+        {diagOpen.entryTiming && (
+        <>
         <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           {metric("평가 완료 거래", entryTimingSummary.totalEvaluatedTrades ?? 0)}
           {metric("위험 거래", entryTimingSummary.entryTimingRiskTrades ?? 0, "text-amber-300")}
@@ -1320,6 +1357,8 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
@@ -1333,11 +1372,16 @@ export default function VirtualJournalPage() {
               추천은 나왔지만 평가 기간 동안 진입가까지 가격이 오지 않은 거래를 진단합니다. 진입가 산식이나 entry_window_days는 아직 변경하지 않았습니다.
             </p>
           </div>
-          <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
-            진단 전용
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
+              진단 전용
+            </span>
+            <DiagToggle id="entryNotTouched" />
+          </div>
         </div>
 
+        {diagOpen.entryNotTouched && (
+        <>
         <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {metric("평가 완료 거래", entryNotTouchedSummary.totalEvaluatedTrades ?? 0)}
           {metric("진입가 미도달", entryNotTouchedSummary.entryNotTouchedTrades ?? 0, "text-cyan-300")}
@@ -1403,6 +1447,8 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
@@ -1416,11 +1462,16 @@ export default function VirtualJournalPage() {
               전일 종가 기준 진입가와 다음날 시가(NEXT_OPEN 체결가) 사이의 괴리로 손절에 걸린 거래를 진단합니다. 추천 제외나 진입가 산식 변경은 아직 적용하지 않았습니다.
             </p>
           </div>
-          <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
-            진단 전용
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
+              진단 전용
+            </span>
+            <DiagToggle id="marketGap" />
+          </div>
         </div>
 
+        {diagOpen.marketGap && (
+        <>
         <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {metric("NEXT_OPEN 거래", marketGapSummary.nextOpenTrades ?? 0)}
           {metric("갭 실패", marketGapSummary.marketGapTrades ?? 0, "text-orange-300")}
@@ -1474,6 +1525,8 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </section>
 
       {/* 과열구간 진입 진단 */}
@@ -1488,11 +1541,16 @@ export default function VirtualJournalPage() {
               진입 시점 RSI·MA20 이격도를 기준으로 구간별 손절 실패율·수익률을 분석합니다. 추천 액션이나 진입가 산식은 변경하지 않습니다.
             </p>
           </div>
-          <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
-            진단 전용
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
+              진단 전용
+            </span>
+            <DiagToggle id="overextended" />
+          </div>
         </div>
 
+        {diagOpen.overextended && (
+        <>
         <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {metric("평가 완료", overextendedData?.summary?.totalEvaluatedTrades ?? 0)}
           {metric("RSI 데이터 보유", overextendedData?.summary?.rsiDataAvailable ?? 0, "text-sky-300")}
@@ -1544,6 +1602,8 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </section>
 
       {/* 수익포착 실패 진단 */}
@@ -1558,12 +1618,15 @@ export default function VirtualJournalPage() {
               MFE(최대 유리 이탈)·목표 진행률 기반으로 수익 기회가 있었지만 포착에 실패한 거래를 분석합니다. 목표가·손절가 산식은 변경하지 않습니다.
             </p>
           </div>
-          <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
-            진단 전용
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="w-fit shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)]">
+              진단 전용
+            </span>
+            <DiagToggle id="profitCapture" />
+          </div>
         </div>
 
-        {(() => {
+        {diagOpen.profitCapture && (() => {
           const s = profitCaptureData?.summary || {};
           return (
             <>
@@ -1657,16 +1720,21 @@ export default function VirtualJournalPage() {
       <section className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-200">성과 게이트 진단</h2>
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            perfGateData?.gateStatus === "OK" ? "bg-emerald-900/60 text-emerald-300" :
-            perfGateData?.gateStatus === "COVERAGE_GAP" ? "bg-amber-900/60 text-amber-300" :
-            perfGateData?.gateStatus === "CAUTION_LOW_SAMPLE" ? "bg-sky-900/60 text-sky-300" :
-            perfGateData?.gateStatus === "BLOCKED_LOW_WIN_RATE" ? "bg-rose-900/60 text-rose-300" :
-            "bg-slate-800 text-slate-400"
-          }`}>
-            {perfGateData?.gateStatus || "로딩 중"}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              perfGateData?.gateStatus === "OK" ? "bg-emerald-900/60 text-emerald-300" :
+              perfGateData?.gateStatus === "COVERAGE_GAP" ? "bg-amber-900/60 text-amber-300" :
+              perfGateData?.gateStatus === "CAUTION_LOW_SAMPLE" ? "bg-sky-900/60 text-sky-300" :
+              perfGateData?.gateStatus === "BLOCKED_LOW_WIN_RATE" ? "bg-rose-900/60 text-rose-300" :
+              "bg-slate-800 text-slate-400"
+            }`}>
+              {perfGateData?.gateStatus || "로딩 중"}
+            </span>
+            <DiagToggle id="perfGate" />
+          </div>
         </div>
+        {diagOpen.perfGate && (
+        <>
         {perfGateData?.reason && (
           <div className="mb-3 rounded-md bg-slate-950/60 px-3 py-2 text-[13px] leading-6 text-slate-400">{perfGateData.reason}</div>
         )}
@@ -1714,6 +1782,8 @@ export default function VirtualJournalPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </section>
       </>
       )}
