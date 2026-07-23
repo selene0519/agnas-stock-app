@@ -1213,7 +1213,14 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       ? "text-slate-300"
       : Number(summary.totalPnl || 0) >= 0 ? "text-emerald-300" : "text-red-300";
   const totalPnlPctText = summary.totalPnlPctText || summary.totalPnlPercentText || (() => {
-    const costBasis = items.reduce((sum: number, item: any) => sum + Number(item.avgPrice || 0) * Number(item.quantity || 0), 0);
+    // 혼합통화일 때 KR·US 원가를 그냥 더하면 안 된다(₩1 ≠ $1). combinedKrw.value/pnl과
+    // 동일하게 US 쪽만 환율을 곱해 KRW로 맞춘 뒤 합산해야 분모·분자 통화가 일치한다.
+    const fx = combinedKrw && usdToKrw?.rate ? usdToKrw.rate : 1;
+    const costBasis = items.reduce((sum: number, item: any) => {
+      const raw = Number(item.avgPrice || 0) * Number(item.quantity || 0);
+      const itemMarket = cleanHoldingMarket(item.market);
+      return sum + (itemMarket === "us" ? raw * fx : raw);
+    }, 0);
     const pnl = combinedKrw ? combinedKrw.pnl : Number(summary.totalPnl || 0);
     if (!Number.isFinite(costBasis) || costBasis <= 0 || !Number.isFinite(pnl)) return "수익률 확인 중";
     const pct = (pnl / costBasis) * 100;
