@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T07:41:09.892128+00:00",
+  "generatedAt": "2026-07-23T10:21:24.251640+00:00",
   "asOfDate": "2026-07-23",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -9,15 +9,13 @@
     "BULL": [
       "BREAKOUT"
     ],
-    "SIDE": [
-      "BOTTOM_CATCH"
-    ],
+    "SIDE": [],
     "BEAR": []
   },
   "selfCalibrated": true,
   "liveSamplesTotal": 0,
   "universeSize": 106,
-  "candidateCount": 7,
+  "candidateCount": 6,
   "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
@@ -81,22 +79,6 @@
       "rrRatio": 1.44,
       "rsi14": 28.1,
       "distMa20Pct": -12.7,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
-      "symbol": "KOSDAQ",
-      "name": "KOSDAQ",
-      "setup": "BOTTOM_CATCH",
-      "asOfDate": "2026-07-23",
-      "close": 765.59,
-      "entryRef": 765.59,
-      "stop": 750,
-      "target": 827,
-      "rrRatio": 3.94,
-      "rsi14": 29.3,
-      "distMa20Pct": -8.4,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
