@@ -1,0 +1,97 @@
+name: MONE Pattern Edge Refresh (weekly)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # UTC 기준. KST 일 08:00 (주말, 국장/미장 휴장 중 재현성 좋은 시점)
+    - cron: "0 23 * * 6"   # KST 일요일 08:00
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mone-pattern-edge-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # regime_pattern_execution(~25min) + pattern_walkforward(~25min) + margin.
+    # Deliberately isolated from the daily 60-min accumulator so a slow/failed
+    # run here never blocks recommendations, holdings, or quote refresh.
+    timeout-minutes: 120
+    env:
+      CI: "true"
+      PYTHONUTF8: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          else
+            python -m pip install pandas numpy
+          fi
+
+      - name: Regenerate KR pattern walk-forward harnesses
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import json, logging
+          logging.disable(logging.WARNING)
+          from app.engine.pattern_strategy import pattern_validator as pv
+
+          geo = pv.run_regime_pattern_execution_walkforward(market="kr")
+          with open("../../reports/regime_pattern_execution_kr.json", "w", encoding="utf-8") as f:
+              json.dump(geo, f, ensure_ascii=False, indent=2)
+          print("regime_pattern_execution_kr: status=%s" % geo.get("status"))
+
+          eng = pv.run_walkforward(market="kr", from_date="2014-01-01", horizon_days=20, min_score=0.0)
+          with open("../../reports/pattern_walkforward_kr.json", "w", encoding="utf-8") as f:
+              json.dump(eng, f, ensure_ascii=False, indent=2)
+          print("pattern_walkforward_kr: status=%s" % eng.get("status"))
+          PY
+          echo "harness regen exit $?"
+
+      - name: Rebuild pattern edge map
+        run: |
+          set +e
+          python scripts/build_pattern_edge_map_kr.py
+          echo "edge map build exit $?"
+
+      - name: Commit and push
+        run: |
+          set +e
+          git config user.name "mone-bot"
+          git config user.email "mone-bot@users.noreply.github.com"
+          git add reports/regime_pattern_execution_kr.json reports/pattern_walkforward_kr.json reports/pattern_edge_map_kr.json
+          if git diff --cached --quiet; then
+            echo "no changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: weekly pattern edge map refresh [skip ci]"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin main && break
+            echo "push attempt $i failed, retrying..."
+            sleep 10
+          done

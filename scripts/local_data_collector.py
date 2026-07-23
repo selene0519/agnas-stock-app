@@ -294,6 +294,19 @@ def git_push(commit_msg: str) -> bool:
                 "GIT_COMMITTER_EMAIL": GIT_AUTHOR_EMAIL,
             }
         )
+        # Anti-truncation guard: if any *_daily.csv in the working copy is
+        # shallower than what's already committed, restore the deeper HEAD
+        # version before staging. Protects a deep backfill from being clobbered
+        # by a shallow local refetch. (Mirrors the same guard step in the
+        # GitHub Actions accumulator workflow.)
+        try:
+            subprocess.run(
+                [sys.executable, str(REPO_ROOT / "scripts" / "guard_ohlcv_no_shrink.py")],
+                cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=120,
+            )
+        except Exception:
+            pass
+
         cmds = [
             ["git", "config", "user.email", GIT_AUTHOR_EMAIL],
             ["git", "config", "user.name", GIT_AUTHOR_NAME],
