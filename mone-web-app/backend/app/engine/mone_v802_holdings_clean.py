@@ -192,27 +192,6 @@ def _fmt_pct(v: float) -> str:
         return "+0.00%"
     return f"{v:+.2f}%"
 
-@lru_cache(maxsize=1)
-def _holding_files_cached() -> tuple:
-    # 우선순위: 루트 원장(사용자 편집본) → KIS 자동수집본(fallback).
-    # 루트 파일이 없거나 비어 있을 때 매일 아침 수집된 KIS 데이터로 채운다.
-    primary = _find([
-        "holdings_kr.csv",
-        "holdings_us.csv",
-    ], max_files=2)
-    fallback = _find([
-        "data/kis_2_holdings_kr.csv",
-        "data/kis_holdings_kr.csv",
-        "data/toss_holdings_kr.csv",
-        "data/kis_2_holdings_us.csv",
-        "data/kis_holdings_us.csv",
-        "data/toss_holdings_us.csv",
-    ], max_files=6)
-    return tuple(primary) + tuple(f for f in fallback if f not in primary)
-
-def _holding_files() -> List[Path]:
-    return list(_holding_files_cached())
-
 def _holding_files_primary_symbols() -> set:
     """루트 원장에 있는 심볼 집합 — KIS fallback 파일에서 중복 행을 건너뛸 때 사용."""
     primary = _find(["holdings_kr.csv", "holdings_us.csv"], max_files=2)
