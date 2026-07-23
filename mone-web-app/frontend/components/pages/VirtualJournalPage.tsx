@@ -476,7 +476,7 @@ export default function VirtualJournalPage() {
       type="button"
       aria-expanded={!!diagOpen[id]}
       onClick={() => toggleDiag(id)}
-      className="shrink-0 rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 font-mono text-[11px] font-semibold text-slate-400 transition-transform active:scale-[0.96]"
+      className="flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 px-2.5 font-mono text-[11px] font-semibold text-slate-400 transition-transform active:scale-[0.96]"
     >
       {diagOpen[id] ? "접기 ▲" : "펼치기 ▼"}
     </button>
