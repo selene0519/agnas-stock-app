@@ -1,15 +1,15 @@
 {
   "status": "OK",
-  "sampleCount": 1827,
-  "baseWinRate": 0.3514,
-  "baseAvgPnlPct": -1.909,
-  "generatedAt": "2026-07-23T09:36:47",
+  "sampleCount": 1830,
+  "baseWinRate": 0.3508,
+  "baseAvgPnlPct": -1.92,
+  "generatedAt": "2026-07-23T11:04:39",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
     "suggestedCount": 12,
-    "approvedCount": 4,
-    "pendingReviewCount": 34,
+    "approvedCount": 3,
+    "pendingReviewCount": 35,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
@@ -32,7 +32,7 @@
       "n": 213,
       "winRate": 0.3427,
       "avgPnlPct": -2.167,
-      "multiplier": 1.039,
+      "multiplier": 1.038,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -44,7 +44,7 @@
       "n": 192,
       "winRate": 0.3177,
       "avgPnlPct": -1.952,
-      "multiplier": 0.951,
+      "multiplier": 0.95,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -68,7 +68,7 @@
       "n": 189,
       "winRate": 0.3386,
       "avgPnlPct": -2.13,
-      "multiplier": 1.024,
+      "multiplier": 1.023,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -80,7 +80,7 @@
       "n": 208,
       "winRate": 0.3029,
       "avgPnlPct": -2.205,
-      "multiplier": 0.979,
+      "multiplier": 0.977,
       "direction": "NEUTRAL",
       "suggestedOnly": true,
       "manualApprovalRequired": false
@@ -92,7 +92,7 @@
       "n": 198,
       "winRate": 0.4394,
       "avgPnlPct": -0.711,
-      "multiplier": 0.899,
+      "multiplier": 0.9,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -104,19 +104,19 @@
       "n": 224,
       "winRate": 0.308,
       "avgPnlPct": -3.033,
-      "multiplier": 1.161,
+      "multiplier": 1.159,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "e4a8e793bc0c37d0a465",
+      "feedbackId": "22611ffe33464757b395",
       "mode": "aggressive",
       "horizon": "mid",
-      "n": 214,
-      "winRate": 0.271,
-      "avgPnlPct": -3.445,
-      "multiplier": 1.185,
+      "n": 217,
+      "winRate": 0.2673,
+      "avgPnlPct": -3.518,
+      "multiplier": 1.19,
       "direction": "BOOST",
       "suggestedOnly": true,
       "manualApprovalRequired": true

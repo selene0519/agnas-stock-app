@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-07-23T00:35:38.136298+00:00",
+  "generatedAt": "2026-07-23T02:06:44.909225+00:00",
   "market": "kr",
   "marketRegime": "BEAR",
   "marketRegimeLabel": "약세장",
   "regimeDetail": {
-    "asOf": "2026-07-21",
-    "distToMa20": -12.18,
-    "mom5": -0.87,
-    "kospi": 6747.95
+    "asOf": "2026-07-23",
+    "distToMa20": -7.73,
+    "mom5": 2.62,
+    "kospi": 7036.58
   },
   "favorableRegime": false,
   "finalScoreThreshold": 84.0,
@@ -26,32 +26,45 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 2,
+  "candidateCount": 3,
   "actionableCount": 0,
   "candidates": [
     {
-      "symbol": "017670",
-      "name": "SK텔레콤",
-      "finalScore": 73.0,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "기관 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
       "symbol": "035420",
       "name": "NAVER",
-      "finalScore": 71.3,
+      "finalScore": 71.0,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "보류",
       "supplySignal": "STRONG_BUY",
       "eventBadges": "기관+외국인 동반매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "017670",
+      "name": "SK텔레콤",
+      "finalScore": 65.6,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "보류",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "032640",
+      "name": "LG유플러스",
+      "finalScore": 62.6,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "EV음수 | 이격도수렴 | 기관+외국인 동반매수",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     }
