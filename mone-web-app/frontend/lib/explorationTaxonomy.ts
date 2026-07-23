@@ -192,6 +192,9 @@ function scoreHeuristicMatches(
   const riskStable = numericValue(item, ["riskStabilityScore", "riskScore", "stabilityScore"]);
 
   if (lensId === "leader") {
+    // 워크포워드(train/OOS 거래시뮬)로 검증된 패턴 등급 — 실측 근거가 있는 경우 최우선 인정.
+    const edge = item?.patternEdge as { tier?: unknown } | undefined;
+    if (edge && typeof edge === "object" && edge.tier === "PROVEN") return true;
     return has("MOMENTUM", "BREAKOUT", "GOLDEN_CROSS", "RELATIVE_STRENGTH")
       || momentum >= 60
       || (finalScore >= 65 && ev > 0);

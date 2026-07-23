@@ -2203,6 +2203,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           const geoStageRaw = ps?.geometricPatternStage && typeof ps.geometricPatternStage === "string" ? ps.geometricPatternStage : null;
           const geoPatternText = geoPatternRaw ? (GEO_PATTERN_KO[geoPatternRaw] ?? geoPatternRaw) : null;
           const geoStageText = geoStageRaw ? (GEO_STAGE_KO[geoStageRaw] ?? geoStageRaw) : null;
+          // 워크포워드로 실측한 패턴 엣지 등급 — PROVEN(검증됨)/WEAK(약함)만 표시,
+          // NONE·UNKNOWN은 표시할 근거가 없어 뱃지를 안 띄움(과신 방지).
+          const patternEdgeTier = item.patternEdge && typeof item.patternEdge === "object"
+            ? String(item.patternEdge.tier || "") : "";
           const topBadgeLabel = recommendationBadgeLabel(item, actionCode, actionText);
           const cardMarket = String(item.market || resolvedMarket).toLowerCase();
           const cardPredictionDate = firstText(
@@ -2369,6 +2373,22 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     }>
                       {geoStageText}
                     </span>
+                    {patternEdgeTier === "PROVEN" && (
+                      <span
+                        className="ml-auto rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-bold text-emerald-300"
+                        title="워크포워드 train/OOS 검증 통과 — 실측 근거 있음"
+                      >
+                        검증 엣지
+                      </span>
+                    )}
+                    {patternEdgeTier === "WEAK" && (
+                      <span
+                        className="ml-auto rounded border border-slate-600/50 bg-slate-800/60 px-1.5 py-0.5 font-medium text-slate-400"
+                        title="실측 초과수익은 있으나 승격 기준(train/OOS 일관성) 미충족"
+                      >
+                        약한 근거
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
