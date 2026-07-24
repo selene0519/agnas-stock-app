@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-07-24T00:32:36.456884+00:00",
+  "generatedAt": "2026-07-24T07:40:20.889580+00:00",
   "market": "kr",
   "marketRegime": "BEAR",
   "marketRegimeLabel": "약세장",
   "regimeDetail": {
-    "asOf": "2026-07-22",
-    "distToMa20": -10.72,
-    "mom5": -0.86,
-    "kospi": 6797.7
+    "asOf": "2026-07-24",
+    "distToMa20": -8.41,
+    "mom5": -5.25,
+    "kospi": 6901.99
   },
   "favorableRegime": false,
   "finalScoreThreshold": 84.0,
@@ -26,26 +26,13 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 7,
+  "candidateCount": 6,
   "actionableCount": 0,
   "candidates": [
     {
-      "symbol": "018260",
-      "name": "삼성에스디에스",
-      "finalScore": 69.8,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "대기 관찰",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "기관+외국인 동반매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
       "symbol": "035420",
       "name": "NAVER",
-      "finalScore": 68.5,
+      "finalScore": 68.7,
       "entry": null,
       "stop": null,
       "target": null,
@@ -56,9 +43,9 @@
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
     {
-      "symbol": "017670",
-      "name": "SK텔레콤",
-      "finalScore": 64.1,
+      "symbol": "018260",
+      "name": "삼성에스디에스",
+      "finalScore": 67.4,
       "entry": null,
       "stop": null,
       "target": null,
@@ -71,7 +58,7 @@
     {
       "symbol": "047810",
       "name": "한국항공우주",
-      "finalScore": 63.2,
+      "finalScore": 66.4,
       "entry": null,
       "stop": null,
       "target": null,
@@ -84,7 +71,7 @@
     {
       "symbol": "006360",
       "name": "GS건설",
-      "finalScore": 63.0,
+      "finalScore": 61.8,
       "entry": null,
       "stop": null,
       "target": null,
@@ -95,28 +82,28 @@
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
     {
-      "symbol": "086280",
-      "name": "현대글로비스",
-      "finalScore": 60.2,
+      "symbol": "207940",
+      "name": "삼성바이오로직스",
+      "finalScore": 61.3,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "보류",
       "supplySignal": "STRONG_BUY",
-      "eventBadges": "기관+외국인 동반매수",
+      "eventBadges": "기관+외국인 동반매수 | 저평가성장주",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
     {
       "symbol": "138040",
       "name": "메리츠금융지주",
-      "finalScore": 60.1,
+      "finalScore": 59.1,
       "entry": null,
       "stop": null,
       "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "기관 순매수 | 저평가성장주",
+      "decisionBucket": "기다림",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "EV음수 | 기관+외국인 동반매수 | 저평가성장주",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     }
