@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BellRing, ShieldAlert, X } from "lucide-react";
+import { BellRing, ChevronDown, ChevronUp, ShieldAlert, X } from "lucide-react";
 import { mone } from "@/lib/api";
 import { getDefaultMarketBySession, marketLabel } from "@/lib/marketSession";
 import { priceSessionLabel, statusLabel } from "@/lib/utils";
@@ -33,6 +33,7 @@ export default function SessionSafetyBanner({
 }) {
   const [quality, setQuality] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [alertsExpanded, setAlertsExpanded] = useState(false);
   const [hidden, setHidden] = useState(false);
 
   async function refresh() {
@@ -81,6 +82,10 @@ export default function SessionSafetyBanner({
     if (quality?.dataStatus === "PARTIAL") return "border-amber-500/25 bg-slate-950/60 text-amber-100";
     return "border-slate-800 bg-slate-950/50 text-slate-200";
   }, [quality]);
+
+  const compactAlertLimit = 2;
+  const visibleAlerts = alertsExpanded ? alerts : alerts.slice(0, compactAlertLimit);
+  const hiddenAlertCount = Math.max(0, alerts.length - compactAlertLimit);
 
   if (hidden || !quality) return null;
 
@@ -132,7 +137,7 @@ export default function SessionSafetyBanner({
         </div>
         {alerts.length > 0 && !quality.killSwitch && !quality.isHoliday && (
           <div className="mt-2 flex max-w-full flex-wrap gap-1.5" aria-label={`근접 알림 ${alerts.length}건`}>
-            {alerts.map((alert, index) => {
+            {visibleAlerts.map((alert, index) => {
               const title = alertTitle(alert);
               const symbol = normalizeSymbol(alert);
               return (
@@ -149,6 +154,18 @@ export default function SessionSafetyBanner({
                 </button>
               );
             })}
+            {hiddenAlertCount > 0 && (
+              <button
+                type="button"
+                aria-expanded={alertsExpanded}
+                aria-label={alertsExpanded ? "근접 알림 접기" : `근접 알림 ${hiddenAlertCount}건 더보기`}
+                onClick={() => setAlertsExpanded((value) => !value)}
+                className="inline-flex min-h-8 flex-none items-center gap-1 rounded-lg border border-amber-500/20 px-2.5 py-1 text-[10px] font-medium text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
+              >
+                {alertsExpanded ? <ChevronUp aria-hidden="true" size={11} /> : <ChevronDown aria-hidden="true" size={11} />}
+                <span>{alertsExpanded ? "접기" : `+${hiddenAlertCount} 더보기`}</span>
+              </button>
+            )}
           </div>
         )}
       </div>

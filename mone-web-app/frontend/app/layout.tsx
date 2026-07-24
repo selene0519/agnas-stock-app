@@ -91,7 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <img src="/loading/mone-logo.png" alt="" style={{ width: "160px", objectFit: "contain", filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))" }} />
           <p style={{ marginTop: 4, letterSpacing: "0.35em", color: "#fff", fontWeight: 300, fontSize: "clamp(22px,7vw,32px)", textShadow: "0 0 18px rgba(66,223,212,0.25)" }}>MONE</p>
           <p style={{ marginTop: 4, letterSpacing: "0.25em", color: "rgba(61,216,208,0.6)", fontWeight: 300, fontSize: "clamp(7px,2vw,9px)" }}>WHERE MOMENTUM BEGINS.</p>
-          <img src="/loading/mone-bear.png" alt="MONE bear" style={{ position: "relative", zIndex: 1, width: "min(44vw, 190px)", marginTop: 52, marginBottom: -20, objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(0,0,0,0.65))" }} />
+          <img src="/loading/mone-bear.png" alt="MONE bear" style={{ position: "relative", zIndex: 1, width: "min(44vw, 190px)", marginTop: 36, marginBottom: -20, objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(0,0,0,0.65))" }} />
           <div style={{ width: "min(84vw, 360px)", borderRadius: 22, background: "#1a2a3a", padding: "28px 24px", boxShadow: "0 4px 40px rgba(0,0,0,0.55)" }}>
             <p style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 800 }}>MONE 준비 중...</p>
             <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 500 }}>시장 데이터를 확인하고 있어요</p>
