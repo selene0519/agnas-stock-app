@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-24T14:29:07.760646+00:00",
+  "generatedAt": "2026-07-24T22:19:31.160260+00:00",
   "market": "kr",
   "marketRegime": "BEAR",
   "marketRegimeLabel": "약세장",
@@ -43,15 +43,28 @@
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
     {
-      "symbol": "018260",
-      "name": "삼성에스디에스",
-      "finalScore": 67.4,
+      "symbol": "028670",
+      "name": "팬오션",
+      "finalScore": 67.6,
       "entry": null,
       "stop": null,
       "target": null,
-      "decisionBucket": "대기 관찰",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "기관 순매수",
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "기관+외국인 동반매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "207940",
+      "name": "삼성바이오로직스",
+      "finalScore": 66.8,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "보류",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "기관+외국인 동반매수 | 저평가성장주",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
@@ -69,32 +82,6 @@
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     },
     {
-      "symbol": "006360",
-      "name": "GS건설",
-      "finalScore": 61.8,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "EV음수 | 기관+외국인 동반매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "207940",
-      "name": "삼성바이오로직스",
-      "finalScore": 61.3,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "보류",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "기관+외국인 동반매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
       "symbol": "138040",
       "name": "메리츠금융지주",
       "finalScore": 59.1,
@@ -104,6 +91,19 @@
       "decisionBucket": "기다림",
       "supplySignal": "STRONG_BUY",
       "eventBadges": "EV음수 | 기관+외국인 동반매수 | 저평가성장주",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "105560",
+      "name": "KB금융",
+      "finalScore": 56.9,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "FOREIGN_BUY",
+      "eventBadges": "외국인 순매수 | 저평가성장주",
       "highConviction": false,
       "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
     }
