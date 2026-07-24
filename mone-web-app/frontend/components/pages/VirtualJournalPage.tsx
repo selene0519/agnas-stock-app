@@ -1855,8 +1855,13 @@ export default function VirtualJournalPage() {
             <Activity size={16} className="text-sky-300" />
             <span>연구 중 — 아직 실전 아님</span>
           </div>
-          <span className="rounded bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] text-sky-300">PAPER ONLY</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="rounded bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] text-sky-300">PAPER ONLY</span>
+            <DiagToggle id="researchPreview" />
+          </div>
         </div>
+        {diagOpen.researchPreview && (
+        <>
         <p className="mt-1 max-w-3xl text-[13px] leading-5 text-slate-400">
           위 실전 게이트와 별개입니다. 딥데이터(2014-2026) train/OOS 백테스트로 발굴된 후보지만, 아직 라이브 forward 증거가 쌓이지 않아 실전으로 안 냅니다.
           paper 계좌에서 성과가 쌓여 승격 기준(n≥12·PF&gt;1·승률≥50%)을 넘으면 위 실전 게이트로 이동합니다.
@@ -1917,6 +1922,8 @@ export default function VirtualJournalPage() {
             )}
           </div>
         </div>
+        </>
+        )}
       </section>
 
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
@@ -1925,17 +1932,22 @@ export default function VirtualJournalPage() {
             <Zap size={16} className="text-violet-300" />
             <span>AI 스마트 순위 · 선별 두뇌</span>
           </div>
-          {smartRank ? (
-            <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
-              <span className={`rounded px-2 py-0.5 ${smartRank.marketRegime === "BEAR" ? "bg-red-500/12 text-red-200" : smartRank.marketRegime === "BULL" ? "bg-emerald-500/12 text-emerald-200" : "bg-amber-500/12 text-amber-200"}`}>
-                {smartRank.marketRegime === "BEAR" ? "약세장" : smartRank.marketRegime === "BULL" ? "강세장" : "횡보장"}
-              </span>
-              <span className="rounded bg-violet-500/12 px-2 py-0.5 text-violet-200">{smartRank.featureCount ?? 14}개 신호 동시분석</span>
-            </div>
-          ) : (
-            <span className="font-mono text-[11px] text-slate-400">순위 데이터 없음</span>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {smartRank ? (
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                <span className={`rounded px-2 py-0.5 ${smartRank.marketRegime === "BEAR" ? "bg-red-500/12 text-red-200" : smartRank.marketRegime === "BULL" ? "bg-emerald-500/12 text-emerald-200" : "bg-amber-500/12 text-amber-200"}`}>
+                  {smartRank.marketRegime === "BEAR" ? "약세장" : smartRank.marketRegime === "BULL" ? "강세장" : "횡보장"}
+                </span>
+                <span className="rounded bg-violet-500/12 px-2 py-0.5 text-violet-200">{smartRank.featureCount ?? 14}개 신호 동시분석</span>
+              </div>
+            ) : (
+              <span className="font-mono text-[11px] text-slate-400">순위 데이터 없음</span>
+            )}
+            <DiagToggle id="smartRankPanel" />
+          </div>
         </div>
+        {diagOpen.smartRankPanel && (
+        <>
         <p className="mt-1 max-w-3xl text-[13px] leading-5 text-slate-400">
           14개 신호를 동시에 저울질해 전 종목 순위를 매기는 선별 모델(사람은 못 하는 다중신호 비교). 아래 실증 성적은 안 본 구간(OOS) 검증치입니다.
         </p>
@@ -1975,6 +1987,8 @@ export default function VirtualJournalPage() {
             ⚠ 약세장은 상위 픽도 OOS에서 (−)였습니다 — 순위는 참고만, 실행은 억제(caution).
           </div>
         )}
+        </>
+        )}
       </section>
 
       <section className="rounded-lg bg-slate-900/55 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
@@ -1983,24 +1997,29 @@ export default function VirtualJournalPage() {
             <Target size={16} className="text-cyan-300" />
             <span>레짐 렌즈 · 자가보정</span>
           </div>
-          {lensData ? (
-            <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
-              <span className={`rounded px-2 py-0.5 ${lensData.marketRegime === "BEAR" ? "bg-red-500/12 text-red-200" : lensData.marketRegime === "BULL" ? "bg-emerald-500/12 text-emerald-200" : "bg-amber-500/12 text-amber-200"}`}>
-                {lensData.marketRegime === "BEAR" ? "약세장" : lensData.marketRegime === "BULL" ? "강세장" : "횡보장"}
-                {typeof lensData.breadthAboveMa60 === "number" ? ` · breadth ${lensData.breadthAboveMa60.toFixed(2)}` : ""}
-              </span>
-              <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-300">활성 렌즈: {lensData.activeLens === "BOTTOM_CATCH" ? "저점반등" : "돌파"}</span>
-              {lensData.selfCalibrated && <span className="rounded bg-cyan-500/12 px-2 py-0.5 text-cyan-200">자가보정 ON</span>}
-              {typeof lensData.liveSamplesTotal === "number" && (
-                <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-400">
-                  {lensData.liveSamplesTotal > 0 ? `라이브 실측 ${lensData.liveSamplesTotal}건` : "백테스트 prior 기반"}
+          <div className="flex shrink-0 items-center gap-2">
+            {lensData ? (
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                <span className={`rounded px-2 py-0.5 ${lensData.marketRegime === "BEAR" ? "bg-red-500/12 text-red-200" : lensData.marketRegime === "BULL" ? "bg-emerald-500/12 text-emerald-200" : "bg-amber-500/12 text-amber-200"}`}>
+                  {lensData.marketRegime === "BEAR" ? "약세장" : lensData.marketRegime === "BULL" ? "강세장" : "횡보장"}
+                  {typeof lensData.breadthAboveMa60 === "number" ? ` · breadth ${lensData.breadthAboveMa60.toFixed(2)}` : ""}
                 </span>
-              )}
-            </div>
-          ) : (
-            <span className="font-mono text-[11px] text-slate-400">렌즈 데이터 없음</span>
-          )}
+                <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-300">활성 렌즈: {lensData.activeLens === "BOTTOM_CATCH" ? "저점반등" : "돌파"}</span>
+                {lensData.selfCalibrated && <span className="rounded bg-cyan-500/12 px-2 py-0.5 text-cyan-200">자가보정 ON</span>}
+                {typeof lensData.liveSamplesTotal === "number" && (
+                  <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-400">
+                    {lensData.liveSamplesTotal > 0 ? `라이브 실측 ${lensData.liveSamplesTotal}건` : "백테스트 prior 기반"}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="font-mono text-[11px] text-slate-400">렌즈 데이터 없음</span>
+            )}
+            <DiagToggle id="lensPanel" />
+          </div>
         </div>
+        {diagOpen.lensPanel && (
+        <>
         <p className="mt-1 max-w-3xl text-[13px] leading-5 text-slate-400">
           장세별 셋업(약세=저점반등, 강세·횡보=돌파)을 매매일지 실측으로 자가보정합니다. ACTIVE(실행가능)만 매수 후보이며, 최근 실측이 무너진 셋업은 자동 차단(SUPPRESSED)됩니다.
         </p>
@@ -2042,6 +2061,8 @@ export default function VirtualJournalPage() {
           <div className="mt-2 rounded-md bg-amber-500/8 px-3 py-1.5 text-[13px] leading-5 text-amber-200/80 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.14)]">
             ⚠ {lensData.disclaimer}
           </div>
+        )}
+        </>
         )}
       </section>
 
@@ -2233,7 +2254,12 @@ export default function VirtualJournalPage() {
           </div>
 
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
-            <h2 className="mb-3 text-sm font-semibold text-slate-200">히스토리컬 리플레이</h2>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-slate-200">히스토리컬 리플레이</h2>
+              <DiagToggle id="replayTool" />
+            </div>
+            {diagOpen.replayTool && (
+            <>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 type="date"
@@ -2257,13 +2283,20 @@ export default function VirtualJournalPage() {
               </button>
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-400">Synthetic cutoff replay v1입니다. 후보 생성은 입력 날짜까지의 OHLCV만 사용하고, 평가는 저장 후 별도로 수행합니다. 과거 백필은 선택 날짜부터 20일 간격으로 최대 24회 실행합니다.</p>
+            </>
+            )}
           </div>
 
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-slate-200">유사 장세 복기</h2>
-              <span className="font-mono text-[11px] text-slate-400">{analogData.benchmarkSymbol || "-"}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[11px] text-slate-400">{analogData.benchmarkSymbol || "-"}</span>
+                <DiagToggle id="analogPanel" />
+              </div>
             </div>
+            {diagOpen.analogPanel && (
+            <>
             {analogData.summary && (
               <div className="mb-3 grid grid-cols-2 gap-2">
                 <div className="rounded-lg bg-slate-950/60 px-3 py-2">
@@ -2292,6 +2325,8 @@ export default function VirtualJournalPage() {
                 <div className="rounded-lg bg-slate-950/60 px-3 py-6 text-center text-xs text-slate-400">유사 장세 replay 결과가 아직 없습니다.</div>
               )}
             </div>
+            </>
+            )}
           </div>
 
           <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
@@ -2568,6 +2603,13 @@ export default function VirtualJournalPage() {
         </div>
       </section>
 
+      <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-900/40 px-4 py-2.5 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+        <span className="text-xs font-semibold text-slate-400">고급 분석 — 귀속분석 · OLS 팩터모델 · 진입효율 · 자기개선 피드백</span>
+        <DiagToggle id="perfAdvanced" />
+      </div>
+
+      {diagOpen.perfAdvanced && (
+      <>
       {/* ── 귀속분석 ─────────────────────────────────────────────── */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
@@ -2938,6 +2980,8 @@ export default function VirtualJournalPage() {
           )}
         </div>
       </section>
+      </>
+      )}
       </>
       )}
     </div>

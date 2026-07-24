@@ -13,6 +13,24 @@ const config: Config = {
         mono: ["'JetBrains Mono'", "'Fira Code'", "monospace"],
       },
       colors: {
+        // Cinema-dark neutral scale (2026-07-24): replaces Tailwind's default
+        // blue-gray slate with a desaturated near-black scale, matching the
+        // ui-ux-pro-max "Modern Dark (Cinema Mobile)" fintech/trading token set.
+        // Every existing bg-slate-*/text-slate-*/border-slate-* class across the
+        // app resolves through this override — no per-file className edits needed.
+        slate: {
+          50: "#f7f7f6",
+          100: "#efeeec",
+          200: "#d9d8d5",
+          300: "#b3b1ac",
+          400: "#8a8f98",
+          500: "#6e7278",
+          600: "#55585c",
+          700: "#303236",
+          800: "#1c1d20",
+          900: "#101014",
+          950: "#0a0a0c",
+        },
         bg: {
           primary: "#0a0e1a",
           secondary: "#0f1628",
@@ -27,6 +45,7 @@ const config: Config = {
           red: "#ef4444",
           orange: "#f59e0b",
           purple: "#8b5cf6",
+          gold: "#c9a961",
         },
         text: {
           primary: "#e2e8f0",

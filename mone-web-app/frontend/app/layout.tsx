@@ -28,7 +28,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0a0f1a',
+  themeColor: '#0a0a0c',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -81,16 +81,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           id="mone-html-splash"
           style={{
             position: "fixed", inset: 0, zIndex: 99999,
-            background: "#0b1220",
+            background: "#0a0a0c",
             display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center",
             fontFamily: "system-ui, sans-serif",
           }}
         >
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 90% 45% at 50% 0%, rgba(20,180,175,0.18), transparent)", pointerEvents: "none" }} />
-          <img src="/loading/mone-logo.png" alt="" style={{ width: "min(52vw, 200px)", objectFit: "contain", filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 90% 45% at 50% 0%, rgba(20,180,175,0.12), transparent)", pointerEvents: "none" }} />
+          <img src="/loading/mone-logo.png" alt="" style={{ width: "168px", objectFit: "contain", filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))" }} />
           <p style={{ marginTop: 4, letterSpacing: "0.35em", color: "#fff", fontWeight: 300, fontSize: "clamp(22px,7vw,32px)", textShadow: "0 0 18px rgba(66,223,212,0.25)" }}>MONE</p>
           <p style={{ marginTop: 4, letterSpacing: "0.25em", color: "rgba(61,216,208,0.6)", fontWeight: 300, fontSize: "clamp(7px,2vw,9px)" }}>WHERE MOMENTUM BEGINS.</p>
+          <img src="/loading/mone-bear.png" alt="MONE bear" style={{ width: "min(44vw, 190px)", marginTop: 52, objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(0,0,0,0.65))" }} />
         </div>
         {/* React가 마운트되면 page.tsx에서 제거 (removeHtmlSplash()) */}
         {children}

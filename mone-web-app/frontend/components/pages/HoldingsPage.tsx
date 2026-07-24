@@ -544,7 +544,7 @@ function NavCurve() {
 
     // 기준선 (0%)
     const zeroY = toY(0);
-    ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "#303236"; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(pad.l, zeroY); ctx.lineTo(W - pad.r, zeroY); ctx.stroke();
     ctx.setLineDash([]);
 
@@ -568,7 +568,7 @@ function NavCurve() {
             if (kRet !== undefined) kospiPoints.push([toX(row.date), toY(kRet)]);
           }
           if (kospiPoints.length > 2) {
-            ctx.strokeStyle = "#64748b80"; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+            ctx.strokeStyle = "#8a8f9880"; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
             ctx.beginPath();
             ctx.moveTo(kospiPoints[0][0], kospiPoints[0][1]);
             for (let i = 1; i < kospiPoints.length; i++) ctx.lineTo(kospiPoints[i][0], kospiPoints[i][1]);
@@ -605,7 +605,7 @@ function NavCurve() {
     }
 
     // 날짜 레이블
-    ctx.fillStyle = "#475569"; ctx.font = "10px monospace";
+    ctx.fillStyle = "#55585c"; ctx.font = "10px monospace";
     ctx.textAlign = "left";
     const firstDate = navRows[0]?.date ?? "";
     const lastDate = navRows.at(-1)?.date ?? "";
@@ -2673,7 +2673,7 @@ function PortfolioSnapshot({
   const lower = Math.max(0, 100 - upper - middle);
   const alphaText = averageAlpha == null ? "계산 대기" : `${averageAlpha >= 0 ? "+" : ""}${averageAlpha.toFixed(2)}%p`;
   const ringStyle = {
-    background: `conic-gradient(#22d3c5 0 ${upper}%, #38bdf8 ${upper}% ${upper + middle}%, #2563eb ${upper + middle}% ${upper + middle + lower}%, #1e293b ${upper + middle + lower}% 100%)`,
+    background: `conic-gradient(#22d3c5 0 ${upper}%, #38bdf8 ${upper}% ${upper + middle}%, #2563eb ${upper + middle}% ${upper + middle + lower}%, #232529 ${upper + middle + lower}% 100%)`,
   };
   return (
     <div className="mone-home-inset grid grid-cols-[1fr_auto] items-center gap-3 rounded-[10px] border p-3">

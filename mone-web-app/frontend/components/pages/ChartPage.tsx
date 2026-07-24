@@ -678,15 +678,15 @@ function RsiChart({ rows }: { rows: any[] }) {
         if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; }
         const chart = LW.createChart(containerRef.current!, {
           width: containerRef.current!.clientWidth, height: 100,
-          layout: { background: { color: "#020617" }, textColor: "#64748b" },
-          grid: { vertLines: { color: "#1e293b" }, horzLines: { color: "#1e293b" } },
-          rightPriceScale: { borderColor: "#334155", scaleMargins: { top: 0.1, bottom: 0.1 } },
-          timeScale: { borderColor: "#334155", visible: false },
+          layout: { background: { color: "#0a0a0c" }, textColor: "#8a8f98" },
+          grid: { vertLines: { color: "#232529" }, horzLines: { color: "#232529" } },
+          rightPriceScale: { borderColor: "#303236", scaleMargins: { top: 0.1, bottom: 0.1 } },
+          timeScale: { borderColor: "#303236", visible: false },
           handleScroll: false, handleScale: false,
         });
         chartRef.current = chart;
         const c = chart as any;
-        const line = c.addLineSeries({ color: "#94a3b8", lineWidth: 1.5, priceLineVisible: false });
+        const line = c.addLineSeries({ color: "#9a9fa6", lineWidth: 1.5, priceLineVisible: false });
         line.setData(rsiData);
         const times = rsiData.map(({ time }) => time);
         const ob = c.addLineSeries({ color: "#ef444440", lineWidth: 1, priceLineVisible: false, lineStyle: LW.LineStyle.Dashed });
@@ -709,7 +709,7 @@ function RsiChart({ rows }: { rows: any[] }) {
   const latest = rsiData.at(-1);
   const rsiColor = latest ? (latest.value >= 80 ? "text-red-400" : latest.value <= 20 ? "text-emerald-400" : "text-slate-400") : "text-slate-400";
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#020617]">
+    <div className="rounded-xl border border-slate-800 bg-[#0a0a0c]">
       <div className="flex items-center gap-3 px-3 pt-2 pb-1">
         <span className="text-[10px] font-medium text-slate-400">RSI(14)</span>
         {latest && <span className={`font-mono text-xs font-bold ${rsiColor}`}>{latest.value.toFixed(1)}</span>}
@@ -760,10 +760,10 @@ function MacdChart({ rows }: { rows: any[] }) {
         if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; }
         const chart = LW.createChart(containerRef.current!, {
           width: containerRef.current!.clientWidth, height: 100,
-          layout: { background: { color: "#020617" }, textColor: "#64748b" },
-          grid: { vertLines: { color: "#1e293b" }, horzLines: { color: "#1e293b" } },
-          rightPriceScale: { borderColor: "#334155", scaleMargins: { top: 0.1, bottom: 0.1 } },
-          timeScale: { borderColor: "#334155", visible: false },
+          layout: { background: { color: "#0a0a0c" }, textColor: "#8a8f98" },
+          grid: { vertLines: { color: "#232529" }, horzLines: { color: "#232529" } },
+          rightPriceScale: { borderColor: "#303236", scaleMargins: { top: 0.1, bottom: 0.1 } },
+          timeScale: { borderColor: "#303236", visible: false },
           handleScroll: false, handleScale: false,
         });
         chartRef.current = chart;
@@ -792,7 +792,7 @@ function MacdChart({ rows }: { rows: any[] }) {
   const lastSignal = macdData.signal.at(-1)?.value ?? 0;
   const isBullish = lastMacd > lastSignal;
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#020617]">
+    <div className="rounded-xl border border-slate-800 bg-[#0a0a0c]">
       <div className="flex items-center gap-3 px-3 pt-2 pb-1">
         <span className="text-[10px] font-medium text-slate-400">MACD(12,26,9)</span>
         <span className={`text-[10px] font-semibold ${isBullish ? "text-emerald-300" : "text-red-400"}`}>
@@ -1326,9 +1326,9 @@ function calcRetracements(pivots: ZigZagPoint[]): {
   const isUpSwing = swingEnd.type === "H";
 
   const LEVELS: { ratio: number; label: string; color: string; isKey: boolean }[] = [
-    { ratio: 0.236, label: "23.6%", color: "#64748b", isKey: false },
-    { ratio: 0.382, label: "38.2%", color: "#94a3b8", isKey: false },
-    { ratio: 0.500, label: "50.0%", color: "#94a3b8", isKey: false },
+    { ratio: 0.236, label: "23.6%", color: "#8a8f98", isKey: false },
+    { ratio: 0.382, label: "38.2%", color: "#9a9fa6", isKey: false },
+    { ratio: 0.500, label: "50.0%", color: "#9a9fa6", isKey: false },
     { ratio: 0.618, label: "61.8%", color: "#f97316", isKey: false },
     { ratio: 0.786, label: "78.6%", color: "#fbbf24", isKey: false },
     { ratio: 0.868, label: "86.8%", color: "#06b6d4", isKey: true  },  // 핵심
@@ -1572,12 +1572,12 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         const chartHeight = containerRef.current!.clientHeight || 320;
         const chartRaw = LW.createChart(containerRef.current!, {
           width: containerRef.current!.clientWidth, height: chartHeight,
-          layout: { background: { color: "#020617" }, textColor: "#94a3b8" },
-          grid: { vertLines: { color: "#1e293b" }, horzLines: { color: "#1e293b" } },
+          layout: { background: { color: "#0a0a0c" }, textColor: "#9a9fa6" },
+          grid: { vertLines: { color: "#232529" }, horzLines: { color: "#232529" } },
           crosshair: { mode: LW.CrosshairMode.Normal },
-          rightPriceScale: { borderColor: "#334155" },
+          rightPriceScale: { borderColor: "#303236" },
           localization: { priceFormatter: (price: number) => chartAxisPrice(price, market) },
-          timeScale: { borderColor: "#334155", timeVisible: true },
+          timeScale: { borderColor: "#303236", timeVisible: true },
         });
         chartRef.current = chartRaw;
         const chart = chartRaw as any;
@@ -1639,7 +1639,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
         };
 
         if (toggles.volume) {
-          const volSeries = chart.addHistogramSeries({ color: "#334155", priceFormat: { type: "volume" }, priceScaleId: "volume" });
+          const volSeries = chart.addHistogramSeries({ color: "#303236", priceFormat: { type: "volume" }, priceScaleId: "volume" });
           chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
           const rowByDate = new Map(rows.map((r) => [chartTime(r), r]));
           volSeries.setData(candleData.map((d) => {
@@ -1707,7 +1707,7 @@ function TvChart({ rows, levels, market, toggles, indexRows = [], chartAnalysis 
                 .map((d) => { const v = indexByDate.get(d.time); return v != null ? { time: d.time, value: v } : null; })
                 .filter(Boolean) as { time: string; value: number }[];
               if (indexNorm.length > 2) {
-                const idxSeries = chart.addLineSeries({ color: "#64748b80", lineWidth: 1, priceLineVisible: false, lineStyle: 2, title: market === "us" ? "SPY" : "KOSPI" });
+                const idxSeries = chart.addLineSeries({ color: "#8a8f9880", lineWidth: 1, priceLineVisible: false, lineStyle: 2, title: market === "us" ? "SPY" : "KOSPI" });
                 idxSeries.setData(indexNorm);
               }
             }
@@ -3228,7 +3228,7 @@ export default function ChartPage() {
                 { group: "지지저항", keys: [["trendline","빗각","#22c55e"]] },
                 { group: "되돌림", keys: [["retracement","되돌림","#06b6d4"]] },
                 { group: "매물대", keys: [["supply","매물대","#f59e0b"]] },
-                { group: "비교지수", keys: [["index", selected?.market === "us" ? "SPY" : "KOSPI", "#94a3b8"]] },
+                { group: "비교지수", keys: [["index", selected?.market === "us" ? "SPY" : "KOSPI", "#9a9fa6"]] },
                 { group: "위험신호", keys: [["fakeBreak","가짜돌파","#ef4444"]] },
               ] as { group: string; keys: [ToggleKey, string, string][] }[]).map(({ group, keys }) => {
                 const allOn = keys.every(([k]) => toggles[k as ToggleKey]);
@@ -3275,7 +3275,7 @@ export default function ChartPage() {
                 고급 지표
               </button>
               {showAdvancedIndicators && ([
-                ["volume","거래량","#64748b"],["macd","MACD","#f97316"],["bb","BB","#a855f7"],["ma10","MA10","#2dd4bf"],["ma60","MA60","#f97316"],["zigzag","ZigZag","#f472b6"]
+                ["volume","거래량","#8a8f98"],["macd","MACD","#f97316"],["bb","BB","#a855f7"],["ma10","MA10","#2dd4bf"],["ma60","MA60","#f97316"],["zigzag","ZigZag","#f472b6"]
               ] as [ToggleKey,string,string][]).map(([key, label, color]) => (
                   <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
                     className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 bg-slate-950 text-slate-600"}`}
@@ -3354,7 +3354,7 @@ export default function ChartPage() {
                     </div>
                   )}
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#020617] p-2">
+                <div className="rounded-xl border border-slate-800 bg-[#0a0a0c] p-2">
                   <TvChart
                     rows={filteredRows}
                     levels={levels}

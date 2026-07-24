@@ -22,9 +22,9 @@ export default function AppLaunchLoading({
   const safeProgress = Math.min(100, Math.max(0, Math.round(progress)));
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-[#0b1220] text-white">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-[#0a0a0c] text-white">
       {/* 상단 은은한 teal glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_45%_at_50%_0%,rgba(20,180,175,0.18),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_45%_at_50%_0%,rgba(20,180,175,0.12),transparent)]" />
 
       {/* 배경 차트 라인 패턴 */}
       <div className="pointer-events-none absolute inset-x-0 top-[30%] h-[40vh] opacity-20">
@@ -54,7 +54,7 @@ export default function AppLaunchLoading({
         <img
           src="/loading/mone-logo.png"
           alt=""
-          className="w-[min(52vw,200px)] object-contain drop-shadow-[0_0_28px_rgba(66,223,212,0.28)] sm:w-[min(46vw,220px)]"
+          className="w-[168px] object-contain drop-shadow-[0_0_28px_rgba(66,223,212,0.28)] sm:w-[176px]"
         />
 
         {/* MONE 텍스트 */}
@@ -93,7 +93,7 @@ export default function AppLaunchLoading({
           />
 
           {/* 진행 카드 */}
-          <div className="w-full rounded-[22px] bg-[#1a2a3a] px-6 pb-7 pt-7 shadow-[0_4px_40px_rgba(0,0,0,0.55)] sm:px-8 sm:pb-8 sm:pt-8">
+          <div className="w-full rounded-[22px] border border-white/10 bg-[#141418] px-6 pb-7 pt-7 shadow-[0_4px_40px_rgba(0,0,0,0.55)] sm:px-8 sm:pb-8 sm:pt-8">
             {/* 제목 + 퍼센트 */}
             <p className="text-[20px] font-extrabold leading-snug text-white sm:text-[24px]">
               MONE 준비 중...{" "}

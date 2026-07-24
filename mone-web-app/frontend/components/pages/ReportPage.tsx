@@ -127,18 +127,18 @@ function PnlCurve({ items }: { items: any[] }) {
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
         {ticks.map((v) => (
-          <line key={v} x1={pad.left} y1={py(v)} x2={W - pad.right} y2={py(v)} stroke="#1e293b" strokeWidth={1} />
+          <line key={v} x1={pad.left} y1={py(v)} x2={W - pad.right} y2={py(v)} stroke="#232529" strokeWidth={1} />
         ))}
-        <line x1={pad.left} y1={zero} x2={W - pad.right} y2={zero} stroke="#334155" strokeWidth={1.5} strokeDasharray="5 3" />
+        <line x1={pad.left} y1={zero} x2={W - pad.right} y2={zero} stroke="#303236" strokeWidth={1.5} strokeDasharray="5 3" />
         <path d={fillD} fill={fillColor} />
         <path d={pathD} fill="none" stroke={stroke} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         {ticks.map((v) => (
-          <text key={v} x={pad.left - 4} y={py(v) + 3.5} textAnchor="end" fontSize={9} fill="#64748b">
+          <text key={v} x={pad.left - 4} y={py(v) + 3.5} textAnchor="end" fontSize={9} fill="#8a8f98">
             {v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1)}%
           </text>
         ))}
         {xTicks.map((i) => (
-          <text key={i} x={px(i)} y={H - 1} textAnchor="middle" fontSize={8} fill="#475569">
+          <text key={i} x={px(i)} y={H - 1} textAnchor="middle" fontSize={8} fill="#55585c">
             {points[i]?.label || ""}
           </text>
         ))}

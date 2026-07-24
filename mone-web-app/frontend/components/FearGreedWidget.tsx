@@ -40,7 +40,7 @@ function GaugeArc({ score, color }: { score: number; color: string }) {
   return (
     <svg viewBox="0 0 120 86" className="w-full max-w-[168px]" aria-label={`공포탐욕지수 ${Math.round(score)}점`}>
       {/* 배경 반원 */}
-      <path d={bgPath} fill="none" stroke="#1e293b" strokeWidth="10" strokeLinecap="round" />
+      <path d={bgPath} fill="none" stroke="#232529" strokeWidth="10" strokeLinecap="round" />
       {/* 채움 호 */}
       {score > 0 && (
         <path
@@ -64,7 +64,7 @@ function GaugeArc({ score, color }: { score: number; color: string }) {
       />
       <circle cx={cx} cy={cy} r="3.5" fill={color} />
       {/* 점수 */}
-      <rect x="43" y="64" width="34" height="18" rx="7" fill="#020617" fillOpacity="0.9" />
+      <rect x="43" y="64" width="34" height="18" rx="7" fill="#0a0a0c" fillOpacity="0.9" />
       <text
         x={cx}
         y={76}

@@ -2081,7 +2081,7 @@ function LegacyMarketGateCard({
           <div className="px-2">
             <div className="text-xs font-black text-slate-600">{regime?.benchmark || "KOSPI"} 20일선</div>
             <div className="relative mx-auto mt-3 flex h-16 w-16 items-center justify-center">
-              {ring(hasRegimeMa ? Math.min(100, Math.abs(maDist) * 12 + 18) : 0, !hasRegimeMa ? "#475569" : maDist >= 0 ? "#34d399" : "#ef4444")}
+              {ring(hasRegimeMa ? Math.min(100, Math.abs(maDist) * 12 + 18) : 0, !hasRegimeMa ? "#55585c" : maDist >= 0 ? "#34d399" : "#ef4444")}
               <div className={`absolute font-mono text-sm font-black tabular-nums ${!hasRegimeMa ? "text-slate-400" : maDist >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                 {hasRegimeMa ? `${maDist >= 0 ? "+" : ""}${maDist.toFixed(1)}%` : "-"}
               </div>
