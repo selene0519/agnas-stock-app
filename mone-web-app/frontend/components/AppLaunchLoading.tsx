@@ -54,7 +54,7 @@ export default function AppLaunchLoading({
         <img
           src="/loading/mone-logo.png"
           alt=""
-          className="w-[168px] object-contain drop-shadow-[0_0_28px_rgba(66,223,212,0.28)] sm:w-[176px]"
+          className="w-[160px] object-contain drop-shadow-[0_0_28px_rgba(66,223,212,0.28)]"
         />
 
         {/* MONE 텍스트 */}

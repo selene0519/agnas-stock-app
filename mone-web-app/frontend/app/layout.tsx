@@ -88,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 90% 45% at 50% 0%, rgba(20,180,175,0.18), transparent)", pointerEvents: "none" }} />
-          <img src="/loading/mone-logo.png" alt="" style={{ width: "168px", objectFit: "contain", filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))" }} />
+          <img src="/loading/mone-logo.png" alt="" style={{ width: "160px", objectFit: "contain", filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))" }} />
           <p style={{ marginTop: 4, letterSpacing: "0.35em", color: "#fff", fontWeight: 300, fontSize: "clamp(22px,7vw,32px)", textShadow: "0 0 18px rgba(66,223,212,0.25)" }}>MONE</p>
           <p style={{ marginTop: 4, letterSpacing: "0.25em", color: "rgba(61,216,208,0.6)", fontWeight: 300, fontSize: "clamp(7px,2vw,9px)" }}>WHERE MOMENTUM BEGINS.</p>
           <img src="/loading/mone-bear.png" alt="MONE bear" style={{ position: "relative", zIndex: 1, width: "min(44vw, 190px)", marginTop: 52, marginBottom: -20, objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(0,0,0,0.65))" }} />
