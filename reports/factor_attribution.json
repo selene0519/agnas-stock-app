@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-07-24 22:12:56",
-  "totalRows": 2188,
-  "olsSampleSize": 1712,
+  "updatedAt": "2026-07-24 23:29:48",
+  "totalRows": 2194,
+  "olsSampleSize": 1718,
   "byStrategy": {
     "conservative_short": {
       "total": 238,
@@ -15,15 +15,15 @@
       "probAccuracy": -0.367
     },
     "conservative_swing": {
-      "total": 255,
-      "wins": 59,
-      "losses": 196,
-      "winRate": 0.2314,
-      "avgWinPct": 7.197,
-      "avgLossPct": 5.991,
-      "payoffRatio": 1.201,
-      "avgProbability": 63.7,
-      "probAccuracy": -0.406
+      "total": 258,
+      "wins": 61,
+      "losses": 197,
+      "winRate": 0.2364,
+      "avgWinPct": 7.042,
+      "avgLossPct": 5.972,
+      "payoffRatio": 1.179,
+      "avgProbability": 63.8,
+      "probAccuracy": -0.402
     },
     "conservative_mid": {
       "total": 213,
@@ -81,26 +81,26 @@
       "probAccuracy": -0.416
     },
     "aggressive_swing": {
-      "total": 267,
+      "total": 268,
       "wins": 55,
-      "losses": 212,
-      "winRate": 0.206,
+      "losses": 213,
+      "winRate": 0.2052,
       "avgWinPct": 8.819,
-      "avgLossPct": 7.819,
-      "payoffRatio": 1.128,
+      "avgLossPct": 7.803,
+      "payoffRatio": 1.13,
       "avgProbability": 63.7,
-      "probAccuracy": -0.431
+      "probAccuracy": -0.432
     },
     "aggressive_mid": {
-      "total": 248,
+      "total": 250,
       "wins": 55,
-      "losses": 193,
-      "winRate": 0.2218,
+      "losses": 195,
+      "winRate": 0.22,
       "avgWinPct": 13.892,
-      "avgLossPct": 10.09,
-      "payoffRatio": 1.377,
+      "avgLossPct": 10.109,
+      "payoffRatio": 1.374,
       "avgProbability": 75.1,
-      "probAccuracy": -0.529
+      "probAccuracy": -0.531
     }
   },
   "byMarket": {
@@ -112,11 +112,11 @@
       "payoffRatio": 1.202
     },
     "us": {
-      "total": 1137,
-      "winRate": 0.2515,
-      "avgWinPct": 9.239,
-      "avgLossPct": 7.15,
-      "payoffRatio": 1.292
+      "total": 1143,
+      "winRate": 0.252,
+      "avgWinPct": 9.192,
+      "avgLossPct": 7.152,
+      "payoffRatio": 1.285
     }
   },
   "byProbBand": {
@@ -125,52 +125,52 @@
       "actualWinRate": 0.0667
     },
     "mid_60-75": {
-      "count": 821,
-      "actualWinRate": 0.2314
+      "count": 826,
+      "actualWinRate": 0.2312
     },
     "high_75+": {
-      "count": 1082,
-      "actualWinRate": 0.2902
+      "count": 1083,
+      "actualWinRate": 0.2909
     }
   },
   "regressionFactors": {
     "intercept": {
-      "coefficient": -18.3653,
-      "r2": 0.0623
+      "coefficient": -18.539,
+      "r2": 0.0622
     },
     "rsi": {
-      "coefficient": 0.2415,
-      "r2": 0.0623,
+      "coefficient": 0.2409,
+      "r2": 0.0622,
       "description": "RSI14 — 높을수록 과매수 (보통 음의 계수)"
     },
     "volumeRatio": {
-      "coefficient": 0.1206,
-      "r2": 0.0623,
+      "coefficient": 0.1348,
+      "r2": 0.0622,
       "description": "거래량비율 — 높을수록 모멘텀 강함 (보통 양의 계수)"
     },
     "distToMa20": {
-      "coefficient": -0.0848,
-      "r2": 0.0623,
+      "coefficient": -0.0855,
+      "r2": 0.0622,
       "description": "MA20 이격도% — 너무 높으면 리스크 증가"
     },
     "probability": {
-      "coefficient": 2.5827,
-      "r2": 0.0623,
+      "coefficient": 2.838,
+      "r2": 0.0622,
       "description": "확률 (0~1) — 모델 신뢰도"
     },
     "momentum5": {
-      "coefficient": -0.1103,
-      "r2": 0.0623,
+      "coefficient": -0.1099,
+      "r2": 0.0622,
       "description": "5일 모멘텀% — 단기 추세"
     },
     "_winRateRegression": {
-      "r2": 0.0499,
-      "sampleSize": 1712,
+      "r2": 0.0487,
+      "sampleSize": 1718,
       "factors": {
-        "rsi": 0.0131,
-        "volumeRatio": 0.0109,
-        "distToMa20": -0.0129,
-        "probability": -0.0804,
+        "rsi": 0.013,
+        "volumeRatio": 0.0114,
+        "distToMa20": -0.0128,
+        "probability": -0.0635,
         "momentum5": 0.0036
       }
     }
@@ -178,9 +178,9 @@
   "insight": [
     "호라이즌: short 전략 평균 승률 26.4%로 최고",
     "모드: balanced 전략 평균 payoff 1.31x로 최고",
-    "마켓: US 승률 25.1%로 우위",
-    "회귀분석: intercept 낮을수록 수익률 향상 (β=-18.365)",
-    "전체 팩터 설명력 R²=0.061 (0~1, 높을수록 예측력 강함)",
+    "마켓: US 승률 25.2%로 우위",
+    "회귀분석: intercept 낮을수록 수익률 향상 (β=-18.539)",
+    "전체 팩터 설명력 R²=0.060 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"
   ]
 }
