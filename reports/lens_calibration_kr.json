@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-24T10:18:53.818918+00:00",
+  "generatedAt": "2026-07-24T13:12:22.807648+00:00",
   "asOfDate": "2026-07-23",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -22,21 +22,6 @@
     "BEAR": []
   },
   "calibration": {
-    "BREAKOUT|BULL": {
-      "setup": "BREAKOUT",
-      "regime": "BULL",
-      "blendedNetAvgPct": 0.403,
-      "blendedWinRate": 43.4,
-      "gate": "ACTIVE",
-      "sizeMultiplier": 0.65,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.403,
-      "priorRawSamples": 12141,
-      "liveFraction": 0.0,
-      "profitFactor": 1.17
-    },
     "BREAKOUT|BEAR": {
       "setup": "BREAKOUT",
       "regime": "BEAR",
@@ -52,21 +37,6 @@
       "liveFraction": 0.0,
       "profitFactor": 0.97
     },
-    "BOTTOM_CATCH|BULL": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BULL",
-      "blendedNetAvgPct": -0.571,
-      "blendedWinRate": 39.9,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -0.571,
-      "priorRawSamples": 2068,
-      "liveFraction": 0.0,
-      "profitFactor": 0.8
-    },
     "BREAKOUT|SIDE": {
       "setup": "BREAKOUT",
       "regime": "SIDE",
@@ -81,6 +51,21 @@
       "priorRawSamples": 5312,
       "liveFraction": 0.0,
       "profitFactor": 0.95
+    },
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "blendedNetAvgPct": -0.571,
+      "blendedWinRate": 39.9,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -0.571,
+      "priorRawSamples": 2068,
+      "liveFraction": 0.0,
+      "profitFactor": 0.8
     },
     "BOTTOM_CATCH|BEAR": {
       "setup": "BOTTOM_CATCH",
@@ -111,6 +96,21 @@
       "priorRawSamples": 2957,
       "liveFraction": 0.0,
       "profitFactor": 0.94
+    },
+    "BREAKOUT|BULL": {
+      "setup": "BREAKOUT",
+      "regime": "BULL",
+      "blendedNetAvgPct": 0.403,
+      "blendedWinRate": 43.4,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 0.65,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": 0.403,
+      "priorRawSamples": 12141,
+      "liveFraction": 0.0,
+      "profitFactor": 1.17
     }
   }
 }
