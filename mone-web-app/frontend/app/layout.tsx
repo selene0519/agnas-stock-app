@@ -28,7 +28,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0a0a0c',
+  themeColor: '#0a0f1a',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -81,17 +81,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           id="mone-html-splash"
           style={{
             position: "fixed", inset: 0, zIndex: 99999,
-            background: "#0a0a0c",
+            background: "#0b1220",
             display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center",
             fontFamily: "system-ui, sans-serif",
           }}
         >
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 90% 45% at 50% 0%, rgba(20,180,175,0.12), transparent)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 90% 45% at 50% 0%, rgba(20,180,175,0.18), transparent)", pointerEvents: "none" }} />
           <img src="/loading/mone-logo.png" alt="" style={{ width: "168px", objectFit: "contain", filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))" }} />
           <p style={{ marginTop: 4, letterSpacing: "0.35em", color: "#fff", fontWeight: 300, fontSize: "clamp(22px,7vw,32px)", textShadow: "0 0 18px rgba(66,223,212,0.25)" }}>MONE</p>
           <p style={{ marginTop: 4, letterSpacing: "0.25em", color: "rgba(61,216,208,0.6)", fontWeight: 300, fontSize: "clamp(7px,2vw,9px)" }}>WHERE MOMENTUM BEGINS.</p>
-          <img src="/loading/mone-bear.png" alt="MONE bear" style={{ width: "min(44vw, 190px)", marginTop: 52, objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(0,0,0,0.65))" }} />
+          <img src="/loading/mone-bear.png" alt="MONE bear" style={{ position: "relative", zIndex: 1, width: "min(44vw, 190px)", marginTop: 52, marginBottom: -20, objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(0,0,0,0.65))" }} />
+          <div style={{ width: "min(84vw, 360px)", borderRadius: 22, background: "#1a2a3a", padding: "28px 24px", boxShadow: "0 4px 40px rgba(0,0,0,0.55)" }}>
+            <p style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 800 }}>MONE 준비 중...</p>
+            <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 500 }}>시장 데이터를 확인하고 있어요</p>
+            <div style={{ height: 6, marginTop: 20, overflow: "hidden", borderRadius: 999, background: "rgba(255,255,255,0.1)" }}>
+              <div style={{ width: "38%", height: "100%", borderRadius: 999, background: "#3dd8d0", boxShadow: "0 0 10px rgba(61,216,208,0.7)" }} />
+            </div>
+          </div>
         </div>
         {/* React가 마운트되면 page.tsx에서 제거 (removeHtmlSplash()) */}
         {children}

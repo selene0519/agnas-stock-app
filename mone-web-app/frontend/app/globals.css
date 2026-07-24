@@ -1,56 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Orbitron:wght@300;400;500&display=swap');
 @import "tailwindcss";
 
-/* Tailwind v4 is CSS-first: tailwind.config.ts's `colors.slate` override is
-   inert unless wired via @config, so the palette must be redefined here too.
-   Desaturated "cinema dark" scale replacing Tailwind's default blue-gray slate
-   (2026-07-24) — every existing slate utility class (bg, text, border, etc.)
-   across the app picks this up with no per-file changes. */
-@theme {
-  --color-slate-50: #f7f7f6;
-  --color-slate-100: #efeeec;
-  --color-slate-200: #d9d8d5;
-  --color-slate-300: #b3b1ac;
-  --color-slate-400: #8a8f98;
-  --color-slate-500: #6e7278;
-  --color-slate-600: #55585c;
-  --color-slate-700: #34343a;
-  --color-slate-800: #232328;
-  --color-slate-900: #141418;
-  --color-slate-950: #0a0a0c;
-  --color-gold: #c9a961;
-  /* Several pages reach for Tailwind's stock teal-* (a brighter mint, #5eead4
-     at 300) as a stand-in for the brand accent instead of --brand-teal. That
-     mismatch plus the new pure-black ground made those spots read as neon.
-     Anchoring teal-300 to the real brand teal (#3dd8d0) fixes both at once. */
-  --color-teal-50: #e8faf8;
-  --color-teal-100: #d0f5f1;
-  --color-teal-200: #a3ece4;
-  --color-teal-300: #3dd8d0;
-  --color-teal-400: #22c4bc;
-  --color-teal-500: #14a89f;
-  --color-teal-600: #0d8880;
-  --color-teal-700: #0a6b65;
-  --color-teal-800: #0a4f4b;
-  --color-teal-900: #0a3d3a;
-  --color-teal-950: #052220;
-}
-
-/* ── Design tokens ──
-   2026-07-24: neutral base recolored from navy to "cinema dark" (desaturated
-   near-black) per ui-ux-pro-max fintech/trading data + user direction. Borders
-   move from a solid slate line to a translucent hairline. brand-teal unchanged
-   (kept per explicit direction); --accent-gold added for sparing use on the
-   single most decision-critical figure per screen (not yet wired anywhere). */
+/* ── Design tokens ── */
 :root {
-  --bg-primary: #0a0a0c;
-  --bg-secondary: #08080a;
-  --bg-card: #141418;
-  --bg-elevated: #1c1c22;
-  --bg-border: rgba(255, 255, 255, 0.10);
+  --bg-primary: #020817;
+  --bg-secondary: #07101f;
+  --bg-card: #0a1424;
+  --bg-elevated: #0e1a2d;
+  --bg-border: #1b2a42;
   --brand-teal: #3dd8d0;
   --brand-teal-glow: rgba(61, 216, 208, 0.28);
-  --accent-gold: #c9a961;
   --accent-blue: #1473e6;
   --accent-cyan: #20b8d6;
   --accent-green: #10b981;
@@ -65,10 +24,10 @@
   --color-neutral: #94a3b8;
   --color-primary-action: #4c8ef8;
   --color-primary-action-hover: #6aa3fb;
-  --color-primary-action-ink: #0a0a0c;
-  --text-primary: #ededef;
-  --text-secondary: #8a8f98;
-  --text-muted: #55585c;
+  --color-primary-action-ink: #07101f;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
   color-scheme: dark;
 }
 
@@ -582,9 +541,9 @@ html[data-theme="light"] .mone-app-shell {
    (translucent slate-900 over the page background, plain slate-800
    border, no extra glow) so the tabs feel like one consistent app. */
 .mone-home {
-  --home-surface: rgba(20, 20, 24, 0.6);
-  --home-inset: rgba(10, 10, 12, 0.6);
-  --home-border: rgba(255, 255, 255, 0.10);
+  --home-surface: rgba(15, 23, 42, 0.5);
+  --home-inset: rgba(2, 6, 23, 0.6);
+  --home-border: #1e293b;
 }
 .mone-home-surface {
   background: var(--home-surface) !important;
@@ -665,8 +624,8 @@ html[data-theme="light"] .mone-page-title {
   background: var(--brand, #2dd4c2);
 }
 html:not([data-theme="light"]) .mone-app-header {
-  background-color: rgba(8, 8, 10, 0.94) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(3, 9, 20, 0.94) !important;
+  border-color: rgba(45, 212, 194, 0.16) !important;
 }
 
 html[data-theme="light"] .mone-home {
@@ -740,11 +699,8 @@ html[data-theme="light"] .mone-tone-neutral { --tone-fg: #475569; }
   background: var(--bg-card); border: 1px solid var(--bg-border);
 }
 .mone-metric-card[data-emphasis="primary"] {
-  border-color: rgba(61,216,208,.4);
-}
-.mone-metric-card[data-emphasis="primary"] .mone-metric-value {
-  font-size: 17px;
-  color: var(--brand-teal);
+  border-color: rgba(61,216,208,.32);
+  box-shadow: inset 0 0 0 1px rgba(61,216,208,.10);
 }
 .mone-metric-card[data-tone] {
   border-color: var(--tone-border);
