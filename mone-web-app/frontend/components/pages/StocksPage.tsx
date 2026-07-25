@@ -1287,12 +1287,14 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   if (exploreView === "recommend") {
     return (
       <div className="mone-home w-full space-y-4 pb-4">
-        <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
-          <ChevronLeft size={18} aria-hidden="true" /> 탐색
-        </button>
-        <div>
-          <span className="mone-home-section-title">추천 탐색</span>
-          <h1 className="mone-page-title mt-3">운용 기준을 고르세요</h1>
+        <div className="space-y-1">
+          <div>
+            <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
+              <ChevronLeft size={18} aria-hidden="true" /> 탐색으로 돌아가기
+            </button>
+          </div>
+          <span className="text-xs font-semibold text-teal-300">추천 탐색</span>
+          <h1 className="mone-page-title !flex">추천 기준을 고르세요</h1>
           <p className="mone-page-subtitle">선택한 기준의 추천 데이터에서 후보를 정렬합니다.</p>
         </div>
         <div className="mone-market-tabs">
@@ -1345,11 +1347,13 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
   return (
     <div className="mone-home w-full space-y-4">
-      <div>
-        <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
-          <ChevronLeft size={18} aria-hidden="true" /> 탐색
-        </button>
-        <h1 className="mone-page-title mt-2">조건으로 후보를 좁히세요</h1>
+      <div className="space-y-1">
+        <div>
+          <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
+            <ChevronLeft size={18} aria-hidden="true" /> 탐색으로 돌아가기
+          </button>
+        </div>
+        <h1 className="mone-page-title !flex">조건으로 후보를 좁히세요</h1>
         <p className="mone-page-subtitle">기존 렌즈와 전문 스크리너의 모든 조건을 그대로 사용합니다.</p>
       </div>
 
