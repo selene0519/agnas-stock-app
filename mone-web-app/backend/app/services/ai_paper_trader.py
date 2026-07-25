@@ -194,6 +194,14 @@ def _is_bad_data_status(text: str) -> bool:
     return any(token in status for token in ("STALE", "ERROR", "NO_DATA", "INVALID"))
 
 
+def _is_tradeable_symbol(market: str, symbol: str) -> bool:
+    """Reject market indexes and malformed identifiers before paper execution."""
+    normalized = str(symbol or "").strip().upper()
+    if market == "kr":
+        return bool(re.fullmatch(r"\d{6}", normalized))
+    return bool(re.fullmatch(r"[A-Z][A-Z0-9.-]{0,14}", normalized))
+
+
 def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -> list[dict[str, Any]]:
     agents = [agent] if agent else list(AGENT_POOL)
     seen: dict[str, dict[str, Any]] = {}
@@ -205,7 +213,7 @@ def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -
         path = REPORTS / f"mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv"
         for row in _read_csv(path):
             symbol = str(row.get("symbol") or "").strip().upper()
-            if not symbol:
+            if not _is_tradeable_symbol(market, symbol):
                 continue
             entry = _num(row.get("entry") or row.get("entryPrice"))
             stop = _num(row.get("stop") or row.get("stopPrice"))
@@ -323,7 +331,7 @@ def _collect_regime_lens_candidates_kr(agent: dict[str, str] | None = None) -> l
             continue
         symbol = str(row.get("symbol") or "").strip().upper()
         setup = str(row.get("setup") or "").strip().upper()
-        if not symbol or setup not in {"BOTTOM_CATCH", "V_REVERSAL", "DOUBLE_BOTTOM"}:
+        if not _is_tradeable_symbol("kr", symbol) or setup not in {"BOTTOM_CATCH", "V_REVERSAL", "DOUBLE_BOTTOM"}:
             continue
 
         entry = _num(row.get("entryRef") or row.get("entry") or row.get("close"))
