@@ -14,6 +14,7 @@ import { dataStatusLabel, normalizeAction, normalizeStatus, toneBadgeClass } fro
 type Market = "all" | "kr" | "us";
 type MarketMode = "all" | "kr" | "us";
 type PortfolioAnalysisTab = "benchmark" | "correlation" | "sector" | "optimize";
+type RiskFocus = "all" | "stop" | "rebalance" | "price";
 const HOLDINGS_API_TIMEOUT_MS = 90000;
 
 function koreanSectorLabel(value: any, symbols: any[] = []) {
@@ -822,6 +823,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   const [market, setMarket] = useState<Market>("all");
   const [holdingsViewTab, setHoldingsViewTab] = useState<"all" | "stock" | "etf">("all");
   const [holdingsDetailOpen, setHoldingsDetailOpen] = useState(false);
+  const [riskFocus, setRiskFocus] = useState<RiskFocus>("all");
   const [portfolioAnalysisTab, setPortfolioAnalysisTab] = useState<PortfolioAnalysisTab>("benchmark");
   const [data, setData] = useState<any>(_bootHoldings ?? { items: [], summary: {} });
   const [loading, setLoading] = useState(!_bootHoldings);
@@ -1266,11 +1268,40 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     return score;
   };
 
+  const matchesRiskFocus = (holding: any, focus: Exclude<RiskFocus, "all">) => {
+    const holdingMarket = cleanHoldingMarket(holding.market);
+    const holdingSymbol = cleanHoldingSymbol(holding.symbol, holdingMarket);
+    const budget = riskBudgetByHolding.get(`${holdingMarket}:${holdingSymbol}`);
+    const totalValue = items.reduce((sum, item) => sum + Number(item.valuation ?? item.marketValue ?? 0), 0);
+
+    if (focus === "stop") {
+      const maxLossPct = Number(riskBudget?.policy?.maxPositionLossPct || 2);
+      const usesDefaultStop = Array.isArray(budget?.reasons)
+        && budget.reasons.some((reason: unknown) => String(reason).toLowerCase().includes("default stop"));
+      return budget
+        ? Number(budget.lossBudgetPct || 0) > maxLossPct || !budget.stopPrice || usesDefaultStop
+        : !holding.stopPrice || Number(holding.stopPrice) <= 0;
+    }
+    if (focus === "rebalance") {
+      const maxWeightPct = Number(riskBudget?.policy?.maxPositionWeightPct || 20);
+      const holdingValue = Number(holding.valuation ?? holding.marketValue ?? 0);
+      const weightPct = totalValue > 0 ? (holdingValue / totalValue) * 100 : 0;
+      return budget
+        ? budget.action === "REDUCE" || Number(budget.weightPct || 0) > maxWeightPct
+        : weightPct > maxWeightPct;
+    }
+    return !holding.currentPrice || Number(holding.currentPrice) <= 0;
+  };
+
+  const focusedHoldings = riskFocus === "all"
+    ? items
+    : items.filter((holding) => matchesRiskFocus(holding, riskFocus));
+
   const { individualStocks, etfHoldings } = useMemo(() => {
     const stocks: any[] = [];
     const etfs: any[] = [];
 
-    for (const item of items) {
+    for (const item of focusedHoldings) {
       const assetType = normalizedHoldingAssetType(item);
       const isEtf = assetType.includes("etf");
       if (isEtf) {
@@ -1286,7 +1317,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     etfs.sort(byRisk);
 
     return { individualStocks: stocks, etfHoldings: etfs };
-  }, [items, riskBudgetByHolding, exitSignals, riskBudget]);
+  }, [focusedHoldings, riskBudgetByHolding, exitSignals, riskBudget]);
   const actionItems = useMemo(() => {
     const rows: { key: string; tone: "red" | "amber" | "blue"; title: string; detail: string; action?: "stop" | "target" }[] = [];
     for (const holding of items) {
@@ -1320,22 +1351,16 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }, [items]);
 
   const riskOverview = useMemo(() => {
-    const budgetItems = Array.isArray(riskBudget?.items) ? riskBudget.items : [];
-    const totalValue = items.reduce((sum, holding) => sum + Number(holding.valuation ?? holding.marketValue ?? 0), 0);
-    const needsStopReview = budgetItems.length > 0
-      ? Number(riskBudget?.missingStopCount ?? budgetItems.filter((item: any) => Number(item.lossBudgetPct || 0) > Number(riskBudget?.policy?.maxPositionLossPct || 2) || !item.stopPrice).length)
-      : items.filter((holding) => !holding.stopPrice || Number(holding.stopPrice) <= 0).length;
-    const needsRebalance = budgetItems.length > 0
-      ? budgetItems.filter((item: any) => item.action === "REDUCE" || Number(item.weightPct || 0) > Number(riskBudget?.policy?.maxPositionWeightPct || 20)).length
-      : items.filter((holding) => totalValue > 0 && (Number(holding.valuation ?? holding.marketValue ?? 0) / totalValue) * 100 > 20).length;
-    const needsPriceReview = items.filter((holding) => !holding.currentPrice || Number(holding.currentPrice) <= 0).length;
+    const needsStopReview = items.filter((holding) => matchesRiskFocus(holding, "stop")).length;
+    const needsRebalance = items.filter((holding) => matchesRiskFocus(holding, "rebalance")).length;
+    const needsPriceReview = items.filter((holding) => matchesRiskFocus(holding, "price")).length;
 
     return [
       { key: "stop", label: "손절 · 손실 예산 점검", count: needsStopReview, tone: "red" as const },
       { key: "rebalance", label: "비중 초과 · 리밸런싱", count: needsRebalance, tone: "amber" as const },
       { key: "price", label: "가격 데이터 갱신", count: needsPriceReview, tone: "amber" as const },
     ];
-  }, [items, riskBudget]);
+  }, [items, riskBudget, riskBudgetByHolding]);
 
   const visibleRiskLossPct = useMemo(() => {
     if (riskBudget && !riskBudget.authRequired) return Number(riskBudget.totalLossBudgetPct || 0);
@@ -1370,6 +1395,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         || Number(b.valuation || b.marketValue || 0) - Number(a.valuation || a.marketValue || 0))
       .slice(0, 3)
   ), [items, riskBudgetByHolding, exitSignals, riskBudget]);
+  const riskFocusLabel: Record<Exclude<RiskFocus, "all">, string> = {
+    stop: "손절 · 손실 예산 점검",
+    rebalance: "비중 초과 · 리밸런싱",
+    price: "가격 데이터 갱신",
+  };
 
   const personalBenchmarkItems = useMemo(() => {
     const apiItems = Array.isArray(benchmarkData?.items) ? benchmarkData.items : [];
@@ -1446,7 +1476,8 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     setMessage("");
   }
 
-  function openHoldingsDetail() {
+  function openHoldingsDetail(focus: RiskFocus = "all") {
+    setRiskFocus(focus);
     setHoldingsDetailOpen(true);
     window.setTimeout(() => {
       document.getElementById("holdings-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1660,7 +1691,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <span className={`ml-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${riskCount > 0 || actionItems.length > 0 ? toneClassName("warning") : toneClassName("safe")}`}>
               {riskCount > 0 || actionItems.length > 0 ? "주의 필요" : "정상"}
             </span>
-            <button type="button" onClick={openHoldingsDetail} className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 hover:text-teal-300">
+            <button type="button" onClick={() => openHoldingsDetail()} className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 hover:text-teal-300">
               전체 리스크 보기 <ChevronRight size={13} />
             </button>
           </div>
@@ -1671,7 +1702,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                 <button
                   key={item.key}
                   type="button"
-                  onClick={openHoldingsDetail}
+                  onClick={() => openHoldingsDetail(item.key as RiskFocus)}
                   className="mone-home-inset min-h-[86px] rounded-[10px] border px-2.5 py-3 text-left transition-colors hover:bg-slate-900/45"
                 >
                   <span className={`block size-2 rounded-full ${isRed ? "bg-red-400" : "bg-amber-400"}`} />
@@ -1795,7 +1826,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                 <button
                   key={`preview-${holding.market}-${holding.symbol}`}
                   type="button"
-                  onClick={openHoldingsDetail}
+                  onClick={() => openHoldingsDetail()}
                   className="grid min-h-[72px] w-full grid-cols-[36px_minmax(0,1fr)_42px_64px] items-center gap-2 px-3.5 text-left transition-colors hover:bg-slate-900/35"
                 >
                   <span className={`grid size-9 place-items-center rounded-full text-[11px] font-semibold ${isRisk ? "bg-amber-400/10 text-amber-300" : "bg-teal-400/10 text-teal-300"}`}>{name.slice(0, 1)}</span>
@@ -1840,6 +1871,21 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
 
       {holdingsDetailOpen && (
         <>
+      {riskFocus !== "all" && (
+        <div className="flex flex-col gap-2 border-y border-amber-500/25 bg-amber-500/10 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xs font-semibold text-amber-100">{riskFocusLabel[riskFocus]} 종목만 보고 있습니다</div>
+            <p className="mt-0.5 text-[10.5px] text-amber-100/75">현재 조건에 해당하는 {focusedHoldings.length}개 보유 종목을 위험도 순으로 정렬했습니다.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRiskFocus("all")}
+            className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/35 px-3 text-xs font-semibold text-amber-100 hover:bg-amber-500/10"
+          >
+            전체 보유 보기
+          </button>
+        </div>
+      )}
       {(individualStocks.length > 0 || etfHoldings.length > 0) && (
         <div id="holdings-detail" className="mone-home-inset grid grid-cols-3 gap-1 rounded-[10px] border p-1">
           {([
