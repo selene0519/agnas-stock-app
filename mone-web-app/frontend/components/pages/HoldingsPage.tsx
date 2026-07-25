@@ -1492,8 +1492,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         ))}
       </div>
 
-      <section className="order-last mone-home-card p-3.5">
-        <h2 className="mone-home-section-title">계좌 · 데이터 관리</h2>
+      <section className={`${items.length === 0 ? "order-0" : "order-last"} mone-home-card p-3.5`}>
+        <h2 className="mone-home-section-title">{items.length === 0 ? "보유 시작" : "계좌 · 데이터 관리"}</h2>
+        {items.length === 0 && (
+          <p className="mt-1 text-xs leading-5 text-slate-400">증권사 계좌를 연결하거나 보유 종목을 직접 추가해 포트폴리오 분석을 시작하세요.</p>
+        )}
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -1585,7 +1588,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             </div>
           ))}
         </div>
-      ) : (
+      ) : items.length > 0 ? (
         <div className="grid grid-cols-2 gap-2">
           <SummaryCard label="총 평가금액" value={totalValueText} visual="value" />
           <SummaryCard label="총 평가손익" value={totalPnlText} accent={totalPnlAccent} subValue={totalPnlPctText} visual="pnl" />
@@ -1593,7 +1596,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           <SummaryCard label="주의/위험 종목 수" value={`${riskCount}개`} visual="risk"
             accent={riskCount > 0 ? "text-amber-300" : "text-emerald-300"} />
         </div>
-      )}
+      ) : null}
 
       <CashInputBar />
 
@@ -2471,7 +2474,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         </>
       )}
 
-      <div className="mone-home-card space-y-3 p-3.5">
+      <div className={`${items.length === 0 ? "hidden" : ""} mone-home-card space-y-3 p-3.5`}>
         <div className="flex items-center gap-2">
           <h2 className="mone-home-section-title">포트폴리오 분석</h2>
         </div>

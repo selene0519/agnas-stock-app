@@ -476,8 +476,19 @@ export default function PaperTradingPage({
       {tab === "positions" && (
         <div className="space-y-2">
           {positions.length === 0 ? (
-            <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center text-sm text-slate-400">
-              보유 포지션 없음 — 주문 탭에서 가상 매수를 시작하세요
+            <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center">
+              <div className="text-sm font-semibold text-slate-200">보유 포지션이 없습니다</div>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                가상 매수로 주문 흐름과 손익 관리를 연습해 보세요.
+              </p>
+              <button
+                type="button"
+                onClick={() => setTab("trade")}
+                className="mt-4 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-teal-500 px-3.5 text-xs font-bold text-slate-950 transition-colors hover:bg-teal-400"
+              >
+                <Plus size={14} />
+                가상 매수 시작
+              </button>
             </div>
           ) : (
             positions.map((p) => (

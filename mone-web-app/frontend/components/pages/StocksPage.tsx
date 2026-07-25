@@ -859,17 +859,6 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       ]),
     ) as Record<ExplorationLensId, number>;
   }, [baseFiltered]);
-  const lensRepresentativeNames = useMemo(() => {
-    return Object.fromEntries(
-      EXPLORATION_LENSES.map((lensDef) => [
-        lensDef.id,
-        lensDef.matchAll
-          ? baseFiltered.slice(0, 2).map((item) => displayName(item)).filter(Boolean).join(" · ")
-          : baseFiltered.filter((item) => itemMatchesLens(item, lensDef.id)).slice(0, 2).map((item) => displayName(item)).filter(Boolean).join(" · "),
-      ]),
-    ) as Record<ExplorationLensId, string>;
-  }, [baseFiltered]);
-
   // 현재 조합(성향·기간)에서 결과가 가장 많은 '다른' 렌즈 — 빈 렌즈 안내에서
   // 안전한 대안으로 제시한다. 이미 로드된 데이터 기준이라 빈 화면으로 안 밀린다.
   const richestOtherLens = useMemo(() => {
@@ -1279,7 +1268,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div className="border-t border-slate-800">
             {EXPLORATION_LENSES.filter((lensDef) => !lensDef.matchAll).map((lensDef) => (
               <button key={lensDef.id} type="button" onClick={() => { setLens(lensDef.id); setScreenerOpen(true); setExploreView("direct"); }} className="flex min-h-[66px] w-full items-center gap-3 border-b border-slate-800 px-3.5 text-left transition-colors last:border-b-0 hover:bg-slate-800/65">
-                <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold text-slate-100">{lensDef.label}</span><span className={`mt-1 block truncate text-[12px] ${lensRepresentativeNames[lensDef.id] ? "text-slate-400" : "text-slate-400"}`}>{lensRepresentativeNames[lensDef.id] || "현재 해당 후보 없음"}</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold text-slate-100">{lensDef.label}</span><span className="mt-1 block truncate text-[12px] text-slate-400">{lensDef.short}</span></span>
                 <span className="shrink-0 text-right"><span className="block font-mono text-[13px] text-teal-300">{lensCounts[lensDef.id]}개</span><ChevronRight size={15} className="mt-1 ml-auto text-slate-400" aria-hidden="true" /></span>
               </button>
             ))}

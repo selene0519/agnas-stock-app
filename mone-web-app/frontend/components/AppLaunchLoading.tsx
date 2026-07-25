@@ -49,7 +49,7 @@ export default function AppLaunchLoading({
       </div>
 
       {/* 메인 콘텐츠 */}
-      <div className="relative flex w-full max-w-[360px] flex-col items-center px-6 sm:max-w-[420px]">
+      <div className="relative flex w-full max-w-[320px] flex-col items-center px-4 sm:max-w-[360px]">
         {/* MONE 로고 (헬릭스 심볼) */}
         <img
           src="/loading/mone-logo.png"
@@ -89,24 +89,24 @@ export default function AppLaunchLoading({
           <img
             src="/loading/mone-bear.png"
             alt="MONE bear"
-            className="relative z-10 mb-[-20px] w-[min(44vw,175px)] object-contain drop-shadow-[0_10px_28px_rgba(0,0,0,0.65)] sm:mb-[-22px] sm:w-[min(40vw,190px)]"
+            className="relative z-10 mb-[-18px] w-[min(40vw,150px)] object-contain drop-shadow-[0_10px_28px_rgba(0,0,0,0.65)] sm:mb-[-20px] sm:w-[165px]"
           />
 
           {/* 진행 카드 */}
-          <div className="w-full rounded-[22px] bg-[#1a2a3a] px-6 pb-7 pt-7 shadow-[0_4px_40px_rgba(0,0,0,0.55)] sm:px-8 sm:pb-8 sm:pt-8">
+          <div className="w-full rounded-[18px] bg-[#1a2a3a] px-5 pb-5 pt-5 shadow-[0_4px_40px_rgba(0,0,0,0.55)] sm:px-6 sm:pb-6 sm:pt-6">
             {/* 제목 + 퍼센트 */}
-            <p className="text-[20px] font-extrabold leading-snug text-white sm:text-[24px]">
+            <p className="text-[18px] font-extrabold leading-snug text-white sm:text-[20px]">
               MONE 준비 중...{" "}
               <span className="text-[#3dd8d0]">{safeProgress}%</span>
             </p>
 
             {/* 상태 메시지 */}
-            <p className="mt-[6px] text-[13px] font-medium text-white/55 sm:text-[15px]">
+            <p className="mt-1 text-[12px] font-medium text-white/55 sm:text-[13px]">
               {message}
             </p>
 
             {/* 진행바 */}
-            <div className="mt-5 h-[6px] w-full overflow-hidden rounded-full bg-white/10">
+            <div className="mt-4 h-[6px] w-full overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full bg-[#3dd8d0] shadow-[0_0_10px_rgba(61,216,208,0.7)] transition-all duration-500 ease-out"
                 style={{ width: `${safeProgress}%` }}
@@ -114,7 +114,7 @@ export default function AppLaunchLoading({
             </div>
 
             {/* 하단 안내 문구 */}
-            <p className="mt-5 text-center text-[12px] font-medium text-white/30 sm:text-[13px]">
+            <p className="mt-4 text-center text-[11px] font-medium text-white/30 sm:text-[12px]">
               {delayed ? "데이터 확인이 조금 지연되고 있어요" : "잠시만 기다려 주세요."}
             </p>
           </div>

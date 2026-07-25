@@ -37,7 +37,7 @@ type HomeSnapshotResult = { ok: true; value: any; stocksCache: any } | { ok: fal
 const BOOT_CACHE_KEY = "mone:boot-preload:v5";
 const BOOT_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;
 const HEALTH_CHECK_TIMEOUT_MS = 8000;
-const SNAPSHOT_FETCH_TIMEOUT_MS = 70000;
+const SNAPSHOT_FETCH_TIMEOUT_MS = 12000;
 
 const EMPTY_BOOT_STATE: BootPreloadState = {
   bootStatus: "idle",
@@ -233,16 +233,18 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
   clearApiSnapshots();
 
   onProgress?.({ progress: 32, message: "국장 예측 스냅샷을 받는 중...", step: "home" });
-  const krHome = await fetchHomeSnapshot("kr");
+  const [krHome, usHome] = await Promise.all([
+    fetchHomeSnapshot("kr"),
+    fetchHomeSnapshot("us"),
+  ]);
 
   onProgress?.({ progress: 66, message: "미장 예측 스냅샷을 받는 중...", step: "stocks" });
-  const usHome = await fetchHomeSnapshot("us");
 
   onProgress?.({ progress: 84, message: "보조 화면 데이터를 저장하는 중...", step: "stocks" });
-  await Promise.allSettled([fetchAuxiliarySnapshots("kr"), fetchAuxiliarySnapshots("us")]);
+  void Promise.allSettled([fetchAuxiliarySnapshots("kr"), fetchAuxiliarySnapshots("us")]);
 
   onProgress?.({ progress: 92, message: "대표 차트 분석을 저장하는 중...", step: "stocks" });
-  await Promise.allSettled([
+  void Promise.allSettled([
     krHome.ok ? fetchChartSnapshot("kr", krHome.value) : Promise.resolve([]),
     usHome.ok ? fetchChartSnapshot("us", usHome.value) : Promise.resolve([]),
   ]);

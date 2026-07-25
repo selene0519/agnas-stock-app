@@ -2927,6 +2927,7 @@ export default function ChartPage() {
     { label: "손익비(RR)", value: riskReward != null ? riskReward.toFixed(2) : "-", sub: riskReward != null ? (riskReward >= 1.8 ? "진입 기준 충족" : "기준 미달") : "산출 대기", tone: riskReward != null && riskReward < 1.8 ? "text-amber-300" : "text-teal-300" },
     { label: "종합 점수", value: moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "-", sub: moneConclusion.conf != null ? `신뢰도 ${moneConclusion.conf}` : "추천 데이터 기준", tone: "text-teal-300" },
   ];
+  const analysisReady = rows.length >= 20 && Number(moneConclusion?.score || 0) > 0;
 
   return (
     <ErrorBoundary>
@@ -3019,7 +3020,25 @@ export default function ChartPage() {
           </div>
           </div>
 
-          {moneConclusion && (
+          {!analysisReady && !loading && (
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-amber-100">분석 데이터 준비 중</div>
+                  <p className="mt-1 text-xs leading-5 text-amber-100/80">{stance.detail} OHLCV 20일과 추천 기준가가 연결되면 진입·손절·목표 지표를 표시합니다.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReloadKey((value) => value + 1)}
+                  className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-amber-400/35 px-3 text-xs font-semibold text-amber-100 hover:bg-amber-500/10"
+                >
+                  <RefreshCw size={13} /> 재조회
+                </button>
+              </div>
+            </div>
+          )}
+
+          {analysisReady && moneConclusion && (
               <div className="mone-home-card grid grid-cols-2 overflow-hidden sm:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
                 <div className="flex min-w-0 flex-col justify-center border-r border-slate-700/70 px-4 py-4 sm:px-5 sm:py-5">
                   <div className={`whitespace-nowrap text-2xl font-black leading-none min-[440px]:text-[28px] sm:text-4xl ${moneConclusion.isRisk || moneConclusion.isGateBlocked ? "text-amber-300" : "text-teal-300"}`}>
@@ -3035,7 +3054,7 @@ export default function ChartPage() {
               </div>
             )}
 
-          <div className="mone-home-card overflow-hidden">
+          {analysisReady && <div className="mone-home-card overflow-hidden">
               <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 sm:grid-cols-3 sm:divide-y-0 xl:grid-cols-6">
                 {summaryMetrics.map((metric) => (
                   <div key={metric.label} className="min-w-0 px-3 py-3.5 text-center">
@@ -3045,18 +3064,18 @@ export default function ChartPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div>}
 
-          <div className="mone-home-card px-3.5 py-3.5">
+          {analysisReady && <div className="mone-home-card px-3.5 py-3.5">
               <div className="flex items-center gap-2"><span className="mone-section-icon" /><div className="mone-home-section-title">MONE 판단 이유</div></div>
               <ol className="mt-2 space-y-1 text-[13px] leading-5 text-slate-400">
                 {analysisReasonLines.length
                   ? analysisReasonLines.map((reason, index) => <li key={reason} className="break-keep">{index + 1}. {reason}</li>)
                   : <li>1. 추천 데이터 연결 후 판단 이유가 표시됩니다.</li>}
               </ol>
-            </div>
+            </div>}
 
-          {showPrecisionHint && (
+          {analysisReady && showPrecisionHint && (
               <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <span>더 자세한 차트 근거가 필요하면 정밀 근거 보기를 켜보세요.</span>

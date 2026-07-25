@@ -417,6 +417,15 @@ export default function ReportPage() {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/45 px-3 py-2 text-xs">
+        <span className="text-slate-500">현재 리포트</span>
+        <span className="font-semibold text-slate-200">{marketLabel(market)}</span>
+        <span className="h-3 w-px bg-slate-700" />
+        <span className="font-semibold text-slate-200">{modeLabel(mode)}</span>
+        <span className="h-3 w-px bg-slate-700" />
+        <span className="font-semibold text-slate-200">{horizonLabel(horizon)}</span>
+      </div>
+
       {/* ── 보유종목 + 가상운용 요약 (장마감·가상운용 탭) ── */}
       {(closing || virtualTab) && (
         <div className="space-y-4">
