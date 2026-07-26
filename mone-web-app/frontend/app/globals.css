@@ -333,8 +333,9 @@ h1, h2, h3 { text-wrap: balance; }
 .skip-link {
   position: fixed; left: 12px; top: 8px; z-index: 100;
   transform: translateY(-160%); border-radius: 8px;
-  background: #0f766e; color: #fff; padding: 10px 14px;
+  background: #0f766e; color: #fff; padding: 12px 14px;
   font-size: 13px; font-weight: 700;
+  min-height: 44px; display: inline-flex; align-items: center;
   transition: transform 0.15s ease-out;
 }
 .skip-link:focus { transform: translateY(0); }

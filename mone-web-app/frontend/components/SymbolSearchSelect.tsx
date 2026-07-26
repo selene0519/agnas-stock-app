@@ -171,6 +171,9 @@ export default function SymbolSearchSelect({
           autoComplete="off"
           spellCheck={false}
           role="combobox"
+          // placeholder는 접근가능한 이름을 보장하지 않는다(보조기술마다 처리가 다르고
+          // 입력이 시작되면 사라진다). combobox에는 명시적 이름이 필요하다.
+          aria-label={placeholder}
           aria-autocomplete="list"
           aria-expanded={open && Boolean(query.trim())}
           aria-controls={`${searchId}-results`}

@@ -101,7 +101,7 @@ export default function AlertsPanel() {
         <button
           onClick={fetchStatus}
           disabled={loading}
-          className="flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
+          className="flex min-h-11 items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
         >
           <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
           새로고침

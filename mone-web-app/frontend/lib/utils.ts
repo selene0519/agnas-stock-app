@@ -68,14 +68,44 @@ export function changeColor(v: number | null | undefined) {
   return "text-slate-400";
 }
 
+// 백엔드가 실제로 내보내는 상태 코드 전부에 한국어 라벨을 붙인다.
+// 예전엔 매핑에 없으면 코드를 그대로 반환해서 세션 배너에 "EMPTY_RESULT" 같은
+// 기계 코드가 사용자에게 노출됐다(2026-07-26 홈 화면에서 실제 확인).
+const STATUS_LABELS: Record<string, string> = {
+  NORMAL: "정상",
+  OK: "정상",
+  PARTIAL: "일부 누락",
+  STALE: "오래된 데이터",
+  NO_DATA: "데이터 없음",
+  EMPTY: "데이터 없음",
+  EMPTY_RESULT: "결과 없음",
+  NOT_FOUND: "데이터 없음",
+  MISSING: "데이터 없음",
+  ERROR: "오류",
+  NETWORK_ERROR: "동기화 지연",
+  PENDING: "확인 중",
+  PRICE_PENDING: "현재가 대기",
+  DATA_PENDING: "데이터 축적 중",
+  DATA_SHORT: "데이터 부족",
+  DATA_INSUFFICIENT: "데이터 부족",
+  LOW_SAMPLE: "표본 부족",
+  FALLBACK: "대체 데이터",
+  CAUTION: "주의",
+  BLOCKED: "차단됨",
+  DISABLED: "비활성",
+  SKIPPED: "건너뜀",
+  SKIP: "건너뜀",
+  VALIDATION_UNAVAILABLE: "검증 불가",
+  NOT_AVAILABLE: "제공 불가",
+  MISSING_KEY: "설정 누락",
+};
+
 export function statusLabel(s: DataStatus | string): string {
   const value = String(s || "NO_DATA").toUpperCase();
-  if (value === "NO_DATA") return "데이터 없음";
-  if (value === "NORMAL") return "정상";
-  if (value === "PARTIAL") return "일부 누락";
-  if (value === "STALE") return "오래된 데이터";
-  if (value === "NETWORK_ERROR") return "동기화 지연";
-  if (value === "ERROR") return "오류";
+  const mapped = STATUS_LABELS[value];
+  if (mapped) return mapped;
+  // 모르는 코드는 그대로 노출하지 않는다. 진단은 개발자 도구에서.
+  if (/^[A-Z][A-Z0-9_]*$/.test(value)) return "상태 확인 중";
   return value;
 }
 

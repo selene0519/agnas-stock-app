@@ -4522,7 +4522,7 @@ export default function HomePage({
             onClick={triggerHomeRefresh}
             title="홈 데이터 동기화"
             aria-label="홈 데이터 동기화"
-            className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-[background-color,color,transform] after:absolute after:-inset-1 after:content-[''] hover:bg-slate-800/55 hover:text-slate-100 active:scale-[0.96]"
+            className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-[background-color,color,transform] after:absolute after:-inset-2.5 after:content-[''] hover:bg-slate-800/55 hover:text-slate-100 active:scale-[0.96]"
           >
             <RefreshCw size={14} className={homeRefreshing ? "animate-spin" : ""} aria-hidden="true" />
           </button>
