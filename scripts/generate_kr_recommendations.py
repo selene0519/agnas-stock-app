@@ -710,6 +710,7 @@ def _decide_timing(score: float, ind: dict, mode: str, horizon: str, ev: float |
 
 def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict | None = None,
                  atr_mult_override: dict[str, tuple[float, float]] | None = None,
+                 market: str = "kr",
                  ) -> tuple[float, float, float, float | None, str, float, int]:
     band = _HORIZON_BANDS[horizon]
     rf = _MODE_RISK[mode]; rwf = _MODE_REWARD[mode]
@@ -744,9 +745,10 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     # `winRates` contains the observed rate for sufficiently sampled strategies
     # and only uses a default during cold start. The API blocks those unverified
     # cold-start rows from becoming executable trades.
-    _win_rates = _rates_doc.get("winRates", {})
+    _market_rates = (_rates_doc.get("byMarket") or {}).get(str(market or "kr").lower()) or {}
+    _win_rates = _market_rates.get("winRates", {})
     _defaults  = _rates_doc.get("defaultRates", {})
-    _sample_counts = _rates_doc.get("sampleCounts", {})
+    _sample_counts = _market_rates.get("sampleCounts", {})
     _rate_key  = f"{mode}_{horizon}"
     base  = float(_win_rates.get(_rate_key) or _defaults.get(f"{horizon}_base") or 0.505)
     scale = float(_defaults.get(f"{horizon}_scale") or 0.14)
@@ -773,6 +775,85 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
         decision = "오늘 진입" if score >= 60 else ("대기 관찰" if score >= 50 else "기다림")
         timing_label, timing_reason = "", ""
     return entry, stop, target, ev, decision, prob, wr_samples
+
+
+def _primary_profile(ind: dict[str, Any]) -> tuple[str, str, str]:
+    """Assign one operational profile to a candidate before it is ranked.
+
+    The previous pipeline re-ranked the same universe nine times, allowing a
+    symbol to appear as conservative, balanced, and aggressive simultaneously.
+    This classifier makes the strategy label describe the candidate's strongest
+    actual setup. The later score and quality filters still decide whether it
+    is publishable.
+    """
+    rsi = _num(ind.get("rsi14"))
+    d20 = _num(ind.get("distanceToMa20"))
+    d60 = _num(ind.get("distanceToMa60"))
+    mom5 = _num(ind.get("recentMomentum5"))
+    volume = _num(ind.get("volumeRatio20"))
+    mdd = _num(ind.get("mdd20"))
+    distance_52w = _num(ind.get("distanceTo52wHigh"))
+
+    candidates: list[tuple[float, str, str, str]] = []
+    for mode in MODES:
+        for horizon in HORIZONS:
+            score = _final_score(ind, mode, horizon)
+            reasons: list[str] = []
+
+            if mode == "conservative":
+                if rsi is not None and 40 <= rsi <= 65:
+                    score += 6.0
+                    reasons.append("stable RSI")
+                else:
+                    score -= 6.0
+                if d20 is not None and -4 <= d20 <= 3:
+                    score += 5.0
+                    reasons.append("near MA20")
+                if (volume is not None and volume >= 1.5) or (mom5 is not None and mom5 > 5.0):
+                    score -= 14.0
+            elif mode == "aggressive":
+                if volume is not None and volume >= 1.2:
+                    score += 14.0
+                    reasons.append("volume expansion")
+                else:
+                    score -= 10.0
+                if mom5 is not None and mom5 > 2.0:
+                    score += 10.0
+                    reasons.append("short momentum")
+                if distance_52w is not None and distance_52w >= -3.0:
+                    score += 3.0
+                    reasons.append("near breakout")
+            else:
+                if d20 is not None and -12 <= d20 <= 6:
+                    score += 3.0
+                    reasons.append("balanced entry zone")
+
+            if horizon == "short":
+                if d20 is not None and abs(d20) <= 5 and mom5 is not None and mom5 >= 0:
+                    score += 12.0
+                    reasons.append("short entry timing")
+                else:
+                    score -= 8.0
+            elif horizon == "swing":
+                if d20 is not None and -15 <= d20 <= -2 and (d60 is None or d60 >= -10):
+                    score += 12.0
+                    reasons.append("swing pullback")
+                else:
+                    score -= 6.0
+            else:
+                if (d60 is None or d60 >= -5) and (mdd is None or mdd >= -15) and (mom5 is None or abs(mom5) <= 3):
+                    score += 10.0
+                    reasons.append("mid-term trend")
+                else:
+                    score -= 10.0
+
+            candidates.append((score, mode, horizon, ", ".join(reasons) or "best profile score"))
+
+    score, mode, horizon, reason = max(
+        candidates,
+        key=lambda item: (item[0], item[1] == "balanced", item[2] == "swing"),
+    )
+    return mode, horizon, reason
 
 
 def _fmt_krw(v: float) -> str:
@@ -945,7 +1026,7 @@ def _load_market_regime() -> dict[str, Any]:
                 "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2),
                 "asOf": str(rows[-1].get("date") or rows[-1].get("Date") or "")[:10], "source": source}
     elif dist < -2.0 or mom5 < -2.0:
-        return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -8.0,
+        return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -15.0,
                 "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
                 "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2),
                 "asOf": str(rows[-1].get("date") or rows[-1].get("Date") or "")[:10], "source": source}
@@ -1409,7 +1490,10 @@ def generate_recommendations() -> dict[str, Any]:
     regime_type = regime.get("regime", "SIDE")
 
     # 최소 점수 기준 — 7중 필터가 품질 보장하므로 레짐 기준 완화
-    min_score_by_regime = {"BULL": 50.0, "SIDE": 55.0, "BEAR": 60.0}
+    # BEAR: 횡단면 RS 딥검증(project_cross_sectional_rs_dispersion)에서 약세장은
+    # 롱/인버스/횡단면/회복 전 프레임에서 초과수익 없음이 확인됨 → 공격형 전면차단 외에
+    # 보수/균형형도 사실상 "예외적으로 뛰어난 셋업만" 통과하도록 바를 크게 높인다.
+    min_score_by_regime = {"BULL": 50.0, "SIDE": 55.0, "BEAR": 72.0}
     min_score_global = min_score_by_regime.get(regime_type, 65.0)
 
     # 전체 종목 스코어 계산
@@ -1487,9 +1571,12 @@ def generate_recommendations() -> dict[str, Any]:
             _MAX_PER_SECTOR = {"conservative": 2, "balanced": 3, "aggressive": 4}.get(mode, 3)
             _sector_counts: dict[str, int] = {}
 
+            # BEAR: 보수/균형형도 노출 자체를 줄인다 (완전차단은 아니지만 소수 예외 셋업만)
+            top_n_effective = 4 if regime_type == "BEAR" else TOP_N
+
             count = 0
             for adj_score, base_score, c in scored_combo:
-                if count >= TOP_N:
+                if count >= top_n_effective:
                     break
                 # 최소 점수 필터 (레짐별)
                 if adj_score < min_score_global:
@@ -1499,6 +1586,9 @@ def generate_recommendations() -> dict[str, Any]:
                 sym = c["symbol"]
                 current = c["current"]
                 ind = c["ind"]
+                primary_mode, primary_horizon, profile_reason = _primary_profile(ind)
+                if (mode, horizon) != (primary_mode, primary_horizon):
+                    continue
 
                 # ── 7중 필터 (v3: 정확도 최적화) ──────────────────────────
                 _ma5 = ind.get("ma5"); _ma20 = ind.get("ma20"); _ma60 = ind.get("ma60")
@@ -1561,7 +1651,9 @@ def generate_recommendations() -> dict[str, Any]:
                     continue
                 # ─────────────────────────────────────────────────────────
 
-                entry, stop, target, ev, decision, wr_prob, wr_samples = _price_band(adj_score, current, mode, horizon, ind)
+                entry, stop, target, ev, decision, wr_prob, wr_samples = _price_band(
+                    adj_score, current, mode, horizon, ind, market="kr"
+                )
 
                 # EV 음수 필터링 (보수형은 엄격, 균형/공격은 경고만)
                 if ev is not None and ev < 0:
@@ -1680,6 +1772,9 @@ def generate_recommendations() -> dict[str, Any]:
                     "modeLabel": MODE_LABELS[mode],
                     "horizon": horizon,
                     "horizonLabel": HORIZON_LABELS[horizon],
+                    "primaryMode": primary_mode,
+                    "primaryHorizon": primary_horizon,
+                    "profileReason": profile_reason,
                     "symbol": sym,
                     "name": c["name"],
                     "decisionBucket": decision,
@@ -1694,7 +1789,9 @@ def generate_recommendations() -> dict[str, Any]:
                     "entry": _fmt_krw(entry),
                     "stop":  _fmt_krw(stop),
                     "target": _fmt_krw(target),
-                    "probability": f"{round(adj_score_final, 1)}%",
+                    "probability": round(wr_prob * 100, 1),
+                    "probabilityText": f"모델 추정 {wr_prob * 100:.1f}%",
+                    "modelScore": round(adj_score_final, 1),
                     "expectedPrice": _fmt_krw(round(current * (1 + (adj_score_final/100 - 0.5) * 0.1))),
                     "opportunityScore": round(sub["upsideScore"] * 0.6 + sub["momentumScore"] * 0.4, 1),
                     "entryScore": round(sub["entryScore"], 1),

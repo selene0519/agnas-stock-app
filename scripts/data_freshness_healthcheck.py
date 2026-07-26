@@ -20,6 +20,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Windows 콘솔(cp949)은 em-dash를 못 찍고 UnicodeEncodeError로 죽는다.
+# 헬스체크가 리포트 출력 중에 죽으면 exit code가 의미를 잃으므로 치환 출력으로 낮춘다.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ROOT = Path(__file__).resolve().parents[1]
 NOW = datetime.now(timezone.utc)
 
@@ -73,6 +81,57 @@ def _newest_csv_date(rel_glob: str, sample: int = 5) -> str | None:
         except Exception:
             continue
     return newest
+
+
+def _read_csv_rows(rel: str) -> list[dict]:
+    p = ROOT / rel
+    if not p.exists():
+        return []
+    for enc in ("utf-8-sig", "utf-8", "cp949"):
+        try:
+            with open(p, encoding=enc, newline="") as f:
+                return [dict(r) for r in csv.DictReader(f)]
+        except Exception:
+            continue
+    return []
+
+
+# 정산 가능한(=승률 분모에 들어가는) 행만 통과시키는 필터.
+# scripts/update_win_rates.py의 _is_realized_forward_result와 같은 기준.
+_NON_ADMISSIBLE = {
+    "", "PENDING", "DATA_PENDING", "NOT_EXECUTED",
+    "CANCELLED", "INVALID_SYMBOL", "DATA_INVALID",
+}
+
+
+def _learning_loop_stats() -> dict:
+    """자가보정 루프가 실제로 살아있는지 보는 지표들.
+
+    파일이 '최근에 쓰였는지'만 보면 부족하다. 정산 스크립트가 매일 돌아
+    파일 mtime은 새것이어도, 새 예측이 하나도 안 잡히면 루프는 죽은 것이다.
+    실제로 2026-07에 그 상태였다(6월 818건 → 7월 21건, clean window 표본 0건).
+    """
+    ledger = _read_csv_rows("reports/virtual_prediction_ledger.csv")
+    results = _read_csv_rows("reports/virtual_validation_results.csv")
+    marker = _load_json("reports/clean_window_marker.json") or {}
+    clean_start = str(marker.get("cleanWindowStart") or "")[:10]
+
+    created = sorted(str(r.get("createdAt") or "")[:10] for r in ledger if r.get("createdAt"))
+    admissible = [
+        r for r in results
+        if str(r.get("result") or r.get("status") or "").upper().strip() not in _NON_ADMISSIBLE
+    ]
+    clean_admissible = [
+        r for r in admissible
+        if clean_start and str(r.get("createdAt") or "")[:10] >= clean_start
+    ]
+    return {
+        "newestCapture": created[-1] if created else None,
+        "ledgerRows": len(ledger),
+        "cleanWindowStart": clean_start or None,
+        "admissibleTotal": len(admissible),
+        "cleanWindowAdmissible": len(clean_admissible),
+    }
 
 
 def _find_error_steps(obj, path="") -> list[str]:
@@ -134,6 +193,37 @@ def run(max_stale_days: float = 3.0) -> dict:
     # 6) 전략 승률(정산)
     swr = _load_json("reports/strategy_win_rates.json")
     check_date("strategy_win_rates", (swr or {}).get("generatedAt") or (swr or {}).get("updatedAt"), max_stale_days, False)
+
+    # 7) 예측 캡처 — 자가보정 루프의 입력. 여기가 멈추면 아무리 기다려도
+    #    표본이 안 쌓이므로 "시간이 해결해준다"가 성립하지 않는다.
+    #    주말(최대 2일)을 흡수하려고 +2일 여유를 준다.
+    loop = _learning_loop_stats()
+    check_date("prediction_capture", loop["newestCapture"], max_stale_days + 2, True)
+
+    # 8) 정산 적체 — 만기가 지났는데 정산이 안 된 건수.
+    pss = _load_json("reports/pending_settlement_status.json") or {}
+    unsettled = int(pss.get("unsettled") or 0)
+    if unsettled > 200:
+        add("settlement_backlog", "ERROR", f"미정산 {unsettled}건 (>200)", False)
+    elif unsettled > 50:
+        add("settlement_backlog", "WARN", f"미정산 {unsettled}건 (>50)", False)
+    else:
+        add("settlement_backlog", "OK", f"미정산 {unsettled}건", False)
+
+    # 9) clean window 표본 축적 — 신뢰할 수 있는 구간에서 정산된 표본 수.
+    #    엣지 판정의 분모라서, 0이면 화면의 승률이 전부 오염 구간 산출물이다.
+    #    아직 쌓이는 중일 수 있으니 critical은 아니고 가시화가 목적.
+    cw = loop["cleanWindowAdmissible"]
+    detail = (f"clean window({loop['cleanWindowStart']}) 정산표본 {cw}건 "
+              f"/ 전체 정산 {loop['admissibleTotal']}건 / 원장 {loop['ledgerRows']}행")
+    if not loop["cleanWindowStart"]:
+        add("clean_window_samples", "MISSING", "clean_window_marker.json 없음", False)
+    elif cw <= 0:
+        add("clean_window_samples", "ERROR", detail + " — 오염 구간 데이터만 서빙 중", False)
+    elif cw < 30:
+        add("clean_window_samples", "WARN", detail + " — 표본 부족(30건 미만)", False)
+    else:
+        add("clean_window_samples", "OK", detail, False)
 
     crit_bad = [c for c in checks if c["critical"] and c["status"] != "OK"]
     overall = "ERROR" if crit_bad else ("WARN" if any(c["status"] != "OK" for c in checks) else "OK")

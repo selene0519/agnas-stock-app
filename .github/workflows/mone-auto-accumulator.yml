@@ -541,6 +541,21 @@ jobs:
 
       # US 예측 알림은 mone-notify.yml (미장 장전 09:00 ET)에서 단독 1회 발송
 
+      - name: 추천 예측 원장 캡처 (자가보정 루프 입력)
+        # 원래 _record_virtual_ledger는 /api/final/recommendations 핸들러 안에서만
+        # 불렸다 = 캡처가 "누가 앱을 열어야" 일어나는 요청 시간 부작용. 배포 백엔드는
+        # 디스크가 휘발성이라 git에 남지도 않아, 6월 818건 → 7월 21건으로 원장이
+        # 사실상 죽었고 clean window 표본이 0건이었다. 여기서 스케줄로 돌려
+        # "시간이 지나면 표본이 쌓인다"는 전제를 복구한다.
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python ../../scripts/capture_recommendation_predictions.py --market all
+          echo "capture_recommendation_predictions: exit $?"
+          set -e
+
       - name: Refresh KR/US close validations
         # 파일명은 kr만 가리키지만 KR+US 둘 다 생성함 (US 누락이 settle_pending_validations.py가
         # US 예측을 영영 EXPIRED로만 종결시키던 원인이었음 — _build_validation_index가 찾는
@@ -951,6 +966,9 @@ jobs:
             git add reports/backtest_summary.json 2>/dev/null || true
             git add reports/ensemble_calibration_*.json 2>/dev/null || true
             git add reports/live_calibration_kr.json 2>/dev/null || true
+            # 예측 원장 — 이 워크플로가 캡처해놓고 stage를 안 해서 결과가 매번
+            # 버려지고 있었다. 정산(mone-settle-validations)만 stage 하고 있었음.
+            git add reports/virtual_prediction_ledger.csv reports/recommendation_capture_status.json 2>/dev/null || true
             git add reports/factor_attribution.json 2>/dev/null || true
             # kelly_position_sizes.json 은 개인 보유 기반이라 커밋 제외(.gitignore).
             git add reports/factor_based_filter_adjustments.json 2>/dev/null || true

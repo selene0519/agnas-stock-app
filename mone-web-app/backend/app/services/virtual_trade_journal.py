@@ -408,6 +408,19 @@ def _upper(value: Any) -> str:
     return _text(value).upper()
 
 
+def _has_consistent_realized_outcome(row: dict[str, Any]) -> bool:
+    """Accept realized PnL only when its terminal label agrees with its sign."""
+    pnl = _safe_float(row.get("net_pnl_pct"))
+    if pnl is None:
+        return False
+    outcome = _upper(row.get("outcome"))
+    if outcome in {"TARGET_HIT", "TARGET"}:
+        return pnl > 0
+    if outcome in {"STOP_HIT", "STOP_FIRST", "STOP"}:
+        return pnl < 0
+    return True
+
+
 def _journal_session(value: Any, default: str = DEFAULT_JOURNAL_SESSION) -> str:
     session = _upper(value)
     if session in JOURNAL_SESSIONS:
@@ -4067,16 +4080,19 @@ def attribution_analysis(
         _merge_evaluations(_read_journal_rows()),
         market, mode, horizon, "all", "all",
     )
-    evaluated = [
+    evaluated_candidates = [
         r for r in rows
         if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}
         and _safe_float(r.get("net_pnl_pct")) is not None
     ]
+    inconsistent_outcomes = [r for r in evaluated_candidates if not _has_consistent_realized_outcome(r)]
+    evaluated = [r for r in evaluated_candidates if _has_consistent_realized_outcome(r)]
 
     if not evaluated:
         return {
             "status": "OK",
             "count": 0,
+            "excludedInconsistentOutcomeCount": len(inconsistent_outcomes),
             "byRegime": [],
             "byMarket": [],
             "bySector": [],
@@ -4090,6 +4106,7 @@ def attribution_analysis(
     return {
         "status": "OK",
         "count": len(evaluated),
+        "excludedInconsistentOutcomeCount": len(inconsistent_outcomes),
         "byRegime": _factor_stats(evaluated, "market_regime_at_signal"),
         "byMarket": _factor_stats(evaluated, "market"),
         "bySector": _factor_stats(evaluated, "sector"),
@@ -4491,6 +4508,25 @@ def entry_efficiency_stats(market: str = "all", horizon: str = "all") -> dict[st
 _FEEDBACK_JSON = DATA_DIR / "attribution_feedback.json"
 
 
+def _attribution_multiplier(
+    win_rate: float,
+    avg_pnl: float,
+    base_win_rate: float,
+    base_avg_pnl: float,
+) -> float:
+    """Return a conservative score multiplier from realized trade outcomes."""
+    # Dividing one negative PnL by another inverts performance: a larger loss
+    # can look better than the baseline. Negative expectancy never earns a boost.
+    if avg_pnl <= 0:
+        loss_penalty = min(0.30, abs(avg_pnl) * 0.04)
+        low_win_penalty = min(0.20, max(0.0, 0.45 - win_rate) * 0.5)
+        return max(0.50, round(0.95 - loss_penalty - low_win_penalty, 3))
+
+    win_edge = (win_rate - base_win_rate) if base_win_rate > 0 else 0.0
+    pnl_edge = avg_pnl - max(0.0, base_avg_pnl)
+    return max(0.50, min(1.25, round(1.0 + win_edge * 0.6 + min(0.25, pnl_edge * 0.04), 3)))
+
+
 def attribution_feedback(market: str = "all") -> dict[str, Any]:
     """Generate manual score-adjustment suggestions from journal attribution."""
     _ensure()
@@ -4503,17 +4539,19 @@ def attribution_feedback(market: str = "all") -> dict[str, Any]:
         "all",
         "all",
     )
-    evaluated = [
+    evaluated_candidates = [
         r for r in rows
         if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}
         and _safe_float(r.get("net_pnl_pct")) is not None
     ]
+    inconsistent_outcomes = [r for r in evaluated_candidates if not _has_consistent_realized_outcome(r)]
+    evaluated = [r for r in evaluated_candidates if _has_consistent_realized_outcome(r)]
 
     if len(evaluated) < 10:
         return {"status": "LOW_SAMPLE", "sampleCount": len(evaluated), "minRequired": 10, "adjustments": []}
 
     all_pnls = [_safe_float(r.get("net_pnl_pct")) for r in evaluated if _safe_float(r.get("net_pnl_pct")) is not None]
-    wins = sum(1 for r in evaluated if (_safe_float(r.get("net_pnl_pct")) or 0) > 0 or _upper(r.get("outcome")) == "TARGET_HIT")
+    wins = sum(1 for r in evaluated if (_safe_float(r.get("net_pnl_pct")) or 0) > 0)
     base_win_rate = wins / len(evaluated) if evaluated else 0.5
     base_avg_pnl = sum(all_pnls) / len(all_pnls) if all_pnls else 0
 
@@ -4527,16 +4565,15 @@ def attribution_feedback(market: str = "all") -> dict[str, Any]:
             if len(sub) < 3:
                 continue
             pnls = [_safe_float(r.get("net_pnl_pct")) for r in sub if _safe_float(r.get("net_pnl_pct")) is not None]
-            sub_wins = sum(1 for r in sub if (_safe_float(r.get("net_pnl_pct")) or 0) > 0 or _upper(r.get("outcome")) == "TARGET_HIT")
+            sub_wins = sum(1 for r in sub if (_safe_float(r.get("net_pnl_pct")) or 0) > 0)
             win_rate = sub_wins / len(sub)
             avg_pnl = sum(pnls) / len(pnls) if pnls else 0
-            win_ratio = win_rate / base_win_rate if base_win_rate > 0 else 1.0
-            pnl_ratio = avg_pnl / base_avg_pnl if base_avg_pnl and avg_pnl else 1.0
-            multiplier = max(0.5, min(1.5, round(win_ratio * 0.6 + pnl_ratio * 0.4, 3)))
+            multiplier = _attribution_multiplier(win_rate, avg_pnl, base_win_rate, base_avg_pnl)
             direction = "BOOST" if multiplier > 1.05 else ("REDUCE" if multiplier < 0.95 else "NEUTRAL")
             feedback_id = hashlib.sha256(f"{market}|{mode}|{hz}|{len(sub)}|{round(win_rate, 4)}|{round(avg_pnl, 3)}".encode("utf-8")).hexdigest()[:20]
             adjustments.append({
                 "feedbackId": feedback_id,
+                "market": market,
                 "mode": mode,
                 "horizon": hz,
                 "n": len(sub),
@@ -4553,7 +4590,9 @@ def attribution_feedback(market: str = "all") -> dict[str, Any]:
     approved = [item for item in calibration_items if _upper(item.get("approvalStatus")) == "APPROVED"]
     result: dict[str, Any] = {
         "status": "OK",
+        "market": market,
         "sampleCount": len(evaluated),
+        "excludedInconsistentOutcomeCount": len(inconsistent_outcomes),
         "baseWinRate": round(base_win_rate, 4),
         "baseAvgPnlPct": round(base_avg_pnl, 3),
         "generatedAt": _now_iso(),
