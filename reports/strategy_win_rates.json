@@ -1,12 +1,12 @@
 {
-  "updatedAt": "2026-07-25 00:35:43",
-  "totalSamples": 620,
-  "totalWins": 112,
-  "overallWinRate": 0.1806,
+  "updatedAt": "2026-07-27 08:51:51",
+  "totalSamples": 625,
+  "totalWins": 113,
+  "overallWinRate": 0.1808,
   "minSamplesForUpdate": 20,
   "sampleCounts": {
     "conservative_short": 56,
-    "conservative_swing": 59,
+    "conservative_swing": 64,
     "conservative_mid": 43,
     "balanced_short": 55,
     "balanced_swing": 173,
@@ -17,7 +17,7 @@
   },
   "winRates": {
     "conservative_short": 0.1429,
-    "conservative_swing": 0.1356,
+    "conservative_swing": 0.1406,
     "conservative_mid": 0.2326,
     "balanced_short": 0.1273,
     "balanced_swing": 0.1676,
@@ -28,7 +28,7 @@
   },
   "observedWinRates": {
     "conservative_short": 0.1429,
-    "conservative_swing": 0.1356,
+    "conservative_swing": 0.1406,
     "conservative_mid": 0.2326,
     "balanced_short": 0.1273,
     "balanced_swing": 0.1676,
@@ -39,7 +39,7 @@
   },
   "averageReturnPct": {
     "conservative_short": -2.2144,
-    "conservative_swing": -4.3085,
+    "conservative_swing": -4.033,
     "conservative_mid": -3.3436,
     "balanced_short": -3.7726,
     "balanced_swing": -5.0447,
@@ -52,7 +52,7 @@
     "source": "reports/virtual_validation_results.csv",
     "requiresRealizedReturn": true,
     "excludedRows": {
-      "NON_EXECUTED_OR_PENDING": 204,
+      "NON_EXECUTED_OR_PENDING": 199,
       "MISSING_REALIZED_RETURN": 0
     },
     "signalLedgerRowsExcluded": 0
@@ -65,5 +65,5 @@
     "swing_scale": 0.14,
     "mid_scale": 0.15
   },
-  "note": "샘플 20건 미만 전략은 기본값 사용. 전체 620건 검증됨."
+  "note": "샘플 20건 미만 전략은 기본값 사용. 전체 625건 검증됨."
 }
