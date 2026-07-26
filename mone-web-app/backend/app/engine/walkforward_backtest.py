@@ -385,6 +385,32 @@ def _load_ohlcv_all(market: str = "kr") -> dict[str, list[dict]]:
     return result
 
 
+def _exclude_future_ohlcv(
+    ohlcv_all: dict[str, list[dict]],
+    as_of: date | None = None,
+) -> tuple[dict[str, list[dict]], int]:
+    """Keep only valid observations available as of the backtest run date."""
+    cutoff = as_of or date.today()
+    result: dict[str, list[dict]] = {}
+    excluded = 0
+    for symbol, rows in ohlcv_all.items():
+        usable: list[dict] = []
+        for row in rows:
+            raw_date = str(row.get("date") or "")[:10]
+            try:
+                observation_date = date.fromisoformat(raw_date)
+            except ValueError:
+                excluded += 1
+                continue
+            if observation_date > cutoff:
+                excluded += 1
+                continue
+            usable.append(row)
+        if len(usable) >= 30:
+            result[symbol] = usable
+    return result, excluded
+
+
 def _slice_rows(rows: list[dict], before_date: str) -> list[dict]:
     """before_date 미만 행만 반환 (엄격한 미래 누출 방지)"""
     return [r for r in rows if str(r.get("date") or "") < before_date]
@@ -700,7 +726,8 @@ def run_walkforward(
     지정 market/mode/horizon 조합에 대해 Walk-Forward 검증 실행.
     반환: {windows: [...], baselineStats: {...}, correctedStats: {...}, diff: {...}}
     """
-    ohlcv_all = _load_ohlcv_all(market)
+    as_of = date.today()
+    ohlcv_all, excluded_future_rows = _exclude_future_ohlcv(_load_ohlcv_all(market), as_of)
     if len(ohlcv_all) < 5:
         return {"status": "DATA_INSUFFICIENT", "reason": f"OHLCV 심볼 {len(ohlcv_all)}개 — 최소 5개 필요"}
 
@@ -785,6 +812,8 @@ def run_walkforward(
         "market":         market,
         "mode":           mode,
         "horizon":        horizon,
+        "asOf":           as_of.isoformat(),
+        "excludedFutureRows": excluded_future_rows,
         "dataRange":      f"{data_start} ~ {data_end}",
         "windowCount":    len(window_results),
         "windows":        window_results,
@@ -798,6 +827,7 @@ def run_walkforward(
         # 적용). 가격 룩어헤드는 cutoff_date로 처리됨. 생존편향 없는 실측 신뢰도는
         # 라이브 VTJ 롤링 보정(reports/live_calibration_kr.json)을 참조할 것.
         "dataQuality": {
+            "futureRowsExcluded": excluded_future_rows,
             "lookAheadControlled": True,   # cutoff_date 기준 과거 OHLCV만 사용
             "survivorshipBias": True,       # universe = 현재 상장 심볼만 (상폐 부재)
             "pointInTimeListingFilter": False,
