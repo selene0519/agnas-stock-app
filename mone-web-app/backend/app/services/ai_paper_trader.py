@@ -34,6 +34,8 @@ RISK_PER_TRADE_PCT = float(os.getenv("AI_PAPER_RISK_PER_TRADE_PCT", "0.01"))
 MIN_TRADE_KR = float(os.getenv("AI_PAPER_MIN_TRADE_KR", "10000"))
 MIN_TRADE_US = float(os.getenv("AI_PAPER_MIN_TRADE_US", "10"))
 LENS_EXPERIMENT_SIZE_MULT = float(os.getenv("AI_PAPER_LENS_EXPERIMENT_SIZE_MULT", "0.25"))
+MIN_REALIZED_SAMPLES = int(os.getenv("AI_PAPER_MIN_REALIZED_SAMPLES", "20"))
+MIN_REALIZED_WIN_RATE = float(os.getenv("AI_PAPER_MIN_REALIZED_WIN_RATE", "0.45"))
 
 TRADE_FIELDS = [
     "id", "createdAt", "market", "agentId", "agentLabel", "generation",
@@ -200,6 +202,34 @@ def _is_tradeable_symbol(market: str, symbol: str) -> bool:
     if market == "kr":
         return bool(re.fullmatch(r"\d{6}", normalized))
     return bool(re.fullmatch(r"[A-Z][A-Z0-9.-]{0,14}", normalized))
+
+
+def _realized_performance_gate(market: str, agent: dict[str, str]) -> dict[str, Any]:
+    """Allow AI paper entries only when the matching strategy has a proven edge."""
+    report = _read_json(REPORTS / "strategy_win_rates.json", {})
+    key = f"{agent['mode']}_{agent['horizon']}"
+    market_stats = (report.get("byMarket") or {}).get(market) or {}
+    sample_count = int(_num((market_stats.get("sampleCounts") or {}).get(key)))
+    win_rate = _num((market_stats.get("observedWinRates") or {}).get(key))
+    avg_return = _num((market_stats.get("averageReturnPct") or {}).get(key))
+
+    gate = {
+        "allowed": False,
+        "market": market,
+        "strategy": key,
+        "sampleCount": sample_count,
+        "minSamples": MIN_REALIZED_SAMPLES,
+        "winRate": win_rate,
+        "minWinRate": MIN_REALIZED_WIN_RATE,
+        "avgReturnPct": avg_return,
+    }
+    if sample_count < MIN_REALIZED_SAMPLES:
+        return {**gate, "reason": "INSUFFICIENT_REALIZED_SAMPLES"}
+    if win_rate < MIN_REALIZED_WIN_RATE:
+        return {**gate, "reason": "REALIZED_WIN_RATE_BELOW_GATE"}
+    if avg_return <= 0:
+        return {**gate, "reason": "NEGATIVE_REALIZED_EXPECTANCY"}
+    return {**gate, "allowed": True, "reason": "REALIZED_EDGE_CONFIRMED"}
 
 
 def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -> list[dict[str, Any]]:
@@ -652,6 +682,19 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
         })
         return actions
 
+    performance_gate = _realized_performance_gate(market, agent)
+    if not performance_gate["allowed"]:
+        actions.append({
+            "action": "SKIP",
+            "market": market,
+            "agentId": agent["id"],
+            "agentLabel": agent["label"],
+            "reason": performance_gate["reason"],
+            "performanceGate": performance_gate,
+            "result": {"ok": False, "dryRun": dry_run},
+        })
+        return actions
+
     positions = _position_items(market, agent["id"])
     held = {str(p.get("symbol") or "").upper() for p in positions}
     slots = max(0, MAX_POSITIONS - len(positions))
@@ -912,6 +955,8 @@ def status(market: str = "all") -> dict[str, Any]:
         ctx = _active_context(mk)
         agent = ctx["agent"]
         summary = _summary_for_market(mk, agent["id"])
+        performance_gate = _realized_performance_gate(mk, agent)
+        candidate_count = len(_collect_recommendations(mk, agent)) if performance_gate["allowed"] else 0
         survival = _survival_state(mk, summary)
         markets[mk] = {
             "activeAgent": agent,
@@ -920,7 +965,8 @@ def status(market: str = "all") -> dict[str, Any]:
             "liveMetrics": _live_nav_metrics(mk, agent["id"], summary),
             "survival": survival,
             "positions": _position_items(mk, agent["id"]),
-            "candidateCount": len(_collect_recommendations(mk, agent)),
+            "candidateCount": candidate_count,
+            "entryPerformanceGate": performance_gate,
             "proofFailed": survival["state"] == "DEAD",
             "proofBoard": _walkforward_proof_board(mk, agent["id"]),
         }
