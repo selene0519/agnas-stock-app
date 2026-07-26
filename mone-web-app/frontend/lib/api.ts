@@ -598,6 +598,8 @@ export const mone = {
     apiGet<any>("/api/journal/historical-strategy-calibration", p),
   portfolioRiskBudget: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/portfolio/risk-budget", p),
+  quantOperatingStatus: (p?: { market?: Market | string }) =>
+    apiGet<any>("/api/quant/operating-status", p),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>

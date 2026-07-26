@@ -8542,6 +8542,27 @@ def api_portfolio_risk_budget(
     return risk_budget(market=market, user_id=user_id)
 
 
+@app.get("/api/quant/operating-status")
+def api_quant_operating_status(
+    market: str = Query("all", pattern="^(kr|us|all)$"),
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
+    authorization: str = Header(default="", alias="Authorization"),
+) -> dict:
+    """Single fail-closed research and paper-trading operating decision."""
+    from app.services.quant_operating_governor import operating_status
+
+    user_id = ""
+    try:
+        if str(os.environ.get("MONE_ANON_HOLDINGS", "")).strip().lower() in {"1", "true", "yes", "on"}:
+            user_id = _db.sanitize_uid(x_mone_user)
+        if not user_id:
+            payload = _verify_user_token(_extract_bearer_token(authorization))
+            user_id = _db.sanitize_uid(str((payload or {}).get("userId") or (payload or {}).get("sub") or ""))
+    except Exception:
+        user_id = ""
+    return operating_status(market=market, user_id=user_id)
+
+
 @app.post("/api/journal/self-learning/auto-calibrate")
 def api_journal_self_learning_auto_calibrate(payload: dict = Body(default_factory=dict)) -> dict:
     from app.services import virtual_trade_journal as vtj

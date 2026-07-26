@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mone, type Market } from "@/lib/api";
+import { QuantOperatingStatus } from "@/components/QuantOperatingStatus";
 import { TrendingUp, TrendingDown, RefreshCw, Plus, Minus, RotateCcw, History, BarChart3, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 type Position = {
@@ -448,6 +449,8 @@ export default function PaperTradingPage({
           </button>
         </div>
       </div>
+
+      <QuantOperatingStatus market={market} />
 
       {/* 요약 */}
       {summary && <SummaryBar summary={summary} market={market} />}
