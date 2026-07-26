@@ -5,7 +5,7 @@ import json
 import math
 import os
 import re
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +19,7 @@ AI_NAV_CSV = PAPER_DIR / "ai_paper_nav.csv"
 AI_BALANCE_JSON = PAPER_DIR / "ai_paper_balance.json"
 AI_STOPS_JSON = PAPER_DIR / "ai_paper_stops.json"
 AI_STATE_JSON = PAPER_DIR / "ai_paper_state.json"
+AI_SUPERVISOR_STATUS_JSON = PAPER_DIR / "ai_paper_supervisor_status.json"
 
 AGENT_POOL: tuple[dict[str, str], ...] = (
     {"id": "ml_rank_balanced_mid", "label": "ML Rank Balanced Mid", "mode": "balanced", "horizon": "mid"},
@@ -205,7 +206,7 @@ def _is_tradeable_symbol(market: str, symbol: str) -> bool:
 
 
 def _realized_performance_gate(market: str, agent: dict[str, str]) -> dict[str, Any]:
-    """Allow AI paper entries only when the matching strategy has a proven edge."""
+    """Allow entries only after clean realized and independent OOS evidence."""
     report = _read_json(REPORTS / "strategy_win_rates.json", {})
     key = f"{agent['mode']}_{agent['horizon']}"
     market_stats = (report.get("byMarket") or {}).get(market) or {}
@@ -229,7 +230,15 @@ def _realized_performance_gate(market: str, agent: dict[str, str]) -> dict[str, 
         return {**gate, "reason": "REALIZED_WIN_RATE_BELOW_GATE"}
     if avg_return <= 0:
         return {**gate, "reason": "NEGATIVE_REALIZED_EXPECTANCY"}
-    return {**gate, "allowed": True, "reason": "REALIZED_EDGE_CONFIRMED"}
+
+    proof = _walkforward_proof_board(market, agent["id"])
+    gate["walkForwardStatus"] = proof.get("status")
+    gate["walkForwardVerdict"] = proof.get("verdict")
+    if proof.get("status") != "OK":
+        return {**gate, "reason": "WALK_FORWARD_DATA_NOT_READY"}
+    if proof.get("verdict") != "PROVING_EDGE":
+        return {**gate, "reason": "WALK_FORWARD_NOT_PROVEN"}
+    return {**gate, "allowed": True, "reason": "REALIZED_AND_OOS_EDGE_CONFIRMED"}
 
 
 def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -> list[dict[str, Any]]:
@@ -870,6 +879,28 @@ def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, An
             "rows": [],
         }
 
+    as_of = date.today()
+    future_windows: list[str] = []
+    for row in rows:
+        raw_window = str(row.get("window") or "").strip()
+        try:
+            window_date = date.fromisoformat(raw_window[:10])
+        except ValueError:
+            continue
+        if window_date > as_of:
+            future_windows.append(raw_window)
+    if future_windows:
+        return {
+            "status": "INVALID_TEMPORAL_DATA",
+            "method": "walk_forward_oos",
+            "verdict": "UNPROVEN",
+            "message": "walkforward results include windows after the current date",
+            "asOf": as_of.isoformat(),
+            "futureWindowCount": len(future_windows),
+            "latestFutureWindow": max(future_windows),
+            "rows": [],
+        }
+
     def _metrics(profile: dict[str, str], strategy: str) -> dict[str, Any] | None:
         matched = [
             row for row in rows
@@ -979,6 +1010,7 @@ def status(market: str = "all") -> dict[str, Any]:
         "lastRun": state.get("lastRun", {}),
         "navRows": len(nav_rows),
         "latestNav": nav_rows[-1] if nav_rows else {},
+        "supervisor": _read_json(AI_SUPERVISOR_STATUS_JSON, {}),
     }
 
 
