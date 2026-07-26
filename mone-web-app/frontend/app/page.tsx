@@ -18,6 +18,7 @@ import { getCachedBootPreload, runBootPreload, type BootPreloadState } from "../
 import { useFocusTrap } from "../lib/useFocusTrap";
 
 const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
+const APP_SHELL_TIMEOUT_MS = 2500;
 
 function PageLoading() {
   return <div className="py-16 text-center text-sm text-slate-500" role="status">화면을 불러오는 중…</div>;
@@ -145,11 +146,11 @@ export default function App() {
       if (!cancelled && showLaunchLoading) setBootDelayed(true);
     }, 5000); // 5초 후 "서버 응답이 늦어지고 있어요" 표시
 
-    // Keep launch visible while the daily KR/US prediction snapshot is prepared.
-    // The app should not open first and then keep loading page-level data.
+    // Do not block navigation on a slow first snapshot. Page-level views can
+    // consume the same preload once it resolves after the app shell is visible.
     const maxBootTimer = window.setTimeout(() => {
       if (!cancelled && showLaunchLoading) setBooting(false);
-    }, 90000);
+    }, APP_SHELL_TIMEOUT_MS);
 
     const updateBoot = (progress: number, message: string, step: "server" | "home" | "stocks" | "done") => {
       if (cancelled) return;
