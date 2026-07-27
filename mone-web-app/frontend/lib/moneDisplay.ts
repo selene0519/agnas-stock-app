@@ -404,11 +404,63 @@ export function pctText(value: any, fallback = "-"): string {
   return `${signed}${n.toFixed(2)}%`;
 }
 
+export type WinRateSource = "live" | "backtest" | "observed" | "unverified" | "none";
+
+export interface ResolvedWinRate {
+  value: number | null;
+  source: WinRateSource;
+  /** 배지에 그대로 쓸 수 있는 짧은 라벨 */
+  label: string;
+  /** 라이브 정산 실측 표본(유효 표본수). 백테스트면 null */
+  effN: number | null;
+}
+
+/**
+ * 승률 표시의 단일 진입점.
+ *
+ * 예전엔 화면 3곳이 각자 `calibratedWinRate`(=백테스트 보정값, 44~55%)를 읽고
+ * "실증"/"승률"이라고 라벨을 붙였다. 같은 구간의 라이브 정산 실측은 훨씬
+ * 낮아서(KR 풀링 11.6%), 측정된 적 없는 낙관값이 측정값 행세를 하고 있었다.
+ * 라이브 값이 있으면 그것을 쓰고, 없으면 백테스트임을 라벨에 명시한다.
+ */
+export function resolveWinRate(item: any): ResolvedWinRate {
+  const live = toNumber(item?.liveCalibratedWinRate);
+  if (live !== null) {
+    const effN = toNumber(item?.liveCalibrationEffN);
+    return { value: live, source: "live", label: "실증", effN };
+  }
+  const backtest = toNumber(item?.calibratedWinRate);
+  if (backtest !== null) {
+    return { value: backtest, source: "backtest", label: "백테스트", effN: null };
+  }
+  // 홈 매트릭스는 추천 CSV 행을 그대로 통과시키므로 위 두 보정값이 없다.
+  // 대신 생성기가 실측/미검증을 표시해 둔 컬럼이 있으니 그걸 신뢰한다.
+  // (표본 부족이면 하드코딩 기본값이라 "실증"이라고 부르면 안 된다.)
+  const csvRate = toNumber(item?.probability);
+  const csvSource = String(item?.probabilitySource ?? "").toUpperCase();
+  if (csvRate !== null && csvSource) {
+    const measured = csvSource === "OBSERVED_WIN_RATE" || item?.probabilityMeasured === true;
+    return {
+      value: csvRate,
+      source: measured ? "observed" : "unverified",
+      label: measured ? "실측" : "미검증",
+      effN: toNumber(item?.probabilitySampleCount),
+    };
+  }
+  return { value: null, source: "none", label: "미측정", effN: null };
+}
+
 export function probabilityText(item: any, fallback = "-"): string {
-  // Measured calibrated rate first; otherwise show the separately labelled score probability.
-  if (item?.calibratedWinRate != null) {
-    const wr = Number(item.calibratedWinRate);
-    if (!isNaN(wr)) return `승률 ${wr.toFixed(1)}%`;
+  // 라이브 실측 우선, 없으면 백테스트임을 라벨로 구분해서 표시.
+  const resolved = resolveWinRate(item);
+  if (resolved.value !== null) {
+    const prefix =
+      resolved.source === "live" || resolved.source === "observed"
+        ? "실측 승률"
+        : resolved.source === "backtest"
+        ? "백테스트 승률"
+        : "미검증 승률";
+    return `${prefix} ${resolved.value.toFixed(1)}%`;
   }
   const probNum = Number(item?.probability);
   // probability may come from CSV as "77.6%" (string with %); use as-is if already formatted, else format the number

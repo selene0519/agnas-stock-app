@@ -539,7 +539,7 @@ def generate_us_recommendations() -> dict[str, Any]:
                 if not _passed:
                     continue
 
-                entry, stop, target, ev, decision, wr_prob, wr_samples = _price_band(
+                entry, stop, target, ev, decision, wr_prob, wr_samples, wr_measured = _price_band(
                     adj_score, current, mode, horizon, ind, market="us"
                 )
 
@@ -645,7 +645,15 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "stop": _fmt_usd(stop),
                     "target": _fmt_usd(target),
                     "probability": round(wr_prob * 100, 1),
-                    "probabilityText": f"모델 추정 {wr_prob * 100:.1f}%",
+                    # 실측 기반인지 하드코딩 기본값인지 구분해서 내보낸다.
+                    # 표본이 모자라 기본값을 쓴 행을 측정값처럼 보이게 하면 안 된다.
+                    "probabilityText": (
+                        f"실측 기반 {wr_prob * 100:.1f}%" if wr_measured
+                        else f"미검증 기본값 {wr_prob * 100:.1f}%"
+                    ),
+                    "probabilityMeasured": wr_measured,
+                    "probabilitySource": "OBSERVED_WIN_RATE" if wr_measured else "UNVERIFIED_DEFAULT",
+                    "probabilitySampleCount": wr_samples,
                     "modelScore": round(adj_score, 1),
                     "expectedPrice": _fmt_usd(round(current * (1 + (adj_score/100 - 0.5) * 0.1), 2)),
                     "opportunityScore": round(_sub_scores(ind)["upsideScore"] * 0.6 + _sub_scores(ind)["momentumScore"] * 0.4, 1),

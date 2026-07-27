@@ -2076,7 +2076,13 @@ def _apply_light_correction(item: dict[str, Any], summary: dict[str, Any]) -> di
     adjusted = dict(item)
     probability = _num(adjusted.get("probability"))
     if probability > 0:
-        adjusted["probability"] = max(0.0, round(probability - penalty, 1))
+        # 비율 감점이다. 예전엔 퍼센트포인트를 그대로 뺐는데(`- 15`), 그 값은
+        # 낙관적인 백테스트 승률(44~55%) 스케일에 맞춰져 있었다. 승률 소스를
+        # 라이브 실측(KR 10% 안팎)으로 바꾸자 10.5 - 15 = 음수 → 0.0으로 뭉개져
+        # "승률 0%"가 떴다. 같은 함수가 점수는 이미 `* 0.85`로 비율 감점한다.
+        adjusted["probability"] = round(
+            max(0.0, probability * (1.0 - max(0.0, min(100.0, penalty)) / 100.0)), 1
+        )
         adjusted["probabilityText"] = _pct_text(adjusted["probability"])
     for key in ("finalScore", "finalRankScore", "quantScore"):
         if isinstance(adjusted.get(key), (int, float)):
@@ -2377,12 +2383,19 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
                 item = _apply_light_correction(item, correction_state)
                 item.setdefault("computedFields", []).append("self_correction_penalty")
             if attr_mult != 1.0:
+                # probability는 이 코드베이스 전체에서 0~100 퍼센트다(0~1 분수가
+                # 아니다). 그런데 상한이 1.0으로 걸려 있어서, 배율이 적용되는
+                # 순간 8.9% 같은 값이 1.0으로 잘려 화면에 "승률 1%"로 떴다.
+                # 승률 소스가 낙관적인 백테스트(44~55%)였을 땐 어차피 상한에
+                # 걸려 늘 1.0이라 아무도 이상함을 못 느꼈다.
                 for _akey in ("finalRankScore", "probability"):
                     _val = item.get(_akey)
                     if _val is not None:
-                        _cap = 100.0 if _akey == "finalRankScore" else 1.0
-                        _dp = 1 if _akey == "finalRankScore" else 2
-                        item[_akey] = round(_clamp(float(_val) * attr_mult, 0.0, _cap), _dp)
+                        item[_akey] = round(_clamp(float(_val) * attr_mult, 0.0, 100.0), 1)
+                # 배율이 probability를 바꿨으면 표시 문자열도 같이 갱신한다.
+                # 안 그러면 숫자 필드(8.6)와 화면 문자열(8.9%)이 어긋난다.
+                if item.get("probability") is not None:
+                    item["probabilityText"] = _pct_text(item["probability"])
                 item.setdefault("computedFields", []).append(f"attribution_mult_{attr_mult}")
             item = _apply_chart_signal_overlay(item, mode, horizon)
             try:

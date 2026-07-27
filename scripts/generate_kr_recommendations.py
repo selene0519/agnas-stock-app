@@ -135,9 +135,12 @@ def _rsi(vals: list[float], p: int = 14) -> float | None:
 
 
 def _atr(h: list[float], l: list[float], c: list[float], p: int = 14) -> float | None:
-    if len(c) <= p:
+    # 길이가 다른 시리즈가 들어오면 인덱싱이 터진다(_aligned_ohlc_rows가 앞단에서
+    # 막지만, 다른 호출자가 생겨도 한 종목 때문에 전체 생성이 죽지 않게 방어).
+    n = min(len(h), len(l), len(c))
+    if n <= p:
         return None
-    rs = [max(h[i]-l[i], abs(h[i]-c[i-1]), abs(l[i]-c[i-1])) for i in range(len(c)-p, len(c))]
+    rs = [max(h[i]-l[i], abs(h[i]-c[i-1]), abs(l[i]-c[i-1])) for i in range(n-p, n)]
     return sum(rs) / p
 
 
@@ -158,7 +161,31 @@ def _momentum(vals: list[float], p: int) -> float | None:
     return (vals[-1] - vals[-p-1]) / vals[-p-1] * 100
 
 
+def _aligned_ohlc_rows(rows: list[dict]) -> list[dict]:
+    """open/high/low/close가 모두 파싱되는 행만 남긴다.
+
+    `_series`는 컬럼별로 독립적으로 파싱해서 실패한 값을 건너뛴다. 그래서 어느
+    한 컬럼만 깨진 행이 있으면 그 뒤로 배열 길이가 어긋나고, high/low가 close와
+    **하루씩 밀려서** 지표가 조용히 틀린다. 운이 나쁘면 `_atr`이 IndexError로
+    죽으면서 KR 추천 생성 전체가 멈춘다.
+
+    2026-07-27 실측: kr_007660_daily.csv 1427행(2020-02-24)이 두 행이 합쳐진
+    형태로 깨져 있었고(high="332020-05-14", low="kr"), 그 한 종목 때문에
+    generate_kr_recommendations가 통째로 크래시해 추천이 7-23부터 멈춰 있었다.
+    """
+    clean: list[dict] = []
+    for row in rows:
+        if all(
+            _num(row.get(a) if row.get(a) is not None else row.get(a.capitalize())) is not None
+            for a in ("open", "high", "low", "close")
+        ):
+            clean.append(row)
+    return clean
+
+
 def indicators(rows: list[dict]) -> dict[str, float | None]:
+    # 깨진 행은 여기서 한 번에 떨어내 모든 시리즈의 길이·정렬을 보장한다.
+    rows = _aligned_ohlc_rows(rows)
     # 오늘 날짜(장중 반일 데이터) 포함 여부 감지 → 거래량 계산 기준에서 제외
     from datetime import date as _date
     _today = _date.today().isoformat()
@@ -711,7 +738,7 @@ def _decide_timing(score: float, ind: dict, mode: str, horizon: str, ev: float |
 def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict | None = None,
                  atr_mult_override: dict[str, tuple[float, float]] | None = None,
                  market: str = "kr",
-                 ) -> tuple[float, float, float, float | None, str, float, int]:
+                 ) -> tuple[float, float, float, float | None, str, float, int, bool]:
     band = _HORIZON_BANDS[horizon]
     rf = _MODE_RISK[mode]; rwf = _MODE_REWARD[mode]
     entry = current
@@ -746,14 +773,26 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     # and only uses a default during cold start. The API blocks those unverified
     # cold-start rows from becoming executable trades.
     _market_rates = (_rates_doc.get("byMarket") or {}).get(str(market or "kr").lower()) or {}
-    _win_rates = _market_rates.get("winRates", {})
     _defaults  = _rates_doc.get("defaultRates", {})
     _sample_counts = _market_rates.get("sampleCounts", {})
     _rate_key  = f"{mode}_{horizon}"
-    base  = float(_win_rates.get(_rate_key) or _defaults.get(f"{horizon}_base") or 0.505)
+    _min_samples = int(_rates_doc.get("minSamplesForUpdate") or 20)
+    wr_samples = int(_sample_counts.get(_rate_key) or 0)
+
+    # 실측 승률은 observedWinRates에서만 읽는다. `winRates`는 표본이 모자라면
+    # 하드코딩 기본값으로 채워져 나오므로 측정값과 구분이 안 된다.
+    #
+    # 그리고 `x or default`를 쓰면 **실측 0.0%가 falsy라서 기본값으로 바뀐다** —
+    # 즉 "한 번도 못 이긴 전략"이 화면에 52.5%로 뜬다(KR conservative_mid 실측).
+    # 반드시 None 검사로 분기해야 한다.
+    _observed = _market_rates.get("observedWinRates", {}).get(_rate_key)
+    wr_measured = _observed is not None and wr_samples >= _min_samples
+    if wr_measured:
+        base = float(_observed)
+    else:
+        base = float(_defaults.get(f"{horizon}_base") or 0.505)
     scale = float(_defaults.get(f"{horizon}_scale") or 0.14)
     prob  = max(0.01, min(0.99, base + (score - 50.0) / 50.0 * scale))
-    wr_samples = int(_sample_counts.get(_rate_key) or 0)
 
     ev = None
     rr = None
@@ -774,7 +813,7 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     else:
         decision = "오늘 진입" if score >= 60 else ("대기 관찰" if score >= 50 else "기다림")
         timing_label, timing_reason = "", ""
-    return entry, stop, target, ev, decision, prob, wr_samples
+    return entry, stop, target, ev, decision, prob, wr_samples, wr_measured
 
 
 def _primary_profile(ind: dict[str, Any]) -> tuple[str, str, str]:
@@ -1651,7 +1690,7 @@ def generate_recommendations() -> dict[str, Any]:
                     continue
                 # ─────────────────────────────────────────────────────────
 
-                entry, stop, target, ev, decision, wr_prob, wr_samples = _price_band(
+                entry, stop, target, ev, decision, wr_prob, wr_samples, wr_measured = _price_band(
                     adj_score, current, mode, horizon, ind, market="kr"
                 )
 
@@ -1790,7 +1829,15 @@ def generate_recommendations() -> dict[str, Any]:
                     "stop":  _fmt_krw(stop),
                     "target": _fmt_krw(target),
                     "probability": round(wr_prob * 100, 1),
-                    "probabilityText": f"모델 추정 {wr_prob * 100:.1f}%",
+                    # 실측 기반인지 하드코딩 기본값인지 구분해서 내보낸다.
+                    # 표본이 모자라 기본값을 쓴 행을 측정값처럼 보이게 하면 안 된다.
+                    "probabilityText": (
+                        f"실측 기반 {wr_prob * 100:.1f}%" if wr_measured
+                        else f"미검증 기본값 {wr_prob * 100:.1f}%"
+                    ),
+                    "probabilityMeasured": wr_measured,
+                    "probabilitySource": "OBSERVED_WIN_RATE" if wr_measured else "UNVERIFIED_DEFAULT",
+                    "probabilitySampleCount": wr_samples,
                     "modelScore": round(adj_score_final, 1),
                     "expectedPrice": _fmt_krw(round(current * (1 + (adj_score_final/100 - 0.5) * 0.1))),
                     "opportunityScore": round(sub["upsideScore"] * 0.6 + sub["momentumScore"] * 0.4, 1),

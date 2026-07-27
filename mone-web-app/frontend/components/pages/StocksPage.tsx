@@ -21,6 +21,7 @@ import {
   horizonLabel,
   modeLabel,
   priceText,
+  resolveWinRate,
   sanitizeCodeLabel,
   sourceStatusLabel,
   strategyTagLabel,
@@ -790,9 +791,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     }
     if (filterWinRate40) {
       result = result.filter((item) => {
-        const wr = item.calibratedWinRate;
-        if (wr == null) return true; // null이면 필터 적용 안 함
-        return Number(wr) >= 40;
+        // 백테스트 낙관값이 아니라 라이브 실측 우선으로 거른다.
+        const wr = resolveWinRate(item).value;
+        if (wr == null) return true; // 측정값 없으면 필터 적용 안 함
+        return wr >= 40;
       });
     }
     if (supplyFilter) {

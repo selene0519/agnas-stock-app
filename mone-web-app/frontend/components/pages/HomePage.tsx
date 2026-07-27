@@ -42,6 +42,7 @@ import {
   priceText,
   probabilityText,
   resolveEvPct,
+  resolveWinRate,
   resolveRr,
   strategyTagLabel,
   toNumber,
@@ -1102,7 +1103,8 @@ function TodayEntryCard({
     ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
     : "border-slate-600 bg-slate-700/60 text-slate-300";
   const ensembleScore = item.ensembleScore != null ? Number(item.ensembleScore) : null;
-  const calibratedWinRate = item.calibratedWinRate != null ? Number(item.calibratedWinRate) : null;
+  // 라이브 정산 실측 우선. 백테스트값을 "실증"이라고 부르지 않는다.
+  const resolvedWinRate = resolveWinRate(item);
   const toneStyle = {
     entry: {
       card: "hover:border-blue-500/45 focus:ring-blue-500/40",
@@ -1156,9 +1158,14 @@ function TodayEntryCard({
               market={(String(item.market || item._market || "kr")).toLowerCase() === "us" ? "us" : "kr"}
               name={String(item.name || "")}
             />
-            {showCalibBadges && calibratedWinRate != null && (
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium [font-variant-numeric:tabular-nums] ${calibBadgeClass}`}>
-                실증 {calibratedWinRate.toFixed(0)}%{lowSample ? ` · 표본부족(n=${calibCount || wrSampleCount})` : ""}
+            {showCalibBadges && resolvedWinRate.value != null && (
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-medium [font-variant-numeric:tabular-nums] ${calibBadgeClass}`}
+                title={resolvedWinRate.source === "live"
+                  ? "라이브 가상매매 정산 실측 승률"
+                  : "백테스트 보정 승률 — 라이브에서 측정된 값이 아닙니다"}
+              >
+                {resolvedWinRate.label} {resolvedWinRate.value.toFixed(0)}%{lowSample ? ` · 표본부족(n=${calibCount || wrSampleCount})` : ""}
               </span>
             )}
             {showCalibBadges && ensembleScore != null && (
