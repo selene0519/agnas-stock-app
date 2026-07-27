@@ -1,22 +1,23 @@
 {
-  "generatedAt": "2026-07-27T11:27:09.067514+00:00",
+  "generatedAt": "2026-07-27T16:27:36.777677+00:00",
   "overall": "ERROR",
   "criticalFailures": 1,
+  "hardFailures": 0,
   "maxStaleDays": 3.0,
   "checks": [
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "3.48d, asOf=2026-07-24",
+      "detail": "3.69d, asOf=2026-07-24",
       "critical": true,
-      "ageDays": 3.48
+      "ageDays": 3.69
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "2.14d, asOf=2026-07-25 07:58:58",
+      "detail": "2.35d, asOf=2026-07-25 07:58:58",
       "critical": true,
-      "ageDays": 2.14
+      "ageDays": 2.35
     },
     {
       "name": "collector_steps",
@@ -28,30 +29,51 @@
     {
       "name": "collector_run",
       "status": "STALE",
-      "detail": "4.79d old (>3.0d), asOf=2026-07-22T16:34:11.602476",
+      "detail": "5.0d old (>3.0d), asOf=2026-07-22T16:34:11.602476",
       "critical": true,
-      "ageDays": 4.79
+      "ageDays": 5.0
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "2.52d, asOf=2026-07-25T07:59:56+09:00",
+      "detail": "2.73d, asOf=2026-07-25T07:59:56+09:00",
       "critical": false,
-      "ageDays": 2.52
+      "ageDays": 2.73
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "2.48d, asOf=2026-07-25",
+      "detail": "2.69d, asOf=2026-07-25",
       "critical": false,
-      "ageDays": 2.48
+      "ageDays": 2.69
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-27 20:27:09",
+      "detail": "-0.37d, asOf=2026-07-28 01:27:36",
       "critical": false,
       "ageDays": -0.37
+    },
+    {
+      "name": "prediction_capture",
+      "status": "OK",
+      "detail": "4.69d, asOf=2026-07-23",
+      "critical": true,
+      "ageDays": 4.69
+    },
+    {
+      "name": "settlement_backlog",
+      "status": "WARN",
+      "detail": "미정산 57건 (>50)",
+      "critical": false,
+      "ageDays": null
+    },
+    {
+      "name": "clean_window_samples",
+      "status": "WARN",
+      "detail": "clean window(2026-07-10) 정산표본 5건 / 전체 정산 625건 / 원장 834행 — 표본 부족(30건 미만)",
+      "critical": false,
+      "ageDays": null
     }
   ]
 }
