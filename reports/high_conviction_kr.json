@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-07-24T22:59:32.617550+00:00",
+  "generatedAt": "2026-07-27T21:55:54.449040+00:00",
   "market": "kr",
-  "marketRegime": "BEAR",
-  "marketRegimeLabel": "약세장",
+  "marketRegime": "SIDE",
+  "marketRegimeLabel": "횡보장",
   "regimeDetail": {
     "asOf": "2026-07-24",
-    "distToMa20": -9.99,
-    "mom5": -1.91,
-    "kospi": 6690.62
+    "distToMa20": NaN,
+    "mom5": NaN,
+    "kospi": NaN
   },
   "favorableRegime": false,
   "finalScoreThreshold": 84.0,
@@ -26,86 +26,7 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 6,
+  "candidateCount": 0,
   "actionableCount": 0,
-  "candidates": [
-    {
-      "symbol": "035420",
-      "name": "NAVER",
-      "finalScore": 68.7,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "대기 관찰",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "기관 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "028670",
-      "name": "팬오션",
-      "finalScore": 67.6,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "기관+외국인 동반매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "207940",
-      "name": "삼성바이오로직스",
-      "finalScore": 66.8,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "보류",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "기관+외국인 동반매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "047810",
-      "name": "한국항공우주",
-      "finalScore": 66.4,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "대기 관찰",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "기관 순매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "138040",
-      "name": "메리츠금융지주",
-      "finalScore": 59.1,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "EV음수 | 기관+외국인 동반매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "105560",
-      "name": "KB금융",
-      "finalScore": 56.9,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "외국인 순매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
-    }
-  ]
+  "candidates": []
 }

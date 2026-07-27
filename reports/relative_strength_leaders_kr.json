@@ -1,103 +1,31 @@
 {
   "version": "relative-strength-v1",
   "market": "kr",
-  "asOf": "2026-07-24",
+  "asOf": "2026-07-23",
   "regime": "BEAR",
   "status": "BEAR_DEFENSIVE",
   "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
-  "universeCount": 100,
+  "universeCount": 3,
   "leaders": [],
   "laggardsToAvoid": [],
   "defensiveHolds": [
     {
-      "symbol": "138040",
-      "rs60Pct": 7.69,
-      "relToIndexPp": 4.37,
-      "vol60Pct": 2.33
+      "symbol": "360750",
+      "rs60Pct": 4.93,
+      "relToIndexPp": -4.66,
+      "vol60Pct": 0.84
     },
     {
-      "symbol": "030200",
-      "rs60Pct": -12.32,
-      "relToIndexPp": -15.64,
-      "vol60Pct": 2.49
+      "symbol": "133690",
+      "rs60Pct": 10.24,
+      "relToIndexPp": 0.65,
+      "vol60Pct": 1.43
     },
     {
-      "symbol": "011200",
-      "rs60Pct": 2.61,
-      "relToIndexPp": -0.71,
-      "vol60Pct": 2.55
-    },
-    {
-      "symbol": "032640",
-      "rs60Pct": -11.2,
-      "relToIndexPp": -14.52,
-      "vol60Pct": 2.63
-    },
-    {
-      "symbol": "055550",
-      "rs60Pct": 4.4,
-      "relToIndexPp": 1.08,
-      "vol60Pct": 2.89
-    },
-    {
-      "symbol": "068270",
-      "rs60Pct": -10.85,
-      "relToIndexPp": -14.17,
-      "vol60Pct": 2.94
-    },
-    {
-      "symbol": "086790",
-      "rs60Pct": 7.38,
-      "relToIndexPp": 4.06,
-      "vol60Pct": 2.95
-    },
-    {
-      "symbol": "035720",
-      "rs60Pct": -24.66,
-      "relToIndexPp": -27.98,
-      "vol60Pct": 3.0
-    },
-    {
-      "symbol": "105560",
-      "rs60Pct": 8.96,
-      "relToIndexPp": 5.64,
-      "vol60Pct": 3.04
-    },
-    {
-      "symbol": "028670",
-      "rs60Pct": -6.22,
-      "relToIndexPp": -9.54,
-      "vol60Pct": 3.05
-    },
-    {
-      "symbol": "000100",
-      "rs60Pct": -20.99,
-      "relToIndexPp": -24.31,
-      "vol60Pct": 3.06
-    },
-    {
-      "symbol": "207940",
-      "rs60Pct": -0.65,
-      "relToIndexPp": -3.97,
-      "vol60Pct": 3.15
-    },
-    {
-      "symbol": "015760",
-      "rs60Pct": -23.38,
-      "relToIndexPp": -26.7,
-      "vol60Pct": 3.15
-    },
-    {
-      "symbol": "035900",
-      "rs60Pct": -29.37,
-      "relToIndexPp": -32.69,
-      "vol60Pct": 3.39
-    },
-    {
-      "symbol": "326030",
-      "rs60Pct": -21.21,
-      "relToIndexPp": -24.53,
-      "vol60Pct": 3.5
+      "symbol": "018880",
+      "rs60Pct": -9.67,
+      "relToIndexPp": -19.26,
+      "vol60Pct": 6.58
     }
   ],
   "note": "Research/paper only. Capital preservation, not return."
