@@ -140,7 +140,7 @@ function BridgeCard({
           type="button"
           onClick={checkSnapshot}
           disabled={loading === "check"}
-          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading === "check" ? "animate-spin" : ""} />
           상태 확인
@@ -149,7 +149,7 @@ function BridgeCard({
           type="button"
           onClick={connected || status.legacyCredential ? disconnect : onRefresh}
           disabled={loading === "disconnect"}
-          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-50"
         >
           <Unplug size={14} />
           {connected || status.legacyCredential ? "연결 해제" : "새로고침"}

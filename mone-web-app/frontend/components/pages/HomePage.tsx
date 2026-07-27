@@ -1286,7 +1286,7 @@ function TodayEntryCard({
             event.stopPropagation();
             onAnalyze(item);
           }}
-          className="mone-analysis-action flex min-h-10 w-full items-center justify-center gap-1.5 rounded-[11px] px-3 py-2 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
+          className="mone-analysis-action flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[11px] px-3 py-2 text-sm font-semibold transition-[background-color,box-shadow,color,transform] active:scale-[0.96]"
         >
           분석 보기 <ArrowRight size={14} />
         </button>
@@ -2131,7 +2131,7 @@ function LegacyMarketGateCard({
             onClick={onToggle}
             aria-expanded={expanded}
             aria-controls="market-gate-details"
-            className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-lg text-xs font-bold text-teal-300 transition-[color,transform] hover:text-teal-200 active:scale-[0.96]"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg text-xs font-bold text-teal-300 transition-[color,transform] hover:text-teal-200 active:scale-[0.96]"
           >
             {expanded ? "접기" : "자세히"}
             <ChevronRight size={13} className={`transition-transform duration-200 ${expanded ? "-rotate-90" : "rotate-90"}`} />
@@ -2654,7 +2654,7 @@ function StrategyRecordsSection({
                 type="button"
                 onClick={onMatrixClick}
                 aria-expanded={showMatrix}
-                className="inline-flex min-h-10 shrink-0 items-center gap-1 px-1 text-[11px] font-semibold text-teal-300 transition-[color,transform] hover:text-teal-200 active:scale-[0.96]"
+                className="inline-flex min-h-11 shrink-0 items-center gap-1 px-1 text-[11px] font-semibold text-teal-300 transition-[color,transform] hover:text-teal-200 active:scale-[0.96]"
               >
                 핵심 후보 보기 <ChevronRight size={14} className={`transition-transform duration-200 ${showMatrix ? "rotate-90" : ""}`} />
               </button>
@@ -2918,7 +2918,7 @@ function CompactHoldingsSection({
         )}
         <span className="ml-auto text-xs text-slate-400">{holdings.length}개 · 위험/주의 {riskCount}개</span>
         {onNavigate && (
-          <button onClick={() => onNavigate("holdings")} className="flex min-h-8 items-center gap-1 rounded-lg px-1.5 text-xs text-slate-400 transition-[color,transform] hover:text-slate-300 active:scale-[0.96]">
+          <button onClick={() => onNavigate("holdings")} className="flex min-h-11 items-center gap-1 rounded-lg px-1.5 text-xs text-slate-400 transition-[color,transform] hover:text-slate-300 active:scale-[0.96]">
             <ChevronRight size={14} />
           </button>
         )}

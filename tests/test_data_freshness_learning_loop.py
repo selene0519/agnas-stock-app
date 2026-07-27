@@ -111,3 +111,41 @@ def test_zero_clean_samples_surface_as_error_check(tmp_path, monkeypatch) -> Non
     by_name = {c["name"]: c for c in result["checks"]}
     assert by_name["clean_window_samples"]["status"] == "ERROR"
     assert "오염" in by_name["clean_window_samples"]["detail"]
+
+
+def test_noncritical_error_still_raises_alarm(tmp_path, monkeypatch) -> None:
+    """비critical ERROR도 overall=ERROR여야 한다(=exit 1=텔레그램 알람).
+
+    예전엔 critical 항목만 알람을 냈다. 그래서 '루프가 죽었다'는 가장 중요한
+    신호(clean_window_samples=0)가 정작 조용히 넘어갔다 — 조용한 실패를 잡으려고
+    만든 검사가 조용히 실패하는 구조였다.
+    """
+    hc = _setup(
+        tmp_path, monkeypatch,
+        ledger_rows=[{"predictionId": "a", "createdAt": "2026-06-15", "market": "kr",
+                      "symbol": "005930", "status": "CLOSED"}],
+        result_rows=[{"predictionId": "a", "createdAt": "2026-06-15", "market": "kr",
+                      "symbol": "005930", "result": "STOP"}],
+    )
+    result = hc.run(max_stale_days=3.0)
+
+    assert result["checks"], "검사가 하나도 없다"
+    assert any(c["status"] == "ERROR" and not c["critical"] for c in result["checks"])
+    assert result["overall"] == "ERROR", "비critical ERROR가 알람으로 이어지지 않는다"
+    assert result["hardFailures"] >= 1
+
+
+def test_transient_staleness_does_not_alarm(tmp_path, monkeypatch) -> None:
+    """일시적 지연(STALE/WARN)까지 알람하면 알람이 무뎌진다 — 무알람 유지."""
+    hc = _setup(
+        tmp_path, monkeypatch,
+        ledger_rows=[{"predictionId": "d", "createdAt": "2026-07-20", "market": "kr",
+                      "symbol": "005930", "status": "CLOSED"}],
+        result_rows=[{"predictionId": f"r{i}", "createdAt": "2026-07-20", "market": "kr",
+                      "symbol": "005930", "result": "STOP"} for i in range(40)],
+    )
+    result = hc.run(max_stale_days=3.0)
+    statuses = {c["name"]: c["status"] for c in result["checks"]}
+
+    assert statuses["clean_window_samples"] == "OK", statuses
+    assert not any(c["status"] == "ERROR" and not c["critical"] for c in result["checks"])

@@ -285,7 +285,8 @@ export default function BacktestComparePanel() {
               type="button"
               key={mk}
               onClick={() => setMarket(mk)}
-              className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${market === mk ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}
+              aria-pressed={market === mk}
+              className={`min-h-11 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${market === mk ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}
             >
               {mk === "kr" ? "국장" : "미장"}
             </button>
@@ -294,9 +295,11 @@ export default function BacktestComparePanel() {
             type="button"
             onClick={() => loadAll(true)}
             disabled={loading || isRefreshing}
-            className="flex min-h-11 items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
+            title="전략 검증 새로고침"
+            aria-label="전략 검증 데이터 새로고침"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
           >
-            <RefreshCw size={11} className={(loading || isRefreshing) ? "animate-spin" : ""} />
+            <RefreshCw size={11} aria-hidden="true" className={(loading || isRefreshing) ? "animate-spin" : ""} />
           </button>
         </div>
       </div>

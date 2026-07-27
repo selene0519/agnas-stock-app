@@ -3030,7 +3030,7 @@ export default function ChartPage() {
                 <button
                   type="button"
                   onClick={() => setReloadKey((value) => value + 1)}
-                  className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-amber-400/35 px-3 text-xs font-semibold text-amber-100 hover:bg-amber-500/10"
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-amber-400/35 px-3 text-xs font-semibold text-amber-100 hover:bg-amber-500/10"
                 >
                   <RefreshCw size={13} /> 재조회
                 </button>

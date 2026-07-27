@@ -1659,11 +1659,11 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
             <button onClick={() => load()}
-              className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] text-slate-300 transition-[background-color,transform] hover:bg-slate-800 active:scale-[0.96]">
+              className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] text-slate-300 transition-[background-color,transform] hover:bg-slate-800 active:scale-[0.96]">
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> 새로고침
             </button>
             <button onClick={refreshVisibleQuotes} disabled={refreshingAllQuotes}
-              className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-[11px] text-blue-200 transition-[background-color,transform] hover:bg-blue-500/20 active:scale-[0.96] disabled:opacity-50">
+              className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-[11px] text-blue-200 transition-[background-color,transform] hover:bg-blue-500/20 active:scale-[0.96] disabled:opacity-50">
               <Zap size={12} className={refreshingAllQuotes ? "animate-pulse" : ""} /> 현재가 갱신
             </button>
           </div>
@@ -1738,7 +1738,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               <button
                 type="button"
                 onClick={() => setRiskBudgetOpen((v) => !v)}
-                className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-300 transition-[background-color,transform] hover:bg-slate-800 active:scale-[0.96]"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-300 transition-[background-color,transform] hover:bg-slate-800 active:scale-[0.96]"
               >
                 상세 리스크 예산 {riskBudgetOpen ? "접기" : "보기"}
                 <ChevronDown size={14} className={`transition-transform ${riskBudgetOpen ? "rotate-180" : ""}`} />
@@ -1862,7 +1862,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <p className="mt-2 text-[13px] font-semibold text-slate-100">보유종목을 등록해주세요</p>
             <p className="mt-1 text-[10.5px] leading-5 text-slate-400">직접 입력하거나 증권사 데이터를 연동해 시작할 수 있습니다.</p>
             <div className="mt-3 grid w-full max-w-[300px] grid-cols-2 gap-2">
-              <button type="button" onClick={() => setShowAdd(true)} className="mone-selection-brand min-h-9 rounded-[8px] px-3 text-[11px] font-semibold">직접 등록</button>
+              <button type="button" onClick={() => setShowAdd(true)} className="mone-selection-brand min-h-11 rounded-[8px] px-3 text-[11px] font-semibold">직접 등록</button>
               <button type="button" onClick={() => onNavigate?.("broker")} className="rounded-[8px] border border-slate-700 bg-slate-950 px-3 text-[11px] font-semibold text-slate-300 hover:bg-slate-900">증권사 연동</button>
             </div>
           </div>
@@ -1880,7 +1880,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
           <button
             type="button"
             onClick={() => setRiskFocus("all")}
-            className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/35 px-3 text-xs font-semibold text-amber-100 hover:bg-amber-500/10"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-amber-400/35 px-3 text-xs font-semibold text-amber-100 hover:bg-amber-500/10"
           >
             전체 보유 보기
           </button>
@@ -1894,7 +1894,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             { key: "etf", label: `ETF (${etfHoldings.length})` },
           ] as const).map((tab) => (
             <button key={tab.key} onClick={() => setHoldingsViewTab(tab.key)}
-              className={`min-h-9 rounded-[7px] px-2 text-[11px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
+              className={`min-h-11 rounded-[7px] px-2 text-[11px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
                 holdingsViewTab === tab.key ? "mone-selection-brand" : "text-slate-400 hover:text-slate-300"
               }`}>
               {tab.label}
@@ -2142,7 +2142,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-400">공용 데이터가 있더라도 이 화면에는 이 브라우저의 개인 보유만 표시합니다.</p>
                 )}
                 <button onClick={() => setShowAdd(true)}
-                  className="mone-primary-action mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.96]">
+                  className="mone-primary-action mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.96]">
                   <Plus size={14} /> 첫 종목 직접 추가
                 </button>
               </div>

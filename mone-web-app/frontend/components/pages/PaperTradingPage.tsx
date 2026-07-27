@@ -435,7 +435,7 @@ export default function PaperTradingPage({
             <button
               key={mk}
               onClick={() => setMarket(mk)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${market === mk ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}
+              className={`min-h-11 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${market === mk ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}
             >
               {mk === "kr" ? "국장" : "미장"}
             </button>
@@ -443,9 +443,12 @@ export default function PaperTradingPage({
           <button
             onClick={loadAll}
             disabled={loading}
-            className="flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1.5 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
+            type="button"
+            title="새로고침"
+            aria-label="모의투자 데이터 새로고침"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-slate-700 px-2 py-1.5 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
           >
-            <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={11} aria-hidden="true" className={loading ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
@@ -468,7 +471,7 @@ export default function PaperTradingPage({
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${tab === id ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}
+            className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${tab === id ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}
           >
             {icon}{label}
           </button>
@@ -487,7 +490,7 @@ export default function PaperTradingPage({
               <button
                 type="button"
                 onClick={() => setTab("trade")}
-                className="mt-4 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-teal-500 px-3.5 text-xs font-bold text-slate-950 transition-colors hover:bg-teal-400"
+                className="mt-4 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-teal-500 px-3.5 text-xs font-bold text-slate-950 transition-colors hover:bg-teal-400"
               >
                 <Plus size={14} />
                 가상 매수 시작
@@ -607,7 +610,7 @@ export default function PaperTradingPage({
         )}
         <button
           onClick={handleReset}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] text-slate-400 hover:border-red-500/40 hover:text-red-400"
+          className="flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] text-slate-400 hover:border-red-500/40 hover:text-red-400"
         >
           <RotateCcw size={11} />
           {resetConfirm ? "정말 초기화하시겠습니까? (한 번 더 클릭)" : `${market.toUpperCase()} 페이퍼 초기화`}

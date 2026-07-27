@@ -226,11 +226,22 @@ def run(max_stale_days: float = 3.0) -> dict:
         add("clean_window_samples", "OK", detail, False)
 
     crit_bad = [c for c in checks if c["critical"] and c["status"] != "OK"]
-    overall = "ERROR" if crit_bad else ("WARN" if any(c["status"] != "OK" for c in checks) else "OK")
+    # ERROR는 critical 여부와 무관하게 알람을 띄운다.
+    #
+    # 예전엔 critical 항목만 exit 1을 냈다. 그래서 clean_window_samples가
+    # ERROR(=정산 표본 0건, 즉 화면 승률이 전부 오염 구간 산출물)여도 overall이
+    # WARN에 그쳐 exit 0 → 텔레그램 알람이 안 갔다. 루프가 조용히 죽는 경로를
+    # 막으려고 만든 검사가 정작 조용히 실패하는 구조였다.
+    # STALE/WARN은 그대로 무알람(일시적 지연까지 알리면 알람이 무뎌진다).
+    hard_bad = [c for c in checks if c["status"] in {"ERROR", "MISSING"}]
+    overall = "ERROR" if (crit_bad or hard_bad) else (
+        "WARN" if any(c["status"] != "OK" for c in checks) else "OK"
+    )
     result = {
         "generatedAt": NOW.isoformat(),
         "overall": overall,
         "criticalFailures": len(crit_bad),
+        "hardFailures": len(hard_bad),
         "maxStaleDays": max_stale_days,
         "checks": checks,
     }
