@@ -73,9 +73,12 @@ jobs:
           set -e
           echo "data_freshness_healthcheck: exit ${code}"
           if [ "${code}" != "0" ]; then
-            echo "::warning::데이터 신선도 critical 실패 — 텔레그램 경보 전송"
+            echo "::warning::데이터 신선도 실패 — 텔레그램 경보 전송"
             if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-              detail=$(python -c "import json; d=json.load(open('reports/data_freshness_status.json')); print(' / '.join(f\"{c['name']}:{c['status']}\" for c in d['checks'] if c['critical'] and c['status']!='OK'))" 2>/dev/null || echo "파싱 실패")
+              # critical만 뽑으면 비critical ERROR(예: clean_window_samples=0,
+              # 정산 적체)일 때 본문이 비어서 "무슨 일인지 없는" 알람이 간다.
+              # 사유를 detail까지 붙여 그대로 보낸다.
+              detail=$(python -c "import json; d=json.load(open('reports/data_freshness_status.json',encoding='utf-8')); print(' / '.join(f\"{c['name']}:{c['status']}({c.get('detail','')[:60]})\" for c in d['checks'] if c['status']!='OK') or '사유 없음')" 2>/dev/null || echo "파싱 실패")
               curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
                 -H "Content-Type: application/json" \
                 -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE 데이터 신선도 경보 (조용한 실패 탐지)\n${detail}\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \

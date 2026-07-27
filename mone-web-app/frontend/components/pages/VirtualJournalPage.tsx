@@ -308,10 +308,10 @@ function AiPaperSurvivalPanel({
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={onPreview} disabled={busy} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-emerald-500/12 px-3 text-xs font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] disabled:opacity-50">
+          <button onClick={onPreview} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-emerald-500/12 px-3 text-xs font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] disabled:opacity-50">
             <Play size={13} /> 다음 행동 점검
           </button>
-          <button onClick={onRefresh} disabled={busy} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] disabled:opacity-50">
+          <button onClick={onRefresh} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] disabled:opacity-50">
             <RefreshCw size={13} className={busy ? "animate-spin" : ""} /> 새로고침
           </button>
         </div>
@@ -945,16 +945,16 @@ export default function VirtualJournalPage() {
             </p>
           </div>
           <div className="grid grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:gap-2">
-            <button onClick={load} disabled={loading || !!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-slate-800 px-1 text-[11px] font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
+            <button onClick={load} disabled={loading || !!busy} className="inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-slate-800 px-1 text-[11px] font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
               <RefreshCw size={13} className="shrink-0" /> 새로고침
             </button>
-            <button onClick={() => runAction("evaluate")} disabled={!!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-cyan-500/12 px-1 text-[11px] font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
+            <button onClick={() => runAction("evaluate")} disabled={!!busy} className="inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-cyan-500/12 px-1 text-[11px] font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
               <Activity size={13} className="shrink-0" /> 평가 실행
             </button>
-            <button onClick={() => runAction("auto")} disabled={!!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-emerald-500/12 px-1 text-[11px] font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
+            <button onClick={() => runAction("auto")} disabled={!!busy} className="inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-emerald-500/12 px-1 text-[11px] font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
               <Play size={13} className="shrink-0" /> 자동 캡처
             </button>
-            <button onClick={() => runAction("analog")} disabled={!!busy} className="inline-flex min-h-10 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-indigo-500/12 px-1 text-[11px] font-semibold text-indigo-200 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
+            <button onClick={() => runAction("analog")} disabled={!!busy} className="inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-indigo-500/12 px-1 text-[11px] font-semibold text-indigo-200 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50 sm:gap-1.5 sm:px-3 sm:text-sm">
               <Activity size={13} className="shrink-0" /> 유사 장세
             </button>
           </div>
@@ -2265,19 +2265,19 @@ export default function VirtualJournalPage() {
                 type="date"
                 value={replayDate}
                 onChange={(event) => setReplayDate(event.target.value)}
-                className="min-h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 font-mono text-sm text-slate-200 outline-none focus:border-cyan-500"
+                className="min-h-11 rounded-lg border border-slate-800 bg-slate-950 px-3 font-mono text-sm text-slate-200 outline-none focus:border-cyan-500"
               />
               <button
                 onClick={() => runAction("replay")}
                 disabled={!!busy || !replayDate}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-indigo-500/12 px-3 text-sm font-semibold text-indigo-200 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-indigo-500/12 px-3 text-sm font-semibold text-indigo-200 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50"
               >
                 <Play size={15} /> 리플레이
               </button>
               <button
                 onClick={() => runAction("backfill")}
                 disabled={!!busy || !replayDate}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-cyan-500/12 px-3 text-sm font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-cyan-500/12 px-3 text-sm font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)] transition-transform active:scale-[0.96] disabled:opacity-50"
               >
                 <Play size={15} /> 과거 백필
               </button>
@@ -2400,14 +2400,14 @@ export default function VirtualJournalPage() {
                       <button
                         onClick={() => reviewSuggestion(item, "APPROVED")}
                         disabled={!!busy}
-                        className="inline-flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-emerald-500/12 px-2 text-xs font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] disabled:opacity-50"
+                        className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-emerald-500/12 px-2 text-xs font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] disabled:opacity-50"
                       >
                         <CheckCircle2 size={13} /> 승인
                       </button>
                       <button
                         onClick={() => reviewSuggestion(item, "REJECTED")}
                         disabled={!!busy}
-                        className="inline-flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-slate-800 px-2 text-xs font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] disabled:opacity-50"
+                        className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-slate-800 px-2 text-xs font-semibold text-slate-300 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] disabled:opacity-50"
                       >
                         <XCircle size={13} /> 반려
                       </button>
@@ -2429,7 +2429,7 @@ export default function VirtualJournalPage() {
               <button
                 onClick={applyApprovedSuggestions}
                 disabled={!!busy}
-                className="mb-3 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-md bg-cyan-500/12 px-3 text-xs font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.24)] disabled:opacity-50"
+                className="mb-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md bg-cyan-500/12 px-3 text-xs font-semibold text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.24)] disabled:opacity-50"
               >
                 <ShieldCheck size={13} /> 승인 보정 적용
               </button>
@@ -2802,14 +2802,14 @@ export default function VirtualJournalPage() {
               <button
                 onClick={() => runAction("self-calibrate")}
                 disabled={!!busy}
-                className="inline-flex min-h-8 items-center justify-center rounded-lg bg-emerald-500/10 px-2 text-[11px] font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] transition-transform active:scale-[0.96] disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-emerald-500/10 px-2 text-[11px] font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] transition-transform active:scale-[0.96] disabled:opacity-50"
               >
                 자가보정 실행
               </button>
               <button
                 onClick={rollbackSelfLearning}
                 disabled={!!busy || !selfLearningData?.correctionVersion}
-                className="inline-flex min-h-8 items-center justify-center rounded-lg bg-red-500/10 px-2 text-[11px] font-semibold text-red-200 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.22)] transition-transform active:scale-[0.96] disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-500/10 px-2 text-[11px] font-semibold text-red-200 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.22)] transition-transform active:scale-[0.96] disabled:opacity-50"
               >
                 롤백
               </button>

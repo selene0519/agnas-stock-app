@@ -50,7 +50,7 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
           </div>
           <p className="mt-1 text-xs leading-5 text-slate-400">실현 성과, 독립 검증, AI 일지, 보유 위험예산을 통과한 신호만 종이계좌 검토 대상으로 표시합니다.</p>
         </div>
-        <button type="button" onClick={load} disabled={loading} aria-label="운용 판정 새로고침" className="shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:opacity-50">
+        <button type="button" onClick={load} disabled={loading} aria-label="운용 판정 새로고침" className="shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:opacity-50">
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
         </button>
       </div>

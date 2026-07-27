@@ -1293,7 +1293,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       <div className="mone-home w-full space-y-4 pb-4">
         <div className="space-y-1">
           <div>
-            <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
+            <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
               <ChevronLeft size={18} aria-hidden="true" /> 탐색으로 돌아가기
             </button>
           </div>
@@ -1353,7 +1353,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     <div className="mone-home w-full space-y-4">
       <div className="space-y-1">
         <div>
-          <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
+          <button type="button" onClick={() => setExploreView("hub")} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-slate-300 hover:text-white">
             <ChevronLeft size={18} aria-hidden="true" /> 탐색으로 돌아가기
           </button>
         </div>
@@ -1523,7 +1523,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       <button
                         type="button"
                         onClick={() => setLens(richestOtherLens.id)}
-                        className="mx-0.5 inline-flex min-h-8 items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-300 hover:bg-emerald-500/20"
+                        className="mx-0.5 inline-flex min-h-11 items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-300 hover:bg-emerald-500/20"
                       >
                         {richestOtherLens.label} {richestOtherLens.count}개 보기 →
                       </button>

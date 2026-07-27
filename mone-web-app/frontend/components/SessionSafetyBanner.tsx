@@ -147,7 +147,7 @@ export default function SessionSafetyBanner({
                   title={title}
                   aria-label={`근접 알림: ${title}`}
                   onClick={() => window.dispatchEvent(new CustomEvent("mone-open-near-alert", { detail: alert }))}
-                  className="inline-flex min-h-8 max-w-full flex-none items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2.5 py-1 text-left text-[10px] text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
+                  className="inline-flex min-h-11 max-w-full flex-none items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2.5 py-1 text-left text-[10px] text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
                 >
                   <BellRing aria-hidden="true" size={10} className="hidden shrink-0 sm:block" />
                   <span className="min-w-0 truncate whitespace-nowrap">{title}</span>
@@ -160,7 +160,7 @@ export default function SessionSafetyBanner({
                 aria-expanded={alertsExpanded}
                 aria-label={alertsExpanded ? "근접 알림 접기" : `근접 알림 ${hiddenAlertCount}건 더보기`}
                 onClick={() => setAlertsExpanded((value) => !value)}
-                className="inline-flex min-h-8 flex-none items-center gap-1 rounded-lg border border-amber-500/20 px-2.5 py-1 text-[10px] font-medium text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
+                className="inline-flex min-h-11 flex-none items-center gap-1 rounded-lg border border-amber-500/20 px-2.5 py-1 text-[10px] font-medium text-amber-200 transition-[background-color,border-color,transform] hover:border-amber-400/40 hover:bg-amber-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.96]"
               >
                 {alertsExpanded ? <ChevronUp aria-hidden="true" size={11} /> : <ChevronDown aria-hidden="true" size={11} />}
                 <span>{alertsExpanded ? "접기" : `+${hiddenAlertCount} 더보기`}</span>

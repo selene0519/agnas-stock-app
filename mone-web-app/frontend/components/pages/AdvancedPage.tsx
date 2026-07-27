@@ -234,7 +234,7 @@ export default function AdvancedPage({
             ))}
           </div>
           <button onClick={runMonteCarlo} disabled={mcLoading}
-            className="mt-4 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50">
+            className="mt-4 min-h-11 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50">
             {mcLoading ? "시뮬레이션 중..." : "시뮬레이션 실행"}
           </button>
           <div className="mt-3 text-xs text-slate-400">

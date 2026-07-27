@@ -726,7 +726,9 @@ html[data-theme="light"] .mone-tone-neutral { --tone-fg: #475569; }
 }
 .mone-segmented-item {
   flex: 1 0 auto; display: flex; align-items: center; justify-content: center;
-  gap: 4px; min-height: 32px; padding: 0 10px; border-radius: 8px;
+  /* 44px는 높이뿐 아니라 폭에도 적용된다 — "전체" 같은 짧은 라벨은
+     패딩만으로 41px밖에 안 나와 터치 타깃 기준에 미달했다. */
+  gap: 4px; min-height: 44px; min-width: 44px; padding: 0 10px; border-radius: 8px;
   font-size: 12px; font-weight: 600; color: var(--text-secondary);
   background: transparent; border: none; cursor: pointer;
   transition: background-color .15s, color .15s;
