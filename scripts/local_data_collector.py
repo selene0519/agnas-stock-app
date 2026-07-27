@@ -255,6 +255,17 @@ def _auto_sync_block_reason() -> str | None:
     """
     git_dir = REPO_ROOT / ".git"
     try:
+        # 0) main이 아닌 브랜치에서는 손대지 않는다.
+        #    이 함수 아래의 커밋/rebase/push는 전부 main 기준이라(`git push origin main`),
+        #    피처 브랜치가 체크아웃돼 있으면 데이터 커밋이 그 브랜치에 쌓이고
+        #    push는 낡은 로컬 main ref를 밀다가 실패한다. 2026-07-27에 실제로
+        #    작업 브랜치에 수집 커밋 3개가 얹히고 push가 계속 실패했다.
+        branch = _run_git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
+        if branch != "main":
+            return (
+                f"현재 브랜치가 main이 아닙니다(HEAD={branch or 'detached'}). "
+                "수집 데이터가 작업 브랜치에 섞이지 않도록 동기화를 건너뜁니다"
+            )
         # 1) 진행 중인 merge/rebase/cherry-pick/revert
         for marker in ("rebase-merge", "rebase-apply", "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD"):
             if (git_dir / marker).exists():
