@@ -2535,16 +2535,35 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
         # A score-derived value is useful for research ranking but is not a win
         # rate.  Never manufacture a 35%+ probability when no measured rate
         # exists, and never lift an observed losing rate with a score overlay.
-        measured_probability = _num(out.get("calibratedWinRate"))
-        if measured_probability is not None:
-            probability = max(0.0, min(100.0, round(measured_probability, 1)))
+        # 소스 우선순위: 라이브 정산 실측 > 백테스트 보정 > 없음.
+        #
+        # 예전엔 백테스트 보정값(ensemble_calibrator, 44~55%)을 그대로
+        # "MEASURED_CALIBRATION"으로 내보냈다. 그런데 같은 구간의 라이브 실측은
+        # 훨씬 낮고(KR 풀링 11.6%), 화면에는 그 낙관값이 "실증"이라는 라벨로
+        # 떴다 — 측정된 적 없는 숫자를 측정값이라고 말한 셈이다.
+        # 라이브 테이블은 이미 prior로 베이지안 shrinkage된 값이라 표본이
+        # 얇아도 백테스트 낙관값보다 덜 위험하다. 있으면 그쪽을 쓴다.
+        live_probability = _num(out.get("liveCalibratedWinRate"))
+        backtest_probability = _num(out.get("calibratedWinRate"))
+        if live_probability is not None:
+            probability = max(0.0, min(100.0, round(live_probability, 1)))
             out["probability"] = probability
             out["probabilityText"] = f"{probability:.1f}%"
-            out["probabilitySource"] = "MEASURED_CALIBRATION"
+            out["probabilitySource"] = "LIVE_SETTLED_CALIBRATION"
+            out["probabilityBasis"] = "라이브 정산 실측"
+        elif backtest_probability is not None:
+            probability = max(0.0, min(100.0, round(backtest_probability, 1)))
+            out["probability"] = probability
+            out["probabilityText"] = f"{probability:.1f}%"
+            # 백테스트 승률은 생존편향·룩어헤드 통제가 라이브만 못하다.
+            # 측정값처럼 보이지 않도록 소스를 분명히 구분한다.
+            out["probabilitySource"] = "BACKTEST_CALIBRATION"
+            out["probabilityBasis"] = "백테스트 추정(라이브 실측 아님)"
         else:
             out["probability"] = None
             out["probabilityText"] = "실측 확률 미산출"
             out["probabilitySource"] = "MODEL_ESTIMATE_NOT_MEASURED"
+            out["probabilityBasis"] = "실측 표본 없음"
         # 가격 데이터 상태: 두 소스 중 더 좋은 것을 반영
         # PRICE_PENDING > PARTIAL > NORMAL 순으로 품질
         prior_status = out.get("dataStatus", "PARTIAL")

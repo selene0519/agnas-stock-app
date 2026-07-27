@@ -6,6 +6,7 @@ import { BarChart2, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 
 const BACKTEST_CACHE_KEY = "mone:backtest-compare-cache:v2";
 const BACKTEST_CACHE_TTL = 30 * 60 * 1000;
+const BACKTEST_LOAD_TIMEOUT_MS = 12_000;
 
 function readBacktestCache(market: Market): Record<string, any> | null {
   if (typeof window === "undefined") return null;
@@ -73,16 +74,22 @@ function ReturnLabel({ pct }: { pct: number }) {
   if (!pct) return <span className="text-slate-400 text-xs">—</span>;
   const color = pct > 0 ? "text-emerald-400" : "text-red-400";
   const sign = pct > 0 ? "+" : "";
-  return <span className={`font-mono text-xs font-bold ${color}`}>{sign}{pct.toFixed(1)}%</span>;
+  return (
+    <span className={`whitespace-nowrap font-mono text-xs font-bold ${color}`} title="평균 수익률">
+      <span className="mr-0.5 font-sans text-[10px] font-medium text-slate-500">평균</span>
+      {sign}{pct.toFixed(1)}%
+    </span>
+  );
 }
 
 function resultFromJournalPerformance(
+  market: Market,
   mode: Mode,
   horizon: Horizon,
   journalRows: any[]
 ): StrategyResult | null {
   const row = journalRows.find(
-    (item) => item?.market === "all" && item?.mode === mode && item?.horizon === horizon
+    (item) => (item?.market === market || item?.market === "all") && item?.mode === mode && item?.horizon === horizon
   );
   const count = Number(row?.count || 0);
   if (!row || count <= 0) return null;
@@ -163,6 +170,7 @@ export default function BacktestComparePanel() {
   const [results, setResults] = useState<Record<string, StrategyResult | null>>({});
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [notice, setNotice] = useState("");
 
   async function loadAll(force = false) {
     if (!force) {
@@ -177,6 +185,7 @@ export default function BacktestComparePanel() {
     }
 
     if (force) setIsRefreshing(true);
+    setNotice("");
 
     const combos: { mode: Mode; horizon: Horizon }[] = [];
     for (const m of MODES) {
@@ -186,23 +195,36 @@ export default function BacktestComparePanel() {
     }
 
     try {
-      const [dashboard, journalPerf]: any[] = await Promise.all([
+      const dashboard: any = await Promise.race([
         mone.validationDashboard({ market }),
-        mone.journalPerformance({ market }),
+        new Promise((_, reject) => {
+          window.setTimeout(() => reject(new Error("BACKTEST_LOAD_TIMEOUT")), BACKTEST_LOAD_TIMEOUT_MS);
+        }),
       ]);
       const stats = dashboard?.stats || {};
-      const dashboardCompleted = Number(dashboard?.summary?.totalCompleted || 0);
-      const journalRows = Array.isArray(journalPerf?.strategyRows) ? journalPerf.strategyRows : [];
+      const dashboardCompleted = Number(
+        dashboard?.summary?.realizedCompleted ?? dashboard?.summary?.totalCompleted ?? 0
+      );
+      let journalRows: any[] = [];
+      if (dashboardCompleted <= 0) {
+        const journalPerf: any = await Promise.race([
+          mone.journalPerformance({ market }),
+          new Promise((_, reject) => {
+            window.setTimeout(() => reject(new Error("BACKTEST_LOAD_TIMEOUT")), BACKTEST_LOAD_TIMEOUT_MS);
+          }),
+        ]);
+        journalRows = Array.isArray(journalPerf?.strategyRows) ? journalPerf.strategyRows : [];
+      }
       const entries = combos.map(({ mode, horizon }) => {
         const raw = stats[`${mode}_${horizon}`] || {};
-        const completed = Number(raw.completed || 0);
+        const completed = Number(raw.realizedCompleted ?? raw.meaningfulCompleted ?? raw.completed ?? 0);
         const pending = Number(raw.pending ?? raw.pendingCount ?? 0);
         const journalResult =
-          dashboardCompleted <= 0 ? resultFromJournalPerformance(mode, horizon, journalRows) : null;
+          dashboardCompleted <= 0 ? resultFromJournalPerformance(market, mode, horizon, journalRows) : null;
         if (journalResult) return [`${mode}:${horizon}`, journalResult];
-        const wins = Number(raw.wins || 0);
-        const winRate = Number(raw.winRate || 0);
-        const avgReturn = Number(raw.avgReturn || 0);
+        const winRate = Number(raw.realizedWinRate ?? raw.meaningfulWinRate ?? raw.winRate ?? 0);
+        const avgReturn = Number(raw.realizedAvgReturn ?? raw.meaningfulAvgReturn ?? raw.avgReturn ?? 0);
+        const wins = Math.round(completed * winRate / 100);
         const result: StrategyResult = {
           mode,
           horizon,
@@ -221,7 +243,12 @@ export default function BacktestComparePanel() {
       setResults(newResults);
       writeBacktestCache(market, newResults);
     } catch {
-      setResults(Object.fromEntries(combos.map(({ mode, horizon }) => [`${mode}:${horizon}`, null])));
+      setNotice("검증 데이터 응답이 지연되어 빈 상태를 먼저 표시합니다.");
+      setResults((current) =>
+        Object.keys(current).length > 0
+          ? current
+          : Object.fromEntries(combos.map(({ mode, horizon }) => [`${mode}:${horizon}`, null]))
+      );
     }
     setLoading(false);
     setIsRefreshing(false);
@@ -250,11 +277,12 @@ export default function BacktestComparePanel() {
         <div className="flex items-center gap-2">
           <BarChart2 size={14} className="text-cyan-400" />
           <span className="text-sm font-bold text-slate-200">전략 검증 (9전략)</span>
-          <span className="text-[10px] text-slate-400">(검증 대시보드 기준)</span>
+          <span className="text-[10px] text-slate-400">(실현 손익 기준)</span>
         </div>
         <div className="flex items-center gap-2">
           {(["kr", "us"] as Market[]).map((mk) => (
             <button
+              type="button"
               key={mk}
               onClick={() => setMarket(mk)}
               className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${market === mk ? "bg-slate-100 text-slate-950" : "text-slate-400 hover:text-white"}`}
@@ -263,9 +291,10 @@ export default function BacktestComparePanel() {
             </button>
           ))}
           <button
+            type="button"
             onClick={() => loadAll(true)}
             disabled={loading || isRefreshing}
-            className="flex items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
+            className="flex min-h-11 items-center gap-1 rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
           >
             <RefreshCw size={11} className={(loading || isRefreshing) ? "animate-spin" : ""} />
           </button>
@@ -273,9 +302,16 @@ export default function BacktestComparePanel() {
       </div>
 
       {/* 요약 통계 */}
+      {notice && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+          {notice}
+        </div>
+      )}
+
+      {/* 요약 통계 */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: "총 모의 체결", value: totalExecuted > 0 ? `${totalExecuted}건` : "—" },
+          { label: "실현 검증 거래", value: totalExecuted > 0 ? `${totalExecuted}건` : "—" },
           { label: "전략 평균 승률", value: validResults.length > 0 ? `${avgWinRate.toFixed(1)}%` : "—" },
           { label: "활성 전략 수", value: `${validResults.length}/9` },
         ].map(({ label, value }) => (

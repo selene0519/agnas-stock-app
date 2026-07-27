@@ -55,6 +55,7 @@ DEFAULTS = {
 
 MODES    = ["conservative", "balanced", "aggressive"]
 HORIZONS = ["short", "swing", "mid"]
+MARKETS = ["kr", "us"]
 
 
 def _read_csv(path: Path) -> list[dict[str, Any]]:
@@ -115,6 +116,64 @@ def _is_realized_forward_result(row: dict) -> tuple[bool, str]:
     return True, ""
 
 
+def _is_same_day_close_placeholder(row: dict) -> bool:
+    """Return true for zero-holding-period cost rows, not strategy outcomes."""
+    result = str(row.get("result") or row.get("status") or "").strip().lower()
+    if result != "close_exit":
+        return False
+    ret = _return_pct(row)
+    return ret is not None and abs(ret) <= 0.15
+
+
+def _empty_counts() -> dict[str, dict[str, Any]]:
+    return {
+        f"{mode}_{horizon}": {"win": 0, "loss": 0, "total": 0, "returns": []}
+        for mode in MODES
+        for horizon in HORIZONS
+    }
+
+
+def _rates_payload(counts: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    win_rates: dict[str, float] = {}
+    observed_win_rates: dict[str, float | None] = {}
+    average_return_pct: dict[str, float | None] = {}
+    sample_counts: dict[str, int] = {}
+
+    for mode in MODES:
+        for horizon in HORIZONS:
+            key = f"{mode}_{horizon}"
+            bucket = counts[key]
+            sample_counts[key] = bucket["total"]
+            observed = round(bucket["win"] / bucket["total"], 4) if bucket["total"] else None
+            observed_win_rates[key] = observed
+            returns = bucket["returns"]
+            average_return_pct[key] = round(sum(returns) / len(returns), 4) if returns else None
+            win_rates[key] = (
+                round(max(PROBABILITY_MIN, min(PROBABILITY_MAX, observed or 0.0)), 4)
+                if bucket["total"] >= MIN_SAMPLES
+                else DEFAULTS[f"{horizon}_base"]
+            )
+
+    for horizon in HORIZONS:
+        base = DEFAULTS[f"{horizon}_base"]
+        if sample_counts[f"conservative_{horizon}"] < MIN_SAMPLES:
+            win_rates[f"conservative_{horizon}"] = round(min(PROBABILITY_MAX, base + 0.01), 4)
+        if sample_counts[f"aggressive_{horizon}"] < MIN_SAMPLES:
+            win_rates[f"aggressive_{horizon}"] = round(max(PROBABILITY_MIN, base - 0.01), 4)
+
+    total_samples = sum(bucket["total"] for bucket in counts.values())
+    total_wins = sum(bucket["win"] for bucket in counts.values())
+    return {
+        "totalSamples": total_samples,
+        "totalWins": total_wins,
+        "overallWinRate": round(total_wins / total_samples, 4) if total_samples else None,
+        "sampleCounts": sample_counts,
+        "winRates": win_rates,
+        "observedWinRates": observed_win_rates,
+        "averageReturnPct": average_return_pct,
+    }
+
+
 def calculate_win_rates() -> dict[str, Any]:
     # VTJ 검증 결과 + signal_ledger 검증 결과 병합 (중복 없이)
     rows = _read_csv(VALIDATION_CSV)
@@ -128,16 +187,19 @@ def calculate_win_rates() -> dict[str, Any]:
     excluded: dict[str, int] = {"NON_EXECUTED_OR_PENDING": 0, "MISSING_REALIZED_RETURN": 0}
 
     # 전략별 집계
-    counts: dict[str, dict[str, Any]] = {}
-    for mode in MODES:
-        for horizon in HORIZONS:
-            key = f"{mode}_{horizon}"
-            counts[key] = {"win": 0, "loss": 0, "total": 0, "returns": []}
+    # Keep the aggregate document for old readers, but calibrate each market
+    # independently. A KR loss must never alter a US trade decision.
+    counts = _empty_counts()
+    market_counts = {market: _empty_counts() for market in MARKETS}
 
     for row in rows:
         mode    = str(row.get("mode", "")).lower().strip()
         horizon = str(row.get("horizon", "")).lower().strip()
+        market = str(row.get("market", "")).lower().strip()
         if mode not in MODES or horizon not in HORIZONS:
+            continue
+        if _is_same_day_close_placeholder(row):
+            excluded["SAME_DAY_CLOSE_PLACEHOLDER"] = excluded.get("SAME_DAY_CLOSE_PLACEHOLDER", 0) + 1
             continue
         eligible, exclusion_reason = _is_realized_forward_result(row)
         if not eligible:
@@ -148,14 +210,20 @@ def calculate_win_rates() -> dict[str, Any]:
             excluded["UNCLASSIFIED_RESULT"] = excluded.get("UNCLASSIFIED_RESULT", 0) + 1
             continue
         key = f"{mode}_{horizon}"
-        counts[key]["total"] += 1
-        if result:
-            counts[key]["win"] += 1
-        else:
-            counts[key]["loss"] += 1
+        bucket_sets = [counts]
+        if market in market_counts:
+            bucket_sets.append(market_counts[market])
+        for bucket_set in bucket_sets:
+            bucket_set[key]["total"] += 1
+            if result:
+                bucket_set[key]["win"] += 1
+            else:
+                bucket_set[key]["loss"] += 1
         realized_return = _return_pct(row)
         if realized_return is not None:
             counts[key]["returns"].append(realized_return)
+            if market in market_counts:
+                market_counts[market][key]["returns"].append(realized_return)
 
     # 기본값에서 출발
     win_rates: dict[str, float] = {}
@@ -198,6 +266,7 @@ def calculate_win_rates() -> dict[str, Any]:
     total_validated = sum(c["total"] for c in counts.values())
     total_wins = sum(c["win"] for c in counts.values())
     overall_rate = round(total_wins / total_validated, 4) if total_validated > 0 else None
+    by_market = {market: _rates_payload(market_counts[market]) for market in MARKETS}
 
     result_doc = {
         "updatedAt": now,
@@ -209,6 +278,7 @@ def calculate_win_rates() -> dict[str, Any]:
         "winRates": win_rates,
         "observedWinRates": observed_win_rates,
         "averageReturnPct": average_return_pct,
+        "byMarket": by_market,
         "performanceDataPolicy": {
             "source": "reports/virtual_validation_results.csv",
             "requiresRealizedReturn": True,

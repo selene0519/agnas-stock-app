@@ -16,6 +16,28 @@ from app.engine import correction_store  # noqa: E402
 from app.services import virtual_trade_journal as vtj  # noqa: E402
 
 
+def test_negative_expectancy_attribution_never_boosts_a_strategy() -> None:
+    multiplier = vtj._attribution_multiplier(
+        win_rate=0.27,
+        avg_pnl=-3.52,
+        base_win_rate=0.35,
+        base_avg_pnl=-1.92,
+    )
+
+    assert multiplier < 0.95
+
+
+def test_positive_expectancy_attribution_can_reward_a_strategy() -> None:
+    multiplier = vtj._attribution_multiplier(
+        win_rate=0.62,
+        avg_pnl=2.4,
+        base_win_rate=0.45,
+        base_avg_pnl=0.8,
+    )
+
+    assert multiplier > 1.0
+
+
 def _valid_recommendation(symbol: str = "TEST") -> dict:
     return {
         "market": "kr",
@@ -736,6 +758,7 @@ def test_attribution_feedback_suggests_boost_and_reduce_without_auto_apply(isola
 
     assert out["status"] == "OK"
     assert out["sampleCount"] == 12
+    assert out["excludedInconsistentOutcomeCount"] == 0
     assert out["autoApplied"] is False
     assert out["manualApprovalRequired"] is True
     assert out["calibrationSummary"]["applyEndpoint"] == "/api/journal/calibration/apply-approved"

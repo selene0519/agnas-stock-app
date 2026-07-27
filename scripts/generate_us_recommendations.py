@@ -41,7 +41,7 @@ from scripts.generate_kr_recommendations import (
     _read_csv, _write_csv, _num, _series, indicators,
     _sub_scores, _final_score, _ma_convergence,
     _ma_convergence as _ma_conv,
-    _price_band, _decide_timing, _strategy_tags, _fmt_krw,
+    _price_band, _decide_timing, _strategy_tags, _fmt_krw, _primary_profile,
     _HORIZON_BANDS, _MODE_WEIGHTS, _MODE_RISK, _MODE_REWARD,
     MODE_LABELS, HORIZON_LABELS, MODES, HORIZONS,
     _load_news_sentiment, _load_financial_data,
@@ -343,7 +343,7 @@ def _load_us_market_regime() -> dict[str, Any]:
                     "description": f"US SPY/QQQ/DIA MA20 {avg_dist:+.1f}%, 5d {avg_mom5:+.1f}%",
                     "asOf": as_of, "source": "us index OHLCV"}
         if bear_n >= 2:
-            return {"regime": "BEAR", "label": "BEAR", "scoreAdjust": -8.0,
+            return {"regime": "BEAR", "label": "BEAR", "scoreAdjust": -15.0,
                     "description": f"US SPY/QQQ/DIA MA20 {avg_dist:+.1f}%, 5d {avg_mom5:+.1f}%",
                     "asOf": as_of, "source": "us index OHLCV"}
         return {"regime": "SIDE", "label": "SIDE", "scoreAdjust": 0.0,
@@ -386,7 +386,7 @@ def _load_us_market_regime() -> dict[str, Any]:
                 "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%",
                 "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv"}
     elif dist < -2.0 or mom5 < -2.0:
-        return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -8.0,
+        return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -15.0,
                 "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%",
                 "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv"}
     return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
@@ -437,7 +437,10 @@ def generate_us_recommendations() -> dict[str, Any]:
     regime_label = regime.get("label", "횡보장")
     regime_type = regime.get("regime", "SIDE")
     # 최소 점수 기준 — 7중 필터가 품질 보장하므로 레짐 기준 완화
-    min_score_by_regime = {"BULL": 50.0, "SIDE": 55.0, "BEAR": 60.0}
+    # BEAR: 횡단면 RS 딥검증(project_cross_sectional_rs_dispersion)에서 약세장은
+    # 롱/인버스/횡단면/회복 전 프레임에서 초과수익 없음이 확인됨 → 공격형 전면차단 외에
+    # 보수/균형형도 사실상 "예외적으로 뛰어난 셋업만" 통과하도록 바를 크게 높인다.
+    min_score_by_regime = {"BULL": 50.0, "SIDE": 55.0, "BEAR": 72.0}
     min_score_global = min_score_by_regime.get(regime_type, 55.0)
 
     # 전체 스코어 계산
@@ -505,15 +508,21 @@ def generate_us_recommendations() -> dict[str, Any]:
             _MAX_PER_SECTOR_US = {"conservative": 2, "balanced": 3, "aggressive": 4}.get(mode, 3)
             _sector_counts_us: dict[str, int] = {}
 
+            # BEAR: 보수/균형형도 노출 자체를 줄인다 (완전차단은 아니지만 소수 예외 셋업만)
+            top_n_effective = 4 if regime_type == "BEAR" else TOP_N
+
             count = 0
             for adj_score, base_score, c in scored_combo:
-                if count >= TOP_N:
+                if count >= top_n_effective:
                     break
                 if adj_score < min_score_global:
                     continue
                 sym = c["symbol"]
                 current = c["current"]
                 ind = c["ind"]
+                primary_mode, primary_horizon, profile_reason = _primary_profile(ind)
+                if (mode, horizon) != (primary_mode, primary_horizon):
+                    continue
 
                 # ── 8중 필터 (v3: 정확도 최적화) — passes_us_quality_filters()로 분리됨
                 # (scripts/backtest_band_calibration.py가 같은 함수로 밴드를 검증한다)
@@ -530,7 +539,9 @@ def generate_us_recommendations() -> dict[str, Any]:
                 if not _passed:
                     continue
 
-                entry, stop, target, ev, decision, wr_prob, wr_samples = _price_band(adj_score, current, mode, horizon, ind)
+                entry, stop, target, ev, decision, wr_prob, wr_samples, wr_measured = _price_band(
+                    adj_score, current, mode, horizon, ind, market="us"
+                )
 
                 if ev is not None and ev < 0:
                     if mode == "conservative":
@@ -617,6 +628,9 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "modeLabel": MODE_LABELS[mode],
                     "horizon": horizon,
                     "horizonLabel": HORIZON_LABELS[horizon],
+                    "primaryMode": primary_mode,
+                    "primaryHorizon": primary_horizon,
+                    "profileReason": profile_reason,
                     "symbol": sym,
                     "name": c["name"],
                     "decisionBucket": decision,
@@ -630,7 +644,17 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "entry": _fmt_usd(entry),
                     "stop": _fmt_usd(stop),
                     "target": _fmt_usd(target),
-                    "probability": f"{round(adj_score, 1)}%",
+                    "probability": round(wr_prob * 100, 1),
+                    # 실측 기반인지 하드코딩 기본값인지 구분해서 내보낸다.
+                    # 표본이 모자라 기본값을 쓴 행을 측정값처럼 보이게 하면 안 된다.
+                    "probabilityText": (
+                        f"실측 기반 {wr_prob * 100:.1f}%" if wr_measured
+                        else f"미검증 기본값 {wr_prob * 100:.1f}%"
+                    ),
+                    "probabilityMeasured": wr_measured,
+                    "probabilitySource": "OBSERVED_WIN_RATE" if wr_measured else "UNVERIFIED_DEFAULT",
+                    "probabilitySampleCount": wr_samples,
+                    "modelScore": round(adj_score, 1),
                     "expectedPrice": _fmt_usd(round(current * (1 + (adj_score/100 - 0.5) * 0.1), 2)),
                     "opportunityScore": round(_sub_scores(ind)["upsideScore"] * 0.6 + _sub_scores(ind)["momentumScore"] * 0.4, 1),
                     "entryScore": round(_sub_scores(ind)["entryScore"], 1),

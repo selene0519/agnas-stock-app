@@ -21,6 +21,7 @@ import {
   horizonLabel,
   modeLabel,
   priceText,
+  resolveWinRate,
   sanitizeCodeLabel,
   sourceStatusLabel,
   strategyTagLabel,
@@ -790,9 +791,10 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
     }
     if (filterWinRate40) {
       result = result.filter((item) => {
-        const wr = item.calibratedWinRate;
-        if (wr == null) return true; // null이면 필터 적용 안 함
-        return Number(wr) >= 40;
+        // 백테스트 낙관값이 아니라 라이브 실측 우선으로 거른다.
+        const wr = resolveWinRate(item).value;
+        if (wr == null) return true; // 측정값 없으면 필터 적용 안 함
+        return wr >= 40;
       });
     }
     if (supplyFilter) {
@@ -1231,18 +1233,20 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div className="space-y-3 border-t border-slate-800 px-3.5 py-3">
             <div>
               <div className="mb-2 text-[13px] font-semibold text-slate-300">투자성향</div>
-              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-1">{modeTabs.map((item) => <button key={item.id} type="button" onClick={() => setMode(item.id)} className={`min-h-10 rounded-md px-2 text-sm font-semibold transition-colors ${mode === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}>{item.label}</button>)}</div>
+              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-1">{modeTabs.map((item) => <button key={item.id} type="button" onClick={() => setMode(item.id)} className={`min-h-11 rounded-md px-2 text-sm font-semibold transition-colors ${mode === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}>{item.label}</button>)}</div>
             </div>
             <div>
               <div className="mb-2 text-[13px] font-semibold text-slate-300">투자기간</div>
-              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-1">{horizonTabs.map((item) => <button key={item.id} type="button" onClick={() => setHorizon(item.id)} className={`min-h-10 rounded-md px-2 text-sm font-semibold transition-colors ${horizon === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}>{item.label}</button>)}</div>
+              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-1">{horizonTabs.map((item) => <button key={item.id} type="button" onClick={() => setHorizon(item.id)} className={`min-h-11 rounded-md px-2 text-sm font-semibold transition-colors ${horizon === item.id ? "mone-selection-brand" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"}`}>{item.label}</button>)}</div>
             </div>
           </div>
           {loading && <div className="border-t border-slate-800 px-3.5 py-4 text-sm text-slate-400">추천 데이터를 불러오고 있습니다.</div>}
           {!loading && previewCandidates.length === 0 && (
             <div className="border-t border-slate-800 px-3.5 py-4 text-sm leading-6 text-slate-400">
               {canOfferKrConservativeFallback ? "현재 국장 약세장에서는 균형형 후보를 보류합니다." : "현재 기준을 통과한 후보가 없습니다."}
-              {canOfferKrConservativeFallback && <button type="button" onClick={() => setMode("conservative")} className="ml-2 font-semibold text-teal-300 hover:text-teal-200">보수형 후보 보기</button>}
+              {/* 문장 안에 들어가는 인라인 버튼이라 박스를 키우면 줄 흐름이 깨진다.
+                  가상요소로 터치 영역만 44px로 넓힌다(앱 전반에서 쓰는 패턴). */}
+              {canOfferKrConservativeFallback && <button type="button" onClick={() => setMode("conservative")} className="relative ml-2 font-semibold text-teal-300 after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:text-teal-200">보수형 후보 보기</button>}
             </div>
           )}
           {!loading && previewCandidates.map((item) => (

@@ -2847,7 +2847,7 @@ export default function ChartPage() {
           <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900/70 p-1">
           {(["conservative","balanced","aggressive"] as const).map((m) => (
             <button key={m} onClick={() => setAtrMode(m)}
-              className={`min-h-10 min-w-0 rounded-lg px-2 py-1 text-xs font-medium transition-[background-color,border-color,color,transform] active:scale-[0.96] ${atrMode === m ? "mone-selection-brand" : "border border-slate-700 bg-slate-950/40 text-slate-400 hover:bg-slate-800"}`}>
+              className={`min-h-11 min-w-0 rounded-lg px-2 py-1 text-xs font-medium transition-[background-color,border-color,color,transform] active:scale-[0.96] ${atrMode === m ? "mone-selection-brand" : "border border-slate-700 bg-slate-950/40 text-slate-400 hover:bg-slate-800"}`}>
               {m === "conservative" ? "보수" : m === "balanced" ? "균형" : "공격"}
             </button>
           ))}
@@ -2855,7 +2855,7 @@ export default function ChartPage() {
           <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900/70 p-1">
           {(["short","swing","mid"] as const).map((h) => (
             <button key={h} onClick={() => setAtrHorizon(h)}
-              className={`min-h-10 min-w-0 rounded-lg px-2 py-1 text-xs font-medium transition-[background-color,border-color,color,transform] active:scale-[0.96] ${atrHorizon === h ? "mone-selection-brand" : "border border-slate-700 bg-slate-950/40 text-slate-400 hover:bg-slate-800"}`}>
+              className={`min-h-11 min-w-0 rounded-lg px-2 py-1 text-xs font-medium transition-[background-color,border-color,color,transform] active:scale-[0.96] ${atrHorizon === h ? "mone-selection-brand" : "border border-slate-700 bg-slate-950/40 text-slate-400 hover:bg-slate-800"}`}>
               {h === "short" ? "단기" : h === "swing" ? "스윙" : "중기"}
             </button>
           ))}
@@ -2995,7 +2995,7 @@ export default function ChartPage() {
                   <button
                     onClick={() => setReloadKey((v) => v + 1)}
                     disabled={loading}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-50"
                   >
                     <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                     재조회

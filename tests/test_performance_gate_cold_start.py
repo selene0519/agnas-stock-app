@@ -200,9 +200,8 @@ def test_gate2_small_gap_does_not_trigger_mismatch():
 def test_gate3_genuine_poor_performance_blocks():
     """Low netWinRate + sufficient samples + no mismatch → PERFORMANCE_BLOCKED."""
     with patch(_DASH, return_value=_dashboard(
-            meaningful_win_rate=30.0)):  # gap = 20% - 30% = -10 → wait, swj = 20%
+            meaningful_win_rate=20.0)):
         with patch(_SWJ, return_value=_swj(net_wr=0.20, sample=40)):
-            # swjWR=20%, csvWR=30% → gap=swj-csv = -10pp (negative → no mismatch)
             r = _recommendation_performance_safety("kr", "balanced", "swing")
     assert r["status"] == "PERFORMANCE_BLOCKED"
     assert r["isPerformanceHardBlocked"] is True

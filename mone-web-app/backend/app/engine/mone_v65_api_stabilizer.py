@@ -2019,7 +2019,13 @@ def _attribution_score_multiplier(market: str, mode: str, horizon: str) -> float
             with path.open(encoding="utf-8") as f:
                 atf = json.load(f)
             for entry in atf.get("adjustments", []):
+                # Feedback is a review proposal, not a live model change. It
+                # must be market-specific and explicitly approved before use.
+                if entry.get("suggestedOnly", False) or entry.get("manualApprovalRequired", False):
+                    continue
                 if (
+                    str(entry.get("market") or "").lower() == market.lower()
+                    and
                     str(entry.get("mode") or "").lower() == mode.lower()
                     and str(entry.get("horizon") or "").lower() == horizon.lower()
                 ):
@@ -2070,7 +2076,13 @@ def _apply_light_correction(item: dict[str, Any], summary: dict[str, Any]) -> di
     adjusted = dict(item)
     probability = _num(adjusted.get("probability"))
     if probability > 0:
-        adjusted["probability"] = max(0.0, round(probability - penalty, 1))
+        # 비율 감점이다. 예전엔 퍼센트포인트를 그대로 뺐는데(`- 15`), 그 값은
+        # 낙관적인 백테스트 승률(44~55%) 스케일에 맞춰져 있었다. 승률 소스를
+        # 라이브 실측(KR 10% 안팎)으로 바꾸자 10.5 - 15 = 음수 → 0.0으로 뭉개져
+        # "승률 0%"가 떴다. 같은 함수가 점수는 이미 `* 0.85`로 비율 감점한다.
+        adjusted["probability"] = round(
+            max(0.0, probability * (1.0 - max(0.0, min(100.0, penalty)) / 100.0)), 1
+        )
         adjusted["probabilityText"] = _pct_text(adjusted["probability"])
     for key in ("finalScore", "finalRankScore", "quantScore"):
         if isinstance(adjusted.get(key), (int, float)):
@@ -2371,12 +2383,19 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
                 item = _apply_light_correction(item, correction_state)
                 item.setdefault("computedFields", []).append("self_correction_penalty")
             if attr_mult != 1.0:
+                # probability는 이 코드베이스 전체에서 0~100 퍼센트다(0~1 분수가
+                # 아니다). 그런데 상한이 1.0으로 걸려 있어서, 배율이 적용되는
+                # 순간 8.9% 같은 값이 1.0으로 잘려 화면에 "승률 1%"로 떴다.
+                # 승률 소스가 낙관적인 백테스트(44~55%)였을 땐 어차피 상한에
+                # 걸려 늘 1.0이라 아무도 이상함을 못 느꼈다.
                 for _akey in ("finalRankScore", "probability"):
                     _val = item.get(_akey)
                     if _val is not None:
-                        _cap = 100.0 if _akey == "finalRankScore" else 1.0
-                        _dp = 1 if _akey == "finalRankScore" else 2
-                        item[_akey] = round(_clamp(float(_val) * attr_mult, 0.0, _cap), _dp)
+                        item[_akey] = round(_clamp(float(_val) * attr_mult, 0.0, 100.0), 1)
+                # 배율이 probability를 바꿨으면 표시 문자열도 같이 갱신한다.
+                # 안 그러면 숫자 필드(8.6)와 화면 문자열(8.9%)이 어긋난다.
+                if item.get("probability") is not None:
+                    item["probabilityText"] = _pct_text(item["probability"])
                 item.setdefault("computedFields", []).append(f"attribution_mult_{attr_mult}")
             item = _apply_chart_signal_overlay(item, mode, horizon)
             try:
@@ -2661,12 +2680,20 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
         # ── Primary source: strategy_win_rates.json (VTJ net win rate) ──────────
         swj = _load_strategy_win_rates()
         swj_min_samples = int(swj.get("minSamplesForUpdate") or 20)
-        observed_rates = swj.get("observedWinRates") or {}
-        observed_returns = swj.get("averageReturnPct") or {}
+        market_key = _market_norm(market)
+        by_market = swj.get("byMarket") or {}
+        market_rates = by_market.get(market_key) or {}
+        # Existing snapshots before the market split have no byMarket key. Keep
+        # them usable during rollout; once the key exists, never cross-calibrate.
+        using_legacy_rates = not by_market
+        if using_legacy_rates:
+            market_rates = swj
+        observed_rates = market_rates.get("observedWinRates") or {}
+        observed_returns = market_rates.get("averageReturnPct") or {}
         has_observed_performance = key in observed_rates and observed_rates.get(key) is not None
         net_win_rate_raw = observed_rates.get(key) if has_observed_performance else None
         net_win_rate = round(float(net_win_rate_raw) * 100, 1) if net_win_rate_raw is not None else None
-        net_win_rate_sample = int((swj.get("sampleCounts") or {}).get(key) or 0)
+        net_win_rate_sample = int((market_rates.get("sampleCounts") or {}).get(key) or 0)
         expected_return_pct = _num(observed_returns.get(key), None) if has_observed_performance else None
 
         # ── Diagnostic source: validation CSV stats ───────────────────────────
@@ -2689,14 +2716,20 @@ def _recommendation_performance_safety(market: str, mode: str, horizon: str) -> 
         metric_definition_mismatch = False
         if net_win_rate is not None and meaningful_win_rate is not None:
             metric_mismatch_pp = round(net_win_rate - meaningful_win_rate, 1)
-            metric_definition_mismatch = metric_mismatch_pp >= 10.0
+            metric_definition_mismatch = abs(metric_mismatch_pp) >= 10.0
 
         base: dict[str, Any] = {
             "mode": norm_mode,
             "horizon": norm_horizon,
             # Primary: VTJ net win rate
             "netWinRate": net_win_rate,
-            "netWinRateSource": "strategy_win_rates.json:observedWinRates" if has_observed_performance else "unverified_legacy_rate",
+            "netWinRateSource": (
+                "strategy_win_rates.json:observedWinRates:legacy"
+                if has_observed_performance and using_legacy_rates
+                else f"strategy_win_rates.json:byMarket.{market_key}.observedWinRates"
+                if has_observed_performance
+                else "market_performance_unavailable"
+            ),
             "netWinRateSampleCount": net_win_rate_sample,
             "expectedReturnPct": expected_return_pct,
             "hasObservedPerformance": has_observed_performance,
@@ -4576,6 +4609,10 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
     메인 파일(undated) + 날짜별 파일(YYYYMMDD) 모두 집계.
     """
     requested_market = _market_norm(market)
+    cache_key = f"validation-dashboard:{requested_market}"
+    cached, payload = _ttl_get(cache_key, 60)
+    if cached:
+        return payload
     markets = ("kr", "us") if requested_market == "all" else (requested_market,)
     repo   = _repo_root()
     MODES_    = ("conservative", "balanced", "aggressive")
@@ -4661,6 +4698,25 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
                 "lowSample": len(completed) < 30,
             }
 
+    # The validation files include target-touch diagnostics, which can count a
+    # row as a win even when its realized exit was a stop. Surface the realized
+    # forward-return metrics separately so user-facing screens never mix bases.
+    realized_rates_doc = _load_strategy_win_rates()
+    realized_market_rates = (realized_rates_doc.get("byMarket") or {}).get(requested_market) or {}
+    realized_rate_source = "strategy_win_rates.json:byMarket"
+    if not realized_market_rates and requested_market in {"kr", "us"} and not realized_rates_doc.get("byMarket"):
+        realized_market_rates = realized_rates_doc
+        realized_rate_source = "strategy_win_rates.json:legacy"
+    for key, stat in stats.items():
+        sample_count = int(_num((realized_market_rates.get("sampleCounts") or {}).get(key), 0) or 0)
+        observed_rate = _num((realized_market_rates.get("observedWinRates") or {}).get(key), None)
+        realized_avg_return = _num((realized_market_rates.get("averageReturnPct") or {}).get(key), None)
+        if sample_count > 0 and observed_rate is not None:
+            stat["realizedCompleted"] = sample_count
+            stat["realizedWinRate"] = round(observed_rate * 100, 1)
+            stat["realizedAvgReturn"] = realized_avg_return
+            stat["realizedPerformanceSource"] = realized_rate_source
+
     # ── 생애주기 (virtual_prediction_ledger.csv)
     lifecycle: list[dict[str, Any]] = []
     for p in [repo / "reports" / "virtual_prediction_ledger.csv", repo / "virtual_prediction_ledger.csv"]:
@@ -4693,8 +4749,12 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
     total_win  = sum(s["wins"] for s in all_stats)
     total_done = sum(s["completed"] for s in all_stats)
     overall_wr = round(total_win / total_done * 100, 1) if total_done else None
+    realized_stats = [s for s in all_stats if s.get("realizedCompleted")]
+    realized_completed = sum(int(s["realizedCompleted"]) for s in realized_stats)
+    realized_wins = sum(round(int(s["realizedCompleted"]) * float(s["realizedWinRate"]) / 100) for s in realized_stats)
+    realized_overall_wr = round(realized_wins / realized_completed * 100, 1) if realized_completed else None
 
-    return {
+    payload = {
         "status": "OK",
         "market": requested_market,
         "generatedAt": datetime.now().isoformat(),
@@ -4705,6 +4765,10 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
             "totalPending":   sum(s["pendingCount"] for s in all_stats),
             "totalWins": total_win,
             "totalNotExecuted": sum(s["notExecutedCount"] for s in all_stats),
+            "realizedCompleted": realized_completed or None,
+            "realizedWins": realized_wins or None,
+            "realizedOverallWinRate": realized_overall_wr,
+            "realizedPerformanceSource": realized_rate_source if realized_completed else None,
             "sampleStatus": _validation_sample_status(total_done),
             "lowSample": total_done < 30,
             "basis": "completed entry-touch validations only; pending and not-executed rows are excluded from win-rate denominator",
@@ -4712,6 +4776,8 @@ def _validation_dashboard_payload(market: str) -> dict[str, Any]:
         },
         "lifecycle": lifecycle,
     }
+    _ttl_set(cache_key, payload)
+    return payload
 
 
 def _disclosure_calendar_payload(market: str, days: int = 30) -> dict[str, Any]:

@@ -1503,7 +1503,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             onClick={() => load()}
             title="보유 데이터 새로고침"
             aria-label="보유 데이터 새로고침"
-            className="mone-home-inset inline-flex size-9 items-center justify-center rounded-[8px] border text-slate-400 transition-[color,transform] hover:text-slate-100 active:scale-[0.96]"
+            className="mone-home-inset relative inline-flex size-9 items-center justify-center rounded-[8px] border text-slate-400 transition-[color,transform] after:absolute after:-inset-1 after:content-[''] hover:text-slate-100 active:scale-[0.96]"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           </button>
@@ -1691,7 +1691,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <span className={`ml-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${riskCount > 0 || actionItems.length > 0 ? toneClassName("warning") : toneClassName("safe")}`}>
               {riskCount > 0 || actionItems.length > 0 ? "주의 필요" : "정상"}
             </span>
-            <button type="button" onClick={() => openHoldingsDetail()} className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 hover:text-teal-300">
+            <button type="button" onClick={() => openHoldingsDetail()} className="relative ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] hover:text-teal-300">
               전체 리스크 보기 <ChevronRight size={13} />
             </button>
           </div>
@@ -1803,7 +1803,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <button
               type="button"
               onClick={() => holdingsDetailOpen ? setHoldingsDetailOpen(false) : openHoldingsDetail()}
-              className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 transition-colors hover:text-teal-300"
+              className="relative ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 transition-colors after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] hover:text-teal-300"
             >
               {holdingsDetailOpen ? "간단히 보기" : "전체 보기"} <ChevronRight size={12} className={holdingsDetailOpen ? "rotate-90" : ""} />
             </button>
@@ -2535,7 +2535,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               key={tab.key}
               type="button"
               onClick={() => setPortfolioAnalysisTab(tab.key)}
-              className={`min-h-9 rounded-[7px] px-1 text-[10.5px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
+              className={`min-h-11 rounded-[7px] px-1 text-[10.5px] font-semibold transition-[background-color,color,transform] active:scale-[0.96] ${
                 portfolioAnalysisTab === tab.key
                   ? "mone-selection-brand"
                   : "text-slate-400 hover:text-slate-300"
