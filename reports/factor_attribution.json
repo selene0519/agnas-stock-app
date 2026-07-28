@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-07-28 16:17:45",
-  "totalRows": 2221,
+  "updatedAt": "2026-07-28 18:23:46",
+  "totalRows": 2261,
   "olsSampleSize": 1745,
   "byStrategy": {
     "conservative_short": {
@@ -15,26 +15,26 @@
       "probAccuracy": -0.364
     },
     "conservative_swing": {
-      "total": 261,
+      "total": 262,
       "wins": 62,
-      "losses": 199,
-      "winRate": 0.2375,
+      "losses": 200,
+      "winRate": 0.2366,
       "avgWinPct": 7.005,
-      "avgLossPct": 5.981,
+      "avgLossPct": 5.982,
       "payoffRatio": 1.171,
-      "avgProbability": 64.0,
-      "probAccuracy": -0.402
+      "avgProbability": 63.7,
+      "probAccuracy": -0.401
     },
     "conservative_mid": {
-      "total": 218,
-      "wins": 59,
-      "losses": 159,
-      "winRate": 0.2706,
-      "avgWinPct": 11.514,
-      "avgLossPct": 7.436,
-      "payoffRatio": 1.548,
-      "avgProbability": 70.7,
-      "probAccuracy": -0.436
+      "total": 229,
+      "wins": 61,
+      "losses": 168,
+      "winRate": 0.2664,
+      "avgWinPct": 11.781,
+      "avgLossPct": 7.49,
+      "payoffRatio": 1.573,
+      "avgProbability": 67.3,
+      "probAccuracy": -0.407
     },
     "balanced_short": {
       "total": 197,
@@ -48,26 +48,26 @@
       "probAccuracy": -0.321
     },
     "balanced_swing": {
-      "total": 329,
-      "wins": 66,
+      "total": 330,
+      "wins": 67,
       "losses": 263,
-      "winRate": 0.2006,
-      "avgWinPct": 9.234,
+      "winRate": 0.203,
+      "avgWinPct": 9.202,
       "avgLossPct": 7.217,
-      "payoffRatio": 1.28,
-      "avgProbability": 68.4,
-      "probAccuracy": -0.483
+      "payoffRatio": 1.275,
+      "avgProbability": 68.2,
+      "probAccuracy": -0.479
     },
     "balanced_mid": {
-      "total": 239,
+      "total": 253,
       "wins": 59,
-      "losses": 180,
-      "winRate": 0.2469,
+      "losses": 194,
+      "winRate": 0.2332,
       "avgWinPct": 12.578,
-      "avgLossPct": 8.647,
-      "payoffRatio": 1.455,
-      "avgProbability": 70.5,
-      "probAccuracy": -0.458
+      "avgLossPct": 8.822,
+      "payoffRatio": 1.426,
+      "avgProbability": 66.7,
+      "probAccuracy": -0.434
     },
     "aggressive_short": {
       "total": 210,
@@ -92,45 +92,45 @@
       "probAccuracy": -0.434
     },
     "aggressive_mid": {
-      "total": 258,
+      "total": 271,
       "wins": 55,
-      "losses": 203,
-      "winRate": 0.2132,
+      "losses": 216,
+      "winRate": 0.203,
       "avgWinPct": 13.892,
-      "avgLossPct": 10.205,
-      "payoffRatio": 1.361,
+      "avgLossPct": 10.53,
+      "payoffRatio": 1.319,
       "avgProbability": 75.1,
-      "probAccuracy": -0.538
+      "probAccuracy": -0.548
     }
   },
   "byMarket": {
     "kr": {
-      "total": 1053,
-      "winRate": 0.226,
-      "avgWinPct": 7.576,
-      "avgLossPct": 6.283,
-      "payoffRatio": 1.206
+      "total": 1076,
+      "winRate": 0.2221,
+      "avgWinPct": 7.574,
+      "avgLossPct": 6.405,
+      "payoffRatio": 1.182
     },
     "us": {
-      "total": 1168,
-      "winRate": 0.2474,
-      "avgWinPct": 9.177,
-      "avgLossPct": 7.224,
-      "payoffRatio": 1.27
+      "total": 1185,
+      "winRate": 0.2456,
+      "avgWinPct": 9.249,
+      "avgLossPct": 7.326,
+      "payoffRatio": 1.263
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 285,
-      "actualWinRate": 0.0667
+      "count": 312,
+      "actualWinRate": 0.0705
     },
     "mid_60-75": {
-      "count": 836,
-      "actualWinRate": 0.2297
+      "count": 845,
+      "actualWinRate": 0.2272
     },
     "high_75+": {
-      "count": 1100,
-      "actualWinRate": 0.2873
+      "count": 1104,
+      "actualWinRate": 0.2862
     }
   },
   "regressionFactors": {
@@ -177,8 +177,8 @@
   },
   "insight": [
     "호라이즌: short 전략 평균 승률 26.5%로 최고",
-    "모드: balanced 전략 평균 payoff 1.30x로 최고",
-    "마켓: US 승률 24.7%로 우위",
+    "모드: balanced 전략 평균 payoff 1.29x로 최고",
+    "마켓: US 승률 24.6%로 우위",
     "회귀분석: intercept 낮을수록 수익률 향상 (β=-17.818)",
     "전체 팩터 설명력 R²=0.061 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"

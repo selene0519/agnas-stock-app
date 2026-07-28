@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T07:40:26.411379+00:00",
+  "generatedAt": "2026-07-28T09:23:07.281838+00:00",
   "asOfDate": "2026-07-27",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -22,6 +22,21 @@
     "BEAR": []
   },
   "calibration": {
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "blendedNetAvgPct": -0.571,
+      "blendedWinRate": 39.9,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -0.571,
+      "priorRawSamples": 2068,
+      "liveFraction": 0.0,
+      "profitFactor": 0.8
+    },
     "BOTTOM_CATCH|BEAR": {
       "setup": "BOTTOM_CATCH",
       "regime": "BEAR",
@@ -51,21 +66,6 @@
       "priorRawSamples": 12140,
       "liveFraction": 0.0,
       "profitFactor": 1.17
-    },
-    "BOTTOM_CATCH|SIDE": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "SIDE",
-      "blendedNetAvgPct": -0.154,
-      "blendedWinRate": 44.8,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -0.154,
-      "priorRawSamples": 2957,
-      "liveFraction": 0.0,
-      "profitFactor": 0.94
     },
     "BREAKOUT|BEAR": {
       "setup": "BREAKOUT",
@@ -97,20 +97,20 @@
       "liveFraction": 0.0,
       "profitFactor": 0.95
     },
-    "BOTTOM_CATCH|BULL": {
+    "BOTTOM_CATCH|SIDE": {
       "setup": "BOTTOM_CATCH",
-      "regime": "BULL",
-      "blendedNetAvgPct": -0.571,
-      "blendedWinRate": 39.9,
+      "regime": "SIDE",
+      "blendedNetAvgPct": -0.154,
+      "blendedWinRate": 44.8,
       "gate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "liveEffectiveSamples": 0.0,
       "liveRawSamples": 0,
       "liveNetAvgPct": null,
-      "priorNetAvgPct": -0.571,
-      "priorRawSamples": 2068,
+      "priorNetAvgPct": -0.154,
+      "priorRawSamples": 2957,
       "liveFraction": 0.0,
-      "profitFactor": 0.8
+      "profitFactor": 0.94
     }
   }
 }
