@@ -98,6 +98,10 @@ const STATUS_LABELS: Record<string, string> = {
   VALIDATION_UNAVAILABLE: "검증 불가",
   NOT_AVAILABLE: "제공 불가",
   MISSING_KEY: "설정 누락",
+  // 운용 게이트(quant_operating_governor)가 내는 값. 화면에 "DEFERRED"가
+  // 그대로 떠 있었다 — 밑줄 없는 단독 대문자라 앞선 기계코드 스캔에서 놓쳤다.
+  DEFERRED: "판정 보류",
+  CHECK: "확인 필요",
 };
 
 export function statusLabel(s: DataStatus | string): string {

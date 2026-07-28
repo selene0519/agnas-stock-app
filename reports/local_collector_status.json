@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-07-28T16:30:01.010254",
+  "startedAt": "2026-07-28T16:40:00.885544",
   "market": "kr",
   "steps": {
     "ohlcv_kr": {
@@ -18,7 +18,7 @@
         {
           "script": "settle_lens_predictions_kr.py",
           "status": "OK",
-          "stdout": "settle: +0 settled, 20 pending -> reports\\lens_live_journal_kr.csv\n",
+          "stdout": "settle: +0 settled, 21 pending -> reports\\lens_live_journal_kr.csv\n",
           "stderr": ""
         },
         {
@@ -72,7 +72,7 @@
         {
           "script": "capture_lens_predictions_kr.py",
           "status": "OK",
-          "stdout": "capture asOf=2026-07-28 regime=BEAR: +1건 (기존 20건) -> reports\\lens_prediction_ledger_kr.csv\n  207940 BREAKOUT gate=SUPPRESSED_LOW_EDGE entry=1549000.0\n",
+          "stdout": "capture asOf=2026-07-28 regime=BEAR: +0건 (기존 21건) -> reports\\lens_prediction_ledger_kr.csv\n",
           "stderr": ""
         },
         {
@@ -106,7 +106,7 @@
             "file": "reports/news_summary_kr.csv"
           }
         ],
-        "createdAt": "2026-07-28 16:30:41"
+        "createdAt": "2026-07-28 16:40:33"
       },
       "disclosures": {
         "status": "OK",
@@ -119,7 +119,7 @@
             "file": "data/disclosures/disclosures_kr.csv"
           }
         ],
-        "createdAt": "2026-07-28 16:30:42"
+        "createdAt": "2026-07-28 16:40:34"
       }
     },
     "virtual_validation": {
@@ -25793,7 +25793,7 @@
       ]
     }
   },
-  "elapsedSec": 58.0,
-  "completedAt": "2026-07-28T16:30:59.036145",
+  "elapsedSec": 52.9,
+  "completedAt": "2026-07-28T16:40:53.766520",
   "source": "local_task_scheduler"
 }
