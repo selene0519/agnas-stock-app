@@ -760,13 +760,18 @@ def run_walkforward(
     horizon: str = "swing",
     window_months: int = 1,
     min_score: float = 50.0,
+    prepared_ohlcv: tuple[dict[str, list[dict]], int] | None = None,
+    as_of: date | None = None,
 ) -> dict[str, Any]:
     """
     지정 market/mode/horizon 조합에 대해 Walk-Forward 검증 실행.
     반환: {windows: [...], baselineStats: {...}, correctedStats: {...}, diff: {...}}
     """
-    as_of = date.today()
-    ohlcv_all, excluded_future_rows = _exclude_future_ohlcv(_load_ohlcv_all(market), as_of)
+    as_of = as_of or date.today()
+    if prepared_ohlcv is None:
+        ohlcv_all, excluded_future_rows = _exclude_future_ohlcv(_load_ohlcv_all(market), as_of)
+    else:
+        ohlcv_all, excluded_future_rows = prepared_ohlcv
     if len(ohlcv_all) < 5:
         return {"status": "DATA_INSUFFICIENT", "reason": f"OHLCV 심볼 {len(ohlcv_all)}개 — 최소 5개 필요"}
 
@@ -1065,11 +1070,19 @@ def run_all(market: str = "kr") -> dict[str, Any]:
 
     all_results: dict[str, Any] = {}
     all_csv_rows: list[dict]    = []
+    as_of = date.today()
+    prepared_ohlcv = _exclude_future_ohlcv(_load_ohlcv_all(market), as_of)
 
     for mode, horizon in product(modes, horizons):
         key = f"{market}_{mode}_{horizon}"
         print(f"  Walk-Forward: {key} ...", flush=True)
-        result = run_walkforward(market, mode, horizon)
+        result = run_walkforward(
+            market,
+            mode,
+            horizon,
+            prepared_ohlcv=prepared_ohlcv,
+            as_of=as_of,
+        )
         all_results[key] = result
 
         # CSV용 행 추출 (창별 요약)

@@ -35,3 +35,23 @@ def test_persisted_results_with_future_window_are_invalid(monkeypatch, tmp_path:
 
     assert integrity["status"] == "INVALID_TEMPORAL_DATA"
     assert integrity["futureWindowCount"] == 1
+
+
+def test_run_all_prepares_ohlcv_once(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(walkforward, "_reports_dir", lambda: tmp_path)
+    loads = []
+    received = []
+    monkeypatch.setattr(walkforward, "_load_ohlcv_all", lambda market: loads.append(market) or {"TEST": []})
+    monkeypatch.setattr(walkforward, "_exclude_future_ohlcv", lambda rows, as_of: (rows, 0))
+
+    def fake_run(*args, **kwargs):
+        received.append(kwargs.get("prepared_ohlcv"))
+        return {"status": "DATA_INSUFFICIENT", "windows": [], "diff": {}}
+
+    monkeypatch.setattr(walkforward, "run_walkforward", fake_run)
+
+    result = walkforward.run_all("us")
+
+    assert result["combosRun"] == 9
+    assert loads == ["us"]
+    assert received == [({"TEST": []}, 0)] * 9
