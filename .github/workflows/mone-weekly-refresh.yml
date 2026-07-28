@@ -30,7 +30,11 @@ concurrency:
 jobs:
   weekly:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # fetch 전용으로 남았다(실측 ~2.5분). 앙상블 보정은 117분짜리라
+    # mone-ensemble-calibration.yml로 분리했다 — 그게 여기 있으면
+    # 타임아웃에 걸릴 때 **앞서 성공한 fetch 결과까지 커밋 못 하고 버려진다**
+    # (2026-07-28 실측: DART/yfinance/섹터/유니버스 4단계 성공했는데 전부 유실).
+    timeout-minutes: 30
     env:
       CI: "true"
       GITHUB_ACTIONS_RUN: "true"
@@ -106,27 +110,6 @@ jobs:
           else
             echo "scripts/build_universe.py not found; skip."
           fi
-          set -e
-
-      - name: 앙상블 보정 (walk-forward)
-        # accumulator에서 19분+ 돌다 타임아웃에 잘리던 스텝. 여기서는 끝까지 돈다.
-        working-directory: mone-web-app/backend
-        env:
-          PYTHONPATH: .
-        run: |
-          set +e
-          python - <<'PY'
-          import sys, json
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          from app.engine.ensemble_calibrator import run_ensemble_calibration
-          for market in ("kr", "us"):
-              result = run_ensemble_calibration(market=market)
-              combos = len(result.get("combos", []))
-              print(json.dumps(result, ensure_ascii=False, indent=2))
-              print(f"앙상블 보정 [{market}]: {combos}개 콤보 저장됨")
-          PY
-          echo "ensemble calibration: exit $?"
           set -e
 
       - name: Remove local token/cache files before commit
