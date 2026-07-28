@@ -17,7 +17,7 @@ import argparse
 import csv
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Windows 콘솔(cp949)은 em-dash를 못 찍고 UnicodeEncodeError로 죽는다.
@@ -102,6 +102,76 @@ _NON_ADMISSIBLE = {
     "", "PENDING", "DATA_PENDING", "NOT_EXECUTED",
     "CANCELLED", "INVALID_SYMBOL", "DATA_INVALID",
 }
+
+
+# CI 캡처가 처음으로 성공한 날. 이 이전 구간은 캡처 스텝이 아예 없었거나
+# (스크립트 생성 2026-07-26, 51577cc) 루트 app.py가 백엔드 app 패키지를 가려
+# 매 실행 죽던 구간이라(aafd943, 8c310be) 연속성 위반으로 세면 영영 빨간불이 된다.
+# 새 결손이 생기면 그건 이 날 이후의 진짜 회귀다.
+CAPTURE_CI_EPOCH = "2026-07-28"
+# 연속성을 볼 창. 짧으면 한 번의 휴장/지연에 과민해지고, 길면 회귀를 늦게 잡는다.
+CAPTURE_CONTINUITY_WINDOW_DAYS = 21
+
+
+def _trading_days_since(start: str, sample: int = 5) -> list[str]:
+    """장이 열린 날 목록을 OHLCV 봉에서 역산한다.
+
+    공휴일 달력을 하드코딩하지 않으려는 것이다 — 하드코딩하면 그 표가 낡는 순간
+    헬스체크가 거짓말을 시작하고, 이 레포는 이미 그 방식으로 세 번 당했다.
+    거래정지/신규상장 종목은 봉이 빠지므로 여러 파일의 **합집합**을 쓴다.
+    """
+    files = sorted(ROOT.glob("data/market/ohlcv/kr_*_daily.csv"))
+    if not files:
+        return []
+    days: set[str] = set()
+    for p in files[:sample] + files[-sample:]:
+        try:
+            with open(p, encoding="utf-8-sig", newline="") as f:
+                for row in csv.DictReader(f):
+                    d = str(row.get("date") or row.get("Date") or "")[:10]
+                    if d >= start:
+                        days.add(d)
+        except Exception:
+            continue
+    return sorted(days)
+
+
+def _capture_continuity_check() -> tuple:
+    """캡처가 **매 거래일** 잡혔는지. (name, status, detail, critical)
+
+    `prediction_capture`는 최신 캡처가 며칠 전인지만 본다. 그래서 어제 22건이
+    들어왔으면 중간에 9일이 비어도 OK를 찍는다 — 2026-07-28에 배운 교훈
+    ("파일 mtime은 새것이었다")과 똑같은 함정을 감시 장치 쪽에서 반복한 것이다.
+    표본 축적 속도가 곧 엣지 판정의 분모라서, 결손일은 지연이 아니라 손실이다.
+    """
+    window_start = (NOW - timedelta(days=CAPTURE_CONTINUITY_WINDOW_DAYS)).strftime("%Y-%m-%d")
+    start = max(CAPTURE_CI_EPOCH, window_start)
+    expected = _trading_days_since(start)
+    if not expected:
+        return ("capture_continuity", "OK",
+                f"판정 구간 없음 (기준일 {start} 이후 거래일 0일)", False)
+    # 최신 거래일은 장마감 수집과 캡처 사이의 경합이 있으므로 1일 유예.
+    # (accumulator는 KST 07:30 장전 / 16:30 장후에 도는데, 장후 실행에서
+    #  OHLCV 갱신이 캡처보다 늦으면 그날 봉은 있는데 캡처는 아직 없을 수 있다.)
+    expected = expected[:-1]
+    if not expected:
+        return ("capture_continuity", "OK",
+                f"판정 구간 없음 (기준일 {start} 이후 확정 거래일 0일)", False)
+
+    ledger = _read_csv_rows("reports/virtual_prediction_ledger.csv")
+    captured = {str(r.get("createdAt") or "")[:10] for r in ledger if r.get("createdAt")}
+    missing = [d for d in expected if d not in captured]
+    detail = (f"거래일 {len(expected)}일 중 캡처 {len(expected) - len(missing)}일"
+              f" (기준일 {start}~, 유예 1일)")
+    if not missing:
+        return ("capture_continuity", "OK", detail, True)
+    detail += f" — 결손 {len(missing)}일: {', '.join(missing[:5])}"
+    if len(missing) > 5:
+        detail += f" 외 {len(missing) - 5}일"
+    # 1일 결손은 CI 지연/일시 장애로도 생긴다. 2일부터는 캡처가 멈춘 것으로 본다.
+    if len(missing) >= 2:
+        return ("capture_continuity", "ERROR", detail + " — 캡처가 멈춘 것으로 보임", True)
+    return ("capture_continuity", "WARN", detail, True)
 
 
 def _learning_loop_stats() -> dict:
@@ -243,6 +313,8 @@ def run(max_stale_days: float = 3.0) -> dict:
     #    주말(최대 2일)을 흡수하려고 +2일 여유를 준다.
     loop = _learning_loop_stats()
     check_date("prediction_capture", loop["newestCapture"], max_stale_days + 2, True)
+    # 7-b) 캡처 **연속성**. 위 검사는 최신성만 보므로 중간 결손을 못 본다.
+    add(*_capture_continuity_check())
 
     # 8) 정산 적체 — **만기가 지났는데도** PENDING인 건수만 센다.
     overdue = loop["overduePending"]

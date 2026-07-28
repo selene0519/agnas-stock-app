@@ -110,6 +110,7 @@ def _build_validation_index(market: str) -> dict[str, dict[str, Any]]:
                             "returnPct": _num(row.get("returnPct") or row.get("realized_return_pct") or row.get("return_pct")),
                             "exitPrice": _num(row.get("exitPrice") or row.get("exit_price")),
                             "validationDate": date,
+                            "exitDate": date,
                         }
                     elif result in NOT_EXECUTED_RESULTS:
                         index[key] = {
@@ -118,6 +119,7 @@ def _build_validation_index(market: str) -> dict[str, dict[str, Any]]:
                             "returnPct": None,
                             "exitPrice": None,
                             "validationDate": date,
+                            "exitDate": date,
                         }
     return index
 
@@ -197,7 +199,7 @@ def _settle_from_ohlcv(market: str, symbol: str, entry: float | None, stop: floa
             if best_not_executed is None or date > best_not_executed[0]:
                 best_not_executed = (date, {
                     "kind": "not_executed", "result": "NOT_EXECUTED",
-                    "returnPct": None, "exitPrice": None,
+                    "returnPct": None, "exitPrice": None, "exitDate": date,
                 })
             continue
         target_hit = bool(target and high >= target)
@@ -212,7 +214,11 @@ def _settle_from_ohlcv(market: str, symbol: str, entry: float | None, stop: floa
             result, exit_price = "close_exit", close
         ret = round(((exit_price - entry) / entry * 100) - cost, 4)
         if best_exec is None or date > best_exec[0]:
-            best_exec = (date, {"kind": "exec", "result": result, "returnPct": ret, "exitPrice": exit_price})
+            # 청산 **날짜**를 같이 남긴다. 이게 없으면 전략별 자본곡선의 시점이
+            # 전부 만기일(validationDueDate) 추정치가 되어, 손절로 3일 만에 끝난
+            # 거래와 만기까지 끌고 간 거래가 같은 날 실현된 것처럼 보인다.
+            best_exec = (date, {"kind": "exec", "result": result, "returnPct": ret,
+                                "exitPrice": exit_price, "exitDate": date})
     if best_exec:
         return best_exec[1]
     if best_not_executed:
@@ -353,6 +359,7 @@ def main() -> None:
             row["result"]      = "NOT_EXECUTED"
             row["exitStatus"]  = "NOT_EXECUTED"
             row["exitPrice"]   = ""
+            row["exitDate"]    = str(found.get("exitDate") or "")
             row["validatedAt"] = TODAY
             settled += 1
         elif found:
@@ -370,6 +377,7 @@ def main() -> None:
             row["result"]      = result_str
             row["exitStatus"]  = new_status
             row["exitPrice"]   = str(found.get("exitPrice") or "")
+            row["exitDate"]    = str(found.get("exitDate") or "")
             row["validatedAt"] = TODAY
             settled += 1
         else:
@@ -385,7 +393,7 @@ def main() -> None:
         # results 업데이트
         existing = results_map.get(pred_id, dict(row))
         existing = dict(existing)
-        for k in ("status", "returnPct", "result", "exitStatus", "exitPrice", "validatedAt"):
+        for k in ("status", "returnPct", "result", "exitStatus", "exitPrice", "exitDate", "validatedAt"):
             if row.get(k):
                 existing[k] = row[k]
         result_key = str(row.get("result") or "").strip().upper()
@@ -403,7 +411,7 @@ def main() -> None:
     # 저장
     if ledger_rows:
         ledger_fields = list(dict.fromkeys(
-            list(ledger_rows[0].keys()) + ["status", "returnPct", "result", "exitStatus", "exitPrice", "validatedAt"]
+            list(ledger_rows[0].keys()) + ["status", "returnPct", "result", "exitStatus", "exitPrice", "exitDate", "validatedAt"]
         ))
         _write_csv(ledger_path, updated_ledger, ledger_fields)
 

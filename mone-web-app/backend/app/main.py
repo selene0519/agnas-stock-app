@@ -64,19 +64,38 @@ app.add_middleware(
 
 # ── 글로벌 예외 핸들러 ────────────────────────────────────────────────────────
 # FastAPI가 처리하지 못한 모든 500 에러를 HTML이 아닌 JSON으로 반환
+def _debug_errors_enabled() -> bool:
+    """스택트레이스를 응답 본문에 실어도 되는지.
+
+    기본값은 **끔**. 켜져 있으면 500 응답이 파일 경로·코드 구조·예외 메시지를
+    그대로 밖으로 흘린다. 예외 메시지에는 자격증명이 섞이기 쉽다(psycopg2의
+    접속 문자열, 외부 API 클라이언트가 URL에 실은 키 등). 이 백엔드는 Render에
+    배포돼 인터넷에서 닿으므로 기본 노출은 위험하다.
+    로컬 디버깅은 `MONE_DEBUG_ERRORS=1`로 명시적으로 켠다.
+    """
+    return os.environ.get("MONE_DEBUG_ERRORS", "").strip().lower() in ("1", "true", "yes")
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     import traceback
-    return JSONResponse(
-        status_code=500,
-        content={
-            "ok": False,
-            "status": "ERROR",
-            "error": str(exc),
-            "path": str(request.url.path),
-            "trace": traceback.format_exc()[-800:],
-        },
-    )
+
+    # 서버 로그에는 항상 전문을 남긴다 — 밖으로 안 보낼 뿐 잃어버리면 안 된다.
+    traceback.print_exc()
+
+    content: dict[str, object] = {
+        "ok": False,
+        "status": "ERROR",
+        # 에러 응답에도 조작된 경로가 아니라 실제 라우팅 경로가 찍혀야
+        # 로그를 보고 사고를 재구성할 수 있다.
+        "path": str(request.scope.get("path") or ""),
+    }
+    if _debug_errors_enabled():
+        content["error"] = str(exc)
+        content["trace"] = traceback.format_exc()[-800:]
+    else:
+        content["error"] = "Internal server error"
+    return JSONResponse(status_code=500, content=content)
 
 # ── 인메모리 Rate Limiter ──────────────────────────────────────────────────────
 # 무거운 수집/갱신 엔드포인트 보호: IP당 최대 1회/60초
@@ -525,9 +544,26 @@ def _normalize_oauth_user(provider: str, payload: dict) -> dict[str, str]:
         "picture": str(profile.get("profile_image_url") or profile.get("thumbnail_image_url") or ""),
     }
 
+def _raw_path(request: Request) -> str:
+    """라우팅이 실제로 쓰는 경로. **보안 판정은 반드시 이걸로 한다.**
+
+    `request.url`은 `{scheme}://{host}{path}`를 문자열로 이어붙였다가 다시 파싱해서
+    만들어진다. 그래서 Host 헤더에 `/`가 들어오면 경로 경계가 밀려 `request.url.path`가
+    실제 요청 경로와 달라진다(starlette PYSEC-2026-161). 라우팅은 raw scope path를
+    쓰므로 **엔드포인트는 정상 실행되는데 앞단의 경로 기반 인증만 건너뛴다.**
+
+    실측(2026-07-29, 레포 핀 버전 starlette 0.41.3):
+        GET /api/admin/secret + `Host: example.com/abc?bar=`
+        -> request.url.path == "/abc" (관리자 prefix 불일치 -> 인증 통과)
+        -> 라우팅은 /api/admin/secret 으로 dispatch -> 200 + 데이터 노출
+    starlette 1.3.1에서는 막히지만, 여기서 scope를 쓰면 버전과 무관하게 안전하다.
+    """
+    return str(request.scope.get("path") or "")
+
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    path = request.url.path
+    path = _raw_path(request)
     if request.method == "POST" and any(path.startswith(p) for p in _RATE_LIMITED_PREFIXES):
         client_ip = request.client.host if request.client else "unknown"
         key = f"{client_ip}:{path}"
@@ -547,7 +583,7 @@ async def rate_limit_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def admin_auth_middleware(request: Request, call_next):
-    path = request.url.path
+    path = _raw_path(request)
     if request.method == "GET" and path == "/api/admin/pipeline":
         return await call_next(request)
     if path.startswith("/api/admin/"):

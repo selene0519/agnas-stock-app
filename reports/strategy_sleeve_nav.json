@@ -1,0 +1,165 @@
+{
+  "generatedAt": "2026-07-28T17:13:29.053829+00:00",
+  "basis": {
+    "positionFraction": 0.1,
+    "startNav": 100.0,
+    "cleanWindowOnly": true,
+    "cleanWindowStart": "2026-07-10",
+    "realizedOnly": true,
+    "forwardSourcesOnly": true
+  },
+  "dataQuality": {
+    "totalTrades": 3,
+    "estimatedTimingTrades": 3,
+    "estimatedTimingNote": "exitDate가 없는 과거 정산분은 만기일로 실현 시점을 근사했다. 곡선의 시점 정확도만 영향받고 최종 NAV는 영향받지 않는다.",
+    "excluded": {
+      "nonRealized": 172,
+      "replaySource": 0,
+      "beforeCleanWindow": 659,
+      "unknownSleeve": 0,
+      "noReturn": 0
+    },
+    "sampleWarning": "표본 3건 — 30건 미만이면 순위는 노이즈로 봐야 한다"
+  },
+  "ranking": [
+    "conservative_swing"
+  ],
+  "sleeves": {
+    "conservative_short": {
+      "trades": 0,
+      "nav": 100.0,
+      "totalReturnPct": 0.0,
+      "winRate": null,
+      "avgReturnPct": null,
+      "avgGainPct": null,
+      "avgLossPct": null,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.0,
+      "estimatedTimingTrades": 0,
+      "curve": []
+    },
+    "conservative_swing": {
+      "trades": 3,
+      "nav": 99.2983,
+      "totalReturnPct": -0.7017,
+      "winRate": 0.0,
+      "avgReturnPct": -2.3408,
+      "avgGainPct": null,
+      "avgLossPct": -2.3408,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.7,
+      "estimatedTimingTrades": 3,
+      "curve": [
+        {
+          "date": "2026-07-27",
+          "nav": 99.3824,
+          "symbol": "000810",
+          "returnPct": -6.1761
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 99.3456,
+          "symbol": "030200",
+          "returnPct": -0.3697
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 99.2983,
+          "symbol": "032640",
+          "returnPct": -0.4765
+        }
+      ]
+    },
+    "conservative_mid": {
+      "trades": 0,
+      "nav": 100.0,
+      "totalReturnPct": 0.0,
+      "winRate": null,
+      "avgReturnPct": null,
+      "avgGainPct": null,
+      "avgLossPct": null,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.0,
+      "estimatedTimingTrades": 0,
+      "curve": []
+    },
+    "balanced_short": {
+      "trades": 0,
+      "nav": 100.0,
+      "totalReturnPct": 0.0,
+      "winRate": null,
+      "avgReturnPct": null,
+      "avgGainPct": null,
+      "avgLossPct": null,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.0,
+      "estimatedTimingTrades": 0,
+      "curve": []
+    },
+    "balanced_swing": {
+      "trades": 0,
+      "nav": 100.0,
+      "totalReturnPct": 0.0,
+      "winRate": null,
+      "avgReturnPct": null,
+      "avgGainPct": null,
+      "avgLossPct": null,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.0,
+      "estimatedTimingTrades": 0,
+      "curve": []
+    },
+    "balanced_mid": {
+      "trades": 0,
+      "nav": 100.0,
+      "totalReturnPct": 0.0,
+      "winRate": null,
+      "avgReturnPct": null,
+      "avgGainPct": null,
+      "avgLossPct": null,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.0,
+      "estimatedTimingTrades": 0,
+      "curve": []
+    },
+    "aggressive_short": {
+      "trades": 0,
+      "nav": 100.0,
+      "totalReturnPct": 0.0,
+      "winRate": null,
+      "avgReturnPct": null,
+      "avgGainPct": null,
+      "avgLossPct": null,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.0,
+      "estimatedTimingTrades": 0,
+      "curve": []
+    },
+    "aggressive_swing": {
+      "trades": 0,
+      "nav": 100.0,
+      "totalReturnPct": 0.0,
+      "winRate": null,
+      "avgReturnPct": null,
+      "avgGainPct": null,
+      "avgLossPct": null,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.0,
+      "estimatedTimingTrades": 0,
+      "curve": []
+    },
+    "aggressive_mid": {
+      "trades": 0,
+      "nav": 100.0,
+      "totalReturnPct": 0.0,
+      "winRate": null,
+      "avgReturnPct": null,
+      "avgGainPct": null,
+      "avgLossPct": null,
+      "payoffRatio": null,
+      "maxDrawdownPct": 0.0,
+      "estimatedTimingTrades": 0,
+      "curve": []
+    }
+  }
+}

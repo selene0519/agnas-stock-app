@@ -101,7 +101,114 @@
 됐으니 전제는 갖춰졌지만, 라이브 실측(~19.6%)으로 돌리면 통과가 거의 없어진다. clean window
 표본이 쌓인 뒤 결정할 일.
 
+## 2026-07-29 세션 — 감시 장치가 최신성만 보고 연속성을 안 봤다 + 승률 순위가 자본 순위와 반대
+사용자가 TradingAgents 논문(2412.20138v7)과 유사 오픈소스 2종(virattt/ai-hedge-fund,
+midnightnnn/llm_invest)을 참고자료로 줬다. **셋 다 out-of-sample 엣지를 공개하지 않았다**
+— ai-hedge-fund v2는 validation 모듈이 아예 미구현, llm_invest는 walk-forward 인프라만 있고
+결과 없음, 원논문은 3개월·3종목(SR 8.21을 저자도 각주에서 "기대 범위 초과"로 인정) + LLM
+사전학습 룩어헤드 논의 없음. **MONE가 저들보다 앞서 있는 지점이 바로 측정 장치다.**
+가져온 건 llm_invest의 sleeve 개념 하나뿐이고, 페르소나 에이전트·실주문 경로·백테스트 검증은
+의도적으로 안 가져왔다(전자는 측정 불가, 후자는 팩터 귀속을 무력화).
+
+**1) 캡처 "결손 9일"은 열린 버그가 아니었다(내 초기 오진 정정).** 타임라인: 7/10~25는 CI
+캡처 스텝 자체가 없었고(스크립트 생성 7/26 `51577cc`), 7/26~27은 셰도잉·fastapi 누락으로
+사망(`aafd943`, `8c310be`), **7/28이 첫 성공(22건)**. 즉 결손은 이미 고친 버그의 흔적이다.
+다만 결론이 바뀐다 — **캡처가 정상 동작한 날은 아직 하루뿐**이라 내구성이 미검증이다.
+
+**2) 진짜 갭: `data_freshness_healthcheck.py:245`가 최신성만 봤다.** `prediction_capture`는
+`newestCapture`의 나이만 검사해서, 어제 22건이 들어왔으면 그 앞 9일이 비어도 OK다.
+7/28에 배운 교훈("정산이 매일 돌아 mtime은 새것이었다")을 **감시 장치 쪽에서 그대로 반복**한
+것이다. → `capture_continuity` 검사 추가. 거래일 달력을 **OHLCV 봉에서 역산**한다(공휴일
+표를 하드코딩하면 그 표가 낡는 순간 헬스체크가 거짓말을 시작한다). 1일 결손=WARN, 2일=ERROR,
+최신 거래일은 장마감/캡처 경합으로 1일 유예, `CAPTURE_CI_EPOCH=2026-07-28` 이전은 미판정.
+
+**3) 소급 캡처는 하면 안 된다(조사 결론).** 누락 9일을 채우면 `HISTORICAL_REPLAY`가 되는데
+`virtual_trade_journal.py:61`이 그 가중치를 **0.0**으로 못박고 있다. 7/28에 두 원장 3배
+모순(9.1% vs 32.2%)을 해소한 근거가 그 정책이라, 소급분은 clean window 분모에 한 건도 못
+들어간다. 넣으면 그때 고친 낙관 누출이 되살아난다.
+
+**4) 승률로 전략을 고르면 거의 반대로 고른다(신규 실측).** `update_strategy_sleeve_nav.py`
+추가 — 9개 셀(mode×horizon)을 등가중·고정비율 가상 sleeve로 굴려 자본곡선을 그린다.
+오염 구간 662건 기준 **승률 순위 vs NAV 순위 스피어만 상관 = −0.3**:
+
+| sleeve | 승률 | 페이오프 | NAV 수익% |
+|---|---|---|---|
+| aggressive_mid | **19.4% (1위)** | 0.59 | **−44.5% (8위)** |
+| conservative_short | 14.3% (4위) | 1.40 | **−11.7% (1위)** |
+| balanced_swing | 15.4% | 1.30 | −58.8% (9위, n=175) |
+
+즉 `strategy_win_rates.json`만 보고 전략을 고르면 손익 비대칭을 정면으로 놓친다. 북극성이
+"손익 비대칭 개선"이므로 비교축을 페이오프·자본곡선으로 옮겨야 한다. (단 이 662건은 **오염
+구간**이라 진단용이다. clean window는 아직 3건.)
+
+**5) 청산 **날짜**가 버려지고 있었다.** `settle_pending_validations.py`가 `best_exec[0]`에
+청산일을 들고 있으면서 안 남겨서, 손절로 3일 만에 끝난 거래와 만기까지 끈 거래가 같은 날
+실현된 것처럼 보였다. → `exitDate` 기록 추가(OHLCV 경로·인덱스 경로 양쪽). 과거 행은
+만기일로 근사하되 `estimatedTimingTrades`로 정직하게 카운트한다.
+
+**설계 원칙(멀티에이전트를 안 넣은 이유):** sleeve는 **새 예측을 만들지 않는다** — 이미
+정산된 표본을 다시 묶을 뿐이라 기존 게이트·기준선을 건드리지 않는다. 미청산 건의 평가손익도
+안 쓴다(라이브 시세를 다시 끌면 정산 경로와 두 번째 산식이 생긴다 — 손절가 3중 계산의 전례).
+사이징도 등가중 고정이다(Kelly를 쓰면 사이징 스킬과 **선택 스킬**이 섞여 #3 진단이 안 보인다).
+
+**6) 의존성이 무핀이었다(추가 발견).** `requirements.txt`와 워크플로 7곳이 `pandas numpy`를
+상한 없이 설치하고 있었다. pandas 3.0.5가 풀리면 테스트 5개가 죽는다 — **코드를 아무도 안
+건드린 날 CI가 깨지는** 종류라 원인 추적이 제일 오래 걸린다. 상한 적용 + `test_dependency_pins.py`로
+재발 차단(이 테스트가 내가 손으로 놓친 `mone-news-refresh.yml` 1곳을 실제로 잡았다).
+
+**⚠️ 남은 것:** clean window 표본은 여전히 3건. sleeve 순위는 30건 넘기 전엔 노이즈
+(`sampleWarning`이 자동으로 뜬다). `minCalibratedWinRate` 게이트 결정은 그 뒤 일로 그대로 남음.
+UI(#7 잔여: AI매매·관리자 계측, 빈/에러 상태 QA, 색 대비)도 손대지 않았다.
+
+## 2026-07-29 (2) — 테스트가 처음 완주하자 관리자 인증 우회가 나왔다
+**환경이 없다고 적어둔 게 실제로는 안 해본 것이었다.** `pip install` 한 줄로 전체
+테스트가 돌았고(624 passed), 그 상태에서 `pip-audit`를 돌리니 백엔드 핀에 CVE 12건이
+쌓여 있었다. 루트 requirements는 **무핀**(최신 메이저를 끌어옴), 백엔드는 **핀은 있는데
+한 번도 안 올림** — 정반대 실패가 한 레포에 같이 있었다.
+
+**실제로 뚫렸다(재현 완료).** `main.py:550` `admin_auth_middleware`가
+`path = request.url.path`로 `/api/admin/` prefix를 검사했다. `request.url`은
+`{scheme}://{host}{path}`를 이어붙였다 다시 파싱해 만들어지므로 Host에 `/`가 섞이면
+경로 경계가 밀린다. 라우팅은 raw scope path를 쓰므로 **엔드포인트는 정상 실행되고
+앞단 인증만 건너뛴다**(starlette PYSEC-2026-161). 레포 핀 버전 0.41.3에서 실측:
+
+    GET /api/admin/secret  +  Host: example.com/abc?bar=
+    -> request.url.path == "/abc"  (prefix 불일치 -> 인증 통과)
+    -> 라우팅은 /api/admin/secret  -> 200 + 데이터 노출
+
+백엔드는 Render에 배포돼 있어 인터넷에서 닿는다. rate limiter도 같은 패턴이었다.
+
+**수정: 라이브러리가 아니라 습관을 고쳤다.** 보안 판정을 `request.scope["path"]`로
+옮겼다(`_raw_path()`). starlette 0.41.3에서도 막힌다 — 버전 독립. starlette 1.x 승격은
+FastAPI 메이저 동반 이동이라 **안 했다**(코드 수정으로 해당 CVE가 무력화되고, 나머지
+starlette CVE는 StaticFiles/FileResponse/HTTPEndpoint/`request.form()`을 안 써서 미해당).
+`requests==2.33.0`, `python-dotenv==1.2.2`만 안전 승격.
+`tests/test_admin_auth_host_header_bypass.py`가 AST로 `request.url.path` 재발을 막는다
+(정규식으로 짰더니 자기 docstring을 잡았다 — 검사 대상이 문자열을 담고 있을 땐 AST로).
+
+**같이 나온 것 — 500 응답이 스택트레이스를 무조건 실어보냈다.** `global_exception_handler`가
+`traceback.format_exc()[-800:]`를 조건 없이 본문에 넣고 있었다. 파일 경로·코드 구조가 새고,
+예외 메시지엔 자격증명이 섞이기 쉽다(psycopg2 접속 문자열, URL에 키를 실은 클라이언트).
+→ 기본 차단 + `MONE_DEBUG_ERRORS=1`일 때만 노출. 서버 로그엔 항상 전문을 남긴다.
+
+**점검했고 문제 없던 것:** 관리자 토큰 검증(HMAC-SHA256 + `compare_digest` + 만료),
+CORS(와일드카드 없는 화이트리스트), `urlopen` 호출부(URL이 하드코딩 OAuth 엔드포인트라
+SSRF 아님), `request.form()`/StaticFiles/FileResponse/HTTPEndpoint 미사용.
+
+⚠️ **남음:** starlette 0.41.3 핀 자체는 그대로다. 지금은 미해당이지만 나중에
+StaticFiles/`request.form()`을 쓰기 시작하면 Range DoS·폼 한도 무시가 바로 살아난다.
+그때는 FastAPI 승격이 선행돼야 한다.
+
 ## 제약 / 운영 메모
 - CI dispatch 권한 없음(403) → 파이프라인 실행은 사용자 손 필요.
+- 이 환경엔 과학 스택이 **선설치만 안 돼 있을 뿐 설치하면 전체 검증이 된다**
+  (이전 노트의 "구동 불가"는 틀렸다). 한 줄로 끝:
+  `pip install "pandas>=2.2,<3" "numpy>=1.26,<3" fastapi plotly python-dotenv streamlit yfinance httpx pytest`
+  → 2026-07-29 기준 **622 passed / 0 failed**. 앞으로 "환경이 없어서 못 돌린다"고
+  적기 전에 설치부터 시도할 것.
+- ⚠️ **pandas는 반드시 `<3`**. 무핀이면 CI가 최신 메이저를 풀어와 코드를 안 건드린 날
+  깨진다 — pandas 3.0.5에서 5개가 `TypeError: Invalid value 'True' for dtype 'str'`로
+  사망(문자열 컬럼 bool 대입 금지, 예측 원장이 그 패턴을 씀). requirements.txt + 워크플로
+  7곳에 상한 적용, `tests/test_dependency_pins.py`가 무핀 재발을 막는다.
 - 이 실행 환경엔 프론트 빌드/`fastapi`/`yfinance`/`FDR` 없음 → 백엔드 라이브 구동·시각 QA 불가(코드/로직 단위검증으로 대체).
 - 보유 **수량** 동기화는 로컬 브릿지(`scripts/sync_all.ps1`, 사용자 PC) 담당 — 안 돌리면 수량이 조용히 낡음.

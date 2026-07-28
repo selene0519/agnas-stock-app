@@ -53,7 +53,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests python-dotenv pandas numpy 2>/dev/null || true
+          pip install requests python-dotenv "pandas>=2.2,<3" "numpy>=1.26,<3" 2>/dev/null || true
           # FastAPI 백엔드 의존성 (data_loader.py 임포트용)
           if [ -f mone-web-app/backend/requirements.txt ]; then
             pip install -r mone-web-app/backend/requirements.txt --quiet 2>/dev/null || true

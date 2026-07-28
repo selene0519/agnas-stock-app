@@ -1,6 +1,11 @@
+# 하한이 아니라 **상한**이 중요하다. 무핀으로 두면 CI가 매 실행 최신 메이저를
+# 새로 풀어오므로, 아무도 코드를 안 건드린 날 갑자기 깨진다 — 이 레포에서 조용한
+# 실패가 반복된 자리와 같은 계열이다(2026-07-29 실측: pandas 3.0.5에서 테스트
+# 622개 중 5개가 `TypeError: Invalid value 'True' for dtype 'str'`로 사망.
+# pandas 3.0이 문자열 컬럼에 bool 대입을 막았는데, 예측 원장 쪽이 그 패턴을 쓴다).
 streamlit
-pandas
-numpy
+pandas>=2.2,<3
+numpy>=1.26,<3
 plotly
 requests
 yfinance
