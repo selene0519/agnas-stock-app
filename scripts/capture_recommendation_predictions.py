@@ -43,9 +43,26 @@ for _stream in (sys.stdout, sys.stderr):
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "mone-web-app" / "backend"
+
+# 레포 루트에는 스트림릿 앱 `app.py`가 있고 백엔드에는 `app/` **패키지**가 있다.
+# 둘 다 sys.path에 있으면 `import app`이 루트의 app.py로 잡혀서
+#   ModuleNotFoundError: No module named 'app.engine'; 'app' is not a package
+# 가 난다. 2026-07-28 CI에서 이 캡처가 매 실행 이 에러로 죽고 있었는데,
+# 워크플로가 `set +e`라 스텝은 success로 찍혀 아무도 몰랐다
+# (CLAUDE.md #1의 generate_kr_recommendations sys.path 사고와 같은 계열).
+#
+# 그래서 (1) 백엔드를 항상 루트보다 앞에 두고, (2) 앞서 누가 루트 app.py를
+# 임포트해 캐시해뒀으면 그 항목을 비운다. tests/conftest.py도 같은 가드를 쓴다.
 for _p in (str(ROOT), str(BACKEND)):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+    if _p in sys.path:
+        sys.path.remove(_p)
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(BACKEND))
+
+_cached_app = sys.modules.get("app")
+if _cached_app is not None and not hasattr(_cached_app, "__path__"):
+    for _name in [n for n in sys.modules if n == "app" or n.startswith("app.")]:
+        sys.modules.pop(_name, None)
 
 MODES = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")

@@ -500,8 +500,16 @@ jobs:
         run: |
           set +e
           python ../../scripts/capture_recommendation_predictions.py --market all
-          echo "capture_recommendation_predictions: exit $?"
+          code=$?
           set -e
+          echo "capture_recommendation_predictions: exit ${code}"
+          # `set +e`만 두면 이 스텝이 죽어도 워크플로가 green으로 지나간다.
+          # 실제로 2026-07-28까지 매 실행 ModuleNotFoundError로 죽고 있었는데
+          # 아무도 몰랐다(원장이 7-23에 멈춘 걸 헬스체크가 잡아서야 발견).
+          # 자가보정 루프의 입력이므로 최소한 눈에는 띄게 한다.
+          if [ "${code}" != "0" ]; then
+            echo "::error::예측 캡처 실패(exit ${code}) — 자가보정 루프에 새 표본이 쌓이지 않습니다"
+          fi
 
       - name: Refresh KR/US close validations
         # 파일명은 kr만 가리키지만 KR+US 둘 다 생성함 (US 누락이 settle_pending_validations.py가
