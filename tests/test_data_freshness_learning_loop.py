@@ -149,3 +149,66 @@ def test_transient_staleness_does_not_alarm(tmp_path, monkeypatch) -> None:
 
     assert statuses["clean_window_samples"] == "OK", statuses
     assert not any(c["status"] == "ERROR" and not c["critical"] for c in result["checks"])
+
+
+def test_pending_before_due_is_not_counted_as_backlog(tmp_path, monkeypatch) -> None:
+    """만기 전 대기는 적체가 아니다.
+
+    settle_pending_validations.py의 `unsettled`는 `due_date > TODAY` 분기에서도
+    증가한다(=만기 전 대기까지 셈). 그 값으로 적체를 판단하면 캡처가 건강해질수록
+    숫자가 커져 영영 경고가 뜨고, 그러면 알람 자체를 안 믿게 된다.
+    """
+    hc = _setup(
+        tmp_path, monkeypatch,
+        ledger_rows=[
+            {"predictionId": f"p{i}", "createdAt": "2026-07-28", "market": "kr",
+             "symbol": "005930", "status": "PENDING"} for i in range(60)
+        ],
+        result_rows=[],
+    )
+    # 만기일을 미래로 채운다
+    import csv as _csv
+    path = tmp_path / "reports" / "virtual_prediction_ledger.csv"
+    rows = list(_csv.DictReader(path.open(encoding="utf-8", newline="")))
+    fields = list(rows[0].keys()) + ["validationDueDate"]
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = _csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        for r in rows:
+            r["validationDueDate"] = "2099-01-01"
+            w.writerow(r)
+
+    stats = hc._learning_loop_stats()
+    assert stats["pendingTotal"] == 60
+    assert stats["overduePending"] == 0, "만기 전 대기가 적체로 잡혔다"
+
+    result = hc.run(max_stale_days=3.0)
+    backlog = {c["name"]: c for c in result["checks"]}["settlement_backlog"]
+    assert backlog["status"] == "OK", backlog
+
+
+def test_overdue_pending_is_flagged(tmp_path, monkeypatch) -> None:
+    """만기가 지났는데 PENDING이면 진짜 적체 — 경고해야 한다."""
+    hc = _setup(
+        tmp_path, monkeypatch,
+        ledger_rows=[
+            {"predictionId": f"p{i}", "createdAt": "2026-01-01", "market": "kr",
+             "symbol": "005930", "status": "PENDING"} for i in range(30)
+        ],
+        result_rows=[],
+    )
+    import csv as _csv
+    path = tmp_path / "reports" / "virtual_prediction_ledger.csv"
+    rows = list(_csv.DictReader(path.open(encoding="utf-8", newline="")))
+    fields = list(rows[0].keys()) + ["validationDueDate"]
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = _csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        for r in rows:
+            r["validationDueDate"] = "2026-01-20"   # 이미 지남
+            w.writerow(r)
+
+    stats = hc._learning_loop_stats()
+    assert stats["overduePending"] == 30
+    backlog = {c["name"]: c for c in hc.run(3.0)["checks"]}["settlement_backlog"]
+    assert backlog["status"] in {"WARN", "ERROR"}, backlog
