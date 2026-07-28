@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T23:50:22.285695+00:00",
+  "generatedAt": "2026-07-28T17:13:29.095058+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -8,16 +8,16 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.99d, asOf=2026-07-28",
+      "detail": "0.72d, asOf=2026-07-28",
       "critical": true,
-      "ageDays": 0.99
+      "ageDays": 0.72
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "-0.36d, asOf=2026-07-29 08:29:52",
+      "detail": "-0.19d, asOf=2026-07-28 21:48:45",
       "critical": true,
-      "ageDays": -0.36
+      "ageDays": -0.19
     },
     {
       "name": "collector_steps",
@@ -29,37 +29,37 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.3d, asOf=2026-07-28T16:40:53.766520",
+      "detail": "0.02d, asOf=2026-07-28T16:40:53.766520",
       "critical": true,
-      "ageDays": 0.3
+      "ageDays": 0.02
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.01d, asOf=2026-07-29T08:31:35+09:00",
+      "detail": "0.18d, asOf=2026-07-28T21:50:25+09:00",
       "critical": false,
-      "ageDays": 0.01
+      "ageDays": 0.18
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "-0.01d, asOf=2026-07-29",
+      "detail": "0.72d, asOf=2026-07-28",
       "critical": false,
-      "ageDays": -0.01
+      "ageDays": 0.72
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-29 08:50:22",
+      "detail": "-0.1d, asOf=2026-07-28 19:38:20",
       "critical": false,
-      "ageDays": -0.37
+      "ageDays": -0.1
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "-0.01d, asOf=2026-07-29",
+      "detail": "0.72d, asOf=2026-07-28",
       "critical": true,
-      "ageDays": -0.01
+      "ageDays": 0.72
     },
     {
       "name": "capture_continuity",
@@ -71,21 +71,21 @@
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 53건",
+      "detail": "만기경과 미정산 0건 / 대기중 79건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "WARN",
-      "detail": "clean window(2026-07-10) 정산표본 3건 / 전체 정산 662건 / 원장 876행 — 표본 부족(30건 미만)",
+      "detail": "clean window(2026-07-10) 정산표본 3건 / 전체 정산 662건 / 원장 856행 — 표본 부족(30건 미만)",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "live_gate_promotion",
       "status": "OK",
-      "detail": "승격 1/12셀 (기준 effN≥30, 최대 36.5, global effN 84.1 승률 17.8%) — 활성: 0-72|SIDE",
+      "detail": "승격 1/12셀 (기준 effN≥30, 최대 37.4, global effN 86.0 승률 17.8%) — 활성: 0-72|SIDE",
       "critical": false,
       "ageDays": null
     }
