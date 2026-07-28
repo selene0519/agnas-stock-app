@@ -1,0 +1,118 @@
+name: MONE Ensemble Calibration
+
+# mone-weekly-refresh에서 분리된 앙상블 보정(walk-forward).
+#
+# 왜 따로 떼었나 — 2026-07-28 실측:
+#   앙상블 보정 단독 7033초(117분) → 120분 타임아웃에 걸려 cancelled.
+#   그 바람에 **앞서 성공한 4단계(DART/yfinance/섹터/유니버스)까지
+#   커밋 스텝이 skip 되어 통째로 유실**됐다. 느린 스텝 하나가 같은 잡에 있으면
+#   끝난 일까지 같이 버려진다 — accumulator 때와 똑같은 구조였다.
+#
+# 왜 월 1회인가:
+#   `run_ensemble_calibration`은 시장당 9개(3모드×3기간) walk-forward를 돌린다.
+#   KR+US면 18회. 함수 docstring에도 "보통 월 1회"라고 적혀 있는데 워크플로만
+#   주 1회로 돌리고 있었다. 설계 의도대로 월 1회로 맞춘다.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 매월 1일 21:00 UTC = 매월 2일 06:00 KST
+    - cron: "0 21 1 * *"
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mone-ensemble-calibration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    # 실측 117분에서 잘렸으므로 실제 완주 시간은 그보다 길다.
+    # 넉넉히 주되 무한정은 아니게(GitHub 호스티드 러너 상한은 6시간).
+    timeout-minutes: 300
+    env:
+      CI: "true"
+      GITHUB_ACTIONS_RUN: "true"
+      TZ: Asia/Seoul
+      PYTHONUTF8: "1"
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          fi
+          # 백엔드 엔진을 직접 임포트하므로 백엔드 의존성도 필요하다
+          # (캡처가 fastapi 없어서 CI에서만 죽었던 것과 같은 함정).
+          if [ -f mone-web-app/backend/requirements.txt ]; then
+            python -m pip install -r mone-web-app/backend/requirements.txt
+          fi
+
+      - name: 앙상블 보정 (walk-forward, 시장당 9콤보)
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.engine.ensemble_calibrator import run_ensemble_calibration
+          for market in ("kr", "us"):
+              result = run_ensemble_calibration(market=market)
+              combos = len(result.get("combos", []))
+              print(json.dumps(result, ensure_ascii=False, indent=2))
+              print(f"앙상블 보정 [{market}]: {combos}개 콤보 저장됨")
+          PY
+          code=$?
+          set -e
+          echo "ensemble calibration: exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::앙상블 보정 실패(exit ${code}) — 보정 테이블이 갱신되지 않았습니다"
+          fi
+
+      - name: Remove local token/cache files before commit
+        run: |
+          rm -f data/kis_token_cache*.json reports/kis_token_cache*.json kis_token_cache*.json 2>/dev/null || true
+          rm -f mone-web-app/backend/cache/*token_cache*.json 2>/dev/null || true
+
+      - name: Commit generated data
+        # 보정이 실패해도 부분 산출물은 남길 수 있게 always()로 둔다.
+        if: always()
+        run: |
+          bash scripts/ci_commit_app_data.sh "chore: ensemble calibration [skip ci]"
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 — 알림 스킵"
+            exit 0
+          fi
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE Ensemble Calibration 실패\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\n앙상블 보정 테이블이 갱신되지 않았습니다.\"}" \
+            || echo "텔레그램 알림 전송 실패 (무시)"
