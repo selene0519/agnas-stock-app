@@ -63,6 +63,37 @@ function fallbackSymbol(market: Market): MoneSymbol {
   return { id: "kr-005930", symbol: "005930", name: "삼성전자", market: "kr", label: "삼성전자 (005930)", isWatch: true };
 }
 
+// MACD(26봉) 기준. 이걸 넘겨야 MA20·볼린저·RSI·MACD가 전부 산출된다.
+const MIN_CHART_BARS = 26;
+
+/** 분석 가능한(=봉이 충분한) 첫 종목. 봉 수를 모르면 막지 않는다. */
+function pickAnalyzable(items: unknown): MoneSymbol | null {
+  if (!Array.isArray(items)) return null;
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i] as any;
+    const symbol = toSymbol(item, i);
+    if (!symbol) continue;
+    const bars = Number(item?.ohlcvCount ?? item?.barCount ?? NaN);
+    // 봉 수가 알려져 있고 기준 미만이면 건너뛴다. 기본 종목이 "분석 데이터
+    // 준비 중"으로 뜨면 화면 전체가 고장난 것처럼 보인다 — 실제로 신규 상장
+    // ETF(19봉)가 보유 목록 맨 앞이라 그 상태였다.
+    if (Number.isFinite(bars) && bars < MIN_CHART_BARS) continue;
+    return symbol;
+  }
+  return null;
+}
+
+/** 홈 매트릭스(9전략)를 훑어 추천 후보를 모은다. 한 번의 호출로 끝난다. */
+function recommendedFromMatrix(matrix: unknown): any[] {
+  if (!matrix || typeof matrix !== "object") return [];
+  const out: any[] = [];
+  for (const cell of Object.values(matrix as Record<string, any>)) {
+    const items = cell?.items;
+    if (Array.isArray(items)) out.push(...items);
+  }
+  return out;
+}
+
 function initialChartMarket(): Market {
   if (typeof window === "undefined") return "all";
   const saved = window.localStorage.getItem("mone:selectedMarketMode");
@@ -2518,19 +2549,24 @@ export default function ChartPage() {
     async function seed() {
       setSeedLoading(true);
       try {
+        // 우선순위: 오늘의 추천 → 보유 → 대표 종목.
+        // 예전엔 보유가 먼저였고 봉 수도 안 봐서, 보유 목록 맨 앞의 신규 상장
+        // ETF(0209Z0, 19봉)가 기본으로 잡혀 첫 화면이 늘 "분석 데이터 준비 중"
+        // 이었다. 분석 화면은 추천 종목을 먼저 보여주는 게 맞다.
         let picked: MoneSymbol | null = null;
         try {
-          const holdings = await mone.holdingsClean({ market: resolvedMarket, limit: 20 });
+          // 홈 매트릭스는 9전략 셀을 한 번에 준다(조합별로 9번 부르지 않는다).
+          const home: any = await mone.homeSummary({ market: resolvedMarket, limit: 12 });
           if (!active) return;
-          picked = Array.isArray(holdings.items) ? (holdings.items.map(toSymbol).find(Boolean) ?? null) : null;
-        } catch { /* try recommendations next */ }
+          picked = pickAnalyzable(recommendedFromMatrix(home?.matrix));
+        } catch { /* 보유로 넘어간다 */ }
         if (!active) return;
         if (!picked) {
           try {
-            const rec = await mone.recommendations({ market: resolvedMarket, mode: "balanced", horizon: "swing", limit: 20 });
+            const holdings = await mone.holdingsClean({ market: resolvedMarket, limit: 20 });
             if (!active) return;
-            picked = Array.isArray(rec.items) ? (rec.items.map(toSymbol).find(Boolean) ?? null) : null;
-          } catch { /* use fallback */ }
+            picked = pickAnalyzable(holdings?.items);
+          } catch { /* 대표 종목으로 넘어간다 */ }
         }
         if (active) setSelected(picked ?? fallbackSymbol(resolvedMarket));
       } finally { if (active) setSeedLoading(false); }
