@@ -95,7 +95,8 @@ const OUTCOME_LABEL: Record<string, string> = {
   LOSS: "손실",
 };
 function outcomeLabel(outcome: string) {
-  return OUTCOME_LABEL[outcome] ?? outcome;
+  // 미매핑 코드를 그대로 반환하면 사용자 화면에 기계코드가 뜬다.
+  return OUTCOME_LABEL[outcome] ?? (outcome ? "기타" : "-");
 }
 
 const MODE_SHORT: Record<string, string> = { conservative: "보수", balanced: "균형", aggressive: "공격" };
@@ -289,6 +290,30 @@ function AiPaperSurvivalPanel({
     if (action === "SELL") return "bg-red-500/15 text-red-300";
     return "bg-slate-700 text-slate-300";
   };
+  // 코드를 그대로 그리면 사용자에게 "UNPROVEN"/"PROVING_EDGE"가 노출된다.
+  // 2026-07-26에 statusLabel이 미매핑 코드를 그대로 반환해 "EMPTY_RESULT"가
+  // 새어나간 것과 같은 계열이라, 폴백도 한국어로 둔다.
+  const VERDICT_LABEL: Record<string, string> = {
+    PROVING_EDGE: "엣지 입증 중",
+    COMPETITIVE: "경쟁력 있음",
+    NOT_PROVEN: "미입증",
+    UNPROVEN: "미입증",
+    INSUFFICIENT_SAMPLE: "표본 부족",
+  };
+  const verdictLabel = (verdict?: string) => {
+    const key = String(verdict || "").trim().toUpperCase();
+    return VERDICT_LABEL[key] || (key ? "판정 대기" : "판정 대기");
+  };
+  const SURVIVAL_STATE_LABEL: Record<string, string> = {
+    ALIVE: "운용 중",
+    RETIRED: "중단",
+    PROBATION: "관찰 중",
+    UNKNOWN: "확인 불가",
+  };
+  const survivalStateLabel = (state?: string) => {
+    const key = String(state || "").trim().toUpperCase();
+    return SURVIVAL_STATE_LABEL[key] || "확인 불가";
+  };
   const verdictTone = (verdict: string) => {
     if (verdict === "PROVING_EDGE" || verdict === "COMPETITIVE") return "text-emerald-300";
     if (verdict === "NOT_PROVEN") return "text-red-300";
@@ -326,7 +351,7 @@ function AiPaperSurvivalPanel({
           const proof = item?.proofBoard || {};
           const live = item?.liveMetrics || {};
           const proofRows = Array.isArray(proof.rows) ? proof.rows.slice(0, 3) : [];
-          const state = survival.state || "UNKNOWN";
+          const state = survivalStateLabel(survival.state);
           const liveEnough = Number(live.sampleCount || 0) >= 5;
           return (
             <div key={mk} className="rounded-lg bg-slate-950/55 p-3 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
@@ -344,7 +369,7 @@ function AiPaperSurvivalPanel({
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
                   <span className="text-slate-400">OOS 판정</span>
-                  <span className={`truncate text-right font-semibold ${verdictTone(proof.verdict)}`}>{proof.verdict || "UNPROVEN"}</span>
+                  <span className={`truncate text-right font-semibold ${verdictTone(proof.verdict)}`}>{verdictLabel(proof.verdict)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
                   <span className="text-slate-400">검증 순위</span>

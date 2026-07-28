@@ -188,7 +188,7 @@ export default function SymbolSearchSelect({
             if (event.key === "Escape") setOpen(false);
           }}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-600"
+          className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-600"
         />
         {query && (
           <button

@@ -533,11 +533,11 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
                 <div className="mb-3 flex items-center justify-between">
                   <div className="font-mono text-sm font-bold text-slate-100">{String(row.market || "-").toUpperCase()}</div>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${toneClassName(row.localCollectorPushed ? "safe" : "warning")}`}>
-                    local {row.localCollectorStatus || "UNKNOWN"}
+                    local {row.localCollectorStatus || "확인 불가"}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <Mini label="GitHub Actions" value={`${row.githubActionsStatus || "UNKNOWN"}`} />
+                  <Mini label="GitHub Actions" value={`${row.githubActionsStatus || "확인 불가"}`} />
                   <Mini label="Collector pushed" value={row.localCollectorPushed === true ? "true" : row.localCollectorPushed === false ? "false" : "unknown"} />
                   <Mini label="Render latest file" value={row.renderLatestFileDate || "-"} />
                   <Mini label="Recommendation" value={row.recommendationLatestDate || "-"} />
@@ -613,7 +613,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
             <h2 className="text-lg font-semibold text-slate-100">빗각 과거 검증</h2>
             <p className="text-sm text-slate-400">과거 시점에서 그은 지지·저항 빗각을 다음 5봉 실제 고저가와 뉴스 리스크로 검증합니다.</p>
           </div>
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{trendlineAccuracy.status || "UNKNOWN"}</span>
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{trendlineAccuracy.status || "확인 불가"}</span>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <Metric label="표본" value={trendlineAccuracy.sampleCount ?? "-"} />
@@ -634,7 +634,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
             <h2 className="text-lg font-semibold text-slate-100">데이터 점검</h2>
             <p className="text-sm text-slate-400">백엔드 루트, 데이터 상태, 파일 구분을 표시합니다.</p>
           </div>
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{audit.status || "UNKNOWN"}</span>
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{audit.status || "확인 불가"}</span>
         </div>
 
         <div className="grid grid-cols-1 gap-2 text-xs text-slate-400 md:grid-cols-2">

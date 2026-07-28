@@ -221,13 +221,13 @@ export default function HoldingsWatchlistManager() {
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           onClick={() => setTab("holdings")}
-          className={`rounded-xl px-4 py-2 text-sm ${tab === "holdings" ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}
+          className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm ${tab === "holdings" ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}
         >
           보유종목 수정
         </button>
         <button
           onClick={() => setTab("watchlist")}
-          className={`rounded-xl px-4 py-2 text-sm ${tab === "watchlist" ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}
+          className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm ${tab === "watchlist" ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"}`}
         >
           관심종목 수정
         </button>

@@ -598,7 +598,7 @@ export default function PaperTradingPage({
               value={seedInput}
               onChange={(e) => setSeedInput(e.target.value)}
               placeholder={market === "kr" ? "5000000" : "5000"}
-              className="w-36 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
+              className="min-h-11 w-36 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
             />
             <button
               onClick={() => { setShowSeedInput(false); setResetConfirm(false); setSeedInput(""); }}

@@ -371,7 +371,7 @@ export default function ReportPage() {
         <div className="flex gap-2">
           {(["kr", "us"] as Market[]).map((m) => (
             <button key={m} onClick={() => setMarket(m)}
-              className={`rounded-xl px-4 py-1.5 text-sm font-medium ${market === m ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
+              className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-1.5 text-sm font-medium ${market === m ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
               {marketLabel(m)}
             </button>
           ))}
@@ -405,13 +405,13 @@ export default function ReportPage() {
       <div className="flex flex-wrap gap-1.5">
         {(["conservative", "balanced", "aggressive"] as Mode[]).map((m) => (
           <button key={m} onClick={() => setMode(m)}
-            className={`rounded-xl px-3 py-1.5 text-xs font-medium ${mode === m ? "bg-emerald-600 text-white" : "bg-slate-900 text-slate-400"}`}>
+            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-1.5 text-xs font-medium ${mode === m ? "bg-emerald-600 text-white" : "bg-slate-900 text-slate-400"}`}>
             {modeLabel(m)}
           </button>
         ))}
         {(["short", "swing", "mid"] as Horizon[]).map((h) => (
           <button key={h} onClick={() => setHorizon(h)}
-            className={`rounded-xl px-3 py-1.5 text-xs font-medium ${horizon === h ? "bg-cyan-600 text-white" : "bg-slate-900 text-slate-400"}`}>
+            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-1.5 text-xs font-medium ${horizon === h ? "bg-cyan-600 text-white" : "bg-slate-900 text-slate-400"}`}>
             {horizonLabel(h)}
           </button>
         ))}

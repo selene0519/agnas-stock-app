@@ -206,7 +206,7 @@ export default function BrokerPage({ userToken, onLogin, onNavigate }: BrokerPag
             <button
               type="button"
               onClick={onLogin}
-              className="rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white active:bg-blue-700"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white active:bg-blue-700"
             >
               로그인하기
             </button>
@@ -214,7 +214,7 @@ export default function BrokerPage({ userToken, onLogin, onNavigate }: BrokerPag
           <button
             type="button"
             onClick={() => onNavigate?.("holdings")}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-6 py-2.5 text-sm font-semibold text-slate-200 active:bg-slate-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-6 py-2.5 text-sm font-semibold text-slate-200 active:bg-slate-800"
           >
             직접 추가로 체험하기
           </button>
