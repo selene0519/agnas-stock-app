@@ -525,6 +525,50 @@ def _source_weight(source_type: Any) -> float:
     return float(SOURCE_CALIBRATION_WEIGHTS.get(_upper(source_type), 0.0))
 
 
+def _is_calibration_admissible(row: dict[str, Any]) -> bool:
+    """보정 근거로 쓸 수 있는 표본인지. SOURCE_CALIBRATION_WEIGHTS 정책을 따른다.
+
+    가중치 0인 소스(HISTORICAL_REPLAY 등)는 가설 생성용이지 라이브 파라미터를
+    움직일 근거가 아니다 — 정책 자체는 이미 위에 명시돼 있었는데 귀속분석
+    경로만 그걸 안 보고 전부 풀링하고 있었다.
+
+    2026-07-28 실측이 그 대가를 보여준다:
+        HISTORICAL_REPLAY    n=1298  승률 39.8%  평균 -0.40%
+        FORWARD_PAPER_TRADE  n= 569  승률 19.9%  평균 -5.58%
+        풀링(기존 attribution_feedback 근거)  승률 33.7%
+
+    즉 화면과 자가보정이 근거로 삼던 32%대 승률은 **70%가 과거 리플레이**였다.
+    같은 기간 forward 실측은 19.9%/-5.58%로 훨씬 나쁘다.
+    """
+    return _source_weight(row.get("source_type")) > 0.0
+
+
+def _source_breakdown(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """소스별 표본수/승률/평균손익. 제외분을 조용히 지우지 않고 드러낸다."""
+    buckets: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = _upper(row.get("source_type")) or "UNKNOWN"
+        pnl = _safe_float(row.get("net_pnl_pct"))
+        if pnl is None:
+            continue
+        b = buckets.setdefault(key, {"n": 0, "wins": 0, "pnl": 0.0})
+        b["n"] += 1
+        b["pnl"] += pnl
+        if pnl > 0:
+            b["wins"] += 1
+    out = []
+    for key, b in sorted(buckets.items(), key=lambda kv: -kv[1]["n"]):
+        out.append({
+            "sourceType": key,
+            "calibrationWeight": _source_weight(key),
+            "admissible": _source_weight(key) > 0.0,
+            "n": b["n"],
+            "winRate": round(b["wins"] / b["n"], 4) if b["n"] else None,
+            "avgPnlPct": round(b["pnl"] / b["n"], 3) if b["n"] else None,
+        })
+    return out
+
+
 def _candidate_numbers(item: dict[str, Any]) -> dict[str, float | None]:
     return {
         "score": _safe_float(item.get("finalRankScore") or item.get("finalScore") or item.get("recommendationScore")),
@@ -4085,6 +4129,9 @@ def attribution_analysis(
         if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}
         and _safe_float(r.get("net_pnl_pct")) is not None
     ]
+    source_breakdown = _source_breakdown(evaluated_candidates)
+    replay_rows = [r for r in evaluated_candidates if not _is_calibration_admissible(r)]
+    evaluated_candidates = [r for r in evaluated_candidates if _is_calibration_admissible(r)]
     inconsistent_outcomes = [r for r in evaluated_candidates if not _has_consistent_realized_outcome(r)]
     evaluated = [r for r in evaluated_candidates if _has_consistent_realized_outcome(r)]
 
@@ -4093,6 +4140,8 @@ def attribution_analysis(
             "status": "OK",
             "count": 0,
             "excludedInconsistentOutcomeCount": len(inconsistent_outcomes),
+            "excludedBySourcePolicyCount": len(replay_rows),
+            "sourceBreakdown": source_breakdown,
             "byRegime": [],
             "byMarket": [],
             "bySector": [],
@@ -4107,6 +4156,10 @@ def attribution_analysis(
         "status": "OK",
         "count": len(evaluated),
         "excludedInconsistentOutcomeCount": len(inconsistent_outcomes),
+        # 가중치 0인 소스(과거 리플레이)를 뺀 수와, 소스별 실측을 함께 낸다.
+        # 빼기만 하고 숨기면 "표본이 왜 줄었나"를 나중에 알 수 없다.
+        "excludedBySourcePolicyCount": len(replay_rows),
+        "sourceBreakdown": source_breakdown,
         "byRegime": _factor_stats(evaluated, "market_regime_at_signal"),
         "byMarket": _factor_stats(evaluated, "market"),
         "bySector": _factor_stats(evaluated, "sector"),
@@ -4544,11 +4597,24 @@ def attribution_feedback(market: str = "all") -> dict[str, Any]:
         if _upper(r.get("status")) in {"EVALUATED", "CANCELLED"}
         and _safe_float(r.get("net_pnl_pct")) is not None
     ]
+    # 보정 배율의 근거이므로 SOURCE_CALIBRATION_WEIGHTS 정책을 반드시 통과시킨다.
+    # 과거 리플레이를 섞으면 승률이 실제보다 좋아 보이고(실측 39.8% vs forward
+    # 19.9%), 그 낙관값으로 라이브 점수를 조정하게 된다.
+    source_breakdown = _source_breakdown(evaluated_candidates)
+    replay_rows = [r for r in evaluated_candidates if not _is_calibration_admissible(r)]
+    evaluated_candidates = [r for r in evaluated_candidates if _is_calibration_admissible(r)]
     inconsistent_outcomes = [r for r in evaluated_candidates if not _has_consistent_realized_outcome(r)]
     evaluated = [r for r in evaluated_candidates if _has_consistent_realized_outcome(r)]
 
     if len(evaluated) < 10:
-        return {"status": "LOW_SAMPLE", "sampleCount": len(evaluated), "minRequired": 10, "adjustments": []}
+        return {
+            "status": "LOW_SAMPLE",
+            "sampleCount": len(evaluated),
+            "minRequired": 10,
+            "excludedBySourcePolicyCount": len(replay_rows),
+            "sourceBreakdown": source_breakdown,
+            "adjustments": [],
+        }
 
     all_pnls = [_safe_float(r.get("net_pnl_pct")) for r in evaluated if _safe_float(r.get("net_pnl_pct")) is not None]
     wins = sum(1 for r in evaluated if (_safe_float(r.get("net_pnl_pct")) or 0) > 0)
@@ -4593,6 +4659,11 @@ def attribution_feedback(market: str = "all") -> dict[str, Any]:
         "market": market,
         "sampleCount": len(evaluated),
         "excludedInconsistentOutcomeCount": len(inconsistent_outcomes),
+        "excludedBySourcePolicyCount": len(replay_rows),
+        # 이 승률이 어떤 표본에서 나왔는지 숫자로 남긴다. 예전엔 과거 리플레이가
+        # 섞인 32%대가 근거 표시 없이 화면과 보정에 그대로 쓰였다.
+        "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
+        "sourceBreakdown": source_breakdown,
         "baseWinRate": round(base_win_rate, 4),
         "baseAvgPnlPct": round(base_avg_pnl, 3),
         "generatedAt": _now_iso(),
