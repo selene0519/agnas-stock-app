@@ -134,6 +134,36 @@ def _learning_loop_stats() -> dict:
     }
 
 
+# mone_v65_api_stabilizer.PUBLIC_QUANT_POLICY["minLiveCalibrationEffN"]와 같은 값.
+# 헬스체크는 stdlib만 쓰므로 백엔드를 import 하지 않고 상수를 복제한다.
+# (백엔드 쪽을 바꾸면 여기도 같이 바꿔야 한다 — 테스트가 두 값의 일치를 검사한다.)
+LIVE_GATE_MIN_EFFN = 30.0
+
+
+def _live_gate_promotion_check() -> tuple:
+    """라이브 실측 게이트가 실제로 승격됐는지. (name, status, detail, critical)
+
+    자동화의 진짜 위험은 "안 도는 것"이 아니라 **돌았는지 아무도 모르는 것**이다.
+    표본이 쌓이면 게이트 소스가 백테스트→라이브로 저절로 바뀌게 해뒀으니,
+    지금 몇 개 셀이 그 기준을 넘겼는지 눈에 보여야 한다.
+    """
+    cal = _load_json("reports/live_calibration_kr.json")
+    if not cal:
+        return ("live_gate_promotion", "MISSING", "live_calibration_kr.json 없음", False)
+    table = cal.get("table") or {}
+    if not table:
+        return ("live_gate_promotion", "WARN", "라이브 보정 테이블이 비어 있음", False)
+    promoted = [k for k, v in table.items() if float((v or {}).get("effN") or 0) >= LIVE_GATE_MIN_EFFN]
+    best = max((float((v or {}).get("effN") or 0) for v in table.values()), default=0.0)
+    g = cal.get("global") or {}
+    detail = (f"승격 {len(promoted)}/{len(table)}셀 (기준 effN≥{LIVE_GATE_MIN_EFFN:g}, "
+              f"최대 {best:.1f}, global effN {float(g.get('effN') or 0):.1f} "
+              f"승률 {g.get('winRate')}%)")
+    if promoted:
+        return ("live_gate_promotion", "OK", detail + f" — 활성: {', '.join(sorted(promoted)[:3])}", False)
+    return ("live_gate_promotion", "WARN", detail + " — 아직 백테스트 소스 사용 중", False)
+
+
 def _find_error_steps(obj, path="") -> list[str]:
     """상태 JSON에서 status가 ERROR/FAIL/실패인 노드 경로 수집 (조용한 실패)."""
     bad = []
@@ -224,6 +254,11 @@ def run(max_stale_days: float = 3.0) -> dict:
         add("clean_window_samples", "WARN", detail + " — 표본 부족(30건 미만)", False)
     else:
         add("clean_window_samples", "OK", detail, False)
+
+    # 10) 자동 승격 현황 — "표본 쌓이면 자동으로 켜진다"가 실제로 켜졌는지.
+    #     자동화의 위험은 안 도는 게 아니라 **돌았는지 아무도 모르는 것**이다.
+    #     라이브 보정 셀 중 게이트 승격 기준(effN)을 넘긴 게 몇 개인지 보여준다.
+    add(*_live_gate_promotion_check())
 
     crit_bad = [c for c in checks if c["critical"] and c["status"] != "OK"]
     # ERROR는 critical 여부와 무관하게 알람을 띄운다.
