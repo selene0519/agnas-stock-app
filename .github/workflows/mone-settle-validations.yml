@@ -65,6 +65,21 @@ jobs:
           echo "update_win_rates: exit $?"
           set -e
 
+      - name: 전략별 sleeve 자본곡선 갱신
+        # 승률만으로 전략을 고르면 손익 비대칭을 놓친다. 실측(오염 구간 662건)에서
+        # 승률 순위와 NAV 순위의 스피어만 상관은 -0.3이었다 — aggressive_mid는
+        # 승률 1위(19.4%)인데 자본은 8위(-44.5%, 페이오프 0.59). 정산 직후에
+        # 돌려야 그날 반영분이 곡선에 들어간다.
+        run: |
+          set +e
+          python scripts/update_strategy_sleeve_nav.py
+          code=$?
+          set -e
+          echo "update_strategy_sleeve_nav: exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::sleeve 자본곡선 갱신 실패(exit ${code}) — 전략 비교가 옛 데이터로 고정됩니다"
+          fi
+
       - name: 데이터 신선도 헬스게이트 + 알람 (조용한 실패 탐지)
         run: |
           set +e
@@ -98,6 +113,9 @@ jobs:
             git add reports/virtual_prediction_ledger.csv reports/virtual_validation_results.csv 2>/dev/null || true
             git add reports/pending_settlement_status.json reports/strategy_win_rates.json 2>/dev/null || true
             git add reports/data_freshness_status.json 2>/dev/null || true
+            # allowlist에 빠지면 스텝이 성공해도 산출물이 매번 버려진다
+            # (레거시 산출물 68개가 그렇게 2개월간 조용히 사라진 전례가 있다).
+            git add reports/strategy_sleeve_nav.json 2>/dev/null || true
 
             if git diff --cached --quiet; then
               echo "변경 없음 — 커밋 건너뜀"
