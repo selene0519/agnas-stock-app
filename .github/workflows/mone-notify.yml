@@ -61,7 +61,7 @@ jobs:
           if [ -f requirements.txt ]; then
             python -m pip install -r requirements.txt
           else
-            python -m pip install pandas numpy requests python-dotenv
+            python -m pip install "pandas>=2.2,<3" "numpy>=1.26,<3" requests python-dotenv
           fi
 
       - name: Check which market's preopen window this run matches

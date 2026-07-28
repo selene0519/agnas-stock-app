@@ -71,7 +71,7 @@ jobs:
           if [ -f requirements.txt ]; then
             python -m pip install -r requirements.txt
           else
-            python -m pip install pandas numpy requests python-dotenv yfinance finance-datareader beautifulsoup4 lxml
+            python -m pip install "pandas>=2.2,<3" "numpy>=1.26,<3" requests python-dotenv yfinance finance-datareader beautifulsoup4 lxml
           fi
           # 이 워크플로의 여러 스텝이 백엔드 모듈을 직접 임포트한다
           # (예측 캡처는 mone_v65_api_stabilizer를 부르는데 그게 fastapi를 import 한다).

@@ -47,7 +47,7 @@ jobs:
           if [ -f requirements.txt ]; then
             python -m pip install -r requirements.txt
           else
-            python -m pip install pandas numpy
+            python -m pip install "pandas>=2.2,<3" "numpy>=1.26,<3"
           fi
 
       - name: Regenerate KR pattern walk-forward harnesses

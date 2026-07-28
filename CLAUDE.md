@@ -151,14 +151,25 @@ midnightnnn/llm_invest)을 참고자료로 줬다. **셋 다 out-of-sample 엣�
 안 쓴다(라이브 시세를 다시 끌면 정산 경로와 두 번째 산식이 생긴다 — 손절가 3중 계산의 전례).
 사이징도 등가중 고정이다(Kelly를 쓰면 사이징 스킬과 **선택 스킬**이 섞여 #3 진단이 안 보인다).
 
+**6) 의존성이 무핀이었다(추가 발견).** `requirements.txt`와 워크플로 7곳이 `pandas numpy`를
+상한 없이 설치하고 있었다. pandas 3.0.5가 풀리면 테스트 5개가 죽는다 — **코드를 아무도 안
+건드린 날 CI가 깨지는** 종류라 원인 추적이 제일 오래 걸린다. 상한 적용 + `test_dependency_pins.py`로
+재발 차단(이 테스트가 내가 손으로 놓친 `mone-news-refresh.yml` 1곳을 실제로 잡았다).
+
 **⚠️ 남은 것:** clean window 표본은 여전히 3건. sleeve 순위는 30건 넘기 전엔 노이즈
 (`sampleWarning`이 자동으로 뜬다). `minCalibratedWinRate` 게이트 결정은 그 뒤 일로 그대로 남음.
 UI(#7 잔여: AI매매·관리자 계측, 빈/에러 상태 QA, 색 대비)도 손대지 않았다.
 
 ## 제약 / 운영 메모
 - CI dispatch 권한 없음(403) → 파이프라인 실행은 사용자 손 필요.
-- 이 환경엔 `pandas`/`numpy`/`fastapi` 없음 → 94개 테스트 중 62개가 **수집 불가**,
-  19개가 같은 이유로 실패한다. 신규 스크립트는 **stdlib만** 쓰고 테스트도 그렇게 짤 것
-  (그래야 이 환경에서 실제로 검증된다). 2026-07-29 기준 수집 가능분 141 passed.
+- 이 환경엔 과학 스택이 **선설치만 안 돼 있을 뿐 설치하면 전체 검증이 된다**
+  (이전 노트의 "구동 불가"는 틀렸다). 한 줄로 끝:
+  `pip install "pandas>=2.2,<3" "numpy>=1.26,<3" fastapi plotly python-dotenv streamlit yfinance httpx pytest`
+  → 2026-07-29 기준 **622 passed / 0 failed**. 앞으로 "환경이 없어서 못 돌린다"고
+  적기 전에 설치부터 시도할 것.
+- ⚠️ **pandas는 반드시 `<3`**. 무핀이면 CI가 최신 메이저를 풀어와 코드를 안 건드린 날
+  깨진다 — pandas 3.0.5에서 5개가 `TypeError: Invalid value 'True' for dtype 'str'`로
+  사망(문자열 컬럼 bool 대입 금지, 예측 원장이 그 패턴을 씀). requirements.txt + 워크플로
+  7곳에 상한 적용, `tests/test_dependency_pins.py`가 무핀 재발을 막는다.
 - 이 실행 환경엔 프론트 빌드/`fastapi`/`yfinance`/`FDR` 없음 → 백엔드 라이브 구동·시각 QA 불가(코드/로직 단위검증으로 대체).
 - 보유 **수량** 동기화는 로컬 브릿지(`scripts/sync_all.ps1`, 사용자 PC) 담당 — 안 돌리면 수량이 조용히 낡음.
