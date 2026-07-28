@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28 23:01:00",
+  "generatedAt": "2026-07-28 21:48:56",
   "source": "us_ohlcv_quant_scanner",
   "symbols": 158,
   "liveSymbols": 111,
@@ -7,20 +7,20 @@
     "regime": "SIDE",
     "label": "SIDE",
     "scoreAdjust": 0.0,
-    "description": "US SPY/QQQ/DIA MA20 -2.0%, 5d -2.1%",
-    "asOf": "2026-07-28",
+    "description": "US SPY/QQQ/DIA MA20 -1.8%, 5d -0.6%",
+    "asOf": "2026-07-27",
     "source": "us index OHLCV"
   },
-  "evFiltered": 5,
+  "evFiltered": 7,
   "results": {
     "conservative_short": 0,
-    "conservative_swing": 0,
-    "conservative_mid": 0,
-    "balanced_short": 1,
-    "balanced_swing": 0,
-    "balanced_mid": 5,
+    "conservative_swing": 2,
+    "conservative_mid": 4,
+    "balanced_short": 2,
+    "balanced_swing": 1,
+    "balanced_mid": 1,
     "aggressive_short": 3,
     "aggressive_swing": 0,
-    "aggressive_mid": 8
+    "aggressive_mid": 5
   }
 }

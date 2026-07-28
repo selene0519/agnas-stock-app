@@ -1,14 +1,14 @@
 {
-  "version": 366,
-  "generatedAt": "2026-07-28T23:02:05",
+  "version": 363,
+  "generatedAt": "2026-07-28T12:50:24.593977+00:00",
   "market": "us",
-  "totalSamples": 3386,
+  "totalSamples": 3343,
   "markets": {
     "us_aggressive_short": {
       "market": "us",
       "mode": "aggressive",
       "horizon": "short",
-      "sampleCount": 278,
+      "sampleCount": 273,
       "learnableSampleCount": 26,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -33,15 +33,15 @@
         "MISS_ENTRY_TOO_LOW": 4,
         "GOOD": 2,
         "GOOD_SIGNAL_WEAK_EXIT": 2,
-        "DATA_STALE": 252
+        "DATA_STALE": 247
       },
-      "appliedAt": "2026-07-28T14:01:58.882200+00:00"
+      "appliedAt": "2026-07-28T12:50:24.592970+00:00"
     },
     "us_balanced_swing": {
       "market": "us",
       "mode": "balanced",
       "horizon": "swing",
-      "sampleCount": 439,
+      "sampleCount": 429,
       "learnableSampleCount": 89,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -66,15 +66,15 @@
         "GOOD_SIGNAL_WEAK_EXIT": 17,
         "MISS_ENTRY_TOO_LOW": 13,
         "GOOD": 7,
-        "DATA_STALE": 350
+        "DATA_STALE": 340
       },
-      "appliedAt": "2026-07-28T14:01:58.882312+00:00"
+      "appliedAt": "2026-07-28T12:50:24.593127+00:00"
     },
     "us_conservative_mid": {
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
-      "sampleCount": 489,
+      "sampleCount": 481,
       "learnableSampleCount": 20,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -99,15 +99,15 @@
         "MISS_ENTRY_TOO_LOW": 2,
         "GOOD_SIGNAL_WEAK_EXIT": 7,
         "GOOD": 1,
-        "DATA_STALE": 469
+        "DATA_STALE": 461
       },
-      "appliedAt": "2026-07-28T14:01:58.882404+00:00"
+      "appliedAt": "2026-07-28T12:50:24.593269+00:00"
     },
     "us_aggressive_mid": {
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
-      "sampleCount": 498,
+      "sampleCount": 488,
       "learnableSampleCount": 27,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -131,9 +131,9 @@
         "ENTRY_TOO_AGGRESSIVE": 12,
         "MISS_ENTRY_TOO_LOW": 2,
         "GOOD_SIGNAL_WEAK_EXIT": 13,
-        "DATA_STALE": 471
+        "DATA_STALE": 461
       },
-      "appliedAt": "2026-07-28T14:01:58.882497+00:00"
+      "appliedAt": "2026-07-28T12:50:24.593422+00:00"
     },
     "us_aggressive_swing": {
       "market": "us",
@@ -166,7 +166,7 @@
         "GOOD": 1,
         "DATA_STALE": 311
       },
-      "appliedAt": "2026-07-28T14:01:58.882566+00:00"
+      "appliedAt": "2026-07-28T12:50:24.593531+00:00"
     },
     "us_conservative_short": {
       "market": "us",
@@ -199,31 +199,28 @@
         "MISS_ENTRY_TOO_LOW": 3,
         "DATA_STALE": 206
       },
-      "appliedAt": "2026-07-28T14:01:58.882615+00:00"
+      "appliedAt": "2026-07-28T12:50:24.593609+00:00"
     },
     "us_conservative_swing": {
       "market": "us",
       "mode": "conservative",
       "horizon": "swing",
-      "sampleCount": 301,
+      "sampleCount": 299,
       "learnableSampleCount": 27,
-      "confidence": 0.78,
+      "confidence": 0.9,
       "weightAdjustments": {
-        "riskPenalty": 0.833,
-        "qualityScore": -0.0679
+        "riskPenalty": 0.833
       },
       "priceAdjustments": {
-        "entryAggressiveness": -0.15,
+        "entryAggressiveness": -0.4,
         "targetMultiplier": 0.0,
-        "stopAtrMultiplier": 0.0392
+        "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": -0.8,
+        "maxDistanceToEntryPct": -1.0,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
-        "DATA_QUALITY",
-        "STOP_TOO_TIGHT",
         "ENTRY_TOO_AGGRESSIVE",
         "MISS_ENTRY_TOO_LOW",
         "GOOD_SIGNAL_WEAK_EXIT"
@@ -233,15 +230,9 @@
         "ENTRY_TOO_AGGRESSIVE": 18,
         "GOOD": 1,
         "GOOD_SIGNAL_WEAK_EXIT": 4,
-        "DATA_STALE": 274
+        "DATA_STALE": 272
       },
-      "appliedAt": "2026-07-28T23:02:05",
-      "rawJournalSampleCount": 53,
-      "effectiveJournalSampleCount": 53,
-      "journalCalibrationApplied": true,
-      "journalCalibrationSource": "d842b4738155ee2a0933",
-      "journalCalibrationSourceType": "FORWARD_PAPER_TRADE",
-      "journalCalibrationAppliedBy": "github-actions-vtj-self-learning"
+      "appliedAt": "2026-07-28T12:50:24.593715+00:00"
     },
     "us_mid_1566.2100": {
       "market": "us",
@@ -266,13 +257,13 @@
       "reasonCounts": {
         "MISS_ENTRY_TOO_LOW": 1
       },
-      "appliedAt": "2026-07-28T14:01:58.882684+00:00"
+      "appliedAt": "2026-07-28T12:50:24.593730+00:00"
     },
     "us_balanced_mid": {
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
-      "sampleCount": 502,
+      "sampleCount": 497,
       "learnableSampleCount": 27,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -296,15 +287,15 @@
         "ENTRY_TOO_AGGRESSIVE": 17,
         "GOOD_SIGNAL_WEAK_EXIT": 8,
         "MISS_ENTRY_TOO_LOW": 2,
-        "DATA_STALE": 475
+        "DATA_STALE": 470
       },
-      "appliedAt": "2026-07-28T14:01:58.882777+00:00"
+      "appliedAt": "2026-07-28T12:50:24.593880+00:00"
     },
     "us_balanced_short": {
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
-      "sampleCount": 294,
+      "sampleCount": 291,
       "learnableSampleCount": 29,
       "confidence": 0.9,
       "weightAdjustments": {
@@ -327,11 +318,10 @@
         "ENTRY_TOO_AGGRESSIVE": 22,
         "MISS_ENTRY_TOO_LOW": 5,
         "GOOD": 2,
-        "DATA_STALE": 265
+        "DATA_STALE": 262
       },
-      "appliedAt": "2026-07-28T14:01:58.882836+00:00"
+      "appliedAt": "2026-07-28T12:50:24.593975+00:00"
     }
   },
-  "savedAt": "2026-07-28T14:02:05.839764+00:00",
-  "source": "virtual_trade_journal_approved_calibrations"
+  "savedAt": "2026-07-28T12:50:24.594529+00:00"
 }

@@ -1,73 +1,80 @@
 {
   "table": {
-    "55-60|BULL": {
-      "count": 98,
-      "winRate": 53.1,
-      "avgPnl": 0.908,
-      "avgWin": 4.744,
-      "lossPct": 46.9
+    "60-65|SIDE": {
+      "count": 834,
+      "winRate": 48.4,
+      "avgPnl": 0.654,
+      "avgWin": 4.139,
+      "lossPct": 51.6
     },
-    "50-55|BULL": {
+    "65-70|SIDE": {
+      "count": 164,
+      "winRate": 42.1,
+      "avgPnl": 0.096,
+      "avgWin": 4.712,
+      "lossPct": 57.9
+    },
+    "70-100|SIDE": {
       "count": 12,
-      "winRate": 50.0,
-      "avgPnl": 2.406,
-      "avgWin": 9.631,
-      "lossPct": 50.0
+      "winRate": 33.3,
+      "avgPnl": -1.195,
+      "avgWin": 1.421,
+      "lossPct": 66.7
     },
     "60-65|BULL": {
-      "count": 164,
+      "count": 2337,
       "winRate": 42.7,
-      "avgPnl": 0.145,
-      "avgWin": 5.791,
+      "avgPnl": -0.048,
+      "avgWin": 4.822,
       "lossPct": 57.3
     },
     "65-70|BULL": {
-      "count": 47,
-      "winRate": 51.1,
-      "avgPnl": 1.674,
-      "avgWin": 7.677,
-      "lossPct": 48.9
+      "count": 570,
+      "winRate": 45.6,
+      "avgPnl": 0.829,
+      "avgWin": 6.678,
+      "lossPct": 54.4
     },
-    "60-65|SIDE": {
-      "count": 59,
-      "winRate": 64.4,
-      "avgPnl": 1.654,
-      "avgWin": 4.17,
-      "lossPct": 35.6
+    "55-60|BULL": {
+      "count": 1002,
+      "winRate": 41.7,
+      "avgPnl": 0.1,
+      "avgWin": 5.681,
+      "lossPct": 58.3
+    },
+    "50-55|BULL": {
+      "count": 153,
+      "winRate": 35.9,
+      "avgPnl": -0.653,
+      "avgWin": 6.903,
+      "lossPct": 64.1
     },
     "65-70|BEAR": {
-      "count": 8,
-      "winRate": 25.0,
-      "avgPnl": -0.855,
-      "avgWin": 4.681,
-      "lossPct": 75.0
-    },
-    "70-100|BEAR": {
-      "count": 1,
-      "winRate": 0.0,
-      "avgPnl": -1.458,
-      "avgWin": 0,
-      "lossPct": 100.0
+      "count": 58,
+      "winRate": 17.2,
+      "avgPnl": -1.12,
+      "avgWin": 3.454,
+      "lossPct": 82.8
     },
     "70-100|BULL": {
-      "count": 2,
-      "winRate": 0.0,
-      "avgPnl": -2.322,
-      "avgWin": 0,
-      "lossPct": 100.0
+      "count": 34,
+      "winRate": 47.1,
+      "avgPnl": 0.203,
+      "avgWin": 5.092,
+      "lossPct": 52.9
     },
-    "65-70|SIDE": {
-      "count": 14,
-      "winRate": 28.6,
-      "avgPnl": -2.374,
-      "avgWin": 1.972,
-      "lossPct": 71.4
+    "70-100|BEAR": {
+      "count": 6,
+      "winRate": 66.7,
+      "avgPnl": 1.126,
+      "avgWin": 2.553,
+      "lossPct": 33.3
     }
   },
   "global": {
-    "count": 405,
-    "winRate": 48.4,
-    "avgPnl": 0.671
+    "count": 5170,
+    "winRate": 43.3,
+    "avgPnl": 0.166
   },
   "bins": [
     "0-50",
@@ -80,5 +87,5 @@
   "market": "us",
   "mode": "balanced",
   "horizon": "swing",
-  "recordCount": 610
+  "recordCount": 9245
 }
