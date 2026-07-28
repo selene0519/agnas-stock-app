@@ -2975,9 +2975,27 @@ PUBLIC_QUANT_POLICY = {
     "minRiskReward": 1.5,
     "minCalibratedWinRatePct": 45.0,
     "minCalibrationCount": 30,
+    # ── 라이브 실측 게이트 자동 승격 ────────────────────────────────────
+    # 라이브 정산 표본이 이만큼(유효표본) 쌓인 셀은 게이트 소스를 백테스트에서
+    # 라이브 실측으로 **자동 전환**한다. 사람이 스위치를 올릴 필요가 없다.
+    "minLiveCalibrationEffN": 30.0,
+    # 라이브로 전환되면 절대 기준(45%)을 쓰지 않는다. 그 45%는 낙관적인
+    # 백테스트 분포(44~55%)에 맞춰진 값이라, 라이브 실측(전체 17%대)에 대면
+    # 게이트가 아니라 영구 정지 스위치가 된다.
+    # 대신 **그 종목의 손익비로 계산한 손익분기 승률 + 마진**을 요구한다.
+    #   손익분기 = 1/(1+RR)  (RR 3.0이면 25%)
+    # 이러면 기준이 종목마다 자동으로 맞춰지고, 내가 임의의 숫자를 정할 필요도 없다.
+    "liveWinRateMarginPct": 5.0,
     "maxSingleTradeRiskPct": 0.5,
     "maxPositionWeightPct": 10.0,
 }
+
+
+def _breakeven_win_rate_pct(rr: float | None) -> float | None:
+    """손익비 RR에서 손익분기 승률(%). RR 3.0 → 25.0"""
+    if rr is None or rr <= 0:
+        return None
+    return 100.0 / (1.0 + float(rr))
 
 
 def _calc_risk_reward(item: dict[str, Any]) -> float | None:
@@ -3095,10 +3113,34 @@ def _public_quant_verdict(item: dict[str, Any], performance: dict[str, Any], tra
 
     calibration_count = int(_num(item.get("calibrationCount"), 0) or 0)
     calibrated_wr = _num(item.get("calibratedWinRate"), None)
-    if calibration_count < int(policy["minCalibrationCount"]):
-        cautions.append(f"calibration sample low ({calibration_count}/{policy['minCalibrationCount']})")
-    elif calibrated_wr is None or calibrated_wr < float(policy["minCalibratedWinRatePct"]):
-        reasons.append(f"calibrated win rate below gate ({calibrated_wr}%)")
+    live_wr = _num(item.get("liveCalibratedWinRate"), None)
+    live_effn = _num(item.get("liveCalibrationEffN"), 0) or 0.0
+
+    # 라이브 실측 표본이 충분히 쌓인 셀은 자동으로 라이브를 게이트 소스로 쓴다.
+    # 표본이 모자라면 예전대로 백테스트 소스를 쓴다 → 시간이 지나 표본이
+    # 쌓이는 것만으로 게이트가 저절로 정직해진다(사람 개입 없음).
+    if live_wr is not None and live_effn >= float(policy["minLiveCalibrationEffN"]):
+        breakeven = _breakeven_win_rate_pct(rr)
+        required = (
+            breakeven + float(policy["liveWinRateMarginPct"])
+            if breakeven is not None
+            else float(policy["minCalibratedWinRatePct"])
+        )
+        item["calibrationGateSource"] = "LIVE_SETTLED"
+        item["calibrationGateRequiredPct"] = round(required, 1)
+        item["calibrationGateEffN"] = round(live_effn, 1)
+        if live_wr < required:
+            reasons.append(
+                f"live win rate below breakeven gate ({live_wr}% < {required:.1f}% "
+                f"= RR {rr} 손익분기 + {policy['liveWinRateMarginPct']}%p, effN {live_effn:.1f})"
+            )
+    else:
+        item["calibrationGateSource"] = "BACKTEST" if calibrated_wr is not None else "NONE"
+        item["calibrationGateEffN"] = round(live_effn, 1)
+        if calibration_count < int(policy["minCalibrationCount"]):
+            cautions.append(f"calibration sample low ({calibration_count}/{policy['minCalibrationCount']})")
+        elif calibrated_wr is None or calibrated_wr < float(policy["minCalibratedWinRatePct"]):
+            reasons.append(f"calibrated win rate below gate ({calibrated_wr}%)")
 
     if item.get("isTradeBlocked"):
         reasons.append(str(item.get("tradeBlockReason") or item.get("tradeBlockStatus") or "item trade block"))
