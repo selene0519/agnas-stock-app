@@ -1,3 +1,4 @@
+import csv
 import sys
 from datetime import date
 from pathlib import Path
@@ -19,3 +20,18 @@ def test_exclude_future_ohlcv_removes_future_and_invalid_rows() -> None:
 
     assert excluded == 2
     assert [row["date"] for row in usable["TEST"]] == [row["date"] for row in historic]
+
+
+def test_persisted_results_with_future_window_are_invalid(monkeypatch, tmp_path: Path) -> None:
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    with (reports / "walkforward_results_us.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["window"])
+        writer.writeheader()
+        writer.writerows([{"window": "2026-07-26"}, {"window": "2026-07-29"}])
+    monkeypatch.setattr(walkforward, "_reports_dir", lambda: reports)
+
+    integrity = walkforward.inspect_persisted_results("us", as_of=date(2026, 7, 28))
+
+    assert integrity["status"] == "INVALID_TEMPORAL_DATA"
+    assert integrity["futureWindowCount"] == 1

@@ -38,6 +38,25 @@ def test_positive_expectancy_attribution_can_reward_a_strategy() -> None:
     assert multiplier > 1.0
 
 
+def test_ops_dashboard_uses_persisted_learning_snapshot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    snapshot_path = tmp_path / "self_learning_status.json"
+    snapshot_path.write_text(
+        '{"status":"OK","generatedAt":"2026-07-28T10:00:00","latest":{"market":"all","generatedAt":"2026-07-28T09:00:00","quality":{"score":88},"eligibleCount":2,"applied":1}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(vtj, "SELF_LEARNING_STATUS_JSON", snapshot_path)
+    monkeypatch.setattr(vtj, "JOURNAL_CSV", tmp_path / "journal.csv")
+    monkeypatch.setattr(vtj, "EVALUATION_CSV", tmp_path / "evaluations.csv")
+    monkeypatch.setattr(vtj, "CALIBRATION_APPROVALS_CSV", tmp_path / "approvals.csv")
+    monkeypatch.setattr(vtj, "CALIBRATION_APPLICATIONS_CSV", tmp_path / "applications.csv")
+    monkeypatch.setattr(vtj, "self_learning_status", lambda *_args, **_kwargs: pytest.fail("ops dashboard must not recalculate learning"))
+
+    dashboard = vtj.ops_dashboard("all")
+
+    assert dashboard["selfLearning"]["quality"] == {"score": 88}
+    assert dashboard["performanceGate"]["status"] == "DEFERRED"
+
+
 def _valid_recommendation(symbol: str = "TEST") -> dict:
     return {
         "market": "kr",

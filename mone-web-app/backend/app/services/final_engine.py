@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 import csv as _csv_std
-from datetime import datetime
+from datetime import date, datetime
 from functools import lru_cache
 import os
 import re
@@ -35,6 +35,16 @@ HORIZON_LABELS = {"short": "단기", "swing": "스윙", "mid": "중기"}
 HORIZON_DAYS = {"short": 1, "swing": 5, "mid": 20}
 HORIZON_PROB_FIELD = {"short": "prob1d", "swing": "prob5d", "mid": "prob20d"}
 HORIZON_PRICE_FIELD = {"short": "expectedPrice1dText", "swing": "expectedPrice5dText", "mid": "expectedPrice20dText"}
+
+
+def _temporally_valid_walkforward_rows(wf_df: pd.DataFrame) -> pd.DataFrame:
+    """Reject an entire report when any persisted window is future-dated or invalid."""
+    if "window" not in wf_df.columns:
+        return wf_df.iloc[0:0]
+    window_dates = pd.to_datetime(wf_df["window"], errors="coerce")
+    if window_dates.isna().any() or (window_dates.dt.date > date.today()).any():
+        return wf_df.iloc[0:0]
+    return wf_df
 
 MODE_RULES = {
     "conservative": {"min_opportunity": 68, "min_entry": 64, "max_risk": 38, "max_gap": 0.035, "max_items": 5, "risk_mult": 0.82},
@@ -1248,6 +1258,9 @@ def _load_walkforward_metrics(market: str) -> dict[str, dict[str, Any]]:
         wf_df = data.read_csv(csv_path)
         if wf_df.empty:
             return result
+        wf_df = _temporally_valid_walkforward_rows(wf_df)
+        if wf_df.empty:
+            return result
         # corrected strategy 우선 사용 (baseline 제외)
         if "strategy" in wf_df.columns:
             corrected = wf_df[wf_df["strategy"] == "corrected"]
@@ -1329,6 +1342,9 @@ def _wf_fullhistory(market: str) -> dict[str, dict[str, Any]]:
         return out
     try:
         wf_df = data.read_csv(csv_path)
+        if wf_df.empty:
+            return out
+        wf_df = _temporally_valid_walkforward_rows(wf_df)
         if wf_df.empty:
             return out
         if "strategy" in wf_df.columns:

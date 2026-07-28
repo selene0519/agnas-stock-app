@@ -2780,6 +2780,34 @@ def _read_self_learning_report() -> dict[str, Any]:
         return {"runs": []}
 
 
+def _persisted_self_learning_status(market: str) -> dict[str, Any]:
+    """Read the latest completed learning run without recalculating it for a UI health check."""
+    report = _read_self_learning_report()
+    latest = report.get("latest") if isinstance(report.get("latest"), dict) else {}
+    latest_market = _text(latest.get("market") or "all").lower()
+    requested_market = _text(market or "all").lower()
+    compatible = requested_market == "all" or latest_market in {"all", requested_market}
+    if not latest or not compatible:
+        return {
+            "status": "STALE",
+            "source": "PERSISTED_RUN",
+            "quality": None,
+            "performanceGate": {"status": "DEFERRED", "message": "Use self-learning status for a fresh performance gate."},
+        }
+    return {
+        "status": "OK",
+        "source": "PERSISTED_RUN",
+        "generatedAt": report.get("generatedAt"),
+        "quality": latest.get("quality"),
+        "eligibleAutoCount": latest.get("eligibleCount"),
+        "lowSampleCount": None,
+        "appliedCount": latest.get("applied"),
+        "correctionVersion": None,
+        "lastSelfLearningRun": latest,
+        "performanceGate": {"status": "DEFERRED", "message": "Use self-learning status for a fresh performance gate."},
+    }
+
+
 def _write_self_learning_report(run: dict[str, Any]) -> None:
     try:
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -2922,9 +2950,12 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
     }
 
 
-def _performance_scope_rows(application: dict[str, Any]) -> list[dict[str, Any]]:
+def _performance_scope_rows(
+    application: dict[str, Any],
+    merged_rows: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     rows = _filter_rows(
-        _merge_evaluations(_read_journal_rows()),
+        merged_rows if merged_rows is not None else _merge_evaluations(_read_journal_rows()),
         _text(application.get("market") or "all").lower(),
         _text(application.get("mode") or "all").lower(),
         _text(application.get("horizon") or "all").lower(),
@@ -2963,6 +2994,7 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
     if not applications:
         return {"status": "NO_APPLICATIONS", "items": [], "autoRollback": False}
 
+    merged_rows = _merge_evaluations(_read_journal_rows())
     min_samples = int(AUTO_CALIBRATION_POLICY.get("minPrePostSamples") or 30)
     pnl_drop = float(AUTO_CALIBRATION_POLICY.get("rollbackAvgPnlDropPct") or 1.5)
     win_drop = float(AUTO_CALIBRATION_POLICY.get("rollbackWinRateDrop") or 0.10)
@@ -2970,7 +3002,7 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
     rollback_candidates: list[dict[str, Any]] = []
     for app in applications[:12]:
         applied_at = _text(app.get("applied_at"))
-        rows = _performance_scope_rows(app)
+        rows = _performance_scope_rows(app, merged_rows=merged_rows)
         before = [row for row in rows if _row_event_date(row) < applied_at]
         after = [row for row in rows if _row_event_date(row) >= applied_at]
         before_m = _performance_metrics(before[-max(min_samples, 100):])
@@ -3213,8 +3245,10 @@ def ops_dashboard(market: str = "all") -> dict[str, Any]:
         _file_status(REPORTS_DIR / "factor_based_filter_adjustments.json"),
     ]
     warnings = [f"{f['path']}:{f['state']}" for f in files if f["state"].startswith("MISSING_REQUIRED")]
-    perf_gate = calibration_performance_gate(market=market, auto_rollback=False)
-    self_status = self_learning_status(market=market) if market != "__internal_skip" else {}
+    # The complete learning analysis has its own endpoint.  The dashboard uses
+    # the last completed snapshot so opening the page never starts it again.
+    self_status = _persisted_self_learning_status(market)
+    perf_gate = self_status.get("performanceGate") or {"status": "DEFERRED"}
     operational = _journal_operational_verdict(
         raw_journal_rows=raw_journal_rows,
         merged_rows=journal_rows,
@@ -3245,6 +3279,9 @@ def ops_dashboard(market: str = "all") -> dict[str, Any]:
             "latestEvaluatedAt": operational.get("latestEvaluatedAt"),
         },
         "selfLearning": {
+            "status": self_status.get("status"),
+            "source": self_status.get("source"),
+            "generatedAt": self_status.get("generatedAt"),
             "quality": self_status.get("quality"),
             "eligibleAutoCount": self_status.get("eligibleAutoCount"),
             "lowSampleCount": self_status.get("lowSampleCount"),

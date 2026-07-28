@@ -40,6 +40,45 @@ def _reports_dir() -> Path:
     return _repo_root() / "reports"
 
 
+def inspect_persisted_results(market: str, as_of: date | None = None) -> dict[str, Any]:
+    """Return temporal integrity for an already-written walk-forward CSV."""
+    cutoff = as_of or date.today()
+    csv_path = _reports_dir() / f"walkforward_results_{market}.csv"
+    if not csv_path.exists():
+        return {"status": "NO_DATA", "market": market, "asOf": cutoff.isoformat(), "path": str(csv_path)}
+
+    future_rows = 0
+    invalid_dates = 0
+    total_rows = 0
+    latest_window: str | None = None
+    try:
+        with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
+            for row in csv.DictReader(handle):
+                total_rows += 1
+                raw_window = str(row.get("window") or "").strip()
+                try:
+                    window_date = datetime.fromisoformat(raw_window).date()
+                except (TypeError, ValueError):
+                    invalid_dates += 1
+                    continue
+                latest_window = max(latest_window or raw_window, raw_window)
+                if window_date > cutoff:
+                    future_rows += 1
+    except Exception as exc:
+        return {"status": "ERROR", "market": market, "asOf": cutoff.isoformat(), "path": str(csv_path), "error": str(exc)}
+
+    return {
+        "status": "INVALID_TEMPORAL_DATA" if future_rows or invalid_dates else "OK",
+        "market": market,
+        "asOf": cutoff.isoformat(),
+        "path": str(csv_path),
+        "totalRows": total_rows,
+        "futureWindowCount": future_rows,
+        "invalidWindowCount": invalid_dates,
+        "latestWindow": latest_window,
+    }
+
+
 # ─── 공통 유틸 ────────────────────────────────────────────────────────────────
 
 def _num(v: Any) -> float | None:
@@ -1069,6 +1108,7 @@ def run_all(market: str = "kr") -> dict[str, Any]:
     summary = {
         "generatedAt": datetime.utcnow().isoformat(),
         "market":      market,
+        "asOf":        date.today().isoformat(),
         "combos":      all_results,
     }
     json_path = reports / f"walkforward_summary_{market}.json"

@@ -3918,6 +3918,14 @@ def api_validation_walkforward(
             return {"status": "ERROR", "error": str(exc)}
 
     # 저장된 결과 반환
+    temporal_integrity = _wfb.inspect_persisted_results(mk)
+    if temporal_integrity.get("status") == "INVALID_TEMPORAL_DATA":
+        return {
+            **temporal_integrity,
+            "message": "Persisted walk-forward results include future or invalid windows and are excluded until rerun.",
+            "nextAction": "Run the walk-forward job again with current OHLCV data.",
+        }
+
     if summary_path.exists():
         try:
             data = _wf_json.loads(summary_path.read_text(encoding="utf-8"))
