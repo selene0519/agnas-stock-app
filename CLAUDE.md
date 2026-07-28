@@ -160,6 +160,36 @@ midnightnnn/llm_invest)을 참고자료로 줬다. **셋 다 out-of-sample 엣�
 (`sampleWarning`이 자동으로 뜬다). `minCalibratedWinRate` 게이트 결정은 그 뒤 일로 그대로 남음.
 UI(#7 잔여: AI매매·관리자 계측, 빈/에러 상태 QA, 색 대비)도 손대지 않았다.
 
+## 2026-07-29 (2) — 테스트가 처음 완주하자 관리자 인증 우회가 나왔다
+**환경이 없다고 적어둔 게 실제로는 안 해본 것이었다.** `pip install` 한 줄로 전체
+테스트가 돌았고(624 passed), 그 상태에서 `pip-audit`를 돌리니 백엔드 핀에 CVE 12건이
+쌓여 있었다. 루트 requirements는 **무핀**(최신 메이저를 끌어옴), 백엔드는 **핀은 있는데
+한 번도 안 올림** — 정반대 실패가 한 레포에 같이 있었다.
+
+**실제로 뚫렸다(재현 완료).** `main.py:550` `admin_auth_middleware`가
+`path = request.url.path`로 `/api/admin/` prefix를 검사했다. `request.url`은
+`{scheme}://{host}{path}`를 이어붙였다 다시 파싱해 만들어지므로 Host에 `/`가 섞이면
+경로 경계가 밀린다. 라우팅은 raw scope path를 쓰므로 **엔드포인트는 정상 실행되고
+앞단 인증만 건너뛴다**(starlette PYSEC-2026-161). 레포 핀 버전 0.41.3에서 실측:
+
+    GET /api/admin/secret  +  Host: example.com/abc?bar=
+    -> request.url.path == "/abc"  (prefix 불일치 -> 인증 통과)
+    -> 라우팅은 /api/admin/secret  -> 200 + 데이터 노출
+
+백엔드는 Render에 배포돼 있어 인터넷에서 닿는다. rate limiter도 같은 패턴이었다.
+
+**수정: 라이브러리가 아니라 습관을 고쳤다.** 보안 판정을 `request.scope["path"]`로
+옮겼다(`_raw_path()`). starlette 0.41.3에서도 막힌다 — 버전 독립. starlette 1.x 승격은
+FastAPI 메이저 동반 이동이라 **안 했다**(코드 수정으로 해당 CVE가 무력화되고, 나머지
+starlette CVE는 StaticFiles/FileResponse/HTTPEndpoint/`request.form()`을 안 써서 미해당).
+`requests==2.33.0`, `python-dotenv==1.2.2`만 안전 승격.
+`tests/test_admin_auth_host_header_bypass.py`가 AST로 `request.url.path` 재발을 막는다
+(정규식으로 짰더니 자기 docstring을 잡았다 — 검사 대상이 문자열을 담고 있을 땐 AST로).
+
+⚠️ **남음:** starlette 0.41.3 핀 자체는 그대로다. 지금은 미해당이지만 나중에
+StaticFiles/`request.form()`을 쓰기 시작하면 Range DoS·폼 한도 무시가 바로 살아난다.
+그때는 FastAPI 승격이 선행돼야 한다.
+
 ## 제약 / 운영 메모
 - CI dispatch 권한 없음(403) → 파이프라인 실행은 사용자 손 필요.
 - 이 환경엔 과학 스택이 **선설치만 안 돼 있을 뿐 설치하면 전체 검증이 된다**

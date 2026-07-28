@@ -73,7 +73,9 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
             "ok": False,
             "status": "ERROR",
             "error": str(exc),
-            "path": str(request.url.path),
+            # 에러 응답에도 조작된 경로가 아니라 실제 라우팅 경로가 찍혀야
+            # 로그를 보고 사고를 재구성할 수 있다.
+            "path": str(request.scope.get("path") or ""),
             "trace": traceback.format_exc()[-800:],
         },
     )
@@ -525,9 +527,26 @@ def _normalize_oauth_user(provider: str, payload: dict) -> dict[str, str]:
         "picture": str(profile.get("profile_image_url") or profile.get("thumbnail_image_url") or ""),
     }
 
+def _raw_path(request: Request) -> str:
+    """라우팅이 실제로 쓰는 경로. **보안 판정은 반드시 이걸로 한다.**
+
+    `request.url`은 `{scheme}://{host}{path}`를 문자열로 이어붙였다가 다시 파싱해서
+    만들어진다. 그래서 Host 헤더에 `/`가 들어오면 경로 경계가 밀려 `request.url.path`가
+    실제 요청 경로와 달라진다(starlette PYSEC-2026-161). 라우팅은 raw scope path를
+    쓰므로 **엔드포인트는 정상 실행되는데 앞단의 경로 기반 인증만 건너뛴다.**
+
+    실측(2026-07-29, 레포 핀 버전 starlette 0.41.3):
+        GET /api/admin/secret + `Host: example.com/abc?bar=`
+        -> request.url.path == "/abc" (관리자 prefix 불일치 -> 인증 통과)
+        -> 라우팅은 /api/admin/secret 으로 dispatch -> 200 + 데이터 노출
+    starlette 1.3.1에서는 막히지만, 여기서 scope를 쓰면 버전과 무관하게 안전하다.
+    """
+    return str(request.scope.get("path") or "")
+
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    path = request.url.path
+    path = _raw_path(request)
     if request.method == "POST" and any(path.startswith(p) for p in _RATE_LIMITED_PREFIXES):
         client_ip = request.client.host if request.client else "unknown"
         key = f"{client_ip}:{path}"
@@ -547,7 +566,7 @@ async def rate_limit_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def admin_auth_middleware(request: Request, call_next):
-    path = request.url.path
+    path = _raw_path(request)
     if request.method == "GET" and path == "/api/admin/pipeline":
         return await call_next(request)
     if path.startswith("/api/admin/"):
