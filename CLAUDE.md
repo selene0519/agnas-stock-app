@@ -231,11 +231,29 @@ pip-audit 12건 → **0건**. 라이브 백엔드에서 재확인: `Host: exampl
 |  |  |  |  |   | 70-100 | **29,470** | +0.116 |
 
 1. **국면이 점수보다 훨씬 강하다.** BULL−BEAR 격차 0.955%p. 라이브 실측(강세 +0.2%/약세
-   −3.4%)과 **방향이 일치**하므로 백테스트 아티팩트가 아니다. 베어 게이트는 지금
-   `quant_scanner.py:2782`에서 **aggressive에만** 걸려 있다 → 전 모드 확대가 1순위 후보.
+   −3.4%)과 **방향이 일치**하므로 백테스트 아티팩트가 아니다.
+   ~~베어 게이트는 aggressive에만 걸려 있다~~ → **오기. 정정:** `_bear_reversal_entry_gate`는
+   mode 인자를 아예 받지 않고 `quant_scanner.py:2782`가 전 모드에 적용한다(`test_bear_market_
+   aggressive_disable.py`는 이름과 달리 CSV 쓰기 테스트다). **확대할 게 없었다.**
 2. **점수는 55 위로 단조가 아니다.** 최상위 구간(70-100)이 60-65보다 나쁘고, 그게 **전체의
    36%**다. "확신도 높은 걸 고르면 낫다"가 성립하지 않는다 — CLAUDE.md #3의
    "probability anti-predictive"가 규모까지 붙어 재확인됐다.
+
+## 2026-07-29 (4) — 두 가설을 라이브로 잴 축이 아예 없었다
+앙상블이 낸 두 가설(국면 격차, 점수 비단조)을 게이트에 반영하려다 **원장에 `finalScore`가
+안 남는다**는 걸 발견했다. 원장 컬럼은 `probability`뿐인데, 그건 CLAUDE.md #3에서 이미
+anti-predictive로 판정된 값이고 **랭킹이 실제로 쓰는 건 `finalScore`**다(서빙은
+`mone_v65_api_stabilizer.py:5072`에서 `-x["finalScore"]` 내림차순 정렬).
+`regime`도 마찬가지로 안 남았다.
+
+→ 즉 "점수 상위가 정말 더 나은가", "약세장이 얼마나 갉아먹는가"를 **라이브 표본으로는
+검증할 방법이 없었고**, 그래서 지금까지 그 판정을 walk-forward(낙관 편향)에만 의존해 왔다.
+`_record_virtual_ledger`에 `finalScore`/`regime` 추가 + sleeve 스크립트에 `byRegime`·
+`byScoreBin` 축 추가. **게이트는 하나도 안 건드렸다** — 라이브가 같은 말을 하는지 본 뒤에
+논할 일이다(walk-forward 풀링 +0.113% vs 라이브 −5.02%/거래, 낙관 간극이 그만큼 크다).
+
+기존 662건은 필드가 없어 `UNRECORDED`로 모인다. 이걸 안 밝히면 "국면 분석이 고장났다"로
+보이므로 `regimeRecordedTrades`/`scoreRecordedTrades`/`axisCoverageNote`로 커버리지를 명시.
 
 ## 제약 / 운영 메모
 - CI dispatch 권한 없음(403) → 파이프라인 실행은 사용자 손 필요.

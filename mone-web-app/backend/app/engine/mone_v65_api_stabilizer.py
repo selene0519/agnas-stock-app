@@ -3738,6 +3738,14 @@ def _record_virtual_ledger(items: list[dict[str, Any]], source: str = "recommend
             "targetPrice": target,
             "expectedPrice": _num(item.get("expectedPrice")),
             "probability": _num(item.get("probability")),
+            # 랭킹이 실제로 쓰는 점수와 국면을 같이 남긴다.
+            # 이게 없으면 "점수 상위 구간이 정말 더 나은가", "약세장이 얼마나
+            # 갉아먹는가"를 **라이브 표본으로는 검증할 방법이 없다** — 지금까지
+            # 그 판정을 walk-forward(낙관 편향)에만 의존해 온 이유가 이것이다.
+            # 앙상블 82,251건에서 점수 70-100 구간(전체의 36%)이 60-65보다
+            # 나빴는데, 서빙은 finalScore 내림차순으로 고른다.
+            "finalScore": _num(item.get("finalScore")),
+            "regime": str(item.get("regime") or item.get("marketRegime") or ""),
             "validationWindowDays": window,
             "validationDueDate": _date_add_trading_days(today, window),
             "status": "PENDING",
@@ -3748,6 +3756,7 @@ def _record_virtual_ledger(items: list[dict[str, Any]], source: str = "recommend
     _write_csv_rows(path, [
         "predictionId", "createdAt", "market", "symbol", "name", "mode", "horizon",
         "entryPrice", "stopPrice", "targetPrice", "expectedPrice", "probability",
+        "finalScore", "regime",
         "validationWindowDays", "validationDueDate", "status", "source",
     ], list(keyed.values()))
 
@@ -3882,6 +3891,7 @@ def _validate_virtual_ledger() -> dict[str, Any]:
     _write_csv_rows(_validation_path(), [
         "predictionId", "createdAt", "market", "symbol", "name", "mode", "horizon",
         "entryPrice", "stopPrice", "targetPrice", "expectedPrice", "probability",
+        "finalScore", "regime",
         "validationWindowDays", "validationDueDate", "status", "source", "isExecuted",
         "targetHit", "stopHit", "exitPrice", "returnPct", "result", "reason", "dataStatus", "validationRule",
     ], results)

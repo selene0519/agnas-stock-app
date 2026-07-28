@@ -15,7 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 FIELDS = ["predictionId", "createdAt", "market", "symbol", "mode", "horizon",
-          "validationDueDate", "exitDate", "returnPct", "result", "source"]
+          "validationDueDate", "exitDate", "returnPct", "result", "source",
+          "finalScore", "regime"]
 
 
 def _load_module():
@@ -34,6 +35,7 @@ def _row(**kw) -> dict:
         "market": "kr", "symbol": "005930", "mode": "balanced", "horizon": "swing",
         "validationDueDate": "2026-07-25", "exitDate": "2026-07-20",
         "returnPct": "1.0", "result": "TARGET_HIT", "source": "api/final/recommendations",
+        "finalScore": "", "regime": "",
     }
     base.update(kw)
     return base
@@ -151,3 +153,41 @@ def test_empty_input_is_safe(tmp_path, monkeypatch) -> None:
     assert data["ranking"] == []
     assert data["dataQuality"]["totalTrades"] == 0
     assert data["dataQuality"]["sampleWarning"]
+
+
+def test_regime_and_score_axes_split_trades(tmp_path, monkeypatch) -> None:
+    """국면·점수구간 축이 실제로 갈라져야 한다.
+
+    앙상블(walk-forward)이 낸 두 가설 — 국면 격차 0.955%p, 점수 70-100 구간이
+    60-65보다 나쁨 — 을 **라이브 표본으로** 재기 위한 축이다. walk-forward는
+    절대 수준이 낙관 쪽이라 그 수치로 게이트를 바꾸면 안 되고, 여기서는 관측만 한다.
+    """
+    rows = [
+        _row(predictionId="a", regime="BULL", finalScore="62", returnPct="2.0",
+             exitDate="2026-07-14"),
+        _row(predictionId="b", regime="BEAR", finalScore="75", returnPct="-4.0",
+             exitDate="2026-07-15"),
+        _row(predictionId="c", regime="BEAR", finalScore="72", returnPct="-2.0",
+             exitDate="2026-07-16"),
+    ]
+    mod = _setup(tmp_path, monkeypatch, rows)
+    data = mod.build()
+    assert data["byRegime"]["BULL"]["trades"] == 1
+    assert data["byRegime"]["BEAR"]["trades"] == 2
+    assert data["byRegime"]["BEAR"]["avgReturnPct"] < data["byRegime"]["BULL"]["avgReturnPct"]
+    assert data["byScoreBin"]["60-65"]["trades"] == 1
+    assert data["byScoreBin"]["70-100"]["trades"] == 2
+    # 표본이 적으면 순위를 믿지 말라고 각 버킷이 스스로 말해야 한다.
+    assert data["byScoreBin"]["70-100"]["sampleWarning"]
+
+
+def test_rows_without_axis_fields_are_disclosed_not_silently_dropped(tmp_path, monkeypatch) -> None:
+    """finalScore/regime이 없는 과거 행을 조용히 버리면 '분석이 고장난' 것처럼 보인다."""
+    mod = _setup(tmp_path, monkeypatch, [_row(predictionId="old", returnPct="1.0")])
+    data = mod.build()
+    assert data["byRegime"]["UNRECORDED"]["trades"] == 1
+    assert data["byScoreBin"] == {}
+    q = data["dataQuality"]
+    assert q["regimeRecordedTrades"] == 0
+    assert q["scoreRecordedTrades"] == 0
+    assert q["axisCoverageNote"]
