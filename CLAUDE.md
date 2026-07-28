@@ -186,6 +186,15 @@ starlette CVE는 StaticFiles/FileResponse/HTTPEndpoint/`request.form()`을 안 �
 `tests/test_admin_auth_host_header_bypass.py`가 AST로 `request.url.path` 재발을 막는다
 (정규식으로 짰더니 자기 docstring을 잡았다 — 검사 대상이 문자열을 담고 있을 땐 AST로).
 
+**같이 나온 것 — 500 응답이 스택트레이스를 무조건 실어보냈다.** `global_exception_handler`가
+`traceback.format_exc()[-800:]`를 조건 없이 본문에 넣고 있었다. 파일 경로·코드 구조가 새고,
+예외 메시지엔 자격증명이 섞이기 쉽다(psycopg2 접속 문자열, URL에 키를 실은 클라이언트).
+→ 기본 차단 + `MONE_DEBUG_ERRORS=1`일 때만 노출. 서버 로그엔 항상 전문을 남긴다.
+
+**점검했고 문제 없던 것:** 관리자 토큰 검증(HMAC-SHA256 + `compare_digest` + 만료),
+CORS(와일드카드 없는 화이트리스트), `urlopen` 호출부(URL이 하드코딩 OAuth 엔드포인트라
+SSRF 아님), `request.form()`/StaticFiles/FileResponse/HTTPEndpoint 미사용.
+
 ⚠️ **남음:** starlette 0.41.3 핀 자체는 그대로다. 지금은 미해당이지만 나중에
 StaticFiles/`request.form()`을 쓰기 시작하면 Range DoS·폼 한도 무시가 바로 살아난다.
 그때는 FastAPI 승격이 선행돼야 한다.

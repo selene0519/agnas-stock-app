@@ -95,3 +95,28 @@ def test_vulnerable_pattern_is_actually_exploitable_on_pinned_starlette() -> Non
     if poisoned.status_code == 401:
         pytest.skip("설치된 starlette가 이미 Host 헤더를 검증한다(패치 버전)")
     assert poisoned.status_code == 200  # 취약 버전에서의 실제 동작 기록
+
+
+def test_global_error_handler_does_not_leak_traceback_by_default() -> None:
+    """500 응답에 스택트레이스가 기본 노출되면 안 된다.
+
+    파일 경로·코드 구조가 새고, 예외 메시지엔 자격증명이 섞이기 쉽다
+    (psycopg2 접속 문자열, URL에 키를 실은 외부 API 클라이언트 등).
+    이 백엔드는 Render에 배포돼 인터넷에서 닿는다.
+    """
+    source = MAIN_PY.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    handler = next(
+        (n for n in ast.walk(tree)
+         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+         and n.name == "global_exception_handler"),
+        None,
+    )
+    assert handler is not None, "global_exception_handler를 찾지 못했다"
+
+    # "trace" 키를 무조건 채우면(= 조건 분기 밖에서 대입) 기본 노출이다.
+    guarded = any(isinstance(n, ast.If) for n in ast.walk(handler))
+    mentions_trace = "trace" in ast.dump(handler)
+    assert not mentions_trace or guarded, (
+        "스택트레이스를 조건 없이 응답에 싣고 있다 — 디버그 플래그로 가릴 것"
+    )

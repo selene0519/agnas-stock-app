@@ -64,21 +64,38 @@ app.add_middleware(
 
 # ── 글로벌 예외 핸들러 ────────────────────────────────────────────────────────
 # FastAPI가 처리하지 못한 모든 500 에러를 HTML이 아닌 JSON으로 반환
+def _debug_errors_enabled() -> bool:
+    """스택트레이스를 응답 본문에 실어도 되는지.
+
+    기본값은 **끔**. 켜져 있으면 500 응답이 파일 경로·코드 구조·예외 메시지를
+    그대로 밖으로 흘린다. 예외 메시지에는 자격증명이 섞이기 쉽다(psycopg2의
+    접속 문자열, 외부 API 클라이언트가 URL에 실은 키 등). 이 백엔드는 Render에
+    배포돼 인터넷에서 닿으므로 기본 노출은 위험하다.
+    로컬 디버깅은 `MONE_DEBUG_ERRORS=1`로 명시적으로 켠다.
+    """
+    return os.environ.get("MONE_DEBUG_ERRORS", "").strip().lower() in ("1", "true", "yes")
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     import traceback
-    return JSONResponse(
-        status_code=500,
-        content={
-            "ok": False,
-            "status": "ERROR",
-            "error": str(exc),
-            # 에러 응답에도 조작된 경로가 아니라 실제 라우팅 경로가 찍혀야
-            # 로그를 보고 사고를 재구성할 수 있다.
-            "path": str(request.scope.get("path") or ""),
-            "trace": traceback.format_exc()[-800:],
-        },
-    )
+
+    # 서버 로그에는 항상 전문을 남긴다 — 밖으로 안 보낼 뿐 잃어버리면 안 된다.
+    traceback.print_exc()
+
+    content: dict[str, object] = {
+        "ok": False,
+        "status": "ERROR",
+        # 에러 응답에도 조작된 경로가 아니라 실제 라우팅 경로가 찍혀야
+        # 로그를 보고 사고를 재구성할 수 있다.
+        "path": str(request.scope.get("path") or ""),
+    }
+    if _debug_errors_enabled():
+        content["error"] = str(exc)
+        content["trace"] = traceback.format_exc()[-800:]
+    else:
+        content["error"] = "Internal server error"
+    return JSONResponse(status_code=500, content=content)
 
 # ── 인메모리 Rate Limiter ──────────────────────────────────────────────────────
 # 무거운 수집/갱신 엔드포인트 보호: IP당 최대 1회/60초
