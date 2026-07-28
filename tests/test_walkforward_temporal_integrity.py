@@ -50,8 +50,9 @@ def test_run_all_prepares_ohlcv_once(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr(walkforward, "run_walkforward", fake_run)
 
-    result = walkforward.run_all("us")
+    result = walkforward.run_all("us", window_months=3)
 
     assert result["combosRun"] == 9
+    assert result["results"]
     assert loads == ["us"]
     assert received == [({"TEST": []}, 0)] * 9

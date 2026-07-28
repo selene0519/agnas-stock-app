@@ -1059,7 +1059,7 @@ def _apply_wf_correction(
 
 # ─── 전체 실행 (모든 mode×horizon 조합) ──────────────────────────────────────
 
-def run_all(market: str = "kr") -> dict[str, Any]:
+def run_all(market: str = "kr", window_months: int = 1) -> dict[str, Any]:
     """
     market의 9개 (3 mode × 3 horizon) 조합 전부 실행.
     결과를 reports/ 에 저장하고 요약 반환.
@@ -1080,6 +1080,7 @@ def run_all(market: str = "kr") -> dict[str, Any]:
             market,
             mode,
             horizon,
+            window_months=window_months,
             prepared_ohlcv=prepared_ohlcv,
             as_of=as_of,
         )
@@ -1122,6 +1123,7 @@ def run_all(market: str = "kr") -> dict[str, Any]:
         "generatedAt": datetime.utcnow().isoformat(),
         "market":      market,
         "asOf":        date.today().isoformat(),
+        "windowMonths": window_months,
         "combos":      all_results,
     }
     json_path = reports / f"walkforward_summary_{market}.json"
