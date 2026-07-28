@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Eye, RefreshCw, ShieldCheck } from "lucide-react";
 import { mone, type Market } from "@/lib/api";
+import { statusLabel } from "@/lib/utils";
 
 const STATE_STYLE: Record<string, { label: string; className: string; icon: typeof ShieldCheck }> = {
   TRADEABLE: { label: "진입 가능", className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200", icon: CheckCircle2 },
@@ -60,8 +61,9 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { label: "검증 후보", value: `${row.candidateCount ?? 0}개` },
-              { label: "일지 기록", value: journal.recordingStatus ?? "-" },
-              { label: "평가 상태", value: journal.evaluationStatus ?? "-" },
+              // 원시 코드(DEFERRED/CHECK/OK)를 그대로 찍지 않는다.
+              { label: "일지 기록", value: journal.recordingStatus ? statusLabel(journal.recordingStatus) : "-" },
+              { label: "평가 상태", value: journal.evaluationStatus ? statusLabel(journal.evaluationStatus) : "-" },
               { label: "손실 예산", value: `${Number(risk.totalLossBudgetPct ?? 0).toFixed(1)}% / ${risk.maxPortfolioLossPct ?? "-"}%` },
             ].map((item) => (
               <div key={item.label} className="rounded-md bg-slate-900/70 px-3 py-2">
