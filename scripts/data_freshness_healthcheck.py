@@ -125,7 +125,21 @@ def _learning_loop_stats() -> dict:
         r for r in admissible
         if clean_start and str(r.get("createdAt") or "")[:10] >= clean_start
     ]
+    # 만기가 지났는데 아직 PENDING인 행 = 진짜 적체.
+    # settle_pending_validations.py의 `unsettled`는 **만기 전 대기**까지 세므로
+    # (settle_pending_validations.py:327 `due_date > TODAY` 분기) 그 값으로
+    # 적체를 판단하면 캡처가 건강해질수록 숫자가 커져 영영 경고가 뜬다.
+    today = NOW.strftime("%Y-%m-%d")
+    overdue = [
+        r for r in ledger
+        if str(r.get("status") or "").upper() == "PENDING"
+        and str(r.get("validationDueDate") or "")[:10]
+        and str(r.get("validationDueDate") or "")[:10] <= today
+    ]
+    pending = [r for r in ledger if str(r.get("status") or "").upper() == "PENDING"]
     return {
+        "pendingTotal": len(pending),
+        "overduePending": len(overdue),
         "newestCapture": created[-1] if created else None,
         "ledgerRows": len(ledger),
         "cleanWindowStart": clean_start or None,
@@ -230,15 +244,16 @@ def run(max_stale_days: float = 3.0) -> dict:
     loop = _learning_loop_stats()
     check_date("prediction_capture", loop["newestCapture"], max_stale_days + 2, True)
 
-    # 8) 정산 적체 — 만기가 지났는데 정산이 안 된 건수.
-    pss = _load_json("reports/pending_settlement_status.json") or {}
-    unsettled = int(pss.get("unsettled") or 0)
-    if unsettled > 200:
-        add("settlement_backlog", "ERROR", f"미정산 {unsettled}건 (>200)", False)
-    elif unsettled > 50:
-        add("settlement_backlog", "WARN", f"미정산 {unsettled}건 (>50)", False)
+    # 8) 정산 적체 — **만기가 지났는데도** PENDING인 건수만 센다.
+    overdue = loop["overduePending"]
+    pending = loop["pendingTotal"]
+    detail = f"만기경과 미정산 {overdue}건 / 대기중 {pending}건"
+    if overdue > 100:
+        add("settlement_backlog", "ERROR", detail + " — 정산이 멈춘 것으로 보임", False)
+    elif overdue > 20:
+        add("settlement_backlog", "WARN", detail, False)
     else:
-        add("settlement_backlog", "OK", f"미정산 {unsettled}건", False)
+        add("settlement_backlog", "OK", detail, False)
 
     # 9) clean window 표본 축적 — 신뢰할 수 있는 구간에서 정산된 표본 수.
     #    엣지 판정의 분모라서, 0이면 화면의 승률이 전부 오염 구간 산출물이다.
