@@ -1,6 +1,11 @@
 name: MONE Weekly Walk-Forward Backtest
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - reports/.walkforward-rerun
   schedule:
     # UTC 기준. KST 토요일 16:30 (미장 금요일 마감 후)
     - cron: "30 7 * * 6"
