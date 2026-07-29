@@ -2268,15 +2268,37 @@ def _load_dart_financials(repo_root: Path, market: str) -> dict[str, dict]:
     path = repo_root / "reports" / "dart_financial_data_kr.csv"
     if not path.exists():
         return {}
+    # 최신 연도를 무조건 고르면 **껍데기 행이 채워진 행을 덮는다.**
+    # 2026-07-29 실측: 2026년 행이 107종목 있는데 revenue/operating_income/
+    # net_income/total_equity가 전부 공란이었고(수집이 아직 안 된 회계연도),
+    # 2023~2025는 96~102종목이 채워져 있었다. 그런데 로더가 year 문자열 비교로
+    # 2026을 골라서 **106종목 중 1종목만** 실제 재무값이 전달되고 있었다.
+    # 즉 PER/PBR/ROE·저평가 가치 태그 같은 재무 기반 로직이 사실상 죽어 있었다.
+    #
+    # 그래서 "가장 최신"이 아니라 **"값이 있는 것 중 가장 최신"**을 고른다.
+    core_fields = ("revenue", "operating_income", "net_income", "total_equity")
+
+    def _has_values(row: dict) -> bool:
+        return any(str(row.get(f) or "").strip() not in ("", "0", "nan", "None")
+                   for f in core_fields)
+
     result: dict[str, dict] = {}
     for row in _read_csv(path):
         sym = str(row.get("symbol", "")).strip()
         if not sym:
             continue
         yr = str(row.get("year", ""))
-        if sym not in result or yr > str(result[sym].get("year", "")):
-            result[sym] = dict(row)
-            result[sym.lstrip("0")] = dict(row)
+        prev = result.get(sym)
+        if prev is not None:
+            prev_has, cur_has = _has_values(prev), _has_values(row)
+            # 값이 있는 행이 항상 이긴다. 둘 다 값이 있으면 최신이 이긴다.
+            # 둘 다 비었으면 최신을 남겨 "언제 시도됐는지"는 보존한다.
+            if prev_has and not cur_has:
+                continue
+            if prev_has == cur_has and yr <= str(prev.get("year", "")):
+                continue
+        result[sym] = dict(row)
+        result[sym.lstrip("0")] = dict(row)
     return result
 
 
