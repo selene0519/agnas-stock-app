@@ -1,13 +1,195 @@
 {
   "version": "relative-strength-v1",
   "market": "us",
-  "asOf": "2026-07-27",
+  "asOf": "2026-07-28",
   "regime": "SIDE",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 0,
-  "leaders": [],
-  "laggardsToAvoid": [],
+  "universeCount": 131,
+  "leaders": [
+    {
+      "symbol": "SNOW",
+      "rs60Pct": 98.11,
+      "relToIndexPp": 94.75,
+      "vol60Pct": 5.59
+    },
+    {
+      "symbol": "DDOG",
+      "rs60Pct": 89.79,
+      "relToIndexPp": 86.43,
+      "vol60Pct": 5.16
+    },
+    {
+      "symbol": "DELL",
+      "rs60Pct": 87.65,
+      "relToIndexPp": 84.3,
+      "vol60Pct": 6.54
+    },
+    {
+      "symbol": "OKTA",
+      "rs60Pct": 84.94,
+      "relToIndexPp": 81.59,
+      "vol60Pct": 5.29
+    },
+    {
+      "symbol": "PANW",
+      "rs60Pct": 77.89,
+      "relToIndexPp": 74.54,
+      "vol60Pct": 3.42
+    },
+    {
+      "symbol": "CRWD",
+      "rs60Pct": 63.14,
+      "relToIndexPp": 59.79,
+      "vol60Pct": 3.52
+    },
+    {
+      "symbol": "MU",
+      "rs60Pct": 58.66,
+      "relToIndexPp": 55.31,
+      "vol60Pct": 7.0
+    },
+    {
+      "symbol": "HPE",
+      "rs60Pct": 58.46,
+      "relToIndexPp": 55.11,
+      "vol60Pct": 4.85
+    },
+    {
+      "symbol": "ESTC",
+      "rs60Pct": 33.75,
+      "relToIndexPp": 30.39,
+      "vol60Pct": 3.35
+    },
+    {
+      "symbol": "ALAB",
+      "rs60Pct": 33.63,
+      "relToIndexPp": 30.27,
+      "vol60Pct": 6.93
+    },
+    {
+      "symbol": "HUT",
+      "rs60Pct": 33.47,
+      "relToIndexPp": 30.11,
+      "vol60Pct": 6.96
+    },
+    {
+      "symbol": "ELF",
+      "rs60Pct": 31.47,
+      "relToIndexPp": 28.11,
+      "vol60Pct": 3.92
+    },
+    {
+      "symbol": "LLY",
+      "rs60Pct": 30.61,
+      "relToIndexPp": 27.25,
+      "vol60Pct": 1.98
+    },
+    {
+      "symbol": "S",
+      "rs60Pct": 29.52,
+      "relToIndexPp": 26.16,
+      "vol60Pct": 3.34
+    },
+    {
+      "symbol": "NET",
+      "rs60Pct": 28.85,
+      "relToIndexPp": 25.49,
+      "vol60Pct": 4.76
+    }
+  ],
+  "laggardsToAvoid": [
+    {
+      "symbol": "TMDX",
+      "rs60Pct": -24.31,
+      "relToIndexPp": -27.66,
+      "vol60Pct": 4.46
+    },
+    {
+      "symbol": "IONQ",
+      "rs60Pct": -24.91,
+      "relToIndexPp": -28.27,
+      "vol60Pct": 5.94
+    },
+    {
+      "symbol": "IREN",
+      "rs60Pct": -25.44,
+      "relToIndexPp": -28.8,
+      "vol60Pct": 6.96
+    },
+    {
+      "symbol": "ORCL",
+      "rs60Pct": -25.67,
+      "relToIndexPp": -29.03,
+      "vol60Pct": 4.01
+    },
+    {
+      "symbol": "LI",
+      "rs60Pct": -25.91,
+      "relToIndexPp": -29.27,
+      "vol60Pct": 2.86
+    },
+    {
+      "symbol": "LITE",
+      "rs60Pct": -27.75,
+      "relToIndexPp": -31.1,
+      "vol60Pct": 5.98
+    },
+    {
+      "symbol": "CRCL",
+      "rs60Pct": -29.23,
+      "relToIndexPp": -32.58,
+      "vol60Pct": 6.47
+    },
+    {
+      "symbol": "CAVA",
+      "rs60Pct": -30.41,
+      "relToIndexPp": -33.77,
+      "vol60Pct": 3.54
+    },
+    {
+      "symbol": "BBAI",
+      "rs60Pct": -30.65,
+      "relToIndexPp": -34.01,
+      "vol60Pct": 4.03
+    },
+    {
+      "symbol": "SMR",
+      "rs60Pct": -34.03,
+      "relToIndexPp": -37.38,
+      "vol60Pct": 5.63
+    },
+    {
+      "symbol": "MSTR",
+      "rs60Pct": -41.88,
+      "relToIndexPp": -45.23,
+      "vol60Pct": 5.01
+    },
+    {
+      "symbol": "OKLO",
+      "rs60Pct": -45.41,
+      "relToIndexPp": -48.76,
+      "vol60Pct": 5.34
+    },
+    {
+      "symbol": "AAOI",
+      "rs60Pct": -46.37,
+      "relToIndexPp": -49.73,
+      "vol60Pct": 8.9
+    },
+    {
+      "symbol": "LUNR",
+      "rs60Pct": -51.2,
+      "relToIndexPp": -54.56,
+      "vol60Pct": 7.31
+    },
+    {
+      "symbol": "SOXS",
+      "rs60Pct": -96.85,
+      "relToIndexPp": -100.2,
+      "vol60Pct": 16.86
+    }
+  ],
   "defensiveHolds": [],
   "note": "Research/paper only."
 }
