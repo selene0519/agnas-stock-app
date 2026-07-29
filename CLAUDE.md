@@ -368,6 +368,29 @@ PR head는 Vercel 3개 모두 success였다. 루트 `vercel.json`은 `deployment
 설명한 주석에 걸렸다. 검사 대상이 그 문자열을 담고 있을 땐 주석/문자열을 제외할 것
 (2026-07-29 AST 사건과 같은 계열, 이번 세션에만 두 번째다).
 
+## 2026-07-29 (9) — PR 게이트가 첫 실행에서 **내 실수**를 잡았다
+`pr-checks.yml`을 넣자마자 첫 PR에서 빨간불이 떴다. 잡힌 건 다름 아닌 **내가 만든
+테스트**다: `ERROR tests/test_alpha_display_and_pr_checks.py` / exit 2.
+
+원인은 `import yaml`인데 워크플로 설치 목록에 **PyYAML을 안 넣은 것**. 로컬엔 다른
+패키지의 전이 의존으로 이미 깔려 있어서 666개가 통과했다. 즉 이 세션 내내 반복해
+말한 **"로컬에서 되는 것과 CI에서 되는 것은 다르다"를 내가 그대로 밟았고**, 게이트가
+없었으면 이 PR은 초록으로 머지됐을 것이다. (CLAUDE.md 2026-07-28의 캡처 사고와 같은 계열.)
+
+**핀 하나 추가로 끝내지 않았다** — 설치 목록은 손으로 관리하는 중복이라 또 빠진다.
+`test_pr_workflow_installs_everything_tests_import`가 tests/의 서드파티 임포트를
+**AST로** 모아 워크플로 설치 목록과 대조한다.
+
+⚠️ 그 테스트를 쓰면서 **같은 실수를 한 번 더 했다**: 표준 라이브러리 목록을 손으로
+적다가 `inspect`를 빠뜨렸다. 낡는 표를 만들지 말라는 게 이 파일의 교훈인데 그걸
+어긴 것이라, `sys.stdlib_module_names`(인터프리터 권위 목록)로 교체했다.
+
+**검증 방식도 바꿨다.** 앞으로는 로컬 통과로 끝내지 말고 **깨끗한 venv에 워크플로와
+같은 목록만 설치해** 돌릴 것:
+    python -m venv /tmp/cienv && /tmp/cienv/bin/pip install <워크플로와 동일 목록>
+    /tmp/cienv/bin/python -m pytest tests -q
+이 방식으로 재검증 → **667 passed / 0 failed**.
+
 ## 제약 / 운영 메모
 - CI dispatch 권한 없음(403) → 파이프라인 실행은 사용자 손 필요.
 - 이 환경엔 과학 스택이 **선설치만 안 돼 있을 뿐 설치하면 전체 검증이 된다**
