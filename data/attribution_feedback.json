@@ -1,7 +1,7 @@
 {
   "status": "OK",
   "market": "all",
-  "sampleCount": 619,
+  "sampleCount": 629,
   "excludedInconsistentOutcomeCount": 3,
   "excludedBySourcePolicyCount": 1298,
   "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
@@ -18,20 +18,20 @@
       "sourceType": "FORWARD_PAPER_TRADE",
       "calibrationWeight": 1.0,
       "admissible": true,
-      "n": 622,
-      "winRate": 0.2074,
-      "avgPnlPct": -5.52
+      "n": 632,
+      "winRate": 0.2041,
+      "avgPnlPct": -5.619
     }
   ],
-  "baseWinRate": 0.2036,
-  "baseAvgPnlPct": -5.552,
-  "generatedAt": "2026-07-29T08:49:07",
+  "baseWinRate": 0.2003,
+  "baseAvgPnlPct": -5.651,
+  "generatedAt": "2026-07-29T16:16:54",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
-    "suggestedCount": 14,
+    "suggestedCount": 16,
     "approvedCount": 5,
-    "pendingReviewCount": 33,
+    "pendingReviewCount": 34,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
@@ -49,27 +49,27 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "a7ed04cc4068bb6585a0",
+      "feedbackId": "53023a6d5f2c60588f76",
       "market": "all",
       "mode": "conservative",
       "horizon": "swing",
-      "n": 84,
-      "winRate": 0.2857,
-      "avgPnlPct": -3.609,
-      "multiplier": 0.724,
+      "n": 85,
+      "winRate": 0.2824,
+      "avgPnlPct": -3.675,
+      "multiplier": 0.719,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "683d0b97f6ec8119e098",
+      "feedbackId": "a6b8d4f1aac8b39f9f34",
       "market": "all",
       "mode": "conservative",
       "horizon": "mid",
-      "n": 62,
-      "winRate": 0.1129,
-      "avgPnlPct": -6.167,
-      "multiplier": 0.535,
+      "n": 70,
+      "winRate": 0.1,
+      "avgPnlPct": -6.855,
+      "multiplier": 0.501,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -101,14 +101,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "53fc37896d7ae90a9ff8",
+      "feedbackId": "c8c78c1e3d36d814990c",
       "market": "all",
       "mode": "balanced",
       "horizon": "mid",
-      "n": 80,
-      "winRate": 0.1125,
-      "avgPnlPct": -6.836,
-      "multiplier": 0.508,
+      "n": 81,
+      "winRate": 0.1111,
+      "avgPnlPct": -6.885,
+      "multiplier": 0.505,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
