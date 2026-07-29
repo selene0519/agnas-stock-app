@@ -1,0 +1,317 @@
+{
+  "generatedAt": "2026-07-29T17:50:02.408862+00:00",
+  "totalJoined": 642,
+  "trainN": 385,
+  "testN": 257,
+  "dateRange": {
+    "min": "2026-06-18",
+    "max": "2026-07-21"
+  },
+  "method": "추천일 날짜순 60/40 분할. train에서 방향을 보고 test에서 확인. 수치 피처는 스피어만 순위상관 + 상·하위 5분위 평균 격차.",
+  "numeric": {
+    "final_rank_score": {
+      "train": {
+        "n": 385,
+        "spearman": 0.014,
+        "bottomMeanPct": -5.881,
+        "topMeanPct": -3.947,
+        "gapPct": 1.934,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": -0.2347,
+        "bottomMeanPct": -4.627,
+        "topMeanPct": -8.745,
+        "gapPct": -4.119,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": false
+    },
+    "probability": {
+      "train": {
+        "n": 385,
+        "spearman": 0.014,
+        "bottomMeanPct": -5.881,
+        "topMeanPct": -3.947,
+        "gapPct": 1.934,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": -0.2347,
+        "bottomMeanPct": -4.627,
+        "topMeanPct": -8.745,
+        "gapPct": -4.119,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": false
+    },
+    "risk_score": {
+      "train": {
+        "n": 385,
+        "spearman": 0.4156,
+        "bottomMeanPct": -8.802,
+        "topMeanPct": -0.222,
+        "gapPct": 8.58,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": 0.3555,
+        "bottomMeanPct": -8.112,
+        "topMeanPct": 0.37,
+        "gapPct": 8.482,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": true
+    },
+    "event_risk_score": {
+      "train": {
+        "n": 385,
+        "spearman": 0.0725,
+        "bottomMeanPct": -14.3,
+        "topMeanPct": 10.869,
+        "gapPct": 25.169,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": null,
+        "bottomMeanPct": -13.107,
+        "topMeanPct": 5.179,
+        "gapPct": 18.286,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": false
+    },
+    "rsi_at_entry": {
+      "train": {
+        "n": 385,
+        "spearman": -0.2187,
+        "bottomMeanPct": -2.789,
+        "topMeanPct": -7.419,
+        "gapPct": -4.63,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": -0.1542,
+        "bottomMeanPct": -5.396,
+        "topMeanPct": -8.164,
+        "gapPct": -2.768,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": true
+    },
+    "volume_ratio_at_entry": {
+      "train": {
+        "n": 385,
+        "spearman": -0.0887,
+        "bottomMeanPct": -5.043,
+        "topMeanPct": -7.107,
+        "gapPct": -2.063,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": 0.1652,
+        "bottomMeanPct": -6.664,
+        "topMeanPct": -4.993,
+        "gapPct": 1.671,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": false
+    },
+    "atr14_pct_at_entry": {
+      "train": {
+        "n": 385,
+        "spearman": -0.4556,
+        "bottomMeanPct": 0.776,
+        "topMeanPct": -8.016,
+        "gapPct": -8.792,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": -0.5931,
+        "bottomMeanPct": -0.92,
+        "topMeanPct": -9.325,
+        "gapPct": -8.405,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": true
+    },
+    "mdd20_at_entry": {
+      "train": {
+        "n": 385,
+        "spearman": 0.2931,
+        "bottomMeanPct": -9.916,
+        "topMeanPct": -2.793,
+        "gapPct": 7.122,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": 0.4232,
+        "bottomMeanPct": -8.882,
+        "topMeanPct": -0.887,
+        "gapPct": 7.995,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": true
+    },
+    "momentum5_at_entry": {
+      "train": {
+        "n": 385,
+        "spearman": -0.2107,
+        "bottomMeanPct": -3.88,
+        "topMeanPct": -7.976,
+        "gapPct": -4.096,
+        "perQuintileN": 77
+      },
+      "test": {
+        "n": 257,
+        "spearman": 0.0212,
+        "bottomMeanPct": -7.228,
+        "topMeanPct": -6.648,
+        "gapPct": 0.58,
+        "perQuintileN": 51
+      },
+      "confirmedOutOfSample": false
+    }
+  },
+  "categorical": {
+    "market_regime_at_signal": {
+      "SIDE": {
+        "train": {
+          "n": 26,
+          "meanPct": -0.034
+        },
+        "test": {
+          "n": 69,
+          "meanPct": -5.659
+        }
+      }
+    },
+    "sector": {
+      "?": {
+        "train": {
+          "n": 265,
+          "meanPct": -3.497
+        },
+        "test": {
+          "n": 237,
+          "meanPct": -6.039
+        }
+      },
+      "Bio/Healthcare": {
+        "train": {
+          "n": 26,
+          "meanPct": -3.158
+        },
+        "test": {
+          "n": 13,
+          "meanPct": -2.45
+        }
+      }
+    },
+    "mode": {
+      "aggressive": {
+        "train": {
+          "n": 122,
+          "meanPct": -7.784
+        },
+        "test": {
+          "n": 117,
+          "meanPct": -7.484
+        }
+      },
+      "balanced": {
+        "train": {
+          "n": 98,
+          "meanPct": -5.633
+        },
+        "test": {
+          "n": 62,
+          "meanPct": -5.608
+        }
+      },
+      "conservative": {
+        "train": {
+          "n": 165,
+          "meanPct": -3.273
+        },
+        "test": {
+          "n": 78,
+          "meanPct": -3.677
+        }
+      }
+    },
+    "horizon": {
+      "mid": {
+        "train": {
+          "n": 158,
+          "meanPct": -7.576
+        },
+        "test": {
+          "n": 93,
+          "meanPct": -9.285
+        }
+      },
+      "short": {
+        "train": {
+          "n": 95,
+          "meanPct": -0.764
+        },
+        "test": {
+          "n": 70,
+          "meanPct": -1.465
+        }
+      },
+      "swing": {
+        "train": {
+          "n": 132,
+          "meanPct": -5.849
+        },
+        "test": {
+          "n": 94,
+          "meanPct": -5.789
+        }
+      }
+    },
+    "market": {
+      "us": {
+        "train": {
+          "n": 243,
+          "meanPct": -3.629
+        },
+        "test": {
+          "n": 236,
+          "meanPct": -6.063
+        }
+      },
+      "kr": {
+        "train": {
+          "n": 142,
+          "meanPct": -8.167
+        },
+        "test": {
+          "n": 21,
+          "meanPct": -3.782
+        }
+      }
+    }
+  },
+  "confirmedFeatures": [
+    "risk_score",
+    "rsi_at_entry",
+    "atr14_pct_at_entry",
+    "mdd20_at_entry"
+  ],
+  "caveats": [
+    "피처 9개를 동시에 본다 — 다중비교로 우연히 |상관|>0.1이 한둘 나오는 건 정상이다. 부호 일치와 격차 유지를 같이 봐야 한다.",
+    "표본 구간이 KOSPI -24%인 한 국면뿐이라 국면 한정 결론이다.",
+    "net_pnl_pct는 원장 B 기준(평가창 60일, 왕복비용). 원장 A와 규칙이 다르다."
+  ]
+}
