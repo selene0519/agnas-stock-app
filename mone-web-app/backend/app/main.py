@@ -3272,6 +3272,29 @@ def api_stock_analysis(
             "inHoldings": in_holdings,
             "holdingPnlPct": holding_pnl,
             "inWatchlist": in_watchlist,
+            # 회사가 무슨 사업을 하는지 + 밸류에이션. 차트·공시·수급만으로는
+            # "이 회사가 뭘 파는지"를 사용자가 알 수 없다.
+            # 값이 없으면 키를 비워 보내고 화면이 '정보 없음'을 그린다.
+            "companyProfile": {
+                "businessSummary": str(reco.get("businessSummary") or ""),
+                "industryName": str(reco.get("industryName") or ""),
+                "establishedDate": str(reco.get("companyEstablishedDate") or ""),
+                "homepage": str(reco.get("companyHomepage") or ""),
+            },
+            "valuation": {
+                "per": _num(reco.get("per")),
+                "pbr": _num(reco.get("pbr")),
+                "roe": _num(reco.get("roe")),
+                "dividendYield": _num(reco.get("div")),
+                "marketCap": _num(reco.get("marketCap")),
+                "revenue": _num(reco.get("revenue")),
+                "operatingProfit": _num(reco.get("operatingProfit")),
+                "netIncome": _num(reco.get("netIncome")),
+                "revenueGrowth": _num(reco.get("revenueGrowth")),
+                "debtRatio": _num(reco.get("debtRatio")),
+                # 이 수치들이 어느 회계연도/수집분에서 왔는지 화면이 밝힐 수 있게.
+                "sourceYears": str(reco.get("financialSourceYears") or ""),
+            },
             "indicators": {
                 "rsi14": rsi_val,
                 "mdd60": mdd,

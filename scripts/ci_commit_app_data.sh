@@ -38,6 +38,9 @@ stage_app_data() {
   git add reports/reco_cache/*.json 2>/dev/null || true
   git add reports/kr_recommendation_gen_status.json reports/us_recommendation_gen_status.json 2>/dev/null || true
   git add reports/strategy_win_rates.json reports/dart_financial_data_kr.csv reports/dart_financial_status.json 2>/dev/null || true
+  # 기업개황(사업 내용). allowlist에 빠지면 수집 스텝이 성공해도 산출물이
+  # 매번 버려진다 — 레거시 산출물 68개가 그렇게 2개월간 사라진 전례가 있다.
+  git add data/fundamental/dart_company_profile_kr.csv reports/dart_company_profile_status.json 2>/dev/null || true
   git add reports/lens_journal_kr.csv reports/lens_calibration_kr.json reports/regime_lens_candidates_kr.json 2>/dev/null || true
   git add reports/lens_prediction_ledger_kr.csv reports/lens_live_journal_kr.csv 2>/dev/null || true
   git add reports/lens_promotion_status_kr.json 2>/dev/null || true

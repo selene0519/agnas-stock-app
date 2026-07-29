@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { mone } from "@/lib/api";
-import { RefreshCw, ChevronDown, ChevronUp, ShieldAlert, TrendingDown, Brain } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronUp, ShieldAlert, TrendingDown, Brain, Building2 } from "lucide-react";
 
 type Signal = { type: "positive" | "neutral" | "warning"; text: string };
 type BiasCheck = { type: string; level: "ok" | "caution" | "warning"; title: string; text: string; action?: string | null };
@@ -47,7 +47,56 @@ type AnalysisData = {
     warningCount: number;
     cautionCount: number;
   };
+  companyProfile?: {
+    businessSummary?: string;
+    industryName?: string;
+    establishedDate?: string;
+    homepage?: string;
+  };
+  valuation?: {
+    per?: number | null;
+    pbr?: number | null;
+    roe?: number | null;
+    dividendYield?: number | null;
+    marketCap?: number | null;
+    revenue?: number | null;
+    operatingProfit?: number | null;
+    netIncome?: number | null;
+    revenueGrowth?: number | null;
+    debtRatio?: number | null;
+    sourceYears?: string;
+  };
 };
+
+/** 억/조 단위로 줄여 쓴다. 원 단위 12자리는 모바일에서 읽을 수 없다. */
+function krwShort(value?: number | null): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "-";
+  const abs = Math.abs(value);
+  if (abs >= 1e12) return `${(value / 1e12).toFixed(1)}조`;
+  if (abs >= 1e8) return `${Math.round(value / 1e8).toLocaleString("ko-KR")}억`;
+  return value.toLocaleString("ko-KR");
+}
+
+function metric(value?: number | null, suffix = "", digits = 2): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "-";
+  return `${value.toFixed(digits)}${suffix}`;
+}
+
+/** 값이 하나도 없으면 카드를 그리지 않는다 — 빈 표를 보여주면 고장으로 보인다. */
+function hasAnyValue(obj?: Record<string, unknown>): boolean {
+  if (!obj) return false;
+  return Object.entries(obj).some(([k, v]) =>
+    k !== "sourceYears" && v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v)));
+}
+
+function ValueRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1">
+      <span className="text-[11px] text-slate-400">{label}</span>
+      <span className="text-xs font-semibold tabular-nums text-slate-100">{value}</span>
+    </div>
+  );
+}
 
 function SignalRow({ signal }: { signal: Signal }) {
   const cls =
@@ -223,6 +272,50 @@ export default function StockResearchPanel({
 
       {displayData && displayData.status === "OK" && (
         <>
+          {/* #1 기업 정보 — 차트·공시·수급만으로는 "이 회사가 뭘 파는지" 알 수 없다. */}
+          {(displayData.companyProfile?.businessSummary
+            || displayData.companyProfile?.industryName
+            || hasAnyValue(displayData.valuation as Record<string, unknown> | undefined)) && (
+            <Panel
+              title="기업 정보"
+              icon={<Building2 size={14} className="text-teal-400" />}
+              badge={displayData.companyProfile?.industryName || undefined}
+              defaultOpen
+            >
+              {displayData.companyProfile?.businessSummary ? (
+                <p className="mb-2 text-[11.5px] leading-relaxed text-slate-300">
+                  {displayData.companyProfile.businessSummary}
+                </p>
+              ) : (
+                <p className="mb-2 text-[11px] text-slate-500">사업 정보가 아직 수집되지 않았습니다.</p>
+              )}
+
+              {hasAnyValue(displayData.valuation as Record<string, unknown> | undefined) ? (
+                <div className="grid grid-cols-2 gap-x-4">
+                  <ValueRow label="PER" value={metric(displayData.valuation?.per, "배")} />
+                  <ValueRow label="PBR" value={metric(displayData.valuation?.pbr, "배")} />
+                  <ValueRow label="ROE" value={metric(displayData.valuation?.roe, "%", 1)} />
+                  <ValueRow label="배당수익률" value={metric(displayData.valuation?.dividendYield, "%", 2)} />
+                  <ValueRow label="시가총액" value={krwShort(displayData.valuation?.marketCap)} />
+                  <ValueRow label="부채비율" value={metric(displayData.valuation?.debtRatio, "%", 1)} />
+                  <ValueRow label="매출" value={krwShort(displayData.valuation?.revenue)} />
+                  <ValueRow label="영업이익" value={krwShort(displayData.valuation?.operatingProfit)} />
+                  <ValueRow label="순이익" value={krwShort(displayData.valuation?.netIncome)} />
+                  <ValueRow label="매출성장" value={metric(displayData.valuation?.revenueGrowth, "%", 1)} />
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500">재무 데이터가 아직 수집되지 않았습니다.</p>
+              )}
+
+              {/* 어느 시점 수치인지 밝힌다 — 회계연도와 시장지표 수집 시점이 다르다. */}
+              {displayData.valuation?.sourceYears && (
+                <p className="mt-2 text-[10px] text-slate-500">
+                  재무 기준: {displayData.valuation.sourceYears} 수집분
+                </p>
+              )}
+            </Panel>
+          )}
+
           {/* #2 재무건전성 */}
           <Panel
             title="재무건전성 / 밸류에이션"

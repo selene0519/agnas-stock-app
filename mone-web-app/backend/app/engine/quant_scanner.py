@@ -2330,6 +2330,32 @@ def _dart_map_cached(repo_root_str: str, market: str) -> dict[str, dict]:
     return _load_dart_financials(Path(repo_root_str), market)
 
 
+def _load_company_profiles(repo_root: Path, market: str) -> dict[str, dict]:
+    """{symbol: 기업개황}. 사업 내용을 화면에 붙이기 위한 소스 (KR 전용).
+
+    scripts/fetch_dart_company_profile.py가 만든다. 파일이 없으면 빈 맵을
+    돌려주고, 화면은 '정보 없음'을 그린다 — 없는 걸 지어내지 않는다.
+    """
+    if market != "kr":
+        return {}
+    path = repo_root / "data" / "fundamental" / "dart_company_profile_kr.csv"
+    if not path.exists():
+        return {}
+    out: dict[str, dict] = {}
+    for row in _read_csv(path):
+        sym = str(row.get("symbol", "")).strip()
+        if not sym:
+            continue
+        out[sym.zfill(6)] = dict(row)
+        out[sym.lstrip("0")] = dict(row)
+    return out
+
+
+@lru_cache(maxsize=4)
+def _company_profile_cached(repo_root_str: str, market: str) -> dict[str, dict]:
+    return _load_company_profiles(Path(repo_root_str), market)
+
+
 @lru_cache(maxsize=4)
 def _sector_strength_map(repo_root_str: str, market: str) -> dict[str, dict]:
     """candidate_universe_{market}.csv + OHLCV 로 섹터 상대강도 맵을 만든다.
@@ -2392,17 +2418,54 @@ def apply_quant_overlay(item: dict[str, Any], repo_root: Path, mode: str, horizo
     dart_map = _dart_map_cached(str(repo_root), market)
     dart_row = dart_map.get(symbol) or dart_map.get(symbol.lstrip("0")) or {}
     if dart_row:
+        # 아래 financial_keys(=financialDataStatus와 화면 재무 카드를 결정)가
+        # 기대하는 항목을 **전부** 주입한다. 예전에는 비율 5개만 넘겨서
+        # revenue/operatingProfit/netIncome/성장률이 DART에 있어도 버려졌고,
+        # 그래서 "실적·재무상태"가 화면에 안 떴다.
         for dart_k, item_k in [
+            # 비율·밸류에이션
             ("roe", "roe"), ("debt_ratio", "debtRatio"),
-            ("operating_margin", "operatingMargin"), ("per", "per"), ("pbr", "pbr"),
+            ("operating_margin", "operatingMargin"), ("net_margin", "netMargin"),
+            ("per", "per"), ("pbr", "pbr"), ("eps", "eps"), ("peg", "peg"),
+            ("div", "div"), ("market_cap", "marketCap"),
+            # 원시 재무제표 (실적·재무상태)
+            ("revenue", "revenue"), ("operating_income", "operatingProfit"),
+            ("net_income", "netIncome"), ("total_equity", "totalEquity"),
+            ("total_debt", "totalDebt"), ("total_assets", "totalAssets"),
+            # 성장률
+            ("revenue_growth", "revenueGrowth"), ("eps_growth", "epsGrowth"),
         ]:
             if item.get(item_k) is None:
                 v = dart_row.get(dart_k)
-                if v is not None and str(v).strip() not in ("", "None", "nan"):
+                if v is not None and str(v).strip() not in ("", "None", "nan", "-"):
                     try:
                         item = {**item, item_k: float(str(v).replace(",", ""))}
                     except Exception:
                         pass
+        # 재무 수치가 어느 회계연도/수집분에서 왔는지 화면이 밝힐 수 있게 남긴다.
+        # (DART 회계연도 행과 yfinance 달력연도 행이 병합되므로 단일 연도가 아니다.)
+        merged_years = str(dart_row.get("_mergedYears") or "").strip()
+        if merged_years:
+            item = {**item, "financialSourceYears": merged_years}
+
+    # 기업개황(사업 내용) 주입 — "이 회사가 뭘 하는가"를 카드가 말할 수 있게.
+    # 없으면 아무 키도 넣지 않는다. 빈 문자열을 넣으면 화면이 빈 줄을 그린다.
+    try:
+        _profile = (_company_profile_cached(str(repo_root), market).get(symbol)
+                    or _company_profile_cached(str(repo_root), market).get(symbol.lstrip("0")))
+    except Exception:
+        _profile = None
+    if _profile:
+        for prof_k, item_k in (
+            ("businessSummary", "businessSummary"),
+            ("industryName", "industryName"),
+            ("industryCode", "industryCode"),
+            ("homepage", "companyHomepage"),
+            ("establishedDate", "companyEstablishedDate"),
+        ):
+            v = str(_profile.get(prof_k) or "").strip()
+            if v and not str(item.get(item_k) or "").strip():
+                item = {**item, item_k: v}
 
     # 마켓 레짐 로드 (점수 가중치 결정)
     try:
