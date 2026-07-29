@@ -1,0 +1,89 @@
+name: PR Checks
+
+# 이 레포의 다른 워크플로는 전부 schedule/workflow_dispatch라 **PR에서는 아무것도
+# 돌지 않았다.** 2026-07-29 실측: 피처 브랜치 대상 Actions 실행 0건. PR에 붙는
+# 체크는 Vercel 배포 3개뿐이었고, 그건 프론트가 빌드되는지만 본다.
+#
+# 즉 테스트를 깨는 PR도 초록으로 통과한다. 이 레포가 반복해서 당한 "조용한 실패"와
+# 같은 구조라(워크플로 `set +e` 34곳, 캡처가 매 실행 죽는데 success로 찍힘) 여기서
+# 끊는다. 이 워크플로는 **실패하면 실패로 보이는 것**이 유일한 목적이므로
+# `set +e`를 쓰지 않는다.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-tests:
+    name: Python 테스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      TZ: Asia/Seoul
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        # pandas 상한(<3)은 requirements.txt와 같아야 한다 — 무핀이면 최신 메이저를
+        # 끌어와 코드를 안 건드린 날 깨진다(2026-07-29에 pandas 3.0.5로 5개 사망).
+        # tests/test_dependency_pins.py가 이 상한의 부재를 별도로 잡는다.
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pandas>=2.2,<3" "numpy>=1.26,<3" \
+                      fastapi uvicorn starlette pydantic httpx \
+                      plotly streamlit yfinance python-dotenv \
+                      requests beautifulsoup4 lxml pytest
+
+      - name: pytest
+        # 수집 에러도 실패로 본다. 임포트가 깨진 테스트는 "없는 것"이 아니라
+        # "확인 못 한 것"이다 — 조용히 건너뛰면 감시가 거짓말을 시작한다.
+        run: python -m pytest tests -q --no-header -p no:cacheprovider
+
+  frontend-checks:
+    name: 프론트 타입·린트·빌드
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mone-web-app/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: mone-web-app/frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: 타입 검사
+        run: npx tsc --noEmit
+
+      - name: 린트 (에러만 차단, 경고는 허용)
+        # 현재 경고가 81건 있다. 한 번에 0으로 만들려다 무관한 변경이 섞이는 것보다
+        # **에러 0을 지키는 것**이 먼저다. 경고를 줄이는 건 별도 작업.
+        run: npx eslint . --ext .ts,.tsx --max-warnings=-1
+
+      - name: 프로덕션 빌드
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: npx next build

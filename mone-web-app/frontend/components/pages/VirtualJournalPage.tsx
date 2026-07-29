@@ -6,6 +6,7 @@ import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { outcomeTone, toneClassName } from "@/lib/tone";
 import { displayName } from "@/lib/moneDisplay";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import AlphaPanel from "@/components/AlphaPanel";
 
 type ScopeMarket = Extract<Market, "kr" | "us" | "all">;
 type ScopeMode = Extract<Mode, "conservative" | "balanced" | "aggressive" | "all">;
@@ -958,6 +959,10 @@ export default function VirtualJournalPage() {
 
   return (
     <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
+      {/* 원시 수익률 표 위에 둔다 — 아래 숫자들을 어떻게 읽어야 하는지가
+          먼저 와야 "-14%"를 앱 실패로 오독하지 않는다. */}
+      <AlphaPanel />
+
       <section className="rounded-lg bg-slate-900/60 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">

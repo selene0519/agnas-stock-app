@@ -568,6 +568,9 @@ export const mone = {
     apiPost<ApiList>(`/api/journal/virtual-trades/${encodeURIComponent(journalId)}/review`, body || {}),
   journalAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/analytics", p),
+  // 추천의 시장 대비 초과수익(알파). 원시 수익률만 보면 시장 하락을 앱 실패로
+  // 오해하게 되므로, 원시·시장몫·알파를 같이 받아 화면에서 나눠 보여준다.
+  edgeAlpha: () => apiGet<ApiList>("/api/edge/alpha"),
   virtualFailureAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/virtual/failure-analytics", p),
   virtualImprovementPriorities: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; regime?: string; recommendationBucket?: string }) =>
