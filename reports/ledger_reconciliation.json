@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-29T01:40:42.977002+00:00",
+  "generatedAt": "2026-07-29T10:42:06.864028+00:00",
   "cleanWindowStart": "2026-07-10",
   "verdict": "두 원장은 서로 다른 모집단이다. A=서빙 추천 전체(limit 50, 필터 없음), B=상위 5개 페이퍼 매매(_reject_reason + 심볼 중복제거). 같은 줄에 놓고 비교하면 안 된다.",
   "ledgerA": {
@@ -11,11 +11,11 @@
       "factor_attribution.py",
       "update_strategy_sleeve_nav.py"
     ],
-    "uniquePredictions": 874,
+    "uniquePredictions": 875,
     "allTime": {
-      "trades": 662,
-      "winRate": 0.1511,
-      "avgPnlPct": -5.0176
+      "trades": 663,
+      "winRate": 0.1538,
+      "avgPnlPct": -5.0154
     },
     "cleanWindow": {
       "trades": 3,
@@ -35,19 +35,19 @@
     ],
     "uniquePredictions": 880,
     "allTime": {
-      "trades": 626,
-      "winRate": 0.2061,
-      "avgPnlPct": -5.5238
+      "trades": 636,
+      "winRate": 0.2028,
+      "avgPnlPct": -5.6219
     },
     "cleanWindow": {
-      "trades": 67,
-      "winRate": 0.1194,
-      "avgPnlPct": -6.6308
+      "trades": 72,
+      "winRate": 0.1111,
+      "avgPnlPct": -6.9266
     }
   },
   "overlap": {
     "sharedPredictions": 88,
-    "onlyA": 786,
+    "onlyA": 787,
     "onlyB": 792,
     "note": "교집합이 작은 것은 버그가 아니다 — B는 조합당 상위 5개만 심볼 중복 없이 고르고, A는 최대 50개를 그대로 담는다."
   },
