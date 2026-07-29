@@ -172,8 +172,14 @@ def run(apply: bool) -> dict:
         elif old_ret is not None:
             after.append(old_ret)
 
-        same_ret = (old_ret is not None and new_ret is not None
-                    and abs(float(new_ret) - old_ret) < 0.005)
+        # 둘 다 None(NOT_EXECUTED)이면 "같다"로 봐야 한다. 예전 조건은
+        # non-None을 요구해서 값이 없는 행 82개를 매번 "변경"으로 보고했다 —
+        # 없는 변화를 보고하는 감시 도구는 있으나 마나다.
+        if old_ret is None and new_ret is None:
+            same_ret = True
+        else:
+            same_ret = (old_ret is not None and new_ret is not None
+                        and abs(float(new_ret) - old_ret) < 0.005)
         if new_result == old_result and same_ret:
             skipped["unchanged"] += 1
             row["validationRule"] = RULE_TAG
