@@ -2060,11 +2060,53 @@ def _attribution_score_multiplier(market: str, mode: str, horizon: str) -> float
     return max(0.5, min(1.5, base + kelly_adj))
 
 
+# ── 변동성 인지 재랭킹 ────────────────────────────────────────────────
+# 2026-07-29 홀드아웃 검정(추천일 날짜순 60/40, 저널 642건):
+#   같은 날 추천들의 평균을 빼 **공통 시장 요인을 제거**한 뒤에도
+#     atr14_pct_at_entry   train ρ -0.427 / test ρ **-0.494**  (5분위 격차 -6.77%p)
+#   즉 저변동 종목이 고변동 종목보다 시장조정 후 6.77%p 앞섰고, train/test에서
+#   부호와 크기가 모두 유지됐다.
+#
+#   반면 앱이 실제로 순위를 매기던 점수는 반대였다:
+#     final_rank_score     train ρ +0.026 / test ρ **-0.291**  (격차 -4.26%p)
+#
+# 그래서 finalScore를 버리지 않고 **변동성 항을 더해 보정**한다. 버리지 않는
+# 이유는 표본이 KOSPI -24% **한 국면**뿐이기 때문이다 — 저변동 우위는 국면
+# 의존적이라 상승장에서 뒤집힐 수 있다. 원점수는 `finalScoreRaw`로 남겨
+# 두 랭킹을 계속 비교할 수 있게 한다.
+#
+# ⚠️ 이 보정은 기댓값을 (+)로 만든다고 보장하지 않는다. 홀드아웃에서 확인된
+#    것은 "순위 매김이 덜 틀린다"까지다.
+VOL_RERANK_WEIGHT = 0.35      # 원점수 0.65 + 변동성점수 0.35
+VOL_ATR_REF_PCT = 3.0         # 이 값을 중앙으로 잡고 저변동에 가점
+
+
+def _volatility_rank_score(item: dict[str, Any]) -> float | None:
+    """ATR%가 낮을수록 높은 점수(0~100). 값이 없으면 None."""
+    atr = _num(item.get("atr14Pct") or item.get("atr14_pct"))
+    if not atr or atr <= 0:
+        return None
+    # ATR 1% -> 약 83점, 3% -> 50점, 6% -> 약 29점. 완만한 반비례.
+    return _clamp(100.0 * VOL_ATR_REF_PCT / (VOL_ATR_REF_PCT + atr), 0, 100)
+
+
 def _sync_final_rank_score(item: dict[str, Any]) -> dict[str, Any]:
     for key in ("finalScore", "quantScore", "finalRankScore"):
         score = _num(item.get(key))
         if score > 0:
-            item["finalRankScore"] = round(_clamp(score, 0, 100), 1)
+            base = _clamp(score, 0, 100)
+            item["finalScoreRaw"] = round(base, 1)
+            vol = _volatility_rank_score(item)
+            if vol is None:
+                # 변동성을 모르면 원점수를 그대로 쓴다 — 없는 정보를 지어내지 않는다.
+                item["volRerankApplied"] = False
+                item["finalRankScore"] = round(base, 1)
+            else:
+                blended = base * (1 - VOL_RERANK_WEIGHT) + vol * VOL_RERANK_WEIGHT
+                item["volRankScore"] = round(vol, 1)
+                item["volRerankApplied"] = True
+                item["finalRankScore"] = round(_clamp(blended, 0, 100), 1)
+                item["finalScore"] = item["finalRankScore"]
             break
     return item
 
