@@ -141,7 +141,13 @@ def _window_cutoff(horizon: str, due_date: str) -> str:
 
 def _find_result(sym: str, mode: str, horizon: str, due_date: str,
                  market: str, index: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
-    """due_date 이후 가장 빠른 체결 결과를 찾는다."""
+    """검증 창 안의 일별 스냅샷 중 **가장 늦은** 체결 결과를 고른다.
+
+    (2026-07-29 정정: docstring이 오랫동안 "가장 빠른"이라고 적혀 있었는데
+    코드는 `k_date > best_exec[0]`로 **가장 늦은** 것을 고른다. 동작이 아니라
+    설명이 틀렸던 것이라 설명을 실제에 맞췄다. 각 스냅샷은 그날까지의 봉으로
+    같은 예측을 재평가한 결과이므로, 늦은 스냅샷일수록 더 많은 봉을 본다.)
+    """
     cutoff = _window_cutoff(horizon, due_date)
     best_exec: tuple[str, dict[str, Any]] | None = None
     best_not_executed: tuple[str, dict[str, Any]] | None = None
@@ -183,8 +189,16 @@ def _settle_from_ohlcv(market: str, symbol: str, entry: float | None, stop: floa
     if not rows:
         return None
     cost = COST_PCT.get(market, COST_PCT["kr"])
-    best_exec: tuple[str, dict[str, Any]] | None = None
-    best_not_executed: tuple[str, dict[str, Any]] | None = None
+    # ── 선착순 청산 ────────────────────────────────────────────────────
+    # 예전엔 매 거래일을 독립 평가하고 `date > best_exec[0]`로 **덮어썼다.**
+    # 그래서 3일차에 손절된 거래가 10일차 종가청산으로 기록됐다 — 포지션은
+    # 3일차에 이미 닫혔는데도. 진입 여부도 매일 다시 판정해서, 한 번 들어간
+    # 뒤 진입가가 그날 범위를 벗어나면 미체결로 되돌아갔다.
+    # 이제 **진입은 한 번, 청산은 먼저 닿은 날**이다.
+    entered = False
+    last_close: float | None = None
+    last_date = ""
+    last_seen = ""
     for row in rows:
         date = str(row.get("date") or row.get("Date") or "")[:10]
         if not date or date < created[:10] or date > cutoff:
@@ -194,35 +208,34 @@ def _settle_from_ohlcv(market: str, symbol: str, entry: float | None, stop: floa
         close = _num(row.get("close") or row.get("Close"))
         if low is None or high is None or close is None:
             continue
-        executed = low <= entry <= high
-        if not executed:
-            if best_not_executed is None or date > best_not_executed[0]:
-                best_not_executed = (date, {
-                    "kind": "not_executed", "result": "NOT_EXECUTED",
-                    "returnPct": None, "exitPrice": None, "exitDate": date,
-                })
-            continue
+        last_seen = date
+        if not entered:
+            if not (low <= entry <= high):
+                continue
+            entered = True
         target_hit = bool(target and high >= target)
         stop_hit = bool(stop and low <= stop)
         if target_hit and stop_hit:
             target_hit = False  # 동시 도달 시 손절 먼저 났다고 가정 (보수적)
-        if target_hit:
-            result, exit_price = "target_hit", target
-        elif stop_hit:
-            result, exit_price = "stop_hit", stop
-        else:
-            result, exit_price = "close_exit", close
-        ret = round(((exit_price - entry) / entry * 100) - cost, 4)
-        if best_exec is None or date > best_exec[0]:
+        if target_hit or stop_hit:
+            result = "target_hit" if target_hit else "stop_hit"
+            exit_price = target if target_hit else stop
             # 청산 **날짜**를 같이 남긴다. 이게 없으면 전략별 자본곡선의 시점이
             # 전부 만기일(validationDueDate) 추정치가 되어, 손절로 3일 만에 끝난
             # 거래와 만기까지 끌고 간 거래가 같은 날 실현된 것처럼 보인다.
-            best_exec = (date, {"kind": "exec", "result": result, "returnPct": ret,
-                                "exitPrice": exit_price, "exitDate": date})
-    if best_exec:
-        return best_exec[1]
-    if best_not_executed:
-        return best_not_executed[1]
+            return {"kind": "exec", "result": result,
+                    "returnPct": round(((exit_price - entry) / entry * 100) - cost, 4),
+                    "exitPrice": exit_price, "exitDate": date}
+        last_close, last_date = close, date
+
+    if entered and last_close is not None:
+        # 만기까지 목표·손절 어느 쪽도 안 닿음 -> 마지막 종가로 청산.
+        return {"kind": "exec", "result": "close_exit",
+                "returnPct": round(((last_close - entry) / entry * 100) - cost, 4),
+                "exitPrice": last_close, "exitDate": last_date}
+    if last_seen:
+        return {"kind": "not_executed", "result": "NOT_EXECUTED",
+                "returnPct": None, "exitPrice": None, "exitDate": last_seen}
     return None
 
 

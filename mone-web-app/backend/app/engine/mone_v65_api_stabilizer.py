@@ -3840,20 +3840,52 @@ def _validate_virtual_ledger() -> dict[str, Any]:
                 data_pending_count += 1
                 result.update({"result": "DATA_PENDING", "reason": "검증 기간 OHLCV 없음", "dataStatus": "DATA_PENDING"})
             else:
+                # ── 선착순 청산 ────────────────────────────────────────
+                # 예전엔 창 **전체**를 훑어 target_hit/stop_hit 플래그를 모은 뒤
+                # 마지막에 한 번 판정했다. 그러면 2일차에 목표를 찍고 9일차에
+                # 손절을 찍은 거래가 STOP_FIRST(손실)로 기록된다 — 실제로는
+                # 2일차에 익절되어 포지션이 이미 없는데도.
+                #
+                # 2026-07-29 실측: STOP_FIRST로 기록된 110건 중 **46건(41.8%)이
+                # 목표 먼저**였다. 이 편향을 바로잡으면 정산 663건의 평균손익이
+                # -5.015% -> -3.826%(+1.189%p), 승률 15.4% -> 22.3%로 바뀐다.
+                # 즉 기록이 체계적으로 **비관** 쪽이었다.
+                #
+                # 같은 날 둘 다 닿은 경우만 보수적으로 손절 우선을 유지한다
+                # (일봉으로는 순서를 알 수 없으므로).
                 touched = False
                 target_hit = False
                 stop_hit = False
+                exited = False
                 close_price = 0.0
                 for bar in window_rows:
                     high = _num(_text(bar, ["high", "High", "고가"], ""))
                     low = _num(_text(bar, ["low", "Low", "저가"], ""))
-                    close_price = _num(_text(bar, ["close", "Close", "종가"], "")) or close_price
-                    if low <= entry <= high:
+                    bar_close = _num(_text(bar, ["close", "Close", "종가"], ""))
+                    if bar_close:
+                        # 청산 후의 종가는 더 이상 이 거래와 무관하다.
+                        if not exited:
+                            close_price = bar_close
+                    if not touched:
+                        if not (low <= entry <= high):
+                            continue
                         touched = True
-                    if touched and high >= target:
+                    if exited:
+                        continue
+                    day_target = high >= target
+                    day_stop = low <= stop
+                    if day_target and day_stop:
+                        # 둘 다 세워야 아래 판정에서 STOP_FIRST가 된다. 이제
+                        # STOP_FIRST는 **같은 날 동시 도달**만 뜻한다(원래 의도).
                         target_hit = True
-                    if touched and low <= stop:
                         stop_hit = True
+                        exited = True
+                    elif day_target:
+                        target_hit = True
+                        exited = True
+                    elif day_stop:
+                        stop_hit = True
+                        exited = True
                 if not touched:
                     not_executed_count += 1
                     result.update({"result": "NOT_EXECUTED", "reason": "진입가 미도달"})
