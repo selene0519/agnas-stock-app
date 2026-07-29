@@ -109,10 +109,10 @@ function ScreenerSection({
       >
         <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
         {typeof count === "number" && count > 0 && (
-          <span className="font-mono text-[10px] text-slate-600">{count}</span>
+          <span className="font-mono text-[10px] text-slate-400">{count}</span>
         )}
         {active && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-label="적용 중" />}
-        <span className="ml-auto text-[10px] text-slate-600">{open ? "▲" : "▼"}</span>
+        <span className="ml-auto text-[10px] text-slate-400">{open ? "▲" : "▼"}</span>
       </button>
       {open && <div className="border-t border-slate-800/70 px-3 py-3">{children}</div>}
     </div>
@@ -1396,7 +1396,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <div className="mt-3 flex flex-wrap gap-1.5">
             <span className="text-[10px] text-slate-400 self-center">그룹:</span>
             <button onClick={() => setGroupFilter(null)}
-              className={`rounded-full px-3 py-1 text-[11px] font-medium ${!groupFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+              className={`rounded-full px-3 py-1 text-[11px] font-medium ${!groupFilter ? "bg-emerald-600 text-slate-950" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
               전체
             </button>
             {groupsList.map((g) => (
@@ -1485,18 +1485,18 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono">
                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${badge[v.verdict] || badge.thin}`}>{icon[v.verdict] || icon.thin}</span>
                       <span className="text-[10px] text-slate-400">신뢰도 {v.confidence === "HIGH" ? "높음" : v.confidence === "MED" ? "보통" : "낮음"}</span>
-                      <span className="text-[10px] text-slate-600">· 전략 {v.profile}</span>
+                      <span className="text-[10px] text-slate-400">· 전략 {v.profile}</span>
                     </div>
                     {btN > 0 && (
                       <div className="font-mono text-[10px] text-slate-400">
                         백테스트 <span className={bt >= 0 ? "text-emerald-300" : "text-red-400"}>{fmt(bt)}</span>
-                        <span className="text-slate-600"> · 승률 {btWin.toFixed(0)}% · 표본 {btN}건</span>
+                        <span className="text-slate-400"> · 승률 {btWin.toFixed(0)}% · 표본 {btN}건</span>
                       </div>
                     )}
                     <div className="font-mono text-[10px] text-slate-400">
                       실전(모의) {leN > 0
-                        ? <><span className={le >= 0 ? "text-emerald-300" : "text-amber-300"}>{fmt(le)}</span><span className="text-slate-600"> · 승률 {leWin.toFixed(0)}% · 표본 {leN}건</span></>
-                        : <span className="text-slate-600">표본 축적 중</span>}
+                        ? <><span className={le >= 0 ? "text-emerald-300" : "text-amber-300"}>{fmt(le)}</span><span className="text-slate-400"> · 승률 {leWin.toFixed(0)}% · 표본 {leN}건</span></>
+                        : <span className="text-slate-400">표본 축적 중</span>}
                     </div>
                     {v.verdict === "caution" && (
                       <div className="text-[10px] text-amber-400">실전에서 손실 구간 — 지금은 무리한 진입보다 관망하세요.</div>
@@ -1654,7 +1654,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
               {/* 세부 조건 — 접힘, 렌즈가 관련 섹션을 펼친다 */}
               <div className="space-y-2">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                   고급 필터 · 렌즈에 맞춰 펼쳐집니다
                 </div>
 
@@ -1695,7 +1695,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     open={sectionOpen("strategy")} active={sectionActive("strategy")} onToggle={toggleSection}>
                     <div className="flex flex-wrap gap-1.5">
                       <button onClick={() => setTagFilter(null)}
-                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${!tagFilter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
+                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${!tagFilter ? "bg-emerald-600 text-slate-950" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>
                         전체
                       </button>
                       {allTags.map((tag) => (
@@ -1951,7 +1951,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       </span>
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
-                      <span className="truncate text-slate-600">
+                      <span className="truncate text-slate-400">
                         출처: {row.priceSource || row.source || "symbol master"}
                       </span>
                       <span className={String(row.dataStatus || "").toUpperCase() === "NORMAL" ? "text-emerald-400" : "text-amber-300"}>
@@ -1959,7 +1959,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                       </span>
                     </div>
                   </button>
-                  <div className="mt-2 text-[10px] text-slate-600">현재 추천 후보는 아닙니다 · 분석 화면에서 상세 확인 가능</div>
+                  <div className="mt-2 text-[10px] text-slate-400">현재 추천 후보는 아닙니다 · 분석 화면에서 상세 확인 가능</div>
                   <div className="mt-3 flex gap-2">
                     <button
                       type="button"
@@ -2064,7 +2064,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           <span className="font-semibold text-emerald-300">{priceBasisInfo.predictionText}</span>
           <span className="text-cyan-300">{priceBasisInfo.priceText}</span>
           <span>{priceBasisInfo.ohlcvText}</span>
-          <span className="text-slate-600">상세 판단은 각 카드의 분석 보기로 이어집니다.</span>
+          <span className="text-slate-400">상세 판단은 각 카드의 분석 보기로 이어집니다.</span>
         </div>
       </div>
 
@@ -2084,7 +2084,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
       {visible.length === 0 && !loading && !loadError && (
         <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center">
           <p className="text-slate-400">현재 조건에 맞는 후보가 없습니다.</p>
-          <div className="mt-3 space-y-1 text-xs text-slate-600">
+          <div className="mt-3 space-y-1 text-xs text-slate-400">
             {watchOnly && items.length === 0 && <p>• 관심종목이 없거나 추천 파일에 매칭되지 않음 → 종목 카드에서 관심종목 추가 또는 관심종목만 보기 해제</p>}
             {watchOnly && items.length > 0 && visible.length === 0 && <p>• 관심종목 {watchlist.length}개 중 {modeLabel(mode)}/{horizonLabel(horizon)} 추천에 매칭된 종목 없음 → 성향·기간 변경 또는 관심종목만 보기 해제</p>}
             {!watchOnly && items.length === 0 && <p>• 추천 파일({modeLabel(mode)}/{horizonLabel(horizon)})이 비어있음 — GitHub Actions 실행 후 데이터가 채워집니다</p>}

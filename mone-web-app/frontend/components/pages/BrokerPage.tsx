@@ -246,7 +246,7 @@ export default function BrokerPage({ userToken, onLogin, onNavigate }: BrokerPag
         </div>
       </div>
 
-      {loading && <div className="py-2 text-center text-xs text-slate-600">연동 상태 조회 중...</div>}
+      {loading && <div className="py-2 text-center text-xs text-slate-400">연동 상태 조회 중...</div>}
 
       <div className="space-y-3">
         {BROKERS.map((broker) => (

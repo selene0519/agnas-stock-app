@@ -1,0 +1,705 @@
+{
+  "viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "standard": "WCAG 2.1 AA",
+  "thresholds": {
+    "normalText": 4.5,
+    "largeText": 3.0
+  },
+  "loadingMarkers": [
+    "불러오는 중",
+    "준비 중",
+    "로딩 중",
+    "계산 중",
+    "확인하고 있어요"
+  ],
+  "themes": {
+    "dark": {
+      "home": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 88,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 107,
+        "appliedTheme": "dark",
+        "visibleTextChars": 803,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "report": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 30,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 49,
+        "appliedTheme": "dark",
+        "visibleTextChars": 264,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "stocks": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 42,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 61,
+        "appliedTheme": "dark",
+        "visibleTextChars": 326,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "holdings": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 37,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 54,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 95,
+        "appliedTheme": "dark",
+        "visibleTextChars": 364,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "chart": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 54,
+        "skipped": {
+          "hidden": 9,
+          "zeroBox": 29,
+          "disabled": 2,
+          "unparsedColor": 0
+        },
+        "textElements": 94,
+        "appliedTheme": "dark",
+        "visibleTextChars": 603,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "news": {
+        "violations": [
+          {
+            "count": 2,
+            "text": "원본 159건",
+            "tag": "div",
+            "fg": "#32b2af",
+            "bg": "#12424b",
+            "rawColor": "rgb(61, 216, 208)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 400,
+            "large": false,
+            "ratio": 4.3,
+            "need": 4.5,
+            "cls": "line-clamp-1 text-[10px] opacity-75"
+          },
+          {
+            "count": 1,
+            "text": "최근일 확인 필요",
+            "tag": "div",
+            "fg": "#738094",
+            "bg": "#111828",
+            "rawColor": "rgb(148, 163, 184)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 400,
+            "large": false,
+            "ratio": 4.44,
+            "need": 4.5,
+            "cls": "line-clamp-1 text-[10px] opacity-75"
+          }
+        ],
+        "undetermined": [],
+        "checked": 1172,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 1191,
+        "appliedTheme": "dark",
+        "visibleTextChars": 9804,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "prediction": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 260,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 31,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 295,
+        "appliedTheme": "dark",
+        "visibleTextChars": 2694,
+        "pendingLoaders": [
+          "불러오는 중"
+        ],
+        "renderTrusted": false
+      },
+      "advanced": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 55,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 74,
+        "appliedTheme": "dark",
+        "visibleTextChars": 555,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "paper": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 48,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 67,
+        "appliedTheme": "dark",
+        "visibleTextChars": 473,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "journal": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 1436,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 1010,
+          "disabled": 3,
+          "unparsedColor": 0
+        },
+        "textElements": 2453,
+        "appliedTheme": "dark",
+        "visibleTextChars": 17017,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "broker": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 12,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 31,
+        "appliedTheme": "dark",
+        "visibleTextChars": 137,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "admin": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 18,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 1,
+          "unparsedColor": 0
+        },
+        "textElements": 38,
+        "appliedTheme": "dark",
+        "visibleTextChars": 131,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      }
+    },
+    "light": {
+      "home": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 88,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 107,
+        "appliedTheme": "light",
+        "visibleTextChars": 800,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "report": {
+        "violations": [
+          {
+            "count": 1,
+            "text": "진입 후보 · EV·손익비·전략 태그",
+            "tag": "div",
+            "fg": "#e7f4f3",
+            "bg": "#0d9488",
+            "rawColor": "rgb(255, 255, 255)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 400,
+            "large": false,
+            "ratio": 3.33,
+            "need": 4.5,
+            "cls": "mt-0.5 text-[10px] opacity-90 leading-tight"
+          },
+          {
+            "count": 1,
+            "text": "미장",
+            "tag": "button",
+            "fg": "#ffffff",
+            "bg": "#0d9488",
+            "rawColor": "rgb(255, 255, 255)",
+            "onGradient": false,
+            "fontPx": 14,
+            "weight": 500,
+            "large": false,
+            "ratio": 3.74,
+            "need": 4.5,
+            "cls": "inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-1.5 text-sm "
+          },
+          {
+            "count": 1,
+            "text": "오늘 추천",
+            "tag": "div",
+            "fg": "#ffffff",
+            "bg": "#0d9488",
+            "rawColor": "rgb(255, 255, 255)",
+            "onGradient": false,
+            "fontPx": 12,
+            "weight": 700,
+            "large": false,
+            "ratio": 3.74,
+            "need": 4.5,
+            "cls": "font-bold leading-tight"
+          }
+        ],
+        "undetermined": [],
+        "checked": 30,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 49,
+        "appliedTheme": "light",
+        "visibleTextChars": 264,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "stocks": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 42,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 61,
+        "appliedTheme": "light",
+        "visibleTextChars": 326,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "holdings": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 37,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 54,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 95,
+        "appliedTheme": "light",
+        "visibleTextChars": 364,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "chart": {
+        "violations": [
+          {
+            "count": 4,
+            "text": "데이터 연결 확인 중",
+            "tag": "div",
+            "fg": "#ad7f39",
+            "bg": "#fef4e4",
+            "rawColor": "rgb(146, 88, 0)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 400,
+            "large": false,
+            "ratio": 3.28,
+            "need": 4.5,
+            "cls": "mt-1 text-[10px] leading-4 opacity-75"
+          },
+          {
+            "count": 4,
+            "text": "OHLCV",
+            "tag": "div",
+            "fg": "#a8772e",
+            "bg": "#fef4e4",
+            "rawColor": "rgb(146, 88, 0)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 600,
+            "large": false,
+            "ratio": 3.61,
+            "need": 4.5,
+            "cls": "text-[10px] font-semibold uppercase tracking-wide opacity-80"
+          }
+        ],
+        "undetermined": [],
+        "checked": 54,
+        "skipped": {
+          "hidden": 9,
+          "zeroBox": 29,
+          "disabled": 2,
+          "unparsedColor": 0
+        },
+        "textElements": 94,
+        "appliedTheme": "light",
+        "visibleTextChars": 603,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "news": {
+        "violations": [
+          {
+            "count": 1,
+            "text": "company financial rows merged from company/cl",
+            "tag": "div",
+            "fg": "#3a967d",
+            "bg": "#daf0ed",
+            "rawColor": "rgb(4, 120, 87)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 400,
+            "large": false,
+            "ratio": 3.03,
+            "need": 4.5,
+            "cls": "line-clamp-1 text-[10px] opacity-75"
+          },
+          {
+            "count": 2,
+            "text": "원본 159건",
+            "tag": "div",
+            "fg": "#378c89",
+            "bg": "#c2eff0",
+            "rawColor": "rgb(9, 107, 103)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 400,
+            "large": false,
+            "ratio": 3.2,
+            "need": 4.5,
+            "cls": "line-clamp-1 text-[10px] opacity-75"
+          },
+          {
+            "count": 1,
+            "text": "상태",
+            "tag": "div",
+            "fg": "#2f9075",
+            "bg": "#daf0ed",
+            "rawColor": "rgb(4, 120, 87)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 600,
+            "large": false,
+            "ratio": 3.29,
+            "need": 4.5,
+            "cls": "text-[10px] font-semibold uppercase tracking-wide opacity-80"
+          },
+          {
+            "count": 2,
+            "text": "표시",
+            "tag": "div",
+            "fg": "#2e8582",
+            "bg": "#c2eff0",
+            "rawColor": "rgb(9, 107, 103)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 600,
+            "large": false,
+            "ratio": 3.51,
+            "need": 4.5,
+            "cls": "text-[10px] font-semibold uppercase tracking-wide opacity-80"
+          },
+          {
+            "count": 1,
+            "text": "최근일 확인 필요",
+            "tag": "div",
+            "fg": "#707c8c",
+            "bg": "#ecf0f5",
+            "rawColor": "rgb(71, 85, 105)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 400,
+            "large": false,
+            "ratio": 3.71,
+            "need": 4.5,
+            "cls": "line-clamp-1 text-[10px] opacity-75"
+          },
+          {
+            "count": 1,
+            "text": "미장",
+            "tag": "button",
+            "fg": "#ffffff",
+            "bg": "#0d9488",
+            "rawColor": "rgb(255, 255, 255)",
+            "onGradient": false,
+            "fontPx": 12,
+            "weight": 500,
+            "large": false,
+            "ratio": 3.74,
+            "need": 4.5,
+            "cls": "inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-1.5 text-xs "
+          },
+          {
+            "count": 1,
+            "text": "원본",
+            "tag": "div",
+            "fg": "#687485",
+            "bg": "#ecf0f5",
+            "rawColor": "rgb(71, 85, 105)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 600,
+            "large": false,
+            "ratio": 4.14,
+            "need": 4.5,
+            "cls": "text-[10px] font-semibold uppercase tracking-wide opacity-80"
+          }
+        ],
+        "undetermined": [],
+        "checked": 1172,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 1191,
+        "appliedTheme": "light",
+        "visibleTextChars": 9804,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "prediction": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 76,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 31,
+          "disabled": 1,
+          "unparsedColor": 0
+        },
+        "textElements": 112,
+        "appliedTheme": "light",
+        "visibleTextChars": 1121,
+        "pendingLoaders": [
+          "불러오는 중"
+        ],
+        "renderTrusted": false
+      },
+      "advanced": {
+        "violations": [
+          {
+            "count": 1,
+            "text": "정상",
+            "tag": "span",
+            "fg": "#047857",
+            "bg": "#b2e7da",
+            "rawColor": "rgb(4, 120, 87)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 600,
+            "large": false,
+            "ratio": 4.02,
+            "need": 4.5,
+            "cls": "rounded px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/"
+          }
+        ],
+        "undetermined": [],
+        "checked": 55,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 74,
+        "appliedTheme": "light",
+        "visibleTextChars": 555,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "paper": {
+        "violations": [
+          {
+            "count": 1,
+            "text": "정상",
+            "tag": "span",
+            "fg": "#047857",
+            "bg": "#b2e7da",
+            "rawColor": "rgb(4, 120, 87)",
+            "onGradient": false,
+            "fontPx": 10,
+            "weight": 600,
+            "large": false,
+            "ratio": 4.02,
+            "need": 4.5,
+            "cls": "rounded px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/"
+          }
+        ],
+        "undetermined": [],
+        "checked": 48,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 67,
+        "appliedTheme": "light",
+        "visibleTextChars": 473,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "journal": {
+        "violations": [
+          {
+            "count": 1,
+            "text": "14개 신호 동시분석",
+            "tag": "span",
+            "fg": "#ddd6ff",
+            "bg": "#f1eaff",
+            "rawColor": "oklch(0.894 0.057 293.283)",
+            "onGradient": false,
+            "fontPx": 11,
+            "weight": 400,
+            "large": false,
+            "ratio": 1.19,
+            "need": 4.5,
+            "cls": "rounded bg-violet-500/12 px-2 py-0.5 text-violet-200"
+          },
+          {
+            "count": 1,
+            "text": "유사 장세",
+            "tag": "button",
+            "fg": "#c6d2ff",
+            "bg": "#ecebff",
+            "rawColor": "oklch(0.87 0.065 274.039)",
+            "onGradient": false,
+            "fontPx": 11,
+            "weight": 600,
+            "large": false,
+            "ratio": 1.27,
+            "need": 4.5,
+            "cls": "inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded"
+          }
+        ],
+        "undetermined": [],
+        "checked": 1448,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 1010,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 2462,
+        "appliedTheme": "light",
+        "visibleTextChars": 17274,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "broker": {
+        "violations": [
+          {
+            "count": 1,
+            "text": "로그인하기",
+            "tag": "button",
+            "fg": "#ffffff",
+            "bg": "#0d9488",
+            "rawColor": "rgb(255, 255, 255)",
+            "onGradient": false,
+            "fontPx": 14,
+            "weight": 600,
+            "large": false,
+            "ratio": 3.74,
+            "need": 4.5,
+            "cls": "inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-6 py-"
+          }
+        ],
+        "undetermined": [],
+        "checked": 12,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 0,
+          "unparsedColor": 0
+        },
+        "textElements": 31,
+        "appliedTheme": "light",
+        "visibleTextChars": 137,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      },
+      "admin": {
+        "violations": [],
+        "undetermined": [],
+        "checked": 18,
+        "skipped": {
+          "hidden": 4,
+          "zeroBox": 15,
+          "disabled": 1,
+          "unparsedColor": 0
+        },
+        "textElements": 38,
+        "appliedTheme": "light",
+        "visibleTextChars": 131,
+        "pendingLoaders": [],
+        "renderTrusted": true
+      }
+    }
+  }
+}

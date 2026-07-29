@@ -188,7 +188,7 @@ function StrategyBreakdown({ items }: { items: any[] }) {
                 <td className="py-2.5 pr-3 font-semibold text-slate-300">{modeLabel(m)}</td>
                 {horizons.map((h) => {
                   const s = stats[`${m}_${h}`];
-                  if (!s || s.total === 0) return <td key={h} className="py-2.5 text-center text-slate-700">—</td>;
+                  if (!s || s.total === 0) return <td key={h} className="py-2.5 text-center text-slate-400">—</td>;
                   const wr = (s.wins / s.total) * 100;
                   const avg = s.returns.reduce((a, b) => a + b, 0) / s.returns.length;
                   const wrColor = wr >= 55 ? "text-emerald-300" : wr >= 45 ? "text-amber-300" : "text-red-300";
@@ -202,7 +202,7 @@ function StrategyBreakdown({ items }: { items: any[] }) {
                       <div className={`mt-0.5 font-mono text-[10px] ${avg >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                         avg {avg >= 0 ? "+" : ""}{avg.toFixed(1)}%
                       </div>
-                      <div className="text-slate-600">{s.wins}/{s.total}</div>
+                      <div className="text-slate-400">{s.wins}/{s.total}</div>
                     </td>
                   );
                 })}
@@ -384,7 +384,8 @@ export default function ReportPage() {
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`rounded-xl px-2 py-2.5 text-left text-xs sm:text-sm ${tab === t.id ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>
             <div className="font-bold leading-tight">{t.label}</div>
-            <div className="mt-0.5 text-[10px] opacity-70 leading-tight">{t.desc}</div>
+            {/* opacity-70이면 활성 탭 3.67:1 / 비활성 4.05:1로 AA(4.5) 미달이었다. */}
+            <div className="mt-0.5 text-[10px] opacity-90 leading-tight">{t.desc}</div>
           </button>
         ))}
       </div>
@@ -405,20 +406,20 @@ export default function ReportPage() {
       <div className="flex flex-wrap gap-1.5">
         {(["conservative", "balanced", "aggressive"] as Mode[]).map((m) => (
           <button key={m} onClick={() => setMode(m)}
-            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-1.5 text-xs font-medium ${mode === m ? "bg-emerald-600 text-white" : "bg-slate-900 text-slate-400"}`}>
+            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-1.5 text-xs font-medium ${mode === m ? "bg-emerald-600 text-slate-950" : "bg-slate-900 text-slate-400"}`}>
             {modeLabel(m)}
           </button>
         ))}
         {(["short", "swing", "mid"] as Horizon[]).map((h) => (
           <button key={h} onClick={() => setHorizon(h)}
-            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-1.5 text-xs font-medium ${horizon === h ? "bg-cyan-600 text-white" : "bg-slate-900 text-slate-400"}`}>
+            className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-1.5 text-xs font-medium ${horizon === h ? "bg-cyan-600 text-slate-950" : "bg-slate-900 text-slate-400"}`}>
             {horizonLabel(h)}
           </button>
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/45 px-3 py-2 text-xs">
-        <span className="text-slate-500">현재 리포트</span>
+        <span className="text-slate-400">현재 리포트</span>
         <span className="font-semibold text-slate-200">{marketLabel(market)}</span>
         <span className="h-3 w-px bg-slate-700" />
         <span className="font-semibold text-slate-200">{modeLabel(mode)}</span>
@@ -702,7 +703,7 @@ export default function ReportPage() {
                             const barColor = wr == null ? "" : wr >= 55 ? "bg-emerald-500" : wr >= 45 ? "bg-amber-500" : "bg-red-500";
                             return (
                               <td key={h} className="px-3 py-3 text-center">
-                                <div className={`text-base font-bold ${wr == null ? "text-slate-600" : wr >= 55 ? "text-emerald-300" : wr >= 45 ? "text-amber-300" : "text-red-300"}`}>
+                                <div className={`text-base font-bold ${wr == null ? "text-slate-400" : wr >= 55 ? "text-emerald-300" : wr >= 45 ? "text-amber-300" : "text-red-300"}`}>
                                   {wr != null ? `${wr}%` : "—"}
                                 </div>
                                 {wr != null && (

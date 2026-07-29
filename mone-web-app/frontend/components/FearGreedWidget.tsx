@@ -128,7 +128,7 @@ function FgCard({
         {data.label}
       </span>
       {data.history && <MiniBar history={data.history} />}
-      <span className="max-w-[140px] text-center text-[9px] leading-tight text-slate-600">{data.source}</span>
+      <span className="max-w-[140px] text-center text-[9px] leading-tight text-slate-400">{data.source}</span>
     </div>
   );
 }

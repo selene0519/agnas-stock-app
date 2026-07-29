@@ -67,7 +67,7 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
               { label: "손실 예산", value: `${Number(risk.totalLossBudgetPct ?? 0).toFixed(1)}% / ${risk.maxPortfolioLossPct ?? "-"}%` },
             ].map((item) => (
               <div key={item.label} className="rounded-md bg-slate-900/70 px-3 py-2">
-                <div className="text-[10px] text-slate-500">{item.label}</div>
+                <div className="text-[10px] text-slate-400">{item.label}</div>
                 <div className="mt-1 truncate font-mono text-xs font-semibold text-slate-200">{item.value}</div>
               </div>
             ))}

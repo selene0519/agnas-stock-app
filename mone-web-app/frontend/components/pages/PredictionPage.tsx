@@ -624,7 +624,7 @@ export default function PredictionPage() {
                       const isActive = m === strategy && h === term;
                       return (
                         <td key={h} className={`px-3 py-2.5 text-center ${isActive ? "ring-1 ring-inset ring-emerald-500/40" : ""}`}>
-                          <div className={`text-base font-bold ${wr == null ? "text-slate-600" : wr >= 55 ? "text-emerald-300" : wr >= 45 ? "text-amber-300" : "text-red-300"}`}>
+                          <div className={`text-base font-bold ${wr == null ? "text-slate-400" : wr >= 55 ? "text-emerald-300" : wr >= 45 ? "text-amber-300" : "text-red-300"}`}>
                             {wr != null ? `${wr}%` : "—"}
                           </div>
                           <div className="mt-0.5 text-slate-400">{s?.completed ? `${s.wins}/${s.completed}` : `대기 ${s?.pendingCount ?? 0}`}</div>
@@ -694,7 +694,7 @@ export default function PredictionPage() {
             </div>
           )}
           {stats.executedCount === 0 && (
-            <p className="mt-2 text-[11px] text-slate-600">체결/결과 데이터가 없습니다. decisionBucket이 "실행"인 종목이 없거나 outcome 필드가 채워지지 않았습니다.</p>
+            <p className="mt-2 text-[11px] text-slate-400">체결/결과 데이터가 없습니다. decisionBucket이 "실행"인 종목이 없거나 outcome 필드가 채워지지 않았습니다.</p>
           )}
         </div>
       )}
@@ -799,7 +799,7 @@ export default function PredictionPage() {
                 return (
                   <tr key={`${item.market}-${item.symbol}-${index}`} className="border-b border-slate-800/60">
                     <td className="px-4 py-3"><div className="font-semibold text-slate-100">{displayName(item)}</div><div className="font-mono text-xs text-slate-400">{item.symbol} · {String(item.market || "").toUpperCase()}</div></td>
-                    <td className="px-4 py-3 font-mono"><span className="text-emerald-300">{probabilityText(item, "-")}</span><span className="text-slate-600"> / </span><span className="text-cyan-300">{score !== null ? score.toFixed(1) : "-"}</span></td>
+                    <td className="px-4 py-3 font-mono"><span className="text-emerald-300">{probabilityText(item, "-")}</span><span className="text-slate-400"> / </span><span className="text-cyan-300">{score !== null ? score.toFixed(1) : "-"}</span></td>
                     <td className="px-4 py-3 font-mono">{current}</td>
                     <td className="px-4 py-3 font-mono text-sky-300">{entry}</td>
                     <td className="px-4 py-3 font-mono text-red-300">{stop}</td>
@@ -908,7 +908,7 @@ function AccuracyPanel({ accuracy }: { accuracy: any }) {
                       <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.min(100, b.directionHitRate)}%` }} />
                     </div>
                     <span className="w-12 text-right font-mono text-slate-300">{b.directionHitRate}%</span>
-                    <span className="text-slate-600">({b.count})</span>
+                    <span className="text-slate-400">({b.count})</span>
                   </div>
                 ))}
               </div>

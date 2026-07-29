@@ -746,7 +746,7 @@ function RsiChart({ rows }: { rows: any[] }) {
         {latest && <span className={`font-mono text-xs font-bold ${rsiColor}`}>{latest.value.toFixed(1)}</span>}
         {latest?.value >= 80 && <span className="text-[10px] text-red-400">과매수</span>}
         {latest?.value <= 20 && <span className="text-[10px] text-emerald-400">과매도</span>}
-        <span className="ml-auto text-[10px] text-slate-600">80 / 20 기준선</span>
+        <span className="ml-auto text-[10px] text-slate-400">80 / 20 기준선</span>
       </div>
       <div ref={containerRef} className="h-[100px] w-full" />
     </div>
@@ -829,7 +829,7 @@ function MacdChart({ rows }: { rows: any[] }) {
         <span className={`text-[10px] font-semibold ${isBullish ? "text-emerald-300" : "text-red-400"}`}>
           {isBullish ? "골든크로스" : "데드크로스"}
         </span>
-        <span className="ml-auto text-[10px] text-slate-600">
+        <span className="ml-auto text-[10px] text-slate-400">
           <span style={{ color: "#38bdf8" }}>━ MACD</span>
           <span className="ml-2" style={{ color: "#f97316" }}>- - Signal</span>
         </span>
@@ -2105,7 +2105,7 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
           <RefreshCw size={11} className={invLoading ? "animate-spin" : ""} />
           {invLoading ? "조회 중..." : "투자자 동향"}
         </button>
-        {lastFetch > 0 && <span className="text-[10px] text-slate-600">{new Date(lastFetch).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>}
+        {lastFetch > 0 && <span className="text-[10px] text-slate-400">{new Date(lastFetch).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>}
       </div>
 
       {/* 호가창 */}
@@ -2144,12 +2144,12 @@ function OrderbookPanel({ symbol, market }: { symbol: string; market: string }) 
                       </div>
                     </td>
                     <td className="py-1 text-center font-mono font-semibold text-slate-200">{row.price.toLocaleString()}</td>
-                    <td className="py-1 pr-3 text-right text-slate-700">—</td>
+                    <td className="py-1 pr-3 text-right text-slate-400">—</td>
                   </tr>
                 ))}
                 {bids.slice(0, 5).map((row, i) => (
                   <tr key={`bid-${i}`} className="border-b border-slate-900/50">
-                    <td className="py-1 pl-3 text-left text-slate-700">—</td>
+                    <td className="py-1 pl-3 text-left text-slate-400">—</td>
                     <td className="py-1 text-center font-mono font-semibold text-slate-200">{row.price.toLocaleString()}</td>
                     <td className="py-1 pr-3">
                       <div className="flex items-center justify-end gap-1.5">
@@ -2874,12 +2874,12 @@ export default function ChartPage() {
             ATR(14) = {atrValue > 0 ? money(atrValue, selected.market) : "데이터 부족"} · 분할 계획 50/30/20
             {entryPlanBlocked ? " · 시장 게이트 회복과 조건 개선 후 적용" : ""}
           </p>
-          <p className="mt-1 text-[11px] text-slate-600">
+          <p className="mt-1 text-[11px] text-slate-400">
             최종 목표는 표시 기준 목표가와 동일하게 사용하고, 1차 목표는 분할익절 참고선으로만 표시합니다.
           </p>
         </div>
         <div className="grid w-full gap-2 sm:w-auto sm:min-w-[296px]">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">선택 전략 <span className="font-normal normal-case text-slate-600">· 이 종목 계획에만 적용</span></div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">선택 전략 <span className="font-normal normal-case text-slate-400">· 이 종목 계획에만 적용</span></div>
           <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900/70 p-1">
           {(["conservative","balanced","aggressive"] as const).map((m) => (
             <button key={m} onClick={() => setAtrMode(m)}
@@ -2910,7 +2910,7 @@ export default function ChartPage() {
               <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                 <div className="text-xs text-slate-400">{label}</div>
                 <div className={`mt-1 font-mono font-bold ${color}`}>{value}</div>
-                <div className="text-[10px] text-slate-600">{sub}</div>
+                <div className="text-[10px] text-slate-400">{sub}</div>
               </div>
             ))}
           </div>
@@ -2924,7 +2924,7 @@ export default function ChartPage() {
               <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                 <div className="text-xs text-slate-400">{label}</div>
                 <div className={`mt-1 font-mono font-bold ${color}`}>{value}</div>
-                <div className="text-[10px] text-slate-600">{sub}</div>
+                <div className="text-[10px] text-slate-400">{sub}</div>
               </div>
             ))}
           </div>
@@ -3027,7 +3027,7 @@ export default function ChartPage() {
                   </span>
                 </div>
                   <span className="text-xs text-slate-400">{stance.detail}</span>
-                  {loadState.updatedAt && <span className="text-[11px] text-slate-600">갱신 {loadState.updatedAt}</span>}
+                  {loadState.updatedAt && <span className="text-[11px] text-slate-400">갱신 {loadState.updatedAt}</span>}
                   <button
                     onClick={() => setReloadKey((v) => v + 1)}
                     disabled={loading}
@@ -3204,12 +3204,12 @@ export default function ChartPage() {
                     <div key={card.label} className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
                       <div className="text-[10px] text-slate-400">{card.label}</div>
                       <div className="mt-1 break-words font-mono text-sm font-bold text-slate-100">{card.value}</div>
-                      <div className="text-[10px] text-slate-600">{card.sub}</div>
+                      <div className="text-[10px] text-slate-400">{card.sub}</div>
                     </div>
                   ))}
                 </div>
               )}
-              <div className="mt-2 text-[10px] text-slate-600">
+              <div className="mt-2 text-[10px] text-slate-400">
                 OHLCV 최근일: {freshness.detail}
                 {loadState.recoDate && <span className="ml-3 text-violet-400/70">추천 생성: {loadState.recoDate.slice(0, 10)}</span>}
               </div>
@@ -3240,7 +3240,7 @@ export default function ChartPage() {
                   </button>
                 ))}
               </div>
-              <span className="text-slate-700">|</span>
+              <span className="text-slate-400">|</span>
               <button
                 type="button"
                 onClick={() => applyPrecisionEvidence(!precisionEvidence)}
@@ -3273,7 +3273,7 @@ export default function ChartPage() {
                 <span className="rounded border border-emerald-600/30 px-2 py-1 text-[10px] text-emerald-300">가격선</span>
                 {([["ma20","MA20","#facc15"],["rsi","RSI","#38bdf8"]] as [ToggleKey,string,string][]).map(([key, label, color]) => (
                   <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
-                    className={`rounded border px-2 py-1 text-[10px] font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 text-slate-600"}`}
+                    className={`rounded border px-2 py-1 text-[10px] font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 text-slate-400"}`}
                     style={toggles[key] ? { color, borderColor: color + "66" } : {}}>
                     {label}
                   </button>
@@ -3303,14 +3303,14 @@ export default function ChartPage() {
                       className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-bold ${
                         allOn ? "border-cyan-600/50 bg-cyan-600/15 text-cyan-300"
                         : someOn ? "border-slate-600 bg-slate-900 text-slate-300"
-                        : "border-slate-800 bg-slate-950 text-slate-600 hover:text-slate-400"
+                        : "border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200"
                       }`}
                     >
                       {group}
                     </button>
                     {someOn && keys.map(([key, label, color]) => (
                       <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key as ToggleKey] }))}
-                        className={`rounded border px-1.5 py-1 text-[10px] ${toggles[key as ToggleKey] ? "border-current" : "border-slate-800 text-slate-700"}`}
+                        className={`rounded border px-1.5 py-1 text-[10px] ${toggles[key as ToggleKey] ? "border-current" : "border-slate-800 text-slate-400"}`}
                         style={toggles[key as ToggleKey] ? { color, borderColor: color + "55" } : {}}>
                         {label}
                       </button>
@@ -3333,7 +3333,7 @@ export default function ChartPage() {
                 ["volume","거래량","#8a8f98"],["macd","MACD","#f97316"],["bb","BB","#a855f7"],["ma10","MA10","#2dd4bf"],["ma60","MA60","#f97316"],["zigzag","ZigZag","#f472b6"]
               ] as [ToggleKey,string,string][]).map(([key, label, color]) => (
                   <button key={key} onClick={() => setToggles((prev) => ({ ...prev, [key]: !prev[key] }))}
-                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 bg-slate-950 text-slate-600"}`}
+                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${toggles[key] ? "border-current bg-slate-900" : "border-slate-800 bg-slate-950 text-slate-400"}`}
                     style={toggles[key] ? { color, borderColor: color + "66" } : {}}>
                     {label}
                   </button>
@@ -3344,7 +3344,7 @@ export default function ChartPage() {
               <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400">
                 <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-sky-500" />
                 <div>차트 데이터를 불러오는 중...</div>
-                <div className="mt-1 text-xs text-slate-600">서버 응답이 느린 경우 최대 20초 소요될 수 있습니다</div>
+                <div className="mt-1 text-xs text-slate-400">서버 응답이 느린 경우 최대 20초 소요될 수 있습니다</div>
               </div>
             )}
             {!loading && rows.length === 0 && loadState.ohlcvStatus === "TIMEOUT" && (
@@ -3502,7 +3502,7 @@ export default function ChartPage() {
                         const touchBadge = (cnt: number, valid: boolean) => {
                           if (cnt >= 3 && valid) return <span className="ml-1 rounded px-1 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400">{cnt}회검증</span>;
                           if (cnt >= 3)          return <span className="ml-1 rounded px-1 py-0.5 text-[10px] font-medium bg-amber-500/20 text-amber-400">{cnt}회</span>;
-                          if (!valid)            return <span className="ml-1 rounded px-1 py-0.5 text-[10px] text-slate-600 bg-slate-800">구조미확인</span>;
+                          if (!valid)            return <span className="ml-1 rounded px-1 py-0.5 text-[10px] text-slate-400 bg-slate-800">구조미확인</span>;
                           return null;
                         };
 
@@ -3562,7 +3562,7 @@ export default function ChartPage() {
                       {Array.isArray(ca.warnings) && ca.warnings.length > 0 && (
                         <div className="text-xs text-amber-400 mb-1">⚠ {ca.warnings.join(" | ")}</div>
                       )}
-                      <div className="text-[10px] text-slate-600 mt-2 leading-relaxed">
+                      <div className="text-[10px] text-slate-400 mt-2 leading-relaxed">
                         본 분석은 투자 권유가 아닌 조건부 감시 정보입니다. 추세선·되돌림 레벨은 감시 기준선으로만 활용하세요.
                       </div>
                     </div>
@@ -3777,7 +3777,7 @@ export default function ChartPage() {
                       <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                         <div className="text-[10px] text-slate-400">5일 거래량비 (vs 20일 평균)</div>
                         <div className={`mt-1 font-mono text-sm font-bold ${ratio >= 1.5 ? "text-emerald-300" : ratio <= 0.5 ? "text-red-400" : "text-slate-300"}`}>{ratio.toFixed(2)}x</div>
-                        <div className="text-[10px] text-slate-600">{ratio >= 1.5 ? "거래 급증" : ratio >= 1.0 ? "평균 이상" : "거래 감소"}</div>
+                        <div className="text-[10px] text-slate-400">{ratio >= 1.5 ? "거래 급증" : ratio >= 1.0 ? "평균 이상" : "거래 감소"}</div>
                       </div>
                       <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                         <div className="text-[10px] text-slate-400">5일 / 20일 수익률</div>
@@ -3793,7 +3793,7 @@ export default function ChartPage() {
                             style={{ height: `${Math.max(4, maxVol > 0 ? (vol / maxVol) * 100 : 0)}%` }} />
                         ))}
                       </div>
-                      <div className="mt-1 flex justify-between text-[10px] text-slate-600"><span>20일 전</span><span>최근 5일</span><span>오늘</span></div>
+                      <div className="mt-1 flex justify-between text-[10px] text-slate-400"><span>20일 전</span><span>최근 5일</span><span>오늘</span></div>
                     </div>
                   </div>
                 );
@@ -3846,7 +3846,7 @@ export default function ChartPage() {
                       return (
                         <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2 text-center">
                           <div className="text-[10px] text-slate-400">{label}</div>
-                          <div className={`mt-0.5 font-mono text-sm font-bold ${n !== null && !isNaN(n) ? (good(n) ? "text-emerald-400" : bad(n) ? "text-red-400" : "text-slate-100") : "text-slate-600"}`}>
+                          <div className={`mt-0.5 font-mono text-sm font-bold ${n !== null && !isNaN(n) ? (good(n) ? "text-emerald-400" : bad(n) ? "text-red-400" : "text-slate-100") : "text-slate-400"}`}>
                             {n !== null && !isNaN(n) ? `${n.toFixed(1)}${suffix}` : "-"}
                           </div>
                         </div>
@@ -3859,7 +3859,7 @@ export default function ChartPage() {
                       return (
                         <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
                           <div className="text-[10px] text-slate-400">{label}</div>
-                          <div className={`mt-0.5 font-mono text-sm font-bold ${n !== null && !isNaN(n) ? (n >= 15 ? "text-emerald-400" : n >= 0 ? "text-slate-300" : "text-red-400") : "text-slate-600"}`}>
+                          <div className={`mt-0.5 font-mono text-sm font-bold ${n !== null && !isNaN(n) ? (n >= 15 ? "text-emerald-400" : n >= 0 ? "text-slate-300" : "text-red-400") : "text-slate-400"}`}>
                             {n !== null && !isNaN(n) ? `${n >= 0 ? "+" : ""}${n.toFixed(1)}%` : "-"}
                           </div>
                         </div>
@@ -3871,7 +3871,7 @@ export default function ChartPage() {
                       저평가 성장주 — PEG {Number(company.peg).toFixed(2)} · ROE {Number(company.roe).toFixed(1)}%
                     </div>
                   )}
-                  {!company.hasDartData && <div className="mt-2 text-[10px] text-slate-600">DART 재무 데이터 분석 대기 (매주 월요일 자동 갱신)</div>}
+                  {!company.hasDartData && <div className="mt-2 text-[10px] text-slate-400">DART 재무 데이터 분석 대기 (매주 월요일 자동 갱신)</div>}
                 </>
               ) : loading ? (
                 <div className="text-sm text-slate-400">불러오는 중...</div>
@@ -3912,7 +3912,7 @@ export default function ChartPage() {
                     return (
                       <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
                         <div className="text-[10px] text-slate-400">{label}</div>
-                        <div className="mt-0.5 text-xs text-slate-600">데이터 부족 ({(m?.missing || []).join(", ") || "필수 항목 누락"})</div>
+                        <div className="mt-0.5 text-xs text-slate-400">데이터 부족 ({(m?.missing || []).join(", ") || "필수 항목 누락"})</div>
                       </div>
                     );
                   }
@@ -3943,10 +3943,10 @@ export default function ChartPage() {
                           {va.eva.score} / 100 · {va.eva.label}
                         </div>
                       ) : (
-                        <div className="mt-0.5 text-xs text-slate-600">데이터 부족 ({(va.eva?.missing || []).join(", ")})</div>
+                        <div className="mt-0.5 text-xs text-slate-400">데이터 부족 ({(va.eva?.missing || []).join(", ")})</div>
                       )}
                     </div>
-                    <div className="text-[10px] text-slate-600">{va.note} 절대가치 평가는 보조 진단이며 추천 점수에 반영되지 않습니다.</div>
+                    <div className="text-[10px] text-slate-400">{va.note} 절대가치 평가는 보조 진단이며 추천 점수에 반영되지 않습니다.</div>
                   </div>
                 );
               })()}
@@ -3973,10 +3973,10 @@ export default function ChartPage() {
                           <div className={`mt-0.5 font-mono text-sm font-bold ${z.zone === "안전" ? "text-emerald-400" : z.zone === "위험" ? "text-red-400" : "text-amber-400"}`}>
                             {z.score} · {z.zone}
                           </div>
-                          <div className="text-[10px] text-slate-600">{z.note}</div>
+                          <div className="text-[10px] text-slate-400">{z.note}</div>
                         </>
                       ) : (
-                        <div className="mt-0.5 text-xs text-slate-600">데이터 부족 ({(z?.missing || []).join(", ")})</div>
+                        <div className="mt-0.5 text-xs text-slate-400">데이터 부족 ({(z?.missing || []).join(", ")})</div>
                       )}
                     </div>
                     <div className="grid grid-cols-3 gap-2">
@@ -3987,7 +3987,7 @@ export default function ChartPage() {
                         </div>
                       ))}
                     </div>
-                    {lv?.status !== "OK" && <div className="text-[10px] text-slate-600">{lv?.note}</div>}
+                    {lv?.status !== "OK" && <div className="text-[10px] text-slate-400">{lv?.note}</div>}
                   </div>
                 );
               })()}
@@ -4054,7 +4054,7 @@ function Info({ label, value, sub = "" }: { label: string; value: string; sub?: 
     <div className="min-w-0 rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2">
       <div className="text-[10px] text-slate-400">{label}</div>
       <div className="mt-1 break-keep font-mono text-xs font-semibold leading-tight text-slate-100 sm:text-sm">{value}</div>
-      {sub && <div className="mt-1 text-[10px] leading-snug text-slate-600">{sub}</div>}
+      {sub && <div className="mt-1 text-[10px] leading-snug text-slate-400">{sub}</div>}
     </div>
   );
 }
@@ -4129,7 +4129,7 @@ function SimilarPatternPanel({ data }: { data: any | null }) {
                 <SimilarPatternWinRateBadge rate={s?.winRate ?? 0} />
               </div>
               <div className="mt-1"><SimilarPatternReturnLabel pct={s?.avgReturn} /></div>
-              <div className="mt-0.5 text-[10px] text-slate-600">평균수익률 · {s?.count ?? 0}건</div>
+              <div className="mt-0.5 text-[10px] text-slate-400">평균수익률 · {s?.count ?? 0}건</div>
             </div>
           );
         })}
@@ -4160,7 +4160,7 @@ function SimilarPatternPanel({ data }: { data: any | null }) {
           </table>
         </div>
       )}
-      <div className="text-[10px] text-slate-600 leading-relaxed">
+      <div className="text-[10px] text-slate-400 leading-relaxed">
         {data.message || "과거 유사 시점 기준 통계이며 투자 조언이 아닙니다."}
       </div>
     </div>
@@ -4217,7 +4217,7 @@ function EventContextPanel({ data }: { data: any | null }) {
         <div className="text-xs text-slate-400">{data.eventSummary || "이벤트 특이사항 없음"}</div>
         <div className="shrink-0 text-right">
           <div className={`font-mono text-sm font-bold ${riskCls}`}>{risk.toFixed(1)}/10</div>
-          <div className="text-[10px] text-slate-600">이벤트 리스크</div>
+          <div className="text-[10px] text-slate-400">이벤트 리스크</div>
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
@@ -4227,7 +4227,7 @@ function EventContextPanel({ data }: { data: any | null }) {
         <EventTagBadge tag={data.macroEventTag} />
         <EventTagBadge tag={data.sectorEventTag} />
       </div>
-      <div className="text-[10px] text-slate-600 leading-relaxed">
+      <div className="text-[10px] text-slate-400 leading-relaxed">
         뉴스·공시·실적·매크로·섹터 키워드 기반 참고 신호이며 투자 조언이 아닙니다. (신뢰도 {Math.round((data.eventReliabilityScore ?? 0) * 100)}%)
       </div>
     </div>
@@ -4277,7 +4277,7 @@ function Related({ item, kind = "news" }: { item: any; kind?: "news" | "disclosu
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs text-slate-400">
           {source && <span className="text-slate-400">{source}</span>}
-          {source && date && <span className="mx-1 text-slate-700">·</span>}
+          {source && date && <span className="mx-1 text-slate-400">·</span>}
           {date && <span>{date}</span>}
         </div>
         {link ? (
@@ -4291,7 +4291,7 @@ function Related({ item, kind = "news" }: { item: any; kind?: "news" | "disclosu
             원문 →
           </a>
         ) : (
-          <span className="shrink-0 text-[10px] text-slate-600">링크 없음</span>
+          <span className="shrink-0 text-[10px] text-slate-400">링크 없음</span>
         )}
       </div>
     </div>
