@@ -445,7 +445,8 @@ html[data-theme="light"] .mone-app-shell [class*="text-emerald-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-400"] {
-  color: #047857 !important;
+  /* #047857은 밝은 emerald 워시(#b2e7da) 위 4.00:1 / 회색 표면 3.42:1로 AA 미달. */
+  color: #064e3b !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="text-teal-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-teal-200"],
@@ -493,7 +494,8 @@ html[data-theme="light"] .mone-app-shell [class*="text-purple-400"],
 html[data-theme="light"] .mone-app-shell [class*="text-indigo-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-indigo-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-indigo-400"] {
-  color: #5b21b6 !important;
+  /* #5b21b6은 회색빛 표면(#9d9bbf) 위 3.37:1로 미달 — 한 단계 더 어둡게. */
+  color: #3b0764 !important;
 }
 
 /* 단독 `text-white`는 라이트 배경(#f6f8fc) 위에서 **1.06:1 — 사실상 안 보인다.**
