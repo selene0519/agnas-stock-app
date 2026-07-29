@@ -78,7 +78,14 @@ PR_WORKFLOW = ROOT / ".github" / "workflows" / "pr-checks.yml"
 # sys.stdlib_module_names가 인터프리터의 권위 있는 목록이다.
 _STDLIB = set(sys.stdlib_module_names) | {"__future__"}
 # 레포 내부 모듈 — 설치 대상이 아니다.
-_REPO_LOCAL = {"app", "core", "scripts", "tests", "conftest", "daily_system_check"}
+# 레포 내부 모듈 — 설치 대상이 아니다.
+# **손으로 적지 않는다.** scripts/의 실제 파일명을 읽는다 — 이 파일이 막으려는
+# "낡는 표" 문제를 목록 자체가 저지르면 안 된다(테스트가 sys.stdlib_module_names로
+# 옮겨간 것과 같은 이유). 실제로 tests가 scripts/ 모듈을 임포트하기 시작하자
+# 하드코딩 목록이 그걸 서드파티로 오인했다.
+_REPO_LOCAL = ({"app", "core", "scripts", "tests", "conftest", "daily_system_check"}
+               | {p.stem for p in (ROOT / "scripts").glob("*.py")}
+               | {p.stem for p in ROOT.glob("*.py")})
 # import 이름 != 배포 패키지명인 것들.
 _IMPORT_TO_PACKAGE = {
     "yaml": "pyyaml",

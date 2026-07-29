@@ -801,6 +801,33 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     scale = float(_defaults.get(f"{horizon}_scale") or 0.14)
     prob  = max(0.01, min(0.99, base + (score - 50.0) / 50.0 * scale))
 
+    # ── 국면 조건부 EV ────────────────────────────────────────────────
+    # 2026-07-29 실측: 예측 목표도달률 24.9% vs 실제 13.6%. 밴드를 바꿔도
+    # 괴리가 **커지기만** 했다(손절 1.5σ에서 이론 33.3% vs 실제 2.9%).
+    # 원인은 밴드 기하학이 아니라 **국면 드리프트**다 — 하락장에서는 목표를
+    # 어디 두든 안 닿는다.
+    #
+    # 15년 워크포워드(82,251건)가 국면별 승률을 이미 갖고 있다:
+    #     BULL 41.8% · SIDE 41.8% · BEAR 31.3%   (풀링 40.8%)
+    #
+    # ⚠️ 이 보정은 **EV에만** 건다. `prob`(화면에 뜨는 확률)은 실측값
+    #    그대로 둔다 — 처음엔 prob를 곱했다가 기존 정직성 테스트 4개가
+    #    잡아냈다("표시 확률은 실측과 정확히 같아야 한다"). 화면 숫자를
+    #    보정하면 "실측 기반 38.0%"라는 라벨이 거짓이 된다.
+    _REGIME_WR = {"BULL": 0.418, "SIDE": 0.418, "NEUTRAL": 0.418, "BEAR": 0.313}
+    _POOLED_WR = 0.408
+    _ev_prob = prob
+    _regime_applied = None
+    try:
+        _rg = str((_load_market_regime() or {}).get("regime") or "").upper()
+        _rw = _REGIME_WR.get(_rg)
+        if _rw:
+            # 하한을 두지 않는다 — 실측 0%는 0%로 남아야 한다.
+            _ev_prob = min(0.99, max(0.0, prob * (_rw / _POOLED_WR)))
+            _regime_applied = _rg
+    except Exception:
+        pass
+
     ev = None
     rr = None
     min_rr = _HORIZON_BANDS[horizon].get("min_rr", 1.5)
@@ -809,7 +836,7 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
         risk_pct = abs((entry - stop) / entry * 100)
         if risk_pct > 0:
             rr = round(rew / risk_pct, 2)
-            ev = round(prob * rew - (1 - prob) * risk_pct - TRADE_COST_PCT, 2)
+            ev = round(_ev_prob * rew - (1 - _ev_prob) * risk_pct - TRADE_COST_PCT, 2)
             # 최소 RR 미달이면 EV 신뢰도 표시
             if rr < min_rr:
                 ev = round(ev * 0.7, 2)   # 패널티 적용
