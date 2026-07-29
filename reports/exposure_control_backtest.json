@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-07-29T18:52:12.863277+00:00",
+  "source": "KOSPI 일봉 15년 (2011-07-29~2026-07-29)",
+  "method": "전일 국면으로 당일 노출을 정한다(룩어헤드 없음). 종목 선택은 재현 불가라 지수 수익 x 노출로 근사한다 — 알파가 0과 구별되지 않는다는 측정과 일관된 가정이다.",
+  "reference": "virattt/ai-hedge-fund v2/risk/limits.py (상한에 걸린 노출은 현금으로 남긴다)",
+  "switchCostPct": 0.41,
+  "policies": {
+    "현행(상시 만기 노출)": {
+      "weights": {
+        "BULL": 1.0,
+        "SIDE": 1.0,
+        "BEAR": 1.0
+      },
+      "finalNav": 309.55,
+      "totalReturnPct": 209.55,
+      "days": 3660,
+      "exposedDayShare": 1.0,
+      "switches": 0,
+      "dailyVolPct": 1.2977,
+      "returnPerVol": 161.48
+    },
+    "약세장 절반": {
+      "weights": {
+        "BULL": 1.0,
+        "SIDE": 1.0,
+        "BEAR": 0.5
+      },
+      "finalNav": 96.94,
+      "totalReturnPct": -3.06,
+      "days": 3660,
+      "exposedDayShare": 1.0,
+      "switches": 430,
+      "dailyVolPct": 1.0572,
+      "returnPerVol": -2.89
+    },
+    "약세장 정지": {
+      "weights": {
+        "BULL": 1.0,
+        "SIDE": 1.0,
+        "BEAR": 0.0
+      },
+      "finalNav": 28.27,
+      "totalReturnPct": -71.73,
+      "days": 3660,
+      "exposedDayShare": 0.795,
+      "switches": 430,
+      "dailyVolPct": 0.964,
+      "returnPerVol": -74.41
+    },
+    "약세장 정지+횡보 감축": {
+      "weights": {
+        "BULL": 1.0,
+        "SIDE": 0.6,
+        "BEAR": 0.0
+      },
+      "finalNav": 25.45,
+      "totalReturnPct": -74.55,
+      "days": 3660,
+      "exposedDayShare": 0.795,
+      "switches": 995,
+      "dailyVolPct": 0.8128,
+      "returnPerVol": -91.72
+    },
+    "강세장만": {
+      "weights": {
+        "BULL": 1.0,
+        "SIDE": 0.0,
+        "BEAR": 0.0
+      },
+      "finalNav": 20.63,
+      "totalReturnPct": -79.37,
+      "days": 3660,
+      "exposedDayShare": 0.45,
+      "switches": 602,
+      "dailyVolPct": 0.7137,
+      "returnPerVol": -111.2
+    },
+    "보수(강세 80/횡보 40/약세 0)": {
+      "weights": {
+        "BULL": 0.8,
+        "SIDE": 0.4,
+        "BEAR": 0.0
+      },
+      "finalNav": 33.26,
+      "totalReturnPct": -66.74,
+      "days": 3660,
+      "exposedDayShare": 0.795,
+      "switches": 995,
+      "dailyVolPct": 0.6271,
+      "returnPerVol": -106.43
+    }
+  },
+  "caveats": [
+    "알파가 (+)면 노출을 줄일수록 손해다. 이 표는 '알파 0' 가정 위에 있다.",
+    "국면 라벨이 실제와 어긋나 있다(reports/regime_label_audit.md). 라벨이 고쳐지면 이 결과도 다시 재야 한다.",
+    "지수 근사라 종목 분산·개별 손절 효과가 빠져 있다."
+  ]
+}
