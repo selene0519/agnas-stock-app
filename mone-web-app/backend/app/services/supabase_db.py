@@ -2,7 +2,16 @@
 
 Pattern: CSV is primary store; this module syncs changes to Supabase so the
 data is accessible across devices. All writes go to CSV first, then here.
-Falls back silently when SUPABASE_URL / SUPABASE_KEY are not set.
+Falls back silently when the env vars below are not set.
+
+환경변수 (**이름이 정확해야 한다 — 틀리면 오류 없이 그냥 꺼진다**):
+    SUPABASE_URL          필수
+    SUPABASE_SERVICE_KEY  (권장, RLS 우회) 또는 SUPABASE_ANON_KEY
+
+⚠️ `SUPABASE_KEY`는 **읽지 않는다.** 이 docstring과 CLAUDE.md가 오랫동안
+`SUPABASE_KEY`라고 적어둔 탓에 그 이름으로 등록하면 `_enabled()`가 False가
+되어 동기화가 조용히 죽는다. 2026-07-29에 문서 쪽을 코드에 맞춰 고쳤고,
+`tests/test_supabase_env_names.py`가 재발을 막는다.
 """
 from __future__ import annotations
 
