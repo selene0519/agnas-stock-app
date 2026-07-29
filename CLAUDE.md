@@ -285,6 +285,31 @@ clean window 정산 표본을 **3건**이라 하고, VTJ 저널 기반은 **65�
 
 clean window(7-10~) 라이브 실측: **65건 / 승률 12.3% / 평균 −6.452%**.
 
+## 2026-07-29 (6) — 두 원장은 같은 걸 다르게 센 게 아니라 **다른 걸** 담고 있었다
+"3건 vs 65건"의 정체를 팠다. 결론: **교집합이 854 vs 880 중 88건뿐**이다.
+2026-07-28의 "승률 9.1% vs 32.2%"는 표본 구성(리플레이 풀링) 문제였는데, 이번은
+**모집단 자체가 다르다.**
+
+| | 원장A `virtual_prediction_ledger` | 원장B `virtual_trade_journal` |
+|---|---|---|
+| 캡처 | `_recommendations_payload(limit=50)` 서빙 경로, **필터 없음** | 리포트 CSV → `_reject_reason` → `_unique_by_symbol`**[:5]** |
+| 질문 | "보여준 추천 **전체**에 엣지가 있나" | "**상위 5개**만 담았다면 어땠나" |
+| 정산 | `settle_pending_validations` → `virtual_validation_results` | `vtj.evaluate()` → `virtual_trade_evaluations` |
+| 소비 | `update_win_rates` → `strategy_win_rates.json` (**화면 승률**) | `build_live_calibration`, `calibration_gate_shadow` (**게이트**) |
+| 실측 | n=662 승률 15.1% 평균 **−5.018%** | n=600 승률 19.8% 평균 **−5.638%** |
+
+**결정: 엣지 판정 분모=B, 화면 표시 분모=A.** 게이트가 답할 질문은 "따라 샀을 때의
+기댓값"이라 상위 N 부분집합(B)이 맞고, 화면 승률은 사용자가 보는 카드 전체(A)를
+설명해야 한다. 이 **비대칭을 문서화하지 않으면 또 헷갈린다** → `scripts/reconcile_ledgers.py`가
+정의·소비자·수치를 `reports/ledger_reconciliation.json`으로 남기고,
+`tests/test_ledger_reconciliation.py`가 소비자 배선이 뒤바뀌는 걸 막는다.
+
+**⚠️ 내 가설이 실측에 반박당했다(기록용).** "B는 필터가 걸린 부분집합이니 A보다
+좋게 나오는 게 정상"이라고 스크립트에 써뒀는데, 실측은 **B가 승률은 높고(19.8% vs
+15.1%) 평균손익은 더 나쁘다(−5.638% vs −5.018%)**. 상위 5개 필터는 **적중률만 올리고
+기댓값은 못 올린다** — 더 자주 맞히는 대신 틀릴 때 더 크게 잃는다. 손익 비대칭이
+선택 단계에서도 그대로 재현된 것이고, `payoffRatio`를 비교축으로 옮긴 판단(#4)과 같은 방향이다.
+
 ## 제약 / 운영 메모
 - CI dispatch 권한 없음(403) → 파이프라인 실행은 사용자 손 필요.
 - 이 환경엔 과학 스택이 **선설치만 안 돼 있을 뿐 설치하면 전체 검증이 된다**
