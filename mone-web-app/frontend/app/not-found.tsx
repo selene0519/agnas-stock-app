@@ -10,7 +10,7 @@ export default function NotFound() {
       </div>
       <Link
         href="/"
-        className="rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
+        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
       >
         홈으로 돌아가기
       </Link>

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T23:50:22.234926+00:00",
+  "generatedAt": "2026-07-29T01:40:42.689519+00:00",
   "basis": {
     "positionFraction": 0.1,
     "startNav": 100.0,
@@ -19,8 +19,20 @@
       "unknownSleeve": 0,
       "noReturn": 0
     },
+    "regimeRecordedTrades": 0,
+    "scoreRecordedTrades": 0,
+    "axisCoverageNote": "finalScore/regime은 2026-07-29 캡처분부터 기록된다. 그 이전 표본은 byScoreBin에 안 들어가고 byRegime의 UNRECORDED로 모인다.",
     "sampleWarning": "표본 3건 — 30건 미만이면 순위는 노이즈로 봐야 한다"
   },
+  "byRegime": {
+    "UNRECORDED": {
+      "trades": 3,
+      "winRate": 0.0,
+      "avgReturnPct": -2.3408,
+      "sampleWarning": "표본 30건 미만 — 순위는 노이즈"
+    }
+  },
+  "byScoreBin": {},
   "ranking": [
     "conservative_swing"
   ],

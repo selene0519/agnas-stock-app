@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-07-29T01:40:42.977002+00:00",
+  "cleanWindowStart": "2026-07-10",
+  "verdict": "두 원장은 서로 다른 모집단이다. A=서빙 추천 전체(limit 50, 필터 없음), B=상위 5개 페이퍼 매매(_reject_reason + 심볼 중복제거). 같은 줄에 놓고 비교하면 안 된다.",
+  "ledgerA": {
+    "name": "추천 원장 (virtual_prediction_ledger)",
+    "captures": "_recommendations_payload(limit=50) — 서빙 경로 그대로, 필터 없음",
+    "question": "앱이 보여준 추천 목록 전체에 엣지가 있나",
+    "consumers": [
+      "update_win_rates.py -> strategy_win_rates.json (화면 netWinRate)",
+      "factor_attribution.py",
+      "update_strategy_sleeve_nav.py"
+    ],
+    "uniquePredictions": 874,
+    "allTime": {
+      "trades": 662,
+      "winRate": 0.1511,
+      "avgPnlPct": -5.0176
+    },
+    "cleanWindow": {
+      "trades": 3,
+      "winRate": 0.0,
+      "avgPnlPct": -2.3408
+    }
+  },
+  "ledgerB": {
+    "name": "VTJ 페이퍼 저널 (virtual_trade_journal)",
+    "captures": "추천 리포트 CSV -> _reject_reason -> _unique_by_symbol[:5] (조합당 최대 5)",
+    "question": "상위 5개만 골라 담았다면 어땠나",
+    "consumers": [
+      "build_live_calibration.py",
+      "calibration_gate_shadow.py",
+      "factor_attribution.py",
+      "analyze_live_axes.py"
+    ],
+    "uniquePredictions": 880,
+    "allTime": {
+      "trades": 626,
+      "winRate": 0.2061,
+      "avgPnlPct": -5.5238
+    },
+    "cleanWindow": {
+      "trades": 67,
+      "winRate": 0.1194,
+      "avgPnlPct": -6.6308
+    }
+  },
+  "overlap": {
+    "sharedPredictions": 88,
+    "onlyA": 786,
+    "onlyB": 792,
+    "note": "교집합이 작은 것은 버그가 아니다 — B는 조합당 상위 5개만 심볼 중복 없이 고르고, A는 최대 50개를 그대로 담는다."
+  },
+  "recommendation": {
+    "edgeVerdictDenominator": "ledgerB",
+    "reason": "엣지 판정의 목적은 '사용자가 이 앱을 따라 샀을 때의 기댓값'이다. 아무도 50종목을 사지 않으므로 상위 N 부분집합(B)이 그 질문에 맞다. 실측상 B는 A보다 승률이 높은데(19.8% vs 15.1%) 평균손익은 더 나쁘다(-5.638% vs -5.018%) — 상위 필터가 적중률만 올리고 기댓값은 못 올린다. 따라서 'B가 부분집합이니 더 좋을 것'이라는 가정으로 읽으면 안 된다.",
+    "displayDenominator": "ledgerA",
+    "displayReason": "화면의 승률은 사용자가 보는 카드 전체를 설명해야 하므로 A가 맞다. A로 재고 B로 판정하는 이 비대칭을 문서화하지 않으면 다시 헷갈린다."
+  }
+}

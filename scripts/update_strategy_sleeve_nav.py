@@ -61,6 +61,14 @@ HORIZONS = ("short", "swing", "mid")
 POSITION_FRACTION = 0.10
 START_NAV = 100.0
 
+# 앙상블(walk-forward, 82,251건)이 낸 두 가설을 **라이브 표본으로** 검증하기 위한 축.
+#   ① 국면: BULL +0.241% / SIDE +0.064% / BEAR -0.714% (격차 0.955%p)
+#   ② 점수: 70-100 구간(전체의 36%)이 60-65보다 나쁨 = 단조가 아님
+# walk-forward는 절대 수준이 낙관 쪽이라(풀링 +0.113% vs 라이브 -2%/거래) 그 수치로
+# 게이트를 바꾸면 안 된다. 여기서는 **관측만** 한다 — 라이브 표본이 같은 말을 하는지
+# 확인된 뒤에 게이트를 논한다.
+SCORE_BINS = [(0, 50), (50, 55), (55, 60), (60, 65), (65, 70), (70, 101)]
+
 # 실현 손익이 없는 결과 = 자본곡선에 반영할 게 없는 행.
 # scripts/update_win_rates.py / data_freshness_healthcheck.py와 같은 기준.
 NON_REALIZED = {
@@ -112,6 +120,41 @@ def _realized_date(row: dict) -> tuple[str, bool]:
     if exit_date:
         return exit_date, False
     return str(row.get("validationDueDate") or row.get("createdAt") or "")[:10], True
+
+
+def _score_bin(row: dict) -> str | None:
+    score = _num(row.get("finalScore"))
+    if score is None:
+        return None
+    for lo, hi in SCORE_BINS:
+        if lo <= score < hi:
+            return f"{lo}-{hi if hi <= 100 else 100}"
+    return None
+
+
+def _regime_of(row: dict) -> str:
+    return str(row.get("regime") or "").strip().upper() or "UNRECORDED"
+
+
+def _bucket_stats(trades: list[dict], keyfn) -> dict:
+    """축(국면/점수구간)별 실현 손익 집계. 표본이 적으면 그대로 드러나게 n을 같이 낸다."""
+    groups: dict[str, list[float]] = {}
+    for t in trades:
+        k = keyfn(t)
+        if k is None:
+            continue
+        groups.setdefault(k, []).append(t["returnPct"])
+    out: dict[str, dict] = {}
+    for k, rets in sorted(groups.items()):
+        wins = [r for r in rets if r > 0]
+        out[k] = {
+            "trades": len(rets),
+            "winRate": round(len(wins) / len(rets), 4),
+            "avgReturnPct": round(sum(rets) / len(rets), 4),
+            # 30건 미만이면 순위가 노이즈라는 걸 소비자가 알아야 한다.
+            "sampleWarning": None if len(rets) >= 30 else "표본 30건 미만 — 순위는 노이즈",
+        }
+    return out
 
 
 def _sleeve_key(row: dict) -> str | None:
@@ -169,6 +212,7 @@ def build(clean_only: bool = True) -> dict:
             "date": realized_on, "returnPct": ret,
             "symbol": row.get("symbol"), "market": row.get("market"),
             "estimatedTiming": estimated,
+            "scoreBin": _score_bin(row), "regime": _regime_of(row),
         })
 
     out_sleeves: dict[str, dict] = {}
@@ -209,6 +253,9 @@ def build(clean_only: bool = True) -> dict:
             "curve": curve,
         }
 
+    # 전 sleeve를 합쳐 국면/점수구간 축으로도 본다 — 전략 선택과는 다른 질문이다.
+    all_trades = [t for ts in sleeves.values() for t in ts]
+
     ranked = sorted(
         (k for k, v in out_sleeves.items() if v["trades"] > 0),
         key=lambda k: out_sleeves[k]["totalReturnPct"], reverse=True,
@@ -233,11 +280,25 @@ def build(clean_only: bool = True) -> dict:
                 "곡선의 시점 정확도만 영향받고 최종 NAV는 영향받지 않는다."
             ),
             "excluded": excluded,
+            # finalScore/regime은 2026-07-29부터 원장에 기록된다. 그 이전 행은
+            # UNRECORDED로 모이는데, 이걸 안 밝히면 "국면 분석이 고장났다"로 보인다.
+            "regimeRecordedTrades": sum(
+                1 for ts in sleeves.values() for t in ts if t["regime"] != "UNRECORDED"),
+            "scoreRecordedTrades": sum(
+                1 for ts in sleeves.values() for t in ts if t["scoreBin"] is not None),
+            "axisCoverageNote": (
+                "finalScore/regime은 2026-07-29 캡처분부터 기록된다. "
+                "그 이전 표본은 byScoreBin에 안 들어가고 byRegime의 UNRECORDED로 모인다."
+            ),
             "sampleWarning": (
                 None if total_trades >= 30
                 else f"표본 {total_trades}건 — 30건 미만이면 순위는 노이즈로 봐야 한다"
             ),
         },
+        # walk-forward 가설을 라이브로 재는 축. 여기 수치가 앙상블과 어긋나면
+        # 앙상블(백테스트) 쪽을 의심해야 한다 — 라이브가 기준이다.
+        "byRegime": _bucket_stats(all_trades, lambda t: t["regime"]),
+        "byScoreBin": _bucket_stats(all_trades, lambda t: t["scoreBin"]),
         "ranking": ranked,
         "sleeves": out_sleeves,
     }

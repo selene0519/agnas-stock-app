@@ -1691,7 +1691,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <span className={`ml-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${riskCount > 0 || actionItems.length > 0 ? toneClassName("warning") : toneClassName("safe")}`}>
               {riskCount > 0 || actionItems.length > 0 ? "주의 필요" : "정상"}
             </span>
-            <button type="button" onClick={() => openHoldingsDetail()} className="relative ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] hover:text-teal-300">
+            <button type="button" onClick={() => openHoldingsDetail()} className="relative ml-auto inline-flex min-h-11 items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] hover:text-teal-300">
               전체 리스크 보기 <ChevronRight size={13} />
             </button>
           </div>
@@ -1803,7 +1803,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
             <button
               type="button"
               onClick={() => holdingsDetailOpen ? setHoldingsDetailOpen(false) : openHoldingsDetail()}
-              className="relative ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 transition-colors after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] hover:text-teal-300"
+              className="relative ml-auto inline-flex min-h-11 items-center gap-0.5 text-[10.5px] font-semibold text-slate-400 transition-colors after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] hover:text-teal-300"
             >
               {holdingsDetailOpen ? "간단히 보기" : "전체 보기"} <ChevronRight size={12} className={holdingsDetailOpen ? "rotate-90" : ""} />
             </button>

@@ -289,13 +289,13 @@ export default function NewsPage() {
         {/* 시장 + 컨텐츠 탭 한 줄 */}
         <div className="flex flex-wrap gap-1.5">
           {(["kr", "us"] as Market[]).map((item) => (
-            <button key={item} onClick={() => setMarket(item)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${market === item ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+            <button key={item} onClick={() => setMarket(item)} className={`inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium ${market === item ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
               {marketLabel(item)}
             </button>
           ))}
           <span className="self-center text-slate-700">|</span>
           {(["news", "disclosures", "company"] as Tab[]).map((item) => (
-            <button key={item} onClick={() => setTab(item)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${tab === item ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+            <button key={item} onClick={() => setTab(item)} className={`inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium ${tab === item ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
               {tabLabel(item)}
             </button>
           ))}

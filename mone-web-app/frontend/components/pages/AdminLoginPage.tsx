@@ -101,7 +101,7 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
               type="text"
               value={adminId}
               onChange={(event) => setAdminId(event.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-700"
+              className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-700"
               placeholder="관리자 ID"
               autoComplete="username"
             />
@@ -117,7 +117,7 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-700"
+              className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-700"
               placeholder="관리자 비밀번호"
               autoComplete="current-password"
             />

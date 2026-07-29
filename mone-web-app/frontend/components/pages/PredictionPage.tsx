@@ -134,7 +134,7 @@ const PLAYBOOK: Record<Strategy, { enter: string; avoid: string; size: string; r
     enter: "확률·EV·손익비가 동시에 양호하고 최근 검증 승률이 45~55% 이상일 때",
     avoid: "뉴스 리스크, 반복 손절, 목표가 대비 기대수익 부족",
     size: "기본 5~10%, 손절폭과 승률로 자동 축소",
-    regime: "NEUTRAL/BULL에서 기본 전략",
+    regime: "중립·강세 국면에서 기본 전략",
     failure: "목표 도달 전에 기간 만료가 많으면 보유 기간과 목표폭을 재조정",
   },
   aggressive: {
@@ -204,7 +204,7 @@ function ValidationPolicyPanel({ market, data, validationRows }: { market: Marke
     <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-semibold text-slate-200">검증 정책</div>
-        <div className="text-xs text-slate-400">행 단위 검증 {validationRows.length.toLocaleString("ko-KR")}건 · DATA_PENDING/대기 {pending}건 · 진입 미터치 {noTouch}건</div>
+        <div className="text-xs text-slate-400">행 단위 검증 {validationRows.length.toLocaleString("ko-KR")}건 · 데이터 대기 {pending}건 · 진입 미터치 {noTouch}건</div>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">실제 저가 ≤ 진입가 ≤ 실제 고가일 때만 체결</div>
@@ -523,7 +523,7 @@ export default function PredictionPage() {
 
       <div className="flex flex-wrap gap-2">
         {(["all", "kr", "us"] as Market[]).map((item) => (
-          <button key={item} onClick={() => setMarket(item)} className={`rounded-xl px-4 py-2 text-sm ${market === item ? "mone-selection-brand" : "bg-slate-900 text-slate-400"}`}>{item === "all" ? "전체" : item === "kr" ? "국장" : "미장"}</button>
+          <button key={item} onClick={() => setMarket(item)} className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm ${market === item ? "mone-selection-brand" : "bg-slate-900 text-slate-400"}`}>{item === "all" ? "전체" : item === "kr" ? "국장" : "미장"}</button>
         ))}
       </div>
 
@@ -533,7 +533,7 @@ export default function PredictionPage() {
             <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">투자 성향</div>
             <div className="flex flex-wrap gap-2">
               {strategyTabs.map((item) => (
-                <button key={item.id} onClick={() => setStrategy(item.id)} className={`rounded-xl px-4 py-2 text-sm ${strategy === item.id ? "mone-selection-brand" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
+                <button key={item.id} onClick={() => setStrategy(item.id)} className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm ${strategy === item.id ? "mone-selection-brand" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
               ))}
             </div>
           </div>
@@ -541,7 +541,7 @@ export default function PredictionPage() {
             <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">투자 기간</div>
             <div className="flex flex-wrap gap-2">
               {termTabs.map((item) => (
-                <button key={item.id} onClick={() => setTerm(item.id)} className={`rounded-xl px-4 py-2 text-sm ${term === item.id ? "mone-selection-brand" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
+                <button key={item.id} onClick={() => setTerm(item.id)} className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm ${term === item.id ? "mone-selection-brand" : "bg-slate-950 text-slate-400"}`}>{item.label}</button>
               ))}
             </div>
           </div>
@@ -710,7 +710,7 @@ export default function PredictionPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="종목 검색"
-                className="w-36 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none sm:w-44"
+                className="min-h-11 w-36 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none sm:w-44"
               />
               <select
                 value={statusFilter}
