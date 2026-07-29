@@ -79,6 +79,19 @@ jobs:
           fi
           set -e
 
+      - name: Fetch DART company profiles (사업 내용)
+        # 기업개황은 잘 안 바뀌므로 캐시 적중분은 건너뛴다. DART 일 호출 한도를
+        # 재무 수집과 나눠 쓰기 위해 주간 워크플로에 둔다.
+        run: |
+          set +e
+          if [ -f scripts/fetch_dart_company_profile.py ]; then
+            python scripts/fetch_dart_company_profile.py
+            echo "fetch_dart_company_profile: exit $?"
+          else
+            echo "scripts/fetch_dart_company_profile.py not found; skip."
+          fi
+          set -e
+
       - name: Fetch KR financial data via yfinance
         run: |
           set +e

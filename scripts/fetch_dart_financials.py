@@ -132,34 +132,65 @@ def _load_current_price_map() -> dict[str, float]:
     return prices
 
 
-def fetch_financials(corp_code: str, year: str) -> dict[str, float | None]:
-    """DART 단일기업 재무제표 조회 → 주요 지표 추출"""
-    url = f"{BASE_URL}/fnlttSinglAcnt.json"
-    params = {"crtfc_key": DART_KEY, "corp_code": corp_code,
-              "bsns_year": year, "reprt_code": REPORT_CODE}
-    try:
-        resp = requests.get(url, params=params, timeout=10)
-        data = resp.json()
-    except Exception:
-        return {}
-
-    if data.get("status") != "000":
-        return {}
-
-    # 연결재무제표 우선, 없으면 별도
-    items_all = data.get("list", [])
-    consol = [r for r in items_all if r.get("fs_div") == "CFS"]
-    items = consol if consol else items_all
+def _extract_accounts(items: list[dict]) -> dict[str, float | None]:
+    """계정명 매칭으로 ACCOUNT_MAP의 항목을 뽑는다. 연결(CFS) 우선."""
+    consol = [r for r in items if r.get("fs_div") == "CFS"]
+    rows = consol if consol else items
 
     result: dict[str, float | None] = {}
     for key, names in ACCOUNT_MAP.items():
-        for row in items:
+        for row in rows:
             if any(n in str(row.get("account_nm", "")) for n in names):
                 val = _num(row.get("thstrm_amount"))
                 if val is not None:
                     result[key] = val
                     break
     return result
+
+
+def _dart_get(endpoint: str, params: dict) -> list[dict]:
+    try:
+        resp = requests.get(f"{BASE_URL}/{endpoint}", params=params, timeout=15)
+        data = resp.json()
+    except Exception:
+        return []
+    if data.get("status") != "000":
+        return []
+    return data.get("list", []) or []
+
+
+def fetch_financials(corp_code: str, year: str) -> dict[str, float | None]:
+    """DART 단일기업 재무제표 조회 → 주요 지표 추출.
+
+    **fnlttSinglAcnt(주요계정)에는 EPS가 없다.** 그 엔드포인트는 자산/부채/자본/
+    매출/영업이익/당기순이익 등 10여 개 주요 계정만 준다. 그래서 eps가 한 번도
+    채워지지 않았고(2026-07-29 실측 0/412), eps에 의존하는 체인이 통째로 죽었다:
+
+        shares = net_income / eps  ->  None
+        per    = price / eps       ->  None
+        pbr    = price / (equity/shares) -> None
+        market_cap = price * shares      -> None
+
+    docstring에는 `fnlttSinglAcntAll`이라고 적혀 있었는데 실제 호출은
+    `fnlttSinglAcnt`였다 — 주석과 코드가 어긋나 있었다.
+
+    그래서 전체 재무제표(fnlttSinglAcntAll)를 먼저 시도하고, 실패하면 기존
+    주요계정으로 폴백한다. 폴백이 있으므로 새 엔드포인트가 막혀도 동작은
+    이전과 같다(EPS만 여전히 빈 채로 남는다).
+    """
+    base = {"crtfc_key": DART_KEY, "corp_code": corp_code,
+            "bsns_year": year, "reprt_code": REPORT_CODE}
+
+    # 전체 재무제표 — 주당이익 포함. fs_div는 필수이며 연결(CFS) 우선.
+    for fs_div in ("CFS", "OFS"):
+        items = _dart_get("fnlttSinglAcntAll.json", {**base, "fs_div": fs_div})
+        if items:
+            result = _extract_accounts(items)
+            if result:
+                return result
+
+    # 폴백: 주요계정 (EPS 없음)
+    return _extract_accounts(_dart_get("fnlttSinglAcnt.json", base))
 
 
 def _calc_ratios(cur: dict, prev: dict) -> dict[str, Any]:

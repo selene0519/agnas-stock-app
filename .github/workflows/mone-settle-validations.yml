@@ -90,6 +90,11 @@ jobs:
           echo "reconcile_ledgers: exit $?"
           python scripts/analyze_live_axes.py
           echo "analyze_live_axes: exit $?"
+          # 알파(시장 대비 초과수익) — 원시 수익률만 보면 선택 실력과
+          # 시장 흐름이 섞인다. 2026-06~07처럼 KOSPI가 24% 빠진 구간에선
+          # 그 구분이 결론을 통째로 바꾼다.
+          python scripts/analyze_recommendation_alpha.py --all
+          echo "analyze_recommendation_alpha: exit $?"
           set -e
 
       - name: 데이터 신선도 헬스게이트 + 알람 (조용한 실패 탐지)
@@ -129,6 +134,7 @@ jobs:
             # (레거시 산출물 68개가 그렇게 2개월간 조용히 사라진 전례가 있다).
             git add reports/strategy_sleeve_nav.json 2>/dev/null || true
             git add reports/ledger_reconciliation.json reports/live_axis_analysis.json 2>/dev/null || true
+            git add reports/recommendation_alpha.json 2>/dev/null || true
 
             if git diff --cached --quiet; then
               echo "변경 없음 — 커밋 건너뜀"
