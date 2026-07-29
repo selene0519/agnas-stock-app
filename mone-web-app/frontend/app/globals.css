@@ -518,18 +518,22 @@ html[data-theme="light"] .mone-app-shell ::placeholder {
   color: #5b6675 !important;
 }
 
-/* 톤 카드 안의 작은 글씨는 `opacity-75/80`으로 한 번 더 흐려진다. 다크는
-   배경이 어두워 여유가 있지만, **라이트는 밝은 워시 위라 여유가 없다** —
-   실측 3.03~3.33:1로 전부 AA 미달이었다. 위계는 이미 톤 색과 굵기가
-   만들고 있으므로 라이트에서는 opacity 감쇠를 끈다. */
-html[data-theme="light"] .mone-app-shell [class*="mone-tone-"] [class*="opacity-"] {
+/* 톤 카드 안의 작은 글씨는 `opacity-75/80`으로 **이미 옅은 톤 색을 한 번 더**
+   흐리게 만든다. 라이트가 3.03~3.33:1로 먼저 터졌지만, 다크도 4.30/4.44:1로
+   미달이었다 — 처음엔 라이트에만 적용했다가 실측에서 다크도 걸렸다.
+   불투명도만 걷으면 다크 6.26~6.91:1 / 라이트도 통과한다. 위계는 톤 색과
+   굵기가 이미 만들고 있으므로 opacity 감쇠는 없어도 된다. */
+.mone-app-shell [class*="mone-tone-"] [class*="opacity-"] {
   opacity: 1 !important;
 }
 /* 색이 붙은 배경 위의 흰 글자는 라이트에서도 흰색이 맞다. 이 규칙이 위의
    일반 `text-white` 규칙보다 **구체적이고 뒤에 있어** 이긴다.
    teal/sky/violet/amber/slate-800도 실제로 쓰이므로 같이 넣는다 —
    빠뜨리면 그 버튼들의 글자가 라이트에서 어두워져 배경과 겹친다. */
-html[data-theme="light"] .mone-app-shell [class*="bg-blue-"]:not([class*="/"])[class*="text-white"],
+/* ⚠️ `bg-blue-*`는 여기 넣으면 안 된다. 위(577행)에서 브랜드 teal 배경 +
+   어두운 잉크(#052420)로 다시 칠해지는데, 이 규칙이 더 구체적이라 잉크를
+   흰색으로 되돌려버린다 — 실측 2.49:1. 브랜드 표면의 정답은 어두운 잉크다
+   (#052420 on #14b8a6 = 6.59:1). */
 html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"]:not([class*="/"])[class*="text-white"],
 html[data-theme="light"] .mone-app-shell [class*="bg-teal-"]:not([class*="/"])[class*="text-white"],
 html[data-theme="light"] .mone-app-shell [class*="bg-sky-"]:not([class*="/"])[class*="text-white"],
@@ -750,7 +754,8 @@ html[data-theme="light"] .mone-home {
   --tone-bg: rgba(148,163,184,.10);
   --tone-border: rgba(148,163,184,.22);
 }
-html[data-theme="light"] .mone-tone-safe    { --tone-fg: #047857; }
+/* #047857은 밝은 emerald 워시(#b2e7da) 위에서 4.00:1로 AA 미달이었다. */
+html[data-theme="light"] .mone-tone-safe    { --tone-fg: #065f46; }
 html[data-theme="light"] .mone-tone-warning { --tone-fg: #925800; }
 html[data-theme="light"] .mone-tone-danger  { --tone-fg: #b4233a; }
 html[data-theme="light"] .mone-tone-info    { --tone-fg: #096b67; }
