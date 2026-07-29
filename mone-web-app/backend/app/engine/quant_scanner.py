@@ -2268,37 +2268,60 @@ def _load_dart_financials(repo_root: Path, market: str) -> dict[str, dict]:
     path = repo_root / "reports" / "dart_financial_data_kr.csv"
     if not path.exists():
         return {}
-    # 최신 연도를 무조건 고르면 **껍데기 행이 채워진 행을 덮는다.**
-    # 2026-07-29 실측: 2026년 행이 107종목 있는데 revenue/operating_income/
-    # net_income/total_equity가 전부 공란이었고(수집이 아직 안 된 회계연도),
-    # 2023~2025는 96~102종목이 채워져 있었다. 그런데 로더가 year 문자열 비교로
-    # 2026을 골라서 **106종목 중 1종목만** 실제 재무값이 전달되고 있었다.
-    # 즉 PER/PBR/ROE·저평가 가치 태그 같은 재무 기반 로직이 사실상 죽어 있었다.
+    # **연도를 하나 고르면 안 된다 — 두 수집기가 서로 다른 필드를 채운다.**
     #
-    # 그래서 "가장 최신"이 아니라 **"값이 있는 것 중 가장 최신"**을 고른다.
-    core_fields = ("revenue", "operating_income", "net_income", "total_equity")
+    # 이 CSV에는 writer가 둘 있다:
+    #   fetch_dart_financials.py   year=회계연도(2025/2024). 원시 재무제표
+    #                              (revenue/operating_income/net_income/total_equity)
+    #   fetch_kr_financial_data.py year=**달력연도**(오늘이 2026이면 2026).
+    #                              yfinance .info의 시장 지표
+    #                              (per/revenue_growth/eps_growth/div/market_cap)
+    #
+    # 2026-07-29 실측 (KR 종목 기준):
+    #             revenue  operating_income  per   revenue_growth  div  market_cap
+    #   2025행     96/102       102/102      0/102     0/102       0/102   0/102
+    #   2026행      0/107         0/107     84/107    88/107      69/107  92/107
+    #
+    # 즉 **어느 한 해도 단독으로는 불완전하다.** 원래 로더는 year 문자열 비교로
+    # 2026을 골라서 원시 재무제표가 106종목 중 1종목만 살아 있었고, 그걸 고치려고
+    # "값 있는 최신 연도"로 바꿨더니 이번엔 per/성장률/배당을 잃었다
+    # ('저PER' 스타일 태그가 쓰는 바로 그 값이다).
+    #
+    # 그래서 연도 선택이 아니라 **필드 단위 병합**을 한다. 최신 연도를 기준으로
+    # 두고, 비어 있는 칸만 과거 연도에서 채운다. 최신 값이 항상 이기므로
+    # 오래된 수치가 새 수치를 덮을 일은 없다.
+    def _is_blank(v) -> bool:
+        return str(v or "").strip() in ("", "nan", "None", "-")
 
-    def _has_values(row: dict) -> bool:
-        return any(str(row.get(f) or "").strip() not in ("", "0", "nan", "None")
-                   for f in core_fields)
-
-    result: dict[str, dict] = {}
+    by_symbol: dict[str, list[dict]] = {}
     for row in _read_csv(path):
         sym = str(row.get("symbol", "")).strip()
-        if not sym:
+        if sym:
+            by_symbol.setdefault(sym, []).append(row)
+
+    result: dict[str, dict] = {}
+    for sym, rows in by_symbol.items():
+        # 최신 연도부터. 앞선 행의 값이 뒤 행에 덮이지 않게 setdefault처럼 채운다.
+        rows.sort(key=lambda r: str(r.get("year", "")), reverse=True)
+        merged: dict = {}
+        sources: list[str] = []
+        for row in rows:
+            used = False
+            for key, val in row.items():
+                if key is None:
+                    continue
+                if _is_blank(merged.get(key)) and not _is_blank(val):
+                    merged[key] = val
+                    used = True
+            if used:
+                sources.append(str(row.get("year", "")))
+        if not merged:
             continue
-        yr = str(row.get("year", ""))
-        prev = result.get(sym)
-        if prev is not None:
-            prev_has, cur_has = _has_values(prev), _has_values(row)
-            # 값이 있는 행이 항상 이긴다. 둘 다 값이 있으면 최신이 이긴다.
-            # 둘 다 비었으면 최신을 남겨 "언제 시도됐는지"는 보존한다.
-            if prev_has and not cur_has:
-                continue
-            if prev_has == cur_has and yr <= str(prev.get("year", "")):
-                continue
-        result[sym] = dict(row)
-        result[sym.lstrip("0")] = dict(row)
+        # 어느 연도들이 합쳐졌는지 남긴다 — 나중에 "이 PER은 어느 시점 값인가"를
+        # 되짚을 수 있어야 한다.
+        merged["_mergedYears"] = ",".join(dict.fromkeys(sources))
+        result[sym] = dict(merged)
+        result[sym.lstrip("0")] = dict(merged)
     return result
 
 
