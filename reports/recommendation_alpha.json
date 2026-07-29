@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-29T10:42:07.505233+00:00",
+  "generatedAt": "2026-07-29T15:54:17.461894+00:00",
   "since": null,
   "method": "시장모형 이벤트 스터디. 추정창 [-250,-11] 거래일에서 R_stock = alpha + beta*R_KOSPI 를 OLS 적합 후, 이벤트창의 초과수익을 누적(CAR). 추정창이 이벤트 이전에서 끝나 룩어헤드 없음.",
   "reference": "virattt/ai-hedge-fund v2/event_study (실적발표 대신 추천일을 이벤트로 사용)",
@@ -47,16 +47,16 @@
     },
     "D+20": {
       "events": 150,
-      "meanCarPct": 5.6588,
-      "meanRawReturnPct": -13.9794,
-      "marketComponentPct": -19.6382,
-      "positiveShare": 0.7,
-      "tStat": 5.317,
+      "meanCarPct": 5.6528,
+      "meanRawReturnPct": -14.5874,
+      "marketComponentPct": -20.2402,
+      "positiveShare": 0.6667,
+      "tStat": 5.063,
       "pValue": 0.0,
       "significant": true,
       "bootstrapCi95": [
-        3.5655,
-        7.749
+        3.4863,
+        7.834
       ],
       "sampleWarning": null,
       "significanceUsable": false
