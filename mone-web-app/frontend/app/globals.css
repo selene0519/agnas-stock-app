@@ -27,7 +27,9 @@
   --color-primary-action-ink: #07101f;
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
-  --text-muted: #475569;
+  /* #475569(slate-600)이었는데 어두운 배경 위에서 2.64:1 — WCAG AA(4.5) 미달.
+     보조 텍스트보다 한 단계 흐리되 기준은 넘는 값으로 올린다(약 5.8:1). */
+  --text-muted: #7c8ba1;
   color-scheme: dark;
 }
 
@@ -39,7 +41,8 @@ html[data-theme="light"] {
   --bg-border: #d8e0ea;
   --text-primary: #111827;
   --text-secondary: #475569;
-  --text-muted: #718096;
+  /* #718096은 밝은 배경(#f6f8fc) 위에서 3.78:1 — AA(4.5) 미달이라 어둡게 내린다. */
+  --text-muted: #65707e;
   color-scheme: light;
 }
 
@@ -589,7 +592,8 @@ html[data-theme="light"] .mone-app-shell {
   font-size: 11.5px;
   letter-spacing: 0.01em;
   line-height: 1.45;
-  color: #64748b;
+  /* #64748b는 4.20:1로 AA 미달이었다. 토큰을 쓰면 테마별로 같이 따라간다. */
+  color: var(--text-secondary);
 }
 .mone-market-tabs {
   display: grid;

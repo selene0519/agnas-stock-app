@@ -797,7 +797,7 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       <div className="mt-4 flex gap-2">
         <button onClick={handleSave} disabled={saving}
-          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
+          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-500 disabled:opacity-50">
           <Save size={13} /> 추가
         </button>
         <button onClick={onCancel}
@@ -1639,7 +1639,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
               {Number(soldHistory.totalRealizedPnl || 0) >= 0 ? "+" : ""}{Number(soldHistory.totalRealizedPnl || 0).toLocaleString("ko-KR")}
             </span>
           </div>
-          <div className="mt-1 text-[11px] text-slate-600">위 평가손익은 현재 보유종목 기준입니다 — {soldHistory.note}</div>
+          <div className="mt-1 text-[11px] text-slate-400">위 평가손익은 현재 보유종목 기준입니다 — {soldHistory.note}</div>
         </div>
       )}
 
@@ -1948,7 +1948,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                     <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-400">{holdingPurposeLabel(holdingPurpose)}</span>
                   </div>
                   <div className="mt-0.5 text-xs text-slate-400">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
-                  <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
+                  <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-400">
                     <span>{holdingSourceText}</span>
                     {holdingDateText && <span>기준 {holdingDateText}</span>}
                     {holdingPriceSourceText && <span>가격 {holdingPriceSourceText}</span>}
@@ -2078,7 +2078,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button onClick={() => saveEdit(holding)} disabled={savingKey === key}
-                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
+                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-500 disabled:opacity-50">
                       <Save size={12} /> 저장
                     </button>
                     <button onClick={() => { setEditKey(null); setEditDraft(null); }}
@@ -2187,7 +2187,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                         <span className="whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] text-slate-400">{holdingPurposeLabel(holdingPurpose)}</span>
                       </div>
                       <div className="mt-0.5 text-xs text-slate-400">{holdingBroker} · {String(holding.market || "").toUpperCase()}</div>
-                      <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
+                      <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-400">
                         <span>{holdingSourceText}</span>
                         {holdingDateText && <span>기준 {holdingDateText}</span>}
                         {holdingPriceSourceText && <span>가격 {holdingPriceSourceText}</span>}
@@ -2274,7 +2274,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                       </div>
                       <div className="mt-3 flex gap-2">
                         <button onClick={() => saveEdit(holding)} disabled={savingKey === key}
-                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-500 disabled:opacity-50">
                           <Save size={12} /> 저장
                         </button>
                         <button onClick={() => { setEditKey(null); setEditDraft(null); }}
@@ -2405,7 +2405,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
                       </div>
                     ))}
                   </div>
-                  <div className="mt-1.5 text-[10px] text-slate-600">
+                  <div className="mt-1.5 text-[10px] text-slate-400">
                     최근 {riskBudget.correlation.lookbackDays}거래일 일간수익률 기준 · |r|≥{riskBudget.policy?.highCorrelationThreshold ?? 0.7} 이상만 표시
                   </div>
                 </div>

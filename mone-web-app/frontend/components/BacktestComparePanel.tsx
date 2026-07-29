@@ -76,7 +76,7 @@ function ReturnLabel({ pct }: { pct: number }) {
   const sign = pct > 0 ? "+" : "";
   return (
     <span className={`whitespace-nowrap font-mono text-xs font-bold ${color}`} title="평균 수익률">
-      <span className="mr-0.5 font-sans text-[10px] font-medium text-slate-500">평균</span>
+      <span className="mr-0.5 font-sans text-[10px] font-medium text-slate-400">평균</span>
       {sign}{pct.toFixed(1)}%
     </span>
   );
@@ -112,14 +112,14 @@ function resultFromJournalPerformance(
 function StrategyCell({ result, loading }: { result: StrategyResult | null; loading: boolean }) {
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center text-[10px] text-slate-600 py-3">
+      <div className="flex h-full items-center justify-center text-[10px] text-slate-400 py-3">
         …
       </div>
     );
   }
   if (!result || result.status !== "OK" || result.total_trades === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-[10px] text-slate-600 py-3">
+      <div className="flex h-full items-center justify-center text-[10px] text-slate-400 py-3">
         데이터 없음
       </div>
     );
@@ -131,7 +131,7 @@ function StrategyCell({ result, loading }: { result: StrategyResult | null; load
         <ReturnLabel pct={result.total_return_pct} />
       </div>
       <div className="flex items-center justify-between gap-1 text-[10px] text-slate-400">
-        <span className="font-mono text-slate-400">{result.executed_trades}<span className="text-slate-600">/{result.total_trades}</span></span>
+        <span className="font-mono text-slate-400">{result.executed_trades}<span className="text-slate-400">/{result.total_trades}</span></span>
         <span className="font-mono">{result.profit_loss_ratio > 0 ? `RR ${result.profit_loss_ratio.toFixed(1)}` : "—"}</span>
       </div>
     </div>
@@ -344,12 +344,12 @@ export default function BacktestComparePanel() {
                   <div key={key} className="flex items-center justify-between gap-3 px-3 py-2.5">
                     <span className="w-10 shrink-0 text-[11px] font-semibold text-slate-400">{horizon.label}</span>
                     {cellLoading ? (
-                      <span className="text-[10px] text-slate-600">…</span>
+                      <span className="text-[10px] text-slate-400">…</span>
                     ) : !result || result.status !== "OK" || result.total_trades === 0 ? (
-                      <span className="text-[10px] text-slate-600">데이터 없음</span>
+                      <span className="text-[10px] text-slate-400">데이터 없음</span>
                     ) : (
                       <div className="flex flex-1 items-center justify-end gap-3">
-                        <span className="font-mono text-[10px] text-slate-400">{result.executed_trades}<span className="text-slate-600">/{result.total_trades}</span></span>
+                        <span className="font-mono text-[10px] text-slate-400">{result.executed_trades}<span className="text-slate-400">/{result.total_trades}</span></span>
                         <ReturnLabel pct={result.total_return_pct} />
                         <WinRateBadge rate={result.win_rate} />
                       </div>
@@ -366,7 +366,7 @@ export default function BacktestComparePanel() {
       <div className="hidden rounded-2xl border border-slate-700/60 bg-slate-900/50 overflow-hidden sm:block">
         {/* 컬럼 헤더 (horizons) */}
         <div className="grid grid-cols-4 border-b border-slate-700/40">
-          <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+          <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
             전략
           </div>
           {HORIZONS.map((h) => (

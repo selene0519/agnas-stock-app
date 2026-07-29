@@ -391,6 +391,50 @@ PR head는 Vercel 3개 모두 success였다. 루트 `vercel.json`은 `deployment
     /tmp/cienv/bin/python -m pytest tests -q
 이 방식으로 재검증 → **667 passed / 0 failed**.
 
+## 2026-07-29 (10) — 색 대비 감사: 계측기가 코드보다 먼저 세 번 틀렸다
+PR #147 체크 실측 확인(**Python 테스트 / 프론트 타입·린트·빌드 둘 다 success**,
+`667 passed, 1 skipped in 85.42s`, CI가 푼 핀 = pandas 2.3.3 / numpy 2.4.6 /
+starlette 1.3.1). **이 레포에서 PR 트리거 테스트가 실제로 돌아 통과한 첫 사례**다.
+
+그다음 #7의 마지막 항목(색 대비 전수)을 했다. **세 번의 오류가 전부 앱을 실제보다
+좋아 보이게 만드는 방향이었다** — 감시 장치는 이 방향으로 틀리면 아무도 눈치 못 챈다.
+
+1. **색 파싱을 `rgba?\(` 정규식으로 했다.** Chromium은 계산값을 `oklab()`/`oklch()`로
+   돌려준다(Tailwind v4 팔레트 + `/opacity` 수정자). journal 화면에서 텍스트 200개 중
+   **141개를 조용히 건너뛰고** "위반 5건"이라 보고했다. → 캔버스에 맡겨 CSS Color 4 전부 처리.
+2. **로딩 화면을 쟀다.** home의 가시 텍스트가 56자("MONE 준비 중…")일 때 "위반 0"이
+   나왔다. 처음엔 "가시 글자수 200자"를 렌더 완료 신호로 썼는데 **틀린 대리지표**였다 —
+   broker/admin은 로그인 게이트라 본문이 원래 140자다. → 로딩 문구 존재 여부로 교체.
+3. **`opacity` 누적 방향이 반대였다.** 요소에서 위로 곱한 prefix를 배경에도 써서
+   자식의 `opacity-70`이 **부모 배경까지** 흐리게 만들었다. 브랜드 teal(#14b8a6)이
+   #11867f로 계산돼 2.58:1로 보고됐다(**참값 3.67:1**). → suffix 곱으로 수정.
+
+계측기를 고치자 **고유 41건 / 총 139건** — 버그 버전이 말한 5건의 8배였다.
+
+**원인은 하나였다.** `text-slate-600`(#45556c, 2.50~2.64:1)이 렌더된 11개 화면 **전부**에
+깔려 있었다. 그런데 `text-slate-400`은 이미 이 앱의 지배적 관례(1124곳)이고 7.6:1로
+통과한다 → **새 룩을 만든 게 아니라 예외 131곳을 관례로 되돌린 것**이다. 강조색 칩도
+같다: 이 앱은 이미 브랜드색 위에 어두운 잉크를 깐다(`globals.css:512`가 teal 위에
+#052420). 그래서 emerald/cyan-600 위 흰 글자(3.6:1)를 `text-slate-950`(5.5:1)로.
+
+**계속 찾아서만 나온 것 2개:**
+- **라이트 테마는 한 번도 감사된 적이 없었다.** 헤더에 토글이 있어 사용자가 실제로 보는데
+  (`app/page.tsx:122`), 거기 `--text-muted`는 3.78:1이었다. 이제 두 테마 다 잰다.
+- **`::placeholder`는 텍스트 노드가 아니라** TreeWalker에 안 걸린다 → 실측에서도 못 보던
+  사각지대. `AdminLoginPage`에 1.93:1짜리가 있었다.
+
+**부수 사고(테스트가 잡았다):** 색을 일괄 승격하니 `text-slate-600 hover:text-slate-400`
+3곳이 `text-slate-400 hover:text-slate-400`이 됐다 — 대비는 통과하는데 **hover 피드백이
+조용히 죽는다.** `test_hover_states_are_not_no_ops`가 잡았다.
+
+`tests/test_frontend_contrast.py`는 WCAG 공식을 **파이썬으로 직접 구현**해 브라우저 없이
+CI에서 토큰 명암비를 검증한다(실측 스크립트는 dev 서버가 필요해 CI에서 못 돈다).
+계측기 버그 3종의 재발도 같이 막는다.
+
+⚠️ **남은 한계:** 실측은 **375x812 모바일 뷰포트만** 본다. `Sidebar.tsx`처럼 데스크톱
+전용 UI는 측정 대상에 안 들어간다(그래서 이번엔 계산으로 확인해 고쳤다). 빈 상태·에러
+상태에서만 그려지는 텍스트도 그 상태를 만들어야 잡힌다.
+
 ## 제약 / 운영 메모
 - CI dispatch 권한 없음(403) → 파이프라인 실행은 사용자 손 필요.
 - 이 환경엔 과학 스택이 **선설치만 안 돼 있을 뿐 설치하면 전체 검증이 된다**
@@ -402,5 +446,14 @@ PR head는 Vercel 3개 모두 success였다. 루트 `vercel.json`은 `deployment
   깨진다 — pandas 3.0.5에서 5개가 `TypeError: Invalid value 'True' for dtype 'str'`로
   사망(문자열 컬럼 bool 대입 금지, 예측 원장이 그 패턴을 씀). requirements.txt + 워크플로
   7곳에 상한 적용, `tests/test_dependency_pins.py`가 무핀 재발을 막는다.
-- 이 실행 환경엔 프론트 빌드/`fastapi`/`yfinance`/`FDR` 없음 → 백엔드 라이브 구동·시각 QA 불가(코드/로직 단위검증으로 대체).
+- ~~이 실행 환경엔 프론트 빌드/`fastapi`/`yfinance`/`FDR` 없음 → 백엔드 라이브 구동·시각 QA 불가~~
+  → **틀렸다(2026-07-29 반증).** 백엔드·프론트 **둘 다 이 환경에서 뜬다**:
+  `cd mone-web-app/backend && MONE_STARTUP_SYNC=0 MONE_AUTO_SYNC_DISABLE=1 PYTHONPATH=. python -m uvicorn app.main:app --port 8050`
+  (프론트 프록시 기본 대상이 **8050**이다 — 8000에 띄우면 502가 난다)
+  + `cd mone-web-app/frontend && npx next dev -p 3000`. 이 조합으로 12개 화면 실측을 끝냈다.
+- ⚠️ **로컬 백엔드를 띄우면 예측 원장에 쓴다.** UI 계측 중 `/api/final/recommendations`가
+  수십 번 호출되면서 `data/signal_ledger.csv`에 4행, `reports/virtual_validation_results.csv`에
+  877/835행 churn, 추천 CSV 5개가 **오늘 날짜로** 생성됐다. 이건 CI 캡처가 아니라
+  **UI 계측의 부산물**인데 원장에서는 구별이 안 된다 → clean window 표본을 오염시킨다.
+  계측 후 반드시 `git checkout -- data/ reports/*.csv`로 되돌릴 것(이번에 되돌렸다).
 - 보유 **수량** 동기화는 로컬 브릿지(`scripts/sync_all.ps1`, 사용자 PC) 담당 — 안 돌리면 수량이 조용히 낡음.

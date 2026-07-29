@@ -107,7 +107,7 @@ export default function AlphaPanel() {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[300px] text-[11px]">
           <thead>
-            <tr className="text-slate-500">
+            <tr className="text-slate-400">
               <th className="py-1 text-left font-medium">기간</th>
               <th className="py-1 text-right font-medium">추천</th>
               <th className="py-1 text-right font-medium">시장</th>
@@ -148,7 +148,7 @@ export default function AlphaPanel() {
         </p>
       )}
 
-      <p className="mt-2 text-[10px] text-slate-500">
+      <p className="mt-2 text-[10px] text-slate-400">
         표본 {data.events}건
         {data.eventDateRange?.min && ` · ${data.eventDateRange.min}~${data.eventDateRange.max}`}
         {data.avgBeta !== undefined && ` · 평균 베타 ${data.avgBeta}`}

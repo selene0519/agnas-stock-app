@@ -222,7 +222,7 @@ export default function AlertsPanel() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
             마지막 체크 근접 알림
             {status.lastCheck.checkedAt && (
-              <span className="ml-2 normal-case font-normal text-slate-600">
+              <span className="ml-2 normal-case font-normal text-slate-400">
                 {status.lastCheck.checkedAt}
               </span>
             )}

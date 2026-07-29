@@ -293,9 +293,11 @@ export default function NewsPage() {
               {marketLabel(item)}
             </button>
           ))}
-          <span className="self-center text-slate-700">|</span>
+          {/* 장식용 구분선. `|` 문자로 두면 텍스트라 대비 기준(4.5:1)에 걸린다
+              — 실측 1.93:1이었다. 스크린리더도 "세로줄"을 읽을 이유가 없다. */}
+          <span aria-hidden="true" className="mx-1 h-5 w-px self-center bg-slate-700" />
           {(["news", "disclosures", "company"] as Tab[]).map((item) => (
-            <button key={item} onClick={() => setTab(item)} className={`inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium ${tab === item ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+            <button key={item} onClick={() => setTab(item)} className={`inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium ${tab === item ? "bg-emerald-600 text-slate-950" : "bg-slate-800 text-slate-400"}`}>
               {tabLabel(item)}
             </button>
           ))}
@@ -430,7 +432,7 @@ function CompanyDetail({ selected }: { selected: any }) {
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
           <div className={`h-full rounded-full ${readiness.pct >= 75 ? "bg-emerald-500" : readiness.pct >= 35 ? "bg-amber-400" : "bg-slate-500"}`} style={{ width: `${readiness.pct}%` }} />
         </div>
-        <div className="mt-2 flex justify-between text-[10px] text-slate-600">
+        <div className="mt-2 flex justify-between text-[10px] text-slate-400">
           <span>채워진 지표 {readiness.present}/{FIN_FIELDS.length}</span>
           <span>{hasFinData ? "재무 분석 가능" : "재무 원본 보강 대기"}</span>
         </div>
@@ -502,7 +504,7 @@ function CompanyDetail({ selected }: { selected: any }) {
         {(selected.dataSources || [selected.source]).filter(Boolean).map((src: string, i: number) => (
           <span key={i} className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 font-mono">{src}</span>
         ))}
-        {!selected.source && !selected.dataSources && <span className="italic text-slate-600">출처 정보 없음 (local CSV/json)</span>}
+        {!selected.source && !selected.dataSources && <span className="italic text-slate-400">출처 정보 없음 (local CSV/json)</span>}
         {selected.dartYear && <span className="rounded-md border border-blue-700/40 bg-blue-800/20 px-2 py-0.5 text-blue-300">DART {selected.dartYear}년</span>}
       </div>
     </div>

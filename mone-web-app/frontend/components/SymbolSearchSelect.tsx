@@ -188,7 +188,7 @@ export default function SymbolSearchSelect({
             if (event.key === "Escape") setOpen(false);
           }}
           placeholder={placeholder}
-          className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-600"
+          className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-400"
         />
         {query && (
           <button
@@ -233,7 +233,7 @@ export default function SymbolSearchSelect({
                   <div className={`font-mono text-xs ${item.currentPriceText ? "text-slate-300" : "text-amber-300"}`}>
                     {item.currentPriceText || "실시간 현재가 없음"}
                   </div>
-                  <div className="text-[10px] text-slate-600">
+                  <div className="text-[10px] text-slate-400">
                     {item.priceSource || item.source || (String(item.dataStatus || "").toUpperCase() === "PRICE_PENDING" ? "현재가 대기" : item.dataStatus) || ""}
                   </div>
                 </div>

@@ -20,7 +20,7 @@ export default function GlobalError({
         <h1 className="mt-3 text-xl font-semibold">예기치 못한 오류가 발생했습니다</h1>
         <p className="mt-2 max-w-sm text-sm text-slate-400">{error?.message || "알 수 없는 오류"}</p>
         {error?.digest && (
-          <p className="mt-1 font-mono text-xs text-slate-600">Ref: {error.digest}</p>
+          <p className="mt-1 font-mono text-xs text-slate-400">Ref: {error.digest}</p>
         )}
       </div>
       <div className="flex gap-3">
