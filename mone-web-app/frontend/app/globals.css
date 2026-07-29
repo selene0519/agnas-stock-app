@@ -481,6 +481,20 @@ html[data-theme="light"] .mone-app-shell [class*="text-sky-400"] {
 html[data-theme="light"] .mone-app-shell [class*="text-amber-400"] {
   color: #92400e !important;
 }
+/* violet/indigo/purple 계열도 빠져 있었다 — 라이트에서 1.19:1, 1.27:1.
+   cyan-400과 같은 사고다: 색 계열 하나가 목록에서 빠지면 그 배지가 안 보인다. */
+html[data-theme="light"] .mone-app-shell [class*="text-violet-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-violet-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-violet-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-violet-400"],
+html[data-theme="light"] .mone-app-shell [class*="text-purple-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-purple-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-purple-400"],
+html[data-theme="light"] .mone-app-shell [class*="text-indigo-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-indigo-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-indigo-400"] {
+  color: #5b21b6 !important;
+}
 
 /* 단독 `text-white`는 라이트 배경(#f6f8fc) 위에서 **1.06:1 — 사실상 안 보인다.**
    실측에서 화면 제목("MONE 트레이딩", "모의투자")이 그랬다. 색이 붙은 배경 위의
