@@ -286,11 +286,17 @@ def run() -> tuple[dict[str, Any], dict[str, Any]]:
                 "momentum5":  mom5 if mom5 is not None else 0.0,
                 "return":     ret,
                 "isWin":      1.0 if outcome == "WIN" else 0.0,
+                "market":     mk,
             })
 
     # ── OLS 회귀 ─────────────────────────────────────────────────────────────
     FEATURE_NAMES = ["rsi", "volumeRatio", "distToMa20", "probability", "momentum5"]
     regression: dict[str, Any] = {}
+    # **시장별 회귀도 같이 낸다.** 2026-07-29 발견: byMarket은 승률·페이오프
+    # 요약만 담고 회귀는 풀링이라, 국장에서 배운 계수가 미장 필터에 그대로
+    # 적용되고 있었다. 두 시장은 세금·유동성·거래시간이 달라 같은 계수를
+    # 쓸 근거가 없다.
+    regression_by_market: dict[str, Any] = {}
 
     if len(ols_data) >= 10:
         y_ret = [d["return"] for d in ols_data]
@@ -411,6 +417,25 @@ def run() -> tuple[dict[str, Any], dict[str, Any]]:
                 "sampleCount":    fr["total"] if fr else 0,
             }
 
+    # 시장별 회귀 (표본 30건 미만이면 계수를 내지 않는다 — 없는 정보를 만들지 않는다)
+    for _mk in sorted({d.get("market") for d in ols_data if d.get("market")}):
+        sub = [d for d in ols_data if d.get("market") == _mk]
+        if len(sub) < 30:
+            regression_by_market[_mk] = {"status": "INSUFFICIENT_DATA", "n": len(sub)}
+            continue
+        Xm = [[1.0] + [d[f] for f in FEATURE_NAMES] for d in sub]
+        ym = [d["return"] for d in sub]
+        bm_ = _ols(Xm, ym)
+        if bm_ is None:
+            regression_by_market[_mk] = {"status": "SINGULAR", "n": len(sub)}
+            continue
+        r2m = _r_squared(Xm, ym, bm_)
+        regression_by_market[_mk] = {
+            "status": "OK", "n": len(sub), "r2": round(r2m, 4),
+            "intercept": round(bm_[0], 4),
+            **{f: round(bm_[i], 4) for i, f in enumerate(FEATURE_NAMES, 1)},
+        }
+
     factor_doc: dict[str, Any] = {
         "updatedAt":         now,
         "totalRows":         sum(v["total"] for v in factor_results.values()),
@@ -419,6 +444,7 @@ def run() -> tuple[dict[str, Any], dict[str, Any]]:
         "byMarket":          market_factor,
         "byProbBand":        prob_factor,
         "regressionFactors": regression,
+        "regressionByMarket": regression_by_market,
         "insight":           _generate_insights(factor_results, market_factor, kelly_results, regression),
     }
     return factor_doc, kelly_results

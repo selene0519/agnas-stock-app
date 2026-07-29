@@ -29,6 +29,13 @@ def _load_factor_adjustments_us() -> dict:
         if p.exists():
             doc = _json.loads(p.read_text(encoding="utf-8"))
             if doc.get("status") == "APPLIED":
+                # **자기 시장의 조정을 먼저 쓴다.** 풀링 조정은 국장에서 배운
+                # 계수를 미장에 그대로 적용해 왔다(2026-07-29 발견). 시장별
+                # 회귀는 rsi 계수가 KR 0.093 vs US 0.237로 2.5배 다르고,
+                # 시장별 R2(0.127/0.119)가 풀링(0.062)의 2배다.
+                mine = ((doc.get("byMarket") or {}).get("us") or {})
+                if mine.get("status") == "APPLIED" and mine.get("adjustments"):
+                    return mine["adjustments"]
                 return doc.get("adjustments", {})
     except Exception:
         pass
