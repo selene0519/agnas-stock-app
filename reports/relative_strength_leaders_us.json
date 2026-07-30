@@ -5,10 +5,16 @@
   "regime": "BEAR",
   "status": "BEAR_DEFENSIVE",
   "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
-  "universeCount": 132,
+  "universeCount": 133,
   "leaders": [],
   "laggardsToAvoid": [],
   "defensiveHolds": [
+    {
+      "symbol": "SP500",
+      "rs60Pct": 2.96,
+      "relToIndexPp": -0.2,
+      "vol60Pct": 0.84
+    },
     {
       "symbol": "BRK-B",
       "rs60Pct": 7.44,
@@ -18,7 +24,7 @@
     {
       "symbol": "PFE",
       "rs60Pct": -4.84,
-      "relToIndexPp": -8.0,
+      "relToIndexPp": -8.01,
       "vol60Pct": 1.26
     },
     {
@@ -66,13 +72,13 @@
     {
       "symbol": "JNJ",
       "rs60Pct": 14.87,
-      "relToIndexPp": 11.71,
+      "relToIndexPp": 11.7,
       "vol60Pct": 1.6
     },
     {
       "symbol": "PEP",
       "rs60Pct": -8.55,
-      "relToIndexPp": -11.71,
+      "relToIndexPp": -11.72,
       "vol60Pct": 1.6
     },
     {
@@ -91,12 +97,6 @@
       "symbol": "AAPL",
       "rs60Pct": 19.82,
       "relToIndexPp": 16.66,
-      "vol60Pct": 1.77
-    },
-    {
-      "symbol": "HD",
-      "rs60Pct": 7.53,
-      "relToIndexPp": 4.37,
       "vol60Pct": 1.77
     }
   ],
