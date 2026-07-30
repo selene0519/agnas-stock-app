@@ -185,6 +185,9 @@ def test_prediction_is_sealed_only_when_raw_contract_and_ohlcv_cutoff_match(tmp_
 
     assert result["appended"] == 1
     assert result["conflicts"] == 0
+    assert result["runAt"] == "2026-01-02T22:00:00+00:00"
+    assert result["candidateDiagnostics"][0]["matchedRecommendations"] == 1
+    assert result["candidateDiagnostics"][0]["sealedOrConfirmed"] == 1
     assert rows[0]["forward_seal_status"] == "SEALED_FORWARD"
     assert rows[0]["record_hash"] == shadow._prediction_hash(rows[0])
     assert float(rows[0]["challenger_score"]) > float(rows[0]["champion_score"])
@@ -211,6 +214,119 @@ def test_prediction_is_sealed_only_when_raw_contract_and_ohlcv_cutoff_match(tmp_
     )
     assert stale["appended"] == 0
     assert stale["skippedForwardSeal"] == 1
+
+
+def test_candidate_recording_health_has_grace_then_fails_loudly() -> None:
+    registry = _registry_row()
+    registry["registered_at"] = "2026-01-01T00:00:00+00:00"
+    registry["record_hash"] = shadow._registry_hash(registry)
+    failed_run = {
+        "runAt": "2026-01-01T01:00:00+00:00",
+        "candidateDiagnostics": [{
+            "candidateFingerprint": "candidate-a",
+            "matchedRecommendations": 2,
+            "sealedOrConfirmed": 0,
+            "skippedInputContract": 2,
+            "skippedForwardSeal": 0,
+            "conflicts": 0,
+        }],
+    }
+
+    warmup = shadow.candidate_recording_health(
+        _candidate(), [registry], [], [], failed_run,
+        now=shadow._parse_time("2026-01-03T00:00:00+00:00"),
+    )
+    stalled = shadow.candidate_recording_health(
+        _candidate(), [registry], [], [], failed_run,
+        now=shadow._parse_time("2026-01-07T00:00:00+00:00"),
+    )
+
+    assert warmup["status"] == "WARMUP"
+    assert warmup["healthy"] is True
+    assert warmup["lastAttemptReason"] == "INPUT_CONTRACT_REJECTED"
+    assert stalled["status"] == "STALLED"
+    assert stalled["requiresAttention"] is True
+    assert stalled["blockingReason"] == "INPUT_CONTRACT_REJECTED_AFTER_GRACE"
+
+
+def test_candidate_recording_health_detects_prediction_silence() -> None:
+    registry = _registry_row()
+    registry["registered_at"] = "2026-01-01T00:00:00+00:00"
+    registry["record_hash"] = shadow._registry_hash(registry)
+    prediction = {field: "" for field in shadow.PREDICTION_FIELDS}
+    prediction.update({
+        "prediction_id": "prediction-a",
+        "candidate_fingerprint": "candidate-a",
+        "recorded_at": "2026-01-02T00:00:00+00:00",
+    })
+
+    health = shadow.candidate_recording_health(
+        _candidate(), [registry], [prediction], [], None,
+        now=shadow._parse_time("2026-01-08T00:00:00+00:00"),
+    )
+
+    assert health["status"] == "STALLED"
+    assert health["blockingReason"] == "PREDICTION_SILENCE_EXCEEDED"
+    assert health["sealedPredictions"] == 1
+
+
+def test_settlement_only_build_preserves_last_recording_diagnostics(monkeypatch, tmp_path: Path) -> None:
+    output = tmp_path / "shadow.json"
+    promotion = tmp_path / "promotion.json"
+    previous_run = {
+        "runAt": "2026-01-02T00:00:00+00:00",
+        "candidateDiagnostics": [{
+            "candidateFingerprint": "candidate-a",
+            "matchedRecommendations": 2,
+            "skippedInputContract": 2,
+        }],
+    }
+    output.write_text(json.dumps({"lastRecordingRun": previous_run}), encoding="utf-8")
+    monkeypatch.setattr(shadow.vtj, "calibration_shadow_candidates", lambda: {
+        "status": "SHADOW_ONLY",
+        "policyVersion": shadow.vtj.AUTO_CALIBRATION_POLICY["version"],
+        "policyFingerprint": shadow.vtj._calibration_policy_fingerprint(),
+        "items": [],
+        "blocked": [],
+        "readiness": {"readyForReview": 0, "eligibleSuggestions": 0, "items": []},
+    })
+
+    payload = shadow.build(
+        registry_path=tmp_path / "registry.csv",
+        prediction_path=tmp_path / "predictions.csv",
+        settlement_path=tmp_path / "settlements.csv",
+        output_path=output,
+        promotion_path=promotion,
+        record=False,
+        settle=False,
+    )
+
+    assert payload["lastRecordingRun"] == previous_run
+    assert payload["predictionRun"]["appended"] == 0
+
+
+def test_operational_exit_code_fails_integrity_and_registration_not_normal_warmup() -> None:
+    healthy = {
+        "integrity": {"predictionHashViolations": 0},
+        "candidates": [{"recordingHealth": {"status": "WARMUP"}}],
+    }
+    stalled = {
+        "integrity": {"predictionHashViolations": 0},
+        "candidates": [{"recordingHealth": {"status": "STALLED"}}],
+    }
+    corrupt = {
+        "integrity": {"predictionHashViolations": 1},
+        "candidates": [{"recordingHealth": {"status": "COLLECTING"}}],
+    }
+    missing_registry = {
+        "integrity": {"predictionHashViolations": 0},
+        "candidates": [{"recordingHealth": {"status": "ERROR"}}],
+    }
+
+    assert shadow.operational_exit_code(healthy) == 0
+    assert shadow.operational_exit_code(stalled) == 0
+    assert shadow.operational_exit_code(corrupt) == 2
+    assert shadow.operational_exit_code(missing_registry) == 2
 
 
 def test_settlement_rejects_tampered_prediction(monkeypatch, tmp_path: Path) -> None:
@@ -330,6 +446,22 @@ def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
     assert certificate is not None
     assert certificate["candidateFingerprint"] == "candidate-a"
     assert certificate["recordHash"] == shadow.vtj._promotion_certificate_hash(certificate)
+
+    losing_settlements = []
+    for row in settlements:
+        losing = {**row, "challenger_net_pnl_pct": -1.0}
+        losing["record_hash"] = shadow._settlement_hash(losing)
+        losing_settlements.append(losing)
+    losing_comparison = shadow.compare_candidate("candidate-a", predictions, losing_settlements)
+    rejected, rejected_certificate = shadow._promotion(
+        _candidate(), losing_comparison, shadow._integrity([_registry_row()], predictions, losing_settlements)
+    )
+
+    assert rejected["evidenceMature"] is True
+    assert rejected["terminalFailure"] is True
+    assert rejected["decision"] == "REJECT_CHALLENGER"
+    assert rejected["suggestedAction"] == "REJECT_PRECOMMITTED_CANDIDATE"
+    assert rejected_certificate is None
 
 
 def test_clustered_single_date_never_qualifies_for_promotion() -> None:

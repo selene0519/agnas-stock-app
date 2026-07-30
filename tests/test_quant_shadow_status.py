@@ -65,8 +65,15 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
             "sealedPredictions": 10,
             "settledPredictions": 4,
             "promotionEligible": 0,
+            "recordingHealthy": False,
+            "stalledCandidates": 1,
         },
         "candidates": [{
+            "recordingHealth": {
+                "status": "STALLED",
+                "requiresAttention": True,
+                "blockingReason": "PREDICTION_SILENCE_EXCEEDED",
+            },
             "promotion": {
                 "promotionEligible": False,
                 "blockingReasons": ["LOW_PROMOTION_SIGNAL_DATES"],
@@ -93,11 +100,17 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
     assert result["summary"]["championRiskAllocationGatePassed"] is True
     assert result["summary"]["selfCorrectionActiveCandidates"] == 1
     assert result["summary"]["selfCorrectionSealedPredictions"] == 10
-    assert result["summary"]["selfCorrectionBlockingReasons"] == ["LOW_PROMOTION_SIGNAL_DATES"]
+    assert result["summary"]["selfCorrectionBlockingReasons"] == [
+        "LOW_PROMOTION_SIGNAL_DATES",
+        "PREDICTION_SILENCE_EXCEEDED",
+    ]
+    assert result["summary"]["selfCorrectionRecordingHealthy"] is False
+    assert result["summary"]["selfCorrectionStalledCandidates"] == 1
     assert "ALPHA_NOT_PROVEN" in result["decisionReasons"]
     assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in result["decisionReasons"]
     assert "NO_POSITIVE_SLEEVE" in result["decisionReasons"]
     assert "SELF_CORRECTION_NOT_PROMOTABLE" in result["decisionReasons"]
+    assert "SELF_CORRECTION_EVIDENCE_STALLED" in result["decisionReasons"]
 
 
 def test_missing_reports_never_look_healthy(tmp_path: Path, monkeypatch) -> None:

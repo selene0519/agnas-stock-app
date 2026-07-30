@@ -90,6 +90,10 @@ def shadow_status() -> dict[str, Any]:
         row.get("promotion") for row in self_correction_candidates
         if isinstance(row, dict) and isinstance(row.get("promotion"), dict)
     ]
+    self_correction_recording_health = [
+        row.get("recordingHealth") for row in self_correction_candidates
+        if isinstance(row, dict) and isinstance(row.get("recordingHealth"), dict)
+    ]
     self_correction_blockers = list(dict.fromkeys(
         reason
         for promotion_row in self_correction_promotions
@@ -97,6 +101,17 @@ def shadow_status() -> dict[str, Any]:
     ))
     if int(self_correction_summary.get("activeCandidates") or 0) <= 0:
         self_correction_blockers.append("NO_ACTIVE_CANDIDATE")
+    recording_blockers = [
+        str(row.get("blockingReason"))
+        for row in self_correction_recording_health
+        if row.get("requiresAttention") and row.get("blockingReason")
+    ]
+    self_correction_blockers.extend(recording_blockers)
+    self_correction_blockers = list(dict.fromkeys(self_correction_blockers))
+    if recording_blockers:
+        reasons.append("SELF_CORRECTION_EVIDENCE_STALLED")
+    if int(self_correction_summary.get("terminalFailureCandidates") or 0) > 0:
+        reasons.append("SELF_CORRECTION_CANDIDATE_FAILED")
     if int(self_correction_summary.get("promotionEligible") or 0) <= 0:
         reasons.append("SELF_CORRECTION_NOT_PROMOTABLE")
     if not bool(walk_forward.get("promotionGrade")):
@@ -152,6 +167,10 @@ def shadow_status() -> dict[str, Any]:
             "selfCorrectionPromotionEligible": int(self_correction_summary.get("promotionEligible") or 0),
             "selfCorrectionReadyForReview": int(self_correction_summary.get("readyForReview") or 0),
             "selfCorrectionEligibleSuggestions": int(self_correction_summary.get("eligibleSuggestions") or 0),
+            "selfCorrectionRecordingHealthy": bool(self_correction_summary.get("recordingHealthy", True)),
+            "selfCorrectionStalledCandidates": int(self_correction_summary.get("stalledCandidates") or 0),
+            "selfCorrectionTerminalFailureCandidates": int(self_correction_summary.get("terminalFailureCandidates") or 0),
+            "selfCorrectionRecordingHealth": self_correction_recording_health,
             "selfCorrectionBlockingReasons": self_correction_blockers,
             "walkForwardPromotionGrade": bool(walk_forward.get("promotionGrade")),
         },

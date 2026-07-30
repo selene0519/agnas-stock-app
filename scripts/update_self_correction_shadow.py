@@ -41,6 +41,8 @@ MIN_CHALLENGER_TRADES = vtj.CALIBRATION_PROMOTION_MIN_TRADES
 BOOTSTRAP_SAMPLES = 10_000
 BOOTSTRAP_SEED = 20260731
 MAX_RECORDING_DELAY_HOURS = float(vtj.CALIBRATION_SHADOW_POLICY["maxRecordingDelayHours"])
+INITIAL_RECORDING_GRACE_DAYS = float(vtj.CALIBRATION_SHADOW_POLICY["initialRecordingGraceCalendarDays"])
+MAX_PREDICTION_SILENCE_DAYS = float(vtj.CALIBRATION_SHADOW_POLICY["maxPredictionSilenceCalendarDays"])
 BASE_MIN_RR = dict(vtj.CALIBRATION_SHADOW_POLICY["baseMinRiskReward"])
 BASE_MAX_DISTANCE_TO_ENTRY_PCT = float(vtj.CALIBRATION_SHADOW_POLICY["baseMaxDistanceToEntryPct"])
 
@@ -268,9 +270,23 @@ def record_predictions(
     existing = _read_csv(prediction_path)
     by_id = {_text(row.get("prediction_id")): row for row in existing if _text(row.get("prediction_id"))}
     appended = conflicts = skipped_contract = skipped_forward = 0
+    diagnostics: list[dict[str, Any]] = []
     for candidate in candidates:
         after = candidate.get("after") if isinstance(candidate.get("after"), dict) else {}
         fingerprint = _text(candidate.get("candidateFingerprint"))
+        diagnostic = {
+            "candidateFingerprint": fingerprint,
+            "market": candidate.get("market"),
+            "mode": candidate.get("mode"),
+            "horizon": candidate.get("horizon"),
+            "matchedRecommendations": 0,
+            "sealedOrConfirmed": 0,
+            "appended": 0,
+            "alreadySealed": 0,
+            "skippedInputContract": 0,
+            "skippedForwardSeal": 0,
+            "conflicts": 0,
+        }
         for raw_row in recommendations:
             market = _text(raw_row.get("market")).lower()
             mode = _text(raw_row.get("mode")).lower()
@@ -279,8 +295,10 @@ def record_predictions(
                 _text(candidate.get("market")), _text(candidate.get("mode")), _text(candidate.get("horizon")),
             ):
                 continue
+            diagnostic["matchedRecommendations"] += 1
             if _text(raw_row.get("correctionInputContractVersion")) != INPUT_CONTRACT_VERSION:
                 skipped_contract += 1
+                diagnostic["skippedInputContract"] += 1
                 continue
             generated_at = _text(raw_row.get("generatedAt") or raw_row.get("generated_at"))
             generated_dt = _parse_time(generated_at)
@@ -296,6 +314,7 @@ def record_predictions(
                 or recording_delay_hours > MAX_RECORDING_DELAY_HOURS
             ):
                 skipped_forward += 1
+                diagnostic["skippedForwardSeal"] += 1
                 continue
             raw_entry = _num(raw_row.get("rawEntry"))
             raw_stop = _num(raw_row.get("rawStop"))
@@ -308,6 +327,7 @@ def record_predictions(
                 or not raw_target > raw_entry > raw_stop or not components or not weights
             ):
                 skipped_contract += 1
+                diagnostic["skippedInputContract"] += 1
                 continue
             correction = apply_correction_params(
                 {key: float(value) for key, value in components.items() if _num(value) is not None},
@@ -316,6 +336,7 @@ def record_predictions(
             )
             if not correction.get("correctionApplied"):
                 skipped_contract += 1
+                diagnostic["skippedInputContract"] += 1
                 continue
             champion_entry = _num(raw_row.get("entry") or raw_row.get("entryPrice"))
             champion_stop = _num(raw_row.get("stop") or raw_row.get("stopPrice"))
@@ -323,6 +344,7 @@ def record_predictions(
             champion_score = _num(raw_row.get("finalRankScore") or raw_row.get("finalScore"))
             if None in {champion_entry, champion_stop, champion_target, champion_score}:
                 skipped_contract += 1
+                diagnostic["skippedInputContract"] += 1
                 continue
             challenger_score = _weighted_score(raw_score, components, correction["adjustedScores"], weights)
             champion_rr = (
@@ -386,13 +408,124 @@ def record_predictions(
                 existing.append(row)
                 by_id[prediction_id] = row
                 appended += 1
+                diagnostic["appended"] += 1
+                diagnostic["sealedOrConfirmed"] += 1
+            elif _text(previous.get("record_hash")) == _prediction_hash(previous) and _prediction_hash(previous) == _prediction_hash(row):
+                diagnostic["alreadySealed"] += 1
+                diagnostic["sealedOrConfirmed"] += 1
             elif _text(previous.get("record_hash")) != _prediction_hash(previous) or _prediction_hash(previous) != _prediction_hash(row):
                 conflicts += 1
+                diagnostic["conflicts"] += 1
+        diagnostics.append(diagnostic)
     if appended:
         _write_csv(prediction_path, existing, PREDICTION_FIELDS)
     return {
         "appended": appended, "conflicts": conflicts, "total": len(existing),
         "skippedInputContract": skipped_contract, "skippedForwardSeal": skipped_forward,
+        "runAt": now,
+        "candidateDiagnostics": diagnostics,
+    }
+
+
+def _days_since(now: datetime, value: Any) -> float | None:
+    timestamp = _parse_time(value)
+    if timestamp is None:
+        return None
+    return max(0.0, (now - timestamp).total_seconds() / 86400.0)
+
+
+def candidate_recording_health(
+    candidate: dict[str, Any],
+    registry_rows: list[dict[str, Any]],
+    prediction_rows: list[dict[str, Any]],
+    settlement_rows: list[dict[str, Any]],
+    last_recording_run: dict[str, Any] | None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Diagnose a stalled Forward experiment without creating/backfilling evidence."""
+    now_dt = now or datetime.now(timezone.utc)
+    fingerprint = _text(candidate.get("candidateFingerprint"))
+    registry = next((
+        row for row in registry_rows
+        if _text(row.get("candidate_fingerprint")) == fingerprint
+    ), None)
+    predictions = [
+        row for row in prediction_rows
+        if _text(row.get("candidate_fingerprint")) == fingerprint
+    ]
+    settlements = [
+        row for row in settlement_rows
+        if _text(row.get("candidate_fingerprint")) == fingerprint
+    ]
+    diagnostics = (
+        last_recording_run.get("candidateDiagnostics")
+        if isinstance(last_recording_run, dict) and isinstance(last_recording_run.get("candidateDiagnostics"), list)
+        else []
+    )
+    diagnostic = next((
+        row for row in diagnostics
+        if isinstance(row, dict) and _text(row.get("candidateFingerprint")) == fingerprint
+    ), {})
+    registered_at = _text((registry or {}).get("registered_at"))
+    last_prediction = max(
+        (_text(row.get("recorded_at")) for row in predictions if _text(row.get("recorded_at"))),
+        default="",
+    )
+    last_settlement = max(
+        (_text(row.get("settled_at")) for row in settlements if _text(row.get("settled_at"))),
+        default="",
+    )
+    age_days = _days_since(now_dt, registered_at)
+    silence_days = _days_since(now_dt, last_prediction or registered_at)
+    attempt_reason = "NO_RECORDING_RUN"
+    matched = int(diagnostic.get("matchedRecommendations") or 0)
+    if diagnostic:
+        if int(diagnostic.get("conflicts") or 0) > 0:
+            attempt_reason = "PREDICTION_IMMUTABLE_CONFLICT"
+        elif int(diagnostic.get("sealedOrConfirmed") or 0) > 0:
+            attempt_reason = "SEAL_CONFIRMED"
+        elif matched <= 0:
+            attempt_reason = "NO_SCOPE_RECOMMENDATIONS"
+        elif int(diagnostic.get("skippedInputContract") or 0) >= matched:
+            attempt_reason = "INPUT_CONTRACT_REJECTED"
+        elif int(diagnostic.get("skippedForwardSeal") or 0) > 0:
+            attempt_reason = "FORWARD_SEAL_REJECTED"
+        else:
+            attempt_reason = "NO_SEALABLE_RECOMMENDATION"
+
+    if registry is None:
+        status, blocker = "ERROR", "CANDIDATE_NOT_REGISTERED"
+    elif not registered_at:
+        status, blocker = "ERROR", "CANDIDATE_REGISTRATION_TIME_MISSING"
+    elif int(diagnostic.get("conflicts") or 0) > 0:
+        status, blocker = "ERROR", "PREDICTION_IMMUTABLE_CONFLICT"
+    elif predictions:
+        if silence_days is not None and silence_days > MAX_PREDICTION_SILENCE_DAYS:
+            status, blocker = "STALLED", "PREDICTION_SILENCE_EXCEEDED"
+        else:
+            status, blocker = "COLLECTING", ""
+    elif age_days is not None and age_days > INITIAL_RECORDING_GRACE_DAYS:
+        status, blocker = "STALLED", f"{attempt_reason}_AFTER_GRACE"
+    else:
+        status, blocker = "WARMUP", ""
+    return {
+        "status": status,
+        "healthy": status in {"WARMUP", "COLLECTING"},
+        "requiresAttention": status in {"STALLED", "ERROR"},
+        "blockingReason": blocker or None,
+        "lastAttemptReason": attempt_reason,
+        "candidateFingerprint": fingerprint,
+        "registeredAt": registered_at or None,
+        "candidateAgeCalendarDays": round(age_days, 3) if age_days is not None else None,
+        "predictionSilenceCalendarDays": round(silence_days, 3) if silence_days is not None else None,
+        "initialGraceCalendarDays": INITIAL_RECORDING_GRACE_DAYS,
+        "maxPredictionSilenceCalendarDays": MAX_PREDICTION_SILENCE_DAYS,
+        "sealedPredictions": len(predictions),
+        "settledPredictions": len(settlements),
+        "lastPredictionRecordedAt": last_prediction or None,
+        "lastSettlementAt": last_settlement or None,
+        "lastRecordingRunAt": (last_recording_run or {}).get("runAt") if isinstance(last_recording_run, dict) else None,
+        "lastRunDiagnostics": diagnostic or None,
     }
 
 
@@ -641,7 +774,8 @@ def _promotion(candidate: dict[str, Any], comparison: dict[str, Any], integrity:
     champion = comparison["champion"]
     uplift_ci = comparison["pairedUplift"].get("bootstrapCi95")
     blockers: list[str] = []
-    if any(int(value or 0) > 0 for value in integrity.values()):
+    integrity_clean = not any(int(value or 0) > 0 for value in integrity.values())
+    if not integrity_clean:
         blockers.append("SHADOW_INTEGRITY_VIOLATION")
     if comparison.get("completedSignalDates", 0) < MIN_SIGNAL_DATES:
         blockers.append("LOW_PROMOTION_SIGNAL_DATES")
@@ -655,10 +789,30 @@ def _promotion(candidate: dict[str, Any], comparison: dict[str, Any], integrity:
         blockers.append("DRAWDOWN_COMPARISON_NOT_READY")
     elif challenger["maxDrawdownPct"] > champion["maxDrawdownPct"]:
         blockers.append("PROMOTION_DRAWDOWN_WORSE")
+    evidence_mature = (
+        comparison.get("completedSignalDates", 0) >= MIN_SIGNAL_DATES
+        and challenger.get("selectedEvaluatedTrades", 0) >= MIN_CHALLENGER_TRADES
+    )
+    promotion_eligible = not blockers
+    if promotion_eligible:
+        decision_name = "READY_FOR_HUMAN_REVIEW"
+        suggested_action = "HUMAN_PROMOTION_REVIEW"
+    elif evidence_mature and not integrity_clean:
+        decision_name = "INVALIDATE_EXPERIMENT"
+        suggested_action = "REJECT_AND_INVESTIGATE_INTEGRITY"
+    elif evidence_mature:
+        decision_name = "REJECT_CHALLENGER"
+        suggested_action = "REJECT_PRECOMMITTED_CANDIDATE"
+    else:
+        decision_name = "KEEP_CHALLENGER_SHADOW"
+        suggested_action = "CONTINUE_FORWARD_COLLECTION"
     decision = {
-        "promotionEligible": not blockers,
-        "decision": "READY_FOR_HUMAN_REVIEW" if not blockers else "KEEP_CHALLENGER_SHADOW",
+        "promotionEligible": promotion_eligible,
+        "decision": decision_name,
         "blockingReasons": blockers,
+        "evidenceMature": evidence_mature,
+        "terminalFailure": evidence_mature and not promotion_eligible,
+        "suggestedAction": suggested_action,
         "autoPromotionAllowed": False,
         "humanApprovalRequired": True,
     }
@@ -696,11 +850,24 @@ def build(
     record: bool = True,
     settle: bool = True,
 ) -> dict[str, Any]:
+    try:
+        previous_payload = json.loads(output_path.read_text(encoding="utf-8"))
+        if not isinstance(previous_payload, dict):
+            previous_payload = {}
+    except Exception:
+        previous_payload = {}
     candidate_status = vtj.calibration_shadow_candidates()
     candidates = candidate_status.get("items") if isinstance(candidate_status.get("items"), list) else []
     readiness = candidate_status.get("readiness") if isinstance(candidate_status.get("readiness"), dict) else {}
     registry_status = register_candidates(candidates, registry_path) if record else {"appended": 0, "conflicts": 0, "total": len(_read_csv(registry_path))}
     prediction_status = record_predictions(candidates, _read_recommendations(), prediction_path) if record else {"appended": 0, "conflicts": 0, "total": len(_read_csv(prediction_path))}
+    last_recording_run = (
+        prediction_status
+        if record
+        else previous_payload.get("lastRecordingRun")
+        if isinstance(previous_payload.get("lastRecordingRun"), dict)
+        else None
+    )
     settlement_status = settle_predictions(prediction_path, settlement_path) if settle else {"appended": 0, "pending": 0, "total": len(_read_csv(settlement_path))}
     registry_rows = _read_csv(registry_path)
     prediction_rows = _read_csv(prediction_path)
@@ -718,6 +885,13 @@ def build(
         fingerprint = _text(candidate.get("candidateFingerprint"))
         comparison = compare_candidate(fingerprint, active_predictions, active_settlements)
         decision, certificate = _promotion(candidate, comparison, integrity)
+        recording_health = candidate_recording_health(
+            candidate,
+            active_registry,
+            active_predictions,
+            active_settlements,
+            last_recording_run,
+        )
         if certificate is not None:
             certificates.append(certificate)
         results.append({
@@ -727,6 +901,7 @@ def build(
             "mode": candidate.get("mode"),
             "horizon": candidate.get("horizon"),
             "reason": candidate.get("reason"),
+            "recordingHealth": recording_health,
             "comparison": comparison,
             "promotion": decision,
         })
@@ -746,11 +921,22 @@ def build(
             "promotionEligible": len(certificates),
             "readyForReview": int(readiness.get("readyForReview") or 0),
             "eligibleSuggestions": int(readiness.get("eligibleSuggestions") or 0),
+            "recordingHealthy": all(
+                bool((row.get("recordingHealth") or {}).get("healthy")) for row in results
+            ) if results else True,
+            "stalledCandidates": sum(
+                1 for row in results
+                if (row.get("recordingHealth") or {}).get("status") in {"STALLED", "ERROR"}
+            ),
+            "terminalFailureCandidates": sum(
+                1 for row in results if bool((row.get("promotion") or {}).get("terminalFailure"))
+            ),
             "abstain": not certificates,
         },
         "integrity": integrity,
         "registryRun": registry_status,
         "predictionRun": prediction_status,
+        "lastRecordingRun": last_recording_run,
         "settlementRun": settlement_status,
         "candidateGate": candidate_status,
         "candidates": results,
@@ -768,6 +954,19 @@ def build(
     return payload
 
 
+def operational_exit_code(payload: dict[str, Any]) -> int:
+    integrity = payload.get("integrity") if isinstance(payload.get("integrity"), dict) else {}
+    if any(int(value or 0) > 0 for value in integrity.values()):
+        return 2
+    candidates = payload.get("candidates") if isinstance(payload.get("candidates"), list) else []
+    if any(
+        _text((row.get("recordingHealth") or {}).get("status")).upper() == "ERROR"
+        for row in candidates if isinstance(row, dict)
+    ):
+        return 2
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-record", action="store_true")
@@ -782,7 +981,15 @@ def main() -> int:
         settle=not args.no_settle,
     )
     print(json.dumps(payload, ensure_ascii=False, indent=2))
-    return 0
+    exit_code = operational_exit_code(payload)
+    summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    if exit_code:
+        print("::error::Self-correction Shadow evidence integrity or candidate registration failed.")
+    elif int(summary.get("stalledCandidates") or 0) > 0:
+        print("::warning::Self-correction Forward evidence collection is stalled; inspect recordingHealth.")
+    if int(summary.get("terminalFailureCandidates") or 0) > 0:
+        print("::warning::A mature self-correction challenger failed its precommitted promotion gate.")
+    return exit_code
 
 
 if __name__ == "__main__":

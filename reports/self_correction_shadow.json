@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T16:13:25.591651+00:00",
+  "generatedAt": "2026-07-30T16:38:09.511914+00:00",
   "policy": {
-    "version": "self-correction-shadow-v1.0.0",
+    "version": "self-correction-shadow-v1.1.0",
     "inputContractVersion": "correction-shadow-input-v1",
     "maxPositions": 3,
     "maxActiveCandidates": 1,
@@ -21,12 +21,16 @@
     "requiresExactApprovalAndCandidateLineage": true,
     "requiresForwardSealedRawInputs": true,
     "maxRecordingDelayHours": 36.0,
+    "initialRecordingGraceCalendarDays": 5,
+    "maxPredictionSilenceCalendarDays": 5,
+    "requiresCandidateRecordingFreshness": true,
+    "terminalFailureAtPrecommittedMinimum": true,
     "requiresAfterCostPositiveReturn": true,
     "requiresPairedUpliftLowerCiAboveZero": true,
     "requiresDrawdownNoWorseThanChampion": true,
     "autoPromotionAllowed": false,
     "humanApprovalRequired": true,
-    "fingerprint": "c93b04dc966ea94c401b"
+    "fingerprint": "7071a0f5259f2f2a441f"
   },
   "calibrationPolicy": {
     "version": "vtj-self-calibration-v2.2.0",
@@ -40,6 +44,9 @@
     "promotionEligible": 0,
     "readyForReview": 7,
     "eligibleSuggestions": 8,
+    "recordingHealthy": true,
+    "stalledCandidates": 0,
+    "terminalFailureCandidates": 0,
     "abstain": true
   },
   "integrity": {
@@ -66,6 +73,29 @@
     "appended": 0,
     "conflicts": 0,
     "total": 0
+  },
+  "lastRecordingRun": {
+    "appended": 0,
+    "conflicts": 0,
+    "total": 0,
+    "skippedInputContract": 2,
+    "skippedForwardSeal": 0,
+    "runAt": "2026-07-30T16:34:58.098044+00:00",
+    "candidateDiagnostics": [
+      {
+        "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
+        "market": "us",
+        "mode": "aggressive",
+        "horizon": "short",
+        "matchedRecommendations": 2,
+        "sealedOrConfirmed": 0,
+        "appended": 0,
+        "alreadySealed": 0,
+        "skippedInputContract": 2,
+        "skippedForwardSeal": 0,
+        "conflicts": 0
+      }
+    ]
   },
   "settlementRun": {
     "appended": 0,
@@ -733,6 +763,37 @@
       "mode": "aggressive",
       "horizon": "short",
       "reason": "STOP_TOO_TIGHT",
+      "recordingHealth": {
+        "status": "WARMUP",
+        "healthy": true,
+        "requiresAttention": false,
+        "blockingReason": null,
+        "lastAttemptReason": "INPUT_CONTRACT_REJECTED",
+        "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
+        "registeredAt": "2026-07-30T15:50:57.789490+00:00",
+        "candidateAgeCalendarDays": 0.033,
+        "predictionSilenceCalendarDays": 0.033,
+        "initialGraceCalendarDays": 5.0,
+        "maxPredictionSilenceCalendarDays": 5.0,
+        "sealedPredictions": 0,
+        "settledPredictions": 0,
+        "lastPredictionRecordedAt": null,
+        "lastSettlementAt": null,
+        "lastRecordingRunAt": "2026-07-30T16:34:58.098044+00:00",
+        "lastRunDiagnostics": {
+          "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
+          "market": "us",
+          "mode": "aggressive",
+          "horizon": "short",
+          "matchedRecommendations": 2,
+          "sealedOrConfirmed": 0,
+          "appended": 0,
+          "alreadySealed": 0,
+          "skippedInputContract": 2,
+          "skippedForwardSeal": 0,
+          "conflicts": 0
+        }
+      },
       "comparison": {
         "completedSignalDates": 0,
         "incompleteSignalDates": 0,
@@ -770,6 +831,9 @@
           "PROMOTION_UPLIFT_NOT_PROVEN",
           "DRAWDOWN_COMPARISON_NOT_READY"
         ],
+        "evidenceMature": false,
+        "terminalFailure": false,
+        "suggestedAction": "CONTINUE_FORWARD_COLLECTION",
         "autoPromotionAllowed": false,
         "humanApprovalRequired": true
       }
