@@ -236,6 +236,10 @@ def build() -> dict[str, Any]:
             "score": _num(row.get("finalRankScore") or row.get("finalScore")),
             "expectedValue": _num(row.get("expectedValue")),
             "riskRewardRatio": _num(row.get("rrActual") or row.get("riskRewardRatio")),
+            "entryPrice": _num(row.get("entry") or row.get("entryPrice")),
+            "stopPrice": _num(row.get("stop") or row.get("stopPrice")),
+            "sector": _text(row.get("sector")) or "UNKNOWN",
+            "beta": _num(row.get("beta")),
             "modelProbabilityDisplayOnly": _num(row.get("probability")),
             "recommendationSource": row.get("recommendationSource"),
         })
