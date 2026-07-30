@@ -41,8 +41,14 @@ ROOT = Path(__file__).resolve().parents[1]
 OHLCV = ROOT / "data" / "market" / "ohlcv"
 OUT = ROOT / "reports" / "regime_recalibration.json"
 
-HOLD_BARS = 10          # swing 기준
-ATR_STOP_MULT = 1.5     # 앱의 swing 값
+# 앱의 호라이즌별 설정 (mone_v65 / generate_*_recommendations의 _ATR_MULT와 동일)
+HORIZONS = {
+    "short": {"bars": 5,  "stop": 1.2, "target": 2.8},
+    "swing": {"bars": 10, "stop": 1.5, "target": 4.5},
+    "mid":   {"bars": 21, "stop": 2.0, "target": 5.5},
+}
+HOLD_BARS = 10          # run()에서 호라이즌별로 덮어쓴다
+ATR_STOP_MULT = 1.5
 ATR_TARGET_MULT = 4.5
 COST_PCT = 0.41         # 왕복
 MIN_CELL = 200
@@ -129,7 +135,9 @@ def _atr(bars, i, n=14):
     return statistics.fmean(trs) if trs else None
 
 
-def run(step: int) -> dict:
+def run(step: int, horizon: str = "swing") -> dict:
+    cfg = HORIZONS[horizon]
+    hold_bars, stop_mult, target_mult = cfg["bars"], cfg["stop"], cfg["target"]
     kospi = _load(OHLCV / "kr_KOSPI_daily.csv")
     kdate = {d: i for i, (d, *_r) in enumerate(kospi)}
     kclose = [c for _d, _h, _l, c in kospi]
@@ -162,19 +170,19 @@ def run(step: int) -> dict:
         bars = _load(path)
         if len(bars) < 200:
             continue
-        for i in range(20, len(bars) - HOLD_BARS - 1, step):
+        for i in range(20, len(bars) - hold_bars - 1, step):
             entry_date, entry = bars[i][0], bars[i][3]
             if entry_date not in labels["current(단기2)"]:
                 continue
             atr = _atr(bars, i)
             if not atr or atr <= 0 or entry <= 0:
                 continue
-            stop = entry - atr * ATR_STOP_MULT
-            target = entry + atr * ATR_TARGET_MULT
+            stop = entry - atr * stop_mult
+            target = entry + atr * target_mult
             if stop <= 0:
                 continue
             ret = None
-            for j in range(i + 1, min(i + 1 + HOLD_BARS, len(bars))):
+            for j in range(i + 1, min(i + 1 + hold_bars, len(bars))):
                 if bars[j][2] <= stop and bars[j][1] >= target:
                     ret = (stop - entry) / entry * 100          # 동시 -> 보수적
                     break
@@ -185,7 +193,7 @@ def run(step: int) -> dict:
                     ret = (target - entry) / entry * 100
                     break
             if ret is None:
-                j = min(i + HOLD_BARS, len(bars) - 1)
+                j = min(i + hold_bars, len(bars) - 1)
                 ret = (bars[j][3] - entry) / entry * 100
             ret -= COST_PCT
             trades += 1
@@ -220,8 +228,9 @@ def run(step: int) -> dict:
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "tradesSimulated": trades,
         "sampleStep": step,
-        "holdBars": HOLD_BARS,
-        "atrMult": {"stop": ATR_STOP_MULT, "target": ATR_TARGET_MULT},
+        "horizon": horizon,
+        "holdBars": hold_bars,
+        "atrMult": {"stop": stop_mult, "target": target_mult},
         "costPct": COST_PCT,
         "method": ("110개 KR 종목 15년에 대해 앱과 같은 규칙(ATR 배수 밴드, 선착순 "
                    "청산, 왕복 비용)으로 전략을 재현하고, 진입일 국면으로 묶었다. "
@@ -231,7 +240,7 @@ def run(step: int) -> dict:
         "caveats": [
             "생존편향: 유니버스가 오늘 상장된 110종목이라 절대 수준은 낙관 쪽이다. "
             "국면 간 **상대 비교**는 같은 편향을 공유하므로 유효하다.",
-            "swing(10봉) 하나만 봤다. short/mid는 별도 실행이 필요하다.",
+            "호라이즌별로 따로 돌려야 한다(--horizon). ATR 배수와 보유 기간이 다르다.",
             f"셀 표본 {MIN_CELL}건 미만은 격차 계산에서 제외한다.",
         ],
     }
@@ -240,12 +249,17 @@ def run(step: int) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--step", type=int, default=5, help="표본일 간격(거래일)")
+    ap.add_argument("--horizon", default="swing", choices=list(HORIZONS))
     args = ap.parse_args()
-    d = run(args.step)
+    d = run(args.step, args.horizon)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    out = OUT.with_name(f"regime_recalibration_{args.horizon}.json")
+    out.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.horizon == "swing":
+        OUT.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"=== 국면 정의 재검증 (전략 재현 {d['tradesSimulated']:,}건, 15년) ===\n")
+    print(f"=== 국면 재검증 [{args.horizon}] 보유{d['holdBars']}봉 "
+          f"ATR {d['atrMult']['stop']}/{d['atrMult']['target']} · 재현 {d['tradesSimulated']:,}건 ===\n")
     for name, r in d["definitions"].items():
         cells = r["cells"]
         parts = "  ".join(

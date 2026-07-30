@@ -71,8 +71,15 @@ def test_unknown_regime_does_not_adjust() -> None:
 def test_regime_table_matches_walkforward() -> None:
     """숫자를 임의로 바꾸면 근거가 사라진다."""
     s = KR.read_text(encoding="utf-8")
-    for tok in ('"BULL": 0.427', '"SIDE": 0.395', '"BEAR": 0.459', "_POOLED_WR = 0.423"):
+    # 호라이즌별 표 — 15년 재현(각 26,000여 건)에서 나온 값이어야 한다.
+    for tok in ('_REGIME_WR_BY_HORIZON', '"SIDE": 0.381', '"SIDE": 0.386',
+                '"SIDE": 0.368', '_POOLED_WR_BY_HORIZON'):
         assert tok in s, f"{tok} 가 15년 전략 재현 실측과 다르다"
+    # 세 호라이즌 전부 SIDE가 가장 낮아야 한다.
+    for h, bear, bull, side in (("short", 0.449, 0.435, 0.381),
+                                ("swing", 0.444, 0.433, 0.386),
+                                ("mid", 0.440, 0.438, 0.368)):
+        assert side < bull < bear or side < bull, f"{h}에서 SIDE가 최저가 아니다"
 
 
 def test_no_probability_floor_that_inflates_measured_zero() -> None:

@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-07-30T01:13:24.868016+00:00",
-  "tradesSimulated": 26476,
+  "generatedAt": "2026-07-30T01:12:54.344798+00:00",
+  "tradesSimulated": 26498,
   "sampleStep": 10,
-  "horizon": "swing",
-  "holdBars": 10,
+  "horizon": "short",
+  "holdBars": 5,
   "atrMult": {
-    "stop": 1.5,
-    "target": 4.5
+    "stop": 1.2,
+    "target": 2.8
   },
   "costPct": 0.41,
   "method": "110개 KR 종목 15년에 대해 앱과 같은 규칙(ATR 배수 밴드, 선착순 청산, 왕복 비용)으로 전략을 재현하고, 진입일 국면으로 묶었다. 검증 기준을 '지수 향후 수익'에서 '전략 성과'로 바꿨다 — 앞선 시도가 실패한 원인이 그 기준이었다.",
@@ -14,86 +14,86 @@
     "current(단기2)": {
       "cells": {
         "BEAR": {
-          "n": 5065,
-          "winRatePct": 45.9,
-          "meanPct": 0.5471
+          "n": 5080,
+          "winRatePct": 45.6,
+          "meanPct": 0.1969
         },
         "BULL": {
-          "n": 12358,
-          "winRatePct": 42.7,
-          "meanPct": 0.5206
+          "n": 12361,
+          "winRatePct": 43.0,
+          "meanPct": 0.0382
         },
         "SIDE": {
-          "n": 9053,
-          "winRatePct": 39.5,
-          "meanPct": -0.2561
+          "n": 9057,
+          "winRatePct": 39.6,
+          "meanPct": -0.4289
         }
       },
-      "regimeSpreadPp": 0.8032,
+      "regimeSpreadPp": 0.6258,
       "bearIsWorst": false
     },
     "trend60확인": {
       "cells": {
         "BEAR": {
-          "n": 8193,
-          "winRatePct": 45.7,
-          "meanPct": 0.5956
+          "n": 8209,
+          "winRatePct": 45.6,
+          "meanPct": 0.2025
         },
         "BULL": {
-          "n": 9000,
-          "winRatePct": 41.9,
-          "meanPct": 0.4997
+          "n": 9003,
+          "winRatePct": 42.7,
+          "meanPct": 0.0526
         },
         "SIDE": {
-          "n": 9283,
-          "winRatePct": 39.4,
-          "meanPct": -0.2684
+          "n": 9286,
+          "winRatePct": 39.0,
+          "meanPct": -0.4898
         }
       },
-      "regimeSpreadPp": 0.864,
+      "regimeSpreadPp": 0.6923,
       "bearIsWorst": false
     },
     "trend60단독": {
       "cells": {
         "BEAR": {
-          "n": 7410,
-          "winRatePct": 44.4,
-          "meanPct": 0.3799
+          "n": 7412,
+          "winRatePct": 44.9,
+          "meanPct": 0.0292
         },
         "BULL": {
-          "n": 11300,
-          "winRatePct": 43.3,
-          "meanPct": 0.5551
+          "n": 11315,
+          "winRatePct": 43.5,
+          "meanPct": 0.1353
         },
         "SIDE": {
-          "n": 7766,
-          "winRatePct": 38.6,
-          "meanPct": -0.2835
+          "n": 7771,
+          "winRatePct": 38.1,
+          "meanPct": -0.5352
         }
       },
-      "regimeSpreadPp": 0.8386,
+      "regimeSpreadPp": 0.6705,
       "bearIsWorst": true
     },
     "dual(60+120)": {
       "cells": {
         "BEAR": {
-          "n": 7364,
+          "n": 7366,
           "winRatePct": 44.9,
-          "meanPct": 0.4822
+          "meanPct": 0.0202
         },
         "BULL": {
-          "n": 10744,
-          "winRatePct": 42.5,
-          "meanPct": 0.4545
+          "n": 10759,
+          "winRatePct": 42.8,
+          "meanPct": 0.0732
         },
         "SIDE": {
-          "n": 8368,
-          "winRatePct": 39.6,
-          "meanPct": -0.185
+          "n": 8373,
+          "winRatePct": 39.4,
+          "meanPct": -0.3999
         }
       },
-      "regimeSpreadPp": 0.6672,
-      "bearIsWorst": false
+      "regimeSpreadPp": 0.4731,
+      "bearIsWorst": true
     }
   },
   "caveats": [
