@@ -50,7 +50,8 @@ HORIZONS = {
 HOLD_BARS = 10          # run()에서 호라이즌별로 덮어쓴다
 ATR_STOP_MULT = 1.5
 ATR_TARGET_MULT = 4.5
-COST_PCT = 0.41         # 왕복
+COST_PCT_BY_MARKET = {"kr": 0.41, "us": 0.30}   # 왕복
+COST_PCT = 0.41
 MIN_CELL = 200
 
 
@@ -107,6 +108,31 @@ def _def_trend60_vol(d20, m5, t60, t120, vr=None):
     return "SIDE"
 
 
+def _def_trend60_vol_weak(d20, m5, t60, t120, vr=None):
+    """거래량 고갈 규칙을 **약한 추세에만** 적용한다.
+
+    왜 이 후보가 필요했나: 채택된 `trend60+거래량`은 고갈 검사를 추세 검사보다
+    **먼저** 하므로, 거래량만 마르면 60일 -15%도 SIDE(횡보장)로 부른다.
+    2026-07-29 KOSPI 실측이 정확히 그 경우다(trend60 -15.36%, 거래량비 0.805
+    -> 라벨 "횡보장"). 15년 중 국장 154일·미장 180일이 |trend60|>=8%인데
+    SIDE로 덮였다.
+
+    문제가 둘이다. (1) 화면에 급락장을 "횡보장"이라 쓰면 사용자가 앱을 못 믿는다.
+    (2) `regime_type == "BEAR"` 게이트(공격형 차단)가 하필 급락장에서 꺼진다.
+    그래서 |trend60|가 확실히 큰 구간은 거래량과 무관하게 추세를 인정한다.
+    """
+    if t60 is None:
+        return "SIDE"
+    strong = abs(t60) >= 8.0
+    if vr is not None and vr < 0.85 and not strong:
+        return "SIDE"
+    if t60 > 3.0:
+        return "BULL"
+    if t60 < -3.0:
+        return "BEAR"
+    return "SIDE"
+
+
 def _def_vol_only(d20, m5, t60, t120, vr=None):
     """거래량만으로 판정 — 거래량이 정말 정보인지 단독 검정."""
     if vr is None:
@@ -135,6 +161,7 @@ DEFS = {
     "trend60단독": _def_trend_only,
     "dual(60+120)": _def_dual_trend,
     "trend60+거래량": _def_trend60_vol,
+    "trend60+거래량(약추세만)": _def_trend60_vol_weak,
     "거래량단독": _def_vol_only,
 }
 
@@ -169,10 +196,12 @@ def _atr(bars, i, n=14):
     return statistics.fmean(trs) if trs else None
 
 
-def run(step: int, horizon: str = "swing") -> dict:
+def run(step: int, horizon: str = "swing", market: str = "kr") -> dict:
     cfg = HORIZONS[horizon]
+    cost = COST_PCT_BY_MARKET.get(market, 0.41)
+    bench = "KOSPI" if market == "kr" else "SPY"
     hold_bars, stop_mult, target_mult = cfg["bars"], cfg["stop"], cfg["target"]
-    kospi = _load(OHLCV / "kr_KOSPI_daily.csv")
+    kospi = _load(OHLCV / f"{market}_{bench}_daily.csv")
     kdate = {d: i for i, (d, *_r) in enumerate(kospi)}
     kclose = [x[3] for x in kospi]
     kvol = [x[4] for x in kospi]
@@ -203,8 +232,8 @@ def run(step: int, horizon: str = "swing") -> dict:
     # 전략 재현
     buckets = {name: {} for name in DEFS}
     trades = 0
-    for path in sorted(OHLCV.glob("kr_*_daily.csv")):
-        if "KOSPI" in path.name or "KOSDAQ" in path.name:
+    for path in sorted(OHLCV.glob(f"{market}_*_daily.csv")):
+        if bench in path.name or "KOSDAQ" in path.name or "QQQ" in path.name:
             continue
         bars = _load(path)
         if len(bars) < 200:
@@ -234,7 +263,7 @@ def run(step: int, horizon: str = "swing") -> dict:
             if ret is None:
                 j = min(i + hold_bars, len(bars) - 1)
                 ret = (bars[j][3] - entry) / entry * 100
-            ret -= COST_PCT
+            ret -= cost
             trades += 1
             for name in DEFS:
                 reg = labels[name].get(entry_date)
@@ -267,6 +296,7 @@ def run(step: int, horizon: str = "swing") -> dict:
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "tradesSimulated": trades,
         "sampleStep": step,
+        "market": market,
         "horizon": horizon,
         "holdBars": hold_bars,
         "atrMult": {"stop": stop_mult, "target": target_mult},
@@ -289,15 +319,16 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--step", type=int, default=5, help="표본일 간격(거래일)")
     ap.add_argument("--horizon", default="swing", choices=list(HORIZONS))
+    ap.add_argument("--market", default="kr", choices=("kr", "us"))
     args = ap.parse_args()
-    d = run(args.step, args.horizon)
+    d = run(args.step, args.horizon, args.market)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    out = OUT.with_name(f"regime_recalibration_{args.horizon}.json")
+    out = OUT.with_name(f"regime_recalibration_{args.market}_{args.horizon}.json")
     out.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
-    if args.horizon == "swing":
+    if args.horizon == "swing" and args.market == "kr":
         OUT.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"=== 국면 재검증 [{args.horizon}] 보유{d['holdBars']}봉 "
+    print(f"=== 국면 재검증 [{args.market}/{args.horizon}] 보유{d['holdBars']}봉 "
           f"ATR {d['atrMult']['stop']}/{d['atrMult']['target']} · 재현 {d['tradesSimulated']:,}건 ===\n")
     for name, r in d["definitions"].items():
         cells = r["cells"]

@@ -21,6 +21,14 @@ elif sys.path[0] != str(ROOT):
     # ModuleNotFoundError("'app' is not a package")가 났었다.
     pass
 
+# `regime_kr` / `regime_us` / `regime_source`는 scripts/ 안에 있다. 레포 루트만
+# sys.path에 있으면 `python -c`로 이 모듈을 import했을 때 ModuleNotFoundError가
+# 난다(실제로 test_us_market_regime_staleness가 그렇게 깨졌다). **append**로
+# 넣는다 — 맨 앞에 꽂으면 위에서 지키려던 import 우선순위가 깨진다.
+_SCRIPTS_DIR = str(ROOT / "scripts")
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.append(_SCRIPTS_DIR)
+
 # 팩터 회귀 기반 필터 조정값 로드
 def _load_factor_adjustments_us() -> dict:
     try:
@@ -313,56 +321,57 @@ def _nonempty_recommendation_count() -> int:
 
 
 def _load_us_market_regime() -> dict[str, Any]:
-    votes: list[dict[str, Any]] = []
-    for symbol in ("SPY", "QQQ", "DIA"):
-        index_path = ROOT / "data" / "market" / "ohlcv" / f"us_{symbol}_daily.csv"
-        index_rows = _read_csv(index_path)
-        index_rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
-        index_closes = [_num(r.get("close") or r.get("Close")) for r in index_rows]
-        index_closes = [c for c in index_closes if c is not None]
-        if len(index_closes) < 20:
-            continue
-        latest = index_closes[-1]
-        ma20 = sum(index_closes[-20:]) / 20
-        dist = (latest - ma20) / ma20 * 100
-        mom5 = (index_closes[-1] - index_closes[-6]) / index_closes[-6] * 100 if len(index_closes) >= 6 and index_closes[-6] else 0.0
-        if dist > 0 and mom5 > 0:
-            regime = "BULL"
-        elif dist < -2.0 or mom5 < -2.0:
-            regime = "BEAR"
-        else:
-            regime = "SIDE"
-        votes.append({
-            "symbol": symbol,
-            "regime": regime,
-            "dist": dist,
-            "mom5": mom5,
-            "asOf": str(index_rows[-1].get("date") or index_rows[-1].get("Date") or "")[:10],
-        })
-    if votes:
-        bull_n = sum(1 for item in votes if item["regime"] == "BULL")
-        bear_n = sum(1 for item in votes if item["regime"] == "BEAR")
-        avg_dist = sum(float(item["dist"]) for item in votes) / len(votes)
-        avg_mom5 = sum(float(item["mom5"]) for item in votes) / len(votes)
-        as_of = max(str(item["asOf"]) for item in votes)
-        if bull_n >= 2:
-            return {"regime": "BULL", "label": "BULL", "scoreAdjust": +5.0,
-                    "description": f"US SPY/QQQ/DIA MA20 {avg_dist:+.1f}%, 5d {avg_mom5:+.1f}%",
-                    "asOf": as_of, "source": "us index OHLCV"}
-        if bear_n >= 2:
-            return {"regime": "BEAR", "label": "BEAR", "scoreAdjust": -15.0,
-                    "description": f"US SPY/QQQ/DIA MA20 {avg_dist:+.1f}%, 5d {avg_mom5:+.1f}%",
-                    "asOf": as_of, "source": "us index OHLCV"}
-        return {"regime": "SIDE", "label": "SIDE", "scoreAdjust": 0.0,
-                "description": f"US SPY/QQQ/DIA MA20 {avg_dist:+.1f}%, 5d {avg_mom5:+.1f}%",
-                "asOf": as_of, "source": "us index OHLCV"}
+    """미장 마켓 레짐 — 판정은 `regime_us`에 **위임**한다.
 
+    ⚠️ 2026-07-30까지 이 함수는 SPY/QQQ/DIA **3지수 투표**로 판정했고, 각
+    지수를 옛 정의(MA20 이격 + 5일 모멘텀)로 분류했다. 그 정의는 15년 재현에서
+    국면을 가르지 못해 국장에서 폐기된 것과 같은 식이다. SPY 15년으로 맞춰보니
+    검증정의(trend60+거래량)와 **일치가 51.1%**(3,711일 중 1,813일 불일치)였고,
+    검증정의가 SIDE로 본 714일을 옛 정의는 BULL로 불렀다.
+
+    투표를 없앤 이유: 승률표를 만든 재현이 **SPY 하나**로 라벨링했다. QQQ/DIA를
+    섞으면 표와 판정이 어긋난다(이 레포가 반복해 당한 형태). SPY가 없을 때만
+    QQQ -> DIA로 폴백하되 **판정식은 하나**로 유지한다.
+
+    **판정식을 다시 여기 적지 말 것.** 값이 필요하면 `regime_us`를 고친다.
+    """
+    import regime_us as _ru
+
+    for symbol in ("SPY", "QQQ", "DIA"):
+        rows = _read_csv(ROOT / "data" / "market" / "ohlcv" / f"us_{symbol}_daily.csv")
+        rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
+        series = []
+        for r in rows:
+            c = _num(r.get("close") or r.get("Close"))
+            if c is None:
+                continue
+            series.append((str(r.get("date") or r.get("Date") or "")[:10], c,
+                           _num(r.get("volume") or r.get("Volume")) or 0.0))
+        if len(series) < 61:
+            continue
+        regime, label, detail = _ru.regime_from_rows(series, symbol)
+        t60 = detail.get("trend60")
+        vr = detail.get("volRatio")
+        desc = f"US {symbol} 60일 추세 {t60:+.1f}%" if t60 is not None else f"US {symbol}"
+        if vr is not None:
+            desc += f", 거래량비 {vr:.2f}"
+        return {
+            "regime": regime, "label": label,
+            "scoreAdjust": _ru.SCORE_ADJUST.get(regime, 0.0),
+            "description": desc, "benchmark": symbol,
+            "trend60": t60, "volRatio": vr,
+            "definition": detail.get("definition"),
+            "asOf": detail.get("asOf") or series[-1][0],
+            "source": f"us_{symbol}_daily.csv",
+        }
+
+    # 지수 OHLCV가 전부 없을 때만 benchmark_daily.csv로 폴백한다.
     path = ROOT / "data" / "market" / "benchmark_daily.csv"
     rows = [r for r in _read_csv(path) if str(r.get("benchmark", "")).upper() in ("NASDAQ", "SP500", "SPY")]
     if not rows:
         rows = [r for r in _read_csv(path) if str(r.get("benchmark", "")).upper() not in ("KOSPI", "KOSDAQ")]
     rows.sort(key=lambda r: str(r.get("date", "")))
-    dated_closes: list[tuple[date, float]] = []
+    series = []
     for row in rows:
         close = _num(row.get("close"))
         try:
@@ -370,13 +379,12 @@ def _load_us_market_regime() -> dict[str, Any]:
         except ValueError:
             continue
         if close is not None:
-            dated_closes.append((row_date, close))
-    dated_closes.sort(key=lambda item: item[0])
-    closes = [close for _, close in dated_closes]
-    if len(closes) < 20:
+            series.append((row_date, close, _num(row.get("volume")) or 0.0))
+    series.sort(key=lambda item: item[0])
+    if not series:
         return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
                 "description": "US 벤치마크 데이터 부족", "source": "benchmark_daily.csv"}
-    as_of_date = dated_closes[-1][0]
+    as_of_date = series[-1][0]
     stale_days = (datetime.now().date() - as_of_date).days
     if stale_days > BENCHMARK_FALLBACK_MAX_AGE_DAYS:
         return {"regime": "SIDE", "label": "데이터 지연", "scoreAdjust": 0.0,
@@ -384,21 +392,16 @@ def _load_us_market_regime() -> dict[str, Any]:
                 "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv",
                 "dataStatus": "STALE", "staleDays": stale_days,
                 "maxAgeDays": BENCHMARK_FALLBACK_MAX_AGE_DAYS}
-    latest = closes[-1]
-    ma20 = sum(closes[-20:]) / 20
-    dist = (latest - ma20) / ma20 * 100
-    mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
-    if dist > 0 and mom5 > 0:
-        return {"regime": "BULL", "label": "강세장", "scoreAdjust": +5.0,
-                "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-                "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv"}
-    elif dist < -2.0 or mom5 < -2.0:
-        return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -15.0,
-                "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-                "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv"}
-    return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
-            "description": f"US 시장 MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-            "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv"}
+    regime, label, detail = _ru.regime_from_rows(
+        [(d.isoformat(), c, v) for d, c, v in series], "benchmark")
+    return {
+        "regime": regime, "label": label,
+        "scoreAdjust": _ru.SCORE_ADJUST.get(regime, 0.0),
+        "description": f"US 벤치마크 60일 추세 {detail.get('trend60')}%",
+        "trend60": detail.get("trend60"), "volRatio": detail.get("volRatio"),
+        "definition": detail.get("definition"),
+        "asOf": as_of_date.isoformat(), "source": "benchmark_daily.csv",
+    }
 
 
 def generate_us_recommendations() -> dict[str, Any]:
@@ -550,6 +553,9 @@ def generate_us_recommendations() -> dict[str, Any]:
                     adj_score, current, mode, horizon, ind, market="us"
                 )
 
+                # 미장 국면 EV 보정은 `_price_band`가 `market="us"`로 이미 적용한다
+                # (`regime_source` -> `regime_us.WIN_RATES`). 여기서 한 번 더 곱하면
+                # **이중 보정**이 된다 — 처음 넣었을 때 실제로 그랬다.
                 if ev is not None and ev < 0:
                     if mode == "conservative":
                         ev_filtered += 1

@@ -26,6 +26,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "mone-web-app" / "backend"))
 
+# `regime_kr` / `regime_us` / `regime_source`는 scripts/ 안에 있다. 레포 루트만
+# sys.path에 있으면 `python -c`로 이 모듈을 import했을 때 ModuleNotFoundError가
+# 난다(실제로 test_us_market_regime_staleness가 그렇게 깨졌다). **append**로
+# 넣는다 — 맨 앞에 꽂으면 위에서 지키려던 import 우선순위가 깨진다.
+_SCRIPTS_DIR = str(ROOT / "scripts")
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.append(_SCRIPTS_DIR)
+
 from scripts.walk_forward_backtest import TRADE_COST_PCT  # 매수수수료+매도세+슬리피지 ≈ 0.345%, 백테스트와 동일 산식 유지
 
 OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
@@ -814,40 +822,34 @@ def _price_band(score: float, current: float, mode: str, horizon: str, ind: dict
     #    그대로 둔다 — 처음엔 prob를 곱했다가 기존 정직성 테스트 4개가
     #    잡아냈다("표시 확률은 실측과 정확히 같아야 한다"). 화면 숫자를
     #    보정하면 "실측 기반 38.0%"라는 라벨이 거짓이 된다.
-    # ⚠️ **2026-07-30 정정: 이전 값(BEAR 0.313)은 거꾸로였다.**
-    # 15년 전략 재현(110종목, 앱과 같은 ATR 밴드·선착순 청산·왕복비용)을
-    # 호라이즌별로 돌렸다. 국면 정의는 `trend60단독`(60일 추세만) — 네 후보 중
-    # 국면 간 격차가 가장 크고(mid 1.80pp) 세 호라이즌 모두 SIDE를 정확히 골라낸다.
-    #
-    #   호라이즌  BEAR   BULL   SIDE    풀링    n
-    #   short    0.449  0.435  0.381   0.423   26,498
-    #   swing    0.444  0.433  0.386   0.422   26,476
-    #   mid      0.440  0.438  0.368   0.418   26,360
-    #
-    # **세 호라이즌 전부 SIDE(횡보장)가 최악이다.** 라이브 clean window(72건)도
-    # 같다: BEAR -3.78 / BULL -7.16 / SIDE -10.35. 두 독립 출처가 일치한다.
+    # ⚠️ **2026-07-30 정정: 이전 값(BEAR 0.313)은 거꾸로였다.** 15년 전략 재현
+    # (앱과 같은 ATR 밴드·선착순 청산·왕복비용)으로 호라이즌별 승률을 다시 냈고,
+    # 라이브 clean window(72건)도 같은 순서를 말한다(두 독립 출처 일치).
     # 기계적으로도 납득된다 — 손절이 ATR 1.2~2.0배로 좁아 **추세 없는 구간에서
-    # 잡음에 털린다.** 하락장은 되돌림이 목표를 채운다.
+    # 잡음에 털린다.** 이전 값의 출처였던 앙상블 표는 **라벨이 섞인 원장** 위에서
+    # 계산된 것이었다(2026-07-30에 통일).
     #
-    # 이전 값의 출처였던 앙상블 캘리브레이션 표는 **라벨이 섞인 원장** 위에서
-    # 계산된 것이었다(2026-07-30에 통일). 15년 재현이 더 직접적인 증거다.
-    _REGIME_WR_BY_HORIZON = {
-        "short": {"BULL": 0.435, "SIDE": 0.381, "NEUTRAL": 0.381, "BEAR": 0.449},
-        "swing": {"BULL": 0.433, "SIDE": 0.386, "NEUTRAL": 0.386, "BEAR": 0.444},
-        "mid":   {"BULL": 0.438, "SIDE": 0.368, "NEUTRAL": 0.368, "BEAR": 0.440},
-    }
-    _POOLED_WR_BY_HORIZON = {"short": 0.423, "swing": 0.422, "mid": 0.418}
-    _REGIME_WR = _REGIME_WR_BY_HORIZON.get(horizon, _REGIME_WR_BY_HORIZON["swing"])
-    _POOLED_WR = _POOLED_WR_BY_HORIZON.get(horizon, 0.422)
+    # ⚠️ **표는 시장별로 다르고 순서가 정반대다.** 그래서 승률표를 여기 두지 않고
+    # `regime_source`가 시장별 모듈(`regime_kr.WIN_RATES` / `regime_us.WIN_RATES`)에서
+    # 꺼내오게 한다 — **값을 주석이나 다른 파일에 복제하지 말 것.** 복제해 둔 표가
+    # 판정과 어긋나는 사고를 이 레포는 이미 두 번 겪었다.
+    # `_price_band`는 미장 생성기도 import해 쓰는 함수인데, 2026-07-30까지 이
+    # 블록이 표를 **국장 것으로 고정**해 두고 KOSPI 국면을 읽고 있었다 —
+    # 즉 미장 EV가 국장 국면·국장 승률표로 보정됐다. 미장에서 가장 나쁜 국면은
+    # BULL인데 국장 표는 BULL에 두 번째로 높은 승률을 매긴다. 정확히 거꾸로다.
+    #
+    # 배수는 **1.0을 넘지 않는다** — 표가 현재 상장 종목만으로 만들어져
+    # 생존편향이 있으므로, 불리한 국면만 깎고 유리한 쪽으로는 올리지 않는다.
     _ev_prob = prob
     _regime_applied = None
     try:
-        _rg = str((_load_market_regime() or {}).get("regime") or "").upper()
-        _rw = _REGIME_WR.get(_rg)
-        if _rw:
+        import regime_source as _rs
+        _rg = str(_rs.latest(str(ROOT), market)[0] or "").upper()
+        _mult = _rs.ev_multiplier(market, _rg, horizon)
+        if _mult != 1.0:
             # 하한을 두지 않는다 — 실측 0%는 0%로 남아야 한다.
-            _ev_prob = min(0.99, max(0.0, prob * (_rw / _POOLED_WR)))
-            _regime_applied = _rg
+            _ev_prob = min(0.99, max(0.0, prob * _mult))
+        _regime_applied = _rg
     except Exception:
         pass
 
@@ -1099,7 +1101,20 @@ def _peg_tag(dart_row: dict | None) -> tuple[bool, str]:
 
 
 def _load_market_regime() -> dict[str, Any]:
-    """KOSPI OHLCV 우선으로 마켓 레짐 판단."""
+    """KR 마켓 레짐 — 판정은 `regime_kr`에 **위임**한다.
+
+    ⚠️ 2026-07-30까지 이 함수는 판정식(MA20 이격 + 5일 모멘텀)을 **자기 안에
+    복제**해 두고 있었다. 그래서 `regime_kr`을 검증된 정의(trend60+거래량)로
+    고쳤을 때 정작 추천을 만드는 이 경로는 옛 정의로 남았다. 15년 KOSPI로
+    두 정의를 맞춰보니 **일치가 46.2%**(3,621일 중 1,949일 불일치)였고,
+    검증정의가 SIDE(최악, 승률 0.368~0.386)로 본 653일을 옛 정의는
+    BULL(0.433~0.438)로 불러 **EV를 1.13~1.19배 부풀렸다** — 하필 가장
+    나쁜 국면에서 낙관 쪽으로 틀리는 방향이었다.
+
+    **판정식을 다시 여기 적지 말 것.** 값이 필요하면 `regime_kr`을 고친다.
+    """
+    import regime_kr as _rk
+
     path = ROOT / "data" / "market" / "ohlcv" / "kr_KOSPI_daily.csv"
     rows = _read_csv(path)
     source = "kr_KOSPI_daily.csv"
@@ -1108,28 +1123,36 @@ def _load_market_regime() -> dict[str, Any]:
         rows = [r for r in _read_csv(path) if str(r.get("benchmark", "")).upper() == "KOSPI"]
         source = "benchmark_daily.csv"
     rows.sort(key=lambda r: str(r.get("date") or r.get("Date") or ""))
-    closes = [_num(r.get("close") or r.get("Close")) for r in rows]
-    closes = [c for c in closes if c is not None]
-    if len(closes) < 20:
-        return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0, "description": "데이터 부족"}
-    latest = closes[-1]
-    ma20 = sum(closes[-20:]) / 20
-    dist = (latest - ma20) / ma20 * 100
-    mom5 = (closes[-1] - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] else 0.0
-    if dist > 0 and mom5 > 0:
-        return {"regime": "BULL", "label": "강세장", "scoreAdjust": +5.0,
-                "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-                "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2),
-                "asOf": str(rows[-1].get("date") or rows[-1].get("Date") or "")[:10], "source": source}
-    elif dist < -2.0 or mom5 < -2.0:
-        return {"regime": "BEAR", "label": "약세장", "scoreAdjust": -15.0,
-                "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-                "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2),
-                "asOf": str(rows[-1].get("date") or rows[-1].get("Date") or "")[:10], "source": source}
-    return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
-            "description": f"KOSPI 20일선 {dist:+.1f}%, 5일 {mom5:+.1f}%",
-            "kospiLatest": round(latest, 0), "distToMa20": round(dist, 2),
-            "asOf": str(rows[-1].get("date") or rows[-1].get("Date") or "")[:10], "source": source}
+    # (date, close, volume) — 폴백 소스도 같은 판정 함수를 거치게 한다.
+    series = []
+    for r in rows:
+        c = _num(r.get("close") or r.get("Close"))
+        if c is None:
+            continue
+        series.append((str(r.get("date") or r.get("Date") or "")[:10], c,
+                       _num(r.get("volume") or r.get("Volume")) or 0.0))
+    if not series:
+        return {"regime": "SIDE", "label": "횡보장", "scoreAdjust": 0.0,
+                "description": "데이터 부족", "source": source}
+
+    regime, label, detail = _rk.regime_from_rows(series)
+    t60 = detail.get("trend60")
+    vr = detail.get("volRatio")
+    desc = (f"KOSPI 60일 추세 {t60:+.1f}%" if t60 is not None
+            else f"KOSPI 20일선 {detail.get('distToMa20', 0):+.1f}%")
+    if vr is not None:
+        desc += f", 거래량비 {vr:.2f}"
+    return {
+        "regime": regime, "label": label,
+        "scoreAdjust": _rk.SCORE_ADJUST.get(regime, 0.0),
+        "description": desc,
+        "kospiLatest": round(series[-1][1], 0),
+        "distToMa20": detail.get("distToMa20"),
+        "trend60": t60, "volRatio": vr,
+        "definition": detail.get("definition"),
+        "asOf": detail.get("asOf") or series[-1][0],
+        "source": source,
+    }
 
 
 # ── KIS 현재가 로드
