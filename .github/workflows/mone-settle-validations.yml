@@ -103,6 +103,10 @@ jobs:
           # Audit immutable strategy cohorts and independent economic decisions.
           python scripts/audit_strategy_cohorts.py
           echo "audit_strategy_cohorts: exit $?"
+          # Shadow meta-gate may abstain entirely; it cannot mutate the live
+          # recommendation set until its own sleeve proves incremental value.
+          python scripts/build_shadow_meta_gate.py
+          echo "build_shadow_meta_gate: exit $?"
           set -e
 
       - name: 데이터 신선도 헬스게이트 + 알람 (조용한 실패 탐지)
@@ -145,6 +149,7 @@ jobs:
             git add reports/ledger_reconciliation.json reports/live_axis_analysis.json 2>/dev/null || true
             git add reports/recommendation_alpha.json 2>/dev/null || true
             git add reports/strategy_cohort_audit.json 2>/dev/null || true
+            git add reports/shadow_meta_gate.json 2>/dev/null || true
 
             if git diff --cached --quiet; then
               echo "변경 없음 — 커밋 건너뜀"

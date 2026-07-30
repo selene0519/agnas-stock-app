@@ -1,0 +1,1075 @@
+{
+  "status": "SHADOW_ONLY",
+  "generatedAt": "2026-07-30T06:47:29.905417+00:00",
+  "policy": {
+    "maxTake": 3,
+    "minIndependentDecisions": 100,
+    "minDistinctSignalDates": 30,
+    "minRiskRewardRatio": 1.5,
+    "requiresPositiveAfterCostExpectancy": true,
+    "requiresProfitFactorAboveOne": true,
+    "uncalibratedProbabilityCanTriggerTake": false
+  },
+  "summary": {
+    "candidates": 20,
+    "take": 0,
+    "wait": 0,
+    "reject": 20,
+    "abstain": true
+  },
+  "take": [],
+  "decisions": [
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "mid",
+      "symbol": "SNOW",
+      "name": "Snowflake",
+      "decision": "REJECT",
+      "reasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 85.5,
+      "expectedValue": 0.79,
+      "riskRewardRatio": 2.88,
+      "modelProbabilityDisplayOnly": 29.5,
+      "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "mid",
+      "symbol": "HPE",
+      "name": "HPE",
+      "decision": "REJECT",
+      "reasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 80.1,
+      "expectedValue": 0.91,
+      "riskRewardRatio": 3.04,
+      "modelProbabilityDisplayOnly": 28.0,
+      "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "LMT",
+      "name": "LMT",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 71.4,
+      "expectedValue": -0.63,
+      "riskRewardRatio": 2.94,
+      "modelProbabilityDisplayOnly": 25.3,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "swing",
+      "symbol": "AVGO",
+      "name": "AVGO",
+      "decision": "REJECT",
+      "reasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 71.3,
+      "expectedValue": 0.03,
+      "riskRewardRatio": 3.23,
+      "modelProbabilityDisplayOnly": 26.9,
+      "recommendationSource": "mone_v36_final_recommendations_us_conservative_swing.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "AAPL",
+      "name": "Apple",
+      "decision": "REJECT",
+      "reasons": [
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 70.2,
+      "expectedValue": -0.57,
+      "riskRewardRatio": 3.04,
+      "modelProbabilityDisplayOnly": 25.0,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "ELF",
+      "name": "e.l.f. Beauty",
+      "decision": "REJECT",
+      "reasons": [
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 69.9,
+      "expectedValue": -1.39,
+      "riskRewardRatio": 2.72,
+      "modelProbabilityDisplayOnly": 24.9,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "ADBE",
+      "name": "Adobe",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 69.1,
+      "expectedValue": -1.14,
+      "riskRewardRatio": 2.82,
+      "modelProbabilityDisplayOnly": 24.7,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "swing",
+      "symbol": "DELL",
+      "name": "Dell",
+      "decision": "REJECT",
+      "reasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 68.2,
+      "expectedValue": 0.26,
+      "riskRewardRatio": 3.14,
+      "modelProbabilityDisplayOnly": 26.1,
+      "recommendationSource": "mone_v36_final_recommendations_us_conservative_swing.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "KO",
+      "name": "KO",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 67.2,
+      "expectedValue": -1.08,
+      "riskRewardRatio": 2.72,
+      "modelProbabilityDisplayOnly": 24.1,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "mid",
+      "symbol": "ABBV",
+      "name": "ABBV",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 64.2,
+      "expectedValue": -1.86,
+      "riskRewardRatio": 3.01,
+      "modelProbabilityDisplayOnly": 18.3,
+      "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "CRM",
+      "name": "Salesforce",
+      "decision": "REJECT",
+      "reasons": [
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 64.0,
+      "expectedValue": -1.79,
+      "riskRewardRatio": 2.76,
+      "modelProbabilityDisplayOnly": 23.2,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "BAC",
+      "name": "Bank of America",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 63.9,
+      "expectedValue": -1.19,
+      "riskRewardRatio": 2.67,
+      "modelProbabilityDisplayOnly": 23.2,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "SLB",
+      "name": "Schlumberger",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 63.3,
+      "expectedValue": -1.24,
+      "riskRewardRatio": 2.86,
+      "modelProbabilityDisplayOnly": 23.0,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "RSP",
+      "name": "RSP",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 61.0,
+      "expectedValue": -0.6,
+      "riskRewardRatio": 3.5,
+      "modelProbabilityDisplayOnly": 22.4,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "mid",
+      "symbol": "MA",
+      "name": "Mastercard",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 59.8,
+      "expectedValue": -1.82,
+      "riskRewardRatio": 3.12,
+      "modelProbabilityDisplayOnly": 17.0,
+      "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "F",
+      "name": "Ford",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 59.2,
+      "expectedValue": -2.37,
+      "riskRewardRatio": 2.08,
+      "modelProbabilityDisplayOnly": 21.9,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "mid",
+      "symbol": "CVX",
+      "name": "Chevron",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 59.1,
+      "expectedValue": -1.87,
+      "riskRewardRatio": 3.08,
+      "modelProbabilityDisplayOnly": 16.8,
+      "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "short",
+      "symbol": "JNJ",
+      "name": "JNJ",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 57.4,
+      "expectedValue": -1.83,
+      "riskRewardRatio": 2.78,
+      "modelProbabilityDisplayOnly": 15.0,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_short.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "symbol": "PFE",
+      "name": "PFE",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 55.6,
+      "expectedValue": -1.98,
+      "riskRewardRatio": 2.39,
+      "modelProbabilityDisplayOnly": 20.9,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "short",
+      "symbol": "SCHD",
+      "name": "SCHD",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "RISK_REWARD_TOO_LOW",
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ],
+      "score": 53.9,
+      "expectedValue": -1.49,
+      "riskRewardRatio": 1.25,
+      "modelProbabilityDisplayOnly": 14.2,
+      "recommendationSource": "mone_v36_final_recommendations_us_aggressive_short.csv"
+    }
+  ],
+  "cellEvidence": {
+    "kr|aggressive|mid": {
+      "independentDecisions": 25,
+      "distinctSignalDates": 6,
+      "winRate": 0.0,
+      "winRateWilsonLower95": 0.0,
+      "avgNetPnlPct": -12.3381,
+      "profitFactor": 0.0,
+      "brierScore": 0.521504,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 5,
+          "meanPredicted": 0.683,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.683,
+          "wilsonLower95": 0.0
+        },
+        {
+          "band": "70-80",
+          "samples": 20,
+          "meanPredicted": 0.7311,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.7311,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "kr|aggressive|short": {
+      "independentDecisions": 1,
+      "distinctSignalDates": 1,
+      "winRate": 0.0,
+      "winRateWilsonLower95": 0.0,
+      "avgNetPnlPct": -9.0664,
+      "profitFactor": 0.0,
+      "brierScore": 0.494209,
+      "probabilityCalibration": [
+        {
+          "band": "70-80",
+          "samples": 1,
+          "meanPredicted": 0.703,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.703,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "kr|aggressive|swing": {
+      "independentDecisions": 10,
+      "distinctSignalDates": 3,
+      "winRate": 0.0,
+      "winRateWilsonLower95": 0.0,
+      "avgNetPnlPct": -11.6548,
+      "profitFactor": 0.0,
+      "brierScore": 0.500886,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 4,
+          "meanPredicted": 0.69,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.69,
+          "wilsonLower95": 0.0
+        },
+        {
+          "band": "70-80",
+          "samples": 6,
+          "meanPredicted": 0.719,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.719,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "kr|balanced|mid": {
+      "independentDecisions": 25,
+      "distinctSignalDates": 9,
+      "winRate": 0.0,
+      "winRateWilsonLower95": 0.0,
+      "avgNetPnlPct": -8.9564,
+      "profitFactor": 0.0,
+      "brierScore": 0.497139,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 16,
+          "meanPredicted": 0.6889,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.6889,
+          "wilsonLower95": 0.0
+        },
+        {
+          "band": "70-80",
+          "samples": 9,
+          "meanPredicted": 0.7327,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.7327,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "kr|balanced|swing": {
+      "independentDecisions": 3,
+      "distinctSignalDates": 3,
+      "winRate": 0.3333,
+      "winRateWilsonLower95": 0.0615,
+      "avgNetPnlPct": -7.1615,
+      "profitFactor": 0.0248,
+      "brierScore": 0.366027,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 2,
+          "meanPredicted": 0.6875,
+          "actualWinRate": 0.5,
+          "calibrationGap": 0.1875,
+          "wilsonLower95": 0.0945
+        },
+        {
+          "band": "70-80",
+          "samples": 1,
+          "meanPredicted": 0.716,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.716,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "kr|conservative|mid": {
+      "independentDecisions": 35,
+      "distinctSignalDates": 9,
+      "winRate": 0.0286,
+      "winRateWilsonLower95": 0.0051,
+      "avgNetPnlPct": -9.4743,
+      "profitFactor": 0.0491,
+      "brierScore": 0.547424,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 8,
+          "meanPredicted": 0.684,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.684,
+          "wilsonLower95": 0.0
+        },
+        {
+          "band": "70-80",
+          "samples": 19,
+          "meanPredicted": 0.734,
+          "actualWinRate": 0.0526,
+          "calibrationGap": 0.6814,
+          "wilsonLower95": 0.0094
+        },
+        {
+          "band": "80-100",
+          "samples": 8,
+          "meanPredicted": 0.837,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.837,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "kr|conservative|short": {
+      "independentDecisions": 30,
+      "distinctSignalDates": 12,
+      "winRate": 0.4333,
+      "winRateWilsonLower95": 0.2738,
+      "avgNetPnlPct": 0.2094,
+      "profitFactor": 1.0883,
+      "brierScore": 0.322364,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 9,
+          "meanPredicted": 0.6878,
+          "actualWinRate": 0.2222,
+          "calibrationGap": 0.4656,
+          "wilsonLower95": 0.0632
+        },
+        {
+          "band": "70-80",
+          "samples": 21,
+          "meanPredicted": 0.7255,
+          "actualWinRate": 0.5238,
+          "calibrationGap": 0.2017,
+          "wilsonLower95": 0.3237
+        }
+      ],
+      "evidenceStatus": "WAIT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES"
+      ]
+    },
+    "kr|conservative|swing": {
+      "independentDecisions": 34,
+      "distinctSignalDates": 10,
+      "winRate": 0.1471,
+      "winRateWilsonLower95": 0.0645,
+      "avgNetPnlPct": -6.8926,
+      "profitFactor": 0.0936,
+      "brierScore": 0.457368,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 11,
+          "meanPredicted": 0.686,
+          "actualWinRate": 0.0909,
+          "calibrationGap": 0.5951,
+          "wilsonLower95": 0.0162
+        },
+        {
+          "band": "70-80",
+          "samples": 22,
+          "meanPredicted": 0.742,
+          "actualWinRate": 0.1818,
+          "calibrationGap": 0.5602,
+          "wilsonLower95": 0.0731
+        },
+        {
+          "band": "80-100",
+          "samples": 1,
+          "meanPredicted": 0.8,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.8,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|aggressive|mid": {
+      "independentDecisions": 70,
+      "distinctSignalDates": 19,
+      "winRate": 0.0429,
+      "winRateWilsonLower95": 0.0147,
+      "avgNetPnlPct": -9.9306,
+      "profitFactor": 0.0963,
+      "brierScore": 0.568685,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 4,
+          "meanPredicted": 0.69,
+          "actualWinRate": 0.25,
+          "calibrationGap": 0.44,
+          "wilsonLower95": 0.0456
+        },
+        {
+          "band": "70-80",
+          "samples": 52,
+          "meanPredicted": 0.7538,
+          "actualWinRate": 0.0385,
+          "calibrationGap": 0.7153,
+          "wilsonLower95": 0.0106
+        },
+        {
+          "band": "80-100",
+          "samples": 14,
+          "meanPredicted": 0.8368,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.8368,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|aggressive|short": {
+      "independentDecisions": 53,
+      "distinctSignalDates": 19,
+      "winRate": 0.3962,
+      "winRateWilsonLower95": 0.2759,
+      "avgNetPnlPct": -2.2134,
+      "profitFactor": 0.4809,
+      "brierScore": 0.348823,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 20,
+          "meanPredicted": 0.6884,
+          "actualWinRate": 0.45,
+          "calibrationGap": 0.2384,
+          "wilsonLower95": 0.2582
+        },
+        {
+          "band": "70-80",
+          "samples": 30,
+          "meanPredicted": 0.7227,
+          "actualWinRate": 0.4,
+          "calibrationGap": 0.3227,
+          "wilsonLower95": 0.2459
+        },
+        {
+          "band": "80-100",
+          "samples": 3,
+          "meanPredicted": 0.8187,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.8187,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|aggressive|swing": {
+      "independentDecisions": 79,
+      "distinctSignalDates": 17,
+      "winRate": 0.1139,
+      "winRateWilsonLower95": 0.0611,
+      "avgNetPnlPct": -7.4111,
+      "profitFactor": 0.0987,
+      "brierScore": 0.484374,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 26,
+          "meanPredicted": 0.6922,
+          "actualWinRate": 0.2308,
+          "calibrationGap": 0.4614,
+          "wilsonLower95": 0.1103
+        },
+        {
+          "band": "70-80",
+          "samples": 48,
+          "meanPredicted": 0.7368,
+          "actualWinRate": 0.0625,
+          "calibrationGap": 0.6743,
+          "wilsonLower95": 0.0215
+        },
+        {
+          "band": "80-100",
+          "samples": 5,
+          "meanPredicted": 0.8198,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.8198,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|balanced|mid": {
+      "independentDecisions": 56,
+      "distinctSignalDates": 16,
+      "winRate": 0.1607,
+      "winRateWilsonLower95": 0.0869,
+      "avgNetPnlPct": -5.9601,
+      "profitFactor": 0.279,
+      "brierScore": 0.487763,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 10,
+          "meanPredicted": 0.6892,
+          "actualWinRate": 0.3,
+          "calibrationGap": 0.3892,
+          "wilsonLower95": 0.1078
+        },
+        {
+          "band": "70-80",
+          "samples": 36,
+          "meanPredicted": 0.7412,
+          "actualWinRate": 0.1667,
+          "calibrationGap": 0.5745,
+          "wilsonLower95": 0.0787
+        },
+        {
+          "band": "80-100",
+          "samples": 10,
+          "meanPredicted": 0.8129,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.8129,
+          "wilsonLower95": 0.0
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|balanced|short": {
+      "independentDecisions": 27,
+      "distinctSignalDates": 8,
+      "winRate": 0.4815,
+      "winRateWilsonLower95": 0.3074,
+      "avgNetPnlPct": -0.4957,
+      "profitFactor": 0.8802,
+      "brierScore": 0.305003,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 11,
+          "meanPredicted": 0.6887,
+          "actualWinRate": 0.4545,
+          "calibrationGap": 0.2342,
+          "wilsonLower95": 0.2127
+        },
+        {
+          "band": "70-80",
+          "samples": 16,
+          "meanPredicted": 0.7213,
+          "actualWinRate": 0.5,
+          "calibrationGap": 0.2213,
+          "wilsonLower95": 0.28
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|balanced|swing": {
+      "independentDecisions": 43,
+      "distinctSignalDates": 13,
+      "winRate": 0.1628,
+      "winRateWilsonLower95": 0.0812,
+      "avgNetPnlPct": -6.9681,
+      "profitFactor": 0.1498,
+      "brierScore": 0.446852,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 14,
+          "meanPredicted": 0.6871,
+          "actualWinRate": 0.2143,
+          "calibrationGap": 0.4729,
+          "wilsonLower95": 0.0757
+        },
+        {
+          "band": "70-80",
+          "samples": 29,
+          "meanPredicted": 0.7306,
+          "actualWinRate": 0.1379,
+          "calibrationGap": 0.5927,
+          "wilsonLower95": 0.055
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|conservative|mid": {
+      "independentDecisions": 35,
+      "distinctSignalDates": 13,
+      "winRate": 0.1714,
+      "winRateWilsonLower95": 0.081,
+      "avgNetPnlPct": -4.2364,
+      "profitFactor": 0.4315,
+      "brierScore": 0.534482,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 1,
+          "meanPredicted": 0.691,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.691,
+          "wilsonLower95": 0.0
+        },
+        {
+          "band": "70-80",
+          "samples": 14,
+          "meanPredicted": 0.7524,
+          "actualWinRate": 0.0714,
+          "calibrationGap": 0.681,
+          "wilsonLower95": 0.0127
+        },
+        {
+          "band": "80-100",
+          "samples": 20,
+          "meanPredicted": 0.8396,
+          "actualWinRate": 0.25,
+          "calibrationGap": 0.5896,
+          "wilsonLower95": 0.1119
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|conservative|short": {
+      "independentDecisions": 54,
+      "distinctSignalDates": 10,
+      "winRate": 0.3889,
+      "winRateWilsonLower95": 0.2704,
+      "avgNetPnlPct": -0.7703,
+      "profitFactor": 0.7799,
+      "brierScore": 0.352977,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 7,
+          "meanPredicted": 0.6899,
+          "actualWinRate": 0.2857,
+          "calibrationGap": 0.4041,
+          "wilsonLower95": 0.0822
+        },
+        {
+          "band": "70-80",
+          "samples": 44,
+          "meanPredicted": 0.7403,
+          "actualWinRate": 0.3864,
+          "calibrationGap": 0.354,
+          "wilsonLower95": 0.2572
+        },
+        {
+          "band": "80-100",
+          "samples": 3,
+          "meanPredicted": 0.8117,
+          "actualWinRate": 0.6667,
+          "calibrationGap": 0.145,
+          "wilsonLower95": 0.2077
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    },
+    "us|conservative|swing": {
+      "independentDecisions": 52,
+      "distinctSignalDates": 11,
+      "winRate": 0.3846,
+      "winRateWilsonLower95": 0.2647,
+      "avgNetPnlPct": -1.4898,
+      "profitFactor": 0.7056,
+      "brierScore": 0.370625,
+      "probabilityCalibration": [
+        {
+          "band": "60-70",
+          "samples": 4,
+          "meanPredicted": 0.6903,
+          "actualWinRate": 0.0,
+          "calibrationGap": 0.6903,
+          "wilsonLower95": 0.0
+        },
+        {
+          "band": "70-80",
+          "samples": 42,
+          "meanPredicted": 0.7556,
+          "actualWinRate": 0.4524,
+          "calibrationGap": 0.3032,
+          "wilsonLower95": 0.3122
+        },
+        {
+          "band": "80-100",
+          "samples": 6,
+          "meanPredicted": 0.8142,
+          "actualWinRate": 0.1667,
+          "calibrationGap": 0.6475,
+          "wilsonLower95": 0.0301
+        }
+      ],
+      "evidenceStatus": "REJECT",
+      "blockingReasons": [
+        "LOW_INDEPENDENT_DECISIONS",
+        "LOW_DISTINCT_SIGNAL_DATES",
+        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
+        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+      ]
+    }
+  }
+}
