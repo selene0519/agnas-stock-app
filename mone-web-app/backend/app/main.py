@@ -586,7 +586,9 @@ async def admin_auth_middleware(request: Request, call_next):
     path = _raw_path(request)
     if request.method == "GET" and path == "/api/admin/pipeline":
         return await call_next(request)
-    if path.startswith("/api/admin/"):
+    from app.services.admin_route_policy import requires_admin_auth
+
+    if requires_admin_auth(request.method, path):
         token = _extract_bearer_token(request.headers.get("authorization"))
         if not _verify_admin_token(token):
             status_code = 503 if not _admin_auth_configured() else 401
@@ -8628,6 +8630,14 @@ def api_quant_operating_status(
     except Exception:
         user_id = ""
     return operating_status(market=market, user_id=user_id)
+
+
+@app.get("/api/quant/shadow-status")
+def api_quant_shadow_status() -> dict:
+    """Read-only evidence, abstention, sleeve, and risk state for Quant V2."""
+    from app.services.quant_shadow_status import shadow_status
+
+    return shadow_status()
 
 
 @app.post("/api/journal/self-learning/auto-calibrate")
