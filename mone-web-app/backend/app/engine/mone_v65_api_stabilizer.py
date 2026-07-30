@@ -3314,6 +3314,9 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
         payload = _apply_recommendation_trade_safety(payload, normalized_market)
         payload = _apply_recommendation_performance_safety(payload, normalized_market, normalized_mode, normalized_horizon)
         payload = _apply_public_quant_trader_policy(payload, cash)
+        from app.services.quant_operating_governor import apply_entry_authority
+
+        payload = apply_entry_authority(payload, normalized_market)
     try:
         _apply_low_atr_next_open_guard(payload.get("items", []), normalized_market)
     except Exception:

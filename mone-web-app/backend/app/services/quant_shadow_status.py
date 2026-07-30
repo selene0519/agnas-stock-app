@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +21,7 @@ REPORT_FILES = {
     "selfCorrection": "self_correction_shadow.json",
     "walkForward": "walkforward_integrity.json",
 }
+DEFAULT_MAX_REPORT_AGE_HOURS = 72.0
 
 
 def _read_report(name: str) -> dict[str, Any]:
@@ -32,8 +35,56 @@ def _read_report(name: str) -> dict[str, Any]:
     return {"status": "MISSING", "_source": f"reports/{path.name}"}
 
 
+def _report_freshness(report: dict[str, Any], now: datetime) -> dict[str, Any]:
+    raw_timestamp = str(report.get("generatedAt") or report.get("updatedAt") or report.get("createdAt") or "").strip()
+    try:
+        max_age_hours = max(1.0, float(os.environ.get("MONE_QUANT_REPORT_MAX_AGE_HOURS", DEFAULT_MAX_REPORT_AGE_HOURS)))
+    except (TypeError, ValueError):
+        max_age_hours = DEFAULT_MAX_REPORT_AGE_HOURS
+    if not raw_timestamp:
+        return {
+            "fresh": False,
+            "reason": "MISSING_GENERATED_AT",
+            "generatedAt": "",
+            "ageHours": None,
+            "maxAgeHours": max_age_hours,
+        }
+    try:
+        parsed = datetime.fromisoformat(raw_timestamp.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        age_hours = (now - parsed.astimezone(timezone.utc)).total_seconds() / 3600.0
+    except (TypeError, ValueError):
+        return {
+            "fresh": False,
+            "reason": "INVALID_GENERATED_AT",
+            "generatedAt": raw_timestamp,
+            "ageHours": None,
+            "maxAgeHours": max_age_hours,
+        }
+    if age_hours < -0.1:
+        reason = "FUTURE_GENERATED_AT"
+        fresh = False
+    elif age_hours > max_age_hours:
+        reason = "REPORT_TOO_OLD"
+        fresh = False
+    else:
+        reason = ""
+        fresh = True
+    return {
+        "fresh": fresh,
+        "reason": reason,
+        "generatedAt": raw_timestamp,
+        "ageHours": round(max(age_hours, 0.0), 2),
+        "maxAgeHours": max_age_hours,
+    }
+
+
 def shadow_status() -> dict[str, Any]:
     reports = {name: _read_report(name) for name in REPORT_FILES}
+    now = datetime.now(timezone.utc)
+    report_freshness = {name: _report_freshness(report, now) for name, report in reports.items()}
+    stale_reports = [name for name, freshness in report_freshness.items() if not freshness["fresh"]]
     meta = reports["metaGate"]
     risk = reports["riskBudget"]
     alpha = reports["alpha"]
@@ -54,10 +105,13 @@ def shadow_status() -> dict[str, Any]:
     top_sleeve = sleeves.get(top_name) if top_name and isinstance(sleeves.get(top_name), dict) else None
 
     take = int(summary.get("take") or 0)
-    decision = "ABSTAIN" if bool(summary.get("abstain", take == 0)) else "SHADOW_TAKE"
+    raw_decision = "ABSTAIN" if bool(summary.get("abstain", take == 0)) else "SHADOW_TAKE"
+    decision = "ABSTAIN" if missing or stale_reports else raw_decision
     reasons: list[str] = []
     if missing:
         reasons.append("MISSING_REPORTS")
+    if stale_reports:
+        reasons.append("STALE_EVIDENCE_REPORTS")
     if not bool(d20.get("significanceUsable")):
         reasons.append("ALPHA_NOT_PROVEN")
     residual_validation = residual_alpha.get("validation") if isinstance(residual_alpha.get("validation"), dict) else {}
@@ -122,6 +176,7 @@ def shadow_status() -> dict[str, Any]:
         "mode": "SHADOW_ONLY",
         "liveTradingAllowed": False,
         "decision": decision,
+        "rawDecision": raw_decision,
         "decisionReasons": reasons,
         "summary": {
             "candidates": int(summary.get("candidates") or 0),
@@ -176,5 +231,7 @@ def shadow_status() -> dict[str, Any]:
         },
         "sources": {name: report.get("_source") for name, report in reports.items()},
         "missingReports": missing,
+        "staleReports": stale_reports,
+        "reportFreshness": report_freshness,
         "reports": reports,
     }

@@ -206,8 +206,27 @@ def buy(
     memo: str = "",
 ) -> dict[str, Any]:
     """가상 매수."""
+    mk = market.lower()
+    try:
+        from app.services.quant_operating_governor import entry_authority
+
+        authority = entry_authority(mk)
+    except Exception as exc:
+        authority = {
+            "operatingState": "BLOCKED",
+            "paperEntryAllowed": False,
+            "reasonCodes": ["OPERATING_AUTHORITY_UNAVAILABLE"],
+            "error": repr(exc),
+        }
+    if not authority.get("paperEntryAllowed"):
+        return {
+            "ok": False,
+            "status": "BLOCKED",
+            "code": "QUANT_OPERATING_GATE",
+            "error": "New paper entries are not authorized by the quant operating governor.",
+            "operatingAuthority": authority,
+        }
     with _LOCK:
-        mk = market.lower()
         balance = _load_balance()
         cash = balance.get(mk, 0.0)
 

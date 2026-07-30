@@ -1024,8 +1024,35 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
     }
     for mk in _market_list(market):
         actions: list[dict[str, Any]] = []
+        try:
+            from app.services.quant_operating_governor import entry_authority
+
+            authority = entry_authority(mk)
+        except Exception as exc:
+            authority = {
+                "market": mk,
+                "operatingState": "BLOCKED",
+                "entryAllowed": False,
+                "paperEntryAllowed": False,
+                "exitAllowed": True,
+                "liveOrderAllowed": False,
+                "reasonCodes": ["OPERATING_AUTHORITY_UNAVAILABLE"],
+                "error": repr(exc),
+            }
+        # Risk-reducing exits must remain available even when new exposure is
+        # denied.  Only the buy leg is governed by entry authority.
         actions.extend(_sell_triggered_positions(mk, dry_run=dry_run))
-        actions.extend(_buy_candidates(mk, dry_run=dry_run))
+        if authority.get("paperEntryAllowed"):
+            actions.extend(_buy_candidates(mk, dry_run=dry_run))
+        else:
+            actions.append({
+                "action": "SKIP",
+                "scope": "NEW_ENTRY",
+                "market": mk,
+                "reason": "QUANT_OPERATING_GATE",
+                "reasonCodes": list(authority.get("reasonCodes") or []),
+                "result": {"ok": False, "dryRun": dry_run},
+            })
         nav = {} if dry_run else _append_nav_snapshot(mk, actions)
         ctx = _active_context(mk)
         summary = _summary_for_market(mk, ctx["agentId"])
@@ -1037,6 +1064,7 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
             "liveMetrics": _live_nav_metrics(mk, ctx["agentId"], summary),
             "survival": _survival_state(mk, summary),
             "proofBoard": _walkforward_proof_board(mk, ctx["agentId"]),
+            "operatingAuthority": authority,
             "nav": nav,
         }
     if not dry_run:

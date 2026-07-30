@@ -337,20 +337,16 @@ def _b64url_decode(value: str) -> bytes:
     return base64.urlsafe_b64decode(padded.encode("ascii"))
 
 
-DEFAULT_ADMIN_ID = "AGNAS"
-DEFAULT_ADMIN_PASSWORD_SHA256 = "45dbe2462bb307fd71cb0b586670343398f2278892ad7f194704e25ff790eb88"
-
-
 def _admin_password_hash() -> str:
     configured_hash = os.environ.get("MONE_ADMIN_PASSWORD_SHA256", "").strip().lower()
     if configured_hash:
         return configured_hash
     password = os.environ.get("MONE_ADMIN_PASSWORD", "")
-    return hashlib.sha256(password.encode("utf-8")).hexdigest() if password else DEFAULT_ADMIN_PASSWORD_SHA256
+    return hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
 
 
 def _admin_id() -> str:
-    return (os.environ.get("MONE_ADMIN_ID") or os.environ.get("MONE_ADMIN_USERNAME") or DEFAULT_ADMIN_ID).strip()
+    return (os.environ.get("MONE_ADMIN_ID") or os.environ.get("MONE_ADMIN_USERNAME") or "").strip()
 
 
 def _admin_auth_secret() -> bytes:
@@ -854,7 +850,10 @@ def api_final_recommendations(
             "killSwitch": True,
             "summary": f"data_quality unavailable: {exc!r}",
         }
-    return _apply_recommendation_trade_safety(payload, quality)
+    payload = _apply_recommendation_trade_safety(payload, quality)
+    from app.services.quant_operating_governor import apply_entry_authority
+
+    return apply_entry_authority(payload, mk)
 
 
 @app.get("/api/final/recommendation-detail")

@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.engine import data_quality, session
-from app.services import ai_paper_trader, portfolio_risk_budget, virtual_trade_journal
+from app.services import ai_paper_trader, portfolio_risk_budget, quant_shadow_status, virtual_trade_journal
 
 
 _MARKETS = ("kr", "us")
@@ -22,6 +22,13 @@ def _market_list(market: str) -> list[str]:
 
 
 def _decision_reason(code: str) -> str:
+    english_labels = {
+        "QUANT_SHADOW_NOT_APPROVED": "Quant V2 evidence has not approved a new entry.",
+        "QUANT_EVIDENCE_INTEGRITY_NOT_READY": "Quant V2 evidence reports are missing, stale, or invalid.",
+        "OPERATING_AUTHORITY_UNAVAILABLE": "Operating authority unavailable; new entries fail closed.",
+    }
+    if code in english_labels:
+        return english_labels[code]
     labels = {
         "INSUFFICIENT_REALIZED_SAMPLES": "실현 평가 표본이 최소 기준에 도달하지 않았습니다.",
         "REALIZED_WIN_RATE_BELOW_GATE": "실현 승률이 운용 기준보다 낮습니다.",
@@ -37,7 +44,7 @@ def _decision_reason(code: str) -> str:
     return labels.get(code, "운용 안전장치가 추가 검증을 요구합니다.")
 
 
-def _govern_market(market: str, user_id: str = "") -> dict[str, Any]:
+def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None = None) -> dict[str, Any]:
     """Build one conservative decision. Dependency failures fail closed."""
     reasons: list[str] = []
     try:
@@ -51,6 +58,31 @@ def _govern_market(market: str, user_id: str = "") -> dict[str, Any]:
     except Exception:
         quality = {"status": "ERROR", "killSwitch": True}
     price_session = session.get_price_session(market)
+
+    if shadow is None:
+        try:
+            shadow = quant_shadow_status.shadow_status()
+        except Exception:
+            shadow = {
+                "status": "ERROR",
+                "decision": "ABSTAIN",
+                "liveTradingAllowed": False,
+                "missingReports": list(quant_shadow_status.REPORT_FILES),
+                "staleReports": list(quant_shadow_status.REPORT_FILES),
+                "decisionReasons": ["SHADOW_STATUS_UNAVAILABLE"],
+            }
+    shadow_missing = list(shadow.get("missingReports") or [])
+    shadow_stale = list(shadow.get("staleReports") or [])
+    shadow_integrity_ready = (
+        not shadow_missing
+        and not shadow_stale
+        and str(shadow.get("status") or "").upper() != "ERROR"
+    )
+    shadow_signal_ready = (
+        shadow_integrity_ready
+        and str(shadow.get("status") or "").upper() == "OK"
+        and str(shadow.get("decision") or "").upper() == "SHADOW_TAKE"
+    )
 
     data_ready = not bool(quality.get("killSwitch"))
     proof_ready = bool(performance_gate.get("allowed"))
@@ -100,14 +132,18 @@ def _govern_market(market: str, user_id: str = "") -> dict[str, Any]:
         reasons.append("DATA_QUALITY_KILL_SWITCH")
     if not proof_ready:
         reasons.append(str(performance_gate.get("reason") or "WALK_FORWARD_DATA_NOT_READY"))
+    if not shadow_integrity_ready:
+        reasons.append("QUANT_EVIDENCE_INTEGRITY_NOT_READY")
+    if not shadow_signal_ready:
+        reasons.append("QUANT_SHADOW_NOT_APPROVED")
 
     candidate_count = int(paper_status.get("candidateCount") or 0)
     if not reasons and candidate_count <= 0:
         reasons.append("NO_ELIGIBLE_CANDIDATE")
 
-    if not journal_ready or not risk_ready or not data_ready:
+    if not journal_ready or not risk_ready or not data_ready or not shadow_integrity_ready:
         operating_state = "BLOCKED"
-    elif not proof_ready or candidate_count <= 0:
+    elif not proof_ready or not shadow_signal_ready or candidate_count <= 0:
         operating_state = "ABSTAIN"
     elif is_review_session:
         operating_state = "WATCH"
@@ -121,11 +157,15 @@ def _govern_market(market: str, user_id: str = "") -> dict[str, Any]:
         {"id": "portfolio", "label": "포트폴리오 위험예산", "passed": risk_ready, "detail": risk_budget.get("status")},
         {"id": "data", "label": "데이터 품질", "passed": data_ready, "detail": quality.get("status")},
     ]
+    checks.append({"id": "quantShadow", "label": "Quant V2 evidence", "passed": shadow_signal_ready, "detail": shadow.get("decision")})
     return {
         "market": market,
         "operatingState": operating_state,
         "entryAllowed": operating_state == "TRADEABLE",
-        "candidateCount": candidate_count if proof_ready else 0,
+        "paperEntryAllowed": operating_state == "TRADEABLE",
+        "exitAllowed": True,
+        "liveOrderAllowed": operating_state == "TRADEABLE" and bool(shadow.get("liveTradingAllowed")),
+        "candidateCount": candidate_count if proof_ready and shadow_signal_ready else 0,
         "reasonCodes": list(dict.fromkeys(reasons)),
         "reasons": [_decision_reason(code) for code in dict.fromkeys(reasons)],
         "checks": checks,
@@ -147,11 +187,31 @@ def _govern_market(market: str, user_id: str = "") -> dict[str, Any]:
         },
         "dataQuality": {"status": quality.get("status") or quality.get("dataStatus"), "killSwitch": bool(quality.get("killSwitch"))},
         "priceSession": price_session,
+        "quantShadow": {
+            "status": shadow.get("status"),
+            "mode": shadow.get("mode"),
+            "decision": shadow.get("decision"),
+            "decisionReasons": shadow.get("decisionReasons") or [],
+            "missingReports": shadow_missing,
+            "staleReports": shadow_stale,
+            "liveTradingAllowed": bool(shadow.get("liveTradingAllowed")),
+        },
     }
 
 
 def operating_status(market: str = "all", user_id: str = "") -> dict[str, Any]:
-    markets = {mk: _govern_market(mk, user_id=user_id) for mk in _market_list(market)}
+    try:
+        shadow = quant_shadow_status.shadow_status()
+    except Exception:
+        shadow = {
+            "status": "ERROR",
+            "decision": "ABSTAIN",
+            "liveTradingAllowed": False,
+            "missingReports": list(quant_shadow_status.REPORT_FILES),
+            "staleReports": list(quant_shadow_status.REPORT_FILES),
+            "decisionReasons": ["SHADOW_STATUS_UNAVAILABLE"],
+        }
+    markets = {mk: _govern_market(mk, user_id=user_id, shadow=shadow) for mk in _market_list(market)}
     return {
         "status": "OK",
         "market": market,
@@ -160,3 +220,63 @@ def operating_status(market: str = "all", user_id: str = "") -> dict[str, Any]:
         "markets": markets,
         "tradeableMarketCount": sum(1 for row in markets.values() if row["entryAllowed"]),
     }
+
+
+def entry_authority(market: str, user_id: str = "") -> dict[str, Any]:
+    """Return the canonical authority for a new position; failures deny entry."""
+    normalized = _market_list(market)[0]
+    try:
+        return operating_status(normalized, user_id=user_id)["markets"][normalized]
+    except Exception as exc:
+        return {
+            "market": normalized,
+            "operatingState": "BLOCKED",
+            "entryAllowed": False,
+            "paperEntryAllowed": False,
+            "exitAllowed": True,
+            "liveOrderAllowed": False,
+            "reasonCodes": ["OPERATING_AUTHORITY_UNAVAILABLE"],
+            "reasons": [_decision_reason("OPERATING_AUTHORITY_UNAVAILABLE")],
+            "error": repr(exc),
+        }
+
+
+def apply_entry_authority(payload: dict[str, Any], market: str, user_id: str = "") -> dict[str, Any]:
+    """Keep research candidates visible while making denied entries unmistakably non-tradeable."""
+    authority = entry_authority(market, user_id=user_id)
+    payload["operatingAuthority"] = authority
+    payload["entryAllowed"] = bool(authority.get("entryAllowed"))
+    payload["liveOrderAllowed"] = bool(authority.get("liveOrderAllowed"))
+    if authority.get("entryAllowed"):
+        return payload
+
+    reason_codes = list(authority.get("reasonCodes") or ["OPERATING_AUTHORITY_BLOCK"])
+    reason_text = "; ".join(reason_codes)
+    payload["reviewOnly"] = True
+    safety = dict(payload.get("tradeSafety") or {})
+    safety.update({
+        "status": "BLOCKED",
+        "reviewOnly": True,
+        "isTradeBlocked": True,
+        "operatingState": authority.get("operatingState"),
+        "reasonCodes": reason_codes,
+    })
+    safety["reason"] = str(safety.get("reason") or reason_text)
+    payload["tradeSafety"] = safety
+    blocked_items: list[Any] = []
+    for item in payload.get("items") or []:
+        if not isinstance(item, dict):
+            blocked_items.append(item)
+            continue
+        row = dict(item)
+        row["isTradeBlocked"] = True
+        existing = str(row.get("tradeBlockStatus") or "").upper()
+        if existing in {"", "OK", "NORMAL"}:
+            row["tradeBlockStatus"] = "QUANT_OPERATING_GATE"
+        row["tradeBlockReason"] = row.get("tradeBlockReason") or reason_text
+        row["reviewOnly"] = True
+        row["entryAllowed"] = False
+        blocked_items.append(row)
+    payload["items"] = blocked_items
+    payload["blockedCount"] = sum(1 for item in blocked_items if isinstance(item, dict) and item.get("isTradeBlocked"))
+    return payload

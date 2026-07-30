@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1] / "mone-web-app" / "backend"
@@ -123,3 +124,16 @@ def test_missing_reports_never_look_healthy(tmp_path: Path, monkeypatch) -> None
     assert len(result["missingReports"]) == len(status.REPORT_FILES)
     assert "RISK_ALLOCATION_INTEGRITY_NOT_PROVEN" in result["decisionReasons"]
     assert "CHAMPION_RISK_ALLOCATION_NOT_PROVEN" in result["decisionReasons"]
+
+
+def test_report_freshness_rejects_old_or_undated_evidence(monkeypatch) -> None:
+    monkeypatch.setenv("MONE_QUANT_REPORT_MAX_AGE_HOURS", "48")
+    now = datetime(2026, 7, 31, 0, 0, tzinfo=timezone.utc)
+
+    old = status._report_freshness({"generatedAt": "2026-07-28T23:59:00+00:00"}, now)
+    undated = status._report_freshness({"status": "OK"}, now)
+
+    assert old["fresh"] is False
+    assert old["reason"] == "REPORT_TOO_OLD"
+    assert undated["fresh"] is False
+    assert undated["reason"] == "MISSING_GENERATED_AT"

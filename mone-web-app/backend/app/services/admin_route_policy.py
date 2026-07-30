@@ -3,6 +3,7 @@ from __future__ import annotations
 
 ADMIN_PREFIX = "/api/admin/"
 PROTECTED_MUTATION_PREFIXES = (
+    "/api/paper/",  # global paper ledgers and AI cycles are operational state
     "/api/journal/virtual-trades/capture",
     "/api/journal/virtual-trades/evaluate",
     "/api/journal/virtual-trades/",  # per-trade review actions

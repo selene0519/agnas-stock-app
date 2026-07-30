@@ -9,6 +9,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.services import ai_paper_trader as trader
+from app.services import quant_operating_governor as governor
 
 
 def _agent() -> dict[str, str]:
@@ -70,3 +71,62 @@ def test_walkforward_future_windows_are_not_usable(monkeypatch) -> None:
 
     assert board["status"] == "INVALID_TEMPORAL_DATA"
     assert board["verdict"] == "UNPROVEN"
+
+
+def _stub_cycle_views(monkeypatch) -> None:
+    monkeypatch.setattr(trader, "_market_list", lambda market: ["kr"])
+    monkeypatch.setattr(trader, "_active_context", lambda market: {"agent": _agent(), "agentId": "test", "generation": 1})
+    monkeypatch.setattr(trader, "_summary_for_market", lambda market, agent_id: {"portfolioValue": 100.0})
+    monkeypatch.setattr(trader, "_live_nav_metrics", lambda market, agent_id, summary: {})
+    monkeypatch.setattr(trader, "_survival_state", lambda market, summary: {"state": "ALIVE"})
+    monkeypatch.setattr(trader, "_walkforward_proof_board", lambda market, agent_id: {})
+
+
+def test_run_cycle_denies_new_entries_but_keeps_risk_reducing_exits(monkeypatch) -> None:
+    _stub_cycle_views(monkeypatch)
+    monkeypatch.setattr(
+        governor,
+        "entry_authority",
+        lambda market: {
+            "market": market,
+            "operatingState": "ABSTAIN",
+            "entryAllowed": False,
+            "paperEntryAllowed": False,
+            "exitAllowed": True,
+            "reasonCodes": ["QUANT_SHADOW_NOT_APPROVED"],
+        },
+    )
+    monkeypatch.setattr(trader, "_sell_triggered_positions", lambda market, dry_run: [{"action": "SELL", "symbol": "005930"}])
+    buy_calls: list[str] = []
+    monkeypatch.setattr(trader, "_buy_candidates", lambda market, dry_run: buy_calls.append(market) or [{"action": "BUY"}])
+
+    result = trader.run_cycle("kr", dry_run=True)
+    actions = result["markets"]["kr"]["actions"]
+
+    assert buy_calls == []
+    assert actions[0]["action"] == "SELL"
+    assert actions[1]["action"] == "SKIP"
+    assert actions[1]["scope"] == "NEW_ENTRY"
+    assert result["markets"]["kr"]["operatingAuthority"]["exitAllowed"] is True
+
+
+def test_run_cycle_calls_buy_leg_only_when_paper_entry_is_authorized(monkeypatch) -> None:
+    _stub_cycle_views(monkeypatch)
+    monkeypatch.setattr(
+        governor,
+        "entry_authority",
+        lambda market: {
+            "market": market,
+            "operatingState": "TRADEABLE",
+            "entryAllowed": True,
+            "paperEntryAllowed": True,
+            "exitAllowed": True,
+            "reasonCodes": [],
+        },
+    )
+    monkeypatch.setattr(trader, "_sell_triggered_positions", lambda market, dry_run: [])
+    monkeypatch.setattr(trader, "_buy_candidates", lambda market, dry_run: [{"action": "BUY", "symbol": "005930"}])
+
+    result = trader.run_cycle("kr", dry_run=True)
+
+    assert result["markets"]["kr"]["actions"] == [{"action": "BUY", "symbol": "005930"}]

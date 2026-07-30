@@ -39,3 +39,15 @@ def test_capture_evaluation_review_and_replay_require_admin_auth() -> None:
 def test_read_only_journal_status_is_not_accidentally_blocked() -> None:
     assert requires_admin_auth("GET", "/api/journal/self-learning/status") is False
     assert requires_admin_auth("GET", "/api/journal/virtual-trades") is False
+
+
+def test_all_paper_ledger_mutations_require_admin_auth() -> None:
+    protected = (
+        ("POST", "/api/paper/buy"),
+        ("POST", "/api/paper/sell"),
+        ("DELETE", "/api/paper/reset"),
+        ("PATCH", "/api/paper/stops/kr/005930"),
+        ("POST", "/api/paper/ai/run"),
+    )
+    assert all(requires_admin_auth(method, path) for method, path in protected)
+    assert requires_admin_auth("GET", "/api/paper/ai/status") is False

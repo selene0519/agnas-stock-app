@@ -15,6 +15,19 @@ def _stub_dependencies(monkeypatch, *, allowed=True, journal_status="RUNNING", r
     monkeypatch.setattr(governor.portfolio_risk_budget, "risk_budget", lambda market, user_id="": {"status": risk_status, "policy": {"maxPortfolioLossPct": 6.0}})
     monkeypatch.setattr(governor.data_quality, "data_quality", lambda market, mode: {"status": "OK", "killSwitch": kill_switch})
     monkeypatch.setattr(governor.session, "get_price_session", lambda market: {"isReviewMode": review, "priceSession": f"{market}_closed" if review else f"{market}_intraday"})
+    monkeypatch.setattr(
+        governor.quant_shadow_status,
+        "shadow_status",
+        lambda: {
+            "status": "OK",
+            "mode": "SHADOW_ONLY",
+            "decision": "SHADOW_TAKE",
+            "decisionReasons": [],
+            "missingReports": [],
+            "staleReports": [],
+            "liveTradingAllowed": False,
+        },
+    )
 
 
 def test_governor_allows_only_when_every_gate_passes(monkeypatch) -> None:
@@ -22,6 +35,9 @@ def test_governor_allows_only_when_every_gate_passes(monkeypatch) -> None:
     result = governor.operating_status("kr")["markets"]["kr"]
     assert result["operatingState"] == "TRADEABLE"
     assert result["entryAllowed"] is True
+    assert result["paperEntryAllowed"] is True
+    assert result["exitAllowed"] is True
+    assert result["liveOrderAllowed"] is False
 
 
 def test_governor_abstains_when_evidence_is_unproven(monkeypatch) -> None:
@@ -37,3 +53,50 @@ def test_governor_blocks_when_journal_is_not_healthy(monkeypatch) -> None:
     result = governor.operating_status("kr")["markets"]["kr"]
     assert result["operatingState"] == "BLOCKED"
     assert "JOURNAL_INTEGRITY_NOT_READY" in result["reasonCodes"]
+
+
+def test_governor_blocks_stale_quant_evidence_even_when_legacy_gate_passes(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch)
+    monkeypatch.setattr(
+        governor.quant_shadow_status,
+        "shadow_status",
+        lambda: {
+            "status": "WARN",
+            "mode": "SHADOW_ONLY",
+            "decision": "SHADOW_TAKE",
+            "decisionReasons": ["STALE_EVIDENCE_REPORTS"],
+            "missingReports": [],
+            "staleReports": ["residualAlpha"],
+            "liveTradingAllowed": False,
+        },
+    )
+
+    result = governor.operating_status("kr")["markets"]["kr"]
+
+    assert result["operatingState"] == "BLOCKED"
+    assert result["entryAllowed"] is False
+    assert result["exitAllowed"] is True
+    assert "QUANT_EVIDENCE_INTEGRITY_NOT_READY" in result["reasonCodes"]
+
+
+def test_recommendations_remain_visible_but_are_not_tradeable_when_authority_denies(monkeypatch) -> None:
+    monkeypatch.setattr(
+        governor,
+        "entry_authority",
+        lambda market, user_id="": {
+            "market": market,
+            "operatingState": "ABSTAIN",
+            "entryAllowed": False,
+            "liveOrderAllowed": False,
+            "reasonCodes": ["QUANT_SHADOW_NOT_APPROVED"],
+        },
+    )
+    payload = {"status": "OK", "items": [{"symbol": "AAPL", "tradeBlockStatus": "OK"}]}
+
+    result = governor.apply_entry_authority(payload, "us")
+
+    assert len(result["items"]) == 1
+    assert result["reviewOnly"] is True
+    assert result["entryAllowed"] is False
+    assert result["items"][0]["isTradeBlocked"] is True
+    assert result["items"][0]["tradeBlockStatus"] == "QUANT_OPERATING_GATE"
