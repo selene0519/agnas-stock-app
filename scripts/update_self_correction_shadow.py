@@ -67,6 +67,7 @@ PREDICTION_FIELDS = [
 ]
 SETTLEMENT_FIELDS = [
     "settlement_id", "prediction_id", "candidate_fingerprint", "settled_at", "signal_date",
+    "evaluation_policy_version", "evaluation_policy_fingerprint",
     "market", "mode", "horizon", "symbol", "champion_status", "challenger_status",
     "champion_outcome", "challenger_outcome", "champion_net_pnl_pct", "challenger_net_pnl_pct",
     "champion_exit_date", "challenger_exit_date", "record_hash",
@@ -644,6 +645,8 @@ def settle_predictions(
             "candidate_fingerprint": prediction.get("candidate_fingerprint"),
             "settled_at": now,
             "signal_date": prediction.get("signal_date"),
+            "evaluation_policy_version": vtj.EVALUATION_POLICY["version"],
+            "evaluation_policy_fingerprint": vtj._evaluation_policy_fingerprint(),
             "market": prediction.get("market"),
             "mode": prediction.get("mode"),
             "horizon": prediction.get("horizon"),
@@ -819,6 +822,11 @@ def _integrity(
         or _text(row.get("candidate_fingerprint"))
         != _text((prediction_by_id.get(_text(row.get("prediction_id"))) or {}).get("candidate_fingerprint"))
     )
+    settlement_policy_violations = sum(
+        1 for row in settlement_rows
+        if _text(row.get("evaluation_policy_version")) != _text(vtj.EVALUATION_POLICY["version"])
+        or _text(row.get("evaluation_policy_fingerprint")) != vtj._evaluation_policy_fingerprint()
+    )
     return {
         "registryHashViolations": sum(1 for row in registry_rows if _text(row.get("record_hash")) != _registry_hash(row)),
         "predictionHashViolations": sum(1 for row in prediction_rows if _text(row.get("record_hash")) != _prediction_hash(row)),
@@ -829,6 +837,7 @@ def _integrity(
         "predictionLineageViolations": lineage_violations,
         "predictionRecordingTimeViolations": recording_time_violations,
         "predictionSettlementRelationshipViolations": relationship_violations,
+        "settlementEvaluationPolicyViolations": settlement_policy_violations,
         "forwardSealViolations": sum(1 for row in prediction_rows if _text(row.get("forward_seal_status")) != "SEALED_FORWARD"),
         "inputContractViolations": sum(1 for row in prediction_rows if _text(row.get("input_contract_version")) != INPUT_CONTRACT_VERSION),
     }
@@ -892,6 +901,8 @@ def _promotion(candidate: dict[str, Any], comparison: dict[str, Any], integrity:
         "candidateFingerprint": candidate.get("candidateFingerprint"),
         "shadowPolicyVersion": POLICY_VERSION,
         "shadowPolicyFingerprint": _policy_fingerprint(),
+        "evaluationPolicyVersion": vtj.EVALUATION_POLICY["version"],
+        "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
         "completedSignalDates": comparison.get("completedSignalDates"),

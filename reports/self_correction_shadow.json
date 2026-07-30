@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T17:36:17.760543+00:00",
+  "generatedAt": "2026-07-30T17:58:04.972307+00:00",
   "policy": {
-    "version": "self-correction-shadow-v1.2.0",
+    "version": "self-correction-shadow-v1.3.0",
     "inputContractVersion": "correction-shadow-input-v1",
     "maxPositions": 3,
     "maxActiveCandidates": 1,
@@ -23,6 +23,7 @@
     "maxRecordingDelayHours": 36.0,
     "requiresSealAfterCanonicalClose": true,
     "requiresSealBeforeNextSessionOpen": true,
+    "requiresExactEvaluationPolicyLineage": true,
     "initialRecordingGraceCalendarDays": 5,
     "maxPredictionSilenceCalendarDays": 5,
     "requiresCandidateRecordingFreshness": true,
@@ -32,7 +33,7 @@
     "requiresDrawdownNoWorseThanChampion": true,
     "autoPromotionAllowed": false,
     "humanApprovalRequired": true,
-    "fingerprint": "d708b0ffd5eecd3239e8"
+    "fingerprint": "2371fb929c113a0953b4"
   },
   "calibrationPolicy": {
     "version": "vtj-self-calibration-v2.2.0",
@@ -61,6 +62,7 @@
     "predictionLineageViolations": 0,
     "predictionRecordingTimeViolations": 0,
     "predictionSettlementRelationshipViolations": 0,
+    "settlementEvaluationPolicyViolations": 0,
     "forwardSealViolations": 0,
     "inputContractViolations": 0,
     "candidateRegistryImmutableConflicts": 0,
@@ -774,8 +776,8 @@
         "lastAttemptReason": "INPUT_CONTRACT_REJECTED",
         "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
         "registeredAt": "2026-07-30T15:50:57.789490+00:00",
-        "candidateAgeCalendarDays": 0.073,
-        "predictionSilenceCalendarDays": 0.073,
+        "candidateAgeCalendarDays": 0.088,
+        "predictionSilenceCalendarDays": 0.088,
         "initialGraceCalendarDays": 5.0,
         "maxPredictionSilenceCalendarDays": 5.0,
         "sealedPredictions": 0,

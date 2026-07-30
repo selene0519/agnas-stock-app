@@ -112,7 +112,7 @@ CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v1"
 CALIBRATION_PROMOTION_MIN_SIGNAL_DATES = 60
 CALIBRATION_PROMOTION_MIN_TRADES = 120
 CALIBRATION_SHADOW_POLICY = {
-    "version": "self-correction-shadow-v1.2.0",
+    "version": "self-correction-shadow-v1.3.0",
     "inputContractVersion": "correction-shadow-input-v1",
     "maxPositions": 3,
     "maxActiveCandidates": 1,
@@ -129,6 +129,7 @@ CALIBRATION_SHADOW_POLICY = {
     "maxRecordingDelayHours": 36.0,
     "requiresSealAfterCanonicalClose": True,
     "requiresSealBeforeNextSessionOpen": True,
+    "requiresExactEvaluationPolicyLineage": True,
     "initialRecordingGraceCalendarDays": 5,
     "maxPredictionSilenceCalendarDays": 5,
     "requiresCandidateRecordingFreshness": True,
@@ -192,6 +193,16 @@ EVALUATION_WINDOWS = {"short": 5, "swing": 20, "mid": 60}
 MARKET_COSTS = {
     "kr": {"buy_slippage": 0.001, "sell_slippage": 0.001, "tax_commission": 0.0021},
     "us": {"buy_slippage": 0.001, "sell_slippage": 0.001, "tax_commission": 0.0010},
+}
+EVALUATION_POLICY = {
+    "version": "vtj-evaluation-v2.0.0",
+    "futureBarsStrictlyAfterSignalDate": True,
+    "limitFillBarTargetEmbargo": True,
+    "sameBarTargetAndStop": "STOP_FIRST",
+    "stopGapFill": "WORSE_OF_STOP_OR_OPEN",
+    "entryWindows": ENTRY_WINDOWS,
+    "evaluationWindows": EVALUATION_WINDOWS,
+    "marketCosts": MARKET_COSTS,
 }
 # 일평균 거래금액(최근 20거래일) 기준 슬리피지 배수 — 거래량이 적은 종목은 같은 호가 슬리피지
 # 가정으로는 실제 체결가 충격을 과소평가하게 됨. 시장별 절대 단위(원/달러)가 달라 임계값을 분리.
@@ -283,6 +294,8 @@ JOURNAL_COLS = [
 
 EVALUATION_COLS = [
     "journal_id",
+    "evaluation_policy_version",
+    "evaluation_policy_fingerprint",
     "status",
     "outcome",
     "filled",
@@ -552,6 +565,10 @@ def _calibration_policy_fingerprint() -> str:
 
 def _calibration_shadow_policy_fingerprint() -> str:
     return _hash_payload(CALIBRATION_SHADOW_POLICY)[:20]
+
+
+def _evaluation_policy_fingerprint() -> str:
+    return _hash_payload(EVALUATION_POLICY)[:20]
 
 
 def _sealed_row_hash(row: dict[str, Any], columns: list[str]) -> str:
@@ -1896,7 +1913,14 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     costs = MARKET_COSTS.get(market, MARKET_COSTS["kr"])
     liquidity_mult = _liquidity_slippage_multiplier(ohlcv, market, as_of_ts)
     actual_buy = raw_fill * (1 + costs["buy_slippage"] * liquidity_mult)
-    exit_info = _find_exit(holding, entry, stop, target, eval_window)
+    exit_info = _find_exit(
+        holding,
+        entry,
+        stop,
+        target,
+        eval_window,
+        allow_first_bar_target=entry_type == "NEXT_OPEN",
+    )
     if not exit_info["completed"] and not exit_info["terminal"]:
         return _pending_eval(row, fill_date, actual_buy, entry_window, eval_window, holding, entry, stop, target)
 
@@ -1915,6 +1939,8 @@ def _evaluate_one(row: dict[str, Any]) -> dict[str, Any]:
     review_text = _review_text(row, outcome, failure, net, mfe, mae, regime_at_exit)
     return {
         "journal_id": row.get("journal_id"),
+        "evaluation_policy_version": EVALUATION_POLICY["version"],
+        "evaluation_policy_fingerprint": _evaluation_policy_fingerprint(),
         "status": "EVALUATED" if outcome not in {"CANCELLED_NOT_FILLED", "PENDING"} else "CANCELLED",
         "outcome": outcome,
         "filled": True,
@@ -1968,6 +1994,8 @@ def _evaluation_stub(
     detail = unknown_detail or review_text if canonical_reason == "UNKNOWN" else ""
     return {
         "journal_id": row.get("journal_id"),
+        "evaluation_policy_version": EVALUATION_POLICY["version"],
+        "evaluation_policy_fingerprint": _evaluation_policy_fingerprint(),
         "status": status,
         "outcome": outcome,
         "filled": False,
@@ -2029,25 +2057,41 @@ def _row_date(row: Any) -> str:
     return str(value or "")[:10]
 
 
-def _find_exit(holding: pd.DataFrame, entry: float, stop: float, target: float, eval_window: int) -> dict[str, Any]:
+def _find_exit(
+    holding: pd.DataFrame,
+    entry: float,
+    stop: float,
+    target: float,
+    eval_window: int,
+    *,
+    allow_first_bar_target: bool = True,
+) -> dict[str, Any]:
     first_target_date = ""
     first_stop_date = ""
     for idx, bar in holding.iterrows():
         high = _safe_float(bar.get("high")) or _safe_float(bar.get("close"))
         low = _safe_float(bar.get("low")) or _safe_float(bar.get("close"))
+        open_price = _safe_float(bar.get("open")) or _safe_float(bar.get("close"))
         close = _safe_float(bar.get("close")) or entry
         if high is None or low is None:
             continue
         target_hit = high >= target
         stop_hit = low <= stop
+        # A daily LIMIT_TOUCH bar does not reveal whether its high occurred
+        # before or after the entry was filled. Never credit a target on that
+        # first bar unless entry was fixed at the opening print.
+        if int(idx) == 0 and not allow_first_bar_target:
+            target_hit = False
         row_date = _row_date(bar)
         if target_hit and stop_hit:
             first_target_date = first_target_date or row_date
             first_stop_date = first_stop_date or row_date
-            return _exit_payload("STOP", stop, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop=False)
+            stop_fill = min(stop, open_price) if open_price is not None else stop
+            return _exit_payload("STOP", stop_fill, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop=False)
         if stop_hit:
             first_stop_date = first_stop_date or row_date
-            return _exit_payload("STOP", stop, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop=False)
+            stop_fill = min(stop, open_price) if open_price is not None else stop
+            return _exit_payload("STOP", stop_fill, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop=False)
         if target_hit:
             first_target_date = first_target_date or row_date
             return _exit_payload("TARGET", target, row_date, int(idx) + 1, first_target_date, first_stop_date, target_before_stop=True)
@@ -3168,6 +3212,8 @@ def _calibration_promotion_verdict(
         (_text(certificate.get("shadowPolicyVersion")) == _text(CALIBRATION_SHADOW_POLICY.get("version")), "PROMOTION_SHADOW_POLICY_VERSION_MISMATCH"),
         (_text(certificate.get("shadowPolicyFingerprint")) == _calibration_shadow_policy_fingerprint(), "PROMOTION_SHADOW_POLICY_FINGERPRINT_MISMATCH"),
         (_text(certificate.get("calibrationPolicyFingerprint")) == _calibration_policy_fingerprint(), "PROMOTION_POLICY_FINGERPRINT_MISMATCH"),
+        (_text(certificate.get("evaluationPolicyVersion")) == _text(EVALUATION_POLICY.get("version")), "PROMOTION_EVALUATION_POLICY_VERSION_MISMATCH"),
+        (_text(certificate.get("evaluationPolicyFingerprint")) == _evaluation_policy_fingerprint(), "PROMOTION_EVALUATION_POLICY_FINGERPRINT_MISMATCH"),
         (_text(certificate.get("approvalRecordHash")) == _text(approval.get("record_hash")), "PROMOTION_APPROVAL_HASH_MISMATCH"),
         (_text(certificate.get("evidenceFingerprint")) == evidence_fingerprint, "PROMOTION_EVIDENCE_MISMATCH"),
         (certificate.get("promotionEligible") is True, "PROMOTION_NOT_ELIGIBLE"),

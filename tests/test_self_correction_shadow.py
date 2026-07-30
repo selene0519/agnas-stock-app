@@ -480,6 +480,23 @@ def test_rehashed_prediction_cannot_escape_cross_ledger_lineage_audit() -> None:
     assert integrity["predictionLineageViolations"] == 1
 
 
+def test_settlement_with_wrong_evaluation_policy_cannot_enter_promotion_evidence() -> None:
+    settlement = {field: "" for field in shadow.SETTLEMENT_FIELDS}
+    settlement.update({
+        "settlement_id": "settlement-a",
+        "prediction_id": "prediction-a",
+        "candidate_fingerprint": "candidate-a",
+        "evaluation_policy_version": "obsolete-evaluator",
+        "evaluation_policy_fingerprint": "obsolete-fingerprint",
+    })
+    settlement["record_hash"] = shadow._settlement_hash(settlement)
+
+    integrity = shadow._integrity([_registry_row()], [], [settlement])
+
+    assert integrity["settlementHashViolations"] == 0
+    assert integrity["settlementEvaluationPolicyViolations"] == 1
+
+
 def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
     predictions = []
     settlements = []
@@ -527,6 +544,8 @@ def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
                 "prediction_id": prediction_id,
                 "candidate_fingerprint": "candidate-a",
                 "signal_date": signal_date,
+                "evaluation_policy_version": shadow.vtj.EVALUATION_POLICY["version"],
+                "evaluation_policy_fingerprint": shadow.vtj._evaluation_policy_fingerprint(),
                 "champion_net_pnl_pct": 1.0,
                 "challenger_net_pnl_pct": 2.0,
             })
@@ -543,6 +562,8 @@ def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
     assert decision["promotionEligible"] is True
     assert certificate is not None
     assert certificate["candidateFingerprint"] == "candidate-a"
+    assert certificate["evaluationPolicyVersion"] == shadow.vtj.EVALUATION_POLICY["version"]
+    assert certificate["evaluationPolicyFingerprint"] == shadow.vtj._evaluation_policy_fingerprint()
     assert certificate["recordHash"] == shadow.vtj._promotion_certificate_hash(certificate)
 
     losing_settlements = []
@@ -595,6 +616,8 @@ def test_clustered_single_date_never_qualifies_for_promotion() -> None:
             "prediction_id": f"p-{index}",
             "candidate_fingerprint": "candidate-a",
             "signal_date": "2026-01-02",
+            "evaluation_policy_version": shadow.vtj.EVALUATION_POLICY["version"],
+            "evaluation_policy_fingerprint": shadow.vtj._evaluation_policy_fingerprint(),
             "champion_net_pnl_pct": 1,
             "challenger_net_pnl_pct": 2,
         })

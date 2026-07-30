@@ -64,6 +64,8 @@ def _write_valid_calibration_promotion_certificate(approval: dict, suggestion: d
         "candidateFingerprint": candidate_fingerprint,
         "shadowPolicyVersion": vtj.CALIBRATION_SHADOW_POLICY["version"],
         "shadowPolicyFingerprint": vtj._calibration_shadow_policy_fingerprint(),
+        "evaluationPolicyVersion": vtj.EVALUATION_POLICY["version"],
+        "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
         "completedSignalDates": vtj.CALIBRATION_PROMOTION_MIN_SIGNAL_DATES,
@@ -263,6 +265,68 @@ def test_stop_wins_when_target_and_stop_touch_same_daily_candle() -> None:
     assert out["targetTouched"] is True
     assert out["stopTouched"] is True
     assert out["targetBeforeStop"] is False
+
+
+def test_limit_touch_does_not_credit_ambiguous_target_on_fill_bar() -> None:
+    holding = pd.DataFrame([
+        {"date": "2026-01-02", "open": 105, "high": 112, "low": 99, "close": 104},
+        {"date": "2026-01-03", "open": 104, "high": 106, "low": 100, "close": 105},
+    ])
+
+    out = vtj._find_exit(
+        holding,
+        entry=100,
+        stop=95,
+        target=110,
+        eval_window=2,
+        allow_first_bar_target=False,
+    )
+
+    assert out["exit_kind"] == "TIME"
+    assert out["targetTouched"] is False
+
+
+def test_stop_gap_uses_open_instead_of_optimistic_stop_price() -> None:
+    holding = pd.DataFrame([
+        {"date": "2026-01-02", "open": 90, "high": 94, "low": 88, "close": 91},
+    ])
+
+    out = vtj._find_exit(holding, entry=100, stop=95, target=110, eval_window=5)
+
+    assert out["exit_kind"] == "STOP"
+    assert out["exit_price"] == 90
+
+
+def test_evaluate_one_applies_limit_fill_bar_target_embargo(monkeypatch: pytest.MonkeyPatch) -> None:
+    rows = [
+        {"date": "2026-01-01", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+        {"date": "2026-01-02", "open": 105, "high": 112, "low": 99, "close": 104, "volume": 1000},
+    ]
+    rows.extend([
+        {"date": f"2026-01-0{day}", "open": 104, "high": 108, "low": 99, "close": 105, "volume": 1000}
+        for day in range(3, 7)
+    ])
+    ohlcv = pd.DataFrame(rows)
+    ohlcv["_date_ts"] = pd.to_datetime(ohlcv["date"], errors="coerce").dt.normalize()
+    monkeypatch.setattr(vtj, "_load_ohlcv", lambda market, symbol: (ohlcv.copy(), "pytest", "actual_ohlcv"))
+
+    out = vtj._evaluate_one({
+        "journal_id": "ambiguous-fill-target",
+        "market": "kr",
+        "symbol": "TEST",
+        "horizon": "short",
+        "as_of_date": "2026-01-01",
+        "entry_type": "LIMIT_TOUCH",
+        "entry_price": 100,
+        "stop_price": 95,
+        "target_price": 110,
+    })
+
+    assert out["outcome"] != "TARGET_HIT"
+    assert out["targetTouched"] is False
+    assert out["exit_date"] == "2026-01-06"
+    assert out["evaluation_policy_version"] == vtj.EVALUATION_POLICY["version"]
+    assert out["evaluation_policy_fingerprint"] == vtj._evaluation_policy_fingerprint()
 
 
 def test_evaluate_one_records_touch_order_and_excursions(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1508,6 +1572,8 @@ def test_sealed_approval_rejects_tamper_and_regression_but_allows_newer_evidence
         "candidateFingerprint": "candidate-a",
         "shadowPolicyVersion": vtj.CALIBRATION_SHADOW_POLICY["version"],
         "shadowPolicyFingerprint": vtj._calibration_shadow_policy_fingerprint(),
+        "evaluationPolicyVersion": vtj.EVALUATION_POLICY["version"],
+        "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
         "completedSignalDates": 10,
