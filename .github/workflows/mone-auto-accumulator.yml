@@ -728,8 +728,11 @@ jobs:
           status = vtj.self_learning_status(market="all")
           print("[vtj-self-learning/status]")
           print(json.dumps(status, ensure_ascii=False, indent=2))
-          result = vtj.auto_self_calibrate(market="all", applied_by="github-actions-vtj-self-learning", apply=True, max_applications=4)
-          print("[vtj-self-learning/apply]")
+          # Shadow-only until an unseen independent cohort proves incremental
+          # after-cost value. Suggestions remain visible, but CI cannot mutate
+          # live correction parameters.
+          result = vtj.auto_self_calibrate(market="all", applied_by="github-actions-vtj-self-learning", apply=False, max_applications=4)
+          print("[vtj-self-learning/shadow]")
           print(json.dumps(result, ensure_ascii=False, indent=2))
           PY
           echo "vtj-self-learning: exit $?"
@@ -746,7 +749,7 @@ jobs:
           from pathlib import Path
           sys.path.insert(0, str(Path.cwd()))
           from app.services import virtual_trade_journal as vtj
-          result = vtj.calibration_performance_gate(market="all", auto_rollback=True)
+          result = vtj.calibration_performance_gate(market="all", auto_rollback=False)
           print("[vtj-self-learning/performance-gate]")
           print(json.dumps(result, ensure_ascii=False, indent=2))
           PY

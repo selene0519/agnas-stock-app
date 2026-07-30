@@ -56,6 +56,7 @@ OHLCV = ROOT / "data" / "market" / "ohlcv"
 JOURNAL = ROOT / "data" / "virtual_trade_journal.csv"
 MARKER = ROOT / "reports" / "clean_window_marker.json"
 OUT = ROOT / "reports" / "recommendation_alpha.json"
+KR_MASTER = ROOT / "data" / "stock_master_kr.csv"
 
 # 추정창: 이벤트 11거래일 전에서 끝난다. 이벤트 직전 며칠은 정보가 새기
 # 시작하는 구간이라 시장모형 적합에서 빼는 것이 표준이다.
@@ -63,8 +64,10 @@ EST_START, EST_END = -250, -11
 MIN_EST_OBS = 60           # 이보다 적으면 alpha/beta를 못 믿는다
 DEFAULT_WINDOWS = (1, 5, 20)
 MIN_TRUSTWORTHY_N = 30
+MIN_TRUSTWORTHY_DATES = 30
 
-BENCHMARK = {"kr": "KOSPI"}   # KOSDAQ 종목도 KOSPI를 시장 대용치로 쓴다
+DEFAULT_BENCHMARKS = {"kr": "KOSPI", "us": "SPY"}
+BENCHMARK = DEFAULT_BENCHMARKS  # compatibility for the retained v1 diagnostic
 
 
 def _read_csv(path: Path) -> list[dict]:
@@ -162,7 +165,79 @@ def _bootstrap_ci(values: np.ndarray, n_boot: int = 5000,
     return lo, hi
 
 
-def compute(windows: tuple[int, ...], since: str | None) -> dict:
+def _cluster_bootstrap_ci(
+    values: np.ndarray,
+    clusters: list[str],
+    n_boot: int = 5000,
+    confidence: float = 0.95,
+    seed: int = 20260730,
+) -> tuple[float, float, float, int]:
+    """Equal-date block bootstrap for signals sharing one market shock."""
+    grouped: dict[str, list[float]] = {}
+    for value, cluster in zip(values, clusters):
+        grouped.setdefault(str(cluster), []).append(float(value))
+    daily_means = np.array([np.mean(grouped[key]) for key in sorted(grouped)], dtype=float)
+    if len(daily_means) < 2:
+        mean = float(daily_means.mean()) if len(daily_means) else float("nan")
+        return float("nan"), float("nan"), mean, len(daily_means)
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(daily_means), size=(n_boot, len(daily_means)))
+    means = daily_means[idx].mean(axis=1)
+    lo = float(np.percentile(means, (1 - confidence) / 2 * 100))
+    hi = float(np.percentile(means, (1 + confidence) / 2 * 100))
+    return lo, hi, float(daily_means.mean()), len(daily_means)
+
+
+def _kr_benchmark_map() -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for row in _read_csv(KR_MASTER):
+        code = str(row.get("code") or row.get("symbol") or "").strip().split(".")[0].zfill(6)
+        market_type = str(row.get("market_type") or row.get("note") or "").upper()
+        if code.isdigit():
+            mapping[code] = "KOSDAQ" if "KOSDAQ" in market_type or "코스닥" in market_type else "KOSPI"
+    return mapping
+
+
+def _decision_key(row: dict) -> str:
+    return "|".join(
+        str(row.get(key) or "").strip().lower()
+        for key in ("as_of_date", "market", "symbol")
+    )
+
+
+def _dedupe_journal_rows(rows: list[dict]) -> tuple[list[dict], int]:
+    selected: dict[str, dict] = {}
+    for row in rows:
+        key = _decision_key(row)
+        previous = selected.get(key)
+        if previous is None:
+            selected[key] = row
+            continue
+        previous_score = _num(previous.get("final_rank_score"))
+        score = _num(row.get("final_rank_score"))
+        if (score if score is not None else float("-inf")) > (
+            previous_score if previous_score is not None else float("-inf")
+        ):
+            selected[key] = row
+    return list(selected.values()), len(rows) - len(selected)
+
+
+def _select_strategy_cohort(rows: list[dict], fingerprint: str | None) -> tuple[list[dict], str]:
+    if fingerprint:
+        return [row for row in rows if str(row.get("strategy_fingerprint") or "").strip() == fingerprint], fingerprint
+    identified = [row for row in rows if str(row.get("strategy_fingerprint") or "").strip()]
+    if not identified:
+        return rows, "LEGACY_UNFINGERPRINTED"
+    latest_by_fingerprint: dict[str, str] = {}
+    for row in identified:
+        fp = str(row.get("strategy_fingerprint") or "").strip()
+        date = str(row.get("as_of_date") or "")[:10]
+        latest_by_fingerprint[fp] = max(latest_by_fingerprint.get(fp, ""), date)
+    selected = max(latest_by_fingerprint, key=lambda fp: latest_by_fingerprint[fp])
+    return [row for row in identified if str(row.get("strategy_fingerprint") or "").strip() == selected], selected
+
+
+def _compute_v1_legacy(windows: tuple[int, ...], since: str | None) -> dict:
     bench = _load_series(OHLCV / f"kr_{BENCHMARK['kr']}_daily.csv")
     if not bench:
         return {"status": "NO_BENCHMARK"}
@@ -338,15 +413,260 @@ def compute(windows: tuple[int, ...], since: str | None) -> dict:
     return result
 
 
+def compute(
+    windows: tuple[int, ...],
+    since: str | None,
+    fingerprint: str | None = None,
+    market: str = "all",
+) -> dict:
+    """Compute fingerprint-isolated, market/date-cluster-aware recommendation alpha."""
+    events: list[dict] = []
+    skipped = {
+        "noOhlcv": 0,
+        "noBenchmark": 0,
+        "shortEstimation": 0,
+        "noBenchmarkDate": 0,
+        "shortEventWindow": 0,
+        "replaySource": 0,
+        "beforeSince": 0,
+        "marketMismatch": 0,
+        "duplicateDecision": 0,
+    }
+    requested_market = str(market or "all").lower()
+    raw_forward: list[dict] = []
+    for row in _read_csv(JOURNAL):
+        if str(row.get("source_type") or "").upper() != "FORWARD_PAPER_TRADE":
+            skipped["replaySource"] += 1
+            continue
+        row_market = str(row.get("market") or "").lower()
+        if row_market not in {"kr", "us"} or (requested_market != "all" and row_market != requested_market):
+            skipped["marketMismatch"] += 1
+            continue
+        raw_forward.append(row)
+
+    cohort_rows, selected_fingerprint = _select_strategy_cohort(raw_forward, fingerprint)
+    filtered: list[dict] = []
+    for row in cohort_rows:
+        signal_date = str(row.get("as_of_date") or row.get("captured_at") or "")[:10]
+        if since and signal_date < since:
+            skipped["beforeSince"] += 1
+            continue
+        filtered.append(row)
+    rows, duplicate_count = _dedupe_journal_rows(filtered)
+    skipped["duplicateDecision"] = duplicate_count
+
+    kr_benchmarks = _kr_benchmark_map()
+    stock_cache: dict[tuple[str, str], tuple[list[str], np.ndarray] | None] = {}
+    benchmark_cache: dict[tuple[str, str], tuple[list[str], np.ndarray] | None] = {}
+
+    for row in rows:
+        row_market = str(row.get("market") or "").lower()
+        signal_date = str(row.get("as_of_date") or row.get("captured_at") or "")[:10]
+        raw_symbol = str(row.get("symbol") or "").strip().upper().split(".")[0]
+        symbol = raw_symbol.zfill(6) if row_market == "kr" else raw_symbol
+        if not signal_date or not symbol or (row_market == "kr" and not symbol.isdigit()):
+            continue
+
+        benchmark_symbol = kr_benchmarks.get(symbol, DEFAULT_BENCHMARKS["kr"]) if row_market == "kr" else DEFAULT_BENCHMARKS["us"]
+        benchmark_key = (row_market, benchmark_symbol)
+        if benchmark_key not in benchmark_cache:
+            benchmark_cache[benchmark_key] = _load_series(OHLCV / f"{row_market}_{benchmark_symbol}_daily.csv")
+        bench = benchmark_cache[benchmark_key]
+        if not bench:
+            skipped["noBenchmark"] += 1
+            continue
+        benchmark_dates, benchmark_closes = bench
+        benchmark_returns = _returns(benchmark_closes)
+        benchmark_index = {day: idx for idx, day in enumerate(benchmark_dates)}
+
+        stock_key = (row_market, symbol)
+        if stock_key not in stock_cache:
+            stock_cache[stock_key] = _load_series(OHLCV / f"{row_market}_{symbol}_daily.csv")
+        series = stock_cache[stock_key]
+        if not series:
+            skipped["noOhlcv"] += 1
+            continue
+        stock_dates, stock_closes = series
+        stock_returns = _returns(stock_closes)
+
+        position = bisect.bisect_left(stock_dates, signal_date)
+        if position <= 0 or position >= len(stock_dates):
+            skipped["noBenchmarkDate"] += 1
+            continue
+        event_index = position - 1
+        estimate_low, estimate_high = event_index + EST_START, event_index + EST_END
+        if estimate_low < 0 or (estimate_high - estimate_low) < MIN_EST_OBS:
+            skipped["shortEstimation"] += 1
+            continue
+        if event_index + max(windows) >= len(stock_returns):
+            skipped["shortEventWindow"] += 1
+            continue
+
+        def benchmark_at(day: str) -> float | None:
+            idx = benchmark_index.get(day)
+            return float(benchmark_returns[idx - 1]) if idx and 0 < idx <= len(benchmark_returns) else None
+
+        estimate_days = stock_dates[estimate_low + 1: estimate_high + 1]
+        pairs = [
+            (stock_returns[estimate_low + offset], benchmark_at(day))
+            for offset, day in enumerate(estimate_days)
+        ]
+        pairs = [(stock_return, benchmark_return) for stock_return, benchmark_return in pairs if benchmark_return is not None]
+        if len(pairs) < MIN_EST_OBS:
+            skipped["shortEstimation"] += 1
+            continue
+        estimate_stock = np.array([stock_return for stock_return, _ in pairs])
+        estimate_benchmark = np.array([benchmark_return for _, benchmark_return in pairs])
+        alpha, beta, r2 = fit_market_model(estimate_stock, estimate_benchmark)
+
+        cars: dict[str, float] = {}
+        raw_returns: dict[str, float] = {}
+        complete = True
+        for window in windows:
+            abnormal_sum = 0.0
+            raw_sum = 0.0
+            for offset in range(0, window + 1):
+                idx = event_index + offset
+                if idx >= len(stock_returns):
+                    complete = False
+                    break
+                benchmark_return = benchmark_at(stock_dates[idx + 1])
+                if benchmark_return is None:
+                    continue
+                abnormal_sum += float(stock_returns[idx]) - (alpha + beta * benchmark_return)
+                raw_sum += float(stock_returns[idx])
+            if not complete:
+                break
+            cars[f"car{window}"] = abnormal_sum * 100.0
+            raw_returns[f"raw{window}"] = raw_sum * 100.0
+        if not complete:
+            skipped["shortEventWindow"] += 1
+            continue
+
+        events.append({
+            "date": signal_date,
+            "cluster": f"{row_market}|{signal_date}",
+            "market": row_market,
+            "symbol": symbol,
+            "benchmark": benchmark_symbol,
+            "strategyFingerprint": selected_fingerprint,
+            "beta": round(beta, 3),
+            "r2": round(r2, 3),
+            **{key: round(value, 4) for key, value in cars.items()},
+            **{key: round(value, 4) for key, value in raw_returns.items()},
+        })
+
+    result: dict = {
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "since": since,
+        "market": requested_market,
+        "strategyFingerprint": selected_fingerprint,
+        "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
+        "method": (
+            "Pre-event market-model CAR. KR uses KOSPI/KOSDAQ by listing market; US uses SPY. "
+            "Inference resamples equal-weight market-date blocks instead of recommendation rows."
+        ),
+        "reference": "virattt/ai-hedge-fund v2/event_study (recommendation date as event)",
+        "events": len(events),
+        "skipped": skipped,
+        "windows": {},
+    }
+    if not events:
+        result["status"] = "NO_EVENTS"
+        return result
+
+    result["status"] = "OK"
+    result["avgBeta"] = round(float(np.mean([event["beta"] for event in events])), 3)
+    result["eventsByMarket"] = {
+        name: sum(1 for event in events if event["market"] == name)
+        for name in ("kr", "us")
+        if any(event["market"] == name for event in events)
+    }
+    result["benchmarks"] = sorted({f"{event['market']}:{event['benchmark']}" for event in events})
+
+    dates = sorted(event["date"] for event in events)
+    months: dict[str, int] = {}
+    for event_date in dates:
+        months[event_date[:7]] = months.get(event_date[:7], 0) + 1
+    result["eventDateRange"] = {"min": dates[0], "max": dates[-1]}
+    result["eventsByMonth"] = months
+    result["caveats"] = [
+        "Long event windows exclude recent signals and bias the sample toward older cohorts.",
+        "Pre-event beta can be stale during abrupt regime changes.",
+        "Positive CAR does not imply positive account PnL; raw return must also be positive.",
+        "US sector benchmarks are not yet applied; US residuals currently use SPY.",
+    ]
+
+    clusters = [event["cluster"] for event in events]
+    distinct_clusters = len(set(clusters))
+    distinct_dates = len(set(dates))
+    span_days = (datetime.fromisoformat(dates[-1]) - datetime.fromisoformat(dates[0])).days + 1
+    result["clustering"] = {
+        "distinctEventDates": distinct_dates,
+        "distinctMarketDateBlocks": distinct_clusters,
+        "calendarSpanDays": span_days,
+        "eventsPerDate": round(len(events) / max(distinct_clusters, 1), 1),
+        "isClustered": len(events) > distinct_clusters,
+        "inferenceMethod": "EQUAL_MARKET_DATE_BLOCK_BOOTSTRAP",
+        "minBlocksForUse": MIN_TRUSTWORTHY_DATES,
+        "note": (
+            "Signals from one market-date share a shock. Row-level inference is diagnostic only; "
+            "promotion uses equal market-date block means and block bootstrap confidence intervals."
+        ),
+    }
+
+    unique_clusters = sorted(set(clusters))
+    for window in windows:
+        car = np.array([event[f"car{window}"] for event in events])
+        raw = np.array([event[f"raw{window}"] for event in events])
+        naive_t, naive_p = _t_test(car)
+        naive_low, naive_high = _bootstrap_ci(car)
+        block_low, block_high, block_mean, block_count = _cluster_bootstrap_ci(car, clusters)
+        daily_means = np.array([
+            np.mean([event[f"car{window}"] for event in events if event["cluster"] == cluster])
+            for cluster in unique_clusters
+        ])
+        block_t, block_p = _t_test(daily_means)
+        significant = bool(block_p < 0.05 and block_low > 0)
+        usable = bool(significant and block_count >= MIN_TRUSTWORTHY_DATES)
+        result["windows"][f"D+{window}"] = {
+            "events": len(car),
+            "independentMarketDateBlocks": block_count,
+            "meanCarPct": round(float(car.mean()), 4),
+            "blockMeanCarPct": round(block_mean, 4),
+            "meanRawReturnPct": round(float(raw.mean()), 4),
+            "marketComponentPct": round(float(raw.mean() - car.mean()), 4),
+            "positiveShare": round(float((car > 0).mean()), 4),
+            "tStat": round(block_t, 3),
+            "pValue": round(block_p, 5),
+            "significant": significant,
+            "bootstrapCi95": [round(block_low, 4), round(block_high, 4)],
+            "naiveRowInference": {
+                "tStat": round(naive_t, 3),
+                "pValue": round(naive_p, 5),
+                "bootstrapCi95": [round(naive_low, 4), round(naive_high, 4)],
+                "usableForPromotion": False,
+            },
+            "sampleWarning": (
+                None if block_count >= MIN_TRUSTWORTHY_DATES
+                else f"Only {block_count} independent market-date blocks; need {MIN_TRUSTWORTHY_DATES}."
+            ),
+            "significanceUsable": usable,
+        }
+    return result
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--windows", default="1,5,20")
     ap.add_argument("--all", action="store_true", help="clean window 이전 표본도 포함")
+    ap.add_argument("--market", choices=("all", "kr", "us"), default="all")
+    ap.add_argument("--fingerprint", default=None, help="특정 전략 fingerprint cohort만 분석")
     args = ap.parse_args()
     windows = tuple(int(x) for x in args.windows.split(",") if x.strip())
     since = None if args.all else _clean_window()
 
-    data = compute(windows, since)
+    data = compute(windows, since, fingerprint=args.fingerprint, market=args.market)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 

@@ -95,6 +95,10 @@ jobs:
           # 그 구분이 결론을 통째로 바꾼다.
           python scripts/analyze_recommendation_alpha.py --all
           echo "analyze_recommendation_alpha: exit $?"
+          # Date-only clean windows can mix different code/calibration regimes.
+          # Audit immutable strategy cohorts and independent economic decisions.
+          python scripts/audit_strategy_cohorts.py
+          echo "audit_strategy_cohorts: exit $?"
           set -e
 
       - name: 데이터 신선도 헬스게이트 + 알람 (조용한 실패 탐지)
@@ -135,6 +139,7 @@ jobs:
             git add reports/strategy_sleeve_nav.json 2>/dev/null || true
             git add reports/ledger_reconciliation.json reports/live_axis_analysis.json 2>/dev/null || true
             git add reports/recommendation_alpha.json 2>/dev/null || true
+            git add reports/strategy_cohort_audit.json 2>/dev/null || true
 
             if git diff --cached --quiet; then
               echo "변경 없음 — 커밋 건너뜀"

@@ -80,7 +80,47 @@ def _valid_recommendation(symbol: str = "TEST") -> dict:
         "priceSource": "pytest",
         "marketRegime": "RISK_ON",
         "generatedAt": "2026-06-18T08:20:00",
+        "appliedCorrectionVersion": 42,
+        "modelVersion": "ranker-test-v1",
+        "codeVersion": "deadbeef",
     }
+
+
+def test_snapshot_records_immutable_strategy_and_decision_identity() -> None:
+    item = _valid_recommendation("IDENTITY")
+
+    first = vtj._snapshot_from_item(item, "FORWARD_PAPER_TRADE", "2026-06-18")
+    second = vtj._snapshot_from_item({**item, "finalRankScore": 91}, "FORWARD_PAPER_TRADE", "2026-06-18")
+
+    assert first["decision_unit_id"] == second["decision_unit_id"]
+    assert first["strategy_fingerprint"] == second["strategy_fingerprint"]
+    assert first["strategy_identity_status"] == "FULL"
+    assert first["correction_version_at_signal"] == "42"
+    assert first["data_cutoff_at_signal"] == "2026-06-18"
+
+
+def test_decision_unit_dedup_keeps_highest_score_and_marks_legacy_rows() -> None:
+    rows = [
+        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "final_rank_score": 70},
+        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "final_rank_score": 82},
+        {"as_of_date": "2026-06-19", "market": "kr", "symbol": "005930", "final_rank_score": 65},
+    ]
+
+    out = vtj._dedupe_decision_units(rows)
+
+    assert len(out) == 2
+    assert out[0]["final_rank_score"] == 82
+    assert all(row["strategy_fingerprint"] == "LEGACY_UNFINGERPRINTED" for row in out)
+
+
+def test_strategy_diagnostics_do_not_drop_the_same_symbol_from_other_sleeves() -> None:
+    rows = [
+        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "mode": "balanced", "horizon": "swing"},
+        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "mode": "aggressive", "horizon": "swing"},
+    ]
+
+    assert len(vtj._dedupe_decision_units(rows)) == 1
+    assert len(vtj._dedupe_decision_units(rows, within_strategy=True)) == 2
 
 
 @pytest.fixture()
@@ -839,7 +879,7 @@ def test_attribution_analysis_includes_ols_regression_when_sample_is_ready(isola
     assert out["regression"]["coefficients"]
 
 
-def test_auto_self_calibrate_auto_approves_and_applies_only_policy_eligible_items(
+def test_auto_self_calibrate_runs_shadow_only_while_auto_apply_is_frozen(
     isolated_vtj: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -900,16 +940,16 @@ def test_auto_self_calibrate_auto_approves_and_applies_only_policy_eligible_item
     correction = correction_store.load_correction("kr", "balanced", "swing")
     status = vtj.self_learning_status("kr")
 
-    assert result["status"] == "OK"
+    assert result["status"] == "SHADOW_ONLY"
     assert result["eligibleCount"] >= 1
-    assert result["approvedCount"] == 1
-    assert result["applied"] == 1
-    assert correction["journalCalibrationApplied"] is True
-    assert correction["journalCalibrationAppliedBy"] == "auto_self_learning"
-    assert correction["filterAdjustments"]["maxDistanceToEntryPct"] > 0
-    assert status["autoApprovalCount"] >= 1
+    assert result["wouldApplyCount"] == 1
+    assert result["approvedCount"] == 0
+    assert result["applied"] == 0
+    assert correction.get("journalCalibrationApplied") is not True
+    assert result["applyResult"]["reason"] == "AUTO_APPLY_FROZEN"
+    assert status["autoApprovalCount"] == 0
     assert status["quality"]["score"] > 0
-    assert status["lastSelfLearningRun"]["applied"] == 1
+    assert status["lastSelfLearningRun"]["applied"] == 0
 
 
 def test_auto_self_calibrate_blocks_when_holdout_drift_is_detected(isolated_vtj: Path) -> None:
@@ -967,7 +1007,7 @@ def test_auto_self_calibrate_blocks_when_holdout_drift_is_detected(isolated_vtj:
 
     result = vtj.auto_self_calibrate("kr", apply=True, max_applications=2)
 
-    assert result["status"] == "OK"
+    assert result["status"] == "SHADOW_ONLY"
     assert result["applied"] == 0
     assert any(row["reason"] == "HOLDOUT_DRIFT" for row in result["blocked"])
 

@@ -50,6 +50,7 @@ DATA_STOCKAPP = ROOT / "data" / "stockapp"
 
 MODES = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")
+RECOMMENDATION_MODEL_VERSION = "mone-v36-deterministic-ranker-v1"
 MODE_LABELS = {"conservative": "보수", "balanced": "균형", "aggressive": "공격"}
 HORIZON_LABELS = {"short": "단기", "swing": "스윙", "mid": "중기"}
 
@@ -1903,6 +1904,12 @@ def generate_recommendations() -> dict[str, Any]:
                     "correctionConfidence": _corr_confidence,
                     "correctionSummary": _corr_summary,
                     "appliedCorrectionVersion": _corr_version,
+                    "modelVersion": RECOMMENDATION_MODEL_VERSION,
+                    "codeVersion": (
+                        os.environ.get("GITHUB_SHA")
+                        or os.environ.get("RENDER_GIT_COMMIT")
+                        or "unknown"
+                    ),
                     # 자가보정 루프: 검증된 승률(strategy_win_rates.json) → confidence 가중 반영
                     "verifiedWinRate": round(wr_prob * 100, 1),
                     "winRateSampleCount": wr_samples,

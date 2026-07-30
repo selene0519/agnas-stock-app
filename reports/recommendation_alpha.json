@@ -1,86 +1,138 @@
 {
-  "generatedAt": "2026-07-29T10:42:07.505233+00:00",
+  "generatedAt": "2026-07-30T06:36:51.180923+00:00",
   "since": null,
-  "method": "시장모형 이벤트 스터디. 추정창 [-250,-11] 거래일에서 R_stock = alpha + beta*R_KOSPI 를 OLS 적합 후, 이벤트창의 초과수익을 누적(CAR). 추정창이 이벤트 이전에서 끝나 룩어헤드 없음.",
-  "reference": "virattt/ai-hedge-fund v2/event_study (실적발표 대신 추천일을 이벤트로 사용)",
-  "events": 150,
+  "market": "all",
+  "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+  "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
+  "method": "Pre-event market-model CAR. KR uses KOSPI/KOSDAQ by listing market; US uses SPY. Inference resamples equal-weight market-date blocks instead of recommendation rows.",
+  "reference": "virattt/ai-hedge-fund v2/event_study (recommendation date as event)",
+  "events": 200,
   "skipped": {
     "noOhlcv": 0,
-    "shortEstimation": 17,
+    "noBenchmark": 0,
+    "shortEstimation": 10,
     "noBenchmarkDate": 0,
-    "shortEventWindow": 69,
+    "shortEventWindow": 187,
     "replaySource": 1298,
-    "beforeSince": 0
+    "beforeSince": 0,
+    "marketMismatch": 0,
+    "duplicateDecision": 483
   },
   "windows": {
     "D+1": {
-      "events": 150,
-      "meanCarPct": 0.9091,
-      "meanRawReturnPct": -1.2994,
-      "marketComponentPct": -2.2085,
-      "positiveShare": 0.5533,
-      "tStat": 2.133,
-      "pValue": 0.03295,
-      "significant": true,
+      "events": 200,
+      "independentMarketDateBlocks": 13,
+      "meanCarPct": 0.1971,
+      "blockMeanCarPct": 1.4453,
+      "meanRawReturnPct": -0.3357,
+      "marketComponentPct": -0.5328,
+      "positiveShare": 0.505,
+      "tStat": 1.26,
+      "pValue": 0.20767,
+      "significant": false,
       "bootstrapCi95": [
-        0.0769,
-        1.7624
+        -0.3109,
+        3.8896
       ],
-      "sampleWarning": null,
+      "naiveRowInference": {
+        "tStat": 0.526,
+        "pValue": 0.5989,
+        "bootstrapCi95": [
+          -0.5344,
+          0.9166
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 13 independent market-date blocks; need 30.",
       "significanceUsable": false
     },
     "D+5": {
-      "events": 150,
-      "meanCarPct": 2.7117,
-      "meanRawReturnPct": -2.2281,
-      "marketComponentPct": -4.9399,
-      "positiveShare": 0.5733,
-      "tStat": 3.263,
-      "pValue": 0.0011,
-      "significant": true,
+      "events": 200,
+      "independentMarketDateBlocks": 13,
+      "meanCarPct": -1.1037,
+      "blockMeanCarPct": -0.5823,
+      "meanRawReturnPct": -1.1686,
+      "marketComponentPct": -0.0649,
+      "positiveShare": 0.51,
+      "tStat": -0.433,
+      "pValue": 0.66519,
+      "significant": false,
       "bootstrapCi95": [
-        1.0978,
-        4.3748
+        -3.2158,
+        1.8192
       ],
-      "sampleWarning": null,
+      "naiveRowInference": {
+        "tStat": -1.411,
+        "pValue": 0.15828,
+        "bootstrapCi95": [
+          -2.6562,
+          0.4019
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 13 independent market-date blocks; need 30.",
       "significanceUsable": false
     },
     "D+20": {
-      "events": 150,
-      "meanCarPct": 5.6588,
-      "meanRawReturnPct": -13.9794,
-      "marketComponentPct": -19.6382,
-      "positiveShare": 0.7,
-      "tStat": 5.317,
-      "pValue": 0.0,
-      "significant": true,
+      "events": 200,
+      "independentMarketDateBlocks": 13,
+      "meanCarPct": -5.0391,
+      "blockMeanCarPct": -3.4441,
+      "meanRawReturnPct": -8.3231,
+      "marketComponentPct": -3.2841,
+      "positiveShare": 0.42,
+      "tStat": -1.539,
+      "pValue": 0.12391,
+      "significant": false,
       "bootstrapCi95": [
-        3.5655,
-        7.749
+        -7.7405,
+        0.6295
       ],
-      "sampleWarning": null,
+      "naiveRowInference": {
+        "tStat": -4.236,
+        "pValue": 2e-05,
+        "bootstrapCi95": [
+          -7.4015,
+          -2.7277
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 13 independent market-date blocks; need 30.",
       "significanceUsable": false
     }
   },
   "status": "OK",
-  "avgBeta": 0.821,
+  "avgBeta": 1.593,
+  "eventsByMarket": {
+    "kr": 60,
+    "us": 140
+  },
+  "benchmarks": [
+    "kr:KOSDAQ",
+    "kr:KOSPI",
+    "us:SPY"
+  ],
   "eventDateRange": {
-    "min": "2026-06-19",
-    "max": "2026-06-26"
+    "min": "2026-06-18",
+    "max": "2026-06-29"
   },
   "eventsByMonth": {
-    "2026-06": 150
+    "2026-06": 200
   },
   "caveats": [
-    "긴 이벤트창일수록 최근 시그널이 제외되어(앞으로의 봉 부족) 표본이 과거로 편향된다. windows별 events 수와 eventsByMonth를 같이 볼 것.",
-    "베타는 이벤트 **이전** 추정창에서 적합된다. 국면이 급변하면(예: 급락장) 실제 베타가 커져 시장 몫이 과소평가되고 알파가 과대평가될 수 있다.",
-    "알파가 (+)라는 것은 '시장보다 덜 빠졌다'는 뜻이지 '돈을 벌었다'가 아니다. 원시수익(meanRawReturnPct)이 (-)면 실제 계좌는 줄어든다."
+    "Long event windows exclude recent signals and bias the sample toward older cohorts.",
+    "Pre-event beta can be stale during abrupt regime changes.",
+    "Positive CAR does not imply positive account PnL; raw return must also be positive.",
+    "US sector benchmarks are not yet applied; US residuals currently use SPY."
   ],
   "clustering": {
-    "distinctEventDates": 6,
-    "calendarSpanDays": 8,
-    "eventsPerDate": 25.0,
+    "distinctEventDates": 8,
+    "distinctMarketDateBlocks": 13,
+    "calendarSpanDays": 12,
+    "eventsPerDate": 15.4,
     "isClustered": true,
-    "note": "이벤트가 며칠에 몰려 있으면 t검정의 독립성 가정이 깨진다. 모든 이벤트가 같은 시장 충격을 공유하므로 유효 표본은 '이벤트 수'가 아니라 '서로 다른 날 수'에 가깝다. isClustered=true면 pValue/significant를 근거로 쓰지 말 것."
+    "inferenceMethod": "EQUAL_MARKET_DATE_BLOCK_BOOTSTRAP",
+    "minBlocksForUse": 30,
+    "note": "Signals from one market-date share a shock. Row-level inference is diagnostic only; promotion uses equal market-date block means and block bootstrap confidence intervals."
   }
 }

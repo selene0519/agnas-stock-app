@@ -79,6 +79,33 @@ def test_bootstrap_ci_brackets_the_mean() -> None:
     assert lo < float(vals.mean()) < hi
 
 
+def test_cluster_bootstrap_counts_market_dates_not_rows() -> None:
+    mod = _load()
+    values = np.array([10.0] * 50 + [-2.0] * 50)
+    clusters = ["kr|2026-01-01"] * 50 + ["kr|2026-01-02"] * 50
+
+    lo, hi, mean, blocks = mod._cluster_bootstrap_ci(values, clusters, n_boot=800)
+
+    assert blocks == 2
+    assert mean == pytest.approx(4.0)
+    assert lo <= mean <= hi
+
+
+def test_alpha_input_deduplicates_same_economic_decision() -> None:
+    mod = _load()
+    rows = [
+        {"as_of_date": "2026-01-01", "market": "kr", "symbol": "005930", "final_rank_score": "70"},
+        {"as_of_date": "2026-01-01", "market": "kr", "symbol": "005930", "final_rank_score": "91"},
+        {"as_of_date": "2026-01-02", "market": "kr", "symbol": "005930", "final_rank_score": "65"},
+    ]
+
+    deduped, removed = mod._dedupe_journal_rows(rows)
+
+    assert removed == 1
+    assert len(deduped) == 2
+    assert deduped[0]["final_rank_score"] == "91"
+
+
 def test_replay_samples_are_excluded(tmp_path, monkeypatch) -> None:
     """HISTORICAL_REPLAY가 섞이면 2026-07-28에 고친 낙관 누출이 되살아난다."""
     mod = _load()

@@ -45,7 +45,7 @@ from scripts.generate_kr_recommendations import (
     _HORIZON_BANDS, _MODE_WEIGHTS, _MODE_RISK, _MODE_REWARD,
     MODE_LABELS, HORIZON_LABELS, MODES, HORIZONS,
     _load_news_sentiment, _load_financial_data,
-    MIN_OHLCV_ROWS, TOP_N,
+    MIN_OHLCV_ROWS, TOP_N, RECOMMENDATION_MODEL_VERSION,
     setup_score, recommendation_bucket, momentum_continuation_score,
 )
 import csv, json, math, os, re
@@ -695,6 +695,12 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "correctionConfidence": _corr_confidence,
                     "correctionSummary": _corr_summary,
                     "appliedCorrectionVersion": _corr_version,
+                    "modelVersion": RECOMMENDATION_MODEL_VERSION,
+                    "codeVersion": (
+                        os.environ.get("GITHUB_SHA")
+                        or os.environ.get("RENDER_GIT_COMMIT")
+                        or "unknown"
+                    ),
                     # 자가보정 루프: 검증된 승률(strategy_win_rates.json) → confidence 가중 반영
                     "verifiedWinRate": round(wr_prob * 100, 1),
                     "winRateSampleCount": wr_samples,

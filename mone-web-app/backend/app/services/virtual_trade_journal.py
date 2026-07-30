@@ -62,7 +62,11 @@ SOURCE_CALIBRATION_WEIGHTS = {
     "BACKTEST_EXPERIMENT": 0.15,
 }
 AUTO_CALIBRATION_POLICY = {
-    "enabled": True,
+    # Parameter suggestions are generated continuously, but automatic mutation
+    # stays frozen until a challenger has proven incremental after-cost value
+    # on an unseen, independently clustered cohort.
+    "enabled": False,
+    "mode": "SHADOW_ONLY",
     "minEffectiveSamples": 40,
     "maxApplicationsPerRun": 4,
     "maxFailureShareForAutoApply": 0.45,
@@ -86,6 +90,12 @@ AUTO_CALIBRATION_POLICY = {
         "BACKTEST_EXPERIMENT": 0.35,
     },
 }
+
+# Bump this value whenever the recommendation decision contract changes.  The
+# fingerprint also includes the correction/model/code versions carried by the
+# recommendation, so results from materially different strategies cannot be
+# mixed merely because they share the same calendar clean-window date.
+STRATEGY_CONTRACT_VERSION = "mone-recommendation-v1"
 CORRECTION_LIMITS = {
     "weightAdjustments": {
         "riskScore": (-0.35, 0.25),
@@ -175,6 +185,14 @@ JOURNAL_COLS = [
     "horizon",
     "symbol",
     "name",
+    "decision_unit_id",
+    "strategy_fingerprint",
+    "strategy_contract_version",
+    "strategy_identity_status",
+    "correction_version_at_signal",
+    "model_version_at_signal",
+    "code_version_at_signal",
+    "data_cutoff_at_signal",
     "decision_bucket",
     "entry_type",
     "entry_price",
@@ -442,7 +460,7 @@ def _read_journal_rows() -> list[dict[str, Any]]:
         work = dict(row)
         work["journal_session"] = _journal_session(work.get("journal_session"))
         work.setdefault("session_note", "")
-        normalized.append(work)
+        normalized.append(_ensure_row_identity(work))
     return normalized
 
 
@@ -484,6 +502,117 @@ def _journal_id(row: dict[str, Any]) -> str:
         )
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+
+
+def _decision_unit_id(row: dict[str, Any]) -> str:
+    """Identify one economic decision, independent of UI/session duplicates."""
+    raw = "|".join(
+        _text(row.get(key)).lower()
+        for key in ("as_of_date", "market", "symbol")
+    )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
+
+
+def _strategy_identity(item: dict[str, Any], row: dict[str, Any]) -> dict[str, str]:
+    """Build an immutable strategy identity from point-in-time provenance.
+
+    Observation values such as score, price, and regime are deliberately not
+    included: they vary by signal and are outcomes of a strategy, not its
+    identity.  A caller-supplied fingerprint wins so upstream generators can
+    provide a stronger configuration hash without the journal rewriting it.
+    """
+    explicit = _text(item.get("strategyFingerprint") or item.get("strategy_fingerprint"))
+    correction_version = _text(
+        item.get("appliedCorrectionVersion")
+        or item.get("correctionVersion")
+        or item.get("calibrationVersion")
+        or "0"
+    )
+    model_version = _text(
+        item.get("modelVersion")
+        or item.get("strategyVersion")
+        or item.get("scoringVersion")
+        or "unknown"
+    )
+    code_version = _text(
+        item.get("codeVersion")
+        or item.get("gitSha")
+        or item.get("commitSha")
+        or os.environ.get("GITHUB_SHA")
+        or os.environ.get("RENDER_GIT_COMMIT")
+        or "unknown"
+    )
+    data_cutoff = _text(
+        item.get("dataCutoff")
+        or item.get("dataCutoffAt")
+        or item.get("asOfDate")
+        or row.get("as_of_date")
+    )[:19]
+    payload = {
+        "contract": STRATEGY_CONTRACT_VERSION,
+        "market": _text(row.get("market")).lower(),
+        "mode": _text(row.get("mode")).lower(),
+        "horizon": _text(row.get("horizon")).lower(),
+        "correctionVersion": correction_version,
+        "modelVersion": model_version,
+        "codeVersion": code_version,
+    }
+    fingerprint = explicit or hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()[:24]
+    identity_status = "FULL" if model_version != "unknown" and code_version != "unknown" else "PARTIAL"
+    return {
+        "strategy_fingerprint": fingerprint,
+        "strategy_contract_version": STRATEGY_CONTRACT_VERSION,
+        "strategy_identity_status": identity_status,
+        "correction_version_at_signal": correction_version,
+        "model_version_at_signal": model_version,
+        "code_version_at_signal": code_version,
+        "data_cutoff_at_signal": data_cutoff,
+    }
+
+
+def _ensure_row_identity(row: dict[str, Any]) -> dict[str, Any]:
+    """Normalize new identity fields without pretending legacy rows are clean."""
+    work = dict(row)
+    work["decision_unit_id"] = _text(work.get("decision_unit_id")) or _decision_unit_id(work)
+    if not _text(work.get("strategy_fingerprint")):
+        work["strategy_fingerprint"] = "LEGACY_UNFINGERPRINTED"
+        work["strategy_identity_status"] = "LEGACY"
+    return work
+
+
+def _dedupe_decision_units(
+    rows: list[dict[str, Any]],
+    within_strategy: bool = False,
+) -> list[dict[str, Any]]:
+    """Keep one highest-score record per independent economic decision.
+
+    Strategy diagnostics retain one observation per strategy cell before
+    grouping; account-level quality metrics collapse cross-strategy duplicates.
+    """
+    selected: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for raw in rows:
+        row = _ensure_row_identity(raw)
+        key = _text(row.get("decision_unit_id"))
+        if within_strategy:
+            key += "|" + "|".join(
+                _text(row.get(field)).lower()
+                for field in ("mode", "horizon", "source_type", "journal_session")
+            )
+        if key not in selected:
+            selected[key] = row
+            order.append(key)
+            continue
+        previous = selected[key]
+        prev_score = _safe_float(previous.get("final_rank_score"))
+        next_score = _safe_float(row.get("final_rank_score"))
+        if (next_score if next_score is not None else float("-inf")) > (
+            prev_score if prev_score is not None else float("-inf")
+        ):
+            selected[key] = row
+    return [selected[key] for key in order]
 
 
 def _decision_bucket(item: dict[str, Any]) -> str:
@@ -718,6 +847,8 @@ def _snapshot_from_item(
         "momentum5_at_entry": _safe_float(item.get("recentMomentum5")),
         "raw_recommendation_json": _json(item),
     }
+    row["decision_unit_id"] = _decision_unit_id(row)
+    row.update(_strategy_identity(item, row))
     row["journal_id"] = _journal_id(row)
     return row
 
@@ -2208,7 +2339,15 @@ def failure_patterns(
     rows = _filter_rows(_merge_evaluations(_read_journal_rows()), market, mode, horizon, source_type, journal_session, "all")
     if _session_filter(journal_session) == "ALL":
         rows = [row for row in rows if _is_trade_evaluation_session(row)]
-    evaluated = [row for row in rows if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}]
+    raw_evaluated = [row for row in rows if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}]
+    evaluated = _dedupe_decision_units(raw_evaluated, within_strategy=True)
+    raw_group_counts = Counter(
+        "|".join(
+            _text(row.get(k))
+            for k in ("market", "mode", "horizon", "source_type", "journal_session")
+        )
+        for row in raw_evaluated
+    )
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in evaluated:
         key = "|".join(
@@ -2233,6 +2372,8 @@ def failure_patterns(
             "sourceType": source_v,
             "journalSession": session_v,
             "sampleCount": total,
+            "rawRowCount": raw_group_counts.get(key, total),
+            "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
             "sourceWeight": source_weight,
             "effectiveSampleCount": effective_total,
             "avgNetPnlPct": round(sum(returns) / len(returns), 4) if returns else None,
@@ -2671,6 +2812,7 @@ def _rows_for_suggestion_scope(item: dict[str, Any]) -> list[dict[str, Any]]:
         if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
         and _text(row.get("failure_reason") or "NONE")
     ]
+    out = _dedupe_decision_units(out)
     out.sort(key=_row_event_date)
     return out
 
@@ -2732,11 +2874,12 @@ def _self_learning_quality(market: str = "all") -> dict[str, Any]:
         "all",
         "all",
     )
-    evaluated = [
+    raw_evaluated = [
         row for row in rows
         if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
         and _is_trade_evaluation_session(row)
     ]
+    evaluated = _dedupe_decision_units(raw_evaluated)
     by_source = Counter(_upper(row.get("source_type") or "UNKNOWN") for row in evaluated)
     effective_samples = sum(_source_weight(row.get("source_type")) for row in evaluated)
     forward = by_source.get("FORWARD_PAPER_TRADE", 0) + by_source.get("MANUAL_REVIEWED", 0)
@@ -2745,22 +2888,33 @@ def _self_learning_quality(market: str = "all") -> dict[str, Any]:
     pnl_values = [_safe_float(row.get("net_pnl_pct")) for row in evaluated]
     pnl_values = [v for v in pnl_values if v is not None]
     avg_pnl = round(sum(pnl_values) / len(pnl_values), 4) if pnl_values else None
+    distinct_signal_dates = len({_text(row.get("as_of_date"))[:10] for row in evaluated if _text(row.get("as_of_date"))})
+    fingerprinted = sum(
+        1 for row in evaluated
+        if _text(row.get("strategy_fingerprint")) not in {"", "LEGACY_UNFINGERPRINTED"}
+    )
+    fingerprint_coverage = fingerprinted / len(evaluated) if evaluated else 0.0
     score = 0
     score += min(35, int(effective_samples / 120 * 35))
     score += min(25, int(forward / 50 * 25))
-    score += min(20, int(historical / 150 * 20))
-    score += 10 if source_count >= 2 else 0
-    score += 10 if avg_pnl is not None else 0
+    score += min(20, int(distinct_signal_dates / 60 * 20))
+    score += int(fingerprint_coverage * 10)
+    score += 10 if avg_pnl is not None and avg_pnl > 0 else 0
     gates = [
         {"name": "effective_samples", "status": "PASS" if effective_samples >= AUTO_CALIBRATION_POLICY["minEffectiveSamples"] else "LOW_SAMPLE", "value": round(effective_samples, 3), "target": AUTO_CALIBRATION_POLICY["minEffectiveSamples"]},
         {"name": "forward_samples", "status": "PASS" if forward >= 30 else "WATCH", "value": forward, "target": 30},
-        {"name": "historical_replay", "status": "PASS" if historical >= 100 else "WATCH", "value": historical, "target": 100},
-        {"name": "source_mix", "status": "PASS" if source_count >= 2 else "SINGLE_SOURCE", "value": source_count, "target": 2},
+        {"name": "distinct_signal_dates", "status": "PASS" if distinct_signal_dates >= 60 else "LOW_INDEPENDENCE", "value": distinct_signal_dates, "target": 60},
+        {"name": "strategy_fingerprint_coverage", "status": "PASS" if fingerprint_coverage >= 0.95 else "LEGACY_MIXED", "value": round(fingerprint_coverage, 4), "target": 0.95},
+        {"name": "positive_after_cost_expectancy", "status": "PASS" if avg_pnl is not None and avg_pnl > 0 else "FAIL", "value": avg_pnl, "target": "> 0"},
     ]
     return {
         "score": min(100, score),
         "grade": "A" if score >= 85 else "B" if score >= 70 else "C" if score >= 50 else "D",
         "evaluatedSamples": len(evaluated),
+        "rawEvaluatedRows": len(raw_evaluated),
+        "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
+        "distinctSignalDates": distinct_signal_dates,
+        "strategyFingerprintCoverage": round(fingerprint_coverage, 4),
         "effectiveSamples": round(effective_samples, 3),
         "forwardSamples": forward,
         "historicalReplaySamples": historical,
@@ -2861,25 +3015,30 @@ def auto_self_calibrate(
     if limit is None:
         limit = int(AUTO_CALIBRATION_POLICY.get("maxApplicationsPerRun") or 4)
     selected = eligible[:max(0, int(limit))]
+    auto_apply_enabled = bool(AUTO_CALIBRATION_POLICY.get("enabled"))
     approvals: list[dict[str, Any]] = []
-    for row in selected:
-        reviewed = review_calibration_suggestion(
-            str(row.get("suggestionId") or ""),
-            decision="APPROVED",
-            reviewed_by=applied_by,
-            reviewer_note=(
-                "Auto-approved by VTJ self-learning policy. "
-                f"effectiveSamples={row.get('effectiveSamples')}, share={row.get('share')}, "
-                "bounded by correction clamps and source confidence caps."
-            ),
-        )
-        if reviewed.get("status") == "OK":
-            approvals.append(reviewed.get("approval") or {})
-        else:
-            blocked.append({**row, "eligible": False, "reason": reviewed.get("error") or "AUTO_APPROVAL_FAILED"})
+    if auto_apply_enabled:
+        for row in selected:
+            reviewed = review_calibration_suggestion(
+                str(row.get("suggestionId") or ""),
+                decision="APPROVED",
+                reviewed_by=applied_by,
+                reviewer_note=(
+                    "Auto-approved by VTJ self-learning policy. "
+                    f"effectiveSamples={row.get('effectiveSamples')}, share={row.get('share')}, "
+                    "bounded by correction clamps and source confidence caps."
+                ),
+            )
+            if reviewed.get("status") == "OK":
+                approvals.append(reviewed.get("approval") or {})
+            else:
+                blocked.append({**row, "eligible": False, "reason": reviewed.get("error") or "AUTO_APPROVAL_FAILED"})
 
-    apply_result: dict[str, Any] = {"status": "SKIPPED", "reason": "APPLY_FALSE"}
-    if apply and approvals:
+    apply_result: dict[str, Any] = {
+        "status": "SKIPPED",
+        "reason": "AUTO_APPLY_FROZEN" if not auto_apply_enabled else "APPLY_FALSE",
+    }
+    if auto_apply_enabled and apply and approvals:
         approval_ids = [_text(row.get("approval_id")) for row in approvals if _text(row.get("approval_id"))]
         apply_result = apply_approved_calibrations(
             applied_by=applied_by,
@@ -2888,13 +3047,14 @@ def auto_self_calibrate(
         )
 
     result = {
-        "status": "OK",
+        "status": "OK" if auto_apply_enabled else "SHADOW_ONLY",
         "generatedAt": _now_iso(),
         "market": market,
         "policy": AUTO_CALIBRATION_POLICY,
         "quality": quality_before,
         "suggestionCount": len(suggestions),
         "eligibleCount": len(eligible),
+        "wouldApplyCount": len(selected),
         "selectedCount": len(selected),
         "approvedCount": len(approvals),
         "applied": int(apply_result.get("applied") or 0) if isinstance(apply_result, dict) else 0,
@@ -2968,6 +3128,7 @@ def _performance_scope_rows(
         if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
         and _safe_float(row.get("net_pnl_pct")) is not None
     ]
+    out = _dedupe_decision_units(out)
     out.sort(key=_row_event_date)
     return out
 
@@ -3015,7 +3176,10 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
             after_avg = float(after_m.get("avgNetPnlPct") or 0.0)
             before_wr = float(before_m.get("winRate") or 0.0)
             after_wr = float(after_m.get("winRate") or 0.0)
-            degraded = (after_avg <= before_avg - pnl_drop) and (after_wr <= before_wr - win_drop)
+            # A material deterioration in either capital outcome or hit rate is
+            # sufficient to stop promotion. Requiring both allowed harmful
+            # calibrations to remain active when only one guardrail failed.
+            degraded = (after_avg <= before_avg - pnl_drop) or (after_wr <= before_wr - win_drop)
             status = "DEGRADED" if degraded else "PASS"
             reason = "Post-calibration performance deteriorated." if degraded else "Post-calibration performance is within guardrails."
         item = {
