@@ -1,39 +1,43 @@
 {
-  "generatedAt": "2026-07-29T23:46:43.734761+00:00",
-  "asOfDate": "2026-07-29",
+  "generatedAt": "2026-07-30T07:15:40.797964+00:00",
+  "asOfDate": "2026-07-30",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.07,
+  "breadthAboveMa60": 0.14,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
       "BREAKOUT"
     ],
-    "SIDE": [],
-    "BEAR": []
+    "SIDE": [
+      "BREAKOUT"
+    ],
+    "BEAR": [
+      "BOTTOM_CATCH"
+    ]
   },
   "selfCalibrated": true,
   "liveSamplesTotal": 0,
   "universeSize": 106,
   "candidateCount": 1,
-  "actionableCount": 0,
+  "actionableCount": 1,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
     {
-      "symbol": "214450",
-      "name": "파마리서치",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-07-29",
-      "close": 391000.0,
-      "entryRef": 391000.0,
-      "stop": 375360,
-      "target": 422280,
-      "rrRatio": 2.0,
-      "rsi14": 67.1,
-      "distMa20Pct": 14.4,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
+      "symbol": "293490",
+      "name": "카카오게임즈",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-07-30",
+      "close": 7500.0,
+      "entryRef": 7500.0,
+      "stop": 6895,
+      "target": 8100,
+      "rrRatio": 0.99,
+      "rsi14": 31.3,
+      "distMa20Pct": -3.9,
+      "calibrationGate": "ACTIVE",
+      "sizeMultiplier": 1.43,
+      "actionable": true
     }
   ]
 }
