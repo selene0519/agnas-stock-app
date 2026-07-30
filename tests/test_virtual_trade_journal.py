@@ -1183,6 +1183,241 @@ def test_clustered_same_day_samples_never_pass_strict_holdout(monkeypatch: pytes
     assert verdict["reason"] == "LOW_HOLDOUT"
 
 
+def test_human_reviewed_shadow_incubation_uses_forward_test_as_primary_holdout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    low_historical_holdout = {
+        "status": "LOW_HOLDOUT",
+        "passed": False,
+        "distinctSignalDates": 10,
+        "requiredDistinctSignalDates": 30,
+        "reason": "NOT_ENOUGH_INDEPENDENT_DATES_FOR_STRICT_HOLDOUT",
+    }
+    monkeypatch.setattr(vtj, "_holdout_validation", lambda _item: low_historical_holdout)
+    item = {
+        "status": "SUGGESTED",
+        "approvalStatus": "PENDING_REVIEW",
+        "applicationStatus": "NOT_APPLIED",
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "sampleCount": 50,
+        "distinctSignalDates": 10,
+        "share": 0.30,
+        "reason": "STOP_TOO_TIGHT",
+        "threshold": 0.15,
+    }
+
+    auto = vtj._auto_calibration_verdict(item)
+    shadow = vtj._shadow_calibration_verdict(item)
+
+    assert auto["eligible"] is False
+    assert auto["reason"] == "LOW_HOLDOUT"
+    assert shadow["eligible"] is True
+    assert shadow["reason"] == "SHADOW_INCUBATION_ELIGIBLE"
+    assert shadow["historicalHoldoutPassed"] is False
+    assert shadow["requiresForwardPromotion"] is True
+
+
+def test_shadow_incubation_rejects_non_forward_and_clustered_training_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_holdout_validation", lambda _item: {"status": "LOW_HOLDOUT", "passed": False})
+    base = {
+        "status": "SUGGESTED",
+        "approvalStatus": "PENDING_REVIEW",
+        "applicationStatus": "NOT_APPLIED",
+        "sampleCount": 60,
+        "distinctSignalDates": 10,
+        "share": 0.30,
+        "reason": "STOP_TOO_TIGHT",
+    }
+
+    replay = vtj._shadow_calibration_verdict({**base, "sourceType": "HISTORICAL_REPLAY"})
+    clustered = vtj._shadow_calibration_verdict({
+        **base,
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "distinctSignalDates": 1,
+    })
+
+    assert replay["eligible"] is False
+    assert replay["reason"] == "SHADOW_SOURCE_NOT_FORWARD"
+    assert clustered["eligible"] is False
+    assert clustered["reason"] == "SHADOW_TRAINING_DATE_GATE"
+
+
+def test_shadow_readiness_ranks_eligible_candidate_without_granting_live_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_holdout_validation", lambda _item: {"status": "LOW_HOLDOUT", "passed": False})
+    suggestions = [
+        {
+            "suggestionId": "ready-a",
+            "sourceSummaryId": "scope-a",
+            "status": "SUGGESTED",
+            "approvalStatus": "PENDING_REVIEW",
+            "applicationStatus": "NOT_APPLIED",
+            "market": "us",
+            "mode": "conservative",
+            "horizon": "swing",
+            "sourceType": "FORWARD_PAPER_TRADE",
+            "journalSession": "AFTER_CLOSE_TRADE",
+            "sampleCount": 53,
+            "distinctSignalDates": 11,
+            "share": 0.25,
+            "reason": "STOP_TOO_TIGHT",
+        },
+        {
+            "suggestionId": "waiting-b",
+            "sourceSummaryId": "scope-b",
+            "status": "SUGGESTED",
+            "approvalStatus": "PENDING_REVIEW",
+            "applicationStatus": "NOT_APPLIED",
+            "market": "kr",
+            "mode": "balanced",
+            "horizon": "swing",
+            "sourceType": "FORWARD_PAPER_TRADE",
+            "journalSession": "AFTER_CLOSE_TRADE",
+            "sampleCount": 49,
+            "distinctSignalDates": 20,
+            "share": 0.40,
+            "reason": "STOP_TOO_TIGHT",
+        },
+    ]
+
+    readiness = vtj.calibration_shadow_readiness(suggestions)
+
+    assert readiness["readyForReview"] == 1
+    assert readiness["eligibleSuggestions"] == 1
+    assert readiness["items"][0]["suggestionId"] == "ready-a"
+    assert readiness["items"][0]["requiresHumanReview"] is True
+    assert readiness["items"][0]["requiresForwardPromotion"] is True
+    assert readiness["items"][1]["remainingRawSamples"] == 1
+
+
+def test_sealed_manual_approval_can_arm_low_holdout_shadow_but_not_live(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    validation = {
+        "status": "LOW_HOLDOUT",
+        "passed": False,
+        "distinctSignalDates": 19,
+        "requiredDistinctSignalDates": 30,
+    }
+    monkeypatch.setattr(vtj, "_holdout_validation", lambda _item: validation)
+    item = {
+        "suggestionId": "shadow-suggestion",
+        "sourceSummaryId": "shadow-scope",
+        "market": "us",
+        "mode": "aggressive",
+        "horizon": "short",
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "journalSession": "AFTER_CLOSE_TRADE",
+        "status": "SUGGESTED",
+        "reason": "STOP_TOO_TIGHT",
+        "sampleCount": 58,
+        "distinctSignalDates": 19,
+        "count": 13,
+        "share": 0.2241,
+        "threshold": 0.15,
+    }
+    evidence = vtj._calibration_evidence(item)
+    approval = {
+        "approval_id": "shadow-approval",
+        "suggestion_id": item["suggestionId"],
+        "decision": "APPROVED",
+        "reviewed_by": "pytest-human",
+        "reviewed_at": "2026-07-31T00:00:00",
+        "source_summary_id": item["sourceSummaryId"],
+        "market": item["market"],
+        "mode": item["mode"],
+        "horizon": item["horizon"],
+        "source_type": item["sourceType"],
+        "journal_session": item["journalSession"],
+        "reason": item["reason"],
+        "suggestion_status": item["status"],
+        "sample_count": item["sampleCount"],
+        "distinct_signal_dates": item["distinctSignalDates"],
+        "count": item["count"],
+        "share": item["share"],
+        "threshold": item["threshold"],
+        "message": "forward-only experiment",
+        "before_params_json": "{}",
+        "after_params_json": "{}",
+        "reviewer_note": "human reviewed; no live authority",
+        "policy_version": vtj.AUTO_CALIBRATION_POLICY["version"],
+        "policy_fingerprint": vtj._calibration_policy_fingerprint(),
+        "evidence_fingerprint": evidence["fingerprint"],
+    }
+    approval["record_hash"] = vtj._sealed_row_hash(approval, vtj.CALIBRATION_APPROVAL_COLS)
+
+    armed = vtj._approval_application_verdict(approval, {item["suggestionId"]: item})
+    persistent_shadow = vtj._approval_shadow_verdict(approval)
+    promotion = vtj._calibration_promotion_verdict(
+        approval,
+        evidence["fingerprint"],
+        "not-yet-promoted",
+    )
+
+    assert armed["eligible"] is True
+    assert armed["reason"] == "SEALED_CURRENT_EVIDENCE_PASS"
+    assert armed["validation"]["status"] == "LOW_HOLDOUT"
+    assert persistent_shadow["eligible"] is True
+    assert persistent_shadow["approvedEvidenceFingerprint"] == evidence["fingerprint"]
+    assert promotion["passed"] is False
+    assert promotion["reason"] == "MISSING_PROMOTION_CERTIFICATE"
+
+
+def test_latest_scope_decision_revokes_older_shadow_approval() -> None:
+    shared = {
+        "source_summary_id": "scope-a",
+        "reason": "STOP_TOO_TIGHT",
+    }
+    approved = {
+        **shared,
+        "approval_id": "approval-old",
+        "decision": "APPROVED",
+        "reviewed_at": "2026-07-01T00:00:00",
+    }
+    rejected = {
+        **shared,
+        "approval_id": "rejection-new",
+        "decision": "REJECTED",
+        "reviewed_at": "2026-07-02T00:00:00",
+    }
+
+    latest = vtj._latest_approval_by_scope([rejected, approved])
+
+    assert len(latest) == 1
+    assert latest["scope-a|STOP_TOO_TIGHT"]["approval_id"] == "rejection-new"
+    assert latest["scope-a|STOP_TOO_TIGHT"]["decision"] == "REJECTED"
+
+
+def test_attached_approval_state_prefers_latest_scope_rejection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_approval_index", lambda: {
+        "same-suggestion": {
+            "approval_id": "old-approval",
+            "decision": "APPROVED",
+            "reviewed_at": "2026-07-01T00:00:00",
+        },
+    })
+    monkeypatch.setattr(vtj, "_approval_scope_index", lambda: {
+        "scope-a|STOP_TOO_TIGHT": {
+            "approval_id": "new-rejection",
+            "decision": "REJECTED",
+            "reviewed_at": "2026-07-02T00:00:00",
+        },
+    })
+    monkeypatch.setattr(vtj, "_application_by_approval", lambda: {})
+    monkeypatch.setattr(vtj, "_source_summary_id", lambda _item: "scope-a")
+    monkeypatch.setattr(vtj, "_suggestion_id", lambda _item: "same-suggestion")
+
+    attached = vtj._attach_approval_state([{"reason": "STOP_TOO_TIGHT"}])
+
+    assert attached[0]["approvalStatus"] == "REJECTED"
+    assert attached[0]["approvalId"] == "new-rejection"
+
+
 def test_sealed_approval_rejects_tamper_and_regression_but_allows_newer_evidence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

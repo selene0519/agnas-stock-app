@@ -150,6 +150,8 @@ def shadow_status() -> dict[str, Any]:
             "selfCorrectionSealedPredictions": int(self_correction_summary.get("sealedPredictions") or 0),
             "selfCorrectionSettledPredictions": int(self_correction_summary.get("settledPredictions") or 0),
             "selfCorrectionPromotionEligible": int(self_correction_summary.get("promotionEligible") or 0),
+            "selfCorrectionReadyForReview": int(self_correction_summary.get("readyForReview") or 0),
+            "selfCorrectionEligibleSuggestions": int(self_correction_summary.get("eligibleSuggestions") or 0),
             "selfCorrectionBlockingReasons": self_correction_blockers,
             "walkForwardPromotionGrade": bool(walk_forward.get("promotionGrade")),
         },

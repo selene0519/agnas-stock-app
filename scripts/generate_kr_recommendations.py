@@ -1556,6 +1556,7 @@ def generate_recommendations() -> dict[str, Any]:
         all_scored.append({
             "symbol": sym,
             "name": name_map.get(sym, sym),
+            "as_of_date": max((str(row.get("date") or row.get("Date") or "")[:10] for row in rows), default=""),
             "current": current,
             "ind": ind,
             "score_base": score_bal,
@@ -1819,6 +1820,7 @@ def generate_recommendations() -> dict[str, Any]:
                     "profileReason": profile_reason,
                     "symbol": sym,
                     "name": c["name"],
+                    "asOfDate": c["as_of_date"],
                     "decisionBucket": decision,
                     "timingLabel": timing_label,
                     "timingReason": timing_reason,

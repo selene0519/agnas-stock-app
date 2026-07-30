@@ -68,7 +68,7 @@ AUTO_CALIBRATION_POLICY = {
     # on an unseen, independently clustered cohort.
     "enabled": False,
     "mode": "SHADOW_ONLY",
-    "version": "vtj-self-calibration-v2.1.0",
+    "version": "vtj-self-calibration-v2.2.0",
     "minEffectiveSamples": 40,
     "maxApplicationsPerRun": 1,
     "maxActiveShadowCandidates": 1,
@@ -79,6 +79,13 @@ AUTO_CALIBRATION_POLICY = {
     "minDistinctSignalDates": 30,
     "minHoldoutSignalDates": 8,
     "strictHoldoutRequired": True,
+    # Historical holdout remains mandatory for unattended approval.  A human-
+    # approved, zero-capital Shadow experiment may start earlier because the
+    # immutable 60-date Forward comparison is its primary holdout.
+    "shadowIncubationSourceTypes": ["FORWARD_PAPER_TRADE"],
+    "shadowIncubationMinDistinctSignalDates": 10,
+    "strictHistoricalHoldoutRequiredForShadow": False,
+    "forwardPromotionIsPrimaryHoldout": True,
     "currentEvidenceRevalidationRequired": True,
     "sealedApprovalRequired": True,
     "promotionCertificateRequired": True,
@@ -2548,12 +2555,24 @@ def _approval_index() -> dict[str, dict[str, Any]]:
 
 def _approval_scope_index() -> dict[str, dict[str, Any]]:
     rows = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
-    rows.sort(key=lambda row: _text(row.get("reviewed_at")))
-    return {
-        f"{_text(row.get('source_summary_id'))}|{_upper(row.get('reason'))}": row
-        for row in rows
-        if _text(row.get("source_summary_id")) and _upper(row.get("reason"))
-    }
+    return _latest_approval_by_scope(rows)
+
+
+def _approval_scope_key(row: dict[str, Any]) -> str:
+    source_summary_id = _text(row.get("source_summary_id") or row.get("sourceSummaryId"))
+    reason = _upper(row.get("reason"))
+    return f"{source_summary_id}|{reason}" if source_summary_id and reason else ""
+
+
+def _latest_approval_by_scope(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Return the latest decision per calibration scope; later rejection revokes approval."""
+    ordered = sorted(enumerate(rows), key=lambda pair: (_text(pair[1].get("reviewed_at")), pair[0]))
+    latest: dict[str, dict[str, Any]] = {}
+    for _, row in ordered:
+        key = _approval_scope_key(row)
+        if key:
+            latest[key] = row
+    return latest
 
 
 def _attach_approval_state(suggestions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2565,9 +2584,9 @@ def _attach_approval_state(suggestions: list[dict[str, Any]]) -> list[dict[str, 
         work = dict(item)
         work["sourceSummaryId"] = _source_summary_id(work)
         work["suggestionId"] = _suggestion_id(work)
-        approval = approvals.get(work["suggestionId"]) or scope_approvals.get(
+        approval = scope_approvals.get(
             f"{work['sourceSummaryId']}|{_upper(work.get('reason'))}"
-        )
+        ) or approvals.get(work["suggestionId"])
         work["approvalStatus"] = _text(approval.get("decision")) if approval else "PENDING_REVIEW"
         work["approvalId"] = _text(approval.get("approval_id")) if approval else ""
         work["reviewedAt"] = _text(approval.get("reviewed_at")) if approval else ""
@@ -2778,10 +2797,7 @@ def _approved_delta(reason: str, share: float, source_weight: float) -> dict[str
     return {}
 
 
-def _approval_application_verdict(
-    approval: dict[str, Any],
-    current_suggestions: dict[str, dict[str, Any]],
-) -> dict[str, Any]:
+def _approval_integrity_verdict(approval: dict[str, Any]) -> dict[str, Any]:
     stored_hash = _text(approval.get("record_hash"))
     if not stored_hash:
         return {"eligible": False, "reason": "UNSEALED_APPROVAL"}
@@ -2791,6 +2807,43 @@ def _approval_application_verdict(
         return {"eligible": False, "reason": "CALIBRATION_POLICY_VERSION_MISMATCH"}
     if _text(approval.get("policy_fingerprint")) != _calibration_policy_fingerprint():
         return {"eligible": False, "reason": "CALIBRATION_POLICY_FINGERPRINT_MISMATCH"}
+    return {"eligible": True, "reason": "SEALED_APPROVAL"}
+
+
+def _approval_shadow_verdict(approval: dict[str, Any]) -> dict[str, Any]:
+    """Validate the immutable approval snapshot used to start/continue Shadow."""
+    integrity = _approval_integrity_verdict(approval)
+    if not integrity.get("eligible"):
+        return integrity
+    snapshot = {
+        "status": approval.get("suggestion_status"),
+        "approvalStatus": "PENDING_REVIEW",
+        "applicationStatus": "NOT_APPLIED",
+        "sourceType": approval.get("source_type"),
+        "sampleCount": approval.get("sample_count"),
+        "distinctSignalDates": approval.get("distinct_signal_dates"),
+        "share": approval.get("share"),
+        "reason": approval.get("reason"),
+        "threshold": approval.get("threshold"),
+    }
+    verdict = _shadow_calibration_verdict(snapshot)
+    if not verdict.get("eligible"):
+        return verdict
+    return {
+        **verdict,
+        "approvedEvidenceFingerprint": _text(approval.get("evidence_fingerprint")),
+        "currentEvidenceFingerprint": None,
+        "currentSuggestionId": None,
+    }
+
+
+def _approval_application_verdict(
+    approval: dict[str, Any],
+    current_suggestions: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    integrity = _approval_integrity_verdict(approval)
+    if not integrity.get("eligible"):
+        return integrity
 
     suggestion_id = _text(approval.get("suggestion_id"))
     current = current_suggestions.get(suggestion_id)
@@ -2837,7 +2890,7 @@ def _approval_application_verdict(
 
     evidence = _calibration_evidence(current)
     candidate = {**current, "approvalStatus": "PENDING_REVIEW", "applicationStatus": "NOT_APPLIED"}
-    verdict = _auto_calibration_verdict(candidate)
+    verdict = _shadow_calibration_verdict(candidate)
     if not verdict.get("eligible"):
         return {
             "eligible": False,
@@ -2851,7 +2904,7 @@ def _approval_application_verdict(
         "approvedEvidenceFingerprint": _text(approval.get("evidence_fingerprint")),
         "currentEvidenceFingerprint": evidence["fingerprint"],
         "currentSuggestionId": _text(current.get("suggestionId")),
-        "validation": evidence["validation"],
+        "validation": verdict.get("validation") or evidence["validation"],
     }
 
 
@@ -2953,20 +3006,84 @@ def _build_approved_correction_candidate(
     }
 
 
+def calibration_shadow_readiness(
+    suggestions: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Expose which suggestions can be reviewed for a Forward-only trial."""
+    current = suggestions
+    if current is None:
+        current = calibration_suggestions("all", "all", "all", "all", "all").get("items", [])
+    rows: list[dict[str, Any]] = []
+    for item in current:
+        if _upper(item.get("status")) != "SUGGESTED":
+            continue
+        verdict = _shadow_calibration_verdict(item)
+        effective = float(verdict.get("effectiveSamples") or 0.0)
+        share = float(_safe_float(item.get("share")) or 0.0)
+        rows.append({
+            "suggestionId": item.get("suggestionId"),
+            "sourceSummaryId": item.get("sourceSummaryId"),
+            "market": item.get("market"),
+            "mode": item.get("mode"),
+            "horizon": item.get("horizon"),
+            "sourceType": item.get("sourceType"),
+            "journalSession": item.get("journalSession"),
+            "reason": item.get("reason"),
+            "sampleCount": item.get("sampleCount"),
+            "distinctSignalDates": item.get("distinctSignalDates"),
+            "share": item.get("share"),
+            "approvalStatus": item.get("approvalStatus"),
+            "applicationStatus": item.get("applicationStatus"),
+            "shadowEligible": bool(verdict.get("eligible")),
+            "shadowGateReason": verdict.get("reason"),
+            "estimatedAffectedSamples": round(effective * share, 3),
+            "historicalHoldoutPassed": verdict.get("historicalHoldoutPassed") is True,
+            "validation": verdict.get("validation"),
+            "minRawSamples": verdict.get("minRawSamples"),
+            "minDistinctSignalDates": verdict.get("minDistinctSignalDates"),
+            "remainingRawSamples": max(
+                0,
+                int(verdict.get("minRawSamples") or 0) - int(_safe_float(item.get("sampleCount")) or 0),
+            ),
+            "remainingDistinctSignalDates": max(
+                0,
+                int(verdict.get("minDistinctSignalDates") or 0)
+                - int(_safe_float(item.get("distinctSignalDates")) or 0),
+            ),
+            "requiresHumanReview": True,
+            "requiresForwardPromotion": True,
+        })
+    rows.sort(key=lambda row: (
+        not bool(row.get("shadowEligible")),
+        -float(row.get("estimatedAffectedSamples") or 0.0),
+        _text(row.get("market")),
+        _text(row.get("mode")),
+        _text(row.get("horizon")),
+        _text(row.get("reason")),
+    ))
+    return {
+        "status": "SHADOW_ONLY",
+        "readyForReview": sum(
+            1 for row in rows
+            if row.get("shadowEligible") and _upper(row.get("approvalStatus")) == "PENDING_REVIEW"
+        ),
+        "eligibleSuggestions": sum(1 for row in rows if row.get("shadowEligible")),
+        "items": rows,
+    }
+
+
 def calibration_shadow_candidates() -> dict[str, Any]:
-    """Return sealed, current-evidence-approved candidates without mutating live params."""
+    """Return sealed approval-snapshot candidates without mutating live params."""
     try:
         from app.engine import correction_store
         params = correction_store.load_params()
     except Exception as exc:
         return {"status": "ERROR", "reason": f"CORRECTION_STORE_UNAVAILABLE: {exc}", "items": []}
-    approvals = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
+    approval_rows = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
+    approvals = list(_latest_approval_by_scope(approval_rows).values())
     already_applied = _application_index()
     current_items = calibration_suggestions("all", "all", "all", "all", "all").get("items", [])
-    current_suggestions = {
-        _text(item.get("suggestionId")): item
-        for item in current_items if _text(item.get("suggestionId"))
-    }
+    readiness = calibration_shadow_readiness(current_items)
     markets = dict(params.get("markets") or {})
     items: list[dict[str, Any]] = []
     blocked: list[dict[str, Any]] = []
@@ -2977,7 +3094,7 @@ def calibration_shadow_candidates() -> dict[str, Any]:
         if approval_id in already_applied:
             blocked.append({"approvalId": approval_id, "reason": "ALREADY_APPLIED"})
             continue
-        verdict = _approval_application_verdict(approval, current_suggestions)
+        verdict = _approval_shadow_verdict(approval)
         if not verdict.get("eligible"):
             blocked.append({"approvalId": approval_id, "reason": verdict.get("reason")})
             continue
@@ -3010,6 +3127,7 @@ def calibration_shadow_candidates() -> dict[str, Any]:
         "policyFingerprint": _calibration_policy_fingerprint(),
         "items": items,
         "blocked": blocked,
+        "readiness": readiness,
     }
 
 
@@ -3080,7 +3198,8 @@ def apply_approved_calibrations(
     except Exception as exc:
         return {"status": "ERROR", "error": f"CORRECTION_STORE_UNAVAILABLE: {exc}"}
 
-    approvals = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
+    approval_rows = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
+    approvals = list(_latest_approval_by_scope(approval_rows).values())
     already_applied = _application_index()
     params = correction_store.load_params()
     markets = dict(params.get("markets") or {})
@@ -3212,6 +3331,62 @@ def apply_approved_calibrations(
         "items": applied_rows,
         "correctionVersion": old_version + 1 if applied_rows else old_version,
         "source": _relative(CALIBRATION_APPLICATIONS_CSV),
+    }
+
+
+def _shadow_calibration_verdict(item: dict[str, Any]) -> dict[str, Any]:
+    """Gate an immutable, zero-capital Forward experiment.
+
+    This is intentionally different from the unattended auto-approval gate:
+    historical holdout drift or a large proposed effect can require human
+    review without preventing a pre-registered Forward test.  Promotion and
+    live mutation still require the independent Forward certificate.
+    """
+    status = _upper(item.get("status"))
+    application_status = _upper(item.get("applicationStatus"))
+    source_type = _upper(item.get("sourceType"))
+    raw_samples = int(_safe_float(item.get("sampleCount")) or 0)
+    distinct_dates = int(_safe_float(item.get("distinctSignalDates")) or 0)
+    source_weight = _source_weight(source_type)
+    effective_samples = raw_samples * source_weight
+    share = float(_safe_float(item.get("share")) or 0.0)
+    source_mins = AUTO_CALIBRATION_POLICY.get("sourceMinSamples") or {}
+    min_raw = int(source_mins.get(source_type, 999999))
+    min_effective = float(AUTO_CALIBRATION_POLICY.get("minEffectiveSamples") or 40)
+    min_dates = int(AUTO_CALIBRATION_POLICY.get("shadowIncubationMinDistinctSignalDates") or 10)
+    allowed_sources = {
+        _upper(value)
+        for value in (AUTO_CALIBRATION_POLICY.get("shadowIncubationSourceTypes") or [])
+        if _upper(value)
+    }
+    base = {
+        "effectiveSamples": round(effective_samples, 3),
+        "minRawSamples": min_raw,
+        "distinctSignalDates": distinct_dates,
+        "minDistinctSignalDates": min_dates,
+        "requiresForwardPromotion": True,
+    }
+    if status != "SUGGESTED":
+        return {"eligible": False, "reason": "NOT_SUGGESTED", **base}
+    if application_status == "APPLIED":
+        return {"eligible": False, "reason": "ALREADY_APPLIED", **base}
+    if source_type not in allowed_sources:
+        return {"eligible": False, "reason": "SHADOW_SOURCE_NOT_FORWARD", **base}
+    if raw_samples < min_raw:
+        return {"eligible": False, "reason": "RAW_SAMPLE_GATE", **base}
+    if effective_samples < min_effective:
+        return {"eligible": False, "reason": "EFFECTIVE_SAMPLE_GATE", **base}
+    if distinct_dates < min_dates:
+        return {"eligible": False, "reason": "SHADOW_TRAINING_DATE_GATE", **base}
+    if not _approved_delta(_upper(item.get("reason")), share, source_weight):
+        return {"eligible": False, "reason": "NO_PARAMETER_MAPPING", **base}
+    validation = _holdout_validation(item)
+    return {
+        "eligible": True,
+        "reason": "SHADOW_INCUBATION_ELIGIBLE",
+        **base,
+        "validation": validation,
+        "historicalHoldoutPassed": validation.get("status") == "OK",
     }
 
 

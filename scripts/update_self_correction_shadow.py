@@ -698,6 +698,7 @@ def build(
 ) -> dict[str, Any]:
     candidate_status = vtj.calibration_shadow_candidates()
     candidates = candidate_status.get("items") if isinstance(candidate_status.get("items"), list) else []
+    readiness = candidate_status.get("readiness") if isinstance(candidate_status.get("readiness"), dict) else {}
     registry_status = register_candidates(candidates, registry_path) if record else {"appended": 0, "conflicts": 0, "total": len(_read_csv(registry_path))}
     prediction_status = record_predictions(candidates, _read_recommendations(), prediction_path) if record else {"appended": 0, "conflicts": 0, "total": len(_read_csv(prediction_path))}
     settlement_status = settle_predictions(prediction_path, settlement_path) if settle else {"appended": 0, "pending": 0, "total": len(_read_csv(settlement_path))}
@@ -743,6 +744,8 @@ def build(
             "sealedPredictions": len(active_predictions),
             "settledPredictions": len(active_settlements),
             "promotionEligible": len(certificates),
+            "readyForReview": int(readiness.get("readyForReview") or 0),
+            "eligibleSuggestions": int(readiness.get("eligibleSuggestions") or 0),
             "abstain": not certificates,
         },
         "integrity": integrity,

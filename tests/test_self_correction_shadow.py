@@ -408,6 +408,8 @@ def test_recommendation_generators_emit_raw_shadow_input_contract() -> None:
         assert '"rawModelScore"' in source
         assert '"scoreComponentsJson"' in source
         assert '"scoreWeightsJson"' in source
+        assert '"asOfDate": c["as_of_date"]' in source
+        assert '"as_of_date": max(' in source
         assert '"correctionInputContractVersion": "correction-shadow-input-v1"' in source
 
     assert shadow.vtj.AUTO_CALIBRATION_POLICY["maxActiveShadowCandidates"] == 1
