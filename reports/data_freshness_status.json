@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-30T15:56:15.416041+00:00",
+  "generatedAt": "2026-07-30T23:53:18.450431+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,16 +15,16 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.66d, asOf=2026-07-30",
+      "detail": "1.0d, asOf=2026-07-30",
       "critical": true,
-      "ageDays": 0.66
+      "ageDays": 1.0
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "-0.3d, asOf=2026-07-30 23:01:10",
+      "detail": "-0.37d, asOf=2026-07-31 08:44:31",
       "critical": true,
-      "ageDays": -0.3
+      "ageDays": -0.37
     },
     {
       "name": "collector_steps",
@@ -36,37 +36,37 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "1.97d, asOf=2026-07-28T16:40:53.766520",
+      "detail": "2.3d, asOf=2026-07-28T16:40:53.766520",
       "critical": true,
-      "ageDays": 1.97
+      "ageDays": 2.3
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.08d, asOf=2026-07-30T23:02:21+09:00",
+      "detail": "0.01d, asOf=2026-07-31T08:46:01+09:00",
       "critical": false,
-      "ageDays": 0.08
+      "ageDays": 0.01
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.66d, asOf=2026-07-30",
+      "detail": "-0.0d, asOf=2026-07-31",
       "critical": false,
-      "ageDays": 0.66
+      "ageDays": -0.0
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-31 00:56:14",
+      "detail": "-0.37d, asOf=2026-07-31 08:53:17",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.66d, asOf=2026-07-30",
+      "detail": "1.0d, asOf=2026-07-30",
       "critical": true,
-      "ageDays": 0.66
+      "ageDays": 1.0
     },
     {
       "name": "capture_continuity",
@@ -92,7 +92,7 @@
     {
       "name": "live_gate_promotion",
       "status": "OK",
-      "detail": "승격 1/14셀 (기준 effN≥30, 최대 36.1, global effN 87.7 승률 16.7%) — 활성: 0-72|SIDE",
+      "detail": "승격 1/14셀 (기준 effN≥30, 최대 35.3, global effN 85.7 승률 16.7%) — 활성: 0-72|SIDE",
       "critical": false,
       "ageDays": null
     }
