@@ -374,6 +374,7 @@ def _price_band(
     horizon: str,
     ind: dict | None = None,
     regime_params: dict | None = None,
+    market: str = "kr",
 ) -> tuple[float, float, float]:
     """entry, stop, target 반환. regime_params 가 있으면 레짐 어댑티브 파라미터 사용."""
     rp = regime_params or _REGIME_TRADE_PARAMS["SIDE"]
@@ -384,17 +385,21 @@ def _price_band(
     sm, tm = rp["atr_mult"]
     atr14 = ind.get("atr14") if ind else None
     if atr14 and atr14 > 0 and current > 0:
-        atr_stop   = round(entry - atr14 * sm)
-        atr_target = round(entry + atr14 * tm)
+        atr_stop   = _round_trade_price(entry - atr14 * sm, market)
+        atr_target = _round_trade_price(entry + atr14 * tm, market)
         atr_pct = (entry - atr_stop) / entry * 100
         if 1.5 <= atr_pct <= 15.0:
-            return entry, atr_stop, atr_target
+            return _round_trade_price(entry, market), atr_stop, atr_target
 
     band_stop   = rp["horizon_stop"][horizon]
     band_target = rp["horizon_target"][horizon]
-    stop   = round(entry * (1.0 - (1.0 - band_stop) * rf))
-    target = round(entry * (1.0 + (band_target - 1.0) * rwf))
-    return entry, stop, target
+    stop   = _round_trade_price(entry * (1.0 - (1.0 - band_stop) * rf), market)
+    target = _round_trade_price(entry * (1.0 + (band_target - 1.0) * rwf), market)
+    return _round_trade_price(entry, market), stop, target
+
+
+def _round_trade_price(value: float, market: str) -> float:
+    return round(float(value), 2) if str(market).lower() == "us" else round(float(value), 0)
 
 
 # ─── OHLCV 로딩 ───────────────────────────────────────────────────────────────
@@ -435,7 +440,7 @@ def _exclude_future_ohlcv(
     for symbol, rows in ohlcv_all.items():
         usable: list[dict] = []
         for row in rows:
-            raw_date = str(row.get("date") or "")[:10]
+            raw_date = str(row.get("date") or "").strip()[:10]
             try:
                 observation_date = date.fromisoformat(raw_date)
             except ValueError:
@@ -444,7 +449,9 @@ def _exclude_future_ohlcv(
             if observation_date > cutoff:
                 excluded += 1
                 continue
-            usable.append(row)
+            # Normalize compact YYYYMMDD and ISO YYYY-MM-DD sources before any
+            # later lexical slicing/window comparisons.
+            usable.append({**row, "date": observation_date.isoformat()})
         if len(usable) >= 30:
             result[symbol] = usable
     return result, excluded
@@ -563,13 +570,13 @@ def _generate_recs_at_date(
             continue
 
         # ── 레짐 어댑티브 가격 밴드 ────────────────────────────────────────
-        entry, stop, target = _price_band(score, current, mode, horizon, ind, rp)
+        entry, stop, target = _price_band(score, current, mode, horizon, ind, rp, market=market)
         sub = _sub_scores(ind)
 
         corr_applied = False
         if combo_params:
             entry, stop, target, corr_applied = _apply_wf_correction(
-                combo_params, entry, stop, target, ind
+                combo_params, entry, stop, target, ind, market=market
             )
 
         recs.append({
@@ -1034,6 +1041,7 @@ def _apply_wf_correction(
     stop: float,
     target: float,
     ind: dict | None = None,
+    market: str = "kr",
 ) -> tuple[float, float, float, bool]:
     """
     combo_params의 priceAdjustments를 entry/stop/target에 직접 적용.
@@ -1052,8 +1060,9 @@ def _apply_wf_correction(
 
     # entryAggressiveness > 0 → entry 를 current 기준으로 살짝 위로
     # (entry가 이미 current와 같은 경우가 많으므로 stop distance 기준 조정)
-    stop_dist  = max(entry - stop,  1.0)
-    target_dist = max(target - entry, 1.0)
+    min_tick = 0.01 if str(market).lower() == "us" else 1.0
+    stop_dist  = max(entry - stop, min_tick)
+    target_dist = max(target - entry, min_tick)
 
     new_entry  = entry  + stop_dist  * ea * 0.1   # 작게 조정
     new_stop   = stop   + stop_dist  * sm * 0.1
@@ -1067,6 +1076,13 @@ def _apply_wf_correction(
         new_stop = new_entry - stop_dist * 0.5
     if new_target <= new_entry:
         new_target = new_entry + target_dist * 0.5
+    new_entry = max(min_tick * 2.0, _round_trade_price(new_entry, market))
+    new_stop = _round_trade_price(new_stop, market)
+    new_target = _round_trade_price(new_target, market)
+    new_stop = max(min_tick, min(new_stop, new_entry - min_tick))
+    new_target = max(new_entry + min_tick, new_target)
+    new_stop = _round_trade_price(new_stop, market)
+    new_target = _round_trade_price(new_target, market)
     if inverted:
         logging.getLogger(__name__).warning(
             "walkforward correction produced an inverted stop/target and was "
@@ -1075,7 +1091,7 @@ def _apply_wf_correction(
             entry, stop, target, new_entry, new_stop, new_target, ea, sm, tm,
         )
 
-    return round(new_entry, 0), round(new_stop, 0), round(new_target, 0), True
+    return new_entry, new_stop, new_target, True
 
 
 # ─── 전체 실행 (모든 mode×horizon 조합) ──────────────────────────────────────
@@ -1141,12 +1157,19 @@ def run_all(market: str = "kr", window_months: int = 1) -> dict[str, Any]:
             w.writeheader()
             w.writerows(all_csv_rows)
 
+    # Individual trade records are transient calibration inputs. Persisting
+    # them again inside every combo duplicates large ledgers and makes the
+    # read-only API load multi-megabyte JSON files for summary requests.
+    persisted_results = {
+        key: {field: value for field, value in result.items() if field != "tradeRecords"}
+        for key, result in all_results.items()
+    }
     summary = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "market":      market,
         "asOf":        date.today().isoformat(),
         "windowMonths": window_months,
-        "combos":      all_results,
+        "combos":      persisted_results,
     }
     json_path = reports / f"walkforward_summary_{market}.json"
     json_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
