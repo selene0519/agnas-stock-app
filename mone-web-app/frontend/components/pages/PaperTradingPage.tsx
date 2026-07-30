@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mone, type Market } from "@/lib/api";
-import { QuantOperatingStatus } from "@/components/QuantOperatingStatus";
+import { ShadowCapitalGate } from "@/components/ShadowCapitalGate";
 import { TrendingUp, TrendingDown, RefreshCw, Plus, Minus, RotateCcw, History, BarChart3, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 type Position = {
@@ -427,7 +427,7 @@ export default function PaperTradingPage({
       {/* 헤더 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">모의투자</h1>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">모의투자</h1>
           <p className="mt-1 text-xs text-slate-400">가상 자금으로 실전처럼 매매 연습 — 현재가 기준 자동 체결</p>
         </div>
         <div className="flex items-center gap-2">
@@ -453,7 +453,7 @@ export default function PaperTradingPage({
         </div>
       </div>
 
-      <QuantOperatingStatus market={market} />
+      <ShadowCapitalGate market={market} />
 
       {/* 요약 */}
       {summary && <SummaryBar summary={summary} market={market} />}

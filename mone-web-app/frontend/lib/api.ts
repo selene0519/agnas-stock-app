@@ -29,6 +29,33 @@ export interface ApiList<T = any> {
   [key: string]: any;
 }
 
+export interface QuantShadowStatus {
+  status: string;
+  mode: "SHADOW_ONLY" | string;
+  liveTradingAllowed: false;
+  decision: "ABSTAIN" | "SHADOW_TAKE" | string;
+  decisionReasons: string[];
+  summary: {
+    candidates: number;
+    take: number;
+    wait: number;
+    reject: number;
+    grossExposurePct: number;
+    cashWeightPct: number;
+    portfolioBeta: number;
+    d20BlockMeanCarPct: number | null;
+    d20AlphaCi95: [number, number] | null;
+    independentAlphaBlocks: number | null;
+    topSleeve: string | null;
+    topSleeveReturnPct: number | null;
+    topSleeveProfitFactor: number | null;
+    independentDecisions: number | null;
+  };
+  sources: Record<string, string>;
+  missingReports: string[];
+  error?: string;
+}
+
 /** 추천 카드 아이템 타입 — 4차 이벤트 필드 + 5차 adaptive 필드 포함 */
 export interface RecommendationItem {
   symbol: string;
@@ -600,6 +627,8 @@ export const mone = {
     apiGet<any>("/api/portfolio/risk-budget", p),
   quantOperatingStatus: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/quant/operating-status", p),
+  quantShadowStatus: () =>
+    apiGet<QuantShadowStatus>("/api/quant/shadow-status"),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>
     apiGet<ApiList>("/api/backtest/summary", p),
   backtestTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; limit?: number }) =>
