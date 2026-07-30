@@ -14,7 +14,9 @@ MONE은 국장·미장 주식 데이터를 자동 수집하고, 보수/균형/�
 - 데이터: KIS API (한국투자증권), DART, GNews, Finnhub
 - 자동화: GitHub Actions
 - 데이터 저장: CSV 파일 기반 + Supabase 동기화 코드 연결됨(`supabase_db.py`),
-  단 `.env`에 SUPABASE_URL/SUPABASE_KEY 미설정으로 현재 비활성 (2026-06-27 확인)
+  단 `.env`에 SUPABASE_URL/SUPABASE_SERVICE_KEY 미설정으로 현재 비활성
+  (2026-07-29 정정: 코드가 읽는 이름은 SUPABASE_SERVICE_KEY 또는 SUPABASE_ANON_KEY다.
+   `SUPABASE_KEY`로 등록하면 오류 없이 그냥 꺼진다 — supabase_db.py:19)
 
 ---
 
@@ -96,7 +98,8 @@ reports/virtual_prediction_ledger.csv      ← VTJ 가상 체결 원장
 - BottomNav 더보기: 로그인 버튼 (미로그인) / 유저 프로필 + 로그아웃 (로그인 시)
 - 보유종목/관심종목 Supabase 동기화: `user_data.py`(upsert/delete) ↔ `supabase_db.py`,
   서버 시작 시 `auto_sync.py`가 `pull_to_csv()` 호출 — **코드는 완료, 연결은 미완**
-  (SUPABASE_URL/SUPABASE_KEY를 .env에 채우기만 하면 동작. 기존 메모에 있던
+  (SUPABASE_URL + SUPABASE_SERVICE_KEY를 .env에 채우면 동작. **SUPABASE_KEY 아님** —
+  그 이름으로 넣으면 조용히 비활성이다. 기존 메모에 있던
   Supabase 프로젝트 `tzbwktslzquogjvfllpl` 키를 등록하면 끝)
 
 #### VTJ (Virtual Trade Journal)
@@ -263,7 +266,7 @@ GITHUB_TOKEN
 ```
 - ANTHROPIC_API_KEY Render 등록 → Claude API 감성 분석 활성화
 - 백테스트 데이터 500건+ 후 보정 테이블 재생성 (run_ensemble_calibration 호출)
-- Supabase SUPABASE_URL/SUPABASE_KEY를 .env에 등록 (코드는 이미 완료, Phase 5 마무리는
+- Supabase SUPABASE_URL/**SUPABASE_SERVICE_KEY**를 .env에 등록 (코드는 이미 완료, Phase 5 마무리는
   키 등록만 남음 — 프로젝트 tzbwktslzquogjvfllpl)
 - 매물대 압축(Phase 6) 계산 로직 미발견 — 토글(toggles.supply)은 있는데 실제 계산부 확인 필요
 - 손절지연(추격매수 반대 패턴) 행동분석 미시작

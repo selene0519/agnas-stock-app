@@ -133,3 +133,34 @@ def test_real_repo_run_reports_clustering_state() -> None:
     assert "clustering" in res
     assert "isClustered" in res["clustering"]
     assert "eventsByMonth" in res
+
+
+# ── 창별 표본 분리 (2026-07-29) ─────────────────────────────────────────
+# 이벤트 하나가 **모든 창**을 만족해야 채택되면, D+20치 미래 봉이 없는 최근
+# 시그널이 통째로 버려진다. 그 결과 남은 표본이 과거 며칠에 몰려 군집이 되고,
+# **짧은 창까지 같이 못 쓰게 된다.** 실측: 150건 전부 2026-06의 6일에 몰림
+# -> 창별 분리 후 D+1이 10일에 퍼져 군집이 풀렸다.
+def test_windows_are_collected_independently() -> None:
+    src = (ROOT / "scripts" / "analyze_recommendation_alpha.py").read_text(encoding="utf-8")
+    assert "ev + min(windows) >= len(sret)" in src, (
+        "가장 긴 창을 요구하면 최근 시그널이 통째로 빠져 표본이 과거로 몰린다")
+    assert "if not cars:" in src, "창 하나가 비어도 나머지는 살려야 한다"
+
+
+def test_clustering_is_judged_per_window() -> None:
+    """창마다 표본이 다르므로 군집도 창마다 달라진다."""
+    src = (ROOT / "scripts" / "analyze_recommendation_alpha.py").read_text(encoding="utf-8")
+    assert "wclustered" in src and "distinctEventDates" in src
+    assert "significanceUsable" in src
+
+
+def test_cli_never_prints_bare_significance() -> None:
+    """군집인데 '유의: 예'로 찍으면 그게 곧 낙관 누출이다.
+
+    화면에는 significanceUsable(군집·표본수까지 통과)만 나가야 한다.
+    """
+    src = (ROOT / "scripts" / "analyze_recommendation_alpha.py").read_text(encoding="utf-8")
+    body = src[src.index("def main("):]
+    assert 'w["significant"]' not in body, (
+        "CLI가 significant를 그대로 찍고 있다 — 군집일 때 근거 없는 '유의'가 나간다")
+    assert 'significanceUsable' in body

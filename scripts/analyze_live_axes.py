@@ -48,11 +48,9 @@ OUT = ROOT / "reports" / "live_axis_analysis.json"
 
 # 국면 라벨이 한 파일 안에서 RISK_ON / 횡보장 / BULL / SIDE / 약세장 / NEUTRAL로
 # 뒤섞여 있다. 정규화하지 않으면 같은 국면이 여러 버킷으로 흩어져 n이 쪼개진다.
-REGIME_NORM = {
-    "RISK_ON": "BULL", "BULL": "BULL", "강세장": "BULL",
-    "SIDE": "SIDE", "횡보장": "SIDE", "NEUTRAL": "SIDE",
-    "BEAR": "BEAR", "약세장": "BEAR", "RISK_OFF": "BEAR",
-}
+# 매핑은 scripts/regime_labels.py 한 곳에만 둔다. 스크립트마다 사본을 들면
+# 하나가 낡는 순간 조용히 갈린다.
+from regime_labels import _ALIAS as REGIME_NORM  # noqa: E402
 SCORE_BINS = [(0, 50), (50, 55), (55, 60), (60, 65), (65, 70), (70, 101)]
 MIN_TRUSTWORTHY_N = 30
 

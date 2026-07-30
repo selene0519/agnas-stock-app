@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-07-29T17:00:59.531955+00:00",
+  "stable": false,
+  "idempotency": {
+    "ok": true,
+    "judgmentChanges": 0,
+    "valueChanges": 0,
+    "meanBeforePct": -3.8752,
+    "meanAfterPct": -3.8752,
+    "note": "이미 정산된 행을 같은 규칙으로 다시 정산했을 때 값이 바뀌면 정산이 실행 시점에 의존한다는 뜻이다."
+  },
+  "crossLedger": {
+    "ok": false,
+    "sharedTrades": 60,
+    "agreeWithinPp": 0.5,
+    "agreeShare": 0.0833,
+    "minAgreeShare": 0.9,
+    "meanA": -7.9845,
+    "meanB": -4.9801,
+    "meanDiffPp": -3.0044,
+    "medianDiffPp": -1.0095,
+    "note": "같은 예측인데 값이 다르면 '엣지가 얼마인가'에 답이 두 개가 된다. 원인은 아래 ruleDivergence — 버그가 아니라 설계가 갈린 것이다."
+  },
+  "ruleDivergence": {
+    "cost": {
+      "ledgerA": {
+        "kr": 0.09,
+        "us": 0.06
+      },
+      "ledgerB": {
+        "kr": 0.41,
+        "us": 0.3,
+        "breakdown": "buy_slippage 0.1 + sell_slippage 0.1 + tax_commission 0.21(kr)/0.10(us)"
+      },
+      "note": "국장 기준 약 4.6배 차이. 같은 거래의 순손익이 달라진다."
+    },
+    "window": {
+      "ledgerA": {
+        "validationDays": {
+          "short": 5,
+          "swing": 10,
+          "mid": 21
+        },
+        "plusBufferDays": 7,
+        "entryWindow": null
+      },
+      "ledgerB": {
+        "evaluationDays": {
+          "short": 5,
+          "swing": 20,
+          "mid": 60
+        },
+        "entryWindowDays": {
+          "short": 3,
+          "swing": 5,
+          "mid": 10
+        }
+      },
+      "note": "mid 기준 28일 vs 60일. 창이 길면 만기 청산 대신 목표·손절에 닿을 확률이 오른다."
+    },
+    "decisionNeeded": "어느 규칙이 '이 앱의 매매'인지는 사람이 정해야 한다. 코드로 한쪽에 맞추면 그 순간 과거 수치의 의미가 바뀐다."
+  }
+}

@@ -176,6 +176,57 @@ def _build_failure_reason_tags(row: dict[str, Any]) -> str:
     if data_src in {"unavailable", "placeholder", "mock"}:
         tags.append("data_insufficient")
 
+    # ── 가격·변동성 기반 태그 ──────────────────────────────────────────
+    # 2026-07-29 실측: postmortem 93행의 failureReasonTags가 **전부 "none"**
+    # 이었다. 위 태그들이 전부 이벤트 필드(뉴스/공시/실적/매크로/섹터)에만
+    # 의존하는데 그 데이터가 비어 있었기 때문이다. "왜 틀렸는지"가 비어 있으면
+    # 자가보정이 배울 근거가 없다 — 실제로 보정 효과가 0.00%p였다.
+    #
+    # 그래서 **이미 있는 수치**로 태그를 만든다. 아래 셋은 같은 날 추천들의
+    # 평균을 빼 시장 요인을 제거한 뒤에도 홀드아웃에서 살아남은 피처다:
+    #   atr14Pct   test ρ -0.494   mdd20  test ρ +0.369   rsi  test ρ -0.209
+    def _f(*keys: str) -> float | None:
+        for k in keys:
+            v = row.get(k)
+            if v in (None, ""):
+                continue
+            try:
+                return float(str(v).replace("%", "").replace(",", "").strip())
+            except (TypeError, ValueError):
+                continue
+        return None
+
+    atr = _f("atr14Pct", "atr14_pct", "atr14_pct_at_entry")
+    if atr is not None and atr >= 4.0:
+        tags.append("high_volatility_entry")
+
+    rsi = _f("rsi", "rsiAtEntry", "rsi_at_entry")
+    if rsi is not None and rsi >= 70:
+        tags.append("overbought_entry")
+
+    mdd = _f("mdd20", "mdd20AtEntry", "mdd20_at_entry")
+    if mdd is not None and mdd <= -15:
+        tags.append("deep_drawdown_entry")
+
+    # 손실의 몫이 시장인지 종목인지 — 오늘 측정에서 D+1 손실의 89%가 시장이었다.
+    # 이 구분이 없으면 시장 탓을 선택 실패로 오독하고 엉뚱한 곳을 보정한다.
+    bench = _f("benchmarkReturnPct", "marketReturnPct", "indexReturnPct")
+    own = _f("returnPct", "return_pct", "net_pnl_pct")
+    if bench is not None and own is not None:
+        if bench <= -3.0 and own <= bench + 1.0:
+            tags.append("market_decline")          # 시장이 끌고 내려감
+        elif bench >= 0.0 and own <= -3.0:
+            tags.append("stock_specific_loss")     # 시장은 버텼는데 종목이 빠짐
+
+    # 손절이 변동성 대비 너무 좁으면 정상 등락에도 털린다.
+    stop_pct = _f("stopDistancePct", "stopPct")
+    if stop_pct is None:
+        entry, stop = _f("entryPrice", "entry"), _f("stopPrice", "stop")
+        if entry and stop and entry > 0:
+            stop_pct = abs((entry - stop) / entry * 100)
+    if stop_pct is not None and atr and atr > 0 and stop_pct < atr * 1.2:
+        tags.append("stop_within_noise")
+
     return ",".join(tags) if tags else "none"
 
 
