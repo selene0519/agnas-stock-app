@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-29T18:52:12.863277+00:00",
+  "generatedAt": "2026-07-30T01:21:58.542407+00:00",
   "source": "KOSPI 일봉 15년 (2011-07-29~2026-07-29)",
   "method": "전일 국면으로 당일 노출을 정한다(룩어헤드 없음). 종목 선택은 재현 불가라 지수 수익 x 노출로 근사한다 — 알파가 0과 구별되지 않는다는 측정과 일관된 가정이다.",
   "reference": "virattt/ai-hedge-fund v2/risk/limits.py (상한에 걸린 노출은 현금으로 남긴다)",
@@ -25,13 +25,13 @@
         "SIDE": 1.0,
         "BEAR": 0.5
       },
-      "finalNav": 96.94,
-      "totalReturnPct": -3.06,
+      "finalNav": 194.89,
+      "totalReturnPct": 94.89,
       "days": 3660,
       "exposedDayShare": 1.0,
-      "switches": 430,
-      "dailyVolPct": 1.0572,
-      "returnPerVol": -2.89
+      "switches": 170,
+      "dailyVolPct": 1.1573,
+      "returnPerVol": 81.99
     },
     "약세장 정지": {
       "weights": {
@@ -39,13 +39,13 @@
         "SIDE": 1.0,
         "BEAR": 0.0
       },
-      "finalNav": 28.27,
-      "totalReturnPct": -71.73,
+      "finalNav": 117.58,
+      "totalReturnPct": 17.58,
       "days": 3660,
-      "exposedDayShare": 0.795,
-      "switches": 430,
-      "dailyVolPct": 0.964,
-      "returnPerVol": -74.41
+      "exposedDayShare": 0.731,
+      "switches": 170,
+      "dailyVolPct": 1.1067,
+      "returnPerVol": 15.88
     },
     "약세장 정지+횡보 감축": {
       "weights": {
@@ -53,13 +53,13 @@
         "SIDE": 0.6,
         "BEAR": 0.0
       },
-      "finalNav": 25.45,
-      "totalReturnPct": -74.55,
+      "finalNav": 114.01,
+      "totalReturnPct": 14.01,
       "days": 3660,
-      "exposedDayShare": 0.795,
-      "switches": 995,
-      "dailyVolPct": 0.8128,
-      "returnPerVol": -91.72
+      "exposedDayShare": 0.731,
+      "switches": 371,
+      "dailyVolPct": 1.005,
+      "returnPerVol": 13.94
     },
     "강세장만": {
       "weights": {
@@ -67,13 +67,13 @@
         "SIDE": 0.0,
         "BEAR": 0.0
       },
-      "finalNav": 20.63,
-      "totalReturnPct": -79.37,
+      "finalNav": 104.62,
+      "totalReturnPct": 4.62,
       "days": 3660,
-      "exposedDayShare": 0.45,
-      "switches": 602,
-      "dailyVolPct": 0.7137,
-      "returnPerVol": -111.2
+      "exposedDayShare": 0.398,
+      "switches": 204,
+      "dailyVolPct": 0.9431,
+      "returnPerVol": 4.9
     },
     "보수(강세 80/횡보 40/약세 0)": {
       "weights": {
@@ -81,13 +81,13 @@
         "SIDE": 0.4,
         "BEAR": 0.0
       },
-      "finalNav": 33.26,
-      "totalReturnPct": -66.74,
+      "finalNav": 113.32,
+      "totalReturnPct": 13.32,
       "days": 3660,
-      "exposedDayShare": 0.795,
-      "switches": 995,
-      "dailyVolPct": 0.6271,
-      "returnPerVol": -106.43
+      "exposedDayShare": 0.731,
+      "switches": 371,
+      "dailyVolPct": 0.7892,
+      "returnPerVol": 16.87
     }
   },
   "caveats": [
