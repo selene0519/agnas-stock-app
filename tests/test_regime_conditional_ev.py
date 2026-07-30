@@ -35,12 +35,21 @@ def _band(regime: str):
     return G._price_band(65.0, 50000.0, "balanced", "swing", _IND)
 
 
-def test_bear_regime_lowers_ev() -> None:
-    """하락장 승률(31.3%)이 풀링(40.8%)보다 낮으므로 EV도 낮아야 한다."""
+def test_side_regime_lowers_ev_most() -> None:
+    """**횡보장이 최악이다.** 2026-07-30 정정.
+
+    15년 전략 재현(26,476건)에서 네 가지 국면 정의 **전부**에서 SIDE만 음수였고
+    (BEAR +0.547 / BULL +0.521 / SIDE -0.256), 라이브 clean window(72건)도
+    같았다(BEAR -3.78 / BULL -7.16 / SIDE -10.35).
+    손절이 1.5 ATR로 좁아 추세 없는 구간에서 잡음에 털리기 때문이다.
+    이전 구현은 BEAR를 깎고 SIDE를 BULL과 같게 뒀다 — 거꾸로였다.
+    """
     _, _, _, ev_bull, _, _, _, _ = _band("BULL")
+    _, _, _, ev_side, _, _, _, _ = _band("SIDE")
     _, _, _, ev_bear, _, _, _, _ = _band("BEAR")
-    assert ev_bull is not None and ev_bear is not None
-    assert ev_bear < ev_bull, f"약세장 EV가 강세장보다 낮아야 한다: {ev_bear} vs {ev_bull}"
+    assert None not in (ev_bull, ev_side, ev_bear)
+    assert ev_side < ev_bull, f"횡보장 EV가 강세장보다 낮아야 한다: {ev_side} vs {ev_bull}"
+    assert ev_side < ev_bear, f"횡보장 EV가 하락장보다 낮아야 한다: {ev_side} vs {ev_bear}"
 
 
 def test_displayed_probability_is_untouched_by_regime() -> None:
@@ -62,8 +71,8 @@ def test_unknown_regime_does_not_adjust() -> None:
 def test_regime_table_matches_walkforward() -> None:
     """숫자를 임의로 바꾸면 근거가 사라진다."""
     s = KR.read_text(encoding="utf-8")
-    for tok in ('"BULL": 0.418', '"BEAR": 0.313', "_POOLED_WR = 0.408"):
-        assert tok in s, f"{tok} 가 워크포워드 실측과 다르다"
+    for tok in ('"BULL": 0.427', '"SIDE": 0.395', '"BEAR": 0.459', "_POOLED_WR = 0.423"):
+        assert tok in s, f"{tok} 가 15년 전략 재현 실측과 다르다"
 
 
 def test_no_probability_floor_that_inflates_measured_zero() -> None:
