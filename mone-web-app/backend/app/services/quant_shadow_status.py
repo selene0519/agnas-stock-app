@@ -59,6 +59,8 @@ def shadow_status() -> dict[str, Any]:
     if not bool(d20.get("significanceUsable")):
         reasons.append("ALPHA_NOT_PROVEN")
     residual_validation = residual_alpha.get("validation") if isinstance(residual_alpha.get("validation"), dict) else {}
+    residual_research_validation = residual_alpha.get("researchValidation") if isinstance(residual_alpha.get("researchValidation"), dict) else {}
+    forward_evidence = residual_alpha.get("forwardEvidence") if isinstance(residual_alpha.get("forwardEvidence"), dict) else {}
     if residual_validation.get("evidenceStatus") != "PASS":
         reasons.append("RESIDUAL_ALPHA_MODEL_NOT_PROVEN")
     if not top_sleeve or float(top_sleeve.get("totalReturnPct") or 0.0) <= 0:
@@ -92,6 +94,12 @@ def shadow_status() -> dict[str, Any]:
             "residualAlphaModelEvidence": residual_validation.get("evidenceStatus"),
             "residualAlphaOosPredictions": residual_validation.get("oosPredictions"),
             "residualAlphaOosSignalDates": residual_validation.get("oosSignalDates"),
+            "residualAlphaForwardSettledPredictions": residual_validation.get("oosPredictions"),
+            "residualAlphaForwardSettledSignalDates": residual_validation.get("oosSignalDates"),
+            "residualAlphaResearchOosPredictions": residual_research_validation.get("oosPredictions"),
+            "residualAlphaResearchOosSignalDates": residual_research_validation.get("oosSignalDates"),
+            "residualAlphaForwardModelFingerprint": forward_evidence.get("modelFingerprint"),
+            "residualAlphaForwardIntegrityBlockers": forward_evidence.get("integrityBlockingReasons") or [],
             "residualAlphaSelectedCi95": residual_validation.get("selectedBlockBootstrapCi95"),
             "topSleeve": top_name,
             "topSleeveReturnPct": top_sleeve.get("totalReturnPct") if top_sleeve else None,

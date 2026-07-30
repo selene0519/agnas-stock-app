@@ -91,6 +91,11 @@ stage_app_data() {
   git add reports/factor_attribution.json 2>/dev/null || true
   # kelly_position_sizes.json 은 개인 보유 기반이라 커밋 제외(.gitignore).
   git add reports/factor_based_filter_adjustments.json 2>/dev/null || true
+  # Residual-alpha promotion evidence is valid only when the prediction was
+  # sealed immediately after recommendation generation and later settled in
+  # its separate append-only journal.
+  git add reports/shadow_residual_alpha.json 2>/dev/null || true
+  git add data/shadow_residual_alpha_predictions.csv data/shadow_residual_alpha_settlements.csv 2>/dev/null || true
 
   # Keep ignore rules up to date, but never commit secrets, caches, node_modules, or Next build artifacts.
   git add .gitignore mone-web-app/.gitignore mone-web-app/frontend/.gitignore 2>/dev/null || true

@@ -460,6 +460,21 @@ jobs:
           fi
           set -e
 
+      - name: Seal residual-alpha predictions immediately
+        # This must run in the recommendation-producing workflow. The later
+        # settlement workflow is allowed to settle labels, but must never
+        # backfill an old recommendation as if it were a live prediction.
+        run: |
+          set +e
+          python scripts/build_shadow_residual_alpha.py
+          code=$?
+          set -e
+          echo "build_shadow_residual_alpha: exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::Forward residual-alpha prediction sealing failed (exit ${code})"
+            exit "${code}"
+          fi
+
       - name: Rebuild regime lens self-calibration (KR)
         # forward 루프: settle(만기정산) → journal(백테prior) → calibration(라이브+prior 블렌드)
         #             → screen(오늘후보) → capture(오늘후보를 예측원장에 기록)

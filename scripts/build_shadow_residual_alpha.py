@@ -19,6 +19,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import numpy as np
 
@@ -29,6 +30,8 @@ JOURNAL = ROOT / "data" / "virtual_trade_journal.csv"
 KR_MASTER = ROOT / "data" / "stock_master_kr.csv"
 REPORTS = ROOT / "reports"
 OUT = REPORTS / "shadow_residual_alpha.json"
+PREDICTION_JOURNAL = ROOT / "data" / "shadow_residual_alpha_predictions.csv"
+SETTLEMENT_JOURNAL = ROOT / "data" / "shadow_residual_alpha_settlements.csv"
 
 FORWARD_SOURCES = {"FORWARD_PAPER_TRADE", "MANUAL_REVIEWED"}
 PLAN_ONLY_SESSIONS = {"PREMARKET_PLAN", "INTRADAY_CHECK"}
@@ -44,7 +47,22 @@ MIN_OOS_DATES = 30
 MIN_SELECTED_OOS = 60
 RIDGE_LAMBDA = 10.0
 LOWER_QUANTILE_Z = 1.645
-POLICY_VERSION = "shadow-residual-alpha-v1.0.2"
+MAX_RECORDING_DELAY_HOURS = 6.0
+POLICY_VERSION = "shadow-residual-alpha-v1.1.0"
+
+PREDICTION_FIELDS = [
+    "prediction_id", "policy_version", "model_fingerprint", "recorded_at",
+    "generated_at", "signal_date", "candidate_key", "economic_event_key",
+    "market", "mode", "horizon", "symbol", "status", "train_rows",
+    "train_dates", "train_max_label_available_date",
+    "predicted_residual_alpha_pct", "prediction_lower90_pct",
+    "baseline_prediction_pct", "record_hash",
+]
+SETTLEMENT_FIELDS = [
+    "prediction_id", "model_fingerprint", "settled_at", "signal_date",
+    "economic_event_key", "label_available_date",
+    "realized_residual_alpha_pct", "beta", "market_model_r2", "record_hash",
+]
 
 NUMERIC_FEATURES = (
     "final_rank_score",
@@ -101,6 +119,11 @@ def _policy() -> dict[str, Any]:
         "sameDateRowsStayInOneTestBlock": True,
         "eventDayReturnExcluded": True,
         "trainingLabelAvailableStrictlyBeforeSignalDate": True,
+        "validationSource": "IMMUTABLE_FORWARD_PREDICTION_AND_SETTLEMENT_JOURNALS",
+        "researchWalkForwardCannotPromote": True,
+        "maxPredictionRecordingDelayHours": MAX_RECORDING_DELAY_HOURS,
+        "modelFingerprintCohortRequired": True,
+        "immutablePredictionAndSettlementRows": True,
         "numericFeatures": list(NUMERIC_FEATURES),
         "categoryFeatures": [f"{field}={value}" for field, value in CATEGORY_FEATURES],
     }
@@ -153,6 +176,64 @@ def candidate_key(row: dict[str, Any], signal_date: str | None = None) -> str:
         _text(row.get("symbol")).upper(),
     ))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+
+
+def economic_event_key(row: dict[str, Any], signal_date: str | None = None) -> str:
+    day = _text(signal_date or row.get("asOfDate") or row.get("as_of_date") or row.get("generatedAt"))[:10]
+    market = _text(row.get("market")).lower()
+    symbol = _text(row.get("symbolNormalized") or row.get("symbol")).upper().split(".")[0]
+    if market == "kr":
+        symbol = symbol.zfill(6)
+    window = HORIZON_WINDOWS.get(_text(row.get("horizon")).lower())
+    raw = "|".join((day, market, symbol, str(window or "")))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+
+
+def _parse_generated_at(value: Any) -> datetime | None:
+    raw = _text(value)
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo("Asia/Seoul"))
+    return parsed.astimezone(timezone.utc)
+
+
+def _prediction_id(model_fingerprint: str, candidate_key_value: str) -> str:
+    raw = f"{model_fingerprint}|{candidate_key_value}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:28]
+
+
+def _same_immutable_row(left: dict[str, Any], right: dict[str, Any], ignored: set[str]) -> bool:
+    keys = (set(left) | set(right)) - ignored
+    return all(_text(left.get(key)) == _text(right.get(key)) for key in keys)
+
+
+def _row_hash(row: dict[str, Any], ignored: set[str]) -> str:
+    payload = {key: _text(value) for key, value in row.items() if key not in ignored and key != "record_hash"}
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _append_csv_rows(path: Path, fields: list[str], rows: list[dict[str, Any]]) -> tuple[int, str | None]:
+    if not rows:
+        return 0, None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    exists = path.exists() and path.stat().st_size > 0
+    if exists:
+        with path.open(encoding="utf-8-sig", newline="") as handle:
+            header = next(csv.reader(handle), [])
+        if header != fields:
+            return 0, "JOURNAL_SCHEMA_MISMATCH"
+    with path.open("a", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
+        if not exists:
+            writer.writeheader()
+        writer.writerows({field: row.get(field, "") for field in fields} for row in rows)
+    return len(rows), None
 
 
 def _dedupe_forward_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -298,6 +379,7 @@ def _event_label(
         **row,
         "signalDate": signal_date,
         "candidateKey": candidate_key(row, signal_date),
+        "economicEventKey": economic_event_key(row, signal_date),
         "symbolNormalized": symbol,
         "benchmark": benchmark_symbol,
         "labelWindow": window,
@@ -510,7 +592,9 @@ def current_predictions(labeled_rows: list[dict[str, Any]], candidates: list[dic
         train_dates = {row["signalDate"] for row in train}
         base = {
             "candidateKey": candidate_key(candidate, signal_date),
+            "economicEventKey": economic_event_key(candidate, signal_date),
             "signalDate": signal_date,
+            "generatedAt": _text(candidate.get("generatedAt") or candidate.get("generated_at")),
             "market": _text(candidate.get("market")).lower(),
             "mode": _text(candidate.get("mode")).lower(),
             "horizon": _text(candidate.get("horizon")).lower(),
@@ -522,7 +606,7 @@ def current_predictions(labeled_rows: list[dict[str, Any]], candidates: list[dic
         if len(train) < MIN_TRAIN_ROWS or len(train_dates) < MIN_TRAIN_DATES:
             output.append({**base, "status": "INSUFFICIENT_TRAINING_HISTORY"})
             continue
-        values, _, residual_sd = _fit_predict(train, [candidate])
+        values, baselines, residual_sd = _fit_predict(train, [candidate])
         value = float(values[0])
         output.append({
             **base,
@@ -530,20 +614,307 @@ def current_predictions(labeled_rows: list[dict[str, Any]], candidates: list[dic
             "trainMaxLabelAvailableDate": max(row["labelAvailableDate"] for row in train),
             "predictedResidualAlphaPct": round(value, 6),
             "predictionLower90Pct": round(value - LOWER_QUANTILE_Z * residual_sd, 6),
+            "baselinePredictionPct": round(float(baselines[0]), 6),
         })
     return output
 
 
-def build() -> dict[str, Any]:
+def record_forward_predictions(
+    predictions: list[dict[str, Any]],
+    path: Path | None = None,
+    recorded_at: datetime | None = None,
+) -> dict[str, Any]:
+    journal_path = path or PREDICTION_JOURNAL
+    now = (recorded_at or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    existing = _read_csv(journal_path)
+    by_id = {_text(row.get("prediction_id")): row for row in existing if _text(row.get("prediction_id"))}
+    pending: list[dict[str, Any]] = []
+    conflicts = 0
+    duplicate = 0
+    late = 0
+    missing_time = 0
+    future = 0
+    fingerprint = _policy_fingerprint()
+    for prediction in predictions:
+        generated = _parse_generated_at(prediction.get("generatedAt"))
+        if generated is None:
+            missing_time += 1
+            continue
+        delay_hours = (now - generated).total_seconds() / 3600.0
+        if delay_hours < 0:
+            future += 1
+            continue
+        if delay_hours > MAX_RECORDING_DELAY_HOURS:
+            late += 1
+            continue
+        candidate = _text(prediction.get("candidateKey"))
+        prediction_id = _prediction_id(fingerprint, candidate)
+        row = {
+            "prediction_id": prediction_id,
+            "policy_version": POLICY_VERSION,
+            "model_fingerprint": fingerprint,
+            "recorded_at": now.isoformat(),
+            "generated_at": generated.isoformat(),
+            "signal_date": prediction.get("signalDate"),
+            "candidate_key": candidate,
+            "economic_event_key": prediction.get("economicEventKey"),
+            "market": prediction.get("market"),
+            "mode": prediction.get("mode"),
+            "horizon": prediction.get("horizon"),
+            "symbol": prediction.get("symbol"),
+            "status": prediction.get("status"),
+            "train_rows": prediction.get("trainRows"),
+            "train_dates": prediction.get("trainDates"),
+            "train_max_label_available_date": prediction.get("trainMaxLabelAvailableDate"),
+            "predicted_residual_alpha_pct": prediction.get("predictedResidualAlphaPct"),
+            "prediction_lower90_pct": prediction.get("predictionLower90Pct"),
+            "baseline_prediction_pct": prediction.get("baselinePredictionPct"),
+        }
+        row["record_hash"] = _row_hash(row, {"recorded_at"})
+        previous = by_id.get(prediction_id)
+        if previous:
+            if _same_immutable_row(previous, row, {"recorded_at"}):
+                duplicate += 1
+            else:
+                conflicts += 1
+            continue
+        by_id[prediction_id] = row
+        pending.append(row)
+    appended, schema_error = _append_csv_rows(journal_path, PREDICTION_FIELDS, pending)
+    return {
+        "path": str(journal_path.relative_to(ROOT)) if journal_path.is_relative_to(ROOT) else str(journal_path),
+        "existingRows": len(existing),
+        "appendedRows": appended,
+        "duplicateRows": duplicate,
+        "lateCandidatesSkipped": late,
+        "missingGeneratedAtSkipped": missing_time,
+        "futureGeneratedAtSkipped": future,
+        "immutableConflicts": conflicts,
+        "schemaError": schema_error,
+    }
+
+
+def settle_forward_predictions(
+    labeled_rows: list[dict[str, Any]],
+    prediction_path: Path | None = None,
+    settlement_path: Path | None = None,
+    settled_at: datetime | None = None,
+) -> dict[str, Any]:
+    predictions_path = prediction_path or PREDICTION_JOURNAL
+    output_path = settlement_path or SETTLEMENT_JOURNAL
+    predictions = _read_csv(predictions_path)
+    existing = _read_csv(output_path)
+    existing_by_id = {_text(row.get("prediction_id")): row for row in existing if _text(row.get("prediction_id"))}
+    labels = {_text(row.get("economicEventKey")): row for row in labeled_rows if _text(row.get("economicEventKey"))}
+    now = (settled_at or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    pending: list[dict[str, Any]] = []
+    duplicate = 0
+    conflicts = 0
+    unresolved = 0
+    for prediction in predictions:
+        if _text(prediction.get("status")) != "PREDICTED":
+            continue
+        label = labels.get(_text(prediction.get("economic_event_key")))
+        if label is None:
+            unresolved += 1
+            continue
+        prediction_id = _text(prediction.get("prediction_id"))
+        row = {
+            "prediction_id": prediction_id,
+            "model_fingerprint": prediction.get("model_fingerprint"),
+            "settled_at": now.isoformat(),
+            "signal_date": prediction.get("signal_date"),
+            "economic_event_key": prediction.get("economic_event_key"),
+            "label_available_date": label.get("labelAvailableDate"),
+            "realized_residual_alpha_pct": label.get("residualAlphaPct"),
+            "beta": label.get("beta"),
+            "market_model_r2": label.get("marketModelR2"),
+        }
+        row["record_hash"] = _row_hash(row, {"settled_at"})
+        previous = existing_by_id.get(prediction_id)
+        if previous:
+            if _same_immutable_row(previous, row, {"settled_at"}):
+                duplicate += 1
+            else:
+                conflicts += 1
+            continue
+        existing_by_id[prediction_id] = row
+        pending.append(row)
+    appended, schema_error = _append_csv_rows(output_path, SETTLEMENT_FIELDS, pending)
+    return {
+        "path": str(output_path.relative_to(ROOT)) if output_path.is_relative_to(ROOT) else str(output_path),
+        "predictionRows": len(predictions),
+        "existingRows": len(existing),
+        "appendedRows": appended,
+        "duplicateRows": duplicate,
+        "unresolvedPredictions": unresolved,
+        "immutableConflicts": conflicts,
+        "schemaError": schema_error,
+    }
+
+
+def live_forward_oos(
+    prediction_path: Path | None = None,
+    settlement_path: Path | None = None,
+    model_fingerprint: str | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    predictions = _read_csv(prediction_path or PREDICTION_JOURNAL)
+    settlements = _read_csv(settlement_path or SETTLEMENT_JOURNAL)
+    fingerprint = model_fingerprint or _policy_fingerprint()
+    current_predictions = [row for row in predictions if _text(row.get("model_fingerprint")) == fingerprint]
+    current_settlements = [row for row in settlements if _text(row.get("model_fingerprint")) == fingerprint]
+    prediction_ids = [_text(row.get("prediction_id")) for row in current_predictions]
+    settlement_ids = [_text(row.get("prediction_id")) for row in current_settlements]
+    prediction_hash_violations = sum(
+        _text(row.get("record_hash")) != _row_hash(row, {"recorded_at"}) for row in current_predictions
+    )
+    settlement_hash_violations = sum(
+        _text(row.get("record_hash")) != _row_hash(row, {"settled_at"}) for row in current_settlements
+    )
+    recording_time_violations = 0
+    for row in current_predictions:
+        generated = _parse_generated_at(row.get("generated_at"))
+        recorded = _parse_generated_at(row.get("recorded_at"))
+        if generated is None or recorded is None:
+            recording_time_violations += 1
+            continue
+        delay = (recorded - generated).total_seconds() / 3600.0
+        if delay < 0 or delay > MAX_RECORDING_DELAY_HOURS:
+            recording_time_violations += 1
+    settlements_by_id = {_text(row.get("prediction_id")): row for row in current_settlements}
+    selected_by_event: dict[str, dict[str, Any]] = {}
+    relationship_violations = 0
+    for prediction in current_predictions:
+        if _text(prediction.get("status")) != "PREDICTED":
+            continue
+        settlement = settlements_by_id.get(_text(prediction.get("prediction_id")))
+        if settlement is None:
+            continue
+        if (
+            _text(settlement.get("economic_event_key")) != _text(prediction.get("economic_event_key"))
+            or _text(settlement.get("signal_date")) != _text(prediction.get("signal_date"))
+        ):
+            relationship_violations += 1
+            continue
+        event_key = _text(prediction.get("economic_event_key"))
+        row = {
+            "predictionId": prediction.get("prediction_id"),
+            "economicEventKey": event_key,
+            "signalDate": prediction.get("signal_date"),
+            "labelAvailableDate": settlement.get("label_available_date"),
+            "trainMaxLabelAvailableDate": prediction.get("train_max_label_available_date"),
+            "predictedResidualAlphaPct": _num(prediction.get("predicted_residual_alpha_pct")),
+            "predictionLower90Pct": _num(prediction.get("prediction_lower90_pct")),
+            "baselinePredictionPct": _num(prediction.get("baseline_prediction_pct")),
+            "realizedResidualAlphaPct": _num(settlement.get("realized_residual_alpha_pct")),
+        }
+        if any(row[key] is None for key in (
+            "predictedResidualAlphaPct", "predictionLower90Pct",
+            "baselinePredictionPct", "realizedResidualAlphaPct",
+        )):
+            continue
+        previous = selected_by_event.get(event_key)
+        if previous is None or float(row["predictionLower90Pct"]) > float(previous["predictionLower90Pct"]):
+            selected_by_event[event_key] = row
+    rows = sorted(selected_by_event.values(), key=lambda row: (row["signalDate"], row["economicEventKey"]))
+    integrity = {
+        "duplicatePredictionIds": len(prediction_ids) - len(set(prediction_ids)),
+        "duplicateSettlementIds": len(settlement_ids) - len(set(settlement_ids)),
+        "predictionHashViolations": prediction_hash_violations,
+        "settlementHashViolations": settlement_hash_violations,
+        "recordingTimeViolations": recording_time_violations,
+        "predictionSettlementRelationshipViolations": relationship_violations,
+    }
+    return rows, {
+        "modelFingerprint": fingerprint,
+        "predictionJournalRows": len(predictions),
+        "settlementJournalRows": len(settlements),
+        "settledCurrentModelEconomicEvents": len(rows),
+        "journalIntegrity": integrity,
+    }
+
+
+def apply_forward_seal_status(
+    predictions: list[dict[str, Any]],
+    path: Path | None = None,
+) -> list[dict[str, Any]]:
+    fingerprint = _policy_fingerprint()
+    sealed = {
+        _text(row.get("prediction_id")): row
+        for row in _read_csv(path or PREDICTION_JOURNAL)
+        if _text(row.get("model_fingerprint")) == fingerprint
+        and _text(row.get("record_hash")) == _row_hash(row, {"recorded_at"})
+    }
+    output: list[dict[str, Any]] = []
+    for prediction in predictions:
+        prediction_id = _prediction_id(fingerprint, _text(prediction.get("candidateKey")))
+        row = sealed.get(prediction_id)
+        expected = {
+            "prediction_id": prediction_id,
+            "policy_version": POLICY_VERSION,
+            "model_fingerprint": fingerprint,
+            "generated_at": (_parse_generated_at(prediction.get("generatedAt")) or ""),
+            "signal_date": prediction.get("signalDate"),
+            "candidate_key": prediction.get("candidateKey"),
+            "economic_event_key": prediction.get("economicEventKey"),
+            "market": prediction.get("market"),
+            "mode": prediction.get("mode"),
+            "horizon": prediction.get("horizon"),
+            "symbol": prediction.get("symbol"),
+            "status": prediction.get("status"),
+            "train_rows": prediction.get("trainRows"),
+            "train_dates": prediction.get("trainDates"),
+            "train_max_label_available_date": prediction.get("trainMaxLabelAvailableDate"),
+            "predicted_residual_alpha_pct": prediction.get("predictedResidualAlphaPct"),
+            "prediction_lower90_pct": prediction.get("predictionLower90Pct"),
+            "baseline_prediction_pct": prediction.get("baselinePredictionPct"),
+        }
+        if isinstance(expected["generated_at"], datetime):
+            expected["generated_at"] = expected["generated_at"].isoformat()
+        matches = bool(row) and _same_immutable_row(row, expected, {"recorded_at", "record_hash"})
+        output.append({
+            **prediction,
+            "predictionId": prediction_id,
+            "forwardSealStatus": "SEALED_FORWARD" if matches else "UNSEALED",
+        })
+    return output
+
+
+def build(
+    prediction_path: Path | None = None,
+    settlement_path: Path | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
     raw = _read_csv(JOURNAL)
     forward = _dedupe_forward_rows(raw)
     labeled, skipped = build_labeled_rows(raw)
-    oos = expanding_oos(labeled)
-    validation = validation_summary(oos)
+    research_oos = expanding_oos(labeled)
+    research_validation = validation_summary(research_oos)
     predictions = current_predictions(labeled, _recommendation_rows())
+    prediction_journal = record_forward_predictions(predictions, prediction_path, now)
+    predictions = apply_forward_seal_status(predictions, prediction_path)
+    settlement_journal = settle_forward_predictions(labeled, prediction_path, settlement_path, now)
+    live_oos, live_source = live_forward_oos(prediction_path, settlement_path)
+    validation = validation_summary(live_oos)
+    integrity_blockers: list[str] = []
+    if prediction_journal["immutableConflicts"]:
+        integrity_blockers.append("IMMUTABLE_PREDICTION_CONFLICT")
+    if settlement_journal["immutableConflicts"]:
+        integrity_blockers.append("IMMUTABLE_SETTLEMENT_CONFLICT")
+    if prediction_journal["futureGeneratedAtSkipped"]:
+        integrity_blockers.append("FUTURE_PREDICTION_TIMESTAMP")
+    if prediction_journal["schemaError"] or settlement_journal["schemaError"]:
+        integrity_blockers.append("FORWARD_JOURNAL_SCHEMA_MISMATCH")
+    journal_integrity = live_source.get("journalIntegrity") or {}
+    if any(int(value or 0) > 0 for value in journal_integrity.values()):
+        integrity_blockers.append("FORWARD_JOURNAL_INTEGRITY_VIOLATION")
+    if integrity_blockers:
+        validation["blockingReasons"] = list(dict.fromkeys(validation["blockingReasons"] + integrity_blockers))
+        validation["evidenceStatus"] = "WAIT"
+    validation["source"] = "IMMUTABLE_FORWARD_PREDICTION_AND_SETTLEMENT_JOURNALS"
     return {
         "status": "SHADOW_ONLY",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": (now or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat(),
         "policy": {**_policy(), "fingerprint": _policy_fingerprint()},
         "data": {
             "rawJournalRows": len(raw),
@@ -553,6 +924,17 @@ def build() -> dict[str, Any]:
             "skipped": skipped,
         },
         "validation": validation,
+        "researchValidation": {
+            **research_validation,
+            "source": "RECOMPUTED_EXPANDING_WALK_FORWARD_RESEARCH_ONLY",
+            "promotionEligible": False,
+        },
+        "forwardEvidence": {
+            **live_source,
+            "predictionJournal": prediction_journal,
+            "settlementJournal": settlement_journal,
+            "integrityBlockingReasons": integrity_blockers,
+        },
         "summary": {
             "candidates": len(predictions),
             "predicted": sum(1 for row in predictions if row["status"] == "PREDICTED"),
@@ -560,7 +942,8 @@ def build() -> dict[str, Any]:
             "evidenceStatus": validation["evidenceStatus"],
         },
         "predictions": predictions,
-        "oosAudit": oos,
+        "forwardOosAudit": live_oos,
+        "researchOosAudit": research_oos,
     }
 
 

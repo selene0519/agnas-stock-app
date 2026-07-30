@@ -22,7 +22,7 @@ def test_negative_expectancy_cell_rejects_even_high_score_candidate() -> None:
     }
 
     decision, reasons = gate._candidate_decision(
-        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0}, "PASS"
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0, "forwardSealStatus": "SEALED_FORWARD"}, "PASS"
     )
 
     assert decision == "REJECT"
@@ -37,7 +37,7 @@ def test_insufficient_but_not_negative_evidence_waits() -> None:
     }
 
     decision, _ = gate._candidate_decision(
-        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0}, "PASS"
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0, "forwardSealStatus": "SEALED_FORWARD"}, "PASS"
     )
 
     assert decision == "WAIT"
@@ -48,7 +48,7 @@ def test_only_proven_positive_cell_can_take() -> None:
     cell = {"evidenceStatus": "PASS", "blockingReasons": []}
 
     decision, reasons = gate._candidate_decision(
-        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0}, "PASS"
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0, "forwardSealStatus": "SEALED_FORWARD"}, "PASS"
     )
 
     assert decision == "TAKE"
@@ -65,12 +65,24 @@ def test_unproven_residual_alpha_model_cannot_take() -> None:
     assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in reasons
 
 
+def test_recomputed_but_unsealed_prediction_cannot_take() -> None:
+    candidate = {"dataStatus": "NORMAL", "expectedValue": 2, "rrActual": 2.0}
+    cell = {"evidenceStatus": "PASS", "blockingReasons": []}
+
+    decision, reasons = gate._candidate_decision(
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0, "forwardSealStatus": "UNSEALED"}, "PASS"
+    )
+
+    assert decision == "WAIT"
+    assert "RESIDUAL_ALPHA_PREDICTION_NOT_FORWARD_SEALED" in reasons
+
+
 def test_nonpositive_residual_alpha_lower_bound_rejects() -> None:
     candidate = {"dataStatus": "NORMAL", "expectedValue": 2, "rrActual": 2.0}
     cell = {"evidenceStatus": "PASS", "blockingReasons": []}
 
     decision, reasons = gate._candidate_decision(
-        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": -0.01}, "PASS"
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": -0.01, "forwardSealStatus": "SEALED_FORWARD"}, "PASS"
     )
 
     assert decision == "REJECT"

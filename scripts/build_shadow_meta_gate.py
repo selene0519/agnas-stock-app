@@ -34,8 +34,8 @@ MIN_DISTINCT_SIGNAL_DATES = 30
 MIN_RISK_REWARD = 1.5
 MAX_TAKE = 3
 PROBABILITY_BINS = ((0, 50), (50, 60), (60, 70), (70, 80), (80, 101))
-POLICY_VERSION = "shadow-meta-v1.1.1"
-RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.0.2"
+POLICY_VERSION = "shadow-meta-v1.2.0"
+RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.0"
 
 
 def _policy() -> dict[str, Any]:
@@ -256,6 +256,8 @@ def _candidate_decision(
         reasons.append("RESIDUAL_ALPHA_MODEL_NOT_PROVEN")
     elif not residual_prediction or residual_prediction.get("status") != "PREDICTED":
         reasons.append("NO_RESIDUAL_ALPHA_PREDICTION")
+    elif residual_prediction.get("forwardSealStatus") != "SEALED_FORWARD":
+        reasons.append("RESIDUAL_ALPHA_PREDICTION_NOT_FORWARD_SEALED")
     elif (_num(residual_prediction.get("predictionLower90Pct")) or 0.0) <= 0:
         reasons.append("RESIDUAL_ALPHA_NOT_POSITIVE")
     if cell is None:
@@ -274,6 +276,7 @@ def _candidate_decision(
     if any(reason in reasons for reason in (
         "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
         "NO_RESIDUAL_ALPHA_PREDICTION",
+        "RESIDUAL_ALPHA_PREDICTION_NOT_FORWARD_SEALED",
     )):
         return "WAIT", reasons
     if cell.get("evidenceStatus") != "PASS":
@@ -340,6 +343,8 @@ def build() -> dict[str, Any]:
             "predictedResidualAlphaPct": _num((residual_prediction or {}).get("predictedResidualAlphaPct")),
             "residualAlphaLower90Pct": _num((residual_prediction or {}).get("predictionLower90Pct")),
             "residualAlphaModelFingerprint": _text((residual_prediction or {}).get("modelFingerprint")) or None,
+            "residualAlphaPredictionId": _text((residual_prediction or {}).get("predictionId")) or None,
+            "residualAlphaForwardSealStatus": _text((residual_prediction or {}).get("forwardSealStatus")) or "UNSEALED",
             "recommendationSource": row.get("recommendationSource"),
         })
     decisions.sort(key=lambda row: row.get("score") if row.get("score") is not None else float("-inf"), reverse=True)

@@ -105,7 +105,7 @@ export function ShadowCapitalGate({ market }: { market: Market }) {
         <>
           <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 md:grid-cols-5 md:divide-y-0">
             <GateStep icon={Activity} label="01 독립 증거" value={`${summary.independentDecisions ?? 0}건`} detail="승격 최소 200건 · 날짜 기준은 별도 검증" passed={evidencePassed} />
-            <GateStep icon={BrainCircuit} label="02 알파 예측" value={`${summary.residualAlphaOosPredictions ?? 0}건`} detail={`OOS ${summary.residualAlphaOosSignalDates ?? 0}일 · ${summary.residualAlphaModelEvidence || "미검증"}`} passed={residualModelPassed} />
+            <GateStep icon={BrainCircuit} label="02 알파 예측" value={`${summary.residualAlphaForwardSettledPredictions ?? 0}건`} detail={`Forward OOS ${summary.residualAlphaForwardSettledSignalDates ?? 0}일 · ${summary.residualAlphaModelEvidence || "미검증"}`} passed={residualModelPassed} />
             <GateStep icon={BarChart3} label="03 실현 알파" value={percent(summary.d20BlockMeanCarPct, 2)} detail={`D+20 블록 CI ${ci ? `${number(ci[0], 2)} ~ ${number(ci[1], 2)}%` : "—"}`} passed={alphaPassed} />
             <GateStep icon={CircleDollarSign} label="04 자본곡선" value={percent(summary.topSleeveReturnPct, 2)} detail={`${summary.topSleeve || "최상위 sleeve 없음"} · PF ${number(summary.topSleeveProfitFactor, 2)}`} passed={sleevePassed} />
             <GateStep icon={ShieldAlert} label="05 위험예산" value={`현금 ${number(summary.cashWeightPct, 0)}%`} detail={`총 노출 ${number(summary.grossExposurePct, 1)}% · β ${number(summary.portfolioBeta, 2)}`} passed={riskPassed} />

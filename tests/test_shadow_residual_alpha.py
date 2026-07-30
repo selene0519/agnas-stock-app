@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import csv
 import importlib.util
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -159,8 +160,152 @@ def test_current_prediction_refuses_insufficient_training(monkeypatch) -> None:
     assert result[0]["status"] == "INSUFFICIENT_TRAINING_HISTORY"
 
 
+def _forward_prediction(generated_at: str, candidate: str = "candidate-a", lower: float = 0.5) -> dict:
+    return {
+        "candidateKey": candidate,
+        "economicEventKey": "event-a",
+        "signalDate": "2026-07-30",
+        "generatedAt": generated_at,
+        "market": "kr",
+        "mode": "balanced",
+        "horizon": "short",
+        "symbol": "005930",
+        "status": "PREDICTED",
+        "trainRows": 150,
+        "trainDates": 30,
+        "trainMaxLabelAvailableDate": "2026-07-29",
+        "predictedResidualAlphaPct": 1.0,
+        "predictionLower90Pct": lower,
+        "baselinePredictionPct": 0.1,
+    }
+
+
+def test_forward_prediction_journal_records_timely_naive_kst_once(tmp_path) -> None:
+    journal = tmp_path / "predictions.csv"
+    now = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+    prediction = _forward_prediction("2026-07-30 09:00:00")  # naive recommendation timestamps are KST
+
+    first = model.record_forward_predictions([prediction], journal, now)
+    second = model.record_forward_predictions([prediction], journal, now + timedelta(minutes=5))
+
+    assert first["appendedRows"] == 1
+    assert second["appendedRows"] == 0
+    assert second["duplicateRows"] == 1
+    rows = model._read_csv(journal)
+    assert len(rows) == 1
+    assert rows[0]["generated_at"] == "2026-07-30T00:00:00+00:00"
+
+
+def test_forward_prediction_journal_never_backfills_stale_candidate(tmp_path) -> None:
+    journal = tmp_path / "predictions.csv"
+    result = model.record_forward_predictions(
+        [_forward_prediction("2026-07-29 09:00:00")],
+        journal,
+        datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc),
+    )
+
+    assert result["lateCandidatesSkipped"] == 1
+    assert result["appendedRows"] == 0
+    assert not journal.exists()
+
+
+def test_forward_prediction_journal_detects_immutable_conflict(tmp_path) -> None:
+    journal = tmp_path / "predictions.csv"
+    now = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+    model.record_forward_predictions([_forward_prediction("2026-07-30 09:00:00")], journal, now)
+    changed = {**_forward_prediction("2026-07-30 09:00:00"), "predictedResidualAlphaPct": 99.0}
+
+    result = model.record_forward_predictions([changed], journal, now)
+
+    assert result["immutableConflicts"] == 1
+    assert len(model._read_csv(journal)) == 1
+
+
+def test_settlement_is_append_only_and_live_oos_uses_current_fingerprint(tmp_path) -> None:
+    prediction_journal = tmp_path / "predictions.csv"
+    settlement_journal = tmp_path / "settlements.csv"
+    now = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+    model.record_forward_predictions(
+        [_forward_prediction("2026-07-30 09:00:00")], prediction_journal, now
+    )
+    label = {
+        "economicEventKey": "event-a",
+        "labelAvailableDate": "2026-08-06",
+        "residualAlphaPct": 2.5,
+        "beta": 0.8,
+        "marketModelR2": 0.4,
+    }
+
+    first = model.settle_forward_predictions([label], prediction_journal, settlement_journal, now)
+    second = model.settle_forward_predictions([label], prediction_journal, settlement_journal, now + timedelta(days=1))
+    rows, source = model.live_forward_oos(prediction_journal, settlement_journal)
+
+    assert first["appendedRows"] == 1
+    assert second["duplicateRows"] == 1
+    assert len(rows) == 1
+    assert rows[0]["realizedResidualAlphaPct"] == 2.5
+    assert source["settledCurrentModelEconomicEvents"] == 1
+
+
+def test_forward_journal_hash_detects_manual_prediction_mutation(tmp_path) -> None:
+    prediction_journal = tmp_path / "predictions.csv"
+    now = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+    model.record_forward_predictions(
+        [_forward_prediction("2026-07-30 09:00:00")], prediction_journal, now
+    )
+    rows = model._read_csv(prediction_journal)
+    rows[0]["prediction_lower90_pct"] = "999"
+    with prediction_journal.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=model.PREDICTION_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    _, source = model.live_forward_oos(prediction_journal, tmp_path / "settlements.csv")
+    sealed = model.apply_forward_seal_status(
+        [_forward_prediction("2026-07-30 09:00:00")], prediction_journal
+    )
+
+    assert source["journalIntegrity"]["predictionHashViolations"] == 1
+    assert sealed[0]["forwardSealStatus"] == "UNSEALED"
+
+
+def test_recomputed_research_validation_cannot_promote(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(model, "_read_csv", lambda path: [])
+    monkeypatch.setattr(model, "build_labeled_rows", lambda rows: ([], {}))
+    monkeypatch.setattr(model, "expanding_oos", lambda rows: [{"research": True}])
+    monkeypatch.setattr(model, "_recommendation_rows", lambda: [])
+    monkeypatch.setattr(
+        model,
+        "validation_summary",
+        lambda rows: {
+            "evidenceStatus": "PASS" if rows else "WAIT",
+            "blockingReasons": [] if rows else ["LOW_OOS_PREDICTIONS"],
+            "oosPredictions": len(rows),
+            "oosSignalDates": len(rows),
+        },
+    )
+
+    report = model.build(
+        tmp_path / "predictions.csv",
+        tmp_path / "settlements.csv",
+        datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc),
+    )
+
+    assert report["researchValidation"]["evidenceStatus"] == "PASS"
+    assert report["researchValidation"]["promotionEligible"] is False
+    assert report["validation"]["evidenceStatus"] == "WAIT"
+    assert report["validation"]["source"] == "IMMUTABLE_FORWARD_PREDICTION_AND_SETTLEMENT_JOURNALS"
+
+
 def test_scheduled_pipeline_builds_residual_model_before_meta_gate() -> None:
     workflow = (ROOT / ".github" / "workflows" / "mone-settle-validations.yml").read_text(encoding="utf-8")
+    accumulator = (ROOT / ".github" / "workflows" / "mone-auto-accumulator.yml").read_text(encoding="utf-8")
+    commit_script = (ROOT / "scripts" / "ci_commit_app_data.sh").read_text(encoding="utf-8")
 
     assert workflow.index("scripts/build_shadow_residual_alpha.py") < workflow.index("scripts/build_shadow_meta_gate.py")
     assert "reports/shadow_residual_alpha.json" in workflow
+    assert "data/shadow_residual_alpha_predictions.csv" in workflow
+    assert "data/shadow_residual_alpha_settlements.csv" in workflow
+    assert accumulator.index("scripts/generate_us_recommendations.py") < accumulator.index("scripts/build_shadow_residual_alpha.py")
+    assert "data/shadow_residual_alpha_predictions.csv" in commit_script
+    assert "data/shadow_residual_alpha_settlements.csv" in commit_script
