@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +15,69 @@ if str(BACKEND_DIR) not in sys.path:
 
 from app.engine import correction_store  # noqa: E402
 from app.services import virtual_trade_journal as vtj  # noqa: E402
+
+
+def _write_valid_calibration_promotion_certificate(approval: dict, suggestion: dict) -> dict:
+    market = str(approval["market"])
+    mode = str(approval["mode"])
+    horizon = str(approval["horizon"])
+    source_type = str(approval["source_type"])
+    raw_samples = int(float(approval["sample_count"]))
+    source_weight = vtj._source_weight(source_type)
+    effective_samples = max(30, int(round(raw_samples * source_weight)))
+    delta = vtj._approved_delta(str(approval["reason"]), float(approval["share"]), source_weight)
+    before = correction_store.load_correction(market, mode, horizon)
+    after = vtj._clamp_nested_adjustments(vtj._merge_nested_adjustments(before, delta))
+    after.update({
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "sampleCount": max(int(before.get("sampleCount") or 0), effective_samples),
+        "rawJournalSampleCount": raw_samples,
+        "effectiveJournalSampleCount": effective_samples,
+        "confidence": min(
+            vtj._source_confidence_cap(source_type),
+            max(float(before.get("confidence") or 0.0), vtj._confidence_from_effective_samples(effective_samples)),
+        ),
+        "journalCalibrationApplied": True,
+        "journalCalibrationSource": approval["approval_id"],
+        "journalCalibrationSourceType": source_type,
+    })
+    top = list(before.get("topFailureReasons") or [])
+    reason = str(approval["reason"])
+    if reason and reason not in top:
+        top.insert(0, reason)
+    after["topFailureReasons"] = top[:8]
+    candidate_fingerprint = vtj._correction_candidate_fingerprint(
+        approval,
+        str(approval["evidence_fingerprint"]),
+        before,
+        after,
+        delta,
+    )
+    certificate = {
+        "version": vtj.CALIBRATION_PROMOTION_VERSION,
+        "approvalId": approval["approval_id"],
+        "approvalRecordHash": approval["record_hash"],
+        "evidenceFingerprint": approval["evidence_fingerprint"],
+        "calibrationPolicyFingerprint": vtj._calibration_policy_fingerprint(),
+        "candidateFingerprint": candidate_fingerprint,
+        "promotionEligible": True,
+        "decision": "READY_FOR_HUMAN_REVIEW",
+        "completedSignalDates": vtj.CALIBRATION_PROMOTION_MIN_SIGNAL_DATES,
+        "evaluatedChallengerTrades": vtj.CALIBRATION_PROMOTION_MIN_TRADES,
+        "avgAfterCostReturnPct": 0.1,
+        "pairedUpliftCi95": [0.01, 0.2],
+        "championMaxDrawdownPct": 8.0,
+        "challengerMaxDrawdownPct": 6.0,
+    }
+    certificate["recordHash"] = vtj._promotion_certificate_hash(certificate)
+    vtj.CALIBRATION_PROMOTION_JSON.parent.mkdir(parents=True, exist_ok=True)
+    vtj.CALIBRATION_PROMOTION_JSON.write_text(
+        json.dumps({"certificates": [certificate]}),
+        encoding="utf-8",
+    )
+    return certificate
 
 
 def test_negative_expectancy_attribution_never_boosts_a_strategy() -> None:
@@ -41,7 +105,19 @@ def test_positive_expectancy_attribution_can_reward_a_strategy() -> None:
 def test_ops_dashboard_uses_persisted_learning_snapshot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     snapshot_path = tmp_path / "self_learning_status.json"
     snapshot_path.write_text(
-        '{"status":"OK","generatedAt":"2026-07-28T10:00:00","latest":{"market":"all","generatedAt":"2026-07-28T09:00:00","quality":{"score":88},"eligibleCount":2,"applied":1}}',
+        json.dumps({
+            "status": "OK",
+            "generatedAt": "2026-07-28T10:00:00",
+            "latest": {
+                "status": "SHADOW_ONLY",
+                "market": "all",
+                "generatedAt": "2026-07-28T09:00:00",
+                "policyFingerprint": vtj._calibration_policy_fingerprint(),
+                "quality": {"score": 88},
+                "eligibleCount": 2,
+                "applied": 0,
+            },
+        }),
         encoding="utf-8",
     )
     monkeypatch.setattr(vtj, "SELF_LEARNING_STATUS_JSON", snapshot_path)
@@ -53,8 +129,42 @@ def test_ops_dashboard_uses_persisted_learning_snapshot(monkeypatch: pytest.Monk
 
     dashboard = vtj.ops_dashboard("all")
 
+    assert dashboard["selfLearning"]["status"] == "SHADOW_ONLY"
     assert dashboard["selfLearning"]["quality"] == {"score": 88}
     assert dashboard["performanceGate"]["status"] == "DEFERRED"
+
+
+def test_ops_dashboard_rejects_stale_self_learning_policy_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    snapshot_path = tmp_path / "self_learning_status.json"
+    snapshot_path.write_text(
+        json.dumps({
+            "status": "OK",
+            "generatedAt": "2026-07-28T10:00:00",
+            "latest": {
+                "status": "OK",
+                "market": "all",
+                "generatedAt": "2026-07-28T09:00:00",
+                "policyFingerprint": "obsolete-policy",
+                "quality": {"score": 100},
+                "eligibleCount": 4,
+                "applied": 4,
+            },
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(vtj, "SELF_LEARNING_STATUS_JSON", snapshot_path)
+    monkeypatch.setattr(vtj, "JOURNAL_CSV", tmp_path / "journal.csv")
+    monkeypatch.setattr(vtj, "EVALUATION_CSV", tmp_path / "evaluations.csv")
+
+    persisted = vtj._persisted_self_learning_status("all")
+
+    assert persisted["status"] == "STALE"
+    assert persisted["reason"] == "POLICY_MISMATCH"
+    assert persisted["quality"] is None
+    assert persisted["persistedPolicyFingerprint"] == "obsolete-policy"
 
 
 def _valid_recommendation(symbol: str = "TEST") -> dict:
@@ -637,16 +747,18 @@ def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
     monkeypatch.setattr(correction_store, "_reports_dir", lambda: isolated_vtj)
     journal_rows = []
     eval_rows = []
-    for idx in range(30):
+    for idx in range(60):
         jid = f"apply-jid-{idx}"
+        signal_date = (datetime(2026, 1, 1) + timedelta(days=idx)).date().isoformat()
+        evaluated_date = (datetime(2026, 1, 2) + timedelta(days=idx)).date().isoformat()
         journal_rows.append(
             {
                 "journal_id": jid,
                 "source_type": "FORWARD_PAPER_TRADE",
                 "journal_session": "AFTER_CLOSE_TRADE",
-                "as_of_date": "2026-01-01",
-                "generated_at": "2026-01-01T00:00:00",
-                "captured_at": "2026-01-01T00:00:00",
+                "as_of_date": signal_date,
+                "generated_at": f"{signal_date}T00:00:00",
+                "captured_at": f"{signal_date}T00:00:00",
                 "market": "kr",
                 "mode": "balanced",
                 "horizon": "swing",
@@ -682,8 +794,8 @@ def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
                 "net_pnl_pct": -3,
                 "mfe_pct": 2,
                 "mae_pct": -5,
-                "failure_reason": "STOP_TOO_TIGHT" if idx < 6 else "FALSE_SIGNAL",
-                "evaluated_at": f"2026-01-02T00:00:{idx:02d}",
+                "failure_reason": "STOP_TOO_TIGHT" if idx % 5 == 0 else "FALSE_SIGNAL",
+                "evaluated_at": f"{evaluated_date}T00:00:00",
             }
         )
     vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
@@ -691,7 +803,14 @@ def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
 
     suggestions = vtj.calibration_suggestions("kr", "balanced", "swing", "FORWARD_PAPER_TRADE")["items"]
     target = next(item for item in suggestions if item.get("reason") == "STOP_TOO_TIGHT")
-    vtj.review_calibration_suggestion(target["suggestionId"], decision="APPROVED", reviewed_by="pytest")
+    reviewed = vtj.review_calibration_suggestion(target["suggestionId"], decision="APPROVED", reviewed_by="pytest")
+    before_promotion = correction_store.load_params()
+    blocked = vtj.apply_approved_calibrations(applied_by="pytest")
+    assert blocked["applied"] == 0
+    assert blocked["skipped"][0]["reason"] == "MISSING_PROMOTION_CERTIFICATE"
+    assert correction_store.load_params() == before_promotion
+
+    certificate = _write_valid_calibration_promotion_certificate(reviewed["approval"], target)
     applied = vtj.apply_approved_calibrations(applied_by="pytest")
     correction = correction_store.load_correction("kr", "balanced", "swing")
     refreshed = vtj.calibration_suggestions("kr", "balanced", "swing", "FORWARD_PAPER_TRADE")["items"]
@@ -702,6 +821,18 @@ def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
     assert correction["journalCalibrationApplied"] is True
     assert correction["priceAdjustments"]["stopAtrMultiplier"] > 0
     assert refreshed_target["applicationStatus"] == "APPLIED"
+    application_rows = vtj._read_rows(vtj.CALIBRATION_APPLICATIONS_CSV, vtj.CALIBRATION_APPLICATION_COLS)
+    assert len(application_rows) == 1
+    assert application_rows[0]["policy_version"] == vtj.AUTO_CALIBRATION_POLICY["version"]
+    assert application_rows[0]["distinct_signal_dates"] == "60"
+    assert application_rows[0]["candidate_fingerprint"] == certificate["candidateFingerprint"]
+    assert application_rows[0]["promotion_certificate_hash"] == certificate["recordHash"]
+    assert application_rows[0]["record_hash"] == vtj._sealed_row_hash(application_rows[0], vtj.CALIBRATION_APPLICATION_COLS)
+    integrity = vtj._calibration_ledger_integrity()
+    assert integrity["approvals"]["validSealedRows"] == 1
+    assert integrity["applications"]["validSealedRows"] == 1
+    assert integrity["promotionCertificates"]["validCurrentPolicyRows"] == 1
+    assert integrity["integrityViolations"] == 0
 
 
 def test_entry_efficiency_stats_tracks_fill_rate_slippage_and_days(isolated_vtj: Path) -> None:
@@ -888,14 +1019,16 @@ def test_auto_self_calibrate_runs_shadow_only_while_auto_apply_is_frozen(
     eval_rows = []
     for idx in range(50):
         jid = f"auto-jid-{idx}"
+        signal_date = (datetime(2026, 1, 1) + timedelta(days=idx)).date().isoformat()
+        evaluated_date = (datetime(2026, 1, 2) + timedelta(days=idx)).date().isoformat()
         journal_rows.append(
             {
                 "journal_id": jid,
                 "source_type": "FORWARD_PAPER_TRADE",
                 "journal_session": "AFTER_CLOSE_TRADE",
-                "as_of_date": "2026-01-01",
-                "generated_at": "2026-01-01T00:00:00",
-                "captured_at": "2026-01-01T00:00:00",
+                "as_of_date": signal_date,
+                "generated_at": f"{signal_date}T00:00:00",
+                "captured_at": f"{signal_date}T00:00:00",
                 "market": "kr",
                 "mode": "balanced",
                 "horizon": "swing",
@@ -930,7 +1063,7 @@ def test_auto_self_calibrate_runs_shadow_only_while_auto_apply_is_frozen(
                 "filled": True,
                 "net_pnl_pct": -2.5,
                 "failure_reason": "ENTRY_TIMING" if idx < 16 or idx >= 45 else "FALSE_SIGNAL",
-                "evaluated_at": f"2026-01-02T00:00:{idx % 60:02d}",
+                "evaluated_at": f"{evaluated_date}T00:00:00",
             }
         )
     vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
@@ -957,14 +1090,16 @@ def test_auto_self_calibrate_blocks_when_holdout_drift_is_detected(isolated_vtj:
     eval_rows = []
     for idx in range(80):
         jid = f"drift-jid-{idx}"
+        signal_date = (datetime(2026, 1, 1) + timedelta(days=idx)).date().isoformat()
+        evaluated_date = (datetime(2026, 1, 2) + timedelta(days=idx)).date().isoformat()
         journal_rows.append(
             {
                 "journal_id": jid,
                 "source_type": "FORWARD_PAPER_TRADE",
                 "journal_session": "AFTER_CLOSE_TRADE",
-                "as_of_date": "2026-01-01",
-                "generated_at": "2026-01-01T00:00:00",
-                "captured_at": "2026-01-01T00:00:00",
+                "as_of_date": signal_date,
+                "generated_at": f"{signal_date}T00:00:00",
+                "captured_at": f"{signal_date}T00:00:00",
                 "market": "kr",
                 "mode": "balanced",
                 "horizon": "swing",
@@ -999,7 +1134,7 @@ def test_auto_self_calibrate_blocks_when_holdout_drift_is_detected(isolated_vtj:
                 "filled": True,
                 "net_pnl_pct": -2.0,
                 "failure_reason": "ENTRY_TIMING" if idx < 30 else "FALSE_SIGNAL",
-                "evaluated_at": f"2026-01-{1 + idx // 3:02d}T00:00:00",
+                "evaluated_at": f"{evaluated_date}T00:00:00",
             }
         )
     vtj._write_rows(vtj.JOURNAL_CSV, journal_rows, vtj.JOURNAL_COLS)
@@ -1010,6 +1145,140 @@ def test_auto_self_calibrate_blocks_when_holdout_drift_is_detected(isolated_vtj:
     assert result["status"] == "SHADOW_ONLY"
     assert result["applied"] == 0
     assert any(row["reason"] == "HOLDOUT_DRIFT" for row in result["blocked"])
+
+
+def test_clustered_same_day_samples_never_pass_strict_holdout(monkeypatch: pytest.MonkeyPatch) -> None:
+    rows = [
+        {
+            "as_of_date": "2026-01-01",
+            "failure_reason": "ENTRY_TIMING" if idx < 20 else "FALSE_SIGNAL",
+            "net_pnl_pct": -1.0,
+        }
+        for idx in range(60)
+    ]
+    monkeypatch.setattr(vtj, "_rows_for_suggestion_scope", lambda item: rows)
+    item = {
+        "status": "SUGGESTED",
+        "approvalStatus": "PENDING_REVIEW",
+        "applicationStatus": "NOT_APPLIED",
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "sampleCount": 60,
+        "share": 1 / 3,
+        "reason": "ENTRY_TIMING",
+        "threshold": 0.25,
+    }
+
+    validation = vtj._holdout_validation(item)
+    verdict = vtj._auto_calibration_verdict(item)
+
+    assert validation["status"] == "LOW_HOLDOUT"
+    assert validation["passed"] is False
+    assert validation["distinctSignalDates"] == 1
+    assert verdict["eligible"] is False
+    assert verdict["reason"] == "LOW_HOLDOUT"
+
+
+def test_sealed_approval_rejects_tamper_and_stale_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
+    rows = []
+    for idx in range(60):
+        signal_date = (datetime(2026, 1, 1) + timedelta(days=idx)).date().isoformat()
+        rows.append({
+            "as_of_date": signal_date,
+            "failure_reason": "STOP_TOO_TIGHT" if idx % 5 == 0 else "FALSE_SIGNAL",
+            "net_pnl_pct": -1.0,
+        })
+    monkeypatch.setattr(vtj, "_rows_for_suggestion_scope", lambda item: rows)
+    item = {
+        "suggestionId": "suggestion-a",
+        "sourceSummaryId": "summary-a",
+        "market": "kr",
+        "mode": "balanced",
+        "horizon": "swing",
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "journalSession": "AFTER_CLOSE_TRADE",
+        "status": "SUGGESTED",
+        "reason": "STOP_TOO_TIGHT",
+        "sampleCount": 60,
+        "distinctSignalDates": 60,
+        "count": 12,
+        "share": 0.2,
+        "threshold": 0.15,
+    }
+    evidence = vtj._calibration_evidence(item)
+    approval = {
+        "approval_id": "approval-a",
+        "suggestion_id": "suggestion-a",
+        "decision": "APPROVED",
+        "reviewed_by": "pytest",
+        "reviewed_at": "2026-04-01T00:00:00",
+        "source_summary_id": "summary-a",
+        "market": "kr",
+        "mode": "balanced",
+        "horizon": "swing",
+        "source_type": "FORWARD_PAPER_TRADE",
+        "journal_session": "AFTER_CLOSE_TRADE",
+        "reason": "STOP_TOO_TIGHT",
+        "suggestion_status": "SUGGESTED",
+        "sample_count": 60,
+        "distinct_signal_dates": 60,
+        "count": 12,
+        "share": 0.2,
+        "threshold": 0.15,
+        "message": "test",
+        "before_params_json": "{}",
+        "after_params_json": "{}",
+        "reviewer_note": "test",
+        "policy_version": vtj.AUTO_CALIBRATION_POLICY["version"],
+        "policy_fingerprint": vtj._calibration_policy_fingerprint(),
+        "evidence_fingerprint": evidence["fingerprint"],
+    }
+    approval["record_hash"] = vtj._sealed_row_hash(approval, vtj.CALIBRATION_APPROVAL_COLS)
+
+    valid = vtj._approval_application_verdict(approval, {"suggestion-a": item})
+    tampered = {**approval, "share": 0.4}
+    stale_item = {**item, "sampleCount": 61}
+    stale = vtj._approval_application_verdict(approval, {"suggestion-a": stale_item})
+
+    assert valid["eligible"] is True
+    assert vtj._approval_application_verdict(tampered, {"suggestion-a": item})["reason"] == "APPROVAL_RECORD_HASH_MISMATCH"
+    assert stale["eligible"] is False
+    assert stale["reason"] == "APPROVAL_EVIDENCE_FIELDS_MISMATCH"
+    missing_promotion = vtj._calibration_promotion_verdict(
+        approval,
+        evidence["fingerprint"],
+        "candidate-a",
+    )
+    assert missing_promotion["passed"] is False
+    assert missing_promotion["reason"] == "MISSING_PROMOTION_CERTIFICATE"
+
+    weak_certificate = {
+        "version": vtj.CALIBRATION_PROMOTION_VERSION,
+        "approvalId": "approval-a",
+        "approvalRecordHash": approval["record_hash"],
+        "evidenceFingerprint": evidence["fingerprint"],
+        "calibrationPolicyFingerprint": vtj._calibration_policy_fingerprint(),
+        "candidateFingerprint": "candidate-a",
+        "promotionEligible": True,
+        "decision": "READY_FOR_HUMAN_REVIEW",
+        "completedSignalDates": 10,
+        "evaluatedChallengerTrades": 20,
+        "avgAfterCostReturnPct": 0.1,
+        "pairedUpliftCi95": [0.01, 0.2],
+        "championMaxDrawdownPct": 8.0,
+        "challengerMaxDrawdownPct": 6.0,
+    }
+    weak_certificate["recordHash"] = vtj._promotion_certificate_hash(weak_certificate)
+    vtj.CALIBRATION_PROMOTION_JSON.parent.mkdir(parents=True, exist_ok=True)
+    vtj.CALIBRATION_PROMOTION_JSON.write_text(json.dumps({"certificates": [weak_certificate]}), encoding="utf-8")
+    weak = vtj._calibration_promotion_verdict(approval, evidence["fingerprint"], "candidate-a")
+    assert weak["passed"] is False
+    assert "LOW_PROMOTION_SIGNAL_DATES" in weak["blockingReasons"]
+
+
+def test_ci_commit_workflow_preserves_calibration_promotion_evidence() -> None:
+    script = (BACKEND_DIR.parents[1] / "scripts" / "ci_commit_app_data.sh").read_text(encoding="utf-8")
+
+    assert "reports/self_correction_promotion.json" in script
 
 
 def test_self_learning_rollback_restores_previous_correction_version(

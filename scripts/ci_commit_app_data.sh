@@ -76,7 +76,7 @@ stage_app_data() {
   # candidate_universe_{market}.csv 에 쓰는데 그동안 git add 목록에 없어 커밋 누락 → 5월 이후 동결됨.
   git add candidate_universe_kr.csv candidate_universe_us.csv 2>/dev/null || true
   git add data/signal_ledger.csv data/signal_outcomes.csv data/recommendation_snapshots.csv data/recommendation_validation_results.csv 2>/dev/null || true
-  git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/virtual_trade_calibration_*.csv data/postmortem_ledger.csv data/attribution_feedback.json reports/virtual_trade_journal_status.json reports/virtual_trade_self_learning_status.json 2>/dev/null || true
+  git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/virtual_trade_calibration_*.csv data/postmortem_ledger.csv data/attribution_feedback.json reports/virtual_trade_journal_status.json reports/virtual_trade_self_learning_status.json reports/self_correction_promotion.json 2>/dev/null || true
   git add data/paper/paper_stops.json 2>/dev/null || true
   git add reports/self_correction_params.json reports/self_correction_params_v*.json 2>/dev/null || true
   git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
@@ -116,7 +116,8 @@ verify_vtj_outputs_staged() {
     data/virtual_trade_calibration_applications.csv \
     data/attribution_feedback.json \
     reports/virtual_trade_journal_status.json \
-    reports/virtual_trade_self_learning_status.json
+    reports/virtual_trade_self_learning_status.json \
+    reports/self_correction_promotion.json
   do
     [ -e "${path}" ] || continue
     [ -n "$(git status --porcelain -- "${path}")" ] || continue

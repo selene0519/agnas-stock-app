@@ -33,6 +33,7 @@ HISTORY_OPERATION_CSV = DATA_DIR / "history" / "virtual_operation_history.csv"
 HISTORY_EVALUATION_CSV = DATA_DIR / "history" / "virtual_operation_evaluation.csv"
 VIRTUAL_VALIDATION_RESULTS_CSV = REPORTS_DIR / "virtual_validation_results.csv"
 HISTORICAL_CALIBRATION_REPORT_JSON = REPORTS_DIR / "historical_strategy_calibration.json"
+CALIBRATION_PROMOTION_JSON = REPORTS_DIR / "self_correction_promotion.json"
 
 MARKETS = {"kr", "us"}
 MODES = {"conservative", "balanced", "aggressive"}
@@ -67,12 +68,19 @@ AUTO_CALIBRATION_POLICY = {
     # on an unseen, independently clustered cohort.
     "enabled": False,
     "mode": "SHADOW_ONLY",
+    "version": "vtj-self-calibration-v2.0.0",
     "minEffectiveSamples": 40,
-    "maxApplicationsPerRun": 4,
+    "maxApplicationsPerRun": 1,
     "maxFailureShareForAutoApply": 0.45,
     "minHoldoutSamples": 10,
     "holdoutFraction": 0.25,
     "holdoutShareFloor": 0.65,
+    "minDistinctSignalDates": 30,
+    "minHoldoutSignalDates": 8,
+    "strictHoldoutRequired": True,
+    "currentEvidenceRevalidationRequired": True,
+    "sealedApprovalRequired": True,
+    "promotionCertificateRequired": True,
     "minPrePostSamples": 30,
     "rollbackAvgPnlDropPct": 1.5,
     "rollbackWinRateDrop": 0.10,
@@ -90,6 +98,9 @@ AUTO_CALIBRATION_POLICY = {
         "BACKTEST_EXPERIMENT": 0.35,
     },
 }
+CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v1"
+CALIBRATION_PROMOTION_MIN_SIGNAL_DATES = 60
+CALIBRATION_PROMOTION_MIN_TRADES = 120
 
 # Bump this value whenever the recommendation decision contract changes.  The
 # fingerprint also includes the correction/model/code versions carried by the
@@ -298,6 +309,7 @@ CALIBRATION_APPROVAL_COLS = [
     "reason",
     "suggestion_status",
     "sample_count",
+    "distinct_signal_dates",
     "count",
     "share",
     "threshold",
@@ -305,6 +317,10 @@ CALIBRATION_APPROVAL_COLS = [
     "before_params_json",
     "after_params_json",
     "reviewer_note",
+    "policy_version",
+    "policy_fingerprint",
+    "evidence_fingerprint",
+    "record_hash",
 ]
 
 CALIBRATION_APPLICATION_COLS = [
@@ -320,12 +336,20 @@ CALIBRATION_APPLICATION_COLS = [
     "journal_session",
     "source_weight",
     "raw_sample_count",
+    "distinct_signal_dates",
     "effective_sample_count",
     "reason",
     "before_params_json",
     "after_params_json",
     "correction_version",
     "status",
+    "policy_version",
+    "policy_fingerprint",
+    "evidence_fingerprint",
+    "approval_record_hash",
+    "candidate_fingerprint",
+    "promotion_certificate_hash",
+    "record_hash",
 ]
 
 
@@ -375,6 +399,7 @@ def _write_path(path: Path) -> Path:
             (data.REPO_ROOT / "data" / "virtual_trade_calibration_applications.csv").resolve(),
             (data.REPO_ROOT / "reports" / "virtual_trade_journal_status.json").resolve(),
             (data.REPO_ROOT / "reports" / "virtual_trade_self_learning_status.json").resolve(),
+            (data.REPO_ROOT / "reports" / "self_correction_promotion.json").resolve(),
         }
         if resolved in protected:
             root = Path(os.environ.get("MONE_PYTEST_WRITE_ROOT") or tempfile.gettempdir()) / "mone-vtj-pytest"
@@ -473,6 +498,25 @@ def _json(value: Any) -> str:
         return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     except Exception:
         return "{}"
+
+
+def _hash_payload(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _calibration_policy_fingerprint() -> str:
+    return _hash_payload(AUTO_CALIBRATION_POLICY)[:20]
+
+
+def _sealed_row_hash(row: dict[str, Any], columns: list[str]) -> str:
+    payload = {
+        column: str(row.get(column)).strip() if row.get(column) is not None else ""
+        for column in columns
+        if column != "record_hash"
+    }
+    return _hash_payload(payload)
 
 
 def _from_json(value: Any) -> Any:
@@ -2363,6 +2407,10 @@ def failure_patterns(
         returns = [_safe_float(row.get("net_pnl_pct")) for row in sub]
         returns = [v for v in returns if v is not None]
         total = len(sub)
+        distinct_signal_dates = len({
+            _text(row.get("as_of_date"))[:10]
+            for row in sub if _text(row.get("as_of_date"))
+        })
         source_weight = _source_weight(source_v)
         effective_total = round(total * source_weight, 3)
         items.append({
@@ -2372,6 +2420,7 @@ def failure_patterns(
             "sourceType": source_v,
             "journalSession": session_v,
             "sampleCount": total,
+            "distinctSignalDates": distinct_signal_dates,
             "rawRowCount": raw_group_counts.get(key, total),
             "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
             "sourceWeight": source_weight,
@@ -2427,13 +2476,14 @@ def _suggestion_base(item: dict[str, Any]) -> dict[str, Any]:
         "sourceType": item.get("sourceType"),
         "journalSession": item.get("journalSession"),
         "sampleCount": item.get("sampleCount"),
+        "distinctSignalDates": item.get("distinctSignalDates"),
     }
 
 
 def _source_summary_id(item: dict[str, Any]) -> str:
     raw = "|".join(
         _text(item.get(key))
-        for key in ("market", "mode", "horizon", "sourceType", "journalSession", "sampleCount")
+        for key in ("market", "mode", "horizon", "sourceType", "journalSession", "sampleCount", "distinctSignalDates")
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
@@ -2450,6 +2500,7 @@ def _suggestion_id(item: dict[str, Any]) -> str:
             "status",
             "reason",
             "sampleCount",
+            "distinctSignalDates",
             "count",
             "share",
             "threshold",
@@ -2504,6 +2555,7 @@ def review_calibration_suggestion(
     match = next((item for item in all_suggestions if _text(item.get("suggestionId")) == sid), None)
     if not match:
         return {"status": "ERROR", "error": "SUGGESTION_NOT_FOUND", "suggestionId": sid}
+    evidence = _calibration_evidence(match)
     reviewed_at = _now_iso()
     approval_id = hashlib.sha256(f"{sid}|{normalized_decision}|{reviewed_at}".encode("utf-8")).hexdigest()[:20]
     row = {
@@ -2521,6 +2573,7 @@ def review_calibration_suggestion(
         "reason": match.get("reason"),
         "suggestion_status": match.get("status"),
         "sample_count": match.get("sampleCount"),
+        "distinct_signal_dates": match.get("distinctSignalDates"),
         "count": match.get("count"),
         "share": match.get("share"),
         "threshold": match.get("threshold"),
@@ -2528,7 +2581,11 @@ def review_calibration_suggestion(
         "before_params_json": _json(before_params or {}),
         "after_params_json": _json(after_params or {}),
         "reviewer_note": _text(reviewer_note),
+        "policy_version": AUTO_CALIBRATION_POLICY.get("version"),
+        "policy_fingerprint": _calibration_policy_fingerprint(),
+        "evidence_fingerprint": evidence["fingerprint"],
     }
+    row["record_hash"] = _sealed_row_hash(row, CALIBRATION_APPROVAL_COLS)
     rows = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
     _write_rows(CALIBRATION_APPROVALS_CSV, rows + [row], CALIBRATION_APPROVAL_COLS)
     return {
@@ -2555,6 +2612,63 @@ def _application_by_approval() -> dict[str, dict[str, Any]]:
         if aid and _upper(row.get("status")) == "APPLIED":
             out[aid] = row
     return out
+
+
+def _calibration_ledger_integrity() -> dict[str, Any]:
+    def _audit(rows: list[dict[str, Any]], columns: list[str]) -> dict[str, int]:
+        sealed = invalid_hash = policy_mismatch = legacy_unsealed = 0
+        for row in rows:
+            record_hash = _text(row.get("record_hash"))
+            if not record_hash:
+                legacy_unsealed += 1
+                continue
+            if record_hash != _sealed_row_hash(row, columns):
+                invalid_hash += 1
+                continue
+            sealed += 1
+            if (
+                _text(row.get("policy_version")) != _text(AUTO_CALIBRATION_POLICY.get("version"))
+                or _text(row.get("policy_fingerprint")) != _calibration_policy_fingerprint()
+            ):
+                policy_mismatch += 1
+        return {
+            "rows": len(rows),
+            "validSealedRows": sealed - policy_mismatch,
+            "legacyUnsealedRows": legacy_unsealed,
+            "invalidRecordHashes": invalid_hash,
+            "policyMismatchRows": policy_mismatch,
+        }
+
+    approvals = _audit(_read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS), CALIBRATION_APPROVAL_COLS)
+    applications = _audit(_read_rows(CALIBRATION_APPLICATIONS_CSV, CALIBRATION_APPLICATION_COLS), CALIBRATION_APPLICATION_COLS)
+    try:
+        promotion_report = json.loads(CALIBRATION_PROMOTION_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        promotion_report = {}
+    certificates = promotion_report.get("certificates") if isinstance(promotion_report, dict) else []
+    if not isinstance(certificates, list):
+        certificates = []
+    valid_certificates = sum(
+        1 for row in certificates
+        if isinstance(row, dict)
+        and _text(row.get("recordHash")) == _promotion_certificate_hash(row)
+        and _text(row.get("version")) == CALIBRATION_PROMOTION_VERSION
+        and _text(row.get("calibrationPolicyFingerprint")) == _calibration_policy_fingerprint()
+    )
+    return {
+        "policyVersion": AUTO_CALIBRATION_POLICY.get("version"),
+        "policyFingerprint": _calibration_policy_fingerprint(),
+        "approvals": approvals,
+        "applications": applications,
+        "promotionCertificates": {
+            "required": True,
+            "rows": len(certificates),
+            "validCurrentPolicyRows": valid_certificates,
+            "source": _relative(CALIBRATION_PROMOTION_JSON),
+        },
+        "newApplicationsFailClosed": True,
+        "integrityViolations": approvals["invalidRecordHashes"] + applications["invalidRecordHashes"],
+    }
 
 
 def _confidence_from_effective_samples(effective_samples: int) -> float:
@@ -2620,6 +2734,138 @@ def _approved_delta(reason: str, share: float, source_weight: float) -> dict[str
     return {}
 
 
+def _approval_application_verdict(
+    approval: dict[str, Any],
+    current_suggestions: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    stored_hash = _text(approval.get("record_hash"))
+    if not stored_hash:
+        return {"eligible": False, "reason": "UNSEALED_APPROVAL"}
+    if stored_hash != _sealed_row_hash(approval, CALIBRATION_APPROVAL_COLS):
+        return {"eligible": False, "reason": "APPROVAL_RECORD_HASH_MISMATCH"}
+    if _text(approval.get("policy_version")) != _text(AUTO_CALIBRATION_POLICY.get("version")):
+        return {"eligible": False, "reason": "CALIBRATION_POLICY_VERSION_MISMATCH"}
+    if _text(approval.get("policy_fingerprint")) != _calibration_policy_fingerprint():
+        return {"eligible": False, "reason": "CALIBRATION_POLICY_FINGERPRINT_MISMATCH"}
+
+    suggestion_id = _text(approval.get("suggestion_id"))
+    current = current_suggestions.get(suggestion_id)
+    if current is None:
+        return {"eligible": False, "reason": "SUGGESTION_NO_LONGER_CURRENT"}
+    field_pairs = {
+        "source_summary_id": "sourceSummaryId",
+        "market": "market",
+        "mode": "mode",
+        "horizon": "horizon",
+        "source_type": "sourceType",
+        "journal_session": "journalSession",
+        "reason": "reason",
+        "suggestion_status": "status",
+        "sample_count": "sampleCount",
+        "distinct_signal_dates": "distinctSignalDates",
+        "count": "count",
+        "share": "share",
+        "threshold": "threshold",
+    }
+    if any(
+        str(approval.get(approval_field) if approval.get(approval_field) is not None else "").strip()
+        != str(current.get(current_field) if current.get(current_field) is not None else "").strip()
+        for approval_field, current_field in field_pairs.items()
+    ):
+        return {"eligible": False, "reason": "APPROVAL_EVIDENCE_FIELDS_MISMATCH"}
+
+    evidence = _calibration_evidence(current)
+    if _text(approval.get("evidence_fingerprint")) != evidence["fingerprint"]:
+        return {"eligible": False, "reason": "CALIBRATION_EVIDENCE_FINGERPRINT_MISMATCH"}
+    candidate = {**current, "approvalStatus": "PENDING_REVIEW", "applicationStatus": "NOT_APPLIED"}
+    verdict = _auto_calibration_verdict(candidate)
+    if not verdict.get("eligible"):
+        return {
+            "eligible": False,
+            "reason": verdict.get("reason") or "CURRENT_EVIDENCE_GATE_FAILED",
+            "validation": verdict.get("validation"),
+        }
+    return {
+        "eligible": True,
+        "reason": "SEALED_CURRENT_EVIDENCE_PASS",
+        "suggestion": current,
+        "evidenceFingerprint": evidence["fingerprint"],
+        "validation": evidence["validation"],
+    }
+
+
+def _correction_candidate_fingerprint(
+    approval: dict[str, Any],
+    evidence_fingerprint: str,
+    before: dict[str, Any],
+    after: dict[str, Any],
+    delta: dict[str, Any],
+) -> str:
+    return _hash_payload({
+        "approvalId": _text(approval.get("approval_id")),
+        "approvalRecordHash": _text(approval.get("record_hash")),
+        "evidenceFingerprint": evidence_fingerprint,
+        "calibrationPolicyFingerprint": _calibration_policy_fingerprint(),
+        "before": before,
+        "after": after,
+        "delta": delta,
+    })
+
+
+def _promotion_certificate_hash(certificate: dict[str, Any]) -> str:
+    return _hash_payload({key: value for key, value in certificate.items() if key != "recordHash"})
+
+
+def _calibration_promotion_verdict(
+    approval: dict[str, Any],
+    evidence_fingerprint: str,
+    candidate_fingerprint: str,
+) -> dict[str, Any]:
+    try:
+        report = json.loads(CALIBRATION_PROMOTION_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        return {"passed": False, "reason": "MISSING_PROMOTION_CERTIFICATE"}
+    certificates = report.get("certificates") if isinstance(report, dict) else []
+    if not isinstance(certificates, list):
+        certificates = []
+    certificate = next((
+        row for row in certificates
+        if isinstance(row, dict)
+        and _text(row.get("approvalId")) == _text(approval.get("approval_id"))
+        and _text(row.get("candidateFingerprint")) == candidate_fingerprint
+    ), None)
+    if certificate is None:
+        return {"passed": False, "reason": "MISSING_PROMOTION_CERTIFICATE"}
+    if _text(certificate.get("recordHash")) != _promotion_certificate_hash(certificate):
+        return {"passed": False, "reason": "PROMOTION_CERTIFICATE_HASH_MISMATCH"}
+    checks = [
+        (_text(certificate.get("version")) == CALIBRATION_PROMOTION_VERSION, "PROMOTION_CERTIFICATE_VERSION_MISMATCH"),
+        (_text(certificate.get("calibrationPolicyFingerprint")) == _calibration_policy_fingerprint(), "PROMOTION_POLICY_FINGERPRINT_MISMATCH"),
+        (_text(certificate.get("approvalRecordHash")) == _text(approval.get("record_hash")), "PROMOTION_APPROVAL_HASH_MISMATCH"),
+        (_text(certificate.get("evidenceFingerprint")) == evidence_fingerprint, "PROMOTION_EVIDENCE_MISMATCH"),
+        (certificate.get("promotionEligible") is True, "PROMOTION_NOT_ELIGIBLE"),
+        (_text(certificate.get("decision")) == "READY_FOR_HUMAN_REVIEW", "PROMOTION_DECISION_NOT_READY"),
+        (int(_safe_float(certificate.get("completedSignalDates")) or 0) >= CALIBRATION_PROMOTION_MIN_SIGNAL_DATES, "LOW_PROMOTION_SIGNAL_DATES"),
+        (int(_safe_float(certificate.get("evaluatedChallengerTrades")) or 0) >= CALIBRATION_PROMOTION_MIN_TRADES, "LOW_PROMOTION_TRADES"),
+        (float(_safe_float(certificate.get("avgAfterCostReturnPct")) or 0.0) > 0, "NON_POSITIVE_PROMOTION_RETURN"),
+    ]
+    uplift_ci = certificate.get("pairedUpliftCi95") if isinstance(certificate.get("pairedUpliftCi95"), list) else []
+    checks.append((len(uplift_ci) >= 2 and float(_safe_float(uplift_ci[0]) or 0.0) > 0, "PROMOTION_UPLIFT_NOT_PROVEN"))
+    champion_dd = _safe_float(certificate.get("championMaxDrawdownPct"))
+    challenger_dd = _safe_float(certificate.get("challengerMaxDrawdownPct"))
+    checks.append((
+        champion_dd is not None and challenger_dd is not None and challenger_dd <= champion_dd,
+        "PROMOTION_DRAWDOWN_WORSE",
+    ))
+    blockers = [reason for passed, reason in checks if not passed]
+    return {
+        "passed": not blockers,
+        "reason": "PROMOTION_CERTIFICATE_PASS" if not blockers else blockers[0],
+        "blockingReasons": blockers,
+        "certificate": certificate,
+    }
+
+
 def apply_approved_calibrations(
     applied_by: str = "local_admin",
     approval_ids: list[str] | None = None,
@@ -2639,7 +2885,13 @@ def apply_approved_calibrations(
     applied_rows: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     requested_ids = {_text(v) for v in (approval_ids or []) if _text(v)}
-    application_limit = max(0, int(max_applications)) if max_applications is not None else None
+    policy_limit = max(0, int(AUTO_CALIBRATION_POLICY.get("maxApplicationsPerRun") or 1))
+    application_limit = policy_limit if max_applications is None else min(policy_limit, max(0, int(max_applications)))
+    current_items = calibration_suggestions("all", "all", "all", "all", "all").get("items", [])
+    current_suggestions = {
+        _text(item.get("suggestionId")): item
+        for item in current_items if _text(item.get("suggestionId"))
+    }
 
     for approval in approvals:
         approval_id = _text(approval.get("approval_id"))
@@ -2654,6 +2906,14 @@ def apply_approved_calibrations(
             continue
         if approval_id in already_applied:
             skipped.append({"approvalId": approval_id, "reason": "ALREADY_APPLIED"})
+            continue
+        evidence_gate = _approval_application_verdict(approval, current_suggestions)
+        if not evidence_gate.get("eligible"):
+            skipped.append({
+                "approvalId": approval_id,
+                "reason": evidence_gate.get("reason") or "CURRENT_EVIDENCE_GATE_FAILED",
+                "validation": evidence_gate.get("validation"),
+            })
             continue
         if _upper(approval.get("suggestion_status")) != "SUGGESTED":
             skipped.append({"approvalId": approval_id, "reason": "NOT_SUGGESTED"})
@@ -2689,15 +2949,37 @@ def apply_approved_calibrations(
             "journalCalibrationApplied": True,
             "journalCalibrationSource": approval_id,
             "journalCalibrationSourceType": source_type,
-            "journalCalibrationAppliedBy": _text(applied_by or "local_admin"),
-            "appliedAt": _now_iso(),
         })
         top = list(before.get("topFailureReasons") or [])
         if reason and reason not in top:
             top.insert(0, reason)
         after["topFailureReasons"] = top[:8]
-        markets[key] = after
+        candidate_fingerprint = _correction_candidate_fingerprint(
+            approval,
+            _text(evidence_gate.get("evidenceFingerprint")),
+            before,
+            after,
+            delta,
+        )
+        promotion_gate = _calibration_promotion_verdict(
+            approval,
+            _text(evidence_gate.get("evidenceFingerprint")),
+            candidate_fingerprint,
+        )
+        if not promotion_gate.get("passed"):
+            skipped.append({
+                "approvalId": approval_id,
+                "reason": promotion_gate.get("reason") or "PROMOTION_CERTIFICATE_REQUIRED",
+                "blockingReasons": promotion_gate.get("blockingReasons") or [],
+                "candidateFingerprint": candidate_fingerprint,
+            })
+            continue
         applied_at = _now_iso()
+        after.update({
+            "journalCalibrationAppliedBy": _text(applied_by or "local_admin"),
+            "appliedAt": applied_at,
+        })
+        markets[key] = after
         application_id = hashlib.sha256(f"{approval_id}|{applied_at}".encode("utf-8")).hexdigest()[:20]
         applied_rows.append({
             "application_id": application_id,
@@ -2712,13 +2994,21 @@ def apply_approved_calibrations(
             "journal_session": approval.get("journal_session"),
             "source_weight": source_weight,
             "raw_sample_count": raw_sample_count,
+            "distinct_signal_dates": approval.get("distinct_signal_dates"),
             "effective_sample_count": effective_sample_count,
             "reason": reason,
             "before_params_json": _json(before),
             "after_params_json": _json(after),
             "correction_version": old_version + 1,
             "status": "APPLIED",
+            "policy_version": AUTO_CALIBRATION_POLICY.get("version"),
+            "policy_fingerprint": _calibration_policy_fingerprint(),
+            "evidence_fingerprint": evidence_gate.get("evidenceFingerprint"),
+            "approval_record_hash": approval.get("record_hash"),
+            "candidate_fingerprint": candidate_fingerprint,
+            "promotion_certificate_hash": (promotion_gate.get("certificate") or {}).get("recordHash"),
         })
+        applied_rows[-1]["record_hash"] = _sealed_row_hash(applied_rows[-1], CALIBRATION_APPLICATION_COLS)
 
     if applied_rows:
         new_params = {
@@ -2770,10 +3060,10 @@ def _auto_calibration_verdict(item: dict[str, Any]) -> dict[str, Any]:
     if not _approved_delta(_upper(item.get("reason")), share, source_weight):
         return {"eligible": False, "reason": "NO_PARAMETER_MAPPING", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
     validation = _holdout_validation(item)
-    if validation.get("status") == "DRIFT":
+    if validation.get("status") != "OK":
         return {
             "eligible": False,
-            "reason": "HOLDOUT_DRIFT",
+            "reason": "HOLDOUT_DRIFT" if validation.get("status") == "DRIFT" else "LOW_HOLDOUT",
             "effectiveSamples": round(effective_samples, 3),
             "minRawSamples": min_raw,
             "validation": validation,
@@ -2824,17 +3114,42 @@ def _holdout_validation(item: dict[str, Any]) -> dict[str, Any]:
     total = len(rows)
     min_holdout = int(AUTO_CALIBRATION_POLICY.get("minHoldoutSamples") or 10)
     fraction = float(AUTO_CALIBRATION_POLICY.get("holdoutFraction") or 0.25)
-    holdout_n = max(min_holdout, int(math.ceil(total * fraction))) if total else min_holdout
-    if total < min_holdout * 2:
+    min_distinct_dates = int(AUTO_CALIBRATION_POLICY.get("minDistinctSignalDates") or 30)
+    min_holdout_dates = int(AUTO_CALIBRATION_POLICY.get("minHoldoutSignalDates") or 8)
+
+    def _signal_date(row: dict[str, Any]) -> str:
+        return _text(row.get("as_of_date"))[:10] or _row_event_date(row)[:10]
+
+    signal_dates = sorted({_signal_date(row) for row in rows if _signal_date(row)})
+    holdout_date_count = max(min_holdout_dates, int(math.ceil(len(signal_dates) * fraction))) if signal_dates else min_holdout_dates
+    if total < min_holdout * 2 or len(signal_dates) < min_distinct_dates or len(signal_dates) <= holdout_date_count:
         return {
             "status": "LOW_HOLDOUT",
-            "passed": True,
+            "passed": False,
             "total": total,
             "holdoutSamples": 0,
-            "reason": "NOT_ENOUGH_FOR_STRICT_HOLDOUT",
+            "distinctSignalDates": len(signal_dates),
+            "requiredDistinctSignalDates": min_distinct_dates,
+            "holdoutSignalDates": 0,
+            "requiredHoldoutSignalDates": min_holdout_dates,
+            "reason": "NOT_ENOUGH_INDEPENDENT_DATES_FOR_STRICT_HOLDOUT",
         }
-    holdout = rows[-holdout_n:]
-    train = rows[:-holdout_n]
+    holdout_dates = set(signal_dates[-holdout_date_count:])
+    holdout = [row for row in rows if _signal_date(row) in holdout_dates]
+    train = [row for row in rows if _signal_date(row) not in holdout_dates]
+    if len(holdout) < min_holdout or not train:
+        return {
+            "status": "LOW_HOLDOUT",
+            "passed": False,
+            "total": total,
+            "trainSamples": len(train),
+            "holdoutSamples": len(holdout),
+            "distinctSignalDates": len(signal_dates),
+            "requiredDistinctSignalDates": min_distinct_dates,
+            "holdoutSignalDates": len(holdout_dates),
+            "requiredHoldoutSignalDates": min_holdout_dates,
+            "reason": "HOLDOUT_BLOCK_HAS_TOO_FEW_SAMPLES",
+        }
 
     def _share(sub: list[dict[str, Any]]) -> float:
         if not sub:
@@ -2856,11 +3171,42 @@ def _holdout_validation(item: dict[str, Any]) -> dict[str, Any]:
         "total": total,
         "trainSamples": len(train),
         "holdoutSamples": len(holdout),
+        "distinctSignalDates": len(signal_dates),
+        "holdoutSignalDates": len(holdout_dates),
+        "holdoutUnit": "SIGNAL_DATE_BLOCK",
         "trainReasonShare": round(train_share, 4),
         "holdoutReasonShare": round(holdout_share, 4),
         "requiredHoldoutShare": round(required_share, 4),
         "trainAvgPnlPct": _avg_pnl(train),
         "holdoutAvgPnlPct": _avg_pnl(holdout),
+    }
+
+
+def _calibration_evidence(item: dict[str, Any]) -> dict[str, Any]:
+    validation = _holdout_validation(item)
+    payload = {
+        "policyVersion": AUTO_CALIBRATION_POLICY.get("version"),
+        "policyFingerprint": _calibration_policy_fingerprint(),
+        "suggestionId": item.get("suggestionId"),
+        "sourceSummaryId": item.get("sourceSummaryId"),
+        "market": item.get("market"),
+        "mode": item.get("mode"),
+        "horizon": item.get("horizon"),
+        "sourceType": item.get("sourceType"),
+        "journalSession": item.get("journalSession"),
+        "status": item.get("status"),
+        "reason": item.get("reason"),
+        "sampleCount": int(_safe_float(item.get("sampleCount")) or 0),
+        "distinctSignalDates": int(_safe_float(item.get("distinctSignalDates")) or 0),
+        "count": int(_safe_float(item.get("count")) or 0),
+        "share": round(float(_safe_float(item.get("share")) or 0.0), 8),
+        "threshold": round(float(_safe_float(item.get("threshold")) or 0.0), 8),
+        "validation": validation,
+    }
+    return {
+        "fingerprint": _hash_payload(payload),
+        "payload": payload,
+        "validation": validation,
     }
 
 
@@ -2941,17 +3287,29 @@ def _persisted_self_learning_status(market: str) -> dict[str, Any]:
     latest_market = _text(latest.get("market") or "all").lower()
     requested_market = _text(market or "all").lower()
     compatible = requested_market == "all" or latest_market in {"all", requested_market}
-    if not latest or not compatible:
+    current_policy_fingerprint = _calibration_policy_fingerprint()
+    latest_policy_fingerprint = _text(latest.get("policyFingerprint"))
+    policy_current = latest_policy_fingerprint == current_policy_fingerprint
+    if not latest or not compatible or not policy_current:
         return {
             "status": "STALE",
             "source": "PERSISTED_RUN",
+            "reason": (
+                "POLICY_MISMATCH"
+                if latest and compatible and not policy_current
+                else "NO_COMPATIBLE_RUN"
+            ),
+            "policyFingerprint": current_policy_fingerprint,
+            "persistedPolicyFingerprint": latest_policy_fingerprint or None,
             "quality": None,
+            "lastSelfLearningRun": latest or None,
             "performanceGate": {"status": "DEFERRED", "message": "Use self-learning status for a fresh performance gate."},
         }
     return {
-        "status": "OK",
+        "status": _upper(latest.get("status") or "OK"),
         "source": "PERSISTED_RUN",
         "generatedAt": report.get("generatedAt"),
+        "policyFingerprint": current_policy_fingerprint,
         "quality": latest.get("quality"),
         "eligibleAutoCount": latest.get("eligibleCount"),
         "lowSampleCount": None,
@@ -3011,9 +3369,8 @@ def auto_self_calibrate(
             blocked.append(work)
 
     eligible.sort(key=lambda row: (float(row.get("effectiveSamples") or 0) * float(row.get("share") or 0)), reverse=True)
-    limit = max_applications
-    if limit is None:
-        limit = int(AUTO_CALIBRATION_POLICY.get("maxApplicationsPerRun") or 4)
+    policy_limit = int(AUTO_CALIBRATION_POLICY.get("maxApplicationsPerRun") or 1)
+    limit = policy_limit if max_applications is None else min(policy_limit, max(0, int(max_applications)))
     selected = eligible[:max(0, int(limit))]
     auto_apply_enabled = bool(AUTO_CALIBRATION_POLICY.get("enabled"))
     approvals: list[dict[str, Any]] = []
@@ -3051,6 +3408,8 @@ def auto_self_calibrate(
         "generatedAt": _now_iso(),
         "market": market,
         "policy": AUTO_CALIBRATION_POLICY,
+        "policyFingerprint": _calibration_policy_fingerprint(),
+        "calibrationLedgerIntegrity": _calibration_ledger_integrity(),
         "quality": quality_before,
         "suggestionCount": len(suggestions),
         "eligibleCount": len(eligible),
@@ -3095,6 +3454,8 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
         "market": market,
         "correctionVersion": int(params.get("version") or 0),
         "policy": AUTO_CALIBRATION_POLICY,
+        "policyFingerprint": _calibration_policy_fingerprint(),
+        "calibrationLedgerIntegrity": _calibration_ledger_integrity(),
         "quality": quality,
         "sourceWeights": SOURCE_CALIBRATION_WEIGHTS,
         "suggestionCount": len(suggestions),

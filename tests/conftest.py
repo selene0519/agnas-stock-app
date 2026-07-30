@@ -40,5 +40,6 @@ def isolate_virtual_trade_journal_files(monkeypatch: pytest.MonkeyPatch, tmp_pat
     monkeypatch.setattr(vtj, "HISTORY_EVALUATION_CSV", history_dir / "virtual_operation_evaluation.csv")
     monkeypatch.setattr(vtj, "VIRTUAL_VALIDATION_RESULTS_CSV", reports_dir / "virtual_validation_results.csv")
     monkeypatch.setattr(vtj, "HISTORICAL_CALIBRATION_REPORT_JSON", reports_dir / "historical_strategy_calibration.json")
+    monkeypatch.setattr(vtj, "CALIBRATION_PROMOTION_JSON", reports_dir / "self_correction_promotion.json")
     if hasattr(vtj, "_FEEDBACK_JSON"):
         monkeypatch.setattr(vtj, "_FEEDBACK_JSON", data_dir / "attribution_feedback.json")
