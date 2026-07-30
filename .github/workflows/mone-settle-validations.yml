@@ -105,7 +105,7 @@ jobs:
           echo "audit_strategy_cohorts: exit $?"
           # Predict horizon-aligned residual alpha with an expanding, date-blocked
           # model.  The downstream gate fails closed until OOS evidence passes.
-          python scripts/build_shadow_residual_alpha.py
+          python scripts/build_shadow_residual_alpha.py --record-market none
           echo "build_shadow_residual_alpha: exit $?"
           # Shadow meta-gate may abstain entirely; it cannot mutate the live
           # recommendation set until its own sleeve proves incremental value.

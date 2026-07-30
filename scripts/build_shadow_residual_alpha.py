@@ -880,10 +880,26 @@ def apply_forward_seal_status(
     return output
 
 
+def filter_recordable_predictions(
+    predictions: list[dict[str, Any]],
+    record_market: str,
+) -> tuple[str, list[dict[str, Any]]]:
+    market_filter = _text(record_market).lower()
+    if market_filter not in {"all", "kr", "us", "none"}:
+        raise ValueError(f"unsupported record market: {record_market}")
+    if market_filter == "none":
+        return market_filter, []
+    return market_filter, [
+        row for row in predictions
+        if market_filter == "all" or _text(row.get("market")).lower() == market_filter
+    ]
+
+
 def build(
     prediction_path: Path | None = None,
     settlement_path: Path | None = None,
     now: datetime | None = None,
+    record_market: str = "none",
 ) -> dict[str, Any]:
     raw = _read_csv(JOURNAL)
     forward = _dedupe_forward_rows(raw)
@@ -891,7 +907,10 @@ def build(
     research_oos = expanding_oos(labeled)
     research_validation = validation_summary(research_oos)
     predictions = current_predictions(labeled, _recommendation_rows())
-    prediction_journal = record_forward_predictions(predictions, prediction_path, now)
+    market_filter, recordable_predictions = filter_recordable_predictions(predictions, record_market)
+    prediction_journal = record_forward_predictions(recordable_predictions, prediction_path, now)
+    prediction_journal["recordMarket"] = market_filter
+    prediction_journal["candidateRowsConsidered"] = len(recordable_predictions)
     predictions = apply_forward_seal_status(predictions, prediction_path)
     settlement_journal = settle_forward_predictions(labeled, prediction_path, settlement_path, now)
     live_oos, live_source = live_forward_oos(prediction_path, settlement_path)
@@ -950,8 +969,9 @@ def build(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=OUT)
+    parser.add_argument("--record-market", choices=("all", "kr", "us", "none"), default="none")
     args = parser.parse_args()
-    report = build()
+    report = build(record_market=args.record_market)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({"data": report["data"], "validation": report["validation"], "summary": report["summary"]}, ensure_ascii=False, indent=2))

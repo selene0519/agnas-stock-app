@@ -465,11 +465,21 @@ jobs:
         # settlement workflow is allowed to settle labels, but must never
         # backfill an old recommendation as if it were a live prediction.
         run: |
+          RECORD_MARKET="all"
+          if [ "${GITHUB_EVENT_NAME:-}" = "schedule" ]; then
+            KST_HOUR="$(TZ=Asia/Seoul date '+%H')"
+            case "${KST_HOUR}" in
+              07) RECORD_MARKET="us" ;;  # latest completed US close
+              16) RECORD_MARKET="kr" ;;  # latest completed KR close
+              06) RECORD_MARKET="us" ;;  # Saturday US Friday close
+              *) RECORD_MARKET="none" ;;
+            esac
+          fi
           set +e
-          python scripts/build_shadow_residual_alpha.py
+          python scripts/build_shadow_residual_alpha.py --record-market "${RECORD_MARKET}"
           code=$?
           set -e
-          echo "build_shadow_residual_alpha: exit ${code}"
+          echo "build_shadow_residual_alpha(${RECORD_MARKET}): exit ${code}"
           if [ "${code}" != "0" ]; then
             echo "::error::Forward residual-alpha prediction sealing failed (exit ${code})"
             exit "${code}"

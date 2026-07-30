@@ -269,6 +269,18 @@ def test_forward_journal_hash_detects_manual_prediction_mutation(tmp_path) -> No
     assert sealed[0]["forwardSealStatus"] == "UNSEALED"
 
 
+def test_only_canonical_market_predictions_are_recordable() -> None:
+    predictions = [{"market": "kr", "candidateKey": "kr"}, {"market": "us", "candidateKey": "us"}]
+
+    market, selected = model.filter_recordable_predictions(predictions, "KR")
+    none_market, none_selected = model.filter_recordable_predictions(predictions, "none")
+
+    assert market == "kr"
+    assert [row["candidateKey"] for row in selected] == ["kr"]
+    assert none_market == "none"
+    assert none_selected == []
+
+
 def test_recomputed_research_validation_cannot_promote(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(model, "_read_csv", lambda path: [])
     monkeypatch.setattr(model, "build_labeled_rows", lambda rows: ([], {}))
@@ -303,9 +315,13 @@ def test_scheduled_pipeline_builds_residual_model_before_meta_gate() -> None:
     commit_script = (ROOT / "scripts" / "ci_commit_app_data.sh").read_text(encoding="utf-8")
 
     assert workflow.index("scripts/build_shadow_residual_alpha.py") < workflow.index("scripts/build_shadow_meta_gate.py")
+    assert "scripts/build_shadow_residual_alpha.py --record-market none" in workflow
     assert "reports/shadow_residual_alpha.json" in workflow
     assert "data/shadow_residual_alpha_predictions.csv" in workflow
     assert "data/shadow_residual_alpha_settlements.csv" in workflow
     assert accumulator.index("scripts/generate_us_recommendations.py") < accumulator.index("scripts/build_shadow_residual_alpha.py")
+    assert '07) RECORD_MARKET="us"' in accumulator
+    assert '16) RECORD_MARKET="kr"' in accumulator
+    assert '--record-market "${RECORD_MARKET}"' in accumulator
     assert "data/shadow_residual_alpha_predictions.csv" in commit_script
     assert "data/shadow_residual_alpha_settlements.csv" in commit_script
