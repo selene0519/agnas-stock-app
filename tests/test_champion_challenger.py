@@ -116,11 +116,40 @@ def test_promotion_requires_all_preregistered_gates() -> None:
     }
     integrity = {"immutableConflicts": 0, "timeIntegrityViolations": 0, "fingerprintCoverage": 1.0}
 
-    passed = cc.promotion_decision(comparison, {"passed": True}, integrity)
-    blocked = cc.promotion_decision(comparison, {"passed": False}, integrity)
+    passed = cc.promotion_decision(comparison, {"passed": True}, {"passed": True}, integrity)
+    blocked = cc.promotion_decision(comparison, {"passed": False}, {"passed": False}, integrity)
 
     assert passed["promotionEligible"] is True
     assert passed["autoPromotionAllowed"] is False
     assert passed["humanApprovalRequired"] is True
     assert blocked["promotionEligible"] is False
     assert "RESIDUAL_ALPHA_NOT_PROVEN" in blocked["blockingReasons"]
+    assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in blocked["blockingReasons"]
+
+
+def test_residual_model_gate_requires_explicit_pass() -> None:
+    missing = cc._residual_model_gate({})
+    passing = cc._residual_model_gate({
+        "policy": {"fingerprint": "model-a", "version": cc.RESIDUAL_ALPHA_POLICY_VERSION},
+        "validation": {"evidenceStatus": "PASS", "oosPredictions": 200, "oosSignalDates": 40},
+    })
+
+    assert missing["passed"] is False
+    assert passing["passed"] is True
+    assert passing["modelFingerprint"] == "model-a"
+
+
+def test_comparison_cohort_never_pools_prior_meta_policy() -> None:
+    rows = [
+        {"policy_fingerprint": "champion-a", "meta_policy_fingerprint": "meta-old"},
+        {"policy_fingerprint": "champion-a", "meta_policy_fingerprint": "meta-current"},
+        {"policy_fingerprint": "champion-old", "meta_policy_fingerprint": "meta-current"},
+    ]
+
+    selected = cc._active_policy_rows(
+        rows,
+        {"policy": {"fingerprint": "meta-current"}},
+        "champion-a",
+    )
+
+    assert selected == [rows[1]]

@@ -46,6 +46,10 @@ export interface QuantShadowStatus {
     d20BlockMeanCarPct: number | null;
     d20AlphaCi95: [number, number] | null;
     independentAlphaBlocks: number | null;
+    residualAlphaModelEvidence?: string | null;
+    residualAlphaOosPredictions?: number | null;
+    residualAlphaOosSignalDates?: number | null;
+    residualAlphaSelectedCi95?: [number, number] | null;
     topSleeve: string | null;
     topSleeveReturnPct: number | null;
     topSleeveProfitFactor: number | null;

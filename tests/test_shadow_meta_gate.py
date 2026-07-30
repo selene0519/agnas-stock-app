@@ -21,7 +21,9 @@ def test_negative_expectancy_cell_rejects_even_high_score_candidate() -> None:
         "blockingReasons": ["NON_POSITIVE_AFTER_COST_EXPECTANCY"],
     }
 
-    decision, reasons = gate._candidate_decision(candidate, cell)
+    decision, reasons = gate._candidate_decision(
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0}, "PASS"
+    )
 
     assert decision == "REJECT"
     assert "NON_POSITIVE_AFTER_COST_EXPECTANCY" in reasons
@@ -34,7 +36,9 @@ def test_insufficient_but_not_negative_evidence_waits() -> None:
         "blockingReasons": ["LOW_DISTINCT_SIGNAL_DATES"],
     }
 
-    decision, _ = gate._candidate_decision(candidate, cell)
+    decision, _ = gate._candidate_decision(
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0}, "PASS"
+    )
 
     assert decision == "WAIT"
 
@@ -43,10 +47,34 @@ def test_only_proven_positive_cell_can_take() -> None:
     candidate = {"dataStatus": "NORMAL", "expectedValue": 2, "rrActual": 2.0}
     cell = {"evidenceStatus": "PASS", "blockingReasons": []}
 
-    decision, reasons = gate._candidate_decision(candidate, cell)
+    decision, reasons = gate._candidate_decision(
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": 1.0}, "PASS"
+    )
 
     assert decision == "TAKE"
     assert reasons == []
+
+
+def test_unproven_residual_alpha_model_cannot_take() -> None:
+    candidate = {"dataStatus": "NORMAL", "expectedValue": 2, "rrActual": 2.0}
+    cell = {"evidenceStatus": "PASS", "blockingReasons": []}
+
+    decision, reasons = gate._candidate_decision(candidate, cell, None, "WAIT")
+
+    assert decision == "WAIT"
+    assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in reasons
+
+
+def test_nonpositive_residual_alpha_lower_bound_rejects() -> None:
+    candidate = {"dataStatus": "NORMAL", "expectedValue": 2, "rrActual": 2.0}
+    cell = {"evidenceStatus": "PASS", "blockingReasons": []}
+
+    decision, reasons = gate._candidate_decision(
+        candidate, cell, {"status": "PREDICTED", "predictionLower90Pct": -0.01}, "PASS"
+    )
+
+    assert decision == "REJECT"
+    assert "RESIDUAL_ALPHA_NOT_POSITIVE" in reasons
 
 
 def test_probability_calibration_exposes_overconfidence() -> None:

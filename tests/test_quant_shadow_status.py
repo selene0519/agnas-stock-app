@@ -22,6 +22,15 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
         "status": "OK",
         "windows": {"D+20": {"blockMeanCarPct": -3.4, "bootstrapCi95": [-7.7, 0.6], "independentMarketDateBlocks": 13, "significanceUsable": False}},
     })
+    _write(tmp_path, "residualAlpha", {
+        "status": "SHADOW_ONLY",
+        "validation": {
+            "evidenceStatus": "WAIT",
+            "oosPredictions": 0,
+            "oosSignalDates": 0,
+            "selectedBlockBootstrapCi95": None,
+        },
+    })
     _write(tmp_path, "sleeve", {
         "status": "OK",
         "ranking": ["balanced_short"],
@@ -43,6 +52,7 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
     assert result["liveTradingAllowed"] is False
     assert result["summary"]["cashWeightPct"] == 100.0
     assert "ALPHA_NOT_PROVEN" in result["decisionReasons"]
+    assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in result["decisionReasons"]
     assert "NO_POSITIVE_SLEEVE" in result["decisionReasons"]
 
 

@@ -11,6 +11,7 @@ REPORTS_DIR = data.REPO_ROOT / "reports"
 REPORT_FILES = {
     "cohort": "strategy_cohort_audit.json",
     "alpha": "recommendation_alpha.json",
+    "residualAlpha": "shadow_residual_alpha.json",
     "sleeve": "strategy_sleeve_nav_v2.json",
     "metaGate": "shadow_meta_gate.json",
     "riskBudget": "shadow_risk_budget.json",
@@ -35,6 +36,7 @@ def shadow_status() -> dict[str, Any]:
     meta = reports["metaGate"]
     risk = reports["riskBudget"]
     alpha = reports["alpha"]
+    residual_alpha = reports["residualAlpha"]
     sleeve = reports["sleeve"]
     cohort = reports["cohort"]
     champion_challenger = reports["championChallenger"]
@@ -56,6 +58,9 @@ def shadow_status() -> dict[str, Any]:
         reasons.append("MISSING_REPORTS")
     if not bool(d20.get("significanceUsable")):
         reasons.append("ALPHA_NOT_PROVEN")
+    residual_validation = residual_alpha.get("validation") if isinstance(residual_alpha.get("validation"), dict) else {}
+    if residual_validation.get("evidenceStatus") != "PASS":
+        reasons.append("RESIDUAL_ALPHA_MODEL_NOT_PROVEN")
     if not top_sleeve or float(top_sleeve.get("totalReturnPct") or 0.0) <= 0:
         reasons.append("NO_POSITIVE_SLEEVE")
     if float(risk.get("grossExposurePct") or 0.0) <= 0:
@@ -84,6 +89,10 @@ def shadow_status() -> dict[str, Any]:
             "d20BlockMeanCarPct": d20.get("blockMeanCarPct"),
             "d20AlphaCi95": d20.get("bootstrapCi95"),
             "independentAlphaBlocks": d20.get("independentMarketDateBlocks"),
+            "residualAlphaModelEvidence": residual_validation.get("evidenceStatus"),
+            "residualAlphaOosPredictions": residual_validation.get("oosPredictions"),
+            "residualAlphaOosSignalDates": residual_validation.get("oosSignalDates"),
+            "residualAlphaSelectedCi95": residual_validation.get("selectedBlockBootstrapCi95"),
             "topSleeve": top_name,
             "topSleeveReturnPct": top_sleeve.get("totalReturnPct") if top_sleeve else None,
             "topSleeveProfitFactor": top_sleeve.get("profitFactor") if top_sleeve else None,

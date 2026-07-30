@@ -23,12 +23,14 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 META_GATE = ROOT / "reports" / "shadow_meta_gate.json"
 ALPHA_REPORT = ROOT / "reports" / "recommendation_alpha.json"
+RESIDUAL_ALPHA_REPORT = ROOT / "reports" / "shadow_residual_alpha.json"
 JOURNAL = ROOT / "data" / "virtual_trade_journal.csv"
 EVALUATIONS = ROOT / "data" / "virtual_trade_evaluations.csv"
 LEDGER = ROOT / "data" / "shadow_challenger_journal.csv"
 OUT = ROOT / "reports" / "champion_challenger.json"
 
-POLICY_VERSION = "champion-challenger-v1.0.0"
+POLICY_VERSION = "champion-challenger-v1.1.1"
+RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.0.2"
 POSITION_WEIGHT = 0.10
 MAX_POSITIONS = 3
 MIN_COMPLETE_SIGNAL_DATES = 60
@@ -38,6 +40,8 @@ BOOTSTRAP_SEED = 20260730
 
 LEDGER_FIELDS = [
     "decision_id", "policy_version", "policy_fingerprint", "recorded_at",
+    "candidate_key", "meta_policy_fingerprint", "residual_alpha_model_fingerprint",
+    "predicted_residual_alpha_pct", "residual_alpha_lower90_pct",
     "signal_date", "generated_at", "market", "mode", "horizon", "symbol",
     "name", "score", "champion_decision", "challenger_decision", "reasons",
 ]
@@ -58,6 +62,8 @@ def _policy() -> dict[str, Any]:
         "requiresProfitFactorAboveOne": True,
         "requiresPairedUpliftBootstrapLowerAboveZero": True,
         "requiresD20ResidualAlphaLowerCiAboveZero": True,
+        "requiresValidatedResidualAlphaPredictionModel": True,
+        "residualAlphaPolicyVersion": RESIDUAL_ALPHA_POLICY_VERSION,
         "requiresChallengerDrawdownNoWorseThanChampion": True,
         "requiresTimeIntegrity": True,
         "autoPromotionAllowed": False,
@@ -129,6 +135,11 @@ def _ledger_row(decision: dict[str, Any], recorded_at: str) -> dict[str, Any] | 
         "policy_version": POLICY_VERSION,
         "policy_fingerprint": _fingerprint(_policy()),
         "recorded_at": recorded_at,
+        "candidate_key": _text(decision.get("candidateKey")),
+        "meta_policy_fingerprint": _text(decision.get("policyFingerprint")),
+        "residual_alpha_model_fingerprint": _text(decision.get("residualAlphaModelFingerprint")),
+        "predicted_residual_alpha_pct": _num(decision.get("predictedResidualAlphaPct")),
+        "residual_alpha_lower90_pct": _num(decision.get("residualAlphaLower90Pct")),
         "signal_date": signal_date,
         "generated_at": _text(decision.get("generatedAt")),
         "market": _text(decision.get("market")).lower(),
@@ -323,7 +334,46 @@ def _alpha_gate(alpha: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def promotion_decision(comparison: dict[str, Any], alpha_gate: dict[str, Any], integrity: dict[str, Any]) -> dict[str, Any]:
+def _residual_model_gate(report: dict[str, Any]) -> dict[str, Any]:
+    validation = report.get("validation") if isinstance(report.get("validation"), dict) else {}
+    policy = report.get("policy") if isinstance(report.get("policy"), dict) else {}
+    version_matches = policy.get("version") == RESIDUAL_ALPHA_POLICY_VERSION
+    return {
+        "passed": validation.get("evidenceStatus") == "PASS" and version_matches,
+        "evidenceStatus": validation.get("evidenceStatus") or "MISSING",
+        "modelFingerprint": policy.get("fingerprint"),
+        "policyVersion": policy.get("version"),
+        "requiredPolicyVersion": RESIDUAL_ALPHA_POLICY_VERSION,
+        "oosPredictions": validation.get("oosPredictions"),
+        "oosSignalDates": validation.get("oosSignalDates"),
+        "selectedBlockBootstrapCi95": validation.get("selectedBlockBootstrapCi95"),
+        "blockingReasons": (
+            validation.get("blockingReasons") or ["MISSING_RESIDUAL_ALPHA_MODEL_REPORT"]
+        ) + ([] if version_matches else ["RESIDUAL_ALPHA_MODEL_VERSION_MISMATCH"]),
+    }
+
+
+def _active_policy_rows(
+    rows: list[dict[str, Any]],
+    meta: dict[str, Any],
+    champion_fingerprint: str | None = None,
+) -> list[dict[str, Any]]:
+    meta_policy = meta.get("policy") if isinstance(meta.get("policy"), dict) else {}
+    active_meta_fingerprint = _text(meta_policy.get("fingerprint"))
+    active_champion_fingerprint = champion_fingerprint or _fingerprint(_policy())
+    return [
+        row for row in rows
+        if _text(row.get("policy_fingerprint")) == active_champion_fingerprint
+        and _text(row.get("meta_policy_fingerprint")) == active_meta_fingerprint
+    ]
+
+
+def promotion_decision(
+    comparison: dict[str, Any],
+    alpha_gate: dict[str, Any],
+    residual_model_gate: dict[str, Any],
+    integrity: dict[str, Any],
+) -> dict[str, Any]:
     challenger = comparison["challenger"]
     champion = comparison["champion"]
     uplift_ci = comparison["pairedUplift"].get("bootstrapCi95")
@@ -350,6 +400,8 @@ def promotion_decision(comparison: dict[str, Any], alpha_gate: dict[str, Any], i
         blockers.append("CHALLENGER_DRAWDOWN_WORSE")
     if not alpha_gate.get("passed"):
         blockers.append("RESIDUAL_ALPHA_NOT_PROVEN")
+    if not residual_model_gate.get("passed"):
+        blockers.append("RESIDUAL_ALPHA_MODEL_NOT_PROVEN")
     return {
         "promotionEligible": not blockers,
         "decision": "READY_FOR_HUMAN_REVIEW" if not blockers else "KEEP_CHALLENGER_SHADOW",
@@ -366,14 +418,20 @@ def build(
     evaluations_path: Path = EVALUATIONS,
     ledger_path: Path = LEDGER,
     *,
+    residual_path: Path = RESIDUAL_ALPHA_REPORT,
     record: bool = True,
 ) -> dict[str, Any]:
     meta = _read_json(meta_path)
     record_status = record_decisions(meta, ledger_path) if record else {"appended": 0, "conflicts": 0, "skipped": 0, "total": len(_read_csv(ledger_path))}
-    ledger_rows = _read_csv(ledger_path)
+    all_ledger_rows = _read_csv(ledger_path)
+    active_fingerprint = _fingerprint(_policy())
+    meta_policy = meta.get("policy") if isinstance(meta.get("policy"), dict) else {}
+    active_meta_fingerprint = _text(meta_policy.get("fingerprint"))
+    ledger_rows = _active_policy_rows(all_ledger_rows, meta, active_fingerprint)
     outcomes, violations = _latest_outcomes(journal_path, evaluations_path)
     comparison = compare(ledger_rows, outcomes)
     alpha_gate = _alpha_gate(_read_json(alpha_path))
+    residual_model_gate = _residual_model_gate(_read_json(residual_path))
     fingerprinted = sum(1 for row in ledger_rows if _text(row.get("policy_fingerprint")))
     integrity = {
         "immutableConflicts": record_status["conflicts"],
@@ -381,14 +439,21 @@ def build(
         "fingerprintCoverage": round(fingerprinted / len(ledger_rows), 6) if ledger_rows else 0.0,
         "violations": violations[:20],
     }
-    promotion = promotion_decision(comparison, alpha_gate, integrity)
+    promotion = promotion_decision(comparison, alpha_gate, residual_model_gate, integrity)
     return {
         "status": "SHADOW_ONLY",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "policy": {**_policy(), "fingerprint": _fingerprint(_policy())},
         "recording": record_status,
+        "policyCohort": {
+            "activeFingerprint": active_fingerprint,
+            "activeMetaPolicyFingerprint": active_meta_fingerprint,
+            "activeRows": len(ledger_rows),
+            "excludedPriorPolicyRows": len(all_ledger_rows) - len(ledger_rows),
+        },
         "integrity": integrity,
         "alphaGate": alpha_gate,
+        "residualAlphaModelGate": residual_model_gate,
         "comparison": comparison,
         "promotion": promotion,
     }
@@ -398,13 +463,22 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--meta", type=Path, default=META_GATE)
     parser.add_argument("--alpha", type=Path, default=ALPHA_REPORT)
+    parser.add_argument("--residual-alpha", type=Path, default=RESIDUAL_ALPHA_REPORT)
     parser.add_argument("--journal", type=Path, default=JOURNAL)
     parser.add_argument("--evaluations", type=Path, default=EVALUATIONS)
     parser.add_argument("--ledger", type=Path, default=LEDGER)
     parser.add_argument("--output", type=Path, default=OUT)
     parser.add_argument("--no-record", action="store_true")
     args = parser.parse_args()
-    report = build(args.meta, args.alpha, args.journal, args.evaluations, args.ledger, record=not args.no_record)
+    report = build(
+        args.meta,
+        args.alpha,
+        args.journal,
+        args.evaluations,
+        args.ledger,
+        residual_path=args.residual_alpha,
+        record=not args.no_record,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({"recording": report["recording"], "promotion": report["promotion"]}, ensure_ascii=False, indent=2))

@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Activity, AlertTriangle, BarChart3, Check, CircleDollarSign, RefreshCw, ShieldAlert } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, BrainCircuit, Check, CircleDollarSign, RefreshCw, ShieldAlert } from "lucide-react";
 import { mone, type Market, type QuantShadowStatus } from "@/lib/api";
 
 const REASON_LABELS: Record<string, string> = {
   MISSING_REPORTS: "검증 보고서가 일부 누락됨",
   ALPHA_NOT_PROVEN: "시장 대비 잔차 알파가 아직 입증되지 않음",
+  RESIDUAL_ALPHA_MODEL_NOT_PROVEN: "개별 후보의 잔차 알파 예측력이 아직 OOS에서 입증되지 않음",
   NO_POSITIVE_SLEEVE: "양의 자본곡선을 만든 전략 셀이 없음",
   NO_APPROVED_RISK_EXPOSURE: "위험 한도를 통과한 포지션이 없음",
   CHALLENGER_NOT_PROMOTABLE: "새 전략이 기존 전략 대비 우월성을 아직 입증하지 못함",
@@ -67,6 +68,7 @@ export function ShadowCapitalGate({ market }: { market: Market }) {
   const summary = row?.summary;
   const ci = summary?.d20AlphaCi95;
   const alphaPassed = row?.decisionReasons?.includes("ALPHA_NOT_PROVEN") === false;
+  const residualModelPassed = row?.decisionReasons?.includes("RESIDUAL_ALPHA_MODEL_NOT_PROVEN") === false;
   const sleevePassed = row?.decisionReasons?.includes("NO_POSITIVE_SLEEVE") === false;
   const riskPassed = row?.decisionReasons?.includes("NO_APPROVED_RISK_EXPOSURE") === false;
   const evidencePassed = !row?.missingReports?.length && (summary?.independentDecisions ?? 0) >= 200;
@@ -83,7 +85,7 @@ export function ShadowCapitalGate({ market }: { market: Market }) {
             <span className="text-[10px] font-medium text-slate-500">{marketLabel} · 실주문 미허용</span>
           </div>
           <h2 id="quant-capital-gate-title" className="mt-3 text-base font-bold text-slate-100">{row?.decision === "SHADOW_TAKE" ? "검증용 진입 후보 있음" : "자본 투입 보류"}</h2>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-400">추천 수가 아니라 독립 표본, 시장 대비 알파, 실제 자본곡선, 위험예산을 모두 통과해야 진입합니다.</p>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-400">추천 수가 아니라 독립 표본, 후보별 잔차 알파 예측, 실제 초과성과, 자본곡선과 위험예산을 모두 통과해야 진입합니다.</p>
         </div>
         <button type="button" onClick={load} disabled={loading} aria-label="퀀트 자본 게이트 새로고침" className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center self-end rounded-lg border border-slate-700 text-slate-400 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 disabled:opacity-50 sm:self-auto">
           <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
@@ -91,8 +93,8 @@ export function ShadowCapitalGate({ market }: { market: Market }) {
       </div>
 
       {loading && !row ? (
-        <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 sm:grid-cols-4 sm:divide-y-0" aria-label="검증 상태 불러오는 중">
-          {[0, 1, 2, 3].map((item) => <div key={item} className="h-24 animate-pulse bg-slate-900/50" />)}
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 md:grid-cols-5 md:divide-y-0" aria-label="검증 상태 불러오는 중">
+          {[0, 1, 2, 3, 4].map((item) => <div key={item} className="h-24 animate-pulse bg-slate-900/50" />)}
         </div>
       ) : error ? (
         <div className="flex items-start gap-3 bg-red-400/5 px-4 py-4 text-sm text-red-200" role="alert">
@@ -101,11 +103,12 @@ export function ShadowCapitalGate({ market }: { market: Market }) {
         </div>
       ) : row && summary ? (
         <>
-          <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 sm:grid-cols-4 sm:divide-y-0">
+          <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 md:grid-cols-5 md:divide-y-0">
             <GateStep icon={Activity} label="01 독립 증거" value={`${summary.independentDecisions ?? 0}건`} detail="승격 최소 200건 · 날짜 기준은 별도 검증" passed={evidencePassed} />
-            <GateStep icon={BarChart3} label="02 잔차 알파" value={percent(summary.d20BlockMeanCarPct, 2)} detail={`D+20 블록 CI ${ci ? `${number(ci[0], 2)} ~ ${number(ci[1], 2)}%` : "—"}`} passed={alphaPassed} />
-            <GateStep icon={CircleDollarSign} label="03 자본곡선" value={percent(summary.topSleeveReturnPct, 2)} detail={`${summary.topSleeve || "최상위 sleeve 없음"} · PF ${number(summary.topSleeveProfitFactor, 2)}`} passed={sleevePassed} />
-            <GateStep icon={ShieldAlert} label="04 위험예산" value={`현금 ${number(summary.cashWeightPct, 0)}%`} detail={`총 노출 ${number(summary.grossExposurePct, 1)}% · β ${number(summary.portfolioBeta, 2)}`} passed={riskPassed} />
+            <GateStep icon={BrainCircuit} label="02 알파 예측" value={`${summary.residualAlphaOosPredictions ?? 0}건`} detail={`OOS ${summary.residualAlphaOosSignalDates ?? 0}일 · ${summary.residualAlphaModelEvidence || "미검증"}`} passed={residualModelPassed} />
+            <GateStep icon={BarChart3} label="03 실현 알파" value={percent(summary.d20BlockMeanCarPct, 2)} detail={`D+20 블록 CI ${ci ? `${number(ci[0], 2)} ~ ${number(ci[1], 2)}%` : "—"}`} passed={alphaPassed} />
+            <GateStep icon={CircleDollarSign} label="04 자본곡선" value={percent(summary.topSleeveReturnPct, 2)} detail={`${summary.topSleeve || "최상위 sleeve 없음"} · PF ${number(summary.topSleeveProfitFactor, 2)}`} passed={sleevePassed} />
+            <GateStep icon={ShieldAlert} label="05 위험예산" value={`현금 ${number(summary.cashWeightPct, 0)}%`} detail={`총 노출 ${number(summary.grossExposurePct, 1)}% · β ${number(summary.portfolioBeta, 2)}`} passed={riskPassed} />
           </div>
 
           <div className="border-t border-slate-800 px-4 py-3">

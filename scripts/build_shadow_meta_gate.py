@@ -25,6 +25,7 @@ JOURNAL = ROOT / "data" / "virtual_trade_journal.csv"
 EVALUATIONS = ROOT / "data" / "virtual_trade_evaluations.csv"
 REPORTS = ROOT / "reports"
 OUT = REPORTS / "shadow_meta_gate.json"
+RESIDUAL_ALPHA = REPORTS / "shadow_residual_alpha.json"
 
 FORWARD_SOURCES = {"FORWARD_PAPER_TRADE", "MANUAL_REVIEWED"}
 PLAN_ONLY_SESSIONS = {"PREMARKET_PLAN", "INTRADAY_CHECK"}
@@ -33,7 +34,8 @@ MIN_DISTINCT_SIGNAL_DATES = 30
 MIN_RISK_REWARD = 1.5
 MAX_TAKE = 3
 PROBABILITY_BINS = ((0, 50), (50, 60), (60, 70), (70, 80), (80, 101))
-POLICY_VERSION = "shadow-meta-v1.0.0"
+POLICY_VERSION = "shadow-meta-v1.1.1"
+RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.0.2"
 
 
 def _policy() -> dict[str, Any]:
@@ -45,6 +47,9 @@ def _policy() -> dict[str, Any]:
         "minRiskRewardRatio": MIN_RISK_REWARD,
         "requiresPositiveAfterCostExpectancy": True,
         "requiresProfitFactorAboveOne": True,
+        "requiresValidatedResidualAlphaModel": True,
+        "requiresPositiveResidualAlphaLower90": True,
+        "residualAlphaPolicyVersion": RESIDUAL_ALPHA_POLICY_VERSION,
         "uncalibratedProbabilityCanTriggerTake": False,
     }
 
@@ -64,6 +69,17 @@ def _decision_id(row: dict[str, Any], signal_date: str) -> str:
         _text(row.get("symbol")).upper(),
     ])
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
+
+
+def _candidate_key(row: dict[str, Any], signal_date: str) -> str:
+    raw = "|".join([
+        signal_date,
+        _text(row.get("market")).lower(),
+        _text(row.get("mode")).lower(),
+        _text(row.get("horizon")).lower(),
+        _text(row.get("symbol")).upper(),
+    ])
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -220,7 +236,12 @@ def _recommendation_rows() -> list[dict[str, str]]:
     return rows
 
 
-def _candidate_decision(row: dict[str, Any], cell: dict[str, Any] | None) -> tuple[str, list[str]]:
+def _candidate_decision(
+    row: dict[str, Any],
+    cell: dict[str, Any] | None,
+    residual_prediction: dict[str, Any] | None = None,
+    residual_evidence_status: str = "MISSING",
+) -> tuple[str, list[str]]:
     reasons: list[str] = []
     data_status = _text(row.get("dataStatus") or row.get("data_status")).upper()
     expected_value = _num(row.get("expectedValue") or row.get("expected_value"))
@@ -231,6 +252,12 @@ def _candidate_decision(row: dict[str, Any], cell: dict[str, Any] | None) -> tup
         reasons.append("EV_NOT_POSITIVE")
     if risk_reward is None or risk_reward < MIN_RISK_REWARD:
         reasons.append("RISK_REWARD_TOO_LOW")
+    if residual_evidence_status != "PASS":
+        reasons.append("RESIDUAL_ALPHA_MODEL_NOT_PROVEN")
+    elif not residual_prediction or residual_prediction.get("status") != "PREDICTED":
+        reasons.append("NO_RESIDUAL_ALPHA_PREDICTION")
+    elif (_num(residual_prediction.get("predictionLower90Pct")) or 0.0) <= 0:
+        reasons.append("RESIDUAL_ALPHA_NOT_POSITIVE")
     if cell is None:
         reasons.append("NO_FORWARD_EVIDENCE")
         return "WAIT", reasons
@@ -241,8 +268,14 @@ def _candidate_decision(row: dict[str, Any], cell: dict[str, Any] | None) -> tup
         "RISK_REWARD_TOO_LOW",
         "NON_POSITIVE_AFTER_COST_EXPECTANCY",
         "PROFIT_FACTOR_NOT_ABOVE_ONE",
+        "RESIDUAL_ALPHA_NOT_POSITIVE",
     )):
         return "REJECT", reasons
+    if any(reason in reasons for reason in (
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
+        "NO_RESIDUAL_ALPHA_PREDICTION",
+    )):
+        return "WAIT", reasons
     if cell.get("evidenceStatus") != "PASS":
         return "WAIT", reasons
     return "TAKE", reasons
@@ -250,19 +283,42 @@ def _candidate_decision(row: dict[str, Any], cell: dict[str, Any] | None) -> tup
 
 def build() -> dict[str, Any]:
     cells = _cell_stats(_independent_rows())
+    try:
+        residual_report = json.loads(RESIDUAL_ALPHA.read_text(encoding="utf-8"))
+    except Exception:
+        residual_report = {"status": "MISSING", "validation": {"evidenceStatus": "MISSING"}, "predictions": []}
+    validation = residual_report.get("validation") if isinstance(residual_report.get("validation"), dict) else {}
+    residual_policy = residual_report.get("policy") if isinstance(residual_report.get("policy"), dict) else {}
+    residual_version_matches = residual_policy.get("version") == RESIDUAL_ALPHA_POLICY_VERSION
+    residual_evidence_status = (
+        _text(validation.get("evidenceStatus")).upper() or "MISSING"
+    ) if residual_version_matches else "VERSION_MISMATCH"
+    residual_predictions = {
+        _text(item.get("candidateKey")): item
+        for item in residual_report.get("predictions", [])
+        if isinstance(item, dict) and _text(item.get("candidateKey"))
+    }
     decisions: list[dict[str, Any]] = []
     for row in _recommendation_rows():
         market = _text(row.get("market")).lower()
         mode = _text(row.get("mode")).lower()
         horizon = _text(row.get("horizon")).lower()
         cell_key = f"{market}|{mode}|{horizon}"
-        decision, reasons = _candidate_decision(row, cells.get(cell_key))
         generated_at = _text(row.get("generatedAt") or row.get("generated_at"))
         signal_date = _text(row.get("asOfDate") or row.get("as_of_date"))[:10] or generated_at[:10]
+        candidate_key = _candidate_key(row, signal_date)
+        residual_prediction = residual_predictions.get(candidate_key)
+        decision, reasons = _candidate_decision(
+            row,
+            cells.get(cell_key),
+            residual_prediction,
+            residual_evidence_status,
+        )
         decisions.append({
             "decisionId": _decision_id(row, signal_date),
             "policyVersion": POLICY_VERSION,
             "policyFingerprint": _policy_fingerprint(),
+            "candidateKey": candidate_key,
             "signalDate": signal_date,
             "generatedAt": generated_at,
             "market": market,
@@ -280,6 +336,10 @@ def build() -> dict[str, Any]:
             "sector": _text(row.get("sector")) or "UNKNOWN",
             "beta": _num(row.get("beta")),
             "modelProbabilityDisplayOnly": _num(row.get("probability")),
+            "residualAlphaModelEvidence": residual_evidence_status,
+            "predictedResidualAlphaPct": _num((residual_prediction or {}).get("predictedResidualAlphaPct")),
+            "residualAlphaLower90Pct": _num((residual_prediction or {}).get("predictionLower90Pct")),
+            "residualAlphaModelFingerprint": _text((residual_prediction or {}).get("modelFingerprint")) or None,
             "recommendationSource": row.get("recommendationSource"),
         })
     decisions.sort(key=lambda row: row.get("score") if row.get("score") is not None else float("-inf"), reverse=True)
@@ -288,6 +348,16 @@ def build() -> dict[str, Any]:
         "status": "SHADOW_ONLY",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "policy": {**_policy(), "fingerprint": _policy_fingerprint()},
+        "residualAlphaModel": {
+            "status": residual_report.get("status"),
+            "evidenceStatus": residual_evidence_status,
+            "policyVersion": residual_policy.get("version"),
+            "requiredPolicyVersion": RESIDUAL_ALPHA_POLICY_VERSION,
+            "blockingReasons": (
+                validation.get("blockingReasons") or []
+            ) + ([] if residual_version_matches else ["RESIDUAL_ALPHA_MODEL_VERSION_MISMATCH"]),
+            "source": "reports/shadow_residual_alpha.json",
+        },
         "summary": {
             "candidates": len(decisions),
             "take": len(take),

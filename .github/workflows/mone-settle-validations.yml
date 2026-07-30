@@ -103,6 +103,10 @@ jobs:
           # Audit immutable strategy cohorts and independent economic decisions.
           python scripts/audit_strategy_cohorts.py
           echo "audit_strategy_cohorts: exit $?"
+          # Predict horizon-aligned residual alpha with an expanding, date-blocked
+          # model.  The downstream gate fails closed until OOS evidence passes.
+          python scripts/build_shadow_residual_alpha.py
+          echo "build_shadow_residual_alpha: exit $?"
           # Shadow meta-gate may abstain entirely; it cannot mutate the live
           # recommendation set until its own sleeve proves incremental value.
           python scripts/build_shadow_meta_gate.py
@@ -155,6 +159,7 @@ jobs:
             git add reports/ledger_reconciliation.json reports/live_axis_analysis.json 2>/dev/null || true
             git add reports/recommendation_alpha.json 2>/dev/null || true
             git add reports/strategy_cohort_audit.json 2>/dev/null || true
+            git add reports/shadow_residual_alpha.json 2>/dev/null || true
             git add reports/shadow_meta_gate.json 2>/dev/null || true
             git add reports/shadow_risk_budget.json 2>/dev/null || true
             git add data/shadow_challenger_journal.csv reports/champion_challenger.json 2>/dev/null || true

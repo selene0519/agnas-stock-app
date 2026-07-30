@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T07:31:37.916294+00:00",
+  "generatedAt": "2026-07-30T11:37:00.862269+00:00",
   "policy": {
-    "version": "champion-challenger-v1.0.0",
+    "version": "champion-challenger-v1.1.1",
     "champion": "TOP_3_RAW_CANDIDATES",
     "challenger": "SHADOW_META_GATE_TAKE_ONLY",
     "positionWeight": 0.1,
@@ -15,17 +15,25 @@
     "requiresProfitFactorAboveOne": true,
     "requiresPairedUpliftBootstrapLowerAboveZero": true,
     "requiresD20ResidualAlphaLowerCiAboveZero": true,
+    "requiresValidatedResidualAlphaPredictionModel": true,
+    "residualAlphaPolicyVersion": "shadow-residual-alpha-v1.0.2",
     "requiresChallengerDrawdownNoWorseThanChampion": true,
     "requiresTimeIntegrity": true,
     "autoPromotionAllowed": false,
     "humanApprovalRequired": true,
-    "fingerprint": "bcc7c81eab9eb14abdea"
+    "fingerprint": "eb5c291c6f07c7507205"
   },
   "recording": {
     "appended": 0,
     "conflicts": 0,
     "skipped": 0,
-    "total": 20
+    "total": 40
+  },
+  "policyCohort": {
+    "activeFingerprint": "eb5c291c6f07c7507205",
+    "activeMetaPolicyFingerprint": "2def25d6bffe4c00a459",
+    "activeRows": 20,
+    "excludedPriorPolicyRows": 20
   },
   "integrity": {
     "immutableConflicts": 0,
@@ -42,6 +50,24 @@
     ],
     "independentMarketDateBlocks": 13,
     "significanceUsable": false
+  },
+  "residualAlphaModelGate": {
+    "passed": false,
+    "evidenceStatus": "WAIT",
+    "modelFingerprint": "4161379d8e40016c8b6e",
+    "policyVersion": "shadow-residual-alpha-v1.0.2",
+    "requiredPolicyVersion": "shadow-residual-alpha-v1.0.2",
+    "oosPredictions": 0,
+    "oosSignalDates": 0,
+    "selectedBlockBootstrapCi95": null,
+    "blockingReasons": [
+      "LOW_OOS_PREDICTIONS",
+      "LOW_OOS_SIGNAL_DATES",
+      "LOW_SELECTED_OOS_PREDICTIONS",
+      "SELECTED_ALPHA_LOWER_CI_NOT_POSITIVE",
+      "MODEL_NOT_BETTER_THAN_EXPANDING_MEAN",
+      "NON_POSITIVE_RANK_IC"
+    ]
   },
   "comparison": {
     "completedSignalDates": 0,
@@ -80,7 +106,8 @@
       "CHALLENGER_PROFIT_FACTOR_NOT_ABOVE_ONE",
       "PAIRED_UPLIFT_NOT_PROVEN",
       "DRAWDOWN_COMPARISON_NOT_READY",
-      "RESIDUAL_ALPHA_NOT_PROVEN"
+      "RESIDUAL_ALPHA_NOT_PROVEN",
+      "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
     ],
     "autoPromotionAllowed": false,
     "humanApprovalRequired": true
