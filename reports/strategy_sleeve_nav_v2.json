@@ -1,0 +1,2475 @@
+{
+  "status": "OK",
+  "generatedAt": "2026-07-30T06:44:25.270217+00:00",
+  "basis": {
+    "startNav": 100.0,
+    "positionFraction": 0.1,
+    "capitalConstrained": true,
+    "sameDayExitCashReused": false,
+    "riskClampRedistribution": false,
+    "returnField": "net_pnl_pct",
+    "executionCostsAlreadyIncluded": true,
+    "forwardSourcesOnly": true,
+    "actualFillAndExitDatesRequired": true,
+    "cohortPolicy": "LATEST_FINGERPRINT_PER_SLEEVE",
+    "sameDayEntryPriority": "HIGHEST_FINAL_RANK_SCORE_FIRST"
+  },
+  "dataQuality": {
+    "excluded": {
+      "notEvaluated": 248,
+      "nonForwardSource": 1298
+    }
+  },
+  "ranking": [
+    "balanced_short",
+    "conservative_short",
+    "conservative_swing",
+    "aggressive_short",
+    "conservative_mid",
+    "balanced_mid",
+    "balanced_swing",
+    "aggressive_swing",
+    "aggressive_mid"
+  ],
+  "sleeves": {
+    "conservative_short": {
+      "trades": 39,
+      "candidateTrades": 84,
+      "capacityRejectedTrades": 45,
+      "nav": 95.1533,
+      "cash": 95.1533,
+      "openPositions": 0,
+      "totalReturnPct": -4.8467,
+      "winRate": 0.4103,
+      "avgNetPnlPct": -1.3162,
+      "payoffRatio": 0.8389,
+      "profitFactor": 0.5754,
+      "maxDrawdownPct": 8.208,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-23",
+          "nav": 99.1963,
+          "cash": 9.1963,
+          "openPositions": 9,
+          "symbol": "329180",
+          "market": "kr",
+          "netPnlPct": -8.0373
+        },
+        {
+          "date": "2026-06-23",
+          "nav": 98.3277,
+          "cash": 18.3277,
+          "openPositions": 8,
+          "symbol": "051910",
+          "market": "kr",
+          "netPnlPct": -8.6856
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 96.9987,
+          "cash": 8.6709,
+          "openPositions": 9,
+          "symbol": "HUT",
+          "market": "us",
+          "netPnlPct": -13.2905
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 95.9435,
+          "cash": 17.6158,
+          "openPositions": 8,
+          "symbol": "MARA",
+          "market": "us",
+          "netPnlPct": -10.5518
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 94.7578,
+          "cash": 26.4301,
+          "openPositions": 7,
+          "symbol": "AI",
+          "market": "us",
+          "netPnlPct": -11.8563
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 93.9006,
+          "cash": 9.1428,
+          "openPositions": 9,
+          "symbol": "105560",
+          "market": "kr",
+          "netPnlPct": -8.5724
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 94.255,
+          "cash": 19.4972,
+          "openPositions": 8,
+          "symbol": "UBER",
+          "market": "us",
+          "netPnlPct": 3.544
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 93.2963,
+          "cash": 28.5385,
+          "openPositions": 7,
+          "symbol": "HPE",
+          "market": "us",
+          "netPnlPct": -9.5869
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 93.0844,
+          "cash": 38.3265,
+          "openPositions": 6,
+          "symbol": "196170",
+          "market": "kr",
+          "netPnlPct": -2.1193
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 92.3588,
+          "cash": 47.601,
+          "openPositions": 5,
+          "symbol": "055550",
+          "market": "kr",
+          "netPnlPct": -7.2554
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 92.0577,
+          "cash": 9.1747,
+          "openPositions": 10,
+          "symbol": "PG",
+          "market": "us",
+          "netPnlPct": -3.1778
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 93.1301,
+          "cash": 18.742,
+          "openPositions": 9,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": 12.624
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 92.9334,
+          "cash": 27.7812,
+          "openPositions": 8,
+          "symbol": "PG",
+          "market": "us",
+          "netPnlPct": -2.1297
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 92.3999,
+          "cash": 37.0804,
+          "openPositions": 7,
+          "symbol": "RIOT",
+          "market": "us",
+          "netPnlPct": -5.4259
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 92.0959,
+          "cash": 46.0123,
+          "openPositions": 6,
+          "symbol": "DIS",
+          "market": "us",
+          "netPnlPct": -3.2916
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 92.5722,
+          "cash": 9.7121,
+          "openPositions": 10,
+          "symbol": "MA",
+          "market": "us",
+          "netPnlPct": 5.1565
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 92.2182,
+          "cash": 18.5322,
+          "openPositions": 9,
+          "symbol": "ETN",
+          "market": "us",
+          "netPnlPct": -3.8581
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 92.3729,
+          "cash": 28.1626,
+          "openPositions": 8,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": 1.632
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 92.2688,
+          "cash": 29.4801,
+          "openPositions": 7,
+          "symbol": "005930",
+          "market": "kr",
+          "netPnlPct": -7.3168
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 91.792,
+          "cash": 38.2128,
+          "openPositions": 6,
+          "symbol": "COHR",
+          "market": "us",
+          "netPnlPct": -5.1782
+        },
+        {
+          "date": "2026-07-06",
+          "nav": 92.3267,
+          "cash": 38.8043,
+          "openPositions": 6,
+          "symbol": "LYFT",
+          "market": "us",
+          "netPnlPct": 5.7896
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 92.6487,
+          "cash": 48.3359,
+          "openPositions": 5,
+          "symbol": "MELI",
+          "market": "us",
+          "netPnlPct": 3.4968
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 92.591,
+          "cash": 57.4877,
+          "openPositions": 4,
+          "symbol": "TXN",
+          "market": "us",
+          "netPnlPct": -0.6269
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 92.6773,
+          "cash": 66.7836,
+          "openPositions": 3,
+          "symbol": "UBER",
+          "market": "us",
+          "netPnlPct": 0.9372
+        },
+        {
+          "date": "2026-07-10",
+          "nav": 92.8927,
+          "cash": 57.6428,
+          "openPositions": 4,
+          "symbol": "TSLA",
+          "market": "us",
+          "netPnlPct": 2.3467
+        },
+        {
+          "date": "2026-07-10",
+          "nav": 92.6906,
+          "cash": 64.9193,
+          "openPositions": 3,
+          "symbol": "133690",
+          "market": "kr",
+          "netPnlPct": -2.7024
+        },
+        {
+          "date": "2026-07-10",
+          "nav": 92.5444,
+          "cash": 74.0089,
+          "openPositions": 2,
+          "symbol": "133690",
+          "market": "kr",
+          "netPnlPct": -1.5834
+        },
+        {
+          "date": "2026-07-10",
+          "nav": 92.7271,
+          "cash": 83.4594,
+          "openPositions": 1,
+          "symbol": "381180",
+          "market": "kr",
+          "netPnlPct": 1.9721
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 92.7189,
+          "cash": 74.1735,
+          "openPositions": 2,
+          "symbol": "PEP",
+          "market": "us",
+          "netPnlPct": -0.0885
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 92.2298,
+          "cash": 82.9571,
+          "openPositions": 1,
+          "symbol": "214150",
+          "market": "kr",
+          "netPnlPct": -5.2751
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 92.1435,
+          "cash": 55.2019,
+          "openPositions": 4,
+          "symbol": "UNH",
+          "market": "us",
+          "netPnlPct": -0.9352
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 91.9844,
+          "cash": 64.3154,
+          "openPositions": 3,
+          "symbol": "068270",
+          "market": "kr",
+          "netPnlPct": -1.7163
+        },
+        {
+          "date": "2026-07-24",
+          "nav": 92.1422,
+          "cash": 36.9024,
+          "openPositions": 6,
+          "symbol": "068270",
+          "market": "kr",
+          "netPnlPct": 1.7106
+        },
+        {
+          "date": "2026-07-24",
+          "nav": 92.9491,
+          "cash": 46.9078,
+          "openPositions": 5,
+          "symbol": "011200",
+          "market": "kr",
+          "netPnlPct": 8.7726
+        },
+        {
+          "date": "2026-07-24",
+          "nav": 93.1069,
+          "cash": 56.2886,
+          "openPositions": 4,
+          "symbol": "068270",
+          "market": "kr",
+          "netPnlPct": 1.7106
+        },
+        {
+          "date": "2026-07-24",
+          "nav": 93.4164,
+          "cash": 65.8211,
+          "openPositions": 3,
+          "symbol": "207940",
+          "market": "kr",
+          "netPnlPct": 3.3564
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 93.6994,
+          "cash": 75.3026,
+          "openPositions": 2,
+          "symbol": "068270",
+          "market": "kr",
+          "netPnlPct": 3.0767
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 93.9056,
+          "cash": 84.7072,
+          "openPositions": 1,
+          "symbol": "068270",
+          "market": "kr",
+          "netPnlPct": 2.2415
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 95.1533,
+          "cash": 95.1533,
+          "openPositions": 0,
+          "symbol": "207940",
+          "market": "kr",
+          "netPnlPct": 13.5637
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 17
+    },
+    "conservative_swing": {
+      "trades": 23,
+      "candidateTrades": 86,
+      "capacityRejectedTrades": 63,
+      "nav": 91.3806,
+      "cash": 91.3806,
+      "openPositions": 0,
+      "totalReturnPct": -8.6194,
+      "winRate": 0.2609,
+      "avgNetPnlPct": -4.3155,
+      "payoffRatio": 0.7611,
+      "profitFactor": 0.2968,
+      "maxDrawdownPct": 8.6194,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-23",
+          "nav": 98.9319,
+          "cash": 8.9319,
+          "openPositions": 9,
+          "symbol": "051910",
+          "market": "kr",
+          "netPnlPct": -10.6812
+        },
+        {
+          "date": "2026-06-23",
+          "nav": 97.9375,
+          "cash": 17.9375,
+          "openPositions": 8,
+          "symbol": "329180",
+          "market": "kr",
+          "netPnlPct": -9.9441
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 96.7518,
+          "cash": 8.8144,
+          "openPositions": 9,
+          "symbol": "AI",
+          "market": "us",
+          "netPnlPct": -11.8563
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 95.8327,
+          "cash": 9.0808,
+          "openPositions": 9,
+          "symbol": "055550",
+          "market": "kr",
+          "netPnlPct": -9.1915
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 96.8251,
+          "cash": 10.9924,
+          "openPositions": 9,
+          "symbol": "V",
+          "market": "us",
+          "netPnlPct": 9.9245
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 97.875,
+          "cash": 22.0423,
+          "openPositions": 8,
+          "symbol": "VRTX",
+          "market": "us",
+          "netPnlPct": 10.4985
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 96.5975,
+          "cash": 10.9773,
+          "openPositions": 9,
+          "symbol": "RIOT",
+          "market": "us",
+          "netPnlPct": -13.0521
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 95.3944,
+          "cash": 19.7742,
+          "openPositions": 8,
+          "symbol": "196170",
+          "market": "kr",
+          "netPnlPct": -12.0316
+        },
+        {
+          "date": "2026-07-10",
+          "nav": 95.4465,
+          "cash": 19.8263,
+          "openPositions": 8,
+          "symbol": "381180",
+          "market": "kr",
+          "netPnlPct": 0.5462
+        },
+        {
+          "date": "2026-07-14",
+          "nav": 95.2843,
+          "cash": 9.6556,
+          "openPositions": 9,
+          "symbol": "360750",
+          "market": "kr",
+          "netPnlPct": -1.7861
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 94.7364,
+          "cash": 7.5958,
+          "openPositions": 10,
+          "symbol": "TSM",
+          "market": "us",
+          "netPnlPct": -6.7277
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 93.5922,
+          "cash": 8.4005,
+          "openPositions": 10,
+          "symbol": "DELL",
+          "market": "us",
+          "netPnlPct": -11.9878
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 92.8909,
+          "cash": 17.2276,
+          "openPositions": 9,
+          "symbol": "214150",
+          "market": "kr",
+          "netPnlPct": -7.3603
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 92.5377,
+          "cash": 26.8744,
+          "openPositions": 8,
+          "symbol": "TEM",
+          "market": "us",
+          "netPnlPct": -3.5312
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 93.4713,
+          "cash": 37.808,
+          "openPositions": 7,
+          "symbol": "105560",
+          "market": "kr",
+          "netPnlPct": 9.3357
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 93.3293,
+          "cash": 45.2618,
+          "openPositions": 6,
+          "symbol": "UNH",
+          "market": "us",
+          "netPnlPct": -1.8698
+        },
+        {
+          "date": "2026-07-21",
+          "nav": 93.7045,
+          "cash": 46.3041,
+          "openPositions": 6,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": 3.7519
+        },
+        {
+          "date": "2026-07-21",
+          "nav": 93.6931,
+          "cash": 46.4199,
+          "openPositions": 5,
+          "symbol": "000810",
+          "market": "kr",
+          "netPnlPct": -8.9524
+        },
+        {
+          "date": "2026-07-22",
+          "nav": 93.9283,
+          "cash": 56.4489,
+          "openPositions": 4,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": 2.4018
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 93.1257,
+          "cash": 65.4338,
+          "openPositions": 3,
+          "symbol": "TSLA",
+          "market": "us",
+          "netPnlPct": -8.2005
+        },
+        {
+          "date": "2026-07-24",
+          "nav": 93.0394,
+          "cash": 74.1619,
+          "openPositions": 2,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -0.9786
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 92.2627,
+          "cash": 82.7181,
+          "openPositions": 1,
+          "symbol": "278470",
+          "market": "kr",
+          "netPnlPct": -8.3223
+        },
+        {
+          "date": "2026-07-29",
+          "nav": 91.3806,
+          "cash": 91.3806,
+          "openPositions": 0,
+          "symbol": "003490",
+          "market": "kr",
+          "netPnlPct": -9.2422
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 17
+    },
+    "conservative_mid": {
+      "trades": 25,
+      "candidateTrades": 70,
+      "capacityRejectedTrades": 45,
+      "nav": 85.8239,
+      "cash": 85.8239,
+      "openPositions": 0,
+      "totalReturnPct": -14.1761,
+      "winRate": 0.08,
+      "avgNetPnlPct": -7.1815,
+      "payoffRatio": 2.1809,
+      "profitFactor": 0.2286,
+      "maxDrawdownPct": 14.1761,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-23",
+          "nav": 99.4189,
+          "cash": 9.4189,
+          "openPositions": 9,
+          "symbol": "TEM",
+          "market": "us",
+          "netPnlPct": -5.8108
+        },
+        {
+          "date": "2026-06-23",
+          "nav": 98.0182,
+          "cash": 18.0182,
+          "openPositions": 8,
+          "symbol": "051910",
+          "market": "kr",
+          "netPnlPct": -14.0074
+        },
+        {
+          "date": "2026-06-24",
+          "nav": 96.7059,
+          "cash": 8.6878,
+          "openPositions": 9,
+          "symbol": "329180",
+          "market": "kr",
+          "netPnlPct": -13.1224
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 95.6508,
+          "cash": 8.9448,
+          "openPositions": 9,
+          "symbol": "MARA",
+          "market": "us",
+          "netPnlPct": -10.5518
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 94.4651,
+          "cash": 17.7592,
+          "openPositions": 8,
+          "symbol": "AI",
+          "market": "us",
+          "netPnlPct": -11.8563
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 93.2311,
+          "cash": 8.766,
+          "openPositions": 9,
+          "symbol": "TXN",
+          "market": "us",
+          "netPnlPct": -12.3402
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 92.1139,
+          "cash": 7.5705,
+          "openPositions": 9,
+          "symbol": "032830",
+          "market": "kr",
+          "netPnlPct": -12.8598
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 93.4044,
+          "cash": 11.2905,
+          "openPositions": 9,
+          "symbol": "VRTX",
+          "market": "us",
+          "netPnlPct": 12.9054
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 93.227,
+          "cash": 1.7726,
+          "openPositions": 10,
+          "symbol": "RIOT",
+          "market": "us",
+          "netPnlPct": -9.1004
+        },
+        {
+          "date": "2026-07-10",
+          "nav": 96.1379,
+          "cash": 12.911,
+          "openPositions": 10,
+          "symbol": "SE",
+          "market": "us",
+          "netPnlPct": 29.1099
+        },
+        {
+          "date": "2026-07-13",
+          "nav": 96.1055,
+          "cash": 1.7402,
+          "openPositions": 11,
+          "symbol": "381180",
+          "market": "kr",
+          "netPnlPct": -1.8297
+        },
+        {
+          "date": "2026-07-14",
+          "nav": 94.8787,
+          "cash": 8.7732,
+          "openPositions": 11,
+          "symbol": "015760",
+          "market": "kr",
+          "netPnlPct": -12.2683
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 94.0915,
+          "cash": 8.8266,
+          "openPositions": 11,
+          "symbol": "DELL",
+          "market": "us",
+          "netPnlPct": -8.1881
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 93.8797,
+          "cash": 1.5284,
+          "openPositions": 11,
+          "symbol": "ANET",
+          "market": "us",
+          "netPnlPct": -12.1705
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 93.3329,
+          "cash": 9.8082,
+          "openPositions": 10,
+          "symbol": "GOOGL",
+          "market": "us",
+          "netPnlPct": -6.1952
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 92.5725,
+          "cash": 17.2641,
+          "openPositions": 9,
+          "symbol": "TSM",
+          "market": "us",
+          "netPnlPct": -9.2548
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 92.3373,
+          "cash": 25.3417,
+          "openPositions": 8,
+          "symbol": "360750",
+          "market": "kr",
+          "netPnlPct": -2.8289
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 91.3605,
+          "cash": 33.7053,
+          "openPositions": 7,
+          "symbol": "TSLA",
+          "market": "us",
+          "netPnlPct": -10.4578
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 90.6868,
+          "cash": 40.6021,
+          "openPositions": 6,
+          "symbol": "UBER",
+          "market": "us",
+          "netPnlPct": -8.8991
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 89.8681,
+          "cash": 48.5494,
+          "openPositions": 5,
+          "symbol": "UBER",
+          "market": "us",
+          "netPnlPct": -9.3391
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 89.2659,
+          "cash": 57.9472,
+          "openPositions": 4,
+          "symbol": "UBER",
+          "market": "us",
+          "netPnlPct": -6.0225
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 88.2292,
+          "cash": 66.7124,
+          "openPositions": 3,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -10.5761
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 87.1613,
+          "cash": 75.091,
+          "openPositions": 2,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -11.3046
+        },
+        {
+          "date": "2026-07-29",
+          "nav": 86.2107,
+          "cash": 82.9135,
+          "openPositions": 1,
+          "symbol": "214150",
+          "market": "kr",
+          "netPnlPct": -10.8356
+        },
+        {
+          "date": "2026-07-29",
+          "nav": 85.8239,
+          "cash": 85.8239,
+          "openPositions": 0,
+          "symbol": "047810",
+          "market": "kr",
+          "netPnlPct": -11.7328
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 18
+    },
+    "balanced_short": {
+      "trades": 23,
+      "candidateTrades": 27,
+      "capacityRejectedTrades": 4,
+      "nav": 96.1874,
+      "cash": 96.1874,
+      "openPositions": 0,
+      "totalReturnPct": -3.8126,
+      "winRate": 0.4783,
+      "avgNetPnlPct": -1.6027,
+      "payoffRatio": 0.7048,
+      "profitFactor": 0.6253,
+      "maxDrawdownPct": 6.0174,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-23",
+          "nav": 99.2376,
+          "cash": 9.2376,
+          "openPositions": 9,
+          "symbol": "MARA",
+          "market": "us",
+          "netPnlPct": -7.6238
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 97.9086,
+          "cash": 8.6709,
+          "openPositions": 9,
+          "symbol": "HUT",
+          "market": "us",
+          "netPnlPct": -13.2905
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 97.2219,
+          "cash": 17.9843,
+          "openPositions": 8,
+          "symbol": "RDDT",
+          "market": "us",
+          "netPnlPct": -6.8668
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 96.0159,
+          "cash": 8.0316,
+          "openPositions": 9,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -13.0553
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 95.6825,
+          "cash": 17.6982,
+          "openPositions": 8,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -3.3341
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 95.1309,
+          "cash": 27.1467,
+          "openPositions": 7,
+          "symbol": "TSM",
+          "market": "us",
+          "netPnlPct": -5.5154
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 95.223,
+          "cash": 37.2387,
+          "openPositions": 6,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": 0.9207
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 94.3767,
+          "cash": 46.3924,
+          "openPositions": 5,
+          "symbol": "NBIS",
+          "market": "us",
+          "netPnlPct": -8.463
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 95.185,
+          "cash": 55.4628,
+          "openPositions": 4,
+          "symbol": "PANW",
+          "market": "us",
+          "netPnlPct": 9.7835
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 95.3599,
+          "cash": 65.6377,
+          "openPositions": 3,
+          "symbol": "CAT",
+          "market": "us",
+          "netPnlPct": 1.7488
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 93.9826,
+          "cash": 74.2605,
+          "openPositions": 2,
+          "symbol": "ARM",
+          "market": "us",
+          "netPnlPct": -13.7727
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 94.2691,
+          "cash": 84.5469,
+          "openPositions": 1,
+          "symbol": "RIOT",
+          "market": "us",
+          "netPnlPct": 2.8642
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 97.0925,
+          "cash": 49.9579,
+          "openPositions": 5,
+          "symbol": "ALAB",
+          "market": "us",
+          "netPnlPct": 29.0408
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 96.5611,
+          "cash": 39.435,
+          "openPositions": 6,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -5.6366
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 95.2896,
+          "cash": 28.5073,
+          "openPositions": 7,
+          "symbol": "SNDK",
+          "market": "us",
+          "netPnlPct": -13.1683
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 94.6034,
+          "cash": 37.2481,
+          "openPositions": 6,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -7.279
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 94.6425,
+          "cash": 37.2537,
+          "openPositions": 6,
+          "symbol": "UNH",
+          "market": "us",
+          "netPnlPct": 0.4149
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 95.2618,
+          "cash": 47.2999,
+          "openPositions": 5,
+          "symbol": "SNOW",
+          "market": "us",
+          "netPnlPct": 6.5692
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 95.5599,
+          "cash": 57.025,
+          "openPositions": 4,
+          "symbol": "LLY",
+          "market": "us",
+          "netPnlPct": 3.1631
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 94.9673,
+          "cash": 66.0884,
+          "openPositions": 3,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -6.138
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 95.1745,
+          "cash": 76.0049,
+          "openPositions": 2,
+          "symbol": "UNH",
+          "market": "us",
+          "netPnlPct": 2.1348
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 95.4114,
+          "cash": 85.951,
+          "openPositions": 1,
+          "symbol": "LLY",
+          "market": "us",
+          "netPnlPct": 2.4392
+        },
+        {
+          "date": "2026-07-13",
+          "nav": 96.1874,
+          "cash": 96.1874,
+          "openPositions": 0,
+          "symbol": "DELL",
+          "market": "us",
+          "netPnlPct": 8.2027
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 8
+    },
+    "balanced_swing": {
+      "trades": 21,
+      "candidateTrades": 46,
+      "capacityRejectedTrades": 25,
+      "nav": 85.0617,
+      "cash": 85.0617,
+      "openPositions": 0,
+      "totalReturnPct": -14.9383,
+      "winRate": 0.0952,
+      "avgNetPnlPct": -7.8656,
+      "payoffRatio": 0.3287,
+      "profitFactor": 0.0381,
+      "maxDrawdownPct": 14.9383,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-23",
+          "nav": 98.8769,
+          "cash": 8.8769,
+          "openPositions": 9,
+          "symbol": "005930",
+          "market": "kr",
+          "netPnlPct": -11.2306
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 97.4096,
+          "cash": 8.5326,
+          "openPositions": 9,
+          "symbol": "MARA",
+          "market": "us",
+          "netPnlPct": -14.6739
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 96.7702,
+          "cash": 8.2376,
+          "openPositions": 9,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -7.2022
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 95.5964,
+          "cash": 8.8262,
+          "openPositions": 9,
+          "symbol": "RIOT",
+          "market": "us",
+          "netPnlPct": -11.7384
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 94.033,
+          "cash": 17.2628,
+          "openPositions": 8,
+          "symbol": "HUT",
+          "market": "us",
+          "netPnlPct": -15.634
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 93.0025,
+          "cash": 7.5021,
+          "openPositions": 9,
+          "symbol": "TER",
+          "market": "us",
+          "netPnlPct": -12.077
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 92.0435,
+          "cash": 14.7808,
+          "openPositions": 8,
+          "symbol": "LRCX",
+          "market": "us",
+          "netPnlPct": -11.6415
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 91.5157,
+          "cash": 22.1124,
+          "openPositions": 7,
+          "symbol": "SNDK",
+          "market": "us",
+          "netPnlPct": -6.716
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 90.3732,
+          "cash": 30.9699,
+          "openPositions": 6,
+          "symbol": "TER",
+          "market": "us",
+          "netPnlPct": -11.4248
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 89.7218,
+          "cash": 22.2439,
+          "openPositions": 7,
+          "symbol": "CAT",
+          "market": "us",
+          "netPnlPct": -6.5137
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 88.9729,
+          "cash": 9.251,
+          "openPositions": 9,
+          "symbol": "TSM",
+          "market": "us",
+          "netPnlPct": -7.4895
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 88.5113,
+          "cash": 13.089,
+          "openPositions": 8,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -10.7365
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 87.5783,
+          "cash": 21.1282,
+          "openPositions": 7,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -10.398
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 87.0371,
+          "cash": 30.587,
+          "openPositions": 6,
+          "symbol": "GE",
+          "market": "us",
+          "netPnlPct": -5.4119
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 86.3074,
+          "cash": 30.5569,
+          "openPositions": 6,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -7.76
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 86.1447,
+          "cash": 39.0979,
+          "openPositions": 5,
+          "symbol": "UNH",
+          "market": "us",
+          "netPnlPct": -1.8698
+        },
+        {
+          "date": "2026-07-21",
+          "nav": 86.6723,
+          "cash": 49.6255,
+          "openPositions": 4,
+          "symbol": "HOOD",
+          "market": "us",
+          "netPnlPct": 5.2758
+        },
+        {
+          "date": "2026-07-21",
+          "nav": 86.7366,
+          "cash": 59.6898,
+          "openPositions": 3,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": 0.6436
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 86.1749,
+          "cash": 68.1002,
+          "openPositions": 2,
+          "symbol": "SHOP",
+          "market": "us",
+          "netPnlPct": -6.2612
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 85.8307,
+          "cash": 76.7934,
+          "openPositions": 1,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -3.8082
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 85.0617,
+          "cash": 85.0617,
+          "openPositions": 0,
+          "symbol": "DELL",
+          "market": "us",
+          "netPnlPct": -8.5088
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 14
+    },
+    "balanced_mid": {
+      "trades": 21,
+      "candidateTrades": 81,
+      "capacityRejectedTrades": 60,
+      "nav": 85.7196,
+      "cash": 85.7196,
+      "openPositions": 0,
+      "totalReturnPct": -14.2804,
+      "winRate": 0.0952,
+      "avgNetPnlPct": -7.5872,
+      "payoffRatio": 1.298,
+      "profitFactor": 0.1501,
+      "maxDrawdownPct": 14.2804,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-23",
+          "nav": 98.8272,
+          "cash": 8.8272,
+          "openPositions": 9,
+          "symbol": "HUT",
+          "market": "us",
+          "netPnlPct": -11.7282
+        },
+        {
+          "date": "2026-06-23",
+          "nav": 97.9995,
+          "cash": 17.9995,
+          "openPositions": 8,
+          "symbol": "010120",
+          "market": "kr",
+          "netPnlPct": -8.277
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 96.8379,
+          "cash": 8.8384,
+          "openPositions": 9,
+          "symbol": "086790",
+          "market": "kr",
+          "netPnlPct": -11.6157
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 95.8862,
+          "cash": 17.6867,
+          "openPositions": 8,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -9.7113
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 97.1767,
+          "cash": 11.2905,
+          "openPositions": 9,
+          "symbol": "VRTX",
+          "market": "us",
+          "netPnlPct": 12.9054
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 95.6816,
+          "cash": 8.5049,
+          "openPositions": 10,
+          "symbol": "034730",
+          "market": "kr",
+          "netPnlPct": -14.9512
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 95.3867,
+          "cash": 17.7985,
+          "openPositions": 9,
+          "symbol": "133690",
+          "market": "kr",
+          "netPnlPct": -3.0761
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 94.5798,
+          "cash": 9.1931,
+          "openPositions": 10,
+          "symbol": "CAT",
+          "market": "us",
+          "netPnlPct": -8.0688
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 95.8108,
+          "cash": 11.231,
+          "openPositions": 10,
+          "symbol": "UNH",
+          "market": "us",
+          "netPnlPct": 12.3097
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 94.8503,
+          "cash": 8.9493,
+          "openPositions": 10,
+          "symbol": "ANET",
+          "market": "us",
+          "netPnlPct": -11.6279
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 93.5303,
+          "cash": 17.168,
+          "openPositions": 9,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -13.8381
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 92.4269,
+          "cash": 25.2577,
+          "openPositions": 8,
+          "symbol": "RDDT",
+          "market": "us",
+          "netPnlPct": -12.0024
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 92.2356,
+          "cash": 23.9218,
+          "openPositions": 8,
+          "symbol": "360750",
+          "market": "kr",
+          "netPnlPct": -2.3628
+        },
+        {
+          "date": "2026-07-22",
+          "nav": 91.3334,
+          "cash": 33.0195,
+          "openPositions": 7,
+          "symbol": "003490",
+          "market": "kr",
+          "netPnlPct": -9.0225
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 91.0863,
+          "cash": 42.0152,
+          "openPositions": 6,
+          "symbol": "PG",
+          "market": "us",
+          "netPnlPct": -2.6729
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 90.9218,
+          "cash": 43.4235,
+          "openPositions": 5,
+          "symbol": "TSLA",
+          "market": "us",
+          "netPnlPct": -10.4578
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 89.7392,
+          "cash": 50.4404,
+          "openPositions": 4,
+          "symbol": "AMAT",
+          "market": "us",
+          "netPnlPct": -14.4233
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 89.4257,
+          "cash": 59.708,
+          "openPositions": 3,
+          "symbol": "UNH",
+          "market": "us",
+          "netPnlPct": -3.2716
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 88.0462,
+          "cash": 68.3285,
+          "openPositions": 2,
+          "symbol": "HIMS",
+          "market": "us",
+          "netPnlPct": -13.7952
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 87.014,
+          "cash": 77.2963,
+          "openPositions": 1,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -10.3219
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 85.7196,
+          "cash": 85.7196,
+          "openPositions": 0,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -13.3207
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 20
+    },
+    "aggressive_short": {
+      "trades": 43,
+      "candidateTrades": 54,
+      "capacityRejectedTrades": 11,
+      "nav": 88.1993,
+      "cash": 88.1993,
+      "openPositions": 0,
+      "totalReturnPct": -11.8007,
+      "winRate": 0.3488,
+      "avgNetPnlPct": -2.7608,
+      "payoffRatio": 0.6967,
+      "profitFactor": 0.3451,
+      "maxDrawdownPct": 11.9887,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-23",
+          "nav": 99.2376,
+          "cash": 9.2376,
+          "openPositions": 9,
+          "symbol": "MARA",
+          "market": "us",
+          "netPnlPct": -7.6238
+        },
+        {
+          "date": "2026-06-23",
+          "nav": 98.331,
+          "cash": 18.331,
+          "openPositions": 8,
+          "symbol": "005930",
+          "market": "kr",
+          "netPnlPct": -9.0664
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 97.6443,
+          "cash": 9.3133,
+          "openPositions": 9,
+          "symbol": "RDDT",
+          "market": "us",
+          "netPnlPct": -6.8668
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 96.3152,
+          "cash": 17.9843,
+          "openPositions": 8,
+          "symbol": "HUT",
+          "market": "us",
+          "netPnlPct": -13.2905
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 96.5791,
+          "cash": 10.2639,
+          "openPositions": 9,
+          "symbol": "GE",
+          "market": "us",
+          "netPnlPct": 2.6386
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 95.2954,
+          "cash": 18.8132,
+          "openPositions": 8,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -13.0553
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 94.3768,
+          "cash": 27.8947,
+          "openPositions": 7,
+          "symbol": "STX",
+          "market": "us",
+          "netPnlPct": -9.1852
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 94.4689,
+          "cash": 37.9868,
+          "openPositions": 6,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": 0.9207
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 94.6438,
+          "cash": 48.1616,
+          "openPositions": 5,
+          "symbol": "CAT",
+          "market": "us",
+          "netPnlPct": 1.7488
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 94.9302,
+          "cash": 58.4481,
+          "openPositions": 4,
+          "symbol": "RIOT",
+          "market": "us",
+          "netPnlPct": 2.8642
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 94.7647,
+          "cash": 68.2825,
+          "openPositions": 3,
+          "symbol": "SIMO",
+          "market": "us",
+          "netPnlPct": -1.6556
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 96.7405,
+          "cash": 12.421,
+          "openPositions": 9,
+          "symbol": "ALAB",
+          "market": "us",
+          "netPnlPct": 23.2509
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 96.1955,
+          "cash": 8.9315,
+          "openPositions": 10,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -5.7512
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 95.8643,
+          "cash": 18.0767,
+          "openPositions": 9,
+          "symbol": "LLY",
+          "market": "us",
+          "netPnlPct": -3.4951
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 94.8604,
+          "cash": 8.4726,
+          "openPositions": 10,
+          "symbol": "MU",
+          "market": "us",
+          "netPnlPct": -10.5932
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 94.1598,
+          "cash": 17.2485,
+          "openPositions": 9,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -7.393
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 94.4442,
+          "cash": 25.8856,
+          "openPositions": 8,
+          "symbol": "ABBV",
+          "market": "us",
+          "netPnlPct": 3.4047
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 93.1818,
+          "cash": 34.2097,
+          "openPositions": 7,
+          "symbol": "SNDK",
+          "market": "us",
+          "netPnlPct": -13.1683
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 92.6151,
+          "cash": 43.2744,
+          "openPositions": 6,
+          "symbol": "LRCX",
+          "market": "us",
+          "netPnlPct": -5.8845
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 92.0939,
+          "cash": 14.1975,
+          "openPositions": 9,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -6.138
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 92.1332,
+          "cash": 23.7133,
+          "openPositions": 8,
+          "symbol": "UNH",
+          "market": "us",
+          "netPnlPct": 0.4149
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 92.7558,
+          "cash": 33.8123,
+          "openPositions": 7,
+          "symbol": "SNOW",
+          "market": "us",
+          "netPnlPct": 6.5692
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 91.6857,
+          "cash": 42.2187,
+          "openPositions": 6,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -11.2922
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 91.7634,
+          "cash": 45.0433,
+          "openPositions": 5,
+          "symbol": "LLY",
+          "market": "us",
+          "netPnlPct": 2.8293
+        },
+        {
+          "date": "2026-07-08",
+          "nav": 91.9317,
+          "cash": 54.8857,
+          "openPositions": 4,
+          "symbol": "ABBV",
+          "market": "us",
+          "netPnlPct": 1.7402
+        },
+        {
+          "date": "2026-07-10",
+          "nav": 91.742,
+          "cash": 27.1848,
+          "openPositions": 7,
+          "symbol": "ALAB",
+          "market": "us",
+          "netPnlPct": -2.0485
+        },
+        {
+          "date": "2026-07-10",
+          "nav": 91.5512,
+          "cash": 36.2555,
+          "openPositions": 6,
+          "symbol": "LLY",
+          "market": "us",
+          "netPnlPct": -2.06
+        },
+        {
+          "date": "2026-07-13",
+          "nav": 92.3109,
+          "cash": 27.9665,
+          "openPositions": 7,
+          "symbol": "DELL",
+          "market": "us",
+          "netPnlPct": 8.2027
+        },
+        {
+          "date": "2026-07-13",
+          "nav": 92.1937,
+          "cash": 37.1108,
+          "openPositions": 6,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -1.2653
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 92.8436,
+          "cash": 19.2957,
+          "openPositions": 8,
+          "symbol": "DUOL",
+          "market": "us",
+          "netPnlPct": 7.069
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 92.0679,
+          "cash": 27.6752,
+          "openPositions": 7,
+          "symbol": "DELL",
+          "market": "us",
+          "netPnlPct": -8.4726
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 92.2756,
+          "cash": 37.076,
+          "openPositions": 6,
+          "symbol": "DUOL",
+          "market": "us",
+          "netPnlPct": 2.2594
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 91.5078,
+          "cash": 45.5276,
+          "openPositions": 5,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -8.3285
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 91.1909,
+          "cash": 26.9134,
+          "openPositions": 7,
+          "symbol": "AVGO",
+          "market": "us",
+          "netPnlPct": -3.4619
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 91.0829,
+          "cash": 35.9986,
+          "openPositions": 6,
+          "symbol": "DUOL",
+          "market": "us",
+          "netPnlPct": -1.1748
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 91.5111,
+          "cash": 45.62,
+          "openPositions": 5,
+          "symbol": "AAPL",
+          "market": "us",
+          "netPnlPct": 4.6581
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 90.5739,
+          "cash": 53.9022,
+          "openPositions": 4,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -10.1654
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 89.9189,
+          "cash": 53.3406,
+          "openPositions": 4,
+          "symbol": "HPE",
+          "market": "us",
+          "netPnlPct": -7.1574
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 89.6911,
+          "cash": 62.2636,
+          "openPositions": 3,
+          "symbol": "JPM",
+          "market": "us",
+          "netPnlPct": -2.4894
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 88.7492,
+          "cash": 70.5411,
+          "openPositions": 2,
+          "symbol": "HPE",
+          "market": "us",
+          "netPnlPct": -10.2167
+        },
+        {
+          "date": "2026-07-21",
+          "nav": 88.3741,
+          "cash": 70.4418,
+          "openPositions": 2,
+          "symbol": "ABNB",
+          "market": "us",
+          "netPnlPct": -4.0991
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 88.0113,
+          "cash": 79.1363,
+          "openPositions": 1,
+          "symbol": "HIMS",
+          "market": "us",
+          "netPnlPct": -4.0064
+        },
+        {
+          "date": "2026-07-24",
+          "nav": 88.1993,
+          "cash": 88.1993,
+          "openPositions": 0,
+          "symbol": "ABBV",
+          "market": "us",
+          "netPnlPct": 2.1189
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 20
+    },
+    "aggressive_swing": {
+      "trades": 30,
+      "candidateTrades": 89,
+      "capacityRejectedTrades": 59,
+      "nav": 78.118,
+      "cash": 78.118,
+      "openPositions": 0,
+      "totalReturnPct": -21.882,
+      "winRate": 0.0667,
+      "avgNetPnlPct": -8.2859,
+      "payoffRatio": 0.3382,
+      "profitFactor": 0.0244,
+      "maxDrawdownPct": 22.3642,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-23",
+          "nav": 98.8769,
+          "cash": 8.8769,
+          "openPositions": 9,
+          "symbol": "005930",
+          "market": "kr",
+          "netPnlPct": -11.2306
+        },
+        {
+          "date": "2026-06-24",
+          "nav": 97.7522,
+          "cash": 8.8752,
+          "openPositions": 9,
+          "symbol": "000810",
+          "market": "kr",
+          "netPnlPct": -11.2477
+        },
+        {
+          "date": "2026-06-24",
+          "nav": 96.6018,
+          "cash": 17.7249,
+          "openPositions": 8,
+          "symbol": "298040",
+          "market": "kr",
+          "netPnlPct": -11.5035
+        },
+        {
+          "date": "2026-06-26",
+          "nav": 95.8717,
+          "cash": 8.1468,
+          "openPositions": 9,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -8.225
+        },
+        {
+          "date": "2026-06-29",
+          "nav": 94.6731,
+          "cash": 6.8661,
+          "openPositions": 9,
+          "symbol": "COHR",
+          "market": "us",
+          "netPnlPct": -14.8618
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 93.1097,
+          "cash": 8.4366,
+          "openPositions": 9,
+          "symbol": "HUT",
+          "market": "us",
+          "netPnlPct": -15.634
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 92.4321,
+          "cash": 7.759,
+          "openPositions": 9,
+          "symbol": "SNDK",
+          "market": "us",
+          "netPnlPct": -8.0319
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 91.9373,
+          "cash": 14.1303,
+          "openPositions": 8,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -7.2068
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 91.0093,
+          "cash": 21.3491,
+          "openPositions": 7,
+          "symbol": "LRCX",
+          "market": "us",
+          "netPnlPct": -11.3909
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 89.9484,
+          "cash": 29.9484,
+          "openPositions": 6,
+          "symbol": "TER",
+          "market": "us",
+          "netPnlPct": -10.9819
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 88.6054,
+          "cash": 38.6054,
+          "openPositions": 5,
+          "symbol": "MU",
+          "market": "us",
+          "netPnlPct": -13.4301
+        },
+        {
+          "date": "2026-07-03",
+          "nav": 87.5254,
+          "cash": 47.5254,
+          "openPositions": 4,
+          "symbol": "034730",
+          "market": "kr",
+          "netPnlPct": -10.8
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 86.6352,
+          "cash": 11.625,
+          "openPositions": 8,
+          "symbol": "ALAB",
+          "market": "us",
+          "netPnlPct": -10.1713
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 86.0305,
+          "cash": 21.0204,
+          "openPositions": 7,
+          "symbol": "CAT",
+          "market": "us",
+          "netPnlPct": -6.0462
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 85.8346,
+          "cash": 29.5769,
+          "openPositions": 6,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -2.239
+        },
+        {
+          "date": "2026-07-14",
+          "nav": 85.5919,
+          "cash": 8.3408,
+          "openPositions": 9,
+          "symbol": "JPM",
+          "market": "us",
+          "netPnlPct": -2.8268
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 84.8774,
+          "cash": 7.6263,
+          "openPositions": 9,
+          "symbol": "ANET",
+          "market": "us",
+          "netPnlPct": -8.567
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 84.3179,
+          "cash": 15.6502,
+          "openPositions": 8,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -6.5181
+        },
+        {
+          "date": "2026-07-15",
+          "nav": 83.307,
+          "cash": 23.3919,
+          "openPositions": 7,
+          "symbol": "CRDO",
+          "market": "us",
+          "netPnlPct": -11.5495
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 82.7926,
+          "cash": 10.0427,
+          "openPositions": 8,
+          "symbol": "SIMO",
+          "market": "us",
+          "netPnlPct": -13.4422
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 81.4881,
+          "cash": 18.7381,
+          "openPositions": 7,
+          "symbol": "SIMO",
+          "market": "us",
+          "netPnlPct": -13.0457
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 80.9942,
+          "cash": 28.2443,
+          "openPositions": 6,
+          "symbol": "GE",
+          "market": "us",
+          "netPnlPct": -4.9385
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 80.2946,
+          "cash": 19.9293,
+          "openPositions": 7,
+          "symbol": "ANET",
+          "market": "us",
+          "netPnlPct": -8.1503
+        },
+        {
+          "date": "2026-07-20",
+          "nav": 79.4288,
+          "cash": 27.3942,
+          "openPositions": 6,
+          "symbol": "TEM",
+          "market": "us",
+          "netPnlPct": -10.3936
+        },
+        {
+          "date": "2026-07-21",
+          "nav": 79.4931,
+          "cash": 37.4585,
+          "openPositions": 5,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": 0.6436
+        },
+        {
+          "date": "2026-07-22",
+          "nav": 79.0962,
+          "cash": 45.3923,
+          "openPositions": 4,
+          "symbol": "ABNB",
+          "market": "us",
+          "netPnlPct": -4.7651
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 78.5553,
+          "cash": 53.6039,
+          "openPositions": 3,
+          "symbol": "SHOP",
+          "market": "us",
+          "netPnlPct": -6.1802
+        },
+        {
+          "date": "2026-07-24",
+          "nav": 78.1794,
+          "cash": 61.3274,
+          "openPositions": 2,
+          "symbol": "HOOD",
+          "market": "us",
+          "netPnlPct": -4.6405
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 77.6358,
+          "cash": 68.8833,
+          "openPositions": 1,
+          "symbol": "HIMS",
+          "market": "us",
+          "netPnlPct": -6.7117
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 78.118,
+          "cash": 78.118,
+          "openPositions": 0,
+          "symbol": "KO",
+          "market": "us",
+          "netPnlPct": 5.5092
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 18
+    },
+    "aggressive_mid": {
+      "trades": 26,
+      "candidateTrades": 95,
+      "capacityRejectedTrades": 69,
+      "nav": 77.7557,
+      "cash": 77.7557,
+      "openPositions": 0,
+      "totalReturnPct": -22.2443,
+      "winRate": 0.0769,
+      "avgNetPnlPct": -9.5891,
+      "payoffRatio": 1.9722,
+      "profitFactor": 0.1615,
+      "maxDrawdownPct": 23.2863,
+      "maxInvestedPct": 100.0,
+      "curve": [
+        {
+          "date": "2026-06-25",
+          "nav": 98.4799,
+          "cash": 8.4799,
+          "openPositions": 9,
+          "symbol": "298040",
+          "market": "kr",
+          "netPnlPct": -15.2014
+        },
+        {
+          "date": "2026-06-25",
+          "nav": 97.0727,
+          "cash": 17.0727,
+          "openPositions": 8,
+          "symbol": "HUT",
+          "market": "us",
+          "netPnlPct": -14.0717
+        },
+        {
+          "date": "2026-06-30",
+          "nav": 99.8665,
+          "cash": 12.501,
+          "openPositions": 9,
+          "symbol": "ALAB",
+          "market": "us",
+          "netPnlPct": 28.7801
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 101.3583,
+          "cash": 11.3717,
+          "openPositions": 9,
+          "symbol": "PANW",
+          "market": "us",
+          "netPnlPct": 20.2551
+        },
+        {
+          "date": "2026-07-01",
+          "nav": 100.0643,
+          "cash": 20.0776,
+          "openPositions": 8,
+          "symbol": "RIOT",
+          "market": "us",
+          "netPnlPct": -12.9407
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 98.5782,
+          "cash": 8.514,
+          "openPositions": 10,
+          "symbol": "000810",
+          "market": "kr",
+          "netPnlPct": -14.8603
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 97.0944,
+          "cash": 17.0302,
+          "openPositions": 9,
+          "symbol": "005930",
+          "market": "kr",
+          "netPnlPct": -14.8378
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 95.9427,
+          "cash": 25.8849,
+          "openPositions": 8,
+          "symbol": "SNDK",
+          "market": "us",
+          "netPnlPct": -11.5098
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 94.5008,
+          "cash": 34.4297,
+          "openPositions": 7,
+          "symbol": "LRCX",
+          "market": "us",
+          "netPnlPct": -14.4381
+        },
+        {
+          "date": "2026-07-02",
+          "nav": 92.9945,
+          "cash": 42.9233,
+          "openPositions": 6,
+          "symbol": "STX",
+          "market": "us",
+          "netPnlPct": -15.0632
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 92.9869,
+          "cash": 0.0571,
+          "openPositions": 10,
+          "symbol": "INTC",
+          "market": "us",
+          "netPnlPct": -11.8381
+        },
+        {
+          "date": "2026-07-07",
+          "nav": 91.4917,
+          "cash": 8.562,
+          "openPositions": 9,
+          "symbol": "034730",
+          "market": "kr",
+          "netPnlPct": -14.9512
+        },
+        {
+          "date": "2026-07-13",
+          "nav": 90.2126,
+          "cash": 8.0203,
+          "openPositions": 9,
+          "symbol": "ALAB",
+          "market": "us",
+          "netPnlPct": -13.7549
+        },
+        {
+          "date": "2026-07-14",
+          "nav": 89.8256,
+          "cash": 5.3386,
+          "openPositions": 9,
+          "symbol": "LLY",
+          "market": "us",
+          "netPnlPct": -6.7588
+        },
+        {
+          "date": "2026-07-16",
+          "nav": 88.8405,
+          "cash": 8.3143,
+          "openPositions": 9,
+          "symbol": "CAT",
+          "market": "us",
+          "netPnlPct": -10.5937
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 87.699,
+          "cash": 8.158,
+          "openPositions": 9,
+          "symbol": "TSM",
+          "market": "us",
+          "netPnlPct": -12.2741
+        },
+        {
+          "date": "2026-07-17",
+          "nav": 86.8692,
+          "cash": 12.6667,
+          "openPositions": 8,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -15.5447
+        },
+        {
+          "date": "2026-07-22",
+          "nav": 85.9669,
+          "cash": 13.0776,
+          "openPositions": 8,
+          "symbol": "003490",
+          "market": "kr",
+          "netPnlPct": -9.0225
+        },
+        {
+          "date": "2026-07-22",
+          "nav": 85.5203,
+          "cash": 21.3178,
+          "openPositions": 7,
+          "symbol": "NVO",
+          "market": "us",
+          "netPnlPct": -5.1414
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 84.5478,
+          "cash": 29.6448,
+          "openPositions": 6,
+          "symbol": "TSLA",
+          "market": "us",
+          "netPnlPct": -10.4578
+        },
+        {
+          "date": "2026-07-23",
+          "nav": 83.2979,
+          "cash": 36.9569,
+          "openPositions": 5,
+          "symbol": "HIMS",
+          "market": "us",
+          "netPnlPct": -14.5977
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 82.4814,
+          "cash": 44.4546,
+          "openPositions": 4,
+          "symbol": "HIMS",
+          "market": "us",
+          "netPnlPct": -9.8213
+        },
+        {
+          "date": "2026-07-27",
+          "nav": 81.4398,
+          "cash": 53.4194,
+          "openPositions": 3,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -10.4093
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 80.0532,
+          "cash": 60.0532,
+          "openPositions": 2,
+          "symbol": "DELL",
+          "market": "us",
+          "netPnlPct": -17.2876
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 79.0211,
+          "cash": 69.0211,
+          "openPositions": 1,
+          "symbol": "ASML",
+          "market": "us",
+          "netPnlPct": -10.3219
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 77.7557,
+          "cash": 77.7557,
+          "openPositions": 0,
+          "symbol": "AMD",
+          "market": "us",
+          "netPnlPct": -12.6535
+        }
+      ],
+      "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
+      "duplicateDecisionRowsRemoved": 0,
+      "distinctSignalDates": 20
+    }
+  }
+}
