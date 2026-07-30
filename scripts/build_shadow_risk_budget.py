@@ -8,6 +8,7 @@ distance blocks allocation entirely.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,68 @@ MAX_GROSS_EXPOSURE = 0.30
 MAX_SECTOR_EXPOSURE = 0.15
 MAX_PORTFOLIO_BETA = 0.30
 ACCOUNT_RISK_PER_TRADE = 0.005
+POLICY_VERSION = "shadow-risk-budget-v1.1.0"
+
+
+def _fingerprint(payload: Any, *, length: int | None = 20) -> str:
+    raw = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    return digest[:length] if length else digest
+
+
+def _policy(meta_policy_fingerprint: str) -> dict[str, Any]:
+    return {
+        "version": POLICY_VERSION,
+        "metaPolicyFingerprint": meta_policy_fingerprint or "MISSING",
+        "baseWeight": BASE_WEIGHT,
+        "maxPositionWeight": MAX_POSITION_WEIGHT,
+        "maxGrossExposure": MAX_GROSS_EXPOSURE,
+        "maxSectorExposure": MAX_SECTOR_EXPOSURE,
+        "maxPortfolioBeta": MAX_PORTFOLIO_BETA,
+        "accountRiskPerTrade": ACCOUNT_RISK_PER_TRADE,
+        "removedExposureStaysCash": True,
+        "redistributionAllowed": False,
+    }
+
+
+def _allocation_evidence(
+    policy_fingerprint: str,
+    meta_policy_fingerprint: str,
+    positions: list[dict[str, Any]],
+    rejected: list[dict[str, Any]],
+) -> dict[str, Any]:
+    position_rows = [
+        {
+            "decisionId": str(row.get("decisionId") or ""),
+            "candidateKey": str(row.get("candidateKey") or ""),
+            "symbol": str(row.get("symbol") or ""),
+            "market": str(row.get("market") or ""),
+            "sector": str(row.get("sector") or ""),
+            "weight": round(float(row.get("weight") or 0.0), 8),
+            "stopDistancePct": round(float(row.get("stopDistancePct") or 0.0), 8),
+            "lossAtStopPctOfEquity": round(float(row.get("lossAtStopPctOfEquity") or 0.0), 8),
+            "beta": round(float(row.get("beta") or 0.0), 8),
+            "betaSource": str(row.get("betaSource") or ""),
+            "clamps": sorted(str(value) for value in (row.get("clamps") or [])),
+        }
+        for row in positions
+    ]
+    rejected_rows = [
+        {
+            "decisionId": str(row.get("decisionId") or ""),
+            "candidateKey": str(row.get("candidateKey") or ""),
+            "symbol": str(row.get("symbol") or ""),
+            "reason": str(row.get("reason") or ""),
+            "clamps": sorted(str(value) for value in (row.get("clamps") or [])),
+        }
+        for row in rejected
+    ]
+    return {
+        "policyFingerprint": policy_fingerprint,
+        "metaPolicyFingerprint": meta_policy_fingerprint,
+        "positions": sorted(position_rows, key=lambda row: (row["decisionId"], row["symbol"])),
+        "rejected": sorted(rejected_rows, key=lambda row: (row["decisionId"], row["symbol"], row["reason"])),
+    }
 
 
 def _num(value: Any) -> float | None:
@@ -49,14 +112,19 @@ def allocate(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     )
     for candidate in ranked:
         symbol = str(candidate.get("symbol") or "").strip()
+        identity = {
+            "decisionId": candidate.get("decisionId"),
+            "candidateKey": candidate.get("candidateKey"),
+            "symbol": symbol,
+        }
         entry = _num(candidate.get("entryPrice"))
         stop = _num(candidate.get("stopPrice"))
         if entry is None or stop is None or entry <= 0 or stop >= entry:
-            rejected.append({"symbol": symbol, "reason": "INVALID_OR_MISSING_STOP_DISTANCE"})
+            rejected.append({**identity, "reason": "INVALID_OR_MISSING_STOP_DISTANCE"})
             continue
         stop_distance = (entry - stop) / entry
         if stop_distance <= 0:
-            rejected.append({"symbol": symbol, "reason": "INVALID_OR_MISSING_STOP_DISTANCE"})
+            rejected.append({**identity, "reason": "INVALID_OR_MISSING_STOP_DISTANCE"})
             continue
 
         beta = abs(_num(candidate.get("beta")) or 1.0)
@@ -78,13 +146,15 @@ def allocate(candidates: list[dict[str, Any]]) -> dict[str, Any]:
             if remaining_beta_weight <= final_weight + 1e-12:
                 clamps.append("MAX_PORTFOLIO_BETA")
         if final_weight <= 1e-9:
-            rejected.append({"symbol": symbol, "reason": "NO_RISK_BUDGET_REMAINING", "clamps": clamps})
+            rejected.append({**identity, "reason": "NO_RISK_BUDGET_REMAINING", "clamps": clamps})
             continue
 
         gross += final_weight
         portfolio_beta += final_weight * beta
         sector_weights[sector] = sector_weights.get(sector, 0.0) + final_weight
         positions.append({
+            "decisionId": candidate.get("decisionId"),
+            "candidateKey": candidate.get("candidateKey"),
             "symbol": symbol,
             "market": candidate.get("market"),
             "sector": sector,
@@ -114,19 +184,43 @@ def build() -> dict[str, Any]:
         meta = json.loads(META_GATE.read_text(encoding="utf-8"))
     except Exception:
         meta = {"take": []}
-    allocation = allocate(meta.get("take") if isinstance(meta.get("take"), list) else [])
+    meta_policy = meta.get("policy") if isinstance(meta.get("policy"), dict) else {}
+    meta_policy_fingerprint = str(meta_policy.get("fingerprint") or "").strip()
+    take = meta.get("take") if isinstance(meta.get("take"), list) else []
+    lineage_blockers: list[str] = []
+    if not meta_policy_fingerprint:
+        lineage_blockers.append("MISSING_META_POLICY_FINGERPRINT")
+    if any(str(row.get("policyFingerprint") or "").strip() != meta_policy_fingerprint for row in take):
+        lineage_blockers.append("META_DECISION_POLICY_MISMATCH")
+    if any(not str(row.get("decisionId") or "").strip() for row in take):
+        lineage_blockers.append("MISSING_DECISION_ID")
+    if any(not str(row.get("candidateKey") or "").strip() for row in take):
+        lineage_blockers.append("MISSING_CANDIDATE_KEY")
+    decision_ids = [str(row.get("decisionId") or "").strip() for row in take]
+    candidate_keys = [str(row.get("candidateKey") or "").strip() for row in take]
+    if len(set(decision_ids)) != len(decision_ids):
+        lineage_blockers.append("DUPLICATE_DECISION_ID")
+    if len(set(candidate_keys)) != len(candidate_keys):
+        lineage_blockers.append("DUPLICATE_CANDIDATE_KEY")
+
+    policy = _policy(meta_policy_fingerprint)
+    policy_fingerprint = _fingerprint(policy)
+    allocation = allocate(take if not lineage_blockers else [])
+    evidence = _allocation_evidence(
+        policy_fingerprint,
+        meta_policy_fingerprint,
+        allocation["positions"],
+        allocation["rejected"],
+    )
     return {
         "status": "SHADOW_ONLY",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "policy": {
-            "baseWeight": BASE_WEIGHT,
-            "maxPositionWeight": MAX_POSITION_WEIGHT,
-            "maxGrossExposure": MAX_GROSS_EXPOSURE,
-            "maxSectorExposure": MAX_SECTOR_EXPOSURE,
-            "maxPortfolioBeta": MAX_PORTFOLIO_BETA,
-            "accountRiskPerTrade": ACCOUNT_RISK_PER_TRADE,
-            "removedExposureStaysCash": True,
-            "redistributionAllowed": False,
+        "policy": {**policy, "fingerprint": policy_fingerprint},
+        "lineage": {
+            "valid": not lineage_blockers,
+            "blockingReasons": lineage_blockers,
+            "metaTakeCount": len(take),
+            "allocationFingerprint": _fingerprint(evidence, length=None),
         },
         **allocation,
     }

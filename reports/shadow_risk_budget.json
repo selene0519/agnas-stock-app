@@ -1,7 +1,9 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T12:48:04.960829+00:00",
+  "generatedAt": "2026-07-30T13:20:01.737357+00:00",
   "policy": {
+    "version": "shadow-risk-budget-v1.1.0",
+    "metaPolicyFingerprint": "7ab81641bf1fda23081b",
     "baseWeight": 0.1,
     "maxPositionWeight": 0.1,
     "maxGrossExposure": 0.3,
@@ -9,7 +11,14 @@
     "maxPortfolioBeta": 0.3,
     "accountRiskPerTrade": 0.005,
     "removedExposureStaysCash": true,
-    "redistributionAllowed": false
+    "redistributionAllowed": false,
+    "fingerprint": "b25191ddabe035b5b32a"
+  },
+  "lineage": {
+    "valid": true,
+    "blockingReasons": [],
+    "metaTakeCount": 0,
+    "allocationFingerprint": "eeb60e4ceba85c5284a7169c99e108e9c38597f17619be206d79672bac68d2e0"
   },
   "positions": [],
   "rejected": [],

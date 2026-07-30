@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,8 @@ def _candidate(symbol: str, sector: str = "Tech", beta: float | None = 1.0) -> d
         "stopPrice": 95,
         "beta": beta,
         "score": 80,
+        "decisionId": f"decision-{symbol}",
+        "candidateKey": f"candidate-{symbol}",
     }
 
 
@@ -67,3 +70,40 @@ def test_no_take_candidates_means_full_cash() -> None:
     assert result["positions"] == []
     assert result["grossExposurePct"] == 0.0
     assert result["cashWeightPct"] == 100.0
+
+
+def test_build_binds_allocation_to_meta_policy_and_decisions(tmp_path: Path, monkeypatch) -> None:
+    meta_path = tmp_path / "meta.json"
+    candidate = _candidate("A")
+    candidate["policyFingerprint"] = "meta-a"
+    meta_path.write_text(json.dumps({
+        "policy": {"fingerprint": "meta-a"},
+        "take": [candidate],
+    }), encoding="utf-8")
+    monkeypatch.setattr(risk, "META_GATE", meta_path)
+
+    report = risk.build()
+
+    assert report["lineage"]["valid"] is True
+    assert len(report["lineage"]["allocationFingerprint"]) == 64
+    assert report["positions"][0]["decisionId"] == "decision-A"
+    assert report["positions"][0]["candidateKey"] == "candidate-A"
+    assert report["policy"]["metaPolicyFingerprint"] == "meta-a"
+
+
+def test_build_fails_closed_on_meta_decision_policy_mismatch(tmp_path: Path, monkeypatch) -> None:
+    meta_path = tmp_path / "meta.json"
+    candidate = _candidate("A")
+    candidate["policyFingerprint"] = "wrong-meta"
+    meta_path.write_text(json.dumps({
+        "policy": {"fingerprint": "meta-a"},
+        "take": [candidate],
+    }), encoding="utf-8")
+    monkeypatch.setattr(risk, "META_GATE", meta_path)
+
+    report = risk.build()
+
+    assert report["lineage"]["valid"] is False
+    assert "META_DECISION_POLICY_MISMATCH" in report["lineage"]["blockingReasons"]
+    assert report["positions"] == []
+    assert report["cashWeightPct"] == 100.0

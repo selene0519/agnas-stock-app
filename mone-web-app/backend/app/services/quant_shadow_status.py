@@ -71,8 +71,15 @@ def shadow_status() -> dict[str, Any]:
         reasons.append("NO_POSITIVE_SLEEVE")
     if float(risk.get("grossExposurePct") or 0.0) <= 0:
         reasons.append("NO_APPROVED_RISK_EXPOSURE")
+    risk_lineage = risk.get("lineage") if isinstance(risk.get("lineage"), dict) else {}
+    risk_policy = risk.get("policy") if isinstance(risk.get("policy"), dict) else {}
+    if risk_lineage.get("valid") is not True:
+        reasons.append("RISK_ALLOCATION_INTEGRITY_NOT_PROVEN")
     promotion = champion_challenger.get("promotion") if isinstance(champion_challenger.get("promotion"), dict) else {}
     comparison = champion_challenger.get("comparison") if isinstance(champion_challenger.get("comparison"), dict) else {}
+    risk_gate = champion_challenger.get("riskAllocationGate") if isinstance(champion_challenger.get("riskAllocationGate"), dict) else {}
+    if risk_gate.get("passed") is not True:
+        reasons.append("CHAMPION_RISK_ALLOCATION_NOT_PROVEN")
     if not bool(promotion.get("promotionEligible")):
         reasons.append("CHALLENGER_NOT_PROMOTABLE")
     if not bool(walk_forward.get("promotionGrade")):
@@ -92,6 +99,11 @@ def shadow_status() -> dict[str, Any]:
             "grossExposurePct": float(risk.get("grossExposurePct") or 0.0),
             "cashWeightPct": float(risk.get("cashWeightPct") or 100.0),
             "portfolioBeta": float(risk.get("portfolioBeta") or 0.0),
+            "riskAllocationLineageValid": risk_lineage.get("valid") is True,
+            "riskAllocationIntegrityBlockers": risk_lineage.get("blockingReasons") or [],
+            "riskPolicyFingerprint": risk_policy.get("fingerprint"),
+            "riskAllocationFingerprint": risk_lineage.get("allocationFingerprint"),
+            "championRiskAllocationGatePassed": risk_gate.get("passed") is True,
             "d20BlockMeanCarPct": d20.get("blockMeanCarPct"),
             "d20AlphaCi95": d20.get("bootstrapCi95"),
             "independentAlphaBlocks": d20.get("independentMarketDateBlocks"),

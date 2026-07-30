@@ -44,10 +44,18 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
         "sleeves": {"balanced_short": {"totalReturnPct": -3.8, "profitFactor": 0.6}},
     })
     _write(tmp_path, "metaGate", {"status": "SHADOW_ONLY", "summary": {"candidates": 20, "take": 0, "wait": 0, "reject": 20, "abstain": True}})
-    _write(tmp_path, "riskBudget", {"status": "SHADOW_ONLY", "grossExposurePct": 0, "cashWeightPct": 100, "portfolioBeta": 0})
+    _write(tmp_path, "riskBudget", {
+        "status": "SHADOW_ONLY",
+        "policy": {"fingerprint": "risk-a"},
+        "lineage": {"valid": True, "blockingReasons": [], "allocationFingerprint": "allocation-a"},
+        "grossExposurePct": 0,
+        "cashWeightPct": 100,
+        "portfolioBeta": 0,
+    })
     _write(tmp_path, "championChallenger", {
         "status": "SHADOW_ONLY",
         "comparison": {"completedSignalDates": 0},
+        "riskAllocationGate": {"passed": True},
         "promotion": {"promotionEligible": False, "decision": "KEEP_CHALLENGER_SHADOW", "blockingReasons": ["LOW_COMPLETE_SIGNAL_DATES"]},
     })
     _write(tmp_path, "walkForward", {"status": "WARN", "promotionGrade": False})
@@ -64,6 +72,10 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
     assert result["summary"]["residualAlphaCurrentTrainingDataFingerprint"] == "training-a"
     assert result["summary"]["residualAlphaRegisteredModels"] == 1
     assert result["summary"]["residualAlphaModelVersionReuseConflicts"] == 0
+    assert result["summary"]["riskAllocationLineageValid"] is True
+    assert result["summary"]["riskPolicyFingerprint"] == "risk-a"
+    assert result["summary"]["riskAllocationFingerprint"] == "allocation-a"
+    assert result["summary"]["championRiskAllocationGatePassed"] is True
     assert "ALPHA_NOT_PROVEN" in result["decisionReasons"]
     assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in result["decisionReasons"]
     assert "NO_POSITIVE_SLEEVE" in result["decisionReasons"]
@@ -77,3 +89,5 @@ def test_missing_reports_never_look_healthy(tmp_path: Path, monkeypatch) -> None
     assert result["status"] == "WARN"
     assert result["decision"] == "ABSTAIN"
     assert len(result["missingReports"]) == len(status.REPORT_FILES)
+    assert "RISK_ALLOCATION_INTEGRITY_NOT_PROVEN" in result["decisionReasons"]
+    assert "CHAMPION_RISK_ALLOCATION_NOT_PROVEN" in result["decisionReasons"]

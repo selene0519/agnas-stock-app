@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T12:48:05.182269+00:00",
+  "generatedAt": "2026-07-30T13:54:52.026555+00:00",
   "policy": {
-    "version": "champion-challenger-v1.2.2",
+    "version": "champion-challenger-v1.3.3",
     "champion": "TOP_3_RAW_CANDIDATES",
     "challenger": "SHADOW_META_GATE_TAKE_ONLY",
     "positionWeight": 0.1,
@@ -17,28 +17,36 @@
     "requiresD20ResidualAlphaLowerCiAboveZero": true,
     "requiresValidatedResidualAlphaPredictionModel": true,
     "residualAlphaPolicyVersion": "shadow-residual-alpha-v1.1.2",
+    "challengerUsesRecordedRiskBudgetWeights": true,
+    "riskBudgetPolicyVersion": "shadow-risk-budget-v1.1.0",
+    "requiresValidRiskAllocationLineage": true,
     "requiresChallengerDrawdownNoWorseThanChampion": true,
     "requiresTimeIntegrity": true,
     "autoPromotionAllowed": false,
     "humanApprovalRequired": true,
-    "fingerprint": "8b208fa36ee2297b725d"
+    "fingerprint": "5162344624fe0a92136e"
   },
   "recording": {
-    "appended": 20,
+    "appended": 0,
     "conflicts": 0,
     "skipped": 0,
-    "total": 120
+    "total": 140
   },
   "policyCohort": {
-    "activeFingerprint": "8b208fa36ee2297b725d",
+    "activeFingerprint": "5162344624fe0a92136e",
     "activeMetaPolicyFingerprint": "7ab81641bf1fda23081b",
+    "activeRiskPolicyFingerprint": "b25191ddabe035b5b32a",
     "activeRows": 20,
-    "excludedPriorPolicyRows": 100
+    "validActiveRows": 20,
+    "excludedPriorPolicyRows": 120
   },
   "integrity": {
     "immutableConflicts": 0,
     "timeIntegrityViolations": 0,
+    "recordHashViolations": 0,
+    "invalidRecordIds": [],
     "fingerprintCoverage": 1.0,
+    "riskLineageCoverage": 1.0,
     "violations": []
   },
   "alphaGate": {
@@ -68,6 +76,14 @@
       "MODEL_NOT_BETTER_THAN_EXPANDING_MEAN",
       "NON_POSITIVE_RANK_IC"
     ]
+  },
+  "riskAllocationGate": {
+    "passed": true,
+    "policyVersion": "shadow-risk-budget-v1.1.0",
+    "requiredPolicyVersion": "shadow-risk-budget-v1.1.0",
+    "policyFingerprint": "b25191ddabe035b5b32a",
+    "allocationFingerprint": "eeb60e4ceba85c5284a7169c99e108e9c38597f17619be206d79672bac68d2e0",
+    "blockingReasons": []
   },
   "comparison": {
     "completedSignalDates": 0,

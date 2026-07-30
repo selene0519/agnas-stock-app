@@ -43,6 +43,11 @@ export interface QuantShadowStatus {
     grossExposurePct: number;
     cashWeightPct: number;
     portfolioBeta: number;
+    riskAllocationLineageValid?: boolean;
+    riskAllocationIntegrityBlockers?: string[];
+    riskPolicyFingerprint?: string | null;
+    riskAllocationFingerprint?: string | null;
+    championRiskAllocationGatePassed?: boolean;
     d20BlockMeanCarPct: number | null;
     d20AlphaCi95: [number, number] | null;
     independentAlphaBlocks: number | null;
