@@ -36,6 +36,7 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
             "modelRegistry": {"existingRows": 1, "appendedRows": 0, "versionReuseConflicts": 0},
             "integrityBlockingReasons": [],
         },
+        "predictions": [{"modelInstanceFingerprint": "instance-a", "trainingDataFingerprint": "training-a"}],
     })
     _write(tmp_path, "sleeve", {
         "status": "OK",
@@ -59,6 +60,8 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
     assert result["summary"]["cashWeightPct"] == 100.0
     assert result["summary"]["residualAlphaForwardModelFingerprint"] == "model-a"
     assert result["summary"]["residualAlphaImplementationFingerprint"] == "implementation-a"
+    assert result["summary"]["residualAlphaCurrentModelInstanceFingerprint"] == "instance-a"
+    assert result["summary"]["residualAlphaCurrentTrainingDataFingerprint"] == "training-a"
     assert result["summary"]["residualAlphaRegisteredModels"] == 1
     assert result["summary"]["residualAlphaModelVersionReuseConflicts"] == 0
     assert "ALPHA_NOT_PROVEN" in result["decisionReasons"]

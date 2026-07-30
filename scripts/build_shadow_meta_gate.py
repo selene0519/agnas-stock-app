@@ -34,8 +34,8 @@ MIN_DISTINCT_SIGNAL_DATES = 30
 MIN_RISK_REWARD = 1.5
 MAX_TAKE = 3
 PROBABILITY_BINS = ((0, 50), (50, 60), (60, 70), (70, 80), (80, 101))
-POLICY_VERSION = "shadow-meta-v1.2.1"
-RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.1"
+POLICY_VERSION = "shadow-meta-v1.2.2"
+RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.2"
 
 
 def _policy(residual_model_fingerprint: str = "MISSING") -> dict[str, Any]:
@@ -346,6 +346,7 @@ def build() -> dict[str, Any]:
             "predictedResidualAlphaPct": _num((residual_prediction or {}).get("predictedResidualAlphaPct")),
             "residualAlphaLower90Pct": _num((residual_prediction or {}).get("predictionLower90Pct")),
             "residualAlphaModelFingerprint": _text((residual_prediction or {}).get("modelFingerprint")) or None,
+            "residualAlphaModelInstanceFingerprint": _text((residual_prediction or {}).get("modelInstanceFingerprint")) or None,
             "residualAlphaPredictionId": _text((residual_prediction or {}).get("predictionId")) or None,
             "residualAlphaForwardSealStatus": _text((residual_prediction or {}).get("forwardSealStatus")) or "UNSEALED",
             "recommendationSource": row.get("recommendationSource"),

@@ -29,8 +29,8 @@ EVALUATIONS = ROOT / "data" / "virtual_trade_evaluations.csv"
 LEDGER = ROOT / "data" / "shadow_challenger_journal.csv"
 OUT = ROOT / "reports" / "champion_challenger.json"
 
-POLICY_VERSION = "champion-challenger-v1.2.1"
-RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.1"
+POLICY_VERSION = "champion-challenger-v1.2.2"
+RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.2"
 POSITION_WEIGHT = 0.10
 MAX_POSITIONS = 3
 MIN_COMPLETE_SIGNAL_DATES = 60
@@ -41,6 +41,7 @@ BOOTSTRAP_SEED = 20260730
 LEDGER_FIELDS = [
     "decision_id", "policy_version", "policy_fingerprint", "recorded_at",
     "candidate_key", "meta_policy_fingerprint", "residual_alpha_model_fingerprint",
+    "residual_alpha_model_instance_fingerprint",
     "predicted_residual_alpha_pct", "residual_alpha_lower90_pct",
     "signal_date", "generated_at", "market", "mode", "horizon", "symbol",
     "name", "score", "champion_decision", "challenger_decision", "reasons",
@@ -138,6 +139,7 @@ def _ledger_row(decision: dict[str, Any], recorded_at: str) -> dict[str, Any] | 
         "candidate_key": _text(decision.get("candidateKey")),
         "meta_policy_fingerprint": _text(decision.get("policyFingerprint")),
         "residual_alpha_model_fingerprint": _text(decision.get("residualAlphaModelFingerprint")),
+        "residual_alpha_model_instance_fingerprint": _text(decision.get("residualAlphaModelInstanceFingerprint")),
         "predicted_residual_alpha_pct": _num(decision.get("predictedResidualAlphaPct")),
         "residual_alpha_lower90_pct": _num(decision.get("residualAlphaLower90Pct")),
         "signal_date": signal_date,

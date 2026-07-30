@@ -168,6 +168,18 @@ def test_ridge_prediction_learns_direction_without_probability_semantics() -> No
     assert predictions[1] > predictions[0]
 
 
+def test_training_and_model_instance_fingerprints_are_reproducible_and_data_sensitive() -> None:
+    rows = [_row(1, 1, 1.0, feature=10.0), _row(2, 1, 2.0, feature=20.0)]
+
+    first = model.training_data_fingerprint(rows)
+    reordered = model.training_data_fingerprint(list(reversed(rows)))
+    changed = model.training_data_fingerprint([{**rows[0], "residualAlphaPct": 9.0}, rows[1]])
+
+    assert first == reordered
+    assert first != changed
+    assert model.model_instance_fingerprint(first) != model.model_instance_fingerprint(changed)
+
+
 def test_camel_case_candidate_features_use_training_schema() -> None:
     row = {"finalRankScore": "88.5", "rrActual": "2.1", "rsi14": "55"}
 
@@ -185,9 +197,12 @@ def test_current_prediction_refuses_insufficient_training(monkeypatch) -> None:
     result = model.current_predictions(labeled, [candidate])
 
     assert result[0]["status"] == "INSUFFICIENT_TRAINING_HISTORY"
+    assert result[0]["trainingDataFingerprint"]
+    assert result[0]["modelInstanceFingerprint"]
 
 
 def _forward_prediction(generated_at: str, candidate: str = "candidate-a", lower: float = 0.5) -> dict:
+    training_fingerprint = "training-a"
     return {
         "candidateKey": candidate,
         "economicEventKey": "event-a",
@@ -201,6 +216,8 @@ def _forward_prediction(generated_at: str, candidate: str = "candidate-a", lower
         "trainRows": 150,
         "trainDates": 30,
         "trainMaxLabelAvailableDate": "2026-07-29",
+        "trainingDataFingerprint": training_fingerprint,
+        "modelInstanceFingerprint": model.model_instance_fingerprint(training_fingerprint),
         "predictedResidualAlphaPct": 1.0,
         "predictionLower90Pct": lower,
         "baselinePredictionPct": 0.1,
@@ -221,6 +238,8 @@ def test_forward_prediction_journal_records_timely_naive_kst_once(tmp_path) -> N
     rows = model._read_csv(journal)
     assert len(rows) == 1
     assert rows[0]["generated_at"] == "2026-07-30T00:00:00+00:00"
+    assert rows[0]["training_data_fingerprint"] == "training-a"
+    assert rows[0]["model_instance_fingerprint"] == model.model_instance_fingerprint("training-a")
 
 
 def test_forward_prediction_journal_never_backfills_stale_candidate(tmp_path) -> None:
@@ -293,6 +312,27 @@ def test_forward_journal_hash_detects_manual_prediction_mutation(tmp_path) -> No
     )
 
     assert source["journalIntegrity"]["predictionHashViolations"] == 1
+    assert sealed[0]["forwardSealStatus"] == "UNSEALED"
+
+
+def test_forward_journal_rejects_internally_inconsistent_model_instance(tmp_path) -> None:
+    prediction_journal = tmp_path / "predictions.csv"
+    now = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+    prediction = _forward_prediction("2026-07-30 09:00:00")
+    model.record_forward_predictions([prediction], prediction_journal, now)
+    rows = model._read_csv(prediction_journal)
+    rows[0]["model_instance_fingerprint"] = "wrong-instance"
+    rows[0]["record_hash"] = model._row_hash(rows[0], {"recorded_at"})
+    with prediction_journal.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=model.PREDICTION_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    _, source = model.live_forward_oos(prediction_journal, tmp_path / "settlements.csv")
+    sealed = model.apply_forward_seal_status([prediction], prediction_journal)
+
+    assert source["journalIntegrity"]["predictionHashViolations"] == 0
+    assert source["journalIntegrity"]["predictionLineageViolations"] == 1
     assert sealed[0]["forwardSealStatus"] == "UNSEALED"
 
 

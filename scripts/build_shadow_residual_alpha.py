@@ -50,13 +50,14 @@ MIN_SELECTED_OOS = 60
 RIDGE_LAMBDA = 10.0
 LOWER_QUANTILE_Z = 1.645
 MAX_RECORDING_DELAY_HOURS = 6.0
-POLICY_VERSION = "shadow-residual-alpha-v1.1.1"
+POLICY_VERSION = "shadow-residual-alpha-v1.1.2"
 
 PREDICTION_FIELDS = [
     "prediction_id", "policy_version", "model_fingerprint", "recorded_at",
     "generated_at", "signal_date", "candidate_key", "economic_event_key",
     "market", "mode", "horizon", "symbol", "status", "train_rows",
     "train_dates", "train_max_label_available_date",
+    "training_data_fingerprint", "model_instance_fingerprint",
     "predicted_residual_alpha_pct", "prediction_lower90_pct",
     "baseline_prediction_pct", "record_hash",
 ]
@@ -150,6 +151,8 @@ def _model_implementation_fingerprint() -> str:
         "_feature_matrix",
         "_fit_predict",
         "expanding_oos",
+        "training_data_fingerprint",
+        "model_instance_fingerprint",
         "current_predictions",
     )
     sources: dict[str, str] = {}
@@ -558,6 +561,39 @@ def _fit_predict(
     return predictions, baseline, residual_sd
 
 
+def training_data_fingerprint(train_rows: list[dict[str, Any]]) -> str:
+    canonical: list[dict[str, Any]] = []
+    for row in train_rows:
+        numeric = {
+            feature: (round(value, 12) if value is not None and math.isfinite(value) else None)
+            for feature in NUMERIC_FEATURES
+            for value in [_feature_num(row, feature)]
+        }
+        canonical.append({
+            "candidateKey": _text(row.get("candidateKey")),
+            "economicEventKey": _text(row.get("economicEventKey")),
+            "signalDate": _text(row.get("signalDate")),
+            "labelAvailableDate": _text(row.get("labelAvailableDate")),
+            "residualAlphaPct": round(float(row["residualAlphaPct"]), 12),
+            "categories": {
+                field: _text(row.get(field)).lower()
+                for field in sorted({field for field, _ in CATEGORY_FEATURES})
+            },
+            "numericFeatures": numeric,
+        })
+    canonical.sort(key=lambda item: (
+        item["signalDate"], item["labelAvailableDate"],
+        item["candidateKey"], item["economicEventKey"],
+    ))
+    raw = json.dumps(canonical, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def model_instance_fingerprint(training_fingerprint: str) -> str:
+    raw = f"{_policy_fingerprint()}|{training_fingerprint}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+
+
 def expanding_oos(labeled_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in labeled_rows:
@@ -571,6 +607,8 @@ def expanding_oos(labeled_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         test = grouped[signal_date]
         values, baselines, residual_sd = _fit_predict(train, test)
         max_available = max(row["labelAvailableDate"] for row in train)
+        training_fingerprint = training_data_fingerprint(train)
+        instance_fingerprint = model_instance_fingerprint(training_fingerprint)
         for row, value, baseline in zip(test, values, baselines):
             predictions.append({
                 "candidateKey": row["candidateKey"],
@@ -579,6 +617,8 @@ def expanding_oos(labeled_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "trainMaxLabelAvailableDate": max_available,
                 "trainRows": len(train),
                 "trainDates": len(train_dates),
+                "trainingDataFingerprint": training_fingerprint,
+                "modelInstanceFingerprint": instance_fingerprint,
                 "predictedResidualAlphaPct": float(value),
                 "predictionLower90Pct": float(value - LOWER_QUANTILE_Z * residual_sd),
                 "baselinePredictionPct": float(baseline),
@@ -686,6 +726,7 @@ def current_predictions(labeled_rows: list[dict[str, Any]], candidates: list[dic
         signal_date = _text(candidate.get("asOfDate") or candidate.get("as_of_date") or candidate.get("generatedAt"))[:10]
         train = [row for row in labeled_rows if row["labelAvailableDate"] < signal_date]
         train_dates = {row["signalDate"] for row in train}
+        training_fingerprint = training_data_fingerprint(train)
         base = {
             "candidateKey": candidate_key(candidate, signal_date),
             "economicEventKey": economic_event_key(candidate, signal_date),
@@ -696,6 +737,8 @@ def current_predictions(labeled_rows: list[dict[str, Any]], candidates: list[dic
             "horizon": _text(candidate.get("horizon")).lower(),
             "symbol": _text(candidate.get("symbol")).upper(),
             "modelFingerprint": _policy_fingerprint(),
+            "trainingDataFingerprint": training_fingerprint,
+            "modelInstanceFingerprint": model_instance_fingerprint(training_fingerprint),
             "trainRows": len(train),
             "trainDates": len(train_dates),
         }
@@ -762,6 +805,8 @@ def record_forward_predictions(
             "train_rows": prediction.get("trainRows"),
             "train_dates": prediction.get("trainDates"),
             "train_max_label_available_date": prediction.get("trainMaxLabelAvailableDate"),
+            "training_data_fingerprint": prediction.get("trainingDataFingerprint"),
+            "model_instance_fingerprint": prediction.get("modelInstanceFingerprint"),
             "predicted_residual_alpha_pct": prediction.get("predictedResidualAlphaPct"),
             "prediction_lower90_pct": prediction.get("predictionLower90Pct"),
             "baseline_prediction_pct": prediction.get("baselinePredictionPct"),
@@ -868,7 +913,18 @@ def live_forward_oos(
         _text(row.get("record_hash")) != _row_hash(row, {"settled_at"}) for row in current_settlements
     )
     recording_time_violations = 0
+    prediction_lineage_violations = 0
+    invalid_lineage_prediction_ids: set[str] = set()
     for row in current_predictions:
+        training_fingerprint = _text(row.get("training_data_fingerprint"))
+        instance_fingerprint = _text(row.get("model_instance_fingerprint"))
+        if (
+            not training_fingerprint
+            or not instance_fingerprint
+            or instance_fingerprint != model_instance_fingerprint(training_fingerprint)
+        ):
+            prediction_lineage_violations += 1
+            invalid_lineage_prediction_ids.add(_text(row.get("prediction_id")))
         generated = _parse_generated_at(row.get("generated_at"))
         recorded = _parse_generated_at(row.get("recorded_at"))
         if generated is None or recorded is None:
@@ -882,6 +938,8 @@ def live_forward_oos(
     relationship_violations = 0
     for prediction in current_predictions:
         if _text(prediction.get("status")) != "PREDICTED":
+            continue
+        if _text(prediction.get("prediction_id")) in invalid_lineage_prediction_ids:
             continue
         settlement = settlements_by_id.get(_text(prediction.get("prediction_id")))
         if settlement is None:
@@ -899,6 +957,8 @@ def live_forward_oos(
             "signalDate": prediction.get("signal_date"),
             "labelAvailableDate": settlement.get("label_available_date"),
             "trainMaxLabelAvailableDate": prediction.get("train_max_label_available_date"),
+            "trainingDataFingerprint": prediction.get("training_data_fingerprint"),
+            "modelInstanceFingerprint": prediction.get("model_instance_fingerprint"),
             "predictedResidualAlphaPct": _num(prediction.get("predicted_residual_alpha_pct")),
             "predictionLower90Pct": _num(prediction.get("prediction_lower90_pct")),
             "baselinePredictionPct": _num(prediction.get("baseline_prediction_pct")),
@@ -919,6 +979,7 @@ def live_forward_oos(
         "predictionHashViolations": prediction_hash_violations,
         "settlementHashViolations": settlement_hash_violations,
         "recordingTimeViolations": recording_time_violations,
+        "predictionLineageViolations": prediction_lineage_violations,
         "predictionSettlementRelationshipViolations": relationship_violations,
     }
     return rows, {
@@ -961,6 +1022,8 @@ def apply_forward_seal_status(
             "train_rows": prediction.get("trainRows"),
             "train_dates": prediction.get("trainDates"),
             "train_max_label_available_date": prediction.get("trainMaxLabelAvailableDate"),
+            "training_data_fingerprint": prediction.get("trainingDataFingerprint"),
+            "model_instance_fingerprint": prediction.get("modelInstanceFingerprint"),
             "predicted_residual_alpha_pct": prediction.get("predictedResidualAlphaPct"),
             "prediction_lower90_pct": prediction.get("predictionLower90Pct"),
             "baseline_prediction_pct": prediction.get("baselinePredictionPct"),

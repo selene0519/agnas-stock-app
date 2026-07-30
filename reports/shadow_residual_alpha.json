@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T12:44:14.871123+00:00",
+  "generatedAt": "2026-07-30T13:06:03.736913+00:00",
   "policy": {
-    "version": "shadow-residual-alpha-v1.1.1",
+    "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
     "horizonWindows": {
       "short": 5,
@@ -32,7 +32,7 @@
     "immutablePredictionAndSettlementRows": true,
     "immutableModelRegistryRequired": true,
     "policyVersionCannotIdentifyMultipleImplementations": true,
-    "implementationFingerprint": "acb1087a79789701f4102e714c37a12cd278ec523d59c1320e9c54b8b082cce4",
+    "implementationFingerprint": "3c25385d30f952237cc479ceea0b84a6c90177ade5c5924b13b0d5eaa3df1990",
     "numericFeatures": [
       "final_rank_score",
       "expected_value",
@@ -54,7 +54,7 @@
       "horizon=swing",
       "horizon=mid"
     ],
-    "fingerprint": "a0d088c9cb762bd6febd"
+    "fingerprint": "7f3642213237690bb880"
   },
   "data": {
     "rawJournalRows": 2178,
@@ -112,7 +112,7 @@
     "promotionEligible": false
   },
   "forwardEvidence": {
-    "modelFingerprint": "a0d088c9cb762bd6febd",
+    "modelFingerprint": "7f3642213237690bb880",
     "predictionJournalRows": 0,
     "settlementJournalRows": 0,
     "settledCurrentModelEconomicEvents": 0,
@@ -122,14 +122,15 @@
       "predictionHashViolations": 0,
       "settlementHashViolations": 0,
       "recordingTimeViolations": 0,
+      "predictionLineageViolations": 0,
       "predictionSettlementRelationshipViolations": 0
     },
     "modelRegistry": {
       "path": "data\\shadow_residual_model_registry.csv",
-      "currentModelFingerprint": "a0d088c9cb762bd6febd",
-      "currentImplementationFingerprint": "acb1087a79789701f4102e714c37a12cd278ec523d59c1320e9c54b8b082cce4",
-      "policyVersion": "shadow-residual-alpha-v1.1.1",
-      "existingRows": 1,
+      "currentModelFingerprint": "7f3642213237690bb880",
+      "currentImplementationFingerprint": "3c25385d30f952237cc479ceea0b84a6c90177ade5c5924b13b0d5eaa3df1990",
+      "policyVersion": "shadow-residual-alpha-v1.1.2",
+      "existingRows": 2,
       "appendedRows": 0,
       "duplicateRows": 1,
       "versionReuseConflicts": 0,
@@ -178,7 +179,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "LMT",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -186,7 +189,7 @@
       "predictedResidualAlphaPct": 8.654194,
       "predictionLower90Pct": -7.779771,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "9e3d91550c9cce021691ff42e383",
+      "predictionId": "ffba449a2b5eca7ac8e6a7ac9f7d",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -198,7 +201,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "AAPL",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -206,7 +211,7 @@
       "predictedResidualAlphaPct": 11.100655,
       "predictionLower90Pct": -5.33331,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "75320f3a408ace82bbabcb542944",
+      "predictionId": "8cc41315918eb72afaadf98be1e4",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -218,7 +223,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "ELF",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -226,7 +233,7 @@
       "predictedResidualAlphaPct": 0.346467,
       "predictionLower90Pct": -16.087498,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "f0a90f191c835206e3afbf402219",
+      "predictionId": "3ab1420108b9b6bab59fd3e7d372",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -238,7 +245,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "ADBE",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -246,7 +255,7 @@
       "predictedResidualAlphaPct": 4.267549,
       "predictionLower90Pct": -12.166417,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "ac7670e31f36168d433f42c8a7b7",
+      "predictionId": "41527c1f7913b17bfa522f64e87f",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -258,7 +267,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "KO",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -266,7 +277,7 @@
       "predictedResidualAlphaPct": 17.340627,
       "predictionLower90Pct": 0.906662,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "ce6fa22269611d6f18fa3d442306",
+      "predictionId": "6f93732307a957ad380ae71a25e4",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -278,7 +289,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "CRM",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -286,7 +299,7 @@
       "predictedResidualAlphaPct": 7.544018,
       "predictionLower90Pct": -8.889947,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "6e71a2e43bcd6a963c03a6ed457d",
+      "predictionId": "c89302fcafa2b0728f34b0c26172",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -298,7 +311,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "BAC",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -306,7 +321,7 @@
       "predictedResidualAlphaPct": 14.594815,
       "predictionLower90Pct": -1.83915,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "329341ad54fb314d69f93885c66d",
+      "predictionId": "915fdbfa913aa40a1b8cf78b4498",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -318,7 +333,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "SLB",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -326,7 +343,7 @@
       "predictedResidualAlphaPct": 20.849178,
       "predictionLower90Pct": 4.415213,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "e359ff4570f5e157b479f4c1c553",
+      "predictionId": "919199fc23bdfa5ec2048e087bd1",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -338,7 +355,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "RSP",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -346,7 +365,7 @@
       "predictedResidualAlphaPct": 22.577616,
       "predictionLower90Pct": 6.14365,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "7f1d2c073c571ac6bf58a3d59f3c",
+      "predictionId": "5c6df92c17e92559cd0cfc945e62",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -358,7 +377,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "F",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -366,7 +387,7 @@
       "predictedResidualAlphaPct": 9.723733,
       "predictionLower90Pct": -6.710232,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "0e3da1e9af126f6022dc670a5fc7",
+      "predictionId": "ea534525159469b14628e800bfe5",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -378,7 +399,9 @@
       "mode": "aggressive",
       "horizon": "mid",
       "symbol": "PFE",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -386,7 +409,7 @@
       "predictedResidualAlphaPct": 22.263172,
       "predictionLower90Pct": 5.829207,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "0e49524591f1966e933c5eccd7e1",
+      "predictionId": "e8d85bb16494d9db0138c2d6636a",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -398,7 +421,9 @@
       "mode": "aggressive",
       "horizon": "short",
       "symbol": "JNJ",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -406,7 +431,7 @@
       "predictedResidualAlphaPct": 22.577616,
       "predictionLower90Pct": 6.14365,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "76c4604198ffe2b5c48ffe5a99e4",
+      "predictionId": "80c6c0795287024cb8620caa6305",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -418,7 +443,9 @@
       "mode": "aggressive",
       "horizon": "short",
       "symbol": "SCHD",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -426,7 +453,7 @@
       "predictedResidualAlphaPct": 19.709109,
       "predictionLower90Pct": 3.275143,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "fc0218e08570d8f2beff30992ce6",
+      "predictionId": "2311293ecec10d87e416daa5dbf2",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -438,7 +465,9 @@
       "mode": "balanced",
       "horizon": "mid",
       "symbol": "ABBV",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -446,7 +475,7 @@
       "predictedResidualAlphaPct": 16.48353,
       "predictionLower90Pct": 0.049565,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "5f98696dab52d51f0abc51a4a513",
+      "predictionId": "ecf0e845ec65dc1ca2161992b0d6",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -458,7 +487,9 @@
       "mode": "balanced",
       "horizon": "mid",
       "symbol": "MA",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -466,7 +497,7 @@
       "predictedResidualAlphaPct": 14.049455,
       "predictionLower90Pct": -2.38451,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "e6ef1fa40178a6db906203b410cc",
+      "predictionId": "e9a2277fdfce0c2b4c8a87c15dee",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -478,7 +509,9 @@
       "mode": "balanced",
       "horizon": "mid",
       "symbol": "CVX",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -486,7 +519,7 @@
       "predictedResidualAlphaPct": 18.803062,
       "predictionLower90Pct": 2.369097,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "5cb1440454fa30818e7402f578ca",
+      "predictionId": "c81e99a21913b798219e1c0b6038",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -498,7 +531,9 @@
       "mode": "conservative",
       "horizon": "mid",
       "symbol": "SNOW",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -506,7 +541,7 @@
       "predictedResidualAlphaPct": 10.079344,
       "predictionLower90Pct": -6.354621,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "daf708386fa784ac99f5df047d56",
+      "predictionId": "1def205cf4e9c6b0375abbc5dfff",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -518,7 +553,9 @@
       "mode": "conservative",
       "horizon": "mid",
       "symbol": "HPE",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -526,7 +563,7 @@
       "predictedResidualAlphaPct": 8.231603,
       "predictionLower90Pct": -8.202362,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "59931857a771e9421f917df69083",
+      "predictionId": "cb6c5f915c641cff2afd33a73429",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -538,7 +575,9 @@
       "mode": "conservative",
       "horizon": "swing",
       "symbol": "AVGO",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -546,7 +585,7 @@
       "predictedResidualAlphaPct": 10.422391,
       "predictionLower90Pct": -6.011574,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "3d4f77a1bc533657d9013f056eb7",
+      "predictionId": "78777f86a62fbd639d28b303474b",
       "forwardSealStatus": "UNSEALED"
     },
     {
@@ -558,7 +597,9 @@
       "mode": "conservative",
       "horizon": "swing",
       "symbol": "DELL",
-      "modelFingerprint": "a0d088c9cb762bd6febd",
+      "modelFingerprint": "7f3642213237690bb880",
+      "trainingDataFingerprint": "5556d0f3f59b1dff19701cf3cd347fa64fb2189a2f1aba3c3d29650b5299d396",
+      "modelInstanceFingerprint": "01b747001f9a22ebfd1f4981",
       "trainRows": 329,
       "trainDates": 23,
       "status": "PREDICTED",
@@ -566,7 +607,7 @@
       "predictedResidualAlphaPct": 2.552862,
       "predictionLower90Pct": -13.881103,
       "baselinePredictionPct": -3.198731,
-      "predictionId": "4ce300840c02a74b34b3cd6e9ab5",
+      "predictionId": "7a2a9608e27d33f21fbf3e75800c",
       "forwardSealStatus": "UNSEALED"
     }
   ],

@@ -63,6 +63,8 @@ def shadow_status() -> dict[str, Any]:
     forward_evidence = residual_alpha.get("forwardEvidence") if isinstance(residual_alpha.get("forwardEvidence"), dict) else {}
     model_registry = forward_evidence.get("modelRegistry") if isinstance(forward_evidence.get("modelRegistry"), dict) else {}
     residual_policy = residual_alpha.get("policy") if isinstance(residual_alpha.get("policy"), dict) else {}
+    residual_predictions = residual_alpha.get("predictions") if isinstance(residual_alpha.get("predictions"), list) else []
+    current_residual_prediction = next((row for row in residual_predictions if isinstance(row, dict)), {})
     if residual_validation.get("evidenceStatus") != "PASS":
         reasons.append("RESIDUAL_ALPHA_MODEL_NOT_PROVEN")
     if not top_sleeve or float(top_sleeve.get("totalReturnPct") or 0.0) <= 0:
@@ -102,6 +104,8 @@ def shadow_status() -> dict[str, Any]:
             "residualAlphaResearchOosSignalDates": residual_research_validation.get("oosSignalDates"),
             "residualAlphaForwardModelFingerprint": forward_evidence.get("modelFingerprint"),
             "residualAlphaImplementationFingerprint": residual_policy.get("implementationFingerprint"),
+            "residualAlphaCurrentModelInstanceFingerprint": current_residual_prediction.get("modelInstanceFingerprint"),
+            "residualAlphaCurrentTrainingDataFingerprint": current_residual_prediction.get("trainingDataFingerprint"),
             "residualAlphaRegisteredModels": int(model_registry.get("existingRows") or 0) + int(model_registry.get("appendedRows") or 0),
             "residualAlphaModelVersionReuseConflicts": int(model_registry.get("versionReuseConflicts") or 0),
             "residualAlphaForwardIntegrityBlockers": forward_evidence.get("integrityBlockingReasons") or [],
